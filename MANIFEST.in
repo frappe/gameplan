@@ -1,0 +1,18 @@
+include MANIFEST.in
+include requirements.txt
+include *.json
+include *.md
+include *.py
+include *.txt
+recursive-include teams *.css
+recursive-include teams *.csv
+recursive-include teams *.html
+recursive-include teams *.ico
+recursive-include teams *.js
+recursive-include teams *.json
+recursive-include teams *.md
+recursive-include teams *.png
+recursive-include teams *.py
+recursive-include teams *.svg
+recursive-include teams *.txt
+recursive-exclude teams *.pyc
