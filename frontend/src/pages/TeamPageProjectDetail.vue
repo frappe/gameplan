@@ -1,0 +1,240 @@
+<template>
+  <div class="pb-40" v-if="$resources.project.data">
+    <div class="py-8 mx-auto max-w-main-content">
+      <div>
+        <h1 class="text-6xl font-bold">
+          {{ project.title }}
+        </h1>
+        <p class="text-sm text-gray-500">
+          created {{ $dayjs(project.creation).fromNow() }}
+          {{ $resources.updateProject.loading ? 'saving...' : '' }}
+        </p>
+      </div>
+    </div>
+    <div class="border-b">
+      <div
+        class="flex py-2 mx-auto text-sm font-medium text-gray-500 max-w-main-content"
+      >
+        <div class="w-[70%]">Task</div>
+        <div class="w-[15%]">Assignee</div>
+        <div class="w-[15%]">Due Date</div>
+      </div>
+    </div>
+    <div class="mb-4" v-for="state in project.task_states" :key="state.status">
+      <div
+        class="flex py-2 mx-auto text-lg font-semibold text-gray-900 max-w-main-content"
+      >
+        <button class="p-1 mr-1 transition-colors rounded hover:bg-gray-100">
+          <FeatherIcon name="chevron-right" class="w-4 h-4" />
+        </button>
+        <div>{{ state.status }}</div>
+      </div>
+      <div v-for="task in tasksByStatus(state.status)">
+        <div
+          class="py-2 mx-auto text-base font-medium text-gray-700 border-b max-w-main-content hover:bg-gray-50"
+        >
+          <div class="flex pl-8">
+            <button class="block mr-2">
+              <FeatherIcon
+                name="circle"
+                class="w-4 text-gray-400 transition-colors hover:text-gray-600"
+              />
+            </button>
+            <div class="w-[70%]">{{ task.title }}</div>
+            <div class="w-[15%]"></div>
+            <div class="w-[15%]"></div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div
+          class="mx-auto text-sm font-medium text-gray-700 border-b max-w-main-content"
+        >
+          <div class="flex pl-8">
+            <button class="block mr-2">
+              <Spinner
+                class="w-4"
+                v-if="
+                  $resources.createTask.loading &&
+                  $resources.createTask.params.doc.status === state.status
+                "
+              />
+              <FeatherIcon
+                v-else
+                name="circle"
+                class="w-4 text-gray-400 transition-colors hover:text-gray-600"
+              />
+            </button>
+            <div class="w-[70%]">
+              <input
+                :ref="(ref) => setNewTaskRef(ref, state.status)"
+                class="w-full p-0 py-2 text-base font-medium text-gray-700 border-none focus:ring-0"
+                type="text"
+                @keydown.enter="
+                  $resources.createTask.submit({
+                    doc: {
+                      doctype: 'Team Task',
+                      project: projectId,
+                      title: newTaskRefs[state.status].value,
+                      status: state.status,
+                    },
+                  })
+                "
+                placeholder="Add a task"
+                :disabled="$resources.createTask.loading"
+              />
+            </div>
+            <div class="w-[15%]"></div>
+            <div class="w-[15%]"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="mx-auto mt-4 max-w-main-content">
+      <Button
+        v-show="!addingNewStatus"
+        icon-left="plus"
+        type="white"
+        @click="
+          () => {
+            addingNewStatus = true
+            $nextTick(() => $refs.newStatusInput.focus())
+          }
+        "
+      >
+        Add status
+      </Button>
+      <div class="flex items-center" v-if="addingNewStatus">
+        <button class="p-1 mr-1 transition-colors rounded hover:bg-gray-100">
+          <Spinner class="w-4" v-if="$resources.createStatus.loading" />
+          <FeatherIcon name="chevron-right" class="w-4 h-4" v-else />
+        </button>
+        <input
+          ref="newStatusInput"
+          type="text"
+          class="p-0 text-lg font-semibold text-gray-900 border-none focus:ring-0"
+          v-model="newStatus"
+          @keydown.enter="$resources.createStatus.submit()"
+          :disabled="$resources.createStatus.loading"
+        />
+      </div>
+    </div>
+  </div>
+</template>
+<script>
+import { Spinner, debounce } from 'frappe-ui'
+export default {
+  name: 'TeamPageProjectDetail',
+  props: ['team', 'projectId'],
+  components: {
+    Spinner,
+  },
+  data() {
+    return {
+      addingNewStatus: false,
+      newStatus: '',
+    }
+  },
+  resources: {
+    project() {
+      return {
+        method: 'frappe.client.get',
+        cache: ['team-project', this.projectId],
+        params: {
+          doctype: 'Team Project',
+          name: this.projectId,
+        },
+        auto: true,
+      }
+    },
+    tasks() {
+      return {
+        method: 'frappe.client.get_list',
+        cache: ['team-project-tasks', this.projectId],
+        params: {
+          doctype: 'Team Task',
+          filters: {
+            project: this.projectId,
+          },
+          fields: ['*'],
+          order_by: 'creation asc',
+        },
+        auto: true,
+      }
+    },
+    updateProject() {
+      return {
+        method: 'frappe.client.set_value',
+        params: {
+          doctype: 'Team Project',
+          name: this.projectId,
+          fieldname: {
+            description: this.project?.description,
+          },
+        },
+      }
+    },
+    createTask() {
+      return {
+        method: 'frappe.client.insert',
+        async onSuccess(data) {
+          await this.$resources.tasks.fetch()
+          await this.$nextTick()
+          let input = this.newTaskRefs[data.status]
+          if (input) {
+            input.value = ''
+            input.focus()
+          }
+        },
+      }
+    },
+    createStatus() {
+      let task_states = [
+        ...(this.project?.task_states || []),
+        {
+          status: this.newStatus,
+        },
+      ]
+      return {
+        method: 'frappe.client.set_value',
+        params: {
+          doctype: 'Team Project',
+          name: this.projectId,
+          fieldname: {
+            task_states,
+          },
+        },
+        onSuccess() {
+          this.newStatus = ''
+          this.addingNewStatus = false
+          this.$resources.project.fetch()
+        },
+      }
+    },
+  },
+  computed: {
+    project() {
+      return this.$resources.project.data
+    },
+    tasks() {
+      return this.$resources.tasks.data
+    },
+  },
+  methods: {
+    tasksByStatus(status) {
+      return this.tasks.filter((task) => task.status === status)
+    },
+    setNewTaskRef(ref, status) {
+      this.newTaskRefs = this.newTaskRefs || {}
+      this.newTaskRefs[status] = ref
+    },
+    onDescriptionUpdate(content) {
+      this.$resources.project.data.description = content
+      this.updateProject()
+    },
+    updateProject: debounce(function () {
+      this.$resources.updateProject.submit()
+    }, 700),
+  },
+}
+</script>

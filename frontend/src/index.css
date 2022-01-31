@@ -1,0 +1,7 @@
+@import './assets/Inter/inter.css';
+@import 'frappe-ui/src/style.css';
+
+.ProseMirror {
+  outline: none;
+  caret-color: theme('colors.blue.600');
+}

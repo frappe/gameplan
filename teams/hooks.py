@@ -47,6 +47,10 @@ app_license = "MIT"
 #	"Role": "home_page"
 # }
 
+website_route_rules = [
+	{"from_route": "/teams/<path:app_path>", "to_route": "teams"},
+]
+
 # Generators
 # ----------
 

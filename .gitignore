@@ -3,4 +3,6 @@
 *.egg-info
 *.swp
 tags
+node_modules
 teams/docs/current
+teams/public/frontend
