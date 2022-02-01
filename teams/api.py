@@ -12,7 +12,9 @@ def create_team(name):
 
 @frappe.whitelist()
 def get_teams():
-	return frappe.db.get_all("Team", fields=["name", "title", "modified", "creation"])
+	return frappe.db.get_all(
+		"Team", fields=["name", "title", "modified", "creation"], order_by="creation asc"
+	)
 
 
 @frappe.whitelist()

@@ -1,14 +1,16 @@
 <template>
-  <Dialog :options="{title: 'Add Team'}" v-model="showDialog">
-    <Input
-      label="Team Name"
-      type="text"
-      v-model="teamName"
-      placeholder="Team Name"
-    />
-    <ErrorMessage class="mt-2" :error="$resources.createTeam.error" />
+  <NewDialog :options="{ title: 'Add Team' }" v-model="showDialog">
+    <template #dialog-content>
+      <Input
+        label="Team Name"
+        type="text"
+        v-model="teamName"
+        placeholder="Team Name"
+      />
+      <ErrorMessage class="mt-2" :error="$resources.createTeam.error" />
+    </template>
 
-    <template #actions>
+    <template #dialog-actions>
       <Button
         type="primary"
         @click="
@@ -21,25 +23,34 @@
         Create Team
       </Button>
     </template>
-  </Dialog>
+  </NewDialog>
 </template>
 <script>
-import NewDialog from "frappe-ui/src/components/NewDialog.vue"
+import { NewDialog } from 'frappe-ui'
 
 export default {
   name: 'AddTeamDialog',
-  emits: ['success'],
+  props: ['show'],
+  emits: ['success', 'update:show'],
   data() {
     return {
       teamName: '',
       teamType: '',
-      showDialog: true,
     }
   },
   components: {
     NewDialog,
   },
-  methods: {},
+  computed: {
+    showDialog: {
+      get() {
+        return this.show
+      },
+      set(val) {
+        this.$emit('update:show', val)
+      },
+    },
+  },
   resources: {
     createTeam: {
       method: 'teams.api.create_team',

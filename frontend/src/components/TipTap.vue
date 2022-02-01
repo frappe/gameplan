@@ -1,5 +1,5 @@
 <template>
-  <div v-if="editor">
+  <div class="w-full" v-if="editor">
     <BubbleMenu
       class="bubble-menu"
       :tippy-options="{ duration: 100 }"
@@ -36,21 +36,27 @@
         {{ button.label }}
       </button>
     </FloatingMenu>
-    <editor-content :editor="editor" class="prose-sm prose" />
+    <editor-content
+      :editor="editor"
+      :class="$attrs.class || 'prose-sm prose'"
+    />
   </div>
 </template>
 
 <script>
 import { Editor, EditorContent, BubbleMenu, FloatingMenu } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
+import Placeholder from '@tiptap/extension-placeholder'
 
 export default {
+  name: 'TipTap',
+  inheritAttrs: false,
   components: {
     EditorContent,
     BubbleMenu,
     FloatingMenu,
   },
-  props: ['content'],
+  props: ['content', 'placeholder'],
   emits: ['update'],
   expose: ['editor'],
   data() {
@@ -71,10 +77,15 @@ export default {
       content: this.content || '<p></p>',
       editorProps: {
         attributes: {
-          class: 'prose prose-sm prose-p:my-1',
+          class: 'prose-p:my-1',
         },
       },
-      extensions: [StarterKit],
+      extensions: [
+        StarterKit,
+        Placeholder.configure({
+          placeholder: this.placeholder || 'Write something...',
+        }),
+      ],
       onUpdate: ({ editor }) => {
         this.$emit('update', editor.getHTML())
       },
@@ -127,3 +138,12 @@ export default {
   },
 }
 </script>
+<style>
+.ProseMirror:not(.ProseMirror-focused) p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: theme('colors.gray.500');
+  pointer-events: none;
+  height: 0;
+}
+</style>

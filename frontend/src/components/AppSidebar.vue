@@ -174,8 +174,14 @@
     </div>
   </div>
   <AddTeamDialog
-    v-if="showAddTeamDialog"
-    @success="(team) => $router.push(`/${team.name}`)"
+    v-model:show="showAddTeamDialog"
+    @success="
+      (team) => {
+        showAddTeamDialog = false
+        $resources.teams.fetch()
+        $router.push(`/${team.name}`)
+      }
+    "
   />
 </template>
 

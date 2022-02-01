@@ -12,6 +12,12 @@ class Team(Document):
 			slug = frappe.scrub(self.title)
 			self.name = append_number_if_name_exists("Team", slug)
 
+		if not self.description:
+			self.description = f'''
+			<strong>Welcome to the {self.title} team page!</strong>
+			<p>You can add a brief introduction about the team, important links, resources, and other important information here.</p>
+		'''
+
 	@frappe.whitelist()
 	def send_invitation(self, email):
 		for row in self.members:

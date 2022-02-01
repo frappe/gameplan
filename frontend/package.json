@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@headlessui/vue": "^1.4.2",
+    "@tiptap/extension-placeholder": "^2.0.0-beta.47",
     "@tiptap/starter-kit": "^2.0.0-beta.171",
     "@tiptap/vue-3": "^2.0.0-beta.88",
     "dayjs": "^1.10.7",
