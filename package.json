@@ -2,6 +2,8 @@
     "private": true,
     "workspaces": ["frontend", "frappe-ui"],
     "scripts": {
-        "dev": "cd frontend && yarn dev"
+        "postinstall": "cd frontend && yarn install",
+        "dev": "cd frontend && yarn dev",
+        "build": "cd frontend && yarn build"
     }
 }
