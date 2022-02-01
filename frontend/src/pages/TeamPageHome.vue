@@ -10,8 +10,8 @@
     "
   />
 
-  <div class="mx-auto pb-80 max-w-main-content">
-    <div class="w-3/5 mt-10">
+  <div class="container mx-auto pb-80">
+    <div class="mt-10">
       <div class="flex items-center justify-between">
         <h1 class="text-6xl font-bold">{{ team.title }}</h1>
       </div>
@@ -29,8 +29,8 @@
         "
       />
     </div>
-    <TeamPageHomeProjects class="w-3/5 mt-10" :team="team" />
-    <TeamPageHomeMembers class="w-3/5 mt-10" :team="team" />
+    <TeamPageHomeProjects class="mt-10 w-" :team="team" />
+    <TeamPageHomeMembers class="mt-10 w-" :team="team" />
   </div>
 </template>
 <script>

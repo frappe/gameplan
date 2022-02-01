@@ -8,9 +8,19 @@ module.exports = {
     '../node_modules/frappe-ui/src/components/**/*.{vue,js,ts,jsx,tsx}',
   ],
   theme: {
+    container: {
+      center: true,
+      padding: {
+        DEFAULT: '2rem',
+        sm: '2rem',
+        lg: '4rem',
+        xl: '12rem',
+        '2xl': '15rem',
+      },
+    },
     extend: {
       maxWidth: {
-        'main-content': '80rem',
+        'main-content': '768px',
       },
     },
   },

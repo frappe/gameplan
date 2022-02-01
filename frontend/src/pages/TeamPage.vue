@@ -1,7 +1,7 @@
 <template>
   <div class="h-full" v-if="$resources.team.data">
     <div class="py-4 bg-white border-b">
-      <div class="mx-auto max-w-main-content">
+      <div class="mx-auto container">
         <Breadcrumbs :pages="breadcrumbs" />
 
         <div class="mt-2" v-if="false">

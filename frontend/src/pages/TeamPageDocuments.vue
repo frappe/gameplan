@@ -1,5 +1,5 @@
 <template>
-  <div class="py-4 mx-auto max-w-main-content">
+  <div class="py-4 mx-auto container">
     <div class="grid grid-cols-6 gap-4">
       <button
         class="flex items-center justify-center border border-gray-400 border-dashed rounded-lg"

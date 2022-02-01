@@ -8,7 +8,7 @@
     </div>
     <ul
       role="list"
-      class="grid grid-cols-1 gap-4 py-4 mt-4 border-t border-gray-200 empty:py-0 sm:grid-cols-2"
+      class="grid grid-cols-1 gap-4 py-4 mt-4 border-t border-gray-200 empty:py-0 sm:grid-cols-2 lg:grid-cols-3"
     >
       <li
         v-for="project in $resources.projects.data"

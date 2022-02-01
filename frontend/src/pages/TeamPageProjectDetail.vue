@@ -1,6 +1,6 @@
 <template>
   <div class="pb-40" v-if="$resources.project.data">
-    <div class="py-8 mx-auto max-w-main-content">
+    <div class="container py-8 mx-auto">
       <div>
         <h1 class="text-6xl font-bold">
           {{ project.title }}
@@ -13,7 +13,7 @@
     </div>
     <div class="border-b">
       <div
-        class="flex py-2 mx-auto text-sm font-medium text-gray-500 max-w-main-content"
+        class="container flex py-2 mx-auto text-sm font-medium text-gray-500"
       >
         <div class="w-[70%]">Task</div>
         <div class="w-[15%]">Assignee</div>
@@ -22,16 +22,16 @@
     </div>
     <div class="mb-4" v-for="state in project.task_states" :key="state.status">
       <div
-        class="flex py-2 mx-auto text-lg font-semibold text-gray-900 max-w-main-content"
+        class="container flex py-2 mx-auto text-lg font-semibold text-gray-900"
       >
         <button class="p-1 mr-1 transition-colors rounded hover:bg-gray-100">
           <FeatherIcon name="chevron-right" class="w-4 h-4" />
         </button>
         <div>{{ state.status }}</div>
       </div>
-      <div v-for="task in tasksByStatus(state.status)">
+      <div class="container" v-for="task in tasksByStatus(state.status)">
         <div
-          class="py-2 mx-auto text-base font-medium text-gray-700 border-b max-w-main-content hover:bg-gray-50"
+          class="py-2 mx-auto text-base font-medium text-gray-700 border-b hover:bg-gray-50"
         >
           <div class="flex pl-8">
             <button class="block mr-2">
@@ -46,10 +46,8 @@
           </div>
         </div>
       </div>
-      <div>
-        <div
-          class="mx-auto text-sm font-medium text-gray-700 border-b max-w-main-content"
-        >
+      <div class="container">
+        <div class="mx-auto text-sm font-medium text-gray-700 border-b">
           <div class="flex pl-8">
             <button class="block mr-2">
               <Spinner
@@ -90,7 +88,7 @@
         </div>
       </div>
     </div>
-    <div class="mx-auto mt-4 max-w-main-content">
+    <div class="container mx-auto mt-4">
       <Button
         v-show="!addingNewStatus"
         icon-left="plus"
