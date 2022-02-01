@@ -6,18 +6,20 @@
         type="text"
         v-model="teamName"
         placeholder="Team Name"
+        @keydown.enter="
+          (e) => $resources.createTeam.submit({ name: e.target.value })
+        "
       />
-      <ErrorMessage class="mt-2" :error="$resources.createTeam.error" />
+      <ErrorMessage
+        class="mt-2"
+        :message="$resources.createTeam.error?.message"
+      />
     </template>
 
     <template #dialog-actions>
       <Button
         type="primary"
-        @click="
-          $resources.createTeam.submit({
-            name: teamName,
-          })
-        "
+        @click="$resources.createTeam.submit()"
         :loading="$resources.createTeam.loading"
       >
         Create Team
@@ -35,7 +37,6 @@ export default {
   data() {
     return {
       teamName: '',
-      teamType: '',
     }
   },
   components: {
@@ -52,11 +53,22 @@ export default {
     },
   },
   resources: {
-    createTeam: {
-      method: 'teams.api.create_team',
-      onSuccess(team) {
-        this.$emit('success', team)
-      },
+    createTeam() {
+      return {
+        method: 'teams.api.create_team',
+        params: {
+          name: this.teamName,
+        },
+        validate(params) {
+          if (!params?.name) {
+            return 'Team Name is required'
+          }
+        },
+        onSuccess(team) {
+          this.teamName = ''
+          this.$emit('success', team)
+        },
+      }
     },
   },
 }

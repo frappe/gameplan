@@ -88,27 +88,9 @@ def accept_invitation(key=None):
 
 @frappe.whitelist()
 def get_unsplash_photos(keyword=None):
-	if not "unsplash_access_key" in frappe.conf:
-		frappe.throw("Please set unsplash_access_key in site_config.json")
+	from teams.unsplash import get_list, get_by_keyword
 
-	def _get():
-		import requests
+	if keyword:
+		return get_by_keyword(keyword)
 
-		base_url = "https://api.unsplash.com"
-		path = f"/search/photos?query={keyword}" if keyword else "/photos"
-		res = requests.get(
-			f"{base_url}{path}",
-			headers={
-				"Accept-Version": "v1",
-				"Authorization": f"Client-ID {frappe.conf.unsplash_access_key}",
-			},
-		)
-		res.raise_for_status()
-		data = res.json()
-		if isinstance(data, list):
-			return data
-		return data.get("results")
-
-	if not keyword:
-		return frappe.cache().get_value("unsplash_photos", generator=_get)
-	return _get()
+	return frappe.cache().get_value("unsplash_photos", generator=get_list)
