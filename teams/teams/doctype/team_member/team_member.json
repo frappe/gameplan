@@ -8,7 +8,9 @@
  "field_order": [
   "email",
   "user",
-  "status"
+  "role",
+  "status",
+  "key"
  ],
  "fields": [
   {
@@ -31,12 +33,23 @@
    "in_list_view": 1,
    "label": "Status",
    "options": "Invited\nAccepted"
+  },
+  {
+   "fieldname": "key",
+   "fieldtype": "Data",
+   "label": "Key",
+   "read_only": 1
+  },
+  {
+   "fieldname": "role",
+   "fieldtype": "Data",
+   "label": "Role"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2022-01-30 19:01:32.894901",
+ "modified": "2022-02-01 18:24:33.847679",
  "modified_by": "Administrator",
  "module": "Teams",
  "name": "Team Member",

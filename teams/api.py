@@ -52,12 +52,10 @@ def update_document(name, title, content):
 
 @frappe.whitelist()
 def get_user_info(email):
-	return (
-		frappe.db.get_values(
-			"User", email, fieldname=["name", "email", "user_image", "full_name"], as_dict=True
-		)
-		or None
+	result = frappe.db.get_values(
+		"User", email, fieldname=["name", "email", "user_image", "full_name"], as_dict=True
 	)
+	return result[0] if result else None
 
 
 @frappe.whitelist()
@@ -77,13 +75,15 @@ def accept_invitation(key=None):
 	if not result:
 		frappe.throw("Invalid or expired key")
 
+	# valid key, now set the user as Administrator
+	frappe.set_user('Administrator')
 	team = frappe.get_doc("Team", result[0].parent)
 	user = team.accept_invitation(key)
 
 	if user:
 		frappe.local.login_manager.login_as(user.name)
 		frappe.local.response["type"] = "redirect"
-		frappe.local.response["location"] = "/teams"
+		frappe.local.response["location"] = "/teams/" + team.name
 
 
 @frappe.whitelist()

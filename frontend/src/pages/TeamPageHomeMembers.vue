@@ -7,10 +7,7 @@
       </Button>
     </div>
     <div class="mt-4">
-      <ul
-        role="list"
-        class="border-t border-b border-gray-200 divide-y divide-gray-200"
-      >
+      <ul role="list" class="border-t border-gray-200 divide-y divide-gray-200">
         <li
           v-for="member in team.members"
           :key="member.name"
@@ -29,20 +26,22 @@
                   v-else
                   class="flex items-center justify-center w-10 h-10 text-lg text-gray-600 bg-gray-300 rounded-full"
                 >
-                  {{ user.full_name[0].toUpperCase() }}
+                  {{ user.full_name ? user.full_name[0].toUpperCase() : '' }}
                 </div>
               </div>
               <div class="flex-1 min-w-0">
                 <p class="text-sm font-medium text-gray-900 truncate">
-                  {{ user.full_name }}
+                  {{
+                    member.status === 'Invited' ? user.email : user.full_name
+                  }}
                 </p>
                 <p class="text-sm font-medium text-gray-500 truncate">
-                  {{ user.email }}
+                  {{ member.role }}
                 </p>
               </div>
             </div>
             <div class="flex-shrink-0">
-              <Badge :color="member.status == 'Invited' ? 'yellow' : 'green'">
+              <Badge v-if="member.status === 'Invited'" color="yellow">
                 {{ member.status }}
               </Badge>
             </div>
