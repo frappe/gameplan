@@ -1,7 +1,7 @@
 <template>
   <div class="h-full" v-if="$resources.team.data">
     <div class="py-4 bg-white border-b">
-      <div class="mx-auto container">
+      <div class="container mx-auto">
         <Breadcrumbs :pages="breadcrumbs" />
 
         <div class="mt-2" v-if="false">
@@ -76,7 +76,6 @@ export default {
           current: fullPath === `/${this.team.name}`,
         },
       ]
-      console.log(this.$route)
       if (this.$route.params.projectId) {
         let projectId = this.$route.params.projectId
         let route = `/${this.team.name}/projects/${projectId}`

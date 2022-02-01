@@ -215,7 +215,7 @@ export default {
       return this.$resources.project.data
     },
     tasks() {
-      return this.$resources.tasks.data
+      return this.$resources.tasks.data || []
     },
   },
   methods: {
