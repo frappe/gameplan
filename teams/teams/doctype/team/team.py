@@ -63,14 +63,17 @@ class Team(Document):
 	def accept_invitation(self, key):
 		for row in self.members:
 			if row.key == key:
-				user = frappe.get_doc(
-					doctype="User",
-					user_type="Website User",
-					email=row.email,
-					send_welcome_email=0,
-					first_name=row.email.split("@")[0],
-				).insert(ignore_permissions=True)
-				user.add_roles("Team Project User")
+				if not frappe.db.exists("User", row.email):
+					user = frappe.get_doc(
+						doctype="User",
+						user_type="Website User",
+						email=row.email,
+						send_welcome_email=0,
+						first_name=row.email.split("@")[0],
+					).insert(ignore_permissions=True)
+					user.add_roles("Team Project User", "System Manager")
+				else:
+					user = frappe.get_doc("User", row.email)
 				row.user = user.name
 				row.status = "Accepted"
 				self.save()
