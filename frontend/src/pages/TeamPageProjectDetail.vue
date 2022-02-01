@@ -31,23 +31,32 @@
       </div>
       <div class="container" v-for="task in tasksByStatus(state.status)">
         <div
-          class="py-2 mx-auto text-base font-medium text-gray-700 border-b hover:bg-gray-50"
+          class="mx-auto text-base font-medium text-gray-700 border-t hover:bg-gray-50"
         >
-          <div class="flex pl-8">
-            <button class="block mr-2">
-              <FeatherIcon
-                name="circle"
-                class="w-4 text-gray-400 transition-colors hover:text-gray-600"
+          <div class="flex">
+            <div class="flex pl-8 py-2 w-[70%]">
+              <button class="block mr-2">
+                <FeatherIcon
+                  name="circle"
+                  class="w-4 text-gray-400 transition-colors hover:text-gray-600"
+                />
+              </button>
+              {{ task.title }}
+            </div>
+            <div class="w-[15%] flex flex-shrink-0">
+              <AssignUser
+                class="w-full h-full"
+                :users="users"
+                :assigned-user="task.assignedUser"
+                @update:assigned-user="updateAssignedUser(task, $event)"
               />
-            </button>
-            <div class="w-[70%]">{{ task.title }}</div>
-            <div class="w-[15%]"></div>
-            <div class="w-[15%]"></div>
+            </div>
+            <div class="w-[15%] flex-shrink-0"></div>
           </div>
         </div>
       </div>
       <div class="container">
-        <div class="mx-auto text-sm font-medium text-gray-700 border-b">
+        <div class="mx-auto text-sm font-medium text-gray-700 border-t">
           <div class="flex pl-8">
             <button class="block mr-2">
               <Spinner
@@ -121,11 +130,14 @@
 </template>
 <script>
 import { Spinner, debounce } from 'frappe-ui'
+import AssignUser from '@/components/AssignUser.vue'
+
 export default {
   name: 'TeamPageProjectDetail',
   props: ['team', 'projectId'],
   components: {
     Spinner,
+    AssignUser,
   },
   data() {
     return {
@@ -157,7 +169,17 @@ export default {
           fields: ['*'],
           order_by: 'creation asc',
         },
-        auto: true,
+        auto: Boolean(this.project),
+        onSuccess(tasks) {
+          for (let task of tasks) {
+            let assignedUserEmail = task._assign
+              ? JSON.parse(task._assign)[0]
+              : null
+            task.assignedUser = assignedUserEmail
+              ? this.users.find((user) => user.email === assignedUserEmail)
+              : null
+          }
+        },
       }
     },
     updateProject() {
@@ -209,6 +231,14 @@ export default {
         },
       }
     },
+    assignTask() {
+      return {
+        method: 'teams.api.assign_task',
+        onSuccess() {
+          this.$resources.tasks.fetch()
+        },
+      }
+    },
   },
   computed: {
     project() {
@@ -216,6 +246,9 @@ export default {
     },
     tasks() {
       return this.$resources.tasks.data || []
+    },
+    users() {
+      return this.project?.members || []
     },
   },
   methods: {
@@ -225,6 +258,13 @@ export default {
     setNewTaskRef(ref, status) {
       this.newTaskRefs = this.newTaskRefs || {}
       this.newTaskRefs[status] = ref
+    },
+    updateAssignedUser(task, user) {
+      task.assignedUser = user
+      this.$resources.assignTask.submit({
+        task: task.name,
+        user: user.email,
+      })
     },
     onDescriptionUpdate(content) {
       this.$resources.project.data.description = content

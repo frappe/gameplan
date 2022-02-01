@@ -76,7 +76,7 @@ def accept_invitation(key=None):
 		frappe.throw("Invalid or expired key")
 
 	# valid key, now set the user as Administrator
-	frappe.set_user('Administrator')
+	frappe.set_user("Administrator")
 	team = frappe.get_doc("Team", result[0].parent)
 	user = team.accept_invitation(key)
 
@@ -94,3 +94,11 @@ def get_unsplash_photos(keyword=None):
 		return get_by_keyword(keyword)
 
 	return frappe.cache().get_value("unsplash_photos", generator=get_list)
+
+
+@frappe.whitelist()
+def assign_task(task, user):
+	from frappe.desk.form.assign_to import add, clear
+
+	clear("Team Task", task)
+	add({"assign_to": [user], "doctype": "Team Task", "name": task})

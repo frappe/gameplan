@@ -8,6 +8,13 @@ from teams.unsplash import get_random as get_random_image
 
 
 class Team(Document):
+	def as_dict(self, *args, **kwargs) -> dict:
+		d = super().as_dict(*args, **kwargs)
+		for member in d.members:
+			if member.user:
+				member.full_name = frappe.db.get_value("User", member.user, "full_name")
+		return d
+
 	def before_insert(self):
 		if not self.name:
 			slug = frappe.scrub(self.title)

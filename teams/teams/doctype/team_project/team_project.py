@@ -6,4 +6,7 @@ from frappe.model.document import Document
 
 
 class TeamProject(Document):
-	pass
+	def as_dict(self, *args, **kwargs) -> dict:
+		d = super().as_dict(*args, **kwargs)
+		d.members = frappe.get_doc("Team", d.team).as_dict()["members"]
+		return d
