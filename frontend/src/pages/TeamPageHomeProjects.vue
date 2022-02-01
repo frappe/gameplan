@@ -8,7 +8,7 @@
     </div>
     <ul
       role="list"
-      class="grid grid-cols-1 gap-4 py-4 mt-4 border-t border-b border-gray-200 sm:grid-cols-2"
+      class="grid grid-cols-1 gap-4 py-4 mt-4 border-t border-gray-200 empty:py-0 sm:grid-cols-2"
     >
       <li
         v-for="project in $resources.projects.data"
@@ -47,12 +47,34 @@
         </div>
       </li>
     </ul>
+    <div
+      class="flex flex-col items-center justify-center py-8"
+      v-if="$resources.projects.data?.length === 0"
+    >
+      <FeatherIcon name="folder-plus" class="w-6 h-6 text-gray-500" />
+      <span class="mt-2 text-base text-gray-800"> No projects </span>
+    </div>
     <NewDialog
       :options="{ title: 'Create Project' }"
       v-model="createNewProjectDialog"
     >
       <template #dialog-content>
-        <Input type="text" label="Project Title" v-model="newProjectTitle" />
+        <Input
+          type="text"
+          label="Project Title"
+          v-model="newProjectTitle"
+          @keydown.enter="
+            (e) =>
+              $resources.createProject.submit({
+                doc: {
+                  doctype: 'Team Project',
+                  team: team.name,
+                  title: e.target.value,
+                  task_states: [{ status: 'To do' }, { status: 'In progress' }],
+                },
+              })
+          "
+        />
         <ErrorMessage class="mt-2" :message="$resources.createProject.error" />
       </template>
       <template #dialog-actions>
