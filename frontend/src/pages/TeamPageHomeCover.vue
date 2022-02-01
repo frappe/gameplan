@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-[3rem]">
+  <div class="min-h-[3rem] bg-gray-100">
     <UnsplashImageBrowser
       @select="
         (imageUrl) => {

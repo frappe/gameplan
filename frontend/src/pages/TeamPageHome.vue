@@ -1,5 +1,6 @@
 <template>
   <TeamPageHomeCover
+    :key="team.name"
     :team="team"
     @change="
       (imageUrl) => {

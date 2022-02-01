@@ -1,64 +1,60 @@
 <template>
-  <div>
-    <Popover v-slot="{ open }" class="relative">
-      <PopoverButton class="w-full">
-        <slot v-bind="{ open }"></slot>
-      </PopoverButton>
+  <Popover v-slot="{ open }" class="relative">
+    <PopoverButton class="flex w-full">
+      <slot v-bind="{ open }"></slot>
+    </PopoverButton>
 
-      <transition
-        enter-active-class="transition duration-200 ease-out"
-        enter-from-class="translate-y-1 opacity-0"
-        enter-to-class="translate-y-0 opacity-100"
-        leave-active-class="transition duration-150 ease-in"
-        leave-from-class="translate-y-0 opacity-100"
-        leave-to-class="translate-y-1 opacity-0"
+    <transition
+      enter-active-class="transition duration-200 ease-out"
+      enter-from-class="translate-y-1 opacity-0"
+      enter-to-class="translate-y-0 opacity-100"
+      leave-active-class="transition duration-150 ease-in"
+      leave-from-class="translate-y-0 opacity-100"
+      leave-to-class="translate-y-1 opacity-0"
+    >
+      <PopoverPanel
+        class="absolute z-10 max-w-sm px-4 mt-3 transform -translate-x-1/2 bg-white left-1/2 sm:px-0 lg:max-w-3xl"
       >
-        <PopoverPanel
-          class="absolute z-10 max-w-sm px-4 mt-3 transform -translate-x-1/2 left-1/2 sm:px-0 lg:max-w-3xl"
+        <div
+          class="p-6 overflow-hidden rounded-lg shadow-lg ring-1 ring-black ring-opacity-5"
         >
-          <div
-            class="p-6 overflow-hidden rounded-lg shadow-lg ring-1 ring-black ring-opacity-5"
-          >
-            <div class="">
-              <Input
-                type="text"
-                placeholder="search by keyword"
-                v-model="search"
-              />
-            </div>
-            <div
-              class="relative grid gap-2 my-4 bg-white lg:grid-cols-2 w-[25.5rem]"
-            >
-              <button
-                v-for="image in $resources.images.data"
-                :key="image.id"
-                class="overflow-hidden rounded hover:opacity-80 w-[200px] h-[50px]"
-                @click="$emit('select', image.urls.raw)"
-              >
-                <img
-                  :src="
-                    image.urls.raw +
-                    '&w=200&h=50&fit=crop&crop=entropy,faces,focalpoint'
-                  "
-                />
-              </button>
-            </div>
-            <FileUploader @success="(file) => $emit('select', file.file_url)">
-              <template
-                v-slot="{ file, progress, uploading, openFileSelector }"
-              >
-                <div class="w-full text-center">
-                  <Button @click="openFileSelector" :loading="uploading">
-                    {{ uploading ? `Uploading ${progress}%` : 'Upload Image' }}
-                  </Button>
-                </div>
-              </template>
-            </FileUploader>
+          <div class="">
+            <Input
+              type="text"
+              placeholder="search by keyword"
+              v-model="search"
+            />
           </div>
-        </PopoverPanel>
-      </transition>
-    </Popover>
-  </div>
+          <div
+            class="relative grid gap-2 my-4 bg-white lg:grid-cols-2 w-[25.5rem]"
+          >
+            <button
+              v-for="image in $resources.images.data"
+              :key="image.id"
+              class="overflow-hidden rounded hover:opacity-80 w-[200px] h-[50px]"
+              @click="$emit('select', image.urls.raw)"
+            >
+              <img
+                :src="
+                  image.urls.raw +
+                  '&w=200&h=50&fit=crop&crop=entropy,faces,focalpoint'
+                "
+              />
+            </button>
+          </div>
+          <FileUploader @success="(file) => $emit('select', file.file_url)">
+            <template v-slot="{ file, progress, uploading, openFileSelector }">
+              <div class="w-full text-center">
+                <Button @click="openFileSelector" :loading="uploading">
+                  {{ uploading ? `Uploading ${progress}%` : 'Upload Image' }}
+                </Button>
+              </div>
+            </template>
+          </FileUploader>
+        </div>
+      </PopoverPanel>
+    </transition>
+  </Popover>
 </template>
 
 <script>
