@@ -42,6 +42,11 @@
                     })
                   "
                   :disabled="$resources.updateTaskCompleted.loading"
+                  :aria-label="
+                    task.is_completed
+                      ? 'Mark as incomplete'
+                      : 'Mark as complete'
+                  "
                 >
                   <FeatherIcon
                     :name="task.is_completed ? 'check' : 'circle'"
@@ -224,7 +229,7 @@ export default {
           },
           fields: ['*'],
           order_by: 'creation asc',
-          limit_page_length: 100
+          limit_page_length: 100,
         },
         auto: Boolean(this.project),
         debounce: 300,
