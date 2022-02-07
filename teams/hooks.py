@@ -7,7 +7,7 @@ app_description = "A project management tool with a focus on teams"
 app_icon = "octicon octicon-file-directory"
 app_color = "grey"
 app_email = "hello@frappe.io"
-app_license = "MIT"
+app_license = "GNU GPLv3"
 
 # Includes in <head>
 # ------------------

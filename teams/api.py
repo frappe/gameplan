@@ -1,5 +1,5 @@
 # Copyright (c) 2021, Frappe Technologies Pvt. Ltd. and Contributors
-# MIT License. See license.txt
+# GNU GPLv3 License. See license.txt
 
 from __future__ import unicode_literals
 import frappe
