@@ -18,9 +18,9 @@ const routes = [
         component: () => import('@/pages/TeamPageHome.vue'),
       },
       {
-        name: 'TeamPageProjectDetail',
+        name: 'ProjectDetail',
         path: 'projects/:projectId',
-        component: () => import('@/pages/TeamPageProjectDetail.vue'),
+        component: () => import('@/pages/ProjectDetail.vue'),
         props: true,
       },
       {

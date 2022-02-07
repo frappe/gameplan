@@ -1,11 +1,10 @@
 <template>
-  <Listbox as="div" v-model="selectedUser" v-slot="{ open }">
-    <ListboxButton
-      class="w-full h-full text-left"
-      :class="{ 'hover:opacity-100 opacity-0': !selectedUser && !open }"
-    >
+  <Listbox as="div" v-model="selectedUser">
+    <ListboxButton class="w-full h-full text-left" :class="$attrs.class">
       {{ selectedUser?.email || '' }}
-      <span v-if="!selectedUser" class="text-sm text-gray-500">Assign this task</span>
+      <span v-if="!selectedUser" class="text-sm text-gray-500">
+        Assign this task
+      </span>
     </ListboxButton>
     <div class="relative">
       <transition
@@ -24,20 +23,23 @@
             as="template"
           >
             <li
-              class="flex py-2 pl-3 pr-6 cursor-default whitespace-nowrap"
+              class="flex items-baseline py-2 pl-3 pr-6 cursor-default whitespace-nowrap"
               :class="{ 'bg-gray-100': active }"
             >
               <span
-                class="mr-2"
+                class="mr-2 text-base"
                 :class="
                   selected ? 'text-gray-900 font-medium' : 'text-gray-600'
                 "
               >
                 {{ user.full_name }}
               </span>
-              <span :class="selected ? 'text-gray-600' : 'text-gray-500'">
-                {{ user.email }}</span
+              <span
+                class="text-sm"
+                :class="selected ? 'text-gray-600' : 'text-gray-500'"
               >
+                {{ user.email }}
+              </span>
             </li>
           </ListboxOption>
         </ListboxOptions>
@@ -54,6 +56,7 @@ import {
 } from '@headlessui/vue'
 export default {
   name: 'AssignUser',
+  inheritAttrs: false,
   props: ['users', 'assignedUser'],
   emits: ['update:assignedUser'],
   components: {

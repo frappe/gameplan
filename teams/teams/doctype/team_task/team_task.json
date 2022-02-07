@@ -41,6 +41,8 @@
   {
    "fieldname": "status",
    "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Status"
   },
   {
@@ -52,18 +54,21 @@
    "default": "0",
    "fieldname": "is_completed",
    "fieldtype": "Check",
+   "in_list_view": 1,
    "label": "Is Completed"
   },
   {
    "fieldname": "project",
    "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Project",
    "options": "Team Project"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-02-01 18:41:28.560367",
+ "modified": "2022-02-07 15:14:57.603904",
  "modified_by": "Administrator",
  "module": "Teams",
  "name": "Team Task",
@@ -96,5 +101,6 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "title_field": "title"
 }

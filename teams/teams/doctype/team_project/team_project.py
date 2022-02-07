@@ -10,3 +10,14 @@ class TeamProject(Document):
 		d = super().as_dict(*args, **kwargs)
 		d.members = frappe.get_doc("Team", d.team).as_dict()["members"]
 		return d
+
+	def update_progress(self):
+		result = frappe.db.get_all(
+			"Team Task",
+			filters={"project": self.name},
+			fields=["sum(is_completed) as completed", "count(name) as total"],
+		)[0]
+		if result.total > 0:
+			self.progress = (result.completed or 0) * 100 / result.total
+			self.save()
+			self.reload()
