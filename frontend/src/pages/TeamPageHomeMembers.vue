@@ -49,30 +49,30 @@
         </li>
       </ul>
     </div>
-    <NewDialog :options="{ title: 'Invite' }" v-model="inviteMemberDialog">
-      <template #dialog-content>
+    <Dialog :options="{ title: 'Invite' }" v-model="inviteMemberDialog">
+      <template #body-content>
         <Input type="text" label="Email" v-model="inviteEmail" />
         <ErrorMessage class="mt-2" :message="$resources.teamInvite.error" />
       </template>
-      <template #dialog-actions>
+      <template #actions>
         <Button
-          type="primary"
+          appearance="primary"
           @click="$resources.teamInvite.submit"
           :loading="$resources.teamInvite.loading"
         >
           Send invitation
         </Button>
       </template>
-    </NewDialog>
+    </Dialog>
   </div>
 </template>
 <script>
-import { NewDialog } from 'frappe-ui'
+import { Dialog } from 'frappe-ui'
 
 export default {
   name: 'TeamPageHomeMembers',
   props: ['team'],
-  components: { NewDialog },
+  components: { Dialog },
   data() {
     return {
       inviteMemberDialog: false,

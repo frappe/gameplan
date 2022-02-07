@@ -88,7 +88,7 @@
                 <AssignUser
                   class="w-full h-full opacity-0 group-hover:opacity-100"
                   :users="users"
-                  :assigned-user="task.assignedUser"
+                  :assignedUser="task.assignedUser"
                   @update:assigned-user="updateAssignedUser(task, $event)"
                 />
               </div>
@@ -224,8 +224,7 @@ export default {
           },
           fields: ['*'],
           order_by: 'creation asc',
-          limit_page_length: 100,
-          debug: 1
+          limit_page_length: 100
         },
         auto: Boolean(this.project),
         debounce: 300,

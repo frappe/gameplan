@@ -35,7 +35,7 @@
 </template>
 <script>
 import TipTap from '@/components/TipTap.vue'
-import { FileUploader, NewDialog } from 'frappe-ui'
+import { FileUploader } from 'frappe-ui'
 import TeamPageHomeProjects from './TeamPageHomeProjects.vue'
 import TeamPageHomeMembers from './TeamPageHomeMembers.vue'
 import TeamPageHomeCover from './TeamPageHomeCover.vue'
@@ -46,7 +46,6 @@ export default {
   components: {
     TipTap,
     FileUploader,
-    NewDialog,
     TeamPageHomeProjects,
     TeamPageHomeMembers,
     TeamPageHomeCover,

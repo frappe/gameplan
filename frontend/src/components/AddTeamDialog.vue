@@ -1,6 +1,6 @@
 <template>
-  <NewDialog :options="{ title: 'Add Team' }" v-model="showDialog">
-    <template #dialog-content>
+  <Dialog :options="{ title: 'Add Team' }" v-model="showDialog">
+    <template #body-content>
       <Input
         label="Team Name"
         type="text"
@@ -16,19 +16,19 @@
       />
     </template>
 
-    <template #dialog-actions>
+    <template #actions>
       <Button
-        type="primary"
+        appearance="primary"
         @click="$resources.createTeam.submit()"
         :loading="$resources.createTeam.loading"
       >
         Create Team
       </Button>
     </template>
-  </NewDialog>
+  </Dialog>
 </template>
 <script>
-import { NewDialog } from 'frappe-ui'
+import { Dialog } from 'frappe-ui'
 
 export default {
   name: 'AddTeamDialog',
@@ -40,7 +40,7 @@ export default {
     }
   },
   components: {
-    NewDialog,
+    Dialog,
   },
   computed: {
     showDialog: {

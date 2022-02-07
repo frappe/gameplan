@@ -54,11 +54,11 @@
       <FeatherIcon name="folder-plus" class="w-6 h-6 text-gray-500" />
       <span class="mt-2 text-base text-gray-800"> No projects </span>
     </div>
-    <NewDialog
+    <Dialog
       :options="{ title: 'Create Project' }"
       v-model="createNewProjectDialog"
     >
-      <template #dialog-content>
+      <template #body-content>
         <Input
           type="text"
           label="Project Title"
@@ -77,9 +77,9 @@
         />
         <ErrorMessage class="mt-2" :message="$resources.createProject.error" />
       </template>
-      <template #dialog-actions>
+      <template #actions>
         <Button
-          type="primary"
+          appearance="primary"
           @click="
             $resources.createProject.submit({
               doc: {
@@ -95,16 +95,16 @@
           Create
         </Button>
       </template>
-    </NewDialog>
+    </Dialog>
   </div>
 </template>
 <script>
-import { NewDialog } from 'frappe-ui'
+import { Dialog } from 'frappe-ui'
 export default {
   name: 'TeamPageHomeProjects',
   props: ['team'],
   components: {
-    NewDialog,
+    Dialog,
   },
   data() {
     return {
