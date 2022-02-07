@@ -1,80 +1,85 @@
 <template>
-  <div>
-    <div class="flex items-center justify-between">
-      <h2 class="text-2xl font-bold">Members</h2>
-      <Button icon-left="plus" @click="inviteMemberDialog = true">
-        Add Member
-      </Button>
-    </div>
-    <div class="mt-4">
-      <ul role="list" class="border-t border-gray-200 divide-y divide-gray-200">
+  <div class="flex mt-4">
+    <h2 class="sr-only">Members</h2>
+    <button
+      class="flex mr-2 space-x-2 rounded-full empty:mr-0 focus:outline-none focus-visible:ring"
+      @click="manageMembersDialog = true"
+    >
+      <div
+        :title="member.full_name || member.email"
+        v-for="member in team.members"
+        :key="member.name"
+      >
+        <Avatar
+          :imageURL="member.user_image"
+          :label="member.full_name || member.email"
+          :title="member.full_name || member.email"
+        />
+      </div>
+    </button>
+    <button
+      class="grid w-8 h-8 border border-gray-500 border-dashed rounded-full opacity-50 hover:opacity-100 place-items-center focus-visible:ring focus:outline-none"
+      @click="inviteMemberDialog = true"
+    >
+      <FeatherIcon name="plus" class="w-4 text-gray-700" />
+    </button>
+  </div>
+  <Dialog
+    :options="{ title: 'Manage team members' }"
+    v-model="manageMembersDialog"
+  >
+    <template #body-content>
+      <ul role="list" class="divide-y">
         <li
+          class="flex items-center w-full py-2 space-x-2"
           v-for="member in team.members"
           :key="member.name"
-          class="flex items-center justify-between py-4 space-x-3"
         >
-          <UserInfo :email="member.email" v-slot="{ user }">
-            <div class="flex items-center flex-1 min-w-0 space-x-3">
-              <div class="flex-shrink-0">
-                <img
-                  v-if="user.user_image"
-                  class="w-10 h-10 rounded-full"
-                  :src="user.user_image"
-                  :alt="user.full_name"
-                />
-                <div
-                  v-else
-                  class="flex items-center justify-center w-10 h-10 text-lg text-gray-600 bg-gray-300 rounded-full"
-                >
-                  {{ user.full_name ? user.full_name[0].toUpperCase() : '' }}
-                </div>
-              </div>
-              <div class="flex-1 min-w-0">
-                <p class="text-sm font-medium text-gray-900 truncate">
-                  {{
-                    member.status === 'Invited' ? user.email : user.full_name
-                  }}
-                </p>
-                <p class="text-sm font-medium text-gray-500 truncate">
-                  {{ member.role }}
-                </p>
-              </div>
+          <Avatar
+            :imageURL="member.user_image"
+            :label="member.full_name || member.email"
+          />
+          <div>
+            <div class="text-base font-medium text-gray-800">
+              {{ member.full_name || member.email }}
             </div>
-            <div class="flex-shrink-0">
-              <Badge v-if="member.status === 'Invited'" color="yellow">
-                {{ member.status }}
-              </Badge>
+            <div class="text-sm text-gray-600">
+              {{ member.full_name ? member.email : '' }}
             </div>
-          </UserInfo>
+          </div>
+          <Badge class="!ml-auto" v-if="member.status == 'Invited'">
+            Pending invite
+          </Badge>
         </li>
       </ul>
-    </div>
-    <Dialog :options="{ title: 'Invite' }" v-model="inviteMemberDialog">
-      <template #body-content>
-        <Input type="text" label="Email" v-model="inviteEmail" />
-        <ErrorMessage class="mt-2" :message="$resources.teamInvite.error" />
-      </template>
-      <template #actions>
-        <Button
-          appearance="primary"
-          @click="$resources.teamInvite.submit"
-          :loading="$resources.teamInvite.loading"
-        >
-          Send invitation
-        </Button>
-      </template>
-    </Dialog>
-  </div>
+    </template>
+  </Dialog>
+  <Dialog :options="{ title: 'Invite' }" v-model="inviteMemberDialog">
+    <template #body-content>
+      <Input type="text" label="Email" v-model="inviteEmail" />
+      <ErrorMessage class="mt-2" :message="$resources.teamInvite.error" />
+    </template>
+    <template #actions>
+      <Button
+        appearance="primary"
+        @click="$resources.teamInvite.submit"
+        :loading="$resources.teamInvite.loading"
+      >
+        Send invitation
+      </Button>
+    </template>
+  </Dialog>
 </template>
 <script>
-import { Dialog } from 'frappe-ui'
+import { Dialog, Avatar } from 'frappe-ui'
 
 export default {
   name: 'TeamPageHomeMembers',
   props: ['team'],
-  components: { Dialog },
+  components: { Dialog, Avatar },
   data() {
     return {
+      manageMembersDialog: false,
       inviteMemberDialog: false,
       inviteEmail: '',
     }

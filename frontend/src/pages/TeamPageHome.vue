@@ -16,6 +16,8 @@
         <h1 class="text-6xl font-bold">{{ team.title }}</h1>
       </div>
 
+      <TeamPageHomeMembers :team="team" />
+
       <TipTap
         class="w-full px-3 py-2 mt-4 -mx-3 prose-sm prose max-w-[unset] rounded-lg focus-within:bg-gray-50"
         :key="team.name"
@@ -29,8 +31,7 @@
         "
       />
     </div>
-    <TeamPageHomeProjects class="mt-10 w-" :team="team" />
-    <TeamPageHomeMembers class="mt-10 w-" :team="team" />
+    <TeamPageHomeProjects class="mt-10" :team="team" />
   </div>
 </template>
 <script>

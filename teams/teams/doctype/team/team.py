@@ -12,7 +12,9 @@ class Team(Document):
 		d = super().as_dict(*args, **kwargs)
 		for member in d.members:
 			if member.user:
-				member.full_name = frappe.db.get_value("User", member.user, "full_name")
+				full_name, user_image = frappe.db.get_value("User", member.user, ["full_name", "user_image"])
+				member.full_name = full_name
+				member.user_image = user_image
 		return d
 
 	def before_insert(self):
