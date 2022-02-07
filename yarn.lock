@@ -35,7 +35,7 @@
   dependencies:
     regenerator-runtime "^0.13.4"
 
-"@headlessui/vue@^1.4.2":
+"@headlessui/vue@^1.4.2", "@headlessui/vue@^1.4.3":
   version "1.4.3"
   resolved "https://registry.yarnpkg.com/@headlessui/vue/-/vue-1.4.3.tgz#685898891cde4d8a38a01945d4d84855d5fe7224"
   integrity sha512-cDAd3aP7jH5bO2WO4eSkyQQg0k6Zw8gobl+zL8LGApqix28EtlxultyKH/mVKnbo8Kiq6IDRzwP1HfKOf1QZbQ==
@@ -967,6 +967,21 @@ fraction.js@^4.1.2:
   version "4.1.2"
   resolved "https://registry.yarnpkg.com/fraction.js/-/fraction.js-4.1.2.tgz#13e420a92422b6cf244dff8690ed89401029fbe8"
   integrity sha512-o2RiJQ6DZaR/5+Si0qJUIy637QMRudSi9kU/FFzx9EZazrIdnBgpU+3sEWCxAVhH2RtxW2Oz+T4p2o8uOPVcgA==
+
+frappe-ui@^0.0.5:
+  version "0.0.5"
+  resolved "https://registry.yarnpkg.com/frappe-ui/-/frappe-ui-0.0.5.tgz#7c7341162e77a8b7b52ef797addd31be38597597"
+  integrity sha512-szFUh0rMdl7YCXgEDZOvi1GTEgpCKGQ8yVoBxVvHs+rbPO9nMDMVjRMikoEVNsspVCTcS8KUG65Mjy2WVRDuTg==
+  dependencies:
+    "@headlessui/vue" "^1.4.3"
+    "@popperjs/core" "^2.11.2"
+    "@tailwindcss/forms" "^0.4.0"
+    "@tailwindcss/typography" "^0.5.0"
+    autoprefixer "^10.4.2"
+    feather-icons "^4.28.0"
+    postcss "^8.4.5"
+    socket.io-client "^2.4.0"
+    tailwindcss "^3.0.12"
 
 fs.realpath@^1.0.0:
   version "1.0.0"
