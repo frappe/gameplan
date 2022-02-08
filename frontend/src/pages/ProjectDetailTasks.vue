@@ -33,7 +33,7 @@
                 <button
                   class="block mr-2"
                   @click="
-                    $resources.updateTaskCompleted.submit({
+                    $resources.updateTaskField.submit({
                       doctype: 'Team Task',
                       name: task.name,
                       fieldname: {
@@ -41,7 +41,7 @@
                       },
                     })
                   "
-                  :disabled="$resources.updateTaskCompleted.loading"
+                  :disabled="$resources.updateTaskField.loading"
                   :aria-label="
                     task.is_completed
                       ? 'Mark as incomplete'
@@ -91,13 +91,39 @@
               </div>
               <div class="w-[15%] flex flex-shrink-0">
                 <AssignUser
-                  class="w-full h-full opacity-0 group-hover:opacity-100"
+                  class="w-full h-full text-sm text-gray-700"
+                  :class="
+                    task.assignedUser ? '' : 'opacity-0 group-hover:opacity-100'
+                  "
                   :users="users"
                   :assignedUser="task.assignedUser"
                   @update:assigned-user="updateAssignedUser(task, $event)"
                 />
               </div>
-              <div class="w-[15%] flex-shrink-0"></div>
+              <div class="w-[15%] flex-shrink-0">
+                <input
+                  type="date"
+                  class="w-full h-full p-0 text-sm bg-transparent border-none focus:outline-none"
+                  :class="
+                    task.due_date
+                      ? 'text-gray-700'
+                      : 'text-gray-500 opacity-0 group-hover:opacity-100'
+                  "
+                  :value="(task.due_date || '').split(' ')[0]"
+                  @change="
+                    (e) => {
+                      task.due_date = e.target.value
+                      $resources.updateTaskField.submit({
+                        doctype: 'Team Task',
+                        name: task.name,
+                        fieldname: {
+                          due_date: task.due_date,
+                        },
+                      })
+                    }
+                  "
+                />
+              </div>
               <div
                 class="w-[5%] flex items-center justify-end flex-shrink-0 opacity-0 group-hover:opacity-100"
               >
@@ -293,7 +319,7 @@ export default {
         },
       }
     },
-    updateTaskCompleted() {
+    updateTaskField() {
       return {
         method: 'frappe.client.set_value',
         onFetch(params) {
@@ -307,7 +333,7 @@ export default {
           this.$refetchResource(['team-project'])
           this.$resources.tasks.data = this.$resources.tasks.data.map((t) => {
             if (t.name === task.name) {
-              return task
+              Object.assign(t, task)
             }
             return t
           })

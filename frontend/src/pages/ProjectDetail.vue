@@ -58,7 +58,6 @@
 </template>
 <script>
 import { Dropdown, Spinner } from 'frappe-ui'
-import AssignUser from '@/components/AssignUser.vue'
 import Pie from '@/components/Pie.vue'
 import ProjectDetailTasks from './ProjectDetailTasks.vue'
 
@@ -68,7 +67,6 @@ export default {
   components: {
     Dropdown,
     Spinner,
-    AssignUser,
     Pie,
     ProjectDetailTasks,
   },
