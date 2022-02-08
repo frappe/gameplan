@@ -29,8 +29,11 @@ class Team(Document):
 		"""
 
 		if not self.cover_image:
-			image = get_random_image({"query": self.title, "orientation": "landscape"})
-			self.cover_image = image["urls"]["raw"]
+			try:
+				image = get_random_image({"query": self.title, "orientation": "landscape"})
+				self.cover_image = image["urls"]["raw"]
+			except:
+				pass
 
 		self.append(
 			"members",
