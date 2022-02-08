@@ -92,7 +92,6 @@ export default {
         },
         onSuccess() {
           this.$refetchResource('teams')
-          this.$router.push('/')
         },
       }
     },
@@ -111,7 +110,11 @@ export default {
             label: 'Delete Team',
             appearance: 'danger',
             loading: this.$resources.deleteTeam.loading,
-            handler: () => this.$resources.deleteTeam.submit(),
+            handler: ({ close }) => {
+              this.$resources.deleteTeam.submit()
+              this.$router.push('/')
+              close()
+            },
           },
           {
             label: 'Cancel',
