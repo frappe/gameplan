@@ -11,6 +11,10 @@ class TeamProject(Document):
 		d.members = frappe.get_doc("Team", d.team).as_dict()["members"]
 		return d
 
+	def on_trash(self):
+		for task in frappe.db.get_all("Team Task", {"project": self.name}):
+			frappe.delete_doc("Team Task", task.name)
+
 	def update_progress(self):
 		result = frappe.db.get_all(
 			"Team Task",

@@ -12,7 +12,9 @@ class Team(Document):
 		d = super().as_dict(*args, **kwargs)
 		for member in d.members:
 			if member.user:
-				full_name, user_image = frappe.db.get_value("User", member.user, ["full_name", "user_image"])
+				full_name, user_image = frappe.db.get_value(
+					"User", member.user, ["full_name", "user_image"]
+				)
 				member.full_name = full_name
 				member.user_image = user_image
 		return d
@@ -44,6 +46,10 @@ class Team(Document):
 				"role": "Owner",
 			},
 		)
+
+	def on_trash(self):
+		for project in frappe.db.get_all("Team Project", {"team": self.name}):
+			frappe.delete_doc("Team Project", project.name)
 
 	@frappe.whitelist()
 	def send_invitation(self, email):
