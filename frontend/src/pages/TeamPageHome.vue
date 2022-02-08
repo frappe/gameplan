@@ -12,8 +12,20 @@
 
   <div class="container mx-auto pb-80">
     <div class="mt-10">
-      <div class="flex items-center justify-between">
+      <div class="flex items-center">
         <h1 class="text-6xl font-bold">{{ team.title }}</h1>
+        <Dropdown
+          class="ml-2"
+          placement="left"
+          :options="[
+            {
+              label: 'Delete',
+              icon: 'trash-2',
+              handler: () => this.deleteTeam(),
+            },
+          ]"
+          :button="{ appearance: 'minimal', icon: 'more-horizontal' }"
+        ></Dropdown>
       </div>
 
       <TeamPageHomeMembers :team="team" />
@@ -36,7 +48,7 @@
 </template>
 <script>
 import TipTap from '@/components/TipTap.vue'
-import { FileUploader } from 'frappe-ui'
+import { FileUploader, Dropdown } from 'frappe-ui'
 import TeamPageHomeProjects from './TeamPageHomeProjects.vue'
 import TeamPageHomeMembers from './TeamPageHomeMembers.vue'
 import TeamPageHomeCover from './TeamPageHomeCover.vue'
@@ -50,6 +62,7 @@ export default {
     TeamPageHomeProjects,
     TeamPageHomeMembers,
     TeamPageHomeCover,
+    Dropdown,
   },
   resources: {
     updateTeam() {
@@ -69,6 +82,43 @@ export default {
           this.$refetchResource(['team', this.team.name])
         },
       }
+    },
+    deleteTeam() {
+      return {
+        method: 'frappe.client.delete',
+        params: {
+          doctype: 'Team',
+          name: this.team.name,
+        },
+        onSuccess() {
+          this.$refetchResource('teams')
+          this.$router.push('/')
+        },
+      }
+    },
+  },
+  methods: {
+    deleteTeam() {
+      this.$dialog({
+        title: 'Delete Team',
+        message: 'Are you sure you want to delete the team?',
+        icon: {
+          name: 'trash-2',
+          appearance: 'danger',
+        },
+        actions: [
+          {
+            label: 'Delete Team',
+            appearance: 'danger',
+            loading: this.$resources.deleteTeam.loading,
+            handler: () => this.$resources.deleteTeam.submit(),
+          },
+          {
+            label: 'Cancel',
+            handler: 'cancel',
+          },
+        ],
+      })
     },
   },
 }

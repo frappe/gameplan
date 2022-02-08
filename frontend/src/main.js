@@ -15,6 +15,7 @@ import App from './App.vue'
 import UserInfo from '@/components/UserInfo.vue'
 import './index.css'
 import { dayjs } from '@/utils'
+import { createDialog } from './utils/dialogs'
 
 let globalComponents = {
   Button,
@@ -46,5 +47,6 @@ for (let key in globalComponents) {
   app.component(key, globalComponents[key])
 }
 app.config.globalProperties.$dayjs = dayjs
+app.config.globalProperties.$dialog = createDialog
 app.use(router)
 app.mount('#app')
