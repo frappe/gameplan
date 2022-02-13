@@ -8,6 +8,7 @@
  "field_order": [
   "title",
   "progress",
+  "icon",
   "column_break_2",
   "status",
   "team",
@@ -70,6 +71,11 @@
    "fieldname": "progress",
    "fieldtype": "Percent",
    "label": "Progress"
+  },
+  {
+   "fieldname": "icon",
+   "fieldtype": "Data",
+   "label": "Icon"
   }
  ],
  "index_web_pages_for_search": 1,
@@ -79,7 +85,7 @@
    "link_fieldname": "project"
   }
  ],
- "modified": "2022-02-06 02:46:48.655948",
+ "modified": "2022-02-14 01:02:56.096293",
  "modified_by": "Administrator",
  "module": "Teams",
  "name": "Team Project",

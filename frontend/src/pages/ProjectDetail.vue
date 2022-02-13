@@ -3,16 +3,25 @@
     <div class="container py-8 mx-auto">
       <div>
         <div class="flex items-center space-x-2">
-          <div
-            class="flex items-center space-x-2"
-            :title="`${Math.round(project.progress)}% complete`"
-          >
-            <Pie
-              class="w-6"
-              :value="project.progress"
-              :key="project.progress"
+          <div class="flex items-center space-x-2">
+            <ProjectIconPicker
+              ref="projectIconPicker"
+              v-model="project.icon"
+              @update:modelValue="
+                (icon) =>
+                  $resources.updateProject.submit({
+                    doctype: 'Team Project',
+                    name: project.name,
+                    fieldname: {
+                      icon,
+                    },
+                  })
+              "
             />
-            <h1 class="text-6xl font-bold">
+            <h1
+              class="text-6xl font-bold"
+              :title="`${Math.round(project.progress)}% complete`"
+            >
               {{ project.title }}
             </h1>
           </div>
@@ -60,6 +69,7 @@
 import { Dropdown, Spinner } from 'frappe-ui'
 import Pie from '@/components/Pie.vue'
 import ProjectDetailTasks from './ProjectDetailTasks.vue'
+import ProjectIconPicker from '@/components/ProjectIconPicker.vue'
 
 export default {
   name: 'ProjectDetail',
@@ -69,6 +79,7 @@ export default {
     Spinner,
     Pie,
     ProjectDetailTasks,
+    ProjectIconPicker,
   },
   resources: {
     project() {
@@ -81,10 +92,18 @@ export default {
         },
         auto: true,
         onSuccess(project) {
+          if (!project.icon) {
+            this.$nextTick(() => this.$refs.projectIconPicker.setRandom())
+          }
           project.task_states.map((task_state) => {
             task_state.open = true
           })
         },
+      }
+    },
+    updateProject() {
+      return {
+        method: 'frappe.client.set_value',
       }
     },
   },

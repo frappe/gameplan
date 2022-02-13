@@ -19,13 +19,9 @@
           class="relative flex items-center p-2 -m-2 space-x-4 rounded-xl hover:bg-gray-50 focus-within:ring-2 focus-within:ring-blue-500"
         >
           <div
-            class="flex items-center justify-center flex-shrink-0 w-10 h-10 bg-gray-400 rounded-lg"
+            class="flex items-center justify-center flex-shrink-0 w-10 h-10 bg-gray-100 rounded-lg"
           >
-            <FeatherIcon
-              name="menu"
-              class="w-4 h-4 text-white"
-              aria-hidden="true"
-            />
+            <span class="text-4xl">{{ project.icon }}</span>
           </div>
           <div>
             <h3 class="text-base font-medium text-gray-900">
