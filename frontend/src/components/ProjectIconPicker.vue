@@ -31,9 +31,10 @@
             </div>
             <Button @click="setRandom">Random</Button>
           </div>
+          <div class="w-96"></div>
           <div v-for="(emojis, group) in emojiGroups" :key="group">
             <div class="text-sm text-gray-700">{{ group }}</div>
-            <div class="grid grid-cols-12 mt-1 place-items-center min-w-max">
+            <div class="grid grid-cols-12 mt-1 place-items-center w-96">
               <button
                 class="w-8 h-8 p-1 text-2xl rounded-md focus:outline-none focus:ring focus:ring-blue-200 hover:bg-gray-100"
                 v-for="emoji in emojis"
@@ -87,6 +88,9 @@ export default {
           group = groups[emoji.category]
         }
         group.push(emoji)
+      }
+      if (!Object.keys(groups).length) {
+        groups['No results'] = []
       }
       return groups
     },
