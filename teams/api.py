@@ -102,3 +102,22 @@ def assign_task(task, user):
 
 	clear("Team Task", task)
 	add({"assign_to": [user], "doctype": "Team Task", "name": task})
+
+
+@frappe.whitelist()
+def project_tasks(project):
+	project = frappe.get_doc("Team Project", project)
+	tasks_by_status = []
+	for state in project.task_states:
+		tasks_by_status.append(
+			{
+				"status": state.status,
+				"tasks": frappe.db.get_all(
+					"Team Task",
+					filters={"project": project.name, "status": state.status},
+					fields=["*"],
+					order_by="idx asc, creation asc",
+				),
+			}
+		)
+	return tasks_by_status

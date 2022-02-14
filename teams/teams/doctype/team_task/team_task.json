@@ -13,7 +13,8 @@
   "status",
   "priority",
   "is_completed",
-  "project"
+  "project",
+  "idx"
  ],
  "fields": [
   {
@@ -64,11 +65,16 @@
    "in_standard_filter": 1,
    "label": "Project",
    "options": "Team Project"
+  },
+  {
+   "fieldname": "idx",
+   "fieldtype": "Int",
+   "label": "Index"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-02-07 15:14:57.603904",
+ "modified": "2022-02-14 15:08:31.679444",
  "modified_by": "Administrator",
  "module": "Teams",
  "name": "Team Task",

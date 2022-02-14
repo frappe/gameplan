@@ -7,7 +7,37 @@
       <div class="w-[5%]"></div>
     </div>
   </div>
-  <div v-for="state in project.task_states" :key="state.status">
+  <template v-if="!$resources.tasks.data">
+    <div
+      class="container flex items-center py-2 mx-auto text-lg font-semibold text-gray-900"
+    >
+      <Button
+        class="mr-1"
+        appearance="minimal"
+        :icon="'chevron-down'"
+        :disabled="true"
+      />
+      <div>Loading...</div>
+    </div>
+    <div class="container">
+      <div class="mx-auto text-sm font-medium text-gray-700 border-t">
+        <div class="flex pl-8">
+          <button class="block mr-2" disabled>
+            <FeatherIcon
+              name="circle"
+              class="w-4 text-gray-300 animate-pulse"
+            />
+          </button>
+          <div class="w-[65%] py-2">
+            <div class="w-40 py-2 bg-gray-100 rounded animate-pulse"></div>
+          </div>
+          <div class="w-[15%]"></div>
+          <div class="w-[15%]"></div>
+        </div>
+      </div>
+    </div>
+  </template>
+  <div v-for="state in $resources.tasks.data" :key="state.status">
     <div
       class="container flex items-center py-2 mx-auto text-lg font-semibold text-gray-900"
     >
@@ -20,153 +50,151 @@
       <div>{{ state.status }}</div>
     </div>
     <div v-if="state.open">
-      <template v-if="$resources.tasks.data">
-        <div
-          class="container"
-          v-for="task in tasksByStatus(state.status)"
-          :key="task.name"
-          :animate="{ opacity: 1 }"
+      <template v-if="state.tasks">
+        <Draggable
+          v-model="state.tasks"
+          group="tasks"
+          item-key="name"
+          @sort="updateTasks(state, state.status)"
         >
-          <div class="mx-auto border-t hover:bg-gray-50 group">
-            <div class="flex">
-              <div class="flex pl-8 w-[65%]">
-                <button
-                  class="block mr-2"
-                  @click="
-                    $resources.updateTaskField.submit({
-                      doctype: 'Team Task',
-                      name: task.name,
-                      fieldname: {
-                        is_completed: !Boolean(task.is_completed),
-                      },
-                    })
-                  "
-                  :disabled="$resources.updateTaskField.loading"
-                  :aria-label="
-                    task.is_completed
-                      ? 'Mark as incomplete'
-                      : 'Mark as complete'
-                  "
-                >
-                  <FeatherIcon
-                    :name="task.is_completed ? 'check' : 'circle'"
-                    class="w-4 transition-colors"
-                    :class="{
-                      'text-gray-500 hover:text-gray-700': task.is_completed,
-                      'text-gray-400 hover:text-gray-600': !task.is_completed,
-                    }"
-                  />
-                </button>
-                <input
-                  :class="[
-                    'text-base font-medium w-full p-1 bg-transparent transition-colors border-none focus:ring-0',
-                    task.is_completed
-                      ? 'line-through text-gray-500'
-                      : 'text-gray-800',
-                  ]"
-                  type="text"
-                  v-model="task.title"
-                  @input="
-                    () => {
-                      if (!task.title) return
-                      $resources.updateTaskTitle.submit({
-                        doctype: 'Team Task',
-                        name: task.name,
-                        fieldname: {
-                          title: task.title,
-                        },
-                      })
-                    }
-                  "
-                  @blur="
-                    () => {
-                      if (task.title) return
-                      $resources.deleteTask.submit({
-                        doctype: 'Team Task',
-                        name: task.name,
-                      })
-                    }
-                  "
-                />
-              </div>
-              <div class="w-[15%] flex flex-shrink-0">
-                <AssignUser
-                  class="w-full h-full text-sm text-gray-700"
-                  :class="
-                    task.assignedUser ? '' : 'opacity-0 group-hover:opacity-100'
-                  "
-                  :users="users"
-                  :assignedUser="task.assignedUser"
-                  @update:assigned-user="updateAssignedUser(task, $event)"
-                />
-              </div>
-              <div class="w-[15%] flex-shrink-0">
-                <input
-                  type="date"
-                  class="w-full h-full p-0 text-sm bg-transparent border-none focus:outline-none"
-                  :class="
-                    task.due_date
-                      ? 'text-gray-700'
-                      : 'text-gray-500 opacity-0 group-hover:opacity-100'
-                  "
-                  :value="(task.due_date || '').split(' ')[0]"
-                  @change="
-                    (e) => {
-                      task.due_date = e.target.value
-                      $resources.updateTaskField.submit({
-                        doctype: 'Team Task',
-                        name: task.name,
-                        fieldname: {
-                          due_date: task.due_date,
-                        },
-                      })
-                    }
-                  "
-                />
-              </div>
-              <div
-                class="w-[5%] flex items-center justify-end flex-shrink-0 opacity-0 group-hover:opacity-100"
-              >
-                <Dropdown
-                  :button="{ icon: 'more-horizontal', appearance: 'minimal' }"
-                  :options="[
-                    {
-                      label: 'Delete',
-                      icon: 'trash-2',
-                      handler: () => {
-                        $resources.deleteTask.submit({
+          <template #item="{ element: task }">
+            <div class="container">
+              <div class="mx-auto border-t hover:bg-gray-50 group">
+                <div class="flex">
+                  <div class="flex items-center pl-1.5 w-[65%]">
+                    <button class="mr-2 opacity-0 group-hover:opacity-100">
+                      <DragHandleIcon class="w-4 h-4 text-gray-400" />
+                    </button>
+                    <button
+                      class="block mr-2"
+                      @click="
+                        $resources.updateTaskField.submit({
                           doctype: 'Team Task',
                           name: task.name,
+                          fieldname: {
+                            is_completed: !Boolean(task.is_completed),
+                          },
                         })
-                      },
-                    },
-                  ]"
-                />
+                      "
+                      :disabled="$resources.updateTaskField.loading"
+                      :aria-label="
+                        task.is_completed
+                          ? 'Mark as incomplete'
+                          : 'Mark as complete'
+                      "
+                    >
+                      <FeatherIcon
+                        :name="task.is_completed ? 'check' : 'circle'"
+                        class="w-4 transition-colors"
+                        :class="{
+                          'text-gray-500 hover:text-gray-700':
+                            task.is_completed,
+                          'text-gray-400 hover:text-gray-600':
+                            !task.is_completed,
+                        }"
+                      />
+                    </button>
+                    <input
+                      :class="[
+                        'text-base font-medium w-full p-1 bg-transparent transition-colors border-none focus:ring-0',
+                        task.is_completed
+                          ? 'line-through text-gray-500'
+                          : 'text-gray-800',
+                      ]"
+                      type="text"
+                      v-model="task.title"
+                      @input="
+                        () => {
+                          if (!task.title) return
+                          $resources.updateTaskTitle.submit({
+                            doctype: 'Team Task',
+                            name: task.name,
+                            fieldname: {
+                              title: task.title,
+                            },
+                          })
+                        }
+                      "
+                      @blur="
+                        () => {
+                          if (task.title) return
+                          $resources.deleteTask.submit({
+                            doctype: 'Team Task',
+                            name: task.name,
+                          })
+                        }
+                      "
+                    />
+                  </div>
+                  <div class="w-[15%] flex flex-shrink-0">
+                    <AssignUser
+                      class="w-full h-full text-sm text-gray-700"
+                      :class="
+                        task.assignedUser
+                          ? ''
+                          : 'opacity-0 group-hover:opacity-100'
+                      "
+                      :users="users"
+                      :assignedUser="task.assignedUser"
+                      @update:assigned-user="updateAssignedUser(task, $event)"
+                    />
+                  </div>
+                  <div class="w-[15%] flex-shrink-0">
+                    <input
+                      type="date"
+                      class="w-full h-full p-0 text-sm bg-transparent border-none focus:outline-none"
+                      :class="
+                        task.due_date
+                          ? 'text-gray-700'
+                          : 'text-gray-500 opacity-0 group-hover:opacity-100'
+                      "
+                      :value="(task.due_date || '').split(' ')[0]"
+                      @change="
+                        (e) => {
+                          task.due_date = e.target.value
+                          $resources.updateTaskField.submit({
+                            doctype: 'Team Task',
+                            name: task.name,
+                            fieldname: {
+                              due_date: task.due_date,
+                            },
+                          })
+                        }
+                      "
+                    />
+                  </div>
+                  <div
+                    class="w-[5%] flex items-center justify-end flex-shrink-0 opacity-0 group-hover:opacity-100"
+                  >
+                    <Dropdown
+                      :button="{
+                        icon: 'more-horizontal',
+                        appearance: 'minimal',
+                      }"
+                      :options="[
+                        {
+                          label: 'Delete',
+                          icon: 'trash-2',
+                          handler: () => {
+                            $resources.deleteTask.submit({
+                              doctype: 'Team Task',
+                              name: task.name,
+                            })
+                          },
+                        },
+                      ]"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
+          </template>
+        </Draggable>
       </template>
-      <div class="container" v-else>
-        <div class="mx-auto text-sm font-medium text-gray-700 border-t">
-          <div class="flex pl-8">
-            <button class="block mr-2">
-              <FeatherIcon
-                name="circle"
-                class="w-4 text-gray-300 animate-pulse"
-              />
-            </button>
-            <div class="w-[65%] py-2">
-              <div class="w-40 py-2 bg-gray-100 rounded animate-pulse"></div>
-            </div>
-            <div class="w-[15%]"></div>
-            <div class="w-[15%]"></div>
-          </div>
-        </div>
-      </div>
       <div class="container mb-4">
         <div class="mx-auto text-sm font-medium text-gray-700 border-t">
-          <div class="flex pl-8">
+          <div class="flex pl-7">
+            <div class="w-0.5"></div>
             <button class="block mr-2">
               <FeatherIcon
                 name="circle"
@@ -231,12 +259,20 @@
 </template>
 <script>
 import { Dropdown, Spinner } from 'frappe-ui'
+import Draggable from 'vuedraggable'
 import AssignUser from '@/components/AssignUser.vue'
+import DragHandleIcon from '@/components/DragHandleIcon.vue'
 
 export default {
   name: 'ProjectDetailTasks',
   props: ['project'],
-  components: { Dropdown, Spinner, AssignUser },
+  components: {
+    Dropdown,
+    Spinner,
+    AssignUser,
+    Draggable,
+    DragHandleIcon,
+  },
   data() {
     return {
       addingNewStatus: false,
@@ -246,27 +282,27 @@ export default {
   resources: {
     tasks() {
       return {
-        method: 'frappe.client.get_list',
+        method: 'teams.api.project_tasks',
         cache: ['team-project-tasks', this.project.name],
         params: {
-          doctype: 'Team Task',
-          filters: {
-            project: this.project.name,
-          },
-          fields: ['*'],
-          order_by: 'creation asc',
-          limit_page_length: 100,
+          project: this.project.name,
         },
         auto: Boolean(this.project),
         debounce: 300,
-        onSuccess(tasks) {
-          for (let task of tasks) {
-            let assignedUserEmail = task._assign
-              ? JSON.parse(task._assign)[0]
-              : null
-            task.assignedUser = assignedUserEmail
-              ? this.users.find((user) => user.email === assignedUserEmail)
-              : null
+        onSuccess(states) {
+          for (let state of states) {
+            state.open = true
+            state.tasks.forEach((task, i) => {
+              if (!task.idx) {
+                task.idx = i + 1
+              }
+              let assignedUserEmail = task._assign
+                ? JSON.parse(task._assign)[0]
+                : null
+              task.assignedUser = assignedUserEmail
+                ? this.users.find((user) => user.email === assignedUserEmail)
+                : null
+            })
           }
         },
       }
@@ -276,14 +312,19 @@ export default {
         method: 'frappe.client.insert',
         onFetch(params) {
           // optimistic update
-          this.$resources.tasks.data.push(params.doc)
+          for (let state of this.tasks) {
+            if (state.status == params.doc.status) {
+              params.doc.idx = state.tasks.length + 1
+              state.tasks.push(params.doc)
+            }
+          }
           let input = this.newTaskRefs[params.doc.status]
           if (input) {
             input.value = ''
             this.$nextTick(() => input.focus())
           }
         },
-        onSuccess(data) {
+        onSuccess() {
           this.$resources.tasks.fetch()
         },
       }
@@ -364,6 +405,11 @@ export default {
         },
       }
     },
+    bulkUpdateTasks() {
+      return {
+        method: 'frappe.client.bulk_update',
+      }
+    },
   },
   computed: {
     tasks() {
@@ -374,8 +420,22 @@ export default {
     },
   },
   methods: {
-    tasksByStatus(status) {
-      return this.tasks.filter((task) => task.status === status)
+    updateTasks(state, status) {
+      state.tasks.forEach((task, i) => {
+        task.idx = i + 1
+        task.status = status
+      })
+
+      this.$resources.bulkUpdateTasks.submit({
+        docs: JSON.stringify(
+          state.tasks.map((task) => ({
+            doctype: 'Team Task',
+            docname: task.name,
+            status: task.status,
+            idx: task.idx,
+          }))
+        ),
+      })
     },
     setNewTaskRef(ref, status) {
       this.newTaskRefs = this.newTaskRefs || {}

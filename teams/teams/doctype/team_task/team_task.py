@@ -6,6 +6,11 @@ from frappe.model.document import Document
 
 
 class TeamTask(Document):
+	def before_insert(self):
+		self.idx = (
+			frappe.db.count("Team Task", {"project": self.project, "status": self.status}) + 1
+		)
+
 	def on_update(self):
 		self.update_project_progress()
 
