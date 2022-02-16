@@ -10,6 +10,7 @@
   "title",
   "description",
   "cover_image",
+  "cover_image_position",
   "members"
  ],
  "fields": [
@@ -35,11 +36,16 @@
    "fieldtype": "Table",
    "label": "Members",
    "options": "Team Member"
+  },
+  {
+   "fieldname": "cover_image_position",
+   "fieldtype": "Float",
+   "label": "Cover Image Position"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-01-30 19:02:01.768859",
+ "modified": "2022-02-16 15:30:07.729655",
  "modified_by": "Administrator",
  "module": "Teams",
  "name": "Team",

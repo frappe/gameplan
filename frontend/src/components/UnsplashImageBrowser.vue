@@ -1,5 +1,5 @@
 <template>
-  <Popover v-slot="{ open }" class="relative">
+  <Popover v-slot="{ open }">
     <PopoverButton class="flex w-full">
       <slot v-bind="{ open }"></slot>
     </PopoverButton>
@@ -16,17 +16,32 @@
         class="absolute z-10 max-w-sm px-4 mt-3 transform -translate-x-1/2 bg-white left-1/2 sm:px-0 lg:max-w-3xl"
       >
         <div
-          class="p-6 overflow-hidden rounded-lg shadow-lg ring-1 ring-black ring-opacity-5"
+          class="p-3 overflow-hidden rounded-lg shadow-lg ring-1 ring-black ring-opacity-5"
         >
-          <div class="">
-            <Input
-              type="text"
-              placeholder="search by keyword"
-              v-model="search"
-            />
+          <div class="flex items-center space-x-2">
+            <div class="flex-1">
+              <Input
+                type="text"
+                placeholder="search by keyword"
+                :value="search"
+                @input="(val) => (search = val)"
+                :debounce="300"
+              />
+            </div>
+            <FileUploader @success="(file) => $emit('select', file.file_url)">
+              <template
+                v-slot="{ file, progress, uploading, openFileSelector }"
+              >
+                <div class="w-full text-center">
+                  <Button @click="openFileSelector" :loading="uploading">
+                    {{ uploading ? `Uploading ${progress}%` : 'Upload Image' }}
+                  </Button>
+                </div>
+              </template>
+            </FileUploader>
           </div>
           <div
-            class="relative grid gap-2 my-4 bg-white lg:grid-cols-2 w-[25.5rem]"
+            class="relative grid gap-2 mt-2 bg-white lg:grid-cols-2 w-[25.5rem]"
           >
             <button
               v-for="image in $resources.images.data"
@@ -42,15 +57,12 @@
               />
             </button>
           </div>
-          <FileUploader @success="(file) => $emit('select', file.file_url)">
-            <template v-slot="{ file, progress, uploading, openFileSelector }">
-              <div class="w-full text-center">
-                <Button @click="openFileSelector" :loading="uploading">
-                  {{ uploading ? `Uploading ${progress}%` : 'Upload Image' }}
-                </Button>
-              </div>
-            </template>
-          </FileUploader>
+          <div class="mt-2 text-sm text-center text-gray-500">
+            Image search powered by
+            <a class="underline" target="_blank" href="https://unsplash.com">
+              Unsplash
+            </a>
+          </div>
         </div>
       </PopoverPanel>
     </transition>

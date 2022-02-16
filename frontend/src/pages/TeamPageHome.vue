@@ -3,9 +3,8 @@
     :key="team.name"
     :team="team"
     @change="
-      (imageUrl) => {
-        team.cover_image = imageUrl
-        $resources.updateTeam.submit()
+      (values) => {
+        $resources.updateTeam.submit(values)
       }
     "
   />
@@ -37,8 +36,7 @@
         placeholder="Add a description for your team"
         @update="
           (val) => {
-            team.description = val
-            $resources.updateTeam.submit()
+            $resources.updateTeam.submit({ description: val })
           }
         "
       />
@@ -68,14 +66,12 @@ export default {
     updateTeam() {
       return {
         method: 'frappe.client.set_value',
-        params: {
-          doctype: 'Team',
-          name: this.team.name,
-          fieldname: {
-            title: this.team.title,
-            description: this.team.description,
-            cover_image: this.team.cover_image,
-          },
+        makeParams(values) {
+          return {
+            doctype: 'Team',
+            name: this.team.name,
+            fieldname: values,
+          }
         },
         debounce: 500,
         onSuccess() {
