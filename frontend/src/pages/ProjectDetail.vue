@@ -30,28 +30,32 @@
             :button="{ icon: 'more-horizontal', appearance: 'minimal' }"
             :options="[
               {
-                group: 'Details',
-                hideLabel: true,
-                items: [
-                  {
-                    label: 'Edit Description',
-                    icon: 'edit',
-                  },
-                  {
-                    label: 'Invite Team Members',
-                    icon: 'mail',
-                  },
-                ],
-              },
-              {
-                group: 'Actions',
-                hideLabel: true,
-                items: [
-                  {
-                    label: 'Delete',
-                    icon: 'trash-2',
-                  },
-                ],
+                label: 'Delete this project',
+                icon: 'trash-2',
+                handler: () =>
+                  $dialog({
+                    title: 'Delete project',
+                    message: 'Are you sure you want to delete this project?',
+                    actions: [
+                      {
+                        label: 'Delete',
+                        appearance: 'danger',
+                        loading: $resources.deleteProject.loading,
+                        handler: ({ close }) => {
+                          $resources.deleteProject
+                            .submit({
+                              doctype: 'Team Project',
+                              name: project.name,
+                            })
+                            .then(() => close())
+                        },
+                      },
+                      {
+                        label: 'Cancel',
+                        handler: 'cancel',
+                      },
+                    ],
+                  }),
               },
             ]"
           />
@@ -104,6 +108,14 @@ export default {
     updateProject() {
       return {
         method: 'frappe.client.set_value',
+      }
+    },
+    deleteProject() {
+      return {
+        method: 'frappe.client.delete',
+        onSuccess() {
+          this.$router.push(`/${this.team.name}`)
+        },
       }
     },
   },
