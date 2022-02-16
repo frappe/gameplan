@@ -121,3 +121,10 @@ def project_tasks(project):
 			}
 		)
 	return tasks_by_status
+
+
+@frappe.whitelist()
+def delete_group(project, group):
+	project = frappe.get_doc("Team Project", project)
+	project.delete_group(group)
+	return project

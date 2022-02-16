@@ -25,3 +25,14 @@ class TeamProject(Document):
 			self.progress = (result.completed or 0) * 100 / result.total
 			self.save()
 			self.reload()
+
+	def delete_group(self, group):
+		tasks = frappe.db.count("Team Task", {"project": self.name, "status": group})
+		if tasks > 0:
+			frappe.throw(f"Group {group} cannot be deleted because it has {tasks} tasks")
+
+		for state in self.task_states:
+			if state.status == group:
+				self.remove(state)
+				self.save()
+				break

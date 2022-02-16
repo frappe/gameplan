@@ -38,16 +38,40 @@
     </div>
   </template>
   <div v-for="state in $resources.tasks.data" :key="state.status">
-    <div
-      class="container flex items-center py-2 mx-auto text-lg font-semibold text-gray-900"
-    >
+    <div class="container flex items-center py-2 mx-auto">
       <Button
         class="mr-1"
         appearance="minimal"
         @click="state.open = !state.open"
         :icon="state.open ? 'chevron-down' : 'chevron-right'"
       />
-      <div>{{ state.status }}</div>
+      <div class="text-lg font-semibold text-gray-900">{{ state.status }}</div>
+      <Dropdown
+        placement="left"
+        class="ml-1"
+        :button="{
+          icon: 'more-horizontal',
+          appearance: 'minimal',
+        }"
+        :options="[
+          {
+            label: 'Move tasks to another group',
+            icon: 'log-out',
+            handler: () => {
+              changeGroupDialog.show = true
+              changeGroupDialog.fromGroup = state.status
+            },
+          },
+          {
+            label: 'Delete',
+            icon: 'trash-2',
+            handler: () => {
+              deleteGroupDialog.show = true
+              deleteGroupDialog.group = state.status
+            },
+          },
+        ]"
+      />
     </div>
     <div v-if="state.open">
       <template v-if="state.tasks">
@@ -256,6 +280,74 @@
       />
     </div>
   </div>
+  <Dialog
+    :options="{
+      title: `Move tasks from ${changeGroupDialog.fromGroup}`,
+      actions: [
+        {
+          label: changeGroupDialog.toGroup
+            ? `Move tasks to ${changeGroupDialog.toGroup}`
+            : 'Move tasks',
+          appearance: 'primary',
+          loading: $resources.bulkUpdateTasks.loading,
+          handler: () => changeGroup(),
+        },
+      ],
+    }"
+    v-model="changeGroupDialog.show"
+  >
+    <template #body-content>
+      <Input
+        type="select"
+        :options="[
+          '',
+          ...project.task_states
+            .map((t) => t.status)
+            .filter((t) => t !== changeGroupDialog.fromGroup),
+        ]"
+        label="Select Group"
+        v-model="changeGroupDialog.toGroup"
+      />
+    </template>
+  </Dialog>
+  <Dialog
+    :options="{
+      title: 'Delete Group',
+      icon: {
+        name: 'trash-2',
+        appearance: 'danger',
+      },
+      message: `Are you sure you want to delete the group: ${deleteGroupDialog.group}?`,
+      actions: [
+        {
+          label: 'Delete',
+          appearance: 'danger',
+          loading: $resources.deleteGroup.loading,
+          handler: () => $resources.deleteGroup.submit(),
+        },
+      ],
+    }"
+    v-model="deleteGroupDialog.show"
+    @update:modelValue="
+      (val) => {
+        if (!val) {
+          deleteGroupDialog.group = ''
+          $resources.deleteGroup.reset()
+        }
+      }
+    "
+  >
+    <template #body-content>
+      <p class="text-sm text-gray-600">
+        Are you sure you want to delete the group:
+        {{ deleteGroupDialog.group }}?
+      </p>
+      <ErrorMessage
+        class="mt-2"
+        :message="$resources.deleteGroup.error?.messages"
+      />
+    </template>
+  </Dialog>
 </template>
 <script>
 import { Dropdown, Spinner } from 'frappe-ui'
@@ -276,6 +368,8 @@ export default {
   data() {
     return {
       addingNewStatus: false,
+      changeGroupDialog: { fromGroup: null, toGroup: null, show: false },
+      deleteGroupDialog: { group: null, show: false },
       newStatus: '',
     }
   },
@@ -348,6 +442,22 @@ export default {
         onSuccess() {
           this.newStatus = ''
           this.addingNewStatus = false
+          this.$resources.tasks.reload()
+          this.$refetchResource(['team-project', this.project.name])
+        },
+      }
+    },
+    deleteGroup() {
+      return {
+        method: 'teams.api.delete_group',
+        params: {
+          project: this.project.name,
+          group: this.deleteGroupDialog.group,
+        },
+        onSuccess() {
+          this.deleteGroupDialog.show = false
+          this.deleteGroupDialog.group = null
+          this.$resources.tasks.reload()
           this.$refetchResource(['team-project', this.project.name])
         },
       }
@@ -408,6 +518,15 @@ export default {
     bulkUpdateTasks() {
       return {
         method: 'frappe.client.bulk_update',
+        onSuccess() {
+          this.changeGroupDialog.show = false
+          this.$resources.tasks.fetch()
+        },
+      }
+    },
+    deleteState() {
+      return {
+        method: 'frappe.client.set_value',
       }
     },
   },
@@ -420,6 +539,7 @@ export default {
     },
   },
   methods: {
+    log: console.log,
     updateTasks(state, status) {
       state.tasks.forEach((task, i) => {
         task.idx = i + 1
@@ -447,6 +567,29 @@ export default {
         task: task.name,
         user: user.email,
       })
+    },
+    deleteState(state) {
+      this.$resources.deleteState.submit({
+        project: this.project.name,
+        status: state.status,
+      })
+    },
+    changeGroup() {
+      for (let d of this.$resources.tasks.data) {
+        if (d.status === this.changeGroupDialog.fromGroup) {
+          this.$resources.bulkUpdateTasks.submit({
+            docs: JSON.stringify(
+              d.tasks.map((t) => ({
+                doctype: 'Team Task',
+                docname: t.name,
+                status: this.changeGroupDialog.toGroup,
+              }))
+            ),
+          })
+          this.changeGroupDialog.fromGroup = null
+          this.changeGroupDialog.toGroup = null
+        }
+      }
     },
   },
 }
