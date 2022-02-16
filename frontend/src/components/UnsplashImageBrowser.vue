@@ -13,7 +13,7 @@
       leave-to-class="translate-y-1 opacity-0"
     >
       <PopoverPanel
-        class="absolute z-10 max-w-sm px-4 mt-3 transform -translate-x-1/2 bg-white left-1/2 sm:px-0 lg:max-w-3xl"
+        class="absolute max-w-sm px-4 mt-3 transform -translate-x-1/2 bg-white rounded-lg left-1/2 sm:px-0 lg:max-w-3xl"
       >
         <div
           class="p-3 overflow-hidden rounded-lg shadow-lg ring-1 ring-black ring-opacity-5"

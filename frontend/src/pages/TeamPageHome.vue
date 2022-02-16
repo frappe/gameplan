@@ -1,5 +1,6 @@
 <template>
   <TeamPageHomeCover
+    class="relative z-10"
     :key="team.name"
     :team="team"
     @change="
