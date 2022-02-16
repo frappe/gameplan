@@ -14,7 +14,7 @@
     "@tiptap/vue-3": "^2.0.0-beta.88",
     "dayjs": "^1.10.7",
     "feather-icons": "^4.28.0",
-    "frappe-ui": "^0.0.8",
+    "frappe-ui": "^0.0.9",
     "gemoji": "^7.1.0",
     "vue": "^3.2.26",
     "vue-query": "^1.16.2",
