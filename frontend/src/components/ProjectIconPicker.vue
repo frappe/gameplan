@@ -18,9 +18,9 @@
         class="absolute z-10 px-4 mt-3 transform -translate-x-1/2 bg-white max-w-max left-1/2 sm:px-0"
       >
         <div
-          class="p-3 space-y-4 overflow-y-auto rounded-lg shadow-lg max-h-96 ring-1 ring-black ring-opacity-5"
+          class="relative overflow-y-auto rounded-lg shadow-lg max-h-96 ring-1 ring-black ring-opacity-5"
         >
-          <div class="flex gap-2">
+          <div class="flex gap-2 px-3 pt-3 pb-1">
             <div class="flex-1">
               <Input
                 type="text"
@@ -32,9 +32,11 @@
             <Button @click="setRandom">Random</Button>
           </div>
           <div class="w-96"></div>
-          <div v-for="(emojis, group) in emojiGroups" :key="group">
-            <div class="text-sm text-gray-700">{{ group }}</div>
-            <div class="grid grid-cols-12 mt-1 place-items-center w-96">
+          <div class="px-3" v-for="(emojis, group) in emojiGroups" :key="group">
+            <div class="sticky top-0 pt-3 pb-2 text-sm text-gray-700 bg-white">
+              {{ group }}
+            </div>
+            <div class="grid grid-cols-12 place-items-center w-96">
               <button
                 class="w-8 h-8 p-1 text-2xl rounded-md focus:outline-none focus:ring focus:ring-blue-200 hover:bg-gray-100"
                 v-for="emoji in emojis"
