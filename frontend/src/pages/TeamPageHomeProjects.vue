@@ -27,7 +27,7 @@
             <h3 class="text-base font-medium text-gray-900">
               <router-link
                 :to="{
-                  name: 'ProjectDetail',
+                  name: 'ProjectDetailOverview',
                   params: { projectId: project.name },
                 }"
                 class="focus:outline-none"

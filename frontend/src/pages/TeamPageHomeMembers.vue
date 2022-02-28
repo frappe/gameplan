@@ -95,7 +95,7 @@ export default {
         onSuccess() {
           this.inviteEmail = ''
           this.inviteMemberDialog = false
-          this.$refetchResource(['team', this.team.name])
+          this.$refetchResource(['Team', this.team.name])
         },
       }
     },
