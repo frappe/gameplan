@@ -1,6 +1,6 @@
 <template>
   <div
-    class="py-8 mx-auto container"
+    class="container py-8 mx-auto"
     style="height: calc(100vh - 5.25rem)"
     v-if="$resources.document.data"
   >
@@ -19,9 +19,9 @@
         v-if="$resources.updateDocument.loading"
         class="absolute top-0 right-0 mt-4 mr-4 text-gray-600"
       />
-      <TipTap
+      <TextEditor
         :content="content"
-        @update="
+        @change="
           (updatedContent) => {
             content = updatedContent
             onUpdate()
@@ -32,14 +32,14 @@
   </div>
 </template>
 <script>
-import TipTap from '@/components/TipTap.vue'
-import { LoadingIndicator, debounce } from 'frappe-ui'
+import { LoadingIndicator, TextEditor, debounce } from 'frappe-ui'
+
 export default {
   name: 'EditDocument',
   props: ['documentId'],
   components: {
-    TipTap,
     LoadingIndicator,
+    TextEditor,
   },
   data() {
     return {

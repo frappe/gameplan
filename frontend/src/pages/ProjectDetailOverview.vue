@@ -221,7 +221,6 @@
   </div>
 </template>
 <script>
-import TipTap from '@/components/TipTap.vue'
 import { Avatar, TextEditor, Dropdown, Dialog, Resource } from 'frappe-ui'
 import InputWithSuggestions from '@/components/InputWithSuggestions.vue'
 
@@ -229,7 +228,6 @@ export default {
   name: 'ProjectDetailOverview',
   props: ['project'],
   components: {
-    TipTap,
     Avatar,
     TextEditor,
     Dropdown,
