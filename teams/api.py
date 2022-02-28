@@ -128,3 +128,8 @@ def delete_group(project, group):
 	project = frappe.get_doc("Team Project", project)
 	project.delete_group(group)
 	return project
+
+
+@frappe.whitelist()
+def project_activities(project):
+	return frappe.get_doc("Team Project", project).get_activities()

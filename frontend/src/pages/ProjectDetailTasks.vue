@@ -1,12 +1,4 @@
 <template>
-  <div class="border-b">
-    <div class="container flex py-2 mx-auto text-sm font-medium text-gray-500">
-      <div class="w-[65%]">Task</div>
-      <div class="w-[15%]">Assignee</div>
-      <div class="w-[15%]">Due Date</div>
-      <div class="w-[5%]"></div>
-    </div>
-  </div>
   <template v-if="!$resources.tasks.data">
     <div
       class="container flex items-center py-2 mx-auto text-lg font-semibold text-gray-900"
@@ -28,11 +20,11 @@
               class="w-4 text-gray-300 animate-pulse"
             />
           </button>
-          <div class="w-[65%] py-2">
+          <div class="w-[70%] py-2">
             <div class="w-40 py-2 bg-gray-100 rounded animate-pulse"></div>
           </div>
           <div class="w-[15%]"></div>
-          <div class="w-[15%]"></div>
+          <div class="w-[10%]"></div>
         </div>
       </div>
     </div>
@@ -82,10 +74,10 @@
           @sort="updateTasks(state, state.status)"
         >
           <template #item="{ element: task }">
-            <div class="container">
+            <div class="container" v-show="!task.deleted">
               <div class="mx-auto border-t hover:bg-gray-50 group">
                 <div class="flex">
-                  <div class="flex items-center pl-1.5 w-[65%]">
+                  <div class="flex items-center pl-1.5 w-[70%]">
                     <button class="mr-2 opacity-0 group-hover:opacity-100">
                       <DragHandleIcon class="w-4 h-4 text-gray-400" />
                     </button>
@@ -93,11 +85,8 @@
                       class="block mr-2"
                       @click="
                         $resources.updateTaskField.submit({
-                          doctype: 'Team Task',
-                          name: task.name,
-                          fieldname: {
-                            is_completed: !Boolean(task.is_completed),
-                          },
+                          task: task.name,
+                          is_completed: !Boolean(task.is_completed),
                         })
                       "
                       :disabled="$resources.updateTaskField.loading"
@@ -163,7 +152,7 @@
                       @update:assigned-user="updateAssignedUser(task, $event)"
                     />
                   </div>
-                  <div class="w-[15%] flex-shrink-0">
+                  <div class="w-[10%] flex-shrink-0">
                     <input
                       type="date"
                       class="w-full h-full p-0 text-sm bg-transparent border-none focus:outline-none"
@@ -177,11 +166,8 @@
                         (e) => {
                           task.due_date = e.target.value
                           $resources.updateTaskField.submit({
-                            doctype: 'Team Task',
-                            name: task.name,
-                            fieldname: {
-                              due_date: task.due_date,
-                            },
+                            task: task.name,
+                            due_date: task.due_date,
                           })
                         }
                       "
@@ -225,7 +211,7 @@
                 class="w-4 text-gray-400 transition-colors hover:text-gray-600"
               />
             </button>
-            <div class="w-[65%]">
+            <div class="w-[70%]">
               <input
                 :ref="(ref) => setNewTaskRef(ref, state.status)"
                 class="w-full p-1 text-base font-medium text-gray-700 border-none focus:ring-0"
@@ -406,7 +392,7 @@ export default {
         method: 'frappe.client.insert',
         onFetch(params) {
           // optimistic update
-          for (let state of this.tasks) {
+          for (let state of this.$resources.tasks.data) {
             if (state.status == params.doc.status) {
               params.doc.idx = state.tasks.length + 1
               state.tasks.push(params.doc)
@@ -443,7 +429,7 @@ export default {
           this.newStatus = ''
           this.addingNewStatus = false
           this.$resources.tasks.reload()
-          this.$refetchResource(['team-project', this.project.name])
+          this.$refetchResource(['Team Project', this.project.name])
         },
       }
     },
@@ -458,7 +444,7 @@ export default {
           this.deleteGroupDialog.show = false
           this.deleteGroupDialog.group = null
           this.$resources.tasks.reload()
-          this.$refetchResource(['team-project', this.project.name])
+          this.$refetchResource(['Team Project', this.project.name])
         },
       }
     },
@@ -473,15 +459,23 @@ export default {
     updateTaskField() {
       return {
         method: 'frappe.client.set_value',
+        makeParams(args) {
+          let { task, ...fields } = args
+          return {
+            doctype: 'Team Task',
+            name: task,
+            fieldname: fields,
+          }
+        },
         onFetch(params) {
           // optimistic update
-          if (params.task) {
-            let task = this.tasks.find((task) => task.name === params.task)
+          if (params.name) {
+            let task = this.tasks.find((task) => task.name === params.name)
             task.is_completed = params.fieldname.is_completed
           }
         },
         onSuccess(task) {
-          this.$refetchResource(['team-project'])
+          this.$refetchResource(['Team Project'])
           this.$resources.tasks.data = this.$resources.tasks.data.map((t) => {
             if (t.name === task.name) {
               Object.assign(t, task)
@@ -502,12 +496,14 @@ export default {
         method: 'frappe.client.delete',
         onFetch(params) {
           // optimistic update
-          this.$resources.tasks.data = this.tasks.filter(
-            (task) => task.name !== params.name
-          )
+          for (let task of this.tasks) {
+            if (task.name === params.name) {
+              task.deleted = true
+            }
+          }
         },
         onSuccess() {
-          this.$refetchResource(['team-project'])
+          this.$refetchResource(['Team Project'])
           this.$resources.tasks.fetch()
         },
         onError() {
@@ -532,7 +528,12 @@ export default {
   },
   computed: {
     tasks() {
-      return this.$resources.tasks.data || []
+      let states = this.$resources.tasks.data || []
+      let tasks = []
+      for (let state of states) {
+        tasks = tasks.concat(state.tasks)
+      }
+      return tasks
     },
     users() {
       return this.project?.members || []
