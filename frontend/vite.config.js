@@ -15,6 +15,9 @@ export default defineConfig({
       '@': path.resolve(__dirname, 'src'),
     },
   },
+  optimizeDeps: {
+    include: ['feather-icons'],
+  },
   build: {
     outDir: '../teams/public/frontend',
     emptyOutDir: true,
