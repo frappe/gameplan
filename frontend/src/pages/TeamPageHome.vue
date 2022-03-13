@@ -5,7 +5,7 @@
     :team="team"
     @change="
       (values) => {
-        $resources.updateTeam.submit(values)
+        $resources.team.setValues.submit(values)
       }
     "
   />
@@ -42,7 +42,7 @@
         placeholder="Add a description for your team"
         @change="
           (val) => {
-            $resources.updateTeam.submit({ description: val })
+            $resources.team.setValueDebounced.submit({ description: val })
           }
         "
       />
@@ -68,32 +68,11 @@ export default {
     TextEditor,
   },
   resources: {
-    updateTeam() {
+    team() {
       return {
-        method: 'frappe.client.set_value',
-        makeParams(values) {
-          return {
-            doctype: 'Team',
-            name: this.team.name,
-            fieldname: values,
-          }
-        },
-        debounce: 500,
-        onSuccess() {
-          this.$refetchResource(['Team', this.team.name])
-        },
-      }
-    },
-    deleteTeam() {
-      return {
-        method: 'frappe.client.delete',
-        params: {
-          doctype: 'Team',
-          name: this.team.name,
-        },
-        onSuccess() {
-          this.$refetchResource('teams')
-        },
+        type: 'document',
+        doctype: 'Team',
+        name: this.team.name,
       }
     },
   },
@@ -110,9 +89,14 @@ export default {
           {
             label: 'Delete Team',
             appearance: 'danger',
-            loading: this.$resources.deleteTeam.loading,
+            loading: this.$resources.team.delete.loading,
             handler: ({ close }) => {
-              this.$resources.deleteTeam.submit()
+              let teams = this.$getResource('teams')
+              this.$resources.team.delete.submit().then(() => teams.reload())
+              // optimistic update
+              teams.setData((data) =>
+                data.filter((team) => team.name !== this.team.name)
+              )
               this.$router.push('/')
               close()
             },
