@@ -134,10 +134,6 @@
           </Resource>
         </template>
       </Dialog>
-
-      <!-- <Dialog :options="{ title: 'Add members to this project' }">
-        <template #body-content> </template>
-      </Dialog> -->
     </div>
     <div class="w-1/2">
       <h2 class="text-lg font-bold">Activity</h2>
@@ -222,7 +218,6 @@
 </template>
 <script>
 import { Avatar, TextEditor, Dropdown, Dialog, Resource } from 'frappe-ui'
-import InputWithSuggestions from '@/components/InputWithSuggestions.vue'
 
 export default {
   name: 'ProjectDetailOverview',
@@ -233,7 +228,6 @@ export default {
     Dropdown,
     Dialog,
     Resource,
-    InputWithSuggestions,
   },
   data() {
     return {
