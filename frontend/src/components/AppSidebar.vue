@@ -63,8 +63,9 @@
                     : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900',
                   'group flex items-center px-2 py-2 text-base font-medium rounded-md',
                 ]"
-                >{{ item.name }}</router-link
               >
+                {{ item.name }}
+              </router-link>
             </nav>
           </div>
           <div class="flex flex-shrink-0 p-4 border-t border-gray-200">
@@ -106,10 +107,7 @@
     <div class="flex flex-col flex-1 min-h-0 bg-white border-r border-gray-200">
       <div class="flex flex-col flex-1 pt-5 pb-4 overflow-y-auto">
         <div class="flex items-center justify-between flex-shrink-0 px-3">
-          Teams
-          <Button icon="plus" @click="showAddTeamDialog = true">
-            Create Team
-          </Button>
+          Frappe Teams
         </div>
         <div class="flex-1 mt-5">
           <nav class="px-2 space-y-1 bg-white">
@@ -120,11 +118,16 @@
               inactive="text-gray-600 hover:bg-gray-50 hover:text-gray-900"
             />
           </nav>
-          <h3
-            class="px-3 mt-8 text-xs font-semibold tracking-wider text-gray-500 uppercase"
-          >
-            Teams
-          </h3>
+          <div class="flex items-center justify-between px-3 mt-8">
+            <h3
+              class="text-xs font-semibold tracking-wider text-gray-500 uppercase"
+            >
+              Teams
+            </h3>
+            <Button icon="plus" @click="showAddTeamDialog = true">
+              Create Team
+            </Button>
+          </div>
           <nav class="px-2 mt-1 space-y-1 bg-white">
             <Links
               :links="
