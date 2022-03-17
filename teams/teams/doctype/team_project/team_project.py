@@ -1,11 +1,14 @@
 # Copyright (c) 2022, Frappe Technologies Pvt Ltd and contributors
 # For license information, please see license.txt
 
-import frappe
+import frappe, requests
 from frappe.model.document import Document
+from teams.mixins.manage_members import ManageMembersMixin
+from bs4 import BeautifulSoup
+from urllib.parse import urljoin
 
 
-class TeamProject(Document):
+class TeamProject(ManageMembersMixin, Document):
 	def as_dict(self, *args, **kwargs) -> dict:
 		d = super().as_dict(*args, **kwargs)
 		for member in d.members:
@@ -42,14 +45,6 @@ class TeamProject(Document):
 			self.progress = (result.completed or 0) * 100 / result.total
 			self.save()
 			self.reload()
-
-	@frappe.whitelist()
-	def remove_member(self, user):
-		for member in self.members:
-			if member.user == user:
-				self.remove(member)
-				self.save()
-				return self
 
 	def delete_group(self, group):
 		tasks = frappe.db.count("Team Task", {"project": self.name, "status": group})
@@ -91,3 +86,30 @@ class TeamProject(Document):
 			)
 		activities.sort(key=lambda x: x["date"], reverse=True)
 		return activities
+
+	@frappe.whitelist()
+	def add_attachment(self, url, title=None):
+		if not url.startswith("http"):
+			url = "https://" + url
+
+		meta = get_meta_tags(url)
+		self.append(
+			"attachments", {"url": url, "title": title or meta["title"], "image": meta["image"]}
+		)
+		self.save()
+
+
+def get_meta_tags(url):
+	response = requests.get(url, timeout=2, allow_redirects=True)
+	soup = BeautifulSoup(response.text, "html.parser")
+	title = soup.find("title").text.strip()
+
+	image = None
+	favicon = soup.find("link", rel="icon")
+	if favicon:
+		image = favicon["href"]
+
+	if image and image.startswith("/"):
+		image = urljoin(url, image)
+
+	return {"title": title, "image": image}

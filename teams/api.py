@@ -70,20 +70,28 @@ def accept_invitation(key=None):
 		frappe.throw("Invalid or expired key")
 
 	result = frappe.db.get_all(
-		"Team Member", filters={"key": key}, fields=["email", "parent"]
+		"Team Member", filters={"key": key}, fields=["email", "parent", "parenttype"]
 	)
 	if not result:
 		frappe.throw("Invalid or expired key")
 
 	# valid key, now set the user as Administrator
 	frappe.set_user("Administrator")
-	team = frappe.get_doc("Team", result[0].parent)
-	user = team.accept_invitation(key)
+	doctype = result[0].parenttype
+	doc = frappe.get_doc(doctype, result[0].parent)
+	user = doc.accept_invitation(key)
+
+	if doctype == "Team":
+		redirect_location = f"/teams/{doc.name}"
+	elif doctype == "Team Project":
+		redirect_location = f"/teams/{doc.team}/projects/{doc.name}"
+	else:
+		redirect_location = "/teams"
 
 	if user:
 		frappe.local.login_manager.login_as(user.name)
 		frappe.local.response["type"] = "redirect"
-		frappe.local.response["location"] = "/teams/" + team.name
+		frappe.local.response["location"] = redirect_location
 
 
 @frappe.whitelist()
@@ -133,3 +141,12 @@ def delete_group(project, group):
 @frappe.whitelist()
 def project_activities(project):
 	return frappe.get_doc("Team Project", project).get_activities()
+
+
+@frappe.whitelist()
+def get_system_users():
+	return frappe.db.get_all(
+		"User",
+		fields=["name", "email", "full_name", "first_name", "last_name", "user_image"],
+		filters={"user_type": "System User", "enabled": 1},
+	)

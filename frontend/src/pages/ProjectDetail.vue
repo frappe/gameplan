@@ -1,21 +1,26 @@
 <template>
-  <div class="pb-40" v-if="$resources.project.data">
+  <div class="pb-40" v-if="$resources.project.doc">
     <div class="container pt-8 pb-4 mx-auto">
       <div>
+        <router-link
+          class="inline-flex items-center p-2 mb-2 space-x-2 text-base rounded-md hover:bg-gray-50"
+          :to="{
+            name: 'TeamPageHome',
+            params: { teamId: $resources.project.doc.team },
+          }"
+        >
+          <FeatherIcon name="arrow-left" class="w-4" />
+          <span class="text-gray-800">
+            back to {{ $resources.project.doc.team }}
+          </span>
+        </router-link>
         <div class="flex items-center space-x-2">
           <div class="flex items-center space-x-2">
             <ProjectIconPicker
               ref="projectIconPicker"
               v-model="project.icon"
               @update:modelValue="
-                (icon) =>
-                  $resources.updateProject.submit({
-                    doctype: 'Team Project',
-                    name: project.name,
-                    fieldname: {
-                      icon,
-                    },
-                  })
+                (icon) => $resources.project.setValue.submit({ icon })
               "
             />
             <h1
@@ -40,14 +45,12 @@
                       {
                         label: 'Delete',
                         appearance: 'danger',
-                        loading: $resources.deleteProject.loading,
+                        loading: $resources.project.delete.loading,
                         handler: ({ close }) => {
-                          $resources.deleteProject
-                            .submit({
-                              doctype: 'Team Project',
-                              name: project.name,
-                            })
-                            .then(() => close())
+                          $resources.project.delete.submit().then(() => {
+                            close()
+                            this.$router.push(`/${this.team.name}`)
+                          })
                         },
                       },
                       {
@@ -102,7 +105,7 @@
       </div>
     </div>
 
-    <router-view :project="$resources.project.data" />
+    <router-view :project="$resources.project" />
   </div>
 </template>
 <script>
@@ -126,14 +129,15 @@ export default {
   resources: {
     project() {
       return {
-        method: 'frappe.client.get',
-        cache: ['Team Project', this.projectId],
-        params: {
-          doctype: 'Team Project',
-          name: this.projectId,
+        type: 'document',
+        doctype: 'Team Project',
+        name: this.projectId,
+        whitelistedMethods: {
+          removeMember: 'remove_member',
+          inviteMembers: 'invite_members',
+          addAttachment: 'add_attachment',
         },
-        auto: true,
-        onSuccess(project) {
+        postprocess(project) {
           if (!project.icon) {
             this.$nextTick(() => this.$refs.projectIconPicker.setRandom())
           }
@@ -143,23 +147,10 @@ export default {
         },
       }
     },
-    updateProject() {
-      return {
-        method: 'frappe.client.set_value',
-      }
-    },
-    deleteProject() {
-      return {
-        method: 'frappe.client.delete',
-        onSuccess() {
-          this.$router.push(`/${this.team.name}`)
-        },
-      }
-    },
   },
   computed: {
     project() {
-      return this.$resources.project.data ? this.$resources.project.data : null
+      return this.$resources.project.doc
     },
     tabs() {
       return [

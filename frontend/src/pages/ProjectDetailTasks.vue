@@ -220,7 +220,7 @@
                   $resources.createTask.submit({
                     doc: {
                       doctype: 'Team Task',
-                      project: project.name,
+                      project: project.doc.name,
                       title: newTaskRefs[state.status].value,
                       status: state.status,
                     },
@@ -287,7 +287,7 @@
         type="select"
         :options="[
           '',
-          ...project.task_states
+          ...project.doc.task_states
             .map((t) => t.status)
             .filter((t) => t !== changeGroupDialog.fromGroup),
         ]"
@@ -363,11 +363,11 @@ export default {
     tasks() {
       return {
         method: 'teams.api.project_tasks',
-        cache: ['team-project-tasks', this.project.name],
+        cache: ['team-project-tasks', this.project.doc.name],
         params: {
-          project: this.project.name,
+          project: this.project.doc.name,
         },
-        auto: Boolean(this.project),
+        auto: Boolean(this.project.doc),
         debounce: 300,
         onSuccess(states) {
           for (let state of states) {
@@ -411,7 +411,7 @@ export default {
     },
     createStatus() {
       let task_states = [
-        ...(this.project?.task_states || []),
+        ...(this.project.doc?.task_states || []),
         {
           status: this.newStatus,
         },
@@ -420,7 +420,7 @@ export default {
         method: 'frappe.client.set_value',
         params: {
           doctype: 'Team Project',
-          name: this.project.name,
+          name: this.project.doc.name,
           fieldname: {
             task_states,
           },
@@ -429,7 +429,7 @@ export default {
           this.newStatus = ''
           this.addingNewStatus = false
           this.$resources.tasks.reload()
-          this.$refetchResource(['Team Project', this.project.name])
+          this.$refetchResource(['Team Project', this.project.doc.name])
         },
       }
     },
@@ -437,14 +437,14 @@ export default {
       return {
         method: 'teams.api.delete_group',
         params: {
-          project: this.project.name,
+          project: this.project.doc.name,
           group: this.deleteGroupDialog.group,
         },
         onSuccess() {
           this.deleteGroupDialog.show = false
           this.deleteGroupDialog.group = null
           this.$resources.tasks.reload()
-          this.$refetchResource(['Team Project', this.project.name])
+          this.$refetchResource(['Team Project', this.project.doc.name])
         },
       }
     },
@@ -536,7 +536,7 @@ export default {
       return tasks
     },
     users() {
-      return this.project?.members || []
+      return this.project.doc?.members || []
     },
   },
   methods: {
@@ -571,7 +571,7 @@ export default {
     },
     deleteState(state) {
       this.$resources.deleteState.submit({
-        project: this.project.name,
+        project: this.project.doc.name,
         status: state.status,
       })
     },

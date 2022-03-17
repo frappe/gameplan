@@ -2,6 +2,7 @@
 *.pyc
 *.egg-info
 *.swp
+__pycache__
 tags
 node_modules
 teams/docs/current

@@ -1,11 +1,11 @@
 <template>
   <TeamPageHomeCover
     class="relative z-10"
-    :key="team.name"
+    :key="team.doc.name"
     :team="team"
     @change="
       (values) => {
-        $resources.team.setValues.submit(values)
+        team.setValue.submit(values)
       }
     "
   />
@@ -13,7 +13,7 @@
   <div class="container mx-auto pb-80">
     <div class="mt-10">
       <div class="flex items-center">
-        <h1 class="text-6xl font-bold">{{ team.title }}</h1>
+        <h1 class="text-6xl font-bold">{{ team.doc.title }}</h1>
         <Dropdown
           class="ml-2"
           placement="left"
@@ -36,13 +36,13 @@
 
       <TextEditor
         class="w-full px-3 py-2 -mx-3 mt-4 prose-sm prose max-w-[unset] rounded-lg focus-within:bg-gray-50"
-        :key="team.name"
-        :content="team.description"
+        :key="team.doc.name"
+        :content="team.doc.description"
         :showBubbleMenu="true"
         placeholder="Add a description for your team"
         @change="
           (val) => {
-            $resources.team.setValueDebounced.submit({ description: val })
+            team.setValueDebounced.submit({ description: val })
           }
         "
       />
@@ -67,15 +67,6 @@ export default {
     Dropdown,
     TextEditor,
   },
-  resources: {
-    team() {
-      return {
-        type: 'document',
-        doctype: 'Team',
-        name: this.team.name,
-      }
-    },
-  },
   methods: {
     deleteTeam() {
       this.$dialog({
@@ -89,13 +80,13 @@ export default {
           {
             label: 'Delete Team',
             appearance: 'danger',
-            loading: this.$resources.team.delete.loading,
+            loading: this.team.delete.loading,
             handler: ({ close }) => {
               let teams = this.$getResource('teams')
-              this.$resources.team.delete.submit().then(() => teams.reload())
+              this.team.delete.submit().then(() => teams.reload())
               // optimistic update
               teams.setData((data) =>
-                data.filter((team) => team.name !== this.team.name)
+                data.filter((team) => team.name !== this.team.doc.name)
               )
               this.$router.push('/')
               close()

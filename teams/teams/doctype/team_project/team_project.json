@@ -15,7 +15,8 @@
   "section_break_5",
   "description",
   "task_states",
-  "members"
+  "members",
+  "attachments"
  ],
  "fields": [
   {
@@ -76,6 +77,12 @@
    "fieldname": "icon",
    "fieldtype": "Data",
    "label": "Icon"
+  },
+  {
+   "fieldname": "attachments",
+   "fieldtype": "Table",
+   "label": "Attachments",
+   "options": "Team Attachment"
   }
  ],
  "index_web_pages_for_search": 1,
@@ -85,7 +92,7 @@
    "link_fieldname": "project"
   }
  ],
- "modified": "2022-02-14 01:02:56.096293",
+ "modified": "2022-03-17 18:50:21.170280",
  "modified_by": "Administrator",
  "module": "Teams",
  "name": "Team Project",

@@ -4,10 +4,11 @@
 import frappe
 from frappe.model.document import Document
 from frappe.model.naming import append_number_if_name_exists
+from teams.mixins.manage_members import ManageMembersMixin
 from teams.unsplash import get_random as get_random_image
 
 
-class Team(Document):
+class Team(ManageMembersMixin, Document):
 	def as_dict(self, *args, **kwargs) -> dict:
 		d = super().as_dict(*args, **kwargs)
 		for member in d.members:
@@ -74,28 +75,12 @@ class Team(Document):
 			recipients=email,
 			subject=f"You have been invited to join {self.title}",
 			template="team_invitation",
-			args={"team": self, "invite_link": self.get_invitation_link(member)},
+			args={
+				"title": f"Team: {self.title}",
+				"invite_link": self.get_invitation_link(member),
+			},
 			now=True,
 		)
-
-	def accept_invitation(self, key):
-		for row in self.members:
-			if row.key == key:
-				if not frappe.db.exists("User", row.email):
-					user = frappe.get_doc(
-						doctype="User",
-						user_type="Website User",
-						email=row.email,
-						send_welcome_email=0,
-						first_name=row.email.split("@")[0],
-					).insert(ignore_permissions=True)
-					user.add_roles("Team Project User", "System Manager")
-				else:
-					user = frappe.get_doc("User", row.email)
-				row.user = user.name
-				row.status = "Accepted"
-				self.save()
-				return user
 
 	def get_invitation_link(self, member):
 		return frappe.utils.get_url(
