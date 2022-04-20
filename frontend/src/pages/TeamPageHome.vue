@@ -1,5 +1,5 @@
 <template>
-  <TeamPageHomeCover
+  <!-- <TeamPageHomeCover
     class="relative z-10"
     :key="team.doc.name"
     :team="team"
@@ -8,10 +8,10 @@
         team.setValue.submit(values)
       }
     "
-  />
+  /> -->
 
-  <div class="container mx-auto pb-80">
-    <div class="mt-10">
+  <div class="container pt-10 mx-auto pb-80">
+    <div>
       <div class="flex items-center">
         <h1 class="text-6xl font-bold">{{ team.doc.title }}</h1>
         <Dropdown

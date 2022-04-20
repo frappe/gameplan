@@ -6,7 +6,7 @@
         :class="{ 'animate-pulse': loading }"
         :style="{ objectPosition: `center ${imagePosition}` }"
         :src="coverImageUrl"
-        :alt="`${team.title} cover image`"
+        :alt="`${team.doc.title} cover image`"
         @load="loading = false"
       />
       <div
@@ -23,7 +23,7 @@
             @click="
               () => {
                 $emit('change', {
-                  cover_image_position: team.cover_image_position,
+                  cover_image_position: team.doc.cover_image_position,
                 })
                 reposition = false
               }
@@ -89,19 +89,19 @@ export default {
         let diff = this.initialY - e.clientY
         this.changeY = (diff * 100) / clientHeight
 
-        let finalPosition = this.team.cover_image_position + this.changeY
+        let finalPosition = this.team.doc.cover_image_position + this.changeY
         if (finalPosition > 100) {
-          this.changeY = 100 - this.team.cover_image_position
+          this.changeY = 100 - this.team.doc.cover_image_position
         }
         if (finalPosition < 0) {
-          this.changeY = -this.team.cover_image_position
+          this.changeY = -this.team.doc.cover_image_position
         }
       }
     }
     this.onMouseUp = () => {
       if (!this.reposition) return
       this.initialY = null
-      this.team.cover_image_position += this.changeY
+      this.team.doc.cover_image_position += this.changeY
       this.changeY = 0
     }
     window.addEventListener('mousemove', this.onMouseMove)
@@ -123,7 +123,7 @@ export default {
   },
   computed: {
     coverImageUrl() {
-      let image_url = this.team.cover_image
+      let image_url = this.team.doc.cover_image
       if (!image_url) return null
       if (image_url.startsWith('https://images.unsplash.com')) {
         let width = window.innerWidth || 768
@@ -132,7 +132,7 @@ export default {
       return image_url
     },
     imagePosition() {
-      return `${this.team.cover_image_position + this.changeY}%`
+      return `${this.team.doc.cover_image_position + this.changeY}%`
     },
   },
 }
