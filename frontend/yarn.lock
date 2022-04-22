@@ -35,11 +35,6 @@
   dependencies:
     regenerator-runtime "^0.13.4"
 
-"@headlessui/vue@^1.4.3":
-  version "1.4.3"
-  resolved "https://registry.yarnpkg.com/@headlessui/vue/-/vue-1.4.3.tgz#685898891cde4d8a38a01945d4d84855d5fe7224"
-  integrity sha512-cDAd3aP7jH5bO2WO4eSkyQQg0k6Zw8gobl+zL8LGApqix28EtlxultyKH/mVKnbo8Kiq6IDRzwP1HfKOf1QZbQ==
-
 "@headlessui/vue@^1.5.0":
   version "1.5.0"
   resolved "https://registry.yarnpkg.com/@headlessui/vue/-/vue-1.5.0.tgz#8cd4877d3d344e482073a04ae8e3b7f987bb267c"
@@ -983,12 +978,12 @@ fraction.js@^4.1.2:
   resolved "https://registry.yarnpkg.com/fraction.js/-/fraction.js-4.1.2.tgz#13e420a92422b6cf244dff8690ed89401029fbe8"
   integrity sha512-o2RiJQ6DZaR/5+Si0qJUIy637QMRudSi9kU/FFzx9EZazrIdnBgpU+3sEWCxAVhH2RtxW2Oz+T4p2o8uOPVcgA==
 
-frappe-ui@^0.0.13:
-  version "0.0.13"
-  resolved "https://registry.yarnpkg.com/frappe-ui/-/frappe-ui-0.0.13.tgz#0dec30a8f28386d14fd721ea255b4be201c10863"
-  integrity sha512-aLKiZib55/QMS9xJCmQmqu9hKWcx5wYN3vsv6YBvlIyQQZpPiAIBwPKrYtBMqE2Wk+BDYpw/kkYfW96J1yNORw==
+frappe-ui@^0.0.15:
+  version "0.0.15"
+  resolved "https://registry.yarnpkg.com/frappe-ui/-/frappe-ui-0.0.15.tgz#ed7a4f7f8614543a3db28b146762afde9a71ca3a"
+  integrity sha512-RgVSL3OpWHO9SSTGVb6JfeK3UORmtLJJXtUfQx2wzl3G6ba4KaT9gwwVPbpOZuWyWEVY0W3lM5YkUMS0yY0WYg==
   dependencies:
-    "@headlessui/vue" "^1.4.3"
+    "@headlessui/vue" "^1.5.0"
     "@popperjs/core" "^2.11.2"
     "@tailwindcss/forms" "^0.4.0"
     "@tailwindcss/typography" "^0.5.0"
