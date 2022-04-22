@@ -1,6 +1,7 @@
 {
     "include": [
-        "./src/**/*"
+        "./src/**/*",
+        "intellisense.d.ts"
     ],
     "compilerOptions": {
         "baseUrl": ".",
@@ -8,6 +9,7 @@
             "@/*": [
                 "src/*"
             ]
-        }
+        },
+        "jsx": "preserve"
     }
 }
