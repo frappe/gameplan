@@ -1,5 +1,5 @@
 <template>
-  <div class="h-full">
+  <div class="h-full" v-if="$resources.user.data">
     <AppSidebar v-model:sidebarOpen="sidebarOpen" />
     <div class="flex flex-col flex-1 h-full md:pl-64">
       <div
@@ -31,6 +31,16 @@ export default {
   components: {
     AppSidebar,
     Dialogs,
+  },
+  resources: {
+    user: {
+      method: 'teams.api.session_user',
+      auto: true,
+      cache: 'user',
+      onSuccess(user) {
+        this.$.appContext.config.globalProperties.$user = user
+      },
+    },
   },
   setup() {
     const sidebarOpen = ref(false)

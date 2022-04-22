@@ -104,17 +104,19 @@
   <!-- Static sidebar for desktop -->
   <div class="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0">
     <!-- Sidebar component, swap this element with another sidebar if you like -->
-    <div class="flex flex-col flex-1 min-h-0 bg-white border-r border-gray-200">
+    <div
+      class="flex flex-col flex-1 min-h-0 bg-gray-100 border-r border-gray-200"
+    >
       <div class="flex flex-col flex-1 pt-5 pb-4 overflow-y-auto">
-        <div class="flex items-center justify-between flex-shrink-0 px-3">
-          Frappe Teams
+        <div class="grid px-2">
+          <UserDropdown />
         </div>
         <div class="flex-1 mt-5">
-          <nav class="px-2 space-y-1 bg-white">
+          <nav class="px-2 space-y-1">
             <Links
               :links="navigation"
               class="flex items-center px-2 py-2 text-sm font-medium rounded-md"
-              active="bg-gray-100 text-gray-900"
+              active="bg-white text-gray-900"
               inactive="text-gray-600 hover:bg-gray-50 hover:text-gray-900"
             />
           </nav>
@@ -122,13 +124,13 @@
             <h3
               class="text-xs font-semibold tracking-wider text-gray-500 uppercase"
             >
-              Teams
+              Your Teams
             </h3>
             <Button icon="plus" @click="showAddTeamDialog = true">
               Create Team
             </Button>
           </div>
-          <nav class="px-2 mt-1 space-y-1 bg-white">
+          <nav class="px-2 mt-1 space-y-1">
             <Links
               :links="
                 $resources.teams.data.map((team) => ({
@@ -137,7 +139,7 @@
                 }))
               "
               class="flex items-center px-2 py-2 text-sm font-medium rounded-md"
-              active="bg-gray-100 text-gray-900"
+              active="bg-white text-gray-900"
               inactive="text-gray-600 hover:bg-gray-50 hover:text-gray-900"
             />
           </nav>
@@ -148,31 +150,6 @@
             No teams
           </div>
         </div>
-      </div>
-      <div class="flex flex-shrink-0 p-4 border-t border-gray-200">
-        <a href="#" class="flex-shrink-0 block w-full group">
-          <div class="flex items-center">
-            <div>
-              <img
-                class="inline-block rounded-full h-9 w-9"
-                src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
-                alt
-              />
-            </div>
-            <div class="ml-3">
-              <p
-                class="text-sm font-medium text-gray-700 group-hover:text-gray-900"
-              >
-                Tom Cook
-              </p>
-              <p
-                class="text-xs font-medium text-gray-500 group-hover:text-gray-700"
-              >
-                View profile
-              </p>
-            </div>
-          </div>
-        </a>
       </div>
     </div>
   </div>
@@ -197,6 +174,8 @@ import {
 } from '@headlessui/vue'
 import AddTeamDialog from './AddTeamDialog.vue'
 import Links from './Links.vue'
+import { Dropdown } from 'frappe-ui'
+import UserDropdown from './UserDropdown.vue'
 
 export default {
   name: 'AppSidebar',
@@ -209,10 +188,20 @@ export default {
     TransitionChild,
     AddTeamDialog,
     Links,
+    Dropdown,
+    UserDropdown,
   },
   data() {
     return {
-      navigation: [{ name: 'Overview', route: '/' }],
+      navigation: [
+        {
+          name: 'Daily Planner',
+          route: {
+            name: 'DailyPlanner',
+          },
+        },
+        { name: 'Inbox', route: '/inbox' },
+      ],
       showAddTeamDialog: false,
     }
   },

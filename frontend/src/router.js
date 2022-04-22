@@ -7,6 +7,44 @@ const routes = [
     component: () => import('@/pages/Home.vue'),
   },
   {
+    path: '/daily-planner/:date?',
+    name: 'DailyPlanner',
+    component: () => import('@/pages/DailyPlanner.vue'),
+    props: true,
+    children: [
+      {
+        name: 'DailyPlannerNotes',
+        path: 'notes',
+        component: () => import('@/pages/DailyPlannerNotes.vue'),
+      },
+      {
+        name: 'DailyPlannerTasks',
+        path: 'tasks',
+        component: () => import('@/pages/DailyPlannerTasks.vue'),
+      },
+      {
+        name: 'DailyPlannerCalendar',
+        path: 'calendar',
+        component: () => import('@/pages/DailyPlannerCalendar.vue'),
+      },
+    ],
+  },
+  {
+    path: '/inbox',
+    name: 'Inbox',
+    component: () => import('@/pages/Home.vue'),
+  },
+  {
+    path: '/tasks',
+    name: 'Tasks',
+    component: () => import('@/pages/Home.vue'),
+  },
+  {
+    path: '/settings',
+    name: 'Settings',
+    component: () => import('@/pages/Home.vue'),
+  },
+  {
     path: '/:teamId',
     name: 'TeamPage',
     component: () => import('@/pages/TeamPage.vue'),

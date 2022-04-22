@@ -13,8 +13,11 @@
   "status",
   "priority",
   "is_completed",
+  "idx",
   "project",
-  "idx"
+  "project_title",
+  "team",
+  "team_title"
  ],
  "fields": [
   {
@@ -31,12 +34,12 @@
   },
   {
    "fieldname": "start_date",
-   "fieldtype": "Datetime",
+   "fieldtype": "Date",
    "label": "Start Date"
   },
   {
    "fieldname": "due_date",
-   "fieldtype": "Datetime",
+   "fieldtype": "Date",
    "label": "Due Date"
   },
   {
@@ -70,11 +73,32 @@
    "fieldname": "idx",
    "fieldtype": "Int",
    "label": "Index"
+  },
+  {
+   "fetch_from": "project.title",
+   "fieldname": "project_title",
+   "fieldtype": "Data",
+   "label": "Project Title",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "project.team",
+   "fieldname": "team",
+   "fieldtype": "Link",
+   "label": "Team",
+   "options": "Team"
+  },
+  {
+   "fetch_from": "team.title",
+   "fieldname": "team_title",
+   "fieldtype": "Data",
+   "label": "Team Title",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-02-14 15:08:31.679444",
+ "modified": "2022-04-22 15:02:10.354173",
  "modified_by": "Administrator",
  "module": "Teams",
  "name": "Team Task",
