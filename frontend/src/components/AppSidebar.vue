@@ -115,10 +115,19 @@
           <nav class="px-2 space-y-1">
             <Links
               :links="navigation"
-              class="flex items-center px-2 py-2 text-sm font-medium rounded-md"
+              class="flex items-center px-2 py-2 font-medium rounded-md"
               active="bg-white text-gray-900"
               inactive="text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-            />
+            >
+              <template v-slot="{ link }">
+                <span class="inline-flex items-center space-x-2">
+                  <span class="grid w-5 h-5 place-items-center">
+                    <FeatherIcon :name="link.icon" class="w-4 h-4" />
+                  </span>
+                  <span class="text-lg">{{ link.name }}</span>
+                </span>
+              </template>
+            </Links>
           </nav>
           <div class="flex items-center justify-between px-3 mt-8">
             <h3
@@ -135,13 +144,28 @@
               :links="
                 $resources.teams.data.map((team) => ({
                   name: team.title,
-                  route: `/${team.name}`,
+                  icon: team.icon,
+                  route: {
+                    name: 'TeamPageHome',
+                    params: { teamId: team.name },
+                  },
                 }))
               "
-              class="flex items-center px-2 py-2 text-sm font-medium rounded-md"
+              class="flex items-center px-2 py-2 font-medium rounded-md"
               active="bg-white text-gray-900"
               inactive="text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-            />
+            >
+              <template v-slot="{ link }">
+                <span class="inline-flex items-center space-x-2">
+                  <span
+                    class="flex items-center justify-center w-5 h-5 text-xl"
+                  >
+                    {{ link.icon }}
+                  </span>
+                  <span class="text-lg">{{ link.name }}</span>
+                </span>
+              </template>
+            </Links>
           </nav>
           <div
             v-if="$resources.teams.fetched && !$resources.teams.data.length"
@@ -196,18 +220,24 @@ export default {
       navigation: [
         {
           name: 'Daily Planner',
+          icon: 'edit',
           route: {
             name: 'DailyPlanner',
           },
         },
-        { name: 'Inbox', route: '/inbox' },
+        { name: 'Inbox', icon: 'inbox', route: '/inbox' },
       ],
       showAddTeamDialog: false,
     }
   },
   resources: {
     teams: {
-      method: 'teams.api.get_teams',
+      method: 'frappe.client.get_list',
+      params: {
+        doctype: 'Team',
+        fields: ['name', 'title', 'icon', 'modified', 'creation'],
+        order_by: 'creation asc',
+      },
       cache: 'teams',
       auto: true,
       initialData: [],

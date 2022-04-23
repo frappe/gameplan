@@ -12,10 +12,14 @@
 
   <div class="container pt-10 mx-auto pb-80">
     <div>
-      <div class="flex items-center">
+      <div class="flex items-center space-x-2">
+        <IconPicker
+          ref="teamIconPicker"
+          v-model="team.doc.icon"
+          @update:modelValue="(icon) => team.setValue.submit({ icon })"
+        />
         <h1 class="text-6xl font-bold">{{ team.doc.title }}</h1>
         <Dropdown
-          class="ml-2"
           placement="left"
           :options="[
             {
@@ -55,6 +59,7 @@ import { FileUploader, Dropdown, TextEditor } from 'frappe-ui'
 import TeamPageHomeProjects from './TeamPageHomeProjects.vue'
 import TeamPageHomeMembers from './TeamPageHomeMembers.vue'
 import TeamPageHomeCover from './TeamPageHomeCover.vue'
+import IconPicker from '@/components/IconPicker.vue'
 
 export default {
   name: 'TeamPageHome',
@@ -66,6 +71,12 @@ export default {
     TeamPageHomeCover,
     Dropdown,
     TextEditor,
+    IconPicker,
+  },
+  mounted() {
+    if (!this.team.doc.icon) {
+      this.$refs.teamIconPicker.setRandom()
+    }
   },
   methods: {
     deleteTeam() {

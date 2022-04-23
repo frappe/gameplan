@@ -11,6 +11,7 @@
   "description",
   "cover_image",
   "cover_image_position",
+  "icon",
   "members"
  ],
  "fields": [
@@ -41,11 +42,16 @@
    "fieldname": "cover_image_position",
    "fieldtype": "Float",
    "label": "Cover Image Position"
+  },
+  {
+   "fieldname": "icon",
+   "fieldtype": "Data",
+   "label": "Icon"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-02-16 15:30:07.729655",
+ "modified": "2022-04-23 13:02:02.367023",
  "modified_by": "Administrator",
  "module": "Teams",
  "name": "Team",

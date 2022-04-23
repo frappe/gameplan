@@ -14,7 +14,9 @@
         $attrs.class,
       ]"
     >
-      {{ link.name }}
+      <slot :link="link">
+        {{ link.name }}
+      </slot>
     </a>
   </router-link>
 </template>

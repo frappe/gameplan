@@ -16,7 +16,7 @@
         </router-link>
         <div class="flex items-center space-x-2">
           <div class="flex items-center space-x-2">
-            <ProjectIconPicker
+            <IconPicker
               ref="projectIconPicker"
               v-model="project.icon"
               @update:modelValue="
@@ -112,7 +112,7 @@
 import { Dropdown, Spinner } from 'frappe-ui'
 import Pie from '@/components/Pie.vue'
 import ProjectDetailTasks from './ProjectDetailTasks.vue'
-import ProjectIconPicker from '@/components/ProjectIconPicker.vue'
+import IconPicker from '@/components/IconPicker.vue'
 import Links from '@/components/Links.vue'
 
 export default {
@@ -123,7 +123,7 @@ export default {
     Spinner,
     Pie,
     ProjectDetailTasks,
-    ProjectIconPicker,
+    IconPicker,
     Links,
   },
   resources: {

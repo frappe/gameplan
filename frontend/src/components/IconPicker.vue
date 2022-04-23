@@ -4,7 +4,7 @@
       class="px-2 -ml-2 rounded-md focus:outline-none"
       :class="open ? 'bg-gray-200' : 'hover:bg-gray-100'"
     >
-      <span class="text-6xl"> {{ modelValue || 'a' }} </span>
+      <span class="text-6xl"> {{ modelValue || '' }} </span>
     </PopoverButton>
     <transition
       enter-active-class="transition duration-200 ease-out"
@@ -59,7 +59,7 @@ import { debounce } from 'frappe-ui'
 import { gemoji } from 'gemoji'
 
 export default {
-  name: 'ProjectIconPicker',
+  name: 'IconPicker',
   props: ['modelValue'],
   emits: ['update:modelValue'],
   expose: ['setRandom'],
