@@ -6,6 +6,7 @@ from frappe.model.document import Document
 from frappe.model.naming import append_number_if_name_exists
 from teams.mixins.manage_members import ManageMembersMixin
 from teams.unsplash import get_random as get_random_image
+from teams.utils import validate_url
 
 
 class Team(ManageMembersMixin, Document):
@@ -47,6 +48,16 @@ class Team(ManageMembersMixin, Document):
 				"role": "Owner",
 			},
 		)
+
+	def before_save(self):
+		for link in self.links:
+			if link.is_new():
+				valid_url = validate_url(link.url)
+				if not valid_url:
+					frappe.throw(f'Invalid URL: {link.url}')
+				else:
+					link.url = valid_url
+
 
 	def on_trash(self):
 		for project in frappe.db.get_all("Team Project", {"team": self.name}):

@@ -12,7 +12,8 @@
   "cover_image",
   "cover_image_position",
   "icon",
-  "members"
+  "members",
+  "links"
  ],
  "fields": [
   {
@@ -47,11 +48,17 @@
    "fieldname": "icon",
    "fieldtype": "Data",
    "label": "Icon"
+  },
+  {
+   "fieldname": "links",
+   "fieldtype": "Table",
+   "label": "Links",
+   "options": "Team Link"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-04-23 13:02:02.367023",
+ "modified": "2022-04-23 14:43:37.881308",
  "modified_by": "Administrator",
  "module": "Teams",
  "name": "Team",
