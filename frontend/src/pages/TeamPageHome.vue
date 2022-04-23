@@ -1,15 +1,4 @@
 <template>
-  <!-- <TeamPageHomeCover
-    class="relative z-10"
-    :key="team.doc.name"
-    :team="team"
-    @change="
-      (values) => {
-        team.setValue.submit(values)
-      }
-    "
-  /> -->
-
   <div class="container pt-10 mx-auto pb-80">
     <div>
       <div class="flex items-center space-x-2">
@@ -18,7 +7,7 @@
           v-model="team.doc.icon"
           @update:modelValue="(icon) => team.setValue.submit({ icon })"
         />
-        <h1 class="text-6xl font-bold">{{ team.doc.title }}</h1>
+        <h1 class="text-6xl font-bold text-gray-900">{{ team.doc.title }}</h1>
         <Dropdown
           placement="left"
           :options="[
@@ -36,13 +25,10 @@
         />
       </div>
 
-      <TeamPageHomeMembers :team="team" />
-
       <TextEditor
-        class="w-full px-3 py-2 -mx-3 mt-4 prose-sm prose max-w-[unset] rounded-lg focus-within:bg-gray-50"
+        class="w-full mt-2 rounded-lg"
         :key="team.doc.name"
         :content="team.doc.description"
-        :showBubbleMenu="true"
         placeholder="Add a description for your team"
         @change="
           (val) => {
@@ -51,15 +37,23 @@
         "
       />
     </div>
-    <TeamPageHomeProjects class="mt-10" :team="team" />
+    <div class="grid grid-cols-7 gap-5 mt-10">
+      <div class="col-span-5">
+        <TeamPageHomeProjects :team="team" />
+        <TeamPageHomeLinks :team="team" class="mt-12" />
+      </div>
+      <div class="col-span-2">
+        <TeamPageHomeMembers :team="team" />
+      </div>
+    </div>
   </div>
 </template>
 <script>
-import { FileUploader, Dropdown, TextEditor } from 'frappe-ui'
+import { FileUploader, Dropdown, TextEditor, Avatar } from 'frappe-ui'
 import TeamPageHomeProjects from './TeamPageHomeProjects.vue'
 import TeamPageHomeMembers from './TeamPageHomeMembers.vue'
-import TeamPageHomeCover from './TeamPageHomeCover.vue'
 import IconPicker from '@/components/IconPicker.vue'
+import TeamPageHomeLinks from './TeamPageHomeLinks.vue'
 
 export default {
   name: 'TeamPageHome',
@@ -67,11 +61,12 @@ export default {
   components: {
     FileUploader,
     TeamPageHomeProjects,
+    TeamPageHomeLinks,
     TeamPageHomeMembers,
-    TeamPageHomeCover,
     Dropdown,
     TextEditor,
     IconPicker,
+    Avatar,
   },
   mounted() {
     if (!this.team.doc.icon) {

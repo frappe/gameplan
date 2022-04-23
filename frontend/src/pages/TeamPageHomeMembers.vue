@@ -1,12 +1,13 @@
 <template>
-  <div class="flex mt-4">
-    <h2 class="sr-only">Members</h2>
-    <button
-      class="flex mr-2 space-x-2 rounded-full empty:mr-0 focus:outline-none focus-visible:ring"
-      @click="inviteMemberDialog = true"
-    >
+  <div>
+    <div class="flex items-center space-x-2">
+      <h2 class="text-2xl font-bold text-gray-900">Members</h2>
+      <Button icon="plus" @click="inviteMemberDialog = true" />
+    </div>
+    <div class="p-5 mt-5 space-y-4 bg-gray-100 rounded-xl">
       <div
-        v-for="member in team.doc.members"
+        class="flex items-center space-x-2"
+        v-for="member in members"
         :title="member.full_name || member.email"
         :key="member.name"
       >
@@ -15,14 +16,14 @@
           :label="member.full_name || member.email"
           :title="member.full_name || member.email"
         />
+        <div>
+          <div class="text-base text-gray-900">
+            {{ member.full_name }}
+          </div>
+          <div class="text-sm text-gray-600">{{ member.email }}</div>
+        </div>
       </div>
-    </button>
-    <button
-      class="grid w-8 h-8 border border-gray-500 border-dashed rounded-full opacity-50 hover:opacity-100 place-items-center focus-visible:ring focus:outline-none"
-      @click="inviteMemberDialog = true"
-    >
-      <FeatherIcon name="plus" class="w-4 text-gray-700" />
-    </button>
+    </div>
   </div>
   <AddMemberDialog :team="team.doc" v-model="inviteMemberDialog" />
 </template>
@@ -42,6 +43,13 @@ export default {
     return {
       inviteMemberDialog: false,
     }
+  },
+  computed: {
+    members() {
+      return this.team.doc.members.filter(
+        (member) => member.status != 'Invited'
+      )
+    },
   },
 }
 </script>

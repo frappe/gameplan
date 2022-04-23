@@ -1,14 +1,16 @@
 <template>
   <div>
-    <div class="flex items-center justify-between">
-      <h2 class="text-2xl font-bold">Projects</h2>
-      <Button icon-left="plus" @click="createNewProjectDialog = true">
-        New Project
-      </Button>
+    <div class="flex items-center space-x-2">
+      <h2 class="text-2xl font-bold text-gray-900">Projects</h2>
+      <Button
+        icon="plus"
+        label="New Project"
+        @click="createNewProjectDialog = true"
+      />
     </div>
     <ul
       role="list"
-      class="grid grid-cols-1 gap-4 py-4 mt-4 border-t border-gray-200 empty:py-0 sm:grid-cols-2 lg:grid-cols-3"
+      class="grid grid-cols-1 gap-4 mt-7 empty:py-0 sm:grid-cols-2 lg:grid-cols-3"
     >
       <li
         v-for="project in $resources.projects.data"
@@ -16,15 +18,15 @@
         class="flow-root"
       >
         <div
-          class="relative flex items-center p-2 -m-2 space-x-4 rounded-xl hover:bg-gray-50 focus-within:ring-2 focus-within:ring-blue-500"
+          class="relative flex items-center p-2 -m-2 space-x-4 rounded-xl group hover:bg-gray-100 focus-within:ring-2 focus-within:ring-blue-500"
         >
           <div
-            class="flex items-center justify-center flex-shrink-0 w-10 h-10 bg-gray-100 rounded-lg"
+            class="flex items-center justify-center flex-shrink-0 w-10 h-10 bg-gray-100 rounded-lg group-hover:bg-white"
           >
             <span class="text-4xl">{{ project.icon }}</span>
           </div>
           <div>
-            <h3 class="text-base font-medium text-gray-900">
+            <h3 class="text-lg font-medium text-gray-900">
               <router-link
                 :to="{
                   name: 'ProjectDetailOverview',
@@ -33,11 +35,12 @@
                 class="focus:outline-none"
               >
                 <span class="absolute inset-0" aria-hidden="true" />
-                {{ project.title }}<span aria-hidden="true"> &rarr;</span>
+                {{ project.title }}
+                <span aria-hidden="true"> &rarr;</span>
               </router-link>
             </h3>
             <p class="mt-1 text-base text-gray-500">
-              updated {{ $dayjs(project.modified).fromNow() }}
+              Updated {{ $dayjs(project.modified).fromNow() }}
             </p>
           </div>
         </div>
