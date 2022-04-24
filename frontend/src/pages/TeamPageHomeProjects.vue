@@ -10,7 +10,7 @@
     </div>
     <ul
       role="list"
-      class="grid grid-cols-1 gap-4 mt-7 empty:py-0 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+      class="grid grid-cols-1 gap-4 mt-5 empty:py-0 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
     >
       <li
         v-for="project in $resources.projects.data"
@@ -18,10 +18,10 @@
         class="flow-root"
       >
         <div
-          class="relative flex items-center p-2 -m-2 space-x-4 rounded-xl group hover:bg-gray-100 focus-within:ring-2 focus-within:ring-blue-500"
+          class="relative flex items-center p-2 space-x-4 transition-colors border border-gray-100 rounded-xl group hover:bg-gray-100 focus-within:ring-2 focus-within:ring-blue-500"
         >
           <div
-            class="flex items-center justify-center flex-shrink-0 w-10 h-10 bg-gray-100 rounded-lg group-hover:bg-white"
+            class="flex items-center justify-center flex-shrink-0 w-10 h-10 transition-colors bg-gray-100 rounded-lg group-hover:bg-white"
           >
             <span class="text-4xl">{{ project.icon }}</span>
           </div>
@@ -29,7 +29,7 @@
             <h3 class="text-lg font-medium text-gray-900">
               <router-link
                 :to="{
-                  name: 'ProjectDetailOverview',
+                  name: 'ProjectDetailTasks',
                   params: { projectId: project.name },
                 }"
                 class="focus:outline-none"
@@ -45,10 +45,24 @@
           </div>
         </div>
       </li>
+      <button
+        v-if="$resources.projects.data?.length === 0"
+        class="relative text-left flex items-center p-2 space-x-4 transition-colors border border-gray-100 rounded-xl group hover:bg-gray-100 focus-within:ring-2 focus-within:ring-blue-500"
+        @click="createNewProjectDialog = true"
+      >
+        <div
+          class="flex items-center justify-center flex-shrink-0 w-10 h-10 transition-colors bg-gray-100 rounded-lg group-hover:bg-white"
+        >
+          <FeatherIcon name="plus" class="w-5 text-gray-600" />
+        </div>
+        <div>
+          <h3 class="text-lg font-medium text-gray-900">New Project</h3>
+        </div>
+      </button>
     </ul>
     <div
-      class="flex flex-col items-center justify-center py-8"
-      v-if="$resources.projects.data?.length === 0"
+      class="flex flex-col items-center justify-center py-8 bg-gray-100 rounded-xl"
+      v-if="0 && $resources.projects.data?.length === 0"
     >
       <FeatherIcon name="folder-plus" class="w-6 h-6 text-gray-500" />
       <span class="mt-2 text-base text-gray-800"> No projects </span>
@@ -62,34 +76,18 @@
           type="text"
           label="Project Title"
           v-model="newProjectTitle"
-          @keydown.enter="
-            (e) =>
-              $resources.createProject.submit({
-                doc: {
-                  doctype: 'Team Project',
-                  team: team.name,
-                  title: e.target.value,
-                  task_states: [{ status: 'To do' }, { status: 'In progress' }],
-                },
-              })
-          "
+          @keydown.enter="(e) => createProject(e.target.value)"
         />
-        <ErrorMessage class="mt-2" :message="$resources.createProject.error" />
+        <ErrorMessage
+          class="mt-2"
+          :message="$resources.projects.insert.error"
+        />
       </template>
       <template #actions>
         <Button
           appearance="primary"
-          @click="
-            $resources.createProject.submit({
-              doc: {
-                doctype: 'Team Project',
-                team: team.name,
-                title: newProjectTitle,
-                task_states: [{ status: 'To do' }, { status: 'In progress' }],
-              },
-            })
-          "
-          :loading="$resources.createProject.loading"
+          @click="createProject(newProjectTitle)"
+          :loading="$resources.projects.insert.loading"
         >
           Create
         </Button>
@@ -114,27 +112,32 @@ export default {
   resources: {
     projects() {
       return {
-        method: 'frappe.client.get_list',
-        cache: ['team-projects', this.team.name],
-        params: {
-          doctype: 'Team Project',
-          filters: { team: this.team.name },
-          fields: ['*'],
-          order_by: 'modified desc',
-        },
-        auto: true,
+        type: 'list',
+        doctype: 'Team Project',
+        filters: { team: this.team.name },
+        fields: ['*'],
+        order_by: 'modified desc',
       }
     },
-    createProject: {
-      method: 'frappe.client.insert',
-      onSuccess(project) {
-        this.newProjectTitle = ''
-        this.createNewProjectDialog = false
-        this.$router.push({
-          name: 'ProjectDetail',
-          params: { projectId: project.name },
-        })
-      },
+  },
+  methods: {
+    createProject(title) {
+      this.$resources.projects.insert.submit(
+        {
+          team: this.team.name,
+          title,
+        },
+        {
+          onSuccess(project) {
+            this.newProjectTitle = ''
+            this.createNewProjectDialog = false
+            this.$router.push({
+              name: 'ProjectDetailTasks',
+              params: { projectId: project.name },
+            })
+          },
+        }
+      )
     },
   },
 }

@@ -22,6 +22,7 @@
               @update:modelValue="
                 (icon) => $resources.project.setValue.submit({ icon })
               "
+              :set-default="true"
             />
             <h1
               class="text-6xl font-bold"
@@ -37,28 +38,7 @@
               {
                 label: 'Delete this project',
                 icon: 'trash-2',
-                handler: () =>
-                  $dialog({
-                    title: 'Delete project',
-                    message: 'Are you sure you want to delete this project?',
-                    actions: [
-                      {
-                        label: 'Delete',
-                        appearance: 'danger',
-                        loading: $resources.project.delete.loading,
-                        handler: ({ close }) => {
-                          $resources.project.delete.submit().then(() => {
-                            close()
-                            this.$router.push(`/${this.team.name}`)
-                          })
-                        },
-                      },
-                      {
-                        label: 'Cancel',
-                        handler: 'cancel',
-                      },
-                    ],
-                  }),
+                handler: () => (projectDeleteDialog = true),
               },
             ]"
           />
@@ -68,6 +48,35 @@
         </p>
       </div>
     </div>
+
+    <Dialog
+      :options="{
+        title: 'Delete project',
+        message: 'Are you sure you want to delete this project?',
+      }"
+      v-model="projectDeleteDialog"
+    >
+      <template #actions>
+        <Button
+          appearance="danger"
+          :loading="$resources.project.delete.loading"
+          @click="
+            () => {
+              $resources.project.delete.submit().then(() => {
+                projectDeleteDialog = false
+                $router.push({
+                  name: 'TeamPageHome',
+                  params: { teamId: team.name },
+                })
+              })
+            }
+          "
+        >
+          Delete
+        </Button>
+        <Button @click="projectDeleteDialog = false">Cancel</Button>
+      </template>
+    </Dialog>
 
     <div class="border-b">
       <div class="container mx-auto">
@@ -126,6 +135,11 @@ export default {
     IconPicker,
     Links,
   },
+  data() {
+    return {
+      projectDeleteDialog: false,
+    }
+  },
   resources: {
     project() {
       return {
@@ -138,9 +152,6 @@ export default {
           addAttachment: 'add_attachment',
         },
         postprocess(project) {
-          if (!project.icon) {
-            this.$nextTick(() => this.$refs.projectIconPicker.setRandom())
-          }
           project.task_states.map((task_state) => {
             task_state.open = true
           })
@@ -155,13 +166,13 @@ export default {
     tabs() {
       return [
         {
-          name: 'Overview',
-          route: `/${this.team.name}/projects/${this.projectId}`,
+          name: 'Tasks',
+          route: `/${this.team.name}/projects/${this.projectId}/tasks`,
           class: this.tabLinkClasses,
         },
         {
-          name: 'Tasks',
-          route: `/${this.team.name}/projects/${this.projectId}/tasks`,
+          name: 'Overview',
+          route: `/${this.team.name}/projects/${this.projectId}`,
           class: this.tabLinkClasses,
         },
       ]

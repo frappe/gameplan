@@ -48,5 +48,6 @@ for (let key in globalComponents) {
 }
 app.config.globalProperties.$dayjs = dayjs
 app.config.globalProperties.$dialog = createDialog
+app.config.globalProperties.$log = console.log.bind(console)
 app.use(router)
 app.mount('#app')

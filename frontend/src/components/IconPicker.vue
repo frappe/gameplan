@@ -60,7 +60,7 @@ import { gemoji } from 'gemoji'
 
 export default {
   name: 'IconPicker',
-  props: ['modelValue'],
+  props: ['modelValue', 'setDefault'],
   emits: ['update:modelValue'],
   expose: ['setRandom'],
   data() {
@@ -70,6 +70,11 @@ export default {
     Popover,
     PopoverButton,
     PopoverPanel,
+  },
+  mounted() {
+    if (this.setDefault && !this.modelValue) {
+      this.setRandom()
+    }
   },
   computed: {
     emojiGroups() {

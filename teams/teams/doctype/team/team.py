@@ -4,6 +4,7 @@
 import frappe
 from frappe.model.document import Document
 from frappe.model.naming import append_number_if_name_exists
+from teams.gemoji import get_random_gemoji
 from teams.mixins.manage_members import ManageMembersMixin
 from teams.unsplash import get_random as get_random_image
 from teams.utils import validate_url
@@ -25,6 +26,9 @@ class Team(ManageMembersMixin, Document):
 		if not self.name:
 			slug = frappe.scrub(self.title)
 			self.name = append_number_if_name_exists("Team", slug)
+
+		if not self.icon:
+			self.icon = get_random_gemoji().emoji
 
 		if not self.description:
 			self.description = f"""

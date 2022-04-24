@@ -3,9 +3,9 @@
     <div>
       <div class="flex items-center space-x-2">
         <IconPicker
-          ref="teamIconPicker"
           v-model="team.doc.icon"
           @update:modelValue="(icon) => team.setValue.submit({ icon })"
+          :set-default="true"
         />
         <h1 class="text-6xl font-bold text-gray-900">{{ team.doc.title }}</h1>
         <Dropdown
@@ -69,11 +69,6 @@ export default {
     TextEditor,
     IconPicker,
     Avatar,
-  },
-  mounted() {
-    if (!this.team.doc.icon) {
-      this.$refs.teamIconPicker.setRandom()
-    }
   },
   methods: {
     deleteTeam() {
