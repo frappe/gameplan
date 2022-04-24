@@ -37,10 +37,12 @@
         "
       />
     </div>
-    <div class="grid grid-cols-7 gap-5 mt-10">
-      <div class="col-span-5">
+    <div class="grid grid-cols-8 mt-10 gap-x-5 gap-y-12">
+      <div class="col-span-8">
         <TeamPageHomeProjects :team="team" />
-        <TeamPageHomeLinks :team="team" class="mt-12" />
+      </div>
+      <div class="col-span-6">
+        <TeamPageHomeLinks :team="team" />
       </div>
       <div class="col-span-2">
         <TeamPageHomeMembers :team="team" />

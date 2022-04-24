@@ -23,6 +23,9 @@
           <div class="text-sm text-gray-600">{{ member.email }}</div>
         </div>
       </div>
+      <div v-if="!team.doc.members.length" class="text-base text-gray-600">
+        Invite members to collaborate.
+      </div>
     </div>
   </div>
   <AddMemberDialog :team="team.doc" v-model="inviteMemberDialog" />

@@ -10,7 +10,7 @@
     </div>
     <ul
       role="list"
-      class="grid grid-cols-1 gap-4 mt-7 empty:py-0 sm:grid-cols-2 lg:grid-cols-3"
+      class="grid grid-cols-1 gap-4 mt-7 empty:py-0 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
     >
       <li
         v-for="project in $resources.projects.data"

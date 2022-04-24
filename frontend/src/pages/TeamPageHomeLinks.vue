@@ -34,6 +34,9 @@
           <FeatherIcon name="x" class="w-3.5 h-3.5 text-gray-900" />
         </button>
       </div>
+      <div v-if="!team.doc.links.length" class="text-base text-gray-600">
+        Keep track of important links here. To add a link, click on the plus button above.
+      </div>
     </div>
     <Dialog :options="{ title: 'Create Link' }" v-model="createNewLinkDialog">
       <template #body-content>
