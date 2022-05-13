@@ -52,7 +52,7 @@
               <div class="text-lg font-semibold text-gray-900">
                 {{ section.title }}
                 <span class="font-normal">
-                  ({{ $resources.tasks.data[section.name].length }})
+                  ({{ $resources.tasks.data[section.name]?.length }})
                 </span>
               </div>
               <Dropdown
@@ -481,6 +481,7 @@ export default {
           onSuccess: () => {
             this.addingNewSection = false
             this.newSectionTitle = ''
+            this.$resources.tasks.reload()
           },
         }
       )
