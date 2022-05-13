@@ -1,20 +1,35 @@
 <template>
-  <div class="pb-40" v-if="$resources.project.doc">
-    <div class="container pt-8 pb-4 mx-auto">
-      <div>
-        <router-link
-          class="inline-flex items-center p-2 mb-2 space-x-2 text-base rounded-md hover:bg-gray-50"
-          :to="{
-            name: 'TeamPageHome',
-            params: { teamId: $resources.project.doc.team },
-          }"
-        >
-          <FeatherIcon name="arrow-left" class="w-4" />
-          <span class="text-gray-800">
-            back to {{ $resources.project.doc.team }}
-          </span>
-        </router-link>
-        <div class="flex items-center space-x-2">
+  <div class="flex flex-col h-full">
+    <header class="sticky top-0 z-10 h-12 px-4 py-3 bg-white border-b">
+      <Breadcrumbs
+        :breadcrumbs="[
+          team?.doc && {
+            title: team.doc.title,
+            icon: team.doc.icon,
+            route: {
+              name: 'TeamPageHome',
+              params: { teamId: team.doc.name },
+            },
+          },
+          project && {
+            title: project.title,
+            icon: project.icon,
+            route: task
+              ? {
+                  name: 'ProjectDetailTasks',
+                  params: { projectId: project.name },
+                }
+              : undefined,
+          },
+          task?.doc && {
+            title: task.doc.title,
+          },
+        ]"
+      />
+    </header>
+    <div class="flex flex-col flex-1 h-full pt-8" v-if="project">
+      <div class="border-b">
+        <div class="container">
           <div class="flex items-center space-x-2">
             <IconPicker
               ref="projectIconPicker"
@@ -23,98 +38,73 @@
                 (icon) => $resources.project.setValue.submit({ icon })
               "
               :set-default="true"
-            />
-            <h1
-              class="text-6xl font-bold"
-              :title="`${Math.round(project.progress)}% complete`"
             >
-              {{ project.title }}
-            </h1>
-          </div>
-          <Dropdown
-            placement="left"
-            :button="{ icon: 'more-horizontal', appearance: 'minimal' }"
-            :options="[
-              {
-                label: 'Delete this project',
-                icon: 'trash-2',
-                handler: () => (projectDeleteDialog = true),
-              },
-            ]"
-          />
-        </div>
-        <p class="text-sm text-gray-500">
-          created {{ $dayjs(project.creation).fromNow() }}
-        </p>
-      </div>
-    </div>
-
-    <Dialog
-      :options="{
-        title: 'Delete project',
-        message: 'Are you sure you want to delete this project?',
-      }"
-      v-model="projectDeleteDialog"
-    >
-      <template #actions>
-        <Button
-          appearance="danger"
-          :loading="$resources.project.delete.loading"
-          @click="
-            () => {
-              $resources.project.delete.submit().then(() => {
-                projectDeleteDialog = false
-                $router.push({
-                  name: 'TeamPageHome',
-                  params: { teamId: team.name },
-                })
-              })
-            }
-          "
-        >
-          Delete
-        </Button>
-        <Button @click="projectDeleteDialog = false">Cancel</Button>
-      </template>
-    </Dialog>
-
-    <div class="border-b">
-      <div class="container mx-auto">
-        <div class="mt-2">
-          <div class="sm:hidden">
-            <label for="tabs" class="sr-only">Select a tab</label>
-            <!-- Use an "onChange" listener to redirect the user to the selected tab URL. -->
-            <select
-              id="tabs"
-              name="tabs"
-              class="block w-full py-2 pl-3 pr-10 text-base border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-              @change="$router.push($event.target.value)"
-            >
-              <option
-                v-for="tab in tabs"
-                :key="tab.name"
-                :selected="$route.fullPath === tab.route"
-                :value="tab.route"
-              >
-                {{ tab.name }}
-              </option>
-            </select>
-          </div>
-          <div class="hidden sm:block">
+              <template v-slot="{ open }">
+                <div
+                  class="p-px leading-none rounded-md text-[42px] focus:outline-none"
+                  :class="open ? 'bg-gray-200' : 'hover:bg-gray-100'"
+                >
+                  {{ project.icon || '' }}
+                </div>
+              </template>
+            </IconPicker>
             <div>
-              <nav class="flex -mb-px space-x-8" aria-label="Tabs">
-                <Links
-                  :links="tabs"
-                  class="px-1 py-2 text-sm font-medium border-b-2 whitespace-nowrap"
+              <div class="flex items-center space-x-2">
+                <h1
+                  class="text-6xl font-bold"
+                  :title="`${Math.round(project.progress)}% complete`"
+                >
+                  {{ project.title }}
+                </h1>
+                <Dropdown
+                  placement="left"
+                  :button="{ icon: 'more-horizontal', appearance: 'minimal' }"
+                  :options="[
+                    {
+                      label: 'Delete this project',
+                      icon: 'trash-2',
+                      handler: () => (projectDeleteDialog = true),
+                    },
+                  ]"
                 />
-              </nav>
+              </div>
+              <Tabs :tabs="tabs" class="border-none" />
             </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <router-view :project="$resources.project" />
+      <Dialog
+        :options="{
+          title: 'Delete project',
+          message: 'Are you sure you want to delete this project?',
+        }"
+        v-model="projectDeleteDialog"
+      >
+        <template #actions>
+          <Button
+            appearance="danger"
+            :loading="$resources.project.delete.loading"
+            @click="
+              () => {
+                $resources.project.delete.submit().then(() => {
+                  projectDeleteDialog = false
+                  $router.push({
+                    name: 'TeamPageHome',
+                    params: { teamId: team.doc.name },
+                  })
+                })
+              }
+            "
+          >
+            Delete
+          </Button>
+          <Button @click="projectDeleteDialog = false">Cancel</Button>
+        </template>
+      </Dialog>
+
+      <router-view class="flex-1" :project="$resources.project" />
+    </div>
   </div>
 </template>
 <script>
@@ -123,10 +113,12 @@ import Pie from '@/components/Pie.vue'
 import ProjectDetailTasks from './ProjectDetailTasks.vue'
 import IconPicker from '@/components/IconPicker.vue'
 import Links from '@/components/Links.vue'
+import Tabs from '@/components/Tabs.vue'
+import Breadcrumbs from '@/components/Breadcrumbs.vue'
 
 export default {
   name: 'ProjectDetail',
-  props: ['teamId', 'team', 'projectId'],
+  props: ['team', 'projectId'],
   components: {
     Dropdown,
     Spinner,
@@ -134,6 +126,8 @@ export default {
     ProjectDetailTasks,
     IconPicker,
     Links,
+    Tabs,
+    Breadcrumbs,
   },
   data() {
     return {
@@ -150,10 +144,14 @@ export default {
           removeMember: 'remove_member',
           inviteMembers: 'invite_members',
           addAttachment: 'add_attachment',
+          createSection: 'create_section',
+          deleteSection: 'delete_section',
+          updateTasksOrder: 'update_tasks_order',
         },
-        postprocess(project) {
-          project.task_states.map((task_state) => {
-            task_state.open = true
+        transform(project) {
+          project.sections.map((section) => {
+            section.open = true
+            section.tasks = []
           })
         },
       }
@@ -163,16 +161,29 @@ export default {
     project() {
       return this.$resources.project.doc
     },
+    task() {
+      let task = null
+      if (this.$route.name === 'ProjectTaskDetail') {
+        task = this.$getDocumentResource('Team Task', this.$route.params.taskId)
+      }
+      return task
+    },
     tabs() {
       return [
         {
           name: 'Tasks',
-          route: `/${this.team.name}/projects/${this.projectId}/tasks`,
+          route: {
+            name: 'ProjectDetailTasks',
+            params: { teamId: this.team.doc.name, projectId: this.projectId },
+          },
           class: this.tabLinkClasses,
         },
         {
           name: 'Overview',
-          route: `/${this.team.name}/projects/${this.projectId}`,
+          route: {
+            name: 'ProjectDetailOverview',
+            params: { teamId: this.team.doc.name, projectId: this.projectId },
+          },
           class: this.tabLinkClasses,
         },
       ]
@@ -181,12 +192,12 @@ export default {
   methods: {
     tabLinkClasses($route, link) {
       let active = false
-      if ($route.fullPath === link.route) {
+      if (link.route.name === $route.name) {
+        active = true
+      } else if ($route.fullPath === link.route) {
         active = true
       }
-      if (link.name != 'Overview' && $route.fullPath.startsWith(link.route)) {
-        active = true
-      }
+
       if (active) {
         return 'border-blue-500 text-blue-600'
       }

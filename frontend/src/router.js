@@ -69,6 +69,14 @@ const routes = [
             name: 'ProjectDetailTasks',
             path: 'tasks',
             component: () => import('@/pages/ProjectDetailTasks.vue'),
+            children: [
+              {
+                name: 'ProjectTaskDetail',
+                path: ':taskId',
+                component: () => import('@/pages/ProjectTaskDetail.vue'),
+                props: true,
+              },
+            ],
           },
         ],
       },

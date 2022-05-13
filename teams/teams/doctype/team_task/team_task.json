@@ -16,6 +16,8 @@
   "idx",
   "project",
   "project_title",
+  "project_section",
+  "project_section_title",
   "team",
   "team_title"
  ],
@@ -94,11 +96,24 @@
    "fieldtype": "Data",
    "label": "Team Title",
    "read_only": 1
+  },
+  {
+   "fieldname": "project_section",
+   "fieldtype": "Link",
+   "label": "Project Section",
+   "options": "Team Project Section"
+  },
+  {
+   "fetch_from": "project_section.title",
+   "fieldname": "project_section_title",
+   "fieldtype": "Data",
+   "label": "Project Section Title",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-04-22 15:02:10.354173",
+ "modified": "2022-04-29 18:13:25.712366",
  "modified_by": "Administrator",
  "module": "Teams",
  "name": "Team Task",

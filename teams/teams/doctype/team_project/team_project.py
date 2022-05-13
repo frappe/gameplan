@@ -3,6 +3,7 @@
 
 import frappe, requests
 from frappe.model.document import Document
+from teams.gemoji import get_random_gemoji
 from teams.mixins.manage_members import ManageMembersMixin
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
@@ -21,6 +22,9 @@ class TeamProject(ManageMembersMixin, Document):
 		return d
 
 	def before_insert(self):
+		if not self.icon:
+			self.icon = get_random_gemoji().emoji
+
 		self.append(
 			"members",
 			{
@@ -97,6 +101,50 @@ class TeamProject(ManageMembersMixin, Document):
 			"attachments", {"url": url, "title": title or meta["title"], "image": meta["image"]}
 		)
 		self.save()
+
+	@frappe.whitelist()
+	def create_section(self, title):
+		self.append("sections", {"title": title, "type": "Draft"})
+		self.save()
+
+	@frappe.whitelist()
+	def delete_section(self, section):
+		section_to_remove = None
+		for s in self.sections:
+			if s.name == section:
+				section_to_remove = s
+				break
+
+		task_count = frappe.db.count(
+			"Team Task", {"project": self.name, "project_section": section_to_remove.name}
+		)
+		if task_count > 0:
+			if task_count == 1:
+				frappe.throw(
+					f"Section {section_to_remove.title} cannot be deleted because it has 1 task"
+				)
+			else:
+				frappe.throw(
+					f"Section {section_to_remove.title} cannot be deleted because it"
+					f" has {task_count} tasks"
+				)
+
+		self.remove(section_to_remove)
+
+		# recompute idx
+		for i, section in enumerate(self.sections):
+			section.idx = i + 1
+
+		self.save()
+
+	@frappe.whitelist()
+	def update_tasks_order(self, tasks):
+		tasks = frappe.parse_json(tasks)
+		for task in tasks:
+			task = frappe._dict(task)
+			frappe.db.set_value(
+				"Team Task", task.name, {"idx": task.idx, "project_section": task.project_section}
+			)
 
 
 def get_meta_tags(url):
