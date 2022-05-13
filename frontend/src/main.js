@@ -16,6 +16,7 @@ import UserInfo from '@/components/UserInfo.vue'
 import './index.css'
 import { dayjs } from '@/utils'
 import { createDialog } from './utils/dialogs'
+import { createToast } from './utils/toasts'
 
 let globalComponents = {
   Button,
@@ -48,6 +49,7 @@ for (let key in globalComponents) {
 }
 app.config.globalProperties.$dayjs = dayjs
 app.config.globalProperties.$dialog = createDialog
+app.config.globalProperties.$toast = createToast
 app.config.globalProperties.$log = console.log.bind(console)
 app.use(router)
 app.mount('#app')

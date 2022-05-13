@@ -20,17 +20,20 @@
     </div>
   </div>
   <Dialogs />
+  <Toasts />
 </template>
 <script>
 import { ref } from 'vue'
 import AppSidebar from './AppSidebar.vue'
 import { Dialogs } from '@/utils/dialogs'
+import { Toasts } from '@/utils/toasts'
 
 export default {
   name: 'AppShell',
   components: {
     AppSidebar,
     Dialogs,
+    Toasts
   },
   resources: {
     user: {
