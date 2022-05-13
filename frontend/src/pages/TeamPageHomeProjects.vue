@@ -36,7 +36,6 @@
               >
                 <span class="absolute inset-0" aria-hidden="true" />
                 {{ project.title }}
-                <span aria-hidden="true"> &rarr;</span>
               </router-link>
             </h3>
             <p class="mt-1 text-base text-gray-500">
@@ -47,7 +46,7 @@
       </li>
       <button
         v-if="$resources.projects.data?.length === 0"
-        class="relative text-left flex items-center p-2 space-x-4 transition-colors border border-gray-100 rounded-xl group hover:bg-gray-100 focus-within:ring-2 focus-within:ring-blue-500"
+        class="relative flex items-center p-2 space-x-4 text-left transition-colors border border-gray-100 rounded-xl group hover:bg-gray-100 focus-within:ring-2 focus-within:ring-blue-500"
         @click="createNewProjectDialog = true"
       >
         <div
@@ -117,6 +116,7 @@ export default {
         filters: { team: this.team.name },
         fields: ['*'],
         order_by: 'modified desc',
+        cache: ['Team Projects', this.team.name],
       }
     },
   },
@@ -126,9 +126,15 @@ export default {
         {
           team: this.team.name,
           title,
+          sections: [
+            { title: 'To Do', type: 'Draft' },
+            { title: 'In Progress', type: 'Draft' },
+            { title: 'Done', type: 'Closed' },
+          ],
         },
         {
           onSuccess(project) {
+            this.$resources.projects.reload()
             this.newProjectTitle = ''
             this.createNewProjectDialog = false
             this.$router.push({

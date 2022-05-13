@@ -1,10 +1,9 @@
 <template>
   <Popover v-slot="{ open }" class="relative">
-    <PopoverButton
-      class="px-2 -ml-2 rounded-md focus:outline-none"
-      :class="open ? 'bg-gray-200' : 'hover:bg-gray-100'"
-    >
-      <span class="text-6xl"> {{ modelValue || '' }} </span>
+    <PopoverButton>
+      <slot :open="open">
+        <span class="text-base"> {{ modelValue || '' }} </span>
+      </slot>
     </PopoverButton>
     <transition
       enter-active-class="transition duration-200 ease-out"

@@ -1,9 +1,11 @@
 import _dayjs from 'dayjs'
 import relativeTime from 'dayjs/esm/plugin/relativeTime'
 import localizedFormat from 'dayjs/plugin/localizedFormat'
+import isToday from 'dayjs/plugin/isToday'
 
 _dayjs.extend(relativeTime)
 _dayjs.extend(localizedFormat)
+_dayjs.extend(isToday)
 
 export let dayjs = _dayjs
 

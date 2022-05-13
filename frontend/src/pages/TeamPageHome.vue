@@ -1,4 +1,16 @@
 <template>
+  <header
+    class="sticky top-0 z-10 flex items-center h-12 px-4 py-3 bg-white border-b"
+  >
+    <Breadcrumbs
+      :breadcrumbs="[
+        {
+          title: team.doc.title,
+          icon: team.doc.icon,
+        },
+      ]"
+    />
+  </header>
   <div class="container pt-10 mx-auto pb-80">
     <div>
       <div class="flex items-center space-x-2">
@@ -6,7 +18,16 @@
           v-model="team.doc.icon"
           @update:modelValue="(icon) => team.setValue.submit({ icon })"
           :set-default="true"
-        />
+        >
+          <template v-slot="{ open }">
+            <div
+              class="p-px leading-none rounded-md text-7xl focus:outline-none"
+              :class="open ? 'bg-gray-200' : 'hover:bg-gray-100'"
+            >
+              {{ team.doc.icon || '' }}
+            </div>
+          </template>
+        </IconPicker>
         <h1 class="text-6xl font-bold text-gray-900">{{ team.doc.title }}</h1>
         <Dropdown
           placement="left"
@@ -56,6 +77,7 @@ import TeamPageHomeProjects from './TeamPageHomeProjects.vue'
 import TeamPageHomeMembers from './TeamPageHomeMembers.vue'
 import IconPicker from '@/components/IconPicker.vue'
 import TeamPageHomeLinks from './TeamPageHomeLinks.vue'
+import Breadcrumbs from '@/components/Breadcrumbs.vue'
 
 export default {
   name: 'TeamPageHome',
@@ -69,6 +91,7 @@ export default {
     TextEditor,
     IconPicker,
     Avatar,
+    Breadcrumbs,
   },
   methods: {
     deleteTeam() {
