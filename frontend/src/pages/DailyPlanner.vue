@@ -2,9 +2,11 @@
   <header class="flex items-center px-4 py-3 border-b">
     <h1 class="text-lg font-semibold text-gray-900">Daily Planner</h1>
   </header>
-  <div class="relative flex justify-between h-12 max-w-2xl px-4 mx-auto -mt-12">
+  <div
+    class="relative grid justify-between h-12 max-w-2xl grid-cols-7 px-4 mx-auto mt-4"
+  >
     <router-link
-      class="flex flex-col items-center justify-center h-full px-5 text-sm"
+      class="flex flex-col items-center justify-center h-full px-5 border-b-2"
       v-for="day in days"
       :key="day"
       :to="{
@@ -13,14 +15,20 @@
       }"
       :class="
         day.format('YYYY-MM-DD') == date
-          ? 'bg-blue-500 text-white font-medium'
-          : 'hover:bg-gray-50 text-gray-800'
+          ? 'border-blue-500 font-medium'
+          : 'hover:bg-gray-50 border-gray-100 '
       "
     >
-      <div>
+      <div class="text-xs text-gray-600">
         {{ day.format('ddd') }}
       </div>
-      <div>
+      <div
+        class="text-lg"
+        :class="[
+          day.isToday() ? 'text-blue-500 font-semibold' : 'text-gray-800',
+          day.format('YYYY-MM-DD') == date ? 'font-semibold' : '',
+        ]"
+      >
         {{ day.format('D') }}
       </div>
     </router-link>
