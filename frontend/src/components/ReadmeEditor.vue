@@ -32,7 +32,6 @@
     </div>
     <TextEditor
       ref="readme"
-      editor-class="pb-20"
       :content="resource.doc[fieldname]"
       placeholder="Use this space to write a detailed description of your project"
       @change="(val) => (resource.doc[fieldname] = val)"
