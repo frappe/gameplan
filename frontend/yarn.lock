@@ -209,6 +209,15 @@
   resolved "https://registry.yarnpkg.com/@tiptap/extension-italic/-/extension-italic-2.0.0-beta.26.tgz#b00c9e32b81b1bd94eaed24bb2a22e44d5dc54a3"
   integrity sha512-vejGe2ra4K5ipFOn1U9viqF9X9nPTX8WSJpSOux+9UbKjHpANy7bz69tp66OIi/Wh5L/MMDc+luH/04qfVnpZw==
 
+"@tiptap/extension-link@^2.0.0-beta.37":
+  version "2.0.0-beta.37"
+  resolved "https://registry.yarnpkg.com/@tiptap/extension-link/-/extension-link-2.0.0-beta.37.tgz#8d569284b82860e6a9aac42b85ed9c0911e50599"
+  integrity sha512-G5sM1a8Kjm1ZMro+BGsk+yApIDMl7RF/u1PY929HHld7JPsjgB+DZbbQ1U7e9Kxiu/9aDwgOa+w+SLqLiajedw==
+  dependencies:
+    linkifyjs "^3.0.5"
+    prosemirror-model "^1.16.1"
+    prosemirror-state "^1.3.4"
+
 "@tiptap/extension-list-item@^2.0.0-beta.20":
   version "2.0.0-beta.20"
   resolved "https://registry.yarnpkg.com/@tiptap/extension-list-item/-/extension-list-item-2.0.0-beta.20.tgz#7169528b226dee4590e013bdf6e5fc6d83729b0f"
@@ -978,16 +987,17 @@ fraction.js@^4.1.2:
   resolved "https://registry.yarnpkg.com/fraction.js/-/fraction.js-4.1.2.tgz#13e420a92422b6cf244dff8690ed89401029fbe8"
   integrity sha512-o2RiJQ6DZaR/5+Si0qJUIy637QMRudSi9kU/FFzx9EZazrIdnBgpU+3sEWCxAVhH2RtxW2Oz+T4p2o8uOPVcgA==
 
-frappe-ui@^0.0.20:
-  version "0.0.20"
-  resolved "https://registry.yarnpkg.com/frappe-ui/-/frappe-ui-0.0.20.tgz#88f12fdc445742c0cca993bffde224c5f8cef334"
-  integrity sha512-hvKO0GMMNyusiPYpS5KLv6BCKzt4toRigNtKeOvb3xVmeZXUN2EMpjwSQsko+/m+azv5AsXhtaz22Dr1pMm/dA==
+frappe-ui@^0.0.22:
+  version "0.0.22"
+  resolved "https://registry.yarnpkg.com/frappe-ui/-/frappe-ui-0.0.22.tgz#6e348df0b3079517e5ce4772cce56977d00ebf62"
+  integrity sha512-NkeCXoXSrr71NlslczUBz9WzHwncuWD2E01K+bt1ODAAnvfdLqibuc8/KTt5jwiyY6PGdqlz/4WlWNAVLiWUMA==
   dependencies:
     "@headlessui/vue" "^1.5.0"
     "@popperjs/core" "^2.11.2"
     "@tailwindcss/forms" "^0.4.0"
     "@tailwindcss/typography" "^0.5.0"
     "@tiptap/extension-image" "^2.0.0-beta.27"
+    "@tiptap/extension-link" "^2.0.0-beta.37"
     "@tiptap/extension-placeholder" "^2.0.0-beta.48"
     "@tiptap/starter-kit" "^2.0.0-beta.183"
     "@tiptap/vue-3" "^2.0.0-beta.90"
@@ -1168,6 +1178,11 @@ lines-and-columns@^1.1.6:
   version "1.2.4"
   resolved "https://registry.yarnpkg.com/lines-and-columns/-/lines-and-columns-1.2.4.tgz#eca284f75d2965079309dc0ad9255abb2ebc1632"
   integrity sha512-7ylylesZQ/PV29jhEDl3Ufjo6ZX7gCqJr5F7PKrqc93v7fzSymt1BpwEU8nAUXs8qzzvqhbjhK5QZg6Mt/HkBg==
+
+linkifyjs@^3.0.5:
+  version "3.0.5"
+  resolved "https://registry.yarnpkg.com/linkifyjs/-/linkifyjs-3.0.5.tgz#99e51a3a0c0e232fcb63ebb89eea3ff923378f34"
+  integrity sha512-1Y9XQH65eQKA9p2xtk+zxvnTeQBG7rdAXSkUG97DmuI/Xhji9uaUzaWxRj6rf9YC0v8KKHkxav7tnLX82Sz5Fg==
 
 lodash.castarray@^4.4.0:
   version "4.4.0"
