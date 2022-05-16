@@ -4,7 +4,7 @@
       <h2 class="text-2xl font-bold text-gray-900">Members</h2>
       <Button icon="plus" @click="inviteMemberDialog = true" />
     </div>
-    <div class="p-5 mt-5 space-y-4 bg-gray-100 rounded-xl">
+    <div class="mt-5 space-y-4 rounded-xl">
       <div
         class="flex items-center space-x-2"
         v-for="member in members"

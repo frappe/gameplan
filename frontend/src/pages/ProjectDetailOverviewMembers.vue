@@ -1,6 +1,9 @@
 <template>
   <div>
-    <h2 class="text-lg font-bold">Members</h2>
+    <div class="flex items-center space-x-2">
+      <h2 class="text-2xl font-bold text-gray-900">Members</h2>
+      <Button icon="plus" @click="addMember.show = true" />
+    </div>
     <div class="grid grid-cols-1 mt-4">
       <Dropdown
         v-for="member in project.doc.members"
@@ -67,17 +70,6 @@
           </button>
         </template>
       </Dropdown>
-      <button
-        class="flex items-center p-2 rounded-lg hover:bg-gray-50"
-        @click="addMember.show = true"
-      >
-        <div
-          class="grid w-8 h-8 text-gray-600 border border-gray-400 border-dashed rounded-full place-items-center"
-        >
-          <FeatherIcon name="plus" class="w-4" />
-        </div>
-        <div class="ml-2 text-sm font-semibold text-gray-500">Add member</div>
-      </button>
     </div>
 
     <Dialog :options="{ title: 'Update Role' }" v-model="updateMemberRole.show">
