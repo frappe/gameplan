@@ -11,7 +11,7 @@
       ]"
     />
   </header>
-  <div class="container pt-10 mx-auto pb-80">
+  <div class="container pt-8 mx-auto pb-80">
     <div>
       <div class="flex items-center space-x-2">
         <IconPicker

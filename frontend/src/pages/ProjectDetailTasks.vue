@@ -451,7 +451,8 @@ export default {
           task.deleted = false
           this.$toast({
             icon: 'alert-triangle',
-            appearance: 'danger',
+            iconClasses: 'text-red-600',
+            title: 'Error deleting task',
             text: e.messages.join('\n'),
             timeout: 10,
           })

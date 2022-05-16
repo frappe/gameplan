@@ -14,6 +14,7 @@
   "team",
   "section_break_5",
   "description",
+  "readme",
   "task_states",
   "sections",
   "members",
@@ -90,6 +91,11 @@
    "fieldtype": "Table",
    "label": "Task Sections",
    "options": "Team Project Section"
+  },
+  {
+   "fieldname": "readme",
+   "fieldtype": "Text Editor",
+   "label": "Readme"
   }
  ],
  "index_web_pages_for_search": 1,
@@ -99,7 +105,7 @@
    "link_fieldname": "project"
   }
  ],
- "modified": "2022-04-24 12:36:22.555110",
+ "modified": "2022-05-13 18:26:36.295931",
  "modified_by": "Administrator",
  "module": "Teams",
  "name": "Team Project",

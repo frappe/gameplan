@@ -8,6 +8,7 @@
  "field_order": [
   "project",
   "status",
+  "title",
   "content"
  ],
  "fields": [
@@ -23,17 +24,26 @@
    "fieldname": "content",
    "fieldtype": "Text Editor",
    "in_list_view": 1,
-   "label": "Content"
+   "label": "Content",
+   "reqd": 1
   },
   {
    "fieldname": "status",
    "fieldtype": "Data",
-   "label": "Status"
+   "in_list_view": 1,
+   "label": "Status",
+   "reqd": 1
+  },
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "label": "Title",
+   "reqd": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-02-23 23:38:08.472243",
+ "modified": "2022-05-16 13:11:19.099415",
  "modified_by": "Administrator",
  "module": "Teams",
  "name": "Team Project Status Update",

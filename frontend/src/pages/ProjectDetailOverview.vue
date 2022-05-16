@@ -1,22 +1,21 @@
 <template>
-  <div class="container mt-6 space-y-6">
-    <ProjectDetailOverviewMembers class="w-1/2" :project="project" />
-    <ProjectDetailOverviewLinks class="w-1/2" :project="project" />
-    <ProjectDetailOverviewStatusUpdate class="w-1/2" :project="project" />
+  <div class="container mt-6">
+    <div class="grid grid-cols-8 gap-6">
+      <ProjectDetailOverviewReadme class="col-span-6" :project="project" />
+      <ProjectDetailOverviewMembers class="col-span-2" :project="project" />
+    </div>
   </div>
 </template>
 <script>
 import ProjectDetailOverviewMembers from './ProjectDetailOverviewMembers.vue'
-import ProjectDetailOverviewLinks from './ProjectDetailOverviewLinks.vue'
-import ProjectDetailOverviewStatusUpdate from './ProjectDetailOverviewStatusUpdate.vue'
+import ProjectDetailOverviewReadme from './ProjectDetailOverviewReadme.vue'
 
 export default {
   name: 'ProjectDetailOverview',
   props: ['project'],
   components: {
-    ProjectDetailOverviewLinks,
-    ProjectDetailOverviewStatusUpdate,
     ProjectDetailOverviewMembers,
+    ProjectDetailOverviewReadme,
   },
 }
 </script>

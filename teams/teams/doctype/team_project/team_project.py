@@ -25,6 +25,18 @@ class TeamProject(ManageMembersMixin, Document):
 		if not self.icon:
 			self.icon = get_random_gemoji().emoji
 
+		if not self.readme:
+			self.readme = f"""
+			<h3>Welcome to the {self.title} page!</h3>
+			<p>You can add a brief introduction about this project, links, resources, and other important information here.</p>
+
+			<h3>What this project is about</h3>
+			<p>This project is about...</p>
+
+			<h3>How we'll collaborate</h3>
+			<p>We'll do a weekly standup every Thursday...</p>
+		"""
+
 		self.append(
 			"members",
 			{
@@ -36,8 +48,10 @@ class TeamProject(ManageMembersMixin, Document):
 		)
 
 	def on_trash(self):
-		for task in frappe.db.get_all("Team Task", {"project": self.name}):
-			frappe.delete_doc("Team Task", task.name)
+		linked_doctypes = ["Team Task", "Team Project Status Update"]
+		for doctype in linked_doctypes:
+			for d in frappe.db.get_all(doctype, {"project": self.name}):
+				frappe.delete_doc(doctype, d.name)
 
 	def update_progress(self):
 		result = frappe.db.get_all(

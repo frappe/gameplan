@@ -1,7 +1,7 @@
 <template>
   <div>
     <h2 class="text-lg font-bold">Members</h2>
-    <div class="grid grid-cols-3 gap-1 mt-4">
+    <div class="grid grid-cols-1 mt-4">
       <Dropdown
         v-for="member in project.doc.members"
         :key="member.user"

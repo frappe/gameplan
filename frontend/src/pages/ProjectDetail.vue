@@ -30,7 +30,7 @@
     <div class="flex flex-col flex-1 h-full pt-8" v-if="project">
       <div class="border-b">
         <div class="container">
-          <div class="flex items-center space-x-2">
+          <div class="flex items-start space-x-2">
             <IconPicker
               ref="projectIconPicker"
               v-model="project.icon"
@@ -41,7 +41,7 @@
             >
               <template v-slot="{ open }">
                 <div
-                  class="p-px leading-none rounded-md text-[42px] focus:outline-none"
+                  class="p-px leading-none rounded-md text-[30px] focus:outline-none"
                   :class="open ? 'bg-gray-200' : 'hover:bg-gray-100'"
                 >
                   {{ project.icon || '' }}
@@ -51,7 +51,7 @@
             <div>
               <div class="flex items-center space-x-2">
                 <h1
-                  class="text-6xl font-bold"
+                  class="text-6xl font-bold leading-8"
                   :title="`${Math.round(project.progress)}% complete`"
                 >
                   {{ project.title }}
@@ -89,6 +89,7 @@
               () => {
                 $resources.project.delete.submit().then(() => {
                   projectDeleteDialog = false
+                  $getListResource(['Team Projects', team.doc.name])?.reload()
                   $router.push({
                     name: 'TeamPageHome',
                     params: { teamId: team.doc.name },
@@ -171,6 +172,14 @@ export default {
     tabs() {
       return [
         {
+          name: 'Overview',
+          route: {
+            name: 'ProjectDetailOverview',
+            params: { teamId: this.team.doc.name, projectId: this.projectId },
+          },
+          class: this.tabLinkClasses,
+        },
+        {
           name: 'Tasks',
           route: {
             name: 'ProjectDetailTasks',
@@ -179,9 +188,9 @@ export default {
           class: this.tabLinkClasses,
         },
         {
-          name: 'Overview',
+          name: 'Updates',
           route: {
-            name: 'ProjectDetailOverview',
+            name: 'ProjectDetailUpdate',
             params: { teamId: this.team.doc.name, projectId: this.projectId },
           },
           class: this.tabLinkClasses,
@@ -195,6 +204,8 @@ export default {
       if (link.route.name === $route.name) {
         active = true
       } else if ($route.fullPath === link.route) {
+        active = true
+      } else if ($route.matched.map((r) => r.name).includes(link.route.name)) {
         active = true
       }
 
