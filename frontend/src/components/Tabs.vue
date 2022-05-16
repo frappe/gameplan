@@ -23,8 +23,20 @@
         <nav class="flex -mb-px space-x-8" aria-label="Tabs">
           <Links
             :links="tabs"
-            class="px-1 py-2 text-sm font-medium border-b-2 whitespace-nowrap"
-          />
+            class="px-1 py-2 text-sm font-medium leading-none border-b-2 whitespace-nowrap"
+            v-slot="{ link }"
+          >
+            <div class="flex items-end space-x-1 items-">
+              <FeatherIcon
+                :name="link.icon"
+                v-if="link.icon"
+                class="w-3.5 h-3.5"
+              />
+              <span>
+                {{ link.name }}
+              </span>
+            </div>
+          </Links>
         </nav>
       </div>
     </div>

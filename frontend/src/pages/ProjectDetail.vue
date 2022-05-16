@@ -173,6 +173,7 @@ export default {
       return [
         {
           name: 'Overview',
+          icon: 'home',
           route: {
             name: 'ProjectDetailOverview',
             params: { teamId: this.team.doc.name, projectId: this.projectId },
@@ -181,6 +182,7 @@ export default {
         },
         {
           name: 'Tasks',
+          icon: 'check-square',
           route: {
             name: 'ProjectDetailTasks',
             params: { teamId: this.team.doc.name, projectId: this.projectId },
@@ -189,6 +191,7 @@ export default {
         },
         {
           name: 'Updates',
+          icon: 'server',
           route: {
             name: 'ProjectDetailUpdate',
             params: { teamId: this.team.doc.name, projectId: this.projectId },
