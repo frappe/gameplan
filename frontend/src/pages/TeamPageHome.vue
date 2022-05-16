@@ -45,25 +45,11 @@
           }"
         />
       </div>
-
-      <TextEditor
-        class="w-full mt-2 rounded-lg"
-        :key="team.doc.name"
-        :content="team.doc.description"
-        placeholder="Add a description for your team"
-        @change="
-          (val) => {
-            team.setValueDebounced.submit({ description: val })
-          }
-        "
-      />
     </div>
-    <div class="grid grid-cols-8 mt-10 gap-x-5 gap-y-12">
-      <div class="col-span-8">
-        <TeamPageHomeProjects :team="team" />
-      </div>
+    <div class="grid grid-cols-8 gap-6 mt-6">
       <div class="col-span-6">
-        <TeamPageHomeLinks :team="team" />
+        <ReadmeEditor :resource="team" fieldname="description" />
+        <TeamPageHomeProjects class="mt-6" :team="team" />
       </div>
       <div class="col-span-2">
         <TeamPageHomeMembers :team="team" />
@@ -72,26 +58,23 @@
   </div>
 </template>
 <script>
-import { FileUploader, Dropdown, TextEditor, Avatar } from 'frappe-ui'
+import { Dropdown } from 'frappe-ui'
 import TeamPageHomeProjects from './TeamPageHomeProjects.vue'
 import TeamPageHomeMembers from './TeamPageHomeMembers.vue'
 import IconPicker from '@/components/IconPicker.vue'
-import TeamPageHomeLinks from './TeamPageHomeLinks.vue'
 import Breadcrumbs from '@/components/Breadcrumbs.vue'
+import ReadmeEditor from '@/components/ReadmeEditor.vue'
 
 export default {
   name: 'TeamPageHome',
   props: ['team'],
   components: {
-    FileUploader,
     TeamPageHomeProjects,
-    TeamPageHomeLinks,
     TeamPageHomeMembers,
     Dropdown,
-    TextEditor,
     IconPicker,
-    Avatar,
     Breadcrumbs,
+    ReadmeEditor,
   },
   methods: {
     deleteTeam() {

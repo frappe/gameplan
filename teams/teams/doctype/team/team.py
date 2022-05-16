@@ -24,7 +24,7 @@ class Team(ManageMembersMixin, Document):
 
 	def before_insert(self):
 		if not self.name:
-			slug = frappe.scrub(self.title)
+			slug = frappe.scrub(self.title).replace("_", "-")
 			self.name = append_number_if_name_exists("Team", slug)
 
 		if not self.icon:
@@ -32,8 +32,18 @@ class Team(ManageMembersMixin, Document):
 
 		if not self.description:
 			self.description = f"""
-			<strong>Welcome to the {self.title} team page!</strong>
+			<h3>Welcome to the {self.title} team page!</h3>
 			<p>You can add a brief introduction about the team, important links, resources, and other important information here.</p>
+
+			<h3>About the team</h3>
+			<p>This team is about...</p>
+
+			<h3>Team Goals</h3>
+			<ul>
+				<li>Excellence in everything we do...</li>
+				<li>Collaboration and communication...</li>
+				<li>To...</li>
+			</ul>
 		"""
 
 		if not self.cover_image:
@@ -58,10 +68,9 @@ class Team(ManageMembersMixin, Document):
 			if link.is_new():
 				valid_url = validate_url(link.url)
 				if not valid_url:
-					frappe.throw(f'Invalid URL: {link.url}')
+					frappe.throw(f"Invalid URL: {link.url}")
 				else:
 					link.url = valid_url
-
 
 	def on_trash(self):
 		for project in frappe.db.get_all("Team Project", {"team": self.name}):

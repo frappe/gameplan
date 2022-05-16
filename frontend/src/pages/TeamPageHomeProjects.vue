@@ -3,6 +3,7 @@
     <div class="flex items-center space-x-2">
       <h2 class="text-2xl font-bold text-gray-900">Projects</h2>
       <Button
+        v-if="$resources.projects.data?.length"
         icon="plus"
         label="New Project"
         @click="createNewProjectDialog = true"
@@ -10,7 +11,7 @@
     </div>
     <ul
       role="list"
-      class="grid grid-cols-1 gap-4 mt-5 empty:py-0 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+      class="grid grid-cols-1 gap-4 mt-5 empty:py-0 sm:grid-cols-2 lg:grid-cols-3"
     >
       <li
         v-for="project in $resources.projects.data"
