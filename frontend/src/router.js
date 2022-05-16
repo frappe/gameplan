@@ -41,7 +41,7 @@ const routes = [
   {
     path: '/settings',
     name: 'Settings',
-    component: () => import('@/pages/Home.vue'),
+    component: () => import('@/pages/PersonalSettings.vue'),
   },
   {
     path: '/:teamId',
