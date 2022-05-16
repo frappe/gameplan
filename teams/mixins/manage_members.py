@@ -7,8 +7,12 @@ import frappe
 class ManageMembersMixin:
 	@frappe.whitelist()
 	def invite_members(self, emails):
+		existing_members = [d.email for d in self.members]
 		for email in emails:
 			if not frappe.utils.validate_email_address(email):
+				continue
+
+			if email in existing_members:
 				continue
 
 			if frappe.db.exists("User", email):
@@ -33,6 +37,9 @@ class ManageMembersMixin:
 			f"/api/method/teams.api.accept_invitation?key={member.key}"
 		)
 		title = f"Team: {self.title}" if self.doctype == "Team" else f"Project: {self.title}"
+		if frappe.local.dev_server:
+			print(f"Invite link for {member.email}: {invite_link}")
+
 		frappe.sendmail(
 			recipients=member.email,
 			subject=f"You have been invited to join {self.title}",
@@ -45,12 +52,13 @@ class ManageMembersMixin:
 		for row in self.members:
 			if row.key == key:
 				if not frappe.db.exists("User", row.email):
+					first_name = row.email.split("@")[0].title()
 					user = frappe.get_doc(
 						doctype="User",
 						user_type="Website User",
 						email=row.email,
 						send_welcome_email=0,
-						first_name=row.email.split("@")[0],
+						first_name=first_name,
 					).insert(ignore_permissions=True)
 					user.add_roles("Team Project User", "System Manager")
 				else:
