@@ -8,7 +8,7 @@
  "engine": "InnoDB",
  "field_order": [
   "title",
-  "description",
+  "readme",
   "cover_image",
   "cover_image_position",
   "icon",
@@ -22,11 +22,6 @@
    "in_list_view": 1,
    "label": "Title",
    "reqd": 1
-  },
-  {
-   "fieldname": "description",
-   "fieldtype": "Text Editor",
-   "label": "Description"
   },
   {
    "fieldname": "cover_image",
@@ -54,11 +49,16 @@
    "fieldtype": "Table",
    "label": "Links",
    "options": "Team Link"
+  },
+  {
+   "fieldname": "readme",
+   "fieldtype": "Text Editor",
+   "label": "Readme"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-04-23 14:43:37.881308",
+ "modified": "2022-05-16 16:46:12.012734",
  "modified_by": "Administrator",
  "module": "Teams",
  "name": "Team",

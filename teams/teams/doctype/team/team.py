@@ -30,8 +30,8 @@ class Team(ManageMembersMixin, Document):
 		if not self.icon:
 			self.icon = get_random_gemoji().emoji
 
-		if not self.description:
-			self.description = f"""
+		if not self.readme:
+			self.readme = f"""
 			<h3>Welcome to the {self.title} team page!</h3>
 			<p>You can add a brief introduction about the team, important links, resources, and other important information here.</p>
 
@@ -73,8 +73,10 @@ class Team(ManageMembersMixin, Document):
 					link.url = valid_url
 
 	def on_trash(self):
-		for project in frappe.db.get_all("Team Project", {"team": self.name}):
-			frappe.delete_doc("Team Project", project.name)
+		linked_doctypes = ["Team Project"]
+		for doctype in linked_doctypes:
+			for project in frappe.db.get_all(doctype, {"team": self.name}):
+				frappe.delete_doc(doctype, project.name)
 
 	@frappe.whitelist()
 	def send_invitation(self, email):
