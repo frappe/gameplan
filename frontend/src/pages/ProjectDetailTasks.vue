@@ -406,6 +406,11 @@ export default {
         transform(data) {
           return this.transformTasksIntoSections(data)
         },
+        setValue: {
+          onSuccess() {
+            this.project.reload()
+          },
+        },
       }
     },
     assignTask() {

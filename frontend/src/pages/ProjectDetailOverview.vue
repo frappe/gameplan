@@ -1,7 +1,10 @@
 <template>
   <div class="container mt-6">
     <div class="grid grid-cols-8 gap-6">
-      <ProjectDetailOverviewReadme class="col-span-6" :project="project" />
+      <div class="col-span-6 space-y-5">
+        <ProjectDetailOverviewSummary :project="project" />
+        <ProjectDetailOverviewReadme :project="project" />
+      </div>
       <ProjectDetailOverviewMembers class="col-span-2" :project="project" />
     </div>
   </div>
@@ -9,6 +12,7 @@
 <script>
 import ProjectDetailOverviewMembers from './ProjectDetailOverviewMembers.vue'
 import ProjectDetailOverviewReadme from './ProjectDetailOverviewReadme.vue'
+import ProjectDetailOverviewSummary from './ProjectDetailOverviewSummary.vue'
 
 export default {
   name: 'ProjectDetailOverview',
@@ -16,6 +20,7 @@ export default {
   components: {
     ProjectDetailOverviewMembers,
     ProjectDetailOverviewReadme,
+    ProjectDetailOverviewSummary,
   },
 }
 </script>

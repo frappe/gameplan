@@ -19,6 +19,22 @@ class TeamProject(ManageMembersMixin, Document):
 				)
 				member.full_name = full_name
 				member.user_image = user_image
+		# summary
+		total_tasks = frappe.db.count("Team Task", {"project": self.name})
+		completed_tasks = frappe.db.count(
+			"Team Task", {"project": self.name, "is_completed": 1}
+		)
+		pending_tasks = total_tasks - completed_tasks
+		overdue_tasks = frappe.db.count(
+			"Team Task",
+			{"project": self.name, "is_completed": 0, "due_date": ("<", frappe.utils.today())},
+		)
+		d.summary = {
+			"total_tasks": total_tasks,
+			"completed_tasks": completed_tasks,
+			"pending_tasks": pending_tasks,
+			"overdue_tasks": overdue_tasks,
+		}
 		return d
 
 	def before_insert(self):
