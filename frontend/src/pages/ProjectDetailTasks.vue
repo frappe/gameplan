@@ -1,9 +1,8 @@
 <template>
   <div class="relative">
     <div>
-      <div class="h-4"></div>
       <div class="container">
-        <div class="flex py-1.5 leading-6 text-gray-600 text-base border-b">
+        <div class="flex items-center h-10 text-base text-gray-600 border-b">
           <div class="w-[70%]">Task</div>
           <div class="w-[15%]">Assignee</div>
           <div class="w-[10%]">Due Date</div>
@@ -147,6 +146,9 @@
                             params: { taskId: task.name },
                           }"
                           class="text-base w-full py-1.5 px-1 cursor-pointer"
+                          :class="{
+                            'line-through text-gray-600': task.is_completed,
+                          }"
                         >
                           {{ task.title }}
                         </router-link>
@@ -290,13 +292,14 @@
         enter-active-class="transition duration-300 ease-out"
         leave-from-class="translate-x-0"
         leave-to-class="translate-x-full"
-        leave-active-class="transition duration-150 ease-out"
+        leave-active-class="transition duration-150 ease-in"
       >
         <div
           v-if="$route.name == 'ProjectTaskDetail'"
-          class="absolute top-0 bottom-0 right-0 w-1/2 bg-white border-l shadow"
+          class="absolute top-0 bottom-0 right-0 w-1/2 bg-white border-l"
         >
           <component
+            class="h-full"
             :is="Component"
             :project="project"
             @task-update="$resources.tasks.reload()"
