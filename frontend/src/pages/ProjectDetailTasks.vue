@@ -70,30 +70,85 @@
                       @click="section.open = !section.open"
                       :icon="section.open ? 'chevron-down' : 'chevron-right'"
                     />
-                    <div class="text-lg font-semibold text-gray-900">
-                      {{ section.title }}
-                      <span class="font-normal">
-                        ({{ $resources.tasks.data[section.name]?.length }})
-                      </span>
-                    </div>
-                    <Dropdown
-                      placement="left"
-                      class="ml-1"
-                      :button="{
-                        icon: 'more-horizontal',
-                        appearance: 'minimal',
-                      }"
-                      :options="[
-                        {
-                          label: 'Delete',
-                          icon: 'trash-2',
-                          handler: () => {
-                            deleteSectionDialog.show = true
-                            deleteSectionDialog.section = section
-                          },
-                        },
-                      ]"
-                    />
+                    <Popover
+                      :show="
+                        editSectionTitlePopup.show &&
+                        editSectionTitlePopup.section === section
+                      "
+                    >
+                      <template #target>
+                        <div class="flex items-center">
+                          <div class="text-lg font-semibold text-gray-900">
+                            {{ section.title }}
+                            <span class="font-normal">
+                              ({{
+                                $resources.tasks.data[section.name]?.length
+                              }})
+                            </span>
+                          </div>
+                          <Dropdown
+                            placement="left"
+                            class="ml-1"
+                            :button="{
+                              icon: 'more-horizontal',
+                              appearance: 'minimal',
+                            }"
+                            :options="[
+                              {
+                                label: 'Edit title',
+                                icon: 'edit',
+                                handler: () => {
+                                  editSectionTitlePopup.show = true
+                                  editSectionTitlePopup.section = section
+                                },
+                              },
+                              {
+                                label: 'Delete',
+                                icon: 'trash-2',
+                                handler: () => {
+                                  deleteSectionDialog.show = true
+                                  deleteSectionDialog.section = section
+                                },
+                              },
+                            ]"
+                          />
+                        </div>
+                      </template>
+                      <template #content>
+                        <div
+                          class="p-2 bg-white border border-gray-100 rounded-lg shadow-lg"
+                        >
+                          <div class="flex items-end space-x-1">
+                            <Input
+                              label="Edit title and hit enter"
+                              type="text"
+                              placeholder="Section title"
+                              :value="section.title"
+                              @keydown.enter="
+                                (e) => {
+                                  section.title = e.target.value
+                                  updateSections()
+                                  editSectionTitlePopup = {
+                                    show: false,
+                                    section: null,
+                                  }
+                                }
+                              "
+                            />
+                            <Button
+                              @click="
+                                editSectionTitlePopup = {
+                                  show: false,
+                                  section: null,
+                                }
+                              "
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      </template>
+                    </Popover>
                   </div>
                 </div>
                 <div class="pl-5" v-show="section.open">
@@ -411,6 +466,7 @@ import {
   Spinner,
   onOutsideClickDirective,
   LoadingIndicator,
+  Popover,
 } from 'frappe-ui'
 import Draggable from 'vuedraggable'
 import AssignUser from '@/components/AssignUser.vue'
@@ -426,6 +482,7 @@ export default {
     Draggable,
     DragHandleIcon,
     LoadingIndicator,
+    Popover,
   },
   directives: {
     onOutsideClick: onOutsideClickDirective,
@@ -436,6 +493,7 @@ export default {
       deleteSectionDialog: { section: null, show: false },
       newSectionTitle: '',
       taskIsDragging: false,
+      editSectionTitlePopup: { show: false, section: null },
     }
   },
   resources: {
