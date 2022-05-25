@@ -29,7 +29,7 @@
     </header>
     <div class="flex flex-col flex-1 h-full pt-8" v-if="project">
       <div class="border-b">
-        <div class="container">
+        <div class="px-6">
           <div class="flex items-start space-x-2">
             <IconPicker
               ref="projectIconPicker"

@@ -1,7 +1,7 @@
 <template>
-  <div class="relative">
+  <div class="relative px-6">
     <div>
-      <div class="container">
+      <div>
         <div class="flex items-center h-10 text-base text-gray-600 border-b">
           <div class="w-[70%]">Task</div>
           <div class="w-[15%]">Assignee</div>
@@ -9,8 +9,8 @@
         </div>
       </div>
       <template v-if="!$resources.tasks.data">
-        <div class="container py-2 mx-auto text-lg font-semibold text-gray-900">
-          <div class="flex items-center -ml-8">
+        <div class="py-2 text-lg font-semibold text-gray-900">
+          <div class="flex items-center">
             <Button
               class="mr-1"
               appearance="minimal"
@@ -20,8 +20,8 @@
             <div>Loading...</div>
           </div>
         </div>
-        <div class="container">
-          <div class="mx-auto text-sm font-medium text-gray-700 border-t">
+        <div>
+          <div class="text-sm font-medium text-gray-700 border-t">
             <div class="flex">
               <button class="block mr-2" disabled>
                 <FeatherIcon
@@ -40,8 +40,8 @@
       </template>
       <template v-if="$resources.tasks.data">
         <div v-for="section in project.doc.sections" :key="section.name">
-          <div class="container py-2 mx-auto" v-if="!section.noSection">
-            <div class="flex items-center -ml-8">
+          <div class="py-2" v-if="!section.noSection">
+            <div class="flex items-center">
               <Button
                 class="mr-1"
                 appearance="minimal"
@@ -74,7 +74,7 @@
               />
             </div>
           </div>
-          <div v-if="section.open">
+          <div v-show="section.open">
             <Draggable
               v-model="$resources.tasks.data[section.name]"
               group="tasks"
@@ -83,12 +83,9 @@
               @sort="updateTasks(section, $resources.tasks.data[section.name])"
             >
               <template #item="{ element: task }">
-                <div
-                  class="container"
-                  v-show="!task.deleted && !task.deletionError"
-                >
+                <div v-show="!task.deleted && !task.deletionError">
                   <div
-                    class="mx-auto border-t hover:bg-gray-50 group"
+                    class="rounded-lg hover:bg-gray-50 group"
                     @click.capture="task.isActive = true"
                     v-onOutsideClick="
                       () => {
@@ -96,47 +93,39 @@
                       }
                     "
                   >
-                    <div class="flex -ml-6">
+                    <div class="flex">
                       <div class="flex items-center w-[70%]">
                         <button
-                          class="mr-2 group-hover:opacity-100"
+                          class="flex-shrink-0 grid mr-1 w-[30px] h-[30px] border border-transparent place-items-center group-hover:opacity-100"
                           :class="task.isActive ? 'opacity-100' : 'opacity-0'"
                         >
                           <DragHandleIcon class="w-4 h-4 text-gray-400" />
                         </button>
-                        <button
-                          v-if="!task.loading"
-                          class="block mr-2"
-                          @click="
-                            () => {
-                              task.is_completed = !task.is_completed
-                              $resources.tasks.setValue.submit({
-                                name: task.name,
-                                is_completed: task.is_completed,
-                              })
-                            }
-                          "
-                          :disabled="
-                            $resources.tasks.setValue.loading &&
-                            $resources.tasks.setValue.params.name === task.name
-                          "
-                          :aria-label="
-                            task.is_completed
-                              ? 'Mark as incomplete'
-                              : 'Mark as complete'
-                          "
-                        >
-                          <FeatherIcon
-                            :name="task.is_completed ? 'check' : 'circle'"
-                            class="w-4 transition-colors"
-                            :class="{
-                              'text-gray-500 hover:text-gray-700':
-                                task.is_completed,
-                              'text-gray-400 hover:text-gray-600':
-                                !task.is_completed,
-                            }"
+                        <div class="mr-1" v-if="!task.loading">
+                          <Input
+                            type="checkbox"
+                            :aria-label="
+                              task.is_completed
+                                ? 'Mark as incomplete'
+                                : 'Mark as complete'
+                            "
+                            v-model="task.is_completed"
+                            @change="
+                              (val) => {
+                                task.is_completed = val
+                                $resources.tasks.setValue.submit({
+                                  name: task.name,
+                                  is_completed: task.is_completed,
+                                })
+                              }
+                            "
+                            :disabled="
+                              $resources.tasks.setValue.loading &&
+                              $resources.tasks.setValue.params.name ===
+                                task.name
+                            "
                           />
-                        </button>
+                        </div>
                         <div class="w-4 h-4 pl-px mr-2" v-else>
                           <LoadingIndicator class="text-gray-500" />
                         </div>
@@ -214,19 +203,18 @@
                 </div>
               </template>
             </Draggable>
-            <div class="container mb-4">
-              <div class="mx-auto text-sm font-medium text-gray-700 border-t">
-                <div class="flex">
-                  <button class="block mr-2">
-                    <FeatherIcon
-                      name="circle"
-                      class="w-4 text-gray-400 transition-colors hover:text-gray-600"
-                    />
-                  </button>
+            <div class="mb-4">
+              <div
+                class="text-sm font-medium text-gray-700 rounded-lg focus-within:bg-gray-50"
+              >
+                <div class="flex pl-8">
+                  <div class="grid place-items-center ml-0.5 mr-1">
+                    <Input type="checkbox" :disabled="true" />
+                  </div>
                   <div class="w-[70%]">
                     <input
                       :ref="(ref) => setNewTaskRef(ref, section.name)"
-                      class="w-full p-1 text-base font-medium text-gray-700 border-none focus:ring-0"
+                      class="w-full p-1 text-base font-medium text-gray-700 bg-transparent border-none focus:ring-0"
                       type="text"
                       @keydown.enter="
                         createTask({
@@ -235,7 +223,7 @@
                           project_section: section.name,
                         })
                       "
-                      placeholder="Add a task"
+                      placeholder="Add a task..."
                       :disabled="$resources.tasks.insert.loading"
                     />
                   </div>
@@ -247,8 +235,8 @@
           </div>
         </div>
       </template>
-      <div class="container pb-40 mx-auto mt-4">
-        <div class="-ml-8">
+      <div class="pb-40 mt-4">
+        <div>
           <Button
             v-show="!addingNewSection"
             icon-left="plus"

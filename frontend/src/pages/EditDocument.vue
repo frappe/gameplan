@@ -1,6 +1,6 @@
 <template>
   <div
-    class="container py-8 mx-auto"
+    class="px-6 py-8 mx-auto"
     style="height: calc(100vh - 5.25rem)"
     v-if="$resources.document.data"
   >

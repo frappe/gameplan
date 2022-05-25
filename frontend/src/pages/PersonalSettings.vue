@@ -11,7 +11,7 @@
       ]"
     />
   </header>
-  <div class="container pt-8" v-if="$resources.user.doc">
+  <div class="px-6 pt-8" v-if="$resources.user.doc">
     <h1 class="text-6xl font-bold text-gray-900">Personal Settings</h1>
     <div class="grid grid-cols-12 gap-4 mt-6">
       <Input

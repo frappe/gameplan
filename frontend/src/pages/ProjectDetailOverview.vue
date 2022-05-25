@@ -1,5 +1,5 @@
 <template>
-  <div class="container mt-6">
+  <div class="px-6 mt-6">
     <div class="grid grid-cols-8 gap-6">
       <div class="col-span-6 space-y-5">
         <ProjectDetailOverviewSummary :project="project" />
