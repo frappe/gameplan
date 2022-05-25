@@ -1,44 +1,33 @@
 <template>
   <div class="p-6" v-if="update">
-    <h2 class="text-xl font-semibold text-gray-900">{{ update.title }}</h2>
-
-    <div class="grid items-center grid-cols-8 mt-3 gap-y-2">
-      <div class="col-span-1">
-        <label class="text-base text-gray-700">Status</label>
-      </div>
-      <div class="col-span-7">
+    <div class="flex items-center space-x-4">
+      <Avatar :label="$user().full_name" :imageURL="$user().user_image" />
+      <div class="flex items-center w-full">
+        <div>
+          <span class="text-base text-gray-900">
+            {{ $user().full_name }}
+          </span>
+          &middot;
+          <span class="text-base text-gray-600">
+            {{ $dayjs(update.creation).fromNow() }}
+          </span>
+        </div>
         <Badge
-          :color="
-            { 'At Risk': 'yellow', 'On Track': 'green', 'Off Track': 'red' }[
-              update.status
-            ]
-          "
+          class="ml-auto"
+          :color="{
+            green: update.status === 'On Track',
+            red: update.status === 'Off Track',
+            yellow: update.status === 'At Risk',
+          }"
         >
           {{ update.status }}
         </Badge>
       </div>
-      <div class="col-span-1">
-        <label class="text-base text-gray-700">Posted By</label>
-      </div>
-      <div class="flex items-center col-span-7 space-x-2">
-        <UserInfo :email="update.owner" v-slot="{ user }">
-          <Avatar
-            :label="user.full_name"
-            :imageURL="user.user_image"
-            size="sm"
-          />
-          <span class="text-base text-gray-900">
-            {{ user.full_name }}
-          </span>
-        </UserInfo>
-      </div>
     </div>
-    <div class="mt-2">
-      <label class="text-base text-gray-700">Summary</label>
-    </div>
+    <h2 class="mt-3 text-xl font-semibold text-gray-900">{{ update.title }}</h2>
     <TextEditor
-      class="mt-1"
-      editor-class="px-3 py-2 border rounded-lg max-w-[unset] min-h-[20rem]"
+      class="mt-3"
+      editor-class="max-w-[unset] min-h-[20rem]"
       :content="update.content"
       :editable="false"
     />

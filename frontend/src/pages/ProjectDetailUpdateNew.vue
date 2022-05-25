@@ -67,11 +67,12 @@ export default {
       title: '',
       status: '',
       content: `
-        <h3>What we've accomplished</h3>
+        <p>Two line summary of the update...</p>
+        <h4>What we've accomplished</h4>
         <p></p>
-        <h3>What's blocked</h3>
+        <h4>What's blocked</h4>
         <p></p>
-        <h3>Next Steps</h3>
+        <h4>Next Steps</h4>
         <p></p>
       `,
     }

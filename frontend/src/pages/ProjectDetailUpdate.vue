@@ -1,83 +1,103 @@
 <template>
   <div class="relative">
-    <div class="container h-full mt-6">
-      <Button iconLeft="edit" :route="{ name: 'ProjectDetailUpdateNew' }">
-        Write a new status update
-      </Button>
-      <div class="relative w-1/2 h-full pr-4 mt-6 space-y-8">
-        <!-- vertical line -->
-        <div
-          class="absolute top-0 bottom-0 border-l left-3.5 z-[-1] -translate-x-[0.5px]"
-        ></div>
-        <div
-          class="flex items-start space-x-4"
-          v-for="d in activity"
-          :key="d.key"
+    <div class="w-5/12 h-full px-6 mt-6">
+      <div class="relative h-full mt-6 space-y-3">
+        <router-link
+          custom
+          :to="{ name: 'ProjectDetailUpdateNew' }"
+          v-slot="{ href, navigate }"
         >
-          <div>
-            <div
-              class="grid bg-white border border-gray-300 rounded-full place-items-center w-7 h-7"
-            >
-              <FeatherIcon
-                :name="d.icon || 'circle'"
-                class="w-3 h-3 text-gray-600"
+          <a
+            :href="href"
+            @click="navigate"
+            class="block p-3 rounded-xl"
+            :class="
+              $route.name === 'ProjectDetailUpdateNew'
+                ? 'bg-gray-100'
+                : 'hover:bg-gray-50'
+            "
+          >
+            <div class="flex items-center space-x-4">
+              <Avatar
+                :label="$user().full_name"
+                :imageURL="$user().user_image"
               />
+              <div class="text-base text-gray-700">Write an update...</div>
             </div>
-          </div>
-          <div class="flex items-start mt-1 space-x-2">
-            <div>
-              <div class="text-base" v-if="d.type === 'create'">
+          </a>
+        </router-link>
+        <template v-for="d in activity" :key="d.key">
+          <router-link
+            :to="{
+              name: 'ProjectDetailUpdateView',
+              params: { updateId: d.name },
+            }"
+            class="block p-3 rounded-xl"
+            :class="
+              $route.name === 'ProjectDetailUpdateView' &&
+              $route.params.updateId === d.name
+                ? 'bg-gray-100'
+                : 'hover:bg-gray-50'
+            "
+          >
+            <div class="flex items-center space-x-4">
+              <div>
                 <UserInfo :email="d.user" :key="d.key">
                   <template v-slot="{ user }">
-                    <span class="font-medium text-gray-900">
-                      {{ user.full_name }}
-                    </span>
-                    <span class="text-gray-600"> created this project </span>
+                    <Avatar
+                      :label="user.full_name"
+                      :imageURL="user.user_image"
+                    />
                   </template>
                 </UserInfo>
               </div>
-              <div class="text-base" v-else-if="d.type === 'update'">
-                <span class="font-medium text-gray-900">
-                  {{ d.title }}
-                </span>
-                <span class="text-gray-600"> by </span>
-                <UserInfo :email="d.user" :key="d.key">
-                  <template v-slot="{ user }">
-                    <span class="font-medium text-gray-900">
-                      {{ user.full_name }}
-                    </span>
-                  </template>
-                </UserInfo>
-              </div>
-
-              <div class="mt-1 mb-3" v-if="d.type === 'update'">
-                <Button
-                  appearance="white"
-                  icon-right="chevron-right"
-                  :route="{
-                    name: 'ProjectDetailUpdateView',
-                    params: { updateId: d.name },
-                  }"
-                >
-                  View update
-                </Button>
-              </div>
-              <div
-                class="mt-1 text-base text-gray-600"
-                :title="$dayjs(d.timestamp)"
-              >
-                {{ $dayjs(d.timestamp).format('d MMM, YYYY') }}
-              </div>
+              <UserInfo :email="d.user" :key="d.key">
+                <template v-slot="{ user }">
+                  <div class="flex items-center w-full">
+                    <div>
+                      <span class="text-base text-gray-900">
+                        {{ user.full_name }}
+                      </span>
+                      &middot;
+                      <span class="text-base text-gray-600">
+                        {{ $dayjs(d.timestamp).fromNow() }}
+                      </span>
+                    </div>
+                    <Badge
+                      class="ml-auto"
+                      :color="{
+                        green: d.status === 'On Track',
+                        red: d.status === 'Off Track',
+                        yellow: d.status === 'At Risk',
+                      }"
+                    >
+                      {{ d.status }}
+                    </Badge>
+                  </div>
+                </template>
+              </UserInfo>
             </div>
+            <div class="mt-3 text-xl font-semibold">
+              {{ d.title }}
+            </div>
+            <div
+              class="mt-3 overflow-hidden prose-sm prose max-h-12"
+              v-html="d.content"
+            />
+          </router-link>
+          <div class="px-3">
+            <div class="border-t"></div>
           </div>
-        </div>
+        </template>
       </div>
     </div>
     <div
-      class="absolute top-0 bottom-0 right-0 w-1/2 border-l"
       v-if="
-        $route.name in { ProjectDetailUpdateNew: 1, ProjectDetailUpdateView: 1 }
+        ['ProjectDetailUpdateNew', 'ProjectDetailUpdateView'].includes(
+          $route.name
+        )
       "
+      class="absolute top-0 bottom-0 right-0 w-7/12 border-l"
     >
       <router-view :project="project" />
     </div>
@@ -102,6 +122,24 @@ export default {
         },
         fields: ['*'],
         order_by: 'creation desc',
+        onSuccess() {
+          this.openLatestUpdate()
+        },
+      }
+    },
+  },
+  mounted() {
+    this.openLatestUpdate()
+  },
+  methods: {
+    openLatestUpdate() {
+      let latest = (this.$resources.updates.data || [])[0]
+      if (latest) {
+        // open latest update
+        this.$router.replace({
+          name: 'ProjectDetailUpdateView',
+          params: { updateId: latest.name },
+        })
       }
     },
   },
@@ -117,16 +155,17 @@ export default {
             title: update.title,
             status: update.status,
             name: update.name,
+            content: update.content,
             key: update.name,
           }
         }),
-        {
-          type: 'create',
-          icon: 'plus',
-          user: this.project.doc.owner,
-          timestamp: this.project.doc.creation,
-          key: 'create',
-        },
+        // {
+        //   type: 'create',
+        //   icon: 'plus',
+        //   user: this.project.doc.owner,
+        //   timestamp: this.project.doc.creation,
+        //   key: 'create',
+        // },
       ]
     },
   },
