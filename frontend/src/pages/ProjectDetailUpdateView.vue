@@ -24,11 +24,10 @@
         </Badge>
       </div>
     </div>
-    <h2 class="mt-3 text-xl font-semibold text-gray-900">{{ update.title }}</h2>
     <TextEditor
       class="mt-3"
       editor-class="max-w-[unset] min-h-[20rem]"
-      :content="update.content"
+      :content="content"
       :editable="false"
     />
   </div>
@@ -53,6 +52,9 @@ export default {
     update() {
       return this.$resources.update.doc
     },
+    content() {
+      return `<h2>${this.update.title}</h2>${this.update.content}`
+    }
   },
 }
 </script>

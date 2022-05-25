@@ -1,7 +1,7 @@
 <template>
-  <div class="relative">
-    <div class="w-5/12 h-full px-6 mt-6">
-      <div class="relative h-full mt-6 space-y-3">
+  <div class="flex">
+    <div class="w-5/12 h-full px-6 py-6 overflow-auto">
+      <div class="relative h-full space-y-3">
         <router-link
           custom
           :to="{ name: 'ProjectDetailUpdateNew' }"
@@ -27,18 +27,16 @@
           </a>
         </router-link>
         <template v-for="d in activity" :key="d.key">
+          <div class="px-3">
+            <div class="border-t"></div>
+          </div>
           <router-link
             :to="{
               name: 'ProjectDetailUpdateView',
               params: { updateId: d.name },
             }"
             class="block p-3 rounded-xl"
-            :class="
-              $route.name === 'ProjectDetailUpdateView' &&
-              $route.params.updateId === d.name
-                ? 'bg-gray-100'
-                : 'hover:bg-gray-50'
-            "
+            :class="isActive(d) ? 'bg-gray-100' : 'hover:bg-gray-50'"
           >
             <div class="flex items-center space-x-4">
               <div>
@@ -85,10 +83,8 @@
               v-html="d.content"
             />
           </router-link>
-          <div class="px-3">
-            <div class="border-t"></div>
-          </div>
         </template>
+        <div class="h-10"></div>
       </div>
     </div>
     <div
@@ -97,7 +93,7 @@
           $route.name
         )
       "
-      class="absolute top-0 bottom-0 right-0 w-7/12 border-l"
+      class="w-7/12 overflow-auto border-l"
     >
       <router-view :project="project" />
     </div>
@@ -141,6 +137,12 @@ export default {
           params: { updateId: latest.name },
         })
       }
+    },
+    isActive(update) {
+      return (
+        this.$route.name === 'ProjectDetailUpdateView' &&
+        this.$route.params.updateId === update.name
+      )
     },
   },
   computed: {

@@ -1,11 +1,10 @@
 <template>
-  <div class="flex flex-col justify-between px-5 pt-6">
+  <div class="flex flex-col justify-between px-5 pt-6" ref="comments">
     <div class="space-y-6">
       <div
         class="flex items-start space-x-3 group"
         v-for="(comment, i) in $resources.comments.data"
         :key="comment.name"
-        ref="comments"
       >
         <UserInfo :email="comment.owner" v-slot="{ user }">
           <Avatar
@@ -148,9 +147,7 @@ export default {
         },
         order_by: 'creation asc',
         onSuccess() {
-          setTimeout(() => {
-            this.scrollToLastComment()
-          }, 500)
+          this.scrollToLastComment()
         },
       }
     },
@@ -192,10 +189,7 @@ export default {
     },
     scrollToLastComment() {
       this.$nextTick(() => {
-        this.$refs.comments.slice(-1)[0].scrollIntoView({
-          behavior: 'smooth',
-          block: 'start',
-        })
+        this.$refs.comments.scrollTop = this.$refs.comments.scrollHeight
       })
     },
   },

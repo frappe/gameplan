@@ -1,353 +1,373 @@
 <template>
-  <div class="relative px-6">
-    <div>
+  <div class="flex">
+    <div
+      class="flex-shrink-0 overflow-auto"
+      :class="isTaskOpen ? 'w-1/2' : 'w-full'"
+    >
       <div>
-        <div class="flex items-center h-10 text-base text-gray-600 border-b">
-          <div class="w-[70%]">Task</div>
-          <div class="w-[15%]">Assignee</div>
-          <div class="w-[10%]">Due Date</div>
+        <div
+          class="flex items-center h-10 px-6 text-base text-gray-600 border-b"
+        >
+          <div :class="isTaskOpen ? 'w-full' : 'w-[70%]'">Task</div>
+          <div class="w-[15%]" :class="isTaskOpen && 'hidden'">Assignee</div>
+          <div class="w-[10%]" :class="isTaskOpen && 'hidden'">Due Date</div>
         </div>
-      </div>
-      <template v-if="!$resources.tasks.data">
-        <div class="py-2 text-lg font-semibold text-gray-900">
-          <div class="flex items-center">
-            <Button
-              class="mr-1"
-              appearance="minimal"
-              :icon="'chevron-down'"
-              :disabled="true"
-            />
-            <div>Loading...</div>
-          </div>
-        </div>
-        <div>
-          <div class="text-sm font-medium text-gray-700 border-t">
-            <div class="flex">
-              <button class="block mr-2" disabled>
-                <FeatherIcon
-                  name="circle"
-                  class="w-4 text-gray-300 animate-pulse"
-                />
-              </button>
-              <div class="w-[70%] py-2">
-                <div class="w-40 py-2 bg-gray-100 rounded animate-pulse"></div>
-              </div>
-              <div class="w-[15%]"></div>
-              <div class="w-[10%]"></div>
-            </div>
-          </div>
-        </div>
-      </template>
-      <template v-if="$resources.tasks.data">
-        <div v-for="section in project.doc.sections" :key="section.name">
-          <div class="py-2" v-if="!section.noSection">
+        <template v-if="!$resources.tasks.data">
+          <div class="px-6 py-2 text-lg font-semibold text-gray-900">
             <div class="flex items-center">
               <Button
                 class="mr-1"
                 appearance="minimal"
-                @click="section.open = !section.open"
-                :icon="section.open ? 'chevron-down' : 'chevron-right'"
+                :icon="'chevron-down'"
+                :disabled="true"
               />
-              <div class="text-lg font-semibold text-gray-900">
-                {{ section.title }}
-                <span class="font-normal">
-                  ({{ $resources.tasks.data[section.name]?.length }})
-                </span>
-              </div>
-              <Dropdown
-                placement="left"
-                class="ml-1"
-                :button="{
-                  icon: 'more-horizontal',
-                  appearance: 'minimal',
-                }"
-                :options="[
-                  {
-                    label: 'Delete',
-                    icon: 'trash-2',
-                    handler: () => {
-                      deleteSectionDialog.show = true
-                      deleteSectionDialog.section = section
-                    },
-                  },
-                ]"
-              />
+              <div>Loading...</div>
             </div>
           </div>
-          <div v-show="section.open">
-            <Draggable
-              v-model="$resources.tasks.data[section.name]"
-              group="tasks"
-              item-key="name"
-              animation="150"
-              @sort="updateTasks(section, $resources.tasks.data[section.name])"
-            >
-              <template #item="{ element: task }">
-                <div v-show="!task.deleted && !task.deletionError">
+          <div class="px-6">
+            <div class="text-sm font-medium text-gray-700 border-t">
+              <div class="flex pl-8">
+                <div class="grid place-items-center ml-0.5 mr-1">
+                  <Input type="checkbox" :disabled="true" />
+                </div>
+                <div class="py-2" :class="isTaskOpen ? 'w-full' : 'w-[70%]'">
                   <div
-                    class="rounded-lg hover:bg-gray-50 group"
-                    @click.capture="task.isActive = true"
-                    v-onOutsideClick="
-                      () => {
-                        task.isActive = false
-                      }
-                    "
-                  >
-                    <div class="flex">
-                      <div class="flex items-center w-[70%]">
-                        <button
-                          class="flex-shrink-0 grid mr-1 w-[30px] h-[30px] border border-transparent place-items-center group-hover:opacity-100"
-                          :class="task.isActive ? 'opacity-100' : 'opacity-0'"
+                    class="w-40 py-2 bg-gray-100 rounded animate-pulse"
+                  ></div>
+                </div>
+                <div class="w-[15%]" :class="isTaskOpen && 'hidden'"></div>
+                <div class="w-[10%]" :class="isTaskOpen && 'hidden'"></div>
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <template v-if="$resources.tasks.data">
+          <div
+            class="px-6"
+            v-for="section in project.doc.sections"
+            :key="section.name"
+          >
+            <div class="py-2" v-if="!section.noSection">
+              <div class="flex items-center">
+                <Button
+                  class="mr-1"
+                  appearance="minimal"
+                  @click="section.open = !section.open"
+                  :icon="section.open ? 'chevron-down' : 'chevron-right'"
+                />
+                <div class="text-lg font-semibold text-gray-900">
+                  {{ section.title }}
+                  <span class="font-normal">
+                    ({{ $resources.tasks.data[section.name]?.length }})
+                  </span>
+                </div>
+                <Dropdown
+                  placement="left"
+                  class="ml-1"
+                  :button="{
+                    icon: 'more-horizontal',
+                    appearance: 'minimal',
+                  }"
+                  :options="[
+                    {
+                      label: 'Delete',
+                      icon: 'trash-2',
+                      handler: () => {
+                        deleteSectionDialog.show = true
+                        deleteSectionDialog.section = section
+                      },
+                    },
+                  ]"
+                />
+              </div>
+            </div>
+            <div v-show="section.open">
+              <Draggable
+                v-model="$resources.tasks.data[section.name]"
+                group="tasks"
+                item-key="name"
+                animation="150"
+                @sort="
+                  updateTasks(section, $resources.tasks.data[section.name])
+                "
+              >
+                <template #item="{ element: task }">
+                  <div v-show="!task.deleted && !task.deletionError">
+                    <div
+                      class="rounded-lg group"
+                      :class="
+                        openTask === task.name
+                          ? 'bg-gray-100'
+                          : 'hover:bg-gray-50'
+                      "
+                      @click.capture="task.isActive = true"
+                      v-onOutsideClick="
+                        () => {
+                          task.isActive = false
+                        }
+                      "
+                    >
+                      <div class="flex">
+                        <div
+                          class="flex items-center"
+                          :class="isTaskOpen ? 'w-full' : 'w-[70%]'"
                         >
-                          <DragHandleIcon class="w-4 h-4 text-gray-400" />
-                        </button>
-                        <div class="mr-1" v-if="!task.loading">
-                          <Input
-                            type="checkbox"
-                            :aria-label="
-                              task.is_completed
-                                ? 'Mark as incomplete'
-                                : 'Mark as complete'
+                          <button
+                            class="flex-shrink-0 grid mr-1 w-[30px] h-[30px] border border-transparent place-items-center group-hover:opacity-100"
+                            :class="task.isActive ? 'opacity-100' : 'opacity-0'"
+                          >
+                            <DragHandleIcon class="w-4 h-4 text-gray-400" />
+                          </button>
+                          <div class="mr-1" v-if="!task.loading">
+                            <Input
+                              type="checkbox"
+                              :aria-label="
+                                task.is_completed
+                                  ? 'Mark as incomplete'
+                                  : 'Mark as complete'
+                              "
+                              v-model="task.is_completed"
+                              @change="
+                                (val) => {
+                                  task.is_completed = val
+                                  $resources.tasks.setValue.submit({
+                                    name: task.name,
+                                    is_completed: task.is_completed,
+                                  })
+                                }
+                              "
+                              :disabled="
+                                $resources.tasks.setValue.loading &&
+                                $resources.tasks.setValue.params.name ===
+                                  task.name
+                              "
+                            />
+                          </div>
+                          <div class="w-4 h-4 pl-px mr-2" v-else>
+                            <LoadingIndicator class="text-gray-500" />
+                          </div>
+                          <router-link
+                            :to="{
+                              name: 'ProjectTaskDetail',
+                              params: { taskId: task.name },
+                            }"
+                            class="text-base w-full py-1.5 px-1 cursor-pointer"
+                            :class="{
+                              'line-through text-gray-600': task.is_completed,
+                            }"
+                          >
+                            {{ task.title }}
+                          </router-link>
+                        </div>
+                        <div
+                          class="w-[15%] flex flex-shrink-0"
+                          :class="isTaskOpen && 'hidden'"
+                        >
+                          <AssignUser
+                            class="w-full h-full text-sm text-gray-700"
+                            :class="
+                              task.assignedUser || task.isActive
+                                ? ''
+                                : 'opacity-0 group-hover:opacity-100'
                             "
-                            v-model="task.is_completed"
-                            @change="
-                              (val) => {
-                                task.is_completed = val
-                                $resources.tasks.setValue.submit({
-                                  name: task.name,
-                                  is_completed: task.is_completed,
-                                })
-                              }
-                            "
-                            :disabled="
-                              $resources.tasks.setValue.loading &&
-                              $resources.tasks.setValue.params.name ===
-                                task.name
+                            :users="users"
+                            :assignedUser="task.assignedUser"
+                            @update:assigned-user="
+                              updateAssignedUser(task, $event)
                             "
                           />
                         </div>
-                        <div class="w-4 h-4 pl-px mr-2" v-else>
-                          <LoadingIndicator class="text-gray-500" />
-                        </div>
-                        <router-link
-                          :to="{
-                            name: 'ProjectTaskDetail',
-                            params: { taskId: task.name },
-                          }"
-                          class="text-base w-full py-1.5 px-1 cursor-pointer"
-                          :class="{
-                            'line-through text-gray-600': task.is_completed,
-                          }"
+                        <div
+                          class="w-[10%] flex-shrink-0"
+                          :class="isTaskOpen && 'hidden'"
                         >
-                          {{ task.title }}
-                        </router-link>
-                      </div>
-                      <div class="w-[15%] flex flex-shrink-0">
-                        <AssignUser
-                          class="w-full h-full text-sm text-gray-700"
-                          :class="
-                            task.assignedUser || task.isActive
-                              ? ''
-                              : 'opacity-0 group-hover:opacity-100'
-                          "
-                          :users="users"
-                          :assignedUser="task.assignedUser"
-                          @update:assigned-user="
-                            updateAssignedUser(task, $event)
-                          "
-                        />
-                      </div>
-                      <div class="w-[10%] flex-shrink-0">
-                        <input
-                          type="date"
-                          class="w-full h-full p-0 text-sm bg-transparent border-none focus:outline-none"
-                          :class="
-                            task.due_date || task.isActive
-                              ? 'text-gray-700'
-                              : 'text-gray-500 opacity-0 group-hover:opacity-100'
-                          "
-                          :value="(task.due_date || '').split(' ')[0]"
-                          @change="
-                            (e) => {
-                              task.due_date = e.target.value
-                              $resources.tasks.setValue.submit({
-                                name: task.name,
-                                due_date: task.due_date,
-                              })
-                            }
-                          "
-                        />
-                      </div>
-                      <div
-                        class="w-[5%] flex items-center justify-end flex-shrink-0 group-hover:opacity-100"
-                        :class="task.isActive ? 'opacity-100' : 'opacity-0'"
-                      >
-                        <Dropdown
-                          :button="{
-                            icon: 'more-horizontal',
-                            appearance: 'minimal',
-                          }"
-                          :options="[
-                            {
-                              label: 'Delete',
-                              icon: 'trash-2',
-                              handler: () => {
-                                deleteTask(task)
-                              },
-                            },
+                          <input
+                            type="date"
+                            class="w-full h-full p-0 text-sm bg-transparent border-none focus:outline-none"
+                            :class="
+                              task.due_date || task.isActive
+                                ? 'text-gray-700'
+                                : 'text-gray-500 opacity-0 group-hover:opacity-100'
+                            "
+                            :value="(task.due_date || '').split(' ')[0]"
+                            @change="
+                              (e) => {
+                                task.due_date = e.target.value
+                                $resources.tasks.setValue.submit({
+                                  name: task.name,
+                                  due_date: task.due_date,
+                                })
+                              }
+                            "
+                          />
+                        </div>
+                        <div
+                          class="w-[5%] flex items-center justify-end flex-shrink-0 group-hover:opacity-100"
+                          :class="[
+                            task.isActive ? 'opacity-100' : 'opacity-0',
+                            isTaskOpen && 'hidden',
                           ]"
-                        />
+                        >
+                          <Dropdown
+                            :button="{
+                              icon: 'more-horizontal',
+                              appearance: 'minimal',
+                            }"
+                            :options="[
+                              {
+                                label: 'Delete',
+                                icon: 'trash-2',
+                                handler: () => {
+                                  deleteTask(task)
+                                },
+                              },
+                            ]"
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              </template>
-            </Draggable>
-            <div class="mb-4">
-              <div
-                class="text-sm font-medium text-gray-700 rounded-lg focus-within:bg-gray-50"
-              >
-                <div class="flex pl-8">
-                  <div class="grid place-items-center ml-0.5 mr-1">
-                    <Input type="checkbox" :disabled="true" />
+                </template>
+              </Draggable>
+              <div class="mb-4">
+                <div
+                  class="text-sm font-medium text-gray-700 rounded-lg focus-within:bg-gray-50"
+                >
+                  <div class="flex pl-8">
+                    <div class="grid place-items-center ml-0.5 mr-1">
+                      <Input type="checkbox" :disabled="true" />
+                    </div>
+                    <div :class="isTaskOpen ? 'w-full' : 'w-[70%]'">
+                      <input
+                        :ref="(ref) => setNewTaskRef(ref, section.name)"
+                        class="w-full p-1 text-base font-medium text-gray-700 bg-transparent border-none focus:ring-0"
+                        type="text"
+                        @keydown.enter="
+                          createTask({
+                            title: newTaskRefs[section.name].value,
+                            project: project.doc.name,
+                            project_section: section.name,
+                          })
+                        "
+                        placeholder="Add a task..."
+                        :disabled="$resources.tasks.insert.loading"
+                      />
+                    </div>
+                    <div class="w-[15%]" :class="isTaskOpen && 'hidden'"></div>
+                    <div class="w-[15%]" :class="isTaskOpen && 'hidden'"></div>
                   </div>
-                  <div class="w-[70%]">
-                    <input
-                      :ref="(ref) => setNewTaskRef(ref, section.name)"
-                      class="w-full p-1 text-base font-medium text-gray-700 bg-transparent border-none focus:ring-0"
-                      type="text"
-                      @keydown.enter="
-                        createTask({
-                          title: newTaskRefs[section.name].value,
-                          project: project.doc.name,
-                          project_section: section.name,
-                        })
-                      "
-                      placeholder="Add a task..."
-                      :disabled="$resources.tasks.insert.loading"
-                    />
-                  </div>
-                  <div class="w-[15%]"></div>
-                  <div class="w-[15%]"></div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      </template>
-      <div class="pb-40 mt-4">
-        <div>
-          <Button
-            v-show="!addingNewSection"
-            icon-left="plus"
-            appearance="white"
-            @click="
-              () => {
-                addingNewSection = true
-                $nextTick(() => {
-                  $refs.newSectionInput.focus()
-                })
-              }
-            "
-          >
-            Add section
-          </Button>
-          <div class="flex items-center" v-if="addingNewSection">
+        </template>
+        <div class="px-6 pb-40 mt-4">
+          <div>
             <Button
-              :icon="project.createSection.loading ? 'loader' : 'chevron-right'"
-              class="mr-1"
-            />
-            <input
-              ref="newSectionInput"
-              type="text"
-              class="p-0 text-lg font-semibold text-gray-900 border-none focus:ring-0"
-              v-model="newSectionTitle"
-              @keydown.enter="createSection(newSectionTitle)"
-              @keydown.esc="cancelAddingNewSection"
-              @blur="cancelAddingNewSection"
-              :disabled="project.createSection.loading"
-            />
+              v-show="!addingNewSection"
+              icon-left="plus"
+              appearance="white"
+              @click="
+                () => {
+                  addingNewSection = true
+                  $nextTick(() => {
+                    $refs.newSectionInput.focus()
+                  })
+                }
+              "
+            >
+              Add section
+            </Button>
+            <div class="flex items-center" v-if="addingNewSection">
+              <Button
+                :icon="
+                  project.createSection.loading ? 'loader' : 'chevron-right'
+                "
+                class="mr-1"
+              />
+              <input
+                ref="newSectionInput"
+                type="text"
+                class="p-0 text-lg font-semibold text-gray-900 border-none focus:ring-0"
+                v-model="newSectionTitle"
+                @keydown.enter="createSection(newSectionTitle)"
+                @keydown.esc="cancelAddingNewSection"
+                @blur="cancelAddingNewSection"
+                :disabled="project.createSection.loading"
+              />
+            </div>
           </div>
         </div>
       </div>
+      <Dialog
+        :options="{
+          title: 'Delete Section',
+          icon: {
+            name: 'trash-2',
+            appearance: 'danger',
+          },
+          message: `Are you sure you want to delete the section: ${deleteSectionDialog.section?.title}?`,
+          actions: [
+            {
+              label: 'Delete',
+              appearance: 'danger',
+              loading: project.deleteSection.loading,
+              handler: () => {
+                project.deleteSection.submit(
+                  { section: deleteSectionDialog.section.name },
+                  {
+                    onSuccess() {
+                      deleteSectionDialog.section = null
+                      deleteSectionDialog.show = false
+                    },
+                  }
+                )
+              },
+            },
+            {
+              label: 'Cancel',
+            },
+          ],
+        }"
+        v-model="deleteSectionDialog.show"
+        @update:modelValue="
+          (val) => {
+            if (!val) {
+              deleteSectionDialog.section = null
+              project.deleteSection.reset()
+            }
+          }
+        "
+      >
+        <template #body-content>
+          <p class="text-sm text-gray-600">
+            Are you sure you want to delete the section:
+            <strong>{{ deleteSectionDialog.section?.title }}</strong>
+            ?
+          </p>
+          <ErrorMessage
+            class="mt-2"
+            :message="project.deleteSection.error?.messages"
+          />
+        </template>
+      </Dialog>
     </div>
 
     <!-- task detail -->
     <router-view v-slot="{ Component }">
-      <transition
-        enter-from-class="translate-x-full"
-        enter-to-class="translate-x-0"
-        enter-active-class="transition duration-300 ease-out"
-        leave-from-class="translate-x-0"
-        leave-to-class="translate-x-full"
-        leave-active-class="transition duration-150 ease-in"
+      <div
+        v-if="$route.name == 'ProjectTaskDetail'"
+        class="w-1/2 bg-white border-l"
       >
-        <div
-          v-if="$route.name == 'ProjectTaskDetail'"
-          class="absolute top-0 bottom-0 right-0 w-1/2 bg-white border-l"
-        >
-          <component
-            class="h-full"
-            :is="Component"
-            :project="project"
-            @task-update="$resources.tasks.reload()"
-          />
-        </div>
-      </transition>
-    </router-view>
-
-    <Dialog
-      :options="{
-        title: 'Delete Section',
-        icon: {
-          name: 'trash-2',
-          appearance: 'danger',
-        },
-        message: `Are you sure you want to delete the section: ${deleteSectionDialog.section?.title}?`,
-        actions: [
-          {
-            label: 'Delete',
-            appearance: 'danger',
-            loading: project.deleteSection.loading,
-            handler: () => {
-              project.deleteSection.submit(
-                { section: deleteSectionDialog.section.name },
-                {
-                  onSuccess() {
-                    deleteSectionDialog.section = null
-                    deleteSectionDialog.show = false
-                  },
-                }
-              )
-            },
-          },
-          {
-            label: 'Cancel',
-          },
-        ],
-      }"
-      v-model="deleteSectionDialog.show"
-      @update:modelValue="
-        (val) => {
-          if (!val) {
-            deleteSectionDialog.section = null
-            project.deleteSection.reset()
-          }
-        }
-      "
-    >
-      <template #body-content>
-        <p class="text-sm text-gray-600">
-          Are you sure you want to delete the section:
-          <strong>{{ deleteSectionDialog.section?.title }}</strong>
-          ?
-        </p>
-        <ErrorMessage
-          class="mt-2"
-          :message="project.deleteSection.error?.messages"
+        <component
+          class="h-full"
+          :is="Component"
+          :project="project"
+          @task-update="$resources.tasks.reload()"
         />
-      </template>
-    </Dialog>
+      </div>
+    </router-view>
   </div>
 </template>
 <script>
@@ -377,7 +397,6 @@ export default {
   },
   data() {
     return {
-      activeTask: null,
       addingNewSection: false,
       deleteSectionDialog: { section: null, show: false },
       newSectionTitle: '',
@@ -416,6 +435,12 @@ export default {
   computed: {
     users() {
       return this.project.doc?.members || []
+    },
+    isTaskOpen() {
+      return this.$route.name == 'ProjectTaskDetail'
+    },
+    openTask() {
+      return this.$route.params.taskId
     },
   },
   methods: {

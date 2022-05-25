@@ -1,5 +1,5 @@
 <template>
-  <div class="h-full" v-if="$resources.team.doc">
+  <div class="flex flex-col h-full" v-if="$resources.team.doc">
     <router-view :team="$resources.team" />
   </div>
 </template>
