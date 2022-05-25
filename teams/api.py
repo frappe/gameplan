@@ -44,11 +44,15 @@ def update_document(name, title, content):
 
 
 @frappe.whitelist()
-def get_user_info(email):
-	result = frappe.db.get_values(
-		"User", email, fieldname=["name", "email", "user_image", "full_name"], as_dict=True
-	)
-	return result[0] if result else None
+def get_user_info():
+	users = frappe.db.get_all("User", fields=["name", "email", "user_image", "full_name", "user_type"])
+	out = {}
+	for user in users:
+		if frappe.session.user == user.name:
+			user.session_user = True
+		out[user.name] = user
+	return out
+
 
 
 @frappe.whitelist()

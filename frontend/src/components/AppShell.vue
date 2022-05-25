@@ -1,5 +1,5 @@
 <template>
-  <div class="h-full" v-if="$resources.user.data">
+  <div class="h-full" v-if="usersResource.data">
     <AppSidebar v-model:sidebarOpen="sidebarOpen" />
     <div class="flex flex-col flex-1 h-full md:pl-64">
       <div
@@ -27,28 +27,20 @@ import { ref } from 'vue'
 import AppSidebar from './AppSidebar.vue'
 import { Dialogs } from '@/utils/dialogs'
 import { Toasts } from '@/utils/toasts'
+import { usersResource } from '@/utils/users'
 
 export default {
   name: 'AppShell',
   components: {
     AppSidebar,
     Dialogs,
-    Toasts
-  },
-  resources: {
-    user: {
-      method: 'teams.api.session_user',
-      auto: true,
-      cache: 'user',
-      onSuccess(user) {
-        this.$.appContext.config.globalProperties.$user = user
-      },
-    },
+    Toasts,
   },
   setup() {
     const sidebarOpen = ref(false)
     return {
       sidebarOpen,
+      usersResource,
     }
   },
 }

@@ -4,9 +4,9 @@
       class="flex items-center w-full px-2 py-2 space-x-2 text-base font-medium text-left rounded-md"
       :class="open ? 'bg-gray-300' : 'hover:bg-gray-200'"
     >
-      <Avatar :label="$user.full_name" size="sm" />
+      <Avatar :label="$user().full_name" size="sm" />
       <span>
-        {{ $user.full_name }}
+        {{ $user().full_name }}
       </span>
       <FeatherIcon name="chevron-down" class="w-4 h-4" />
     </MenuButton>

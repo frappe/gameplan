@@ -87,7 +87,7 @@ export default {
       return {
         type: 'document',
         doctype: 'User',
-        name: this.$user.name,
+        name: this.$user().name,
       }
     },
   },

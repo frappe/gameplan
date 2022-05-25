@@ -82,8 +82,8 @@
     >
       <Avatar
         class="flex-shrink-0"
-        :label="$user.full_name"
-        :imageURL="$user.user_image"
+        :label="$user().full_name"
+        :imageURL="$user().user_image"
       />
       <div class="relative flex items-center w-full">
         <div
@@ -162,7 +162,7 @@ export default {
       }
       this.$resources.comments.setData((data) => {
         data.push({
-          owner: this.$user.name,
+          owner: this.$user().name,
           content: this.newComment,
           task: this.task.doc.name,
           loading: true,
