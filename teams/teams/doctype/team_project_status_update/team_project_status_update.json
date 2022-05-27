@@ -9,7 +9,8 @@
   "project",
   "status",
   "title",
-  "content"
+  "content",
+  "reactions"
  ],
  "fields": [
   {
@@ -39,11 +40,17 @@
    "fieldtype": "Data",
    "label": "Title",
    "reqd": 1
+  },
+  {
+   "fieldname": "reactions",
+   "fieldtype": "Table",
+   "label": "Reactions",
+   "options": "Team Reaction"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-05-16 13:11:19.099415",
+ "modified": "2022-05-27 15:48:30.220343",
  "modified_by": "Administrator",
  "module": "Teams",
  "name": "Team Project Status Update",

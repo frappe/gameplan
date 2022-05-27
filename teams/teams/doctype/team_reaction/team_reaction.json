@@ -1,14 +1,12 @@
 {
  "actions": [],
- "allow_rename": 1,
+ "autoname": "autoincrement",
  "creation": "2022-05-25 22:48:06.287407",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "emoji",
-  "reference_doctype",
-  "reference_name"
+  "emoji"
  ],
  "fields": [
   {
@@ -17,39 +15,18 @@
    "in_list_view": 1,
    "label": "Emoji",
    "reqd": 1
-  },
-  {
-   "fieldname": "reference_doctype",
-   "fieldtype": "Data",
-   "label": "Reference DocType"
-  },
-  {
-   "fieldname": "reference_name",
-   "fieldtype": "Data",
-   "label": "Reference Name"
   }
  ],
  "index_web_pages_for_search": 1,
+ "istable": 1,
  "links": [],
- "modified": "2022-05-25 22:49:36.177012",
+ "modified": "2022-05-27 15:47:21.703232",
  "modified_by": "Administrator",
  "module": "Teams",
  "name": "Team Reaction",
+ "naming_rule": "Autoincrement",
  "owner": "Administrator",
- "permissions": [
-  {
-   "create": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "System Manager",
-   "share": 1,
-   "write": 1
-  }
- ],
+ "permissions": [],
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []
