@@ -1,23 +1,27 @@
 <template>
-  <Popover v-slot="{ open }" class="relative">
-    <PopoverButton>
-      <slot :open="open">
-        <span class="text-base"> {{ modelValue || '' }} </span>
-      </slot>
-    </PopoverButton>
-    <transition
-      enter-active-class="transition duration-200 ease-out"
-      enter-from-class="translate-y-1 opacity-0"
-      enter-to-class="translate-y-0 opacity-100"
-      leave-active-class="transition duration-150 ease-in"
-      leave-from-class="translate-y-0 opacity-100"
-      leave-to-class="translate-y-1 opacity-0"
-    >
-      <PopoverPanel
+  <Popover
+    :transition="{
+      enterActiveClass: 'transition duration-200 ease-out',
+      enterFromClass: 'translate-y-1 opacity-0',
+      enterToClass: 'translate-y-0 opacity-100',
+      leaveActiveClass: 'transition duration-150 ease-in',
+      leaveFromClass: 'translate-y-0 opacity-100',
+      leaveToClass: 'translate-y-1 opacity-0',
+    }"
+  >
+    <template #target="{ togglePopover, isOpen }">
+      <button @click="togglePopover()">
+        <slot v-bind="{ isOpen }">
+          <span class="text-base"> {{ modelValue || '' }} </span>
+        </slot>
+      </button>
+    </template>
+    <template #content>
+      <div
         class="absolute z-10 px-4 mt-3 transform -translate-x-1/2 bg-white max-w-max left-1/2 sm:px-0"
       >
         <div
-          class="relative overflow-y-auto rounded-lg shadow-lg max-h-96 ring-1 ring-black ring-opacity-5"
+          class="relative pb-3 overflow-y-auto rounded-lg shadow-lg max-h-96 ring-1 ring-black ring-opacity-5"
         >
           <div class="flex gap-2 px-3 pt-3 pb-1">
             <div class="flex-1">
@@ -48,13 +52,12 @@
             </div>
           </div>
         </div>
-      </PopoverPanel>
-    </transition>
+      </div>
+    </template>
   </Popover>
 </template>
 <script>
-import { Popover, PopoverButton, PopoverPanel } from '@headlessui/vue'
-import { debounce } from 'frappe-ui'
+import { debounce, Popover } from 'frappe-ui'
 import { gemoji } from 'gemoji'
 
 export default {
@@ -67,8 +70,6 @@ export default {
   },
   components: {
     Popover,
-    PopoverButton,
-    PopoverPanel,
   },
   mounted() {
     if (this.setDefault && !this.modelValue) {

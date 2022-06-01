@@ -19,10 +19,10 @@
           @update:modelValue="(icon) => team.setValue.submit({ icon })"
           :set-default="true"
         >
-          <template v-slot="{ open }">
+          <template v-slot="{ isOpen }">
             <div
               class="p-px leading-none rounded-md text-7xl focus:outline-none"
-              :class="open ? 'bg-gray-200' : 'hover:bg-gray-100'"
+              :class="isOpen ? 'bg-gray-200' : 'hover:bg-gray-100'"
             >
               {{ team.doc.icon || '' }}
             </div>
