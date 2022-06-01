@@ -47,9 +47,9 @@
       </div>
     </div>
     <div class="grid grid-cols-8 gap-6 mt-6">
-      <div class="col-span-6">
+      <div class="col-span-6 space-y-6">
+        <TeamPageHomeProjects :team="team" />
         <ReadmeEditor :resource="team" fieldname="readme" />
-        <TeamPageHomeProjects class="mt-6" :team="team" />
       </div>
       <div class="col-span-2">
         <TeamPageHomeMembers :team="team" />
