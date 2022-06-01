@@ -3,7 +3,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 const routes = [
   {
     path: '/',
-    redirect: '/daily-planner',
+    redirect: '/home',
   },
   {
     path: '/daily-planner/:date?',
