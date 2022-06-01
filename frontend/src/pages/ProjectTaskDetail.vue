@@ -105,8 +105,9 @@
       </div>
     </div>
     <CommentsArea
-      class="flex-1 min-h-0 overflow-auto bg-gray-50"
-      :task="$resources.task"
+      class="flex-1 min-h-0 px-5 overflow-auto bg-gray-50"
+      doctype="Team Task"
+      :name="task.doc.name"
     />
   </div>
 </template>

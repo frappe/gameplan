@@ -1,6 +1,6 @@
 <template>
-  <div class="flex flex-col justify-between px-5 pt-6" ref="comments">
-    <div class="space-y-6">
+  <div class="flex flex-col justify-" ref="comments">
+    <div class="pt-6 space-y-6" v-if="$resources.comments.data?.length">
       <div
         class="flex items-start space-x-3 group"
         v-for="(comment, i) in $resources.comments.data"
@@ -75,12 +75,9 @@
       </div>
     </div>
 
-    <div
-      class="sticky bottom-0 flex items-center pt-6 pb-6 space-x-3 bg-gray-50"
-      ref="addComment"
-    >
+    <div class="flex items-start pt-6 pb-6 space-x-3" ref="addComment">
       <Avatar
-        class="flex-shrink-0"
+        class="flex-shrink-0 mt-1"
         :label="$user().full_name"
         :imageURL="$user().user_image"
       />
@@ -106,7 +103,7 @@
       </div>
       <button
         v-if="!commentEmpty"
-        class="grid flex-shrink-0 w-8 h-8 bg-blue-500 rounded-full place-items-center"
+        class="grid flex-shrink-0 w-8 h-8 mt-1 bg-blue-500 rounded-full place-items-center"
         @click="submitComment"
         :disabled="$resources.comments.insert.loading"
       >
@@ -129,7 +126,7 @@ import { Avatar, LoadingIndicator, TextEditor } from 'frappe-ui'
 
 export default {
   name: 'CommentsArea',
-  props: ['task'],
+  props: ['doctype', 'name'],
   components: { Avatar, LoadingIndicator, TextEditor },
   data() {
     return {
@@ -143,7 +140,8 @@ export default {
         doctype: 'Team Comment',
         fields: ['content', 'owner', 'creation', 'modified', 'name'],
         filters: {
-          task: this.task.doc.name,
+          reference_doctype: this.doctype,
+          reference_name: this.name,
         },
         order_by: 'creation asc',
         onSuccess() {
@@ -161,14 +159,16 @@ export default {
         data.push({
           owner: this.$user().name,
           content: this.newComment,
-          task: this.task.doc.name,
+          reference_doctype: this.doctype,
+          reference_name: this.name,
           loading: true,
         })
         return data
       })
       this.$resources.comments.insert.submit(
         {
-          task: this.task.doc.name,
+          reference_doctype: this.doctype,
+          reference_name: this.name,
           content: this.newComment,
         },
         {
