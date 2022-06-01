@@ -11,7 +11,7 @@
       </template>
       <template #content="{ togglePopover }">
         <div
-          class="inline-flex p-1 bg-white border border-gray-100 rounded-lg shadow-xl"
+          class="inline-flex p-1 mt-1 bg-white border border-gray-100 rounded-lg shadow-xl"
         >
           <div class="grid grid-cols-8 items-center space-x-0.5">
             <button
@@ -36,7 +36,7 @@
       </template>
     </Popover>
     <Transition
-      enterActiveClass="transition duration-500 ease-out"
+      enterActiveClass="transition duration-300 ease-out"
       enterFromClass="scale-75"
       enterToClass="scale-100"
       leaveActiveClass="transition duration-100 ease-in absolute"
@@ -48,26 +48,49 @@
         tag="div"
         class="flex items-stretch space-x-1.5"
         moveClass="transition duration-100 ease-in"
-        enterActiveClass="transition duration-500 ease-out"
+        enterActiveClass="transition duration-300 ease-out"
         enterFromClass="scale-75"
         enterToClass="scale-100"
         leaveActiveClass="transition duration-100 ease-in"
         leaveFromClass="scale-100 opacity-100"
         leaveToClass="scale-90 opacity-0"
       >
-        <button
-          v-for="(reactions, emoji) in reactionsCount"
-          :key="emoji"
-          class="flex items-center justify-center px-2 py-1 text-sm transition border rounded-full"
-          :class="[
-            reactions.userReacted
-              ? 'bg-blue-100 border-blue-200 hover:border-blue-300'
-              : 'border-gray-300 hover:border-gray-400',
-          ]"
-          @click="toggleReaction(emoji)"
-        >
-          {{ emoji }} {{ reactions.count }}
-        </button>
+        <Popover v-for="(reactions, emoji) in reactionsCount" :key="emoji">
+          <template #target="{ open, close }">
+            <button
+              @mouseover="showReactions(open)"
+              @mouseleave="hideReactions(close)"
+              class="flex items-center justify-center px-2 py-1 text-sm transition border rounded-full"
+              :class="[
+                reactions.userReacted
+                  ? 'bg-blue-100 border-blue-200 hover:border-blue-300'
+                  : 'border-gray-300 hover:border-gray-400',
+              ]"
+              @click="toggleReaction(emoji)"
+            >
+              {{ emoji }} {{ reactions.count }}
+            </button>
+          </template>
+          <template #content>
+            <div
+              class="p-2 mt-1 space-y-2 bg-white border border-gray-100 rounded-lg shadow-xl"
+            >
+              <div
+                class="flex items-center space-x-1 leading-none"
+                v-for="user in reactions.users"
+              >
+                <Avatar
+                  size="sm"
+                  :label="$user(user).full_name"
+                  :imageURL="$user(user).user_image"
+                />
+                <span class="text-base text-gray-900">
+                  {{ $user(user).full_name }}
+                </span>
+              </div>
+            </div>
+          </template>
+        </Popover>
       </TransitionGroup>
     </Transition>
   </div>
@@ -75,45 +98,14 @@
 <script>
 import { Popover } from 'frappe-ui'
 import ReactionFaceIcon from './ReactionFaceIcon.vue'
+import Avatar from 'frappe-ui/src/components/Avatar.vue'
 
 export default {
   name: 'Reactions',
   props: ['reactions', 'doctype', 'name'],
   emits: ['update:reactions'],
-  components: { ReactionFaceIcon, Popover },
+  components: { ReactionFaceIcon, Popover, Avatar },
   resources: {
-    reactions() {
-      return {
-        type: 'list',
-        cache: [this.doctype, this.project],
-        doctype: 'Team Reaction',
-        fields: ['*'],
-        filters: {
-          project: this.project,
-          reference_doctype: this.doctype,
-          reference_name: ['in', this.names],
-        },
-        order_by: 'creation asc',
-        transform(data) {
-          let reactions = {}
-          for (let reaction of data) {
-            if (!reactions[reaction.reference_name]) {
-              reactions[reaction.reference_name] = {}
-            }
-            if (reactions[reaction.reference_name][reaction.emoji] == null) {
-              reactions[reaction.reference_name][reaction.emoji] = []
-            }
-            reactions[reaction.reference_name][reaction.emoji].push(reaction)
-            if (reaction.owner === this.$user().name) {
-              reactions[reaction.reference_name][
-                reaction.emoji
-              ].userReacted = true
-            }
-          }
-          return reactions
-        },
-      }
-    },
     addReaction() {
       return {
         method: 'frappe.client.insert',
@@ -135,7 +127,6 @@ export default {
             owner: d.owner,
           }))
           this.$emit('update:reactions', reactions)
-          this.$emit('change')
         },
       }
     },
@@ -182,15 +173,27 @@ export default {
       // update server
       this.$resources.removeReaction.submit(reaction.name)
     },
+    showReactions(showPopup) {
+      this.showReactionsTimer = setTimeout(() => {
+        showPopup()
+      }, 500)
+    },
+    hideReactions(closePopup) {
+      if (this.showReactionsTimer) {
+        clearTimeout(this.showReactionsTimer)
+      }
+      closePopup()
+    },
   },
   computed: {
     reactionsCount() {
       let out = {}
       for (let reaction of this.reactions) {
         if (!out[reaction.emoji]) {
-          out[reaction.emoji] = { count: 0, userReacted: false }
+          out[reaction.emoji] = { count: 0, users: [], userReacted: false }
         }
         out[reaction.emoji].count++
+        out[reaction.emoji].users.push(reaction.owner)
         if (reaction.owner === this.$user().name) {
           out[reaction.emoji].userReacted = true
         }
