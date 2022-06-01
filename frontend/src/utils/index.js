@@ -19,3 +19,9 @@ export function getImgDimensions(imgSrc) {
     img.src = imgSrc
   })
 }
+
+export function htmlToText(html) {
+  let tmp = document.createElement('div')
+  tmp.innerHTML = html
+  return tmp.textContent || tmp.innerText || ''
+}

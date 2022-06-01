@@ -31,12 +31,18 @@ const routes = [
   {
     path: '/inbox',
     name: 'Inbox',
+    component: () => import('@/pages/ComingSoon.vue'),
+  },
+  {
+    path: '/home/:updateId?',
+    name: 'Home',
     component: () => import('@/pages/Home.vue'),
+    props: true,
   },
   {
     path: '/tasks',
     name: 'Tasks',
-    component: () => import('@/pages/Home.vue'),
+    component: () => import('@/pages/ComingSoon.vue'),
   },
   {
     path: '/settings',
@@ -67,21 +73,9 @@ const routes = [
           },
           {
             name: 'ProjectDetailUpdate',
-            path: 'status-update',
+            path: 'status-update/:updateId?',
             component: () => import('@/pages/ProjectDetailUpdate.vue'),
-            children: [
-              {
-                name: 'ProjectDetailUpdateNew',
-                path: 'new',
-                component: () => import('@/pages/ProjectDetailUpdateNew.vue'),
-              },
-              {
-                name: 'ProjectDetailUpdateView',
-                path: ':updateId',
-                component: () => import('@/pages/ProjectDetailUpdateView.vue'),
-                props: true
-              }
-            ]
+            props: true,
           },
           {
             name: 'ProjectDetailTasks',

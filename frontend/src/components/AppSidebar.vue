@@ -219,13 +219,20 @@ export default {
     return {
       navigation: [
         {
+          name: 'Home',
+          icon: 'home',
+          route: {
+            name: 'Home',
+          },
+        },
+        {
           name: 'Daily Planner',
           icon: 'edit',
           route: {
             name: 'DailyPlanner',
           },
         },
-        { name: 'Inbox', icon: 'inbox', route: '/inbox' },
+        // { name: 'Inbox', icon: 'inbox', route: '/inbox' },
       ],
       showAddTeamDialog: false,
     }

@@ -103,11 +103,14 @@ export default {
             return `Please select project status before publishing.`
           }
         },
-        onSuccess() {
-          this.$router.replace({ name: 'ProjectDetailUpdate' })
+        onSuccess(doc) {
+          this.$router.replace({
+            name: 'ProjectDetailUpdate',
+            params: { updateId: doc.name },
+          })
           this.$getListResource([
             'Project Updates',
-            this.project.doc.name,
+            { project: this.project.doc.name },
           ]).reload()
           this.title = ''
           this.status = null
