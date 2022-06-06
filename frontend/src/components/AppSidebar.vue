@@ -226,6 +226,13 @@ export default {
           },
         },
         {
+          name: 'People',
+          icon: 'users',
+          route: {
+            name: 'People',
+          },
+        },
+        {
           name: 'Daily Planner',
           icon: 'edit',
           route: {

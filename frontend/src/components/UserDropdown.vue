@@ -24,6 +24,17 @@
       >
         <MenuItem v-slot="{ active }">
           <router-link
+            :to="{ name: 'People', params: { person: $user().name } }"
+            :class="[
+              active ? 'bg-gray-100' : '',
+              'flex rounded-md text-gray-900 items-center w-full px-2 py-2 text-sm',
+            ]"
+          >
+            My Profile
+          </router-link>
+        </MenuItem>
+        <MenuItem v-slot="{ active }">
+          <router-link
             to="/settings"
             :class="[
               active ? 'bg-gray-100' : '',

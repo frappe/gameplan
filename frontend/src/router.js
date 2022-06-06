@@ -40,9 +40,10 @@ const routes = [
     props: true,
   },
   {
-    path: '/tasks',
-    name: 'Tasks',
-    component: () => import('@/pages/ComingSoon.vue'),
+    path: '/people/:person?',
+    name: 'People',
+    component: () => import('@/pages/People.vue'),
+    props: true,
   },
   {
     path: '/settings',

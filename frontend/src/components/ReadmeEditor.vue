@@ -1,6 +1,9 @@
 <template>
   <div class="relative px-4 py-4 border rounded-xl">
-    <div class="absolute top-0 right-0 z-10 flex mt-4 mr-4 space-x-2">
+    <div
+      class="absolute top-0 right-0 z-10 flex mt-4 mr-4 space-x-2"
+      v-if="editable"
+    >
       <Button
         v-if="!editReadme"
         label="Edit"
@@ -45,7 +48,20 @@
 import { TextEditor } from 'frappe-ui'
 export default {
   name: 'ReadmeEditor',
-  props: ['resource', 'fieldname'],
+  props: {
+    resource: {
+      type: Object,
+      required: true,
+    },
+    fieldname: {
+      type: String,
+      required: true,
+    },
+    editable: {
+      type: Boolean,
+      default: true,
+    },
+  },
   components: { TextEditor },
   data() {
     return {

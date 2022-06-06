@@ -44,7 +44,7 @@ app_license = "GNU GPLv3"
 
 # website user home page (by Role)
 # role_home_page = {
-#	"Role": "home_page"
+# 	"Role": "home_page"
 # }
 
 website_route_rules = [
@@ -108,13 +108,11 @@ website_route_rules = [
 # ---------------
 # Hook on document methods and events
 
-# doc_events = {
-# 	"*": {
-# 		"on_update": "method",
-# 		"on_cancel": "method",
-# 		"on_trash": "method"
-#	}
-# }
+doc_events = {
+	"User": {
+		"after_insert": "teams.teams.doctype.team_user_profile.team_user_profile.create_user_profile"
+	}
+}
 
 # Scheduled Tasks
 # ---------------
@@ -191,4 +189,3 @@ website_route_rules = [
 # auth_hooks = [
 # 	"teams.auth.validate"
 # ]
-
