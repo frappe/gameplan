@@ -30,5 +30,11 @@ export default {
   name: 'Home',
   props: ['updateId'],
   components: { Breadcrumbs, ProjectStatusUpdates, ProjectStatusUpdatesView },
+  pageMeta() {
+    return {
+      title: 'Home',
+      emoji: '🏠',
+    }
+  },
 }
 </script>

@@ -19,5 +19,11 @@ export default {
       }
     },
   },
+  pageMeta() {
+    return {
+      title: this.$resources.team.doc.title,
+      emoji: this.$resources.team.doc.icon,
+    }
+  },
 }
 </script>

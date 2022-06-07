@@ -9,6 +9,7 @@ import {
   Alert,
   Badge,
   createCall,
+  pageMeta,
 } from 'frappe-ui'
 import router from './router'
 import App from './App.vue'
@@ -54,4 +55,6 @@ app.config.globalProperties.$toast = createToast
 app.config.globalProperties.$log = console.log.bind(console)
 app.config.globalProperties.$user = userInfo
 app.use(router)
+app.use(pageMeta)
+
 app.mount('#app')
