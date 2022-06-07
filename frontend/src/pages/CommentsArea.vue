@@ -28,11 +28,17 @@
 
               <template v-if="comment.modified > comment.creation">
                 &middot;
-                <span class="italic text-gray-600">Edited</span>
+                <span class="text-gray-600" :title="$dayjs(comment.modified)">
+                  Edited
+                </span>
               </template>
               <template v-if="comment.loading">
                 &middot;
                 <span class="italic text-gray-600">Sending...</span>
+              </template>
+              <template v-if="comment.error">
+                &middot;
+                <span class="text-red-600">Error</span>
               </template>
             </div>
             <div
@@ -61,6 +67,7 @@
             </div>
           </div>
           <div
+            v-if="$user().name === comment.owner"
             class="!ml-auto"
             :class="comment.editing ? '' : 'opacity-0 group-hover:opacity-100'"
           >
@@ -182,10 +189,18 @@ export default {
     editComment(comment) {
       comment.loading = true
       comment.editing = false
-      this.$resources.comments.setValue.submit({
-        name: comment.name,
-        content: comment.content,
-      })
+      this.$resources.comments.setValue.submit(
+        {
+          name: comment.name,
+          content: comment.content,
+        },
+        {
+          onError() {
+            comment.loading = false
+            comment.error = true
+          },
+        }
+      )
     },
     scrollToLastComment() {
       this.$nextTick(() => {
