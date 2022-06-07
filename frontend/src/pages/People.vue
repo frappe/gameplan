@@ -18,6 +18,7 @@
     <div class="flex flex-1 min-h-0">
       <div class="w-1/3 overflow-auto">
         <div class="py-6 pl-6 space-y-2">
+          <h1 class="mb-6 text-6xl font-bold leading-7 text-gray-900">People</h1>
           <div v-for="user in $resources.users.data" :key="user.name">
             <router-link
               :to="{ name: 'People', params: { person: user.name } }"
@@ -31,6 +32,7 @@
               </div>
               <Badge
                 class="ml-auto"
+                :class="$route.params.person === user.name ? 'bg-white' : ''"
                 :color="{
                   green: user.status == 'Available',
                   yellow: user.status == 'Away',
@@ -66,6 +68,7 @@ export default {
         cache: 'People',
         fields: [
           'name',
+          'user',
           'user.full_name',
           'user.email',
           'user.user_image',

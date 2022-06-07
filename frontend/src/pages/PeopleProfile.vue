@@ -1,12 +1,12 @@
 <template>
-  <div class="p-6" v-if="user && $resources.profile.doc">
+  <div class="p-6" v-if="doc">
     <div class="flex items-center">
-      <h2 class="text-3xl font-bold text-gray-900">
-        {{ $user(user).full_name }}
+      <h2 class="text-3xl font-bold leading-7 text-gray-900">
+        {{ $user(doc.user).full_name }}
       </h2>
 
       <Input
-        :disabled="$user().name != user"
+        :disabled="$user().name != doc.user"
         type="select"
         :options="[
           { label: 'Set Status', value: '', disabled: true },
@@ -14,7 +14,7 @@
           { label: 'Busy', value: 'Busy' },
           { label: 'Away', value: 'Away' },
         ]"
-        v-model="$resources.profile.doc.status"
+        v-model="doc.status"
         class="ml-2"
         @change="
           (value) =>
@@ -26,7 +26,7 @@
     </div>
     <ReadmeEditor
       :resource="$resources.profile"
-      :editable="$user().name === user"
+      :editable="$user().name === doc.user"
       fieldname="readme"
       class="mt-6"
     />
@@ -52,6 +52,11 @@ export default {
           },
         },
       }
+    },
+  },
+  computed: {
+    doc() {
+      return this.$resources.profile.doc
     },
   },
 }

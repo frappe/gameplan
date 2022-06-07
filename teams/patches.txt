@@ -2,3 +2,4 @@
 
 [post_model_sync]
 teams.teams.doctype.team_user_profile.patches.create_user_profile
+teams.teams.doctype.team_user_profile.patches.set_name

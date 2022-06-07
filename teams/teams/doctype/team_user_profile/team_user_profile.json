@@ -1,7 +1,6 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "field:user",
  "creation": "2022-06-06 16:37:44.053094",
  "doctype": "DocType",
  "editable_grid": 1,
@@ -35,11 +34,11 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-06-06 17:37:45.453526",
+ "modified": "2022-06-07 16:15:11.877711",
  "modified_by": "Administrator",
  "module": "Teams",
  "name": "Team User Profile",
- "naming_rule": "By fieldname",
+ "naming_rule": "By script",
  "owner": "Administrator",
  "permissions": [
   {
