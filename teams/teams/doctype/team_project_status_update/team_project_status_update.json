@@ -58,12 +58,24 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-05-31 18:27:38.871731",
+ "modified": "2022-06-08 19:19:32.012433",
  "modified_by": "Administrator",
  "module": "Teams",
  "name": "Team Project Status Update",
  "owner": "Administrator",
  "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Teams User",
+   "share": 1,
+   "write": 1
+  },
   {
    "create": 1,
    "delete": 1,

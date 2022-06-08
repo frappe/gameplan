@@ -113,7 +113,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-04-29 18:13:25.712366",
+ "modified": "2022-06-08 19:18:57.080560",
  "modified_by": "Administrator",
  "module": "Teams",
  "name": "Team Task",
@@ -127,7 +127,7 @@
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "System Manager",
+   "role": "Teams User",
    "share": 1,
    "write": 1
   },
@@ -139,7 +139,7 @@
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Team Project User",
+   "role": "System Manager",
    "share": 1,
    "write": 1
   }

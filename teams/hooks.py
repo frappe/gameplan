@@ -36,6 +36,12 @@ app_license = "GNU GPLv3"
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
 
+# Fixtures
+
+fixtures = [
+	{"dt": "Role", "filters": [["role_name", "in", ["Teams User"]]]},
+]
+
 # Home Pages
 # ----------
 
