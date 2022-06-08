@@ -60,7 +60,7 @@ class ManageMembersMixin:
 						send_welcome_email=0,
 						first_name=first_name,
 					).insert(ignore_permissions=True)
-					user.add_roles("Team Project User", "System Manager")
+					user.add_roles("Teams User")
 				else:
 					user = frappe.get_doc("User", row.email)
 				row.user = user.name
