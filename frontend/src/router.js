@@ -34,6 +34,11 @@ const routes = [
     component: () => import('@/pages/ComingSoon.vue'),
   },
   {
+    path: '/tasks',
+    name: 'Tasks',
+    component: () => import('@/pages/Tasks.vue'),
+  },
+  {
     path: '/home/:updateId?',
     name: 'Home',
     component: () => import('@/pages/Home.vue'),
