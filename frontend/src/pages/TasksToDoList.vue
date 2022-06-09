@@ -175,6 +175,7 @@ export default {
         fields: ['name', 'title', 'due_date', 'is_completed', 'idx'],
         filters: {
           project: ['is', 'not set'],
+          owner: this.$user().name,
         },
         order_by: 'idx desc',
       }
