@@ -76,7 +76,6 @@
           <Button
             v-if="editContent"
             appearance="primary"
-            iconLeft="edit"
             @click="
               () => {
                 $resources.update.setValue.submit({

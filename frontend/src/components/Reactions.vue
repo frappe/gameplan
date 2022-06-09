@@ -1,5 +1,5 @@
 <template>
-  <div class="flex items-stretch mt-3 space-x-1.5">
+  <div class="flex items-stretch space-x-1.5">
     <Popover>
       <template #target="{ togglePopover }">
         <button
@@ -9,10 +9,8 @@
           <ReactionFaceIcon />
         </button>
       </template>
-      <template #content="{ togglePopover }">
-        <div
-          class="inline-flex p-1 mt-1 bg-white border border-gray-100 rounded-lg shadow-xl"
-        >
+      <template #body-main="{ togglePopover }">
+        <div class="inline-flex p-1 mt-1">
           <div class="grid grid-cols-8 items-center space-x-0.5">
             <button
               class="w-6 h-6 rounded hover:bg-gray-50"
@@ -55,11 +53,14 @@
         leaveFromClass="scale-100 opacity-100"
         leaveToClass="scale-90 opacity-0"
       >
-        <Popover v-for="(reactions, emoji) in reactionsCount" :key="emoji">
-          <template #target="{ open, close }">
+        <Popover
+          trigger="hover"
+          hover-delay="0.5"
+          v-for="(reactions, emoji) in reactionsCount"
+          :key="emoji"
+        >
+          <template #target>
             <button
-              @mouseover="showReactions(open)"
-              @mouseleave="hideReactions(close)"
               class="flex items-center justify-center px-2 py-1 text-sm transition border rounded-full"
               :class="[
                 reactions.userReacted
@@ -71,7 +72,7 @@
               {{ emoji }} {{ reactions.count }}
             </button>
           </template>
-          <template #content>
+          <template #body>
             <div
               class="p-2 mt-1 space-y-2 bg-white border border-gray-100 rounded-lg shadow-xl"
             >
@@ -172,17 +173,6 @@ export default {
 
       // update server
       this.$resources.removeReaction.submit(reaction.name)
-    },
-    showReactions(showPopup) {
-      this.showReactionsTimer = setTimeout(() => {
-        showPopup()
-      }, 500)
-    },
-    hideReactions(closePopup) {
-      if (this.showReactionsTimer) {
-        clearTimeout(this.showReactionsTimer)
-      }
-      closePopup()
     },
   },
   computed: {

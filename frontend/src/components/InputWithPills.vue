@@ -38,7 +38,7 @@
                 autocomplete="none"
               />
             </template>
-            <template #content>
+            <template #body>
               <TransitionRoot
                 leave="transition ease-in duration-100"
                 leaveFrom="opacity-100"

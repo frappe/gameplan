@@ -1,14 +1,5 @@
 <template>
-  <Popover
-    :transition="{
-      enterActiveClass: 'transition duration-200 ease-out',
-      enterFromClass: 'translate-y-1 opacity-0',
-      enterToClass: 'translate-y-0 opacity-100',
-      leaveActiveClass: 'transition duration-150 ease-in',
-      leaveFromClass: 'translate-y-0 opacity-100',
-      leaveToClass: 'translate-y-1 opacity-0',
-    }"
-  >
+  <Popover transition="default">
     <template #target="{ togglePopover, isOpen }">
       <button @click="togglePopover()">
         <slot v-bind="{ isOpen }">
@@ -16,9 +7,9 @@
         </slot>
       </button>
     </template>
-    <template #content>
+    <template #body>
       <div
-        class="absolute z-10 px-4 mt-3 transform -translate-x-1/2 bg-white max-w-max left-1/2 sm:px-0"
+        class="px-4 mt-3 transform -translate-x-1/2 bg-white max-w-max left-1/2 sm:px-0"
       >
         <div
           class="relative pb-3 overflow-y-auto rounded-lg shadow-lg max-h-96 ring-1 ring-black ring-opacity-5"

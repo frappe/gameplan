@@ -70,13 +70,8 @@
                       @click="section.open = !section.open"
                       :icon="section.open ? 'chevron-down' : 'chevron-right'"
                     />
-                    <Popover
-                      :show="
-                        editSectionTitlePopup.show &&
-                        editSectionTitlePopup.section === section
-                      "
-                    >
-                      <template #target>
+                    <Popover>
+                      <template #target="{ open: openEditPopup }">
                         <div class="flex items-center">
                           <div class="text-lg font-semibold text-gray-900">
                             {{ section.title }}
@@ -98,7 +93,7 @@
                                 label: 'Edit title',
                                 icon: 'edit',
                                 handler: () => {
-                                  editSectionTitlePopup.show = true
+                                  openEditPopup()
                                   editSectionTitlePopup.section = section
                                 },
                               },
@@ -114,10 +109,8 @@
                           />
                         </div>
                       </template>
-                      <template #content>
-                        <div
-                          class="p-2 bg-white border border-gray-100 rounded-lg shadow-lg"
-                        >
+                      <template #body-main="{ close }">
+                        <div class="p-2">
                           <div class="flex items-end space-x-1">
                             <Input
                               label="Edit title and hit enter"
@@ -126,8 +119,11 @@
                               :value="section.title"
                               @keydown.enter="
                                 (e) => {
-                                  section.title = e.target.value
-                                  updateSections()
+                                  if (e.target.value) {
+                                    section.title = e.target.value
+                                    updateSections()
+                                  }
+                                  close()
                                   editSectionTitlePopup = {
                                     show: false,
                                     section: null,
@@ -137,9 +133,12 @@
                             />
                             <Button
                               @click="
-                                editSectionTitlePopup = {
-                                  show: false,
-                                  section: null,
+                                () => {
+                                  close()
+                                  editSectionTitlePopup = {
+                                    show: false,
+                                    section: null,
+                                  }
                                 }
                               "
                             >
