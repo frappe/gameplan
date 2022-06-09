@@ -41,14 +41,56 @@
       <TextEditor
         class="mt-3"
         editor-class="max-w-[unset] min-h-[8rem]"
-        :content="content"
-        :editable="false"
+        :content="update.content"
+        @change="update.content = $event"
+        :editable="editContent"
       />
-      <Reactions
-        doctype="Team Project Status Update"
-        :name="update.name"
-        v-model:reactions="update.reactions"
-      />
+      <div
+        class="flex items-center justify-between"
+        v-if="$user().name === update.owner"
+      >
+        <Reactions
+          doctype="Team Project Status Update"
+          :name="update.name"
+          v-model:reactions="update.reactions"
+        />
+        <div class="flex space-x-2">
+          <Button
+            v-if="!editContent"
+            iconLeft="edit"
+            @click="editContent = true"
+          >
+            Edit
+          </Button>
+          <Button
+            v-if="editContent"
+            @click="
+              () => {
+                $resources.update.reload()
+                editContent = false
+              }
+            "
+          >
+            Discard
+          </Button>
+          <Button
+            v-if="editContent"
+            appearance="primary"
+            iconLeft="edit"
+            @click="
+              () => {
+                $resources.update.setValue.submit({
+                  name: update.name,
+                  content: update.content,
+                })
+                editContent = false
+              }
+            "
+          >
+            Save
+          </Button>
+        </div>
+      </div>
     </div>
     <div class="flex-1 px-6 mt-6 border-t bg-gray-50">
       <CommentsArea doctype="Team Project Status Update" :name="update.name" />
@@ -111,6 +153,11 @@ export default {
         },
       }
     },
+  },
+  data() {
+    return {
+      editContent: false,
+    }
   },
   computed: {
     update() {

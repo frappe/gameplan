@@ -68,6 +68,7 @@
         </div>
 
         <Reactions
+          class="mt-3"
           v-model:reactions="d.reactions"
           doctype="Team Project Status Update"
           :name="d.name"
