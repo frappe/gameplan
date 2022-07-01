@@ -18,7 +18,7 @@ import './index.css'
 import { dayjs } from '@/utils'
 import { createDialog } from './utils/dialogs'
 import { createToast } from './utils/toasts'
-import { userInfo } from './utils/users'
+import { userInfo, usersResource } from './utils/users'
 
 let globalComponents = {
   Button,
@@ -54,6 +54,7 @@ app.config.globalProperties.$dialog = createDialog
 app.config.globalProperties.$toast = createToast
 app.config.globalProperties.$log = console.log.bind(console)
 app.config.globalProperties.$user = userInfo
+app.config.globalProperties.$users = usersResource
 app.use(router)
 app.use(pageMeta)
 

@@ -1,44 +1,50 @@
 <template>
-  <div>
-    <div class="flex items-center space-x-2">
-      <h2 class="text-2xl font-bold text-gray-900">Members</h2>
-      <Button icon="plus" @click="inviteMemberDialog = true" />
-    </div>
-    <div class="mt-5 space-y-4 rounded-xl">
-      <div
-        class="flex items-center space-x-2"
-        v-for="member in members"
-        :title="member.full_name || member.email"
-        :key="member.name"
-      >
-        <Avatar
-          :imageURL="member.user_image"
-          :label="member.full_name || member.email"
-          :title="member.full_name || member.email"
-        />
-        <div>
-          <div class="text-base text-gray-900">
-            {{ member.full_name }}
+  <div class="flex items-center">
+    <div class="flex items-center rounded-xl">
+      <div v-if="!team.doc.members.length" class="mr-2 text-base text-gray-600">
+        Invite members to collaborate
+      </div>
+      <template v-else>
+        <span class="text-base text-gray-600">
+          {{
+            members.length > 1
+              ? `${members.length} members`
+              : `${members.length} member`
+          }}
+        </span>
+        <button
+          class="flex items-center ml-4 rounded-full"
+          @click="inviteMemberDialog = true"
+        >
+          <div
+            class="flex items-center -ml-2 border-2 border-white rounded-full"
+            v-for="member in members"
+            :title="member.full_name || member.email"
+            :key="member.name"
+          >
+            <Avatar
+              :imageURL="member.user_image"
+              :label="member.full_name || member.email"
+              :title="member.full_name || member.email"
+            />
           </div>
-          <div class="text-sm text-gray-600">{{ member.email }}</div>
-        </div>
-      </div>
-      <div v-if="!team.doc.members.length" class="text-base text-gray-600">
-        Invite members to collaborate.
-      </div>
+        </button>
+      </template>
+    </div>
+    <div class="flex items-center ml-2 space-x-2">
+      <Button label="Share" @click="inviteMemberDialog = true" />
     </div>
   </div>
   <AddMemberDialog :team="team.doc" v-model="inviteMemberDialog" />
 </template>
 <script>
-import { Dialog, Avatar } from 'frappe-ui'
+import { Avatar } from 'frappe-ui'
 import AddMemberDialog from '@/components/AddMemberDialog.vue'
 
 export default {
   name: 'TeamPageHomeMembers',
   props: ['team'],
   components: {
-    Dialog,
     Avatar,
     AddMemberDialog,
   },

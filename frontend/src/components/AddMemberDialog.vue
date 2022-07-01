@@ -1,28 +1,95 @@
 <template>
-  <Dialog :options="{ title: 'Invite members' }" v-model="open">
+  <Dialog
+    :options="{ title: 'Invite members' }"
+    @close="resetValues"
+    v-model="open"
+  >
     <template #body-content>
-      <div>
-        <InputWithPills
-          class="mt-4"
-          :options="getUserOptions"
-          placeholder="Add member via name or email"
-          v-model="invites"
+      <ul v-if="invites.length" class="flex flex-wrap gap-2 py-2">
+        <li
+          class="flex items-center p-1 space-x-2 bg-gray-100 rounded"
+          v-for="user in invites"
+          :key="user.email"
+          :title="user.email"
         >
-        </InputWithPills>
-        <ErrorMessage class="mt-2" :message="resource.error" />
-        <div class="mt-2">
-          <Button
-            v-if="invites.length"
-            appearance="primary"
-            @click="sendInvites"
-            :loading="resource.loading"
+          <Avatar
+            v-if="user.user_image"
+            size="sm"
+            :imageURL="user.user_image"
+          />
+          <span class="text-base" :class="{ 'ml-2': !user.user_image }">
+            {{ user.full_name || user.email }}
+          </span>
+          <button
+            @click="invites = invites.filter((a) => a != user)"
+            class="grid w-4 h-4 text-gray-700 rounded hover:bg-gray-300 place-items-center"
           >
-            Send invitation
-          </Button>
-        </div>
+            <FeatherIcon class="w-3" name="x" />
+          </button>
+        </li>
+      </ul>
+      <div>
+        <Combobox v-model="selectedUser">
+          <div @click="activateInviteMemberInput">
+            <ComboboxInput
+              ref="input"
+              class="w-full form-input"
+              @change="inviteQuery = $event.target.value"
+              placeholder="Add member via name or email"
+              :disabled="!addMembersIntent"
+              autocomplete="off"
+            />
+          </div>
+          <ComboboxOptions class="mt-3" :static="true" v-if="addMembersIntent">
+            <div class="mb-1 text-sm font-semibold text-gray-500">
+              {{
+                filteredUsers.length === 0
+                  ? 'Keep typing to invite via email'
+                  : 'Select a person to invite'
+              }}
+            </div>
+            <ComboboxOption
+              as="template"
+              v-slot="{ selected, active }"
+              v-for="user in filteredUsers"
+              :key="user.name"
+              :value="user"
+            >
+              <li
+                class="flex items-center px-3 py-2 -mx-3 space-x-2 text-base rounded-md cursor-default select-none"
+                :class="{
+                  'bg-gray-100': active,
+                  'text-gray-900': !active,
+                }"
+                :title="user.email"
+              >
+                <Avatar
+                  v-if="user.user_image"
+                  size="sm"
+                  :imageURL="user.user_image"
+                />
+                <FeatherIcon
+                  v-else-if="user.icon"
+                  :name="user.icon"
+                  class="w-4 h-4 text-gray-700"
+                />
+                <div
+                  v-else
+                  class="grid w-5 h-5 bg-gray-100 border rounded-full place-items-center"
+                >
+                  <FeatherIcon class="w-3 h-3 text-gray-500" name="user" />
+                </div>
+                <span>
+                  {{ user.full_name || user.email }}
+                </span>
+              </li>
+            </ComboboxOption>
+          </ComboboxOptions>
+        </Combobox>
+        <ErrorMessage class="mt-2" :message="resource.error" />
       </div>
 
-      <div class="mt-4">
+      <div class="mt-4" v-if="!addMembersIntent">
         <h4 class="text-base font-medium">Members</h4>
         <ul role="list" class="mt-2 divide-y">
           <li
@@ -49,14 +116,28 @@
         </ul>
       </div>
     </template>
+    <template #actions>
+      <Button
+        v-if="invites.length"
+        appearance="primary"
+        @click="sendInvites"
+        :loading="resource.loading"
+      >
+        Send invitation
+      </Button>
+      <Button v-if="invites.length" @click="open = false"> Cancel </Button>
+    </template>
   </Dialog>
 </template>
 <script>
-import { computed, ref } from 'vue'
+import { Avatar, ErrorMessage, Badge } from 'frappe-ui'
+import {
+  Combobox,
+  ComboboxInput,
+  ComboboxOptions,
+  ComboboxOption,
+} from '@headlessui/vue'
 import InputWithPills from './InputWithPills.vue'
-import ErrorMessage from 'frappe-ui/src/components/ErrorMessage.vue'
-import Avatar from 'frappe-ui/src/components/Avatar.vue'
-import Badge from 'frappe-ui/src/components/Badge.vue'
 
 export default {
   name: 'AddMemberDialog',
@@ -66,6 +147,10 @@ export default {
     ErrorMessage,
     Avatar,
     Badge,
+    Combobox,
+    ComboboxInput,
+    ComboboxOptions,
+    ComboboxOption,
   },
   resources: {
     project() {
@@ -82,31 +167,37 @@ export default {
         name: this.team?.name,
       }
     },
-    users() {
-      return {
-        method: 'teams.api.get_system_users',
-        cache: 'system_users',
-        auto: true,
+  },
+  data() {
+    return {
+      invites: [],
+      inviteQuery: '',
+      selectedUser: null,
+      addMembersIntent: false,
+    }
+  },
+  watch: {
+    selectedUser(user) {
+      if (user === null) return
+      if (!this.invites.includes(user)) {
+        this.invites.push(user)
+        this.inviteQuery = ''
+        this.selectedUser = null
       }
     },
   },
-  setup(props, { emit }) {
-    let open = computed({
-      get: () => props.modelValue,
-      set: (val) => {
-        emit('update:modelValue', val)
+  computed: {
+    open: {
+      get() {
+        return this.modelValue
+      },
+      set(val) {
+        this.$emit('update:modelValue', val)
         if (!val) {
-          emit('close')
+          this.$emit('close')
         }
       },
-    })
-    let invites = ref([])
-    return {
-      open,
-      invites,
-    }
-  },
-  computed: {
+    },
     resource() {
       if (this.team) {
         return this.$resources.team.inviteMembers
@@ -123,43 +214,53 @@ export default {
         return this.project.members
       }
     },
+    invitableUsers() {
+      let memberEmails = this.members.map((m) => m.email)
+      return Object.values(this.$users.data)
+        .filter((user) => !memberEmails.includes(user.email))
+        .sort((a, b) => a.full_name - b.full_name)
+    },
+    filteredUsers() {
+      if (!this.inviteQuery) {
+        return this.invitableUsers
+      } else {
+        let users = this.invitableUsers.filter((user) => {
+          let searchTexts = [user.full_name.toLowerCase(), user.email]
+          return searchTexts.some((text) => text.includes(this.inviteQuery))
+        })
+        if (users.length == 0) {
+          let emailRegex = /^\w+@[a-zA-Z_]+?\.[a-zA-Z]{2,3}$/
+          if (emailRegex.test(this.inviteQuery)) {
+            users.push({
+              icon: 'mail',
+              email: this.inviteQuery,
+            })
+          }
+        }
+        return users
+      }
+    },
   },
   methods: {
-    getUserOptions({ query }) {
-      let users = this.$resources.users.data
-      let existingUsers = this.members.map((member) => member.email)
-
-      let options = users
-        .filter((user) => {
-          if (existingUsers.includes(user.email)) {
-            return false
-          }
-          if (query) {
-            return user.full_name.toLowerCase().includes(query.toLowerCase())
-          }
-          return true
-        })
-        .map((user) => ({
-          label: user.full_name,
-          value: user.name,
-        }))
-
-      let emailRegex = /^\w+@[a-zA-Z_]+?\.[a-zA-Z]{2,3}$/
-      if (emailRegex.test(query)) {
-        options.push({
-          label: `+ Invite ${query} via email`,
-          value: query,
-          displayValue: query,
-        })
-      }
-      return options
-    },
     sendInvites() {
-      let emails = this.invites.map((invite) => invite.value)
+      let emails = this.invites.map((user) => user.email)
       this.resource.submit({ emails }).then(() => {
-        this.open = false
         this.invites = []
+        this.addMembersIntent = false
       })
+    },
+    activateInviteMemberInput() {
+      this.addMembersIntent = true
+      this.$nextTick(() => {
+        this.$refs.input.$el.focus()
+      })
+    },
+    resetValues() {
+      this.open = false
+      this.invites = []
+      this.inviteQuery = ''
+      this.selectedUser = null
+      this.addMembersIntent = false
     },
   },
 }

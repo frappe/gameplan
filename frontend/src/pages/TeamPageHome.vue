@@ -12,7 +12,7 @@
     />
   </header>
   <div class="px-6 pt-8 overflow-auto pb-80">
-    <div>
+    <div class="flex items-center w-full">
       <div class="flex items-center space-x-2">
         <IconPicker
           v-model="team.doc.icon"
@@ -35,7 +35,7 @@
             {
               label: 'Delete',
               icon: 'trash-2',
-              handler: () => this.deleteTeam(),
+              handler: () => deleteTeam(),
             },
           ]"
           :button="{
@@ -45,14 +45,17 @@
           }"
         />
       </div>
+      <div class="ml-auto">
+        <TeamPageHomeMembers :team="team" />
+      </div>
     </div>
-    <div class="grid grid-cols-8 gap-6 mt-6">
-      <div class="col-span-6 space-y-6">
-        <TeamPageHomeProjects :team="team" />
+
+    <div class="grid grid-cols-10 gap-6 mt-6">
+      <div class="col-span-7 space-y-6">
         <ReadmeEditor :resource="team" fieldname="readme" />
       </div>
-      <div class="col-span-2">
-        <TeamPageHomeMembers :team="team" />
+      <div class="col-span-3">
+        <TeamPageHomeProjects :team="team" />
       </div>
     </div>
   </div>
