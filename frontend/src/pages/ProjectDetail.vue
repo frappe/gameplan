@@ -172,8 +172,8 @@ export default {
     tabs() {
       return [
         {
-          name: 'Overview',
-          icon: 'home',
+          name: 'Readme',
+          // icon: 'home',
           route: {
             name: 'ProjectDetailOverview',
             params: { teamId: this.team.doc.name, projectId: this.projectId },
@@ -181,19 +181,19 @@ export default {
           class: this.tabLinkClasses,
         },
         {
-          name: 'Tasks',
-          icon: 'check-square',
+          name: 'Discussions',
+          // icon: 'server',
           route: {
-            name: 'ProjectDetailTasks',
+            name: 'ProjectDetailUpdate',
             params: { teamId: this.team.doc.name, projectId: this.projectId },
           },
           class: this.tabLinkClasses,
         },
         {
-          name: 'Updates',
-          icon: 'server',
+          name: 'Tasks',
+          // icon: 'check-square',
           route: {
-            name: 'ProjectDetailUpdate',
+            name: 'ProjectDetailTasks',
             params: { teamId: this.team.doc.name, projectId: this.projectId },
           },
           class: this.tabLinkClasses,
