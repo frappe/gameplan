@@ -45,14 +45,17 @@ def update_document(name, title, content):
 
 @frappe.whitelist()
 def get_user_info():
-	users = frappe.db.get_all("User", fields=["name", "email", "user_image", "full_name", "user_type"])
+	users = frappe.db.get_all(
+		"User",
+		filters=[["Has Role", "role", "=", "Teams User"]],
+		fields=["name", "email", "user_image", "full_name", "user_type"],
+	)
 	out = {}
 	for user in users:
 		if frappe.session.user == user.name:
 			user.session_user = True
 		out[user.name] = user
 	return out
-
 
 
 @frappe.whitelist()
@@ -181,27 +184,26 @@ def update_daily_note(content, date=None):
 	note.save()
 	return note
 
+
 @frappe.whitelist()
 def tasks_for_day(date):
-	Task = frappe.qb.DocType('Team Task')
-	Project = frappe.qb.DocType('Team Project')
+	Task = frappe.qb.DocType("Team Task")
+	Project = frappe.qb.DocType("Team Project")
 	overdue_condition = date == frappe.utils.today()
 	query = (
-		frappe.qb
-			.from_(Task)
-			.select(Task.star)
-			.left_join(Project)
-			.on(Task.project == Project.name)
-			.where(Task.owner == frappe.session.user)
-			.orderby(Task.idx, order=frappe._dict(value='desc'))
+		frappe.qb.from_(Task)
+		.select(Task.star)
+		.left_join(Project)
+		.on(Task.project == Project.name)
+		.where(Task.owner == frappe.session.user)
+		.orderby(Task.idx, order=frappe._dict(value="desc"))
 	)
 	if date == frappe.utils.today():
 		# fetch overdues only for today
-		query = query.where(((Task.due_date == date) | ((Task.due_date < date) & (Task.is_completed == 0))))
+		query = query.where(
+			((Task.due_date == date) | ((Task.due_date < date) & (Task.is_completed == 0)))
+		)
 	else:
 		query = query.where(Task.due_date == date)
 
-
 	return query.run(as_dict=1)
-
-
