@@ -232,20 +232,20 @@ export default {
             name: 'People',
           },
         },
-        {
-          name: 'Daily Planner',
-          icon: 'edit',
-          route: {
-            name: 'DailyPlanner',
-          },
-        },
-        {
-          name: 'Tasks',
-          icon: 'clipboard',
-          route: {
-            name: 'Tasks',
-          },
-        },
+        // {
+        //   name: 'Daily Planner',
+        //   icon: 'edit',
+        //   route: {
+        //     name: 'DailyPlanner',
+        //   },
+        // },
+        // {
+        //   name: 'Tasks',
+        //   icon: 'clipboard',
+        //   route: {
+        //     name: 'Tasks',
+        //   },
+        // },
         // { name: 'Inbox', icon: 'inbox', route: '/inbox' },
       ],
       showAddTeamDialog: false,
