@@ -1,19 +1,18 @@
 <template>
   <div class="p-6">
     <div class="flex items-start justify-between">
-      <div>
+      <div class="w-full">
         <div>
           <label class="text-base text-gray-700">Title</label>
         </div>
         <input
           type="text"
-          class="px-2 py-1 mt-1 text-xl font-semibold bg-gray-100 border-0 rounded-lg focus:ring-0"
-          placeholder="Project is on track..."
+          class="w-4/5 px-2 py-1 mt-1 text-xl font-semibold bg-gray-100 border-0 rounded-lg focus:ring-0"
           ref="title"
           v-model="title"
         />
       </div>
-      <div class="space-x-2">
+      <div class="space-x-2 shrink-0">
         <Button
           appearance="primary"
           :loading="$resources.newUpdate.loading"
@@ -22,24 +21,6 @@
           Publish
         </Button>
         <Button :route="{ name: 'ProjectDetailUpdate' }">Discard</Button>
-      </div>
-    </div>
-
-    <div class="mt-3">
-      <div>
-        <label class="text-base text-gray-700">Status</label>
-      </div>
-      <div class="mt-1 space-x-2">
-        <Button
-          :appearance="d.name === status ? d.appearance : 'secondary'"
-          v-for="d in statuses"
-          :key="d.name"
-          @click="status = d.name"
-        >
-          <span :class="d.name !== status ? d.textColor : null">
-            {{ d.name }}
-          </span>
-        </Button>
       </div>
     </div>
     <div class="mt-3">
@@ -65,16 +46,7 @@ export default {
   data() {
     return {
       title: '',
-      status: '',
-      content: `
-        <p>Two line summary of the update...</p>
-        <h4>What we've accomplished</h4>
-        <p></p>
-        <h4>What's blocked</h4>
-        <p></p>
-        <h4>Next Steps</h4>
-        <p></p>
-      `,
+      content: '',
     }
   },
   mounted() {
@@ -84,13 +56,12 @@ export default {
     newUpdate() {
       return {
         method: 'frappe.client.insert',
-        makeParams({ title, status, content }) {
+        makeParams({ title, content }) {
           return {
             doc: {
-              doctype: 'Team Project Status Update',
+              doctype: 'Team Project Discussion',
               project: this.project.doc.name,
               title,
-              status,
               content,
             },
           }
@@ -98,9 +69,6 @@ export default {
         validate(params) {
           if (!params.doc.title) {
             return `Please enter title before publishing.`
-          }
-          if (!params.doc.status) {
-            return `Please select project status before publishing.`
           }
         },
         onSuccess(doc) {

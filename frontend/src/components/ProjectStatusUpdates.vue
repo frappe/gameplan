@@ -1,5 +1,5 @@
 <template>
-  <div class="h-full space-y-3">
+  <div class="h-full space-y-5">
     <template v-for="d in $resources.updates.data" :key="d.name">
       <router-link
         :to="{
@@ -45,17 +45,6 @@
                     {{ $dayjs(d.creation).fromNow() }}
                   </div>
                 </div>
-                <Badge
-                  class="flex-shrink-0 ml-auto"
-                  :class="isActive(d) ? 'bg-white' : ''"
-                  :color="{
-                    green: d.status === 'On Track',
-                    red: d.status === 'Off Track',
-                    yellow: d.status === 'At Risk',
-                  }"
-                >
-                  {{ d.status }}
-                </Badge>
               </div>
             </template>
           </UserInfo>
@@ -70,7 +59,7 @@
         <Reactions
           class="mt-3"
           v-model:reactions="d.reactions"
-          doctype="Team Project Status Update"
+          doctype="Team Project Discussion"
           :name="d.name"
         />
       </router-link>
@@ -98,7 +87,7 @@ export default {
       return {
         type: 'list',
         cache: ['Project Updates', this.filters],
-        doctype: 'Team Project Status Update',
+        doctype: 'Team Project Discussion',
         filters: this.filters,
         fields: [
           'name',

@@ -45,12 +45,8 @@ class TeamProject(ManageMembersMixin, Document):
 			self.readme = f"""
 			<h3>Welcome to the {self.title} page!</h3>
 			<p>You can add a brief introduction about this project, links, resources, and other important information here.</p>
-
-			<h3>What this project is about</h3>
-			<p>This project is about...</p>
-
-			<h3>How we'll collaborate</h3>
-			<p>We'll do a weekly standup every Thursday...</p>
+			<p></p>
+			<p></p>
 		"""
 
 		self.append(

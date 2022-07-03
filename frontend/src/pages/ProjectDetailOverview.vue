@@ -5,7 +5,7 @@
         <ProjectDetailOverviewSummary :project="project" />
         <ProjectDetailOverviewReadme :project="project" />
       </div>
-      <ProjectDetailOverviewMembers class="col-span-2" :project="project" />
+      <!-- <ProjectDetailOverviewMembers class="col-span-2" :project="project" /> -->
     </div>
   </div>
 </template>

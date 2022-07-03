@@ -1,23 +1,15 @@
 <template>
   <div class="flex">
     <div class="w-5/12 h-full px-6 py-6 overflow-auto">
-      <router-link
-        custom
-        :to="{ name: 'ProjectDetailUpdate', params: { updateId: 'new' } }"
-        v-slot="{ href, navigate }"
-      >
-        <a
-          :href="href"
-          @click="navigate"
-          class="block p-3 mb-3 border rounded-xl"
-          :class="updateId === 'new' ? 'bg-gray-100' : 'hover:bg-gray-50'"
+      <div class="flex items-center justify-between mb-5">
+        <h1 class="text-2xl font-semibold">All Discussions</h1>
+        <Button
+          iconLeft="plus"
+          :route="{ name: 'ProjectDetailUpdate', params: { updateId: 'new' } }"
         >
-          <div class="flex items-center space-x-4">
-            <Avatar :label="$user().full_name" :imageURL="$user().user_image" />
-            <div class="text-base text-gray-700">Write an update...</div>
-          </div>
-        </a>
-      </router-link>
+          New Discussion
+        </Button>
+      </div>
       <ProjectStatusUpdates
         :filters="{ project: project.doc.name }"
         routeName="ProjectDetailUpdate"

@@ -26,73 +26,64 @@
               {{ $dayjs(update.creation).fromNow() }}
             </span>
           </div>
-          <Badge
-            class="ml-auto"
-            :color="{
-              green: update.status === 'On Track',
-              red: update.status === 'Off Track',
-              yellow: update.status === 'At Risk',
-            }"
-          >
-            {{ update.status }}
-          </Badge>
+          <div class="flex ml-auto space-x-2">
+            <Button
+              v-if="!editContent"
+              icon="edit"
+              @click="editContent = true"
+            />
+            <Button
+              v-if="editContent"
+              @click="
+                () => {
+                  $resources.update.reload()
+                  editContent = false
+                }
+              "
+            >
+              Discard
+            </Button>
+            <Button
+              v-if="editContent"
+              appearance="primary"
+              @click="
+                () => {
+                  $resources.update.setValue.submit({
+                    name: update.name,
+                    content: update.content,
+                  })
+                  editContent = false
+                }
+              "
+            >
+              Save
+            </Button>
+          </div>
         </div>
+      </div>
+      <div>
+        <h1 class="mt-3 text-3xl font-bold">{{ update.title }}</h1>
       </div>
       <TextEditor
         class="mt-3"
-        editor-class="max-w-[unset] min-h-[8rem]"
+        :editor-class="[
+          'max-w-[unset] min-h-[8rem]',
+          { 'bg-gray-100 px-3 py-2 rounded-md': editContent },
+        ]"
         :content="update.content"
         @change="update.content = $event"
         :editable="editContent"
       />
-      <div
-        class="flex items-center justify-between"
-        v-if="$user().name === update.owner"
-      >
+      <div class="mt-3" v-if="$user().name === update.owner">
         <Reactions
-          doctype="Team Project Status Update"
+          doctype="Team Project Discussion"
           :name="update.name"
           v-model:reactions="update.reactions"
         />
-        <div class="flex space-x-2">
-          <Button
-            v-if="!editContent"
-            iconLeft="edit"
-            @click="editContent = true"
-          >
-            Edit
-          </Button>
-          <Button
-            v-if="editContent"
-            @click="
-              () => {
-                $resources.update.reload()
-                editContent = false
-              }
-            "
-          >
-            Discard
-          </Button>
-          <Button
-            v-if="editContent"
-            appearance="primary"
-            @click="
-              () => {
-                $resources.update.setValue.submit({
-                  name: update.name,
-                  content: update.content,
-                })
-                editContent = false
-              }
-            "
-          >
-            Save
-          </Button>
-        </div>
       </div>
     </div>
     <div class="flex-1 px-6 mt-6 border-t bg-gray-50">
-      <CommentsArea doctype="Team Project Status Update" :name="update.name" />
+      <CommentsArea doctype="Team Project Discussion" :name="update.name" />
     </div>
   </div>
   <div class="grid h-full text-base place-items-center bg-gray-50" v-else>
@@ -114,9 +105,9 @@ export default {
     update() {
       return {
         type: 'list',
-        doctype: 'Team Project Status Update',
+        doctype: 'Team Project Discussion',
         filters: { name: this.updateId },
-        cache: ['Team Project Status Update', this.updateId],
+        cache: ['Team Project Discussion', this.updateId],
         fields: [
           'name',
           'owner',

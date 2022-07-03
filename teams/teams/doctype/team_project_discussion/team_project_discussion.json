@@ -33,8 +33,7 @@
    "fieldname": "status",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "Status",
-   "reqd": 1
+   "label": "Status"
   },
   {
    "fieldname": "title",
@@ -58,10 +57,10 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-06-08 19:19:32.012433",
+ "modified": "2022-07-03 19:20:05.072036",
  "modified_by": "Administrator",
  "module": "Teams",
- "name": "Team Project Status Update",
+ "name": "Team Project Discussion",
  "owner": "Administrator",
  "permissions": [
   {

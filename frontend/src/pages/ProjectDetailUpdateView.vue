@@ -43,7 +43,7 @@ export default {
     update() {
       return {
         type: 'document',
-        doctype: 'Team Project Status Update',
+        doctype: 'Team Project Discussion',
         name: this.updateId,
       }
     },

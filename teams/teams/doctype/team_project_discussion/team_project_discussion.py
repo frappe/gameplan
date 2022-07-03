@@ -4,5 +4,5 @@
 # import frappe
 from frappe.model.document import Document
 
-class TeamProjectStatusUpdate(Document):
+class TeamProjectDiscussion(Document):
 	pass

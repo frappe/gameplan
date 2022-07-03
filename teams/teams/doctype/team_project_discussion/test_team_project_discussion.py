@@ -4,5 +4,5 @@
 # import frappe
 import unittest
 
-class TestTeamProjectStatusUpdate(unittest.TestCase):
+class TestTeamProjectDiscussion(unittest.TestCase):
 	pass

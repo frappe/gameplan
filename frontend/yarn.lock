@@ -240,6 +240,11 @@
   resolved "https://registry.yarnpkg.com/@tiptap/extension-strike/-/extension-strike-2.0.0-beta.27.tgz#c5187bf3c28837f95a5c0c0617d0dd31c318353d"
   integrity sha512-2dmCgtesuDdivM/54Q+Y6Tc3JbGz1SkHP6c62piuqBiYLWg3xa16zChZOhfN8szbbQlBgLT6XRTDt3c2Ux+Dug==
 
+"@tiptap/extension-text-align@^2.0.0-beta.31":
+  version "2.0.0-beta.31"
+  resolved "https://registry.yarnpkg.com/@tiptap/extension-text-align/-/extension-text-align-2.0.0-beta.31.tgz#31229ef1a16555a9b3a1dc94bf7d3a8c64639f51"
+  integrity sha512-gSJqi57piiMPc2r6WEkXv7ZgQIogigsRUhmlnZC/7s3zzOvjXrexWnV0Ctt/9A7BKcM7OHMykpZyoewvk6QRTw==
+
 "@tiptap/extension-text@^2.0.0-beta.15":
   version "2.0.0-beta.15"
   resolved "https://registry.yarnpkg.com/@tiptap/extension-text/-/extension-text-2.0.0-beta.15.tgz#f08cff1b78f1c6996464dfba1fef8ec1e107617f"
@@ -938,10 +943,10 @@ fraction.js@^4.1.2:
   resolved "https://registry.yarnpkg.com/fraction.js/-/fraction.js-4.1.2.tgz#13e420a92422b6cf244dff8690ed89401029fbe8"
   integrity sha512-o2RiJQ6DZaR/5+Si0qJUIy637QMRudSi9kU/FFzx9EZazrIdnBgpU+3sEWCxAVhH2RtxW2Oz+T4p2o8uOPVcgA==
 
-frappe-ui@^0.0.30:
-  version "0.0.30"
-  resolved "https://registry.yarnpkg.com/frappe-ui/-/frappe-ui-0.0.30.tgz#be16efbd329944b6b6d6daa1fb11051257ba4eef"
-  integrity sha512-0M5pg68d/a6D1luNVj6Y/oz5NWiBv3WQQJM1v7OpOO5RbKy0dkJ+W8p37ZH8UbiFODyt6yHjHATLXvOWbis/1w==
+frappe-ui@^0.0.33:
+  version "0.0.33"
+  resolved "https://registry.yarnpkg.com/frappe-ui/-/frappe-ui-0.0.33.tgz#3d74eb1c647372b22a51313b61d43a79b9aaee23"
+  integrity sha512-Ljlg/KPnXft2eb8g5DvGzVJT9NU+EZJFb46iCpFESgeM+gU5o9t+1n7ookqJiUOdLSjxIrwgD4fxgwb9p5pnVw==
   dependencies:
     "@headlessui/vue" "^1.5.0"
     "@popperjs/core" "^2.11.2"
@@ -950,6 +955,7 @@ frappe-ui@^0.0.30:
     "@tiptap/extension-image" "^2.0.0-beta.27"
     "@tiptap/extension-link" "^2.0.0-beta.37"
     "@tiptap/extension-placeholder" "^2.0.0-beta.48"
+    "@tiptap/extension-text-align" "^2.0.0-beta.31"
     "@tiptap/starter-kit" "^2.0.0-beta.183"
     "@tiptap/vue-3" "^2.0.0-beta.90"
     autoprefixer "^10.4.2"
