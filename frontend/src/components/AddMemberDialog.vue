@@ -30,24 +30,32 @@
       </ul>
       <div>
         <Combobox v-model="selectedUser">
-          <div @click="activateInviteMemberInput">
-            <ComboboxInput
-              ref="input"
-              class="w-full form-input"
-              @change="inviteQuery = $event.target.value"
-              placeholder="Add member via name or email"
-              :disabled="!addMembersIntent"
-              autocomplete="off"
-            />
+          <ComboboxInput
+            class="w-full form-input"
+            @change="
+              (e) => {
+                inviteQuery = e.target.value
+                addMembersIntent = true
+              }
+            "
+            placeholder="Add member via name or email"
+            autocomplete="off"
+          />
+          <div
+            v-if="addMembersIntent"
+            class="mt-3 mb-1 text-sm font-semibold text-gray-500"
+          >
+            {{
+              filteredUsers.length === 0
+                ? 'Keep typing to invite via email'
+                : 'Select a person to invite'
+            }}
           </div>
-          <ComboboxOptions class="mt-3" :static="true" v-if="addMembersIntent">
-            <div class="mb-1 text-sm font-semibold text-gray-500">
-              {{
-                filteredUsers.length === 0
-                  ? 'Keep typing to invite via email'
-                  : 'Select a person to invite'
-              }}
-            </div>
+          <ComboboxOptions
+            class="h-[7rem] overflow-y-auto"
+            :static="true"
+            v-if="addMembersIntent"
+          >
             <ComboboxOption
               as="template"
               v-slot="{ selected, active }"
@@ -56,7 +64,7 @@
               :value="user"
             >
               <li
-                class="flex items-center px-3 py-2 -mx-3 space-x-2 text-base rounded-md cursor-default select-none"
+                class="flex items-center px-3 py-2 space-x-2 text-base rounded-md cursor-default select-none"
                 :class="{
                   'bg-gray-100': active,
                   'text-gray-900': !active,
@@ -88,8 +96,7 @@
         </Combobox>
         <ErrorMessage class="mt-2" :message="resource.error" />
       </div>
-
-      <div class="mt-4" v-if="!addMembersIntent">
+      <div class="mt-4" v-show="!addMembersIntent">
         <h4 class="text-base font-medium">Members</h4>
         <ul role="list" class="mt-2 divide-y">
           <li
@@ -247,12 +254,6 @@ export default {
       this.resource.submit({ emails }).then(() => {
         this.invites = []
         this.addMembersIntent = false
-      })
-    },
-    activateInviteMemberInput() {
-      this.addMembersIntent = true
-      this.$nextTick(() => {
-        this.$refs.input.$el.focus()
       })
     },
     resetValues() {
