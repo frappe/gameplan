@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col h-full" v-if="updateId && update">
+  <div class="flex flex-col h-full" v-if="postId && update">
     <div class="p-6">
       <div class="flex items-center space-x-4">
         <Avatar
@@ -99,15 +99,15 @@ import CommentsArea from '../pages/CommentsArea.vue'
 
 export default {
   name: 'ProjectStatusUpdatesView',
-  props: ['updateId'],
+  props: ['postId'],
   components: { TextEditor, Avatar, Reactions, CommentsArea },
   resources: {
     update() {
       return {
         type: 'list',
         doctype: 'Team Project Discussion',
-        filters: { name: this.updateId },
-        cache: ['Team Project Discussion', this.updateId],
+        filters: { name: this.postId },
+        cache: ['Team Project Discussion', this.postId],
         fields: [
           'name',
           'owner',

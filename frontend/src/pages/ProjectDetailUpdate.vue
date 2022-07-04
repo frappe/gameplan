@@ -5,7 +5,7 @@
         <h1 class="text-2xl font-semibold">All Discussions</h1>
         <Button
           iconLeft="plus"
-          :route="{ name: 'ProjectDetailUpdate', params: { updateId: 'new' } }"
+          :route="{ name: 'ProjectDetailUpdate', params: { postId: 'new' } }"
         >
           New Discussion
         </Button>
@@ -16,8 +16,8 @@
       />
     </div>
     <div class="w-7/12 overflow-auto border-l">
-      <ProjectDetailUpdateNew v-if="updateId == 'new'" :project="project" />
-      <ProjectStatusUpdatesView v-else :updateId="updateId" />
+      <ProjectDetailUpdateNew v-if="postId == 'new'" :project="project" />
+      <ProjectStatusUpdatesView v-else :postId="postId" />
     </div>
   </div>
 </template>
@@ -31,7 +31,7 @@ import ProjectDetailUpdateNew from './ProjectDetailUpdateNew.vue'
 
 export default {
   name: 'ProjectDetailUpdate',
-  props: ['project', 'updateId'],
+  props: ['project', 'postId'],
   components: {
     TextEditor,
     Avatar,
@@ -43,7 +43,7 @@ export default {
   },
   methods: {
     isActive(update) {
-      return this.$route.params.updateId === update.name
+      return this.$route.params.postId === update.name
     },
   },
 }

@@ -4,7 +4,7 @@
       <router-link
         :to="{
           name: this.routeName,
-          params: { updateId: d.name },
+          params: { postId: d.name },
           replace: true,
         }"
         class="block p-3 border rounded-xl"
@@ -71,7 +71,7 @@
 import { Avatar, TextEditor } from 'frappe-ui'
 import Link from '@/components/Link.vue'
 import Reactions from '@/components/Reactions.vue'
-import { htmlToText } from '@/utils'
+import { htmlToText } from 'html-to-text'
 
 export default {
   name: 'ProjectStatusUpdates',
@@ -137,15 +137,24 @@ export default {
         // open latest update
         this.$router.replace({
           name: 'ProjectStatusUpdatesView',
-          params: { updateId: latest.name },
+          params: { postId: latest.name },
         })
       }
     },
     isActive(update) {
-      return this.$route.params.updateId === update.name
+      return this.$route.params.postId === update.name
     },
     summary(content) {
-      return htmlToText(content)
+      return htmlToText(content, {
+        selectors: [
+          { selector: 'h1', options: { uppercase: false } },
+          { selector: 'h2', options: { uppercase: false } },
+          { selector: 'h3', options: { uppercase: false } },
+          { selector: 'h4', options: { uppercase: false } },
+          { selector: 'h5', options: { uppercase: false } },
+          { selector: 'h6', options: { uppercase: false } },
+        ],
+      })
     },
   },
 }

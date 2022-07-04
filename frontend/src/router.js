@@ -79,7 +79,7 @@ const routes = [
           },
           {
             name: 'ProjectDetailUpdate',
-            path: 'status-update/:updateId?',
+            path: 'discussion/:postId?',
             component: () => import('@/pages/ProjectDetailUpdate.vue'),
             props: true,
           },

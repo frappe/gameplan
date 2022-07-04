@@ -16,7 +16,7 @@
       <div class="flex items-center space-x-2">
         <IconPicker
           v-model="team.doc.icon"
-          @update:modelValue="(icon) => team.setValue.submit({ icon })"
+          @update:modelValue="updateTeamIcon"
           :set-default="true"
         >
           <template v-slot="{ isOpen }">
@@ -80,6 +80,17 @@ export default {
     ReadmeEditor,
   },
   methods: {
+    updateTeamIcon(icon) {
+      this.team.setValue.submit({ icon })
+      this.$getListResource('teams').setData((teams) => {
+        for (let team of teams) {
+          if (team.name == this.team.name) {
+            team.icon = icon
+          }
+        }
+        return teams
+      })
+    },
     deleteTeam() {
       this.$dialog({
         title: 'Delete Team',
