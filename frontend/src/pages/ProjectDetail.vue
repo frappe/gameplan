@@ -135,6 +135,19 @@ export default {
       projectDeleteDialog: false,
     }
   },
+  mounted() {
+    this.$getListResource('teams').setData((teams) => {
+      for (let team of teams) {
+        if (team.name === this.team.doc.name) {
+          team.open = true
+          if (!team.projects.data) {
+            team.projects.fetch()
+          }
+        }
+      }
+      return teams
+    })
+  },
   resources: {
     project() {
       return {
