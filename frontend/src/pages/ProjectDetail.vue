@@ -23,16 +23,50 @@
             </IconPicker>
             <div>
               <div class="flex items-center space-x-2">
-                <h1
-                  class="text-6xl font-bold leading-8"
-                  :title="`${Math.round(project.progress)}% complete`"
-                >
-                  {{ project.title }}
-                </h1>
+                <Popover ref="editTitlePopup" :hideOnBlur="false">
+                  <template #target>
+                    <h1
+                      class="text-6xl font-bold leading-8"
+                      :title="`${Math.round(project.progress)}% complete`"
+                    >
+                      {{ project.title }}
+                    </h1>
+                  </template>
+                  <template #body-main>
+                    <div class="p-2">
+                      <div class="flex items-end space-x-1">
+                        <Input
+                          label="Edit title and hit enter"
+                          type="text"
+                          placeholder="Project title"
+                          :value="project.title"
+                          @keydown.enter="
+                            (e) => {
+                              if (e.target.value) {
+                                $resources.project.setValue.submit({
+                                  title: e.target.value,
+                                })
+                              }
+                              $refs.editTitlePopup.close()
+                            }
+                          "
+                        />
+                        <Button @click="() => $refs.editTitlePopup.close()">
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  </template>
+                </Popover>
                 <Dropdown
                   placement="left"
                   :button="{ icon: 'more-horizontal', appearance: 'minimal' }"
                   :options="[
+                    {
+                      label: 'Edit Title',
+                      icon: 'edit',
+                      handler: () => $refs.editTitlePopup.open(),
+                    },
                     {
                       label: 'Move to another team',
                       icon: 'log-out',
@@ -148,7 +182,7 @@
   </div>
 </template>
 <script>
-import { Autocomplete, Dropdown, Spinner } from 'frappe-ui'
+import { Autocomplete, Dropdown, Spinner, Input, Popover } from 'frappe-ui'
 import Pie from '@/components/Pie.vue'
 import ProjectDetailTasks from './ProjectDetailTasks.vue'
 import IconPicker from '@/components/IconPicker.vue'
@@ -160,6 +194,7 @@ export default {
   name: 'ProjectDetail',
   props: ['team', 'projectId'],
   components: {
+    Input,
     Dropdown,
     Spinner,
     Pie,
@@ -169,6 +204,7 @@ export default {
     Tabs,
     Breadcrumbs,
     Autocomplete,
+    Popover,
   },
   data() {
     return {
