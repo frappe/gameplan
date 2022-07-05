@@ -1,33 +1,6 @@
 <template>
   <div class="flex flex-col h-full">
     <header class="sticky top-0 z-10 bg-white">
-      <div class="h-12 px-4 py-3 border-b">
-        <Breadcrumbs
-          :breadcrumbs="[
-            team?.doc && {
-              title: team.doc.title,
-              icon: team.doc.icon,
-              route: {
-                name: 'TeamPageHome',
-                params: { teamId: team.doc.name },
-              },
-            },
-            project && {
-              title: project.title,
-              icon: project.icon,
-              route: task
-                ? {
-                    name: 'ProjectDetailTasks',
-                    params: { projectId: project.name },
-                  }
-                : undefined,
-            },
-            task?.doc && {
-              title: task.doc.title,
-            },
-          ]"
-        />
-      </div>
       <div class="pt-8 border-b" v-if="project">
         <div class="px-6">
           <div class="flex items-start space-x-2">

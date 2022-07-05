@@ -1,20 +1,5 @@
 <template>
   <div class="flex flex-col h-full">
-    <header class="flex items-center h-12 px-4 py-3 bg-white border-b">
-      <Breadcrumbs
-        :breadcrumbs="[
-          {
-            title: 'People',
-            icon: '👨‍👩‍👧‍👦',
-            route: { name: 'People' },
-          },
-          person && {
-            title: $user(person).full_name,
-            icon: '',
-          },
-        ]"
-      />
-    </header>
     <div class="flex flex-1 min-h-0">
       <div class="w-1/3 overflow-auto">
         <div class="py-6 pl-6 space-y-2">

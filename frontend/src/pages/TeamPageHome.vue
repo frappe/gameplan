@@ -1,16 +1,4 @@
 <template>
-  <header
-    class="sticky top-0 z-10 flex items-center h-12 px-4 py-3 bg-white border-b"
-  >
-    <Breadcrumbs
-      :breadcrumbs="[
-        {
-          title: team.doc.title,
-          icon: team.doc.icon,
-        },
-      ]"
-    />
-  </header>
   <div class="px-6 pt-8 overflow-auto pb-80">
     <div class="flex items-center w-full">
       <div class="flex items-center space-x-2">
