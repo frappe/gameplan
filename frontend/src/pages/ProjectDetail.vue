@@ -114,7 +114,7 @@
         @close="
           () => {
             projectMoveDialog.team = null
-            $resources.team.moveToTeam.reset()
+            $resources.project.moveToTeam.reset()
           }
         "
         v-model="projectMoveDialog.show"
@@ -294,12 +294,20 @@ export default {
           )
         ) {
           team.projects.reload()
+          if (this.projectMoveDialog.team.value === team.name) {
+            team.open = true
+          }
         }
       }
       this.$router.push({
-        name: 'TeamPageHome',
-        params: { teamId: this.projectMoveDialog.team.value },
+        name: 'ProjectDetailOverview',
+        params: {
+          teamId: this.projectMoveDialog.team.value,
+          projectId: this.projectId,
+        },
       })
+      this.projectMoveDialog.team = null
+      this.$resources.project.moveToTeam.reset()
     },
     tabLinkClasses($route, link) {
       let active = false

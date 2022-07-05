@@ -179,7 +179,7 @@ class TeamProject(ManageMembersMixin, Document):
 
 		self.team = team
 		for task in frappe.db.get_all("Team Task", {"project": self.name}, pluck="name"):
-			task_doc = frappe.get_doc("Task", task)
+			task_doc = frappe.get_doc("Team Task", task)
 			task_doc.team = self.team
 			task_doc.save()
 		self.save()
