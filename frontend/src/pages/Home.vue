@@ -1,35 +1,46 @@
 <template>
   <div class="flex flex-col h-full">
-    <header
-      class="sticky top-0 z-10 flex items-center h-12 px-4 py-3 bg-white border-b"
-    >
-      <Breadcrumbs
-        :breadcrumbs="[
-          {
-            title: 'Home',
-            icon: '🏠',
-          },
-        ]"
-      />
-    </header>
     <div class="flex flex-1 min-h-0">
       <div class="w-5/12 h-full px-6 py-6 overflow-auto">
-        <ProjectStatusUpdates routeName="Home" />
+        <div class="flex items-center justify-between mb-5">
+          <h1 class="text-2xl font-semibold">Posts</h1>
+
+          <select class="form-input" v-model="selectedTeam.value">
+            <option value="" selected>Posts by all teams</option>
+            <option selected disabled>Filter by Team</option>
+            <option
+              v-for="team in $getListResource('Sidebar Teams').data"
+              :key="team.name"
+              :value="team.name"
+            >
+              {{ team.title }}
+            </option>
+          </select>
+        </div>
+        <DiscussionList
+          routeName="Home"
+          :filters="selectedTeam.value ? { team: selectedTeam.value } : null"
+        />
       </div>
       <div class="w-7/12 overflow-auto border-l">
-        <ProjectStatusUpdatesView :updateId="updateId" />
+        <DiscussionView :postId="postId" />
       </div>
     </div>
   </div>
 </template>
 <script>
 import Breadcrumbs from '@/components/Breadcrumbs.vue'
-import ProjectStatusUpdates from '@/components/ProjectStatusUpdates.vue'
-import ProjectStatusUpdatesView from '@/components/ProjectStatusUpdatesView.vue'
+import DiscussionList from '@/components/DiscussionList.vue'
+import DiscussionView from '@/components/DiscussionView.vue'
 export default {
   name: 'Home',
-  props: ['updateId'],
-  components: { Breadcrumbs, ProjectStatusUpdates, ProjectStatusUpdatesView },
+  props: ['postId'],
+  components: { Breadcrumbs, DiscussionList, DiscussionView },
+  data() {
+    return {
+      selectedTeam: { label: null, value: '' },
+    }
+  },
   pageMeta() {
     return {
       title: 'Home',

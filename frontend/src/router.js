@@ -39,7 +39,7 @@ const routes = [
     component: () => import('@/pages/Tasks.vue'),
   },
   {
-    path: '/home/:updateId?',
+    path: '/home/:postId?',
     name: 'Home',
     component: () => import('@/pages/Home.vue'),
     props: true,
