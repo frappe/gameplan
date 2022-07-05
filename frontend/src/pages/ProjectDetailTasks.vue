@@ -246,19 +246,16 @@
                             class="w-[15%] flex flex-shrink-0"
                             :class="isTaskOpen && 'hidden'"
                           >
-                            <AssignUser
-                              class="w-full h-full text-sm text-gray-700"
-                              :class="
-                                task.assignedUser || task.isActive
-                                  ? ''
-                                  : 'opacity-0 group-hover:opacity-100'
-                              "
-                              :users="users"
-                              :assignedUser="task.assignedUser"
-                              @update:assigned-user="
-                                updateAssignedUser(task, $event)
-                              "
-                            />
+                            <div class="flex items-center space-x-1">
+                              <Avatar
+                                size="sm"
+                                :imageURL="$user(task.assigned_to).user_image"
+                                :label="$user(task.assigned_to).full_name"
+                              />
+                              <span class="text-base text-gray-900">
+                                {{ $user(task.assigned_to).full_name }}
+                              </span>
+                            </div>
                           </div>
                           <div
                             class="w-[10%] flex-shrink-0"
@@ -461,6 +458,7 @@
 </template>
 <script>
 import {
+  Avatar,
   Dropdown,
   Spinner,
   onOutsideClickDirective,
@@ -468,7 +466,6 @@ import {
   Popover,
 } from 'frappe-ui'
 import Draggable from 'vuedraggable'
-import AssignUser from '@/components/AssignUser.vue'
 import DragHandleIcon from '@/components/DragHandleIcon.vue'
 
 export default {
@@ -477,11 +474,11 @@ export default {
   components: {
     Dropdown,
     Spinner,
-    AssignUser,
     Draggable,
     DragHandleIcon,
     LoadingIndicator,
     Popover,
+    Avatar,
   },
   directives: {
     onOutsideClick: onOutsideClickDirective,

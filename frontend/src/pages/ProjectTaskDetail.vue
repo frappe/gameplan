@@ -52,18 +52,17 @@
             <span class="ml-4">Assignee</span>
           </div>
           <span class="text-gray-900">
-            WIP
-            <!-- <AssignUser
-              class="w-full h-full text-sm text-gray-700"
-              :class="
-                task.assignedUser || task.isActive
-                  ? ''
-                  : 'opacity-0 group-hover:opacity-100'
+            <Autocomplete
+              class="placeholder-gray-500 bg-transparent"
+              placeholder="Assign a user"
+              :options="assignableUsers"
+              :value="task.doc.assigned_to"
+              @change="
+                (option) => {
+                  task.setValue.submit({ assigned_to: option?.value || '' })
+                }
               "
-              :users="users"
-              :assignedUser="task.assignedUser"
-              @update:assigned-user="updateAssignedUser(task, $event)"
-            /> -->
+            />
           </span>
         </div>
         <div class="grid grid-cols-4 px-5 text-base">
@@ -72,17 +71,15 @@
             <span class="ml-4">Due Date</span>
           </div>
           <span class="text-gray-900">
-            <!-- {{ $dayjs(task.doc.due_date).format('d MMM, YYYY') }} -->
             <input
               type="date"
-              class="w-full h-full p-0 text-sm bg-transparent border-none focus:outline-none"
+              class="w-full bg-transparent form-input"
               :class="task.doc.due_date ? 'text-gray-700' : 'text-gray-500'"
               :value="task.doc.due_date"
               @change="
                 (e) => {
-                  task.doc.due_date = e.target.value
                   task.setValue.submit({
-                    due_date: task.doc.due_date,
+                    due_date: e.target.value,
                   })
                 }
               "
@@ -112,9 +109,8 @@
   </div>
 </template>
 <script>
-import { Avatar, TextEditor } from 'frappe-ui'
+import { Avatar, TextEditor, Autocomplete } from 'frappe-ui'
 import CommentsArea from './CommentsArea.vue'
-import AssignUser from '@/components/AssignUser.vue'
 
 export default {
   name: 'ProjectTaskDetail',
@@ -123,7 +119,7 @@ export default {
     TextEditor,
     Avatar,
     CommentsArea,
-    AssignUser,
+    Autocomplete,
   },
   resources: {
     task() {
@@ -140,6 +136,15 @@ export default {
                 }
               }
               return bySection
+            })
+          },
+          onError(e) {
+            let message = e.messages ? e.messages.join('\n') : e.message
+            this.$toast({
+              title: 'Task Update Error',
+              text: message,
+              icon: 'alert-circle',
+              iconClasses: 'text-red-600',
             })
           },
         },
@@ -164,6 +169,14 @@ export default {
   computed: {
     task() {
       return this.$resources.task
+    },
+    assignableUsers() {
+      return Object.values(this.$users.data)
+        .filter((user) => user.name != this.task.doc.assigned_to)
+        .map((user) => ({
+          label: user.full_name,
+          value: user.name,
+        }))
     },
   },
 }
