@@ -139,11 +139,6 @@ def delete_group(project, group):
 
 
 @frappe.whitelist()
-def project_activities(project):
-	return frappe.get_doc("Team Project", project).get_activities()
-
-
-@frappe.whitelist()
 def get_system_users():
 	return frappe.db.get_all(
 		"User",

@@ -148,7 +148,7 @@
                 inactive="text-gray-600 hover:bg-gray-50 hover:text-gray-900"
               >
                 <button
-                  @click="
+                  @click.prevent="
                     () => {
                       team.open = !team.open
                       if (team.projects.data == null) {
@@ -284,7 +284,7 @@ export default {
       doctype: 'Team',
       fields: ['name', 'title', 'icon', 'modified', 'creation'],
       order_by: 'creation asc',
-      cache: 'teams',
+      cache: 'Sidebar Teams',
       transform(data) {
         return data.map((team) => {
           return {
@@ -307,7 +307,7 @@ export default {
         params: {
           doctype: 'Team Project',
           filters: { team },
-          fields: ['name', 'title', 'icon'],
+          fields: ['name', 'title', 'icon', 'team'],
           order_by: 'creation asc',
         },
         cache: ['Team Project List', team],
@@ -316,6 +316,7 @@ export default {
             project.route = {
               name: 'ProjectDetailOverview',
               params: {
+                teamId: project.team,
                 projectId: project.name,
               },
             }

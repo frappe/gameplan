@@ -172,6 +172,18 @@ class TeamProject(ManageMembersMixin, Document):
 				"Team Task", task.name, {"idx": task.idx, "project_section": task.project_section}
 			)
 
+	@frappe.whitelist()
+	def move_to_team(self, team):
+		if not team or self.team == team:
+			return
+
+		self.team = team
+		for task in frappe.db.get_all("Team Task", {"project": self.name}, pluck="name"):
+			task_doc = frappe.get_doc("Task", task)
+			task_doc.team = self.team
+			task_doc.save()
+		self.save()
+
 
 def get_meta_tags(url):
 	response = requests.get(url, timeout=2, allow_redirects=True)

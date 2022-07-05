@@ -61,6 +61,11 @@
                   :button="{ icon: 'more-horizontal', appearance: 'minimal' }"
                   :options="[
                     {
+                      label: 'Move to another team',
+                      icon: 'log-out',
+                      handler: () => (projectMoveDialog.show = true),
+                    },
+                    {
                       label: 'Delete this project',
                       icon: 'trash-2',
                       handler: () => (projectDeleteDialog = true),
@@ -102,6 +107,66 @@
           <Button @click="projectDeleteDialog = false">Cancel</Button>
         </template>
       </Dialog>
+      <Dialog
+        :options="{
+          title: 'Move project to another team',
+        }"
+        @close="
+          () => {
+            projectMoveDialog.team = null
+            $resources.team.moveToTeam.reset()
+          }
+        "
+        v-model="projectMoveDialog.show"
+      >
+        <template #body-content>
+          <Autocomplete
+            :options="
+              $getListResource('Sidebar Teams')
+                .data.filter((d) => d.name != team.doc.name)
+                .map((d) => ({
+                  label: d.title,
+                  value: d.name,
+                }))
+            "
+            v-model="projectMoveDialog.team"
+          />
+          <ErrorMessage
+            class="mt-2"
+            :message="$resources.project.moveToTeam.error"
+          />
+        </template>
+        <template #actions>
+          <Button
+            appearance="primary"
+            :loading="$resources.project.moveToTeam.loading"
+            @click="
+              () => {
+                $resources.project.moveToTeam.submit(
+                  { team: projectMoveDialog.team?.value },
+                  {
+                    validate() {
+                      if (!projectMoveDialog.team?.value) {
+                        return 'Team is required to move this project'
+                      }
+                    },
+                    onSuccess() {
+                      onProjectMove()
+                    },
+                  }
+                )
+              }
+            "
+          >
+            {{
+              projectMoveDialog.team
+                ? `Move to ${projectMoveDialog.team.label}`
+                : 'Move'
+            }}
+          </Button>
+          <Button @click="projectMoveDialog.show = false">Cancel</Button>
+        </template>
+      </Dialog>
     </header>
     <div class="flex flex-col flex-1 h-full min-h-0" v-if="project">
       <router-view class="flex-1 h-full" :project="$resources.project" />
@@ -109,7 +174,7 @@
   </div>
 </template>
 <script>
-import { Dropdown, Spinner } from 'frappe-ui'
+import { Autocomplete, Dropdown, Spinner } from 'frappe-ui'
 import Pie from '@/components/Pie.vue'
 import ProjectDetailTasks from './ProjectDetailTasks.vue'
 import IconPicker from '@/components/IconPicker.vue'
@@ -129,14 +194,16 @@ export default {
     Links,
     Tabs,
     Breadcrumbs,
+    Autocomplete,
   },
   data() {
     return {
       projectDeleteDialog: false,
+      projectMoveDialog: { show: false, team: null },
     }
   },
   mounted() {
-    this.$getListResource('teams').setData((teams) => {
+    this.$getListResource('Sidebar Teams').setData((teams) => {
       for (let team of teams) {
         if (team.name === this.team.doc.name) {
           team.open = true
@@ -161,6 +228,7 @@ export default {
           createSection: 'create_section',
           deleteSection: 'delete_section',
           updateTasksOrder: 'update_tasks_order',
+          moveToTeam: 'move_to_team',
         },
         transform(project) {
           project.sections.map((section) => {
@@ -215,6 +283,24 @@ export default {
     },
   },
   methods: {
+    onProjectMove() {
+      this.projectMoveDialog.show = false
+      this.$getListResource(['Team Projects', this.team.doc.name])?.reload()
+      let teams = this.$getListResource('Sidebar Teams')
+      for (let team of teams.data) {
+        if (
+          [this.team.doc.name, this.projectMoveDialog.team.value].includes(
+            team.name
+          )
+        ) {
+          team.projects.reload()
+        }
+      }
+      this.$router.push({
+        name: 'TeamPageHome',
+        params: { teamId: this.projectMoveDialog.team.value },
+      })
+    },
     tabLinkClasses($route, link) {
       let active = false
       if (link.route.name === $route.name) {
