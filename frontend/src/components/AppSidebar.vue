@@ -156,7 +156,7 @@
                       }
                     }
                   "
-                  class="w-4 h-4 mr-2 rounded hover:bg-gray-100"
+                  class="grid w-5 h-5 mr-2 rounded place-items-center hover:bg-gray-200"
                 >
                   <FeatherIcon
                     :name="team.open ? 'chevron-down' : 'chevron-right'"
@@ -175,7 +175,7 @@
               <div v-show="team.open">
                 <Links
                   :links="team.projects.data || []"
-                  class="flex items-center py-2 pl-8 pr-2 font-medium rounded-md"
+                  class="flex items-center py-1.5 mt-0.5 pl-12 pr-2 font-medium rounded-md"
                   active="bg-white text-gray-900"
                   inactive="text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                 >
@@ -186,7 +186,7 @@
                       >
                         {{ link.icon }}
                       </span>
-                      <span class="text-lg">{{ link.title }}</span>
+                      <span class="text-base">{{ link.title }}</span>
                     </span>
                   </template>
                 </Links>
