@@ -246,7 +246,10 @@
                             class="w-[15%] flex flex-shrink-0"
                             :class="isTaskOpen && 'hidden'"
                           >
-                            <div class="flex items-center space-x-1">
+                            <div
+                              class="flex items-center space-x-1"
+                              v-if="task.assigned_to"
+                            >
                               <Avatar
                                 size="sm"
                                 :imageURL="$user(task.assigned_to).user_image"

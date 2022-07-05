@@ -53,7 +53,7 @@
           </div>
           <span class="text-gray-900">
             <Autocomplete
-              class="placeholder-gray-500 bg-transparent"
+              class="bg-transparent"
               placeholder="Assign a user"
               :options="assignableUsers"
               :value="task.doc.assigned_to"

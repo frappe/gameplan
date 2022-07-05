@@ -130,6 +130,7 @@
                 }))
             "
             v-model="projectMoveDialog.team"
+            placeholder="Select a team"
           />
           <ErrorMessage
             class="mt-2"
