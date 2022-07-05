@@ -98,7 +98,7 @@ import Reactions from './Reactions.vue'
 import CommentsArea from '../pages/CommentsArea.vue'
 
 export default {
-  name: 'ProjectStatusUpdatesView',
+  name: 'DiscussionView',
   props: ['postId'],
   components: { TextEditor, Avatar, Reactions, CommentsArea },
   resources: {

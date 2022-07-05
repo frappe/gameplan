@@ -74,7 +74,7 @@ import Reactions from '@/components/Reactions.vue'
 import { htmlToText } from 'html-to-text'
 
 export default {
-  name: 'ProjectStatusUpdates',
+  name: 'DiscussionList',
   props: ['filters', 'routeName'],
   components: {
     TextEditor,

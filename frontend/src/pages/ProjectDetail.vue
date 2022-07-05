@@ -272,7 +272,9 @@ export default {
           class: this.tabLinkClasses,
         },
         {
-          name: 'Tasks',
+          name: this.$resources.project.doc.summary.total_tasks
+            ? `Tasks (${this.$resources.project.doc.summary.pending_tasks}/${this.$resources.project.doc.summary.total_tasks})`
+            : 'Tasks',
           // icon: 'check-square',
           route: {
             name: 'ProjectDetailTasks',

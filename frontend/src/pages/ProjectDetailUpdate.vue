@@ -10,14 +10,14 @@
           New Discussion
         </Button>
       </div>
-      <ProjectStatusUpdates
+      <DiscussionList
         :filters="{ project: project.doc.name }"
         routeName="ProjectDetailUpdate"
       />
     </div>
     <div class="w-7/12 overflow-auto border-l">
       <ProjectDetailUpdateNew v-if="postId == 'new'" :project="project" />
-      <ProjectStatusUpdatesView v-else :postId="postId" />
+      <DiscussionView v-else :postId="postId" />
     </div>
   </div>
 </template>
@@ -25,8 +25,8 @@
 import { Avatar, TextEditor } from 'frappe-ui'
 import Link from '@/components/Link.vue'
 import Reactions from '@/components/Reactions.vue'
-import ProjectStatusUpdates from '@/components/ProjectStatusUpdates.vue'
-import ProjectStatusUpdatesView from '@/components/ProjectStatusUpdatesView.vue'
+import DiscussionList from '@/components/DiscussionList.vue'
+import DiscussionView from '@/components/DiscussionView.vue'
 import ProjectDetailUpdateNew from './ProjectDetailUpdateNew.vue'
 
 export default {
@@ -37,8 +37,8 @@ export default {
     Avatar,
     Link,
     Reactions,
-    ProjectStatusUpdates,
-    ProjectStatusUpdatesView,
+    DiscussionList,
+    DiscussionView,
     ProjectDetailUpdateNew,
   },
   methods: {
