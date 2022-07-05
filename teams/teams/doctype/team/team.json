@@ -58,7 +58,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-06-08 19:16:49.271429",
+ "modified": "2022-07-05 15:55:07.786986",
  "modified_by": "Administrator",
  "module": "Teams",
  "name": "Team",
@@ -92,5 +92,6 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "track_changes": 1
 }

@@ -19,7 +19,8 @@
   "project_section",
   "project_section_title",
   "team",
-  "team_title"
+  "team_title",
+  "assigned_to"
  ],
  "fields": [
   {
@@ -109,11 +110,17 @@
    "fieldtype": "Data",
    "label": "Project Section Title",
    "read_only": 1
+  },
+  {
+   "fieldname": "assigned_to",
+   "fieldtype": "Link",
+   "label": "Assigned To",
+   "options": "User"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-06-08 19:18:57.080560",
+ "modified": "2022-07-05 15:55:15.048621",
  "modified_by": "Administrator",
  "module": "Teams",
  "name": "Team Task",
@@ -147,5 +154,6 @@
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
- "title_field": "title"
+ "title_field": "title",
+ "track_changes": 1
 }

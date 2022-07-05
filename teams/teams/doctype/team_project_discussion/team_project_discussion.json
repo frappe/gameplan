@@ -57,7 +57,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-07-03 19:20:05.072036",
+ "modified": "2022-07-05 15:55:22.026710",
  "modified_by": "Administrator",
  "module": "Teams",
  "name": "Team Project Discussion",
@@ -90,5 +90,6 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "track_changes": 1
 }

@@ -105,7 +105,7 @@
    "link_fieldname": "project"
   }
  ],
- "modified": "2022-06-08 19:19:51.711743",
+ "modified": "2022-07-05 15:55:00.715488",
  "modified_by": "Administrator",
  "module": "Teams",
  "name": "Team Project",
@@ -139,5 +139,6 @@
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
- "title_field": "title"
+ "title_field": "title",
+ "track_changes": 1
 }
