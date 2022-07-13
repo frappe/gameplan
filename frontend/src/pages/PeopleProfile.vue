@@ -46,11 +46,6 @@ export default {
         type: 'document',
         doctype: 'Team User Profile',
         name: this.user,
-        setValue: {
-          onSuccess: () => {
-            this.$getListResource('People').reload()
-          },
-        },
       }
     },
   },

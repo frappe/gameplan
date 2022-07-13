@@ -3,7 +3,7 @@
     <div class="flex items-center w-full">
       <div class="flex items-center space-x-2">
         <IconPicker
-          v-model="team.doc.icon"
+          :modelValue="team.doc.icon"
           @update:modelValue="updateTeamIcon"
           :set-default="true"
         >
@@ -70,14 +70,6 @@ export default {
   methods: {
     updateTeamIcon(icon) {
       this.team.setValue.submit({ icon })
-      this.$getListResource('teams').setData((teams) => {
-        for (let team of teams) {
-          if (team.name == this.team.name) {
-            team.icon = icon
-          }
-        }
-        return teams
-      })
     },
     deleteTeam() {
       this.$dialog({
