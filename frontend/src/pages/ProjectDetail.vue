@@ -213,17 +213,15 @@ export default {
     }
   },
   mounted() {
-    this.$getListResource('Sidebar Teams').setData((teams) => {
-      for (let team of teams) {
-        if (team.name === this.team.doc.name) {
-          team.open = true
-          if (!team.projects.data) {
-            team.projects.fetch()
-          }
+    let teams = this.$getListResource('Sidebar Teams')
+    for (let team of teams.data) {
+      if (team.name === this.team.doc.name) {
+        team.open = true
+        if (!team.projects.data) {
+          team.projects.fetch()
         }
       }
-      return teams
-    })
+    }
   },
   resources: {
     project() {
