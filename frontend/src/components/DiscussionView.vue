@@ -22,7 +22,10 @@
               </router-link>
             </span>
             &middot;
-            <span class="text-base text-gray-600">
+            <span
+              class="text-base text-gray-600"
+              :title="$dayjs(update.creation)"
+            >
               {{ $dayjs(update.creation).fromNow() }}
             </span>
           </div>

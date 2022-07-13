@@ -1,5 +1,5 @@
 <template>
-  <div class="h-full space-y-5">
+  <div class="h-full divide-y">
     <template v-for="d in $resources.updates.data" :key="d.name">
       <router-link
         :to="{
@@ -7,7 +7,7 @@
           params: { postId: d.name },
           replace: true,
         }"
-        class="block p-3 border rounded-xl"
+        class="block p-3"
         :class="isActive(d) ? 'bg-gray-100' : 'hover:bg-gray-50'"
       >
         <div class="flex items-center space-x-4">
@@ -22,7 +22,11 @@
             <template v-slot="{ user }">
               <div class="flex items-start w-full">
                 <div>
-                  <div class="text-base text-gray-900">
+                  <div class="text-xl font-semibold leading-snug">
+                    {{ d.title }}
+                  </div>
+                  <div class="mt-1 text-base text-gray-900">
+                    by
                     {{ user.full_name }}
                     <template v-if="!filters">
                       <span class="text-gray-600">in&nbsp;</span>
@@ -37,31 +41,19 @@
                         {{ d.project_title }}
                       </router-link>
                     </template>
-                  </div>
-                  <div
-                    class="text-base text-gray-600"
-                    :title="$dayjs(d.creation)"
-                  >
-                    {{ $dayjs(d.creation).fromNow() }}
+                    <span
+                      class="text-base text-gray-600"
+                      :title="$dayjs(d.creation)"
+                    >
+                      &middot;
+                      {{ $dayjs(d.creation).fromNow() }}
+                    </span>
                   </div>
                 </div>
               </div>
             </template>
           </UserInfo>
         </div>
-        <div class="mt-3 text-xl font-semibold">
-          {{ d.title }}
-        </div>
-        <div class="mt-3 overflow-hidden prose-sm prose max-h-12">
-          {{ summary(d.content) }}
-        </div>
-
-        <Reactions
-          class="mt-3"
-          v-model:reactions="d.reactions"
-          doctype="Team Project Discussion"
-          :name="d.name"
-        />
       </router-link>
     </template>
     <div class="h-10"></div>
@@ -69,9 +61,6 @@
 </template>
 <script>
 import { Avatar, TextEditor } from 'frappe-ui'
-import Link from '@/components/Link.vue'
-import Reactions from '@/components/Reactions.vue'
-import { htmlToText } from 'html-to-text'
 
 export default {
   name: 'DiscussionList',
@@ -79,8 +68,6 @@ export default {
   components: {
     TextEditor,
     Avatar,
-    Link,
-    Reactions,
   },
   resources: {
     updates() {
@@ -143,18 +130,6 @@ export default {
     },
     isActive(update) {
       return this.$route.params.postId === update.name
-    },
-    summary(content) {
-      return htmlToText(content, {
-        selectors: [
-          { selector: 'h1', options: { uppercase: false } },
-          { selector: 'h2', options: { uppercase: false } },
-          { selector: 'h3', options: { uppercase: false } },
-          { selector: 'h4', options: { uppercase: false } },
-          { selector: 'h5', options: { uppercase: false } },
-          { selector: 'h6', options: { uppercase: false } },
-        ],
-      })
     },
   },
 }
