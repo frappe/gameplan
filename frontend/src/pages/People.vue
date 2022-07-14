@@ -1,44 +1,46 @@
 <template>
   <div class="flex flex-col h-full">
     <div class="flex flex-1 min-h-0">
-      <div class="w-1/3 overflow-auto">
+      <div class="w-full overflow-auto" v-if="!selectedUser">
         <div class="py-6 pl-6 space-y-2">
           <h1 class="mb-6 text-6xl font-bold leading-7 text-gray-900">
             People
           </h1>
-          <div v-for="user in $resources.users.data" :key="user.name">
-            <router-link
-              :to="{
-                name: 'People',
-                params: {
-                  person: $user().name === user.user ? 'profile' : user.name,
-                },
-              }"
-              class="flex items-center w-full p-4 border rounded-xl hover:bg-gray-50"
-              exact-active-class="!bg-gray-100"
-            >
-              <Avatar :label="user.full_name" :imageURL="user.user_image" />
-              <div class="ml-2">
-                <div class="text-lg text-gray-900">{{ user.full_name }}</div>
-                <div class="text-base text-gray-600">{{ user.email }}</div>
-              </div>
-              <Badge
-                class="ml-auto"
-                :class="$route.params.person === user.name ? 'bg-white' : ''"
-                :color="{
-                  green: user.status == 'Available',
-                  yellow: user.status == 'Away',
-                  red: user.status == 'Busy',
+          <div class="divide-y">
+            <div v-for="user in $resources.users.data" :key="user.name">
+              <router-link
+                :to="{
+                  name: 'People',
+                  params: {
+                    person: $user().name === user.user ? 'profile' : user.name,
+                  },
                 }"
+                class="flex items-center w-full p-4 hover:bg-gray-50"
+                exact-active-class="!bg-gray-100"
               >
-                {{ user.status }}
-              </Badge>
-            </router-link>
+                <Avatar :label="user.full_name" :imageURL="user.user_image" />
+                <div class="ml-2">
+                  <div class="text-lg text-gray-900">{{ user.full_name }}</div>
+                  <div class="text-base text-gray-600">{{ user.email }}</div>
+                </div>
+                <Badge
+                  class="ml-auto"
+                  :class="$route.params.person === user.name ? 'bg-white' : ''"
+                  :color="{
+                    green: user.status == 'Available',
+                    yellow: user.status == 'Away',
+                    red: user.status == 'Busy',
+                  }"
+                >
+                  {{ user.status }}
+                </Badge>
+              </router-link>
+            </div>
           </div>
         </div>
       </div>
-      <div class="w-2/3 overflow-auto">
-        <PeopleProfile v-if="selectedUser" :user="selectedUser" />
+      <div class="w-full overflow-auto" v-else>
+        <PeopleProfile :user="selectedUser" />
       </div>
     </div>
   </div>

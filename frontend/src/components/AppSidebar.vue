@@ -112,7 +112,7 @@
             <Links
               :links="navigation"
               class="flex items-center px-2 py-2 font-medium rounded-md"
-              active="bg-white text-gray-900"
+              active="bg-gray-200 text-gray-900"
               inactive="text-gray-600 hover:bg-gray-50 hover:text-gray-900"
             >
               <template v-slot="{ link }">
