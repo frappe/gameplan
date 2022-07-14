@@ -1,7 +1,7 @@
 <template>
   <div>
-    <div class="flex items-center justify-between space-x-2">
-      <h2 class="text-2xl font-bold text-gray-900">Projects</h2>
+    <div class="flex items-center justify-between mb-2 space-x-2">
+      <h2 class="text-lg text-gray-900">Projects</h2>
       <Button
         v-if="$resources.projects.data?.length"
         iconLeft="plus"
@@ -10,7 +10,7 @@
         Add Project
       </Button>
     </div>
-    <ul role="list" class="mt-5 space-y-2.5 empty:py-0">
+    <ul role="list" class="grid grid-cols-3 gap-4">
       <li
         v-for="project in $resources.projects.data"
         :key="project.name"

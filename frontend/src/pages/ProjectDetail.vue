@@ -1,89 +1,87 @@
 <template>
-  <div class="flex flex-col h-full">
+  <div class="flex flex-col h-full px-6 pt-8">
     <header class="sticky top-0 z-10 bg-white">
-      <div class="pt-8 border-b" v-if="project">
-        <div class="px-6">
-          <div class="flex items-start space-x-2">
-            <IconPicker
-              ref="projectIconPicker"
-              v-model="project.icon"
-              @update:modelValue="
-                (icon) => $resources.project.setValue.submit({ icon })
-              "
-              :set-default="true"
-            >
-              <template v-slot="{ open }">
-                <div
-                  class="p-px leading-none rounded-md text-[30px] focus:outline-none"
-                  :class="open ? 'bg-gray-200' : 'hover:bg-gray-100'"
-                >
-                  {{ project.icon || '' }}
-                </div>
-              </template>
-            </IconPicker>
-            <div>
-              <div class="flex items-center space-x-2">
-                <Popover ref="editTitlePopup" :hideOnBlur="false">
-                  <template #target>
-                    <h1
-                      class="text-6xl font-bold leading-8"
-                      :title="`${Math.round(project.progress)}% complete`"
-                    >
-                      {{ project.title }}
-                    </h1>
-                  </template>
-                  <template #body-main>
-                    <div class="p-2">
-                      <div class="flex items-end space-x-1">
-                        <Input
-                          label="Edit title and hit enter"
-                          type="text"
-                          placeholder="Project title"
-                          :value="project.title"
-                          @keydown.enter="
-                            (e) => {
-                              if (e.target.value) {
-                                $resources.project.setValue.submit({
-                                  title: e.target.value,
-                                })
-                              }
-                              $refs.editTitlePopup.close()
-                            }
-                          "
-                        />
-                        <Button @click="() => $refs.editTitlePopup.close()">
-                          Cancel
-                        </Button>
-                      </div>
-                    </div>
-                  </template>
-                </Popover>
-                <Dropdown
-                  placement="left"
-                  :button="{ icon: 'more-horizontal', appearance: 'minimal' }"
-                  :options="[
-                    {
-                      label: 'Edit Title',
-                      icon: 'edit',
-                      handler: () => $refs.editTitlePopup.open(),
-                    },
-                    {
-                      label: 'Move to another team',
-                      icon: 'log-out',
-                      handler: () => (projectMoveDialog.show = true),
-                    },
-                    {
-                      label: 'Delete this project',
-                      icon: 'trash-2',
-                      handler: () => (projectDeleteDialog = true),
-                    },
-                  ]"
-                />
+      <div class="border-b" v-if="project">
+        <div class="flex items-start space-x-2">
+          <IconPicker
+            ref="projectIconPicker"
+            v-model="project.icon"
+            @update:modelValue="
+              (icon) => $resources.project.setValue.submit({ icon })
+            "
+            :set-default="true"
+          >
+            <template v-slot="{ open }">
+              <div
+                class="p-px leading-none rounded-md text-[30px] focus:outline-none"
+                :class="open ? 'bg-gray-200' : 'hover:bg-gray-100'"
+              >
+                {{ project.icon || '' }}
               </div>
-              <Tabs :tabs="tabs" class="border-none" />
+            </template>
+          </IconPicker>
+          <div>
+            <div class="flex items-center space-x-2">
+              <Popover ref="editTitlePopup" :hideOnBlur="false">
+                <template #target>
+                  <h1
+                    class="text-6xl font-bold leading-8"
+                    :title="`${Math.round(project.progress)}% complete`"
+                  >
+                    {{ project.title }}
+                  </h1>
+                </template>
+                <template #body-main>
+                  <div class="p-2">
+                    <div class="flex items-end space-x-1">
+                      <Input
+                        label="Edit title and hit enter"
+                        type="text"
+                        placeholder="Project title"
+                        :value="project.title"
+                        @keydown.enter="
+                          (e) => {
+                            if (e.target.value) {
+                              $resources.project.setValue.submit({
+                                title: e.target.value,
+                              })
+                            }
+                            $refs.editTitlePopup.close()
+                          }
+                        "
+                      />
+                      <Button @click="() => $refs.editTitlePopup.close()">
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                </template>
+              </Popover>
+              <Dropdown
+                placement="left"
+                :button="{ icon: 'more-horizontal', appearance: 'minimal' }"
+                :options="[
+                  {
+                    label: 'Edit Title',
+                    icon: 'edit',
+                    handler: () => $refs.editTitlePopup.open(),
+                  },
+                  {
+                    label: 'Move to another team',
+                    icon: 'log-out',
+                    handler: () => (projectMoveDialog.show = true),
+                  },
+                  {
+                    label: 'Delete this project',
+                    icon: 'trash-2',
+                    handler: () => (projectDeleteDialog = true),
+                  },
+                ]"
+              />
             </div>
           </div>
         </div>
+        <Tabs :tabs="tabs" class="border-none" />
       </div>
       <Dialog
         :options="{
@@ -273,8 +271,12 @@ export default {
           name: 'Discussions',
           // icon: 'server',
           route: {
-            name: 'ProjectDetailUpdate',
+            name: 'ProjectDetailDiscussions',
             params: { teamId: this.team.doc.name, projectId: this.projectId },
+            activeForRoutes: [
+              'ProjectDetailDiscussions',
+              'ProjectDetailDiscussion',
+            ],
           },
           class: this.tabLinkClasses,
         },
@@ -325,7 +327,13 @@ export default {
         active = true
       } else if ($route.fullPath === link.route) {
         active = true
-      } else if ($route.matched.map((r) => r.name).includes(link.route.name)) {
+      } else if (
+        $route.matched.some(
+          (r) =>
+            (link.route.activeForRoutes || []).includes(r.name) ||
+            r.name == link.route.name
+        )
+      ) {
         active = true
       }
 

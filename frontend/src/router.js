@@ -39,10 +39,9 @@ const routes = [
     component: () => import('@/pages/Tasks.vue'),
   },
   {
-    path: '/home/:postId?',
+    path: '/home',
     name: 'Home',
     component: () => import('@/pages/Home.vue'),
-    props: true,
   },
   {
     path: '/people/:person?',
@@ -78,9 +77,19 @@ const routes = [
             component: () => import('@/pages/ProjectDetailOverview.vue'),
           },
           {
-            name: 'ProjectDetailUpdate',
-            path: 'discussion/:postId?',
-            component: () => import('@/pages/ProjectDetailUpdate.vue'),
+            name: 'ProjectDetailDiscussions',
+            path: 'discussions',
+            component: () => import('@/pages/ProjectDetailDiscussions.vue'),
+          },
+          {
+            name: 'ProjectDetailDiscussionNew',
+            path: 'discussions/new',
+            component: () => import('@/pages/ProjectDetailDiscussionNew.vue'),
+          },
+          {
+            name: 'ProjectDetailDiscussion',
+            path: 'discussion/:postId',
+            component: () => import('@/pages/ProjectDetailDiscussion.vue'),
             props: true,
           },
           {

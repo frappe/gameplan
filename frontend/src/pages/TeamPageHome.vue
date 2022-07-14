@@ -38,12 +38,11 @@
       </div>
     </div>
 
-    <div class="grid grid-cols-10 gap-6 mt-6">
-      <div class="col-span-7 space-y-6">
+    <div class="mt-6 space-y-4">
+      <TeamPageHomeProjects :team="team" />
+      <div>
+        <h2 class="mb-2 text-lg text-gray-900">Readme</h2>
         <ReadmeEditor :resource="team" fieldname="readme" />
-      </div>
-      <div class="col-span-3">
-        <TeamPageHomeProjects :team="team" />
       </div>
     </div>
   </div>

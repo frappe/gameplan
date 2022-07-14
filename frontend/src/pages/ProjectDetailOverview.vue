@@ -1,11 +1,8 @@
 <template>
-  <div class="px-6 mt-6">
-    <div class="grid grid-cols-8 gap-6">
-      <div class="col-span-6 space-y-5">
-        <ProjectDetailOverviewSummary :project="project" />
-        <ProjectDetailOverviewReadme :project="project" />
-      </div>
-      <!-- <ProjectDetailOverviewMembers class="col-span-2" :project="project" /> -->
+  <div class="mt-6">
+    <div class="space-y-5">
+      <ProjectDetailOverviewSummary :project="project" />
+      <ProjectDetailOverviewReadme :project="project" />
     </div>
   </div>
 </template>

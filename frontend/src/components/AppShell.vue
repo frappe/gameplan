@@ -1,5 +1,5 @@
 <template>
-  <div class="h-full" v-if="usersResource.data">
+  <div class="container h-full" v-if="usersResource.data">
     <AppSidebar v-model:sidebarOpen="sidebarOpen" />
     <div class="flex flex-col flex-1 h-full md:pl-64">
       <div

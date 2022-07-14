@@ -1,23 +1,16 @@
 <template>
   <div class="flex">
-    <div class="w-5/12 h-full px-6 py-6 overflow-auto">
+    <div class="w-full h-full py-6 overflow-auto">
       <div class="flex items-center justify-between mb-5">
         <h1 class="text-2xl font-semibold">All Discussions</h1>
-        <Button
-          iconLeft="plus"
-          :route="{ name: 'ProjectDetailUpdate', params: { postId: 'new' } }"
-        >
+        <Button iconLeft="plus" :route="{ name: 'ProjectDetailDiscussionNew' }">
           New Discussion
         </Button>
       </div>
       <DiscussionList
         :filters="{ project: project.doc.name }"
-        routeName="ProjectDetailUpdate"
+        routeName="ProjectDetailDiscussion"
       />
-    </div>
-    <div class="w-7/12 overflow-auto border-l">
-      <ProjectDetailUpdateNew v-if="postId == 'new'" :project="project" />
-      <DiscussionView v-else :postId="postId" />
     </div>
   </div>
 </template>
@@ -27,10 +20,9 @@ import Link from '@/components/Link.vue'
 import Reactions from '@/components/Reactions.vue'
 import DiscussionList from '@/components/DiscussionList.vue'
 import DiscussionView from '@/components/DiscussionView.vue'
-import ProjectDetailUpdateNew from './ProjectDetailUpdateNew.vue'
 
 export default {
-  name: 'ProjectDetailUpdate',
+  name: 'ProjectDetailDiscussions',
   props: ['project', 'postId'],
   components: {
     TextEditor,
@@ -39,7 +31,6 @@ export default {
     Reactions,
     DiscussionList,
     DiscussionView,
-    ProjectDetailUpdateNew,
   },
   methods: {
     isActive(update) {

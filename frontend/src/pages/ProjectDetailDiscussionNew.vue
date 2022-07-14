@@ -20,7 +20,7 @@
         >
           Publish
         </Button>
-        <Button :route="{ name: 'ProjectDetailUpdate' }">Discard</Button>
+        <Button :route="{ name: 'ProjectDetailDiscussions' }">Discard</Button>
       </div>
     </div>
     <div class="mt-3">

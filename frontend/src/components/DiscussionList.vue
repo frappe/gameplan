@@ -4,8 +4,7 @@
       <router-link
         :to="{
           name: this.routeName,
-          params: { postId: d.name },
-          replace: true,
+          params: { teamId: d.team, projectId: d.project, postId: d.name },
         }"
         class="block p-3"
         :class="isActive(d) ? 'bg-gray-100' : 'hover:bg-gray-50'"

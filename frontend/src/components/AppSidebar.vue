@@ -95,18 +95,14 @@
           </div>
         </div>
       </TransitionChild>
-      <div class="flex-shrink-0 w-14">
-        <!-- Force sidebar to shrink to fit close icon -->
-      </div>
+      <div class="flex-shrink-0 w-14"></div>
     </Dialog>
   </TransitionRoot>
 
   <!-- Static sidebar for desktop -->
   <div class="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0">
     <!-- Sidebar component, swap this element with another sidebar if you like -->
-    <div
-      class="flex flex-col flex-1 min-h-0 bg-gray-100 border-r border-gray-200"
-    >
+    <div class="flex flex-col flex-1 min-h-0">
       <div class="flex flex-col flex-1 pt-5 pb-4 overflow-y-auto">
         <div class="grid px-2">
           <UserDropdown />
@@ -144,7 +140,7 @@
               <Link
                 :link="team"
                 class="flex items-center px-2 py-2 font-medium rounded-md"
-                exact-active="bg-white text-gray-900"
+                exact-active="bg-gray-200 text-gray-900"
                 inactive="text-gray-600 hover:bg-gray-50 hover:text-gray-900"
               >
                 <button
@@ -176,7 +172,7 @@
                 <Links
                   :links="team.projects.data || []"
                   class="flex items-center py-1.5 mt-0.5 pl-12 pr-2 font-medium rounded-md"
-                  active="bg-white text-gray-900"
+                  active="bg-gray-200 text-gray-900"
                   inactive="text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                 >
                   <template v-slot="{ link }">
