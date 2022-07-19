@@ -87,32 +87,8 @@ export default {
           'project',
           'project.title as project_title',
           'team.title as team_title',
-          'reactions.name as reaction_name',
-          'reactions.emoji as reaction_emoji',
-          'reactions.owner as reaction_owner',
         ],
-        order_by: 'creation desc',
-        transform(data) {
-          let order = []
-          let updates = {}
-          for (let d of data) {
-            if (!order.includes(d.name)) {
-              order.push(d.name)
-            }
-            if (!updates[d.name]) {
-              updates[d.name] = d
-              updates[d.name].reactions = []
-            }
-            if (d.reaction_emoji) {
-              updates[d.name].reactions.push({
-                name: d.reaction_name,
-                emoji: d.reaction_emoji,
-                owner: d.reaction_owner,
-              })
-            }
-          }
-          return order.map((d) => updates[d])
-        },
+        order_by: 'modified desc',
       }
     },
   },

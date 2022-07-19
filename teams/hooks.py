@@ -116,7 +116,8 @@ website_route_rules = [
 
 doc_events = {
 	"User": {
-		"after_insert": "teams.teams.doctype.team_user_profile.team_user_profile.create_user_profile"
+		"after_insert": "teams.teams.doctype.team_user_profile.team_user_profile.create_user_profile",
+		"on_trash": "teams.teams.doctype.team_user_profile.team_user_profile.delete_user_profile"
 	}
 }
 

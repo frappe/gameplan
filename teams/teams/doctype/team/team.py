@@ -34,16 +34,6 @@ class Team(ManageMembersMixin, Document):
 			self.readme = f"""
 			<h3>Welcome to the {self.title} team page!</h3>
 			<p>You can add a brief introduction about the team, important links, resources, and other important information here.</p>
-
-			<h3>About the team</h3>
-			<p>This team is about...</p>
-
-			<h3>Team Goals</h3>
-			<ul>
-				<li>Excellence in everything we do...</li>
-				<li>Collaboration and communication...</li>
-				<li>To...</li>
-			</ul>
 		"""
 
 		if not self.cover_image:

@@ -17,4 +17,10 @@ class TeamUserProfile(Document):
 
 
 def create_user_profile(doc, method=None):
-	return frappe.get_doc(doctype="Team User Profile", user=doc.name).insert()
+	try:
+		return frappe.get_doc(doctype="Team User Profile", user=doc.name).insert()
+	except:
+		pass
+
+def delete_user_profile(doc, method=None):
+	return frappe.get_doc("Team User Profile", {"user": doc.name}).delete()

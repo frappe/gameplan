@@ -60,7 +60,7 @@ class TeamProject(ManageMembersMixin, Document):
 		)
 
 	def on_trash(self):
-		linked_doctypes = ["Team Task", "Team Project Status Update"]
+		linked_doctypes = ["Team Task", "Team Project Discussion"]
 		for doctype in linked_doctypes:
 			for d in frappe.db.get_all(doctype, {"project": self.name}):
 				frappe.delete_doc(doctype, d.name)
