@@ -27,7 +27,7 @@
                   <div class="mt-1 text-base text-gray-900">
                     <span class="text-gray-600"> by </span>
                     {{ user.full_name }}
-                    <template v-if="!filters">
+                    <template v-if="!filters || !filters.project">
                       <span class="text-gray-600">in&nbsp;</span>
                       <router-link
                         class="hover:text-blue-600"
