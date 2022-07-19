@@ -1,10 +1,10 @@
 {
-  "name": "teams-ui",
+  "name": "gameplan-ui",
   "version": "0.0.0",
   "scripts": {
     "dev": "vite",
-    "build": "vite build --base=/assets/teams/frontend/ && yarn copy-html-entry",
-    "copy-html-entry": "cp ../teams/public/frontend/index.html ../teams/www/teams.html",
+    "build": "vite build --base=/assets/gameplan/frontend/ && yarn copy-html-entry",
+    "copy-html-entry": "cp ../gameplan/public/frontend/index.html ../gameplan/www/teams.html",
     "serve": "vite preview"
   },
   "dependencies": {

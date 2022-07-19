@@ -64,7 +64,7 @@ export default {
   resources: {
     documents() {
       return {
-        method: 'teams.api.get_documents',
+        method: 'gameplan.api.get_documents',
         cache: ['team-documents', this.team.name],
         params: {
           team: this.team.name,
@@ -75,7 +75,7 @@ export default {
     },
     newDocument() {
       return {
-        method: 'teams.api.new_document',
+        method: 'gameplan.api.new_document',
         params: {
           team: this.team.name,
         },

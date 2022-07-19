@@ -25,7 +25,7 @@ export default {
   resources: {
     note() {
       return {
-        method: 'teams.api.daily_note',
+        method: 'gameplan.api.daily_note',
         params: {
           date: this.date,
         },
@@ -38,7 +38,7 @@ export default {
     },
     updateNote() {
       return {
-        method: 'teams.api.update_daily_note',
+        method: 'gameplan.api.update_daily_note',
         makeParams(content) {
           let date = this.$dayjs().format('YYYY-MM-DD')
           return {

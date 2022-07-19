@@ -1,7 +1,7 @@
 import { createResource } from 'frappe-ui'
 
 export let usersResource = createResource({
-  method: 'teams.api.get_user_info',
+  method: 'gameplan.api.get_user_info',
   cache: 'users',
   initialData: {},
 })

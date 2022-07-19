@@ -1,7 +1,7 @@
-## Teams
+## Gameplan
 
-A project management tool with a focus on teams
+Team discussion and collaboration tool
 
 #### License
 
-GNU GPLv3
+AGPLv3

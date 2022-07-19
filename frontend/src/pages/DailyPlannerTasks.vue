@@ -75,7 +75,7 @@ export default {
   resources: {
     allTasks() {
       return {
-        method: 'teams.api.tasks_for_day',
+        method: 'gameplan.api.tasks_for_day',
         params: {
           date: this.date,
         },

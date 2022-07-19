@@ -3,15 +3,15 @@ from setuptools import setup, find_packages
 with open("requirements.txt") as f:
 	install_requires = f.read().strip().split("\n")
 
-# get version from __version__ variable in teams/__init__.py
-from teams import __version__ as version
+# get version from __version__ variable in gameplan/__init__.py
+from gameplan import __version__ as version
 
 setup(
-	name="teams",
+	name="gameplan",
 	version=version,
-	description="A project management tool with a focus on teams",
+	description="Team discussion and collaboration tool",
 	author="Frappe Technologies Pvt Ltd",
-	author_email="hello@frappe.io",
+	author_email="faris@frappe.io",
 	packages=find_packages(),
 	zip_safe=False,
 	include_package_data=True,

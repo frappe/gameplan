@@ -5,7 +5,7 @@
 __pycache__
 tags
 node_modules
-teams/docs/current
-teams/public/frontend
-teams/www/teams.html
+gameplan/docs/current
+gameplan/public/frontend
+gameplan/www/teams.html
 build

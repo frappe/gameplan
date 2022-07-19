@@ -85,7 +85,7 @@ export default {
   resources: {
     images() {
       return {
-        method: 'teams.api.get_unsplash_photos',
+        method: 'gameplan.api.get_unsplash_photos',
         params: { keyword: this.search },
         auto: true,
         debounce: 500,

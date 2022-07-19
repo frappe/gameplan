@@ -1,3 +1,3 @@
-# Teams
+# Gameplan
 
-Project management tool for teams for getting things done.
+Team discussion and collaboration tool

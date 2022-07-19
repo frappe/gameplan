@@ -518,7 +518,7 @@ export default {
     },
     assignTask() {
       return {
-        method: 'teams.api.assign_task',
+        method: 'gameplan.api.assign_task',
         onSuccess() {
           this.$resources.tasks.reload()
         },

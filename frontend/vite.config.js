@@ -19,7 +19,7 @@ export default defineConfig({
     include: ['feather-icons'],
   },
   build: {
-    outDir: '../teams/public/frontend',
+    outDir: '../gameplan/public/frontend',
     emptyOutDir: true,
     target: 'es2015',
   },

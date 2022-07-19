@@ -55,7 +55,7 @@ export default {
   resources: {
     createTeam() {
       return {
-        method: 'teams.api.create_team',
+        method: 'gameplan.api.create_team',
         params: {
           name: this.teamName,
         },

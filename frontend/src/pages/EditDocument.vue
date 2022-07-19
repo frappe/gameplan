@@ -50,7 +50,7 @@ export default {
   resources: {
     document() {
       return {
-        method: 'teams.api.get_document',
+        method: 'gameplan.api.get_document',
         params: {
           name: this.documentId,
         },
@@ -62,7 +62,7 @@ export default {
       }
     },
     updateDocument: {
-      method: 'teams.api.update_document',
+      method: 'gameplan.api.update_document',
     },
   },
   methods: {
