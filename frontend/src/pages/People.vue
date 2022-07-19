@@ -3,9 +3,7 @@
     <div class="flex flex-1 min-h-0">
       <div class="w-full overflow-auto" v-if="!selectedUser">
         <div class="py-6 pl-6 space-y-2">
-          <h1 class="mb-6 text-6xl font-bold leading-7 text-gray-900">
-            People
-          </h1>
+          <h1 class="text-2xl font-semibold">People</h1>
           <div class="divide-y">
             <div v-for="user in $resources.users.data" :key="user.name">
               <router-link

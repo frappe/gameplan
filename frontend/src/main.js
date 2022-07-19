@@ -18,7 +18,7 @@ import './index.css'
 import { dayjs } from '@/utils'
 import { createDialog } from './utils/dialogs'
 import { createToast } from './utils/toasts'
-import { userInfo, usersResource } from './utils/users'
+import { userInfo, usersResource } from './resources/users'
 
 let globalComponents = {
   Button,

@@ -21,11 +21,11 @@
             <template v-slot="{ user }">
               <div class="flex items-start w-full">
                 <div>
-                  <div class="text-xl font-semibold leading-snug">
+                  <div class="text-lg font-medium leading-snug">
                     {{ d.title }}
                   </div>
                   <div class="mt-1 text-base text-gray-900">
-                    by
+                    <span class="text-gray-600"> by </span>
                     {{ user.full_name }}
                     <template v-if="!filters">
                       <span class="text-gray-600">in&nbsp;</span>
@@ -40,10 +40,7 @@
                         {{ d.project_title }}
                       </router-link>
                     </template>
-                    <span
-                      class="text-base text-gray-600"
-                      :title="$dayjs(d.creation)"
-                    >
+                    <span class="text-gray-600" :title="$dayjs(d.creation)">
                       &middot;
                       {{ $dayjs(d.creation).fromNow() }}
                     </span>

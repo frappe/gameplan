@@ -1,6 +1,6 @@
 <template>
   <div class="flex flex-col h-full px-6 pt-8">
-    <header class="sticky top-0 z-10 bg-white">
+    <header class="bg-white">
       <div class="border-b" v-if="project">
         <div class="flex items-start space-x-2">
           <IconPicker

@@ -1,12 +1,8 @@
 <template>
   <div class="flex flex-col h-full" v-if="postId && update">
     <div class="py-6">
-      <div>
-        <h1 class="text-3xl font-bold">{{ update.title }}</h1>
-      </div>
-      <div class="flex items-center space-x-2">
+      <div class="flex items-center mb-3 space-x-2">
         <Avatar
-          size="sm"
           :label="$user(update.owner).full_name"
           :imageURL="$user(update.owner).user_image"
         />
@@ -68,8 +64,10 @@
           </div>
         </div>
       </div>
+      <div>
+        <h1 class="text-3xl font-bold">{{ update.title }}</h1>
+      </div>
       <TextEditor
-        class="mt-3"
         :editor-class="[
           'max-w-[unset] min-h-[8rem]',
           { 'bg-gray-100 px-3 py-2 rounded-md': editContent },
@@ -86,14 +84,9 @@
         />
       </div>
     </div>
-    <div class="flex-1 border-t">
+    <div class="flex-1 pb-40 border-t">
       <CommentsArea doctype="Team Project Discussion" :name="update.name" />
     </div>
-  </div>
-  <div class="grid h-full text-base place-items-center bg-gray-50" v-else>
-    <span class="px-3 py-1 text-gray-600 bg-white border rounded-full">
-      Select an update to view
-    </span>
   </div>
 </template>
 <script>

@@ -101,7 +101,7 @@
             Add comment...
           </span>
           <TextEditor
-            editor-class="prose-p:text-base"
+            editor-class="prose-p:text-base min-h-[4rem]"
             :content="newComment"
             @change="(val) => (newComment = val)"
             :starterkit-options="{ heading: false }"

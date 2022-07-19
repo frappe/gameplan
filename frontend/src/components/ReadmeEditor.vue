@@ -36,7 +36,7 @@
     <TextEditor
       ref="readme"
       :content="resource.doc[fieldname]"
-      placeholder="Use this space to write a detailed description of your project"
+      :placeholder="placeholder"
       @change="(val) => (resource.doc[fieldname] = val)"
       :bubbleMenu="true"
       :floating-menu="true"
@@ -61,6 +61,9 @@ export default {
       type: Boolean,
       default: true,
     },
+    placeholder: {
+      type: String
+    }
   },
   components: { TextEditor },
   data() {

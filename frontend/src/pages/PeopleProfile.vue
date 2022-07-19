@@ -29,6 +29,11 @@
       :editable="$user().name === doc.user"
       fieldname="readme"
       class="mt-6"
+      :placeholder="
+        $user().name == doc.user
+          ? 'Write a brief introduction of yourself...'
+          : 'This person haven\'t updated their introduction'
+      "
     />
   </div>
 </template>

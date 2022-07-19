@@ -52,7 +52,7 @@
             }}
           </div>
           <ComboboxOptions
-            class="h-[7rem] overflow-y-auto"
+            class="h-[8rem] overflow-y-auto"
             :static="true"
             v-if="addMembersIntent"
           >
