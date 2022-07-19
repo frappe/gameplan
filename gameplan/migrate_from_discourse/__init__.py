@@ -8,6 +8,7 @@ from urllib.parse import urljoin
 import frappe
 import psycopg2
 from psycopg2.extras import DictCursor
+from frappe.database.database import savepoint
 from frappe.utils import update_progress_bar
 from bs4 import BeautifulSoup
 from .emojis import get_emoji
@@ -15,11 +16,11 @@ import requests
 
 def execute():
 	frappe.flags.in_import = True
-	clear_data([
-		# 'Team Project',
-		# 'Team',
-		'Team Project Discussion'
-	])
+	# clear_data([
+	# 	# 'Team Project',
+	# 	# 'Team',
+	# 	'Team Project Discussion'
+	# ])
 	# migrate_users()
 	# migrate_categories()
 	migrate_posts()
@@ -32,70 +33,71 @@ def migrate_posts():
 			posts.cooked as content, posts.id as post_id
 		from topics
 		left join posts on posts.topic_id = topics.id
-		where posts.user_id > 0 and posts.post_number = 1 and posts.raw like '%upload://%' and posts.like_count > 1 and topics.posts_count > 2
-		limit 100
+		where posts.user_id > 0 and posts.post_number = 1
 	''')
 
 	for i, topic in enumerate(topics):
 		if frappe.db.exists('Discourse ID Map', {'discourse_table': 'topics', 'discourse_id': topic.id}):
 			continue
 
-		update_progress_bar('Creating Posts', i, len(topics))
+		update_progress_bar('Creating Posts', i, len(topics), absolute=True)
 
-		user = get_user(topic.user_id)
-		project = get_project(topic.category_id)
-		# likes - reactions
-		reactions = get_reactions(topic.post_id)
+		with savepoint():
+			user = get_user(topic.user_id)
+			project = get_project(topic.category_id)
+			# likes - reactions
+			reactions = get_reactions(topic.post_id)
 
-		doc = frappe.get_doc(
-			doctype='Team Project Discussion',
-			title=topic.title,
-			content=topic.content,
-			project=project,
-			team=frappe.db.get_value('Team Project', project, 'team'),
-			creation=topic.creation,
-			modified=topic.modified,
-			owner=user,
-			modified_by=user,
-			reactions=reactions
-		)
-		doc.db_insert()
-		for d in doc.get_all_children():
-			d.parent = doc.name
-			d.db_insert()
-
-		# images
-		process_images_in_html(doc, 'content')
-
-		# comments
-		comments = run_query(f'''
-			select posts.id, posts.created_at as creation, posts.updated_at as modified, posts.user_id,
-			posts.cooked as content, posts.topic_id
-			from posts
-			where posts.topic_id = {topic.id} and posts.user_id > 0 and posts.post_number > 1
-		''')
-
-		for comment in comments:
-			user = get_user(comment.user_id)
-			reactions = get_reactions(comment.id)
-			comment_doc = frappe.get_doc(
-				doctype='Team Comment',
-				reference_doctype=doc.doctype,
-				reference_name=doc.name,
-				content=comment.content,
-				creation=comment.creation,
-				modified=comment.modified,
+			doc = frappe.get_doc(
+				doctype='Team Project Discussion',
+				title=topic.title,
+				content=topic.content,
+				project=project,
+				team=frappe.db.get_value('Team Project', project, 'team'),
+				creation=topic.creation,
+				modified=topic.modified,
 				owner=user,
 				modified_by=user,
 				reactions=reactions
 			)
-			comment_doc.db_insert()
-			for d in comment_doc.get_all_children():
-				d.parent = comment_doc.name
+			doc.db_insert()
+			for d in doc.get_all_children():
+				d.parent = doc.name
 				d.db_insert()
-			process_images_in_html(comment_doc, 'content')
 
-		log_discourse_map(doc, 'topics', topic.id)
+			# images
+			process_images_in_html(doc, 'content')
+
+			# comments
+			comments = run_query(f'''
+				select posts.id, posts.created_at as creation, posts.updated_at as modified, posts.user_id,
+				posts.cooked as content, posts.topic_id
+				from posts
+				where posts.topic_id = {topic.id} and posts.user_id > 0 and posts.post_number > 1
+			''')
+
+			for comment in comments:
+				user = get_user(comment.user_id)
+				reactions = get_reactions(comment.id)
+				comment_doc = frappe.get_doc(
+					doctype='Team Comment',
+					reference_doctype=doc.doctype,
+					reference_name=doc.name,
+					content=comment.content,
+					creation=comment.creation,
+					modified=comment.modified,
+					owner=user,
+					modified_by=user,
+					reactions=reactions
+				)
+				comment_doc.db_insert()
+				for d in comment_doc.get_all_children():
+					d.parent = comment_doc.name
+					d.db_insert()
+				process_images_in_html(comment_doc, 'content')
+
+			log_discourse_map(doc, 'topics', topic.id)
+
 
 def process_images_in_html(doc, fieldname):
 	html = doc.get(fieldname)
@@ -161,6 +163,16 @@ def get_reactions(post_id):
 		})
 	return reactions
 
+def get_avatar_url(user_id):
+	result = run_query(f'''
+		select users.id, users.username, user_avatars.custom_upload_id from users
+		left join user_avatars on user_avatars.user_id = users.id
+		where user_id = {user_id} limit 1;
+	''')
+	user = result[0] if result else None
+	if user:
+		return f'https://gameplan.frappe.io/user_avatar/gameplan.frappe.io/{user.username}/240/{user.custom_upload_id}.png'
+
 
 def clear_data(doctypes=None):
 	to_delete = []
@@ -199,7 +211,15 @@ def migrate_users():
 			username=user.username,
 			roles=[{"role": "Teams User"}]
 		).insert(ignore_if_duplicate=True)
-		log_discourse_map(doc, "users", user.id)
+
+		if doc:
+			avatar_url = get_avatar_url(user.id)
+			if avatar_url:
+				filename = f'{user.username}.png'.replace(' ', '-').replace('%20', '-')
+				file = save_image(avatar_url, filename, doc)
+				if file:
+					doc.db_set('user_image', file.file_url)
+			log_discourse_map(doc, "users", user.id)
 
 
 
