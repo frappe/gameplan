@@ -41,7 +41,7 @@
                 () => {
                   team.open = !team.open
                   if (team.projects.data == null) {
-                    team.projects.fetch()
+                    team.projects.list.fetch()
                   }
                 }
               "

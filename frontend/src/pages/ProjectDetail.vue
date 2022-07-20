@@ -216,7 +216,7 @@ export default {
       if (team.name === this.team.doc.name) {
         team.open = true
         if (!team.projects.data) {
-          team.projects.fetch()
+          team.projects.list.fetch()
         }
       }
     }
