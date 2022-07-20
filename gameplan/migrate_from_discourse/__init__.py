@@ -189,8 +189,7 @@ def clear_data(doctypes=None):
 
 def migrate_users():
 	users = run_query('''
-		select users.id, username, active, name as full_name,
-			REPLACE(REPLACE(user_emails.email, '@erpnext.com', '@frappe.io'), '@iwebnotes.com', '@frappe.io') as email
+		select users.id, username, active, name as full_name, user_emails.email as email
 		from users
 		left join user_emails on user_emails.user_id = users.id
 		where users.id > 1 order by id asc;
