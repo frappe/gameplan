@@ -1,11 +1,30 @@
 import _dayjs from 'dayjs'
 import relativeTime from 'dayjs/esm/plugin/relativeTime'
 import localizedFormat from 'dayjs/plugin/localizedFormat'
+import updateLocale from 'dayjs/plugin/updateLocale'
 import isToday from 'dayjs/plugin/isToday'
 
+_dayjs.extend(updateLocale)
 _dayjs.extend(relativeTime)
 _dayjs.extend(localizedFormat)
 _dayjs.extend(isToday)
+_dayjs.updateLocale('en', {
+  relativeTime: {
+    future: 'in %s',
+    past: '%s ago',
+    s: 'a few seconds',
+    m: '1m',
+    mm: '%dm',
+    h: '1h',
+    hh: '%dh',
+    d: 'd',
+    dd: '%dd',
+    M: '1M',
+    MM: '%dM',
+    y: 'y',
+    yy: '%dy',
+  },
+})
 
 export let dayjs = _dayjs
 

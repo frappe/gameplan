@@ -1,32 +1,49 @@
 <template>
-  <div class="flex flex-col h-full" v-if="postId && update">
+  <div class="flex flex-col h-full" v-if="postId && discussion">
     <div class="py-6">
       <div class="flex items-center mb-3 space-x-2">
         <Avatar
-          :label="$user(update.owner).full_name"
-          :imageURL="$user(update.owner).user_image"
+          :label="$user(discussion.owner).full_name"
+          :imageURL="$user(discussion.owner).user_image"
         />
         <div class="flex items-center w-full">
           <div>
             <span class="text-base text-gray-900">
-              {{ $user(update.owner).full_name }} in
+              {{ $user(discussion.owner).full_name }} in
+              <router-link
+                class="hover:text-blue-600"
+                :to="{
+                  name: 'TeamPageHome',
+                  params: {
+                    teamId: discussion.team,
+                  },
+                }"
+              >
+                {{ getDoc('Team', discussion.team)?.title || discussion.team }}
+              </router-link>
+              >
               <router-link
                 class="hover:text-blue-600"
                 :to="{
                   name: 'ProjectDetailOverview',
-                  params: { teamId: update.team, projectId: update.project },
+                  params: {
+                    teamId: discussion.team,
+                    projectId: discussion.project,
+                  },
                 }"
               >
-                {{ update.team_title }} >
-                {{ update.project_title }}
+                {{
+                  getDoc('Team Project', discussion.project)?.title ||
+                  discussion.project
+                }}
               </router-link>
             </span>
             &middot;
             <span
               class="text-base text-gray-600"
-              :title="$dayjs(update.creation)"
+              :title="$dayjs(discussion.creation)"
             >
-              {{ $dayjs(update.creation).fromNow() }}
+              {{ $dayjs(discussion.creation).fromNow() }}
             </span>
           </div>
           <div class="flex ml-auto space-x-2">
@@ -39,7 +56,7 @@
               v-if="editContent"
               @click="
                 () => {
-                  $resources.update.reload()
+                  $resources.discussion.reload()
                   editContent = false
                 }
               "
@@ -51,9 +68,9 @@
               appearance="primary"
               @click="
                 () => {
-                  $resources.update.setValue.submit({
-                    name: update.name,
-                    content: update.content,
+                  $resources.discussion.setValue.submit({
+                    title: discussion.title,
+                    content: discussion.content,
                   })
                   editContent = false
                 }
@@ -65,27 +82,38 @@
         </div>
       </div>
       <div>
-        <h1 class="text-3xl font-bold">{{ update.title }}</h1>
+        <div v-if="editContent" class="w-full mb-3">
+          <input
+            type="text"
+            class="w-full px-2 py-1 mt-1 text-xl font-semibold bg-gray-100 border-0 rounded-lg focus:ring-0"
+            ref="title"
+            v-model="discussion.title"
+          />
+        </div>
+        <h1 v-else class="text-3xl font-bold">{{ discussion.title }}</h1>
       </div>
       <TextEditor
+        :key="editContent"
         :editor-class="[
           'max-w-[unset] min-h-[8rem]',
-          { 'bg-gray-100 px-3 py-2 rounded-md': editContent },
+          { 'border px-3 py-2 rounded-b-lg': editContent },
         ]"
         :editable="editContent"
-        :content="update.content"
-        @change="update.content = $event"
+        :content="discussion.content"
+        @change="discussion.content = $event"
+        :bubbleMenu="editContent"
+        :fixedMenu="editContent"
       />
       <div class="mt-3">
         <Reactions
           doctype="Team Project Discussion"
-          :name="update.name"
-          v-model:reactions="update.reactions"
+          :name="discussion.name"
+          v-model:reactions="discussion.reactions"
         />
       </div>
     </div>
     <div class="flex-1 pb-40 border-t">
-      <CommentsArea doctype="Team Project Discussion" :name="update.name" />
+      <CommentsArea doctype="Team Project Discussion" :name="discussion.name" />
     </div>
   </div>
 </template>
@@ -99,45 +127,42 @@ export default {
   props: ['postId'],
   components: { TextEditor, Avatar, Reactions, CommentsArea },
   resources: {
-    update() {
+    discussion() {
+      return {
+        type: 'document',
+        doctype: 'Team Project Discussion',
+        name: this.postId,
+        onSuccess(doc) {
+          if (this.viewTimer) {
+            console.log('clearing timeout for', doc.name)
+            clearTimeout(this.viewTimer)
+            this.viewTimer = null
+          }
+          console.log('started reading', doc.name)
+          this.viewTimer = setTimeout(() => {
+            if (
+              this.$route.name === 'ProjectDetailDiscussion' &&
+              this.$route.params.postId === doc.name
+            ) {
+              console.log('track view for ', doc.name)
+              this.$resources.view.insert.submit({ discussion: this.postId })
+            } else {
+              console.log('skipped view for ', doc.name)
+            }
+          }, 3000)
+        },
+      }
+    },
+    view() {
       return {
         type: 'list',
-        doctype: 'Team Project Discussion',
-        filters: { name: this.postId },
-        cache: ['Team Project Discussion', this.postId],
-        fields: [
-          'name',
-          'owner',
-          'creation',
-          'modified',
-          'title',
-          'status',
-          'content',
-          'team',
-          'project',
-          'project.title as project_title',
-          'team.title as team_title',
-          'reactions.name as reaction_name',
-          'reactions.emoji as reaction_emoji',
-          'reactions.owner as reaction_owner',
-        ],
-        transform(data) {
-          let updates = {}
-          for (let d of data) {
-            if (!updates[d.name]) {
-              updates[d.name] = d
-              updates[d.name].reactions = []
-            }
-            if (d.reaction_emoji) {
-              updates[d.name].reactions.push({
-                name: d.reaction_name,
-                emoji: d.reaction_emoji,
-                owner: d.reaction_owner,
-              })
-            }
-          }
-          return Object.values(updates)[0]
+        doctype: 'Team Discussion View',
+        filters: {
+          discussion: this.postId,
+          viewed_by: this.$user().name,
         },
+        limit: 1,
+        order_by: 'creation desc',
       }
     },
   },
@@ -146,12 +171,14 @@ export default {
       editContent: false,
     }
   },
-  computed: {
-    update() {
-      return this.$resources.update.data
+  methods: {
+    getDoc(doctype, name) {
+      return this.$getDocumentResource(doctype, name)?.doc
     },
-    content() {
-      return `<h2>${this.update.title}</h2>${this.update.content}`
+  },
+  computed: {
+    discussion() {
+      return this.$resources.discussion.doc
     },
   },
 }

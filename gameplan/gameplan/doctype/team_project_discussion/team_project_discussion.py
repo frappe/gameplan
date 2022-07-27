@@ -5,6 +5,9 @@ import frappe
 from frappe.model.document import Document
 
 class TeamProjectDiscussion(Document):
+	def before_insert(self):
+		self.last_post_at = frappe.utils.now()
+
 	def on_trash(self):
 		for name in frappe.db.get_all('Team Comment', {
 			'reference_doctype': self.doctype,

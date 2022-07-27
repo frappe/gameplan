@@ -59,3 +59,7 @@ app.use(router)
 app.use(pageMeta)
 
 app.mount('#app')
+
+if (import.meta.env.DEV) {
+  window.dayjs = dayjs
+}

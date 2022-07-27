@@ -11,7 +11,8 @@
   "status",
   "title",
   "content",
-  "reactions"
+  "reactions",
+  "last_post_at"
  ],
  "fields": [
   {
@@ -26,8 +27,7 @@
    "fieldname": "content",
    "fieldtype": "Text Editor",
    "in_list_view": 1,
-   "label": "Content",
-   "reqd": 1
+   "label": "Content"
   },
   {
    "fieldname": "status",
@@ -53,11 +53,16 @@
    "fieldtype": "Link",
    "label": "Team",
    "options": "Team"
+  },
+  {
+   "fieldname": "last_post_at",
+   "fieldtype": "Datetime",
+   "label": "Last Post At"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-07-05 15:55:22.026710",
+ "modified": "2022-07-27 16:19:21.449244",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "Team Project Discussion",

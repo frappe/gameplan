@@ -1,7 +1,7 @@
 <template>
   <div class="h-full divide-y">
     <router-link
-      v-for="d in $resources.updates.data"
+      v-for="d in $resources.discussions.data"
       :key="d.name"
       :to="{
         name: this.routeName,
@@ -20,12 +20,12 @@
         </div>
         <UserInfo :email="d.owner">
           <template v-slot="{ user }">
-            <div class="flex items-start w-full">
-              <div>
-                <div class="text-lg font-medium leading-snug">
-                  {{ d.title }}
-                </div>
-                <div class="mt-1 text-base text-gray-900">
+            <div class="w-full">
+              <div class="text-lg font-medium leading-snug">
+                {{ d.title }}
+              </div>
+              <div class="flex items-center justify-between mt-1 text-base">
+                <div class="text-gray-900">
                   <span class="text-gray-600"> by </span>
                   {{ user.full_name }}
                   <template v-if="!filters || !filters.project">
@@ -41,26 +41,40 @@
                       {{ d.project_title }}
                     </router-link>
                   </template>
-                  <span class="text-gray-600" :title="$dayjs(d.creation)">
-                    &middot;
-                    {{ $dayjs(d.creation).fromNow() }}
-                  </span>
                 </div>
+                <span
+                  class="text-gray-600"
+                  :title="discussionTimestampDescription(d)"
+                >
+                  {{
+                    $dayjs().diff(d.modified, 'day') >= 25
+                      ? $dayjs(d.modified).format('d MMM')
+                      : $dayjs(d.modified).fromNow(true)
+                  }}
+                </span>
               </div>
             </div>
           </template>
         </UserInfo>
       </div>
     </router-link>
-    <div class="p-3 pb-40 pl-14">
-      <Button
-        v-if="$resources.updates.hasNextPage"
-        class="ml-1"
-        @click="$resources.updates.next()"
-        :loading="$resources.updates.list.loading"
+    <div class="pb-40">
+      <div
+        class="flex items-center p-3 space-x-4"
+        v-if="$resources.discussions.hasNextPage"
       >
-        Load more posts
-      </Button>
+        <div class="w-8 h-8 bg-gray-100 rounded-full"></div>
+        <Button
+          @click="$resources.discussions.next()"
+          :loading="$resources.discussions.list.loading"
+        >
+          {{
+            $resources.discussions.list.loading
+              ? 'Loading...'
+              : 'Load more posts'
+          }}
+        </Button>
+      </div>
     </div>
   </div>
 </template>
@@ -75,10 +89,10 @@ export default {
     Avatar,
   },
   resources: {
-    updates() {
+    discussions() {
       return {
         type: 'list',
-        cache: ['Project Updates', this.filters],
+        cache: ['Team Project Discussion', this.filters],
         doctype: 'Team Project Discussion',
         filters: this.filters,
         fields: [
@@ -86,6 +100,7 @@ export default {
           'owner',
           'creation',
           'modified',
+          'last_post_at',
           'title',
           'status',
           'content',
@@ -100,7 +115,7 @@ export default {
   },
   methods: {
     openLatestUpdate() {
-      let latest = (this.$resources.updates.data || [])[0]
+      let latest = (this.$resources.discussions.data || [])[0]
       if (latest) {
         // open latest update
         this.$router.replace({
@@ -111,6 +126,12 @@ export default {
     },
     isActive(update) {
       return this.$route.params.postId === update.name
+    },
+    discussionTimestampDescription(d) {
+      return [
+        `First Post: ${this.$dayjs(d.creation)}`,
+        `Latest Post: ${this.$dayjs(d.modified)}`,
+      ].join('\n')
     },
   },
 }
