@@ -1,5 +1,5 @@
 <template>
-  <div class="p-6">
+  <div class="py-6">
     <div class="flex items-start justify-between">
       <div class="w-full">
         <div>
@@ -73,8 +73,8 @@ export default {
         },
         onSuccess(doc) {
           this.$router.replace({
-            name: 'ProjectDetailUpdate',
-            params: { updateId: doc.name },
+            name: 'ProjectDetailDiscussion',
+            params: { postId: doc.name },
           })
           this.$getListResource([
             'Project Updates',

@@ -19,9 +19,7 @@
           :imageURL="$user().user_image"
           size="sm"
         />
-        <span>
-          {{ $user().full_name }}
-        </span>
+        <span>{{ $user().full_name }}</span>
         <FeatherIcon name="chevron-down" class="w-4 h-4" />
       </button>
     </template>

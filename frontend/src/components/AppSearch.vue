@@ -14,6 +14,7 @@
             class="block w-full py-1 pl-10 pr-3 text-sm placeholder-gray-500 bg-gray-100 border border-transparent rounded-md focus:outline-none focus:ring-0 focus:border-gray-100 focus:shadow focus:text-gray-900 focus:placeholder-gray-400 focus:bg-white"
             placeholder="Search"
             type="search"
+            autocomplete="off"
             @input="
               (e) => {
                 $resources.search.submit(e.target.value)
@@ -52,6 +53,15 @@
               />
             </li>
           </ComboboxOption>
+          <div
+            class="text-base text-gray-600 px-2.5 py-1.5"
+            v-if="
+              !$resources.search.loading &&
+              ($resources.search.data || []).length == 0
+            "
+          >
+            No results found
+          </div>
         </ComboboxOptions>
       </template>
     </Popover>
@@ -85,7 +95,6 @@ export default {
   watch: {
     selectedValue(value) {
       if (value) {
-        console.log(value.title, value.team, value.name)
         this.$router.push({
           name: 'ProjectDetailDiscussion',
           params: {

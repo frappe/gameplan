@@ -9,7 +9,7 @@
     <div class="w-full pl-16 pr-10">
       <AppSearch />
     </div>
-    <div>
+    <div class="shrink-0">
       <UserDropdown />
     </div>
   </header>
