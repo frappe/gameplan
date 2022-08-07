@@ -182,7 +182,6 @@
 <script>
 import { Autocomplete, Dropdown, Spinner, Input, Popover } from 'frappe-ui'
 import Pie from '@/components/Pie.vue'
-import ProjectDetailTasks from './ProjectDetailTasks.vue'
 import IconPicker from '@/components/IconPicker.vue'
 import Links from '@/components/Links.vue'
 import Tabs from '@/components/Tabs.vue'
@@ -196,7 +195,6 @@ export default {
     Dropdown,
     Spinner,
     Pie,
-    ProjectDetailTasks,
     IconPicker,
     Links,
     Tabs,
@@ -216,7 +214,7 @@ export default {
       if (team.name === this.team.doc.name) {
         team.open = true
         if (!team.projects.data) {
-          team.projects.list.fetch()
+          team.projects.reload()
         }
       }
     }
@@ -286,8 +284,14 @@ export default {
             : 'Tasks',
           // icon: 'check-square',
           route: {
-            name: 'ProjectDetailTasks',
+            name: 'ProjectTasks',
+            query: { open: true },
             params: { teamId: this.team.doc.name, projectId: this.projectId },
+            activeForRoutes: [
+              'ProjectTasks',
+              'ProjectTaskDetail',
+              'ProjectTaskNew',
+            ],
           },
           class: this.tabLinkClasses,
         },

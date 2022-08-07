@@ -24,12 +24,19 @@
               <div class="text-lg font-medium leading-snug">
                 {{ d.title }}
               </div>
-              <div class="flex items-center justify-between mt-1 text-base">
-                <div class="text-gray-900">
-                  <span class="text-gray-600"> by </span>
+              <div class="flex items-center justify-between mt-0.5 text-base">
+                <div class="text-gray-600">
+                  <span>by</span>
                   {{ user.full_name }}
+                  <span>
+                    {{
+                      $dayjs().diff(d.modified, 'month') >= 9
+                        ? 'on ' + $dayjs(d.modified).format('D MMM YYYY')
+                        : $dayjs(d.modified).fromNow()
+                    }}
+                  </span>
                   <template v-if="!filters || !filters.project">
-                    <span class="text-gray-600">in&nbsp;</span>
+                    <span> in </span>
                     <router-link
                       class="hover:text-blue-600"
                       :to="{
@@ -48,7 +55,7 @@
                 >
                   {{
                     $dayjs().diff(d.modified, 'day') >= 25
-                      ? $dayjs(d.modified).format('d MMM')
+                      ? $dayjs(d.modified).format('D MMM')
                       : $dayjs(d.modified).fromNow(true)
                   }}
                 </span>

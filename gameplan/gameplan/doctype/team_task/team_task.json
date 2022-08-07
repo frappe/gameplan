@@ -13,6 +13,8 @@
   "status",
   "priority",
   "is_completed",
+  "completed_at",
+  "completed_by",
   "idx",
   "project",
   "project_title",
@@ -116,11 +118,21 @@
    "fieldtype": "Link",
    "label": "Assigned To",
    "options": "User"
+  },
+  {
+   "fieldname": "completed_at",
+   "fieldtype": "Datetime",
+   "label": "Completed At"
+  },
+  {
+   "fieldname": "completed_by",
+   "fieldtype": "Data",
+   "label": "Completed By"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-07-05 15:55:15.048621",
+ "modified": "2022-08-07 18:49:48.361241",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "Team Task",
