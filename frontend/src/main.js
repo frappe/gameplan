@@ -61,5 +61,9 @@ app.use(pageMeta)
 app.mount('#app')
 
 if (import.meta.env.DEV) {
-  window.dayjs = dayjs
+  window.$dayjs = dayjs
+  window.$user = userInfo
+  window.$users = usersResource
+  window.$dialog = createDialog
+  window.$toast = createToast
 }
