@@ -95,7 +95,7 @@
       <TextEditor
         :key="editContent"
         :editor-class="[
-          'max-w-[unset] min-h-[8rem]',
+          'max-w-[unset] min-h-[8rem] prose-sm',
           { 'border px-3 py-2 rounded-b-lg': editContent },
         ]"
         :editable="editContent"

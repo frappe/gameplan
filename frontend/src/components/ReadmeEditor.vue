@@ -35,6 +35,7 @@
     </div>
     <TextEditor
       ref="readme"
+      editor-class="prose-sm"
       :content="resource.doc[fieldname]"
       :placeholder="placeholder"
       @change="(val) => (resource.doc[fieldname] = val)"
@@ -62,8 +63,8 @@ export default {
       default: true,
     },
     placeholder: {
-      type: String
-    }
+      type: String,
+    },
   },
   components: { TextEditor },
   data() {

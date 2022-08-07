@@ -3,7 +3,7 @@
     <TextEditor
       v-if="$resources.note.data"
       class="mt-4"
-      editor-class="pb-20"
+      editor-class="pb-20 prose-sm"
       :content="$resources.note.data.content"
       placeholder="Use this space to plan your day, and jot down notes."
       @change="(val) => $resources.updateNote.submit(val)"

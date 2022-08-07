@@ -50,7 +50,7 @@
               @keydown.meta.enter.capture.stop="editComment(comment)"
             >
               <TextEditor
-                editor-class="prose-p:text-base"
+                editor-class="prose-p:text-base prose-sm"
                 :editable="comment.editing || false"
                 :content="comment.content"
                 @change="(val) => (comment.content = val)"
@@ -101,7 +101,7 @@
             Add comment...
           </span>
           <TextEditor
-            editor-class="prose-p:text-base min-h-[4rem]"
+            editor-class="prose-p:text-base min-h-[4rem] prose-sm"
             :content="newComment"
             @change="(val) => (newComment = val)"
             :starterkit-options="{ heading: false }"

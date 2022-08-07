@@ -26,7 +26,7 @@
     </div>
     <TextEditor
       class="mt-3"
-      editor-class="max-w-[unset] min-h-[20rem]"
+      editor-class="max-w-[unset] min-h-[20rem] prose-sm"
       :content="content"
       :editable="false"
     />
