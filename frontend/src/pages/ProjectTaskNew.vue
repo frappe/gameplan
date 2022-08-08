@@ -29,7 +29,8 @@
   </div>
 </template>
 <script>
-import { Avatar, TextEditor, Autocomplete, Dropdown, Input } from 'frappe-ui'
+import { Avatar, Autocomplete, Input } from 'frappe-ui'
+import TextEditor from '@/components/TextEditor.vue'
 
 export default {
   name: 'ProjectTaskNew',

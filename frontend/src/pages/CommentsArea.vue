@@ -50,7 +50,7 @@
               @keydown.meta.enter.capture.stop="editComment(comment)"
             >
               <TextEditor
-                editor-class="prose-p:text-base prose-sm"
+                editor-class="prose-sm prose-p:text-base"
                 :editable="comment.editing || false"
                 :content="comment.content"
                 @change="(val) => (comment.content = val)"
@@ -94,17 +94,12 @@
           @keydown.ctrl.enter.capture.stop="submitComment"
           @keydown.meta.enter.capture.stop="submitComment"
         >
-          <span
-            class="pointer-events-none absolute py-1.5 text-base text-gray-600"
-            v-if="commentEmpty"
-          >
-            Add comment...
-          </span>
           <TextEditor
             editor-class="prose-p:text-base min-h-[4rem] prose-sm"
             :content="newComment"
             @change="(val) => (newComment = val)"
             :starterkit-options="{ heading: false }"
+            placeholder="Add comment..."
           />
         </div>
       </div>
@@ -129,7 +124,8 @@
   </div>
 </template>
 <script>
-import { Avatar, LoadingIndicator, TextEditor } from 'frappe-ui'
+import { Avatar, LoadingIndicator } from 'frappe-ui'
+import TextEditor from '@/components/TextEditor.vue'
 
 export default {
   name: 'CommentsArea',

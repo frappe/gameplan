@@ -46,7 +46,7 @@
   </div>
 </template>
 <script>
-import { TextEditor } from 'frappe-ui'
+import TextEditor from '@/components/TextEditor.vue'
 export default {
   name: 'ReadmeEditor',
   props: {

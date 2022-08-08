@@ -33,7 +33,8 @@
   </div>
 </template>
 <script>
-import { Avatar, TextEditor } from 'frappe-ui'
+import { Avatar } from 'frappe-ui'
+import TextEditor from '@/components/TextEditor.vue'
 
 export default {
   name: 'ProjectDetailUpdateView',

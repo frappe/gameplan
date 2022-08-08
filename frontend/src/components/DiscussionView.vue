@@ -118,9 +118,10 @@
   </div>
 </template>
 <script>
-import { Avatar, TextEditor } from 'frappe-ui'
+import { Avatar } from 'frappe-ui'
 import Reactions from './Reactions.vue'
-import CommentsArea from '../pages/CommentsArea.vue'
+import CommentsArea from '@/pages/CommentsArea.vue'
+import TextEditor from '@/components/TextEditor.vue'
 
 export default {
   name: 'DiscussionView',
