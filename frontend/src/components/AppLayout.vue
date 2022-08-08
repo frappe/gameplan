@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col h-screen overflow-hidden" v-if="$users.data">
+  <div class="flex flex-col h-screen overflow-hidden" v-if="$users.data.length">
     <div class="border-b">
       <div class="container">
         <slot name="navbar" />

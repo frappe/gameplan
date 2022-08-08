@@ -249,7 +249,7 @@ export default {
       return this.$resources.task
     },
     assignableUsers() {
-      return Object.values(this.$users.data)
+      return this.$users.data
         .filter((user) => user.name != this.task.doc.assigned_to)
         .map((user) => ({
           label: user.full_name,

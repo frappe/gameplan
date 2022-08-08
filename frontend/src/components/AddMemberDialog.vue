@@ -225,7 +225,7 @@ export default {
       let memberEmails = this.members.map((m) => m.email)
       memberEmails = memberEmails.concat(this.invites.map((user) => user.email))
 
-      return Object.values(this.$users.data)
+      return this.$users.data
         .filter((user) => !memberEmails.includes(user.email))
         .sort((a, b) => a.full_name - b.full_name)
     },

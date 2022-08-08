@@ -1,9 +1,15 @@
 import { createResource } from 'frappe-ui'
 
+let usersByName = {}
 export let usersResource = createResource({
   method: 'gameplan.api.get_user_info',
   cache: 'users',
-  initialData: {},
+  initialData: [],
+  onSuccess(users) {
+    for (let user of users) {
+      usersByName[user.name] = user
+    }
+  },
 })
 usersResource.fetch()
 
@@ -17,7 +23,7 @@ export function userInfo(email) {
     full_name: email.split('@')[0],
     user_image: null,
   }
-  return usersResource.data[email] || fallback
+  return usersByName[email] || fallback
 }
 
 let _sessionUser = null
