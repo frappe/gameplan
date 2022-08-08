@@ -3,6 +3,8 @@
 
 import frappe
 from frappe.model.document import Document
+from gameplan.utils import extract_mentions
+from frappe.utils import get_fullname
 
 class TeamComment(Document):
 	def after_insert(self):
@@ -13,3 +15,19 @@ class TeamComment(Document):
 				"last_post_at",
 				frappe.utils.now()
 			)
+
+	def on_change(self):
+		mentions = extract_mentions(self.content)
+		for mention in mentions:
+			values = frappe._dict(
+				from_user=self.owner,
+				to_user=mention.email,
+				comment=self.name,
+				discussion=self.reference_name if self.reference_doctype == "Team Project Discussion" else None,
+			)
+			if frappe.db.exists("Team Notification", values):
+				continue
+			notification = frappe.get_doc(doctype='Team Notification')
+			notification.message = f'{get_fullname(self.owner)} mentioned you in a comment',
+			notification.update(values)
+			notification.insert(ignore_permissions=True)

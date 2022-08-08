@@ -3,6 +3,8 @@
 
 import frappe
 from frappe.model.document import Document
+from gameplan.utils import extract_mentions
+from frappe.utils import get_fullname
 
 class TeamProjectDiscussion(Document):
 	def before_insert(self):
@@ -14,6 +16,22 @@ class TeamProjectDiscussion(Document):
 			'reference_name': self.name
 		}, pluck='name'):
 			frappe.delete_doc('Team Comment', name)
+
+	def on_change(self):
+		mentions = extract_mentions(self.content)
+		for mention in mentions:
+			values = frappe._dict(
+				from_user=self.owner,
+				to_user=mention.email,
+				discussion=self.name,
+			)
+			if frappe.db.exists("Team Notification", values):
+				continue
+			notification = frappe.get_doc(doctype='Team Notification')
+			notification.message = f'{get_fullname(self.owner)} mentioned you in a post',
+			notification.update(values)
+			notification.insert(ignore_permissions=True)
+
 
 def make_full_text_search_index():
 	frappe.db.sql('ALTER TABLE `tabTeam Project Discussion` ADD FULLTEXT (title, content, owner)')

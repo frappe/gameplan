@@ -77,10 +77,6 @@ export default {
             name: 'ProjectDetailDiscussion',
             params: { postId: doc.name },
           })
-          this.$getListResource([
-            'Project Updates',
-            { project: this.project.doc.name },
-          ]).reload()
           this.title = ''
           this.status = null
           this.content = ''

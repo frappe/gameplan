@@ -2,8 +2,9 @@
 # MIT License. See license.txt
 
 from __future__ import unicode_literals
-import frappe, requests
+import frappe
 from urllib.parse import urlparse
+from bs4 import BeautifulSoup
 
 
 def validate_url(url):
@@ -12,3 +13,10 @@ def validate_url(url):
 		url = "https://" + url
 		result = urlparse(url)
 	return url if (result.scheme and result.netloc) else False
+
+def extract_mentions(html):
+	soup = BeautifulSoup(html, 'html.parser')
+	mentions = []
+	for d in soup.find_all('span', attrs={'data-type': 'mention'}):
+		mentions.append(frappe._dict(full_name=d.get('data-label'), email=d.get('data-id')))
+	return mentions

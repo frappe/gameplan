@@ -49,13 +49,17 @@ def get_user_info():
 		"User",
 		filters=[["Has Role", "role", "=", "Teams User"]],
 		fields=["name", "email", "user_image", "full_name", "user_type"],
+		order_by="full_name asc"
 	)
-	out = {}
 	for user in users:
 		if frappe.session.user == user.name:
 			user.session_user = True
-		out[user.name] = user
-	return out
+	return users
+
+@frappe.whitelist()
+def unread_notifications():
+	res = frappe.db.get_all('Team Notification', 'count(name) as count', {'to_user': frappe.session.user, 'read': 0})
+	return res[0].count
 
 
 @frappe.whitelist()

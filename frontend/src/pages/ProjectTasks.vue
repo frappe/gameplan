@@ -63,6 +63,7 @@
             </span>
             <div class="flex items-center space-x-2 text-base">
               <Tooltip
+                v-if="d.assigned_to"
                 placement="bottom"
                 :text="`Assigned to ${$user(d.assigned_to).full_name}`"
               >

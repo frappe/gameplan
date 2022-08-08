@@ -9,12 +9,20 @@
           inactive="text-gray-600 hover:bg-gray-50 hover:text-gray-900"
         >
           <template v-slot="{ link }">
-            <span class="inline-flex items-center space-x-2">
+            <div class="flex items-center w-full space-x-2">
               <span class="grid w-5 h-5 place-items-center">
                 <FeatherIcon :name="link.icon" class="w-4 h-4" />
               </span>
               <span class="text-lg">{{ link.name }}</span>
-            </span>
+              <span
+                v-if="
+                  link.unreadNotifications && link.unreadNotifications.data > 0
+                "
+                class="!ml-auto block px-1 bg-red-500 text-white rounded text-sm"
+              >
+                {{ link.unreadNotifications.data }}
+              </span>
+            </div>
           </template>
         </Links>
       </nav>
@@ -112,6 +120,13 @@ import Link from './Link.vue'
 import AddTeamDialog from './AddTeamDialog.vue'
 import { teams } from '@/resources/teams'
 
+let unreadNotifications = createResource({
+  cache: 'Unread Notifications Count',
+  method: 'gameplan.api.unread_notifications',
+  initialData: 0,
+})
+unreadNotifications.fetch()
+
 export default {
   name: 'AppSidebar',
   props: ['sidebarOpen'],
@@ -142,10 +157,23 @@ export default {
             name: 'People',
           },
         },
+        {
+          name: 'Notifications',
+          icon: 'bell',
+          route: {
+            name: 'Notifications',
+          },
+          unreadNotifications,
+        },
       ],
       showAddTeamDialog: false,
       teams,
     }
+  },
+  mounted() {
+    this.$socket.on('gameplan:new_notification', () => {
+      unreadNotifications.reload()
+    })
   },
   resources: {
     teams: {

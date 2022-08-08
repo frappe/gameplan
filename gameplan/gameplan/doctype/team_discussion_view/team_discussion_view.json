@@ -36,7 +36,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-07-20 17:28:13.989444",
+ "modified": "2022-08-08 20:53:12.040344",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "Team Discussion View",
@@ -51,6 +51,17 @@
    "read": 1,
    "report": 1,
    "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Teams User",
    "share": 1,
    "write": 1
   }
