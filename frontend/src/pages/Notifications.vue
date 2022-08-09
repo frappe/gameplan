@@ -27,18 +27,32 @@
         </div>
         <div class="flex items-center space-x-2">
           <router-link
+            v-if="d.discussion || d.task"
             class="block text-sm font-medium text-blue-500 hover:text-blue-700"
-            :to="{
-              name: 'ProjectDetailDiscussion',
-              params: {
-                postId: d.discussion,
-                projectId: d.project,
-                teamId: d.team,
-              },
-            }"
+            :to="
+              d.discussion
+                ? {
+                    name: 'ProjectDetailDiscussion',
+                    params: {
+                      postId: d.discussion,
+                      projectId: d.project,
+                      teamId: d.team,
+                    },
+                  }
+                : d.task
+                ? {
+                    name: 'ProjectTaskDetail',
+                    params: {
+                      teamId: d.team,
+                      projectId: d.project,
+                      taskId: d.task,
+                    },
+                  }
+                : null
+            "
             @click="markAsRead(d.name)"
           >
-            View Discussion
+            {{ d.discussion ? 'View Discussion' : d.task ? 'View Task' : '' }}
           </router-link>
           <button
             v-if="!d.read"
