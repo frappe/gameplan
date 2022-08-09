@@ -96,6 +96,12 @@
           </div>
         </router-link>
       </div>
+      <div
+        class="text-base text-gray-600"
+        v-if="!tasks.loading && !tasks.data?.length"
+      >
+        No tasks
+      </div>
     </div>
   </div>
 </template>

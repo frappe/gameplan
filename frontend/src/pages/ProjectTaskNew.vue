@@ -2,14 +2,13 @@
   <div class="flex flex-col">
     <div class="py-5">
       <h1 class="mb-4 text-2xl font-semibold">New Task</h1>
-      <Input type="text" label="Title" v-model="title" />
+      <Input type="text" placeholder="Title" v-model="title" />
       <div class="mt-4">
-        <label class="text-sm leading-4 text-gray-700">Description</label>
         <div class="relative px-3 py-2 mt-2 border rounded-md">
           <TextEditor
             editor-class="min-h-[4rem] prose-sm"
             :content="description"
-            placeholder="Write a description for your task"
+            placeholder="Description"
             @change="(val) => (description = val)"
             :bubbleMenu="true"
           />
