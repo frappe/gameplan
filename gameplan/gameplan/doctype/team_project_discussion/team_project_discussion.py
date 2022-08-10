@@ -17,6 +17,9 @@ class TeamProjectDiscussion(Document):
 		}, pluck='name'):
 			frappe.delete_doc('Team Comment', name)
 
+		for name in frappe.db.get_all('Team Discussion Visit', {'discussion': self.name}, pluck='name'):
+			frappe.delete_doc('Team Discussion Visit', name)
+
 	def on_change(self):
 		mentions = extract_mentions(self.content)
 		for mention in mentions:
