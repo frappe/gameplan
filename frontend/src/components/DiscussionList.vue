@@ -21,8 +21,17 @@
         <UserInfo :email="d.owner">
           <template v-slot="{ user }">
             <div class="w-full">
-              <div class="text-lg font-medium leading-snug">
-                {{ d.title }}
+              <div>
+                <span
+                  class="text-lg font-medium leading-snug"
+                  :class="d.unread > 0 ? 'text-gray-900' : 'text-gray-600'"
+                >
+                  {{ d.title }}
+                </span>
+                <span
+                  class="inline-block w-1.5 h-1.5 ml-1 mb-0.5 bg-blue-300 rounded-full"
+                  v-if="d.unread > 0"
+                ></span>
               </div>
               <div class="flex items-center justify-between mt-0.5 text-base">
                 <div class="text-gray-600">
@@ -66,19 +75,11 @@
       </div>
     </router-link>
     <div class="pb-40">
-      <div
-        class="flex items-center p-3 space-x-4"
-        v-if="$resources.discussions.hasNextPage"
-      >
+      <div class="flex items-center p-3 space-x-4" v-if="hasNextPage">
         <div class="w-8 h-8 bg-gray-100 rounded-full"></div>
-        <Button
-          @click="$resources.discussions.next()"
-          :loading="$resources.discussions.list.loading"
-        >
+        <Button @click="start += 20" :loading="$resources.discussions.loading">
           {{
-            $resources.discussions.list.loading
-              ? 'Loading...'
-              : 'Load more posts'
+            $resources.discussions.loading ? 'Loading...' : 'Load more posts'
           }}
         </Button>
       </div>
@@ -95,42 +96,37 @@ export default {
     TextEditor,
     Avatar,
   },
+  data() {
+    return {
+      start: 0,
+      hasNextPage: true,
+    }
+  },
   resources: {
     discussions() {
       return {
-        type: 'list',
         cache: ['Team Project Discussion', this.filters],
-        doctype: 'Team Project Discussion',
-        filters: this.filters,
-        fields: [
-          'name',
-          'owner',
-          'creation',
-          'modified',
-          'last_post_at',
-          'title',
-          'status',
-          'content',
-          'team',
-          'project',
-          'project.title as project_title',
-          'team.title as team_title',
-        ],
-        order_by: 'modified desc',
+        method:
+          'gameplan.gameplan.doctype.team_project_discussion.api.get_discussions',
+        params: {
+          filters: this.filters,
+          start: this.start,
+        },
+        auto: true,
+        transform(data) {
+          if (this.start > 0) {
+            let currentData = this.$resources.discussions.data || []
+            if (data.length < 20) {
+              this.hasNextPage = false
+            }
+            return [...currentData, ...data]
+          }
+          return data
+        },
       }
     },
   },
   methods: {
-    openLatestUpdate() {
-      let latest = (this.$resources.discussions.data || [])[0]
-      if (latest) {
-        // open latest update
-        this.$router.replace({
-          name: 'ProjectStatusUpdatesView',
-          params: { postId: latest.name },
-        })
-      }
-    },
     isActive(update) {
       return this.$route.params.postId === update.name
     },

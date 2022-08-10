@@ -1,16 +1,24 @@
 {
  "actions": [],
  "allow_rename": 1,
- "creation": "2022-07-20 17:28:13.989444",
+ "creation": "2022-08-10 13:45:31.991076",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
+  "user",
   "discussion",
-  "viewed_at",
-  "viewed_by"
+  "last_visit"
  ],
  "fields": [
+  {
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "User",
+   "options": "User",
+   "reqd": 1
+  },
   {
    "fieldname": "discussion",
    "fieldtype": "Link",
@@ -20,26 +28,17 @@
    "reqd": 1
   },
   {
-   "fieldname": "viewed_at",
+   "fieldname": "last_visit",
    "fieldtype": "Datetime",
-   "in_list_view": 1,
-   "label": "Viewed At",
-   "reqd": 1
-  },
-  {
-   "fieldname": "viewed_by",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "Viewed By",
-   "reqd": 1
+   "label": "Last Visit"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-08-08 20:53:12.040344",
+ "modified": "2022-08-10 15:35:31.471014",
  "modified_by": "Administrator",
  "module": "Gameplan",
- "name": "Team Discussion View",
+ "name": "Team Discussion Visit",
  "owner": "Administrator",
  "permissions": [
   {
@@ -51,17 +50,6 @@
    "read": 1,
    "report": 1,
    "role": "System Manager",
-   "share": 1,
-   "write": 1
-  },
-  {
-   "create": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Teams User",
    "share": 1,
    "write": 1
   }

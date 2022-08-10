@@ -133,37 +133,23 @@ export default {
         type: 'document',
         doctype: 'Team Project Discussion',
         name: this.postId,
+        whitelistedMethods: {
+          trackVisit: 'track_visit',
+        },
         onSuccess(doc) {
-          if (this.viewTimer) {
-            console.log('clearing timeout for', doc.name)
-            clearTimeout(this.viewTimer)
-            this.viewTimer = null
+          if (this.visitTimer) {
+            clearTimeout(this.visitTimer)
+            this.visitTimer = null
           }
-          console.log('started reading', doc.name)
-          this.viewTimer = setTimeout(() => {
+          this.visitTimer = setTimeout(() => {
             if (
               this.$route.name === 'ProjectDetailDiscussion' &&
               this.$route.params.postId === doc.name
             ) {
-              console.log('track view for ', doc.name)
-              this.$resources.view.insert.submit({ discussion: this.postId })
-            } else {
-              console.log('skipped view for ', doc.name)
+              this.$resources.discussion.trackVisit.submit()
             }
-          }, 3000)
+          }, 2000)
         },
-      }
-    },
-    view() {
-      return {
-        type: 'list',
-        doctype: 'Team Discussion View',
-        filters: {
-          discussion: this.postId,
-          viewed_by: this.$user().name,
-        },
-        limit: 1,
-        order_by: 'creation desc',
       }
     },
   },

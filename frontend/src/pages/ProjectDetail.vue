@@ -210,7 +210,7 @@ export default {
   },
   mounted() {
     let teams = this.$getListResource('Sidebar Teams')
-    for (let team of teams.data) {
+    for (let team of teams.data || []) {
       if (team.name === this.team.doc.name) {
         team.open = true
         if (!team.projects.data) {
@@ -303,7 +303,7 @@ export default {
       this.projectMoveDialog.show = false
       this.$getListResource(['Team Projects', this.team.doc.name])?.reload()
       let teams = this.$getListResource('Sidebar Teams')
-      for (let team of teams.data) {
+      for (let team of teams.data || []) {
         if (
           [this.team.doc.name, this.projectMoveDialog.team.value].includes(
             team.name
