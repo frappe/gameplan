@@ -15,6 +15,8 @@ def validate_url(url):
 	return url if (result.scheme and result.netloc) else False
 
 def extract_mentions(html):
+	if not html:
+		return []
 	soup = BeautifulSoup(html, 'html.parser')
 	mentions = []
 	for d in soup.find_all('span', attrs={'data-type': 'mention'}):
