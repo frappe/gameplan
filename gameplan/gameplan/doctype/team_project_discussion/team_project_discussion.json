@@ -1,6 +1,6 @@
 {
  "actions": [],
- "allow_rename": 1,
+ "autoname": "autoincrement",
  "creation": "2022-02-23 23:37:19.541395",
  "doctype": "DocType",
  "editable_grid": 1,
@@ -62,10 +62,11 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-07-27 16:19:21.449244",
+ "modified": "2022-08-10 18:53:23.874570",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "Team Project Discussion",
+ "naming_rule": "Autoincrement",
  "owner": "Administrator",
  "permissions": [
   {

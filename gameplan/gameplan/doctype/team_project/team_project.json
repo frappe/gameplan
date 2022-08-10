@@ -1,6 +1,6 @@
 {
  "actions": [],
- "allow_rename": 1,
+ "autoname": "autoincrement",
  "creation": "2022-01-27 21:20:24.458022",
  "doctype": "DocType",
  "editable_grid": 1,
@@ -105,10 +105,11 @@
    "link_fieldname": "project"
   }
  ],
- "modified": "2022-07-05 15:55:00.715488",
+ "modified": "2022-08-10 18:53:39.898561",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "Team Project",
+ "naming_rule": "Autoincrement",
  "owner": "Administrator",
  "permissions": [
   {

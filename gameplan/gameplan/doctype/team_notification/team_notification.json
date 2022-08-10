@@ -1,6 +1,6 @@
 {
  "actions": [],
- "allow_rename": 1,
+ "autoname": "autoincrement",
  "creation": "2022-08-08 19:29:34.011024",
  "doctype": "DocType",
  "editable_grid": 1,
@@ -86,10 +86,11 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-08-08 20:56:39.600288",
+ "modified": "2022-08-10 18:54:04.817920",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "Team Notification",
+ "naming_rule": "Autoincrement",
  "owner": "Administrator",
  "permissions": [
   {

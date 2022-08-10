@@ -1,6 +1,6 @@
 {
  "actions": [],
- "allow_rename": 1,
+ "autoname": "autoincrement",
  "creation": "2022-02-01 01:30:15.103103",
  "doctype": "DocType",
  "editable_grid": 1,
@@ -132,10 +132,11 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-08-07 18:49:48.361241",
+ "modified": "2022-08-10 18:53:51.398575",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "Team Task",
+ "naming_rule": "Autoincrement",
  "owner": "Administrator",
  "permissions": [
   {

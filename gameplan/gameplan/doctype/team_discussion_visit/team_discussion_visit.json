@@ -1,6 +1,6 @@
 {
  "actions": [],
- "allow_rename": 1,
+ "autoname": "autoincrement",
  "creation": "2022-08-10 13:45:31.991076",
  "doctype": "DocType",
  "editable_grid": 1,
@@ -35,10 +35,11 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-08-10 15:35:31.471014",
+ "modified": "2022-08-10 18:43:35.449357",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "Team Discussion Visit",
+ "naming_rule": "Autoincrement",
  "owner": "Administrator",
  "permissions": [
   {
