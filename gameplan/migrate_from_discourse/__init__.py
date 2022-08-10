@@ -30,7 +30,7 @@ def migrate_posts():
 	topics = run_query('''
 		select topics.id, topics.title, topics.user_id, topics.category_id,
 			posts.created_at as creation, posts.updated_at as modified,
-			posts.cooked as content, posts.id as post_id
+			posts.cooked as content, posts.id as post_id, topics.last_posted_at as last_post_at
 		from topics
 		left join posts on posts.topic_id = topics.id
 		where posts.user_id > 0 and posts.post_number = 1
@@ -41,8 +41,9 @@ def migrate_posts():
 			continue
 
 		update_progress_bar('Creating Posts', i, len(topics), absolute=True)
-
-		with savepoint():
+		savepoint = f'inserting_topic_{topic.id}'
+		try:
+			frappe.db.savepoint(savepoint)
 			user = get_user(topic.user_id)
 			project = get_project(topic.category_id)
 			# likes - reactions
@@ -54,6 +55,7 @@ def migrate_posts():
 				content=topic.content,
 				project=project,
 				team=frappe.db.get_value('Team Project', project, 'team'),
+				last_post_at=topic.last_post_at,
 				creation=topic.creation,
 				modified=topic.modified,
 				owner=user,
@@ -96,7 +98,32 @@ def migrate_posts():
 					d.db_insert()
 				process_images_in_html(comment_doc, 'content')
 
-			log_discourse_map(doc, 'topics', topic.id)
+			# visits
+			visits_data = run_query(f'''
+				select topic_id, first_visited_at as creation, last_visited_at as last_visit, user_id
+				from topic_users where topic_id = '{topic.id}'
+			''')
+			visits = []
+			for d in visits_data:
+				name = frappe.db.get_next_sequence_val('Team Discussion Visit')
+				user = get_user(d.user_id)
+				#        ["name", "user", "discussion", 'last_visit', 'creation', 'modified', 'modified_by', 'owner'],
+				visits.append([name, user, doc.name, d.last_visit, d.creation, d.last_visit, user, user])
+
+			if visits:
+				frappe.db.bulk_insert(
+					"Team Discussion Visit",
+					["name", "user", "discussion", "last_visit", "creation", "modified", "modified_by", "owner"],
+					visits
+				)
+
+			log_discourse_map(doc, "topics", topic.id)
+		except Exception:
+			frappe.db.rollback(save_point=savepoint)
+			print(frappe.get_traceback())
+			break
+		else:
+			frappe.db.release_savepoint(savepoint)
 
 
 def process_images_in_html(doc, fieldname):
