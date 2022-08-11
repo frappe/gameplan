@@ -144,7 +144,7 @@ export default {
           this.visitTimer = setTimeout(() => {
             if (
               this.$route.name === 'ProjectDetailDiscussion' &&
-              this.$route.params.postId === doc.name
+              Number(this.$route.params.postId) === doc.name
             ) {
               this.$resources.discussion.trackVisit.submit()
             }

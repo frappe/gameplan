@@ -128,7 +128,7 @@ export default {
   },
   methods: {
     isActive(update) {
-      return this.$route.params.postId === update.name
+      return Number(this.$route.params.postId) === update.name
     },
     discussionTimestampDescription(d) {
       return [
