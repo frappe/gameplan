@@ -8,7 +8,8 @@
  "field_order": [
   "user",
   "status",
-  "readme"
+  "readme",
+  "full_name"
  ],
  "fields": [
   {
@@ -30,11 +31,18 @@
    "fieldname": "readme",
    "fieldtype": "Text Editor",
    "label": "Readme"
+  },
+  {
+   "fetch_from": "user.full_name",
+   "fieldname": "full_name",
+   "fieldtype": "Data",
+   "label": "Full Name",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-06-09 17:58:12.327017",
+ "modified": "2022-08-11 14:11:13.570602",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "Team User Profile",
