@@ -147,6 +147,7 @@ export default {
           reference_name: this.name,
         },
         order_by: 'creation asc',
+        limit: 999,
         onSuccess() {
           this.scrollToLastComment()
         },
