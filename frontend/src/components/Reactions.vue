@@ -110,13 +110,14 @@ export default {
     addReaction() {
       return {
         method: 'frappe.client.insert',
-        makeParams(emoji) {
+        makeParams({emoji, user}) {
           return {
             doc: {
               doctype: 'Team Reaction',
               parentfield: 'reactions',
               parenttype: this.doctype,
               parent: this.name,
+              user,
               emoji,
             },
           }
@@ -125,7 +126,7 @@ export default {
           let reactions = data.reactions.map((d) => ({
             name: d.name,
             emoji: d.emoji,
-            owner: d.owner,
+            user: d.user,
           }))
           this.$emit('update:reactions', reactions)
         },
@@ -146,7 +147,7 @@ export default {
   methods: {
     toggleReaction(emoji) {
       let existingReaction = this.reactions.find(
-        (r) => r.owner === this.$user().name && r.emoji === emoji
+        (r) => r.user === this.$user().name && r.emoji === emoji
       )
       if (existingReaction) {
         this.removeReaction(existingReaction)
@@ -155,16 +156,17 @@ export default {
       }
     },
     addReaction(emoji) {
+      const user = this.$user().name;
       let reactions = [
         ...this.reactions,
         {
           emoji,
-          owner: this.$user().name,
+          user,
           name: `new-emoji-${this.reactions.length}`,
         },
       ]
       this.$emit('update:reactions', reactions)
-      this.$resources.addReaction.submit(emoji)
+      this.$resources.addReaction.submit({emoji, user})
     },
     removeReaction(reaction) {
       // update local
@@ -183,8 +185,8 @@ export default {
           out[reaction.emoji] = { count: 0, users: [], userReacted: false }
         }
         out[reaction.emoji].count++
-        out[reaction.emoji].users.push(reaction.owner)
-        if (reaction.owner === this.$user().name) {
+        out[reaction.emoji].users.push(reaction.user)
+        if (reaction.user === this.$user().name) {
           out[reaction.emoji].userReacted = true
         }
       }
