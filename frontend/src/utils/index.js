@@ -16,3 +16,12 @@ export function htmlToText(html) {
   tmp.innerHTML = html
   return tmp.textContent || tmp.innerText || ''
 }
+
+export function copyToClipboard(text) {
+  let textField = document.createElement('textarea')
+  textField.value = text
+  document.body.appendChild(textField)
+  textField.select()
+  document.execCommand('copy')
+  textField.remove()
+}

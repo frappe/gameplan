@@ -38,6 +38,7 @@
                       projectId: d.project,
                       teamId: d.team,
                     },
+                    query: d.comment ? { comment: d.comment } : null,
                   }
                 : d.task
                 ? {
@@ -47,6 +48,7 @@
                       projectId: d.project,
                       taskId: d.task,
                     },
+                    query: d.comment ? { comment: d.comment } : null,
                   }
                 : null
             "

@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col" v-if="task && task.doc">
+  <div class="flex flex-col overflow-auto" v-if="task && task.doc">
     <div class="py-5">
       <div class="flex items-start justify-between">
         <input
@@ -164,11 +164,7 @@
         </div>
       </div>
     </div>
-    <CommentsArea
-      class="flex-1 min-h-0"
-      doctype="Team Task"
-      :name="task.doc.name"
-    />
+    <CommentsArea class="flex-1" doctype="Team Task" :name="task.doc.name" />
   </div>
 </template>
 <script>

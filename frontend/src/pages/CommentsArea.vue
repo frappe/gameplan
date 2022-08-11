@@ -1,10 +1,15 @@
 <template>
-  <div class="flex flex-col justify-" ref="comments">
-    <div class="pt-6 space-y-6" v-if="$resources.comments.data?.length">
+  <div class="flex flex-col" ref="comments">
+    <div class="px-1 pt-6 space-y-5" v-if="$resources.comments.data?.length">
       <div
-        class="flex items-start space-x-3 group"
+        class="flex items-start p-1 space-x-3 transition-shadow rounded-md group"
+        :class="{
+          ring: !comment.loading && highlightedComment == comment.name,
+        }"
         v-for="(comment, i) in $resources.comments.data"
         :key="comment.name"
+        :data-id="comment.name"
+        :ref="'comment-' + comment.name"
       >
         <UserInfo :email="comment.owner" v-slot="{ user }">
           <Avatar
@@ -13,11 +18,10 @@
             :imageURL="user.user_image"
           />
           <div class="flex-1">
-            <div class="text-base text-gray-900">
+            <div class="flex items-center text-base text-gray-900">
               <span class="font-medium">
-                {{ user.full_name }}
-              </span>
-              &middot;
+                {{ user.full_name }}&middot;&nbsp;</span
+              >
               <time
                 class="text-gray-600"
                 :datetime="comment.creation"
@@ -40,6 +44,25 @@
                 &middot;
                 <span class="text-red-600">Error</span>
               </template>
+              <Dropdown
+                v-show="!comment.editing"
+                class="ml-auto"
+                placement="right"
+                :button="{ icon: 'more-horizontal', appearance: 'minimal' }"
+                :options="[
+                  {
+                    label: 'Edit',
+                    icon: 'edit',
+                    handler: () => (comment.editing = true),
+                    condition: () => $user().name === comment.owner,
+                  },
+                  {
+                    label: 'Copy link',
+                    icon: 'link',
+                    handler: () => copyLink(comment),
+                  },
+                ]"
+              />
             </div>
             <div
               :class="
@@ -66,31 +89,19 @@
               </Button>
             </div>
           </div>
-          <div
-            v-if="$user().name === comment.owner"
-            class="!ml-auto"
-            :class="comment.editing ? '' : 'opacity-0 group-hover:opacity-100'"
-          >
-            <Button
-              v-show="!comment.editing"
-              icon="edit-2"
-              appearance="minimal"
-              @click="comment.editing = true"
-            />
-          </div>
         </UserInfo>
       </div>
     </div>
 
-    <div class="flex items-start pt-6 pb-6 space-x-3" ref="addComment">
+    <div class="flex items-start px-2 pt-6 pb-6 space-x-3" ref="addComment">
       <Avatar
         class="flex-shrink-0 mt-1"
         :label="$user().full_name"
         :imageURL="$user().user_image"
       />
-      <div class="relative flex items-center w-full">
+      <div class="w-full">
         <div
-          class="relative w-full border focus-within:border-gray-400 bg-white rounded-lg px-3.5 py-1 min-h-[2.5rem]"
+          class="w-full border focus-within:border-gray-400 bg-white rounded-lg px-3.5 py-1 min-h-[2.5rem]"
           @keydown.ctrl.enter.capture.stop="submitComment"
           @keydown.meta.enter.capture.stop="submitComment"
         >
@@ -102,38 +113,32 @@
             placeholder="Add comment..."
           />
         </div>
+        <Button
+          class="mt-2"
+          v-show="!commentEmpty"
+          appearance="primary"
+          @click="submitComment"
+          :loading="$resources.comments.insert.loading"
+        >
+          Submit
+        </Button>
       </div>
-      <button
-        v-if="!commentEmpty"
-        class="grid flex-shrink-0 w-8 h-8 mt-1 bg-blue-500 rounded-full place-items-center"
-        @click="submitComment"
-        :disabled="$resources.comments.insert.loading"
-      >
-        <LoadingIndicator
-          class="w-4 h-4 text-white"
-          v-if="$resources.comments.insert.loading"
-        />
-        <FeatherIcon
-          v-else
-          class="w-4 h-4 text-white"
-          name="arrow-up"
-          :stroke-width="2"
-        />
-      </button>
     </div>
   </div>
 </template>
 <script>
-import { Avatar, LoadingIndicator } from 'frappe-ui'
+import { Avatar, LoadingIndicator, Dropdown } from 'frappe-ui'
 import TextEditor from '@/components/TextEditor.vue'
+import { copyToClipboard } from '@/utils'
 
 export default {
   name: 'CommentsArea',
   props: ['doctype', 'name'],
-  components: { Avatar, LoadingIndicator, TextEditor },
+  components: { Avatar, LoadingIndicator, TextEditor, Dropdown },
   data() {
     return {
       newComment: '',
+      highlightedComment: '',
     }
   },
   resources: {
@@ -149,7 +154,10 @@ export default {
         order_by: 'creation asc',
         limit: 999,
         onSuccess() {
-          this.scrollToLastComment()
+          if (this.$route.query.comment) {
+            this.scrollToComment(Number(this.$route.query.comment))
+            this.$router.replace({ query: null })
+          }
         },
       }
     },
@@ -169,18 +177,11 @@ export default {
         })
         return data
       })
-      this.$resources.comments.insert.submit(
-        {
-          reference_doctype: this.doctype,
-          reference_name: this.name,
-          content: this.newComment,
-        },
-        {
-          onSuccess() {
-            this.scrollToLastComment()
-          },
-        }
-      )
+      this.$resources.comments.insert.submit({
+        reference_doctype: this.doctype,
+        reference_name: this.name,
+        content: this.newComment,
+      })
       this.newComment = ''
     },
     editComment(comment) {
@@ -199,10 +200,20 @@ export default {
         }
       )
     },
-    scrollToLastComment() {
+    scrollToComment(comment) {
+      if (!comment) return
       this.$nextTick(() => {
-        this.$refs.comments.scrollTop = this.$refs.comments.scrollHeight
+        let $comment = this.$refs['comment-' + comment][0]
+        let scrollContainer = getScrollParent($comment)
+        scrollContainer.scrollTop = $comment.offsetTop - 164
+        this.highlightedComment = comment
+        setTimeout(() => (this.highlightedComment = null), 2000)
       })
+    },
+    copyLink(comment) {
+      let location = window.location
+      let url = `${location.origin}${location.pathname}?comment=${comment.name}`
+      copyToClipboard(url)
     },
   },
   computed: {
@@ -210,5 +221,17 @@ export default {
       return !this.newComment || this.newComment === '<p></p>'
     },
   },
+}
+
+function getScrollParent(node) {
+  if (node == null) {
+    return null
+  }
+
+  if (node.scrollHeight > node.clientHeight) {
+    return node
+  } else {
+    return getScrollParent(node.parentNode)
+  }
 }
 </script>
