@@ -5,7 +5,7 @@
         <div class="py-6 pl-6 space-y-2">
           <div class="flex items-center justify-between">
             <h1 class="text-2xl font-semibold">People</h1>
-            <Input type="text" placeholder="search" v-model="search" />
+            <Input type="text" placeholder="Search by name" v-model="search" />
           </div>
           <div class="divide-y">
             <div v-for="user in $resources.users.data" :key="user.name">
