@@ -1,33 +1,9 @@
 <template>
-  <header
-    class="sticky top-0 z-10 flex items-center h-12 px-4 py-3 bg-white border-b"
-  >
-    <Breadcrumbs
-      :breadcrumbs="[
-        {
-          title: 'Personal Settings',
-          icon: '⚙️',
-        },
-      ]"
-    />
-  </header>
   <div class="px-6 pt-8" v-if="$resources.user.doc">
-    <h1 class="text-6xl font-bold text-gray-900">Personal Settings</h1>
-    <div class="grid grid-cols-12 gap-4 mt-6">
-      <Input
-        class="col-span-3"
-        label="First Name"
-        type="text"
-        v-model="$resources.user.doc.first_name"
-      />
-      <Input
-        class="col-span-3"
-        label="Last Name"
-        type="text"
-        v-model="$resources.user.doc.last_name"
-      />
+    <h1 class="text-2xl font-semibold text-gray-900">Personal Settings</h1>
+    <div class="grid grid-cols-2 gap-4 mt-6">
       <FileUploader
-        class="col-span-2 col-start-1"
+        class="col-span-2"
         @success="
           (file) =>
             $resources.user.setValue.submit({ user_image: file.file_url })
@@ -45,6 +21,16 @@
           </div>
         </template>
       </FileUploader>
+      <Input
+        label="First Name"
+        type="text"
+        v-model="$resources.user.doc.first_name"
+      />
+      <Input
+        label="Last Name"
+        type="text"
+        v-model="$resources.user.doc.last_name"
+      />
     </div>
     <div class="mt-6">
       <Button
@@ -60,7 +46,10 @@
               {
                 onSuccess: () => {
                   $getResource('user')?.reload()
-                  $getResource(['user_info', $resources.user.doc.name])?.reload()
+                  $getResource([
+                    'user_info',
+                    $resources.user.doc.name,
+                  ])?.reload()
                 },
               }
             )
@@ -90,6 +79,12 @@ export default {
         name: this.$user().name,
       }
     },
+  },
+  pageMeta() {
+    return {
+      title: 'Personal Settings',
+      emoji: '⚙️',
+    }
   },
 }
 </script>
