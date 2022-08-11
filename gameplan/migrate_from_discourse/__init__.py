@@ -139,7 +139,7 @@ def process_images_in_html(doc, fieldname):
 	for img in soup.findAll('img'):
 		src = img.get('src')
 		filename = img.get('alt')
-		if src:
+		if src and not src.startswith('https://mail.google.com'):
 			file = save_image(src, filename, doc)
 			if file:
 				img['src'] = file.file_url
@@ -151,11 +151,16 @@ def save_image(src, filename=None, doc=None):
 	if not src.startswith('http'):
 		src = urljoin('https://gameplan.frappe.io', src)
 
-	res = requests.get(src)
+	try:
+		res = requests.get(src)
+	except requests.exceptions.ConnectionError:
+		return
+
 	if res.ok:
 		_, extn = splitext(src)
 		hash = frappe.generate_hash(length=5)
-		filename = f'{filename}-{hash}{extn}'.replace(' ', '-').replace('%20', '-')
+		filename = f'{filename or ""}-{hash}{extn}'.replace(' ', '-').replace('%20', '-')
+		filename = filename.split('?', 1)[0]
 		return frappe.get_doc(
 			doctype='File',
 			content=res.content,
@@ -223,7 +228,7 @@ def migrate_users():
 	''')
 
 	for i, user in enumerate(users):
-		update_progress_bar("Creating users", i, len(users))
+		update_progress_bar("Creating users", i, len(users), absolute=True)
 
 		full_name = f'{user.full_name or user.username} '
 		first_name, last_name = full_name.split(' ', 1)
@@ -462,7 +467,7 @@ def migrate_categories():
 	}]
 
 	for i, d in enumerate(categories):
-		update_progress_bar('Creating projects', i, len(categories))
+		update_progress_bar('Creating projects', i, len(categories), absolute=True)
 		id = d['id']
 		team = d['team']
 		project = d['project']
@@ -495,7 +500,7 @@ def run_query(query, values=None):
 
 	if not conn:
 		conn = psycopg2.connect(
-			"host='localhost' dbname='gameplandb' user='postgres' password='qwe' port=5432"
+			"host='localhost' dbname='gameplandb2' user='postgres' password='qwe' port=5432"
 		)
 		cursor = conn.cursor(cursor_factory=DictCursor)
 
