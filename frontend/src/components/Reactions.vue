@@ -53,51 +53,33 @@
         leaveFromClass="scale-100 opacity-100"
         leaveToClass="scale-90 opacity-0"
       >
-        <Popover
-          trigger="hover"
-          hover-delay="0.5"
-          v-for="(reactions, emoji) in reactionsCount"
-          :key="emoji"
-        >
-          <template #target>
-            <button
-              class="flex items-center justify-center px-2 py-1 text-sm transition border rounded-full"
-              :class="[
-                reactions.userReacted
-                  ? 'bg-blue-100 border-blue-200 hover:border-blue-300'
-                  : 'border-gray-300 hover:border-gray-400',
-              ]"
-              @click="toggleReaction(emoji)"
-            >
-              {{ emoji }} {{ reactions.count }}
-            </button>
-          </template>
+        <Tooltip v-for="(reactions, emoji) in reactionsCount" :key="emoji">
+          <button
+            class="flex items-center justify-center px-2 py-1 text-sm transition border rounded-full"
+            :class="[
+              reactions.userReacted
+                ? 'bg-blue-100 border-blue-200 hover:border-blue-300'
+                : 'border-gray-300 hover:border-gray-400',
+            ]"
+            @click="toggleReaction(emoji)"
+          >
+            {{ emoji }} {{ reactions.count }}
+          </button>
+
           <template #body>
             <div
-              class="p-2 mt-1 space-y-2 bg-white border border-gray-100 rounded-lg shadow-xl"
+              class="px-2 py-1 text-xs max-w-[30ch] text-center text-white bg-gray-800 border border-gray-100 rounded-lg shadow-xl"
             >
-              <div
-                class="flex items-center space-x-1 leading-none"
-                v-for="user in reactions.users"
-              >
-                <Avatar
-                  size="sm"
-                  :label="$user(user).full_name"
-                  :imageURL="$user(user).user_image"
-                />
-                <span class="text-base text-gray-900">
-                  {{ $user(user).full_name }}
-                </span>
-              </div>
+              {{ toolTipText(reactions) }}
             </div>
           </template>
-        </Popover>
+        </Tooltip>
       </TransitionGroup>
     </Transition>
   </div>
 </template>
 <script>
-import { Popover } from 'frappe-ui'
+import { Popover, Tooltip } from 'frappe-ui'
 import ReactionFaceIcon from './ReactionFaceIcon.vue'
 import Avatar from 'frappe-ui/src/components/Avatar.vue'
 
@@ -105,12 +87,12 @@ export default {
   name: 'Reactions',
   props: ['reactions', 'doctype', 'name'],
   emits: ['update:reactions'],
-  components: { ReactionFaceIcon, Popover, Avatar },
+  components: { ReactionFaceIcon, Popover, Avatar, Tooltip },
   resources: {
     addReaction() {
       return {
         method: 'frappe.client.insert',
-        makeParams({emoji, user}) {
+        makeParams({ emoji, user }) {
           return {
             doc: {
               doctype: 'Team Reaction',
@@ -156,7 +138,7 @@ export default {
       }
     },
     addReaction(emoji) {
-      const user = this.$user().name;
+      const user = this.$user().name
       let reactions = [
         ...this.reactions,
         {
@@ -166,7 +148,7 @@ export default {
         },
       ]
       this.$emit('update:reactions', reactions)
-      this.$resources.addReaction.submit({emoji, user})
+      this.$resources.addReaction.submit({ emoji, user })
     },
     removeReaction(reaction) {
       // update local
@@ -175,6 +157,16 @@ export default {
 
       // update server
       this.$resources.removeReaction.submit(reaction.name)
+    },
+    toolTipText(reactions) {
+      return reactions.users
+        .map((user) => {
+          if (user) {
+            return this.$user(user).full_name.trim()
+          }
+          return ''
+        })
+        .join(', ')
     },
   },
   computed: {
