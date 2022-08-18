@@ -117,7 +117,8 @@ after_install = [
 doc_events = {
 	"User": {
 		"after_insert": "gameplan.gameplan.doctype.team_user_profile.team_user_profile.create_user_profile",
-		"on_trash": "gameplan.gameplan.doctype.team_user_profile.team_user_profile.delete_user_profile"
+		"on_trash": "gameplan.gameplan.doctype.team_user_profile.team_user_profile.delete_user_profile",
+		"on_update": "gameplan.gameplan.doctype.team_user_profile.team_user_profile.on_user_update"
 	}
 }
 

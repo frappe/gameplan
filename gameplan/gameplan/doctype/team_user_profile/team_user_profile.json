@@ -7,6 +7,7 @@
  "engine": "InnoDB",
  "field_order": [
   "user",
+  "enabled",
   "status",
   "readme",
   "full_name"
@@ -38,11 +39,18 @@
    "fieldtype": "Data",
    "label": "Full Name",
    "read_only": 1
+  },
+  {
+   "default": "0",
+   "fetch_from": "user.enabled",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Enabled"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-08-11 14:11:13.570602",
+ "modified": "2022-08-18 13:40:32.996192",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "Team User Profile",
@@ -76,5 +84,6 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "track_changes": 1
 }

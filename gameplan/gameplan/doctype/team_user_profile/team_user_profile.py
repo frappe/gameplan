@@ -24,3 +24,10 @@ def create_user_profile(doc, method=None):
 
 def delete_user_profile(doc, method=None):
 	return frappe.get_doc("Team User Profile", {"user": doc.name}).delete()
+
+def on_user_update(doc, method=None):
+	if any(doc.has_value_changed(field) for field in ["full_name", "enabled"]):
+		profile = frappe.get_doc("Team User Profile", {"user": doc.name})
+		profile.enabled = doc.enabled
+		profile.full_name = doc.full_name
+		profile.save()
