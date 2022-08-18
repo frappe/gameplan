@@ -35,8 +35,6 @@ def search(query=None):
 
 @frappe.whitelist()
 def get_discussions(filters=None, start=None):
-	from frappe.query_builder.functions import Coalesce
-
 	filters = frappe.parse_json(filters) if filters else None
 	Discussion = frappe.qb.DocType('Team Project Discussion')
 	Visit = frappe.qb.DocType('Team Discussion Visit')
@@ -47,8 +45,7 @@ def get_discussions(filters=None, start=None):
 		.select(
 			Discussion.name, Discussion.owner, Discussion.creation, Discussion.modified,
 			Discussion.title, Discussion.status, Discussion.team, Discussion.project, Discussion.last_post_at,
-			Visit.last_visit, Coalesce(Discussion.last_post_at - Visit.last_visit, 1).as_('unread'),
-			Project.title.as_('project_title'), Team.title.as_('team_title')
+			Visit.last_visit, Project.title.as_('project_title'), Team.title.as_('team_title')
 		)
 		.left_join(Visit)
 		.on((Discussion.name == Visit.discussion) & (Visit.user == frappe.session.user))

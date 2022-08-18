@@ -24,13 +24,13 @@
               <div>
                 <span
                   class="text-lg font-medium leading-snug"
-                  :class="d.unread > 0 ? 'text-gray-900' : 'text-gray-600'"
+                  :class="d.unread ? 'text-gray-900' : 'text-gray-600'"
                 >
                   {{ d.title }}
                 </span>
                 <span
                   class="inline-block w-1.5 h-1.5 ml-1 mb-0.5 bg-blue-300 rounded-full"
-                  v-if="d.unread > 0"
+                  v-if="d.unread"
                 ></span>
               </div>
               <div class="flex items-center justify-between mt-0.5 text-base">
@@ -107,6 +107,9 @@ export default {
         },
         auto: true,
         transform(data) {
+          for (let d of data) {
+            d.unread = d.last_post_at > d.last_visit
+          }
           if (this.start > 0) {
             let currentData = this.$resources.discussions.data || []
             if (data.length < 20) {

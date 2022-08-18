@@ -228,6 +228,11 @@ export default {
           moveToProject: 'move_to_project',
         },
         onSuccess(doc) {
+          if (!this.$route.query.comment && doc.last_unread_comment) {
+            this.$router.replace({
+              query: { comment: doc.last_unread_comment },
+            })
+          }
           if (this.visitTimer) {
             clearTimeout(this.visitTimer)
             this.visitTimer = null

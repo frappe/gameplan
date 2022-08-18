@@ -7,6 +7,19 @@ from gameplan.utils import extract_mentions
 from frappe.utils import get_fullname
 
 class TeamProjectDiscussion(Document):
+	def as_dict(self, *args, **kwargs):
+		d = super(TeamProjectDiscussion, self).as_dict(*args, **kwargs)
+		last_visit = frappe.db.get_value('Team Discussion Visit', {'discussion': self.name, 'user': frappe.session.user}, 'last_visit')
+		result = frappe.db.get_all(
+			'Team Comment',
+			filters={'reference_doctype': self.doctype, 'reference_name': self.name, 'creation': ('>', last_visit)},
+			order_by='creation asc',
+			limit=1,
+			pluck='name'
+		)
+		d.last_unread_comment = result[0] if result else None
+		return d
+
 	def before_insert(self):
 		self.last_post_at = frappe.utils.now()
 

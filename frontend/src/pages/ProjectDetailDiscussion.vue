@@ -1,6 +1,9 @@
 <template>
   <div class="flex">
-    <DiscussionView class="w-full overflow-auto" :postId="postId" />
+    <DiscussionView
+      class="w-full overflow-auto scroll-smooth"
+      :postId="postId"
+    />
   </div>
 </template>
 <script>
