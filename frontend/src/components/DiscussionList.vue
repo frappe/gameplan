@@ -37,13 +37,6 @@
                 <div class="text-gray-600">
                   <span>by</span>
                   {{ user.full_name }}
-                  <span>
-                    {{
-                      $dayjs().diff(d.modified, 'month') >= 9
-                        ? 'on ' + $dayjs(d.modified).format('D MMM YYYY')
-                        : $dayjs(d.modified).fromNow()
-                    }}
-                  </span>
                   <template v-if="!filters || !filters.project">
                     <span> in </span>
                     <router-link
@@ -63,9 +56,9 @@
                   :title="discussionTimestampDescription(d)"
                 >
                   {{
-                    $dayjs().diff(d.modified, 'day') >= 25
-                      ? $dayjs(d.modified).format('D MMM')
-                      : $dayjs(d.modified).fromNow(true)
+                    $dayjs().diff(d.last_post_at, 'day') >= 25
+                      ? $dayjs(d.last_post_at).format('D MMM')
+                      : $dayjs(d.last_post_at).fromNow(true)
                   }}
                 </span>
               </div>
@@ -133,7 +126,7 @@ export default {
     discussionTimestampDescription(d) {
       return [
         `First Post: ${this.$dayjs(d.creation)}`,
-        `Latest Post: ${this.$dayjs(d.modified)}`,
+        `Latest Post: ${this.$dayjs(d.last_post_at)}`,
       ].join('\n')
     },
   },
