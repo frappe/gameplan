@@ -85,6 +85,12 @@ export default {
       activeTab: 'Unread',
     }
   },
+  pageMeta() {
+    return {
+      title: 'Notifications',
+      emoji: '🔔',
+    }
+  },
   components: { Avatar, TabButtons, Tooltip, Link },
   resources: {
     unreadNotifications() {
