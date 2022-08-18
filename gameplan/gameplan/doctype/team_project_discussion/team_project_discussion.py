@@ -49,6 +49,14 @@ class TeamProjectDiscussion(Document):
 			visit.last_visit = frappe.utils.now()
 			visit.insert(ignore_permissions=True)
 
+	@frappe.whitelist()
+	def move_to_project(self, project):
+		if project == self.project:
+			return
+
+		self.project = project
+		self.save()
+
 
 def make_full_text_search_index():
 	frappe.db.sql('ALTER TABLE `tabTeam Project Discussion` ADD FULLTEXT (title, content, owner)')
