@@ -10,6 +10,11 @@ export let usersResource = createResource({
       usersByName[user.name] = user
     }
   },
+  onError(error) {
+    if (error && error.exc_type === 'AuthenticationError') {
+      window.location.href = '/login'
+    }
+  },
 })
 usersResource.fetch()
 

@@ -43,8 +43,11 @@ def update_document(name, title, content):
 	doc.save()
 
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def get_user_info():
+	if frappe.session.user == "Guest":
+		frappe.throw("Authentication failed", exc=frappe.AuthenticationError)
+
 	users = frappe.db.get_all(
 		"User",
 		filters=[["Has Role", "role", "=", "Teams User"]],
