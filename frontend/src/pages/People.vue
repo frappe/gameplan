@@ -70,7 +70,7 @@ export default {
   },
   resources: {
     users() {
-      let filters = null
+      let filters = { enabled: 1 }
       if (this.search) {
         filters = { full_name: ['like', '%' + this.search + '%'] }
       }
