@@ -79,6 +79,13 @@
                 @change="(val) => (comment.content = val)"
                 :starterkit-options="{ heading: false }"
               />
+              <div class="mt-3">
+                <Reactions
+                  doctype="Team Comment"
+                  :name="comment.name"
+                  v-model:reactions="comment.reactions"
+                />
+              </div>
             </div>
             <div class="pt-2 space-x-2" v-show="comment.editing">
               <Button appearance="primary" @click="editComment(comment)">
@@ -130,11 +137,12 @@
 import { Avatar, LoadingIndicator, Dropdown } from 'frappe-ui'
 import TextEditor from '@/components/TextEditor.vue'
 import { copyToClipboard } from '@/utils'
+import Reactions from '@/components/Reactions.vue'
 
 export default {
   name: 'CommentsArea',
   props: ['doctype', 'name'],
-  components: { Avatar, LoadingIndicator, TextEditor, Dropdown },
+  components: { Avatar, LoadingIndicator, TextEditor, Dropdown, Reactions },
   data() {
     return {
       newComment: '',
@@ -146,7 +154,35 @@ export default {
       return {
         type: 'list',
         doctype: 'Team Comment',
-        fields: ['content', 'owner', 'creation', 'modified', 'name'],
+        fields: [
+          'content',
+          'owner',
+          'creation',
+          'modified',
+          'name',
+          'reactions.user as reaction_user',
+          'reactions.emoji as reaction_emoji',
+        ],
+        transform(data) {
+          let comments = {}
+          let out = []
+          for (let d of data) {
+            let comment
+            if (!comments[d.name]) {
+              d.reactions = []
+              comments[d.name] = d
+              out.push(d)
+            }
+            comment = comments[d.name]
+            if (d.reaction_user && d.reaction_emoji) {
+              comment.reactions.push({
+                user: d.reaction_user,
+                emoji: d.reaction_emoji,
+              })
+            }
+          }
+          return out
+        },
         filters: {
           reference_doctype: this.doctype,
           reference_name: this.name,
