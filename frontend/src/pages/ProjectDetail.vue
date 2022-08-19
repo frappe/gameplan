@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col h-full px-6 pt-8">
+  <div class="flex flex-col h-full pt-8">
     <header>
       <div class="border-b" v-if="project">
         <div class="flex items-start space-x-2">

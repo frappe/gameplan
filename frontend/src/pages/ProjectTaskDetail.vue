@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col overflow-auto" v-if="task && task.doc">
+  <div class="flex flex-col" v-if="task && task.doc">
     <div class="py-5">
       <div class="flex items-start justify-between">
         <input

@@ -1,8 +1,8 @@
 <template>
   <div class="flex flex-col h-full">
     <div class="flex flex-1 min-h-0">
-      <div class="w-full overflow-auto" v-if="!selectedUser">
-        <div class="py-6 pl-6 space-y-2">
+      <div class="w-full" v-if="!selectedUser">
+        <div class="py-6 space-y-2">
           <div class="flex items-center justify-between">
             <h1 class="text-2xl font-semibold">People</h1>
             <Input type="text" placeholder="Search by name" v-model="search" />
@@ -48,7 +48,7 @@
           </div>
         </div>
       </div>
-      <div class="w-full overflow-auto" v-else>
+      <div class="w-full" v-else>
         <PeopleProfile :user="selectedUser" />
       </div>
     </div>

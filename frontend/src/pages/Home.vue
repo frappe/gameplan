@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col h-full">
     <div class="flex flex-1 min-h-0">
-      <div class="w-full h-full px-6 py-6">
+      <div class="w-full h-full py-6">
         <div class="flex items-center justify-between mb-3">
           <h1 class="text-2xl font-semibold">Posts</h1>
 

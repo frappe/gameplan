@@ -240,9 +240,7 @@ export default {
       if (!comment) return
       this.$nextTick(() => {
         let $comment = this.$refs['comment-' + comment][0]
-        let scrollContainer = getScrollParent($comment)
-        scrollContainer.scrollTop =
-          $comment.offsetTop - scrollContainer.offsetTop - 2
+        scrollToElement($comment)
         this.highlightedComment = comment
         setTimeout(() => (this.highlightedComment = null), 2000)
       })
@@ -260,15 +258,13 @@ export default {
   },
 }
 
-function getScrollParent(node) {
-  if (node == null) {
-    return null
-  }
-
-  if (node.scrollHeight > node.clientHeight) {
-    return node
-  } else {
-    return getScrollParent(node.parentNode)
-  }
+function scrollToElement(element) {
+  let headerOffset = 65
+  let elementPosition = element.getBoundingClientRect().top
+  let offsetPosition = elementPosition + window.pageYOffset - headerOffset
+  window.scrollTo({
+    top: offsetPosition,
+    behavior: 'smooth',
+  })
 }
 </script>

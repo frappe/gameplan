@@ -1,5 +1,5 @@
 <template>
-  <div class="pt-6 overflow-auto">
+  <div class="pt-6">
     <div class="space-y-5">
       <ProjectDetailOverviewSummary :project="project" />
       <ProjectDetailOverviewReadme :project="project" />

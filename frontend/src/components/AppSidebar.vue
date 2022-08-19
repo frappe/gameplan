@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col flex-1 py-6 overflow-y-auto">
+  <div class="flex flex-col flex-1 py-6">
     <div class="flex-1">
       <nav class="px-2 space-y-1">
         <Links

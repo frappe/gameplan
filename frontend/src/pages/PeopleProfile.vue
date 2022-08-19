@@ -1,5 +1,5 @@
 <template>
-  <div class="p-6" v-if="doc">
+  <div class="py-6" v-if="doc">
     <div class="flex items-center">
       <h2 class="text-3xl font-bold leading-7 text-gray-900">
         {{ $user(doc.user).full_name }}

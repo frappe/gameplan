@@ -1,5 +1,5 @@
 <template>
-  <div class="px-6 pt-8 overflow-auto pb-80">
+  <div class="pt-8 pb-80">
     <div class="flex items-center w-full">
       <div class="flex items-center space-x-2">
         <IconPicker
