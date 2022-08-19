@@ -13,7 +13,7 @@
       >
         <UserInfo :email="comment.owner" v-slot="{ user }">
           <Avatar
-            class="flex-shrink-0"
+            class="sticky flex-shrink-0 top-1"
             :label="user.full_name"
             :imageURL="user.user_image"
           />
@@ -241,7 +241,8 @@ export default {
       this.$nextTick(() => {
         let $comment = this.$refs['comment-' + comment][0]
         let scrollContainer = getScrollParent($comment)
-        scrollContainer.scrollTop = $comment.offsetTop - 164
+        scrollContainer.scrollTop =
+          $comment.offsetTop - scrollContainer.offsetTop - 2
         this.highlightedComment = comment
         setTimeout(() => (this.highlightedComment = null), 2000)
       })
