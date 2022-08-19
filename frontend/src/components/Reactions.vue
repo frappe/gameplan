@@ -11,7 +11,7 @@
       </template>
       <template #body-main="{ togglePopover }">
         <div class="inline-flex p-1 mt-1">
-          <div class="grid grid-cols-8 items-center space-x-0.5">
+          <div class="grid grid-cols-10 items-center space-x-0.5">
             <button
               class="w-6 h-6 rounded hover:bg-gray-50"
               v-for="emoji in standardEmojis"
