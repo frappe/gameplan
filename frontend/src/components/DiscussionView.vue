@@ -287,5 +287,14 @@ export default {
       return this.$resources.discussion.doc
     },
   },
+  pageMeta() {
+    if (!this.discussion) return
+    let project = this.getDoc('Team Project', this.discussion.project)
+    if (!project) return
+    return {
+      title: [this.discussion.title, project.title].filter(Boolean).join(' - '),
+      emoji: project.icon,
+    }
+  },
 }
 </script>
