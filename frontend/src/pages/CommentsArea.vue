@@ -210,6 +210,7 @@ export default {
           reference_doctype: this.doctype,
           reference_name: this.name,
           loading: true,
+          reactions: [],
         })
         return data
       })

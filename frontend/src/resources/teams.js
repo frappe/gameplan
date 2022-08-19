@@ -20,6 +20,7 @@ export let teams = createListResource({
     })
   },
 })
+teams.reload()
 
 function createProjectsResource(team) {
   return createListResource({

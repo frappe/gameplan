@@ -1,7 +1,17 @@
 <template>
   <div class="relative px-4 py-4 border rounded-xl">
+    <TextEditor
+      ref="readme"
+      editor-class="prose-sm"
+      :content="resource.doc[fieldname]"
+      :placeholder="placeholder"
+      @change="(val) => (resource.doc[fieldname] = val)"
+      :bubbleMenu="true"
+      :floating-menu="true"
+      :editable="editReadme"
+    />
     <div
-      class="absolute top-0 right-0 z-10 flex mt-4 mr-4 space-x-2"
+      class="absolute top-0 right-0 flex mt-4 mr-4 space-x-2"
       v-if="editable"
     >
       <Button
@@ -33,16 +43,6 @@
         />
       </template>
     </div>
-    <TextEditor
-      ref="readme"
-      editor-class="prose-sm"
-      :content="resource.doc[fieldname]"
-      :placeholder="placeholder"
-      @change="(val) => (resource.doc[fieldname] = val)"
-      :bubbleMenu="true"
-      :floating-menu="true"
-      :editable="editReadme"
-    />
   </div>
 </template>
 <script>

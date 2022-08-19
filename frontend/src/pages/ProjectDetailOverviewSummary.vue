@@ -1,5 +1,5 @@
 <template>
-  <div v-if="cards.length" class="grid grid-cols-4 gap-5">
+  <div v-if="cards.length" class="grid grid-cols-2 gap-5 sm:grid-cols-4">
     <div
       class="bg-gray-100 rounded-xl px-3.5 py-2.5"
       v-for="card in cards"

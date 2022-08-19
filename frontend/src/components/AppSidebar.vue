@@ -114,18 +114,11 @@ import {
   TransitionChild,
   TransitionRoot,
 } from '@headlessui/vue'
-import { createResource } from 'frappe-ui'
 import Links from './Links.vue'
 import Link from './Link.vue'
 import AddTeamDialog from './AddTeamDialog.vue'
 import { teams } from '@/resources/teams'
-
-let unreadNotifications = createResource({
-  cache: 'Unread Notifications Count',
-  method: 'gameplan.api.unread_notifications',
-  initialData: 0,
-})
-unreadNotifications.fetch()
+import { unreadNotifications } from '@/resources/notifications'
 
 export default {
   name: 'AppSidebar',
@@ -174,54 +167,6 @@ export default {
     this.$socket.on('gameplan:new_notification', () => {
       unreadNotifications.reload()
     })
-  },
-  resources: {
-    teams: {
-      type: 'list',
-      doctype: 'Team',
-      fields: ['name', 'title', 'icon', 'modified', 'creation'],
-      order_by: 'creation asc',
-      cache: 'Sidebar Teams',
-      transform(data) {
-        return data.map((team) => {
-          return {
-            ...team,
-            route: {
-              name: 'TeamPageHome',
-              params: { teamId: team.name },
-            },
-            open: false,
-            projects: this.createProjectsResource(team.name),
-          }
-        })
-      },
-    },
-  },
-  methods: {
-    createProjectsResource(team) {
-      return createResource({
-        method: 'frappe.client.get_list',
-        params: {
-          doctype: 'Team Project',
-          filters: { team },
-          fields: ['name', 'title', 'icon', 'team'],
-          order_by: 'creation asc',
-        },
-        cache: ['Team Project List', team],
-        transform(projects) {
-          return projects.map((project) => {
-            project.route = {
-              name: 'ProjectDetailOverview',
-              params: {
-                teamId: project.team,
-                projectId: project.name,
-              },
-            }
-            return project
-          })
-        },
-      })
-    },
   },
 }
 </script>

@@ -122,7 +122,7 @@
       </div>
     </div>
     <div class="grid grid-cols-8 gap-4 pb-5 border-b">
-      <div class="col-span-6">
+      <div class="col-span-8 sm:col-span-6">
         <ReadmeEditor
           class="min-h-full"
           :resource="task"
@@ -131,7 +131,7 @@
           placeholder="Write a description..."
         />
       </div>
-      <div class="col-span-2 space-y-4">
+      <div class="col-span-8 space-y-4 sm:col-span-2">
         <div class="w-full">
           <label class="text-sm text-gray-600">Assignee</label>
           <Autocomplete

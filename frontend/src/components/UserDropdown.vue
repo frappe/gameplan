@@ -1,6 +1,6 @@
 <template>
   <Dropdown
-    placement="center"
+    placement="right"
     :options="[
       {
         label: 'My Profile',
@@ -11,7 +11,7 @@
   >
     <template v-slot="{ open }">
       <button
-        class="flex items-center w-full px-2 py-2 space-x-2 text-base font-medium text-left rounded-md"
+        class="flex items-center w-full p-2 space-x-2 text-base font-medium text-left rounded-md"
         :class="open ? 'bg-gray-300' : 'hover:bg-gray-200'"
       >
         <Avatar
@@ -19,8 +19,8 @@
           :imageURL="$user().user_image"
           size="sm"
         />
-        <span>{{ $user().full_name }}</span>
-        <FeatherIcon name="chevron-down" class="w-4 h-4" />
+        <span class="hidden sm:inline">{{ $user().full_name }}</span>
+        <FeatherIcon name="chevron-down" class="hidden w-4 h-4 sm:inline" />
       </button>
     </template>
   </Dropdown>

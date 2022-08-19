@@ -5,7 +5,7 @@
         Invite members to collaborate
       </div>
       <template v-else>
-        <span class="text-base text-gray-600">
+        <span class="hidden text-base text-gray-600 sm:inline">
           {{
             members.length > 1
               ? `${members.length} members`

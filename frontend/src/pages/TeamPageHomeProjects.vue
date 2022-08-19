@@ -10,7 +10,7 @@
         Add Project
       </Button>
     </div>
-    <ul role="list" class="grid grid-cols-3 gap-4">
+    <ul role="list" class="grid grid-cols-1 gap-4 sm:grid-cols-3">
       <li
         v-for="project in $resources.projects.data"
         :key="project.name"

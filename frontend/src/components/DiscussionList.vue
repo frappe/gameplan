@@ -35,8 +35,9 @@
               </div>
               <div class="flex items-center justify-between mt-0.5 text-base">
                 <div class="text-gray-600">
-                  <span>by</span>
-                  {{ user.full_name }}
+                  <span :class="filters ? '' : 'hidden sm:inline'">
+                    by {{ user.full_name }}
+                  </span>
                   <template v-if="!filters || !filters.project">
                     <span> in </span>
                     <router-link
@@ -52,7 +53,7 @@
                   </template>
                 </div>
                 <span
-                  class="text-gray-600"
+                  class="text-gray-600 shrink-0"
                   :title="discussionTimestampDescription(d)"
                 >
                   {{

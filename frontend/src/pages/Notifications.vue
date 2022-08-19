@@ -11,11 +11,11 @@
     </div>
     <div class="divide-y">
       <div
-        class="flex items-center justify-between py-2"
+        class="flex items-start justify-between py-2"
         v-for="d in notifications"
         :key="d.name"
       >
-        <div class="flex items-center">
+        <div class="flex items-start">
           <Avatar
             size="sm"
             :imageURL="$user(d.from_user).user_image"
@@ -25,7 +25,7 @@
             {{ d.message }} {{ $dayjs(d.creation).fromNow() }}
           </div>
         </div>
-        <div class="flex items-center space-x-2">
+        <div class="flex items-start ml-2 space-x-2 shrink-0">
           <router-link
             v-if="d.discussion || d.task"
             class="block text-sm font-medium text-blue-500 hover:text-blue-700"
