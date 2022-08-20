@@ -40,7 +40,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-08-10 18:54:12.815770",
+ "modified": "2022-08-20 12:06:28.496669",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "Team Comment",
@@ -48,20 +48,10 @@
  "owner": "Administrator",
  "permissions": [
   {
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Teams User",
-   "share": 1
-  },
-  {
    "create": 1,
    "delete": 1,
    "email": 1,
    "export": 1,
-   "if_owner": 1,
    "print": 1,
    "read": 1,
    "report": 1,
