@@ -126,7 +126,6 @@
         <ReadmeEditor
           class="min-h-full"
           :resource="task"
-          :editable="$user().name === task.doc.owner"
           fieldname="description"
           placeholder="Write a description..."
         />
