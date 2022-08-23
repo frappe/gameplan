@@ -78,7 +78,7 @@
     <div class="pb-40">
       <div class="flex items-center p-3 space-x-4" v-if="hasNextPage">
         <div class="w-8 h-8 bg-gray-100 rounded-full"></div>
-        <Button @click="start += 20" :loading="$resources.discussions.loading">
+        <Button @click="nextPage" :loading="$resources.discussions.loading">
           {{
             $resources.discussions.loading ? 'Loading...' : 'Load more posts'
           }}
@@ -109,20 +109,22 @@ export default {
         cache: ['Team Project Discussion', this.filters],
         method:
           'gameplan.gameplan.doctype.team_project_discussion.api.get_discussions',
-        params: {
-          filters: this.filters,
-          start: this.start,
+        makeParams() {
+          return {
+            filters: this.filters,
+            start: this.start,
+          }
         },
         auto: true,
         transform(data) {
+          if (data.length < 20) {
+            this.hasNextPage = false
+          }
           for (let d of data) {
             d.unread = d.last_post_at > d.last_visit
           }
           if (this.start > 0) {
             let currentData = this.$resources.discussions.data || []
-            if (data.length < 20) {
-              this.hasNextPage = false
-            }
             return [...currentData, ...data]
           }
           return data
@@ -139,6 +141,10 @@ export default {
         `First Post: ${this.$dayjs(d.creation)}`,
         `Latest Post: ${this.$dayjs(d.last_post_at)}`,
       ].join('\n')
+    },
+    nextPage() {
+      this.start += 20
+      this.$resources.discussions.fetch()
     },
   },
 }
