@@ -1,5 +1,24 @@
 <template>
   <div class="flex flex-col" ref="comments">
+    <div
+      v-if="$resources.comments.data == null"
+      class="flex items-start px-2 py-4 space-x-3 text-base animate-pulse"
+    >
+      <div class="w-8 h-8 bg-gray-200 rounded-full"></div>
+      <div>
+        <div class="flex flex-col justify-center h-8">
+          <div class="w-40 h-2 bg-gray-200"></div>
+        </div>
+        <div class="flex flex-col gap-2">
+          <div v-for="i in 4">
+            <div
+              class="h-2 bg-gray-200"
+              :style="{ width: `${Math.max(Math.random() * 800, 600)}px` }"
+            ></div>
+          </div>
+        </div>
+      </div>
+    </div>
     <div class="px-1 pt-6 space-y-5" v-if="$resources.comments.data?.length">
       <div
         class="flex items-start p-1 space-x-3 transition-shadow rounded-md group"
@@ -145,6 +164,7 @@ export default {
   components: { Avatar, LoadingIndicator, TextEditor, Dropdown, Reactions },
   data() {
     return {
+      commentMap: {},
       newComment: '',
       highlightedComment: '',
     }
@@ -154,45 +174,51 @@ export default {
       return {
         type: 'list',
         doctype: 'Team Comment',
-        fields: [
-          'content',
-          'owner',
-          'creation',
-          'modified',
-          'name',
-          'reactions.user as reaction_user',
-          'reactions.emoji as reaction_emoji',
-        ],
+        fields: ['content', 'owner', 'creation', 'modified', 'name'],
         transform(data) {
-          let comments = {}
-          let out = []
           for (let d of data) {
-            let comment
-            if (!comments[d.name]) {
-              d.reactions = []
-              comments[d.name] = d
-              out.push(d)
-            }
-            comment = comments[d.name]
-            if (d.reaction_user && d.reaction_emoji) {
-              comment.reactions.push({
-                user: d.reaction_user,
-                emoji: d.reaction_emoji,
-              })
-            }
+            this.commentMap[d.name] = d
+            d.reactions = []
           }
-          return out
+          return data
         },
         filters: {
           reference_doctype: this.doctype,
           reference_name: this.name,
         },
         order_by: 'creation asc',
-        limit: 999,
+        limit: 99999,
         onSuccess() {
           if (this.$route.query.comment) {
             this.scrollToComment(Number(this.$route.query.comment))
             this.$router.replace({ query: null })
+          }
+        },
+      }
+    },
+    reactions() {
+      if (!this.$resources.comments.data?.length) return
+      let comments = this.$resources.comments.data.map((d) => d.name)
+      return {
+        type: 'list',
+        doctype: 'Team Reaction',
+        fields: ['user', 'emoji', 'parent'],
+        filters: {
+          parenttype: 'Team Comment',
+          parent: ['in', comments],
+        },
+        parent: 'Team Comment',
+        order_by: 'parent asc, idx asc',
+        limit: 99999,
+        onSuccess(reactions) {
+          for (let reaction of reactions) {
+            let comment = this.commentMap[reaction.parent]
+            if (comment) {
+              comment.reactions.push({
+                user: reaction.user,
+                emoji: reaction.emoji,
+              })
+            }
           }
         },
       }
