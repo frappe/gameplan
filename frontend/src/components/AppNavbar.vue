@@ -1,7 +1,7 @@
 <template>
   <header class="flex items-center justify-between w-full h-14">
     <router-link
-      class="flex-shrink-0 px-4 font-bold tracking-widest text-gray-700 uppercase sm:px-0 sm:w-64"
+      class="flex-shrink-0 font-bold tracking-widest text-gray-700 uppercase sm:px-4 sm:w-64"
       :to="{ name: 'Home' }"
     >
       Gameplan

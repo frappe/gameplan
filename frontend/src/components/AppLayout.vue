@@ -1,11 +1,11 @@
 <template>
   <div class="relative flex flex-col" v-if="$users.data.length">
     <div class="sticky top-0 z-10 bg-white border-b">
-      <div class="sm:container">
+      <div class="px-4 lg:container lg:px-0">
         <slot name="navbar" />
       </div>
     </div>
-    <div class="container flex-1 h-full">
+    <div class="flex-1 h-full px-4 lg:container lg:px-0">
       <div class="flex h-full">
         <div class="flex-shrink-0 hidden w-64 min-h-0 pb-40 sm:block">
           <slot name="sidebar" />
