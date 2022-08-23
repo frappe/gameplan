@@ -18,7 +18,10 @@
   "task_states",
   "sections",
   "members",
-  "attachments"
+  "attachments",
+  "section_break_14",
+  "tasks_count",
+  "discussions_count"
  ],
  "fields": [
   {
@@ -96,6 +99,20 @@
    "fieldname": "readme",
    "fieldtype": "Text Editor",
    "label": "Readme"
+  },
+  {
+   "fieldname": "section_break_14",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "tasks_count",
+   "fieldtype": "Int",
+   "label": "Tasks Count"
+  },
+  {
+   "fieldname": "discussions_count",
+   "fieldtype": "Int",
+   "label": "Discussions Count"
   }
  ],
  "index_web_pages_for_search": 1,
@@ -105,7 +122,7 @@
    "link_fieldname": "project"
   }
  ],
- "modified": "2022-08-10 18:53:39.898561",
+ "modified": "2022-08-23 16:42:55.974763",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "Team Project",

@@ -14,11 +14,20 @@ class TeamTask(Document):
 		)
 		self.idx = total_tasks_in_section + 1
 
+	def after_insert(self):
+		self.update_tasks_count(1)
+
 	def on_update(self):
 		self.update_project_progress()
 
 	def on_trash(self):
 		self.update_project_progress()
+		self.update_tasks_count(-1)
+
+	def update_tasks_count(self, delta=1):
+		project = frappe.get_doc('Team Project', self.project)
+		project.tasks_count = project.tasks_count + delta
+		project.save(ignore_permissions=True)
 
 	def update_project_progress(self):
 		if self.project and self.has_value_changed("is_completed"):

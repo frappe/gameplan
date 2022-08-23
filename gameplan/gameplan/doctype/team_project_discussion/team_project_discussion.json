@@ -12,7 +12,8 @@
   "title",
   "content",
   "reactions",
-  "last_post_at"
+  "last_post_at",
+  "comments_count"
  ],
  "fields": [
   {
@@ -58,11 +59,16 @@
    "fieldname": "last_post_at",
    "fieldtype": "Datetime",
    "label": "Last Post At"
+  },
+  {
+   "fieldname": "comments_count",
+   "fieldtype": "Int",
+   "label": "Comments Count"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-08-10 18:53:23.874570",
+ "modified": "2022-08-23 17:07:43.447350",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "Team Project Discussion",

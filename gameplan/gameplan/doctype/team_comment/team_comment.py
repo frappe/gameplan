@@ -8,13 +8,22 @@ from frappe.utils import get_fullname
 
 class TeamComment(Document):
 	def after_insert(self):
-		if self.reference_doctype == "Team Project Discussion":
-			frappe.db.set_value(
-				self.reference_doctype,
-				self.reference_name,
-				"last_post_at",
-				frappe.utils.now()
-			)
+		if self.reference_doctype not in ["Team Project Discussion", "Team Task"]:
+			return
+		reference_doc = frappe.get_doc(self.reference_doctype, self.reference_name)
+		if reference_doc.meta.has_field("last_post_at"):
+			reference_doc.set("last_post_at", frappe.utils.now())
+		if reference_doc.meta.has_field("comments_count"):
+			reference_doc.set("comments_count", reference_doc.comments_count + 1)
+		reference_doc.save(ignore_permissions=True)
+
+	def on_trash(self):
+		if self.reference_doctype not in ["Team Project Discussion", "Team Task"]:
+			return
+		reference_doc = frappe.get_doc(self.reference_doctype, self.reference_name)
+		if reference_doc.meta.has_field("comments_count"):
+			reference_doc.set("comments_count", reference_doc.comments_count - 1)
+		reference_doc.save(ignore_permissions=True)
 
 	def on_change(self):
 		mentions = extract_mentions(self.content)

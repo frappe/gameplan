@@ -21,7 +21,7 @@
         <UserInfo :email="d.owner">
           <template v-slot="{ user }">
             <div class="w-full">
-              <div>
+              <div class="flex items-center">
                 <span
                   class="text-lg font-medium leading-snug"
                   :class="d.unread ? 'text-gray-900' : 'text-gray-600'"
@@ -32,6 +32,14 @@
                   class="inline-block w-1.5 h-1.5 ml-1 mb-0.5 bg-blue-300 rounded-full"
                   v-if="d.unread"
                 ></span>
+                <span
+                  class="inline-flex items-center ml-auto text-base"
+                  :class="d.unread ? 'text-gray-900' : 'text-gray-600'"
+                  v-if="d.comments_count"
+                >
+                  {{ d.comments_count }}
+                  <FeatherIcon name="message-circle" class="w-4 h-4 ml-1" />
+                </span>
               </div>
               <div class="flex items-center justify-between mt-0.5 text-base">
                 <div class="text-gray-600">
@@ -51,17 +59,16 @@
                       {{ d.project_title }}
                     </router-link>
                   </template>
+                  <span
+                    class="text-gray-600 shrink-0"
+                    :title="discussionTimestampDescription(d)"
+                    >&nbsp;{{
+                      $dayjs().diff(d.last_post_at, 'day') >= 25
+                        ? 'on ' + $dayjs(d.last_post_at).format('D MMM')
+                        : $dayjs(d.last_post_at).fromNow()
+                    }}
+                  </span>
                 </div>
-                <span
-                  class="text-gray-600 shrink-0"
-                  :title="discussionTimestampDescription(d)"
-                >
-                  {{
-                    $dayjs().diff(d.last_post_at, 'day') >= 25
-                      ? $dayjs(d.last_post_at).format('D MMM')
-                      : $dayjs(d.last_post_at).fromNow(true)
-                  }}
-                </span>
               </div>
             </div>
           </template>

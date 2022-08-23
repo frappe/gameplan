@@ -266,7 +266,11 @@ export default {
           class: this.tabLinkClasses,
         },
         {
-          name: 'Discussions',
+          name: `Discussions ${
+            this.$resources.project.doc.discussions_count
+              ? `(${this.$resources.project.doc.discussions_count})`
+              : ''
+          }`,
           // icon: 'server',
           route: {
             name: 'ProjectDetailDiscussions',

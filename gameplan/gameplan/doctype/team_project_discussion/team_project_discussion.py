@@ -23,7 +23,11 @@ class TeamProjectDiscussion(Document):
 	def before_insert(self):
 		self.last_post_at = frappe.utils.now()
 
+	def after_insert(self):
+		self.update_discussions_count(1)
+
 	def on_trash(self):
+		self.update_discussions_count(-1)
 		for name in frappe.db.get_all('Team Comment', {
 			'reference_doctype': self.doctype,
 			'reference_name': self.name
@@ -69,6 +73,11 @@ class TeamProjectDiscussion(Document):
 
 		self.project = project
 		self.save()
+
+	def update_discussions_count(self, delta=1):
+		project = frappe.get_doc("Team Project", self.project)
+		project.discussions_count = project.discussions_count + delta
+		project.save(ignore_permissions=True)
 
 
 def make_full_text_search_index():
