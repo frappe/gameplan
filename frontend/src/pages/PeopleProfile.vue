@@ -32,7 +32,7 @@
       :placeholder="
         $user().name == doc.user
           ? 'Write a brief introduction of yourself...'
-          : 'This person haven\'t updated their introduction'
+          : 'This person hasn\'t updated their introduction'
       "
     />
   </div>
