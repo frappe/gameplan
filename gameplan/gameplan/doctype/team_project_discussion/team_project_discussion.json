@@ -68,7 +68,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-08-23 17:07:43.447350",
+ "modified": "2022-08-25 18:30:59.578899",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "Team Project Discussion",
@@ -100,8 +100,10 @@
    "write": 1
   }
  ],
+ "show_title_field_in_link": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
+ "title_field": "title",
  "track_changes": 1
 }
