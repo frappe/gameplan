@@ -39,8 +39,8 @@
           <div class="flex-1">
             <div class="flex items-center text-base text-gray-900">
               <span class="font-medium">
-                {{ user.full_name }}&middot;&nbsp;</span
-              >
+                {{ user.full_name }}&nbsp;&middot;&nbsp;
+              </span>
               <time
                 class="text-gray-600"
                 :datetime="comment.creation"
@@ -48,20 +48,20 @@
               >
                 {{ $dayjs(comment.creation).fromNow() }}
               </time>
-
               <template v-if="comment.modified > comment.creation">
-                &middot;
                 <span class="text-gray-600" :title="$dayjs(comment.modified)">
-                  Edited
+                  &nbsp;&middot; Edited
                 </span>
               </template>
               <template v-if="comment.loading">
-                &middot;
+                &nbsp;&middot;
                 <span class="italic text-gray-600">Sending...</span>
               </template>
               <template v-if="comment.error">
-                &middot;
-                <span class="text-red-600">Error</span>
+                <div>
+                  &nbsp;&middot;
+                  <span class="text-red-600"> Error</span>
+                </div>
               </template>
               <Dropdown
                 v-show="!comment.editing"
@@ -73,12 +73,25 @@
                     label: 'Edit',
                     icon: 'edit',
                     handler: () => (comment.editing = true),
-                    condition: () => $user().name === comment.owner,
+                    condition: () => $isSessionUser(comment.owner),
                   },
                   {
                     label: 'Copy link',
                     icon: 'link',
                     handler: () => copyLink(comment),
+                  },
+                  {
+                    label: 'Delete',
+                    icon: 'trash',
+                    handler: () => {
+                      $resources.comments.setValue.submit({
+                        name: comment.name,
+                        deleted_at: $dayjs().format('YYYY-MM-DD HH:mm:ss'),
+                      })
+                    },
+                    condition: () =>
+                      $isSessionUser(comment.owner) &&
+                      comment.deleted_at == null,
                   },
                 ]"
               />
@@ -92,13 +105,17 @@
               @keydown.meta.enter.capture.stop="editComment(comment)"
             >
               <TextEditor
+                v-if="comment.deleted_at == null"
                 editor-class="prose-sm prose-p:text-base"
                 :editable="comment.editing || false"
                 :content="comment.content"
                 @change="(val) => (comment.content = val)"
                 :starterkit-options="{ heading: false }"
               />
-              <div class="mt-3">
+              <span class="text-base italic text-gray-600" v-else>
+                This message is deleted
+              </span>
+              <div class="mt-3" v-if="!comment.deleted_at">
                 <Reactions
                   doctype="Team Comment"
                   :name="comment.name"
@@ -174,7 +191,14 @@ export default {
       return {
         type: 'list',
         doctype: 'Team Comment',
-        fields: ['content', 'owner', 'creation', 'modified', 'name'],
+        fields: [
+          'content',
+          'owner',
+          'creation',
+          'modified',
+          'name',
+          'deleted_at',
+        ],
         transform(data) {
           for (let d of data) {
             this.commentMap[d.name] = d
@@ -193,6 +217,7 @@ export default {
             this.scrollToComment(Number(this.$route.query.comment))
             this.$router.replace({ query: null })
           }
+          this.attachReactionsToComments()
         },
       }
     },
@@ -210,16 +235,8 @@ export default {
         parent: 'Team Comment',
         order_by: 'parent asc, idx asc',
         limit: 99999,
-        onSuccess(reactions) {
-          for (let reaction of reactions) {
-            let comment = this.commentMap[reaction.parent]
-            if (comment) {
-              comment.reactions.push({
-                user: reaction.user,
-                emoji: reaction.emoji,
-              })
-            }
-          }
+        onSuccess() {
+          this.attachReactionsToComments()
         },
       }
     },
@@ -276,6 +293,22 @@ export default {
       let location = window.location
       let url = `${location.origin}${location.pathname}?comment=${comment.name}`
       copyToClipboard(url)
+    },
+    attachReactionsToComments() {
+      if (!this.$resources.reactions?.data) return
+      for (let d of this.$resources.comments.data) {
+        this.commentMap[d.name] = d
+        d.reactions = []
+      }
+      for (let reaction of this.$resources.reactions.data) {
+        let comment = this.commentMap[reaction.parent]
+        if (comment) {
+          comment.reactions.push({
+            user: reaction.user,
+            emoji: reaction.emoji,
+          })
+        }
+      }
     },
   },
   computed: {

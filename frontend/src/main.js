@@ -55,6 +55,9 @@ app.config.globalProperties.$toast = createToast
 app.config.globalProperties.$log = console.log.bind(console)
 app.config.globalProperties.$user = userInfo
 app.config.globalProperties.$users = usersResource
+app.config.globalProperties.$isSessionUser = (email) => {
+  return userInfo().name === email
+}
 app.use(router)
 app.use(pageMeta)
 
