@@ -7,6 +7,10 @@
         route: { name: 'People', params: { person: 'profile' } },
       },
       { label: 'Settings', route: { name: 'Settings' } },
+      {
+        label: 'Log out',
+        handler: () => logout(),
+      },
     ]"
   >
     <template v-slot="{ open }">
@@ -35,6 +39,11 @@ export default {
     FeatherIcon,
     Avatar,
     Link,
+  },
+  methods: {
+    logout() {
+      this.$call('logout').then(() => (window.location.href = '/login'))
+    },
   },
 }
 </script>
