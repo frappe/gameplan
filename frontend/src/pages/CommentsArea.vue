@@ -2,12 +2,12 @@
   <div class="flex flex-col" ref="comments">
     <div
       v-if="$resources.comments.data == null"
-      class="flex items-start px-2 py-4 space-x-3 text-base animate-pulse"
+      class="flex animate-pulse items-start space-x-3 px-2 py-4 text-base"
     >
-      <div class="w-8 h-8 bg-gray-200 rounded-full"></div>
+      <div class="h-8 w-8 rounded-full bg-gray-200"></div>
       <div>
-        <div class="flex flex-col justify-center h-8">
-          <div class="w-40 h-2 bg-gray-200"></div>
+        <div class="flex h-8 flex-col justify-center">
+          <div class="h-2 w-40 bg-gray-200"></div>
         </div>
         <div class="flex flex-col gap-2">
           <div v-for="i in 4">
@@ -19,9 +19,9 @@
         </div>
       </div>
     </div>
-    <div class="px-1 pt-6 space-y-5" v-if="$resources.comments.data?.length">
+    <div class="space-y-5 px-1 pt-6" v-if="$resources.comments.data?.length">
       <div
-        class="flex items-start p-1 space-x-3 transition-shadow rounded-md group"
+        class="group flex items-start space-x-3 rounded-md p-1 transition-shadow"
         :class="{
           ring: !comment.loading && highlightedComment == comment.name,
         }"
@@ -32,7 +32,7 @@
       >
         <UserInfo :email="comment.owner" v-slot="{ user }">
           <Avatar
-            class="sticky flex-shrink-0 top-1"
+            class="sticky top-1 flex-shrink-0"
             :label="user.full_name"
             :imageURL="user.user_image"
           />
@@ -73,7 +73,8 @@
                     label: 'Edit',
                     icon: 'edit',
                     handler: () => (comment.editing = true),
-                    condition: () => $isSessionUser(comment.owner),
+                    condition: () =>
+                      $isSessionUser(comment.owner) && !comment.deleted_at,
                   },
                   {
                     label: 'Copy link',
@@ -99,7 +100,7 @@
             <div
               :class="
                 comment.editing &&
-                'mt-1 w-full border focus-within:border-gray-400 bg-white rounded-lg px-3.5 py-1 min-h-[2.5rem]'
+                'mt-1 min-h-[2.5rem] w-full rounded-lg border bg-white px-3.5 py-1 focus-within:border-gray-400'
               "
               @keydown.ctrl.enter.capture.stop="editComment(comment)"
               @keydown.meta.enter.capture.stop="editComment(comment)"
@@ -111,11 +112,12 @@
                 :content="comment.content"
                 @change="(val) => (comment.content = val)"
                 :starterkit-options="{ heading: false }"
+                :bubbleMenu="true"
               />
               <span class="text-base italic text-gray-600" v-else>
                 This message is deleted
               </span>
-              <div class="mt-3" v-if="!comment.deleted_at">
+              <div class="mt-3" v-if="!comment.deleted_at && !comment.editing">
                 <Reactions
                   doctype="Team Comment"
                   :name="comment.name"
@@ -123,7 +125,7 @@
                 />
               </div>
             </div>
-            <div class="pt-2 space-x-2" v-show="comment.editing">
+            <div class="space-x-2 pt-2" v-show="comment.editing">
               <Button appearance="primary" @click="editComment(comment)">
                 Save
               </Button>
@@ -136,15 +138,15 @@
       </div>
     </div>
 
-    <div class="flex items-start px-2 pt-6 pb-6 space-x-3" ref="addComment">
+    <div class="flex items-start space-x-3 px-2 pt-6 pb-6" ref="addComment">
       <Avatar
-        class="flex-shrink-0 mt-1"
+        class="mt-1 flex-shrink-0"
         :label="$user().full_name"
         :imageURL="$user().user_image"
       />
       <div class="w-full">
         <div
-          class="w-full border focus-within:border-gray-400 bg-white rounded-lg px-3.5 py-1 min-h-[2.5rem]"
+          class="min-h-[2.5rem] w-full rounded-lg border bg-white px-3.5 py-1 focus-within:border-gray-400"
           @keydown.ctrl.enter.capture.stop="submitComment"
           @keydown.meta.enter.capture.stop="submitComment"
         >
@@ -152,8 +154,9 @@
             editor-class="prose-p:text-base min-h-[4rem] prose-sm"
             :content="newComment"
             @change="(val) => (newComment = val)"
-            :starterkit-options="{ heading: false }"
+            :starterkit-options="{ heading: { levels: [2, 3, 4, 5, 6] } }"
             placeholder="Add comment..."
+            :bubbleMenu="true"
           />
         </div>
         <Button

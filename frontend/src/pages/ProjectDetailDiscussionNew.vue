@@ -31,7 +31,6 @@
       editor-class="px-3 py-2 border rounded-b-lg max-w-[unset] min-h-[20rem] prose-sm"
       :content="content"
       @change="(val) => (content = val)"
-      :bubbleMenu="true"
       :fixedMenu="true"
     />
   </div>
