@@ -61,7 +61,7 @@
    "fieldname": "discussion",
    "fieldtype": "Link",
    "label": "Discussion",
-   "options": "Team Project Discussion"
+   "options": "Team Discussion"
   },
   {
    "fieldname": "task",
@@ -86,7 +86,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-08-10 18:54:04.817920",
+ "modified": "2022-08-31 20:13:13.771477",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "Team Notification",

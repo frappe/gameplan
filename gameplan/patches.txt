@@ -5,3 +5,4 @@ gameplan.gameplan.doctype.team_user_profile.patches.create_user_profile
 gameplan.gameplan.doctype.team_user_profile.patches.set_name
 gameplan.gameplan.doctype.team_project_discussion.patches.rename_team_project_status_update_doctype
 gameplan.gameplan.doctype.team_project_discussion.patches.add_full_text_search_index
+gameplan.gameplan.doctype.team_discussion.patches.rename_team_project_discussion_to_team_discussion

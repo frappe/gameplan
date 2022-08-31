@@ -110,7 +110,7 @@ export default {
   resources: {
     search: {
       method:
-        'gameplan.gameplan.doctype.team_project_discussion.api.search',
+        'gameplan.gameplan.doctype.team_discussion.api.search',
       makeParams(query) {
         return { query }
       },

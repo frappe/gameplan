@@ -59,7 +59,7 @@ export default {
         makeParams({ title, content }) {
           return {
             doc: {
-              doctype: 'Team Project Discussion',
+              doctype: 'Team Discussion',
               project: this.project.doc.name,
               title,
               content,

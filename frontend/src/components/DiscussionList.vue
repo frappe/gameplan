@@ -106,9 +106,9 @@ export default {
   resources: {
     discussions() {
       return {
-        cache: ['Team Project Discussion', this.filters],
+        cache: ['Team Discussion', this.filters],
         method:
-          'gameplan.gameplan.doctype.team_project_discussion.api.get_discussions',
+          'gameplan.gameplan.doctype.team_discussion.api.get_discussions',
         makeParams() {
           return {
             filters: this.filters,

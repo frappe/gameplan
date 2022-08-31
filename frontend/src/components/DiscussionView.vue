@@ -125,14 +125,14 @@
       />
       <div class="mt-3">
         <Reactions
-          doctype="Team Project Discussion"
+          doctype="Team Discussion"
           :name="discussion.name"
           v-model:reactions="discussion.reactions"
         />
       </div>
     </div>
     <div class="flex-1 pb-40 border-t">
-      <CommentsArea doctype="Team Project Discussion" :name="discussion.name" />
+      <CommentsArea doctype="Team Discussion" :name="discussion.name" />
     </div>
 
     <Dialog
@@ -221,7 +221,7 @@ export default {
     discussion() {
       return {
         type: 'document',
-        doctype: 'Team Project Discussion',
+        doctype: 'Team Discussion',
         name: this.postId,
         whitelistedMethods: {
           trackVisit: 'track_visit',

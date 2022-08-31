@@ -8,7 +8,7 @@ from frappe.utils import get_fullname
 
 class TeamComment(Document):
 	def after_insert(self):
-		if self.reference_doctype not in ["Team Project Discussion", "Team Task"]:
+		if self.reference_doctype not in ["Team Discussion", "Team Task"]:
 			return
 		reference_doc = frappe.get_doc(self.reference_doctype, self.reference_name)
 		if reference_doc.meta.has_field("last_post_at"):
@@ -18,7 +18,7 @@ class TeamComment(Document):
 		reference_doc.save(ignore_permissions=True)
 
 	def on_trash(self):
-		if self.reference_doctype not in ["Team Project Discussion", "Team Task"]:
+		if self.reference_doctype not in ["Team Discussion", "Team Task"]:
 			return
 		reference_doc = frappe.get_doc(self.reference_doctype, self.reference_name)
 		if reference_doc.meta.has_field("comments_count"):
@@ -33,7 +33,7 @@ class TeamComment(Document):
 				to_user=mention.email,
 				comment=self.name,
 			)
-			if self.reference_doctype == "Team Project Discussion":
+			if self.reference_doctype == "Team Discussion":
 				values.discussion = self.reference_name
 			elif self.reference_doctype == "Team Task":
 				values.task = self.reference_name

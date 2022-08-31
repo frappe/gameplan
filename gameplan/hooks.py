@@ -75,7 +75,7 @@ website_route_rules = [
 
 # before_install = "gameplan.install.before_install"
 after_install = [
-	"gameplan.gameplan.doctype.team_project_discussion.team_project_discussion.make_full_text_search_index"
+	"gameplan.gameplan.doctype.team_discussion.team_discussion.make_full_text_search_index"
 ]
 
 # Uninstallation

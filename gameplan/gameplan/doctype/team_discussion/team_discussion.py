@@ -6,9 +6,9 @@ from frappe.model.document import Document
 from gameplan.utils import extract_mentions
 from frappe.utils import get_fullname
 
-class TeamProjectDiscussion(Document):
+class TeamDiscussion(Document):
 	def as_dict(self, *args, **kwargs):
-		d = super(TeamProjectDiscussion, self).as_dict(*args, **kwargs)
+		d = super(TeamDiscussion, self).as_dict(*args, **kwargs)
 		last_visit = frappe.db.get_value('Team Discussion Visit', {'discussion': self.name, 'user': frappe.session.user}, 'last_visit')
 		result = frappe.db.get_all(
 			'Team Comment',
@@ -81,5 +81,5 @@ class TeamProjectDiscussion(Document):
 
 
 def make_full_text_search_index():
-	frappe.db.sql('ALTER TABLE `tabTeam Project Discussion` ADD FULLTEXT (title, content, owner)')
+	frappe.db.sql('ALTER TABLE `tabTeam Discussion` ADD FULLTEXT (title, content, owner)')
 

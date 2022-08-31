@@ -14,7 +14,7 @@ def search(query=None):
 		return []
 
 	results = frappe.db.sql('''
-		SELECT name, title, content, owner, team, project, modified FROM `tabTeam Project Discussion`
+		SELECT name, title, content, owner, team, project, modified FROM `tabTeam Discussion`
 		WHERE MATCH (title,content,owner)
 		AGAINST (%(query)s IN NATURAL LANGUAGE MODE)
 		ORDER BY modified DESC
@@ -36,7 +36,7 @@ def search(query=None):
 @frappe.whitelist()
 def get_discussions(filters=None, start=None):
 	filters = frappe.parse_json(filters) if filters else None
-	Discussion = frappe.qb.DocType('Team Project Discussion')
+	Discussion = frappe.qb.DocType('Team Discussion')
 	Visit = frappe.qb.DocType('Team Discussion Visit')
 	Project = frappe.qb.DocType('Team Project')
 	Team = frappe.qb.DocType('Team')

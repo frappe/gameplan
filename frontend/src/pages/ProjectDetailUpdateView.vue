@@ -44,7 +44,7 @@ export default {
     update() {
       return {
         type: 'document',
-        doctype: 'Team Project Discussion',
+        doctype: 'Team Discussion',
         name: this.updateId,
       }
     },
