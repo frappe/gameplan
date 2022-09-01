@@ -44,9 +44,14 @@ const routes = [
     component: () => import('@/pages/Home.vue'),
   },
   {
-    path: '/people/:person?',
+    path: '/people',
     name: 'People',
     component: () => import('@/pages/People.vue'),
+  },
+  {
+    path: '/people/:personId',
+    name: 'PersonProfile',
+    component: () => import('@/pages/PersonProfile.vue'),
     props: true,
   },
   {
@@ -133,6 +138,10 @@ const routes = [
 let router = createRouter({
   history: createWebHistory('/teams/'),
   routes,
+})
+
+router.beforeEach(() => {
+  // window.scrollTo(0, 0)
 })
 
 export default router

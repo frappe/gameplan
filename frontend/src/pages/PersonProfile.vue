@@ -42,15 +42,15 @@ import { TextEditor, Popover } from 'frappe-ui'
 import ReadmeEditor from '@/components/ReadmeEditor.vue'
 
 export default {
-  name: 'PeopleProfile',
-  props: ['user'],
+  name: 'PersonProfile',
+  props: ['personId'],
   components: { TextEditor, ReadmeEditor, Popover },
   resources: {
     profile() {
       return {
         type: 'document',
         doctype: 'Team User Profile',
-        name: this.user,
+        name: this.personId,
       }
     },
   },
