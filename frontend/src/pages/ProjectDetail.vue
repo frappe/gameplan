@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col h-full pt-8">
+  <div class="flex h-full flex-col pt-8">
     <header>
       <div class="border-b" v-if="project">
         <div class="flex items-start space-x-2">
@@ -13,7 +13,7 @@
           >
             <template v-slot="{ open }">
               <div
-                class="p-px leading-none rounded-md text-[30px] focus:outline-none"
+                class="rounded-md p-px text-[30px] leading-none focus:outline-none"
                 :class="open ? 'bg-gray-200' : 'hover:bg-gray-100'"
               >
                 {{ project.icon || '' }}
@@ -174,8 +174,8 @@
         </template>
       </Dialog>
     </header>
-    <div class="flex flex-col flex-1 h-full min-h-0" v-if="project">
-      <router-view class="flex-1 h-full" :project="$resources.project" />
+    <div class="flex h-full min-h-0 flex-1 flex-col" v-if="project">
+      <router-view class="h-full flex-1" :project="$resources.project" />
     </div>
   </div>
 </template>
@@ -258,12 +258,11 @@ export default {
       return [
         {
           name: 'Readme',
-          // icon: 'home',
           route: {
             name: 'ProjectDetailOverview',
             params: { teamId: this.team.doc.name, projectId: this.projectId },
           },
-          class: this.tabLinkClasses,
+          isActive: this.$route.name === 'ProjectDetailOverview',
         },
         {
           name: `Discussions ${
@@ -271,33 +270,29 @@ export default {
               ? `(${this.$resources.project.doc.discussions_count})`
               : ''
           }`,
-          // icon: 'server',
           route: {
             name: 'ProjectDetailDiscussions',
             params: { teamId: this.team.doc.name, projectId: this.projectId },
-            activeForRoutes: [
-              'ProjectDetailDiscussions',
-              'ProjectDetailDiscussion',
-            ],
           },
-          class: this.tabLinkClasses,
+          isActive: [
+            'ProjectDetailDiscussions',
+            'ProjectDetailDiscussion',
+          ].includes(this.$route.name),
         },
         {
           name: this.$resources.project.doc.summary.total_tasks
             ? `Tasks (${this.$resources.project.doc.summary.pending_tasks}/${this.$resources.project.doc.summary.total_tasks})`
             : 'Tasks',
-          // icon: 'check-square',
           route: {
             name: 'ProjectTasks',
             query: { open: true },
             params: { teamId: this.team.doc.name, projectId: this.projectId },
-            activeForRoutes: [
-              'ProjectTasks',
-              'ProjectTaskDetail',
-              'ProjectTaskNew',
-            ],
           },
-          class: this.tabLinkClasses,
+          isActive: [
+            'ProjectTasks',
+            'ProjectTaskDetail',
+            'ProjectTaskNew',
+          ].includes(this.$route.name),
         },
       ]
     },
@@ -328,27 +323,6 @@ export default {
       })
       this.projectMoveDialog.team = null
       this.$resources.project.moveToTeam.reset()
-    },
-    tabLinkClasses($route, link) {
-      let active = false
-      if (link.route.name === $route.name) {
-        active = true
-      } else if ($route.fullPath === link.route) {
-        active = true
-      } else if (
-        $route.matched.some(
-          (r) =>
-            (link.route.activeForRoutes || []).includes(r.name) ||
-            r.name == link.route.name
-        )
-      ) {
-        active = true
-      }
-
-      if (active) {
-        return 'border-blue-500 text-blue-600'
-      }
-      return 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
     },
   },
   pageMeta() {

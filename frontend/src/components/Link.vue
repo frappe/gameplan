@@ -10,7 +10,7 @@
       @click="navigate"
       :class="[
         linkClasses(isActive, isExactActive),
-        link.class ? link.class($route, link) : null,
+        typeof link.class == 'function' ? link.class($route, link) : link.class,
         $attrs.class,
       ]"
     >
