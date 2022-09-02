@@ -1,4 +1,5 @@
 import { createResource } from 'frappe-ui'
+import { reactive } from 'vue'
 
 let usersByName = {}
 export let usersResource = createResource({
@@ -7,7 +8,7 @@ export let usersResource = createResource({
   initialData: [],
   onSuccess(users) {
     for (let user of users) {
-      usersByName[user.name] = user
+      usersByName[user.name] = reactive(user)
     }
   },
   onError(error) {

@@ -1,50 +1,145 @@
 <template>
-  <div class="py-6" v-if="doc">
-    <div class="flex items-center">
-      <h2 class="text-3xl font-bold leading-7 text-gray-900">
-        {{ $user(doc.user).full_name }}
-      </h2>
-
-      <Input
-        :disabled="$user().name != doc.user"
-        type="select"
-        :options="[
-          { label: 'Set Status', value: '', disabled: true },
-          { label: 'Available', value: 'Available' },
-          { label: 'Busy', value: 'Busy' },
-          { label: 'Away', value: 'Away' },
-        ]"
-        v-model="doc.status"
-        class="ml-2"
+  <div class="py-6" v-if="profile">
+    <div>
+      <CoverImage
+        :imageUrl="profile.cover_image"
+        :imagePosition="profile.cover_image_position"
+        :editable="$isSessionUser(profile.user)"
         @change="
-          (value) =>
+          ({ imageUrl, imagePosition }) => {
             $resources.profile.setValue.submit({
-              status: value,
+              cover_image: imageUrl,
+              cover_image_position: imagePosition,
             })
+          }
         "
       />
+      <div class="-mt-16 inline-block translate-y-0 px-10">
+        <FileUploader @success="(file) => setUserImage(file.file_url)">
+          <template v-slot="{ file, progress, uploading, openFileSelector }">
+            <button
+              v-if="currentUser.user_image"
+              @click="openFileSelector"
+              :class="{ 'hover:opacity-80': $isSessionUser(profile.user) }"
+              :disabled="!$isSessionUser(profile.user) || uploading"
+            >
+              <img
+                class="h-32 w-32 rounded-full border-4 border-white object-cover"
+                :src="currentUser.user_image"
+              />
+            </button>
+            <button
+              v-else
+              @click="openFileSelector"
+              class="h-32 w-32 rounded-full border-4 border-white bg-gray-200 text-sm text-gray-600"
+              :class="{ 'hover:bg-gray-300': $isSessionUser(profile.user) }"
+              :disabled="!$isSessionUser(profile.user) || uploading"
+            >
+              <span v-if="$isSessionUser(profile.user)">
+                {{ uploading ? `Uploading ${progress}%` : 'Upload Image' }}
+              </span>
+            </button>
+          </template>
+        </FileUploader>
+      </div>
     </div>
-    <ReadmeEditor
-      :resource="$resources.profile"
-      :editable="$user().name === doc.user"
-      fieldname="readme"
-      class="mt-6"
-      :placeholder="
-        $user().name == doc.user
-          ? 'Write a brief introduction of yourself...'
-          : 'This person hasn\'t updated their introduction'
-      "
-    />
+    <div class="px-10">
+      <div class="flex items-center justify-between">
+        <div class="px-1">
+          <h2 class="text-3xl font-bold leading-7 text-gray-900">
+            {{ $user(profile.user).full_name }}
+          </h2>
+          <p v-if="profile.bio" class="text-lg">{{ profile.bio }}</p>
+        </div>
+
+        <Button
+          v-if="$isSessionUser(profile.user)"
+          @click="editDialog.show = true"
+          iconLeft="edit-2"
+        >
+          Edit Profile
+        </Button>
+      </div>
+      <div class="mt-6" v-if="profile.readme || $isSessionUser(profile.user)">
+        <div class="text-base font-medium text-gray-600">About me</div>
+        <ReadmeEditor
+          class="mt-1"
+          :resource="$resources.profile"
+          :editable="$user().name === profile.user"
+          fieldname="readme"
+          placeholder="Write a brief introduction of yourself..."
+        />
+      </div>
+    </div>
+    <Dialog
+      v-if="$isSessionUser(profile.user)"
+      :options="{ title: 'Edit Profile' }"
+      v-model="editDialog.show"
+      @close="discard"
+    >
+      <template #body-content>
+        <div class="space-y-4">
+          <Input label="First Name" v-model="user.first_name" />
+          <Input label="Last Name" v-model="user.last_name" />
+          <Input
+            label="Bio"
+            v-model="profile.bio"
+            type="textarea"
+            maxlength="280"
+          />
+        </div>
+      </template>
+      <template #actions>
+        <Button appearance="primary" @click="save">Save</Button>
+        <Button @click="editDialog.show = false">Discard</Button>
+      </template>
+    </Dialog>
   </div>
 </template>
 <script>
-import { TextEditor, Popover } from 'frappe-ui'
+import {
+  TextEditor,
+  Popover,
+  Avatar,
+  Dialog,
+  FileUploader,
+  call,
+} from 'frappe-ui'
 import ReadmeEditor from '@/components/ReadmeEditor.vue'
+import CoverImage from '@/components/CoverImage.vue'
+import { sessionUser } from '@/resources/users'
 
 export default {
   name: 'PersonProfile',
   props: ['personId'],
-  components: { TextEditor, ReadmeEditor, Popover },
+  components: {
+    TextEditor,
+    ReadmeEditor,
+    Popover,
+    CoverImage,
+    Avatar,
+    Dialog,
+    FileUploader,
+  },
+  beforeRouteEnter(to, from, next) {
+    if (to.params.personId == 'me') {
+      call('frappe.client.get_value', {
+        doctype: 'Team User Profile',
+        filters: { user: sessionUser() },
+        fieldname: 'name',
+      }).then((r) => {
+        next({ name: 'PersonProfile', params: { personId: r.name } })
+      })
+    } else {
+      next()
+    }
+  },
+  data() {
+    return {
+      editing: false,
+      editDialog: { show: false },
+    }
+  },
   resources: {
     profile() {
       return {
@@ -53,11 +148,54 @@ export default {
         name: this.personId,
       }
     },
+    user() {
+      if (!this.profile || !this.$isSessionUser(this.profile.user)) return
+      return {
+        type: 'document',
+        doctype: 'User',
+        name: this.profile.user,
+      }
+    },
   },
   computed: {
-    doc() {
+    profile() {
       return this.$resources.profile.doc
     },
+    user() {
+      return this.$resources.user.doc
+    },
+    currentUser() {
+      return this.$user(this.profile.user)
+    },
+  },
+  methods: {
+    save() {
+      this.$resources.user.setValue
+        .submit({
+          first_name: this.user.first_name,
+          last_name: this.user.last_name,
+        })
+        .then(() => {
+          this.$resources.profile.setValue.submit({
+            bio: this.profile.bio,
+          })
+        })
+      this.editDialog.show = false
+    },
+    discard() {
+      this.$resources.user.reload()
+      this.$resources.profile.reload()
+    },
+    setUserImage(url) {
+      this.$resources.user.setValue.submit({ user_image: url })
+      this.currentUser.user_image = url
+    },
+  },
+  pageMeta() {
+    return {
+      title: [this.profile?.full_name || '', 'Profile'].join(' - '),
+      emoji: '👨‍👩‍👧‍👦',
+    }
   },
 }
 </script>

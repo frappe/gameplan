@@ -60,11 +60,6 @@ const routes = [
     component: () => import('@/pages/Notifications.vue'),
   },
   {
-    path: '/settings',
-    name: 'Settings',
-    component: () => import('@/pages/PersonalSettings.vue'),
-  },
-  {
     path: '/:teamId',
     name: 'TeamPage',
     component: () => import('@/pages/TeamPage.vue'),

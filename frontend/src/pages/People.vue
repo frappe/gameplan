@@ -19,7 +19,7 @@
             :to="{
               name: 'PersonProfile',
               params: {
-                personId: $user().name === user.user ? 'profile' : user.name,
+                personId: user.name,
               },
             }"
             class="flex w-full items-center rounded-lg border p-3 hover:bg-gray-50 focus-visible:border-gray-400 focus-visible:outline-none focus-visible:ring focus-visible:ring-gray-300"
@@ -54,12 +54,11 @@
 <script>
 import { Avatar, Badge, Input } from 'frappe-ui'
 import Breadcrumbs from '@/components/Breadcrumbs.vue'
-import PeopleProfile from './PeopleProfile.vue'
 
 export default {
   name: 'People',
   props: ['person'],
-  components: { Breadcrumbs, Avatar, PeopleProfile, Badge, Input },
+  components: { Breadcrumbs, Avatar, Badge, Input },
   data() {
     return {
       search: '',
@@ -88,26 +87,9 @@ export default {
       }
     },
   },
-  computed: {
-    selectedUser() {
-      if (!this.$resources.users.data) return
-
-      if (this.person === 'profile') {
-        let user = this.$resources.users.data.find(
-          (d) => d.user === this.$user().name
-        )
-        return user?.name
-      }
-      return this.person
-    },
-  },
   pageMeta() {
-    let selectedPerson = (this.$resources.users.data || []).find(
-      (d) => d.name === this.person
-    )
     return {
-      title:
-        'People' + (selectedPerson ? ' - ' + selectedPerson.full_name : ''),
+      title: 'People',
       emoji: '👨‍👩‍👧‍👦',
     }
   },
