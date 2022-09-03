@@ -12,9 +12,9 @@
             @input="search = $event"
           />
         </div>
-        <div class="mt-6 grid md:grid-cols-3 gap-4">
+        <div class="mt-6 grid gap-4 md:grid-cols-3">
           <router-link
-            v-for="user in $resources.users.data"
+            v-for="user in people"
             :key="user.name"
             :to="{
               name: 'PersonProfile',
@@ -85,6 +85,18 @@ export default {
         ],
         limit: 999,
       }
+    },
+  },
+  computed: {
+    people() {
+      if (!this.$resources.users.data) return []
+      let myProfile = this.$resources.users.data.find(
+        (p) => p.user == this.$user().name
+      )
+      return [
+        myProfile,
+        ...this.$resources.users.data.filter((p) => p != myProfile),
+      ].filter(Boolean)
     },
   },
   pageMeta() {
