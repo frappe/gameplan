@@ -1,5 +1,5 @@
 <template>
-  <div class="relative px-4 py-4 border rounded-xl">
+  <div class="relative rounded-xl border px-4 py-4">
     <TextEditor
       ref="readme"
       editor-class="prose-sm"
@@ -11,15 +11,16 @@
       :editable="editReadme"
     />
     <div
-      class="absolute top-0 right-0 flex mt-4 mr-4 space-x-2"
+      class="absolute top-0 right-0 mt-4 mr-4 flex space-x-2"
       v-if="editable"
     >
-      <Button
-        v-if="!editReadme"
-        label="Edit"
-        iconLeft="edit-2"
-        @click="editReadmeAndFocus"
-      />
+      <Tooltip v-if="!editReadme" text="Edit" placement="top">
+        <Button
+          icon="edit-2"
+          @click="editReadmeAndFocus"
+          appearance="minimal"
+        />
+      </Tooltip>
       <template v-else>
         <Button
           label="Save"
@@ -32,7 +33,7 @@
           "
         />
         <Button
-          label="Cancel"
+          label="Discard"
           iconLeft="rotate-ccw"
           @click="
             () => {
@@ -46,6 +47,7 @@
   </div>
 </template>
 <script>
+import { Tooltip } from 'frappe-ui'
 import TextEditor from '@/components/TextEditor.vue'
 export default {
   name: 'ReadmeEditor',
@@ -66,7 +68,7 @@ export default {
       type: String,
     },
   },
-  components: { TextEditor },
+  components: { TextEditor, Tooltip },
   data() {
     return {
       editReadme: false,

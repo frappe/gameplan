@@ -15,32 +15,35 @@
         "
       />
       <div class="-mt-16 inline-block translate-y-0 px-10">
-        <FileUploader @success="(file) => setUserImage(file.file_url)">
-          <template v-slot="{ file, progress, uploading, openFileSelector }">
-            <button
-              v-if="currentUser.user_image"
-              @click="openFileSelector"
-              :class="{ 'hover:opacity-80': $isSessionUser(profile.user) }"
-              :disabled="!$isSessionUser(profile.user) || uploading"
-            >
-              <img
-                class="h-32 w-32 rounded-full border-4 border-white object-cover"
-                :src="currentUser.user_image"
-              />
-            </button>
-            <button
-              v-else
-              @click="openFileSelector"
-              class="h-32 w-32 rounded-full border-4 border-white bg-gray-200 text-sm text-gray-600"
-              :class="{ 'hover:bg-gray-300': $isSessionUser(profile.user) }"
-              :disabled="!$isSessionUser(profile.user) || uploading"
-            >
-              <span v-if="$isSessionUser(profile.user)">
-                {{ uploading ? `Uploading ${progress}%` : 'Upload Image' }}
-              </span>
-            </button>
-          </template>
-        </FileUploader>
+        <ImagePreview
+          v-model:show="imagePreview.show"
+          :imageUrl="imagePreview.imageUrl"
+        />
+        <button
+          v-if="currentUser.user_image"
+          @click="
+            () => {
+              imagePreview.imageUrl = currentUser.user_image
+              imagePreview.show = true
+            }
+          "
+          class="rounded-full bg-white outline-none focus:ring"
+          :class="{ 'hover:opacity-80': $isSessionUser(profile.user) }"
+        >
+          <img
+            class="h-32 w-32 rounded-full border-4 border-white object-cover"
+            :src="currentUser.user_image"
+          />
+        </button>
+        <button
+          v-else
+          @click="editDialog.show = true"
+          class="h-32 w-32 rounded-full border-4 border-white bg-gray-200 text-sm text-gray-600"
+          :class="{ 'hover:bg-gray-300': $isSessionUser(profile.user) }"
+          :disabled="!$isSessionUser(profile.user)"
+        >
+          <span v-if="$isSessionUser(profile.user)"> Upload Image </span>
+        </button>
       </div>
     </div>
     <div class="px-10">
@@ -51,11 +54,10 @@
           </h2>
           <p v-if="profile.bio" class="mt-2 text-lg">{{ profile.bio }}</p>
         </div>
-
         <Button
           v-if="$isSessionUser(profile.user)"
           @click="editDialog.show = true"
-          iconLeft="edit-2"
+          appearance="minimal"
         >
           Edit Profile
         </Button>
@@ -73,6 +75,26 @@
     >
       <template #body-content>
         <div class="space-y-4">
+          <FileUploader @success="(file) => setUserImage(file.file_url)">
+            <template v-slot="{ file, progress, uploading, openFileSelector }">
+              <div class="flex items-center space-x-2">
+                <Avatar
+                  size="lg"
+                  :imageURL="currentUser.user_image"
+                  :label="currentUser.full_name"
+                />
+                <Button @click="openFileSelector">
+                  {{ uploading ? `Uploading ${progress}%` : 'Upload Image' }}
+                </Button>
+                <Button
+                  v-if="currentUser.user_image"
+                  @click="setUserImage(null)"
+                >
+                  Remove
+                </Button>
+              </div>
+            </template>
+          </FileUploader>
           <Input label="First Name" v-model="user.first_name" />
           <Input label="Last Name" v-model="user.last_name" />
           <Input
@@ -103,6 +125,7 @@ import ReadmeEditor from '@/components/ReadmeEditor.vue'
 import CoverImage from '@/components/CoverImage.vue'
 import { sessionUser } from '@/resources/users'
 import Tabs from '@/components/Tabs.vue'
+import ImagePreview from '../components/ImagePreview.vue'
 
 export default {
   name: 'PersonProfile',
@@ -116,6 +139,7 @@ export default {
     Dialog,
     FileUploader,
     Tabs,
+    ImagePreview,
   },
   beforeRouteEnter(to, from, next) {
     window.scrollTo(0, 0)
@@ -135,6 +159,7 @@ export default {
     return {
       editing: false,
       editDialog: { show: false },
+      imagePreview: { show: false, imageUrl: null },
     }
   },
   resources: {
