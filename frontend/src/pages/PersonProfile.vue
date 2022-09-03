@@ -118,6 +118,7 @@ export default {
     Tabs,
   },
   beforeRouteEnter(to, from, next) {
+    window.scrollTo(0, 0)
     if (to.params.personId == 'me') {
       call('frappe.client.get_value', {
         doctype: 'Team User Profile',
