@@ -12,7 +12,7 @@
             @input="search = $event"
           />
         </div>
-        <div class="mt-6 grid grid-cols-3 gap-4">
+        <div class="mt-6 grid md:grid-cols-3 gap-4">
           <router-link
             v-for="user in $resources.users.data"
             :key="user.name"

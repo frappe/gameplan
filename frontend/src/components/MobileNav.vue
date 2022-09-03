@@ -22,7 +22,7 @@
       </TransitionChild>
 
       <div class="fixed inset-0 overflow-y-auto">
-        <div class="flex items-start justify-center min-h-full text-center">
+        <div class="flex min-h-full items-start justify-center text-center">
           <TransitionChild
             as="template"
             enter="duration-200 ease-out"
@@ -33,9 +33,9 @@
             leave-to="opacity-0 -translate-y-full"
           >
             <DialogPanel
-              class="w-full p-6 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-b-2xl"
+              class="w-full transform overflow-hidden rounded-b-2xl bg-white p-6 text-left align-middle shadow-xl transition-all"
             >
-              <div class="flex items-center justify-between mb-2">
+              <div class="mb-2 flex items-center justify-between">
                 <DialogTitle
                   as="h3"
                   class="text-lg font-medium leading-6 text-gray-900"
@@ -47,14 +47,14 @@
               <div @click="closeModal">
                 <Links
                   :links="navigation"
-                  class="flex items-center px-2 py-2 font-medium rounded-md"
+                  class="flex items-center rounded-md px-2 py-2 font-medium"
                   active="bg-gray-200 text-gray-900"
                   inactive="text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                 >
                   <template v-slot="{ link }">
-                    <div class="flex items-center w-full space-x-2">
-                      <span class="grid w-5 h-5 place-items-center">
-                        <FeatherIcon :name="link.icon" class="w-4 h-4" />
+                    <div class="flex w-full items-center space-x-2">
+                      <span class="grid h-5 w-5 place-items-center">
+                        <FeatherIcon :name="link.icon" class="h-4 w-4" />
                       </span>
                       <span class="text-lg">{{ link.name }}</span>
                       <span
@@ -62,7 +62,7 @@
                           link.unreadNotifications &&
                           link.unreadNotifications.data > 0
                         "
-                        class="!ml-auto block px-1 bg-red-500 text-white rounded text-sm"
+                        class="!ml-auto block rounded bg-red-500 px-1 text-sm text-white"
                       >
                         {{ link.unreadNotifications.data }}
                       </span>
@@ -72,14 +72,14 @@
                 <hr class="my-1 bg-gray-200" />
                 <Links
                   :links="teams"
-                  class="flex items-center px-2 py-2 font-medium rounded-md"
+                  class="flex items-center rounded-md px-2 py-2 font-medium"
                   active="bg-gray-200 text-gray-900"
                   inactive="text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                 >
                   <template v-slot="{ link }">
-                    <div class="flex items-center w-full space-x-2">
+                    <div class="flex w-full items-center space-x-2">
                       <span
-                        class="flex items-center justify-center w-5 h-5 text-xl"
+                        class="flex h-5 w-5 items-center justify-center text-xl"
                       >
                         {{ link.icon }}
                       </span>
@@ -137,6 +137,9 @@ export default {
       let title = null
       if (matchedRoutes.includes('TeamPage') && this.$route.params.teamId) {
         title = this.teams.find((t) => t.id === this.$route.params.teamId)?.name
+      }
+      if (matchedRoutes.includes('PersonProfile')) {
+        title = 'People'
       }
       return title || this.$route.name
     },
