@@ -45,11 +45,11 @@
     </div>
     <div class="px-10">
       <div class="flex items-center justify-between">
-        <div class="px-1">
-          <h2 class="text-3xl font-bold leading-7 text-gray-900">
+        <div>
+          <h2 class="text-3xl font-bold leading-none text-gray-900">
             {{ $user(profile.user).full_name }}
           </h2>
-          <p v-if="profile.bio" class="text-lg">{{ profile.bio }}</p>
+          <p v-if="profile.bio" class="mt-2 text-lg">{{ profile.bio }}</p>
         </div>
 
         <Button
@@ -60,16 +60,10 @@
           Edit Profile
         </Button>
       </div>
-      <div class="mt-6" v-if="profile.readme || $isSessionUser(profile.user)">
-        <div class="text-base font-medium text-gray-600">About me</div>
-        <ReadmeEditor
-          class="mt-1"
-          :resource="$resources.profile"
-          :editable="$user().name === profile.user"
-          fieldname="readme"
-          placeholder="Write a brief introduction of yourself..."
-        />
-      </div>
+    </div>
+    <div class="mt-4 px-10">
+      <Tabs :tabs="tabs" />
+      <router-view :profile="$resources.profile" />
     </div>
     <Dialog
       v-if="$isSessionUser(profile.user)"
@@ -108,6 +102,7 @@ import {
 import ReadmeEditor from '@/components/ReadmeEditor.vue'
 import CoverImage from '@/components/CoverImage.vue'
 import { sessionUser } from '@/resources/users'
+import Tabs from '@/components/Tabs.vue'
 
 export default {
   name: 'PersonProfile',
@@ -120,6 +115,7 @@ export default {
     Avatar,
     Dialog,
     FileUploader,
+    Tabs,
   },
   beforeRouteEnter(to, from, next) {
     if (to.params.personId == 'me') {
@@ -166,6 +162,26 @@ export default {
     },
     currentUser() {
       return this.$user(this.profile.user)
+    },
+    tabs() {
+      return [
+        {
+          name: 'About me',
+          route: {
+            name: 'PersonProfileAboutMe',
+            params: { personId: this.personId },
+          },
+          isActive: this.$route.name == 'PersonProfileAboutMe',
+        },
+        {
+          name: 'Posts',
+          route: {
+            name: 'PersonProfilePosts',
+            params: { personId: this.personId },
+          },
+          isActive: this.$route.name == 'PersonProfilePosts',
+        },
+      ]
     },
   },
   methods: {

@@ -53,6 +53,19 @@ const routes = [
     name: 'PersonProfile',
     component: () => import('@/pages/PersonProfile.vue'),
     props: true,
+    redirect: { name: 'PersonProfileAboutMe' },
+    children: [
+      {
+        name: 'PersonProfileAboutMe',
+        path: '',
+        component: () => import('@/pages/PersonProfileAboutMe.vue'),
+      },
+      {
+        name: 'PersonProfilePosts',
+        path: 'posts',
+        component: () => import('@/pages/PersonProfilePosts.vue'),
+      },
+    ],
   },
   {
     path: '/notifications',
