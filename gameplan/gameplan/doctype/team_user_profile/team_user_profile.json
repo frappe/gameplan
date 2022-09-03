@@ -10,7 +10,10 @@
   "enabled",
   "status",
   "readme",
-  "full_name"
+  "full_name",
+  "cover_image",
+  "cover_image_position",
+  "bio"
  ],
  "fields": [
   {
@@ -46,11 +49,27 @@
    "fieldname": "enabled",
    "fieldtype": "Check",
    "label": "Enabled"
+  },
+  {
+   "fieldname": "cover_image",
+   "fieldtype": "Attach Image",
+   "label": "Cover Image"
+  },
+  {
+   "fieldname": "cover_image_position",
+   "fieldtype": "Float",
+   "label": "Cover Image Position"
+  },
+  {
+   "fieldname": "bio",
+   "fieldtype": "Data",
+   "label": "Bio",
+   "length": 280
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-08-18 13:40:32.996192",
+ "modified": "2022-09-02 02:31:14.866548",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "Team User Profile",

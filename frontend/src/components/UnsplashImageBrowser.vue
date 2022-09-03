@@ -1,22 +1,14 @@
 <template>
-  <Popover v-slot="{ open }">
-    <PopoverButton class="flex w-full">
-      <slot v-bind="{ open }"></slot>
-    </PopoverButton>
-
-    <transition
-      enter-active-class="transition duration-200 ease-out"
-      enter-from-class="translate-y-1 opacity-0"
-      enter-to-class="translate-y-0 opacity-100"
-      leave-active-class="transition duration-150 ease-in"
-      leave-from-class="translate-y-0 opacity-100"
-      leave-to-class="translate-y-1 opacity-0"
-    >
-      <PopoverPanel
-        class="absolute max-w-sm px-4 mt-3 transform -translate-x-1/2 bg-white rounded-lg left-1/2 sm:px-0 lg:max-w-3xl"
+  <Popover transition="default">
+    <template #target="{ isOpen, togglePopover }" class="flex w-full">
+      <slot v-bind="{ isOpen, togglePopover }"></slot>
+    </template>
+    <template #body>
+      <div
+        class="absolute left-1/2 mt-3 max-w-sm -translate-x-1/2 transform rounded-lg bg-white px-4 sm:px-0 lg:max-w-3xl"
       >
         <div
-          class="p-3 overflow-hidden rounded-lg shadow-lg ring-1 ring-black ring-opacity-5"
+          class="overflow-hidden rounded-lg p-3 shadow-lg ring-1 ring-black ring-opacity-5"
         >
           <div class="flex items-center space-x-2">
             <div class="flex-1">
@@ -41,12 +33,12 @@
             </FileUploader>
           </div>
           <div
-            class="relative grid gap-2 mt-2 bg-white lg:grid-cols-2 w-[25.5rem]"
+            class="relative mt-2 grid w-[25.5rem] gap-2 bg-white lg:grid-cols-2"
           >
             <button
               v-for="image in $resources.images.data"
               :key="image.id"
-              class="overflow-hidden rounded hover:opacity-80 w-[200px] h-[50px]"
+              class="h-[50px] w-[200px] overflow-hidden rounded hover:opacity-80"
               @click="$emit('select', image.urls.raw)"
             >
               <img
@@ -57,28 +49,26 @@
               />
             </button>
           </div>
-          <div class="mt-2 text-sm text-center text-gray-500">
+          <div class="mt-2 text-center text-sm text-gray-500">
             Image search powered by
             <a class="underline" target="_blank" href="https://unsplash.com">
               Unsplash
             </a>
           </div>
         </div>
-      </PopoverPanel>
-    </transition>
+      </div>
+    </template>
   </Popover>
 </template>
 
 <script>
-import { Popover, PopoverButton, PopoverPanel } from '@headlessui/vue'
-import { FileUploader } from 'frappe-ui'
+// import { Popover, PopoverButton, PopoverPanel } from '@headlessui/vue'
+import { Popover, FileUploader } from 'frappe-ui'
 
 export default {
   name: 'UnsplashImageBrowser',
   components: {
     Popover,
-    PopoverButton,
-    PopoverPanel,
     FileUploader,
   },
   emits: ['select'],
@@ -96,9 +86,6 @@ export default {
     return {
       search: '',
     }
-  },
-  methods: {
-    log: console.log,
   },
 }
 </script>

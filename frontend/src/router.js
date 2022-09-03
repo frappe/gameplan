@@ -44,20 +44,33 @@ const routes = [
     component: () => import('@/pages/Home.vue'),
   },
   {
-    path: '/people/:person?',
+    path: '/people',
     name: 'People',
     component: () => import('@/pages/People.vue'),
+  },
+  {
+    path: '/people/:personId',
+    name: 'PersonProfile',
+    component: () => import('@/pages/PersonProfile.vue'),
     props: true,
+    redirect: { name: 'PersonProfileAboutMe' },
+    children: [
+      {
+        name: 'PersonProfileAboutMe',
+        path: '',
+        component: () => import('@/pages/PersonProfileAboutMe.vue'),
+      },
+      {
+        name: 'PersonProfilePosts',
+        path: 'posts',
+        component: () => import('@/pages/PersonProfilePosts.vue'),
+      },
+    ],
   },
   {
     path: '/notifications',
     name: 'Notifications',
     component: () => import('@/pages/Notifications.vue'),
-  },
-  {
-    path: '/settings',
-    name: 'Settings',
-    component: () => import('@/pages/PersonalSettings.vue'),
   },
   {
     path: '/:teamId',
@@ -133,6 +146,10 @@ const routes = [
 let router = createRouter({
   history: createWebHistory('/teams/'),
   routes,
+})
+
+router.beforeEach(() => {
+  // window.scrollTo(0, 0)
 })
 
 export default router

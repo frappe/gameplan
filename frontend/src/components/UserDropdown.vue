@@ -4,9 +4,8 @@
     :options="[
       {
         label: 'My Profile',
-        route: { name: 'People', params: { person: 'profile' } },
+        route: { name: 'PersonProfile', params: { personId: 'me' } },
       },
-      { label: 'Settings', route: { name: 'Settings' } },
       {
         label: 'Log out',
         handler: () => logout(),
@@ -15,7 +14,7 @@
   >
     <template v-slot="{ open }">
       <button
-        class="flex items-center w-full p-2 space-x-2 text-base font-medium text-left rounded-md"
+        class="flex w-full items-center space-x-2 rounded-md p-2 text-left text-base font-medium"
         :class="open ? 'bg-gray-300' : 'hover:bg-gray-200'"
       >
         <Avatar
@@ -24,7 +23,7 @@
           size="sm"
         />
         <span class="hidden sm:inline">{{ $user().full_name }}</span>
-        <FeatherIcon name="chevron-down" class="hidden w-4 h-4 sm:inline" />
+        <FeatherIcon name="chevron-down" class="hidden h-4 w-4 sm:inline" />
       </button>
     </template>
   </Dropdown>
