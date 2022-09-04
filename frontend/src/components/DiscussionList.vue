@@ -121,7 +121,7 @@ export default {
             this.hasNextPage = false
           }
           for (let d of data) {
-            d.unread = d.last_post_at > d.last_visit
+            d.unread = !d.last_visit || d.last_post_at > d.last_visit
           }
           if (this.start > 0) {
             let currentData = this.$resources.discussions.data || []
