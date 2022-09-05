@@ -15,8 +15,8 @@
             <Input
               type="select"
               :options="[
-                { label: 'Sort by name', value: 'full_name' },
-                { label: 'Sort by last updated', value: 'modified' },
+                { label: 'Sort by name', value: 'full_name asc' },
+                { label: 'Sort by last updated', value: 'modified desc' },
               ]"
               v-model="orderBy"
             />
@@ -72,7 +72,7 @@ export default {
   data() {
     return {
       search: '',
-      orderBy: 'full_name',
+      orderBy: 'full_name asc',
     }
   },
   resources: {
