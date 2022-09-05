@@ -4,13 +4,23 @@
       <div class="w-full py-6">
         <div class="flex items-center justify-between">
           <h1 class="text-2xl font-semibold">People</h1>
-          <Input
-            type="text"
-            placeholder="Search by name"
-            v-model="search"
-            :debounce="500"
-            @input="search = $event"
-          />
+          <div class="flex items-center space-x-2">
+            <Input
+              type="text"
+              placeholder="Search by name"
+              v-model="search"
+              :debounce="500"
+              @input="search = $event"
+            />
+            <Input
+              type="select"
+              :options="[
+                { label: 'Sort by name', value: 'full_name' },
+                { label: 'Sort by last updated', value: 'modified' },
+              ]"
+              v-model="orderBy"
+            />
+          </div>
         </div>
         <div class="mt-6 grid gap-4 md:grid-cols-3">
           <router-link
@@ -62,6 +72,7 @@ export default {
   data() {
     return {
       search: '',
+      orderBy: 'full_name',
     }
   },
   resources: {
@@ -81,9 +92,10 @@ export default {
           'user.full_name',
           'user.email',
           'user.user_image',
-          'status',
+          'modified',
         ],
         limit: 999,
+        order_by: this.orderBy,
       }
     },
   },
