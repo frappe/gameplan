@@ -1,6 +1,6 @@
 <template>
   <div class="pt-8 pb-80">
-    <div class="flex items-center w-full">
+    <div class="flex w-full items-center">
       <div class="flex items-center space-x-2">
         <IconPicker
           :modelValue="team.doc.icon"
@@ -9,7 +9,7 @@
         >
           <template v-slot="{ isOpen }">
             <div
-              class="p-px leading-none rounded-md text-7xl focus:outline-none"
+              class="rounded-md p-px text-7xl leading-none focus:outline-none"
               :class="isOpen ? 'bg-gray-200' : 'hover:bg-gray-100'"
             >
               {{ team.doc.icon || '' }}
@@ -65,6 +65,14 @@ export default {
     IconPicker,
     Breadcrumbs,
     ReadmeEditor,
+  },
+  beforeRouteEnter(to, from, next) {
+    window.scrollTo(0, 0)
+    next()
+  },
+  beforeRouteUpdate(to, from, next) {
+    window.scrollTo(0, 0)
+    next()
   },
   methods: {
     updateTeamIcon(icon) {
