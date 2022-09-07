@@ -143,17 +143,7 @@ export default {
   },
   beforeRouteEnter(to, from, next) {
     window.scrollTo(0, 0)
-    if (to.params.personId == 'me') {
-      call('frappe.client.get_value', {
-        doctype: 'Team User Profile',
-        filters: { user: sessionUser() },
-        fieldname: 'name',
-      }).then((r) => {
-        next({ name: 'PersonProfile', params: { personId: r.name } })
-      })
-    } else {
-      next()
-    }
+    next()
   },
   data() {
     return {

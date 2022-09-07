@@ -4,7 +4,10 @@
     :options="[
       {
         label: 'My Profile',
-        route: { name: 'PersonProfile', params: { personId: 'me' } },
+        route: {
+          name: 'PersonProfile',
+          params: { personId: $user().user_profile },
+        },
       },
       {
         label: 'Log out',

@@ -2,14 +2,22 @@
   <div class="flex h-full flex-col" v-if="postId && discussion">
     <div class="py-6">
       <div class="mb-3 flex items-center space-x-2">
-        <Avatar
-          :label="$user(discussion.owner).full_name"
-          :imageURL="$user(discussion.owner).user_image"
-        />
+        <UserProfileLink :user="discussion.owner">
+          <Avatar
+            :label="$user(discussion.owner).full_name"
+            :imageURL="$user(discussion.owner).user_image"
+          />
+        </UserProfileLink>
         <div class="flex w-full items-center">
           <div>
             <span class="text-base text-gray-900">
-              {{ $user(discussion.owner).full_name }} in
+              <UserProfileLink
+                class="font-medium hover:text-blue-600"
+                :user="discussion.owner"
+              >
+                {{ $user(discussion.owner).full_name }}
+              </UserProfileLink>
+              in
               <router-link
                 class="hover:text-blue-600"
                 :to="{
@@ -196,6 +204,7 @@ import { Autocomplete, Avatar, Dropdown, Dialog } from 'frappe-ui'
 import Reactions from './Reactions.vue'
 import CommentsArea from '@/pages/CommentsArea.vue'
 import TextEditor from '@/components/TextEditor.vue'
+import UserProfileLink from './UserProfileLink.vue'
 import { copyToClipboard } from '@/utils'
 import { teams } from '@/data/teams'
 import { getTeamProjects } from '@/data/projects'
@@ -211,6 +220,7 @@ export default {
     Dropdown,
     Dialog,
     Autocomplete,
+    UserProfileLink,
   },
   resources: {
     discussion() {

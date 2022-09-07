@@ -31,16 +31,21 @@
         :ref="'comment-' + comment.name"
       >
         <UserInfo :email="comment.owner" v-slot="{ user }">
-          <Avatar
-            class="sticky top-1 flex-shrink-0"
-            :label="user.full_name"
-            :imageURL="user.user_image"
-          />
+          <UserProfileLink :user="user.name">
+            <Avatar
+              class="sticky top-1 flex-shrink-0"
+              :label="user.full_name"
+              :imageURL="user.user_image"
+            />
+          </UserProfileLink>
           <div class="flex-1">
             <div class="flex items-center text-base text-gray-900">
-              <span class="font-medium">
+              <UserProfileLink
+                class="font-medium hover:text-blue-600"
+                :user="user.name"
+              >
                 {{ user.full_name }}&nbsp;&middot;&nbsp;
-              </span>
+              </UserProfileLink>
               <time
                 class="text-gray-600"
                 :datetime="comment.creation"
@@ -177,11 +182,19 @@ import { Avatar, LoadingIndicator, Dropdown } from 'frappe-ui'
 import TextEditor from '@/components/TextEditor.vue'
 import { copyToClipboard } from '@/utils'
 import Reactions from '@/components/Reactions.vue'
+import UserProfileLink from '@/components/UserProfileLink.vue'
 
 export default {
   name: 'CommentsArea',
   props: ['doctype', 'name'],
-  components: { Avatar, LoadingIndicator, TextEditor, Dropdown, Reactions },
+  components: {
+    Avatar,
+    LoadingIndicator,
+    TextEditor,
+    Dropdown,
+    Reactions,
+    UserProfileLink,
+  },
   data() {
     return {
       commentMap: {},

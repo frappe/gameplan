@@ -54,9 +54,15 @@ def get_user_info():
 		fields=["name", "email", "user_image", "full_name", "user_type"],
 		order_by="full_name asc"
 	)
+	user_profile_names = frappe.db.get_all('Team User Profile',
+		fields=['user', 'name'],
+		filters={'user': ['in', [u.name for u in users]]}
+	)
+	user_profile_names_map = {u.user: u.name for u in user_profile_names}
 	for user in users:
 		if frappe.session.user == user.name:
 			user.session_user = True
+		user.user_profile = user_profile_names_map.get(user.name)
 	return users
 
 @frappe.whitelist()
