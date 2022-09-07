@@ -148,7 +148,7 @@ import InputWithPills from './InputWithPills.vue'
 
 export default {
   name: 'AddMemberDialog',
-  props: ['project', 'team'],
+  props: ['project', 'team', 'modelValue'],
   components: {
     InputWithPills,
     ErrorMessage,
