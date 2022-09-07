@@ -1,5 +1,5 @@
 <template>
-  <div class="flex items-stretch space-x-1.5">
+  <div class="flex items-stretch space-x-1.5 select-none">
     <Popover>
       <template #target="{ togglePopover }">
         <button
