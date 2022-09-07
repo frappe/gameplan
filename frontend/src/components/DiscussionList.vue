@@ -77,6 +77,16 @@
     </router-link>
     <div class="pb-40">
       <div
+        v-if="
+          !$resources.discussions.list.loading &&
+          $resources.discussions.data.length === 0
+        "
+        class="flex flex-col items-center rounded-lg border-2 border-dashed py-8 text-base text-gray-600"
+      >
+        <FeatherIcon name="coffee" class="h-7 w-7 text-gray-500" />
+        No discussions
+      </div>
+      <div
         class="flex items-center space-x-4 p-3"
         v-if="$resources.discussions.hasNextPage"
       >
