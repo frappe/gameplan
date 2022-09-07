@@ -29,19 +29,19 @@
                   {{ d.title }}
                 </span>
                 <span
-                  class="inline-block w-1.5 h-1.5 ml-1 mb-0.5 bg-blue-300 rounded-full"
+                  class="ml-1 mb-0.5 inline-block h-1.5 w-1.5 rounded-full bg-blue-300"
                   v-if="d.unread"
                 ></span>
                 <span
-                  class="inline-flex items-center ml-auto text-base"
+                  class="ml-auto inline-flex items-center text-base"
                   :class="d.unread ? 'text-gray-900' : 'text-gray-600'"
                   v-if="d.comments_count"
                 >
                   {{ d.comments_count }}
-                  <FeatherIcon name="message-circle" class="w-4 h-4 ml-1" />
+                  <FeatherIcon name="message-circle" class="ml-1 h-4 w-4" />
                 </span>
               </div>
-              <div class="flex items-center justify-between mt-0.5 text-base">
+              <div class="mt-0.5 flex items-center justify-between text-base">
                 <div class="text-gray-600">
                   <span :class="filters ? '' : 'hidden sm:inline'">
                     by {{ user.full_name }}
@@ -60,7 +60,7 @@
                     </router-link>
                   </template>
                   <span
-                    class="text-gray-600 shrink-0"
+                    class="shrink-0 text-gray-600"
                     :title="discussionTimestampDescription(d)"
                     >&nbsp;{{
                       $dayjs().diff(d.last_post_at, 'day') >= 25
@@ -76,9 +76,15 @@
       </div>
     </router-link>
     <div class="pb-40">
-      <div class="flex items-center p-3 space-x-4" v-if="hasNextPage">
-        <div class="w-8 h-8 bg-gray-100 rounded-full"></div>
-        <Button @click="nextPage" :loading="$resources.discussions.loading">
+      <div
+        class="flex items-center space-x-4 p-3"
+        v-if="$resources.discussions.hasNextPage"
+      >
+        <div class="h-8 w-8 rounded-full bg-gray-100"></div>
+        <Button
+          @click="$resources.discussions.next"
+          :loading="$resources.discussions.list.loading"
+        >
           {{
             $resources.discussions.loading ? 'Loading...' : 'Load more posts'
           }}
@@ -97,35 +103,18 @@ export default {
     TextEditor,
     Avatar,
   },
-  data() {
-    return {
-      start: 0,
-      hasNextPage: true,
-    }
-  },
   resources: {
     discussions() {
       return {
+        type: 'list',
+        doctype: 'Team Discussion',
         cache: ['Team Discussion', this.filters],
-        method:
-          'gameplan.gameplan.doctype.team_discussion.api.get_discussions',
-        makeParams() {
-          return {
-            filters: this.filters,
-            start: this.start,
-          }
-        },
+        method: 'gameplan.gameplan.doctype.team_discussion.api.get_discussions',
+        filters: this.filters,
         auto: true,
         transform(data) {
-          if (data.length < 20) {
-            this.hasNextPage = false
-          }
           for (let d of data) {
             d.unread = !d.last_visit || d.last_post_at > d.last_visit
-          }
-          if (this.start > 0) {
-            let currentData = this.$resources.discussions.data || []
-            return [...currentData, ...data]
           }
           return data
         },
@@ -141,10 +130,6 @@ export default {
         `First Post: ${this.$dayjs(d.creation)}`,
         `Latest Post: ${this.$dayjs(d.last_post_at)}`,
       ].join('\n')
-    },
-    nextPage() {
-      this.start += 20
-      this.$resources.discussions.fetch()
     },
   },
 }
