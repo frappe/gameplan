@@ -123,7 +123,7 @@ import {
 } from 'frappe-ui'
 import ReadmeEditor from '@/components/ReadmeEditor.vue'
 import CoverImage from '@/components/CoverImage.vue'
-import { sessionUser } from '@/resources/users'
+import { sessionUser } from '@/data/users'
 import Tabs from '@/components/Tabs.vue'
 import ImagePreview from '../components/ImagePreview.vue'
 

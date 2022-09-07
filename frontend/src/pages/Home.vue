@@ -9,7 +9,7 @@
             <option value="" selected>Posts by all teams</option>
             <option selected disabled>Filter by Team</option>
             <option
-              v-for="team in $getListResource('Sidebar Teams').data"
+              v-for="team in $getListResource('Teams').data"
               :key="team.name"
               :value="team.name"
             >

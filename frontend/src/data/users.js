@@ -1,14 +1,14 @@
 import { createResource } from 'frappe-ui'
 import { reactive } from 'vue'
 
-let usersByName = {}
+let usersByName = reactive({})
 export let usersResource = createResource({
   method: 'gameplan.api.get_user_info',
-  cache: 'users',
+  cache: 'Users',
   initialData: [],
-  onSuccess(users) {
+  onData(users) {
     for (let user of users) {
-      usersByName[user.name] = reactive(user)
+      usersByName[user.name] = user
     }
   },
   onError(error) {
@@ -23,13 +23,15 @@ export function userInfo(email) {
   if (!email) {
     email = sessionUser()
   }
-  let fallback = {
-    name: email,
-    email: email,
-    full_name: email.split('@')[0],
-    user_image: null,
+  if (!usersByName[email]) {
+    usersByName[email] = {
+      name: email,
+      email: email,
+      full_name: email.split('@')[0],
+      user_image: null,
+    }
   }
-  return usersByName[email] || fallback
+  return usersByName[email]
 }
 
 let _sessionUser = null

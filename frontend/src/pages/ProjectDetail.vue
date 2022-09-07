@@ -98,7 +98,6 @@
               () => {
                 $resources.project.delete.submit().then(() => {
                   projectDeleteDialog = false
-                  $getListResource(['Team Projects', team.doc.name])?.reload()
                   $router.push({
                     name: 'TeamPageHome',
                     params: { teamId: team.doc.name },
@@ -127,7 +126,7 @@
         <template #body-content>
           <Autocomplete
             :options="
-              $getListResource('Sidebar Teams')
+              $getListResource('Teams')
                 .data.filter((d) => d.name != team.doc.name)
                 .map((d) => ({
                   label: d.title,
@@ -186,6 +185,8 @@ import IconPicker from '@/components/IconPicker.vue'
 import Links from '@/components/Links.vue'
 import Tabs from '@/components/Tabs.vue'
 import Breadcrumbs from '@/components/Breadcrumbs.vue'
+import { projects, getTeamProjects } from '@/data/projects'
+import { teams } from '@/data/teams'
 
 export default {
   name: 'ProjectDetail',
@@ -209,13 +210,9 @@ export default {
     }
   },
   mounted() {
-    let teams = this.$getListResource('Sidebar Teams')
     for (let team of teams.data || []) {
       if (team.name === this.team.doc.name) {
         team.open = true
-        if (!team.projects.data) {
-          team.projects.reload()
-        }
       }
     }
   },
@@ -300,15 +297,13 @@ export default {
   methods: {
     onProjectMove() {
       this.projectMoveDialog.show = false
-      this.$getListResource(['Team Projects', this.team.doc.name])?.reload()
-      let teams = this.$getListResource('Sidebar Teams')
+      projects.reload()
       for (let team of teams.data || []) {
         if (
           [this.team.doc.name, this.projectMoveDialog.team.value].includes(
             team.name
           )
         ) {
-          team.projects.reload()
           if (this.projectMoveDialog.team.value === team.name) {
             team.open = true
           }
@@ -324,6 +319,7 @@ export default {
       this.projectMoveDialog.team = null
       this.$resources.project.moveToTeam.reset()
     },
+    getTeamProjects,
   },
   pageMeta() {
     return {

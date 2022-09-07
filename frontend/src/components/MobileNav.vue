@@ -105,8 +105,8 @@ import {
   DialogTitle,
 } from '@headlessui/vue'
 import Links from './Links.vue'
-import { teams } from '@/resources/teams'
-import { unreadNotifications } from '@/resources/notifications'
+import { teams } from '@/data/teams'
+import { unreadNotifications } from '@/data/notifications'
 
 export default {
   name: 'MobileNav',
