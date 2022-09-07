@@ -72,6 +72,7 @@ class TeamDiscussion(Document):
 			return
 
 		self.project = project
+		self.team = frappe.db.get_value("Team Project", project, "team")
 		self.save()
 
 	def update_discussions_count(self, delta=1):

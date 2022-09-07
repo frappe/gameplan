@@ -1,12 +1,12 @@
 <template>
-  <div class="flex flex-col h-full" v-if="postId && discussion">
+  <div class="flex h-full flex-col" v-if="postId && discussion">
     <div class="py-6">
-      <div class="flex items-center mb-3 space-x-2">
+      <div class="mb-3 flex items-center space-x-2">
         <Avatar
           :label="$user(discussion.owner).full_name"
           :imageURL="$user(discussion.owner).user_image"
         />
-        <div class="flex items-center w-full">
+        <div class="flex w-full items-center">
           <div>
             <span class="text-base text-gray-900">
               {{ $user(discussion.owner).full_name }} in
@@ -46,7 +46,7 @@
               {{ $dayjs(discussion.creation).fromNow() }}
             </span>
           </div>
-          <div class="flex ml-auto space-x-2">
+          <div class="ml-auto flex space-x-2">
             <Dropdown
               v-show="!editingContent"
               class="ml-auto"
@@ -101,10 +101,10 @@
         </div>
       </div>
       <div>
-        <div v-if="editingContent" class="w-full mb-3">
+        <div v-if="editingContent" class="mb-3 w-full">
           <input
             type="text"
-            class="w-full px-2 py-1 mt-1 text-xl font-semibold bg-gray-100 border-0 rounded-lg focus:ring-0"
+            class="mt-1 w-full rounded-lg border-0 bg-gray-100 px-2 py-1 text-xl font-semibold focus:ring-0"
             ref="title"
             v-model="discussion.title"
           />
@@ -131,7 +131,7 @@
         />
       </div>
     </div>
-    <div class="flex-1 pb-40 border-t">
+    <div class="flex-1 border-t pb-40">
       <CommentsArea doctype="Team Discussion" :name="discussion.name" />
     </div>
 
@@ -149,14 +149,7 @@
     >
       <template #body-content>
         <Autocomplete
-          :options="
-            $getListResource('Sidebar Teams')
-              .data.find((d) => d.name == discussion.team)
-              .projects.data.map((d) => ({
-                label: d.title,
-                value: d.name,
-              }))
-          "
+          :options="projectOptions"
           v-model="discussionMoveDialog.project"
           placeholder="Select a project"
         />
@@ -174,13 +167,13 @@
               $resources.discussion.moveToProject.submit(
                 { project: discussionMoveDialog.project?.value },
                 {
+                  beforeSubmit() {
+                    onDiscussionMove()
+                  },
                   validate() {
                     if (!discussionMoveDialog.project?.value) {
                       return 'Project is required to move this discussion'
                     }
-                  },
-                  onSuccess() {
-                    onDiscussionMove()
                   },
                 }
               )
@@ -204,6 +197,8 @@ import Reactions from './Reactions.vue'
 import CommentsArea from '@/pages/CommentsArea.vue'
 import TextEditor from '@/components/TextEditor.vue'
 import { copyToClipboard } from '@/utils'
+import { teams } from '@/data/teams'
+import { getTeamProjects } from '@/data/projects'
 
 export default {
   name: 'DiscussionView',
@@ -268,6 +263,10 @@ export default {
       copyToClipboard(url)
     },
     onDiscussionMove() {
+      this.$resources.discussion.setDoc((doc) => {
+        doc.project = this.discussionMoveDialog.project?.value
+        return doc
+      })
       this.discussionMoveDialog.show = false
       this.discussionMoveDialog.project = null
 
@@ -285,6 +284,15 @@ export default {
   computed: {
     discussion() {
       return this.$resources.discussion.doc
+    },
+    projectOptions() {
+      return teams.data.map((team) => ({
+        group: team.title,
+        items: getTeamProjects(team.name).map((project) => ({
+          label: project.title,
+          value: project.name,
+        })),
+      }))
     },
   },
   pageMeta() {
