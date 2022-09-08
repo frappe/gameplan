@@ -116,7 +116,7 @@
                 :editable="comment.editing || false"
                 :content="comment.content"
                 @change="(val) => (comment.content = val)"
-                :starterkit-options="{ heading: false }"
+                :starterkit-options="{ heading: { levels: [2, 3, 4, 5, 6] } }"
                 :bubbleMenu="true"
               />
               <span class="text-base italic text-gray-600" v-else>
