@@ -231,7 +231,6 @@ export default {
         onSuccess() {
           if (this.$route.query.comment) {
             this.scrollToComment(Number(this.$route.query.comment))
-            this.$router.replace({ query: null })
           }
           this.attachReactionsToComments()
         },
