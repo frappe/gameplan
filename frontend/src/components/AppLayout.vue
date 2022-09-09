@@ -17,6 +17,9 @@
             </router-link>
             <MobileNav />
           </div>
+          <Alert v-if="this.$readOnlyMode" type="warning">
+              This site is running in read only mode. Full functionality will be restored soon.
+          </Alert>
           <div class="mx-auto max-w-4xl px-4 sm:px-10">
             <slot name="main" />
           </div>
@@ -27,8 +30,10 @@
 </template>
 <script>
 import MobileNav from './MobileNav.vue'
+import Alert from 'frappe-ui/src/components/Alert.vue'
+
 export default {
   name: 'AppLayout',
-  components: { MobileNav },
+  components: { MobileNav, Alert },
 }
 </script>

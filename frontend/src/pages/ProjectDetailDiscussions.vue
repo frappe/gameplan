@@ -3,7 +3,7 @@
     <div class="w-full h-full py-6">
       <div class="flex items-center justify-between mb-5">
         <h1 class="text-2xl font-semibold">All Discussions</h1>
-        <Button iconLeft="plus" :route="{ name: 'ProjectDetailDiscussionNew' }">
+        <Button v-if="!this.$readOnlyMode" iconLeft="plus" :route="{ name: 'ProjectDetailDiscussionNew' }">
           New Discussion
         </Button>
       </div>

@@ -54,6 +54,9 @@ class TeamDiscussion(Document):
 
 	@frappe.whitelist()
 	def track_visit(self):
+		if frappe.flags.read_only:
+			return
+
 		values = {"user": frappe.session.user, "discussion": self.name}
 		existing = frappe.db.get_value("Team Discussion Visit", values)
 		if existing:
