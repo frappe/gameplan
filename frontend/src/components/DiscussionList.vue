@@ -7,12 +7,13 @@
         name: this.routeName,
         params: { teamId: d.team, projectId: d.project, postId: d.name },
       }"
-      class="block hover:bg-gray-100"
+      class="relative block hover:bg-gray-100"
     >
       <div
-        class="flex items-center space-x-4 border-l-2 border-transparent p-3"
-        :class="[d.unread ? ' border-blue-400' : '']"
-      >
+        v-show="d.unread"
+        class="absolute -left-2 top-1/2 h-1.5 w-1.5 shrink-0 -translate-y-1/2 rounded-full bg-blue-300"
+      ></div>
+      <div class="flex items-center space-x-4 p-3">
         <UserInfo :email="d.last_post_by || d.owner">
           <template v-slot="{ user }">
             <Avatar :label="user.full_name" :imageURL="user.user_image" />
@@ -22,9 +23,11 @@
                   <span class="text-lg font-medium leading-snug">
                     {{ d.title }}
                   </span>
-                  <span class="whitespace-pre text-gray-600"> &middot; </span>
+                  <span class="hidden whitespace-pre text-gray-600 md:inline">
+                    &middot;
+                  </span>
                   <span
-                    class="shrink-0 text-sm text-gray-600"
+                    class="hidden shrink-0 whitespace-nowrap text-sm text-gray-600 md:inline"
                     :title="discussionTimestampDescription(d)"
                     >{{
                       $dayjs().diff(d.last_post_at, 'day') >= 25
@@ -34,7 +37,7 @@
                   </span>
                 </div>
                 <span
-                  class="ml-auto inline-flex items-center text-base"
+                  class="ml-auto inline-flex shrink-0 items-center text-base"
                   :class="d.unread ? 'text-gray-900' : 'text-gray-600'"
                   v-if="d.comments_count"
                 >
@@ -61,6 +64,15 @@
                     </router-link>
                   </template>
                 </div>
+                <span
+                  class="shrink-0 whitespace-nowrap text-sm text-gray-600 md:hidden"
+                  :title="discussionTimestampDescription(d)"
+                  >{{
+                    $dayjs().diff(d.last_post_at, 'day') >= 25
+                      ? $dayjs(d.last_post_at).format('D MMM')
+                      : $dayjs(d.last_post_at).fromNow()
+                  }}
+                </span>
               </div>
             </div>
           </template>
