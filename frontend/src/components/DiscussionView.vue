@@ -27,7 +27,7 @@
                   },
                 }"
               >
-                {{ getDoc('Team', discussion.team)?.title || discussion.team }}
+                {{ $getDoc('Team', discussion.team)?.title || discussion.team }}
               </router-link>
               >
               <router-link
@@ -41,7 +41,7 @@
                 }"
               >
                 {{
-                  getDoc('Team Project', discussion.project)?.title ||
+                  $getDoc('Team Project', discussion.project)?.title ||
                   discussion.project
                 }}
               </router-link>
@@ -171,21 +171,9 @@
           appearance="primary"
           :loading="$resources.discussion.moveToProject.loading"
           @click="
-            () => {
-              $resources.discussion.moveToProject.submit(
-                { project: discussionMoveDialog.project?.value },
-                {
-                  beforeSubmit() {
-                    onDiscussionMove()
-                  },
-                  validate() {
-                    if (!discussionMoveDialog.project?.value) {
-                      return 'Project is required to move this discussion'
-                    }
-                  },
-                }
-              )
-            }
+            $resources.discussion.moveToProject.submit({
+              project: discussionMoveDialog.project?.value,
+            })
           "
         >
           {{
@@ -230,7 +218,20 @@ export default {
         name: this.postId,
         whitelistedMethods: {
           trackVisit: 'track_visit',
-          moveToProject: 'move_to_project',
+          moveToProject: {
+            method: 'move_to_project',
+            validate() {
+              if (!this.discussionMoveDialog.project?.value) {
+                return 'Project is required to move this discussion'
+              }
+            },
+            onError() {
+              this.discussionMoveDialog.show = true
+            },
+            onSuccess() {
+              this.onDiscussionMove()
+            },
+          },
         },
         onSuccess(doc) {
           if (!this.$route.query.comment && doc.last_unread_comment) {
@@ -264,29 +265,24 @@ export default {
     }
   },
   methods: {
-    getDoc(doctype, name) {
-      return this.$getDocumentResource(doctype, name)?.doc
-    },
     copyLink() {
       let location = window.location
       let url = `${location.origin}${location.pathname}`
       copyToClipboard(url)
     },
     onDiscussionMove() {
-      this.$resources.discussion.setDoc((doc) => {
-        doc.project = this.discussionMoveDialog.project?.value
-        return doc
-      })
-      this.discussionMoveDialog.show = false
-      this.discussionMoveDialog.project = null
+      this.$nextTick(() => {
+        this.discussionMoveDialog.show = false
+        this.discussionMoveDialog.project = null
 
-      this.$router.replace({
-        name: 'ProjectDetailDiscussion',
-        params: {
-          teamId: this.discussion.team,
-          projectId: this.discussion.project,
-          postId: this.discussion.name,
-        },
+        this.$router.replace({
+          name: 'ProjectDetailDiscussion',
+          params: {
+            teamId: this.discussion.team,
+            projectId: this.discussion.project,
+            postId: this.discussion.name,
+          },
+        })
       })
       this.$resources.discussion.moveToProject.reset()
     },
@@ -307,7 +303,7 @@ export default {
   },
   pageMeta() {
     if (!this.discussion) return
-    let project = this.getDoc('Team Project', this.discussion.project)
+    let project = this.$getDoc('Team Project', this.discussion.project)
     if (!project) return
     return {
       title: [this.discussion.title, project.title].filter(Boolean).join(' - '),

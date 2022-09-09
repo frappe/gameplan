@@ -68,7 +68,7 @@ class TeamDiscussion(Document):
 
 	@frappe.whitelist()
 	def move_to_project(self, project):
-		if project == self.project:
+		if not project or project == self.project:
 			return
 
 		self.project = project
