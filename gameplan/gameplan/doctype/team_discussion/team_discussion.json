@@ -13,6 +13,7 @@
   "content",
   "reactions",
   "last_post_at",
+  "last_post_by",
   "comments_count"
  ],
  "fields": [
@@ -64,11 +65,17 @@
    "fieldname": "comments_count",
    "fieldtype": "Int",
    "label": "Comments Count"
+  },
+  {
+   "fieldname": "last_post_by",
+   "fieldtype": "Link",
+   "label": "Last Post By",
+   "options": "User"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-08-25 18:30:59.578899",
+ "modified": "2022-09-09 22:01:18.371578",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "Team Discussion",

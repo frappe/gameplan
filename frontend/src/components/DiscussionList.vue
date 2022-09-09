@@ -7,31 +7,32 @@
         name: this.routeName,
         params: { teamId: d.team, projectId: d.project, postId: d.name },
       }"
-      class="block p-3"
-      :class="isActive(d) ? 'bg-gray-100' : 'hover:bg-gray-50'"
+      class="block hover:bg-gray-100"
     >
-      <div class="flex items-center space-x-4">
-        <div>
-          <UserInfo :email="d.owner">
-            <template v-slot="{ user }">
-              <Avatar :label="user.full_name" :imageURL="user.user_image" />
-            </template>
-          </UserInfo>
-        </div>
-        <UserInfo :email="d.owner">
+      <div
+        class="flex items-center space-x-4 border-l-2 border-transparent p-3"
+        :class="[d.unread ? ' border-blue-400' : '']"
+      >
+        <UserInfo :email="d.last_post_by || d.owner">
           <template v-slot="{ user }">
+            <Avatar :label="user.full_name" :imageURL="user.user_image" />
             <div class="w-full">
               <div class="flex items-center">
-                <span
-                  class="text-lg font-medium leading-snug"
-                  :class="d.unread ? 'text-gray-900' : 'text-gray-600'"
-                >
-                  {{ d.title }}
-                </span>
-                <span
-                  class="ml-1 mb-0.5 inline-block h-1.5 w-1.5 rounded-full bg-blue-300"
-                  v-if="d.unread"
-                ></span>
+                <div :class="d.unread ? 'text-gray-900' : 'text-gray-600'">
+                  <span class="text-lg font-medium leading-snug">
+                    {{ d.title }}
+                  </span>
+                  <span class="whitespace-pre text-gray-600"> &middot; </span>
+                  <span
+                    class="shrink-0 text-sm text-gray-600"
+                    :title="discussionTimestampDescription(d)"
+                    >{{
+                      $dayjs().diff(d.last_post_at, 'day') >= 25
+                        ? $dayjs(d.last_post_at).format('D MMM')
+                        : $dayjs(d.last_post_at).fromNow()
+                    }}
+                  </span>
+                </div>
                 <span
                   class="ml-auto inline-flex items-center text-base"
                   :class="d.unread ? 'text-gray-900' : 'text-gray-600'"
@@ -44,7 +45,7 @@
               <div class="mt-0.5 flex items-center justify-between text-base">
                 <div class="text-gray-600">
                   <span :class="filters ? '' : 'hidden sm:inline'">
-                    by {{ user.full_name }}
+                    {{ user.full_name }}
                   </span>
                   <template v-if="!filters || !filters.project">
                     <span> in </span>
@@ -59,15 +60,6 @@
                       {{ d.project_title }}
                     </router-link>
                   </template>
-                  <span
-                    class="shrink-0 text-gray-600"
-                    :title="discussionTimestampDescription(d)"
-                    >&nbsp;{{
-                      $dayjs().diff(d.last_post_at, 'day') >= 25
-                        ? 'on ' + $dayjs(d.last_post_at).format('D MMM')
-                        : $dayjs(d.last_post_at).fromNow()
-                    }}
-                  </span>
                 </div>
               </div>
             </div>

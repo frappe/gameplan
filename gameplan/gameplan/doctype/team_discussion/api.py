@@ -45,7 +45,7 @@ def get_discussions(filters=None, limit_start=None):
 		.select(
 			Discussion.name, Discussion.owner, Discussion.creation, Discussion.modified,
 			Discussion.title, Discussion.status, Discussion.team, Discussion.project,
-			Discussion.last_post_at, Discussion.comments_count,
+			Discussion.last_post_at, Discussion.last_post_by, Discussion.comments_count,
 			Visit.last_visit, Project.title.as_('project_title'), Team.title.as_('team_title')
 		)
 		.left_join(Visit)
