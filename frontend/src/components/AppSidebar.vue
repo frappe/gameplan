@@ -17,7 +17,7 @@
     leave-to-class="-translate-x-full"
   >
     <div
-      class="flex w-64 flex-1 flex-col overflow-auto bg-gray-100 pb-40"
+      class="flex w-72 flex-1 flex-col overflow-auto bg-gray-100 h-full pb-40"
       v-show="sidebarOpen"
     >
       <div class="flex w-full items-center justify-between px-2 py-4">
