@@ -1,5 +1,25 @@
 <template>
-  <div class="flex h-full flex-col" v-if="postId && discussion">
+  <div class="relative flex h-full flex-col" v-if="postId && discussion">
+    <div class="sticky top-0 z-10 border-b bg-white" v-show="showNavbar">
+      <transition
+        enter-active-class="transition ease-out duration-200"
+        enter-from-class="opacity-0 translate-y-4"
+        enter-to-class="opacity-100 translate-y-0"
+      >
+        <div class="flex items-center px-2 py-4" v-show="showNavbar">
+          <UserProfileLink :user="discussion.owner">
+            <Avatar
+              :label="$user(discussion.owner).full_name"
+              :imageURL="$user(discussion.owner).user_image"
+            />
+          </UserProfileLink>
+          <h1 class="ml-3 text-2xl font-bold">
+            {{ discussion.title }}
+          </h1>
+        </div>
+      </transition>
+    </div>
+
     <div class="py-6">
       <div class="mb-3 flex items-center space-x-2">
         <UserProfileLink :user="discussion.owner">
@@ -117,12 +137,18 @@
             v-model="discussion.title"
           />
         </div>
-        <h1 v-else class="text-3xl font-bold">{{ discussion.title }}</h1>
+        <h1
+          v-else
+          v-visibility="handleTitleVisibility"
+          class="text-3xl font-bold"
+        >
+          {{ discussion.title }}
+        </h1>
       </div>
       <TextEditor
         :key="editingContent"
         :editor-class="[
-          'max-w-[unset] min-h-[8rem] prose-sm',
+          'min-h-[8rem] prose-sm text-[15px]',
           { 'border px-3 py-2 rounded-b-lg': editingContent },
         ]"
         :editable="editingContent"
@@ -188,7 +214,13 @@
   </div>
 </template>
 <script>
-import { Autocomplete, Avatar, Dropdown, Dialog } from 'frappe-ui'
+import {
+  Autocomplete,
+  Avatar,
+  Dropdown,
+  Dialog,
+  visibilityDirective,
+} from 'frappe-ui'
 import Reactions from './Reactions.vue'
 import CommentsArea from '@/pages/CommentsArea.vue'
 import TextEditor from '@/components/TextEditor.vue'
@@ -200,6 +232,9 @@ import { getTeamProjects } from '@/data/projects'
 export default {
   name: 'DiscussionView',
   props: ['postId'],
+  directives: {
+    visibility: visibilityDirective,
+  },
   components: {
     TextEditor,
     Avatar,
@@ -262,6 +297,7 @@ export default {
         show: false,
         project: null,
       },
+      showNavbar: false,
     }
   },
   methods: {
@@ -285,6 +321,9 @@ export default {
         })
       })
       this.$resources.discussion.moveToProject.reset()
+    },
+    handleTitleVisibility(visible) {
+      this.showNavbar = !visible
     },
   },
   computed: {
