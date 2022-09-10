@@ -1,6 +1,6 @@
 <template>
   <Dropdown
-    placement="right"
+    placement="center"
     :options="[
       {
         label: 'My Profile',

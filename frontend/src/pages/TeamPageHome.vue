@@ -66,14 +66,6 @@ export default {
     Breadcrumbs,
     ReadmeEditor,
   },
-  beforeRouteEnter(to, from, next) {
-    window.scrollTo(0, 0)
-    next()
-  },
-  beforeRouteUpdate(to, from, next) {
-    window.scrollTo(0, 0)
-    next()
-  },
   methods: {
     updateTeamIcon(icon) {
       this.team.setValue.submit({ icon })

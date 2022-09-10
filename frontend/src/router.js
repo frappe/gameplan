@@ -49,6 +49,11 @@ const routes = [
     component: () => import('@/pages/People.vue'),
   },
   {
+    path: '/search',
+    name: 'Search',
+    component: () => import('@/pages/Search.vue'),
+  },
+  {
     path: '/people/:personId',
     name: 'PersonProfile',
     component: () => import('@/pages/PersonProfile.vue'),
@@ -146,10 +151,6 @@ const routes = [
 let router = createRouter({
   history: createWebHistory('/teams/'),
   routes,
-})
-
-router.beforeEach(() => {
-  // window.scrollTo(0, 0)
 })
 
 export default router
