@@ -823,10 +823,10 @@ fraction.js@^4.2.0:
   resolved "https://registry.yarnpkg.com/fraction.js/-/fraction.js-4.2.0.tgz#448e5109a313a3527f5a3ab2119ec4cf0e0e2950"
   integrity sha512-MhLuK+2gUcnZe8ZHlaaINnQLl0xRIGRfcGk2yl8xoQAfHrSsL3rYu6FCmBdkdbhc9EPlwyGHewaRsvwRMJtAlA==
 
-frappe-ui@^0.0.62:
-  version "0.0.62"
-  resolved "https://registry.yarnpkg.com/frappe-ui/-/frappe-ui-0.0.62.tgz#3ae3d46b5e5053aeeda7d68490fbb627ee53f257"
-  integrity sha512-sUs20vQqnPU24pCXQOldO161yWa6MC8eRc0Fqi30aB70ev5l+n4QIkJUpAT+TKVUb8uYBfkJnA1QXNUflN/pTw==
+frappe-ui@^0.0.63:
+  version "0.0.63"
+  resolved "https://registry.yarnpkg.com/frappe-ui/-/frappe-ui-0.0.63.tgz#8f97ee4965cd46d2367ad5cb11ef5fc6055abb15"
+  integrity sha512-dKEmRkv9VLRLb26UMMBP1q5RzXTRPpU/Q/cZ9Tu9FVustDQ8wX5N137R0bWKSmsAHNlzLsVd7wVh7552iJEXxw==
   dependencies:
     "@headlessui/vue" "^1.5.0"
     "@popperjs/core" "^2.11.2"
