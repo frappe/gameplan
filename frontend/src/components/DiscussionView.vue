@@ -168,7 +168,7 @@
         />
       </div>
     </div>
-    <div class="flex-1 border-t pb-40">
+    <div class="flex-1 pb-40">
       <CommentsArea doctype="Team Discussion" :name="discussion.name" />
     </div>
 

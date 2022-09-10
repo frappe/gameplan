@@ -19,9 +19,9 @@
         </div>
       </div>
     </div>
-    <div class="space-y-5 px-1 pt-6" v-if="$resources.comments.data?.length">
+    <div class="px-1" v-if="$resources.comments.data?.length">
       <div
-        class="group flex items-start space-x-3 rounded-md p-1 transition-shadow"
+        class="group flex items-start space-x-3 rounded-md px-1 py-6 transition-shadow border-t"
         :class="{
           ring: !comment.loading && highlightedComment == comment.name,
         }"
