@@ -112,7 +112,7 @@
             >
               <TextEditor
                 v-if="comment.deleted_at == null"
-                editor-class="prose-sm prose-p:text-base"
+                editor-class="prose-sm text-[15px]"
                 :editable="comment.editing || false"
                 :content="comment.content"
                 @change="(val) => (comment.content = val)"
@@ -156,7 +156,7 @@
           @keydown.meta.enter.capture.stop="submitComment"
         >
           <TextEditor
-            editor-class="prose-p:text-base min-h-[4rem] prose-sm"
+            editor-class="min-h-[4rem] prose-sm text-[15px]"
             :content="newComment"
             @change="(val) => (newComment = val)"
             :starterkit-options="{ heading: { levels: [2, 3, 4, 5, 6] } }"
@@ -299,9 +299,14 @@ export default {
       if (!comment) return
       this.$nextTick(() => {
         let $comment = this.$refs['comment-' + comment][0]
-        scrollToElement($comment)
+        if ($comment?.scrollIntoView) {
+          $comment.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start',
+          })
+        }
         this.highlightedComment = comment
-        setTimeout(() => (this.highlightedComment = null), 2000)
+        setTimeout(() => (this.highlightedComment = null), 10000)
       })
     },
     copyLink(comment) {

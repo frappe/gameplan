@@ -1,5 +1,5 @@
 <template>
-  <ReadmeEditor :resource="project" fieldname="readme" />
+  <ReadmeEditor :resource="project" fieldname="readme" :border="false" />
 </template>
 <script>
 import ReadmeEditor from '@/components/ReadmeEditor.vue'

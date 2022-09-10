@@ -42,7 +42,7 @@
       <TeamPageHomeProjects :team="team" />
       <div>
         <h2 class="mb-2 text-lg text-gray-900">Readme</h2>
-        <ReadmeEditor :resource="team" fieldname="readme" />
+        <ReadmeEditor :resource="team" fieldname="readme" :border="false" />
       </div>
     </div>
   </div>
@@ -65,14 +65,6 @@ export default {
     IconPicker,
     Breadcrumbs,
     ReadmeEditor,
-  },
-  beforeRouteEnter(to, from, next) {
-    window.scrollTo(0, 0)
-    next()
-  },
-  beforeRouteUpdate(to, from, next) {
-    window.scrollTo(0, 0)
-    next()
   },
   methods: {
     updateTeamIcon(icon) {

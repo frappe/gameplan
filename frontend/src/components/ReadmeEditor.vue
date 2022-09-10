@@ -1,5 +1,8 @@
 <template>
-  <div class="relative rounded-xl border px-4 py-4">
+  <div
+    class="relative rounded-xl"
+    :class="{ 'border px-4 py-4': border || editReadme }"
+  >
     <TextEditor
       ref="readme"
       editor-class="prose-sm"
@@ -11,7 +14,8 @@
       :editable="editReadme"
     />
     <div
-      class="absolute top-0 right-0 mt-4 mr-4 flex space-x-2"
+      class="absolute top-0 right-0 flex space-x-2"
+      :class="{ 'mt-4 mr-4': border || editReadme }"
       v-if="editable"
     >
       <Tooltip v-if="!editReadme" text="Edit" placement="top">
@@ -66,6 +70,10 @@ export default {
     },
     placeholder: {
       type: String,
+    },
+    border: {
+      type: Boolean,
+      default: true,
     },
   },
   components: { TextEditor, Tooltip },
