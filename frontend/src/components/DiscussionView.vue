@@ -1,12 +1,15 @@
 <template>
   <div class="relative flex h-full flex-col" v-if="postId && discussion">
-    <div class="sticky top-0 z-10 border-b bg-white" v-show="showNavbar">
+    <div
+      class="sticky top-0 z-10 -mx-4 border-b bg-white sm:mx-0"
+      v-show="showNavbar"
+    >
       <transition
         enter-active-class="transition ease-out duration-200"
         enter-from-class="opacity-0 translate-y-4"
         enter-to-class="opacity-100 translate-y-0"
       >
-        <div class="flex items-center px-2 py-4" v-show="showNavbar">
+        <div class="flex items-center px-6 sm:px-2 py-4" v-show="showNavbar">
           <UserProfileLink :user="discussion.owner">
             <Avatar
               :label="$user(discussion.owner).full_name"
