@@ -28,7 +28,9 @@
             }
           "
           class="rounded-full bg-white outline-none focus:ring"
-          :class="{ 'hover:opacity-80': $isSessionUser(profile.user) }"
+          :class="{
+            'hover:opacity-80': $isSessionUser(profile.user),
+          }"
         >
           <img
             class="h-32 w-32 rounded-full border-4 border-white object-cover"
@@ -113,17 +115,8 @@
   </div>
 </template>
 <script>
-import {
-  TextEditor,
-  Popover,
-  Avatar,
-  Dialog,
-  FileUploader,
-  call,
-} from 'frappe-ui'
-import ReadmeEditor from '@/components/ReadmeEditor.vue'
+import { Avatar, Dialog, FileUploader } from 'frappe-ui'
 import CoverImage from '@/components/CoverImage.vue'
-import { sessionUser } from '@/data/users'
 import Tabs from '@/components/Tabs.vue'
 import ImagePreview from '../components/ImagePreview.vue'
 
@@ -131,19 +124,12 @@ export default {
   name: 'PersonProfile',
   props: ['personId'],
   components: {
-    TextEditor,
-    ReadmeEditor,
-    Popover,
     CoverImage,
     Avatar,
     Dialog,
     FileUploader,
     Tabs,
     ImagePreview,
-  },
-  beforeRouteEnter(to, from, next) {
-    window.scrollTo(0, 0)
-    next()
   },
   data() {
     return {

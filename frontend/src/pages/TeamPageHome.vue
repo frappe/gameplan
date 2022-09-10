@@ -42,7 +42,7 @@
       <TeamPageHomeProjects :team="team" />
       <div>
         <h2 class="mb-2 text-lg text-gray-900">Readme</h2>
-        <ReadmeEditor :resource="team" fieldname="readme" />
+        <ReadmeEditor :resource="team" fieldname="readme" :border="false" />
       </div>
     </div>
   </div>

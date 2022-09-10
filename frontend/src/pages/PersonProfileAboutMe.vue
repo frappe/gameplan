@@ -5,6 +5,7 @@
     :editable="$isSessionUser(profile.doc.user)"
     fieldname="readme"
     placeholder="Write a brief introduction of yourself..."
+    :border="false"
   />
 </template>
 <script>
