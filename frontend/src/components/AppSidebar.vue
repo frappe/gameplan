@@ -39,7 +39,7 @@
                 <span class="grid h-5 w-5 place-items-center">
                   <FeatherIcon :name="link.icon" class="h-4 w-4" />
                 </span>
-                <span class="text-lg">{{ link.name }}</span>
+                <span class="text-base">{{ link.name }}</span>
                 <span
                   v-if="
                     link.unreadNotifications &&
@@ -88,7 +88,7 @@
                 <span class="flex h-5 w-5 items-center justify-center text-xl">
                   {{ team.icon }}
                 </span>
-                <span class="text-lg">{{ team.title }}</span>
+                <span class="text-base">{{ team.title }}</span>
               </span>
             </Link>
             <div v-show="team.open">
