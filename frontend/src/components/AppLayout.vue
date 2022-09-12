@@ -17,7 +17,7 @@
             </router-link>
             <MobileNav />
           </div>
-          <div class="mx-auto max-w-4xl px-4">
+          <div class="mx-auto max-w-4xl px-4 sm:px-10">
             <slot name="main" />
           </div>
         </div>
