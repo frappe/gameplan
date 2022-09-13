@@ -222,6 +222,7 @@ export default {
         type: 'document',
         doctype: 'Team Project',
         name: this.projectId,
+        realtime: true,
         whitelistedMethods: {
           removeMember: 'remove_member',
           inviteMembers: 'invite_members',

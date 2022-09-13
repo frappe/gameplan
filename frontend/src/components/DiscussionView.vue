@@ -254,6 +254,7 @@ export default {
         type: 'document',
         doctype: 'Team Discussion',
         name: this.postId,
+        realtime: true,
         whitelistedMethods: {
           trackVisit: 'track_visit',
           moveToProject: {

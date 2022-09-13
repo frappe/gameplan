@@ -13,6 +13,7 @@ export default {
         type: 'document',
         doctype: 'Team',
         name: this.teamId,
+        realtime: true,
         whitelistedMethods: {
           inviteMembers: 'invite_members',
         },
