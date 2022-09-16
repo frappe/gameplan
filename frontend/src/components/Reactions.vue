@@ -1,19 +1,19 @@
 <template>
-  <div class="flex items-stretch space-x-1.5 select-none">
+  <div class="flex select-none items-stretch space-x-1.5">
     <Popover>
       <template #target="{ togglePopover }">
         <button
           @click="togglePopover()"
-          class="flex items-center justify-center h-full px-2 py-1 transition border border-gray-300 rounded-full hover:border-gray-400"
+          class="flex h-full items-center justify-center rounded-full border border-gray-300 px-2 py-1 transition hover:border-gray-400"
         >
           <ReactionFaceIcon />
         </button>
       </template>
       <template #body-main="{ togglePopover }">
-        <div class="inline-flex p-1 mt-1">
+        <div class="mt-1 inline-flex p-1">
           <div class="grid grid-cols-10 items-center space-x-0.5">
             <button
-              class="w-6 h-6 rounded hover:bg-gray-50"
+              class="h-6 w-6 rounded hover:bg-gray-50"
               v-for="emoji in standardEmojis"
               :key="emoji"
               @click="
@@ -55,10 +55,10 @@
       >
         <Tooltip v-for="(reactions, emoji) in reactionsCount" :key="emoji">
           <button
-            class="flex items-center justify-center px-2 py-1 text-sm transition border rounded-full"
+            class="flex items-center justify-center rounded-full border px-2 py-1 text-sm transition"
             :class="[
               reactions.userReacted
-                ? 'bg-blue-100 border-blue-200 hover:border-blue-300'
+                ? 'border-blue-200 bg-blue-100 hover:border-blue-300'
                 : 'border-gray-300 hover:border-gray-400',
             ]"
             @click="toggleReaction(emoji)"
@@ -68,7 +68,7 @@
 
           <template #body>
             <div
-              class="px-2 py-1 text-xs max-w-[30ch] text-center text-white bg-gray-800 border border-gray-100 rounded-lg shadow-xl"
+              class="max-w-[30ch] rounded-lg border border-gray-100 bg-gray-800 px-2 py-1 text-center text-xs text-white shadow-xl"
             >
               {{ toolTipText(reactions) }}
             </div>
@@ -128,6 +128,7 @@ export default {
   },
   methods: {
     toggleReaction(emoji) {
+      if (this.$readOnlyMode) return;
       let existingReaction = this.reactions.find(
         (r) => r.user === this.$user().name && r.emoji === emoji
       )

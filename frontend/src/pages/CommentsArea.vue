@@ -142,7 +142,7 @@
       </div>
     </div>
 
-    <div class="sticky bottom-0 mt-2 bg-white py-4 sm:p-2" ref="addComment">
+    <div v-if="!$readOnlyMode" class="sticky bottom-0 mt-2 bg-white py-4 sm:p-2" ref="addComment">
       <button
         class="flex w-full items-center rounded-lg bg-gray-100 py-2 px-2 text-left text-base text-gray-600 hover:bg-gray-200"
         @click="showCommentBox = true"

@@ -1,12 +1,12 @@
 <template>
   <div class="flex">
-    <div class="w-full h-full py-6 overflow-auto">
-      <div class="flex items-center justify-between mb-5">
+    <div class="h-full w-full overflow-auto py-6">
+      <div class="mb-5 flex items-center justify-between">
         <h1 class="text-2xl font-semibold">Tasks</h1>
         <div class="flex items-stretch space-x-2">
-          <div class="flex p-1 text-sm bg-gray-100 rounded-md">
+          <div class="flex rounded-md bg-gray-100 p-1 text-sm">
             <button
-              class="px-2 py-1 leading-none transition-all rounded"
+              class="rounded px-2 py-1 leading-none transition-all"
               :class="{ 'bg-white shadow': openTasks }"
               @click="
                 $router.replace({
@@ -24,7 +24,7 @@
               Open
             </button>
             <button
-              class="px-2 py-1 leading-none transition-all rounded"
+              class="rounded px-2 py-1 leading-none transition-all"
               :class="{ 'bg-white shadow': !openTasks }"
               @click="
                 $router.replace({
@@ -42,7 +42,11 @@
               Closed
             </button>
           </div>
-          <Button iconLeft="plus" :route="{ name: 'ProjectTaskNew' }">
+          <Button
+            iconLeft="plus"
+            :route="{ name: 'ProjectTaskNew' }"
+            v-if="!$readOnlyMode"
+          >
             New Task
           </Button>
         </div>
@@ -76,7 +80,7 @@
             </div>
           </div>
           <div
-            class="text-gray-600 flex items-center justify-between mt-0.5 text-sm"
+            class="mt-0.5 flex items-center justify-between text-sm text-gray-600"
           >
             <span>
               Created by {{ $user(d.owner).full_name }}
