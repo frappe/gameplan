@@ -17,7 +17,7 @@
     leave-to-class="-translate-x-full"
   >
     <div
-      class="flex w-72 flex-1 flex-col overflow-auto bg-gray-100 h-full pb-40"
+      class="flex h-full w-72 flex-1 flex-col overflow-auto bg-gray-100 pb-40"
       v-show="sidebarOpen"
     >
       <div class="flex w-full items-center justify-between px-2 py-4">
@@ -54,11 +54,7 @@
           </Links>
         </nav>
         <div class="mt-6 flex items-center justify-between px-3">
-          <h3
-            class="text-xs font-semibold uppercase tracking-wider text-gray-500"
-          >
-            Your Teams
-          </h3>
+          <h3 class="text-sm font-semibold text-gray-700">Teams</h3>
           <Button icon="plus" @click="showAddTeamDialog = true">
             Create Team
           </Button>

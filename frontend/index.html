@@ -12,7 +12,7 @@
     <div id="popovers"></div>
     <script>
       window.csrf_token = '{{ csrf_token }}';
-      window.read_only_mode = '{{ read_only_mode|tojson }}';
+      window.read_only_mode = JSON.parse('{{ read_only_mode|tojson }}');
     </script>
     <script type="module" src="/src/main.js"></script>
   </body>

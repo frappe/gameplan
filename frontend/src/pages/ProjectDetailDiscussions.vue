@@ -1,9 +1,13 @@
 <template>
   <div class="flex">
-    <div class="w-full h-full py-6">
-      <div class="flex items-center justify-between mb-5">
+    <div class="h-full w-full py-6">
+      <div class="mb-5 flex items-center justify-between">
         <h1 class="text-2xl font-semibold">All Discussions</h1>
-        <Button v-if="!this.$readOnlyMode" iconLeft="plus" :route="{ name: 'ProjectDetailDiscussionNew' }">
+        <Button
+          v-if="!$readOnlyMode"
+          iconLeft="plus"
+          :route="{ name: 'ProjectDetailDiscussionNew' }"
+        >
           New Discussion
         </Button>
       </div>
