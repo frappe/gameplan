@@ -49,6 +49,7 @@ app.use(FrappeUI, {
 for (let key in globalComponents) {
   app.component(key, globalComponents[key])
 }
+app.config.unwrapInjectedRef = true
 app.config.globalProperties.$dayjs = dayjs
 app.config.globalProperties.$dialog = createDialog
 app.config.globalProperties.$toast = createToast

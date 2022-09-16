@@ -9,7 +9,7 @@
         enter-from-class="opacity-0 translate-y-4"
         enter-to-class="opacity-100 translate-y-0"
       >
-        <div class="flex items-center px-6 sm:px-2 py-4" v-show="showNavbar">
+        <div class="flex items-center px-6 py-4 sm:px-2" v-show="showNavbar">
           <UserProfileLink :user="discussion.owner">
             <Avatar
               :label="$user(discussion.owner).full_name"
@@ -151,7 +151,7 @@
       <TextEditor
         :key="editingContent"
         :editor-class="[
-          'min-h-[8rem] prose-sm text-[15px]',
+          'min-h-[8rem] prose-sm',
           { 'border px-3 py-2 rounded-b-lg': editingContent },
         ]"
         :editable="editingContent"
@@ -168,9 +168,7 @@
         />
       </div>
     </div>
-    <div class="flex-1 pb-40">
-      <CommentsArea doctype="Team Discussion" :name="discussion.name" />
-    </div>
+    <CommentsArea doctype="Team Discussion" :name="discussion.name" />
 
     <Dialog
       :options="{

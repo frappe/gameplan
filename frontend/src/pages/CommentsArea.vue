@@ -19,9 +19,9 @@
         </div>
       </div>
     </div>
-    <div class="px-1" v-if="$resources.comments.data?.length">
+    <div class="px-1 pb-20" v-if="$resources.comments.data?.length">
       <div
-        class="group flex items-start space-x-3 rounded-md px-1 py-6 transition-shadow border-t"
+        class="group rounded-md border-t px-1 py-6 transition-shadow"
         :class="{
           ring: !comment.loading && highlightedComment == comment.name,
         }"
@@ -31,77 +31,76 @@
         :ref="'comment-' + comment.name"
       >
         <UserInfo :email="comment.owner" v-slot="{ user }">
-          <UserProfileLink :user="user.name">
-            <Avatar
-              class="sticky top-1 flex-shrink-0"
-              :label="user.full_name"
-              :imageURL="user.user_image"
-            />
-          </UserProfileLink>
-          <div class="flex-1">
-            <div class="flex items-center text-base text-gray-900">
-              <UserProfileLink
-                class="font-medium hover:text-blue-600"
-                :user="user.name"
-              >
-                {{ user.full_name }}&nbsp;&middot;&nbsp;
-              </UserProfileLink>
-              <time
-                class="text-gray-600"
-                :datetime="comment.creation"
-                :title="$dayjs(comment.creation)"
-              >
-                {{ $dayjs(comment.creation).fromNow() }}
-              </time>
-              <template v-if="comment.modified > comment.creation">
-                <span class="text-gray-600" :title="$dayjs(comment.modified)">
-                  &nbsp;&middot; Edited
-                </span>
-              </template>
-              <template v-if="comment.loading">
-                &nbsp;&middot;
-                <span class="italic text-gray-600">Sending...</span>
-              </template>
-              <template v-if="comment.error">
-                <div>
-                  &nbsp;&middot;
-                  <span class="text-red-600"> Error</span>
-                </div>
-              </template>
-              <Dropdown
-                v-show="!comment.editing"
-                class="ml-auto"
-                placement="right"
-                :button="{ icon: 'more-horizontal', appearance: 'minimal' }"
-                :options="[
-                  {
-                    label: 'Edit',
-                    icon: 'edit',
-                    handler: () => (comment.editing = true),
-                    condition: () =>
-                      $isSessionUser(comment.owner) && !comment.deleted_at,
-                  },
-                  {
-                    label: 'Copy link',
-                    icon: 'link',
-                    handler: () => copyLink(comment),
-                  },
-                  {
-                    label: 'Delete',
-                    icon: 'trash',
-                    handler: () => {
-                      $resources.comments.setValue.submit({
-                        name: comment.name,
-                        deleted_at: $dayjs().format('YYYY-MM-DD HH:mm:ss'),
-                      })
-                    },
-                    condition: () =>
-                      $isSessionUser(comment.owner) &&
-                      comment.deleted_at == null,
-                  },
-                ]"
+          <div class="mb-2 flex items-center text-base text-gray-900">
+            <UserProfileLink class="mr-3" :user="user.name">
+              <Avatar
+                class="sticky top-1 flex-shrink-0"
+                :label="user.full_name"
+                :imageURL="user.user_image"
               />
-            </div>
+            </UserProfileLink>
+            <UserProfileLink
+              class="font-medium hover:text-blue-600"
+              :user="user.name"
+            >
+              {{ user.full_name }}&nbsp;&middot;&nbsp;
+            </UserProfileLink>
+            <time
+              class="text-gray-600"
+              :datetime="comment.creation"
+              :title="$dayjs(comment.creation)"
+            >
+              {{ $dayjs(comment.creation).fromNow() }}
+            </time>
+            <template v-if="comment.modified > comment.creation">
+              <span class="text-gray-600" :title="$dayjs(comment.modified)">
+                &nbsp;&middot; Edited
+              </span>
+            </template>
+            <template v-if="comment.loading">
+              &nbsp;&middot;
+              <span class="italic text-gray-600">Sending...</span>
+            </template>
+            <template v-if="comment.error">
+              <div>
+                &nbsp;&middot;
+                <span class="text-red-600"> Error</span>
+              </div>
+            </template>
+            <Dropdown
+              v-show="!comment.editing"
+              class="ml-auto"
+              placement="right"
+              :button="{ icon: 'more-horizontal', appearance: 'minimal' }"
+              :options="[
+                {
+                  label: 'Edit',
+                  icon: 'edit',
+                  handler: () => (comment.editing = true),
+                  condition: () =>
+                    $isSessionUser(comment.owner) && !comment.deleted_at,
+                },
+                {
+                  label: 'Copy link',
+                  icon: 'link',
+                  handler: () => copyLink(comment),
+                },
+                {
+                  label: 'Delete',
+                  icon: 'trash',
+                  handler: () => {
+                    $resources.comments.setValue.submit({
+                      name: comment.name,
+                      deleted_at: $dayjs().format('YYYY-MM-DD HH:mm:ss'),
+                    })
+                  },
+                  condition: () =>
+                    $isSessionUser(comment.owner) && comment.deleted_at == null,
+                },
+              ]"
+            />
+          </div>
+          <div class="flex-1">
             <div
               :class="
                 comment.editing &&
@@ -112,7 +111,7 @@
             >
               <TextEditor
                 v-if="comment.deleted_at == null"
-                editor-class="prose-sm text-[15px]"
+                editor-class="prose-sm"
                 :editable="comment.editing || false"
                 :content="comment.content"
                 @change="(val) => (comment.content = val)"
@@ -143,36 +142,67 @@
       </div>
     </div>
 
-    <div class="flex items-start space-x-3 px-2 pt-6 pb-6" ref="addComment">
-      <Avatar
-        class="mt-1 flex-shrink-0"
-        :label="$user().full_name"
-        :imageURL="$user().user_image"
-      />
-      <div class="w-full">
-        <div
-          class="min-h-[2.5rem] w-full rounded-lg border bg-white px-3.5 py-1 focus-within:border-gray-400"
-          @keydown.ctrl.enter.capture.stop="submitComment"
-          @keydown.meta.enter.capture.stop="submitComment"
-        >
-          <TextEditor
-            editor-class="min-h-[4rem] prose-sm text-[15px]"
-            :content="newComment"
-            @change="(val) => (newComment = val)"
-            :starterkit-options="{ heading: { levels: [2, 3, 4, 5, 6] } }"
-            placeholder="Add comment..."
-            :bubbleMenu="true"
+    <div class="sticky bottom-0 mt-2 bg-white py-4 sm:p-2" ref="addComment">
+      <button
+        class="flex w-full items-center rounded-lg bg-gray-100 py-2 px-2 text-left text-base text-gray-600 hover:bg-gray-200"
+        @click="showCommentBox = true"
+        v-show="!showCommentBox"
+      >
+        <Avatar
+          class="mr-3 flex-shrink-0"
+          :label="$user().full_name"
+          :imageURL="$user().user_image"
+          size="sm"
+        />
+        Add comment
+      </button>
+      <div
+        v-show="showCommentBox"
+        class="w-full rounded-lg border bg-white p-4 focus-within:border-gray-400"
+        @keydown.ctrl.enter.capture.stop="submitComment"
+        @keydown.meta.enter.capture.stop="submitComment"
+      >
+        <div class="mb-4 flex items-center space-x-2">
+          <Avatar
+            class="flex-shrink-0"
+            :label="$user().full_name"
+            :imageURL="$user().user_image"
+            size="sm"
           />
+          <span class="text-base font-medium text-gray-900">
+            {{ $user().full_name }}
+          </span>
         </div>
-        <Button
-          class="mt-2"
-          v-show="!commentEmpty"
-          appearance="primary"
-          @click="submitComment"
-          :loading="$resources.comments.insert.loading"
+        <TextEditor
+          ref="newCommentEditor"
+          editor-class="min-h-[4rem] prose-sm overflow-y-auto max-h-[50vh]"
+          :content="newComment"
+          @change="(val) => (newComment = val)"
+          :starterkit-options="{ heading: { levels: [2, 3, 4, 5, 6] } }"
+          placeholder="Add comment..."
         >
-          Submit
-        </Button>
+          <template v-slot:bottom>
+            <div
+              class="mt-2 flex flex-col justify-between sm:flex-row sm:items-center"
+            >
+              <TextEditorFixedMenu
+                class="overflow-x-auto"
+                :buttons="textEditorMenuButtons"
+              />
+              <div class="mt-2 flex items-center justify-end space-x-2 sm:mt-0">
+                <Button @click="resetCommentState"> Discard </Button>
+                <Button
+                  appearance="primary"
+                  @click="submitComment"
+                  :loading="$resources.comments.insert.loading"
+                  :disabled="commentEmpty"
+                >
+                  Submit
+                </Button>
+              </div>
+            </div>
+          </template>
+        </TextEditor>
       </div>
     </div>
   </div>
@@ -183,6 +213,10 @@ import TextEditor from '@/components/TextEditor.vue'
 import { copyToClipboard } from '@/utils'
 import Reactions from '@/components/Reactions.vue'
 import UserProfileLink from '@/components/UserProfileLink.vue'
+import { nextTick } from 'vue'
+import TextEditorMenu from 'frappe-ui/src/components/TextEditor/Menu.vue'
+import TextEditorFixedMenu from 'frappe-ui/src/components/TextEditor/TextEditorFixedMenu.vue'
+import { getScrollParent } from '@/utils'
 
 export default {
   name: 'CommentsArea',
@@ -194,13 +228,28 @@ export default {
     Dropdown,
     Reactions,
     UserProfileLink,
+    TextEditorMenu,
+    TextEditorFixedMenu,
   },
   data() {
     return {
       commentMap: {},
+      showCommentBox: false,
       newComment: '',
       highlightedComment: '',
     }
+  },
+  watch: {
+    showCommentBox(val) {
+      if (val) {
+        nextTick(() => {
+          this.$refs.newCommentEditor.editor.commands.focus()
+          // scroll to bottom
+          let scrollContainer = getScrollParent(this.$refs.comments)
+          scrollContainer.scrollTop = scrollContainer.scrollHeight
+        })
+      }
+    },
   },
   resources: {
     comments() {
@@ -277,7 +326,7 @@ export default {
         reference_name: this.name,
         content: this.newComment,
       })
-      this.newComment = ''
+      this.resetCommentState()
     },
     editComment(comment) {
       comment.loading = true
@@ -330,10 +379,57 @@ export default {
         }
       }
     },
+    resetCommentState() {
+      this.newComment = ''
+      this.showCommentBox = false
+    },
   },
   computed: {
     commentEmpty() {
       return !this.newComment || this.newComment === '<p></p>'
+    },
+    editorObject() {
+      return this.$refs.newCommentEditor?.editor
+    },
+    textEditorMenuButtons() {
+      return [
+        'Paragraph',
+        ['Heading 2', 'Heading 3', 'Heading 4', 'Heading 5', 'Heading 6'],
+        'Separator',
+        'Bold',
+        'Italic',
+        'Separator',
+        'Bullet List',
+        'Numbered List',
+        'Separator',
+        'Align Left',
+        'Align Center',
+        'Align Right',
+        'Separator',
+        'Image',
+        'Link',
+        'Blockquote',
+        'Code',
+        'Horizontal Rule',
+        [
+          'InsertTable',
+          'AddColumnBefore',
+          'AddColumnAfter',
+          'DeleteColumn',
+          'AddRowBefore',
+          'AddRowAfter',
+          'DeleteRow',
+          'MergeCells',
+          'SplitCell',
+          'ToggleHeaderColumn',
+          'ToggleHeaderRow',
+          'ToggleHeaderCell',
+          'DeleteTable',
+        ],
+        'Separator',
+        'Undo',
+        'Redo',
+      ]
     },
   },
 }

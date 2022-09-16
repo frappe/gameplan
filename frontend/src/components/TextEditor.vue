@@ -1,5 +1,12 @@
 <template>
-  <FTextEditor :mentions="users" v-bind="$attrs" ref="textEditor" />
+  <FTextEditor :mentions="users" v-bind="$attrs" ref="textEditor">
+    <template #top>
+      <slot name="top" />
+    </template>
+    <template #bottom>
+      <slot name="bottom" />
+    </template>
+  </FTextEditor>
 </template>
 <script>
 import { TextEditor as FTextEditor } from 'frappe-ui'
