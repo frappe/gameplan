@@ -45,7 +45,7 @@
                     link.unreadNotifications &&
                     link.unreadNotifications.data > 0
                   "
-                  class="!ml-auto block rounded bg-red-500 px-1 text-sm text-white"
+                  class="!ml-auto block rounded bg-blue-400 px-1 text-sm text-white"
                 >
                   {{ link.unreadNotifications.data }}
                 </span>
