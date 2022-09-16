@@ -154,7 +154,7 @@
           :imageURL="$user().user_image"
           size="sm"
         />
-        Add comment
+        Add a comment
       </button>
       <div
         v-show="showCommentBox"
@@ -177,7 +177,7 @@
           ref="newCommentEditor"
           editor-class="min-h-[4rem] prose-sm overflow-y-auto max-h-[50vh]"
           :content="newComment"
-          @change="(val) => (newComment = val)"
+          @change="onNewCommentChange"
           :starterkit-options="{ heading: { levels: [2, 3, 4, 5, 6] } }"
           placeholder="Add comment..."
         >
@@ -190,7 +190,7 @@
                 :buttons="textEditorMenuButtons"
               />
               <div class="mt-2 flex items-center justify-end space-x-2 sm:mt-0">
-                <Button @click="resetCommentState"> Discard </Button>
+                <Button @click="discardDialog = true"> Discard </Button>
                 <Button
                   appearance="primary"
                   @click="submitComment"
@@ -205,10 +205,32 @@
         </TextEditor>
       </div>
     </div>
+    <Dialog
+      :options="{
+        title: 'Discard comment',
+        message: 'Are you sure you want to discard your comment?',
+        actions: [
+          {
+            label: 'Discard comment',
+            handler: () => {
+              resetCommentState()
+              discardDialog = false
+            },
+            appearance: 'primary',
+          },
+          {
+            label: 'Keep comment',
+            appearance: 'white',
+          },
+        ],
+      }"
+      v-model="discardDialog"
+    >
+    </Dialog>
   </div>
 </template>
 <script>
-import { Avatar, LoadingIndicator, Dropdown } from 'frappe-ui'
+import { Avatar, LoadingIndicator, Dropdown, Dialog } from 'frappe-ui'
 import TextEditor from '@/components/TextEditor.vue'
 import { copyToClipboard } from '@/utils'
 import Reactions from '@/components/Reactions.vue'
@@ -230,13 +252,16 @@ export default {
     UserProfileLink,
     TextEditorMenu,
     TextEditorFixedMenu,
+    Dialog,
   },
   data() {
+    let draftComment = localStorage.getItem(this.draftCommentKey())
     return {
       commentMap: {},
-      showCommentBox: false,
-      newComment: '',
+      showCommentBox: draftComment ? true : false,
+      newComment: draftComment || '',
       highlightedComment: '',
+      discardDialog: false,
     }
   },
   watch: {
@@ -379,9 +404,22 @@ export default {
         }
       }
     },
+    onNewCommentChange(content) {
+      this.newComment = content
+
+      // save draft comment to local storage
+      setTimeout(() => {
+        // set timeout to move it off main thread
+        localStorage.setItem(this.draftCommentKey(), content)
+      }, 0)
+    },
     resetCommentState() {
       this.newComment = ''
       this.showCommentBox = false
+      localStorage.removeItem(this.draftCommentKey())
+    },
+    draftCommentKey() {
+      return `draft-comment-${this.doctype}-${this.name}`
     },
   },
   computed: {
