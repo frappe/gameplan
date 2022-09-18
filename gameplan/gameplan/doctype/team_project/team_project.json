@@ -15,10 +15,7 @@
   "section_break_5",
   "description",
   "readme",
-  "task_states",
-  "sections",
   "members",
-  "attachments",
   "section_break_14",
   "tasks_count",
   "discussions_count"
@@ -60,12 +57,6 @@
    "options": "Team Member"
   },
   {
-   "fieldname": "task_states",
-   "fieldtype": "Table",
-   "label": "Task States",
-   "options": "Task Status"
-  },
-  {
    "fieldname": "column_break_2",
    "fieldtype": "Column Break"
   },
@@ -82,18 +73,6 @@
    "fieldname": "icon",
    "fieldtype": "Data",
    "label": "Icon"
-  },
-  {
-   "fieldname": "attachments",
-   "fieldtype": "Table",
-   "label": "Attachments",
-   "options": "Team Attachment"
-  },
-  {
-   "fieldname": "sections",
-   "fieldtype": "Table",
-   "label": "Task Sections",
-   "options": "Team Project Section"
   },
   {
    "fieldname": "readme",
@@ -126,7 +105,7 @@
    "link_fieldname": "project"
   }
  ],
- "modified": "2022-08-31 20:24:37.962818",
+ "modified": "2022-09-18 20:19:59.513013",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "Team Project",

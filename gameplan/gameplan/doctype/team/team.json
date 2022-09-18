@@ -12,8 +12,7 @@
   "cover_image",
   "cover_image_position",
   "icon",
-  "members",
-  "links"
+  "members"
  ],
  "fields": [
   {
@@ -45,12 +44,6 @@
    "label": "Icon"
   },
   {
-   "fieldname": "links",
-   "fieldtype": "Table",
-   "label": "Links",
-   "options": "Team Link"
-  },
-  {
    "fieldname": "readme",
    "fieldtype": "Text Editor",
    "label": "Readme"
@@ -58,7 +51,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-08-25 18:31:50.419685",
+ "modified": "2022-09-18 20:21:38.760297",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "Team",

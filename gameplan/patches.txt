@@ -6,3 +6,9 @@ gameplan.gameplan.doctype.team_user_profile.patches.set_name
 gameplan.gameplan.doctype.team_project_discussion.patches.rename_team_project_status_update_doctype
 gameplan.gameplan.doctype.team_project_discussion.patches.add_full_text_search_index
 gameplan.gameplan.doctype.team_discussion.patches.rename_team_project_discussion_to_team_discussion
+execute:frappe.delete_doc('DocType', 'Team Project Section', force=1)
+execute:frappe.delete_doc('DocType', 'Task Status', force=1)
+execute:frappe.delete_doc('DocType', 'Team Document', force=1)
+execute:frappe.delete_doc('DocType', 'Team Attachment', force=1)
+execute:frappe.delete_doc('DocType', 'Team Note', force=1)
+execute:frappe.delete_doc('DocType', 'Team Link', force=1)

@@ -15,34 +15,6 @@ def get_team(name):
 	return frappe.get_doc("Team", name)
 
 
-@frappe.whitelist()
-def get_documents(team):
-	return frappe.db.get_all(
-		"Team Document",
-		fields=["name", "title", "modified", "creation"],
-		filters={"team": team},
-		order_by="creation desc",
-	)
-
-
-@frappe.whitelist()
-def new_document(team):
-	return frappe.get_doc(doctype="Team Document", team=team).insert()
-
-
-@frappe.whitelist()
-def get_document(name):
-	return frappe.get_doc("Team Document", name)
-
-
-@frappe.whitelist()
-def update_document(name, title, content):
-	doc = frappe.get_doc("Team Document", name)
-	doc.title = title
-	doc.content = content
-	doc.save()
-
-
 @frappe.whitelist(allow_guest=True)
 def get_user_info():
 	if frappe.session.user == "Guest":
@@ -164,33 +136,6 @@ def get_system_users():
 def session_user():
 	out = frappe.get_doc("User", frappe.session.user).as_dict()
 	return out
-
-
-@frappe.whitelist()
-def daily_note(date=None):
-	if not date:
-		date = frappe.utils.today()
-
-	note_name = frappe.db.get_value(
-		"Team Note", filters={"date": date, "owner": frappe.session.user}
-	)
-	if not note_name:
-		note = frappe.get_doc(doctype="Team Note", date=date, content="").insert()
-	else:
-		note = frappe.get_doc("Team Note", note_name)
-
-	return note
-
-
-@frappe.whitelist()
-def update_daily_note(content, date=None):
-	if not date:
-		date = frappe.utils.today()
-
-	note = frappe.get_doc("Team Note", {"date": date, "owner": frappe.session.user})
-	note.content = content
-	note.save()
-	return note
 
 
 @frappe.whitelist()

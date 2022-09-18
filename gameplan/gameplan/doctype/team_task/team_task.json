@@ -18,8 +18,6 @@
   "idx",
   "project",
   "project_title",
-  "project_section",
-  "project_section_title",
   "team",
   "team_title",
   "assigned_to"
@@ -101,19 +99,6 @@
    "read_only": 1
   },
   {
-   "fieldname": "project_section",
-   "fieldtype": "Link",
-   "label": "Project Section",
-   "options": "Team Project Section"
-  },
-  {
-   "fetch_from": "project_section.title",
-   "fieldname": "project_section_title",
-   "fieldtype": "Data",
-   "label": "Project Section Title",
-   "read_only": 1
-  },
-  {
    "fieldname": "assigned_to",
    "fieldtype": "Link",
    "label": "Assigned To",
@@ -132,7 +117,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-08-10 18:53:51.398575",
+ "modified": "2022-09-18 20:11:19.601174",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "Team Task",
