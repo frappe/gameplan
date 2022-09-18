@@ -8,12 +8,6 @@ from frappe.utils import get_fullname
 
 
 class TeamTask(Document):
-	def before_insert(self):
-		total_tasks_in_section = frappe.db.count(
-			"Team Task", {"project": self.project, "project_section": self.project_section}
-		)
-		self.idx = total_tasks_in_section + 1
-
 	def after_insert(self):
 		self.update_tasks_count(1)
 

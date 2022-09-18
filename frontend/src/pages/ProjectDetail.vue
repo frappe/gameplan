@@ -232,12 +232,6 @@ export default {
           updateTasksOrder: 'update_tasks_order',
           moveToTeam: 'move_to_team',
         },
-        transform(project) {
-          project.sections.map((section) => {
-            section.open = true
-            section.tasks = []
-          })
-        },
       }
     },
   },
