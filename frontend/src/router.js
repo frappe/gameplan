@@ -6,39 +6,6 @@ const routes = [
     redirect: '/home',
   },
   {
-    path: '/daily-planner/:date?',
-    name: 'DailyPlanner',
-    component: () => import('@/pages/DailyPlanner.vue'),
-    props: true,
-    children: [
-      {
-        name: 'DailyPlannerNotes',
-        path: 'notes',
-        component: () => import('@/pages/DailyPlannerNotes.vue'),
-      },
-      {
-        name: 'DailyPlannerTasks',
-        path: 'tasks',
-        component: () => import('@/pages/DailyPlannerTasks.vue'),
-      },
-      {
-        name: 'DailyPlannerCalendar',
-        path: 'calendar',
-        component: () => import('@/pages/DailyPlannerCalendar.vue'),
-      },
-    ],
-  },
-  {
-    path: '/inbox',
-    name: 'Inbox',
-    component: () => import('@/pages/ComingSoon.vue'),
-  },
-  {
-    path: '/tasks',
-    name: 'Tasks',
-    component: () => import('@/pages/Tasks.vue'),
-  },
-  {
     path: '/home',
     name: 'Home',
     component: () => import('@/pages/Home.vue'),
@@ -132,17 +99,6 @@ const routes = [
             props: true,
           },
         ],
-      },
-      {
-        name: 'TeamPageDocuments',
-        path: 'documents',
-        component: () => import('@/pages/TeamPageDocuments.vue'),
-      },
-      {
-        path: 'document/:documentId/edit',
-        name: 'EditDocument',
-        component: () => import('@/pages/EditDocument.vue'),
-        props: true,
       },
     ],
   },
