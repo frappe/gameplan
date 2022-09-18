@@ -3,6 +3,20 @@
   <p align="center">Delightful work communication tool that you'll actually enjoy using</p>
 </p>
 
+<img width="1402" alt="Screenshot 2022-09-18 at 9 16 08 PM" src="https://user-images.githubusercontent.com/9355208/190922102-daff8e9f-e34f-4129-a520-dcf834e92958.png">
+
+<details>
+  <summary>Show more screenshots</summary>
+  
+  <img width="1402" alt="Screenshot 2022-09-18 at 9 18 17 PM" src="https://user-images.githubusercontent.com/9355208/190922154-e5bdb690-57d3-4024-9143-9d009894b035.png">
+
+  <img width="1402" alt="Screenshot 2022-09-18 at 9 18 47 PM" src="https://user-images.githubusercontent.com/9355208/190922161-61eb1cd7-a56a-4460-bc7f-d6c24d1c2df7.png">
+  
+  <img width="1402" alt="Screenshot 2022-09-18 at 11 47 06 PM" src="https://user-images.githubusercontent.com/9355208/190922333-fdad6271-2a77-4c7d-8d74-7c518d3052d6.png">
+
+
+</details>
+
 Gameplan is a work communication tool for teams who mostly work remote and prefer having meaningful discussions in an async format. We built it for ourselves because we were finding it difficult to keep track of so many conversations in our chat tool. Chat forces you to be online all the time and doesn't really have any concept of threaded discussions. Gameplan allows you to categorize your discussions around projects and teams. It also doubles up as your team's knowledge archive. You can surface important information and conclusions from your discussions into the readme's of your projects and teams.
 
 ## Features
