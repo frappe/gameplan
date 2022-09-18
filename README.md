@@ -47,7 +47,7 @@ If you want to self-host, you can follow official [Frappe Bench Installation](ht
 If you have an idea that you think Gameplan should implement or you just want to hangout with other Gameplan users, you can join [Discussions](https://github.com/frappe/gameplan/discussions).
 
 ## Reporting Bugs
-If you find any bugs, feel free to report them here on [GitHub Issues](https://github.com/frappe/gameplan). Make sure you share enough information (app screenshots, browser console screenshots, stack traces, etc) for project maintainers to replicate your bug.
+If you find any bugs, feel free to report them here on [GitHub Issues](https://github.com/frappe/gameplan/issues). Make sure you share enough information (app screenshots, browser console screenshots, stack traces, etc) for project maintainers to replicate your bug.
 
 ## License
 
