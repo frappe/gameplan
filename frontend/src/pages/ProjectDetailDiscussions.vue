@@ -2,7 +2,7 @@
   <div class="flex">
     <div class="h-full w-full py-6">
       <div class="mb-5 flex items-center justify-between">
-        <h1 class="text-2xl font-semibold">All Discussions</h1>
+        <h2 class="text-2xl font-semibold">All Discussions</h2>
         <Button
           v-if="!$readOnlyMode"
           iconLeft="plus"

@@ -2,7 +2,7 @@
   <div class="flex">
     <div class="h-full w-full overflow-auto py-6">
       <div class="mb-5 flex items-center justify-between">
-        <h1 class="text-2xl font-semibold">Tasks</h1>
+        <h2 class="text-2xl font-semibold">Tasks</h2>
         <div class="flex items-stretch space-x-2">
           <div class="flex rounded-md bg-gray-100 p-1 text-sm">
             <button
