@@ -32,7 +32,7 @@
             :to="
               d.discussion
                 ? {
-                    name: 'ProjectDetailDiscussion',
+                    name: 'ProjectDiscussion',
                     params: {
                       postId: d.discussion,
                       projectId: d.project,

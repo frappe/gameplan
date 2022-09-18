@@ -19,7 +19,7 @@
 </template>
 <script>
 export default {
-  name: 'ProjectDetailOverviewSummary',
+  name: 'ProjectOverviewSummary',
   props: ['project'],
   computed: {
     cards() {

@@ -18,7 +18,7 @@
           </select>
         </div>
         <DiscussionList
-          routeName="ProjectDetailDiscussion"
+          routeName="ProjectDiscussion"
           :filters="selectedTeam.value ? { team: selectedTeam.value } : null"
         />
       </div>

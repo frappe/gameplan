@@ -29,7 +29,7 @@
               <h3 class="text-lg font-medium text-gray-900">
                 <router-link
                   :to="{
-                    name: 'ProjectDetailOverview',
+                    name: 'ProjectOverview',
                     params: { projectId: project.name },
                   }"
                   class="focus:outline-none"
@@ -122,7 +122,7 @@ export default {
             this.newProjectTitle = ''
             this.createNewProjectDialog = false
             this.$router.push({
-              name: 'ProjectDetailOverview',
+              name: 'ProjectOverview',
               params: { projectId: project.name },
             })
           },

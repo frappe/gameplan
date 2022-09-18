@@ -20,7 +20,7 @@
         >
           Publish
         </Button>
-        <Button :route="{ name: 'ProjectDetailDiscussions' }">Discard</Button>
+        <Button :route="{ name: 'ProjectDiscussions' }">Discard</Button>
       </div>
     </div>
     <div class="mt-3">
@@ -40,7 +40,7 @@ import { Avatar } from 'frappe-ui'
 import TextEditor from '@/components/TextEditor.vue'
 
 export default {
-  name: 'ProjectDetailUpdateNew',
+  name: 'ProjectDiscussionNew',
   props: ['project'],
   components: { TextEditor, Avatar },
   data() {
@@ -73,7 +73,7 @@ export default {
         },
         onSuccess(doc) {
           this.$router.replace({
-            name: 'ProjectDetailDiscussion',
+            name: 'ProjectDiscussion',
             params: { postId: doc.name },
           })
           this.title = ''

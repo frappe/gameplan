@@ -55,7 +55,7 @@
                     <router-link
                       class="hover:text-blue-600"
                       :to="{
-                        name: 'ProjectDetailOverview',
+                        name: 'ProjectOverview',
                         params: { teamId: d.team, projectId: d.project },
                       }"
                     >

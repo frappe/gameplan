@@ -11,7 +11,7 @@ import DiscussionList from '@/components/DiscussionList.vue'
 import DiscussionView from '@/components/DiscussionView.vue'
 
 export default {
-  name: 'ProjectDetailUpdate',
+  name: 'ProjectDiscussion',
   props: ['project', 'postId'],
   components: {
     TextEditor,

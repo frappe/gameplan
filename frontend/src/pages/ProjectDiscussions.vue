@@ -6,14 +6,14 @@
         <Button
           v-if="!$readOnlyMode"
           iconLeft="plus"
-          :route="{ name: 'ProjectDetailDiscussionNew' }"
+          :route="{ name: 'ProjectDiscussionNew' }"
         >
           New Discussion
         </Button>
       </div>
       <DiscussionList
         :filters="{ project: project.doc.name }"
-        routeName="ProjectDetailDiscussion"
+        routeName="ProjectDiscussion"
       />
     </div>
   </div>
@@ -26,7 +26,7 @@ import DiscussionList from '@/components/DiscussionList.vue'
 import DiscussionView from '@/components/DiscussionView.vue'
 
 export default {
-  name: 'ProjectDetailDiscussions',
+  name: 'ProjectDiscussions',
   props: ['project', 'postId'],
   components: {
     TextEditor,

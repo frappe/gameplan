@@ -4,7 +4,7 @@
 <script>
 import ReadmeEditor from '@/components/ReadmeEditor.vue'
 export default {
-  name: 'ProjectDetailOverviewReadme',
+  name: 'ProjectOverviewReadme',
   props: ['project'],
   components: { ReadmeEditor },
 }

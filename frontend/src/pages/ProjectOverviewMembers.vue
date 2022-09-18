@@ -117,7 +117,7 @@ import { Avatar, Dropdown, Dialog, Resource } from 'frappe-ui'
 import AddMemberDialog from '@/components/AddMemberDialog.vue'
 
 export default {
-  name: 'ProjectDetailOverviewMembers',
+  name: 'ProjectOverviewMembers',
   props: ['project'],
   components: { Avatar, Dropdown, Dialog, Resource, AddMemberDialog },
   data() {

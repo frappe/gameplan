@@ -2,7 +2,7 @@
   <div class="mt-6">
     <DiscussionList
       :filters="{ owner: profile.doc.user }"
-      routeName="ProjectDetailDiscussion"
+      routeName="ProjectDiscussion"
     />
   </div>
 </template>

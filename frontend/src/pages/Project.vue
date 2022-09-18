@@ -189,7 +189,7 @@ import { projects, getTeamProjects } from '@/data/projects'
 import { teams } from '@/data/teams'
 
 export default {
-  name: 'ProjectDetail',
+  name: 'Project',
   props: ['team', 'projectId'],
   components: {
     Input,
@@ -251,10 +251,10 @@ export default {
         {
           name: 'Readme',
           route: {
-            name: 'ProjectDetailOverview',
+            name: 'ProjectOverview',
             params: { teamId: this.team.doc.name, projectId: this.projectId },
           },
-          isActive: this.$route.name === 'ProjectDetailOverview',
+          isActive: this.$route.name === 'ProjectOverview',
         },
         {
           name: `Discussions ${
@@ -263,12 +263,12 @@ export default {
               : ''
           }`,
           route: {
-            name: 'ProjectDetailDiscussions',
+            name: 'ProjectDiscussions',
             params: { teamId: this.team.doc.name, projectId: this.projectId },
           },
           isActive: [
-            'ProjectDetailDiscussions',
-            'ProjectDetailDiscussion',
+            'ProjectDiscussions',
+            'ProjectDiscussion',
           ].includes(this.$route.name),
         },
         {
@@ -305,7 +305,7 @@ export default {
         }
       }
       this.$router.push({
-        name: 'ProjectDetailOverview',
+        name: 'ProjectOverview',
         params: {
           teamId: this.projectMoveDialog.team.value,
           projectId: this.projectId,

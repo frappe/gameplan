@@ -71,30 +71,30 @@ const routes = [
         ],
       },
       {
-        name: 'ProjectDetail',
+        name: 'Project',
         path: 'projects/:projectId',
-        component: () => import('@/pages/ProjectDetail.vue'),
+        component: () => import('@/pages/Project.vue'),
         props: true,
         children: [
           {
-            name: 'ProjectDetailOverview',
+            name: 'ProjectOverview',
             path: '',
-            component: () => import('@/pages/ProjectDetailOverview.vue'),
+            component: () => import('@/pages/ProjectOverview.vue'),
           },
           {
-            name: 'ProjectDetailDiscussions',
+            name: 'ProjectDiscussions',
             path: 'discussions',
-            component: () => import('@/pages/ProjectDetailDiscussions.vue'),
+            component: () => import('@/pages/ProjectDiscussions.vue'),
           },
           {
-            name: 'ProjectDetailDiscussionNew',
+            name: 'ProjectDiscussionNew',
             path: 'discussions/new',
-            component: () => import('@/pages/ProjectDetailDiscussionNew.vue'),
+            component: () => import('@/pages/ProjectDiscussionNew.vue'),
           },
           {
-            name: 'ProjectDetailDiscussion',
+            name: 'ProjectDiscussion',
             path: 'discussion/:postId',
-            component: () => import('@/pages/ProjectDetailDiscussion.vue'),
+            component: () => import('@/pages/ProjectDiscussion.vue'),
             props: true,
           },
           {

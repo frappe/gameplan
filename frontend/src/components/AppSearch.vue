@@ -104,7 +104,7 @@ export default {
     selectedValue(value) {
       if (value) {
         this.$router.push({
-          name: 'ProjectDetailDiscussion',
+          name: 'ProjectDiscussion',
           params: {
             teamId: value.team,
             projectId: value.project,

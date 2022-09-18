@@ -56,7 +56,7 @@
               <router-link
                 class="hover:text-blue-600"
                 :to="{
-                  name: 'ProjectDetailOverview',
+                  name: 'ProjectOverview',
                   params: {
                     teamId: discussion.team,
                     projectId: discussion.project,
@@ -282,7 +282,7 @@ export default {
           }
           this.visitTimer = setTimeout(() => {
             if (
-              this.$route.name === 'ProjectDetailDiscussion' &&
+              this.$route.name === 'ProjectDiscussion' &&
               Number(this.$route.params.postId) === doc.name
             ) {
               this.$resources.discussion.trackVisit.submit()
@@ -314,7 +314,7 @@ export default {
         this.discussionMoveDialog.project = null
 
         this.$router.replace({
-          name: 'ProjectDetailDiscussion',
+          name: 'ProjectDiscussion',
           params: {
             teamId: this.discussion.team,
             projectId: this.discussion.project,
