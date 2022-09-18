@@ -99,7 +99,7 @@
                 $resources.project.delete.submit().then(() => {
                   projectDeleteDialog = false
                   $router.push({
-                    name: 'TeamPageHome',
+                    name: 'Team',
                     params: { teamId: team.doc.name },
                   })
                 })

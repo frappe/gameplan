@@ -135,7 +135,7 @@ export default {
     currentPageTitle() {
       let matchedRoutes = this.$route.matched.map((r) => r.name)
       let title = null
-      if (matchedRoutes.includes('TeamPage') && this.$route.params.teamId) {
+      if (matchedRoutes.includes('Team') && this.$route.params.teamId) {
         title = this.teams.find((t) => t.id === this.$route.params.teamId)?.name
       }
       if (matchedRoutes.includes('PersonProfile')) {

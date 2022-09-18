@@ -44,7 +44,7 @@
               <router-link
                 class="hover:text-blue-600"
                 :to="{
-                  name: 'TeamPageHome',
+                  name: 'Team',
                   params: {
                     teamId: discussion.team,
                   },

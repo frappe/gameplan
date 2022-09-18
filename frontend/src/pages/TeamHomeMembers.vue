@@ -42,7 +42,7 @@ import { Avatar } from 'frappe-ui'
 import AddMemberDialog from '@/components/AddMemberDialog.vue'
 
 export default {
-  name: 'TeamPageHomeMembers',
+  name: 'TeamHomeMembers',
   props: ['team'],
   components: {
     Avatar,

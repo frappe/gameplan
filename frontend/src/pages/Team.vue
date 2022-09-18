@@ -5,7 +5,7 @@
 </template>
 <script>
 export default {
-  name: 'TeamPage',
+  name: 'Team',
   props: ['teamId'],
   resources: {
     team() {

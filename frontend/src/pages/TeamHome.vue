@@ -50,7 +50,7 @@ import ReadmeEditor from '@/components/ReadmeEditor.vue'
 import Tabs from '@/components/Tabs.vue'
 
 export default {
-  name: 'TeamPageHome',
+  name: 'TeamHome',
   props: ['team'],
   components: {
     TeamHomeMembers,
