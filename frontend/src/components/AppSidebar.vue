@@ -64,8 +64,6 @@
             <Link
               :link="team"
               class="flex items-center rounded-md px-2 py-2 font-medium"
-              exact-active="bg-white shadow-sm text-gray-900"
-              inactive="text-gray-600 hover:bg-gray-50 hover:text-gray-900"
             >
               <button
                 @click.prevent="

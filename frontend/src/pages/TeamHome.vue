@@ -1,5 +1,5 @@
 <template>
-  <div class="pt-8 pb-80">
+  <div class="pt-8 pb-20">
     <div class="flex w-full items-center">
       <div class="flex items-center space-x-2">
         <IconPicker
@@ -34,37 +34,51 @@
         />
       </div>
       <div class="ml-auto">
-        <TeamPageHomeMembers :team="team" />
+        <TeamHomeMembers :team="team" />
       </div>
     </div>
-
-    <div class="mt-6 space-y-4">
-      <TeamPageHomeProjects :team="team" />
-      <div>
-        <h2 class="mb-2 text-lg text-gray-900">Readme</h2>
-        <ReadmeEditor :resource="team" fieldname="readme" :border="false" />
-      </div>
-    </div>
+    <Tabs :tabs="tabs" />
+    <router-view :team="team" />
   </div>
 </template>
 <script>
 import { Dropdown } from 'frappe-ui'
-import TeamPageHomeProjects from './TeamPageHomeProjects.vue'
-import TeamPageHomeMembers from './TeamPageHomeMembers.vue'
+import TeamHomeMembers from './TeamHomeMembers.vue'
 import IconPicker from '@/components/IconPicker.vue'
 import Breadcrumbs from '@/components/Breadcrumbs.vue'
 import ReadmeEditor from '@/components/ReadmeEditor.vue'
+import Tabs from '@/components/Tabs.vue'
 
 export default {
   name: 'TeamPageHome',
   props: ['team'],
   components: {
-    TeamPageHomeProjects,
-    TeamPageHomeMembers,
+    TeamHomeMembers,
     Dropdown,
     IconPicker,
     Breadcrumbs,
     ReadmeEditor,
+    Tabs,
+  },
+  computed: {
+    tabs() {
+      return [
+        {
+          name: 'Overview',
+          route: {
+            name: 'TeamOverview',
+          },
+          isActive: this.$route.name === 'TeamOverview',
+        },
+        {
+          name: 'Projects',
+          route: {
+            name: 'TeamProjects',
+          },
+          isActive: this.$route.name === 'TeamProjects',
+        },
+      ]
+    },
   },
   methods: {
     updateTeamIcon(icon) {
