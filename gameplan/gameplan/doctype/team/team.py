@@ -53,15 +53,6 @@ class Team(ManageMembersMixin, Document):
 			},
 		)
 
-	def before_save(self):
-		for link in self.links:
-			if link.is_new():
-				valid_url = validate_url(link.url)
-				if not valid_url:
-					frappe.throw(f"Invalid URL: {link.url}")
-				else:
-					link.url = valid_url
-
 	def on_trash(self):
 		linked_doctypes = ["Team Project"]
 		for doctype in linked_doctypes:

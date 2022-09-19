@@ -3,7 +3,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 const routes = [
   {
     path: '/',
-    redirect: '/home',
+    redirect: window.default_route || '/home',
   },
   {
     path: '/home',
@@ -19,6 +19,11 @@ const routes = [
     path: '/search',
     name: 'Search',
     component: () => import('@/pages/Search.vue'),
+  },
+  {
+    path: '/onboarding',
+    name: 'Onboarding',
+    component: () => import('@/pages/Onboarding.vue'),
   },
   {
     path: '/people/:personId',

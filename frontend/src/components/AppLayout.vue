@@ -1,5 +1,5 @@
 <template>
-  <div class="relative flex h-full flex-col" v-if="$users.data.length">
+  <div class="relative flex h-full flex-col" v-if="$users.fetched">
     <div class="h-full flex-1">
       <div class="flex h-full">
         <div

@@ -1,5 +1,6 @@
 <template>
-  <AppLayout>
+  <router-view v-if="$route.name === 'Onboarding'" />
+  <AppLayout v-else>
     <template v-slot:sidebar>
       <AppSidebar />
     </template>
