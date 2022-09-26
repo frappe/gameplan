@@ -48,6 +48,25 @@ These are some of the tools used on frontend:
 - [TailwindCSS](https://tailwindcss.com)
 - [HeadlessUI](https://headlessui.com)
 
+## Local Setup
+
+1. Setup frappe-bench by following [this guide](https://frappeframework.com/docs/v14/user/en/installation)
+1. In the frappe-bench directory, run `bench start` and keep it running. Open a new terminal session and cd into `frappe-bench` directory.
+1. Run the following commands:
+    ```sh
+    bench new-site gameplan.test
+    bench get-app gameplan
+    bench --site gameplan.test install-app gameplan
+    bench --site gameplan.test add-to-hosts
+    bench --site gameplan.test browse --user Administrator
+    ```
+ 1. Now, open a new terminal session and cd into `frappe-bench/apps/gameplan`, and run the following commands:
+    ```
+    yarn
+    yarn dev
+    ```
+ 1. Now, you can access the site on vite dev server at `http://gameplan.test:8080`
+
 ## Deployment
 Gameplan is an app built on top of Frappe Framework. So, you can follow any deployment guide for hosting a Frappe Framework based site.
 
