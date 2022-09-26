@@ -98,12 +98,7 @@ export default {
             appearance: 'danger',
             loading: this.team.delete.loading,
             handler: ({ close }) => {
-              let teams = this.$getResource('teams')
-              this.team.delete.submit().then(() => teams.reload())
-              // optimistic update
-              teams.setData((data) =>
-                data.filter((team) => team.name !== this.team.doc.name)
-              )
+              this.team.delete.submit()
               this.$router.push('/')
               close()
             },
