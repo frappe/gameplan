@@ -38,6 +38,7 @@
             v-model="data"
           />
         </div>
+        <ErrorMessage class="mt-2" :message="$resources.onboarding.error" />
         <div class="mt-10 flex items-center justify-between">
           <Button v-show="activeStepIndex > 0" @click="prevStep">
             Previous
@@ -63,15 +64,16 @@
   </div>
 </template>
 <script>
-import { Input } from 'frappe-ui'
+import { Input, LoadingIndicator, ErrorMessage } from 'frappe-ui'
 import OnboardingStepTeam from './OnboardingStepTeam.vue'
 import OnboardingStepProject from './OnboardingStepProject.vue'
 import OnboardingStepInvites from './OnboardingStepInvites.vue'
-import LoadingIndicator from 'frappe-ui/src/components/LoadingIndicator.vue'
+import { teams } from '@/data/teams'
+import { projects } from '@/data/projects'
 
 export default {
   name: 'Onboarding',
-  components: { Input, LoadingIndicator },
+  components: { Input, LoadingIndicator, ErrorMessage },
   resources: {
     onboarding: {
       method: 'gameplan.api.onboarding',
@@ -80,8 +82,21 @@ export default {
           data: this.data,
         }
       },
-      onSuccess() {
-        this.$router.push({ name: 'Home' })
+      validate() {
+        if (!this.data.team) {
+          return 'Please select a team'
+        }
+        if (!this.data.project) {
+          return 'Please select a project'
+        }
+        if (this.data.emails.filter(Boolean).length === 0) {
+          return 'Please enter at least one email'
+        }
+      },
+      onSuccess(teamId) {
+        teams.reload()
+        projects.reload()
+        this.$router.push({ name: 'Team', params: { teamId } })
       },
     },
   },
@@ -138,9 +153,7 @@ export default {
       }
     },
     completeSetup() {
-      if (this.steps.every((step) => step.isCompleted)) {
-        this.$resources.onboarding.submit()
-      }
+      this.$resources.onboarding.submit()
     },
   },
 }
