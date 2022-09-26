@@ -1,9 +1,14 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
+let defaultRoute = window.default_route
+if (defaultRoute?.includes('{{')) {
+  defaultRoute = '/home'
+}
+
 const routes = [
   {
     path: '/',
-    redirect: '/home',
+    redirect: defaultRoute,
   },
   {
     path: '/home',
@@ -19,6 +24,11 @@ const routes = [
     path: '/search',
     name: 'Search',
     component: () => import('@/pages/Search.vue'),
+  },
+  {
+    path: '/onboarding',
+    name: 'Onboarding',
+    component: () => import('@/pages/Onboarding.vue'),
   },
   {
     path: '/people/:personId',

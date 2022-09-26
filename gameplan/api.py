@@ -160,3 +160,11 @@ def tasks_for_day(date):
 		query = query.where(Task.due_date == date)
 
 	return query.run(as_dict=1)
+
+@frappe.whitelist()
+def onboarding(data):
+	data = frappe.parse_json(data)
+	team = frappe.get_doc(doctype='Team', title=data.team).insert()
+	frappe.get_doc(doctype='Team Project', team=team.name, title=data.project).insert()
+	team.invite_members(data.emails)
+	return team.name

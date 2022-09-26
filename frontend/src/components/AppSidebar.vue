@@ -118,7 +118,6 @@
         @success="
           (team) => {
             showAddTeamDialog = false
-            teams.fetch()
             $router.push(`/${team.name}`)
           }
         "
