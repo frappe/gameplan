@@ -1,9 +1,14 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
+let defaultRoute = window.default_route
+if (defaultRoute?.includes('{{')) {
+  defaultRoute = '/home'
+}
+
 const routes = [
   {
     path: '/',
-    redirect: window.default_route || '/home',
+    redirect: defaultRoute,
   },
   {
     path: '/home',
