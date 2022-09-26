@@ -23,7 +23,8 @@
    "in_list_view": 1,
    "label": "Project",
    "options": "Team Project",
-   "reqd": 1
+   "reqd": 1,
+   "search_index": 1
   },
   {
    "fieldname": "content",
@@ -54,12 +55,14 @@
    "fieldname": "team",
    "fieldtype": "Link",
    "label": "Team",
-   "options": "Team"
+   "options": "Team",
+   "search_index": 1
   },
   {
    "fieldname": "last_post_at",
    "fieldtype": "Datetime",
-   "label": "Last Post At"
+   "label": "Last Post At",
+   "search_index": 1
   },
   {
    "fieldname": "comments_count",
@@ -75,7 +78,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-09-09 22:01:18.371578",
+ "modified": "2022-09-26 12:42:08.358227",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "Team Discussion",
