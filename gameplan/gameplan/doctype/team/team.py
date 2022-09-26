@@ -6,8 +6,6 @@ from frappe.model.document import Document
 from frappe.model.naming import append_number_if_name_exists
 from gameplan.gemoji import get_random_gemoji
 from gameplan.mixins.manage_members import ManageMembersMixin
-from gameplan.unsplash import get_random as get_random_image
-from gameplan.utils import validate_url
 
 
 class Team(ManageMembersMixin, Document):
@@ -35,13 +33,6 @@ class Team(ManageMembersMixin, Document):
 			<h3>Welcome to the {self.title} team page!</h3>
 			<p>You can add a brief introduction about the team, important links, resources, and other important information here.</p>
 		"""
-
-		if not self.cover_image:
-			try:
-				image = get_random_image({"query": self.title, "orientation": "landscape"})
-				self.cover_image = image["urls"]["raw"]
-			except:
-				pass
 
 		self.append(
 			"members",

@@ -6,21 +6,15 @@
         type="text"
         v-model="teamName"
         placeholder="Team Name"
-        @keydown.enter="
-          (e) => $resources.createTeam.submit({ name: e.target.value })
-        "
+        @keydown.enter="createTeam($event.target.value)"
       />
-      <ErrorMessage
-        class="mt-2"
-        :message="$resources.createTeam.error?.message"
-      />
+      <ErrorMessage class="mt-2" :message="teams.insert.error?.messages" />
     </template>
-
     <template #actions>
       <Button
         appearance="primary"
-        @click="$resources.createTeam.submit()"
-        :loading="$resources.createTeam.loading"
+        @click="createTeam(teamName)"
+        :loading="teams.insert.loading"
       >
         Create Team
       </Button>
@@ -29,6 +23,7 @@
 </template>
 <script>
 import { Dialog } from 'frappe-ui'
+import { teams } from '@/data/teams'
 
 export default {
   name: 'AddTeamDialog',
@@ -37,10 +32,25 @@ export default {
   data() {
     return {
       teamName: '',
+      teams,
     }
   },
   components: {
     Dialog,
+  },
+  methods: {
+    createTeam(teamName) {
+      teams.insert.submit(
+        { title: teamName },
+        {
+          onSuccess: (team) => {
+            this.teamName = ''
+            this.showDialog = false
+            this.$emit('success', team)
+          },
+        }
+      )
+    },
   },
   computed: {
     showDialog: {
@@ -50,25 +60,6 @@ export default {
       set(val) {
         this.$emit('update:show', val)
       },
-    },
-  },
-  resources: {
-    createTeam() {
-      return {
-        method: 'gameplan.api.create_team',
-        params: {
-          name: this.teamName,
-        },
-        validate(params) {
-          if (!params?.name) {
-            return 'Team Name is required'
-          }
-        },
-        onSuccess(team) {
-          this.teamName = ''
-          this.$emit('success', team)
-        },
-      }
     },
   },
 }
