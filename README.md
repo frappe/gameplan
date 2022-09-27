@@ -1,6 +1,6 @@
 <p align="center">
   <img src="https://user-images.githubusercontent.com/9355208/190904451-ac6f171b-26c6-4432-a04f-044974516da6.png" alt="Gameplan logo" height="50" />
-  <p align="center">Delightful work communication tool that you'll actually enjoy using</p>
+  <p align="center">Delightful, open-source, work communication tool for remote teams</p>
 </p>
 
 <img width="1402" alt="Screenshot 2022-09-18 at 9 16 08 PM" src="https://user-images.githubusercontent.com/9355208/190922102-daff8e9f-e34f-4129-a520-dcf834e92958.png">
