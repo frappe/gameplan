@@ -82,7 +82,7 @@
           <div
             class="mt-0.5 flex items-center justify-between text-sm text-gray-600"
           >
-            <span>
+            <span :title="taskTimestampDescription(d)">
               Created by {{ $user(d.owner).full_name }}
               {{
                 $dayjs().diff(d.creation, 'month') >= 9
@@ -90,12 +90,13 @@
                   : $dayjs(d.creation).fromNow()
               }}
             </span>
-            <span :title="taskTimestampDescription(d)">
-              {{
-                $dayjs().diff(d.modified, 'day') >= 25
-                  ? $dayjs(d.modified).format('D MMM')
-                  : $dayjs(d.modified).fromNow(true)
-              }}
+            <span
+              :class="{
+                'text-red-600': $dayjs().isAfter($dayjs(d.due_date), 'day'),
+              }"
+              v-if="d.due_date"
+            >
+              {{ $dayjs(d.due_date).format('LL') }}
             </span>
           </div>
         </router-link>
@@ -148,8 +149,8 @@ export default {
   methods: {
     taskTimestampDescription(d) {
       return [
-        `Created On: ${this.$dayjs(d.creation)}`,
-        `Updated On: ${this.$dayjs(d.modified)}`,
+        `Created On: ${this.$dayjs(d.creation).format('LLL')}`,
+        `Updated On: ${this.$dayjs(d.modified).format('LLL')}`,
       ].join('\n')
     },
   },
