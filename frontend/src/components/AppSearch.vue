@@ -77,15 +77,12 @@ import {
   ComboboxButton,
 } from '@headlessui/vue'
 import { Popover } from 'frappe-ui'
+import { focus } from '@/directives'
 
 export default {
   name: 'AppSearch',
   directives: {
-    focus: {
-      mounted(el) {
-        el.focus()
-      },
-    },
+    focus,
   },
   components: {
     Combobox,
