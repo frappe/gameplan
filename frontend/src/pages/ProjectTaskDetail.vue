@@ -5,19 +5,20 @@
         <input
           v-if="editTaskTitle"
           type="text"
-          class="w-full p-1 -ml-1 text-2xl font-semibold border-none rounded-md focus:outline-none focus:bg-gray-100 focus:ring-0"
+          class="-ml-1 w-full rounded-md border-none p-1 text-2xl font-semibold focus:bg-gray-100 focus:outline-none focus:ring-0"
           :class="{ 'bg-gray-100': editTaskTitle }"
           v-model="task.doc.title"
           ref="taskTitle"
           :disabled="!editTaskTitle"
           @keydown.enter="updateTaskTitle()"
+          v-focus
         />
         <h1 v-else class="text-2xl font-semibold">{{ task.doc.title }}</h1>
-        <div class="flex ml-2 space-x-1 shrink-0">
+        <div class="ml-2 flex shrink-0 space-x-1">
           <template v-if="!editTaskTitle">
             <div
               v-if="task.doc.is_completed"
-              class="flex items-center px-2 py-1 text-base text-green-800 bg-green-100 rounded-md shrink-0"
+              class="flex shrink-0 items-center rounded-md bg-green-100 px-2 py-1 text-base text-green-800"
               :title="
                 [
                   `Completed on: ${$dayjs(task.doc.completed_at).format(
@@ -29,7 +30,7 @@
             >
               <FeatherIcon
                 name="check"
-                class="w-4 mr-1 text-green-800/70"
+                class="mr-1 w-4 text-green-800/70"
                 :strokeWidth="3"
               />
               <span> Completed </span>
@@ -42,7 +43,7 @@
                   icon: 'edit',
                   handler: () => {
                     editTaskTitle = true
-                    $nextTick(() => $refs.taskTitle.focus())
+                    // $nextTick(() => $refs.taskTitle.focus())
                   },
                 },
                 {
@@ -80,15 +81,7 @@
             />
           </template>
           <template v-if="editTaskTitle">
-            <Button
-              appearance="primary"
-              @click="
-                () => {
-                  editTaskTitle = false
-                  updateTaskTitle()
-                }
-              "
-            >
+            <Button appearance="primary" @click="updateTaskTitle()">
               Save
             </Button>
             <Button
@@ -104,7 +97,7 @@
           </template>
         </div>
       </div>
-      <div class="flex items-center mt-1 text-sm text-gray-600">
+      <div class="mt-1 flex items-center text-sm text-gray-600">
         <span>
           Created on {{ $dayjs(task.doc.creation).format('D MMM, YYYY') }} by
         </span>
@@ -121,7 +114,7 @@
         </template>
       </div>
     </div>
-    <div class="grid grid-cols-8 gap-4 pb-5 border-b">
+    <div class="grid grid-cols-8 gap-4 border-b pb-5">
       <div class="col-span-8 sm:col-span-6">
         <ReadmeEditor
           class="min-h-full"
@@ -149,7 +142,7 @@
           <label class="text-sm text-gray-600">Due Date</label>
           <input
             type="date"
-            class="w-full mt-2 form-input"
+            class="form-input mt-2 w-full"
             :class="task.doc.due_date ? 'text-gray-700' : 'text-gray-500'"
             :value="task.doc.due_date"
             @change="
@@ -170,10 +163,14 @@
 import { Avatar, TextEditor, Autocomplete, Dropdown } from 'frappe-ui'
 import CommentsArea from './CommentsArea.vue'
 import ReadmeEditor from '@/components/ReadmeEditor.vue'
+import { focus } from '@/directives'
 
 export default {
   name: 'ProjectTaskDetail',
   props: ['project', 'taskId'],
+  directives: {
+    focus,
+  },
   components: {
     TextEditor,
     Avatar,
@@ -234,6 +231,7 @@ export default {
       } else {
         this.task.reload()
       }
+      this.editTaskTitle = false
     },
     $tasks() {
       return this.$getListResource(['Project Tasks', this.task.doc.project])
