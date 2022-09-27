@@ -7,6 +7,9 @@ from gameplan.utils import extract_mentions
 from frappe.utils import get_fullname
 
 class TeamDiscussion(Document):
+	on_delete_cascade = ['Team Comment', 'Team Discussion Visit']
+	on_delete_set_null = ['Team Notification']
+
 	def as_dict(self, *args, **kwargs):
 		d = super(TeamDiscussion, self).as_dict(*args, **kwargs)
 		last_visit = frappe.db.get_value('Team Discussion Visit', {'discussion': self.name, 'user': frappe.session.user}, 'last_visit')
@@ -28,16 +31,8 @@ class TeamDiscussion(Document):
 
 	def on_trash(self):
 		self.update_discussions_count(-1)
-		for name in frappe.db.get_all('Team Comment', {
-			'reference_doctype': self.doctype,
-			'reference_name': self.name
-		}, pluck='name'):
-			frappe.delete_doc('Team Comment', name)
 
-		for name in frappe.db.get_all('Team Discussion Visit', {'discussion': self.name}, pluck='name'):
-			frappe.delete_doc('Team Discussion Visit', name)
-
-	def on_change(self):
+	def on_update(self):
 		mentions = extract_mentions(self.content)
 		for mention in mentions:
 			values = frappe._dict(
