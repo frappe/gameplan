@@ -98,9 +98,12 @@ export default {
             appearance: 'danger',
             loading: this.team.delete.loading,
             handler: ({ close }) => {
-              this.team.delete.submit()
-              this.$router.push('/')
-              close()
+              return this.team.delete.submit(null, {
+                onSuccess: () => {
+                  this.$router.push('/')
+                  close()
+                },
+              })
             },
           },
           {

@@ -214,9 +214,12 @@ export default {
             label: 'Delete',
             appearance: 'danger',
             handler: ({ close }) => {
-              this.task.delete.submit()
-              this.$router.back()
-              close()
+              return this.task.delete.submit(null, {
+                onSuccess: () => {
+                  this.$router.back()
+                  close()
+                },
+              })
             },
           },
           {
