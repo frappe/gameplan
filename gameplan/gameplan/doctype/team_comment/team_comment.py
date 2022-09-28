@@ -7,6 +7,8 @@ from gameplan.utils import extract_mentions
 from frappe.utils import get_fullname
 
 class TeamComment(Document):
+	on_delete_set_null = ["Team Notification"]
+
 	def after_insert(self):
 		if self.reference_doctype not in ["Team Discussion", "Team Task"]:
 			return
@@ -24,10 +26,9 @@ class TeamComment(Document):
 			return
 		reference_doc = frappe.get_doc(self.reference_doctype, self.reference_name)
 		if reference_doc.meta.has_field("comments_count"):
-			reference_doc.set("comments_count", reference_doc.comments_count - 1)
-		reference_doc.save(ignore_permissions=True)
+			reference_doc.db_set("comments_count", reference_doc.comments_count - 1)
 
-	def on_change(self):
+	def on_update(self):
 		mentions = extract_mentions(self.content)
 		for mention in mentions:
 			values = frappe._dict(

@@ -10,6 +10,9 @@ from urllib.parse import urljoin
 
 
 class TeamProject(ManageMembersMixin, Document):
+	on_delete_cascade = ["Team Task", "Team Discussion"]
+	on_delete_set_null = ["Team Notification"]
+
 	def as_dict(self, *args, **kwargs) -> dict:
 		d = super().as_dict(*args, **kwargs)
 		for member in d.members:
@@ -58,12 +61,6 @@ class TeamProject(ManageMembersMixin, Document):
 				"status": "Accepted",
 			},
 		)
-
-	def on_trash(self):
-		linked_doctypes = ["Team Task", "Team Discussion"]
-		for doctype in linked_doctypes:
-			for d in frappe.db.get_all(doctype, {"project": self.name}):
-				frappe.delete_doc(doctype, d.name)
 
 	def update_progress(self):
 		result = frappe.db.get_all(

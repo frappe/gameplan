@@ -9,6 +9,9 @@ from gameplan.mixins.manage_members import ManageMembersMixin
 
 
 class Team(ManageMembersMixin, Document):
+	on_delete_cascade = ["Team Project"]
+	on_delete_set_null = ["Team Notification"]
+
 	def as_dict(self, *args, **kwargs) -> dict:
 		d = super().as_dict(*args, **kwargs)
 		for member in d.members:
@@ -43,12 +46,6 @@ class Team(ManageMembersMixin, Document):
 				"role": "Owner",
 			},
 		)
-
-	def on_trash(self):
-		linked_doctypes = ["Team Project"]
-		for doctype in linked_doctypes:
-			for project in frappe.db.get_all(doctype, {"team": self.name}):
-				frappe.delete_doc(doctype, project.name)
 
 	@frappe.whitelist()
 	def send_invitation(self, email):

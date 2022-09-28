@@ -8,6 +8,9 @@ from frappe.utils import get_fullname
 
 
 class TeamTask(Document):
+	on_delete_cascade = ["Team Comment"]
+	on_delete_set_null = ["Team Notification"]
+
 	def after_insert(self):
 		self.update_tasks_count(1)
 
@@ -15,19 +18,17 @@ class TeamTask(Document):
 		self.update_project_progress()
 
 	def on_trash(self):
-		self.update_project_progress()
 		self.update_tasks_count(-1)
 
 	def update_tasks_count(self, delta=1):
-		project = frappe.get_doc('Team Project', self.project)
-		project.tasks_count = project.tasks_count + delta
-		project.save(ignore_permissions=True)
+		current_tasks_count = frappe.db.get_value("Team Project", self.project, "tasks_count")
+		frappe.db.set_value("Team Project", self.project, "tasks_count", current_tasks_count + delta)
 
 	def update_project_progress(self):
 		if self.project and self.has_value_changed("is_completed"):
 			frappe.get_doc("Team Project", self.project).update_progress()
 
-	def on_change(self):
+	def on_update(self):
 		mentions = extract_mentions(self.description)
 		for mention in mentions:
 			values = frappe._dict(
