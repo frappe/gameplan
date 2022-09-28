@@ -57,10 +57,7 @@
                   </div>
                 </template>
               </Popover>
-              <Badge
-                v-if="$resources.project.doc.archived_at"
-                class="!bg-gray-100"
-              >
+              <Badge v-if="$resources.project.doc.archived_at">
                 Archived
               </Badge>
               <Dropdown

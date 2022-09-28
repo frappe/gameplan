@@ -3,6 +3,7 @@
     placement="center"
     :options="[
       {
+        icon: 'user',
         label: 'My Profile',
         route: {
           name: 'PersonProfile',
@@ -10,6 +11,12 @@
         },
       },
       {
+        icon: 'folder-minus',
+        label: 'Archived Teams',
+        handler: () => (archivedTeamsDialog = true),
+      },
+      {
+        icon: 'log-out',
         label: 'Log out',
         handler: () => logout(),
       },
@@ -30,8 +37,13 @@
       </button>
     </template>
   </Dropdown>
+  <ArchivedTeamsDialog
+    v-if="archivedTeamsDialog"
+    v-model="archivedTeamsDialog"
+  />
 </template>
 <script>
+import { defineAsyncComponent } from 'vue'
 import { FeatherIcon, Dropdown, Avatar, Link } from 'frappe-ui'
 
 export default {
@@ -41,6 +53,14 @@ export default {
     FeatherIcon,
     Avatar,
     Link,
+    ArchivedTeamsDialog: defineAsyncComponent(() =>
+      import('./ArchivedTeamsDialog.vue')
+    ),
+  },
+  data() {
+    return {
+      archivedTeamsDialog: false,
+    }
   },
   methods: {
     logout() {

@@ -60,7 +60,7 @@
           </Button>
         </div>
         <nav class="mt-1 space-y-1 px-2">
-          <div v-for="team in teams.data" :key="team.name">
+          <div v-for="team in activeTeams" :key="team.name">
             <Link
               :link="team"
               class="flex items-center rounded-md px-2 py-2 font-medium"
@@ -196,6 +196,11 @@ export default {
     this.$socket.on('gameplan:new_notification', () => {
       unreadNotifications.reload()
     })
+  },
+  computed: {
+    activeTeams() {
+      return this.teams.data.filter((team) => !team.archived_at)
+    },
   },
   methods: {
     teamProjects(teamName) {

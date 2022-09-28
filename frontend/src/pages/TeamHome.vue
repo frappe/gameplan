@@ -17,13 +17,15 @@
           </template>
         </IconPicker>
         <h1 class="text-6xl font-bold text-gray-900">{{ team.doc.title }}</h1>
+        <Badge v-if="team.doc.archived_at">Archived</Badge>
         <Dropdown
+          v-if="!team.doc.archived_at"
           placement="left"
           :options="[
             {
-              label: 'Delete',
+              label: 'Archive',
               icon: 'trash-2',
-              handler: () => deleteTeam(),
+              handler: () => archiveTeam(),
             },
           ]"
           :button="{
@@ -45,8 +47,6 @@
 import { Dropdown } from 'frappe-ui'
 import TeamHomeMembers from './TeamHomeMembers.vue'
 import IconPicker from '@/components/IconPicker.vue'
-import Breadcrumbs from '@/components/Breadcrumbs.vue'
-import ReadmeEditor from '@/components/ReadmeEditor.vue'
 import Tabs from '@/components/Tabs.vue'
 
 export default {
@@ -56,8 +56,6 @@ export default {
     TeamHomeMembers,
     Dropdown,
     IconPicker,
-    Breadcrumbs,
-    ReadmeEditor,
     Tabs,
   },
   computed: {
@@ -84,23 +82,18 @@ export default {
     updateTeamIcon(icon) {
       this.team.setValue.submit({ icon })
     },
-    deleteTeam() {
+    archiveTeam() {
       this.$dialog({
-        title: 'Delete Team',
-        message: 'Are you sure you want to delete the team?',
-        icon: {
-          name: 'trash-2',
-          appearance: 'danger',
-        },
+        title: 'Archive Team',
+        message: 'Are you sure you want to archive the team?',
         actions: [
           {
-            label: 'Delete Team',
-            appearance: 'danger',
-            loading: this.team.delete.loading,
+            label: 'Archive',
+            appearance: 'primary',
             handler: ({ close }) => {
-              return this.team.delete.submit(null, {
+              return this.team.archive.submit(null, {
                 onSuccess: () => {
-                  this.$router.push('/')
+                  this.$router.replace({ name: 'Home' })
                   close()
                 },
               })

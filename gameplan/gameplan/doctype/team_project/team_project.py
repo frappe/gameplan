@@ -4,12 +4,13 @@
 import frappe, requests
 from frappe.model.document import Document
 from gameplan.gemoji import get_random_gemoji
+from gameplan.mixins.archivable import Archivable
 from gameplan.mixins.manage_members import ManageMembersMixin
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 
 
-class TeamProject(ManageMembersMixin, Document):
+class TeamProject(ManageMembersMixin, Archivable, Document):
 	on_delete_cascade = ["Team Task", "Team Discussion"]
 	on_delete_set_null = ["Team Notification"]
 
@@ -125,18 +126,6 @@ class TeamProject(ManageMembersMixin, Document):
 				doc = frappe.get_doc(doctype, name)
 				doc.team = self.team
 				doc.save()
-
-	@frappe.whitelist()
-	def archive(self):
-		self.archived_at = frappe.utils.now()
-		self.archived_by = frappe.session.user
-		self.save()
-
-	@frappe.whitelist()
-	def unarchive(self):
-		self.archived_at = None
-		self.archived_by = None
-		self.save()
 
 def get_meta_tags(url):
 	response = requests.get(url, timeout=2, allow_redirects=True)

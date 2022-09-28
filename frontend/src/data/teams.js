@@ -3,7 +3,7 @@ import { createListResource } from 'frappe-ui'
 export let teams = createListResource({
   type: 'list',
   doctype: 'Team',
-  fields: ['name', 'title', 'icon', 'modified', 'creation'],
+  fields: ['name', 'title', 'icon', 'modified', 'creation', 'archived_at'],
   order_by: 'title asc',
   cache: 'Teams',
   limit: 999,
@@ -17,12 +17,9 @@ export let teams = createListResource({
         },
         class($route, link) {
           if (
-            [
-              'Team',
-              'TeamHome',
-              'TeamOverview',
-              'TeamProjects',
-            ].includes($route.name) &&
+            ['Team', 'TeamHome', 'TeamOverview', 'TeamProjects'].includes(
+              $route.name
+            ) &&
             $route.params.teamId === link.route.params.teamId
           ) {
             return 'bg-white shadow-sm text-gray-900'

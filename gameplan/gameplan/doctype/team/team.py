@@ -5,10 +5,11 @@ import frappe
 from frappe.model.document import Document
 from frappe.model.naming import append_number_if_name_exists
 from gameplan.gemoji import get_random_gemoji
+from gameplan.mixins.archivable import Archivable
 from gameplan.mixins.manage_members import ManageMembersMixin
 
 
-class Team(ManageMembersMixin, Document):
+class Team(ManageMembersMixin, Archivable, Document):
 	on_delete_cascade = ["Team Project"]
 	on_delete_set_null = ["Team Notification"]
 

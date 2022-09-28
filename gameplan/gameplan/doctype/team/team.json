@@ -12,7 +12,9 @@
   "cover_image",
   "cover_image_position",
   "icon",
-  "members"
+  "members",
+  "archived_at",
+  "archived_by"
  ],
  "fields": [
   {
@@ -47,11 +49,22 @@
    "fieldname": "readme",
    "fieldtype": "Text Editor",
    "label": "Readme"
+  },
+  {
+   "fieldname": "archived_at",
+   "fieldtype": "Datetime",
+   "label": "Archived At"
+  },
+  {
+   "fieldname": "archived_by",
+   "fieldtype": "Link",
+   "label": "Archived By",
+   "options": "User"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-09-18 20:21:38.760297",
+ "modified": "2022-09-28 22:40:42.927716",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "Team",
