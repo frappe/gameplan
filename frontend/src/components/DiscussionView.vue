@@ -168,7 +168,11 @@
         />
       </div>
     </div>
-    <CommentsArea doctype="Team Discussion" :name="discussion.name" />
+    <CommentsArea
+      doctype="Team Discussion"
+      :name="discussion.name"
+      :newCommentsFrom="discussion.last_unread_comment"
+    />
 
     <Dialog
       :options="{

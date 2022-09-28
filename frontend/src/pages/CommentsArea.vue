@@ -20,129 +20,152 @@
       </div>
     </div>
     <div class="px-1 pb-20" v-if="$resources.comments.data?.length">
-      <div
-        class="group rounded-md border-t px-1 py-6 transition-shadow"
-        :class="{
-          ring: !comment.loading && highlightedComment == comment.name,
-        }"
+      <template
         v-for="(comment, i) in $resources.comments.data"
         :key="comment.name"
-        :data-id="comment.name"
-        :ref="'comment-' + comment.name"
       >
-        <UserInfo :email="comment.owner" v-slot="{ user }">
-          <div class="mb-2 flex items-center text-base text-gray-900">
-            <UserProfileLink class="mr-3" :user="user.name">
-              <Avatar
-                class="sticky top-1 flex-shrink-0"
-                :label="user.full_name"
-                :imageURL="user.user_image"
-              />
-            </UserProfileLink>
-            <UserProfileLink
-              class="font-medium hover:text-blue-600"
-              :user="user.name"
-            >
-              {{ user.full_name }}&nbsp;&middot;&nbsp;
-            </UserProfileLink>
-            <time
-              class="text-gray-600"
-              :datetime="comment.creation"
-              :title="$dayjs(comment.creation)"
-            >
-              {{ $dayjs(comment.creation).fromNow() }}
-            </time>
-            <template v-if="comment.modified > comment.creation">
-              <span class="text-gray-600" :title="$dayjs(comment.modified)">
-                &nbsp;&middot; Edited
-              </span>
-            </template>
-            <template v-if="comment.loading">
-              &nbsp;&middot;
-              <span class="italic text-gray-600">Sending...</span>
-            </template>
-            <template v-if="comment.error">
-              <div>
-                &nbsp;&middot;
-                <span class="text-red-600"> Error</span>
-              </div>
-            </template>
-            <Dropdown
-              v-show="!comment.editing"
-              class="ml-auto"
-              placement="right"
-              :button="{ icon: 'more-horizontal', appearance: 'minimal' }"
-              :options="[
-                {
-                  label: 'Edit',
-                  icon: 'edit',
-                  handler: () => (comment.editing = true),
-                  condition: () =>
-                    $isSessionUser(comment.owner) && !comment.deleted_at,
-                },
-                {
-                  label: 'Copy link',
-                  icon: 'link',
-                  handler: () => copyLink(comment),
-                },
-                {
-                  label: 'Delete',
-                  icon: 'trash',
-                  handler: () => {
-                    $resources.comments.setValue.submit({
-                      name: comment.name,
-                      deleted_at: $dayjs().format('YYYY-MM-DD HH:mm:ss'),
-                    })
-                  },
-                  condition: () =>
-                    $isSessionUser(comment.owner) && comment.deleted_at == null,
-                },
-              ]"
-            />
-          </div>
-          <div class="flex-1">
-            <div
-              :class="
-                comment.editing &&
-                'mt-1 min-h-[2.5rem] w-full rounded-lg border bg-white px-3.5 py-1 focus-within:border-gray-400'
-              "
-              @keydown.ctrl.enter.capture.stop="editComment(comment)"
-              @keydown.meta.enter.capture.stop="editComment(comment)"
-            >
-              <TextEditor
-                v-if="comment.deleted_at == null"
-                editor-class="prose-sm"
-                :editable="comment.editing || false"
-                :content="comment.content"
-                @change="(val) => (comment.content = val)"
-                :starterkit-options="{ heading: { levels: [2, 3, 4, 5, 6] } }"
-                :bubbleMenu="true"
-              />
-              <span class="text-base italic text-gray-600" v-else>
-                This message is deleted
-              </span>
-              <div class="mt-3" v-if="!comment.deleted_at && !comment.editing">
-                <Reactions
-                  doctype="Team Comment"
-                  :name="comment.name"
-                  v-model:reactions="comment.reactions"
+        <div
+          class="relative my-4"
+          v-if="newMessagesFrom && newMessagesFrom == comment.name"
+        >
+          <div class="border-b-2 border-blue-600/50"></div>
+          <span
+            class="absolute -top-2 left-1/2 -translate-x-1/2 bg-white px-2 text-sm font-medium text-blue-700"
+          >
+            new comments
+          </span>
+        </div>
+        <div
+          class="group rounded-md px-1 py-6 transition-shadow"
+          :class="{
+            ring: !comment.loading && highlightedComment == comment.name,
+            'border-t': !newMessagesFrom || newMessagesFrom != comment.name,
+          }"
+          :data-id="comment.name"
+          :ref="'comment-' + comment.name"
+        >
+          <UserInfo :email="comment.owner" v-slot="{ user }">
+            <div class="mb-2 flex items-center text-base text-gray-900">
+              <UserProfileLink class="mr-3" :user="user.name">
+                <Avatar
+                  class="sticky top-1 flex-shrink-0"
+                  :label="user.full_name"
+                  :imageURL="user.user_image"
                 />
+              </UserProfileLink>
+              <UserProfileLink
+                class="font-medium hover:text-blue-600"
+                :user="user.name"
+              >
+                {{ user.full_name }}&nbsp;&middot;&nbsp;
+              </UserProfileLink>
+              <time
+                class="text-gray-600"
+                :datetime="comment.creation"
+                :title="$dayjs(comment.creation)"
+              >
+                {{ $dayjs(comment.creation).fromNow() }}
+              </time>
+              <template v-if="comment.modified > comment.creation">
+                <span class="text-gray-600" :title="$dayjs(comment.modified)">
+                  &nbsp;&middot; Edited
+                </span>
+              </template>
+              <template v-if="comment.loading">
+                &nbsp;&middot;
+                <span class="italic text-gray-600">Sending...</span>
+              </template>
+              <template v-if="comment.error">
+                <div>
+                  &nbsp;&middot;
+                  <span class="text-red-600"> Error</span>
+                </div>
+              </template>
+              <Dropdown
+                v-show="!comment.editing"
+                class="ml-auto"
+                placement="right"
+                :button="{ icon: 'more-horizontal', appearance: 'minimal' }"
+                :options="[
+                  {
+                    label: 'Edit',
+                    icon: 'edit',
+                    handler: () => (comment.editing = true),
+                    condition: () =>
+                      $isSessionUser(comment.owner) && !comment.deleted_at,
+                  },
+                  {
+                    label: 'Copy link',
+                    icon: 'link',
+                    handler: () => copyLink(comment),
+                  },
+                  {
+                    label: 'Delete',
+                    icon: 'trash',
+                    handler: () => {
+                      $resources.comments.setValue.submit({
+                        name: comment.name,
+                        deleted_at: $dayjs().format('YYYY-MM-DD HH:mm:ss'),
+                      })
+                    },
+                    condition: () =>
+                      $isSessionUser(comment.owner) &&
+                      comment.deleted_at == null,
+                  },
+                ]"
+              />
+            </div>
+            <div class="flex-1">
+              <div
+                :class="
+                  comment.editing &&
+                  'mt-1 min-h-[2.5rem] w-full rounded-lg border bg-white px-3.5 py-1 focus-within:border-gray-400'
+                "
+                @keydown.ctrl.enter.capture.stop="editComment(comment)"
+                @keydown.meta.enter.capture.stop="editComment(comment)"
+              >
+                <TextEditor
+                  v-if="comment.deleted_at == null"
+                  editor-class="prose-sm"
+                  :editable="comment.editing || false"
+                  :content="comment.content"
+                  @change="(val) => (comment.content = val)"
+                  :starterkit-options="{ heading: { levels: [2, 3, 4, 5, 6] } }"
+                  :bubbleMenu="true"
+                />
+                <span class="text-base italic text-gray-600" v-else>
+                  This message is deleted
+                </span>
+                <div
+                  class="mt-3"
+                  v-if="!comment.deleted_at && !comment.editing"
+                >
+                  <Reactions
+                    doctype="Team Comment"
+                    :name="comment.name"
+                    v-model:reactions="comment.reactions"
+                  />
+                </div>
+              </div>
+              <div class="space-x-2 pt-2" v-show="comment.editing">
+                <Button appearance="primary" @click="editComment(comment)">
+                  Save
+                </Button>
+                <Button appearance="white" @click="comment.editing = false">
+                  Discard
+                </Button>
               </div>
             </div>
-            <div class="space-x-2 pt-2" v-show="comment.editing">
-              <Button appearance="primary" @click="editComment(comment)">
-                Save
-              </Button>
-              <Button appearance="white" @click="comment.editing = false">
-                Discard
-              </Button>
-            </div>
-          </div>
-        </UserInfo>
-      </div>
+          </UserInfo>
+        </div>
+      </template>
     </div>
 
-    <div v-if="!$readOnlyMode" class="sticky bottom-0 mt-2 bg-white py-4 sm:p-2" ref="addComment">
+    <div
+      v-if="!$readOnlyMode"
+      class="sticky bottom-0 mt-2 bg-white py-4 sm:p-2"
+      ref="addComment"
+    >
       <button
         class="flex w-full items-center rounded-lg bg-gray-100 py-2 px-2 text-left text-base text-gray-600 hover:bg-gray-200"
         @click="showCommentBox = true"
@@ -242,7 +265,7 @@ import { getScrollParent } from '@/utils'
 
 export default {
   name: 'CommentsArea',
-  props: ['doctype', 'name'],
+  props: ['doctype', 'name', 'newCommentsFrom'],
   components: {
     Avatar,
     LoadingIndicator,
@@ -260,6 +283,7 @@ export default {
       commentMap: {},
       showCommentBox: draftComment ? true : false,
       newComment: draftComment || '',
+      newMessagesFrom: this.newCommentsFrom,
       highlightedComment: '',
       discardDialog: false,
     }
@@ -302,10 +326,14 @@ export default {
         },
         order_by: 'creation asc',
         limit: 99999,
-        onSuccess() {
-          if (this.$route.query.comment) {
-            this.scrollToComment(Number(this.$route.query.comment))
-          }
+        onSuccess(comments) {
+          setTimeout(() => {
+            if (this.$route.query.comment) {
+              this.scrollToComment(Number(this.$route.query.comment))
+            } else {
+              this.scrollToComment(comments[comments.length - 1]?.name)
+            }
+          }, 300)
           this.attachReactionsToComments()
         },
       }
@@ -377,6 +405,7 @@ export default {
           $comment.scrollIntoView({
             behavior: 'smooth',
             block: 'start',
+            inline: 'nearest',
           })
         }
         this.highlightedComment = comment
