@@ -36,6 +36,7 @@
               <span> Completed </span>
             </div>
             <Dropdown
+              v-if="!readOnlyMode"
               :button="{ icon: 'more-horizontal' }"
               :options="[
                 {
@@ -43,7 +44,6 @@
                   icon: 'edit',
                   handler: () => {
                     editTaskTitle = true
-                    // $nextTick(() => $refs.taskTitle.focus())
                   },
                 },
                 {
@@ -121,6 +121,7 @@
           :resource="task"
           fieldname="description"
           placeholder="Write a description..."
+          :editable="!readOnlyMode"
         />
       </div>
       <div class="col-span-8 space-y-4 sm:col-span-2">
@@ -131,6 +132,7 @@
             placeholder="Assign a user"
             :options="assignableUsers"
             :value="task.doc.assigned_to"
+            :disabled="readOnlyMode"
             @change="
               (option) => {
                 task.setValue.submit({ assigned_to: option?.value || '' })
@@ -145,6 +147,7 @@
             class="form-input mt-2 w-full"
             :class="task.doc.due_date ? 'text-gray-700' : 'text-gray-500'"
             :value="task.doc.due_date"
+            :disabled="readOnlyMode"
             @change="
               (e) => {
                 task.setValue.submit({
@@ -156,7 +159,12 @@
         </div>
       </div>
     </div>
-    <CommentsArea class="flex-1" doctype="Team Task" :name="task.doc.name" />
+    <CommentsArea
+      class="flex-1"
+      doctype="Team Task"
+      :name="task.doc.name"
+      :read-only-mode="readOnlyMode"
+    />
   </div>
 </template>
 <script>
@@ -251,6 +259,9 @@ export default {
           label: user.full_name,
           value: user.name,
         }))
+    },
+    readOnlyMode() {
+      return this.$readOnlyMode || Boolean(this.project.doc.archived_at)
     },
   },
 }

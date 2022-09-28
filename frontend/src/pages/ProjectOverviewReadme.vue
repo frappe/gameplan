@@ -1,5 +1,10 @@
 <template>
-  <ReadmeEditor :resource="project" fieldname="readme" :border="false" />
+  <ReadmeEditor
+    :resource="project"
+    fieldname="readme"
+    :border="false"
+    :editable="!project.doc.archived_at"
+  />
 </template>
 <script>
 import ReadmeEditor from '@/components/ReadmeEditor.vue'

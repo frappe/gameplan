@@ -57,6 +57,12 @@
                   </div>
                 </template>
               </Popover>
+              <Badge
+                v-if="$resources.project.doc.archived_at"
+                class="!bg-gray-100"
+              >
+                Archived
+              </Badge>
               <Dropdown
                 placement="left"
                 :button="{ icon: 'more-horizontal', appearance: 'minimal' }"
@@ -65,16 +71,25 @@
                     label: 'Edit Title',
                     icon: 'edit',
                     handler: () => $refs.editTitlePopup.open(),
+                    condition: () => !$resources.project.doc.archived_at,
                   },
                   {
                     label: 'Move to another team',
                     icon: 'log-out',
                     handler: () => (projectMoveDialog.show = true),
+                    condition: () => !$resources.project.doc.archived_at,
                   },
                   {
-                    label: 'Delete this project',
+                    label: 'Archive this project',
                     icon: 'trash-2',
-                    handler: () => (projectDeleteDialog = true),
+                    handler: archiveProject,
+                    condition: () => !$resources.project.doc.archived_at,
+                  },
+                  {
+                    label: 'Unarchive this project',
+                    icon: 'trash-2',
+                    handler: unarchiveProject,
+                    condition: () => $resources.project.doc.archived_at,
                   },
                 ]"
               />
@@ -83,34 +98,6 @@
         </div>
         <Tabs :tabs="tabs" class="border-none" />
       </div>
-      <Dialog
-        :options="{
-          title: 'Delete project',
-          message: 'Are you sure you want to delete this project?',
-        }"
-        v-model="projectDeleteDialog"
-      >
-        <template #actions>
-          <Button
-            appearance="danger"
-            :loading="$resources.project.delete.loading"
-            @click="
-              () => {
-                $resources.project.delete.submit().then(() => {
-                  projectDeleteDialog = false
-                  $router.push({
-                    name: 'Team',
-                    params: { teamId: team.doc.name },
-                  })
-                })
-              }
-            "
-          >
-            Delete
-          </Button>
-          <Button @click="projectDeleteDialog = false">Cancel</Button>
-        </template>
-      </Dialog>
       <Dialog
         :options="{
           title: 'Move project to another team',
@@ -205,7 +192,6 @@ export default {
   },
   data() {
     return {
-      projectDeleteDialog: false,
       projectMoveDialog: { show: false, team: null },
     }
   },
@@ -224,13 +210,9 @@ export default {
         name: this.projectId,
         realtime: true,
         whitelistedMethods: {
-          removeMember: 'remove_member',
-          inviteMembers: 'invite_members',
-          addAttachment: 'add_attachment',
-          createSection: 'create_section',
-          deleteSection: 'delete_section',
-          updateTasksOrder: 'update_tasks_order',
           moveToTeam: 'move_to_team',
+          archive: 'archive',
+          unarchive: 'unarchive',
         },
       }
     },
@@ -269,6 +251,7 @@ export default {
           isActive: [
             'ProjectDiscussions',
             'ProjectDiscussion',
+            'ProjectDiscussionNew',
           ].includes(this.$route.name),
         },
         {
@@ -290,6 +273,46 @@ export default {
     },
   },
   methods: {
+    archiveProject() {
+      this.$dialog({
+        title: 'Archive Project',
+        message: 'Are you sure you want to archive this project?',
+        actions: [
+          {
+            label: 'Archive',
+            appearance: 'primary',
+            handler: ({ close }) => {
+              return this.$resources.project.archive.submit(null, {
+                onSuccess: close,
+              })
+            },
+          },
+          {
+            label: 'Cancel',
+          },
+        ],
+      })
+    },
+    unarchiveProject() {
+      this.$dialog({
+        title: 'Unarchive Project',
+        message: 'Are you sure you want to unarchive this project?',
+        actions: [
+          {
+            label: 'Unarchive',
+            appearance: 'primary',
+            handler: ({ close }) => {
+              return this.$resources.project.unarchive.submit(null, {
+                onSuccess: close,
+              })
+            },
+          },
+          {
+            label: 'Cancel',
+          },
+        ],
+      })
+    },
     onProjectMove() {
       this.projectMoveDialog.show = false
       projects.reload()

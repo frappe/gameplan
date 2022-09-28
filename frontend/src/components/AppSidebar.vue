@@ -87,7 +87,7 @@
             </Link>
             <div v-show="team.open">
               <Links
-                :links="getTeamProjects(team.name)"
+                :links="teamProjects(team.name)"
                 class="mt-0.5 flex items-center rounded-md py-1.5 pl-12 pr-2 font-medium"
                 active="bg-white shadow-sm text-gray-900"
                 inactive="text-gray-600 hover:bg-gray-50 hover:text-gray-900"
@@ -198,7 +198,9 @@ export default {
     })
   },
   methods: {
-    getTeamProjects,
+    teamProjects(teamName) {
+      return getTeamProjects(teamName).filter((project) => !project.archived_at)
+    },
   },
 }
 </script>

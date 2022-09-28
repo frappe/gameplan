@@ -4,7 +4,7 @@
       <div class="mb-5 flex items-center justify-between">
         <h2 class="text-2xl font-semibold">All Discussions</h2>
         <Button
-          v-if="!$readOnlyMode"
+          v-if="!$readOnlyMode && !project.doc.archived_at"
           iconLeft="plus"
           :route="{ name: 'ProjectDiscussionNew' }"
         >

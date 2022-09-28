@@ -92,7 +92,9 @@
                     icon: 'edit',
                     handler: () => (comment.editing = true),
                     condition: () =>
-                      $isSessionUser(comment.owner) && !comment.deleted_at,
+                      $isSessionUser(comment.owner) &&
+                      !comment.deleted_at &&
+                      !readOnlyMode,
                   },
                   {
                     label: 'Copy link',
@@ -110,7 +112,8 @@
                     },
                     condition: () =>
                       $isSessionUser(comment.owner) &&
-                      comment.deleted_at == null,
+                      comment.deleted_at == null &&
+                      !readOnlyMode,
                   },
                 ]"
               />
@@ -162,7 +165,7 @@
     </div>
 
     <div
-      v-if="!$readOnlyMode"
+      v-if="!readOnlyMode"
       class="sticky bottom-0 mt-2 bg-white py-4 sm:p-2"
       ref="addComment"
     >
@@ -265,7 +268,7 @@ import { getScrollParent } from '@/utils'
 
 export default {
   name: 'CommentsArea',
-  props: ['doctype', 'name', 'newCommentsFrom'],
+  props: ['doctype', 'name', 'newCommentsFrom', 'readOnlyMode'],
   components: {
     Avatar,
     LoadingIndicator,
@@ -295,7 +298,9 @@ export default {
           this.$refs.newCommentEditor.editor.commands.focus()
           // scroll to bottom
           let scrollContainer = getScrollParent(this.$refs.comments)
-          scrollContainer.scrollTop = scrollContainer.scrollHeight
+          if (scrollContainer) {
+            scrollContainer.scrollTop = scrollContainer.scrollHeight
+          }
         })
       }
     },

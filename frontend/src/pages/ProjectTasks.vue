@@ -45,7 +45,7 @@
           <Button
             iconLeft="plus"
             :route="{ name: 'ProjectTaskNew' }"
-            v-if="!$readOnlyMode"
+            v-if="!$readOnlyMode && !project.doc.archived_at"
           >
             New Task
           </Button>
@@ -112,6 +112,7 @@
 </template>
 <script>
 import { Avatar, Popover, Tooltip } from 'frappe-ui'
+import TabButtons from '@/components/TabButtons.vue'
 
 export default {
   name: 'ProjectTasks',
@@ -166,6 +167,6 @@ export default {
       return this.$route.query.open === 'true'
     },
   },
-  components: { Avatar, Popover, Tooltip },
+  components: { Avatar, Popover, Tooltip, TabButtons },
 }
 </script>

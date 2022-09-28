@@ -115,61 +115,6 @@ class TeamProject(ManageMembersMixin, Document):
 		return activities
 
 	@frappe.whitelist()
-	def add_attachment(self, url, title=None):
-		if not url.startswith("http"):
-			url = "https://" + url
-
-		meta = get_meta_tags(url)
-		self.append(
-			"attachments", {"url": url, "title": title or meta["title"], "image": meta["image"]}
-		)
-		self.save()
-
-	@frappe.whitelist()
-	def create_section(self, title):
-		self.append("sections", {"title": title, "type": "Draft"})
-		self.save()
-
-	@frappe.whitelist()
-	def delete_section(self, section):
-		section_to_remove = None
-		for s in self.sections:
-			if s.name == section:
-				section_to_remove = s
-				break
-
-		task_count = frappe.db.count(
-			"Team Task", {"project": self.name, "project_section": section_to_remove.name}
-		)
-		if task_count > 0:
-			if task_count == 1:
-				frappe.throw(
-					f"Section {section_to_remove.title} cannot be deleted because it has 1 task"
-				)
-			else:
-				frappe.throw(
-					f"Section {section_to_remove.title} cannot be deleted because it"
-					f" has {task_count} tasks"
-				)
-
-		self.remove(section_to_remove)
-
-		# recompute idx
-		for i, section in enumerate(self.sections):
-			section.idx = i + 1
-
-		self.save()
-
-	@frappe.whitelist()
-	def update_tasks_order(self, tasks):
-		tasks = frappe.parse_json(tasks)
-		for task in tasks:
-			task = frappe._dict(task)
-			frappe.db.set_value(
-				"Team Task", task.name, {"idx": task.idx, "project_section": task.project_section}
-			)
-
-	@frappe.whitelist()
 	def move_to_team(self, team):
 		if not team or self.team == team:
 			return
@@ -180,6 +125,18 @@ class TeamProject(ManageMembersMixin, Document):
 				doc = frappe.get_doc(doctype, name)
 				doc.team = self.team
 				doc.save()
+
+	@frappe.whitelist()
+	def archive(self):
+		self.archived_at = frappe.utils.now()
+		self.archived_by = frappe.session.user
+		self.save()
+
+	@frappe.whitelist()
+	def unarchive(self):
+		self.archived_at = None
+		self.archived_by = None
+		self.save()
 
 def get_meta_tags(url):
 	response = requests.get(url, timeout=2, allow_redirects=True)

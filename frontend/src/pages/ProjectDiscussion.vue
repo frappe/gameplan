@@ -1,6 +1,10 @@
 <template>
   <div class="flex">
-    <DiscussionView class="w-full" :postId="postId" />
+    <DiscussionView
+      class="w-full"
+      :postId="postId"
+      :read-only-mode="Boolean(project.doc.archived_at) || $readOnlyMode"
+    />
   </div>
 </template>
 <script>

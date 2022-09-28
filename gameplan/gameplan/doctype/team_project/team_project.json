@@ -18,7 +18,9 @@
   "members",
   "section_break_14",
   "tasks_count",
-  "discussions_count"
+  "discussions_count",
+  "archived_at",
+  "archived_by"
  ],
  "fields": [
   {
@@ -92,6 +94,17 @@
    "fieldname": "discussions_count",
    "fieldtype": "Int",
    "label": "Discussions Count"
+  },
+  {
+   "fieldname": "archived_at",
+   "fieldtype": "Datetime",
+   "label": "Archived At"
+  },
+  {
+   "fieldname": "archived_by",
+   "fieldtype": "Link",
+   "label": "Archived By",
+   "options": "User"
   }
  ],
  "index_web_pages_for_search": 1,
@@ -105,7 +118,7 @@
    "link_fieldname": "project"
   }
  ],
- "modified": "2022-09-18 20:19:59.513013",
+ "modified": "2022-09-28 20:48:02.144976",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "Team Project",

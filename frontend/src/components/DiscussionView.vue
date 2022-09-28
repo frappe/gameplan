@@ -79,6 +79,7 @@
           </div>
           <div class="ml-auto flex space-x-2">
             <Dropdown
+              v-if="!readOnlyMode"
               v-show="!editingContent"
               class="ml-auto"
               placement="right"
@@ -165,6 +166,7 @@
           doctype="Team Discussion"
           :name="discussion.name"
           v-model:reactions="discussion.reactions"
+          :read-only-mode="readOnlyMode"
         />
       </div>
     </div>
@@ -172,8 +174,8 @@
       doctype="Team Discussion"
       :name="discussion.name"
       :newCommentsFrom="discussion.last_unread_comment"
+      :read-only-mode="readOnlyMode"
     />
-
     <Dialog
       :options="{
         title: 'Move discussion to another project',
@@ -236,7 +238,7 @@ import { getTeamProjects } from '@/data/projects'
 
 export default {
   name: 'DiscussionView',
-  props: ['postId'],
+  props: ['postId', 'readOnlyMode'],
   directives: {
     visibility: visibilityDirective,
   },

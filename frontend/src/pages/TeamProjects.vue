@@ -1,19 +1,25 @@
 <template>
   <div class="mt-6 space-y-4">
     <div>
-      <div class="mb-2 flex items-center justify-between space-x-2">
-        <h2 class="text-lg text-gray-900">Projects</h2>
-        <Button
-          v-if="teamProjects.length"
-          iconLeft="plus"
-          @click="createNewProjectDialog = true"
-        >
-          Add Project
-        </Button>
+      <div class="mb-5 flex items-center justify-between space-x-2">
+        <h2 class="text-2xl font-semibold text-gray-900">Projects</h2>
+        <div class="flex items-stretch space-x-2">
+          <TabButtons
+            :buttons="[{ label: 'Active' }, { label: 'Archived' }]"
+            v-model="activeTab"
+          />
+          <Button
+            v-if="teamProjects.length"
+            iconLeft="plus"
+            @click="createNewProjectDialog = true"
+          >
+            Add Project
+          </Button>
+        </div>
       </div>
       <ul role="list" class="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <li
-          v-for="project in teamProjects"
+          v-for="project in projectsList"
           :key="project.name"
           class="flow-root"
         >
@@ -88,22 +94,36 @@
 <script>
 import { Dialog } from 'frappe-ui'
 import { projects, getTeamProjects } from '@/data/projects'
+import TabButtons from '@/components/TabButtons.vue'
 
 export default {
   name: 'TeamProjects',
   props: ['team'],
   components: {
     Dialog,
+    TabButtons,
   },
   data() {
     return {
       createNewProjectDialog: false,
       newProjectTitle: '',
+      activeTab: 'Active',
     }
   },
   computed: {
     projects() {
       return projects
+    },
+    projectsList() {
+      return this.activeTab === 'Active'
+        ? this.activeProjects
+        : this.archivedProjects
+    },
+    activeProjects() {
+      return this.teamProjects.filter((project) => !project.archived_at)
+    },
+    archivedProjects() {
+      return this.teamProjects.filter((project) => project.archived_at)
     },
     teamProjects() {
       return getTeamProjects(this.team.name)

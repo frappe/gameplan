@@ -85,7 +85,7 @@ import Avatar from 'frappe-ui/src/components/Avatar.vue'
 
 export default {
   name: 'Reactions',
-  props: ['reactions', 'doctype', 'name'],
+  props: ['reactions', 'doctype', 'name', 'readOnlyMode'],
   emits: ['update:reactions'],
   components: { ReactionFaceIcon, Popover, Avatar, Tooltip },
   resources: {
@@ -128,7 +128,7 @@ export default {
   },
   methods: {
     toggleReaction(emoji) {
-      if (this.$readOnlyMode) return;
+      if (this.readOnlyMode) return;
       let existingReaction = this.reactions.find(
         (r) => r.user === this.$user().name && r.emoji === emoji
       )
