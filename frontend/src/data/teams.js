@@ -6,6 +6,7 @@ export let teams = createListResource({
   fields: ['name', 'title', 'icon', 'modified', 'creation'],
   order_by: 'title asc',
   cache: 'Teams',
+  limit: 999,
   transform(data) {
     return data.map((team) => {
       return {
