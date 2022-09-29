@@ -7,7 +7,7 @@
         >
           <slot name="sidebar" />
         </div>
-        <div class="w-full overflow-auto">
+        <div class="w-full overflow-auto" id="scrollContainer">
           <div
             class="flex items-center justify-between border-b py-4 px-4 sm:hidden"
           >

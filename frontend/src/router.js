@@ -134,4 +134,18 @@ let router = createRouter({
   routes,
 })
 
+let scrollPositions = {}
+router.beforeEach((to, from, next) => {
+  // window.scrollContainer is reference to the scroll container in AppLayout.vue
+  if (window.scrollContainer) {
+    scrollPositions[from.fullPath] = window.scrollContainer.scrollTop
+  }
+  if (scrollPositions[to.fullPath] !== undefined) {
+    setTimeout(() => {
+      window.scrollContainer.scrollTop = scrollPositions[to.fullPath]
+    }, 0)
+  }
+  next()
+})
+
 export default router
