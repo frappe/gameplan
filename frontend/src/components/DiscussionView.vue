@@ -52,7 +52,7 @@
               >
                 {{ $getDoc('Team', discussion.team)?.title || discussion.team }}
               </router-link>
-              >
+              <span class="text-gray-500"> &mdash; </span>
               <router-link
                 class="hover:text-blue-600"
                 :to="{

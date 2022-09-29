@@ -59,7 +59,8 @@
                         params: { teamId: d.team, projectId: d.project },
                       }"
                     >
-                      {{ d.team_title }} >
+                      {{ d.team_title }}
+                      <span class="text-gray-500"> &mdash; </span>
                       {{ d.project_title }}
                     </router-link>
                   </template>
