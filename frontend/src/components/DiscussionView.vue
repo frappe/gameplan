@@ -1,7 +1,7 @@
 <template>
   <div class="relative flex h-full flex-col" v-if="postId && discussion">
     <div
-      class="sticky top-0 z-10 -mx-4 border-b bg-white sm:mx-0"
+      class="fixed top-0 z-10 -mx-4 w-full border-b bg-white sm:mx-0"
       v-show="showNavbar"
     >
       <transition
@@ -330,7 +330,7 @@ export default {
       })
       this.$resources.discussion.moveToProject.reset()
     },
-    handleTitleVisibility(visible) {
+    handleTitleVisibility(visible, entry) {
       this.showNavbar = !visible
     },
   },
