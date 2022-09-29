@@ -1,59 +1,128 @@
 <template>
   <div class="py-6">
-    <div class="flex items-start justify-between">
-      <div class="w-full">
-        <div>
-          <label class="text-base text-gray-700">Title</label>
+    <div class="border p-4 rounded-lg">
+      <div class="mb-3 flex items-center space-x-2">
+        <UserProfileLink :user="$user().name">
+          <Avatar :label="$user().full_name" :imageURL="$user().user_image" />
+        </UserProfileLink>
+        <div class="flex w-full items-center">
+          <div>
+            <span class="text-base text-gray-900">
+              <UserProfileLink
+                class="font-medium hover:text-blue-600"
+                :user="$user().name"
+              >
+                {{ $user().full_name }}
+              </UserProfileLink>
+              in
+              <router-link
+                class="hover:text-blue-600"
+                :to="{
+                  name: 'Team',
+                  params: {
+                    teamId: project.doc.team,
+                  },
+                }"
+              >
+                {{
+                  $getDoc('Team', project.doc.team)?.title || project.doc.team
+                }}
+              </router-link>
+              <span class="text-gray-500"> &mdash; </span>
+              <router-link
+                class="hover:text-blue-600"
+                :to="{
+                  name: 'ProjectOverview',
+                  params: {
+                    teamId: project.doc.team,
+                    projectId: project.doc.name,
+                  },
+                }"
+              >
+                {{ project.doc.title }}
+              </router-link>
+            </span>
+          </div>
         </div>
-        <input
-          type="text"
-          class="w-4/5 px-2 py-1 mt-1 text-xl font-semibold bg-gray-100 border-0 rounded-lg focus:ring-0"
-          ref="title"
-          v-model="title"
-        />
+        <div class="space-x-2 shrink-0 hidden sm:block">
+          <Button :route="{ name: 'ProjectDiscussions' }">Discard</Button>
+          <Button
+            appearance="primary"
+            :loading="$resources.newDiscussion.loading"
+            @click="$resources.newDiscussion.submit({ title, content })"
+          >
+            Publish
+          </Button>
+        </div>
       </div>
-      <div class="space-x-2 shrink-0">
-        <Button
-          appearance="primary"
-          :loading="$resources.newUpdate.loading"
-          @click="$resources.newUpdate.submit({ title, status, content })"
-        >
-          Publish
-        </Button>
-        <Button :route="{ name: 'ProjectDiscussions' }">Discard</Button>
-      </div>
+      <ErrorMessage :message="$resources.newDiscussion.error" />
+      <textarea
+        class="w-full px-0 py-0.5 mt-1 text-3xl font-bold border-0 rounded-lg focus:ring-0 placeholder-gray-400 resize-none"
+        v-model="title"
+        placeholder="Title"
+        rows="1"
+        wrap="soft"
+        maxlength="140"
+        v-focus
+        @keydown.enter.prevent="$refs.textEditor.editor.commands.focus()"
+        @input="
+          (e) => {
+            e.target.style.height = e.target.scrollHeight + 'px'
+          }
+        "
+      ></textarea>
+      <TextEditor
+        ref="textEditor"
+        class="mt-1"
+        editor-class="rounded-b-lg max-w-[unset] prose-sm h-[calc(100vh-410px)] sm:h-[calc(100vh-320px)] overflow-auto"
+        :content="content"
+        @change="(val) => (content = val)"
+        placeholder="Write something..."
+      >
+        <template v-slot:bottom>
+          <div
+            class="mt-2 flex flex-col justify-between sm:flex-row sm:items-center"
+          >
+            <TextEditorFixedMenu
+              class="overflow-x-auto"
+              :buttons="textEditorMenuButtons"
+            />
+            <div class="space-x-2 shrink-0 sm:hidden mt-2 text-right">
+              <Button :route="{ name: 'ProjectDiscussions' }">Discard</Button>
+              <Button
+                appearance="primary"
+                :loading="$resources.newDiscussion.loading"
+                @click="$resources.newDiscussion.submit({ title, content })"
+              >
+                Publish
+              </Button>
+            </div>
+          </div>
+        </template>
+      </TextEditor>
     </div>
-    <div class="mt-3">
-      <label class="text-base text-gray-700">Summary</label>
-    </div>
-    <TextEditor
-      class="mt-1"
-      editor-class="px-3 py-2 border rounded-b-lg max-w-[unset] min-h-[20rem] prose-sm"
-      :content="content"
-      @change="(val) => (content = val)"
-      :fixedMenu="true"
-    />
   </div>
 </template>
 <script>
 import { Avatar } from 'frappe-ui'
 import TextEditor from '@/components/TextEditor.vue'
+import { focus } from '@/directives'
+import UserProfileLink from '@/components/UserProfileLink.vue'
+import TextEditorFixedMenu from 'frappe-ui/src/components/TextEditor/TextEditorFixedMenu.vue'
 
 export default {
   name: 'ProjectDiscussionNew',
   props: ['project'],
-  components: { TextEditor, Avatar },
+  components: { TextEditor, Avatar, UserProfileLink, TextEditorFixedMenu },
+  directives: { focus },
   data() {
     return {
       title: '',
       content: '',
     }
   },
-  mounted() {
-    this.$refs.title.focus()
-  },
   resources: {
-    newUpdate() {
+    newDiscussion() {
       return {
         method: 'frappe.client.insert',
         makeParams({ title, content }) {
@@ -74,38 +143,57 @@ export default {
         onSuccess(doc) {
           this.$router.replace({
             name: 'ProjectDiscussion',
-            params: { postId: doc.name },
+            params: {
+              teamId: doc.team,
+              projectId: doc.project,
+              postId: doc.name,
+            },
           })
           this.title = ''
-          this.status = null
           this.content = ''
-        },
-        onError(e) {
-          let message = e.messages ? e.messages.join('\n') : e.message
-          this.$toast({
-            title: 'Project Update Error',
-            text: message,
-            icon: 'alert-circle',
-            iconClasses: 'text-red-600',
-          })
         },
       }
     },
   },
   computed: {
-    statuses() {
+    textEditorMenuButtons() {
       return [
-        {
-          name: 'On Track',
-          textColor: 'text-green-600',
-          appearance: 'success',
-        },
-        {
-          name: 'At Risk',
-          textColor: 'text-yellow-600',
-          appearance: 'warning',
-        },
-        { name: 'Off Track', textColor: 'text-red-600', appearance: 'danger' },
+        'Paragraph',
+        ['Heading 2', 'Heading 3', 'Heading 4', 'Heading 5', 'Heading 6'],
+        'Separator',
+        'Bold',
+        'Italic',
+        'Separator',
+        'Bullet List',
+        'Numbered List',
+        'Separator',
+        'Align Left',
+        'Align Center',
+        'Align Right',
+        'Separator',
+        'Image',
+        'Link',
+        'Blockquote',
+        'Code',
+        'Horizontal Rule',
+        [
+          'InsertTable',
+          'AddColumnBefore',
+          'AddColumnAfter',
+          'DeleteColumn',
+          'AddRowBefore',
+          'AddRowAfter',
+          'DeleteRow',
+          'MergeCells',
+          'SplitCell',
+          'ToggleHeaderColumn',
+          'ToggleHeaderRow',
+          'ToggleHeaderCell',
+          'DeleteTable',
+        ],
+        'Separator',
+        'Undo',
+        'Redo',
       ]
     },
   },
