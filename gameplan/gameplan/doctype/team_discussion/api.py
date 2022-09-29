@@ -34,7 +34,7 @@ def search(query=None):
 
 
 @frappe.whitelist()
-def get_discussions(filters=None, limit_start=None):
+def get_discussions(filters=None, limit_start=None, limit_page_length=None):
 	filters = frappe.parse_json(filters) if filters else None
 	Discussion = frappe.qb.DocType('Team Discussion')
 	Visit = frappe.qb.DocType('Team Discussion Visit')
@@ -55,7 +55,7 @@ def get_discussions(filters=None, limit_start=None):
 		.left_join(Team)
 		.on(Discussion.team == Team.name)
 		.orderby(Discussion.last_post_at, order=frappe._dict(value="desc"))
-		.limit(20)
+		.limit(limit_page_length)
 		.offset(limit_start or 0)
 	)
 	if filters:
