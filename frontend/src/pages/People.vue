@@ -77,15 +77,11 @@ export default {
   },
   resources: {
     users() {
-      let filters = { enabled: 1 }
-      if (this.search) {
-        filters = { full_name: ['like', '%' + this.search + '%'] }
-      }
       return {
         type: 'list',
         cache: 'People',
         doctype: 'Team User Profile',
-        filters,
+        filters: { enabled: 1 },
         fields: [
           'name',
           'user',
@@ -105,6 +101,14 @@ export default {
       let myProfile = this.$resources.users.data.find(
         (p) => p.user == this.$user().name
       )
+      if (this.search) {
+        return this.$resources.users.data.filter((p) => {
+          return (
+            p.full_name.toLowerCase().includes(this.search.toLowerCase()) ||
+            p.email.toLowerCase().includes(this.search.toLowerCase())
+          )
+        })
+      }
       return [
         myProfile,
         ...this.$resources.users.data.filter((p) => p != myProfile),
