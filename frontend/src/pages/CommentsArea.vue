@@ -284,7 +284,7 @@ export default {
     let draftComment = localStorage.getItem(this.draftCommentKey())
     return {
       commentMap: {},
-      showCommentBox: draftComment ? true : false,
+      showCommentBox: false,
       newComment: draftComment || '',
       newMessagesFrom: this.newCommentsFrom,
       highlightedComment: '',
@@ -304,6 +304,11 @@ export default {
         })
       }
     },
+  },
+  mounted() {
+    if (!this.$refs.newCommentEditor.editor.isEmpty) {
+      this.showCommentBox = true
+    }
   },
   resources: {
     comments() {
