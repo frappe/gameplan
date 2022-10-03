@@ -35,16 +35,12 @@
             class="flex w-full items-center rounded-lg border p-3 hover:bg-gray-50 focus-visible:border-gray-400 focus-visible:outline-none focus-visible:ring focus-visible:ring-gray-300"
             exact-active-class="!bg-gray-100"
           >
-            <Avatar
-              :label="user.full_name"
-              :imageURL="user.user_image"
-              size="lg"
-            />
+            <UserAvatar :user="user.user" size="lg" />
             <div class="ml-3">
               <div class="text-base font-medium text-gray-900">
-                {{ user.full_name }}
+                {{ $user(user.user).full_name }}
               </div>
-              <div class="text-base text-gray-600">{{ user.email }}</div>
+              <div class="text-base text-gray-600">{{ user.user }}</div>
             </div>
           </router-link>
 
@@ -62,13 +58,13 @@
   </div>
 </template>
 <script>
-import { Avatar, Badge, Input } from 'frappe-ui'
+import { Badge, Input } from 'frappe-ui'
 import Breadcrumbs from '@/components/Breadcrumbs.vue'
 
 export default {
   name: 'People',
   props: ['person'],
-  components: { Breadcrumbs, Avatar, Badge, Input },
+  components: { Breadcrumbs, Badge, Input },
   data() {
     return {
       search: '',
@@ -82,14 +78,7 @@ export default {
         cache: 'People',
         doctype: 'Team User Profile',
         filters: { enabled: 1 },
-        fields: [
-          'name',
-          'user',
-          'user.full_name',
-          'user.email',
-          'user.user_image',
-          'modified',
-        ],
+        fields: ['name', 'user', 'modified'],
         limit: 999,
         order_by: this.orderBy,
       }

@@ -14,6 +14,7 @@ import {
 import router from './router'
 import App from './App.vue'
 import UserInfo from '@/components/UserInfo.vue'
+import UserAvatar from '@/components/UserAvatar.vue'
 import './index.css'
 import { dayjs } from '@/utils'
 import { createDialog } from './utils/dialogs'
@@ -29,6 +30,7 @@ let globalComponents = {
   Alert,
   Badge,
   UserInfo,
+  UserAvatar
 }
 
 let call = createCall({

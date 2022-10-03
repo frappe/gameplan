@@ -1,6 +1,6 @@
 <template>
-  <div class="w-full h-full py-6">
-    <div class="flex items-center justify-between mb-5">
+  <div class="h-full w-full py-6">
+    <div class="mb-5 flex items-center justify-between">
       <h1 class="text-2xl font-semibold">Notifications</h1>
       <div class="flex items-stretch space-x-2">
         <TabButtons
@@ -16,16 +16,12 @@
         :key="d.name"
       >
         <div class="flex items-start">
-          <Avatar
-            size="sm"
-            :imageURL="$user(d.from_user).user_image"
-            :label="$user(d.from_user).full_name"
-          />
+          <UserAvatar size="sm" :user="d.from_user" />
           <div class="ml-2 text-base text-gray-900">
             {{ d.message }} {{ $dayjs(d.creation).fromNow() }}
           </div>
         </div>
-        <div class="flex items-start ml-2 space-x-2 shrink-0">
+        <div class="ml-2 flex shrink-0 items-start space-x-2">
           <router-link
             v-if="d.discussion || d.task"
             class="block text-sm font-medium text-blue-500 hover:text-blue-700"
@@ -58,7 +54,7 @@
           </router-link>
           <button
             v-if="!d.read"
-            class="p-0.5 transition-colors rounded hover:bg-gray-100"
+            class="rounded p-0.5 transition-colors hover:bg-gray-100"
             @click="markAsRead(d.name)"
             title="Mark as read"
           >
@@ -73,7 +69,6 @@
   </div>
 </template>
 <script>
-import Avatar from 'frappe-ui/src/components/Avatar.vue'
 import TabButtons from '../components/TabButtons.vue'
 import Tooltip from 'frappe-ui/src/components/Tooltip.vue'
 import Link from '@/components/Link.vue'
@@ -91,7 +86,7 @@ export default {
       emoji: '🔔',
     }
   },
-  components: { Avatar, TabButtons, Tooltip, Link },
+  components: { TabButtons, Tooltip, Link },
   resources: {
     unreadNotifications() {
       if (this.activeTab !== 'Unread') return
