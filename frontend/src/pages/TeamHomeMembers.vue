@@ -35,7 +35,7 @@
       <Button label="Share" @click="inviteMemberDialog = true" />
     </div>
   </div>
-  <AddMemberDialog :team="team.doc" v-model="inviteMemberDialog" />
+  <AddMemberDialog :resource="team" v-model="inviteMemberDialog" />
 </template>
 <script>
 import { Avatar } from 'frappe-ui'
