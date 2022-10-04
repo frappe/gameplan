@@ -8,21 +8,31 @@ from gameplan.mixins.archivable import Archivable
 from gameplan.mixins.manage_members import ManageMembersMixin
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
+from pypika.terms import ExistsCriterion
 
 
 class TeamProject(ManageMembersMixin, Archivable, Document):
 	on_delete_cascade = ["Team Task", "Team Discussion"]
 	on_delete_set_null = ["Team Notification"]
 
+	@staticmethod
+	def get_list_query(query):
+		Project = frappe.qb.DocType('Team Project')
+		Member = frappe.qb.DocType('Team Member')
+		member_exists = (
+			frappe.qb.from_(Member)
+				.select(Member.name)
+				.where(Member.parenttype == 'Team')
+				.where(Member.parent == Project.team)
+				.where(Member.user == frappe.session.user)
+		)
+		query = query.where(
+			(Project.is_private == 0) | ((Project.is_private == 1) & ExistsCriterion(member_exists))
+		)
+		return query
+
 	def as_dict(self, *args, **kwargs) -> dict:
 		d = super().as_dict(*args, **kwargs)
-		for member in d.members:
-			if member.user:
-				full_name, user_image = frappe.db.get_value(
-					"User", member.user, ["full_name", "user_image"]
-				)
-				member.full_name = full_name
-				member.user_image = user_image
 		# summary
 		total_tasks = frappe.db.count("Team Task", {"project": self.name})
 		completed_tasks = frappe.db.count(

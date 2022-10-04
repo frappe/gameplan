@@ -92,14 +92,19 @@
                 active="bg-white shadow-sm text-gray-900"
                 inactive="text-gray-600 hover:bg-gray-50 hover:text-gray-900"
               >
-                <template v-slot="{ link }">
+                <template v-slot="{ link: project }">
                   <span class="inline-flex items-center space-x-2">
                     <span
                       class="flex h-5 w-5 items-center justify-center text-xl"
                     >
-                      {{ link.icon }}
+                      {{ project.icon }}
                     </span>
-                    <span class="text-base">{{ link.title }}</span>
+                    <span class="text-base">{{ project.title }}</span>
+                    <FeatherIcon
+                      v-if="project.is_private"
+                      name="lock"
+                      class="h-3 w-3"
+                    />
                   </span>
                 </template>
               </Links>
@@ -126,12 +131,7 @@
   </transition>
 </template>
 <script>
-import {
-  Dialog,
-  DialogOverlay,
-  TransitionChild,
-  TransitionRoot,
-} from '@headlessui/vue'
+import { Tooltip, FeatherIcon } from 'frappe-ui'
 import Links from './Links.vue'
 import Link from './Link.vue'
 import AddTeamDialog from './AddTeamDialog.vue'
@@ -139,20 +139,16 @@ import { teams } from '@/data/teams'
 import { getTeamProjects } from '@/data/projects'
 import { unreadNotifications } from '@/data/notifications'
 import UserDropdown from './UserDropdown.vue'
-import Tooltip from 'frappe-ui/src/components/Tooltip.vue'
 
 export default {
   name: 'AppSidebar',
   components: {
-    Dialog,
-    DialogOverlay,
-    TransitionRoot,
-    TransitionChild,
     AddTeamDialog,
     Links,
     Link,
     UserDropdown,
     Tooltip,
+    FeatherIcon,
   },
   data() {
     return {

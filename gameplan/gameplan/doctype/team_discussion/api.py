@@ -3,6 +3,7 @@
 
 from __future__ import unicode_literals
 import frappe
+from pypika.terms import ExistsCriterion
 
 
 @frappe.whitelist()
@@ -40,6 +41,14 @@ def get_discussions(filters=None, limit_start=None, limit_page_length=None):
 	Visit = frappe.qb.DocType('Team Discussion Visit')
 	Project = frappe.qb.DocType('Team Project')
 	Team = frappe.qb.DocType('Team')
+	Member = frappe.qb.DocType('Team Member')
+	member_exists = (
+		frappe.qb.from_(Member)
+			.select(Member.name)
+			.where(Member.parenttype == 'Team')
+			.where(Member.parent == Project.team)
+			.where(Member.user == frappe.session.user)
+	)
 	query = (
 		frappe.qb.from_(Discussion)
 		.select(
@@ -54,6 +63,9 @@ def get_discussions(filters=None, limit_start=None, limit_page_length=None):
 		.on(Discussion.project == Project.name)
 		.left_join(Team)
 		.on(Discussion.team == Team.name)
+		.where(
+			(Project.is_private == 0) | ((Project.is_private == 1) & ExistsCriterion(member_exists))
+		)
 		.orderby(Discussion.last_post_at, order=frappe._dict(value="desc"))
 		.limit(limit_page_length)
 		.offset(limit_start or 0)

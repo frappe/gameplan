@@ -2,7 +2,7 @@
   <div class="flex h-full flex-col pt-8">
     <header>
       <div class="border-b" v-if="project">
-        <div class="flex items-start space-x-2">
+        <div class="flex w-full items-start">
           <IconPicker
             ref="projectIconPicker"
             v-model="project.icon"
@@ -20,81 +20,95 @@
               </div>
             </template>
           </IconPicker>
-          <div>
-            <div class="flex items-center space-x-2">
-              <Popover ref="editTitlePopup" :hideOnBlur="false">
-                <template #target>
-                  <h1
-                    class="text-6xl font-bold leading-8"
-                    :title="`${Math.round(project.progress)}% complete`"
-                  >
-                    {{ project.title }}
-                  </h1>
-                </template>
-                <template #body-main>
-                  <div class="p-2">
-                    <div class="flex items-end space-x-1">
-                      <Input
-                        label="Edit title and hit enter"
-                        type="text"
-                        placeholder="Project title"
-                        :value="project.title"
-                        @keydown.enter="
-                          (e) => {
-                            if (e.target.value) {
-                              $resources.project.setValue.submit({
-                                title: e.target.value,
-                              })
-                            }
-                            $refs.editTitlePopup.close()
-                          }
-                        "
-                      />
-                      <Button @click="() => $refs.editTitlePopup.close()">
-                        Cancel
-                      </Button>
-                    </div>
-                  </div>
-                </template>
-              </Popover>
-              <Badge v-if="$resources.project.doc.archived_at">
-                Archived
-              </Badge>
-              <Dropdown
-                placement="left"
-                :button="{ icon: 'more-horizontal', appearance: 'minimal' }"
-                :options="[
-                  {
-                    label: 'Edit Title',
-                    icon: 'edit',
-                    handler: () => $refs.editTitlePopup.open(),
-                    condition: () => !$resources.project.doc.archived_at,
-                  },
-                  {
-                    label: 'Move to another team',
-                    icon: 'log-out',
-                    handler: () => (projectMoveDialog.show = true),
-                    condition: () => !$resources.project.doc.archived_at,
-                  },
-                  {
-                    label: 'Archive this project',
-                    icon: 'trash-2',
-                    handler: archiveProject,
-                    condition: () => !$resources.project.doc.archived_at,
-                  },
-                  {
-                    label: 'Unarchive this project',
-                    icon: 'trash-2',
-                    handler: unarchiveProject,
-                    condition: () => $resources.project.doc.archived_at,
-                  },
-                ]"
-              />
-            </div>
+          <div class="ml-2 flex items-center space-x-2">
+            <h1 class="text-6xl font-bold leading-8">
+              {{ project.title }}
+            </h1>
+            <Badge v-if="$resources.project.doc.archived_at"> Archived </Badge>
+            <Tooltip
+              v-if="$resources.project.doc.is_private"
+              text="This project is only visible to team members"
+              placement="top"
+            >
+              <Badge> Private </Badge>
+            </Tooltip>
+            <Dropdown
+              placement="left"
+              :button="{ icon: 'more-horizontal', appearance: 'minimal' }"
+              :options="[
+                {
+                  label: 'Edit',
+                  icon: 'edit',
+                  handler: () => (projectEditDialog.show = true),
+                  condition: () => !$resources.project.doc.archived_at,
+                },
+                {
+                  label: 'Move to another team',
+                  icon: 'log-out',
+                  handler: () => (projectMoveDialog.show = true),
+                  condition: () => !$resources.project.doc.archived_at,
+                },
+                {
+                  label: 'Archive this project',
+                  icon: 'trash-2',
+                  handler: archiveProject,
+                  condition: () => !$resources.project.doc.archived_at,
+                },
+                {
+                  label: 'Unarchive this project',
+                  icon: 'trash-2',
+                  handler: unarchiveProject,
+                  condition: () => $resources.project.doc.archived_at,
+                },
+              ]"
+            />
           </div>
         </div>
         <Tabs :tabs="tabs" class="border-none" />
       </div>
+      <Dialog
+        :options="{
+          title: 'Edit Project',
+          actions: [
+            {
+              label: 'Save',
+              appearance: 'primary',
+              handler: ({ close }) => {
+                $resources.project.setValue.submit({
+                  title: project.title,
+                  is_private: project.is_private,
+                })
+                close()
+              },
+            },
+            {
+              label: 'Cancel',
+            },
+          ],
+        }"
+        v-model="projectEditDialog.show"
+      >
+        <template #body-content>
+          <Input
+            class="mb-2"
+            label="Title"
+            v-model="$resources.project.doc.title"
+          />
+          <Input
+            label="Visibility"
+            type="select"
+            :options="[
+              { label: 'Visible to everyone', value: 0 },
+              { label: 'Visible to team members (Private)', value: 1 },
+            ]"
+            v-model="$resources.project.doc.is_private"
+          />
+          <ErrorMessage
+            class="mt-2"
+            :message="$resources.project.setValue.error"
+          />
+        </template>
+      </Dialog>
       <Dialog
         :options="{
           title: 'Move project to another team',
@@ -163,7 +177,7 @@
   </div>
 </template>
 <script>
-import { Autocomplete, Dropdown, Spinner, Input, Popover } from 'frappe-ui'
+import { Autocomplete, Dropdown, Spinner, Input, Tooltip } from 'frappe-ui'
 import Pie from '@/components/Pie.vue'
 import IconPicker from '@/components/IconPicker.vue'
 import Links from '@/components/Links.vue'
@@ -185,11 +199,12 @@ export default {
     Tabs,
     Breadcrumbs,
     Autocomplete,
-    Popover,
+    Tooltip,
   },
   data() {
     return {
       projectMoveDialog: { show: false, team: null },
+      projectEditDialog: { show: false },
     }
   },
   mounted() {
@@ -210,6 +225,7 @@ export default {
           moveToTeam: 'move_to_team',
           archive: 'archive',
           unarchive: 'unarchive',
+          inviteMembers: 'invite_members',
         },
       }
     },
