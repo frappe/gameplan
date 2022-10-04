@@ -4,7 +4,7 @@
       <h2 class="text-2xl font-bold text-gray-900">Members</h2>
       <Button icon="plus" @click="addMember.show = true" />
     </div>
-    <div class="grid grid-cols-1 mt-4">
+    <div class="mt-4 grid grid-cols-1">
       <Dropdown
         v-for="member in project.doc.members"
         :key="member.user"
@@ -40,14 +40,10 @@
       >
         <template v-slot="{ open }">
           <button
-            class="flex items-center w-full p-2 transition-colors rounded-md group"
+            class="group flex w-full items-center rounded-md p-2 transition-colors"
             :class="open ? 'bg-gray-100' : 'hover:bg-gray-50'"
           >
-            <Avatar
-              class="flex-shrink-0"
-              :label="member.full_name || member.email"
-              :imageURL="member.user_image"
-            />
+            <UserAvatar :user="member.email" />
             <div class="ml-2">
               <div class="flex text-sm font-semibold text-gray-700">
                 {{ member.full_name || member.email }}
@@ -62,7 +58,7 @@
             </div>
             <FeatherIcon
               name="chevron-down"
-              class="w-4 ml-auto text-gray-700 transition-opacity"
+              class="ml-auto w-4 text-gray-700 transition-opacity"
               :class="
                 open ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
               "
@@ -113,13 +109,13 @@
   </div>
 </template>
 <script>
-import { Avatar, Dropdown, Dialog, Resource } from 'frappe-ui'
+import { Dropdown, Dialog, Resource } from 'frappe-ui'
 import AddMemberDialog from '@/components/AddMemberDialog.vue'
 
 export default {
   name: 'ProjectOverviewMembers',
   props: ['project'],
-  components: { Avatar, Dropdown, Dialog, Resource, AddMemberDialog },
+  components: { Dropdown, Dialog, Resource, AddMemberDialog },
   data() {
     return {
       updateMemberRole: { member: null, show: false },

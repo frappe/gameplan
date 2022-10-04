@@ -47,11 +47,7 @@
           <UserInfo :email="comment.owner" v-slot="{ user }">
             <div class="mb-2 flex items-center text-base text-gray-900">
               <UserProfileLink class="mr-3" :user="user.name">
-                <Avatar
-                  class="sticky top-1 flex-shrink-0"
-                  :label="user.full_name"
-                  :imageURL="user.user_image"
-                />
+                <UserAvatar :user="user.name" />
               </UserProfileLink>
               <UserProfileLink
                 class="font-medium hover:text-blue-600"
@@ -174,12 +170,7 @@
         @click="showCommentBox = true"
         v-show="!showCommentBox"
       >
-        <Avatar
-          class="mr-3 flex-shrink-0"
-          :label="$user().full_name"
-          :imageURL="$user().user_image"
-          size="sm"
-        />
+        <UserAvatar class="mr-3" :user="$user().name" size="sm" />
         Add a comment
       </button>
       <div
@@ -189,12 +180,7 @@
         @keydown.meta.enter.capture.stop="submitComment"
       >
         <div class="mb-4 flex items-center space-x-2">
-          <Avatar
-            class="flex-shrink-0"
-            :label="$user().full_name"
-            :imageURL="$user().user_image"
-            size="sm"
-          />
+          <UserAvatar :user="$user().name" size="sm" />
           <span class="text-base font-medium text-gray-900">
             {{ $user().full_name }}
           </span>
@@ -256,7 +242,7 @@
   </div>
 </template>
 <script>
-import { Avatar, LoadingIndicator, Dropdown, Dialog } from 'frappe-ui'
+import { LoadingIndicator, Dropdown, Dialog } from 'frappe-ui'
 import TextEditor from '@/components/TextEditor.vue'
 import { copyToClipboard } from '@/utils'
 import Reactions from '@/components/Reactions.vue'
@@ -270,7 +256,6 @@ export default {
   name: 'CommentsArea',
   props: ['doctype', 'name', 'newCommentsFrom', 'readOnlyMode'],
   components: {
-    Avatar,
     LoadingIndicator,
     TextEditor,
     Dropdown,

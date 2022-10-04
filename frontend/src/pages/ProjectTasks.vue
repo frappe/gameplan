@@ -71,11 +71,7 @@
                 placement="bottom"
                 :text="`Assigned to ${$user(d.assigned_to).full_name}`"
               >
-                <Avatar
-                  size="sm"
-                  :label="$user(d.assigned_to).full_name"
-                  :imageURL="$user(d.assigned_to).user_image"
-                />
+                <UserAvatar size="sm" :user="d.assigned_to" />
               </Tooltip>
             </div>
           </div>

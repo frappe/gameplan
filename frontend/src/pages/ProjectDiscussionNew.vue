@@ -1,9 +1,9 @@
 <template>
   <div class="py-6">
-    <div class="border p-4 rounded-lg">
+    <div class="rounded-lg border p-4">
       <div class="mb-3 flex items-center space-x-2">
         <UserProfileLink :user="$user().name">
-          <Avatar :label="$user().full_name" :imageURL="$user().user_image" />
+          <UserAvatar :user="$user().name" />
         </UserProfileLink>
         <div class="flex w-full items-center">
           <div>
@@ -44,7 +44,7 @@
             </span>
           </div>
         </div>
-        <div class="space-x-2 shrink-0 hidden sm:block">
+        <div class="hidden shrink-0 space-x-2 sm:block">
           <Button :route="{ name: 'ProjectDiscussions' }">Discard</Button>
           <Button
             appearance="primary"
@@ -57,7 +57,7 @@
       </div>
       <ErrorMessage :message="$resources.newDiscussion.error" />
       <textarea
-        class="w-full px-0 py-0.5 mt-1 text-3xl font-bold border-0 rounded-lg focus:ring-0 placeholder-gray-400 resize-none"
+        class="mt-1 w-full resize-none rounded-lg border-0 px-0 py-0.5 text-3xl font-bold placeholder-gray-400 focus:ring-0"
         v-model="title"
         placeholder="Title"
         rows="1"
@@ -87,7 +87,7 @@
               class="overflow-x-auto"
               :buttons="textEditorMenuButtons"
             />
-            <div class="space-x-2 shrink-0 sm:hidden mt-2 text-right">
+            <div class="mt-2 shrink-0 space-x-2 text-right sm:hidden">
               <Button :route="{ name: 'ProjectDiscussions' }">Discard</Button>
               <Button
                 appearance="primary"
@@ -104,7 +104,6 @@
   </div>
 </template>
 <script>
-import { Avatar } from 'frappe-ui'
 import TextEditor from '@/components/TextEditor.vue'
 import { focus } from '@/directives'
 import UserProfileLink from '@/components/UserProfileLink.vue'
@@ -113,7 +112,7 @@ import TextEditorFixedMenu from 'frappe-ui/src/components/TextEditor/TextEditorF
 export default {
   name: 'ProjectDiscussionNew',
   props: ['project'],
-  components: { TextEditor, Avatar, UserProfileLink, TextEditorFixedMenu },
+  components: { TextEditor, UserProfileLink, TextEditorFixedMenu },
   directives: { focus },
   data() {
     return {

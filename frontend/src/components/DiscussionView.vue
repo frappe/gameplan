@@ -11,10 +11,7 @@
       >
         <div class="flex items-center px-6 py-4 sm:px-2" v-show="showNavbar">
           <UserProfileLink :user="discussion.owner">
-            <Avatar
-              :label="$user(discussion.owner).full_name"
-              :imageURL="$user(discussion.owner).user_image"
-            />
+            <UserAvatar :user="discussion.owner" />
           </UserProfileLink>
           <h1 class="ml-3 text-2xl font-bold">
             {{ discussion.title }}
@@ -26,10 +23,7 @@
     <div class="py-6">
       <div class="mb-3 flex items-center space-x-2">
         <UserProfileLink :user="discussion.owner">
-          <Avatar
-            :label="$user(discussion.owner).full_name"
-            :imageURL="$user(discussion.owner).user_image"
-          />
+          <UserAvatar :user="discussion.owner" />
         </UserProfileLink>
         <div class="flex w-full items-center">
           <div>
@@ -221,13 +215,7 @@
   </div>
 </template>
 <script>
-import {
-  Autocomplete,
-  Avatar,
-  Dropdown,
-  Dialog,
-  visibilityDirective,
-} from 'frappe-ui'
+import { Autocomplete, Dropdown, Dialog, visibilityDirective } from 'frappe-ui'
 import Reactions from './Reactions.vue'
 import CommentsArea from '@/pages/CommentsArea.vue'
 import TextEditor from '@/components/TextEditor.vue'
@@ -244,7 +232,6 @@ export default {
   },
   components: {
     TextEditor,
-    Avatar,
     Reactions,
     CommentsArea,
     Dropdown,

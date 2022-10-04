@@ -80,11 +80,7 @@
           <FileUploader @success="(file) => setUserImage(file.file_url)">
             <template v-slot="{ file, progress, uploading, openFileSelector }">
               <div class="flex items-center space-x-2">
-                <Avatar
-                  size="lg"
-                  :imageURL="currentUser.user_image"
-                  :label="currentUser.full_name"
-                />
+                <UserAvatar size="lg" :user="profile.user" />
                 <Button @click="openFileSelector">
                   {{ uploading ? `Uploading ${progress}%` : 'Upload Image' }}
                 </Button>
@@ -115,7 +111,7 @@
   </div>
 </template>
 <script>
-import { Avatar, Dialog, FileUploader } from 'frappe-ui'
+import { Dialog, FileUploader } from 'frappe-ui'
 import CoverImage from '@/components/CoverImage.vue'
 import Tabs from '@/components/Tabs.vue'
 import ImagePreview from '../components/ImagePreview.vue'
@@ -125,7 +121,6 @@ export default {
   props: ['personId'],
   components: {
     CoverImage,
-    Avatar,
     Dialog,
     FileUploader,
     Tabs,

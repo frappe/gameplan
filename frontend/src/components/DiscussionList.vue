@@ -16,7 +16,7 @@
       <div class="flex items-center space-x-4 p-3">
         <UserInfo :email="d.last_post_by || d.owner">
           <template v-slot="{ user }">
-            <Avatar :label="user.full_name" :imageURL="user.user_image" />
+            <UserAvatar :user="user.name" />
             <div class="w-full">
               <div class="flex items-center">
                 <div :class="d.unread ? 'text-gray-900' : 'text-gray-600'">
@@ -109,14 +109,13 @@
   </div>
 </template>
 <script>
-import { Avatar, TextEditor } from 'frappe-ui'
+import { TextEditor } from 'frappe-ui'
 
 export default {
   name: 'DiscussionList',
   props: ['filters', 'routeName'],
   components: {
     TextEditor,
-    Avatar,
   },
   resources: {
     discussions() {

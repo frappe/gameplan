@@ -41,7 +41,14 @@
                   class="focus:outline-none"
                 >
                   <span class="absolute inset-0" aria-hidden="true" />
-                  {{ project.title }}
+                  <span class="inline-flex items-center">
+                    {{ project.title }}
+                    <FeatherIcon
+                      v-if="project.is_private"
+                      name="lock"
+                      class="ml-1 h-3 w-3"
+                    />
+                  </span>
                 </router-link>
               </h3>
               <p class="mt-1 text-base text-gray-500">
@@ -70,18 +77,30 @@
         v-model="createNewProjectDialog"
       >
         <template #body-content>
-          <Input
-            type="text"
-            label="Project Title"
-            v-model="newProjectTitle"
-            @keydown.enter="(e) => createProject(e.target.value)"
-          />
-          <ErrorMessage class="mt-2" :message="projects.insert.error" />
+          <div class="space-y-2">
+            <Input
+              type="text"
+              label="Title"
+              v-model="newProject.title"
+              @input="newProject.title = $event"
+              @keydown.enter="createProject"
+            />
+            <Input
+              type="select"
+              label="Visibility"
+              :options="[
+                { label: 'Visible to everyone', value: 0 },
+                { label: 'Visible to team members (Private)', value: 1 },
+              ]"
+              v-model="newProject.is_private"
+            />
+            <ErrorMessage :message="projects.insert.error" />
+          </div>
         </template>
         <template #actions>
           <Button
             appearance="primary"
-            @click="createProject(newProjectTitle)"
+            @click="createProject"
             :loading="projects.insert.loading"
           >
             Create
@@ -106,7 +125,7 @@ export default {
   data() {
     return {
       createNewProjectDialog: false,
-      newProjectTitle: '',
+      newProject: { title: '', is_private: false },
       activeTab: 'Active',
     }
   },
@@ -130,16 +149,16 @@ export default {
     },
   },
   methods: {
-    createProject(title) {
+    createProject() {
       projects.insert.submit(
         {
           team: this.team.name,
-          title,
+          ...this.newProject,
         },
         {
           onSuccess: (project) => {
             projects.reload()
-            this.newProjectTitle = ''
+            this.newProject = this.$options.data().newProject
             this.createNewProjectDialog = false
             this.$router.push({
               name: 'ProjectOverview',

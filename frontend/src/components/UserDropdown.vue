@@ -27,11 +27,7 @@
         class="flex w-full items-center space-x-2 rounded-md p-2 text-left text-base font-medium"
         :class="open ? 'bg-gray-300' : 'hover:bg-gray-200'"
       >
-        <Avatar
-          :label="$user().full_name"
-          :imageURL="$user().user_image"
-          size="sm"
-        />
+        <UserAvatar :user="$user().name" size="sm" />
         <span class="hidden sm:inline">{{ $user().full_name }}</span>
         <FeatherIcon name="chevron-down" class="hidden h-4 w-4 sm:inline" />
       </button>
@@ -44,14 +40,13 @@
 </template>
 <script>
 import { defineAsyncComponent } from 'vue'
-import { FeatherIcon, Dropdown, Avatar, Link } from 'frappe-ui'
+import { FeatherIcon, Dropdown, Link } from 'frappe-ui'
 
 export default {
   name: 'UserDropdown',
   components: {
     Dropdown,
     FeatherIcon,
-    Avatar,
     Link,
     ArchivedTeamsDialog: defineAsyncComponent(() =>
       import('./ArchivedTeamsDialog.vue')
