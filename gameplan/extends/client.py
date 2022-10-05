@@ -17,6 +17,12 @@ def get_list(doctype=None, fields=None, filters=None, order_by=None, start=0, li
 		limit=limit,
         parent=parent
 	)
+	if order_by:
+		parts = order_by.split(" ")
+		orderby_field = parts[0]
+		orderby_direction = parts[1] if len(parts) > 1 else "asc"
+		query = query.orderby(orderby_field, order=frappe._dict(value=orderby_direction))
+
 	query = apply_custom_filters(doctype, query)
 	return query.run(as_dict=True, debug=debug)
 
