@@ -101,9 +101,29 @@
                     label: 'Delete',
                     icon: 'trash',
                     handler: () => {
-                      $resources.comments.setValue.submit({
-                        name: comment.name,
-                        deleted_at: $dayjs().format('YYYY-MM-DD HH:mm:ss'),
+                      $dialog({
+                        title: 'Delete comment',
+                        message:
+                          'Are you sure you want to delete this comment?',
+                        actions: [
+                          {
+                            label: 'Delete',
+                            appearance: 'danger',
+                            handler: ({ close }) => {
+                              return $resources.comments.setValue
+                                .submit({
+                                  name: comment.name,
+                                  deleted_at: $dayjs().format(
+                                    'YYYY-MM-DD HH:mm:ss'
+                                  ),
+                                })
+                                .then(close)
+                            },
+                          },
+                          {
+                            label: 'Cancel',
+                          },
+                        ],
                       })
                     },
                     condition: () =>
@@ -116,21 +136,28 @@
             </div>
             <div class="flex-1">
               <div
-                :class="
-                  comment.editing &&
-                  'mt-1 min-h-[2.5rem] w-full rounded-lg border bg-white px-3.5 py-1 focus-within:border-gray-400'
-                "
+                :class="{
+                  'w-full rounded-lg border bg-white p-4 focus-within:border-gray-400':
+                    comment.editing,
+                }"
                 @keydown.ctrl.enter.capture.stop="editComment(comment)"
                 @keydown.meta.enter.capture.stop="editComment(comment)"
               >
-                <TextEditor
+                <CommentEditor
                   v-if="comment.deleted_at == null"
-                  editor-class="prose-sm"
+                  :value="comment.content"
+                  @change="comment.content = $event"
                   :editable="comment.editing || false"
-                  :content="comment.content"
-                  @change="(val) => (comment.content = val)"
-                  :starterkit-options="{ heading: { levels: [2, 3, 4, 5, 6] } }"
-                  :bubbleMenu="true"
+                  :submitButtonProps="{
+                    onClick: () => editComment(comment),
+                    loading: comment.loading,
+                  }"
+                  :discardButtonProps="{
+                    onClick: () => {
+                      comment.editing = false
+                      $resources.comments.fetchOne.submit(comment.name)
+                    },
+                  }"
                 />
                 <span class="text-base italic text-gray-600" v-else>
                   This message is deleted
@@ -145,14 +172,6 @@
                     v-model:reactions="comment.reactions"
                   />
                 </div>
-              </div>
-              <div class="space-x-2 pt-2" v-show="comment.editing">
-                <Button appearance="primary" @click="editComment(comment)">
-                  Save
-                </Button>
-                <Button appearance="white" @click="comment.editing = false">
-                  Discard
-                </Button>
               </div>
             </div>
           </UserInfo>
@@ -185,85 +204,43 @@
             {{ $user().full_name }}
           </span>
         </div>
-        <TextEditor
+        <CommentEditor
           ref="newCommentEditor"
-          editor-class="min-h-[4rem] prose-sm overflow-y-auto max-h-[50vh]"
-          :content="newComment"
+          :value="newComment"
           @change="onNewCommentChange"
-          :starterkit-options="{ heading: { levels: [2, 3, 4, 5, 6] } }"
-          placeholder="Add comment..."
-        >
-          <template v-slot:bottom>
-            <div
-              class="mt-2 flex flex-col justify-between sm:flex-row sm:items-center"
-            >
-              <TextEditorFixedMenu
-                class="overflow-x-auto"
-                :buttons="textEditorMenuButtons"
-              />
-              <div class="mt-2 flex items-center justify-end space-x-2 sm:mt-0">
-                <Button @click="discardDialog = true"> Discard </Button>
-                <Button
-                  appearance="primary"
-                  @click="submitComment"
-                  :loading="$resources.comments.insert.loading"
-                  :disabled="commentEmpty"
-                >
-                  Submit
-                </Button>
-              </div>
-            </div>
-          </template>
-        </TextEditor>
+          :submitButtonProps="{
+            onClick: submitComment,
+            loading: $resources.comments.insert.loading,
+            disabled: commentEmpty,
+          }"
+          :discardButtonProps="{
+            onClick: discardComment,
+          }"
+          :editable="showCommentBox"
+        />
       </div>
     </div>
-    <Dialog
-      :options="{
-        title: 'Discard comment',
-        message: 'Are you sure you want to discard your comment?',
-        actions: [
-          {
-            label: 'Discard comment',
-            handler: () => {
-              resetCommentState()
-              discardDialog = false
-            },
-            appearance: 'primary',
-          },
-          {
-            label: 'Keep comment',
-            appearance: 'white',
-          },
-        ],
-      }"
-      v-model="discardDialog"
-    >
-    </Dialog>
   </div>
 </template>
 <script>
 import { LoadingIndicator, Dropdown, Dialog } from 'frappe-ui'
-import TextEditor from '@/components/TextEditor.vue'
 import { copyToClipboard } from '@/utils'
 import Reactions from '@/components/Reactions.vue'
 import UserProfileLink from '@/components/UserProfileLink.vue'
 import { nextTick } from 'vue'
-import TextEditorMenu from 'frappe-ui/src/components/TextEditor/Menu.vue'
-import TextEditorFixedMenu from 'frappe-ui/src/components/TextEditor/TextEditorFixedMenu.vue'
 import { getScrollParent } from '@/utils'
+import CommentEditor from '@/components/CommentEditor.vue'
 
 export default {
   name: 'CommentsArea',
   props: ['doctype', 'name', 'newCommentsFrom', 'readOnlyMode'],
   components: {
     LoadingIndicator,
-    TextEditor,
     Dropdown,
     Reactions,
     UserProfileLink,
-    TextEditorMenu,
-    TextEditorFixedMenu,
     Dialog,
+    CommentEditor,
   },
   data() {
     let draftComment = localStorage.getItem(this.draftCommentKey())
@@ -273,7 +250,6 @@ export default {
       newComment: draftComment || '',
       newMessagesFrom: this.newCommentsFrom,
       highlightedComment: '',
-      discardDialog: false,
     }
   },
   watch: {
@@ -407,6 +383,29 @@ export default {
         setTimeout(() => (this.highlightedComment = null), 10000)
       })
     },
+    discardComment() {
+      if (!this.editorObject.isEmpty) {
+        this.$dialog({
+          title: 'Discard comment',
+          message: 'Are you sure you want to discard your comment?',
+          actions: [
+            {
+              label: 'Discard comment',
+              handler: ({ close }) => {
+                this.resetCommentState()
+                close()
+              },
+              appearance: 'primary',
+            },
+            {
+              label: 'Keep comment',
+            },
+          ],
+        })
+      } else {
+        this.resetCommentState()
+      }
+    },
     copyLink(comment) {
       let location = window.location
       let url = `${location.origin}${location.pathname}?comment=${comment.name}`
@@ -452,46 +451,6 @@ export default {
     },
     editorObject() {
       return this.$refs.newCommentEditor?.editor
-    },
-    textEditorMenuButtons() {
-      return [
-        'Paragraph',
-        ['Heading 2', 'Heading 3', 'Heading 4', 'Heading 5', 'Heading 6'],
-        'Separator',
-        'Bold',
-        'Italic',
-        'Separator',
-        'Bullet List',
-        'Numbered List',
-        'Separator',
-        'Align Left',
-        'Align Center',
-        'Align Right',
-        'Separator',
-        'Image',
-        'Link',
-        'Blockquote',
-        'Code',
-        'Horizontal Rule',
-        [
-          'InsertTable',
-          'AddColumnBefore',
-          'AddColumnAfter',
-          'DeleteColumn',
-          'AddRowBefore',
-          'AddRowAfter',
-          'DeleteRow',
-          'MergeCells',
-          'SplitCell',
-          'ToggleHeaderColumn',
-          'ToggleHeaderRow',
-          'ToggleHeaderCell',
-          'DeleteTable',
-        ],
-        'Separator',
-        'Undo',
-        'Redo',
-      ]
     },
   },
 }
