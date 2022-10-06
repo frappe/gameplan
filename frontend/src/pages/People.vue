@@ -44,10 +44,10 @@
             </div>
           </router-link>
 
-          <div class="p-3" v-if="$resources.users.hasNextPage">
+          <div class="p-3" v-if="$resources.profiles.hasNextPage">
             <Button
-              @click="$resources.users.next()"
-              :loading="$resources.users.list.loading"
+              @click="$resources.profiles.next()"
+              :loading="$resources.profiles.list.loading"
             >
               Load more
             </Button>
@@ -72,7 +72,7 @@ export default {
     }
   },
   resources: {
-    users() {
+    profiles() {
       return {
         type: 'list',
         cache: 'People',
@@ -86,22 +86,28 @@ export default {
   },
   computed: {
     people() {
-      if (!this.$resources.users.data) return []
-      let myProfile = this.$resources.users.data.find(
-        (p) => p.user == this.$user().name
-      )
+      if (!this.profiles.length) return []
+      let myProfile = this.profiles.find((p) => p.user == this.$user().name)
       if (this.search) {
-        return this.$resources.users.data.filter((p) => {
+        return this.profiles.filter((p) => {
           return (
             p.full_name.toLowerCase().includes(this.search.toLowerCase()) ||
             p.email.toLowerCase().includes(this.search.toLowerCase())
           )
         })
       }
-      return [
-        myProfile,
-        ...this.$resources.users.data.filter((p) => p != myProfile),
-      ].filter(Boolean)
+      return [myProfile, ...this.profiles.filter((p) => p != myProfile)].filter(
+        Boolean
+      )
+    },
+    profiles() {
+      return (this.$resources.profiles.data || []).map((profile) => {
+        return {
+          ...profile,
+          email: this.$user(profile.user).email,
+          full_name: this.$user(profile.user).full_name,
+        }
+      })
     },
   },
   pageMeta() {
