@@ -1,6 +1,6 @@
 <template>
   <div class="flex select-none items-stretch space-x-1.5">
-    <Popover>
+    <Popover class="h-full">
       <template #target="{ togglePopover }">
         <button
           @click="togglePopover()"
@@ -128,7 +128,7 @@ export default {
   },
   methods: {
     toggleReaction(emoji) {
-      if (this.readOnlyMode) return;
+      if (this.readOnlyMode) return
       let existingReaction = this.reactions.find(
         (r) => r.user === this.$user().name && r.emoji === emoji
       )

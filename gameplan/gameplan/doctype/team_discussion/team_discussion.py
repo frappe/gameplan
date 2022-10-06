@@ -3,12 +3,14 @@
 
 import frappe
 from frappe.model.document import Document
+from gameplan.mixins.activity import HasActivity
 from gameplan.utils import extract_mentions
 from frappe.utils import get_fullname
 
-class TeamDiscussion(Document):
+class TeamDiscussion(HasActivity, Document):
 	on_delete_cascade = ['Team Comment', 'Team Discussion Visit']
 	on_delete_set_null = ['Team Notification']
+	activities = ['Discussion Closed', 'Discussion Reopened']
 
 	def as_dict(self, *args, **kwargs):
 		d = super(TeamDiscussion, self).as_dict(*args, **kwargs)
@@ -71,6 +73,24 @@ class TeamDiscussion(Document):
 
 		self.project = project
 		self.team = frappe.db.get_value("Team Project", project, "team")
+		self.save()
+
+	@frappe.whitelist()
+	def close_discussion(self):
+		if self.closed_at:
+			return
+		self.closed_at = frappe.utils.now()
+		self.closed_by = frappe.session.user
+		self.log_activity('Discussion Closed')
+		self.save()
+
+	@frappe.whitelist()
+	def reopen_discussion(self):
+		if not self.closed_at:
+			return
+		self.closed_at = None
+		self.closed_by = None
+		self.log_activity('Discussion Reopened')
 		self.save()
 
 	def update_discussions_count(self, delta=1):

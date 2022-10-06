@@ -14,6 +14,8 @@
   "reactions",
   "last_post_at",
   "last_post_by",
+  "closed_at",
+  "closed_by",
   "comments_count"
  ],
  "fields": [
@@ -74,11 +76,22 @@
    "fieldtype": "Link",
    "label": "Last Post By",
    "options": "User"
+  },
+  {
+   "fieldname": "closed_at",
+   "fieldtype": "Datetime",
+   "label": "Closed At"
+  },
+  {
+   "fieldname": "closed_by",
+   "fieldtype": "Link",
+   "label": "Closed By",
+   "options": "User"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-09-26 12:42:08.358227",
+ "modified": "2022-10-05 20:47:01.095851",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "Team Discussion",
