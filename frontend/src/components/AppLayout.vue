@@ -3,7 +3,7 @@
     <div class="h-full flex-1">
       <div class="flex h-full">
         <div
-          class="hidden min-h-0 flex-shrink-0 overflow-hidden hover:overflow-auto sm:block"
+          class="relative hidden min-h-0 flex-shrink-0 overflow-hidden hover:overflow-auto sm:block"
         >
           <slot name="sidebar" />
         </div>
