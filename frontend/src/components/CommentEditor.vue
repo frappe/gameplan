@@ -10,7 +10,7 @@
     :content="value"
     @change="editable ? $emit('change', $event) : null"
     :starterkit-options="{ heading: { levels: [2, 3, 4, 5, 6] } }"
-    placeholder="Add comment..."
+    :placeholder="placeholder"
     :editable="editable"
   >
     <template v-slot:bottom>
@@ -19,7 +19,7 @@
         class="mt-2 flex flex-col justify-between sm:flex-row sm:items-center"
       >
         <TextEditorFixedMenu
-          class="overflow-x-auto"
+          class="-ml-1 overflow-x-auto"
           :buttons="textEditorMenuButtons"
         />
         <div class="mt-2 flex items-center justify-end space-x-2 sm:mt-0">
@@ -39,13 +39,32 @@ import { TextEditorFixedMenu } from 'frappe-ui/src/components/TextEditor'
 
 export default {
   name: 'CommentEditor',
-  props: [
-    'value',
-    'editable',
-    'editorProps',
-    'submitButtonProps',
-    'discardButtonProps',
-  ],
+  props: {
+    value: {
+      type: String,
+      default: '',
+    },
+    placeholder: {
+      type: String,
+      default: null,
+    },
+    editable: {
+      type: Boolean,
+      default: true,
+    },
+    editorProps: {
+      type: Object,
+      default: () => ({}),
+    },
+    submitButtonProps: {
+      type: Object,
+      default: () => ({}),
+    },
+    discardButtonProps: {
+      type: Object,
+      default: () => ({}),
+    },
+  },
   emits: ['change'],
   expose: ['editor'],
   components: { TextEditor, TextEditorFixedMenu },

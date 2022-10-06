@@ -16,7 +16,8 @@
       <div class="flex items-center space-x-4 p-3">
         <UserInfo :email="d.last_post_by || d.owner">
           <template v-slot="{ user }">
-            <UserAvatar :user="user.name" />
+            <FeatherIconCircle name="lock" color="green" v-if="d.closed_at" />
+            <UserAvatar :user="user.name" v-else />
             <div class="w-full">
               <div class="flex items-center">
                 <div :class="d.unread ? 'text-gray-900' : 'text-gray-600'">
@@ -110,12 +111,14 @@
 </template>
 <script>
 import { TextEditor } from 'frappe-ui'
+import FeatherIconCircle from './FeatherIconCircle.vue'
 
 export default {
   name: 'DiscussionList',
   props: ['filters', 'routeName'],
   components: {
     TextEditor,
+    FeatherIconCircle,
   },
   resources: {
     discussions() {

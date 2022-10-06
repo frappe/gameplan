@@ -9,6 +9,15 @@ from frappe.utils import get_fullname
 class TeamComment(Document):
 	on_delete_set_null = ["Team Notification"]
 
+	def before_insert(self):
+		if self.reference_doctype not in ["Team Discussion"]:
+			return
+
+		reference_doc = frappe.get_doc(self.reference_doctype, self.reference_name)
+		if reference_doc.meta.has_field("closed_at"):
+			if reference_doc.closed_at:
+				frappe.throw("Cannot add comment to a closed discussion")
+
 	def after_insert(self):
 		if self.reference_doctype not in ["Team Discussion", "Team Task"]:
 			return

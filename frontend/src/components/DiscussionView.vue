@@ -13,7 +13,17 @@
           <UserProfileLink :user="discussion.owner">
             <UserAvatar :user="discussion.owner" />
           </UserProfileLink>
-          <h1 class="ml-3 text-2xl font-bold">
+          <h1 class="ml-3 flex items-center text-2xl font-bold">
+            <Tooltip
+              v-if="discussion.closed_at"
+              text="This discussion is closed"
+            >
+              <FeatherIcon
+                name="lock"
+                class="mr-2 h-4 w-4 text-gray-700"
+                :stroke-width="2"
+              />
+            </Tooltip>
             {{ discussion.title }}
           </h1>
         </div>
@@ -21,8 +31,8 @@
     </div>
 
     <div class="py-6">
-      <div class="mb-3 flex items-center space-x-2">
-        <UserProfileLink :user="discussion.owner">
+      <div class="mb-3 flex items-center">
+        <UserProfileLink class="mr-3" :user="discussion.owner">
           <UserAvatar :user="discussion.owner" />
         </UserProfileLink>
         <div class="flex w-full items-center">
@@ -91,6 +101,58 @@
                   handler: () => copyLink(),
                 },
                 {
+                  label: 'Close discussion',
+                  icon: 'lock',
+                  condition: () => !discussion.closed_at,
+                  handler: () => {
+                    $dialog({
+                      title: 'Close discussion',
+                      message:
+                        'When a discussion is closed, commenting is disabled. Anyone can re-open the discussion later. Do you want to close this discussion?',
+                      icon: { name: 'lock', appearance: 'success' },
+                      actions: [
+                        {
+                          label: 'Close',
+                          handler: ({ close }) =>
+                            $resources.discussion.closeDiscussion
+                              .submit()
+                              .then(close),
+                          appearance: 'primary',
+                        },
+                        {
+                          label: 'Cancel',
+                        },
+                      ],
+                    })
+                  },
+                },
+                {
+                  label: 'Re-open discussion',
+                  icon: 'unlock',
+                  condition: () => discussion.closed_at,
+                  handler: () => {
+                    $dialog({
+                      title: 'Re-open discussion',
+                      message:
+                        'Do you want to re-open this discussion? Anyone can comment on it again.',
+                      icon: { name: 'unlock', appearance: 'success' },
+                      actions: [
+                        {
+                          label: 'Re-open',
+                          handler: ({ close }) =>
+                            $resources.discussion.reopenDiscussion
+                              .submit()
+                              .then(close),
+                          appearance: 'primary',
+                        },
+                        {
+                          label: 'Cancel',
+                        },
+                      ],
+                    })
+                  },
+                },
+                {
                   label: 'Move to another project',
                   icon: 'log-out',
                   handler: () => (discussionMoveDialog.show = true),
@@ -138,9 +200,18 @@
         <h1
           v-else
           v-visibility="handleTitleVisibility"
-          class="text-3xl font-bold"
+          class="flex items-center text-3xl font-bold"
         >
-          {{ discussion.title }}
+          <Tooltip v-if="discussion.closed_at" text="This discussion is closed">
+            <FeatherIcon
+              name="lock"
+              class="mr-2 h-4 w-4 text-gray-700"
+              :stroke-width="2"
+            />
+          </Tooltip>
+          <span>
+            {{ discussion.title }}
+          </span>
         </h1>
       </div>
       <TextEditor
@@ -169,6 +240,7 @@
       :name="discussion.name"
       :newCommentsFrom="discussion.last_unread_comment"
       :read-only-mode="readOnlyMode"
+      :disable-new-comment="discussion.closed_at"
     />
     <Dialog
       :options="{
@@ -215,9 +287,16 @@
   </div>
 </template>
 <script>
-import { Autocomplete, Dropdown, Dialog, visibilityDirective } from 'frappe-ui'
+import {
+  Autocomplete,
+  Dropdown,
+  Dialog,
+  Tooltip,
+  visibilityDirective,
+} from 'frappe-ui'
 import Reactions from './Reactions.vue'
-import CommentsArea from '@/pages/CommentsArea.vue'
+import CommentsArea from '@/components/CommentsArea.vue'
+import CommentEditor from './CommentEditor.vue'
 import TextEditor from '@/components/TextEditor.vue'
 import UserProfileLink from './UserProfileLink.vue'
 import { copyToClipboard } from '@/utils'
@@ -238,6 +317,8 @@ export default {
     Dialog,
     Autocomplete,
     UserProfileLink,
+    CommentEditor,
+    Tooltip,
   },
   resources: {
     discussion() {
@@ -248,6 +329,8 @@ export default {
         realtime: true,
         whitelistedMethods: {
           trackVisit: 'track_visit',
+          closeDiscussion: 'close_discussion',
+          reopenDiscussion: 'reopen_discussion',
           moveToProject: {
             method: 'move_to_project',
             validate() {
