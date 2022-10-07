@@ -31,6 +31,11 @@ const routes = [
     component: () => import('@/pages/Onboarding.vue'),
   },
   {
+    path: '/list',
+    name: 'Teams',
+    component: () => import('@/pages/Teams.vue'),
+  },
+  {
     path: '/people/:personId',
     name: 'PersonProfile',
     component: () => import('@/pages/PersonProfile.vue'),

@@ -209,7 +209,22 @@ export default {
   },
   computed: {
     activeTeams() {
-      return this.teams.data.filter((team) => !team.archived_at)
+      return this.teams.data
+        .filter((team) => !team.archived_at)
+        .map((team) => {
+          team.class = function ($route, link) {
+            if (
+              ['Team', 'TeamHome', 'TeamOverview', 'TeamProjects'].includes(
+                $route.name
+              ) &&
+              $route.params.teamId === link.route.params.teamId
+            ) {
+              return 'bg-white shadow-sm text-gray-900'
+            }
+            return 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+          }
+          return team
+        })
     },
   },
   methods: {

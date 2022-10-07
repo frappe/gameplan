@@ -15,17 +15,6 @@ export let teams = createListResource({
           name: 'Team',
           params: { teamId: team.name },
         },
-        class($route, link) {
-          if (
-            ['Team', 'TeamHome', 'TeamOverview', 'TeamProjects'].includes(
-              $route.name
-            ) &&
-            $route.params.teamId === link.route.params.teamId
-          ) {
-            return 'bg-white shadow-sm text-gray-900'
-          }
-          return 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-        },
         open: false,
         projects: [],
       }

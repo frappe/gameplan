@@ -1,29 +1,29 @@
 <template>
   <router-view v-if="$route.name === 'Onboarding'" />
-  <AppLayout v-else>
+  <MobileLayout v-else-if="isMobile">
+    <router-view />
+  </MobileLayout>
+  <DesktopLayout v-else>
     <template v-slot:sidebar>
       <AppSidebar />
     </template>
     <template v-slot:main>
       <router-view />
     </template>
-  </AppLayout>
+  </DesktopLayout>
   <Dialogs />
   <Toasts />
 </template>
 
-<script>
-import AppLayout from './components/AppLayout.vue'
+<script setup>
+import { computed } from 'vue'
+import DesktopLayout from './components/DesktopLayout.vue'
 import AppSidebar from './components/AppSidebar.vue'
 import { Dialogs } from '@/utils/dialogs'
 import { Toasts } from '@/utils/toasts'
+import { useScreenSize } from './utils/composables'
+import MobileLayout from './components/MobileLayout.vue'
 
-export default {
-  components: {
-    AppLayout,
-    AppSidebar,
-    Dialogs,
-    Toasts,
-  },
-}
+const size = useScreenSize()
+const isMobile = computed(() => size.width < 640)
 </script>
