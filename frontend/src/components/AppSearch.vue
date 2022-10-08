@@ -1,82 +1,69 @@
 <template>
-  <Combobox v-model="selectedValue" nullable>
-    <Popover class="w-full">
-      <template #target="{ open: openPopover }">
-        <div class="relative w-full">
-          <div
-            class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3"
-          >
-            <FeatherIcon name="search" class="h-4 w-4 text-gray-500" />
-          </div>
-          <ComboboxInput
-            id="search"
-            name="search"
-            class="block w-full rounded-md border border-transparent bg-gray-100 py-1 pl-10 pr-3 text-sm placeholder-gray-500 focus:border-gray-100 focus:bg-white focus:text-gray-900 focus:placeholder-gray-400 focus:shadow focus:outline-none focus:ring-0"
-            placeholder="Search"
-            type="search"
-            autocomplete="off"
-            @input="
-              (e) => {
-                $resources.search.submit(e.target.value)
-                openPopover()
-              }
-            "
-            v-focus
-          />
+  <div class="flex items-center space-x-2">
+    <Input
+      iconLeft="search"
+      class="w-full"
+      placeholder="Type a query and hit enter to search"
+      autocomplete="off"
+      :value="query"
+      @input="query = $event"
+      @keydown.enter="(e) => $resources.search.submit(e.target.value)"
+      v-focus
+    />
+    <Button
+      @click="$resources.search.submit(query)"
+      :loading="$resources.search.loading"
+    >
+      Search
+    </Button>
+  </div>
+  <div v-if="$resources.search.data" class="mt-2 text-sm text-gray-600">
+    About {{ $resources.search.data.total }} results for "{{
+      $resources.search.params.query
+    }}" ({{ $resources.search.data.duration.toFixed(2) }}
+    ms)
+  </div>
+  <div class="mt-6 divide-y" v-if="$resources.search.data?.docs.length">
+    <router-link
+      class="flex p-3 hover:bg-gray-100"
+      v-for="d in $resources.search.data.docs"
+      :to="{
+        name: 'ProjectDiscussion',
+        params: { teamId: d.team, projectId: d.project, postId: d.name },
+        query: { comment: d.comment || undefined, fromSearch: 1 },
+      }"
+    >
+      <UserAvatar :user="d.last_post_by || d.owner" class="mr-4" />
+      <div class="search-result">
+        <div class="flex items-center">
+          <div class="text-lg font-medium leading-snug" v-html="d.title" />
+          <span class="whitespace-pre text-gray-600 md:inline"> &middot; </span>
+          <span
+            class="shrink-0 whitespace-nowrap text-sm text-gray-600 md:inline"
+            >{{
+              $dayjs().diff(d.last_post_at, 'day') >= 25
+                ? $dayjs(d.last_post_at).format('D MMM')
+                : $dayjs(d.last_post_at).fromNow()
+            }}
+          </span>
         </div>
-      </template>
-      <template #body>
-        <ComboboxOptions
-          class="overflow-y-auto rounded-md rounded-t-none bg-white p-1.5 shadow-md"
-        >
-          <ComboboxOption
-            as="template"
-            v-for="option in $resources.search.data"
-            :key="option.name"
-            :value="option"
-            v-slot="{ active }"
-          >
-            <li
-              :class="[
-                'rounded-md px-2.5 py-1.5 text-base',
-                { 'bg-gray-100': active },
-              ]"
-            >
-              <div class="flex items-center justify-between">
-                <div class="text-base font-medium" v-html="option.title" />
-                <span class="text-xs text-gray-600">{{
-                  $dayjs(option.modified).fromNow()
-                }}</span>
-              </div>
-              <div
-                class="prose-sm prose mt-1 text-sm text-gray-600"
-                v-html="option.content"
-              />
-            </li>
-          </ComboboxOption>
-          <div
-            class="px-2.5 py-1.5 text-base text-gray-600"
-            v-if="
-              !$resources.search.loading &&
-              ($resources.search.data || []).length == 0
-            "
-          >
-            No results found
-          </div>
-        </ComboboxOptions>
-      </template>
-    </Popover>
-  </Combobox>
+        <div
+          class="mt-1 text-base text-gray-800"
+          v-html="trimContent(d.content)"
+        ></div>
+      </div>
+    </router-link>
+    <Button
+      class="mt-4"
+      @click="next"
+      :loading="$resources.search.loading"
+      v-if="$resources.search.data?.docs.length < $resources.search.data.total"
+    >
+      Load more
+    </Button>
+  </div>
 </template>
 <script>
-import {
-  Combobox,
-  ComboboxInput,
-  ComboboxOptions,
-  ComboboxOption,
-  ComboboxButton,
-} from '@headlessui/vue'
-import { Popover } from 'frappe-ui'
 import { focus } from '@/directives'
 
 export default {
@@ -84,42 +71,60 @@ export default {
   directives: {
     focus,
   },
-  components: {
-    Combobox,
-    ComboboxInput,
-    ComboboxOptions,
-    ComboboxOption,
-    ComboboxButton,
-    Popover,
-  },
   data() {
     return {
-      selectedValue: null,
+      start: 0,
+      query: '',
     }
-  },
-  watch: {
-    selectedValue(value) {
-      if (value) {
-        this.$router.push({
-          name: 'ProjectDiscussion',
-          params: {
-            teamId: value.team,
-            projectId: value.project,
-            postId: value.name,
-          },
-        })
-        this.$resources.search.reset()
-      }
-    },
   },
   resources: {
     search: {
-      method: 'gameplan.gameplan.doctype.team_discussion.api.search',
+      cache: 'Search',
+      method: 'gameplan.gameplan.doctype.team_discussion.search.search',
       makeParams(query) {
-        return { query }
+        return { query, start: this.start }
       },
-      debounce: 500,
+      transform(data) {
+        return {
+          ...data,
+          docs: this.start
+            ? this.$resources.search.data.docs.concat(data.docs)
+            : data.docs,
+        }
+      },
+    },
+  },
+  methods: {
+    next() {
+      this.start += 10
+      this.$resources.search.submit(
+        this.query || this.$resources.search.params.query
+      )
+    },
+    trimContent(content) {
+      let trimmedLength = 200
+      let indexOf = content.indexOf('<mark>')
+      if (indexOf === -1) {
+        return content.slice(0, 200)
+      }
+
+      let start = indexOf - trimmedLength / 2
+      if (start < 0) {
+        start = 0
+      }
+      let end = indexOf + trimmedLength / 2
+      if (end > content.length) {
+        end = content.length
+      }
+      return content.slice(start, end)
     },
   },
 }
 </script>
+<style>
+.search-result mark {
+  border-radius: 0.25rem;
+  background-color: theme('colors.yellow.200');
+  padding: 2px 3px;
+}
+</style>

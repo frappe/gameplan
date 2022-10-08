@@ -78,6 +78,8 @@ after_install = [
 	"gameplan.gameplan.doctype.team_discussion.team_discussion.make_full_text_search_index"
 ]
 
+after_migrate = ["gameplan.gameplan.doctype.team_discussion.search.rebuild_index_in_background"]
+
 # Uninstallation
 # ------------
 

@@ -347,7 +347,11 @@ export default {
           },
         },
         onSuccess(doc) {
-          if (!this.$route.query.comment && doc.last_unread_comment) {
+          if (
+            !this.$route.query.comment &&
+            !this.$route.query.fromSearch &&
+            doc.last_unread_comment
+          ) {
             this.$router.replace({
               query: { comment: doc.last_unread_comment },
             })

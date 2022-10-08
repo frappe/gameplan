@@ -132,11 +132,7 @@ export default {
       if (val) {
         nextTick(() => {
           this.$refs.newCommentEditor?.editor.commands.focus()
-          // scroll to bottom
-          let scrollContainer = getScrollParent(this.$refs.comments)
-          if (scrollContainer) {
-            scrollContainer.scrollTop = scrollContainer.scrollHeight
-          }
+          this.scrollToEnd()
         })
       }
     },
@@ -198,8 +194,8 @@ export default {
           setTimeout(() => {
             if (this.$route.query.comment) {
               this.scrollToComment(Number(this.$route.query.comment))
-            } else {
-              this.scrollToComment(comments[comments.length - 1]?.name)
+            } else if (!this.$route.query.fromSearch) {
+              this.scrollToEnd()
             }
           }, 300)
           this.attachReactionsToComments()
@@ -304,6 +300,11 @@ export default {
         this.highlightedComment = id
         setTimeout(() => (this.highlightedComment = null), 10000)
       })
+    },
+    scrollToEnd() {
+      if (window.scrollContainer) {
+        scrollContainer.scrollTop = scrollContainer.scrollHeight
+      }
     },
     discardComment() {
       if (!this.editorObject.isEmpty) {
