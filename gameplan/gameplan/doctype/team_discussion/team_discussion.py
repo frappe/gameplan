@@ -3,14 +3,15 @@
 
 import frappe
 from frappe.model.document import Document
+from gameplan.gameplan.doctype.team_discussion.search import update_index
 from gameplan.mixins.activity import HasActivity
-from gameplan.utils import extract_mentions
-from frappe.utils import get_fullname
+from gameplan.mixins.mentions import HasMentions
 
-class TeamDiscussion(HasActivity, Document):
+class TeamDiscussion(HasActivity, HasMentions, Document):
 	on_delete_cascade = ['Team Comment', 'Team Discussion Visit']
 	on_delete_set_null = ['Team Notification']
 	activities = ['Discussion Closed', 'Discussion Reopened']
+	mentions_field = 'content'
 
 	def as_dict(self, *args, **kwargs):
 		d = super(TeamDiscussion, self).as_dict(*args, **kwargs)
@@ -35,19 +36,8 @@ class TeamDiscussion(HasActivity, Document):
 		self.update_discussions_count(-1)
 
 	def on_update(self):
-		mentions = extract_mentions(self.content)
-		for mention in mentions:
-			values = frappe._dict(
-				from_user=self.owner,
-				to_user=mention.email,
-				discussion=self.name,
-			)
-			if frappe.db.exists("Team Notification", values):
-				continue
-			notification = frappe.get_doc(doctype='Team Notification')
-			notification.message = f'{get_fullname(self.owner)} mentioned you in a post',
-			notification.update(values)
-			notification.insert(ignore_permissions=True)
+		self.notify_mentions()
+		update_index(self)
 
 	@frappe.whitelist()
 	def track_visit(self):

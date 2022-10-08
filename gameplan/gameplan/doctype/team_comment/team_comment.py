@@ -3,11 +3,12 @@
 
 import frappe
 from frappe.model.document import Document
-from gameplan.utils import extract_mentions
-from frappe.utils import get_fullname
+from gameplan.gameplan.doctype.team_discussion.search import remove_index, update_index
+from gameplan.mixins.mentions import HasMentions
 
-class TeamComment(Document):
+class TeamComment(HasMentions, Document):
 	on_delete_set_null = ["Team Notification"]
+	mentions_field = 'content'
 
 	def before_insert(self):
 		if self.reference_doctype not in ["Team Discussion"]:
@@ -38,23 +39,12 @@ class TeamComment(Document):
 			reference_doc.db_set("comments_count", reference_doc.comments_count - 1)
 
 	def on_update(self):
-		mentions = extract_mentions(self.content)
-		for mention in mentions:
-			values = frappe._dict(
-				from_user=self.owner,
-				to_user=mention.email,
-				comment=self.name,
-			)
-			if self.reference_doctype == "Team Discussion":
-				values.discussion = self.reference_name
-			elif self.reference_doctype == "Team Task":
-				values.task = self.reference_name
-				values.project = frappe.db.get_value("Team Task", self.reference_name, "project")
+		self.update_discussion_index()
+		self.notify_mentions()
 
-			if frappe.db.exists("Team Notification", values):
-				continue
-
-			notification = frappe.get_doc(doctype="Team Notification")
-			notification.message = f'{get_fullname(self.owner)} mentioned you in a comment',
-			notification.update(values)
-			notification.insert(ignore_permissions=True)
+	def update_discussion_index(self):
+		if self.reference_doctype == "Team Discussion":
+			if self.deleted_at:
+				remove_index(self)
+			else:
+				update_index(self)
