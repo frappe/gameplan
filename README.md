@@ -3,7 +3,17 @@
   <p align="center">Delightful, open-source, work communication tool for remote teams</p>
 </p>
 
+<p align="center">
+  <a href="https://dashboard.cypress.io/projects/y2q697/runs">
+    <img alt="cypress" src="https://img.shields.io/endpoint?url=https://dashboard.cypress.io/badge/simple/y2q697/main&style=flat&logo=cypress">
+  </a>
+  <a href="https://github.com/frappe/gameplan/blob/main/LICENSE">
+    <img alt="license" src="https://img.shields.io/badge/license-AGPLv3-blue">
+  </a>
+</p>
+
 <img width="1402" alt="Screenshot 2022-09-18 at 9 16 08 PM" src="https://user-images.githubusercontent.com/9355208/190922102-daff8e9f-e34f-4129-a520-dcf834e92958.png">
+
 
 <details>
   <summary>Show more screenshots</summary>
