@@ -15,5 +15,6 @@
     "root_password": "123",
     "host_name": "http://gameplan.test:8000",
     "monitor": 1,
-    "server_script_enabled": true
+    "server_script_enabled": true,
+    "mute_emails": true
 }
