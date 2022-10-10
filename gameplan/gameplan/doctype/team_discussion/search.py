@@ -164,7 +164,10 @@ def get_records_to_index():
 		d.comment = ''
 		records.append(d)
 
-	result = frappe.db.get_all('Team Comment', fields=['name', 'content', 'reference_name', 'modified'], filters={'reference_doctype': 'Team Discussion'})
+	result = frappe.db.get_all('Team Comment',
+		fields=['name', 'content', 'reference_name', 'modified'],
+		filters={'reference_doctype': 'Team Discussion', 'deleted_at': ('is', 'not set')}
+	)
 	for d in result:
 		d.title = ''
 		d.comment = d.name
