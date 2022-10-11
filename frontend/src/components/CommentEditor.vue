@@ -88,6 +88,7 @@ export default {
         'Align Right',
         'Separator',
         'Image',
+        'Video',
         'Link',
         'Blockquote',
         'Code',
