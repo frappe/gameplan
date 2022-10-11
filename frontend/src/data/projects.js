@@ -2,7 +2,15 @@ import { createListResource } from 'frappe-ui'
 
 export let projects = createListResource({
   doctype: 'Team Project',
-  fields: ['name', 'title', 'icon', 'team', 'archived_at', 'is_private'],
+  fields: [
+    'name',
+    'title',
+    'icon',
+    'team',
+    'archived_at',
+    'is_private',
+    'modified',
+  ],
   order_by: 'title asc',
   limit: 999,
   cache: 'Projects',
