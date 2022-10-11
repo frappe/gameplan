@@ -7,7 +7,10 @@
       autocomplete="off"
       :value="query"
       @input="query = $event"
-      @keydown.enter="(e) => $resources.search.submit(e.target.value)"
+      @keydown.enter="
+        (e) =>
+          e.target.value ? $resources.search.submit(e.target.value) : null
+      "
       v-focus
     />
     <Button
