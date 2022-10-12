@@ -65,8 +65,9 @@ def search(query, start=0):
 
 
 def rebuild_index():
-	drop_index()
 	r = frappe.cache()
+	r.set_value('discussions_index_in_progress', True)
+	drop_index()
 	# Options for index creation
 	index_def = IndexDefinition(
 		prefix = [f"{r.make_key(PREFIX).decode()}:"],
@@ -84,9 +85,11 @@ def rebuild_index():
 
 	records_to_index = get_records_to_index()
 	create_index_for_records(records_to_index)
+	r.set_value('discussions_index_in_progress', False)
 
 def rebuild_index_in_background():
-	frappe.enqueue(rebuild_index, queue='long')
+	if not frappe.cache().get_value('discussions_index_in_progress'):
+		frappe.enqueue(rebuild_index, queue='long')
 
 def create_index_for_records(records):
 	r = frappe.cache()

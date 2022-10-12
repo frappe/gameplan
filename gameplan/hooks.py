@@ -130,6 +130,12 @@ doc_events = {
 # Scheduled Tasks
 # ---------------
 
+scheduler_events = {
+	"hourly": [
+		"gameplan.gameplan.doctype.team_discussion.search.rebuild_index_in_background"
+	]
+}
+
 # scheduler_events = {
 # 	"all": [
 # 		"gameplan.tasks.all"
