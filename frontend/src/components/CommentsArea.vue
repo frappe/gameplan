@@ -208,7 +208,7 @@ export default {
       return {
         type: 'list',
         doctype: 'Team Reaction',
-        fields: ['user', 'emoji', 'parent'],
+        fields: ['user', 'emoji', 'parent', 'name'],
         filters: {
           parenttype: 'Team Comment',
           parent: ['in', comments],
@@ -339,6 +339,7 @@ export default {
         let comment = this.commentMap[reaction.parent]
         if (comment) {
           comment.reactions.push({
+            name: reaction.name,
             user: reaction.user,
             emoji: reaction.emoji,
           })

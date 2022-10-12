@@ -3,6 +3,7 @@
     <Popover class="h-full">
       <template #target="{ togglePopover }">
         <button
+          :disabled="$resources.batch.loading"
           @click="togglePopover()"
           class="flex h-full items-center justify-center rounded-full border border-gray-300 px-2 py-1 transition hover:border-gray-400"
         >
@@ -22,10 +23,7 @@
                   togglePopover()
                 }
               "
-              :disabled="
-                $resources.addReaction.loading ||
-                $resources.removeReaction.loading
-              "
+              :disabled="$resources.batch.loading"
             >
               {{ emoji }}
             </button>
@@ -65,7 +63,6 @@
           >
             {{ emoji }} {{ reactions.count }}
           </button>
-
           <template #body>
             <div
               class="max-w-[30ch] rounded-lg border border-gray-100 bg-gray-800 px-2 py-1 text-center text-xs text-white shadow-xl"
@@ -77,52 +74,47 @@
       </TransitionGroup>
     </Transition>
   </div>
+  <div class="mt-2 space-y-2" v-if="batchRequestErrors.length">
+    <ErrorMessage v-for="error in batchRequestErrors" :message="error" />
+  </div>
 </template>
 <script>
-import { Popover, Tooltip } from 'frappe-ui'
+import { Popover, Tooltip, ErrorMessage } from 'frappe-ui'
 import ReactionFaceIcon from './ReactionFaceIcon.vue'
-import Avatar from 'frappe-ui/src/components/Avatar.vue'
+import LoadingIndicator from 'frappe-ui/src/components/LoadingIndicator.vue'
 
 export default {
   name: 'Reactions',
   props: ['reactions', 'doctype', 'name', 'readOnlyMode'],
   emits: ['update:reactions'],
-  components: { ReactionFaceIcon, Popover, Avatar, Tooltip },
+  components: {
+    ReactionFaceIcon,
+    Popover,
+    Tooltip,
+    ErrorMessage,
+    LoadingIndicator,
+  },
   resources: {
-    addReaction() {
+    batch() {
       return {
-        method: 'frappe.client.insert',
-        makeParams({ emoji, user }) {
-          return {
-            doc: {
-              doctype: 'Team Reaction',
-              parentfield: 'reactions',
-              parenttype: this.doctype,
-              parent: this.name,
-              user,
-              emoji,
-            },
+        method: 'gameplan.extends.client.batch',
+        makeParams() {
+          return { requests: this.changes }
+        },
+        onSuccess(responses) {
+          this.changes = []
+          for (let response of responses) {
+            if (response.message?.reactions) {
+              let reactions = response.message.reactions.map((d) => ({
+                name: d.name,
+                emoji: d.emoji,
+                user: d.user,
+              }))
+              this.$emit('update:reactions', reactions)
+            }
           }
         },
-        onSuccess(data) {
-          let reactions = data.reactions.map((d) => ({
-            name: d.name,
-            emoji: d.emoji,
-            user: d.user,
-          }))
-          this.$emit('update:reactions', reactions)
-        },
-      }
-    },
-    removeReaction() {
-      return {
-        method: 'frappe.client.delete',
-        makeParams(name) {
-          return {
-            doctype: 'Team Reaction',
-            name,
-          }
-        },
+        debounce: 1000,
       }
     },
   },
@@ -149,7 +141,21 @@ export default {
         },
       ]
       this.$emit('update:reactions', reactions)
-      this.$resources.addReaction.submit({ emoji, user })
+      this.changes = [
+        ...(this.changes || []),
+        {
+          cmd: 'frappe.client.insert',
+          doc: {
+            doctype: 'Team Reaction',
+            parentfield: 'reactions',
+            parenttype: this.doctype,
+            parent: this.name,
+            user,
+            emoji,
+          },
+        },
+      ]
+      this.$resources.batch.submit()
     },
     removeReaction(reaction) {
       // update local
@@ -157,7 +163,15 @@ export default {
       this.$emit('update:reactions', reactions)
 
       // update server
-      this.$resources.removeReaction.submit(reaction.name)
+      this.changes = [
+        ...(this.changes || []),
+        {
+          cmd: 'frappe.client.delete',
+          doctype: 'Team Reaction',
+          name: reaction.name,
+        },
+      ]
+      this.$resources.batch.submit()
     },
     toolTipText(reactions) {
       return reactions.users
@@ -184,6 +198,22 @@ export default {
         }
       }
       return out
+    },
+    batchRequestErrors() {
+      if (!this.$resources.batch.data) {
+        return []
+      }
+      return this.$resources.batch.data
+        .filter((d) => d.exception)
+        .map((d) => {
+          let _server_messages = d._server_messages
+          try {
+            _server_messages = JSON.parse(_server_messages)
+            return _server_messages.map((m) => JSON.parse(m).message)
+          } catch (e) {}
+          return d.exception
+        })
+        .flat()
     },
     standardEmojis() {
       return [
