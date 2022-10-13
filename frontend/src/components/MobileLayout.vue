@@ -3,7 +3,7 @@
     <div class="h-full overflow-auto px-4">
       <slot />
     </div>
-    <div class="grid grid-cols-4 border-t border-gray-300">
+    <div class="grid grid-cols-5 border-t border-gray-300">
       <router-link
         v-for="tab in tabs"
         :key="tab.name"
@@ -15,12 +15,6 @@
           class="h-6 w-6"
           :class="[tab.isActive ? 'text-blue-600' : 'text-gray-900']"
         />
-        <span
-          class="mt-2 text-base font-medium leading-none"
-          :class="[tab.isActive ? 'text-blue-600 ' : 'text-gray-900']"
-        >
-          {{ tab.name }}
-        </span>
       </router-link>
     </div>
   </div>
@@ -58,6 +52,12 @@ export default {
           icon: 'users',
           route: { name: 'People' },
           isActive: ['People', 'PersonProfile'].includes(this.$route.name),
+        },
+        {
+          name: 'Search',
+          icon: 'search',
+          route: { name: 'Search' },
+          isActive: this.$route.name === 'Search',
         },
         {
           name: 'Notifications',
