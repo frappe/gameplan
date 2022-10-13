@@ -2,7 +2,7 @@ describe('Onboarding', () => {
   it('onboarding works', () => {
     cy.login()
     cy.request('/api/method/gameplan.test_api.clear_data')
-    cy.visit('/teams')
+    cy.visit('/g')
 
     cy.get('input[placeholder=Marketing]').type('Marketing')
     cy.get('button').contains('Next').click()
@@ -11,7 +11,7 @@ describe('Onboarding', () => {
     cy.get('input[placeholder="jane@example.com"]:first').type('test@example.com')
     cy.get('button').contains('Complete Setup').click()
 
-    cy.url().should('include', '/teams/marketing/overview')
+    cy.url().should('include', '/g/marketing/overview')
 
     cy.get('a:contains("Projects")').click()
     cy.get('a:contains("Product Launch")').should('exist')
