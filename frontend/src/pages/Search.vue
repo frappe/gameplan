@@ -10,5 +10,11 @@ import AppSearch from '@/components/AppSearch.vue'
 export default {
   name: 'Search',
   components: { Input, AppSearch },
+  pageMeta() {
+    return {
+      title: 'Search',
+      emoji: '🔍',
+    }
+  },
 }
 </script>
