@@ -8,4 +8,5 @@ node_modules
 gameplan/docs/current
 gameplan/public/frontend
 gameplan/www/teams.html
+gameplan/www/g.html
 build

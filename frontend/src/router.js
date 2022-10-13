@@ -135,7 +135,7 @@ const routes = [
 ]
 
 let router = createRouter({
-  history: createWebHistory('/teams/'),
+  history: createWebHistory('/g/'),
   routes,
 })
 

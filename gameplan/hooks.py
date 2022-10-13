@@ -52,7 +52,11 @@ fixtures = [
 # }
 
 website_route_rules = [
-	{"from_route": "/teams/<path:app_path>", "to_route": "teams"},
+	{"from_route": "/g/<path:app_path>", "to_route": "g"},
+]
+
+website_redirects = [
+	{"source": r"/teams(/.*)?", "target": r"/g\1"},
 ]
 
 # Generators
