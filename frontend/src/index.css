@@ -1,2 +1,7 @@
 @import './assets/Inter/inter.css';
 @import 'frappe-ui/src/style.css';
+
+/* disable webkit tap highlight color */
+body {
+  -webkit-tap-highlight-color: transparent;
+}
