@@ -23,9 +23,6 @@
   </div>
 </template>
 <script setup>
-import { computed } from 'vue'
 import Links from '@/components/Links.vue'
-import { teams } from '@/data/teams'
-
-let activeTeams = computed(() => teams.data.filter((team) => !team.archived_at))
+import { activeTeams } from '@/data/teams'
 </script>

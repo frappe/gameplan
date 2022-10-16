@@ -121,7 +121,7 @@
         </div>
       </nav>
       <div
-        v-if="teams.fetched && !teams.data.length"
+        v-if="teams.fetched && !activeTeams.length"
         class="px-3 py-2 text-sm text-gray-500"
       >
         No teams
@@ -143,7 +143,7 @@ import { Tooltip, FeatherIcon } from 'frappe-ui'
 import Links from './Links.vue'
 import Link from './Link.vue'
 import AddTeamDialog from './AddTeamDialog.vue'
-import { teams } from '@/data/teams'
+import { activeTeams, teams } from '@/data/teams'
 import { getTeamProjects } from '@/data/projects'
 import { unreadNotifications } from '@/data/notifications'
 import UserDropdown from './UserDropdown.vue'
@@ -209,22 +209,20 @@ export default {
   },
   computed: {
     activeTeams() {
-      return this.teams.data
-        .filter((team) => !team.archived_at)
-        .map((team) => {
-          team.class = function ($route, link) {
-            if (
-              ['Team', 'TeamHome', 'TeamOverview', 'TeamProjects'].includes(
-                $route.name
-              ) &&
-              $route.params.teamId === link.route.params.teamId
-            ) {
-              return 'bg-white shadow-sm text-gray-900'
-            }
-            return 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+      return activeTeams.value.map((team) => {
+        team.class = function ($route, link) {
+          if (
+            ['Team', 'TeamHome', 'TeamOverview', 'TeamProjects'].includes(
+              $route.name
+            ) &&
+            $route.params.teamId === link.route.params.teamId
+          ) {
+            return 'bg-white shadow-sm text-gray-900'
           }
-          return team
-        })
+          return 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+        }
+        return team
+      })
     },
   },
   methods: {

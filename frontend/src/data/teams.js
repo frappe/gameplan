@@ -1,4 +1,5 @@
 import { createListResource } from 'frappe-ui'
+import { computed } from 'vue'
 
 export let teams = createListResource({
   type: 'list',
@@ -22,3 +23,7 @@ export let teams = createListResource({
   },
 })
 teams.reload()
+
+export let activeTeams = computed(() => {
+  return (teams.data || []).filter((team) => !team.archived_at)
+})

@@ -11,8 +11,13 @@ def get_context(context):
 	csrf_token = frappe.sessions.get_csrf_token()
 	frappe.db.commit()
 	context.csrf_token = csrf_token
+	context.default_route = get_default_route()
 
-	if not frappe.db.get_all('Team'):
-		context.default_route = '/onboarding'
+def on_login(login_manager):
+	frappe.response['default_route'] = get_default_route()
+
+def get_default_route():
+	if not frappe.db.get_all('Team', limit=1):
+		return '/onboarding'
 	else:
-		context.default_route = '/home'
+		return '/home'

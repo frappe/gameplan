@@ -6,6 +6,7 @@
           class="relative hidden min-h-0 flex-shrink-0 overflow-hidden hover:overflow-auto sm:block"
         >
           <slot name="sidebar" />
+          <AppSidebar />
         </div>
         <div class="w-full overflow-auto" id="scrollContainer">
           <div
@@ -29,18 +30,14 @@
             </div>
           </div>
           <div class="mx-auto max-w-4xl px-4 sm:px-10">
-            <slot name="main" />
+            <slot />
           </div>
         </div>
       </div>
     </div>
   </div>
 </template>
-<script>
+<script setup>
 import MobileNav from './MobileNav.vue'
-
-export default {
-  name: 'AppLayout',
-  components: { MobileNav },
-}
+import AppSidebar from './AppSidebar.vue'
 </script>

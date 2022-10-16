@@ -1,8 +1,10 @@
 import { createResource } from 'frappe-ui'
 import { reactive } from 'vue'
+import router from '@/router'
+import { session } from './session'
 
 let usersByName = reactive({})
-export let usersResource = createResource({
+export let users = createResource({
   method: 'gameplan.api.get_user_info',
   cache: 'Users',
   initialData: [],
@@ -13,15 +15,20 @@ export let usersResource = createResource({
   },
   onError(error) {
     if (error && error.exc_type === 'AuthenticationError') {
-      window.location.href = '/login'
+      router.push('/login')
     }
   },
 })
-usersResource.fetch()
+users.reload = () => {
+  users.promise = users.fetch()
+  return users.promise
+}
+
+users.reload()
 
 export function userInfo(email) {
   if (!email) {
-    email = sessionUser()
+    email = session.user
   }
   if (!usersByName[email]) {
     usersByName[email] = {
@@ -32,13 +39,4 @@ export function userInfo(email) {
     }
   }
   return usersByName[email]
-}
-
-let _sessionUser = null
-export function sessionUser() {
-  if (!_sessionUser) {
-    let cookies = new URLSearchParams(document.cookie.split('; ').join('&'))
-    _sessionUser = cookies.get('user_id')
-  }
-  return _sessionUser
 }

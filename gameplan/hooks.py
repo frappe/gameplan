@@ -57,6 +57,8 @@ website_route_rules = [
 
 website_redirects = [
 	{"source": r"/teams(/.*)?", "target": r"/g\1"},
+	{"source": "/", "target": "/g"},
+	{"source": "/login", "target": "/g/login"},
 ]
 
 # Generators
@@ -125,11 +127,14 @@ doc_events = {
 		"on_trash": "gameplan.mixins.on_delete.on_trash",
 	},
 	"User": {
+		"before_insert": "gameplan.gameplan.doctype.team_user_profile.team_user_profile.add_roles",
 		"after_insert": "gameplan.gameplan.doctype.team_user_profile.team_user_profile.create_user_profile",
 		"on_trash": "gameplan.gameplan.doctype.team_user_profile.team_user_profile.delete_user_profile",
 		"on_update": "gameplan.gameplan.doctype.team_user_profile.team_user_profile.on_user_update"
 	}
 }
+
+on_login = 'gameplan.www.g.on_login'
 
 # Scheduled Tasks
 # ---------------

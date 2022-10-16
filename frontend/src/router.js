@@ -1,4 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { session } from './data/session'
+import { users } from './data/users'
 
 let defaultRoute = window.default_route
 if (defaultRoute?.includes('{{')) {
@@ -14,6 +16,11 @@ const routes = [
     path: '/home',
     name: 'Home',
     component: () => import('@/pages/Home.vue'),
+  },
+  {
+    path: '/login',
+    name: 'Login',
+    component: () => import('@/pages/Login.vue'),
   },
   {
     path: '/people',
@@ -140,7 +147,7 @@ let router = createRouter({
 })
 
 let scrollPositions = {}
-router.beforeEach((to, from, next) => {
+function saveAndRestoreScrollPosition(to, from) {
   // window.scrollContainer is reference to the scroll container in AppLayout.vue
   if (window.scrollContainer) {
     scrollPositions[from.fullPath] = window.scrollContainer.scrollTop
@@ -150,7 +157,24 @@ router.beforeEach((to, from, next) => {
       window.scrollContainer.scrollTop = scrollPositions[to.fullPath]
     }, 0)
   }
-  next()
+}
+
+router.beforeEach(async (to, from, next) => {
+  saveAndRestoreScrollPosition(to, from)
+  let isLoggedIn = session.isLoggedIn
+  try {
+    await users.promise
+  } catch (error) {
+    isLoggedIn = false
+  }
+
+  if (to.name === 'Login' && isLoggedIn) {
+    next({ name: 'Home' })
+  } else if (to.name !== 'Login' && !isLoggedIn) {
+    next({ name: 'Login' })
+  } else {
+    next()
+  }
 })
 
 export default router

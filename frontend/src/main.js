@@ -19,7 +19,8 @@ import './index.css'
 import { dayjs } from '@/utils'
 import { createDialog } from './utils/dialogs'
 import { createToast } from './utils/toasts'
-import { userInfo, usersResource } from './data/users'
+import { userInfo, users } from './data/users'
+import { session } from './data/session'
 
 let globalComponents = {
   Button,
@@ -30,7 +31,7 @@ let globalComponents = {
   Alert,
   Badge,
   UserInfo,
-  UserAvatar
+  UserAvatar,
 }
 
 let call = createCall({
@@ -57,7 +58,8 @@ app.config.globalProperties.$dialog = createDialog
 app.config.globalProperties.$toast = createToast
 app.config.globalProperties.$log = console.log.bind(console)
 app.config.globalProperties.$user = userInfo
-app.config.globalProperties.$users = usersResource
+app.config.globalProperties.$users = users
+app.config.globalProperties.$session = session
 app.config.globalProperties.$readOnlyMode = window.read_only_mode
 app.config.globalProperties.$isSessionUser = (email) => {
   return userInfo().name === email
@@ -70,7 +72,8 @@ app.mount('#app')
 if (import.meta.env.DEV) {
   window.$dayjs = dayjs
   window.$user = userInfo
-  window.$users = usersResource
+  window.$users = users
+  window.$session = session
   window.$dialog = createDialog
   window.$toast = createToast
 }

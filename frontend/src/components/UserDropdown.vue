@@ -59,7 +59,7 @@ export default {
   },
   methods: {
     logout() {
-      this.$call('logout').then(() => (window.location.href = '/login'))
+      this.$session.logout.submit()
     },
   },
 }
