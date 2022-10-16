@@ -1,9 +1,9 @@
 <template>
-  <div class="flex h-full flex-col">
+  <div class="flex h-full flex-col standalone:h-screen standalone:pt-4">
     <div class="h-full overflow-auto px-4">
       <slot />
     </div>
-    <div class="grid grid-cols-5 border-t border-gray-300">
+    <div class="grid grid-cols-5 border-t border-gray-300 standalone:pb-4">
       <router-link
         v-for="tab in tabs"
         :key="tab.name"

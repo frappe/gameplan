@@ -6,6 +6,7 @@
           <h1 class="text-2xl font-semibold">People</h1>
           <div class="flex items-center space-x-2">
             <Input
+              class="hidden sm:block"
               type="text"
               placeholder="Search by name"
               v-model="search"
@@ -21,6 +22,16 @@
               v-model="orderBy"
             />
           </div>
+        </div>
+        <div>
+          <Input
+            class="sm:hidden w-full mt-2"
+            type="text"
+            placeholder="Search by name"
+            v-model="search"
+            :debounce="500"
+            @input="search = $event"
+          />
         </div>
         <div class="mt-6 grid gap-4 md:grid-cols-3">
           <router-link
