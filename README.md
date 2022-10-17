@@ -59,8 +59,8 @@ These are some of the tools used on frontend:
 - [HeadlessUI](https://headlessui.com)
 
 ## Local Setup
-### Docker Compose
- Clone the repo
+### Docker
+You need Docker, docker-compose and git setup on your machine. Refer [Docker documentation](https://docs.docker.com/). After that, run the following commands:
 ```
 git clone https://github.com/frappe/gameplan
 cd gameplan/docker
