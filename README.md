@@ -17,11 +17,11 @@
 
 <details>
   <summary>Show more screenshots</summary>
-  
+
   <img width="1402" alt="Screenshot 2022-09-18 at 9 18 17 PM" src="https://user-images.githubusercontent.com/9355208/190922154-e5bdb690-57d3-4024-9143-9d009894b035.png">
 
   <img width="1402" alt="Screenshot 2022-09-18 at 9 18 47 PM" src="https://user-images.githubusercontent.com/9355208/190922161-61eb1cd7-a56a-4460-bc7f-d6c24d1c2df7.png">
-  
+
   <img width="1402" alt="Screenshot 2022-09-18 at 11 47 06 PM" src="https://user-images.githubusercontent.com/9355208/190922333-fdad6271-2a77-4c7d-8d74-7c518d3052d6.png">
 
 
@@ -59,7 +59,19 @@ These are some of the tools used on frontend:
 - [HeadlessUI](https://headlessui.com)
 
 ## Local Setup
+### Docker Compose
+ Clone the repo
+```
+git clone https://github.com/frappe/gameplan
+cd gameplan/docker
+docker-compose up
+```
 
+Wait for sometime until the setup script creates a site. After that you can
+access `http://localhost:8000` in your browser and Gameplan's login screen
+should show up.
+
+### Frappe Bench
 1. Setup frappe-bench by following [this guide](https://frappeframework.com/docs/v14/user/en/installation)
 1. In the frappe-bench directory, run `bench start` and keep it running. Open a new terminal session and cd into `frappe-bench` directory.
 1. Run the following commands:
