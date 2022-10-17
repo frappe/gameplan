@@ -72,6 +72,9 @@ access `http://localhost:8000` in your browser and Gameplan's login screen
 should show up.
 
 ### Frappe Bench
+
+Currently, this app depends on the `develop` branch of [frappe](https://github.com/frappe/frappe).
+
 1. Setup frappe-bench by following [this guide](https://frappeframework.com/docs/v14/user/en/installation)
 1. In the frappe-bench directory, run `bench start` and keep it running. Open a new terminal session and cd into `frappe-bench` directory.
 1. Run the following commands:
