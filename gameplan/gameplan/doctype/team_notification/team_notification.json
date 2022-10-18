@@ -37,7 +37,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Type",
-   "options": "Mention",
+   "options": "Mention\nReaction",
    "reqd": 1
   },
   {
@@ -86,7 +86,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-08-31 20:13:13.771477",
+ "modified": "2022-10-17 20:14:20.818904",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "Team Notification",

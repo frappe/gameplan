@@ -55,7 +55,7 @@
                 v-if="
                   link.unreadNotifications && link.unreadNotifications.data > 0
                 "
-                class="!ml-auto block rounded bg-blue-400 px-1 text-sm text-white"
+                class="!ml-auto block text-sm text-gray-800"
               >
                 {{ link.unreadNotifications.data }}
               </span>

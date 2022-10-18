@@ -6,8 +6,9 @@ from frappe.model.document import Document
 from gameplan.gameplan.doctype.team_discussion.search import update_index
 from gameplan.mixins.activity import HasActivity
 from gameplan.mixins.mentions import HasMentions
+from gameplan.mixins.reactions import HasReactions
 
-class TeamDiscussion(HasActivity, HasMentions, Document):
+class TeamDiscussion(HasActivity, HasMentions, HasReactions, Document):
 	on_delete_cascade = ['Team Comment', 'Team Discussion Visit']
 	on_delete_set_null = ['Team Notification']
 	activities = ['Discussion Closed', 'Discussion Reopened']
@@ -37,6 +38,7 @@ class TeamDiscussion(HasActivity, HasMentions, Document):
 
 	def on_update(self):
 		self.notify_mentions()
+		self.notify_reactions()
 		update_index(self)
 
 	@frappe.whitelist()

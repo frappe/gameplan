@@ -15,9 +15,15 @@
         v-for="d in notifications"
         :key="d.name"
       >
-        <div class="flex items-start">
-          <UserAvatar size="sm" :user="d.from_user" />
-          <div class="ml-2 text-base text-gray-900">
+        <div class="flex items-start space-x-2">
+          <UserAvatar size="sm" :user="d.from_user" v-if="d.from_user" />
+          <div
+            class="grid h-5 w-5 place-items-center"
+            v-if="d.type === 'Reaction'"
+          >
+            <FeatherIcon name="heart" class="w-4 h-4 text-gray-700" />
+          </div>
+          <div class="text-base text-gray-900">
             {{ d.message }} {{ $dayjs(d.creation).fromNow() }}
           </div>
         </div>
@@ -100,6 +106,7 @@ export default {
           'from_user',
           'message',
           'read',
+          'type',
           'creation',
           'comment',
           'discussion',
@@ -122,6 +129,7 @@ export default {
           'from_user',
           'message',
           'read',
+          'type',
           'creation',
           'comment',
           'discussion',
