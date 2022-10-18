@@ -25,7 +25,7 @@
         </div>
         <div>
           <Input
-            class="sm:hidden w-full mt-2"
+            class="mt-2 w-full sm:hidden"
             type="text"
             placeholder="Search by name"
             v-model="search"
@@ -51,7 +51,7 @@
               <div class="text-base font-medium text-gray-900">
                 {{ $user(user.user).full_name }}
               </div>
-              <div class="text-base text-gray-600">{{ user.user }}</div>
+              <div class="text-base text-gray-600">{{ user.bio }}</div>
             </div>
           </router-link>
 
@@ -79,7 +79,7 @@ export default {
   data() {
     return {
       search: '',
-      orderBy: 'full_name asc',
+      orderBy: 'modified desc',
     }
   },
   resources: {
@@ -89,7 +89,7 @@ export default {
         cache: 'People',
         doctype: 'Team User Profile',
         filters: { enabled: 1 },
-        fields: ['name', 'user', 'modified'],
+        fields: ['name', 'user', 'bio', 'modified'],
         limit: 999,
         order_by: this.orderBy,
       }
