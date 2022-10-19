@@ -43,7 +43,6 @@ export default {
   pageMeta() {
     return {
       title: 'Home',
-      emoji: '🏠',
     }
   },
 }
