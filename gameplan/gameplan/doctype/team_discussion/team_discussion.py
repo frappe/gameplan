@@ -39,8 +39,11 @@ class TeamDiscussion(HasActivity, HasMentions, HasReactions, Document):
 	def on_update(self):
 		self.notify_mentions()
 		self.notify_reactions()
-		self.update_slug()
+		self.log_title_update()
 		update_index(self)
+
+	def before_save(self):
+		self.update_slug()
 
 	def update_slug(self):
 		# remove special characters from title and set as slug
