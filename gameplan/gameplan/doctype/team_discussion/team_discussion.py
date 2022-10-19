@@ -11,7 +11,7 @@ from gameplan.mixins.reactions import HasReactions
 class TeamDiscussion(HasActivity, HasMentions, HasReactions, Document):
 	on_delete_cascade = ['Team Comment', 'Team Discussion Visit']
 	on_delete_set_null = ['Team Notification']
-	activities = ['Discussion Closed', 'Discussion Reopened']
+	activities = ['Discussion Closed', 'Discussion Reopened', 'Discussion Title Changed']
 	mentions_field = 'content'
 
 	def as_dict(self, *args, **kwargs):
@@ -55,6 +55,13 @@ class TeamDiscussion(HasActivity, HasMentions, HasReactions, Document):
 		slug = '-'.join(slug)
 		slug = re.sub('[-]+', '-', slug)
 		self.slug = slug
+
+	def log_title_update(self):
+		if self.has_value_changed('title') and self.get_doc_before_save():
+			self.log_activity('Discussion Title Changed', data={
+				'old_title': self.get_doc_before_save().title,
+				'new_title': self.title
+			})
 
 	@frappe.whitelist()
 	def track_visit(self):

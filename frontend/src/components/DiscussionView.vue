@@ -84,13 +84,18 @@
           <div class="ml-auto flex space-x-2">
             <Dropdown
               v-if="!readOnlyMode"
-              v-show="!editingContent"
+              v-show="!editingContent && !editingTitle"
               class="ml-auto"
               placement="right"
               :button="{ icon: 'more-horizontal', appearance: 'minimal' }"
               :options="[
                 {
-                  label: 'Edit',
+                  label: 'Edit Title',
+                  icon: 'edit',
+                  handler: () => (editingTitle = true),
+                },
+                {
+                  label: 'Edit Post',
                   icon: 'edit',
                   handler: () => (editingContent = true),
                   condition: () => $user().name === discussion.owner,
@@ -160,26 +165,34 @@
               ]"
             />
             <Button
-              v-if="editingContent"
+              v-if="editingContent || editingTitle"
               @click="
                 () => {
                   $resources.discussion.reload()
                   editingContent = false
+                  editingTitle = false
                 }
               "
             >
               Discard
             </Button>
             <Button
-              v-if="editingContent"
+              v-if="editingContent || editingTitle"
               appearance="primary"
               @click="
                 () => {
-                  $resources.discussion.setValue.submit({
-                    title: discussion.title,
-                    content: discussion.content,
+                  let values = {}
+                  if (editingContent) {
+                    values.content = discussion.content
+                  }
+                  if (editingTitle) {
+                    values.title = discussion.title
+                  }
+                  $resources.discussion.setValue.submit(values).then(() => {
+                    this.updateUrlSlug()
                   })
                   editingContent = false
+                  editingTitle = false
                 }
               "
             >
@@ -189,7 +202,7 @@
         </div>
       </div>
       <div>
-        <div v-if="editingContent" class="mb-3 w-full">
+        <div v-if="editingTitle" class="mb-3 w-full">
           <input
             type="text"
             class="mt-1 w-full rounded-lg border-0 bg-gray-100 px-2 py-1 text-xl font-semibold focus:ring-0"
@@ -347,18 +360,7 @@ export default {
           },
         },
         onSuccess(doc) {
-          if (
-            !this.$route.params.slug ||
-            this.$route.params.slug !== doc.slug
-          ) {
-            this.$router.replace({
-              name: 'ProjectDiscussion',
-              params: {
-                ...this.$route.params,
-                slug: doc.slug,
-              },
-            })
-          }
+          this.updateUrlSlug()
           if (
             !this.$route.query.comment &&
             !this.$route.query.fromSearch &&
@@ -387,6 +389,7 @@ export default {
   data() {
     return {
       editingContent: false,
+      editingTitle: false,
       discussionMoveDialog: {
         show: false,
         project: null,
@@ -418,6 +421,18 @@ export default {
     },
     handleTitleVisibility(visible, entry) {
       this.showNavbar = !visible
+    },
+    updateUrlSlug() {
+      let doc = this.discussion
+      if (!this.$route.params.slug || this.$route.params.slug !== doc.slug) {
+        this.$router.replace({
+          name: 'ProjectDiscussion',
+          params: {
+            ...this.$route.params,
+            slug: doc.slug,
+          },
+        })
+      }
     },
   },
   computed: {

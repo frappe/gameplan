@@ -235,6 +235,7 @@ export default {
         transform(activities) {
           for (let activity of activities) {
             activity.doctype = 'Team Activity'
+            activity.data = activity.data ? JSON.parse(activity.data) : null
           }
           return activities
         },
