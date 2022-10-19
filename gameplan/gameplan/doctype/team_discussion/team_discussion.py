@@ -1,6 +1,6 @@
 # Copyright (c) 2022, Frappe Technologies Pvt Ltd and contributors
 # For license information, please see license.txt
-
+import re
 import frappe
 from frappe.model.document import Document
 from gameplan.gameplan.doctype.team_discussion.search import update_index
@@ -39,7 +39,19 @@ class TeamDiscussion(HasActivity, HasMentions, HasReactions, Document):
 	def on_update(self):
 		self.notify_mentions()
 		self.notify_reactions()
+		self.update_slug()
 		update_index(self)
+
+	def update_slug(self):
+		# remove special characters from title and set as slug
+		if not self.title:
+			return
+		slug = re.sub('[^A-Za-z0-9\s-]+', '', self.title.lower())
+		slug = slug.split(' ')
+		slug = [part for part in slug if part]
+		slug = '-'.join(slug)
+		slug = re.sub('[-]+', '-', slug)
+		self.slug = slug
 
 	@frappe.whitelist()
 	def track_visit(self):

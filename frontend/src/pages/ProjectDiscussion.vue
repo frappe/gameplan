@@ -16,7 +16,7 @@ import DiscussionView from '@/components/DiscussionView.vue'
 
 export default {
   name: 'ProjectDiscussion',
-  props: ['project', 'postId'],
+  props: ['project', 'postId', 'slug'],
   components: {
     TextEditor,
     Avatar,

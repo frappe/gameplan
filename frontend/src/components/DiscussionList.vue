@@ -5,7 +5,12 @@
       :key="d.name"
       :to="{
         name: this.routeName,
-        params: { teamId: d.team, projectId: d.project, postId: d.name },
+        params: {
+          teamId: d.team,
+          projectId: d.project,
+          postId: d.name,
+          slug: d.slug,
+        },
       }"
       class="relative block hover:bg-gray-100"
     >
