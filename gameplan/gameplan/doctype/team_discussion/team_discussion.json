@@ -10,6 +10,7 @@
   "team",
   "status",
   "title",
+  "slug",
   "content",
   "reactions",
   "last_post_at",
@@ -87,11 +88,16 @@
    "fieldtype": "Link",
    "label": "Closed By",
    "options": "User"
+  },
+  {
+   "fieldname": "slug",
+   "fieldtype": "Data",
+   "label": "Slug"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-10-05 20:47:01.095851",
+ "modified": "2022-10-19 17:08:30.025988",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "Team Discussion",

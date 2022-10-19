@@ -348,6 +348,18 @@ export default {
         },
         onSuccess(doc) {
           if (
+            !this.$route.params.slug ||
+            this.$route.params.slug !== doc.slug
+          ) {
+            this.$router.replace({
+              name: 'ProjectDiscussion',
+              params: {
+                ...this.$route.params,
+                slug: doc.slug,
+              },
+            })
+          }
+          if (
             !this.$route.query.comment &&
             !this.$route.query.fromSearch &&
             doc.last_unread_comment

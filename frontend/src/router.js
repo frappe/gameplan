@@ -115,7 +115,7 @@ const routes = [
           },
           {
             name: 'ProjectDiscussion',
-            path: 'discussion/:postId',
+            path: 'discussion/:postId/:slug?',
             component: () => import('@/pages/ProjectDiscussion.vue'),
             props: true,
           },
