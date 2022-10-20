@@ -35,11 +35,8 @@
                   <span
                     class="hidden shrink-0 whitespace-nowrap text-sm text-gray-600 md:inline"
                     :title="discussionTimestampDescription(d)"
-                    >{{
-                      $dayjs().diff(d.last_post_at, 'day') >= 25
-                        ? $dayjs(d.last_post_at).format('D MMM')
-                        : $dayjs(d.last_post_at).fromNow()
-                    }}
+                  >
+                    {{ discussionTimestamp(d) }}
                   </span>
                 </div>
                 <span
@@ -74,11 +71,8 @@
                 <span
                   class="shrink-0 whitespace-nowrap text-sm text-gray-600 md:hidden"
                   :title="discussionTimestampDescription(d)"
-                  >{{
-                    $dayjs().diff(d.last_post_at, 'day') >= 25
-                      ? $dayjs(d.last_post_at).format('D MMM')
-                      : $dayjs(d.last_post_at).fromNow()
-                  }}
+                >
+                  {{ discussionTimestamp(d) }}
                 </span>
               </div>
             </div>
@@ -146,6 +140,12 @@ export default {
   methods: {
     isActive(update) {
       return Number(this.$route.params.postId) === update.name
+    },
+    discussionTimestamp(d) {
+      let timestamp = d.last_post_at || d.creation
+      return this.$dayjs().diff(timestamp, 'day') >= 25
+        ? this.$dayjs(timestamp).format('D MMM')
+        : this.$dayjs(timestamp).fromNow()
     },
     discussionTimestampDescription(d) {
       return [
