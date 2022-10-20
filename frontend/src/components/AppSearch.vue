@@ -3,7 +3,7 @@
     <Input
       iconLeft="search"
       class="w-full"
-      placeholder="Type a query and hit enter to search"
+      placeholder="Type a keyword and hit enter to search"
       autocomplete="off"
       :value="query"
       @input="query = $event"
