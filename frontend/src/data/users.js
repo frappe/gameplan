@@ -19,11 +19,6 @@ export let users = createResource({
     }
   },
 })
-users.reload = () => {
-  users.promise = users.fetch()
-  return users.promise
-}
-
 users.reload()
 
 export function userInfo(email) {

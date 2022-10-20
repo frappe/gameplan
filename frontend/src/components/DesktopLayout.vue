@@ -24,8 +24,10 @@
         </div>
       </div>
     </div>
+    <CommandPalette />
   </div>
 </template>
 <script setup>
 import AppSidebar from './AppSidebar.vue'
+import CommandPalette from './CommandPalette.vue'
 </script>
