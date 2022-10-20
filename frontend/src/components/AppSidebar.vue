@@ -31,14 +31,14 @@
     }"
     :style="{ width: `${sidebarWidth}px` }"
   >
-    <div class="flex w-full items-center justify-between px-2 py-4">
+    <div class="flex w-full items-center justify-between px-2 py-2">
       <UserDropdown />
       <Tooltip text="Hide Sidebar">
         <Button icon="chevrons-left" @click="sidebarOpen = false"></Button>
       </Tooltip>
     </div>
     <div class="flex-1">
-      <nav class="space-y-1 px-2">
+      <nav class="px-2">
         <Links
           :links="navigation"
           class="flex items-center rounded-md px-2 py-2 font-medium"
@@ -69,7 +69,7 @@
           Create Team
         </Button>
       </div>
-      <nav class="mt-1 space-y-1 px-2">
+      <nav class="mt-1 px-2">
         <div v-for="team in activeTeams" :key="team.name">
           <Link
             :link="team"
