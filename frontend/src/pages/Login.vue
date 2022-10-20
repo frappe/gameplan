@@ -18,7 +18,12 @@
             <input
               id="email"
               name="email"
-              type="email"
+              :type="
+                (email || '').toLowerCase() === 'administrator'
+                  ? 'text'
+                  : 'email'
+              "
+              v-model="email"
               placeholder="jane@example.com"
               class="form-input mt-2 w-full bg-white shadow-sm focus:bg-white focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-100"
               required
@@ -85,6 +90,7 @@ import GameplanLogo from '@/components/GameplanLogo.vue'
 import GameplanLogoType from '@/components/GameplanLogoType.vue'
 
 let showEmailLogin = ref(false)
+let email = ref('')
 
 let authProviders = createResource({
   method: 'gameplan.api.oauth_providers',
