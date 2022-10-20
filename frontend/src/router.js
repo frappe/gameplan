@@ -90,6 +90,11 @@ const routes = [
             path: 'projects',
             component: () => import('@/pages/TeamProjects.vue'),
           },
+          {
+            name: 'TeamDiscussions',
+            path: 'discussions',
+            component: () => import('@/pages/TeamDiscussions.vue'),
+          },
         ],
       },
       {

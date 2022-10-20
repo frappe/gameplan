@@ -75,6 +75,13 @@ export default {
           },
           isActive: this.$route.name === 'TeamProjects',
         },
+        {
+          name: 'Discussions',
+          route: {
+            name: 'TeamDiscussions',
+          },
+          isActive: this.$route.name === 'TeamDiscussions',
+        },
       ]
     },
   },
