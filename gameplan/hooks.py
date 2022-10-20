@@ -140,8 +140,8 @@ on_login = 'gameplan.www.g.on_login'
 # ---------------
 
 scheduler_events = {
-	"hourly": [
-		"gameplan.gameplan.doctype.team_discussion.search.rebuild_index_in_background"
+	"all": [
+		"gameplan.gameplan.doctype.team_discussion.search.rebuild_index_if_not_exists"
 	]
 }
 

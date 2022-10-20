@@ -87,9 +87,17 @@ def rebuild_index():
 	create_index_for_records(records_to_index)
 	r.set_value('discussions_index_in_progress', False)
 
+
 def rebuild_index_in_background():
 	if not frappe.cache().get_value('discussions_index_in_progress'):
 		frappe.enqueue(rebuild_index, queue='long')
+
+
+def rebuild_index_if_not_exists():
+	try:
+		frappe.cache().ft(INDEX_NAME).info()
+	except ResponseError:
+		rebuild_index()
 
 def create_index_for_records(records):
 	r = frappe.cache()
