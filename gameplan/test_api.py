@@ -13,7 +13,10 @@ def whitelist(fn):
 
 
 @whitelist
-def clear_data():
+def clear_data(onboard=None):
     doctypes = frappe.get_all("DocType", filters={"module": "Gameplan"}, pluck="name")
     for doctype in doctypes:
         frappe.db.delete(doctype)
+
+    if onboard:
+        frappe.get_doc(doctype='Team', title='Test Team').insert()
