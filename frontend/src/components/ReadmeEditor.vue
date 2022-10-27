@@ -21,6 +21,7 @@
       <Tooltip v-if="!editReadme && !$readOnlyMode" text="Edit" placement="top">
         <Button
           icon="edit-2"
+          label="Edit"
           @click="editReadmeAndFocus"
           appearance="minimal"
         />

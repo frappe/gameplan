@@ -65,9 +65,11 @@
       </nav>
       <div class="mt-6 flex items-center justify-between px-3">
         <h3 class="text-sm font-semibold text-gray-700">Teams</h3>
-        <Button icon="plus" @click="showAddTeamDialog = true">
-          Create Team
-        </Button>
+        <Button
+          icon="plus"
+          label="Create Team"
+          @click="showAddTeamDialog = true"
+        />
       </div>
       <nav class="mt-1 px-2">
         <div v-for="team in activeTeams" :key="team.name">

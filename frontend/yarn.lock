@@ -916,10 +916,10 @@ csstype@^2.6.8:
   resolved "https://registry.yarnpkg.com/csstype/-/csstype-2.6.20.tgz#9229c65ea0b260cf4d3d997cb06288e36a8d6dda"
   integrity sha512-/WwNkdXfckNgw6S5R125rrW8ez139lBHWouiBvX8dfMFtcn6V81REDqnH7+CRpRipfYlyU1CmOnOxrmGcFOjeA==
 
-cypress@^10.9.0:
-  version "10.9.0"
-  resolved "https://registry.yarnpkg.com/cypress/-/cypress-10.9.0.tgz#273a61a6304766f9d6423e5ac8d4a9a11ed8b485"
-  integrity sha512-MjIWrRpc+bQM9U4kSSdATZWZ2hUqHGFEQTF7dfeZRa4MnalMtc88FIE49USWP2ZVtfy5WPBcgfBX+YorFqGElA==
+cypress@10.11.0:
+  version "10.11.0"
+  resolved "https://registry.yarnpkg.com/cypress/-/cypress-10.11.0.tgz#e9fbdd7638bae3d8fb7619fd75a6330d11ebb4e8"
+  integrity sha512-lsaE7dprw5DoXM00skni6W5ElVVLGAdRUUdZjX2dYsGjbY/QnpzWZ95Zom1mkGg0hAaO/QVTZoFVS7Jgr/GUPA==
   dependencies:
     "@cypress/request" "^2.88.10"
     "@cypress/xvfb" "^1.2.4"
@@ -1343,10 +1343,10 @@ fraction.js@^4.2.0:
   resolved "https://registry.yarnpkg.com/fraction.js/-/fraction.js-4.2.0.tgz#448e5109a313a3527f5a3ab2119ec4cf0e0e2950"
   integrity sha512-MhLuK+2gUcnZe8ZHlaaINnQLl0xRIGRfcGk2yl8xoQAfHrSsL3rYu6FCmBdkdbhc9EPlwyGHewaRsvwRMJtAlA==
 
-frappe-ui@^0.0.83:
-  version "0.0.83"
-  resolved "https://registry.yarnpkg.com/frappe-ui/-/frappe-ui-0.0.83.tgz#b602d117d1bbb09657c1233fa7c5586e8bc03fe4"
-  integrity sha512-EEWC0shs1eWsWJZvh9FFw2FyRZiJCXqAE5Lk30xrJ6Vcm8VE3Z0qiXrRtqtCEHjL6X9ED1gc/yapzNHWv/GIag==
+frappe-ui@^0.0.84:
+  version "0.0.84"
+  resolved "https://registry.yarnpkg.com/frappe-ui/-/frappe-ui-0.0.84.tgz#07477f877278492c6d5c5762a12459ce2b4906cb"
+  integrity sha512-R0b7NhBtEOPoSlrytfFr2UjHd9PmXr4I6IHaWiVR0yROS6h4MulKiuKogxGz/jkPDO9PIz+Wl1dXuhlRsObtvw==
   dependencies:
     "@headlessui/vue" "^1.5.0"
     "@popperjs/core" "^2.11.2"
