@@ -5,6 +5,7 @@
         <input
           v-if="editTaskTitle"
           type="text"
+          placeholder="Title"
           class="-ml-1 w-full rounded-md border-none p-1 text-2xl font-semibold focus:bg-gray-100 focus:outline-none focus:ring-0"
           :class="{ 'bg-gray-100': editTaskTitle }"
           v-model="task.doc.title"
@@ -37,7 +38,7 @@
             </div>
             <Dropdown
               v-if="!readOnlyMode"
-              :button="{ icon: 'more-horizontal' }"
+              :button="{ icon: 'more-horizontal', label: 'Task Options' }"
               :options="[
                 {
                   label: 'Edit title',
