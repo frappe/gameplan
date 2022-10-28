@@ -22,7 +22,9 @@ def create_user_profile(doc, method=None):
 		frappe.db.commit()
 
 def delete_user_profile(doc, method=None):
-	return frappe.get_doc("Team User Profile", {"user": doc.name}).delete()
+	exists = frappe.db.exists("Team User Profile", {"user": doc.name})
+	if exists:
+		return frappe.get_doc("Team User Profile", {"user": doc.name}).delete()
 
 def on_user_update(doc, method=None):
 	create_user_profile(doc)
