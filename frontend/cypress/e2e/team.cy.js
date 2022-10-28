@@ -20,7 +20,7 @@ describe('Team', () => {
 
     cy.get('button[aria-label="Options"]').click()
     cy.get('button').contains('Archive').click()
-    cy.get('[role=dialog] button').contains('Archive').click()
+    cy.dialog('button').contains('Archive').click()
     cy.contains('Engineering').should('not.exist')
 
     cy.get('button').contains('Administrator').click()

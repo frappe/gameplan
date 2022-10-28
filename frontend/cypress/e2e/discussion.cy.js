@@ -103,7 +103,7 @@ describe('Discussion', () => {
     // close discussion
     cy.iconButton('Discussion Options').click()
     cy.button('Close discussion').click()
-    cy.get('[role=dialog] button').contains('Close').click()
+    cy.dialog('button').contains('Close').click()
     cy.contains('closed this discussion').should('exist')
     cy.button('Add a comment').should('not.exist')
   })

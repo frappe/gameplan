@@ -45,3 +45,7 @@ Cypress.Commands.add("button", (text) => {
 Cypress.Commands.add("iconButton", (text) => {
 	return cy.get(`button[aria-label="${text}"]`);
 });
+
+Cypress.Commands.add("dialog", (selector) => {
+	return cy.get(`[role=dialog] ${selector}`);
+});
