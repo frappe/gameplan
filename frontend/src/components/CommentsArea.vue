@@ -204,7 +204,10 @@ export default {
     },
     reactions() {
       if (!this.$resources.comments.data?.length) return
-      let comments = this.$resources.comments.data.map((d) => d.name)
+      let comments = this.$resources.comments.data
+        .map((d) => d.name)
+        .filter(Boolean)
+      if (!comments.length) return
       return {
         type: 'list',
         doctype: 'Team Reaction',
