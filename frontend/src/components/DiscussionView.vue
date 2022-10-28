@@ -87,7 +87,11 @@
               v-show="!editingContent && !editingTitle"
               class="ml-auto"
               placement="right"
-              :button="{ icon: 'more-horizontal', appearance: 'minimal' }"
+              :button="{
+                icon: 'more-horizontal',
+                appearance: 'minimal',
+                label: 'Discussion Options',
+              }"
               :options="[
                 {
                   label: 'Edit Title',
@@ -208,6 +212,7 @@
             class="mt-1 w-full rounded-lg border-0 bg-gray-100 px-2 py-1 text-xl font-semibold focus:ring-0"
             ref="title"
             v-model="discussion.title"
+            placeholder="Title"
           />
         </div>
         <h1

@@ -37,3 +37,11 @@ Cypress.Commands.add("login", (email, password) => {
 		body: { usr: email, pwd: password },
 	});
 });
+
+Cypress.Commands.add("button", (text) => {
+	return cy.get(`button:contains("${text}")`);
+});
+
+Cypress.Commands.add("iconButton", (text) => {
+	return cy.get(`button[aria-label="${text}"]`);
+});
