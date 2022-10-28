@@ -43,7 +43,11 @@
           v-show="!comment.editing"
           class="ml-auto"
           placement="right"
-          :button="{ icon: 'more-horizontal', appearance: 'minimal' }"
+          :button="{
+            icon: 'more-horizontal',
+            appearance: 'minimal',
+            label: 'Comment Options',
+          }"
           :options="[
             {
               label: 'Edit',
