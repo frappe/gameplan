@@ -34,7 +34,7 @@
             </Tooltip>
             <Dropdown
               placement="left"
-              :button="{ icon: 'more-horizontal', appearance: 'minimal' }"
+              :button="{ icon: 'more-horizontal', appearance: 'minimal', label: 'Options' }"
               :options="[
                 {
                   label: 'Edit',
