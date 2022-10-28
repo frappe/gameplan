@@ -24,7 +24,7 @@ describe('Project', () => {
     cy.get('label:contains("Title") input').type('Project 1')
     cy.get('button').contains('Create').click()
     cy.get('h1:contains("Project 1")').should('exist')
-    cy.get('@project')
+    cy.wait('@project')
       .its('response.body.message')
       .then((project) => {
         cy.url().should('include', `/g/engineering/projects/${project.name}`)

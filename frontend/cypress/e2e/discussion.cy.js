@@ -58,7 +58,7 @@ describe('Discussion', () => {
     cy.button('Add a comment').click()
     cy.focused().type('This is the first comment{enter}')
     cy.button('Submit').click()
-    cy.get('@comment')
+    cy.wait('@comment')
       .its('response.body.message')
       .then((comment) => {
         cy.get(`div[data-id="${comment.name}"]`).should('exist')
