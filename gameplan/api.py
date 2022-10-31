@@ -3,6 +3,7 @@
 
 from __future__ import unicode_literals
 import frappe
+from gameplan.utils import validate_type
 
 
 @frappe.whitelist()
@@ -50,7 +51,8 @@ def invite_member(email, team):
 
 
 @frappe.whitelist(allow_guest=True)
-def accept_invitation(key=None):
+@validate_type
+def accept_invitation(key: str = None):
 	if not key:
 		frappe.throw("Invalid or expired key")
 
