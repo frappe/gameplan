@@ -6,16 +6,6 @@ import frappe
 from gameplan.utils import validate_type
 
 
-@frappe.whitelist()
-def create_team(name):
-	return frappe.get_doc(doctype="Team", title=name).insert()
-
-
-@frappe.whitelist()
-def get_team(name):
-	return frappe.get_doc("Team", name)
-
-
 @frappe.whitelist(allow_guest=True)
 def get_user_info():
 	if frappe.session.user == "Guest":
@@ -42,12 +32,6 @@ def get_user_info():
 def unread_notifications():
 	res = frappe.db.get_all('Team Notification', 'count(name) as count', {'to_user': frappe.session.user, 'read': 0})
 	return res[0].count
-
-
-@frappe.whitelist()
-def invite_member(email, team):
-	team = frappe.get_doc("Team", team)
-	team.send_invitation(email)
 
 
 @frappe.whitelist(allow_guest=True)
@@ -91,77 +75,19 @@ def get_unsplash_photos(keyword=None):
 	return frappe.cache().get_value("unsplash_photos", generator=get_list)
 
 
-@frappe.whitelist()
-def assign_task(task, user):
-	from frappe.desk.form.assign_to import add, clear
-
-	clear("Team Task", task)
-	add({"assign_to": [user], "doctype": "Team Task", "name": task})
 
 
-@frappe.whitelist()
-def project_tasks(project):
-	project = frappe.get_doc("Team Project", project)
-	tasks_by_status = []
-	for state in project.task_states:
-		tasks_by_status.append(
-			{
-				"status": state.status,
-				"tasks": frappe.db.get_all(
-					"Team Task",
-					filters={"project": project.name, "status": state.status},
-					fields=["*"],
-					order_by="idx asc, creation asc",
-				),
-			}
-		)
-	return tasks_by_status
 
 
-@frappe.whitelist()
-def delete_group(project, group):
-	project = frappe.get_doc("Team Project", project)
-	project.delete_group(group)
-	return project
 
 
-@frappe.whitelist()
-def get_system_users():
-	return frappe.db.get_all(
-		"User",
-		fields=["name", "email", "full_name", "first_name", "last_name", "user_image"],
-		filters={"user_type": "System User", "enabled": 1},
-	)
 
 
-@frappe.whitelist()
-def session_user():
-	out = frappe.get_doc("User", frappe.session.user).as_dict()
-	return out
 
 
-@frappe.whitelist()
-def tasks_for_day(date):
-	Task = frappe.qb.DocType("Team Task")
-	Project = frappe.qb.DocType("Team Project")
-	overdue_condition = date == frappe.utils.today()
-	query = (
-		frappe.qb.from_(Task)
-		.select(Task.star)
-		.left_join(Project)
-		.on(Task.project == Project.name)
-		.where(Task.owner == frappe.session.user)
-		.orderby(Task.idx, order=frappe._dict(value="desc"))
-	)
-	if date == frappe.utils.today():
-		# fetch overdues only for today
-		query = query.where(
-			((Task.due_date == date) | ((Task.due_date < date) & (Task.is_completed == 0)))
-		)
-	else:
-		query = query.where(Task.due_date == date)
 
-	return query.run(as_dict=1)
+
+
 
 @frappe.whitelist()
 def onboarding(data):
