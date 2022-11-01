@@ -96,7 +96,7 @@ jobs:
           bench --site gameplan.test execute frappe.tests.ui_test_helpers.create_test_user
 
       - name: UI Tests
-        run: cd ~/frappe-bench/apps/gameplan/frontend && yarn test
+        run: cd ~/frappe-bench && bench --site gameplan.test run-ui-tests gameplan
         env:
           CYPRESS_BASE_URL: http://gameplan.test:8000
 
