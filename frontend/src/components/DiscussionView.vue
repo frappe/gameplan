@@ -436,6 +436,7 @@ export default {
             ...this.$route.params,
             slug: doc.slug,
           },
+          query: this.$route.query
         })
       }
     },
