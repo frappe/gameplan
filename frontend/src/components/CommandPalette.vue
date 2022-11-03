@@ -95,6 +95,7 @@ export default {
       window.addEventListener('keydown', (e) => {
         if (e.key === 'k' && (e.ctrlKey || e.metaKey)) {
           this.show = !this.show
+		  e.preventDefault();
         }
       })
     },
