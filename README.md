@@ -96,7 +96,7 @@ Currently, this app depends on the `develop` branch of [frappe](https://github.c
 Gameplan is an app built on top of Frappe Framework. So, you can follow any deployment guide for hosting a Frappe Framework based site.
 
 ### Managed Hosting
-Gameplan can be deployed in a few clicks on [Frappe Cloud](https://frappecloud.com).
+Gameplan can be deployed in a few clicks on [Frappe Cloud](https://frappecloud.com/marketplace/apps/gameplan).
 
 ### Self hosting
 If you want to self-host, you can follow official [Frappe Bench Installation](https://github.com/frappe/bench#installation) instructions.
