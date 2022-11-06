@@ -98,46 +98,56 @@ const routes = [
         ],
       },
       {
-        name: 'Project',
+        name: 'ProjectLayout',
         path: 'projects/:projectId',
-        component: () => import('@/pages/Project.vue'),
+        component: () => import('@/pages/ProjectLayout.vue'),
         props: true,
+        redirect: { name: 'Project' },
         children: [
           {
-            name: 'ProjectOverview',
+            name: 'Project',
             path: '',
-            component: () => import('@/pages/ProjectOverview.vue'),
-          },
-          {
-            name: 'ProjectDiscussions',
-            path: 'discussions',
-            component: () => import('@/pages/ProjectDiscussions.vue'),
-          },
-          {
-            name: 'ProjectDiscussionNew',
-            path: 'discussions/new',
-            component: () => import('@/pages/ProjectDiscussionNew.vue'),
+            component: () => import('@/pages/Project.vue'),
+            redirect: { name: 'ProjectOverview' },
+            props: true,
+            children: [
+              {
+                name: 'ProjectOverview',
+                path: '',
+                component: () => import('@/pages/ProjectOverview.vue'),
+              },
+              {
+                name: 'ProjectDiscussions',
+                path: 'discussions',
+                component: () => import('@/pages/ProjectDiscussions.vue'),
+              },
+              {
+                name: 'ProjectDiscussionNew',
+                path: 'discussions/new',
+                component: () => import('@/pages/ProjectDiscussionNew.vue'),
+              },
+              {
+                name: 'ProjectTasks',
+                path: 'tasks',
+                component: () => import('@/pages/ProjectTasks.vue'),
+              },
+              {
+                name: 'ProjectTaskNew',
+                path: 'tasks/new',
+                component: () => import('@/pages/ProjectTaskNew.vue'),
+              },
+              {
+                name: 'ProjectTaskDetail',
+                path: 'tasks/:taskId',
+                component: () => import('@/pages/ProjectTaskDetail.vue'),
+                props: true,
+              },
+            ],
           },
           {
             name: 'ProjectDiscussion',
             path: 'discussion/:postId/:slug?',
             component: () => import('@/pages/ProjectDiscussion.vue'),
-            props: true,
-          },
-          {
-            name: 'ProjectTasks',
-            path: 'tasks',
-            component: () => import('@/pages/ProjectTasks.vue'),
-          },
-          {
-            name: 'ProjectTaskNew',
-            path: 'tasks/new',
-            component: () => import('@/pages/ProjectTaskNew.vue'),
-          },
-          {
-            name: 'ProjectTaskDetail',
-            path: 'tasks/:taskId',
-            component: () => import('@/pages/ProjectTaskDetail.vue'),
             props: true,
           },
         ],

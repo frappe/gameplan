@@ -1,14 +1,12 @@
 <template>
-  <div class="flex h-full flex-col pt-8">
-    <header>
-      <div class="border-b" v-if="project">
-        <div class="flex w-full items-start">
+  <div class="flex h-full flex-col">
+    <header class="sticky top-0 z-10 border-b bg-white px-5 pt-3">
+      <div v-if="project">
+        <div class="flex h-9 w-full items-center">
           <IconPicker
             ref="projectIconPicker"
-            v-model="project.icon"
-            @update:modelValue="
-              (icon) => $resources.project.setValue.submit({ icon })
-            "
+            v-model="project.doc.icon"
+            @update:modelValue="(icon) => project.setValue.submit({ icon })"
             :set-default="true"
           >
             <template v-slot="{ open }">
@@ -16,17 +14,17 @@
                 class="rounded-md p-px text-[30px] leading-none focus:outline-none"
                 :class="open ? 'bg-gray-200' : 'hover:bg-gray-100'"
               >
-                {{ project.icon || '' }}
+                {{ project.doc.icon || '' }}
               </div>
             </template>
           </IconPicker>
           <div class="ml-2 flex items-center space-x-2">
-            <h1 class="text-6xl font-bold leading-8">
-              {{ project.title }}
+            <h1 class="text-4xl font-bold leading-8">
+              {{ project.doc.title }}
             </h1>
-            <Badge v-if="$resources.project.doc.archived_at"> Archived </Badge>
+            <Badge v-if="project.doc.archived_at"> Archived </Badge>
             <Tooltip
-              v-if="$resources.project.doc.is_private"
+              v-if="project.doc.is_private"
               text="This project is only visible to team members"
               placement="top"
             >
@@ -34,31 +32,35 @@
             </Tooltip>
             <Dropdown
               placement="left"
-              :button="{ icon: 'more-horizontal', appearance: 'minimal', label: 'Options' }"
+              :button="{
+                icon: 'more-horizontal',
+                appearance: 'minimal',
+                label: 'Options',
+              }"
               :options="[
                 {
                   label: 'Edit',
                   icon: 'edit',
                   handler: () => (projectEditDialog.show = true),
-                  condition: () => !$resources.project.doc.archived_at,
+                  condition: () => !project.doc.archived_at,
                 },
                 {
                   label: 'Move to another team',
                   icon: 'log-out',
                   handler: () => (projectMoveDialog.show = true),
-                  condition: () => !$resources.project.doc.archived_at,
+                  condition: () => !project.doc.archived_at,
                 },
                 {
                   label: 'Archive this project',
                   icon: 'trash-2',
                   handler: archiveProject,
-                  condition: () => !$resources.project.doc.archived_at,
+                  condition: () => !project.doc.archived_at,
                 },
                 {
                   label: 'Unarchive this project',
                   icon: 'trash-2',
                   handler: unarchiveProject,
-                  condition: () => $resources.project.doc.archived_at,
+                  condition: () => project.doc.archived_at,
                 },
               ]"
             />
@@ -74,9 +76,9 @@
               label: 'Save',
               appearance: 'primary',
               handler: ({ close }) => {
-                $resources.project.setValue.submit({
-                  title: project.title,
-                  is_private: project.is_private,
+                project.setValue.submit({
+                  title: project.doc.title,
+                  is_private: project.doc.is_private,
                 })
                 close()
               },
@@ -89,11 +91,7 @@
         v-model="projectEditDialog.show"
       >
         <template #body-content>
-          <Input
-            class="mb-2"
-            label="Title"
-            v-model="$resources.project.doc.title"
-          />
+          <Input class="mb-2" label="Title" v-model="project.doc.title" />
           <Input
             label="Visibility"
             type="select"
@@ -101,12 +99,9 @@
               { label: 'Visible to everyone', value: 0 },
               { label: 'Visible to team members (Private)', value: 1 },
             ]"
-            v-model="$resources.project.doc.is_private"
+            v-model="project.doc.is_private"
           />
-          <ErrorMessage
-            class="mt-2"
-            :message="$resources.project.setValue.error"
-          />
+          <ErrorMessage class="mt-2" :message="project.setValue.error" />
         </template>
       </Dialog>
       <Dialog
@@ -116,7 +111,7 @@
         @close="
           () => {
             projectMoveDialog.team = null
-            $resources.project.moveToTeam.reset()
+            project.moveToTeam.reset()
           }
         "
         v-model="projectMoveDialog.show"
@@ -134,18 +129,15 @@
             v-model="projectMoveDialog.team"
             placeholder="Select a team"
           />
-          <ErrorMessage
-            class="mt-2"
-            :message="$resources.project.moveToTeam.error"
-          />
+          <ErrorMessage class="mt-2" :message="project.moveToTeam.error" />
         </template>
         <template #actions>
           <Button
             appearance="primary"
-            :loading="$resources.project.moveToTeam.loading"
+            :loading="project.moveToTeam.loading"
             @click="
               () => {
-                $resources.project.moveToTeam.submit(
+                project.moveToTeam.submit(
                   { team: projectMoveDialog.team?.value },
                   {
                     validate() {
@@ -171,9 +163,12 @@
         </template>
       </Dialog>
     </header>
-    <div class="flex h-full min-h-0 flex-1 flex-col" v-if="project">
-      <router-view class="h-full flex-1" :project="$resources.project" />
-    </div>
+
+    <router-view
+      v-if="project"
+      class="mx-auto w-full max-w-4xl px-5"
+      :project="project"
+    />
   </div>
 </template>
 <script>
@@ -188,7 +183,7 @@ import { teams } from '@/data/teams'
 
 export default {
   name: 'Project',
-  props: ['team', 'projectId'],
+  props: ['team', 'project'],
   components: {
     Input,
     Dropdown,
@@ -214,26 +209,7 @@ export default {
       }
     }
   },
-  resources: {
-    project() {
-      return {
-        type: 'document',
-        doctype: 'Team Project',
-        name: this.projectId,
-        realtime: true,
-        whitelistedMethods: {
-          moveToTeam: 'move_to_team',
-          archive: 'archive',
-          unarchive: 'unarchive',
-          inviteMembers: 'invite_members',
-        },
-      }
-    },
-  },
   computed: {
-    project() {
-      return this.$resources.project.doc
-    },
     task() {
       let task = null
       if (this.$route.name === 'ProjectTaskDetail') {
@@ -244,22 +220,28 @@ export default {
     tabs() {
       return [
         {
-          name: 'Readme',
+          name: 'Overview',
           route: {
             name: 'ProjectOverview',
-            params: { teamId: this.team.doc.name, projectId: this.projectId },
+            params: {
+              teamId: this.team.doc.name,
+              projectId: this.project.name,
+            },
           },
           isActive: this.$route.name === 'ProjectOverview',
         },
         {
           name: `Discussions ${
-            this.$resources.project.doc.discussions_count
-              ? `(${this.$resources.project.doc.discussions_count})`
+            this.project.doc.discussions_count
+              ? `(${this.project.doc.discussions_count})`
               : ''
           }`,
           route: {
             name: 'ProjectDiscussions',
-            params: { teamId: this.team.doc.name, projectId: this.projectId },
+            params: {
+              teamId: this.team.doc.name,
+              projectId: this.project.name,
+            },
           },
           isActive: [
             'ProjectDiscussions',
@@ -268,13 +250,16 @@ export default {
           ].includes(this.$route.name),
         },
         {
-          name: this.$resources.project.doc.summary.total_tasks
-            ? `Tasks (${this.$resources.project.doc.summary.pending_tasks}/${this.$resources.project.doc.summary.total_tasks})`
+          name: this.project.doc.summary.total_tasks
+            ? `Tasks (${this.project.doc.summary.pending_tasks}/${this.project.doc.summary.total_tasks})`
             : 'Tasks',
           route: {
             name: 'ProjectTasks',
             query: { open: true },
-            params: { teamId: this.team.doc.name, projectId: this.projectId },
+            params: {
+              teamId: this.team.doc.name,
+              projectId: this.project.name,
+            },
           },
           isActive: [
             'ProjectTasks',
@@ -295,7 +280,7 @@ export default {
             label: 'Archive',
             appearance: 'primary',
             handler: ({ close }) => {
-              return this.$resources.project.archive.submit(null, {
+              return this.project.archive.submit(null, {
                 onSuccess: close,
               })
             },
@@ -315,7 +300,7 @@ export default {
             label: 'Unarchive',
             appearance: 'primary',
             handler: ({ close }) => {
-              return this.$resources.project.unarchive.submit(null, {
+              return this.project.unarchive.submit(null, {
                 onSuccess: close,
               })
             },
@@ -344,19 +329,13 @@ export default {
         name: 'ProjectOverview',
         params: {
           teamId: this.projectMoveDialog.team.value,
-          projectId: this.projectId,
+          projectId: this.project.name,
         },
       })
       this.projectMoveDialog.team = null
-      this.$resources.project.moveToTeam.reset()
+      this.project.moveToTeam.reset()
     },
     getTeamProjects,
-  },
-  pageMeta() {
-    return {
-      title: `${this.project.title} - ${this.team.doc.title}`,
-      emoji: this.project.icon,
-    }
   },
 }
 </script>
