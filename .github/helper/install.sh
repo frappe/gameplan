@@ -33,6 +33,11 @@ echo "Setting Up Procfile..."
 sed -i 's/^watch:/# watch:/g' Procfile
 sed -i 's/^schedule:/# schedule:/g' Procfile
 
+echo "Setting up redisearch module..."
+echo "loadmodule ${GITHUB_WORKSPACE}/.github/helper/redisearch.so" >> ./config/redis_cache.conf
+chmod +x "${GITHUB_WORKSPACE}/.github/helper/redisearch.so"
+cat ./config/redis_cache.conf
+
 echo "Starting Bench..."
 
 bench start &> bench_start.log &
@@ -42,6 +47,7 @@ build_pid=$!
 
 bench --site gameplan.test reinstall --yes
 bench --site gameplan.test install-app gameplan
+bench --site gameplan.test execute gameplan.gameplan.doctype.team_discussion.search.rebuild_index_if_not_exists
 
 # wait till assets are built succesfully
 wait $build_pid

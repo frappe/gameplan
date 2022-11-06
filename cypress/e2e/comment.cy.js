@@ -90,11 +90,16 @@ describe('Comment', () => {
         ).should('exist')
 
         // delete comment
+        cy.intercept({
+            method: 'POST',
+            url: '/api/method/frappe.client.set_value',
+          }).as('deleteComment')
         cy.get(
           `div[data-id=${comment.name}] button[aria-label="Comment Options"]`
         ).click()
         cy.button('Delete').click()
         cy.dialog('button:contains("Delete")').click()
+        cy.wait('@deleteComment')
         cy.get(`div[data-id=${comment.name}]`)
           .contains('This message is deleted')
           .should('exist')
