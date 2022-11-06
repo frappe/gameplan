@@ -1,18 +1,19 @@
 <template>
   <TextEditor
     ref="textEditor"
-    :editor-class="[
-      'prose-sm',
-      {
-        'min-h-[4rem] overflow-y-auto max-h-[50vh]': editable,
-      },
-    ]"
+    :editor-class="['prose-sm', editable && 'min-h-[4rem]']"
     :content="value"
     @change="editable ? $emit('change', $event) : null"
     :starterkit-options="{ heading: { levels: [2, 3, 4, 5, 6] } }"
     :placeholder="placeholder"
     :editable="editable"
   >
+    <template v-slot:editor="{ editor }">
+      <EditorContent
+        :class="[editable && 'max-h-[50vh] overflow-y-auto']"
+        :editor="editor"
+      />
+    </template>
     <template v-slot:bottom>
       <div
         v-if="editable"
@@ -34,6 +35,7 @@
 </template>
 
 <script>
+import { EditorContent } from '@tiptap/vue-3'
 import TextEditor from '@/components/TextEditor.vue'
 import { TextEditorFixedMenu } from 'frappe-ui/src/components/TextEditor'
 
@@ -67,7 +69,7 @@ export default {
   },
   emits: ['change'],
   expose: ['editor'],
-  components: { TextEditor, TextEditorFixedMenu },
+  components: { TextEditor, TextEditorFixedMenu, EditorContent },
   computed: {
     editor() {
       return this.$refs.textEditor.editor

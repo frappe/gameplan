@@ -165,10 +165,10 @@
   resolved "https://registry.yarnpkg.com/@socket.io/component-emitter/-/component-emitter-3.1.0.tgz#96116f2a912e0c02817345b3c10751069920d553"
   integrity sha512-+9jVqKhRSpsc591z5vX+X5Yyw+he/HCB4iQ/RYxw35CEPaY1gnsNE43nf9n9AaYjAQrTiI/mOwKUKdUs9vf7Xg==
 
-"@tailwindcss/forms@^0.4.0":
-  version "0.4.1"
-  resolved "https://registry.yarnpkg.com/@tailwindcss/forms/-/forms-0.4.1.tgz#5a47ccd60490cbba84e662f2b9cf3d71a5126d17"
-  integrity sha512-gS9xjCmJjUBz/eP12QlENPLnf0tCx68oYE3mri0GMP5jdtVwLbGUNSRpjsp6NzLAZzZy3ueOwrcqB78Ax6Z84A==
+"@tailwindcss/forms@^0.5.3":
+  version "0.5.3"
+  resolved "https://registry.yarnpkg.com/@tailwindcss/forms/-/forms-0.5.3.tgz#e4d7989686cbcaf416c53f1523df5225332a86e7"
+  integrity sha512-y5mb86JUoiUgBjY/o6FJSFZSEttfb3Q5gllE4xoKjAAD+vBrnIhE4dViwUuow3va8mpH4s9jyUbUbrRGoRdc2Q==
   dependencies:
     mini-svg-data-uri "^1.2.3"
 
@@ -1343,14 +1343,14 @@ fraction.js@^4.2.0:
   resolved "https://registry.yarnpkg.com/fraction.js/-/fraction.js-4.2.0.tgz#448e5109a313a3527f5a3ab2119ec4cf0e0e2950"
   integrity sha512-MhLuK+2gUcnZe8ZHlaaINnQLl0xRIGRfcGk2yl8xoQAfHrSsL3rYu6FCmBdkdbhc9EPlwyGHewaRsvwRMJtAlA==
 
-frappe-ui@^0.0.84:
-  version "0.0.84"
-  resolved "https://registry.yarnpkg.com/frappe-ui/-/frappe-ui-0.0.84.tgz#07477f877278492c6d5c5762a12459ce2b4906cb"
-  integrity sha512-R0b7NhBtEOPoSlrytfFr2UjHd9PmXr4I6IHaWiVR0yROS6h4MulKiuKogxGz/jkPDO9PIz+Wl1dXuhlRsObtvw==
+frappe-ui@^0.0.85:
+  version "0.0.85"
+  resolved "https://registry.yarnpkg.com/frappe-ui/-/frappe-ui-0.0.85.tgz#0ad6667189b85c91a09ace18d8b748a0ca7c019a"
+  integrity sha512-SHo8Gsd7KqbyOeubQax905qc1zauAjp3uB/liKRo4Ayfh5yuxX7QiBFVfp5KNJLzq3i5UdRVBsE+YkteXTwZGw==
   dependencies:
     "@headlessui/vue" "^1.5.0"
     "@popperjs/core" "^2.11.2"
-    "@tailwindcss/forms" "^0.4.0"
+    "@tailwindcss/forms" "^0.5.3"
     "@tailwindcss/typography" "^0.5.0"
     "@tiptap/extension-image" "^2.0.0-beta.30"
     "@tiptap/extension-link" "^2.0.0-beta.43"
