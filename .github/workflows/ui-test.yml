@@ -96,9 +96,10 @@ jobs:
           bench --site gameplan.test execute frappe.tests.ui_test_helpers.create_test_user
 
       - name: UI Tests
-        run: cd ~/frappe-bench && bench --site gameplan.test run-ui-tests gameplan
+        run: cd ~/frappe-bench && bench --site gameplan.test run-ui-tests gameplan --headless
         env:
           CYPRESS_BASE_URL: http://gameplan.test:8000
+          CYPRESS_RECORD_KEY: 9c23c39a-b56b-46d5-b673-44faf1f1da83
 
       - name: Stop server
         run: |
@@ -108,4 +109,3 @@ jobs:
       - name: Show bench output
         if: ${{ always() }}
         run: cat ~/frappe-bench/bench_start.log || true
-
