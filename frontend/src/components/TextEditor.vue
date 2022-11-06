@@ -1,5 +1,8 @@
 <template>
   <FTextEditor :mentions="users" v-bind="$attrs" ref="textEditor">
+    <template #editor="props">
+      <slot name="editor" v-bind="props" />
+    </template>
     <template #top>
       <slot name="top" />
     </template>
