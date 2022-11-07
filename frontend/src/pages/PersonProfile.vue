@@ -15,7 +15,7 @@
         "
       />
     </div>
-    <div class="-mt-16 flex translate-y-0 px-6">
+    <div class="-mt-16 inline-flex translate-y-0 px-6">
       <ImagePreview
         v-model:show="imagePreview.show"
         :imageUrl="imagePreview.imageUrl"
