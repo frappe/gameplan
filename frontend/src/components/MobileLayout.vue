@@ -1,6 +1,6 @@
 <template>
   <div class="flex h-full flex-col">
-    <div class="h-full overflow-auto px-4">
+    <div class="h-full overflow-auto">
       <slot />
     </div>
     <div class="grid grid-cols-5 border-t border-gray-300 standalone:pb-4">
@@ -51,7 +51,7 @@ export default {
           name: 'People',
           icon: 'users',
           route: { name: 'People' },
-          isActive: ['People', 'PersonProfile'].includes(this.$route.name),
+          isActive: /People|PersonProfile/g.test(this.$route.name),
         },
         {
           name: 'Search',

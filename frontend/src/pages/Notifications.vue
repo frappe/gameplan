@@ -1,5 +1,5 @@
 <template>
-  <div class="h-full w-full px-5 py-3">
+  <div class="h-full w-full px-4 py-3 sm:px-5">
     <div class="mb-5 flex items-center justify-between">
       <h1 class="text-2xl font-semibold">Notifications</h1>
       <div class="flex items-stretch space-x-2">

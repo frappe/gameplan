@@ -1,11 +1,12 @@
 <template>
   <div class="relative flex h-full flex-col" v-if="postId && discussion">
     <header class="sticky top-0 z-10 border-b bg-white sm:mx-0">
-      <div class="flex h-[60px] items-center px-4">
+      <div class="flex min-h-[60px] items-center px-4 sm:h-[60px]">
         <Button
           icon-left="chevron-left"
           appearance="minimal"
           @click="$router.back()"
+          :class="['-ml-2 sm:ml-0', showNavbar && 'hidden sm:inline-flex']"
         >
           Back
         </Button>
@@ -15,10 +16,12 @@
           enter-to-class="opacity-100 translate-y-0"
         >
           <div
-            class="mx-auto w-full max-w-3xl px-6 text-center sm:px-2"
+            class="mx-auto w-full max-w-3xl sm:px-6 sm:text-center"
             v-show="showNavbar"
           >
-            <h1 class="flex items-center justify-center text-xl font-semibold">
+            <h1
+              class="flex items-center pt-2 text-xl font-semibold sm:justify-center sm:pt-0"
+            >
               <Tooltip
                 class="flex"
                 v-if="discussion.closed_at"
@@ -32,7 +35,7 @@
               </Tooltip>
               {{ discussion.title }}
             </h1>
-            <DiscussionMeta :discussion="discussion" />
+            <DiscussionMeta :discussion="discussion" class="pb-2 sm:pb-0" />
           </div>
         </transition>
         <div class="ml-auto flex items-center space-x-2">

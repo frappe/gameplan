@@ -1,9 +1,9 @@
 <template>
   <div class="flex h-full flex-col">
-    <div class="flex min-h-0 flex-1">
+    <div class="flex flex-1">
       <div class="h-full w-full">
         <div
-          class="sticky top-0 z-10 mb-5 flex items-center border-b bg-white py-3 px-5"
+          class="sticky top-0 z-10 mb-5 flex items-center border-b bg-white py-3 px-4 sm:px-5"
         >
           <h1 class="text-2xl font-semibold">Posts</h1>
           <div class="relative ml-auto">
@@ -25,7 +25,7 @@
           </div>
         </div>
         <DiscussionList
-          class="mx-auto max-w-4xl px-5"
+          class="mx-auto max-w-4xl sm:px-5"
           routeName="ProjectDiscussion"
           :filters="selectedTeam.value ? { team: selectedTeam.value } : null"
         />

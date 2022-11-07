@@ -54,7 +54,7 @@
 
     <div
       v-if="!readOnlyMode && !disableNewComment"
-      class="fixed bottom-0 mt-2 w-full max-w-3xl bg-white py-4 pr-12"
+      class="fixed bottom-12 mb-px mt-2 w-full max-w-3xl bg-white py-4 pr-12 sm:bottom-0"
       ref="addComment"
     >
       <button

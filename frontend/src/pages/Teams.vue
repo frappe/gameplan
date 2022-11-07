@@ -1,7 +1,9 @@
 <template>
-  <div class="py-6">
-    <h1 class="mb-6 text-2xl font-semibold">Teams</h1>
-    <div class="divide-y">
+  <div class="pb-10">
+    <div class="sticky top-0 border-b bg-white px-4 py-3">
+      <h1 class="text-2xl font-semibold">Teams</h1>
+    </div>
+    <div class="divide-y px-4">
       <Links
         :links="activeTeams"
         class="flex items-center py-4 font-medium text-gray-900"

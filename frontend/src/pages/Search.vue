@@ -1,5 +1,5 @@
 <template>
-  <div class="py-3 px-5">
+  <div class="py-3 px-4 sm:px-5">
     <h1 class="mb-3 text-2xl font-semibold">Search</h1>
     <div class="flex items-center space-x-2">
       <Input
@@ -28,57 +28,57 @@
       }}" ({{ $resources.search.data.duration.toFixed(2) }}
       ms)
     </div>
-    <div
-      class="mx-auto mt-6 max-w-4xl px-5"
-      v-if="$resources.search.data?.docs.length"
+  </div>
+  <div
+    class="mx-auto mt-3 max-w-4xl sm:px-5"
+    v-if="$resources.search.data?.docs.length"
+  >
+    <router-link
+      class="flex flex-col rounded-[10px] hover:bg-gray-100"
+      v-for="d in $resources.search.data.docs"
+      :to="{
+        name: 'ProjectDiscussion',
+        params: { teamId: d.team, projectId: d.project, postId: d.name },
+        query: { comment: d.comment || undefined, fromSearch: 1 },
+      }"
     >
-      <router-link
-        class="flex flex-col rounded-[10px] hover:bg-gray-100"
-        v-for="d in $resources.search.data.docs"
-        :to="{
-          name: 'ProjectDiscussion',
-          params: { teamId: d.team, projectId: d.project, postId: d.name },
-          query: { comment: d.comment || undefined, fromSearch: 1 },
-        }"
-      >
-        <div class="flex p-3 pl-7">
-          <UserAvatar :user="d.last_post_by || d.owner" class="mr-4" />
-          <div class="search-result">
-            <div class="flex items-center">
-              <div class="text-lg font-medium leading-snug" v-html="d.title" />
-              <span class="whitespace-pre text-gray-600 md:inline">
-                &middot;
-              </span>
-              <span
-                class="shrink-0 whitespace-nowrap text-sm text-gray-600 md:inline"
-                >{{
-                  $dayjs().diff(d.last_post_at, 'day') >= 25
-                    ? $dayjs(d.last_post_at).format('D MMM')
-                    : $dayjs(d.last_post_at).fromNow()
-                }}
-              </span>
-            </div>
-            <div
-              class="mt-1 text-base text-gray-800"
-              v-html="trimContent(d.content)"
-            ></div>
+      <div class="flex p-3 pl-7">
+        <UserAvatar :user="d.last_post_by || d.owner" class="mr-4" />
+        <div class="search-result">
+          <div class="flex items-center">
+            <div class="text-lg font-medium leading-snug" v-html="d.title" />
+            <span class="whitespace-pre text-gray-600 md:inline">
+              &middot;
+            </span>
+            <span
+              class="shrink-0 whitespace-nowrap text-sm text-gray-600 md:inline"
+              >{{
+                $dayjs().diff(d.last_post_at, 'day') >= 25
+                  ? $dayjs(d.last_post_at).format('D MMM')
+                  : $dayjs(d.last_post_at).fromNow()
+              }}
+            </span>
           </div>
+          <div
+            class="mt-1 text-base text-gray-800"
+            v-html="trimContent(d.content)"
+          ></div>
         </div>
-        <div class="ml-7 mr-3 h-px border-t border-gray-200"></div>
-      </router-link>
-      <div class="pb-10 text-center">
-        <Button
-          class="mt-4"
-          @click="next"
-          :loading="$resources.search.loading"
-          icon-left="file-text"
-          v-if="
-            $resources.search.data?.docs.length < $resources.search.data.total
-          "
-        >
-          Load more
-        </Button>
       </div>
+      <div class="ml-7 mr-3 h-px border-t border-gray-200"></div>
+    </router-link>
+    <div class="pb-10 text-center">
+      <Button
+        class="mt-4"
+        @click="next"
+        :loading="$resources.search.loading"
+        icon-left="file-text"
+        v-if="
+          $resources.search.data?.docs.length < $resources.search.data.total
+        "
+      >
+        Load more
+      </Button>
     </div>
   </div>
 </template>

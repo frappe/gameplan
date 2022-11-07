@@ -1,8 +1,8 @@
 <template>
   <div class="flex h-full flex-col">
-    <div class="flex min-h-0 flex-1">
+    <div class="flex flex-1">
       <div class="w-full">
-        <header class="sticky top-0 z-10 border-b bg-white py-3 px-5">
+        <header class="sticky top-0 z-10 border-b bg-white py-3 px-4 sm:px-5">
           <div class="flex items-center justify-between">
             <h1 class="text-2xl font-semibold">People</h1>
             <div class="flex items-center space-x-2">
@@ -35,7 +35,7 @@
             />
           </div>
         </header>
-        <div class="grid gap-5 py-5 px-5 md:grid-cols-4">
+        <div class="grid gap-5 py-4 px-4 sm:py-5 sm:px-5 md:grid-cols-4">
           <router-link
             v-for="user in people"
             :key="user.name"

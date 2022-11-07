@@ -48,19 +48,22 @@
         <span v-if="$isSessionUser(profile.user)"> Upload Image </span>
       </button>
     </div>
-    <div class="sticky top-0 z-10 border-b bg-white px-6">
+    <div class="sticky top-0 z-10 border-b bg-white px-4 sm:px-6">
       <div class="flex items-center justify-between pt-2">
-        <div class="flex items-baseline">
+        <div class="items-baseline sm:flex">
           <h2 class="text-3xl font-bold leading-none text-gray-900">
             {{ $user(profile.user).full_name }}
           </h2>
-          <span class="px-1 text-gray-600">&middot;</span>
-          <p v-if="profile.bio" class="text-lg">{{ profile.bio }}</p>
+          <span class="hidden px-1 text-gray-600 sm:inline">&middot;</span>
+          <p v-if="profile.bio" class="mt-2 text-lg sm:mt-0">
+            {{ profile.bio }}
+          </p>
         </div>
         <Button
           v-if="$isSessionUser(profile.user)"
           @click="editDialog.show = true"
           appearance="minimal"
+          class="whitespace-nowrap"
         >
           Edit Profile
         </Button>
