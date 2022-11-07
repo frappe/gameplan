@@ -211,6 +211,7 @@
               appearance="minimal"
               icon="edit"
               @click="editingContent = true"
+              label="Edit Post"
             >
               Edit
             </Button>
