@@ -7,34 +7,6 @@ from pypika.terms import ExistsCriterion
 
 
 @frappe.whitelist()
-def search(query=None):
-	from bs4 import BeautifulSoup
-
-	query = query.lower() if query else ''
-	if not query:
-		return []
-
-	results = frappe.db.sql('''
-		SELECT name, title, content, owner, team, project, modified FROM `tabTeam Discussion`
-		WHERE MATCH (title,content,owner)
-		AGAINST (%(query)s IN NATURAL LANGUAGE MODE)
-		ORDER BY modified DESC
-		LIMIT 5
-	''', values={'query': query}, as_dict=1)
-
-	keywords = remove_falsy_values(query.split(' '))
-	out = []
-	for r in results:
-		soup = BeautifulSoup(r.content)
-		content_text = soup.get_text()
-		r.content = highlight_matched_words(content_text, keywords, strip_content=True)
-		r.title = highlight_matched_words(r.title, keywords)
-		out.append(r)
-
-	return out
-
-
-@frappe.whitelist()
 def get_discussions(filters=None, limit_start=None, limit_page_length=None):
 	filters = frappe.parse_json(filters) if filters else None
 	Discussion = frappe.qb.DocType('Team Discussion')

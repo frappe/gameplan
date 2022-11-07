@@ -111,8 +111,3 @@ class TeamDiscussion(HasActivity, HasMentions, HasReactions, Document):
 		project = frappe.get_doc("Team Project", self.project)
 		project.discussions_count = project.discussions_count + delta
 		project.save(ignore_permissions=True)
-
-
-def make_full_text_search_index():
-	frappe.db.sql('ALTER TABLE `tabTeam Discussion` ADD FULLTEXT (title, content, owner)')
-

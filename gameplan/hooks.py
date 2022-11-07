@@ -80,9 +80,7 @@ website_redirects = [
 # ------------
 
 # before_install = "gameplan.install.before_install"
-after_install = [
-	"gameplan.gameplan.doctype.team_discussion.team_discussion.make_full_text_search_index"
-]
+# after_install = "gameplan.install.after_install"
 
 after_migrate = ["gameplan.gameplan.doctype.team_discussion.search.rebuild_index_in_background"]
 
