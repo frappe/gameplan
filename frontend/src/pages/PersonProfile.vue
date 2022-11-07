@@ -1,5 +1,5 @@
 <template>
-  <div class="py-6" v-if="profile">
+  <div v-if="profile">
     <div>
       <CoverImage
         :imageUrl="profile.cover_image"
@@ -14,47 +14,48 @@
           }
         "
       />
-      <div class="-mt-16 inline-block translate-y-0 px-10">
-        <ImagePreview
-          v-model:show="imagePreview.show"
-          :imageUrl="imagePreview.imageUrl"
-        />
-        <button
-          v-if="currentUser.user_image"
-          @click="
-            () => {
-              imagePreview.imageUrl = currentUser.user_image
-              imagePreview.show = true
-            }
-          "
-          class="rounded-full bg-white outline-none focus:ring"
-          :class="{
-            'hover:opacity-80': $isSessionUser(profile.user),
-          }"
-        >
-          <img
-            class="h-32 w-32 rounded-full border-4 border-white object-cover"
-            :src="currentUser.user_image"
-          />
-        </button>
-        <button
-          v-else
-          @click="editDialog.show = true"
-          class="h-32 w-32 rounded-full border-4 border-white bg-gray-200 text-sm text-gray-600"
-          :class="{ 'hover:bg-gray-300': $isSessionUser(profile.user) }"
-          :disabled="!$isSessionUser(profile.user)"
-        >
-          <span v-if="$isSessionUser(profile.user)"> Upload Image </span>
-        </button>
-      </div>
     </div>
-    <div class="px-10">
-      <div class="flex items-center justify-between">
-        <div>
+    <div class="-mt-16 flex translate-y-0 px-6">
+      <ImagePreview
+        v-model:show="imagePreview.show"
+        :imageUrl="imagePreview.imageUrl"
+      />
+      <button
+        v-if="currentUser.user_image"
+        @click="
+          () => {
+            imagePreview.imageUrl = currentUser.user_image
+            imagePreview.show = true
+          }
+        "
+        class="rounded-full bg-white outline-none focus:ring"
+        :class="{
+          'hover:opacity-80': $isSessionUser(profile.user),
+        }"
+      >
+        <img
+          class="h-32 w-32 rounded-full border-4 border-white object-cover"
+          :src="currentUser.user_image"
+        />
+      </button>
+      <button
+        v-else
+        @click="editDialog.show = true"
+        class="h-32 w-32 rounded-full border-4 border-white bg-gray-200 text-sm text-gray-600"
+        :class="{ 'hover:bg-gray-300': $isSessionUser(profile.user) }"
+        :disabled="!$isSessionUser(profile.user)"
+      >
+        <span v-if="$isSessionUser(profile.user)"> Upload Image </span>
+      </button>
+    </div>
+    <div class="sticky top-0 z-10 border-b bg-white px-6">
+      <div class="flex items-center justify-between pt-2">
+        <div class="flex items-baseline">
           <h2 class="text-3xl font-bold leading-none text-gray-900">
             {{ $user(profile.user).full_name }}
           </h2>
-          <p v-if="profile.bio" class="mt-2 text-lg">{{ profile.bio }}</p>
+          <span class="px-1 text-gray-600">&middot;</span>
+          <p v-if="profile.bio" class="text-lg">{{ profile.bio }}</p>
         </div>
         <Button
           v-if="$isSessionUser(profile.user)"
@@ -64,9 +65,9 @@
           Edit Profile
         </Button>
       </div>
+      <Tabs class="border-none" :tabs="tabs" />
     </div>
-    <div class="mt-4 px-10">
-      <Tabs :tabs="tabs" />
+    <div class="mx-auto max-w-4xl px-5">
       <router-view :profile="$resources.profile" />
     </div>
     <Dialog

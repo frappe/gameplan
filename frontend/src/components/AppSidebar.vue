@@ -167,7 +167,21 @@ export default {
       sidebarOpen: true,
       sidebarWidth: 256,
       sidebarResizing: false,
-      navigation: [
+
+      showAddTeamDialog: false,
+      teams,
+    }
+  },
+  mounted() {
+    this.$socket.on('gameplan:new_notification', () => {
+      unreadNotifications.reload()
+    })
+    let sidebarWidth = parseInt(localStorage.getItem('sidebarWidth') || 256)
+    this.sidebarWidth = sidebarWidth
+  },
+  computed: {
+    navigation() {
+      return [
         {
           name: 'Home',
           icon: 'home',
@@ -181,6 +195,7 @@ export default {
           route: {
             name: 'People',
           },
+          isActive: /People|PersonProfile/g.test(this.$route.name),
         },
         {
           name: 'Search',
@@ -197,19 +212,8 @@ export default {
           },
           unreadNotifications,
         },
-      ],
-      showAddTeamDialog: false,
-      teams,
-    }
-  },
-  mounted() {
-    this.$socket.on('gameplan:new_notification', () => {
-      unreadNotifications.reload()
-    })
-    let sidebarWidth = parseInt(localStorage.getItem('sidebarWidth') || 256)
-    this.sidebarWidth = sidebarWidth
-  },
-  computed: {
+      ]
+    },
     activeTeams() {
       return activeTeams.value.map((team) => {
         team.class = function ($route, link) {
