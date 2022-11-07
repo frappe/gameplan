@@ -49,7 +49,10 @@
             <div class="w-full">
               <div class="flex items-center">
                 <div :class="d.unread ? 'text-gray-900' : 'text-gray-600'">
-                  <span class="text-lg font-medium leading-snug">
+                  <span
+                    class="text-lg leading-snug"
+                    :class="[d.unread ? 'font-semibold' : 'font-medium']"
+                  >
                     {{ d.title }}
                   </span>
                   <span class="hidden whitespace-pre text-gray-600 md:inline">
