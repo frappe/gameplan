@@ -1,19 +1,162 @@
 <template>
   <div class="relative flex h-full flex-col" v-if="postId && discussion">
-    <div
-      class="fixed top-0 z-10 -mx-4 w-full border-b bg-white sm:mx-0"
-      v-show="showNavbar"
-    >
-      <transition
-        enter-active-class="transition ease-out duration-200"
-        enter-from-class="opacity-0 translate-y-4"
-        enter-to-class="opacity-100 translate-y-0"
-      >
-        <div class="flex items-center px-6 py-4 sm:px-2" v-show="showNavbar">
-          <UserProfileLink :user="discussion.owner">
-            <UserAvatar :user="discussion.owner" />
-          </UserProfileLink>
-          <h1 class="ml-3 flex items-center text-2xl font-bold">
+    <header class="sticky top-0 z-10 border-b bg-white sm:mx-0">
+      <div class="flex h-[60px] items-center px-4">
+        <Button
+          icon-left="chevron-left"
+          appearance="minimal"
+          @click="$router.back()"
+        >
+          Back
+        </Button>
+        <transition
+          enter-active-class="transition ease-out duration-200"
+          enter-from-class="opacity-0 translate-y-4"
+          enter-to-class="opacity-100 translate-y-0"
+        >
+          <div
+            class="mx-auto w-full max-w-3xl px-6 text-center sm:px-2"
+            v-show="showNavbar"
+          >
+            <h1 class="flex items-center justify-center text-xl font-semibold">
+              <Tooltip
+                class="flex"
+                v-if="discussion.closed_at"
+                text="This discussion is closed"
+              >
+                <FeatherIcon
+                  name="lock"
+                  class="mr-2 h-4 w-4 text-gray-700"
+                  :stroke-width="2"
+                />
+              </Tooltip>
+              {{ discussion.title }}
+            </h1>
+            <DiscussionMeta :discussion="discussion" />
+          </div>
+        </transition>
+        <div class="ml-auto flex items-center space-x-2">
+          <Dropdown
+            v-if="!readOnlyMode"
+            class="ml-auto"
+            placement="right"
+            :button="{
+              icon: 'more-horizontal',
+              appearance: 'minimal',
+              label: 'Discussion Options',
+            }"
+            :options="[
+              {
+                label: 'Edit Title',
+                icon: 'edit',
+                handler: () => (editingTitle = true),
+              },
+              {
+                label: 'Copy link',
+                icon: 'link',
+                handler: () => copyLink(),
+              },
+              {
+                label: 'Close discussion',
+                icon: 'lock',
+                condition: () => !discussion.closed_at,
+                handler: () => {
+                  $dialog({
+                    title: 'Close discussion',
+                    message:
+                      'When a discussion is closed, commenting is disabled. Anyone can re-open the discussion later. Do you want to close this discussion?',
+                    icon: { name: 'lock', appearance: 'success' },
+                    actions: [
+                      {
+                        label: 'Close',
+                        handler: ({ close }) =>
+                          $resources.discussion.closeDiscussion
+                            .submit()
+                            .then(close),
+                        appearance: 'primary',
+                      },
+                      {
+                        label: 'Cancel',
+                      },
+                    ],
+                  })
+                },
+              },
+              {
+                label: 'Re-open discussion',
+                icon: 'unlock',
+                condition: () => discussion.closed_at,
+                handler: () => {
+                  $dialog({
+                    title: 'Re-open discussion',
+                    message:
+                      'Do you want to re-open this discussion? Anyone can comment on it again.',
+                    icon: { name: 'unlock', appearance: 'success' },
+                    actions: [
+                      {
+                        label: 'Re-open',
+                        handler: ({ close }) =>
+                          $resources.discussion.reopenDiscussion
+                            .submit()
+                            .then(close),
+                        appearance: 'primary',
+                      },
+                      {
+                        label: 'Cancel',
+                      },
+                    ],
+                  })
+                },
+              },
+              {
+                label: 'Move to another project',
+                icon: 'log-out',
+                handler: () => (discussionMoveDialog.show = true),
+              },
+            ]"
+          />
+        </div>
+      </div>
+    </header>
+
+    <div class="mx-auto w-full max-w-3xl px-6">
+      <div class="py-6">
+        <div>
+          <div v-if="editingTitle" class="mb-3 w-full">
+            <div class="mb-2">
+              <input
+                v-if="editingTitle"
+                type="text"
+                class="w-full rounded-lg border-0 bg-gray-100 px-2 py-1 text-xl font-semibold focus:ring-0"
+                ref="title"
+                v-model="discussion.title"
+                placeholder="Title"
+                @keydown.enter="
+                  () => {
+                    $resources.discussion.setValue
+                      .submit({ title: discussion.title })
+                      .then(() => this.updateUrlSlug())
+                    editingTitle = false
+                  }
+                "
+                @keydown.esc="
+                  () => {
+                    $resources.discussion.reload()
+                    editingTitle = false
+                  }
+                "
+                v-focus
+              />
+              <p class="mt-1 text-sm text-gray-600">
+                Edit title and press enter. Press escape to cancel.
+              </p>
+            </div>
+          </div>
+          <h1
+            v-else
+            v-visibility="handleTitleVisibility"
+            class="flex items-center text-3xl font-bold"
+          >
             <Tooltip
               v-if="discussion.closed_at"
               text="This discussion is closed"
@@ -24,284 +167,142 @@
                 :stroke-width="2"
               />
             </Tooltip>
-            {{ discussion.title }}
+            <span>
+              {{ discussion.title }}
+            </span>
           </h1>
         </div>
-      </transition>
-    </div>
+        <div class="flex items-center text-base" v-show="!editingTitle">
+          <DiscussionBreadcrumbs :discussion="discussion" />
+          <span class="px-1.5">&middot;</span>
+          <span class="text-gray-600">
+            {{
+              discussion.participants_count == 1
+                ? `1 participant`
+                : `${discussion.participants_count} participants`
+            }}
+          </span>
+        </div>
+        <div class="mt-6 mb-2 flex w-full items-center">
+          <UserProfileLink class="mr-3" :user="discussion.owner">
+            <UserAvatar :user="discussion.owner" />
+          </UserProfileLink>
+          <UserProfileLink
+            class="text-base font-medium hover:text-blue-600"
+            :user="discussion.owner"
+          >
+            {{ $user(discussion.owner).full_name }}&nbsp;&middot;&nbsp;
+          </UserProfileLink>
+          <time
+            class="text-base text-gray-600"
+            :datetime="discussion.creation"
+            :title="$dayjs(discussion.creation)"
+          >
+            {{ $dayjs(discussion.creation).fromNow() }}
+          </time>
 
-    <div class="py-6">
-      <div class="mb-3 flex items-center">
-        <UserProfileLink class="mr-3" :user="discussion.owner">
-          <UserAvatar :user="discussion.owner" />
-        </UserProfileLink>
-        <div class="flex w-full items-center">
-          <div>
-            <span class="text-base text-gray-900">
-              <UserProfileLink
-                class="font-medium hover:text-blue-600"
-                :user="discussion.owner"
-              >
-                {{ $user(discussion.owner).full_name }}
-              </UserProfileLink>
-              in
-              <router-link
-                class="hover:text-blue-600"
-                :to="{
-                  name: 'Team',
-                  params: {
-                    teamId: discussion.team,
-                  },
-                }"
-              >
-                {{ $getDoc('Team', discussion.team)?.title || discussion.team }}
-              </router-link>
-              <span class="text-gray-500"> &mdash; </span>
-              <router-link
-                class="hover:text-blue-600"
-                :to="{
-                  name: 'ProjectOverview',
-                  params: {
-                    teamId: discussion.team,
-                    projectId: discussion.project,
-                  },
-                }"
-              >
-                {{
-                  $getDoc('Team Project', discussion.project)?.title ||
-                  discussion.project
-                }}
-              </router-link>
-            </span>
-            &middot;
-            <span
-              class="text-base text-gray-600"
-              :title="$dayjs(discussion.creation)"
-            >
-              {{ $dayjs(discussion.creation).fromNow() }}
-            </span>
-          </div>
           <div class="ml-auto flex space-x-2">
-            <Dropdown
-              v-if="!readOnlyMode"
-              v-show="!editingContent && !editingTitle"
-              class="ml-auto"
-              placement="right"
-              :button="{
-                icon: 'more-horizontal',
-                appearance: 'minimal',
-                label: 'Discussion Options',
-              }"
-              :options="[
-                {
-                  label: 'Edit Title',
-                  icon: 'edit',
-                  handler: () => (editingTitle = true),
-                },
-                {
-                  label: 'Edit Post',
-                  icon: 'edit',
-                  handler: () => (editingContent = true),
-                  condition: () => $user().name === discussion.owner,
-                },
-                {
-                  label: 'Copy link',
-                  icon: 'link',
-                  handler: () => copyLink(),
-                },
-                {
-                  label: 'Close discussion',
-                  icon: 'lock',
-                  condition: () => !discussion.closed_at,
-                  handler: () => {
-                    $dialog({
-                      title: 'Close discussion',
-                      message:
-                        'When a discussion is closed, commenting is disabled. Anyone can re-open the discussion later. Do you want to close this discussion?',
-                      icon: { name: 'lock', appearance: 'success' },
-                      actions: [
-                        {
-                          label: 'Close',
-                          handler: ({ close }) =>
-                            $resources.discussion.closeDiscussion
-                              .submit()
-                              .then(close),
-                          appearance: 'primary',
-                        },
-                        {
-                          label: 'Cancel',
-                        },
-                      ],
-                    })
-                  },
-                },
-                {
-                  label: 'Re-open discussion',
-                  icon: 'unlock',
-                  condition: () => discussion.closed_at,
-                  handler: () => {
-                    $dialog({
-                      title: 'Re-open discussion',
-                      message:
-                        'Do you want to re-open this discussion? Anyone can comment on it again.',
-                      icon: { name: 'unlock', appearance: 'success' },
-                      actions: [
-                        {
-                          label: 'Re-open',
-                          handler: ({ close }) =>
-                            $resources.discussion.reopenDiscussion
-                              .submit()
-                              .then(close),
-                          appearance: 'primary',
-                        },
-                        {
-                          label: 'Cancel',
-                        },
-                      ],
-                    })
-                  },
-                },
-                {
-                  label: 'Move to another project',
-                  icon: 'log-out',
-                  handler: () => (discussionMoveDialog.show = true),
-                },
-              ]"
-            />
             <Button
-              v-if="editingContent || editingTitle"
-              @click="
-                () => {
-                  $resources.discussion.reload()
-                  editingContent = false
-                  editingTitle = false
-                }
+              v-if="
+                !readOnlyMode &&
+                $user().name === discussion.owner &&
+                !editingContent
               "
+              appearance="minimal"
+              icon="edit"
+              @click="editingContent = true"
+              label="Edit Post"
             >
-              Discard
-            </Button>
-            <Button
-              v-if="editingContent || editingTitle"
-              appearance="primary"
-              @click="
-                () => {
-                  let values = {}
-                  if (editingContent) {
-                    values.content = discussion.content
-                  }
-                  if (editingTitle) {
-                    values.title = discussion.title
-                  }
-                  $resources.discussion.setValue.submit(values).then(() => {
-                    this.updateUrlSlug()
-                  })
-                  editingContent = false
-                  editingTitle = false
-                }
-              "
-            >
-              Save
+              Edit
             </Button>
           </div>
         </div>
-      </div>
-      <div>
-        <div v-if="editingTitle" class="mb-3 w-full">
-          <input
-            type="text"
-            class="mt-1 w-full rounded-lg border-0 bg-gray-100 px-2 py-1 text-xl font-semibold focus:ring-0"
-            ref="title"
-            v-model="discussion.title"
-            placeholder="Title"
+        <div
+          :class="{
+            'rounded-lg border p-4 focus-within:border-gray-400':
+              editingContent,
+          }"
+        >
+          <CommentEditor
+            :value="discussion.content"
+            @change="discussion.content = $event"
+            :submitButtonProps="{
+              onClick: () => {
+                $resources.discussion.setValue.submit({
+                  content: discussion.content,
+                })
+                editingContent = false
+              },
+              loading: $resources.discussion.setValue.loading,
+            }"
+            :discardButtonProps="{
+              onClick: () => {
+                editingContent = false
+                $resources.discussion.reload()
+              },
+            }"
+            :editable="editingContent"
           />
         </div>
-        <h1
-          v-else
-          v-visibility="handleTitleVisibility"
-          class="flex items-center text-3xl font-bold"
-        >
-          <Tooltip v-if="discussion.closed_at" text="This discussion is closed">
-            <FeatherIcon
-              name="lock"
-              class="mr-2 h-4 w-4 text-gray-700"
-              :stroke-width="2"
-            />
-          </Tooltip>
-          <span>
-            {{ discussion.title }}
-          </span>
-        </h1>
+        <div class="mt-3">
+          <Reactions
+            doctype="Team Discussion"
+            :name="discussion.name"
+            v-model:reactions="discussion.reactions"
+            :read-only-mode="readOnlyMode"
+          />
+        </div>
       </div>
-      <TextEditor
-        :key="editingContent"
-        :editor-class="[
-          'min-h-[8rem] prose-sm',
-          { 'border px-3 py-2 rounded-b-lg': editingContent },
-        ]"
-        :editable="editingContent"
-        :content="discussion.content"
-        @change="discussion.content = $event"
-        :bubbleMenu="editingContent"
-        :fixedMenu="editingContent"
+      <CommentsArea
+        doctype="Team Discussion"
+        :name="discussion.name"
+        :newCommentsFrom="discussion.last_unread_comment"
+        :read-only-mode="readOnlyMode"
+        :disable-new-comment="discussion.closed_at"
       />
-      <div class="mt-3">
-        <Reactions
-          doctype="Team Discussion"
-          :name="discussion.name"
-          v-model:reactions="discussion.reactions"
-          :read-only-mode="readOnlyMode"
-        />
-      </div>
+      <Dialog
+        :options="{
+          title: 'Move discussion to another project',
+        }"
+        @close="
+          () => {
+            discussionMoveDialog.project = null
+            $resources.discussion.moveToProject.reset()
+          }
+        "
+        v-model="discussionMoveDialog.show"
+      >
+        <template #body-content>
+          <Autocomplete
+            :options="projectOptions"
+            v-model="discussionMoveDialog.project"
+            placeholder="Select a project"
+          />
+          <ErrorMessage
+            class="mt-2"
+            :message="$resources.discussion.moveToProject.error"
+          />
+        </template>
+        <template #actions>
+          <Button
+            appearance="primary"
+            :loading="$resources.discussion.moveToProject.loading"
+            @click="
+              $resources.discussion.moveToProject.submit({
+                project: discussionMoveDialog.project?.value,
+              })
+            "
+          >
+            {{
+              discussionMoveDialog.project
+                ? `Move to ${discussionMoveDialog.project.label}`
+                : 'Move'
+            }}
+          </Button>
+          <Button @click="discussionMoveDialog.show = false">Cancel</Button>
+        </template>
+      </Dialog>
     </div>
-    <CommentsArea
-      doctype="Team Discussion"
-      :name="discussion.name"
-      :newCommentsFrom="discussion.last_unread_comment"
-      :read-only-mode="readOnlyMode"
-      :disable-new-comment="discussion.closed_at"
-    />
-    <Dialog
-      :options="{
-        title: 'Move discussion to another project',
-      }"
-      @close="
-        () => {
-          discussionMoveDialog.project = null
-          $resources.discussion.moveToProject.reset()
-        }
-      "
-      v-model="discussionMoveDialog.show"
-    >
-      <template #body-content>
-        <Autocomplete
-          :options="projectOptions"
-          v-model="discussionMoveDialog.project"
-          placeholder="Select a project"
-        />
-        <ErrorMessage
-          class="mt-2"
-          :message="$resources.discussion.moveToProject.error"
-        />
-      </template>
-      <template #actions>
-        <Button
-          appearance="primary"
-          :loading="$resources.discussion.moveToProject.loading"
-          @click="
-            $resources.discussion.moveToProject.submit({
-              project: discussionMoveDialog.project?.value,
-            })
-          "
-        >
-          {{
-            discussionMoveDialog.project
-              ? `Move to ${discussionMoveDialog.project.label}`
-              : 'Move'
-          }}
-        </Button>
-        <Button @click="discussionMoveDialog.show = false">Cancel</Button>
-      </template>
-    </Dialog>
   </div>
 </template>
 <script>
@@ -317,6 +318,9 @@ import CommentsArea from '@/components/CommentsArea.vue'
 import CommentEditor from './CommentEditor.vue'
 import TextEditor from '@/components/TextEditor.vue'
 import UserProfileLink from './UserProfileLink.vue'
+import DiscussionMeta from './DiscussionMeta.vue'
+import DiscussionBreadcrumbs from './DiscussionBreadcrumbs.vue'
+import { focus } from '@/directives'
 import { copyToClipboard } from '@/utils'
 import { teams } from '@/data/teams'
 import { getTeamProjects } from '@/data/projects'
@@ -326,6 +330,7 @@ export default {
   props: ['postId', 'readOnlyMode'],
   directives: {
     visibility: visibilityDirective,
+    focus,
   },
   components: {
     TextEditor,
@@ -337,6 +342,8 @@ export default {
     UserProfileLink,
     CommentEditor,
     Tooltip,
+    DiscussionMeta,
+    DiscussionBreadcrumbs,
   },
   resources: {
     discussion() {
@@ -436,7 +443,7 @@ export default {
             ...this.$route.params,
             slug: doc.slug,
           },
-          query: this.$route.query
+          query: this.$route.query,
         })
       }
     },

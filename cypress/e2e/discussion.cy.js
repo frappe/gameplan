@@ -67,18 +67,16 @@ describe('Discussion', () => {
     // edit title
     cy.iconButton('Discussion Options').click()
     cy.button('Edit Title').click()
-    cy.get('input[placeholder="Title"]').clear().type('Edited Discussion Title')
-    cy.button('Save').click()
+    cy.get('input[placeholder="Title"]').clear().type('Edited Discussion Title{enter}')
     cy.get('h1:contains("Edited Discussion Title")').should('exist')
     cy.contains(
       'changed the title from "Starting a new discussion" to "Edited Discussion Title"'
     ).should('exist')
 
     // edit content
-    cy.iconButton('Discussion Options').click()
-    cy.button('Edit Post').click()
+    cy.iconButton('Edit Post').click()
     cy.get('[contenteditable=true]').type('adding more content')
-    cy.button('Save').click()
+    cy.button('Submit').click()
     cy.get('p:contains("adding more content")').should('exist')
 
     // move to another project

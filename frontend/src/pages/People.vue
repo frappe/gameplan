@@ -1,39 +1,41 @@
 <template>
   <div class="flex h-full flex-col">
     <div class="flex min-h-0 flex-1">
-      <div class="w-full py-6">
-        <div class="flex items-center justify-between">
-          <h1 class="text-2xl font-semibold">People</h1>
-          <div class="flex items-center space-x-2">
+      <div class="w-full">
+        <header class="sticky top-0 z-10 border-b bg-white py-3 px-5">
+          <div class="flex items-center justify-between">
+            <h1 class="text-2xl font-semibold">People</h1>
+            <div class="flex items-center space-x-2">
+              <Input
+                class="hidden sm:block"
+                type="text"
+                placeholder="Search by name"
+                v-model="search"
+                :debounce="500"
+                @input="search = $event"
+              />
+              <Input
+                type="select"
+                :options="[
+                  { label: 'Sort by name', value: 'full_name asc' },
+                  { label: 'Sort by last updated', value: 'modified desc' },
+                ]"
+                v-model="orderBy"
+              />
+            </div>
+          </div>
+          <div>
             <Input
-              class="hidden sm:block"
+              class="mt-2 w-full sm:hidden"
               type="text"
               placeholder="Search by name"
               v-model="search"
               :debounce="500"
               @input="search = $event"
             />
-            <Input
-              type="select"
-              :options="[
-                { label: 'Sort by name', value: 'full_name asc' },
-                { label: 'Sort by last updated', value: 'modified desc' },
-              ]"
-              v-model="orderBy"
-            />
           </div>
-        </div>
-        <div>
-          <Input
-            class="mt-2 w-full sm:hidden"
-            type="text"
-            placeholder="Search by name"
-            v-model="search"
-            :debounce="500"
-            @input="search = $event"
-          />
-        </div>
-        <div class="mt-6 grid gap-4 md:grid-cols-3">
+        </header>
+        <div class="grid gap-5 py-5 px-5 md:grid-cols-4">
           <router-link
             v-for="user in people"
             :key="user.name"
@@ -43,18 +45,42 @@
                 personId: user.name,
               },
             }"
-            class="flex w-full items-center rounded-lg border p-3 hover:bg-gray-50 focus-visible:border-gray-400 focus-visible:outline-none focus-visible:ring focus-visible:ring-gray-300"
+            class="w-full items-center overflow-hidden rounded-[20px] border pb-4 hover:border-gray-400 focus-visible:border-gray-400 focus-visible:outline-none focus-visible:ring focus-visible:ring-gray-300"
             exact-active-class="!bg-gray-100"
           >
-            <UserAvatar :user="user.user" size="lg" />
-            <div class="ml-3">
-              <div class="text-base font-medium text-gray-900">
+            <div class="h-16 w-full bg-gray-50">
+              <img
+                v-if="user.cover_image"
+                class="h-16 w-full object-cover"
+                :src="coverImageUrl(user.cover_image)"
+                :style="{
+                  objectPosition: `center ${user.cover_image_position}%`,
+                }"
+              />
+            </div>
+            <div class="-mt-8 flex justify-center">
+              <img
+                v-if="$user(user.user).user_image"
+                :src="$user(user.user).user_image"
+                class="h-16 w-16 rounded-full border-[6px] border-white object-cover"
+              />
+              <div
+                v-else
+                class="h-16 w-16 rounded-full border-[6px] border-white bg-gray-100"
+              ></div>
+            </div>
+            <div class="px-1 text-center">
+              <div class="text-xl font-medium text-gray-900">
                 {{ $user(user.user).full_name }}
               </div>
-              <div class="text-base text-gray-600">{{ user.bio }}</div>
+              <div
+                class="overflow-hidden text-ellipsis whitespace-nowrap text-lg text-gray-600"
+                :title="(user.bio || '').length > 40 ? user.bio : ''"
+              >
+                {{ user.bio }}
+              </div>
             </div>
           </router-link>
-
           <div class="p-3" v-if="$resources.profiles.hasNextPage">
             <Button
               @click="$resources.profiles.next()"
@@ -89,7 +115,14 @@ export default {
         cache: 'People',
         doctype: 'Team User Profile',
         filters: { enabled: 1 },
-        fields: ['name', 'user', 'bio', 'modified'],
+        fields: [
+          'name',
+          'user',
+          'bio',
+          'modified',
+          'cover_image',
+          'cover_image_position',
+        ],
         limit: 999,
         order_by: this.orderBy,
       }
@@ -119,6 +152,15 @@ export default {
           full_name: this.$user(profile.user).full_name,
         }
       })
+    },
+  },
+  methods: {
+    coverImageUrl(url) {
+      if (!url) return null
+      if (url.startsWith('https://images.unsplash.com')) {
+        return url + '&w=300&fit=crop&crop=entropy,faces,focalpoint'
+      }
+      return url
     },
   },
   pageMeta() {

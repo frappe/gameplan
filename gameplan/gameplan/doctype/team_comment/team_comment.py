@@ -30,6 +30,8 @@ class TeamComment(HasMentions, HasReactions, Document):
 			reference_doc.set("last_post_by", frappe.session.user)
 		if reference_doc.meta.has_field("comments_count"):
 			reference_doc.set("comments_count", reference_doc.comments_count + 1)
+		if reference_doc.doctype == 'Team Discussion':
+			reference_doc.update_participants_count()
 		reference_doc.save(ignore_permissions=True)
 
 	def on_trash(self):

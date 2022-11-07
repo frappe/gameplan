@@ -40,7 +40,8 @@ class TeamDiscussion(HasActivity, HasMentions, HasReactions, Document):
 		self.notify_mentions()
 		self.notify_reactions()
 		self.log_title_update()
-		update_index(self)
+		self.update_participants_count()
+		self.update_search_index()
 
 	def before_save(self):
 		self.update_slug()
@@ -62,6 +63,21 @@ class TeamDiscussion(HasActivity, HasMentions, HasReactions, Document):
 				'old_title': self.get_doc_before_save().title,
 				'new_title': self.title
 			})
+
+	def update_search_index(self):
+		if self.has_value_changed('title') or self.has_value_changed('content'):
+			update_index(self)
+
+	def update_participants_count(self):
+		participants = frappe.db.get_all('Team Comment',
+			filters={
+				'reference_doctype': self.doctype,
+				'reference_name': self.name
+			},
+			pluck='owner'
+		)
+		participants.append(self.owner)
+		self.participants_count = len(list(set(participants)))
 
 	@frappe.whitelist()
 	def track_visit(self):
@@ -111,3 +127,4 @@ class TeamDiscussion(HasActivity, HasMentions, HasReactions, Document):
 		project = frappe.get_doc("Team Project", self.project)
 		project.discussions_count = project.discussions_count + delta
 		project.save(ignore_permissions=True)
+

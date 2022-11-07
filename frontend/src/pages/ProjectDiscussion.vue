@@ -1,5 +1,5 @@
 <template>
-  <div class="flex">
+  <div class="flex" v-if="project">
     <DiscussionView
       class="w-full"
       :postId="postId"
@@ -16,7 +16,7 @@ import DiscussionView from '@/components/DiscussionView.vue'
 
 export default {
   name: 'ProjectDiscussion',
-  props: ['project', 'postId', 'slug'],
+  props: ['team', 'project', 'teamId', 'projectId', 'postId', 'slug'],
   components: {
     TextEditor,
     Avatar,

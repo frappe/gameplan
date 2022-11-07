@@ -11,14 +11,14 @@
         <div class="w-full overflow-auto" id="scrollContainer">
           <div
             v-if="$readOnlyMode"
-            class="right-0 top-0 mb-3 bg-gray-100 px-4 py-3 text-sm text-gray-600"
+            class="right-0 top-0 mb-3 bg-gray-100 py-3 text-sm text-gray-600"
           >
-            <div class="mx-auto max-w-4xl px-10">
+            <div class="mx-auto px-10">
               This site is running in read-only mode. Full functionality will be
               restored soon.
             </div>
           </div>
-          <div class="mx-auto max-w-4xl px-10">
+          <div>
             <slot />
           </div>
         </div>

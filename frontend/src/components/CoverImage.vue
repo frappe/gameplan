@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-[3rem] overflow-hidden rounded-lg bg-gray-100">
+  <div class="min-h-[3rem] overflow-hidden bg-gray-100">
     <div class="group relative h-[200px] w-full" v-if="validatedImageUrl">
       <img
         class="h-[200px] w-full object-cover"

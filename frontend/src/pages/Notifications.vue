@@ -1,5 +1,5 @@
 <template>
-  <div class="h-full w-full py-6">
+  <div class="h-full w-full px-5 py-3">
     <div class="mb-5 flex items-center justify-between">
       <h1 class="text-2xl font-semibold">Notifications</h1>
       <div class="flex items-stretch space-x-2">
@@ -21,7 +21,7 @@
             class="grid h-5 w-5 place-items-center"
             v-if="d.type === 'Reaction'"
           >
-            <FeatherIcon name="heart" class="w-4 h-4 text-gray-700" />
+            <FeatherIcon name="heart" class="h-4 w-4 text-gray-700" />
           </div>
           <div class="text-base text-gray-900">
             {{ d.message }} {{ $dayjs(d.creation).fromNow() }}

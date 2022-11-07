@@ -1,7 +1,7 @@
 <template>
   <TextEditor
     ref="textEditor"
-    :editor-class="['prose-sm', editable && 'min-h-[4rem]']"
+    :editor-class="['prose-sm max-w-none', editable && 'min-h-[4rem]']"
     :content="value"
     @change="editable ? $emit('change', $event) : null"
     :starterkit-options="{ heading: { levels: [2, 3, 4, 5, 6] } }"
@@ -110,9 +110,6 @@ export default {
           'ToggleHeaderCell',
           'DeleteTable',
         ],
-        'Separator',
-        'Undo',
-        'Redo',
       ]
     },
   },
