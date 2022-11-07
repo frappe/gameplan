@@ -17,7 +17,8 @@
   "last_post_by",
   "closed_at",
   "closed_by",
-  "comments_count"
+  "comments_count",
+  "participants_count"
  ],
  "fields": [
   {
@@ -70,7 +71,8 @@
   {
    "fieldname": "comments_count",
    "fieldtype": "Int",
-   "label": "Comments Count"
+   "label": "Comments Count",
+   "read_only": 1
   },
   {
    "fieldname": "last_post_by",
@@ -93,11 +95,17 @@
    "fieldname": "slug",
    "fieldtype": "Data",
    "label": "Slug"
+  },
+  {
+   "fieldname": "participants_count",
+   "fieldtype": "Int",
+   "label": "Participants Count",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-10-19 17:08:30.025988",
+ "modified": "2022-11-07 01:08:18.960764",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "Team Discussion",

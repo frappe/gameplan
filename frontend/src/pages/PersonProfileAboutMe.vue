@@ -1,10 +1,14 @@
 <template>
   <ReadmeEditor
-    class="mt-6"
+    class="my-6"
     :resource="profile"
     :editable="$isSessionUser(profile.doc.user)"
     fieldname="readme"
-    placeholder="Write a brief introduction of yourself..."
+    :placeholder="
+      $isSessionUser(profile.doc.user)
+        ? 'Write a brief introduction of yourself...'
+        : 'No introduction'
+    "
     :border="false"
   />
 </template>

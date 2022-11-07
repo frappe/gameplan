@@ -1,5 +1,5 @@
 <template>
-  <div class="h-full divide-y">
+  <div class="h-full">
     <router-link
       v-for="d in $resources.discussions.data"
       :key="d.name"
@@ -12,17 +12,40 @@
           slug: d.slug,
         },
       }"
-      class="relative block hover:bg-gray-100"
+      class="group relative block rounded-[10px] hover:bg-gray-100"
     >
-      <div
-        v-show="d.unread"
-        class="absolute -left-2 top-1/2 h-1.5 w-1.5 shrink-0 -translate-y-1/2 rounded-full bg-blue-300"
-      ></div>
       <div class="flex items-center space-x-4 p-3">
         <UserInfo :email="d.last_post_by || d.owner">
           <template v-slot="{ user }">
-            <FeatherIconCircle name="lock" color="green" v-if="d.closed_at" />
-            <UserAvatar :user="user.name" v-else />
+            <div class="flex items-center space-x-3">
+              <div
+                class="h-1.5 w-1.5 shrink-0 rounded-full bg-blue-500"
+                :class="d.unread ? 'visible' : 'invisible'"
+              ></div>
+              <component
+                :is="d.closed_at ? 'Tooltip' : 'div'"
+                class="flex"
+                v-bind="
+                  d.closed_at
+                    ? {
+                        text: 'This discussion is closed',
+                        placement: 'top',
+                      }
+                    : null
+                "
+              >
+                <div class="relative">
+                  <UserAvatar :user="d.closed_by || user.name" />
+
+                  <div
+                    v-if="d.closed_at"
+                    class="absolute bottom-0 right-0 rounded-full bg-green-100 p-0.5 ring-2 ring-white group-hover:ring-gray-100"
+                  >
+                    <FeatherIcon name="lock" class="h-3 w-3 text-green-500" />
+                  </div>
+                </div>
+              </component>
+            </div>
             <div class="w-full">
               <div class="flex items-center">
                 <div :class="d.unread ? 'text-gray-900' : 'text-gray-600'">
@@ -39,14 +62,6 @@
                     {{ discussionTimestamp(d) }}
                   </span>
                 </div>
-                <span
-                  class="ml-auto inline-flex shrink-0 items-center text-base"
-                  :class="d.unread ? 'text-gray-900' : 'text-gray-600'"
-                  v-if="d.comments_count"
-                >
-                  {{ d.comments_count }}
-                  <FeatherIcon name="message-circle" class="ml-1 h-4 w-4" />
-                </span>
               </div>
               <div class="mt-0.5 flex items-center justify-between text-base">
                 <div class="text-gray-600">
@@ -76,9 +91,18 @@
                 </span>
               </div>
             </div>
+            <span
+              class="ml-auto inline-flex shrink-0 items-center text-base"
+              :class="d.unread ? 'text-gray-900' : 'text-gray-600'"
+              v-if="d.comments_count"
+            >
+              {{ d.comments_count }}
+              <FeatherIcon name="message-circle" class="ml-1 h-4 w-4" />
+            </span>
           </template>
         </UserInfo>
       </div>
+      <div class="ml-7 mr-3 h-px border-t border-gray-200"></div>
     </router-link>
     <div class="pb-40">
       <div
@@ -92,13 +116,13 @@
         No discussions
       </div>
       <div
-        class="flex items-center space-x-4 p-3"
+        class="flex items-center justify-center p-3"
         v-if="$resources.discussions.hasNextPage"
       >
-        <div class="h-8 w-8 rounded-full bg-gray-100"></div>
         <Button
           @click="$resources.discussions.next"
           :loading="$resources.discussions.list.loading"
+          icon-left="file-text"
         >
           {{
             $resources.discussions.loading ? 'Loading...' : 'Load more posts'
@@ -109,7 +133,7 @@
   </div>
 </template>
 <script>
-import { TextEditor } from 'frappe-ui'
+import { TextEditor, Tooltip } from 'frappe-ui'
 import FeatherIconCircle from './FeatherIconCircle.vue'
 
 export default {
@@ -118,6 +142,7 @@ export default {
   components: {
     TextEditor,
     FeatherIconCircle,
+    Tooltip,
   },
   resources: {
     discussions() {

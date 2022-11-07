@@ -102,7 +102,7 @@ def rebuild_index_if_not_exists():
 def create_index_for_records(records):
 	r = frappe.cache()
 	for i, d in enumerate(records):
-		if not hasattr(frappe.local, 'request'):
+		if not hasattr(frappe.local, 'request') and len(records) > 10:
 			update_progress_bar('Indexing discussions', i, len(records), absolute=True)
 
 		key = r.make_key(f"{PREFIX}:{d.name}:{d.comment}").decode()
@@ -114,7 +114,7 @@ def create_index_for_records(records):
 		}
 		super(RedisWrapper, r).hset(key, mapping=mapping)
 
-	if not hasattr(frappe.local, 'request'):
+	if not hasattr(frappe.local, 'request') and len(records) > 10:
 		print()
 
 
@@ -186,4 +186,3 @@ def get_records_to_index():
 		records.append(d)
 
 	return records
-

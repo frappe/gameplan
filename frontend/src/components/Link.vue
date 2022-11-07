@@ -30,7 +30,7 @@ export default {
       if (isExactActive) {
         return this.exactActive || this.active
       }
-      if (isActive && !this.exactActive) {
+      if (this.link.isActive || (isActive && !this.exactActive)) {
         return this.active
       }
       return this.inactive

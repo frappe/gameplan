@@ -1,46 +1,48 @@
 <template>
-  <div class="pt-8 pb-20">
-    <div class="flex w-full items-center">
-      <div class="flex items-center space-x-2">
-        <IconPicker
-          :modelValue="team.doc.icon"
-          @update:modelValue="updateTeamIcon"
-          :set-default="true"
-        >
-          <template v-slot="{ isOpen }">
-            <div
-              class="rounded-md p-px text-7xl leading-none focus:outline-none"
-              :class="isOpen ? 'bg-gray-200' : 'hover:bg-gray-100'"
-            >
-              {{ team.doc.icon || '' }}
-            </div>
-          </template>
-        </IconPicker>
-        <h1 class="text-6xl font-bold text-gray-900">{{ team.doc.title }}</h1>
-        <Badge v-if="team.doc.archived_at">Archived</Badge>
-        <Dropdown
-          v-if="!team.doc.archived_at"
-          placement="left"
-          :options="[
-            {
-              label: 'Archive',
-              icon: 'trash-2',
-              handler: () => archiveTeam(),
-            },
-          ]"
-          :button="{
-            label: 'Options',
-            appearance: 'minimal',
-            icon: 'more-horizontal',
-          }"
-        />
+  <div class="pb-20">
+    <div class="sticky top-0 z-10 border-b bg-white px-5 pt-3">
+      <div class="flex w-full items-center">
+        <div class="flex items-center space-x-2">
+          <IconPicker
+            :modelValue="team.doc.icon"
+            @update:modelValue="updateTeamIcon"
+            :set-default="true"
+          >
+            <template v-slot="{ isOpen }">
+              <div
+                class="rounded-md p-px text-7xl leading-none focus:outline-none"
+                :class="isOpen ? 'bg-gray-200' : 'hover:bg-gray-100'"
+              >
+                {{ team.doc.icon || '' }}
+              </div>
+            </template>
+          </IconPicker>
+          <h1 class="text-4xl font-bold text-gray-900">{{ team.doc.title }}</h1>
+          <Badge v-if="team.doc.archived_at">Archived</Badge>
+          <Dropdown
+            v-if="!team.doc.archived_at"
+            placement="left"
+            :options="[
+              {
+                label: 'Archive',
+                icon: 'trash-2',
+                handler: () => archiveTeam(),
+              },
+            ]"
+            :button="{
+              label: 'Options',
+              appearance: 'minimal',
+              icon: 'more-horizontal',
+            }"
+          />
+        </div>
+        <div class="ml-auto">
+          <TeamHomeMembers :team="team" />
+        </div>
       </div>
-      <div class="ml-auto">
-        <TeamHomeMembers :team="team" />
-      </div>
+      <Tabs :tabs="tabs" class="border-none" />
     </div>
-    <Tabs :tabs="tabs" />
-    <router-view :team="team" />
+    <router-view class="mx-auto max-w-4xl px-5" :team="team" />
   </div>
 </template>
 <script>
