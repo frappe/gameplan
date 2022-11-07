@@ -35,7 +35,9 @@
             />
           </div>
         </header>
-        <div class="grid gap-5 py-4 px-4 sm:py-5 sm:px-5 md:grid-cols-4">
+        <div
+          class="grid gap-5 py-4 px-4 sm:py-5 sm:px-5 lg:grid-cols-3 xl:grid-cols-4"
+        >
           <router-link
             v-for="user in people"
             :key="user.name"
