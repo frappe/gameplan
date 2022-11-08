@@ -9,6 +9,7 @@
               <Input
                 class="hidden sm:block"
                 type="text"
+                icon-left="search"
                 placeholder="Search by name"
                 v-model="search"
                 :debounce="500"
