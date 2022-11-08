@@ -55,6 +55,7 @@
               <img
                 v-if="user.cover_image"
                 class="h-16 w-full object-cover"
+                loading="lazy"
                 :src="coverImageUrl(user.cover_image)"
                 :style="{
                   objectPosition: `center ${user.cover_image_position}%`,
