@@ -5,6 +5,7 @@
     v-slot="{ href, isActive, isExactActive, navigate }"
   >
     <a
+      ref="elementRef"
       v-bind="$attrs"
       :href="href"
       @click="navigate"
@@ -25,6 +26,7 @@ export default {
   name: 'Link',
   inheritAttrs: false,
   props: ['link', 'active', 'exact-active', 'inactive'],
+  expose: ['getRef'],
   methods: {
     linkClasses(isActive, isExactActive) {
       if (isExactActive) {
@@ -34,6 +36,9 @@ export default {
         return this.active
       }
       return this.inactive
+    },
+    getRef() {
+      return this.$refs.elementRef
     },
   },
 }

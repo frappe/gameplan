@@ -202,13 +202,6 @@ export default {
       projectEditDialog: { show: false },
     }
   },
-  mounted() {
-    for (let team of teams.data || []) {
-      if (team.name === this.team.doc.name) {
-        team.open = true
-      }
-    }
-  },
   computed: {
     task() {
       let task = null

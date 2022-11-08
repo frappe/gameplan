@@ -155,7 +155,7 @@ export default {
   beforeUnmount() {
     this.$socket.off('new_activity')
     // cleanup mutation observer
-    this.mutationObserver.disconnect()
+    this.mutationObserver?.disconnect()
     delete this.mutationObserver
   },
   resources: {
@@ -379,6 +379,7 @@ export default {
     },
     setupMutationObserver() {
       let $el = this.$refs.addComment
+      if (!$el) return
       this.mutationObserver = new MutationObserver(() => {
         this.addCommentHeight = $el.clientHeight
       })

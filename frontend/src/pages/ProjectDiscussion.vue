@@ -13,6 +13,7 @@ import Link from '@/components/Link.vue'
 import Reactions from '@/components/Reactions.vue'
 import DiscussionList from '@/components/DiscussionList.vue'
 import DiscussionView from '@/components/DiscussionView.vue'
+import { teams } from '@/data/teams'
 
 export default {
   name: 'ProjectDiscussion',
@@ -24,6 +25,18 @@ export default {
     Reactions,
     DiscussionList,
     DiscussionView,
+  },
+  watch: {
+    postId: {
+      immediate: true,
+      handler() {
+        for (let team of teams.data || []) {
+          if (team.name === this.team.doc.name) {
+            team.open = true
+          }
+        }
+      },
+    },
   },
   methods: {
     isActive(update) {
