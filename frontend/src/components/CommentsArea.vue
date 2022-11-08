@@ -19,7 +19,11 @@
         </div>
       </div>
     </div>
-    <div class="px-1 pb-20" v-if="timelineItems.length">
+    <div
+      class="px-1"
+      :style="{ paddingBottom: `${addCommentHeight + 80}px` }"
+      v-if="timelineItems.length"
+    >
       <template v-for="item in timelineItems" :key="item.name">
         <div
           v-if="newMessagesFrom && newMessagesFrom == item.name"
@@ -125,6 +129,7 @@ export default {
       newComment: draftComment || '',
       newMessagesFrom: this.newCommentsFrom,
       highlightedComment: '',
+      addCommentHeight: 0,
     }
   },
   watch: {
@@ -149,9 +154,13 @@ export default {
         this.$resources.activities.reload()
       }
     })
+    this.setupMutationObserver()
   },
   beforeUnmount() {
     this.$socket.off('new_activity')
+    // cleanup mutation observer
+    this.mutationObserver.disconnect()
+    delete this.mutationObserver
   },
   resources: {
     comments() {
@@ -371,6 +380,13 @@ export default {
       if ($comment?.$el) {
         comment.$el = $comment.$el
       }
+    },
+    setupMutationObserver() {
+      let $el = this.$refs.addComment
+      this.mutationObserver = new MutationObserver(() => {
+        this.addCommentHeight = $el.clientHeight
+      })
+      this.mutationObserver.observe($el, { childList: true, subtree: true })
     },
   },
   computed: {
