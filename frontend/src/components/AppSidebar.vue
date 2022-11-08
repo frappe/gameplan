@@ -12,30 +12,12 @@
     {{ sidebarWidth }}
   </div>
 
-  <Motion
-    :animate="{
-      opacity: sidebarOpen ? 0 : 1,
-      x: sidebarOpen ? `-100%` : 0,
-    }"
-    class="fixed top-4 left-4"
-  >
-    <Tooltip text="Show Sidebar" position="bottom">
-      <Button icon="chevrons-right" @click="sidebarOpen = true"></Button>
-    </Tooltip>
-  </Motion>
-
-  <Motion
+  <div
     class="inline-flex h-full flex-1 flex-col overflow-auto bg-gray-100 pb-40"
-    :animate="{
-      marginLeft: sidebarOpen ? '0rem' : `-${sidebarWidth}px`,
-    }"
     :style="{ width: `${sidebarWidth}px` }"
   >
     <div class="flex w-full items-center justify-between px-2 py-2">
       <UserDropdown />
-      <Tooltip text="Hide Sidebar">
-        <Button icon="chevrons-left" @click="sidebarOpen = false"></Button>
-      </Tooltip>
     </div>
     <div class="flex-1">
       <nav class="px-2">
@@ -138,7 +120,7 @@
         }
       "
     />
-  </Motion>
+  </div>
 </template>
 <script>
 import { Tooltip, FeatherIcon } from 'frappe-ui'
