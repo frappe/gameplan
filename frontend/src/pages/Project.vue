@@ -1,5 +1,5 @@
 <template>
-  <div class="flex h-full flex-col">
+  <div class="flex flex-col">
     <header class="sticky top-0 z-10 border-b bg-white px-5 pt-3">
       <div v-if="project">
         <div class="flex h-9 w-full items-center">

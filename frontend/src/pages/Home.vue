@@ -3,7 +3,7 @@
     <div class="flex flex-1">
       <div class="h-full w-full">
         <div
-          class="sticky top-0 z-10 mb-5 flex items-center border-b bg-white py-3 px-4 sm:px-5"
+          class="sticky top-0 z-10 mb-1 sm:mb-5 flex items-center border-b bg-white py-3 px-4 sm:px-5"
         >
           <h1 class="text-2xl font-semibold">Posts</h1>
           <div class="relative ml-auto">

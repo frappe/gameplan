@@ -5,6 +5,7 @@
         <h2 class="text-2xl font-semibold">Posts</h2>
       </div>
       <DiscussionList
+        class="-mx-5 sm:mx-0"
         :filters="{ team: team.doc.name }"
         routeName="ProjectDiscussion"
       />
