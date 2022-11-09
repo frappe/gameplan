@@ -32,7 +32,7 @@
               <span class="grid h-5 w-5 place-items-center">
                 <FeatherIcon :name="link.icon" class="h-4 w-4" />
               </span>
-              <span class="text-lg">{{ link.name }}</span>
+              <span class="text-base">{{ link.name }}</span>
               <span
                 v-if="
                   link.unreadNotifications && link.unreadNotifications.data > 0
@@ -73,7 +73,7 @@
               <span class="flex h-5 w-5 items-center justify-center text-xl">
                 {{ team.icon }}
               </span>
-              <span class="text-lg">{{ team.title }}</span>
+              <span class="text-base">{{ team.title }}</span>
             </span>
           </Link>
           <div class="mb-2 space-y-0.5 mt-0.5" v-show="team.open">
@@ -93,7 +93,7 @@
                   >
                     {{ project.icon }}
                   </span>
-                  <span class="text-lg">{{ project.title }}</span>
+                  <span class="text-base">{{ project.title }}</span>
                   <FeatherIcon
                     v-if="project.is_private"
                     name="lock"
