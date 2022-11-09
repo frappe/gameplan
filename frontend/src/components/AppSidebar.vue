@@ -69,12 +69,20 @@
                 <ChevronTriangle class="h-3 w-3 text-gray-500" />
               </Motion>
             </button>
-            <span class="inline-flex items-center space-x-2">
+            <div class="flex w-full items-center">
               <span class="flex h-5 w-5 items-center justify-center text-xl">
                 {{ team.icon }}
               </span>
-              <span class="text-base">{{ team.title }}</span>
-            </span>
+              <span class="text-base ml-2">{{ team.title }}</span>
+              <div class="ml-auto">
+                <Tooltip
+                  v-if="team.unread"
+                  :text="`${team.unread} unread posts`"
+                >
+                  <span class="text-gray-600 text-sm">{{ team.unread }}</span>
+                </Tooltip>
+              </div>
+            </div>
           </Link>
           <div class="mb-2 space-y-0.5 mt-0.5" v-show="team.open">
             <Link
@@ -131,7 +139,7 @@ import Link from './Link.vue'
 import AddTeamDialog from './AddTeamDialog.vue'
 import UserDropdown from './UserDropdown.vue'
 import ChevronTriangle from './icons/ChevronTriangle.vue'
-import { activeTeams, teams } from '@/data/teams'
+import { activeTeams, teams, unreadItems } from '@/data/teams'
 import { getTeamProjects } from '@/data/projects'
 import { unreadNotifications } from '@/data/notifications'
 
@@ -160,6 +168,9 @@ export default {
   mounted() {
     this.$socket.on('gameplan:new_notification', () => {
       unreadNotifications.reload()
+    })
+    this.$socket.on('gameplan:unread_items', () => {
+      unreadItems.reload()
     })
     let sidebarWidth = parseInt(localStorage.getItem('sidebarWidth') || 256)
     this.sidebarWidth = sidebarWidth

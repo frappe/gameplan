@@ -1,4 +1,4 @@
-import { createListResource } from 'frappe-ui'
+import { createListResource, createResource } from 'frappe-ui'
 import { computed } from 'vue'
 
 export let teams = createListResource({
@@ -8,6 +8,9 @@ export let teams = createListResource({
   order_by: 'title asc',
   cache: 'Teams',
   limit: 999,
+  onSuccess() {
+    unreadItems.fetch()
+  },
   transform(data) {
     return data.map((team) => {
       return {
@@ -23,6 +26,16 @@ export let teams = createListResource({
   },
 })
 teams.reload()
+
+export let unreadItems = createResource({
+  method: 'gameplan.api.get_unread_items',
+  cache: 'UnreadItems',
+  onSuccess(data) {
+    for (let team of teams.data) {
+      team.unread = data[team.name] || 0
+    }
+  },
+})
 
 export let activeTeams = computed(() => {
   return (teams.data || []).filter((team) => !team.archived_at)

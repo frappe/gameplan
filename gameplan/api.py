@@ -75,6 +75,25 @@ def get_unsplash_photos(keyword=None):
 	return frappe.cache().get_value("unsplash_photos", generator=get_list)
 
 
+@frappe.whitelist()
+def get_unread_items():
+    from frappe.query_builder.functions import Count
+    Discussion = frappe.qb.DocType("Team Discussion")
+    Visit = frappe.qb.DocType("Team Discussion Visit")
+    query = (
+		frappe.qb.from_(Discussion)
+	        .select(Discussion.team, Count(Discussion.team).as_("count"))
+            .left_join(Visit)
+	        .on((Visit.discussion == Discussion.name) & (Visit.user == frappe.session.user))
+	        .where((Visit.last_visit.isnull()) | (Visit.last_visit < Discussion.last_post_at))
+            .groupby(Discussion.team)
+    )
+    data = query.run(as_dict=1)
+    out = {}
+    for d in data:
+        out[d.team] = d.count
+    return out
+
 
 
 
