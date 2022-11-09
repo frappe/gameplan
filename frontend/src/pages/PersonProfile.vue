@@ -70,7 +70,7 @@
       </div>
       <Tabs class="border-none" :tabs="tabs" />
     </div>
-    <div class="mx-auto max-w-4xl px-5">
+    <div class="mx-auto max-w-4xl sm:px-5">
       <router-view :profile="$resources.profile" />
     </div>
     <Dialog

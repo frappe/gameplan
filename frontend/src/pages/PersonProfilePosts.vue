@@ -1,5 +1,5 @@
 <template>
-  <div class="mt-6">
+  <div class="mt-1 sm:mt-6">
     <DiscussionList
       :filters="{ owner: profile.doc.user }"
       routeName="ProjectDiscussion"
