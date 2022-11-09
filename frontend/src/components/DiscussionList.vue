@@ -73,17 +73,11 @@
                   </span>
                   <template v-if="!filters || !filters.project">
                     <span> in </span>
-                    <router-link
-                      class="hover:text-blue-600"
-                      :to="{
-                        name: 'ProjectOverview',
-                        params: { teamId: d.team, projectId: d.project },
-                      }"
-                    >
+                    <span>
                       {{ d.team_title }}
                       <span class="text-gray-500"> &mdash; </span>
                       {{ d.project_title }}
-                    </router-link>
+                    </span>
                   </template>
                 </div>
                 <span
