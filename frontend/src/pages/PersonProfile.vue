@@ -109,7 +109,16 @@
       </template>
       <template #actions>
         <Button appearance="primary" @click="save">Save</Button>
-        <Button @click="editDialog.show = false">Discard</Button>
+        <Button
+          @click="
+            () => {
+              editDialog.show = false
+              $resources.profile.reload()
+            }
+          "
+        >
+          Discard
+        </Button>
       </template>
     </Dialog>
   </div>
