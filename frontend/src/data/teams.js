@@ -30,13 +30,15 @@ teams.reload()
 export let unreadItems = createResource({
   method: 'gameplan.api.get_unread_items',
   cache: 'UnreadItems',
-  onSuccess(data) {
-    for (let team of teams.data) {
-      team.unread = data[team.name] || 0
-    }
-  },
 })
 
 export let activeTeams = computed(() => {
-  return (teams.data || []).filter((team) => !team.archived_at)
+  return (teams.data || [])
+    .filter((team) => !team.archived_at)
+    .map((team) => {
+      if (unreadItems.data) {
+        team.unread = unreadItems.data[team.name] || 0
+      }
+      return team
+    })
 })
