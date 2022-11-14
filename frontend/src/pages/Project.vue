@@ -26,7 +26,6 @@
             <Tooltip
               v-if="project.doc.is_private"
               text="This project is only visible to team members"
-              placement="top"
             >
               <Badge> Private </Badge>
             </Tooltip>

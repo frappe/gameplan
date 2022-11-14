@@ -26,12 +26,7 @@
                 :is="d.closed_at ? 'Tooltip' : 'div'"
                 class="flex"
                 v-bind="
-                  d.closed_at
-                    ? {
-                        text: 'This discussion is closed',
-                        placement: 'top',
-                      }
-                    : null
+                  d.closed_at ? { text: 'This discussion is closed' } : null
                 "
               >
                 <div class="relative">

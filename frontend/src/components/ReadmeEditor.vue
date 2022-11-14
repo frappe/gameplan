@@ -18,7 +18,7 @@
       :class="{ 'mt-4 mr-4': border || editReadme }"
       v-if="editable"
     >
-      <Tooltip v-if="!editReadme && !$readOnlyMode" text="Edit" placement="top">
+      <Tooltip v-if="!editReadme && !$readOnlyMode" text="Edit">
         <Button
           icon="edit-2"
           label="Edit"
