@@ -34,7 +34,8 @@
    "fieldname": "content",
    "fieldtype": "Text Editor",
    "in_list_view": 1,
-   "label": "Content"
+   "label": "Content",
+   "read_only": 1
   },
   {
    "fieldname": "status",
@@ -105,7 +106,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-11-07 01:08:18.960764",
+ "modified": "2022-11-14 16:39:47.920830",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "Team Discussion",

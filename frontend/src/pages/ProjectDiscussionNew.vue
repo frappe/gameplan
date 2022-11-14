@@ -169,6 +169,7 @@ export default {
         'Align Left',
         'Align Center',
         'Align Right',
+        'FontColor',
         'Separator',
         'Image',
         'Video',
