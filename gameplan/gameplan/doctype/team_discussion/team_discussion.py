@@ -29,6 +29,7 @@ class TeamDiscussion(HasActivity, HasMentions, HasReactions, Document):
 
 	def before_insert(self):
 		self.last_post_at = frappe.utils.now()
+		self.update_participants_count()
 
 	def after_insert(self):
 		self.update_discussions_count(1)
