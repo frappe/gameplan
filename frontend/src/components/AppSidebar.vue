@@ -246,7 +246,9 @@ export default {
     },
     setProjectRef($comp, project) {
       this.$projectRefs = this.$projectRefs || {}
+      if ($comp) {
       this.$projectRefs[project.name] = $comp.getRef()
+      }
     },
     async scrollProjectIntoView(project) {
       await this.$nextTick()
