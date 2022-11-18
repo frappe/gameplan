@@ -45,7 +45,7 @@
           </div>
         </div>
         <div class="hidden shrink-0 space-x-2 sm:block">
-          <Button :route="{ name: 'ProjectDiscussions' }">Discard</Button>
+          <Button @click="discard">Discard</Button>
           <Button
             appearance="primary"
             :loading="$resources.newDiscussion.loading"
@@ -70,13 +70,14 @@
             e.target.style.height = e.target.scrollHeight + 'px'
           }
         "
+        @change="(e) => saveDraftPost({ title: e.target.value })"
       ></textarea>
       <TextEditor
         ref="textEditor"
         class="mt-1"
-        editor-class="rounded-b-lg max-w-[unset] prose-sm h-[calc(100vh-410px)] sm:h-[calc(100vh-320px)] overflow-auto"
+        editor-class="rounded-b-lg max-w-[unset] prose-sm h-[calc(100vh-410px)] sm:h-[calc(100vh-300px)] overflow-auto"
         :content="content"
-        @change="(val) => (content = val)"
+        @change="onNewPostChange"
         placeholder="Write something..."
       >
         <template v-slot:bottom>
@@ -88,7 +89,7 @@
               :buttons="textEditorMenuButtons"
             />
             <div class="mt-2 shrink-0 space-x-2 text-right sm:hidden">
-              <Button :route="{ name: 'ProjectDiscussions' }">Discard</Button>
+              <Button @click="discard">Discard</Button>
               <Button
                 appearance="primary"
                 :loading="$resources.newDiscussion.loading"
@@ -115,9 +116,10 @@ export default {
   components: { TextEditor, UserProfileLink, TextEditorFixedMenu },
   directives: { focus },
   data() {
+    let draftPost = this.getDraftPost()
     return {
-      title: '',
-      content: '',
+      title: draftPost?.title || '',
+      content: draftPost?.content || '',
     }
   },
   resources: {
@@ -152,6 +154,59 @@ export default {
           this.content = ''
         },
       }
+    },
+  },
+  methods: {
+    onNewPostChange(value) {
+      this.content = value
+      this.saveDraftPost({ content: value })
+    },
+    discard() {
+      if (!this.$refs.textEditor.editor.isEmpty || this.title) {
+        this.$dialog({
+          title: 'Discard post',
+          message: 'Are you sure you want to discard your post?',
+          actions: [
+            {
+              label: 'Discard post',
+              handler: ({ close }) => {
+                localStorage.removeItem(this.draftPostKey())
+                this.$router.push({ name: 'ProjectDiscussions' })
+                close()
+              },
+              appearance: 'primary',
+            },
+            {
+              label: 'Keep post',
+            },
+          ],
+        })
+      } else {
+        localStorage.removeItem(this.draftPostKey())
+        this.$router.push({ name: 'ProjectDiscussions' })
+      }
+    },
+    saveDraftPost({ title, content }) {
+      setTimeout(() => {
+        let draftPost = this.getDraftPost()
+        if (!draftPost) {
+          draftPost = {}
+        }
+        if (title != null) {
+          draftPost.title = title
+        }
+        if (content != null) {
+          draftPost.content = content
+        }
+        localStorage.setItem(this.draftPostKey(), JSON.stringify(draftPost))
+      }, 0)
+    },
+    getDraftPost() {
+      let draftPost = localStorage.getItem(this.draftPostKey())
+      return draftPost ? JSON.parse(draftPost) : null
+    },
+    draftPostKey() {
+      return `draft-post-${this.project.doc.name}`
     },
   },
   computed: {
