@@ -211,7 +211,10 @@ export default {
           return searchTexts.some((text) => text.includes(this.inviteQuery))
         })
         if (users.length == 0) {
-          let emailRegex = /^\w+@[a-zA-Z_]+?\.[a-zA-Z]{2,3}$/
+          // https://stackoverflow.com/a/46181
+          let emailRegex =
+            /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
+
           if (emailRegex.test(this.inviteQuery)) {
             users.push({
               icon: 'mail',
