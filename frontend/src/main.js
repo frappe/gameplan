@@ -1,6 +1,5 @@
 import { createApp } from 'vue'
 import {
-  FrappeUI,
   Button,
   Input,
   ErrorMessage,
@@ -8,8 +7,11 @@ import {
   FeatherIcon,
   Alert,
   Badge,
-  createCall,
-  pageMeta,
+  request,
+  setConfig,
+  frappeRequest,
+  pageMetaPlugin,
+  resourcesPlugin,
 } from 'frappe-ui'
 import router from './router'
 import App from './App.vue'
@@ -21,6 +23,7 @@ import { createDialog } from './utils/dialogs'
 import { createToast } from './utils/toasts'
 import { userInfo, users } from './data/users'
 import { session } from './data/session'
+import socket from './socket'
 
 let globalComponents = {
   Button,
@@ -33,26 +36,16 @@ let globalComponents = {
   UserInfo,
   UserAvatar,
 }
-
-let call = createCall({
-  onError({ status }) {
-    if (status === 403 && document.cookie.includes('sid=Guest')) {
-      console.log('navigate to login')
-    }
-  },
-})
-
 let app = createApp(App)
-app.use(FrappeUI, {
-  call,
-  resources: {
-    getResource: call,
-  },
-})
+setConfig('resourceFetcher', frappeRequest)
+app.use(resourcesPlugin)
+app.use(pageMetaPlugin)
+app.use(router)
 for (let key in globalComponents) {
   app.component(key, globalComponents[key])
 }
 app.config.unwrapInjectedRef = true
+app.config.globalProperties.$socket = socket
 app.config.globalProperties.$dayjs = dayjs
 app.config.globalProperties.$dialog = createDialog
 app.config.globalProperties.$toast = createToast
@@ -64,9 +57,6 @@ app.config.globalProperties.$readOnlyMode = window.read_only_mode
 app.config.globalProperties.$isSessionUser = (email) => {
   return userInfo().name === email
 }
-app.use(router)
-app.use(pageMeta)
-
 app.mount('#app')
 
 if (import.meta.env.DEV) {
@@ -76,4 +66,6 @@ if (import.meta.env.DEV) {
   window.$session = session
   window.$dialog = createDialog
   window.$toast = createToast
+  window.$request = request
+  window.$frappeRequest = frappeRequest
 }

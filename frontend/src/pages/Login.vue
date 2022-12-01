@@ -93,7 +93,7 @@ let showEmailLogin = ref(false)
 let email = ref('')
 
 let authProviders = createResource({
-  method: 'gameplan.api.oauth_providers',
+  url: 'gameplan.api.oauth_providers',
   auto: true,
   onSuccess(data) {
     showEmailLogin.value = data.length === 0

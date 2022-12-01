@@ -4,7 +4,7 @@
       <h1 class="mb-4 text-2xl font-semibold">New Task</h1>
       <Input type="text" placeholder="Title" v-model="title" />
       <div class="mt-4">
-        <div class="relative px-3 py-2 mt-2 border rounded-md">
+        <div class="relative mt-2 rounded-md border px-3 py-2">
           <TextEditor
             editor-class="min-h-[4rem] prose-sm"
             :content="description"
@@ -48,7 +48,7 @@ export default {
   },
   resources: {
     createTask: {
-      method: 'frappe.client.insert',
+      url: 'frappe.client.insert',
       makeParams() {
         return {
           doc: {

@@ -26,9 +26,9 @@ export let projects = createListResource({
       return project
     })
   },
+  auto: true,
 })
 
 export function getTeamProjects(team) {
   return projects.data?.filter((project) => project.team === team) || []
 }
-projects.reload()

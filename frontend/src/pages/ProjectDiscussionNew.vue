@@ -125,7 +125,7 @@ export default {
   resources: {
     newDiscussion() {
       return {
-        method: 'frappe.client.insert',
+        url: 'frappe.client.insert',
         makeParams({ title, content }) {
           return {
             doc: {

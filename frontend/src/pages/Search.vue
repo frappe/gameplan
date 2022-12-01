@@ -22,16 +22,16 @@
         Search
       </Button>
     </div>
-    <div v-if="$resources.search.data" class="mt-2 text-sm text-gray-600">
+    <div v-if="$resources.search.params" class="mt-2 text-sm text-gray-600">
       About {{ $resources.search.data.total }} results for "{{
-        $resources.search.params.query
+        $resources.search.params?.query
       }}" ({{ $resources.search.data.duration.toFixed(2) }}
       ms)
     </div>
   </div>
   <div
     class="mx-auto mt-3 max-w-4xl sm:px-5"
-    v-if="$resources.search.data?.docs.length"
+    v-if="$resources.search.params && $resources.search.data?.docs.length"
   >
     <router-link
       class="flex flex-col rounded-[10px] hover:bg-gray-100"
@@ -99,7 +99,7 @@ export default {
   resources: {
     search: {
       cache: 'Search',
-      method: 'gameplan.gameplan.doctype.team_discussion.search.search',
+      url: 'gameplan.gameplan.doctype.team_discussion.search.search',
       makeParams(query) {
         return { query, start: this.start }
       },

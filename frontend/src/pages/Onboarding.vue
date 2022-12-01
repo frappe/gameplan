@@ -76,7 +76,7 @@ export default {
   components: { Input, LoadingIndicator, ErrorMessage },
   resources: {
     onboarding: {
-      method: 'gameplan.api.onboarding',
+      url: 'gameplan.api.onboarding',
       makeParams() {
         return {
           data: this.data,

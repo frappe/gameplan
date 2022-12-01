@@ -5,7 +5,7 @@ import { session } from './session'
 
 let usersByName = reactive({})
 export let users = createResource({
-  method: 'gameplan.api.get_user_info',
+  url: 'gameplan.api.get_user_info',
   cache: 'Users',
   initialData: [],
   onData(users) {
@@ -19,7 +19,6 @@ export let users = createResource({
     }
   },
 })
-users.reload()
 
 export function userInfo(email) {
   if (!email) {

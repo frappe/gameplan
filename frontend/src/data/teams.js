@@ -8,6 +8,7 @@ export let teams = createListResource({
   order_by: 'title asc',
   cache: 'Teams',
   limit: 999,
+  auto: true,
   onSuccess() {
     unreadItems.fetch()
   },
@@ -25,10 +26,9 @@ export let teams = createListResource({
     })
   },
 })
-teams.reload()
 
 export let unreadItems = createResource({
-  method: 'gameplan.api.get_unread_items',
+  url: 'gameplan.api.get_unread_items',
   cache: 'UnreadItems',
 })
 

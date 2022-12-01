@@ -171,7 +171,7 @@
   </div>
 </template>
 <script>
-import { Autocomplete, Dropdown, Spinner, Input, Tooltip } from 'frappe-ui'
+import { Autocomplete, Dropdown, Input, Tooltip } from 'frappe-ui'
 import Pie from '@/components/Pie.vue'
 import IconPicker from '@/components/IconPicker.vue'
 import Links from '@/components/Links.vue'
@@ -186,7 +186,6 @@ export default {
   components: {
     Input,
     Dropdown,
-    Spinner,
     Pie,
     IconPicker,
     Links,

@@ -79,7 +79,7 @@
       <template #actions>
         <Resource
           :options="{
-            method: 'frappe.client.set_value',
+            url: 'frappe.client.set_value',
             onSuccess() {
               updateMemberRole.show = false
               project.get.reload()
