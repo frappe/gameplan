@@ -46,7 +46,7 @@
  "in_create": 1,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-10-05 21:09:16.756917",
+ "modified": "2022-12-02 12:58:08.160831",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "Team Activity",
@@ -73,6 +73,17 @@
    "read": 1,
    "report": 1,
    "role": "Teams User",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Gameplan Guest",
    "share": 1,
    "write": 1
   }

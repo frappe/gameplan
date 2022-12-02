@@ -8,6 +8,7 @@ from frappe.model.base_document import get_controller
 
 @frappe.whitelist()
 def get_list(doctype=None, fields=None, filters=None, order_by=None, start=0, limit=20, parent=None, debug=False):
+	check_permissions(doctype, parent)
 	query = frappe.qb.engine.get_query(
 		table=doctype,
 		fields=fields,
@@ -15,7 +16,7 @@ def get_list(doctype=None, fields=None, filters=None, order_by=None, start=0, li
 		order_by=order_by,
 		start=start,
 		limit=limit,
-        parent=parent
+		parent=parent
 	)
 	if order_by:
 		for declaration in order_by.split(','):
@@ -26,6 +27,14 @@ def get_list(doctype=None, fields=None, filters=None, order_by=None, start=0, li
 
 	query = apply_custom_filters(doctype, query)
 	return query.run(as_dict=True, debug=debug)
+
+def check_permissions(doctype, parent):
+	user = frappe.session.user
+	if (
+		not frappe.has_permission(doctype, "select", user=user, parent_doctype=parent)
+		and not frappe.has_permission(doctype, "read", user=user, parent_doctype=parent)
+	):
+		frappe.throw(f'Insufficient Permission for {doctype}', frappe.PermissionError)
 
 def apply_custom_filters(doctype, query):
 	"""Apply custom filters to query"""

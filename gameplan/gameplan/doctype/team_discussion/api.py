@@ -8,6 +8,9 @@ from pypika.terms import ExistsCriterion
 
 @frappe.whitelist()
 def get_discussions(filters=None, limit_start=None, limit_page_length=None):
+	if not frappe.has_permission('Team Discussion', 'read'):
+		frappe.throw('Insufficient Permission for Team Discussion', frappe.PermissionError)
+
 	filters = frappe.parse_json(filters) if filters else None
 	Discussion = frappe.qb.DocType('Team Discussion')
 	Visit = frappe.qb.DocType('Team Discussion Visit')
@@ -46,6 +49,12 @@ def get_discussions(filters=None, limit_start=None, limit_page_length=None):
 	if filters:
 		for key in filters:
 			query = query.where(Discussion[key] == filters[key])
+
+	is_guest = 'Gameplan Guest' in frappe.get_roles()
+	if is_guest:
+		GuestAccess = frappe.qb.DocType('GP Guest Access')
+		project_list = GuestAccess.select(GuestAccess.project).where(GuestAccess.user == frappe.session.user)
+		query = query.where(Discussion.project.isin(project_list))
 
 	return query.run(as_dict=1)
 

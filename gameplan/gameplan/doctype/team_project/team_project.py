@@ -29,6 +29,10 @@ class TeamProject(ManageMembersMixin, Archivable, Document):
 		query = query.where(
 			(Project.is_private == 0) | ((Project.is_private == 1) & ExistsCriterion(member_exists))
 		)
+		if 'Gameplan Guest' in frappe.get_roles():
+			GuestAccess = frappe.qb.DocType('GP Guest Access')
+			project_list = GuestAccess.select(GuestAccess.project).where(GuestAccess.user == frappe.session.user)
+			query = query.where(Project.name.isin(project_list))
 		return query
 
 	def as_dict(self, *args, **kwargs) -> dict:
@@ -136,6 +140,29 @@ class TeamProject(ManageMembersMixin, Archivable, Document):
 				doc = frappe.get_doc(doctype, name)
 				doc.team = self.team
 				doc.save()
+
+	@frappe.whitelist()
+	def invite_guest(self, email):
+		frappe.utils.validate_email_address(email, True)
+
+		if frappe.db.exists('User', email) and 'Teams User' in frappe.get_roles(email):
+			frappe.throw('This user is already a Gameplan member')
+
+		if not frappe.db.exists("GP Guest Access", {'project': self.name, 'user': email}):
+			invitation = frappe.get_doc(
+				doctype='GP Invitation',
+				email=email,
+				type='Project Guest Access',
+				project=self.name,
+			)
+			invitation.insert(ignore_permissions=True)
+
+	@frappe.whitelist()
+	def remove_guest(self, email):
+		name = frappe.db.get_value('GP Guest Access', {'project': self.name, 'user': email})
+		if name:
+			frappe.delete_doc('GP Guest Access', name)
+
 
 def get_meta_tags(url):
 	response = requests.get(url, timeout=2, allow_redirects=True)

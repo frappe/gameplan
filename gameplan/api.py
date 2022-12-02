@@ -13,9 +13,13 @@ def get_user_info():
 
 	users = frappe.db.get_all(
 		"User",
-		filters=[["Has Role", "role", "=", "Teams User"]],
+		filters=[["Has Role", "role", "in", ["Teams User", "Gameplan Guest"]]],
 		fields=["name", "email", "user_image", "full_name", "user_type"],
 		order_by="full_name asc"
+	)
+	roles = frappe.db.get_all('Has Role',
+		filters={'parenttype': 'User'},
+		fields=['role', 'parent']
 	)
 	user_profile_names = frappe.db.get_all('Team User Profile',
 		fields=['user', 'name'],
@@ -26,6 +30,7 @@ def get_user_info():
 		if frappe.session.user == user.name:
 			user.session_user = True
 		user.user_profile = user_profile_names_map.get(user.name)
+		user.roles = [r.role for r in roles if r.parent == user.name]
 	return users
 
 @frappe.whitelist()
@@ -41,28 +46,19 @@ def accept_invitation(key: str = None):
 		frappe.throw("Invalid or expired key")
 
 	result = frappe.db.get_all(
-		"Team Member", filters={"key": key}, fields=["email", "parent", "parenttype"]
+		"GP Invitation", filters={"key": key}, pluck='name'
 	)
 	if not result:
 		frappe.throw("Invalid or expired key")
 
-	# valid key, now set the user as Administrator
-	frappe.set_user("Administrator")
-	doctype = result[0].parenttype
-	doc = frappe.get_doc(doctype, result[0].parent)
-	user = doc.accept_invitation(key)
+	invitation = frappe.get_doc('GP Invitation', result[0])
+	invitation.accept()
+	invitation.reload()
 
-	if doctype == "Team":
-		redirect_location = f"/teams/{doc.name}"
-	elif doctype == "Team Project":
-		redirect_location = f"/teams/{doc.team}/projects/{doc.name}"
-	else:
-		redirect_location = "/teams"
-
-	if user:
-		frappe.local.login_manager.login_as(user.name)
+	if invitation.status == "Accepted":
+		frappe.local.login_manager.login_as(invitation.email)
 		frappe.local.response["type"] = "redirect"
-		frappe.local.response["location"] = redirect_location
+		frappe.local.response["location"] = "/g"
 
 
 @frappe.whitelist()
@@ -77,22 +73,22 @@ def get_unsplash_photos(keyword=None):
 
 @frappe.whitelist()
 def get_unread_items():
-    from frappe.query_builder.functions import Count
-    Discussion = frappe.qb.DocType("Team Discussion")
-    Visit = frappe.qb.DocType("Team Discussion Visit")
-    query = (
+	from frappe.query_builder.functions import Count
+	Discussion = frappe.qb.DocType("Team Discussion")
+	Visit = frappe.qb.DocType("Team Discussion Visit")
+	query = (
 		frappe.qb.from_(Discussion)
-	        .select(Discussion.team, Count(Discussion.team).as_("count"))
-            .left_join(Visit)
-	        .on((Visit.discussion == Discussion.name) & (Visit.user == frappe.session.user))
-	        .where((Visit.last_visit.isnull()) | (Visit.last_visit < Discussion.last_post_at))
-            .groupby(Discussion.team)
-    )
-    data = query.run(as_dict=1)
-    out = {}
-    for d in data:
-        out[d.team] = d.count
-    return out
+			.select(Discussion.team, Count(Discussion.team).as_("count"))
+			.left_join(Visit)
+			.on((Visit.discussion == Discussion.name) & (Visit.user == frappe.session.user))
+			.where((Visit.last_visit.isnull()) | (Visit.last_visit < Discussion.last_post_at))
+			.groupby(Discussion.team)
+	)
+	data = query.run(as_dict=1)
+	out = {}
+	for d in data:
+		out[d.team] = d.count
+	return out
 
 
 

@@ -30,6 +30,7 @@ export function userInfo(email) {
       email: email,
       full_name: email.split('@')[0],
       user_image: null,
+      roles: [],
     }
   }
   return usersByName[email]

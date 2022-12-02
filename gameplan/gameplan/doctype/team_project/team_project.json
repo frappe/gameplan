@@ -125,7 +125,7 @@
    "link_fieldname": "project"
   }
  ],
- "modified": "2022-10-02 11:12:33.683844",
+ "modified": "2022-11-16 15:54:08.147262",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "Team Project",
@@ -155,6 +155,15 @@
    "role": "System Manager",
    "share": 1,
    "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Gameplan Guest",
+   "share": 1
   }
  ],
  "show_title_field_in_link": 1,

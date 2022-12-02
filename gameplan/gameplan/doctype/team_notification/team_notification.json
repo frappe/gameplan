@@ -86,7 +86,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-10-17 20:14:20.818904",
+ "modified": "2022-12-02 13:05:22.481731",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "Team Notification",
@@ -113,6 +113,17 @@
    "read": 1,
    "report": 1,
    "role": "Teams User",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Gameplan Guest",
    "share": 1,
    "write": 1
   }

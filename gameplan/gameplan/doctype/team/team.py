@@ -24,6 +24,16 @@ class Team(ManageMembersMixin, Archivable, Document):
 				member.user_image = user_image
 		return d
 
+	@staticmethod
+	def get_list_query(query):
+		is_guest = 'Gameplan Guest' in frappe.get_roles()
+		if is_guest:
+			Team = frappe.qb.DocType('Team')
+			GuestAccess = frappe.qb.DocType('GP Guest Access')
+			team_list = GuestAccess.select(GuestAccess.team).where(GuestAccess.user == frappe.session.user)
+			query = query.where(Team.name.isin(team_list))
+		return query
+
 	def before_insert(self):
 		if not self.name:
 			slug = frappe.scrub(self.title).replace("_", "-")
@@ -48,37 +58,25 @@ class Team(ManageMembersMixin, Archivable, Document):
 			},
 		)
 
-	@frappe.whitelist()
-	def send_invitation(self, email):
-		for row in self.members:
-			if row.email == email:
-				if row.status == "Invited":
-					frappe.throw(f"Invitation already sent to {email}")
-				if row.status == "Accepted":
-					frappe.throw(f"{email} is already a member of this project")
-
-		member = self.append(
-			"members",
-			{
+	def add_member(self, email):
+		if email not in [member.user for member in self.members]:
+			self.append("members", {
 				"email": email,
-				"status": "Invited",
-				"role": "Member",
-				"key": frappe.utils.generate_hash(length=8),
-			},
-		)
-		self.save()
-		frappe.sendmail(
-			recipients=email,
-			subject=f"You have been invited to join {self.title}",
-			template="team_invitation",
-			args={
-				"title": f"Team: {self.title}",
-				"invite_link": self.get_invitation_link(member),
-			},
-			now=True,
-		)
+				"user": email,
+				"status": "Accepted"
+			})
 
-	def get_invitation_link(self, member):
-		return frappe.utils.get_url(
-			f"/api/method/gameplan.api.accept_invitation?key={member.key}"
-		)
+	@frappe.whitelist()
+	def invite_members(self, emails):
+		for email in emails:
+			frappe.utils.validate_email_address(email, True)
+
+		existing_members = [m.user for m in self.members]
+		for email in emails:
+			if email not in existing_members:
+				frappe.get_doc(
+					doctype='GP Invitation',
+					email=email,
+					type='Team Access',
+					team=self.name,
+				).insert(ignore_permissions=True)

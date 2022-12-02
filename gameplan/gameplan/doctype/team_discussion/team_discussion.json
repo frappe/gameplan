@@ -106,7 +106,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-11-14 16:39:47.920830",
+ "modified": "2022-11-16 16:04:36.307308",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "Team Discussion",
@@ -136,6 +136,15 @@
    "role": "System Manager",
    "share": 1,
    "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Gameplan Guest",
+   "share": 1
   }
  ],
  "show_title_field_in_link": 1,

@@ -21,6 +21,8 @@ export default {
           archive: 'archive',
           unarchive: 'unarchive',
           inviteMembers: 'invite_members',
+          inviteGuest: 'invite_guest',
+          removeGuest: 'remove_guest',
         },
       }
     },
