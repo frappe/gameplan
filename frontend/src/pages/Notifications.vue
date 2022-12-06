@@ -114,7 +114,8 @@ export default {
           'project',
           'team',
         ],
-        order_by: 'creation desc',
+        orderBy: 'creation desc',
+        auto: true,
       }
     },
     readNotifications() {
@@ -137,7 +138,8 @@ export default {
           'project',
           'team',
         ],
-        order_by: 'creation desc',
+        orderBy: 'creation desc',
+        auto: true,
       }
     },
   },

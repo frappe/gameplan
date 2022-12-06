@@ -125,7 +125,8 @@ export default {
           project: this.project.doc.name,
           is_completed: false,
         },
-        order_by: 'creation desc',
+        orderBy: 'creation desc',
+        auto: true,
       }
     },
     closedTasks() {
@@ -139,7 +140,8 @@ export default {
           project: this.project.doc.name,
           is_completed: true,
         },
-        order_by: 'creation desc',
+        orderBy: 'creation desc',
+        auto: true,
       }
     },
   },

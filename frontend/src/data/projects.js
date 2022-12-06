@@ -11,8 +11,8 @@ export let projects = createListResource({
     'is_private',
     'modified',
   ],
-  order_by: 'title asc',
-  limit: 999,
+  orderBy: 'title asc',
+  pageLength: 999,
   cache: 'Projects',
   transform(projects) {
     return projects.map((project) => {
@@ -26,9 +26,9 @@ export let projects = createListResource({
       return project
     })
   },
+  auto: true,
 })
 
 export function getTeamProjects(team) {
   return projects.data?.filter((project) => project.team === team) || []
 }
-projects.reload()

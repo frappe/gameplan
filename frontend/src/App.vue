@@ -11,6 +11,7 @@
 import { computed, defineAsyncComponent } from 'vue'
 import { Dialogs } from '@/utils/dialogs'
 import { Toasts } from '@/utils/toasts'
+import { users } from '@/data/users'
 import { useScreenSize } from './utils/composables'
 
 const size = useScreenSize()
@@ -22,4 +23,6 @@ const Layout = computed(() => {
     return defineAsyncComponent(() => import('./components/DesktopLayout.vue'))
   }
 })
+
+users.fetch()
 </script>

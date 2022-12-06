@@ -68,7 +68,7 @@
             <FeatherIcon name="plus" class="w-5 text-gray-600" />
           </div>
           <div>
-            <h3 class="text-lg font-medium text-gray-900">New Project</h3>
+            <h3 class="text-lg font-medium text-gray-900">Add Project</h3>
           </div>
         </button>
       </ul>

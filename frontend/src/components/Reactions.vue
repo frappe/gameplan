@@ -98,7 +98,7 @@ export default {
   resources: {
     batch() {
       return {
-        method: 'gameplan.extends.client.batch',
+        url: 'gameplan.extends.client.batch',
         makeParams() {
           return { requests: this.changes }
         },
