@@ -10,7 +10,7 @@
           <UserAvatar :user="user.pending ? user.email : user.user" />
           <div class="text-base">
             <span class="text-gray-900">
-              {{ $user(user.email || user.user).full_name }}
+              {{ user.pending ? user.email : $user(user.user).full_name }}
             </span>
             <span class="text-gray-600" v-if="user.pending"> (Pending)</span>
           </div>
@@ -38,7 +38,7 @@
       >
         Invite
       </Button>
-      <Button @click="inviteGuestDialog = false">Discard</Button>
+      <Button @click="inviteGuestDialog = false">Cancel</Button>
     </template>
   </Dialog>
 </template>
@@ -88,7 +88,7 @@ function invite() {
     {
       onSuccess() {
         email.value = ''
-        inviteGuestDialog.value = false
+        pending.reload()
       },
     }
   )
