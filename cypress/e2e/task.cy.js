@@ -1,7 +1,10 @@
 describe('Task', () => {
   it('task actions', () => {
     cy.login()
-    cy.request('/api/method/gameplan.test_api.clear_data?onboard=1')
+    cy.request({
+        method: 'POST',
+        url: '/api/method/gameplan.test_api.clear_data?onboard=1',
+    })
     cy.request('POST', '/api/method/frappe.client.insert_many', {
       docs: [
         {

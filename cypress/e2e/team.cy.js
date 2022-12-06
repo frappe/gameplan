@@ -1,7 +1,10 @@
 describe('Team', () => {
   it('team creation, readme edit and archive', () => {
     cy.login()
-    cy.request('/api/method/gameplan.test_api.clear_data?onboard=1')
+    cy.request({
+        method: 'POST',
+        url: '/api/method/gameplan.test_api.clear_data?onboard=1',
+    })
     cy.visit('/g')
     cy.get('button[aria-label="Create Team"]').click()
     cy.get('input[placeholder="Team Name"]').type('Engineering')

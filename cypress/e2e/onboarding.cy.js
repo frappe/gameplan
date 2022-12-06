@@ -1,7 +1,10 @@
 describe('Onboarding', () => {
   it('onboarding works', () => {
     cy.login()
-    cy.request('/api/method/gameplan.test_api.clear_data')
+    cy.request({
+        method: 'POST',
+        url: '/api/method/gameplan.test_api.clear_data',
+    })
     cy.visit('/g')
 
     cy.get('input[placeholder=Marketing]').type('Marketing')
