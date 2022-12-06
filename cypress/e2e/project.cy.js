@@ -20,7 +20,7 @@ describe('Project', () => {
     cy.url().should('include', '/g/engineering/projects')
 
     cy.intercept('POST', '/api/method/frappe.client.insert').as('project')
-    cy.get('button').contains('New Project').click()
+    cy.get('button').contains('Add Project').click()
     cy.get('label:contains("Title") input').type('Project 1')
     cy.get('button').contains('Create').click()
     cy.get('h1:contains("Project 1")').should('exist')
