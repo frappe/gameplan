@@ -11,8 +11,8 @@ export let projects = createListResource({
     'is_private',
     'modified',
   ],
-  order_by: 'title asc',
-  limit: 999,
+  orderBy: 'title asc',
+  pageLength: 999,
   cache: 'Projects',
   transform(projects) {
     return projects.map((project) => {

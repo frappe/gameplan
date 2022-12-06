@@ -54,7 +54,7 @@
 
     <div
       v-if="!readOnlyMode && !disableNewComment"
-      class="fixed bottom-12 standalone:bottom-16 mb-px mt-2 w-full max-w-3xl bg-white py-4 pr-12 sm:bottom-0"
+      class="fixed bottom-12 mb-px mt-2 w-full max-w-3xl bg-white py-4 pr-12 sm:bottom-0 standalone:bottom-16"
       ref="addComment"
     >
       <button
@@ -183,8 +183,9 @@ export default {
           reference_doctype: this.doctype,
           reference_name: this.name,
         },
-        order_by: 'creation asc',
-        limit: 99999,
+        orderBy: 'creation asc',
+        pageLength: 99999,
+        auto: true,
         setValue: {
           onSuccess() {
             this.attachReactionsToComments()
@@ -222,8 +223,9 @@ export default {
           parent: ['in', comments],
         },
         parent: 'Team Comment',
-        order_by: 'parent asc, idx asc',
-        limit: 99999,
+        orderBy: 'parent asc, idx asc',
+        pageLength: 99999,
+        auto: true,
         onSuccess() {
           this.attachReactionsToComments()
         },
@@ -238,8 +240,9 @@ export default {
           reference_doctype: this.doctype,
           reference_name: this.name,
         },
-        order_by: 'creation asc',
-        limit: 99999,
+        orderBy: 'creation asc',
+        pageLength: 99999,
+        auto: true,
         transform(activities) {
           for (let activity of activities) {
             activity.doctype = 'Team Activity'

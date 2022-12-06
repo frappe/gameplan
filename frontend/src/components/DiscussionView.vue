@@ -360,7 +360,7 @@ export default {
           closeDiscussion: 'close_discussion',
           reopenDiscussion: 'reopen_discussion',
           moveToProject: {
-            url: 'move_to_project',
+            method: 'move_to_project',
             validate() {
               if (!this.discussionMoveDialog.project?.value) {
                 return 'Project is required to move this discussion'

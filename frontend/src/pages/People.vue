@@ -127,8 +127,9 @@ export default {
           'cover_image',
           'cover_image_position',
         ],
-        limit: 999,
-        order_by: this.orderBy,
+        pageLength: 999,
+        orderBy: this.orderBy,
+        auto: true,
       }
     },
   },

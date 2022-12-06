@@ -145,7 +145,7 @@ export default {
         url: 'gameplan.gameplan.doctype.team_discussion.api.get_discussions',
         filters: this.filters,
         auto: true,
-        limit: 50,
+        pageLength: 50,
         transform(data) {
           for (let d of data) {
             d.unread = !d.last_visit || d.last_post_at > d.last_visit
