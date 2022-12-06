@@ -49,7 +49,7 @@
           <Button
             appearance="primary"
             :loading="$resources.newDiscussion.loading"
-            @click="$resources.newDiscussion.submit({ title, content })"
+            @click="publish"
           >
             Publish
           </Button>
@@ -93,7 +93,7 @@
               <Button
                 appearance="primary"
                 :loading="$resources.newDiscussion.loading"
-                @click="$resources.newDiscussion.submit({ title, content })"
+                @click="publish"
               >
                 Publish
               </Button>
@@ -161,6 +161,19 @@ export default {
       this.content = value
       this.saveDraftPost({ content: value })
     },
+    publish() {
+      this.$resources.newDiscussion.submit(
+        {
+          title: this.title,
+          content: this.content,
+        },
+        {
+          onSuccess() {
+            this.clearDraftPost()
+          },
+        }
+      )
+    },
     discard() {
       if (!this.$refs.textEditor.editor.isEmpty || this.title) {
         this.$dialog({
@@ -204,6 +217,9 @@ export default {
     getDraftPost() {
       let draftPost = localStorage.getItem(this.draftPostKey())
       return draftPost ? JSON.parse(draftPost) : null
+    },
+    clearDraftPost() {
+      localStorage.removeItem(this.draftPostKey())
     },
     draftPostKey() {
       return `draft-post-${this.project.doc.name}`
