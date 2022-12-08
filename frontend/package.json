@@ -13,7 +13,7 @@
     "@headlessui/vue": "^1.5.0",
     "dayjs": "^1.10.7",
     "feather-icons": "^4.28.0",
-    "frappe-ui": "^0.0.92",
+    "frappe-ui": "^0.0.93",
     "fuse.js": "^6.6.2",
     "gemoji": "^7.1.0",
     "motion": "^10.14.2",
@@ -21,13 +21,14 @@
     "vue-router": "^4.0.12"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "^2.0.1",
+    "@vitejs/plugin-vue": "^3.2.0",
+    "@vitejs/plugin-vue-jsx": "^2.1.1",
     "autoprefixer": "^10.4.2",
     "cypress": "10.11.0",
     "postcss": "^8.4.5",
     "rollup-plugin-visualizer": "^5.8.2",
     "tailwindcss": "^3.0.12",
-    "vite": "^2.0.5",
-    "vue-template-compiler": "^2.6.14"
+    "vite": "^3.2.5",
+    "vue-template-compiler": "^2.7.14"
   }
 }

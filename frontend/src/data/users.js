@@ -8,10 +8,13 @@ export let users = createResource({
   url: 'gameplan.api.get_user_info',
   cache: 'Users',
   initialData: [],
-  onData(users) {
+  transform(users) {
     for (let user of users) {
+      user.isGuest = user.role === 'Gameplan Guest'
+      user.isNotGuest = !user.isGuest
       usersByName[user.name] = user
     }
+    return users
   },
   onError(error) {
     if (error && error.exc_type === 'AuthenticationError') {
@@ -30,7 +33,7 @@ export function userInfo(email) {
       email: email,
       full_name: email.split('@')[0],
       user_image: null,
-      roles: [],
+      role: null,
     }
   }
   return usersByName[email]

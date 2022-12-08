@@ -192,7 +192,7 @@ export default {
             name: 'People',
           },
           isActive: /People|PersonProfile/g.test(this.$route.name),
-          condition: () => this.$user().roles.includes('Teams User'),
+          condition: () => this.$user().isNotGuest,
         },
         {
           name: 'Search',
@@ -200,7 +200,7 @@ export default {
           route: {
             name: 'Search',
           },
-          condition: () => this.$user().roles.includes('Teams User'),
+          condition: () => this.$user().isNotGuest,
         },
         {
           name: 'Notifications',

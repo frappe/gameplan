@@ -30,7 +30,7 @@
               <Badge> Private </Badge>
             </Tooltip>
             <Dropdown
-              v-if="$user().roles.includes('Teams User')"
+              v-if="$user().isNotGuest"
               placement="left"
               :button="{
                 icon: 'more-horizontal',
@@ -169,7 +169,7 @@
         </template>
       </Dialog>
       <InviteGuestDialog
-        v-if="$user().roles.includes('Teams User')"
+        v-if="$user().isNotGuest"
         v-model="inviteGuestDialog.show"
         :project="project"
       />

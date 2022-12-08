@@ -11,6 +11,11 @@
         },
       },
       {
+        icon: 'settings',
+        label: 'Settings & Members',
+        handler: () => (settingsDialog.show = true),
+      },
+      {
         icon: 'folder-minus',
         label: 'Archived Teams',
         handler: () => (archivedTeamsDialog = true),
@@ -37,6 +42,7 @@
     v-if="archivedTeamsDialog"
     v-model="archivedTeamsDialog"
   />
+  <SettingsDialog v-model="settingsDialog.show" :tab="settingsDialog.tab" />
 </template>
 <script>
 import { defineAsyncComponent } from 'vue'
@@ -51,10 +57,14 @@ export default {
     ArchivedTeamsDialog: defineAsyncComponent(() =>
       import('./ArchivedTeamsDialog.vue')
     ),
+    SettingsDialog: defineAsyncComponent(() =>
+      import('./Settings/SettingsDialog.vue')
+    ),
   },
   data() {
     return {
       archivedTeamsDialog: false,
+      settingsDialog: { show: false, tab: null },
     }
   },
   methods: {

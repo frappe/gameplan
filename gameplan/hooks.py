@@ -37,7 +37,7 @@ app_license = "AGPLv3"
 # Fixtures
 
 fixtures = [
-	{"dt": "Role", "filters": [["role_name", "in", ["Teams User"]]]},
+	{"dt": "Role", "filters": [["role_name", "like", "Gameplan %"]]},
 ]
 
 # Home Pages
@@ -125,7 +125,6 @@ doc_events = {
 		"on_trash": "gameplan.mixins.on_delete.on_trash",
 	},
 	"User": {
-		"before_insert": "gameplan.gameplan.doctype.team_user_profile.team_user_profile.add_roles",
 		"after_insert": "gameplan.gameplan.doctype.team_user_profile.team_user_profile.create_user_profile",
 		"on_trash": [
 			"gameplan.gameplan.doctype.team_user_profile.team_user_profile.delete_user_profile",

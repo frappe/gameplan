@@ -7,14 +7,16 @@ from frappe.model.document import Document
 class GPInvitation(Document):
 	def before_insert(self):
 		frappe.utils.validate_email_address(self.email, True)
-		if self.type == 'Team Access' and not self.team:
-			frappe.throw('Team is required')
-		elif self.type == 'Project Guest Access' and not self.project:
-			frappe.throw('Project is required')
+		if self.role == 'Gameplan Guest' and not (self.teams or self.projects):
+			frappe.throw('Team or Project is required to invite as Guest')
+
+		if self.role != 'Gameplan Guest':
+			self.teams = None
+			self.projects = None
 
 		self.key = frappe.generate_hash(length=12)
 		self.invited_by = frappe.session.user
-		self.status = 'Invited'
+		self.status = 'Pending'
 
 	def after_insert(self):
 		self.invite_via_email()
@@ -26,13 +28,8 @@ class GPInvitation(Document):
 		if frappe.local.dev_server:
 			print(f"Invite link for {self.email}: {invite_link}")
 
-		title, template = '', ''
-		if self.type == 'Team Member':
-			title = f'Team: {self.team}'
-			template = 'team_invitation'
-		elif self.type == 'Project Guest Member':
-			title = f'Project: {self.project}'
-			template = 'project_guest_invitation'
+		title = f'Gameplan'
+		template = 'gameplan_invitation'
 
 		frappe.sendmail(
 			recipients=self.email,
@@ -48,25 +45,29 @@ class GPInvitation(Document):
 			frappe.throw('Invalid or expired key')
 
 		user = self.create_user_if_not_exists()
-		if self.type == 'Team Access':
-			user.append_roles('Teams User')
-			user.save(ignore_permissions=True)
-			# add user to team
-			team = frappe.get_doc("Team", self.team)
-			team.add_member(user.name)
-			team.save(ignore_permissions=True)
-		elif self.type == 'Project Guest Access':
-			user.append_roles('Gameplan Guest')
-			user.save(ignore_permissions=True)
-			# create guest access
-			guest_access = frappe.get_doc(doctype='GP Guest Access')
-			guest_access.user = user.name
-			guest_access.project = self.project
-			guest_access.save(ignore_permissions=True)
+		user.append_roles(self.role)
+		user.save(ignore_permissions=True)
+		self.create_guest_access(user)
 
 		self.status = 'Accepted'
 		self.accepted_at = frappe.utils.now()
 		self.save(ignore_permissions=True)
+
+	def create_guest_access(self, user):
+		if self.role == 'Gameplan Guest':
+			teams = frappe.parse_json(self.teams) if self.teams else []
+			for team in teams:
+				guest_access = frappe.get_doc(doctype='GP Guest Access')
+				guest_access.user = user.name
+				guest_access.team = team
+				guest_access.save(ignore_permissions=True)
+
+			projects = frappe.parse_json(self.projects) if self.projects else []
+			for project in projects:
+				guest_access = frappe.get_doc(doctype='GP Guest Access')
+				guest_access.user = user.name
+				guest_access.project = project
+				guest_access.save(ignore_permissions=True)
 
 	def create_user_if_not_exists(self):
 		if not frappe.db.exists("User", self.email):

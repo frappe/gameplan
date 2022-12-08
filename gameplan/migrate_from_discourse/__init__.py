@@ -240,7 +240,7 @@ def migrate_users():
 			first_name=first_name,
 			last_name=last_name,
 			username=user.username,
-			roles=[{"role": "Teams User"}]
+			roles=[{"role": "Gameplan Member"}]
 		).insert(ignore_if_duplicate=True)
 
 		if doc:

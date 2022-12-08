@@ -18,7 +18,7 @@ export default {
       return this.$user(this.user).user_profile || null
     },
     canVisitProfile() {
-      return this.userProfileName && this.$user().roles.includes('Teams User')
+      return this.userProfileName && this.$user().isNotGuest
     },
   },
 }

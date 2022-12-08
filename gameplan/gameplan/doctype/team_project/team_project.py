@@ -145,7 +145,8 @@ class TeamProject(ManageMembersMixin, Archivable, Document):
 	def invite_guest(self, email):
 		frappe.utils.validate_email_address(email, True)
 
-		if frappe.db.exists('User', email) and 'Teams User' in frappe.get_roles(email):
+		user_roles = frappe.get_roles(email)
+		if frappe.db.exists('User', email) and 'Gameplan Member' in user_roles or 'Gameplan Admin' in user_roles:
 			frappe.throw('This user is already a Gameplan member')
 
 		if not frappe.db.exists("GP Guest Access", {'project': self.name, 'user': email}):

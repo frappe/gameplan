@@ -8,9 +8,9 @@
  "engine": "InnoDB",
  "field_order": [
   "email",
-  "type",
-  "team",
-  "project",
+  "role",
+  "teams",
+  "projects",
   "key",
   "status",
   "email_sent_at",
@@ -36,15 +36,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Status",
-   "options": "\nInvited\nAccepted\nExpired"
-  },
-  {
-   "fieldname": "type",
-   "fieldtype": "Select",
-   "in_list_view": 1,
-   "label": "Type",
-   "options": "\nTeam Access\nProject Guest Access",
-   "reqd": 1
+   "options": "\nPending\nAccepted\nExpired"
   },
   {
    "fieldname": "email_sent_at",
@@ -63,21 +55,28 @@
    "label": "Accepted At"
   },
   {
-   "fieldname": "team",
-   "fieldtype": "Link",
-   "label": "Team",
-   "options": "Team"
+   "fieldname": "teams",
+   "fieldtype": "Small Text",
+   "label": "Teams",
+   "read_only": 1
   },
   {
-   "fieldname": "project",
-   "fieldtype": "Link",
-   "label": "Project",
-   "options": "Team Project"
+   "fieldname": "projects",
+   "fieldtype": "Small Text",
+   "label": "Projects",
+   "read_only": 1
+  },
+  {
+   "fieldname": "role",
+   "fieldtype": "Select",
+   "label": "Role",
+   "options": "\nGameplan Admin\nGameplan Member\nGameplan Guest",
+   "reqd": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-12-02 16:23:55.622463",
+ "modified": "2022-12-08 14:03:34.238809",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "GP Invitation",
