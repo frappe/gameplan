@@ -3,7 +3,7 @@
     <template #body-content>
       <div class="my-4 space-y-2">
         <div
-          class="flex gap-4 items-center"
+          class="flex items-center gap-4"
           v-for="user in users"
           :key="user.name"
         >
@@ -61,9 +61,9 @@ let pending = createListResource({
   type: 'list',
   doctype: 'GP Invitation',
   filters: {
-    project: props.project.name,
-    type: 'Project Guest Access',
-    status: 'Invited',
+    projects: ['like', `%${props.project.name}%`],
+    role: 'Gameplan Guest',
+    status: 'Pending',
   },
   fields: ['email', 'project', 'name'],
   transform(data) {

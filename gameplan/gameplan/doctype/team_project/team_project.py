@@ -9,6 +9,7 @@ from gameplan.mixins.manage_members import ManageMembersMixin
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 from pypika.terms import ExistsCriterion
+from gameplan.api import invite_by_email
 
 
 class TeamProject(ManageMembersMixin, Archivable, Document):
@@ -143,20 +144,7 @@ class TeamProject(ManageMembersMixin, Archivable, Document):
 
 	@frappe.whitelist()
 	def invite_guest(self, email):
-		frappe.utils.validate_email_address(email, True)
-
-		user_roles = frappe.get_roles(email)
-		if frappe.db.exists('User', email) and 'Gameplan Member' in user_roles or 'Gameplan Admin' in user_roles:
-			frappe.throw('This user is already a Gameplan member')
-
-		if not frappe.db.exists("GP Guest Access", {'project': self.name, 'user': email}):
-			invitation = frappe.get_doc(
-				doctype='GP Invitation',
-				email=email,
-				type='Project Guest Access',
-				project=self.name,
-			)
-			invitation.insert(ignore_permissions=True)
+		invite_by_email(email, role='Gameplan Guest', projects=[self.name])
 
 	@frappe.whitelist()
 	def remove_guest(self, email):
