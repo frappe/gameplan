@@ -156,6 +156,12 @@ def get_unread_items():
 			.where((Visit.last_visit.isnull()) | (Visit.last_visit < Discussion.last_post_at))
 			.groupby(Discussion.team)
 	)
+	is_guest = 'Gameplan Guest' in frappe.get_roles()
+	if is_guest:
+		GuestAccess = frappe.qb.DocType('GP Guest Access')
+		project_list = GuestAccess.select(GuestAccess.project).where(GuestAccess.user == frappe.session.user)
+		query = query.where(Discussion.project.isin(project_list))
+
 	data = query.run(as_dict=1)
 	out = {}
 	for d in data:
