@@ -210,7 +210,7 @@ export default {
           },
           unreadNotifications,
         },
-      ].filter((nav) => nav.condition?.() || true)
+      ].filter((nav) => (nav.condition ? nav.condition() : true))
     },
     activeTeams() {
       return activeTeams.value.map((team) => {
