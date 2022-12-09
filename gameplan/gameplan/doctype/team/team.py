@@ -6,23 +6,11 @@ from frappe.model.document import Document
 from frappe.model.naming import append_number_if_name_exists
 from gameplan.gemoji import get_random_gemoji
 from gameplan.mixins.archivable import Archivable
-from gameplan.mixins.manage_members import ManageMembersMixin
 
 
-class Team(ManageMembersMixin, Archivable, Document):
+class Team(Archivable, Document):
 	on_delete_cascade = ["Team Project"]
 	on_delete_set_null = ["Team Notification"]
-
-	def as_dict(self, *args, **kwargs) -> dict:
-		d = super().as_dict(*args, **kwargs)
-		for member in d.members:
-			if member.user:
-				full_name, user_image = frappe.db.get_value(
-					"User", member.user, ["full_name", "user_image"]
-				)
-				member.full_name = full_name
-				member.user_image = user_image
-		return d
 
 	@staticmethod
 	def get_list_query(query):
@@ -48,15 +36,7 @@ class Team(ManageMembersMixin, Archivable, Document):
 			<p>You can add a brief introduction about the team, important links, resources, and other important information here.</p>
 		"""
 
-		self.append(
-			"members",
-			{
-				"email": frappe.session.user,
-				"user": frappe.session.user,
-				"status": "Accepted",
-				"role": "Owner",
-			},
-		)
+		self.add_member(frappe.session.user)
 
 	def add_member(self, email):
 		if email not in [member.user for member in self.members]:
@@ -67,16 +47,15 @@ class Team(ManageMembersMixin, Archivable, Document):
 			})
 
 	@frappe.whitelist()
-	def invite_members(self, emails):
-		for email in emails:
-			frappe.utils.validate_email_address(email, True)
+	def add_members(self, users):
+		for user in users:
+			self.add_member(user)
+		self.save()
 
-		existing_members = [m.user for m in self.members]
-		for email in emails:
-			if email not in existing_members:
-				frappe.get_doc(
-					doctype='GP Invitation',
-					email=email,
-					type='Team Access',
-					team=self.name,
-				).insert(ignore_permissions=True)
+	@frappe.whitelist()
+	def remove_member(self, user):
+		for member in self.members:
+			if member.user == user:
+				self.remove(member)
+				self.save()
+				break

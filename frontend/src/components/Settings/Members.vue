@@ -19,12 +19,9 @@
       class="mt-2 flex items-center justify-between border-b py-2 text-base text-gray-600"
     >
       <div class="w-4/5">User</div>
-      <div class="w-1/5 px-3">Access Level</div>
+      <div class="w-1/5 px-3">Role</div>
     </div>
     <ul class="divide-y overflow-auto">
-      <div class="py-2 text-base text-gray-600" v-if="users.length === 0">
-        Loading members...
-      </div>
       <li
         class="flex items-center justify-between py-2"
         v-for="user in filteredUsers"
@@ -76,34 +73,30 @@ export default {
               return _user
             })
           })
-          this.users = users.data
         },
       }
     },
     removeUser() {
       return {
         url: 'gameplan.api.remove_user',
+        onSuccess(user) {
+          users.setData((data) => data.filter((_user) => _user.name !== user))
+        },
       }
     },
   },
   data() {
     return {
-      users: [],
       search: '',
       inviteMembers: false,
     }
   },
-  mounted() {
-    setTimeout(() => {
-      this.users = users.data
-    }, 10)
-  },
   computed: {
     filteredUsers() {
       if (!this.search) {
-        return this.users
+        return users.data
       }
-      return this.users.filter((user) => {
+      return users.data.filter((user) => {
         let term = this.search.toLowerCase()
         return (
           user.name.toLowerCase().includes(term) ||
@@ -146,7 +139,7 @@ export default {
             appearance: 'danger',
             handler: ({ close }) => {
               return this.$resources.removeUser.submit(
-                { user },
+                { user: user.name },
                 { onSuccess: close }
               )
             },

@@ -12,15 +12,21 @@ def get_user_info(user=None):
 	if frappe.session.user == "Guest":
 		frappe.throw("Authentication failed", exc=frappe.AuthenticationError)
 
-	filters = [["Has Role", "role", "like", "Gameplan %"]]
+	filters = [
+		['User', 'enabled', '=', 1],
+		["Has Role", "role", "like", "Gameplan %"]
+	]
 	if user:
 		filters.append(["User", "name", "=", user])
 	users = frappe.db.get_all(
 		"User",
 		filters=filters,
 		fields=["name", "email", "user_image", "full_name", "user_type"],
-		order_by="full_name asc"
+		order_by="full_name asc",
+		distinct=True
 	)
+	# bug: order_by isn't applied when distinct=True
+	users.sort(key=lambda x: x.full_name)
 	roles = frappe.db.get_all('Has Role',
 		filters={'parenttype': 'User'},
 		fields=['role', 'parent']
@@ -67,6 +73,7 @@ def remove_user(user: str):
 	user_doc = frappe.get_doc('User', user)
 	user_doc.enabled = 0
 	user_doc.save(ignore_permissions=True)
+	return user
 
 
 @frappe.whitelist()

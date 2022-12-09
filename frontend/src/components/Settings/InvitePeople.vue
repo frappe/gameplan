@@ -4,7 +4,7 @@
       <div class="flex items-center gap-2">
         <h2 class="text-xl font-bold leading-none">Invite People</h2>
       </div>
-      <Button label="Show Members" @click="$emit('back')" />
+      <Button icon-left="users" label="Show Members" @click="$emit('back')" />
     </div>
     <div class="mt-4 space-y-4">
       <Input
