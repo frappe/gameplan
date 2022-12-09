@@ -14,6 +14,7 @@
         icon: 'settings',
         label: 'Settings & Members',
         handler: () => (settingsDialog.show = true),
+        condition: () => $user().isNotGuest,
       },
       {
         icon: 'log-out',
