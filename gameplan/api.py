@@ -2,6 +2,7 @@
 # See license.txt
 
 from __future__ import unicode_literals
+import gameplan
 import frappe
 from frappe.utils import validate_email_address, split_emails
 from gameplan.utils import validate_type
@@ -51,7 +52,7 @@ def get_user_info(user=None):
 @frappe.whitelist()
 @validate_type
 def change_user_role(user: str, role: str):
-	if 'Gameplan Admin' not in frappe.get_roles():
+	if gameplan.is_guest():
 		frappe.throw('Only Admin can change user roles')
 
 	if role not in ['Gameplan Guest', 'Gameplan Member', 'Gameplan Admin']:
@@ -156,7 +157,7 @@ def get_unread_items():
 			.where((Visit.last_visit.isnull()) | (Visit.last_visit < Discussion.last_post_at))
 			.groupby(Discussion.team)
 	)
-	is_guest = 'Gameplan Guest' in frappe.get_roles()
+	is_guest = gameplan.is_guest()
 	if is_guest:
 		GuestAccess = frappe.qb.DocType('GP Guest Access')
 		project_list = GuestAccess.select(GuestAccess.project).where(GuestAccess.user == frappe.session.user)

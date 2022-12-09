@@ -2,6 +2,7 @@
 # For license information, please see license.txt
 
 import frappe
+import gameplan
 from frappe.model.document import Document
 from frappe.model.naming import append_number_if_name_exists
 from gameplan.gemoji import get_random_gemoji
@@ -14,7 +15,7 @@ class Team(Archivable, Document):
 
 	@staticmethod
 	def get_list_query(query):
-		is_guest = 'Gameplan Guest' in frappe.get_roles()
+		is_guest = gameplan.is_guest()
 		if is_guest:
 			Team = frappe.qb.DocType('Team')
 			GuestAccess = frappe.qb.DocType('GP Guest Access')

@@ -18,6 +18,9 @@ def clear_data(onboard=None):
 	for doctype in doctypes:
 		frappe.db.delete(doctype)
 
+	admin = frappe.get_doc('User', 'Administrator')
+	admin.add_roles('Gameplan Admin')
+
 	if not frappe.db.exists('User', 'john@example.com'):
 		frappe.get_doc(
 			doctype='User',

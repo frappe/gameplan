@@ -1,7 +1,7 @@
 # Copyright (c) 2022, Frappe Technologies Pvt Ltd and contributors
 # For license information, please see license.txt
 
-import frappe, requests
+import frappe, requests, gameplan
 from frappe.model.document import Document
 from gameplan.gemoji import get_random_gemoji
 from gameplan.mixins.archivable import Archivable
@@ -30,7 +30,7 @@ class TeamProject(ManageMembersMixin, Archivable, Document):
 		query = query.where(
 			(Project.is_private == 0) | ((Project.is_private == 1) & ExistsCriterion(member_exists))
 		)
-		if 'Gameplan Guest' in frappe.get_roles():
+		if gameplan.is_guest():
 			GuestAccess = frappe.qb.DocType('GP Guest Access')
 			project_list = GuestAccess.select(GuestAccess.project).where(GuestAccess.user == frappe.session.user)
 			query = query.where(Project.name.isin(project_list))

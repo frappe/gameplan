@@ -3,6 +3,7 @@
 
 from __future__ import unicode_literals
 import frappe
+import gameplan
 from pypika.terms import ExistsCriterion
 
 
@@ -50,7 +51,7 @@ def get_discussions(filters=None, limit_start=None, limit_page_length=None):
 		for key in filters:
 			query = query.where(Discussion[key] == filters[key])
 
-	is_guest = 'Gameplan Guest' in frappe.get_roles()
+	is_guest = gameplan.is_guest()
 	if is_guest:
 		GuestAccess = frappe.qb.DocType('GP Guest Access')
 		project_list = GuestAccess.select(GuestAccess.project).where(GuestAccess.user == frappe.session.user)

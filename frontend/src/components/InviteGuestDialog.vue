@@ -65,7 +65,7 @@ let pending = createListResource({
     role: 'Gameplan Guest',
     status: 'Pending',
   },
-  fields: ['email', 'project', 'name'],
+  fields: ['email', 'projects', 'name'],
   transform(data) {
     return data.map((d) => ({ ...d, pending: true }))
   },
