@@ -28,15 +28,21 @@
   </Dialog>
 </template>
 <script>
+import { markRaw } from 'vue'
 import { Dialog, FeatherIcon } from 'frappe-ui'
 import Members from './Members.vue'
-import { markRaw } from 'vue'
+import ArchivedTeams from './ArchivedTeams.vue'
 
 let tabs = [
   {
     label: 'Members',
     icon: 'users',
     component: markRaw(Members),
+  },
+  {
+    label: 'Archived Teams',
+    icon: 'folder-minus',
+    component: markRaw(ArchivedTeams),
   },
 ]
 
