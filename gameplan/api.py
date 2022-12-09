@@ -188,7 +188,8 @@ def onboarding(data):
 	data = frappe.parse_json(data)
 	team = frappe.get_doc(doctype='Team', title=data.team).insert()
 	frappe.get_doc(doctype='Team Project', team=team.name, title=data.project).insert()
-	team.invite_members(data.emails)
+	emails = ', '.join(data.emails)
+	invite_by_email(emails, role='Gameplan Member')
 	return team.name
 
 @frappe.whitelist(allow_guest=True)
