@@ -16,3 +16,4 @@ gameplan.gameplan.doctype.team_discussion.patches.set_title_slug
 gameplan.gameplan.doctype.team_discussion.patches.update_participants_count
 gameplan.patches.update_gameplan_roles
 gameplan.gameplan.doctype.team.patches.remove_invited_members
+execute:frappe.delete_doc_if_exists('DocType', 'Team Project Discussion', force=1)
