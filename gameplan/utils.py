@@ -36,7 +36,7 @@ def validate_type(func):
 		bound_args.apply_defaults()
 		for arg_name, arg_value in bound_args.arguments.items():
 			if arg_name in annotated_types:
-				if not isinstance(arg_value, annotated_types[arg_name]):
+				if arg_value is not None and not isinstance(arg_value, annotated_types[arg_name]):
 					raise TypeError(f"{func.__name__}: Argument {arg_name} must be of type {annotated_types[arg_name]}")
 		return func(*args, **kwargs)
 	return wrapper
