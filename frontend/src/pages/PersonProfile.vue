@@ -52,7 +52,7 @@
       <div class="flex items-center justify-between pt-2">
         <div class="items-baseline sm:flex">
           <h2 class="text-3xl font-bold leading-none text-gray-900">
-            {{ $user(profile.user).full_name }}
+            {{ user?.full_name }}
           </h2>
           <span class="hidden px-1 text-gray-600 sm:inline">&middot;</span>
           <p v-if="profile.bio" class="mt-2 text-lg sm:mt-0">

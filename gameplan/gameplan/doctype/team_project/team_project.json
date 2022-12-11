@@ -125,7 +125,7 @@
    "link_fieldname": "project"
   }
  ],
- "modified": "2022-10-02 11:12:33.683844",
+ "modified": "2022-12-07 21:33:05.188659",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "Team Project",
@@ -140,7 +140,7 @@
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Teams User",
+   "role": "System Manager",
    "share": 1,
    "write": 1
   },
@@ -152,9 +152,30 @@
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "System Manager",
+   "role": "Gameplan Admin",
    "share": 1,
    "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Gameplan Member",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Gameplan Guest",
+   "share": 1
   }
  ],
  "show_title_field_in_link": 1,

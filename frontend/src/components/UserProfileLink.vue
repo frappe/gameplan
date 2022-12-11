@@ -1,6 +1,6 @@
 <template>
   <router-link
-    v-if="userProfileName"
+    v-if="canVisitProfile"
     :to="{ name: 'PersonProfile', params: { personId: userProfileName } }"
   >
     <slot />
@@ -16,6 +16,9 @@ export default {
   computed: {
     userProfileName() {
       return this.$user(this.user).user_profile || null
+    },
+    canVisitProfile() {
+      return this.userProfileName && this.$user().isNotGuest
     },
   },
 }

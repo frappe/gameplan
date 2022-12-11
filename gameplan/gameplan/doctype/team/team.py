@@ -2,27 +2,26 @@
 # For license information, please see license.txt
 
 import frappe
+import gameplan
 from frappe.model.document import Document
 from frappe.model.naming import append_number_if_name_exists
 from gameplan.gemoji import get_random_gemoji
 from gameplan.mixins.archivable import Archivable
-from gameplan.mixins.manage_members import ManageMembersMixin
 
 
-class Team(ManageMembersMixin, Archivable, Document):
+class Team(Archivable, Document):
 	on_delete_cascade = ["Team Project"]
 	on_delete_set_null = ["Team Notification"]
 
-	def as_dict(self, *args, **kwargs) -> dict:
-		d = super().as_dict(*args, **kwargs)
-		for member in d.members:
-			if member.user:
-				full_name, user_image = frappe.db.get_value(
-					"User", member.user, ["full_name", "user_image"]
-				)
-				member.full_name = full_name
-				member.user_image = user_image
-		return d
+	@staticmethod
+	def get_list_query(query):
+		is_guest = gameplan.is_guest()
+		if is_guest:
+			Team = frappe.qb.DocType('Team')
+			GuestAccess = frappe.qb.DocType('GP Guest Access')
+			team_list = GuestAccess.select(GuestAccess.team).where(GuestAccess.user == frappe.session.user)
+			query = query.where(Team.name.isin(team_list))
+		return query
 
 	def before_insert(self):
 		if not self.name:
@@ -38,47 +37,26 @@ class Team(ManageMembersMixin, Archivable, Document):
 			<p>You can add a brief introduction about the team, important links, resources, and other important information here.</p>
 		"""
 
-		self.append(
-			"members",
-			{
-				"email": frappe.session.user,
-				"user": frappe.session.user,
-				"status": "Accepted",
-				"role": "Owner",
-			},
-		)
+		self.add_member(frappe.session.user)
+
+	def add_member(self, email):
+		if email not in [member.user for member in self.members]:
+			self.append("members", {
+				"email": email,
+				"user": email,
+				"status": "Accepted"
+			})
 
 	@frappe.whitelist()
-	def send_invitation(self, email):
-		for row in self.members:
-			if row.email == email:
-				if row.status == "Invited":
-					frappe.throw(f"Invitation already sent to {email}")
-				if row.status == "Accepted":
-					frappe.throw(f"{email} is already a member of this project")
-
-		member = self.append(
-			"members",
-			{
-				"email": email,
-				"status": "Invited",
-				"role": "Member",
-				"key": frappe.utils.generate_hash(length=8),
-			},
-		)
+	def add_members(self, users):
+		for user in users:
+			self.add_member(user)
 		self.save()
-		frappe.sendmail(
-			recipients=email,
-			subject=f"You have been invited to join {self.title}",
-			template="team_invitation",
-			args={
-				"title": f"Team: {self.title}",
-				"invite_link": self.get_invitation_link(member),
-			},
-			now=True,
-		)
 
-	def get_invitation_link(self, member):
-		return frappe.utils.get_url(
-			f"/api/method/gameplan.api.accept_invitation?key={member.key}"
-		)
+	@frappe.whitelist()
+	def remove_member(self, user):
+		for member in self.members:
+			if member.user == user:
+				self.remove(member)
+				self.save()
+				break

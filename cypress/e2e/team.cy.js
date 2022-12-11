@@ -27,7 +27,8 @@ describe('Team', () => {
     cy.contains('Engineering').should('not.exist')
 
     cy.get('button').contains('Administrator').click()
-    cy.get('button').contains('Archived Teams').click()
+    cy.get('button').contains('Settings').click()
+    cy.dialog('button').contains('Archived Teams').click()
 
     cy.contains('Engineering').should('exist')
   })

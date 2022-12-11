@@ -1,7 +1,7 @@
 # Copyright (c) 2022, Frappe Technologies Pvt Ltd and contributors
 # For license information, please see license.txt
 
-import frappe, requests
+import frappe, requests, gameplan
 from frappe.model.document import Document
 from gameplan.gemoji import get_random_gemoji
 from gameplan.mixins.archivable import Archivable
@@ -9,6 +9,7 @@ from gameplan.mixins.manage_members import ManageMembersMixin
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 from pypika.terms import ExistsCriterion
+from gameplan.api import invite_by_email
 
 
 class TeamProject(ManageMembersMixin, Archivable, Document):
@@ -29,6 +30,10 @@ class TeamProject(ManageMembersMixin, Archivable, Document):
 		query = query.where(
 			(Project.is_private == 0) | ((Project.is_private == 1) & ExistsCriterion(member_exists))
 		)
+		if gameplan.is_guest():
+			GuestAccess = frappe.qb.DocType('GP Guest Access')
+			project_list = GuestAccess.select(GuestAccess.project).where(GuestAccess.user == frappe.session.user)
+			query = query.where(Project.name.isin(project_list))
 		return query
 
 	def as_dict(self, *args, **kwargs) -> dict:
@@ -136,6 +141,17 @@ class TeamProject(ManageMembersMixin, Archivable, Document):
 				doc = frappe.get_doc(doctype, name)
 				doc.team = self.team
 				doc.save()
+
+	@frappe.whitelist()
+	def invite_guest(self, email):
+		invite_by_email(email, role='Gameplan Guest', projects=[self.name])
+
+	@frappe.whitelist()
+	def remove_guest(self, email):
+		name = frappe.db.get_value('GP Guest Access', {'project': self.name, 'user': email})
+		if name:
+			frappe.delete_doc('GP Guest Access', name)
+
 
 def get_meta_tags(url):
 	response = requests.get(url, timeout=2, allow_redirects=True)

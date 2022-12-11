@@ -6,21 +6,21 @@
   />
   <div
     v-show="sidebarResizing"
-    class="fixed z-20 -translate-x-[130%] mt-3 rounded-md bg-gray-800 px-2 py-1 text-base text-white"
+    class="fixed z-20 mt-3 -translate-x-[130%] rounded-md bg-gray-800 px-2 py-1 text-base text-white"
     :style="{ left: sidebarWidth + 'px' }"
   >
     {{ sidebarWidth }}
   </div>
 
   <div
-    class="inline-flex h-full flex-1 flex-col overflow-auto bg-gray-50 border-r pb-40"
+    class="inline-flex h-full flex-1 flex-col overflow-auto border-r bg-gray-50 pb-40"
     :style="{ width: `${sidebarWidth}px` }"
   >
     <div class="flex w-full items-center justify-between px-2 py-2">
       <UserDropdown />
     </div>
     <div class="flex-1">
-      <nav class="px-2 space-y-0.5">
+      <nav class="space-y-0.5 px-2">
         <Links
           :links="navigation"
           class="flex items-center rounded-lg px-2 py-1"
@@ -54,7 +54,7 @@
           @click="showAddTeamDialog = true"
         />
       </div>
-      <nav class="mt-1 px-2 space-y-0.5">
+      <nav class="mt-1 space-y-0.5 px-2">
         <div v-for="team in activeTeams" :key="team.name">
           <Link :link="team" class="flex items-center rounded-lg px-2 py-1">
             <button
@@ -73,18 +73,18 @@
               <span class="flex h-5 w-5 items-center justify-center text-xl">
                 {{ team.icon }}
               </span>
-              <span class="text-base ml-2">{{ team.title }}</span>
+              <span class="ml-2 text-base">{{ team.title }}</span>
               <div class="ml-auto">
                 <Tooltip
                   v-if="team.unread"
                   :text="`${team.unread} unread posts`"
                 >
-                  <span class="text-gray-600 text-sm">{{ team.unread }}</span>
+                  <span class="text-sm text-gray-600">{{ team.unread }}</span>
                 </Tooltip>
               </div>
             </div>
           </Link>
-          <div class="mb-2 space-y-0.5 mt-0.5" v-show="team.open">
+          <div class="mb-2 mt-0.5 space-y-0.5" v-show="team.open">
             <Link
               :key="project.name"
               v-for="project in teamProjects(team.name)"
@@ -192,6 +192,7 @@ export default {
             name: 'People',
           },
           isActive: /People|PersonProfile/g.test(this.$route.name),
+          condition: () => this.$user().isNotGuest,
         },
         {
           name: 'Search',
@@ -199,6 +200,7 @@ export default {
           route: {
             name: 'Search',
           },
+          condition: () => this.$user().isNotGuest,
         },
         {
           name: 'Notifications',
@@ -208,7 +210,7 @@ export default {
           },
           unreadNotifications,
         },
-      ]
+      ].filter((nav) => (nav.condition ? nav.condition() : true))
     },
     activeTeams() {
       return activeTeams.value.map((team) => {
@@ -247,7 +249,7 @@ export default {
     setProjectRef($comp, project) {
       this.$projectRefs = this.$projectRefs || {}
       if ($comp) {
-      this.$projectRefs[project.name] = $comp.getRef()
+        this.$projectRefs[project.name] = $comp.getRef()
       }
     },
     async scrollProjectIntoView(project) {

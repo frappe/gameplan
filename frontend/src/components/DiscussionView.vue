@@ -325,7 +325,7 @@ import DiscussionMeta from './DiscussionMeta.vue'
 import DiscussionBreadcrumbs from './DiscussionBreadcrumbs.vue'
 import { focus } from '@/directives'
 import { copyToClipboard } from '@/utils'
-import { teams } from '@/data/teams'
+import { activeTeams } from '@/data/teams'
 import { getTeamProjects } from '@/data/projects'
 
 export default {
@@ -456,7 +456,7 @@ export default {
       return this.$resources.discussion.doc
     },
     projectOptions() {
-      return teams.data.map((team) => ({
+      return activeTeams.value.map((team) => ({
         group: team.title,
         items: getTeamProjects(team.name).map((project) => ({
           label: project.title,

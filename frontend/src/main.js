@@ -24,6 +24,7 @@ import { createToast } from './utils/toasts'
 import { userInfo, users } from './data/users'
 import { session } from './data/session'
 import socket from './socket'
+import resetDataMixin from './utils/resetDataMixin'
 
 let globalComponents = {
   Button,
@@ -41,6 +42,7 @@ setConfig('resourceFetcher', frappeRequest)
 app.use(resourcesPlugin)
 app.use(pageMetaPlugin)
 app.use(router)
+app.mixin(resetDataMixin)
 for (let key in globalComponents) {
   app.component(key, globalComponents[key])
 }

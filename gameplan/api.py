@@ -2,20 +2,35 @@
 # See license.txt
 
 from __future__ import unicode_literals
+import gameplan
 import frappe
+from frappe.utils import validate_email_address, split_emails
 from gameplan.utils import validate_type
 
 
 @frappe.whitelist(allow_guest=True)
-def get_user_info():
+def get_user_info(user=None):
 	if frappe.session.user == "Guest":
 		frappe.throw("Authentication failed", exc=frappe.AuthenticationError)
 
+	filters = [
+		['User', 'enabled', '=', 1],
+		["Has Role", "role", "like", "Gameplan %"]
+	]
+	if user:
+		filters.append(["User", "name", "=", user])
 	users = frappe.db.get_all(
 		"User",
-		filters=[["Has Role", "role", "=", "Teams User"]],
+		filters=filters,
 		fields=["name", "email", "user_image", "full_name", "user_type"],
-		order_by="full_name asc"
+		order_by="full_name asc",
+		distinct=True
+	)
+	# bug: order_by isn't applied when distinct=True
+	users.sort(key=lambda x: x.full_name)
+	roles = frappe.db.get_all('Has Role',
+		filters={'parenttype': 'User'},
+		fields=['role', 'parent']
 	)
 	user_profile_names = frappe.db.get_all('Team User Profile',
 		fields=['user', 'name'],
@@ -26,7 +41,70 @@ def get_user_info():
 		if frappe.session.user == user.name:
 			user.session_user = True
 		user.user_profile = user_profile_names_map.get(user.name)
+		user_roles = [r.role for r in roles if r.parent == user.name]
+		user.role = None
+		for role in ['Gameplan Guest', 'Gameplan Member', 'Gameplan Admin']:
+			if role in user_roles:
+				user.role = role
 	return users
+
+
+@frappe.whitelist()
+@validate_type
+def change_user_role(user: str, role: str):
+	if gameplan.is_guest():
+		frappe.throw('Only Admin can change user roles')
+
+	if role not in ['Gameplan Guest', 'Gameplan Member', 'Gameplan Admin']:
+		return get_user_info(user)[0]
+
+	user_doc = frappe.get_doc('User', user)
+	for _role in user_doc.roles:
+		if _role.role in ['Gameplan Guest', 'Gameplan Member', 'Gameplan Admin']:
+			user_doc.remove(_role)
+	user_doc.append_roles(role)
+	user_doc.save(ignore_permissions=True)
+
+	return get_user_info(user)[0]
+
+
+@frappe.whitelist()
+@validate_type
+def remove_user(user: str):
+	user_doc = frappe.get_doc('User', user)
+	user_doc.enabled = 0
+	user_doc.save(ignore_permissions=True)
+	return user
+
+
+@frappe.whitelist()
+@validate_type
+def invite_by_email(emails: str, role: str, projects: list = None):
+	if not emails:
+		return
+	email_string = validate_email_address(emails, throw=False)
+	email_list = split_emails(email_string)
+	if not email_list:
+		return
+	existing_members = frappe.db.get_all('User', filters={'email': ['in', email_list]}, pluck='email')
+	existing_invites = frappe.db.get_all('GP Invitation',
+		filters={
+			'email': ['in', email_list],
+			'role': ['in', ['Gameplan Admin', 'Gameplan Member']]
+		},
+		pluck='email')
+	to_invite = list(set(email_list) - set(existing_members) - set(existing_invites))
+	if projects:
+		projects = frappe.as_json(projects, indent=None)
+
+	for email in to_invite:
+		frappe.get_doc(
+			doctype='GP Invitation',
+			email=email,
+			role=role,
+			projects=projects
+		).insert(ignore_permissions=True)
+
 
 @frappe.whitelist()
 def unread_notifications():
@@ -41,28 +119,19 @@ def accept_invitation(key: str = None):
 		frappe.throw("Invalid or expired key")
 
 	result = frappe.db.get_all(
-		"Team Member", filters={"key": key}, fields=["email", "parent", "parenttype"]
+		"GP Invitation", filters={"key": key}, pluck='name'
 	)
 	if not result:
 		frappe.throw("Invalid or expired key")
 
-	# valid key, now set the user as Administrator
-	frappe.set_user("Administrator")
-	doctype = result[0].parenttype
-	doc = frappe.get_doc(doctype, result[0].parent)
-	user = doc.accept_invitation(key)
+	invitation = frappe.get_doc('GP Invitation', result[0])
+	invitation.accept()
+	invitation.reload()
 
-	if doctype == "Team":
-		redirect_location = f"/teams/{doc.name}"
-	elif doctype == "Team Project":
-		redirect_location = f"/teams/{doc.team}/projects/{doc.name}"
-	else:
-		redirect_location = "/teams"
-
-	if user:
-		frappe.local.login_manager.login_as(user.name)
+	if invitation.status == "Accepted":
+		frappe.local.login_manager.login_as(invitation.email)
 		frappe.local.response["type"] = "redirect"
-		frappe.local.response["location"] = redirect_location
+		frappe.local.response["location"] = "/g"
 
 
 @frappe.whitelist()
@@ -77,22 +146,28 @@ def get_unsplash_photos(keyword=None):
 
 @frappe.whitelist()
 def get_unread_items():
-    from frappe.query_builder.functions import Count
-    Discussion = frappe.qb.DocType("Team Discussion")
-    Visit = frappe.qb.DocType("Team Discussion Visit")
-    query = (
+	from frappe.query_builder.functions import Count
+	Discussion = frappe.qb.DocType("Team Discussion")
+	Visit = frappe.qb.DocType("Team Discussion Visit")
+	query = (
 		frappe.qb.from_(Discussion)
-	        .select(Discussion.team, Count(Discussion.team).as_("count"))
-            .left_join(Visit)
-	        .on((Visit.discussion == Discussion.name) & (Visit.user == frappe.session.user))
-	        .where((Visit.last_visit.isnull()) | (Visit.last_visit < Discussion.last_post_at))
-            .groupby(Discussion.team)
-    )
-    data = query.run(as_dict=1)
-    out = {}
-    for d in data:
-        out[d.team] = d.count
-    return out
+			.select(Discussion.team, Count(Discussion.team).as_("count"))
+			.left_join(Visit)
+			.on((Visit.discussion == Discussion.name) & (Visit.user == frappe.session.user))
+			.where((Visit.last_visit.isnull()) | (Visit.last_visit < Discussion.last_post_at))
+			.groupby(Discussion.team)
+	)
+	is_guest = gameplan.is_guest()
+	if is_guest:
+		GuestAccess = frappe.qb.DocType('GP Guest Access')
+		project_list = GuestAccess.select(GuestAccess.project).where(GuestAccess.user == frappe.session.user)
+		query = query.where(Discussion.project.isin(project_list))
+
+	data = query.run(as_dict=1)
+	out = {}
+	for d in data:
+		out[d.team] = d.count
+	return out
 
 
 
@@ -113,7 +188,8 @@ def onboarding(data):
 	data = frappe.parse_json(data)
 	team = frappe.get_doc(doctype='Team', title=data.team).insert()
 	frappe.get_doc(doctype='Team Project', team=team.name, title=data.project).insert()
-	team.invite_members(data.emails)
+	emails = ', '.join(data.emails)
+	invite_by_email(emails, role='Gameplan Member')
 	return team.name
 
 @frappe.whitelist(allow_guest=True)

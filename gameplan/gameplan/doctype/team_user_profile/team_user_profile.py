@@ -33,6 +33,3 @@ def on_user_update(doc, method=None):
 		profile.enabled = doc.enabled
 		profile.full_name = doc.full_name
 		profile.save(ignore_permissions=True)
-
-def add_roles(doc, method=None):
-	doc.append_roles("Teams User")

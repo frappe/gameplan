@@ -1,9 +1,13 @@
 <template>
   <div class="flex items-center">
     <div class="flex items-center rounded-xl">
-      <div v-if="!team.doc.members.length" class="mr-2 text-base text-gray-600">
-        Invite members to collaborate
-      </div>
+      <Button
+        v-if="!team.doc.members.length"
+        icon-left="user-plus"
+        @click="inviteMemberDialog = true"
+      >
+        Add Members
+      </Button>
       <template v-else>
         <span class="hidden text-base text-gray-600 sm:inline">
           {{
@@ -13,26 +17,18 @@
           }}
         </span>
         <button
-          class="flex items-center ml-4 rounded-full"
+          class="ml-4 flex items-center rounded-full"
           @click="inviteMemberDialog = true"
         >
           <div
-            class="flex items-center -ml-2 border-2 border-white rounded-full"
+            class="-ml-2 flex items-center rounded-full border-2 border-white"
             v-for="member in members"
-            :title="member.full_name || member.email"
             :key="member.name"
           >
-            <Avatar
-              :imageURL="member.user_image"
-              :label="member.full_name || member.email"
-              :title="member.full_name || member.email"
-            />
+            <UserAvatar :user="member.user" />
           </div>
         </button>
       </template>
-    </div>
-    <div class="flex items-center ml-2 space-x-2">
-      <Button label="Share" @click="inviteMemberDialog = true" />
     </div>
   </div>
   <AddMemberDialog :resource="team" v-model="inviteMemberDialog" />

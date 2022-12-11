@@ -30,6 +30,7 @@
               <Badge> Private </Badge>
             </Tooltip>
             <Dropdown
+              v-if="$user().isNotGuest"
               placement="left"
               :button="{
                 icon: 'more-horizontal',
@@ -41,6 +42,12 @@
                   label: 'Edit',
                   icon: 'edit',
                   handler: () => (projectEditDialog.show = true),
+                  condition: () => !project.doc.archived_at,
+                },
+                {
+                  label: 'Manage Guests',
+                  icon: 'user-plus',
+                  handler: () => (inviteGuestDialog.show = true),
                   condition: () => !project.doc.archived_at,
                 },
                 {
@@ -161,6 +168,11 @@
           <Button @click="projectMoveDialog.show = false">Cancel</Button>
         </template>
       </Dialog>
+      <InviteGuestDialog
+        v-if="$user().isNotGuest"
+        v-model="inviteGuestDialog.show"
+        :project="project"
+      />
     </header>
 
     <router-view
@@ -176,7 +188,7 @@ import Pie from '@/components/Pie.vue'
 import IconPicker from '@/components/IconPicker.vue'
 import Links from '@/components/Links.vue'
 import Tabs from '@/components/Tabs.vue'
-import Breadcrumbs from '@/components/Breadcrumbs.vue'
+import InviteGuestDialog from '@/components/InviteGuestDialog.vue'
 import { projects, getTeamProjects } from '@/data/projects'
 import { teams } from '@/data/teams'
 
@@ -190,14 +202,15 @@ export default {
     IconPicker,
     Links,
     Tabs,
-    Breadcrumbs,
     Autocomplete,
     Tooltip,
+    InviteGuestDialog,
   },
   data() {
     return {
       projectMoveDialog: { show: false, team: null },
       projectEditDialog: { show: false },
+      inviteGuestDialog: { show: false },
     }
   },
   computed: {

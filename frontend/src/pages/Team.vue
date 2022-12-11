@@ -15,7 +15,8 @@ export default {
         name: this.teamId,
         realtime: true,
         whitelistedMethods: {
-          inviteMembers: 'invite_members',
+          addMembers: 'add_members',
+          removeMember: 'remove_member',
           archive: 'archive',
           unarchive: 'unarchive',
         },

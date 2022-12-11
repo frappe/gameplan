@@ -11,9 +11,10 @@
         },
       },
       {
-        icon: 'folder-minus',
-        label: 'Archived Teams',
-        handler: () => (archivedTeamsDialog = true),
+        icon: 'settings',
+        label: 'Settings & Members',
+        handler: () => (settingsDialog.show = true),
+        condition: () => $user().isNotGuest,
       },
       {
         icon: 'log-out',
@@ -33,10 +34,7 @@
       </button>
     </template>
   </Dropdown>
-  <ArchivedTeamsDialog
-    v-if="archivedTeamsDialog"
-    v-model="archivedTeamsDialog"
-  />
+  <SettingsDialog v-model="settingsDialog.show" :tab="settingsDialog.tab" />
 </template>
 <script>
 import { defineAsyncComponent } from 'vue'
@@ -48,13 +46,13 @@ export default {
     Dropdown,
     FeatherIcon,
     Link,
-    ArchivedTeamsDialog: defineAsyncComponent(() =>
-      import('./ArchivedTeamsDialog.vue')
+    SettingsDialog: defineAsyncComponent(() =>
+      import('./Settings/SettingsDialog.vue')
     ),
   },
   data() {
     return {
-      archivedTeamsDialog: false,
+      settingsDialog: { show: false, tab: null },
     }
   },
   methods: {
