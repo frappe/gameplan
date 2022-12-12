@@ -55,14 +55,14 @@ export default {
           icon: 'users',
           route: { name: 'People' },
           isActive: /People|PersonProfile/g.test(this.$route.name),
-          condition: () => $user().isNotGuest,
+          condition: () => this.$user().isNotGuest,
         },
         {
           name: 'Search',
           icon: 'search',
           route: { name: 'Search' },
           isActive: this.$route.name === 'Search',
-          condition: () => $user().isNotGuest,
+          condition: () => this.$user().isNotGuest,
         },
         {
           name: 'Notifications',
