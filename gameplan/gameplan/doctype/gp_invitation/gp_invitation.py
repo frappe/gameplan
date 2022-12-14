@@ -82,3 +82,16 @@ class GPInvitation(Document):
 		else:
 			user = frappe.get_doc("User", self.email)
 		return user
+
+def expire_invitations():
+	''' expire invitations after 3 days '''
+	from frappe.utils import add_days, now
+
+	days = 3
+	invitations_to_expire = frappe.db.get_all('GP Invitation',
+		filters={'status': 'Pending', 'creation': ['<', add_days(now(), -days)]}
+	)
+	for invitation in invitations_to_expire:
+		invitation = frappe.get_doc('GP Invitation', invitation.name)
+		invitation.status = 'Expired'
+		invitation.save(ignore_permissions=True)

@@ -142,7 +142,10 @@ on_login = 'gameplan.www.g.on_login'
 scheduler_events = {
 	"all": [
 		"gameplan.gameplan.doctype.team_discussion.search.rebuild_index_if_not_exists"
-	]
+	],
+	"hourly": [
+		"gameplan.gameplan.doctype.gp_invitation.gp_invitation.expire_invitations"
+	],
 }
 
 # scheduler_events = {
