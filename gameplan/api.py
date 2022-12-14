@@ -169,7 +169,12 @@ def get_unread_items():
 		out[d.team] = d.count
 	return out
 
-
+@frappe.whitelist()
+def mark_all_notifications_as_read():
+	for d in frappe.db.get_all('Team Notification', filters={'to_user': frappe.session.user, 'read': 0}, pluck='name'):
+		doc = frappe.get_doc('Team Notification', d)
+		doc.read = 1
+		doc.save(ignore_permissions=True)
 
 
 

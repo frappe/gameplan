@@ -3,6 +3,16 @@
     <div class="mb-5 flex items-center justify-between">
       <h1 class="text-2xl font-semibold">Notifications</h1>
       <div class="flex items-stretch space-x-2">
+        <Button
+          @click="$resources.markAllAsRead.submit"
+          :loading="$resources.markAllAsRead.loading"
+          v-if="
+            activeTab === 'Unread' &&
+            $resources.unreadNotifications.data.length > 0
+          "
+        >
+          Mark all as read
+        </Button>
         <TabButtons
           :buttons="[{ label: 'Unread', active: true }, { label: 'Read' }]"
           v-model="activeTab"
@@ -140,6 +150,15 @@ export default {
         ],
         orderBy: 'creation desc',
         auto: true,
+      }
+    },
+    markAllAsRead() {
+      return {
+        url: 'gameplan.api.mark_all_notifications_as_read',
+        onSuccess() {
+          this.$getResource('Unread Notifications Count')?.reload()
+          this.$resources.unreadNotifications.reload()
+        },
       }
     },
   },
