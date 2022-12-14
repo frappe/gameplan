@@ -6,6 +6,7 @@ from frappe.model.document import Document
 from gameplan.gameplan.doctype.team_discussion.search import remove_index, update_index
 from gameplan.mixins.mentions import HasMentions
 from gameplan.mixins.reactions import HasReactions
+from gameplan.utils import remove_empty_trailing_paragraphs
 
 class TeamComment(HasMentions, HasReactions, Document):
 	on_delete_set_null = ["Team Notification"]
@@ -40,6 +41,9 @@ class TeamComment(HasMentions, HasReactions, Document):
 		reference_doc = frappe.get_doc(self.reference_doctype, self.reference_name)
 		if reference_doc.meta.has_field("comments_count"):
 			reference_doc.db_set("comments_count", reference_doc.comments_count - 1)
+
+	def validate(self):
+		self.content = remove_empty_trailing_paragraphs(self.content)
 
 	def on_update(self):
 		self.update_discussion_index()

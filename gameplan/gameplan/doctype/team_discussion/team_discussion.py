@@ -7,6 +7,7 @@ from gameplan.gameplan.doctype.team_discussion.search import update_index
 from gameplan.mixins.activity import HasActivity
 from gameplan.mixins.mentions import HasMentions
 from gameplan.mixins.reactions import HasReactions
+from gameplan.utils import remove_empty_trailing_paragraphs
 
 class TeamDiscussion(HasActivity, HasMentions, HasReactions, Document):
 	on_delete_cascade = ['Team Comment', 'Team Discussion Visit']
@@ -36,6 +37,9 @@ class TeamDiscussion(HasActivity, HasMentions, HasReactions, Document):
 
 	def on_trash(self):
 		self.update_discussions_count(-1)
+
+	def validate(self):
+		self.content = remove_empty_trailing_paragraphs(self.content)
 
 	def on_update(self):
 		self.notify_mentions()

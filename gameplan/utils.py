@@ -27,6 +27,22 @@ def extract_mentions(html):
 	return mentions
 
 
+def remove_empty_trailing_paragraphs(html):
+	from bs4 import BeautifulSoup
+
+	soup = BeautifulSoup(html, 'html.parser')
+	# remove p, br tags that are at the end with no content
+	all_tags = soup.find_all(True)
+	all_tags.reverse()
+	for tag in all_tags:
+		if tag.name in ['br', 'p'] and not tag.contents:
+			tag.extract()
+		else:
+			# break on first non-empty tag
+			break
+	return str(soup)
+
+
 def validate_type(func):
 	@wraps(func)
 	def wrapper(*args, **kwargs):
