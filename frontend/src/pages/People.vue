@@ -63,9 +63,9 @@
               />
             </div>
             <div class="-mt-8 flex justify-center">
-              <img
+              <UserImage
                 v-if="$user(user.user).user_image"
-                :src="$user(user.user).user_image"
+                :user="user.user"
                 class="h-16 w-16 rounded-full border-[6px] border-white object-cover"
               />
               <div
