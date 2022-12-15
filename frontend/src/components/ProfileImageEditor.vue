@@ -40,7 +40,7 @@
           class="mt-4"
           :message="profile.removeImageBackground.error"
         />
-        <div class="mt-4 grid grid-cols-2 gap-4">
+        <div class="mt-4 flex items-center gap-4">
           <Button
             v-if="profile.doc.image && profile.doc.original_image"
             @click="profile.revertImageBackground.submit()"
