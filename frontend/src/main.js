@@ -17,6 +17,7 @@ import router from './router'
 import App from './App.vue'
 import UserInfo from '@/components/UserInfo.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
+import UserImage from '@/components/UserImage.vue'
 import './index.css'
 import { dayjs } from '@/utils'
 import { createDialog } from './utils/dialogs'
@@ -36,6 +37,7 @@ let globalComponents = {
   Badge,
   UserInfo,
   UserAvatar,
+  UserImage,
 }
 let app = createApp(App)
 setConfig('resourceFetcher', frappeRequest)

@@ -80,7 +80,7 @@ website_redirects = [
 # ------------
 
 # before_install = "gameplan.install.before_install"
-# after_install = "gameplan.install.after_install"
+after_install = "gameplan.install.after_install"
 
 after_migrate = ["gameplan.gameplan.doctype.team_discussion.search.rebuild_index_in_background"]
 

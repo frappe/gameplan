@@ -7,13 +7,17 @@
  "engine": "InnoDB",
  "field_order": [
   "user",
-  "enabled",
-  "status",
-  "readme",
   "full_name",
+  "bio",
+  "readme",
+  "cover_image_section",
   "cover_image",
   "cover_image_position",
-  "bio"
+  "profile_image_section",
+  "image",
+  "is_image_background_removed",
+  "original_image",
+  "image_background_color"
  ],
  "fields": [
   {
@@ -26,12 +30,6 @@
    "unique": 1
   },
   {
-   "default": "Available",
-   "fieldname": "status",
-   "fieldtype": "Data",
-   "label": "Status"
-  },
-  {
    "fieldname": "readme",
    "fieldtype": "Text Editor",
    "label": "Readme"
@@ -42,13 +40,6 @@
    "fieldtype": "Data",
    "label": "Full Name",
    "read_only": 1
-  },
-  {
-   "default": "0",
-   "fetch_from": "user.enabled",
-   "fieldname": "enabled",
-   "fieldtype": "Check",
-   "label": "Enabled"
   },
   {
    "fieldname": "cover_image",
@@ -65,11 +56,42 @@
    "fieldtype": "Data",
    "label": "Bio",
    "length": 280
+  },
+  {
+   "fieldname": "profile_image_section",
+   "fieldtype": "Section Break",
+   "label": "Profile Image"
+  },
+  {
+   "fieldname": "cover_image_section",
+   "fieldtype": "Section Break",
+   "label": "Cover Image"
+  },
+  {
+   "fieldname": "image",
+   "fieldtype": "Attach Image",
+   "label": "Image"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_image_background_removed",
+   "fieldtype": "Check",
+   "label": "Is Image Background Removed"
+  },
+  {
+   "fieldname": "original_image",
+   "fieldtype": "Attach Image",
+   "label": "Original Image"
+  },
+  {
+   "fieldname": "image_background_color",
+   "fieldtype": "Color",
+   "label": "Image Background Color"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-12-07 21:32:28.078090",
+ "modified": "2022-12-16 01:32:52.446268",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "Team User Profile",
