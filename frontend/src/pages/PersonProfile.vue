@@ -33,9 +33,9 @@
           'hover:opacity-80': $isSessionUser(profile.user),
         }"
       >
-        <img
+        <UserImage
           class="h-32 w-32 rounded-full border-4 border-white object-cover"
-          :src="currentUser.user_image"
+          :user="currentUser.name"
         />
       </button>
       <button
@@ -77,48 +77,35 @@
       v-if="$isSessionUser(profile.user)"
       :options="{ title: 'Edit Profile' }"
       v-model="editDialog.show"
-      @close="discard"
+      @after-leave="discard"
     >
       <template #body-content>
         <div class="space-y-4">
-          <FileUploader @success="(file) => setUserImage(file.file_url)">
-            <template v-slot="{ file, progress, uploading, openFileSelector }">
-              <div class="flex items-center space-x-2">
-                <UserAvatar size="lg" :user="profile.user" />
-                <Button @click="openFileSelector">
-                  {{ uploading ? `Uploading ${progress}%` : 'Upload Image' }}
-                </Button>
-                <Button
-                  v-if="currentUser.user_image"
-                  @click="setUserImage(null)"
-                >
-                  Remove
-                </Button>
-              </div>
-            </template>
-          </FileUploader>
-          <Input label="First Name" v-model="user.first_name" />
-          <Input label="Last Name" v-model="user.last_name" />
-          <Input
-            label="Bio"
-            v-model="profile.bio"
-            type="textarea"
-            maxlength="280"
+          <ProfileImageEditor
+            :profile="$resources.profile"
+            v-if="editDialog.editingProfilePhoto"
           />
+          <template v-else>
+            <div class="flex items-center gap-4">
+              <UserAvatar size="lg" :user="profile.user" />
+              <Button @click="editDialog.editingProfilePhoto = true">
+                Edit Profile Photo
+              </Button>
+            </div>
+            <Input label="First Name" v-model="user.first_name" />
+            <Input label="Last Name" v-model="user.last_name" />
+            <Input
+              label="Bio"
+              v-model="profile.bio"
+              type="textarea"
+              maxlength="280"
+            />
+          </template>
         </div>
       </template>
       <template #actions>
         <Button appearance="primary" @click="save">Save</Button>
-        <Button
-          @click="
-            () => {
-              editDialog.show = false
-              $resources.profile.reload()
-            }
-          "
-        >
-          Discard
-        </Button>
+        <Button @click="editDialog.show = false"> Discard </Button>
       </template>
     </Dialog>
   </div>
@@ -128,6 +115,9 @@ import { Dialog, FileUploader } from 'frappe-ui'
 import CoverImage from '@/components/CoverImage.vue'
 import Tabs from '@/components/Tabs.vue'
 import ImagePreview from '../components/ImagePreview.vue'
+import ColorPicker from '@/components/ColorPicker.vue'
+import ProfileImageEditor from '@/components/ProfileImageEditor.vue'
+import UserImage from '@/components/UserImage.vue'
 
 export default {
   name: 'PersonProfile',
@@ -138,11 +128,15 @@ export default {
     FileUploader,
     Tabs,
     ImagePreview,
+    ColorPicker,
+    ProfileImageEditor,
+    UserImage,
   },
   data() {
     return {
       editing: false,
-      editDialog: { show: false },
+      editDialog: { show: false, editingProfilePhoto: false },
+      profilePhotoDialog: { show: false },
       imagePreview: { show: false, imageUrl: null },
     }
   },
@@ -152,6 +146,12 @@ export default {
         type: 'document',
         doctype: 'Team User Profile',
         name: this.personId,
+        realtime: true,
+        whitelistedMethods: {
+          setImage: 'set_image',
+          removeImageBackground: 'remove_image_background',
+          revertImageBackground: 'revert_image_background',
+        },
       }
     },
     user() {
@@ -160,6 +160,7 @@ export default {
         type: 'document',
         doctype: 'User',
         name: this.profile.user,
+        realtime: true,
       }
     },
   },
@@ -211,6 +212,7 @@ export default {
     discard() {
       this.$resources.user.reload()
       this.$resources.profile.reload()
+      this.editDialog = this.$options.data().editDialog
     },
     setUserImage(url) {
       this.$resources.user.setValue.submit({ user_image: url })

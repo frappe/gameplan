@@ -17,3 +17,5 @@ gameplan.gameplan.doctype.team_discussion.patches.update_participants_count
 gameplan.patches.update_gameplan_roles
 gameplan.gameplan.doctype.team.patches.remove_invited_members
 execute:frappe.delete_doc_if_exists('DocType', 'Team Project Discussion', force=1)
+gameplan.gameplan.doctype.team_user_profile.patches.setup_rembg
+gameplan.gameplan.doctype.team_user_profile.patches.set_image

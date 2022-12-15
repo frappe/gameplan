@@ -3,6 +3,9 @@
     v-if="user"
     :label="$user(user).full_name"
     :imageURL="$user(user).user_image"
+    :style="{
+      backgroundColor: $user(user).image_background_color || null,
+    }"
     v-bind="$attrs"
   />
 </template>

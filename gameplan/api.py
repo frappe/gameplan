@@ -32,15 +32,20 @@ def get_user_info(user=None):
 		filters={'parenttype': 'User'},
 		fields=['role', 'parent']
 	)
-	user_profile_names = frappe.db.get_all('Team User Profile',
-		fields=['user', 'name'],
+	user_profiles = frappe.db.get_all('Team User Profile',
+		fields=['user', 'name', 'image', 'image_background_color', 'is_image_background_removed'],
 		filters={'user': ['in', [u.name for u in users]]}
 	)
-	user_profile_names_map = {u.user: u.name for u in user_profile_names}
+	user_profile_map = {u.user: u for u in user_profiles}
 	for user in users:
 		if frappe.session.user == user.name:
 			user.session_user = True
-		user.user_profile = user_profile_names_map.get(user.name)
+		user_profile = user_profile_map.get(user.name)
+		if user_profile:
+			user.user_profile = user_profile.name
+			user.user_image = user_profile.image
+			user.image_background_color = user_profile.image_background_color
+			user.is_image_background_removed = user_profile.is_image_background_removed
 		user_roles = [r.role for r in roles if r.parent == user.name]
 		user.role = None
 		for role in ['Gameplan Guest', 'Gameplan Member', 'Gameplan Admin']:
