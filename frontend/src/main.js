@@ -26,6 +26,8 @@ import { userInfo, users } from './data/users'
 import { session } from './data/session'
 import socket from './socket'
 import resetDataMixin from './utils/resetDataMixin'
+import { getCachedListResource } from 'frappe-ui/src/resources/listResource'
+import { getCachedResource } from 'frappe-ui/src/resources/resources'
 
 let globalComponents = {
   Button,
@@ -62,6 +64,16 @@ app.config.globalProperties.$isSessionUser = (email) => {
   return userInfo().name === email
 }
 app.mount('#app')
+
+socket.on('refetch_resource', (data) => {
+  if (data.cache_key) {
+    let resource =
+      getCachedResource(data.cache_key) || getCachedListResource(data.cache_key)
+    if (resource) {
+      resource.reload()
+    }
+  }
+})
 
 if (import.meta.env.DEV) {
   window.$dayjs = dayjs

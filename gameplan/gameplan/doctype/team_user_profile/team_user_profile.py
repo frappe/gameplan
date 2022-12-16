@@ -2,10 +2,10 @@
 # For license information, please see license.txt
 
 import frappe
+import gameplan
 from frappe.model.document import Document
 from frappe.model.naming import append_number_if_name_exists
 from frappe.website.utils import cleanup_page_name
-
 from gameplan.gameplan.doctype.team_user_profile.profile_photo import remove_background
 
 
@@ -24,6 +24,7 @@ class TeamUserProfile(Document):
 		self.image_background_color = None
 		self.original_image = None
 		self.save()
+		gameplan.refetch_resource('Users')
 
 	@frappe.whitelist()
 	def remove_image_background(self, default_color=None):
@@ -46,6 +47,7 @@ class TeamUserProfile(Document):
 		self.is_image_background_removed = True
 		self.image_background_color = default_color
 		self.save()
+		gameplan.refetch_resource('Users')
 
 	@frappe.whitelist()
 	def revert_image_background(self):
@@ -55,6 +57,7 @@ class TeamUserProfile(Document):
 			self.is_image_background_removed = False
 			self.image_background_color = None
 			self.save()
+			gameplan.refetch_resource('Users')
 
 
 def create_user_profile(doc, method=None):
