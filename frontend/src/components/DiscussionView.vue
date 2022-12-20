@@ -5,7 +5,7 @@
         <Button
           icon-left="chevron-left"
           appearance="minimal"
-          @click="$router.back()"
+          @click="onBackClick"
           :class="['-ml-2 sm:ml-0', showNavbar && 'hidden sm:inline-flex']"
         >
           Back
@@ -447,6 +447,19 @@ export default {
             slug: doc.slug,
           },
           query: this.$route.query,
+        })
+      }
+    },
+    onBackClick() {
+      if (this.$router.options.history.state.back) {
+        this.$router.back()
+      } else {
+        this.$router.push({
+          name: 'ProjectDiscussions',
+          params: {
+            teamId: this.discussion.team,
+            projectId: this.discussion.project,
+          },
         })
       }
     },

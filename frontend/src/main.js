@@ -84,4 +84,5 @@ if (import.meta.env.DEV) {
   window.$toast = createToast
   window.$request = request
   window.$frappeRequest = frappeRequest
+  window.$router = router
 }
