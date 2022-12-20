@@ -8,7 +8,7 @@
           :loading="$resources.markAllAsRead.loading"
           v-if="
             activeTab === 'Unread' &&
-            $resources.unreadNotifications.data.length > 0
+            $resources.unreadNotifications.data?.length > 0
           "
         >
           Mark all as read

@@ -52,7 +52,7 @@
       <div class="flex items-center justify-between pt-2">
         <div class="items-baseline sm:flex">
           <h2 class="text-3xl font-bold leading-none text-gray-900">
-            {{ user?.full_name }}
+            {{ user ? user.full_name : profile.full_name }}
           </h2>
           <span class="hidden px-1 text-gray-600 sm:inline">&middot;</span>
           <p v-if="profile.bio" class="mt-2 text-lg sm:mt-0">
@@ -169,7 +169,7 @@ export default {
       return this.$resources.profile.doc
     },
     user() {
-      return this.$resources.user.doc
+      return this.$resources.user?.doc
     },
     currentUser() {
       return this.$user(this.profile.user)
