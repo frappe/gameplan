@@ -5,7 +5,10 @@
         <div
           class="sticky top-0 z-10 mb-1 flex items-center border-b bg-white py-3 px-4 sm:px-5"
         >
-          <h1 class="text-2xl font-semibold">Posts</h1>
+          <h1 class="text-2xl font-semibold">
+            <span class="hidden sm:inline"> Posts </span>
+            <button class="pr-10 sm:hidden" @click="scrollToTop">Posts</button>
+          </h1>
           <div class="relative ml-auto">
             <FeatherIcon
               name="layers"
@@ -37,6 +40,7 @@
 import Breadcrumbs from '@/components/Breadcrumbs.vue'
 import DiscussionList from '@/components/DiscussionList.vue'
 import { activeTeams } from '@/data/teams'
+import { scrollTo as scrollContainerTo } from '@/utils/scrollContainer'
 
 export default {
   name: 'Home',
@@ -47,6 +51,14 @@ export default {
       selectedTeam: { label: null, value: '' },
       activeTeams,
     }
+  },
+  methods: {
+    scrollToTop() {
+      scrollContainerTo({
+        top: 0,
+        behavior: 'smooth',
+      })
+    },
   },
   pageMeta() {
     return {

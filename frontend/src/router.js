@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { session } from './data/session'
 import { users } from './data/users'
+import { getScrollContainer, scrollTo } from './utils/scrollContainer'
 
 let defaultRoute = window.default_route
 if (defaultRoute?.includes('{{')) {
@@ -163,13 +164,13 @@ let router = createRouter({
 
 let scrollPositions = {}
 function saveAndRestoreScrollPosition(to, from) {
-  // window.scrollContainer is reference to the scroll container in AppLayout.vue
-  if (window.scrollContainer) {
-    scrollPositions[from.fullPath] = window.scrollContainer.scrollTop
+  let scrollContainer = getScrollContainer()
+  if (scrollContainer) {
+    scrollPositions[from.fullPath] = scrollContainer.scrollTop
   }
   if (scrollPositions[to.fullPath] !== undefined) {
     setTimeout(() => {
-      window.scrollContainer.scrollTop = scrollPositions[to.fullPath]
+      scrollTo({ top: scrollPositions[to.fullPath] })
     }, 0)
   }
 }
