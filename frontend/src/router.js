@@ -71,13 +71,13 @@ const routes = [
     path: '/:teamId',
     name: 'TeamLayout',
     component: () => import('@/pages/TeamLayout.vue'),
-    redirect: { name: 'TeamHome' },
+    redirect: { name: 'Team' },
     props: true,
     children: [
       {
-        name: 'TeamHome',
+        name: 'Team',
         path: '',
-        component: () => import('@/pages/TeamHome.vue'),
+        component: () => import('@/pages/Team.vue'),
         redirect: { name: 'TeamOverview' },
         props: true,
         children: [

@@ -52,7 +52,7 @@ import IconPicker from '@/components/IconPicker.vue'
 import Tabs from '@/components/Tabs.vue'
 
 export default {
-  name: 'TeamHome',
+  name: 'Team',
   props: ['team'],
   components: {
     TeamHomeMembers,

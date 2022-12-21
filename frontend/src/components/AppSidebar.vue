@@ -216,7 +216,7 @@ export default {
       return activeTeams.value.map((team) => {
         team.class = function ($route, link) {
           if (
-            ['Team', 'TeamHome', 'TeamOverview', 'TeamProjects'].includes(
+            ['TeamLayout', 'Team', 'TeamOverview', 'TeamProjects'].includes(
               $route.name
             ) &&
             $route.params.teamId === link.route.params.teamId
