@@ -166,12 +166,6 @@ export default {
     }
   },
   mounted() {
-    this.$socket.on('gameplan:new_notification', () => {
-      unreadNotifications.reload()
-    })
-    this.$socket.on('gameplan:unread_items', () => {
-      unreadItems.reload()
-    })
     let sidebarWidth = parseInt(localStorage.getItem('sidebarWidth') || 256)
     this.sidebarWidth = sidebarWidth
   },

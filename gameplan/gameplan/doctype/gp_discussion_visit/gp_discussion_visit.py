@@ -2,12 +2,13 @@
 # For license information, please see license.txt
 
 import frappe
+import gameplan
 from frappe.model.document import Document
 
 class GPDiscussionVisit(Document):
 	def after_insert(self):
-		frappe.publish_realtime('gameplan:unread_items', user=self.user, after_commit=True)
+		gameplan.refetch_resource('UnreadItems', user=self.user)
 
 	def on_change(self):
 		if self.has_value_changed('last_visit'):
-			frappe.publish_realtime('gameplan:unread_items', user=self.user, after_commit=True)
+			gameplan.refetch_resource('UnreadItems', user=self.user)
