@@ -75,22 +75,26 @@
                     </span>
                   </template>
                 </div>
-                <span
-                  class="shrink-0 whitespace-nowrap text-sm text-gray-600 md:hidden"
-                  :title="discussionTimestampDescription(d)"
-                >
-                  {{ discussionTimestamp(d) }}
-                </span>
               </div>
             </div>
-            <span
-              class="ml-auto inline-flex shrink-0 items-center text-base"
-              :class="d.unread ? 'text-gray-900' : 'text-gray-600'"
-              v-if="d.comments_count"
-            >
-              {{ d.comments_count }}
-              <FeatherIcon name="message-circle" class="ml-1 h-4 w-4" />
-            </span>
+            <div class="ml-auto text-right">
+              <div
+                class="inline-flex shrink-0 items-center text-base leading-6"
+                :class="[
+                  d.unread ? 'text-gray-900' : 'text-gray-600',
+                  d.comments_count ? '' : 'invisible',
+                ]"
+              >
+                {{ d.comments_count || 0 }}
+                <FeatherIcon name="message-circle" class="ml-1 h-4 w-4" />
+              </div>
+              <div
+                class="mt-0.5 shrink-0 whitespace-nowrap text-sm text-gray-600 md:hidden"
+                :title="discussionTimestampDescription(d)"
+              >
+                {{ discussionTimestamp(d) }}
+              </div>
+            </div>
           </template>
         </UserInfo>
       </div>

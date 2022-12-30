@@ -11,34 +11,38 @@
         <UserProfileLink class="mr-3" :user="user.name">
           <UserAvatar :user="user.name" />
         </UserProfileLink>
-        <UserProfileLink
-          class="font-medium hover:text-blue-600"
-          :user="user.name"
-        >
-          {{ user.full_name }}&nbsp;&middot;&nbsp;
-        </UserProfileLink>
-        <time
-          class="text-gray-600"
-          :datetime="comment.creation"
-          :title="$dayjs(comment.creation)"
-        >
-          {{ $dayjs(comment.creation).fromNow() }}
-        </time>
-        <template v-if="comment.modified > comment.creation">
-          <span class="text-gray-600" :title="$dayjs(comment.modified)">
-            &nbsp;&middot; Edited
-          </span>
-        </template>
-        <template v-if="comment.loading">
-          &nbsp;&middot;
-          <span class="italic text-gray-600">Sending...</span>
-        </template>
-        <template v-if="comment.error">
+        <div class="md:flex md:items-center">
+          <UserProfileLink
+            class="font-medium hover:text-blue-600"
+            :user="user.name"
+          >
+            {{ user.full_name }}
+            <span class="hidden md:inline">&nbsp;&middot;&nbsp;</span>
+          </UserProfileLink>
           <div>
-            &nbsp;&middot;
-            <span class="text-red-600"> Error</span>
+            <time
+              class="text-gray-600"
+              :datetime="comment.creation"
+              :title="$dayjs(comment.creation)"
+            >
+              {{ $dayjs(comment.creation).fromNow() }}
+            </time>
+            <span
+              v-if="comment.modified > comment.creation"
+              class="text-gray-600"
+              :title="$dayjs(comment.modified)"
+            >
+              &nbsp;&middot; Edited
+            </span>
+            <span v-if="comment.loading" class="italic text-gray-600">
+              &nbsp;&middot; Sending...
+            </span>
+            <div v-if="comment.error">
+              &nbsp;&middot;
+              <span class="text-red-600"> Error</span>
+            </div>
           </div>
-        </template>
+        </div>
         <Dropdown
           v-show="!comment.editing"
           class="ml-auto"

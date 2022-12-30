@@ -190,20 +190,22 @@
           <UserProfileLink class="mr-3" :user="discussion.owner">
             <UserAvatar :user="discussion.owner" />
           </UserProfileLink>
-          <UserProfileLink
-            class="text-base font-medium hover:text-blue-600"
-            :user="discussion.owner"
-          >
-            {{ $user(discussion.owner).full_name }}&nbsp;&middot;&nbsp;
-          </UserProfileLink>
-          <time
-            class="text-base text-gray-600"
-            :datetime="discussion.creation"
-            :title="$dayjs(discussion.creation)"
-          >
-            {{ $dayjs(discussion.creation).fromNow() }}
-          </time>
-
+          <div class="flex flex-col md:block">
+            <UserProfileLink
+              class="text-base font-medium hover:text-blue-600"
+              :user="discussion.owner"
+            >
+              {{ $user(discussion.owner).full_name }}
+              <span class="hidden md:inline">&nbsp;&middot;&nbsp;</span>
+            </UserProfileLink>
+            <time
+              class="text-base text-gray-600"
+              :datetime="discussion.creation"
+              :title="$dayjs(discussion.creation)"
+            >
+              {{ $dayjs(discussion.creation).fromNow() }}
+            </time>
+          </div>
           <div class="ml-auto flex space-x-2">
             <Button
               v-if="
