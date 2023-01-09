@@ -40,6 +40,7 @@ class TeamDiscussion(HasActivity, HasMentions, HasReactions, Document):
 
 	def validate(self):
 		self.content = remove_empty_trailing_paragraphs(self.content)
+		self.title = self.title.strip()
 
 	def on_update(self):
 		self.notify_mentions()
@@ -55,7 +56,8 @@ class TeamDiscussion(HasActivity, HasMentions, HasReactions, Document):
 		# remove special characters from title and set as slug
 		if not self.title:
 			return
-		slug = re.sub('[^A-Za-z0-9\s-]+', '', self.title.lower())
+		slug = re.sub(r'[^A-Za-z0-9\s-]+', '', self.title.lower())
+		slug = slug.replace('\n', ' ')
 		slug = slug.split(' ')
 		slug = [part for part in slug if part]
 		slug = '-'.join(slug)
