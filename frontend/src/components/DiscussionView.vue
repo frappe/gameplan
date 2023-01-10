@@ -363,8 +363,8 @@ export default {
           reopenDiscussion: 'reopen_discussion',
           moveToProject: {
             method: 'move_to_project',
-            validate() {
-              if (!this.discussionMoveDialog.project?.value) {
+            validate(params) {
+              if (!params.args.project) {
                 return 'Project is required to move this discussion'
               }
             },
