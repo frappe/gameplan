@@ -8,9 +8,10 @@ import frappe
 def execute():
 	doctypes = {
 		'Team': 'GP Team',
+		'Team Project': 'GP Project'
 	}
 	for old in doctypes:
 		new = doctypes[old]
-		if not frappe.db.table_exists(new):
+		if not frappe.db.exists('DocType', new):
 			print('Renaming {0} to {1}'.format(old, new))
-			frappe.db.rename_table(old, new)
+			frappe.rename_doc('DocType', old, new, force=True, ignore_if_exists=True)

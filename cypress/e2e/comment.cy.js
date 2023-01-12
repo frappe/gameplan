@@ -12,7 +12,7 @@ describe('Comment', () => {
           title: 'Engineering',
         },
         {
-          doctype: 'Team Project',
+          doctype: 'GP Project',
           title: 'Gameplan',
           team: 'engineering',
         },

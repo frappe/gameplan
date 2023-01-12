@@ -13,7 +13,7 @@ export default {
     project() {
       return {
         type: 'document',
-        doctype: 'Team Project',
+        doctype: 'GP Project',
         name: this.projectId,
         realtime: true,
         whitelistedMethods: {

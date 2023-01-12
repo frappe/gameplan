@@ -17,7 +17,7 @@ import requests
 def execute():
 	frappe.flags.in_import = True
 	# clear_data([
-	# 	# 'Team Project',
+	# 	# 'GP Project',
 	# 	# 'GP Team',
 	# 	'Team Discussion'
 	# ])
@@ -54,7 +54,7 @@ def migrate_posts():
 				title=topic.title,
 				content=topic.content,
 				project=project,
-				team=frappe.db.get_value('Team Project', project, 'team'),
+				team=frappe.db.get_value('GP Project', project, 'team'),
 				last_post_at=topic.last_post_at,
 				creation=topic.creation,
 				modified=topic.modified,
@@ -178,7 +178,7 @@ def get_user(user_id):
 
 def get_project(category_id):
 	return frappe.db.get_value('Discourse ID Map', {
-		'reference_doctype': 'Team Project',
+		'reference_doctype': 'GP Project',
 		'discourse_table': 'categories',
 		'discourse_id': category_id
 	}, 'reference_name')
@@ -478,7 +478,7 @@ def migrate_categories():
 		else:
 			team_doc = frappe.get_doc('GP Team', {'title': team})
 
-		project_doc = frappe.get_doc(doctype='Team Project', title=project, team=team_doc.name).insert()
+		project_doc = frappe.get_doc(doctype='GP Project', title=project, team=team_doc.name).insert()
 		log_discourse_map(project_doc, 'categories', id)
 
 

@@ -21,12 +21,12 @@ class TeamTask(HasMentions, Document):
 		self.update_tasks_count(-1)
 
 	def update_tasks_count(self, delta=1):
-		current_tasks_count = frappe.db.get_value("Team Project", self.project, "tasks_count")
-		frappe.db.set_value("Team Project", self.project, "tasks_count", current_tasks_count + delta)
+		current_tasks_count = frappe.db.get_value("GP Project", self.project, "tasks_count")
+		frappe.db.set_value("GP Project", self.project, "tasks_count", current_tasks_count + delta)
 
 	def update_project_progress(self):
 		if self.project and self.has_value_changed("is_completed"):
-			frappe.get_doc("Team Project", self.project).update_progress()
+			frappe.get_doc("GP Project", self.project).update_progress()
 
 	def on_update(self):
 		self.notify_mentions()

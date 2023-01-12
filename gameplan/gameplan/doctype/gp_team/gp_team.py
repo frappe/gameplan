@@ -9,7 +9,7 @@ from gameplan.gemoji import get_random_gemoji
 from gameplan.mixins.archivable import Archivable
 
 class GPTeam(Archivable, Document):
-	on_delete_cascade = ["Team Project"]
+	on_delete_cascade = ["GP Project"]
 	on_delete_set_null = ["Team Notification"]
 
 	@staticmethod

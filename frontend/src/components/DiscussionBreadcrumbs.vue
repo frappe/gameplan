@@ -33,7 +33,7 @@ export default {
   computed: {
     projectTitle() {
       return (
-        this.$getDoc('Team Project', this.discussion.project)?.title ||
+        this.$getDoc('GP Project', this.discussion.project)?.title ||
         this.discussion.project
       )
     },

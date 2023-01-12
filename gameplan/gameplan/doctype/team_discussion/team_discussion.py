@@ -109,7 +109,7 @@ class TeamDiscussion(HasActivity, HasMentions, HasReactions, Document):
 			return
 
 		self.project = project
-		self.team = frappe.db.get_value("Team Project", project, "team")
+		self.team = frappe.db.get_value("GP Project", project, "team")
 		self.save()
 
 	@frappe.whitelist()
@@ -131,6 +131,6 @@ class TeamDiscussion(HasActivity, HasMentions, HasReactions, Document):
 		self.save()
 
 	def update_discussions_count(self, delta=1):
-		project = frappe.get_doc("Team Project", self.project)
+		project = frappe.get_doc("GP Project", self.project)
 		project.discussions_count = project.discussions_count + delta
 		project.save(ignore_permissions=True)

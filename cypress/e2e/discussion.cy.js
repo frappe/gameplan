@@ -12,12 +12,12 @@ describe('Discussion', () => {
           title: 'Engineering',
         },
         {
-          doctype: 'Team Project',
+          doctype: 'GP Project',
           title: 'Gameplan',
           team: 'engineering',
         },
         {
-          doctype: 'Team Project',
+          doctype: 'GP Project',
           title: 'ERPNext',
           team: 'engineering',
         },

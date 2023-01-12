@@ -12,13 +12,13 @@ from pypika.terms import ExistsCriterion
 from gameplan.api import invite_by_email
 
 
-class TeamProject(ManageMembersMixin, Archivable, Document):
+class GPProject(ManageMembersMixin, Archivable, Document):
 	on_delete_cascade = ["Team Task", "Team Discussion"]
 	on_delete_set_null = ["Team Notification"]
 
 	@staticmethod
 	def get_list_query(query):
-		Project = frappe.qb.DocType('Team Project')
+		Project = frappe.qb.DocType('GP Project')
 		Member = frappe.qb.DocType('Team Member')
 		member_exists = (
 			frappe.qb.from_(Member)

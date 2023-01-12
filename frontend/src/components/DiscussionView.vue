@@ -482,7 +482,7 @@ export default {
   },
   pageMeta() {
     if (!this.discussion) return
-    let project = this.$getDoc('Team Project', this.discussion.project)
+    let project = this.$getDoc('GP Project', this.discussion.project)
     if (!project) return
     return {
       title: [this.discussion.title, project.title].filter(Boolean).join(' - '),
