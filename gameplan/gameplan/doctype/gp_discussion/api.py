@@ -17,7 +17,7 @@ def get_discussions(filters=None, limit_start=None, limit_page_length=None):
 	Visit = frappe.qb.DocType('Team Discussion Visit')
 	Project = frappe.qb.DocType('GP Project')
 	Team = frappe.qb.DocType('GP Team')
-	Member = frappe.qb.DocType('Team Member')
+	Member = frappe.qb.DocType('GP Member')
 	member_exists = (
 		frappe.qb.from_(Member)
 			.select(Member.name)

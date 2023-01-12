@@ -19,7 +19,7 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 	@staticmethod
 	def get_list_query(query):
 		Project = frappe.qb.DocType('GP Project')
-		Member = frappe.qb.DocType('Team Member')
+		Member = frappe.qb.DocType('GP Member')
 		member_exists = (
 			frappe.qb.from_(Member)
 				.select(Member.name)

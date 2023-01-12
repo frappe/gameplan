@@ -12,6 +12,7 @@ def execute():
 		'Team Discussion': 'GP Discussion',
 		'Team Task': 'GP Task',
 		'Team Comment': 'GP Comment',
+		'Team Member': 'GP Member',
 	}
 	for old in doctypes:
 		new = doctypes[old]

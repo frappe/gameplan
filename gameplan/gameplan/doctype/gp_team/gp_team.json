@@ -33,7 +33,7 @@
    "fieldname": "members",
    "fieldtype": "Table",
    "label": "Members",
-   "options": "Team Member"
+   "options": "GP Member"
   },
   {
    "fieldname": "cover_image_position",
@@ -64,7 +64,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-12-07 21:32:09.932298",
+ "modified": "2023-01-12 17:05:22.658284",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "GP Team",

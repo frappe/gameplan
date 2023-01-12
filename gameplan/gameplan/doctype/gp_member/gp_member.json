@@ -23,7 +23,7 @@
  "modified": "2022-12-09 12:53:23.011368",
  "modified_by": "Administrator",
  "module": "Gameplan",
- "name": "Team Member",
+ "name": "GP Member",
  "naming_rule": "Autoincrement",
  "owner": "Administrator",
  "permissions": [],

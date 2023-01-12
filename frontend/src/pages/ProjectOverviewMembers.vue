@@ -91,7 +91,7 @@
             appearance="primary"
             @click="
               resource.submit({
-                doctype: 'Team Member',
+                doctype: 'GP Member',
                 name: updateMemberRole.member.name,
                 fieldname: {
                   role: $refs.memberRole.getInputValue(),

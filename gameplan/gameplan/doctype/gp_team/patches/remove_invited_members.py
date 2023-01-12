@@ -6,4 +6,4 @@ import frappe
 
 
 def execute():
-	frappe.db.delete("Team Member", {'user': ['is', 'not set']})
+	frappe.db.delete("GP Member", {'user': ['is', 'not set']})

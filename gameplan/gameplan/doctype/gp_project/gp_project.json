@@ -57,7 +57,7 @@
    "fieldname": "members",
    "fieldtype": "Table",
    "label": "Members",
-   "options": "Team Member"
+   "options": "GP Member"
   },
   {
    "fieldname": "column_break_2",
@@ -117,15 +117,15 @@
  "index_web_pages_for_search": 1,
  "links": [
   {
-   "link_doctype": "Team Task",
+   "link_doctype": "GP Task",
    "link_fieldname": "project"
   },
   {
-   "link_doctype": "Team Discussion",
+   "link_doctype": "GP Discussion",
    "link_fieldname": "project"
   }
  ],
- "modified": "2023-01-12 13:37:54.190735",
+ "modified": "2023-01-12 17:05:23.306755",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "GP Project",
