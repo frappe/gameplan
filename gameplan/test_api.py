@@ -46,4 +46,4 @@ def clear_data(onboard=None):
 		frappe.delete_doc("User", user.name)
 
 	if onboard:
-		frappe.get_doc(doctype='Team', title='Test Team').insert()
+		frappe.get_doc(doctype='GP Team', title='Test Team').insert()

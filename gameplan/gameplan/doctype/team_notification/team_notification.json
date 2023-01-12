@@ -81,12 +81,12 @@
    "fieldname": "team",
    "fieldtype": "Link",
    "label": "Team",
-   "options": "Team"
+   "options": "GP Team"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-12-07 21:35:04.657433",
+ "modified": "2023-01-12 13:37:55.537057",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "Team Notification",

@@ -60,7 +60,7 @@
    "fieldname": "team",
    "fieldtype": "Link",
    "label": "Team",
-   "options": "Team",
+   "options": "GP Team",
    "search_index": 1
   },
   {
@@ -106,7 +106,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-12-07 21:32:47.261345",
+ "modified": "2023-01-12 13:37:54.762626",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "Team Discussion",

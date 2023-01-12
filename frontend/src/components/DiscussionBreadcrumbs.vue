@@ -39,7 +39,7 @@ export default {
     },
     teamTitle() {
       return (
-        this.$getDoc('Team', this.discussion.team)?.title ||
+        this.$getDoc('GP Team', this.discussion.team)?.title ||
         this.discussion.team
       )
     },

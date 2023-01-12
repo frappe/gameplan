@@ -8,7 +8,7 @@ describe('Comment', () => {
     cy.request('POST', '/api/method/frappe.client.insert_many', {
       docs: [
         {
-          doctype: 'Team',
+          doctype: 'GP Team',
           title: 'Engineering',
         },
         {

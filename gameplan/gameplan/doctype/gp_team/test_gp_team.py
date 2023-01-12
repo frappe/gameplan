@@ -4,5 +4,5 @@
 # import frappe
 import unittest
 
-class TestTeam(unittest.TestCase):
+class TestGPTeam(unittest.TestCase):
 	pass

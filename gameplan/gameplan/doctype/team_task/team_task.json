@@ -89,7 +89,7 @@
    "fieldname": "team",
    "fieldtype": "Link",
    "label": "Team",
-   "options": "Team"
+   "options": "GP Team"
   },
   {
    "fetch_from": "team.title",
@@ -117,7 +117,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-12-07 21:31:48.139748",
+ "modified": "2023-01-12 13:37:55.163619",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "Team Task",

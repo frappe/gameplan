@@ -18,7 +18,7 @@ def execute():
 	frappe.flags.in_import = True
 	# clear_data([
 	# 	# 'Team Project',
-	# 	# 'Team',
+	# 	# 'GP Team',
 	# 	'Team Discussion'
 	# ])
 	# migrate_users()
@@ -472,11 +472,11 @@ def migrate_categories():
 		team = d['team']
 		project = d['project']
 
-		if not frappe.db.exists('Team', {'title': team}):
-			team_doc = frappe.get_doc(doctype='Team', title=team).insert()
+		if not frappe.db.exists('GP Team', {'title': team}):
+			team_doc = frappe.get_doc(doctype='GP Team', title=team).insert()
 			log_discourse_map(team_doc, 'categories', id)
 		else:
-			team_doc = frappe.get_doc('Team', {'title': team})
+			team_doc = frappe.get_doc('GP Team', {'title': team})
 
 		project_doc = frappe.get_doc(doctype='Team Project', title=project, team=team_doc.name).insert()
 		log_discourse_map(project_doc, 'categories', id)

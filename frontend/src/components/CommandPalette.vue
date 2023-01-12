@@ -95,7 +95,7 @@ export default {
       window.addEventListener('keydown', (e) => {
         if (e.key === 'k' && (e.ctrlKey || e.metaKey)) {
           this.show = !this.show
-		  e.preventDefault();
+          e.preventDefault()
         }
       })
     },
@@ -108,7 +108,7 @@ export default {
       for (const team of activeTeams.value) {
         teamsByName[team.name] = team
         list.push({
-          doctype: 'Team',
+          doctype: 'GP Team',
           type: 'Team',
           name: team.name,
           title: team.title,

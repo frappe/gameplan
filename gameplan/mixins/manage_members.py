@@ -36,7 +36,7 @@ class ManageMembersMixin:
 		invite_link = frappe.utils.get_url(
 			f"/api/method/gameplan.api.accept_invitation?key={member.key}"
 		)
-		title = f"Team: {self.title}" if self.doctype == "Team" else f"Project: {self.title}"
+		title = f"Team: {self.title}" if self.doctype == "GP Team" else f"Project: {self.title}"
 		if frappe.local.dev_server:
 			print(f"Invite link for {member.email}: {invite_link}")
 

@@ -33,12 +33,12 @@
    "fieldname": "team",
    "fieldtype": "Link",
    "label": "Team",
-   "options": "Team"
+   "options": "GP Team"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-12-02 17:24:50.553092",
+ "modified": "2023-01-12 13:37:53.544532",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "GP Guest Access",

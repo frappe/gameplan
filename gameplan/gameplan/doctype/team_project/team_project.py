@@ -23,7 +23,7 @@ class TeamProject(ManageMembersMixin, Archivable, Document):
 		member_exists = (
 			frappe.qb.from_(Member)
 				.select(Member.name)
-				.where(Member.parenttype == 'Team')
+				.where(Member.parenttype == 'GP Team')
 				.where(Member.parent == Project.team)
 				.where(Member.user == frappe.session.user)
 		)

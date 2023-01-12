@@ -67,7 +67,7 @@
  "modified": "2022-12-07 21:32:09.932298",
  "modified_by": "Administrator",
  "module": "Gameplan",
- "name": "Team",
+ "name": "GP Team",
  "naming_rule": "Set by user",
  "owner": "Administrator",
  "permissions": [

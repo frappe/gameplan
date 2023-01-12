@@ -8,8 +8,7 @@ from frappe.model.naming import append_number_if_name_exists
 from gameplan.gemoji import get_random_gemoji
 from gameplan.mixins.archivable import Archivable
 
-
-class Team(Archivable, Document):
+class GPTeam(Archivable, Document):
 	on_delete_cascade = ["Team Project"]
 	on_delete_set_null = ["Team Notification"]
 
@@ -17,7 +16,7 @@ class Team(Archivable, Document):
 	def get_list_query(query):
 		is_guest = gameplan.is_guest()
 		if is_guest:
-			Team = frappe.qb.DocType('Team')
+			Team = frappe.qb.DocType('GP Team')
 			GuestAccess = frappe.qb.DocType('GP Guest Access')
 			team_list = GuestAccess.select(GuestAccess.team).where(GuestAccess.user == frappe.session.user)
 			query = query.where(Team.name.isin(team_list))
@@ -26,7 +25,7 @@ class Team(Archivable, Document):
 	def before_insert(self):
 		if not self.name:
 			slug = frappe.scrub(self.title).replace("_", "-")
-			self.name = append_number_if_name_exists("Team", slug)
+			self.name = append_number_if_name_exists("GP Team", slug)
 
 		if not self.icon:
 			self.icon = get_random_gemoji().emoji

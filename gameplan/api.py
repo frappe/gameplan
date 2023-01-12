@@ -196,7 +196,7 @@ def mark_all_notifications_as_read():
 @frappe.whitelist()
 def onboarding(data):
 	data = frappe.parse_json(data)
-	team = frappe.get_doc(doctype='Team', title=data.team).insert()
+	team = frappe.get_doc(doctype='GP Team', title=data.team).insert()
 	frappe.get_doc(doctype='Team Project', team=team.name, title=data.project).insert()
 	emails = ', '.join(data.emails)
 	invite_by_email(emails, role='Gameplan Member')

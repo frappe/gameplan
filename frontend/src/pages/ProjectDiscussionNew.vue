@@ -25,7 +25,8 @@
                 }"
               >
                 {{
-                  $getDoc('Team', project.doc.team)?.title || project.doc.team
+                  $getDoc('GP Team', project.doc.team)?.title ||
+                  project.doc.team
                 }}
               </router-link>
               <span class="text-gray-500"> &mdash; </span>
