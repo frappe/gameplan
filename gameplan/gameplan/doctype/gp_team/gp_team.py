@@ -10,7 +10,7 @@ from gameplan.mixins.archivable import Archivable
 
 class GPTeam(Archivable, Document):
 	on_delete_cascade = ["GP Project"]
-	on_delete_set_null = ["Team Notification"]
+	on_delete_set_null = ["GP Notification"]
 
 	@staticmethod
 	def get_list_query(query):

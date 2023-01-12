@@ -5,5 +5,5 @@
 from frappe.tests.utils import FrappeTestCase
 
 
-class TestTeamNotification(FrappeTestCase):
+class TestGPNotification(FrappeTestCase):
 	pass

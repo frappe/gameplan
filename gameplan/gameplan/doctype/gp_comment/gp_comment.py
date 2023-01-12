@@ -9,7 +9,7 @@ from gameplan.mixins.reactions import HasReactions
 from gameplan.utils import remove_empty_trailing_paragraphs
 
 class GPComment(HasMentions, HasReactions, Document):
-	on_delete_set_null = ["Team Notification"]
+	on_delete_set_null = ["GP Notification"]
 	mentions_field = 'content'
 
 	def before_insert(self):

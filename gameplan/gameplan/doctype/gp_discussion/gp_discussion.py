@@ -11,7 +11,7 @@ from gameplan.utils import remove_empty_trailing_paragraphs
 
 class GPDiscussion(HasActivity, HasMentions, HasReactions, Document):
 	on_delete_cascade = ['GP Comment', 'GP Discussion Visit']
-	on_delete_set_null = ['Team Notification']
+	on_delete_set_null = ['GP Notification']
 	activities = ['Discussion Closed', 'Discussion Reopened', 'Discussion Title Changed']
 	mentions_field = 'content'
 

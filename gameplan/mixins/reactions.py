@@ -29,10 +29,10 @@ class HasReactions:
 		elif self.doctype == 'GP Comment':
 			values.comment = self.name
 
-		if frappe.db.exists("Team Notification", values):
-			doc = frappe.get_doc("Team Notification", values)
+		if frappe.db.exists("GP Notification", values):
+			doc = frappe.get_doc("GP Notification", values)
 		else:
-			doc = frappe.get_doc(doctype="Team Notification")
+			doc = frappe.get_doc(doctype="GP Notification")
 			doc.update(values)
 			if self.doctype == 'GP Comment':
 				doc.discussion = self.reference_name if self.reference_doctype == "GP Discussion" else None

@@ -14,7 +14,7 @@ from gameplan.api import invite_by_email
 
 class GPProject(ManageMembersMixin, Archivable, Document):
 	on_delete_cascade = ["GP Task", "GP Discussion"]
-	on_delete_set_null = ["Team Notification"]
+	on_delete_set_null = ["GP Notification"]
 
 	@staticmethod
 	def get_list_query(query):

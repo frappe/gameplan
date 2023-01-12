@@ -8,7 +8,7 @@ from gameplan.mixins.mentions import HasMentions
 
 class GPTask(HasMentions, Document):
 	on_delete_cascade = ["GP Comment"]
-	on_delete_set_null = ["Team Notification"]
+	on_delete_set_null = ["GP Notification"]
 	mentions_field = 'description'
 
 	def after_insert(self):

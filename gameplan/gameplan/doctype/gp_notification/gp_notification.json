@@ -89,7 +89,7 @@
  "modified": "2023-01-12 16:56:50.063064",
  "modified_by": "Administrator",
  "module": "Gameplan",
- "name": "Team Notification",
+ "name": "GP Notification",
  "naming_rule": "Autoincrement",
  "owner": "Administrator",
  "permissions": [

@@ -4,6 +4,6 @@
 import frappe
 from frappe.model.document import Document
 
-class TeamNotification(Document):
+class GPNotification(Document):
 	def after_insert(self):
 		frappe.publish_realtime("gameplan:new_notification", user=self.to_user)

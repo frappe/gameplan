@@ -113,7 +113,7 @@ def invite_by_email(emails: str, role: str, projects: list = None):
 
 @frappe.whitelist()
 def unread_notifications():
-	res = frappe.db.get_all('Team Notification', 'count(name) as count', {'to_user': frappe.session.user, 'read': 0})
+	res = frappe.db.get_all('GP Notification', 'count(name) as count', {'to_user': frappe.session.user, 'read': 0})
 	return res[0].count
 
 
@@ -176,8 +176,8 @@ def get_unread_items():
 
 @frappe.whitelist()
 def mark_all_notifications_as_read():
-	for d in frappe.db.get_all('Team Notification', filters={'to_user': frappe.session.user, 'read': 0}, pluck='name'):
-		doc = frappe.get_doc('Team Notification', d)
+	for d in frappe.db.get_all('GP Notification', filters={'to_user': frappe.session.user, 'read': 0}, pluck='name'):
+		doc = frappe.get_doc('GP Notification', d)
 		doc.read = 1
 		doc.save(ignore_permissions=True)
 
