@@ -25,7 +25,7 @@
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Project",
-   "options": "Team Project",
+   "options": "GP Project",
    "reqd": 1
   },
   {
@@ -33,12 +33,12 @@
    "fieldname": "team",
    "fieldtype": "Link",
    "label": "Team",
-   "options": "Team"
+   "options": "GP Team"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-12-02 17:24:50.553092",
+ "modified": "2023-01-12 14:15:22.501442",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "GP Guest Access",

@@ -37,7 +37,7 @@
           :class="{
             'border-t': item.name != newMessagesFrom,
           }"
-          v-if="item.doctype == 'Team Comment'"
+          v-if="item.doctype == 'GP Comment'"
           :ref="($comment) => setCommentRef($comment, item)"
           :comment="item"
           :highlightedComment="highlightedComment"
@@ -46,7 +46,7 @@
         />
         <Activity
           class="border-t"
-          v-else-if="item.doctype == 'Team Activity'"
+          v-else-if="item.doctype == 'GP Activity'"
           :activity="item"
         />
       </template>
@@ -162,7 +162,7 @@ export default {
     comments() {
       return {
         type: 'list',
-        doctype: 'Team Comment',
+        doctype: 'GP Comment',
         fields: [
           'name',
           'content',
@@ -173,7 +173,7 @@ export default {
         ],
         transform(data) {
           for (let d of data) {
-            d.doctype = 'Team Comment'
+            d.doctype = 'GP Comment'
             this.commentMap[d.name] = d
             d.reactions = []
           }
@@ -216,13 +216,13 @@ export default {
       if (!comments.length) return
       return {
         type: 'list',
-        doctype: 'Team Reaction',
+        doctype: 'GP Reaction',
         fields: ['user', 'emoji', 'parent', 'name'],
         filters: {
-          parenttype: 'Team Comment',
+          parenttype: 'GP Comment',
           parent: ['in', comments],
         },
-        parent: 'Team Comment',
+        parent: 'GP Comment',
         orderBy: 'parent asc, idx asc',
         pageLength: 99999,
         auto: true,
@@ -234,7 +234,7 @@ export default {
     activities() {
       return {
         type: 'list',
-        doctype: 'Team Activity',
+        doctype: 'GP Activity',
         fields: ['name', 'user', 'action', 'data', 'creation'],
         filters: {
           reference_doctype: this.doctype,
@@ -245,7 +245,7 @@ export default {
         auto: true,
         transform(activities) {
           for (let activity of activities) {
-            activity.doctype = 'Team Activity'
+            activity.doctype = 'GP Activity'
             activity.data = activity.data ? JSON.parse(activity.data) : null
           }
           return activities

@@ -251,7 +251,7 @@
         </div>
         <div class="mt-3">
           <Reactions
-            doctype="Team Discussion"
+            doctype="GP Discussion"
             :name="discussion.name"
             v-model:reactions="discussion.reactions"
             :read-only-mode="readOnlyMode"
@@ -259,7 +259,7 @@
         </div>
       </div>
       <CommentsArea
-        doctype="Team Discussion"
+        doctype="GP Discussion"
         :name="discussion.name"
         :newCommentsFrom="discussion.last_unread_comment"
         :read-only-mode="readOnlyMode"
@@ -354,7 +354,7 @@ export default {
     discussion() {
       return {
         type: 'document',
-        doctype: 'Team Discussion',
+        doctype: 'GP Discussion',
         name: this.postId,
         realtime: true,
         whitelistedMethods: {
@@ -482,7 +482,7 @@ export default {
   },
   pageMeta() {
     if (!this.discussion) return
-    let project = this.$getDoc('Team Project', this.discussion.project)
+    let project = this.$getDoc('GP Project', this.discussion.project)
     if (!project) return
     return {
       title: [this.discussion.title, project.title].filter(Boolean).join(' - '),

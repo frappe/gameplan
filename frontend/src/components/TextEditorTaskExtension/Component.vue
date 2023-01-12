@@ -1,15 +1,12 @@
 <template>
-  <node-view-wrapper
-    class="my-2 team-task"
-    :class="'team-task-' + task?.name"
-  >
+  <node-view-wrapper class="team-task my-2" :class="'team-task-' + task?.name">
     <div class="flex items-center space-x-2">
       <input
         type="checkbox"
-        class="w-4 h-4 text-blue-500 border-gray-300 rounded focus:ring-blue-500"
+        class="h-4 w-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500"
       />
       <input
-        class="p-0 border-none [font-size:unset] focus:border-none focus:ring-0"
+        class="border-none p-0 [font-size:unset] focus:border-none focus:ring-0"
         v-if="task"
         type="text"
         v-model="$resources.task.doc.title"
@@ -31,7 +28,7 @@ export default {
     task() {
       return {
         type: 'document',
-        doctype: 'Team Task',
+        doctype: 'GP Task',
         name: this.node.attrs.taskId,
       }
     },

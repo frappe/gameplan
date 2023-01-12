@@ -11,7 +11,7 @@ export default {
     team() {
       return {
         type: 'document',
-        doctype: 'Team',
+        doctype: 'GP Team',
         name: this.teamId,
         realtime: true,
         whitelistedMethods: {

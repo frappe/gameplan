@@ -1,7 +1,7 @@
 import { createListResource } from 'frappe-ui'
 
 export let projects = createListResource({
-  doctype: 'Team Project',
+  doctype: 'GP Project',
   fields: [
     'name',
     'title',

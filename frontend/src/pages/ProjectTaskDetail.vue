@@ -162,7 +162,7 @@
     </div>
     <CommentsArea
       class="flex-1"
-      doctype="Team Task"
+      doctype="GP Task"
       :name="task.doc.name"
       :read-only-mode="readOnlyMode"
     />
@@ -197,7 +197,7 @@ export default {
     task() {
       return {
         type: 'document',
-        doctype: 'Team Task',
+        doctype: 'GP Task',
         name: this.taskId,
         setValue: {
           onError(e) {

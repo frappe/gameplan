@@ -3,7 +3,7 @@ import { computed } from 'vue'
 
 export let teams = createListResource({
   type: 'list',
-  doctype: 'Team',
+  doctype: 'GP Team',
   fields: ['name', 'title', 'icon', 'modified', 'creation', 'archived_at'],
   orderBy: 'title asc',
   cache: 'Teams',

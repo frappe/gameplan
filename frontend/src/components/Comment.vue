@@ -134,7 +134,7 @@
             v-if="!comment.deleted_at && !comment.editing && comment.reactions"
           >
             <Reactions
-              doctype="Team Comment"
+              doctype="GP Comment"
               :name="comment.name"
               v-model:reactions="comment.reactions"
               :read-only-mode="readOnlyMode"

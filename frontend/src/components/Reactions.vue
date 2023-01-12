@@ -147,7 +147,7 @@ export default {
         {
           cmd: 'frappe.client.insert',
           doc: {
-            doctype: 'Team Reaction',
+            doctype: 'GP Reaction',
             parentfield: 'reactions',
             parenttype: this.doctype,
             parent: this.name,
@@ -168,7 +168,7 @@ export default {
         ...(this.changes || []),
         {
           cmd: 'frappe.client.delete',
-          doctype: 'Team Reaction',
+          doctype: 'GP Reaction',
           name: reaction.name,
         },
       ]

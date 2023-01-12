@@ -217,7 +217,7 @@ export default {
     task() {
       let task = null
       if (this.$route.name === 'ProjectTaskDetail') {
-        task = this.$getDocumentResource('Team Task', this.$route.params.taskId)
+        task = this.$getDocumentResource('GP Task', this.$route.params.taskId)
       }
       return task
     },

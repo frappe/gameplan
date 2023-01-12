@@ -82,7 +82,7 @@ website_redirects = [
 # before_install = "gameplan.install.before_install"
 after_install = "gameplan.install.after_install"
 
-after_migrate = ["gameplan.gameplan.doctype.team_discussion.search.rebuild_index_in_background"]
+after_migrate = ["gameplan.gameplan.doctype.gp_discussion.search.rebuild_index_in_background"]
 
 # Uninstallation
 # ------------
@@ -125,12 +125,12 @@ doc_events = {
 		"on_trash": "gameplan.mixins.on_delete.on_trash",
 	},
 	"User": {
-		"after_insert": "gameplan.gameplan.doctype.team_user_profile.team_user_profile.create_user_profile",
+		"after_insert": "gameplan.gameplan.doctype.gp_user_profile.gp_user_profile.create_user_profile",
 		"on_trash": [
-			"gameplan.gameplan.doctype.team_user_profile.team_user_profile.delete_user_profile",
+			"gameplan.gameplan.doctype.gp_user_profile.gp_user_profile.delete_user_profile",
 			"gameplan.gameplan.doctype.gp_guest_access.gp_guest_access.on_user_delete",
 		],
-		"on_update": "gameplan.gameplan.doctype.team_user_profile.team_user_profile.on_user_update"
+		"on_update": "gameplan.gameplan.doctype.gp_user_profile.gp_user_profile.on_user_update"
 	}
 }
 
@@ -141,7 +141,7 @@ on_login = 'gameplan.www.g.on_login'
 
 scheduler_events = {
 	"all": [
-		"gameplan.gameplan.doctype.team_discussion.search.rebuild_index_if_not_exists"
+		"gameplan.gameplan.doctype.gp_discussion.search.rebuild_index_if_not_exists"
 	],
 	"hourly": [
 		"gameplan.gameplan.doctype.gp_invitation.gp_invitation.expire_invitations"

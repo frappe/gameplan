@@ -24,19 +24,19 @@ class HasReactions:
 			to_user=self.owner,
 			type='Reaction',
 		)
-		if self.doctype == 'Team Discussion':
+		if self.doctype == 'GP Discussion':
 			values.discussion = self.name
-		elif self.doctype == 'Team Comment':
+		elif self.doctype == 'GP Comment':
 			values.comment = self.name
 
-		if frappe.db.exists("Team Notification", values):
-			doc = frappe.get_doc("Team Notification", values)
+		if frappe.db.exists("GP Notification", values):
+			doc = frappe.get_doc("GP Notification", values)
 		else:
-			doc = frappe.get_doc(doctype="Team Notification")
+			doc = frappe.get_doc(doctype="GP Notification")
 			doc.update(values)
-			if self.doctype == 'Team Comment':
-				doc.discussion = self.reference_name if self.reference_doctype == "Team Discussion" else None
-				doc.task = self.reference_name if self.reference_doctype == "Team Task" else None
+			if self.doctype == 'GP Comment':
+				doc.discussion = self.reference_name if self.reference_doctype == "GP Discussion" else None
+				doc.task = self.reference_name if self.reference_doctype == "GP Task" else None
 		doc.message = message
 		doc.read = 0
 		doc.flags.ignore_permissions = True

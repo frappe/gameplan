@@ -25,7 +25,8 @@
                 }"
               >
                 {{
-                  $getDoc('Team', project.doc.team)?.title || project.doc.team
+                  $getDoc('GP Team', project.doc.team)?.title ||
+                  project.doc.team
                 }}
               </router-link>
               <span class="text-gray-500"> &mdash; </span>
@@ -129,7 +130,7 @@ export default {
         makeParams({ title, content }) {
           return {
             doc: {
-              doctype: 'Team Discussion',
+              doctype: 'GP Discussion',
               project: this.project.doc.name,
               title,
               content,

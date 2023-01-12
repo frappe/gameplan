@@ -109,7 +109,7 @@ export default {
       return {
         type: 'list',
         cache: 'Unread Notifications',
-        doctype: 'Team Notification',
+        doctype: 'GP Notification',
         filters: { to_user: this.$user().name, read: 0 },
         fields: [
           'name',
@@ -133,7 +133,7 @@ export default {
       return {
         type: 'list',
         cache: 'Read Notifications',
-        doctype: 'Team Notification',
+        doctype: 'GP Notification',
         filters: { to_user: this.$user().name, read: 1 },
         fields: [
           'name',

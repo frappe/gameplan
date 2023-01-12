@@ -8,16 +8,16 @@ describe('Discussion', () => {
     cy.request('POST', '/api/method/frappe.client.insert_many', {
       docs: [
         {
-          doctype: 'Team',
+          doctype: 'GP Team',
           title: 'Engineering',
         },
         {
-          doctype: 'Team Project',
+          doctype: 'GP Project',
           title: 'Gameplan',
           team: 'engineering',
         },
         {
-          doctype: 'Team Project',
+          doctype: 'GP Project',
           title: 'ERPNext',
           team: 'engineering',
         },

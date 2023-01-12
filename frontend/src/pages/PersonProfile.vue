@@ -144,7 +144,7 @@ export default {
     profile() {
       return {
         type: 'document',
-        doctype: 'Team User Profile',
+        doctype: 'GP User Profile',
         name: this.personId,
         realtime: true,
         whitelistedMethods: {

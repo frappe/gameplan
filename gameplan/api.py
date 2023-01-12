@@ -32,7 +32,7 @@ def get_user_info(user=None):
 		filters={'parenttype': 'User'},
 		fields=['role', 'parent']
 	)
-	user_profiles = frappe.db.get_all('Team User Profile',
+	user_profiles = frappe.db.get_all('GP User Profile',
 		fields=['user', 'name', 'image', 'image_background_color', 'is_image_background_removed'],
 		filters={'user': ['in', [u.name for u in users]]}
 	)
@@ -113,7 +113,7 @@ def invite_by_email(emails: str, role: str, projects: list = None):
 
 @frappe.whitelist()
 def unread_notifications():
-	res = frappe.db.get_all('Team Notification', 'count(name) as count', {'to_user': frappe.session.user, 'read': 0})
+	res = frappe.db.get_all('GP Notification', 'count(name) as count', {'to_user': frappe.session.user, 'read': 0})
 	return res[0].count
 
 
@@ -152,8 +152,8 @@ def get_unsplash_photos(keyword=None):
 @frappe.whitelist()
 def get_unread_items():
 	from frappe.query_builder.functions import Count
-	Discussion = frappe.qb.DocType("Team Discussion")
-	Visit = frappe.qb.DocType("Team Discussion Visit")
+	Discussion = frappe.qb.DocType("GP Discussion")
+	Visit = frappe.qb.DocType("GP Discussion Visit")
 	query = (
 		frappe.qb.from_(Discussion)
 			.select(Discussion.team, Count(Discussion.team).as_("count"))
@@ -176,8 +176,8 @@ def get_unread_items():
 
 @frappe.whitelist()
 def mark_all_notifications_as_read():
-	for d in frappe.db.get_all('Team Notification', filters={'to_user': frappe.session.user, 'read': 0}, pluck='name'):
-		doc = frappe.get_doc('Team Notification', d)
+	for d in frappe.db.get_all('GP Notification', filters={'to_user': frappe.session.user, 'read': 0}, pluck='name'):
+		doc = frappe.get_doc('GP Notification', d)
 		doc.read = 1
 		doc.save(ignore_permissions=True)
 
@@ -196,8 +196,8 @@ def mark_all_notifications_as_read():
 @frappe.whitelist()
 def onboarding(data):
 	data = frappe.parse_json(data)
-	team = frappe.get_doc(doctype='Team', title=data.team).insert()
-	frappe.get_doc(doctype='Team Project', team=team.name, title=data.project).insert()
+	team = frappe.get_doc(doctype='GP Team', title=data.team).insert()
+	frappe.get_doc(doctype='GP Project', team=team.name, title=data.project).insert()
 	emails = ', '.join(data.emails)
 	invite_by_email(emails, role='Gameplan Member')
 	return team.name

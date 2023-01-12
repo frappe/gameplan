@@ -99,7 +99,7 @@ export default {
   resources: {
     search: {
       cache: 'Search',
-      url: 'gameplan.gameplan.doctype.team_discussion.search.search',
+      url: 'gameplan.gameplan.doctype.gp_discussion.search.search',
       makeParams(query) {
         return { query, start: this.start }
       },
