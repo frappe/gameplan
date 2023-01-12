@@ -216,7 +216,7 @@ export default {
       if (!comments.length) return
       return {
         type: 'list',
-        doctype: 'Team Reaction',
+        doctype: 'GP Reaction',
         fields: ['user', 'emoji', 'parent', 'name'],
         filters: {
           parenttype: 'GP Comment',
