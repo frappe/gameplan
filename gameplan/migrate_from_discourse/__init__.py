@@ -82,7 +82,7 @@ def migrate_posts():
 				user = get_user(comment.user_id)
 				reactions = get_reactions(comment.id)
 				comment_doc = frappe.get_doc(
-					doctype='Team Comment',
+					doctype='GP Comment',
 					reference_doctype=doc.doctype,
 					reference_name=doc.name,
 					content=comment.content,

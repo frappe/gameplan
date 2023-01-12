@@ -37,7 +37,7 @@
           :class="{
             'border-t': item.name != newMessagesFrom,
           }"
-          v-if="item.doctype == 'Team Comment'"
+          v-if="item.doctype == 'GP Comment'"
           :ref="($comment) => setCommentRef($comment, item)"
           :comment="item"
           :highlightedComment="highlightedComment"
@@ -162,7 +162,7 @@ export default {
     comments() {
       return {
         type: 'list',
-        doctype: 'Team Comment',
+        doctype: 'GP Comment',
         fields: [
           'name',
           'content',
@@ -173,7 +173,7 @@ export default {
         ],
         transform(data) {
           for (let d of data) {
-            d.doctype = 'Team Comment'
+            d.doctype = 'GP Comment'
             this.commentMap[d.name] = d
             d.reactions = []
           }
@@ -219,10 +219,10 @@ export default {
         doctype: 'Team Reaction',
         fields: ['user', 'emoji', 'parent', 'name'],
         filters: {
-          parenttype: 'Team Comment',
+          parenttype: 'GP Comment',
           parent: ['in', comments],
         },
-        parent: 'Team Comment',
+        parent: 'GP Comment',
         orderBy: 'parent asc, idx asc',
         pageLength: 99999,
         auto: true,

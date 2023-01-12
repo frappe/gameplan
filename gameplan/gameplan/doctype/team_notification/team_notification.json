@@ -55,7 +55,7 @@
    "fieldname": "comment",
    "fieldtype": "Link",
    "label": "Comment",
-   "options": "Team Comment"
+   "options": "GP Comment"
   },
   {
    "fieldname": "discussion",
@@ -86,7 +86,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-01-12 15:11:36.714350",
+ "modified": "2023-01-12 16:56:50.063064",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "Team Notification",

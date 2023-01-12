@@ -134,7 +134,7 @@ def update_index(doc):
 			'modified': doc.modified,
 			'comment': ''
 		})
-	elif doc.doctype == 'Team Comment':
+	elif doc.doctype == 'GP Comment':
 		record = frappe._dict({
 			'name': doc.reference_name,
 			'title': '',
@@ -152,7 +152,7 @@ def remove_index(doc):
 			'name': doc.name,
 			'comment': ''
 		})
-	elif doc.doctype == 'Team Comment':
+	elif doc.doctype == 'GP Comment':
 		record = frappe._dict({
 			'name': doc.reference_name,
 			'comment': doc.name
@@ -175,7 +175,7 @@ def get_records_to_index():
 		d.comment = ''
 		records.append(d)
 
-	result = frappe.db.get_all('Team Comment',
+	result = frappe.db.get_all('GP Comment',
 		fields=['name', 'content', 'reference_name', 'modified'],
 		filters={'reference_doctype': 'GP Discussion', 'deleted_at': ('is', 'not set')}
 	)

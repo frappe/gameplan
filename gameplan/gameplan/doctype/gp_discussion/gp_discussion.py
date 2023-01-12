@@ -10,7 +10,7 @@ from gameplan.mixins.reactions import HasReactions
 from gameplan.utils import remove_empty_trailing_paragraphs
 
 class GPDiscussion(HasActivity, HasMentions, HasReactions, Document):
-	on_delete_cascade = ['Team Comment', 'Team Discussion Visit']
+	on_delete_cascade = ['GP Comment', 'Team Discussion Visit']
 	on_delete_set_null = ['Team Notification']
 	activities = ['Discussion Closed', 'Discussion Reopened', 'Discussion Title Changed']
 	mentions_field = 'content'
@@ -19,7 +19,7 @@ class GPDiscussion(HasActivity, HasMentions, HasReactions, Document):
 		d = super(GPDiscussion, self).as_dict(*args, **kwargs)
 		last_visit = frappe.db.get_value('Team Discussion Visit', {'discussion': self.name, 'user': frappe.session.user}, 'last_visit')
 		result = frappe.db.get_all(
-			'Team Comment',
+			'GP Comment',
 			filters={'reference_doctype': self.doctype, 'reference_name': self.name, 'creation': ('>', last_visit)},
 			order_by='creation asc',
 			limit=1,
@@ -76,7 +76,7 @@ class GPDiscussion(HasActivity, HasMentions, HasReactions, Document):
 			update_index(self)
 
 	def update_participants_count(self):
-		participants = frappe.db.get_all('Team Comment',
+		participants = frappe.db.get_all('GP Comment',
 			filters={
 				'reference_doctype': self.doctype,
 				'reference_name': self.name

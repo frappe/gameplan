@@ -23,7 +23,7 @@ class HasMentions:
 			if self.doctype == "GP Task":
 				values.task = self.name
 				values.project = self.project
-			elif self.doctype == "Team Comment":
+			elif self.doctype == "GP Comment":
 				values.comment = self.name
 				if self.reference_doctype == "GP Discussion":
 					values.discussion = self.reference_name

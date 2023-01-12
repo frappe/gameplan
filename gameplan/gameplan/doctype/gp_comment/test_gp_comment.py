@@ -5,5 +5,5 @@
 from frappe.tests.utils import FrappeTestCase
 
 
-class TestTeamComment(FrappeTestCase):
+class TestGPComment(FrappeTestCase):
 	pass
