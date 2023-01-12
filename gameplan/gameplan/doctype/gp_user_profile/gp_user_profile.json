@@ -94,7 +94,7 @@
  "modified": "2022-12-16 01:32:52.446268",
  "modified_by": "Administrator",
  "module": "Gameplan",
- "name": "Team User Profile",
+ "name": "GP User Profile",
  "naming_rule": "By script",
  "owner": "Administrator",
  "permissions": [

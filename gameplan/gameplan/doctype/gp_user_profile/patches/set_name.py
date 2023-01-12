@@ -6,6 +6,6 @@ import frappe
 
 
 def execute():
-	for user in frappe.get_all("Team User Profile"):
-		doc = frappe.get_doc("Team User Profile", user.name)
+	for user in frappe.get_all("GP User Profile"):
+		doc = frappe.get_doc("GP User Profile", user.name)
 		doc.rename(doc.generate_name())

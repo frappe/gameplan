@@ -9,4 +9,4 @@ def execute():
 	for user in frappe.get_all("User"):
 		if user.name in ["Administrator", "Guest"]:
 			continue
-		frappe.get_doc(doctype="Team User Profile", user=user.name).insert(ignore_if_duplicate=True)
+		frappe.get_doc(doctype="GP User Profile", user=user.name).insert(ignore_if_duplicate=True)

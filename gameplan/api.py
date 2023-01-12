@@ -32,7 +32,7 @@ def get_user_info(user=None):
 		filters={'parenttype': 'User'},
 		fields=['role', 'parent']
 	)
-	user_profiles = frappe.db.get_all('Team User Profile',
+	user_profiles = frappe.db.get_all('GP User Profile',
 		fields=['user', 'name', 'image', 'image_background_color', 'is_image_background_removed'],
 		filters={'user': ['in', [u.name for u in users]]}
 	)

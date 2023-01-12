@@ -6,7 +6,7 @@ import frappe
 
 
 def execute():
-	UserProfile = frappe.qb.DocType('Team User Profile')
+	UserProfile = frappe.qb.DocType('GP User Profile')
 	User = frappe.qb.DocType('User')
 	query = (
 		frappe.qb.update(UserProfile)

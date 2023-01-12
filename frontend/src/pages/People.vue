@@ -117,7 +117,7 @@ export default {
       return {
         type: 'list',
         cache: 'People',
-        doctype: 'Team User Profile',
+        doctype: 'GP User Profile',
         filters: { enabled: 1 },
         fields: [
           'name',

@@ -15,6 +15,7 @@ def execute():
 		'Team Member': 'GP Member',
 		'Team Discussion Visit': 'GP Discussion Visit',
 		'Team Notification': 'GP Notification',
+		'Team User Profile': 'GP User Profile',
 	}
 	for old in doctypes:
 		new = doctypes[old]

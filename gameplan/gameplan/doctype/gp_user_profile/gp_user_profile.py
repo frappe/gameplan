@@ -6,10 +6,10 @@ import gameplan
 from frappe.model.document import Document
 from frappe.model.naming import append_number_if_name_exists
 from frappe.website.utils import cleanup_page_name
-from gameplan.gameplan.doctype.team_user_profile.profile_photo import remove_background
+from gameplan.gameplan.doctype.gp_user_profile.profile_photo import remove_background
 
 
-class TeamUserProfile(Document):
+class GPUserProfile(Document):
 	def autoname(self):
 		self.name = self.generate_name()
 
@@ -61,20 +61,20 @@ class TeamUserProfile(Document):
 
 
 def create_user_profile(doc, method=None):
-	if not frappe.db.exists("Team User Profile", {"user": doc.name}):
-		frappe.get_doc(doctype="Team User Profile", user=doc.name).insert(ignore_permissions=True)
+	if not frappe.db.exists("GP User Profile", {"user": doc.name}):
+		frappe.get_doc(doctype="GP User Profile", user=doc.name).insert(ignore_permissions=True)
 		frappe.db.commit()
 
 def delete_user_profile(doc, method=None):
-	exists = frappe.db.exists("Team User Profile", {"user": doc.name})
+	exists = frappe.db.exists("GP User Profile", {"user": doc.name})
 	if exists:
-		return frappe.get_doc("Team User Profile", {"user": doc.name}).delete()
+		return frappe.get_doc("GP User Profile", {"user": doc.name}).delete()
 
 def on_user_update(doc, method=None):
 	create_user_profile(doc)
 	if any(doc.has_value_changed(field) for field in ["full_name", "enabled"]):
 		print('fullname, enalbed changed, updating profile')
-		profile = frappe.get_doc("Team User Profile", {"user": doc.name})
+		profile = frappe.get_doc("GP User Profile", {"user": doc.name})
 		profile.enabled = doc.enabled
 		profile.full_name = doc.full_name
 		profile.save(ignore_permissions=True)
