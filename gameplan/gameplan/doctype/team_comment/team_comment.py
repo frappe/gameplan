@@ -22,7 +22,7 @@ class TeamComment(HasMentions, HasReactions, Document):
 				frappe.throw("Cannot add comment to a closed discussion")
 
 	def after_insert(self):
-		if self.reference_doctype not in ["GP Discussion", "Team Task"]:
+		if self.reference_doctype not in ["GP Discussion", "GP Task"]:
 			return
 		reference_doc = frappe.get_doc(self.reference_doctype, self.reference_name)
 		if reference_doc.meta.has_field("last_post_at"):
@@ -36,7 +36,7 @@ class TeamComment(HasMentions, HasReactions, Document):
 		reference_doc.save(ignore_permissions=True)
 
 	def on_trash(self):
-		if self.reference_doctype not in ["GP Discussion", "Team Task"]:
+		if self.reference_doctype not in ["GP Discussion", "GP Task"]:
 			return
 		reference_doc = frappe.get_doc(self.reference_doctype, self.reference_name)
 		if reference_doc.meta.has_field("comments_count"):

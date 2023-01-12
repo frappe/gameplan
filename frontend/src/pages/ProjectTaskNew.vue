@@ -52,7 +52,7 @@ export default {
       makeParams() {
         return {
           doc: {
-            doctype: 'Team Task',
+            doctype: 'GP Task',
             project: this.project.doc.name,
             title: this.title,
             description: this.description,

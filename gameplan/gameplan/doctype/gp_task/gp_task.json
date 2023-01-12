@@ -120,7 +120,7 @@
  "modified": "2023-01-12 14:37:42.077295",
  "modified_by": "Administrator",
  "module": "Gameplan",
- "name": "Team Task",
+ "name": "GP Task",
  "naming_rule": "Autoincrement",
  "owner": "Administrator",
  "permissions": [

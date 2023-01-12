@@ -13,7 +13,7 @@ from gameplan.api import invite_by_email
 
 
 class GPProject(ManageMembersMixin, Archivable, Document):
-	on_delete_cascade = ["Team Task", "GP Discussion"]
+	on_delete_cascade = ["GP Task", "GP Discussion"]
 	on_delete_set_null = ["Team Notification"]
 
 	@staticmethod
@@ -39,13 +39,13 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 	def as_dict(self, *args, **kwargs) -> dict:
 		d = super().as_dict(*args, **kwargs)
 		# summary
-		total_tasks = frappe.db.count("Team Task", {"project": self.name})
+		total_tasks = frappe.db.count("GP Task", {"project": self.name})
 		completed_tasks = frappe.db.count(
-			"Team Task", {"project": self.name, "is_completed": 1}
+			"GP Task", {"project": self.name, "is_completed": 1}
 		)
 		pending_tasks = total_tasks - completed_tasks
 		overdue_tasks = frappe.db.count(
-			"Team Task",
+			"GP Task",
 			{"project": self.name, "is_completed": 0, "due_date": ("<", frappe.utils.today())},
 		)
 		d.summary = {
@@ -80,7 +80,7 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 
 	def update_progress(self):
 		result = frappe.db.get_all(
-			"Team Task",
+			"GP Task",
 			filters={"project": self.name},
 			fields=["sum(is_completed) as completed", "count(name) as total"],
 		)[0]
@@ -90,7 +90,7 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 			self.reload()
 
 	def delete_group(self, group):
-		tasks = frappe.db.count("Team Task", {"project": self.name, "status": group})
+		tasks = frappe.db.count("GP Task", {"project": self.name, "status": group})
 		if tasks > 0:
 			frappe.throw(f"Group {group} cannot be deleted because it has {tasks} tasks")
 
@@ -136,7 +136,7 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 			return
 		self.team = team
 		self.save()
-		for doctype in ['Team Task', 'GP Discussion']:
+		for doctype in ['GP Task', 'GP Discussion']:
 			for name in frappe.db.get_all(doctype, {"project": self.name}, pluck="name"):
 				doc = frappe.get_doc(doctype, name)
 				doc.team = self.team

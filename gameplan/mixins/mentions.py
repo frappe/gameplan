@@ -20,21 +20,21 @@ class HasMentions:
 			)
 			if self.doctype == "GP Discussion":
 				values.discussion = self.name
-			if self.doctype == "Team Task":
+			if self.doctype == "GP Task":
 				values.task = self.name
 				values.project = self.project
 			elif self.doctype == "Team Comment":
 				values.comment = self.name
 				if self.reference_doctype == "GP Discussion":
 					values.discussion = self.reference_name
-				elif self.reference_doctype == "Team Task":
+				elif self.reference_doctype == "GP Task":
 					values.task = self.reference_name
-					values.project = frappe.db.get_value("Team Task", self.reference_name, "project")
+					values.project = frappe.db.get_value("GP Task", self.reference_name, "project")
 
 			if frappe.db.exists("Team Notification", values):
 				continue
 			notification = frappe.get_doc(doctype='Team Notification')
-			if "Team Task" in [self.doctype, self.get('reference_doctype')]:
+			if "GP Task" in [self.doctype, self.get('reference_doctype')]:
 				notification.message = f'{get_fullname(self.owner)} mentioned you in a task'
 			elif "GP Discussion" in [self.doctype, self.get('reference_doctype')]:
 				notification.message = f'{get_fullname(self.owner)} mentioned you in a post'

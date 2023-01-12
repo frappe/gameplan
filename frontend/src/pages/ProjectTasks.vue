@@ -119,7 +119,7 @@ export default {
       return {
         type: 'list',
         cache: ['Project Tasks', this.project.doc.name, 'open'],
-        doctype: 'Team Task',
+        doctype: 'GP Task',
         fields: ['*'],
         filters: {
           project: this.project.doc.name,
@@ -134,7 +134,7 @@ export default {
       return {
         type: 'list',
         cache: ['Project Tasks', this.project.doc.name, 'closed'],
-        doctype: 'Team Task',
+        doctype: 'GP Task',
         fields: ['*'],
         filters: {
           project: this.project.doc.name,
