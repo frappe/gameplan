@@ -26,16 +26,16 @@
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Project",
-   "options": "Team Project",
+   "options": "GP Project",
    "reqd": 1,
    "search_index": 1
   },
   {
-   "fieldname": "content",
-   "fieldtype": "Text Editor",
-   "in_list_view": 1,
-   "label": "Content",
-   "read_only": 1
+    "fieldname": "content",
+    "fieldtype": "Text Editor",
+    "in_list_view": 1,
+    "label": "Content",
+    "read_only": 1
   },
   {
    "fieldname": "status",
@@ -56,12 +56,12 @@
    "options": "Team Reaction"
   },
   {
-   "fetch_from": "project.team",
-   "fieldname": "team",
-   "fieldtype": "Link",
-   "label": "Team",
-   "options": "GP Team",
-   "search_index": 1
+    "fetch_from": "project.team",
+    "fieldname": "team",
+    "fieldtype": "Link",
+    "label": "Team",
+    "options": "GP Team",
+    "search_index": 1
   },
   {
    "fieldname": "last_post_at",
@@ -70,10 +70,10 @@
    "search_index": 1
   },
   {
-   "fieldname": "comments_count",
-   "fieldtype": "Int",
-   "label": "Comments Count",
-   "read_only": 1
+    "fieldname": "comments_count",
+    "fieldtype": "Int",
+    "label": "Comments Count",
+    "read_only": 1
   },
   {
    "fieldname": "last_post_by",
@@ -93,9 +93,9 @@
    "options": "User"
   },
   {
-   "fieldname": "slug",
-   "fieldtype": "Data",
-   "label": "Slug"
+    "fieldname": "slug",
+    "fieldtype": "Data",
+    "label": "Slug"
   },
   {
    "fieldname": "participants_count",
@@ -106,10 +106,10 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-01-12 13:37:54.762626",
+ "modified": "2023-01-12 14:37:48.931711",
  "modified_by": "Administrator",
  "module": "Gameplan",
- "name": "Team Discussion",
+ "name": "GP Discussion",
  "naming_rule": "Autoincrement",
  "owner": "Administrator",
  "permissions": [

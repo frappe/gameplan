@@ -3,20 +3,20 @@
 import re
 import frappe
 from frappe.model.document import Document
-from gameplan.gameplan.doctype.team_discussion.search import update_index
+from gameplan.gameplan.doctype.gp_discussion.search import update_index
 from gameplan.mixins.activity import HasActivity
 from gameplan.mixins.mentions import HasMentions
 from gameplan.mixins.reactions import HasReactions
 from gameplan.utils import remove_empty_trailing_paragraphs
 
-class TeamDiscussion(HasActivity, HasMentions, HasReactions, Document):
+class GPDiscussion(HasActivity, HasMentions, HasReactions, Document):
 	on_delete_cascade = ['Team Comment', 'Team Discussion Visit']
 	on_delete_set_null = ['Team Notification']
 	activities = ['Discussion Closed', 'Discussion Reopened', 'Discussion Title Changed']
 	mentions_field = 'content'
 
 	def as_dict(self, *args, **kwargs):
-		d = super(TeamDiscussion, self).as_dict(*args, **kwargs)
+		d = super(GPDiscussion, self).as_dict(*args, **kwargs)
 		last_visit = frappe.db.get_value('Team Discussion Visit', {'discussion': self.name, 'user': frappe.session.user}, 'last_visit')
 		result = frappe.db.get_all(
 			'Team Comment',

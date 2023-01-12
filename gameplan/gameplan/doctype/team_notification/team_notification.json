@@ -61,7 +61,7 @@
    "fieldname": "discussion",
    "fieldtype": "Link",
    "label": "Discussion",
-   "options": "Team Discussion"
+   "options": "GP Discussion"
   },
   {
    "fieldname": "task",
@@ -74,7 +74,7 @@
    "fieldname": "project",
    "fieldtype": "Link",
    "label": "Project",
-   "options": "Team Project"
+   "options": "GP Project"
   },
   {
    "fetch_from": "project.team",
@@ -86,7 +86,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-01-12 13:37:55.537057",
+ "modified": "2023-01-12 14:37:34.650350",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "Team Notification",

@@ -24,7 +24,7 @@ describe('Comment', () => {
         let project = data[1]
         cy.request('POST', '/api/method/frappe.client.insert', {
           doc: {
-            doctype: 'Team Discussion',
+            doctype: 'GP Discussion',
             project: project,
             title: 'Test discussion',
             content: 'This is a test discussion',

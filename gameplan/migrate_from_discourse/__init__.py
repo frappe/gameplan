@@ -19,7 +19,7 @@ def execute():
 	# clear_data([
 	# 	# 'GP Project',
 	# 	# 'GP Team',
-	# 	'Team Discussion'
+	# 	'GP Discussion'
 	# ])
 	# migrate_users()
 	# migrate_categories()
@@ -50,7 +50,7 @@ def migrate_posts():
 			reactions = get_reactions(topic.post_id)
 
 			doc = frappe.get_doc(
-				doctype='Team Discussion',
+				doctype='GP Discussion',
 				title=topic.title,
 				content=topic.content,
 				project=project,

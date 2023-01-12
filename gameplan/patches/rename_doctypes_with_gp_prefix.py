@@ -8,7 +8,8 @@ import frappe
 def execute():
 	doctypes = {
 		'Team': 'GP Team',
-		'Team Project': 'GP Project'
+		'Team Project': 'GP Project',
+		'Team Discussion': 'GP Discussion',
 	}
 	for old in doctypes:
 		new = doctypes[old]

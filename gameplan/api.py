@@ -152,7 +152,7 @@ def get_unsplash_photos(keyword=None):
 @frappe.whitelist()
 def get_unread_items():
 	from frappe.query_builder.functions import Count
-	Discussion = frappe.qb.DocType("Team Discussion")
+	Discussion = frappe.qb.DocType("GP Discussion")
 	Visit = frappe.qb.DocType("Team Discussion Visit")
 	query = (
 		frappe.qb.from_(Discussion)

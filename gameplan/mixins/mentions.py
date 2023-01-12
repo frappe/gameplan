@@ -18,14 +18,14 @@ class HasMentions:
 				from_user=self.owner,
 				to_user=mention.email,
 			)
-			if self.doctype == "Team Discussion":
+			if self.doctype == "GP Discussion":
 				values.discussion = self.name
 			if self.doctype == "Team Task":
 				values.task = self.name
 				values.project = self.project
 			elif self.doctype == "Team Comment":
 				values.comment = self.name
-				if self.reference_doctype == "Team Discussion":
+				if self.reference_doctype == "GP Discussion":
 					values.discussion = self.reference_name
 				elif self.reference_doctype == "Team Task":
 					values.task = self.reference_name
@@ -36,7 +36,7 @@ class HasMentions:
 			notification = frappe.get_doc(doctype='Team Notification')
 			if "Team Task" in [self.doctype, self.get('reference_doctype')]:
 				notification.message = f'{get_fullname(self.owner)} mentioned you in a task'
-			elif "Team Discussion" in [self.doctype, self.get('reference_doctype')]:
+			elif "GP Discussion" in [self.doctype, self.get('reference_doctype')]:
 				notification.message = f'{get_fullname(self.owner)} mentioned you in a post'
 			notification.update(values)
 			notification.insert(ignore_permissions=True)

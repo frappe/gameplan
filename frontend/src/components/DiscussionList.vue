@@ -144,9 +144,9 @@ export default {
     discussions() {
       return {
         type: 'list',
-        doctype: 'Team Discussion',
-        cache: ['Team Discussion', this.filters],
-        url: 'gameplan.gameplan.doctype.team_discussion.api.get_discussions',
+        doctype: 'GP Discussion',
+        cache: ['Discussions', this.filters],
+        url: 'gameplan.gameplan.doctype.gp_discussion.api.get_discussions',
         filters: this.filters,
         auto: true,
         pageLength: 50,

@@ -24,7 +24,7 @@ class HasReactions:
 			to_user=self.owner,
 			type='Reaction',
 		)
-		if self.doctype == 'Team Discussion':
+		if self.doctype == 'GP Discussion':
 			values.discussion = self.name
 		elif self.doctype == 'Team Comment':
 			values.comment = self.name
@@ -35,7 +35,7 @@ class HasReactions:
 			doc = frappe.get_doc(doctype="Team Notification")
 			doc.update(values)
 			if self.doctype == 'Team Comment':
-				doc.discussion = self.reference_name if self.reference_doctype == "Team Discussion" else None
+				doc.discussion = self.reference_name if self.reference_doctype == "GP Discussion" else None
 				doc.task = self.reference_name if self.reference_doctype == "Team Task" else None
 		doc.message = message
 		doc.read = 0

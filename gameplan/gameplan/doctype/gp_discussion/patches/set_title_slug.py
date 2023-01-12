@@ -6,7 +6,7 @@ import frappe
 
 
 def execute():
-    for d in frappe.db.get_all('Team Discussion', pluck='name'):
-        doc = frappe.get_doc('Team Discussion', d)
+    for d in frappe.db.get_all('GP Discussion', pluck='name'):
+        doc = frappe.get_doc('GP Discussion', d)
         doc.update_slug()
         doc.db_set('slug', doc.slug)

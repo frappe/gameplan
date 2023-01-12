@@ -13,7 +13,7 @@ from gameplan.api import invite_by_email
 
 
 class GPProject(ManageMembersMixin, Archivable, Document):
-	on_delete_cascade = ["Team Task", "Team Discussion"]
+	on_delete_cascade = ["Team Task", "GP Discussion"]
 	on_delete_set_null = ["Team Notification"]
 
 	@staticmethod
@@ -136,7 +136,7 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 			return
 		self.team = team
 		self.save()
-		for doctype in ['Team Task', 'Team Discussion']:
+		for doctype in ['Team Task', 'GP Discussion']:
 			for name in frappe.db.get_all(doctype, {"project": self.name}, pluck="name"):
 				doc = frappe.get_doc(doctype, name)
 				doc.team = self.team

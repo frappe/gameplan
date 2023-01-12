@@ -3,7 +3,7 @@
 
 import frappe
 from frappe.model.document import Document
-from gameplan.gameplan.doctype.team_discussion.search import remove_index, update_index
+from gameplan.gameplan.doctype.gp_discussion.search import remove_index, update_index
 from gameplan.mixins.mentions import HasMentions
 from gameplan.mixins.reactions import HasReactions
 from gameplan.utils import remove_empty_trailing_paragraphs
@@ -13,7 +13,7 @@ class TeamComment(HasMentions, HasReactions, Document):
 	mentions_field = 'content'
 
 	def before_insert(self):
-		if self.reference_doctype not in ["Team Discussion"]:
+		if self.reference_doctype not in ["GP Discussion"]:
 			return
 
 		reference_doc = frappe.get_doc(self.reference_doctype, self.reference_name)
@@ -22,7 +22,7 @@ class TeamComment(HasMentions, HasReactions, Document):
 				frappe.throw("Cannot add comment to a closed discussion")
 
 	def after_insert(self):
-		if self.reference_doctype not in ["Team Discussion", "Team Task"]:
+		if self.reference_doctype not in ["GP Discussion", "Team Task"]:
 			return
 		reference_doc = frappe.get_doc(self.reference_doctype, self.reference_name)
 		if reference_doc.meta.has_field("last_post_at"):
@@ -31,12 +31,12 @@ class TeamComment(HasMentions, HasReactions, Document):
 			reference_doc.set("last_post_by", frappe.session.user)
 		if reference_doc.meta.has_field("comments_count"):
 			reference_doc.set("comments_count", reference_doc.comments_count + 1)
-		if reference_doc.doctype == 'Team Discussion':
+		if reference_doc.doctype == 'GP Discussion':
 			reference_doc.update_participants_count()
 		reference_doc.save(ignore_permissions=True)
 
 	def on_trash(self):
-		if self.reference_doctype not in ["Team Discussion", "Team Task"]:
+		if self.reference_doctype not in ["GP Discussion", "Team Task"]:
 			return
 		reference_doc = frappe.get_doc(self.reference_doctype, self.reference_name)
 		if reference_doc.meta.has_field("comments_count"):
@@ -51,7 +51,7 @@ class TeamComment(HasMentions, HasReactions, Document):
 		self.notify_reactions()
 
 	def update_discussion_index(self):
-		if self.reference_doctype == "Team Discussion":
+		if self.reference_doctype == "GP Discussion":
 			if self.deleted_at:
 				remove_index(self)
 			else:

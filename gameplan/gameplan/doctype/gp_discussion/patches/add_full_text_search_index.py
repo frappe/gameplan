@@ -2,7 +2,7 @@
 # MIT License. See license.txt
 
 from __future__ import unicode_literals
-from ..team_discussion import make_full_text_search_index
+from ..gp_discussion import make_full_text_search_index
 
 
 def execute():

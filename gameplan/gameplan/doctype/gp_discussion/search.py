@@ -36,7 +36,7 @@ def search(query, start=0):
 
 	data_by_name = {
 		d.name: d
-		for d in frappe.db.get_all('Team Discussion',
+		for d in frappe.db.get_all('GP Discussion',
 			fields=['name', 'title', 'team', 'project', 'owner', 'modified', 'creation', 'last_post_at', 'last_post_by', 'comments_count', 'closed_at', 'closed_by'],
 			filters={'name': ['in', names]}
 		)
@@ -126,7 +126,7 @@ def remove_index_for_records(records):
 
 
 def update_index(doc):
-	if doc.doctype == 'Team Discussion':
+	if doc.doctype == 'GP Discussion':
 		record = frappe._dict({
 			'name': doc.name,
 			'title': doc.title,
@@ -147,7 +147,7 @@ def update_index(doc):
 
 
 def remove_index(doc):
-	if doc.doctype == 'Team Discussion':
+	if doc.doctype == 'GP Discussion':
 		record = frappe._dict({
 			'name': doc.name,
 			'comment': ''
@@ -170,14 +170,14 @@ def drop_index():
 
 def get_records_to_index():
 	records = []
-	result = frappe.db.get_all('Team Discussion', fields=['name', 'title', 'content', 'modified'])
+	result = frappe.db.get_all('GP Discussion', fields=['name', 'title', 'content', 'modified'])
 	for d in result:
 		d.comment = ''
 		records.append(d)
 
 	result = frappe.db.get_all('Team Comment',
 		fields=['name', 'content', 'reference_name', 'modified'],
-		filters={'reference_doctype': 'Team Discussion', 'deleted_at': ('is', 'not set')}
+		filters={'reference_doctype': 'GP Discussion', 'deleted_at': ('is', 'not set')}
 	)
 	for d in result:
 		d.title = ''

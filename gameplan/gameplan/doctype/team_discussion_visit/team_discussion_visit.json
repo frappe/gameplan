@@ -25,7 +25,7 @@
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Discussion",
-   "options": "Team Discussion",
+   "options": "GP Discussion",
    "reqd": 1
   },
   {
@@ -36,7 +36,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-09-26 12:41:34.555761",
+ "modified": "2023-01-12 14:33:21.385508",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "Team Discussion Visit",
