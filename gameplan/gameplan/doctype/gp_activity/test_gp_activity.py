@@ -5,5 +5,5 @@
 from frappe.tests.utils import FrappeTestCase
 
 
-class TestTeamActivity(FrappeTestCase):
+class TestGPActivity(FrappeTestCase):
 	pass

@@ -46,7 +46,7 @@
         />
         <Activity
           class="border-t"
-          v-else-if="item.doctype == 'Team Activity'"
+          v-else-if="item.doctype == 'GP Activity'"
           :activity="item"
         />
       </template>
@@ -234,7 +234,7 @@ export default {
     activities() {
       return {
         type: 'list',
-        doctype: 'Team Activity',
+        doctype: 'GP Activity',
         fields: ['name', 'user', 'action', 'data', 'creation'],
         filters: {
           reference_doctype: this.doctype,
@@ -245,7 +245,7 @@ export default {
         auto: true,
         transform(activities) {
           for (let activity of activities) {
-            activity.doctype = 'Team Activity'
+            activity.doctype = 'GP Activity'
             activity.data = activity.data ? JSON.parse(activity.data) : null
           }
           return activities

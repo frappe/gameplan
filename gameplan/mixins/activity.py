@@ -8,7 +8,7 @@ import json
 
 class HasActivity:
 	'''
-	Mixin to add utility methods to log activity under "Team Activity" doctype.
+	Mixin to add utility methods to log activity under "GP Activity" doctype.
 	'''
 	def log_activity(self, action, user=None, data=None):
 		activities = getattr(self, 'activities', [])
@@ -25,7 +25,7 @@ class HasActivity:
 			data = json.dumps(data)
 
 		activity = frappe.get_doc(
-			doctype='Team Activity',
+			doctype='GP Activity',
 			reference_doctype=self.doctype,
 			reference_name=self.name,
 			action=action,
