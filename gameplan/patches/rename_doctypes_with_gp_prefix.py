@@ -50,15 +50,18 @@ def create_sequences():
 		frappe.db.create_sequence(doctype, start_value=start_value, check_not_exists=True, cache=frappe.db.SEQUENCE_CACHE)
 
 def rename_doctype_links():
-	doctypes_with_links = [
-		'GP Comment',
-		'GP Activity'
-	]
+	doctypes_with_links = {
+		'GP Comment': 'reference_doctype',
+		'GP Activity': 'reference_doctype',
+		'GP Member': 'parenttype',
+		'GP Reaction': 'parenttype',
+	}
 	doctype_values = list(doctypes.keys())
 	for doctype in doctypes_with_links:
-		if frappe.db.exists(doctype, {'reference_doctype': ('in', doctype_values)}):
-			print('Updating reference_doctype in {0}'.format(doctype))
+		fieldname = doctypes_with_links[doctype]
+		if frappe.db.exists(doctype, {fieldname: ('in', doctype_values)}):
+			print(f'Updating {fieldname} in {doctype}')
 			for dt in doctypes:
 				old = dt
 				new = doctypes[dt]
-				frappe.db.set_value(doctype, dn={'reference_doctype': old}, field={'reference_doctype': new}, update_modified=False)
+				frappe.db.set_value(doctype, dn={fieldname: old}, field={fieldname: new}, update_modified=False)
