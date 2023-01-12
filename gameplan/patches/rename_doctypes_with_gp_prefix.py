@@ -4,26 +4,26 @@
 from __future__ import unicode_literals
 import frappe
 
+doctypes = {
+	'Team': 'GP Team',
+	'Team Project': 'GP Project',
+	'Team Discussion': 'GP Discussion',
+	'Team Task': 'GP Task',
+	'Team Comment': 'GP Comment',
+	'Team Member': 'GP Member',
+	'Team Discussion Visit': 'GP Discussion Visit',
+	'Team Notification': 'GP Notification',
+	'Team User Profile': 'GP User Profile',
+	'Team Activity': 'GP Activity',
+	'Team Reaction': 'GP Reaction',
+}
 
 def execute():
 	rename_doctypes()
 	create_sequences()
-
+	rename_doctype_links()
 
 def rename_doctypes():
-	doctypes = {
-		'Team': 'GP Team',
-		'Team Project': 'GP Project',
-		'Team Discussion': 'GP Discussion',
-		'Team Task': 'GP Task',
-		'Team Comment': 'GP Comment',
-		'Team Member': 'GP Member',
-		'Team Discussion Visit': 'GP Discussion Visit',
-		'Team Notification': 'GP Notification',
-		'Team User Profile': 'GP User Profile',
-		'Team Activity': 'GP Activity',
-		'Team Reaction': 'GP Reaction',
-	}
 	for old in doctypes:
 		new = doctypes[old]
 		if not frappe.db.exists('DocType', new):
@@ -48,3 +48,17 @@ def create_sequences():
 		start_value = last_name + 1
 		print('Creating sequence for {0} starting at {1}'.format(doctype, start_value))
 		frappe.db.create_sequence(doctype, start_value=start_value, check_not_exists=True, cache=frappe.db.SEQUENCE_CACHE)
+
+def rename_doctype_links():
+	doctypes_with_links = [
+		'GP Comment',
+		'GP Activity'
+	]
+	doctype_values = list(doctypes.keys())
+	for doctype in doctypes_with_links:
+		if frappe.db.exists(doctype, {'reference_doctype': ('in', doctype_values)}):
+			print('Updating reference_doctype in {0}'.format(doctype))
+			for dt in doctypes:
+				old = dt
+				new = doctypes[dt]
+				frappe.db.set_value(doctype, dn={'reference_doctype': old}, field={'reference_doctype': new}, update_modified=False)
