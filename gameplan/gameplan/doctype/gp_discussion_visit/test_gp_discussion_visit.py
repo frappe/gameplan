@@ -5,5 +5,5 @@
 from frappe.tests.utils import FrappeTestCase
 
 
-class TestTeamDiscussionVisit(FrappeTestCase):
+class TestGPDiscussionVisit(FrappeTestCase):
 	pass

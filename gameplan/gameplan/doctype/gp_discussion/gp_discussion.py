@@ -10,14 +10,14 @@ from gameplan.mixins.reactions import HasReactions
 from gameplan.utils import remove_empty_trailing_paragraphs
 
 class GPDiscussion(HasActivity, HasMentions, HasReactions, Document):
-	on_delete_cascade = ['GP Comment', 'Team Discussion Visit']
+	on_delete_cascade = ['GP Comment', 'GP Discussion Visit']
 	on_delete_set_null = ['Team Notification']
 	activities = ['Discussion Closed', 'Discussion Reopened', 'Discussion Title Changed']
 	mentions_field = 'content'
 
 	def as_dict(self, *args, **kwargs):
 		d = super(GPDiscussion, self).as_dict(*args, **kwargs)
-		last_visit = frappe.db.get_value('Team Discussion Visit', {'discussion': self.name, 'user': frappe.session.user}, 'last_visit')
+		last_visit = frappe.db.get_value('GP Discussion Visit', {'discussion': self.name, 'user': frappe.session.user}, 'last_visit')
 		result = frappe.db.get_all(
 			'GP Comment',
 			filters={'reference_doctype': self.doctype, 'reference_name': self.name, 'creation': ('>', last_visit)},
@@ -92,13 +92,13 @@ class GPDiscussion(HasActivity, HasMentions, HasReactions, Document):
 			return
 
 		values = {"user": frappe.session.user, "discussion": self.name}
-		existing = frappe.db.get_value("Team Discussion Visit", values)
+		existing = frappe.db.get_value("GP Discussion Visit", values)
 		if existing:
-			visit = frappe.get_doc("Team Discussion Visit", existing)
+			visit = frappe.get_doc("GP Discussion Visit", existing)
 			visit.last_visit = frappe.utils.now()
 			visit.save(ignore_permissions=True)
 		else:
-			visit = frappe.get_doc(doctype="Team Discussion Visit")
+			visit = frappe.get_doc(doctype="GP Discussion Visit")
 			visit.update(values)
 			visit.last_visit = frappe.utils.now()
 			visit.insert(ignore_permissions=True)

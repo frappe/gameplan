@@ -4,7 +4,7 @@
 import frappe
 from frappe.model.document import Document
 
-class TeamDiscussionVisit(Document):
+class GPDiscussionVisit(Document):
 	def after_insert(self):
 		frappe.publish_realtime('gameplan:unread_items', user=self.user, after_commit=True)
 

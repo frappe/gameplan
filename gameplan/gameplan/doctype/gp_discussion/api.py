@@ -14,7 +14,7 @@ def get_discussions(filters=None, limit_start=None, limit_page_length=None):
 
 	filters = frappe.parse_json(filters) if filters else None
 	Discussion = frappe.qb.DocType('GP Discussion')
-	Visit = frappe.qb.DocType('Team Discussion Visit')
+	Visit = frappe.qb.DocType('GP Discussion Visit')
 	Project = frappe.qb.DocType('GP Project')
 	Team = frappe.qb.DocType('GP Team')
 	Member = frappe.qb.DocType('GP Member')

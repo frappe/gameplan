@@ -105,14 +105,14 @@ def migrate_posts():
 			''')
 			visits = []
 			for d in visits_data:
-				name = frappe.db.get_next_sequence_val('Team Discussion Visit')
+				name = frappe.db.get_next_sequence_val('GP Discussion Visit')
 				user = get_user(d.user_id)
 				#        ["name", "user", "discussion", 'last_visit', 'creation', 'modified', 'modified_by', 'owner'],
 				visits.append([name, user, doc.name, d.last_visit, d.creation, d.last_visit, user, user])
 
 			if visits:
 				frappe.db.bulk_insert(
-					"Team Discussion Visit",
+					"GP Discussion Visit",
 					["name", "user", "discussion", "last_visit", "creation", "modified", "modified_by", "owner"],
 					visits
 				)
