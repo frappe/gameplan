@@ -41,6 +41,7 @@ class GPDiscussion(HasActivity, HasMentions, HasReactions, Document):
 	def validate(self):
 		self.content = remove_empty_trailing_paragraphs(self.content)
 		self.title = self.title.strip()
+		self.de_duplicate_reactions()
 
 	def on_update(self):
 		self.notify_mentions()

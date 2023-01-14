@@ -44,6 +44,7 @@ class GPComment(HasMentions, HasReactions, Document):
 
 	def validate(self):
 		self.content = remove_empty_trailing_paragraphs(self.content)
+		self.de_duplicate_reactions()
 
 	def on_update(self):
 		self.update_discussion_index()

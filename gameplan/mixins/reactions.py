@@ -41,3 +41,13 @@ class HasReactions:
 		doc.read = 0
 		doc.flags.ignore_permissions = True
 		doc.save()
+
+	def de_duplicate_reactions(self):
+		seen = []
+		reactions = []
+		for reaction in self.reactions:
+			row = (reaction.user, reaction.emoji)
+			if row not in seen:
+				reactions.append(reaction)
+				seen.append(row)
+		self.reactions = reactions
