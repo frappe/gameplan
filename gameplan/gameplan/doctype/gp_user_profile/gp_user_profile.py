@@ -73,7 +73,6 @@ def delete_user_profile(doc, method=None):
 def on_user_update(doc, method=None):
 	create_user_profile(doc)
 	if any(doc.has_value_changed(field) for field in ["full_name", "enabled"]):
-		print('fullname, enalbed changed, updating profile')
 		profile = frappe.get_doc("GP User Profile", {"user": doc.name})
 		profile.enabled = doc.enabled
 		profile.full_name = doc.full_name
