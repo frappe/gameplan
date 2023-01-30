@@ -16,12 +16,7 @@ const routes = [
   {
     path: '/home',
     name: 'Home',
-    component: () => import('@/pages/Feed.vue'),
-  },
-  {
-    path: '/homescreen',
-    name: 'Homescreen',
-    component: () => import('@/pages/HomeProjects.vue'),
+    component: () => import('@/pages/Home.vue'),
   },
   {
     path: '/login',

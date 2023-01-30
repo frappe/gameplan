@@ -24,6 +24,23 @@
           {{ project.unreadCount }}
         </span>
       </Tooltip>
+      <Tooltip
+        v-if="project.comments_count"
+        :text="
+          project.comments_count === 1
+            ? `1 comment in the past week`
+            : `${project.comments_count} comments in the past week`
+        "
+      >
+        <div
+          class="inline-flex h-5 items-center rounded-md bg-gray-200 px-1 text-sm text-gray-600"
+        >
+          <FeatherIcon name="bar-chart-2" class="w-4" />
+          <span>
+            {{ project.comments_count }}
+          </span>
+        </div>
+      </Tooltip>
 
       <div class="ml-auto">
         <slot name="button" />
@@ -36,7 +53,7 @@
         {{ project.team_title }}
       </span>
       <span class="text-base text-gray-600">
-        {{ $dayjs(project.last_visit).fromNow() }}
+        {{ $dayjs(project.timestamp).fromNow() }}
       </span>
     </div>
   </router-link>

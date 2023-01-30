@@ -223,7 +223,7 @@ def recent_projects():
 				Project.title.as_('project_title'),
 				Team.title.as_('team_title'),
 				Project.icon,
-				Max(ProjectVisit.last_visit).as_('last_visit')
+				Max(ProjectVisit.last_visit).as_('timestamp')
 			)
 			.left_join(Project).on(Project.name == ProjectVisit.project)
 			.left_join(Team).on(Team.name == Project.team)
@@ -237,7 +237,33 @@ def recent_projects():
 	return projects.run(as_dict=1)
 
 
+@frappe.whitelist()
+def active_projects():
+	from frappe.query_builder.functions import Count
 
+	Comment = frappe.qb.DocType('GP Comment')
+	Discussion = frappe.qb.DocType('GP Discussion')
+	active_projects = (
+		frappe.qb.from_(Comment)
+			.select(Count(Comment.name).as_('comments_count'), Discussion.project)
+			.left_join(Discussion).on(Discussion.name == Comment.reference_name)
+			.where(Comment.reference_doctype == 'GP Discussion')
+			.where(Comment.creation > frappe.utils.add_days(frappe.utils.now(), -7))
+			.groupby(Discussion.project)
+			.orderby(Count(Comment.name), order=frappe.qb.desc)
+			.limit(12)
+	).run(as_dict=1)
+
+	projects = frappe.qb.get_query('GP Project',
+		fields=['name', 'title as project_title', 'team', 'team.title as team_title', 'icon', 'modified as timestamp'],
+		filters={'name': ('in', [d.project for d in active_projects])}
+	).run(as_dict=1)
+
+	active_projects_comment_count = {d.project: d.comments_count for d in active_projects}
+	for d in projects:
+		d.comments_count = active_projects_comment_count.get(str(d.name), 0)
+
+	return projects
 
 
 
