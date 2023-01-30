@@ -45,7 +45,7 @@ def create_sequences():
 		sequence_name = frappe.scrub(doctype + '_id_seq')
 		frappe.db.sql_ddl('drop sequence if exists {0}'.format(sequence_name))
 		last_name = frappe.db.get_all(doctype, fields=['max(name) as last'])[0].last
-		start_value = last_name + 1
+		start_value = (last_name or 0) + 1
 		print('Creating sequence for {0} starting at {1}'.format(doctype, start_value))
 		frappe.db.create_sequence(doctype, start_value=start_value, check_not_exists=True, cache=frappe.db.SEQUENCE_CACHE)
 
