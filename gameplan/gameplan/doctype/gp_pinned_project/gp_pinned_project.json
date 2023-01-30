@@ -1,0 +1,70 @@
+{
+ "actions": [],
+ "autoname": "autoincrement",
+ "creation": "2023-01-16 18:30:24.490931",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "project",
+  "team",
+  "user",
+  "order"
+ ],
+ "fields": [
+  {
+   "fieldname": "project",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Project",
+   "options": "GP Project",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "project.team",
+   "fieldname": "team",
+   "fieldtype": "Link",
+   "label": "Team",
+   "options": "GP Team",
+   "read_only": 1
+  },
+  {
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "label": "User",
+   "options": "User",
+   "reqd": 1
+  },
+  {
+   "fieldname": "order",
+   "fieldtype": "Int",
+   "label": "Order"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2023-01-30 16:11:56.876297",
+ "modified_by": "Administrator",
+ "module": "Gameplan",
+ "name": "GP Pinned Project",
+ "naming_rule": "Autoincrement",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

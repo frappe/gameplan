@@ -7,24 +7,17 @@ from frappe.model.base_document import get_controller
 
 
 @frappe.whitelist()
-def get_list(doctype=None, fields=None, filters=None, order_by=None, start=0, limit=20, parent=None, debug=False):
+def get_list(doctype=None, fields=None, filters=None, order_by=None, start=0, limit=20, group_by=None, parent=None, debug=False):
 	check_permissions(doctype, parent)
-	query = frappe.qb.engine.get_query(
+	query = frappe.qb.get_query(
 		table=doctype,
 		fields=fields,
 		filters=filters,
 		order_by=order_by,
-		start=start,
+		offset=start,
 		limit=limit,
-		parent=parent
+		group_by=group_by,
 	)
-	if order_by:
-		for declaration in order_by.split(','):
-			parts = declaration.strip().split(" ")
-			orderby_field = parts[0]
-			orderby_direction = parts[1] if len(parts) > 1 else "asc"
-			query = query.orderby(orderby_field, order=frappe._dict(value=orderby_direction))
-
 	query = apply_custom_filters(doctype, query)
 	return query.run(as_dict=True, debug=debug)
 

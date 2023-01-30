@@ -45,6 +45,7 @@
   </Dialog>
 </template>
 <script>
+import { ref } from 'vue'
 import {
   Combobox,
   ComboboxInput,
@@ -55,13 +56,29 @@ import Fuse from 'fuse.js/dist/fuse.basic.esm'
 import { teams, activeTeams } from '@/data/teams'
 import { projects } from '@/data/projects'
 
+let show = ref(false)
+
+export function showCommandPalette() {
+  show.value = true
+}
+
+export function hideCommandPalette() {
+  show.value = false
+}
+
+export function toggleCommandPalette() {
+  show.value = !show.value
+}
+
 export default {
   name: 'CommandPalette',
   data() {
     return {
-      show: false,
       filteredOptions: [],
     }
+  },
+  setup() {
+    return { show }
   },
   components: {
     Combobox,
@@ -74,7 +91,7 @@ export default {
     this.addKeyboardShortcut()
   },
   beforeUnmount() {
-    this.show = false
+    hideCommandPalette()
   },
   methods: {
     onInput(e) {
@@ -88,13 +105,17 @@ export default {
     onSelection(value) {
       if (value) {
         this.$router.push(value.route)
-        this.show = false
+        hideCommandPalette()
       }
     },
     addKeyboardShortcut() {
       window.addEventListener('keydown', (e) => {
-        if (e.key === 'k' && (e.ctrlKey || e.metaKey)) {
-          this.show = !this.show
+        if (
+          e.key === 'k' &&
+          (e.ctrlKey || e.metaKey) &&
+          !e.target.classList.contains('ProseMirror')
+        ) {
+          toggleCommandPalette()
           e.preventDefault()
         }
       })

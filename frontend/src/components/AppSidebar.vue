@@ -180,6 +180,13 @@ export default {
           },
         },
         {
+          name: 'Homescreen',
+          icon: 'home',
+          route: {
+            name: 'Homescreen',
+          },
+        },
+        {
           name: 'People',
           icon: 'users',
           route: {
