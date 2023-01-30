@@ -152,6 +152,23 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 		if name:
 			frappe.delete_doc('GP Guest Access', name)
 
+	@frappe.whitelist()
+	def track_visit(self):
+		if frappe.flags.read_only:
+			return
+
+		values = {"user": frappe.session.user, "project": self.name}
+		existing = frappe.db.get_value("GP Project Visit", values)
+		if existing:
+			visit = frappe.get_doc("GP Project Visit", existing)
+			visit.last_visit = frappe.utils.now()
+			visit.save(ignore_permissions=True)
+		else:
+			visit = frappe.get_doc(doctype="GP Project Visit")
+			visit.update(values)
+			visit.last_visit = frappe.utils.now()
+			visit.insert(ignore_permissions=True)
+
 
 def get_meta_tags(url):
 	response = requests.get(url, timeout=2, allow_redirects=True)

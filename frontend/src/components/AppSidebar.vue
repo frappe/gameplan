@@ -166,12 +166,6 @@ export default {
     }
   },
   mounted() {
-    this.$socket.on('gameplan:new_notification', () => {
-      unreadNotifications.reload()
-    })
-    this.$socket.on('gameplan:unread_items', () => {
-      unreadItems.reload()
-    })
     let sidebarWidth = parseInt(localStorage.getItem('sidebarWidth') || 256)
     this.sidebarWidth = sidebarWidth
   },
@@ -216,7 +210,7 @@ export default {
       return activeTeams.value.map((team) => {
         team.class = function ($route, link) {
           if (
-            ['Team', 'TeamHome', 'TeamOverview', 'TeamProjects'].includes(
+            ['TeamLayout', 'Team', 'TeamOverview', 'TeamProjects'].includes(
               $route.name
             ) &&
             $route.params.teamId === link.route.params.teamId

@@ -23,6 +23,10 @@ export default {
           inviteMembers: 'invite_members',
           inviteGuest: 'invite_guest',
           removeGuest: 'remove_guest',
+          trackVisit: 'track_visit',
+        },
+        onSuccess() {
+          this.$resources.project.trackVisit.submit()
         },
       }
     },

@@ -1,15 +1,11 @@
 {
-    "include": [
-        "./src/**/*",
-        "intellisense.d.ts"
-    ],
-    "compilerOptions": {
-        "baseUrl": ".",
-        "paths": {
-            "@/*": [
-                "src/*"
-            ]
-        },
-        "jsx": "preserve"
-    }
+  "include": ["./src/**/*", "intellisense.d.ts"],
+  "compilerOptions": {
+    "allowJs": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    },
+    "jsx": "preserve"
+  }
 }

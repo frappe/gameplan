@@ -41,3 +41,14 @@ export function getScrollParent(node) {
 export function getRandomNumber(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min
 }
+
+export function getPlatform() {
+  let ua = navigator.userAgent.toLowerCase()
+  if (ua.indexOf('win') > -1) {
+    return 'win'
+  } else if (ua.indexOf('mac') > -1) {
+    return 'mac'
+  } else if (ua.indexOf('x11') > -1 || ua.indexOf('linux') > -1) {
+    return 'linux'
+  }
+}

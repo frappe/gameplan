@@ -69,15 +69,15 @@ const routes = [
   },
   {
     path: '/:teamId',
-    name: 'Team',
-    component: () => import('@/pages/Team.vue'),
-    redirect: { name: 'TeamHome' },
+    name: 'TeamLayout',
+    component: () => import('@/pages/TeamLayout.vue'),
+    redirect: { name: 'Team' },
     props: true,
     children: [
       {
-        name: 'TeamHome',
+        name: 'Team',
         path: '',
-        component: () => import('@/pages/TeamHome.vue'),
+        component: () => import('@/pages/Team.vue'),
         redirect: { name: 'TeamOverview' },
         props: true,
         children: [

@@ -1,4 +1,4 @@
-import { onMounted, onUnmounted, reactive } from 'vue'
+import { onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 
 export function useScreenSize() {
   const size = reactive({
@@ -20,4 +20,15 @@ export function useScreenSize() {
   })
 
   return size
+}
+
+export function useLocalStorage(key, initialValue) {
+  let value = ref(null)
+  let storedValue = localStorage.getItem(key)
+  value.value = storedValue ? JSON.parse(storedValue) : initialValue
+
+  watch(value, (newValue) => {
+    localStorage.setItem(key, JSON.stringify(newValue))
+  })
+  return value
 }

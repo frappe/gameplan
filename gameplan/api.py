@@ -175,6 +175,30 @@ def get_unread_items():
 	return out
 
 @frappe.whitelist()
+def get_unread_items_by_project(projects):
+	from frappe.query_builder.functions import Count
+
+	project_names = frappe.parse_json(projects)
+	Discussion = frappe.qb.DocType("GP Discussion")
+	Visit = frappe.qb.DocType("GP Discussion Visit")
+	query = (
+		frappe.qb.from_(Discussion)
+			.select(Discussion.project, Count(Discussion.project).as_("count"))
+			.left_join(Visit)
+			.on((Visit.discussion == Discussion.name) & (Visit.user == frappe.session.user))
+			.where((Visit.last_visit.isnull()) | (Visit.last_visit < Discussion.last_post_at))
+			.where(Discussion.project.isin(project_names))
+			.groupby(Discussion.project)
+	)
+
+	data = query.run(as_dict=1)
+	out = {}
+	for d in data:
+		out[d.project] = d.count
+	return out
+
+
+@frappe.whitelist()
 def mark_all_notifications_as_read():
 	for d in frappe.db.get_all('GP Notification', filters={'to_user': frappe.session.user, 'read': 0}, pluck='name'):
 		doc = frappe.get_doc('GP Notification', d)
@@ -182,10 +206,64 @@ def mark_all_notifications_as_read():
 		doc.save(ignore_permissions=True)
 
 
+@frappe.whitelist()
+def recent_projects():
+	from frappe.query_builder.functions import Max
+
+	ProjectVisit = frappe.qb.DocType('GP Project Visit')
+	Team = frappe.qb.DocType('GP Team')
+	Project = frappe.qb.DocType('GP Project')
+	Pin = frappe.qb.DocType('GP Pinned Project')
+	pinned_projects_query = frappe.qb.from_(Pin).select(Pin.project).where(Pin.user == frappe.session.user)
+	projects = (
+		frappe.qb.from_(ProjectVisit)
+			.select(
+				ProjectVisit.project.as_('name'),
+				Project.team,
+				Project.title.as_('project_title'),
+				Team.title.as_('team_title'),
+				Project.icon,
+				Max(ProjectVisit.last_visit).as_('timestamp')
+			)
+			.left_join(Project).on(Project.name == ProjectVisit.project)
+			.left_join(Team).on(Team.name == Project.team)
+			.groupby(ProjectVisit.project)
+			.where(ProjectVisit.user == frappe.session.user)
+			.where(ProjectVisit.project.notin(pinned_projects_query))
+			.orderby(ProjectVisit.last_visit, order=frappe.qb.desc)
+			.limit(12)
+	)
+
+	return projects.run(as_dict=1)
 
 
+@frappe.whitelist()
+def active_projects():
+	from frappe.query_builder.functions import Count
 
+	Comment = frappe.qb.DocType('GP Comment')
+	Discussion = frappe.qb.DocType('GP Discussion')
+	active_projects = (
+		frappe.qb.from_(Comment)
+			.select(Count(Comment.name).as_('comments_count'), Discussion.project)
+			.left_join(Discussion).on(Discussion.name == Comment.reference_name)
+			.where(Comment.reference_doctype == 'GP Discussion')
+			.where(Comment.creation > frappe.utils.add_days(frappe.utils.now(), -7))
+			.groupby(Discussion.project)
+			.orderby(Count(Comment.name), order=frappe.qb.desc)
+			.limit(12)
+	).run(as_dict=1)
 
+	projects = frappe.qb.get_query('GP Project',
+		fields=['name', 'title as project_title', 'team', 'team.title as team_title', 'icon', 'modified as timestamp'],
+		filters={'name': ('in', [d.project for d in active_projects])}
+	).run(as_dict=1)
+
+	active_projects_comment_count = {d.project: d.comments_count for d in active_projects}
+	for d in projects:
+		d.comments_count = active_projects_comment_count.get(str(d.name), 0)
+
+	return projects
 
 
 
