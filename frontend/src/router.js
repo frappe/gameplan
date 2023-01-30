@@ -21,7 +21,7 @@ const routes = [
   {
     path: '/homescreen',
     name: 'Homescreen',
-    component: () => import('@/pages/Homescreen.vue'),
+    component: () => import('@/pages/HomeProjects.vue'),
   },
   {
     path: '/login',
