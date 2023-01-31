@@ -8,7 +8,9 @@
             icon-right="chevron-down"
             appearance="minimal"
           >
-            <h1 class="text-2xl font-semibold">Home</h1>
+            <h1 class="text-2xl font-semibold">
+              {{ title }}
+            </h1>
           </Button>
         </div>
         <button
@@ -84,30 +86,36 @@ export default {
     CheckCircle,
   },
   data() {
-    return {
-      showCustomiseHomeDialog: false,
-    }
-  },
-  setup() {
     // options: projects, feed
     let homePage = useLocalStorage('homePage', 'projects')
 
     return {
       homePage,
-      showCommandPalette,
+      showCustomiseHomeDialog: false,
       homePageOptions: [
         {
           label: 'Pinned, Active & Recent Projects',
           value: 'projects',
+          title: 'Projects',
         },
         {
           label: 'Discussion feed sorted by most recent',
           value: 'feed',
+          title: 'Feed',
         },
       ],
     }
   },
+  methods: {
+    showCommandPalette,
+  },
   computed: {
+    title() {
+      return (
+        this.homePageOptions.find((option) => option.value === this.homePage)
+          ?.title || 'Home'
+      )
+    },
     searchPlaceholder() {
       let platform = getPlatform()
       if (platform == 'mac') {

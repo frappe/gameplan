@@ -1,15 +1,14 @@
 <template>
   <div class="mx-auto mt-5 h-full max-w-4xl pb-20 sm:px-5">
-    <section
-      class="mb-6 space-y-2 px-4 lg:px-2"
-      v-if="$resources.pins.data?.length"
-    >
-      <div>
-        <h2 class="text-lg font-semibold text-gray-900">Pinned projects</h2>
-        <p class="text-base text-gray-600">
-          Pin and organize projects that you follow
-        </p>
-      </div>
+    <section class="mb-6 space-y-2 px-4 lg:px-2">
+      <h2 class="text-lg font-semibold text-gray-900">Pinned</h2>
+      <p
+        class="text-base text-gray-600"
+        v-if="$resources.pins.data?.length === 0"
+      >
+        You haven't pinned any projects. Start by pinning a project from the
+        list below.
+      </p>
       <Draggable
         class="grid grid-cols-1 gap-4 lg:grid-cols-3"
         v-model="$resources.pins.data"
@@ -23,7 +22,6 @@
             <template #button>
               <Tooltip text="Unpin this project">
                 <Button
-                  class="opacity-0 transition-opacity group-hover:opacity-100"
                   appearance="minimal"
                   @click.prevent="unpinProject(project.pinId)"
                   :loading="
@@ -46,12 +44,7 @@
         class="flex w-full items-center justify-between rounded-md px-4 py-2 hover:bg-gray-100 lg:px-2"
         @click="activeProjects = !activeProjects"
       >
-        <div class="text-left">
-          <h2 class="text-lg font-semibold text-gray-900">Active Projects</h2>
-          <p class="text-base text-gray-600">
-            Projects on which there is active engagement
-          </p>
-        </div>
+        <h2 class="text-lg font-semibold text-gray-900">Active</h2>
         <Motion :animate="{ rotate: activeProjects ? 90 : 0 }">
           <FeatherIcon name="chevron-right" class="h-4 w-4" />
         </Motion>
@@ -69,7 +62,6 @@
           <template #button>
             <Tooltip text="Pin this project">
               <Button
-                class="opacity-0 transition-opacity group-hover:opacity-100"
                 appearance="minimal"
                 @click.prevent="pinProject(project.name)"
                 :loading="
@@ -97,12 +89,8 @@
         class="flex w-full items-center justify-between rounded-md px-4 py-2 hover:bg-gray-100 lg:px-2"
         @click="recentProjects = !recentProjects"
       >
-        <div class="text-left">
-          <h2 class="text-lg font-semibold text-gray-900">Recently visited</h2>
-          <p class="text-base text-gray-600">
-            Projects that you have visited recently
-          </p>
-        </div>
+        <h2 class="text-lg font-semibold text-gray-900">Recent</h2>
+
         <Motion :animate="{ rotate: recentProjects ? 90 : 0 }">
           <FeatherIcon name="chevron-right" class="h-4 w-4" />
         </Motion>
@@ -119,7 +107,6 @@
           <template #button>
             <Tooltip text="Pin this project">
               <Button
-                class="opacity-0 transition-opacity group-hover:opacity-100"
                 appearance="minimal"
                 @click.prevent="pinProject(project.name)"
                 :loading="
@@ -192,18 +179,28 @@ export default {
       }
     },
     unreadCount() {
-      if (!this.$resources.pins.data?.length) return
+      if (!this.projectNames.length) return
       return {
         url: 'gameplan.api.get_unread_items_by_project',
         params: {
-          projects: this.$resources.pins.data.map((project) => project.name),
+          projects: this.projectNames,
         },
         onSuccess(data) {
+          function setUnreadCount(project) {
+            let unreadCount = data[project.name]
+            if (unreadCount != null) {
+              project.unreadCount = unreadCount
+            }
+            return project
+          }
           this.$resources.pins.setData(
-            this.$resources.pins.data.map((project) => {
-              project.unreadCount = data[project.name]
-              return project
-            })
+            this.$resources.pins.data.map(setUnreadCount)
+          )
+          this.$resources.recentProjects.setData(
+            this.$resources.recentProjects.data.map(setUnreadCount)
+          )
+          this.$resources.activeProjects.setData(
+            this.$resources.activeProjects.data.map(setUnreadCount)
           )
         },
         auto: true,
@@ -248,6 +245,17 @@ export default {
         order: index + 1,
       }))
       this.$resources.bulkUpdatePinOrder.submit({ docs: JSON.stringify(docs) })
+    },
+  },
+  computed: {
+    projectNames() {
+      let names = [
+        ...(this.$resources.pins.data || []),
+        ...(this.$resources.activeProjects.data || []),
+        ...(this.$resources.recentProjects.data || []),
+      ].map((project) => project.name)
+      // unique names
+      return [...new Set(names)]
     },
   },
 }

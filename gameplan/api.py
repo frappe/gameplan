@@ -243,14 +243,15 @@ def active_projects():
 
 	Comment = frappe.qb.DocType('GP Comment')
 	Discussion = frappe.qb.DocType('GP Discussion')
+	CommentCount = Count(Comment.name).as_('comments_count')
 	active_projects = (
 		frappe.qb.from_(Comment)
-			.select(Count(Comment.name).as_('comments_count'), Discussion.project)
+			.select(CommentCount, Discussion.project)
 			.left_join(Discussion).on(Discussion.name == Comment.reference_name)
 			.where(Comment.reference_doctype == 'GP Discussion')
-			.where(Comment.creation > frappe.utils.add_days(frappe.utils.now(), -7))
+			.where(Comment.creation > frappe.utils.add_days(frappe.utils.now(), -70))
 			.groupby(Discussion.project)
-			.orderby(Count(Comment.name), order=frappe.qb.desc)
+			.orderby(CommentCount, order=frappe.qb.desc)
 			.limit(12)
 	).run(as_dict=1)
 
@@ -262,6 +263,8 @@ def active_projects():
 	active_projects_comment_count = {d.project: d.comments_count for d in active_projects}
 	for d in projects:
 		d.comments_count = active_projects_comment_count.get(str(d.name), 0)
+
+	projects.sort(key=lambda d: d.comments_count, reverse=True)
 
 	return projects
 
