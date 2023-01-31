@@ -45,6 +45,13 @@
                   condition: () => !project.doc.archived_at,
                 },
                 {
+                  label: 'Pin to home',
+                  icon: PinIcon,
+                  handler: () => pinProject(),
+                  condition: () =>
+                    !project.doc.is_pinned && !project.doc.archived_at,
+                },
+                {
                   label: 'Manage Guests',
                   icon: 'user-plus',
                   handler: () => (inviteGuestDialog.show = true),
@@ -183,7 +190,13 @@
   </div>
 </template>
 <script>
-import { Autocomplete, Dropdown, Input, Tooltip } from 'frappe-ui'
+import {
+  Autocomplete,
+  Dropdown,
+  frappeRequest,
+  Input,
+  Tooltip,
+} from 'frappe-ui'
 import Pie from '@/components/Pie.vue'
 import IconPicker from '@/components/IconPicker.vue'
 import Links from '@/components/Links.vue'
@@ -191,6 +204,7 @@ import Tabs from '@/components/Tabs.vue'
 import InviteGuestDialog from '@/components/InviteGuestDialog.vue'
 import { projects, getTeamProjects } from '@/data/projects'
 import { teams } from '@/data/teams'
+import PinIcon from '~icons/lucide/pin'
 
 export default {
   name: 'Project',
@@ -205,6 +219,11 @@ export default {
     Autocomplete,
     Tooltip,
     InviteGuestDialog,
+  },
+  setup() {
+    return {
+      PinIcon,
+    }
   },
   data() {
     return {
@@ -275,6 +294,24 @@ export default {
     },
   },
   methods: {
+    pinProject() {
+      frappeRequest({
+        url: 'frappe.client.insert',
+        params: {
+          doc: {
+            doctype: 'GP Pinned Project',
+            project: this.project.name,
+          },
+        },
+      }).then(() => {
+        this.project.reload()
+        this.$toast({
+          title: 'Project pinned to homescreen',
+          icon: 'check-circle',
+          iconClasses: 'text-green-600',
+        })
+      })
+    },
     archiveProject() {
       this.$dialog({
         title: 'Archive Project',

@@ -128,7 +128,6 @@
 <script>
 import Pin from '~icons/lucide/pin'
 import Unpin from '~icons/lucide/pin-off'
-import { getPlatform } from '@/utils'
 import Draggable from 'vuedraggable'
 import HomescreenProjectCard from './HomeProjectCard.vue'
 import { Motion } from '@motionone/vue'

@@ -54,6 +54,7 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 			"pending_tasks": pending_tasks,
 			"overdue_tasks": overdue_tasks,
 		}
+		d.is_pinned = bool(frappe.db.exists("GP Pinned Project", {"project": self.name, "user": frappe.session.user}))
 		return d
 
 	def before_insert(self):
