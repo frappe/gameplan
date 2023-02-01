@@ -32,9 +32,7 @@
         </Tooltip>
       </div>
       <div class="mt-1 flex items-end justify-between leading-none">
-        <span
-          class="text-sm font-semibold uppercase tracking-wide text-gray-600/90"
-        >
+        <span class="text-base tracking-wide text-gray-500">
           {{ project.team_title }}
         </span>
         <Tooltip
