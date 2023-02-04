@@ -104,7 +104,16 @@
         </div>
       </template>
       <template #actions>
-        <Button appearance="primary" @click="save">Save</Button>
+        <Button
+          appearance="primary"
+          @click="save"
+          :loading="
+            $resources.user.setValue.loading ||
+            $resources.profile.setValue.loading
+          "
+        >
+          Save
+        </Button>
         <Button @click="editDialog.show = false"> Discard </Button>
       </template>
     </Dialog>
@@ -206,8 +215,8 @@ export default {
           this.$resources.profile.setValue.submit({
             bio: this.profile.bio,
           })
+          this.editDialog.show = false
         })
-      this.editDialog.show = false
     },
     discard() {
       this.$resources.user.reload()
