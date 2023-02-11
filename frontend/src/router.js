@@ -78,7 +78,7 @@ const routes = [
         name: 'Team',
         path: '',
         component: () => import('@/pages/Team.vue'),
-        redirect: { name: 'TeamOverview' },
+        redirect: { name: 'TeamProjects' },
         props: true,
         children: [
           {
@@ -109,7 +109,7 @@ const routes = [
             name: 'Project',
             path: '',
             component: () => import('@/pages/Project.vue'),
-            redirect: { name: 'ProjectOverview' },
+            redirect: { name: 'ProjectDiscussions' },
             props: true,
             children: [
               {
