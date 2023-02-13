@@ -148,7 +148,7 @@ export default {
           title: project.title,
           team: team?.title,
           route: {
-            name: 'ProjectOverview',
+            name: 'Project',
             params: { teamId: project.team, projectId: project.name },
           },
         })

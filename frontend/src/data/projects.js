@@ -17,7 +17,7 @@ export let projects = createListResource({
   transform(projects) {
     return projects.map((project) => {
       project.route = {
-        name: 'ProjectOverview',
+        name: 'Project',
         params: {
           teamId: project.team,
           projectId: project.name,
