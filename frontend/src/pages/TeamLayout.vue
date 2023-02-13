@@ -2,6 +2,15 @@
   <div class="flex h-full flex-col" v-if="$resources.team.doc">
     <router-view :team="$resources.team" />
   </div>
+  <div
+    class="grid h-full place-items-center px-4 py-20 text-center text-lg text-gray-600"
+    v-else-if="$resources.team.get.error"
+  >
+    <div class="space-y-2">
+      <div>Invalid team or not permitted to access</div>
+      <Button icon-left="home" :route="{ name: 'Home' }">Home</Button>
+    </div>
+  </div>
 </template>
 <script>
 export default {

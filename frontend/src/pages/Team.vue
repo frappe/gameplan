@@ -22,6 +22,12 @@
             {{ team.doc.title }}
           </h1>
           <Badge v-if="team.doc.archived_at">Archived</Badge>
+          <Tooltip
+            v-if="team.doc.is_private"
+            text="This team is only visible to team members"
+          >
+            <Badge> Private </Badge>
+          </Tooltip>
           <Dropdown
             v-if="!team.doc.archived_at"
             placement="left"
@@ -49,7 +55,7 @@
   </div>
 </template>
 <script>
-import { Dropdown } from 'frappe-ui'
+import { Dropdown, Badge, Tooltip } from 'frappe-ui'
 import TeamHomeMembers from './TeamHomeMembers.vue'
 import IconPicker from '@/components/IconPicker.vue'
 import Tabs from '@/components/Tabs.vue'
@@ -62,6 +68,8 @@ export default {
     Dropdown,
     IconPicker,
     Tabs,
+    Tooltip,
+    Badge,
   },
   computed: {
     tabs() {

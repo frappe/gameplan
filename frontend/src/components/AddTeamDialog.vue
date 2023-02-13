@@ -1,14 +1,25 @@
 <template>
   <Dialog :options="{ title: 'Add Team' }" v-model="showDialog">
     <template #body-content>
-      <Input
-        label="Team Name"
-        type="text"
-        v-model="teamName"
-        placeholder="Team Name"
-        @keydown.enter="createTeam($event.target.value)"
-      />
-      <ErrorMessage class="mt-2" :message="teams.insert.error?.messages" />
+      <div class="space-y-2">
+        <Input
+          label="Team Name"
+          type="text"
+          v-model="newTeam.title"
+          placeholder="Team Name"
+          @keydown.enter="createTeam($event.target.value)"
+        />
+        <Input
+          type="select"
+          label="Visibility"
+          :options="[
+            { label: 'Visible to everyone', value: 0 },
+            { label: 'Visible to team members (Private)', value: 1 },
+          ]"
+          v-model="newTeam.is_private"
+        />
+        <ErrorMessage :message="teams.insert.error?.messages" />
+      </div>
     </template>
     <template #actions>
       <Button
@@ -31,7 +42,7 @@ export default {
   emits: ['success', 'update:show'],
   data() {
     return {
-      teamName: '',
+      newTeam: { title: '', is_private: 0 },
       teams,
     }
   },
@@ -39,17 +50,14 @@ export default {
     Dialog,
   },
   methods: {
-    createTeam(teamName) {
-      teams.insert.submit(
-        { title: teamName },
-        {
-          onSuccess: (team) => {
-            this.teamName = ''
-            this.showDialog = false
-            this.$emit('success', team)
-          },
-        }
-      )
+    createTeam() {
+      teams.insert.submit(this.newTeam, {
+        onSuccess: (team) => {
+          this.$resetData('newTeam')
+          this.showDialog = false
+          this.$emit('success', team)
+        },
+      })
     },
   },
   computed: {
