@@ -163,6 +163,7 @@ export default {
       return {
         type: 'list',
         doctype: 'GP Comment',
+        cache: ['Comments', this.doctype, this.name],
         fields: [
           'name',
           'content',
