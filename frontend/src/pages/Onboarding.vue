@@ -96,7 +96,7 @@ export default {
       onSuccess(teamId) {
         teams.reload()
         projects.reload()
-        this.$router.push({ name: 'Team', params: { teamId } })
+        this.$router.push({ name: 'TeamOverview', params: { teamId } })
       },
     },
   },

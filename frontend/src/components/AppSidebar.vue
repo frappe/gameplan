@@ -125,7 +125,10 @@
       @success="
         (team) => {
           showAddTeamDialog = false
-          $router.push(`/${team.name}`)
+          $router.push({
+            name: 'TeamOverview',
+            params: { teamId: team.name },
+          })
         }
       "
     />
