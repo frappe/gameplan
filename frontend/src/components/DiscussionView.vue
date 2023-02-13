@@ -387,18 +387,13 @@ export default {
               query: { comment: doc.last_unread_comment },
             })
           }
-          if (this.visitTimer) {
-            clearTimeout(this.visitTimer)
-            this.visitTimer = null
+
+          if (
+            this.$route.name === 'ProjectDiscussion' &&
+            Number(this.$route.params.postId) === doc.name
+          ) {
+            this.$resources.discussion.trackVisit.submit()
           }
-          this.visitTimer = setTimeout(() => {
-            if (
-              this.$route.name === 'ProjectDiscussion' &&
-              Number(this.$route.params.postId) === doc.name
-            ) {
-              this.$resources.discussion.trackVisit.submit()
-            }
-          }, 2000)
         },
       }
     },
