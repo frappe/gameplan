@@ -3,6 +3,18 @@
     <header class="sticky top-0 z-10 border-b bg-white px-5 pt-3">
       <div v-if="project">
         <div class="flex h-9 w-full items-center">
+          <div class="rounded-md p-px text-5xl leading-none focus:outline-none">
+            {{ team.doc.icon || '' }}
+          </div>
+          <router-link
+            :to="{ name: 'Team', params: { teamId: team.doc.name } }"
+            class="ml-1 rounded-md px-1 hover:bg-gray-200"
+          >
+            <h1 class="text-2xl font-medium text-gray-600">
+              {{ team.doc.title }}
+            </h1>
+          </router-link>
+          <FeatherIcon name="chevron-right" class="mx-0.5 w-5 text-gray-600" />
           <IconPicker
             ref="projectIconPicker"
             v-model="project.doc.icon"
@@ -11,7 +23,7 @@
           >
             <template v-slot="{ open }">
               <div
-                class="rounded-md p-px text-[30px] leading-none focus:outline-none"
+                class="rounded-md p-px text-5xl leading-none focus:outline-none"
                 :class="open ? 'bg-gray-200' : 'hover:bg-gray-100'"
               >
                 {{ project.doc.icon || '' }}
@@ -19,7 +31,7 @@
             </template>
           </IconPicker>
           <div class="ml-2 flex items-center space-x-2">
-            <h1 class="text-4xl font-bold leading-8">
+            <h1 class="text-2xl font-medium leading-8">
               {{ project.doc.title }}
             </h1>
             <Badge v-if="project.doc.archived_at"> Archived </Badge>
