@@ -8,13 +8,19 @@
  "engine": "InnoDB",
  "field_order": [
   "title",
-  "readme",
+  "column_break_zutb",
+  "icon",
+  "is_private",
+  "section_break_tczw",
+  "members",
+  "section_break_jewo",
   "cover_image",
   "cover_image_position",
-  "icon",
-  "members",
+  "column_break_sikq",
+  "archived_by",
   "archived_at",
-  "archived_by"
+  "section_break_gvbw",
+  "readme"
  ],
  "fields": [
   {
@@ -60,11 +66,37 @@
    "fieldtype": "Link",
    "label": "Archived By",
    "options": "User"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_private",
+   "fieldtype": "Check",
+   "label": "Is Private"
+  },
+  {
+   "fieldname": "column_break_zutb",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_tczw",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "section_break_jewo",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_sikq",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_gvbw",
+   "fieldtype": "Section Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-01-12 17:05:22.658284",
+ "modified": "2023-02-13 21:00:23.191195",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "GP Team",

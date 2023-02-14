@@ -7,13 +7,34 @@ from frappe.model.document import Document
 from frappe.model.naming import append_number_if_name_exists
 from gameplan.gemoji import get_random_gemoji
 from gameplan.mixins.archivable import Archivable
+from pypika.terms import ExistsCriterion
 
 class GPTeam(Archivable, Document):
 	on_delete_cascade = ["GP Project"]
 	on_delete_set_null = ["GP Notification"]
 
+	def as_dict(self, *args, **kwargs) -> dict:
+		members = [m.user for m in self.members]
+		if self.is_private and frappe.session.user not in members:
+			frappe.throw("Not permitted", frappe.PermissionError)
+
+		d = super().as_dict(*args, **kwargs)
+		return d
+
 	@staticmethod
 	def get_list_query(query):
+		Team = frappe.qb.DocType('GP Team')
+		Member = frappe.qb.DocType('GP Member')
+		member_exists = (
+			frappe.qb.from_(Member)
+				.select(Member.name)
+				.where(Member.parenttype == 'GP Team')
+				.where(Member.parent == Team.name)
+				.where(Member.user == frappe.session.user)
+		)
+		query = query.where(
+			(Team.is_private == 0) | ((Team.is_private == 1) & ExistsCriterion(member_exists))
+		)
 		is_guest = gameplan.is_guest()
 		if is_guest:
 			Team = frappe.qb.DocType('GP Team')

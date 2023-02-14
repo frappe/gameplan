@@ -74,6 +74,11 @@
                 {{ team.icon }}
               </span>
               <span class="ml-2 text-base">{{ team.title }}</span>
+              <FeatherIcon
+                v-if="team.is_private"
+                name="lock"
+                class="ml-2 h-3 w-3"
+              />
               <div class="ml-auto">
                 <Tooltip
                   v-if="team.unread"

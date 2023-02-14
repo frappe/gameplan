@@ -4,7 +4,15 @@ import { computed } from 'vue'
 export let teams = createListResource({
   type: 'list',
   doctype: 'GP Team',
-  fields: ['name', 'title', 'icon', 'modified', 'creation', 'archived_at'],
+  fields: [
+    'name',
+    'title',
+    'icon',
+    'modified',
+    'creation',
+    'archived_at',
+    'is_private',
+  ],
   orderBy: 'title asc',
   cache: 'Teams',
   pageLength: 999,

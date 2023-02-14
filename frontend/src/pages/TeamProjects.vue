@@ -86,6 +86,7 @@
               @keydown.enter="createProject"
             />
             <Input
+              v-if="!team.doc.is_private"
               type="select"
               label="Visibility"
               :options="[
