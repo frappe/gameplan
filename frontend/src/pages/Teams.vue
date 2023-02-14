@@ -15,6 +15,11 @@
             </span>
             <span class="text-xl">{{ team.title }}</span>
             <FeatherIcon
+              v-if="team.is_private"
+              name="lock"
+              class="ml-2 h-3 w-3"
+            />
+            <FeatherIcon
               name="chevron-right"
               class="ml-auto h-5 w-5 text-gray-600"
             />

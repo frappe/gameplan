@@ -26,7 +26,7 @@
             v-if="team.doc.is_private"
             text="This team is only visible to team members"
           >
-            <Badge> Private </Badge>
+            <FeatherIcon name="lock" class="h-4 w-4" />
           </Tooltip>
           <Dropdown
             v-if="!team.doc.archived_at"
@@ -55,7 +55,7 @@
   </div>
 </template>
 <script>
-import { Dropdown, Badge, Tooltip } from 'frappe-ui'
+import { Dropdown, Badge, Tooltip, FeatherIcon } from 'frappe-ui'
 import TeamHomeMembers from './TeamHomeMembers.vue'
 import IconPicker from '@/components/IconPicker.vue'
 import Tabs from '@/components/Tabs.vue'
@@ -70,6 +70,7 @@ export default {
     Tabs,
     Tooltip,
     Badge,
+    FeatherIcon,
   },
   computed: {
     tabs() {

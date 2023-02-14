@@ -39,7 +39,7 @@
               v-if="project.doc.is_private"
               text="This project is only visible to team members"
             >
-              <Badge> Private </Badge>
+              <FeatherIcon name="lock" class="h-4 w-4" />
             </Tooltip>
             <Dropdown
               v-if="$user().isNotGuest"
