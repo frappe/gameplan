@@ -79,6 +79,10 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 			},
 		)
 
+	def before_save(self):
+		if frappe.db.get_value('GP Team', self.team, 'is_private'):
+			self.is_private = True
+
 	def update_progress(self):
 		result = frappe.db.get_all(
 			"GP Task",

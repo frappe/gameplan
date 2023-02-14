@@ -118,6 +118,7 @@
         <template #body-content>
           <Input class="mb-2" label="Title" v-model="project.doc.title" />
           <Input
+            v-if="!team.doc.is_private"
             label="Visibility"
             type="select"
             :options="[
