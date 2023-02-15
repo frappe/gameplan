@@ -165,9 +165,13 @@ export default {
     },
     discussionTimestamp(d) {
       let timestamp = d.last_post_at || d.creation
-      return this.$dayjs().diff(timestamp, 'day') >= 25
-        ? this.$dayjs(timestamp).format('D MMM')
-        : this.$dayjs(timestamp).fromNow()
+      if (this.$dayjs().diff(timestamp, 'day') < 25) {
+        return this.$dayjs(timestamp).fromNow()
+      }
+      if (this.$dayjs().diff(timestamp, 'year') < 1) {
+        return this.$dayjs(timestamp).format('D MMM')
+      }
+      return this.$dayjs(timestamp).format('D MMM YYYY')
     },
     discussionTimestampDescription(d) {
       return [

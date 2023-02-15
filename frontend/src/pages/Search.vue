@@ -52,11 +52,8 @@
             </span>
             <span
               class="shrink-0 whitespace-nowrap text-sm text-gray-600 md:inline"
-              >{{
-                $dayjs().diff(d.last_post_at, 'day') >= 25
-                  ? $dayjs(d.last_post_at).format('D MMM')
-                  : $dayjs(d.last_post_at).fromNow()
-              }}
+            >
+              {{ timestamp(d) }}
             </span>
           </div>
           <div
@@ -136,6 +133,16 @@ export default {
         end = content.length
       }
       return content.slice(start, end)
+    },
+    timestamp(d) {
+      let timestamp = d.last_post_at
+      if (this.$dayjs().diff(timestamp, 'day') < 25) {
+        return this.$dayjs(timestamp).fromNow()
+      }
+      if (this.$dayjs().diff(timestamp, 'year') < 1) {
+        return this.$dayjs(timestamp).format('D MMM')
+      }
+      return this.$dayjs(timestamp).format('D MMM YYYY')
     },
   },
   pageMeta() {
