@@ -199,6 +199,9 @@ export default {
         type: 'document',
         doctype: 'GP Task',
         name: this.taskId,
+        whitelistedMethods: {
+          trackVisit: 'track_visit',
+        },
         setValue: {
           onError(e) {
             let message = e.messages ? e.messages.join('\n') : e.message
@@ -209,6 +212,14 @@ export default {
               iconClasses: 'text-red-600',
             })
           },
+        },
+        onSuccess(doc) {
+          if (
+            this.$route.name === 'ProjectTaskDetail' &&
+            Number(this.$route.params.taskId) === doc.name
+          ) {
+            this.$resources.task.trackVisit.submit()
+          }
         },
       }
     },

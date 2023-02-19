@@ -4,6 +4,7 @@ import re
 import frappe
 from frappe.model.document import Document
 from gameplan.gameplan.doctype.gp_discussion.search import update_index
+from gameplan.gameplan.doctype.gp_notification.gp_notification import GPNotification
 from gameplan.mixins.activity import HasActivity
 from gameplan.mixins.mentions import HasMentions
 from gameplan.mixins.reactions import HasReactions
@@ -103,6 +104,10 @@ class GPDiscussion(HasActivity, HasMentions, HasReactions, Document):
 			visit.update(values)
 			visit.last_visit = frappe.utils.now()
 			visit.insert(ignore_permissions=True)
+
+		# also mark notifications as read
+		GPNotification.clear_notifications(discussion=self.name)
+
 
 	@frappe.whitelist()
 	def move_to_project(self, project):

@@ -3,6 +3,7 @@
 
 import frappe
 from frappe.model.document import Document
+from gameplan.gameplan.doctype.gp_notification.gp_notification import GPNotification
 from gameplan.mixins.mentions import HasMentions
 
 
@@ -16,6 +17,7 @@ class GPTask(HasMentions, Document):
 
 	def on_update(self):
 		self.update_project_progress()
+		self.notify_mentions()
 
 	def on_trash(self):
 		self.update_tasks_count(-1)
@@ -28,5 +30,6 @@ class GPTask(HasMentions, Document):
 		if self.project and self.has_value_changed("is_completed"):
 			frappe.get_doc("GP Project", self.project).update_progress()
 
-	def on_update(self):
-		self.notify_mentions()
+	@frappe.whitelist()
+	def track_visit(self):
+		GPNotification.clear_notifications(task=self.name)
