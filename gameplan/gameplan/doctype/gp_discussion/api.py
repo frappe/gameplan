@@ -28,11 +28,7 @@ def get_discussions(filters=None, limit_start=None, limit_page_length=None):
 	query = (
 		frappe.qb.from_(Discussion)
 		.select(
-			Discussion.name, Discussion.owner, Discussion.creation, Discussion.modified,
-			Discussion.title, Discussion.status, Discussion.team, Discussion.project,
-			Discussion.last_post_at, Discussion.last_post_by, Discussion.comments_count,
-			Discussion.closed_at, Discussion.closed_by, Discussion.slug,
-			Visit.last_visit, Project.title.as_('project_title'), Team.title.as_('team_title')
+			Discussion.star, Visit.last_visit, Project.title.as_('project_title'), Team.title.as_('team_title')
 		)
 		.left_join(Visit)
 		.on((Discussion.name == Visit.discussion) & (Visit.user == frappe.session.user))
@@ -43,6 +39,7 @@ def get_discussions(filters=None, limit_start=None, limit_page_length=None):
 		.where(
 			(Project.is_private == 0) | ((Project.is_private == 1) & ExistsCriterion(member_exists))
 		)
+		.orderby(Discussion.pinned_at, order=frappe._dict(value="desc"))
 		.orderby(Discussion.last_post_at, order=frappe._dict(value="desc"))
 		.limit(limit_page_length)
 		.offset(limit_start or 0)

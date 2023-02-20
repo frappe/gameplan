@@ -23,10 +23,14 @@
                 :class="d.unread ? 'visible' : 'invisible'"
               ></div>
               <component
-                :is="d.closed_at ? 'Tooltip' : 'div'"
+                :is="d.closed_at || d.pinned_at ? 'Tooltip' : 'div'"
                 class="flex"
                 v-bind="
-                  d.closed_at ? { text: 'This discussion is closed' } : null
+                  d.closed_at
+                    ? { text: 'This discussion is closed' }
+                    : d.pinned_at
+                    ? { text: 'This discussion is pinned' }
+                    : null
                 "
               >
                 <div class="relative">
@@ -37,6 +41,12 @@
                     class="absolute bottom-0 right-0 rounded-full bg-green-100 p-0.5 ring-2 ring-white group-hover:ring-gray-100"
                   >
                     <FeatherIcon name="lock" class="h-3 w-3 text-green-500" />
+                  </div>
+                  <div
+                    v-if="d.pinned_at"
+                    class="absolute bottom-0 right-0 rounded-full bg-yellow-100 p-0.5 ring-2 ring-white group-hover:ring-gray-100"
+                  >
+                    <PinIcon class="h-3 w-3 rotate-45 text-yellow-500" />
                   </div>
                 </div>
               </component>
@@ -130,15 +140,15 @@
 </template>
 <script>
 import { TextEditor, Tooltip } from 'frappe-ui'
-import FeatherIconCircle from './FeatherIconCircle.vue'
+import PinIcon from '~icons/lucide/pin'
 
 export default {
   name: 'DiscussionList',
   props: ['filters', 'routeName'],
   components: {
     TextEditor,
-    FeatherIconCircle,
     Tooltip,
+    PinIcon,
   },
   resources: {
     discussions() {

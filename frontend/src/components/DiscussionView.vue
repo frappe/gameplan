@@ -48,75 +48,7 @@
               appearance: 'minimal',
               label: 'Discussion Options',
             }"
-            :options="[
-              {
-                label: 'Edit Title',
-                icon: 'edit',
-                handler: () => (editingTitle = true),
-              },
-              {
-                label: 'Copy link',
-                icon: 'link',
-                handler: () => copyLink(),
-              },
-              {
-                label: 'Close discussion',
-                icon: 'lock',
-                condition: () => !discussion.closed_at,
-                handler: () => {
-                  $dialog({
-                    title: 'Close discussion',
-                    message:
-                      'When a discussion is closed, commenting is disabled. Anyone can re-open the discussion later. Do you want to close this discussion?',
-                    icon: { name: 'lock', appearance: 'success' },
-                    actions: [
-                      {
-                        label: 'Close',
-                        handler: ({ close }) =>
-                          $resources.discussion.closeDiscussion
-                            .submit()
-                            .then(close),
-                        appearance: 'primary',
-                      },
-                      {
-                        label: 'Cancel',
-                      },
-                    ],
-                  })
-                },
-              },
-              {
-                label: 'Re-open discussion',
-                icon: 'unlock',
-                condition: () => discussion.closed_at,
-                handler: () => {
-                  $dialog({
-                    title: 'Re-open discussion',
-                    message:
-                      'Do you want to re-open this discussion? Anyone can comment on it again.',
-                    icon: { name: 'unlock', appearance: 'success' },
-                    actions: [
-                      {
-                        label: 'Re-open',
-                        handler: ({ close }) =>
-                          $resources.discussion.reopenDiscussion
-                            .submit()
-                            .then(close),
-                        appearance: 'primary',
-                      },
-                      {
-                        label: 'Cancel',
-                      },
-                    ],
-                  })
-                },
-              },
-              {
-                label: 'Move to another project',
-                icon: 'log-out',
-                handler: () => (discussionMoveDialog.show = true),
-              },
-            ]"
+            :options="actions"
           />
         </div>
       </div>
@@ -361,6 +293,8 @@ export default {
           trackVisit: 'track_visit',
           closeDiscussion: 'close_discussion',
           reopenDiscussion: 'reopen_discussion',
+          pinDiscussion: 'pin_discussion',
+          unpinDiscussion: 'unpin_discussion',
           moveToProject: {
             method: 'move_to_project',
             validate(params) {
@@ -473,6 +407,130 @@ export default {
           value: project.name,
         })),
       }))
+    },
+    actions() {
+      return [
+        {
+          label: 'Edit Title',
+          icon: 'edit',
+          handler: () => {
+            this.editingTitle = true
+          },
+        },
+        {
+          label: 'Copy link',
+          icon: 'link',
+          handler: this.copyLink,
+        },
+        {
+          label: 'Pin discussion...',
+          icon: 'arrow-up-left',
+          handler: () => {
+            let project = this.$getDoc('GP Project', this.discussion.project)
+            $dialog({
+              title: 'Pin discussion',
+              message: `When a discussion is pinned, it shows up on top of the discussion list in ${project.title}. Do you want to pin this discussion?`,
+              icon: { name: 'arrow-up-left', appearance: 'success' },
+              actions: [
+                {
+                  label: 'Pin',
+                  handler: ({ close }) =>
+                    this.$resources.discussion.pinDiscussion
+                      .submit()
+                      .then(close),
+                  appearance: 'primary',
+                },
+                {
+                  label: 'Cancel',
+                },
+              ],
+            })
+          },
+        },
+        {
+          label: 'Unpin discussion...',
+          icon: 'arrow-up-left',
+          handler: () => {
+            $dialog({
+              title: 'Unpin discussion',
+              message: `Do you want to unpin this discussion?`,
+              icon: { name: 'arrow-down-left', appearance: 'success' },
+              actions: [
+                {
+                  label: 'Unpin',
+                  handler: ({ close }) =>
+                    this.$resources.discussion.unpinDiscussion
+                      .submit()
+                      .then(close),
+                  appearance: 'primary',
+                },
+                {
+                  label: 'Cancel',
+                },
+              ],
+            })
+          },
+        },
+        {
+          label: 'Close discussion...',
+          icon: 'lock',
+          condition: () => !this.discussion.closed_at,
+          handler: () => {
+            $dialog({
+              title: 'Close discussion',
+              message:
+                'When a discussion is closed, commenting is disabled. Anyone can re-open the discussion later. Do you want to close this discussion?',
+              icon: { name: 'lock', appearance: 'success' },
+              actions: [
+                {
+                  label: 'Close',
+                  handler: ({ close }) =>
+                    this.$resources.discussion.closeDiscussion
+                      .submit()
+                      .then(close),
+                  appearance: 'primary',
+                },
+                {
+                  label: 'Cancel',
+                },
+              ],
+            })
+          },
+        },
+        {
+          label: 'Re-open discussion...',
+          icon: 'unlock',
+          condition: () => this.discussion.closed_at,
+          handler: () => {
+            $dialog({
+              title: 'Re-open discussion',
+              message:
+                'Do you want to re-open this discussion? Anyone can comment on it again.',
+              icon: { name: 'unlock', appearance: 'success' },
+              actions: [
+                {
+                  label: 'Re-open',
+                  handler: ({ close }) =>
+                    this.$resources.discussion.reopenDiscussion
+                      .submit()
+                      .then(close),
+                  appearance: 'primary',
+                },
+                {
+                  label: 'Cancel',
+                },
+              ],
+            })
+          },
+        },
+        {
+          label: 'Move to...',
+          icon: 'log-out',
+          handler: () => {
+            this.discussionMoveDialog.show = true
+          },
+        },
+      ]
     },
   },
   pageMeta() {

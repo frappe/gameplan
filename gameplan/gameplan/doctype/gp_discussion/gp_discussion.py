@@ -13,7 +13,7 @@ from gameplan.utils import remove_empty_trailing_paragraphs
 class GPDiscussion(HasActivity, HasMentions, HasReactions, Document):
 	on_delete_cascade = ['GP Comment', 'GP Discussion Visit']
 	on_delete_set_null = ['GP Notification']
-	activities = ['Discussion Closed', 'Discussion Reopened', 'Discussion Title Changed']
+	activities = ['Discussion Closed', 'Discussion Reopened', 'Discussion Title Changed', 'Discussion Pinned', 'Discussion Unpinned']
 	mentions_field = 'content'
 
 	def as_dict(self, *args, **kwargs):
@@ -134,6 +134,24 @@ class GPDiscussion(HasActivity, HasMentions, HasReactions, Document):
 		self.closed_at = None
 		self.closed_by = None
 		self.log_activity('Discussion Reopened')
+		self.save()
+
+	@frappe.whitelist()
+	def pin_discussion(self):
+		if self.pinned_at:
+			return
+		self.pinned_at = frappe.utils.now()
+		self.pinned_by = frappe.session.user
+		self.log_activity('Discussion Pinned')
+		self.save()
+
+	@frappe.whitelist()
+	def unpin_discussion(self):
+		if not self.pinned_at:
+			return
+		self.pinned_at = None
+		self.pinned_by = None
+		self.log_activity('Discussion Unpinned')
 		self.save()
 
 	def update_discussions_count(self, delta=1):

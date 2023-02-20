@@ -17,6 +17,8 @@
   "last_post_by",
   "closed_at",
   "closed_by",
+  "pinned_at",
+  "pinned_by",
   "comments_count",
   "participants_count"
  ],
@@ -102,11 +104,22 @@
    "fieldtype": "Int",
    "label": "Participants Count",
    "read_only": 1
+  },
+  {
+   "fieldname": "pinned_at",
+   "fieldtype": "Datetime",
+   "label": "Pinned At"
+  },
+  {
+   "fieldname": "pinned_by",
+   "fieldtype": "Link",
+   "label": "Pinned By",
+   "options": "User"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-01-12 17:30:44.856348",
+ "modified": "2023-02-20 18:29:13.384580",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "GP Discussion",

@@ -7,6 +7,8 @@
           'Discussion Closed': 'lock',
           'Discussion Reopened': 'unlock',
           'Discussion Title Changed': 'edit-3',
+          'Discussion Pinned': 'arrow-up-left',
+          'Discussion Unpinned': 'arrow-down-left',
         }[activity.action]
       "
       color="green"
@@ -28,6 +30,15 @@
         v-if="activity.action == 'Discussion Reopened'"
       >
         reopened this discussion
+      </span>
+      <span class="text-gray-900" v-if="activity.action == 'Discussion Pinned'">
+        pinned this discussion
+      </span>
+      <span
+        class="text-gray-900"
+        v-if="activity.action == 'Discussion Unpinned'"
+      >
+        unpinned this discussion
       </span>
       <span
         class="text-gray-900"
