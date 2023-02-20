@@ -425,6 +425,7 @@ export default {
         {
           label: 'Pin discussion...',
           icon: 'arrow-up-left',
+          condition: () => !this.discussion.pinned_at,
           handler: () => {
             let project = this.$getDoc('GP Project', this.discussion.project)
             $dialog({
@@ -449,7 +450,8 @@ export default {
         },
         {
           label: 'Unpin discussion...',
-          icon: 'arrow-up-left',
+          icon: 'arrow-down-left',
+          condition: () => this.discussion.pinned_at,
           handler: () => {
             $dialog({
               title: 'Unpin discussion',
