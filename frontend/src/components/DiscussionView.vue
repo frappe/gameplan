@@ -428,7 +428,7 @@ export default {
           condition: () => !this.discussion.pinned_at,
           handler: () => {
             let project = this.$getDoc('GP Project', this.discussion.project)
-            $dialog({
+            this.$dialog({
               title: 'Pin discussion',
               message: `When a discussion is pinned, it shows up on top of the discussion list in ${project.title}. Do you want to pin this discussion?`,
               icon: { name: 'arrow-up-left', appearance: 'success' },
@@ -453,7 +453,7 @@ export default {
           icon: 'arrow-down-left',
           condition: () => this.discussion.pinned_at,
           handler: () => {
-            $dialog({
+            this.$dialog({
               title: 'Unpin discussion',
               message: `Do you want to unpin this discussion?`,
               icon: { name: 'arrow-down-left', appearance: 'success' },
