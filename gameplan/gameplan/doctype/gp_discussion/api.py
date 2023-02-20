@@ -39,14 +39,19 @@ def get_discussions(filters=None, limit_start=None, limit_page_length=None):
 		.where(
 			(Project.is_private == 0) | ((Project.is_private == 1) & ExistsCriterion(member_exists))
 		)
-		.orderby(Discussion.pinned_at, order=frappe._dict(value="desc"))
-		.orderby(Discussion.last_post_at, order=frappe._dict(value="desc"))
 		.limit(limit_page_length)
 		.offset(limit_start or 0)
 	)
 	if filters:
 		for key in filters:
 			query = query.where(Discussion[key] == filters[key])
+
+		# order by pinned_at desc if project is selected
+		if filters['project']:
+			query = query.orderby(Discussion.pinned_at, order=frappe._dict(value="desc"))
+
+	# default order by last_post_at desc
+	query = query.orderby(Discussion.last_post_at, order=frappe._dict(value="desc"))
 
 	is_guest = gameplan.is_guest()
 	if is_guest:

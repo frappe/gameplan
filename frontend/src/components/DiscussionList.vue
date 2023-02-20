@@ -23,7 +23,11 @@
                 :class="d.unread ? 'visible' : 'invisible'"
               ></div>
               <component
-                :is="d.closed_at || d.pinned_at ? 'Tooltip' : 'div'"
+                :is="
+                  d.closed_at || (d.pinned_at && this.filters)
+                    ? 'Tooltip'
+                    : 'div'
+                "
                 class="flex"
                 v-bind="
                   d.closed_at
@@ -43,7 +47,7 @@
                     <FeatherIcon name="lock" class="h-3 w-3 text-green-500" />
                   </div>
                   <div
-                    v-if="d.pinned_at"
+                    v-if="d.pinned_at && this.filters"
                     class="absolute bottom-0 right-0 rounded-full bg-yellow-100 p-0.5 ring-2 ring-white group-hover:ring-gray-100"
                   >
                     <PinIcon class="h-3 w-3 rotate-45 text-yellow-500" />
@@ -161,6 +165,7 @@ export default {
         auto: true,
         pageLength: 50,
         transform(data) {
+          console.log(this.filters)
           for (let d of data) {
             d.unread = !d.last_visit || d.last_post_at > d.last_visit
           }
