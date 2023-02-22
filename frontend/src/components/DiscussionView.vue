@@ -478,7 +478,7 @@ export default {
           icon: 'lock',
           condition: () => !this.discussion.closed_at,
           handler: () => {
-            $dialog({
+            this.$dialog({
               title: 'Close discussion',
               message:
                 'When a discussion is closed, commenting is disabled. Anyone can re-open the discussion later. Do you want to close this discussion?',
@@ -504,7 +504,7 @@ export default {
           icon: 'unlock',
           condition: () => this.discussion.closed_at,
           handler: () => {
-            $dialog({
+            this.$dialog({
               title: 'Re-open discussion',
               message:
                 'Do you want to re-open this discussion? Anyone can comment on it again.',
