@@ -165,7 +165,6 @@ export default {
         auto: true,
         pageLength: 50,
         transform(data) {
-          console.log(this.filters)
           for (let d of data) {
             d.unread = !d.last_visit || d.last_post_at > d.last_visit
           }
