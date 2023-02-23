@@ -58,9 +58,14 @@
               icon: 'edit',
               handler: () => (comment.editing = true),
               condition: () =>
-                $isSessionUser(comment.owner) &&
                 !comment.deleted_at &&
                 !readOnlyMode,
+            },
+            {
+              label: 'Revisions',
+              icon: 'rotate-ccw',
+              handler: () => (showRevisionsDialog = true),
+              condition: () => comment.modified > comment.creation,
             },
             {
               label: 'Copy link',
@@ -143,6 +148,12 @@
         </div>
       </div>
     </UserInfo>
+    <RevisionsDialog
+      v-model="showRevisionsDialog"
+      doctype="GP Comment"
+      :name="comment.name"
+      fieldname="content"
+    />
   </div>
 </template>
 <script>
@@ -151,6 +162,7 @@ import { copyToClipboard } from '@/utils'
 import UserProfileLink from './UserProfileLink.vue'
 import CommentEditor from './CommentEditor.vue'
 import Reactions from './Reactions.vue'
+import RevisionsDialog from './RevisionsDialog.vue'
 
 export default {
   name: 'Comment',
@@ -171,7 +183,18 @@ export default {
       type: Object,
     },
   },
-  components: { UserProfileLink, Dropdown, CommentEditor, Reactions },
+  components: {
+    UserProfileLink,
+    Dropdown,
+    CommentEditor,
+    Reactions,
+    RevisionsDialog,
+  },
+  data() {
+    return {
+      showRevisionsDialog: false,
+    }
+  },
   methods: {
     editComment(comment) {
       comment.loading = true

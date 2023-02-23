@@ -47,7 +47,7 @@ def get_discussions(filters=None, limit_start=None, limit_page_length=None):
 			query = query.where(Discussion[key] == filters[key])
 
 		# order by pinned_at desc if project is selected
-		if filters['project']:
+		if filters.get('project'):
 			query = query.orderby(Discussion.pinned_at, order=frappe._dict(value="desc"))
 
 	# default order by last_post_at desc

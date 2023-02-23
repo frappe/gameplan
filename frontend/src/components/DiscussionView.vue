@@ -239,6 +239,12 @@
           <Button @click="discussionMoveDialog.show = false">Cancel</Button>
         </template>
       </Dialog>
+      <RevisionsDialog
+        v-model="showRevisionsDialog"
+        doctype="GP Discussion"
+        :name="discussion.name"
+        fieldname="content"
+      />
     </div>
   </div>
 </template>
@@ -257,6 +263,7 @@ import TextEditor from '@/components/TextEditor.vue'
 import UserProfileLink from './UserProfileLink.vue'
 import DiscussionMeta from './DiscussionMeta.vue'
 import DiscussionBreadcrumbs from './DiscussionBreadcrumbs.vue'
+import RevisionsDialog from './RevisionsDialog.vue'
 import { focus } from '@/directives'
 import { copyToClipboard } from '@/utils'
 import { activeTeams } from '@/data/teams'
@@ -281,6 +288,7 @@ export default {
     Tooltip,
     DiscussionMeta,
     DiscussionBreadcrumbs,
+    RevisionsDialog,
   },
   resources: {
     discussion() {
@@ -340,6 +348,7 @@ export default {
         show: false,
         project: null,
       },
+      showRevisionsDialog: false,
       showNavbar: false,
     }
   },
@@ -416,6 +425,11 @@ export default {
           handler: () => {
             this.editingTitle = true
           },
+        },
+        {
+          label: 'Revisions',
+          icon: 'rotate-ccw',
+          handler: () => (this.showRevisionsDialog = true),
         },
         {
           label: 'Copy link',

@@ -16,6 +16,7 @@
     "frappe-ui": "^0.0.102",
     "fuse.js": "^6.6.2",
     "gemoji": "^7.1.0",
+    "htmldiff-js": "^1.0.5",
     "motion": "^10.14.2",
     "vue": "^3.2.26",
     "vue-router": "^4.0.12",
