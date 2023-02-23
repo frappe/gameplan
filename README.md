@@ -71,6 +71,11 @@ Wait for sometime until the setup script creates a site. After that you can
 access `http://localhost:8000` in your browser and Gameplan's login screen
 should show up.
 
+Use the following credentials to log in:
+
+- Username: `alex@example.com`
+- Password: `123`
+
 ### Frappe Bench
 
 Currently, this app depends on the `develop` branch of [frappe](https://github.com/frappe/frappe).

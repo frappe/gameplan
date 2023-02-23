@@ -34,6 +34,7 @@ bench --site gameplan.localhost install-app gameplan
 bench --site gameplan.localhost set-config developer_mode 1
 bench --site gameplan.localhost clear-cache
 bench --site gameplan.localhost set-config mute_emails 1
+bench --site gameplan.localhost add-user alex@example.com --first-name Alex --last-name Scott --password 123 --user-type 'System User' --add-role 'Gameplan Admin'
 bench use gameplan.localhost
 
 bench start
