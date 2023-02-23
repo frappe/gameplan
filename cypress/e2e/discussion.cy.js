@@ -84,7 +84,7 @@ describe('Discussion', () => {
 
     // move to another project
     cy.iconButton('Discussion Options').click()
-    cy.button('Move to another project').click()
+    cy.button('Move to...').click()
     cy.button('Select a project').click()
     cy.get('li:contains("ERPNext")').click()
     cy.button('Move to ERPNext').click()
