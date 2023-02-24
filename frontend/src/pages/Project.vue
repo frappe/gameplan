@@ -41,6 +41,24 @@
             >
               <FeatherIcon name="lock" class="h-4 w-4" />
             </Tooltip>
+            <Button
+              appearance="minimal"
+              icon-left="check"
+              v-if="project.doc.is_followed"
+              @click="project.unfollow.submit()"
+              :loading="project.unfollow.loading"
+            >
+              Following
+            </Button>
+            <Button
+              appearance="minimal"
+              icon-left="plus"
+              v-else
+              @click="project.follow.submit()"
+              :loading="project.follow.loading"
+            >
+              Follow
+            </Button>
             <Dropdown
               v-if="$user().isNotGuest"
               placement="left"
@@ -55,13 +73,6 @@
                   icon: 'edit',
                   handler: () => (projectEditDialog.show = true),
                   condition: () => !project.doc.archived_at,
-                },
-                {
-                  label: 'Pin to home',
-                  icon: PinIcon,
-                  handler: () => pinProject(),
-                  condition: () =>
-                    !project.doc.is_pinned && !project.doc.archived_at,
                 },
                 {
                   label: 'Manage Guests',

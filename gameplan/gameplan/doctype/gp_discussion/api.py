@@ -13,6 +13,7 @@ def get_discussions(filters=None, limit_start=None, limit_page_length=None):
 		frappe.throw('Insufficient Permission for GP Discussion', frappe.PermissionError)
 
 	filters = frappe.parse_json(filters) if filters else None
+	feed_type = filters.pop('feed_type', None) if filters else None
 	Discussion = frappe.qb.DocType('GP Discussion')
 	Visit = frappe.qb.DocType('GP Discussion Visit')
 	Project = frappe.qb.DocType('GP Project')
@@ -49,6 +50,14 @@ def get_discussions(filters=None, limit_start=None, limit_page_length=None):
 		# order by pinned_at desc if project is selected
 		if filters.get('project'):
 			query = query.orderby(Discussion.pinned_at, order=frappe._dict(value="desc"))
+
+	if feed_type == 'unread':
+		query = query.where((Visit.last_visit < Discussion.last_post_at) | (Visit.last_visit.isnull()))
+
+	if feed_type == 'following':
+		FollowedProject = frappe.qb.DocType('GP Followed Project')
+		followed_projects = FollowedProject.select(FollowedProject.project).where(FollowedProject.user == frappe.session.user)
+		query = query.where(Discussion.project.isin(followed_projects))
 
 	# default order by last_post_at desc
 	query = query.orderby(Discussion.last_post_at, order=frappe._dict(value="desc"))

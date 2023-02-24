@@ -149,6 +149,7 @@ import PinIcon from '~icons/lucide/pin'
 export default {
   name: 'DiscussionList',
   props: ['filters', 'routeName'],
+  expose: ['discussions'],
   components: {
     TextEditor,
     Tooltip,
@@ -192,6 +193,11 @@ export default {
         `First Post: ${this.$dayjs(d.creation)}`,
         `Latest Post: ${this.$dayjs(d.last_post_at)}`,
       ].join('\n')
+    },
+  },
+  computed: {
+    discussions() {
+      return this.$resources.discussions
     },
   },
 }

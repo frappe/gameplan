@@ -24,6 +24,8 @@ export default {
           inviteGuest: 'invite_guest',
           removeGuest: 'remove_guest',
           trackVisit: 'track_visit',
+          follow: 'follow',
+          unfollow: 'unfollow',
         },
         onSuccess() {
           this.$resources.project.trackVisit.submit()

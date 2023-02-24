@@ -14,9 +14,17 @@ const routes = [
     redirect: defaultRoute,
   },
   {
-    path: '/home',
+    path: '/home/:feedType?',
     name: 'Home',
     component: () => import('@/pages/Home.vue'),
+    props: true,
+    beforeEnter: (to, from, next) => {
+      if (!to.params.feedType) {
+        next({ name: 'Home', params: { feedType: 'recent' } })
+      } else {
+        next()
+      }
+    },
   },
   {
     path: '/login',
