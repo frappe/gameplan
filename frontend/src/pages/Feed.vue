@@ -1,5 +1,7 @@
 <template>
-  <header class="sticky top-0 z-10 border-b bg-white py-3 px-4 sm:px-5">
+  <header
+    class="fixed top-0 z-10 h-14 w-full border-b bg-white py-3 px-4 sm:sticky sm:px-5"
+  >
     <div class="flex items-center justify-between">
       <div class="ml-3 flex">
         <h1 class="mr-4 text-2xl font-semibold">Home</h1>
@@ -29,7 +31,13 @@
       </button>
     </div>
   </header>
-  <div class="mt-1">
+  <div
+    class="fixed top-14 flex w-full justify-center py-2 text-gray-600"
+    v-if="swipeLoading"
+  >
+    <LoadingIndicator class="h-4 w-4" />
+  </div>
+  <div class="mt-14 pt-1 sm:mt-0">
     <div
       class="mx-auto -mt-1 flex max-w-4xl items-center justify-between px-2 pt-2 pb-2 sm:px-0 sm:px-5"
       v-if="feedType === 'following'"
@@ -132,21 +140,24 @@ import Breadcrumbs from '@/components/Breadcrumbs.vue'
 import DiscussionList from '@/components/DiscussionList.vue'
 import { activeTeams } from '@/data/teams'
 import { getTeamProjects } from '@/data/projects'
-import { Autocomplete } from 'frappe-ui'
+import { Autocomplete, LoadingIndicator } from 'frappe-ui'
 import { getPlatform } from '@/utils'
 import { showCommandPalette } from '@/components/CommandPalette.vue'
+import { useSwipe } from '@/utils/composables'
+import { getScrollContainer } from '@/utils/scrollContainer'
 
 let projectFollowId = {}
 
 export default {
   name: 'Home',
   props: ['feedType'],
-  components: { Breadcrumbs, DiscussionList, Autocomplete },
+  components: { Breadcrumbs, DiscussionList, Autocomplete, LoadingIndicator },
   data() {
     return {
       followProjectsDialog: false,
       projects: [],
       selectedProject: null,
+      swipeLoading: false,
       feedOptions: [
         {
           label: 'Recent',
@@ -163,6 +174,10 @@ export default {
       ],
     }
   },
+  setup() {
+    const swipe = useSwipe()
+    return { swipe }
+  },
   watch: {
     selectedProject(value) {
       if (!value) return
@@ -170,6 +185,21 @@ export default {
         this.projects.push(value)
       }
       this.selectedProject = null
+    },
+    swipe: {
+      handler(d) {
+        if (
+          getScrollContainer().scrollTop === 0 &&
+          d.direction == 'down' &&
+          d.diffY < -200
+        ) {
+          this.swipeLoading = true
+          this.$refs.discussionList.discussions.reload().then(() => {
+            this.swipeLoading = false
+          })
+        }
+      },
+      deep: true,
     },
   },
   resources: {
