@@ -54,7 +54,11 @@
         </div>
       </div>
 
-      <Button icon-left="plus" @click="followProjectsDialog = true">
+      <Button
+        class="shrink-0"
+        icon-left="plus"
+        @click="followProjectsDialog = true"
+      >
         Follow Projects
       </Button>
     </div>
