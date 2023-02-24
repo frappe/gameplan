@@ -114,7 +114,7 @@
       </div>
       <div class="ml-7 mr-3 h-px border-t border-gray-200"></div>
     </router-link>
-    <div class="pb-40">
+    <div class="px-2 pb-40 sm:px-0">
       <div
         v-if="
           !$resources.discussions.list.loading &&

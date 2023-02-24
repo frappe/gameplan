@@ -41,24 +41,26 @@
             >
               <FeatherIcon name="lock" class="h-4 w-4" />
             </Tooltip>
-            <Button
-              appearance="minimal"
-              icon-left="check"
-              v-if="project.doc.is_followed"
-              @click="project.unfollow.submit()"
-              :loading="project.unfollow.loading"
-            >
-              Following
-            </Button>
-            <Button
-              appearance="minimal"
-              icon-left="plus"
-              v-else
-              @click="project.follow.submit()"
-              :loading="project.follow.loading"
-            >
-              Follow
-            </Button>
+            <template v-if="!isMobile">
+              <Button
+                appearance="minimal"
+                icon-left="check"
+                v-if="project.doc.is_followed"
+                @click="project.unfollow.submit()"
+                :loading="project.unfollow.loading"
+              >
+                Following
+              </Button>
+              <Button
+                v-else
+                appearance="minimal"
+                icon-left="plus"
+                @click="project.follow.submit()"
+                :loading="project.follow.loading"
+              >
+                Follow
+              </Button>
+            </template>
             <Dropdown
               v-if="$user().isNotGuest"
               placement="left"
@@ -73,6 +75,18 @@
                   icon: 'edit',
                   handler: () => (projectEditDialog.show = true),
                   condition: () => !project.doc.archived_at,
+                },
+                {
+                  label: 'Follow',
+                  icon: 'plus',
+                  handler: () => project.follow.submit(),
+                  condition: () => isMobile && !project.doc.is_followed,
+                },
+                {
+                  label: 'Following',
+                  icon: 'check',
+                  handler: () => project.unfollow.submit(),
+                  condition: () => isMobile && project.doc.is_followed,
                 },
                 {
                   label: 'Manage Guests',
@@ -214,6 +228,7 @@
   </div>
 </template>
 <script>
+import { computed } from 'vue'
 import {
   Autocomplete,
   Dropdown,
@@ -229,6 +244,7 @@ import InviteGuestDialog from '@/components/InviteGuestDialog.vue'
 import { projects, getTeamProjects } from '@/data/projects'
 import { teams } from '@/data/teams'
 import PinIcon from '~icons/lucide/pin'
+import { useScreenSize } from '@/utils/composables'
 
 export default {
   name: 'Project',
@@ -245,8 +261,11 @@ export default {
     InviteGuestDialog,
   },
   setup() {
+    const size = useScreenSize()
+    const isMobile = computed(() => size.width < 640)
     return {
       PinIcon,
+      isMobile,
     }
   },
   data() {

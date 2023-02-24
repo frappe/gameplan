@@ -31,7 +31,7 @@
   </header>
   <div class="mt-1">
     <div
-      class="mx-auto -mt-1 flex max-w-4xl items-center justify-between pt-2 pb-2 sm:px-5"
+      class="mx-auto -mt-1 flex max-w-4xl items-center justify-between px-2 pt-2 pb-2 sm:px-0 sm:px-5"
       v-if="feedType === 'following'"
     >
       <div class="text-base text-gray-700">
