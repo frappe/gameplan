@@ -158,7 +158,10 @@ export default {
       }
       let oldHtml = change[1]
       let newHtml = change[2]
-      return HtmlDiff.execute(oldHtml, newHtml)
+
+      // because of commonjs and esm shenanigans
+      let makeDiff = HtmlDiff.default?.execute || HtmlDiff.execute
+      return makeDiff(oldHtml, newHtml)
     },
     showDialog: {
       get() {
