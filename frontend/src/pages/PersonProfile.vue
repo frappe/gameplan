@@ -28,10 +28,7 @@
             imagePreview.show = true
           }
         "
-        class="rounded-full bg-white outline-none focus:ring"
-        :class="{
-          'hover:opacity-80': $isSessionUser(profile.user),
-        }"
+        class="rounded-full bg-white outline-none hover:brightness-110 focus:ring"
       >
         <UserImage
           class="h-32 w-32 rounded-full border-4 border-white object-cover"
