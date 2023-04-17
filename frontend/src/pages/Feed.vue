@@ -70,12 +70,15 @@
         Follow Projects
       </Button>
     </div>
-    <DiscussionList
-      ref="discussionList"
-      class="mx-auto max-w-4xl sm:px-5"
-      routeName="ProjectDiscussion"
-      :filters="filters"
-    />
+    <KeepAlive>
+      <DiscussionList
+        ref="discussionList"
+        class="mx-auto max-w-4xl sm:px-5"
+        routeName="ProjectDiscussion"
+        :filters="filters"
+        :key="JSON.stringify(filters)"
+      />
+    </KeepAlive>
     <Dialog
       v-model="followProjectsDialog"
       :options="{ title: 'Select projects to follow' }"
