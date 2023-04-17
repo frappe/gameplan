@@ -12,6 +12,7 @@ export let users = createResource({
     for (let user of users) {
       user.isGuest = user.role === 'Gameplan Guest'
       user.isNotGuest = !user.isGuest
+      user.isDisabled = user.enabled === 0
       usersByName[user.name] = user
     }
     return users

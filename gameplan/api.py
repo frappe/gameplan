@@ -13,21 +13,20 @@ def get_user_info(user=None):
 	if frappe.session.user == "Guest":
 		frappe.throw("Authentication failed", exc=frappe.AuthenticationError)
 
-	filters = [
-		['User', 'enabled', '=', 1],
-		["Has Role", "role", "like", "Gameplan %"]
-	]
+	filters = {
+		'roles.role': ['like', 'Gameplan %']
+	}
 	if user:
-		filters.append(["User", "name", "=", user])
-	users = frappe.db.get_all(
+		filters['name'] = user
+
+	users = frappe.qb.get_query(
 		"User",
 		filters=filters,
-		fields=["name", "email", "user_image", "full_name", "user_type"],
+		fields=["name", "email", "enabled", "user_image", "full_name", "user_type"],
 		order_by="full_name asc",
-		distinct=True
-	)
-	# bug: order_by isn't applied when distinct=True
-	users.sort(key=lambda x: x.full_name)
+		distinct=True,
+	).run(as_dict=1)
+
 	roles = frappe.db.get_all('Has Role',
 		filters={'parenttype': 'User'},
 		fields=['role', 'parent']
