@@ -200,5 +200,8 @@ export default {
       return this.$resources.discussions
     },
   },
+  activated() {
+    this.$resources.discussions.reload()
+  },
 }
 </script>
