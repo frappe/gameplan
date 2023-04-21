@@ -69,32 +69,3 @@ def get_discussions(filters=None, limit_start=None, limit_page_length=None):
 		query = query.where(Discussion.project.isin(project_list))
 
 	return query.run(as_dict=1)
-
-
-
-def highlight_matched_words(text, keywords, strip_content=False):
-	words = remove_falsy_values(text.split(' '))
-	matches = []
-	for i, word in enumerate(words):
-		if word.lower() in keywords:
-			matches.append(i)
-			words[i] = f'<mark class="bg-yellow-100">{word}</mark>'
-
-	if matches:
-		if strip_content:
-			min_match = min(matches)
-			max_match = min_match + 8
-			left = min_match - 2
-			right = max_match + 2
-			left = left if left >= 0 else 0
-			right = right if right < len(words) else len(words) - 1
-			words = words[left:right]
-	else:
-		if strip_content:
-			words = []
-
-	return ' '.join(words)
-
-
-def remove_falsy_values(items):
-	return [item for item in items if item]
