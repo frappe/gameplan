@@ -157,17 +157,22 @@ def get_unread_items():
 		frappe.qb.from_(Discussion)
 			.select(Discussion.team, Count(Discussion.team).as_("count"))
 			.left_join(Visit)
-			.on((Visit.discussion == Discussion.name))
-			.where((Visit.user == frappe.session.user) & (Visit.last_visit.isnull() | (Visit.last_visit < Discussion.last_post_at)))
+			.on((Visit.discussion == Discussion.name) & (Visit.user == frappe.session.user))
+			.where((Visit.last_visit.isnull()) | (Visit.last_visit < Discussion.last_post_at))
 			.groupby(Discussion.team)
 	)
+
 	is_guest = gameplan.is_guest()
 	if is_guest:
 		GuestAccess = frappe.qb.DocType('GP Guest Access')
 		project_list = GuestAccess.select(GuestAccess.project).where(GuestAccess.user == frappe.session.user)
 		query = query.where(Discussion.project.isin(project_list))
 
-	data = query.run(as_dict=1)
+	# pypika doesn't have any API for "FORCE INDEX FOR JOIN"
+	sql = query.get_sql()
+	sql = sql.replace('LEFT JOIN `tabGP Discussion Visit`', 'LEFT JOIN `tabGP Discussion Visit` FORCE INDEX FOR JOIN(discussion_user_index)')
+	data = frappe.db.sql(sql, as_dict=1, debug=1)
+
 	out = {}
 	for d in data:
 		out[d.team] = d.count
