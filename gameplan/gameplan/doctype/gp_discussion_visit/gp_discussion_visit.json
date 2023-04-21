@@ -26,8 +26,7 @@
    "in_list_view": 1,
    "label": "Discussion",
    "options": "GP Discussion",
-   "reqd": 1,
-   "search_index": 1
+   "reqd": 1
   },
   {
    "fieldname": "last_visit",
@@ -37,7 +36,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-04-21 14:25:33.188735",
+ "modified": "2023-04-21 16:19:55.705051",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "GP Discussion Visit",

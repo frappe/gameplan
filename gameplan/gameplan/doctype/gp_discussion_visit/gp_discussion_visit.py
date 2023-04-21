@@ -12,3 +12,6 @@ class GPDiscussionVisit(Document):
 	def on_change(self):
 		if self.has_value_changed('last_visit'):
 			gameplan.refetch_resource('UnreadItems', user=self.user)
+
+def on_doctype_update():
+	frappe.db.add_index('GP Discussion Visit', ['discussion', 'user'])
