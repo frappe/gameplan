@@ -171,7 +171,7 @@ def get_unread_items():
 	# pypika doesn't have any API for "FORCE INDEX FOR JOIN"
 	sql = query.get_sql()
 	sql = sql.replace('LEFT JOIN `tabGP Discussion Visit`', 'LEFT JOIN `tabGP Discussion Visit` FORCE INDEX FOR JOIN(discussion_user_index)')
-	data = frappe.db.sql(sql, as_dict=1, debug=1)
+	data = frappe.db.sql(sql, as_dict=1)
 
 	out = {}
 	for d in data:
