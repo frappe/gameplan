@@ -151,6 +151,17 @@ const routes = [
                 component: () => import('@/pages/ProjectTaskDetail.vue'),
                 props: true,
               },
+              {
+                name: 'ProjectPages',
+                path: 'pages',
+                component: () => import('@/pages/ProjectPages.vue'),
+              },
+              {
+                name: 'ProjectPage',
+                path: 'pages/:pageId',
+                component: () => import('@/pages/ProjectPage.vue'),
+                props: true,
+              },
             ],
           },
           {

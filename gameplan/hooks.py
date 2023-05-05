@@ -6,6 +6,9 @@ app_publisher = "Frappe Technologies Pvt Ltd"
 app_description = "Team discussion and collaboration tool"
 app_email = "faris@frappe.io"
 app_license = "AGPLv3"
+app_icon_url = "/assets/gameplan/manifest/favicon-180.png"
+app_icon_title = "Gameplan"
+app_icon_route = "/g"
 
 # Includes in <head>
 # ------------------
@@ -176,6 +179,7 @@ scheduler_events = {
 #
 override_whitelisted_methods = {
 	"frappe.client.get_list": "gameplan.extends.client.get_list",
+	"frappe.client.bulk_insert": "gameplan.extends.client.bulk_insert",
 }
 #
 # each overriding function accepts a `data` argument;
