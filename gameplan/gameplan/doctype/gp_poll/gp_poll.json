@@ -1,0 +1,94 @@
+{
+ "actions": [],
+ "autoname": "autoincrement",
+ "creation": "2023-05-04 19:01:53.072100",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "title",
+  "options",
+  "multiple_answers",
+  "anonymous",
+  "discussion",
+  "votes",
+  "total_votes",
+  "end_time"
+ ],
+ "fields": [
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Title",
+   "reqd": 1
+  },
+  {
+   "fieldname": "options",
+   "fieldtype": "Table",
+   "label": "Options",
+   "options": "GP Poll Option",
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "multiple_answers",
+   "fieldtype": "Check",
+   "label": "Multiple Answers"
+  },
+  {
+   "default": "0",
+   "fieldname": "anonymous",
+   "fieldtype": "Check",
+   "label": "Anonymous"
+  },
+  {
+   "fieldname": "discussion",
+   "fieldtype": "Link",
+   "label": "Discussion",
+   "options": "GP Discussion"
+  },
+  {
+   "fieldname": "votes",
+   "fieldtype": "Table",
+   "label": "Votes",
+   "options": "GP Poll Vote"
+  },
+  {
+   "fieldname": "total_votes",
+   "fieldtype": "Int",
+   "label": "Total Votes"
+  },
+  {
+   "fieldname": "end_time",
+   "fieldtype": "Datetime",
+   "label": "End Time"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2023-05-05 18:08:12.645011",
+ "modified_by": "Administrator",
+ "module": "Gameplan",
+ "name": "GP Poll",
+ "naming_rule": "Autoincrement",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

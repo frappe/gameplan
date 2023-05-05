@@ -92,15 +92,20 @@
               </div>
             </div>
             <div class="ml-auto text-right">
-              <div
-                class="inline-flex shrink-0 items-center text-base leading-6"
-                :class="[
-                  d.unread ? 'text-gray-900' : 'text-gray-600',
-                  d.comments_count ? '' : 'invisible',
-                ]"
-              >
-                {{ d.comments_count || 0 }}
-                <FeatherIcon name="message-circle" class="ml-1 h-4 w-4" />
+              <div class="flex items-center space-x-3">
+                <Tooltip text="Ongoing poll" v-if="d.ongoing_polls.length">
+                  <FeatherIcon name="bar-chart-2" class="h-4 w-4 -rotate-90" />
+                </Tooltip>
+                <div
+                  class="inline-flex shrink-0 items-center text-base leading-6"
+                  :class="[
+                    d.unread ? 'text-gray-900' : 'text-gray-600',
+                    d.comments_count ? '' : 'invisible',
+                  ]"
+                >
+                  {{ d.comments_count || 0 }}
+                  <FeatherIcon name="message-circle" class="ml-1 h-4 w-4" />
+                </div>
               </div>
               <div
                 class="mt-0.5 shrink-0 whitespace-nowrap text-sm text-gray-600 md:hidden"

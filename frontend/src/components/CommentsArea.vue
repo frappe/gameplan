@@ -20,7 +20,7 @@
       </div>
     </div>
     <div class="px-1" :style="{ paddingBottom: `${addCommentHeight + 80}px` }">
-      <template v-for="item in timelineItems" :key="item.name">
+      <template v-for="item in timelineItems" :key="item.doctype + item.name">
         <div
           v-if="newMessagesFrom && newMessagesFrom == item.name"
           class="relative my-4"
@@ -49,6 +49,12 @@
           v-else-if="item.doctype == 'GP Activity'"
           :activity="item"
         />
+        <Poll
+          class="border-t"
+          v-else-if="item.doctype == 'GP Poll'"
+          :poll="item"
+          :readOnlyMode="readOnlyMode"
+        />
       </template>
     </div>
 
@@ -71,14 +77,20 @@
         @keydown.ctrl.enter.capture.stop="submitComment"
         @keydown.meta.enter.capture.stop="submitComment"
       >
-        <div class="mb-4 flex items-center space-x-2">
+        <div class="mb-4 flex items-center">
           <UserAvatar :user="$user().name" size="sm" />
-          <span class="text-base font-medium text-gray-900">
+          <span class="ml-2 text-base font-medium text-gray-900">
             {{ $user().full_name }}
           </span>
+          <TabButtons
+            class="ml-auto"
+            :buttons="[{ label: 'Comment' }, { label: 'Poll' }]"
+            v-model="newCommentType"
+          />
         </div>
         <CommentEditor
           ref="newCommentEditor"
+          v-show="newCommentType == 'Comment'"
           :value="newComment"
           @change="onNewCommentChange"
           :submitButtonProps="{
@@ -92,16 +104,29 @@
           :editable="showCommentBox"
           placeholder="Add a comment"
         />
+        <PollEditor
+          v-show="newCommentType == 'Poll'"
+          v-model:poll="newPoll"
+          :submitButtonProps="{
+            onClick: submitPoll,
+            loading: $resources.polls.insert.loading,
+          }"
+          :discardButtonProps="{
+            onClick: discardPoll,
+          }"
+        />
       </div>
     </div>
   </div>
 </template>
 <script>
 import { nextTick } from 'vue'
-import { getScrollParent } from '@/utils'
 import CommentEditor from '@/components/CommentEditor.vue'
 import Comment from './Comment.vue'
 import Activity from './Activity.vue'
+import TabButtons from './TabButtons.vue'
+import PollEditor from './PollEditor.vue'
+import Poll from './Poll.vue'
 
 export default {
   name: 'CommentsArea',
@@ -116,13 +141,22 @@ export default {
     CommentEditor,
     Comment,
     Activity,
+    TabButtons,
+    PollEditor,
+    Poll,
   },
   data() {
     let draftComment = localStorage.getItem(this.draftCommentKey())
     return {
       commentMap: {},
       showCommentBox: false,
+      newCommentType: 'Comment',
       newComment: draftComment || '',
+      newPoll: {
+        title: '',
+        multiple_answers: false,
+        options: [{ title: '', idx: 1 }],
+      },
       newMessagesFrom: this.newCommentsFrom,
       highlightedComment: '',
       addCommentHeight: 0,
@@ -253,6 +287,31 @@ export default {
         },
       }
     },
+    polls() {
+      return {
+        type: 'list',
+        doctype: 'GP Poll',
+        fields: [
+          'name',
+          'title',
+          'multiple_answers',
+          'creation',
+          'owner',
+          'end_time',
+          { options: ['name', 'title', 'idx', 'percentage'] },
+          { votes: ['title', 'user'] },
+        ],
+        orderBy: 'creation asc',
+        auto: true,
+        pageLength: 99999,
+        transform(data) {
+          for (let d of data) {
+            d.doctype = 'GP Poll'
+          }
+          return data
+        },
+      }
+    },
   },
   methods: {
     submitComment() {
@@ -371,7 +430,29 @@ export default {
     resetCommentState() {
       this.newComment = ''
       this.showCommentBox = false
+      this.newPoll = {
+        title: '',
+        multiple_answers: false,
+        options: [{ title: '', idx: 1 }],
+      }
       localStorage.removeItem(this.draftCommentKey())
+    },
+    submitPoll() {
+      if (this.doctype !== 'GP Discussion') return
+      return this.$resources.polls.insert.submit(
+        {
+          ...this.newPoll,
+          discussion: this.name,
+        },
+        {
+          onSuccess() {
+            this.resetCommentState()
+          },
+        }
+      )
+    },
+    discardPoll() {
+      this.resetCommentState()
     },
     draftCommentKey() {
       return `draft-comment-${this.doctype}-${this.name}`
@@ -398,6 +479,9 @@ export default {
       }
       if (this.$resources.activities.data?.length) {
         items = items.concat(this.$resources.activities.data)
+      }
+      if (this.$resources.polls.data?.length) {
+        items = items.concat(this.$resources.polls.data)
       }
       return items.sort((a, b) => {
         return new Date(a.creation) - new Date(b.creation)

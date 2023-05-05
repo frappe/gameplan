@@ -68,4 +68,15 @@ def get_discussions(filters=None, limit_start=None, limit_page_length=None):
 		project_list = GuestAccess.select(GuestAccess.project).where(GuestAccess.user == frappe.session.user)
 		query = query.where(Discussion.project.isin(project_list))
 
-	return query.run(as_dict=1)
+	discussions = query.run(as_dict=1)
+	Poll = frappe.qb.DocType('GP Poll')
+	ongoing_polls = (
+		frappe.qb.from_(Poll).select(Poll.name, Poll.owner, Poll.discussion)
+		.where(Poll.end_time.isnull() | (Poll.end_time > frappe.utils.now()))
+		.where(Poll.discussion.isin([d.name for d in discussions]))
+		.orderby(Poll.creation, order=frappe._dict(value="asc"))
+		.run(as_dict=1)
+	)
+	for discussion in discussions:
+		discussion["ongoing_polls"] = [p for p in ongoing_polls if str(p.discussion) == str(discussion.name)]
+	return discussions

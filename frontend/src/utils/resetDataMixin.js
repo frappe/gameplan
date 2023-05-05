@@ -1,7 +1,7 @@
 export default {
   methods: {
     $resetData(resetKeys) {
-      let data = this.$options.data()
+      let data = this.$options.data.call(this)
       if (!resetKeys) {
         resetKeys = Object.keys(data)
       }
