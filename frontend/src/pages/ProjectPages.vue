@@ -33,7 +33,13 @@
         <Button icon-left="plus" @click="newPage">New Page</Button>
       </div>
     </div>
-    <div class="mt-4 grid grid-cols-1 gap-5 md:grid-cols-3 lg:grid-cols-4">
+    <div class="mt-5 grid grid-cols-1 gap-5 md:grid-cols-3 lg:grid-cols-4">
+      <div
+        class="text-base text-gray-600"
+        v-if="!$resources.pages.data?.length"
+      >
+        No pages
+      </div>
       <div class="relative" v-for="d in $resources.pages.data" :key="d.name">
         <div class="absolute top-0 right-0 p-3">
           <Dropdown
