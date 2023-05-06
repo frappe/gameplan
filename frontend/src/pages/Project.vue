@@ -333,6 +333,19 @@ export default {
             'ProjectTaskNew',
           ].includes(this.$route.name),
         },
+        {
+          name: 'Pages',
+          route: {
+            name: 'ProjectPages',
+            params: {
+              teamId: this.team.doc.name,
+              projectId: this.project.name,
+            },
+          },
+          isActive: ['ProjectPages', 'ProjectPage', 'ProjectPageNew'].includes(
+            this.$route.name
+          ),
+        },
       ]
     },
   },

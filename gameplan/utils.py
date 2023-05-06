@@ -4,6 +4,7 @@
 from __future__ import unicode_literals
 import frappe
 import inspect
+import re
 from functools import wraps
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
@@ -56,3 +57,14 @@ def validate_type(func):
 					raise TypeError(f"{func.__name__}: Argument {arg_name} must be of type {annotated_types[arg_name]}")
 		return func(*args, **kwargs)
 	return wrapper
+
+def url_safe_slug(text):
+	if not text:
+		return text
+	slug = re.sub(r'[^A-Za-z0-9\s-]+', '', text.lower())
+	slug = slug.replace('\n', ' ')
+	slug = slug.split(' ')
+	slug = [part for part in slug if part]
+	slug = '-'.join(slug)
+	slug = re.sub('[-]+', '-', slug)
+	return slug
