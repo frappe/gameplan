@@ -8,7 +8,7 @@ from gameplan.gameplan.doctype.gp_notification.gp_notification import GPNotifica
 from gameplan.mixins.activity import HasActivity
 from gameplan.mixins.mentions import HasMentions
 from gameplan.mixins.reactions import HasReactions
-from gameplan.utils import remove_empty_trailing_paragraphs
+from gameplan.utils import remove_empty_trailing_paragraphs, url_safe_slug
 
 class GPDiscussion(HasActivity, HasMentions, HasReactions, Document):
 	on_delete_cascade = ['GP Comment', 'GP Discussion Visit']
@@ -55,16 +55,7 @@ class GPDiscussion(HasActivity, HasMentions, HasReactions, Document):
 		self.update_slug()
 
 	def update_slug(self):
-		# remove special characters from title and set as slug
-		if not self.title:
-			return
-		slug = re.sub(r'[^A-Za-z0-9\s-]+', '', self.title.lower())
-		slug = slug.replace('\n', ' ')
-		slug = slug.split(' ')
-		slug = [part for part in slug if part]
-		slug = '-'.join(slug)
-		slug = re.sub('[-]+', '-', slug)
-		self.slug = slug
+		self.slug = url_safe_slug(self.title)
 
 	def log_title_update(self):
 		if self.has_value_changed('title') and self.get_doc_before_save():

@@ -6,44 +6,34 @@
         <Dropdown
           :options="[
             {
-              label: 'Delete',
-              icon: 'trash',
-              handler: () => {
-                $dialog({
-                  title: 'Delete Page',
-                  message: 'Are you sure you want to delete this page?',
-                  actions: [
-                    {
-                      label: 'Delete',
-                      handler: ({ close }) => {
-                        close()
-                        return this.$resources.pages.delete.submit(d.name)
-                      },
-                      appearance: 'danger',
-                    },
-                    {
-                      label: 'Cancel',
-                    },
-                  ],
-                })
-              },
+              label: 'Page Title',
+              handler: () => (orderBy = 'title asc'),
+            },
+            {
+              label: 'Date Updated',
+              handler: () => (orderBy = 'modified desc'),
+            },
+            {
+              label: 'Date Created',
+              handler: () => (orderBy = 'creation desc'),
             },
           ]"
-          placement="right"
+          placement="center"
         >
           <Button>
-            <span class="inline-flex items-center">
+            <div class="flex items-center">
+              <ArrowDownUp
+                class="mr-1.5 h-4 w-4 leading-none"
+                :stroke-width="1.5"
+              />
               <span> Sort </span>
-            </span>
+            </div>
           </Button>
         </Dropdown>
         <Button icon-left="plus" @click="newPage">New Page</Button>
       </div>
     </div>
-    <!-- <div>
-      {{ $resources.pages.data }}
-    </div> -->
-    <div class="mt-4 grid grid-cols-4 gap-5">
+    <div class="mt-4 grid grid-cols-1 gap-5 md:grid-cols-3 lg:grid-cols-4">
       <div class="relative" v-for="d in $resources.pages.data" :key="d.name">
         <div class="absolute top-0 right-0 p-3">
           <Dropdown
@@ -80,7 +70,12 @@
             placement="right"
           />
         </div>
-        <router-link :to="{ name: 'ProjectPage', params: { pageId: d.name } }">
+        <router-link
+          :to="{
+            name: 'ProjectPage',
+            params: { pageId: d.name, slug: d.slug },
+          }"
+        >
           <section
             class="aspect-[37/50] cursor-pointer overflow-hidden rounded-xl border border-gray-50 p-3 shadow-md hover:shadow-lg"
           >
@@ -90,7 +85,7 @@
             </div>
             <hr class="my-2 border-gray-100" />
             <div
-              class="prose prose-sm pointer-events-none w-[250%] origin-top-left scale-[.39] prose-p:my-1"
+              class="prose prose-sm pointer-events-none w-[200%] origin-top-left scale-[.55] prose-p:my-1 md:w-[250%] md:scale-[.39]"
               v-html="d.content"
             />
           </section>
@@ -107,14 +102,20 @@ export default {
   name: 'ProjectPages',
   props: ['project'],
   components: { Dropdown, ArrowDownUp },
+  data() {
+    return {
+      orderBy: 'modified desc',
+    }
+  },
   resources: {
     pages() {
       return {
         type: 'list',
+        cache: ['Project Pages', this.project.doc.name],
         doctype: 'GP Page',
-        fields: ['name', 'creation', 'title', 'content', 'modified'],
+        fields: ['name', 'creation', 'title', 'content', 'slug', 'modified'],
         filters: { project: this.project.name },
-        orderBy: 'modified desc',
+        orderBy: this.orderBy,
         auto: true,
       }
     },

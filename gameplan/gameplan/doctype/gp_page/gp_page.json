@@ -9,7 +9,8 @@
  "field_order": [
   "title",
   "content",
-  "project"
+  "project",
+  "slug"
  ],
  "fields": [
   {
@@ -27,11 +28,17 @@
    "fieldtype": "Link",
    "label": "Project",
    "options": "GP Project"
+  },
+  {
+   "fieldname": "slug",
+   "fieldtype": "Data",
+   "label": "Slug",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-05-06 01:07:24.257799",
+ "modified": "2023-05-06 15:15:46.103952",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "GP Page",

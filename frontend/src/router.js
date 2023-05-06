@@ -158,7 +158,7 @@ const routes = [
               },
               {
                 name: 'ProjectPage',
-                path: 'pages/:pageId',
+                path: 'pages/:pageId/:slug?',
                 component: () => import('@/pages/ProjectPage.vue'),
                 props: true,
               },

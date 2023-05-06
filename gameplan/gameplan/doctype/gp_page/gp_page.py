@@ -3,7 +3,9 @@
 
 # import frappe
 from frappe.model.document import Document
+from gameplan.utils import url_safe_slug
 
 
 class GPPage(Document):
-	pass
+	def before_save(self):
+		self.slug = url_safe_slug(self.title)
