@@ -178,8 +178,7 @@ scheduler_events = {
 # ------------------------------
 #
 override_whitelisted_methods = {
-	"frappe.client.get_list": "gameplan.extends.client.get_list",
-	"frappe.client.bulk_insert": "gameplan.extends.client.bulk_insert",
+	"frappe.client.get_list": "gameplan.extends.client.get_list"
 }
 #
 # each overriding function accepts a `data` argument;
