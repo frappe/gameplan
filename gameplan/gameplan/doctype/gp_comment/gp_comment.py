@@ -33,6 +33,7 @@ class GPComment(HasMentions, HasReactions, Document):
 			reference_doc.set("comments_count", reference_doc.comments_count + 1)
 		if reference_doc.doctype == 'GP Discussion':
 			reference_doc.update_participants_count()
+			reference_doc.track_visit()
 		reference_doc.save(ignore_permissions=True)
 
 	def on_trash(self):

@@ -11,10 +11,11 @@
   "options",
   "multiple_answers",
   "anonymous",
-  "discussion",
   "votes",
   "total_votes",
-  "end_time"
+  "stopped_at",
+  "discussion",
+  "reactions"
  ],
  "fields": [
   {
@@ -61,14 +62,20 @@
    "label": "Total Votes"
   },
   {
-   "fieldname": "end_time",
+   "fieldname": "stopped_at",
    "fieldtype": "Datetime",
-   "label": "End Time"
+   "label": "Stopped At"
+  },
+  {
+   "fieldname": "reactions",
+   "fieldtype": "Table",
+   "label": "Reactions",
+   "options": "GP Reaction"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-05-05 18:08:12.645011",
+ "modified": "2023-05-10 17:27:38.094957",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "GP Poll",
@@ -84,6 +91,40 @@
    "read": 1,
    "report": 1,
    "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Gameplan Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Gameplan Member",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Gameplan Guest",
    "share": 1,
    "write": 1
   }

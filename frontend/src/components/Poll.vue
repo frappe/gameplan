@@ -1,5 +1,5 @@
 <template>
-  <div class="py-6">
+  <div class="rounded-md py-6 transition-shadow" :class="{ ring: highlight }">
     <div class="mb-2 flex items-center text-base text-gray-900">
       <UserInfo :email="_poll.owner" v-slot="{ user }">
         <UserProfileLink class="mr-3" :user="user.name">
@@ -25,7 +25,15 @@
         </div>
       </UserInfo>
       <div class="ml-auto flex items-center space-x-2">
-        <Tooltip text="This is a poll">
+        <Button
+          v-if="!isStopped && $isSessionUser(_poll.owner)"
+          appearance="minimal"
+          icon-left="minus-circle"
+          @click="stopPoll"
+        >
+          Stop Poll
+        </Button>
+        <Tooltip v-else text="This is a poll">
           <FeatherIcon name="bar-chart-2" class="h-4 w-4 -rotate-90" />
         </Tooltip>
         <Dropdown
@@ -35,46 +43,18 @@
             appearance: 'minimal',
             label: 'Poll Options',
           }"
-          :options="[
-            {
-              label: 'Retract vote',
-              icon: 'edit',
-            },
-            {
-              label: 'Copy link',
-              icon: 'link',
-              handler: copyLink,
-            },
-            {
-              label: 'Delete',
-              icon: 'trash',
-              handler: () => {
-                $dialog({
-                  title: 'Delete poll',
-                  message: 'Are you sure you want to delete this poll?',
-                  actions: [
-                    {
-                      label: 'Delete',
-                      appearance: 'danger',
-                      handler: ({ close }) => {
-                        return this.$resources.poll.delete.submit().then(close)
-                      },
-                    },
-                    {
-                      label: 'Cancel',
-                    },
-                  ],
-                })
-              },
-              condition: () => $isSessionUser(_poll.owner),
-            },
-          ]"
+          :options="dropdownOptions"
         />
       </div>
     </div>
     <div class="text-base font-semibold">{{ _poll.title }}</div>
     <div class="mt-0.5 text-sm text-gray-600">
-      {{ _poll.total_votes }} {{ _poll.total_votes === 1 ? 'vote' : 'votes' }}
+      <span v-if="_poll.multiple_answers"> Multiple answers &middot; </span>
+      <span v-if="_poll.anonymous"> Anonymous &middot; </span>
+      <span>
+        {{ _poll.total_votes }} {{ _poll.total_votes === 1 ? 'vote' : 'votes' }}
+      </span>
+      <span v-if="_poll.stopped_at"> &middot; {{ stopTime }} </span>
     </div>
     <div class="mt-2 space-y-2">
       <button
@@ -82,14 +62,16 @@
         v-for="option in _poll.options"
         :key="option.idx"
         @click="submitVote(option)"
-        :disabled="participated || $resources.poll.submitVote.loading"
+        :disabled="
+          participated || isStopped || $resources.poll.submitVote.loading
+        "
       >
         <div
           class="mr-2 h-4 w-4 rounded-full border-2 text-sm"
           :class="
             isVotedByUser(option.title)
               ? 'border-gray-900 bg-gray-900'
-              : participated
+              : participated || isStopped
               ? 'border-gray-300'
               : 'border-gray-300 group-hover:border-gray-400'
           "
@@ -103,25 +85,89 @@
         </div>
         <div class="flex items-baseline">
           <div class="text-base">{{ option.title }}</div>
-          <div class="ml-1 text-xs text-gray-600" v-if="participated">
+          <div class="ml-1 text-base text-gray-600" v-if="participated">
             ({{ option.percentage }}%)
           </div>
         </div>
       </button>
     </div>
+    <div class="mt-3">
+      <Reactions
+        doctype="GP Poll"
+        :name="poll.name"
+        :reactions="_poll.reactions"
+      />
+    </div>
+    <Dialog
+      :options="{ title: 'Poll results' }"
+      v-model="showDialog"
+      v-if="pollResults"
+    >
+      <template #body-content>
+        <h2 class="text-lg font-semibold">{{ _poll.title }}</h2>
+        <div class="mt-2 space-y-4">
+          <div v-for="option in pollResults" :key="option.title">
+            <div class="flex items-center">
+              <h3 class="text-base font-medium">{{ option.title }}</h3>
+
+              <div class="mx-2 flex-1 border-b"></div>
+              <div class="text-base text-gray-600">
+                {{ option.votes }} {{ option.votes === 1 ? 'vote' : 'votes' }}
+              </div>
+              <div class="ml-1 text-base text-gray-600">
+                ({{ option.percentage }}%)
+              </div>
+            </div>
+            <div class="py-2" v-for="user in option.voters" :key="user">
+              <UserInfo :email="user" v-slot="{ user: _user }">
+                <UserProfileLink :user="_user.name">
+                  <div class="flex items-center space-x-2">
+                    <UserAvatar size="sm" :user="_user.name" />
+                    <span class="text-base">{{ _user.full_name }}</span>
+                  </div>
+                </UserProfileLink>
+              </UserInfo>
+            </div>
+          </div>
+        </div>
+      </template>
+    </Dialog>
   </div>
 </template>
 <script>
-import { Dropdown, FeatherIcon, Tooltip } from 'frappe-ui'
+import { Dropdown, Dialog, FeatherIcon, Tooltip } from 'frappe-ui'
 import UserAvatar from './UserAvatar.vue'
 import UserProfileLink from './UserProfileLink.vue'
 import { copyToClipboard } from '@/utils'
+import Reactions from './Reactions.vue'
 
 export default {
   name: 'Poll',
-  props: ['poll'],
+  props: {
+    poll: {
+      type: Object,
+      required: true,
+    },
+    highlight: {
+      type: Boolean,
+      default: false,
+    },
+  },
   emits: ['vote'],
-  components: { UserProfileLink, UserAvatar, Dropdown, FeatherIcon, Tooltip },
+  components: {
+    UserProfileLink,
+    UserAvatar,
+    Dropdown,
+    FeatherIcon,
+    Tooltip,
+    Reactions,
+    Dialog,
+  },
+  data() {
+    return {
+      showDialog: false,
+    }
+  },
   resources: {
     poll() {
       return {
@@ -132,19 +178,64 @@ export default {
         realtime: true,
         whitelistedMethods: {
           submitVote: 'submit_vote',
+          stopPoll: 'stop_poll',
+          retractVote: 'retract_vote',
         },
       }
     },
   },
   methods: {
     submitVote(option) {
-      this.$resources.poll.get.fetch().then(() => {
-        this.$resources.poll.submitVote.submit({ option: option.title })
+      if (this._poll.anonymous) {
+        this.$dialog({
+          title: 'Anonymous poll',
+          message: `This poll is anonymous. Once you vote, you cannot retract your vote. You are voting for "${option.title}". Continue?`,
+          actions: [
+            {
+              label: `Vote for "${option.title}"`,
+              appearance: 'primary',
+              handler: ({ close }) => {
+                this.$resources.poll.submitVote
+                  .submit({ option: option.title })
+                  .then(close)
+              },
+            },
+            {
+              label: 'Cancel',
+            },
+          ],
+        })
+      } else {
+        if (this.$resources.poll.doc) {
+          this.$resources.poll.submitVote.submit({ option: option.title })
+        } else {
+          this.$resources.poll.get.fetch().then(() => {
+            this.$resources.poll.submitVote.submit({ option: option.title })
+          })
+        }
+      }
+    },
+    stopPoll() {
+      this.$dialog({
+        title: 'Stop poll',
+        message:
+          'After the poll is stopped, no one will be able to vote on it. Continue?',
+        actions: [
+          {
+            label: 'Stop',
+            appearance: 'danger',
+            handler: ({ close }) =>
+              this.$resources.poll.stopPoll.submit().then(close),
+          },
+          {
+            label: 'Cancel',
+          },
+        ],
       })
     },
     isVotedByUser(option) {
       return this._poll.votes.find(
-        (vote) => vote.title === option && vote.user === this.$user().name
+        (vote) => vote.option === option && vote.user === this.$user().name
       )
     },
     copyLink() {
@@ -155,10 +246,100 @@ export default {
   },
   computed: {
     participated() {
+      return this._poll.votes.some((d) => d.user === this.$user().name) ?? false
+    },
+    pollResults() {
+      if (!this.$resources.poll.doc || this._poll.anonymous) return null
+      return this._poll.options.map((option) => {
+        return {
+          title: option.title,
+          votes: option.votes,
+          percentage: option.percentage,
+          voters: this._poll.votes
+            .filter((vote) => vote.option === option.title)
+            .map((vote) => vote.user),
+        }
+      })
+    },
+    dropdownOptions() {
+      return [
+        {
+          label: 'Show results',
+          icon: 'bar-chart-2',
+          condition: () => this.pollResults,
+          handler: () => {
+            this.showDialog = true
+          },
+        },
+        {
+          label: 'Retract vote',
+          icon: 'corner-up-left',
+          condition: () =>
+            !this._poll.anonymous &&
+            this.participated &&
+            (!this._poll.stopped_at ||
+              this.$dayjs().isBefore(this._poll.stopped_at)),
+          handler: () => {
+            this.$dialog({
+              title: 'Retract vote',
+              message: 'Are you sure you want to retract your vote?',
+              actions: [
+                {
+                  label: 'Retract vote',
+                  appearance: 'danger',
+                  handler: ({ close }) =>
+                    this.$resources.poll.retractVote.submit().then(close),
+                },
+                {
+                  label: 'Cancel',
+                },
+              ],
+            })
+          },
+        },
+        {
+          label: 'Copy link',
+          icon: 'link',
+          handler: this.copyLink,
+        },
+        {
+          label: 'Delete',
+          icon: 'trash',
+          condition: () => this.$isSessionUser(this._poll.owner),
+          handler: () => {
+            this.$dialog({
+              title: 'Delete poll',
+              message: 'Are you sure you want to delete this poll?',
+              actions: [
+                {
+                  label: 'Delete',
+                  appearance: 'danger',
+                  handler: ({ close }) =>
+                    this.$resources.poll.delete.submit().then(close),
+                },
+                {
+                  label: 'Cancel',
+                },
+              ],
+            })
+          },
+        },
+      ]
+    },
+    isStopped() {
       return (
-        this._poll.votes.some((vote) => vote.user === this.$user().name) ??
-        false
+        this._poll.stopped_at && this.$dayjs().isAfter(this._poll.stopped_at)
       )
+    },
+    stopTime() {
+      let timestamp = this._poll.stopped_at
+      if (this.$dayjs().diff(timestamp, 'day') < 7) {
+        return `Ended ${this.$dayjs(timestamp).fromNow()}`
+      }
+      if (this.$dayjs().diff(timestamp, 'year') < 1) {
+        return `Ended at ${this.$dayjs(timestamp).format('D MMM, h:mm A')}`
+      }
+      return `Ended at ${this.$dayjs(timestamp).format('D MMM YYYY, h:mm A')}`
     },
     _poll() {
       return this.$resources.poll.doc || this.poll

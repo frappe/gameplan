@@ -4,9 +4,10 @@
 import frappe
 from frappe.model.document import Document
 from frappe.utils import flt
+from .gp_poll_attributes import GPPollAttributes
 
 
-class GPPoll(Document):
+class GPPoll(Document, GPPollAttributes):
 	def before_insert(self):
 		self.options = [d for d in self.options if d.title]
 		for option in self.options:
@@ -17,45 +18,72 @@ class GPPoll(Document):
 			frappe.throw(frappe._("Duplicate options not allowed"))
 
 	def validate(self):
-		vote_count = {}
-		vote_by_user = {}
-		for d in self.votes:
-			vote_count[d.title] = vote_count.get(d.title, 0) + 1
-			vote_by_user[d.user] = vote_by_user.get(d.user, []) + [d.title]
-		self.total_votes = len(vote_by_user)
-		for option in self.options:
-			option.votes = 0
-			option.percentage = 0
-			if option.title in vote_count:
-				option.votes = vote_count[option.title]
-				option.percentage = flt(vote_count[option.title] * 100 / self.total_votes, 2)
+		self.total_votes = len(self.votes)
+
+	def after_insert(self):
+		discussion = frappe.get_doc("GP Discussion", self.discussion)
+		discussion.last_post_at = frappe.utils.now()
+		discussion.last_post_by = frappe.session.user
+		discussion.comments_count = discussion.comments_count + 1
+		discussion.update_participants_count()
+		discussion.track_visit()
+		discussion.save()
 
 	@frappe.whitelist()
 	def submit_vote(self, option):
-		self.check_if_ended()
+		self.check_if_stopped()
 
+		if self.anonymous:
+			self.submit_anonymous_vote(option)
+		else:
+			self.submit_non_anonymous_vote(option)
+
+	def submit_anonymous_vote(self, option):
 		for d in self.votes:
 			if d.user == frappe.session.user:
 				return
-		self.append("votes", {"title": option, "user": frappe.session.user})
+		for _option in self.options:
+			if _option.title == option:
+				self.append("votes", {"user": frappe.session.user})
+				self.total_votes = len(self.votes)
+				_option.votes += 1
+				_option.percentage = flt(_option.votes * 100 / self.total_votes, 2)
+				self.save()
+				break
+
+	def submit_non_anonymous_vote(self, option):
+		for d in self.votes:
+			if d.user == frappe.session.user:
+				return
+
+		self.append("votes", {"user": frappe.session.user, "option": option})
+		self.total_votes = len(self.votes)
+		for _option in self.options:
+			_option.votes = len([d for d in self.votes if d.option == _option.title])
+			_option.percentage = flt(_option.votes * 100 / self.total_votes, 2)
 		self.save()
 
 	@frappe.whitelist()
 	def retract_vote(self):
-		self.check_if_ended()
-
+		self.check_if_stopped()
+		if self.anonymous:
+			frappe.throw(frappe._("Cannot retract vote for anonymous poll"))
 		self.votes = [d for d in self.votes if d.user != frappe.session.user]
+		self.total_votes = len(self.votes)
+		for _option in self.options:
+			_option.votes = len([d for d in self.votes if d.option == _option.title])
+			_option.percentage = flt(_option.votes * 100 / self.total_votes, 2) if self.total_votes else 0
 		self.save()
 
 	@frappe.whitelist()
-	def end_poll(self):
-		if self.end_time:
-			return
-		self.end_time = frappe.utils.now()
+	def stop_poll(self):
+		if frappe.session.user != self.owner:
+			frappe.throw(frappe._("Only owner can stop the poll"))
+		self.stopped_at = frappe.utils.now()
 		self.save()
 
-	def check_if_ended(self):
-		if self.end_time and self.end_time < frappe.utils.now():
+	def check_if_stopped(self):
+		if self.stopped_at and self.stopped_at < frappe.utils.now_datetime():
 			frappe.throw(frappe._("Poll has ended"))
 
 

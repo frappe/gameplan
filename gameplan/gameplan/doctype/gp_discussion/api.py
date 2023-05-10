@@ -72,7 +72,7 @@ def get_discussions(filters=None, limit_start=None, limit_page_length=None):
 	Poll = frappe.qb.DocType('GP Poll')
 	ongoing_polls = (
 		frappe.qb.from_(Poll).select(Poll.name, Poll.owner, Poll.discussion)
-		.where(Poll.end_time.isnull() | (Poll.end_time > frappe.utils.now()))
+		.where(Poll.stopped_at.isnull() | (Poll.stopped_at > frappe.utils.now()))
 		.where(Poll.discussion.isin([d.name for d in discussions]))
 		.orderby(Poll.creation, order=frappe._dict(value="asc"))
 		.run(as_dict=1)

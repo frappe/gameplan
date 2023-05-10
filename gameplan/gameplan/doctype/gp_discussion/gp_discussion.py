@@ -27,6 +27,14 @@ class GPDiscussion(HasActivity, HasMentions, HasReactions, Document):
 			pluck='name'
 		)
 		d.last_unread_comment = result[0] if result else None
+		polls = frappe.db.get_all(
+			'GP Poll',
+			filters={'discussion': self.name, 'creation': ('>', last_visit)},
+			order_by='creation asc',
+			limit=1,
+			pluck='name'
+		)
+		d.last_unread_poll = polls[0] if polls else None
 		return d
 
 	def before_insert(self):
@@ -75,6 +83,10 @@ class GPDiscussion(HasActivity, HasMentions, HasReactions, Document):
 				'reference_name': self.name
 			},
 			pluck='owner'
+		)
+		participants += frappe.db.get_all("GP Poll",
+			filters={"discussion": self.name},
+			pluck="owner"
 		)
 		participants.append(self.owner)
 		self.participants_count = len(list(set(participants)))

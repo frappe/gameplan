@@ -38,9 +38,9 @@
             'border-t': item.name != newMessagesFrom,
           }"
           v-if="item.doctype == 'GP Comment'"
-          :ref="($comment) => setCommentRef($comment, item)"
+          :ref="($comment) => setItemRef($comment, item)"
           :comment="item"
-          :highlightedComment="highlightedComment"
+          :highlight="highlightedItem == item"
           :readOnlyMode="readOnlyMode"
           :comments="$resources.comments"
         />
@@ -52,6 +52,8 @@
         <Poll
           class="border-t"
           v-else-if="item.doctype == 'GP Poll'"
+          :ref="($poll) => setItemRef($poll, item)"
+          :highlight="highlightedItem == item"
           :poll="item"
           :readOnlyMode="readOnlyMode"
         />
@@ -115,6 +117,7 @@
             onClick: discardPoll,
           }"
         />
+        <ErrorMessage :message="$resources.polls.insert.error" />
       </div>
     </div>
   </div>
@@ -127,6 +130,8 @@ import Activity from './Activity.vue'
 import TabButtons from './TabButtons.vue'
 import PollEditor from './PollEditor.vue'
 import Poll from './Poll.vue'
+import { getScrollContainer } from '@/utils/scrollContainer'
+import socket from '@/socket'
 
 export default {
   name: 'CommentsArea',
@@ -155,10 +160,13 @@ export default {
       newPoll: {
         title: '',
         multiple_answers: false,
-        options: [{ title: '', idx: 1 }],
+        options: [
+          { title: '', idx: 1 },
+          { title: '', idx: 2 },
+        ],
       },
       newMessagesFrom: this.newCommentsFrom,
-      highlightedComment: '',
+      highlightedItem: null,
       addCommentHeight: 0,
     }
   },
@@ -173,6 +181,8 @@ export default {
     },
   },
   mounted() {
+    socket.on('list_update', () => {})
+
     if (!this.$refs.newCommentEditor?.editor.isEmpty) {
       this.showCommentBox = true
     }
@@ -205,12 +215,11 @@ export default {
           'creation',
           'modified',
           'deleted_at',
+          { reactions: ['name', 'user', 'emoji'] },
         ],
         transform(data) {
           for (let d of data) {
             d.doctype = 'GP Comment'
-            this.commentMap[d.name] = d
-            d.reactions = []
           }
           return data
         },
@@ -221,48 +230,18 @@ export default {
         orderBy: 'creation asc',
         pageLength: 99999,
         auto: true,
-        setValue: {
-          onSuccess() {
-            this.attachReactionsToComments()
-          },
-        },
-        fetchOne: {
-          onSuccess() {
-            this.attachReactionsToComments()
-          },
-        },
-        onSuccess(comments) {
-          setTimeout(() => {
-            if (this.$route.query.comment) {
-              this.scrollToComment(Number(this.$route.query.comment))
-            } else if (!this.$route.query.fromSearch) {
-              this.scrollToEnd()
-            }
-          }, 300)
-          this.attachReactionsToComments()
-        },
-      }
-    },
-    reactions() {
-      if (!this.$resources.comments.data?.length) return
-      let comments = this.$resources.comments.data
-        .map((d) => d.name)
-        .filter(Boolean)
-      if (!comments.length) return
-      return {
-        type: 'list',
-        doctype: 'GP Reaction',
-        fields: ['user', 'emoji', 'parent', 'name'],
-        filters: {
-          parenttype: 'GP Comment',
-          parent: ['in', comments],
-        },
-        parent: 'GP Comment',
-        orderBy: 'parent asc, idx asc',
-        pageLength: 99999,
-        auto: true,
         onSuccess() {
-          this.attachReactionsToComments()
+          if (this.$route.query.comment) {
+            let comment = this.$resources.comments.getRow(
+              this.$route.query.comment
+            )
+            this.scrollToItem(comment)
+          } else if (
+            !this.$route.query.fromSearch &&
+            this.$resources.comments.data.length > 0
+          ) {
+            this.scrollToEnd()
+          }
         },
       }
     },
@@ -294,13 +273,18 @@ export default {
         fields: [
           'name',
           'title',
+          'anonymous',
           'multiple_answers',
           'creation',
           'owner',
-          'end_time',
+          'stopped_at',
           { options: ['name', 'title', 'idx', 'percentage'] },
-          { votes: ['title', 'user'] },
+          { votes: ['user', 'title'] },
+          { reactions: ['name', 'user', 'emoji'] },
         ],
+        filters: {
+          discussion: this.name,
+        },
         orderBy: 'creation asc',
         auto: true,
         pageLength: 99999,
@@ -309,6 +293,12 @@ export default {
             d.doctype = 'GP Poll'
           }
           return data
+        },
+        onSuccess() {
+          if (this.$route.query.poll) {
+            let poll = this.$resources.polls.getRow(this.$route.query.poll)
+            this.scrollToItem(poll)
+          }
         },
       }
     },
@@ -356,27 +346,27 @@ export default {
       )
       this.resetCommentState()
     },
-    scrollToComment(id) {
-      if (!id) return
-      let comment = this.commentMap[id]
-      if (!comment) return
-
-      this.$nextTick(() => {
-        if (comment.$el?.scrollIntoView) {
-          comment.$el.scrollIntoView({
-            behavior: 'smooth',
-            block: 'start',
-            inline: 'nearest',
-          })
-        }
-        this.highlightedComment = id
-        setTimeout(() => (this.highlightedComment = null), 10000)
-      })
+    async scrollToItem(item) {
+      if (!item) return
+      await nextTick()
+      if (item.$el) {
+        this.highlightedItem = item
+        this.scrollToElement(item.$el)
+      }
+      setTimeout(() => {
+        this.highlightedItem = null
+        this.$router.replace({ query: {} })
+      }, 10000)
+    },
+    scrollToElement($el) {
+      let scrollContainer = getScrollContainer()
+      let headerHeight = 64
+      let top = $el.offsetTop - scrollContainer.scrollTop - headerHeight
+      scrollContainer.scrollBy({ top, left: 0, behavior: 'smooth' })
     },
     scrollToEnd() {
-      if (window.scrollContainer) {
-        scrollContainer.scrollTop = scrollContainer.scrollHeight
-      }
+      let scrollContainer = getScrollContainer()
+      scrollContainer.scrollTop = scrollContainer.scrollHeight
     },
     discardComment() {
       if (!this.editorObject.isEmpty) {
@@ -401,23 +391,6 @@ export default {
         this.resetCommentState()
       }
     },
-    attachReactionsToComments() {
-      if (!this.$resources.reactions?.data) return
-      for (let d of this.$resources.comments.data) {
-        this.commentMap[d.name] = d
-        d.reactions = []
-      }
-      for (let reaction of this.$resources.reactions.data) {
-        let comment = this.commentMap[reaction.parent]
-        if (comment) {
-          comment.reactions.push({
-            name: reaction.name,
-            user: reaction.user,
-            emoji: reaction.emoji,
-          })
-        }
-      }
-    },
     onNewCommentChange(content) {
       this.newComment = content
 
@@ -428,14 +401,14 @@ export default {
       }, 0)
     },
     resetCommentState() {
-      this.newComment = ''
-      this.showCommentBox = false
-      this.newPoll = {
-        title: '',
-        multiple_answers: false,
-        options: [{ title: '', idx: 1 }],
-      }
       localStorage.removeItem(this.draftCommentKey())
+      this.$resetData([
+        'newComment',
+        'showCommentBox',
+        'newCommentType',
+        'newPoll',
+        'highlightedItem',
+      ])
     },
     submitPoll() {
       if (this.doctype !== 'GP Discussion') return
@@ -457,9 +430,9 @@ export default {
     draftCommentKey() {
       return `draft-comment-${this.doctype}-${this.name}`
     },
-    setCommentRef($comment, comment) {
-      if ($comment?.$el) {
-        comment.$el = $comment.$el
+    setItemRef($component, item) {
+      if ($component?.$el) {
+        item.$el = $component.$el
       }
     },
     setupMutationObserver() {

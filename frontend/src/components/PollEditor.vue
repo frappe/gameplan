@@ -6,12 +6,12 @@
       v-model="poll.title"
       @change="$emit('update:poll', poll)"
     />
-    <!-- <Input
+    <Input
       type="checkbox"
-      label="Allow multiple answers"
-      v-model="poll.multiple_answers"
+      label="Anonymous"
+      v-model="poll.anonymous"
       @change="$emit('update:poll', poll)"
-    /> -->
+    />
     <div class="space-y-2">
       <div class="text-sm leading-4 text-gray-700">Options</div>
       <Input
@@ -50,7 +50,7 @@ export default {
         })
       }
       this.$emit('update:poll', this.poll)
-    }, 300),
+    }, 100),
   },
 }
 </script>
