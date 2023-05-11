@@ -66,7 +66,7 @@
       ref="addComment"
     >
       <button
-        class="flex w-full items-center rounded-lg bg-gray-100 py-2 px-2 text-left text-base text-gray-600 hover:bg-gray-200"
+        class="flex w-full items-center rounded-lg bg-gray-100 px-2 py-2 text-left text-base text-gray-600 hover:bg-gray-200"
         @click="showCommentBox = true"
         v-show="!showCommentBox"
       >
@@ -181,8 +181,6 @@ export default {
     },
   },
   mounted() {
-    socket.on('list_update', () => {})
-
     if (!this.$refs.newCommentEditor?.editor.isEmpty) {
       this.showCommentBox = true
     }
