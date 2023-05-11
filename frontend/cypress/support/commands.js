@@ -24,28 +24,28 @@
 // -- This will overwrite an existing command --
 // Cypress.Commands.overwrite('visit', (originalFn, url, options) => { ... })
 
-Cypress.Commands.add("login", (email, password) => {
-	if (!email) {
-		email = Cypress.config("testUser") || "Administrator";
-	}
-	if (!password) {
-		password = Cypress.config("adminPassword");
-	}
-	cy.request({
-		url: "/api/method/login",
-		method: "POST",
-		body: { usr: email, pwd: password },
-	});
-});
+Cypress.Commands.add('login', (email, password) => {
+  if (!email) {
+    email = Cypress.config('testUser') || 'Administrator'
+  }
+  if (!password) {
+    password = Cypress.config('adminPassword')
+  }
+  cy.request({
+    url: '/api/method/login',
+    method: 'POST',
+    body: { usr: email, pwd: password },
+  })
+})
 
-Cypress.Commands.add("button", (text) => {
-	return cy.get(`button:contains("${text}")`);
-});
+Cypress.Commands.add('button', (text) => {
+  return cy.get(`button:contains("${text}"):visible`)
+})
 
-Cypress.Commands.add("iconButton", (text) => {
-	return cy.get(`button[aria-label="${text}"]`);
-});
+Cypress.Commands.add('iconButton', (text) => {
+  return cy.get(`button[aria-label="${text}"]:visible`)
+})
 
-Cypress.Commands.add("dialog", (selector) => {
-	return cy.get(`[role=dialog] ${selector}`);
-});
+Cypress.Commands.add('dialog', (selector) => {
+  return cy.get(`[role=dialog] ${selector}`)
+})

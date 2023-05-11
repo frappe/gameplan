@@ -2,7 +2,7 @@
   <div
     class="rounded-md py-6 transition-shadow"
     :class="{
-      ring: !comment.loading && highlightedComment == comment.name,
+      ring: !comment.loading && highlight,
     }"
     :data-id="comment.name"
   >
@@ -57,9 +57,7 @@
               label: 'Edit',
               icon: 'edit',
               handler: () => (comment.editing = true),
-              condition: () =>
-                !comment.deleted_at &&
-                !readOnlyMode,
+              condition: () => !comment.deleted_at && !readOnlyMode,
             },
             {
               label: 'Revisions',
@@ -175,9 +173,9 @@ export default {
       type: Boolean,
       default: false,
     },
-    highlightedComment: {
-      type: [String, Number],
-      default: null,
+    highlight: {
+      type: Boolean,
+      default: false,
     },
     comments: {
       type: Object,

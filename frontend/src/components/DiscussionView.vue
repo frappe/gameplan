@@ -322,11 +322,15 @@ export default {
           this.updateUrlSlug()
           if (
             !this.$route.query.comment &&
+            !this.$route.query.poll &&
             !this.$route.query.fromSearch &&
-            doc.last_unread_comment
+            (doc.last_unread_comment || doc.last_unread_poll)
           ) {
             this.$router.replace({
-              query: { comment: doc.last_unread_comment },
+              query: {
+                comment: doc.last_unread_comment || undefined,
+                poll: doc.last_unread_poll || undefined,
+              },
             })
           }
 
