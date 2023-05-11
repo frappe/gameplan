@@ -2,8 +2,8 @@ describe('Comment', () => {
   it('comment actions', () => {
     cy.login()
     cy.request({
-        method: 'POST',
-        url: '/api/method/gameplan.test_api.clear_data?onboard=1',
+      method: 'POST',
+      url: '/api/method/gameplan.test_api.clear_data?onboard=1',
     })
     cy.request('POST', '/api/method/frappe.client.insert_many', {
       docs: [
@@ -94,9 +94,9 @@ describe('Comment', () => {
 
         // delete comment
         cy.intercept({
-            method: 'POST',
-            url: '/api/method/frappe.client.set_value',
-          }).as('deleteComment')
+          method: 'POST',
+          url: '/api/method/frappe.client.set_value',
+        }).as('deleteComment')
         cy.get(
           `div[data-id=${comment.name}] button[aria-label="Comment Options"]`
         ).click()
