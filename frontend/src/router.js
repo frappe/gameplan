@@ -185,11 +185,12 @@ let scrollPositions = {}
 function saveAndRestoreScrollPosition(to, from) {
   let scrollContainer = getScrollContainer()
   if (scrollContainer) {
-    scrollPositions[from.fullPath] = scrollContainer.scrollTop
+    scrollPositions[from.path] = scrollContainer.scrollTop
   }
-  if (scrollPositions[to.fullPath] !== undefined) {
+  if (scrollPositions[to.path] !== undefined && to.path !== from.path) {
     setTimeout(() => {
-      scrollTo({ top: scrollPositions[to.fullPath] })
+      console.log('scrolling to', scrollPositions[to.path])
+      scrollTo({ top: scrollPositions[to.path] })
     }, 0)
   }
 }
