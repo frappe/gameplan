@@ -70,13 +70,14 @@ def get_discussions(filters=None, limit_start=None, limit_page_length=None):
 
 	discussions = query.run(as_dict=1)
 	Poll = frappe.qb.DocType('GP Poll')
+	discussion_names = [d.name for d in discussions]
 	ongoing_polls = (
 		frappe.qb.from_(Poll).select(Poll.name, Poll.owner, Poll.discussion)
 		.where(Poll.stopped_at.isnull() | (Poll.stopped_at > frappe.utils.now()))
-		.where(Poll.discussion.isin([d.name for d in discussions]))
+		.where(Poll.discussion.isin(discussion_names))
 		.orderby(Poll.creation, order=frappe._dict(value="asc"))
 		.run(as_dict=1)
-	)
+	) if discussion_names else []
 	for discussion in discussions:
 		discussion["ongoing_polls"] = [p for p in ongoing_polls if str(p.discussion) == str(discussion.name)]
 	return discussions
