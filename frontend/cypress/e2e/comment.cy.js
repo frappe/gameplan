@@ -32,9 +32,18 @@ describe('Comment', () => {
         })
           .its('body.message')
           .then((discussion) => {
+            cy.intercept('POST', '/api/method/frappe.client.get', (req) => {
+              if (
+                req.body.hasOwnProperty('doctype') &&
+                req.body.doctype === 'GP Discussion'
+              ) {
+                req.alias = 'getDiscussion'
+              }
+            })
             cy.visit(
               `/g/engineering/projects/${project}/discussion/${discussion.name}`
             )
+            cy.wait('@getDiscussion')
           })
       })
 
