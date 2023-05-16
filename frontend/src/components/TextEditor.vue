@@ -23,10 +23,12 @@ export default {
       return this.$refs.textEditor.editor
     },
     users() {
-      return this.$users.data.map((user) => ({
-        label: user.full_name,
-        value: user.name,
-      }))
+      return this.$users.data
+        .filter((user) => user.enabled)
+        .map((user) => ({
+          label: user.full_name,
+          value: user.name,
+        }))
     },
   },
 }
