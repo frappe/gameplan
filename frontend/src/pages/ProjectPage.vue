@@ -13,7 +13,11 @@
         "
         ref="titleInput"
       />
-      <hr class="my-4" />
+      <div class="mt-2 text-sm text-gray-600">
+        Updated by {{ $user(page.doc.modified_by).full_name }} on
+        {{ $dayjs(page.doc.modified).format('LLL') }}
+      </div>
+      <hr class="mb-4 mt-2" />
     </div>
     <TextEditor
       editor-class="rounded-b-lg max-w-[unset] prose-sm pb-[50vh] md:px-[70px]"
@@ -37,7 +41,6 @@ export default {
         type: 'document',
         doctype: 'GP Page',
         name: this.pageId,
-        realtime: true,
         onSuccess() {
           this.updateUrlSlug()
         },
@@ -48,6 +51,10 @@ export default {
     setTimeout(() => {
       this.$refs.titleInput.focus()
     }, 100)
+    this.setupRealtime()
+  },
+  beforeUnmount() {
+    this.removeRealtime()
   },
   methods: {
     updateUrlSlug() {
@@ -64,6 +71,23 @@ export default {
           query: this.$route.query,
         })
       }
+    },
+    onRealtime({ doctype, name, user }) {
+      if (
+        doctype === 'GP Page' &&
+        name == this.pageId &&
+        user != this.$user().name
+      ) {
+        this.$resources.page.reload()
+      }
+    },
+    setupRealtime() {
+      this.$socket.emit('doctype_subscribe', 'GP Page')
+      this.$socket.on('list_update', this.onRealtime)
+    },
+    removeRealtime() {
+      this.$socket.emit('doctype_unsubscribe', 'GP Page')
+      this.$socket.off('list_update', this.onRealtime)
     },
   },
   computed: {
