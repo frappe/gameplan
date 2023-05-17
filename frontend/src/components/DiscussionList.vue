@@ -93,7 +93,7 @@
             </div>
             <div class="ml-auto text-right">
               <div class="flex items-center space-x-3">
-                <Tooltip text="Ongoing poll" v-if="d.ongoing_polls.length">
+                <Tooltip text="Ongoing poll" v-if="d.ongoing_polls?.length">
                   <FeatherIcon name="bar-chart-2" class="h-4 w-4 -rotate-90" />
                 </Tooltip>
                 <div

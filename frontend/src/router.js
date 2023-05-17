@@ -189,7 +189,6 @@ function saveAndRestoreScrollPosition(to, from) {
   }
   if (scrollPositions[to.path] !== undefined && to.path !== from.path) {
     setTimeout(() => {
-      console.log('scrolling to', scrollPositions[to.path])
       scrollTo({ top: scrollPositions[to.path] })
     }, 0)
   }
