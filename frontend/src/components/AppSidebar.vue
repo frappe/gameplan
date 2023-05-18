@@ -23,30 +23,28 @@
       <nav class="space-y-0.5 px-2">
         <Links
           :links="navigation"
-          class="flex items-center rounded-lg px-2 py-1"
-          active="bg-gray-200 text-gray-900"
-          inactive="text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+          class="flex items-center rounded px-2 py-1 text-gray-800"
+          active="bg-white shadow-sm"
+          inactive="hover:bg-gray-100"
         >
           <template v-slot="{ link }">
-            <div class="flex w-full items-center space-x-3">
-              <span class="grid h-5 w-5 place-items-center">
-                <FeatherIcon :name="link.icon" class="h-4 w-4" />
+            <div class="flex w-full items-center space-x-2">
+              <span class="grid h-5 w-6 place-items-center">
+                <FeatherIcon :name="link.icon" class="h-4 w-4 text-gray-700" />
               </span>
               <span class="text-base">{{ link.name }}</span>
               <span
-                v-if="
-                  link.unreadNotifications && link.unreadNotifications.data > 0
-                "
-                class="!ml-auto block text-sm text-gray-800"
+                v-if="link.count"
+                class="!ml-auto block text-xs text-gray-600"
               >
-                {{ link.unreadNotifications.data }}
+                {{ link.count }}
               </span>
             </div>
           </template>
         </Links>
       </nav>
       <div class="mt-6 flex items-center justify-between px-3">
-        <h3 class="text-sm font-semibold text-gray-700">Teams</h3>
+        <h3 class="text-sm font-medium text-gray-600">Teams</h3>
         <Button
           icon="plus"
           label="Create Team"
@@ -56,7 +54,7 @@
       </div>
       <nav class="mt-1 space-y-0.5 px-2">
         <div v-for="team in activeTeams" :key="team.name">
-          <Link :link="team" class="flex items-center rounded-lg px-2 py-1">
+          <Link :link="team" class="flex items-center rounded px-2 py-1">
             <button
               @click.prevent="
                 () => {
@@ -84,7 +82,7 @@
                   v-if="team.unread"
                   :text="`${team.unread} unread posts`"
                 >
-                  <span class="text-sm text-gray-600">{{ team.unread }}</span>
+                  <span class="text-xs text-gray-600">{{ team.unread }}</span>
                 </Tooltip>
               </div>
             </div>
@@ -95,9 +93,9 @@
               v-for="project in teamProjects(team.name)"
               :link="project"
               :ref="($comp) => setProjectRef($comp, project)"
-              class="flex items-center rounded-md py-1 pl-12 pr-2"
-              active="bg-gray-200 text-gray-900"
-              inactive="text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+              class="flex items-center rounded-md py-1 pl-12 pr-2 text-gray-800"
+              active="bg-white shadow-sm"
+              inactive="hover:bg-gray-100"
             >
               <template v-slot="{ link: project }">
                 <span class="inline-flex items-center space-x-2">
@@ -210,7 +208,7 @@ export default {
           route: {
             name: 'Notifications',
           },
-          unreadNotifications,
+          count: unreadNotifications.data || 0,
         },
       ].filter((nav) => (nav.condition ? nav.condition() : true))
     },
@@ -223,9 +221,9 @@ export default {
             ) &&
             $route.params.teamId === link.route.params.teamId
           ) {
-            return 'bg-gray-200 text-gray-900'
+            return 'bg-white shadow-sm text-gray-800'
           }
-          return 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+          return 'text-gray-800 hover:bg-gray-100'
         }
         return team
       })

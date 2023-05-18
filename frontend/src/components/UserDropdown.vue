@@ -25,11 +25,13 @@
   >
     <template v-slot="{ open }">
       <button
-        class="flex w-full items-center space-x-2 rounded-md p-2 text-left text-base font-medium"
+        class="flex w-full items-center space-x-2 rounded-md p-2 text-left"
         :class="open ? 'bg-gray-300' : 'hover:bg-gray-200'"
       >
-        <UserAvatar :user="$user().name" size="sm" />
-        <span class="hidden sm:inline">{{ $user().full_name }}</span>
+        <UserAvatar :user="$user().name" size="md" />
+        <span class="hidden text-base font-medium text-gray-900 sm:inline">
+          {{ $user().full_name }}
+        </span>
         <FeatherIcon name="chevron-down" class="hidden h-4 w-4 sm:inline" />
       </button>
     </template>
