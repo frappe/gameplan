@@ -17,7 +17,8 @@ PREFIX = "discussions_search_doc"
 @frappe.whitelist()
 def search(query, start=0):
 	r = frappe.cache()
-	query = Query(query).paging(start, 30).highlight(tags=["<mark>", "</mark>"]).sort_by("modified", asc=False)
+	page_length = 50
+	query = Query(query).paging(start, page_length).highlight(tags=["<mark>", "</mark>"]).sort_by("modified", asc=False)
 
 	try:
 		result = r.ft(INDEX_NAME).search(query)

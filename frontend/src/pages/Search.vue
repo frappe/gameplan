@@ -1,5 +1,5 @@
 <template>
-  <div class="py-3 px-4 sm:px-5">
+  <div class="px-4 py-3 sm:px-5">
     <h1 class="mb-3 text-2xl font-semibold">Search</h1>
     <div class="flex items-center space-x-2">
       <Input
@@ -22,7 +22,10 @@
         Search
       </Button>
     </div>
-    <div v-if="$resources.search.params" class="mt-2 text-sm text-gray-600">
+    <div
+      v-if="$resources.search.params && $resources.search.data"
+      class="mt-2 text-sm text-gray-600"
+    >
       About {{ $resources.search.data.total }} results for "{{
         $resources.search.params?.query
       }}" ({{ $resources.search.data.duration.toFixed(2) }}
@@ -71,7 +74,9 @@
         :loading="$resources.search.loading"
         icon-left="file-text"
         v-if="
-          $resources.search.data?.docs.length < $resources.search.data.total
+          lastResponse &&
+          lastResponse.docs.length &&
+          lastResponse.docs.length >= pageLength
         "
       >
         Load more
@@ -90,7 +95,9 @@ export default {
   data() {
     return {
       start: 0,
+      pageLength: 50,
       query: '',
+      lastResponse: null,
     }
   },
   resources: {
@@ -101,6 +108,7 @@ export default {
         return { query, start: this.start }
       },
       transform(data) {
+        this.lastResponse = data
         return {
           ...data,
           docs: this.start
@@ -112,7 +120,7 @@ export default {
   },
   methods: {
     next() {
-      this.start += 10
+      this.start += this.pageLength
       this.$resources.search.submit(
         this.query || this.$resources.search.params.query
       )
