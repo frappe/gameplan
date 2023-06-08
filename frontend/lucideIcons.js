@@ -2,10 +2,20 @@ import * as LucideIcons from 'lucide-static'
 
 let icons = {}
 for (const icon in LucideIcons) {
-  icons[icon] = LucideIcons[icon]
+  let iconSvg = LucideIcons[icon]
+  if (icon == 'default') {
+    continue
+  }
+
+  // set stroke-width to 1.5
+  if (iconSvg && iconSvg.includes('stroke-width')) {
+    iconSvg = iconSvg.replace(/stroke-width="2"/g, 'stroke-width="1.5"')
+  }
+
   let dashKey = camelToDash(icon)
+  icons[icon] = iconSvg
   if (dashKey !== icon) {
-    icons[dashKey] = LucideIcons[icon]
+    icons[dashKey] = iconSvg
   }
 }
 
