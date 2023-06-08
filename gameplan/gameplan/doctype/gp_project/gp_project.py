@@ -55,7 +55,6 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 			"overdue_tasks": overdue_tasks,
 		}
 		d.is_pinned = bool(frappe.db.exists("GP Pinned Project", {"project": self.name, "user": frappe.session.user}))
-		d.is_followed = self.is_followed()
 		return d
 
 	def before_insert(self):
@@ -175,19 +174,19 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 			visit.last_visit = frappe.utils.now()
 			visit.insert(ignore_permissions=True)
 
+	@property
 	def is_followed(self):
 		return bool(frappe.db.exists("GP Followed Project", {"project": self.name, "user": frappe.session.user}))
 
 	@frappe.whitelist()
 	def follow(self):
-		if not self.is_followed():
+		if not self.is_followed:
 			frappe.get_doc(doctype="GP Followed Project", project=self.name).insert(ignore_permissions=True)
 
 	@frappe.whitelist()
 	def unfollow(self):
 		follow_id = frappe.db.get_value("GP Followed Project", {"project": self.name, "user": frappe.session.user})
 		frappe.delete_doc("GP Followed Project", follow_id)
-		frappe.errprint(str(self.is_followed()))
 
 def get_meta_tags(url):
 	response = requests.get(url, timeout=2, allow_redirects=True)

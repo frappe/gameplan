@@ -1,16 +1,16 @@
 <template>
   <div class="flex flex-col">
-    <header class="sticky top-0 z-10 border-b bg-white px-5 pt-3">
+    <header class="sticky top-0 z-10 border-b bg-white px-5 pt-1">
       <div v-if="project">
-        <div class="flex h-9 w-full items-center">
-          <div class="rounded-md p-px text-5xl leading-none focus:outline-none">
+        <div class="flex w-full items-center">
+          <div class="rounded-md p-px text-xl leading-none focus:outline-none">
             {{ team.doc.icon || '' }}
           </div>
           <router-link
             :to="{ name: 'Team', params: { teamId: team.doc.name } }"
-            class="ml-1 rounded-md px-1 hover:bg-gray-200"
+            class="ml-1 rounded-md px-1"
           >
-            <h1 class="text-2xl font-medium text-gray-600">
+            <h1 class="text-xl font-bold text-gray-600 hover:text-gray-900">
               {{ team.doc.title }}
             </h1>
           </router-link>
@@ -23,7 +23,7 @@
           >
             <template v-slot="{ open }">
               <div
-                class="rounded-md p-px text-5xl leading-none focus:outline-none"
+                class="rounded-md p-px text-xl leading-none focus:outline-none"
                 :class="open ? 'bg-gray-200' : 'hover:bg-gray-100'"
               >
                 {{ project.doc.icon || '' }}
@@ -31,7 +31,7 @@
             </template>
           </IconPicker>
           <div class="ml-2 flex items-center space-x-2">
-            <h1 class="text-2xl font-medium leading-8">
+            <h1 class="text-xl font-bold text-gray-900">
               {{ project.doc.title }}
             </h1>
             <Badge v-if="project.doc.archived_at"> Archived </Badge>
@@ -43,21 +43,21 @@
             </Tooltip>
             <template v-if="!isMobile">
               <Button
-                appearance="minimal"
-                icon-left="check"
+                variant="ghost"
                 v-if="project.doc.is_followed"
                 @click="project.unfollow.submit()"
                 :loading="project.unfollow.loading"
               >
+                <template #prefix><LucideCheck class="w-4" /></template>
                 Following
               </Button>
               <Button
                 v-else
-                appearance="minimal"
-                icon-left="plus"
+                variant="ghost"
                 @click="project.follow.submit()"
                 :loading="project.follow.loading"
               >
+                <template #prefix><LucidePlus class="w-4" /></template>
                 Follow
               </Button>
             </template>
@@ -66,50 +66,50 @@
               placement="left"
               :button="{
                 icon: 'more-horizontal',
-                appearance: 'minimal',
+                variant: 'ghost',
                 label: 'Options',
               }"
               :options="[
                 {
                   label: 'Edit',
                   icon: 'edit',
-                  handler: () => (projectEditDialog.show = true),
+                  onClick: () => (projectEditDialog.show = true),
                   condition: () => !project.doc.archived_at,
                 },
                 {
                   label: 'Follow',
                   icon: 'plus',
-                  handler: () => project.follow.submit(),
+                  onClick: () => project.follow.submit(),
                   condition: () => isMobile && !project.doc.is_followed,
                 },
                 {
                   label: 'Following',
                   icon: 'check',
-                  handler: () => project.unfollow.submit(),
+                  onClick: () => project.unfollow.submit(),
                   condition: () => isMobile && project.doc.is_followed,
                 },
                 {
                   label: 'Manage Guests',
                   icon: 'user-plus',
-                  handler: () => (inviteGuestDialog.show = true),
+                  onClick: () => (inviteGuestDialog.show = true),
                   condition: () => !project.doc.archived_at,
                 },
                 {
                   label: 'Move to another team',
                   icon: 'log-out',
-                  handler: () => (projectMoveDialog.show = true),
+                  onClick: () => (projectMoveDialog.show = true),
                   condition: () => !project.doc.archived_at,
                 },
                 {
                   label: 'Archive this project',
                   icon: 'trash-2',
-                  handler: archiveProject,
+                  onClick: archiveProject,
                   condition: () => !project.doc.archived_at,
                 },
                 {
                   label: 'Unarchive this project',
                   icon: 'trash-2',
-                  handler: unarchiveProject,
+                  onClick: unarchiveProject,
                   condition: () => project.doc.archived_at,
                 },
               ]"
@@ -124,25 +124,26 @@
           actions: [
             {
               label: 'Save',
-              appearance: 'primary',
-              handler: ({ close }) => {
-                project.setValue.submit({
+              variant: 'solid',
+              onClick() {
+                return project.setValue.submit({
                   title: project.doc.title,
                   is_private: project.doc.is_private,
                 })
-                close()
               },
-            },
-            {
-              label: 'Cancel',
             },
           ],
         }"
         v-model="projectEditDialog.show"
       >
         <template #body-content>
-          <Input class="mb-2" label="Title" v-model="project.doc.title" />
-          <Input
+          <FormControl
+            class="mb-2"
+            label="Title"
+            v-model="project.doc.title"
+            placeholder="Project title"
+          />
+          <FormControl
             v-if="!team.doc.is_private"
             label="Visibility"
             type="select"
@@ -184,7 +185,7 @@
         </template>
         <template #actions>
           <Button
-            appearance="primary"
+            variant="solid"
             :loading="project.moveToTeam.loading"
             @click="
               () => {
@@ -220,11 +221,14 @@
       />
     </header>
 
-    <router-view
-      v-if="project"
-      class="mx-auto w-full max-w-4xl px-5"
-      :project="project"
-    />
+    <router-view v-slot="{ Component, route }">
+      <component
+        v-if="project"
+        :is="Component"
+        :class="{ 'mx-auto w-full max-w-4xl px-5': !route.meta?.fullWidth }"
+        :project="project"
+      />
+    </router-view>
   </div>
 </template>
 <script>
@@ -232,9 +236,12 @@ import { computed } from 'vue'
 import {
   Autocomplete,
   Dropdown,
+  FormControl,
   frappeRequest,
   Input,
   Tooltip,
+  Select,
+  Textarea,
 } from 'frappe-ui'
 import Pie from '@/components/Pie.vue'
 import IconPicker from '@/components/IconPicker.vue'
@@ -259,6 +266,9 @@ export default {
     Autocomplete,
     Tooltip,
     InviteGuestDialog,
+    FormControl,
+    Select,
+    Textarea,
   },
   setup() {
     const size = useScreenSize()
@@ -316,15 +326,13 @@ export default {
           ].includes(this.$route.name),
         },
         {
-          name: this.project.doc.summary.total_tasks
-            ? `Tasks (${this.project.doc.summary.pending_tasks}/${this.project.doc.summary.total_tasks})`
-            : 'Tasks',
+          name: 'Tasks',
           route: {
             name: 'ProjectTasks',
-            query: { open: true },
             params: {
               teamId: this.team.doc.name,
               projectId: this.project.name,
+              listType: 'active',
             },
           },
           isActive: [
@@ -370,20 +378,17 @@ export default {
     },
     archiveProject() {
       this.$dialog({
-        title: 'Archive Project',
+        title: 'Archive project',
         message: 'Are you sure you want to archive this project?',
         actions: [
           {
             label: 'Archive',
-            appearance: 'primary',
-            handler: ({ close }) => {
+            variant: 'solid',
+            onClick: ({ close }) => {
               return this.project.archive.submit(null, {
                 onSuccess: close,
               })
             },
-          },
-          {
-            label: 'Cancel',
           },
         ],
       })
@@ -395,8 +400,8 @@ export default {
         actions: [
           {
             label: 'Unarchive',
-            appearance: 'primary',
-            handler: ({ close }) => {
+            variant: 'solid',
+            onClick: ({ close }) => {
               return this.project.unarchive.submit(null, {
                 onSuccess: close,
               })
