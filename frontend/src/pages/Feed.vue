@@ -3,7 +3,7 @@
     class="fixed top-0 z-10 h-14 w-full border-b bg-white px-4 py-3 sm:sticky sm:px-5"
   >
     <div class="flex items-center justify-between">
-      <div class="ml-3 flex items-center">
+      <div class="flex items-center">
         <h1 class="mr-4 text-2xl font-semibold">Home</h1>
 
         <div class="flex space-x-1 rounded">

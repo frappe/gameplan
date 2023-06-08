@@ -1,12 +1,13 @@
 <template>
   <div class="flex select-none items-stretch space-x-1.5">
     <Popover class="h-full">
-      <template #target="{ togglePopover }">
+      <template #target="{ togglePopover, isOpen }">
         <button
           aria-label="Add a reaction"
           :disabled="$resources.batch.loading"
           @click="togglePopover()"
-          class="flex h-full items-center justify-center rounded-full border border-gray-300 px-2 py-1 transition hover:border-gray-400"
+          class="flex h-full items-center justify-center rounded-full px-2 py-1 transition bg-gray-100 text-gray-700 hover:bg-gray-200"
+          :class="{ 'bg-gray-200': isOpen }"
         >
           <ReactionFaceIcon />
         </button>
@@ -54,11 +55,11 @@
       >
         <Tooltip v-for="(reactions, emoji) in reactionsCount" :key="emoji">
           <button
-            class="flex items-center justify-center rounded-full border px-2 py-1 text-sm transition"
+            class="flex items-center justify-center rounded-full px-2 py-1 text-sm transition"
             :class="[
               reactions.userReacted
-                ? 'border-blue-200 bg-blue-100 hover:border-blue-300'
-                : 'border-gray-300 hover:border-gray-400',
+                ? 'bg-amber-100 hover:bg-amber-200 text-amber-700'
+                : 'bg-gray-100 hover:bg-gray-200 text-gray-700',
             ]"
             @click="toggleReaction(emoji)"
           >

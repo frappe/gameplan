@@ -14,10 +14,6 @@
       }"
       class="group relative block h-15 rounded-[10px] hover:bg-gray-100"
     >
-      <div
-        class="absolute -left-3 top-[30px] h-1.5 w-1.5 shrink-0 -translate-y-1/2 rounded-full bg-orange-500"
-        :class="d.unread ? 'visible' : 'invisible'"
-      ></div>
       <div class="flex h-full items-center space-x-4 overflow-hidden px-3 py-2">
         <UserInfo :email="d.last_post_by || d.owner">
           <template v-slot="{ user }">
@@ -69,8 +65,10 @@
                   </span>
                 </div>
               </div>
-              <div class="mt-1.5 flex items-center justify-between">
-                <div class="text-base text-gray-600">
+              <div class="min-w-0 mt-1.5 flex items-center justify-between">
+                <div
+                  class="text-base text-gray-600 overflow-hidden text-ellipsis whitespace-nowrap"
+                >
                   <span :class="filters ? '' : 'hidden sm:inline'">
                     {{ user.full_name }}
                   </span>
@@ -111,6 +109,10 @@
         </UserInfo>
       </div>
       <div class="mx-3 h-px border-t border-gray-200"></div>
+      <div
+        class="absolute left-1 sm:-left-3 top-[30px] h-3.5 w-3.5 sm:h-1.5 sm:w-1.5 shrink-0 -translate-y-1/2 rounded-full bg-orange-500 border-[3px] sm:border-none border-white"
+        :class="d.unread ? 'visible' : 'invisible'"
+      ></div>
     </router-link>
     <div class="px-2 pb-40 sm:px-0">
       <div

@@ -20,7 +20,7 @@
             v-show="showNavbar"
           >
             <h1
-              class="flex items-center pt-2 text-xl font-semibold sm:justify-center sm:pt-0"
+              class="flex items-center pt-2 text-lg font-semibold sm:justify-center sm:pt-0"
             >
               <Tooltip
                 class="flex"
@@ -90,7 +90,7 @@
           <h1
             v-else
             v-visibility="handleTitleVisibility"
-            class="flex items-center text-3xl font-bold"
+            class="flex items-center text-2xl font-semibold"
           >
             <Tooltip
               v-if="discussion.closed_at"
@@ -107,7 +107,7 @@
             </span>
           </h1>
         </div>
-        <div class="flex items-center text-base" v-show="!editingTitle">
+        <div class="mt-1.5 flex items-center text-base" v-show="!editingTitle">
           <DiscussionBreadcrumbs :discussion="discussion" />
           <span class="px-1.5">&middot;</span>
           <span class="text-gray-600">
@@ -118,7 +118,7 @@
             }}
           </span>
         </div>
-        <div class="mb-2 mt-6 flex w-full items-center">
+        <div class="mb-2 mt-8 flex w-full items-center">
           <UserProfileLink class="mr-3" :user="discussion.owner">
             <UserAvatar :user="discussion.owner" />
           </UserProfileLink>

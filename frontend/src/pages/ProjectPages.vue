@@ -1,7 +1,7 @@
 <template>
   <div class="py-6">
     <div class="flex items-center justify-between">
-      <div class="text-2xl font-semibold">Pages</div>
+      <div class="text-xl font-semibold">Pages</div>
       <div class="flex items-center space-x-2">
         <Dropdown
           :options="[
@@ -30,13 +30,13 @@
             </div>
           </Button>
         </Dropdown>
-        <Button @click="newPage">
+        <Button variant="solid" @click="newPage">
           <template #prefix><LucidePlus class="w-4" /></template>
-          New Page
+          Add new
         </Button>
       </div>
     </div>
-    <div class="mt-5 grid grid-cols-1 gap-5 md:grid-cols-3 lg:grid-cols-4">
+    <div class="mt-4.5 grid grid-cols-1 gap-5 md:grid-cols-3 lg:grid-cols-4">
       <div
         class="text-base text-gray-600"
         v-if="!$resources.pages.data?.length"
@@ -87,10 +87,10 @@
           }"
         >
           <section
-            class="aspect-[37/50] cursor-pointer overflow-hidden rounded-xl border border-gray-50 p-3 shadow-md hover:shadow-lg"
+            class="aspect-[37/50] cursor-pointer overflow-hidden rounded-md border transition-shadow border-gray-50 p-3 shadow-lg hover:shadow-2xl"
           >
-            <h1 class="text-lg font-medium leading-none">{{ d.title }}</h1>
-            <div class="mt-1.5 text-xs leading-none text-gray-600">
+            <h1 class="text-lg font-semibold leading-none">{{ d.title }}</h1>
+            <div class="mt-1.5 text-base leading-none text-gray-700">
               Updated {{ $dayjs(d.modified).fromNow() }}
             </div>
             <hr class="my-2 border-gray-100" />
