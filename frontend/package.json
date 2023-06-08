@@ -13,7 +13,7 @@
     "@headlessui/vue": "^1.7.14",
     "dayjs": "^1.10.7",
     "feather-icons": "^4.28.0",
-    "frappe-ui": "^0.0.112",
+    "frappe-ui": "frappe/frappe-ui#espresso",
     "fuse.js": "^6.6.2",
     "gemoji": "^7.1.0",
     "htmldiff-js": "^1.0.5",

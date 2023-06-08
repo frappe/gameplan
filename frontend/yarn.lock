@@ -531,11 +531,6 @@
   resolved "https://registry.yarnpkg.com/@esbuild/linux-loong64/-/linux-loong64-0.15.18.tgz#128b76ecb9be48b60cf5cfc1c63a4f00691a3239"
   integrity sha512-L4jVKS82XVhw2nvzLg/19ClLWg0y27ulRwuP7lcyL6AbUWB5aPglXY3M21mauDQMDfRLs8cQmeT03r/+X3cZYQ==
 
-"@headlessui/vue@^1.5.0":
-  version "1.7.4"
-  resolved "https://registry.yarnpkg.com/@headlessui/vue/-/vue-1.7.4.tgz#c554e9ac893a2ec2f58eb8b6b9d80b8be03c5d0e"
-  integrity sha512-QHRlKCK/zRpjSjhth7c2CZvx5eMDFflXauqRdRJgp1CwScx6PwCpWiwDsjQcYM4z8Yik2ZvyX8W4PFT2Wsqqyw==
-
 "@headlessui/vue@^1.7.14":
   version "1.7.14"
   resolved "https://registry.yarnpkg.com/@headlessui/vue/-/vue-1.7.14.tgz#cc10712044944bc728f5ef8b2df2174c1194a55e"
@@ -1032,7 +1027,7 @@
     prosemirror-transform "^1.2.1"
     prosemirror-view "^1.13.3"
 
-"@tiptap/starter-kit@^2.0.0-beta.205":
+"@tiptap/starter-kit@^2.0.0-beta.220":
   version "2.0.3"
   resolved "https://registry.yarnpkg.com/@tiptap/starter-kit/-/starter-kit-2.0.3.tgz#e9a7e26f981ee5295762d796f02e1794c247d417"
   integrity sha512-t4WG4w93zTpL2VxhVyJJvl3kdLF001ZrhpOuEiZqEMBMUMbM56Uiigv1CnUQpTFrjDAh3IM8hkqzAh20TYw2iQ==
@@ -1062,7 +1057,7 @@
   resolved "https://registry.yarnpkg.com/@tiptap/suggestion/-/suggestion-2.0.0-beta.205.tgz#2f4b55f4439ccb31cc0d9e391ab85ac0508238b1"
   integrity sha512-CZt4UvF/IbdBO1cyrwhMhDvN4gOABOXDeHekTrmqKrdckfssmVGHmKoMWpSpjdgvL/mIF1LBGhMZWCLX8aVqDw==
 
-"@tiptap/vue-3@^2.0.0-beta.205":
+"@tiptap/vue-3@^2.0.0-beta.220":
   version "2.0.3"
   resolved "https://registry.yarnpkg.com/@tiptap/vue-3/-/vue-3-2.0.3.tgz#a2f1fd7f55bee1815dfb905e03f788099748938e"
   integrity sha512-2CtNUzt+e7sgvIjxPOyBwoiRcuCHNeJzW+XGxNK2uCWlAKp/Yw3boJ51d51UuIbj9RitGHJ5GpCdLJoL7SDiQA==
@@ -2157,12 +2152,11 @@ fraction.js@^4.2.0:
   resolved "https://registry.yarnpkg.com/fraction.js/-/fraction.js-4.2.0.tgz#448e5109a313a3527f5a3ab2119ec4cf0e0e2950"
   integrity sha512-MhLuK+2gUcnZe8ZHlaaINnQLl0xRIGRfcGk2yl8xoQAfHrSsL3rYu6FCmBdkdbhc9EPlwyGHewaRsvwRMJtAlA==
 
-frappe-ui@^0.0.112:
-  version "0.0.112"
-  resolved "https://registry.yarnpkg.com/frappe-ui/-/frappe-ui-0.0.112.tgz#2246c8739ffdb913eb92cba4a7290a997d3c7b8c"
-  integrity sha512-6hu7GwXQh1W4O6wKOjwSgl0RwszGsIgh+IM9/hOOsYHLOsb58pQkSnWNb8F2A70qGbE9u07zqX0knFtzI381kQ==
+frappe-ui@frappe/frappe-ui#espresso:
+  version "0.0.102"
+  resolved "https://codeload.github.com/frappe/frappe-ui/tar.gz/06a515ef3e95e764f2b55964fc30828cf5d0fefc"
   dependencies:
-    "@headlessui/vue" "^1.5.0"
+    "@headlessui/vue" "^1.7.14"
     "@popperjs/core" "^2.11.2"
     "@tailwindcss/forms" "^0.5.3"
     "@tailwindcss/typography" "^0.5.0"
@@ -2181,16 +2175,23 @@ frappe-ui@^0.0.112:
     "@tiptap/extension-typography" "^2.0.0-beta.205"
     "@tiptap/pm" "^2.0.0-beta.220"
     "@tiptap/prosemirror-tables" "^1.1.3"
-    "@tiptap/starter-kit" "^2.0.0-beta.205"
+    "@tiptap/starter-kit" "^2.0.0-beta.220"
     "@tiptap/suggestion" "^2.0.0-beta.205"
-    "@tiptap/vue-3" "^2.0.0-beta.205"
-    autoprefixer "^10.4.2"
+    "@tiptap/vue-3" "^2.0.0-beta.220"
     feather-icons "^4.28.0"
     idb-keyval "^6.2.0"
-    postcss "^8.4.5"
+    prosemirror-commands "^1.5.0"
+    prosemirror-dropcursor "1.5.0"
+    prosemirror-gapcursor "^1.3.1"
+    prosemirror-history "^1.3.0"
+    prosemirror-keymap "^1.2.0"
+    prosemirror-model "^1.18.3"
+    prosemirror-schema-list "^1.2.2"
+    prosemirror-state "^1.4.2"
+    prosemirror-transform "^1.7.0"
+    prosemirror-view "^1.29.1"
     showdown "^2.1.0"
     socket.io-client "^4.5.1"
-    tailwindcss "^3.0.12"
     tippy.js "^6.3.7"
 
 fs-extra@^9.1.0:
@@ -3022,7 +3023,7 @@ prosemirror-collab@^1.3.0:
   dependencies:
     prosemirror-state "^1.0.0"
 
-prosemirror-commands@^1.0.0, prosemirror-commands@^1.3.1:
+prosemirror-commands@^1.0.0, prosemirror-commands@^1.3.1, prosemirror-commands@^1.5.0:
   version "1.5.2"
   resolved "https://registry.yarnpkg.com/prosemirror-commands/-/prosemirror-commands-1.5.2.tgz#e94aeea52286f658cd984270de9b4c3fff580852"
   integrity sha512-hgLcPaakxH8tu6YvVAaILV2tXYsW3rAdDR8WNkeKGcgeMVQg3/TMhPdVoh7iAmfgVjZGtcOSjKiQaoeKjzd2mQ==
@@ -3030,6 +3031,15 @@ prosemirror-commands@^1.0.0, prosemirror-commands@^1.3.1:
     prosemirror-model "^1.0.0"
     prosemirror-state "^1.0.0"
     prosemirror-transform "^1.0.0"
+
+prosemirror-dropcursor@1.5.0:
+  version "1.5.0"
+  resolved "https://registry.yarnpkg.com/prosemirror-dropcursor/-/prosemirror-dropcursor-1.5.0.tgz#edbc61d6f71f9f924130eec8e85b0861357957c9"
+  integrity sha512-vy7i77ddKyXlu8kKBB3nlxLBnsWyKUmQIPB5x8RkYNh01QNp/qqGmdd5yZefJs0s3rtv5r7Izfu2qbtr+tYAMQ==
+  dependencies:
+    prosemirror-state "^1.0.0"
+    prosemirror-transform "^1.1.0"
+    prosemirror-view "^1.1.0"
 
 prosemirror-dropcursor@^1.5.0:
   version "1.8.1"
@@ -3110,7 +3120,7 @@ prosemirror-model@^1.0.0, prosemirror-model@^1.16.0, prosemirror-model@^1.8.1:
   dependencies:
     orderedmap "^2.0.0"
 
-prosemirror-model@^1.18.1, prosemirror-model@^1.19.0:
+prosemirror-model@^1.18.1, prosemirror-model@^1.18.3, prosemirror-model@^1.19.0:
   version "1.19.2"
   resolved "https://registry.yarnpkg.com/prosemirror-model/-/prosemirror-model-1.19.2.tgz#297c9ecfb103154e605f0dbaf3cc72ee32ca0ad5"
   integrity sha512-RXl0Waiss4YtJAUY3NzKH0xkJmsZupCIccqcIFoLTIKFlKNbIvFDRl27/kQy1FP8iUAxrjRRfIVvOebnnXJgqQ==
@@ -3142,7 +3152,7 @@ prosemirror-state@^1.0.0, prosemirror-state@^1.2.2, prosemirror-state@^1.3.1:
     prosemirror-transform "^1.0.0"
     prosemirror-view "^1.27.0"
 
-prosemirror-state@^1.4.1:
+prosemirror-state@^1.4.1, prosemirror-state@^1.4.2:
   version "1.4.3"
   resolved "https://registry.yarnpkg.com/prosemirror-state/-/prosemirror-state-1.4.3.tgz#94aecf3ffd54ec37e87aa7179d13508da181a080"
   integrity sha512-goFKORVbvPuAQaXhpbemJFRKJ2aixr+AZMGiquiqKxaucC6hlpHNZHWgz5R7dS4roHiwq9vDctE//CZ++o0W1Q==
@@ -3188,7 +3198,7 @@ prosemirror-view@^1.0.0, prosemirror-view@^1.1.0, prosemirror-view@^1.13.3, pros
     prosemirror-state "^1.0.0"
     prosemirror-transform "^1.1.0"
 
-prosemirror-view@^1.28.2, prosemirror-view@^1.31.0:
+prosemirror-view@^1.28.2, prosemirror-view@^1.29.1, prosemirror-view@^1.31.0:
   version "1.31.4"
   resolved "https://registry.yarnpkg.com/prosemirror-view/-/prosemirror-view-1.31.4.tgz#d9a40363bf517605f77a5cfe6c0106958a7dbe5e"
   integrity sha512-nJzH2LpYbonSTYFqQ1BUdEhbd1WPN/rp/K9T9qxBEYpgg3jK3BvEUCR45Ymc9IHpO0m3nBJwPm19RBxZdoBVuw==
