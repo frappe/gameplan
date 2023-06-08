@@ -47,10 +47,11 @@
   },
   {
    "fieldname": "status",
-   "fieldtype": "Data",
+   "fieldtype": "Select",
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "label": "Status"
+   "label": "Status",
+   "options": "\nBacklog\nTodo\nIn Progress\nDone\nCanceled"
   },
   {
    "fieldname": "priority",
@@ -117,7 +118,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-01-12 14:37:42.077295",
+ "modified": "2023-05-30 21:47:45.252990",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "GP Task",

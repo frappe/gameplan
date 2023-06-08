@@ -16,7 +16,7 @@
       </div>
       <div class="mt-4 space-x-2">
         <Button
-          appearance="primary"
+          variant="solid"
           @click="$resources.createTask.submit()"
           :loading="$resources.createTask.loading"
         >

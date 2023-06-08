@@ -12,6 +12,10 @@ class GPTask(HasMentions, Document):
 	on_delete_set_null = ["GP Notification"]
 	mentions_field = 'description'
 
+	def before_insert(self):
+		if not self.status:
+			self.status = 'Backlog'
+
 	def after_insert(self):
 		self.update_tasks_count(1)
 
@@ -23,7 +27,7 @@ class GPTask(HasMentions, Document):
 		self.update_tasks_count(-1)
 
 	def update_tasks_count(self, delta=1):
-		current_tasks_count = frappe.db.get_value("GP Project", self.project, "tasks_count")
+		current_tasks_count = frappe.db.get_value("GP Project", self.project, "tasks_count") or 0
 		frappe.db.set_value("GP Project", self.project, "tasks_count", current_tasks_count + delta)
 
 	def update_project_progress(self):

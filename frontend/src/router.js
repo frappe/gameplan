@@ -137,8 +137,9 @@ const routes = [
               },
               {
                 name: 'ProjectTasks',
-                path: 'tasks',
+                path: 'tasks/:listType',
                 component: () => import('@/pages/ProjectTasks.vue'),
+                props: true,
               },
               {
                 name: 'ProjectTaskNew',
@@ -147,9 +148,10 @@ const routes = [
               },
               {
                 name: 'ProjectTaskDetail',
-                path: 'tasks/:taskId',
+                path: 'task/:taskId',
                 component: () => import('@/pages/ProjectTaskDetail.vue'),
                 props: true,
+                meta: { fullWidth: true },
               },
               {
                 name: 'ProjectPages',

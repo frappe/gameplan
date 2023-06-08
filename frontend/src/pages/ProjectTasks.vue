@@ -1,170 +1,314 @@
 <template>
   <div class="flex">
-    <div class="h-full w-full overflow-auto py-6">
+    <div class="h-full w-full py-6">
       <div class="mb-5 flex items-center justify-between">
-        <h2 class="text-2xl font-semibold">Tasks</h2>
+        <h2 class="text-xl font-semibold text-gray-900">Tasks</h2>
         <div class="flex items-stretch space-x-2">
-          <div class="flex rounded-md bg-gray-100 p-1 text-sm">
-            <button
-              class="rounded px-2 py-1 leading-none transition-all"
-              :class="{ 'bg-white shadow': openTasks }"
-              @click="
-                $router.replace({
-                  name: 'ProjectTasks',
-                  query: {
-                    open: true,
-                  },
-                  params: {
-                    teamId: project.doc.team,
-                    projectId: project.doc.name,
-                  },
-                })
-              "
-            >
-              Open
-            </button>
-            <button
-              class="rounded px-2 py-1 leading-none transition-all"
-              :class="{ 'bg-white shadow': !openTasks }"
-              @click="
-                $router.replace({
-                  name: 'ProjectTasks',
-                  query: {
-                    open: false,
-                  },
-                  params: {
-                    teamId: project.doc.team,
-                    projectId: project.doc.name,
-                  },
-                })
-              "
-            >
-              Closed
-            </button>
-          </div>
+          <Select
+            :options="[
+              { label: 'All', value: 'all' },
+              { label: 'Active', value: 'active' },
+              { label: 'Backlog', value: 'backlog' },
+              { label: 'Done', value: 'done' },
+            ]"
+            v-model="_listType"
+          />
           <Button
-            iconLeft="plus"
-            :route="{ name: 'ProjectTaskNew' }"
+            variant="solid"
+            @click="showNewTaskDialog"
             v-if="!$readOnlyMode && !project.doc.archived_at"
           >
-            New Task
+            <template #prefix>
+              <FeatherIcon class="h-4 w-4" name="plus" />
+            </template>
+            Add New
           </Button>
         </div>
       </div>
-      <div class="divide-y">
-        <router-link
-          v-for="d in tasks.data"
-          :key="d.name"
-          :to="{
-            name: 'ProjectTaskDetail',
-            params: { teamId: d.team, projectId: d.project, taskId: d.name },
-          }"
-          class="block p-3 hover:bg-gray-50"
-        >
-          <div class="flex items-center justify-between">
-            <span class="text-lg font-medium">
-              {{ d.title }}
-            </span>
-            <div class="flex items-center space-x-2 text-base">
-              <Tooltip
-                v-if="d.assigned_to"
-                placement="bottom"
-                :text="`Assigned to ${$user(d.assigned_to).full_name}`"
-              >
-                <UserAvatar size="sm" :user="d.assigned_to" />
-              </Tooltip>
-            </div>
-          </div>
-          <div
-            class="mt-0.5 flex items-center justify-between text-sm text-gray-600"
+      <div>
+        <div v-for="d in $resources.tasks.data" :key="d.name">
+          <router-link
+            :to="{
+              name: 'ProjectTaskDetail',
+              params: { teamId: d.team, projectId: d.project, taskId: d.name },
+            }"
+            class="-mx-2.5 flex items-center rounded p-2.5 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400"
           >
-            <span :title="taskTimestampDescription(d)">
-              Created by {{ $user(d.owner).full_name }}
-              {{
-                $dayjs().diff(d.creation, 'month') >= 9
-                  ? 'on ' + $dayjs(d.creation).format('D MMM YYYY')
-                  : $dayjs(d.creation).fromNow()
-              }}
-            </span>
-            <span
-              :class="{
-                'text-red-600': $dayjs().isAfter($dayjs(d.due_date), 'day'),
+            <div>
+              <div class="flex items-start">
+                <Tooltip text="Change status">
+                  <Dropdown
+                    :options="
+                      statusOptions({
+                        onClick: (status) =>
+                          $resources.tasks.setValue.submit({
+                            status,
+                            name: d.name,
+                          }),
+                      })
+                    "
+                  >
+                    <button
+                      class="flex rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400"
+                    >
+                      <TaskStatusIcon :status="d.status" />
+                    </button>
+                  </Dropdown>
+                </Tooltip>
+                <span
+                  class="ml-2.5 text-base font-medium leading-4 text-gray-900"
+                >
+                  {{ d.title }}
+                </span>
+              </div>
+
+              <div class="ml-6.5 mt-1.5 flex items-center">
+                <div class="flex items-center space-x-2">
+                  <UserAvatar size="xs" :user="d.assigned_to" />
+                  <span class="text-base text-gray-800">
+                    {{ $user(d.assigned_to).full_name }}
+                  </span>
+                </div>
+
+                <template v-if="d.due_date">
+                  <div class="px-2 leading-none text-gray-600">&middot;</div>
+                  <div class="flex items-center">
+                    <FeatherIcon
+                      name="calendar"
+                      class="h-3 w-3 text-gray-700"
+                    />
+                    <span class="ml-2 text-base text-gray-700">
+                      {{ $dayjs(d.due_date).format('D MMM') }}</span
+                    >
+                  </div>
+                </template>
+              </div>
+            </div>
+
+            <Dropdown
+              class="ml-auto"
+              placement="right"
+              :button="{
+                icon: 'more-horizontal',
+                variant: 'ghost',
               }"
-              v-if="d.due_date"
-            >
-              {{ $dayjs(d.due_date).format('LL') }}
-            </span>
-          </div>
-        </router-link>
+              :options="[
+                {
+                  label: 'Delete',
+                  icon: 'trash',
+                  onClick: () => {
+                    this.$resources.tasks.delete.submit(d.name)
+                  },
+                },
+              ]"
+            />
+          </router-link>
+          <div class="w-full border-b"></div>
+        </div>
+      </div>
+      <div
+        class="flex items-center justify-center p-3"
+        v-if="$resources.tasks.hasNextPage"
+      >
+        <Button
+          @click="$resources.tasks.next"
+          :loading="$resources.tasks.list.loading"
+        >
+          <template #prefix>
+            <LucideRefreshCw class="h-4 w-4" />
+          </template>
+          {{ $resources.tasks.loading ? 'Loading...' : 'Load more' }}
+        </Button>
       </div>
       <div
         class="text-base text-gray-600"
-        v-if="!tasks.loading && !tasks.data?.length"
+        v-if="!$resources.tasks.loading && !$resources.tasks.data?.length"
       >
         No tasks
       </div>
     </div>
+    <Dialog
+      :options="{
+        title: 'New Task',
+        actions: [
+          {
+            label: 'Create',
+            variant: 'solid',
+            onClick: ({ close }) =>
+              $resources.tasks.insert
+                .submit(newTask, {
+                  validate() {
+                    if (!newTask.title) {
+                      return 'Task title is required'
+                    }
+                  },
+                })
+                .then(close),
+          },
+        ],
+      }"
+      v-model="newTaskDialog"
+      @after-leave="$resetData(['newTask'])"
+    >
+      <template #body-content>
+        <div class="space-y-4">
+          <FormControl label="Title" v-model="newTask.title" />
+          <FormControl
+            label="Description"
+            type="textarea"
+            v-model="newTask.description"
+          />
+          <div class="flex space-x-2">
+            <Dropdown
+              :options="
+                statusOptions({
+                  onClick: (status) => (newTask.status = status),
+                })
+              "
+            >
+              <Button>
+                <template #prefix>
+                  <TaskStatusIcon :status="newTask.status" />
+                </template>
+                {{ newTask.status }}
+              </Button>
+            </Dropdown>
+            <TextInput
+              type="date"
+              placeholder="Set due date"
+              v-model="newTask.due_date"
+            />
+            <Autocomplete
+              placeholder="Assign a user"
+              :options="
+                $users.data.map((user) => ({
+                  label: user.full_name,
+                  value: user.name,
+                }))
+              "
+              :value="newTask.assigned_to"
+              @change="(option) => (newTask.assigned_to = option?.value || '')"
+            />
+          </div>
+          <ErrorMessage class="mt-2" :message="$resources.tasks.insert.error" />
+        </div>
+      </template>
+    </Dialog>
   </div>
 </template>
 <script>
-import { Avatar, Popover, Tooltip } from 'frappe-ui'
-import TabButtons from '@/components/TabButtons.vue'
+import { h } from 'vue'
+import {
+  Avatar,
+  Popover,
+  Tooltip,
+  Dropdown,
+  Select,
+  Dialog,
+  FormControl,
+  Autocomplete,
+  TextInput,
+} from 'frappe-ui'
+import UserAvatar from '@/components/UserAvatar.vue'
+import TaskStatusIcon from '@/components/icons/TaskStatusIcon.vue'
 
 export default {
   name: 'ProjectTasks',
-  props: ['project'],
+  props: ['project', 'listType'],
+  data() {
+    return {
+      newTaskDialog: false,
+      newTask: {
+        title: '',
+        description: '',
+        status: 'Backlog',
+        assigned_to: null,
+        project: this.project.name,
+      },
+    }
+  },
   resources: {
-    openTasks() {
-      if (!this.openTasks) return
-      return {
-        type: 'list',
-        cache: ['Project Tasks', this.project.doc.name, 'open'],
-        doctype: 'GP Task',
-        fields: ['*'],
-        filters: {
-          project: this.project.doc.name,
-          is_completed: false,
-        },
-        orderBy: 'creation desc',
-        auto: true,
+    tasks() {
+      let filters = {
+        project: this.project.doc.name,
       }
-    },
-    closedTasks() {
-      if (this.openTasks) return
+      if (this.listType === 'all') {
+        // pass
+      }
+      if (this.listType === 'active') {
+        filters.status = ['in', ['Todo', 'In Progress']]
+      }
+      if (this.listType === 'backlog') {
+        filters.status = 'Backlog'
+      }
+      if (this.listType === 'done') {
+        filters.status = 'Done'
+      }
       return {
         type: 'list',
-        cache: ['Project Tasks', this.project.doc.name, 'closed'],
+        cache: ['Project Tasks', this.project.doc.name, this.listType],
         doctype: 'GP Task',
         fields: ['*'],
-        filters: {
-          project: this.project.doc.name,
-          is_completed: true,
-        },
+        filters,
         orderBy: 'creation desc',
         auto: true,
+        realtime: true,
       }
     },
   },
   methods: {
-    taskTimestampDescription(d) {
-      return [
-        `Created On: ${this.$dayjs(d.creation).format('LLL')}`,
-        `Updated On: ${this.$dayjs(d.modified).format('LLL')}`,
-      ].join('\n')
+    showNewTaskDialog() {
+      let status = 'Backlog'
+      if (this.listType === 'active') {
+        status = 'Todo'
+      } else if (this.listType === 'done') {
+        status = 'Done'
+      }
+      this.newTask.status = status
+      this.newTaskDialog = true
+    },
+    statusOptions({ onClick }) {
+      return ['Backlog', 'Todo', 'In Progress', 'Done', 'Canceled'].map(
+        (status) => {
+          return {
+            icon: () => h(TaskStatusIcon, { status }),
+            label: status,
+            onClick: () => onClick(status),
+          }
+        }
+      )
     },
   },
   computed: {
-    tasks() {
-      if (this.openTasks) {
-        return this.$resources.openTasks
-      } else {
-        return this.$resources.closedTasks
-      }
-    },
-    openTasks() {
-      return this.$route.query.open === 'true'
+    _listType: {
+      get() {
+        return this.listType
+      },
+      set(value) {
+        this.$router.replace({
+          name: 'ProjectTasks',
+          params: {
+            teamId: this.project.doc.team,
+            projectId: this.project.doc.name,
+            listType: value,
+          },
+        })
+      },
     },
   },
-  components: { Avatar, Popover, Tooltip, TabButtons },
+  components: {
+    Avatar,
+    Popover,
+    Tooltip,
+    UserAvatar,
+    Dropdown,
+    TaskStatusIcon,
+    Tooltip,
+    Select,
+    Dialog,
+    FormControl,
+    Autocomplete,
+    TextInput,
+  },
 }
 </script>

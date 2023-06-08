@@ -20,3 +20,4 @@ gameplan.gameplan.doctype.team.patches.remove_invited_members
 execute:frappe.delete_doc_if_exists('DocType', 'Team Project Discussion', force=1)
 gameplan.gameplan.doctype.team_user_profile.patches.setup_rembg
 gameplan.gameplan.doctype.team_user_profile.patches.set_image
+gameplan.gameplan.doctype.gp_task.patches.set_status
