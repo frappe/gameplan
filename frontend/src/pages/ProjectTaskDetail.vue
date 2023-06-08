@@ -29,7 +29,13 @@
           editor-class="prose-sm max-w-none"
           placeholder="Description"
           :content="$resources.task.doc.description"
-          @change="(val) => ($resources.task.doc.description = val)"
+          @change="
+            (val) => {
+              $resources.task.setValueDebounced.submit({
+                description: val,
+              })
+            }
+          "
           :bubbleMenu="true"
           :floating-menu="true"
         />
@@ -79,6 +85,17 @@
             </Button>
           </Dropdown>
         </div>
+        <div>Priority</div>
+        <div>
+          <Dropdown :options="priorityOptions">
+            <Button>
+              <template v-if="$resources.task.doc.priority" #prefix>
+                <TaskPriorityIcon :priority="$resources.task.doc.priority" />
+              </template>
+              {{ $resources.task.doc.priority || 'Set priority' }}
+            </Button>
+          </Dropdown>
+        </div>
       </div>
     </div>
   </div>
@@ -92,6 +109,7 @@ import { focus } from '@/directives'
 import { Autocomplete, Dropdown, LoadingText, TextInput } from 'frappe-ui'
 import CommentsList from '@/components/CommentsList.vue'
 import TaskStatusIcon from '@/components/icons/TaskStatusIcon.vue'
+import TaskPriorityIcon from '@/components/icons/TaskPriorityIcon.vue'
 
 export default {
   name: 'TaskDetail',
@@ -148,6 +166,15 @@ export default {
         }
       )
     },
+    priorityOptions() {
+      return ['Low', 'Medium', 'High'].map((priority) => {
+        return {
+          icon: () => h(TaskPriorityIcon, { priority }),
+          label: priority,
+          onClick: () => this.$resources.task.setValue.submit({ priority }),
+        }
+      })
+    },
   },
   components: {
     ReadmeEditor,
@@ -159,6 +186,7 @@ export default {
     CommentsList,
     TaskStatusIcon,
     LoadingText,
+    TaskPriorityIcon,
   },
 }
 </script>

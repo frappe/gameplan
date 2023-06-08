@@ -55,8 +55,9 @@
   },
   {
    "fieldname": "priority",
-   "fieldtype": "Data",
-   "label": "Priority"
+   "fieldtype": "Select",
+   "label": "Priority",
+   "options": "\nUrgent\nHigh\nMedium\nLow"
   },
   {
    "default": "0",
@@ -118,7 +119,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-05-30 21:47:45.252990",
+ "modified": "2023-06-09 01:14:17.921740",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "GP Task",
@@ -176,6 +177,5 @@
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
- "title_field": "title",
- "track_changes": 1
+ "title_field": "title"
 }

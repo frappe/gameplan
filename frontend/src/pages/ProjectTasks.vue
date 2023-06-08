@@ -1,7 +1,7 @@
 <template>
   <div class="flex">
     <div class="h-full w-full py-6">
-      <div class="mb-5 flex items-center justify-between">
+      <div class="mb-4.5 flex items-center justify-between">
         <h2 class="text-xl font-semibold text-gray-900">Tasks</h2>
         <div class="flex items-stretch space-x-2">
           <Select
@@ -21,7 +21,7 @@
             <template #prefix>
               <FeatherIcon class="h-4 w-4" name="plus" />
             </template>
-            Add New
+            Add new
           </Button>
         </div>
       </div>
@@ -33,10 +33,22 @@
               params: { teamId: d.team, projectId: d.project, taskId: d.name },
             }"
             class="-mx-2.5 flex items-center rounded p-2.5 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400"
+            :class="{
+              'pointer-events-none':
+                $resources.tasks.delete.loading &&
+                $resources.tasks.delete.params.name === d.name,
+            }"
           >
             <div>
               <div class="flex items-start">
-                <Tooltip text="Change status">
+                <LoadingIndicator
+                  class="h-4 w-4 text-gray-600"
+                  v-if="
+                    $resources.tasks.delete.loading &&
+                    $resources.tasks.delete.params.name === d.name
+                  "
+                />
+                <Tooltip text="Change status" v-else>
                   <Dropdown
                     :options="
                       statusOptions({
@@ -63,8 +75,10 @@
               </div>
 
               <div class="ml-6.5 mt-1.5 flex items-center">
-                <div class="flex items-center space-x-2">
-                  <UserAvatar size="xs" :user="d.assigned_to" />
+                <div class="text-base text-gray-600">#{{ d.name }}</div>
+                <div class="flex items-center">
+                  <div class="px-2 leading-none text-gray-600">&middot;</div>
+                  <UserAvatar class="mr-2" size="xs" :user="d.assigned_to" />
                   <span class="text-base text-gray-800">
                     {{ $user(d.assigned_to).full_name }}
                   </span>
@@ -80,6 +94,14 @@
                     <span class="ml-2 text-base text-gray-700">
                       {{ $dayjs(d.due_date).format('D MMM') }}</span
                     >
+                  </div>
+                </template>
+                <template v-if="d.priority">
+                  <div class="px-2 leading-none text-gray-600">&middot;</div>
+                  <div class="flex items-center">
+                    <span class="text-base text-gray-700">
+                      {{ d.priority }}
+                    </span>
                   </div>
                 </template>
               </div>
@@ -208,6 +230,7 @@ import {
   FormControl,
   Autocomplete,
   TextInput,
+  LoadingIndicator,
 } from 'frappe-ui'
 import UserAvatar from '@/components/UserAvatar.vue'
 import TaskStatusIcon from '@/components/icons/TaskStatusIcon.vue'
@@ -264,6 +287,7 @@ export default {
       } else if (this.listType === 'done') {
         status = 'Done'
       }
+      this.newTask.assigned_to = this.$user().name
       this.newTask.status = status
       this.newTaskDialog = true
     },
@@ -309,6 +333,7 @@ export default {
     FormControl,
     Autocomplete,
     TextInput,
+    LoadingIndicator,
   },
 }
 </script>

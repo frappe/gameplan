@@ -34,9 +34,7 @@
           </span>
         </div>
         <Comment
-          :class="{
-            'border-t': item.name != newMessagesFrom,
-          }"
+          class="-my-5"
           v-if="item.doctype == 'GP Comment'"
           :ref="($comment) => setItemRef($comment, item)"
           :comment="item"
@@ -45,7 +43,7 @@
           :comments="$resources.comments"
         />
         <Activity
-          class="border-t"
+          class="my-5"
           v-else-if="item.doctype == 'GP Activity'"
           :activity="item"
         />

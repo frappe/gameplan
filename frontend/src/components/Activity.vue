@@ -1,22 +1,32 @@
 <template>
-  <div class="relative flex items-center py-4 text-base text-gray-900">
-    <FeatherIconCircle
-      class="mr-3"
-      :name="
-        {
-          'Discussion Closed': 'lock',
-          'Discussion Reopened': 'unlock',
-          'Discussion Title Changed': 'edit-3',
-          'Discussion Pinned': 'arrow-up-left',
-          'Discussion Unpinned': 'arrow-down-left',
-        }[activity.action]
-      "
-      color="green"
-    />
+  <div class="relative flex items-center text-base">
+    <div class="mr-3 grid h-7 w-7 place-items-center rounded-full bg-gray-100">
+      <LucideLock class="w-4" v-if="activity.action === 'Discussion Closed'" />
+      <LucideUnlock
+        class="w-4"
+        v-else-if="activity.action === 'Discussion Reopened'"
+      />
+      <LucideEdit3
+        class="w-4"
+        v-else-if="activity.action === 'Discussion Title Changed'"
+      />
+      <LucideArrowUpLeft
+        class="w-4"
+        v-else-if="activity.action === 'Discussion Pinned'"
+      />
+      <LucideArrowDownLeft
+        class="w-4"
+        v-else-if="activity.action === 'Discussion Unpinned'"
+      />
+      <LucideEdit3
+        class="w-4"
+        v-else-if="activity.action === 'Task Value Changed'"
+      />
+    </div>
     <p>
       <UserInfo :email="activity.user" v-slot="{ user }">
         <UserProfileLink
-          class="font-medium hover:text-blue-600"
+          class="font-medium text-gray-800 hover:text-gray-600"
           :user="user.name"
         >
           {{ user.full_name }}
@@ -48,7 +58,29 @@
           activity.data.new_title
         }}"
       </span>
-      <time
+      <span
+        class="text-gray-600"
+        v-if="activity.action == 'Task Value Changed'"
+      >
+        <template v-if="activity.data.field === 'assigned_to'">
+          assigned this to
+          <UserProfileLink
+            class="font-medium text-gray-800 hover:text-gray-600"
+            :user="$user(activity.data.new_value).name"
+          >
+            {{ $user(activity.data.new_value).full_name }}
+          </UserProfileLink>
+        </template>
+        <template v-else-if="activity.data.field === 'description'">
+          updated the description
+        </template>
+        <template v-else>
+          changed {{ activity.data.field_label }}
+          <span v-if="activity.data.old_value">from&nbsp;</span>
+          <span class="text-gray-800">{{ activity.data.old_value }}</span> to
+          <span class="text-gray-800">{{ activity.data.new_value }}</span>
+        </template> </span
+      >&nbsp;<time
         class="text-gray-600"
         :datetime="activity.creation"
         :title="$dayjs(activity.creation)"
@@ -60,7 +92,6 @@
 </template>
 <script>
 import UserProfileLink from './UserProfileLink.vue'
-import FeatherIconCircle from './FeatherIconCircle.vue'
 export default {
   name: 'Activity',
   props: {
@@ -69,6 +100,6 @@ export default {
       required: true,
     },
   },
-  components: { UserProfileLink, FeatherIconCircle },
+  components: { UserProfileLink },
 }
 </script>
