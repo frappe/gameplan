@@ -46,11 +46,12 @@
       <div class="mt-6 flex items-center justify-between px-3">
         <h3 class="text-sm font-medium text-gray-600">Teams</h3>
         <Button
-          icon="plus"
           label="Create Team"
-          appearance="minimal"
+          variant="ghost"
           @click="showAddTeamDialog = true"
-        />
+        >
+          <template #icon><LucidePlus class="h-4 w-4" /></template>
+        </Button>
       </div>
       <nav class="mt-1 space-y-0.5 px-2">
         <div v-for="team in activeTeams" :key="team.name">

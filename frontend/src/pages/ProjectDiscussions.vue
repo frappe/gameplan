@@ -5,9 +5,11 @@
         <h2 class="text-2xl font-semibold">Posts</h2>
         <Button
           v-if="!$readOnlyMode && !project.doc.archived_at"
-          iconLeft="plus"
           :route="{ name: 'ProjectDiscussionNew' }"
         >
+          <template #prefix>
+            <LucidePlus class="h-4 w-4" />
+          </template>
           New Discussion
         </Button>
       </div>

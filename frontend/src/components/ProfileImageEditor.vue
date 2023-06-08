@@ -1,6 +1,9 @@
 <template>
-  <FileUploader @success="(file) => setUserImage(file.file_url)">
-    <template v-slot="{ file, progress, uploading, openFileSelector }">
+  <FileUploader
+    @success="(file) => setUserImage(file.file_url)"
+    :validateFile="validateFile"
+  >
+    <template v-slot="{ file, progress, error, uploading, openFileSelector }">
       <div class="flex flex-col items-center">
         <button
           class="group relative rounded-full border-2"
@@ -38,7 +41,7 @@
         </button>
         <ErrorMessage
           class="mt-4"
-          :message="profile.removeImageBackground.error"
+          :message="profile.removeImageBackground.error || error"
         />
         <div class="mt-4 flex items-center gap-4">
           <Button
@@ -94,6 +97,12 @@ export default {
       this.profile.setImage.submit({ image: url })
     },
     getRandomColor,
+    validateFile(file) {
+      let extn = file.name.split('.').pop().toLowerCase()
+      if (!['png', 'jpg'].includes(extn)) {
+        return 'Only PNG and JPG images are allowed'
+      }
+    },
   },
 }
 </script>

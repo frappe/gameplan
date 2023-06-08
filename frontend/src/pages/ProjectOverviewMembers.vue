@@ -2,7 +2,9 @@
   <div>
     <div class="flex items-center space-x-2">
       <h2 class="text-2xl font-bold text-gray-900">Members</h2>
-      <Button icon="plus" @click="addMember.show = true" />
+      <Button @click="addMember.show = true">
+        <template #icon><LucidePlus class="w-4" /></template>
+      </Button>
     </div>
     <div class="mt-4 grid grid-cols-1">
       <Dropdown
@@ -11,22 +13,23 @@
         :options="[
           member.status === 'Accepted' && {
             label: member.role ? 'Change Role' : 'Add Role',
-            handler: () => {
+            onClick: () => {
               updateMemberRole.member = member
               updateMemberRole.show = true
             },
           },
           {
             label: 'Remove from project',
-            handler: () =>
+            onClick: () =>
               this.$dialog({
                 title: `Remove member`,
                 message: `Are you sure you want to remove ${member.full_name} from this project?`,
                 actions: [
                   {
                     label: 'Remove',
-                    appearance: 'danger',
-                    handler: ({ close }) => {
+                    variant: 'solid',
+                    theme: 'red',
+                    onClick: ({ close }) => {
                       project.removeMember
                         .submit({ user: member.user })
                         .then(() => close())
@@ -88,7 +91,7 @@
           v-slot="{ resource }"
         >
           <Button
-            appearance="primary"
+            variant="solid"
             @click="
               resource.submit({
                 doctype: 'GP Member',

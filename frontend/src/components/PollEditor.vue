@@ -24,7 +24,7 @@
     </div>
     <div class="flex justify-end space-x-2">
       <Button v-bind="discardButtonProps">Discard</Button>
-      <Button v-bind="submitButtonProps" appearance="primary"> Submit </Button>
+      <Button v-bind="submitButtonProps" variant="solid"> Submit </Button>
     </div>
   </div>
 </template>

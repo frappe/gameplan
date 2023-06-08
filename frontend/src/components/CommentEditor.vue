@@ -25,7 +25,7 @@
         />
         <div class="mt-2 flex items-center justify-end space-x-2 sm:mt-0">
           <Button v-bind="discardButtonProps || {}"> Discard </Button>
-          <Button appearance="primary" v-bind="submitButtonProps || {}">
+          <Button variant="solid" v-bind="submitButtonProps || {}">
             Submit
           </Button>
         </div>

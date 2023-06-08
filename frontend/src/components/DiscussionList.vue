@@ -50,7 +50,7 @@
                     v-if="d.pinned_at && this.filters"
                     class="absolute bottom-0 right-0 rounded-full bg-yellow-100 p-0.5 ring-2 ring-white group-hover:ring-gray-100"
                   >
-                    <PinIcon class="h-3 w-3 rotate-45 text-yellow-500" />
+                    <LucidePin class="h-3 w-3 rotate-45 text-yellow-500" />
                   </div>
                 </div>
               </component>
@@ -132,7 +132,7 @@
           :loading="$resources.discussions.list.loading"
         >
           <template #prefix>
-            <FeatherIcon name="refresh-cw" class="h-4 w-4" />
+            <LucideRefreshCw class="h-4 w-4" />
           </template>
           {{ $resources.discussions.loading ? 'Loading...' : 'Load more' }}
         </Button>
@@ -142,7 +142,6 @@
 </template>
 <script>
 import { TextEditor, Tooltip } from 'frappe-ui'
-import PinIcon from '~icons/lucide/pin'
 
 export default {
   name: 'DiscussionList',
@@ -151,7 +150,6 @@ export default {
   components: {
     TextEditor,
     Tooltip,
-    PinIcon,
   },
   resources: {
     discussions() {

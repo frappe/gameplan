@@ -4,7 +4,9 @@
       <div class="flex items-center gap-2">
         <h2 class="text-xl font-bold leading-none">Invite People</h2>
       </div>
-      <Button icon-left="users" label="Show Members" @click="$emit('back')" />
+      <Button label="Show Members" @click="$emit('back')">
+        <template #prefix><LucideUsers class="w-4" /></template>
+      </Button>
     </div>
     <div class="mt-4 space-y-4">
       <Input
@@ -37,10 +39,10 @@
             <Button
               v-for="project in projects"
               :key="project.value"
-              icon-right="x"
               @click="projects = projects.filter((p) => p !== project)"
             >
               {{ project.label }}
+              <template #suffix><LucideX class="w-4" /></template>
             </Button>
           </div>
           <Autocomplete
@@ -52,7 +54,7 @@
         </div>
         <ErrorMessage :message="$resources.inviteByEmail.error" />
         <Button
-          appearance="primary"
+          variant="solid"
           @click="$resources.inviteByEmail.submit({ emails, role })"
           :loading="$resources.inviteByEmail.loading"
         >
@@ -88,9 +90,10 @@
                   $resources.pendingInvitations.delete.loading &&
                   $resources.pendingInvitations.delete.params.name === user.name
                 "
-                icon="x"
                 label="Delete invitation"
-              />
+              >
+                <template #icon><LucideX class="w-4" /></template>
+              </Button>
             </Tooltip>
           </div>
         </li>

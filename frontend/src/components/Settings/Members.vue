@@ -10,7 +10,8 @@
           @input="search = $event"
           :debounce="300"
         />
-        <Button icon-left="user-plus" @click="inviteMembers = true">
+        <Button @click="inviteMembers = true">
+          <template #prefix><LucideUserPlus class="w-4" /></template>
           Invite People
         </Button>
       </div>
@@ -19,7 +20,7 @@
       class="mt-2 flex items-center justify-between border-b py-2 text-base text-gray-600"
     >
       <div class="w-4/5">User</div>
-      <div class="w-1/5 px-3">Role</div>
+      <div class="w-1/5 px-2">Role</div>
     </div>
     <ul class="divide-y overflow-auto">
       <li
@@ -41,7 +42,7 @@
             :button="{
               label: getUserRole(user),
               iconRight: 'chevron-down',
-              appearance: 'minimal',
+              variant: 'ghost',
             }"
             placement="right"
           ></Dropdown>
@@ -114,8 +115,8 @@ export default {
         actions: [
           {
             label: 'Change Role',
-            appearance: 'primary',
-            handler: ({ close }) => {
+            variant: 'solid',
+            onClick: ({ close }) => {
               return this.$resources.changeUserRole.submit(
                 { user: user.name, role },
                 { onSuccess: close }
@@ -136,8 +137,9 @@ export default {
         actions: [
           {
             label: 'Remove User',
-            appearance: 'danger',
-            handler: ({ close }) => {
+            variant: 'solid',
+            theme: 'red',
+            onClick: ({ close }) => {
               return this.$resources.removeUser.submit(
                 { user: user.name },
                 { onSuccess: close }

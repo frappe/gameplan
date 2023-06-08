@@ -41,7 +41,7 @@
             />
           </ComboboxInput>
           <template v-if="addMembersIntent">
-            <div class="mt-3 mb-1 text-sm font-semibold text-gray-500">
+            <div class="mb-1 mt-3 text-sm font-semibold text-gray-500">
               {{
                 filteredUsers.length === 0
                   ? 'No users found'
@@ -111,24 +111,27 @@
               </div>
             </div>
             <Button
-              icon="x"
               class="ml-auto"
               @click="resource.removeMember.submit({ user: member.user })"
               :disabled="resource.removeMember.loading"
-            />
+            >
+              <template #icon>
+                <LucideX class="h-4 w-4" />
+              </template>
+            </Button>
           </li>
         </ul>
       </div>
     </template>
     <template #actions v-if="membersToAdd.length">
       <Button
-        appearance="primary"
+        class="w-full"
+        variant="solid"
         @click="sendInvites"
         :loading="resource.addMembers.loading"
       >
         Add
       </Button>
-      <Button @click="open = false"> Cancel </Button>
     </template>
   </Dialog>
 </template>

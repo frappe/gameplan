@@ -30,7 +30,7 @@
           >
             Save position
           </Button>
-          <Button class="mt-2 ml-2" @click="reposition = false">Cancel</Button>
+          <Button class="ml-2 mt-2" @click="reposition = false">Cancel</Button>
         </div>
       </div>
       <div
@@ -49,14 +49,14 @@
           "
         >
           <template v-slot="{ togglePopover }">
-            <Button appearance="white" @click="togglePopover()">
+            <Button variant="outline" @click="togglePopover()">
               Change Image
             </Button>
           </template>
         </UnsplashImageBrowser>
         <Button
           v-if="editable"
-          appearance="white"
+          variant="outline"
           @click="
             () => {
               reposition = true
@@ -84,7 +84,7 @@
         "
       >
         <template v-slot="{ togglePopover }">
-          <Button appearance="white" @click="togglePopover()">
+          <Button variant="outline" @click="togglePopover()">
             Click to set cover image
           </Button>
         </template>

@@ -22,7 +22,7 @@
             <template #button>
               <Tooltip text="Unpin this project">
                 <Button
-                  appearance="minimal"
+                  variant="ghost"
                   @click.prevent="unpinProject(project.pinId)"
                   :loading="
                     $resources.pins.delete.loading &&
@@ -51,7 +51,7 @@
       </button>
 
       <div
-        class="mt-2 mb-6 grid grid-cols-1 gap-4 px-4 lg:grid-cols-3 lg:px-2"
+        class="mb-6 mt-2 grid grid-cols-1 gap-4 px-4 lg:grid-cols-3 lg:px-2"
         v-show="activeProjects"
       >
         <HomescreenProjectCard
@@ -62,7 +62,7 @@
           <template #button>
             <Tooltip text="Pin this project">
               <Button
-                appearance="minimal"
+                variant="ghost"
                 @click.prevent="pinProject(project.name)"
                 :loading="
                   $resources.pins.insert.loading &&
@@ -107,7 +107,7 @@
           <template #button>
             <Tooltip text="Pin this project">
               <Button
-                appearance="minimal"
+                variant="ghost"
                 @click.prevent="pinProject(project.name)"
                 :loading="
                   $resources.pins.insert.loading &&

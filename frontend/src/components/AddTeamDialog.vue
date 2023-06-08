@@ -23,7 +23,8 @@
     </template>
     <template #actions>
       <Button
-        appearance="primary"
+        variant="solid"
+        class="w-full"
         @click="createTeam(teamName)"
         :loading="teams.insert.loading"
       >

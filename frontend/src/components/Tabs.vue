@@ -3,7 +3,7 @@
     <nav class="-mb-px flex space-x-8" aria-label="Tabs">
       <Links
         :links="links"
-        class="whitespace-nowrap border-b-2 py-3 text-base font-medium leading-none"
+        class="whitespace-nowrap border-b-2 py-1.5 text-base"
         v-slot="{ link }"
       >
         <div class="items- flex items-end space-x-1">
@@ -28,8 +28,8 @@ export default {
         return {
           ...tab,
           class: tab.isActive
-            ? 'border-blue-500 text-blue-600'
-            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+            ? 'border-gray-900 text-gray-900'
+            : 'border-transparent text-gray-600 hover:text-gray-700 hover:border-gray-300',
         }
       })
     },

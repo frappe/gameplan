@@ -72,13 +72,13 @@
         class="mt-4"
         @click="next"
         :loading="$resources.search.loading"
-        icon-left="file-text"
         v-if="
           lastResponse &&
           lastResponse.docs.length &&
           lastResponse.docs.length >= pageLength
         "
       >
+        <template #prefix><LucideFileText class="w-4" /></template>
         Load more
       </Button>
     </div>

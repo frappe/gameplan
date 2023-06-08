@@ -96,6 +96,7 @@
           :value="newComment"
           @change="onNewCommentChange"
           :submitButtonProps="{
+            variant: 'solid',
             onClick: submitComment,
             loading: $resources.comments.insert.loading,
             disabled: commentEmpty,
@@ -374,11 +375,11 @@ export default {
           actions: [
             {
               label: 'Discard comment',
-              handler: ({ close }) => {
+              onClick: ({ close }) => {
                 this.resetCommentState()
                 close()
               },
-              appearance: 'primary',
+              variant: 'solid',
             },
             {
               label: 'Keep comment',

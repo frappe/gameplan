@@ -3,9 +3,9 @@
     <div class="flex items-center rounded-xl">
       <Button
         v-if="!team.doc.members.length"
-        icon-left="user-plus"
         @click="inviteMemberDialog = true"
       >
+        <template #prefix><LucideUserPlus class="w-4" /></template>
         Add Members
       </Button>
       <template v-else>

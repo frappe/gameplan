@@ -16,7 +16,7 @@ export let Dialogs = {
           'body-content': () => {
             return [
               dialog.message && (
-                <p class="text-base text-gray-600">{dialog.message}</p>
+                <p class="text-p-base text-gray-700">{dialog.message}</p>
               ),
               <ErrorMessage class="mt-2" message={dialog.error} />,
             ]

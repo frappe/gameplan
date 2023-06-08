@@ -1,6 +1,5 @@
 <template>
   <Dropdown
-    placement="center"
     :options="[
       {
         icon: 'user',
@@ -13,13 +12,13 @@
       {
         icon: 'settings',
         label: 'Settings & Members',
-        handler: () => (settingsDialog.show = true),
+        onClick: () => (settingsDialog.show = true),
         condition: () => $user().isNotGuest,
       },
       {
         icon: 'log-out',
         label: 'Log out',
-        handler: () => logout(),
+        onClick: () => logout(),
       },
     ]"
   >

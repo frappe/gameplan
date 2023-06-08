@@ -48,7 +48,7 @@
         <div class="hidden shrink-0 space-x-2 sm:block">
           <Button @click="discard">Discard</Button>
           <Button
-            appearance="primary"
+            variant="solid"
             :loading="$resources.newDiscussion.loading"
             @click="publish"
           >
@@ -92,7 +92,7 @@
             <div class="mt-2 shrink-0 space-x-2 text-right sm:hidden">
               <Button @click="discard">Discard</Button>
               <Button
-                appearance="primary"
+                variant="solid"
                 :loading="$resources.newDiscussion.loading"
                 @click="publish"
               >
@@ -183,12 +183,12 @@ export default {
           actions: [
             {
               label: 'Discard post',
-              handler: ({ close }) => {
+              onClick: ({ close }) => {
                 localStorage.removeItem(this.draftPostKey())
                 this.$router.push({ name: 'ProjectDiscussions' })
                 close()
               },
-              appearance: 'primary',
+              variant: 'solid',
             },
             {
               label: 'Keep post',

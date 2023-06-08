@@ -61,11 +61,8 @@
         </div>
       </div>
 
-      <Button
-        class="shrink-0"
-        icon-left="plus"
-        @click="followProjectsDialog = true"
-      >
+      <Button class="shrink-0" @click="followProjectsDialog = true">
+        <template #prefix><LucidePlus class="w-4" /></template>
         Follow Projects
       </Button>
     </div>
@@ -106,8 +103,7 @@
                   </div>
                   <Button
                     v-if="isFollowed(project.value)"
-                    icon="check"
-                    appearance="minimal"
+                    variant="ghost"
                     label="Unfollow project"
                     @click="unfollowProject(project.value)"
                     :loading="
@@ -115,19 +111,22 @@
                       $resources.followedProjects.delete.params.name ==
                         project.followId
                     "
-                  />
+                  >
+                    <template #icon><LucideCheck class="w-4" /></template>
+                  </Button>
                   <Button
                     v-else
-                    icon="plus"
                     label="Follow project"
-                    appearance="minimal"
+                    variant="ghost"
                     @click="followProject(project.value)"
                     :loading="
                       $resources.followedProjects.insert.loading &&
                       $resources.followedProjects.insert.params?.doc?.name ==
                         project.value
                     "
-                  />
+                  >
+                    <template #icon><LucidePlus class="w-4" /></template>
+                  </Button>
                 </div>
               </div>
             </div>

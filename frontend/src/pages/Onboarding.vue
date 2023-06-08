@@ -46,14 +46,14 @@
           <Button
             class="ml-auto"
             v-show="activeStepIndex < steps.length - 1"
-            appearance="primary"
+            variant="solid"
             @click="nextStep"
           >
             Next
           </Button>
           <Button
             v-show="activeStepIndex === steps.length - 1"
-            appearance="primary"
+            variant="solid"
             @click="completeSetup"
           >
             Complete Setup

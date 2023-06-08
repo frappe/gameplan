@@ -7,15 +7,15 @@
           :options="[
             {
               label: 'Page Title',
-              handler: () => (orderBy = 'title asc'),
+              onClick: () => (orderBy = 'title asc'),
             },
             {
               label: 'Date Updated',
-              handler: () => (orderBy = 'modified desc'),
+              onClick: () => (orderBy = 'modified desc'),
             },
             {
               label: 'Date Created',
-              handler: () => (orderBy = 'creation desc'),
+              onClick: () => (orderBy = 'creation desc'),
             },
           ]"
           placement="center"
@@ -30,7 +30,10 @@
             </div>
           </Button>
         </Dropdown>
-        <Button icon-left="plus" @click="newPage">New Page</Button>
+        <Button @click="newPage">
+          <template #prefix><LucidePlus class="w-4" /></template>
+          New Page
+        </Button>
       </div>
     </div>
     <div class="mt-5 grid grid-cols-1 gap-5 md:grid-cols-3 lg:grid-cols-4">
@@ -41,29 +44,30 @@
         No pages
       </div>
       <div class="relative" v-for="d in $resources.pages.data" :key="d.name">
-        <div class="absolute top-0 right-0 p-3">
+        <div class="absolute right-0 top-0 p-3">
           <Dropdown
             :button="{
               icon: 'more-horizontal',
               label: 'Page Options',
-              appearance: 'minimal',
+              variant: 'ghost',
             }"
             :options="[
               {
                 label: 'Delete',
                 icon: 'trash',
-                handler: () => {
+                onClick: () => {
                   $dialog({
                     title: 'Delete Page',
                     message: 'Are you sure you want to delete this page?',
                     actions: [
                       {
                         label: 'Delete',
-                        handler: ({ close }) => {
+                        onClick: ({ close }) => {
                           close()
                           return this.$resources.pages.delete.submit(d.name)
                         },
-                        appearance: 'danger',
+                        variant: 'solid',
+                        theme: 'red',
                       },
                       {
                         label: 'Cancel',
