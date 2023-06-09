@@ -16,7 +16,7 @@
           type="text"
           placeholder="Title"
           class="w-full rounded-md border-none p-0 text-2xl font-semibold text-gray-900 focus:outline-none focus:ring-0"
-          @input="
+          @change="
             $resources.task.setValueDebounced.submit({
               title: $event.target.value,
             })
@@ -25,17 +25,10 @@
           v-focus
         />
         <TextEditor
-          ref="readme"
+          ref="description"
           editor-class="prose-sm max-w-none"
           placeholder="Description"
           :content="$resources.task.doc.description"
-          @change="
-            (val) => {
-              $resources.task.setValueDebounced.submit({
-                description: val,
-              })
-            }
-          "
           :bubbleMenu="true"
           :floating-menu="true"
         />
@@ -142,6 +135,7 @@ export default {
           ) {
             this.$resources.task.trackVisit.submit()
           }
+          this.setupEditorBlur()
         },
       }
     },
@@ -174,6 +168,18 @@ export default {
           onClick: () => this.$resources.task.setValue.submit({ priority }),
         }
       })
+    },
+  },
+  methods: {
+    setupEditorBlur() {
+      if (this._blurSetup) return
+      let editor = this.$refs.description.editor
+      editor.on('blur', () => {
+        this.$resources.task.setValueDebounced.submit({
+          description: editor.getHTML(),
+        })
+      })
+      this._blurSetup = true
     },
   },
   components: {
