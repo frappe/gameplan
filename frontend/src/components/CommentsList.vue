@@ -64,7 +64,7 @@
       ref="addComment"
     >
       <div class="flex items-start">
-        <div class="mr-3 flex h-8 items-center">
+        <div class="hidden sm:flex mr-3 h-8 items-center">
           <UserAvatar :user="$user().name" size="md" />
         </div>
         <div class="relative w-full" v-show="!showCommentBox">
@@ -99,16 +99,11 @@
           @keydown.ctrl.enter.capture.stop="submitComment"
           @keydown.meta.enter.capture.stop="submitComment"
         >
-          <div class="mb-4 flex items-center" v-if="false">
+          <div class="mb-4 flex items-center sm:hidden">
             <UserAvatar :user="$user().name" size="sm" />
             <span class="ml-2 text-base font-medium text-gray-900">
               {{ $user().full_name }}
             </span>
-            <TabButtons
-              class="ml-auto"
-              :buttons="[{ label: 'Comment' }, { label: 'Poll' }]"
-              v-model="newCommentType"
-            />
           </div>
           <CommentEditor
             ref="newCommentEditor"

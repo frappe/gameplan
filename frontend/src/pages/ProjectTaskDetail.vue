@@ -1,6 +1,6 @@
 <template>
   <div class="flex h-full flex-1" v-if="$resources.task.doc">
-    <div class="flex-1">
+    <div class="flex-1 w-full">
       <div class="relative p-6">
         <div
           class="absolute right-0 top-0 p-6"
@@ -32,10 +32,50 @@
           :bubbleMenu="true"
           :floating-menu="true"
         />
+        <div class="mt-8 flex items-center space- gap-2 flex-wrap sm:hidden">
+          <Autocomplete
+            placeholder="Assign a user"
+            :options="assignableUsers"
+            :value="$resources.task.doc.assigned_to"
+            @change="
+              (option) => {
+                $resources.task.setValue.submit({
+                  assigned_to: option?.value || '',
+                })
+              }
+            "
+          />
+          <TextInput
+            type="date"
+            placeholder="Due date"
+            v-model="$resources.task.doc.due_date"
+            @change="
+              $resources.task.setValue.submit({
+                due_date: $event.target.value,
+              })
+            "
+          />
+          <Dropdown :options="statusOptions">
+            <Button>
+              <template #prefix>
+                <TaskStatusIcon :status="$resources.task.doc.status" />
+              </template>
+              {{ $resources.task.doc.status || 'Set status' }}
+            </Button>
+          </Dropdown>
+          <Dropdown :options="priorityOptions">
+            <Button>
+              <template v-if="$resources.task.doc.priority" #prefix>
+                <TaskPriorityIcon :priority="$resources.task.doc.priority" />
+              </template>
+              {{ $resources.task.doc.priority || 'Set priority' }}
+            </Button>
+          </Dropdown>
+        </div>
         <CommentsList class="mt-8" doctype="GP Task" :name="taskId" />
       </div>
     </div>
-    <div class="w-[20rem] shrink-0 border-l">
+    <div class="w-[20rem] shrink-0 border-l hidden sm:block">
       <div
         class="grid grid-cols-2 items-center gap-y-6 p-6 text-base text-gray-700"
       >

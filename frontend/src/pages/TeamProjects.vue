@@ -20,14 +20,14 @@
           </Button>
         </div>
       </div>
-      <ul role="list" class="grid grid-cols-1 sm:grid-cols-4 sm:gap-5">
+      <ul role="list" class="grid grid-cols-1 sm:grid-cols-4 gap-5">
         <li
           v-for="project in projectsList"
           :key="project.name"
           class="flow-root"
         >
           <div
-            class="group relative items-center py-3 shadow transition-colors focus-within:ring focus-within:ring-gray-300 hover:bg-gray-100 sm:rounded-lg sm:px-3"
+            class="group relative items-center py-3 shadow transition-colors focus-within:ring focus-within:ring-gray-300 hover:bg-gray-100 rounded-lg px-3"
           >
             <div
               class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded bg-gray-100 transition-colors group-hover:bg-white"
