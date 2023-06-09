@@ -1,17 +1,16 @@
 <template>
   <header
-    class="fixed top-0 z-10 h-14 w-full border-b bg-white py-3 px-4 sm:sticky sm:px-5"
+    class="fixed top-0 z-10 h-14 w-full border-b bg-white px-4 py-3 sm:sticky sm:px-5"
   >
     <div class="flex items-center justify-between">
-      <div class="ml-3 flex">
+      <div class="flex items-center">
         <h1 class="mr-4 text-2xl font-semibold">Home</h1>
 
-        <div class="flex space-x-0.5">
+        <div class="flex space-x-1 rounded">
           <Button
-            appearance="minimal"
             v-for="option in feedOptions"
             :key="option.value"
-            :active="feedType === option.value"
+            :variant="feedType === option.value ? 'subtle' : 'ghost'"
             @click="$router.replace({ params: { feedType: option.value } })"
           >
             {{ option.label }}
@@ -39,7 +38,7 @@
   </div>
   <div class="mt-14 pt-1 sm:mt-0">
     <div
-      class="mx-auto -mt-1 flex max-w-4xl items-center justify-between px-2 pt-2 pb-2 sm:px-0 sm:px-5"
+      class="mx-auto -mt-1 flex max-w-4xl items-center justify-between px-2 pb-2 pt-2 sm:px-0 sm:px-5"
       v-if="feedType === 'following'"
     >
       <div class="text-base text-gray-700">
@@ -62,11 +61,8 @@
         </div>
       </div>
 
-      <Button
-        class="shrink-0"
-        icon-left="plus"
-        @click="followProjectsDialog = true"
-      >
+      <Button class="shrink-0" @click="followProjectsDialog = true">
+        <template #prefix><LucidePlus class="w-4" /></template>
         Follow Projects
       </Button>
     </div>
@@ -107,8 +103,7 @@
                   </div>
                   <Button
                     v-if="isFollowed(project.value)"
-                    icon="check"
-                    appearance="minimal"
+                    variant="ghost"
                     label="Unfollow project"
                     @click="unfollowProject(project.value)"
                     :loading="
@@ -116,19 +111,22 @@
                       $resources.followedProjects.delete.params.name ==
                         project.followId
                     "
-                  />
+                  >
+                    <template #icon><LucideCheck class="w-4" /></template>
+                  </Button>
                   <Button
                     v-else
-                    icon="plus"
                     label="Follow project"
-                    appearance="minimal"
+                    variant="ghost"
                     @click="followProject(project.value)"
                     :loading="
                       $resources.followedProjects.insert.loading &&
                       $resources.followedProjects.insert.params?.doc?.name ==
                         project.value
                     "
-                  />
+                  >
+                    <template #icon><LucidePlus class="w-4" /></template>
+                  </Button>
                 </div>
               </div>
             </div>

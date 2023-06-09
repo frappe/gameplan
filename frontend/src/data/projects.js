@@ -10,6 +10,8 @@ export let projects = createListResource({
     'archived_at',
     'is_private',
     'modified',
+    'tasks_count',
+    'discussions_count',
   ],
   orderBy: 'title asc',
   pageLength: 999,

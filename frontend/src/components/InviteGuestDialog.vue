@@ -16,10 +16,13 @@
           </div>
           <div class="ml-auto">
             <Tooltip :text="user.pending ? 'Remove invite' : 'Remove user'">
-              <Button icon="x" label="Remove" @click="remove(user)" />
+              <Button label="Remove" @click="remove(user)">
+                <template #icon><LucideX class="w-4" /></template>
+              </Button>
             </Tooltip>
           </div>
         </div>
+        <Dialog :options="removeDialog.options" v-model="removeDialog.open" />
       </div>
       <Input
         label="Email"
@@ -32,19 +35,19 @@
     </template>
     <template #actions>
       <Button
-        appearance="primary"
+        class="w-full"
+        variant="solid"
         @click="invite"
         :loading="project.inviteGuest.loading"
       >
         Invite
       </Button>
-      <Button @click="inviteGuestDialog = false">Cancel</Button>
     </template>
   </Dialog>
 </template>
 <script setup>
 import { createListResource, Tooltip } from 'frappe-ui'
-import { ref, computed } from 'vue'
+import { ref, computed, reactive } from 'vue'
 
 const props = defineProps(['modelValue', 'project'])
 const emit = defineEmits(['update:modelValue'])
@@ -94,33 +97,37 @@ function invite() {
   )
 }
 
+let removeDialog = reactive({
+  open: false,
+  options: null,
+})
+
 function remove(user) {
   if (user.pending) {
-    $dialog({
+    removeDialog.options = {
       title: 'Delete Invitation',
       message: 'Are you sure you want to delete this invitation?',
       actions: [
         {
           label: 'Delete',
-          appearance: 'danger',
-          handler: ({ close }) => {
+          variant: 'solid',
+          theme: 'red',
+          onClick: ({ close }) => {
             return pending.delete.submit(user.name).then(close)
           },
         },
-        {
-          label: 'Cancel',
-        },
       ],
-    })
+    }
   } else {
-    $dialog({
+    removeDialog.options = {
       title: 'Remove Guest User',
       message: 'Are you sure you want to remove this guest user?',
       actions: [
         {
           label: 'Delete',
-          appearance: 'danger',
-          handler: ({ close }) => {
+          variant: 'solid',
+          theme: 'red',
+          onClick: ({ close }) => {
             return props.project.removeGuest.submit(
               { email: user.user },
               {
@@ -136,7 +143,8 @@ function remove(user) {
           label: 'Cancel',
         },
       ],
-    })
+    }
   }
+  removeDialog.open = true
 }
 </script>

@@ -12,16 +12,12 @@
           slug: d.slug,
         },
       }"
-      class="group relative block rounded-[10px] hover:bg-gray-100"
+      class="group relative block h-15 rounded-[10px] hover:bg-gray-100"
     >
-      <div class="flex items-center space-x-4 p-3">
+      <div class="flex h-full items-center space-x-4 overflow-hidden px-3 py-2">
         <UserInfo :email="d.last_post_by || d.owner">
           <template v-slot="{ user }">
             <div class="flex items-center space-x-3">
-              <div
-                class="h-1.5 w-1.5 shrink-0 rounded-full bg-blue-500"
-                :class="d.unread ? 'visible' : 'invisible'"
-              ></div>
               <component
                 :is="
                   d.closed_at || (d.pinned_at && this.filters)
@@ -38,7 +34,7 @@
                 "
               >
                 <div class="relative">
-                  <UserAvatar :user="d.closed_by || user.name" />
+                  <UserAvatar :user="d.closed_by || user.name" size="2xl" />
 
                   <div
                     v-if="d.closed_at"
@@ -50,33 +46,29 @@
                     v-if="d.pinned_at && this.filters"
                     class="absolute bottom-0 right-0 rounded-full bg-yellow-100 p-0.5 ring-2 ring-white group-hover:ring-gray-100"
                   >
-                    <PinIcon class="h-3 w-3 rotate-45 text-yellow-500" />
+                    <LucidePin class="h-3 w-3 rotate-45 text-yellow-500" />
                   </div>
                 </div>
               </component>
             </div>
-            <div class="w-full">
-              <div class="flex items-center">
-                <div :class="d.unread ? 'text-gray-900' : 'text-gray-600'">
+            <div class="min-w-0 flex-1">
+              <div class="flex min-w-0 items-center">
+                <div
+                  class="overflow-hidden text-ellipsis whitespace-nowrap leading-none"
+                  :class="d.unread ? 'text-gray-900' : 'text-gray-900'"
+                >
                   <span
-                    class="text-lg leading-snug"
+                    class="overflow-hidden text-ellipsis whitespace-nowrap text-base"
                     :class="[d.unread ? 'font-semibold' : 'font-medium']"
                   >
                     {{ d.title }}
                   </span>
-                  <span class="hidden whitespace-pre text-gray-600 md:inline">
-                    &middot;
-                  </span>
-                  <span
-                    class="hidden shrink-0 whitespace-nowrap text-sm text-gray-600 md:inline"
-                    :title="discussionTimestampDescription(d)"
-                  >
-                    {{ discussionTimestamp(d) }}
-                  </span>
                 </div>
               </div>
-              <div class="mt-0.5 flex items-center justify-between text-base">
-                <div class="text-gray-600">
+              <div class="min-w-0 mt-1.5 flex items-center justify-between">
+                <div
+                  class="text-base text-gray-600 overflow-hidden text-ellipsis whitespace-nowrap"
+                >
                   <span :class="filters ? '' : 'hidden sm:inline'">
                     {{ user.full_name }}
                   </span>
@@ -91,33 +83,36 @@
                 </div>
               </div>
             </div>
-            <div class="ml-auto text-right">
-              <div class="flex items-center space-x-3">
+            <div class="ml-auto">
+              <div
+                class="shrink-0 whitespace-nowrap text-sm text-gray-600"
+                :title="discussionTimestampDescription(d)"
+              >
+                {{ discussionTimestamp(d) }}
+              </div>
+              <div class="mt-1.5 flex items-center justify-end space-x-3">
                 <Tooltip text="Ongoing poll" v-if="d.ongoing_polls?.length">
                   <FeatherIcon name="bar-chart-2" class="h-4 w-4 -rotate-90" />
                 </Tooltip>
                 <div
-                  class="inline-flex shrink-0 items-center text-base leading-6"
+                  class="inline-grid h-5 w-5 shrink-0 place-items-center rounded-full bg-gray-200 text-xs"
                   :class="[
                     d.unread ? 'text-gray-900' : 'text-gray-600',
                     d.comments_count ? '' : 'invisible',
                   ]"
                 >
                   {{ d.comments_count || 0 }}
-                  <FeatherIcon name="message-circle" class="ml-1 h-4 w-4" />
                 </div>
-              </div>
-              <div
-                class="mt-0.5 shrink-0 whitespace-nowrap text-sm text-gray-600 md:hidden"
-                :title="discussionTimestampDescription(d)"
-              >
-                {{ discussionTimestamp(d) }}
               </div>
             </div>
           </template>
         </UserInfo>
       </div>
-      <div class="ml-7 mr-3 h-px border-t border-gray-200"></div>
+      <div class="mx-3 h-px border-t border-gray-200"></div>
+      <div
+        class="absolute left-1 sm:-left-3 top-[30px] h-3.5 w-3.5 sm:h-1.5 sm:w-1.5 shrink-0 -translate-y-1/2 rounded-full bg-orange-500 border-[3px] sm:border-none border-white"
+        :class="d.unread ? 'visible' : 'invisible'"
+      ></div>
     </router-link>
     <div class="px-2 pb-40 sm:px-0">
       <div
@@ -137,11 +132,11 @@
         <Button
           @click="$resources.discussions.next"
           :loading="$resources.discussions.list.loading"
-          icon-left="file-text"
         >
-          {{
-            $resources.discussions.loading ? 'Loading...' : 'Load more posts'
-          }}
+          <template #prefix>
+            <LucideRefreshCw class="h-4 w-4" />
+          </template>
+          {{ $resources.discussions.loading ? 'Loading...' : 'Load more' }}
         </Button>
       </div>
     </div>
@@ -149,7 +144,6 @@
 </template>
 <script>
 import { TextEditor, Tooltip } from 'frappe-ui'
-import PinIcon from '~icons/lucide/pin'
 
 export default {
   name: 'DiscussionList',
@@ -158,7 +152,6 @@ export default {
   components: {
     TextEditor,
     Tooltip,
-    PinIcon,
   },
   resources: {
     discussions() {

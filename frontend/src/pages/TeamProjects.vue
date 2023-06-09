@@ -10,28 +10,31 @@
           />
           <Button
             v-if="teamProjects.length"
-            iconLeft="plus"
             @click="createNewProjectDialog = true"
+            variant="solid"
           >
+            <template #prefix>
+              <LucidePlus class="h-4 w-4" />
+            </template>
             Add Project
           </Button>
         </div>
       </div>
-      <ul role="list" class="grid grid-cols-1 sm:grid-cols-3 sm:gap-4">
+      <ul role="list" class="grid grid-cols-1 sm:grid-cols-4 gap-5">
         <li
           v-for="project in projectsList"
           :key="project.name"
           class="flow-root"
         >
           <div
-            class="group relative flex items-center space-x-4 border-b border-gray-100 py-2 transition-colors focus-within:ring-2 focus-within:ring-blue-500 hover:bg-gray-100 sm:rounded-xl sm:border sm:px-2"
+            class="group relative items-center py-3 shadow transition-colors focus-within:ring focus-within:ring-gray-300 hover:bg-gray-100 rounded-lg px-3"
           >
             <div
-              class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-gray-100 transition-colors group-hover:bg-white"
+              class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded bg-gray-100 transition-colors group-hover:bg-white"
             >
               <span class="text-4xl">{{ project.icon }}</span>
             </div>
-            <div>
+            <div class="mt-2.5">
               <h3 class="text-lg font-medium text-gray-900">
                 <router-link
                   :to="{
@@ -51,8 +54,34 @@
                   </span>
                 </router-link>
               </h3>
-              <p class="mt-1 text-base text-gray-500">
-                Updated {{ $dayjs(project.modified).fromNow() }}
+              <p class="mt-1 text-base">
+                <template v-if="project.tasks_count">
+                  <span class="text-gray-900">
+                    {{ project.tasks_count }}
+                  </span>
+                  <span class="text-gray-600"
+                    >&nbsp;{{ project.tasks_count === 1 ? 'task' : 'tasks' }}
+                  </span>
+                  &middot;
+                </template>
+                <template v-if="project.discussions_count">
+                  <span class="text-gray-900">
+                    {{ project.discussions_count }}
+                  </span>
+                  <span class="text-gray-600"
+                    >&nbsp;{{
+                      project.discussions_count === 1
+                        ? 'discussion'
+                        : 'discussions'
+                    }}
+                  </span>
+                </template>
+                <span
+                  class="text-gray-600"
+                  v-if="project.tasks_count + project.discussions_count == 0"
+                >
+                  {{ $dayjs(project.creation).fromNow() }}
+                </span>
               </p>
             </div>
           </div>
@@ -73,11 +102,11 @@
         </button>
       </ul>
       <Dialog
-        :options="{ title: 'Create Project' }"
+        :options="{ title: 'Create project' }"
         v-model="createNewProjectDialog"
       >
         <template #body-content>
-          <div class="space-y-2">
+          <div class="space-y-5">
             <Input
               type="text"
               label="Title"
@@ -100,7 +129,9 @@
         </template>
         <template #actions>
           <Button
-            appearance="primary"
+            size="md"
+            class="w-full"
+            variant="solid"
             @click="createProject"
             :loading="projects.insert.loading"
           >

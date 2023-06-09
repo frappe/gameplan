@@ -21,7 +21,8 @@
   "tasks_count",
   "discussions_count",
   "archived_at",
-  "archived_by"
+  "archived_by",
+  "is_followed"
  ],
  "fields": [
   {
@@ -112,6 +113,13 @@
    "fieldname": "is_private",
    "fieldtype": "Check",
    "label": "Is Private"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_followed",
+   "fieldtype": "Check",
+   "is_virtual": 1,
+   "label": "Is Followed"
   }
  ],
  "index_web_pages_for_search": 1,
@@ -125,7 +133,7 @@
    "link_fieldname": "project"
   }
  ],
- "modified": "2023-01-12 17:05:23.306755",
+ "modified": "2023-05-29 17:46:40.841850",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "GP Project",

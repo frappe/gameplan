@@ -59,7 +59,7 @@
         <Button
           v-if="$isSessionUser(profile.user)"
           @click="editDialog.show = true"
-          appearance="minimal"
+          variant="ghost"
           class="whitespace-nowrap"
         >
           Edit Profile
@@ -102,7 +102,7 @@
       </template>
       <template #actions>
         <Button
-          appearance="primary"
+          variant="solid"
           @click="save"
           :loading="
             $resources.user.setValue.loading ||

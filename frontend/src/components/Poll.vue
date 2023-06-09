@@ -1,5 +1,5 @@
 <template>
-  <div class="rounded-md py-6 transition-shadow" :class="{ ring: highlight }">
+  <div class="py-6 transition-shadow" :class="{ ring: highlight }">
     <div class="mb-2 flex items-center text-base text-gray-900">
       <UserInfo :email="_poll.owner" v-slot="{ user }">
         <UserProfileLink class="mr-3" :user="user.name">
@@ -27,10 +27,10 @@
       <div class="ml-auto flex items-center space-x-2">
         <Button
           v-if="!isStopped && $isSessionUser(_poll.owner)"
-          appearance="minimal"
-          icon-left="minus-circle"
+          variant="ghost"
           @click="stopPoll"
         >
+          <template #prefix><LucideMinusCircle class="w-4" /></template>
           Stop Poll
         </Button>
         <Tooltip v-else text="This is a poll">
@@ -40,7 +40,7 @@
           placement="right"
           :button="{
             icon: 'more-horizontal',
-            appearance: 'minimal',
+            variant: 'ghost',
             label: 'Poll Options',
           }"
           :options="dropdownOptions"
@@ -193,8 +193,8 @@ export default {
           actions: [
             {
               label: `Vote for "${option.title}"`,
-              appearance: 'primary',
-              handler: ({ close }) => {
+              variant: 'solid',
+              onClick: ({ close }) => {
                 this.$resources.poll.submitVote
                   .submit({ option: option.title })
                   .then(close)
@@ -223,8 +223,9 @@ export default {
         actions: [
           {
             label: 'Stop',
-            appearance: 'danger',
-            handler: ({ close }) =>
+            variant: 'solid',
+            theme: 'red',
+            onClick: ({ close }) =>
               this.$resources.poll.stopPoll.submit().then(close),
           },
           {
@@ -267,7 +268,7 @@ export default {
           label: 'Show results',
           icon: 'bar-chart-2',
           condition: () => this.pollResults,
-          handler: () => {
+          onClick: () => {
             this.showDialog = true
           },
         },
@@ -279,15 +280,16 @@ export default {
             this.participated &&
             (!this._poll.stopped_at ||
               this.$dayjs().isBefore(this._poll.stopped_at)),
-          handler: () => {
+          onClick: () => {
             this.$dialog({
               title: 'Retract vote',
               message: 'Are you sure you want to retract your vote?',
               actions: [
                 {
                   label: 'Retract vote',
-                  appearance: 'danger',
-                  handler: ({ close }) =>
+                  variant: 'solid',
+                  theme: 'red',
+                  onClick: ({ close }) =>
                     this.$resources.poll.retractVote.submit().then(close),
                 },
                 {
@@ -300,21 +302,22 @@ export default {
         {
           label: 'Copy link',
           icon: 'link',
-          handler: this.copyLink,
+          onClick: this.copyLink,
         },
         {
           label: 'Delete',
           icon: 'trash',
           condition: () => this.$isSessionUser(this._poll.owner),
-          handler: () => {
+          onClick: () => {
             this.$dialog({
               title: 'Delete poll',
               message: 'Are you sure you want to delete this poll?',
               actions: [
                 {
                   label: 'Delete',
-                  appearance: 'danger',
-                  handler: ({ close }) =>
+                  variant: 'solid',
+                  theme: 'red',
+                  onClick: ({ close }) =>
                     this.$resources.poll.delete.submit().then(close),
                 },
                 {

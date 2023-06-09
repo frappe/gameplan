@@ -19,7 +19,7 @@
         </div>
       </div>
     </div>
-    <div class="px-1" :style="{ paddingBottom: `${addCommentHeight + 80}px` }">
+    <div class="px-1">
       <template v-for="item in timelineItems" :key="item.doctype + item.name">
         <div
           v-if="newMessagesFrom && newMessagesFrom == item.name"
@@ -34,9 +34,7 @@
           </span>
         </div>
         <Comment
-          :class="{
-            'border-t': item.name != newMessagesFrom,
-          }"
+          class="-my-5"
           v-if="item.doctype == 'GP Comment'"
           :ref="($comment) => setItemRef($comment, item)"
           :comment="item"
@@ -45,7 +43,7 @@
           :comments="$resources.comments"
         />
         <Activity
-          class="border-t"
+          class="my-5"
           v-else-if="item.doctype == 'GP Activity'"
           :activity="item"
         />
@@ -62,63 +60,81 @@
 
     <div
       v-if="!readOnlyMode && !disableNewComment"
-      class="fixed bottom-12 mb-px mt-2 w-full max-w-3xl bg-white py-4 pr-12 sm:bottom-0 standalone:bottom-16"
+      class="px-1 py-4"
       ref="addComment"
     >
-      <button
-        class="flex w-full items-center rounded-lg bg-gray-100 px-2 py-2 text-left text-base text-gray-600 hover:bg-gray-200"
-        @click="showCommentBox = true"
-        v-show="!showCommentBox"
-      >
-        <UserAvatar class="mr-3" :user="$user().name" size="sm" />
-        Add a comment
-      </button>
-      <div
-        v-show="showCommentBox"
-        class="w-full rounded-lg border bg-white p-4 focus-within:border-gray-400"
-        @keydown.ctrl.enter.capture.stop="submitComment"
-        @keydown.meta.enter.capture.stop="submitComment"
-      >
-        <div class="mb-4 flex items-center">
-          <UserAvatar :user="$user().name" size="sm" />
-          <span class="ml-2 text-base font-medium text-gray-900">
-            {{ $user().full_name }}
-          </span>
-          <TabButtons
-            class="ml-auto"
-            :buttons="[{ label: 'Comment' }, { label: 'Poll' }]"
-            v-model="newCommentType"
-          />
+      <div class="flex items-start">
+        <div class="hidden sm:flex mr-3 h-8 items-center">
+          <UserAvatar :user="$user().name" size="md" />
         </div>
-        <CommentEditor
-          ref="newCommentEditor"
-          v-show="newCommentType == 'Comment'"
-          :value="newComment"
-          @change="onNewCommentChange"
-          :submitButtonProps="{
-            variant: 'solid',
-            onClick: submitComment,
-            loading: $resources.comments.insert.loading,
-            disabled: commentEmpty,
-          }"
-          :discardButtonProps="{
-            onClick: discardComment,
-          }"
-          :editable="showCommentBox"
-          placeholder="Add a comment"
-        />
-        <PollEditor
-          v-show="newCommentType == 'Poll'"
-          v-model:poll="newPoll"
-          :submitButtonProps="{
-            onClick: submitPoll,
-            loading: $resources.polls.insert.loading,
-          }"
-          :discardButtonProps="{
-            onClick: discardPoll,
-          }"
-        />
-        <ErrorMessage :message="$resources.polls.insert.error" />
+        <div class="relative w-full" v-show="!showCommentBox">
+          <button
+            class="flex w-full items-center rounded-md border px-2 py-2 text-left text-base text-gray-600 hover:border-gray-400"
+            @click="showCommentBox = true"
+          >
+            Add a comment
+          </button>
+          <div class="absolute inset-y-0 right-0 flex items-center pr-1">
+            <Tooltip text="Add a poll">
+              <Button
+                variant="ghost"
+                label="Add a poll"
+                @click="
+                  () => {
+                    newCommentType = 'Poll'
+                    showCommentBox = true
+                  }
+                "
+              >
+                <template #icon>
+                  <LucideBarChart2 class="w-4 -rotate-90" />
+                </template>
+              </Button>
+            </Tooltip>
+          </div>
+        </div>
+        <div
+          v-show="showCommentBox"
+          class="w-full rounded-lg border bg-white p-4 focus-within:border-gray-400"
+          @keydown.ctrl.enter.capture.stop="submitComment"
+          @keydown.meta.enter.capture.stop="submitComment"
+        >
+          <div class="mb-4 flex items-center sm:hidden">
+            <UserAvatar :user="$user().name" size="sm" />
+            <span class="ml-2 text-base font-medium text-gray-900">
+              {{ $user().full_name }}
+            </span>
+          </div>
+          <CommentEditor
+            ref="newCommentEditor"
+            v-show="newCommentType == 'Comment'"
+            :value="newComment"
+            @change="onNewCommentChange"
+            :submitButtonProps="{
+              variant: 'solid',
+              onClick: submitComment,
+              loading: $resources.comments.insert.loading,
+              disabled: commentEmpty,
+            }"
+            :discardButtonProps="{
+              onClick: discardComment,
+            }"
+            :editable="showCommentBox"
+            placeholder="Add a comment"
+          />
+          <PollEditor
+            v-show="newCommentType == 'Poll'"
+            v-model:poll="newPoll"
+            :submitButtonProps="{
+              onClick: submitPoll,
+              loading: $resources.polls.insert.loading,
+            }"
+            :discardButtonProps="{
+              onClick: discardPoll,
+            }"
+          />
+          <ErrorMessage :message="$resources.polls.insert.error" />
+        </div>
       </div>
     </div>
   </div>
@@ -133,6 +149,7 @@ import PollEditor from './PollEditor.vue'
 import Poll from './Poll.vue'
 import { getScrollContainer } from '@/utils/scrollContainer'
 import socket from '@/socket'
+import { Tooltip } from 'frappe-ui'
 
 export default {
   name: 'CommentsArea',
@@ -150,6 +167,7 @@ export default {
     TabButtons,
     PollEditor,
     Poll,
+    Tooltip,
   },
   data() {
     let draftComment = localStorage.getItem(this.draftCommentKey())
@@ -168,7 +186,6 @@ export default {
       },
       newMessagesFrom: this.newCommentsFrom,
       highlightedItem: null,
-      addCommentHeight: 0,
     }
   },
   watch: {
@@ -185,7 +202,7 @@ export default {
     if (!this.$refs.newCommentEditor?.editor.isEmpty) {
       this.showCommentBox = true
     }
-    this.$socket.on('new_activity', (data) => {
+    socket.on('new_activity', (data) => {
       if (
         data.reference_doctype == this.doctype &&
         data.reference_name == this.name
@@ -193,13 +210,9 @@ export default {
         this.$resources.activities.reload()
       }
     })
-    this.setupMutationObserver()
   },
   beforeUnmount() {
-    this.$socket.off('new_activity')
-    // cleanup mutation observer
-    this.mutationObserver?.disconnect()
-    delete this.mutationObserver
+    socket.off('new_activity')
   },
   resources: {
     comments() {
@@ -433,14 +446,6 @@ export default {
       if ($component?.$el) {
         item.$el = $component.$el
       }
-    },
-    setupMutationObserver() {
-      let $el = this.$refs.addComment
-      if (!$el) return
-      this.mutationObserver = new MutationObserver(() => {
-        this.addCommentHeight = $el.clientHeight
-      })
-      this.mutationObserver.observe($el, { childList: true, subtree: true })
     },
   },
   computed: {

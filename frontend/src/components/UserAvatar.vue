@@ -2,7 +2,7 @@
   <Avatar
     v-if="user"
     :label="$user(user).full_name"
-    :imageURL="$user(user).user_image"
+    :image="$user(user).user_image"
     :style="{
       backgroundColor: $user(user).image_background_color || null,
       filter: $user(user).isDisabled ? 'grayscale(1)' : null,

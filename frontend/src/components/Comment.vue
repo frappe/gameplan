@@ -1,6 +1,6 @@
 <template>
   <div
-    class="rounded-md py-6 transition-shadow"
+    class="py-6 transition-shadow"
     :class="{
       ring: !comment.loading && highlight,
     }"
@@ -9,7 +9,7 @@
     <UserInfo :email="comment.owner" v-slot="{ user }">
       <div class="mb-2 flex items-center text-base text-gray-900">
         <UserProfileLink class="mr-3" :user="user.name">
-          <UserAvatar :user="user.name" />
+          <UserAvatar size="lg" :user="user.name" />
         </UserProfileLink>
         <div class="md:flex md:items-center">
           <UserProfileLink
@@ -49,39 +49,40 @@
           placement="right"
           :button="{
             icon: 'more-horizontal',
-            appearance: 'minimal',
+            variant: 'ghost',
             label: 'Comment Options',
           }"
           :options="[
             {
               label: 'Edit',
               icon: 'edit',
-              handler: () => (comment.editing = true),
+              onClick: () => (comment.editing = true),
               condition: () => !comment.deleted_at && !readOnlyMode,
             },
             {
               label: 'Revisions',
               icon: 'rotate-ccw',
-              handler: () => (showRevisionsDialog = true),
+              onClick: () => (showRevisionsDialog = true),
               condition: () => comment.modified > comment.creation,
             },
             {
               label: 'Copy link',
               icon: 'link',
-              handler: () => copyLink(comment),
+              onClick: () => copyLink(comment),
             },
             {
               label: 'Delete',
               icon: 'trash',
-              handler: () => {
+              onClick: () => {
                 $dialog({
                   title: 'Delete comment',
                   message: 'Are you sure you want to delete this comment?',
                   actions: [
                     {
                       label: 'Delete',
-                      appearance: 'danger',
-                      handler: ({ close }) => {
+                      variant: 'solid',
+                      theme: 'red',
+                      onClick: ({ close }) => {
                         return comments.setValue
                           .submit({
                             name: comment.name,
@@ -89,9 +90,6 @@
                           })
                           .then(close)
                       },
-                    },
-                    {
-                      label: 'Cancel',
                     },
                   ],
                 })

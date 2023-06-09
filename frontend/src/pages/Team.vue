@@ -1,6 +1,6 @@
 <template>
   <div class="pb-20">
-    <div class="sticky top-0 z-10 border-b bg-white px-5 pt-3">
+    <div class="sticky top-0 z-10 border-b bg-white px-5 pt-1">
       <div class="flex w-full items-center">
         <div class="flex items-center space-x-2">
           <IconPicker
@@ -11,14 +11,14 @@
           >
             <template v-slot="{ isOpen }">
               <div
-                class="rounded-md p-px text-5xl leading-none focus:outline-none"
+                class="rounded-md p-px text-xl leading-none focus:outline-none"
                 :class="isOpen ? 'bg-gray-200' : 'hover:bg-gray-100'"
               >
                 {{ team.doc.icon || '' }}
               </div>
             </template>
           </IconPicker>
-          <h1 class="text-2xl font-medium text-gray-900">
+          <h1 class="text-xl font-bold text-gray-900">
             {{ team.doc.title }}
           </h1>
           <Badge v-if="team.doc.archived_at">Archived</Badge>
@@ -35,12 +35,12 @@
               {
                 label: 'Archive',
                 icon: 'trash-2',
-                handler: () => archiveTeam(),
+                onClick: () => archiveTeam(),
               },
             ]"
             :button="{
               label: 'Options',
-              appearance: 'minimal',
+              variant: 'ghost',
               icon: 'more-horizontal',
             }"
           />
@@ -110,8 +110,8 @@ export default {
         actions: [
           {
             label: 'Archive',
-            appearance: 'primary',
-            handler: ({ close }) => {
+            variant: 'solid',
+            onClick: ({ close }) => {
               return this.team.archive.submit(null, {
                 onSuccess: () => {
                   this.$router.replace({ name: 'Home' })
@@ -122,7 +122,6 @@ export default {
           },
           {
             label: 'Cancel',
-            handler: 'cancel',
           },
         ],
       })

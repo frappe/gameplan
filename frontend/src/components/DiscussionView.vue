@@ -3,11 +3,11 @@
     <header class="sticky top-0 z-10 border-b bg-white sm:mx-0">
       <div class="flex min-h-[60px] items-center px-4 sm:h-[60px]">
         <Button
-          icon-left="chevron-left"
-          appearance="minimal"
+          variant="ghost"
           @click="onBackClick"
           :class="['-ml-2 sm:ml-0', showNavbar && 'hidden sm:inline-flex']"
         >
+          <template #prefix><LucideChevronLeft class="h-4 w-4" /></template>
           Back
         </Button>
         <transition
@@ -20,7 +20,7 @@
             v-show="showNavbar"
           >
             <h1
-              class="flex items-center pt-2 text-xl font-semibold sm:justify-center sm:pt-0"
+              class="flex items-center pt-2 text-lg font-semibold sm:justify-center sm:pt-0"
             >
               <Tooltip
                 class="flex"
@@ -45,7 +45,7 @@
             placement="right"
             :button="{
               icon: 'more-horizontal',
-              appearance: 'minimal',
+              variant: 'ghost',
               label: 'Discussion Options',
             }"
             :options="actions"
@@ -90,7 +90,7 @@
           <h1
             v-else
             v-visibility="handleTitleVisibility"
-            class="flex items-center text-3xl font-bold"
+            class="flex items-center text-2xl font-semibold"
           >
             <Tooltip
               v-if="discussion.closed_at"
@@ -107,7 +107,7 @@
             </span>
           </h1>
         </div>
-        <div class="flex items-center text-base" v-show="!editingTitle">
+        <div class="mt-1.5 flex items-center text-base" v-show="!editingTitle">
           <DiscussionBreadcrumbs :discussion="discussion" />
           <span class="px-1.5">&middot;</span>
           <span class="text-gray-600">
@@ -118,7 +118,7 @@
             }}
           </span>
         </div>
-        <div class="mt-6 mb-2 flex w-full items-center">
+        <div class="mb-2 mt-8 flex w-full items-center">
           <UserProfileLink class="mr-3" :user="discussion.owner">
             <UserAvatar :user="discussion.owner" />
           </UserProfileLink>
@@ -140,17 +140,12 @@
           </div>
           <div class="ml-auto flex space-x-2">
             <Button
-              v-if="
-                !readOnlyMode &&
-                $user().name === discussion.owner &&
-                !editingContent
-              "
-              appearance="minimal"
-              icon="edit"
+              v-if="!readOnlyMode && !editingContent"
+              variant="ghost"
               @click="editingContent = true"
               label="Edit Post"
             >
-              Edit
+              <template #icon><LucideEdit class="w-4" /></template>
             </Button>
           </div>
         </div>
@@ -164,6 +159,7 @@
             :value="discussion.content"
             @change="discussion.content = $event"
             :submitButtonProps="{
+              variant: 'solid',
               onClick: () => {
                 $resources.discussion.setValue.submit({
                   content: discussion.content,
@@ -222,7 +218,8 @@
         </template>
         <template #actions>
           <Button
-            appearance="primary"
+            class="w-full"
+            variant="solid"
             :loading="$resources.discussion.moveToProject.loading"
             @click="
               $resources.discussion.moveToProject.submit({
@@ -236,7 +233,6 @@
                 : 'Move'
             }}
           </Button>
-          <Button @click="discussionMoveDialog.show = false">Cancel</Button>
         </template>
       </Dialog>
       <RevisionsDialog
@@ -426,41 +422,38 @@ export default {
         {
           label: 'Edit Title',
           icon: 'edit',
-          handler: () => {
+          onClick: () => {
             this.editingTitle = true
           },
         },
         {
           label: 'Revisions',
           icon: 'rotate-ccw',
-          handler: () => (this.showRevisionsDialog = true),
+          onClick: () => (this.showRevisionsDialog = true),
         },
         {
           label: 'Copy link',
           icon: 'link',
-          handler: this.copyLink,
+          onClick: this.copyLink,
         },
         {
           label: 'Pin discussion...',
           icon: 'arrow-up-left',
           condition: () => !this.discussion.pinned_at,
-          handler: () => {
+          onClick: () => {
             let project = this.$getDoc('GP Project', this.discussion.project)
             this.$dialog({
               title: 'Pin discussion',
               message: `When a discussion is pinned, it shows up on top of the discussion list in ${project.title}. Do you want to pin this discussion?`,
-              icon: { name: 'arrow-up-left', appearance: 'success' },
+              icon: { name: 'arrow-up-left' },
               actions: [
                 {
                   label: 'Pin',
-                  handler: ({ close }) =>
+                  onClick: ({ close }) =>
                     this.$resources.discussion.pinDiscussion
                       .submit()
                       .then(close),
-                  appearance: 'primary',
-                },
-                {
-                  label: 'Cancel',
+                  variant: 'solid',
                 },
               ],
             })
@@ -470,22 +463,19 @@ export default {
           label: 'Unpin discussion...',
           icon: 'arrow-down-left',
           condition: () => this.discussion.pinned_at,
-          handler: () => {
+          onClick: () => {
             this.$dialog({
               title: 'Unpin discussion',
               message: `Do you want to unpin this discussion?`,
-              icon: { name: 'arrow-down-left', appearance: 'success' },
+              icon: { name: 'arrow-down-left' },
               actions: [
                 {
                   label: 'Unpin',
-                  handler: ({ close }) =>
+                  onClick: ({ close }) =>
                     this.$resources.discussion.unpinDiscussion
                       .submit()
                       .then(close),
-                  appearance: 'primary',
-                },
-                {
-                  label: 'Cancel',
+                  variant: 'solid',
                 },
               ],
             })
@@ -495,23 +485,20 @@ export default {
           label: 'Close discussion...',
           icon: 'lock',
           condition: () => !this.discussion.closed_at,
-          handler: () => {
+          onClick: () => {
             this.$dialog({
               title: 'Close discussion',
               message:
                 'When a discussion is closed, commenting is disabled. Anyone can re-open the discussion later. Do you want to close this discussion?',
-              icon: { name: 'lock', appearance: 'success' },
+              icon: { name: 'lock' },
               actions: [
                 {
                   label: 'Close',
-                  handler: ({ close }) =>
+                  onClick: ({ close }) =>
                     this.$resources.discussion.closeDiscussion
                       .submit()
                       .then(close),
-                  appearance: 'primary',
-                },
-                {
-                  label: 'Cancel',
+                  variant: 'solid',
                 },
               ],
             })
@@ -521,23 +508,20 @@ export default {
           label: 'Re-open discussion...',
           icon: 'unlock',
           condition: () => this.discussion.closed_at,
-          handler: () => {
+          onClick: () => {
             this.$dialog({
               title: 'Re-open discussion',
               message:
                 'Do you want to re-open this discussion? Anyone can comment on it again.',
-              icon: { name: 'unlock', appearance: 'success' },
+              icon: { name: 'unlock' },
               actions: [
                 {
                   label: 'Re-open',
-                  handler: ({ close }) =>
+                  onClick: ({ close }) =>
                     this.$resources.discussion.reopenDiscussion
                       .submit()
                       .then(close),
-                  appearance: 'primary',
-                },
-                {
-                  label: 'Cancel',
+                  variant: 'solid',
                 },
               ],
             })
@@ -546,7 +530,7 @@ export default {
         {
           label: 'Move to...',
           icon: 'log-out',
-          handler: () => {
+          onClick: () => {
             this.discussionMoveDialog.show = true
           },
         },

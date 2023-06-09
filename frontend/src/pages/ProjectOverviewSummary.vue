@@ -28,50 +28,39 @@ export default {
         return []
       }
 
-      let route = {
+      let getRoute = (listType) => ({
         name: 'ProjectTasks',
         params: {
           teamId: this.project.doc.team,
           projectId: this.project.doc.name,
+          listType,
         },
-      }
+      })
 
       return [
         {
           count: this.project.doc.summary.completed_tasks,
           titleStyle: 'text-green-600',
           subtitle: 'Completed Tasks',
-          route: {
-            ...route,
-            query: { open: false },
-          },
+          route: getRoute('done'),
         },
         {
           count: this.project.doc.summary.pending_tasks,
           titleStyle: 'text-yellow-600',
           subtitle: 'Pending Tasks',
-          route: {
-            ...route,
-            query: { open: true },
-          },
+          route: getRoute('active'),
         },
         {
           count: this.project.doc.summary.overdue_tasks,
           titleStyle: 'text-red-700',
           subtitle: 'Overdue Tasks',
-          route: {
-            ...route,
-            query: { open: true },
-          },
+          route: getRoute('active'),
         },
         {
           count: this.project.doc.summary.total_tasks,
           titleStyle: 'text-gray-700',
           subtitle: 'Total Tasks',
-          route: {
-            ...route,
-            query: { open: true },
-          },
+          route: getRoute('all'),
         },
       ]
     },

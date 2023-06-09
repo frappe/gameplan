@@ -1,21 +1,21 @@
 <template>
   <div class="py-6">
     <div class="flex items-center justify-between">
-      <div class="text-2xl font-semibold">Pages</div>
+      <div class="text-xl font-semibold">Pages</div>
       <div class="flex items-center space-x-2">
         <Dropdown
           :options="[
             {
               label: 'Page Title',
-              handler: () => (orderBy = 'title asc'),
+              onClick: () => (orderBy = 'title asc'),
             },
             {
               label: 'Date Updated',
-              handler: () => (orderBy = 'modified desc'),
+              onClick: () => (orderBy = 'modified desc'),
             },
             {
               label: 'Date Created',
-              handler: () => (orderBy = 'creation desc'),
+              onClick: () => (orderBy = 'creation desc'),
             },
           ]"
           placement="center"
@@ -30,10 +30,13 @@
             </div>
           </Button>
         </Dropdown>
-        <Button icon-left="plus" @click="newPage">New Page</Button>
+        <Button variant="solid" @click="newPage">
+          <template #prefix><LucidePlus class="w-4" /></template>
+          Add new
+        </Button>
       </div>
     </div>
-    <div class="mt-5 grid grid-cols-1 gap-5 md:grid-cols-3 lg:grid-cols-4">
+    <div class="mt-4.5 grid grid-cols-1 gap-5 md:grid-cols-3 lg:grid-cols-4">
       <div
         class="text-base text-gray-600"
         v-if="!$resources.pages.data?.length"
@@ -41,29 +44,30 @@
         No pages
       </div>
       <div class="relative" v-for="d in $resources.pages.data" :key="d.name">
-        <div class="absolute top-0 right-0 p-3">
+        <div class="absolute right-0 top-0 p-3">
           <Dropdown
             :button="{
               icon: 'more-horizontal',
               label: 'Page Options',
-              appearance: 'minimal',
+              variant: 'ghost',
             }"
             :options="[
               {
                 label: 'Delete',
                 icon: 'trash',
-                handler: () => {
+                onClick: () => {
                   $dialog({
                     title: 'Delete Page',
                     message: 'Are you sure you want to delete this page?',
                     actions: [
                       {
                         label: 'Delete',
-                        handler: ({ close }) => {
+                        onClick: ({ close }) => {
                           close()
                           return this.$resources.pages.delete.submit(d.name)
                         },
-                        appearance: 'danger',
+                        variant: 'solid',
+                        theme: 'red',
                       },
                       {
                         label: 'Cancel',
@@ -83,10 +87,10 @@
           }"
         >
           <section
-            class="aspect-[37/50] cursor-pointer overflow-hidden rounded-xl border border-gray-50 p-3 shadow-md hover:shadow-lg"
+            class="aspect-[37/50] cursor-pointer overflow-hidden rounded-md border transition-shadow border-gray-50 p-3 shadow-lg hover:shadow-2xl"
           >
-            <h1 class="text-lg font-medium leading-none">{{ d.title }}</h1>
-            <div class="mt-1.5 text-xs leading-none text-gray-600">
+            <h1 class="text-lg font-semibold leading-none">{{ d.title }}</h1>
+            <div class="mt-1.5 text-base leading-none text-gray-700">
               Updated {{ $dayjs(d.modified).fromNow() }}
             </div>
             <hr class="my-2 border-gray-100" />

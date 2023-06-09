@@ -32,11 +32,9 @@
     <template v-if="currentRevision && (hasNext || hasPrevious)" #actions>
       <div class="flex w-full justify-between">
         <div>
-          <Button appearance="white" @click="previous" v-if="hasPrevious">
-            Previous
-          </Button>
+          <Button @click="previous" v-if="hasPrevious"> Previous </Button>
         </div>
-        <Button appearance="white" @click="next" v-if="hasNext">Next</Button>
+        <Button @click="next" v-if="hasNext">Next</Button>
       </div>
     </template>
   </Dialog>

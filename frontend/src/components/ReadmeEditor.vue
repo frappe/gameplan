@@ -14,39 +14,38 @@
       :editable="editReadme"
     />
     <div
-      class="absolute top-0 right-0 flex space-x-2"
-      :class="{ 'mt-4 mr-4': border || editReadme }"
+      class="absolute right-0 top-0 flex space-x-2"
+      :class="{ 'mr-4 mt-4': border || editReadme }"
       v-if="editable"
     >
       <Tooltip v-if="!editReadme && !$readOnlyMode" text="Edit">
-        <Button
-          icon="edit-2"
-          label="Edit"
-          @click="editReadmeAndFocus"
-          appearance="minimal"
-        />
+        <Button variant="ghost" label="Edit" @click="editReadmeAndFocus">
+          <template #icon><LucideEdit2 class="w-4" /> </template>
+        </Button>
       </Tooltip>
       <template v-if="editReadme">
         <Button
-          label="Save"
-          iconLeft="save"
           @click="
             () => {
               editReadme = false
               resource.setValue.submit({ [fieldname]: resource.doc[fieldname] })
             }
           "
-        />
+        >
+          <template #prefix><LucideSave class="w-4" /></template>
+          Save
+        </Button>
         <Button
-          label="Discard"
-          iconLeft="rotate-ccw"
           @click="
             () => {
               editReadme = false
               resource.reload()
             }
           "
-        />
+        >
+          <template #prefix><LucideRotateCcw class="w-4" /></template>
+          Discard
+        </Button>
       </template>
     </div>
   </div>

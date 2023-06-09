@@ -6,12 +6,19 @@ import { visualizer } from 'rollup-plugin-visualizer'
 import { getProxyOptions } from 'frappe-ui/src/utils/vite-dev-server'
 import { webserver_port } from '../../../sites/common_site_config.json'
 import Icons from 'unplugin-icons/vite'
+import Components from 'unplugin-vue-components/vite'
+import IconsResolver from 'unplugin-icons/resolver'
 import LucideIcons from './lucideIcons'
 
 export default defineConfig({
   plugins: [
     vue(),
     vueJsx(),
+    Components({
+      resolvers: [
+        IconsResolver({ prefix: false, enabledCollections: ['lucide'] }),
+      ],
+    }),
     Icons({
       customCollections: {
         lucide: LucideIcons,
