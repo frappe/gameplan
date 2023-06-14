@@ -19,14 +19,11 @@
       </div>
       <button
         @click="showCommandPalette"
-        class="hidden w-full max-w-[20rem] rounded-md focus:outline-none focus:ring focus:ring-gray-300 md:block"
+        class="form-input hidden w-full max-w-[20rem] text-left active:bg-gray-200 md:block"
       >
-        <Input
-          :placeholder="searchPlaceholder"
-          icon-left="search"
-          class="cursor-pointer"
-          :disabled="true"
-        />
+        <span class="text-base text-gray-500">
+          {{ searchPlaceholder }}
+        </span>
       </button>
     </div>
   </header>
@@ -71,7 +68,7 @@
         ref="discussionList"
         class="mx-auto max-w-4xl sm:px-5"
         routeName="ProjectDiscussion"
-        :filters="filters"
+        :listOptions="{ filters }"
         :key="JSON.stringify(filters)"
       />
     </KeepAlive>
@@ -152,7 +149,12 @@ let projectFollowId = {}
 export default {
   name: 'Home',
   props: ['feedType'],
-  components: { Breadcrumbs, DiscussionList, Autocomplete, LoadingIndicator },
+  components: {
+    Breadcrumbs,
+    DiscussionList,
+    Autocomplete,
+    LoadingIndicator,
+  },
   data() {
     return {
       followProjectsDialog: false,

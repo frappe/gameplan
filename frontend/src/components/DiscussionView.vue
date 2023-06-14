@@ -1,68 +1,14 @@
 <template>
   <div class="relative flex h-full flex-col" v-if="postId && discussion">
-    <header class="sticky top-0 z-10 border-b bg-white sm:mx-0">
-      <div class="flex min-h-[60px] items-center px-4 sm:h-[60px]">
-        <Button
-          variant="ghost"
-          @click="onBackClick"
-          :class="['-ml-2 sm:ml-0', showNavbar && 'hidden sm:inline-flex']"
-        >
-          <template #prefix><LucideChevronLeft class="h-4 w-4" /></template>
-          Back
-        </Button>
-        <transition
-          enter-active-class="transition ease-out duration-200"
-          enter-from-class="opacity-0 translate-y-4"
-          enter-to-class="opacity-100 translate-y-0"
-        >
-          <div
-            class="mx-auto w-full max-w-3xl sm:px-6 sm:text-center"
-            v-show="showNavbar"
-          >
-            <h1
-              class="flex items-center pt-2 text-lg font-semibold sm:justify-center sm:pt-0"
-            >
-              <Tooltip
-                class="flex"
-                v-if="discussion.closed_at"
-                text="This discussion is closed"
-              >
-                <FeatherIcon
-                  name="lock"
-                  class="mr-2 h-4 w-4 text-gray-700"
-                  :stroke-width="2"
-                />
-              </Tooltip>
-              {{ discussion.title }}
-            </h1>
-            <DiscussionMeta :discussion="discussion" class="pb-2 sm:pb-0" />
-          </div>
-        </transition>
-        <div class="ml-auto flex items-center space-x-2">
-          <Dropdown
-            v-if="!readOnlyMode"
-            class="ml-auto"
-            placement="right"
-            :button="{
-              icon: 'more-horizontal',
-              variant: 'ghost',
-              label: 'Discussion Options',
-            }"
-            :options="actions"
-          />
-        </div>
-      </div>
-    </header>
-
     <div class="mx-auto w-full max-w-3xl px-6">
       <div class="py-6">
-        <div>
-          <div v-if="editingTitle" class="mb-3 w-full">
+        <div class="flex items-start justify-between space-x-1">
+          <div v-if="editingTitle" class="w-full">
             <div class="mb-2">
               <input
                 v-if="editingTitle"
                 type="text"
-                class="w-full rounded-lg border-0 bg-gray-100 px-2 py-1 text-xl font-semibold focus:ring-0"
+                class="w-full rounded border-0 bg-gray-100 px-2 py-1 text-xl font-semibold focus:ring-0"
                 ref="title"
                 v-model="discussion.title"
                 placeholder="Title"
@@ -87,11 +33,7 @@
               </p>
             </div>
           </div>
-          <h1
-            v-else
-            v-visibility="handleTitleVisibility"
-            class="flex items-center text-2xl font-semibold"
-          >
+          <h1 v-else class="flex items-center text-2xl font-semibold">
             <Tooltip
               v-if="discussion.closed_at"
               text="This discussion is closed"
@@ -106,6 +48,17 @@
               {{ discussion.title }}
             </span>
           </h1>
+          <Dropdown
+            v-if="!readOnlyMode"
+            class="ml-auto"
+            placement="right"
+            :button="{
+              icon: 'more-horizontal',
+              variant: 'ghost',
+              label: 'Discussion Options',
+            }"
+            :options="actions"
+          />
         </div>
         <div class="mt-1.5 flex items-center text-base" v-show="!editingTitle">
           <DiscussionBreadcrumbs :discussion="discussion" />
@@ -245,13 +198,7 @@
   </div>
 </template>
 <script>
-import {
-  Autocomplete,
-  Dropdown,
-  Dialog,
-  Tooltip,
-  visibilityDirective,
-} from 'frappe-ui'
+import { Autocomplete, Dropdown, Dialog, Tooltip } from 'frappe-ui'
 import Reactions from './Reactions.vue'
 import CommentsArea from '@/components/CommentsArea.vue'
 import CommentEditor from './CommentEditor.vue'
@@ -269,7 +216,6 @@ export default {
   name: 'DiscussionView',
   props: ['postId', 'readOnlyMode'],
   directives: {
-    visibility: visibilityDirective,
     focus,
   },
   components: {
@@ -374,9 +320,6 @@ export default {
       })
       this.$resources.discussion.moveToProject.reset()
     },
-    handleTitleVisibility(visible, entry) {
-      this.showNavbar = !visible
-    },
     updateUrlSlug() {
       let doc = this.discussion
       if (!this.$route.params.slug || this.$route.params.slug !== doc.slug) {
@@ -387,19 +330,6 @@ export default {
             slug: doc.slug,
           },
           query: this.$route.query,
-        })
-      }
-    },
-    onBackClick() {
-      if (this.$router.options.history.state.back) {
-        this.$router.back()
-      } else {
-        this.$router.push({
-          name: 'ProjectDiscussions',
-          params: {
-            teamId: this.discussion.team,
-            projectId: this.discussion.project,
-          },
         })
       }
     },

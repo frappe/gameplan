@@ -25,72 +25,15 @@
         </li>
       </ul>
       <div>
-        <Combobox v-model="selectedUser">
-          <ComboboxInput as="template">
-            <Input
-              :debounce="200"
-              @input="
-                (value) => {
-                  query = value
-                  addMembersIntent = true
-                }
-              "
-              :value="query"
-              placeholder="Add member via name or email"
-              autocomplete="off"
-            />
-          </ComboboxInput>
-          <template v-if="addMembersIntent">
-            <div class="mb-1 mt-3 text-sm font-semibold text-gray-500">
-              {{
-                filteredUsers.length === 0
-                  ? 'No users found'
-                  : 'Select a person to invite'
-              }}
-            </div>
-            <ComboboxOptions
-              class="max-h-[20rem] overflow-y-auto"
-              :static="true"
-            >
-              <ComboboxOption
-                as="template"
-                v-slot="{ selected, active }"
-                v-for="user in filteredUsers"
-                :key="user.name"
-                :value="user"
-              >
-                <li
-                  class="flex cursor-default select-none items-center space-x-2 rounded-md px-3 py-2 text-base"
-                  :class="{
-                    'bg-gray-100': active,
-                    'text-gray-900': !active,
-                  }"
-                  :title="user.email"
-                >
-                  <UserAvatar
-                    v-if="user.user_image"
-                    :user="user.name"
-                    size="sm"
-                  />
-                  <FeatherIcon
-                    v-else-if="user.icon"
-                    :name="user.icon"
-                    class="h-4 w-4 text-gray-700"
-                  />
-                  <div
-                    v-else
-                    class="grid h-5 w-5 place-items-center rounded-full border bg-gray-100"
-                  >
-                    <FeatherIcon class="h-3 w-3 text-gray-500" name="user" />
-                  </div>
-                  <span>
-                    {{ user.full_name || user.email }}
-                  </span>
-                </li>
-              </ComboboxOption>
-            </ComboboxOptions>
+        <Autocomplete
+          :options="invitableUsers"
+          v-model="selectedUser"
+          placeholder="Add member by name or email"
+        >
+          <template #prefix="{ option }">
+            <UserAvatar class="mr-2" :user="option.email" size="sm" />
           </template>
-        </Combobox>
+        </Autocomplete>
         <ErrorMessage class="mt-2" :message="resource.addMembers.error" />
       </div>
       <div class="mt-4" v-show="!addMembersIntent">
@@ -136,7 +79,7 @@
   </Dialog>
 </template>
 <script>
-import { ErrorMessage } from 'frappe-ui'
+import { Autocomplete, ErrorMessage } from 'frappe-ui'
 import {
   Combobox,
   ComboboxInput,
@@ -153,6 +96,7 @@ export default {
     ComboboxInput,
     ComboboxOptions,
     ComboboxOption,
+    Autocomplete,
   },
   data() {
     return {
@@ -203,6 +147,13 @@ export default {
       return this.$users.data
         .filter((user) => !memberEmails.includes(user.email))
         .sort((a, b) => a.full_name - b.full_name)
+        .map((user) => {
+          return {
+            label: user.full_name,
+            value: user.email,
+            ...user,
+          }
+        })
     },
     filteredUsers() {
       if (!this.query) {

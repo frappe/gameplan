@@ -2143,7 +2143,7 @@ fraction.js@^4.2.0:
 
 frappe-ui@frappe/frappe-ui#espresso:
   version "0.0.112"
-  resolved "https://codeload.github.com/frappe/frappe-ui/tar.gz/000748f119e6499e7f0fb909f902fc419bfabaf9"
+  resolved "https://codeload.github.com/frappe/frappe-ui/tar.gz/8a8ee882549efb35b1cb43e95323cc537855f390"
   dependencies:
     "@headlessui/vue" "^1.7.14"
     "@popperjs/core" "^2.11.2"

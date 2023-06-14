@@ -6,7 +6,7 @@
       </div>
       <DiscussionList
         class="-mx-5 sm:mx-0"
-        :filters="{ team: team.doc.name }"
+        :listOptions="{ filters: { team: team.doc.name } }"
         routeName="ProjectDiscussion"
       />
     </div>

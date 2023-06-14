@@ -86,18 +86,13 @@ const routes = [
         name: 'Team',
         path: '',
         component: () => import('@/pages/Team.vue'),
-        redirect: { name: 'TeamProjects' },
+        redirect: { name: 'TeamOverview' },
         props: true,
         children: [
           {
             name: 'TeamOverview',
-            path: 'overview',
+            path: '',
             component: () => import('@/pages/TeamOverview.vue'),
-          },
-          {
-            name: 'TeamProjects',
-            path: 'projects',
-            component: () => import('@/pages/TeamProjects.vue'),
           },
           {
             name: 'TeamDiscussions',
@@ -117,7 +112,7 @@ const routes = [
             name: 'Project',
             path: '',
             component: () => import('@/pages/Project.vue'),
-            redirect: { name: 'ProjectDiscussions' },
+            redirect: { name: 'ProjectOverview' },
             props: true,
             children: [
               {
@@ -131,20 +126,34 @@ const routes = [
                 component: () => import('@/pages/ProjectDiscussions.vue'),
               },
               {
+                name: 'ProjectDiscussion',
+                path: 'discussion/:postId/:slug?',
+                component: () => import('@/pages/ProjectDiscussion.vue'),
+                props: true,
+              },
+              {
                 name: 'ProjectDiscussionNew',
                 path: 'discussions/new',
                 component: () => import('@/pages/ProjectDiscussionNew.vue'),
               },
               {
                 name: 'ProjectTasks',
-                path: 'tasks/:listType',
+                path: 'tasks/:listType?',
                 component: () => import('@/pages/ProjectTasks.vue'),
                 props: true,
+                beforeEnter(to, from, next) {
+                  if (!to.params.listType) {
+                    next({
+                      name: to.name,
+                      params: {
+                        ...to.params,
+                        listType: to.params.listType || 'active',
               },
-              {
-                name: 'ProjectTaskNew',
-                path: 'tasks/new',
-                component: () => import('@/pages/ProjectTaskNew.vue'),
+                    })
+                  } else {
+                    next()
+                  }
+                },
               },
               {
                 name: 'ProjectTaskDetail',
@@ -165,12 +174,6 @@ const routes = [
                 props: true,
               },
             ],
-          },
-          {
-            name: 'ProjectDiscussion',
-            path: 'discussion/:postId/:slug?',
-            component: () => import('@/pages/ProjectDiscussion.vue'),
-            props: true,
           },
         ],
       },

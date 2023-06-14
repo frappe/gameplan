@@ -11,7 +11,7 @@
         <button
           :class="[
             active ? 'ring-gray-300 focus-visible:ring' : '',
-            checked ? 'bg-white text-gray-900 shadow-xl' : 'text-gray-700',
+            checked ? 'bg-white text-gray-900 shadow' : 'text-gray-700',
             'rounded-[7px] px-2 py-1.5 leading-none transition-colors focus:outline-none',
           ]"
         >

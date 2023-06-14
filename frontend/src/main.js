@@ -15,9 +15,6 @@ import {
 } from 'frappe-ui'
 import router from './router'
 import App from './App.vue'
-import UserInfo from '@/components/UserInfo.vue'
-import UserAvatar from '@/components/UserAvatar.vue'
-import UserImage from '@/components/UserImage.vue'
 import './index.css'
 import { dayjs } from '@/utils'
 import { createDialog } from './utils/dialogs'
@@ -37,9 +34,6 @@ let globalComponents = {
   FeatherIcon,
   Alert,
   Badge,
-  UserInfo,
-  UserAvatar,
-  UserImage,
 }
 let app = createApp(App)
 setConfig('resourceFetcher', frappeRequest)
@@ -50,7 +44,6 @@ app.mixin(resetDataMixin)
 for (let key in globalComponents) {
   app.component(key, globalComponents[key])
 }
-app.config.unwrapInjectedRef = true
 app.config.globalProperties.$socket = socket
 app.config.globalProperties.$dayjs = dayjs
 app.config.globalProperties.$dialog = createDialog

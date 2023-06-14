@@ -323,7 +323,6 @@ export default {
   components: {
     Avatar,
     Popover,
-    Tooltip,
     UserAvatar,
     Dropdown,
     TaskStatusIcon,

@@ -43,7 +43,6 @@ export default {
           isActive: [
             'Teams',
             'TeamOverview',
-            'TeamProjects',
             'ProjectOverview',
             'ProjectDiscussions',
             'ProjectDiscussion',
