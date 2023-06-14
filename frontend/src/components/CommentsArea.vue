@@ -278,7 +278,7 @@ export default {
           'owner',
           'stopped_at',
           { options: ['name', 'title', 'idx', 'percentage'] },
-          { votes: ['user', 'title'] },
+          { votes: ['user', 'option'] },
           { reactions: ['name', 'user', 'emoji'] },
         ],
         filters: {
