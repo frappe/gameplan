@@ -44,6 +44,12 @@ const pageLength = computed(() => {
 
   let availableHeight = screenSize.height - (header + (title + gap) * 2)
   let _pageLength = Math.floor(availableHeight / task / 2)
-  return Math.min(_pageLength, 8)
+  if (_pageLength > 8) {
+    _pageLength = 8
+  }
+  if (_pageLength < 3) {
+    _pageLength = 3
+  }
+  return _pageLength
 })
 </script>
