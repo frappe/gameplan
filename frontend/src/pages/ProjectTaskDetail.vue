@@ -1,6 +1,6 @@
 <template>
   <div class="flex h-full flex-1" v-if="$resources.task.doc">
-    <div class="flex-1 w-full">
+    <div class="w-full flex-1">
       <div class="relative p-6">
         <div
           class="absolute right-0 top-0 p-6"
@@ -32,7 +32,7 @@
           :bubbleMenu="true"
           :floating-menu="true"
         />
-        <div class="mt-8 flex items-center space- gap-2 flex-wrap sm:hidden">
+        <div class="mt-8 flex flex-wrap items-center gap-2 sm:hidden">
           <Autocomplete
             placeholder="Assign a user"
             :options="assignableUsers"
@@ -75,7 +75,7 @@
         <CommentsList class="mt-8" doctype="GP Task" :name="taskId" />
       </div>
     </div>
-    <div class="w-[20rem] shrink-0 border-l hidden sm:block">
+    <div class="hidden w-[20rem] shrink-0 border-l sm:block">
       <div
         class="grid grid-cols-2 items-center gap-y-6 p-6 text-base text-gray-700"
       >

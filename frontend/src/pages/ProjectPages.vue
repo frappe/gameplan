@@ -87,7 +87,7 @@
           }"
         >
           <section
-            class="aspect-[37/50] cursor-pointer overflow-hidden rounded-md border transition-shadow border-gray-50 p-3 shadow-lg hover:shadow-2xl"
+            class="aspect-[37/50] cursor-pointer overflow-hidden rounded-md border border-gray-50 p-3 shadow-lg transition-shadow hover:shadow-2xl"
           >
             <h1 class="text-lg font-semibold leading-none">{{ d.title }}</h1>
             <div class="mt-1.5 text-base leading-none text-gray-700">

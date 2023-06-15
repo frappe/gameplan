@@ -1,5 +1,6 @@
 <template>
   <router-link
+    class="inline-flex"
     v-if="canVisitProfile"
     :to="{ name: 'PersonProfile', params: { personId: userProfileName } }"
   >

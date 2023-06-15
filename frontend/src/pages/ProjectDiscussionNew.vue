@@ -1,9 +1,9 @@
 <template>
-  <div class="py-6">
+  <div class="pt-6">
     <div class="rounded-lg border p-4">
       <div class="mb-3 flex items-center space-x-2">
         <UserProfileLink :user="$user().name">
-          <UserAvatar :user="$user().name" />
+          <UserAvatar size="lg" :user="$user().name" />
         </UserProfileLink>
         <div class="flex w-full items-center">
           <div>
@@ -58,7 +58,7 @@
       </div>
       <ErrorMessage :message="$resources.newDiscussion.error" />
       <textarea
-        class="mt-1 w-full resize-none rounded-lg border-0 px-0 py-0.5 text-3xl font-bold placeholder-gray-400 focus:ring-0"
+        class="mt-1 w-full resize-none border-0 px-0 py-0.5 text-3xl font-bold placeholder-gray-400 focus:ring-0"
         v-model="title"
         placeholder="Title"
         rows="1"
@@ -76,7 +76,7 @@
       <TextEditor
         ref="textEditor"
         class="mt-1"
-        editor-class="rounded-b-lg max-w-[unset] prose-sm h-[calc(100vh-410px)] sm:h-[calc(100vh-300px)] overflow-auto"
+        editor-class="rounded-b-lg max-w-[unset] prose-sm h-[calc(100vh-340px)] sm:h-[calc(100vh-250px)] overflow-auto"
         :content="content"
         @change="onNewPostChange"
         placeholder="Write something..."
