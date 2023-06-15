@@ -4,7 +4,11 @@
       <router-link
         :to="{
           name: 'ProjectPage',
-          params: { projectId: page.project, pageId: page.name },
+          params: {
+            teamId: page.team,
+            projectId: page.project,
+            pageId: page.name,
+          },
         }"
         class="flex h-15 items-start rounded-md p-2.5 hover:bg-gray-100"
       >
@@ -48,7 +52,7 @@ let pages = createListResource({
   type: 'list',
   doctype: 'GP Page',
   cache: ['Pages', props.listOptions],
-  fields: ['name', 'title', 'slug', 'modified', 'owner', 'project'],
+  fields: ['name', 'title', 'slug', 'modified', 'owner', 'project', 'team'],
   filters: props.listOptions.filters,
   pageLength: props.listOptions.pageLength || 20,
   auto: true,
