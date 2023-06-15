@@ -42,9 +42,9 @@ export default defineConfig({
   build: {
     outDir: '../gameplan/public/frontend',
     emptyOutDir: true,
-    target: 'es2015',
     commonjsOptions: {
       include: [/tailwind.config.js/, /node_modules/],
     },
+    sourcemap: true,
   },
 })
