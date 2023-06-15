@@ -13,14 +13,13 @@
     "@headlessui/vue": "^1.7.14",
     "dayjs": "^1.10.7",
     "feather-icons": "^4.28.0",
-    "frappe-ui": "frappe/frappe-ui#espresso",
+    "frappe-ui": "frappe/frappe-ui#63effebeb70171d37fe9f3cb783b661c444ff827",
     "fuse.js": "^6.6.2",
     "gemoji": "^7.1.0",
     "htmldiff-js": "^1.0.5",
     "motion": "^10.14.2",
     "vue": "^3.3.4",
-    "vue-router": "^4.2.2",
-    "vuedraggable": "^4.1.0"
+    "vue-router": "^4.2.2"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^4.2.3",

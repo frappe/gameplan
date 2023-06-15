@@ -40,12 +40,6 @@ let breadcrumbs = computed(() => {
       route: { name: 'HomeDiscussions' },
     })
   }
-  if (route.name === 'HomeProjects') {
-    items.push({
-      label: 'Projects',
-      route: { name: 'HomeProjects' },
-    })
-  }
   if (['HomeTasks', 'HomeTask'].includes(route.name)) {
     items.push({
       label: 'My Tasks',
