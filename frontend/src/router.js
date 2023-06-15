@@ -44,11 +44,6 @@ const routes = [
           fullWidth: true,
         },
       },
-      {
-        name: 'HomePages',
-        path: 'pages',
-        component: () => import('@/pages/HomePages.vue'),
-      },
     ],
   },
   {

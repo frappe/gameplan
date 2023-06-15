@@ -59,12 +59,6 @@ let breadcrumbs = computed(() => {
       route: { name: 'HomeTask' },
     })
   }
-  if (route.name === 'HomePages') {
-    items.push({
-      label: 'Pages',
-      route: { name: 'HomePages' },
-    })
-  }
   return items
 })
 
