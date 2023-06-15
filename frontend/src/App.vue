@@ -14,13 +14,18 @@ import { Toasts } from '@/utils/toasts'
 import { users } from '@/data/users'
 import { useScreenSize } from './utils/composables'
 
-const size = useScreenSize()
-const isMobile = computed(() => size.width < 640)
+const screenSize = useScreenSize()
+const MobileLayout = defineAsyncComponent(() =>
+  import('./components/MobileLayout.vue')
+)
+const DesktopLayout = defineAsyncComponent(() =>
+  import('./components/DesktopLayout.vue')
+)
 const Layout = computed(() => {
-  if (isMobile.value) {
-    return defineAsyncComponent(() => import('./components/MobileLayout.vue'))
+  if (screenSize.width < 640) {
+    return MobileLayout
   } else {
-    return defineAsyncComponent(() => import('./components/DesktopLayout.vue'))
+    return DesktopLayout
   }
 })
 
