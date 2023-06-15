@@ -149,73 +149,7 @@
         No tasks
       </div>
     </div>
-    <Dialog
-      :options="{
-        title: 'New Task',
-        actions: [
-          {
-            label: 'Create',
-            variant: 'solid',
-            onClick: ({ close }) =>
-              $resources.tasks.insert
-                .submit(newTask, {
-                  validate() {
-                    if (!newTask.title) {
-                      return 'Task title is required'
-                    }
-                  },
-                })
-                .then(close),
-          },
-        ],
-      }"
-      v-model="newTaskDialog"
-      @after-leave="$resetData(['newTask'])"
-    >
-      <template #body-content>
-        <div class="space-y-4">
-          <FormControl label="Title" v-model="newTask.title" />
-          <FormControl
-            label="Description"
-            type="textarea"
-            v-model="newTask.description"
-          />
-          <div class="flex space-x-2">
-            <Dropdown
-              :options="
-                statusOptions({
-                  onClick: (status) => (newTask.status = status),
-                })
-              "
-            >
-              <Button>
-                <template #prefix>
-                  <TaskStatusIcon :status="newTask.status" />
-                </template>
-                {{ newTask.status }}
-              </Button>
-            </Dropdown>
-            <TextInput
-              type="date"
-              placeholder="Set due date"
-              v-model="newTask.due_date"
-            />
-            <Autocomplete
-              placeholder="Assign a user"
-              :options="
-                $users.data.map((user) => ({
-                  label: user.full_name,
-                  value: user.name,
-                }))
-              "
-              :value="newTask.assigned_to"
-              @change="(option) => (newTask.assigned_to = option?.value || '')"
-            />
-          </div>
-          <ErrorMessage class="mt-2" :message="$resources.tasks.insert.error" />
-        </div>
-      </template>
-    </Dialog>
+    <NewTaskDialog ref="newTaskDialog" />
   </div>
 </template>
 <script>
@@ -238,18 +172,6 @@ import TaskStatusIcon from '@/components/icons/TaskStatusIcon.vue'
 export default {
   name: 'ProjectTasks',
   props: ['project', 'listType'],
-  data() {
-    return {
-      newTaskDialog: false,
-      newTask: {
-        title: '',
-        description: '',
-        status: 'Backlog',
-        assigned_to: null,
-        project: this.project.name,
-      },
-    }
-  },
   resources: {
     tasks() {
       let filters = {
@@ -287,9 +209,17 @@ export default {
       } else if (this.listType === 'done') {
         status = 'Done'
       }
-      this.newTask.assigned_to = this.$user().name
-      this.newTask.status = status
-      this.newTaskDialog = true
+
+      this.$refs.newTaskDialog.show({
+        defaults: {
+          status,
+          assigned_to: this.$user().name,
+          project: this.project.name,
+        },
+        onSuccess: () => {
+          this.$resources.tasks.reload()
+        },
+      })
     },
     statusOptions({ onClick }) {
       return ['Backlog', 'Todo', 'In Progress', 'Done', 'Canceled'].map(

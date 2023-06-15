@@ -14,17 +14,42 @@ const routes = [
     redirect: defaultRoute,
   },
   {
-    path: '/home/:feedType?',
+    path: '/home',
     name: 'Home',
     component: () => import('@/pages/Home.vue'),
     props: true,
-    beforeEnter: (to, from, next) => {
-      if (!to.params.feedType) {
-        next({ name: 'Home', params: { feedType: 'recent' } })
-      } else {
-        next()
-      }
-    },
+    redirect: { name: 'HomeOverview' },
+    children: [
+      {
+        name: 'HomeOverview',
+        path: '',
+        component: () => import('@/pages/HomeOverview.vue'),
+      },
+      {
+        name: 'HomeDiscussions',
+        path: 'discussions',
+        component: () => import('@/pages/HomeDiscussions.vue'),
+      },
+      {
+        name: 'HomeTasks',
+        path: 'tasks',
+        component: () => import('@/pages/HomeTasks.vue'),
+      },
+      {
+        name: 'HomeTask',
+        path: 'task/:taskId',
+        component: () => import('@/pages/HomeTask.vue'),
+        props: true,
+        meta: {
+          fullWidth: true,
+        },
+      },
+      {
+        name: 'HomePages',
+        path: 'pages',
+        component: () => import('@/pages/HomePages.vue'),
+      },
+    ],
   },
   {
     path: '/login',
@@ -148,7 +173,7 @@ const routes = [
                       params: {
                         ...to.params,
                         listType: to.params.listType || 'active',
-              },
+                      },
                     })
                   } else {
                     next()

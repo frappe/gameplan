@@ -24,8 +24,8 @@ export let users = createResource({
   },
 })
 
-export function userInfo(email) {
-  if (!email) {
+export function getUser(email) {
+  if (!email || email === 'sessionUser') {
     email = session.user
   }
   if (!usersByName[email]) {

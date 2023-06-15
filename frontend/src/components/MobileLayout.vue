@@ -34,7 +34,13 @@ export default {
           name: 'Home',
           icon: 'home',
           route: { name: 'Home' },
-          isActive: ['Home'].includes(this.$route.name),
+          isActive: [
+            'Home',
+            'HomeOverview',
+            'HomeDiscussions',
+            'HomeTasks',
+            'HomeTask',
+          ].includes(this.$route.name),
         },
         {
           name: 'Teams',

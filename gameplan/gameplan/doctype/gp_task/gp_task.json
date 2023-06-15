@@ -18,7 +18,8 @@
   "idx",
   "project",
   "team",
-  "assigned_to"
+  "assigned_to",
+  "comments_count"
  ],
  "fields": [
   {
@@ -99,11 +100,16 @@
    "fieldname": "completed_by",
    "fieldtype": "Data",
    "label": "Completed By"
+  },
+  {
+   "fieldname": "comments_count",
+   "fieldtype": "Int",
+   "label": "Comments Count"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-06-10 11:44:22.197597",
+ "modified": "2023-06-15 21:01:42.058336",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "GP Task",

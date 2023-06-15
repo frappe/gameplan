@@ -19,7 +19,7 @@ import './index.css'
 import { dayjs } from '@/utils'
 import { createDialog } from './utils/dialogs'
 import { createToast } from './utils/toasts'
-import { userInfo, users } from './data/users'
+import { getUser, users } from './data/users'
 import { session } from './data/session'
 import socket from './socket'
 import resetDataMixin from './utils/resetDataMixin'
@@ -49,12 +49,12 @@ app.config.globalProperties.$dayjs = dayjs
 app.config.globalProperties.$dialog = createDialog
 app.config.globalProperties.$toast = createToast
 app.config.globalProperties.$log = console.log.bind(console)
-app.config.globalProperties.$user = userInfo
+app.config.globalProperties.$user = getUser
 app.config.globalProperties.$users = users
 app.config.globalProperties.$session = session
 app.config.globalProperties.$readOnlyMode = window.read_only_mode
 app.config.globalProperties.$isSessionUser = (email) => {
-  return userInfo().name === email
+  return getUser().name === email
 }
 app.mount('#app')
 
@@ -70,7 +70,7 @@ socket.on('refetch_resource', (data) => {
 
 if (import.meta.env.DEV) {
   window.$dayjs = dayjs
-  window.$user = userInfo
+  window.$user = getUser
   window.$users = users
   window.$session = session
   window.$dialog = createDialog
