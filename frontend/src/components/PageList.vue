@@ -48,7 +48,7 @@ let pages = createListResource({
   type: 'list',
   doctype: 'GP Page',
   cache: ['Pages', props.listOptions],
-  fields: ['name', 'title', 'slug', 'modified', 'owner'],
+  fields: ['name', 'title', 'slug', 'modified', 'owner', 'project'],
   filters: props.listOptions.filters,
   pageLength: props.listOptions.pageLength || 20,
   auto: true,
