@@ -1,10 +1,10 @@
 <template>
   <div class="h-full">
     <router-link
-      v-for="d in $resources.discussions.data"
+      v-for="(d, index) in $resources.discussions.data"
       :key="d.name"
       :to="{
-        name: this.routeName,
+        name: 'ProjectDiscussion',
         params: {
           teamId: d.team,
           projectId: d.project,
@@ -65,9 +65,9 @@
                   </span>
                 </div>
               </div>
-              <div class="min-w-0 mt-1.5 flex items-center justify-between">
+              <div class="mt-1.5 flex min-w-0 items-center justify-between">
                 <div
-                  class="text-base text-gray-600 overflow-hidden text-ellipsis whitespace-nowrap"
+                  class="overflow-hidden text-ellipsis whitespace-nowrap text-base text-gray-600"
                 >
                   <span :class="filters ? '' : 'hidden sm:inline'">
                     {{ user.full_name }}
@@ -108,13 +108,16 @@
           </template>
         </UserInfo>
       </div>
-      <div class="mx-3 h-px border-t border-gray-200"></div>
       <div
-        class="absolute left-1 sm:-left-3 top-[30px] h-3.5 w-3.5 sm:h-1.5 sm:w-1.5 shrink-0 -translate-y-1/2 rounded-full bg-orange-500 border-[3px] sm:border-none border-white"
+        class="mx-3 h-px border-t border-gray-200"
+        v-if="index < $resources.discussions.data.length - 1"
+      ></div>
+      <div
+        class="absolute left-1 top-[30px] h-3.5 w-3.5 shrink-0 -translate-y-1/2 rounded-full border-[3px] border-white bg-orange-500 sm:-left-2.5 sm:h-1.5 sm:w-1.5 sm:border-none"
         :class="d.unread ? 'visible' : 'invisible'"
       ></div>
     </router-link>
-    <div class="px-2 pb-40 sm:px-0">
+    <div class="px-2 sm:px-0">
       <div
         v-if="
           !$resources.discussions.list.loading &&
@@ -127,7 +130,7 @@
       </div>
       <div
         class="flex items-center justify-center p-3"
-        v-if="$resources.discussions.hasNextPage"
+        v-if="!hideLoadMore && $resources.discussions.hasNextPage"
       >
         <Button
           @click="$resources.discussions.next"
@@ -147,7 +150,16 @@ import { TextEditor, Tooltip } from 'frappe-ui'
 
 export default {
   name: 'DiscussionList',
-  props: ['filters', 'routeName'],
+  props: {
+    listOptions: {
+      type: Object,
+      default: () => ({}),
+    },
+    hideLoadMore: {
+      type: Boolean,
+      default: false,
+    },
+  },
   expose: ['discussions'],
   components: {
     TextEditor,
@@ -158,11 +170,11 @@ export default {
       return {
         type: 'list',
         doctype: 'GP Discussion',
-        cache: ['Discussions', this.filters],
+        cache: ['Discussions', this.listOptions],
         url: 'gameplan.gameplan.doctype.gp_discussion.api.get_discussions',
-        filters: this.filters,
+        filters: this.listOptions.filters,
         auto: true,
-        pageLength: 50,
+        pageLength: this.listOptions.pageLength || 50,
         transform(data) {
           for (let d of data) {
             d.unread = !d.last_visit || d.last_post_at > d.last_visit
@@ -196,6 +208,9 @@ export default {
   computed: {
     discussions() {
       return this.$resources.discussions
+    },
+    filters() {
+      return this.listOptions.filters
     },
   },
   activated() {

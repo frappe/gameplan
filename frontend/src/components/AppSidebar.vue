@@ -88,23 +88,18 @@
               </div>
             </div>
           </Link>
-          <div class="mb-2 mt-0.5 space-y-0.5" v-show="team.open">
+          <div class="mb-2 mt-0.5 space-y-0.5 pl-7" v-show="team.open">
             <Link
               :key="project.name"
               v-for="project in teamProjects(team.name)"
               :link="project"
               :ref="($comp) => setProjectRef($comp, project)"
-              class="flex items-center rounded-md py-1 pl-12 pr-2 text-gray-800"
+              class="flex h-7 items-center rounded-md px-2 text-gray-800"
               active="bg-white shadow-sm"
               inactive="hover:bg-gray-100"
             >
               <template v-slot="{ link: project }">
                 <span class="inline-flex items-center space-x-2">
-                  <span
-                    class="flex h-5 w-5 items-center justify-center text-xl"
-                  >
-                    {{ project.icon }}
-                  </span>
                   <span class="text-base">{{ project.title }}</span>
                   <FeatherIcon
                     v-if="project.is_private"
@@ -217,9 +212,7 @@ export default {
       return activeTeams.value.map((team) => {
         team.class = function ($route, link) {
           if (
-            ['TeamLayout', 'Team', 'TeamOverview', 'TeamProjects'].includes(
-              $route.name
-            ) &&
+            ['TeamLayout', 'Team', 'TeamOverview'].includes($route.name) &&
             $route.params.teamId === link.route.params.teamId
           ) {
             return 'bg-white shadow-sm text-gray-800'

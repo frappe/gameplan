@@ -2,14 +2,14 @@
   <slot v-bind="{ user }"></slot>
 </template>
 <script>
-import { userInfo } from '@/data/users'
+import { getUser } from '@/data/users'
 
 export default {
   name: 'UserInfo',
   props: ['email'],
   computed: {
     user() {
-      return userInfo(this.email)
+      return getUser(this.email)
     },
   },
 }

@@ -9,13 +9,6 @@
         Add Members
       </Button>
       <template v-else>
-        <span class="hidden text-base text-gray-600 sm:inline">
-          {{
-            members.length > 1
-              ? `${members.length} members`
-              : `${members.length} member`
-          }}
-        </span>
         <button
           class="ml-4 flex items-center rounded-full"
           @click="inviteMemberDialog = true"

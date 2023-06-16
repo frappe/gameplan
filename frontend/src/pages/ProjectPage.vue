@@ -2,7 +2,7 @@
   <div class="py-6" v-if="page.doc">
     <div class="md:px-[70px]">
       <input
-        class="w-full border-0 p-0 pt-4 text-5xl font-semibold focus:outline-none focus:ring-0"
+        class="text-5xl w-full border-0 p-0 pt-4 font-semibold focus:outline-none focus:ring-0"
         type="text"
         :value="page.doc.title"
         @input="

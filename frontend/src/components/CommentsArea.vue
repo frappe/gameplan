@@ -45,7 +45,7 @@
           :comments="$resources.comments"
         />
         <Activity
-          class="border-t"
+          class="border-t py-5"
           v-else-if="item.doctype == 'GP Activity'"
           :activity="item"
         />

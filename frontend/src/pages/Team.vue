@@ -1,37 +1,30 @@
 <template>
   <div class="pb-20">
-    <div class="sticky top-0 z-10 border-b bg-white px-5 pt-1">
-      <div class="flex w-full items-center">
+    <header class="sticky top-0 z-10 border-b bg-white px-5 py-2.5">
+      <div class="flex items-center justify-between">
+        <PageBreadcrumbs
+          class="h-7"
+          :items="[
+            {
+              label: team.doc.title,
+              icon: team.doc.icon,
+              route: { name: 'Team', params: { teamId: team.doc.name } },
+            },
+          ]"
+        />
+
         <div class="flex items-center space-x-2">
-          <IconPicker
-            class="flex"
-            :modelValue="team.doc.icon"
-            @update:modelValue="updateTeamIcon"
-            :set-default="true"
-          >
-            <template v-slot="{ isOpen }">
-              <div
-                class="rounded-md p-px text-xl leading-none focus:outline-none"
-                :class="isOpen ? 'bg-gray-200' : 'hover:bg-gray-100'"
-              >
-                {{ team.doc.icon || '' }}
-              </div>
-            </template>
-          </IconPicker>
-          <h1 class="text-xl font-bold text-gray-900">
-            {{ team.doc.title }}
-          </h1>
-          <Badge v-if="team.doc.archived_at">Archived</Badge>
-          <Tooltip
-            v-if="team.doc.is_private"
-            text="This team is only visible to team members"
-          >
-            <FeatherIcon name="lock" class="h-4 w-4" />
-          </Tooltip>
+          <TeamMembers :team="team" />
           <Dropdown
             v-if="!team.doc.archived_at"
             placement="left"
             :options="[
+              {
+                label: 'Set cover image',
+                icon: 'image',
+                condition: () => !team.doc.cover_image,
+                onClick: () => (showCoverImage = true),
+              },
               {
                 label: 'Archive',
                 icon: 'trash-2',
@@ -45,18 +38,27 @@
             }"
           />
         </div>
-        <div class="ml-auto">
-          <TeamHomeMembers :team="team" />
-        </div>
       </div>
-      <Tabs :tabs="tabs" class="border-none" />
-    </div>
+    </header>
+    <CoverImage
+      v-if="showCoverImage"
+      :imageUrl="team.doc.cover_image"
+      :imagePosition="team.doc.cover_image_position"
+      :editable="true"
+      @change="
+        ({ imageUrl, imagePosition }) => {
+          team.setValue.submit({
+            cover_image: imageUrl,
+            cover_image_position: imagePosition,
+          })
+        }
+      "
+    />
     <router-view class="mx-auto max-w-4xl px-5" :team="team" />
   </div>
 </template>
 <script>
 import { Dropdown, Badge, Tooltip, FeatherIcon } from 'frappe-ui'
-import TeamHomeMembers from './TeamHomeMembers.vue'
 import IconPicker from '@/components/IconPicker.vue'
 import Tabs from '@/components/Tabs.vue'
 
@@ -64,7 +66,6 @@ export default {
   name: 'Team',
   props: ['team'],
   components: {
-    TeamHomeMembers,
     Dropdown,
     IconPicker,
     Tabs,
@@ -72,32 +73,10 @@ export default {
     Badge,
     FeatherIcon,
   },
-  computed: {
-    tabs() {
-      return [
-        {
-          name: 'Overview',
-          route: {
-            name: 'TeamOverview',
-          },
-          isActive: this.$route.name === 'TeamOverview',
-        },
-        {
-          name: 'Projects',
-          route: {
-            name: 'TeamProjects',
-          },
-          isActive: this.$route.name === 'TeamProjects',
-        },
-        {
-          name: 'Discussions',
-          route: {
-            name: 'TeamDiscussions',
-          },
-          isActive: this.$route.name === 'TeamDiscussions',
-        },
-      ]
-    },
+  data() {
+    return {
+      showCoverImage: Boolean(this.team.doc.cover_image),
+    }
   },
   methods: {
     updateTeamIcon(icon) {

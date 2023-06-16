@@ -2,7 +2,7 @@
   <ReadmeEditor
     :resource="project"
     fieldname="readme"
-    :border="false"
+    :border="true"
     :editable="!project.doc.archived_at"
   />
 </template>

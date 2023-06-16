@@ -42,6 +42,8 @@ class GPTask(HasMentions, HasActivity, Document):
 		self.update_tasks_count(-1)
 
 	def update_tasks_count(self, delta=1):
+		if not self.project:
+			return
 		current_tasks_count = frappe.db.get_value("GP Project", self.project, "tasks_count") or 0
 		frappe.db.set_value("GP Project", self.project, "tasks_count", current_tasks_count + delta)
 
