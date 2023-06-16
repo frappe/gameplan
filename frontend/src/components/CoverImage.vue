@@ -1,8 +1,8 @@
 <template>
   <div class="min-h-[3rem] overflow-hidden bg-gray-100">
-    <div class="group relative h-[200px] w-full" v-if="validatedImageUrl">
+    <div class="group relative h-[130px] w-full" v-if="validatedImageUrl">
       <img
-        class="h-[200px] w-full object-cover"
+        class="h-[130px] w-full object-cover"
         :class="{ 'animate-pulse': loading }"
         :style="{ objectPosition }"
         :src="validatedImageUrl"
@@ -70,7 +70,7 @@
     </div>
     <div
       v-else
-      class="flex h-[200px] w-full items-center justify-center bg-gray-100 text-sm text-gray-500"
+      class="flex h-[130px] w-full items-center justify-center bg-gray-50 text-sm text-gray-500"
     >
       <UnsplashImageBrowser
         v-if="editable"

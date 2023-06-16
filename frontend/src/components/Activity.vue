@@ -1,6 +1,8 @@
 <template>
   <div class="relative flex items-center text-base">
-    <div class="mr-3 grid h-7 w-7 place-items-center rounded-full bg-gray-100">
+    <div
+      class="mr-3 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-gray-100"
+    >
       <LucideLock class="w-4" v-if="activity.action === 'Discussion Closed'" />
       <LucideUnlock
         class="w-4"

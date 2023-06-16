@@ -1,9 +1,9 @@
 <template>
-  <div class="mt-8">
+  <div class="mt-6">
     <ReadmeEditor
       :resource="team"
       fieldname="readme"
-      :border="false"
+      :border="true"
       :editable="!team.doc.archived_at"
     />
 

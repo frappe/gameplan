@@ -25,9 +25,9 @@ module.exports = {
       screens: {
         standalone: {
           raw: '(display-mode: standalone)',
-        }
-      }
+        },
+      },
     },
   },
-  plugins: [],
+  plugins: [require('@tailwindcss/container-queries')],
 }

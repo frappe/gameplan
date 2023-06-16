@@ -4,7 +4,10 @@
       class="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-5 py-2.5"
     >
       <PageBreadcrumbs class="h-7" :items="breadcrumbs" />
-      <div class="flex items-center space-x-2">
+      <div
+        v-if="$route.name === 'ProjectOverview'"
+        class="flex items-center space-x-2"
+      >
         <Tooltip
           v-if="project.doc.is_private"
           text="This project is only visible to team members"

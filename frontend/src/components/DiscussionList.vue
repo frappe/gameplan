@@ -113,7 +113,7 @@
         v-if="index < $resources.discussions.data.length - 1"
       ></div>
       <div
-        class="absolute left-1 top-[30px] h-3.5 w-3.5 shrink-0 -translate-y-1/2 rounded-full border-[3px] border-white bg-orange-500 sm:-left-3 sm:h-1.5 sm:w-1.5 sm:border-none"
+        class="absolute left-1 top-[30px] h-3.5 w-3.5 shrink-0 -translate-y-1/2 rounded-full border-[3px] border-white bg-orange-500 sm:-left-2.5 sm:h-1.5 sm:w-1.5 sm:border-none"
         :class="d.unread ? 'visible' : 'invisible'"
       ></div>
     </router-link>

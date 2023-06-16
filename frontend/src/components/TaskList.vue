@@ -1,5 +1,5 @@
 <template>
-  <div v-if="tasks.data?.length">
+  <div class="@container" v-if="tasks.data?.length">
     <div v-for="(d, index) in tasks.data" :key="d.name">
       <router-link
         :to="{
@@ -58,9 +58,9 @@
             </div>
             <div class="flex items-center">
               <div class="px-2 leading-none text-gray-600">&middot;</div>
-              <UserAvatar class="mr-2" size="xs" :user="d.assigned_to" />
+              <UserAvatar size="xs" :user="d.assigned_to" />
               <span
-                class="hidden whitespace-nowrap text-base text-gray-800 sm:inline"
+                class="ml-2 hidden whitespace-nowrap text-base text-gray-800 @md:inline"
               >
                 {{ $user(d.assigned_to).full_name }}
               </span>

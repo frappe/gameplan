@@ -20,6 +20,12 @@
             placement="left"
             :options="[
               {
+                label: 'Set cover image',
+                icon: 'image',
+                condition: () => !team.doc.cover_image,
+                onClick: () => (showCoverImage = true),
+              },
+              {
                 label: 'Archive',
                 icon: 'trash-2',
                 onClick: () => archiveTeam(),
@@ -34,6 +40,20 @@
         </div>
       </div>
     </header>
+    <CoverImage
+      v-if="showCoverImage"
+      :imageUrl="team.doc.cover_image"
+      :imagePosition="team.doc.cover_image_position"
+      :editable="true"
+      @change="
+        ({ imageUrl, imagePosition }) => {
+          team.setValue.submit({
+            cover_image: imageUrl,
+            cover_image_position: imagePosition,
+          })
+        }
+      "
+    />
     <router-view class="mx-auto max-w-4xl px-5" :team="team" />
   </div>
 </template>
@@ -52,6 +72,11 @@ export default {
     Tooltip,
     Badge,
     FeatherIcon,
+  },
+  data() {
+    return {
+      showCoverImage: Boolean(this.team.doc.cover_image),
+    }
   },
   methods: {
     updateTeamIcon(icon) {
