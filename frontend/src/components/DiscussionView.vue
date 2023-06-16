@@ -1,6 +1,6 @@
 <template>
   <div class="relative flex h-full flex-col" v-if="postId && discussion">
-    <div class="mx-auto w-full max-w-3xl px-6">
+    <div class="mx-auto w-full max-w-3xl">
       <div class="py-6">
         <div class="flex items-start justify-between space-x-1">
           <div v-if="editingTitle" class="w-full">
