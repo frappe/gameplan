@@ -2,42 +2,49 @@
   <div class="flex h-full flex-col">
     <div class="flex flex-1">
       <div class="w-full">
-        <header class="sticky top-0 z-10 border-b bg-white py-3 px-4 sm:px-5">
+        <header class="sticky top-0 z-10 border-b bg-white px-4 py-2.5 sm:px-5">
           <div class="flex items-center justify-between">
-            <h1 class="text-2xl font-semibold">People</h1>
+            <PageBreadcrumbs
+              :items="[{ label: 'People', route: { name: 'People' } }]"
+            />
             <div class="flex items-center space-x-2">
-              <Input
+              <TextInput
                 class="hidden sm:block"
                 type="text"
                 icon-left="search"
                 placeholder="Search by name"
                 v-model="search"
                 :debounce="500"
-                @input="search = $event"
-              />
-              <Input
-                type="select"
+              >
+                <template #prefix>
+                  <LucideSearch class="w-4 text-gray-600" />
+                </template>
+              </TextInput>
+              <Select
                 :options="[
                   { label: 'Sort by name', value: 'full_name asc' },
                   { label: 'Sort by last updated', value: 'modified desc' },
                 ]"
                 v-model="orderBy"
-              />
+              >
+                <template #prefix>
+                  <LucideArrowDownUp class="w-4 text-gray-600" />
+                </template>
+              </Select>
             </div>
           </div>
           <div>
-            <Input
+            <TextInput
               class="mt-2 w-full sm:hidden"
               type="text"
               placeholder="Search by name"
               v-model="search"
               :debounce="500"
-              @input="search = $event"
             />
           </div>
         </header>
         <div
-          class="grid gap-5 py-4 px-4 sm:py-5 sm:px-5 lg:grid-cols-3 xl:grid-cols-4"
+          class="grid gap-5 px-4 py-4 sm:px-5 sm:py-5 lg:grid-cols-3 xl:grid-cols-4"
         >
           <router-link
             v-for="user in people"
@@ -99,13 +106,13 @@
   </div>
 </template>
 <script>
-import { Badge, Input } from 'frappe-ui'
+import { Badge, Input, Select, TextInput } from 'frappe-ui'
 import Breadcrumbs from '@/components/Breadcrumbs.vue'
 
 export default {
   name: 'People',
   props: ['person'],
-  components: { Breadcrumbs, Badge, Input },
+  components: { Breadcrumbs, Badge, Input, TextInput, Select },
   data() {
     return {
       search: '',

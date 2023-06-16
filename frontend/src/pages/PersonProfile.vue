@@ -1,5 +1,19 @@
 <template>
   <div v-if="profile">
+    <header
+      class="sticky top-0 z-10 flex border-b bg-white px-4 py-2.5 sm:px-5"
+    >
+      <PageBreadcrumbs
+        :items="[
+          { label: 'People', route: { name: 'People' } },
+          {
+            label: user.full_name,
+            route: { name: 'PersonProfile', params: { personId: user.name } },
+          },
+        ]"
+      />
+      <div class="h-7"></div>
+    </header>
     <div>
       <CoverImage
         :imageUrl="profile.cover_image"
@@ -89,9 +103,9 @@
                 Edit Profile Photo
               </Button>
             </div>
-            <Input label="First Name" v-model="user.first_name" />
-            <Input label="Last Name" v-model="user.last_name" />
-            <Input
+            <FormControl label="First Name" v-model="user.first_name" />
+            <FormControl label="Last Name" v-model="user.last_name" />
+            <FormControl
               label="Bio"
               v-model="profile.bio"
               type="textarea"
@@ -103,6 +117,7 @@
       <template #actions>
         <Button
           variant="solid"
+          class="w-full"
           @click="save"
           :loading="
             $resources.user.setValue.loading ||
@@ -111,13 +126,12 @@
         >
           Save
         </Button>
-        <Button @click="editDialog.show = false"> Discard </Button>
       </template>
     </Dialog>
   </div>
 </template>
 <script>
-import { Dialog, FileUploader } from 'frappe-ui'
+import { Dialog, FileUploader, FormControl } from 'frappe-ui'
 import CoverImage from '@/components/CoverImage.vue'
 import Tabs from '@/components/Tabs.vue'
 import ImagePreview from '../components/ImagePreview.vue'
@@ -137,6 +151,7 @@ export default {
     ColorPicker,
     ProfileImageEditor,
     UserImage,
+    FormControl,
   },
   data() {
     return {
