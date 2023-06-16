@@ -7,8 +7,8 @@
         :items="[
           { label: 'People', route: { name: 'People' } },
           {
-            label: user.full_name,
-            route: { name: 'PersonProfile', params: { personId: user.name } },
+            label: profile?.full_name,
+            route: { name: 'PersonProfile', params: { personId } },
           },
         ]"
       />
