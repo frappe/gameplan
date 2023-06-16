@@ -42,6 +42,7 @@ declare module 'vue' {
     LucideArchive: typeof import('~icons/lucide/archive')['default']
     LucideArrowDownFromLine: typeof import('~icons/lucide/arrow-down-from-line')['default']
     LucideArrowDownLeft: typeof import('~icons/lucide/arrow-down-left')['default']
+    LucideArrowDownUp: typeof import('~icons/lucide/arrow-down-up')['default']
     LucideArrowUpLeft: typeof import('~icons/lucide/arrow-up-left')['default']
     LucideBarChart2: typeof import('~icons/lucide/bar-chart2')['default']
     LucideBell: typeof import('~icons/lucide/bell')['default']

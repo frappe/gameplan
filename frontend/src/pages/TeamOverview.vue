@@ -4,6 +4,7 @@
       :resource="team"
       fieldname="readme"
       :border="true"
+      :collapsible="true"
       :editable="!team.doc.archived_at"
     />
 

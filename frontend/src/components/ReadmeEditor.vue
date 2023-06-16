@@ -3,7 +3,7 @@
     class="relative"
     :class="{
       'rounded-lg border px-3 py-3': border || editReadme,
-      'max-h-[150px] overflow-hidden': !expand,
+      'max-h-[150px] overflow-hidden': !expand && collapsible,
     }"
   >
     <TextEditor
@@ -54,7 +54,7 @@
     <div
       class="absolute bottom-0 right-0 flex"
       :class="{ 'p-3': border || editReadme }"
-      v-if="readmeHeight > 150"
+      v-if="collapsible && readmeHeight > 150"
     >
       <Tooltip text="Expand/Collapse">
         <Button variant="ghost" @click="expand = !expand">
@@ -93,6 +93,10 @@ export default {
     border: {
       type: Boolean,
       default: true,
+    },
+    collapsible: {
+      type: Boolean,
+      default: false,
     },
   },
   components: { TextEditor, Tooltip },
