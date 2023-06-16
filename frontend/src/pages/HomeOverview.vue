@@ -23,6 +23,7 @@
             filters: {
               status: ['in', ['Todo', 'In Progress']],
               assigned_to: $user().name,
+              owner: $user().name,
             },
             pageLength,
           }"
