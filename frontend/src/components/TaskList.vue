@@ -13,7 +13,7 @@
         }"
       >
         <div class="w-full">
-          <div class="flex items-start">
+          <div class="flex min-w-0 items-start">
             <LoadingIndicator
               class="h-4 w-4 text-gray-600"
               v-if="tasks.delete.loading && tasks.delete.params.name === d.name"
@@ -37,10 +37,14 @@
                 </button>
               </Dropdown>
             </Tooltip>
-            <span class="ml-2.5 text-base font-medium leading-4 text-gray-900">
+            <div
+              class="ml-2.5 overflow-hidden text-ellipsis whitespace-nowrap text-base font-medium leading-4 text-gray-900"
+            >
               {{ d.title }}
-            </span>
-            <div class="ml-auto whitespace-nowrap text-sm text-gray-600">
+            </div>
+            <div
+              class="ml-auto shrink-0 whitespace-nowrap text-sm text-gray-600"
+            >
               {{ $dayjs(d.modified).fromNow() }}
             </div>
           </div>
@@ -49,11 +53,11 @@
             <div class="text-base text-gray-600">#{{ d.name }}</div>
             <div
               v-if="d.project"
-              class="flex items-center text-base text-gray-700"
+              class="flex items-center text-base leading-none text-gray-700"
             >
               <div class="px-2 leading-none text-gray-600">&middot;</div>
               {{ d.team_title }}
-              <LucideChevronRight class="w-3 text-gray-600" />
+              <LucideChevronRight class="h-3 w-3 text-gray-600" />
               {{ d.project_title }}
             </div>
             <div class="flex items-center">
@@ -84,7 +88,7 @@
               </div>
             </template>
             <div
-              class="ml-auto inline-grid h-5 w-5 shrink-0 place-items-center rounded-full bg-gray-200 text-xs"
+              class="ml-auto inline-grid h-4 w-4 shrink-0 place-items-center rounded-full bg-gray-200 text-xs"
               :class="[
                 d.unread ? 'text-gray-900' : 'text-gray-600',
                 d.comments_count ? '' : 'invisible',
