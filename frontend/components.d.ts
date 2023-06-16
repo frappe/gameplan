@@ -57,6 +57,7 @@ declare module 'vue' {
     LucideHome: typeof import('~icons/lucide/home')['default']
     LucideLock: typeof import('~icons/lucide/lock')['default']
     LucideMinusCircle: typeof import('~icons/lucide/minus-circle')['default']
+    LucideMoreHorizontal: typeof import('~icons/lucide/more-horizontal')['default']
     LucidePin: typeof import('~icons/lucide/pin')['default']
     LucidePlus: typeof import('~icons/lucide/plus')['default']
     LucideRefreshCw: typeof import('~icons/lucide/refresh-cw')['default']
