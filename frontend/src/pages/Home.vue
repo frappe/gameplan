@@ -7,7 +7,7 @@
 
       <div id="home-actions">
         <button
-          v-if="$route.name === 'Home'"
+          v-if="['Home', 'HomeOverview'].includes($route.name)"
           @click="showCommandPalette"
           class="form-input hidden w-full max-w-[20rem] py-0 text-left active:bg-gray-200 md:block"
         >
