@@ -4,17 +4,21 @@
       class="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-5 py-2.5"
     >
       <PageBreadcrumbs class="h-7" :items="breadcrumbs" />
-      <button
-        @click="showCommandPalette"
-        class="form-input hidden w-full max-w-[20rem] py-0 text-left active:bg-gray-200 md:block"
-      >
-        <div class="flex items-center">
-          <LucideSearch class="w-4 text-gray-600" />
-          <span class="ml-2 text-base text-gray-500">
-            {{ searchPlaceholder }}
-          </span>
-        </div>
-      </button>
+
+      <div id="home-actions">
+        <button
+          v-if="$route.name === 'Home'"
+          @click="showCommandPalette"
+          class="form-input hidden w-full max-w-[20rem] py-0 text-left active:bg-gray-200 md:block"
+        >
+          <div class="flex items-center">
+            <LucideSearch class="w-4 text-gray-600" />
+            <span class="ml-2 text-base text-gray-500">
+              {{ searchPlaceholder }}
+            </span>
+          </div>
+        </button>
+      </div>
     </header>
 
     <router-view v-slot="{ Component, route }">
