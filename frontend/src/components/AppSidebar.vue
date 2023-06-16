@@ -109,6 +109,12 @@
                 </span>
               </template>
             </Link>
+            <div
+              class="flex h-7 items-center px-2 text-base text-gray-600"
+              v-if="teamProjects(team.name).length === 0"
+            >
+              No projects
+            </div>
           </div>
         </div>
       </nav>
