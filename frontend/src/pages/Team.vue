@@ -7,11 +7,27 @@
           :items="[
             {
               label: team.doc.title,
-              icon: team.doc.icon,
               route: { name: 'Team', params: { teamId: team.doc.name } },
             },
           ]"
-        />
+        >
+          <template #prefix>
+            <IconPicker
+              v-model="team.doc.icon"
+              @update:modelValue="
+                team.setValueDebounced.submit({ icon: team.doc.icon })
+              "
+              v-slot="{ isOpen }"
+            >
+              <button
+                class="mr-2 flex rounded-sm text-2xl leading-none"
+                :class="isOpen ? 'bg-gray-200' : 'hover:bg-gray-100'"
+              >
+                {{ team.doc.icon }}
+              </button>
+            </IconPicker>
+          </template>
+        </PageBreadcrumbs>
 
         <div class="flex items-center space-x-2">
           <TeamMembers :team="team" />

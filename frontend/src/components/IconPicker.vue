@@ -9,30 +9,30 @@
     </template>
     <template #body>
       <div
-        class="px-4 mt-3 transform -translate-x-1/2 bg-white max-w-max left-1/2 sm:px-0"
+        class="left-1/2 mt-3 max-w-max -translate-x-1/2 transform bg-white px-4 sm:px-0"
       >
         <div
-          class="relative pb-3 overflow-y-auto rounded-lg shadow-lg max-h-96 ring-1 ring-black ring-opacity-5"
+          class="relative max-h-96 overflow-y-auto rounded-lg pb-3 shadow-2xl ring-1 ring-black ring-opacity-5"
         >
-          <div class="flex gap-2 px-3 pt-3 pb-1">
+          <div class="flex gap-2 px-3 pb-1 pt-3">
             <div class="flex-1">
-              <Input
+              <FormControl
                 type="text"
                 placeholder="Search by keyword"
-                :value="search"
-                @input="setSearch"
+                v-model="search"
+                :debounce="300"
               />
             </div>
             <Button @click="setRandom">Random</Button>
           </div>
           <div class="w-96"></div>
           <div class="px-3" v-for="(emojis, group) in emojiGroups" :key="group">
-            <div class="sticky top-0 pt-3 pb-2 text-sm text-gray-700 bg-white">
+            <div class="sticky top-0 bg-white pb-2 pt-3 text-sm text-gray-700">
               {{ group }}
             </div>
-            <div class="grid grid-cols-12 place-items-center w-96">
+            <div class="grid w-96 grid-cols-12 place-items-center">
               <button
-                class="w-8 h-8 p-1 text-2xl rounded-md focus:outline-none focus:ring focus:ring-blue-200 hover:bg-gray-100"
+                class="h-8 w-8 rounded-md p-1 text-2xl hover:bg-gray-100 focus:outline-none focus:ring focus:ring-blue-200"
                 v-for="emoji in emojis"
                 :key="emoji.description"
                 @click="$emit('update:modelValue', emoji.emoji)"
@@ -94,9 +94,6 @@ export default {
     },
   },
   methods: {
-    setSearch: debounce(function (search) {
-      this.search = search
-    }, 300),
     setRandom() {
       let total = gemoji.length
       let index = randomInt(0, total - 1)
