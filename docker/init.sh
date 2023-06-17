@@ -25,10 +25,10 @@ sed -i '/watch/d' ./Procfile
 bench get-app gameplan
 
 bench new-site gameplan.localhost \
---force \
---mariadb-root-password 123 \
---admin-password admin \
---no-mariadb-socket
+    --force \
+    --mariadb-root-password 123 \
+    --admin-password admin \
+    --no-mariadb-socket
 
 bench --site gameplan.localhost install-app gameplan
 bench --site gameplan.localhost set-config developer_mode 1
