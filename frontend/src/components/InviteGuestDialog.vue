@@ -24,11 +24,10 @@
         </div>
         <Dialog :options="removeDialog.options" v-model="removeDialog.open" />
       </div>
-      <Input
+      <FormControl
         label="Email"
         v-model="email"
         placeholder="jane@example.com"
-        @input="email = $event"
         @keydown.enter="invite"
       />
       <ErrorMessage class="mt-2" :message="project.inviteGuest.error" />
