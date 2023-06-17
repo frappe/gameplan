@@ -40,7 +40,7 @@
 </template>
 <script setup>
 import { useWindowSize } from '@vueuse/core'
-import { computed, defineProps } from 'vue'
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { Dropdown } from 'frappe-ui'
 
