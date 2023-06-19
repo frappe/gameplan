@@ -12,25 +12,68 @@
           />
           <ErrorMessage :message="$resources.task.setValueDebounced.error" />
         </div>
-        <input
-          type="text"
-          placeholder="Title"
-          class="mb-2 w-full rounded-md border-none p-0 text-2xl font-semibold text-gray-900 focus:outline-none focus:ring-0"
-          @change="
-            $resources.task.setValueDebounced.submit({
-              title: $event.target.value,
-            })
-          "
-          v-model="$resources.task.doc.title"
-          v-focus
-        />
+        <div class="flex items-center justify-between">
+          <input
+            type="text"
+            placeholder="Title"
+            class="mb-2 w-full rounded-md border-none p-0 text-2xl font-semibold text-gray-900 focus:outline-none focus:ring-0"
+            @change="
+              $resources.task.setValueDebounced.submit({
+                title: $event.target.value,
+              })
+            "
+            v-model="$resources.task.doc.title"
+            v-focus
+          />
+          <Dropdown
+            :options="[
+              {
+                label: 'Delete',
+                onClick: () => {
+                  $dialog({
+                    title: 'Delete task',
+                    message: 'Are you sure you want to delete this task?',
+                    actions: [
+                      {
+                        label: 'Delete',
+                        theme: 'red',
+                        variant: 'solid',
+                        onClick({ close }) {
+                          return $resources.task.delete.submit(null, {
+                            onSuccess() {
+                              close()
+                              $router.back()
+                            },
+                          })
+                        },
+                      },
+                    ],
+                  })
+                },
+              },
+            ]"
+          >
+            <Button variant="ghost">
+              <template #icon
+                ><LucideMoreHorizontal class="h-4 w-4"
+              /></template>
+            </Button>
+          </Dropdown>
+        </div>
         <TextEditor
           ref="description"
           editor-class="prose-sm max-w-none"
           placeholder="Description"
           :content="$resources.task.doc.description"
           :bubbleMenu="true"
-          :floating-menu="true"
+          :floatingMenu="true"
+          @blur="
+            !$refs.description.editor.isEmpty
+              ? $resources.task.setValueDebounced.submit({
+                  description: $refs.description.editor.getHTML(),
+                })
+              : null
+          "
         />
         <div class="mt-8 flex flex-wrap items-center gap-2 sm:hidden">
           <Autocomplete
@@ -131,40 +174,6 @@
         </div>
       </div>
     </div>
-    <teleport to="#home-actions">
-      <Dropdown
-        :options="[
-          {
-            label: 'Delete',
-            onClick: () => {
-              $dialog({
-                title: 'Delete task',
-                message: 'Are you sure you want to delete this task?',
-                actions: [
-                  {
-                    label: 'Delete',
-                    theme: 'red',
-                    variant: 'solid',
-                    onClick({ close }) {
-                      return $resources.task.delete.submit(null, {
-                        onSuccess() {
-                          close()
-                          $router.back()
-                        },
-                      })
-                    },
-                  },
-                ],
-              })
-            },
-          },
-        ]"
-      >
-        <Button variant="ghost">
-          <template #icon><LucideMoreHorizontal class="h-4 w-4" /></template>
-        </Button>
-      </Dropdown>
-    </teleport>
   </div>
 </template>
 <script>
@@ -209,7 +218,6 @@ export default {
           ) {
             this.$resources.task.trackVisit.submit()
           }
-          this.setupEditorBlur()
         },
       }
     },
@@ -242,23 +250,6 @@ export default {
           onClick: () => this.$resources.task.setValue.submit({ priority }),
         }
       })
-    },
-  },
-  methods: {
-    setupEditorBlur() {
-      if (this._blurSetup) return
-      let editor = this.$refs.description.editor
-      if (!editor) {
-        console.log('editor not ready, trying again in 100ms')
-        setTimeout(() => this.setupEditorBlur(), 100)
-        return
-      }
-      editor.on('blur', () => {
-        this.$resources.task.setValueDebounced.submit({
-          description: editor.getHTML(),
-        })
-      })
-      this._blurSetup = true
     },
   },
   components: {

@@ -4,21 +4,6 @@
       class="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-5 py-2.5"
     >
       <PageBreadcrumbs class="h-7" :items="breadcrumbs" />
-
-      <div id="home-actions">
-        <button
-          v-if="['Home', 'HomeOverview'].includes($route.name)"
-          @click="showCommandPalette"
-          class="form-input hidden w-full max-w-[20rem] py-0 text-left active:bg-gray-200 md:block"
-        >
-          <div class="flex items-center">
-            <LucideSearch class="w-4 text-gray-600" />
-            <span class="ml-2 text-base text-gray-500">
-              {{ searchPlaceholder }}
-            </span>
-          </div>
-        </button>
-      </div>
     </header>
 
     <router-view v-slot="{ Component, route }">
@@ -32,7 +17,7 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { getPlatform } from '@/utils'
-import { showCommandPalette } from '@/components/CommandPalette.vue'
+import { showCommandPalette } from '@/components/CommandPalette/CommandPalette.vue'
 import { getCachedDocumentResource } from 'frappe-ui'
 
 let breadcrumbs = computed(() => {

@@ -102,7 +102,6 @@ import DiscussionList from '@/components/DiscussionList.vue'
 import { activeTeams } from '@/data/teams'
 import { getTeamProjects } from '@/data/projects'
 import { Autocomplete, LoadingIndicator, Select } from 'frappe-ui'
-import { showCommandPalette } from '@/components/CommandPalette.vue'
 import { useSwipe } from '@/utils/composables'
 import { getScrollContainer } from '@/utils/scrollContainer'
 
@@ -202,7 +201,6 @@ export default {
       )
       return followedProjects.includes(project)
     },
-    showCommandPalette,
   },
   computed: {
     filters() {
