@@ -30,7 +30,14 @@
           placeholder="Description"
           :content="$resources.task.doc.description"
           :bubbleMenu="true"
-          :floating-menu="true"
+          :floatingMenu="true"
+          @blur="
+            !$refs.description.editor.isEmpty
+              ? $resources.task.setValueDebounced.submit({
+                  description: $refs.description.editor.getHTML(),
+                })
+              : null
+          "
         />
         <div class="mt-8 flex flex-wrap items-center gap-2 sm:hidden">
           <Autocomplete
@@ -209,7 +216,6 @@ export default {
           ) {
             this.$resources.task.trackVisit.submit()
           }
-          this.setupEditorBlur()
         },
       }
     },
@@ -242,23 +248,6 @@ export default {
           onClick: () => this.$resources.task.setValue.submit({ priority }),
         }
       })
-    },
-  },
-  methods: {
-    setupEditorBlur() {
-      if (this._blurSetup) return
-      let editor = this.$refs.description.editor
-      if (!editor) {
-        console.log('editor not ready, trying again in 100ms')
-        setTimeout(() => this.setupEditorBlur(), 100)
-        return
-      }
-      editor.on('blur', () => {
-        this.$resources.task.setValueDebounced.submit({
-          description: editor.getHTML(),
-        })
-      })
-      this._blurSetup = true
     },
   },
   components: {
