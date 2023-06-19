@@ -1,3 +1,4 @@
+import { computed } from 'vue'
 import { createListResource } from 'frappe-ui'
 
 export let projects = createListResource({
@@ -34,3 +35,7 @@ export let projects = createListResource({
 export function getTeamProjects(team) {
   return projects.data?.filter((project) => project.team === team) || []
 }
+
+export let activeProjects = computed(
+  () => projects.data?.filter((project) => !project.archived_at) || []
+)

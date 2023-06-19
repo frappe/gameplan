@@ -32,7 +32,7 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { getPlatform } from '@/utils'
-import { showCommandPalette } from '@/components/CommandPalette.vue'
+import { showCommandPalette } from '@/components/CommandPalette/CommandPalette.vue'
 import { getCachedDocumentResource } from 'frappe-ui'
 
 let breadcrumbs = computed(() => {

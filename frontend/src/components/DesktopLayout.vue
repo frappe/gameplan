@@ -29,5 +29,5 @@
 </template>
 <script setup>
 import AppSidebar from './AppSidebar.vue'
-import CommandPalette from './CommandPalette.vue'
+import CommandPalette from './CommandPalette/CommandPalette.vue'
 </script>
