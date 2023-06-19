@@ -37,8 +37,7 @@ let newTaskDialog = ref(null)
 const filters = computed(() => {
   let sessionUser = getUser('sessionUser').name
   let filters = {
-    assigned_to: sessionUser,
-    owner: sessionUser,
+    assigned_or_owner: sessionUser,
   }
   if (listType.value === 'active') {
     filters.status = ['in', ['Todo', 'In Progress']]
