@@ -10,6 +10,7 @@
               { label: 'Active', value: 'active' },
               { label: 'Backlog', value: 'backlog' },
               { label: 'Done', value: 'done' },
+              { label: 'Canceled', value: 'canceled' },
             ]"
             v-model="_listType"
           />
@@ -188,6 +189,9 @@ export default {
       }
       if (this.listType === 'done') {
         filters.status = 'Done'
+      }
+      if (this.listType === 'canceled') {
+        filters.status = 'Canceled'
       }
       return {
         type: 'list',

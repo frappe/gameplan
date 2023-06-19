@@ -109,44 +109,61 @@
     No tasks
   </div>
 </template>
-<script setup>
+<script>
 import { h } from 'vue'
-import {
-  LoadingIndicator,
-  Dropdown,
-  Tooltip,
-  createListResource,
-} from 'frappe-ui'
+import { LoadingIndicator, Dropdown, Tooltip } from 'frappe-ui'
 import TaskStatusIcon from './icons/TaskStatusIcon.vue'
 
-const props = defineProps({
-  listOptions: {
-    type: Object,
-    default: () => ({}),
+export default {
+  name: 'TaskList',
+  props: {
+    listOptions: {
+      type: Object,
+      default: () => ({}),
+    },
   },
-})
-
-const tasks = createListResource({
-  type: 'list',
-  cache: ['Tasks', props.listOptions],
-  doctype: 'GP Task',
-  fields: ['*', 'project.title as project_title', 'team.title as team_title'],
-  filters: props.listOptions.filters,
-  orderBy: props.listOptions.orderBy || 'creation desc',
-  pageLength: props.listOptions.pageLength || 20,
-  auto: true,
-  realtime: true,
-})
-
-const statusOptions = ({ onClick }) => {
-  return ['Backlog', 'Todo', 'In Progress', 'Done', 'Canceled'].map(
-    (status) => {
+  components: {
+    LoadingIndicator,
+    Dropdown,
+    Tooltip,
+    TaskStatusIcon,
+  },
+  resources: {
+    tasks() {
       return {
-        icon: () => h(TaskStatusIcon, { status }),
-        label: status,
-        onClick: () => onClick(status),
+        type: 'list',
+        cache: ['Tasks', this.listOptions],
+        doctype: 'GP Task',
+        fields: [
+          '*',
+          'project.title as project_title',
+          'team.title as team_title',
+        ],
+        filters: this.listOptions.filters,
+        orderBy: this.listOptions.orderBy || 'creation desc',
+        pageLength: this.listOptions.pageLength || 20,
+        auto: true,
+        realtime: true,
       }
-    }
-  )
+    },
+  },
+  methods: {
+    statusOptions({ onClick }) {
+      return ['Backlog', 'Todo', 'In Progress', 'Done', 'Canceled'].map(
+        (status) => {
+          return {
+            icon: () => h(TaskStatusIcon, { status }),
+            label: status,
+            onClick: () => onClick(status),
+          }
+        }
+      )
+    },
+  },
+  computed: {
+    tasks() {
+      return this.$resources.tasks
+    },
+  },
 }
 </script>

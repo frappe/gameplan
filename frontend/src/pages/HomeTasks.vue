@@ -9,6 +9,7 @@
             { label: 'Active', value: 'active' },
             { label: 'Backlog', value: 'backlog' },
             { label: 'Done', value: 'done' },
+            { label: 'Canceled', value: 'canceled' },
           ]"
           v-model="listType"
         />
@@ -45,6 +46,8 @@ const filters = computed(() => {
     filters.status = 'Backlog'
   } else if (listType.value === 'done') {
     filters.status = 'Done'
+  } else if (listType.value === 'canceled') {
+    filters.status = 'Canceled'
   }
   return filters
 })
