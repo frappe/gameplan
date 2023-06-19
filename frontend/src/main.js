@@ -2,6 +2,7 @@ import { createApp } from 'vue'
 import {
   Button,
   Input,
+  TextInput,
   FormControl,
   ErrorMessage,
   Dialog,
@@ -29,6 +30,7 @@ import { getCachedResource } from 'frappe-ui/src/resources/resources'
 
 let globalComponents = {
   Button,
+  TextInput,
   Input,
   FormControl,
   ErrorMessage,

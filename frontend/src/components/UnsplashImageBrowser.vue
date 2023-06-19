@@ -12,11 +12,10 @@
         >
           <div class="flex items-center space-x-2">
             <div class="flex-1">
-              <Input
+              <TextInput
                 type="text"
                 placeholder="search by keyword"
-                :value="search"
-                @input="(val) => (search = val)"
+                v-model="search"
                 :debounce="300"
               />
             </div>
