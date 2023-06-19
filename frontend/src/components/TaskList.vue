@@ -132,6 +132,7 @@ export default {
     tasks() {
       return {
         type: 'list',
+        url: 'gameplan.gameplan.doctype.gp_task.gp_task.get_list',
         cache: ['Tasks', this.listOptions],
         doctype: 'GP Task',
         fields: [

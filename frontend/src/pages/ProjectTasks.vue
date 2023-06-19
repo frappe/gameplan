@@ -195,6 +195,7 @@ export default {
       }
       return {
         type: 'list',
+        url: 'gameplan.gameplan.doctype.gp_task.gp_task.get_list',
         cache: ['Project Tasks', this.project.doc.name, this.listType],
         doctype: 'GP Task',
         fields: ['*'],

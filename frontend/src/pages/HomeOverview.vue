@@ -22,8 +22,7 @@
           :listOptions="{
             filters: {
               status: ['in', ['Todo', 'In Progress']],
-              assigned_to: $user().name,
-              owner: $user().name,
+              assigned_or_owner: $user().name,
             },
             pageLength,
           }"

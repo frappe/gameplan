@@ -3,6 +3,7 @@
 
 import frappe
 from frappe.model.document import Document
+from gameplan.extends.client import check_permissions
 from gameplan.gameplan.doctype.gp_notification.gp_notification import GPNotification
 from gameplan.mixins.activity import HasActivity
 from gameplan.mixins.mentions import HasMentions
@@ -63,3 +64,24 @@ class GPTask(HasMentions, HasActivity, Document):
 	@frappe.whitelist()
 	def track_visit(self):
 		GPNotification.clear_notifications(task=self.name)
+
+@frappe.whitelist()
+def get_list(fields=None, filters: dict|None=None, order_by=None, start=0, limit=20, group_by=None, parent=None, debug=False):
+	doctype = 'GP Task'
+	check_permissions(doctype, parent)
+	assigned_or_owner = filters.pop('assigned_or_owner', None)
+	query = frappe.qb.get_query(
+		table=doctype,
+		fields=fields,
+		filters=filters,
+		order_by=order_by,
+		offset=start,
+		limit=limit,
+		group_by=group_by,
+	)
+	if assigned_or_owner:
+		Task = frappe.qb.DocType(doctype)
+		query = query.where(
+			(Task.assigned_to == assigned_or_owner) | (Task.owner == assigned_or_owner)
+		)
+	return query.run(as_dict=True, debug=debug)
