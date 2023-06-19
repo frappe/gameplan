@@ -5,21 +5,36 @@ from __future__ import unicode_literals
 import frappe
 from frappe.model.base_document import get_controller
 
-
 @frappe.whitelist()
-def get_list(doctype=None, fields=None, filters=None, order_by=None, start=0, limit=20, group_by=None, parent=None, debug=False):
-	check_permissions(doctype, parent)
-	query = frappe.qb.get_query(
-		table=doctype,
-		fields=fields,
-		filters=filters,
-		order_by=order_by,
-		offset=start,
-		limit=limit,
-		group_by=group_by,
+def get_list(doctype, **kwargs):
+	controller = get_controller(doctype)
+	if hasattr(controller, "get_list_query"):
+		check_permissions(doctype, kwargs.get("parent"))
+		query = frappe.qb.get_query(
+			table=doctype,
+			fields=kwargs.get("fields"),
+			filters=kwargs.get("filters"),
+			order_by=kwargs.get("order_by"),
+			offset=kwargs.get("start"),
+			limit=kwargs.get("limit", 20),
+			group_by=kwargs.get("group_by"),
+		)
+		return_value = controller.get_list_query(query)
+		if return_value is not None:
+			query = return_value
+		return query.run(as_dict=True, debug=kwargs.get("debug"))
+	return frappe.client.get_list(
+		doctype,
+		fields=kwargs.get("fields"),
+		filters=kwargs.get("filters"),
+		order_by=kwargs.get("order_by"),
+		limit_start=kwargs.get("limit_start"),
+		limit_page_length=kwargs.get("limit_page_length",20),
+		parent=kwargs.get("parent"),
+		debug=kwargs.get("debug", False),
+		as_dict=kwargs.get("as_dict", True),
+		or_filters=kwargs.get("or_filters"),
 	)
-	query = apply_custom_filters(doctype, query)
-	return query.run(as_dict=True, debug=debug)
 
 def check_permissions(doctype, parent):
 	user = frappe.session.user
@@ -28,16 +43,6 @@ def check_permissions(doctype, parent):
 		and not frappe.has_permission(doctype, "read", user=user, parent_doctype=parent)
 	):
 		frappe.throw(f'Insufficient Permission for {doctype}', frappe.PermissionError)
-
-def apply_custom_filters(doctype, query):
-	"""Apply custom filters to query"""
-	controller = get_controller(doctype)
-	if hasattr(controller, "get_list_query"):
-		return_value = controller.get_list_query(query)
-		if return_value is not None:
-			query = return_value
-
-	return query
 
 @frappe.whitelist()
 def batch(requests):
