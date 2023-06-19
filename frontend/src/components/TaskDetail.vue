@@ -12,18 +12,54 @@
           />
           <ErrorMessage :message="$resources.task.setValueDebounced.error" />
         </div>
-        <input
-          type="text"
-          placeholder="Title"
-          class="mb-2 w-full rounded-md border-none p-0 text-2xl font-semibold text-gray-900 focus:outline-none focus:ring-0"
-          @change="
-            $resources.task.setValueDebounced.submit({
-              title: $event.target.value,
-            })
-          "
-          v-model="$resources.task.doc.title"
-          v-focus
-        />
+        <div class="flex items-center justify-between">
+          <input
+            type="text"
+            placeholder="Title"
+            class="mb-2 w-full rounded-md border-none p-0 text-2xl font-semibold text-gray-900 focus:outline-none focus:ring-0"
+            @change="
+              $resources.task.setValueDebounced.submit({
+                title: $event.target.value,
+              })
+            "
+            v-model="$resources.task.doc.title"
+            v-focus
+          />
+          <Dropdown
+            :options="[
+              {
+                label: 'Delete',
+                onClick: () => {
+                  $dialog({
+                    title: 'Delete task',
+                    message: 'Are you sure you want to delete this task?',
+                    actions: [
+                      {
+                        label: 'Delete',
+                        theme: 'red',
+                        variant: 'solid',
+                        onClick({ close }) {
+                          return $resources.task.delete.submit(null, {
+                            onSuccess() {
+                              close()
+                              $router.back()
+                            },
+                          })
+                        },
+                      },
+                    ],
+                  })
+                },
+              },
+            ]"
+          >
+            <Button variant="ghost">
+              <template #icon
+                ><LucideMoreHorizontal class="h-4 w-4"
+              /></template>
+            </Button>
+          </Dropdown>
+        </div>
         <TextEditor
           ref="description"
           editor-class="prose-sm max-w-none"
@@ -138,40 +174,6 @@
         </div>
       </div>
     </div>
-    <teleport to="#home-actions">
-      <Dropdown
-        :options="[
-          {
-            label: 'Delete',
-            onClick: () => {
-              $dialog({
-                title: 'Delete task',
-                message: 'Are you sure you want to delete this task?',
-                actions: [
-                  {
-                    label: 'Delete',
-                    theme: 'red',
-                    variant: 'solid',
-                    onClick({ close }) {
-                      return $resources.task.delete.submit(null, {
-                        onSuccess() {
-                          close()
-                          $router.back()
-                        },
-                      })
-                    },
-                  },
-                ],
-              })
-            },
-          },
-        ]"
-      >
-        <Button variant="ghost">
-          <template #icon><LucideMoreHorizontal class="h-4 w-4" /></template>
-        </Button>
-      </Dropdown>
-    </teleport>
   </div>
 </template>
 <script>

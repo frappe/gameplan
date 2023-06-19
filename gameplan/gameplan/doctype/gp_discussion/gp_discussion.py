@@ -3,7 +3,7 @@
 import re
 import frappe
 from frappe.model.document import Document
-from gameplan.gameplan.doctype.gp_discussion.search import update_index
+from gameplan.search import GameplanSearch
 from gameplan.gameplan.doctype.gp_notification.gp_notification import GPNotification
 from gameplan.mixins.activity import HasActivity
 from gameplan.mixins.mentions import HasMentions
@@ -74,7 +74,8 @@ class GPDiscussion(HasActivity, HasMentions, HasReactions, Document):
 
 	def update_search_index(self):
 		if self.has_value_changed('title') or self.has_value_changed('content'):
-			update_index(self)
+			search = GameplanSearch()
+			search.index_doc(self)
 
 	def update_participants_count(self):
 		participants = frappe.db.get_all('GP Comment',

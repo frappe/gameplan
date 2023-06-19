@@ -21,6 +21,27 @@
     </div>
     <div class="flex-1">
       <nav class="space-y-0.5 px-2">
+        <button
+          v-if="$user().isNotGuest"
+          class="flex w-full items-center rounded px-2 py-1 text-gray-800"
+          :class="[
+            /Search/.test($route.name)
+              ? 'bg-white shadow-sm'
+              : 'hover:bg-gray-100',
+          ]"
+          @click="showCommandPalette"
+        >
+          <div class="flex w-full items-center">
+            <span class="grid h-5 w-6 place-items-center">
+              <LucideSearch class="h-4 w-4 text-gray-700" />
+            </span>
+            <span class="ml-2 text-base">Search</span>
+            <span class="ml-auto text-base text-gray-500">
+              <template v-if="$platform === 'mac'">⌘K</template>
+              <template v-else>Ctrl+K</template>
+            </span>
+          </div>
+        </button>
         <Links
           :links="navigation"
           class="flex items-center rounded px-2 py-1 text-gray-800"
@@ -147,9 +168,10 @@ import Link from './Link.vue'
 import AddTeamDialog from './AddTeamDialog.vue'
 import UserDropdown from './UserDropdown.vue'
 import ChevronTriangle from './icons/ChevronTriangle.vue'
-import { activeTeams, teams, unreadItems } from '@/data/teams'
+import { activeTeams, teams } from '@/data/teams'
 import { getTeamProjects } from '@/data/projects'
 import { unreadNotifications } from '@/data/notifications'
+import { showCommandPalette } from '@/components/CommandPalette/CommandPalette.vue'
 
 export default {
   name: 'AppSidebar',
@@ -194,14 +216,6 @@ export default {
             name: 'People',
           },
           isActive: /People|PersonProfile/g.test(this.$route.name),
-          condition: () => this.$user().isNotGuest,
-        },
-        {
-          name: 'Search',
-          icon: 'search',
-          route: {
-            name: 'Search',
-          },
           condition: () => this.$user().isNotGuest,
         },
         {
@@ -292,6 +306,7 @@ export default {
         this.sidebarWidth = 24 * 16
       }
     },
+    showCommandPalette,
   },
 }
 </script>

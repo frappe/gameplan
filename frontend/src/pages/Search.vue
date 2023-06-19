@@ -1,129 +1,126 @@
 <template>
-  <div class="px-4 py-3 sm:px-5">
-    <h1 class="mb-3 text-2xl font-semibold">Search</h1>
+  <header class="sticky top-0 z-10 border-b bg-white px-4 py-2.5 sm:px-5">
+    <div class="flex items-center justify-between">
+      <PageBreadcrumbs
+        :items="[{ label: 'Search', route: { name: 'Search' } }]"
+      />
+    </div>
+  </header>
+  <div class="mx-auto mt-6 max-w-4xl px-4 sm:px-5">
     <div class="flex items-center space-x-2">
-      <Input
-        iconLeft="search"
+      <TextInput
         class="w-full"
         placeholder="Type a keyword and hit enter to search"
         autocomplete="off"
-        :value="query"
-        @input="query = $event"
-        @keydown.enter="
-          (e) =>
-            e.target.value ? $resources.search.submit(e.target.value) : null
-        "
-        v-focus
-      />
-      <Button
-        @click="$resources.search.submit(query)"
-        :loading="$resources.search.loading"
+        v-model="query"
+        @keydown.enter="(e) => search(e.target.value)"
       >
+        <template>
+          <LucideSearch class="w-4 text-gray-600" />
+        </template>
+      </TextInput>
+      <Button @click="search(query)" :loading="$resources.search.loading">
         Search
       </Button>
     </div>
     <div
       v-if="$resources.search.params && $resources.search.data"
-      class="mt-2 text-sm text-gray-600"
+      class="mt-4 text-base font-semibold text-gray-800"
     >
       About {{ $resources.search.data.total }} results for "{{
         $resources.search.params?.query
       }}" ({{ $resources.search.data.duration.toFixed(2) }}
       ms)
     </div>
-  </div>
-  <div
-    class="mx-auto mt-3 max-w-4xl sm:px-5"
-    v-if="$resources.search.params && $resources.search.data?.docs.length"
-  >
-    <router-link
-      class="flex flex-col rounded-[10px] hover:bg-gray-100"
-      v-for="d in $resources.search.data.docs"
-      :to="{
-        name: 'ProjectDiscussion',
-        params: { teamId: d.team, projectId: d.project, postId: d.name },
-        query: { comment: d.comment || undefined, fromSearch: 1 },
-      }"
+    <div
+      class="pb-10"
+      v-if="$resources.search.params && $resources.search.data"
     >
-      <div class="flex p-3 pl-7">
-        <UserAvatar :user="d.last_post_by || d.owner" class="mr-4" />
-        <div class="search-result">
+      <div
+        class="mt-5"
+        v-for="group in $resources.search.data.groups"
+        :key="group.title"
+      >
+        <div class="mb-3 text-base text-gray-600">
+          {{ group.title }}
+        </div>
+        <router-link
+          v-for="item in group.items"
+          :key="item.name + item.via_comment"
+          :to="getRoute(item)"
+          class="block overflow-hidden rounded px-2.5 py-3 hover:bg-gray-100"
+        >
           <div class="flex items-center">
-            <div class="text-lg font-medium leading-snug" v-html="d.title" />
-            <span class="whitespace-pre text-gray-600 md:inline">
-              &middot;
-            </span>
-            <span
-              class="shrink-0 whitespace-nowrap text-sm text-gray-600 md:inline"
-            >
-              {{ timestamp(d) }}
-            </span>
+            <div class="text-base font-medium" v-html="item.title" />
+            <span class="px-1 leading-none text-gray-600"> &middot; </span>
+            <div class="text-sm text-gray-600">
+              {{ timestamp(item) }}
+            </div>
           </div>
           <div
-            class="mt-1 text-base text-gray-800"
-            v-html="trimContent(d.content)"
+            v-if="item.content"
+            class="mt-1 text-p-base text-gray-700"
+            v-html="trimContent(item.content)"
           ></div>
-        </div>
+        </router-link>
       </div>
-      <div class="ml-7 mr-3 h-px border-t border-gray-200"></div>
-    </router-link>
-    <div class="pb-10 text-center">
-      <Button
-        class="mt-4"
-        @click="next"
-        :loading="$resources.search.loading"
-        v-if="
-          lastResponse &&
-          lastResponse.docs.length &&
-          lastResponse.docs.length >= pageLength
-        "
-      >
-        <template #prefix><LucideFileText class="w-4" /></template>
-        Load more
-      </Button>
     </div>
   </div>
 </template>
 <script>
-import { focus } from '@/directives'
+import { TextInput } from 'frappe-ui'
 
 export default {
   name: 'AppSearch',
-  directives: {
-    focus,
-  },
   data() {
     return {
-      start: 0,
-      pageLength: 50,
       query: '',
-      lastResponse: null,
     }
+  },
+  mounted() {
+    this.query = this.$route.query.q || ''
+    this.search(this.query)
+    this.$router.replace({ query: null })
   },
   resources: {
     search: {
       cache: 'Search',
-      url: 'gameplan.gameplan.doctype.gp_discussion.search.search',
+      url: 'gameplan.search.search',
       makeParams(query) {
         return { query, start: this.start }
       },
       transform(data) {
-        this.lastResponse = data
-        return {
-          ...data,
-          docs: this.start
-            ? this.$resources.search.data.docs.concat(data.docs)
-            : data.docs,
+        let out = {
+          groups: [],
+          total: data.total,
+          duration: data.duration,
         }
+        for (let doctype in data.results) {
+          let group = null
+          if (doctype === 'GP Discussion') {
+            group = 'Discussions'
+          } else if (doctype === 'GP Task') {
+            group = 'Tasks'
+          } else if (doctype === 'GP Page') {
+            group = 'Pages'
+          }
+          if (!group) {
+            continue
+          }
+          out.groups.push({
+            title: group,
+            items: data.results[doctype],
+          })
+        }
+        return out
       },
     },
   },
   methods: {
-    next() {
-      this.start += this.pageLength
-      this.$resources.search.submit(
-        this.query || this.$resources.search.params.query
-      )
+    search(value) {
+      if (value) {
+        this.$resources.search.submit(value)
+      }
     },
     trimContent(content) {
       let trimmedLength = 200
@@ -131,7 +128,6 @@ export default {
       if (indexOf === -1) {
         return content.slice(0, 200)
       }
-
       let start = indexOf - trimmedLength / 2
       if (start < 0) {
         start = 0
@@ -143,7 +139,7 @@ export default {
       return content.slice(start, end)
     },
     timestamp(d) {
-      let timestamp = d.last_post_at
+      let timestamp = d.modified
       if (this.$dayjs().diff(timestamp, 'day') < 25) {
         return this.$dayjs(timestamp).fromNow()
       }
@@ -152,6 +148,39 @@ export default {
       }
       return this.$dayjs(timestamp).format('D MMM YYYY')
     },
+    getRoute(item) {
+      if (item.doctype === 'GP Discussion') {
+        return {
+          name: 'ProjectDiscussion',
+          params: {
+            teamId: item.team,
+            projectId: item.project,
+            postId: item.name,
+          },
+        }
+      }
+      if (item.doctype === 'GP Task') {
+        return {
+          name: item.project ? 'ProjectTaskDetail' : 'HomeTask',
+          params: {
+            teamId: item.team,
+            projectId: item.project,
+            taskId: item.name,
+          },
+        }
+      }
+      if (item.doctype === 'GP Page') {
+        return {
+          name: 'ProjectPage',
+          params: {
+            teamId: item.team,
+            projectId: item.project,
+            pageId: item.name,
+          },
+        }
+      }
+      return { name: 'Search' }
+    },
   },
   pageMeta() {
     return {
@@ -159,6 +188,7 @@ export default {
       emoji: '🔍',
     }
   },
+  components: { TextInput },
 }
 </script>
 <style>

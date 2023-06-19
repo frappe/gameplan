@@ -6,6 +6,7 @@ from frappe.model.document import Document
 from gameplan.gameplan.doctype.gp_notification.gp_notification import GPNotification
 from gameplan.mixins.activity import HasActivity
 from gameplan.mixins.mentions import HasMentions
+from gameplan.search import GameplanSearch
 
 
 class GPTask(HasMentions, HasActivity, Document):
@@ -25,6 +26,7 @@ class GPTask(HasMentions, HasActivity, Document):
 		self.update_project_progress()
 		self.notify_mentions()
 		self.log_value_updates()
+		self.update_search_index()
 
 	def log_value_updates(self):
 		fields = ['title', 'description', 'status', 'priority', 'assigned_to', 'due_date', 'project']
@@ -38,8 +40,15 @@ class GPTask(HasMentions, HasActivity, Document):
 					'new_value': self.get(field)
 				})
 
+	def update_search_index(self):
+		if self.has_value_changed('title') or self.has_value_changed('description'):
+			search = GameplanSearch()
+			search.index_doc(self)
+
 	def on_trash(self):
 		self.update_tasks_count(-1)
+		search = GameplanSearch()
+		search.remove_doc(self)
 
 	def update_tasks_count(self, delta=1):
 		if not self.project:

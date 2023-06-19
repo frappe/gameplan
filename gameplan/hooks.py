@@ -85,7 +85,7 @@ website_redirects = [
 # before_install = "gameplan.install.before_install"
 after_install = "gameplan.install.after_install"
 
-after_migrate = ["gameplan.gameplan.doctype.gp_discussion.search.rebuild_index_in_background"]
+after_migrate = ["gameplan.search.build_index_in_background"]
 
 # Uninstallation
 # ------------
@@ -144,7 +144,7 @@ on_login = 'gameplan.www.g.on_login'
 
 scheduler_events = {
 	"all": [
-		"gameplan.gameplan.doctype.gp_discussion.search.rebuild_index_if_not_exists"
+		"gameplan.search.build_index_if_not_exists"
 	],
 	"hourly": [
 		"gameplan.gameplan.doctype.gp_invitation.gp_invitation.expire_invitations"

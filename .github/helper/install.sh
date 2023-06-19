@@ -47,7 +47,7 @@ build_pid=$!
 
 bench --site gameplan.test reinstall --yes
 bench --site gameplan.test install-app gameplan
-bench --site gameplan.test execute gameplan.gameplan.doctype.gp_discussion.search.rebuild_index_if_not_exists
+bench --site gameplan.test execute gameplan.search.build_index_if_not_exists
 
 # wait till assets are built succesfully
 wait $build_pid

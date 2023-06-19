@@ -117,11 +117,11 @@ export default {
               group.component = 'Item'
               group.items = group.items.map((item) => {
                 item.route = {
-                  name: 'DiscussionView',
+                  name: 'ProjectDiscussion',
                   params: {
                     postId: item.name,
-                    projectId: item.project,
-                    teamId: item.team,
+                    projectId: item.payload.project,
+                    teamId: item.payload.team,
                   },
                 }
                 return item
@@ -134,8 +134,8 @@ export default {
                   name: item.project ? 'ProjectTaskDetail' : 'HomeTask',
                   params: {
                     taskId: item.name,
-                    projectId: item.project,
-                    teamId: item.team,
+                    projectId: item.payload.project,
+                    teamId: item.payload.team,
                   },
                 }
                 return item
@@ -148,8 +148,8 @@ export default {
                   name: 'ProjectPage',
                   params: {
                     pageId: item.name,
-                    projectId: item.project,
-                    teamId: item.team,
+                    projectId: item.payload.project,
+                    teamId: item.payload.team,
                   },
                 }
                 return item

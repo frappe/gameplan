@@ -3,7 +3,7 @@
 
 import frappe
 from frappe.model.document import Document
-from gameplan.gameplan.doctype.gp_discussion.search import remove_index, update_index
+from gameplan.search import GameplanSearch
 from gameplan.mixins.mentions import HasMentions
 from gameplan.mixins.reactions import HasReactions
 from gameplan.utils import remove_empty_trailing_paragraphs
@@ -53,8 +53,9 @@ class GPComment(HasMentions, HasReactions, Document):
 		self.notify_reactions()
 
 	def update_discussion_index(self):
-		if self.reference_doctype == "GP Discussion":
+		if self.reference_doctype in ["GP Discussion", "GP Task"]:
+			search  = GameplanSearch()
 			if self.deleted_at:
-				remove_index(self)
+				search.remove_doc(self)
 			else:
-				update_index(self)
+				search.index_doc(self)
