@@ -9,7 +9,7 @@ from gameplan.mixins.mentions import HasMentions
 
 
 class GPTask(HasMentions, HasActivity, Document):
-	on_delete_cascade = ["GP Comment"]
+	on_delete_cascade = ["GP Comment", "GP Activity"]
 	on_delete_set_null = ["GP Notification"]
 	activities = ['Task Value Changed']
 	mentions_field = 'description'
