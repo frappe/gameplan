@@ -12,9 +12,6 @@
           v-slot="{ activeIndex }"
         >
           <div class="relative">
-            <span class="absolute right-4">
-              {{ activeIndex }}
-            </span>
             <div class="absolute inset-y-0 left-0 flex items-center pl-4.5">
               <LucideSearch class="h-4 w-4" />
             </div>
