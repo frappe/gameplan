@@ -25,7 +25,7 @@
             :listOptions="{
               filters: {
                 project: project.doc.name,
-                status: ['in', ['Todo', 'In Progress']],
+                status: ['in', ['Backlog', 'Todo', 'In Progress']],
               },
               pageLength: 4,
             }"
