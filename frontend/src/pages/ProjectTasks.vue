@@ -8,7 +8,6 @@
             :options="[
               { label: 'All', value: 'all' },
               { label: 'Active', value: 'active' },
-              { label: 'Backlog', value: 'backlog' },
               { label: 'Done', value: 'done' },
               { label: 'Canceled', value: 'canceled' },
             ]"
@@ -182,10 +181,7 @@ export default {
         // pass
       }
       if (this.listType === 'active') {
-        filters.status = ['in', ['Todo', 'In Progress']]
-      }
-      if (this.listType === 'backlog') {
-        filters.status = 'Backlog'
+        filters.status = ['in', ['Backlog', 'Todo', 'In Progress']]
       }
       if (this.listType === 'done') {
         filters.status = 'Done'

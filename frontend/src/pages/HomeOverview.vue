@@ -21,7 +21,7 @@
         <TaskList
           :listOptions="{
             filters: {
-              status: ['in', ['Todo', 'In Progress']],
+              status: ['in', ['Backlog', 'Todo', 'In Progress']],
               assigned_or_owner: $user().name,
             },
             pageLength,

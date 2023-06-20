@@ -7,7 +7,6 @@
           :options="[
             { label: 'All', value: 'all' },
             { label: 'Active', value: 'active' },
-            { label: 'Backlog', value: 'backlog' },
             { label: 'Done', value: 'done' },
             { label: 'Canceled', value: 'canceled' },
           ]"
@@ -40,9 +39,7 @@ const filters = computed(() => {
     assigned_or_owner: sessionUser,
   }
   if (listType.value === 'active') {
-    filters.status = ['in', ['Todo', 'In Progress']]
-  } else if (listType.value === 'backlog') {
-    filters.status = 'Backlog'
+    filters.status = ['in', ['Backlog', 'Todo', 'In Progress']]
   } else if (listType.value === 'done') {
     filters.status = 'Done'
   } else if (listType.value === 'canceled') {
