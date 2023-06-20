@@ -22,7 +22,7 @@ class HasActivity:
 			user = frappe.session.user
 
 		if data and isinstance(data, dict):
-			data = json.dumps(data)
+			data = frappe.as_json(data, indent=None)
 
 		activity = frappe.get_doc(
 			doctype='GP Activity',
