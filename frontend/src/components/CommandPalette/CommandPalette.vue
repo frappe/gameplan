@@ -17,7 +17,7 @@
             </div>
             <ComboboxInput
               placeholder="Search"
-              class="w-full border-none bg-transparent py-3 pl-10.5 pr-4.5 text-base text-gray-800 placeholder-gray-500 focus:ring-0"
+              class="w-full border-none bg-transparent py-3 pl-11.5 pr-4.5 text-base text-gray-800 placeholder-gray-500 focus:ring-0"
               @input="onInput"
               autocomplete="off"
             />
@@ -76,7 +76,7 @@ import Item from './Item.vue'
 import LucideHome from '~icons/lucide/home'
 import LucideUsers from '~icons/lucide/users'
 import LucideBell from '~icons/lucide/bell'
-import LucideSearch from '~icons/lucide/search'
+import LucideSearch from '~icons/lucide/file-search'
 
 let show = ref(false)
 
