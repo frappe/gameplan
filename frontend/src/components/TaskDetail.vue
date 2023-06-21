@@ -186,6 +186,7 @@ import { Autocomplete, Dropdown, LoadingText, TextInput } from 'frappe-ui'
 import CommentsList from '@/components/CommentsList.vue'
 import TaskStatusIcon from '@/components/icons/TaskStatusIcon.vue'
 import TaskPriorityIcon from '@/components/icons/TaskPriorityIcon.vue'
+import { activeUsers } from '@/data/users'
 
 export default {
   name: 'TaskDetail',
@@ -224,7 +225,7 @@ export default {
   },
   computed: {
     assignableUsers() {
-      return this.$users.data
+      return activeUsers.value
         .filter((user) => user.name != this.$resources.task.doc.assigned_to)
         .map((user) => ({
           label: user.full_name,

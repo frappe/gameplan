@@ -43,12 +43,7 @@
           />
           <Autocomplete
             placeholder="Assign a user"
-            :options="
-              $users.data.map((user) => ({
-                label: user.full_name,
-                value: user.name,
-              }))
-            "
+            :options="assignableUsers"
             :value="newTask.assigned_to"
             @change="(option) => (newTask.assigned_to = option?.value || '')"
           />
@@ -69,6 +64,7 @@ import {
   createResource,
 } from 'frappe-ui'
 import TaskStatusIcon from './icons/TaskStatusIcon.vue'
+import { activeUsers } from '@/data/users'
 
 const props = defineProps(['modelValue', 'defaults'])
 const emit = defineEmits(['update:modelValue'])
@@ -105,6 +101,15 @@ function statusOptions({ onClick }) {
     }
   )
 }
+
+const assignableUsers = computed(() => {
+  return activeUsers.value
+    .filter((user) => user.name != newTask.value.assigned_to)
+    .map((user) => ({
+      label: user.full_name,
+      value: user.name,
+    }))
+})
 
 let _onSuccess
 function show({ defaults, onSuccess } = {}) {

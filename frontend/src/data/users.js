@@ -1,5 +1,5 @@
 import { createResource } from 'frappe-ui'
-import { reactive } from 'vue'
+import { computed, reactive } from 'vue'
 import router from '@/router'
 import { session } from './session'
 
@@ -39,3 +39,7 @@ export function getUser(email) {
   }
   return usersByName[email]
 }
+
+export let activeUsers = computed(() => {
+  return users.data.filter((user) => user.enabled)
+})
