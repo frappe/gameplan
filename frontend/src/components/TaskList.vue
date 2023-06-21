@@ -53,19 +53,16 @@
             <div class="text-base text-gray-600">#{{ d.name }}</div>
             <div
               v-if="d.project"
-              class="flex items-center text-base leading-none text-gray-700"
+              class="flex items-center text-base leading-none text-gray-600"
             >
               <div class="px-2 leading-none text-gray-600">&middot;</div>
               {{ d.team_title }}
               <LucideChevronRight class="h-3 w-3 text-gray-600" />
               {{ d.project_title }}
             </div>
-            <div class="flex items-center">
+            <div class="hidden items-center @md:flex" v-if="d.assigned_to">
               <div class="px-2 leading-none text-gray-600">&middot;</div>
-              <UserAvatar size="xs" :user="d.assigned_to" />
-              <span
-                class="ml-2 hidden whitespace-nowrap text-base text-gray-800 @md:inline"
-              >
+              <span class="whitespace-nowrap text-base text-gray-600">
                 {{ $user(d.assigned_to).full_name }}
               </span>
             </div>
@@ -73,8 +70,8 @@
             <template v-if="d.due_date">
               <div class="px-2 leading-none text-gray-600">&middot;</div>
               <div class="flex items-center">
-                <LucideCalendar class="h-3 w-3 text-gray-700" />
-                <span class="ml-2 whitespace-nowrap text-base text-gray-700">
+                <LucideCalendar class="h-3 w-3 text-gray-600" />
+                <span class="ml-2 whitespace-nowrap text-base text-gray-600">
                   {{ $dayjs(d.due_date).format('D MMM') }}</span
                 >
               </div>
@@ -82,7 +79,15 @@
             <template v-if="d.priority">
               <div class="px-2 leading-none text-gray-600">&middot;</div>
               <div class="flex items-center">
-                <span class="text-base text-gray-700">
+                <div
+                  class="h-2 w-2 rounded-full"
+                  :class="{
+                    'bg-red-400': d.priority === 'High',
+                    'bg-yellow-500': d.priority === 'Medium',
+                    'bg-gray-300': d.priority === 'Low',
+                  }"
+                ></div>
+                <span class="ml-2 text-base text-gray-600">
                   {{ d.priority }}
                 </span>
               </div>
