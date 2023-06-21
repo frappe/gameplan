@@ -52,13 +52,15 @@
           <div class="ml-6.5 mt-1.5 flex items-center">
             <div class="text-base text-gray-600">#{{ d.name }}</div>
             <div
-              v-if="d.project"
-              class="flex items-center text-base leading-none text-gray-600"
+              v-if="$route.name != 'ProjectOverview' && d.project"
+              class="flex min-w-0 items-center text-base leading-none text-gray-600"
             >
               <div class="px-2 leading-none text-gray-600">&middot;</div>
-              {{ d.team_title }}
-              <LucideChevronRight class="h-3 w-3 text-gray-600" />
-              {{ d.project_title }}
+              <div>{{ d.team_title }}</div>
+              <LucideChevronRight class="h-3 w-3 shrink-0 text-gray-600" />
+              <div class="overflow-hidden text-ellipsis whitespace-nowrap">
+                {{ d.project_title }}
+              </div>
             </div>
             <div class="hidden items-center @md:flex" v-if="d.assigned_to">
               <div class="px-2 leading-none text-gray-600">&middot;</div>
