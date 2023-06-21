@@ -114,6 +114,12 @@
               {{ $resources.task.doc.priority || 'Set priority' }}
             </Button>
           </Dropdown>
+          <Autocomplete
+            placeholder="Select project"
+            :options="projectOptions"
+            v-model="$resources.task.doc.project"
+            @update:modelValue="changeProject"
+          />
         </div>
         <CommentsList class="mt-8" doctype="GP Task" :name="taskId" />
       </div>
@@ -148,6 +154,15 @@
                 due_date: $event.target.value,
               })
             "
+          />
+        </div>
+        <div>Project</div>
+        <div>
+          <Autocomplete
+            placeholder="Select project"
+            :options="projectOptions"
+            v-model="$resources.task.doc.project"
+            @update:modelValue="changeProject"
           />
         </div>
         <div>Status</div>
@@ -187,6 +202,8 @@ import CommentsList from '@/components/CommentsList.vue'
 import TaskStatusIcon from '@/components/icons/TaskStatusIcon.vue'
 import TaskPriorityIcon from '@/components/icons/TaskPriorityIcon.vue'
 import { activeUsers } from '@/data/users'
+import { activeTeams } from '@/data/teams'
+import { getTeamProjects } from '@/data/projects'
 
 export default {
   name: 'TaskDetail',
@@ -223,6 +240,33 @@ export default {
       }
     },
   },
+  methods: {
+    changeProject(option) {
+      this.$resources.task.setValue.submit(
+        {
+          project: option?.value || '',
+        },
+        {
+          onSuccess() {
+            this.updateRoute()
+          },
+        }
+      )
+    },
+    updateRoute() {
+      let task = this.$resources.task.doc
+      if (task) {
+        this.$router.replace({
+          name: task.project ? 'ProjectTaskDetail' : 'HomeTask',
+          params: {
+            taskId: task.name,
+            teamId: task.team,
+            projectId: task.project,
+          },
+        })
+      }
+    },
+  },
   computed: {
     assignableUsers() {
       return activeUsers.value
@@ -251,6 +295,15 @@ export default {
           onClick: () => this.$resources.task.setValue.submit({ priority }),
         }
       })
+    },
+    projectOptions() {
+      return activeTeams.value.map((team) => ({
+        group: team.title,
+        items: getTeamProjects(team.name).map((project) => ({
+          label: project.title,
+          value: project.name.toString(),
+        })),
+      }))
     },
   },
   components: {

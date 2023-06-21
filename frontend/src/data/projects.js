@@ -33,7 +33,7 @@ export let projects = createListResource({
 })
 
 export function getTeamProjects(team) {
-  return projects.data?.filter((project) => project.team === team) || []
+  return activeProjects.value.filter((project) => project.team === team) || []
 }
 
 export let activeProjects = computed(
