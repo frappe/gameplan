@@ -86,6 +86,7 @@ import {
   ComboboxOptions,
   ComboboxOption,
 } from '@headlessui/vue'
+import { activeUsers } from '@/data/users'
 
 export default {
   name: 'AddMemberDialog',
@@ -144,7 +145,7 @@ export default {
         this.membersToAdd.map((user) => user.email)
       )
 
-      return this.$users.data
+      return activeUsers.value
         .filter((user) => !memberEmails.includes(user.email))
         .sort((a, b) => a.full_name - b.full_name)
         .map((user) => {
