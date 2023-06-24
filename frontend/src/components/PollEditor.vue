@@ -1,30 +1,30 @@
 <template>
   <div class="space-y-4">
-    <Input
+    <FormControl
       type="text"
       label="Question"
       v-model="poll.title"
       @change="$emit('update:poll', poll)"
     />
-    <Input
+    <div class="space-y-2">
+      <div class="text-sm leading-4 text-gray-700">Options</div>
+      <TextInput
+        v-for="option in poll.options"
+        :key="option.idx"
+        :placeholder="`Option ${option.idx}`"
+        v-model="option.title"
+        @update:modelValue="(val) => onOptionChange(option, val)"
+      />
+    </div>
+    <FormControl
       type="checkbox"
       label="Anonymous"
       v-model="poll.anonymous"
       @change="$emit('update:poll', poll)"
     />
-    <div class="space-y-2">
-      <div class="text-sm leading-4 text-gray-700">Options</div>
-      <Input
-        v-for="option in poll.options"
-        :key="option.idx"
-        :placeholder="`Option ${option.idx}`"
-        :value="option.title"
-        @input="onOptionChange(option, $event)"
-      />
-    </div>
     <div class="flex justify-end space-x-2">
       <Button v-bind="discardButtonProps">Discard</Button>
-      <Button v-bind="submitButtonProps" variant="solid"> Submit </Button>
+      <Button v-bind="submitButtonProps" variant="solid">Submit</Button>
     </div>
   </div>
 </template>
@@ -38,11 +38,9 @@ export default {
   methods: {
     onOptionChange: debounce(function (option, value) {
       option.title = value
-
       let lastOption =
         this.poll.options.length > 0 &&
         this.poll.options[this.poll.options.length - 1]
-
       if (lastOption?.title) {
         this.poll.options.push({
           title: '',

@@ -1,9 +1,11 @@
 <template>
-  <Input
+  <FormControl
     label="Team Name"
     placeholder="Marketing"
-    @change="(team) => $emit('update:modelValue', { ...modelValue, team })"
-    :value="modelValue.team"
+    @update:modelValue="
+      (team) => $emit('update:modelValue', { ...modelValue, team })
+    "
+    v-model="modelValue.team"
   />
 </template>
 <script>

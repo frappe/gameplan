@@ -9,17 +9,17 @@
       </Button>
     </div>
     <div class="mt-4 space-y-4">
-      <Input
+      <FormControl
         type="textarea"
         label="Invite by email"
         placeholder="You can enter multiple email addresses separated by comma"
-        @input="emails = $event"
+        @input="emails = $event.target.value"
         :debounce="100"
         :disabled="$resources.inviteByEmail.loading"
       />
       <template v-if="emails">
         <div>
-          <Input
+          <FormControl
             label="Role"
             type="select"
             :options="[

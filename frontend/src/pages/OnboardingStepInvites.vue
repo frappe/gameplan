@@ -1,18 +1,18 @@
 <template>
   <div class="space-y-4">
-    <Input
+    <FormControl
       v-for="(email, index) in modelValue.emails"
       :key="index"
       label="Email"
       placeholder="jane@example.com"
-      @change="
+      v-model="email"
+      @update:modelValue="
         (email) =>
           $emit('update:modelValue', {
             ...modelValue,
             emails: modelValue.emails.map((e, i) => (i === index ? email : e)),
           })
       "
-      :value="email"
     />
     <Button
       v-show="modelValue.emails.length <= 6"

@@ -7,6 +7,7 @@ declare module '@vue/runtime-core' {
     RouterView: typeof import('vue-router')['RouterView']
     Button: typeof import('frappe-ui')['Button']
     Input: typeof import('frappe-ui')['Input']
+    TextInput: typeof import('frappe-ui')['TextInput']
     ErrorMessage: typeof import('frappe-ui')['ErrorMessage']
     Dialog: typeof import('frappe-ui')['Dialog']
     FeatherIcon: typeof import('frappe-ui')['FeatherIcon']

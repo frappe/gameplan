@@ -3,13 +3,14 @@
     <div class="flex items-center justify-between">
       <h2 class="text-xl font-bold leading-none">Members</h2>
       <div class="flex items-center gap-4">
-        <Input
-          icon-left="search"
+        <FormControl
           type="text"
           placeholder="Search by name / email"
-          @input="search = $event"
+          @input="search = $event.target.value"
           :debounce="300"
-        />
+        >
+          <template #prefix><LucideSearch class="h-4 w-4" /></template>
+        </FormControl>
         <Button @click="inviteMembers = true">
           <template #prefix><LucideUserPlus class="w-4" /></template>
           Invite People

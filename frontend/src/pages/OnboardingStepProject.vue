@@ -1,11 +1,11 @@
 <template>
-  <Input
+  <FormControl
     label="Project Name"
     placeholder="Product Launch"
-    @change="
+    @update:modelValue="
       (project) => $emit('update:modelValue', { ...modelValue, project })
     "
-    :value="modelValue.project"
+    v-model="modelValue.project"
   />
 </template>
 <script>
