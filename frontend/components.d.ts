@@ -75,6 +75,7 @@ declare module 'vue' {
     LucideUnfoldVertical: typeof import('~icons/lucide/unfold-vertical')['default']
     LucideUnlock: typeof import('~icons/lucide/unlock')['default']
     LucideUserPlus: typeof import('~icons/lucide/user-plus')['default']
+    LucideUserPlus2: typeof import('~icons/lucide/user-plus2')['default']
     LucideUsers: typeof import('~icons/lucide/users')['default']
     LucideX: typeof import('~icons/lucide/x')['default']
     Members: typeof import('./src/components/Settings/Members.vue')['default']

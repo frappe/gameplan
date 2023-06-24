@@ -1,40 +1,38 @@
 <template>
-  <div v-if="!inviteMembers" class="flex min-h-0 flex-col p-5">
+  <div v-if="!inviteMembers" class="flex min-h-0 flex-col">
     <div class="flex items-center justify-between">
-      <h2 class="text-xl font-bold leading-none">Members</h2>
+      <h2 class="text-xl font-semibold leading-none">Members</h2>
       <div class="flex items-center gap-4">
         <FormControl
-          type="text"
-          placeholder="Search by name / email"
+          placeholder="Search"
           @input="search = $event.target.value"
           :debounce="300"
         >
-          <template #prefix><LucideSearch class="h-4 w-4" /></template>
+          <template #prefix>
+            <LucideSearch class="h-4 w-4 text-gray-500" />
+          </template>
         </FormControl>
-        <Button @click="inviteMembers = true">
-          <template #prefix><LucideUserPlus class="w-4" /></template>
-          Invite People
+        <Button variant="solid" @click="inviteMembers = true">
+          <template #prefix><LucideUserPlus2 class="w-4" /></template>
+          Invite
         </Button>
       </div>
     </div>
-    <div
-      class="mt-2 flex items-center justify-between border-b py-2 text-base text-gray-600"
-    >
-      <div class="w-4/5">User</div>
-      <div class="w-1/5 px-2">Role</div>
-    </div>
-    <ul class="divide-y overflow-auto">
+    <ul class="mt-6 divide-y overflow-auto pb-16">
       <li
-        class="flex items-center justify-between py-2"
+        class="flex items-center justify-between p-2"
         v-for="user in filteredUsers"
         :key="user.name"
       >
-        <div class="w-4/5">
-          <div class="text-base">
-            {{ user.full_name }}
-          </div>
-          <div class="text-sm text-gray-600">
-            {{ user.email }}
+        <div class="flex w-4/5 items-center">
+          <UserAvatar :user="user.name" size="xl" />
+          <div class="ml-3">
+            <div class="text-base text-gray-900">
+              {{ user.full_name }}
+            </div>
+            <div class="mt-1 text-base text-gray-700">
+              {{ user.email }}
+            </div>
           </div>
         </div>
         <div class="flex w-1/5">
@@ -57,7 +55,7 @@
 import { h, computed } from 'vue'
 import { Dropdown, FeatherIcon } from 'frappe-ui'
 import InvitePeople from './InvitePeople.vue'
-import { users } from '@/data/users'
+import { users, activeUsers } from '@/data/users'
 
 export default {
   name: 'Members',
@@ -96,9 +94,9 @@ export default {
   computed: {
     filteredUsers() {
       if (!this.search) {
-        return users.data
+        return activeUsers.value
       }
-      return users.data.filter((user) => {
+      return activeUsers.value.filter((user) => {
         let term = this.search.toLowerCase()
         return (
           user.name.toLowerCase().includes(term) ||

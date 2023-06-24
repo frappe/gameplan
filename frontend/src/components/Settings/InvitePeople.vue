@@ -1,10 +1,10 @@
 <template>
-  <div class="flex min-h-0 flex-col p-5">
+  <div class="flex min-h-0 flex-col">
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-2">
-        <h2 class="text-xl font-bold leading-none">Invite People</h2>
+        <h2 class="text-xl font-semibold leading-none">Invite People</h2>
       </div>
-      <Button label="Show Members" @click="$emit('back')">
+      <Button variant="solid" label="Members" @click="$emit('back')">
         <template #prefix><LucideUsers class="w-4" /></template>
       </Button>
     </div>
