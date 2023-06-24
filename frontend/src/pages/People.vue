@@ -7,12 +7,16 @@
             <PageBreadcrumbs
               :items="[{ label: 'People', route: { name: 'People' } }]"
             />
-            <div class="flex items-center space-x-2">
+          </div>
+        </header>
+        <div class="mx-auto w-full max-w-4xl px-5 pt-6">
+          <div class="flex items-center justify-between">
+            <h2 class="text-xl font-semibold">{{ people.length }} members</h2>
+            <div class="flex items-center gap-2">
               <TextInput
                 class="hidden sm:block"
                 type="text"
-                icon-left="search"
-                placeholder="Search by name"
+                placeholder="Search"
                 v-model="search"
                 :debounce="500"
               >
@@ -33,72 +37,82 @@
               </Select>
             </div>
           </div>
-          <div>
-            <TextInput
-              class="mt-2 w-full sm:hidden"
-              type="text"
-              placeholder="Search by name"
-              v-model="search"
-              :debounce="500"
-            />
-          </div>
-        </header>
-        <div
-          class="grid gap-5 px-4 py-4 sm:px-5 sm:py-5 lg:grid-cols-3 xl:grid-cols-4"
-        >
-          <router-link
-            v-for="user in people"
-            :key="user.name"
-            :to="{
-              name: 'PersonProfile',
-              params: {
-                personId: user.name,
-              },
-            }"
-            class="w-full items-center overflow-hidden rounded-[20px] border pb-4 hover:border-gray-400 focus-visible:border-gray-400 focus-visible:outline-none focus-visible:ring focus-visible:ring-gray-300"
-            exact-active-class="!bg-gray-100"
+          <TextInput
+            class="mt-4 w-full sm:hidden"
+            type="text"
+            placeholder="Search"
+            v-model="search"
+            :debounce="500"
           >
-            <div class="h-16 w-full bg-gray-50">
-              <img
-                v-if="user.cover_image"
-                class="h-16 w-full object-cover"
-                loading="lazy"
-                :src="coverImageUrl(user.cover_image)"
-                :style="{
-                  objectPosition: `center ${user.cover_image_position}%`,
+            <template #prefix>
+              <LucideSearch class="w-4 text-gray-600" />
+            </template>
+          </TextInput>
+          <div class="mt-6 pb-16">
+            <template v-for="user in people" :key="user.name">
+              <router-link
+                :to="{
+                  name: 'PersonProfile',
+                  params: {
+                    personId: user.name,
+                  },
                 }"
-              />
-            </div>
-            <div class="-mt-8 flex justify-center">
-              <UserImage
-                v-if="$user(user.user).user_image"
-                :user="user.user"
-                class="h-16 w-16 rounded-full border-[6px] border-white object-cover"
-              />
-              <div
-                v-else
-                class="h-16 w-16 rounded-full border-[6px] border-white bg-gray-100"
-              ></div>
-            </div>
-            <div class="px-1 text-center">
-              <div class="text-xl font-medium text-gray-900">
-                {{ $user(user.user).full_name }}
-              </div>
-              <div
-                class="overflow-hidden text-ellipsis whitespace-nowrap text-lg text-gray-600"
-                :title="(user.bio || '').length > 40 ? user.bio : ''"
+                class="flex rounded px-2 py-2.5 hover:bg-gray-100"
+                exact-active-class="!bg-gray-100"
               >
-                {{ user.bio }}
-              </div>
+                <div class="flex w-3/5 items-center">
+                  <UserAvatar :user="user.user" size="2xl" />
+                  <div class="ml-3 min-w-0">
+                    <div class="text-base font-medium text-gray-900">
+                      {{ $user(user.user).full_name }}
+                    </div>
+                    <div
+                      v-if="user.bio"
+                      class="mt-1.5 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-base text-gray-600"
+                    >
+                      {{ user.bio }}
+                    </div>
+                  </div>
+                </div>
+                <div
+                  class="flex w-1/5 items-center justify-end text-right text-base text-gray-600"
+                >
+                  <Button
+                    variant="ghost"
+                    :route="{
+                      name: 'PersonProfilePosts',
+                      params: { personId: user.name },
+                    }"
+                    @click.prevent
+                  >
+                    {{ user.discussions_count }} posts
+                  </Button>
+                </div>
+                <div
+                  class="flex w-1/5 items-center justify-end text-right text-base text-gray-600"
+                >
+                  <Button
+                    variant="ghost"
+                    :route="{
+                      name: 'PersonProfileReplies',
+                      params: { personId: user.name },
+                    }"
+                    @click.prevent
+                  >
+                    {{ user.comments_count }} replies
+                  </Button>
+                </div>
+              </router-link>
+              <div class="mx-2 border-b"></div>
+            </template>
+            <div class="p-3" v-if="$resources.profiles.hasNextPage">
+              <Button
+                @click="$resources.profiles.next()"
+                :loading="$resources.profiles.list.loading"
+              >
+                Load more
+              </Button>
             </div>
-          </router-link>
-          <div class="p-3" v-if="$resources.profiles.hasNextPage">
-            <Button
-              @click="$resources.profiles.next()"
-              :loading="$resources.profiles.list.loading"
-            >
-              Load more
-            </Button>
           </div>
         </div>
       </div>
@@ -123,7 +137,8 @@ export default {
     profiles() {
       return {
         type: 'list',
-        cache: 'People',
+        url: '/api/method/gameplan.gameplan.doctype.gp_user_profile.gp_user_profile.get_list',
+        cache: ['People', this.orderBy],
         doctype: 'GP User Profile',
         filters: { enabled: 1 },
         fields: [

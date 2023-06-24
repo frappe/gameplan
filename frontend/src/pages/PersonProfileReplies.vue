@@ -1,7 +1,7 @@
 <template>
   <div class="pb-16">
     <DiscussionList
-      :listOptions="{ filters: { owner: profile.doc.user } }"
+      :listOptions="{ filters: { participator: profile.doc.user } }"
       routeName="ProjectDiscussion"
     />
   </div>
@@ -9,7 +9,7 @@
 <script>
 import DiscussionList from '@/components/DiscussionList.vue'
 export default {
-  name: 'PersonProfilePosts',
+  name: 'PersonProfileReplies',
   props: ['profile'],
   components: { DiscussionList },
 }

@@ -7,6 +7,8 @@ from frappe.model.document import Document
 from frappe.model.naming import append_number_if_name_exists
 from frappe.website.utils import cleanup_page_name
 from gameplan.gameplan.doctype.gp_user_profile.profile_photo import remove_background
+from gameplan.extends.client import check_permissions
+from frappe.query_builder.functions import Count
 
 
 class GPUserProfile(Document):
@@ -24,30 +26,30 @@ class GPUserProfile(Document):
 		self.image_background_color = None
 		self.original_image = None
 		self.save()
-		gameplan.refetch_resource('Users')
+		gameplan.refetch_resource("Users")
 
 	@frappe.whitelist()
 	def remove_image_background(self, default_color=None):
 		if not self.image:
-			frappe.throw('Profile image not found')
-		file = frappe.get_doc('File', {'file_url': self.image })
+			frappe.throw("Profile image not found")
+		file = frappe.get_doc("File", {"file_url": self.image})
 		self.original_image = file.file_url
 		image_content = remove_background(file)
 		filename, extn = file.get_extension()
-		output_filename = f'{filename}_no_bg.png'
+		output_filename = f"{filename}_no_bg.png"
 		new_file = frappe.get_doc(
 			doctype="File",
 			file_name=output_filename,
 			content=image_content,
 			is_private=0,
 			attached_to_doctype=self.doctype,
-			attached_to_name=self.name
+			attached_to_name=self.name,
 		).insert()
 		self.image = new_file.file_url
 		self.is_image_background_removed = True
 		self.image_background_color = default_color
 		self.save()
-		gameplan.refetch_resource('Users')
+		gameplan.refetch_resource("Users")
 
 	@frappe.whitelist()
 	def revert_image_background(self):
@@ -57,7 +59,7 @@ class GPUserProfile(Document):
 			self.is_image_background_removed = False
 			self.image_background_color = None
 			self.save()
-			gameplan.refetch_resource('Users')
+			gameplan.refetch_resource("Users")
 
 
 def create_user_profile(doc, method=None):
@@ -65,10 +67,12 @@ def create_user_profile(doc, method=None):
 		frappe.get_doc(doctype="GP User Profile", user=doc.name).insert(ignore_permissions=True)
 		frappe.db.commit()
 
+
 def delete_user_profile(doc, method=None):
 	exists = frappe.db.exists("GP User Profile", {"user": doc.name})
 	if exists:
 		return frappe.get_doc("GP User Profile", {"user": doc.name}).delete()
+
 
 def on_user_update(doc, method=None):
 	create_user_profile(doc)
@@ -77,3 +81,46 @@ def on_user_update(doc, method=None):
 		profile.enabled = doc.enabled
 		profile.full_name = doc.full_name
 		profile.save(ignore_permissions=True)
+
+
+@frappe.whitelist()
+def get_list(
+	fields=None, filters: dict | None = None, order_by=None, start=0, limit=20, group_by=None, parent=None, debug=False
+):
+	doctype = "GP User Profile"
+	check_permissions(doctype, parent)
+	query = frappe.qb.get_query(
+		table=doctype,
+		fields=fields,
+		filters=filters,
+		order_by=order_by,
+		offset=start,
+		limit=limit,
+		group_by=group_by,
+	)
+	data = query.run(as_dict=True, debug=debug)
+	users = [d.user for d in data]
+
+	Discussion = frappe.qb.DocType("GP Discussion")
+	discussions_count = (
+		frappe.qb.from_(Discussion)
+		.select(Count(Discussion.name).as_("count"), Discussion.owner)
+		.where(Discussion.owner.isin(users))
+		.groupby(Discussion.owner)
+	).run(as_dict=True)
+	discussions_by_user = {d.owner: d.count for d in discussions_count}
+
+	Comment = frappe.qb.DocType("GP Comment")
+	comments_count = (
+		frappe.qb.from_(Comment)
+		.select(Count(Comment.name).as_("count"), Comment.owner)
+		.where(Comment.owner.isin(users) & Comment.deleted_at.isnull())
+		.groupby(Comment.owner)
+	).run(as_dict=True)
+	comments_by_user = {d.owner: d.count for d in comments_count}
+
+	for user in data:
+		user.discussions_count = discussions_by_user.get(user.user, 0)
+		user.comments_count = comments_by_user.get(user.user, 0)
+
+	return data

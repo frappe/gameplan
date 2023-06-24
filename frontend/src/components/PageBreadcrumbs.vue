@@ -54,10 +54,14 @@ const props = defineProps({
 const router = useRouter()
 const { width } = useWindowSize()
 
+const items = computed(() => {
+  return (props.items || []).filter(Boolean)
+})
+
 const dropdownItems = computed(() => {
   if (width.value > 640) return []
 
-  let allExceptLastTwo = props.items.slice(0, -2)
+  let allExceptLastTwo = items.value.slice(0, -2)
   return allExceptLastTwo.map((item) => ({
     ...item,
     icon: null,
@@ -67,9 +71,9 @@ const dropdownItems = computed(() => {
 })
 
 const linkItems = computed(() => {
-  if (width.value > 640) return props.items
+  if (width.value > 640) return items.value
 
-  let lastTwo = props.items.slice(-2)
+  let lastTwo = items.value.slice(-2)
   return lastTwo
 })
 </script>

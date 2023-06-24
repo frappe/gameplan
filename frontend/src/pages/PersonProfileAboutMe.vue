@@ -1,5 +1,6 @@
 <template>
-  <div class="my-6 px-4 sm:px-0">
+  <div class="mt-7 pb-16">
+    <h2 class="mb-3 text-lg font-semibold text-gray-900">About</h2>
     <ReadmeEditor
       :resource="profile"
       :editable="$isSessionUser(profile.doc.user)"

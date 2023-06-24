@@ -88,6 +88,11 @@ const routes = [
         path: 'posts',
         component: () => import('@/pages/PersonProfilePosts.vue'),
       },
+      {
+        name: 'PersonProfileReplies',
+        path: 'replies',
+        component: () => import('@/pages/PersonProfileReplies.vue'),
+      },
     ],
   },
   {

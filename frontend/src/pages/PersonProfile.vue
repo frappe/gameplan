@@ -29,59 +29,68 @@
         "
       />
     </div>
-    <div class="-mt-16 inline-flex translate-y-0 px-6">
-      <ImagePreview
-        v-model:show="imagePreview.show"
-        :imageUrl="imagePreview.imageUrl"
-      />
-      <button
-        v-if="currentUser.user_image"
-        @click="
-          () => {
-            imagePreview.imageUrl = currentUser.user_image
-            imagePreview.show = true
-          }
-        "
-        class="rounded-full bg-white outline-none hover:brightness-110 focus:ring"
-      >
-        <UserImage
-          class="h-32 w-32 rounded-full border-4 border-white object-cover"
-          :user="currentUser.name"
-        />
-      </button>
-      <button
-        v-else
-        @click="editDialog.show = true"
-        class="h-32 w-32 rounded-full border-4 border-white bg-gray-200 text-sm text-gray-600"
-        :class="{ 'hover:bg-gray-300': $isSessionUser(profile.user) }"
-        :disabled="!$isSessionUser(profile.user)"
-      >
-        <span v-if="$isSessionUser(profile.user)"> Upload Image </span>
-      </button>
-    </div>
-    <div class="sticky top-0 z-10 border-b bg-white px-4 sm:px-6">
-      <div class="flex items-center justify-between pt-2">
-        <div class="items-baseline sm:flex">
-          <h2 class="text-3xl font-bold leading-none text-gray-900">
+    <div class="mx-auto -mt-4 max-w-4xl translate-x-0 sm:px-5">
+      <div class="flex items-center">
+        <div class="-mx-1 inline-flex translate-y-0">
+          <ImagePreview
+            v-model:show="imagePreview.show"
+            :imageUrl="imagePreview.imageUrl"
+          />
+          <button
+            v-if="currentUser.user_image"
+            @click="
+              () => {
+                imagePreview.imageUrl = currentUser.user_image
+                imagePreview.show = true
+              }
+            "
+            class="rounded-full bg-white outline-none hover:brightness-110 focus-visible:ring focus-visible:ring-gray-400"
+          >
+            <UserImage
+              class="h-[100px] w-[100px] rounded-full border-4 border-white object-cover"
+              :user="currentUser.name"
+            />
+          </button>
+          <button
+            v-else
+            @click="editDialog.show = true"
+            class="h-32 w-32 rounded-full border-4 border-white bg-gray-200 text-sm text-gray-600"
+            :class="{ 'hover:bg-gray-300': $isSessionUser(profile.user) }"
+            :disabled="!$isSessionUser(profile.user)"
+          >
+            <span v-if="$isSessionUser(profile.user)"> Upload Image </span>
+          </button>
+        </div>
+        <div class="ml-6">
+          <h2 class="mt-2 text-3xl font-semibold text-gray-900">
             {{ user ? user.full_name : profile.full_name }}
           </h2>
-          <span class="hidden px-1 text-gray-600 sm:inline">&middot;</span>
-          <p v-if="profile.bio" class="mt-2 text-lg sm:mt-0">
+          <p v-if="profile.bio" class="mt-2 text-base text-gray-700">
             {{ profile.bio }}
           </p>
         </div>
         <Button
           v-if="$isSessionUser(profile.user)"
           @click="editDialog.show = true"
-          variant="ghost"
-          class="whitespace-nowrap"
+          class="ml-auto"
         >
+          <template #prefix><LucideEdit class="w-4" /></template>
           Edit Profile
         </Button>
       </div>
-      <Tabs class="border-none" :tabs="tabs" />
-    </div>
-    <div class="mx-auto max-w-4xl sm:px-5">
+
+      <div class="mb-4 mt-6">
+        <TabButtons
+          class="inline-block"
+          :buttons="[
+            { label: 'About' },
+            { label: 'Posts' },
+            { label: 'Replies' },
+          ]"
+          v-model="activeTab"
+        />
+      </div>
+
       <router-view :profile="$resources.profile" />
     </div>
     <Dialog
@@ -133,11 +142,11 @@
 <script>
 import { Dialog, FileUploader, FormControl } from 'frappe-ui'
 import CoverImage from '@/components/CoverImage.vue'
-import Tabs from '@/components/Tabs.vue'
 import ImagePreview from '../components/ImagePreview.vue'
 import ColorPicker from '@/components/ColorPicker.vue'
 import ProfileImageEditor from '@/components/ProfileImageEditor.vue'
 import UserImage from '@/components/UserImage.vue'
+import TabButtons from '@/components/TabButtons.vue'
 
 export default {
   name: 'PersonProfile',
@@ -146,12 +155,12 @@ export default {
     CoverImage,
     Dialog,
     FileUploader,
-    Tabs,
     ImagePreview,
     ColorPicker,
     ProfileImageEditor,
     UserImage,
     FormControl,
+    TabButtons,
   },
   data() {
     return {
@@ -195,25 +204,24 @@ export default {
     currentUser() {
       return this.$user(this.profile.user)
     },
-    tabs() {
-      return [
-        {
-          name: 'About me',
-          route: {
-            name: 'PersonProfileAboutMe',
-            params: { personId: this.personId },
-          },
-          isActive: this.$route.name == 'PersonProfileAboutMe',
-        },
-        {
-          name: 'Posts',
-          route: {
-            name: 'PersonProfilePosts',
-            params: { personId: this.personId },
-          },
-          isActive: this.$route.name == 'PersonProfilePosts',
-        },
-      ]
+    activeTab: {
+      get() {
+        return {
+          PersonProfileAboutMe: 'About',
+          PersonProfilePosts: 'Posts',
+          PersonProfileReplies: 'Replies',
+        }[this.$route.name]
+      },
+      set(value) {
+        let route = {
+          About: { name: 'PersonProfileAboutMe' },
+          Posts: { name: 'PersonProfilePosts' },
+          Replies: { name: 'PersonProfileReplies' },
+        }[value]
+        if (route) {
+          this.$router.push(route)
+        }
+      },
     },
   },
   methods: {
