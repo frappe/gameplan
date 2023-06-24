@@ -5,7 +5,7 @@
       :key="index"
       label="Email"
       placeholder="jane@example.com"
-      v-model="email"
+      :modelValue="email"
       @update:modelValue="
         (email) =>
           $emit('update:modelValue', {
