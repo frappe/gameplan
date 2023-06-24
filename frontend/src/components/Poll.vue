@@ -48,7 +48,7 @@
       </div>
     </div>
     <div class="text-base font-semibold">{{ _poll.title }}</div>
-    <div class="mt-0.5 text-sm text-gray-600">
+    <div class="mt-1 text-sm text-gray-600">
       <span v-if="_poll.multiple_answers"> Multiple answers &middot; </span>
       <span v-if="_poll.anonymous"> Anonymous &middot; </span>
       <span>
@@ -56,7 +56,7 @@
       </span>
       <span v-if="_poll.stopped_at"> &middot; {{ stopTime }} </span>
     </div>
-    <div class="mt-2 space-y-2">
+    <div class="my-4 space-y-2">
       <button
         class="group flex items-center text-gray-900"
         v-for="option in _poll.options"
@@ -200,9 +200,6 @@ export default {
                   .then(close)
               },
             },
-            {
-              label: 'Cancel',
-            },
           ],
         })
       } else {
@@ -227,9 +224,6 @@ export default {
             theme: 'red',
             onClick: ({ close }) =>
               this.$resources.poll.stopPoll.submit().then(close),
-          },
-          {
-            label: 'Cancel',
           },
         ],
       })
@@ -292,9 +286,6 @@ export default {
                   onClick: ({ close }) =>
                     this.$resources.poll.retractVote.submit().then(close),
                 },
-                {
-                  label: 'Cancel',
-                },
               ],
             })
           },
@@ -319,9 +310,6 @@ export default {
                   theme: 'red',
                   onClick: ({ close }) =>
                     this.$resources.poll.delete.submit().then(close),
-                },
-                {
-                  label: 'Cancel',
                 },
               ],
             })
