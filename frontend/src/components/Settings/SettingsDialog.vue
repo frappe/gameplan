@@ -31,11 +31,13 @@
   </Dialog>
 </template>
 <script>
-import { markRaw } from 'vue'
+import { markRaw, ref } from 'vue'
 import { Dialog } from 'frappe-ui'
 import Members from './Members.vue'
 import ArchivedTeams from './ArchivedTeams.vue'
+import InvitePeople from './InvitePeople.vue'
 import LucideUsers from '~icons/lucide/users'
+import LucideUsersPlus from '~icons/lucide/user-plus'
 import LucideFolderMinus from '~icons/lucide/folder-minus'
 
 let tabs = [
@@ -45,43 +47,36 @@ let tabs = [
     component: markRaw(Members),
   },
   {
+    label: 'Invites',
+    icon: LucideUsersPlus,
+    component: markRaw(InvitePeople),
+  },
+  {
     label: 'Archive',
     icon: LucideFolderMinus,
     component: markRaw(ArchivedTeams),
   },
 ]
 
+let show = ref(false)
+let activeTab = ref(null)
+
+export function showSettingsDialog(defaultTab = null) {
+  show.value = true
+  if (defaultTab) {
+    activeTab.value = tabs.find((tab) => tab.label == defaultTab)
+  } else {
+    activeTab.value = tabs[0]
+  }
+}
+
 export default {
   name: 'SettingsDialog',
-  props: ['modelValue', 'tab'],
-  emits: ['update:modelValue'],
   components: {
     Dialog,
   },
-  data() {
-    return {
-      activeTab: null,
-    }
-  },
-  mounted() {
-    if (this.tab) {
-      this.activeTab = tabs.find((tab) => tab.label == this.tab)
-    } else {
-      this.activeTab = tabs[0]
-    }
-  },
   setup() {
-    return { tabs }
-  },
-  computed: {
-    show: {
-      get() {
-        return this.modelValue
-      },
-      set(value) {
-        this.$emit('update:modelValue', value)
-      },
-    },
+    return { tabs, show, activeTab }
   },
 }
 </script>

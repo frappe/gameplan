@@ -18,16 +18,16 @@
               restored soon.
             </div>
           </div>
-          <div>
-            <slot />
-          </div>
+          <slot />
         </div>
       </div>
     </div>
     <CommandPalette />
+    <SettingsDialog />
   </div>
 </template>
 <script setup>
 import AppSidebar from './AppSidebar.vue'
 import CommandPalette from './CommandPalette/CommandPalette.vue'
+import SettingsDialog from './Settings/SettingsDialog.vue'
 </script>

@@ -4,15 +4,12 @@
       <div class="flex items-center gap-2">
         <h2 class="text-xl font-semibold leading-none">Invite People</h2>
       </div>
-      <Button variant="solid" label="Members" @click="$emit('back')">
-        <template #prefix><LucideUsers class="w-4" /></template>
-      </Button>
     </div>
     <div class="mt-4 space-y-4">
       <FormControl
         type="textarea"
         label="Invite by email"
-        placeholder="You can enter multiple email addresses separated by comma"
+        placeholder="user1@example.com, user2@example.com, ..."
         @input="emails = $event.target.value"
         :debounce="100"
         :disabled="$resources.inviteByEmail.loading"

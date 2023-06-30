@@ -12,7 +12,7 @@
       {
         icon: 'settings',
         label: 'Settings & Members',
-        onClick: () => (settingsDialog.show = true),
+        onClick: () => showSettingsDialog(),
         condition: () => $user().isNotGuest,
       },
       {
@@ -35,11 +35,10 @@
       </button>
     </template>
   </Dropdown>
-  <SettingsDialog v-model="settingsDialog.show" :tab="settingsDialog.tab" />
 </template>
 <script>
-import { defineAsyncComponent } from 'vue'
 import { FeatherIcon, Dropdown, Link } from 'frappe-ui'
+import { showSettingsDialog } from '@/components/Settings/SettingsDialog.vue'
 
 export default {
   name: 'UserDropdown',
@@ -47,13 +46,10 @@ export default {
     Dropdown,
     FeatherIcon,
     Link,
-    SettingsDialog: defineAsyncComponent(() =>
-      import('./Settings/SettingsDialog.vue')
-    ),
   },
-  data() {
+  setup() {
     return {
-      settingsDialog: { show: false, tab: null },
+      showSettingsDialog,
     }
   },
   methods: {

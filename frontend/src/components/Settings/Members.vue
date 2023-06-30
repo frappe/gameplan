@@ -1,5 +1,5 @@
 <template>
-  <div v-if="!inviteMembers" class="flex min-h-0 flex-col">
+  <div class="flex min-h-0 flex-col">
     <div class="flex items-center justify-between">
       <h2 class="text-xl font-semibold leading-none">Members</h2>
       <div class="flex items-center gap-4">
@@ -12,10 +12,6 @@
             <LucideSearch class="h-4 w-4 text-gray-500" />
           </template>
         </FormControl>
-        <Button variant="solid" @click="inviteMembers = true">
-          <template #prefix><LucideUserPlus2 class="w-4" /></template>
-          Invite
-        </Button>
       </div>
     </div>
     <ul class="mt-6 divide-y overflow-auto pb-16">
@@ -49,17 +45,15 @@
       </li>
     </ul>
   </div>
-  <InvitePeople v-else @back="inviteMembers = false" />
 </template>
 <script>
 import { h, computed } from 'vue'
 import { Dropdown, FeatherIcon } from 'frappe-ui'
-import InvitePeople from './InvitePeople.vue'
 import { users, activeUsers } from '@/data/users'
 
 export default {
   name: 'Members',
-  components: { Dropdown, InvitePeople },
+  components: { Dropdown },
   resources: {
     changeUserRole() {
       return {
@@ -88,7 +82,6 @@ export default {
   data() {
     return {
       search: '',
-      inviteMembers: false,
     }
   },
   computed: {
