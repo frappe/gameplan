@@ -70,9 +70,11 @@ import {
 import fuzzysort from 'fuzzysort'
 import { activeTeams } from '@/data/teams'
 import { activeProjects } from '@/data/projects'
+import { activeUsers } from '@/data/users'
 import ItemTeam from './ItemTeam.vue'
 import ItemProject from './ItemProject.vue'
 import Item from './Item.vue'
+import UserAvatar from '../UserAvatar.vue'
 import LucideHome from '~icons/lucide/home'
 import LucideUsers from '~icons/lucide/users'
 import LucideBell from '~icons/lucide/bell'
@@ -260,6 +262,22 @@ export default {
           },
         })
       }
+
+      for (const user of activeUsers.value) {
+        list.push({
+          type: 'People',
+          group: 'People',
+          doctype: 'GP User Profile',
+          name: user.name,
+          title: user.full_name,
+          modified: user.modified,
+          icon: () => h(UserAvatar, { user: user.email, size: 'sm' }),
+          route: {
+            name: 'PersonProfile',
+            params: { personId: user.user_profile },
+          },
+        })
+      }
       return list
     },
     navigationItems() {
@@ -305,6 +323,7 @@ export default {
       let groups = [
         { title: 'Teams', component: 'ItemTeam' },
         { title: 'Projects', component: 'ItemProject' },
+        { title: 'People', component: 'Item' },
       ]
       let itemsByGroup = {}
       for (const group of groups) {
