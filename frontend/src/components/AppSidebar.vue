@@ -21,6 +21,27 @@
     </div>
     <div class="flex-1">
       <nav class="space-y-0.5 px-2">
+        <Links
+          :links="navigation"
+          class="flex items-center rounded px-2 py-1 text-gray-800 transition"
+          active="bg-white shadow-sm"
+          inactive="hover:bg-gray-100"
+        >
+          <template v-slot="{ link }">
+            <div class="flex w-full items-center space-x-2">
+              <span class="grid h-5 w-6 place-items-center">
+                <component :is="link.icon" class="h-4 w-4 text-gray-700" />
+              </span>
+              <span class="text-sm">{{ link.name }}</span>
+              <span
+                v-if="link.count"
+                class="!ml-auto block text-xs text-gray-600"
+              >
+                {{ link.count }}
+              </span>
+            </div>
+          </template>
+        </Links>
         <button
           v-if="$user().isNotGuest"
           class="flex w-full items-center rounded px-2 py-1 text-gray-800"
@@ -35,34 +56,13 @@
             <span class="grid h-5 w-6 place-items-center">
               <LucideSearch class="h-4 w-4 text-gray-700" />
             </span>
-            <span class="ml-2 text-base">Search</span>
-            <span class="ml-auto text-base text-gray-500">
+            <span class="ml-2 text-sm">Search</span>
+            <span class="ml-auto text-sm text-gray-500">
               <template v-if="$platform === 'mac'">⌘K</template>
               <template v-else>Ctrl+K</template>
             </span>
           </div>
         </button>
-        <Links
-          :links="navigation"
-          class="flex items-center rounded px-2 py-1 text-gray-800"
-          active="bg-white shadow-sm"
-          inactive="hover:bg-gray-100"
-        >
-          <template v-slot="{ link }">
-            <div class="flex w-full items-center space-x-2">
-              <span class="grid h-5 w-6 place-items-center">
-                <FeatherIcon :name="link.icon" class="h-4 w-4 text-gray-700" />
-              </span>
-              <span class="text-base">{{ link.name }}</span>
-              <span
-                v-if="link.count"
-                class="!ml-auto block text-xs text-gray-600"
-              >
-                {{ link.count }}
-              </span>
-            </div>
-          </template>
-        </Links>
       </nav>
       <div class="mt-6 flex items-center justify-between px-3">
         <h3 class="text-sm font-medium text-gray-600">Teams</h3>
@@ -76,7 +76,10 @@
       </div>
       <nav class="mt-1 space-y-0.5 px-2">
         <div v-for="team in activeTeams" :key="team.name">
-          <Link :link="team" class="flex items-center rounded px-2 py-1">
+          <Link
+            :link="team"
+            class="flex items-center rounded px-2 py-1 transition"
+          >
             <button
               @click.prevent="
                 () => {
@@ -93,12 +96,8 @@
               <span class="flex h-5 w-5 items-center justify-center text-xl">
                 {{ team.icon }}
               </span>
-              <span class="ml-2 text-base">{{ team.title }}</span>
-              <FeatherIcon
-                v-if="team.is_private"
-                name="lock"
-                class="ml-2 h-3 w-3"
-              />
+              <span class="ml-2 text-sm">{{ team.title }}</span>
+              <LucideLock v-if="team.is_private" class="ml-2 h-3 w-3" />
               <div class="ml-auto">
                 <Tooltip
                   v-if="team.unread"
@@ -115,23 +114,19 @@
               v-for="project in teamProjects(team.name)"
               :link="project"
               :ref="($comp) => setProjectRef($comp, project)"
-              class="flex h-7 items-center rounded-md px-2 text-gray-800"
+              class="flex h-7 items-center rounded-md px-2 text-gray-800 transition"
               active="bg-white shadow-sm"
               inactive="hover:bg-gray-100"
             >
               <template v-slot="{ link: project }">
                 <span class="inline-flex items-center space-x-2">
-                  <span class="text-base">{{ project.title }}</span>
-                  <FeatherIcon
-                    v-if="project.is_private"
-                    name="lock"
-                    class="h-3 w-3"
-                  />
+                  <span class="text-sm">{{ project.title }}</span>
+                  <LucideLock v-if="project.is_private" class="h-3 w-3" />
                 </span>
               </template>
             </Link>
             <div
-              class="flex h-7 items-center px-2 text-base text-gray-600"
+              class="flex h-7 items-center px-2 text-sm text-gray-600"
               v-if="teamProjects(team.name).length === 0"
             >
               No projects
@@ -172,6 +167,9 @@ import { activeTeams, teams } from '@/data/teams'
 import { getTeamProjects } from '@/data/projects'
 import { unreadNotifications } from '@/data/notifications'
 import { showCommandPalette } from '@/components/CommandPalette/CommandPalette.vue'
+import LucideHome from '~icons/lucide/home'
+import LucideUsers2 from '~icons/lucide/users-2'
+import LucideInbox from '~icons/lucide/inbox'
 
 export default {
   name: 'AppSidebar',
@@ -204,14 +202,14 @@ export default {
       return [
         {
           name: 'Home',
-          icon: 'home',
+          icon: LucideHome,
           route: {
             name: 'Home',
           },
         },
         {
           name: 'People',
-          icon: 'users',
+          icon: LucideUsers2,
           route: {
             name: 'People',
           },
@@ -220,7 +218,7 @@ export default {
         },
         {
           name: 'Notifications',
-          icon: 'bell',
+          icon: LucideInbox,
           route: {
             name: 'Notifications',
           },

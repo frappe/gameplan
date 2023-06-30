@@ -10,13 +10,13 @@
       <button
         v-for="tab in tabs"
         :key="tab.name"
-        class="flex flex-col items-center justify-center py-3"
+        class="flex flex-col items-center justify-center py-3 transition active:scale-95"
         @click="onTabClick(tab)"
       >
-        <FeatherIcon
-          :name="tab.icon"
+        <component
+          :is="tab.icon"
           class="h-6 w-6"
-          :class="[tab.isActive ? 'text-blue-600' : 'text-gray-900']"
+          :class="[tab.isActive ? 'text-gray-900' : 'text-gray-600']"
         />
       </button>
     </div>
@@ -24,6 +24,11 @@
 </template>
 <script>
 import { scrollTo } from '@/utils/scrollContainer'
+import LucideHome from '~icons/lucide/home'
+import LucideUsers2 from '~icons/lucide/users-2'
+import LucideSearch from '~icons/lucide/search'
+import LucideInbox from '~icons/lucide/inbox'
+import LucideLayoutGrid from '~icons/lucide/layout-grid'
 
 export default {
   name: 'MobileLayout',
@@ -32,7 +37,7 @@ export default {
       return [
         {
           name: 'Home',
-          icon: 'home',
+          icon: LucideHome,
           route: { name: 'Home' },
           isActive: [
             'Home',
@@ -44,7 +49,7 @@ export default {
         },
         {
           name: 'Teams',
-          icon: 'sidebar',
+          icon: LucideLayoutGrid,
           route: { name: 'Teams' },
           isActive: [
             'Teams',
@@ -59,21 +64,21 @@ export default {
         },
         {
           name: 'People',
-          icon: 'users',
+          icon: LucideUsers2,
           route: { name: 'People' },
           isActive: /People|PersonProfile/g.test(this.$route.name),
           condition: () => this.$user().isNotGuest,
         },
         {
           name: 'Search',
-          icon: 'search',
+          icon: LucideSearch,
           route: { name: 'Search' },
           isActive: this.$route.name === 'Search',
           condition: () => this.$user().isNotGuest,
         },
         {
           name: 'Notifications',
-          icon: 'inbox',
+          icon: LucideInbox,
           route: { name: 'Notifications' },
           isActive: this.$route.name === 'Notifications',
         },
