@@ -11,16 +11,31 @@ for (const icon in LucideIcons) {
   if (iconSvg && iconSvg.includes('stroke-width')) {
     iconSvg = iconSvg.replace(/stroke-width="2"/g, 'stroke-width="1.5"')
   }
-
-  let dashKey = camelToDash(icon)
   icons[icon] = iconSvg
-  if (dashKey !== icon) {
-    icons[dashKey] = iconSvg
+
+  let dashKeys = camelToDash(icon)
+  for (let dashKey of dashKeys) {
+    if (dashKey !== icon) {
+      icons[dashKey] = iconSvg
+    }
+  }
+
+  if (icon.includes('bar')) {
+    console.log(icon, dashKeys)
   }
 }
 
 export default icons
 
 function camelToDash(key) {
-  return key.replace(/([a-z0-9]|(?=[A-Z]))([A-Z])/g, '$1-$2').toLowerCase()
+  // barChart2 -> bar-chart-2
+  let withNumber = key.replace(/[A-Z0-9]/g, (m) => '-' + m.toLowerCase())
+  // barChart2 -> bar-chart2
+  let withoutNumber = key.replace(/[A-Z]/g, (m) => '-' + m.toLowerCase())
+
+  if (withNumber !== withoutNumber) {
+    // both are required because unplugin icon resolver doesn't put a dash before numbers
+    return [withNumber, withoutNumber]
+  }
+  return [withNumber]
 }
