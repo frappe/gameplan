@@ -85,7 +85,7 @@ export default {
   resources: {
     search: {
       cache: 'Search',
-      url: 'gameplan.search.search',
+      url: 'gameplan.api.search',
       makeParams(query) {
         return { query, start: this.start }
       },
@@ -142,9 +142,6 @@ export default {
       let timestamp = d.modified
       if (this.$dayjs().diff(timestamp, 'day') < 25) {
         return this.$dayjs(timestamp).fromNow()
-      }
-      if (this.$dayjs().diff(timestamp, 'year') < 1) {
-        return this.$dayjs(timestamp).format('D MMM')
       }
       return this.$dayjs(timestamp).format('D MMM YYYY')
     },

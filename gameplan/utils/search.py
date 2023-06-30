@@ -4,7 +4,7 @@
 from __future__ import unicode_literals
 import frappe
 import json
-from redis.commands.search.field import TextField
+from redis.commands.search.field import TextField, TagField
 from redis.commands.search.indexDefinition import IndexDefinition
 from redis.commands.search.query import Query
 from redis.exceptions import ResponseError
@@ -22,12 +22,15 @@ class Search:
 
 	def create_index(self):
 		index_def = IndexDefinition(
-			prefix = [f"{self.redis.make_key(self.prefix).decode()}:"],
+			prefix=[f"{self.redis.make_key(self.prefix).decode()}:"],
 		)
 		schema = []
 		for field in self.schema:
 			kwargs = {k: v for k, v in field.items() if k in ["weight", "sortable", "no_index", "no_stem"]}
-			schema.append(TextField(field.name, **kwargs))
+			if field.type == "tag":
+				schema.append(TagField(field.name, **kwargs))
+			else:
+				schema.append(TextField(field.name, **kwargs))
 
 		self.redis.ft(self.index_name).create_index(schema, definition=index_def)
 
@@ -52,7 +55,7 @@ class Search:
 			parts = sort_by.split(" ")
 			sort_field = parts[0]
 			direction = parts[1] if len(parts) > 1 else "asc"
-			query = query.sort_by(sort_field, asc=direction=="asc")
+			query = query.sort_by(sort_field, asc=direction == "asc")
 		if with_payloads:
 			query = query.with_payloads()
 
@@ -60,11 +63,7 @@ class Search:
 			result = self.redis.ft(self.index_name).search(query)
 		except ResponseError as e:
 			print(e)
-			return frappe._dict({
-				"total": 0,
-				"docs": [],
-				"duration": 0
-			})
+			return frappe._dict({"total": 0, "docs": [], "duration": 0})
 
 		out = frappe._dict(docs=[], total=result.total, duration=result.duration)
 		for doc in result.docs:
@@ -74,6 +73,9 @@ class Search:
 			_doc.payload = json.loads(doc.payload) if doc.payload else None
 			out.docs.append(_doc)
 		return out
+
+	def spellcheck(self, query, **kwargs):
+		return self.redis.ft(self.index_name).spellcheck(query, **kwargs)
 
 	def drop_index(self):
 		try:
