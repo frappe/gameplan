@@ -1,5 +1,6 @@
 <template>
   <router-view
+    class="flex-1"
     v-if="$resources.project.doc"
     :team="team"
     :project="$resources.project"

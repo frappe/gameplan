@@ -64,7 +64,7 @@
       ref="addComment"
     >
       <div class="flex items-start">
-        <div class="hidden sm:flex mr-3 h-8 items-center">
+        <div class="mr-3 hidden h-8 items-center sm:flex">
           <UserAvatar :user="$user().name" size="md" />
         </div>
         <div class="relative w-full" v-show="!showCommentBox">
