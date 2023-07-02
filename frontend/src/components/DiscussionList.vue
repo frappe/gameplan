@@ -12,7 +12,7 @@
           slug: d.slug,
         },
       }"
-      class="group relative block h-15 rounded-[10px] hover:bg-gray-100"
+      class="group relative block h-15 rounded-[10px] transition hover:bg-gray-100"
     >
       <div class="flex h-full items-center space-x-4 overflow-hidden px-3 py-2">
         <UserInfo :email="d.last_post_by || d.owner">
