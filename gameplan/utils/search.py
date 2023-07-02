@@ -33,6 +33,7 @@ class Search:
 				schema.append(TextField(field.name, **kwargs))
 
 		self.redis.ft(self.index_name).create_index(schema, definition=index_def)
+		self._index_exists = True
 
 	def add_document(self, id, doc, payload=None):
 		doc = frappe._dict(doc)
@@ -41,11 +42,13 @@ class Search:
 		for field in self.schema:
 			if field.name in doc:
 				mapping[field.name] = cstr(doc[field.name])
-		self.redis.ft(self.index_name).add_document(doc_id, payload=json.dumps(payload), replace=True, **mapping)
+		if self.index_exists():
+			self.redis.ft(self.index_name).add_document(doc_id, payload=json.dumps(payload), replace=True, **mapping)
 
 	def remove_document(self, id):
 		key = self.redis.make_key(f"{self.prefix}:{id}").decode()
-		self.redis.ft(self.index_name).delete_document(key)
+		if self.index_exists():
+			self.redis.ft(self.index_name).delete_document(key)
 
 	def search(self, query, start=0, page_length=50, sort_by=None, highlight=False, with_payloads=False):
 		query = Query(query).paging(start, page_length)
@@ -78,14 +81,15 @@ class Search:
 		return self.redis.ft(self.index_name).spellcheck(query, **kwargs)
 
 	def drop_index(self):
-		try:
+		if self.index_exists():
 			self.redis.ft(self.index_name).dropindex(delete_documents=True)
-		except ResponseError:
-			pass
 
 	def index_exists(self):
-		try:
-			self.redis.ft(self.index_name).info()
-			return True
-		except ResponseError:
-			return False
+		self._index_exists = getattr(self, "_index_exists", None)
+		if self._index_exists is None:
+			try:
+				self.redis.ft(self.index_name).info()
+				self._index_exists = True
+			except ResponseError:
+				self._index_exists = False
+		return self._index_exists
