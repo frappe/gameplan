@@ -19,6 +19,7 @@
     "gemoji": "^7.1.0",
     "htmldiff-js": "^1.0.5",
     "motion": "^10.14.2",
+    "socket.io-client": "^4.7.1",
     "vue": "^3.3.4",
     "vue-router": "^4.2.2"
   },
