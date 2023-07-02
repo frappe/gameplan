@@ -157,7 +157,7 @@
 </template>
 <script>
 import { Motion } from 'motion/vue'
-import { Tooltip, FeatherIcon } from 'frappe-ui'
+import { Tooltip } from 'frappe-ui'
 import Links from './Links.vue'
 import Link from './Link.vue'
 import AddTeamDialog from './AddTeamDialog.vue'
@@ -179,7 +179,6 @@ export default {
     Link,
     UserDropdown,
     Tooltip,
-    FeatherIcon,
     Motion,
     ChevronTriangle,
   },

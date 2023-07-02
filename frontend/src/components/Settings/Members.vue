@@ -48,8 +48,9 @@
 </template>
 <script>
 import { h, computed } from 'vue'
-import { Dropdown, FeatherIcon } from 'frappe-ui'
+import { Dropdown } from 'frappe-ui'
 import { users, activeUsers } from '@/data/users'
+import LucideCheck from '~icons/lucide/check'
 
 export default {
   name: 'Members',
@@ -224,8 +225,7 @@ function RoleOption({ active, role, onClick, selected }) {
     [
       h('span', { class: 'whitespace-nowrap' }, role),
       selected
-        ? h(FeatherIcon, {
-            name: 'check',
+        ? h(LucideCheck, {
             class: ['h-4 w-4 shrink-0 text-gray-700'],
             'aria-hidden': true,
           })

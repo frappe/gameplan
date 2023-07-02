@@ -54,9 +54,8 @@
                   <span class="absolute inset-0" aria-hidden="true" />
                   <span class="inline-flex items-center">
                     {{ project.title }}
-                    <FeatherIcon
+                    <LucideLock
                       v-if="project.is_private"
-                      name="lock"
                       class="ml-1 h-3 w-3"
                     />
                   </span>
@@ -102,7 +101,7 @@
           <div
             class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-gray-100 transition-colors group-hover:bg-white"
           >
-            <FeatherIcon name="plus" class="w-5 text-gray-600" />
+            <LucidePlus class="w-5 text-gray-600" />
           </div>
           <div>
             <h3 class="text-lg font-medium text-gray-900">Add Project</h3>

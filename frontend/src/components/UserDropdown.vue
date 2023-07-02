@@ -31,20 +31,19 @@
         <span class="hidden text-base font-medium text-gray-900 sm:inline">
           {{ $user().full_name }}
         </span>
-        <FeatherIcon name="chevron-down" class="hidden h-4 w-4 sm:inline" />
+        <LucideChevronDown class="hidden h-4 w-4 sm:inline" />
       </button>
     </template>
   </Dropdown>
 </template>
 <script>
-import { FeatherIcon, Dropdown, Link } from 'frappe-ui'
+import { Dropdown, Link } from 'frappe-ui'
 import { showSettingsDialog } from '@/components/Settings/SettingsDialog.vue'
 
 export default {
   name: 'UserDropdown',
   components: {
     Dropdown,
-    FeatherIcon,
     Link,
   },
   setup() {

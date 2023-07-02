@@ -6,7 +6,6 @@ import {
   FormControl,
   ErrorMessage,
   Dialog,
-  FeatherIcon,
   Alert,
   Badge,
   request,
@@ -35,7 +34,6 @@ let globalComponents = {
   FormControl,
   ErrorMessage,
   Dialog,
-  FeatherIcon,
   Alert,
   Badge,
 }

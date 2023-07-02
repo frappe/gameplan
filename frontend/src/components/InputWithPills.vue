@@ -1,27 +1,27 @@
 <template>
   <div
-    class="flex flex-wrap items-center w-full px-3 form-input cursor-text"
+    class="form-input flex w-full cursor-text flex-wrap items-center px-3"
     :class="modelValue.length > 0 ? 'py-3' : 'py-2'"
     @click="focusInput"
   >
-    <div class="flex flex-wrap items-center w-full gap-1">
+    <div class="flex w-full flex-wrap items-center gap-1">
       <div
-        class="inline-flex items-center pl-2.5 pr-1 py-1 text-sm leading-none whitespace-nowrap rounded-full border"
+        class="inline-flex items-center whitespace-nowrap rounded-full border py-1 pl-2.5 pr-1 text-sm leading-none"
         v-for="option in modelValue"
         :key="option.value"
         :class="
           focusedOption === option
-            ? 'ring-2 ring-blue-600 bg-white'
+            ? 'bg-white ring-2 ring-blue-600'
             : 'bg-white'
         "
       >
         {{ option.displayValue || option.label }}
 
         <button
-          class="p-1 ml-1 rounded-full hover:bg-gray-100"
+          class="ml-1 rounded-full p-1 hover:bg-gray-100"
           @click="removeOption(option)"
         >
-          <FeatherIcon class="w-3" name="x" />
+          <LucideX class="h-3 w-3" />
         </button>
       </div>
       <Combobox v-model="selectedValue">
@@ -29,7 +29,7 @@
           <Popover :show="true">
             <template #target>
               <ComboboxInput
-                class="w-full p-0 text-base bg-transparent border-none focus:ring-0"
+                class="w-full border-none bg-transparent p-0 text-base focus:ring-0"
                 ref="input"
                 :placeholder="placeholder"
                 :value="query"
@@ -46,11 +46,11 @@
                 @after-leave="query = ''"
               >
                 <ComboboxOptions
-                  class="w-full py-1 mt-1 overflow-auto text-base bg-white rounded-md shadow-lg max-h-60 ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm"
+                  class="mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm"
                 >
                   <div
                     v-if="filteredOptions.length === 0"
-                    class="relative px-4 py-2 text-gray-700 cursor-default select-none"
+                    class="relative cursor-default select-none px-4 py-2 text-gray-700"
                   >
                     No user found.
                   </div>
@@ -62,9 +62,9 @@
                     v-slot="{ selected, active }"
                   >
                     <li
-                      class="relative px-3 py-2 cursor-default select-none"
+                      class="relative cursor-default select-none px-3 py-2"
                       :class="{
-                        'text-white bg-blue-500': active,
+                        'bg-blue-500 text-white': active,
                         'text-gray-900': !active,
                       }"
                     >

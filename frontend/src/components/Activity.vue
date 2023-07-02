@@ -1,27 +1,30 @@
 <template>
   <div class="relative flex items-center text-base">
     <div
-      class="mr-3 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-gray-100"
+      class="mr-3 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-gray-100 text-gray-900"
     >
-      <LucideLock class="w-4" v-if="activity.action === 'Discussion Closed'" />
+      <LucideLock
+        class="h-4 w-4"
+        v-if="activity.action === 'Discussion Closed'"
+      />
       <LucideUnlock
-        class="w-4"
+        class="h-4 w-4"
         v-else-if="activity.action === 'Discussion Reopened'"
       />
       <LucideEdit3
-        class="w-4"
+        class="h-4 w-4"
         v-else-if="activity.action === 'Discussion Title Changed'"
       />
       <LucideArrowUpLeft
-        class="w-4"
+        class="h-4 w-4"
         v-else-if="activity.action === 'Discussion Pinned'"
       />
       <LucideArrowDownLeft
-        class="w-4"
+        class="h-4 w-4"
         v-else-if="activity.action === 'Discussion Unpinned'"
       />
       <LucideEdit3
-        class="w-4"
+        class="h-4 w-4"
         v-else-if="activity.action === 'Task Value Changed'"
       />
     </div>

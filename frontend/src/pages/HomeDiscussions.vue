@@ -97,7 +97,6 @@
   </Dialog>
 </template>
 <script>
-import Breadcrumbs from '@/components/Breadcrumbs.vue'
 import DiscussionList from '@/components/DiscussionList.vue'
 import { activeTeams } from '@/data/teams'
 import { getTeamProjects } from '@/data/projects'
@@ -110,7 +109,6 @@ let projectFollowId = {}
 export default {
   name: 'Home',
   components: {
-    Breadcrumbs,
     DiscussionList,
     Autocomplete,
     LoadingIndicator,

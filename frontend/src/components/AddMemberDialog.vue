@@ -7,7 +7,7 @@
     <template #body-content>
       <ul v-if="membersToAdd.length" class="flex flex-wrap gap-2 py-2">
         <li
-          class="flex items-center space-x-2 rounded bg-gray-100 p-1"
+          class="flex items-center space-x-2 rounded bg-gray-100 px-2 py-1.5"
           v-for="user in membersToAdd"
           :key="user.email"
           :title="user.email"
@@ -18,9 +18,9 @@
           </span>
           <button
             @click="membersToAdd = membersToAdd.filter((a) => a != user)"
-            class="grid h-4 w-4 place-items-center rounded text-gray-700 hover:bg-gray-300"
+            class="grid h-4 w-4 place-items-center rounded text-gray-800"
           >
-            <FeatherIcon class="w-3" name="x" />
+            <LucideX class="h-4 w-4" />
           </button>
         </li>
       </ul>

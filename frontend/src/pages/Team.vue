@@ -74,7 +74,7 @@
   </div>
 </template>
 <script>
-import { Dropdown, Badge, Tooltip, FeatherIcon } from 'frappe-ui'
+import { Dropdown, Badge, Tooltip } from 'frappe-ui'
 import IconPicker from '@/components/IconPicker.vue'
 import Tabs from '@/components/Tabs.vue'
 
@@ -87,7 +87,6 @@ export default {
     Tabs,
     Tooltip,
     Badge,
-    FeatherIcon,
   },
   data() {
     return {

@@ -38,8 +38,7 @@
               v-if="discussion.closed_at"
               text="This discussion is closed"
             >
-              <FeatherIcon
-                name="lock"
+              <LucideLock
                 class="mr-2 h-4 w-4 text-gray-700"
                 :stroke-width="2"
               />

@@ -31,7 +31,7 @@
             class="grid h-5 w-5 place-items-center"
             v-if="d.type === 'Reaction'"
           >
-            <FeatherIcon name="heart" class="h-4 w-4 text-gray-700" />
+            <LucideHeart class="h-4 w-4 text-gray-700" />
           </div>
           <div class="text-base text-gray-900">
             {{ d.message }} {{ $dayjs(d.creation).fromNow() }}
@@ -74,7 +74,7 @@
             @click="markAsRead(d.name)"
             title="Mark as read"
           >
-            <FeatherIcon name="x" class="w-4" />
+            <LucideX class="w-4" />
           </button>
         </div>
       </div>

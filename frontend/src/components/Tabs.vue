@@ -7,7 +7,7 @@
         v-slot="{ link }"
       >
         <div class="items- flex items-end space-x-1">
-          <FeatherIcon :name="link.icon" v-if="link.icon" class="h-3.5 w-3.5" />
+          <component :is="link.icon" v-if="link.icon" class="h-3.5 w-3.5" />
           <span>
             {{ link.name }}
           </span>

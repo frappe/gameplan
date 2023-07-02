@@ -34,7 +34,7 @@
           Stop Poll
         </Button>
         <Tooltip v-else text="This is a poll">
-          <FeatherIcon name="bar-chart-2" class="h-4 w-4 -rotate-90" />
+          <LucideBarChart2 class="h-4 w-4 -rotate-90" />
         </Tooltip>
         <Dropdown
           placement="right"
@@ -76,9 +76,8 @@
               : 'border-gray-300 group-hover:border-gray-400'
           "
         >
-          <FeatherIcon
+          <LucideCheck
             v-if="isVotedByUser(option.title)"
-            name="check"
             class="text-white"
             :stroke-width="2.5"
           />
@@ -135,7 +134,7 @@
   </div>
 </template>
 <script>
-import { Dropdown, Dialog, FeatherIcon, Tooltip } from 'frappe-ui'
+import { Dropdown, Dialog, Tooltip } from 'frappe-ui'
 import UserAvatar from './UserAvatar.vue'
 import UserProfileLink from './UserProfileLink.vue'
 import { copyToClipboard } from '@/utils'
@@ -158,7 +157,6 @@ export default {
     UserProfileLink,
     UserAvatar,
     Dropdown,
-    FeatherIcon,
     Tooltip,
     Reactions,
     Dialog,

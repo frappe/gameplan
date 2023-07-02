@@ -19,10 +19,6 @@ for (const icon in LucideIcons) {
       icons[dashKey] = iconSvg
     }
   }
-
-  if (icon.includes('bar')) {
-    console.log(icon, dashKeys)
-  }
 }
 
 export default icons

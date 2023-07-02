@@ -14,7 +14,7 @@
         />
         <Button variant="solid" @click="showNewTaskDialog">
           <template #prefix>
-            <FeatherIcon class="h-4 w-4" name="plus" />
+            <LucidePlus class="h-4 w-4" />
           </template>
           Add new
         </Button>
