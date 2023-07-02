@@ -38,15 +38,15 @@
 
                   <div
                     v-if="d.closed_at"
-                    class="absolute bottom-0 right-0 rounded-full bg-green-100 p-0.5 ring-2 ring-white group-hover:ring-gray-100"
+                    class="absolute bottom-0 right-0 rounded-full bg-gray-100 p-0.5 ring-2 ring-white group-hover:ring-gray-100"
                   >
-                    <FeatherIcon name="lock" class="h-3 w-3 text-green-500" />
+                    <LucideLock class="h-3 w-3 text-gray-900" />
                   </div>
                   <div
                     v-if="d.pinned_at && this.filters"
-                    class="absolute bottom-0 right-0 rounded-full bg-yellow-100 p-0.5 ring-2 ring-white group-hover:ring-gray-100"
+                    class="absolute bottom-0 right-0 rounded-full bg-gray-100 p-0.5 ring-2 ring-white group-hover:ring-gray-100"
                   >
-                    <LucidePin class="h-3 w-3 rotate-45 text-yellow-500" />
+                    <LucidePin class="h-3 w-3 rotate-45 text-gray-900" />
                   </div>
                 </div>
               </component>
@@ -92,17 +92,9 @@
               </div>
               <div class="mt-1.5 flex items-center justify-end space-x-3">
                 <Tooltip text="Ongoing poll" v-if="d.ongoing_polls?.length">
-                  <FeatherIcon name="bar-chart-2" class="h-4 w-4 -rotate-90" />
+                  <LucideBarChart2 class="h-4 w-4 -rotate-90" />
                 </Tooltip>
-                <div
-                  class="inline-grid h-5 w-5 shrink-0 place-items-center rounded-full bg-gray-200 text-xs"
-                  :class="[
-                    d.unread ? 'text-gray-900' : 'text-gray-600',
-                    d.comments_count ? '' : 'invisible',
-                  ]"
-                >
-                  {{ d.comments_count || 0 }}
-                </div>
+                <Badge>{{ d.comments_count + 1 }}</Badge>
               </div>
             </div>
           </template>
@@ -125,7 +117,7 @@
         "
         class="flex flex-col items-center rounded-lg border-2 border-dashed py-8 text-base text-gray-600"
       >
-        <FeatherIcon name="coffee" class="h-7 w-7 text-gray-500" />
+        <LucideCoffee class="h-7 w-7 text-gray-500" />
         No discussions
       </div>
       <div
