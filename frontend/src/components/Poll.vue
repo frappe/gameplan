@@ -78,7 +78,7 @@
         >
           <LucideCheck
             v-if="isVotedByUser(option.title)"
-            class="text-white"
+            class="h-3 w-3 text-white"
             :stroke-width="2.5"
           />
         </div>
