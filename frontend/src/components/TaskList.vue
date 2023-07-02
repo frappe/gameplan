@@ -160,7 +160,7 @@ export default {
   data() {
     return {
       isOpen: {
-        Backlog: false,
+        Backlog: true,
         Todo: true,
         'In Progress': true,
         Canceled: false,
