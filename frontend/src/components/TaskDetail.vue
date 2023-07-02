@@ -12,11 +12,11 @@
           />
           <ErrorMessage :message="$resources.task.setValueDebounced.error" />
         </div>
-        <div class="flex items-center justify-between">
+        <div class="mb-2 flex items-center justify-between space-x-2">
           <input
             type="text"
             placeholder="Title"
-            class="mb-2 w-full rounded-md border-none p-0 text-2xl font-semibold text-gray-900 focus:outline-none focus:ring-0"
+            class="-ml-0.5 w-full rounded-sm border-none p-0.5 text-2xl font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-400"
             @change="
               $resources.task.setValueDebounced.submit({
                 title: $event.target.value,
@@ -62,7 +62,7 @@
         </div>
         <TextEditor
           ref="description"
-          editor-class="prose-sm max-w-none"
+          editor-class="prose-sm max-w-none focus-within:ring-2 focus-within:ring-gray-400 rounded-sm p-0.5 -ml-0.5 min-h-[4rem]"
           placeholder="Description"
           :content="$resources.task.doc.description"
           :bubbleMenu="true"
