@@ -109,11 +109,13 @@
             {
               label: 'Save',
               variant: 'solid',
-              onClick() {
-                return project.setValue.submit({
-                  title: project.doc.title,
-                  is_private: project.doc.is_private,
-                })
+              onClick({ close }) {
+                return project.setValue
+                  .submit({
+                    title: project.doc.title,
+                    is_private: project.doc.is_private,
+                  })
+                  .then(close)
               },
             },
           ],
