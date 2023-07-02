@@ -37,19 +37,14 @@
           <div
             class="group relative items-center rounded-lg p-3 shadow transition-colors focus-within:ring focus-within:ring-gray-300 hover:bg-gray-100"
           >
-            <!-- <div
-              class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded bg-gray-100 transition-colors group-hover:bg-white"
-            >
-              <span class="text-4xl">{{ project.icon }}</span>
-            </div> -->
             <div>
-              <h3 class="text-lg font-medium text-gray-900">
+              <h3 class="overflow-hidden text-lg font-medium text-gray-900">
                 <router-link
                   :to="{
                     name: 'Project',
                     params: { projectId: project.name },
                   }"
-                  class="focus:outline-none"
+                  class="inline-flex w-full overflow-hidden text-ellipsis whitespace-nowrap focus:outline-none"
                 >
                   <span class="absolute inset-0" aria-hidden="true" />
                   <span class="inline-flex items-center">
