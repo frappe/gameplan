@@ -6,10 +6,9 @@ import gameplan
 from frappe.model.document import Document
 from frappe.model.naming import append_number_if_name_exists
 from frappe.website.utils import cleanup_page_name
+from gameplan.gameplan.doctype.gp_user_profile.profile_photo import remove_background
 from gameplan.extends.client import check_permissions
 from frappe.query_builder.functions import Count
-from rq.job import JobStatus
-from time import sleep
 
 
 class GPUserProfile(Document):
@@ -33,19 +32,24 @@ class GPUserProfile(Document):
 	def remove_image_background(self, default_color=None):
 		if not self.image:
 			frappe.throw("Profile image not found")
-
-		job_id = f"remove-img-bg-{self.name}"
-		job = frappe.enqueue(
-			remove_imgbg_in_background, profile_name=self.name, default_color=default_color, at_front=True, job_id=job_id
-		)
-		while True:
-			status = job.get_status()
-			if status in (JobStatus.QUEUED, JobStatus.STARTED, JobStatus.SCHEDULED):
-				print("Waiting for job to complete:", job_id, status)
-				sleep(1)
-			elif status in (JobStatus.FINISHED, JobStatus.FAILED, JobStatus.CANCELED):
-				print("Job status:", job_id, status)
-				break
+		file = frappe.get_doc("File", {"file_url": self.image})
+		self.original_image = file.file_url
+		image_content = remove_background(file)
+		filename, extn = file.get_extension()
+		output_filename = f"{filename}_no_bg.png"
+		new_file = frappe.get_doc(
+			doctype="File",
+			file_name=output_filename,
+			content=image_content,
+			is_private=0,
+			attached_to_doctype=self.doctype,
+			attached_to_name=self.name,
+		).insert()
+		self.image = new_file.file_url
+		self.is_image_background_removed = True
+		self.image_background_color = default_color
+		self.save()
+		gameplan.refetch_resource("Users")
 
 	@frappe.whitelist()
 	def revert_image_background(self):
@@ -120,27 +124,3 @@ def get_list(
 		user.comments_count = comments_by_user.get(user.user, 0)
 
 	return data
-
-
-def remove_imgbg_in_background(profile_name, default_color=None):
-	from gameplan.gameplan.doctype.gp_user_profile.profile_photo import remove_background
-
-	profile = frappe.get_doc("GP User Profile", profile_name)
-	file = frappe.get_doc("File", {"file_url": profile.image})
-	profile.original_image = file.file_url
-	image_content = remove_background(file)
-	filename, extn = file.get_extension()
-	output_filename = f"{filename}_no_bg.png"
-	new_file = frappe.get_doc(
-		doctype="File",
-		file_name=output_filename,
-		content=image_content,
-		is_private=0,
-		attached_to_doctype=profile.doctype,
-		attached_to_name=profile.name,
-	).insert()
-	profile.image = new_file.file_url
-	profile.is_image_background_removed = True
-	profile.image_background_color = default_color
-	profile.save()
-	gameplan.refetch_resource("Users", user=profile.user)
