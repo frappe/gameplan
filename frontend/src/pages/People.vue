@@ -7,6 +7,7 @@
             <PageBreadcrumbs
               :items="[{ label: 'People', route: { name: 'People' } }]"
             />
+            <div class="h-7"></div>
           </div>
         </header>
         <div class="mx-auto w-full max-w-4xl px-5 pt-6">
@@ -28,6 +29,8 @@
                 :options="[
                   { label: 'Name', value: 'full_name asc' },
                   { label: 'Last updated', value: 'modified desc' },
+                  { label: 'Posts', value: 'posts' },
+                  { label: 'Replies', value: 'replies' },
                 ]"
                 v-model="orderBy"
               >
@@ -78,33 +81,31 @@
                     </div>
                   </div>
                 </div>
-                <div
-                  class="flex w-1/5 items-center justify-end text-right text-base text-gray-600"
-                >
-                  <Button
-                    variant="ghost"
-                    :route="{
+                <div class="flex w-1/5 items-center justify-end text-right">
+                  <router-link
+                    class="text-base text-gray-600 hover:text-gray-900"
+                    :to="{
                       name: 'PersonProfilePosts',
                       params: { personId: user.name },
                     }"
                     @click.prevent
                   >
                     {{ user.discussions_count }} posts
-                  </Button>
+                  </router-link>
                 </div>
                 <div
                   class="flex w-1/5 items-center justify-end text-right text-base text-gray-600"
                 >
-                  <Button
-                    variant="ghost"
-                    :route="{
+                  <router-link
+                    class="text-base text-gray-600 hover:text-gray-900"
+                    :to="{
                       name: 'PersonProfileReplies',
                       params: { personId: user.name },
                     }"
                     @click.prevent
                   >
                     {{ user.comments_count }} replies
-                  </Button>
+                  </router-link>
                 </div>
               </router-link>
               <div class="mx-2 border-b"></div>
@@ -125,13 +126,12 @@
 </template>
 <script>
 import { Badge, Input, Select, TextInput } from 'frappe-ui'
-import Breadcrumbs from '@/components/Breadcrumbs.vue'
 import { showSettingsDialog } from '@/components/Settings/SettingsDialog.vue'
 
 export default {
   name: 'People',
   props: ['person'],
-  components: { Breadcrumbs, Badge, Input, TextInput, Select },
+  components: { Badge, Input, TextInput, Select },
   data() {
     return {
       search: '',
@@ -145,10 +145,14 @@ export default {
   },
   resources: {
     profiles() {
+      let orderBy = this.orderBy
+      if (['posts', 'replies'].includes(orderBy)) {
+        orderBy = 'modified desc'
+      }
       return {
         type: 'list',
         url: '/api/method/gameplan.gameplan.doctype.gp_user_profile.gp_user_profile.get_list',
-        cache: ['People', this.orderBy],
+        cache: ['People', orderBy],
         doctype: 'GP User Profile',
         filters: { enabled: 1 },
         fields: [
@@ -177,9 +181,18 @@ export default {
           )
         })
       }
-      return [myProfile, ...this.profiles.filter((p) => p != myProfile)].filter(
-        Boolean
-      )
+
+      let list = [
+        myProfile,
+        ...this.profiles.filter((p) => p != myProfile),
+      ].filter(Boolean)
+
+      if (this.orderBy == 'posts') {
+        list = list.sort((a, b) => b.discussions_count - a.discussions_count)
+      } else if (this.orderBy == 'replies') {
+        list = list.sort((a, b) => b.comments_count - a.comments_count)
+      }
+      return list
     },
     profiles() {
       return (this.$resources.profiles.data || []).map((profile) => {
