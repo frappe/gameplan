@@ -11,35 +11,31 @@
         </Button>
       </div>
     </div>
-    <TaskList
-      :listOptions="{
-        filters: { assigned_or_owner: $user('sessionUser').name },
-      }"
-      :groupByStatus="true"
-    />
+    <TaskList :listOptions="listOptions" :groupByStatus="true" />
     <NewTaskDialog ref="newTaskDialog" />
   </div>
 </template>
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { getCachedListResource, usePageMeta } from 'frappe-ui'
 import { getUser } from '@/data/users'
 
 let newTaskDialog = ref(null)
 
+let listOptions = computed(() => ({
+  filters: { assigned_or_owner: getUser('sessionUser').name },
+}))
+
 function showNewTaskDialog() {
-  let status = 'Backlog'
   newTaskDialog.value.show({
     defaults: {
-      status,
       assigned_to: getUser('sessionUser').name,
     },
     onSuccess: () => {
-      let listOptions = {
-        filters: { assigned_or_owner: getUser('sessionUser').name },
+      let tasks = getCachedListResource(['Tasks', listOptions.value])
+      if (tasks) {
+        tasks.reload()
       }
-      let tasks = getCachedListResource(['Tasks', listOptions])
-      tasks.reload()
     },
   })
 }

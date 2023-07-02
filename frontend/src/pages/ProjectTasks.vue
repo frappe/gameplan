@@ -11,10 +11,7 @@
         </Button>
       </div>
     </div>
-    <TaskList
-      :listOptions="{ filters: { project: project.name } }"
-      :groupByStatus="true"
-    />
+    <TaskList :listOptions="listOptions" :groupByStatus="true" />
     <NewTaskDialog ref="newTaskDialog" />
   </div>
 </template>
@@ -32,18 +29,23 @@ const props = defineProps({
 })
 
 let newTaskDialog = ref(null)
+let listOptions = computed(() => ({
+  filters: {
+    project: props.project.name,
+  },
+}))
 
 function showNewTaskDialog() {
   newTaskDialog.value.show({
     defaults: {
+      project: props.project.name,
       assigned_to: getUser('sessionUser').name,
     },
     onSuccess: () => {
-      let tasks = getCachedListResource([
-        'Tasks',
-        { filters: props.project.name },
-      ])
-      tasks.reload()
+      let tasks = getCachedListResource(['Tasks', listOptions.value])
+      if (tasks) {
+        tasks.reload()
+      }
     },
   })
 }
