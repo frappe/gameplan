@@ -59,7 +59,19 @@ app.config.globalProperties.$platform = getPlatform()
 app.config.globalProperties.$isSessionUser = (email) => {
   return getUser().name === email
 }
-app.mount('#app')
+
+if (import.meta.env.DEV) {
+  frappeRequest({ url: '/api/method/gameplan.www.g.get_context_for_dev' }).then(
+    (values) => {
+      for (let key in values) {
+        window[key] = values[key]
+      }
+      app.mount('#app')
+    }
+  )
+} else {
+  app.mount('#app')
+}
 
 socket.on('refetch_resource', (data) => {
   if (data.cache_key) {

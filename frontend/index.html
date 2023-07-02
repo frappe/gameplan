@@ -176,6 +176,7 @@
     <div id="popovers"></div>
     <script>
       window.csrf_token = '{{ csrf_token }}'
+      window.frappe_version = '{{ frappe_version }}'
       window.read_only_mode = '{{ read_only_mode | tojson }}' == 'true'
       window.default_route = '{{ default_route or "" }}'
     </script>
