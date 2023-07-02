@@ -163,22 +163,9 @@ const routes = [
               },
               {
                 name: 'ProjectTasks',
-                path: 'tasks/:listType?',
+                path: 'tasks',
                 component: () => import('@/pages/ProjectTasks.vue'),
                 props: true,
-                beforeEnter(to, from, next) {
-                  if (!to.params.listType) {
-                    next({
-                      name: to.name,
-                      params: {
-                        ...to.params,
-                        listType: to.params.listType || 'active',
-                      },
-                    })
-                  } else {
-                    next()
-                  }
-                },
               },
               {
                 name: 'ProjectTaskDetail',
