@@ -22,7 +22,7 @@
 </template>
 <script setup>
 import { ref } from 'vue'
-import { getCachedListResource } from 'frappe-ui'
+import { getCachedListResource, usePageMeta } from 'frappe-ui'
 import { getUser } from '@/data/users'
 
 let newTaskDialog = ref(null)
@@ -43,4 +43,10 @@ function showNewTaskDialog() {
     },
   })
 }
+
+usePageMeta(() => {
+  return {
+    title: 'My Tasks',
+  }
+})
 </script>

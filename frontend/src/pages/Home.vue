@@ -16,8 +16,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { getPlatform } from '@/utils'
-import { getCachedDocumentResource } from 'frappe-ui'
+import { getCachedDocumentResource, usePageMeta } from 'frappe-ui'
 
 let breadcrumbs = computed(() => {
   let route = useRoute()
@@ -44,11 +43,9 @@ let breadcrumbs = computed(() => {
   return items
 })
 
-const searchPlaceholder = computed(() => {
-  let platform = getPlatform()
-  if (platform === 'mac') {
-    return 'Jump to project or team (⌘K)'
+usePageMeta(() => {
+  return {
+    title: 'Home',
   }
-  return 'Jump to project or team (Ctrl+K)'
 })
 </script>
