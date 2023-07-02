@@ -45,6 +45,7 @@ class GPUserProfile(Document):
 				sleep(1)
 			elif status in (JobStatus.FINISHED, JobStatus.FAILED, JobStatus.CANCELED):
 				print("Job status:", job_id, status)
+				self.reload()
 				break
 
 	@frappe.whitelist()
