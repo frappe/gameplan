@@ -1,7 +1,7 @@
 [project]
 name = "gameplan"
 authors = [
-    { name = "Frappe Technologies Pvt Ltd", email = "faris@frappe.io"}
+    { name = "Frappe Technologies Pvt Ltd", email = "developers@frappe.io"}
 ]
 description = "Team discussion and collaboration tool"
 requires-python = ">=3.10"
