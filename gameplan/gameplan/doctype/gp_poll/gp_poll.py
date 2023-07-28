@@ -45,11 +45,13 @@ class GPPoll(Document, GPPollAttributes):
 		for _option in self.options:
 			if _option.title == option:
 				self.append("votes", {"user": frappe.session.user})
-				self.total_votes = len(self.votes)
 				_option.votes += 1
-				_option.percentage = flt(_option.votes * 100 / self.total_votes, 2)
-				self.save()
 				break
+
+		self.total_votes = len(self.votes)
+		for _option in self.options:
+			_option.percentage = flt(_option.votes * 100 / self.total_votes, 2)
+		self.save()
 
 	def submit_non_anonymous_vote(self, option):
 		for d in self.votes:
