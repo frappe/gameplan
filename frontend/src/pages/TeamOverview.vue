@@ -143,9 +143,8 @@
   </div>
 </template>
 <script>
-import { Dialog, FormControl, TextInput } from 'frappe-ui'
+import { Dialog, FormControl, TextInput, TabButtons } from 'frappe-ui'
 import { projects, getTeamProjects } from '@/data/projects'
-import TabButtons from '@/components/TabButtons.vue'
 
 export default {
   name: 'TeamOverview',

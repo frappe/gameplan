@@ -140,13 +140,12 @@
   </div>
 </template>
 <script>
-import { Dialog, FileUploader, FormControl } from 'frappe-ui'
+import { Dialog, FileUploader, FormControl, TabButtons } from 'frappe-ui'
 import CoverImage from '@/components/CoverImage.vue'
 import ImagePreview from '../components/ImagePreview.vue'
 import ColorPicker from '@/components/ColorPicker.vue'
 import ProfileImageEditor from '@/components/ProfileImageEditor.vue'
 import UserImage from '@/components/UserImage.vue'
-import TabButtons from '@/components/TabButtons.vue'
 
 export default {
   name: 'PersonProfile',

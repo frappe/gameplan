@@ -125,10 +125,10 @@
 </template>
 <script>
 import { nextTick } from 'vue'
+import { TabButtons } from 'frappe-ui'
 import CommentEditor from '@/components/CommentEditor.vue'
 import Comment from './Comment.vue'
 import Activity from './Activity.vue'
-import TabButtons from './TabButtons.vue'
 import PollEditor from './PollEditor.vue'
 import Poll from './Poll.vue'
 import { getScrollContainer } from '@/utils/scrollContainer'

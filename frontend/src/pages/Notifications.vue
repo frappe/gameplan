@@ -85,8 +85,7 @@
   </div>
 </template>
 <script>
-import TabButtons from '../components/TabButtons.vue'
-import Tooltip from 'frappe-ui/src/components/Tooltip.vue'
+import { TabButtons, Tooltip } from 'frappe-ui'
 import Link from '@/components/Link.vue'
 
 export default {
