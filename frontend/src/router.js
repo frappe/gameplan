@@ -41,6 +41,17 @@ const routes = [
     props: true,
   },
   {
+    name: 'MyPages',
+    path: '/pages',
+    component: () => import('@/pages/MyPages.vue'),
+  },
+  {
+    name: 'Page',
+    path: '/page/:pageId/:slug?',
+    component: () => import('@/pages/Page.vue'),
+    props: true,
+  },
+  {
     path: '/people',
     name: 'People',
     component: () => import('@/pages/People.vue'),

@@ -216,6 +216,14 @@ export default {
           isActive: /MyTasks|Task/g.test(this.$route.name),
         },
         {
+          name: 'My Pages',
+          icon: LucideListTodo,
+          route: {
+            name: 'MyPages',
+          },
+          isActive: /MyPages|Page/g.test(this.$route.name),
+        },
+        {
           name: 'People',
           icon: LucideUsers2,
           route: {
