@@ -171,6 +171,7 @@ import LucideUsers2 from '~icons/lucide/users-2'
 import LucideInbox from '~icons/lucide/inbox'
 import LucideListTodo from '~icons/lucide/list-todo'
 import LucideNewspaper from '~icons/lucide/newspaper'
+import LucideFiles from '~icons/lucide/files'
 
 export default {
   name: 'AppSidebar',
@@ -217,7 +218,7 @@ export default {
         },
         {
           name: 'My Pages',
-          icon: LucideListTodo,
+          icon: LucideFiles,
           route: {
             name: 'MyPages',
           },
