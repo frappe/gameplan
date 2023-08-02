@@ -25,7 +25,7 @@ export let session = reactive({
       users.reload()
       session.user = sessionUser()
       session.login.reset()
-      router.replace(data.default_route || '/home')
+      router.replace(data.default_route || '/')
     },
   }),
   logout: createResource({

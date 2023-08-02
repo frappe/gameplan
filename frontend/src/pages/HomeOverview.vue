@@ -3,7 +3,7 @@
     <div class="sm:rounded sm:border sm:px-4 sm:py-3">
       <div class="mb-3 flex items-center justify-between">
         <h2 class="text-xl font-semibold">Discussions</h2>
-        <Button :route="{ name: 'HomeDiscussions' }">View all</Button>
+        <Button :route="{ name: 'Discussions' }">View all</Button>
       </div>
       <DiscussionList
         :listOptions="{
@@ -16,7 +16,7 @@
       <div class="sm:rounded sm:border sm:px-4 sm:py-3">
         <div class="mb-3 flex items-center justify-between">
           <h2 class="text-xl font-semibold">Tasks</h2>
-          <Button :route="{ name: 'HomeTasks' }">View all</Button>
+          <Button :route="{ name: 'MyTasks' }">View all</Button>
         </div>
         <TaskList
           :listOptions="{

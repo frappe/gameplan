@@ -167,6 +167,7 @@ export default {
         filters: this.listOptions.filters,
         auto: true,
         pageLength: this.listOptions.pageLength || 50,
+        orderBy: this.listOptions.orderBy || 'last_post_at desc',
         transform(data) {
           for (let d of data) {
             d.unread = !d.last_visit || d.last_post_at > d.last_visit

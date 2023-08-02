@@ -29,6 +29,8 @@ import LucideUsers2 from '~icons/lucide/users-2'
 import LucideSearch from '~icons/lucide/search'
 import LucideInbox from '~icons/lucide/inbox'
 import LucideLayoutGrid from '~icons/lucide/layout-grid'
+import LucideListTodo from '~icons/lucide/list-todo'
+import LucideNewspaper from '~icons/lucide/newspaper'
 
 export default {
   name: 'MobileLayout',
@@ -36,16 +38,16 @@ export default {
     tabs() {
       return [
         {
-          name: 'Home',
-          icon: LucideHome,
-          route: { name: 'Home' },
-          isActive: [
-            'Home',
-            'HomeOverview',
-            'HomeDiscussions',
-            'HomeTasks',
-            'HomeTask',
-          ].includes(this.$route.name),
+          name: 'Discussions',
+          icon: LucideNewspaper,
+          route: { name: 'Discussions' },
+          isActive: this.$route.name === 'Discussions',
+        },
+        {
+          name: 'MyTasks',
+          icon: LucideListTodo,
+          route: { name: 'MyTasks' },
+          isActive: /MyTasks|Task/g.test(this.$route.name),
         },
         {
           name: 'Teams',

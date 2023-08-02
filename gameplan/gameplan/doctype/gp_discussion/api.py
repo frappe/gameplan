@@ -8,13 +8,15 @@ from pypika.terms import ExistsCriterion
 
 
 @frappe.whitelist()
-def get_discussions(filters=None, limit_start=None, limit_page_length=None):
+def get_discussions(filters=None, order_by=None, limit_start=None, limit_page_length=None):
 	if not frappe.has_permission("GP Discussion", "read"):
 		frappe.throw("Insufficient Permission for GP Discussion", frappe.PermissionError)
 
 	filters = frappe.parse_json(filters) if filters else None
 	feed_type = filters.pop("feed_type", None) if filters else None
 	participator = filters.pop("participator", None) if filters else None
+	order_by = order_by or "last_post_at desc"
+	order_field, order_direction = order_by.split(" ", 1)
 
 	Discussion = frappe.qb.DocType("GP Discussion")
 	Visit = frappe.qb.DocType("GP Discussion Visit")
@@ -70,7 +72,7 @@ def get_discussions(filters=None, limit_start=None, limit_page_length=None):
 		query = query.where(Discussion.project.isin(followed_projects))
 
 	# default order by last_post_at desc
-	query = query.orderby(Discussion.last_post_at, order=frappe._dict(value="desc"))
+	query = query.orderby(Discussion[order_field], order=frappe._dict(value=order_direction))
 
 	is_guest = gameplan.is_guest()
 	if is_guest:

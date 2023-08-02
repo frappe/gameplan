@@ -167,9 +167,10 @@ import { activeTeams, teams } from '@/data/teams'
 import { getTeamProjects } from '@/data/projects'
 import { unreadNotifications } from '@/data/notifications'
 import { showCommandPalette } from '@/components/CommandPalette/CommandPalette.vue'
-import LucideHome from '~icons/lucide/home'
 import LucideUsers2 from '~icons/lucide/users-2'
 import LucideInbox from '~icons/lucide/inbox'
+import LucideListTodo from '~icons/lucide/list-todo'
+import LucideNewspaper from '~icons/lucide/newspaper'
 
 export default {
   name: 'AppSidebar',
@@ -200,11 +201,19 @@ export default {
     navigation() {
       return [
         {
-          name: 'Home',
-          icon: LucideHome,
+          name: 'Discussions',
+          icon: LucideNewspaper,
           route: {
-            name: 'Home',
+            name: 'Discussions',
           },
+        },
+        {
+          name: 'My Tasks',
+          icon: LucideListTodo,
+          route: {
+            name: 'MyTasks',
+          },
+          isActive: /MyTasks|Task/g.test(this.$route.name),
         },
         {
           name: 'People',

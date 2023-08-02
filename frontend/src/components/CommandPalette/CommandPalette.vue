@@ -130,7 +130,7 @@ export default {
               group.component = 'Item'
               group.items = group.items.map((item) => {
                 item.route = {
-                  name: item.project ? 'ProjectTaskDetail' : 'HomeTask',
+                  name: item.project ? 'ProjectTaskDetail' : 'Task',
                   params: {
                     taskId: item.name,
                     projectId: item.payload.project,

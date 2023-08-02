@@ -5,7 +5,7 @@ import { getScrollContainer, scrollTo } from './utils/scrollContainer'
 
 let defaultRoute = window.default_route
 if (defaultRoute?.includes('{{')) {
-  defaultRoute = '/home'
+  defaultRoute = '/discussions'
 }
 
 const routes = [
@@ -25,31 +25,28 @@ const routes = [
         path: '',
         component: () => import('@/pages/HomeOverview.vue'),
       },
-      {
-        name: 'HomeDiscussions',
-        path: 'discussions',
-        component: () => import('@/pages/HomeDiscussions.vue'),
-      },
-      {
-        name: 'HomeTasks',
-        path: 'tasks',
-        component: () => import('@/pages/HomeTasks.vue'),
-      },
-      {
-        name: 'HomeTask',
-        path: 'task/:taskId',
-        component: () => import('@/pages/HomeTask.vue'),
-        props: true,
-        meta: {
-          fullWidth: true,
-        },
-      },
     ],
   },
   {
     path: '/login',
     name: 'Login',
     component: () => import('@/pages/Login.vue'),
+  },
+  {
+    name: 'Discussions',
+    path: '/discussions',
+    component: () => import('@/pages/Discussions.vue'),
+  },
+  {
+    name: 'MyTasks',
+    path: '/tasks',
+    component: () => import('@/pages/MyTasks.vue'),
+  },
+  {
+    name: 'Task',
+    path: '/task/:taskId',
+    component: () => import('@/pages/Task.vue'),
+    props: true,
   },
   {
     path: '/people',

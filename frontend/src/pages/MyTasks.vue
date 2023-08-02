@@ -1,18 +1,26 @@
 <template>
-  <div class="py-6">
-    <div class="mb-4.5 flex items-center justify-between">
-      <h2 class="text-xl font-semibold text-gray-900">My Tasks</h2>
-      <div class="flex items-stretch space-x-2">
-        <Button variant="solid" @click="showNewTaskDialog">
-          <template #prefix>
-            <LucidePlus class="h-4 w-4" />
-          </template>
-          Add new
-        </Button>
+  <div>
+    <header
+      class="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-5 py-2.5"
+    >
+      <PageBreadcrumbs
+        class="h-7"
+        :items="[{ label: 'My Tasks', route: { name: 'MyTasks' } }]"
+      />
+      <Button variant="solid" @click="showNewTaskDialog">
+        <template #prefix>
+          <LucidePlus class="h-4 w-4" />
+        </template>
+        Add new
+      </Button>
+    </header>
+
+    <div class="mx-auto w-full max-w-4xl px-5">
+      <div class="py-6">
+        <TaskList :listOptions="listOptions" :groupByStatus="true" />
+        <NewTaskDialog ref="newTaskDialog" />
       </div>
     </div>
-    <TaskList :listOptions="listOptions" :groupByStatus="true" />
-    <NewTaskDialog ref="newTaskDialog" />
   </div>
 </template>
 <script setup>

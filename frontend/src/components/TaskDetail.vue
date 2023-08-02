@@ -231,7 +231,7 @@ export default {
         },
         onSuccess(doc) {
           if (
-            ['ProjectTaskDetail', 'HomeTask'].includes(this.$route.name) &&
+            ['ProjectTaskDetail', 'Task'].includes(this.$route.name) &&
             Number(this.$route.params.taskId) === doc.name
           ) {
             this.$resources.task.trackVisit.submit()
@@ -257,7 +257,7 @@ export default {
       let task = this.$resources.task.doc
       if (task) {
         this.$router.replace({
-          name: task.project ? 'ProjectTaskDetail' : 'HomeTask',
+          name: task.project ? 'ProjectTaskDetail' : 'Task',
           params: {
             taskId: task.name,
             teamId: task.team,

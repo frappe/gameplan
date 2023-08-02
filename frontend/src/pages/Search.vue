@@ -158,7 +158,7 @@ export default {
       }
       if (item.doctype === 'GP Task') {
         return {
-          name: item.project ? 'ProjectTaskDetail' : 'HomeTask',
+          name: item.project ? 'ProjectTaskDetail' : 'Task',
           params: {
             teamId: item.team,
             projectId: item.project,

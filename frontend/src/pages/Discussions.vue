@@ -1,37 +1,48 @@
 <template>
+  <header
+    class="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-3 py-2.5 sm:px-5"
+  >
+    <PageBreadcrumbs
+      class="h-7"
+      :items="[{ label: 'Discussions', route: { name: 'Discussions' } }]"
+    />
+    <Button variant="solid" @click="newDiscussionDialog.show = true">
+      <template #prefix><LucidePlus class="h-4 w-4" /></template>
+      Add new
+    </Button>
+  </header>
   <div
     class="fixed inset-x-0 top-14 flex w-full justify-center py-2 text-gray-600"
     v-if="swipeLoading"
   >
     <LoadingIndicator class="h-4 w-4" />
   </div>
-  <div class="mx-auto max-w-4xl pt-6 sm:px-5">
-    <div class="mb-4.5 flex items-center justify-between">
-      <h2 class="text-xl font-semibold">Discussions</h2>
-      <div class="flex items-center space-x-2">
-        <Button
-          v-if="feedType === 'following'"
-          class="shrink-0"
-          @click="followProjectsDialog = true"
-          variant="ghost"
-        >
-          <template #prefix><LucideBellPlus class="w-4" /></template>
-          {{ $resources.followedProjects.data.length }}
-          {{
-            $resources.followedProjects.data.length === 1
-              ? 'Project'
-              : 'Projects'
-          }}
-        </Button>
-
-        <Select :options="feedOptions" v-model="feedType" />
-      </div>
+  <div class="mx-auto max-w-4xl pt-4 sm:px-5">
+    <div class="mb-5 flex items-center justify-between px-3 sm:px-0">
+      <TabButtons :buttons="feedOptions" v-model="feedType" />
+      <Button
+        v-if="feedType === 'following'"
+        class="shrink-0"
+        @click="followProjectsDialog = true"
+        variant="subtle"
+      >
+        <template #prefix><LucideBellPlus class="w-4" /></template>
+        {{ $resources.followedProjects.data.length }}
+        {{
+          $resources.followedProjects.data.length === 1 ? 'Project' : 'Projects'
+        }}
+      </Button>
+      <Select
+        v-if="feedType === 'recent'"
+        :options="orderOptions"
+        v-model="orderBy"
+      />
     </div>
     <KeepAlive>
       <DiscussionList
         ref="discussionList"
         routeName="ProjectDiscussion"
-        :listOptions="{ filters }"
+        :listOptions="{ filters, orderBy }"
         :key="JSON.stringify(filters)"
       />
     </KeepAlive>
@@ -95,28 +106,72 @@
       </div>
     </template>
   </Dialog>
+  <Dialog
+    :options="{
+      title: 'New Discussion',
+      actions: [
+        {
+          label: 'Add new discussion',
+          variant: 'solid',
+          disabled: !newDiscussionDialog.project,
+          onClick() {
+            newDiscussionDialog.show = false
+            $router.push({
+              name: 'ProjectDiscussionNew',
+              params: {
+                projectId: newDiscussionDialog.project.value,
+                teamId: newDiscussionDialog.project.team,
+              },
+            })
+          },
+        },
+      ],
+    }"
+    v-model="newDiscussionDialog.show"
+  >
+    <template #body-content>
+      <p class="mb-4 text-base text-gray-700">
+        Select a project to start a new discussion
+      </p>
+      <Autocomplete
+        :options="projectOptions"
+        v-model="newDiscussionDialog.project"
+        placeholder="Select a project"
+      />
+    </template>
+  </Dialog>
 </template>
 <script>
 import DiscussionList from '@/components/DiscussionList.vue'
 import { activeTeams } from '@/data/teams'
 import { getTeamProjects } from '@/data/projects'
-import { Autocomplete, LoadingIndicator, Select } from 'frappe-ui'
+import {
+  Autocomplete,
+  FormControl,
+  LoadingIndicator,
+  Select,
+  TabButtons,
+  Tooltip,
+} from 'frappe-ui'
 import { useSwipe } from '@/utils/composables'
 import { getScrollContainer } from '@/utils/scrollContainer'
 
 let projectFollowId = {}
 
 export default {
-  name: 'Home',
   components: {
     DiscussionList,
     Autocomplete,
     LoadingIndicator,
     Select,
+    TabButtons,
+    FormControl,
+    Tooltip,
   },
   data() {
     return {
       followProjectsDialog: false,
+      newDiscussionDialog: { show: false, project: null },
       projects: [],
       selectedProject: null,
       swipeLoading: false,
@@ -135,6 +190,22 @@ export default {
         },
       ],
       feedType: 'recent',
+      orderOptions: [
+        {
+          label: 'Sort by',
+          value: '',
+          disabled: true,
+        },
+        {
+          label: 'Last post',
+          value: 'last_post_at desc',
+        },
+        {
+          label: 'Created',
+          value: 'creation desc',
+        },
+      ],
+      orderBy: 'last_post_at desc',
     }
   },
   setup() {
@@ -210,6 +281,7 @@ export default {
         items: getTeamProjects(team.name).map((project) => ({
           label: project.title,
           value: project.name,
+          team: team.name,
           followId: projectFollowId[project.name],
         })),
       }))

@@ -21,23 +21,23 @@ import { getCachedDocumentResource, usePageMeta } from 'frappe-ui'
 let breadcrumbs = computed(() => {
   let route = useRoute()
   let items = [{ label: 'Home', route: { name: 'Home' } }]
-  if (route.name === 'HomeDiscussions') {
+  if (route.name === 'Discussions') {
     items.push({
       label: 'Discussions',
-      route: { name: 'HomeDiscussions' },
+      route: { name: 'Discussions' },
     })
   }
-  if (['HomeTasks', 'HomeTask'].includes(route.name)) {
+  if (['MyTasks', 'Task'].includes(route.name)) {
     items.push({
       label: 'My Tasks',
-      route: { name: 'HomeTasks' },
+      route: { name: 'MyTasks' },
     })
   }
-  if (route.name === 'HomeTask') {
+  if (route.name === 'Task') {
     let task = getCachedDocumentResource('GP Task', route.params.taskId)
     items.push({
       label: task?.doc ? task.doc.title : route.params.taskId,
-      route: { name: 'HomeTask' },
+      route: { name: 'Task' },
     })
   }
   return items
