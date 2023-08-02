@@ -17,15 +17,7 @@ const routes = [
     path: '/home',
     name: 'Home',
     component: () => import('@/pages/Home.vue'),
-    props: true,
-    redirect: { name: 'HomeOverview' },
-    children: [
-      {
-        name: 'HomeOverview',
-        path: '',
-        component: () => import('@/pages/HomeOverview.vue'),
-      },
-    ],
+    redirect: { name: 'Discussions' },
   },
   {
     path: '/login',
