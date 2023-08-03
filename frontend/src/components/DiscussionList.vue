@@ -33,7 +33,7 @@
                     : null
                 "
               >
-                <div class="relative">
+                <div class="relative flex">
                   <UserAvatar :user="d.closed_by || user.name" size="2xl" />
 
                   <div
