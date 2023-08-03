@@ -82,6 +82,11 @@ export default {
       }
     },
   },
+  pageMeta() {
+    return {
+      title: 'My Pages',
+    }
+  },
 }
 </script>
 <style scoped>
