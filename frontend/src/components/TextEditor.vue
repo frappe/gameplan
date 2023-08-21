@@ -26,7 +26,7 @@ export default {
       return this.$users.data
         .filter((user) => user.enabled)
         .map((user) => ({
-          label: user.full_name,
+          label: user.full_name.trimEnd(),
           value: user.name,
         }))
     },
