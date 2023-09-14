@@ -5,6 +5,7 @@
       label="Question"
       v-model="poll.title"
       @change="$emit('update:poll', poll)"
+      autocomplete="off"
     />
     <div class="space-y-2">
       <div class="text-sm leading-4 text-gray-700">Options</div>

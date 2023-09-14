@@ -27,7 +27,7 @@ class GPPoll(Document, GPPollAttributes):
 		discussion.comments_count = discussion.comments_count + 1
 		discussion.update_participants_count()
 		discussion.track_visit()
-		discussion.save()
+		discussion.save(ignore_permissions=True)
 
 	@frappe.whitelist()
 	def submit_vote(self, option):
