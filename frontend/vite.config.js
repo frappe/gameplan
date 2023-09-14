@@ -25,6 +25,25 @@ export default defineConfig({
       },
     }),
     visualizer({ emitFile: true }),
+    {
+      name: 'transform-index.html',
+      transformIndexHtml(html, context) {
+        if (!context.server) {
+          return html.replace(
+            /<\/body>/,
+            `
+            <script>
+                {% for key in boot %}
+                window["{{ key }}"] = {{ boot[key] | tojson }};
+                {% endfor %}
+            </script>
+            </body>
+            `
+          )
+        }
+        return html
+      },
+    },
   ],
   resolve: {
     alias: {
