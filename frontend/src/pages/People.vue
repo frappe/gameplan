@@ -70,8 +70,11 @@
                 <div class="flex w-3/5 items-center">
                   <UserAvatar :user="user.user" size="2xl" />
                   <div class="ml-3 min-w-0">
-                    <div class="text-base font-medium text-gray-900">
-                      {{ $user(user.user).full_name }}
+                    <div class="flex items-center space-x-2">
+                      <div class="text-base font-medium text-gray-900">
+                        {{ $user(user.user).full_name }}
+                      </div>
+                      <Badge v-if="$user(user.user).isGuest">Guest</Badge>
                     </div>
                     <div
                       v-if="user.bio"
