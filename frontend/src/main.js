@@ -22,10 +22,8 @@ import { createDialog } from './utils/dialogs'
 import { createToast } from './utils/toasts'
 import { getUser, users } from './data/users'
 import { session } from './data/session'
-import socket from './socket'
+import { initSocket } from './socket'
 import resetDataMixin from './utils/resetDataMixin'
-import { getCachedListResource } from 'frappe-ui/src/resources/listResource'
-import { getCachedResource } from 'frappe-ui/src/resources/resources'
 
 let globalComponents = {
   Button,
@@ -46,7 +44,6 @@ app.mixin(resetDataMixin)
 for (let key in globalComponents) {
   app.component(key, globalComponents[key])
 }
-app.config.globalProperties.$socket = socket
 app.config.globalProperties.$dayjs = dayjs
 app.config.globalProperties.$dialog = createDialog
 app.config.globalProperties.$toast = createToast
@@ -60,28 +57,23 @@ app.config.globalProperties.$isSessionUser = (email) => {
   return getUser().name === email
 }
 
+let socket
 if (import.meta.env.DEV) {
   frappeRequest({ url: '/api/method/gameplan.www.g.get_context_for_dev' }).then(
     (values) => {
       for (let key in values) {
         window[key] = values[key]
       }
+      socket = initSocket()
+      app.config.globalProperties.$socket = socket
       app.mount('#app')
-    }
+    },
   )
 } else {
+  socket = initSocket()
+  app.config.globalProperties.$socket = socket
   app.mount('#app')
 }
-
-socket.on('refetch_resource', (data) => {
-  if (data.cache_key) {
-    let resource =
-      getCachedResource(data.cache_key) || getCachedListResource(data.cache_key)
-    if (resource) {
-      resource.reload()
-    }
-  }
-})
 
 if (import.meta.env.DEV) {
   window.$dayjs = dayjs
