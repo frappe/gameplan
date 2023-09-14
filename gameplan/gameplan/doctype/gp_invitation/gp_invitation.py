@@ -39,6 +39,11 @@ class GPInvitation(Document):
 		)
 		self.db_set("email_sent_at", frappe.utils.now())
 
+	@frappe.whitelist()
+	def accept_invitation(self):
+		frappe.only_for("System Manager")
+		self.accept()
+
 	def accept(self):
 		if self.status == "Expired":
 			frappe.throw("Invalid or expired key")
