@@ -89,9 +89,6 @@ export default {
         if (!this.data.project) {
           return 'Please select a project'
         }
-        if (this.data.emails.filter(Boolean).length === 0) {
-          return 'Please enter at least one email'
-        }
       },
       onSuccess(teamId) {
         teams.reload()
