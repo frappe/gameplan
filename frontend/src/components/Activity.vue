@@ -79,6 +79,17 @@
         <template v-else-if="activity.data.field === 'description'">
           updated the description
         </template>
+        <template v-else-if="activity.data.field === 'project'">
+          changed project
+          <span v-if="activity.data.old_value">from&nbsp;</span>
+          <span class="text-gray-800">
+            {{ projectTitle(activity.data.old_value) }}
+          </span>
+          to
+          <span class="text-gray-800">
+            {{ projectTitle(activity.data.new_value) }}
+          </span>
+        </template>
         <template v-else>
           changed {{ activity.data.field_label }}
           <span v-if="activity.data.old_value">from&nbsp;</span>
@@ -97,6 +108,8 @@
 </template>
 <script>
 import UserProfileLink from './UserProfileLink.vue'
+import { projectTitle } from '@/utils/formatters'
+
 export default {
   name: 'Activity',
   props: {
@@ -106,5 +119,6 @@ export default {
     },
   },
   components: { UserProfileLink },
+  methods: { projectTitle },
 }
 </script>
