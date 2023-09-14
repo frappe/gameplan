@@ -1,8 +1,10 @@
 <template>
-  <div class="h-full w-full px-4 py-3 sm:px-5">
-    <div class="mb-5 flex items-center justify-between">
-      <h1 class="text-2xl font-semibold">Notifications</h1>
-      <div class="flex items-stretch space-x-2">
+  <header class="sticky top-0 z-10 border-b bg-white px-4 py-2.5 sm:px-5">
+    <div class="flex items-center justify-between">
+      <PageBreadcrumbs
+        :items="[{ label: 'Notifications', route: { name: 'Notifications' } }]"
+      />
+      <div class="h-7 flex items-center space-x-2">
         <Button
           @click="$resources.markAllAsRead.submit"
           :loading="$resources.markAllAsRead.loading"
@@ -19,9 +21,11 @@
         />
       </div>
     </div>
+  </header>
+  <div class="mx-auto w-full max-w-4xl px-5 pt-6">
     <div class="divide-y">
       <div
-        class="flex items-start justify-between py-2"
+        class="flex items-center justify-between py-2"
         v-for="d in notifications"
         :key="d.name"
       >
@@ -37,10 +41,10 @@
             {{ d.message }} {{ $dayjs(d.creation).fromNow() }}
           </div>
         </div>
-        <div class="ml-2 flex shrink-0 items-start space-x-2">
+        <div class="ml-2 flex shrink-0 items-center space-x-2">
           <router-link
             v-if="d.discussion || d.task"
-            class="block text-sm font-medium text-blue-500 hover:text-blue-700"
+            class="block text-sm font-medium text-gray-600 hover:text-gray-700"
             :to="
               d.discussion
                 ? {
@@ -68,14 +72,13 @@
           >
             {{ d.discussion ? 'View Discussion' : d.task ? 'View Task' : '' }}
           </router-link>
-          <button
-            v-if="!d.read"
-            class="rounded p-0.5 transition-colors hover:bg-gray-100"
-            @click="markAsRead(d.name)"
-            title="Mark as read"
-          >
-            <LucideX class="w-4" />
-          </button>
+          <Tooltip text="Mark as read">
+            <Button v-if="!d.read" variant="ghost" @click="markAsRead(d.name)">
+              <template #icon>
+                <LucideX class="w-4" />
+              </template>
+            </Button>
+          </Tooltip>
         </div>
       </div>
     </div>
@@ -179,7 +182,7 @@ export default {
           onSuccess: () => {
             this.$getResource('Unread Notifications Count')?.reload()
           },
-        }
+        },
       )
     },
   },
