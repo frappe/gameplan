@@ -11,7 +11,7 @@ from gameplan.mixins.reactions import HasReactions
 from gameplan.utils import remove_empty_trailing_paragraphs, url_safe_slug
 
 class GPDiscussion(HasActivity, HasMentions, HasReactions, Document):
-	on_delete_cascade = ['GP Comment', 'GP Discussion Visit']
+	on_delete_cascade = ['GP Comment', 'GP Discussion Visit', 'GP Activity']
 	on_delete_set_null = ['GP Notification']
 	activities = ['Discussion Closed', 'Discussion Reopened', 'Discussion Title Changed', 'Discussion Pinned', 'Discussion Unpinned']
 	mentions_field = 'content'

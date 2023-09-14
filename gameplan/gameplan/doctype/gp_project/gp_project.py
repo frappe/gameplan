@@ -13,7 +13,7 @@ from gameplan.api import invite_by_email
 
 
 class GPProject(ManageMembersMixin, Archivable, Document):
-	on_delete_cascade = ["GP Task", "GP Discussion"]
+	on_delete_cascade = ["GP Task", "GP Discussion", "GP Project Visit", "GP Followed Project", "GP Page", "GP Pinned Project"]
 	on_delete_set_null = ["GP Notification"]
 
 	@staticmethod
@@ -65,8 +65,6 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 			self.readme = f"""
 			<h3>Welcome to the {self.title} page!</h3>
 			<p>You can add a brief introduction about this project, links, resources, and other important information here.</p>
-			<p></p>
-			<p></p>
 		"""
 
 		self.append(
