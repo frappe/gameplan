@@ -132,7 +132,7 @@ import Activity from './Activity.vue'
 import PollEditor from './PollEditor.vue'
 import Poll from './Poll.vue'
 import { getScrollContainer } from '@/utils/scrollContainer'
-import socket from '@/socket'
+
 
 export default {
   name: 'CommentsArea',

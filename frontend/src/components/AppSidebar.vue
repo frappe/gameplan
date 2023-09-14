@@ -16,7 +16,7 @@
     class="inline-flex h-full flex-1 flex-col overflow-auto border-r bg-gray-50 pb-40"
     :style="{ width: `${sidebarWidth}px` }"
   >
-    <div class="flex w-full items-center justify-between px-2 py-2">
+    <div class="flex flex-col px-2 py-2">
       <UserDropdown />
     </div>
     <div class="flex-1">

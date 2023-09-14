@@ -15,7 +15,7 @@
   >
     <template #body-content>
       <div class="space-y-4">
-        <FormControl label="Title" v-model="newTask.title" />
+        <FormControl label="Title" v-model="newTask.title" autocomplete="off" />
         <FormControl
           label="Description"
           type="textarea"
@@ -98,7 +98,7 @@ function statusOptions({ onClick }) {
         label: status,
         onClick: () => onClick(status),
       }
-    }
+    },
   )
 }
 

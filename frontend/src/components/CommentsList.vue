@@ -148,7 +148,6 @@ import Activity from './Activity.vue'
 import PollEditor from './PollEditor.vue'
 import Poll from './Poll.vue'
 import { getScrollContainer } from '@/utils/scrollContainer'
-import socket from '@/socket'
 import { Tooltip } from 'frappe-ui'
 
 export default {
@@ -202,7 +201,7 @@ export default {
     if (!this.$refs.newCommentEditor?.editor.isEmpty) {
       this.showCommentBox = true
     }
-    socket.on('new_activity', (data) => {
+    this.$socket.on('new_activity', (data) => {
       if (
         data.reference_doctype == this.doctype &&
         data.reference_name == this.name
@@ -212,7 +211,7 @@ export default {
     })
   },
   beforeUnmount() {
-    socket.off('new_activity')
+    this.$socket.off('new_activity')
   },
   resources: {
     comments() {

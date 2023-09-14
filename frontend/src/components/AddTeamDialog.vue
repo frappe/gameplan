@@ -8,6 +8,7 @@
           v-model="newTeam.title"
           placeholder="Team Name"
           @keydown.enter="createTeam($event.target.value)"
+          autocomplete="off"
         />
         <FormControl
           type="select"
