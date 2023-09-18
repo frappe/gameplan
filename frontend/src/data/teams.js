@@ -50,3 +50,7 @@ export let activeTeams = computed(() => {
       return team
     })
 })
+
+export let getTeam = (teamId) => {
+  return teams.data.find((team) => team.name.toString() === teamId.toString())
+}

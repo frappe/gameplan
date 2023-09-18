@@ -182,8 +182,9 @@ const routes = [
               {
                 name: 'ProjectPage',
                 path: 'pages/:pageId/:slug?',
-                component: () => import('@/pages/ProjectPage.vue'),
+                component: () => import('@/pages/Page.vue'),
                 props: true,
+                meta: { fullWidth: true, hideHeader: true },
               },
             ],
           },

@@ -39,3 +39,9 @@ export function getTeamProjects(team) {
 export let activeProjects = computed(
   () => projects.data?.filter((project) => !project.archived_at) || []
 )
+
+export let getProject = (projectId) => {
+  return projects.data.find(
+    (project) => project.name.toString() === projectId.toString()
+  )
+}

@@ -54,7 +54,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-06-15 15:30:39.161068",
+ "modified": "2023-09-18 21:30:16.417667",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "GP Page",
@@ -110,5 +110,6 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "track_changes": 1
 }
