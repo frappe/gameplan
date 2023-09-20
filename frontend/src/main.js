@@ -37,6 +37,7 @@ let globalComponents = {
 }
 let app = createApp(App)
 setConfig('resourceFetcher', frappeRequest)
+setConfig('defaultListUrl', 'gameplan.extends.client.get_list')
 app.use(resourcesPlugin)
 app.use(pageMetaPlugin)
 app.use(router)
@@ -67,7 +68,7 @@ if (import.meta.env.DEV) {
       socket = initSocket()
       app.config.globalProperties.$socket = socket
       app.mount('#app')
-    },
+    }
   )
 } else {
   socket = initSocket()
