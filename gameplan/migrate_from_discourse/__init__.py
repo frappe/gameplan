@@ -2,27 +2,27 @@
 # MIT License. See license.txt
 
 from __future__ import unicode_literals
-from abc import abstractstaticmethod
 from posixpath import splitext
-from urllib.parse import urljoin
 import frappe
 import psycopg2
 from psycopg2.extras import DictCursor
-from frappe.database.database import savepoint
 from frappe.utils import update_progress_bar
 from bs4 import BeautifulSoup
 from .emojis import get_emoji
-import requests
+
+CONNECTION_STRING = "host='localhost' dbname='discourse_db' user='postgres' password='qwe' port=5432"
+UPLOADS_FOLDER = "/path/to/discourse-backup/uploads"
 
 def execute():
 	frappe.flags.in_import = True
-	# clear_data([
-	# 	# 'GP Project',
-	# 	# 'GP Team',
-	# 	'GP Discussion'
-	# ])
-	# migrate_users()
+	clear_data([
+		# 'GP Project',
+		# 'GP Team',
+		# 'GP Discussion'
+		# 'User'
+	])
 	# migrate_categories()
+	# migrate_users()
 	migrate_posts()
 
 
@@ -34,6 +34,7 @@ def migrate_posts():
 		from topics
 		left join posts on posts.topic_id = topics.id
 		where posts.user_id > 0 and posts.post_number = 1
+		order by topics.id asc
 	''')
 
 	for i, topic in enumerate(topics):
@@ -128,6 +129,7 @@ def migrate_posts():
 
 def process_images_in_html(doc, fieldname):
 	html = doc.get(fieldname)
+	touched = False
 	soup = BeautifulSoup(html, 'html.parser')
 	for img in soup.find_all('img', attrs={'class': 'emoji'}):
 		emoji_name = img.get('title', '::')[1:-1]
@@ -135,6 +137,7 @@ def process_images_in_html(doc, fieldname):
 			emoji = get_emoji(emoji_name)
 			if emoji:
 				img.replace_with(f' {emoji} ')
+				touched = True
 
 	for img in soup.findAll('img'):
 		src = img.get('src')
@@ -143,27 +146,31 @@ def process_images_in_html(doc, fieldname):
 			file = save_image(src, filename, doc)
 			if file:
 				img['src'] = file.file_url
+				touched = True
 
-	doc.db_set(fieldname, str(soup), update_modified=False)
+	if touched:
+		doc.db_set(fieldname, str(soup), update_modified=False)
 
 
 def save_image(src, filename=None, doc=None):
-	if not src.startswith('http'):
-		src = urljoin('https://gameplan.frappe.io', src)
+	parts = src.split('/uploads/', 1)
+	if len(parts) == 2:
+		file_path = parts[1]
+		full_path = f'{UPLOADS_FOLDER}/{file_path}'
+		file_content = None
+		try:
+			with open(full_path, 'rb') as f:
+				file_content = f.read()
+		except FileNotFoundError:
+			return
 
-	try:
-		res = requests.get(src)
-	except requests.exceptions.ConnectionError:
-		return
-
-	if res.ok:
-		_, extn = splitext(src)
+		_, extn = splitext(full_path)
 		hash = frappe.generate_hash(length=5)
 		filename = f'{filename or ""}-{hash}{extn}'.replace(' ', '-').replace('%20', '-')
 		filename = filename.split('?', 1)[0]
 		return frappe.get_doc(
 			doctype='File',
-			content=res.content,
+			content=file_content,
 			file_name=filename,
 			is_private=0,
 			attached_to_doctype=doc.doctype,
@@ -190,20 +197,21 @@ def get_reactions(post_id):
 	reactions = []
 	for d in likes:
 		reactions.append({
-			'owner': get_user(d.user_id),
+			'user': get_user(d.user_id),
 			'emoji': '💖'
 		})
 	return reactions
 
 def get_avatar_url(user_id):
 	result = run_query(f'''
-		select users.id, users.username, user_avatars.custom_upload_id from users
+		select users.id, url from users
 		left join user_avatars on user_avatars.user_id = users.id
-		where user_id = {user_id} limit 1;
+		left join uploads on uploads.id = user_avatars.custom_upload_id
+		where users.id = {user_id} limit 1;
 	''')
 	user = result[0] if result else None
 	if user:
-		return f'https://gameplan.frappe.io/user_avatar/gameplan.frappe.io/{user.username}/240/{user.custom_upload_id}.png'
+		return user['url']
 
 
 def clear_data(doctypes=None):
@@ -246,7 +254,7 @@ def migrate_users():
 		if doc:
 			avatar_url = get_avatar_url(user.id)
 			if avatar_url:
-				filename = f'{user.username}.png'.replace(' ', '-').replace('%20', '-')
+				filename = f'{user.username}'.replace(' ', '-').replace('%20', '-')
 				file = save_image(avatar_url, filename, doc)
 				if file:
 					doc.db_set('user_image', file.file_url)
@@ -255,229 +263,22 @@ def migrate_users():
 
 
 def migrate_categories():
-	categories = [{
-		'id': 46,
-		'project': "Business / Strategy",
-		'team': 'Company'
-	},
-	{
-		'id': 1,
-		'project': "Uncategorized",
-		'team': 'Company'
-	},
-	{
-		'id': 51,
-		'project': "Documentation",
-		'team': 'Engineering'
-	},
-	{
-		'id': 11,
-		'project': "General",
-		'team': 'HR'
-	},
-	{
-		'id': 19,
-		'project': "Friday Forum",
-		'team': 'Company'
-	},
-	{
-		'id': 34,
-		'project': "Conference",
-		'team': 'Marketing'
-	},
-	{
-		'id': 33,
-		'project': "General",
-		'team': 'Framework'
-	},
-	{
-		'id': 49,
-		'project': "General",
-		'team': 'Company'
-	},
-	{
-		'id': 20,
-		'project': "General",
-		'team': 'Support'
-	},
-	{
-		'id': 48,
-		'project': "Systems",
-		'team': 'Quality'
-	},
-	{
-		'id': 41,
-		'project': "CSR",
-		'team': 'Company'
-	},
-	{
-		'id': 42,
-		'project': "Contributor of the Month",
-		'team': 'HR'
-	},
-	{
-		'id': 28,
-		'project': "Monthly Update",
-		'team': 'Company'
-	},
-	{
-		'id': 55,
-		'project': "ISO",
-		'team': "Quality"
-	},
-	{
-		'id': 56,
-		'project': "SAAS",
-		'team': 'Engineering'
-	},
-	{
-		'id': 47,
-		'project': "Culture / Leadership",
-		'team': 'Company'
-	},
-	{
-		'id': 23,
-		'project': "General",
-		'team': 'Frappe Cloud'
-	},
-	{
-		'id': 54,
-		'project': "Solutions",
-		'team': 'Delivery Team'
-	},
-	{
-		'id': 36,
-		'project': "Grievance",
-		'team': "HR"
-	},
-	{
-		'id': 17,
-		'project': "Product Management",
-		'team': 'Company'
-	},
-	{
-		'id': 50,
-		'project': "General",
-		'team': 'Frappe School'
-	},
-	{
-		'id': 27,
-		'project': "Approved",
-		'team': "OpenFLC"
-	},
-	{
-		'id': 6,
-		'project': "SRE",
-		'team': 'DevOps'
-	},
-	{
-		'id': 30,
-		'project': "Delivery / Projects",
-		'team': 'Delivery Team'
-	},
-	{
-		'id': 13,
-		'project': "General",
-		'team': 'Sales'
-	},
-	{
-		'id': 9,
-		'project': "Training",
-		'team': "HR"
-	},
-	{
-		'id': 52,
-		'project': "Release",
-		'team': 'Engineering'
-	},
-	{
-		'id': 22,
-		'project': "General",
-		'team': 'Operations'
-	},
-	{
-		'id': 38,
-		'project': "General",
-		'team': 'Engineering'
-	},
-	{
-		'id': 53,
-		'project': "Team",
-		'team': 'Company'
-	},
-	{
-		'id': 43,
-		'project': "Goals & Reflections",
-		'team': 'HR'
-	},
-	{
-		'id': 45,
-		'project': "Legal",
-		'team': 'Company'
-	},
-	{
-		'id': 8,
-		'project': "General",
-		'team': 'Quality'
-	},
-	{
-		'id': 5,
-		'project': "Meta",
-		'team': 'Company'
-	},
-	{
-		'id': 25,
-		'project': "General",
-		'team': 'Design'
-	},
-	{
-		'id': 21,
-		'project': "Testing",
-		'team': "Quality"
-	},
-	{
-		'id': 10,
-		'project': "General",
-		'team': 'Marketing'
-	},
-	{
-		'id': 26,
-		'project': "General",
-		'team': 'OpenFLC'
-	},
-	{
-		'id': 7,
-		'project': "Accounts",
-		'team': 'Company'
-	},
-	{
-		'id': 16,
-		'project': "Wiki",
-		'team': 'Engineering'
-	},
-	{
-		'id': 12,
-		'project': "Fun Points",
-		'team': 'Company'
-	},
-	{
-		'id': 18,
-		'project': "General",
-		'team': 'Partner Team'
-	}]
+	# create one team under which all categories will be created as projects
+	team = 'General'
+	if not frappe.db.exists('GP Team', {'title': team}):
+		team_doc = frappe.get_doc(doctype='GP Team', title=team).insert()
+	else:
+		team_doc = frappe.get_doc('GP Team', {'title': team})
+
+	categories = run_query('''
+		select categories.id, categories.name as project
+		from categories
+	''')
 
 	for i, d in enumerate(categories):
 		update_progress_bar('Creating projects', i, len(categories), absolute=True)
 		id = d['id']
-		team = d['team']
 		project = d['project']
-
-		if not frappe.db.exists('GP Team', {'title': team}):
-			team_doc = frappe.get_doc(doctype='GP Team', title=team).insert()
-			log_discourse_map(team_doc, 'categories', id)
-		else:
-			team_doc = frappe.get_doc('GP Team', {'title': team})
-
 		project_doc = frappe.get_doc(doctype='GP Project', title=project, team=team_doc.name).insert()
 		log_discourse_map(project_doc, 'categories', id)
 
@@ -499,9 +300,7 @@ def run_query(query, values=None):
 	global conn, cursor
 
 	if not conn:
-		conn = psycopg2.connect(
-			"host='localhost' dbname='gameplandb2' user='postgres' password='qwe' port=5432"
-		)
+		conn = psycopg2.connect(CONNECTION_STRING)
 		cursor = conn.cursor(cursor_factory=DictCursor)
 
 	cursor.execute(query, values)
