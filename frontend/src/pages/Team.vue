@@ -2,7 +2,7 @@
   <div class="pb-20">
     <header class="sticky top-0 z-10 border-b bg-white px-5 py-2.5">
       <div class="flex items-center justify-between">
-        <PageBreadcrumbs
+        <Breadcrumbs
           class="h-7"
           :items="[
             {
@@ -27,7 +27,7 @@
               </button>
             </IconPicker>
           </template>
-        </PageBreadcrumbs>
+        </Breadcrumbs>
 
         <div class="flex items-center space-x-2">
           <TeamMembers :team="team" />
@@ -74,7 +74,7 @@
   </div>
 </template>
 <script>
-import { Dropdown, Badge, Tooltip } from 'frappe-ui'
+import { Breadcrumbs, Dropdown, Badge, Tooltip } from 'frappe-ui'
 import IconPicker from '@/components/IconPicker.vue'
 import Tabs from '@/components/Tabs.vue'
 
@@ -82,6 +82,7 @@ export default {
   name: 'Team',
   props: ['team'],
   components: {
+    Breadcrumbs,
     Dropdown,
     IconPicker,
     Tabs,

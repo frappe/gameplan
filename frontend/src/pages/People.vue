@@ -4,7 +4,7 @@
       <div class="w-full">
         <header class="sticky top-0 z-10 border-b bg-white px-4 py-2.5 sm:px-5">
           <div class="flex items-center justify-between">
-            <PageBreadcrumbs
+            <Breadcrumbs
               :items="[{ label: 'People', route: { name: 'People' } }]"
             />
             <div class="h-7"></div>
@@ -128,13 +128,13 @@
   </div>
 </template>
 <script>
-import { Badge, Input, Select, TextInput } from 'frappe-ui'
+import { Breadcrumbs, Badge, Input, Select, TextInput } from 'frappe-ui'
 import { showSettingsDialog } from '@/components/Settings/SettingsDialog.vue'
 
 export default {
   name: 'People',
   props: ['person'],
-  components: { Badge, Input, TextInput, Select },
+  components: { Badge, Input, TextInput, Select, Breadcrumbs },
   data() {
     return {
       search: '',

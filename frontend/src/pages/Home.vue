@@ -3,7 +3,7 @@
     <header
       class="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-5 py-2.5"
     >
-      <PageBreadcrumbs class="h-7" :items="breadcrumbs" />
+      <Breadcrumbs class="h-7" :items="breadcrumbs" />
     </header>
 
     <router-view v-slot="{ Component, route }">
@@ -16,7 +16,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { getCachedDocumentResource, usePageMeta } from 'frappe-ui'
+import { Breadcrumbs, getCachedDocumentResource, usePageMeta } from 'frappe-ui'
 
 let breadcrumbs = computed(() => {
   let route = useRoute()

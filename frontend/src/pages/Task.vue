@@ -3,7 +3,7 @@
     <header
       class="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-5 py-2.5"
     >
-      <PageBreadcrumbs class="h-7" :items="breadcrumbs" />
+      <Breadcrumbs class="h-7" :items="breadcrumbs" />
     </header>
     <div>
       <TaskDetail :taskId="taskId" />
@@ -11,7 +11,7 @@
   </div>
 </template>
 <script setup>
-import { getCachedDocumentResource } from 'frappe-ui'
+import { Breadcrumbs, getCachedDocumentResource } from 'frappe-ui'
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 

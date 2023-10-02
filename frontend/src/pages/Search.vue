@@ -1,9 +1,7 @@
 <template>
   <header class="sticky top-0 z-10 border-b bg-white px-4 py-2.5 sm:px-5">
     <div class="flex items-center justify-between">
-      <PageBreadcrumbs
-        :items="[{ label: 'Search', route: { name: 'Search' } }]"
-      />
+      <Breadcrumbs :items="[{ label: 'Search', route: { name: 'Search' } }]" />
     </div>
   </header>
   <div class="mx-auto mt-6 max-w-4xl px-4 sm:px-5">
@@ -68,7 +66,7 @@
   </div>
 </template>
 <script>
-import { TextInput } from 'frappe-ui'
+import { Breadcrumbs, TextInput } from 'frappe-ui'
 
 export default {
   name: 'AppSearch',
@@ -185,7 +183,7 @@ export default {
       emoji: '🔍',
     }
   },
-  components: { TextInput },
+  components: { TextInput, Breadcrumbs },
 }
 </script>
 <style>

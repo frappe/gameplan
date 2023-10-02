@@ -3,7 +3,7 @@
     <header
       class="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-5 py-2.5"
     >
-      <PageBreadcrumbs
+      <Breadcrumbs
         class="h-7"
         :items="[{ label: 'My Tasks', route: { name: 'MyTasks' } }]"
       />
@@ -25,7 +25,7 @@
 </template>
 <script setup>
 import { ref, computed } from 'vue'
-import { getCachedListResource, usePageMeta } from 'frappe-ui'
+import { getCachedListResource, usePageMeta, Breadcrumbs } from 'frappe-ui'
 import { getUser } from '@/data/users'
 
 let newTaskDialog = ref(null)

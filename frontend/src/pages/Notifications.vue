@@ -1,10 +1,10 @@
 <template>
   <header class="sticky top-0 z-10 border-b bg-white px-4 py-2.5 sm:px-5">
     <div class="flex items-center justify-between">
-      <PageBreadcrumbs
+      <Breadcrumbs
         :items="[{ label: 'Notifications', route: { name: 'Notifications' } }]"
       />
-      <div class="h-7 flex items-center space-x-2">
+      <div class="flex h-7 items-center space-x-2">
         <Button
           @click="$resources.markAllAsRead.submit"
           :loading="$resources.markAllAsRead.loading"
@@ -88,7 +88,7 @@
   </div>
 </template>
 <script>
-import { TabButtons, Tooltip } from 'frappe-ui'
+import { TabButtons, Tooltip, Breadcrumbs } from 'frappe-ui'
 import Link from '@/components/Link.vue'
 
 export default {
@@ -104,7 +104,7 @@ export default {
       emoji: '🔔',
     }
   },
-  components: { TabButtons, Tooltip, Link },
+  components: { TabButtons, Tooltip, Link, Breadcrumbs },
   resources: {
     unreadNotifications() {
       if (this.activeTab !== 'Unread') return
@@ -182,7 +182,7 @@ export default {
           onSuccess: () => {
             this.$getResource('Unread Notifications Count')?.reload()
           },
-        },
+        }
       )
     },
   },

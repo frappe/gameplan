@@ -1172,10 +1172,25 @@
     "@vueuse/shared" "10.1.2"
     vue-demi ">=0.14.0"
 
+"@vueuse/core@^10.4.1":
+  version "10.4.1"
+  resolved "https://registry.yarnpkg.com/@vueuse/core/-/core-10.4.1.tgz#fc2c8a83a571c207aaedbe393b22daa6d35123f2"
+  integrity sha512-DkHIfMIoSIBjMgRRvdIvxsyboRZQmImofLyOHADqiVbQVilP8VVHDhBX2ZqoItOgu7dWa8oXiNnScOdPLhdEXg==
+  dependencies:
+    "@types/web-bluetooth" "^0.0.17"
+    "@vueuse/metadata" "10.4.1"
+    "@vueuse/shared" "10.4.1"
+    vue-demi ">=0.14.5"
+
 "@vueuse/metadata@10.1.2":
   version "10.1.2"
   resolved "https://registry.yarnpkg.com/@vueuse/metadata/-/metadata-10.1.2.tgz#d8ffe557b1042efd03a0aa88540a00c25d193ee3"
   integrity sha512-3mc5BqN9aU2SqBeBuWE7ne4OtXHoHKggNgxZR2K+zIW4YLsy6xoZ4/9vErQs6tvoKDX6QAqm3lvsrv0mczAwIQ==
+
+"@vueuse/metadata@10.4.1":
+  version "10.4.1"
+  resolved "https://registry.yarnpkg.com/@vueuse/metadata/-/metadata-10.4.1.tgz#9d2ff5c67abf17a8c07865c2413fbd0e92f7b7d7"
+  integrity sha512-2Sc8X+iVzeuMGHr6O2j4gv/zxvQGGOYETYXEc41h0iZXIRnRbJZGmY/QP8dvzqUelf8vg0p/yEA5VpCEu+WpZg==
 
 "@vueuse/shared@10.1.2":
   version "10.1.2"
@@ -1183,6 +1198,13 @@
   integrity sha512-1uoUTPBlgyscK9v6ScGeVYDDzlPSFXBlxuK7SfrDGyUTBiznb3mNceqhwvZHjtDRELZEN79V5uWPTF1VDV8svA==
   dependencies:
     vue-demi ">=0.14.0"
+
+"@vueuse/shared@10.4.1":
+  version "10.4.1"
+  resolved "https://registry.yarnpkg.com/@vueuse/shared/-/shared-10.4.1.tgz#d5ce33033c156efb60664b5d6034d6cd4e2f530c"
+  integrity sha512-vz5hbAM4qA0lDKmcr2y3pPdU+2EVw/yzfRsBdu+6+USGa4PxqSQRYIUC9/NcT06y+ZgaTsyURw2I9qOFaaXHAg==
+  dependencies:
+    vue-demi ">=0.14.5"
 
 acorn@^8.8.2:
   version "8.8.2"
@@ -1996,10 +2018,10 @@ fraction.js@^4.2.0:
   resolved "https://registry.yarnpkg.com/fraction.js/-/fraction.js-4.2.0.tgz#448e5109a313a3527f5a3ab2119ec4cf0e0e2950"
   integrity sha512-MhLuK+2gUcnZe8ZHlaaINnQLl0xRIGRfcGk2yl8xoQAfHrSsL3rYu6FCmBdkdbhc9EPlwyGHewaRsvwRMJtAlA==
 
-frappe-ui@^0.1.5:
-  version "0.1.5"
-  resolved "https://registry.yarnpkg.com/frappe-ui/-/frappe-ui-0.1.5.tgz#59e5576ad1511e6d097a88fc065d5990a2ce9624"
-  integrity sha512-05Ikc0xLt7Pq2OP95wmQWdMzEJwJ1k8NSX57uiAMJLRNkjQTykvsn1G70/XcHxQnOhd5QOs+zKNMrapvmKuwDw==
+frappe-ui@^0.1.6:
+  version "0.1.6"
+  resolved "https://registry.yarnpkg.com/frappe-ui/-/frappe-ui-0.1.6.tgz#92e92fd1cab582dde09cf278b311f177364f2877"
+  integrity sha512-QmTt+hRF4/u3GSdCVo5hpUgQQX+Rm9hOvNMd3c1xNfCpZJ17nGODk6O89cnbbcfXWvIcTj6mnU7r/lSxa+qq9A==
   dependencies:
     "@headlessui/vue" "^1.7.14"
     "@popperjs/core" "^2.11.2"
@@ -2022,6 +2044,7 @@ frappe-ui@^0.1.5:
     "@tiptap/starter-kit" "^2.0.3"
     "@tiptap/suggestion" "^2.0.3"
     "@tiptap/vue-3" "^2.0.3"
+    "@vueuse/core" "^10.4.1"
     feather-icons "^4.28.0"
     idb-keyval "^6.2.0"
     showdown "^2.1.0"
@@ -3604,6 +3627,11 @@ vue-demi@>=0.14.0:
   version "0.14.5"
   resolved "https://registry.yarnpkg.com/vue-demi/-/vue-demi-0.14.5.tgz#676d0463d1a1266d5ab5cba932e043d8f5f2fbd9"
   integrity sha512-o9NUVpl/YlsGJ7t+xuqJKx8EBGf1quRhCiT6D/J0pfwmk9zUwYkC7yrF4SZCe6fETvSM3UNL2edcbYrSyc4QHA==
+
+vue-demi@>=0.14.5:
+  version "0.14.6"
+  resolved "https://registry.yarnpkg.com/vue-demi/-/vue-demi-0.14.6.tgz#dc706582851dc1cdc17a0054f4fec2eb6df74c92"
+  integrity sha512-8QA7wrYSHKaYgUxDA5ZC24w+eHm3sYCbp0EzcDwKqN3p6HqtTCGR/GVsPyZW92unff4UlcSh++lmqDWN3ZIq4w==
 
 vue-router@^4.2.2:
   version "4.2.2"

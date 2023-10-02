@@ -3,7 +3,7 @@
     <header
       class="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-5 py-2.5"
     >
-      <PageBreadcrumbs class="h-7" :items="breadcrumbs">
+      <Breadcrumbs class="h-7" :items="breadcrumbs">
         <template #prefix="{ item }">
           <span
             class="mr-2 flex rounded-sm text-2xl leading-none"
@@ -12,7 +12,7 @@
             {{ item.icon }}
           </span>
         </template>
-      </PageBreadcrumbs>
+      </Breadcrumbs>
       <div class="flex items-center space-x-2">
         <span class="hidden text-sm text-gray-600 sm:block" v-if="page.doc">
           Last updated {{ $dayjs(page.doc.modified).format('LLL') }}
@@ -55,14 +55,14 @@
   </div>
 </template>
 <script>
-import { TextEditor, getCachedDocumentResource } from 'frappe-ui'
+import { Breadcrumbs, TextEditor, getCachedDocumentResource } from 'frappe-ui'
 import { getTeam } from '@/data/teams'
 import { getProject } from '@/data/projects'
 
 export default {
   name: 'Page',
   props: ['pageId', 'slug'],
-  components: { TextEditor },
+  components: { TextEditor, Breadcrumbs },
   resources: {
     page() {
       return {

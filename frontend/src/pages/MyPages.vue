@@ -2,7 +2,7 @@
   <header
     class="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-5 py-2.5"
   >
-    <PageBreadcrumbs
+    <Breadcrumbs
       class="h-7"
       :items="[{ label: 'My Pages', route: { name: 'MyPages' } }]"
     />
@@ -50,7 +50,7 @@
   </div>
 </template>
 <script>
-import { Dropdown, Select } from 'frappe-ui'
+import { Dropdown, Select, Breadcrumbs } from 'frappe-ui'
 import ArrowDownUp from '~icons/lucide/arrow-up-down'
 import PageGrid from './PageGrid.vue'
 

@@ -5,7 +5,7 @@
         class="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-5 py-2.5"
         v-if="!route.meta?.hideHeader"
       >
-        <PageBreadcrumbs class="h-7" :items="breadcrumbs">
+        <Breadcrumbs class="h-7" :items="breadcrumbs">
           <template #prefix="{ item }">
             <span
               class="mr-2 flex rounded-sm text-2xl leading-none"
@@ -14,7 +14,7 @@
               {{ item.icon }}
             </span>
           </template>
-        </PageBreadcrumbs>
+        </Breadcrumbs>
         <div
           v-if="$route.name === 'ProjectOverview'"
           class="flex items-center space-x-2"
@@ -230,6 +230,7 @@ import {
   Autocomplete,
   Dropdown,
   FormControl,
+  Breadcrumbs,
   frappeRequest,
   Input,
   Tooltip,
@@ -262,6 +263,7 @@ export default {
     FormControl,
     Select,
     Textarea,
+    Breadcrumbs,
   },
   setup() {
     const size = useScreenSize()

@@ -3,7 +3,7 @@
     <header
       class="sticky top-0 z-10 flex border-b bg-white px-4 py-2.5 sm:px-5"
     >
-      <PageBreadcrumbs
+      <Breadcrumbs
         :items="[
           { label: 'People', route: { name: 'People' } },
           {
@@ -140,7 +140,13 @@
   </div>
 </template>
 <script>
-import { Dialog, FileUploader, FormControl, TabButtons } from 'frappe-ui'
+import {
+  Breadcrumbs,
+  Dialog,
+  FileUploader,
+  FormControl,
+  TabButtons,
+} from 'frappe-ui'
 import CoverImage from '@/components/CoverImage.vue'
 import ImagePreview from '../components/ImagePreview.vue'
 import ColorPicker from '@/components/ColorPicker.vue'
@@ -160,6 +166,7 @@ export default {
     UserImage,
     FormControl,
     TabButtons,
+    Breadcrumbs,
   },
   data() {
     return {
