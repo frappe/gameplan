@@ -60,8 +60,6 @@ website_route_rules = [
 
 website_redirects = [
 	{"source": r"/teams(/.*)?", "target": r"/g\1"},
-	{"source": "/", "target": "/g"},
-	{"source": "/login", "target": "/g/login"},
 ]
 
 # Generators
