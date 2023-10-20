@@ -51,7 +51,10 @@ def batch(requests):
 		try:
 			frappe.db.savepoint(savepoint)
 			frappe.form_dict.update(request_params)
-			response = handle()
+			handle()
+			response = frappe.response.get("message")
+			if response is not None:
+				frappe.response["message"] = None
 			frappe.db.release_savepoint(savepoint)
 		except Exception as e:
 			frappe.db.rollback(save_point=savepoint)
