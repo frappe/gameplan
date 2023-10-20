@@ -41,7 +41,7 @@ def apply_custom_filters(doctype, query):
 
 @frappe.whitelist()
 def batch(requests):
-	from frappe.handler import handle
+	from frappe.handler import execute_cmd
 	from frappe.app import handle_exception
 	requests = frappe.parse_json(requests)
 	responses = []
@@ -50,11 +50,9 @@ def batch(requests):
 		savepoint = f'batch_request_{i}'
 		try:
 			frappe.db.savepoint(savepoint)
+			cmd = request_params.pop("cmd")
 			frappe.form_dict.update(request_params)
-			handle()
-			response = frappe.response.get("message")
-			if response is not None:
-				frappe.response["message"] = None
+			response = execute_cmd(cmd)
 			frappe.db.release_savepoint(savepoint)
 		except Exception as e:
 			frappe.db.rollback(save_point=savepoint)
@@ -62,4 +60,4 @@ def batch(requests):
 
 		responses.append(response)
 
-	return [r.json for r in responses]
+	return responses
