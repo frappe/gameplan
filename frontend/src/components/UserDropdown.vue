@@ -40,7 +40,7 @@ export default {
           label: 'My Profile',
           route: {
             name: 'PersonProfile',
-            params: { personId: this.$user().user_profile },
+            params: { personId: this.$user().name },
           },
         },
         {
