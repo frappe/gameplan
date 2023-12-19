@@ -1,0 +1,29 @@
+# forked (:p) from frappe/frappe
+
+name: Create fortnightly release
+on:
+  schedule:
+    # 13:00 UTC -> 7pm IST on every alternate Tuesday
+    - cron: '0 13 * * 2/2'
+  workflow_dispatch:
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+
+    steps:
+      - uses: octokit/request-action@v2.x
+        with:
+          route: POST /repos/{owner}/{repo}/pulls
+          owner: frappe
+          repo: gameplan
+          title: |-
+            "chore: merge 'develop' into 'main'"
+          body: "Automated fortnightly release"
+          base: main
+          head: develop
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

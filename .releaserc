@@ -1,0 +1,31 @@
+{
+  "branches": [
+    "main"
+  ],
+  "plugins": [
+    "@semantic-release/commit-analyzer",
+    {
+      "preset": "angular",
+      "releaseRules": [
+        {
+          "breaking": true,
+          "release": false
+        }
+      ]
+    },
+    [
+      "@semantic-release/exec",
+      {
+        "prepareCmd": 'toml set --toml-path pyproject.toml project.version ${nextRelease.version}'
+      }
+    ],
+    [
+      "@semantic-release/git",
+      {
+        "assets": ["pyproject.toml"],
+        "message": "chore(release): bumped to v${nextRelease.version}"
+      }
+    ],
+    "@semantic-release/github"
+  ]
+}
