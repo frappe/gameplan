@@ -54,21 +54,31 @@
         <section
           class="aspect-[37/50] cursor-pointer overflow-hidden rounded-md border border-gray-50 p-3 shadow-lg transition-shadow hover:shadow-2xl"
         >
-          <h1 class="text-lg font-semibold leading-none">{{ d.title }}</h1>
-          <div class="mt-1.5 text-base leading-none text-gray-700">
-            Updated {{ $dayjs(d.modified).fromNow() }}
+          <div class="overflow-hidden text-ellipsis whitespace-nowrap">
+            <h1 class="text-lg font-semibold leading-none">
+              {{ d.title }}
+            </h1>
+            <div
+              class="mt-1.5 flex items-center text-sm leading-none text-gray-700"
+            >
+              <div v-if="d.project">
+                {{ projectTitle(d.project).value }} &middot;&nbsp;
+              </div>
+              <div>Updated {{ $dayjs(d.modified).fromNow() }}</div>
+            </div>
+            <hr class="my-2 border-gray-100" />
+            <div
+              class="prose prose-sm pointer-events-none w-[200%] origin-top-left scale-[.55] prose-p:my-1 md:w-[250%] md:scale-[.39]"
+              v-html="d.content"
+            />
           </div>
-          <hr class="my-2 border-gray-100" />
-          <div
-            class="prose prose-sm pointer-events-none w-[200%] origin-top-left scale-[.55] prose-p:my-1 md:w-[250%] md:scale-[.39]"
-            v-html="d.content"
-          />
         </section>
       </router-link>
     </div>
   </div>
 </template>
 <script>
+import { projectTitle } from '@/utils/formatters'
 import { Dropdown } from 'frappe-ui'
 
 export default {
@@ -95,6 +105,9 @@ export default {
         auto: true,
       }
     },
+  },
+  methods: {
+    projectTitle,
   },
   components: { Dropdown },
 }

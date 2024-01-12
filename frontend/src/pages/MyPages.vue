@@ -42,7 +42,7 @@
     <div class="py-6">
       <PageGrid
         :listOptions="{
-          filters: { owner: $user().name, project: ['is', 'not set'] },
+          filters: { owner: $user().name },
           orderBy,
         }"
       />
@@ -56,7 +56,7 @@ import PageGrid from './PageGrid.vue'
 
 export default {
   name: 'MyPages',
-  components: { Dropdown, Select, ArrowDownUp, PageGrid },
+  components: { Dropdown, Select, ArrowDownUp, PageGrid, Breadcrumbs },
   data() {
     return {
       orderBy: 'modified desc',

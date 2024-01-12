@@ -12,7 +12,7 @@ export function projectTitle(project) {
     projectFormatters[projectId] = computed(() => {
       if (projects.data.length > 0) {
         const project = projects.data.find(
-          (p) => p.name.toString() === projectId,
+          (p) => p.name.toString() === projectId
         )
         if (project) {
           return project.title

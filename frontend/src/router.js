@@ -4,7 +4,7 @@ import { users } from './data/users'
 import { getScrollContainer, scrollTo } from './utils/scrollContainer'
 
 let defaultRoute = window.default_route
-if (defaultRoute?.includes('{{')) {
+if (!defaultRoute || defaultRoute?.includes('{{')) {
   defaultRoute = '/discussions'
 }
 
