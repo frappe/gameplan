@@ -3,6 +3,7 @@
 
 from __future__ import unicode_literals
 import frappe
+from frappe.utils.telemetry import capture
 
 no_cache = 1
 
@@ -13,6 +14,8 @@ def get_context():
 	context = frappe._dict()
 	context.boot = get_boot()
 	context.boot.csrf_token = csrf_token
+	if frappe.session.user != 'Guest':
+		capture('active_site', 'gameplan')
 	return context
 
 @frappe.whitelist(methods=['POST'], allow_guest=True)
