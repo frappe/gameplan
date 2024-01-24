@@ -2,11 +2,15 @@
 # MIT License. See license.txt
 
 from __future__ import unicode_literals
+
 import re
+
 import frappe
+from frappe.core.utils import html2text
+from frappe.utils import cstr, update_progress_bar
+
 import gameplan
 from gameplan.utils.search import Search
-from frappe.utils import strip_html_tags, update_progress_bar, cstr
 
 UNSAFE_CHARS = re.compile(r"[\[\]{}<>+]")
 
@@ -53,7 +57,7 @@ class GameplanSearch(Search):
 			id = f"GP Discussion:{doc.name}"
 			fields = {
 				"title": doc.title,
-				"content": strip_html_tags(doc.content),
+				"content": html2text(doc.content),
 				"modified": doc.modified,
 				"team": doc.team,
 				"project": doc.project,
@@ -66,7 +70,7 @@ class GameplanSearch(Search):
 			id = f"GP Task:{doc.name}"
 			fields = {
 				"title": doc.title,
-				"content": strip_html_tags(doc.description),
+				"content": html2text(doc.description),
 				"modified": doc.modified,
 				"team": doc.team,
 				"project": doc.project,
@@ -79,7 +83,7 @@ class GameplanSearch(Search):
 			id = f"GP Page:{doc.name}"
 			fields = {
 				"title": doc.title,
-				"content": strip_html_tags(doc.content),
+				"content": html2text(doc.content),
 				"modified": doc.modified,
 				"team": doc.team,
 				"project": doc.project,
@@ -93,7 +97,12 @@ class GameplanSearch(Search):
 			team = frappe.db.get_value(doc.reference_doctype, doc.reference_name, "team", cache=True)
 			project = frappe.db.get_value(doc.reference_doctype, doc.reference_name, "project", cache=True)
 
-			fields = {"content": strip_html_tags(doc.content), "modified": doc.modified, "team": team, "project": project}
+			fields = {
+				"content": html2text(doc.content),
+				"modified": doc.modified,
+				"team": team,
+				"project": project,
+			}
 			payload = {
 				"reference_doctype": doc.reference_doctype,
 				"reference_name": doc.reference_name,
