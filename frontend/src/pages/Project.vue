@@ -158,20 +158,12 @@
         >
           <template #body-content>
             <Autocomplete
-              :options="
-                $getListResource('Teams')
-                  .data.filter((d) => d.name != team.doc.name)
-                  .map((d) => ({
-                    label: d.title,
-                    value: d.name,
-                    icon: d.icon,
-                  }))
-              "
+              :options="moveToTeamsList"
               v-model="projectMoveDialog.team"
               placeholder="Select a team"
             >
-              <template #prefix="{ option }">
-                <span class="mr-0.5">{{ option.icon }}</span>
+              <template #item-prefix="{ option }">
+                <span class="mr-2">{{ option.icon }}</span>
               </template>
             </Autocomplete>
             <ErrorMessage class="mt-2" :message="project.moveToTeam.error" />
@@ -242,8 +234,8 @@ import IconPicker from '@/components/IconPicker.vue'
 import Links from '@/components/Links.vue'
 import Tabs from '@/components/Tabs.vue'
 import InviteGuestDialog from '@/components/InviteGuestDialog.vue'
-import { projects, getTeamProjects } from '@/data/projects'
-import { teams } from '@/data/teams'
+import { projects } from '@/data/projects'
+import { activeTeams, teams } from '@/data/teams'
 import PinIcon from '~icons/lucide/pin'
 import { useScreenSize } from '@/utils/composables'
 
@@ -281,6 +273,15 @@ export default {
     }
   },
   computed: {
+    moveToTeamsList() {
+      return activeTeams.value
+        .filter((d) => d.name != this.team.name)
+        .map((d) => ({
+          label: d.title,
+          value: d.name,
+          icon: d.icon,
+        }))
+    },
     task() {
       let task = null
       if (this.$route.name === 'ProjectTaskDetail') {
