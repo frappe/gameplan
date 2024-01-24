@@ -2,18 +2,33 @@
 # MIT License. See license.txt
 
 from __future__ import unicode_literals
-import frappe
+
 import json
-from redis.commands.search.field import TextField, TagField
+
+import frappe
+from frappe.utils import cstr
+from redis.commands.search.field import TagField, TextField
 from redis.commands.search.indexDefinition import IndexDefinition
 from redis.commands.search.query import Query
 from redis.exceptions import ResponseError
-from frappe.utils import cstr
+
+_redis_conn = None
+
+
+def get_redis_conn():
+	global _redis_conn
+
+	if _redis_conn is None:
+		from frappe.utils.redis_wrapper import RedisWrapper
+
+		_redis_conn = RedisWrapper.from_url(frappe.conf.get("redis_cache"))
+
+	return _redis_conn
 
 
 class Search:
 	def __init__(self, index_name, prefix, schema) -> None:
-		self.redis = frappe.cache()
+		self.redis = get_redis_conn()
 		self.index_name = index_name
 		self.prefix = prefix
 		self.schema = []
