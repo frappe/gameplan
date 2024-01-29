@@ -14,6 +14,8 @@ from gameplan.utils.search import Search
 
 UNSAFE_CHARS = re.compile(r"[\[\]{}<>+]")
 
+INDEX_BUILD_FLAG = "discussions_index_in_progress"
+
 
 class GameplanSearch(Search):
 	def __init__(self) -> None:
@@ -183,10 +185,10 @@ class GameplanSearch(Search):
 
 
 def build_index():
-	frappe.cache().set_value("discussions_index_in_progress", True)
+	frappe.cache().set_value(INDEX_BUILD_FLAG, True)
 	search = GameplanSearch()
 	search.build_index()
-	frappe.cache().set_value("discussions_index_in_progress", False)
+	frappe.cache().set_value(INDEX_BUILD_FLAG, False)
 
 
 def build_index_in_background():
@@ -196,5 +198,5 @@ def build_index_in_background():
 
 def build_index_if_not_exists():
 	search = GameplanSearch()
-	if not search.index_exists():
+	if not search.index_exists() or not frappe.cache.exists(INDEX_BUILD_FLAG):
 		build_index()
