@@ -25,9 +25,9 @@
       v-if="$resources.search.params && $resources.search.data"
       class="mt-4 text-base font-semibold text-gray-800"
     >
-      About {{ $resources.search.data.total }} results for "{{
+      {{ $resources.search.data.total }} results for "{{
         $resources.search.params?.query
-      }}" ({{ $resources.search.data.duration.toFixed(2) }}
+      }}" (in about {{ $resources.search.data.duration.toFixed(2) }}
       ms)
     </div>
     <div
@@ -87,10 +87,10 @@ export default {
       transform(data) {
         let out = {
           groups: [],
-          total: 100,
-          duration: 2,
+          total: data.total,
+          duration: data.duration,
         }
-        for (let group in data) {
+        for (let group in data.results) {
           let title
           if (group === 'GP Discussion') {
             title = 'Discussions'
@@ -101,10 +101,9 @@ export default {
           }
           out.groups.push({
             title,
-            items: data[group],
+            items: data.results[group],
           })
         }
-        console.log(out)
         return out
       }
     },
