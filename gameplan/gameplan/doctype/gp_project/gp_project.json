@@ -133,7 +133,7 @@
    "link_fieldname": "project"
   }
  ],
- "modified": "2023-05-29 17:46:40.841850",
+ "modified": "2024-02-06 12:12:18.808576",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "GP Project",
@@ -183,7 +183,8 @@
    "read": 1,
    "report": 1,
    "role": "Gameplan Guest",
-   "share": 1
+   "share": 1,
+   "write": 1
   }
  ],
  "show_title_field_in_link": 1,

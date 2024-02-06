@@ -98,7 +98,7 @@ function statusOptions({ onClick }) {
         label: status,
         onClick: () => onClick(status),
       }
-    },
+    }
   )
 }
 
@@ -118,7 +118,7 @@ function show({ defaults, onSuccess } = {}) {
   _onSuccess = onSuccess
 }
 
-function onCreateClick({ close }) {
+function onCreateClick(close) {
   createTask
     .submit(newTask.value, {
       validate() {
