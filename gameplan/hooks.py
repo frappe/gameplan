@@ -124,7 +124,6 @@ after_migrate = ["gameplan.search.build_index_in_background"]
 doc_events = {
     "*": {
         "on_trash": "gameplan.mixins.on_delete.on_trash",
-        "on_update": "frappe_search.frappe_search.doctype.search.search.update_index",
     },
     "User": {
         "after_insert": "gameplan.gameplan.doctype.gp_user_profile.gp_user_profile.create_user_profile",
@@ -226,3 +225,24 @@ scheduler_events = {
 # Recommended only for DocTypes which have limited documents with untranslated names
 # For example: Role, Gender, etc.
 # translated_search_doctypes = []
+
+frappe_search_doctypes = {
+    "GP Discussion": {
+        "title": "title",
+        "content": ["content"],
+        "extras": ["team", "project"],
+    },
+    "GP Task": {
+        "title": "title",
+        "content": ["description"],
+        "extras": ["team", "project"],
+    },
+    "GP Page": {
+        "title": "title",
+        "content": ["content"],
+        "extras": ["team", "project"],
+    },
+    "GP Comment": {
+        "content": ["content"],
+    },
+}

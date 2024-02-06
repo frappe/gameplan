@@ -80,7 +80,7 @@ export default {
   resources: {
     search: {
       cache: 'Search',
-      url: 'frappe_search.frappe_search.doctype.search.search.tantivy_search',
+      url: 'frappe_search.core.search',
       makeParams(query) {
         return { query, start: this.start }
       },
