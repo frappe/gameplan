@@ -25,9 +25,9 @@
       v-if="$resources.search.params && $resources.search.data"
       class="mt-4 text-base font-semibold text-gray-800"
     >
-      About {{ $resources.search.data.total }} results for "{{
+      {{ $resources.search.data.total }} results for "{{
         $resources.search.params?.query
-      }}" ({{ $resources.search.data.duration.toFixed(2) }}
+      }}" (in about {{ $resources.search.data.duration.toFixed(2) }}
       ms)
     </div>
     <div
@@ -44,21 +44,18 @@
         </div>
         <router-link
           v-for="item in group.items"
-          :key="item.name + item.via_comment"
+          :key="item.name"
           :to="getRoute(item)"
           class="block overflow-hidden rounded px-2.5 py-3 hover:bg-gray-100"
         >
           <div class="flex items-center">
-            <div class="text-base font-medium" v-html="item.title" />
+            <div class="text-base font-medium" v-html="item.highlighted_title || item.title" />
             <span class="px-1 leading-none text-gray-600"> &middot; </span>
-            <div class="text-sm text-gray-600">
-              {{ timestamp(item) }}
-            </div>
           </div>
           <div
-            v-if="item.content"
+            v-if="item.highlighted_content"
             class="mt-1 text-p-base text-gray-700"
-            v-html="trimContent(item.content)"
+            v-html="trimContent(item.highlighted_content.replaceAll('|||', '·'))"
           ></div>
         </router-link>
       </div>
@@ -83,7 +80,7 @@ export default {
   resources: {
     search: {
       cache: 'Search',
-      url: 'gameplan.api.search',
+      url: 'frappe_search.core.search',
       makeParams(query) {
         return { query, start: this.start }
       },
@@ -93,25 +90,22 @@ export default {
           total: data.total,
           duration: data.duration,
         }
-        for (let doctype in data.results) {
-          let group = null
-          if (doctype === 'GP Discussion') {
-            group = 'Discussions'
-          } else if (doctype === 'GP Task') {
-            group = 'Tasks'
-          } else if (doctype === 'GP Page') {
-            group = 'Pages'
-          }
-          if (!group) {
-            continue
+        for (let group in data.results) {
+          let title
+          if (group === 'GP Discussion') {
+            title = 'Discussions'
+          } else if (group === 'GP Task') {
+            title = 'Tasks'
+          } else if (group === 'GP Page') {
+            title = 'Pages'
           }
           out.groups.push({
-            title: group,
-            items: data.results[doctype],
+            title,
+            items: data.results[group],
           })
         }
         return out
-      },
+      }
     },
   },
   methods: {
@@ -148,8 +142,8 @@ export default {
         return {
           name: 'ProjectDiscussion',
           params: {
-            teamId: item.team,
-            projectId: item.project,
+            teamId: item.extras.team,
+            projectId: item.extras.project,
             postId: item.name,
           },
         }
@@ -158,8 +152,8 @@ export default {
         return {
           name: item.project ? 'ProjectTaskDetail' : 'Task',
           params: {
-            teamId: item.team,
-            projectId: item.project,
+            teamId: item.extras.team,
+            projectId: item.extras.project,
             taskId: item.name,
           },
         }
@@ -168,8 +162,8 @@ export default {
         return {
           name: 'ProjectPage',
           params: {
-            teamId: item.team,
-            projectId: item.project,
+            teamId: item.extras.team,
+            projectId: item.extras.project,
             pageId: item.name,
           },
         }

@@ -229,3 +229,24 @@ scheduler_events = {
 # Recommended only for DocTypes which have limited documents with untranslated names
 # For example: Role, Gender, etc.
 # translated_search_doctypes = []
+
+frappe_search_doctypes = {
+    "GP Discussion": {
+        "title": "title",
+        "content": ["content"],
+        "extras": ["team", "project"],
+    },
+    "GP Task": {
+        "title": "title",
+        "content": ["description"],
+        "extras": ["team", "project"],
+    },
+    "GP Page": {
+        "title": "title",
+        "content": ["content"],
+        "extras": ["team", "project"],
+    },
+    "GP Comment": {
+        "content": ["content"],
+    },
+}
