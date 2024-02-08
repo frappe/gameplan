@@ -40,7 +40,7 @@ app_icon_route = "/g"
 # Fixtures
 
 fixtures = [
-	{"dt": "Role", "filters": [["role_name", "like", "Gameplan %"]]},
+    {"dt": "Role", "filters": [["role_name", "like", "Gameplan %"]]},
 ]
 
 # Home Pages
@@ -51,15 +51,15 @@ fixtures = [
 
 # website user home page (by Role)
 # role_home_page = {
-#	"Role": "home_page"
+# 	"Role": "home_page"
 # }
 
 website_route_rules = [
-	{"from_route": "/g/<path:app_path>", "to_route": "g"},
+    {"from_route": "/g/<path:app_path>", "to_route": "g"},
 ]
 
 website_redirects = [
-	{"source": r"/teams(/.*)?", "target": r"/g\1"},
+    {"source": r"/teams(/.*)?", "target": r"/g\1"},
 ]
 
 # Generators
@@ -122,31 +122,27 @@ after_migrate = ["gameplan.search.build_index_in_background"]
 # Hook on document methods and events
 
 doc_events = {
-	"*": {
-		"on_trash": "gameplan.mixins.on_delete.on_trash",
-	},
-	"User": {
-		"after_insert": "gameplan.gameplan.doctype.gp_user_profile.gp_user_profile.create_user_profile",
-		"on_trash": [
-			"gameplan.gameplan.doctype.gp_user_profile.gp_user_profile.delete_user_profile",
-			"gameplan.gameplan.doctype.gp_guest_access.gp_guest_access.on_user_delete",
-		],
-		"on_update": "gameplan.gameplan.doctype.gp_user_profile.gp_user_profile.on_user_update"
-	}
+    "*": {
+        "on_trash": "gameplan.mixins.on_delete.on_trash",
+    },
+    "User": {
+        "after_insert": "gameplan.gameplan.doctype.gp_user_profile.gp_user_profile.create_user_profile",
+        "on_trash": [
+            "gameplan.gameplan.doctype.gp_user_profile.gp_user_profile.delete_user_profile",
+            "gameplan.gameplan.doctype.gp_guest_access.gp_guest_access.on_user_delete",
+        ],
+        "on_update": "gameplan.gameplan.doctype.gp_user_profile.gp_user_profile.on_user_update",
+    },
 }
 
-on_login = 'gameplan.www.g.on_login'
+on_login = "gameplan.www.g.on_login"
 
 # Scheduled Tasks
 # ---------------
 
 scheduler_events = {
-	"all": [
-		"gameplan.search.build_index_if_not_exists"
-	],
-	"hourly": [
-		"gameplan.gameplan.doctype.gp_invitation.gp_invitation.expire_invitations"
-	],
+    "all": ["gameplan.search.build_index_if_not_exists"],
+    "hourly": ["gameplan.gameplan.doctype.gp_invitation.gp_invitation.expire_invitations"],
 }
 
 # scheduler_events = {
@@ -234,17 +230,17 @@ frappe_search_doctypes = {
     "GP Discussion": {
         "title": "title",
         "content": ["content"],
-        "extras": ["team", "project"],
+        "fields": ["team", "project"],
     },
     "GP Task": {
         "title": "title",
         "content": ["description"],
-        "extras": ["team", "project"],
+        "fields": ["team", "project"],
     },
     "GP Page": {
         "title": "title",
         "content": ["content"],
-        "extras": ["team", "project"],
+        "fields": ["team", "project"],
     },
     "GP Comment": {
         "content": ["content"],

@@ -80,9 +80,9 @@ export default {
   resources: {
     search: {
       cache: 'Search',
-      url: 'frappe_search.core.search',
+      url: 'frappe_search.api.search',
       makeParams(query) {
-        return { query, start: this.start }
+        return { query, groupby: true, start: this.start }
       },
       transform(data) {
         let out = {
@@ -137,13 +137,14 @@ export default {
       }
       return this.$dayjs(timestamp).format('D MMM YYYY')
     },
-    getRoute(item) {
+    getRoute(item) {  
+      console.log(item)
       if (item.doctype === 'GP Discussion') {
         return {
           name: 'ProjectDiscussion',
           params: {
-            teamId: item.extras.team,
-            projectId: item.extras.project,
+            teamId: item.fields.team,
+            projectId: item.fields.project,
             postId: item.name,
           },
         }
@@ -152,8 +153,8 @@ export default {
         return {
           name: item.project ? 'ProjectTaskDetail' : 'Task',
           params: {
-            teamId: item.extras.team,
-            projectId: item.extras.project,
+            teamId: item.fields.team,
+            projectId: item.fields.project,
             taskId: item.name,
           },
         }
@@ -162,8 +163,8 @@ export default {
         return {
           name: 'ProjectPage',
           params: {
-            teamId: item.extras.team,
-            projectId: item.extras.project,
+            teamId: item.fields.team,
+            projectId: item.fields.project,
             pageId: item.name,
           },
         }
