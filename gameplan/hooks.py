@@ -230,17 +230,17 @@ frappe_search_doctypes = {
     "GP Discussion": {
         "title": "title",
         "content": ["content"],
-        "fields": ["team", "project"],
+        "fields": ["team", "project", "modified"],
     },
     "GP Task": {
         "title": "title",
         "content": ["description"],
-        "fields": ["team", "project"],
+        "fields": ["team", "project", "modified"],
     },
     "GP Page": {
         "title": "title",
         "content": ["content"],
-        "fields": ["team", "project"],
+        "fields": ["team", "project", "modified"],
     },
     "GP Comment": {
         "content": ["content"],

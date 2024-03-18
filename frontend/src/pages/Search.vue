@@ -39,6 +39,7 @@
         v-for="group in $resources.search.data.groups"
         :key="group.title"
       >
+      
         <div class="mb-3 text-base text-gray-600">
           {{ group.title }}
         </div>
@@ -48,9 +49,12 @@
           :to="getRoute(item)"
           class="block overflow-hidden rounded px-2.5 py-3 hover:bg-gray-100"
         >
-          <div class="flex items-center">
+          <div class="flex items-center" v-if="item.highlighted_title || item.title">
             <div class="text-base font-medium" v-html="item.highlighted_title || item.title" />
             <span class="px-1 leading-none text-gray-600"> &middot; </span>
+            <div class="text-sm text-gray-600">
+              {{ timestamp(item) }}
+            </div>
           </div>
           <div
             v-if="item.highlighted_content"
@@ -98,6 +102,8 @@ export default {
             title = 'Tasks'
           } else if (group === 'GP Page') {
             title = 'Pages'
+          } else if (group === 'GP Comment') {
+            title = 'Comments'
           }
           out.groups.push({
             title,
@@ -131,7 +137,7 @@ export default {
       return content.slice(start, end)
     },
     timestamp(d) {
-      let timestamp = d.modified
+      let timestamp = new Date(d.fields.modified)
       if (this.$dayjs().diff(timestamp, 'day') < 25) {
         return this.$dayjs(timestamp).fromNow()
       }
