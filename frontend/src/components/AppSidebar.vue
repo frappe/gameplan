@@ -156,7 +156,7 @@
   </div>
 </template>
 <script>
-import { Motion } from 'motion/vue'
+import { Motion } from '@oku-ui/motion'
 import { Tooltip } from 'frappe-ui'
 import Links from './Links.vue'
 import Link from './Link.vue'
