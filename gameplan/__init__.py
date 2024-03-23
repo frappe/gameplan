@@ -1,6 +1,7 @@
-
+import importlib.metadata
 import frappe
-__version__ = '0.0.1'
+
+__version__ = importlib.metadata.version(__name__)
 
 def is_guest():
 	if frappe.session.user == 'Administrator':

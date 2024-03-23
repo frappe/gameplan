@@ -6,7 +6,7 @@ authors = [
 description = "Team discussion and collaboration tool"
 requires-python = ">=3.10"
 readme = "README.md"
-dynamic = ["version"]
+version = "0.0.1"
 dependencies = [
     "rembg==2.0.49",
 ]
