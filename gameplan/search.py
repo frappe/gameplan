@@ -5,6 +5,7 @@ from __future__ import unicode_literals
 
 import re
 
+from apexsearch import ApexSearch
 import frappe
 from frappe.core.utils import html2text
 from frappe.utils import cstr, update_progress_bar
@@ -15,9 +16,34 @@ from gameplan.utils.search import Search
 UNSAFE_CHARS = re.compile(r"[\[\]{}<>+]")
 
 INDEX_BUILD_FLAG = "discussions_index_in_progress"
+SCHEMA = {
+    "GP Discussion": {
+        "title": "title",
+        "content": ["content"],
+        "fields": ["team", "project", "modified"],
+    },
+    "GP Task": {
+        "title": "title",
+        "content": ["description"],
+        "fields": ["team", "project", "modified"],
+    },
+    "GP Page": {
+        "title": "title",
+        "content": ["content"],
+        "fields": ["team", "project", "modified"],
+    },
+    "GP Comment": {
+        "content": ["content"],
+		"fields": ["reference_name", "reference_doctype"]
+    },
+}
 
-
-class GameplanSearch(Search):
+class GameplanSearch(ApexSearch):
+	def __init__(self) -> None:
+		super().__init__(frappe.get_hooks('search_index_path')[0], SCHEMA)
+		
+# Delete after review
+class GameplanSearchOld(Search):
 	def __init__(self) -> None:
 		schema = [
 			{"name": "title", "weight": 5},
@@ -187,7 +213,7 @@ class GameplanSearch(Search):
 def build_index():
 	frappe.cache().set_value(INDEX_BUILD_FLAG, True)
 	search = GameplanSearch()
-	search.build_index()
+	search.build_complete_index(lambda table, fields: frappe.get_all(table, fields=fields))
 	frappe.cache().set_value(INDEX_BUILD_FLAG, False)
 
 
@@ -198,5 +224,5 @@ def build_index_in_background():
 
 def build_index_if_not_exists():
 	search = GameplanSearch()
-	if not search.index_exists() or not frappe.cache.exists(INDEX_BUILD_FLAG):
-		build_index()
+	if not search.index_exists or not frappe.cache.exists(INDEX_BUILD_FLAG):
+		search.build_complete_index(lambda table, fields: frappe.get_all(table, fields=fields))

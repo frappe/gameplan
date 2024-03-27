@@ -49,16 +49,16 @@
           class="block overflow-hidden rounded px-2.5 py-3 hover:bg-gray-100"
         >
           <div class="flex items-center">
-            <div class="text-base font-medium" v-html="item.title" />
+            <div class="text-base font-medium" v-html="item.highlighted_title || item.title" />
             <span class="px-1 leading-none text-gray-600"> &middot; </span>
             <div class="text-sm text-gray-600">
               {{ timestamp(item) }}
             </div>
           </div>
           <div
-            v-if="item.content"
+            v-if="item.highlighted_content"
             class="mt-1 text-p-base text-gray-700"
-            v-html="trimContent(item.content)"
+            v-html="trimContent(item.highlighted_content)"
           ></div>
         </router-link>
       </div>

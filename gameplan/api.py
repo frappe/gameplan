@@ -6,6 +6,7 @@ import gameplan
 import frappe
 from frappe.utils import validate_email_address, split_emails, cstr
 from gameplan.utils import validate_type
+from gameplan.search import GameplanSearch
 
 
 @frappe.whitelist(allow_guest=True)
@@ -323,39 +324,29 @@ def oauth_providers():
 
 
 @frappe.whitelist()
-def search(query, start=0):
-	from gameplan.search import GameplanSearch
-
+def search(query):
 	search = GameplanSearch()
-	query = search.clean_query(query)
 
-	query_parts = query.split(" ")
-	if len(query_parts) == 1 and not query_parts[0].endswith("*"):
-		query = f"{query_parts[0]}*"
-	if len(query_parts) > 1:
-		query = " ".join([f"%%{q}%%" for q in query_parts])
-
-	result = search.search(
-		f"@title|content:({query})", start=start, sort_by="modified desc", highlight=True, with_payloads=True
-	)
+	result = search.search(query)
 
 	comments_by_doctype = {}
 	grouped_results = {}
-	for d in result.docs:
-		doctype, name = d.id.split(":")
+	for d in result["results"]:
+		d = frappe._dict(d)
+		doctype, name = d.id.split("-")
 		d.doctype = doctype
 		d.name = name
 		del d.id
 		if doctype == "GP Comment":
-			comments_by_doctype.setdefault(d.payload["reference_doctype"], []).append(d)
+			comments_by_doctype.setdefault(d.fields["reference_doctype"], []).append(d)
 		else:
-			d.project = d.payload.get("project")
-			d.team = d.payload.get("team")
-			del d.payload
+			d.project = d.fields.get("project")
+			d.team = d.fields.get("team")
+			del d.fields
 			grouped_results.setdefault(doctype, []).append(d)
 
-	discussion_names = [d.payload["reference_name"] for d in comments_by_doctype.get("GP Discussion", [])]
-	task_names = [d.payload["reference_name"] for d in comments_by_doctype.get("GP Task", [])]
+	discussion_names = [d.fields["reference_name"] for d in comments_by_doctype.get("GP Discussion", [])]
+	task_names = [d.fields["reference_name"] for d in comments_by_doctype.get("GP Task", [])]
 
 	if discussion_names:
 		for d in frappe.get_all(
@@ -369,8 +360,9 @@ def search(query, start=0):
 			d.via_comment = True
 			d.modified = d.last_post_at
 			for c in comments_by_doctype.get("GP Discussion", []):
-				if c.payload["reference_name"] == d.name:
+				if c.fields["reference_name"] == d.name:
 					d.content = c.content
+					d.highlighted_content = c.highlighted_content
 			grouped_results.setdefault("GP Discussion", []).append(d)
 
 	if task_names:
@@ -382,12 +374,12 @@ def search(query, start=0):
 			d.content = ""
 			d.via_comment = True
 			for c in comments_by_doctype.get("GP Task", []):
-				if c.payload["reference_name"] == d.name:
+				if c.fields["reference_name"] == d.name:
 					d.content = c.content
 			grouped_results.setdefault("GP Task", []).append(d)
 
 	return {
 		"results": grouped_results,
-		"total": result.total,
-		"duration": result.duration,
+		"total": result["total"],
+		"duration": result["duration"],
 	}
