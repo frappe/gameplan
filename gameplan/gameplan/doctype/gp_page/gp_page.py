@@ -17,8 +17,8 @@ class GPPage(Document):
 	def update_search_index(self):
 		if self.has_value_changed('title') or self.has_value_changed('content'):
 			search = GameplanSearch()
-			search.index_doc(self)
+			search.reindex_record(self.as_dict(), self.doctype)
 
 	def on_trash(self):
 		search = GameplanSearch()
-		search.remove_doc(self)
+		search.remove_record(f"{self.doctype}-{self.name}")
