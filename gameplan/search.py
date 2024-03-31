@@ -40,7 +40,7 @@ SCHEMA = {
 
 class GameplanSearch(ApexSearch):
 	def __init__(self) -> None:
-		super().__init__(frappe.get_hooks('search_index_path')[0], SCHEMA)
+		super().__init__(frappe.get_site_path('indexes', 'apex_search'), SCHEMA)
 		
 # Delete after review
 class GameplanSearchOld(Search):
