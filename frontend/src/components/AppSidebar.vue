@@ -88,9 +88,10 @@
               "
               class="mr-1.5 grid h-4 w-4 place-items-center rounded hover:bg-gray-200"
             >
-              <Motion :animate="{ rotate: team.open ? 90 : 0 }">
-                <ChevronTriangle class="h-3 w-3 text-gray-500" />
-              </Motion>
+              <ChevronTriangle
+                class="h-3 w-3 text-gray-500 transition duration-200"
+                :class="[team.open ? 'rotate-90' : 'rotate-0']"
+              />
             </button>
             <div class="flex w-full items-center">
               <span class="flex h-5 w-5 items-center justify-center text-xl">
@@ -156,7 +157,6 @@
   </div>
 </template>
 <script>
-import { Motion } from 'motion/vue'
 import { Tooltip } from 'frappe-ui'
 import Links from './Links.vue'
 import Link from './Link.vue'
@@ -181,7 +181,6 @@ export default {
     Link,
     UserDropdown,
     Tooltip,
-    Motion,
     ChevronTriangle,
   },
   data() {
