@@ -46,6 +46,8 @@ class GPDiscussion(HasActivity, HasMentions, HasReactions, Document):
 
 	def on_trash(self):
 		self.update_discussions_count(-1)
+		search = GameplanSearch()
+		search.remove_record(f"{self.doctype}-{self.name}")
 
 	def validate(self):
 		self.content = remove_empty_trailing_paragraphs(self.content)
@@ -75,7 +77,7 @@ class GPDiscussion(HasActivity, HasMentions, HasReactions, Document):
 	def update_search_index(self):
 		if self.has_value_changed('title') or self.has_value_changed('content'):
 			search = GameplanSearch()
-			search.index_doc(self)
+			search.reindex_record(self.as_dict(), self.doctype)
 
 	def update_participants_count(self):
 		participants = frappe.db.get_all('GP Comment',
