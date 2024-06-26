@@ -33,48 +33,26 @@
         </div>
       </template>
     </Popover>
-    <Transition
-      enterActiveClass="transition duration-300 ease-out"
-      enterFromClass="scale-75"
-      enterToClass="scale-100"
-      leaveActiveClass="transition duration-100 ease-in absolute"
-      leaveFromClass="scale-100 opacity-100"
-      leaveToClass="scale-90 opacity-0"
-    >
-      <TransitionGroup
-        v-if="reactions.length"
-        tag="div"
-        class="flex items-stretch space-x-1.5"
-        moveClass="transition duration-100 ease-in"
-        enterActiveClass="transition duration-300 ease-out"
-        enterFromClass="scale-75"
-        enterToClass="scale-100"
-        leaveActiveClass="transition duration-100 ease-in"
-        leaveFromClass="scale-100 opacity-100"
-        leaveToClass="scale-90 opacity-0"
+    <Tooltip v-for="(reactions, emoji) in reactionsCount" :key="emoji">
+      <button
+        class="flex items-center justify-center rounded-full px-2 py-1 text-sm transition"
+        :class="[
+          reactions.userReacted
+            ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+            : 'bg-gray-100 text-gray-700 hover:bg-gray-200',
+        ]"
+        @click="toggleReaction(emoji)"
       >
-        <Tooltip v-for="(reactions, emoji) in reactionsCount" :key="emoji">
-          <button
-            class="flex items-center justify-center rounded-full px-2 py-1 text-sm transition"
-            :class="[
-              reactions.userReacted
-                ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200',
-            ]"
-            @click="toggleReaction(emoji)"
-          >
-            {{ emoji }} {{ reactions.count }}
-          </button>
-          <template #body>
-            <div
-              class="max-w-[30ch] rounded-lg bg-gray-800 px-2 py-1 text-center text-xs text-white shadow-xl"
-            >
-              {{ toolTipText(reactions) }}
-            </div>
-          </template>
-        </Tooltip>
-      </TransitionGroup>
-    </Transition>
+        {{ emoji }} {{ reactions.count }}
+      </button>
+      <template #body>
+        <div
+          class="max-w-[30ch] rounded-lg border border-gray-100 bg-gray-800 px-2 py-1 text-center text-xs text-white shadow-xl"
+        >
+          {{ toolTipText(reactions) }}
+        </div>
+      </template>
+    </Tooltip>
   </div>
   <div class="mt-2 space-y-2" v-if="batchRequestErrors.length">
     <ErrorMessage v-for="error in batchRequestErrors" :message="error" />
@@ -106,7 +84,7 @@ export default {
         onSuccess(responses) {
           this.changes = []
           for (let response of responses) {
-            if (response.message?.reactions) {
+            if (response?.message?.reactions) {
               let reactions = response.message.reactions.map((d) => ({
                 name: d.name,
                 emoji: d.emoji,
@@ -206,7 +184,7 @@ export default {
         return []
       }
       return this.$resources.batch.data
-        .filter((d) => d.exception)
+        .filter((d) => d?.exception)
         .map((d) => {
           let _server_messages = d._server_messages
           try {
