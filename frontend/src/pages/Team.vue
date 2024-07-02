@@ -106,7 +106,7 @@ export default {
           {
             label: 'Archive',
             variant: 'solid',
-            onClick: ({ close }) => {
+            onClick: (close) => {
               return this.team.archive.submit(null, {
                 onSuccess: () => {
                   this.$router.replace({ name: 'Home' })

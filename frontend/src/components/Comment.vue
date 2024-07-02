@@ -82,7 +82,7 @@
                       label: 'Delete',
                       variant: 'solid',
                       theme: 'red',
-                      onClick: ({ close }) => {
+                      onClick: (close) => {
                         return comments.setValue
                           .submit({
                             name: comment.name,

@@ -109,7 +109,7 @@ export default {
           {
             label: 'Change Role',
             variant: 'solid',
-            onClick: ({ close }) => {
+            onClick: (close) => {
               return this.$resources.changeUserRole.submit(
                 { user: user.name, role },
                 { onSuccess: close }
@@ -132,7 +132,7 @@ export default {
             label: 'Remove User',
             variant: 'solid',
             theme: 'red',
-            onClick: ({ close }) => {
+            onClick: (close) => {
               return this.$resources.removeUser.submit(
                 { user: user.name },
                 { onSuccess: close }

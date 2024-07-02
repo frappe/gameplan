@@ -183,7 +183,7 @@ export default {
           actions: [
             {
               label: 'Discard post',
-              onClick: ({ close }) => {
+              onClick: (close) => {
                 localStorage.removeItem(this.draftPostKey())
                 this.$router.push({ name: 'ProjectDiscussions' })
                 close()
