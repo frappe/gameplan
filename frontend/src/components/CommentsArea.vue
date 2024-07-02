@@ -375,7 +375,7 @@ export default {
           actions: [
             {
               label: 'Discard comment',
-              onClick: ({ close }) => {
+              onClick: (close) => {
                 this.resetCommentState()
                 close()
               },

@@ -192,7 +192,7 @@ export default {
             {
               label: `Vote for "${option.title}"`,
               variant: 'solid',
-              onClick: ({ close }) => {
+              onClick: (close) => {
                 this.$resources.poll.submitVote
                   .submit({ option: option.title })
                   .then(close)
@@ -220,7 +220,7 @@ export default {
             label: 'Stop',
             variant: 'solid',
             theme: 'red',
-            onClick: ({ close }) =>
+            onClick: (close) =>
               this.$resources.poll.stopPoll.submit().then(close),
           },
         ],
@@ -281,7 +281,7 @@ export default {
                   label: 'Retract vote',
                   variant: 'solid',
                   theme: 'red',
-                  onClick: ({ close }) =>
+                  onClick: (close) =>
                     this.$resources.poll.retractVote.submit().then(close),
                 },
               ],
@@ -306,7 +306,7 @@ export default {
                   label: 'Delete',
                   variant: 'solid',
                   theme: 'red',
-                  onClick: ({ close }) =>
+                  onClick: (close) =>
                     this.$resources.poll.delete.submit().then(close),
                 },
               ],

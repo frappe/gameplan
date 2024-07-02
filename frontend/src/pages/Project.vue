@@ -111,7 +111,7 @@
               {
                 label: 'Save',
                 variant: 'solid',
-                onClick({ close }) {
+                onClick(close) {
                   return project.setValue
                     .submit({
                       title: project.doc.title,
@@ -429,7 +429,7 @@ export default {
           {
             label: 'Archive',
             variant: 'solid',
-            onClick: ({ close }) => {
+            onClick: (close) => {
               return this.project.archive.submit(null, {
                 onSuccess: close,
               })
@@ -446,7 +446,7 @@ export default {
           {
             label: 'Unarchive',
             variant: 'solid',
-            onClick: ({ close }) => {
+            onClick: (close) => {
               return this.project.unarchive.submit(null, {
                 onSuccess: close,
               })
