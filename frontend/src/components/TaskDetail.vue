@@ -79,14 +79,8 @@
           <Autocomplete
             placeholder="Assign a user"
             :options="assignableUsers"
-            :value="$resources.task.doc.assigned_to"
-            @change="
-              (option) => {
-                $resources.task.setValue.submit({
-                  assigned_to: option?.value || '',
-                })
-              }
-            "
+            v-model="$resources.task.doc.assigned_to"
+            @update:modelValue="changeAssignee"
           />
           <TextInput
             type="date"
@@ -133,14 +127,8 @@
           <Autocomplete
             placeholder="Assign a user"
             :options="assignableUsers"
-            :value="$resources.task.doc.assigned_to"
-            @change="
-              (option) => {
-                $resources.task.setValue.submit({
-                  assigned_to: option?.value || '',
-                })
-              }
-            "
+            v-model="$resources.task.doc.assigned_to"
+            @update:modelValue="changeAssignee"
           />
         </div>
         <div>Due Date</div>
@@ -218,6 +206,10 @@ export default {
         whitelistedMethods: {
           trackVisit: 'track_visit',
         },
+        transform: (doc) => {
+          doc.project = doc.project.toString();
+          return doc
+        },
         setValue: {
           onError(e) {
             let message = e.messages ? e.messages.join('\n') : e.message
@@ -241,6 +233,9 @@ export default {
     },
   },
   methods: {
+    changeAssignee(option) {
+      this.$resources.task.setValue.submit({ assigned_to: option?.value || '' });
+    },
     changeProject(option) {
       this.$resources.task.setValue.submit(
         {
@@ -270,7 +265,6 @@ export default {
   computed: {
     assignableUsers() {
       return activeUsers.value
-        .filter((user) => user.name != this.$resources.task.doc.assigned_to)
         .map((user) => ({
           label: user.full_name,
           value: user.name,
