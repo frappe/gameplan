@@ -57,7 +57,7 @@
       v-if="collapsible && readmeHeight > 150"
     >
       <Tooltip text="Expand/Collapse">
-        <Button variant="ghost" @click="expand = !expand">
+        <Button variant="ghost" @click.stop="expandCollapse">
           <template #icon>
             <LucideUnfoldVertical class="w-4" />
           </template>
@@ -122,6 +122,10 @@ export default {
       this.$nextTick(() => {
         this.$refs.readme.editor.commands.focus()
       })
+    },
+    expandCollapse(e) {
+      e.stopImmediatePropagation()
+      this.expand = !this.expand
     },
   },
 }
