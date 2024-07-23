@@ -15,14 +15,14 @@
             {
               label: 'Delete',
               icon: 'trash',
-              onClick: () => {
+              onClick: ({ close }) => {
                 $dialog({
                   title: 'Delete Page',
                   message: 'Are you sure you want to delete this page?',
                   actions: [
                     {
                       label: 'Delete',
-                      onClick: ({ close }) => {
+                      onClick: (close) => {
                         close()
                         return $resources.pages.delete.submit(d.name)
                       },
