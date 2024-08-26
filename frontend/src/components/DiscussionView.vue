@@ -378,7 +378,7 @@ export default {
               actions: [
                 {
                   label: 'Pin',
-                  onClick: ({ close }) =>
+                  onClick: (close) =>
                     this.$resources.discussion.pinDiscussion
                       .submit()
                       .then(close),
@@ -400,7 +400,7 @@ export default {
               actions: [
                 {
                   label: 'Unpin',
-                  onClick: ({ close }) =>
+                  onClick: (close) =>
                     this.$resources.discussion.unpinDiscussion
                       .submit()
                       .then(close),
@@ -423,7 +423,7 @@ export default {
               actions: [
                 {
                   label: 'Close',
-                  onClick: ({ close }) =>
+                  onClick: (close) =>
                     this.$resources.discussion.closeDiscussion
                       .submit()
                       .then(close),
@@ -446,7 +446,7 @@ export default {
               actions: [
                 {
                   label: 'Re-open',
-                  onClick: ({ close }) =>
+                  onClick: (close) =>
                     this.$resources.discussion.reopenDiscussion
                       .submit()
                       .then(close),
