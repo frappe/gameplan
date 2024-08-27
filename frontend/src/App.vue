@@ -8,11 +8,12 @@
 </template>
 
 <script setup>
-import { computed, defineAsyncComponent } from 'vue'
+import { computed, defineAsyncComponent, onMounted } from 'vue'
 import { Dialogs } from '@/utils/dialogs'
 import { Toasts } from '@/utils/toasts'
 import { users } from '@/data/users'
 import { useScreenSize } from './utils/composables'
+import { init as initTelemetry } from "@/telemetry";
 
 const screenSize = useScreenSize()
 const MobileLayout = defineAsyncComponent(() =>
@@ -27,6 +28,10 @@ const Layout = computed(() => {
   } else {
     return DesktopLayout
   }
+})
+
+onMounted(async() => {
+  await initTelemetry();
 })
 
 users.fetch()

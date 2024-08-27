@@ -145,6 +145,7 @@
 <script>
 import { Dialog, FormControl, TextInput, TabButtons } from 'frappe-ui'
 import { projects, getTeamProjects } from '@/data/projects'
+import { capture } from "@/telemetry";
 
 export default {
   name: 'TeamOverview',
@@ -193,6 +194,7 @@ export default {
             projects.reload()
             this.newProject = this.$options.data().newProject
             this.createNewProjectDialog = false
+            capture("new_project_created");
             this.$router.push({
               name: 'Project',
               params: { projectId: project.name },

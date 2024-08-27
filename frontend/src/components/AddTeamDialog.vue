@@ -36,6 +36,7 @@
 </template>
 <script>
 import { teams } from '@/data/teams'
+import { capture } from "@/telemetry";
 
 export default {
   name: 'AddTeamDialog',
@@ -54,6 +55,7 @@ export default {
           this.$resetData('newTeam')
           this.showDialog = false
           this.$emit('success', team)
+          capture("new_team_created");
         },
       })
     },
