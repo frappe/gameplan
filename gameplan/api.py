@@ -391,3 +391,14 @@ def search(query, start=0):
 		"total": result.total,
 		"duration": result.duration,
 	}
+
+
+def check_app_permission():
+	if frappe.session.user == "Administrator":
+		return True
+
+	roles = frappe.get_roles()
+	if any(role in ["System Manager", "Gameplan Admin", "Gameplan Member", "Gameplan Guest"] for role in roles):
+		return True
+
+	return False
