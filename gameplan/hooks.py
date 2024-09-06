@@ -10,6 +10,16 @@ app_icon_url = "/assets/gameplan/manifest/favicon-180.png"
 app_icon_title = "Gameplan"
 app_icon_route = "/g"
 
+add_to_apps_screen = [
+	{
+		"name": "gameplan",
+		"logo": "/assets/gameplan/manifest/favicon-196.png",
+		"title": "Gameplan",
+		"route": "/g",
+		# "has_permission": "gameplan.api.permission.has_app_permission"
+	}
+]
+
 # Includes in <head>
 # ------------------
 
