@@ -122,13 +122,23 @@ def accept_invitation(key: str = None):
 		frappe.throw("Invalid or expired key")
 
 	invitation = frappe.get_doc("GP Invitation", result[0])
+
+	is_new_user =  not frappe.db.exists("User", invitation.email)
+	user = frappe.get_doc("User", invitation.email) if not is_new_user else None
+	needs_password_setup = is_new_user or (user and user.reset_password_key)
+
 	invitation.accept()
 	invitation.reload()
 
 	if invitation.status == "Accepted":
-		frappe.local.login_manager.login_as(invitation.email)
-		frappe.local.response["type"] = "redirect"
-		frappe.local.response["location"] = "/g"
+		if needs_password_setup:
+			url = invitation.get_password_link()
+			frappe.local.response["type"] = "redirect"
+			frappe.local.response["location"] = f"{url}"
+		else:
+			frappe.local.login_manager.login_as(invitation.email)
+			frappe.local.response["type"] = "redirect"
+			frappe.local.response["location"] = "/g"
 
 
 @frappe.whitelist()

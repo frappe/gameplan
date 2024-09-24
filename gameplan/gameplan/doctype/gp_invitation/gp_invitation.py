@@ -56,6 +56,10 @@ class GPInvitation(Document):
 		self.status = "Accepted"
 		self.accepted_at = frappe.utils.now()
 		self.save(ignore_permissions=True)
+		frappe.db.commit()
+
+	def get_password_link(self):
+		return password_link(frappe.get_doc("User", self.email))
 
 	def create_guest_access(self, user):
 		if self.role == "Gameplan Guest":
@@ -100,3 +104,23 @@ def expire_invitations():
 		invitation = frappe.get_doc("GP Invitation", invitation.name)
 		invitation.status = "Expired"
 		invitation.save(ignore_permissions=True)
+
+
+def password_link(user, password_expired=False):
+	# from frappe.utils.data import sha256_hash
+	# from frappe.utils import get_url, now_datetime
+	from frappe.utils import get_url, now_datetime, sha256_hash
+
+	key = frappe.generate_hash()
+	hashed_key = sha256_hash(key)
+	user.db_set("reset_password_key", hashed_key)
+	user.db_set("last_reset_password_key_generated_on", now_datetime())
+	frappe.db.commit()
+
+	url = "/update-password?key=" + key
+	if password_expired:
+		url = "/update-password?key=" + key + "&password_expired=true"
+
+	link = get_url(url)
+
+	return link
