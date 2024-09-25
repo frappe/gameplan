@@ -40,6 +40,7 @@ import SettingsTabDialog from './SettingsTab.vue'
 import LucideUsers from '~icons/lucide/users'
 import LucideUsersPlus from '~icons/lucide/user-plus'
 import LucideFolderMinus from '~icons/lucide/folder-minus'
+import LucideSettings from '~icons/lucide/settings'
 
 let tabs = [
   {
@@ -59,7 +60,7 @@ let tabs = [
   },
   {
     label: 'Settings',
-    icon: 'settings',
+    icon: LucideSettings,
     component: markRaw(SettingsTabDialog),
   },
 ]
