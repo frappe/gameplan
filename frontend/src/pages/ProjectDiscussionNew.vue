@@ -110,6 +110,7 @@ import TextEditor from '@/components/TextEditor.vue'
 import { focus } from '@/directives'
 import UserProfileLink from '@/components/UserProfileLink.vue'
 import TextEditorFixedMenu from 'frappe-ui/src/components/TextEditor/TextEditorFixedMenu.vue'
+import { capture } from "@/telemetry";
 
 export default {
   name: 'ProjectDiscussionNew',
@@ -171,6 +172,7 @@ export default {
         {
           onSuccess() {
             this.clearDraftPost()
+            capture("new_discussion_created");
           },
         }
       )
