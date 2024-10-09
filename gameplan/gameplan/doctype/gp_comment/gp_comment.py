@@ -56,6 +56,6 @@ class GPComment(HasMentions, HasReactions, Document):
 		if self.reference_doctype in ["GP Discussion", "GP Task"]:
 			search  = GameplanSearch()
 			if self.deleted_at:
-				search.remove_doc(self)
+				search.remove_record(f"{self.doctype}-{self.name}")
 			else:
-				search.index_doc(self)
+				search.reindex_record(self.as_dict(), self.doctype)

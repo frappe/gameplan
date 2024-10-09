@@ -44,12 +44,13 @@ class GPTask(HasMentions, HasActivity, Document):
 	def update_search_index(self):
 		if self.has_value_changed('title') or self.has_value_changed('description'):
 			search = GameplanSearch()
-			search.index_doc(self)
+			print(self.as_dict())
+			search.reindex_record(self.as_dict(), self.doctype)
 
 	def on_trash(self):
 		self.update_tasks_count(-1)
 		search = GameplanSearch()
-		search.remove_doc(self)
+		search.remove_record(f"{self.doctype}-{self.name}")
 
 	def update_tasks_count(self, delta=1):
 		if not self.project:
