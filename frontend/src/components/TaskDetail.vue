@@ -88,13 +88,14 @@
               }
             "
           />
-          <TextInput
-            type="date"
-            placeholder="Due date"
+          <DatePicker
             v-model="$resources.task.doc.due_date"
-            @change="
+            variant="subtle"
+            placeholder="Due date"
+            :disabled="false"
+            @update:modelValue="
               $resources.task.setValue.submit({
-                due_date: $event.target.value,
+                due_date: $event,
               })
             "
           />
@@ -145,13 +146,14 @@
         </div>
         <div>Due Date</div>
         <div>
-          <TextInput
-            type="date"
-            placeholder="Due date"
+          <DatePicker
             v-model="$resources.task.doc.due_date"
-            @change="
+            variant="subtle"
+            placeholder="Due date"
+            :disabled="false"
+            @update:modelValue="
               $resources.task.setValue.submit({
-                due_date: $event.target.value,
+                due_date: $event,
               })
             "
           />
@@ -197,7 +199,7 @@ import TextEditor from '@/components/TextEditor.vue'
 import ReadmeEditor from '@/components/ReadmeEditor.vue'
 import CommentsArea from '@/components/CommentsArea.vue'
 import { focus } from '@/directives'
-import { Autocomplete, Dropdown, LoadingText, TextInput } from 'frappe-ui'
+import { Autocomplete, Dropdown, LoadingText, DatePicker } from 'frappe-ui'
 import CommentsList from '@/components/CommentsList.vue'
 import TaskStatusIcon from '@/components/icons/TaskStatusIcon.vue'
 import TaskPriorityIcon from '@/components/icons/TaskPriorityIcon.vue'
@@ -311,12 +313,12 @@ export default {
     TextEditor,
     CommentsArea,
     Autocomplete,
-    TextInput,
     Dropdown,
     CommentsList,
     TaskStatusIcon,
     LoadingText,
     TaskPriorityIcon,
+    DatePicker,
   },
 }
 </script>
