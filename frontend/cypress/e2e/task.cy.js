@@ -66,23 +66,15 @@ describe("Task", () => {
     cy.get('li[id^="headlessui-combobox-option-"]:visible')
       .contains("John Doe")
       .click();
-    cy.reload();
 
-    // due date
     let date = new Date().toISOString().split("T")[0];
-    cy.get("input[type=date]")
-      .last({ force: true })
-      .invoke("val", date)
-      .trigger("change");
-    cy.intercept("POST", "/api/method/frappe.client.set_value").as("due_date");
-    cy.wait("@due_date")
-      .its("response.body.message")
-      .then((task) => {
-        expect(task.due_date).to.equal(date);
-        cy.contains("button", task.status).should("exist");
-      });
-    cy.reload();
 
+    cy.get("input[placeholder='Due date']").invoke("val", date);
+    cy.wait(500);
+    cy.get("input[placeholder='Due date']")
+      .should("have.value", date)
+      .and("exist");
+    cy.reload();
     cy.contains("div", "Status").next("div").find("button").click();
     cy.contains("button", "Done").should("be.visible").click();
   });

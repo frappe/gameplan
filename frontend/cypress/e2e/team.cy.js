@@ -25,6 +25,7 @@ describe("Team", () => {
     cy.get('button[aria-label="Options"]').click();
     cy.contains('button[role="menuitem"]', "Archive").click();
     cy.dialog("button").contains("Archive").click();
+    cy.wait(500);
 
     cy.get("button").contains("Gameplan").click();
     cy.get("button").contains("Settings").click();
