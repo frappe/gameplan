@@ -144,7 +144,11 @@
 </template>
 <script>
 import { Dialog, FormControl, TextInput, TabButtons } from 'frappe-ui'
-import { projects, getTeamProjects } from '@/data/projects'
+import {
+  projects,
+  getTeamProjects,
+  getTeamArchivedProjects,
+} from '@/data/projects'
 
 export default {
   name: 'TeamOverview',
@@ -175,7 +179,7 @@ export default {
       return this.teamProjects.filter((project) => !project.archived_at)
     },
     archivedProjects() {
-      return this.teamProjects.filter((project) => project.archived_at)
+      return getTeamArchivedProjects(this.team.name)
     },
     teamProjects() {
       return getTeamProjects(this.team.name)
