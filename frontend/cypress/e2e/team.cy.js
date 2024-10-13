@@ -26,7 +26,7 @@ describe("Team", () => {
     cy.contains('button[role="menuitem"]', "Archive").click();
     cy.dialog("button").contains("Archive").click();
 
-    cy.get("button").contains("Administrator").click();
+    cy.get("button").contains("Gameplan").click();
     cy.get("button").contains("Settings").click();
     cy.get("button").contains("Archive").click();
     cy.contains("Engineering").should("exist");
