@@ -98,7 +98,7 @@ function statusOptions({ onClick }) {
         label: status,
         onClick: () => onClick(status),
       }
-    }
+    },
   )
 }
 
@@ -128,7 +128,7 @@ function onCreateClick(close) {
       },
       onSuccess: _onSuccess,
     })
-    .then(close)
+    .then(close())
 }
 
 defineExpose({ show })

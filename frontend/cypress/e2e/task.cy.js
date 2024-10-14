@@ -67,14 +67,19 @@ describe("Task", () => {
       .contains("John Doe")
       .click();
 
+    // set due date
     let date = new Date().toISOString().split("T")[0];
+    cy.intercept("POST", "/api/method/frappe.client.set_value").as("due_date");
+    cy.get("input[placeholder='Due date']").last().click();
+    cy.get("div").contains(date.split("-")[2]).click({ force: true });
+    cy.wait("@due_date")
+      .its("response.body.message")
+      .then((task) => {
+        task.due_date = date;
+      });
 
-    cy.get("input[placeholder='Due date']").invoke("val", date);
-    cy.wait(500);
-    cy.get("input[placeholder='Due date']")
-      .should("have.value", date)
-      .and("exist");
     cy.reload();
+
     cy.contains("div", "Status").next("div").find("button").click();
     cy.contains("button", "Done").should("be.visible").click();
   });
