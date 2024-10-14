@@ -113,10 +113,10 @@ def password_link(user, password_expired=False):
 
     key = frappe.generate_hash()
     hashed_key = sha256_hash(key)
-    user.db_set("reset_password_key", hashed_key)
-    user.db_set("last_reset_password_key_generated_on", now_datetime())
+    user.reset_password_key = hashed_key
+    user.last_reset_password_key_generated_on = now_datetime()
+    user.save(ignore_permissions=True)
     frappe.db.commit()
-
     url = "/update-password?key=" + key
     if password_expired:
         url = "/update-password?key=" + key + "&password_expired=true"
