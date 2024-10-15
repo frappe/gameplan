@@ -22,9 +22,8 @@
                   actions: [
                     {
                       label: 'Delete',
-                      onClick: ({ close }) => {
-                        close()
-                        return $resources.pages.delete.submit(d.name)
+                      onClick: (close) => {
+                        return $resources.pages.delete.submit(d.name).then(close)
                       },
                       variant: 'solid',
                       theme: 'red',
