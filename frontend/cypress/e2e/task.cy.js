@@ -62,10 +62,19 @@ describe("Task", () => {
       });
 
     // assign
-    cy.button("Assign a user").click();
+    cy.intercept("POST", "/api/method/frappe.client.set_value").as(
+      "assign_user",
+    );
+    cy.button("Administrator").last().click();
     cy.get('li[id^="headlessui-combobox-option-"]:visible')
       .contains("John Doe")
       .click();
+
+    cy.wait("@assign_user")
+      .its("response.body.message")
+      .then((task) => {
+        task.assigned_to = "john@example.com";
+      });
 
     // set due date
     let date = new Date().toISOString().split("T")[0];

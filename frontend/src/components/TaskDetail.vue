@@ -79,14 +79,8 @@
           <Autocomplete
             placeholder="Assign a user"
             :options="assignableUsers"
-            :value="$resources.task.doc.assigned_to"
-            @change="
-              (option) => {
-                $resources.task.setValue.submit({
-                  assigned_to: option?.value || '',
-                })
-              }
-            "
+            v-model="$resources.task.doc.assigned_to"
+            @update:modelValue="changeAssignee"
           />
           <DatePicker
             v-model="$resources.task.doc.due_date"
@@ -134,14 +128,8 @@
           <Autocomplete
             placeholder="Assign a user"
             :options="assignableUsers"
-            :value="$resources.task.doc.assigned_to"
-            @change="
-              (option) => {
-                $resources.task.setValue.submit({
-                  assigned_to: option?.value || '',
-                })
-              }
-            "
+            v-model="$resources.task.doc.assigned_to"
+            @update:modelValue="changeAssignee"
           />
         </div>
         <div>Due Date</div>
@@ -243,6 +231,9 @@ export default {
     },
   },
   methods: {
+    changeAssignee(option) {
+      this.$resources.task.setValue.submit({ assigned_to: option?.value || '' })
+    },
     changeProject(option) {
       this.$resources.task.setValue.submit(
         {
@@ -252,7 +243,7 @@ export default {
           onSuccess() {
             this.updateRoute()
           },
-        }
+        },
       )
     },
     updateRoute() {
@@ -271,12 +262,10 @@ export default {
   },
   computed: {
     assignableUsers() {
-      return activeUsers.value
-        .filter((user) => user.name != this.$resources.task.doc.assigned_to)
-        .map((user) => ({
-          label: user.full_name,
-          value: user.name,
-        }))
+      return activeUsers.value.map((user) => ({
+        label: user.full_name,
+        value: user.name,
+      }))
     },
     statusOptions() {
       return ['Backlog', 'Todo', 'In Progress', 'Done', 'Canceled'].map(
@@ -286,7 +275,7 @@ export default {
             label: status,
             onClick: () => this.$resources.task.setValue.submit({ status }),
           }
-        }
+        },
       )
     },
     priorityOptions() {
