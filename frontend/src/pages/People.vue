@@ -26,6 +26,7 @@
                 </template>
               </TextInput>
               <Select
+                class="w-44 pl-7"
                 :options="[
                   { label: 'Name', value: 'full_name asc' },
                   { label: 'Last updated', value: 'modified desc' },
