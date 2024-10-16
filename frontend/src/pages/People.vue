@@ -26,6 +26,7 @@
                 </template>
               </TextInput>
               <Select
+                class="w-44 pl-7"
                 :options="[
                   { label: 'Name', value: 'full_name asc' },
                   { label: 'Last updated', value: 'modified desc' },
@@ -35,7 +36,7 @@
                 v-model="orderBy"
               >
                 <template #prefix>
-                  <LucideArrowDownUp class="w-4 text-gray-600" />
+                  <LucideArrowDownUp class="w-4 text-gray-600 inline-block" />
                 </template>
               </Select>
               <Button variant="solid" @click="showSettingsDialog('Invites')">
@@ -128,13 +129,20 @@
   </div>
 </template>
 <script>
-import { Breadcrumbs, Badge, Input, Select, TextInput } from 'frappe-ui'
+import {
+  Breadcrumbs,
+  Badge,
+  Input,
+  Select,
+  TextInput,
+  FormControl,
+} from 'frappe-ui'
 import { showSettingsDialog } from '@/components/Settings/SettingsDialog.vue'
 
 export default {
   name: 'People',
   props: ['person'],
-  components: { Badge, Input, TextInput, Select, Breadcrumbs },
+  components: { Badge, Input, TextInput, Select, Breadcrumbs, FormControl },
   data() {
     return {
       search: '',

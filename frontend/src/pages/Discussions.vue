@@ -33,6 +33,7 @@
         }}
       </Button>
       <Select
+        class="pr-7"
         v-if="feedType === 'recent'"
         :options="orderOptions"
         v-model="orderBy"
@@ -268,7 +269,7 @@ export default {
     },
     isFollowed(project) {
       let followedProjects = (this.$resources.followedProjects.data || []).map(
-        (p) => parseInt(p.project)
+        (p) => parseInt(p.project),
       )
       return followedProjects.includes(project)
     },
