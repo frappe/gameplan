@@ -186,7 +186,7 @@
                       onSuccess() {
                         onProjectMove()
                       },
-                    }
+                    },
                   )
                 }
               "
@@ -328,7 +328,7 @@ export default {
       if (this.$route.name === 'ProjectDiscussion') {
         let discussion = this.$getDocumentResource(
           'GP Discussion',
-          this.$route.params.postId
+          this.$route.params.postId,
         )
         items.push({
           label: discussion?.doc?.title || this.$route.params.postId,
@@ -371,7 +371,7 @@ export default {
       if (this.$route.name === 'ProjectTaskDetail') {
         let task = this.$getDocumentResource(
           'GP Task',
-          this.$route.params.taskId
+          this.$route.params.taskId,
         )
         items.push({
           label: task?.doc?.title || this.$route.params.taskId,
@@ -402,7 +402,7 @@ export default {
       if (this.$route.name === 'ProjectPage') {
         let page = this.$getDocumentResource(
           'GP Page',
-          this.$route.params.pageId
+          this.$route.params.pageId,
         )
         items.push({
           label: page?.doc?.title || this.$route.params.pageId,
@@ -429,7 +429,7 @@ export default {
           {
             label: 'Archive',
             variant: 'solid',
-            onClick: ({ close }) => {
+            onClick: (close) => {
               return this.project.archive.submit(null, {
                 onSuccess: close,
               })
@@ -446,7 +446,7 @@ export default {
           {
             label: 'Unarchive',
             variant: 'solid',
-            onClick: ({ close }) => {
+            onClick: (close) => {
               return this.project.unarchive.submit(null, {
                 onSuccess: close,
               })
@@ -464,7 +464,7 @@ export default {
       for (let team of teams.data || []) {
         if (
           [this.team.doc.name, this.projectMoveDialog.team.value].includes(
-            team.name
+            team.name,
           )
         ) {
           if (this.projectMoveDialog.team.value === team.name) {

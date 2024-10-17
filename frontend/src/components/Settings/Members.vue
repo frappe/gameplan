@@ -109,10 +109,10 @@ export default {
           {
             label: 'Change Role',
             variant: 'solid',
-            onClick: ({ close }) => {
+            onClick: (close) => {
               return this.$resources.changeUserRole.submit(
                 { user: user.name, role },
-                { onSuccess: close }
+                { onSuccess: close },
               )
             },
           },
@@ -132,10 +132,10 @@ export default {
             label: 'Remove User',
             variant: 'solid',
             theme: 'red',
-            onClick: ({ close }) => {
+            onClick: (close) => {
               return this.$resources.removeUser.submit(
                 { user: user.name },
-                { onSuccess: close }
+                { onSuccess: close },
               )
             },
           },
@@ -204,7 +204,7 @@ export default {
                 ],
                 onClick: () => this.removeUser(user),
               },
-              'Remove'
+              'Remove',
             ),
         },
       ]
@@ -230,7 +230,7 @@ function RoleOption({ active, role, onClick, selected }) {
             'aria-hidden': true,
           })
         : null,
-    ]
+    ],
   )
 }
 </script>
