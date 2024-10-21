@@ -22,7 +22,7 @@
                   actions: [
                     {
                       label: 'Delete',
-                      onClick: ({ close }) => {
+                      onClick: (close) => {
                         close()
                         return $resources.pages.delete.submit(d.name)
                       },
