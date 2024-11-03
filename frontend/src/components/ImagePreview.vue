@@ -2,9 +2,7 @@
   <teleport to="body">
     <div v-if="show" class="fixed inset-0 z-20 bg-gray-900/80">
       <div class="absolute right-0 p-4 text-right">
-        <Button @click="$emit('update:show', false)">
-          <template><LucideX class="w-4" /></template>
-        </Button>
+        <Button icon="x" @click="$emit('update:show', false)"> </Button>
       </div>
       <div
         class="flex h-full items-center justify-center"

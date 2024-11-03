@@ -244,7 +244,7 @@ export default {
         onSuccess() {
           if (this.$route.query.comment) {
             let comment = this.$resources.comments.getRow(
-              this.$route.query.comment
+              this.$route.query.comment,
             )
             this.scrollToItem(comment)
           } else if (
@@ -353,7 +353,7 @@ export default {
               iconClasses: 'text-red-600',
             })
           },
-        }
+        },
       )
       this.resetCommentState()
     },
@@ -387,7 +387,7 @@ export default {
           actions: [
             {
               label: 'Discard comment',
-              onClick: ({ close }) => {
+              onClick: (close) => {
                 this.resetCommentState()
                 close()
               },
@@ -432,7 +432,7 @@ export default {
           onSuccess() {
             this.resetCommentState()
           },
-        }
+        },
       )
     },
     discardPoll() {

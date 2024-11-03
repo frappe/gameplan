@@ -38,7 +38,7 @@
                         label: 'Delete',
                         theme: 'red',
                         variant: 'solid',
-                        onClick({ close }) {
+                        onClick(close) {
                           return $resources.task.delete.submit(null, {
                             onSuccess() {
                               close()

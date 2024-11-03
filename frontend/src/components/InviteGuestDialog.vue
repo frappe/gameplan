@@ -92,7 +92,7 @@ function invite() {
         email.value = ''
         pending.reload()
       },
-    }
+    },
   )
 }
 
@@ -111,7 +111,7 @@ function remove(user) {
           label: 'Delete',
           variant: 'solid',
           theme: 'red',
-          onClick: ({ close }) => {
+          onClick: (close) => {
             return pending.delete.submit(user.name).then(close)
           },
         },
@@ -126,7 +126,7 @@ function remove(user) {
           label: 'Delete',
           variant: 'solid',
           theme: 'red',
-          onClick: ({ close }) => {
+          onClick: (close) => {
             return props.project.removeGuest.submit(
               { email: user.user },
               {
@@ -134,7 +134,7 @@ function remove(user) {
                   guests.reload()
                   close()
                 },
-              }
+              },
             )
           },
         },
