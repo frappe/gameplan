@@ -477,8 +477,9 @@ def check_bookmark(discussionId):
 @frappe.whitelist()
 def bookmark_discussion(data):
     data = frappe.parse_json(data)
-    doc = frappe.get_doc("GP Bookmark", {"user": frappe.session.user})
-    if doc:
+    doc_name = frappe.db.get_value("GP Bookmark", {"user": frappe.session.user}, "name")
+    if doc_name:
+        doc = frappe.get_doc("GP Bookmark", doc_name)
         if data.remove_bookmark:
             frappe.db.delete(
                 "GP Bookmark Child",

@@ -197,7 +197,7 @@
   </div>
 </template>
 <script>
-import { Autocomplete, Dropdown, Dialog, Tooltip } from 'frappe-ui'
+import { Autocomplete, Dropdown, Dialog, Tooltip, call } from 'frappe-ui'
 import Reactions from './Reactions.vue'
 import CommentsArea from '@/components/CommentsArea.vue'
 import CommentEditor from './CommentEditor.vue'
@@ -312,7 +312,7 @@ export default {
     }
   },
   methods: {
-    bookMarkPost() {
+    bookMarkDiscussion() {
       let data = {
         discussion: this.discussion.name,
         remove_bookmark: this.bookmarkStatus,
@@ -482,7 +482,7 @@ export default {
         {
           label: `${this.bookmarkStatus ? 'Remove Bookmark' : 'Add Bookmark'}`,
           icon: 'bookmark',
-          onClick: this.bookMarkPost,
+          onClick: this.bookMarkDiscussion,
         },
         {
           label: 'Move to...',

@@ -24,7 +24,11 @@
           </div>
         </div>
         <div class="flex flex-1 flex-col px-16 pt-10">
-          <component v-if="activeTab" :is="activeTab.component" />
+          <component
+            v-if="activeTab"
+            :is="activeTab.component"
+            @close-dialog="show = false"
+          />
         </div>
       </div>
     </template>
