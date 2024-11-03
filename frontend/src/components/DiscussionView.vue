@@ -197,7 +197,7 @@
   </div>
 </template>
 <script>
-import { Autocomplete, Dropdown, Dialog, Tooltip } from 'frappe-ui'
+import { Autocomplete, Dropdown, Dialog, Tooltip, call } from 'frappe-ui'
 import Reactions from './Reactions.vue'
 import CommentsArea from '@/components/CommentsArea.vue'
 import CommentEditor from './CommentEditor.vue'
@@ -284,6 +284,19 @@ export default {
         },
       }
     },
+    bookmark() {
+      return {
+        type: 'resource',
+        url: 'gameplan.api.check_bookmark',
+        params: {
+          discussionId: this.postId,
+        },
+        auto: true,
+        onSuccess(data) {
+          this.bookmarkStatus = data
+        },
+      }
+    },
   },
   data() {
     return {
@@ -295,9 +308,19 @@ export default {
       },
       showRevisionsDialog: false,
       showNavbar: false,
+      bookmarkStatus: false,
     }
   },
   methods: {
+    bookMarkDiscussion() {
+      let data = {
+        discussion: this.discussion.name,
+        remove_bookmark: this.bookmarkStatus,
+      }
+      call('gameplan.api.bookmark_discussion', { data }).then((res) => {
+        this.$resources.bookmark.submit()
+      })
+    },
     copyLink() {
       let location = window.location
       let url = `${location.origin}${location.pathname}`
@@ -455,6 +478,11 @@ export default {
               ],
             })
           },
+        },
+        {
+          label: `${this.bookmarkStatus ? 'Remove Bookmark' : 'Add Bookmark'}`,
+          icon: 'bookmark',
+          onClick: this.bookMarkDiscussion,
         },
         {
           label: 'Move to...',

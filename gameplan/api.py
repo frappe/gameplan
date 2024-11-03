@@ -456,3 +456,72 @@ def search(query, start=0):
         "total": result.total,
         "duration": result.duration,
     }
+
+
+@frappe.whitelist()
+def check_bookmark(discussionId):
+    doc = frappe.db.get_value("GP Bookmark", {"user": frappe.session.user}, "name")
+    if doc:
+        bookmark = frappe.db.exists(
+            {
+                "doctype": "GP Bookmark Child",
+                "parenttype": "GP Bookmark",
+                "parent": doc,
+                "discussion": discussionId,
+            }
+        )
+        return True if bookmark else False
+    return False
+
+
+@frappe.whitelist()
+def bookmark_discussion(data):
+    data = frappe.parse_json(data)
+    doc_name = frappe.db.get_value("GP Bookmark", {"user": frappe.session.user}, "name")
+    if doc_name:
+        doc = frappe.get_doc("GP Bookmark", doc_name)
+        if data.remove_bookmark:
+            frappe.db.delete(
+                "GP Bookmark Child",
+                {
+                    "parenttype": "GP Bookmark",
+                    "parent": doc.name,
+                    "discussion": data.discussion,
+                },
+            )
+            return "Bookmark removed"
+        else:
+            doc.append(
+                "bookmarks",
+                {"discussion": data.discussion, "date_added": frappe.utils.getdate()},
+            )
+            doc.save(ignore_permissions=True)
+            return "Bookmark added"
+    frappe.get_doc(
+        {
+            "doctype": "GP Bookmark",
+            "user": frappe.session.user,
+            "bookmarks": [
+                {"discussion": data.discussion, "date_added": frappe.utils.getdate()}
+            ],
+        }
+    ).insert()
+    return "Bookmark added"
+
+
+@frappe.whitelist()
+def get_bookmarks():
+    doc = frappe.db.get_value("GP Bookmark", {"user": frappe.session.user}, "name")
+    if doc:
+        bookmarks = frappe.db.sql(
+            """
+            SELECT bm.discussion
+            FROM `tabGP Bookmark Child` bm
+            WHERE bm.parent = %(name)s AND bm.parenttype = 'GP Bookmark'
+            """,
+            {"name": doc},
+            as_dict=True,
+        )
+        return bookmarks
+
+    return []
