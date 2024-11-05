@@ -276,13 +276,14 @@ export default {
   },
   computed: {
     filters() {
-      const filters = {}
-      if (this.feedType) {
-        filters.feed_type = this.feedType
+      const filters = {
+        ...(this.feedType && { feed_type: this.feedType }),
+        ...(activeProjects.value.length && {
+          project: activeProjects.value.map((discussion) =>
+            Number(discussion.name),
+          ),
+        }),
       }
-      filters.project = activeProjects.value.length
-        ? activeProjects.value.map((discussion) => Number(discussion.name))
-        : []
       return filters
     },
     projectOptions() {
