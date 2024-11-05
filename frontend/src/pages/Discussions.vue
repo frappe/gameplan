@@ -145,7 +145,7 @@
 <script>
 import DiscussionList from '@/components/DiscussionList.vue'
 import { activeTeams } from '@/data/teams'
-import { getTeamProjects } from '@/data/projects'
+import { getTeamProjects, activeProjects } from '@/data/projects'
 import {
   Autocomplete,
   FormControl,
@@ -276,7 +276,15 @@ export default {
   },
   computed: {
     filters() {
-      return this.feedType ? { feed_type: this.feedType } : null
+      const filters = {
+        ...(this.feedType && { feed_type: this.feedType }),
+        ...(activeProjects.value.length && {
+          project: activeProjects.value.map((discussion) =>
+            Number(discussion.name),
+          ),
+        }),
+      }
+      return filters
     },
     projectOptions() {
       return activeTeams.value.map((team) => ({
