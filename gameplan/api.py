@@ -511,17 +511,17 @@ def bookmark_discussion(data):
 
 @frappe.whitelist()
 def get_bookmarks():
-    doc = frappe.db.get_value("GP Bookmark", {"user": frappe.session.user}, "name")
-    if doc:
-        bookmarks = frappe.db.sql(
-            """
-            SELECT bm.discussion
-            FROM `tabGP Bookmark Child` bm
-            WHERE bm.parent = %(name)s AND bm.parenttype = 'GP Bookmark'
-            """,
-            {"name": doc},
-            as_dict=True,
-        )
+    bookmark_child = frappe.qb.DocType("GP Bookmark Child")
+    doc_name = frappe.db.get_value("GP Bookmark", {"user": frappe.session.user}, "name")
+
+    if doc_name:
+        bookmarks = (
+            frappe.qb.from_(bookmark_child)
+            .select(bookmark_child.discussion)
+            .where(bookmark_child.parent == doc_name)
+            .where(bookmark_child.parenttype == "GP Bookmark")
+        ).run(as_dict=True)
+
         return bookmarks
 
     return []
