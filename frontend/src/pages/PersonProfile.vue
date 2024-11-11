@@ -86,6 +86,7 @@
             { label: 'About' },
             { label: 'Posts' },
             { label: 'Replies' },
+            { label: 'Bookmarks' },
           ]"
           v-model="activeTab"
         />
@@ -216,6 +217,7 @@ export default {
           PersonProfileAboutMe: 'About',
           PersonProfilePosts: 'Posts',
           PersonProfileReplies: 'Replies',
+          PersonProfileBookmarks: 'Bookmarks',
         }[this.$route.name]
       },
       set(value) {
@@ -223,6 +225,7 @@ export default {
           About: { name: 'PersonProfileAboutMe' },
           Posts: { name: 'PersonProfilePosts' },
           Replies: { name: 'PersonProfileReplies' },
+          Bookmarks: { name: 'PersonProfileBookmarks' },
         }[value]
         if (route) {
           this.$router.push(route)
