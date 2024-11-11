@@ -14,6 +14,7 @@ import {
   pageMetaPlugin,
   resourcesPlugin,
 } from 'frappe-ui'
+import * as Sentry from '@sentry/vue'
 import router from './router'
 import App from './App.vue'
 import './index.css'
@@ -68,12 +69,22 @@ if (import.meta.env.DEV) {
       socket = initSocket()
       app.config.globalProperties.$socket = socket
       app.mount('#app')
-    }
+    },
   )
 } else {
   socket = initSocket()
   app.config.globalProperties.$socket = socket
   app.mount('#app')
+}
+
+// sentry error logging
+if (import.meta.env.PROD && window.gameplan_frontend_sentry_dsn) {
+  Sentry.init({
+    app,
+    dsn: window.gameplan_frontend_sentry_dsn,
+    integrations: [Sentry.browserTracingIntegration({ router })],
+    tracesSampleRate: 1.0,
+  })
 }
 
 if (import.meta.env.DEV) {
