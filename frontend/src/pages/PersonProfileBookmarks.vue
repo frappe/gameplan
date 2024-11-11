@@ -1,6 +1,7 @@
 <template>
   <div class="pb-16">
     <DiscussionList
+      v-if="bookmarks.length"
       ref="discussionList"
       routeName="ProjectDiscussion"
       :listOptions="{ filters }"
