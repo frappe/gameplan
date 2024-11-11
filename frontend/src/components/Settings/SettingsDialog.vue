@@ -41,12 +41,10 @@ import Members from './Members.vue'
 import ArchivedTeams from './ArchivedTeams.vue'
 import InvitePeople from './InvitePeople.vue'
 import SettingsTabDialog from './SettingsTab.vue'
-import BookmarksTabDialog from './Bookmarks.vue'
 import LucideUsers from '~icons/lucide/users'
 import LucideUsersPlus from '~icons/lucide/user-plus'
 import LucideFolderMinus from '~icons/lucide/folder-minus'
 import LucideSettings from '~icons/lucide/settings'
-import LucideBookmark from '~icons/lucide/bookmark'
 
 let tabs = [
   {
@@ -63,11 +61,6 @@ let tabs = [
     label: 'Archive',
     icon: LucideFolderMinus,
     component: markRaw(ArchivedTeams),
-  },
-  {
-    label: 'Bookmarks',
-    icon: LucideBookmark,
-    component: markRaw(BookmarksTabDialog),
   },
   {
     label: 'Settings',
