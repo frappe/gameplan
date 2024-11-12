@@ -22,3 +22,12 @@ class GPPage(Document):
 	def on_trash(self):
 		search = GameplanSearch()
 		search.remove_doc(self)
+
+def has_permission(doc, user, ptype):
+	if doc.project:
+		# pages in projects accessible by everyone
+		return True
+	if doc.owner == user:
+		# private pages
+		return True
+	return False
