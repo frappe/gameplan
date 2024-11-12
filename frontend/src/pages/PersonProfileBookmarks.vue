@@ -1,24 +1,20 @@
 <template>
-  <div class="flex min-h-0 flex-col">
-    <h2 class="text-xl font-semibold">Bookmarked Discussions</h2>
-    <div class="mt-6 divide-y overflow-y-auto pb-16">
-      <DiscussionList
-        v-if="bookmarks.length"
-        ref="discussionList"
-        routeName="ProjectDiscussion"
-        :listOptions="{ filters }"
-        :key="JSON.stringify(filters)"
-        @click="handleDiscussionClick"
-      />
-      <p v-else class="text-base text-gray-900">No bookmarks</p>
-    </div>
+  <div class="pb-16">
+    <DiscussionList
+      v-if="bookmarks.length"
+      ref="discussionList"
+      routeName="ProjectDiscussion"
+      :listOptions="{ filters }"
+      :key="JSON.stringify(filters)"
+      @click="handleDiscussionClick"
+    />
   </div>
 </template>
 <script>
-import DiscussionList from '../DiscussionList.vue'
+import DiscussionList from '@/components/DiscussionList.vue'
 
 export default {
-  name: 'BookmarksTabDialog',
+  name: 'PersonProfileBookmarks',
   data() {
     return {
       bookmarks: [],
@@ -49,6 +45,7 @@ export default {
     handleDiscussionClick() {
       this.$emit('close-dialog')
     },
+    components: { DiscussionList },
   },
 }
 </script>
