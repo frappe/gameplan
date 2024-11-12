@@ -30,6 +30,7 @@ def get_boot():
 		'default_route': get_default_route(),
 		'site_name': frappe.local.site,
 		'read_only_mode': frappe.flags.read_only,
+		'gameplan_frontend_sentry_dsn': frappe.conf.gameplan_frontend_sentry_dsn
 	})
 
 def on_login(login_manager):
