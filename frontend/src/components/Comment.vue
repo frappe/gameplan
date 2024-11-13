@@ -12,10 +12,7 @@
           <UserAvatar size="lg" :user="user.name" />
         </UserProfileLink>
         <div class="md:flex md:items-center">
-          <UserProfileLink
-            class="font-medium hover:text-blue-600"
-            :user="user.name"
-          >
+          <UserProfileLink class="font-medium hover:text-blue-600" :user="user.name">
             {{ user.full_name }}
             <span class="hidden md:inline">&nbsp;&middot;&nbsp;</span>
           </UserProfileLink>
@@ -95,9 +92,7 @@
                 })
               },
               condition: () =>
-                $isSessionUser(comment.owner) &&
-                comment.deleted_at == null &&
-                !readOnlyMode,
+                $isSessionUser(comment.owner) && comment.deleted_at == null && !readOnlyMode,
             },
           ]"
         />
@@ -105,8 +100,7 @@
       <div class="flex-1">
         <div
           :class="{
-            'w-full rounded-lg border bg-white p-4 focus-within:border-gray-400':
-              comment.editing,
+            'w-full rounded-lg border bg-white p-4 focus-within:border-gray-400': comment.editing,
           }"
           @keydown.ctrl.enter.capture.stop="editComment(comment)"
           @keydown.meta.enter.capture.stop="editComment(comment)"
@@ -127,13 +121,8 @@
               },
             }"
           />
-          <span class="text-base italic text-gray-600" v-else>
-            This message is deleted
-          </span>
-          <div
-            class="mt-3"
-            v-if="!comment.deleted_at && !comment.editing && comment.reactions"
-          >
+          <span class="text-base italic text-gray-600" v-else> This message is deleted </span>
+          <div class="mt-3" v-if="!comment.deleted_at && !comment.editing && comment.reactions">
             <Reactions
               doctype="GP Comment"
               :name="comment.name"

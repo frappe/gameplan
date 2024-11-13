@@ -6,30 +6,19 @@
           <UserAvatar :user="user.name" />
         </UserProfileLink>
         <div class="md:flex md:items-center">
-          <UserProfileLink
-            class="font-medium hover:text-blue-600"
-            :user="user.name"
-          >
+          <UserProfileLink class="font-medium hover:text-blue-600" :user="user.name">
             {{ user.full_name }}
             <span class="hidden md:inline">&nbsp;&middot;&nbsp;</span>
           </UserProfileLink>
           <div>
-            <time
-              class="text-gray-600"
-              :datetime="_poll.creation"
-              :title="$dayjs(_poll.creation)"
-            >
+            <time class="text-gray-600" :datetime="_poll.creation" :title="$dayjs(_poll.creation)">
               {{ $dayjs(_poll.creation).fromNow() }}
             </time>
           </div>
         </div>
       </UserInfo>
       <div class="ml-auto flex items-center space-x-2">
-        <Button
-          v-if="!isStopped && $isSessionUser(_poll.owner)"
-          variant="ghost"
-          @click="stopPoll"
-        >
+        <Button v-if="!isStopped && $isSessionUser(_poll.owner)" variant="ghost" @click="stopPoll">
           <template #prefix><LucideMinusCircle class="w-4" /></template>
           Stop Poll
         </Button>
@@ -51,9 +40,7 @@
     <div class="mt-1 text-sm text-gray-600">
       <span v-if="_poll.multiple_answers"> Multiple answers &middot; </span>
       <span v-if="_poll.anonymous"> Anonymous &middot; </span>
-      <span>
-        {{ _poll.total_votes }} {{ _poll.total_votes === 1 ? 'vote' : 'votes' }}
-      </span>
+      <span> {{ _poll.total_votes }} {{ _poll.total_votes === 1 ? 'vote' : 'votes' }} </span>
       <span v-if="_poll.stopped_at"> &middot; {{ stopTime }} </span>
     </div>
     <div class="my-4 space-y-2">
@@ -62,9 +49,7 @@
         v-for="option in _poll.options"
         :key="option.idx"
         @click="submitVote(option)"
-        :disabled="
-          participated || isStopped || $resources.poll.submitVote.loading
-        "
+        :disabled="participated || isStopped || $resources.poll.submitVote.loading"
       >
         <div
           class="mr-2 h-4 w-4 rounded-full border-2 text-sm"
@@ -91,17 +76,9 @@
       </button>
     </div>
     <div class="mt-3">
-      <Reactions
-        doctype="GP Poll"
-        :name="poll.name"
-        :reactions="_poll.reactions"
-      />
+      <Reactions doctype="GP Poll" :name="poll.name" :reactions="_poll.reactions" />
     </div>
-    <Dialog
-      :options="{ title: 'Poll results' }"
-      v-model="showDialog"
-      v-if="pollResults"
-    >
+    <Dialog :options="{ title: 'Poll results' }" v-model="showDialog" v-if="pollResults">
       <template #body-content>
         <h2 class="text-lg font-semibold">{{ _poll.title }}</h2>
         <div class="mt-2 space-y-4">
@@ -113,9 +90,7 @@
               <div class="text-base text-gray-600">
                 {{ option.votes }} {{ option.votes === 1 ? 'vote' : 'votes' }}
               </div>
-              <div class="ml-1 text-base text-gray-600">
-                ({{ option.percentage }}%)
-              </div>
+              <div class="ml-1 text-base text-gray-600">({{ option.percentage }}%)</div>
             </div>
             <div class="py-2" v-for="user in option.voters" :key="user">
               <UserInfo :email="user" v-slot="{ user: _user }">
@@ -193,9 +168,7 @@ export default {
               label: `Vote for "${option.title}"`,
               variant: 'solid',
               onClick: (close) => {
-                this.$resources.poll.submitVote
-                  .submit({ option: option.title })
-                  .then(close)
+                this.$resources.poll.submitVote.submit({ option: option.title }).then(close)
               },
             },
           ],
@@ -213,15 +186,13 @@ export default {
     stopPoll() {
       this.$dialog({
         title: 'Stop poll',
-        message:
-          'After the poll is stopped, no one will be able to vote on it. Continue?',
+        message: 'After the poll is stopped, no one will be able to vote on it. Continue?',
         actions: [
           {
             label: 'Stop',
             variant: 'solid',
             theme: 'red',
-            onClick: (close) =>
-              this.$resources.poll.stopPoll.submit().then(close),
+            onClick: (close) => this.$resources.poll.stopPoll.submit().then(close),
           },
         ],
       })
@@ -270,8 +241,7 @@ export default {
           condition: () =>
             !this._poll.anonymous &&
             this.participated &&
-            (!this._poll.stopped_at ||
-              this.$dayjs().isBefore(this._poll.stopped_at)),
+            (!this._poll.stopped_at || this.$dayjs().isBefore(this._poll.stopped_at)),
           onClick: () => {
             this.$dialog({
               title: 'Retract vote',
@@ -281,8 +251,7 @@ export default {
                   label: 'Retract vote',
                   variant: 'solid',
                   theme: 'red',
-                  onClick: (close) =>
-                    this.$resources.poll.retractVote.submit().then(close),
+                  onClick: (close) => this.$resources.poll.retractVote.submit().then(close),
                 },
               ],
             })
@@ -306,8 +275,7 @@ export default {
                   label: 'Delete',
                   variant: 'solid',
                   theme: 'red',
-                  onClick: (close) =>
-                    this.$resources.poll.delete.submit().then(close),
+                  onClick: (close) => this.$resources.poll.delete.submit().then(close),
                 },
               ],
             })
@@ -316,9 +284,7 @@ export default {
       ]
     },
     isStopped() {
-      return (
-        this._poll.stopped_at && this.$dayjs().isAfter(this._poll.stopped_at)
-      )
+      return this._poll.stopped_at && this.$dayjs().isAfter(this._poll.stopped_at)
     },
     stopTime() {
       let timestamp = this._poll.stopped_at

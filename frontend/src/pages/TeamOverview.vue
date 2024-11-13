@@ -12,15 +12,8 @@
       <div class="mb-5 flex items-center justify-between space-x-2">
         <h2 class="text-2xl font-semibold text-gray-900">Projects</h2>
         <div class="flex items-stretch space-x-2">
-          <TabButtons
-            :buttons="[{ label: 'Active' }, { label: 'Archived' }]"
-            v-model="activeTab"
-          />
-          <Button
-            v-if="teamProjects.length"
-            @click="createNewProjectDialog = true"
-            variant="solid"
-          >
+          <TabButtons :buttons="[{ label: 'Active' }, { label: 'Archived' }]" v-model="activeTab" />
+          <Button v-if="teamProjects.length" @click="createNewProjectDialog = true" variant="solid">
             <template #prefix>
               <LucidePlus class="h-4 w-4" />
             </template>
@@ -29,11 +22,7 @@
         </div>
       </div>
       <ul role="list" class="grid grid-cols-1 gap-5 sm:grid-cols-4">
-        <li
-          v-for="project in projectsList"
-          :key="project.name"
-          class="flow-root"
-        >
+        <li v-for="project in projectsList" :key="project.name" class="flow-root">
           <div
             class="group relative items-center rounded-lg p-3 shadow transition-colors focus-within:ring focus-within:ring-gray-300 hover:bg-gray-100"
           >
@@ -49,10 +38,7 @@
                   <span class="absolute inset-0" aria-hidden="true" />
                   <span class="inline-flex items-center">
                     {{ project.title }}
-                    <LucideLock
-                      v-if="project.is_private"
-                      class="ml-1 h-3 w-3"
-                    />
+                    <LucideLock v-if="project.is_private" class="ml-1 h-3 w-3" />
                   </span>
                 </router-link>
               </h3>
@@ -71,11 +57,7 @@
                     {{ project.discussions_count }}
                   </span>
                   <span class="text-gray-700"
-                    >&nbsp;{{
-                      project.discussions_count === 1
-                        ? 'discussion'
-                        : 'discussions'
-                    }}
+                    >&nbsp;{{ project.discussions_count === 1 ? 'discussion' : 'discussions' }}
                   </span>
                 </template>
                 <span
@@ -103,17 +85,10 @@
           </div>
         </button>
       </ul>
-      <Dialog
-        :options="{ title: 'Create project' }"
-        v-model="createNewProjectDialog"
-      >
+      <Dialog :options="{ title: 'Create project' }" v-model="createNewProjectDialog">
         <template #body-content>
           <div class="space-y-5">
-            <FormControl
-              label="Title"
-              v-model="newProject.title"
-              @keydown.enter="createProject"
-            />
+            <FormControl label="Title" v-model="newProject.title" @keydown.enter="createProject" />
             <FormControl
               v-if="!team.doc.is_private"
               type="select"
@@ -144,11 +119,7 @@
 </template>
 <script>
 import { Dialog, FormControl, TextInput, TabButtons } from 'frappe-ui'
-import {
-  projects,
-  getTeamProjects,
-  getTeamArchivedProjects,
-} from '@/data/projects'
+import { projects, getTeamProjects, getTeamArchivedProjects } from '@/data/projects'
 
 export default {
   name: 'TeamOverview',
@@ -171,9 +142,7 @@ export default {
       return projects
     },
     projectsList() {
-      return this.activeTab === 'Active'
-        ? this.activeProjects
-        : this.archivedProjects
+      return this.activeTab === 'Active' ? this.activeProjects : this.archivedProjects
     },
     activeProjects() {
       return this.teamProjects.filter((project) => !project.archived_at)
@@ -202,7 +171,7 @@ export default {
               params: { projectId: project.name },
             })
           },
-        }
+        },
       )
     },
   },

@@ -17,11 +17,7 @@
             <FormControl
               variant="outline"
               size="md"
-              :type="
-                (email || '').toLowerCase() === 'administrator'
-                  ? 'text'
-                  : 'email'
-              "
+              :type="(email || '').toLowerCase() === 'administrator' ? 'text' : 'email'"
               label="Email"
               v-model="email"
               placeholder="jane@example.com"
@@ -40,11 +36,7 @@
             />
           </div>
           <ErrorMessage class="mt-2" :message="session.login.error" />
-          <Button
-            variant="solid"
-            class="mt-6 w-full"
-            :loading="session.login.loading"
-          >
+          <Button variant="solid" class="mt-6 w-full" :loading="session.login.loading">
             Login
           </Button>
           <button
@@ -55,10 +47,7 @@
             Login using other methods
           </button>
         </form>
-        <div
-          class="mx-auto space-y-2"
-          v-if="authProviders.data && !showEmailLogin"
-        >
+        <div class="mx-auto space-y-2" v-if="authProviders.data && !showEmailLogin">
           <Button @click="showEmailLogin = true" variant="solid" class="w-full">
             Login via email
           </Button>

@@ -1,8 +1,6 @@
 <template>
   <div v-if="profile">
-    <header
-      class="sticky top-0 z-10 flex border-b bg-white px-4 py-2.5 sm:px-5"
-    >
+    <header class="sticky top-0 z-10 flex border-b bg-white px-4 py-2.5 sm:px-5">
       <Breadcrumbs
         :items="[
           { label: 'People', route: { name: 'People' } },
@@ -32,10 +30,7 @@
     <div class="mx-auto -mt-4 max-w-4xl translate-x-0 sm:px-5">
       <div class="flex items-center">
         <div class="-mx-1 inline-flex translate-y-0">
-          <ImagePreview
-            v-model:show="imagePreview.show"
-            :imageUrl="imagePreview.imageUrl"
-          />
+          <ImagePreview v-model:show="imagePreview.show" :imageUrl="imagePreview.imageUrl" />
           <button
             v-if="currentUser.user_image"
             @click="
@@ -69,11 +64,7 @@
             {{ profile.bio }}
           </p>
         </div>
-        <Button
-          v-if="$isSessionUser(profile.user)"
-          @click="editDialog.show = true"
-          class="ml-auto"
-        >
+        <Button v-if="$isSessionUser(profile.user)" @click="editDialog.show = true" class="ml-auto">
           <template #prefix><LucideEdit class="w-4" /></template>
           Edit Profile
         </Button>
@@ -102,25 +93,15 @@
     >
       <template #body-content>
         <div class="space-y-4">
-          <ProfileImageEditor
-            :profile="$resources.profile"
-            v-if="editDialog.editingProfilePhoto"
-          />
+          <ProfileImageEditor :profile="$resources.profile" v-if="editDialog.editingProfilePhoto" />
           <template v-else>
             <div class="flex items-center gap-4">
               <UserAvatar size="lg" :user="profile.user" />
-              <Button @click="editDialog.editingProfilePhoto = true">
-                Edit Profile Photo
-              </Button>
+              <Button @click="editDialog.editingProfilePhoto = true"> Edit Profile Photo </Button>
             </div>
             <FormControl label="First Name" v-model="user.first_name" />
             <FormControl label="Last Name" v-model="user.last_name" />
-            <FormControl
-              label="Bio"
-              v-model="profile.bio"
-              type="textarea"
-              maxlength="280"
-            />
+            <FormControl label="Bio" v-model="profile.bio" type="textarea" maxlength="280" />
           </template>
         </div>
       </template>
@@ -129,10 +110,7 @@
           variant="solid"
           class="w-full"
           @click="save"
-          :loading="
-            $resources.user.setValue.loading ||
-            $resources.profile.setValue.loading
-          "
+          :loading="$resources.user.setValue.loading || $resources.profile.setValue.loading"
         >
           Save
         </Button>
@@ -141,13 +119,7 @@
   </div>
 </template>
 <script>
-import {
-  Breadcrumbs,
-  Dialog,
-  FileUploader,
-  FormControl,
-  TabButtons,
-} from 'frappe-ui'
+import { Breadcrumbs, Dialog, FileUploader, FormControl, TabButtons } from 'frappe-ui'
 import CoverImage from '@/components/CoverImage.vue'
 import ImagePreview from '../components/ImagePreview.vue'
 import ColorPicker from '@/components/ColorPicker.vue'

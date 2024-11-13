@@ -9,18 +9,11 @@
         class="inline-flex items-center whitespace-nowrap rounded-full border py-1 pl-2.5 pr-1 text-sm leading-none"
         v-for="option in modelValue"
         :key="option.value"
-        :class="
-          focusedOption === option
-            ? 'bg-white ring-2 ring-blue-600'
-            : 'bg-white'
-        "
+        :class="focusedOption === option ? 'bg-white ring-2 ring-blue-600' : 'bg-white'"
       >
         {{ option.displayValue || option.label }}
 
-        <button
-          class="ml-1 rounded-full p-1 hover:bg-gray-100"
-          @click="removeOption(option)"
-        >
+        <button class="ml-1 rounded-full p-1 hover:bg-gray-100" @click="removeOption(option)">
           <LucideX class="h-3 w-3" />
         </button>
       </div>
@@ -147,7 +140,7 @@ export default {
             option.label
               .toLowerCase()
               .replace(/\s+/g, '')
-              .includes(this.query.toLowerCase().replace(/\s+/g, ''))
+              .includes(this.query.toLowerCase().replace(/\s+/g, '')),
           )
     },
   },
@@ -169,7 +162,7 @@ export default {
     removeOption(_option) {
       this.$emit(
         'update:modelValue',
-        this.modelValue.filter((option) => option !== _option)
+        this.modelValue.filter((option) => option !== _option),
       )
     },
     focusInput() {

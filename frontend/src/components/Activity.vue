@@ -3,70 +3,35 @@
     <div
       class="mr-3 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-gray-100 text-gray-900"
     >
-      <LucideLock
-        class="h-4 w-4"
-        v-if="activity.action === 'Discussion Closed'"
-      />
-      <LucideUnlock
-        class="h-4 w-4"
-        v-else-if="activity.action === 'Discussion Reopened'"
-      />
-      <LucideEdit3
-        class="h-4 w-4"
-        v-else-if="activity.action === 'Discussion Title Changed'"
-      />
-      <LucideArrowUpLeft
-        class="h-4 w-4"
-        v-else-if="activity.action === 'Discussion Pinned'"
-      />
-      <LucideArrowDownLeft
-        class="h-4 w-4"
-        v-else-if="activity.action === 'Discussion Unpinned'"
-      />
-      <LucideEdit3
-        class="h-4 w-4"
-        v-else-if="activity.action === 'Task Value Changed'"
-      />
+      <LucideLock class="h-4 w-4" v-if="activity.action === 'Discussion Closed'" />
+      <LucideUnlock class="h-4 w-4" v-else-if="activity.action === 'Discussion Reopened'" />
+      <LucideEdit3 class="h-4 w-4" v-else-if="activity.action === 'Discussion Title Changed'" />
+      <LucideArrowUpLeft class="h-4 w-4" v-else-if="activity.action === 'Discussion Pinned'" />
+      <LucideArrowDownLeft class="h-4 w-4" v-else-if="activity.action === 'Discussion Unpinned'" />
+      <LucideEdit3 class="h-4 w-4" v-else-if="activity.action === 'Task Value Changed'" />
     </div>
     <p>
       <UserInfo :email="activity.user" v-slot="{ user }">
-        <UserProfileLink
-          class="font-medium text-gray-800 hover:text-gray-600"
-          :user="user.name"
-        >
+        <UserProfileLink class="font-medium text-gray-800 hover:text-gray-600" :user="user.name">
           {{ user.full_name }}
         </UserProfileLink>
       </UserInfo>
       <span class="text-gray-900" v-if="activity.action == 'Discussion Closed'">
         closed this discussion
       </span>
-      <span
-        class="text-gray-900"
-        v-if="activity.action == 'Discussion Reopened'"
-      >
+      <span class="text-gray-900" v-if="activity.action == 'Discussion Reopened'">
         reopened this discussion
       </span>
       <span class="text-gray-900" v-if="activity.action == 'Discussion Pinned'">
         pinned this discussion
       </span>
-      <span
-        class="text-gray-900"
-        v-if="activity.action == 'Discussion Unpinned'"
-      >
+      <span class="text-gray-900" v-if="activity.action == 'Discussion Unpinned'">
         unpinned this discussion
       </span>
-      <span
-        class="text-gray-900"
-        v-if="activity.action == 'Discussion Title Changed'"
-      >
-        changed the title from "{{ activity.data.old_title }}" to "{{
-          activity.data.new_title
-        }}"
+      <span class="text-gray-900" v-if="activity.action == 'Discussion Title Changed'">
+        changed the title from "{{ activity.data.old_title }}" to "{{ activity.data.new_title }}"
       </span>
-      <span
-        class="text-gray-600"
-        v-if="activity.action == 'Task Value Changed'"
-      >
+      <span class="text-gray-600" v-if="activity.action == 'Task Value Changed'">
         <template v-if="activity.data.field === 'assigned_to'">
           assigned this to
           <UserProfileLink

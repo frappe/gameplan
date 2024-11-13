@@ -11,7 +11,7 @@ export let Toasts = {
         ...toast,
         modelValue: toast.show,
         'onUpdate:modelValue': (val) => (toast.show = val),
-      })
+      }),
     )
   },
 }

@@ -1,19 +1,12 @@
 <template>
   <div class="flex h-full flex-col items-center bg-gray-100 pt-10">
-    <span
-      class="select-none text-3xl font-black uppercase tracking-[0.5em] text-gray-900"
-    >
+    <span class="select-none text-3xl font-black uppercase tracking-[0.5em] text-gray-900">
       Gameplan
     </span>
     <div class="min mt-7 min-w-[36rem] rounded-lg bg-white p-9 shadow-md">
-      <div
-        v-if="$resources.onboarding.loading"
-        class="flex items-center justify-center"
-      >
+      <div v-if="$resources.onboarding.loading" class="flex items-center justify-center">
         <LoadingIndicator class="h-4 w-4 text-gray-600" />
-        <span class="ml-2 text-base text-gray-900">
-          Setting up your team and project
-        </span>
+        <span class="ml-2 text-base text-gray-900"> Setting up your team and project </span>
       </div>
       <div v-if="!$resources.onboarding.loading">
         <div class="flex items-baseline justify-between">
@@ -32,17 +25,11 @@
           ></div>
         </div>
         <div class="mt-6">
-          <component
-            v-if="activeStep.component"
-            :is="activeStep.component"
-            v-model="data"
-          />
+          <component v-if="activeStep.component" :is="activeStep.component" v-model="data" />
         </div>
         <ErrorMessage class="mt-2" :message="$resources.onboarding.error" />
         <div class="mt-10 flex items-center justify-between">
-          <Button v-show="activeStepIndex > 0" @click="prevStep">
-            Previous
-          </Button>
+          <Button v-show="activeStepIndex > 0" @click="prevStep"> Previous </Button>
           <Button
             class="ml-auto"
             v-show="activeStepIndex < steps.length - 1"

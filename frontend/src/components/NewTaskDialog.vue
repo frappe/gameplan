@@ -16,11 +16,7 @@
     <template #body-content>
       <div class="space-y-4">
         <FormControl label="Title" v-model="newTask.title" autocomplete="off" />
-        <FormControl
-          label="Description"
-          type="textarea"
-          v-model="newTask.description"
-        />
+        <FormControl label="Description" type="textarea" v-model="newTask.description" />
         <div class="flex space-x-2">
           <Dropdown
             :options="
@@ -36,11 +32,7 @@
               {{ newTask.status }}
             </Button>
           </Dropdown>
-          <TextInput
-            type="date"
-            placeholder="Set due date"
-            v-model="newTask.due_date"
-          />
+          <TextInput type="date" placeholder="Set due date" v-model="newTask.due_date" />
           <Autocomplete
             placeholder="Assign a user"
             :options="assignableUsers"
@@ -55,14 +47,7 @@
 </template>
 <script setup>
 import { ref, computed, h } from 'vue'
-import {
-  Dialog,
-  FormControl,
-  Autocomplete,
-  Dropdown,
-  TextInput,
-  createResource,
-} from 'frappe-ui'
+import { Dialog, FormControl, Autocomplete, Dropdown, TextInput, createResource } from 'frappe-ui'
 import TaskStatusIcon from './icons/TaskStatusIcon.vue'
 import { activeUsers } from '@/data/users'
 
@@ -91,15 +76,13 @@ const initialData = {
 const newTask = ref(initialData)
 
 function statusOptions({ onClick }) {
-  return ['Backlog', 'Todo', 'In Progress', 'Done', 'Canceled'].map(
-    (status) => {
-      return {
-        icon: () => h(TaskStatusIcon, { status }),
-        label: status,
-        onClick: () => onClick(status),
-      }
-    },
-  )
+  return ['Backlog', 'Todo', 'In Progress', 'Done', 'Canceled'].map((status) => {
+    return {
+      icon: () => h(TaskStatusIcon, { status }),
+      label: status,
+      onClick: () => onClick(status),
+    }
+  })
 }
 
 const assignableUsers = computed(() => {

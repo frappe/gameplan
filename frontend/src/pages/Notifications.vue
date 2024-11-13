@@ -1,17 +1,12 @@
 <template>
   <header class="sticky top-0 z-10 border-b bg-white px-4 py-2.5 sm:px-5">
     <div class="flex items-center justify-between">
-      <Breadcrumbs
-        :items="[{ label: 'Notifications', route: { name: 'Notifications' } }]"
-      />
+      <Breadcrumbs :items="[{ label: 'Notifications', route: { name: 'Notifications' } }]" />
       <div class="flex h-7 items-center space-x-2">
         <Button
           @click="$resources.markAllAsRead.submit"
           :loading="$resources.markAllAsRead.loading"
-          v-if="
-            activeTab === 'Unread' &&
-            $resources.unreadNotifications.data?.length > 0
-          "
+          v-if="activeTab === 'Unread' && $resources.unreadNotifications.data?.length > 0"
         >
           Mark all as read
         </Button>
@@ -24,17 +19,10 @@
   </header>
   <div class="mx-auto w-full max-w-4xl px-5 pt-6">
     <div class="divide-y">
-      <div
-        class="flex items-center justify-between py-2"
-        v-for="d in notifications"
-        :key="d.name"
-      >
+      <div class="flex items-center justify-between py-2" v-for="d in notifications" :key="d.name">
         <div class="flex items-start space-x-2">
           <UserAvatar size="sm" :user="d.from_user" v-if="d.from_user" />
-          <div
-            class="grid h-5 w-5 place-items-center"
-            v-if="d.type === 'Reaction'"
-          >
+          <div class="grid h-5 w-5 place-items-center" v-if="d.type === 'Reaction'">
             <LucideHeart class="h-4 w-4 text-gray-700" />
           </div>
           <div class="text-base text-gray-900">
@@ -57,16 +45,16 @@
                     query: d.comment ? { comment: d.comment } : null,
                   }
                 : d.task
-                ? {
-                    name: 'ProjectTaskDetail',
-                    params: {
-                      teamId: d.team,
-                      projectId: d.project,
-                      taskId: d.task,
-                    },
-                    query: d.comment ? { comment: d.comment } : null,
-                  }
-                : null
+                  ? {
+                      name: 'ProjectTaskDetail',
+                      params: {
+                        teamId: d.team,
+                        projectId: d.project,
+                        taskId: d.task,
+                      },
+                      query: d.comment ? { comment: d.comment } : null,
+                    }
+                  : null
             "
             @click="markAsRead(d.name)"
           >
@@ -82,9 +70,7 @@
         </div>
       </div>
     </div>
-    <div v-if="!notifications?.length" class="text-base text-gray-600">
-      Nothing to see here
-    </div>
+    <div v-if="!notifications?.length" class="text-base text-gray-600">Nothing to see here</div>
   </div>
 </template>
 <script>
@@ -182,7 +168,7 @@ export default {
           onSuccess: () => {
             this.$getResource('Unread Notifications Count')?.reload()
           },
-        }
+        },
       )
     },
   },

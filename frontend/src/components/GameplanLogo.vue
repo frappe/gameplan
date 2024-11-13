@@ -1,10 +1,5 @@
 <template>
-  <svg
-    class="adsf"
-    viewBox="0 0 118 118"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
+  <svg class="adsf" viewBox="0 0 118 118" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path
       d="M93.928 0H23.1C10.343 0 0 10.343 0 23.101v70.827c0 12.758 10.343 23.101 23.101 23.101h70.827c12.758 0 23.101-10.343 23.101-23.101V23.1C117.029 10.343 106.686 0 93.928 0Z"
       fill="#FF8F26"

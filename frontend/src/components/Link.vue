@@ -1,9 +1,5 @@
 <template>
-  <router-link
-    custom
-    :to="link.route"
-    v-slot="{ href, isActive, isExactActive, navigate }"
-  >
+  <router-link custom :to="link.route" v-slot="{ href, isActive, isExactActive, navigate }">
     <a
       ref="elementRef"
       v-bind="$attrs"

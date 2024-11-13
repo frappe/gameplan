@@ -14,9 +14,7 @@
           <template #prefix>
             <IconPicker
               v-model="team.doc.icon"
-              @update:modelValue="
-                team.setValueDebounced.submit({ icon: team.doc.icon })
-              "
+              @update:modelValue="team.setValueDebounced.submit({ icon: team.doc.icon })"
               v-slot="{ isOpen }"
             >
               <button

@@ -15,9 +15,7 @@ export default defineConfig({
     vue(),
     vueJsx(),
     Components({
-      resolvers: [
-        IconsResolver({ prefix: false, enabledCollections: ['lucide'] }),
-      ],
+      resolvers: [IconsResolver({ prefix: false, enabledCollections: ['lucide'] })],
     }),
     Icons({
       customCollections: {
@@ -38,7 +36,7 @@ export default defineConfig({
                 {% endfor %}
             </script>
             </body>
-            `
+            `,
           )
         }
         return html

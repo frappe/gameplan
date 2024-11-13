@@ -23,17 +23,14 @@
             }"
             class="flex h-15 w-full items-center rounded p-2.5 transition hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400"
             :class="{
-              'pointer-events-none':
-                tasks.delete.loading && tasks.delete.params.name === d.name,
+              'pointer-events-none': tasks.delete.loading && tasks.delete.params.name === d.name,
             }"
           >
             <div class="w-full">
               <div class="flex min-w-0 items-start">
                 <LoadingIndicator
                   class="h-4 w-4 text-gray-600"
-                  v-if="
-                    tasks.delete.loading && tasks.delete.params.name === d.name
-                  "
+                  v-if="tasks.delete.loading && tasks.delete.params.name === d.name"
                 />
                 <Tooltip text="Change status" v-else>
                   <Dropdown
@@ -59,9 +56,7 @@
                 >
                   {{ d.title }}
                 </div>
-                <div
-                  class="ml-auto shrink-0 whitespace-nowrap text-sm text-gray-600"
-                >
+                <div class="ml-auto shrink-0 whitespace-nowrap text-sm text-gray-600">
                   {{ $dayjs(d.modified).fromNow() }}
                 </div>
               </div>
@@ -90,9 +85,7 @@
                   <div class="px-2 leading-none text-gray-600">&middot;</div>
                   <div class="flex items-center">
                     <LucideCalendar class="h-3 w-3 text-gray-600" />
-                    <span
-                      class="ml-2 whitespace-nowrap text-base text-gray-600"
-                    >
+                    <span class="ml-2 whitespace-nowrap text-base text-gray-600">
                       {{ $dayjs(d.due_date).format('D MMM') }}</span
                     >
                   </div>
@@ -125,10 +118,7 @@
               </div>
             </div>
           </router-link>
-          <div
-            class="mx-2.5 border-b"
-            v-if="index < group.tasks.length - 1"
-          ></div>
+          <div class="mx-2.5 border-b" v-if="index < group.tasks.length - 1"></div>
         </div>
       </div>
     </div>
@@ -181,11 +171,7 @@ export default {
         url: 'gameplan.gameplan.doctype.gp_task.gp_task.get_list',
         cache: ['Tasks', this.listOptions],
         doctype: 'GP Task',
-        fields: [
-          '*',
-          'project.title as project_title',
-          'team.title as team_title',
-        ],
+        fields: ['*', 'project.title as project_title', 'team.title as team_title'],
         filters: this.listOptions.filters,
         orderBy: this.listOptions.orderBy || 'creation desc',
         pageLength: this.listOptions.pageLength || 20,
@@ -196,15 +182,13 @@ export default {
   },
   methods: {
     statusOptions({ onClick }) {
-      return ['Backlog', 'Todo', 'In Progress', 'Done', 'Canceled'].map(
-        (status) => {
-          return {
-            icon: () => h(TaskStatusIcon, { status }),
-            label: status,
-            onClick: () => onClick(status),
-          }
+      return ['Backlog', 'Todo', 'In Progress', 'Done', 'Canceled'].map((status) => {
+        return {
+          icon: () => h(TaskStatusIcon, { status }),
+          label: status,
+          onClick: () => onClick(status),
         }
-      )
+      })
     },
   },
   computed: {
@@ -221,15 +205,13 @@ export default {
           },
         ]
       }
-      return ['In Progress', 'Todo', 'Backlog', 'Done', 'Canceled'].map(
-        (status) => {
-          return {
-            id: status,
-            title: status,
-            tasks: this.tasksByStatus[status] || [],
-          }
+      return ['In Progress', 'Todo', 'Backlog', 'Done', 'Canceled'].map((status) => {
+        return {
+          id: status,
+          title: status,
+          tasks: this.tasksByStatus[status] || [],
         }
-      )
+      })
     },
     tasksByStatus() {
       const tasksByStatus = {}

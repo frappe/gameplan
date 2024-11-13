@@ -22,10 +22,7 @@
         >
           <Button>
             <div class="flex items-center">
-              <ArrowDownUp
-                class="mr-1.5 h-4 w-4 leading-none"
-                :stroke-width="1.5"
-              />
+              <ArrowDownUp class="mr-1.5 h-4 w-4 leading-none" :stroke-width="1.5" />
               <span> Sort </span>
             </div>
           </Button>
@@ -36,10 +33,7 @@
         </Button>
       </div>
     </div>
-    <PageGrid
-      class="mt-4.5"
-      :listOptions="{ filters: { project: project.name }, orderBy }"
-    />
+    <PageGrid class="mt-4.5" :listOptions="{ filters: { project: project.name }, orderBy }" />
   </div>
 </template>
 <script>

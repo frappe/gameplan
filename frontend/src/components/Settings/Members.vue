@@ -3,11 +3,7 @@
     <div class="flex items-center justify-between">
       <h2 class="text-xl font-semibold leading-none">Members</h2>
       <div class="flex items-center gap-4">
-        <FormControl
-          placeholder="Search"
-          @input="search = $event.target.value"
-          :debounce="300"
-        >
+        <FormControl placeholder="Search" @input="search = $event.target.value" :debounce="300">
           <template #prefix>
             <LucideSearch class="h-4 w-4 text-gray-500" />
           </template>
@@ -92,10 +88,7 @@ export default {
       }
       return activeUsers.value.filter((user) => {
         let term = this.search.toLowerCase()
-        return (
-          user.name.toLowerCase().includes(term) ||
-          user.full_name.toLowerCase().includes(term)
-        )
+        return user.name.toLowerCase().includes(term) || user.full_name.toLowerCase().includes(term)
       })
     },
   },
@@ -133,10 +126,7 @@ export default {
             variant: 'solid',
             theme: 'red',
             onClick: (close) => {
-              return this.$resources.removeUser.submit(
-                { user: user.name },
-                { onSuccess: close },
-              )
+              return this.$resources.removeUser.submit({ user: user.name }, { onSuccess: close })
             },
           },
           {

@@ -8,10 +8,7 @@
         <div class="flex w-full items-center">
           <div>
             <span class="text-base text-gray-900">
-              <UserProfileLink
-                class="font-medium hover:text-blue-600"
-                :user="$user().name"
-              >
+              <UserProfileLink class="font-medium hover:text-blue-600" :user="$user().name">
                 {{ $user().full_name }}
               </UserProfileLink>
               in
@@ -24,10 +21,7 @@
                   },
                 }"
               >
-                {{
-                  $getDoc('GP Team', project.doc.team)?.title ||
-                  project.doc.team
-                }}
+                {{ $getDoc('GP Team', project.doc.team)?.title || project.doc.team }}
               </router-link>
               <span class="text-gray-500"> &mdash; </span>
               <router-link
@@ -47,11 +41,7 @@
         </div>
         <div class="hidden shrink-0 space-x-2 sm:block">
           <Button @click="discard">Discard</Button>
-          <Button
-            variant="solid"
-            :loading="$resources.newDiscussion.loading"
-            @click="publish"
-          >
+          <Button variant="solid" :loading="$resources.newDiscussion.loading" @click="publish">
             Publish
           </Button>
         </div>
@@ -82,20 +72,11 @@
         placeholder="Write something..."
       >
         <template v-slot:bottom>
-          <div
-            class="mt-2 flex flex-col justify-between sm:flex-row sm:items-center"
-          >
-            <TextEditorFixedMenu
-              class="overflow-x-auto"
-              :buttons="textEditorMenuButtons"
-            />
+          <div class="mt-2 flex flex-col justify-between sm:flex-row sm:items-center">
+            <TextEditorFixedMenu class="overflow-x-auto" :buttons="textEditorMenuButtons" />
             <div class="mt-2 shrink-0 space-x-2 text-right sm:hidden">
               <Button @click="discard">Discard</Button>
-              <Button
-                variant="solid"
-                :loading="$resources.newDiscussion.loading"
-                @click="publish"
-              >
+              <Button variant="solid" :loading="$resources.newDiscussion.loading" @click="publish">
                 Publish
               </Button>
             </div>

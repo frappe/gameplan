@@ -34,14 +34,8 @@
             </div>
           </div>
           <h1 v-else class="flex items-center text-2xl font-semibold">
-            <Tooltip
-              v-if="discussion.closed_at"
-              text="This discussion is closed"
-            >
-              <LucideLock
-                class="mr-2 h-4 w-4 text-gray-700"
-                :stroke-width="2"
-              />
+            <Tooltip v-if="discussion.closed_at" text="This discussion is closed">
+              <LucideLock class="mr-2 h-4 w-4 text-gray-700" :stroke-width="2" />
             </Tooltip>
             <span>
               {{ discussion.title }}
@@ -103,8 +97,7 @@
         </div>
         <div
           :class="{
-            'rounded-lg border p-4 focus-within:border-gray-400':
-              editingContent,
+            'rounded-lg border p-4 focus-within:border-gray-400': editingContent,
           }"
         >
           <CommentEditor
@@ -163,10 +156,7 @@
             v-model="discussionMoveDialog.project"
             placeholder="Select a project"
           />
-          <ErrorMessage
-            class="mt-2"
-            :message="$resources.discussion.moveToProject.error"
-          />
+          <ErrorMessage class="mt-2" :message="$resources.discussion.moveToProject.error" />
         </template>
         <template #actions>
           <Button
@@ -401,10 +391,7 @@ export default {
               actions: [
                 {
                   label: 'Pin',
-                  onClick: (close) =>
-                    this.$resources.discussion.pinDiscussion
-                      .submit()
-                      .then(close),
+                  onClick: (close) => this.$resources.discussion.pinDiscussion.submit().then(close),
                   variant: 'solid',
                 },
               ],
@@ -424,9 +411,7 @@ export default {
                 {
                   label: 'Unpin',
                   onClick: (close) =>
-                    this.$resources.discussion.unpinDiscussion
-                      .submit()
-                      .then(close),
+                    this.$resources.discussion.unpinDiscussion.submit().then(close),
                   variant: 'solid',
                 },
               ],
@@ -447,9 +432,7 @@ export default {
                 {
                   label: 'Close',
                   onClick: (close) =>
-                    this.$resources.discussion.closeDiscussion
-                      .submit()
-                      .then(close),
+                    this.$resources.discussion.closeDiscussion.submit().then(close),
                   variant: 'solid',
                 },
               ],
@@ -463,16 +446,13 @@ export default {
           onClick: () => {
             this.$dialog({
               title: 'Re-open discussion',
-              message:
-                'Do you want to re-open this discussion? Anyone can comment on it again.',
+              message: 'Do you want to re-open this discussion? Anyone can comment on it again.',
               icon: { name: 'unlock' },
               actions: [
                 {
                   label: 'Re-open',
                   onClick: (close) =>
-                    this.$resources.discussion.reopenDiscussion
-                      .submit()
-                      .then(close),
+                    this.$resources.discussion.reopenDiscussion.submit().then(close),
                   variant: 'solid',
                 },
               ],

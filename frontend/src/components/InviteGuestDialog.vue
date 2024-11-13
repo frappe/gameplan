@@ -2,11 +2,7 @@
   <Dialog :options="{ title: 'Manage Guests' }" v-model="inviteGuestDialog">
     <template #body-content>
       <div class="my-4 space-y-2">
-        <div
-          class="flex items-center gap-4"
-          v-for="user in users"
-          :key="user.name"
-        >
+        <div class="flex items-center gap-4" v-for="user in users" :key="user.name">
           <UserAvatar :user="user.pending ? user.email : user.user" />
           <div class="text-base">
             <span class="text-gray-900">
@@ -33,12 +29,7 @@
       <ErrorMessage class="mt-2" :message="project.inviteGuest.error" />
     </template>
     <template #actions>
-      <Button
-        class="w-full"
-        variant="solid"
-        @click="invite"
-        :loading="project.inviteGuest.loading"
-      >
+      <Button class="w-full" variant="solid" @click="invite" :loading="project.inviteGuest.loading">
         Invite
       </Button>
     </template>

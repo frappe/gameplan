@@ -7,11 +7,7 @@
           <div class="mt-3">
             <button
               class="flex h-7 w-full items-center gap-2 rounded px-2 py-1"
-              :class="[
-                activeTab?.label == tab.label
-                  ? 'bg-white shadow-sm'
-                  : 'hover:bg-gray-100',
-              ]"
+              :class="[activeTab?.label == tab.label ? 'bg-white shadow-sm' : 'hover:bg-gray-100']"
               v-for="tab in tabs"
               :key="tab.label"
               @click="activeTab = tab"
@@ -24,11 +20,7 @@
           </div>
         </div>
         <div class="flex flex-1 flex-col px-16 pt-10">
-          <component
-            v-if="activeTab"
-            :is="activeTab.component"
-            @close-dialog="show = false"
-          />
+          <component v-if="activeTab" :is="activeTab.component" @close-dialog="show = false" />
         </div>
       </div>
     </template>

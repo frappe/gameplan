@@ -1,11 +1,7 @@
 <template>
   <div class="border-b">
     <nav class="-mb-px flex space-x-8" aria-label="Tabs">
-      <Links
-        :links="links"
-        class="whitespace-nowrap border-b-2 py-1.5 text-base"
-        v-slot="{ link }"
-      >
+      <Links :links="links" class="whitespace-nowrap border-b-2 py-1.5 text-base" v-slot="{ link }">
         <div class="items- flex items-end space-x-1">
           <component :is="link.icon" v-if="link.icon" class="h-3.5 w-3.5" />
           <span>

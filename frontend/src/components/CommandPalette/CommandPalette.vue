@@ -6,11 +6,7 @@
   >
     <template #body>
       <div>
-        <Combobox
-          nullable
-          @update:model-value="onSelection"
-          v-slot="{ activeIndex }"
-        >
+        <Combobox nullable @update:model-value="onSelection" v-slot="{ activeIndex }">
           <div class="relative">
             <div class="absolute inset-y-0 left-0 flex items-center pl-4.5">
               <LucideSearch class="h-4 w-4" />
@@ -32,10 +28,7 @@
               v-for="(group, index) in groupedSearchResults"
               :key="group.title"
             >
-              <div
-                class="mb-2.5 px-4.5 text-base text-gray-600"
-                v-if="!group.hideTitle"
-              >
+              <div class="mb-2.5 px-4.5 text-base text-gray-600" v-if="!group.hideTitle">
                 {{ group.title }}
               </div>
               <ComboboxOption
@@ -46,11 +39,7 @@
                 class="px-2.5"
                 :disabled="item.disabled"
               >
-                <component
-                  :is="group.component"
-                  :item="item"
-                  :active="active"
-                />
+                <component :is="group.component" :item="item" :active="active" />
               </ComboboxOption>
             </div>
           </ComboboxOptions>
@@ -61,12 +50,7 @@
 </template>
 <script>
 import { h, ref } from 'vue'
-import {
-  Combobox,
-  ComboboxInput,
-  ComboboxOptions,
-  ComboboxOption,
-} from '@headlessui/vue'
+import { Combobox, ComboboxInput, ComboboxOptions, ComboboxOption } from '@headlessui/vue'
 import fuzzysort from 'fuzzysort'
 import { activeTeams } from '@/data/teams'
 import { activeProjects } from '@/data/projects'
@@ -342,9 +326,7 @@ export default {
         .filter((group) => group.items.length > 0)
 
       let serverResults =
-        this.query.length > 2 && this.$resources.search.data
-          ? this.$resources.search.data
-          : []
+        this.query.length > 2 && this.$resources.search.data ? this.$resources.search.data : []
       let results = [...localResults, ...serverResults]
       return [
         ...(this.query.length > 2 ? [this.fullSearchItem] : []),

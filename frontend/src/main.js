@@ -61,16 +61,14 @@ app.config.globalProperties.$isSessionUser = (email) => {
 
 let socket
 if (import.meta.env.DEV) {
-  frappeRequest({ url: '/api/method/gameplan.www.g.get_context_for_dev' }).then(
-    (values) => {
-      for (let key in values) {
-        window[key] = values[key]
-      }
-      socket = initSocket()
-      app.config.globalProperties.$socket = socket
-      app.mount('#app')
-    },
-  )
+  frappeRequest({ url: '/api/method/gameplan.www.g.get_context_for_dev' }).then((values) => {
+    for (let key in values) {
+      window[key] = values[key]
+    }
+    socket = initSocket()
+    app.config.globalProperties.$socket = socket
+    app.mount('#app')
+  })
 } else {
   socket = initSocket()
   app.config.globalProperties.$socket = socket

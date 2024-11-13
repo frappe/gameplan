@@ -36,9 +36,7 @@ export default {
   },
   computed: {
     filters() {
-      return this.bookmarks && this.bookmarks.length
-        ? { name: this.bookmarks }
-        : {}
+      return this.bookmarks && this.bookmarks.length ? { name: this.bookmarks } : {}
     },
   },
   methods: {
