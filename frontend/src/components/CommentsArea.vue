@@ -135,13 +135,7 @@ import { getScrollContainer } from '@/utils/scrollContainer'
 
 export default {
   name: 'CommentsArea',
-  props: [
-    'doctype',
-    'name',
-    'newCommentsFrom',
-    'readOnlyMode',
-    'disableNewComment',
-  ],
+  props: ['doctype', 'name', 'newCommentsFrom', 'readOnlyMode', 'disableNewComment'],
   components: {
     CommentEditor,
     Comment,
@@ -185,10 +179,7 @@ export default {
       this.showCommentBox = true
     }
     this.$socket.on('new_activity', (data) => {
-      if (
-        data.reference_doctype == this.doctype &&
-        data.reference_name == this.name
-      ) {
+      if (data.reference_doctype == this.doctype && data.reference_name == this.name) {
         this.$resources.activities.reload()
       }
     })
@@ -230,14 +221,9 @@ export default {
         auto: true,
         onSuccess() {
           if (this.$route.query.comment) {
-            let comment = this.$resources.comments.getRow(
-              this.$route.query.comment,
-            )
+            let comment = this.$resources.comments.getRow(this.$route.query.comment)
             this.scrollToItem(comment)
-          } else if (
-            !this.$route.query.fromSearch &&
-            this.$resources.comments.data.length > 0
-          ) {
+          } else if (!this.$route.query.fromSearch && this.$resources.comments.data.length > 0) {
             this.scrollToEnd()
           }
         },

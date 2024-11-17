@@ -2,10 +2,7 @@
   <header
     class="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-3 py-2.5 sm:px-5"
   >
-    <Breadcrumbs
-      class="h-7"
-      :items="[{ label: 'Discussions', route: { name: 'Discussions' } }]"
-    />
+    <Breadcrumbs class="h-7" :items="[{ label: 'Discussions', route: { name: 'Discussions' } }]" />
     <Button variant="solid" @click="newDiscussionDialog.show = true">
       <template #prefix><LucidePlus class="h-4 w-4" /></template>
       Add new
@@ -28,16 +25,9 @@
       >
         <template #prefix><LucideBellPlus class="w-4" /></template>
         {{ $resources.followedProjects.data.length }}
-        {{
-          $resources.followedProjects.data.length === 1 ? 'Project' : 'Projects'
-        }}
+        {{ $resources.followedProjects.data.length === 1 ? 'Project' : 'Projects' }}
       </Button>
-      <Select
-        class="pr-7"
-        v-if="feedType === 'recent'"
-        :options="orderOptions"
-        v-model="orderBy"
-      />
+      <Select class="pr-7" v-if="feedType === 'recent'" :options="orderOptions" v-model="orderBy" />
     </div>
     <KeepAlive>
       <DiscussionList
@@ -81,8 +71,7 @@
                   @click="unfollowProject(project.value)"
                   :loading="
                     $resources.followedProjects.delete.loading &&
-                    $resources.followedProjects.delete.params.name ==
-                      project.followId
+                    $resources.followedProjects.delete.params.name == project.followId
                   "
                 >
                   <template #icon><LucideCheck class="w-4" /></template>
@@ -94,8 +83,7 @@
                   @click="followProject(project.value)"
                   :loading="
                     $resources.followedProjects.insert.loading &&
-                    $resources.followedProjects.insert.params?.doc?.name ==
-                      project.value
+                    $resources.followedProjects.insert.params?.doc?.name == project.value
                   "
                 >
                   <template #icon><LucidePlus class="w-4" /></template>
@@ -131,9 +119,7 @@
     v-model="newDiscussionDialog.show"
   >
     <template #body-content>
-      <p class="mb-4 text-base text-gray-700">
-        Select a project to start a new discussion
-      </p>
+      <p class="mb-4 text-base text-gray-700">Select a project to start a new discussion</p>
       <Autocomplete
         :options="projectOptions"
         v-model="newDiscussionDialog.project"
@@ -225,11 +211,7 @@ export default {
     },
     swipe: {
       handler(d) {
-        if (
-          getScrollContainer().scrollTop === 0 &&
-          d.direction == 'down' &&
-          d.diffY < -200
-        ) {
+        if (getScrollContainer().scrollTop === 0 && d.direction == 'down' && d.diffY < -200) {
           this.swipeLoading = true
           this.$refs.discussionList.discussions.reload().then(() => {
             this.swipeLoading = false
@@ -268,8 +250,8 @@ export default {
       this.$resources.followedProjects.delete.submit(followId)
     },
     isFollowed(project) {
-      let followedProjects = (this.$resources.followedProjects.data || []).map(
-        (p) => parseInt(p.project),
+      let followedProjects = (this.$resources.followedProjects.data || []).map((p) =>
+        parseInt(p.project),
       )
       return followedProjects.includes(project)
     },
@@ -279,9 +261,7 @@ export default {
       const filters = {
         ...(this.feedType && { feed_type: this.feedType }),
         ...(activeProjects.value.length && {
-          project: activeProjects.value.map((discussion) =>
-            Number(discussion.name),
-          ),
+          project: activeProjects.value.map((discussion) => Number(discussion.name)),
         }),
       }
       return filters

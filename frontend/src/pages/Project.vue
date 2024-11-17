@@ -7,18 +7,12 @@
       >
         <Breadcrumbs class="h-7" :items="breadcrumbs">
           <template #prefix="{ item }">
-            <span
-              class="mr-2 flex rounded-sm text-2xl leading-none"
-              v-if="item.icon"
-            >
+            <span class="mr-2 flex rounded-sm text-2xl leading-none" v-if="item.icon">
               {{ item.icon }}
             </span>
           </template>
         </Breadcrumbs>
-        <div
-          v-if="$route.name === 'ProjectOverview'"
-          class="flex items-center space-x-2"
-        >
+        <div v-if="$route.name === 'ProjectOverview'" class="flex items-center space-x-2">
           <Tooltip
             v-if="project.doc.is_private"
             text="This project is only visible to team members"
@@ -41,11 +35,7 @@
               <template #prefix><LucideBell class="w-4" /></template>
               Following
             </Button>
-            <Button
-              v-else
-              @click="project.follow.submit()"
-              :loading="project.follow.loading"
-            >
+            <Button v-else @click="project.follow.submit()" :loading="project.follow.loading">
               <template #prefix><LucideBellPlus class="w-4" /></template>
               Follow
             </Button>
@@ -191,11 +181,7 @@
                 }
               "
             >
-              {{
-                projectMoveDialog.team
-                  ? `Move to ${projectMoveDialog.team.label}`
-                  : 'Move'
-              }}
+              {{ projectMoveDialog.team ? `Move to ${projectMoveDialog.team.label}` : 'Move' }}
             </Button>
           </template>
         </Dialog>
@@ -308,11 +294,9 @@ export default {
         },
       ]
       if (
-        [
-          'ProjectDiscussions',
-          'ProjectDiscussion',
-          'ProjectDiscussionNew',
-        ].includes(this.$route.name)
+        ['ProjectDiscussions', 'ProjectDiscussion', 'ProjectDiscussionNew'].includes(
+          this.$route.name,
+        )
       ) {
         items.push({
           label: 'Discussions',
@@ -326,10 +310,7 @@ export default {
         })
       }
       if (this.$route.name === 'ProjectDiscussion') {
-        let discussion = this.$getDocumentResource(
-          'GP Discussion',
-          this.$route.params.postId,
-        )
+        let discussion = this.$getDocumentResource('GP Discussion', this.$route.params.postId)
         items.push({
           label: discussion?.doc?.title || this.$route.params.postId,
           route: {
@@ -369,10 +350,7 @@ export default {
       }
 
       if (this.$route.name === 'ProjectTaskDetail') {
-        let task = this.$getDocumentResource(
-          'GP Task',
-          this.$route.params.taskId,
-        )
+        let task = this.$getDocumentResource('GP Task', this.$route.params.taskId)
         items.push({
           label: task?.doc?.title || this.$route.params.taskId,
           route: {
@@ -400,10 +378,7 @@ export default {
       }
 
       if (this.$route.name === 'ProjectPage') {
-        let page = this.$getDocumentResource(
-          'GP Page',
-          this.$route.params.pageId,
-        )
+        let page = this.$getDocumentResource('GP Page', this.$route.params.pageId)
         items.push({
           label: page?.doc?.title || this.$route.params.pageId,
           route: {
@@ -462,11 +437,7 @@ export default {
       this.projectMoveDialog.show = false
       projects.reload()
       for (let team of teams.data || []) {
-        if (
-          [this.team.doc.name, this.projectMoveDialog.team.value].includes(
-            team.name,
-          )
-        ) {
+        if ([this.team.doc.name, this.projectMoveDialog.team.value].includes(team.name)) {
           if (this.projectMoveDialog.team.value === team.name) {
             team.open = true
           }

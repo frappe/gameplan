@@ -2,9 +2,7 @@
   <Listbox as="div" v-model="selectedUser">
     <ListboxButton class="w-full h-full text-left" :class="$attrs.class">
       {{ selectedUser?.email || '' }}
-      <span v-if="!selectedUser" class="text-sm text-gray-500">
-        Assign this task
-      </span>
+      <span v-if="!selectedUser" class="text-sm text-gray-500"> Assign this task </span>
     </ListboxButton>
     <div class="relative">
       <transition
@@ -28,16 +26,11 @@
             >
               <span
                 class="mr-2 text-base"
-                :class="
-                  selected ? 'text-gray-900 font-medium' : 'text-gray-600'
-                "
+                :class="selected ? 'text-gray-900 font-medium' : 'text-gray-600'"
               >
                 {{ user.full_name }}
               </span>
-              <span
-                class="text-sm"
-                :class="selected ? 'text-gray-600' : 'text-gray-500'"
-              >
+              <span class="text-sm" :class="selected ? 'text-gray-600' : 'text-gray-500'">
                 {{ user.email }}
               </span>
             </li>
@@ -48,12 +41,7 @@
   </Listbox>
 </template>
 <script>
-import {
-  Listbox,
-  ListboxButton,
-  ListboxOptions,
-  ListboxOption,
-} from '@headlessui/vue'
+import { Listbox, ListboxButton, ListboxOptions, ListboxOption } from '@headlessui/vue'
 export default {
   name: 'AssignUser',
   inheritAttrs: false,

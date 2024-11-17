@@ -42,11 +42,7 @@
           :readOnlyMode="readOnlyMode"
           :comments="$resources.comments"
         />
-        <Activity
-          class="my-5"
-          v-else-if="item.doctype == 'GP Activity'"
-          :activity="item"
-        />
+        <Activity class="my-5" v-else-if="item.doctype == 'GP Activity'" :activity="item" />
         <Poll
           class="border-t"
           v-else-if="item.doctype == 'GP Poll'"
@@ -58,11 +54,7 @@
       </template>
     </div>
 
-    <div
-      v-if="!readOnlyMode && !disableNewComment"
-      class="px-1 py-4"
-      ref="addComment"
-    >
+    <div v-if="!readOnlyMode && !disableNewComment" class="px-1 py-4" ref="addComment">
       <div class="flex items-start">
         <div class="mr-3 hidden h-8 items-center sm:flex">
           <UserAvatar :user="$user().name" size="md" />
@@ -152,13 +144,7 @@ import { Tooltip } from 'frappe-ui'
 
 export default {
   name: 'CommentsArea',
-  props: [
-    'doctype',
-    'name',
-    'newCommentsFrom',
-    'readOnlyMode',
-    'disableNewComment',
-  ],
+  props: ['doctype', 'name', 'newCommentsFrom', 'readOnlyMode', 'disableNewComment'],
   components: {
     CommentEditor,
     Comment,
@@ -202,10 +188,7 @@ export default {
       this.showCommentBox = true
     }
     this.$socket.on('new_activity', (data) => {
-      if (
-        data.reference_doctype == this.doctype &&
-        data.reference_name == this.name
-      ) {
+      if (data.reference_doctype == this.doctype && data.reference_name == this.name) {
         this.$resources.activities.reload()
       }
     })
@@ -243,14 +226,9 @@ export default {
         auto: true,
         onSuccess() {
           if (this.$route.query.comment) {
-            let comment = this.$resources.comments.getRow(
-              this.$route.query.comment,
-            )
+            let comment = this.$resources.comments.getRow(this.$route.query.comment)
             this.scrollToItem(comment)
-          } else if (
-            !this.$route.query.fromSearch &&
-            this.$resources.comments.data.length > 0
-          ) {
+          } else if (!this.$route.query.fromSearch && this.$resources.comments.data.length > 0) {
             this.scrollToEnd()
           }
         },

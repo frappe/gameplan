@@ -40,8 +40,7 @@ export default {
     onOptionChange: debounce(function (option, value) {
       option.title = value
       let lastOption =
-        this.poll.options.length > 0 &&
-        this.poll.options[this.poll.options.length - 1]
+        this.poll.options.length > 0 && this.poll.options[this.poll.options.length - 1]
       if (lastOption?.title) {
         this.poll.options.push({
           title: '',

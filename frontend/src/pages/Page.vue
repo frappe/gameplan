@@ -5,10 +5,7 @@
     >
       <Breadcrumbs class="h-7" :items="breadcrumbs">
         <template #prefix="{ item }">
-          <span
-            class="mr-2 flex rounded-sm text-2xl leading-none"
-            v-if="item.icon"
-          >
+          <span class="mr-2 flex rounded-sm text-2xl leading-none" v-if="item.icon">
             {{ item.icon }}
           </span>
         </template>
@@ -99,10 +96,7 @@ export default {
       })
     },
     updateUrlSlug() {
-      if (
-        !this.$route.params.slug ||
-        this.$route.params.slug !== this.page.doc.slug
-      ) {
+      if (!this.$route.params.slug || this.$route.params.slug !== this.page.doc.slug) {
         this.$router.replace({
           name: this.page.doc.project ? 'ProjectPage' : 'Page',
           params: {
@@ -120,10 +114,7 @@ export default {
     },
     isDirty() {
       if (!this.page.doc) return false
-      return (
-        this.page.doc.title !== this.title ||
-        this.page.doc.content !== this.content
-      )
+      return this.page.doc.title !== this.title || this.page.doc.content !== this.content
     },
     breadcrumbs() {
       if (!this.page.doc) return []

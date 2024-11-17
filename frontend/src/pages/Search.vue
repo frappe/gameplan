@@ -17,28 +17,18 @@
           <LucideSearch class="w-4 text-gray-600" />
         </template>
       </TextInput>
-      <Button @click="search(query)" :loading="$resources.search.loading">
-        Search
-      </Button>
+      <Button @click="search(query)" :loading="$resources.search.loading"> Search </Button>
     </div>
     <div
       v-if="$resources.search.params && $resources.search.data"
       class="mt-4 text-base font-semibold text-gray-800"
     >
-      About {{ $resources.search.data.total }} results for "{{
-        $resources.search.params?.query
-      }}" ({{ $resources.search.data.duration.toFixed(2) }}
+      About {{ $resources.search.data.total }} results for "{{ $resources.search.params?.query }}"
+      ({{ $resources.search.data.duration.toFixed(2) }}
       ms)
     </div>
-    <div
-      class="pb-10"
-      v-if="$resources.search.params && $resources.search.data"
-    >
-      <div
-        class="mt-5"
-        v-for="group in $resources.search.data.groups"
-        :key="group.title"
-      >
+    <div class="pb-10" v-if="$resources.search.params && $resources.search.data">
+      <div class="mt-5" v-for="group in $resources.search.data.groups" :key="group.title">
         <div class="mb-3 text-base text-gray-600">
           {{ group.title }}
         </div>

@@ -1,9 +1,5 @@
 <template>
-  <Dialog
-    :options="{ title: 'Add members' }"
-    @close="resetValues"
-    v-model="open"
-  >
+  <Dialog :options="{ title: 'Add members' }" @close="resetValues" v-model="open">
     <template #body-content>
       <ul v-if="membersToAdd.length" class="flex flex-wrap gap-2 py-2">
         <li
@@ -39,11 +35,7 @@
       <div class="mt-4" v-show="!addMembersIntent">
         <h4 class="text-base font-medium">Members</h4>
         <ul role="list" class="mt-2 divide-y">
-          <li
-            class="flex w-full items-center py-2"
-            v-for="member in members"
-            :key="member.name"
-          >
+          <li class="flex w-full items-center py-2" v-for="member in members" :key="member.name">
             <UserAvatar :user="member.user" />
             <div class="ml-3">
               <div class="text-base font-medium text-gray-800">
@@ -80,12 +72,7 @@
 </template>
 <script>
 import { Autocomplete, ErrorMessage } from 'frappe-ui'
-import {
-  Combobox,
-  ComboboxInput,
-  ComboboxOptions,
-  ComboboxOption,
-} from '@headlessui/vue'
+import { Combobox, ComboboxInput, ComboboxOptions, ComboboxOption } from '@headlessui/vue'
 import { activeUsers } from '@/data/users'
 
 export default {
@@ -141,9 +128,7 @@ export default {
     },
     invitableUsers() {
       let memberEmails = this.members.map((m) => m.email)
-      memberEmails = memberEmails.concat(
-        this.membersToAdd.map((user) => user.email)
-      )
+      memberEmails = memberEmails.concat(this.membersToAdd.map((user) => user.email))
 
       return activeUsers.value
         .filter((user) => !memberEmails.includes(user.email))

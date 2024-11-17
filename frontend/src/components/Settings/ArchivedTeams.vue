@@ -1,10 +1,7 @@
 <template>
   <div class="flex min-h-0 flex-col">
     <h2 class="text-xl font-semibold">Archived Teams</h2>
-    <div
-      v-if="archivedTeams.length"
-      class="mt-6 divide-y overflow-y-auto pb-16"
-    >
+    <div v-if="archivedTeams.length" class="mt-6 divide-y overflow-y-auto pb-16">
       <div
         v-for="team in archivedTeams"
         :key="team.id"
@@ -19,10 +16,7 @@
           </span>
         </div>
         <Button
-          :loading="
-            teams.runDocMethod.loading &&
-            teams.runDocMethod.params?.dn === team.name
-          "
+          :loading="teams.runDocMethod.loading && teams.runDocMethod.params?.dn === team.name"
           @click="
             teams.runDocMethod.submit(
               {
@@ -38,7 +32,7 @@
                   })
                   show = false
                 },
-              }
+              },
             )
           "
         >

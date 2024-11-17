@@ -19,18 +19,14 @@
           <template v-slot="{ user }">
             <div class="flex items-center space-x-3">
               <component
-                :is="
-                  d.closed_at || (d.pinned_at && this.filters)
-                    ? 'Tooltip'
-                    : 'div'
-                "
+                :is="d.closed_at || (d.pinned_at && this.filters) ? 'Tooltip' : 'div'"
                 class="flex"
                 v-bind="
                   d.closed_at
                     ? { text: 'This discussion is closed' }
                     : d.pinned_at
-                    ? { text: 'This discussion is pinned' }
-                    : null
+                      ? { text: 'This discussion is pinned' }
+                      : null
                 "
               >
                 <div class="relative flex">
@@ -111,10 +107,7 @@
     </router-link>
     <div class="px-2 sm:px-0">
       <div
-        v-if="
-          !$resources.discussions.list.loading &&
-          $resources.discussions.data.length === 0
-        "
+        v-if="!$resources.discussions.list.loading && $resources.discussions.data.length === 0"
         class="flex flex-col items-center rounded-lg border-2 border-dashed py-8 text-base text-gray-600"
       >
         <LucideCoffee class="h-7 w-7 text-gray-500" />
@@ -124,10 +117,7 @@
         class="flex items-center justify-center p-3"
         v-if="!hideLoadMore && $resources.discussions.hasNextPage"
       >
-        <Button
-          @click="$resources.discussions.next"
-          :loading="$resources.discussions.list.loading"
-        >
+        <Button @click="$resources.discussions.next" :loading="$resources.discussions.list.loading">
           <template #prefix>
             <LucideRefreshCw class="h-4 w-4" />
           </template>

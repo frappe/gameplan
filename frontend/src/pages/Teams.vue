@@ -6,10 +6,7 @@
       </div>
     </header>
     <div class="divide-y px-4">
-      <Links
-        :links="activeTeams"
-        class="flex items-center py-3 font-medium text-gray-900"
-      >
+      <Links :links="activeTeams" class="flex items-center py-3 font-medium text-gray-900">
         <template v-slot="{ link: team }">
           <div class="flex w-full items-center">
             <span class="mr-2 flex h-5 w-5 items-center justify-center text-xl">

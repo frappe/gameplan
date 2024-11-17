@@ -130,9 +130,7 @@ export default {
     },
     hasPrevious() {
       if (!this.currentRevision) return false
-      return (
-        this.currentRevisionIndex < this.$resources.revisions.data.length - 1
-      )
+      return this.currentRevisionIndex < this.$resources.revisions.data.length - 1
     },
     hasNext() {
       if (!this.currentRevision) return false
@@ -148,9 +146,7 @@ export default {
       if (!this.currentRevision) {
         return null
       }
-      let change = this.currentRevision.data.changed.find(
-        (change) => change[0] === this.fieldname
-      )
+      let change = this.currentRevision.data.changed.find((change) => change[0] === this.fieldname)
       if (!change) {
         return null
       }

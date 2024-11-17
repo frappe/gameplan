@@ -11,9 +11,7 @@ export function projectTitle(project) {
   if (!projectFormatters[projectId]) {
     projectFormatters[projectId] = computed(() => {
       if (projects.data.length > 0) {
-        const project = projects.data.find(
-          (p) => p.name.toString() === projectId
-        )
+        const project = projects.data.find((p) => p.name.toString() === projectId)
         if (project) {
           return project.title
         }

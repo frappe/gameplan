@@ -15,12 +15,8 @@ import { users } from '@/data/users'
 import { useScreenSize } from './utils/composables'
 
 const screenSize = useScreenSize()
-const MobileLayout = defineAsyncComponent(() =>
-  import('./components/MobileLayout.vue')
-)
-const DesktopLayout = defineAsyncComponent(() =>
-  import('./components/DesktopLayout.vue')
-)
+const MobileLayout = defineAsyncComponent(() => import('./components/MobileLayout.vue'))
+const DesktopLayout = defineAsyncComponent(() => import('./components/DesktopLayout.vue'))
 const Layout = computed(() => {
   if (screenSize.width < 640) {
     return MobileLayout

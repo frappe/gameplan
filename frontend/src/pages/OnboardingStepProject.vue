@@ -2,9 +2,7 @@
   <FormControl
     label="Project Name"
     placeholder="Product Launch"
-    @update:modelValue="
-      (project) => $emit('update:modelValue', { ...modelValue, project })
-    "
+    @update:modelValue="(project) => $emit('update:modelValue', { ...modelValue, project })"
     v-model="modelValue.project"
   />
 </template>

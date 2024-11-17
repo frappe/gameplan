@@ -14,9 +14,7 @@
         @mousedown="initialY = $event.clientY"
       >
         <div class="text-center">
-          <div class="rounded-md py-1 text-lg text-white">
-            Drag up/down to reposition image
-          </div>
+          <div class="rounded-md py-1 text-lg text-white">Drag up/down to reposition image</div>
           <Button
             class="mt-2"
             @click="
@@ -49,9 +47,7 @@
           "
         >
           <template v-slot="{ togglePopover }">
-            <Button variant="outline" @click="togglePopover()">
-              Change Image
-            </Button>
+            <Button variant="outline" @click="togglePopover()"> Change Image </Button>
           </template>
         </UnsplashImageBrowser>
         <Button
@@ -84,9 +80,7 @@
         "
       >
         <template v-slot="{ togglePopover }">
-          <Button variant="outline" @click="togglePopover()">
-            Click to set cover image
-          </Button>
+          <Button variant="outline" @click="togglePopover()"> Click to set cover image </Button>
         </template>
       </UnsplashImageBrowser>
     </div>
@@ -171,16 +165,12 @@ export default {
       if (!this.imageUrl) return null
       if (this.imageUrl.startsWith('https://images.unsplash.com')) {
         let width = window.innerWidth || 768
-        return (
-          this.imageUrl + `&w=${width}&fit=crop&crop=entropy,faces,focalpoint`
-        )
+        return this.imageUrl + `&w=${width}&fit=crop&crop=entropy,faces,focalpoint`
       }
       return this.imageUrl
     },
     objectPosition() {
-      let position = this.reposition
-        ? this.tempImagePosition
-        : this.imagePosition
+      let position = this.reposition ? this.tempImagePosition : this.imagePosition
       return `center ${position + this.changeY}%`
     },
   },

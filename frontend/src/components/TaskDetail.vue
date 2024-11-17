@@ -2,14 +2,8 @@
   <div class="flex h-full flex-1" v-if="$resources.task.doc">
     <div class="w-full flex-1">
       <div class="relative p-6">
-        <div
-          class="absolute right-0 top-0 p-6"
-          v-show="$resources.task.setValueDebounced.loading"
-        >
-          <LoadingText
-            v-if="!$resources.task.setValueDebounced.error"
-            text="Saving..."
-          />
+        <div class="absolute right-0 top-0 p-6" v-show="$resources.task.setValueDebounced.loading">
+          <LoadingText v-if="!$resources.task.setValueDebounced.error" text="Saving..." />
           <ErrorMessage :message="$resources.task.setValueDebounced.error" />
         </div>
         <div class="mb-2 flex items-center justify-between space-x-2">
@@ -54,9 +48,7 @@
             ]"
           >
             <Button variant="ghost">
-              <template #icon
-                ><LucideMoreHorizontal class="h-4 w-4"
-              /></template>
+              <template #icon><LucideMoreHorizontal class="h-4 w-4" /></template>
             </Button>
           </Dropdown>
         </div>
@@ -120,9 +112,7 @@
       </div>
     </div>
     <div class="hidden w-[20rem] shrink-0 border-l sm:block">
-      <div
-        class="grid grid-cols-2 items-center gap-y-6 p-6 text-base text-gray-700"
-      >
+      <div class="grid grid-cols-2 items-center gap-y-6 p-6 text-base text-gray-700">
         <div>Assignee</div>
         <div>
           <Autocomplete
@@ -268,15 +258,13 @@ export default {
       }))
     },
     statusOptions() {
-      return ['Backlog', 'Todo', 'In Progress', 'Done', 'Canceled'].map(
-        (status) => {
-          return {
-            icon: () => h(TaskStatusIcon, { status }),
-            label: status,
-            onClick: () => this.$resources.task.setValue.submit({ status }),
-          }
-        },
-      )
+      return ['Backlog', 'Todo', 'In Progress', 'Done', 'Canceled'].map((status) => {
+        return {
+          icon: () => h(TaskStatusIcon, { status }),
+          label: status,
+          onClick: () => this.$resources.task.setValue.submit({ status }),
+        }
+      })
     },
     priorityOptions() {
       return ['Low', 'Medium', 'High'].map((priority) => {

@@ -7,9 +7,7 @@
       >
         <GameplanLogo class="w-8 h-8 rounded" />
         <div class="ml-2 flex flex-col">
-          <div class="text-base font-medium text-gray-900 leading-none">
-            Gameplan
-          </div>
+          <div class="text-base font-medium text-gray-900 leading-none">Gameplan</div>
           <div class="mt-1 hidden text-sm text-gray-700 sm:inline leading-none">
             {{ $user().full_name }}
           </div>
@@ -52,10 +50,7 @@ export default {
         {
           icon: () => h(LucideCreditCard),
           label: 'Subscription',
-          condition: () =>
-            this.$user().isNotGuest &&
-            window.frappecloud_host &&
-            window.site_name,
+          condition: () => this.$user().isNotGuest && window.frappecloud_host && window.site_name,
           onClick: () => {
             window.open(
               `${window.frappecloud_host}/dashboard/subscription/${window.site_name}`,

@@ -102,7 +102,7 @@ export default {
     toggleReaction(emoji) {
       if (this.readOnlyMode) return
       let existingReaction = this.reactions.find(
-        (r) => r.user === this.$user().name && r.emoji === emoji
+        (r) => r.user === this.$user().name && r.emoji === emoji,
       )
       if (existingReaction) {
         this.removeReaction(existingReaction)

@@ -4,9 +4,7 @@
       <div class="w-full">
         <header class="sticky top-0 z-10 border-b bg-white px-4 py-2.5 sm:px-5">
           <div class="flex items-center justify-between">
-            <Breadcrumbs
-              :items="[{ label: 'People', route: { name: 'People' } }]"
-            />
+            <Breadcrumbs :items="[{ label: 'People', route: { name: 'People' } }]" />
             <div class="h-7"></div>
           </div>
         </header>
@@ -97,9 +95,7 @@
                     {{ user.discussions_count }} posts
                   </router-link>
                 </div>
-                <div
-                  class="flex w-1/5 items-center justify-end text-right text-base text-gray-600"
-                >
+                <div class="flex w-1/5 items-center justify-end text-right text-base text-gray-600">
                   <router-link
                     class="text-base text-gray-600 hover:text-gray-900"
                     :to="{
@@ -159,14 +155,7 @@ export default {
         cache: ['People', orderBy],
         doctype: 'GP User Profile',
         filters: { enabled: 1 },
-        fields: [
-          'name',
-          'user',
-          'bio',
-          'modified',
-          'cover_image',
-          'cover_image_position',
-        ],
+        fields: ['name', 'user', 'bio', 'modified', 'cover_image', 'cover_image_position'],
         pageLength: 999,
         orderBy: this.orderBy,
         auto: true,
@@ -186,10 +175,7 @@ export default {
         })
       }
 
-      let list = [
-        myProfile,
-        ...this.profiles.filter((p) => p != myProfile),
-      ].filter(Boolean)
+      let list = [myProfile, ...this.profiles.filter((p) => p != myProfile)].filter(Boolean)
 
       if (this.orderBy == 'posts') {
         list = list.sort((a, b) => b.discussions_count - a.discussions_count)

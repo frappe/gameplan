@@ -29,9 +29,7 @@
           <p class="mt-2 text-base text-gray-900">{{ description }}</p>
         </div>
         <div v-if="role === 'Gameplan Guest'">
-          <label class="text-sm leading-4 text-gray-700">
-            Invite Guest to Projects
-          </label>
+          <label class="text-sm leading-4 text-gray-700"> Invite Guest to Projects </label>
           <div class="mt-1 flex flex-wrap gap-2">
             <Button
               v-for="project in projects"
@@ -60,9 +58,7 @@
       </template>
     </div>
     <template v-if="$resources.pendingInvitations.data?.length && !emails">
-      <div
-        class="mt-4 flex items-center justify-between border-b py-2 text-base text-gray-600"
-      >
+      <div class="mt-4 flex items-center justify-between border-b py-2 text-base text-gray-600">
         <div class="w-4/5">Pending Invites</div>
       </div>
       <ul class="divide-y overflow-auto">
@@ -75,9 +71,7 @@
             <span class="text-gray-900">
               {{ user.email }}
             </span>
-            <span class="text-gray-600">
-              ({{ user.role.replace('Gameplan ', '') }})
-            </span>
+            <span class="text-gray-600"> ({{ user.role.replace('Gameplan ', '') }}) </span>
           </div>
           <div>
             <Tooltip text="Delete Invitation">
@@ -154,10 +148,8 @@ export default {
       return {
         'Gameplan Admin':
           'Can create new teams and projects, invite admins and members, browse and create discussions.',
-        'Gameplan Member':
-          'Can create projects, invite members, browse and create discussions.',
-        'Gameplan Guest':
-          'Can browse and participate in invited teams or projects.',
+        'Gameplan Member': 'Can create projects, invite members, browse and create discussions.',
+        'Gameplan Guest': 'Can browse and participate in invited teams or projects.',
       }[this.role]
     },
     projectOptions() {

@@ -9,25 +9,14 @@
     :editable="editable"
   >
     <template v-slot:editor="{ editor }">
-      <EditorContent
-        :class="[editable && 'max-h-[50vh] overflow-y-auto']"
-        :editor="editor"
-      />
+      <EditorContent :class="[editable && 'max-h-[50vh] overflow-y-auto']" :editor="editor" />
     </template>
     <template v-slot:bottom>
-      <div
-        v-if="editable"
-        class="mt-2 flex flex-col justify-between sm:flex-row sm:items-center"
-      >
-        <TextEditorFixedMenu
-          class="-ml-1 overflow-x-auto"
-          :buttons="textEditorMenuButtons"
-        />
+      <div v-if="editable" class="mt-2 flex flex-col justify-between sm:flex-row sm:items-center">
+        <TextEditorFixedMenu class="-ml-1 overflow-x-auto" :buttons="textEditorMenuButtons" />
         <div class="mt-2 flex items-center justify-end space-x-2 sm:mt-0">
           <Button v-bind="discardButtonProps || {}"> Discard </Button>
-          <Button variant="solid" v-bind="submitButtonProps || {}">
-            Submit
-          </Button>
+          <Button variant="solid" v-bind="submitButtonProps || {}"> Submit </Button>
         </div>
       </div>
     </template>

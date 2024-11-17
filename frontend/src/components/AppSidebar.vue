@@ -33,10 +33,7 @@
                 <component :is="link.icon" class="h-4 w-4 text-gray-700" />
               </span>
               <span class="text-sm">{{ link.name }}</span>
-              <span
-                v-if="link.count"
-                class="!ml-auto block text-xs text-gray-600"
-              >
+              <span v-if="link.count" class="!ml-auto block text-xs text-gray-600">
                 {{ link.count }}
               </span>
             </div>
@@ -45,11 +42,7 @@
         <button
           v-if="$user().isNotGuest"
           class="flex w-full items-center rounded px-2 py-1 text-gray-800"
-          :class="[
-            /Search/.test($route.name)
-              ? 'bg-white shadow-sm'
-              : 'hover:bg-gray-100',
-          ]"
+          :class="[/Search/.test($route.name) ? 'bg-white shadow-sm' : 'hover:bg-gray-100']"
           @click="showCommandPalette"
         >
           <div class="flex w-full items-center">
@@ -66,20 +59,13 @@
       </nav>
       <div class="mt-6 flex items-center justify-between px-3">
         <h3 class="text-sm font-medium text-gray-600">Teams</h3>
-        <Button
-          label="Create Team"
-          variant="ghost"
-          @click="showAddTeamDialog = true"
-        >
+        <Button label="Create Team" variant="ghost" @click="showAddTeamDialog = true">
           <template #icon><LucidePlus class="h-4 w-4" /></template>
         </Button>
       </div>
       <nav class="mt-1 space-y-0.5 px-2">
         <div v-for="team in activeTeams" :key="team.name">
-          <Link
-            :link="team"
-            class="flex items-center rounded px-2 py-1 transition"
-          >
+          <Link :link="team" class="flex items-center rounded px-2 py-1 transition">
             <button
               @click.prevent="
                 () => {
@@ -100,10 +86,7 @@
               <span class="ml-2 text-sm">{{ team.title }}</span>
               <LucideLock v-if="team.is_private" class="ml-2 h-3 w-3" />
               <div class="ml-auto">
-                <Tooltip
-                  v-if="team.unread"
-                  :text="`${team.unread} unread posts`"
-                >
+                <Tooltip v-if="team.unread" :text="`${team.unread} unread posts`">
                   <span class="text-xs text-gray-600">{{ team.unread }}</span>
                 </Tooltip>
               </div>
@@ -135,10 +118,7 @@
           </div>
         </div>
       </nav>
-      <div
-        v-if="teams.fetched && !activeTeams.length"
-        class="px-3 py-2 text-sm text-gray-500"
-      >
+      <div v-if="teams.fetched && !activeTeams.length" class="px-3 py-2 text-sm text-gray-500">
         No teams
       </div>
     </div>
