@@ -68,14 +68,12 @@
                   <span :class="filters ? '' : 'hidden sm:inline'">
                     {{ user.full_name }}
                   </span>
-                  <template v-if="!filters || !filters.project">
-                    <span> in </span>
-                    <span>
-                      {{ d.team_title }}
-                      <span class="text-gray-500"> &mdash; </span>
-                      {{ d.project_title }}
-                    </span>
-                  </template>
+                  <span> in </span>
+                  <span>
+                    {{ d.team_title }}
+                    <span class="text-gray-500"> &mdash; </span>
+                    {{ d.project_title }}
+                  </span>
                 </div>
               </div>
             </div>
