@@ -1,51 +1,61 @@
 <template>
-  <div class="pb-16">
-    <DiscussionList
-      v-if="bookmarks.length"
-      ref="discussionList"
-      routeName="ProjectDiscussion"
-      :listOptions="{ filters }"
-      :key="JSON.stringify(filters)"
-      @click="handleDiscussionClick"
-    />
+  <div>
+    <DiscussionListByData :discussions="$resources.discussions?.data" />
   </div>
 </template>
+
 <script>
-import DiscussionList from '@/components/DiscussionList.vue'
+import DiscussionListByData from '@/components/DiscussionListByData.vue'
 
 export default {
   name: 'PersonProfileBookmarks',
+  components: {
+    DiscussionListByData,
+  },
   data() {
     return {
-      bookmarks: [],
+      discussionFilters: [],
     }
   },
   resources: {
-    bookmark() {
+    bookmarks() {
       return {
-        type: 'resource',
-        url: 'gameplan.api.get_bookmarks',
+        type: 'list',
+        doctype: 'GP Bookmark',
+        fields: ['discussion'],
+        filters: {
+          user: this.$user().name,
+        },
         auto: true,
         onSuccess(data) {
-          if (data) {
-            this.bookmarks = data.map((record) => Number(record.discussion))
-          }
+          this.discussionFilters = data.map((record) =>
+            Number(record.discussion),
+          )
         },
       }
     },
-  },
-  computed: {
-    filters() {
-      return this.bookmarks && this.bookmarks.length
-        ? { name: this.bookmarks }
-        : {}
+    discussions() {
+      return {
+        type: 'list',
+        doctype: 'GP Discussion',
+        fields: [
+          'name',
+          'title',
+          'project',
+          'team',
+          'creation',
+          'owner',
+          'last_post_by',
+          'last_post_at',
+          'slug',
+          'comments_count',
+        ],
+        auto: true,
+        filters: {
+          name: ['in', this.discussionFilters],
+        },
+      }
     },
-  },
-  methods: {
-    handleDiscussionClick() {
-      this.$emit('close-dialog')
-    },
-    components: { DiscussionList },
   },
 }
 </script>
