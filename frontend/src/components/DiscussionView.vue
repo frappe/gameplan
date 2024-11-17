@@ -284,12 +284,12 @@ export default {
         },
       }
     },
-    bookmark() {
+    bookmarkStatus() {
       return {
         type: 'resource',
-        url: 'gameplan.api.check_bookmark',
+        url: 'gameplan.api.get_bookmark_status',
         params: {
-          discussionId: this.postId,
+          discussion: this.postId,
         },
         auto: true,
         onSuccess(data) {
@@ -312,13 +312,13 @@ export default {
     }
   },
   methods: {
-    bookMarkDiscussion() {
+    toggleDiscussionBookmark() {
       let data = {
         discussion: this.discussion.name,
         remove_bookmark: this.bookmarkStatus,
       }
-      call('gameplan.api.bookmark_discussion', { data }).then((res) => {
-        this.$resources.bookmark.submit()
+      call('gameplan.api.toggle_discussion_bookmark', { data }).then((res) => {
+        this.$resources.bookmarkStatus.submit()
       })
     },
     copyLink() {
@@ -482,7 +482,7 @@ export default {
         {
           label: `${this.bookmarkStatus ? 'Remove Bookmark' : 'Add Bookmark'}`,
           icon: 'bookmark',
-          onClick: this.bookMarkDiscussion,
+          onClick: this.toggleDiscussionBookmark,
         },
         {
           label: 'Move to...',
