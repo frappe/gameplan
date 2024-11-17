@@ -276,14 +276,15 @@ export default {
     },
     bookmarkStatus() {
       return {
-        type: 'resource',
-        url: 'gameplan.api.get_bookmark_status',
-        params: {
+        type: 'list',
+        doctype: 'GP Bookmark',
+        filters: {
           discussion: this.postId,
+          user: this.$user().name,
         },
         auto: true,
         onSuccess(data) {
-          this.bookmarkStatus = data
+          this.bookmarkStatus = data.length ? true : false
         },
       }
     },
@@ -308,7 +309,7 @@ export default {
         remove_bookmark: this.bookmarkStatus,
       }
       call('gameplan.api.toggle_discussion_bookmark', { data }).then((res) => {
-        this.$resources.bookmarkStatus.submit()
+        this.$resources.bookmarkStatus.fetch()
       })
     },
     copyLink() {

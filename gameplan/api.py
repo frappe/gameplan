@@ -459,13 +459,6 @@ def search(query, start=0):
 
 
 @frappe.whitelist()
-def get_bookmark_status(discussion):
-    return frappe.db.exists(
-        "GP Bookmark", {"user": frappe.session.user, "discussion": discussion}
-    )
-
-
-@frappe.whitelist()
 def toggle_discussion_bookmark(data):
     data = frappe.parse_json(data)
     if data.remove_bookmark:
