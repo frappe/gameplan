@@ -26,6 +26,7 @@ declare module 'vue' {
     DesktopLayout: typeof import('./src/components/DesktopLayout.vue')['default']
     DiscussionBreadcrumbs: typeof import('./src/components/DiscussionBreadcrumbs.vue')['default']
     DiscussionList: typeof import('./src/components/DiscussionList.vue')['default']
+    DiscussionListByData: typeof import('./src/components/DiscussionListByData.vue')['default']
     DiscussionMeta: typeof import('./src/components/DiscussionMeta.vue')['default']
     DiscussionView: typeof import('./src/components/DiscussionView.vue')['default']
     DragHandleIcon: typeof import('./src/components/DragHandleIcon.vue')['default']
