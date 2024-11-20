@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div class="flex select-none items-stretch space-x-1.5">
+    <div class="flex select-none gap-1.5 flex-wrap">
       <button
         aria-label="Add a reaction"
         :disabled="isLoading"
