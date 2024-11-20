@@ -1,79 +1,35 @@
 <template>
-  <div class="flex select-none items-stretch space-x-1.5">
-    <Popover class="h-full">
-      <template #target="{ togglePopover, isOpen }">
-        <button
-          aria-label="Add a reaction"
-          :disabled="$resources.batch.loading"
-          @click="togglePopover()"
-          class="flex h-full items-center justify-center rounded-full bg-gray-100 px-2 py-1 text-gray-700 transition hover:bg-gray-200"
-          :class="{ 'bg-gray-200': isOpen }"
-        >
-          <ReactionFaceIcon />
-        </button>
-      </template>
-      <template #body-main="{ togglePopover }">
-        <div class="mt-1 inline-flex p-1">
-          <div class="grid grid-cols-10 items-center space-x-0.5">
-            <button
-              class="h-6 w-6 rounded hover:bg-gray-50"
-              v-for="emoji in standardEmojis"
-              :key="emoji"
-              @click="
-                () => {
-                  toggleReaction(emoji)
-                  togglePopover()
-                }
-              "
-              :disabled="$resources.batch.loading"
-            >
-              {{ emoji }}
-            </button>
-          </div>
-        </div>
-      </template>
-    </Popover>
-    <Tooltip v-for="(reactions, emoji) in reactionsCount" :key="emoji">
-      <button
-        class="flex items-center justify-center rounded-full px-2 py-1 text-sm transition"
-        :class="[
-          reactions.userReacted
-            ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
-            : 'bg-gray-100 text-gray-700 hover:bg-gray-200',
-        ]"
-        @click="toggleReaction(emoji)"
-      >
-        {{ emoji }} {{ reactions.count }}
-      </button>
-      <template #body>
-        <div
-          class="max-w-[30ch] rounded-lg border border-gray-100 bg-gray-800 px-2 py-1 text-center text-xs text-white shadow-xl"
-        >
-          {{ toolTipText(reactions) }}
-        </div>
-      </template>
-    </Tooltip>
-  </div>
+  <ReactionsUI
+    :reactionsCount="reactionsCount"
+    :toggleReaction="toggleReaction"
+    :toolTipText="toolTipText"
+    :standardEmojis="standardEmojis"
+    :isLoading="$resources.batch.loading"
+  />
   <div class="mt-2 space-y-2" v-if="batchRequestErrors.length">
     <ErrorMessage v-for="error in batchRequestErrors" :message="error" />
   </div>
 </template>
-<script>
-import { Popover, Tooltip, ErrorMessage } from 'frappe-ui'
-import ReactionFaceIcon from './ReactionFaceIcon.vue'
-import LoadingIndicator from 'frappe-ui/src/components/LoadingIndicator.vue'
+<script setup>
+import { useScreenSize } from '@/utils/composables'
+import { defineAsyncComponent, computed } from 'vue'
 
+const screenSize = useScreenSize()
+const ReactionsMobile = defineAsyncComponent(() => import('./ReactionsMobile.vue'))
+const ReactionsDesktop = defineAsyncComponent(() => import('./ReactionsDesktop.vue'))
+const ReactionsUI = computed(() => {
+  if (screenSize.width < 640) {
+    return ReactionsMobile
+  } else {
+    return ReactionsDesktop
+  }
+})
+</script>
+<script>
 export default {
   name: 'Reactions',
   props: ['reactions', 'doctype', 'name', 'readOnlyMode'],
   emits: ['update:reactions'],
-  components: {
-    ReactionFaceIcon,
-    Popover,
-    Tooltip,
-    ErrorMessage,
-    LoadingIndicator,
-  },
   resources: {
     batch() {
       return {

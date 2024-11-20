@@ -7,6 +7,7 @@ export {}
 
 declare module 'vue' {
   export interface GlobalComponents {
+    ActionSheet: (typeof import('./src/components/ActionSheet.vue'))['default']
     Activity: (typeof import('./src/components/Activity.vue'))['default']
     AddMemberDialog: (typeof import('./src/components/AddMemberDialog.vue'))['default']
     AddTeamDialog: (typeof import('./src/components/AddTeamDialog.vue'))['default']
@@ -82,6 +83,8 @@ declare module 'vue' {
     ProfileImageEditor: (typeof import('./src/components/ProfileImageEditor.vue'))['default']
     ReactionFaceIcon: (typeof import('./src/components/ReactionFaceIcon.vue'))['default']
     Reactions: (typeof import('./src/components/Reactions.vue'))['default']
+    ReactionsDesktop: (typeof import('./src/components/ReactionsDesktop.vue'))['default']
+    ReactionsMobile: (typeof import('./src/components/ReactionsMobile.vue'))['default']
     ReadmeEditor: (typeof import('./src/components/ReadmeEditor.vue'))['default']
     RevisionsDialog: (typeof import('./src/components/RevisionsDialog.vue'))['default']
     RouterLink: (typeof import('vue-router'))['RouterLink']
