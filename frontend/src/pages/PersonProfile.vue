@@ -69,16 +69,10 @@
           Edit Profile
         </Button>
       </div>
-
       <div class="mb-4 mt-6">
         <TabButtons
           class="inline-block"
-          :buttons="[
-            { label: 'About' },
-            { label: 'Posts' },
-            { label: 'Replies' },
-            { label: 'Bookmarks' },
-          ]"
+          :buttons="tabButtons"
           v-model="activeTab"
         />
       </div>
@@ -125,6 +119,7 @@ import ImagePreview from '../components/ImagePreview.vue'
 import ColorPicker from '@/components/ColorPicker.vue'
 import ProfileImageEditor from '@/components/ProfileImageEditor.vue'
 import UserImage from '@/components/UserImage.vue'
+import DiscussionListByData from '@/components/DiscussionListByData.vue'
 
 export default {
   name: 'PersonProfile',
@@ -182,6 +177,17 @@ export default {
     },
     currentUser() {
       return this.$user(this.profile.user)
+    },
+    tabButtons() {
+      let buttons = [
+        { label: 'About' },
+        { label: 'Posts' },
+        { label: 'Replies' },
+      ]
+      if (this.$isSessionUser(this.profile.user)) {
+        buttons.push({ label: 'Bookmarks' })
+      }
+      return buttons
     },
     activeTab: {
       get() {
