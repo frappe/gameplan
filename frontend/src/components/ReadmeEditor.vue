@@ -57,11 +57,14 @@
       v-if="collapsible && readmeHeight > 150"
     >
       <Tooltip text="Expand/Collapse">
-        <Button variant="ghost" @click="expand = !expand">
-          <template #icon>
-            <LucideUnfoldVertical class="w-4" />
-          </template>
-        </Button>
+        <!-- TODO: Tooltip bug, button click fires twice -->
+        <div>
+          <Button variant="ghost" @click="expand = !expand">
+            <template #icon>
+              <LucideUnfoldVertical class="w-4" />
+            </template>
+          </Button>
+        </div>
       </Tooltip>
     </div>
   </div>
