@@ -9,6 +9,10 @@ if (!defaultRoute || defaultRoute?.includes('{{')) {
 }
 
 const routes = [
+  // {
+  //   path: '/test',
+  //   component: () => import('@/pages/Test.vue'),
+  // },
   {
     path: '/',
     redirect: defaultRoute,
@@ -28,6 +32,22 @@ const routes = [
     name: 'Discussions',
     path: '/discussions',
     component: () => import('@/pages/Discussions.vue'),
+  },
+  {
+    name: 'Discussion',
+    // path: '/discussions',
+    // component: () => import('@/pages/Discussions.vue'),
+  },
+  {
+    name: 'TeamDiscussion',
+    path: '/:teamId/discussion/:postId/:slug?',
+    component: () => import('@/pages/TeamDiscussion.vue'),
+    props: true,
+  },
+  {
+    name: 'NewDiscussion',
+    path: '/discussions/new',
+    component: () => import('@/pages/NewDiscussion.vue'),
   },
   {
     name: 'MyTasks',
@@ -107,29 +127,16 @@ const routes = [
   },
   {
     path: '/:teamId',
-    name: 'TeamLayout',
+    name: 'Team',
     component: () => import('@/pages/TeamLayout.vue'),
-    redirect: { name: 'Team' },
+    redirect: { name: 'TeamDiscussions' },
     props: true,
     children: [
       {
-        name: 'Team',
-        path: '',
-        component: () => import('@/pages/Team.vue'),
-        redirect: { name: 'TeamOverview' },
+        name: 'TeamDiscussions',
+        path: 'discussions',
+        component: () => import('@/pages/TeamDiscussions.vue'),
         props: true,
-        children: [
-          {
-            name: 'TeamOverview',
-            path: '',
-            component: () => import('@/pages/TeamOverview.vue'),
-          },
-          {
-            name: 'TeamDiscussions',
-            path: 'discussions',
-            component: () => import('@/pages/TeamDiscussions.vue'),
-          },
-        ],
       },
       {
         name: 'ProjectLayout',

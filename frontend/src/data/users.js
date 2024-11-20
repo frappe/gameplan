@@ -40,6 +40,10 @@ export function getUser(email) {
   return usersByName[email]
 }
 
+export function useSessionUser() {
+  return computed(() => getUser(session.user))
+}
+
 export let activeUsers = computed(() => {
   return users.data.filter((user) => user.enabled)
 })

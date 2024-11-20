@@ -1,0 +1,19 @@
+{
+  "include": [
+    "./src/**/*",
+    "intellisense.d.ts",
+    "src/**/*.tsx",
+    "src/**/*.vue",
+    "src/index.js",
+    "./node_modules/unplugin-icons/types/vue",
+    "../node_modules/unplugin-icons/types/vue"
+  ],
+  "compilerOptions": {
+    "allowJs": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    },
+    "jsx": "preserve"
+  }
+}

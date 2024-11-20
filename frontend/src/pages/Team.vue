@@ -29,22 +29,22 @@
 
         <div class="flex items-center space-x-2">
           <TeamMembers :team="team" />
+          <Button
+            v-if="!team.doc.members.map((m) => m.user).includes($user().name)"
+            variant="solid"
+            :loading="team.join.loading"
+            @click="
+              () => {
+                team.join.submit()
+              }
+            "
+          >
+            Join this space
+          </Button>
           <Dropdown
             v-if="!team.doc.archived_at"
             placement="left"
-            :options="[
-              {
-                label: 'Set cover image',
-                icon: 'image',
-                condition: () => !team.doc.cover_image,
-                onClick: () => (showCoverImage = true),
-              },
-              {
-                label: 'Archive',
-                icon: 'trash-2',
-                onClick: () => archiveTeam(),
-              },
-            ]"
+            :options="dropdownOptions"
             :button="{
               label: 'Options',
               variant: 'ghost',
@@ -68,54 +68,83 @@
         }
       "
     />
-    <router-view class="mx-auto max-w-4xl px-5" :team="team" />
+    <div class="mx-auto max-w-4xl px-5 pt-6">
+      <div class="flex items-center justify-between px-3">
+        <TabButtons :buttons="tabOptions" v-model="currentTab" />
+        <Dropdown
+          placement="right"
+          :button="{ icon: LucideSettings2 }"
+          :options="[
+            { group: 'Order by', items: [{ label: 'Recent activity' }, { label: 'Created' }] },
+          ]"
+        />
+      </div>
+
+      <router-view :team="team" />
+    </div>
   </div>
 </template>
-<script>
-import { Breadcrumbs, Dropdown, Badge, Tooltip } from 'frappe-ui'
+<script setup>
+import { ref } from 'vue'
+import { Breadcrumbs, Dropdown, TabButtons } from 'frappe-ui'
 import IconPicker from '@/components/IconPicker.vue'
-import Tabs from '@/components/Tabs.vue'
+import LucideLogOut from '~icons/lucide/log-out.vue'
+import LucideImage from '~icons/lucide/image.vue'
+import LucideTrash2 from '~icons/lucide/trash-2.vue'
+import LucideSettings2 from '~icons/lucide/settings-2.vue'
 
-export default {
-  name: 'Team',
-  props: ['team'],
-  components: {
-    Breadcrumbs,
-    Dropdown,
-    IconPicker,
-    Tabs,
-    Tooltip,
-    Badge,
+const currentTab = ref('discussions')
+const tabOptions = [
+  { label: 'Discussions', value: 'discussions' },
+  { label: 'Pages', value: 'pages' },
+  { label: 'Chat', value: 'chat' },
+]
+
+const props = defineProps(['team'])
+let showCoverImage = ref(Boolean(props.team.doc.cover_image))
+
+let dropdownOptions = [
+  {
+    label: 'Leave this space',
+    icon: LucideLogOut,
+    condition: () => props.team.doc.members.map((m) => m.user).includes($user().name),
+    onClick: () => (showCoverImage.value = true),
   },
-  data() {
-    return {
-      showCoverImage: Boolean(this.team.doc.cover_image),
-    }
+  {
+    label: 'Set cover image',
+    icon: LucideImage,
+    condition: () => !props.team.doc.cover_image,
+    onClick: () => (showCoverImage.value = true),
   },
-  methods: {
-    updateTeamIcon(icon) {
-      this.team.setValue.submit({ icon })
-    },
-    archiveTeam() {
-      this.$dialog({
-        title: 'Archive Team',
-        message: 'Are you sure you want to archive the team?',
-        actions: [
-          {
-            label: 'Archive',
-            variant: 'solid',
-            onClick: (close) => {
-              return this.team.archive.submit(null, {
-                onSuccess: () => {
-                  this.$router.replace({ name: 'Home' })
-                  close()
-                },
-              })
+  {
+    label: 'Archive',
+    icon: LucideTrash2,
+    onClick: () => archiveTeam(),
+  },
+]
+
+function updateTeamIcon(icon) {
+  this.team.setValue.submit({ icon })
+}
+
+function archiveTeam() {
+  this.$dialog({
+    title: 'Archive Team',
+    message: 'Are you sure you want to archive the team?',
+    actions: [
+      {
+        label: 'Archive',
+        variant: 'solid',
+        onClick: (close) => {
+          return this.team.archive.submit(null, {
+            onSuccess: () => {
+              this.$router.replace({ name: 'Home' })
+              close()
             },
-          },
-        ],
-      })
-    },
-  },
+          })
+        },
+      },
+    ],
+  })
 }
 </script>
