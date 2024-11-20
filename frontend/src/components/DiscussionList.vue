@@ -4,10 +4,9 @@
       v-for="(d, index) in $resources.discussions.data"
       :key="d.name"
       :to="{
-        name: 'ProjectDiscussion',
+        name: 'TeamDiscussion',
         params: {
           teamId: d.team,
-          projectId: d.project,
           postId: d.name,
           slug: d.slug,
         },
@@ -15,7 +14,7 @@
       class="group relative block h-15 rounded-[10px] transition hover:bg-gray-100"
     >
       <div class="flex h-full items-center space-x-4 overflow-hidden px-3 py-2">
-        <UserInfo :email="d.last_post_by || d.owner">
+        <UserInfo :email="d.owner">
           <template v-slot="{ user }">
             <div class="flex items-center space-x-3">
               <component
@@ -31,7 +30,6 @@
               >
                 <div class="relative flex">
                   <UserAvatar :user="d.closed_by || user.name" size="2xl" />
-
                   <div
                     v-if="d.closed_at"
                     class="absolute bottom-0 right-0 rounded-full bg-gray-100 p-0.5 ring-2 ring-white group-hover:ring-gray-100"
@@ -50,12 +48,16 @@
             <div class="min-w-0 flex-1">
               <div class="flex min-w-0 items-center">
                 <div
-                  class="overflow-hidden text-ellipsis whitespace-nowrap leading-none"
+                  class="flex items-center overflow-hidden text-ellipsis whitespace-nowrap leading-none"
                   :class="d.unread ? 'text-gray-900' : 'text-gray-900'"
                 >
+                  <div
+                    v-if="d.unread"
+                    class="mr-1 inline-block h-3.5 w-3.5 shrink-0 rounded-full border-[3px] border-white bg-orange-500 sm:-left-2.5 sm:h-2 sm:w-2 sm:border-none"
+                  ></div>
                   <span
-                    class="overflow-hidden text-ellipsis whitespace-nowrap text-base"
-                    :class="[d.unread ? 'font-semibold' : 'font-medium']"
+                    class="overflow-hidden text-ellipsis whitespace-nowrap text-base font-medium"
+                    :class="[d.unread ? 'font-' : 'font-medium']"
                   >
                     {{ d.title }}
                   </span>
@@ -65,17 +67,9 @@
                 <div
                   class="overflow-hidden text-ellipsis whitespace-nowrap text-base text-gray-600"
                 >
-                  <span :class="filters ? '' : 'hidden sm:inline'">
-                    {{ user.full_name }}
+                  <span>
+                    {{ d.team_title }}
                   </span>
-                  <template v-if="!filters || !filters.project">
-                    <span> in </span>
-                    <span>
-                      {{ d.team_title }}
-                      <span class="text-gray-500"> &mdash; </span>
-                      {{ d.project_title }}
-                    </span>
-                  </template>
                 </div>
               </div>
             </div>
@@ -100,10 +94,10 @@
         class="mx-3 h-px border-t border-gray-200"
         v-if="index < $resources.discussions.data.length - 1"
       ></div>
-      <div
+      <!-- <div
         class="absolute left-1 top-[30px] h-3.5 w-3.5 shrink-0 -translate-y-1/2 rounded-full border-[3px] border-white bg-orange-500 sm:-left-2.5 sm:h-1.5 sm:w-1.5 sm:border-none"
         :class="d.unread ? 'visible' : 'invisible'"
-      ></div>
+      ></div> -->
     </router-link>
     <div class="px-2 sm:px-0">
       <div
@@ -128,6 +122,7 @@
   </div>
 </template>
 <script>
+import { teams } from '@/data/teams'
 import { TextEditor, Tooltip } from 'frappe-ui'
 
 export default {
@@ -186,6 +181,9 @@ export default {
         `First Post: ${this.$dayjs(d.creation)}`,
         `Latest Post: ${this.$dayjs(d.last_post_at)}`,
       ].join('\n')
+    },
+    teamIcon(team) {
+      return teams.data?.find((t) => t.name == team)?.icon
     },
   },
   computed: {

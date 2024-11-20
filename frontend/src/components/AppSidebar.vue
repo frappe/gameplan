@@ -21,6 +21,23 @@
     </div>
     <div class="flex-1">
       <nav class="space-y-0.5 px-2">
+        <button
+          v-if="$user().isNotGuest"
+          class="flex w-full items-center rounded px-2 py-1 text-gray-800"
+          :class="[/Search/.test($route.name) ? 'bg-white shadow-sm' : 'hover:bg-gray-100']"
+          @click="showCommandPalette"
+        >
+          <div class="flex w-full items-center">
+            <span class="grid h-5 w-6 place-items-center">
+              <LucideSearch class="h-4 w-4 text-gray-700" />
+            </span>
+            <span class="ml-2 text-sm">Search</span>
+            <span class="ml-auto text-sm text-gray-500">
+              <template v-if="$platform === 'mac'">⌘K</template>
+              <template v-else>Ctrl+K</template>
+            </span>
+          </div>
+        </button>
         <Links
           :links="navigation"
           class="flex items-center rounded px-2 py-1 text-gray-800 transition"
@@ -39,7 +56,7 @@
             </div>
           </template>
         </Links>
-        <button
+        <!-- <button
           v-if="$user().isNotGuest"
           class="flex w-full items-center rounded px-2 py-1 text-gray-800"
           :class="[/Search/.test($route.name) ? 'bg-white shadow-sm' : 'hover:bg-gray-100']"
@@ -55,30 +72,17 @@
               <template v-else>Ctrl+K</template>
             </span>
           </div>
-        </button>
+        </button> -->
       </nav>
       <div class="mt-6 flex items-center justify-between px-3">
-        <h3 class="text-sm font-medium text-gray-600">Teams</h3>
+        <h3 class="text-sm font-medium text-gray-600">Spaces</h3>
         <Button label="Create Team" variant="ghost" @click="showAddTeamDialog = true">
           <template #icon><LucidePlus class="h-4 w-4" /></template>
         </Button>
       </div>
       <nav class="mt-1 space-y-0.5 px-2">
-        <div v-for="team in activeTeams" :key="team.name">
+        <div v-for="team in userSpaces" :key="team.name">
           <Link :link="team" class="flex items-center rounded px-2 py-1 transition">
-            <button
-              @click.prevent="
-                () => {
-                  team.open = !team.open
-                }
-              "
-              class="mr-1.5 grid h-4 w-4 place-items-center rounded hover:bg-gray-200"
-            >
-              <ChevronTriangle
-                class="h-3 w-3 text-gray-500 transition duration-200"
-                :class="[team.open ? 'rotate-90' : 'rotate-0']"
-              />
-            </button>
             <div class="flex w-full items-center">
               <span class="flex h-5 w-5 items-center justify-center text-xl">
                 {{ team.icon }}
@@ -92,33 +96,22 @@
               </div>
             </div>
           </Link>
-          <div class="mb-2 mt-0.5 space-y-0.5 pl-7" v-show="team.open">
-            <Link
-              :key="project.name"
-              v-for="project in teamProjects(team.name)"
-              :link="project"
-              :ref="($comp) => setProjectRef($comp, project)"
-              class="flex h-7 items-center rounded-md px-2 text-gray-800 transition"
-              active="bg-white shadow-sm"
-              inactive="hover:bg-gray-100"
-            >
-              <template v-slot="{ link: project }">
-                <span class="inline-flex items-center space-x-2">
-                  <span class="text-sm">{{ project.title }}</span>
-                  <LucideLock v-if="project.is_private" class="h-3 w-3" />
-                </span>
-              </template>
-            </Link>
-            <div
-              class="flex h-7 items-center px-2 text-sm text-gray-600"
-              v-if="teamProjects(team.name).length === 0"
-            >
-              No projects
-            </div>
-          </div>
         </div>
+        <Link
+          :link="{ route: { name: 'Teams' } }"
+          active="bg-white shadow-sm"
+          inactive="hover:bg-gray-100"
+          class="flex items-center rounded px-2 py-1 text-gray-800 transition"
+        >
+          <div class="flex w-full items-center">
+            <span class="flex h-5 w-5 items-center justify-center text-xl">
+              <LucideGlobe class="h-4 w-4 text-gray-700" />
+            </span>
+            <span class="ml-2 text-sm">Browse all spaces</span>
+          </div>
+        </Link>
       </nav>
-      <div v-if="teams.fetched && !activeTeams.length" class="px-3 py-2 text-sm text-gray-500">
+      <div v-if="teams.fetched && !userSpaces.length" class="px-3 py-2 text-sm text-gray-500">
         No teams
       </div>
     </div>
@@ -143,7 +136,7 @@ import Link from './Link.vue'
 import AddTeamDialog from './AddTeamDialog.vue'
 import UserDropdown from './UserDropdown.vue'
 import ChevronTriangle from './icons/ChevronTriangle.vue'
-import { activeTeams, teams } from '@/data/teams'
+import { activeTeams, teams, userSpaces } from '@/data/teams'
 import { getTeamProjects } from '@/data/projects'
 import { unreadNotifications } from '@/data/notifications'
 import { showCommandPalette } from '@/components/CommandPalette/CommandPalette.vue'
@@ -188,7 +181,15 @@ export default {
           },
         },
         {
-          name: 'My Tasks',
+          name: 'Inbox',
+          icon: LucideInbox,
+          route: {
+            name: 'Notifications',
+          },
+          count: unreadNotifications.data || 0,
+        },
+        {
+          name: 'Tasks',
           icon: LucideListTodo,
           route: {
             name: 'MyTasks',
@@ -196,7 +197,7 @@ export default {
           isActive: /MyTasks|Task/g.test(this.$route.name),
         },
         {
-          name: 'My Pages',
+          name: 'Pages',
           icon: LucideFiles,
           route: {
             name: 'MyPages',
@@ -212,15 +213,21 @@ export default {
           isActive: /People|PersonProfile/g.test(this.$route.name),
           condition: () => this.$user().isNotGuest,
         },
-        {
-          name: 'Notifications',
-          icon: LucideInbox,
-          route: {
-            name: 'Notifications',
-          },
-          count: unreadNotifications.data || 0,
-        },
       ].filter((nav) => (nav.condition ? nav.condition() : true))
+    },
+    userSpaces() {
+      return userSpaces.value.map((space) => {
+        space.class = function ($route, link) {
+          if (
+            ['TeamLayout', 'Team', 'TeamDiscussions'].includes($route.name) &&
+            $route.params.teamId === link.route.params.teamId
+          ) {
+            return 'bg-white shadow-sm text-gray-800'
+          }
+          return 'text-gray-800 hover:bg-gray-100'
+        }
+        return space
+      })
     },
     activeTeams() {
       return activeTeams.value.map((team) => {

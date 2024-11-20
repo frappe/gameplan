@@ -27,6 +27,7 @@ export default {
         name: this.teamId,
         realtime: true,
         whitelistedMethods: {
+          join: 'join',
           addMembers: 'add_members',
           removeMember: 'remove_member',
           archive: 'archive',
