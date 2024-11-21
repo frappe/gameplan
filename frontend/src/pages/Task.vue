@@ -22,8 +22,8 @@ const props = defineProps({
   },
 })
 
+let route = useRoute()
 let breadcrumbs = computed(() => {
-  let route = useRoute()
   let task = getCachedDocumentResource('GP Task', route.params.taskId)
   let items = [
     {
