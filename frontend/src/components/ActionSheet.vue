@@ -33,7 +33,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  'update:modelValue': (value: boolean) => void
+  (event: 'update:modelValue', value: boolean): void
 }>()
 </script>
 <style scoped>
