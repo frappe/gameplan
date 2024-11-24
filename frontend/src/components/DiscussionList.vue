@@ -49,6 +49,7 @@
             </div>
             <div class="min-w-0 flex-1">
               <div class="flex min-w-0 items-center">
+                <div v-if="d.unread" class="h-2 mr-1 w-2 shrink-0 rounded-full bg-orange-500" />
                 <div
                   class="overflow-hidden text-ellipsis whitespace-nowrap leading-none"
                   :class="d.unread ? 'text-gray-900' : 'text-gray-900'"
@@ -99,10 +100,6 @@
       <div
         class="mx-3 h-px border-t border-gray-200"
         v-if="index < $resources.discussions.data.length - 1"
-      ></div>
-      <div
-        class="absolute left-1 top-[30px] h-3.5 w-3.5 shrink-0 -translate-y-1/2 rounded-full border-[3px] border-white bg-orange-500 sm:-left-2.5 sm:h-1.5 sm:w-1.5 sm:border-none"
-        :class="d.unread ? 'visible' : 'invisible'"
       ></div>
     </router-link>
     <div class="px-2 sm:px-0">
