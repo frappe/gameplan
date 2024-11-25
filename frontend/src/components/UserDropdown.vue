@@ -18,21 +18,26 @@
   </Dropdown>
 </template>
 <script>
-import { h } from 'vue'
+import { h, markRaw } from 'vue'
 import { Dropdown } from 'frappe-ui'
 import { showSettingsDialog } from '@/components/Settings/SettingsDialog.vue'
 import LucideCreditCard from '~icons/lucide/credit-card'
 import GameplanLogo from './GameplanLogo.vue'
+import Apps from '@/components/Apps.vue'
 
 export default {
   name: 'UserDropdown',
   components: {
     Dropdown,
     GameplanLogo,
+    Apps,
   },
   computed: {
     dropdownItems() {
       return [
+        {
+          component: markRaw(Apps),
+        },
         {
           icon: 'user',
           label: 'My Profile',

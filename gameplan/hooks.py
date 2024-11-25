@@ -16,7 +16,7 @@ add_to_apps_screen = [
 		"logo": "/assets/gameplan/manifest/favicon-196.png",
 		"title": "Gameplan",
 		"route": "/g",
-		# "has_permission": "gameplan.api.permission.has_app_permission"
+		"has_permission": "gameplan.permissions.has_app_permission"
 	}
 ]
 
