@@ -42,7 +42,7 @@
             class="rounded-full bg-surface-white outline-none hover:brightness-110 focus-visible:ring focus-visible:ring-outline-gray-3"
           >
             <UserImage
-              class="h-[100px] w-[100px] rounded-full border-4 border-white object-cover"
+              class="h-[100px] w-[100px] rounded-full border-4 border-outline-white object-cover"
               :user="currentUser.name"
             />
           </button>

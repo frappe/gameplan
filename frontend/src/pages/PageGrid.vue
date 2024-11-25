@@ -27,9 +27,6 @@
                       variant: 'solid',
                       theme: 'red',
                     },
-                    {
-                      label: 'Cancel',
-                    },
                   ],
                 })
               },
@@ -50,17 +47,17 @@
         }"
       >
         <section
-          class="aspect-[37/50] cursor-pointer overflow-hidden rounded-md border border-gray-50 p-3 shadow-lg transition-shadow hover:shadow-2xl"
+          class="aspect-[37/50] cursor-pointer overflow-hidden rounded-md border border-gray-50 dark:border-outline-gray-1 p-3 shadow-lg transition-shadow hover:shadow-2xl"
         >
           <div class="overflow-hidden text-ellipsis whitespace-nowrap">
-            <h1 class="text-lg font-semibold leading-none">
+            <h1 class="text-lg font-semibold leading-none text-ink-gray-8">
               {{ d.title }}
             </h1>
             <div class="mt-1.5 flex items-center text-sm leading-none text-ink-gray-7">
               <div v-if="d.project">{{ projectTitle(d.project).value }} &middot;&nbsp;</div>
               <div>Updated {{ $dayjs(d.modified).fromNow() }}</div>
             </div>
-            <hr class="my-2 border-gray-100" />
+            <hr class="my-2" />
             <div
               class="prose prose-sm pointer-events-none w-[200%] origin-top-left scale-[.55] prose-p:my-1 md:w-[250%] md:scale-[.39]"
               v-html="d.content"

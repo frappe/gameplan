@@ -9,7 +9,7 @@
         <Combobox nullable @update:model-value="onSelection" v-slot="{ activeIndex }">
           <div class="relative">
             <div class="absolute inset-y-0 left-0 flex items-center pl-4.5">
-              <LucideSearch class="h-4 w-4" />
+              <LucideSearch class="h-4 w-4 text-ink-gray-7" />
             </div>
             <ComboboxInput
               placeholder="Search"
@@ -19,7 +19,7 @@
             />
           </div>
           <ComboboxOptions
-            class="max-h-96 overflow-auto border-t border-gray-100"
+            class="max-h-96 overflow-auto border-t border-outline-gray-1 dark:border-outline-gray-2"
             static
             :hold="true"
           >

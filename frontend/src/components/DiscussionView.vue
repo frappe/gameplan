@@ -37,7 +37,7 @@
             <Tooltip v-if="discussion.closed_at" text="This discussion is closed">
               <LucideLock class="mr-2 h-4 w-4 text-ink-gray-7" :stroke-width="2" />
             </Tooltip>
-            <span>
+            <span class="text-ink-gray-9">
               {{ discussion.title }}
             </span>
           </h1>
@@ -55,7 +55,7 @@
         </div>
         <div class="mt-1.5 flex items-center text-base" v-show="!editingTitle">
           <DiscussionBreadcrumbs :discussion="discussion" />
-          <span class="px-1.5">&middot;</span>
+          <span class="px-1.5 text-ink-gray-8">&middot;</span>
           <span class="text-ink-gray-5">
             {{
               discussion.participants_count == 1
@@ -70,11 +70,11 @@
           </UserProfileLink>
           <div class="flex flex-col md:block">
             <UserProfileLink
-              class="text-base font-medium hover:text-ink-blue-3"
+              class="text-base font-medium text-ink-gray-9 hover:text-ink-blue-3"
               :user="discussion.owner"
             >
               {{ $user(discussion.owner).full_name }}
-              <span class="hidden md:inline">&nbsp;&middot;&nbsp;</span>
+              <span class="hidden md:inline text-ink-gray-8">&nbsp;&middot;&nbsp;</span>
             </UserProfileLink>
             <time
               class="text-base text-ink-gray-5"

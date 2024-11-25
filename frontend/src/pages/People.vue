@@ -10,7 +10,7 @@
         </header>
         <div class="mx-auto w-full max-w-4xl px-5 pt-6">
           <div class="flex items-center justify-between">
-            <h2 class="text-xl font-semibold">{{ people.length }} members</h2>
+            <h2 class="text-xl font-semibold text-ink-gray-8">{{ people.length }} members</h2>
             <div class="flex items-center gap-2">
               <TextInput
                 class="hidden sm:block"

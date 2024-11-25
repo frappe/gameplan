@@ -3,7 +3,7 @@
     <template v-slot="{ open }">
       <button
         class="flex w-[15rem] items-center rounded-md px-2 py-2 text-left"
-        :class="open ? 'bg-surface-white shadow-sm' : 'hover:bg-surface-gray-3'"
+        :class="open ? 'bg-surface-selected shadow-sm' : 'hover:bg-surface-gray-3'"
       >
         <GameplanLogo class="w-8 h-8 rounded" />
         <div class="ml-2 flex flex-col">
@@ -12,7 +12,7 @@
             {{ user.full_name }}
           </div>
         </div>
-        <LucideChevronDown class="ml-auto hidden h-4 w-4 sm:inline" />
+        <LucideChevronDown class="ml-auto hidden h-4 w-4 sm:inline text-ink-gray-8" />
       </button>
     </template>
   </Dropdown>

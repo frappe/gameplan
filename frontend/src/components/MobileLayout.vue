@@ -4,7 +4,7 @@
       <slot />
     </div>
     <div
-      class="grid grid-cols-5 border-t border-outline-gray-2 standalone:pb-4"
+      class="grid grid-cols-5 bg-surface-modal border-t border-outline-gray-2 standalone:pb-4"
       :style="{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }"
     >
       <button

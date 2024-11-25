@@ -24,7 +24,7 @@
         <Links
           :links="navigation"
           class="flex items-center rounded px-2 py-1 text-ink-gray-8 transition"
-          active="bg-surface-white shadow-sm"
+          active="bg-surface-selected shadow-sm"
           inactive="hover:bg-surface-gray-2"
         >
           <template v-slot="{ link }">
@@ -42,7 +42,11 @@
         <button
           v-if="$user().isNotGuest"
           class="flex w-full items-center rounded px-2 py-1 text-ink-gray-8"
-          :class="[/Search/.test($route.name) ? 'bg-surface-white shadow-sm' : 'hover:bg-surface-gray-2']"
+          :class="[
+            /Search/.test($route.name)
+              ? 'bg-surface-selected shadow-sm'
+              : 'hover:bg-surface-gray-2',
+          ]"
           @click="showCommandPalette"
         >
           <div class="flex w-full items-center">
@@ -99,7 +103,7 @@
               :link="project"
               :ref="($comp) => setProjectRef($comp, project)"
               class="flex h-7 items-center rounded-md px-2 text-ink-gray-8 transition"
-              active="bg-surface-white shadow-sm"
+              active="bg-surface-selected shadow-sm"
               inactive="hover:bg-surface-gray-2"
             >
               <template v-slot="{ link: project }">
@@ -229,7 +233,7 @@ export default {
             ['TeamLayout', 'Team', 'TeamOverview'].includes($route.name) &&
             $route.params.teamId === link.route.params.teamId
           ) {
-            return 'bg-surface-white shadow-sm text-ink-gray-8'
+            return 'bg-surface-selected shadow-sm text-ink-gray-8'
           }
           return 'text-ink-gray-8 hover:bg-surface-gray-2'
         }

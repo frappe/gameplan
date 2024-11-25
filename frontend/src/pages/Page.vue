@@ -31,7 +31,7 @@
         </span>
         <div class="mb-3 md:px-[70px]">
           <input
-            class="w-full border-0 p-0 pt-4 text-3xl font-semibold focus:outline-none focus:ring-0"
+            class="w-full border-0 p-0 pt-4 text-3xl font-semibold focus:outline-none focus:ring-0 bg-surface-white text-ink-gray-9"
             type="text"
             :value="page.doc.title"
             @input="page.doc.title = $event.target.value"

@@ -7,7 +7,7 @@
   <div class="mx-auto mt-6 max-w-4xl px-4 sm:px-5">
     <div class="flex items-center space-x-2">
       <TextInput
-        class="w-full"
+        class="flex-1"
         placeholder="Type a keyword and hit enter to search"
         autocomplete="off"
         v-model="query"
