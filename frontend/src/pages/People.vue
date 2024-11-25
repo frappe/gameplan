@@ -43,17 +43,19 @@
               </Button>
             </div>
           </div>
-          <TextInput
-            class="mt-4 w-full sm:hidden"
-            type="text"
-            placeholder="Search"
-            v-model="search"
-            :debounce="500"
-          >
-            <template #prefix>
-              <LucideSearch class="w-4 text-gray-600" />
-            </template>
-          </TextInput>
+          <div class="sm:hidden mt-4">
+            <TextInput
+              class="w-full"
+              type="text"
+              placeholder="Search"
+              v-model="search"
+              :debounce="500"
+            >
+              <template #prefix>
+                <LucideSearch class="w-4 text-gray-600" />
+              </template>
+            </TextInput>
+          </div>
           <div class="mt-6 pb-16">
             <template v-for="user in people" :key="user.name">
               <router-link
