@@ -6,7 +6,7 @@
   >
     <div
       v-if="modelValue"
-      class="bg-white max-h-screen overflow-auto shadow-lg w-full rounded-t-xl slide-in-from-bottom"
+      class="bg-surface-white max-h-screen overflow-auto shadow-lg w-full rounded-t-xl slide-in-from-bottom"
     >
       <div class="py-4 border-b text-center relative">
         <div class="text-lg font-bold">
@@ -15,7 +15,7 @@
         <div class="absolute right-0 inset-y-0 flex items-center pr-4">
           <Button variant="ghost" @click="emit('update:modelValue', false)">
             <template #icon>
-              <LucideX class="text-gray-600" />
+              <LucideX class="text-ink-gray-5" />
             </template>
           </Button>
         </div>

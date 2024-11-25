@@ -8,7 +8,7 @@
       </button>
     </template>
     <template #body>
-      <div class="left-1/2 mt-3 max-w-max -translate-x-1/2 transform bg-white px-4 sm:px-0">
+      <div class="left-1/2 mt-3 max-w-max -translate-x-1/2 transform bg-surface-white px-4 sm:px-0">
         <div
           class="relative max-h-96 overflow-y-auto rounded-lg p-2 shadow-lg ring-1 ring-black ring-opacity-5"
         >

@@ -26,10 +26,10 @@
             ]"
             v-model="role"
           />
-          <p class="mt-2 text-base text-gray-900">{{ description }}</p>
+          <p class="mt-2 text-base text-ink-gray-9">{{ description }}</p>
         </div>
         <div v-if="role === 'Gameplan Guest'">
-          <label class="text-sm leading-4 text-gray-700"> Invite Guest to Projects </label>
+          <label class="text-sm leading-4 text-ink-gray-7"> Invite Guest to Projects </label>
           <div class="mt-1 flex flex-wrap gap-2">
             <Button
               v-for="project in projects"
@@ -58,7 +58,7 @@
       </template>
     </div>
     <template v-if="$resources.pendingInvitations.data?.length && !emails">
-      <div class="mt-4 flex items-center justify-between border-b py-2 text-base text-gray-600">
+      <div class="mt-4 flex items-center justify-between border-b py-2 text-base text-ink-gray-5">
         <div class="w-4/5">Pending Invites</div>
       </div>
       <ul class="divide-y overflow-auto">
@@ -68,10 +68,10 @@
           :key="user.name"
         >
           <div class="w-4/5 text-base">
-            <span class="text-gray-900">
+            <span class="text-ink-gray-9">
               {{ user.email }}
             </span>
-            <span class="text-gray-600"> ({{ user.role.replace('Gameplan ', '') }}) </span>
+            <span class="text-ink-gray-5"> ({{ user.role.replace('Gameplan ', '') }}) </span>
           </div>
           <div>
             <Tooltip text="Delete Invitation">

@@ -13,7 +13,7 @@
             </div>
             <ComboboxInput
               placeholder="Search"
-              class="w-full border-none bg-transparent py-3 pl-11.5 pr-4.5 text-base text-gray-800 placeholder-gray-500 focus:ring-0"
+              class="w-full border-none bg-transparent py-3 pl-11.5 pr-4.5 text-base text-ink-gray-8 placeholder-ink-gray-4 focus:ring-0"
               @input="onInput"
               autocomplete="off"
             />
@@ -28,7 +28,7 @@
               v-for="(group, index) in groupedSearchResults"
               :key="group.title"
             >
-              <div class="mb-2.5 px-4.5 text-base text-gray-600" v-if="!group.hideTitle">
+              <div class="mb-2.5 px-4.5 text-base text-ink-gray-5" v-if="!group.hideTitle">
                 {{ group.title }}
               </div>
               <ComboboxOption

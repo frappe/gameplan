@@ -1,6 +1,6 @@
 <template>
   <teleport to="body">
-    <div v-if="show" class="fixed inset-0 z-20 bg-gray-900/80">
+    <div v-if="show" class="fixed inset-0 z-20 bg-surface-gray-7/80">
       <div class="absolute right-0 p-4 text-right">
         <Button icon="x" @click="$emit('update:show', false)"> </Button>
       </div>

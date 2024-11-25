@@ -1,6 +1,6 @@
 <template>
   <header
-    class="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-3 py-2.5 sm:px-5"
+    class="sticky top-0 z-10 flex items-center justify-between border-b bg-surface-white px-3 py-2.5 sm:px-5"
   >
     <Breadcrumbs class="h-7" :items="[{ label: 'Discussions', route: { name: 'Discussions' } }]" />
     <Button variant="solid" @click="newDiscussionDialog.show = true">
@@ -9,7 +9,7 @@
     </Button>
   </header>
   <div
-    class="fixed inset-x-0 top-14 flex w-full justify-center py-2 text-gray-600"
+    class="fixed inset-x-0 top-14 flex w-full justify-center py-2 text-ink-gray-5"
     v-if="swipeLoading"
   >
     <LoadingIndicator class="h-4 w-4" />
@@ -52,7 +52,7 @@
             @click="projects = projects.filter((p) => p !== project)"
             class="mb-4"
           >
-            <div class="text-lg font-semibold text-gray-900">
+            <div class="text-lg font-semibold text-ink-gray-9">
               {{ team.group }}
             </div>
             <div class="mt-1 divide-y divide-gray-100">
@@ -61,7 +61,7 @@
                 v-for="project in team.items"
                 :key="project.value"
               >
-                <div class="text-base text-gray-800">
+                <div class="text-base text-ink-gray-8">
                   {{ project.label }}
                 </div>
                 <Button
@@ -119,7 +119,7 @@
     v-model="newDiscussionDialog.show"
   >
     <template #body-content>
-      <p class="mb-4 text-base text-gray-700">Select a project to start a new discussion</p>
+      <p class="mb-4 text-base text-ink-gray-7">Select a project to start a new discussion</p>
       <Autocomplete
         :options="projectOptions"
         v-model="newDiscussionDialog.project"

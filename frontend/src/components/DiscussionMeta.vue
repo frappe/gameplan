@@ -1,14 +1,14 @@
 <template>
   <div class="leading-5">
-    <span class="text-base text-gray-800">
-      <UserProfileLink class="hover:text-blue-600" :user="discussion.owner">
+    <span class="text-base text-ink-gray-8">
+      <UserProfileLink class="hover:text-ink-blue-3" :user="discussion.owner">
         {{ $user(discussion.owner).full_name }}
       </UserProfileLink>
       in
       <DiscussionBreadcrumbs :discussion="discussion" />
     </span>
     <span> &middot; </span>
-    <span class="text-base text-gray-600">
+    <span class="text-base text-ink-gray-5">
       {{
         discussion.participants_count == 1
           ? `1 participant`

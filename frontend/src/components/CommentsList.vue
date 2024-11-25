@@ -4,15 +4,15 @@
       v-if="$resources.comments.data == null"
       class="flex animate-pulse items-start space-x-3 px-2 py-4 text-base"
     >
-      <div class="h-8 w-8 rounded-full bg-gray-200"></div>
+      <div class="h-8 w-8 rounded-full bg-surface-gray-3"></div>
       <div>
         <div class="flex h-8 flex-col justify-center">
-          <div class="h-2 w-40 bg-gray-200"></div>
+          <div class="h-2 w-40 bg-surface-gray-3"></div>
         </div>
         <div class="flex flex-col gap-2">
           <div v-for="i in 4">
             <div
-              class="h-2 bg-gray-200"
+              class="h-2 bg-surface-gray-3"
               :style="{ width: `${Math.max(Math.random() * 800, 600)}px` }"
             ></div>
           </div>
@@ -28,7 +28,7 @@
         >
           <div class="border-b border-blue-600"></div>
           <span
-            class="absolute -top-2 left-1/2 -translate-x-1/2 bg-white px-2 text-sm font-medium text-blue-600"
+            class="absolute -top-2 left-1/2 -translate-x-1/2 bg-surface-white px-2 text-sm font-medium text-ink-blue-3"
           >
             New comments
           </span>
@@ -61,7 +61,7 @@
         </div>
         <div class="relative w-full" v-show="!showCommentBox">
           <button
-            class="flex w-full items-center rounded-md border px-2 py-2 text-left text-base text-gray-600 hover:border-gray-400"
+            class="flex w-full items-center rounded-md border px-2 py-2 text-left text-base text-ink-gray-5 hover:border-outline-gray-3"
             @click="showCommentBox = true"
           >
             Add a comment
@@ -87,13 +87,13 @@
         </div>
         <div
           v-show="showCommentBox"
-          class="w-full rounded-lg border bg-white p-4 focus-within:border-gray-400"
+          class="w-full rounded-lg border bg-surface-white p-4 focus-within:border-outline-gray-3"
           @keydown.ctrl.enter.capture.stop="submitComment"
           @keydown.meta.enter.capture.stop="submitComment"
         >
           <div class="mb-4 flex items-center sm:hidden">
             <UserAvatar :user="$user().name" size="sm" />
-            <span class="ml-2 text-base font-medium text-gray-900">
+            <span class="ml-2 text-base font-medium text-ink-gray-9">
               {{ $user().full_name }}
             </span>
           </div>
@@ -328,7 +328,7 @@ export default {
               text: error.messages.join(', '),
               position: 'bottom-center',
               icon: 'alert-circle',
-              iconClasses: 'text-red-600',
+              iconClasses: 'text-ink-red-4',
             })
           },
         },

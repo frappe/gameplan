@@ -6,8 +6,8 @@
           aria-label="Add a reaction"
           :disabled="isLoading"
           @click="togglePopover()"
-          class="flex h-full items-center justify-center rounded-full bg-gray-100 px-2 py-1 text-gray-700 transition hover:bg-gray-200"
-          :class="{ 'bg-gray-200': isOpen }"
+          class="flex h-full items-center justify-center rounded-full bg-surface-gray-2 px-2 py-1 text-ink-gray-7 transition hover:bg-surface-gray-3"
+          :class="{ 'bg-surface-gray-3': isOpen }"
         >
           <ReactionFaceIcon />
         </button>
@@ -16,7 +16,7 @@
         <div class="mt-1 inline-flex p-1">
           <div class="grid grid-cols-10 items-center space-x-0.5">
             <button
-              class="h-6 w-6 rounded hover:bg-gray-50"
+              class="h-6 w-6 rounded hover:bg-surface-menu-bar"
               v-for="emoji in standardEmojis"
               :key="emoji"
               @click="
@@ -38,8 +38,8 @@
         class="flex items-center justify-center rounded-full px-2 py-1 text-sm transition"
         :class="[
           reactions.userReacted
-            ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
-            : 'bg-gray-100 text-gray-700 hover:bg-gray-200',
+            ? 'bg-surface-amber-2 text-amber-700 hover:bg-amber-200'
+            : 'bg-surface-gray-2 text-ink-gray-7 hover:bg-surface-gray-3',
         ]"
         @click="toggleReaction(emoji)"
       >
@@ -47,7 +47,7 @@
       </button>
       <template #body>
         <div
-          class="max-w-[30ch] rounded-lg border border-gray-100 bg-gray-800 px-2 py-1 text-center text-xs text-white shadow-xl"
+          class="max-w-[30ch] rounded-lg border border-gray-100 bg-surface-gray-6 px-2 py-1 text-center text-xs text-ink-white shadow-xl"
         >
           {{ toolTipText(reactions) }}
         </div>

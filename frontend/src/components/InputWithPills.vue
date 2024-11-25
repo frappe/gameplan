@@ -9,11 +9,11 @@
         class="inline-flex items-center whitespace-nowrap rounded-full border py-1 pl-2.5 pr-1 text-sm leading-none"
         v-for="option in modelValue"
         :key="option.value"
-        :class="focusedOption === option ? 'bg-white ring-2 ring-blue-600' : 'bg-white'"
+        :class="focusedOption === option ? 'bg-surface-white ring-2 ring-blue-600' : 'bg-surface-white'"
       >
         {{ option.displayValue || option.label }}
 
-        <button class="ml-1 rounded-full p-1 hover:bg-gray-100" @click="removeOption(option)">
+        <button class="ml-1 rounded-full p-1 hover:bg-surface-gray-2" @click="removeOption(option)">
           <LucideX class="h-3 w-3" />
         </button>
       </div>
@@ -39,11 +39,11 @@
                 @after-leave="query = ''"
               >
                 <ComboboxOptions
-                  class="mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm"
+                  class="mt-1 max-h-60 w-full overflow-auto rounded-md bg-surface-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm"
                 >
                   <div
                     v-if="filteredOptions.length === 0"
-                    class="relative cursor-default select-none px-4 py-2 text-gray-700"
+                    class="relative cursor-default select-none px-4 py-2 text-ink-gray-7"
                   >
                     No user found.
                   </div>
@@ -57,8 +57,8 @@
                     <li
                       class="relative cursor-default select-none px-3 py-2"
                       :class="{
-                        'bg-blue-500 text-white': active,
-                        'text-gray-900': !active,
+                        'bg-blue-500 text-ink-white': active,
+                        'text-ink-gray-9': !active,
                       }"
                     >
                       <span

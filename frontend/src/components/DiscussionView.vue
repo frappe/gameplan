@@ -8,7 +8,7 @@
               <input
                 v-if="editingTitle"
                 type="text"
-                class="w-full rounded border-0 bg-gray-100 px-2 py-1 text-xl font-semibold focus:ring-0"
+                class="w-full rounded border-0 bg-surface-gray-2 px-2 py-1 text-xl font-semibold focus:ring-0"
                 ref="title"
                 v-model="discussion.title"
                 placeholder="Title"
@@ -28,14 +28,14 @@
                 "
                 v-focus
               />
-              <p class="mt-1 text-sm text-gray-600">
+              <p class="mt-1 text-sm text-ink-gray-5">
                 Edit title and press enter. Press escape to cancel.
               </p>
             </div>
           </div>
           <h1 v-else class="flex items-center text-2xl font-semibold">
             <Tooltip v-if="discussion.closed_at" text="This discussion is closed">
-              <LucideLock class="mr-2 h-4 w-4 text-gray-700" :stroke-width="2" />
+              <LucideLock class="mr-2 h-4 w-4 text-ink-gray-7" :stroke-width="2" />
             </Tooltip>
             <span>
               {{ discussion.title }}
@@ -56,7 +56,7 @@
         <div class="mt-1.5 flex items-center text-base" v-show="!editingTitle">
           <DiscussionBreadcrumbs :discussion="discussion" />
           <span class="px-1.5">&middot;</span>
-          <span class="text-gray-600">
+          <span class="text-ink-gray-5">
             {{
               discussion.participants_count == 1
                 ? `1 participant`
@@ -70,14 +70,14 @@
           </UserProfileLink>
           <div class="flex flex-col md:block">
             <UserProfileLink
-              class="text-base font-medium hover:text-blue-600"
+              class="text-base font-medium hover:text-ink-blue-3"
               :user="discussion.owner"
             >
               {{ $user(discussion.owner).full_name }}
               <span class="hidden md:inline">&nbsp;&middot;&nbsp;</span>
             </UserProfileLink>
             <time
-              class="text-base text-gray-600"
+              class="text-base text-ink-gray-5"
               :datetime="discussion.creation"
               :title="$dayjs(discussion.creation)"
             >
@@ -97,7 +97,7 @@
         </div>
         <div
           :class="{
-            'rounded-lg border p-4 focus-within:border-gray-400': editingContent,
+            'rounded-lg border p-4 focus-within:border-outline-gray-3': editingContent,
           }"
         >
           <CommentEditor

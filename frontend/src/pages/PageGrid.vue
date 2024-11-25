@@ -1,6 +1,6 @@
 <template>
   <div class="grid grid-cols-1 gap-5 md:grid-cols-3 lg:grid-cols-4">
-    <div class="text-base text-gray-600" v-if="!$resources.pages.data?.length">No pages</div>
+    <div class="text-base text-ink-gray-5" v-if="!$resources.pages.data?.length">No pages</div>
     <div class="relative" v-for="d in $resources.pages.data" :key="d.name">
       <div class="absolute right-0 top-0 p-3">
         <Dropdown
@@ -56,7 +56,7 @@
             <h1 class="text-lg font-semibold leading-none">
               {{ d.title }}
             </h1>
-            <div class="mt-1.5 flex items-center text-sm leading-none text-gray-700">
+            <div class="mt-1.5 flex items-center text-sm leading-none text-ink-gray-7">
               <div v-if="d.project">{{ projectTitle(d.project).value }} &middot;&nbsp;</div>
               <div>Updated {{ $dayjs(d.modified).fromNow() }}</div>
             </div>

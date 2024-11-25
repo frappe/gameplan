@@ -1,7 +1,7 @@
 <template>
   <svg
     v-bind="$attrs"
-    :class="['-rotate-90 rounded-[50%] bg-gray-100', $attrs.class]"
+    :class="['-rotate-90 rounded-[50%] bg-surface-gray-2', $attrs.class]"
     viewBox="0 0 32 32"
   >
     <circle

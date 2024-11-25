@@ -7,18 +7,18 @@
     :data-id="comment.name"
   >
     <UserInfo :email="comment.owner" v-slot="{ user }">
-      <div class="mb-2 flex items-center text-base text-gray-900">
+      <div class="mb-2 flex items-center text-base text-ink-gray-9">
         <UserProfileLink class="mr-3" :user="user.name">
           <UserAvatar size="lg" :user="user.name" />
         </UserProfileLink>
         <div class="md:flex md:items-center">
-          <UserProfileLink class="font-medium hover:text-blue-600" :user="user.name">
+          <UserProfileLink class="font-medium hover:text-ink-blue-3" :user="user.name">
             {{ user.full_name }}
             <span class="hidden md:inline">&nbsp;&middot;&nbsp;</span>
           </UserProfileLink>
           <div>
             <time
-              class="text-gray-600"
+              class="text-ink-gray-5"
               :datetime="comment.creation"
               :title="$dayjs(comment.creation)"
             >
@@ -26,17 +26,17 @@
             </time>
             <span
               v-if="comment.modified > comment.creation"
-              class="text-gray-600"
+              class="text-ink-gray-5"
               :title="$dayjs(comment.modified)"
             >
               &nbsp;&middot; Edited
             </span>
-            <span v-if="comment.loading" class="italic text-gray-600">
+            <span v-if="comment.loading" class="italic text-ink-gray-5">
               &nbsp;&middot; Sending...
             </span>
             <div v-if="comment.error">
               &nbsp;&middot;
-              <span class="text-red-600"> Error</span>
+              <span class="text-ink-red-4"> Error</span>
             </div>
           </div>
         </div>
@@ -100,7 +100,7 @@
       <div class="flex-1">
         <div
           :class="{
-            'w-full rounded-lg border bg-white p-4 focus-within:border-gray-400': comment.editing,
+            'w-full rounded-lg border bg-surface-white p-4 focus-within:border-outline-gray-3': comment.editing,
           }"
           @keydown.ctrl.enter.capture.stop="editComment(comment)"
           @keydown.meta.enter.capture.stop="editComment(comment)"
@@ -121,7 +121,7 @@
               },
             }"
           />
-          <span class="text-base italic text-gray-600" v-else> This message is deleted </span>
+          <span class="text-base italic text-ink-gray-5" v-else> This message is deleted </span>
           <div class="mt-3" v-if="!comment.deleted_at && !comment.editing && comment.reactions">
             <Reactions
               doctype="GP Comment"

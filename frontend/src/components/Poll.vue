@@ -1,17 +1,17 @@
 <template>
   <div class="py-6 transition-shadow" :class="{ ring: highlight }">
-    <div class="mb-2 flex items-center text-base text-gray-900">
+    <div class="mb-2 flex items-center text-base text-ink-gray-9">
       <UserInfo :email="_poll.owner" v-slot="{ user }">
         <UserProfileLink class="mr-3" :user="user.name">
           <UserAvatar :user="user.name" />
         </UserProfileLink>
         <div class="md:flex md:items-center">
-          <UserProfileLink class="font-medium hover:text-blue-600" :user="user.name">
+          <UserProfileLink class="font-medium hover:text-ink-blue-3" :user="user.name">
             {{ user.full_name }}
             <span class="hidden md:inline">&nbsp;&middot;&nbsp;</span>
           </UserProfileLink>
           <div>
-            <time class="text-gray-600" :datetime="_poll.creation" :title="$dayjs(_poll.creation)">
+            <time class="text-ink-gray-5" :datetime="_poll.creation" :title="$dayjs(_poll.creation)">
               {{ $dayjs(_poll.creation).fromNow() }}
             </time>
           </div>
@@ -37,7 +37,7 @@
       </div>
     </div>
     <div class="text-base font-semibold">{{ _poll.title }}</div>
-    <div class="mt-1 text-sm text-gray-600">
+    <div class="mt-1 text-sm text-ink-gray-5">
       <span v-if="_poll.multiple_answers"> Multiple answers &middot; </span>
       <span v-if="_poll.anonymous"> Anonymous &middot; </span>
       <span> {{ _poll.total_votes }} {{ _poll.total_votes === 1 ? 'vote' : 'votes' }} </span>
@@ -45,7 +45,7 @@
     </div>
     <div class="my-4 space-y-2">
       <button
-        class="group flex items-center text-gray-900"
+        class="group flex items-center text-ink-gray-9"
         v-for="option in _poll.options"
         :key="option.idx"
         @click="submitVote(option)"
@@ -55,21 +55,21 @@
           class="mr-2 h-4 w-4 rounded-full border-2 text-sm"
           :class="
             isVotedByUser(option.title)
-              ? 'border-gray-900 bg-gray-900'
+              ? 'border-gray-900 bg-surface-gray-7'
               : participated || isStopped
-                ? 'border-gray-300'
-                : 'border-gray-300 group-hover:border-gray-400'
+                ? 'border-outline-gray-2'
+                : 'border-outline-gray-2 group-hover:border-outline-gray-3'
           "
         >
           <LucideCheck
             v-if="isVotedByUser(option.title)"
-            class="h-3 w-3 text-white"
+            class="h-3 w-3 text-ink-white"
             :stroke-width="2.5"
           />
         </div>
         <div class="flex items-baseline">
           <div class="text-base">{{ option.title }}</div>
-          <div class="ml-1 text-base text-gray-600" v-if="participated">
+          <div class="ml-1 text-base text-ink-gray-5" v-if="participated">
             ({{ option.percentage }}%)
           </div>
         </div>
@@ -87,10 +87,10 @@
               <h3 class="text-base font-medium">{{ option.title }}</h3>
 
               <div class="mx-2 flex-1 border-b"></div>
-              <div class="text-base text-gray-600">
+              <div class="text-base text-ink-gray-5">
                 {{ option.votes }} {{ option.votes === 1 ? 'vote' : 'votes' }}
               </div>
-              <div class="ml-1 text-base text-gray-600">({{ option.percentage }}%)</div>
+              <div class="ml-1 text-base text-ink-gray-5">({{ option.percentage }}%)</div>
             </div>
             <div class="py-2" v-for="user in option.voters" :key="user">
               <UserInfo :email="user" v-slot="{ user: _user }">

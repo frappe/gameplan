@@ -8,7 +8,7 @@
       autocomplete="off"
     />
     <div class="space-y-2">
-      <div class="text-sm leading-4 text-gray-700">Options</div>
+      <div class="text-sm leading-4 text-ink-gray-7">Options</div>
       <TextInput
         v-for="option in poll.options"
         :key="option.idx"

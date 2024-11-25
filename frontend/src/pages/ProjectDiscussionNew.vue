@@ -7,13 +7,13 @@
         </UserProfileLink>
         <div class="flex w-full items-center">
           <div>
-            <span class="text-base text-gray-900">
-              <UserProfileLink class="font-medium hover:text-blue-600" :user="$user().name">
+            <span class="text-base text-ink-gray-9">
+              <UserProfileLink class="font-medium hover:text-ink-blue-3" :user="$user().name">
                 {{ $user().full_name }}
               </UserProfileLink>
               in
               <router-link
-                class="hover:text-blue-600"
+                class="hover:text-ink-blue-3"
                 :to="{
                   name: 'Team',
                   params: {
@@ -23,9 +23,9 @@
               >
                 {{ $getDoc('GP Team', project.doc.team)?.title || project.doc.team }}
               </router-link>
-              <span class="text-gray-500"> &mdash; </span>
+              <span class="text-ink-gray-4"> &mdash; </span>
               <router-link
-                class="hover:text-blue-600"
+                class="hover:text-ink-blue-3"
                 :to="{
                   name: 'Project',
                   params: {
@@ -48,7 +48,7 @@
       </div>
       <ErrorMessage :message="$resources.newDiscussion.error" />
       <textarea
-        class="mt-1 w-full resize-none border-0 px-0 py-0.5 text-3xl font-bold placeholder-gray-400 focus:ring-0"
+        class="mt-1 w-full resize-none border-0 px-0 py-0.5 text-3xl font-bold placeholder-ink-gray-3 focus:ring-0"
         v-model="title"
         placeholder="Title"
         rows="1"

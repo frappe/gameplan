@@ -5,7 +5,7 @@
     </template>
     <template #body>
       <div
-        class="absolute left-1/2 mt-3 max-w-sm -translate-x-1/2 transform rounded-lg bg-white px-4 sm:px-0 lg:max-w-3xl"
+        class="absolute left-1/2 mt-3 max-w-sm -translate-x-1/2 transform rounded-lg bg-surface-white px-4 sm:px-0 lg:max-w-3xl"
       >
         <div class="overflow-hidden rounded-lg p-3 shadow-2xl ring-1 ring-black ring-opacity-5">
           <div class="flex items-center space-x-2">
@@ -27,7 +27,7 @@
               </template>
             </FileUploader>
           </div>
-          <div class="relative mt-2 grid w-[25.5rem] gap-2 bg-white lg:grid-cols-2">
+          <div class="relative mt-2 grid w-[25.5rem] gap-2 bg-surface-white lg:grid-cols-2">
             <button
               v-for="image in $resources.images.data"
               :key="image.id"
@@ -37,7 +37,7 @@
               <img :src="image.urls.raw + '&w=200&h=50&fit=crop&crop=entropy,faces,focalpoint'" />
             </button>
           </div>
-          <div class="mt-2 text-center text-sm text-gray-500">
+          <div class="mt-2 text-center text-sm text-ink-gray-4">
             Image search powered by
             <a class="underline" target="_blank" href="https://unsplash.com"> Unsplash </a>
           </div>

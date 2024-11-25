@@ -1,5 +1,5 @@
 <template>
-  <header class="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-5 py-2.5">
+  <header class="sticky top-0 z-10 flex items-center justify-between border-b bg-surface-white px-5 py-2.5">
     <Breadcrumbs class="h-7" :items="[{ label: 'My Pages', route: { name: 'MyPages' } }]" />
     <div class="flex items-center space-x-2">
       <Select

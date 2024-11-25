@@ -1,19 +1,19 @@
 <template>
   <div
-    class="absolute right-0 z-10 h-full w-1 cursor-col-resize bg-gray-300 opacity-0 transition-opacity hover:opacity-100"
+    class="absolute right-0 z-10 h-full w-1 cursor-col-resize bg-surface-gray-4 opacity-0 transition-opacity hover:opacity-100"
     :class="{ 'opacity-100': sidebarResizing }"
     @mousedown="startResize"
   />
   <div
     v-show="sidebarResizing"
-    class="fixed z-20 mt-3 -translate-x-[130%] rounded-md bg-gray-800 px-2 py-1 text-base text-white"
+    class="fixed z-20 mt-3 -translate-x-[130%] rounded-md bg-surface-gray-6 px-2 py-1 text-base text-ink-white"
     :style="{ left: sidebarWidth + 'px' }"
   >
     {{ sidebarWidth }}
   </div>
 
   <div
-    class="inline-flex h-full flex-1 flex-col overflow-auto border-r bg-gray-50 pb-40"
+    class="inline-flex h-full flex-1 flex-col overflow-auto border-r bg-surface-menu-bar pb-40"
     :style="{ width: `${sidebarWidth}px` }"
   >
     <div class="flex flex-col px-2 py-2">
@@ -23,17 +23,17 @@
       <nav class="space-y-0.5 px-2">
         <Links
           :links="navigation"
-          class="flex items-center rounded px-2 py-1 text-gray-800 transition"
-          active="bg-white shadow-sm"
-          inactive="hover:bg-gray-100"
+          class="flex items-center rounded px-2 py-1 text-ink-gray-8 transition"
+          active="bg-surface-white shadow-sm"
+          inactive="hover:bg-surface-gray-2"
         >
           <template v-slot="{ link }">
             <div class="flex w-full items-center space-x-2">
               <span class="grid h-5 w-6 place-items-center">
-                <component :is="link.icon" class="h-4 w-4 text-gray-700" />
+                <component :is="link.icon" class="h-4 w-4 text-ink-gray-7" />
               </span>
               <span class="text-sm">{{ link.name }}</span>
-              <span v-if="link.count" class="!ml-auto block text-xs text-gray-600">
+              <span v-if="link.count" class="!ml-auto block text-xs text-ink-gray-5">
                 {{ link.count }}
               </span>
             </div>
@@ -41,16 +41,16 @@
         </Links>
         <button
           v-if="$user().isNotGuest"
-          class="flex w-full items-center rounded px-2 py-1 text-gray-800"
-          :class="[/Search/.test($route.name) ? 'bg-white shadow-sm' : 'hover:bg-gray-100']"
+          class="flex w-full items-center rounded px-2 py-1 text-ink-gray-8"
+          :class="[/Search/.test($route.name) ? 'bg-surface-white shadow-sm' : 'hover:bg-surface-gray-2']"
           @click="showCommandPalette"
         >
           <div class="flex w-full items-center">
             <span class="grid h-5 w-6 place-items-center">
-              <LucideSearch class="h-4 w-4 text-gray-700" />
+              <LucideSearch class="h-4 w-4 text-ink-gray-7" />
             </span>
             <span class="ml-2 text-sm">Search</span>
-            <span class="ml-auto text-sm text-gray-500">
+            <span class="ml-auto text-sm text-ink-gray-4">
               <template v-if="$platform === 'mac'">⌘K</template>
               <template v-else>Ctrl+K</template>
             </span>
@@ -58,7 +58,7 @@
         </button>
       </nav>
       <div class="mt-6 flex items-center justify-between px-3">
-        <h3 class="text-sm font-medium text-gray-600">Teams</h3>
+        <h3 class="text-sm font-medium text-ink-gray-5">Teams</h3>
         <Button label="Create Team" variant="ghost" @click="showAddTeamDialog = true">
           <template #icon><LucidePlus class="h-4 w-4" /></template>
         </Button>
@@ -72,10 +72,10 @@
                   team.open = !team.open
                 }
               "
-              class="mr-1.5 grid h-4 w-4 place-items-center rounded hover:bg-gray-200"
+              class="mr-1.5 grid h-4 w-4 place-items-center rounded hover:bg-surface-gray-3"
             >
               <ChevronTriangle
-                class="h-3 w-3 text-gray-500 transition duration-200"
+                class="h-3 w-3 text-ink-gray-4 transition duration-200"
                 :class="[team.open ? 'rotate-90' : 'rotate-0']"
               />
             </button>
@@ -87,7 +87,7 @@
               <LucideLock v-if="team.is_private" class="ml-2 h-3 w-3" />
               <div class="ml-auto">
                 <Tooltip v-if="team.unread" :text="`${team.unread} unread posts`">
-                  <span class="text-xs text-gray-600">{{ team.unread }}</span>
+                  <span class="text-xs text-ink-gray-5">{{ team.unread }}</span>
                 </Tooltip>
               </div>
             </div>
@@ -98,9 +98,9 @@
               v-for="project in teamProjects(team.name)"
               :link="project"
               :ref="($comp) => setProjectRef($comp, project)"
-              class="flex h-7 items-center rounded-md px-2 text-gray-800 transition"
-              active="bg-white shadow-sm"
-              inactive="hover:bg-gray-100"
+              class="flex h-7 items-center rounded-md px-2 text-ink-gray-8 transition"
+              active="bg-surface-white shadow-sm"
+              inactive="hover:bg-surface-gray-2"
             >
               <template v-slot="{ link: project }">
                 <span class="inline-flex items-center space-x-2">
@@ -110,7 +110,7 @@
               </template>
             </Link>
             <div
-              class="flex h-7 items-center px-2 text-sm text-gray-600"
+              class="flex h-7 items-center px-2 text-sm text-ink-gray-5"
               v-if="teamProjects(team.name).length === 0"
             >
               No projects
@@ -118,7 +118,7 @@
           </div>
         </div>
       </nav>
-      <div v-if="teams.fetched && !activeTeams.length" class="px-3 py-2 text-sm text-gray-500">
+      <div v-if="teams.fetched && !activeTeams.length" class="px-3 py-2 text-sm text-ink-gray-4">
         No teams
       </div>
     </div>
@@ -229,9 +229,9 @@ export default {
             ['TeamLayout', 'Team', 'TeamOverview'].includes($route.name) &&
             $route.params.teamId === link.route.params.teamId
           ) {
-            return 'bg-white shadow-sm text-gray-800'
+            return 'bg-surface-white shadow-sm text-ink-gray-8'
           }
-          return 'text-gray-800 hover:bg-gray-100'
+          return 'text-ink-gray-8 hover:bg-surface-gray-2'
         }
         return team
       })

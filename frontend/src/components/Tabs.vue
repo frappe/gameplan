@@ -24,8 +24,8 @@ export default {
         return {
           ...tab,
           class: tab.isActive
-            ? 'border-gray-900 text-gray-900'
-            : 'border-transparent text-gray-600 hover:text-gray-700 hover:border-gray-300',
+            ? 'border-gray-900 text-ink-gray-9'
+            : 'border-transparent text-ink-gray-5 hover:text-ink-gray-7 hover:border-outline-gray-2',
         }
       })
     },
