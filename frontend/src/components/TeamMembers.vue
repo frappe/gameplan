@@ -20,26 +20,14 @@
   </div>
   <AddMemberDialog :resource="team" v-model="inviteMemberDialog" />
 </template>
-<script>
-import { Avatar } from 'frappe-ui'
+<script setup>
+import { ref, computed } from 'vue'
 import AddMemberDialog from '@/components/AddMemberDialog.vue'
 
-export default {
-  name: 'TeamHomeMembers',
-  props: ['team'],
-  components: {
-    Avatar,
-    AddMemberDialog,
-  },
-  data() {
-    return {
-      inviteMemberDialog: false,
-    }
-  },
-  computed: {
-    members() {
-      return this.team.doc.members.filter((member) => member.status != 'Invited')
-    },
-  },
-}
+let props = defineProps(['team'])
+let inviteMemberDialog = ref(false)
+
+let members = computed(() => {
+  return props.team.doc?.members.filter((member) => member.status != 'Invited')
+})
 </script>

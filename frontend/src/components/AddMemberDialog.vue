@@ -24,10 +24,10 @@
         <Autocomplete
           :options="invitableUsers"
           v-model="selectedUser"
-          placeholder="Add member by name or email"
+          placeholder="Add member by name"
         >
-          <template #prefix="{ option }">
-            <UserAvatar class="mr-2" :user="option.email" size="sm" />
+          <template #item-prefix="{ option }">
+            <UserAvatar :user="option.email" size="sm" />
           </template>
         </Autocomplete>
         <ErrorMessage class="mt-2" :message="resource.addMembers.error" />
