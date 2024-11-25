@@ -80,6 +80,11 @@
                 condition: () => !project.doc.archived_at,
               },
               {
+                label: 'Merge with another project',
+                icon: LucideMerge,
+                onClick: () => (projectMergeDialog.show = true),
+              },
+              {
                 label: 'Archive this project',
                 icon: 'trash-2',
                 onClick: archiveProject,
@@ -185,6 +190,73 @@
             </Button>
           </template>
         </Dialog>
+        <Dialog
+          :options="{
+            title: 'Merge with another project',
+          }"
+          @close="
+            () => {
+              projectMergeDialog.project = null
+              project.mergeWithProject.reset()
+            }
+          "
+          v-model="projectMergeDialog.show"
+        >
+          <template #body-content>
+            <p class="text-p-base text-gray-800 mb-4">
+              This will move all discussions, tasks, and pages from the
+              <span class="whitespace-nowrap font-semibold">{{ project.doc.title }}</span> project
+              to the selected project. This change is irreversible!
+            </p>
+            {{ projectMergeDialog.project }}
+            <Autocomplete
+              :options="mergeProjectsList"
+              v-model="projectMergeDialog.project"
+              placeholder="Select a project"
+            >
+              <template #item-prefix="{ option }">
+                <span class="mr-2">{{ option.icon }}</span>
+              </template>
+            </Autocomplete>
+            <ErrorMessage class="mt-2" :message="project.mergeWithProject.error" />
+          </template>
+          <template #actions>
+            <Button
+              class="w-full"
+              variant="solid"
+              :loading="project.mergeWithProject.loading"
+              @click="
+                () => {
+                  project.mergeWithProject.submit(
+                    { project: projectMergeDialog.project?.value },
+                    {
+                      validate() {
+                        if (!projectMergeDialog.project?.value) {
+                          return 'Please select a project to merge'
+                        }
+                      },
+                      onSuccess() {
+                        if (projectMergeDialog.project.value) {
+                          projectMergeDialog.show = false
+                          return $router.replace({
+                            name: 'Project',
+                            params: { projectId: projectMergeDialog.project.value },
+                          })
+                        }
+                      },
+                    },
+                  )
+                }
+              "
+            >
+              {{
+                projectMergeDialog.project
+                  ? `Merge with ${projectMergeDialog.project.label}`
+                  : 'Merge'
+              }}
+            </Button>
+          </template>
+        </Dialog>
         <InviteGuestDialog
           v-if="$user().isNotGuest"
           v-model="inviteGuestDialog.show"
@@ -223,6 +295,7 @@ import InviteGuestDialog from '@/components/InviteGuestDialog.vue'
 import { projects } from '@/data/projects'
 import { activeTeams, teams } from '@/data/teams'
 import PinIcon from '~icons/lucide/pin'
+import LucideMerge from '~icons/lucide/merge'
 import { useScreenSize } from '@/utils/composables'
 
 export default {
@@ -248,6 +321,7 @@ export default {
     const isMobile = computed(() => size.width < 640)
     return {
       PinIcon,
+      LucideMerge,
       isMobile,
     }
   },
@@ -256,6 +330,7 @@ export default {
       projectMoveDialog: { show: false, team: null },
       projectEditDialog: { show: false },
       inviteGuestDialog: { show: false },
+      projectMergeDialog: { show: false, project: null },
     }
   },
   computed: {
@@ -265,6 +340,15 @@ export default {
         .map((d) => ({
           label: d.title,
           value: d.name,
+          icon: d.icon,
+        }))
+    },
+    mergeProjectsList() {
+      return projects.data
+        .filter((d) => d.name != this.project.name)
+        .map((d) => ({
+          label: d.title,
+          value: d.name.toString(),
           icon: d.icon,
         }))
     },

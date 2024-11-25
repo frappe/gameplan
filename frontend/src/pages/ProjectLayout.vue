@@ -19,6 +19,7 @@ export default {
         realtime: true,
         whitelistedMethods: {
           moveToTeam: 'move_to_team',
+          mergeWithProject: 'merge_with_project',
           archive: 'archive',
           unarchive: 'unarchive',
           inviteMembers: 'invite_members',
