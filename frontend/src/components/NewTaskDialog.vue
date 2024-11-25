@@ -10,6 +10,7 @@
         },
       ],
     }"
+    :disableOutsideClickToClose="disableOutsideClickToClose"
     v-model="showDialog"
     @after-leave="newTask = initialData"
   >
@@ -96,7 +97,6 @@ function show({ defaults, onSuccess } = {}) {
   newTask.value = { ...initialData, ...(defaults || {}) }
   showDialog.value = true
   _onSuccess = onSuccess
-  console.log(newTask)
 }
 
 function onCreateClick(close) {
@@ -115,6 +115,10 @@ function onCreateClick(close) {
     })
     .then(close())
 }
+
+let disableOutsideClickToClose = computed(() => {
+  return createTask.loading || newTask.value?.title != ''
+})
 
 defineExpose({ show })
 </script>
