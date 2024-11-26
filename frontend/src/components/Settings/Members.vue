@@ -5,7 +5,7 @@
       <div class="flex items-center gap-4">
         <FormControl placeholder="Search" @input="search = $event.target.value" :debounce="300">
           <template #prefix>
-            <LucideSearch class="h-4 w-4 text-gray-500" />
+            <LucideSearch class="h-4 w-4 text-ink-gray-4" />
           </template>
         </FormControl>
       </div>
@@ -19,10 +19,10 @@
         <div class="flex w-4/5 items-center">
           <UserAvatar :user="user.name" size="xl" />
           <div class="ml-3">
-            <div class="text-base text-gray-900">
+            <div class="text-base text-ink-gray-9">
               {{ user.full_name }}
             </div>
-            <div class="mt-1 text-base text-gray-700">
+            <div class="mt-1 text-base text-ink-gray-7">
               {{ user.email }}
             </div>
           </div>
@@ -189,8 +189,8 @@ export default {
               'button',
               {
                 class: [
-                  props.active ? 'bg-gray-100' : '',
-                  'group flex w-full items-center text-red-500 rounded-md px-2 py-2 text-sm',
+                  props.active ? 'bg-surface-gray-2' : '',
+                  'group flex w-full items-center text-ink-red-3 rounded-md px-2 py-2 text-sm',
                 ],
                 onClick: () => this.removeUser(user),
               },
@@ -207,7 +207,7 @@ function RoleOption({ active, role, onClick, selected }) {
     'button',
     {
       class: [
-        active ? 'bg-gray-100' : 'text-gray-900',
+        active ? 'bg-surface-gray-2' : 'text-ink-gray-9',
         'group flex w-full justify-between items-center rounded-md px-2 py-2 text-sm',
       ],
       onClick: !selected ? onClick : null,
@@ -216,7 +216,7 @@ function RoleOption({ active, role, onClick, selected }) {
       h('span', { class: 'whitespace-nowrap' }, role),
       selected
         ? h(LucideCheck, {
-            class: ['h-4 w-4 shrink-0 text-gray-700'],
+            class: ['h-4 w-4 shrink-0 text-ink-gray-7'],
             'aria-hidden': true,
           })
         : null,

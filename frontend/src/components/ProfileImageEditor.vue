@@ -4,13 +4,13 @@
       <div class="flex flex-col items-center">
         <button class="group relative rounded-full border-2" @click="openFileSelector">
           <div
-            class="absolute inset-0 grid place-items-center rounded-full bg-gray-400/20 text-base text-gray-600 transition-opacity"
+            class="absolute inset-0 grid place-items-center rounded-full bg-gray-400/20 text-base text-ink-gray-5 transition-opacity"
             :class="[
               uploading ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
               'drop-shadow-sm',
             ]"
           >
-            <span class="inline-block rounded-md bg-gray-900/60 px-2 py-1 text-white">
+            <span class="inline-block rounded-md bg-surface-gray-7/60 px-2 py-1 text-ink-white">
               {{
                 uploading
                   ? `Uploading ${progress}%`
@@ -29,7 +29,7 @@
               backgroundColor: profile.doc.image_background_color || null,
             }"
           />
-          <div v-else class="h-64 w-64 rounded-full bg-gray-100"></div>
+          <div v-else class="h-64 w-64 rounded-full bg-surface-gray-2"></div>
         </button>
         <ErrorMessage class="mt-4" :message="profile.removeImageBackground.error || error" />
         <div class="mt-4 flex items-center gap-4">

@@ -1,5 +1,5 @@
 <template>
-  <header class="sticky top-0 z-10 border-b bg-white px-4 py-2.5 sm:px-5">
+  <header class="sticky top-0 z-10 border-b bg-surface-white px-4 py-2.5 sm:px-5">
     <div class="flex items-center justify-between">
       <Breadcrumbs :items="[{ label: 'Search', route: { name: 'Search' } }]" />
     </div>
@@ -7,21 +7,21 @@
   <div class="mx-auto mt-6 max-w-4xl px-4 sm:px-5">
     <div class="flex items-center space-x-2">
       <TextInput
-        class="w-full"
+        class="flex-1"
         placeholder="Type a keyword and hit enter to search"
         autocomplete="off"
         v-model="query"
         @keydown.enter="(e) => search(e.target.value)"
       >
         <template>
-          <LucideSearch class="w-4 text-gray-600" />
+          <LucideSearch class="w-4 text-ink-gray-5" />
         </template>
       </TextInput>
       <Button @click="search(query)" :loading="$resources.search.loading"> Search </Button>
     </div>
     <div
       v-if="$resources.search.params && $resources.search.data"
-      class="mt-4 text-base font-semibold text-gray-800"
+      class="mt-4 text-base font-semibold text-ink-gray-8"
     >
       About {{ $resources.search.data.total }} results for "{{ $resources.search.params?.query }}"
       ({{ $resources.search.data.duration.toFixed(2) }}
@@ -29,25 +29,25 @@
     </div>
     <div class="pb-10" v-if="$resources.search.params && $resources.search.data">
       <div class="mt-5" v-for="group in $resources.search.data.groups" :key="group.title">
-        <div class="mb-3 text-base text-gray-600">
+        <div class="mb-3 text-base text-ink-gray-5">
           {{ group.title }}
         </div>
         <router-link
           v-for="item in group.items"
           :key="item.name + item.via_comment"
           :to="getRoute(item)"
-          class="block overflow-hidden rounded px-2.5 py-3 hover:bg-gray-100"
+          class="block overflow-hidden rounded px-2.5 py-3 hover:bg-surface-gray-2"
         >
           <div class="flex items-center">
             <div class="text-base font-medium" v-html="item.title" />
-            <span class="px-1 leading-none text-gray-600"> &middot; </span>
-            <div class="text-sm text-gray-600">
+            <span class="px-1 leading-none text-ink-gray-5"> &middot; </span>
+            <div class="text-sm text-ink-gray-5">
               {{ timestamp(item) }}
             </div>
           </div>
           <div
             v-if="item.content"
-            class="mt-1 text-p-base text-gray-700"
+            class="mt-1 text-p-base text-ink-gray-7"
             v-html="trimContent(item.content)"
           ></div>
         </router-link>

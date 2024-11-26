@@ -8,7 +8,7 @@
       </button>
     </template>
     <template #body>
-      <div class="left-1/2 mt-3 max-w-max -translate-x-1/2 transform bg-white px-4 sm:px-0">
+      <div class="left-1/2 mt-3 max-w-max -translate-x-1/2 transform bg-surface-white px-4 sm:px-0">
         <div
           class="relative max-h-96 overflow-y-auto rounded-lg pb-3 shadow-2xl ring-1 ring-black ring-opacity-5"
         >
@@ -25,12 +25,12 @@
           </div>
           <div class="w-96"></div>
           <div class="px-3" v-for="(emojis, group) in emojiGroups" :key="group">
-            <div class="sticky top-0 bg-white pb-2 pt-3 text-sm text-gray-700">
+            <div class="sticky top-0 bg-surface-white pb-2 pt-3 text-sm text-ink-gray-7">
               {{ group }}
             </div>
             <div class="grid w-96 grid-cols-12 place-items-center">
               <button
-                class="h-8 w-8 rounded-md p-1 text-2xl hover:bg-gray-100 focus:outline-none focus:ring focus:ring-blue-200"
+                class="h-8 w-8 rounded-md p-1 text-2xl hover:bg-surface-gray-2 focus:outline-none focus:ring focus:ring-blue-200"
                 v-for="emoji in emojis"
                 :key="emoji.description"
                 @click="$emit('update:modelValue', emoji.emoji)"

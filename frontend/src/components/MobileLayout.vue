@@ -1,10 +1,10 @@
 <template>
   <div class="flex h-full flex-col">
-    <div class="h-full overflow-auto" id="scrollContainer">
+    <div class="h-full overflow-auto bg-surface-white" id="scrollContainer">
       <slot />
     </div>
     <div
-      class="grid grid-cols-5 border-t border-gray-300 standalone:pb-4"
+      class="grid grid-cols-5 bg-surface-modal border-t border-outline-gray-2 standalone:pb-4"
       :style="{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }"
     >
       <button
@@ -16,7 +16,7 @@
         <component
           :is="tab.icon"
           class="h-6 w-6"
-          :class="[tab.isActive ? 'text-gray-900' : 'text-gray-600']"
+          :class="[tab.isActive ? 'text-ink-gray-9' : 'text-ink-gray-5']"
         />
       </button>
     </div>

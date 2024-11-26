@@ -11,7 +11,7 @@
           <span class="flex-shrink-0">
             <span class="h-6 w-6 rounded-full">{{ team.icon }}</span>
           </span>
-          <span class="text-base font-medium text-gray-900">
+          <span class="text-base font-medium text-ink-gray-9">
             {{ team.title }}
           </span>
         </div>
@@ -41,7 +41,7 @@
       </div>
       <ErrorMessage class="pt-2" :message="teams.runDocMethod.error" />
     </div>
-    <div v-else class="text-sm text-gray-600">No archived teams</div>
+    <div v-else class="text-sm text-ink-gray-5">No archived teams</div>
   </div>
 </template>
 <script>

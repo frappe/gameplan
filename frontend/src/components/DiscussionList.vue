@@ -12,7 +12,7 @@
           slug: d.slug,
         },
       }"
-      class="group relative block h-15 rounded-[10px] transition hover:bg-gray-100"
+      class="group relative block h-15 rounded-[10px] transition hover:bg-surface-gray-2"
     >
       <div class="flex h-full items-center space-x-4 overflow-hidden px-3 py-2">
         <UserInfo :email="d.last_post_by || d.owner">
@@ -34,15 +34,15 @@
 
                   <div
                     v-if="d.closed_at"
-                    class="absolute bottom-0 right-0 rounded-full bg-gray-100 p-0.5 ring-2 ring-white group-hover:ring-gray-100"
+                    class="absolute bottom-0 right-0 rounded-full bg-surface-gray-2 p-0.5 ring-2 ring-white group-hover:ring-gray-100"
                   >
-                    <LucideLock class="h-3 w-3 text-gray-900" />
+                    <LucideLock class="h-3 w-3 text-ink-gray-9" />
                   </div>
                   <div
                     v-if="d.pinned_at && this.filters"
-                    class="absolute bottom-0 right-0 rounded-full bg-gray-100 p-0.5 ring-2 ring-white group-hover:ring-gray-100"
+                    class="absolute bottom-0 right-0 rounded-full bg-surface-gray-2 p-0.5 ring-2 ring-white group-hover:ring-gray-100"
                   >
-                    <LucidePin class="h-3 w-3 rotate-45 text-gray-900" />
+                    <LucidePin class="h-3 w-3 rotate-45 text-ink-gray-9" />
                   </div>
                 </div>
               </component>
@@ -52,7 +52,7 @@
                 <div v-if="d.unread" class="h-2 mr-1 w-2 shrink-0 rounded-full bg-orange-500" />
                 <div
                   class="overflow-hidden text-ellipsis whitespace-nowrap leading-none"
-                  :class="d.unread ? 'text-gray-900' : 'text-gray-900'"
+                  :class="d.unread ? 'text-ink-gray-9' : 'text-ink-gray-9'"
                 >
                   <span
                     class="overflow-hidden text-ellipsis whitespace-nowrap text-base"
@@ -64,7 +64,7 @@
               </div>
               <div class="mt-1.5 flex min-w-0 items-center justify-between">
                 <div
-                  class="overflow-hidden text-ellipsis whitespace-nowrap text-base text-gray-600"
+                  class="overflow-hidden text-ellipsis whitespace-nowrap text-base text-ink-gray-5"
                 >
                   <span :class="filters ? '' : 'hidden sm:inline'">
                     {{ user.full_name }}
@@ -73,7 +73,7 @@
                     <span> in </span>
                     <span>
                       {{ d.team_title }}
-                      <span class="text-gray-500"> &mdash; </span>
+                      <span class="text-ink-gray-4"> &mdash; </span>
                       {{ d.project_title }}
                     </span>
                   </template>
@@ -82,7 +82,7 @@
             </div>
             <div class="ml-auto">
               <div
-                class="shrink-0 whitespace-nowrap text-sm text-gray-600"
+                class="shrink-0 whitespace-nowrap text-sm text-ink-gray-5"
                 :title="discussionTimestampDescription(d)"
               >
                 {{ discussionTimestamp(d) }}
@@ -98,16 +98,16 @@
         </UserInfo>
       </div>
       <div
-        class="mx-3 h-px border-t border-gray-200"
+        class="mx-3 h-px border-t border-outline-gray-modals"
         v-if="index < $resources.discussions.data.length - 1"
       ></div>
     </router-link>
     <div class="px-2 sm:px-0">
       <div
         v-if="!$resources.discussions.list.loading && $resources.discussions.data.length === 0"
-        class="flex flex-col items-center rounded-lg border-2 border-dashed py-8 text-base text-gray-600"
+        class="flex flex-col items-center rounded-lg border-2 border-dashed py-8 text-base text-ink-gray-5"
       >
-        <LucideCoffee class="h-7 w-7 text-gray-500" />
+        <LucideCoffee class="h-7 w-7 text-ink-gray-4" />
         No discussions
       </div>
       <div

@@ -1,7 +1,7 @@
 <template>
   <div class="relative flex items-center text-base">
     <div
-      class="mr-3 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-gray-100 text-gray-900"
+      class="mr-3 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-surface-gray-2 text-ink-gray-9"
     >
       <LucideLock class="h-4 w-4" v-if="activity.action === 'Discussion Closed'" />
       <LucideUnlock class="h-4 w-4" v-else-if="activity.action === 'Discussion Reopened'" />
@@ -12,30 +12,30 @@
     </div>
     <p>
       <UserInfo :email="activity.user" v-slot="{ user }">
-        <UserProfileLink class="font-medium text-gray-800 hover:text-gray-600" :user="user.name">
+        <UserProfileLink class="font-medium text-ink-gray-8 hover:text-ink-gray-5" :user="user.name">
           {{ user.full_name }}
         </UserProfileLink>
       </UserInfo>
-      <span class="text-gray-900" v-if="activity.action == 'Discussion Closed'">
+      <span class="text-ink-gray-9" v-if="activity.action == 'Discussion Closed'">
         closed this discussion
       </span>
-      <span class="text-gray-900" v-if="activity.action == 'Discussion Reopened'">
+      <span class="text-ink-gray-9" v-if="activity.action == 'Discussion Reopened'">
         reopened this discussion
       </span>
-      <span class="text-gray-900" v-if="activity.action == 'Discussion Pinned'">
+      <span class="text-ink-gray-9" v-if="activity.action == 'Discussion Pinned'">
         pinned this discussion
       </span>
-      <span class="text-gray-900" v-if="activity.action == 'Discussion Unpinned'">
+      <span class="text-ink-gray-9" v-if="activity.action == 'Discussion Unpinned'">
         unpinned this discussion
       </span>
-      <span class="text-gray-900" v-if="activity.action == 'Discussion Title Changed'">
+      <span class="text-ink-gray-9" v-if="activity.action == 'Discussion Title Changed'">
         changed the title from "{{ activity.data.old_title }}" to "{{ activity.data.new_title }}"
       </span>
-      <span class="text-gray-600" v-if="activity.action == 'Task Value Changed'">
+      <span class="text-ink-gray-5" v-if="activity.action == 'Task Value Changed'">
         <template v-if="activity.data.field === 'assigned_to'">
           assigned this to
           <UserProfileLink
-            class="font-medium text-gray-800 hover:text-gray-600"
+            class="font-medium text-ink-gray-8 hover:text-ink-gray-5"
             :user="$user(activity.data.new_value).name"
           >
             {{ $user(activity.data.new_value).full_name }}
@@ -47,22 +47,22 @@
         <template v-else-if="activity.data.field === 'project'">
           changed project
           <span v-if="activity.data.old_value">from&nbsp;</span>
-          <span class="text-gray-800">
+          <span class="text-ink-gray-8">
             {{ projectTitle(activity.data.old_value) }}
           </span>
           to
-          <span class="text-gray-800">
+          <span class="text-ink-gray-8">
             {{ projectTitle(activity.data.new_value) }}
           </span>
         </template>
         <template v-else>
           changed {{ activity.data.field_label }}
           <span v-if="activity.data.old_value">from&nbsp;</span>
-          <span class="text-gray-800">{{ activity.data.old_value }}</span> to
-          <span class="text-gray-800">{{ activity.data.new_value }}</span>
+          <span class="text-ink-gray-8">{{ activity.data.old_value }}</span> to
+          <span class="text-ink-gray-8">{{ activity.data.new_value }}</span>
         </template> </span
       >&nbsp;<time
-        class="text-gray-600"
+        class="text-ink-gray-5"
         :datetime="activity.creation"
         :title="$dayjs(activity.creation)"
       >

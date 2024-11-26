@@ -1,7 +1,7 @@
 <template>
   <span>
     <router-link
-      class="hover:text-blue-600"
+      class="hover:text-ink-blue-3 text-ink-gray-8"
       :to="{
         name: 'Team',
         params: {
@@ -11,9 +11,9 @@
     >
       {{ teamTitle }}
     </router-link>
-    <span class="text-gray-500"> &mdash; </span>
+    <span class="text-ink-gray-4"> &mdash; </span>
     <router-link
-      class="hover:text-blue-600"
+      class="hover:text-ink-blue-3 text-ink-gray-8"
       :to="{
         name: 'Project',
         params: {

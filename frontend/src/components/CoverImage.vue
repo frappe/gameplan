@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-[3rem] overflow-hidden bg-gray-100">
+  <div class="min-h-[3rem] overflow-hidden bg-surface-gray-2">
     <div class="group relative h-[130px] w-full" v-if="validatedImageUrl">
       <img
         class="h-[130px] w-full object-cover"
@@ -14,7 +14,7 @@
         @mousedown="initialY = $event.clientY"
       >
         <div class="text-center">
-          <div class="rounded-md py-1 text-lg text-white">Drag up/down to reposition image</div>
+          <div class="rounded-md py-1 text-lg text-ink-white">Drag up/down to reposition image</div>
           <Button
             class="mt-2"
             @click="
@@ -66,7 +66,7 @@
     </div>
     <div
       v-else
-      class="flex h-[130px] w-full items-center justify-center bg-gray-50 text-sm text-gray-500"
+      class="flex h-[130px] w-full items-center justify-center bg-surface-menu-bar text-sm text-ink-gray-4"
     >
       <UnsplashImageBrowser
         v-if="editable"

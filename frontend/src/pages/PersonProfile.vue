@@ -1,6 +1,6 @@
 <template>
   <div v-if="profile">
-    <header class="sticky top-0 z-10 flex border-b bg-white px-4 py-2.5 sm:px-5">
+    <header class="sticky top-0 z-10 flex border-b bg-surface-white px-4 py-2.5 sm:px-5">
       <Breadcrumbs
         :items="[
           { label: 'People', route: { name: 'People' } },
@@ -39,28 +39,28 @@
                 imagePreview.show = true
               }
             "
-            class="rounded-full bg-white outline-none hover:brightness-110 focus-visible:ring focus-visible:ring-gray-400"
+            class="rounded-full bg-surface-white outline-none hover:brightness-110 focus-visible:ring focus-visible:ring-outline-gray-3"
           >
             <UserImage
-              class="h-[100px] w-[100px] rounded-full border-4 border-white object-cover"
+              class="h-[100px] w-[100px] rounded-full border-4 border-outline-white object-cover"
               :user="currentUser.name"
             />
           </button>
           <button
             v-else
             @click="editDialog.show = true"
-            class="h-32 w-32 rounded-full border-4 border-white bg-gray-200 text-sm text-gray-600"
-            :class="{ 'hover:bg-gray-300': $isSessionUser(profile.user) }"
+            class="h-32 w-32 rounded-full border-4 border-white bg-surface-gray-3 text-sm text-ink-gray-5"
+            :class="{ 'hover:bg-surface-gray-4': $isSessionUser(profile.user) }"
             :disabled="!$isSessionUser(profile.user)"
           >
             <span v-if="$isSessionUser(profile.user)"> Upload Image </span>
           </button>
         </div>
         <div class="ml-6">
-          <h2 class="mt-2 text-3xl font-semibold text-gray-900">
+          <h2 class="mt-2 text-3xl font-semibold text-ink-gray-9">
             {{ user ? user.full_name : profile.full_name }}
           </h2>
-          <p v-if="profile.bio" class="mt-2 text-base text-gray-700">
+          <p v-if="profile.bio" class="mt-2 text-base text-ink-gray-7">
             {{ profile.bio }}
           </p>
         </div>

@@ -10,7 +10,7 @@
           <input
             type="text"
             placeholder="Title"
-            class="-ml-0.5 w-full rounded-sm border-none p-0.5 text-2xl font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-400"
+            class="-ml-0.5 w-full rounded-sm border-none p-0.5 text-2xl bg-surface-white font-semibold text-ink-gray-9 focus:outline-none focus:ring-2 focus:ring-outline-gray-3"
             @change="
               $resources.task.setValueDebounced.submit({
                 title: $event.target.value,
@@ -54,7 +54,7 @@
         </div>
         <TextEditor
           ref="description"
-          editor-class="prose-sm max-w-none focus-within:ring-2 focus-within:ring-gray-400 rounded-sm p-0.5 -ml-0.5 min-h-[4rem]"
+          editor-class="prose-sm max-w-none focus-within:ring-2 focus-within:ring-outline-gray-3 rounded-sm p-0.5 -ml-0.5 min-h-[4rem]"
           placeholder="Description"
           :content="$resources.task.doc.description"
           :bubbleMenu="true"
@@ -112,7 +112,7 @@
       </div>
     </div>
     <div class="hidden w-[20rem] shrink-0 border-l sm:block">
-      <div class="grid grid-cols-2 items-center gap-y-6 p-6 text-base text-gray-700">
+      <div class="grid grid-cols-2 items-center gap-y-6 p-6 text-base text-ink-gray-7">
         <div>Assignee</div>
         <div>
           <Autocomplete
@@ -205,7 +205,7 @@ export default {
               title: 'Task Update Error',
               text: message,
               icon: 'alert-circle',
-              iconClasses: 'text-red-600',
+              iconClasses: 'text-ink-red-4',
             })
           },
         },

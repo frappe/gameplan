@@ -10,7 +10,7 @@
             pageId: page.name,
           },
         }"
-        class="flex h-15 items-start rounded-md p-2.5 hover:bg-gray-100"
+        class="flex h-15 items-start rounded-md p-2.5 hover:bg-surface-gray-2"
       >
         <div>
           <div class="text-base font-medium leading-4">
@@ -21,8 +21,8 @@
               <UserAvatar :user="page.owner" size="xs" />
               <span class="text-base">{{ $user(page.owner).full_name }}</span>
             </div>
-            <span class="px-2 text-gray-600">&middot;</span>
-            <span class="text-base text-gray-600">
+            <span class="px-2 text-ink-gray-5">&middot;</span>
+            <span class="text-base text-ink-gray-5">
               Updated {{ $dayjs(page.modified).fromNow() }}
             </span>
           </div>
@@ -32,7 +32,7 @@
     </div>
   </div>
   <div
-    class="flex flex-col items-center rounded-lg border-2 border-dashed py-8 text-base text-gray-600"
+    class="flex flex-col items-center rounded-lg border-2 border-dashed py-8 text-base text-ink-gray-5"
     v-else
   >
     No pages

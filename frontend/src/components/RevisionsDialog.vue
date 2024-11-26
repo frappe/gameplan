@@ -8,13 +8,13 @@
           </UserProfileLink>
           <div>
             <UserProfileLink
-              class="font-medium text-gray-900 hover:text-blue-600"
+              class="font-medium text-ink-gray-9 hover:text-ink-blue-3"
               :user="user.name"
             >
               {{ user.full_name }}
             </UserProfileLink>
             <time
-              class="block text-gray-600"
+              class="block text-ink-gray-5"
               :datetime="currentRevision.creation"
               :title="$dayjs(currentRevision.creation)"
             >
@@ -26,7 +26,7 @@
       <div
         v-if="currentRevision"
         v-html="htmlDiff"
-        class="ProseMirror prose prose-sm rounded-md prose-p:my-1 prose-table:table-fixed prose-th:relative prose-th:border prose-th:border-gray-300 prose-th:bg-gray-100 prose-th:p-2 prose-td:relative prose-td:border prose-td:border-gray-300 prose-td:p-2"
+        class="ProseMirror prose prose-sm rounded-md prose-p:my-1 prose-table:table-fixed prose-th:relative prose-th:border prose-th:border-outline-gray-2 prose-th:bg-surface-gray-2 prose-th:p-2 prose-td:relative prose-td:border prose-td:border-outline-gray-2 prose-td:p-2"
       />
     </template>
     <template v-if="currentRevision && (hasNext || hasPrevious)" #actions>

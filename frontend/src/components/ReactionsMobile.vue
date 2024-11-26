@@ -5,7 +5,7 @@
         aria-label="Add a reaction"
         :disabled="isLoading"
         @click="show = true"
-        class="flex h-full items-center justify-center rounded-full bg-gray-100 px-2 py-1 text-gray-700 transition hover:bg-gray-200"
+        class="flex h-full items-center justify-center rounded-full bg-surface-gray-2 px-2 py-1 text-ink-gray-7 transition hover:bg-surface-gray-3"
       >
         <ReactionFaceIcon />
       </button>
@@ -14,8 +14,8 @@
           class="flex items-center justify-center rounded-full px-2 py-1 text-sm transition"
           :class="[
             reactions.userReacted
-              ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200',
+              ? 'bg-surface-amber-2 text-amber-700 hover:bg-amber-200'
+              : 'bg-surface-gray-2 text-ink-gray-7 hover:bg-surface-gray-3',
           ]"
           @click="show = true"
         >
@@ -30,7 +30,7 @@
             v-for="emoji in standardEmojis"
             :key="emoji"
             class="p-1 rounded font-[emoji] text-3xl text-center w-full"
-            :class="[hasUserReacted(emoji) ? 'bg-amber-100' : 'bg-gray-50 hover:bg-gray-100']"
+            :class="[hasUserReacted(emoji) ? 'bg-surface-amber-2' : 'bg-surface-menu-bar hover:bg-surface-gray-2']"
             @click="
               () => {
                 toggleReaction(emoji)
@@ -47,9 +47,9 @@
           <div class="flex py-2 items-start">
             <div class="mr-2 w-14 text-center">
               <span class="text-2xl font-[emoji]"> {{ emoji }}</span>
-              <span class="text-p-lg text-gray-500"> ({{ reactions.count }}) </span>
+              <span class="text-p-lg text-ink-gray-4"> ({{ reactions.count }}) </span>
             </div>
-            <span class="text-p-lg flex-1 text-gray-700">
+            <span class="text-p-lg flex-1 text-ink-gray-7">
               {{ toolTipText(reactions) }}
             </span>
           </div>

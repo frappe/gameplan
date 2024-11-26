@@ -2,7 +2,7 @@
   <Listbox as="div" v-model="selectedUser">
     <ListboxButton class="w-full h-full text-left" :class="$attrs.class">
       {{ selectedUser?.email || '' }}
-      <span v-if="!selectedUser" class="text-sm text-gray-500"> Assign this task </span>
+      <span v-if="!selectedUser" class="text-sm text-ink-gray-4"> Assign this task </span>
     </ListboxButton>
     <div class="relative">
       <transition
@@ -11,7 +11,7 @@
         leave-to-class="opacity-0"
       >
         <ListboxOptions
-          class="absolute z-10 py-1 mt-1 bg-white border rounded-md shadow-lg max-w-max"
+          class="absolute z-10 py-1 mt-1 bg-surface-white border rounded-md shadow-lg max-w-max"
         >
           <ListboxOption
             v-slot="{ active, selected }"
@@ -22,15 +22,15 @@
           >
             <li
               class="flex items-baseline py-2 pl-3 pr-6 cursor-default whitespace-nowrap"
-              :class="{ 'bg-gray-100': active }"
+              :class="{ 'bg-surface-gray-2': active }"
             >
               <span
                 class="mr-2 text-base"
-                :class="selected ? 'text-gray-900 font-medium' : 'text-gray-600'"
+                :class="selected ? 'text-ink-gray-9 font-medium' : 'text-ink-gray-5'"
               >
                 {{ user.full_name }}
               </span>
-              <span class="text-sm" :class="selected ? 'text-gray-600' : 'text-gray-500'">
+              <span class="text-sm" :class="selected ? 'text-ink-gray-5' : 'text-ink-gray-4'">
                 {{ user.email }}
               </span>
             </li>

@@ -2,7 +2,7 @@
   <div class="flex h-full flex-col">
     <div class="flex flex-1">
       <div class="w-full">
-        <header class="sticky top-0 z-10 border-b bg-white px-4 py-2.5 sm:px-5">
+        <header class="sticky top-0 z-10 border-b bg-surface-white px-4 py-2.5 sm:px-5">
           <div class="flex items-center justify-between">
             <Breadcrumbs :items="[{ label: 'People', route: { name: 'People' } }]" />
             <div class="h-7"></div>
@@ -10,7 +10,7 @@
         </header>
         <div class="mx-auto w-full max-w-4xl px-5 pt-6">
           <div class="flex items-center justify-between">
-            <h2 class="text-xl font-semibold">{{ people.length }} members</h2>
+            <h2 class="text-xl font-semibold text-ink-gray-8">{{ people.length }} members</h2>
             <div class="flex items-center gap-2">
               <TextInput
                 class="hidden sm:block"
@@ -20,7 +20,7 @@
                 :debounce="500"
               >
                 <template #prefix>
-                  <LucideSearch class="w-4 text-gray-600" />
+                  <LucideSearch class="w-4 text-ink-gray-5" />
                 </template>
               </TextInput>
               <Select
@@ -34,7 +34,7 @@
                 v-model="orderBy"
               >
                 <template #prefix>
-                  <LucideArrowDownUp class="w-4 text-gray-600" />
+                  <LucideArrowDownUp class="w-4 text-ink-gray-5" />
                 </template>
               </Select>
               <Button variant="solid" @click="showSettingsDialog('Invites')">
@@ -52,7 +52,7 @@
               :debounce="500"
             >
               <template #prefix>
-                <LucideSearch class="w-4 text-gray-600" />
+                <LucideSearch class="w-4 text-ink-gray-5" />
               </template>
             </TextInput>
           </div>
@@ -65,21 +65,21 @@
                     personId: user.name,
                   },
                 }"
-                class="flex rounded px-2 py-2.5 hover:bg-gray-100"
-                exact-active-class="!bg-gray-100"
+                class="flex rounded px-2 py-2.5 hover:bg-surface-gray-2"
+                exact-active-class="!bg-surface-gray-2"
               >
                 <div class="flex w-3/5 items-center">
                   <UserAvatar :user="user.user" size="2xl" />
                   <div class="ml-3 min-w-0">
                     <div class="flex items-center space-x-2">
-                      <div class="text-base font-medium text-gray-900">
+                      <div class="text-base font-medium text-ink-gray-9">
                         {{ $user(user.user).full_name }}
                       </div>
                       <Badge v-if="$user(user.user).isGuest">Guest</Badge>
                     </div>
                     <div
                       v-if="user.bio"
-                      class="mt-1.5 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-base text-gray-600"
+                      class="mt-1.5 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-base text-ink-gray-5"
                     >
                       {{ user.bio }}
                     </div>
@@ -87,7 +87,7 @@
                 </div>
                 <div class="flex w-1/5 items-center justify-end text-right">
                   <router-link
-                    class="text-base text-gray-600 hover:text-gray-900"
+                    class="text-base text-ink-gray-5 hover:text-ink-gray-9"
                     :to="{
                       name: 'PersonProfilePosts',
                       params: { personId: user.name },
@@ -97,9 +97,9 @@
                     {{ user.discussions_count }} posts
                   </router-link>
                 </div>
-                <div class="flex w-1/5 items-center justify-end text-right text-base text-gray-600">
+                <div class="flex w-1/5 items-center justify-end text-right text-base text-ink-gray-5">
                   <router-link
-                    class="text-base text-gray-600 hover:text-gray-900"
+                    class="text-base text-ink-gray-5 hover:text-ink-gray-9"
                     :to="{
                       name: 'PersonProfileReplies',
                       params: { personId: user.name },

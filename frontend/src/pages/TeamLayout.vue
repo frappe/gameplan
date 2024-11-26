@@ -3,7 +3,7 @@
     <router-view :team="$resources.team" />
   </div>
   <div
-    class="grid h-full place-items-center px-4 py-20 text-center text-lg text-gray-600"
+    class="grid h-full place-items-center px-4 py-20 text-center text-lg text-ink-gray-5"
     v-else-if="$resources.team.get.error"
   >
     <div class="space-y-2">
