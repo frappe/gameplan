@@ -269,7 +269,6 @@ export default {
       const $el = this.$projectRefs[project.name]
       if ($el) {
         $el.scrollIntoView({
-          behavior: 'smooth',
           block: 'center',
           inline: 'nearest',
         })
