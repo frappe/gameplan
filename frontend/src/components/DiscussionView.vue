@@ -8,7 +8,7 @@
               <input
                 v-if="editingTitle"
                 type="text"
-                class="w-full rounded border-0 bg-surface-gray-2 px-2 py-1 text-xl font-semibold focus:ring-0"
+                class="w-full rounded border-0 bg-surface-gray-2 text-ink-gray-9 px-2 py-1 text-xl font-semibold focus:ring-0"
                 ref="title"
                 v-model="discussion.title"
                 placeholder="Title"

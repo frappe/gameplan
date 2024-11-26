@@ -96,9 +96,9 @@
                     <div
                       class="h-2 w-2 rounded-full"
                       :class="{
-                        'bg-red-400': d.priority === 'High',
-                        'bg-yellow-500': d.priority === 'Medium',
-                        'bg-surface-gray-4': d.priority === 'Low',
+                        'bg-surface-red-5': d.priority === 'High',
+                        'bg-surface-amber-3': d.priority === 'Medium',
+                        'bg-surface-gray-5': d.priority === 'Low',
                       }"
                     ></div>
                     <span class="ml-2 text-base text-ink-gray-5">
