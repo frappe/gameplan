@@ -1,13 +1,15 @@
 <template>
   <div
-    class="py-6 transition-shadow"
+    class="pb-16 transition-shadow"
     :class="{
       ring: !comment.loading && highlight,
     }"
     :data-id="comment.name"
   >
     <UserInfo :email="comment.owner" v-slot="{ user }">
-      <div class="mb-2 flex items-center text-base text-ink-gray-9">
+      <div
+        class="flex items-center text-base text-ink-gray-9 sticky top-0 pt-16 pb-4 bg-surface-white z-[1]"
+      >
         <UserProfileLink class="mr-3" :user="user.name">
           <UserAvatar size="lg" :user="user.name" />
         </UserProfileLink>
@@ -100,7 +102,8 @@
       <div class="flex-1">
         <div
           :class="{
-            'w-full rounded-lg border bg-surface-white p-4 focus-within:border-outline-gray-3': comment.editing,
+            'w-full rounded-lg border bg-surface-white p-4 focus-within:border-outline-gray-3':
+              comment.editing,
           }"
           @keydown.ctrl.enter.capture.stop="editComment(comment)"
           @keydown.meta.enter.capture.stop="editComment(comment)"

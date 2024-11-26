@@ -1,70 +1,8 @@
 <template>
   <div class="relative flex h-full flex-col" v-if="postId && discussion">
     <div class="mx-auto w-full max-w-3xl">
-      <div class="py-6">
-        <div class="flex items-start justify-between space-x-1">
-          <div v-if="editingTitle" class="w-full">
-            <div class="mb-2">
-              <input
-                v-if="editingTitle"
-                type="text"
-                class="w-full rounded border-0 bg-surface-gray-2 text-ink-gray-9 px-2 py-1 text-xl font-semibold focus:ring-0"
-                ref="title"
-                v-model="discussion.title"
-                placeholder="Title"
-                @keydown.enter="
-                  () => {
-                    $resources.discussion.setValue
-                      .submit({ title: discussion.title })
-                      .then(() => this.updateUrlSlug())
-                    editingTitle = false
-                  }
-                "
-                @keydown.esc="
-                  () => {
-                    $resources.discussion.reload()
-                    editingTitle = false
-                  }
-                "
-                v-focus
-              />
-              <p class="mt-1 text-sm text-ink-gray-5">
-                Edit title and press enter. Press escape to cancel.
-              </p>
-            </div>
-          </div>
-          <h1 v-else class="flex items-center text-2xl font-semibold">
-            <Tooltip v-if="discussion.closed_at" text="This discussion is closed">
-              <LucideLock class="mr-2 h-4 w-4 text-ink-gray-7" :stroke-width="2" />
-            </Tooltip>
-            <span class="text-ink-gray-9">
-              {{ discussion.title }}
-            </span>
-          </h1>
-          <Dropdown
-            v-if="!readOnlyMode"
-            class="ml-auto"
-            placement="right"
-            :button="{
-              icon: 'more-horizontal',
-              variant: 'ghost',
-              label: 'Discussion Options',
-            }"
-            :options="actions"
-          />
-        </div>
-        <div class="mt-1.5 flex items-center text-base" v-show="!editingTitle">
-          <DiscussionBreadcrumbs :discussion="discussion" />
-          <span class="px-1.5 text-ink-gray-8">&middot;</span>
-          <span class="text-ink-gray-5">
-            {{
-              discussion.participants_count == 1
-                ? `1 participant`
-                : `${discussion.participants_count} participants`
-            }}
-          </span>
-        </div>
-        <div class="mb-2 mt-8 flex w-full items-center">
+      <div class="">
+        <div class="pb-4 pt-16 flex w-full items-center sticky top-0 z-[1] bg-surface-white">
           <UserProfileLink class="mr-3" :user="discussion.owner">
             <UserAvatar :user="discussion.owner" />
           </UserProfileLink>
@@ -85,14 +23,70 @@
             </time>
           </div>
           <div class="ml-auto flex space-x-2">
-            <Button
-              v-if="!readOnlyMode && !editingContent"
-              variant="ghost"
-              @click="editingContent = true"
-              label="Edit Post"
-            >
-              <template #icon><LucideEdit class="w-4" /></template>
-            </Button>
+            <Dropdown
+              v-if="!readOnlyMode"
+              class="ml-auto"
+              placement="right"
+              :button="{
+                icon: 'more-horizontal',
+                variant: 'ghost',
+                label: 'Discussion Options',
+              }"
+              :options="actions"
+            />
+          </div>
+        </div>
+        <div class="pb-4">
+          <div class="flex items-start justify-between space-x-1">
+            <div v-if="editingTitle" class="w-full">
+              <div class="mb-2">
+                <input
+                  v-if="editingTitle"
+                  type="text"
+                  class="w-full rounded border-0 bg-surface-gray-2 text-ink-gray-9 px-2 py-1 text-xl font-semibold focus:ring-0"
+                  ref="title"
+                  v-model="discussion.title"
+                  placeholder="Title"
+                  @keydown.enter="
+                    () => {
+                      $resources.discussion.setValue
+                        .submit({ title: discussion.title })
+                        .then(() => this.updateUrlSlug())
+                      editingTitle = false
+                    }
+                  "
+                  @keydown.esc="
+                    () => {
+                      $resources.discussion.reload()
+                      editingTitle = false
+                    }
+                  "
+                  v-focus
+                />
+                <p class="mt-1 text-sm text-ink-gray-5">
+                  Edit title and press enter. Press escape to cancel.
+                </p>
+              </div>
+            </div>
+            <h1 v-else class="flex items-center text-2xl font-semibold">
+              <Tooltip v-if="discussion.closed_at" text="This discussion is closed">
+                <LucideLock class="mr-2 h-4 w-4 text-ink-gray-7" :stroke-width="2" />
+              </Tooltip>
+              <span class="text-ink-gray-9">
+                {{ discussion.title }}
+              </span>
+            </h1>
+          </div>
+          <div class="mt-2 flex items-center text-base" v-show="!editingTitle">
+            <DiscussionBreadcrumbs :discussion="discussion" />
+            <span class="px-1.5 text-ink-gray-8">&middot;</span>
+            <span class="text-ink-gray-5">
+              {{
+                discussion.participants_count == 1
+                  ? `1 participant`
+                  : `${discussion.participants_count} participants`
+              }}
+            </span>
           </div>
         </div>
         <div
@@ -366,6 +360,13 @@ export default {
           icon: 'edit',
           onClick: () => {
             this.editingTitle = true
+          },
+        },
+        {
+          label: 'Edit Post',
+          icon: 'edit',
+          onClick: () => {
+            this.editingContent = true
           },
         },
         {
