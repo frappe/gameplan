@@ -18,11 +18,11 @@
   </Dropdown>
 </template>
 <script setup>
-import { h, computed } from 'vue'
+import { h, computed, onMounted } from 'vue'
 import { Dropdown } from 'frappe-ui'
 import { showSettingsDialog } from '@/components/Settings/SettingsDialog.vue'
 import LucideCreditCard from '~icons/lucide/credit-card'
-import LucideSunMoon from '~icons/lucide/sun-moon'
+import LucideMoon from '~icons/lucide/moon'
 import GameplanLogo from './GameplanLogo.vue'
 import { getUser } from '@/data/users'
 import { session } from '@/data/session'
@@ -45,7 +45,7 @@ const dropdownItems = computed(() => [
     condition: () => user.isNotGuest,
   },
   {
-    icon: LucideSunMoon,
+    icon: LucideMoon,
     label: 'Toggle theme',
     onClick: toggleTheme,
   },
@@ -65,7 +65,16 @@ const dropdownItems = computed(() => [
 ])
 
 function toggleTheme() {
-  const theme = document.documentElement.getAttribute('data-theme')
-  document.documentElement.setAttribute('data-theme', theme === 'dark' ? 'light' : 'dark')
+  const currentTheme = document.documentElement.getAttribute('data-theme')
+  let theme = currentTheme === 'dark' ? 'light' : 'dark'
+  document.documentElement.setAttribute('data-theme', theme)
+  localStorage.setItem('theme', theme)
 }
+
+onMounted(() => {
+  const theme = localStorage.getItem('theme')
+  if (['light', 'dark'].includes(theme)) {
+    document.documentElement.setAttribute('data-theme', theme)
+  }
+})
 </script>
