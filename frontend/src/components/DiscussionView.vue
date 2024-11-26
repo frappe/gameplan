@@ -1,7 +1,7 @@
 <template>
   <div class="relative flex h-full flex-col" v-if="postId && discussion">
     <div class="mx-auto w-full max-w-3xl">
-      <div class="">
+      <div class="pb-16">
         <div class="pb-4 pt-16 flex w-full items-center sticky top-0 z-[1] bg-surface-white">
           <UserProfileLink class="mr-3" :user="discussion.owner">
             <UserAvatar :user="discussion.owner" />
