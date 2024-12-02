@@ -146,6 +146,16 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 				doc.save()
 
 	@frappe.whitelist()
+	def merge_with_project(self, project=None):
+		if not project or self.name == project:
+			return
+		if isinstance(project, str):
+			project = int(project)
+		if not frappe.db.exists("GP Project", project):
+			frappe.throw(f'Invalid Project "{project}"')
+		return self.rename(project, merge=True, validate_rename=False, force=True)
+
+	@frappe.whitelist()
 	def invite_guest(self, email):
 		invite_by_email(email, role='Gameplan Guest', projects=[self.name])
 
