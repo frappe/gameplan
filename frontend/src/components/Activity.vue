@@ -1,5 +1,5 @@
 <template>
-  <div class="relative flex items-center text-base">
+  <div class="relative flex items-center text-p-base">
     <div
       class="mr-3 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-surface-gray-2 text-ink-gray-9"
     >
@@ -12,7 +12,10 @@
     </div>
     <p>
       <UserInfo :email="activity.user" v-slot="{ user }">
-        <UserProfileLink class="font-medium text-ink-gray-8 hover:text-ink-gray-5" :user="user.name">
+        <UserProfileLink
+          class="font-medium text-ink-gray-8 hover:text-ink-gray-5"
+          :user="user.name"
+        >
           {{ user.full_name }}
         </UserProfileLink>
       </UserInfo>

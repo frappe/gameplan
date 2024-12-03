@@ -19,7 +19,7 @@
         </div>
       </div>
     </div>
-    <div class="px-1" :style="{ paddingBottom: `${addCommentHeight + 80}px` }">
+    <div :style="{ paddingBottom: `${addCommentHeight + 80}px` }">
       <template v-for="item in timelineItems" :key="item.doctype + item.name">
         <div
           v-if="newMessagesFrom && newMessagesFrom == item.name"
@@ -62,7 +62,7 @@
 
     <div
       v-if="!readOnlyMode && !disableNewComment"
-      class="fixed bottom-12 mb-px mt-2 w-full max-w-3xl bg-surface-white py-4 pr-12 sm:bottom-0 standalone:bottom-16"
+      class="fixed z-[2] bottom-12 left-0 sm:left-auto px-4 sm:px-0 mb-px mt-2 w-full sm:max-w-3xl bg-surface-white py-3 sm:bottom-[-1px] standalone:bottom-16"
       ref="addComment"
     >
       <button
@@ -80,7 +80,7 @@
         @keydown.meta.enter.capture.stop="submitComment"
       >
         <div class="mb-4 flex items-center">
-          <UserAvatar :user="$user().name" size="sm" />
+          <UserAvatar :user="$user().name" size="md" />
           <span class="ml-2 text-base font-medium text-ink-gray-9">
             {{ $user().full_name }}
           </span>
@@ -105,7 +105,7 @@
             onClick: discardComment,
           }"
           :editable="showCommentBox"
-          placeholder="Add a comment"
+          placeholder="Add a comment..."
         />
         <PollEditor
           v-show="newCommentType == 'Poll'"

@@ -8,7 +8,7 @@
   >
     <UserInfo :email="comment.owner" v-slot="{ user }">
       <div
-        class="flex items-center text-base text-ink-gray-9 sticky top-0 pt-16 pb-4 bg-surface-white z-[1]"
+        class="flex items-center text-base text-ink-gray-9 sticky top-0 pt-14 pb-2 bg-surface-white z-[1]"
       >
         <UserProfileLink class="mr-3" :user="user.name">
           <UserAvatar size="lg" :user="user.name" />
