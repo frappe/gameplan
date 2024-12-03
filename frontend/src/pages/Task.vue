@@ -11,7 +11,7 @@
   </div>
 </template>
 <script setup>
-import { Breadcrumbs, getCachedDocumentResource } from 'frappe-ui'
+import { Breadcrumbs, getCachedDocumentResource, usePageMeta } from 'frappe-ui'
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 
@@ -36,5 +36,12 @@ let breadcrumbs = computed(() => {
     },
   ]
   return items
+})
+
+usePageMeta(() => {
+  let task = getCachedDocumentResource('GP Task', route.params.taskId)
+  return {
+    title: task?.doc?.title || `Task #${props.taskId}`,
+  }
 })
 </script>

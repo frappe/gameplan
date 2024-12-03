@@ -231,8 +231,7 @@ export default {
   },
   pageMeta() {
     return {
-      title: [this.profile?.full_name || '', 'Profile'].join(' - '),
-      emoji: '👨‍👩‍👧‍👦',
+      title: [this.profile?.full_name || '', 'Profile'].join(' | '),
     }
   },
 }

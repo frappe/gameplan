@@ -87,7 +87,6 @@ export default {
   pageMeta() {
     return {
       title: 'Notifications',
-      emoji: '🔔',
     }
   },
   components: { TabButtons, Tooltip, Link, Breadcrumbs },

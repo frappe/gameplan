@@ -49,5 +49,6 @@ export function getTeamArchivedProjects(team) {
 }
 
 export let getProject = (projectId) => {
+  if (projectId == null) return null
   return projects.data.find((project) => project.name.toString() === projectId.toString())
 }

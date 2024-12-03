@@ -97,7 +97,9 @@
                     {{ user.discussions_count }} posts
                   </router-link>
                 </div>
-                <div class="flex w-1/5 items-center justify-end text-right text-base text-ink-gray-5">
+                <div
+                  class="flex w-1/5 items-center justify-end text-right text-base text-ink-gray-5"
+                >
                   <router-link
                     class="text-base text-ink-gray-5 hover:text-ink-gray-9"
                     :to="{
@@ -208,7 +210,6 @@ export default {
   pageMeta() {
     return {
       title: 'People',
-      emoji: '👨‍👩‍👧‍👦',
     }
   },
 }

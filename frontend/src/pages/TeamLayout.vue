@@ -39,7 +39,6 @@ export default {
     if (!this.$resources.team.doc) return
     return {
       title: this.$resources.team.doc.title,
-      emoji: this.$resources.team.doc.icon,
     }
   },
 }

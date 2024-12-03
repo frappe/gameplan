@@ -170,7 +170,6 @@ export default {
   pageMeta() {
     return {
       title: 'Search',
-      emoji: '🔍',
     }
   },
   components: { TextInput, Breadcrumbs },

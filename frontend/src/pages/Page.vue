@@ -174,5 +174,11 @@ export default {
       return page?.doc?.title || this.pageId
     },
   },
+  pageMeta() {
+    let project = getProject(this.page.doc?.project)
+    return {
+      title: project ? `${this.pageTitle} | ${project.title || ''}` : this.pageTitle,
+    }
+  },
 }
 </script>

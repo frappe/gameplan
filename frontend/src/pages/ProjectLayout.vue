@@ -38,8 +38,7 @@ export default {
   pageMeta() {
     if (!this.$resources.project.doc) return
     return {
-      title: `${this.$resources.project.doc.title} - ${this.team.doc.title}`,
-      emoji: this.$resources.project.doc.icon,
+      title: `${this.$resources.project.doc.title} | ${this.team.doc.title}`,
     }
   },
 }

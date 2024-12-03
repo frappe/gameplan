@@ -470,7 +470,6 @@ export default {
     if (!project) return
     return {
       title: [this.discussion.title, project.title].filter(Boolean).join(' - '),
-      emoji: project.icon,
     }
   },
 }
