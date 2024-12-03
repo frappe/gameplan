@@ -5,6 +5,7 @@ import frappe
 
 
 def execute():
+	frappe.reload_doctype("GP Bookmark")
 	for d in frappe.db.get_all("GP Bookmark"):
 		try:
 			doc = frappe.get_doc("GP Bookmark", d.name)
