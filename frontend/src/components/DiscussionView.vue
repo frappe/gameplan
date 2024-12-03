@@ -448,6 +448,29 @@ export default {
             this.discussionMoveDialog.show = true
           },
         },
+        {
+          label: 'Delete',
+          icon: 'trash',
+          onClick: () => {
+            $dialog({
+              title: 'Delete',
+              message: 'Are you sure you want to delete this post? This is irreversible!',
+              actions: [
+                {
+                  label: 'Delete',
+                  variant: 'solid',
+                  theme: 'red',
+                  onClick: ({ close }) => {
+                    return this.$resources.discussion.delete.submit().then(() => {
+                      this.$router.replace({ name: 'Project' })
+                      close()
+                    })
+                  },
+                },
+              ],
+            })
+          },
+        },
       ]
     },
   },

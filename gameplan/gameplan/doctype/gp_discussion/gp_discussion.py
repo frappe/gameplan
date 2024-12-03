@@ -11,7 +11,7 @@ from gameplan.mixins.reactions import HasReactions
 from gameplan.utils import remove_empty_trailing_paragraphs, url_safe_slug
 
 class GPDiscussion(HasActivity, HasMentions, HasReactions, Document):
-	on_delete_cascade = ['GP Comment', 'GP Discussion Visit', 'GP Activity']
+	on_delete_cascade = ['GP Comment', 'GP Discussion Visit', 'GP Activity', 'GP Poll']
 	on_delete_set_null = ['GP Notification']
 	activities = ['Discussion Closed', 'Discussion Reopened', 'Discussion Title Changed', 'Discussion Pinned', 'Discussion Unpinned']
 	mentions_field = 'content'
@@ -45,6 +45,7 @@ class GPDiscussion(HasActivity, HasMentions, HasReactions, Document):
 		self.update_discussions_count(1)
 
 	def on_trash(self):
+		self.delete_bookmark()
 		self.update_discussions_count(-1)
 
 	def validate(self):
@@ -162,3 +163,8 @@ class GPDiscussion(HasActivity, HasMentions, HasReactions, Document):
 		project = frappe.get_doc("GP Project", self.project)
 		project.discussions_count = project.discussions_count + delta
 		project.save(ignore_permissions=True)
+
+	def delete_bookmark(self):
+		bookmark_id = frappe.db.get_value("GP Bookmark Child", {"discussion": self.name}, "parent")
+		if bookmark_id:
+			frappe.get_doc("GP Bookmark", bookmark_id).remove_bookmark(self.name)

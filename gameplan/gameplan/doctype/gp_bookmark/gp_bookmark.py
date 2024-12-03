@@ -3,7 +3,13 @@
 
 # import frappe
 from frappe.model.document import Document
+from frappe.utils import cint
 
 
 class GPBookmark(Document):
-    pass
+	def remove_bookmark(self, discussion):
+		for row in self.bookmarks:
+			if cint(row.discussion) == cint(discussion):
+				self.remove(row)
+				self.save()
+				break
