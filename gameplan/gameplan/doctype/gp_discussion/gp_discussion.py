@@ -35,6 +35,7 @@ class GPDiscussion(HasActivity, HasMentions, HasReactions, Document):
 			pluck='name'
 		)
 		d.last_unread_poll = polls[0] if polls else None
+		d.is_bookmarked = self.is_bookmarked()
 		return d
 
 	def before_insert(self):
@@ -45,7 +46,7 @@ class GPDiscussion(HasActivity, HasMentions, HasReactions, Document):
 		self.update_discussions_count(1)
 
 	def on_trash(self):
-		self.delete_bookmark()
+		self.remove_bookmark()
 		self.update_discussions_count(-1)
 
 	def validate(self):
@@ -159,12 +160,27 @@ class GPDiscussion(HasActivity, HasMentions, HasReactions, Document):
 		self.log_activity('Discussion Unpinned')
 		self.save()
 
+	@frappe.whitelist()
+	def add_bookmark(self):
+		if self.is_bookmarked():
+			return
+		frappe.new_doc("GP Bookmark", discussion=self.name, user=frappe.session.user).insert()
+
+	@frappe.whitelist()
+	def remove_bookmark(self):
+		bookmark = frappe.db.get_value(
+			"GP Bookmark", {"discussion": self.name, "user": frappe.session.user}, "name"
+		)
+		if not bookmark:
+			return
+		frappe.get_doc("GP Bookmark", bookmark).delete()
+
+	def is_bookmarked(self):
+		return bool(
+			frappe.db.exists("GP Bookmark", {"discussion": self.name, "user": frappe.session.user})
+		)
+
 	def update_discussions_count(self, delta=1):
 		project = frappe.get_doc("GP Project", self.project)
 		project.discussions_count = project.discussions_count + delta
 		project.save(ignore_permissions=True)
-
-	def delete_bookmark(self):
-		bookmark_id = frappe.db.get_value("GP Bookmark Child", {"discussion": self.name}, "parent")
-		if bookmark_id:
-			frappe.get_doc("GP Bookmark", bookmark_id).remove_bookmark(self.name)

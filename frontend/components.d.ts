@@ -14,7 +14,6 @@ declare module 'vue' {
     AppSidebar: (typeof import('./src/components/AppSidebar.vue'))['default']
     ArchivedTeams: (typeof import('./src/components/Settings/ArchivedTeams.vue'))['default']
     AssignUser: (typeof import('./src/components/AssignUser.vue'))['default']
-    Bookmarks: (typeof import('./src/components/Settings/Bookmarks.vue'))['default']
     ChevronTriangle: (typeof import('./src/components/icons/ChevronTriangle.vue'))['default']
     ColorPicker: (typeof import('./src/components/ColorPicker.vue'))['default']
     CommandPalette: (typeof import('./src/components/CommandPalette/CommandPalette.vue'))['default']

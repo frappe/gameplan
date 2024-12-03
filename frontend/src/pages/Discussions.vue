@@ -258,13 +258,7 @@ export default {
   },
   computed: {
     filters() {
-      const filters = {
-        ...(this.feedType && { feed_type: this.feedType }),
-        ...(activeProjects.value.length && {
-          project: activeProjects.value.map((discussion) => Number(discussion.name)),
-        }),
-      }
-      return filters
+      return this.feedType ? { feed_type: this.feedType } : null
     },
     projectOptions() {
       return activeTeams.value.map((team) => ({

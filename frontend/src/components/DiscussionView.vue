@@ -212,6 +212,8 @@ export default {
           reopenDiscussion: 'reopen_discussion',
           pinDiscussion: 'pin_discussion',
           unpinDiscussion: 'unpin_discussion',
+          addBookmark: 'add_bookmark',
+          removeBookmark: 'remove_bookmark',
           moveToProject: {
             method: 'move_to_project',
             validate(params) {
@@ -252,19 +254,6 @@ export default {
         },
       }
     },
-    bookmark() {
-      return {
-        type: 'resource',
-        url: 'gameplan.api.check_bookmark',
-        params: {
-          discussionId: this.postId,
-        },
-        auto: true,
-        onSuccess(data) {
-          this.bookmarkStatus = data
-        },
-      }
-    },
   },
   data() {
     return {
@@ -275,19 +264,9 @@ export default {
       },
       showRevisionsDialog: false,
       showNavbar: false,
-      bookmarkStatus: false,
     }
   },
   methods: {
-    bookMarkDiscussion() {
-      let data = {
-        discussion: this.discussion.name,
-        remove_bookmark: this.bookmarkStatus,
-      }
-      call('gameplan.api.bookmark_discussion', { data }).then((res) => {
-        this.$resources.bookmark.submit()
-      })
-    },
     copyLink() {
       let location = window.location
       let url = `${location.origin}${location.pathname}`
@@ -437,9 +416,20 @@ export default {
           },
         },
         {
-          label: `${this.bookmarkStatus ? 'Remove Bookmark' : 'Add Bookmark'}`,
+          label: 'Bookmark',
           icon: 'bookmark',
-          onClick: this.bookMarkDiscussion,
+          onClick: () => {
+            this.$resources.discussion.addBookmark.submit()
+          },
+          condition: () => !this.discussion.is_bookmarked,
+        },
+        {
+          label: 'Remove Bookmark',
+          icon: 'bookmark',
+          onClick: () => {
+            this.$resources.discussion.removeBookmark.submit()
+          },
+          condition: () => this.discussion.is_bookmarked,
         },
         {
           label: 'Move to...',

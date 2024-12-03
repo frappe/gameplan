@@ -7,9 +7,4 @@ from frappe.utils import cint
 
 
 class GPBookmark(Document):
-	def remove_bookmark(self, discussion):
-		for row in self.bookmarks:
-			if cint(row.discussion) == cint(discussion):
-				self.remove(row)
-				self.save()
-				break
+	pass

@@ -15,6 +15,7 @@ def get_discussions(filters=None, order_by=None, limit_start=None, limit_page_le
 	filters = frappe.parse_json(filters) if filters else None
 	feed_type = filters.pop("feed_type", None) if filters else None
 	participator = filters.pop("participator", None) if filters else None
+	user_bookmarks = filters.pop("user_bookmarks", None) if filters else None
 	order_by = order_by or "last_post_at desc"
 	order_field, order_direction = order_by.split(" ", 1)
 
@@ -70,6 +71,13 @@ def get_discussions(filters=None, order_by=None, limit_start=None, limit_page_le
 			return []
 		replies = list(set(replies))
 		query = query.where(Discussion.name.isin(replies))
+
+	if user_bookmarks:
+		Bookmark = frappe.qb.DocType("GP Bookmark")
+		bookmarked_discussions = Bookmark.select(Bookmark.discussion).where(
+			Bookmark.user == frappe.session.user
+		)
+		query = query.where(Discussion.name.isin(bookmarked_discussions))
 
 	if feed_type == "unread":
 		query = query.where((Visit.last_visit < Discussion.last_post_at) | (Visit.last_visit.isnull()))

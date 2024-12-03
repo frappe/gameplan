@@ -6,7 +6,7 @@
  "engine": "InnoDB",
  "field_order": [
   "user",
-  "bookmarks"
+  "discussion"
  ],
  "fields": [
   {
@@ -18,15 +18,15 @@
    "reqd": 1
   },
   {
-   "fieldname": "bookmarks",
-   "fieldtype": "Table",
-   "label": "Bookmarks",
-   "options": "GP Bookmark Child"
+   "fieldname": "discussion",
+   "fieldtype": "Link",
+   "label": "Discussion",
+   "options": "GP Discussion"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-11-03 18:48:04.503102",
+ "modified": "2024-12-03 16:50:02.939711",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "GP Bookmark",
