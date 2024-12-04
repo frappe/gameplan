@@ -1,8 +1,7 @@
 // Copyright (c) 2022, Frappe Technologies Pvt Ltd and contributors
 // For license information, please see license.txt
 
-frappe.ui.form.on('Discourse ID Map', {
-	// refresh: function(frm) {
-
-	// }
+frappe.ui.form.on("Discourse ID Map", {
+  // refresh: function(frm) {
+  // }
 });

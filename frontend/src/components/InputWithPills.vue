@@ -9,7 +9,9 @@
         class="inline-flex items-center whitespace-nowrap rounded-full border py-1 pl-2.5 pr-1 text-sm leading-none"
         v-for="option in modelValue"
         :key="option.value"
-        :class="focusedOption === option ? 'bg-surface-white ring-2 ring-blue-600' : 'bg-surface-white'"
+        :class="
+          focusedOption === option ? 'bg-surface-white ring-2 ring-blue-600' : 'bg-surface-white'
+        "
       >
         {{ option.displayValue || option.label }}
 

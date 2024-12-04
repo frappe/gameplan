@@ -1,7 +1,6 @@
 # Copyright (c) 2022, Frappe Technologies Pvt. Ltd. and Contributors
 # MIT License. See license.txt
 
-from __future__ import unicode_literals
 
 import re
 
@@ -128,17 +127,22 @@ class GameplanSearch(Search):
 	def get_records(self):
 		records = []
 		for d in frappe.db.get_all(
-			"GP Discussion", fields=["name", "title", "content", "last_post_at", "modified", "project", "team"]
+			"GP Discussion",
+			fields=["name", "title", "content", "last_post_at", "modified", "project", "team"],
 		):
 			d.doctype = "GP Discussion"
 			d.modified = d.last_post_at or d.modified
 			records.append(d)
 
-		for d in frappe.db.get_all("GP Task", fields=["name", "title", "description", "modified", "project", "team"]):
+		for d in frappe.db.get_all(
+			"GP Task", fields=["name", "title", "description", "modified", "project", "team"]
+		):
 			d.doctype = "GP Task"
 			records.append(d)
 
-		for d in frappe.db.get_all("GP Page", fields=["name", "title", "content", "modified", "project", "team"]):
+		for d in frappe.db.get_all(
+			"GP Page", fields=["name", "title", "content", "modified", "project", "team"]
+		):
 			d.doctype = "GP Page"
 			records.append(d)
 

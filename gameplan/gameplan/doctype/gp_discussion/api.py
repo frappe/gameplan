@@ -1,10 +1,11 @@
 # Copyright (c) 2022, Frappe Technologies Pvt. Ltd. and Contributors
 # MIT License. See license.txt
 
-from __future__ import unicode_literals
+
 import frappe
-import gameplan
 from pypika.terms import ExistsCriterion
+
+import gameplan
 
 
 @frappe.whitelist()
@@ -95,9 +96,7 @@ def get_discussions(filters=None, order_by=None, limit_start=None, limit_page_le
 	is_guest = gameplan.is_guest()
 	if is_guest:
 		GuestAccess = frappe.qb.DocType("GP Guest Access")
-		project_list = GuestAccess.select(GuestAccess.project).where(
-			GuestAccess.user == frappe.session.user
-		)
+		project_list = GuestAccess.select(GuestAccess.project).where(GuestAccess.user == frappe.session.user)
 		query = query.where(Discussion.project.isin(project_list))
 
 	discussions = query.run(as_dict=1)
@@ -116,7 +115,5 @@ def get_discussions(filters=None, order_by=None, limit_start=None, limit_page_le
 		else []
 	)
 	for discussion in discussions:
-		discussion["ongoing_polls"] = [
-			p for p in ongoing_polls if str(p.discussion) == str(discussion.name)
-		]
+		discussion["ongoing_polls"] = [p for p in ongoing_polls if str(p.discussion) == str(discussion.name)]
 	return discussions

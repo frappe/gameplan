@@ -1,38 +1,51 @@
 # Copyright (c) 2022, Frappe Technologies Pvt Ltd and contributors
 # For license information, please see license.txt
 
-import frappe, requests, gameplan
+from urllib.parse import urljoin
+
+import frappe
+import requests
+from bs4 import BeautifulSoup
 from frappe.model.document import Document
+from pypika.terms import ExistsCriterion
+
+import gameplan
+from gameplan.api import invite_by_email
 from gameplan.gemoji import get_random_gemoji
 from gameplan.mixins.archivable import Archivable
 from gameplan.mixins.manage_members import ManageMembersMixin
-from bs4 import BeautifulSoup
-from urllib.parse import urljoin
-from pypika.terms import ExistsCriterion
-from gameplan.api import invite_by_email
 
 
 class GPProject(ManageMembersMixin, Archivable, Document):
-	on_delete_cascade = ["GP Task", "GP Discussion", "GP Project Visit", "GP Followed Project", "GP Page", "GP Pinned Project"]
+	on_delete_cascade = [
+		"GP Task",
+		"GP Discussion",
+		"GP Project Visit",
+		"GP Followed Project",
+		"GP Page",
+		"GP Pinned Project",
+	]
 	on_delete_set_null = ["GP Notification"]
 
 	@staticmethod
 	def get_list_query(query):
-		Project = frappe.qb.DocType('GP Project')
-		Member = frappe.qb.DocType('GP Member')
+		Project = frappe.qb.DocType("GP Project")
+		Member = frappe.qb.DocType("GP Member")
 		member_exists = (
 			frappe.qb.from_(Member)
-				.select(Member.name)
-				.where(Member.parenttype == 'GP Team')
-				.where(Member.parent == Project.team)
-				.where(Member.user == frappe.session.user)
+			.select(Member.name)
+			.where(Member.parenttype == "GP Team")
+			.where(Member.parent == Project.team)
+			.where(Member.user == frappe.session.user)
 		)
 		query = query.where(
 			(Project.is_private == 0) | ((Project.is_private == 1) & ExistsCriterion(member_exists))
 		)
 		if gameplan.is_guest():
-			GuestAccess = frappe.qb.DocType('GP Guest Access')
-			project_list = GuestAccess.select(GuestAccess.project).where(GuestAccess.user == frappe.session.user)
+			GuestAccess = frappe.qb.DocType("GP Guest Access")
+			project_list = GuestAccess.select(GuestAccess.project).where(
+				GuestAccess.user == frappe.session.user
+			)
 			query = query.where(Project.name.isin(project_list))
 		return query
 
@@ -40,9 +53,7 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 		d = super().as_dict(*args, **kwargs)
 		# summary
 		total_tasks = frappe.db.count("GP Task", {"project": self.name})
-		completed_tasks = frappe.db.count(
-			"GP Task", {"project": self.name, "is_completed": 1}
-		)
+		completed_tasks = frappe.db.count("GP Task", {"project": self.name, "is_completed": 1})
 		pending_tasks = total_tasks - completed_tasks
 		overdue_tasks = frappe.db.count(
 			"GP Task",
@@ -54,7 +65,9 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 			"pending_tasks": pending_tasks,
 			"overdue_tasks": overdue_tasks,
 		}
-		d.is_pinned = bool(frappe.db.exists("GP Pinned Project", {"project": self.name, "user": frappe.session.user}))
+		d.is_pinned = bool(
+			frappe.db.exists("GP Pinned Project", {"project": self.name, "user": frappe.session.user})
+		)
 		return d
 
 	def before_insert(self):
@@ -62,10 +75,10 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 			self.icon = get_random_gemoji().emoji
 
 		if not self.readme:
-			self.readme = f"""
-			<h3>Welcome to the {self.title} page!</h3>
-			<p>You can add a brief introduction about this project, links, resources, and other important information here.</p>
-		"""
+			self.readme = f"""<h3>Welcome to the {self.title} page!</h3>
+			<p>You can add a brief introduction about this project, links,
+			resources, and other important information here.</p>
+			"""
 
 		self.append(
 			"members",
@@ -78,7 +91,7 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 		)
 
 	def before_save(self):
-		if frappe.db.get_value('GP Team', self.team, 'is_private'):
+		if frappe.db.get_value("GP Team", self.team, "is_private"):
 			self.is_private = True
 
 	def update_progress(self):
@@ -139,7 +152,7 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 			return
 		self.team = team
 		self.save()
-		for doctype in ['GP Task', 'GP Discussion']:
+		for doctype in ["GP Task", "GP Discussion"]:
 			for name in frappe.db.get_all(doctype, {"project": self.name}, pluck="name"):
 				doc = frappe.get_doc(doctype, name)
 				doc.team = self.team
@@ -157,13 +170,13 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 
 	@frappe.whitelist()
 	def invite_guest(self, email):
-		invite_by_email(email, role='Gameplan Guest', projects=[self.name])
+		invite_by_email(email, role="Gameplan Guest", projects=[self.name])
 
 	@frappe.whitelist()
 	def remove_guest(self, email):
-		name = frappe.db.get_value('GP Guest Access', {'project': self.name, 'user': email})
+		name = frappe.db.get_value("GP Guest Access", {"project": self.name, "user": email})
 		if name:
-			frappe.delete_doc('GP Guest Access', name)
+			frappe.delete_doc("GP Guest Access", name)
 
 	@frappe.whitelist()
 	def track_visit(self):
@@ -184,7 +197,9 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 
 	@property
 	def is_followed(self):
-		return bool(frappe.db.exists("GP Followed Project", {"project": self.name, "user": frappe.session.user}))
+		return bool(
+			frappe.db.exists("GP Followed Project", {"project": self.name, "user": frappe.session.user})
+		)
 
 	@frappe.whitelist()
 	def follow(self):
@@ -193,8 +208,11 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 
 	@frappe.whitelist()
 	def unfollow(self):
-		follow_id = frappe.db.get_value("GP Followed Project", {"project": self.name, "user": frappe.session.user})
+		follow_id = frappe.db.get_value(
+			"GP Followed Project", {"project": self.name, "user": frappe.session.user}
+		)
 		frappe.delete_doc("GP Followed Project", follow_id)
+
 
 def get_meta_tags(url):
 	response = requests.get(url, timeout=2, allow_redirects=True)

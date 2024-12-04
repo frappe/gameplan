@@ -1,14 +1,15 @@
 # Copyright (c) 2023, Frappe Technologies Pvt. Ltd. and Contributors
 # MIT License. See license.txt
 
-from __future__ import unicode_literals
-import frappe
+
 import json
-from redis.commands.search.field import TextField, TagField
+
+import frappe
+from frappe.utils import cstr
+from redis.commands.search.field import TagField, TextField
 from redis.commands.search.indexDefinition import IndexDefinition
 from redis.commands.search.query import Query
 from redis.exceptions import ResponseError
-from frappe.utils import cstr
 
 
 class Search:
@@ -43,7 +44,9 @@ class Search:
 			if field.name in doc:
 				mapping[field.name] = cstr(doc[field.name])
 		if self.index_exists():
-			self.redis.ft(self.index_name).add_document(doc_id, payload=json.dumps(payload), replace=True, **mapping)
+			self.redis.ft(self.index_name).add_document(
+				doc_id, payload=json.dumps(payload), replace=True, **mapping
+			)
 
 	def remove_document(self, id):
 		key = self.redis.make_key(f"{self.prefix}:{id}").decode()

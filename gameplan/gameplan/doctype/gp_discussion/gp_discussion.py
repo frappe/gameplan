@@ -1,38 +1,52 @@
 # Copyright (c) 2022, Frappe Technologies Pvt Ltd and contributors
 # For license information, please see license.txt
-import re
+
 import frappe
 from frappe.model.document import Document
-from gameplan.search import GameplanSearch
+
 from gameplan.gameplan.doctype.gp_notification.gp_notification import GPNotification
 from gameplan.mixins.activity import HasActivity
 from gameplan.mixins.mentions import HasMentions
 from gameplan.mixins.reactions import HasReactions
+from gameplan.search import GameplanSearch
 from gameplan.utils import remove_empty_trailing_paragraphs, url_safe_slug
 
+
 class GPDiscussion(HasActivity, HasMentions, HasReactions, Document):
-	on_delete_cascade = ['GP Comment', 'GP Discussion Visit', 'GP Activity', 'GP Poll']
-	on_delete_set_null = ['GP Notification']
-	activities = ['Discussion Closed', 'Discussion Reopened', 'Discussion Title Changed', 'Discussion Pinned', 'Discussion Unpinned']
-	mentions_field = 'content'
+	on_delete_cascade = ["GP Comment", "GP Discussion Visit", "GP Activity", "GP Poll"]
+	on_delete_set_null = ["GP Notification"]
+	activities = [
+		"Discussion Closed",
+		"Discussion Reopened",
+		"Discussion Title Changed",
+		"Discussion Pinned",
+		"Discussion Unpinned",
+	]
+	mentions_field = "content"
 
 	def as_dict(self, *args, **kwargs):
-		d = super(GPDiscussion, self).as_dict(*args, **kwargs)
-		last_visit = frappe.db.get_value('GP Discussion Visit', {'discussion': self.name, 'user': frappe.session.user}, 'last_visit')
+		d = super(__class__, self).as_dict(*args, **kwargs)
+		last_visit = frappe.db.get_value(
+			"GP Discussion Visit", {"discussion": self.name, "user": frappe.session.user}, "last_visit"
+		)
 		result = frappe.db.get_all(
-			'GP Comment',
-			filters={'reference_doctype': self.doctype, 'reference_name': self.name, 'creation': ('>', last_visit)},
-			order_by='creation asc',
+			"GP Comment",
+			filters={
+				"reference_doctype": self.doctype,
+				"reference_name": self.name,
+				"creation": (">", last_visit),
+			},
+			order_by="creation asc",
 			limit=1,
-			pluck='name'
+			pluck="name",
 		)
 		d.last_unread_comment = result[0] if result else None
 		polls = frappe.db.get_all(
-			'GP Poll',
-			filters={'discussion': self.name, 'creation': ('>', last_visit)},
-			order_by='creation asc',
+			"GP Poll",
+			filters={"discussion": self.name, "creation": (">", last_visit)},
+			order_by="creation asc",
 			limit=1,
-			pluck='name'
+			pluck="name",
 		)
 		d.last_unread_poll = polls[0] if polls else None
 		d.is_bookmarked = self.is_bookmarked()
@@ -68,29 +82,24 @@ class GPDiscussion(HasActivity, HasMentions, HasReactions, Document):
 		self.slug = url_safe_slug(self.title)
 
 	def log_title_update(self):
-		if self.has_value_changed('title') and self.get_doc_before_save():
-			self.log_activity('Discussion Title Changed', data={
-				'old_title': self.get_doc_before_save().title,
-				'new_title': self.title
-			})
+		if self.has_value_changed("title") and self.get_doc_before_save():
+			self.log_activity(
+				"Discussion Title Changed",
+				data={"old_title": self.get_doc_before_save().title, "new_title": self.title},
+			)
 
 	def update_search_index(self):
-		if self.has_value_changed('title') or self.has_value_changed('content'):
+		if self.has_value_changed("title") or self.has_value_changed("content"):
 			search = GameplanSearch()
 			search.index_doc(self)
 
 	def update_participants_count(self):
-		participants = frappe.db.get_all('GP Comment',
-			filters={
-				'reference_doctype': self.doctype,
-				'reference_name': self.name
-			},
-			pluck='owner'
+		participants = frappe.db.get_all(
+			"GP Comment",
+			filters={"reference_doctype": self.doctype, "reference_name": self.name},
+			pluck="owner",
 		)
-		participants += frappe.db.get_all("GP Poll",
-			filters={"discussion": self.name},
-			pluck="owner"
-		)
+		participants += frappe.db.get_all("GP Poll", filters={"discussion": self.name}, pluck="owner")
 		participants.append(self.owner)
 		self.participants_count = len(list(set(participants)))
 
@@ -114,7 +123,6 @@ class GPDiscussion(HasActivity, HasMentions, HasReactions, Document):
 		# also mark notifications as read
 		GPNotification.clear_notifications(discussion=self.name)
 
-
 	@frappe.whitelist()
 	def move_to_project(self, project):
 		if not project or project == self.project:
@@ -130,7 +138,7 @@ class GPDiscussion(HasActivity, HasMentions, HasReactions, Document):
 			return
 		self.closed_at = frappe.utils.now()
 		self.closed_by = frappe.session.user
-		self.log_activity('Discussion Closed')
+		self.log_activity("Discussion Closed")
 		self.save()
 
 	@frappe.whitelist()
@@ -139,7 +147,7 @@ class GPDiscussion(HasActivity, HasMentions, HasReactions, Document):
 			return
 		self.closed_at = None
 		self.closed_by = None
-		self.log_activity('Discussion Reopened')
+		self.log_activity("Discussion Reopened")
 		self.save()
 
 	@frappe.whitelist()
@@ -148,7 +156,7 @@ class GPDiscussion(HasActivity, HasMentions, HasReactions, Document):
 			return
 		self.pinned_at = frappe.utils.now()
 		self.pinned_by = frappe.session.user
-		self.log_activity('Discussion Pinned')
+		self.log_activity("Discussion Pinned")
 		self.save()
 
 	@frappe.whitelist()
@@ -157,7 +165,7 @@ class GPDiscussion(HasActivity, HasMentions, HasReactions, Document):
 			return
 		self.pinned_at = None
 		self.pinned_by = None
-		self.log_activity('Discussion Unpinned')
+		self.log_activity("Discussion Unpinned")
 		self.save()
 
 	@frappe.whitelist()
@@ -176,9 +184,7 @@ class GPDiscussion(HasActivity, HasMentions, HasReactions, Document):
 		frappe.get_doc("GP Bookmark", bookmark).delete()
 
 	def is_bookmarked(self):
-		return bool(
-			frappe.db.exists("GP Bookmark", {"discussion": self.name, "user": frappe.session.user})
-		)
+		return bool(frappe.db.exists("GP Bookmark", {"discussion": self.name, "user": frappe.session.user}))
 
 	def update_discussions_count(self, delta=1):
 		project = frappe.get_doc("GP Project", self.project)

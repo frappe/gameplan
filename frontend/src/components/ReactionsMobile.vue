@@ -30,7 +30,11 @@
             v-for="emoji in standardEmojis"
             :key="emoji"
             class="p-1 rounded font-[emoji] text-3xl text-center w-full"
-            :class="[hasUserReacted(emoji) ? 'bg-surface-amber-2' : 'bg-surface-menu-bar hover:bg-surface-gray-2']"
+            :class="[
+              hasUserReacted(emoji)
+                ? 'bg-surface-amber-2'
+                : 'bg-surface-menu-bar hover:bg-surface-gray-2',
+            ]"
             @click="
               () => {
                 toggleReaction(emoji)

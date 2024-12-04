@@ -1,7 +1,7 @@
 # Copyright (c) 2022, Frappe Technologies Pvt. Ltd. and Contributors
 # MIT License. See license.txt
 
-from __future__ import unicode_literals
+
 import frappe
 from frappe.utils import update_progress_bar
 
@@ -15,7 +15,7 @@ def execute():
 		try:
 			doc.update_participants_count()
 			doc.db_set("participants_count", doc.participants_count, update_modified=False)
-		except:
+		except Exception:
 			failed.append(discussion)
 
 	if failed:

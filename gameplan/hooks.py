@@ -1,5 +1,3 @@
-from . import __version__ as app_version
-
 app_name = "gameplan"
 app_title = "Gameplan"
 app_publisher = "Frappe Technologies Pvt Ltd"
@@ -61,7 +59,7 @@ fixtures = [
 
 # website user home page (by Role)
 # role_home_page = {
-#	"Role": "home_page"
+# "Role": "home_page"
 # }
 
 website_route_rules = [
@@ -139,22 +137,18 @@ doc_events = {
 			"gameplan.gameplan.doctype.gp_user_profile.gp_user_profile.delete_user_profile",
 			"gameplan.gameplan.doctype.gp_guest_access.gp_guest_access.on_user_delete",
 		],
-		"on_update": "gameplan.gameplan.doctype.gp_user_profile.gp_user_profile.on_user_update"
-	}
+		"on_update": "gameplan.gameplan.doctype.gp_user_profile.gp_user_profile.on_user_update",
+	},
 }
 
-on_login = 'gameplan.www.g.on_login'
+on_login = "gameplan.www.g.on_login"
 
 # Scheduled Tasks
 # ---------------
 
 scheduler_events = {
-	"all": [
-		"gameplan.search.build_index_if_not_exists"
-	],
-	"hourly": [
-		"gameplan.gameplan.doctype.gp_invitation.gp_invitation.expire_invitations"
-	],
+	"all": ["gameplan.search.build_index_if_not_exists"],
+	"hourly": ["gameplan.gameplan.doctype.gp_invitation.gp_invitation.expire_invitations"],
 }
 
 # scheduler_events = {

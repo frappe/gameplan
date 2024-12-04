@@ -1,8 +1,9 @@
 # Copyright (c) 2023, Frappe Technologies Pvt. Ltd. and Contributors
 # MIT License. See license.txt
 
-from __future__ import unicode_literals
+
 import frappe
+
 from gameplan.search import GameplanSearch
 
 
