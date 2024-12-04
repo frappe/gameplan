@@ -4,6 +4,7 @@
 from __future__ import unicode_literals
 import frappe
 import json
+from frappe.utils.redis_wrapper import RedisWrapper
 from redis.commands.search.field import TextField, TagField
 from redis.commands.search.indexDefinition import IndexDefinition
 from redis.commands.search.query import Query
@@ -13,12 +14,15 @@ from frappe.utils import cstr
 
 class Search:
 	def __init__(self, index_name, prefix, schema) -> None:
-		self.redis = frappe.cache()
+		self.setup_redis()
 		self.index_name = index_name
 		self.prefix = prefix
 		self.schema = []
 		for field in schema:
 			self.schema.append(frappe._dict(field))
+
+	def setup_redis(self):
+		self.redis = RedisWrapper.from_url(frappe.conf.get("redis_queue"))
 
 	def create_index(self):
 		index_def = IndexDefinition(
