@@ -3,6 +3,7 @@
 
 import frappe
 from frappe.model.document import Document
+
 from gameplan.extends.client import check_permissions
 from gameplan.gameplan.doctype.gp_notification.gp_notification import GPNotification
 from gameplan.mixins.activity import HasActivity
@@ -13,12 +14,12 @@ from gameplan.search import GameplanSearch
 class GPTask(HasMentions, HasActivity, Document):
 	on_delete_cascade = ["GP Comment", "GP Activity"]
 	on_delete_set_null = ["GP Notification"]
-	activities = ['Task Value Changed']
-	mentions_field = 'description'
+	activities = ["Task Value Changed"]
+	mentions_field = "description"
 
 	def before_insert(self):
 		if not self.status:
-			self.status = 'Backlog'
+			self.status = "Backlog"
 
 	def after_insert(self):
 		self.update_tasks_count(1)
@@ -30,19 +31,22 @@ class GPTask(HasMentions, HasActivity, Document):
 		self.update_search_index()
 
 	def log_value_updates(self):
-		fields = ['title', 'description', 'status', 'priority', 'assigned_to', 'due_date', 'project']
+		fields = ["title", "description", "status", "priority", "assigned_to", "due_date", "project"]
 		for field in fields:
 			prev_doc = self.get_doc_before_save()
 			if prev_doc and str(self.get(field)) != str(prev_doc.get(field)):
-				self.log_activity('Task Value Changed', data={
-					'field': field,
-					'field_label': self.meta.get_label(field),
-					'old_value': prev_doc.get(field),
-					'new_value': self.get(field)
-				})
+				self.log_activity(
+					"Task Value Changed",
+					data={
+						"field": field,
+						"field_label": self.meta.get_label(field),
+						"old_value": prev_doc.get(field),
+						"new_value": self.get(field),
+					},
+				)
 
 	def update_search_index(self):
-		if self.has_value_changed('title') or self.has_value_changed('description'):
+		if self.has_value_changed("title") or self.has_value_changed("description"):
 			search = GameplanSearch()
 			search.index_doc(self)
 
@@ -65,11 +69,21 @@ class GPTask(HasMentions, HasActivity, Document):
 	def track_visit(self):
 		GPNotification.clear_notifications(task=self.name)
 
+
 @frappe.whitelist()
-def get_list(fields=None, filters: dict|None=None, order_by=None, start=0, limit=20, group_by=None, parent=None, debug=False):
-	doctype = 'GP Task'
+def get_list(
+	fields=None,
+	filters: dict | None = None,
+	order_by=None,
+	start=0,
+	limit=20,
+	group_by=None,
+	parent=None,
+	debug=False,
+):
+	doctype = "GP Task"
 	check_permissions(doctype, parent)
-	assigned_or_owner = filters.pop('assigned_or_owner', None)
+	assigned_or_owner = filters.pop("assigned_or_owner", None)
 	query = frappe.qb.get_query(
 		table=doctype,
 		fields=fields,
@@ -81,7 +95,5 @@ def get_list(fields=None, filters: dict|None=None, order_by=None, start=0, limit
 	)
 	if assigned_or_owner:
 		Task = frappe.qb.DocType(doctype)
-		query = query.where(
-			(Task.assigned_to == assigned_or_owner) | (Task.owner == assigned_or_owner)
-		)
+		query = query.where((Task.assigned_to == assigned_or_owner) | (Task.owner == assigned_or_owner))
 	return query.run(as_dict=True, debug=debug)

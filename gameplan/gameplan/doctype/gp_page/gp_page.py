@@ -3,8 +3,9 @@
 
 # import frappe
 from frappe.model.document import Document
-from gameplan.utils import url_safe_slug
+
 from gameplan.search import GameplanSearch
+from gameplan.utils import url_safe_slug
 
 
 class GPPage(Document):
@@ -15,13 +16,14 @@ class GPPage(Document):
 		self.update_search_index()
 
 	def update_search_index(self):
-		if self.has_value_changed('title') or self.has_value_changed('content'):
+		if self.has_value_changed("title") or self.has_value_changed("content"):
 			search = GameplanSearch()
 			search.index_doc(self)
 
 	def on_trash(self):
 		search = GameplanSearch()
 		search.remove_doc(self)
+
 
 def has_permission(doc, user, ptype):
 	if doc.project:

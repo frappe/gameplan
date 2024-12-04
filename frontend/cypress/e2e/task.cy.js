@@ -55,7 +55,7 @@ describe('Task', () => {
 
     // assign
     cy.intercept('POST', '/api/method/frappe.client.set_value').as('assign_user')
-    cy.button('Administrator').last().click()
+    cy.button('Assign a user').click()
     cy.get('li[id^="headlessui-combobox-option-"]:visible').contains('John Doe').click()
 
     cy.wait('@assign_user')

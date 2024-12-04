@@ -7,7 +7,11 @@
           <div class="mt-3">
             <button
               class="flex h-7 w-full items-center gap-2 rounded px-2 py-1"
-              :class="[activeTab?.label == tab.label ? 'bg-surface-white shadow-sm' : 'hover:bg-surface-gray-2']"
+              :class="[
+                activeTab?.label == tab.label
+                  ? 'bg-surface-white shadow-sm'
+                  : 'hover:bg-surface-gray-2',
+              ]"
               v-for="tab in tabs"
               :key="tab.label"
               @click="activeTab = tab"

@@ -4,6 +4,7 @@
 import frappe
 from frappe.model.document import Document
 
+
 class GPProjectVisit(Document):
 	@staticmethod
 	def get_list_query(query):

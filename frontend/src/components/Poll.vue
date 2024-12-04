@@ -11,7 +11,11 @@
             <span class="hidden md:inline">&nbsp;&middot;&nbsp;</span>
           </UserProfileLink>
           <div>
-            <time class="text-ink-gray-5" :datetime="_poll.creation" :title="$dayjs(_poll.creation)">
+            <time
+              class="text-ink-gray-5"
+              :datetime="_poll.creation"
+              :title="$dayjs(_poll.creation)"
+            >
               {{ $dayjs(_poll.creation).fromNow() }}
             </time>
           </div>

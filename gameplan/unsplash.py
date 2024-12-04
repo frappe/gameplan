@@ -1,7 +1,7 @@
 # Copyright (c) 2021, Frappe Technologies Pvt. Ltd. and Contributors
 # See license.txt
 
-from __future__ import unicode_literals
+
 import frappe
 
 base_url = "https://api.unsplash.com"
@@ -24,7 +24,7 @@ def get_random(params=None):
 
 
 def make_unsplash_request(path):
-	if not "unsplash_access_key" in frappe.conf:
+	if "unsplash_access_key" not in frappe.conf:
 		frappe.throw("Please set unsplash_access_key in site_config.json")
 
 	import requests

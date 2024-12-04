@@ -17,7 +17,8 @@ class ManageMembersMixin:
 
 			if frappe.db.exists("User", email):
 				self.append(
-					"members", {"email": email, "user": email, "status": "Accepted"},
+					"members",
+					{"email": email, "user": email, "status": "Accepted"},
 				)
 			else:
 				member = self.append(
@@ -33,9 +34,7 @@ class ManageMembersMixin:
 		self.save()
 
 	def invite_via_email(self, member):
-		invite_link = frappe.utils.get_url(
-			f"/api/method/gameplan.api.accept_invitation?key={member.key}"
-		)
+		invite_link = frappe.utils.get_url(f"/api/method/gameplan.api.accept_invitation?key={member.key}")
 		title = f"Team: {self.title}" if self.doctype == "GP Team" else f"Project: {self.title}"
 		if frappe.local.dev_server:
 			print(f"Invite link for {member.email}: {invite_link}")

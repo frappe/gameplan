@@ -4,6 +4,7 @@
 import frappe
 from frappe.model.document import Document
 from frappe.utils import flt
+
 from .gp_poll_attributes import GPPollAttributes
 
 
@@ -91,12 +92,8 @@ class GPPoll(Document, GPPollAttributes):
 
 @frappe.whitelist()
 def get_list(fields, filters=None, start=0, limit=20, order_by=None):
-	query = frappe.qb.get_query('GP Poll',
-		fields=fields,
-		filters=filters,
-		start=start,
-		limit=limit,
-		order_by=order_by
+	query = frappe.qb.get_query(
+		"GP Poll", fields=fields, filters=filters, start=start, limit=limit, order_by=order_by
 	)
 
 	data = query.run(as_dict=1)

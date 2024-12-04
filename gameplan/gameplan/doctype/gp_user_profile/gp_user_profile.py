@@ -1,15 +1,17 @@
 # Copyright (c) 2022, Frappe Technologies Pvt Ltd and contributors
 # For license information, please see license.txt
 
+from time import sleep
+
 import frappe
-import gameplan
 from frappe.model.document import Document
 from frappe.model.naming import append_number_if_name_exists
-from frappe.website.utils import cleanup_page_name
-from gameplan.extends.client import check_permissions
 from frappe.query_builder.functions import Count
+from frappe.website.utils import cleanup_page_name
 from rq.job import JobStatus
-from time import sleep
+
+import gameplan
+from gameplan.extends.client import check_permissions
 
 
 class GPUserProfile(Document):
@@ -36,7 +38,11 @@ class GPUserProfile(Document):
 
 		job_id = f"remove-img-bg-{self.name}"
 		job = frappe.enqueue(
-			remove_imgbg_in_background, profile_name=self.name, default_color=default_color, at_front=True, job_id=job_id
+			remove_imgbg_in_background,
+			profile_name=self.name,
+			default_color=default_color,
+			at_front=True,
+			job_id=job_id,
 		)
 		while True:
 			status = job.get_status()
@@ -82,7 +88,14 @@ def on_user_update(doc, method=None):
 
 @frappe.whitelist()
 def get_list(
-	fields=None, filters: dict | None = None, order_by=None, start=0, limit=20, group_by=None, parent=None, debug=False
+	fields=None,
+	filters: dict | None = None,
+	order_by=None,
+	start=0,
+	limit=20,
+	group_by=None,
+	parent=None,
+	debug=False,
 ):
 	doctype = "GP User Profile"
 	check_permissions(doctype, parent)
