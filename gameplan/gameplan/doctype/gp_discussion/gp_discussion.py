@@ -29,18 +29,22 @@ class GPDiscussion(HasActivity, HasMentions, HasReactions, Document):
 		last_visit = frappe.db.get_value(
 			"GP Discussion Visit", {"discussion": self.name, "user": frappe.session.user}, "last_visit"
 		)
-		result = frappe.db.get_all(
-			"GP Comment",
-			filters={
-				"reference_doctype": self.doctype,
-				"reference_name": self.name,
-				"creation": (">", last_visit),
-			},
-			order_by="creation asc",
-			limit=1,
-			pluck="name",
-		)
-		d.last_unread_comment = result[0] if result else None
+		if last_visit:
+			result = frappe.db.get_all(
+				"GP Comment",
+				filters={
+					"reference_doctype": self.doctype,
+					"reference_name": self.name,
+					"creation": (">", last_visit),
+				},
+				order_by="creation asc",
+				limit=1,
+				pluck="name",
+			)
+			d.last_unread_comment = result[0] if result else None
+		else:
+			d.last_unread_comment = "first_post"
+
 		polls = frappe.db.get_all(
 			"GP Poll",
 			filters={"discussion": self.name, "creation": (">", last_visit)},

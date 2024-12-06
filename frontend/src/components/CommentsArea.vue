@@ -221,6 +221,10 @@ export default {
         auto: true,
         onSuccess() {
           if (this.$route.query.comment) {
+            if (this.$route.query.comment == 'first_post') {
+              this.$router.replace({ query: {} })
+              return
+            }
             let comment = this.$resources.comments.getRow(this.$route.query.comment)
             this.scrollToItem(comment)
           } else if (!this.$route.query.fromSearch && this.$resources.comments.data.length > 0) {
