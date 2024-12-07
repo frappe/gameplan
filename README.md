@@ -1,64 +1,68 @@
-<p align="center">
-  <img src="https://user-images.githubusercontent.com/9355208/190904451-ac6f171b-26c6-4432-a04f-044974516da6.png" alt="Gameplan logo" height="50" />
-  <p align="center">Delightful, open-source, work communication tool for remote teams</p>
-</p>
+<div align="center" markdown="1">
 
-<p align="center">
-  <a href="https://dashboard.cypress.io/projects/y2q697/runs">
+<img src="./frontend/public/gameplan-logo.svg" alt="Gameplan logo" width="100" />
+<h1>Gameplan</h1>
+
+**Open Source Async Workspace for Remote Teams**
+
+<a href="https://dashboard.cypress.io/projects/y2q697/runs">
     <img alt="cypress" src="https://img.shields.io/endpoint?url=https://dashboard.cypress.io/badge/simple/y2q697/main&style=flat&logo=cypress">
-  </a>
-  <a href="https://github.com/frappe/gameplan/blob/main/LICENSE">
+</a>
+<a href="https://github.com/frappe/gameplan/blob/main/LICENSE">
     <img alt="license" src="https://img.shields.io/badge/license-AGPLv3-blue">
-  </a>
-</p>
+</a>
 
-<img width="1402" alt="Screenshot 2022-09-18 at 9 16 08 PM" src="https://user-images.githubusercontent.com/9355208/190922102-daff8e9f-e34f-4129-a520-dcf834e92958.png">
+</div>
 
+<div>
+    <picture>
+        <source media="(prefers-color-scheme: dark)" srcset=".github/assets/gameplan-hero-dark.png">
+        <img width="1402" alt="Gameplan Homescreen Screenshot" src=".github/assets/gameplan-hero-light.png">
+    </picture>
+</div>
 
-<details>
-  <summary>Show more screenshots</summary>
+## Gameplan
 
-  <img width="1402" alt="Screenshot 2022-09-18 at 9 18 17 PM" src="https://user-images.githubusercontent.com/9355208/190922154-e5bdb690-57d3-4024-9143-9d009894b035.png">
+Gameplan is an async-first discussions tool for remote teams. It encourages thoughtful communication and deep-thinking.
 
-  <img width="1402" alt="Screenshot 2022-09-18 at 9 18 47 PM" src="https://user-images.githubusercontent.com/9355208/190922161-61eb1cd7-a56a-4460-bc7f-d6c24d1c2df7.png">
+## Motivation
+We've been remote first since day one, but as our team grew, chat tools like Telegram fell short. Missing out on crucial conversations became a major issue. We needed a better way to keep everyone connected and in sync. That's how Gameplan was born - to solve the problems of modern remote work!
 
-  <img width="1402" alt="Screenshot 2022-09-18 at 11 47 06 PM" src="https://user-images.githubusercontent.com/9355208/190922333-fdad6271-2a77-4c7d-8d74-7c518d3052d6.png">
+## Key Features
+- **Thread-first discussions**: Gameplan lets you start a discussion and have people comment on it at their own pace, encouraging thoughtful conversation and deep thinking. No more feeling obligated to be online all the time.
 
+- **Spaces for organization**: Spaces help you categorize conversations by project, team, client, or topic – whatever makes sense for your team's workflow. This keeps discussions tidy and easy to find.
 
-</details>
+- **Customizable profiles**: Get a better picture of who's on your team with profiles that let everyone showcase their personality: cover images, short bios, and profile pictures.
 
-Gameplan is a work communication tool for teams who mostly work remote and prefer having meaningful discussions in an async format. We built it for ourselves because we were finding it difficult to keep track of so many conversations in our chat tool. Chat forces you to be online all the time and doesn't really have any concept of threaded discussions. Gameplan allows you to categorize your discussions around projects and teams. It also doubles up as your team's knowledge archive. You can surface important information and conclusions from your discussions into the readme's of your projects and teams.
+- **Pages for note-taking**: Use pages as digital notes to jot down meeting minutes, proposals, ideas – whatever sparks creativity! They can be private by default or shared with just your team or specific spaces.
 
-## Features
-- Organize discussions into projects which in turn are part of a team 🗄
-- Surface important information for your project and team in the Readme 📝
-- Simple layout that optimizes readability of discussions 🤓
-- Customize your Team and Project with emojis 💅🏻
-- People directory with each person's profile page 👨‍👩‍👧‍👦
-- Set cover image, profile photo, short bio and a "About me" section 🦹🏼‍♀️
-- Powerful search capabilities to find older discussions 🔍
-- A common discussions feed that shows discussions from across projects and teams 📚
-- Delightful user-experience in overall usage ✨
-
-## Tech Stack
+## Under the hood
 
 ### Backend
-Gameplan is built on [Frappe Framework](https://frappeframework.com) which is a batteries-included python web-framework.
-These are some of the tools it's built on:
-- [Python](https://www.python.org)
-- [Redis](https://redis.io/)
-- [MariaDB](https://mariadb.org/)
-- [Socket.io](https://socket.io/)
+- [Frappe Framework](https://github.com/frappe/frappe): A full-stack web application framework written in Python and Javascript. The framework provides a robust foundation for building web applications, including a database abstraction layer, user authentication, and a REST API.
 
-### Frontend
-The frontend of Gameplan is a VueJS SPA which uses a component library called [Frappe UI](https://github.com/frappe/frappe-ui).
-These are some of the tools used on frontend:
-- [VueJS](https://vuejs.org)
-- [Frappe UI](https://github.com/frappe/frappe-ui)
-- [TailwindCSS](https://tailwindcss.com)
-- [HeadlessUI](https://headlessui.com)
+- [Frappe UI](https://github.com/frappe/frappe-ui): A Vue-based UI library, to provide a modern user interface. The Frappe UI library provides a variety of components that can be used to build single-page applications on top of the Frappe Framework.
 
-## Local Setup
+- [Redisearch](https://github.com/RediSearch/RediSearch): A powerful text search and secondary indexing engine built on top of Redis. It powers Gameplan's fast search capabilities.
+
+## Production setup
+### Managed Hosting
+
+You can try [Frappe Cloud](https://frappecloud.com), a simple, user-friendly and sophisticated [open-source](https://github.com/frappe/press) platform to host Frappe applications.
+
+It takes care of installation, setup, upgrades, monitoring, maintenance and support of your Frappe deployments. It is a fully featured developer platform with an ability to manage and control multiple Frappe deployments.
+
+<div>
+	<a href="https://frappecloud.com/gameplan/signup" target="_blank">
+		<picture>
+			<source media="(prefers-color-scheme: dark)" srcset="https://frappe.io/files/try-on-fc-white.png">
+			<img src="https://frappe.io/files/try-on-fc-black.png" alt="Try on Frappe Cloud" height="28" />
+		</picture>
+	</a>
+</div>
+
+## Development setup
 ### Docker
 You need Docker, docker-compose and git setup on your machine. Refer [Docker documentation](https://docs.docker.com/). After that, run the following commands:
 ```
@@ -76,7 +80,7 @@ Use the following credentials to log in:
 - Username: `alex@example.com`
 - Password: `123`
 
-### Frappe Bench
+### Local
 
 Currently, this app depends on the `develop` branch of [frappe](https://github.com/frappe/frappe).
 
@@ -97,21 +101,17 @@ Currently, this app depends on the `develop` branch of [frappe](https://github.c
     ```
  1. Now, you can access the site on vite dev server at `http://gameplan.test:8080`
 
-## Deployment
-Gameplan is an app built on top of Frappe Framework. So, you can follow any deployment guide for hosting a Frappe Framework based site.
+## Links
 
-### Managed Hosting
-Gameplan can be deployed in a few clicks on [Frappe Cloud](https://frappecloud.com/marketplace/apps/gameplan).
+- [Report Bugs](https://github.com/frappe/gameplan/issues): If you find any bugs, feel free to report them on GitHub Issues tab.
+- [Discuss](https://github.com/frappe/gameplan/discussions): Join if you have a feature request or hangout with other Gameplan users.
 
-### Self hosting
-If you want to self-host, you can follow official [Frappe Bench Installation](https://github.com/frappe/bench#installation) instructions.
-
-## Discussions
-If you have an idea that you think Gameplan should implement or you just want to hangout with other Gameplan users, you can join [Discussions](https://github.com/frappe/gameplan/discussions).
-
-## Reporting Bugs
-If you find any bugs, feel free to report them here on [GitHub Issues](https://github.com/frappe/gameplan/issues). Make sure you share enough information (app screenshots, browser console screenshots, stack traces, etc) for project maintainers to replicate your bug.
-
-## License
-
-AGPLv3
+<h2></h2>
+<div align="center" style="padding-top: 0.75rem;">
+	<a href="https://frappe.io" target="_blank">
+		<picture>
+			<source media="(prefers-color-scheme: dark)" srcset="https://frappe.io/files/Frappe-white.png">
+			<img src="https://frappe.io/files/Frappe-black.png" alt="Frappe Technologies" height="28"/>
+		</picture>
+	</a>
+</div>
