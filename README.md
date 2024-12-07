@@ -3,7 +3,7 @@
 <img src="./frontend/public/gameplan-logo.svg" alt="Gameplan logo" width="100" />
 <h1>Gameplan</h1>
 
-**Open Source Async Workspace for Remote Teams**
+**Open Source Discussions Platform for Remote Teams**
 
 <a href="https://dashboard.cypress.io/projects/y2q697/runs">
     <img alt="cypress" src="https://img.shields.io/endpoint?url=https://dashboard.cypress.io/badge/simple/y2q697/main&style=flat&logo=cypress">
