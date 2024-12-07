@@ -16,6 +16,7 @@
       <div class="flex pt-3 sm:pt-5">
         <TabButtons
           :buttons="[
+            { label: 'All', value: 'all' },
             { label: 'Assigned to me', value: 'assigned' },
             { label: 'Created by me', value: 'owner' },
           ]"
@@ -35,18 +36,16 @@ import { getCachedListResource, usePageMeta, Breadcrumbs, TabButtons } from 'fra
 import { getUser } from '@/data/users'
 
 let newTaskDialog = ref(null)
-let currentTab = ref('assigned')
+let currentTab = ref('all')
 
 let listOptions = computed(() => {
   let me = getUser('sessionUser').name
-  if (currentTab.value === 'assigned') {
-    return {
-      filters: { assigned_to: me },
-    }
-  }
-  return {
-    filters: { owner: me },
-  }
+  let filters = {
+    all: { assigned_or_owner: me },
+    assigned: { assigned_to: me },
+    owner: { owner: me },
+  }[currentTab.value]
+  return { filters }
 })
 
 function showNewTaskDialog() {
