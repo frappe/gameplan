@@ -104,7 +104,7 @@ Currently, this app depends on the `develop` branch of [frappe](https://github.c
 ## Links
 
 - [Report Bugs](https://github.com/frappe/gameplan/issues): If you find any bugs, feel free to report them on GitHub Issues tab.
-- [Discuss](https://github.com/frappe/gameplan/discussions): Join if you have an idea that you think Gameplan should implement or you just want to hangout with other Gameplan users.
+- [Discuss](https://github.com/frappe/gameplan/discussions): Join if you have a feature request or hangout with other Gameplan users.
 
 <h2></h2>
 <div align="center" style="padding-top: 0.75rem;">
