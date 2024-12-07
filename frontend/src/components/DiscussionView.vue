@@ -178,6 +178,7 @@ import { focus } from '@/directives'
 import { copyToClipboard } from '@/utils'
 import { activeTeams } from '@/data/teams'
 import { getTeamProjects } from '@/data/projects'
+import { nextTick } from 'vue'
 
 export default {
   name: 'DiscussionView',
@@ -291,13 +292,12 @@ export default {
     updateUrlSlug() {
       let doc = this.discussion
       if (!this.$route.params.slug || this.$route.params.slug !== doc.slug) {
-        this.$router.replace({
-          name: 'ProjectDiscussion',
-          params: {
-            ...this.$route.params,
-            slug: doc.slug,
-          },
-          query: this.$route.query,
+        nextTick(() => {
+          this.$router.replace({
+            name: 'ProjectDiscussion',
+            params: { ...this.$route.params, slug: doc.slug },
+            query: this.$route.query,
+          })
         })
       }
     },
