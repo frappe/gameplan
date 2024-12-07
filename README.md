@@ -23,7 +23,7 @@
 
 ## Gameplan
 
-Gameplan is your async workspace for meaningful discussions to stay organized, productive.
+Gameplan is an async-first discussions tool for remote teams. It encourages thoughtful communication and deep-thinking.
 
 ## Motivation
 We've been remote first since day one, but as our team grew, chat tools like Telegram fell short. Missing out on crucial conversations became a major issue. We needed a better way to keep everyone connected and in sync. That's how Gameplan was born - to solve the problems of modern remote work!
