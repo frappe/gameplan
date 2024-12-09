@@ -62,62 +62,57 @@
         </button>
       </nav>
       <div class="mt-6 flex items-center justify-between px-3">
-        <h3 class="text-sm font-medium text-ink-gray-5">Teams</h3>
-        <Button label="Create Team" variant="ghost" @click="showAddTeamDialog = true">
-          <template #icon><LucidePlus class="h-4 w-4" /></template>
-        </Button>
+        <h3 class="text-sm font-medium text-ink-gray-5">Spaces</h3>
+        <DropdownMoreOptions
+          :options="[
+            { label: 'New Space', icon: LucidePlus, onClick: () => (showAddTeamDialog = true) },
+            { label: 'Browse all spaces', icon: LucideTelescope, route: { name: 'Spaces' } },
+          ]"
+        />
       </div>
       <nav class="mt-1 space-y-0.5 px-2">
-        <div v-for="team in activeTeams" :key="team.name">
-          <Link :link="team" class="flex items-center rounded px-2 py-1 transition">
-            <button
-              @click.prevent="
-                () => {
-                  team.open = !team.open
-                }
-              "
-              class="mr-1.5 grid h-4 w-4 place-items-center rounded hover:bg-surface-gray-3"
-            >
-              <ChevronTriangle
-                class="h-3 w-3 text-ink-gray-4 transition duration-200"
-                :class="[team.open ? 'rotate-90' : 'rotate-0']"
-              />
-            </button>
+        <div v-for="group in groups" :key="group.name">
+          <button
+            @click.prevent="
+              () => {
+                group.open = !group.open
+              }
+            "
+            class="flex w-full items-center px-2 py-1.5 rounded-[6px] hover:bg-surface-gray-3"
+          >
+            <ChevronTriangle
+              class="h-3 w-3 mr-1.5 text-ink-gray-4 transition duration-200"
+              :class="[group.open ? 'rotate-90' : 'rotate-0']"
+            />
             <div class="flex w-full items-center">
-              <span class="flex h-5 w-5 items-center justify-center text-xl">
-                {{ team.icon }}
-              </span>
-              <span class="ml-2 text-sm">{{ team.title }}</span>
-              <LucideLock v-if="team.is_private" class="ml-2 h-3 w-3" />
-              <div class="ml-auto">
-                <Tooltip v-if="team.unread" :text="`${team.unread} unread posts`">
-                  <span class="text-xs text-ink-gray-5">{{ team.unread }}</span>
-                </Tooltip>
-              </div>
+              <span class="text-xs text-ink-gray-8">{{ group.title }}</span>
             </div>
-          </Link>
-          <div class="mb-2 mt-0.5 space-y-0.5 pl-7" v-show="team.open">
+          </button>
+          <div class="mb-2 mt-0.5 space-y-0.5 pl-5" v-show="group.open">
             <Link
-              :key="project.name"
-              v-for="project in teamProjects(team.name)"
-              :link="project"
-              :ref="($comp) => setProjectRef($comp, project)"
+              v-for="space in group.spaces"
+              :key="space.name"
+              :link="space"
+              ref="($comp) => setProjectRef($comp, project)"
               class="flex h-7 items-center rounded-md px-2 text-ink-gray-8 transition"
               active="bg-surface-selected shadow-sm"
               inactive="hover:bg-surface-gray-2"
             >
-              <template v-slot="{ link: project }">
+              <template v-slot="{ link: space }">
                 <span class="inline-flex items-center space-x-2">
-                  <span class="text-sm">{{ project.title }}</span>
-                  <LucideLock v-if="project.is_private" class="h-3 w-3" />
+                  <span class="flex h-5 w-5 items-center justify-center text-xl">
+                    {{ space.icon }}
+                  </span>
+                  <span class="text-sm">{{ space.title }}</span>
+                  <LucideLock v-if="space.is_private" class="h-3 w-3" />
                 </span>
               </template>
             </Link>
             <div
               class="flex h-7 items-center px-2 text-sm text-ink-gray-5"
-              v-if="teamProjects(team.name).length === 0"
+              v-if="group.spaces.length === 0"
             >
-              No projects
+              No spaces
             </div>
           </div>
         </div>
@@ -126,25 +121,14 @@
         No teams
       </div>
     </div>
-    <AddTeamDialog
-      v-model:show="showAddTeamDialog"
-      @success="
-        (team) => {
-          showAddTeamDialog = false
-          $router.push({
-            name: 'TeamOverview',
-            params: { teamId: team.name },
-          })
-        }
-      "
-    />
+    <NewSpaceDialog v-model="showAddTeamDialog" />
   </div>
 </template>
-<script>
-import { Tooltip } from 'frappe-ui'
+<script setup lang="ts">
+import { ref, computed } from 'vue'
+import { useRoute } from 'vue-router'
 import Links from './Links.vue'
 import Link from './Link.vue'
-import AddTeamDialog from './AddTeamDialog.vue'
 import UserDropdown from './UserDropdown.vue'
 import ChevronTriangle from './icons/ChevronTriangle.vue'
 import { activeTeams, teams } from '@/data/teams'
@@ -156,154 +140,79 @@ import LucideInbox from '~icons/lucide/inbox'
 import LucideListTodo from '~icons/lucide/list-todo'
 import LucideNewspaper from '~icons/lucide/newspaper'
 import LucideFiles from '~icons/lucide/files'
+import LucidePlus from '~icons/lucide/plus'
+import LucideTelescope from '~icons/lucide/telescope'
+import DropdownMoreOptions from './DropdownMoreOptions.vue'
+import NewSpaceDialog from './NewSpaceDialog.vue'
+import { useSessionUser } from '@/data/users'
+import { useSidebarResize } from '@/utils/sidebarResize'
+import { projects as spaces } from '@/data/projects'
 
-export default {
-  name: 'AppSidebar',
-  components: {
-    AddTeamDialog,
-    Links,
-    Link,
-    UserDropdown,
-    Tooltip,
-    ChevronTriangle,
-  },
-  data() {
-    return {
-      sidebarOpen: true,
-      sidebarWidth: 256,
-      sidebarResizing: false,
+const { startResize, sidebarResizing, sidebarWidth } = useSidebarResize()
+const showAddTeamDialog = ref(false)
 
-      showAddTeamDialog: false,
-      teams,
-    }
-  },
-  mounted() {
-    let sidebarWidth = parseInt(localStorage.getItem('sidebarWidth') || 256)
-    this.sidebarWidth = sidebarWidth
-  },
-  computed: {
-    navigation() {
-      return [
-        {
-          name: 'Discussions',
-          icon: LucideNewspaper,
-          route: {
-            name: 'Discussions',
-          },
-        },
-        {
-          name: 'My Tasks',
-          icon: LucideListTodo,
-          route: {
-            name: 'MyTasks',
-          },
-          isActive: /MyTasks|Task/g.test(this.$route.name),
-        },
-        {
-          name: 'My Pages',
-          icon: LucideFiles,
-          route: {
-            name: 'MyPages',
-          },
-          isActive: /MyPages|Page/g.test(this.$route.name),
-        },
-        {
-          name: 'People',
-          icon: LucideUsers2,
-          route: {
-            name: 'People',
-          },
-          isActive: /People|PersonProfile/g.test(this.$route.name),
-          condition: () => this.$user().isNotGuest,
-        },
-        {
-          name: 'Notifications',
-          icon: LucideInbox,
-          route: {
-            name: 'Notifications',
-          },
-          count: unreadNotifications.data || 0,
-        },
-      ].filter((nav) => (nav.condition ? nav.condition() : true))
-    },
-    activeTeams() {
-      return activeTeams.value.map((team) => {
-        team.class = function ($route, link) {
-          if (
-            ['TeamLayout', 'Team', 'TeamOverview'].includes($route.name) &&
-            $route.params.teamId === link.route.params.teamId
-          ) {
-            return 'bg-surface-selected shadow-sm text-ink-gray-8'
-          }
-          return 'text-ink-gray-8 hover:bg-surface-gray-2'
-        }
-        return team
-      })
-    },
-  },
-  methods: {
-    teamProjects(teamName) {
-      return getTeamProjects(teamName)
-        .filter((project) => !project.archived_at)
-        .map((project) => {
-          if (
-            this.$route.name === 'ProjectDiscussion' &&
-            this.$route.params.projectId == project.name
-          ) {
-            project.isActive = true
-            this.scrollProjectIntoView(project)
-          } else {
-            project.isActive = false
-          }
-          return project
-        })
-    },
-    setProjectRef($comp, project) {
-      this.$projectRefs = this.$projectRefs || {}
-      if ($comp) {
-        this.$projectRefs[project.name] = $comp.getRef()
-      }
-    },
-    async scrollProjectIntoView(project) {
-      await this.$nextTick()
-      const $el = this.$projectRefs[project.name]
-      if ($el) {
-        $el.scrollIntoView({
-          block: 'center',
-          inline: 'nearest',
-        })
-      }
-    },
-    startResize() {
-      document.addEventListener('mousemove', this.resize)
-      document.addEventListener('mouseup', () => {
-        document.body.classList.remove('select-none')
-        document.body.classList.remove('cursor-col-resize')
-        localStorage.setItem('sidebarWidth', this.sidebarWidth)
-        this.sidebarResizing = false
-        document.removeEventListener('mousemove', this.resize)
-      })
-    },
-    resize(e) {
-      this.sidebarResizing = true
-      document.body.classList.add('select-none')
-      document.body.classList.add('cursor-col-resize')
-      this.sidebarWidth = e.clientX
+const route = useRoute()
+const sessionUser = useSessionUser()
 
-      // snap to 256
-      let range = [256 - 10, 256 + 10]
-      if (this.sidebarWidth > range[0] && this.sidebarWidth < range[1]) {
-        this.sidebarWidth = 256
-      }
+const joinedSpaces = computed(() => {
+  return spaces.data
+    .filter((space) => space.members.find((member) => member.user === sessionUser.name))
+    .map((space) => space.name)
+})
 
-      if (this.sidebarWidth < 12 * 16) {
-        this.sidebarWidth = 12 * 16
-      }
-      if (this.sidebarWidth > 24 * 16) {
-        this.sidebarWidth = 24 * 16
-      }
+const groups = computed(() => {
+  return activeTeams.value
+    .map((team) => {
+      team.spaces = getTeamProjects(team.name).filter(
+        (project) => !project.archived_at && joinedSpaces.value.includes(project.name),
+      )
+      return team
+    })
+    .filter((team) => team.spaces.length)
+})
+
+const navigation = computed(() => {
+  return [
+    {
+      name: 'Discussions',
+      icon: LucideNewspaper,
+      route: {
+        name: 'Discussions',
+      },
     },
-    showCommandPalette,
-  },
-}
+    {
+      name: 'My Tasks',
+      icon: LucideListTodo,
+      route: {
+        name: 'MyTasks',
+      },
+      isActive: /MyTasks|Task/g.test(route.name),
+    },
+    {
+      name: 'My Pages',
+      icon: LucideFiles,
+      route: {
+        name: 'MyPages',
+      },
+      isActive: /MyPages|Page/g.test(route.name),
+    },
+    {
+      name: 'People',
+      icon: LucideUsers2,
+      route: {
+        name: 'People',
+      },
+      isActive: /People|PersonProfile/g.test(route.name),
+      condition: () => sessionUser.isNotGuest,
+    },
+    {
+      name: 'Notifications',
+      icon: LucideInbox,
+      route: {
+        name: 'Notifications',
+      },
+      count: unreadNotifications.data || 0,
+    },
+  ].filter((nav) => (nav.condition ? nav.condition() : true))
+})
 </script>
