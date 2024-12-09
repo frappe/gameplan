@@ -213,6 +213,23 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 		)
 		frappe.delete_doc("GP Followed Project", follow_id)
 
+	@frappe.whitelist()
+	def join(self):
+		user = frappe.session.user
+		users = [d.user for d in self.members]
+		if user not in users:
+			self.append("members", {"user": user})
+			self.save()
+
+	@frappe.whitelist()
+	def leave(self):
+		user = frappe.session.user
+		for member in self.members:
+			if member.user == user:
+				self.remove(member)
+				self.save()
+				break
+
 
 def get_meta_tags(url):
 	response = requests.get(url, timeout=2, allow_redirects=True)

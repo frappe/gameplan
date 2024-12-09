@@ -13,6 +13,7 @@ export let projects = createListResource({
     'modified',
     'tasks_count',
     'discussions_count',
+    { members: ['user'] },
   ],
   orderBy: 'title asc',
   pageLength: 999,

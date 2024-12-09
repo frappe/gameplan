@@ -72,6 +72,11 @@ const routes = [
     component: () => import('@/pages/Teams.vue'),
   },
   {
+    path: '/spaces',
+    name: 'Spaces',
+    component: () => import('@/pages/SpaceList.vue'),
+  },
+  {
     path: '/people/:personId',
     name: 'PersonProfile',
     component: () => import('@/pages/PersonProfile.vue'),
