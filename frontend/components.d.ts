@@ -74,6 +74,7 @@ declare module 'vue' {
     LucideX: (typeof import('~icons/lucide/x'))['default']
     Members: (typeof import('./src/components/Settings/Members.vue'))['default']
     MobileLayout: (typeof import('./src/components/MobileLayout.vue'))['default']
+NewSpaceDialog: (typeof import('./src/components/NewSpaceDialog.vue'))['default']
     NewTaskDialog: (typeof import('./src/components/NewTaskDialog.vue'))['default']
     PageList: (typeof import('./src/components/PageList.vue'))['default']
     Pie: (typeof import('./src/components/Pie.vue'))['default']
