@@ -77,6 +77,27 @@ const routes = [
     component: () => import('@/pages/SpaceList.vue'),
   },
   {
+    name: 'Space',
+    path: '/space/:spaceId',
+    component: () => import('@/pages/Space.vue'),
+    redirect: { name: 'SpaceDiscussions' },
+    props: true,
+    children: [
+      {
+        name: 'SpaceDiscussions',
+        path: 'discussions',
+        component: () => import('@/pages/SpaceDiscussions.vue'),
+        props: true,
+      },
+      {
+        name: 'SpacePages',
+        path: 'pages',
+        component: () => import('@/pages/SpacePages.vue'),
+        props: true,
+      },
+    ],
+  },
+  {
     path: '/people/:personId',
     name: 'PersonProfile',
     component: () => import('@/pages/PersonProfile.vue'),

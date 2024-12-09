@@ -14,8 +14,8 @@
   >
     <LoadingIndicator class="h-4 w-4" />
   </div>
-  <div class="mx-auto max-w-4xl pt-4 sm:px-5">
-    <div class="mb-5 flex items-center justify-between px-3 sm:px-0">
+  <div class="mx-auto max-w-4xl pt-5 sm:px-5">
+    <div class="mb-4 flex items-center justify-between px-3">
       <TabButtons :buttons="feedOptions" v-model="feedType" />
       <Button
         v-if="feedType === 'following'"
