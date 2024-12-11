@@ -50,6 +50,7 @@
 import { Dialog, ErrorMessage, FormControl, TextInput } from 'frappe-ui'
 import IconPicker from './IconPicker.vue'
 import { useNewDoc } from '@/data/newDoc'
+import { projects } from '@/data/projects'
 
 const show = defineModel<boolean>()
 const newSpace = useNewDoc('GP Project', {
@@ -60,6 +61,8 @@ const newSpace = useNewDoc('GP Project', {
 
 function submit() {
   newSpace.submit().then(() => {
+    // TODO: useNewDoc should automatically reload related resources
+    projects.reload()
     show.value = false
   })
 }
