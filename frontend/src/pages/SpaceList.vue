@@ -36,6 +36,10 @@
               <div class="overflow-hidden text-ellipsis whitespace-nowrap text-ink-gray-9">
                 <span class="overflow-hidden text-ellipsis whitespace-nowrap text-base font-medium">
                   {{ d.title }}
+                  <LucideLock
+                    v-if="d.is_private"
+                    class="h-3 w-3 text-ink-gray-6 inline ml-1 mb-0.5"
+                  />
                 </span>
               </div>
             </div>
@@ -43,7 +47,7 @@
               <div
                 class="overflow-hidden text-ellipsis whitespace-nowrap text-base text-ink-gray-5"
               >
-                <span class="hidden sm:inline">
+                <span>
                   {{ d.members.length }} {{ d.members.length == 1 ? 'member' : 'members' }}
                 </span>
               </div>
@@ -79,47 +83,20 @@
   </div>
 </template>
 <script setup lang="ts">
-import { ref, computed, unref } from 'vue'
+import { ref } from 'vue'
 import { Breadcrumbs, TabButtons } from 'frappe-ui'
-import NewSpaceDialog from '@/components/NewSpaceDialog.vue'
-import { teams as groups } from '@/data/teams'
+import { useGroupedSpaces } from '@/data/groupedSpaces'
 import { projects as spaces } from '@/data/projects'
-// import { useSpaces } from '@/data/spaces'
-import { GPProject } from '@/types/GPProject'
 import { useSessionUser } from '@/data/users'
+import NewSpaceDialog from '@/components/NewSpaceDialog.vue'
+import { GPProject } from '@/types/GPProject'
+import LucideLock from '~icons/lucide/lock'
 
 const sessionUser = useSessionUser()
 const currentTab = ref('Active')
 
-const groupedSpaces = computed(() => {
-  let _groups = []
-  let spacesData = unref(spaces.data) || []
-
-  let ungroupedSpaces = spacesData.filter((space) => {
-    return !space.team && (currentTab.value === 'Active' ? !space.archived_at : space.archived_at)
-  })
-  if (ungroupedSpaces.length) {
-    _groups.push({
-      name: 'Uncategorized',
-      spaces: ungroupedSpaces,
-    })
-  }
-
-  for (let group of groups.data || []) {
-    let _spaces = spacesData.filter((space) => {
-      return (
-        space.team === group.name &&
-        (currentTab.value === 'Active' ? !space.archived_at : space.archived_at)
-      )
-    })
-    if (_spaces.length) {
-      _groups.push({
-        ...group,
-        spaces: _spaces,
-      })
-    }
-  }
-  return _groups
+const groupedSpaces = useGroupedSpaces({
+  filterFn: (space) => (currentTab.value == 'Active' ? !space.archived_at : space.archived_at),
 })
 
 const newSpaceDialog = ref(false)
