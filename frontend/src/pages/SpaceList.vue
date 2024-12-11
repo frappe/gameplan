@@ -1,13 +1,11 @@
 <template>
-  <header
-    class="sticky top-0 z-10 flex items-center justify-between border-b bg-surface-white px-3 py-2.5 sm:px-5"
-  >
+  <PageHeader>
     <Breadcrumbs class="h-7" :items="[{ label: 'Spaces', route: { name: 'Spaces' } }]" />
     <Button variant="solid" @click="newSpaceDialog = true">
       <template #prefix><LucidePlus class="h-4 w-4" /></template>
       Add new
     </Button>
-  </header>
+  </PageHeader>
   <NewSpaceDialog v-model="newSpaceDialog" />
   <div class="mx-auto max-w-3xl sm:px-5 pb-80">
     <div class="mt-5 flex px-2.5">
@@ -54,7 +52,7 @@
             </div>
           </div>
           <div class="ml-auto">
-            <div v-if="!d.archived_at" @click.prevent>
+            <div class="flex items-center space-x-1" v-if="!d.archived_at" @click.prevent>
               <Button
                 class="w-16"
                 v-if="hasJoined(d)"
@@ -71,6 +69,10 @@
               >
                 Join
               </Button>
+              <SpaceOptions placement="right" :spaceId="d.name" />
+            </div>
+            <div v-else @click.prevent>
+              <Button @click="unarchiveSpace(d)">Unarchive</Button>
             </div>
           </div>
         </div>
@@ -89,6 +91,8 @@ import { useGroupedSpaces } from '@/data/groupedSpaces'
 import { projects as spaces } from '@/data/projects'
 import { useSessionUser } from '@/data/users'
 import NewSpaceDialog from '@/components/NewSpaceDialog.vue'
+import SpaceOptions from '@/components/SpaceOptions.vue'
+import PageHeader from '@/components/PageHeader.vue'
 import { GPProject } from '@/types/GPProject'
 import LucideLock from '~icons/lucide/lock'
 
@@ -111,6 +115,13 @@ function joinSpace(space) {
 function leaveSpace(space) {
   spaces.runDocMethod.submit({
     method: 'leave',
+    name: space.name,
+  })
+}
+
+function unarchiveSpace(space) {
+  spaces.runDocMethod.submit({
+    method: 'unarchive',
     name: space.name,
   })
 }

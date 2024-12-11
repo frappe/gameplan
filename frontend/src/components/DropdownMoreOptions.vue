@@ -3,7 +3,7 @@
     <template #default="{ open }">
       <Button :variant="open ? 'subtle' : 'ghost'">
         <template #icon>
-          <LucideMoreHorizontal class="h-4 w-4" />
+          <LucideMoreHorizontal class="h-4 w-4 text-ink-gray-6" />
         </template>
       </Button>
     </template>
