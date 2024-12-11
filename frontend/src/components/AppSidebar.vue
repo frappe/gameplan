@@ -21,24 +21,6 @@
     </div>
     <div class="flex-1">
       <nav class="space-y-0.5 px-2">
-        <Links
-          :links="navigation"
-          class="flex items-center rounded px-2 py-1 text-ink-gray-8 transition"
-          active="bg-surface-selected shadow-sm"
-          inactive="hover:bg-surface-gray-2"
-        >
-          <template v-slot="{ link }">
-            <div class="flex w-full items-center space-x-2">
-              <span class="grid h-5 w-6 place-items-center">
-                <component :is="link.icon" class="h-4 w-4 text-ink-gray-7" />
-              </span>
-              <span class="text-sm">{{ link.name }}</span>
-              <span v-if="link.count" class="!ml-auto block text-xs text-ink-gray-5">
-                {{ link.count }}
-              </span>
-            </div>
-          </template>
-        </Links>
         <button
           v-if="$user().isNotGuest"
           class="flex w-full items-center rounded px-2 py-1 text-ink-gray-8"
@@ -60,54 +42,76 @@
             </span>
           </div>
         </button>
+        <RouterLink
+          v-for="link in navigation"
+          :key="link.name"
+          :to="link.route"
+          class="flex items-center rounded px-2 py-1 text-ink-gray-8 transition"
+          activeClass="bg-surface-selected shadow-sm"
+          inactiveClass="hover:bg-surface-gray-2"
+        >
+          <div class="flex w-full items-center space-x-2">
+            <span class="grid h-5 w-6 place-items-center">
+              <component :is="link.icon" class="h-4 w-4 text-ink-gray-7" />
+            </span>
+            <span class="text-sm">{{ link.name }}</span>
+            <span v-if="link.count" class="!ml-auto block text-xs text-ink-gray-5">
+              {{ link.count }}
+            </span>
+          </div>
+        </RouterLink>
       </nav>
-      <div class="mt-6 flex items-center justify-between px-3">
-        <h3 class="text-sm font-medium text-ink-gray-5">Spaces</h3>
-        <DropdownMoreOptions
-          :options="[
-            { label: 'New Space', icon: LucidePlus, onClick: () => (showAddTeamDialog = true) },
-            { label: 'Browse all spaces', icon: LucideTelescope, route: { name: 'Spaces' } },
-          ]"
-        />
+      <div class="mt-6 flex items-center justify-between px-2">
+        <RouterLink
+          class="flex w-full items-center justify-between group px-2 py-1.5 rounded hover:bg-surface-gray-2"
+          :to="{ name: 'Spaces' }"
+        >
+          <h3 class="text-sm text-ink-gray-5">Spaces</h3>
+          <span class="text-sm text-ink-gray-5 invisible group-hover:visible">Show all</span>
+        </RouterLink>
+        <div class="space-x-1 flex items-center">
+          <Button variant="ghost" @click="showAddTeamDialog = true">
+            <template #icon>
+              <LucidePlus class="h-4 w-4 text-ink-gray-7" />
+            </template>
+          </Button>
+        </div>
       </div>
-      <nav class="mt-1 space-y-0.5 px-2">
-        <div v-for="group in groups" :key="group.name">
+      <nav class="mt-1 space-y-1 px-2">
+        <div v-for="group in groupedSpaces" :key="group.name">
           <button
             @click.prevent="
               () => {
-                group.open = !group.open
+                isGroupOpen[group.name] = !isGroupOpen[group.name]
               }
             "
-            class="flex w-full items-center px-2 py-1.5 rounded-[6px] hover:bg-surface-gray-3"
+            class="flex w-full items-center px-2 py-1.5 rounded hover:bg-surface-gray-2"
           >
             <ChevronTriangle
-              class="h-3 w-3 mr-1.5 text-ink-gray-4 transition duration-200"
-              :class="[group.open ? 'rotate-90' : 'rotate-0']"
+              class="h-3 w-3 ml-1.5 mr-1.5 text-ink-gray-4 transition duration-200"
+              :class="[isGroupOpen[group.name] ? 'rotate-90' : 'rotate-0']"
             />
             <div class="flex w-full items-center">
-              <span class="text-xs text-ink-gray-8">{{ group.title }}</span>
+              <span class="text-sm text-ink-gray-8">{{ group.title }}</span>
             </div>
           </button>
-          <div class="mb-2 mt-0.5 space-y-0.5 pl-5" v-show="group.open">
-            <Link
+          <div class="mb-2 mt-0.5 space-y-0.5" v-show="isGroupOpen[group.name]">
+            <RouterLink
               v-for="space in group.spaces"
               :key="space.name"
-              :link="space"
-              ref="($comp) => setProjectRef($comp, project)"
-              class="flex h-7 items-center rounded-md px-2 text-ink-gray-8 transition"
-              active="bg-surface-selected shadow-sm"
-              inactive="hover:bg-surface-gray-2"
+              :to="{ name: 'Space', params: { spaceId: space.name } }"
+              class="flex h-7 items-center rounded px-2 text-ink-gray-8 transition"
+              activeClass="bg-surface-selected shadow-sm"
+              inactiveClass="hover:bg-surface-gray-2"
             >
-              <template v-slot="{ link: space }">
-                <span class="inline-flex items-center space-x-2">
-                  <span class="flex h-5 w-5 items-center justify-center text-xl">
-                    {{ space.icon }}
-                  </span>
-                  <span class="text-sm">{{ space.title }}</span>
-                  <LucideLock v-if="space.is_private" class="h-3 w-3" />
+              <span class="inline-flex items-center space-x-2">
+                <span class="flex h-5 w-6 items-center justify-center text-xl">
+                  {{ space.icon }}
                 </span>
-              </template>
-            </Link>
+                <span class="text-sm">{{ space.title }}</span>
+                <LucideLock v-if="space.is_private" class="h-3 w-3" />
+              </span>
+            </RouterLink>
             <div
               class="flex h-7 items-center px-2 text-sm text-ink-gray-5"
               v-if="group.spaces.length === 0"
@@ -125,28 +129,27 @@
   </div>
 </template>
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import Links from './Links.vue'
-import Link from './Link.vue'
-import UserDropdown from './UserDropdown.vue'
-import ChevronTriangle from './icons/ChevronTriangle.vue'
-import { activeTeams, teams } from '@/data/teams'
-import { getTeamProjects } from '@/data/projects'
+import { useGroupedSpaces } from '@/data/groupedSpaces'
 import { unreadNotifications } from '@/data/notifications'
+import { projects as spaces } from '@/data/projects'
+import { activeTeams, teams } from '@/data/teams'
+import { useSessionUser } from '@/data/users'
 import { showCommandPalette } from '@/components/CommandPalette/CommandPalette.vue'
-import LucideUsers2 from '~icons/lucide/users-2'
+import { useSidebarResize } from '@/utils/sidebarResize'
+import NewSpaceDialog from './NewSpaceDialog.vue'
+import RouterLink from './RouterLink.vue'
+import UserDropdown from './UserDropdown.vue'
+
+import ChevronTriangle from './icons/ChevronTriangle.vue'
+import LucideFiles from '~icons/lucide/files'
 import LucideInbox from '~icons/lucide/inbox'
 import LucideListTodo from '~icons/lucide/list-todo'
 import LucideNewspaper from '~icons/lucide/newspaper'
-import LucideFiles from '~icons/lucide/files'
 import LucidePlus from '~icons/lucide/plus'
 import LucideTelescope from '~icons/lucide/telescope'
-import DropdownMoreOptions from './DropdownMoreOptions.vue'
-import NewSpaceDialog from './NewSpaceDialog.vue'
-import { useSessionUser } from '@/data/users'
-import { useSidebarResize } from '@/utils/sidebarResize'
-import { projects as spaces } from '@/data/projects'
+import LucideUsers2 from '~icons/lucide/users-2'
 
 const { startResize, sidebarResizing, sidebarWidth } = useSidebarResize()
 const showAddTeamDialog = ref(false)
@@ -160,28 +163,37 @@ const joinedSpaces = computed(() => {
     .map((space) => space.name)
 })
 
-const groups = computed(() => {
-  return activeTeams.value
-    .map((team) => {
-      team.spaces = getTeamProjects(team.name).filter(
-        (project) => !project.archived_at && joinedSpaces.value.includes(project.name),
-      )
-      return team
-    })
-    .filter((team) => team.spaces.length)
+let groupedSpaces = useGroupedSpaces({
+  filterFn: (space) => !space.archived_at && joinedSpaces.value.includes(space.name),
+})
+
+const isGroupOpen = reactive({
+  ...groupedSpaces.value.reduce((acc, group) => {
+    acc[group.name] = true
+    return acc
+  }, {}),
 })
 
 const navigation = computed(() => {
   return [
     {
-      name: 'Discussions',
+      name: 'Home',
       icon: LucideNewspaper,
       route: {
         name: 'Discussions',
       },
+      open: true,
     },
     {
-      name: 'My Tasks',
+      name: 'Inbox',
+      icon: LucideInbox,
+      route: {
+        name: 'Notifications',
+      },
+      count: unreadNotifications.data || 0,
+    },
+    {
+      name: 'Tasks',
       icon: LucideListTodo,
       route: {
         name: 'MyTasks',
@@ -189,7 +201,7 @@ const navigation = computed(() => {
       isActive: /MyTasks|Task/g.test(route.name),
     },
     {
-      name: 'My Pages',
+      name: 'Pages',
       icon: LucideFiles,
       route: {
         name: 'MyPages',
@@ -204,14 +216,6 @@ const navigation = computed(() => {
       },
       isActive: /People|PersonProfile/g.test(route.name),
       condition: () => sessionUser.isNotGuest,
-    },
-    {
-      name: 'Notifications',
-      icon: LucideInbox,
-      route: {
-        name: 'Notifications',
-      },
-      count: unreadNotifications.data || 0,
     },
   ].filter((nav) => (nav.condition ? nav.condition() : true))
 })
