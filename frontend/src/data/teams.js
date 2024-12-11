@@ -20,7 +20,7 @@ export let teams = createListResource({
           name: 'Team',
           params: { teamId: team.name },
         },
-        open: false,
+        open: true,
         projects: [],
       }
     })

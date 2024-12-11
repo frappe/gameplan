@@ -123,16 +123,16 @@
       </div>
     </div>
   </div>
-  <div
-    class="flex flex-col items-center rounded-lg border-2 border-dashed py-8 text-base text-ink-gray-5"
-    v-else
-  >
+  <EmptyStateBox v-else>
+    <LucideCoffee class="h-7 w-7 text-ink-gray-4" />
     No tasks
-  </div>
+  </EmptyStateBox>
 </template>
 <script>
 import { h } from 'vue'
-import { LoadingIndicator, Dropdown, Tooltip } from 'frappe-ui'
+import { Dropdown, LoadingIndicator, Tooltip } from 'frappe-ui'
+import EmptyStateBox from './EmptyStateBox.vue'
+
 import TaskStatusIcon from './icons/TaskStatusIcon.vue'
 
 export default {

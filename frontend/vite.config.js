@@ -10,6 +10,9 @@ import IconsResolver from 'unplugin-icons/resolver'
 import LucideIcons from './lucideIcons'
 
 export default defineConfig({
+  define: {
+    __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: 'false',
+  },
   plugins: [
     frappeui(),
     vue(),

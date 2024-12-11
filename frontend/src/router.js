@@ -72,6 +72,49 @@ const routes = [
     component: () => import('@/pages/Teams.vue'),
   },
   {
+    path: '/spaces',
+    name: 'Spaces',
+    component: () => import('@/pages/SpaceList.vue'),
+  },
+  {
+    name: 'Space',
+    path: '/space/:spaceId',
+    component: () => import('@/pages/Space.vue'),
+    redirect: { name: 'SpaceDiscussions' },
+    props: true,
+    children: [
+      {
+        name: 'SpaceDiscussions',
+        path: 'discussions',
+        component: () => import('@/pages/SpaceDiscussions.vue'),
+        props: true,
+      },
+      {
+        name: 'SpacePages',
+        path: 'pages',
+        component: () => import('@/pages/SpacePages.vue'),
+        props: true,
+      },
+      {
+        name: 'SpaceTasks',
+        path: 'tasks',
+        component: () => import('@/pages/SpaceTasks.vue'),
+        props: true,
+      },
+    ],
+  },
+  {
+    name: 'Discussion',
+    path: '/space/:spaceId/discussion/:postId/:slug?',
+    component: () => import('@/pages/SpaceDiscussion.vue'),
+    props: true,
+  },
+  {
+    name: 'NewDiscussion',
+    path: '/new-discussion',
+    component: () => import('@/pages/NewDiscussion.vue'),
+  },
+  {
     path: '/people/:personId',
     name: 'PersonProfile',
     component: () => import('@/pages/PersonProfile.vue'),
