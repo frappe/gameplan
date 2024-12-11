@@ -48,7 +48,7 @@
         "
       ></textarea>
       <TextEditor
-        :ref="textEditorRef"
+        ref="textEditorRef"
         class="mt-1"
         editor-class="rounded-b-lg max-w-[unset] prose-sm h-[calc(100vh-340px)] sm:h-[calc(100vh-250px)] overflow-auto"
         :content="newDiscussion.doc.content"
@@ -71,8 +71,8 @@
   </div>
 </template>
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, onMounted, ref, useTemplateRef } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { Autocomplete, Breadcrumbs, TextEditorFixedMenu } from 'frappe-ui'
 import { useGroupedSpaces } from '@/data/groupedSpaces'
 import { useNewDoc } from '@/data/newDoc'
@@ -81,13 +81,15 @@ import PageHeader from '@/components/PageHeader.vue'
 import TextEditor from '@/components/TextEditor.vue'
 import UserProfileLink from '@/components/UserProfileLink.vue'
 import { focus as vFocus } from '@/directives'
-import router from '@/router'
 import { createDialog } from '@/utils/dialogs'
 
 const currentRoute = useRoute()
 const sessionUser = useSessionUser()
+const router = useRouter()
+
 const groupedSpaces = useGroupedSpaces({ filterFn: (space) => !space.archived_at })
 const selectedSpace = ref(null)
+const textEditorRef = useTemplateRef('textEditorRef')
 
 const spaceOptions = computed(() => {
   return groupedSpaces.value.map((group) => {
@@ -119,10 +121,9 @@ const newDiscussion = useNewDoc(
     },
     onSuccess(doc) {
       router.replace({
-        name: 'ProjectDiscussion',
+        name: 'Discussion',
         params: {
-          teamId: doc.team,
-          projectId: doc.project,
+          spaceId: doc.project,
           postId: doc.name,
         },
       })
@@ -154,30 +155,26 @@ function publish() {
 }
 
 function discard() {
-  if (!textEditorRef.editor.isEmpty || this.title) {
+  if (!textEditorRef.value.editor.isEmpty || newDiscussion.doc.title) {
     createDialog({
       title: 'Discard post',
       message: 'Are you sure you want to discard your post?',
       actions: [
         {
           label: 'Discard post',
-          onClick: (close) => {
-            router.push({ name: 'ProjectDiscussions' })
+          onClick: ({ close }) => {
+            router.back()
             close()
           },
           variant: 'solid',
         },
-        {
-          label: 'Keep post',
-        },
       ],
     })
   } else {
-    router.push({ name: 'ProjectDiscussions' })
+    router.back()
   }
 }
 
-const textEditorRef = ref(null)
 const textEditorMenuButtons = [
   'Paragraph',
   ['Heading 2', 'Heading 3', 'Heading 4', 'Heading 5', 'Heading 6'],

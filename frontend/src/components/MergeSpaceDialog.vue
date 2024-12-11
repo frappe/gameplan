@@ -55,7 +55,6 @@ import { useRouter } from 'vue-router'
 import { Autocomplete } from 'frappe-ui'
 import { useGroupedSpaces } from '@/data/groupedSpaces'
 import { projects, getProject } from '@/data/projects'
-import { useSpace } from '@/data/spaces'
 
 const props = defineProps<{
   spaceId: string | number

@@ -104,6 +104,12 @@ const routes = [
     ],
   },
   {
+    name: 'Discussion',
+    path: '/space/:spaceId/discussion/:postId/:slug?',
+    component: () => import('@/pages/SpaceDiscussion.vue'),
+    props: true,
+  },
+  {
     name: 'NewDiscussion',
     path: '/new-discussion',
     component: () => import('@/pages/NewDiscussion.vue'),
