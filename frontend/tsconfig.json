@@ -14,8 +14,9 @@
     "noEmit": true,
     "paths": {
       "@/*": ["./src/*"]
-    }
+    },
+    "types": ["unplugin-icons/types/vue"]
   },
-  "include": ["src/**/*"],
+  "include": ["./src/**/*", "./intellisense.d.ts"],
   "exclude": ["node_modules", "**/*.spec.ts"]
 }
