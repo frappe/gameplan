@@ -1,10 +1,9 @@
 <template>
   <router-link
     :to="{
-      name: 'ProjectDiscussion',
+      name: 'Discussion',
       params: {
-        teamId: discussion.team,
-        projectId: discussion.project,
+        spaceId: discussion.project,
         postId: discussion.name,
         slug: discussion.slug,
       },

@@ -48,7 +48,12 @@
             </h1>
           </div>
           <div class="mt-2 flex items-center text-base" v-show="!editingPost">
-            <DiscussionBreadcrumbs :discussion="discussion" />
+            <router-link
+              class="text-ink-gray-8 hover:text-ink-gray-6"
+              :to="{ name: 'Space', params: { spaceId: discussion.project } }"
+            >
+              {{ space?.title }}
+            </router-link>
             <span class="px-1.5 text-ink-gray-8">&middot;</span>
             <span class="text-ink-gray-5">
               {{
@@ -165,7 +170,7 @@
   </div>
 </template>
 <script>
-import { Autocomplete, Dropdown, Dialog, Tooltip, call } from 'frappe-ui'
+import { Autocomplete, Dropdown, Dialog, Tooltip } from 'frappe-ui'
 import Reactions from './Reactions.vue'
 import CommentsArea from '@/components/CommentsArea.vue'
 import CommentEditor from './CommentEditor.vue'
@@ -177,7 +182,7 @@ import RevisionsDialog from './RevisionsDialog.vue'
 import { focus } from '@/directives'
 import { copyToClipboard } from '@/utils'
 import { activeTeams } from '@/data/teams'
-import { getTeamProjects } from '@/data/projects'
+import { getTeamProjects, getProject } from '@/data/projects'
 import { nextTick } from 'vue'
 
 export default {
@@ -246,10 +251,7 @@ export default {
             })
           }
 
-          if (
-            this.$route.name === 'ProjectDiscussion' &&
-            Number(this.$route.params.postId) === doc.name
-          ) {
+          if (this.$route.name === 'Discussion' && Number(this.$route.params.postId) === doc.name) {
             this.$resources.discussion.trackVisit.submit()
           }
         },
@@ -279,10 +281,9 @@ export default {
         this.discussionMoveDialog.project = null
 
         this.$router.replace({
-          name: 'ProjectDiscussion',
+          name: 'Discussion',
           params: {
-            teamId: this.discussion.team,
-            projectId: this.discussion.project,
+            spaceId: this.discussion.project,
             postId: this.discussion.name,
           },
         })
@@ -294,7 +295,7 @@ export default {
       if (!this.$route.params.slug || this.$route.params.slug !== doc.slug) {
         nextTick(() => {
           this.$router.replace({
-            name: 'ProjectDiscussion',
+            name: 'Discussion',
             params: { ...this.$route.params, slug: doc.slug },
             query: this.$route.query,
           })
@@ -305,6 +306,9 @@ export default {
   computed: {
     discussion() {
       return this.$resources.discussion.doc
+    },
+    space() {
+      return getProject(this.discussion.project)
     },
     projectOptions() {
       return activeTeams.value.map((team) => ({
@@ -452,7 +456,7 @@ export default {
                   theme: 'red',
                   onClick: ({ close }) => {
                     return this.$resources.discussion.delete.submit().then(() => {
-                      this.$router.replace({ name: 'Project' })
+                      this.$router.replace({ name: 'Space' })
                       close()
                     })
                   },

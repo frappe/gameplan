@@ -100,11 +100,10 @@ export default {
               group.component = 'Item'
               group.items = group.items.map((item) => {
                 item.route = {
-                  name: 'ProjectDiscussion',
+                  name: 'Discussion',
                   params: {
                     postId: item.name,
-                    projectId: item.payload.project,
-                    teamId: item.payload.team,
+                    spaceId: item.payload.project,
                   },
                 }
                 return item

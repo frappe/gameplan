@@ -24,7 +24,7 @@
       :showSpaceName="!filters || !filters.project"
     />
     <div class="px-2 sm:px-0">
-      <EmptyStateBox v-if="!discussions.list.loading && discussions.data.length === 0">
+      <EmptyStateBox class="mx-3" v-if="!discussions.list.loading && discussions.data.length === 0">
         <LucideCoffee class="h-7 w-7 text-ink-gray-4" />
         No discussions
       </EmptyStateBox>
