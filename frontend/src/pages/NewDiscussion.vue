@@ -1,0 +1,221 @@
+<template>
+  <PageHeader>
+    <Breadcrumbs
+      class="h-7"
+      :items="[{ label: 'New Discussion', route: { name: 'NewDiscussion' } }]"
+    />
+  </PageHeader>
+  <div class="mx-auto max-w-4xl pt-4 sm:px-5">
+    <div class="rounded-lg border p-4">
+      <div class="mb-3 flex items-center space-x-2">
+        <UserProfileLink :user="sessionUser.name">
+          <UserAvatar size="lg" :user="sessionUser.name" />
+        </UserProfileLink>
+        <div class="flex w-full items-center">
+          <span class="mr-2 text-base text-gray-900">
+            <UserProfileLink class="font-medium hover:text-blue-600" :user="sessionUser.name">
+              {{ sessionUser.full_name }}
+            </UserProfileLink>
+            in
+          </span>
+          <Autocomplete
+            v-model="selectedSpace"
+            :options="spaceOptions"
+            placeholder="Select Space"
+          />
+        </div>
+        <div class="hidden shrink-0 space-x-2 sm:block">
+          <Button @click="discard">Discard</Button>
+          <Button variant="solid" :loading="newDiscussion.loading" @click="publish">
+            Publish
+          </Button>
+        </div>
+      </div>
+      <ErrorMessage :message="newDiscussion.error" />
+      <textarea
+        class="mt-1 w-full resize-none border-0 px-0 py-0.5 text-3xl font-bold placeholder-gray-400 focus:ring-0"
+        v-model="newDiscussion.doc.title"
+        placeholder="Title"
+        rows="1"
+        wrap="soft"
+        maxlength="140"
+        v-focus
+        @keydown.enter.prevent="textEditorRef.editor.commands.focus()"
+        @input="
+          (e) => {
+            e.target.style.height = e.target.scrollHeight + 'px'
+          }
+        "
+      ></textarea>
+      <TextEditor
+        :ref="textEditorRef"
+        class="mt-1"
+        editor-class="rounded-b-lg max-w-[unset] prose-sm h-[calc(100vh-340px)] sm:h-[calc(100vh-250px)] overflow-auto"
+        :content="newDiscussion.doc.content"
+        @change="onNewPostChange"
+        placeholder="Write something..."
+      >
+        <template v-slot:bottom>
+          <div class="mt-2 flex flex-col justify-between sm:flex-row sm:items-center">
+            <TextEditorFixedMenu class="overflow-x-auto" :buttons="textEditorMenuButtons" />
+            <div class="mt-2 shrink-0 space-x-2 text-right sm:hidden">
+              <Button @click="discard">Discard</Button>
+              <Button variant="solid" :loading="newDiscussion.loading" @click="publish">
+                Publish
+              </Button>
+            </div>
+          </div>
+        </template>
+      </TextEditor>
+    </div>
+  </div>
+</template>
+<script setup lang="ts">
+import { computed, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
+import { Autocomplete, Breadcrumbs, TextEditorFixedMenu } from 'frappe-ui'
+import { useGroupedSpaces } from '@/data/groupedSpaces'
+import { useNewDoc } from '@/data/newDoc'
+import { useSessionUser } from '@/data/users'
+import PageHeader from '@/components/PageHeader.vue'
+import TextEditor from '@/components/TextEditor.vue'
+import UserProfileLink from '@/components/UserProfileLink.vue'
+import { focus as vFocus } from '@/directives'
+import router from '@/router'
+import { createDialog } from '@/utils/dialogs'
+
+const currentRoute = useRoute()
+const sessionUser = useSessionUser()
+const groupedSpaces = useGroupedSpaces({ filterFn: (space) => !space.archived_at })
+const selectedSpace = ref(null)
+
+const spaceOptions = computed(() => {
+  return groupedSpaces.value.map((group) => {
+    return {
+      group: group.title,
+      items: group.spaces.map((space) => ({
+        label: space.title,
+        value: space.name,
+      })),
+    }
+  })
+})
+
+const newDiscussion = useNewDoc(
+  'GP Discussion',
+  {
+    project: computed(() => selectedSpace.value?.value),
+    title: '',
+    content: '',
+  },
+  {
+    validate(params) {
+      if (!params.doc.title) {
+        return `Please enter title before publishing.`
+      }
+      if (!params.doc.project) {
+        return `Please select a space before publishing.`
+      }
+    },
+    onSuccess(doc) {
+      router.replace({
+        name: 'ProjectDiscussion',
+        params: {
+          teamId: doc.team,
+          projectId: doc.project,
+          postId: doc.name,
+        },
+      })
+      selectedSpace.value = null
+      newDiscussion.doc.title = ''
+      newDiscussion.doc.content = ''
+    },
+  },
+)
+
+onMounted(() => {
+  if (currentRoute.query?.spaceId) {
+    let spaceOption = spaceOptions.value
+      .map((group) => group.items)
+      .flat()
+      .find((space) => space.value.toString() === currentRoute.query.spaceId)
+    if (spaceOption) {
+      selectedSpace.value = spaceOption
+    }
+  }
+})
+
+function onNewPostChange(value) {
+  newDiscussion.doc.content = value
+}
+
+function publish() {
+  newDiscussion.submit()
+}
+
+function discard() {
+  if (!textEditorRef.editor.isEmpty || this.title) {
+    createDialog({
+      title: 'Discard post',
+      message: 'Are you sure you want to discard your post?',
+      actions: [
+        {
+          label: 'Discard post',
+          onClick: (close) => {
+            router.push({ name: 'ProjectDiscussions' })
+            close()
+          },
+          variant: 'solid',
+        },
+        {
+          label: 'Keep post',
+        },
+      ],
+    })
+  } else {
+    router.push({ name: 'ProjectDiscussions' })
+  }
+}
+
+const textEditorRef = ref(null)
+const textEditorMenuButtons = [
+  'Paragraph',
+  ['Heading 2', 'Heading 3', 'Heading 4', 'Heading 5', 'Heading 6'],
+  'Separator',
+  'Bold',
+  'Italic',
+  'Separator',
+  'Bullet List',
+  'Numbered List',
+  'Separator',
+  'Align Left',
+  'Align Center',
+  'Align Right',
+  'FontColor',
+  'Separator',
+  'Image',
+  'Video',
+  'Link',
+  'Blockquote',
+  'Code',
+  'Horizontal Rule',
+  [
+    'InsertTable',
+    'AddColumnBefore',
+    'AddColumnAfter',
+    'DeleteColumn',
+    'AddRowBefore',
+    'AddRowAfter',
+    'DeleteRow',
+    'MergeCells',
+    'SplitCell',
+    'ToggleHeaderColumn',
+    'ToggleHeaderRow',
+    'ToggleHeaderCell',
+    'DeleteTable',
+  ],
+  'Separator',
+  'Undo',
+  'Redo',
+]
+</script>
