@@ -1,6 +1,9 @@
 <template>
-  <div class="grid grid-cols-1 gap-5 md:grid-cols-3 lg:grid-cols-4">
-    <div class="text-base text-ink-gray-5" v-if="!$resources.pages.data?.length">No pages</div>
+  <div class="grid grid-cols-2 gap-5 md:grid-cols-3 lg:grid-cols-4">
+    <EmptyStateBox class="col-span-4" v-if="!$resources.pages.data?.length">
+      <LucideCoffee class="h-7 w-7 text-ink-gray-4" />
+      No pages
+    </EmptyStateBox>
     <div class="relative" v-for="d in $resources.pages.data" :key="d.name">
       <div class="absolute right-0 top-0 p-3">
         <Dropdown
@@ -69,8 +72,9 @@
   </div>
 </template>
 <script>
-import { projectTitle } from '@/utils/formatters'
 import { Dropdown } from 'frappe-ui'
+import EmptyStateBox from '@/components/EmptyStateBox.vue'
+import { projectTitle } from '@/utils/formatters'
 
 export default {
   name: 'PageGrid',
