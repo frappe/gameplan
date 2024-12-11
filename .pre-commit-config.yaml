@@ -34,6 +34,8 @@ repos:
     hooks:
       - id: prettier
         types_or: [javascript, vue, scss]
+        exclude_types: [yaml]
+
 
 ci:
     autoupdate_schedule: weekly
