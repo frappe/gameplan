@@ -8,17 +8,16 @@
 <a href="https://dashboard.cypress.io/projects/y2q697/runs">
     <img alt="cypress" src="https://img.shields.io/endpoint?url=https://dashboard.cypress.io/badge/simple/y2q697/main&style=flat&logo=cypress">
 </a>
-<a href="https://github.com/frappe/gameplan/blob/main/LICENSE">
-    <img alt="license" src="https://img.shields.io/badge/license-AGPLv3-blue">
-</a>
 
-</div>
+
 
 <div>
     <picture>
         <source media="(prefers-color-scheme: dark)" srcset=".github/assets/gameplan-hero-dark.png">
         <img width="1402" alt="Gameplan Homescreen Screenshot" src=".github/assets/gameplan-hero-light.png">
     </picture>
+</div>
+
 </div>
 
 ## Gameplan
@@ -98,6 +97,9 @@ Currently, this app depends on the `develop` branch of [frappe](https://github.c
     ```
  1. Now, you can access the site on vite dev server at `http://gameplan.test:8080`
 
+## Links
+
+- [Discuss Gameplan](https://github.com/frappe/gameplan/discussions)
 
 <br>
 <br>
