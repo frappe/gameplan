@@ -1,6 +1,6 @@
 <div align="center" markdown="1">
 
-<img src="./frontend/public/gameplan-logo.svg" alt="Gameplan logo" width="100" />
+<img src="./frontend/public/gameplan-logo.svg" alt="Gameplan logo" width="80" />
 <h1>Gameplan</h1>
 
 **Open Source Discussions Platform for Remote Teams**
