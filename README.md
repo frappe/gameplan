@@ -25,10 +25,10 @@
 
 Gameplan is an async-first discussions tool for remote teams. It encourages thoughtful communication and deep-thinking.
 
-## Motivation
+### Motivation
 We've been remote first since day one, but as our team grew, chat tools like Telegram fell short. Missing out on crucial conversations became a major issue. We needed a better way to keep everyone connected and in sync. That's how Gameplan was born - to solve the problems of modern remote work!
 
-## Key Features
+### Key Features
 - **Thread-first discussions**: Gameplan lets you start a discussion and have people comment on it at their own pace, encouraging thoughtful conversation and deep thinking. No more feeling obligated to be online all the time.
 
 - **Spaces for organization**: Spaces help you categorize conversations by project, team, client, or topic – whatever makes sense for your team's workflow. This keeps discussions tidy and easy to find.
@@ -37,13 +37,11 @@ We've been remote first since day one, but as our team grew, chat tools like Tel
 
 - **Pages for note-taking**: Use pages as digital notes to jot down meeting minutes, proposals, ideas – whatever sparks creativity! They can be private by default or shared with just your team or specific spaces.
 
-## Under the hood
+### Under the Hood
 
-- [Frappe Framework](https://github.com/frappe/frappe): A full-stack web application framework written in Python and Javascript. The framework provides a robust foundation for building web applications, including a database abstraction layer, user authentication, and a REST API.
-
-- [Frappe UI](https://github.com/frappe/frappe-ui): A Vue-based UI library, to provide a modern user interface. The Frappe UI library provides a variety of components that can be used to build single-page applications on top of the Frappe Framework.
-
-- [Redisearch](https://github.com/RediSearch/RediSearch): A powerful text search and secondary indexing engine built on top of Redis. It powers Gameplan's fast search capabilities.
+- [Frappe Framework](https://github.com/frappe/frappe): A full-stack batteries-included web framework.
+- [Frappe UI](https://github.com/frappe/frappe-ui): A Vue UI library for a modern user interface built on our [design system](https://www.figma.com/community/file/1407648399328528443).
+- [Redisearch](https://github.com/RediSearch/RediSearch): A powerful search and indexing engine built on top of Redis.
 
 ## Production setup
 ### Managed Hosting
@@ -100,13 +98,10 @@ Currently, this app depends on the `develop` branch of [frappe](https://github.c
     ```
  1. Now, you can access the site on vite dev server at `http://gameplan.test:8080`
 
-## Links
 
-- [Report Bugs](https://github.com/frappe/gameplan/issues): If you find any bugs, feel free to report them on GitHub Issues tab.
-- [Discuss](https://github.com/frappe/gameplan/discussions): Join if you have a feature request or hangout with other Gameplan users.
-
-<h2></h2>
-<div align="center" style="padding-top: 0.75rem;">
+<br>
+<br>
+<div align="center">
 	<a href="https://frappe.io" target="_blank">
 		<picture>
 			<source media="(prefers-color-scheme: dark)" srcset="https://frappe.io/files/Frappe-white.png">
