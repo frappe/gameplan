@@ -43,3 +43,7 @@ export function getUser(email) {
 export let activeUsers = computed(() => {
   return users.data.filter((user) => user.enabled)
 })
+
+export function useSessionUser() {
+  return getUser('sessionUser')
+}

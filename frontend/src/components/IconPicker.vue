@@ -8,9 +8,9 @@
       </button>
     </template>
     <template #body>
-      <div class="left-1/2 mt-3 max-w-max -translate-x-1/2 transform bg-surface-white px-4 sm:px-0">
+      <div class="left-1/2 mt-3 max-w-max -translate-x-1/2 transform px-4 sm:px-0">
         <div
-          class="relative max-h-96 overflow-y-auto rounded-lg pb-3 shadow-2xl ring-1 ring-black ring-opacity-5"
+          class="relative max-h-96 overflow-y-auto rounded-lg pb-3 bg-surface-white shadow-2xl ring-1 ring-black ring-opacity-5"
         >
           <div class="flex gap-2 px-3 pb-1 pt-3">
             <div class="flex-1">
