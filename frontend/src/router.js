@@ -260,21 +260,21 @@ function saveAndRestoreScrollPosition(to, from) {
   }
 }
 
-router.beforeEach(async (to, from, next) => {
+router.beforeEach(async (to, from) => {
   saveAndRestoreScrollPosition(to, from)
-  let isLoggedIn = session.isLoggedIn
-  try {
-    await users.promise
-  } catch (error) {
-    isLoggedIn = false
+
+  if (!users.isFinished) {
+    try {
+      await users.promise
+    } catch (error) {
+      console.error('Error loading users', error)
+    }
   }
 
-  if (to.name === 'Login' && isLoggedIn) {
-    next({ name: 'Home' })
-  } else if (to.name !== 'Login' && !isLoggedIn) {
-    next({ name: 'Login' })
-  } else {
-    next()
+  if (to.name === 'Login' && session.isLoggedIn) {
+    return { name: 'Home' }
+  } else if (to.name !== 'Login' && !session.isLoggedIn) {
+    return { name: 'Login' }
   }
 })
 
