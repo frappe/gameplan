@@ -13,8 +13,8 @@
       <TabButtons :buttons="feedOptions" v-model="feedType" />
       <div class="ml-auto space-x-2">
         <Button
-          v-if="$refs.discusionListRef?.discussions.loading"
-          :loading="$refs.discusionListRef?.discussions.loading"
+          v-if="$refs.discussionListRef?.discussions.loading"
+          :loading="$refs.discussionListRef?.discussions.loading"
         >
           Loading...
         </Button>
