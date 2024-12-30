@@ -1,37 +1,39 @@
 import { computed, Ref } from 'vue'
-import { projects } from './projects'
-import { activeTeams } from './teams'
-import { GPProject, GPTeam } from './types'
+import { spaces, Space } from './spaces'
+import { activeTeams, Team } from './teams'
 
-type FilterFunction = (project: GPProject) => boolean
-type GroupedSpaceItem = GPTeam & { spaces: GPProject[] }
+type FilterFunction = (project: Space) => boolean
+type GroupedSpaceItem = Team & { spaces: Space[] }
 type Options = { filterFn?: FilterFunction }
 
-export function useGroupedSpaces({ filterFn = (_p: GPProject) => true }: Options = {}): Ref<
+export function useGroupedSpaces({ filterFn = (_p: Space) => true }: Options = {}): Ref<
   GroupedSpaceItem[]
 > {
   return computed(() => {
     let groups: GroupedSpaceItem[] = []
 
-    for (let team of activeTeams.value as GPTeam[]) {
-      let spaces = (projects.data || []).filter((project: GPProject) => {
-        return project.team === team.name && filterFn(project)
+    for (let team of activeTeams.value) {
+      let filteredSpaces = (spaces.data || []).filter((space: Space) => {
+        return space.team === team.name && filterFn(space)
       })
-      if (spaces.length) {
+      if (filteredSpaces.length) {
         groups.push({
           ...team,
-          spaces,
+          spaces: filteredSpaces,
         })
       }
     }
-    let ungrouped = (projects.data || []).filter((project: GPProject) => {
-      return !project.team && filterFn(project)
+    let ungrouped = (spaces.data || []).filter((space: Space) => {
+      return !space.team && filterFn(space)
     })
     if (ungrouped.length) {
       groups.push({
         name: 'Uncategorized',
         title: 'Uncategorized',
         spaces: ungrouped,
+        is_private: 0,
+        creation: '',
+        modified: '',
       })
     }
 

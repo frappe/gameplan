@@ -1,6 +1,6 @@
 import { ref, Ref, watch } from 'vue'
 import { createListResource } from 'frappe-ui'
-import { GPDiscussion } from '@/types/GPDiscussion'
+import { GPDiscussion } from '@/types/doctypes'
 
 interface Discussion extends GPDiscussion {
   last_visit: string
