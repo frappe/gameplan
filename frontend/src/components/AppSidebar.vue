@@ -22,12 +22,10 @@
     <div class="flex-1">
       <nav class="space-y-0.5 px-2">
         <button
-          v-if="$user().isNotGuest"
+          v-if="sessionUser.isNotGuest"
           class="flex w-full items-center rounded px-2 py-1 text-ink-gray-8"
           :class="[
-            /Search/.test($route.name)
-              ? 'bg-surface-selected shadow-sm'
-              : 'hover:bg-surface-gray-2',
+            testRoute(/Search/) ? 'bg-surface-selected shadow-sm' : 'hover:bg-surface-gray-2',
           ]"
           @click="showCommandPalette"
         >
@@ -42,7 +40,7 @@
             </span>
           </div>
         </button>
-        <RouterLink
+        <AppLink
           v-for="link in navigation"
           :key="link.name"
           :to="link.route"
@@ -59,16 +57,16 @@
               {{ link.count }}
             </span>
           </div>
-        </RouterLink>
+        </AppLink>
       </nav>
       <div class="mt-6 flex items-center justify-between px-2">
-        <RouterLink
+        <AppLink
           class="flex w-full items-center justify-between group px-2 py-1.5 rounded hover:bg-surface-gray-2"
           :to="{ name: 'Spaces' }"
         >
           <h3 class="text-sm text-ink-gray-5">Spaces</h3>
           <span class="text-sm text-ink-gray-5 invisible group-hover:visible">Show all</span>
-        </RouterLink>
+        </AppLink>
         <div class="space-x-1 flex items-center">
           <Button variant="ghost" @click="showAddTeamDialog = true">
             <template #icon>
@@ -95,8 +93,8 @@
               <span class="text-sm text-ink-gray-8">{{ group.title }}</span>
             </div>
           </button>
-          <div class="mb-2 mt-0.5 space-y-0.5" v-show="isGroupOpen[group.name]">
-            <RouterLink
+          <div class="mb-2 mt-0.5 space-y-0.5 pl-6" v-show="isGroupOpen[group.name]">
+            <AppLink
               v-for="space in group.spaces"
               :key="space.name"
               :to="{ name: 'Space', params: { spaceId: space.name } }"
@@ -111,7 +109,7 @@
                 <span class="text-sm">{{ space.title }}</span>
                 <LucideLock v-if="space.is_private" class="h-3 w-3" />
               </span>
-            </RouterLink>
+            </AppLink>
             <div
               class="flex h-7 items-center px-2 text-sm text-ink-gray-5"
               v-if="group.spaces.length === 0"
@@ -121,7 +119,7 @@
           </div>
         </div>
       </nav>
-      <div v-if="teams.fetched && !activeTeams.length" class="px-3 py-2 text-sm text-ink-gray-4">
+      <div v-if="teams.isFinished && !activeTeams.length" class="px-3 py-2 text-sm text-ink-gray-4">
         No teams
       </div>
     </div>
@@ -131,15 +129,16 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
+import { watchAtMost } from '@vueuse/core'
 import { useGroupedSpaces } from '@/data/groupedSpaces'
 import { unreadNotifications } from '@/data/notifications'
-import { projects as spaces } from '@/data/projects'
+import { joinedSpaces, spaces } from '@/data/spaces'
 import { activeTeams, teams } from '@/data/teams'
 import { useSessionUser } from '@/data/users'
-import { showCommandPalette } from '@/components/CommandPalette/CommandPalette.vue'
 import { useSidebarResize } from '@/utils/sidebarResize'
 import NewSpaceDialog from './NewSpaceDialog.vue'
-import RouterLink from './RouterLink.vue'
+import AppLink from './AppLink.vue'
+import { showCommandPalette } from '@/components/CommandPalette/CommandPalette.vue'
 import UserDropdown from './UserDropdown.vue'
 
 import ChevronTriangle from './icons/ChevronTriangle.vue'
@@ -148,7 +147,6 @@ import LucideInbox from '~icons/lucide/inbox'
 import LucideListTodo from '~icons/lucide/list-todo'
 import LucideNewspaper from '~icons/lucide/newspaper'
 import LucidePlus from '~icons/lucide/plus'
-import LucideTelescope from '~icons/lucide/telescope'
 import LucideUsers2 from '~icons/lucide/users-2'
 
 const { startResize, sidebarResizing, sidebarWidth } = useSidebarResize()
@@ -157,22 +155,22 @@ const showAddTeamDialog = ref(false)
 const route = useRoute()
 const sessionUser = useSessionUser()
 
-const joinedSpaces = computed(() => {
-  return spaces.data
-    .filter((space) => space.members.find((member) => member.user === sessionUser.name))
-    .map((space) => space.name)
-})
-
 let groupedSpaces = useGroupedSpaces({
   filterFn: (space) => !space.archived_at && joinedSpaces.value.includes(space.name),
 })
 
-const isGroupOpen = reactive({
-  ...groupedSpaces.value.reduce((acc, group) => {
-    acc[group.name] = true
-    return acc
-  }, {}),
-})
+const isGroupOpen = reactive<{ [key: string]: boolean }>({})
+watchAtMost(
+  () => spaces.isFinished && teams.isFinished,
+  (val) => {
+    if (val) {
+      for (let group of groupedSpaces.value) {
+        isGroupOpen[group.name] = true
+      }
+    }
+  },
+  { count: 1 },
+)
 
 const navigation = computed(() => {
   return [
@@ -198,7 +196,7 @@ const navigation = computed(() => {
       route: {
         name: 'MyTasks',
       },
-      isActive: /MyTasks|Task/g.test(route.name),
+      isActive: testRoute(/MyTasks|Task/g),
     },
     {
       name: 'Pages',
@@ -206,7 +204,7 @@ const navigation = computed(() => {
       route: {
         name: 'MyPages',
       },
-      isActive: /MyPages|Page/g.test(route.name),
+      isActive: testRoute(/MyPages|Page/g),
     },
     {
       name: 'People',
@@ -214,9 +212,13 @@ const navigation = computed(() => {
       route: {
         name: 'People',
       },
-      isActive: /People|PersonProfile/g.test(route.name),
+      isActive: testRoute(/People|PersonProfile/g),
       condition: () => sessionUser.isNotGuest,
     },
   ].filter((nav) => (nav.condition ? nav.condition() : true))
 })
+
+function testRoute(regex: RegExp) {
+  return route.name ? regex.test(route.name.toString()) : false
+}
 </script>
