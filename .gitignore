@@ -10,3 +10,4 @@ gameplan/public/frontend
 gameplan/www/teams.html
 gameplan/www/g.html
 build
+frontend/components.d.ts
