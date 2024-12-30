@@ -33,13 +33,13 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { getCachedListResource, usePageMeta, Breadcrumbs, TabButtons } from 'frappe-ui'
-import { getUser } from '@/data/users'
+import { useUser } from '@/data/users'
 
 let newTaskDialog = ref(null)
 let currentTab = ref('all')
 
 let listOptions = computed(() => {
-  let me = getUser('sessionUser').name
+  let me = useUser('sessionUser').name
   let filters = {
     all: { assigned_or_owner: me },
     assigned: { assigned_to: me },
@@ -51,7 +51,7 @@ let listOptions = computed(() => {
 function showNewTaskDialog() {
   newTaskDialog.value.show({
     defaults: {
-      assigned_to: getUser('sessionUser').name,
+      assigned_to: useUser('sessionUser').name,
     },
     onSuccess: () => {
       let tasks = getCachedListResource(['Tasks', listOptions.value])

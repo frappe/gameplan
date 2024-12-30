@@ -24,10 +24,10 @@ import { showSettingsDialog } from '@/components/Settings/SettingsDialog.vue'
 import LucideCreditCard from '~icons/lucide/credit-card'
 import LucideMoon from '~icons/lucide/moon'
 import GameplanLogo from './GameplanLogo.vue'
-import { getUser } from '@/data/users'
+import { useUser } from '@/data/users'
 import { session } from '@/data/session'
 
-const user = getUser()
+const user = useUser()
 
 const dropdownItems = computed(() => [
   {

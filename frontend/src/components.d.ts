@@ -18,4 +18,10 @@ declare module '@vue/runtime-core' {
   }
 }
 
+declare module 'vue' {
+  interface ComponentCustomProperties {
+    $platform?: 'mac' | 'win' | 'linux'
+  }
+}
+
 export {}

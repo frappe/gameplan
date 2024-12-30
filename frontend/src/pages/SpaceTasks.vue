@@ -21,7 +21,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { getCachedListResource, Select } from 'frappe-ui'
-import { getUser } from '@/data/users'
+import { useUser } from '@/data/users'
 import SpaceTabs from '@/components/SpaceTabs.vue'
 
 const props = defineProps({
@@ -42,7 +42,7 @@ function showNewTaskDialog() {
   newTaskDialog.value.show({
     defaults: {
       project: props.space.name,
-      assigned_to: getUser('sessionUser').name,
+      assigned_to: useUser('sessionUser').name,
     },
     onSuccess: () => {
       let tasks = getCachedListResource(['Tasks', listOptions.value])

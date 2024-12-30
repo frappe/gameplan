@@ -1,5 +1,5 @@
 <template>
-  <div class="relative flex h-full flex-col" v-if="$users.fetched">
+  <div class="relative flex h-full flex-col" v-if="users.isFinished">
     <div class="h-full flex-1">
       <div class="flex h-full">
         <div class="relative block min-h-0 flex-shrink-0 overflow-hidden hover:overflow-auto">
@@ -23,8 +23,9 @@
     <SettingsDialog />
   </div>
 </template>
-<script setup>
+<script setup lang="ts">
 import AppSidebar from './AppSidebar.vue'
 import CommandPalette from './CommandPalette/CommandPalette.vue'
 import SettingsDialog from './Settings/SettingsDialog.vue'
+import { users } from '@/data/users'
 </script>
