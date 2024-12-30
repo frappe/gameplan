@@ -1,0 +1,20 @@
+{
+  "typeGeneration": {
+    "input": {
+      "gameplan": [
+        "gp_project",
+        "gp_member",
+        "gp_team",
+        "gp_comment",
+        "gp_discussion",
+        "gp_page",
+        "gp_task",
+        "gp_poll",
+        "gp_guest_access",
+        "gp_invitation",
+        "gp_user_profile",
+        "gp_notification"
+      ]
+    }
+  }
+}
