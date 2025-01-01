@@ -57,6 +57,7 @@ class GPDiscussion(HasActivity, HasMentions, HasReactions, Document):
 		return d
 
 	def before_insert(self):
+		self.check_if_project_is_archived()
 		self.last_post_at = frappe.utils.now()
 		self.update_participants_count()
 
@@ -106,6 +107,11 @@ class GPDiscussion(HasActivity, HasMentions, HasReactions, Document):
 		participants += frappe.db.get_all("GP Poll", filters={"discussion": self.name}, pluck="owner")
 		participants.append(self.owner)
 		self.participants_count = len(list(set(participants)))
+
+	def check_if_project_is_archived(self):
+		project_name, archived_at = frappe.db.get_value("GP Project", self.project, ["name", "archived_at"])
+		if archived_at:
+			frappe.throw(f"Project {project_name} is archived. Cannot create discussions.")
 
 	@frappe.whitelist()
 	def track_visit(self):
