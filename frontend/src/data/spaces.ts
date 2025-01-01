@@ -1,7 +1,6 @@
 import { computed, MaybeRefOrGetter, toValue } from 'vue'
-import { useList } from 'frappe-ui/src/data-fetching'
+import { useCall, useList } from 'frappe-ui/src/data-fetching'
 import { GPProject, GPMember } from '@/types/doctypes'
-import { useSessionUser } from './users'
 
 interface Member extends Pick<GPMember, 'user'> {}
 
@@ -55,11 +54,8 @@ export function useSpace(name: MaybeRefOrGetter<string>) {
   })
 }
 
-export const joinedSpaces = computed(() => {
-  const sessionUser = useSessionUser()
-  return (
-    spaces.data
-      ?.filter((space) => space.members.find((member) => member.user === sessionUser.name))
-      .map((space) => space.name) || []
-  )
+export const joinedSpaces = useCall<string[]>({
+  url: '/api/v2/method/GP Project/get_joined_spaces',
+  cacheKey: 'joinedSpaces',
+  initialData: [],
 })

@@ -158,7 +158,7 @@ const route = useRoute()
 const sessionUser = useSessionUser()
 
 let groupedSpaces = useGroupedSpaces({
-  filterFn: (space) => !space.archived_at && joinedSpaces.value.includes(space.name),
+  filterFn: (space) => !space.archived_at && joinedSpaces.data?.includes(space.name),
 })
 
 const isGroupOpen = reactive<{ [key: string]: boolean }>({})

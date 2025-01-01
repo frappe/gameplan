@@ -2,7 +2,7 @@ import { computed, Ref } from 'vue'
 import { spaces, Space } from './spaces'
 import { activeTeams, Team } from './teams'
 
-type FilterFunction = (project: Space) => boolean
+type FilterFunction = (project: Space) => boolean | undefined
 type GroupedSpaceItem = Team & { spaces: Space[] }
 type Options = { filterFn?: FilterFunction }
 
@@ -14,7 +14,7 @@ export function useGroupedSpaces({ filterFn = (_p: Space) => true }: Options = {
 
     for (let team of activeTeams.value) {
       let filteredSpaces = (spaces.data || []).filter((space: Space) => {
-        return space.team === team.name && filterFn(space)
+        return space.team === team.name && Boolean(filterFn(space))
       })
       if (filteredSpaces.length) {
         groups.push({
@@ -24,7 +24,7 @@ export function useGroupedSpaces({ filterFn = (_p: Space) => true }: Options = {
       }
     }
     let ungrouped = (spaces.data || []).filter((space: Space) => {
-      return !space.team && filterFn(space)
+      return !space.team && Boolean(filterFn(space))
     })
     if (ungrouped.length) {
       groups.push({

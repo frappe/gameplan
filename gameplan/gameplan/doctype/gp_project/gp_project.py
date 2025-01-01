@@ -194,3 +194,18 @@ def get_meta_tags(url):
 		image = urljoin(url, image)
 
 	return {"title": title, "image": image}
+
+
+@frappe.whitelist()
+def get_joined_spaces():
+	user = frappe.session.user
+	projects = frappe.qb.get_query(
+		"GP Project",
+		filters={"members.user": user},
+		fields=["name"],
+	).run(as_dict=True, pluck="name")
+	guest_access_projects = frappe.qb.get_query(
+		"GP Guest Access", filters={"user": user}, fields=["project"]
+	).run(as_dict=True, pluck="project")
+
+	return map(str, set(projects + guest_access_projects))
