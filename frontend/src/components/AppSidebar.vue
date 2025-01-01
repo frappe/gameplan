@@ -102,12 +102,14 @@
               activeClass="bg-surface-selected shadow-sm"
               inactiveClass="hover:bg-surface-gray-2"
             >
-              <span class="inline-flex items-center space-x-2">
-                <span class="flex h-5 w-6 items-center justify-center text-xl">
+              <span class="inline-flex min-w-0 items-center space-x-2">
+                <span class="flex-shrink-0 flex h-5 w-6 items-center justify-center text-xl">
                   {{ space.icon }}
                 </span>
-                <span class="text-sm">{{ space.title }}</span>
-                <LucideLock v-if="space.is_private" class="h-3 w-3" />
+                <span class="truncate text-sm flex-grow">
+                  {{ space.title }}
+                </span>
+                <LucideLock v-if="space.is_private" class="flex-shrink-0 h-3 w-3" />
               </span>
             </AppLink>
             <div
