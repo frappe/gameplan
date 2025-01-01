@@ -1131,10 +1131,10 @@
     "@vue/compiler-dom" "3.5.13"
     "@vue/shared" "3.5.13"
 
-"@vue/devtools-api@^6.5.0":
-  version "6.5.0"
-  resolved "https://registry.yarnpkg.com/@vue/devtools-api/-/devtools-api-6.5.0.tgz#98b99425edee70b4c992692628fa1ea2c1e57d07"
-  integrity sha512-o9KfBeaBmCKl10usN4crU53fYtC1r7jJwdGKjPT24t348rHxgfpZ0xL3Xm/gLUYnc0oTp8LAmrxOeLyu6tbk2Q==
+"@vue/devtools-api@^6.6.4":
+  version "6.6.4"
+  resolved "https://registry.yarnpkg.com/@vue/devtools-api/-/devtools-api-6.6.4.tgz#cbe97fe0162b365edc1dba80e173f90492535343"
+  integrity sha512-sGhTPMuXqZ1rVOk32RylztWkfXTRhuS7vgAKv0zjqk8gbsHkJ7xfFf+jbySxt7tWObEJwyKaHMikV/WGDiQm8g==
 
 "@vue/reactivity@3.5.13":
   version "3.5.13"
@@ -2108,10 +2108,10 @@ fraction.js@^4.2.0:
   resolved "https://registry.yarnpkg.com/fraction.js/-/fraction.js-4.2.0.tgz#448e5109a313a3527f5a3ab2119ec4cf0e0e2950"
   integrity sha512-MhLuK+2gUcnZe8ZHlaaINnQLl0xRIGRfcGk2yl8xoQAfHrSsL3rYu6FCmBdkdbhc9EPlwyGHewaRsvwRMJtAlA==
 
-frappe-ui@^0.1.93:
-  version "0.1.93"
-  resolved "https://registry.yarnpkg.com/frappe-ui/-/frappe-ui-0.1.93.tgz#0443800e195cddcff88ba875989148a92a270206"
-  integrity sha512-21VUcBBB9g1o7Iv/TW8ng3SdCxsm9G/g0rEdC9Y1Vqx1A1Ucf8VtVFECX2MgoDrLAwVOBKayU5BMaS1fuphcnA==
+frappe-ui@^0.1.97:
+  version "0.1.97"
+  resolved "https://registry.yarnpkg.com/frappe-ui/-/frappe-ui-0.1.97.tgz#8eb9532ae9c916fcd15e8798b8e1376bd4d73a59"
+  integrity sha512-jYbSm2703nHS+pLOGs2lXNCNLZmhmVaS25fcysax5wzcAXiWT7ZC2iRRvTaHKA9znJxnXXgeaMV37Z+zeWSpdA==
   dependencies:
     "@headlessui/vue" "^1.7.14"
     "@popperjs/core" "^2.11.2"
@@ -3872,12 +3872,12 @@ vue-demi@>=0.14.0:
   resolved "https://registry.yarnpkg.com/vue-demi/-/vue-demi-0.14.5.tgz#676d0463d1a1266d5ab5cba932e043d8f5f2fbd9"
   integrity sha512-o9NUVpl/YlsGJ7t+xuqJKx8EBGf1quRhCiT6D/J0pfwmk9zUwYkC7yrF4SZCe6fETvSM3UNL2edcbYrSyc4QHA==
 
-vue-router@^4.2.2:
-  version "4.2.2"
-  resolved "https://registry.yarnpkg.com/vue-router/-/vue-router-4.2.2.tgz#b0097b66d89ca81c0986be03da244c7b32a4fd81"
-  integrity sha512-cChBPPmAflgBGmy3tBsjeoe3f3VOSG6naKyY5pjtrqLGbNEXdzCigFUHgBvp9e3ysAtFtEx7OLqcSDh/1Cq2TQ==
+vue-router@^4.5.0:
+  version "4.5.0"
+  resolved "https://registry.yarnpkg.com/vue-router/-/vue-router-4.5.0.tgz#58fc5fe374e10b6018f910328f756c3dae081f14"
+  integrity sha512-HDuk+PuH5monfNuY+ct49mNmkCRK4xJAV9Ts4z9UFc4rzdDnxQLyCMGGc8pKhZhHTVzfanpNwB/lwqevcBwI4w==
   dependencies:
-    "@vue/devtools-api" "^6.5.0"
+    "@vue/devtools-api" "^6.6.4"
 
 vue-template-compiler@^2.7.14:
   version "2.7.14"
