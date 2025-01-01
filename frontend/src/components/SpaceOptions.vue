@@ -4,15 +4,20 @@
   <MergeSpaceDialog v-model="showSpaceMergeDialog" :spaceId="props.spaceId" />
   <ChangeSpaceCategoryDialog v-model="showSpaceCategoryDialog" :spaceId="props.spaceId" />
   <EditSpaceDialog v-model="showSpaceEditDialog" :spaceId="props.spaceId" />
+  <ManageMembersDialog v-model="inviteGuestDialog" :spaceId="props.spaceId" />
 </template>
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useDoctype } from 'frappe-ui/src/data-fetching'
 import DropdownMoreOptions from './DropdownMoreOptions.vue'
 import MergeSpaceDialog from './MergeSpaceDialog.vue'
 import ChangeSpaceCategoryDialog from './ChangeSpaceCategoryDialog.vue'
 import EditSpaceDialog from './EditSpaceDialog.vue'
+import ManageMembersDialog from './ManageMembersDialog.vue'
 import { createDialog } from '@/utils/dialogs'
-import { getProject, projects } from '@/data/projects'
+import { useSpace } from '@/data/spaces'
+import { GPProject } from '@/types/doctypes'
+
 import LucideUserPlus from '~icons/lucide/user-plus'
 import LucideEdit from '~icons/lucide/edit'
 import LucideMerge from '~icons/lucide/merge'
@@ -24,33 +29,35 @@ defineOptions({
 })
 
 const props = defineProps<{
-  spaceId: string | number
+  spaceId: string
 }>()
 
-const space = computed(() => getProject(props.spaceId))
+const space = useSpace(() => props.spaceId)
+const spaces = useDoctype<GPProject>('GP Project')
 
 const showSpaceMergeDialog = ref(false)
 const showSpaceCategoryDialog = ref(false)
 const showSpaceEditDialog = ref(false)
+const inviteGuestDialog = ref(false)
 
 const options = computed(() => [
   {
     label: 'Edit',
     icon: LucideEdit,
     onClick: () => (showSpaceEditDialog.value = true),
-    condition: () => !space.value.archived_at,
+    condition: () => !space.value?.archived_at,
   },
   {
-    label: 'Manage Guests',
+    label: 'Manage Members',
     icon: LucideUserPlus,
-    // onClick: () => (inviteGuestDialog.show = true),
-    condition: () => !space.value.archived_at,
+    onClick: () => (inviteGuestDialog.value = true),
+    condition: () => !space.value?.archived_at,
   },
   {
     label: 'Change Category',
     icon: LucideLogOut,
     onClick: () => (showSpaceCategoryDialog.value = true),
-    condition: () => !space.value.archived_at,
+    condition: () => !space.value?.archived_at,
   },
   {
     label: 'Merge',
@@ -69,9 +76,9 @@ const options = computed(() => [
           {
             label: 'Archive',
             variant: 'solid',
-            loading: projects.runDocMethod.loading,
+            loading: spaces.runDocMethod.loading,
             onClick: ({ close }) => {
-              projects.runDocMethod
+              spaces.runDocMethod
                 .submit({
                   method: 'archive',
                   name: props.spaceId,
@@ -82,7 +89,7 @@ const options = computed(() => [
         ],
       })
     },
-    condition: () => !space.value.archived_at,
+    condition: () => !space.value?.archived_at,
   },
 ])
 </script>

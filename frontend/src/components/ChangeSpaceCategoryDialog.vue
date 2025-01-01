@@ -3,12 +3,7 @@
     :options="{
       title: 'Change Category',
     }"
-    @after-leave="
-      () => {
-        selectedTeam = null
-        projects.runDocMethod.reset()
-      }
-    "
+    @after-leave="() => (selectedTeam = null)"
     v-model="show"
   >
     <template #body-content>
@@ -17,20 +12,13 @@
           <span class="mr-2">{{ option.icon }}</span>
         </template>
       </Autocomplete>
-      <ErrorMessage
-        class="mt-2"
-        :message="
-          projects.runDocMethod.params?.method === 'move_to_team' && projects.runDocMethod.error
-        "
-      />
+      <ErrorMessage class="mt-2" :message="spaces.runDocMethod.error" />
     </template>
     <template #actions>
       <Button
         class="w-full"
         variant="solid"
-        :loading="
-          projects.runDocMethod.params?.method === 'move_to_team' && projects.runDocMethod.loading
-        "
+        :loading="spaces.runDocMethod.isLoading(spaceId, 'move_to_team')"
         @click="submit"
       >
         {{ selectedTeam ? `Move to ${selectedTeam.label}` : 'Move' }}
@@ -42,15 +30,18 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { Autocomplete } from 'frappe-ui'
-import { projects, getProject } from '@/data/projects'
 import { activeTeams } from '@/data/teams'
+import { useSpace } from '@/data/spaces'
+import { useDoctype } from 'frappe-ui/src/data-fetching'
+import { GPProject } from '@/types/doctypes'
 
 const props = defineProps<{
-  spaceId: string | number
+  spaceId: string
 }>()
 
 const show = defineModel<boolean>()
-const space = computed(() => getProject(props.spaceId))
+const space = useSpace(() => props.spaceId)
+const spaces = useDoctype<GPProject>('GP Project')
 
 const teamOptions = computed(() => {
   return [
@@ -65,31 +56,30 @@ const teamOptions = computed(() => {
   ]
 })
 
-const selectedTeam = ref(
+const selectedTeam = ref<{ label: string; value: string } | null>(
   teamOptions.value.find(
     (team) => team.value?.toString() === (space.value?.team?.toString() || ''),
-  ),
+  ) ?? null,
 )
 
 function submit() {
-  projects.runDocMethod.submit(
-    {
+  spaces.runDocMethod
+    .submit({
       method: 'move_to_team',
       name: props.spaceId,
-      team: selectedTeam.value?.value,
-    },
-    {
       validate() {
         if (!selectedTeam.value) {
           return 'Please select a team'
         }
       },
-      onSuccess() {
-        if (selectedTeam.value) {
-          show.value = false
-        }
+      params: {
+        team: selectedTeam.value?.value,
       },
-    },
-  )
+    })
+    .then(() => {
+      if (selectedTeam.value) {
+        show.value = false
+      }
+    })
 }
 </script>

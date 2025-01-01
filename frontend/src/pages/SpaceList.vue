@@ -87,8 +87,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { Breadcrumbs, TabButtons } from 'frappe-ui'
+import { useDoctype } from 'frappe-ui/src/data-fetching'
 import { useGroupedSpaces } from '@/data/groupedSpaces'
-import { projects as spaces } from '@/data/projects'
 import { useSessionUser } from '@/data/users'
 import NewSpaceDialog from '@/components/NewSpaceDialog.vue'
 import SpaceOptions from '@/components/SpaceOptions.vue'
@@ -100,10 +100,13 @@ const sessionUser = useSessionUser()
 const currentTab = ref('Active')
 
 const groupedSpaces = useGroupedSpaces({
-  filterFn: (space) => (currentTab.value == 'Active' ? !space.archived_at : space.archived_at),
+  filterFn: (space) =>
+    Boolean(currentTab.value == 'Active' ? !space.archived_at : space.archived_at),
 })
 
 const newSpaceDialog = ref(false)
+
+let spaces = useDoctype<GPProject>('GP Project')
 
 function joinSpace(space) {
   spaces.runDocMethod.submit({
@@ -127,11 +130,7 @@ function unarchiveSpace(space) {
 }
 
 function isMethodLoading(docname, method) {
-  return (
-    spaces.runDocMethod.loading &&
-    spaces.runDocMethod.params.method === method &&
-    spaces.runDocMethod.params.dn === docname
-  )
+  return spaces.runDocMethod.isLoading(docname, method)
 }
 
 function hasJoined(space: GPProject) {

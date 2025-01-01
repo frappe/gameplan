@@ -26,6 +26,7 @@ class GPInvitation(Document):
 		invite_link = frappe.utils.get_url(f"/api/method/gameplan.api.accept_invitation?key={self.key}")
 		if frappe.local.dev_server:
 			print(f"Invite link for {self.email}: {invite_link}")
+			return
 
 		title = "Gameplan"
 		template = "gameplan_invitation"

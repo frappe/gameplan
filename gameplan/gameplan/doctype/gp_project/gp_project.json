@@ -7,10 +7,8 @@
  "engine": "InnoDB",
  "field_order": [
   "title",
-  "progress",
   "icon",
   "column_break_2",
-  "status",
   "team",
   "is_private",
   "section_break_5",
@@ -39,14 +37,6 @@
    "label": "Description"
   },
   {
-   "fieldname": "status",
-   "fieldtype": "Select",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Status",
-   "options": "Open\nCompleted"
-  },
-  {
    "fieldname": "team",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -67,11 +57,6 @@
   {
    "fieldname": "section_break_5",
    "fieldtype": "Section Break"
-  },
-  {
-   "fieldname": "progress",
-   "fieldtype": "Percent",
-   "label": "Progress"
   },
   {
    "fieldname": "icon",
@@ -133,7 +118,7 @@
    "link_fieldname": "project"
   }
  ],
- "modified": "2024-11-25 11:07:41.672080",
+ "modified": "2024-12-15 00:46:16.394764",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "GP Project",

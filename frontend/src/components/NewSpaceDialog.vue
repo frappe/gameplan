@@ -7,10 +7,10 @@
       </p>
       <div class="mt-3 space-y-2">
         <div class="space-x-2 flex items-center w-full">
-          <IconPicker v-model="newSpace.icon" v-slot="{ isOpen }">
+          <IconPicker v-model="newSpace.doc.icon" v-slot="{ isOpen }">
             <Button>
               <template #icon>
-                <span v-if="newSpace.icon">{{ newSpace.icon }}</span>
+                <span v-if="newSpace.doc.icon">{{ newSpace.doc.icon }}</span>
                 <LucidePlus v-else class="h-4 w-4" />
               </template>
             </Button>
@@ -20,6 +20,7 @@
             placeholder="Space name"
             id="new-space-name"
             v-model="newSpace.doc.title"
+            autocomplete="off"
           />
         </div>
 
@@ -49,11 +50,12 @@
 <script setup lang="ts">
 import { Dialog, ErrorMessage, FormControl, TextInput } from 'frappe-ui'
 import IconPicker from './IconPicker.vue'
-import { useNewDoc } from '@/data/newDoc'
-import { projects } from '@/data/projects'
+import { useNewDoc } from 'frappe-ui/src/data-fetching'
+import { GPProject } from '@/types/doctypes'
+import { spaces } from '@/data/spaces'
 
 const show = defineModel<boolean>()
-const newSpace = useNewDoc('GP Project', {
+const newSpace = useNewDoc<GPProject>('GP Project', {
   title: '',
   icon: '',
   is_private: false,
@@ -62,7 +64,7 @@ const newSpace = useNewDoc('GP Project', {
 function submit() {
   newSpace.submit().then(() => {
     // TODO: useNewDoc should automatically reload related resources
-    projects.reload()
+    spaces.reload()
     show.value = false
   })
 }
