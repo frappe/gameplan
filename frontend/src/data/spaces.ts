@@ -2,7 +2,7 @@ import { computed, MaybeRefOrGetter, toValue } from 'vue'
 import { useCall, useList } from 'frappe-ui/src/data-fetching'
 import { GPProject, GPMember } from '@/types/doctypes'
 
-interface Member extends Pick<GPMember, 'user'> {}
+interface Member extends Pick<GPMember, 'user' | 'notify_new_posts' | 'notify_new_comments'> {}
 
 export interface Space
   extends Pick<
@@ -32,7 +32,7 @@ export let spaces = useList<Space>({
     'modified',
     'tasks_count',
     'discussions_count',
-    { members: ['user'] },
+    { members: ['user', 'notify_new_posts', 'notify_new_comments'] },
   ],
   initialData: [],
   orderBy: 'title asc',

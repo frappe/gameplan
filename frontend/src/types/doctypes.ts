@@ -87,10 +87,14 @@ export interface GPPage extends DocType {
   team?: string
 }
 
-// Last updated: 2022-12-09 12:53:23.011368
+// Last updated: 2025-01-02 01:38:15.078526
 export interface GPMember extends ChildDocType {
   /** User: Link (User) */
   user?: string
+  /** Notify about new posts: Check */
+  notify_new_posts: 0 | 1
+  /** Notify about new comments: Check */
+  notify_new_comments: 0 | 1
 }
 
 // Last updated: 2023-01-12 16:56:50.063064

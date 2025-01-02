@@ -179,6 +179,15 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 				self.save()
 				break
 
+	@frappe.whitelist()
+	def update_notification_settings(self, notify_new_posts=0, notify_new_comments=0):
+		for member in self.members:
+			if member.user == frappe.session.user:
+				member.notify_new_posts = notify_new_posts
+				member.notify_new_comments = notify_new_comments
+				self.save()
+				break
+
 
 def get_meta_tags(url):
 	response = requests.get(url, timeout=2, allow_redirects=True)
