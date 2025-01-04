@@ -1,5 +1,9 @@
-// defining global components here for autocompletion via volar
+// defining global components and properties here for autocompletion
 // https://github.com/johnsoncodehk/volar/tree/master/extensions/vscode-vue-language-features
+
+import { useUser } from './data/users'
+import { dayjs } from './utils'
+import { getPlatform } from './utils'
 
 declare module '@vue/runtime-core' {
   export interface GlobalComponents {
@@ -20,7 +24,9 @@ declare module '@vue/runtime-core' {
 
 declare module 'vue' {
   interface ComponentCustomProperties {
-    $platform?: 'mac' | 'win' | 'linux'
+    $platform: typeof getPlatform
+    $user: typeof useUser
+    $dayjs: typeof dayjs
   }
 }
 
