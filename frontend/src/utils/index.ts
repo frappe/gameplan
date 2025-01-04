@@ -1,6 +1,8 @@
-export { default as dayjs } from './dayjs'
+export { dayjs } from './dayjs'
 
-export function getImgDimensions(imgSrc) {
+export function getImgDimensions(
+  imgSrc: string,
+): Promise<{ width: number; height: number; ratio: number }> {
   return new Promise((resolve) => {
     let img = new Image()
     img.onload = function () {
@@ -11,13 +13,13 @@ export function getImgDimensions(imgSrc) {
   })
 }
 
-export function htmlToText(html) {
+export function htmlToText(html: string): string {
   let tmp = document.createElement('div')
   tmp.innerHTML = html
   return tmp.textContent || tmp.innerText || ''
 }
 
-export function copyToClipboard(text) {
+export function copyToClipboard(text: string): void {
   let textField = document.createElement('textarea')
   textField.value = text
   document.body.appendChild(textField)
@@ -26,7 +28,7 @@ export function copyToClipboard(text) {
   textField.remove()
 }
 
-export function getScrollParent(node) {
+export function getScrollParent(node: HTMLElement | null): HTMLElement | null {
   if (node == null) {
     return null
   }
@@ -34,15 +36,15 @@ export function getScrollParent(node) {
   if (node.scrollHeight > node.clientHeight) {
     return node
   } else {
-    return getScrollParent(node.parentNode)
+    return getScrollParent(node.parentNode as HTMLElement)
   }
 }
 
-export function getRandomNumber(min, max) {
+export function getRandomNumber(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min
 }
 
-export function getPlatform() {
+export function getPlatform(): 'win' | 'mac' | 'linux' | undefined {
   let ua = navigator.userAgent.toLowerCase()
   if (ua.indexOf('win') > -1) {
     return 'win'

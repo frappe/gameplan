@@ -72,7 +72,7 @@
 </template>
 <script setup lang="ts">
 import { Tooltip } from 'frappe-ui'
-import dayjs from '@/utils/dayjs'
+import { dayjs } from '@/utils/dayjs'
 import UserAvatar from './UserAvatar.vue'
 import UserInfo from './UserInfo.vue'
 
