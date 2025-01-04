@@ -1,61 +1,73 @@
-import { ref, Ref, watch } from 'vue'
-import { createListResource } from 'frappe-ui'
+import { MaybeRefOrGetter, toValue } from 'vue'
+import { useDoc, useList } from 'frappe-ui/src/data-fetching'
+import { UseListOptions } from 'frappe-ui/src/data-fetching/useList/types'
 import { GPDiscussion } from '@/types/doctypes'
 
 interface Discussion extends GPDiscussion {
   last_visit: string
+  last_post_at: string
+  unread: boolean
 }
 
-interface UseDiscussionOptions {
-  cacheKey?: any
-  filters?: Record<string, any>
-  pageLength?: number
-  orderBy?: string
-}
+export type UseDiscussionOptions = Pick<
+  UseListOptions<Discussion>,
+  'cacheKey' | 'filters' | 'limit' | 'orderBy'
+>
 
-interface ListResource {
-  data: Discussion[]
-  loading: boolean
-  reload: () => void
-}
-
-export function useDiscussions({
-  filters = {},
-  pageLength = 50,
-  orderBy = 'last_post_at desc',
-}: UseDiscussionOptions = {}): Ref<ListResource> {
-  let cacheKey = JSON.stringify({ filters, pageLength, orderBy })
-  let discussions = ref<ListResource>(
-    _createListResource({ filters, pageLength, orderBy, cacheKey }),
-  )
-
-  watch(
-    () => {
-      return { filters, pageLength, orderBy }
-    },
-    () => {
-      let cacheKey = JSON.stringify({ filters, pageLength, orderBy })
-      discussions.value = _createListResource({ filters, pageLength, orderBy, cacheKey })
-    },
-  )
-  return discussions
-}
-
-function _createListResource({ filters, pageLength, orderBy, cacheKey }: UseDiscussionOptions) {
-  return createListResource({
-    type: 'list',
+export function useDiscussions(options: UseDiscussionOptions) {
+  const discussions = useList<Discussion>({
+    url: '/api/v2/method/gameplan.gameplan.doctype.gp_discussion.api.get_discussions',
     doctype: 'GP Discussion',
-    cache: ['Discussions', cacheKey],
-    url: 'gameplan.gameplan.doctype.gp_discussion.api.get_discussions',
-    filters: filters,
-    auto: true,
-    pageLength: pageLength || 50,
-    orderBy: orderBy,
-    transform(data: Discussion[]) {
+    cacheKey: ['Discussions', { ...options }],
+    filters: options.filters,
+    limit: options.limit || 50,
+    orderBy: options.orderBy,
+    transform(data) {
       return data.map((d) => ({
         ...d,
         unread: !d.last_visit || d.last_post_at > d.last_visit,
       }))
     },
   })
+  return discussions
+}
+
+let discussionsCache: Record<string, ReturnType<typeof useDoc>> = {}
+
+export function useDiscussion(discussionId: MaybeRefOrGetter<string>) {
+  interface Discussion extends GPDiscussion {
+    last_unread_comment: string
+    last_unread_poll: string
+    is_bookmarked: boolean
+  }
+
+  interface DiscussionMethods {
+    trackVisit: () => void
+    closeDiscussion: () => void
+    reopenDiscussion: () => void
+    pinDiscussion: () => void
+    unpinDiscussion: () => void
+    addBookmark: () => void
+    removeBookmark: () => void
+    moveToProject: (data: { project: string }) => void
+  }
+
+  let name = toValue(discussionId)
+  if (!discussionsCache[name]) {
+    discussionsCache[name] = useDoc<Discussion, DiscussionMethods>({
+      doctype: 'GP Discussion',
+      name: discussionId,
+      methods: {
+        trackVisit: 'track_visit',
+        closeDiscussion: 'close_discussion',
+        reopenDiscussion: 'reopen_discussion',
+        pinDiscussion: 'pin_discussion',
+        unpinDiscussion: 'unpin_discussion',
+        addBookmark: 'add_bookmark',
+        removeBookmark: 'remove_bookmark',
+        moveToProject: 'move_to_project',
+      },
+    })
+  }
+  return discussionsCache[name] as ReturnType<typeof useDoc<Discussion, DiscussionMethods>>
 }

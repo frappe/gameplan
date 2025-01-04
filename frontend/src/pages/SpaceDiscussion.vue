@@ -21,19 +21,19 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { Breadcrumbs, getCachedDocumentResource } from 'frappe-ui'
-import { getProject } from '@/data/projects'
+import { Breadcrumbs } from 'frappe-ui'
 import DiscussionView from '@/components/DiscussionView.vue'
 import PageHeader from '@/components/PageHeader.vue'
+import { useDiscussion } from '@/data/discussions'
+import { useSpace } from '@/data/spaces'
 
 interface Props {
-  spaceId: string | number
-  postId: string | number
+  spaceId: string
+  postId: string
   slug?: string
 }
 
 const props = defineProps<Props>()
-const space = computed(() => getProject(props.spaceId))
-const discussion = computed(() => getCachedDocumentResource('GP Discussion', props.postId))
+const space = useSpace(() => props.spaceId)
+const discussion = useDiscussion(() => props.postId)
 </script>

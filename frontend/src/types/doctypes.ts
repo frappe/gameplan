@@ -144,7 +144,7 @@ export interface GPDiscussion extends DocType {
   /** Slug: Data */
   slug?: string
   /** Participants Count: Int */
-  participants_count?: number
+  participants_count: number
   /** Pinned At: Datetime */
   pinned_at?: string
   /** Pinned By: Link (User) */

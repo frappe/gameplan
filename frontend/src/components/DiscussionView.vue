@@ -1,25 +1,25 @@
 <template>
-  <div class="relative flex h-full flex-col" v-if="postId && discussion">
+  <div class="relative flex h-full flex-col" v-if="postId && discussion.doc">
     <div class="mx-auto w-full max-w-3xl">
       <div class="pb-16">
         <div class="pb-2 pt-14 flex w-full items-center sticky top-0 z-[1] bg-surface-white">
-          <UserProfileLink class="mr-3" :user="discussion.owner">
-            <UserAvatar size="lg" :user="discussion.owner" />
+          <UserProfileLink class="mr-3" :user="discussion.doc.owner">
+            <UserAvatar size="lg" :user="discussion.doc.owner" />
           </UserProfileLink>
           <div class="flex flex-col md:block">
             <UserProfileLink
               class="text-base font-medium text-ink-gray-9 hover:text-ink-blue-3"
-              :user="discussion.owner"
+              :user="discussion.doc.owner"
             >
-              {{ $user(discussion.owner).full_name }}
+              {{ $user(discussion.doc.owner).full_name }}
               <span class="hidden md:inline text-ink-gray-8">&nbsp;&middot;&nbsp;</span>
             </UserProfileLink>
             <time
               class="text-base text-ink-gray-5"
-              :datetime="discussion.creation"
-              :title="$dayjs(discussion.creation)"
+              :datetime="discussion.doc.creation"
+              :title="$dayjs(discussion.doc.creation).toString()"
             >
-              {{ $dayjs(discussion.creation).fromNow() }}
+              {{ $dayjs(discussion.doc.creation).fromNow() }}
             </time>
           </div>
           <div class="ml-auto flex space-x-2">
@@ -39,27 +39,27 @@
         <div :class="{ 'pb-4 mt-1': !editingPost }">
           <div class="flex items-start justify-between space-x-1">
             <h1 v-if="!editingPost" class="flex items-center text-2xl font-semibold">
-              <Tooltip v-if="discussion.closed_at" text="This discussion is closed">
+              <Tooltip v-if="discussion.doc.closed_at" text="This discussion is closed">
                 <LucideLock class="mr-2 h-4 w-4 text-ink-gray-7" :stroke-width="2" />
               </Tooltip>
               <span class="text-ink-gray-9">
-                {{ discussion.title }}
+                {{ discussion.doc.title }}
               </span>
             </h1>
           </div>
           <div class="mt-2 flex items-center text-base" v-show="!editingPost">
             <router-link
               class="text-ink-gray-8 hover:text-ink-gray-6"
-              :to="{ name: 'Space', params: { spaceId: discussion.project } }"
+              :to="{ name: 'Space', params: { spaceId: discussion.doc.project } }"
             >
               {{ space?.title }}
             </router-link>
             <span class="px-1.5 text-ink-gray-8">&middot;</span>
             <span class="text-ink-gray-5">
               {{
-                discussion.participants_count == 1
+                discussion.doc.participants_count == 1
                   ? `1 participant`
-                  : `${discussion.participants_count} participants`
+                  : `${discussion.doc.participants_count} participants`
               }}
             </span>
           </div>
@@ -76,30 +76,30 @@
                 type="text"
                 class="w-full rounded border-0 text-ink-gray-9 px-0 py-0.5 text-2xl font-semibold focus:ring-0"
                 ref="title"
-                v-model="discussion.title"
+                v-model="discussion.doc.title"
                 placeholder="Title"
                 v-focus
               />
             </div>
           </div>
           <CommentEditor
-            :value="discussion.content"
-            @change="discussion.content = $event"
+            :value="discussion.doc.content"
+            @change="discussion.doc.content = $event"
             :submitButtonProps="{
               variant: 'solid',
               onClick: () => {
-                $resources.discussion.setValue.submit({
-                  title: discussion.title,
-                  content: discussion.content,
+                discussion.setValue.submit({
+                  title: discussion.doc?.title,
+                  content: discussion.doc?.content,
                 })
                 editingPost = false
               },
-              loading: $resources.discussion.setValue.loading,
+              loading: discussion.setValue.loading,
             }"
             :discardButtonProps="{
               onClick: () => {
                 editingPost = false
-                $resources.discussion.reload()
+                discussion.reload()
               },
             }"
             :editable="editingPost"
@@ -108,18 +108,18 @@
         <div class="mt-3">
           <Reactions
             doctype="GP Discussion"
-            :name="discussion.name"
-            v-model:reactions="discussion.reactions"
+            :name="discussion.doc.name"
+            v-model:reactions="discussion.doc.reactions"
             :read-only-mode="readOnlyMode"
           />
         </div>
       </div>
       <CommentsArea
         doctype="GP Discussion"
-        :name="discussion.name"
-        :newCommentsFrom="discussion.last_unread_comment"
+        :name="discussion.doc.name"
+        :newCommentsFrom="discussion.doc.last_unread_comment"
         :read-only-mode="readOnlyMode"
-        :disable-new-comment="discussion.closed_at"
+        :disable-new-comment="discussion.doc.closed_at"
       />
       <Dialog
         :options="{
@@ -128,29 +128,25 @@
         @close="
           () => {
             discussionMoveDialog.project = null
-            $resources.discussion.moveToProject.reset()
+            // discussion.moveToProject.reset()
           }
         "
         v-model="discussionMoveDialog.show"
       >
         <template #body-content>
           <Autocomplete
-            :options="projectOptions"
+            :options="spaceOptions"
             v-model="discussionMoveDialog.project"
             placeholder="Select a project"
           />
-          <ErrorMessage class="mt-2" :message="$resources.discussion.moveToProject.error" />
+          <ErrorMessage class="mt-2" :message="discussion.moveToProject.error" />
         </template>
         <template #actions>
           <Button
             class="w-full"
             variant="solid"
-            :loading="$resources.discussion.moveToProject.loading"
-            @click="
-              $resources.discussion.moveToProject.submit({
-                project: discussionMoveDialog.project?.value,
-              })
-            "
+            :loading="discussion.moveToProject.loading"
+            @click="moveToProject"
           >
             {{
               discussionMoveDialog.project
@@ -163,318 +159,280 @@
       <RevisionsDialog
         v-model="showRevisionsDialog"
         doctype="GP Discussion"
-        :name="discussion.name"
+        :name="discussion.doc.name"
         fieldname="content"
       />
     </div>
   </div>
 </template>
-<script>
-import { Autocomplete, Dropdown, Dialog, Tooltip } from 'frappe-ui'
+
+<script setup lang="ts">
+import { ref, computed, nextTick, onUnmounted, reactive } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { Autocomplete, Dropdown, Dialog, Tooltip, usePageMeta } from 'frappe-ui'
 import Reactions from './Reactions.vue'
 import CommentsArea from '@/components/CommentsArea.vue'
 import CommentEditor from './CommentEditor.vue'
-import TextEditor from '@/components/TextEditor.vue'
 import UserProfileLink from './UserProfileLink.vue'
-import DiscussionMeta from './DiscussionMeta.vue'
-import DiscussionBreadcrumbs from './DiscussionBreadcrumbs.vue'
 import RevisionsDialog from './RevisionsDialog.vue'
-import { focus } from '@/directives'
+import { focus as vFocus } from '@/directives'
 import { copyToClipboard } from '@/utils'
-import { activeTeams } from '@/data/teams'
-import { getTeamProjects, getProject } from '@/data/projects'
-import { nextTick } from 'vue'
+import { useSpace } from '@/data/spaces'
+import { useGroupedSpaces } from '@/data/groupedSpaces'
+import { useDiscussion } from '@/data/discussions'
+import { createDialog } from '@/utils/dialogs'
 
-export default {
-  name: 'DiscussionView',
-  props: ['postId', 'readOnlyMode'],
-  directives: {
-    focus,
-  },
-  components: {
-    TextEditor,
-    Reactions,
-    CommentsArea,
-    Dropdown,
-    Dialog,
-    Autocomplete,
-    UserProfileLink,
-    CommentEditor,
-    Tooltip,
-    DiscussionMeta,
-    DiscussionBreadcrumbs,
-    RevisionsDialog,
-  },
-  resources: {
-    discussion() {
-      return {
-        type: 'document',
-        doctype: 'GP Discussion',
-        name: this.postId,
-        realtime: true,
-        whitelistedMethods: {
-          trackVisit: 'track_visit',
-          closeDiscussion: 'close_discussion',
-          reopenDiscussion: 'reopen_discussion',
-          pinDiscussion: 'pin_discussion',
-          unpinDiscussion: 'unpin_discussion',
-          addBookmark: 'add_bookmark',
-          removeBookmark: 'remove_bookmark',
-          moveToProject: {
-            method: 'move_to_project',
-            validate(params) {
-              if (!params.args.project) {
-                return 'Project is required to move this discussion'
-              }
-            },
-            onError() {
-              this.discussionMoveDialog.show = true
-            },
-            onSuccess() {
-              this.onDiscussionMove()
-            },
-          },
-        },
-        onSuccess(doc) {
-          this.updateUrlSlug()
-          if (
-            !this.$route.query.comment &&
-            !this.$route.query.poll &&
-            !this.$route.query.fromSearch &&
-            (doc.last_unread_comment || doc.last_unread_poll)
-          ) {
-            this.$router.replace({
-              query: {
-                comment: doc.last_unread_comment || undefined,
-                poll: doc.last_unread_poll || undefined,
-              },
-            })
-          }
+const props = defineProps<{
+  postId: string
+  readOnlyMode?: boolean
+}>()
 
-          if (this.$route.name === 'Discussion' && Number(this.$route.params.postId) === doc.name) {
-            this.$resources.discussion.trackVisit.submit()
-          }
-        },
-      }
-    },
-  },
-  data() {
-    return {
-      editingPost: false,
-      discussionMoveDialog: {
-        show: false,
-        project: null,
+const router = useRouter()
+const route = useRoute()
+
+const editingPost = ref(false)
+const discussionMoveDialog = reactive<{
+  show: boolean
+  project: { label: string; value: string } | null
+}>({
+  show: false,
+  project: null,
+})
+const showRevisionsDialog = ref(false)
+
+const discussion = useDiscussion(() => props.postId)
+
+let removeOnSuccess = discussion.onSuccess((doc) => {
+  updateUrlSlug()
+  if (
+    !route.query.comment &&
+    !route.query.poll &&
+    !route.query.fromSearch &&
+    (doc.last_unread_comment || doc.last_unread_poll)
+  ) {
+    router.replace({
+      query: {
+        comment: doc.last_unread_comment || undefined,
+        poll: doc.last_unread_poll || undefined,
       },
-      showRevisionsDialog: false,
-      showNavbar: false,
-    }
-  },
-  methods: {
-    copyLink() {
-      let location = window.location
-      let url = `${location.origin}${location.pathname}`
-      copyToClipboard(url)
-    },
-    onDiscussionMove() {
-      this.$nextTick(() => {
-        this.discussionMoveDialog.show = false
-        this.discussionMoveDialog.project = null
+    })
+  }
 
-        this.$router.replace({
-          name: 'Discussion',
-          params: {
-            spaceId: this.discussion.project,
-            postId: this.discussion.name,
-          },
-        })
+  if (route.name === 'Discussion' && route.params.postId === doc.name) {
+    discussion.trackVisit.submit()
+  }
+})
+
+onUnmounted(() => {
+  removeOnSuccess()
+})
+
+// Methods
+function copyLink() {
+  let location = window.location
+  let url = `${location.origin}${location.pathname}`
+  copyToClipboard(url)
+}
+
+function moveToProject() {
+  if (discussionMoveDialog.project?.value) {
+    discussion.moveToProject
+      .submit({
+        project: discussionMoveDialog.project.value,
       })
-      this.$resources.discussion.moveToProject.reset()
-    },
-    updateUrlSlug() {
-      let doc = this.discussion
-      if (!this.$route.params.slug || this.$route.params.slug !== doc.slug) {
+      .then(() => {
         nextTick(() => {
-          this.$router.replace({
+          discussionMoveDialog.show = false
+          discussionMoveDialog.project = null
+
+          router.replace({
             name: 'Discussion',
-            params: { ...this.$route.params, slug: doc.slug },
-            query: this.$route.query,
+            params: {
+              spaceId: discussion.doc?.project,
+              postId: discussion.doc?.name,
+            },
           })
         })
-      }
-    },
-  },
-  computed: {
-    discussion() {
-      return this.$resources.discussion.doc
-    },
-    space() {
-      return getProject(this.discussion.project)
-    },
-    projectOptions() {
-      return activeTeams.value.map((team) => ({
-        group: team.title,
-        items: getTeamProjects(team.name).map((project) => ({
-          label: project.title,
-          value: project.name,
-        })),
-      }))
-    },
-    actions() {
-      return [
-        {
-          label: 'Edit',
-          icon: 'edit',
-          onClick: () => {
-            this.editingPost = true
-          },
-        },
-        {
-          label: 'Revisions',
-          icon: 'rotate-ccw',
-          onClick: () => (this.showRevisionsDialog = true),
-        },
-        {
-          label: 'Copy link',
-          icon: 'link',
-          onClick: this.copyLink,
-        },
-        {
-          label: 'Pin discussion...',
-          icon: 'arrow-up-left',
-          condition: () => !this.discussion.pinned_at,
-          onClick: () => {
-            let project = this.$getDoc('GP Project', this.discussion.project)
-            this.$dialog({
-              title: 'Pin discussion',
-              message: `When a discussion is pinned, it shows up on top of the discussion list in ${project.title}. Do you want to pin this discussion?`,
-              icon: { name: 'arrow-up-left' },
-              actions: [
-                {
-                  label: 'Pin',
-                  onClick: (close) => this.$resources.discussion.pinDiscussion.submit().then(close),
-                  variant: 'solid',
-                },
-              ],
-            })
-          },
-        },
-        {
-          label: 'Unpin discussion...',
-          icon: 'arrow-down-left',
-          condition: () => this.discussion.pinned_at,
-          onClick: () => {
-            this.$dialog({
-              title: 'Unpin discussion',
-              message: `Do you want to unpin this discussion?`,
-              icon: { name: 'arrow-down-left' },
-              actions: [
-                {
-                  label: 'Unpin',
-                  onClick: (close) =>
-                    this.$resources.discussion.unpinDiscussion.submit().then(close),
-                  variant: 'solid',
-                },
-              ],
-            })
-          },
-        },
-        {
-          label: 'Close discussion...',
-          icon: 'lock',
-          condition: () => !this.discussion.closed_at,
-          onClick: () => {
-            this.$dialog({
-              title: 'Close discussion',
-              message:
-                'When a discussion is closed, commenting is disabled. Anyone can re-open the discussion later. Do you want to close this discussion?',
-              icon: { name: 'lock' },
-              actions: [
-                {
-                  label: 'Close',
-                  onClick: (close) =>
-                    this.$resources.discussion.closeDiscussion.submit().then(close),
-                  variant: 'solid',
-                },
-              ],
-            })
-          },
-        },
-        {
-          label: 'Re-open discussion...',
-          icon: 'unlock',
-          condition: () => this.discussion.closed_at,
-          onClick: () => {
-            this.$dialog({
-              title: 'Re-open discussion',
-              message: 'Do you want to re-open this discussion? Anyone can comment on it again.',
-              icon: { name: 'unlock' },
-              actions: [
-                {
-                  label: 'Re-open',
-                  onClick: (close) =>
-                    this.$resources.discussion.reopenDiscussion.submit().then(close),
-                  variant: 'solid',
-                },
-              ],
-            })
-          },
-        },
-        {
-          label: 'Bookmark',
-          icon: 'bookmark',
-          onClick: () => {
-            this.$resources.discussion.addBookmark.submit()
-          },
-          condition: () => !this.discussion.is_bookmarked,
-        },
-        {
-          label: 'Remove Bookmark',
-          icon: 'bookmark',
-          onClick: () => {
-            this.$resources.discussion.removeBookmark.submit()
-          },
-          condition: () => this.discussion.is_bookmarked,
-        },
-        {
-          label: 'Move to...',
-          icon: 'log-out',
-          onClick: () => {
-            this.discussionMoveDialog.show = true
-          },
-        },
-        {
-          label: 'Delete',
-          icon: 'trash',
-          onClick: () => {
-            $dialog({
-              title: 'Delete',
-              message: 'Are you sure you want to delete this post? This is irreversible!',
-              actions: [
-                {
-                  label: 'Delete',
-                  variant: 'solid',
-                  theme: 'red',
-                  onClick: ({ close }) => {
-                    return this.$resources.discussion.delete.submit().then(() => {
-                      this.$router.replace({ name: 'Space' })
-                      close()
-                    })
-                  },
-                },
-              ],
-            })
-          },
-        },
-      ]
-    },
-  },
-  pageMeta() {
-    if (!this.discussion) return
-    let project = this.$getDoc('GP Project', this.discussion.project)
-    if (!project) return
-    return {
-      title: [this.discussion.title, project.title].filter(Boolean).join(' - '),
-    }
-  },
+      })
+      .catch(() => {
+        discussionMoveDialog.show = true
+      })
+  }
 }
+
+function updateUrlSlug() {
+  let doc = discussion.doc
+  if (!doc) return
+  if (!route.params.slug || route.params.slug !== doc.slug) {
+    nextTick(() => {
+      router.replace({
+        name: 'Discussion',
+        params: { ...route.params, slug: doc.slug },
+        query: route.query,
+      })
+    })
+  }
+}
+
+const space = useSpace(() => discussion.doc?.project)
+
+const spaceOptions = computed(() => {
+  const groups = useGroupedSpaces().value
+  return groups.map((group) => ({
+    group: group.title,
+    items: group.spaces.map((space) => ({
+      label: space.title,
+      value: space.name,
+    })),
+  }))
+})
+
+const actions = computed(() => [
+  {
+    label: 'Edit',
+    icon: 'edit',
+    onClick: () => {
+      editingPost.value = true
+    },
+  },
+  {
+    label: 'Revisions',
+    icon: 'rotate-ccw',
+    onClick: () => (showRevisionsDialog.value = true),
+  },
+  {
+    label: 'Copy link',
+    icon: 'link',
+    onClick: copyLink,
+  },
+  {
+    label: 'Pin discussion...',
+    icon: 'arrow-up-left',
+    condition: () => !discussion.doc?.pinned_at,
+    onClick: () => {
+      createDialog({
+        title: 'Pin discussion',
+        message: `When a discussion is pinned, it shows up on top of the discussion list in ${space.value?.title}. Do you want to pin this discussion?`,
+        icon: { name: 'arrow-up-left' },
+        actions: [
+          {
+            label: 'Pin',
+            onClick: ({ close }) => discussion.pinDiscussion.submit().then(close),
+            variant: 'solid',
+          },
+        ],
+      })
+    },
+  },
+  {
+    label: 'Unpin discussion...',
+    icon: 'arrow-down-left',
+    condition: () => discussion.doc?.pinned_at,
+    onClick: () => {
+      createDialog({
+        title: 'Unpin discussion',
+        message: `Do you want to unpin this discussion?`,
+        icon: { name: 'arrow-down-left' },
+        actions: [
+          {
+            label: 'Unpin',
+            onClick: ({ close }) => discussion.unpinDiscussion.submit().then(close),
+            variant: 'solid',
+          },
+        ],
+      })
+    },
+  },
+  {
+    label: 'Close discussion...',
+    icon: 'lock',
+    condition: () => !discussion.doc?.closed_at,
+    onClick: () => {
+      createDialog({
+        title: 'Close discussion',
+        message:
+          'When a discussion is closed, commenting is disabled. Anyone can re-open the discussion later. Do you want to close this discussion?',
+        icon: { name: 'lock' },
+        actions: [
+          {
+            label: 'Close',
+            onClick: ({ close }) => discussion.closeDiscussion.submit().then(close),
+            variant: 'solid',
+          },
+        ],
+      })
+    },
+  },
+  {
+    label: 'Re-open discussion...',
+    icon: 'unlock',
+    condition: () => discussion.doc?.closed_at,
+    onClick: () => {
+      createDialog({
+        title: 'Re-open discussion',
+        message: 'Do you want to re-open this discussion? Anyone can comment on it again.',
+        icon: { name: 'unlock' },
+        actions: [
+          {
+            label: 'Re-open',
+            onClick: ({ close }) => discussion.reopenDiscussion.submit().then(close),
+            variant: 'solid',
+          },
+        ],
+      })
+    },
+  },
+  {
+    label: 'Bookmark',
+    icon: 'bookmark',
+    onClick: () => discussion.addBookmark.submit(),
+    condition: () => !discussion.doc?.is_bookmarked,
+  },
+  {
+    label: 'Remove Bookmark',
+    icon: 'bookmark',
+    onClick: () => discussion.removeBookmark.submit(),
+    condition: () => discussion.doc?.is_bookmarked,
+  },
+  {
+    label: 'Move to...',
+    icon: 'log-out',
+    onClick: () => {
+      discussionMoveDialog.show = true
+    },
+  },
+  {
+    label: 'Delete',
+    icon: 'trash',
+    onClick: () => {
+      createDialog({
+        title: 'Delete',
+        message: 'Are you sure you want to delete this post? This is irreversible!',
+        actions: [
+          {
+            label: 'Delete',
+            variant: 'solid',
+            theme: 'red',
+            onClick: ({ close }) => {
+              return discussion.delete.submit().then(() => {
+                router.replace({ name: 'Space' })
+                close()
+              })
+            },
+          },
+        ],
+      })
+    },
+  },
+])
+
+// Page Meta
+usePageMeta(() => {
+  if (!discussion.doc) return
+  let space = useSpace(() => discussion.doc?.project)
+  if (!space) return
+  return {
+    title: [discussion.doc.title, space.value?.title].filter(Boolean).join(' - '),
+  }
+})
 </script>

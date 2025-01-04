@@ -47,9 +47,10 @@ export let spaces = useList<Space>({
   immediate: true,
 })
 
-export function useSpace(name: MaybeRefOrGetter<string>) {
+export function useSpace(name: MaybeRefOrGetter<string | undefined>) {
   return computed(() => {
     let _name = toValue(name)
+    if (!_name) return null
     return spaces.data?.find((space) => space.name.toString() === _name?.toString()) ?? null
   })
 }

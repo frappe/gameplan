@@ -3,13 +3,14 @@
 
 
 import frappe
+from frappe.utils import cint
 from pypika.terms import ExistsCriterion
 
 import gameplan
 
 
 @frappe.whitelist()
-def get_discussions(filters=None, order_by=None, limit_start=None, limit_page_length=None):
+def get_discussions(filters=None, order_by=None, start=None, limit=None):
 	if not frappe.has_permission("GP Discussion", "read"):
 		frappe.throw("Insufficient Permission for GP Discussion", frappe.PermissionError)
 
@@ -17,6 +18,7 @@ def get_discussions(filters=None, order_by=None, limit_start=None, limit_page_le
 	feed_type = filters.pop("feed_type", None) if filters else None
 	participator = filters.pop("participator", None) if filters else None
 	user_bookmarks = filters.pop("user_bookmarks", None) if filters else None
+	limit = cint(limit)
 	order_by = order_by or "last_post_at desc"
 	order_field, order_direction = order_by.split(" ", 1)
 
@@ -32,30 +34,19 @@ def get_discussions(filters=None, order_by=None, limit_start=None, limit_page_le
 		.where(Member.user == frappe.session.user)
 	)
 	query = (
-		frappe.qb.from_(Discussion)
-		.select(
-			Discussion.star,
-			Visit.last_visit,
-			Project.title.as_("project_title"),
+		frappe.qb.get_query(
+			Discussion,
+			fields=[Discussion.star, Visit.last_visit, Project.title.as_("project_title")],
+			filters=filters,
 		)
 		.left_join(Visit)
 		.on((Discussion.name == Visit.discussion) & (Visit.user == frappe.session.user))
 		.left_join(Project)
 		.on(Discussion.project == Project.name)
 		.where((Project.is_private == 0) | ((Project.is_private == 1) & ExistsCriterion(member_exists)))
-		.limit(limit_page_length)
-		.offset(limit_start or 0)
+		.limit(limit + 1)
+		.offset(start or 0)
 	)
-	if filters:
-		for key in filters:
-			if isinstance(filters[key], list) and filters[key]:
-				query = query.where(Discussion[key].isin(filters[key]))
-			else:
-				query = query.where(Discussion[key] == filters[key])
-
-		# order by pinned_at desc if project is selected
-		if filters.get("project"):
-			query = query.orderby(Discussion.pinned_at, order=frappe._dict(value="desc"))
 
 	if participator:
 		query = query.where(clause_discussions_commented_by_user(participator))
@@ -85,6 +76,9 @@ def get_discussions(filters=None, order_by=None, limit_start=None, limit_page_le
 		query = query.where(Discussion.project.isin(project_list))
 
 	discussions = query.run(as_dict=1)
+	has_next_page = len(discussions) > limit
+	discussions = discussions[:limit]
+
 	Poll = frappe.qb.DocType("GP Poll")
 	discussion_names = [d.name for d in discussions]
 	ongoing_polls = (
@@ -101,7 +95,7 @@ def get_discussions(filters=None, order_by=None, limit_start=None, limit_page_le
 	)
 	for discussion in discussions:
 		discussion["ongoing_polls"] = [p for p in ongoing_polls if str(p.discussion) == str(discussion.name)]
-	return discussions
+	return {"result": discussions, "has_next_page": has_next_page}
 
 
 def clause_discussions_commented_by_user(user):
