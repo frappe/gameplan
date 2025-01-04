@@ -388,8 +388,10 @@ onMounted(() => {
   }
 })
 
-socket.on('new_activity', () => {
-  activities.reload()
+socket.on('new_activity', (data) => {
+  if (data.reference_doctype === props.doctype && data.reference_name === props.name) {
+    activities.reload()
+  }
 })
 
 onUnmounted(() => {

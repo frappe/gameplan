@@ -22,7 +22,7 @@ import { dayjs, getPlatform } from './utils'
 import { createDialog } from './utils/dialogs'
 import { createToast } from './utils/toasts'
 import { useUser, users } from './data/users'
-import { session } from './data/session'
+import { isSessionUser, session } from './data/session'
 import { initSocket } from './socket'
 import resetDataMixin from './utils/resetDataMixin'
 
@@ -55,9 +55,7 @@ app.config.globalProperties.$users = users
 app.config.globalProperties.$session = session
 app.config.globalProperties.$readOnlyMode = window.read_only_mode
 app.config.globalProperties.$platform = getPlatform()
-app.config.globalProperties.$isSessionUser = (email) => {
-  return session.user === email
-}
+app.config.globalProperties.$isSessionUser = isSessionUser
 
 let socket
 if (import.meta.env.DEV) {

@@ -40,6 +40,10 @@ export let session = reactive({
   isLoggedIn: computed(() => sessionUser.value != null),
 })
 
+export function isSessionUser(user: string) {
+  return session.user === user
+}
+
 function getSessionUserFromCookie() {
   let cookies = new URLSearchParams(document.cookie.split('; ').join('&'))
   let _sessionUser = cookies.get('user_id')

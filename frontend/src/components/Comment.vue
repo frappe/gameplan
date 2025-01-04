@@ -2,7 +2,7 @@
   <div
     class="pb-16 transition-shadow"
     :class="{
-      ring: !comment.loading && highlight,
+      ring: !editableComment?.setValue.loading && highlight,
     }"
     :data-id="comment.name"
   >
@@ -33,17 +33,17 @@
             >
               &nbsp;&middot; Edited
             </span>
-            <span v-if="comment.loading" class="italic text-ink-gray-5">
+            <span v-if="editableComment?.setValue.loading" class="italic text-ink-gray-5">
               &nbsp;&middot; Sending...
             </span>
-            <div v-if="comment.error">
+            <div v-if="editableComment?.setValue.error">
               &nbsp;&middot;
               <span class="text-ink-red-4"> Error</span>
             </div>
           </div>
         </div>
         <Dropdown
-          v-show="!comment.editing"
+          v-show="editableComment == null"
           class="ml-auto"
           placement="right"
           :button="{
@@ -51,81 +51,39 @@
             variant: 'ghost',
             label: 'Comment Options',
           }"
-          :options="[
-            {
-              label: 'Edit',
-              icon: 'edit',
-              onClick: () => (comment.editing = true),
-              condition: () => !comment.deleted_at && !readOnlyMode,
-            },
-            {
-              label: 'Revisions',
-              icon: 'rotate-ccw',
-              onClick: () => (showRevisionsDialog = true),
-              condition: () => comment.modified > comment.creation,
-            },
-            {
-              label: 'Copy link',
-              icon: 'link',
-              onClick: () => copyLink(comment),
-            },
-            {
-              label: 'Delete',
-              icon: 'trash',
-              onClick: () => {
-                $dialog({
-                  title: 'Delete comment',
-                  message: 'Are you sure you want to delete this comment?',
-                  actions: [
-                    {
-                      label: 'Delete',
-                      variant: 'solid',
-                      theme: 'red',
-                      onClick: (close) => {
-                        return comments.setValue
-                          .submit({
-                            name: comment.name,
-                            deleted_at: $dayjs().format('YYYY-MM-DD HH:mm:ss'),
-                          })
-                          .then(close)
-                      },
-                    },
-                  ],
-                })
-              },
-              condition: () =>
-                $isSessionUser(comment.owner) && comment.deleted_at == null && !readOnlyMode,
-            },
-          ]"
+          :options="dropdownOptions"
         />
       </div>
       <div class="flex-1">
         <div
           :class="{
             'w-full rounded-lg border bg-surface-white p-4 focus-within:border-outline-gray-3':
-              comment.editing,
+              editableComment,
           }"
-          @keydown.ctrl.enter.capture.stop="editComment(comment)"
-          @keydown.meta.enter.capture.stop="editComment(comment)"
+          @keydown.ctrl.enter.capture.stop="updateComment(comment)"
+          @keydown.meta.enter.capture.stop="updateComment(comment)"
         >
           <CommentEditor
             v-if="comment.deleted_at == null"
-            :value="comment.content"
-            @change="comment.content = $event"
-            :editable="comment.editing || false"
+            :value="editableComment?.doc.content || comment.content"
+            @change="
+              (value) => {
+                if (editableComment) {
+                  editableComment.doc.content = value
+                }
+              }
+            "
+            :editable="editableComment != null"
             :submitButtonProps="{
-              onClick: () => editComment(comment),
-              loading: comment.loading,
+              onClick: () => updateComment(comment),
+              loading: editableComment?.setValue.loading,
             }"
             :discardButtonProps="{
-              onClick: () => {
-                comment.editing = false
-                comments.fetchOne.submit(comment.name)
-              },
+              onClick: () => setEditing(comment.name, false),
             }"
           />
           <span class="text-base italic text-ink-gray-5" v-else> This message is deleted </span>
-          <div class="mt-3" v-if="!comment.deleted_at && !comment.editing && comment.reactions">
+          <div class="mt-3" v-if="!comment.deleted_at && !editableComment && comment.reactions">
             <Reactions
               doctype="GP Comment"
               :name="comment.name"
@@ -144,70 +102,96 @@
     />
   </div>
 </template>
-<script>
+
+<script setup lang="ts">
+import { ref, computed } from 'vue'
 import { Dropdown } from 'frappe-ui'
+import { useList } from 'frappe-ui/src/data-fetching'
 import { copyToClipboard } from '@/utils'
 import UserProfileLink from './UserProfileLink.vue'
 import CommentEditor from './CommentEditor.vue'
 import Reactions from './Reactions.vue'
 import RevisionsDialog from './RevisionsDialog.vue'
+import UserAvatar from './UserAvatar.vue'
+import { GPComment } from '@/types/doctypes'
+import { isSessionUser } from '@/data/session'
+import { createDialog } from '@/utils/dialogs'
 
-export default {
-  name: 'Comment',
-  props: {
-    comment: {
-      type: Object,
-      required: true,
-    },
-    readOnlyMode: {
-      type: Boolean,
-      default: false,
-    },
-    highlight: {
-      type: Boolean,
-      default: false,
-    },
-    comments: {
-      type: Object,
-    },
-  },
-  components: {
-    UserProfileLink,
-    Dropdown,
-    CommentEditor,
-    Reactions,
-    RevisionsDialog,
-  },
-  data() {
-    return {
-      showRevisionsDialog: false,
-    }
-  },
-  methods: {
-    editComment(comment) {
-      comment.loading = true
-      comment.editing = false
-      this.comments.setValue.submit(
-        {
-          name: comment.name,
-          content: comment.content,
-        },
-        {
-          onSuccess() {
-            comment.loading = false
-          },
-          onError(error) {
-            comment.loading = false
-            comment.error = error
-          },
-        },
-      )
-    },
-    copyLink(comment) {
-      let location = window.location
-      let url = `${location.origin}${location.pathname}?comment=${comment.name}`
-      copyToClipboard(url)
-    },
-  },
+interface Props {
+  comment: GPComment
+  readOnlyMode?: boolean
+  highlight?: boolean
+  comments: ReturnType<typeof useList<GPComment>>
 }
+
+const props = defineProps<Props>()
+const showRevisionsDialog = ref(false)
+const editableComment = ref<ReturnType<typeof props.comments.edit> | null>(null)
+
+const setEditing = (name: string, value: boolean) => {
+  if (value) {
+    editableComment.value = props.comments.edit(name)
+  } else {
+    editableComment.value = null
+  }
+}
+
+const updateComment = (comment: GPComment) => {
+  editableComment.value?.update().then(() => {
+    setEditing(comment.name, false)
+  })
+}
+
+const copyLink = (comment: GPComment) => {
+  const location = window.location
+  const url = `${location.origin}${location.pathname}?comment=${comment.name}`
+  copyToClipboard(url)
+}
+
+const dropdownOptions = computed(() => [
+  {
+    label: 'Edit',
+    icon: 'edit',
+    onClick: () => setEditing(props.comment.name, true),
+    condition: () => !props.comment.deleted_at && !props.readOnlyMode,
+  },
+  {
+    label: 'Revisions',
+    icon: 'rotate-ccw',
+    onClick: () => (showRevisionsDialog.value = true),
+    condition: () => props.comment.modified > props.comment.creation,
+  },
+  {
+    label: 'Copy link',
+    icon: 'link',
+    onClick: () => copyLink(props.comment),
+  },
+  {
+    label: 'Delete',
+    icon: 'trash',
+    onClick: () => {
+      createDialog({
+        title: 'Delete comment',
+        message: 'Are you sure you want to delete this comment?',
+        actions: [
+          {
+            label: 'Delete',
+            variant: 'solid',
+            theme: 'red',
+            onClick: ({ close }) => {
+              return props.comments.setValue
+                .submit({
+                  name: props.comment.name,
+                  deleted_at: $dayjs().format('YYYY-MM-DD HH:mm:ss'),
+                })
+                .then(close)
+            },
+          },
+        ],
+      })
+    },
+    condition: () =>
+      isSessionUser(props.comment.owner) && props.comment.deleted_at == null && !props.readOnlyMode,
+  },
+])
 </script>

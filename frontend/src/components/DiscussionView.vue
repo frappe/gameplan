@@ -117,9 +117,9 @@
       <CommentsArea
         doctype="GP Discussion"
         :name="discussion.doc.name"
-        :newCommentsFrom="discussion.doc.last_unread_comment"
+        :newCommentsFrom="discussion.doc.last_unread_comment?.toString()"
         :read-only-mode="readOnlyMode"
-        :disable-new-comment="discussion.doc.closed_at"
+        :disable-new-comment="Boolean(discussion.doc.closed_at)"
       />
       <Dialog
         :options="{

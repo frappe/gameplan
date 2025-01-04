@@ -3,6 +3,7 @@
 
 import frappe
 from frappe.model.document import Document
+from frappe.utils import cstr
 
 from gameplan.gameplan.doctype.gp_notification.gp_notification import GPNotification
 from gameplan.mixins.activity import HasActivity
@@ -41,7 +42,7 @@ class GPDiscussion(HasActivity, HasMentions, HasReactions, Document):
 				limit=1,
 				pluck="name",
 			)
-			d.last_unread_comment = result[0] if result else None
+			d.last_unread_comment = cstr(result[0]) if result else None
 		else:
 			d.last_unread_comment = "first_post"
 

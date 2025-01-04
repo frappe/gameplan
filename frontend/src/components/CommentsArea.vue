@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col">
     <div
-      v-if="$resources.comments.data == null"
+      v-if="comments.data == null"
       class="flex animate-pulse items-start space-x-3 px-2 py-4 text-base"
     >
       <div class="h-8 w-8 rounded-full bg-surface-gray-3"></div>
@@ -42,7 +42,7 @@
           :comment="item"
           :highlight="highlightedItem == item"
           :readOnlyMode="readOnlyMode"
-          :comments="$resources.comments"
+          :comments="comments"
         />
         <Activity
           class="border-t py-5"
@@ -98,7 +98,7 @@
           :submitButtonProps="{
             variant: 'solid',
             onClick: submitComment,
-            loading: $resources.comments.insert.loading,
+            loading: comments.insert.loading,
             disabled: commentEmpty,
           }"
           :discardButtonProps="{
@@ -112,348 +112,333 @@
           v-model:poll="newPoll"
           :submitButtonProps="{
             onClick: submitPoll,
-            loading: $resources.polls.insert.loading,
+            loading: polls.insert.loading,
           }"
           :discardButtonProps="{
             onClick: discardPoll,
           }"
         />
-        <ErrorMessage :message="$resources.polls.insert.error" />
+        <ErrorMessage :message="polls.insert.error" />
       </div>
     </div>
   </div>
 </template>
-<script>
-import { nextTick } from 'vue'
-import { TabButtons } from 'frappe-ui'
+
+<script setup lang="ts">
+import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { useList } from 'frappe-ui/src/data-fetching'
+import { TabButtons, ErrorMessage } from 'frappe-ui'
 import CommentEditor from '@/components/CommentEditor.vue'
 import Comment from './Comment.vue'
 import Activity from './Activity.vue'
 import PollEditor from './PollEditor.vue'
 import Poll from './Poll.vue'
+import UserAvatar from './UserAvatar.vue'
 import { getScrollContainer } from '@/utils/scrollContainer'
+import { createDialog } from '@/utils/dialogs'
+import { useSocket } from '@/socket'
+import { GPActivity, GPComment, GPPoll } from '@/types/doctypes'
+import type { Editor } from '@tiptap/vue-3'
 
-export default {
-  name: 'CommentsArea',
-  props: ['doctype', 'name', 'newCommentsFrom', 'readOnlyMode', 'disableNewComment'],
-  components: {
-    CommentEditor,
-    Comment,
-    Activity,
-    TabButtons,
-    PollEditor,
-    Poll,
+interface Props {
+  doctype: string
+  name: string
+  newCommentsFrom?: string
+  readOnlyMode?: boolean
+  disableNewComment?: boolean
+}
+
+interface NewPoll {
+  title: string
+  multiple_answers: boolean
+  options: Array<{
+    title: string
+    idx: number
+  }>
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  readOnlyMode: false,
+  disableNewComment: false,
+})
+
+const router = useRouter()
+const route = useRoute()
+const socket = useSocket()
+
+const showCommentBox = ref(false)
+const newCommentType = ref<'Comment' | 'Poll'>('Comment')
+const newComment = ref(localStorage.getItem(draftCommentKey()) || '')
+const newPoll = ref({
+  title: '',
+  multiple_answers: false,
+  options: [
+    { title: '', idx: 1 },
+    { title: '', idx: 2 },
+  ],
+})
+const newMessagesFrom = ref(props.newCommentsFrom)
+const highlightedItem = ref(null)
+const addCommentHeight = ref(0)
+const newCommentEditor = ref(null)
+const addComment = ref(null)
+let mutationObserver: MutationObserver | undefined
+
+const comments = useList<GPComment>({
+  doctype: 'GP Comment',
+  cacheKey: ['Comments', props.doctype, props.name],
+  fields: [
+    'name',
+    'content',
+    'owner',
+    'creation',
+    'modified',
+    'deleted_at',
+    { reactions: ['name', 'user', 'emoji'] },
+  ],
+  transform(data) {
+    return data.map((d) => ({ ...d, doctype: 'GP Comment' }))
   },
-  data() {
-    let draftComment = localStorage.getItem(this.draftCommentKey())
-    return {
-      commentMap: {},
-      showCommentBox: false,
-      newCommentType: 'Comment',
-      newComment: draftComment || '',
-      newPoll: {
-        title: '',
-        multiple_answers: false,
-        options: [
-          { title: '', idx: 1 },
-          { title: '', idx: 2 },
-        ],
-      },
-      newMessagesFrom: this.newCommentsFrom,
-      highlightedItem: null,
-      addCommentHeight: 0,
-    }
+  filters: {
+    reference_doctype: props.doctype,
+    reference_name: props.name,
   },
-  watch: {
-    showCommentBox(val) {
-      if (val) {
-        nextTick(() => {
-          this.$refs.newCommentEditor?.editor.commands.focus()
-          this.scrollToEnd()
-        })
-      }
-    },
-  },
-  mounted() {
-    if (!this.$refs.newCommentEditor?.editor.isEmpty) {
-      this.showCommentBox = true
-    }
-    this.$socket.on('new_activity', (data) => {
-      if (data.reference_doctype == this.doctype && data.reference_name == this.name) {
-        this.$resources.activities.reload()
-      }
-    })
-    this.setupMutationObserver()
-  },
-  beforeUnmount() {
-    this.$socket.off('new_activity')
-    // cleanup mutation observer
-    this.mutationObserver?.disconnect()
-    delete this.mutationObserver
-  },
-  resources: {
-    comments() {
-      return {
-        type: 'list',
-        doctype: 'GP Comment',
-        cache: ['Comments', this.doctype, this.name],
-        fields: [
-          'name',
-          'content',
-          'owner',
-          'creation',
-          'modified',
-          'deleted_at',
-          { reactions: ['name', 'user', 'emoji'] },
-        ],
-        transform(data) {
-          for (let d of data) {
-            d.doctype = 'GP Comment'
-          }
-          return data
-        },
-        filters: {
-          reference_doctype: this.doctype,
-          reference_name: this.name,
-        },
-        orderBy: 'creation asc',
-        pageLength: 99999,
-        auto: true,
-        onSuccess() {
-          if (this.$route.query.comment) {
-            if (this.$route.query.comment == 'first_post') {
-              this.$router.replace({ query: {} })
-              return
-            }
-            let comment = this.$resources.comments.getRow(this.$route.query.comment)
-            this.scrollToItem(comment)
-          } else if (!this.$route.query.fromSearch && this.$resources.comments.data.length > 0) {
-            this.scrollToEnd()
-          }
-        },
-      }
-    },
-    activities() {
-      return {
-        type: 'list',
-        doctype: 'GP Activity',
-        fields: ['name', 'user', 'action', 'data', 'creation'],
-        filters: {
-          reference_doctype: this.doctype,
-          reference_name: this.name,
-        },
-        orderBy: 'creation asc',
-        pageLength: 99999,
-        auto: true,
-        transform(activities) {
-          for (let activity of activities) {
-            activity.doctype = 'GP Activity'
-            activity.data = activity.data ? JSON.parse(activity.data) : null
-          }
-          return activities
-        },
-      }
-    },
-    polls() {
-      return {
-        type: 'list',
-        doctype: 'GP Poll',
-        fields: [
-          'name',
-          'title',
-          'anonymous',
-          'multiple_answers',
-          'creation',
-          'owner',
-          'stopped_at',
-          { options: ['name', 'title', 'idx', 'percentage'] },
-          { votes: ['user', 'option'] },
-          { reactions: ['name', 'user', 'emoji'] },
-        ],
-        filters: {
-          discussion: this.name,
-        },
-        orderBy: 'creation asc',
-        auto: true,
-        pageLength: 99999,
-        transform(data) {
-          for (let d of data) {
-            d.doctype = 'GP Poll'
-          }
-          return data
-        },
-        onSuccess() {
-          if (this.$route.query.poll) {
-            let poll = this.$resources.polls.getRow(this.$route.query.poll)
-            this.scrollToItem(poll)
-          }
-        },
-      }
-    },
-  },
-  methods: {
-    submitComment() {
-      if (this.commentEmpty) {
+  orderBy: 'creation asc',
+  limit: 99999,
+  onSuccess() {
+    if (route.query.comment) {
+      if (route.query.comment === 'first_post') {
+        router.replace({ query: {} })
         return
       }
-      this.$resources.comments.setData((data) => {
-        data.push({
-          owner: this.$user().name,
-          content: this.newComment,
-          reference_doctype: this.doctype,
-          reference_name: this.name,
-          loading: true,
-          reactions: [],
-          creation: this.$dayjs().format('YYYY-MM-DD HH:mm:ss'),
-        })
-        return data
-      })
-      this.$resources.comments.insert.submit(
-        {
-          reference_doctype: this.doctype,
-          reference_name: this.name,
-          content: this.newComment,
-        },
-        {
-          onError(error) {
-            this.$resources.comments.setData((data) => {
-              let lastComment = data[data.length - 1]
-              lastComment.loading = false
-              lastComment.error = error
-              return data
-            })
-            this.$toast({
-              title: 'Error adding new comment',
-              text: error.messages.join(', '),
-              position: 'bottom-center',
-              icon: 'alert-circle',
-              iconClasses: 'text-ink-red-4',
-            })
-          },
-        },
-      )
-      this.resetCommentState()
-    },
-    async scrollToItem(item) {
-      if (!item) return
-      await nextTick()
-      if (item.$el) {
-        this.highlightedItem = item
-        this.scrollToElement(item.$el)
-      }
-      setTimeout(() => {
-        this.highlightedItem = null
-        this.$router.replace({ query: {} })
-      }, 10000)
-    },
-    scrollToElement($el) {
-      let scrollContainer = getScrollContainer()
-      let headerHeight = 64
-      let top = $el.offsetTop - scrollContainer.scrollTop - headerHeight
-      scrollContainer.scrollBy({ top, left: 0, behavior: 'smooth' })
-    },
-    scrollToEnd() {
-      let scrollContainer = getScrollContainer()
-      scrollContainer.scrollTop = scrollContainer.scrollHeight
-    },
-    discardComment() {
-      if (!this.editorObject.isEmpty) {
-        this.$dialog({
-          title: 'Discard comment',
-          message: 'Are you sure you want to discard your comment?',
-          actions: [
-            {
-              label: 'Discard comment',
-              onClick: (close) => {
-                this.resetCommentState()
-                close
-              },
-              variant: 'solid',
-            },
-            {
-              label: 'Keep comment',
-            },
-          ],
-        })
-      } else {
-        this.resetCommentState()
-      }
-    },
-    onNewCommentChange(content) {
-      this.newComment = content
+      const comment = comments.data?.find((c) => c.name === route.query.comment)
+      scrollToItem(comment)
+    } else if (!route.query.fromSearch && comments.data?.length > 0) {
+      scrollToEnd()
+    }
+  },
+})
 
-      // save draft comment to local storage
-      setTimeout(() => {
-        // set timeout to move it off main thread
-        localStorage.setItem(this.draftCommentKey(), content)
-      }, 0)
-    },
-    resetCommentState() {
-      localStorage.removeItem(this.draftCommentKey())
-      this.$resetData([
-        'newComment',
-        'showCommentBox',
-        'newCommentType',
-        'newPoll',
-        'highlightedItem',
-      ])
-    },
-    submitPoll() {
-      if (this.doctype !== 'GP Discussion') return
-      return this.$resources.polls.insert.submit(
+const activities = useList<GPActivity>({
+  doctype: 'GP Activity',
+  fields: ['name', 'user', 'action', 'data', 'creation'],
+  filters: {
+    reference_doctype: props.doctype,
+    reference_name: props.name,
+  },
+  orderBy: 'creation asc',
+  limit: 99999,
+  transform(activities) {
+    return activities.map((activity) => ({
+      ...activity,
+      doctype: 'GP Activity',
+      data: activity.data ? JSON.parse(activity.data as string) : null,
+    }))
+  },
+})
+
+const polls = useList<GPPoll>({
+  doctype: 'GP Poll',
+  fields: [
+    'name',
+    'title',
+    'anonymous',
+    'multiple_answers',
+    'creation',
+    'owner',
+    'stopped_at',
+    { options: ['name', 'title', 'idx', 'percentage'] },
+    { votes: ['user', 'option'] },
+    { reactions: ['name', 'user', 'emoji'] },
+  ],
+  filters: {
+    discussion: props.name,
+  },
+  orderBy: 'creation asc',
+  limit: 99999,
+  transform(data) {
+    return data.map((d) => ({ ...d, doctype: 'GP Poll' }))
+  },
+  onSuccess() {
+    if (route.query.poll) {
+      const poll = polls.data?.find((p) => p.name === route.query.poll)
+      scrollToItem(poll)
+    }
+  },
+})
+
+// Computed
+const timelineItems = computed(() => {
+  let items: Array<GPComment | GPActivity | GPPoll> = []
+  if (comments.data?.length) {
+    items = items.concat(comments.data)
+  }
+  if (activities.data?.length) {
+    items = items.concat(activities.data)
+  }
+  if (polls.data?.length) {
+    items = items.concat(polls.data)
+  }
+  return items.sort((a, b) => new Date(a.creation).valueOf() - new Date(b.creation).valueOf())
+})
+
+const commentEmpty = computed(() => {
+  return !newComment.value || newComment.value === '<p></p>'
+})
+
+const editorObject = computed<Editor | null>(() => {
+  return newCommentEditor.value?.editor || null
+})
+
+function draftCommentKey(): string {
+  return `draft-comment-${props.doctype}-${props.name}`
+}
+
+function resetCommentState() {
+  localStorage.removeItem(draftCommentKey())
+  newComment.value = ''
+  showCommentBox.value = false
+  newCommentType.value = 'Comment'
+  newPoll.value = {
+    title: '',
+    multiple_answers: false,
+    options: [
+      { title: '', idx: 1 },
+      { title: '', idx: 2 },
+    ],
+  }
+  highlightedItem.value = null
+}
+
+async function submitComment() {
+  if (commentEmpty.value) return
+
+  comments.insert
+    .submit({
+      reference_doctype: props.doctype,
+      reference_name: props.name,
+      content: newComment.value,
+    })
+    .then(() => {
+      resetCommentState()
+    })
+}
+
+function scrollToEnd() {
+  const scrollContainer = getScrollContainer()
+  scrollContainer.scrollTop = scrollContainer.scrollHeight
+}
+
+async function scrollToItem(item: any) {
+  if (!item) return
+  await nextTick()
+  if (item.$el) {
+    highlightedItem.value = item
+    scrollToElement(item.$el)
+  }
+  setTimeout(() => {
+    highlightedItem.value = null
+    router.replace({ query: {} })
+  }, 10000)
+}
+
+function scrollToElement($el: HTMLElement) {
+  const scrollContainer = getScrollContainer()
+  const headerHeight = 64
+  const top = $el.offsetTop - scrollContainer.scrollTop - headerHeight
+  scrollContainer.scrollBy({ top, left: 0, behavior: 'smooth' })
+}
+
+function submitPoll() {
+  if (props.doctype !== 'GP Discussion') return
+  return polls.insert
+    .submit({
+      discussion: props.name,
+      title: newPoll.value.title,
+      multiple_answers: newPoll.value.multiple_answers ? 1 : 0,
+      options: newPoll.value.options,
+    })
+    .then(() => {
+      resetCommentState()
+    })
+}
+
+function discardPoll() {
+  resetCommentState()
+}
+
+function setItemRef($component: any, item: any) {
+  if ($component?.$el) {
+    item.$el = $component.$el
+  }
+}
+
+function onNewCommentChange(content: string) {
+  newComment.value = content
+  setTimeout(() => {
+    localStorage.setItem(draftCommentKey(), content)
+  }, 0)
+}
+
+function discardComment() {
+  if (!editorObject.value?.isEmpty) {
+    createDialog({
+      title: 'Discard comment',
+      message: 'Are you sure you want to discard your comment?',
+      actions: [
         {
-          ...this.newPoll,
-          discussion: this.name,
-        },
-        {
-          onSuccess() {
-            this.resetCommentState()
+          label: 'Discard comment',
+          onClick: ({ close }) => {
+            resetCommentState()
+            close()
           },
+          variant: 'solid',
         },
-      )
-    },
-    discardPoll() {
-      this.resetCommentState()
-    },
-    draftCommentKey() {
-      return `draft-comment-${this.doctype}-${this.name}`
-    },
-    setItemRef($component, item) {
-      if ($component?.$el) {
-        item.$el = $component.$el
-      }
-    },
-    setupMutationObserver() {
-      let $el = this.$refs.addComment
-      if (!$el) return
-      this.mutationObserver = new MutationObserver(() => {
-        this.addCommentHeight = $el.clientHeight
-      })
-      this.mutationObserver.observe($el, { childList: true, subtree: true })
-    },
-  },
-  computed: {
-    timelineItems() {
-      let items = []
-      if (this.$resources.comments.data?.length) {
-        items = items.concat(this.$resources.comments.data)
-      }
-      if (this.$resources.activities.data?.length) {
-        items = items.concat(this.$resources.activities.data)
-      }
-      if (this.$resources.polls.data?.length) {
-        items = items.concat(this.$resources.polls.data)
-      }
-      return items.sort((a, b) => {
-        return new Date(a.creation) - new Date(b.creation)
-      })
-    },
-    commentEmpty() {
-      return !this.newComment || this.newComment === '<p></p>'
-    },
-    editorObject() {
-      return this.$refs.newCommentEditor?.editor
-    },
-  },
+        {
+          label: 'Keep comment',
+        },
+      ],
+    })
+  } else {
+    resetCommentState()
+  }
+}
+
+watch(showCommentBox, (val) => {
+  if (val) {
+    nextTick(() => {
+      editorObject.value?.commands.focus()
+      scrollToEnd()
+    })
+  }
+})
+
+onMounted(() => {
+  if (!editorObject.value?.isEmpty) {
+    showCommentBox.value = true
+  }
+  socket.on('new_activity', (data) => {
+    if (data.reference_doctype === props.doctype && data.reference_name === props.name) {
+      activities.reload()
+    }
+  })
+  setupMutationObserver()
+})
+
+onUnmounted(() => {
+  socket.off('new_activity')
+  mutationObserver?.disconnect()
+})
+
+function setupMutationObserver() {
+  const $el = addComment.value
+  if (!$el) return
+
+  const observer = new MutationObserver(() => {
+    addCommentHeight.value = $el.clientHeight
+  })
+  observer.observe($el, { childList: true, subtree: true })
+  mutationObserver = observer
 }
 </script>

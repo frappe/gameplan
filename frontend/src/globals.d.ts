@@ -1,6 +1,7 @@
 // defining global components and properties here for autocompletion
 // https://github.com/johnsoncodehk/volar/tree/master/extensions/vscode-vue-language-features
 
+import { isSessionUser } from './data/session'
 import { useUser } from './data/users'
 import { dayjs } from './utils'
 import { getPlatform } from './utils'
@@ -27,6 +28,7 @@ declare module 'vue' {
     $platform: typeof getPlatform
     $user: typeof useUser
     $dayjs: typeof dayjs
+    $isSessionUser: typeof isSessionUser
   }
 }
 
