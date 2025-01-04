@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col">
     <div
-      v-if="$resources.comments.data == null"
+      v-if="comments.data == null"
       class="flex animate-pulse items-start space-x-3 px-2 py-4 text-base"
     >
       <div class="h-8 w-8 rounded-full bg-surface-gray-3"></div>
@@ -40,17 +40,9 @@
           :comment="item"
           :highlight="highlightedItem == item"
           :readOnlyMode="readOnlyMode"
-          :comments="$resources.comments"
+          :comments="comments"
         />
         <Activity class="my-5" v-else-if="item.doctype == 'GP Activity'" :activity="item" />
-        <Poll
-          class="border-t"
-          v-else-if="item.doctype == 'GP Poll'"
-          :ref="($poll) => setItemRef($poll, item)"
-          :highlight="highlightedItem == item"
-          :poll="item"
-          :readOnlyMode="readOnlyMode"
-        />
       </template>
     </div>
 
@@ -66,24 +58,6 @@
           >
             Add a comment
           </button>
-          <div class="absolute inset-y-0 right-0 flex items-center pr-1">
-            <Tooltip text="Add a poll">
-              <Button
-                variant="ghost"
-                label="Add a poll"
-                @click="
-                  () => {
-                    newCommentType = 'Poll'
-                    showCommentBox = true
-                  }
-                "
-              >
-                <template #icon>
-                  <LucideBarChart2 class="w-4 -rotate-90" />
-                </template>
-              </Button>
-            </Tooltip>
-          </div>
         </div>
         <div
           v-show="showCommentBox"
@@ -99,13 +73,12 @@
           </div>
           <CommentEditor
             ref="newCommentEditor"
-            v-show="newCommentType == 'Comment'"
             :value="newComment"
             @change="onNewCommentChange"
             :submitButtonProps="{
               variant: 'solid',
               onClick: submitComment,
-              loading: $resources.comments.insert.loading,
+              loading: comments.insert.loading,
               disabled: commentEmpty,
             }"
             :discardButtonProps="{
@@ -114,339 +87,312 @@
             :editable="showCommentBox"
             placeholder="Add a comment"
           />
-          <PollEditor
-            v-show="newCommentType == 'Poll'"
-            v-model:poll="newPoll"
-            :submitButtonProps="{
-              onClick: submitPoll,
-              loading: $resources.polls.insert.loading,
-            }"
-            :discardButtonProps="{
-              onClick: discardPoll,
-            }"
-          />
-          <ErrorMessage :message="$resources.polls.insert.error" />
         </div>
       </div>
     </div>
   </div>
 </template>
-<script>
-import { nextTick } from 'vue'
-import { TabButtons } from 'frappe-ui'
+<script setup lang="ts">
+import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { useList } from 'frappe-ui/src/data-fetching'
 import CommentEditor from '@/components/CommentEditor.vue'
 import Comment from './Comment.vue'
 import Activity from './Activity.vue'
-import PollEditor from './PollEditor.vue'
-import Poll from './Poll.vue'
+import UserAvatar from './UserAvatar.vue'
 import { getScrollContainer } from '@/utils/scrollContainer'
-import { Tooltip } from 'frappe-ui'
+import { createDialog } from '@/utils/dialogs'
+import { useSocket } from '@/socket'
+import { GPActivity, GPComment } from '@/types/doctypes'
 
-export default {
-  name: 'CommentsArea',
-  props: ['doctype', 'name', 'newCommentsFrom', 'readOnlyMode', 'disableNewComment'],
-  components: {
-    CommentEditor,
-    Comment,
-    Activity,
-    TabButtons,
-    PollEditor,
-    Poll,
-    Tooltip,
-  },
-  data() {
-    let draftComment = localStorage.getItem(this.draftCommentKey())
-    return {
-      commentMap: {},
-      showCommentBox: false,
-      newCommentType: 'Comment',
-      newComment: draftComment || '',
-      newPoll: {
-        title: '',
-        multiple_answers: false,
-        options: [
-          { title: '', idx: 1 },
-          { title: '', idx: 2 },
-        ],
-      },
-      newMessagesFrom: this.newCommentsFrom,
-      highlightedItem: null,
-    }
-  },
-  watch: {
-    showCommentBox(val) {
-      if (val) {
-        nextTick(() => {
-          this.$refs.newCommentEditor?.editor.commands.focus()
-          this.scrollToEnd()
-        })
-      }
-    },
-  },
-  mounted() {
-    if (!this.$refs.newCommentEditor?.editor.isEmpty) {
-      this.showCommentBox = true
-    }
-    this.$socket.on('new_activity', (data) => {
-      if (data.reference_doctype == this.doctype && data.reference_name == this.name) {
-        this.$resources.activities.reload()
-      }
-    })
-  },
-  beforeUnmount() {
-    this.$socket.off('new_activity')
-  },
-  resources: {
-    comments() {
-      return {
-        type: 'list',
-        doctype: 'GP Comment',
-        cache: ['Comments', this.doctype, this.name],
-        fields: [
-          'name',
-          'content',
-          'owner',
-          'creation',
-          'modified',
-          'deleted_at',
-          { reactions: ['name', 'user', 'emoji'] },
-        ],
-        transform(data) {
-          for (let d of data) {
-            d.doctype = 'GP Comment'
-          }
-          return data
-        },
-        filters: {
-          reference_doctype: this.doctype,
-          reference_name: this.name,
-        },
-        orderBy: 'creation asc',
-        pageLength: 99999,
-        auto: true,
-        onSuccess() {
-          if (this.$route.query.comment) {
-            let comment = this.$resources.comments.getRow(this.$route.query.comment)
-            this.scrollToItem(comment)
-          } else if (!this.$route.query.fromSearch && this.$resources.comments.data.length > 0) {
-            this.scrollToEnd()
-          }
-        },
-      }
-    },
-    activities() {
-      return {
-        type: 'list',
-        doctype: 'GP Activity',
-        fields: ['name', 'user', 'action', 'data', 'creation'],
-        filters: {
-          reference_doctype: this.doctype,
-          reference_name: this.name,
-        },
-        orderBy: 'creation asc',
-        pageLength: 99999,
-        auto: true,
-        transform(activities) {
-          for (let activity of activities) {
-            activity.doctype = 'GP Activity'
-            activity.data = activity.data ? JSON.parse(activity.data) : null
-          }
-          return activities
-        },
-      }
-    },
-    polls() {
-      return {
-        type: 'list',
-        doctype: 'GP Poll',
-        fields: [
-          'name',
-          'title',
-          'anonymous',
-          'multiple_answers',
-          'creation',
-          'owner',
-          'stopped_at',
-          { options: ['name', 'title', 'idx', 'percentage'] },
-          { votes: ['user', 'title'] },
-          { reactions: ['name', 'user', 'emoji'] },
-        ],
-        filters: {
-          discussion: this.name,
-        },
-        orderBy: 'creation asc',
-        auto: true,
-        pageLength: 99999,
-        transform(data) {
-          for (let d of data) {
-            d.doctype = 'GP Poll'
-          }
-          return data
-        },
-        onSuccess() {
-          if (this.$route.query.poll) {
-            let poll = this.$resources.polls.getRow(this.$route.query.poll)
-            this.scrollToItem(poll)
-          }
-        },
-      }
-    },
-  },
-  methods: {
-    submitComment() {
-      if (this.commentEmpty) {
-        return
-      }
-      this.$resources.comments.setData((data) => {
-        data.push({
-          owner: this.$user().name,
-          content: this.newComment,
-          reference_doctype: this.doctype,
-          reference_name: this.name,
-          loading: true,
-          reactions: [],
-          creation: this.$dayjs().format('YYYY-MM-DD HH:mm:ss'),
-        })
-        return data
-      })
-      this.$resources.comments.insert.submit(
-        {
-          reference_doctype: this.doctype,
-          reference_name: this.name,
-          content: this.newComment,
-        },
-        {
-          onError(error) {
-            this.$resources.comments.setData((data) => {
-              let lastComment = data[data.length - 1]
-              lastComment.loading = false
-              lastComment.error = error
-              return data
-            })
-            this.$toast({
-              title: 'Error adding new comment',
-              text: error.messages.join(', '),
-              position: 'bottom-center',
-              icon: 'alert-circle',
-              iconClasses: 'text-ink-red-4',
-            })
-          },
-        },
-      )
-      this.resetCommentState()
-    },
-    async scrollToItem(item) {
-      if (!item) return
-      await nextTick()
-      if (item.$el) {
-        this.highlightedItem = item
-        this.scrollToElement(item.$el)
-      }
-      setTimeout(() => {
-        this.highlightedItem = null
-        this.$router.replace({ query: {} })
-      }, 10000)
-    },
-    scrollToElement($el) {
-      let scrollContainer = getScrollContainer()
-      let headerHeight = 64
-      let top = $el.offsetTop - scrollContainer.scrollTop - headerHeight
-      scrollContainer.scrollBy({ top, left: 0, behavior: 'smooth' })
-    },
-    scrollToEnd() {
-      let scrollContainer = getScrollContainer()
-      scrollContainer.scrollTop = scrollContainer.scrollHeight
-    },
-    discardComment() {
-      if (!this.editorObject.isEmpty) {
-        this.$dialog({
-          title: 'Discard comment',
-          message: 'Are you sure you want to discard your comment?',
-          actions: [
-            {
-              label: 'Discard comment',
-              onClick: (close) => {
-                this.resetCommentState()
-                close()
-              },
-              variant: 'solid',
-            },
-            {
-              label: 'Keep comment',
-            },
-          ],
-        })
-      } else {
-        this.resetCommentState()
-      }
-    },
-    onNewCommentChange(content) {
-      this.newComment = content
-
-      // save draft comment to local storage
-      setTimeout(() => {
-        // set timeout to move it off main thread
-        localStorage.setItem(this.draftCommentKey(), content)
-      }, 0)
-    },
-    resetCommentState() {
-      localStorage.removeItem(this.draftCommentKey())
-      this.$resetData([
-        'newComment',
-        'showCommentBox',
-        'newCommentType',
-        'newPoll',
-        'highlightedItem',
-      ])
-    },
-    submitPoll() {
-      if (this.doctype !== 'GP Discussion') return
-      return this.$resources.polls.insert.submit(
-        {
-          ...this.newPoll,
-          discussion: this.name,
-        },
-        {
-          onSuccess() {
-            this.resetCommentState()
-          },
-        },
-      )
-    },
-    discardPoll() {
-      this.resetCommentState()
-    },
-    draftCommentKey() {
-      return `draft-comment-${this.doctype}-${this.name}`
-    },
-    setItemRef($component, item) {
-      if ($component?.$el) {
-        item.$el = $component.$el
-      }
-    },
-  },
-  computed: {
-    timelineItems() {
-      let items = []
-      if (this.$resources.comments.data?.length) {
-        items = items.concat(this.$resources.comments.data)
-      }
-      if (this.$resources.activities.data?.length) {
-        items = items.concat(this.$resources.activities.data)
-      }
-      if (this.$resources.polls.data?.length) {
-        items = items.concat(this.$resources.polls.data)
-      }
-      return items.sort((a, b) => {
-        return new Date(a.creation) - new Date(b.creation)
-      })
-    },
-    commentEmpty() {
-      return !this.newComment || this.newComment === '<p></p>'
-    },
-    editorObject() {
-      return this.$refs.newCommentEditor?.editor
-    },
-  },
+interface Props {
+  doctype: string
+  name: string
+  newCommentsFrom?: string
+  readOnlyMode?: boolean
+  disableNewComment?: boolean
 }
+
+const props = withDefaults(defineProps<Props>(), {
+  readOnlyMode: false,
+  disableNewComment: false,
+})
+
+const router = useRouter()
+const route = useRoute()
+const socket = useSocket()
+
+const showCommentBox = ref(false)
+const newComment = ref(localStorage.getItem(draftCommentKey()) || '')
+const newMessagesFrom = ref(props.newCommentsFrom)
+const highlightedItem = ref(null)
+const newCommentEditor = ref(null)
+
+const comments = useList<
+  Pick<
+    GPComment,
+    'name' | 'content' | 'owner' | 'creation' | 'modified' | 'deleted_at' | 'reactions'
+  >
+>({
+  doctype: 'GP Comment',
+  cacheKey: ['Comments', props.doctype, props.name],
+  fields: [
+    'name',
+    'content',
+    'owner',
+    'creation',
+    'modified',
+    'deleted_at',
+    { reactions: ['name', 'user', 'emoji'] },
+  ],
+  transform(data) {
+    return data.map((d) => ({ ...d, name: d.name.toString(), doctype: 'GP Comment' }))
+  },
+  filters: {
+    reference_doctype: props.doctype,
+    reference_name: props.name,
+  },
+  orderBy: 'creation asc',
+  limit: 99999,
+  onSuccess() {
+    if (route.query.comment) {
+      let comment = comments.data?.find((c) => c.name === route.query.comment)
+      scrollToItem(comment)
+    } else if (!route.query.fromSearch && comments.data?.length > 0) {
+      scrollToEnd()
+    }
+  },
+})
+
+interface Activity extends Pick<GPActivity, 'name' | 'user' | 'action' | 'creation'> {
+  data: {
+    field?: string
+    field_label?: string
+    old_value?: string
+    new_value?: string
+  }
+}
+
+const activities = useList<Activity>({
+  doctype: 'GP Activity',
+  fields: ['name', 'user', 'action', 'data', 'creation'],
+  filters: {
+    reference_doctype: props.doctype,
+    reference_name: props.name,
+  },
+  orderBy: 'creation asc',
+  limit: 99999,
+  transform(activities) {
+    return activities.map((activity) => ({
+      ...activity,
+      doctype: 'GP Activity',
+      data: activity.data ? JSON.parse(activity.data as string) : null,
+    }))
+  },
+})
+
+// Computed
+type GroupedActivity = {
+  doctype: 'GP Activity'
+  name: string
+  action: string
+  user: string
+  creation: string
+  data: any
+  updates?: { creation: string; data: any }[]
+}
+
+const groupedActivities = computed(() => {
+  if (!activities.data?.length) return []
+
+  const grouped: GroupedActivity[] = []
+  const activityMap = new Map<string, GroupedActivity>()
+
+  const sortedActivities = [...activities.data].sort(
+    (a, b) => new Date(a.creation).getTime() - new Date(b.creation).getTime(),
+  )
+
+  sortedActivities.forEach((activity) => {
+    // Skip if required properties are missing
+    if (!activity?.action || !activity?.user) return
+
+    // Only group description changes
+    if (activity.action === 'Task Value Changed' && activity.data?.field === 'description') {
+      const key = `${activity.action}-${activity.user}-description`
+
+      if (activityMap.has(key)) {
+        const existing = activityMap.get(key)!
+        if (!existing.updates) existing.updates = []
+
+        existing.updates.push({
+          creation: activity.creation,
+          data: activity.data,
+        })
+        // Keep the most recent creation date and data
+        if (new Date(activity.creation) > new Date(existing.creation)) {
+          existing.creation = activity.creation
+          existing.data = activity.data
+        }
+      } else {
+        const newGroup: GroupedActivity = {
+          doctype: 'GP Activity',
+          name: activity.name,
+          action: activity.action,
+          user: activity.user,
+          creation: activity.creation,
+          data: activity.data || {},
+        }
+        activityMap.set(key, newGroup)
+        grouped.push(newGroup)
+      }
+    } else {
+      // For all other activities, add them as is without grouping
+      grouped.push({
+        doctype: 'GP Activity',
+        name: activity.name,
+        action: activity.action,
+        user: activity.user,
+        creation: activity.creation,
+        data: activity.data || {},
+      })
+    }
+  })
+
+  return grouped.sort((a, b) => new Date(a.creation).getTime() - new Date(b.creation).getTime())
+})
+
+const timelineItems = computed(() => {
+  let items: Array<GPComment | GroupedActivity> = []
+  if (comments.data?.length) {
+    items = items.concat(comments.data)
+  }
+  if (groupedActivities.value?.length) {
+    items = items.concat(groupedActivities.value)
+  }
+  return items.sort((a, b) => new Date(a.creation) - new Date(b.creation))
+})
+
+const commentEmpty = computed(() => {
+  return !newComment.value || newComment.value === '<p></p>'
+})
+
+const editorObject = computed(() => {
+  return newCommentEditor.value?.editor
+})
+
+// Methods
+function draftCommentKey(): string {
+  return `draft-comment-${props.doctype}-${props.name}`
+}
+
+function resetCommentState() {
+  localStorage.removeItem(draftCommentKey())
+  newComment.value = ''
+  showCommentBox.value = false
+  highlightedItem.value = null
+}
+
+// ...existing methods converted to functions...
+async function scrollToItem(item) {
+  if (!item) return
+  await nextTick()
+  if (item.$el) {
+    highlightedItem.value = item
+    scrollToElement(item.$el)
+  }
+  setTimeout(() => {
+    highlightedItem.value = null
+    router.replace({ query: {} })
+  }, 10000)
+}
+
+function scrollToElement($el: HTMLElement) {
+  const scrollContainer = getScrollContainer()
+  const headerHeight = 64
+  const top = $el.offsetTop - scrollContainer.scrollTop - headerHeight
+  scrollContainer.scrollBy({ top, left: 0, behavior: 'smooth' })
+}
+
+function scrollToEnd() {
+  const scrollContainer = getScrollContainer()
+  scrollContainer.scrollTop = scrollContainer.scrollHeight
+}
+
+// Add these functions after the existing methods
+function discardComment() {
+  if (!editorObject.value?.isEmpty) {
+    createDialog({
+      title: 'Discard comment',
+      message: 'Are you sure you want to discard your comment?',
+      actions: [
+        {
+          label: 'Discard comment',
+          onClick: ({ close }) => {
+            resetCommentState()
+            close()
+          },
+          variant: 'solid',
+        },
+        {
+          label: 'Keep comment',
+        },
+      ],
+    })
+  } else {
+    resetCommentState()
+  }
+}
+
+function submitComment() {
+  if (commentEmpty.value) {
+    return
+  }
+
+  comments.insert
+    .submit({
+      reference_doctype: props.doctype,
+      reference_name: props.name,
+      content: newComment.value,
+    })
+    .then(() => {
+      resetCommentState()
+    })
+}
+
+function onNewCommentChange(content: string) {
+  newComment.value = content
+  // save draft comment to local storage
+  setTimeout(() => {
+    localStorage.setItem(draftCommentKey(), content)
+  }, 0)
+}
+
+function setItemRef($component: any, item: any) {
+  if ($component?.$el) {
+    item.$el = $component.$el
+  }
+}
+
+watch(showCommentBox, (val) => {
+  if (val) {
+    nextTick(() => {
+      newCommentEditor.value?.editor.commands.focus()
+      scrollToEnd()
+    })
+  }
+})
+
+onMounted(() => {
+  if (!newCommentEditor.value?.editor.isEmpty) {
+    showCommentBox.value = true
+  }
+})
+
+socket.on('new_activity', () => {
+  activities.reload()
+})
+
+onUnmounted(() => {
+  socket.off('new_activity')
+})
 </script>

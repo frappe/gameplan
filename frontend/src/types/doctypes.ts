@@ -294,3 +294,17 @@ export interface GPPoll extends DocType {
   /** Reactions: Table (GP Reaction) */
   reactions: GPReaction[]
 }
+
+// Last updated: 2022-12-07 21:34:41.411618
+export interface GPActivity extends DocType {
+  /** Reference DocType: Link (DocType) */
+  reference_doctype?: string
+  /** Reference Name: Dynamic Link (reference_doctype) */
+  reference_name?: string
+  /** User: Link (User) */
+  user?: string
+  /** Action: Data */
+  action?: string
+  /** Data: Code */
+  data?: string
+}

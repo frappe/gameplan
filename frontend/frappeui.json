@@ -13,7 +13,8 @@
         "gp_guest_access",
         "gp_invitation",
         "gp_user_profile",
-        "gp_notification"
+        "gp_notification",
+        "gp_activity"
       ]
     }
   }
