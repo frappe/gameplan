@@ -25,7 +25,7 @@ declare module '@vue/runtime-core' {
 
 declare module 'vue' {
   interface ComponentCustomProperties {
-    $platform: typeof getPlatform
+    $platform: ReturnType<typeof getPlatform>
     $user: typeof useUser
     $dayjs: typeof dayjs
     $isSessionUser: typeof isSessionUser

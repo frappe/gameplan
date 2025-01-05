@@ -15,12 +15,15 @@
           Last updated {{ $dayjs(page.doc.modified).format('LLL') }}
         </span>
         <Button
-          v-show="page.doc && page.isDirty"
+          v-show="page.doc && isDirty"
           variant="solid"
           @click="save"
-          :loading="page.save.loading"
+          :loading="page.setValue.loading"
         >
           Save
+          <template #suffix>
+            <KeyboardShortcut :ctrl="true">S</KeyboardShortcut>
+          </template>
         </Button>
       </div>
     </header>
@@ -33,152 +36,154 @@
           <input
             class="w-full border-0 p-0 pt-4 text-3xl font-semibold focus:outline-none focus:ring-0 bg-surface-white text-ink-gray-9"
             type="text"
-            :value="page.doc.title"
-            @input="page.doc.title = $event.target.value"
-            @keydown.enter="$refs.content.editor.commands.focus()"
+            v-model="title"
+            @keydown.enter="textEditor?.editor?.commands.focus()"
             ref="titleInput"
           />
         </div>
         <TextEditor
           editor-class="rounded-b-lg max-w-[unset] prose-sm pb-[50vh] md:px-[70px]"
-          :content="page.doc.content"
-          @change="page.doc.content = $event"
+          :content="content"
+          @change="content = $event"
           placeholder="Start writing here..."
           :bubbleMenu="true"
-          ref="content"
+          ref="textEditor"
         />
       </div>
     </div>
   </div>
 </template>
-<script>
-import { Breadcrumbs, TextEditor, getCachedDocumentResource } from 'frappe-ui'
-import { getTeam } from '@/data/teams'
-import { getProject } from '@/data/projects'
 
-export default {
-  name: 'Page',
-  props: ['pageId', 'slug'],
-  components: { TextEditor, Breadcrumbs },
-  resources: {
-    page() {
-      return {
-        type: 'document',
-        doctype: 'GP Page',
-        name: this.pageId,
-        onSuccess() {
-          this.updateUrlSlug()
-          this.$nextTick(() => {
-            this.$refs.titleInput?.focus()
-          })
-        },
-      }
-    },
-  },
-  mounted() {
-    document.addEventListener('keydown', this.handleKeyboardShortcuts)
-  },
-  beforeUnmount() {
-    document.removeEventListener('keydown', this.handleKeyboardShortcuts)
-  },
-  methods: {
-    handleKeyboardShortcuts(e) {
-      if (e.key === 's' && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault()
-        this.save()
-      }
-    },
-    save() {
-      this.page.save.submit(null, {
-        onSuccess() {
-          this.updateUrlSlug()
-        },
-      })
-    },
-    updateUrlSlug() {
-      if (!this.$route.params.slug || this.$route.params.slug !== this.page.doc.slug) {
-        this.$router.replace({
-          name: this.page.doc.project ? 'ProjectPage' : 'Page',
-          params: {
-            ...this.$route.params,
-            slug: this.page.doc.slug,
-          },
-          query: this.$route.query,
-        })
-      }
-    },
-  },
-  computed: {
-    page() {
-      return this.$resources.page
-    },
-    isDirty() {
-      if (!this.page.doc) return false
-      return this.page.doc.title !== this.title || this.page.doc.content !== this.content
-    },
-    breadcrumbs() {
-      if (!this.page.doc) return []
-      if (!this.page.doc.project) {
-        return [
-          { label: 'My Pages', route: { name: 'MyPages' } },
-          {
-            label: this.pageTitle,
-            route: {
-              name: 'Page',
-              params: { pageId: this.pageId, slug: this.slug },
-            },
-          },
-        ]
-      }
-      let team = getTeam(this.page.doc.team)
-      let project = getProject(this.page.doc.project)
+<script setup lang="ts">
+import { ref, computed, onMounted, onBeforeUnmount, useTemplateRef } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { Breadcrumbs, TextEditor, usePageMeta } from 'frappe-ui'
+import { useDoc } from 'frappe-ui/src/data-fetching'
+import { useSpace } from '@/data/spaces'
+import { GPPage } from '@/types/doctypes'
+import KeyboardShortcut from '@/components/KeyboardShortcut.vue'
 
-      if (!(team && project)) return []
-      return [
-        {
-          label: team.title,
-          icon: team.icon,
-          route: { name: 'Team', params: { teamId: team.name } },
+const props = defineProps<{
+  pageId: string
+  slug: string
+  spaceId?: string
+}>()
+
+const route = useRoute()
+const router = useRouter()
+
+const titleInput = useTemplateRef('titleInput')
+const textEditor = useTemplateRef('textEditor')
+
+const title = ref('')
+const content = ref('')
+
+const page = useDoc<GPPage>({
+  doctype: 'GP Page',
+  name: () => props.pageId,
+})
+
+page.onSuccess(() => {
+  title.value = page.doc?.title || ''
+  content.value = page.doc?.content || ''
+  updateUrlSlug()
+  titleInput.value?.focus()
+})
+
+const isDirty = computed(() => {
+  return page.doc?.title !== title.value || page.doc?.content !== content.value
+})
+
+const space = useSpace(() => page.doc?.project)
+
+const pageTitle = computed(() => {
+  return page.doc?.title || props.pageId
+})
+
+const breadcrumbs = computed(() => {
+  if (!page.doc) return []
+  if (!page.doc.project) {
+    return [
+      { label: 'My Pages', route: { name: 'MyPages' } },
+      {
+        label: pageTitle.value,
+        route: {
+          name: 'Page',
+          params: { pageId: props.pageId, slug: props.slug },
         },
-        {
-          label: project.title,
-          route: {
-            name: 'Project',
-            params: {
-              teamId: team.name,
-              projectId: project.name,
-            },
-          },
-        },
-        {
-          label: 'Pages',
-          route: {
-            name: 'ProjectPages',
-            params: {
-              teamId: team.name,
-              projectId: project.name,
-            },
-          },
-        },
-        {
-          label: this.pageTitle,
-          route: {
-            name: 'Page',
-            params: { pageId: this.pageId, slug: this.slug },
-          },
-        },
-      ]
+      },
+    ]
+  }
+
+  if (!space.value) return []
+  return [
+    {
+      label: 'Spaces',
+      route: { name: 'Spaces' },
     },
-    pageTitle() {
-      let page = getCachedDocumentResource('GP Page', this.pageId)
-      return page?.doc?.title || this.pageId
+    {
+      label: space.value?.title,
+      route: {
+        name: 'Space',
+        params: { spaceId: space.value.name },
+      },
     },
-  },
-  pageMeta() {
-    let project = getProject(this.page.doc?.project)
-    return {
-      title: project ? `${this.pageTitle} | ${project.title || ''}` : this.pageTitle,
-    }
-  },
+    {
+      label: 'Pages',
+      route: {
+        name: 'SpacePages',
+        params: { spaceId: space.value.name },
+      },
+    },
+    {
+      label: pageTitle.value,
+      route: {
+        name: 'SpacePage',
+        params: { pageId: props.pageId, slug: props.slug, spaceId: space.value.name },
+      },
+    },
+  ]
+})
+
+const save = () => {
+  page.setValue.submit({
+    title: title.value,
+    content: content.value,
+  })
 }
+
+const handleKeyboardShortcuts = (e: KeyboardEvent) => {
+  if (e.key === 's' && (e.metaKey || e.ctrlKey)) {
+    e.preventDefault()
+    save()
+  }
+}
+
+const updateUrlSlug = () => {
+  if (!route.params.slug || route.params.slug !== page.doc?.slug) {
+    router.replace({
+      name: page.doc?.project ? 'SpacePage' : 'Page',
+      params: {
+        ...route.params,
+        slug: page.doc?.slug,
+      },
+      query: route.query,
+    })
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('keydown', handleKeyboardShortcuts)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('keydown', handleKeyboardShortcuts)
+})
+
+usePageMeta(() => {
+  if (!page.doc) return
+  return {
+    title: space.value ? `${pageTitle.value} | ${space.value.title}` : pageTitle.value,
+  }
+})
 </script>

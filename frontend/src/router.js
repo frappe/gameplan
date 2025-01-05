@@ -96,6 +96,13 @@ const routes = [
         props: true,
       },
       {
+        name: 'SpacePage',
+        path: 'pages/:pageId/:slug?',
+        component: () => import('@/pages/Page.vue'),
+        props: true,
+        meta: { hideHeader: true },
+      },
+      {
         name: 'SpaceTasks',
         path: 'tasks',
         component: () => import('@/pages/SpaceTasks.vue'),

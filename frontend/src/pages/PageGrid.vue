@@ -1,100 +1,120 @@
 <template>
-  <div class="grid grid-cols-2 gap-5 md:grid-cols-3 lg:grid-cols-4">
-    <EmptyStateBox class="col-span-4" v-if="!$resources.pages.data?.length">
+  <div>
+    <EmptyStateBox class="col-span-4" v-if="pages.data?.length === 0">
       <LucideCoffee class="h-7 w-7 text-ink-gray-4" />
       No pages
     </EmptyStateBox>
-    <div class="relative" v-for="d in $resources.pages.data" :key="d.name">
-      <div class="absolute right-0 top-0 p-3">
-        <Dropdown
-          :button="{
-            icon: 'more-horizontal',
-            label: 'Page Options',
-            variant: 'ghost',
-          }"
-          :options="[
-            {
-              label: 'Delete',
-              icon: 'trash',
-              onClick: () => {
-                $dialog({
-                  title: 'Delete Page',
-                  message: 'Are you sure you want to delete this page?',
-                  actions: [
-                    {
-                      label: 'Delete',
-                      onClick: (close) => {
-                        close()
-                        return $resources.pages.delete.submit(d.name)
-                      },
-                      variant: 'solid',
-                      theme: 'red',
-                    },
-                  ],
-                })
-              },
-            },
-          ]"
-          placement="right"
-        />
-      </div>
+    <div class="relative" v-for="d in pages.data" :key="d.name">
       <router-link
         :to="{
-          name: d.project ? 'ProjectPage' : 'Page',
+          name: d.project ? 'SpacePage' : 'Page',
           params: {
             pageId: d.name,
             slug: d.slug,
-            projectId: d.project,
-            teamId: d.team,
+            spaceId: d.project,
           },
         }"
       >
-        <section
-          class="aspect-[37/50] cursor-pointer overflow-hidden rounded-md border border-gray-50 dark:border-outline-gray-1 p-3 shadow-lg transition-shadow hover:shadow-2xl"
-        >
-          <div class="overflow-hidden text-ellipsis whitespace-nowrap">
-            <h1 class="text-lg font-semibold leading-none text-ink-gray-8">
-              {{ d.title }}
-            </h1>
-            <div class="mt-1.5 flex items-center text-sm leading-none text-ink-gray-7">
-              <div v-if="d.project">{{ projectTitle(d.project).value }} &middot;&nbsp;</div>
-              <div>Updated {{ $dayjs(d.modified).fromNow() }}</div>
+        <section class="group">
+          <div
+            class="aspect-[37/50] cursor-pointer overflow-hidden rounded-md border border-gray-50 dark:border-outline-gray-1 p-3 shadow-lg transition-shadow hover:shadow-xl"
+          >
+            <div class="overflow-hidden text-ellipsis whitespace-nowrap">
+              <div
+                class="prose prose-sm pointer-events-none w-[200%] origin-top-left scale-[.55] prose-p:my-1 md:w-[250%] md:scale-[.39]"
+                v-html="d.content"
+              />
             </div>
-            <hr class="my-2" />
-            <div
-              class="prose prose-sm pointer-events-none w-[200%] origin-top-left scale-[.55] prose-p:my-1 md:w-[250%] md:scale-[.39]"
-              v-html="d.content"
-            />
+          </div>
+          <div class="mt-3 flex justify-between items-center">
+            <div class="flex-grow w-full min-w-0">
+              <h1 class="text-base truncate font-semibold text-ink-gray-8">
+                {{ d.title }}
+              </h1>
+              <div
+                class="mt-1.5 text-sm flex gap-1 text-ink-gray-7"
+                v-if="d.project"
+                :set="(space = getSpace(d))"
+              >
+                <div>
+                  {{ space?.icon }}
+                </div>
+                <div>{{ space?.title }}</div>
+              </div>
+            </div>
+            <div class="shrink-0 ml-1 invisible group-hover:visible">
+              <Dropdown
+                :button="{
+                  icon: 'more-horizontal',
+                  label: 'Page Options',
+                  variant: 'ghost',
+                }"
+                :options="getDropdownOptions(d)"
+                placement="right"
+              />
+            </div>
           </div>
         </section>
       </router-link>
     </div>
   </div>
 </template>
-<script>
-import { Dropdown } from 'frappe-ui'
-import EmptyStateBox from '@/components/EmptyStateBox.vue'
-import { projectTitle } from '@/utils/formatters'
 
-export default {
-  name: 'PageGrid',
-  props: ['listOptions'],
-  resources: {
-    pages() {
-      return {
-        type: 'list',
-        cache: ['Pages', this.listOptions],
-        doctype: 'GP Page',
-        fields: ['name', 'creation', 'title', 'content', 'slug', 'project', 'team', 'modified'],
-        filters: this.listOptions.filters,
-        orderBy: this.listOptions.orderBy,
-        auto: true,
-      }
+<script setup lang="ts">
+import { Dropdown } from 'frappe-ui'
+import { useList } from 'frappe-ui/src/data-fetching'
+import EmptyStateBox from '@/components/EmptyStateBox.vue'
+import { createDialog } from '@/utils/dialogs'
+import { UseListOptions } from 'frappe-ui/src/data-fetching/useList/types'
+import { GPPage } from '@/types/doctypes'
+import { useSpace } from '@/data/spaces'
+
+const props = defineProps<{
+  listOptions: {
+    filters: UseListOptions<GPPage>['filters']
+    orderBy?: UseListOptions<GPPage>['orderBy']
+  }
+}>()
+
+interface Page
+  extends Pick<
+    GPPage,
+    'name' | 'creation' | 'title' | 'content' | 'slug' | 'project' | 'team' | 'modified'
+  > {}
+
+const pages = useList<Page>({
+  doctype: 'GP Page',
+  fields: ['name', 'creation', 'title', 'content', 'slug', 'project', 'team', 'modified'],
+  filters: props.listOptions.filters,
+  orderBy: props.listOptions.orderBy,
+  cacheKey: ['Pages', props.listOptions],
+})
+
+function getSpace(page: Page) {
+  return useSpace(() => page.project).value
+}
+
+const getDropdownOptions = (page: Page) => [
+  {
+    label: 'Delete',
+    icon: 'trash',
+    onClick: () => {
+      createDialog({
+        title: 'Delete Page',
+        message: 'Are you sure you want to delete this page?',
+        actions: [
+          {
+            label: 'Delete',
+            onClick: ({ close }) => {
+              close()
+              return pages.delete.submit({ name: page.name })
+            },
+            variant: 'solid',
+            theme: 'red',
+          },
+        ],
+      })
     },
   },
-  methods: {
-    projectTitle,
-  },
-  components: { Dropdown },
-}
+]
 </script>

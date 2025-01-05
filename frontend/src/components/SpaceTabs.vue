@@ -7,7 +7,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { TabButtons } from 'frappe-ui'
 
 const props = defineProps<{
-  spaceId: number
+  spaceId: string
 }>()
 
 const currentRoute = useRoute()
@@ -21,13 +21,15 @@ const spaceTabs = [
 
 const currentTab = computed({
   get() {
+    let currentPage = currentRoute.name?.toString() || 'SpaceDiscussions'
     return {
       SpaceDiscussions: 'discussions',
       SpacePages: 'pages',
       SpaceTasks: 'tasks',
-    }[currentRoute.name]
+    }[currentPage]
   },
   set(value) {
+    if (!value) return
     let routeName = {
       discussions: 'SpaceDiscussions',
       pages: 'SpacePages',

@@ -27,7 +27,7 @@
         v-model="orderBy"
       />
 
-      <Button variant="solid" @click="$resources.newPage.submit()">
+      <Button variant="solid" @click="createNewPage">
         <template #prefix>
           <LucidePlus class="h-4 w-4" />
         </template>
@@ -35,59 +35,44 @@
       </Button>
     </div>
   </header>
-  <div class="mx-auto w-full max-w-4xl px-5">
+  <div class="mx-auto w-full max-w- px-5">
     <div class="py-6">
       <PageGrid
+        class="grid grid-cols-2 gap-x-5 gap-y-8 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6"
         :listOptions="{
-          filters: { owner: $user().name },
-          orderBy,
+          filters: { owner: sessionUser.name },
+          orderBy: () => orderBy,
         }"
       />
     </div>
   </div>
 </template>
-<script>
-import { Dropdown, Select, Breadcrumbs } from 'frappe-ui'
-import ArrowDownUp from '~icons/lucide/arrow-up-down'
-import PageGrid from './PageGrid.vue'
 
-export default {
-  name: 'MyPages',
-  components: { Dropdown, Select, ArrowDownUp, PageGrid, Breadcrumbs },
-  data() {
-    return {
-      orderBy: 'modified desc',
-    }
-  },
-  resources: {
-    newPage() {
-      return {
-        url: 'frappe.client.insert',
-        params: {
-          doc: {
-            doctype: 'GP Page',
-            title: 'Untitled',
-            content: '',
-          },
-        },
-        onSuccess(doc) {
-          this.$router.push({
-            name: 'Page',
-            params: { pageId: doc.name },
-          })
-        },
-      }
-    },
-  },
-  pageMeta() {
-    return {
-      title: 'My Pages',
-    }
-  },
+<script setup lang="ts">
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { Select, Breadcrumbs } from 'frappe-ui'
+import { useNewDoc } from 'frappe-ui/src/data-fetching'
+import { useSessionUser } from '@/data/users'
+import PageGrid from './PageGrid.vue'
+import { GPPage } from '@/types/doctypes'
+import { UseListOptions } from 'frappe-ui/src/data-fetching/useList/types'
+
+const router = useRouter()
+const sessionUser = useSessionUser()
+const orderBy: UseListOptions<GPPage>['orderBy'] = ref('modified desc')
+
+const newPage = useNewDoc<GPPage>('GP Page', {
+  title: 'Untitled',
+  content: '',
+})
+
+function createNewPage() {
+  newPage.submit().then((doc) => {
+    router.push({
+      name: 'Page',
+      params: { pageId: doc.name, slug: doc.slug },
+    })
+  })
 }
 </script>
-<style scoped>
-.sort-button:deep(.feather-minimize-2) {
-  transform: rotate(15deg);
-}
-</style>

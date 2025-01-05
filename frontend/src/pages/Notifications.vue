@@ -1,7 +1,7 @@
 <template>
   <header class="sticky top-0 z-10 border-b bg-surface-white px-4 py-2.5 sm:px-5">
     <div class="flex items-center justify-between">
-      <Breadcrumbs :items="[{ label: 'Notifications', route: { name: 'Notifications' } }]" />
+      <Breadcrumbs :items="[{ label: 'Inbox', route: { name: 'Notifications' } }]" />
       <div class="flex h-7 items-center space-x-2">
         <Button
           @click="$resources.markAllAsRead.submit"
