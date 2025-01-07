@@ -140,7 +140,7 @@ import { useSessionUser } from '@/data/users'
 import { useSidebarResize } from '@/utils/sidebarResize'
 import NewSpaceDialog from './NewSpaceDialog.vue'
 import AppLink from './AppLink.vue'
-import { showCommandPalette } from '@/components/CommandPalette/CommandPalette.vue'
+import { showCommandPalette } from '@/components/CommandPalette/commandPalette.ts'
 import UserDropdown from './UserDropdown.vue'
 
 import ChevronTriangle from './icons/ChevronTriangle.vue'
