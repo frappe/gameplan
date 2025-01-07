@@ -1,22 +1,22 @@
 <template>
-  <div class="flex h-full flex-1" v-if="$resources.task.doc">
+  <div class="flex h-full flex-1" v-if="task.doc">
     <div class="w-full flex-1">
       <div class="relative p-6">
-        <div class="absolute right-0 top-0 p-6" v-show="$resources.task.setValueDebounced.loading">
-          <LoadingText v-if="!$resources.task.setValueDebounced.error" text="Saving..." />
-          <ErrorMessage :message="$resources.task.setValueDebounced.error" />
+        <div class="absolute right-0 top-0 p-6" v-show="task.setValue.loading">
+          <LoadingText v-if="!task.setValue.error" text="Saving..." />
+          <ErrorMessage :message="task.setValue.error" />
         </div>
         <div class="mb-2 flex items-center justify-between space-x-2">
           <input
             type="text"
             placeholder="Title"
             class="-ml-0.5 w-full rounded-sm border-none p-0.5 text-2xl bg-surface-white font-semibold text-ink-gray-9 focus:outline-none focus:ring-2 focus:ring-outline-gray-3"
-            @change="
-              $resources.task.setValueDebounced.submit({
-                title: $event.target.value,
+            @blur="
+              task.setValue.submit({
+                title: ($event.target as HTMLInputElement).value,
               })
             "
-            v-model="$resources.task.doc.title"
+            v-model="task.doc.title"
             v-focus
           />
           <Dropdown
@@ -32,12 +32,10 @@
                         label: 'Delete',
                         theme: 'red',
                         variant: 'solid',
-                        onClick(close) {
-                          return $resources.task.delete.submit(null, {
-                            onSuccess() {
-                              close()
-                              $router.back()
-                            },
+                        onClick({ close }) {
+                          return task.delete.submit().then(() => {
+                            close()
+                            $router.back()
                           })
                         },
                       },
@@ -56,12 +54,12 @@
           ref="description"
           editor-class="prose-sm max-w-none focus-within:ring-2 focus-within:ring-outline-gray-3 rounded-sm p-0.5 -ml-0.5 min-h-[4rem]"
           placeholder="Description"
-          :content="$resources.task.doc.description"
+          :content="task.doc.description"
           :bubbleMenu="true"
           :floatingMenu="true"
           @blur="
             !$refs.description.editor.isEmpty
-              ? $resources.task.setValueDebounced.submit({
+              ? task.setValue.submit({
                   description: $refs.description.editor.getHTML(),
                 })
               : null
@@ -71,16 +69,16 @@
           <Autocomplete
             placeholder="Assign a user"
             :options="assignableUsers"
-            v-model="$resources.task.doc.assigned_to"
+            v-model="task.doc.assigned_to"
             @update:modelValue="changeAssignee"
           />
           <DatePicker
-            v-model="$resources.task.doc.due_date"
+            v-model="task.doc.due_date"
             variant="subtle"
             placeholder="Due date"
             :disabled="false"
             @update:modelValue="
-              $resources.task.setValue.submit({
+              task.setValue.submit({
                 due_date: $event,
               })
             "
@@ -88,24 +86,24 @@
           <Dropdown :options="statusOptions">
             <Button>
               <template #prefix>
-                <TaskStatusIcon :status="$resources.task.doc.status" />
+                <TaskStatusIcon :status="task.doc.status" />
               </template>
-              {{ $resources.task.doc.status || 'Set status' }}
+              {{ task.doc.status || 'Set status' }}
             </Button>
           </Dropdown>
           <Dropdown :options="priorityOptions">
             <Button>
-              <template v-if="$resources.task.doc.priority" #prefix>
-                <TaskPriorityIcon :priority="$resources.task.doc.priority" />
+              <template v-if="task.doc.priority" #prefix>
+                <TaskPriorityIcon :priority="task.doc.priority" />
               </template>
-              {{ $resources.task.doc.priority || 'Set priority' }}
+              {{ task.doc.priority || 'Set priority' }}
             </Button>
           </Dropdown>
           <Autocomplete
-            placeholder="Select project"
-            :options="projectOptions"
-            v-model="$resources.task.doc.project"
-            @update:modelValue="changeProject"
+            placeholder="Select space"
+            :options="spaceOptions"
+            :modelValue="task.doc.project"
+            @update:modelValue="changeSpace"
           />
         </div>
         <CommentsList class="mt-8" doctype="GP Task" :name="taskId" />
@@ -118,31 +116,31 @@
           <Autocomplete
             placeholder="Assign a user"
             :options="assignableUsers"
-            v-model="$resources.task.doc.assigned_to"
+            v-model="task.doc.assigned_to"
             @update:modelValue="changeAssignee"
           />
         </div>
         <div>Due Date</div>
         <div>
           <DatePicker
-            v-model="$resources.task.doc.due_date"
+            v-model="task.doc.due_date"
             variant="subtle"
             placeholder="Due date"
             :disabled="false"
             @update:modelValue="
-              $resources.task.setValue.submit({
+              task.setValue.submit({
                 due_date: $event,
               })
             "
           />
         </div>
-        <div>Project</div>
+        <div>Space</div>
         <div>
           <Autocomplete
-            placeholder="Select project"
-            :options="projectOptions"
-            v-model="$resources.task.doc.project"
-            @update:modelValue="changeProject"
+            placeholder="Select space"
+            :options="spaceOptions"
+            :modelValue="task.doc.project"
+            @update:modelValue="changeSpace"
           />
         </div>
         <div>Status</div>
@@ -150,9 +148,9 @@
           <Dropdown :options="statusOptions">
             <Button>
               <template #prefix>
-                <TaskStatusIcon :status="$resources.task.doc.status" />
+                <TaskStatusIcon :status="task.doc.status" />
               </template>
-              {{ $resources.task.doc.status || 'Set status' }}
+              {{ task.doc.status || 'Set status' }}
             </Button>
           </Dropdown>
         </div>
@@ -160,10 +158,10 @@
         <div>
           <Dropdown :options="priorityOptions">
             <Button>
-              <template v-if="$resources.task.doc.priority" #prefix>
-                <TaskPriorityIcon :priority="$resources.task.doc.priority" />
+              <template v-if="task.doc.priority" #prefix>
+                <TaskPriorityIcon :priority="task.doc.priority" />
               </template>
-              {{ $resources.task.doc.priority || 'Set priority' }}
+              {{ task.doc.priority || 'Set priority' }}
             </Button>
           </Dropdown>
         </div>
@@ -171,131 +169,94 @@
     </div>
   </div>
 </template>
-<script>
-import { h } from 'vue'
+
+<script setup lang="ts">
+import { h, computed } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import TextEditor from '@/components/TextEditor.vue'
-import ReadmeEditor from '@/components/ReadmeEditor.vue'
-import CommentsArea from '@/components/CommentsArea.vue'
-import { focus } from '@/directives'
-import { Autocomplete, Dropdown, LoadingText, DatePicker } from 'frappe-ui'
 import CommentsList from '@/components/CommentsList.vue'
 import TaskStatusIcon from '@/components/icons/TaskStatusIcon.vue'
 import TaskPriorityIcon from '@/components/icons/TaskPriorityIcon.vue'
+import { Autocomplete, Dropdown, LoadingText, DatePicker, Button, debounce } from 'frappe-ui'
+import { focus as vFocus } from '@/directives'
 import { activeUsers } from '@/data/users'
-import { activeTeams } from '@/data/teams'
-import { getTeamProjects } from '@/data/projects'
+import { useGroupedSpaces } from '@/data/groupedSpaces'
+import { useTask } from '@/data/tasks'
+import { GPTask } from '@/types/doctypes'
 
-export default {
-  name: 'TaskDetail',
-  props: ['taskId'],
-  directives: { focus },
-  resources: {
-    task() {
-      return {
-        type: 'document',
-        doctype: 'GP Task',
-        name: this.taskId,
-        whitelistedMethods: {
-          trackVisit: 'track_visit',
-        },
-        setValue: {
-          onError(e) {
-            let message = e.messages ? e.messages.join('\n') : e.message
-            this.$toast({
-              title: 'Task Update Error',
-              text: message,
-              icon: 'alert-circle',
-              iconClasses: 'text-ink-red-4',
-            })
-          },
-        },
-        onSuccess(doc) {
-          if (
-            ['ProjectTaskDetail', 'Task'].includes(this.$route.name) &&
-            Number(this.$route.params.taskId) === doc.name
-          ) {
-            this.$resources.task.trackVisit.submit()
+const props = defineProps<{
+  taskId: string
+}>()
+
+const router = useRouter()
+const route = useRoute()
+
+const task = useTask(() => props.taskId)
+
+task.onSuccess((doc) => {
+  if (['Task', 'SpaceTask'].includes(route.name as string) && route.params.taskId === doc.name) {
+    task.trackVisit.submit()
+  }
+})
+
+const assignableUsers = computed(() =>
+  activeUsers.value.map((user) => ({
+    label: user.full_name,
+    value: user.name,
+  })),
+)
+
+const statusOptions = computed(() =>
+  (['Backlog', 'Todo', 'In Progress', 'Done', 'Canceled'] as Array<GPTask['status']>).map(
+    (status) => ({
+      icon: () => h(TaskStatusIcon, { status }),
+      label: status,
+      onClick: () => task.setValue.submit({ status }),
+    }),
+  ),
+)
+
+const priorityOptions = computed(() =>
+  (['Low', 'Medium', 'High'] as Array<GPTask['priority']>).map((priority) => ({
+    icon: () => h(TaskPriorityIcon, { priority }),
+    label: priority,
+    onClick: () => task.setValue.submit({ priority }),
+  })),
+)
+
+const spaceOptions = computed(() => {
+  return useGroupedSpaces({ filterFn: (space) => !space.archived_at }).value.map((group) => ({
+    group: group.title,
+    items: group.spaces.map((space) => ({
+      label: space.title,
+      value: space.name,
+    })),
+  }))
+})
+
+function changeAssignee(option: { value: string } | null) {
+  task.setValue.submit({ assigned_to: option?.value || '' })
+}
+
+function changeSpace(option: { value: string } | null) {
+  if (!task.doc) return
+  task.doc.project = option?.value || undefined
+  task.setValue.submit({ project: option?.value || '' }).then(updateRoute)
+}
+
+function updateRoute() {
+  if (task.doc) {
+    router.replace({
+      name: task.doc.project ? 'SpaceTask' : 'Task',
+      params: task.doc.project
+        ? {
+            taskId: task.doc.name,
+            spaceId: task.doc.project,
           }
-        },
-      }
-    },
-  },
-  methods: {
-    changeAssignee(option) {
-      this.$resources.task.setValue.submit({ assigned_to: option?.value || '' })
-    },
-    changeProject(option) {
-      this.$resources.task.setValue.submit(
-        {
-          project: option?.value || '',
-        },
-        {
-          onSuccess() {
-            this.updateRoute()
+        : {
+            taskId: task.doc.name,
           },
-        },
-      )
-    },
-    updateRoute() {
-      let task = this.$resources.task.doc
-      if (task) {
-        this.$router.replace({
-          name: task.project ? 'ProjectTaskDetail' : 'Task',
-          params: {
-            taskId: task.name,
-            teamId: task.team,
-            projectId: task.project,
-          },
-        })
-      }
-    },
-  },
-  computed: {
-    assignableUsers() {
-      return activeUsers.value.map((user) => ({
-        label: user.full_name,
-        value: user.name,
-      }))
-    },
-    statusOptions() {
-      return ['Backlog', 'Todo', 'In Progress', 'Done', 'Canceled'].map((status) => {
-        return {
-          icon: () => h(TaskStatusIcon, { status }),
-          label: status,
-          onClick: () => this.$resources.task.setValue.submit({ status }),
-        }
-      })
-    },
-    priorityOptions() {
-      return ['Low', 'Medium', 'High'].map((priority) => {
-        return {
-          icon: () => h(TaskPriorityIcon, { priority }),
-          label: priority,
-          onClick: () => this.$resources.task.setValue.submit({ priority }),
-        }
-      })
-    },
-    projectOptions() {
-      return activeTeams.value.map((team) => ({
-        group: team.title,
-        items: getTeamProjects(team.name).map((project) => ({
-          label: project.title,
-          value: project.name.toString(),
-        })),
-      }))
-    },
-  },
-  components: {
-    ReadmeEditor,
-    TextEditor,
-    CommentsArea,
-    Autocomplete,
-    Dropdown,
-    CommentsList,
-    TaskStatusIcon,
-    LoadingText,
-    TaskPriorityIcon,
-    DatePicker,
-  },
+    })
+  }
 }
 </script>

@@ -17,7 +17,7 @@
       >
         <section class="group">
           <div
-            class="aspect-[37/50] cursor-pointer overflow-hidden rounded-md border border-gray-50 dark:border-outline-gray-1 p-3 shadow-lg transition-shadow hover:shadow-xl"
+            class="aspect-[37/50] cursor-pointer overflow-hidden rounded-md dark:bg-gray-900 border border-gray-50 dark:border-outline-gray-1 p-3 shadow-lg transition-shadow hover:shadow-xl"
           >
             <div class="overflow-hidden text-ellipsis whitespace-nowrap">
               <div

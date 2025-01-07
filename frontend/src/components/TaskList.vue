@@ -18,8 +18,8 @@
         <div v-for="(d, index) in group.tasks" :key="d.name">
           <router-link
             :to="{
-              name: d.project ? 'ProjectTaskDetail' : 'Task',
-              params: { teamId: d.team, projectId: d.project, taskId: d.name },
+              name: d.project ? 'SpaceTask' : 'Task',
+              params: { spaceId: d.project, taskId: d.name },
             }"
             class="flex h-15 w-full items-center rounded p-2.5 transition hover:bg-surface-gray-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-outline-gray-3 group"
             :class="{

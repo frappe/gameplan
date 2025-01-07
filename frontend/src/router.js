@@ -108,6 +108,13 @@ const routes = [
         component: () => import('@/pages/SpaceTasks.vue'),
         props: true,
       },
+      {
+        name: 'SpaceTask',
+        path: 'tasks/:taskId',
+        component: () => import('@/pages/Task.vue'),
+        props: true,
+        meta: { hideHeader: true },
+      },
     ],
   },
   {
