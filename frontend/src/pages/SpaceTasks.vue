@@ -1,7 +1,7 @@
 <template>
-  <div class="mt-5 mx-auto max-w-4xl px-2 sm:px-5" v-if="space.doc">
+  <div class="mt-5 mx-auto max-w-4xl px-2 sm:px-5">
     <div class="mb-4 px-3 flex items-center justify-between">
-      <SpaceTabs :spaceId="space.doc.name" />
+      <SpaceTabs :spaceId="spaceId" />
       <div class="flex items-stretch space-x-2">
         <Button variant="solid" @click="showNewTaskDialog">
           <template #prefix>
@@ -12,43 +12,39 @@
       </div>
     </div>
     <div class="px-3">
-      <TaskList :listOptions="listOptions" :groupByStatus="true" />
+      <TaskList :listOptions="{ filters }" :groupByStatus="true" ref="taskList" />
     </div>
     <NewTaskDialog ref="newTaskDialog" />
   </div>
 </template>
 
-<script setup>
-import { computed, ref } from 'vue'
-import { getCachedListResource, Select } from 'frappe-ui'
+<script setup lang="ts">
+import { useTemplateRef } from 'vue'
 import { useUser } from '@/data/users'
 import SpaceTabs from '@/components/SpaceTabs.vue'
+import NewTaskDialog from '@/components/NewTaskDialog.vue'
+import TaskList from '@/components/TaskList.vue'
 
-const props = defineProps({
-  space: {
-    type: Object,
-    required: true,
-  },
+const props = defineProps<{
+  spaceId: string
+}>()
+
+const newTaskDialog = useTemplateRef<typeof NewTaskDialog>('newTaskDialog')
+const taskList = useTemplateRef<typeof TaskList>('taskList')
+
+const filters = () => ({
+  project: props.spaceId,
 })
 
-let newTaskDialog = ref(null)
-let listOptions = computed(() => ({
-  filters: {
-    project: props.space.name,
-  },
-}))
-
 function showNewTaskDialog() {
+  if (!newTaskDialog.value) return
   newTaskDialog.value.show({
     defaults: {
-      project: props.space.name,
+      project: props.spaceId,
       assigned_to: useUser('sessionUser').name,
     },
     onSuccess: () => {
-      let tasks = getCachedListResource(['Tasks', listOptions.value])
-      if (tasks) {
-        tasks.reload()
-      }
+      taskList.value?.tasks.reload()
     },
   })
 }

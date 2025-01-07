@@ -73,7 +73,7 @@ class GPTask(HasMentions, HasActivity, Document):
 @frappe.whitelist()
 def get_list(
 	fields=None,
-	filters: dict | None = None,
+	filters: str = None,
 	order_by=None,
 	start=0,
 	limit=20,
@@ -83,17 +83,23 @@ def get_list(
 ):
 	doctype = "GP Task"
 	check_permissions(doctype, parent)
-	assigned_or_owner = filters.pop("assigned_or_owner", None)
+	fields = frappe.parse_json(fields) if fields else None
+	filters = frappe.parse_json(filters) if filters else None
+	assigned_or_owner = filters.pop("assigned_or_owner", None) if filters else None
+	limit = int(limit)
+
 	query = frappe.qb.get_query(
-		table=doctype,
+		doctype,
 		fields=fields,
 		filters=filters,
 		order_by=order_by,
 		offset=start,
-		limit=limit,
+		limit=limit + 1,
 		group_by=group_by,
 	)
 	if assigned_or_owner:
 		Task = frappe.qb.DocType(doctype)
 		query = query.where((Task.assigned_to == assigned_or_owner) | (Task.owner == assigned_or_owner))
-	return query.run(as_dict=True, debug=debug)
+
+	data = query.run(as_dict=True, debug=debug)
+	return {"result": data[:limit], "has_next_page": len(data) > limit}

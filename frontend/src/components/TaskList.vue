@@ -21,7 +21,7 @@
               name: d.project ? 'ProjectTaskDetail' : 'Task',
               params: { teamId: d.team, projectId: d.project, taskId: d.name },
             }"
-            class="flex h-15 w-full items-center rounded p-2.5 transition hover:bg-surface-gray-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-outline-gray-3"
+            class="flex h-15 w-full items-center rounded p-2.5 transition hover:bg-surface-gray-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-outline-gray-3 group"
             :class="{
               'pointer-events-none': tasks.delete.loading && tasks.delete.params.name === d.name,
             }"
@@ -55,9 +55,6 @@
                   class="ml-2.5 overflow-hidden text-ellipsis whitespace-nowrap text-base font-medium leading-4 text-ink-gray-9"
                 >
                   {{ d.title }}
-                </div>
-                <div class="ml-auto shrink-0 whitespace-nowrap text-sm text-ink-gray-5">
-                  {{ $dayjs(d.modified).fromNow() }}
                 </div>
               </div>
 
@@ -106,16 +103,10 @@
                     </span>
                   </div>
                 </template>
-                <div
-                  class="ml-auto inline-grid h-4 w-4 shrink-0 place-items-center rounded-full bg-surface-gray-3 text-xs"
-                  :class="[
-                    d.unread ? 'text-ink-gray-9' : 'text-ink-gray-5',
-                    d.comments_count ? '' : 'invisible',
-                  ]"
-                >
-                  {{ d.comments_count || 0 }}
-                </div>
               </div>
+            </div>
+            <div class="invisible group-hover:visible">
+              <DropdownMoreOptions :options="dropdownOptions(d.name)" placement="right" />
             </div>
           </router-link>
           <div class="mx-2.5 border-b" v-if="index < group.tasks.length - 1"></div>
@@ -124,105 +115,133 @@
     </div>
   </div>
   <EmptyStateBox v-else>
-    <LucideCoffee class="h-7 w-7 text-ink-gray-4" />
-    No tasks
+    <template v-if="tasks.error">
+      <ErrorMessage :message="tasks.error" />
+    </template>
+    <template v-else>
+      <LucideCoffee class="h-7 w-7 text-ink-gray-4" />
+      No tasks
+    </template>
   </EmptyStateBox>
 </template>
-<script>
-import { h } from 'vue'
+<script setup lang="ts">
+import { h, ref, computed, watch } from 'vue'
 import { Dropdown, LoadingIndicator, Tooltip } from 'frappe-ui'
 import EmptyStateBox from './EmptyStateBox.vue'
-
 import TaskStatusIcon from './icons/TaskStatusIcon.vue'
+import { useList } from 'frappe-ui/src/data-fetching'
+import { GPTask } from '@/types/doctypes'
+import { UseListOptions } from 'frappe-ui/src/data-fetching/useList/types'
+import DropdownMoreOptions from './DropdownMoreOptions.vue'
+import { createDialog } from '@/utils/dialogs'
 
-export default {
-  name: 'TaskList',
-  props: {
-    groupByStatus: {
-      type: Boolean,
-      default: false,
-    },
-    listOptions: {
-      type: Object,
-      default: () => ({}),
-    },
-  },
-  data() {
-    return {
-      isOpen: {
-        Backlog: true,
-        Todo: true,
-        'In Progress': true,
-        Canceled: false,
-        Done: false,
-      },
-    }
-  },
-  components: {
-    LoadingIndicator,
-    Dropdown,
-    Tooltip,
-    TaskStatusIcon,
-  },
-  resources: {
-    tasks() {
-      return {
-        type: 'list',
-        url: 'gameplan.gameplan.doctype.gp_task.gp_task.get_list',
-        cache: ['Tasks', this.listOptions],
-        doctype: 'GP Task',
-        fields: ['*', 'project.title as project_title', 'team.title as team_title'],
-        filters: this.listOptions.filters,
-        orderBy: this.listOptions.orderBy || 'creation desc',
-        pageLength: this.listOptions.pageLength || 20,
-        auto: true,
-        realtime: true,
-      }
-    },
-  },
-  methods: {
-    statusOptions({ onClick }) {
-      return ['Backlog', 'Todo', 'In Progress', 'Done', 'Canceled'].map((status) => {
-        return {
-          icon: () => h(TaskStatusIcon, { status }),
-          label: status,
-          onClick: () => onClick(status),
-        }
-      })
-    },
-  },
-  computed: {
-    tasks() {
-      return this.$resources.tasks
-    },
-    groupedTasks() {
-      if (!this.groupByStatus) {
-        return [
-          {
-            id: 'all',
-            title: '',
-            tasks: this.tasks.data,
-          },
-        ]
-      }
-      return ['In Progress', 'Todo', 'Backlog', 'Done', 'Canceled'].map((status) => {
-        return {
-          id: status,
-          title: status,
-          tasks: this.tasksByStatus[status] || [],
-        }
-      })
-    },
-    tasksByStatus() {
-      const tasksByStatus = {}
-      this.tasks.data.forEach((task) => {
-        if (!tasksByStatus[task.status]) {
-          tasksByStatus[task.status] = []
-        }
-        tasksByStatus[task.status].push(task)
-      })
-      return tasksByStatus
-    },
-  },
+interface Props {
+  groupByStatus?: boolean
+  listOptions?: {
+    filters?: UseListOptions<GPTask>['filters']
+    orderBy?: UseListOptions<GPTask>['orderBy']
+    pageLength?: UseListOptions<GPTask>['limit']
+  }
 }
+
+const props = withDefaults(defineProps<Props>(), {
+  groupByStatus: false,
+  listOptions: () => ({
+    orderBy: 'creation desc',
+    pageLength: 20,
+  }),
+})
+
+type TaskStatus = GPTask['status']
+let statues: Array<TaskStatus> = ['Backlog', 'Todo', 'In Progress', 'Done', 'Canceled']
+
+const isOpen = ref<Record<TaskStatus, boolean>>({
+  Backlog: true,
+  Todo: true,
+  'In Progress': true,
+  Canceled: false,
+  Done: false,
+})
+
+const tasks = useList<GPTask>({
+  url: '/api/v2/method/gameplan.gameplan.doctype.gp_task.gp_task.get_list',
+  doctype: 'GP Task',
+  fields: ['*', 'project.title as project_title', 'team.title as team_title'],
+  filters: props.listOptions.filters,
+  orderBy: props.listOptions.orderBy,
+  limit: props.listOptions.pageLength,
+  cacheKey: ['Tasks', props.listOptions],
+})
+
+const tasksByStatus = computed(() => {
+  const grouped: Record<TaskStatus, GPTask[]> = {
+    Backlog: [],
+    Todo: [],
+    'In Progress': [],
+    Done: [],
+    Canceled: [],
+  }
+  for (let task of tasks.data || []) {
+    if (!task.status) {
+      task.status = 'Backlog'
+    }
+    if (!grouped[task.status]) {
+      grouped[task.status] = []
+    }
+    grouped[task.status].push(task)
+  }
+  return grouped
+})
+
+const groupedTasks = computed(() => {
+  if (!props.groupByStatus) {
+    return [
+      {
+        id: 'all',
+        title: '',
+        tasks: tasks.data || [],
+      },
+    ]
+  }
+
+  return (['In Progress', 'Todo', 'Backlog', 'Done', 'Canceled'] as Array<TaskStatus>).map(
+    (status) => ({
+      id: status,
+      title: status,
+      tasks: tasksByStatus.value[status] || [],
+    }),
+  )
+})
+
+function dropdownOptions(name: string) {
+  return [
+    {
+      label: 'Delete',
+      onClick: () => {
+        createDialog({
+          title: 'Delete Task',
+          message: 'Are you sure you want to delete this task?',
+          actions: [
+            {
+              label: 'Delete',
+              onClick: ({ close }) => {
+                return tasks.delete.submit({ name }).then(close)
+              },
+            },
+          ],
+        })
+      },
+    },
+  ]
+}
+
+function statusOptions({ onClick }: { onClick: (status: GPTask['status']) => void }) {
+  return ['Backlog', 'Todo', 'In Progress', 'Done', 'Canceled'].map((status) => ({
+    icon: () => h(TaskStatusIcon, { status }),
+    label: status,
+    onClick: () => onClick(status as GPTask['status']),
+  }))
+}
+
+defineExpose({ tasks })
 </script>

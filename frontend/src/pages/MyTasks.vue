@@ -24,29 +24,31 @@
         />
       </div>
       <div class="pb-6 mt-3 sm:mt-4">
-        <TaskList :listOptions="listOptions" :groupByStatus="true" />
+        <TaskList :listOptions="{ filters }" :groupByStatus="true" ref="taskList" />
         <NewTaskDialog ref="newTaskDialog" />
       </div>
     </div>
   </div>
 </template>
-<script setup>
-import { ref, computed } from 'vue'
-import { getCachedListResource, usePageMeta, Breadcrumbs, TabButtons } from 'frappe-ui'
+<script setup lang="ts">
+import { ref, useTemplateRef } from 'vue'
+import { usePageMeta, Breadcrumbs, TabButtons } from 'frappe-ui'
 import { useUser } from '@/data/users'
+import NewTaskDialog from '@/components/NewTaskDialog.vue'
+import TaskList from '@/components/TaskList.vue'
 
-let newTaskDialog = ref(null)
+let newTaskDialog = useTemplateRef<typeof NewTaskDialog>('newTaskDialog')
+let taskList = useTemplateRef<typeof TaskList>('taskList')
 let currentTab = ref('all')
 
-let listOptions = computed(() => {
+let filters = () => {
   let me = useUser('sessionUser').name
-  let filters = {
+  return {
     all: { assigned_or_owner: me },
     assigned: { assigned_to: me },
     owner: { owner: me },
   }[currentTab.value]
-  return { filters }
-})
+}
 
 function showNewTaskDialog() {
   newTaskDialog.value.show({
@@ -54,10 +56,7 @@ function showNewTaskDialog() {
       assigned_to: useUser('sessionUser').name,
     },
     onSuccess: () => {
-      let tasks = getCachedListResource(['Tasks', listOptions.value])
-      if (tasks) {
-        tasks.reload()
-      }
+      taskList.value?.tasks.reload()
     },
   })
 }

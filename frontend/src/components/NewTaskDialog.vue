@@ -12,68 +12,50 @@
     }"
     :disableOutsideClickToClose="disableOutsideClickToClose"
     v-model="showDialog"
-    @after-leave="newTask = initialData"
+    @after-leave="newTask = newDraftTask()"
   >
     <template #body-content>
       <div class="space-y-4">
-        <FormControl label="Title" v-model="newTask.title" autocomplete="off" />
-        <FormControl label="Description" type="textarea" v-model="newTask.description" />
+        <FormControl label="Title" v-model="newTask.doc.title" autocomplete="off" required />
+        <FormControl label="Description" type="textarea" v-model="newTask.doc.description" />
         <div class="flex space-x-2">
           <Dropdown
             :options="
               statusOptions({
-                onClick: (status) => (newTask.status = status),
+                onClick: (status) => (newTask.doc.status = status),
               })
             "
           >
             <Button>
               <template #prefix>
-                <TaskStatusIcon :status="newTask.status" />
+                <TaskStatusIcon :status="newTask.doc.status" />
               </template>
-              {{ newTask.status }}
+              {{ newTask.doc.status }}
             </Button>
           </Dropdown>
-          <TextInput type="date" placeholder="Set due date" v-model="newTask.due_date" />
+          <TextInput type="date" placeholder="Set due date" v-model="newTask.doc.due_date" />
           <Autocomplete
             placeholder="Assign a user"
             :options="assignableUsers"
-            v-model="newTask.assigned_to"
+            v-model="newTask.doc.assigned_to"
           />
         </div>
-        <ErrorMessage class="mt-2" :message="createTask.error" />
+        <ErrorMessage class="mt-2" :message="newTask.error" />
       </div>
     </template>
   </Dialog>
 </template>
-<script setup>
+<script setup lang="ts">
 import { ref, computed, h } from 'vue'
-import { Dialog, FormControl, Autocomplete, Dropdown, TextInput, createResource } from 'frappe-ui'
+import { Dialog, FormControl, Autocomplete, Dropdown, TextInput } from 'frappe-ui'
+import { useNewDoc } from 'frappe-ui/src/data-fetching'
 import TaskStatusIcon from './icons/TaskStatusIcon.vue'
 import { activeUsers } from '@/data/users'
+import { GPTask } from '@/types/doctypes'
 
-const props = defineProps(['modelValue', 'defaults'])
-const emit = defineEmits(['update:modelValue'])
 const showDialog = ref(false)
-const createTask = createResource({
-  url: 'frappe.client.insert',
-  makeParams(values) {
-    return {
-      doc: {
-        doctype: 'GP Task',
-        ...values,
-      },
-    }
-  },
-})
-const initialData = {
-  title: '',
-  description: '',
-  status: 'Backlog',
-  assigned_to: null,
-  project: null,
-}
 
-const newTask = ref(initialData)
+const newTask = newDraftTask()
 
 function statusOptions({ onClick }) {
   return ['Backlog', 'Todo', 'In Progress', 'Done', 'Canceled'].map((status) => {
@@ -94,30 +76,36 @@ const assignableUsers = computed(() => {
 
 let _onSuccess
 function show({ defaults, onSuccess } = {}) {
-  newTask.value = { ...initialData, ...(defaults || {}) }
+  Object.assign(newTask.doc, defaults || {})
   showDialog.value = true
   _onSuccess = onSuccess
 }
 
+function newDraftTask() {
+  return useNewDoc<GPTask>('GP Task', {
+    title: '',
+    description: '',
+    status: 'Backlog',
+    assigned_to: '',
+    project: '',
+  })
+}
+
 function onCreateClick(close) {
-  let newTaskDoc = {
-    ...newTask.value,
-    assigned_to: newTask.value.assigned_to?.value,
+  if (!newTask.doc.title) {
+    newTask.error = new Error('Task title is required')
+    return
   }
-  createTask
-    .submit(newTaskDoc, {
-      validate() {
-        if (!newTask.value.title) {
-          return 'Task title is required'
-        }
-      },
-      onSuccess: _onSuccess,
-    })
-    .then(close())
+  newTask.doc.assigned_to = newTask.doc.assigned_to?.value
+
+  return newTask.submit().then(() => {
+    close()
+    _onSuccess()
+  })
 }
 
 let disableOutsideClickToClose = computed(() => {
-  return createTask.loading || newTask.value?.title != ''
+  return newTask.loading || newTask.doc?.title != ''
 })
 
 defineExpose({ show })

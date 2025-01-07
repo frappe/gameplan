@@ -24,7 +24,7 @@ export interface GPTask extends DocType {
   /** Due Date: Date */
   due_date?: string
   /** Status: Select */
-  status?: '' | 'Backlog' | 'Todo' | 'In Progress' | 'Done' | 'Canceled'
+  status: 'Backlog' | 'Todo' | 'In Progress' | 'Done' | 'Canceled'
   /** Priority: Select */
   priority?: '' | 'Urgent' | 'High' | 'Medium' | 'Low'
   /** Is Completed: Check */
