@@ -29,7 +29,7 @@
     "@vitejs/plugin-vue-jsx": "^3.0.1",
     "autoprefixer": "^10.4.2",
     "cypress": "10.11.0",
-    "lucide-static": "^0.468.0",
+    "lucide-static": "^0.469.0",
     "postcss": "^8.4.5",
     "prettier": "^3.3.3",
     "prettier-plugin-tailwindcss": "^0.6.8",
