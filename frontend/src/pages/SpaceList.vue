@@ -55,7 +55,7 @@
             <div class="flex items-center space-x-1" v-if="!d.archived_at" @click.prevent>
               <Button
                 class="w-16"
-                v-if="hasJoined(d)"
+                v-if="hasJoined(d.name)"
                 @click="leaveSpace(d)"
                 :loading="isMethodLoading(d.name, 'leave')"
               >
@@ -93,6 +93,7 @@ import { useSessionUser } from '@/data/users'
 import NewSpaceDialog from '@/components/NewSpaceDialog.vue'
 import SpaceOptions from '@/components/SpaceOptions.vue'
 import PageHeader from '@/components/PageHeader.vue'
+import { hasJoined, joinedSpaces } from '@/data/spaces'
 import { GPProject } from '@/types/GPProject'
 import LucideLock from '~icons/lucide/lock'
 
@@ -109,17 +110,21 @@ const newSpaceDialog = ref(false)
 let spaces = useDoctype<GPProject>('GP Project')
 
 function joinSpace(space) {
-  spaces.runDocMethod.submit({
-    method: 'join',
-    name: space.name,
-  })
+  spaces.runDocMethod
+    .submit({
+      method: 'join',
+      name: space.name,
+    })
+    .then(joinedSpaces.reload)
 }
 
 function leaveSpace(space) {
-  spaces.runDocMethod.submit({
-    method: 'leave',
-    name: space.name,
-  })
+  spaces.runDocMethod
+    .submit({
+      method: 'leave',
+      name: space.name,
+    })
+    .then(joinedSpaces.reload)
 }
 
 function unarchiveSpace(space) {
@@ -131,9 +136,5 @@ function unarchiveSpace(space) {
 
 function isMethodLoading(docname, method) {
   return spaces.runDocMethod.isLoading(docname, method)
-}
-
-function hasJoined(space: GPProject) {
-  return space.members.find((member) => member.user === sessionUser.name)
 }
 </script>

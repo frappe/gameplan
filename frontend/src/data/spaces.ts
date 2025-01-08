@@ -60,3 +60,7 @@ export const joinedSpaces = useCall<string[]>({
   cacheKey: 'joinedSpaces',
   initialData: [],
 })
+
+export function hasJoined(spaceId: MaybeRefOrGetter<string>) {
+  return joinedSpaces.data?.includes(toValue(spaceId))
+}
