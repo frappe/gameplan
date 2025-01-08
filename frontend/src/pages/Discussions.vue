@@ -9,9 +9,8 @@
     </Button>
   </header>
   <div class="mx-auto max-w-4xl pt-5 sm:px-5">
-    <div class="px-3 mb-4">
-      <LastPostReminder />
-    </div>
+    <LastPostReminder class="px-3 mb-4" />
+
     <div class="mb-4 flex items-center px-3">
       <TabButtons :buttons="feedOptions" v-model="feedType" />
       <div class="ml-auto space-x-2">
