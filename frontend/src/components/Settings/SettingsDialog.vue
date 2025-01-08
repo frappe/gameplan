@@ -34,7 +34,6 @@
 import { markRaw, ref } from 'vue'
 import { Dialog } from 'frappe-ui'
 import Members from './Members.vue'
-import ArchivedTeams from './ArchivedTeams.vue'
 import InvitePeople from './InvitePeople.vue'
 import SettingsTabDialog from './SettingsTab.vue'
 import LucideUsers from '~icons/lucide/users'
@@ -52,11 +51,6 @@ let tabs = [
     label: 'Invites',
     icon: LucideUsersPlus,
     component: markRaw(InvitePeople),
-  },
-  {
-    label: 'Archive',
-    icon: LucideFolderMinus,
-    component: markRaw(ArchivedTeams),
   },
   {
     label: 'Settings',
