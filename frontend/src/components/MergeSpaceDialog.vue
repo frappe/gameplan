@@ -6,7 +6,6 @@
     @after-leave="
       () => {
         selectedSpace = null
-        projects.runDocMethod.reset()
       }
     "
     v-model="show"
@@ -26,25 +25,16 @@
           <span class="mr-2">{{ option.icon }}</span>
         </template>
       </Autocomplete>
-      <ErrorMessage
-        class="mt-2"
-        :message="
-          projects.runDocMethod.params?.method === 'merge_with_project' &&
-          projects.runDocMethod.error
-        "
-      />
+      <ErrorMessage class="mt-2" :message="spaces.runDocMethod.error" />
     </template>
     <template #actions>
       <Button
         class="w-full"
         variant="solid"
-        :loading="
-          projects.runDocMethod.params?.method === 'merge_with_project' &&
-          projects.runDocMethod.loading
-        "
+        :loading="spaces.runDocMethod.isLoading(spaceId, 'merge_with_project')"
         @click="submit"
       >
-        {{ selectedSpace ? `Merge with ${selectedSpace.label}` : 'Merge' }}
+        {{ selectedSpace ? `Merge with ${selectedSpace?.label}` : 'Merge' }}
       </Button>
     </template>
   </Dialog>
@@ -54,14 +44,17 @@ import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Autocomplete } from 'frappe-ui'
 import { useGroupedSpaces } from '@/data/groupedSpaces'
-import { projects, getProject } from '@/data/projects'
+import { useDoctype } from 'frappe-ui/src/data-fetching'
+import { GPProject } from '@/types/doctypes'
+import { useSpace } from '@/data/spaces'
 
 const props = defineProps<{
-  spaceId: string | number
+  spaceId: string
 }>()
 
 const router = useRouter()
-const space = computed(() => getProject(props.spaceId))
+const spaces = useDoctype<GPProject>('GP Project')
+const space = useSpace(() => props.spaceId)
 
 const selectedSpace = ref(null)
 const show = defineModel<boolean>()
@@ -82,28 +75,27 @@ const groupedSpaceOptions = computed(() => {
 })
 
 function submit() {
-  projects.runDocMethod.submit(
-    {
+  spaces.runDocMethod
+    .submit({
       method: 'merge_with_project',
       name: props.spaceId,
-      project: selectedSpace.value?.value,
-    },
-    {
+      params: {
+        project: selectedSpace.value?.value,
+      },
       validate() {
         if (!selectedSpace.value?.value) {
           return 'Please select a project to merge'
         }
       },
-      onSuccess() {
-        if (selectedSpace.value) {
-          show.value = false
-          return router.replace({
-            name: 'Space',
-            params: { spaceId: selectedSpace.value.value },
-          })
-        }
-      },
-    },
-  )
+    })
+    .then(() => {
+      if (selectedSpace.value) {
+        show.value = false
+        return router.replace({
+          name: 'Space',
+          params: { spaceId: selectedSpace.value.value },
+        })
+      }
+    })
 }
 </script>
