@@ -39,8 +39,12 @@ import { computed, ref } from 'vue'
 import { Breadcrumbs, Select, TabButtons, usePageMeta } from 'frappe-ui'
 import DiscussionList from '@/components/DiscussionList.vue'
 import LastPostReminder from '@/components/LastPostReminder.vue'
+import { useLocalStorage } from '@vueuse/core'
 
-const feedType = ref('following')
+const feedType = useLocalStorage<'following' | 'participating' | 'recent'>(
+  'homeFeedType',
+  'following',
+)
 const orderBy = ref('last_post_at desc')
 
 const filters = computed(() => {
