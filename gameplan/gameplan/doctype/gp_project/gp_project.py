@@ -214,3 +214,11 @@ def join_spaces(spaces: list[str] = None):
 		return
 	for space in spaces:
 		frappe.get_doc("GP Project", space).join()
+
+
+@frappe.whitelist()
+def leave_spaces(spaces: list[str] = None):
+	if not spaces:
+		return
+	for space in spaces:
+		frappe.get_doc("GP Project", space).leave()

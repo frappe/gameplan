@@ -165,6 +165,7 @@ const updateUrlSlug = () => {
       name: page.doc?.project ? 'SpacePage' : 'Page',
       params: {
         ...route.params,
+        spaceId: page.doc?.project,
         slug: page.doc?.slug,
       },
       query: route.query,

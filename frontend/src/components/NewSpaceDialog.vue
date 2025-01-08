@@ -23,7 +23,16 @@
             autocomplete="off"
           />
         </div>
-
+        <div class="flex gap-2">
+          <div class="w-7 h-7"></div>
+          <div class="w-full">
+            <Autocomplete
+              placeholder="Category"
+              :options="categoryOptions"
+              v-model="selectedCategory"
+            />
+          </div>
+        </div>
         <div class="flex items-center space-x-2">
           <div class="w-7 h-7"></div>
           <div>
@@ -48,20 +57,55 @@
   </Dialog>
 </template>
 <script setup lang="ts">
-import { Dialog, ErrorMessage, FormControl, TextInput } from 'frappe-ui'
+import { Dialog, ErrorMessage, FormControl, TextInput, Autocomplete } from 'frappe-ui'
 import IconPicker from './IconPicker.vue'
 import { useNewDoc } from 'frappe-ui/src/data-fetching'
 import { GPProject } from '@/types/doctypes'
 import { spaces } from '@/data/spaces'
+import { computed, ref, watch } from 'vue'
+import { activeTeams } from '@/data/teams'
+
+const props = defineProps<{
+  category?: string
+}>()
 
 const show = defineModel<boolean>()
 const newSpace = useNewDoc<GPProject>('GP Project', {
   title: '',
   icon: '',
-  is_private: false,
+  team: '',
+  is_private: 0,
+})
+const selectedCategory = ref<{ label: string; value: string }>(null as any)
+
+watch(show, (value: boolean) => {
+  if (value) {
+    if (props.category) {
+      selectCategory(props.category)
+    } else {
+      selectedCategory.value = null as any
+    }
+  }
 })
 
+const categoryOptions = computed(() => {
+  return activeTeams.value.map((team) => ({
+    label: team.title,
+    value: team.name,
+  }))
+})
+
+function selectCategory(categoryId: string) {
+  let categoryOption = categoryOptions.value.find((option) => option.value === categoryId)
+  if (categoryOption) {
+    selectedCategory.value = categoryOption
+  }
+}
+
 function submit() {
+  if (selectedCategory.value) {
+    newSpace.doc.team = selectedCategory.value.value
+  }
   newSpace.submit().then(() => {
     // TODO: useNewDoc should automatically reload related resources
     spaces.reload()

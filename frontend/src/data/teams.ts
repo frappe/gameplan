@@ -16,12 +16,6 @@ export let teams = useList<Team>({
   cacheKey: 'Teams',
   limit: 999,
   immediate: true,
-  transform(data) {
-    for (let team of data) {
-      team.name = team.name.toString()
-    }
-    return data
-  },
 })
 
 export let activeTeams = computed(() => {
