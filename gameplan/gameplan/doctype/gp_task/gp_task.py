@@ -22,10 +22,9 @@ class GPTask(HasMentions, HasActivity, Document):
 			self.status = "Backlog"
 
 	def after_insert(self):
-		self.update_tasks_count(1)
+		self.update_tasks_count()
 
 	def on_update(self):
-		self.update_project_progress()
 		self.notify_mentions()
 		self.log_value_updates()
 		self.update_search_index()
@@ -51,19 +50,14 @@ class GPTask(HasMentions, HasActivity, Document):
 			search.index_doc(self)
 
 	def on_trash(self):
-		self.update_tasks_count(-1)
+		self.update_tasks_count()
 		search = GameplanSearch()
 		search.remove_doc(self)
 
-	def update_tasks_count(self, delta=1):
+	def update_tasks_count(self):
 		if not self.project:
 			return
-		current_tasks_count = frappe.db.get_value("GP Project", self.project, "tasks_count") or 0
-		frappe.db.set_value("GP Project", self.project, "tasks_count", current_tasks_count + delta)
-
-	def update_project_progress(self):
-		if self.project and self.has_value_changed("is_completed"):
-			frappe.get_doc("GP Project", self.project).update_progress()
+		frappe.get_doc("GP Project", self.project).update_tasks_count()
 
 	@frappe.whitelist()
 	def track_visit(self):

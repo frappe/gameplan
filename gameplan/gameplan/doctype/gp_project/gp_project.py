@@ -82,16 +82,13 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 			self.icon = get_random_gemoji().emoji
 		self.append("members", {"user": frappe.session.user})
 
-	def update_progress(self):
-		result = frappe.db.get_all(
-			"GP Task",
-			filters={"project": self.name},
-			fields=["sum(is_completed) as completed", "count(name) as total"],
-		)[0]
-		if result.total > 0:
-			self.progress = (result.completed or 0) * 100 / result.total
-			self.save()
-			self.reload()
+	def update_discussions_count(self):
+		total_discussions = frappe.db.count("GP Discussion", filters={"project": self.name})
+		self.db_set("discussions_count", total_discussions)
+
+	def update_tasks_count(self):
+		total_tasks = frappe.db.count("GP Task", filters={"project": self.name})
+		self.db_set("tasks_count", total_tasks)
 
 	@frappe.whitelist()
 	def move_to_team(self, team=None):
@@ -209,3 +206,11 @@ def get_joined_spaces():
 	).run(as_dict=True, pluck="project")
 
 	return map(str, set(projects + guest_access_projects))
+
+
+@frappe.whitelist()
+def join_spaces(spaces: list[str] = None):
+	if not spaces:
+		return
+	for space in spaces:
+		frappe.get_doc("GP Project", space).join()

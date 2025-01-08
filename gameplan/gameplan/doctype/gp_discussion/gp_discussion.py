@@ -63,11 +63,11 @@ class GPDiscussion(HasActivity, HasMentions, HasReactions, Document):
 		self.update_participants_count()
 
 	def after_insert(self):
-		self.update_discussions_count(1)
+		self.update_discussions_count()
 
 	def on_trash(self):
 		self.remove_bookmark()
-		self.update_discussions_count(-1)
+		self.update_discussions_count()
 
 	def validate(self):
 		self.content = remove_empty_trailing_paragraphs(self.content)
@@ -197,7 +197,5 @@ class GPDiscussion(HasActivity, HasMentions, HasReactions, Document):
 	def is_bookmarked(self):
 		return bool(frappe.db.exists("GP Bookmark", {"discussion": self.name, "user": frappe.session.user}))
 
-	def update_discussions_count(self, delta=1):
-		project = frappe.get_doc("GP Project", self.project)
-		project.discussions_count = project.discussions_count + delta
-		project.save(ignore_permissions=True)
+	def update_discussions_count(self):
+		frappe.get_doc("GP Project", self.project).update_discussions_count()
