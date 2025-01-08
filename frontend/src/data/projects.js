@@ -30,7 +30,7 @@ export let projects = createListResource({
       return project
     })
   },
-  auto: true,
+  auto: false,
 })
 
 export function getTeamProjects(team) {

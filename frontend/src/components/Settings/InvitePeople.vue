@@ -94,7 +94,7 @@
 </template>
 <script>
 import { Autocomplete, Dropdown, Tooltip } from 'frappe-ui'
-import { projects, getTeamProjects } from '@/data/projects'
+import { getTeamProjects } from '@/data/projects'
 import { activeTeams } from '@/data/teams'
 
 export default {
