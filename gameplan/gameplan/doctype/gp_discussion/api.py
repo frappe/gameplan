@@ -95,7 +95,9 @@ def get_discussions(filters=None, order_by=None, start=None, limit=None):
 	)
 	for discussion in discussions:
 		discussion["ongoing_polls"] = [p for p in ongoing_polls if str(p.discussion) == str(discussion.name)]
-	return {"result": discussions, "has_next_page": has_next_page}
+
+	frappe.response["has_next_page"] = has_next_page
+	return discussions
 
 
 def clause_discussions_commented_by_user(user):

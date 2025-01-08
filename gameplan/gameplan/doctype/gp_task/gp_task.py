@@ -102,4 +102,5 @@ def get_list(
 		query = query.where((Task.assigned_to == assigned_or_owner) | (Task.owner == assigned_or_owner))
 
 	data = query.run(as_dict=True, debug=debug)
-	return {"result": data[:limit], "has_next_page": len(data) > limit}
+	frappe.response["has_next_page"] = len(data) > limit
+	return data[:limit]
