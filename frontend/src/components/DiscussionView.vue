@@ -1,6 +1,6 @@
 <template>
   <div class="relative flex h-full flex-col" v-if="postId && discussion.doc">
-    <div class="mx-auto w-full max-w-3xl">
+    <div class="mx-auto w-full max-w-3xl px-4 sm:px-0">
       <div class="pb-16">
         <div class="pb-2 pt-14 flex w-full items-center sticky top-0 z-[1] bg-surface-white">
           <UserProfileLink class="mr-3" :user="discussion.doc.owner">
@@ -306,6 +306,12 @@ const actions = computed(() => [
     onClick: copyLink,
   },
   {
+    label: 'Bookmark',
+    icon: 'bookmark',
+    onClick: () => discussion.addBookmark.submit(),
+    condition: () => !discussion.doc?.is_bookmarked,
+  },
+  {
     label: 'Pin discussion...',
     icon: 'arrow-up-left',
     condition: () => !discussion.doc?.pinned_at,
@@ -381,12 +387,6 @@ const actions = computed(() => [
         ],
       })
     },
-  },
-  {
-    label: 'Bookmark',
-    icon: 'bookmark',
-    onClick: () => discussion.addBookmark.submit(),
-    condition: () => !discussion.doc?.is_bookmarked,
   },
   {
     label: 'Remove Bookmark',

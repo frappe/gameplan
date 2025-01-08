@@ -7,7 +7,7 @@
     </Button>
   </PageHeader>
   <NewSpaceDialog v-model="newSpaceDialog" />
-  <div class="mx-auto max-w-3xl sm:px-5 pb-80">
+  <div class="mx-auto max-w-3xl px-2 sm:px-5 pb-20 sm:pb-80">
     <div class="mt-5 flex px-2.5">
       <TabButtons :buttons="[{ label: 'Active' }, { label: 'Archived' }]" v-model="currentTab" />
     </div>

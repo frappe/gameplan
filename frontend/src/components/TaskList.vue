@@ -26,7 +26,7 @@
               'pointer-events-none': tasks.delete.loading && tasks.delete.params.name === d.name,
             }"
           >
-            <div class="w-full">
+            <div class="w-full min-w-0">
               <div class="flex min-w-0 items-start">
                 <LoadingIndicator
                   class="h-4 w-4 text-ink-gray-5"
@@ -65,8 +65,6 @@
                   class="flex min-w-0 items-center text-base leading-none text-ink-gray-5"
                 >
                   <div class="px-2 leading-none text-ink-gray-5">&middot;</div>
-                  <div>{{ d.team_title }}</div>
-                  <LucideChevronRight class="h-3 w-3 shrink-0 text-ink-gray-5" />
                   <div class="overflow-hidden text-ellipsis whitespace-nowrap">
                     {{ d.project_title }}
                   </div>
@@ -105,7 +103,7 @@
                 </template>
               </div>
             </div>
-            <div class="invisible group-hover:visible">
+            <div class="sm:invisible group-hover:visible">
               <DropdownMoreOptions :options="dropdownOptions(d.name)" placement="right" />
             </div>
           </router-link>
@@ -166,7 +164,7 @@ const isOpen = ref<Record<TaskStatus, boolean>>({
 const tasks = useList<GPTask>({
   url: '/api/v2/method/gameplan.gameplan.doctype.gp_task.gp_task.get_list',
   doctype: 'GP Task',
-  fields: ['*', 'project.title as project_title', 'team.title as team_title'],
+  fields: ['*', 'project.title as project_title'],
   filters: props.listOptions.filters,
   orderBy: props.listOptions.orderBy,
   limit: props.listOptions.pageLength,

@@ -1,10 +1,12 @@
 <template>
-  <TabButtons :buttons="spaceTabs" v-model="currentTab" />
+  <Select class="min-w-32" v-if="screen.width < 640" :options="spaceTabs" v-model="currentTab" />
+  <TabButtons v-else :buttons="spaceTabs" v-model="currentTab" />
 </template>
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { TabButtons } from 'frappe-ui'
+import { TabButtons, Select } from 'frappe-ui'
+import { useScreenSize } from '@/utils/composables'
 
 const props = defineProps<{
   spaceId: string
@@ -12,6 +14,7 @@ const props = defineProps<{
 
 const currentRoute = useRoute()
 const router = useRouter()
+const screen = useScreenSize()
 
 const spaceTabs = [
   { label: 'Discussions', value: 'discussions' },

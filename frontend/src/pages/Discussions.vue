@@ -13,7 +13,7 @@
 
     <div class="mb-4 flex items-center px-3">
       <TabButtons :buttons="feedOptions" v-model="feedType" />
-      <div class="ml-auto space-x-2">
+      <div class="ml-auto flex space-x-2">
         <Button
           v-if="$refs.discussionListRef?.discussions.loading"
           :loading="$refs.discussionListRef?.discussions.loading"
@@ -27,7 +27,7 @@
       <DiscussionList
         ref="discussionListRef"
         routeName="ProjectDiscussion"
-        :listOptions="{ filters, orderBy }"
+        :listOptions="{ filters, orderBy: () => orderBy }"
         :key="JSON.stringify(filters)"
       />
     </KeepAlive>

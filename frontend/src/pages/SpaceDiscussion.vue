@@ -4,7 +4,7 @@
       :items="[
         { label: 'Spaces', route: { name: 'Spaces' } },
         {
-          label: space.title,
+          label: space?.title,
           route: { name: 'SpaceDiscussions', params: { spaceId } },
         },
         { label: discussion?.doc?.title },
