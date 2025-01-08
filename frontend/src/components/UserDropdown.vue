@@ -23,9 +23,11 @@ import { Dropdown } from 'frappe-ui'
 import { showSettingsDialog } from '@/components/Settings/SettingsDialog.vue'
 import LucideCreditCard from '~icons/lucide/credit-card'
 import LucideMoon from '~icons/lucide/moon'
+import LucideListRestart from '~icons/lucide/list-restart'
 import GameplanLogo from './GameplanLogo.vue'
 import { useUser } from '@/data/users'
 import { session } from '@/data/session'
+import { clear as clearIndexDb } from 'idb-keyval'
 
 const user = useUser()
 
@@ -50,6 +52,11 @@ const dropdownItems = computed(() => [
     onClick: toggleTheme,
   },
   {
+    icon: LucideListRestart,
+    label: 'Clear cache',
+    onClick: clearCache,
+  },
+  {
     icon: () => h(LucideCreditCard),
     label: 'Subscription',
     condition: () => user.isNotGuest && window.frappecloud_host && window.site_name,
@@ -69,6 +76,15 @@ function toggleTheme() {
   let theme = currentTheme === 'dark' ? 'light' : 'dark'
   document.documentElement.setAttribute('data-theme', theme)
   localStorage.setItem('theme', theme)
+}
+
+function clearCache() {
+  localStorage.clear()
+  sessionStorage.clear()
+  clearIndexDb().then(() => {
+    console.log('Cache cleared')
+    window.location.reload()
+  })
 }
 
 onMounted(() => {
