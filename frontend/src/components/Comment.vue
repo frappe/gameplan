@@ -179,12 +179,7 @@ const dropdownOptions = computed(() => [
             variant: 'solid',
             theme: 'red',
             onClick: ({ close }) => {
-              return props.comments.setValue
-                .submit({
-                  name: props.comment.name,
-                  deleted_at: $dayjs().format('YYYY-MM-DD HH:mm:ss'),
-                })
-                .then(close)
+              return props.comments.delete.submit({ name: props.comment.name }).then(close)
             },
           },
         ],
