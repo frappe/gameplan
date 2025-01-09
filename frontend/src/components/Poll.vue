@@ -153,7 +153,6 @@ export default {
         type: 'document',
         doctype: 'GP Poll',
         name: this.poll.name,
-        auto: false,
         realtime: true,
         whitelistedMethods: {
           submitVote: 'submit_vote',
