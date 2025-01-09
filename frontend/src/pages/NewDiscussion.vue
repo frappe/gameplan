@@ -26,15 +26,15 @@
         </div>
         <div class="hidden shrink-0 space-x-2 sm:block">
           <Button @click="discard">Discard</Button>
-          <Button variant="solid" :loading="newDiscussion.loading" @click="publish">
+          <Button variant="solid" :loading="discussions.insert.loading" @click="publish">
             Publish
           </Button>
         </div>
       </div>
-      <ErrorMessage :message="newDiscussion.error" />
+      <ErrorMessage :message="errorMessage || discussions.insert.error" />
       <textarea
         class="mt-1 w-full resize-none border-0 px-0 py-0.5 text-3xl font-bold placeholder-gray-400 focus:ring-0"
-        v-model="newDiscussion.doc.title"
+        v-model="draftDiscussion.title"
         placeholder="Title"
         rows="1"
         wrap="soft"
@@ -51,8 +51,8 @@
         ref="textEditorRef"
         class="mt-1"
         editor-class="rounded-b-lg max-w-[unset] prose-sm h-[calc(100vh-340px)] sm:h-[calc(100vh-250px)] overflow-auto"
-        :content="newDiscussion.doc.content"
-        @change="onNewPostChange"
+        :content="draftDiscussion.content"
+        @change="draftDiscussion.content = $event"
         placeholder="Write something..."
       >
         <template v-slot:bottom>
@@ -60,7 +60,7 @@
             <TextEditorFixedMenu class="overflow-x-auto" :buttons="textEditorMenuButtons" />
             <div class="mt-2 shrink-0 space-x-2 text-right sm:hidden">
               <Button @click="discard">Discard</Button>
-              <Button variant="solid" :loading="newDiscussion.loading" @click="publish">
+              <Button variant="solid" :loading="discussions.insert.loading" @click="publish">
                 Publish
               </Button>
             </div>
@@ -75,21 +75,34 @@ import { computed, onMounted, ref, useTemplateRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Autocomplete, Breadcrumbs, TextEditorFixedMenu } from 'frappe-ui'
 import { useGroupedSpaces } from '@/data/groupedSpaces'
-import { useNewDoc } from '@/data/newDoc'
+import { useDoctype } from 'frappe-ui/src/data-fetching'
 import { useSessionUser } from '@/data/users'
 import PageHeader from '@/components/PageHeader.vue'
 import TextEditor from '@/components/TextEditor.vue'
 import UserProfileLink from '@/components/UserProfileLink.vue'
 import { focus as vFocus } from '@/directives'
 import { createDialog } from '@/utils/dialogs'
+import { useLocalStorage } from '@vueuse/core'
+import { GPDiscussion } from '@/types/doctypes'
 
 const currentRoute = useRoute()
 const sessionUser = useSessionUser()
 const router = useRouter()
 
 const groupedSpaces = useGroupedSpaces({ filterFn: (space) => !space.archived_at })
-const selectedSpace = ref(null)
+const selectedSpace = ref<{ label: string; value: string } | null>(null)
 const textEditorRef = useTemplateRef('textEditorRef')
+const discussions = useDoctype<GPDiscussion>('GP Discussion')
+const errorMessage = ref<string | null>(null)
+
+const draftDiscussion = useLocalStorage(
+  'newDiscussion',
+  {
+    title: '',
+    content: '',
+  },
+  { deep: true },
+)
 
 const spaceOptions = computed(() => {
   return groupedSpaces.value.map((group) => {
@@ -103,37 +116,6 @@ const spaceOptions = computed(() => {
   })
 })
 
-const newDiscussion = useNewDoc(
-  'GP Discussion',
-  {
-    project: computed(() => selectedSpace.value?.value),
-    title: '',
-    content: '',
-  },
-  {
-    validate(params) {
-      if (!params.doc.title) {
-        return `Please enter title before publishing.`
-      }
-      if (!params.doc.project) {
-        return `Please select a space before publishing.`
-      }
-    },
-    onSuccess(doc) {
-      router.replace({
-        name: 'Discussion',
-        params: {
-          spaceId: doc.project,
-          postId: doc.name,
-        },
-      })
-      selectedSpace.value = null
-      newDiscussion.doc.title = ''
-      newDiscussion.doc.content = ''
-    },
-  },
-)
-
 onMounted(() => {
   if (currentRoute.query?.spaceId) {
     let spaceOption = spaceOptions.value
@@ -146,16 +128,43 @@ onMounted(() => {
   }
 })
 
-function onNewPostChange(value) {
-  newDiscussion.doc.content = value
+function publish() {
+  if (!draftDiscussion.value.title) {
+    errorMessage.value = 'Please enter title before publishing.'
+    return
+  }
+  if (!selectedSpace.value) {
+    errorMessage.value = 'Please select a space before publishing.'
+    return
+  }
+  errorMessage.value = null
+
+  return discussions.insert
+    .submit({
+      project: selectedSpace.value?.value,
+      title: draftDiscussion.value.title,
+      content: draftDiscussion.value.content,
+    })
+    .then((doc) => {
+      router.replace({
+        name: 'Discussion',
+        params: {
+          spaceId: doc.project,
+          postId: doc.name,
+        },
+      })
+      resetValues()
+    })
 }
 
-function publish() {
-  newDiscussion.submit()
+function resetValues() {
+  selectedSpace.value = null
+  draftDiscussion.value.title = ''
+  draftDiscussion.value.content = ''
 }
 
 function discard() {
-  if (!textEditorRef.value.editor.isEmpty || newDiscussion.doc.title) {
+  if (!textEditorRef.value.editor.isEmpty || draftDiscussion.value.title) {
     createDialog({
       title: 'Discard post',
       message: 'Are you sure you want to discard your post?',
@@ -163,6 +172,7 @@ function discard() {
         {
           label: 'Discard post',
           onClick: ({ close }) => {
+            resetValues()
             router.back()
             close()
           },
