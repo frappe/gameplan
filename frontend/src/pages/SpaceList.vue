@@ -16,11 +16,19 @@
   </PageHeader>
   <NewSpaceDialog v-model="newSpaceDialog" :category="categoryForNewSpace" />
   <div class="mx-auto max-w-3xl px-2 sm:px-5 pb-20 sm:pb-80">
-    <div class="mt-5 flex px-2.5">
-      <TabButtons :buttons="[{ label: 'Active' }, { label: 'Archived' }]" v-model="currentTab" />
+    <div class="mt-5 mb-3 flex px-2.5">
+      <TabButtons
+        :buttons="[{ label: 'Public' }, { label: 'Private' }, { label: 'Archived' }]"
+        v-model="currentTab"
+      />
     </div>
-    <div v-for="group in groupedSpaces" :key="group.name">
-      <div class="p-3 pt-8 flex items-center justify-between">
+    <div class="p-3" v-if="groupedSpaces.length === 0">
+      <EmptyStateBox>
+        <div class="text-ink-gray-5 text-base">No spaces</div>
+      </EmptyStateBox>
+    </div>
+    <div class="mb-8" v-for="group in groupedSpaces" :key="group.name">
+      <div class="px-3 pb-2 flex items-center justify-between">
         <div class="text-ink-gray-9 text-base">{{ group.title || group.name }}</div>
         <DropdownMoreOptions
           placement="right"
@@ -159,14 +167,21 @@ import DropdownMoreOptions from '@/components/DropdownMoreOptions.vue'
 import { GPProject } from '@/types/GPProject'
 import { GPTeam } from '@/types/doctypes'
 import LucideLock from '~icons/lucide/lock'
+import EmptyStateBox from '@/components/EmptyStateBox.vue'
 
 const teams = useDoctype<GPTeam>('GP Team')
-const currentTab = ref('Active')
+const currentTab = ref('Public')
 const categoryForNewSpace = ref('')
 
 const groupedSpaces = useGroupedSpaces({
   filterFn: (space) =>
-    Boolean(currentTab.value == 'Active' ? !space.archived_at : space.archived_at),
+    Boolean(
+      {
+        Public: !space.archived_at,
+        Private: space.is_private,
+        Archived: space.archived_at,
+      }[currentTab.value],
+    ),
 })
 
 const newSpaceDialog = ref(false)
