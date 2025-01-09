@@ -9,22 +9,16 @@
             {{ item.icon }}
           </span>
         </template>
+        <template #suffix="{ item }">
+          <div v-if="item.isPageTitle && isAutosaving" class="text-base text-ink-gray-5 ml-2">
+            Autosaving...
+          </div>
+        </template>
       </Breadcrumbs>
       <div class="flex items-center space-x-2">
         <span class="hidden text-sm text-ink-gray-5 sm:block" v-if="page.doc">
           Last updated {{ $dayjs(page.doc.modified).format('LLL') }}
         </span>
-        <Button
-          v-show="page.doc && isDirty"
-          variant="solid"
-          @click="save"
-          :loading="page.setValue.loading"
-        >
-          Save
-          <template #suffix>
-            <KeyboardShortcut :ctrl="true">S</KeyboardShortcut>
-          </template>
-        </Button>
       </div>
     </header>
     <div class="mx-auto w-full max-w-4xl px-5">
@@ -37,6 +31,7 @@
             class="w-full border-0 p-0 pt-4 text-3xl font-semibold focus:outline-none focus:ring-0 bg-surface-white text-ink-gray-9"
             type="text"
             v-model="title"
+            @change="autosave"
             @keydown.enter="textEditor?.editor?.commands.focus()"
             ref="titleInput"
           />
@@ -44,7 +39,12 @@
         <TextEditor
           editor-class="rounded-b-lg max-w-[unset] prose-sm pb-[50vh] md:px-[70px]"
           :content="content"
-          @change="content = $event"
+          @change="
+            (value) => {
+              content = value
+              autosave()
+            }
+          "
           placeholder="Start writing here..."
           :bubbleMenu="true"
           ref="textEditor"
@@ -57,7 +57,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, useTemplateRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Breadcrumbs, TextEditor, usePageMeta } from 'frappe-ui'
+import { Breadcrumbs, TextEditor, usePageMeta, debounce } from 'frappe-ui'
 import { useDoc } from 'frappe-ui/src/data-fetching'
 import { useSpace } from '@/data/spaces'
 import { GPPage } from '@/types/doctypes'
@@ -83,9 +83,9 @@ const page = useDoc<GPPage>({
   name: () => props.pageId,
 })
 
-page.onSuccess(() => {
-  title.value = page.doc?.title || ''
-  content.value = page.doc?.content || ''
+page.onSuccess((doc) => {
+  title.value = doc.title || ''
+  content.value = doc.content || ''
   updateUrlSlug()
   titleInput.value?.focus()
 })
@@ -111,6 +111,7 @@ const breadcrumbs = computed(() => {
           name: 'Page',
           params: { pageId: props.pageId, slug: props.slug },
         },
+        isPageTitle: true,
       },
     ]
   }
@@ -145,12 +146,29 @@ const breadcrumbs = computed(() => {
   ]
 })
 
+const isAutosaving = ref(false)
+const MIN_AUTOSAVING_DURATION = 2000 // 2 seconds
+
 const save = () => {
-  page.setValue.submit({
-    title: title.value,
-    content: content.value,
-  })
+  isAutosaving.value = true
+  const startTime = Date.now()
+
+  page.setValue
+    .submit({
+      title: title.value,
+      content: content.value,
+    })
+    .finally(() => {
+      const elapsedTime = Date.now() - startTime
+      const remainingTime = Math.max(0, MIN_AUTOSAVING_DURATION - elapsedTime)
+
+      setTimeout(() => {
+        isAutosaving.value = false
+      }, remainingTime)
+    })
 }
+
+const autosave = debounce(save, 1000)
 
 const handleKeyboardShortcuts = (e: KeyboardEvent) => {
   if (e.key === 's' && (e.metaKey || e.ctrlKey)) {
