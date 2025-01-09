@@ -3,7 +3,8 @@ import { useDoc, useList } from 'frappe-ui/src/data-fetching'
 import { UseListOptions } from 'frappe-ui/src/data-fetching/useList/types'
 import { GPDiscussion } from '@/types/doctypes'
 
-interface Discussion extends GPDiscussion {
+export interface Discussion extends GPDiscussion {
+  project_title: string
   last_visit: string
   last_post_at: string
   unread: boolean
@@ -11,17 +12,18 @@ interface Discussion extends GPDiscussion {
 
 export type UseDiscussionOptions = Pick<
   UseListOptions<Discussion>,
-  'cacheKey' | 'filters' | 'limit' | 'orderBy'
+  'cacheKey' | 'filters' | 'limit' | 'orderBy' | 'immediate'
 >
 
 export function useDiscussions(options: UseDiscussionOptions) {
   const discussions = useList<Discussion>({
     url: '/api/v2/method/gameplan.gameplan.doctype.gp_discussion.api.get_discussions',
     doctype: 'GP Discussion',
-    cacheKey: ['Discussions', { ...options }],
+    cacheKey: options.cacheKey ? ['Discussions', options.cacheKey] : undefined,
     filters: options.filters,
     limit: options.limit || 50,
     orderBy: options.orderBy,
+    immediate: options.immediate ?? true,
     transform(data) {
       return data.map((d) => ({
         ...d,

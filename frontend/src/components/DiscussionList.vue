@@ -28,10 +28,7 @@
         <LucideCoffee class="h-7 w-7 text-ink-gray-4" />
         No discussions
       </EmptyStateBox>
-      <div
-        class="flex items-center justify-center p-3"
-        v-if="!hideLoadMore && discussions.hasNextPage"
-      >
+      <div class="flex items-center justify-center p-3" v-if="discussions.hasNextPage">
         <Button @click="discussions.next" :loading="discussions.loading">
           <template #prefix>
             <LucideRefreshCw class="h-4 w-4" />
@@ -49,27 +46,32 @@ import { UseDiscussionOptions, useDiscussions } from '@/data/discussions'
 import DiscussionRow from './DiscussionRow.vue'
 import EmptyStateBox from './EmptyStateBox.vue'
 
-interface ListOptions extends UseDiscussionOptions {}
+interface Props {
+  filters: UseDiscussionOptions['filters']
+  orderBy?: UseDiscussionOptions['orderBy']
+  cacheKey?: string
+  showPinned?: boolean
+}
 
-const props = defineProps({
-  listOptions: {
-    type: Object as () => ListOptions,
-    default: () => ({}),
-  },
-  hideLoadMore: {
-    type: Boolean,
-    default: false,
-  },
+const props = withDefaults(defineProps<Props>(), {
+  showPinned: true,
 })
 
-const discussions = useDiscussions(props.listOptions)
+const discussions = useDiscussions({
+  filters: props.filters,
+  orderBy: props.orderBy,
+  cacheKey: props.cacheKey,
+})
+
 const pinnedDiscussions = useDiscussions({
+  filters: () => ({ ...toValue(props.filters), pinned_at: ['is', 'set'] }),
   orderBy: 'pinned_at desc',
-  filters: () => ({ ...toValue(props.listOptions.filters), pinned_at: ['is', 'set'] }),
   limit: 99999,
+  cacheKey: props.cacheKey ? ['pinned', props.cacheKey] : undefined,
+  immediate: props.showPinned,
 })
 
-const filters = computed(() => props.listOptions.filters)
+const filters = computed(() => toValue(props.filters))
 
 defineExpose({ discussions })
 </script>

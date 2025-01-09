@@ -1,9 +1,6 @@
 <template>
   <div class="pb-16">
-    <DiscussionList
-      :listOptions="{ filters: { participator: profile.doc.user } }"
-      routeName="ProjectDiscussion"
-    />
+    <DiscussionList :filters="{ participator: profile.doc.user }" :show-pinned="false" />
   </div>
 </template>
 <script>

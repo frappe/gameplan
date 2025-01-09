@@ -1,22 +1,8 @@
 <template>
   <div class="pb-16">
-    <DiscussionList
-      ref="discussionList"
-      routeName="ProjectDiscussion"
-      :listOptions="{ filters: { user_bookmarks: true } }"
-    />
+    <DiscussionList :filters="{ user_bookmarks: true }" :show-pinned="false" />
   </div>
 </template>
-<script>
+<script script lang="ts">
 import DiscussionList from '@/components/DiscussionList.vue'
-
-export default {
-  name: 'PersonProfileBookmarks',
-  methods: {
-    handleDiscussionClick() {
-      this.$emit('close-dialog')
-    },
-    components: { DiscussionList },
-  },
-}
 </script>

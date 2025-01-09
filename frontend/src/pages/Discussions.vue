@@ -27,7 +27,9 @@
       <DiscussionList
         ref="discussionListRef"
         routeName="ProjectDiscussion"
-        :listOptions="{ filters, orderBy: () => orderBy }"
+        :filters="filters"
+        :orderBy="orderBy"
+        :cacheKey="`HomeDiscussions-${feedType}`"
         :key="JSON.stringify(filters)"
       />
     </KeepAlive>

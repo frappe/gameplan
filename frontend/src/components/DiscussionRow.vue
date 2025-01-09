@@ -45,7 +45,13 @@
                 </Badge>
                 <span class="sm:inline">
                   {{ user.full_name }}
-                  <span v-if="showSpaceName"> in {{ discussion.project_title }} </span>
+                  <span class="inline-flex items-center" v-if="showSpaceName">
+                    in {{ discussion.project_title }}
+                    <LucideLock
+                      v-if="isSpacePrivate(discussion.project)"
+                      class="h-3 w-3 text-ink-gray-6 ml-0.5"
+                    />
+                  </span>
                 </span>
               </div>
             </div>
@@ -75,11 +81,13 @@ import { Tooltip } from 'frappe-ui'
 import { dayjs } from '@/utils/dayjs'
 import UserAvatar from './UserAvatar.vue'
 import UserInfo from './UserInfo.vue'
+import { useSpace } from '@/data/spaces'
+import { Discussion } from '@/data/discussions'
 
 import LucidePin from '~icons/lucide/pin'
 
 const props = defineProps<{
-  discussion: Object
+  discussion: Discussion
   index: number
   total: number
   showSpaceName: boolean
@@ -94,6 +102,10 @@ function discussionTimestamp(d) {
     return dayjs(timestamp).format('D MMM')
   }
   return dayjs(timestamp).format('D MMM YYYY')
+}
+
+function isSpacePrivate(spaceId: string) {
+  return useSpace(spaceId).value?.is_private
 }
 
 function discussionTimestampDescription(d) {

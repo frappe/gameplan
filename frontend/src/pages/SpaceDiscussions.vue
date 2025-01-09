@@ -8,12 +8,8 @@
       </Button>
     </div>
     <DiscussionList
-      :listOptions="{
-        filters: () => ({
-          project: spaceId,
-        }),
-      }"
-      routeName="ProjectDiscussion"
+      :filters="() => ({ project: spaceId })"
+      :cacheKey="`SpaceDiscussions-${spaceId}`"
     />
   </div>
 </template>
