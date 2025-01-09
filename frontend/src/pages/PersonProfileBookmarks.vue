@@ -3,6 +3,6 @@
     <DiscussionList :filters="{ user_bookmarks: true }" :show-pinned="false" />
   </div>
 </template>
-<script script lang="ts">
+<script setup lang="ts">
 import DiscussionList from '@/components/DiscussionList.vue'
 </script>
