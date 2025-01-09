@@ -40,7 +40,7 @@
         />
       </div>
     </div>
-    <div class="text-base font-semibold">{{ _poll.title }}</div>
+    <div class="text-base text-ink-gray-9 font-semibold">{{ _poll.title }}</div>
     <div class="mt-1 text-sm text-ink-gray-5">
       <span v-if="_poll.multiple_answers"> Multiple answers &middot; </span>
       <span v-if="_poll.anonymous"> Anonymous &middot; </span>
@@ -72,7 +72,7 @@
           />
         </div>
         <div class="flex items-baseline">
-          <div class="text-base">{{ option.title }}</div>
+          <div class="text-base text-ink-gray-9">{{ option.title }}</div>
           <div class="ml-1 text-base text-ink-gray-5" v-if="participated">
             ({{ option.percentage }}%)
           </div>
@@ -82,29 +82,31 @@
     <div class="mt-3">
       <Reactions doctype="GP Poll" :name="poll.name" :reactions="_poll.reactions" />
     </div>
-    <Dialog :options="{ title: 'Poll results' }" v-model="showDialog" v-if="pollResults">
+    <Dialog :options="{ title: 'Poll results' }" v-model="showDialog">
       <template #body-content>
-        <h2 class="text-lg font-semibold">{{ _poll.title }}</h2>
-        <div class="mt-2 space-y-4">
+        <h2 class="text-lg font-medium text-ink-gray-9">{{ _poll.title }}</h2>
+        <div v-if="!pollResults" class="text-base text-ink-gray-6 mt-2">No votes yet</div>
+        <div class="mt-6 space-y-6">
           <div v-for="option in pollResults" :key="option.title">
-            <div class="flex items-center">
-              <h3 class="text-base font-medium">{{ option.title }}</h3>
-
-              <div class="mx-2 flex-1 border-b"></div>
+            <div class="flex items-center mb-2">
+              <h3 class="text-base text-ink-gray-9 font-medium">{{ option.title }}</h3>
+              <div class="mx-2 flex-1 border-b border-outline-gray-2"></div>
               <div class="text-base text-ink-gray-5">
                 {{ option.votes }} {{ option.votes === 1 ? 'vote' : 'votes' }}
               </div>
               <div class="ml-1 text-base text-ink-gray-5">({{ option.percentage }}%)</div>
             </div>
-            <div class="py-2" v-for="user in option.voters" :key="user">
-              <UserInfo :email="user" v-slot="{ user: _user }">
-                <UserProfileLink :user="_user.name">
-                  <div class="flex items-center space-x-2">
-                    <UserAvatar size="sm" :user="_user.name" />
-                    <span class="text-base">{{ _user.full_name }}</span>
-                  </div>
-                </UserProfileLink>
-              </UserInfo>
+            <div class="space-y-2">
+              <div class="flex" v-for="user in option.voters" :key="user">
+                <UserInfo :email="user" v-slot="{ user: _user }">
+                  <UserProfileLink :user="_user.name">
+                    <div class="flex items-center space-x-2">
+                      <UserAvatar size="sm" :user="_user.name" />
+                      <span class="text-base text-ink-gray-9">{{ _user.full_name }}</span>
+                    </div>
+                  </UserProfileLink>
+                </UserInfo>
+              </div>
             </div>
           </div>
         </div>
@@ -234,7 +236,7 @@ export default {
         {
           label: 'Show results',
           icon: 'bar-chart-2',
-          condition: () => this.pollResults,
+          condition: () => !this._poll.anonymous,
           onClick: () => {
             this.showDialog = true
           },

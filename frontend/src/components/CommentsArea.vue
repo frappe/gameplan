@@ -173,6 +173,7 @@ const newComment = ref(localStorage.getItem(draftCommentKey()) || '')
 const newPoll = ref({
   title: '',
   multiple_answers: false,
+  anonymous: false,
   options: [
     { title: '', idx: 1 },
     { title: '', idx: 2 },
@@ -303,6 +304,7 @@ function resetCommentState() {
   newPoll.value = {
     title: '',
     multiple_answers: false,
+    anonymouse: false,
     options: [
       { title: '', idx: 1 },
       { title: '', idx: 2 },
@@ -356,6 +358,7 @@ function submitPoll() {
     .submit({
       discussion: props.name,
       title: newPoll.value.title,
+      anonymous: newPoll.value.anonymous ? 1 : 0,
       multiple_answers: newPoll.value.multiple_answers ? 1 : 0,
       options: newPoll.value.options,
     })
