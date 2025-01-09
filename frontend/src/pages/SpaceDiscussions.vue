@@ -8,7 +8,11 @@
       </Button>
     </div>
     <DiscussionList
-      :listOptions="{ filters: { project: spaceId } }"
+      :listOptions="{
+        filters: () => ({
+          project: spaceId,
+        }),
+      }"
       routeName="ProjectDiscussion"
     />
   </div>

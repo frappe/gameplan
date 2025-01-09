@@ -44,7 +44,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, toValue } from 'vue'
 import { UseDiscussionOptions, useDiscussions } from '@/data/discussions'
 import DiscussionRow from './DiscussionRow.vue'
 import EmptyStateBox from './EmptyStateBox.vue'
@@ -64,8 +64,8 @@ const props = defineProps({
 
 const discussions = useDiscussions(props.listOptions)
 const pinnedDiscussions = useDiscussions({
-  ...props.listOptions,
-  filters: { ...props.listOptions.filters, pinned_at: ['is', 'set'] },
+  orderBy: 'pinned_at desc',
+  filters: () => ({ ...toValue(props.listOptions.filters), pinned_at: ['is', 'set'] }),
   limit: 99999,
 })
 
