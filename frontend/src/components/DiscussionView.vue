@@ -1,6 +1,6 @@
 <template>
   <div class="relative flex h-full flex-col" v-if="postId && discussion.doc">
-    <div class="mx-auto w-full max-w-3xl px-4 sm:px-0">
+    <div class="mx-auto w-full max-w-3xl px-4 xl:px-0">
       <div class="pb-16">
         <div class="pb-2 pt-14 flex w-full items-center sticky top-0 z-[1] bg-surface-white">
           <UserProfileLink class="mr-3" :user="discussion.doc.owner">
@@ -123,7 +123,7 @@
       />
       <Dialog
         :options="{
-          title: 'Move discussion to another project',
+          title: 'Move discussion to another space',
         }"
         @close="
           () => {
@@ -146,7 +146,7 @@
             class="w-full"
             variant="solid"
             :loading="discussion.moveToProject.loading"
-            @click="moveToProject"
+            @click="moveToSpace"
           >
             {{
               discussionMoveDialog.project
@@ -234,7 +234,7 @@ function copyLink() {
   copyToClipboard(url)
 }
 
-function moveToProject() {
+function moveToSpace() {
   if (discussionMoveDialog.project?.value) {
     discussion.moveToProject
       .submit({
