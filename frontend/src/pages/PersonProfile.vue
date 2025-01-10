@@ -27,7 +27,7 @@
         "
       />
     </div>
-    <div class="mx-auto -mt-4 max-w-4xl translate-x-0 sm:px-5">
+    <div class="mx-auto -mt-4 max-w-4xl translate-x-0 px-5">
       <div class="flex items-center">
         <div class="-mx-1 inline-flex translate-y-0">
           <ImagePreview v-model:show="imagePreview.show" :imageUrl="imagePreview.imageUrl" />
@@ -39,7 +39,7 @@
                 imagePreview.show = true
               }
             "
-            class="rounded-full bg-surface-white outline-none hover:brightness-110 focus-visible:ring focus-visible:ring-outline-gray-3"
+            class="rounded-full shrink-0 bg-surface-white outline-none hover:brightness-110 focus-visible:ring focus-visible:ring-outline-gray-3"
           >
             <UserImage
               class="h-[100px] w-[100px] rounded-full border-4 border-outline-white object-cover"
@@ -64,9 +64,21 @@
             {{ profile.bio }}
           </p>
         </div>
-        <Button v-if="$isSessionUser(profile.user)" @click="editDialog.show = true" class="ml-auto">
+        <Button
+          v-if="$isSessionUser(profile.user)"
+          @click="editDialog.show = true"
+          class="ml-auto hidden sm:block"
+        >
           <template #prefix><LucideEdit class="w-4" /></template>
           Edit Profile
+        </Button>
+        <Button
+          v-if="$isSessionUser(profile.user)"
+          label="Edit Profile"
+          @click="editDialog.show = true"
+          class="ml-auto sm:hidden"
+        >
+          <template #icon><LucideEdit class="w-4" /></template>
         </Button>
       </div>
 

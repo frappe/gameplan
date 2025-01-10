@@ -8,8 +8,8 @@
             <div class="h-7"></div>
           </div>
         </header>
-        <div class="mx-auto w-full max-w-4xl px-5 pt-6">
-          <div class="flex items-center justify-between">
+        <div class="mx-auto w-full max-w-4xl pt-6">
+          <div class="flex items-center justify-between px-3 sm:px-5">
             <h2 class="text-xl font-semibold text-ink-gray-8">{{ people.length }} members</h2>
             <div class="flex items-center gap-2">
               <TextInput
@@ -43,7 +43,7 @@
               </Button>
             </div>
           </div>
-          <div class="sm:hidden mt-4">
+          <div class="sm:hidden px-3 mt-4">
             <TextInput
               class="w-full"
               type="text"
@@ -56,7 +56,7 @@
               </template>
             </TextInput>
           </div>
-          <div class="mt-6 pb-16">
+          <div class="mt-4 pb-16 sm:px-2">
             <template v-for="user in people" :key="user.name">
               <router-link
                 :to="{
@@ -65,10 +65,10 @@
                     personId: user.name,
                   },
                 }"
-                class="flex rounded px-2 py-2.5 hover:bg-surface-gray-2"
+                class="flex sm:rounded px-3 py-2 sm:h-15 hover:bg-surface-gray-2"
                 exact-active-class="!bg-surface-gray-2"
               >
-                <div class="flex w-3/5 items-center">
+                <div class="flex w-full sm:w-3/5 items-center">
                   <UserAvatar :user="user.user" size="2xl" />
                   <div class="ml-3 min-w-0">
                     <div class="flex items-center space-x-2">
@@ -83,9 +83,16 @@
                     >
                       {{ user.bio }}
                     </div>
+                    <div
+                      class="sm:hidden mt-1.5 flex items-center space-x-1 text-base text-ink-gray-5"
+                    >
+                      <span>{{ user.discussions_count }} posts</span>
+                      <span class="text-ink-gray-4">&middot;</span>
+                      <span>{{ user.comments_count }} replies</span>
+                    </div>
                   </div>
                 </div>
-                <div class="flex w-1/5 items-center justify-end text-right">
+                <div class="hidden sm:flex w-1/5 items-center justify-end text-right">
                   <router-link
                     class="text-base text-ink-gray-5 hover:text-ink-gray-9"
                     :to="{
@@ -98,7 +105,7 @@
                   </router-link>
                 </div>
                 <div
-                  class="flex w-1/5 items-center justify-end text-right text-base text-ink-gray-5"
+                  class="hidden sm:flex w-1/5 items-center justify-end text-right text-base text-ink-gray-5"
                 >
                   <router-link
                     class="text-base text-ink-gray-5 hover:text-ink-gray-9"
