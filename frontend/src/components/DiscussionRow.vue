@@ -73,7 +73,11 @@
         </template>
       </UserInfo>
     </div>
-    <div class="mx-3 h-px border-t border-outline-gray-modals" v-if="index < total - 1"></div>
+    <!-- Separator -->
+    <div
+      class="mx-3 h-px border-t border-outline-gray-modals transition-opacity group-hover:opacity-0"
+      v-if="index < total - 1"
+    ></div>
   </router-link>
 </template>
 <script setup lang="ts">
