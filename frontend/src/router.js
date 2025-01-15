@@ -206,17 +206,43 @@ const routes = [
                 name: 'ProjectOverview',
                 path: '',
                 component: () => import('@/pages/ProjectOverview.vue'),
+                redirect: (to) => {
+                  return {
+                    name: 'Space',
+                    params: {
+                      spaceId: to.params.projectId,
+                    },
+                  }
+                },
               },
               {
                 name: 'ProjectDiscussions',
                 path: 'discussions',
                 component: () => import('@/pages/ProjectDiscussions.vue'),
+                redirect: (to) => {
+                  return {
+                    name: 'SpaceDiscussions',
+                    params: {
+                      spaceId: to.params.projectId,
+                    },
+                  }
+                },
               },
               {
                 name: 'ProjectDiscussion',
                 path: 'discussion/:postId/:slug?',
                 component: () => import('@/pages/ProjectDiscussion.vue'),
                 props: true,
+                redirect: (to) => {
+                  return {
+                    name: 'Discussion',
+                    params: {
+                      postId: to.params.postId,
+                      spaceId: to.params.projectId,
+                      slug: to.params.slug,
+                    },
+                  }
+                },
               },
               {
                 name: 'ProjectDiscussionNew',
@@ -228,6 +254,14 @@ const routes = [
                 path: 'tasks',
                 component: () => import('@/pages/ProjectTasks.vue'),
                 props: true,
+                redirect: (to) => {
+                  return {
+                    name: 'SpaceTasks',
+                    params: {
+                      spaceId: to.params.projectId,
+                    },
+                  }
+                },
               },
               {
                 name: 'ProjectTaskDetail',
@@ -235,11 +269,28 @@ const routes = [
                 component: () => import('@/pages/ProjectTaskDetail.vue'),
                 props: true,
                 meta: { fullWidth: true },
+                redirect: (to) => {
+                  return {
+                    name: 'SpaceTask',
+                    params: {
+                      spaceId: to.params.projectId,
+                      taskId: to.params.taskId,
+                    },
+                  }
+                },
               },
               {
                 name: 'ProjectPages',
                 path: 'pages',
                 component: () => import('@/pages/ProjectPages.vue'),
+                redirect: (to) => {
+                  return {
+                    name: 'SpacePages',
+                    params: {
+                      spaceId: to.params.projectId,
+                    },
+                  }
+                },
               },
               {
                 name: 'ProjectPage',
@@ -247,6 +298,16 @@ const routes = [
                 component: () => import('@/pages/Page.vue'),
                 props: true,
                 meta: { fullWidth: true, hideHeader: true },
+                redirect: (to) => {
+                  return {
+                    name: 'SpacePage',
+                    params: {
+                      spaceId: to.params.projectId,
+                      pageId: to.params.pageId,
+                      slug: to.params.slug,
+                    },
+                  }
+                },
               },
             ],
           },
