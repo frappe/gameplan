@@ -93,7 +93,7 @@
               <span class="text-sm text-ink-gray-8">{{ group.title }}</span>
             </div>
           </button>
-          <div class="mb-2 mt-0.5 space-y-0.5 pl-6" v-show="isGroupOpen[group.name]">
+          <div class="mb-2 mt-0.5 space-y-0.5 pl-6" v-show="isGroupOpen[group.name] ?? true">
             <AppLink
               v-for="space in group.spaces"
               :key="space.name"
