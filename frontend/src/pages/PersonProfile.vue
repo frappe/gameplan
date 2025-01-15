@@ -56,7 +56,7 @@
             <span v-if="$isSessionUser(profile.user)"> Upload Image </span>
           </button>
         </div>
-        <div class="ml-6">
+        <div class="ml-6 flex-1">
           <h2 class="mt-2 text-3xl font-semibold text-ink-gray-9">
             {{ user ? user.full_name : profile.full_name }}
           </h2>
@@ -64,33 +64,28 @@
             {{ profile.bio }}
           </p>
         </div>
-        <Button
-          v-if="$isSessionUser(profile.user)"
-          @click="editDialog.show = true"
-          class="ml-auto hidden sm:block"
-        >
-          <template #prefix><LucideEdit class="w-4" /></template>
-          Edit Profile
-        </Button>
-        <Button
-          v-if="$isSessionUser(profile.user)"
-          label="Edit Profile"
-          @click="editDialog.show = true"
-          class="ml-auto sm:hidden"
-        >
-          <template #icon><LucideEdit class="w-4" /></template>
-        </Button>
+        <div v-if="$isSessionUser(profile.user)">
+          <Button @click="editDialog.show = true" class="hidden sm:flex">
+            <template #prefix><LucideEdit class="w-4" /></template>
+            Edit Profile
+          </Button>
+          <Button label="Edit Profile" @click="editDialog.show = true" class="sm:hidden">
+            <template #icon><LucideEdit class="w-4" /></template>
+          </Button>
+        </div>
       </div>
 
       <div class="mb-4 mt-6">
         <TabButtons
           class="inline-block"
-          :buttons="[
-            { label: 'About' },
-            { label: 'Posts' },
-            { label: 'Replies' },
-            { label: 'Bookmarks' },
-          ]"
+          :buttons="
+            [
+              { label: 'About' },
+              { label: 'Posts' },
+              { label: 'Replies' },
+              $isSessionUser(profile.user) ? { label: 'Bookmarks' } : null,
+            ].filter(Boolean)
+          "
           v-model="activeTab"
         />
       </div>
@@ -137,6 +132,7 @@ import ImagePreview from '../components/ImagePreview.vue'
 import ColorPicker from '@/components/ColorPicker.vue'
 import ProfileImageEditor from '@/components/ProfileImageEditor.vue'
 import UserImage from '@/components/UserImage.vue'
+import { isSessionUser } from '@/data/session'
 
 export default {
   name: 'PersonProfile',
