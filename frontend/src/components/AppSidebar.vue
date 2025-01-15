@@ -129,9 +129,8 @@
   </div>
 </template>
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { watchAtMost } from '@vueuse/core'
 import { useGroupedSpaces } from '@/data/groupedSpaces'
 import { unreadNotifications } from '@/data/notifications'
 import { joinedSpaces, spaces } from '@/data/spaces'
@@ -162,16 +161,16 @@ let groupedSpaces = useGroupedSpaces({
 })
 
 const isGroupOpen = reactive<{ [key: string]: boolean }>({})
-watchAtMost(
-  () => spaces.isFinished && teams.isFinished,
+let unwatch = watch(
+  () => teams.isFinished && spaces.isFinished,
   (val) => {
     if (val) {
       for (let group of groupedSpaces.value) {
         isGroupOpen[group.name] = true
       }
+      unwatch()
     }
   },
-  { count: 1 },
 )
 
 const navigation = computed(() => {
