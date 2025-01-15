@@ -1,15 +1,6 @@
 <template>
   <PageHeader>
-    <Breadcrumbs
-      :items="[
-        { label: 'Spaces', route: { name: 'Spaces' } },
-        {
-          label: space?.title,
-          route: { name: 'SpaceDiscussions', params: { spaceId } },
-        },
-        { label: discussion?.doc?.title },
-      ]"
-    />
+    <SpaceBreadcrumbs :spaceId="spaceId" :items="[{ label: discussion?.doc?.title || '' }]" />
   </PageHeader>
   <div class="flex" v-if="space">
     <DiscussionView
@@ -26,6 +17,7 @@ import DiscussionView from '@/components/DiscussionView.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import { useDiscussion } from '@/data/discussions'
 import { useSpace } from '@/data/spaces'
+import SpaceBreadcrumbs from '@/components/SpaceBreadcrumbs.vue'
 
 interface Props {
   spaceId: string

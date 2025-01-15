@@ -3,28 +3,55 @@
     <header
       class="sticky top-0 z-10 flex items-center justify-between border-b bg-surface-white px-5 py-2.5"
     >
-      <Breadcrumbs class="h-7" :items="breadcrumbs">
-        <template #prefix="{ item }">
-          <span class="mr-2 flex rounded-sm text-2xl leading-none" v-if="item.icon">
-            {{ item.icon }}
-          </span>
-        </template>
-        <template #suffix="{ item }">
-          <div v-if="item.isPageTitle && isAutosaving" class="text-base text-ink-gray-5 ml-2">
-            Autosaving...
-          </div>
-        </template>
-      </Breadcrumbs>
-      <div class="flex items-center space-x-2">
-        <span class="hidden text-sm text-ink-gray-5 sm:block" v-if="page.doc">
-          Last updated {{ $dayjs(page.doc.modified).format('LLL') }}
+      <SpaceBreadcrumbs
+        v-if="spaceId"
+        :spaceId="spaceId"
+        :items="[
+          {
+            label: 'Pages',
+            route: {
+              name: 'SpacePages',
+              params: { spaceId: space?.name },
+            },
+          },
+          {
+            label: pageTitle,
+            route: {
+              name: 'SpacePage',
+              params: { pageId: props.pageId, slug: props.slug, spaceId: space?.name },
+            },
+          },
+        ]"
+      />
+      <Breadcrumbs
+        v-else
+        class="h-7"
+        :items="[
+          { label: 'My Pages', route: { name: 'MyPages' } },
+          {
+            label: pageTitle,
+            route: {
+              name: 'Page',
+              params: { pageId: props.pageId, slug: props.slug },
+            },
+            isPageTitle: true,
+          },
+        ]"
+      />
+      <div class="ml-2 shrink-0" v-if="page.doc">
+        <div v-if="isAutosaving" class="flex items-center space-x-1 text-base text-ink-gray-5 ml-2">
+          <LoadingIndicator class="size-3.5" />
+          <span> Autosaving... </span>
+        </div>
+        <span v-else class="hidden text-sm text-ink-gray-5 sm:block">
+          Updated {{ $dayjs(page.doc.modified).format('lll') }}
         </span>
       </div>
     </header>
     <div class="mx-auto w-full max-w-4xl px-5">
       <div class="py-6" v-if="page.doc">
         <span class="text-sm text-ink-gray-5 sm:hidden">
-          Last updated {{ $dayjs(page.doc.modified).format('LLL') }}
+          Updated {{ $dayjs(page.doc.modified).format('lll') }}
         </span>
         <div class="mb-3 md:px-[70px]">
           <input
@@ -61,7 +88,8 @@ import { Breadcrumbs, TextEditor, usePageMeta, debounce } from 'frappe-ui'
 import { useDoc } from 'frappe-ui/src/data-fetching'
 import { useSpace } from '@/data/spaces'
 import { GPPage } from '@/types/doctypes'
-import KeyboardShortcut from '@/components/KeyboardShortcut.vue'
+import SpaceBreadcrumbs from '@/components/SpaceBreadcrumbs.vue'
+import { LoadingIndicator } from 'frappe-ui'
 
 const props = defineProps<{
   pageId: string
@@ -115,35 +143,6 @@ const breadcrumbs = computed(() => {
       },
     ]
   }
-
-  if (!space.value) return []
-  return [
-    {
-      label: 'Spaces',
-      route: { name: 'Spaces' },
-    },
-    {
-      label: space.value?.title,
-      route: {
-        name: 'Space',
-        params: { spaceId: space.value.name },
-      },
-    },
-    {
-      label: 'Pages',
-      route: {
-        name: 'SpacePages',
-        params: { spaceId: space.value.name },
-      },
-    },
-    {
-      label: pageTitle.value,
-      route: {
-        name: 'SpacePage',
-        params: { pageId: props.pageId, slug: props.slug, spaceId: space.value.name },
-      },
-    },
-  ]
 })
 
 const isAutosaving = ref(false)
