@@ -1,6 +1,6 @@
 <template>
   <PageHeader>
-    <SpaceBreadcrumbs :spaceId="spaceId" :items="[{ label: discussion?.doc?.title || '' }]" />
+    <SpaceBreadcrumbs :spaceId="spaceId" :items="[{ label: discussion?.doc?.title || postId }]" />
   </PageHeader>
   <div class="flex" v-if="space">
     <DiscussionView
@@ -12,12 +12,11 @@
 </template>
 
 <script setup lang="ts">
-import { Breadcrumbs } from 'frappe-ui'
+import SpaceBreadcrumbs from '@/components/SpaceBreadcrumbs.vue'
 import DiscussionView from '@/components/DiscussionView.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import { useDiscussion } from '@/data/discussions'
 import { useSpace } from '@/data/spaces'
-import SpaceBreadcrumbs from '@/components/SpaceBreadcrumbs.vue'
 
 interface Props {
   spaceId: string
