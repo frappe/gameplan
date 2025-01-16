@@ -1,6 +1,12 @@
 <template>
-  <div class="py-6 transition-shadow" :class="{ ring: highlight }">
-    <div class="mb-2 flex items-center text-base text-ink-gray-9">
+  <div class="relative">
+    <div
+      v-if="highlight"
+      class="absolute inset-0 translate-y- z-[5] rounded border-2 -mx-4 -mb-4 mt-11 pointer-events-none"
+    />
+    <div
+      class="pb-2 flex items-center text-base text-ink-gray-9 pt-15 top-0 sticky bg-surface-white"
+    >
       <UserInfo :email="_poll.owner" v-slot="{ user }">
         <UserProfileLink class="mr-3" :user="user.name">
           <UserAvatar :user="user.name" />

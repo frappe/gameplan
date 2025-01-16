@@ -26,7 +26,7 @@
         </div>
       </div>
       <template v-else-if="discussion.doc">
-        <div class="pb-16">
+        <div>
           <div class="pb-2 pt-14 flex w-full items-center sticky top-0 z-[1] bg-surface-white">
             <UserProfileLink class="mr-3" :user="discussion.doc.owner">
               <UserAvatar size="lg" :user="discussion.doc.owner" />

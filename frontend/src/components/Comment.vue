@@ -1,11 +1,9 @@
 <template>
-  <div
-    class="pb-16 transition-shadow"
-    :class="{
-      ring: !editableComment?.setValue.loading && highlight,
-    }"
-    :data-id="comment.name"
-  >
+  <div class="relative" :data-id="comment.name">
+    <div
+      v-if="highlight"
+      class="absolute inset-0 translate-y- z-[5] rounded border-2 -mx-4 -mb-4 mt-11 pointer-events-none"
+    />
     <UserInfo :email="comment.owner" v-slot="{ user }">
       <div
         class="flex items-center text-base text-ink-gray-9 sticky top-0 pt-14 pb-2 bg-surface-white z-[1]"

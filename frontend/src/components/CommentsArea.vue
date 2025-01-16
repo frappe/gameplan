@@ -20,10 +20,10 @@
       </div>
     </div>
     <div :style="{ paddingBottom: `${addCommentHeight + 80}px` }">
-      <template v-for="item in timelineItems" :key="item.doctype + item.name">
+      <template v-for="(item, i) in timelineItems" :key="item.doctype + item.name">
         <div
           v-if="newMessagesFrom && newMessagesFrom == item.name"
-          class="relative my-4"
+          class="relative mb-4 mt-15"
           role="separator"
         >
           <div class="border-b border-blue-600"></div>
@@ -34,26 +34,31 @@
           </span>
         </div>
         <Comment
-          :class="{
-            'border-t': item.name != newMessagesFrom,
-          }"
           v-if="item.doctype == 'GP Comment'"
           :ref="($comment) => setItemRef($comment, item)"
           :comment="item"
-          :highlight="highlightedItem == item"
+          :highlight="
+            highlightedItem?.doctype == item.doctype && highlightedItem?.name == item.name
+          "
           :readOnlyMode="readOnlyMode"
           :comments="comments"
         />
         <Activity
-          class="border-t py-5"
+          :class="[
+            {
+              'pt-3': timelineItems[i - 1]?.doctype == 'GP Activity',
+              'pt-15': timelineItems[i - 1]?.doctype != 'GP Activity',
+            },
+          ]"
           v-else-if="item.doctype == 'GP Activity'"
           :activity="item"
         />
         <Poll
-          class="border-t"
           v-else-if="item.doctype == 'GP Poll'"
           :ref="($poll) => setItemRef($poll, item)"
-          :highlight="highlightedItem == item"
+          :highlight="
+            highlightedItem?.doctype == item.doctype && highlightedItem?.name == item.name
+          "
           :poll="item"
           :readOnlyMode="readOnlyMode"
         />
@@ -180,7 +185,7 @@ const newPoll = ref({
   ],
 })
 const newMessagesFrom = ref(props.newCommentsFrom)
-const highlightedItem = ref(null)
+const highlightedItem = ref<{ doctype: string; name: string } | null>(null)
 const addCommentHeight = ref(0)
 const newCommentEditor = ref(null)
 const addComment = ref(null)
@@ -304,7 +309,7 @@ function resetCommentState() {
   newPoll.value = {
     title: '',
     multiple_answers: false,
-    anonymouse: false,
+    anonymous: false,
     options: [
       { title: '', idx: 1 },
       { title: '', idx: 2 },
@@ -336,7 +341,10 @@ async function scrollToItem(item: any) {
   if (!item) return
   await nextTick()
   if (item.$el) {
-    highlightedItem.value = item
+    highlightedItem.value = {
+      doctype: item.doctype,
+      name: item.name,
+    }
     scrollToElement(item.$el)
   }
   setTimeout(() => {
@@ -346,10 +354,12 @@ async function scrollToItem(item: any) {
 }
 
 function scrollToElement($el: HTMLElement) {
-  const scrollContainer = getScrollContainer()
-  const headerHeight = 64
-  const top = $el.offsetTop - scrollContainer.scrollTop - headerHeight
-  scrollContainer.scrollBy({ top, left: 0, behavior: 'smooth' })
+  setTimeout(() => {
+    const scrollContainer = getScrollContainer()
+    const headerHeight = 64
+    const top = $el.offsetTop - scrollContainer.scrollTop - headerHeight
+    scrollContainer.scrollBy({ top, left: 0 })
+  }, 50)
 }
 
 function submitPoll() {
