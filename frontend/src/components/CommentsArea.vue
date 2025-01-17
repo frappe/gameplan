@@ -332,7 +332,17 @@ async function submitComment() {
     })
 }
 
-function scrollToEnd() {
+async function scrollToEnd() {
+  await wait(50)
+  _scrollToEnd()
+  await wait(100)
+  const scrollContainer = getScrollContainer()
+  if (scrollContainer.scrollTop < scrollContainer.scrollHeight) {
+    _scrollToEnd()
+  }
+}
+
+function _scrollToEnd() {
   const scrollContainer = getScrollContainer()
   scrollContainer.scrollTop = scrollContainer.scrollHeight
 }
@@ -341,11 +351,11 @@ async function scrollToItem(item: any) {
   if (!item) return
   await nextTick()
   if (item.$el) {
+    scrollToElement(item.$el)
     highlightedItem.value = {
       doctype: item.doctype,
       name: item.name,
     }
-    scrollToElement(item.$el)
   }
   setTimeout(() => {
     highlightedItem.value = null
@@ -353,13 +363,28 @@ async function scrollToItem(item: any) {
   }, 10000)
 }
 
-function scrollToElement($el: HTMLElement) {
-  setTimeout(() => {
-    const scrollContainer = getScrollContainer()
-    const headerHeight = 64
-    const top = $el.offsetTop - scrollContainer.scrollTop - headerHeight
-    scrollContainer.scrollBy({ top, left: 0 })
-  }, 50)
+async function scrollToElement($el: HTMLElement) {
+  await wait(50)
+  let top = _scrollToElement($el)
+  await wait(100)
+  const scrollContainer = getScrollContainer()
+  if (scrollContainer.scrollTop != top) {
+    _scrollToElement($el)
+  }
+}
+
+function _scrollToElement($el: HTMLElement) {
+  const scrollContainer = getScrollContainer()
+  const headerHeight = 64
+  const top = $el.offsetTop - scrollContainer.scrollTop - headerHeight
+  scrollContainer.scrollBy({ top, left: 0 })
+  return top
+}
+
+function wait(ms: number) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms)
+  })
 }
 
 function submitPoll() {

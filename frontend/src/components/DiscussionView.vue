@@ -245,12 +245,19 @@ async function scrollToUnread() {
     !route.query.fromSearch &&
     (doc?.last_unread_comment || doc?.last_unread_poll)
   ) {
-    router.replace({
-      query: {
-        comment: doc.last_unread_comment || undefined,
-        poll: doc.last_unread_poll || undefined,
-      },
-    })
+    if (doc.last_unread_comment) {
+      router.replace({
+        query: {
+          comment: doc.last_unread_comment || undefined,
+        },
+      })
+    } else if (doc.last_unread_poll) {
+      router.replace({
+        query: {
+          poll: doc.last_unread_poll || undefined,
+        },
+      })
+    }
   }
 
   if (route.name === 'Discussion' && route.params.postId === doc.name) {
