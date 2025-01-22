@@ -29,12 +29,15 @@
     </div>
     <div class="mb-8" v-for="group in groupedSpaces" :key="group.name">
       <div class="px-3 pb-2 flex items-center justify-between">
-        <div class="text-ink-gray-9 text-base">{{ group.title || group.name }}</div>
+        <div class="text-ink-gray-9 text-base">
+          {{ noCategories ? 'All spaces' : group.title || group.name }}
+        </div>
         <DropdownMoreOptions
           placement="right"
           :options="[
             {
               label: 'Edit',
+              condition: () => group.title !== 'Uncategorized',
               onClick: () => {
                 editCategoryDialog.category = group
                 editCategoryDialog.categoryTitle = group.title
@@ -52,7 +55,9 @@
             {
               label: 'New space',
               onClick: () => {
-                categoryForNewSpace = group.name
+                if (group.title !== 'Uncategorized') {
+                  categoryForNewSpace = group.name
+                }
                 newSpaceDialog = true
               },
             },
@@ -158,7 +163,7 @@
 import { reactive, ref } from 'vue'
 import { Breadcrumbs, TabButtons } from 'frappe-ui'
 import { useDoctype } from 'frappe-ui/src/data-fetching'
-import { useGroupedSpaces } from '@/data/groupedSpaces'
+import { noCategories, useGroupedSpaces } from '@/data/groupedSpaces'
 import { hasJoined, joinedSpaces } from '@/data/spaces'
 import NewSpaceDialog from '@/components/NewSpaceDialog.vue'
 import SpaceOptions from '@/components/SpaceOptions.vue'
@@ -192,7 +197,6 @@ const editCategoryDialog = reactive({
 })
 
 let spaces = useDoctype<GPProject>('GP Project')
-// spaces.runMethod.submit({})
 
 function joinSpace(space) {
   spaces.runDocMethod

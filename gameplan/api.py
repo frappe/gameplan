@@ -312,13 +312,11 @@ def active_projects():
 
 
 @frappe.whitelist()
-def onboarding(data):
-	data = frappe.parse_json(data)
-	team = frappe.get_doc(doctype="GP Team", title=data.team).insert()
-	frappe.get_doc(doctype="GP Project", team=team.name, title=data.project).insert()
-	emails = ", ".join(data.emails)
-	invite_by_email(emails, role="Gameplan Member")
-	return team.name
+def onboarding(space, icon, emails):
+	emails = frappe.parse_json(emails)
+	project = frappe.get_doc(doctype="GP Project", title=space, icon=icon).insert()
+	invite_by_email(", ".join(emails), role="Gameplan Member")
+	return project.name
 
 
 @frappe.whitelist(allow_guest=True)

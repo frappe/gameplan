@@ -205,7 +205,7 @@ import RevisionsDialog from './RevisionsDialog.vue'
 import { focus as vFocus } from '@/directives'
 import { copyToClipboard } from '@/utils'
 import { useSpace } from '@/data/spaces'
-import { useGroupedSpaces } from '@/data/groupedSpaces'
+import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { useDiscussion } from '@/data/discussions'
 import { createDialog } from '@/utils/dialogs'
 
@@ -314,16 +314,7 @@ function updateUrlSlug() {
 
 const space = useSpace(() => discussion.doc?.project)
 
-const spaceOptions = computed(() => {
-  const groups = useGroupedSpaces().value
-  return groups.map((group) => ({
-    group: group.title,
-    items: group.spaces.map((space) => ({
-      label: space.title,
-      value: space.name,
-    })),
-  }))
-})
+const spaceOptions = useGroupedSpaceOptions()
 
 const actions = computed(() => [
   {

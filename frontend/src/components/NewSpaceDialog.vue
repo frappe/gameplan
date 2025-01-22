@@ -24,10 +24,10 @@
           />
         </div>
         <div class="flex gap-2">
-          <div class="w-7 h-7"></div>
+          <div class="size-7 shrink-0"></div>
           <div class="w-full">
             <Autocomplete
-              placeholder="Category"
+              placeholder="Category (optional)"
               :options="categoryOptions"
               v-model="selectedCategory"
             />

@@ -36,7 +36,6 @@
     </template>
     <template #actions>
       <div class="flex items-center space-x-2 justify-end">
-        <Button>Cancel</Button>
         <Button variant="solid" @click="submit" :loading="spaces.setValue.loading">Submit</Button>
       </div>
     </template>

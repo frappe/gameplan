@@ -74,7 +74,7 @@
 import { computed, onMounted, ref, useTemplateRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Autocomplete, Breadcrumbs, TextEditorFixedMenu } from 'frappe-ui'
-import { useGroupedSpaces } from '@/data/groupedSpaces'
+import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { useDoctype } from 'frappe-ui/src/data-fetching'
 import { useSessionUser } from '@/data/users'
 import PageHeader from '@/components/PageHeader.vue'
@@ -89,7 +89,6 @@ const currentRoute = useRoute()
 const sessionUser = useSessionUser()
 const router = useRouter()
 
-const groupedSpaces = useGroupedSpaces({ filterFn: (space) => !space.archived_at })
 const selectedSpace = ref<{ label: string; value: string } | null>(null)
 const textEditorRef = useTemplateRef('textEditorRef')
 const discussions = useDoctype<GPDiscussion>('GP Discussion')
@@ -104,17 +103,7 @@ const draftDiscussion = useLocalStorage(
   { deep: true },
 )
 
-const spaceOptions = computed(() => {
-  return groupedSpaces.value.map((group) => {
-    return {
-      group: group.title,
-      items: group.spaces.map((space) => ({
-        label: space.title,
-        value: space.name,
-      })),
-    }
-  })
-})
+const spaceOptions = useGroupedSpaceOptions({ filterFn: (space) => !space.archived_at })
 
 onMounted(() => {
   if (currentRoute.query?.spaceId) {

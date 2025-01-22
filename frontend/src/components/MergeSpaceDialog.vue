@@ -43,7 +43,7 @@
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Autocomplete } from 'frappe-ui'
-import { useGroupedSpaces } from '@/data/groupedSpaces'
+import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { useDoctype } from 'frappe-ui/src/data-fetching'
 import { GPProject } from '@/types/doctypes'
 import { useSpace } from '@/data/spaces'
@@ -59,19 +59,8 @@ const space = useSpace(() => props.spaceId)
 const selectedSpace = ref(null)
 const show = defineModel<boolean>()
 
-const groupedSpaces = useGroupedSpaces({
+const groupedSpaceOptions = useGroupedSpaceOptions({
   filterFn: (s) => s.name.toString() !== props.spaceId.toString(),
-})
-
-const groupedSpaceOptions = computed(() => {
-  return groupedSpaces.value.map((group) => ({
-    group: group.title,
-    items: group.spaces.map((s) => ({
-      label: s.title,
-      value: s.name,
-      icon: s.icon,
-    })),
-  }))
 })
 
 function submit() {

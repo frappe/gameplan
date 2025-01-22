@@ -180,7 +180,7 @@ import TaskPriorityIcon from '@/components/icons/TaskPriorityIcon.vue'
 import { Autocomplete, Dropdown, LoadingText, DatePicker, Button, debounce } from 'frappe-ui'
 import { focus as vFocus } from '@/directives'
 import { activeUsers } from '@/data/users'
-import { useGroupedSpaces } from '@/data/groupedSpaces'
+import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { useTask } from '@/data/tasks'
 import { GPTask } from '@/types/doctypes'
 
@@ -224,15 +224,7 @@ const priorityOptions = computed(() =>
   })),
 )
 
-const spaceOptions = computed(() => {
-  return useGroupedSpaces({ filterFn: (space) => !space.archived_at }).value.map((group) => ({
-    group: group.title,
-    items: group.spaces.map((space) => ({
-      label: space.title,
-      value: space.name,
-    })),
-  }))
-})
+const spaceOptions = useGroupedSpaceOptions({ filterFn: (space) => !space.archived_at })
 
 function changeAssignee(option: { value: string } | null) {
   task.setValue.submit({ assigned_to: option?.value || '' })

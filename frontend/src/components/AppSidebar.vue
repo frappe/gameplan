@@ -78,6 +78,7 @@
       <nav class="mt-1 space-y-1 px-2">
         <div v-for="group in groupedSpaces" :key="group.name">
           <button
+            v-show="!noCategories"
             @click.prevent="
               () => {
                 isGroupOpen[group.name] = !isGroupOpen[group.name]
@@ -93,7 +94,11 @@
               <span class="text-sm text-ink-gray-8">{{ group.title }}</span>
             </div>
           </button>
-          <div class="mb-2 mt-0.5 space-y-0.5 pl-6" v-show="isGroupOpen[group.name] ?? true">
+          <div
+            class="mb-2 mt-0.5 space-y-0.5"
+            :class="!noCategories && 'pl-6'"
+            v-show="isGroupOpen[group.name] ?? true"
+          >
             <AppLink
               v-for="space in group.spaces"
               :key="space.name"
@@ -121,9 +126,6 @@
           </div>
         </div>
       </nav>
-      <div v-if="teams.isFinished && !activeTeams.length" class="px-3 py-2 text-sm text-ink-gray-4">
-        No teams
-      </div>
     </div>
     <NewSpaceDialog v-model="showAddTeamDialog" />
   </div>
@@ -131,10 +133,10 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { useGroupedSpaces } from '@/data/groupedSpaces'
+import { noCategories, useGroupedSpaces } from '@/data/groupedSpaces'
 import { unreadNotifications } from '@/data/notifications'
 import { joinedSpaces, spaces } from '@/data/spaces'
-import { activeTeams, teams } from '@/data/teams'
+import { teams } from '@/data/teams'
 import { useSessionUser } from '@/data/users'
 import { useSidebarResize } from '@/utils/sidebarResize'
 import NewSpaceDialog from './NewSpaceDialog.vue'
