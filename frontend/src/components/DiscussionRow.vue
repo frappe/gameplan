@@ -72,7 +72,7 @@
             </div>
           </div>
           <div class="ml-auto">
-            <Tooltip :text="dayjs(discussion.creation).format('D MMM YYYY [at] h:mm A')">
+            <Tooltip :text="dayjs(discussion.last_post_at).format('D MMM YYYY [at] h:mm A')">
               <div class="shrink-0 whitespace-nowrap text-sm text-ink-gray-5 text-right">
                 {{ discussionTimestamp(discussion) }}
               </div>
