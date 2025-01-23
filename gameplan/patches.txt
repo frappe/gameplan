@@ -24,3 +24,4 @@ gameplan.gameplan.doctype.team_user_profile.patches.set_image
 gameplan.gameplan.doctype.gp_task.patches.set_status
 gameplan.gameplan.doctype.gp_discussion_visit.patches.add_unique_constraint
 gameplan.gameplan.doctype.gp_project.patches.migrate_members_from_team
+gameplan.gameplan.doctype.gp_discussion.patches.set_last_post

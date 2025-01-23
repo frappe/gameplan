@@ -117,7 +117,7 @@ export interface GPNotification extends DocType {
   team?: string
 }
 
-// Last updated: 2024-02-06 12:11:11.919002
+// Last updated: 2025-01-22 16:06:16.029266
 export interface GPDiscussion extends DocType {
   /** Project: Link (GP Project) */
   project: string
@@ -149,6 +149,10 @@ export interface GPDiscussion extends DocType {
   pinned_at?: string
   /** Pinned By: Link (User) */
   pinned_by?: string
+  /** Last Post Type: Select */
+  last_post_type: 'GP Comment' | 'GP Poll'
+  /** Last Post: Dynamic Link (last_post_type) */
+  last_post?: string
 }
 
 // Last updated: 2023-02-13 21:00:23.191195

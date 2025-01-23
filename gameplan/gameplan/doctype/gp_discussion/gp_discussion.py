@@ -14,6 +14,7 @@ from gameplan.utils import remove_empty_trailing_paragraphs, url_safe_slug
 
 
 class GPDiscussion(HasActivity, HasMentions, HasReactions, Document):
+	# Class Configuration
 	on_delete_cascade = ["GP Comment", "GP Discussion Visit", "GP Activity", "GP Poll"]
 	on_delete_set_null = ["GP Notification"]
 	activities = [
@@ -25,6 +26,7 @@ class GPDiscussion(HasActivity, HasMentions, HasReactions, Document):
 	]
 	mentions_field = "content"
 
+	# Lifecycle Methods
 	def as_dict(self, *args, **kwargs):
 		d = super(__class__, self).as_dict(*args, **kwargs)
 		last_visit = frappe.db.get_value(
@@ -84,36 +86,7 @@ class GPDiscussion(HasActivity, HasMentions, HasReactions, Document):
 	def before_save(self):
 		self.update_slug()
 
-	def update_slug(self):
-		self.slug = url_safe_slug(self.title)
-
-	def log_title_update(self):
-		if self.has_value_changed("title") and self.get_doc_before_save():
-			self.log_activity(
-				"Discussion Title Changed",
-				data={"old_title": self.get_doc_before_save().title, "new_title": self.title},
-			)
-
-	def update_search_index(self):
-		if self.has_value_changed("title") or self.has_value_changed("content"):
-			search = GameplanSearch()
-			search.index_doc(self)
-
-	def update_participants_count(self):
-		participants = frappe.db.get_all(
-			"GP Comment",
-			filters={"reference_doctype": self.doctype, "reference_name": self.name},
-			pluck="owner",
-		)
-		participants += frappe.db.get_all("GP Poll", filters={"discussion": self.name}, pluck="owner")
-		participants.append(self.owner)
-		self.participants_count = len(list(set(participants)))
-
-	def check_if_project_is_archived(self):
-		project_name, archived_at = frappe.db.get_value("GP Project", self.project, ["name", "archived_at"])
-		if archived_at:
-			frappe.throw(f"Project {project_name} is archived. Cannot create discussions.")
-
+	# Whitelisted Methods
 	@frappe.whitelist()
 	def track_visit(self):
 		if frappe.flags.read_only:
@@ -194,8 +167,75 @@ class GPDiscussion(HasActivity, HasMentions, HasReactions, Document):
 			return
 		frappe.get_doc("GP Bookmark", bookmark).delete()
 
+	# Utility Methods
 	def is_bookmarked(self):
 		return bool(frappe.db.exists("GP Bookmark", {"discussion": self.name, "user": frappe.session.user}))
 
+	def update_slug(self):
+		self.slug = url_safe_slug(self.title)
+
+	def update_search_index(self):
+		if self.has_value_changed("title") or self.has_value_changed("content"):
+			search = GameplanSearch()
+			search.index_doc(self)
+
+	def update_participants_count(self):
+		participants = frappe.db.get_all(
+			"GP Comment",
+			filters={"reference_doctype": self.doctype, "reference_name": self.name},
+			pluck="owner",
+		)
+		participants += frappe.db.get_all("GP Poll", filters={"discussion": self.name}, pluck="owner")
+		participants.append(self.owner)
+		self.participants_count = len(list(set(participants)))
+
+	def update_last_post(self):
+		def get_last_post(doctype, filters):
+			return frappe.db.get_value(
+				doctype,
+				filters,
+				["name", "creation", "owner"],
+				order_by="creation desc",
+				as_dict=True,
+			)
+
+		def update_last_post_fields(post_type, post_data):
+			self.last_post_type = post_type
+			self.last_post = post_data.name
+			self.last_post_at = post_data.creation
+			self.last_post_by = post_data.owner
+
+		last_comment = get_last_post(
+			"GP Comment", {"reference_doctype": self.doctype, "reference_name": self.name}
+		)
+		last_poll = get_last_post("GP Poll", {"discussion": self.name})
+
+		if last_comment and last_poll:
+			latest = last_comment if last_comment.creation > last_poll.creation else last_poll
+			update_last_post_fields("GP Comment" if latest == last_comment else "GP Poll", latest)
+		elif last_comment:
+			update_last_post_fields("GP Comment", last_comment)
+		elif last_poll:
+			update_last_post_fields("GP Poll", last_poll)
+
+	def update_post_count(self):
+		comments_count = frappe.db.count(
+			"GP Comment", {"reference_doctype": self.doctype, "reference_name": self.name}
+		)
+		polls_count = frappe.db.count("GP Poll", {"discussion": self.name})
+		self.comments_count = comments_count + polls_count
+
 	def update_discussions_count(self):
 		frappe.get_doc("GP Project", self.project).update_discussions_count()
+
+	def log_title_update(self):
+		if self.has_value_changed("title") and self.get_doc_before_save():
+			self.log_activity(
+				"Discussion Title Changed",
+				data={"old_title": self.get_doc_before_save().title, "new_title": self.title},
+			)
+
+	def check_if_project_is_archived(self):
+		project_name, archived_at = frappe.db.get_value("GP Project", self.project, ["name", "archived_at"])
+		if archived_at:
+			frappe.throw(f"Project {project_name} is archived. Cannot create discussions.")

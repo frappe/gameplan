@@ -9,6 +9,8 @@ from .gp_poll_attributes import GPPollAttributes
 
 
 class GPPoll(Document, GPPollAttributes):
+	on_delete_set_null = ["GP Discussion"]
+
 	def before_insert(self):
 		self.options = [d for d in self.options if d.title]
 		for option in self.options:
@@ -22,10 +24,17 @@ class GPPoll(Document, GPPollAttributes):
 		self.total_votes = len(self.votes)
 
 	def after_insert(self):
+		self.update_discussion_meta()
+
+	def after_delete(self):
+		self.update_discussion_meta()
+
+	def update_discussion_meta(self):
+		if not self.discussion:
+			return
 		discussion = frappe.get_doc("GP Discussion", self.discussion)
-		discussion.last_post_at = frappe.utils.now()
-		discussion.last_post_by = frappe.session.user
-		discussion.comments_count = discussion.comments_count + 1
+		discussion.update_last_post()
+		discussion.update_post_count()
 		discussion.update_participants_count()
 		discussion.track_visit()
 		discussion.save(ignore_permissions=True)

@@ -1,8 +1,10 @@
 # Copyright (c) 2022, Frappe Technologies Pvt. Ltd. and Contributors
 # MIT License. See license.txt
 
+from html import unescape
 
 import frappe
+from bleach import clean
 from frappe.utils import cint
 from pypika.terms import ExistsCriterion
 
@@ -79,6 +81,14 @@ def get_discussions(filters=None, order_by=None, start=None, limit=None):
 	has_next_page = len(discussions) > limit
 	discussions = discussions[:limit]
 
+	discussions = include_ongoing_polls(discussions)
+	discussions = include_last_post_content(discussions)
+
+	frappe.response["has_next_page"] = has_next_page
+	return discussions
+
+
+def include_ongoing_polls(discussions):
 	Poll = frappe.qb.DocType("GP Poll")
 	discussion_names = [d.name for d in discussions]
 	ongoing_polls = (
@@ -95,8 +105,47 @@ def get_discussions(filters=None, order_by=None, start=None, limit=None):
 	)
 	for discussion in discussions:
 		discussion["ongoing_polls"] = [p for p in ongoing_polls if str(p.discussion) == str(discussion.name)]
+	return discussions
 
-	frappe.response["has_next_page"] = has_next_page
+
+def include_last_post_content(discussions):
+	Comment = frappe.qb.DocType("GP Comment")
+
+	last_comments_name = [d.last_post for d in discussions if d.last_post_type == "GP Comment"]
+	last_comments_content = (
+		frappe.qb.from_(Comment)
+		.select(Comment.content, Comment.name)
+		.where(Comment.name.isin(last_comments_name))
+		.run(as_dict=1)
+		if last_comments_name
+		else []
+	)
+	last_comments_content_map = {c.name: c.content for c in last_comments_content}
+
+	Poll = frappe.qb.DocType("GP Poll")
+	last_polls_name = [d.last_post for d in discussions if d.last_post_type == "GP Poll"]
+	last_poll_title = (
+		frappe.qb.from_(Poll)
+		.select(Poll.name, Poll.title)
+		.where(Poll.name.isin(last_polls_name))
+		.run(as_dict=1)
+		if last_polls_name
+		else []
+	)
+	last_poll_title_map = {p.name: p.title for p in last_poll_title}
+
+	for discussion in discussions:
+		if discussion.last_post_type == "GP Comment":
+			discussion.last_comment_content = html_to_text_preview(
+				last_comments_content_map.get(cint(discussion.last_post))
+			)
+		if discussion.last_post_type == "GP Poll":
+			discussion.last_poll_title = last_poll_title_map.get(cint(discussion.last_post))
+
+		if not discussion.last_post:
+			discussion.last_post_by = discussion.owner
+			discussion.last_comment_content = html_to_text_preview(discussion.content)
+
 	return discussions
 
 
@@ -120,3 +169,16 @@ def clause_discussions_bookmarked_by_user(user):
 	Bookmark = frappe.qb.DocType("GP Bookmark")
 	bookmarked_discussions = Bookmark.select(Bookmark.discussion).where(Bookmark.user == user)
 	return Discussion.name.isin(bookmarked_discussions)
+
+
+def html_to_text_preview(html):
+	"""Convert HTML to text preview of 100 characters"""
+
+	length = 50
+	text = clean(html or "", tags=[], strip=True)
+	text = unescape(text)
+	text = text.strip()[:length]
+	if len(text) == length:
+		text += "..."
+
+	return text

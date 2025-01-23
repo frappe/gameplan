@@ -49,6 +49,12 @@ class GPTask(HasMentions, HasActivity, Document):
 			search = GameplanSearch()
 			search.index_doc(self)
 
+	def update_comments_count(self):
+		comments_count = frappe.db.count(
+			"GP Comment", {"reference_doctype": "GP Task", "reference_name": self.name}
+		)
+		self.db_set("comments_count", comments_count)
+
 	def on_trash(self):
 		self.update_tasks_count()
 		search = GameplanSearch()
