@@ -15,7 +15,7 @@
         <template v-slot="{ user }">
           <div class="flex items-center space-x-3">
             <div class="relative flex">
-              <UserAvatar :user="discussion.closed_by || user.name" size="2xl" />
+              <UserAvatar :user="user.name" size="2xl" />
             </div>
           </div>
           <div class="min-w-0 flex-1">
@@ -40,34 +40,48 @@
               <div
                 class="overflow-hidden text-ellipsis whitespace-nowrap text-base inline-flex items-center text-ink-gray-5"
               >
-                <Badge variant="outline" theme="green" class="mr-1" v-if="discussion.closed_at">
-                  Closed
-                </Badge>
-                <span class="sm:inline">
-                  {{ user.full_name }}
-                  <span class="inline-flex items-center" v-if="showSpaceName">
-                    in {{ discussion.project_title }}
-                    <LucideLock
-                      v-if="isSpacePrivate(discussion.project)"
-                      class="h-3 w-3 text-ink-gray-6 ml-0.5"
-                    />
-                  </span>
-                </span>
+                <div class="flex items-center min-w-0">
+                  <div class="text-ink-gray-5">
+                    <Tooltip v-if="discussion.closed_at" text="Closed">
+                      <LucideLock class="size-4 p-[1px] mr-1" />
+                    </Tooltip>
+                    <Tooltip v-else-if="discussion.last_post_type == 'GP Comment'" text="Comment">
+                      <LucideReply class="size-4 mr-1" />
+                    </Tooltip>
+                    <Tooltip v-else-if="discussion.last_post_type == 'GP Poll'" text="Poll">
+                      <LucideAlignLeft class="size-4 p-[1px] mr-1" />
+                    </Tooltip>
+                  </div>
+                  <div>
+                    <span>
+                      {{ $user(discussion.last_post_by).full_name.trim() }}
+                    </span>
+                    <span class="inline-flex items-center" v-if="showSpaceName">
+                      &nbsp;in {{ discussion.project_title }}
+                      <LucideLock
+                        v-if="isSpacePrivate(discussion.project)"
+                        class="h-3 w-3 text-ink-gray-6 ml-0.5"
+                      /> </span
+                    >:&nbsp;
+                  </div>
+                  <div class="truncate">
+                    {{ discussion.last_comment_content || discussion.last_poll_title }}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
           <div class="ml-auto">
-            <div
-              class="shrink-0 whitespace-nowrap text-sm text-ink-gray-5"
-              :title="discussionTimestampDescription(discussion)"
-            >
-              {{ discussionTimestamp(discussion) }}
-            </div>
+            <Tooltip :text="dayjs(discussion.creation).format('D MMM YYYY [at] h:mm A')">
+              <div class="shrink-0 whitespace-nowrap text-sm text-ink-gray-5 text-right">
+                {{ discussionTimestamp(discussion) }}
+              </div>
+            </Tooltip>
             <div class="mt-1.5 flex items-center justify-end space-x-3">
               <Tooltip text="Ongoing poll" v-if="discussion.ongoing_polls?.length">
                 <LucideBarChart2 class="h-4 w-4 -rotate-90" />
               </Tooltip>
-              <Badge>{{ discussion.comments_count + 1 }}</Badge>
+              <Badge>{{ (discussion.comments_count || 0) + 1 }}</Badge>
             </div>
           </div>
         </template>
@@ -88,7 +102,10 @@ import UserInfo from './UserInfo.vue'
 import { useSpace } from '@/data/spaces'
 import { Discussion } from '@/data/discussions'
 
-import LucidePin from '~icons/lucide/pin'
+import LucideReply from '~icons/lucide/reply'
+import LucideBarChart2 from '~icons/lucide/bar-chart-2'
+import LucideLock from '~icons/lucide/lock'
+import LucideAlignLeft from '~icons/lucide/align-left'
 
 const props = defineProps<{
   discussion: Discussion
@@ -110,9 +127,5 @@ function discussionTimestamp(d) {
 
 function isSpacePrivate(spaceId: string) {
   return useSpace(spaceId).value?.is_private
-}
-
-function discussionTimestampDescription(d) {
-  return [`First Post: ${dayjs(d.creation)}`, `Latest Post: ${dayjs(d.last_post_at)}`].join('\n')
 }
 </script>

@@ -34,7 +34,6 @@
           </span>
         </div>
         <Comment
-          class="-my-5"
           v-if="item.doctype == 'GP Comment'"
           :ref="($comment) => setItemRef($comment, item)"
           :comment="item"
@@ -46,7 +45,7 @@
       </template>
     </div>
 
-    <div v-if="!readOnlyMode && !disableNewComment" class="px-1 py-4" ref="addComment">
+    <div v-if="!readOnlyMode && !disableNewComment" class="px-1 pb-4 pt-12" ref="addComment">
       <div class="flex items-start">
         <div class="mr-3 hidden h-8 items-center sm:flex">
           <UserAvatar :user="$user().name" size="md" />

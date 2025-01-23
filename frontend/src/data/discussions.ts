@@ -8,6 +8,8 @@ export interface Discussion extends GPDiscussion {
   last_visit: string
   last_post_at: string
   unread: boolean
+  last_comment_content?: string
+  last_poll_title?: string
 }
 
 export type UseDiscussionOptions = Pick<
