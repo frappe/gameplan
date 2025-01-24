@@ -30,13 +30,13 @@ export function useScrollPosition(options = { threshold: 200 }) {
     scrollContainer.removeEventListener('scroll', updateScrollPosition)
   })
 
-  function scrollToTop() {
-    const scrollContainer = getScrollContainer()
-    scrollContainer.scrollTo({ top: 0, behavior: 'smooth' })
-  }
-
   return {
     isScrolled,
     scrollToTop,
   }
+}
+
+export function scrollToTop() {
+  const scrollContainer = getScrollContainer()
+  scrollContainer.scrollTo({ top: 0, behavior: 'smooth' })
 }

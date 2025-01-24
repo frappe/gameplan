@@ -1,6 +1,9 @@
 <template>
   <PageHeader>
-    <SpaceBreadcrumbs :spaceId="spaceId" :items="[{ label: discussion?.doc?.title || postId }]" />
+    <SpaceBreadcrumbs
+      :spaceId="spaceId"
+      :items="[{ label: discussion?.doc?.title || postId, onClick: scrollToTop }]"
+    />
   </PageHeader>
   <div class="flex" v-if="space">
     <DiscussionView
@@ -17,6 +20,7 @@ import DiscussionView from '@/components/DiscussionView.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import { useDiscussion } from '@/data/discussions'
 import { useSpace } from '@/data/spaces'
+import { scrollToTop } from '@/utils/scrollContainer'
 
 interface Props {
   spaceId: string

@@ -33,7 +33,13 @@ import { RouteComponent } from 'vue-router'
 
 const props = defineProps<{
   spaceId: string
-  items?: { label: string; route?: RouteComponent; suffix?: any; prefix?: any }[]
+  items?: {
+    label: string
+    route?: RouteComponent
+    suffix?: any
+    prefix?: any
+    onClick?: () => void
+  }[]
 }>()
 
 const space = useSpace(() => props.spaceId)
