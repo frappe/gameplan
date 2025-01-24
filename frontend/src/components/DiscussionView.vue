@@ -73,13 +73,6 @@
               </h1>
             </div>
             <div class="mt-2 flex items-center text-base" v-show="!editingPost">
-              <router-link
-                class="text-ink-gray-8 hover:text-ink-gray-6"
-                :to="{ name: 'Space', params: { spaceId: discussion.doc.project } }"
-              >
-                {{ space?.title }}
-              </router-link>
-              <span class="px-1.5 text-ink-gray-8">&middot;</span>
               <span class="text-ink-gray-5">
                 {{
                   discussion.doc.participants_count == 1
@@ -87,6 +80,10 @@
                     : `${discussion.doc.participants_count} participants`
                 }}
               </span>
+              <template v-if="discussion.doc.views > 1">
+                <span class="px-1.5 text-ink-gray-8">&middot;</span>
+                <span class="text-ink-gray-5"> {{ discussion.doc.views }} views </span>
+              </template>
             </div>
           </div>
           <div
