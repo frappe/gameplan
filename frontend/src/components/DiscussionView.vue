@@ -189,6 +189,14 @@
         />
       </template>
     </div>
+    <div class="fixed bottom-3 h-9 grid place-content-center right-3 z-[2]">
+      <Button variant="ghost" v-show="isScrolled" @click="scrollToTop">
+        <template #prefix>
+          <LucideArrowUp class="h-5 w-5 text-ink-gray-7" />
+        </template>
+        Scroll to top
+      </Button>
+    </div>
   </div>
 </template>
 
@@ -208,6 +216,9 @@ import { useSpace } from '@/data/spaces'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { useDiscussion } from '@/data/discussions'
 import { createDialog } from '@/utils/dialogs'
+import { useScrollPosition } from '@/utils/scrollContainer'
+
+import LucideArrowUp from '~icons/lucide/arrow-up'
 
 const props = defineProps<{
   postId: string
@@ -216,6 +227,7 @@ const props = defineProps<{
 
 const router = useRouter()
 const route = useRoute()
+const { isScrolled, scrollToTop } = useScrollPosition()
 
 const editingPost = ref(false)
 const discussionMoveDialog = reactive<{
