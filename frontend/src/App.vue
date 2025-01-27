@@ -3,6 +3,7 @@
   <Layout v-else-if="$session.isLoggedIn">
     <router-view />
   </Layout>
+  <NewTaskDialog />
   <Dialogs />
   <Toasts />
 </template>
@@ -13,6 +14,7 @@ import { Dialogs } from '@/utils/dialogs'
 import { Toasts } from '@/utils/toasts'
 import { users } from '@/data/users'
 import { useScreenSize } from './utils/composables'
+import NewTaskDialog from './components/NewTaskDialog/NewTaskDialog.vue'
 
 const screenSize = useScreenSize()
 const MobileLayout = defineAsyncComponent(() => import('./components/MobileLayout.vue'))

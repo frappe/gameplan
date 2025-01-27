@@ -59,6 +59,7 @@ export function useGroupedSpaceOptions({ filterFn = (_p: Space) => true }: Optio
         items: group.spaces.map((space) => ({
           label: space.title,
           value: space.name,
+          icon: space.icon,
         })),
       }
     })

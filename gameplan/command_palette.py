@@ -16,7 +16,7 @@ def search(query):
 	if len(query_parts) == 1 and not query_parts[0].endswith("*"):
 		query = f"{query_parts[0]}*"
 	if len(query_parts) > 1:
-		query = " ".join([f"%%{q}%%" for q in query_parts])
+		query = " ".join([f"%{q}%" for q in query_parts])
 
 	query = f"@title:({query})"
 	result = search.search(query, start=0, sort_by="modified desc", with_payloads=True)

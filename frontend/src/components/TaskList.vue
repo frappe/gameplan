@@ -126,7 +126,7 @@
 import { h, ref, computed, watch } from 'vue'
 import { Dropdown, LoadingIndicator, Tooltip } from 'frappe-ui'
 import EmptyStateBox from './EmptyStateBox.vue'
-import TaskStatusIcon from './icons/TaskStatusIcon.vue'
+import TaskStatusIcon from './NewTaskDialog/TaskStatusIcon.vue'
 import { useList } from 'frappe-ui/src/data-fetching'
 import { GPTask } from '@/types/doctypes'
 import { UseListOptions } from 'frappe-ui/src/data-fetching/useList/types'

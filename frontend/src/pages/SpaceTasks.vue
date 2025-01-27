@@ -3,7 +3,7 @@
     <div class="mb-4 px-3 flex items-center justify-between">
       <SpaceTabs :spaceId="spaceId" />
       <div class="flex items-stretch space-x-2">
-        <Button variant="solid" @click="showNewTaskDialog">
+        <Button variant="solid" @click="openNewTaskDialog">
           <template #prefix>
             <LucidePlus class="h-4 w-4" />
           </template>
@@ -14,7 +14,6 @@
     <div class="px-3">
       <TaskList :listOptions="{ filters }" :groupByStatus="true" ref="taskList" />
     </div>
-    <NewTaskDialog ref="newTaskDialog" />
   </div>
 </template>
 
@@ -22,23 +21,21 @@
 import { useTemplateRef } from 'vue'
 import { useUser } from '@/data/users'
 import SpaceTabs from '@/components/SpaceTabs.vue'
-import NewTaskDialog from '@/components/NewTaskDialog.vue'
 import TaskList from '@/components/TaskList.vue'
+import { showNewTaskDialog } from '@/components/NewTaskDialog'
 
 const props = defineProps<{
   spaceId: string
 }>()
 
-const newTaskDialog = useTemplateRef<typeof NewTaskDialog>('newTaskDialog')
 const taskList = useTemplateRef<typeof TaskList>('taskList')
 
 const filters = () => ({
   project: props.spaceId,
 })
 
-function showNewTaskDialog() {
-  if (!newTaskDialog.value) return
-  newTaskDialog.value.show({
+function openNewTaskDialog() {
+  showNewTaskDialog({
     defaults: {
       project: props.spaceId,
       assigned_to: useUser('sessionUser').name,
