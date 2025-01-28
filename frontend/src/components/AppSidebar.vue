@@ -97,7 +97,7 @@
           <div
             class="mb-2 mt-0.5 space-y-0.5"
             :class="!noCategories && 'pl-6'"
-            v-show="isGroupOpen[group.name] ?? true"
+            v-show="isGroupOpen[group.name]"
           >
             <AppLink
               v-for="space in group.spaces"
@@ -131,12 +131,11 @@
   </div>
 </template>
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { noCategories, useGroupedSpaces } from '@/data/groupedSpaces'
 import { unreadNotifications } from '@/data/notifications'
-import { joinedSpaces, spaces } from '@/data/spaces'
-import { teams } from '@/data/teams'
+import { joinedSpaces } from '@/data/spaces'
 import { useSessionUser } from '@/data/users'
 import { useSidebarResize } from '@/utils/sidebarResize'
 import NewSpaceDialog from './NewSpaceDialog.vue'
@@ -158,22 +157,17 @@ const showAddTeamDialog = ref(false)
 const route = useRoute()
 const sessionUser = useSessionUser()
 
-let groupedSpaces = useGroupedSpaces({
-  filterFn: (space) => !space.archived_at && joinedSpaces.data?.includes(space.name),
-})
-
 const isGroupOpen = reactive<{ [key: string]: boolean }>({})
-let unwatch = watch(
-  () => teams.isFinished && spaces.isFinished,
-  (val) => {
-    if (val) {
-      for (let group of groupedSpaces.value) {
-        isGroupOpen[group.name] = true
-      }
-      unwatch()
-    }
-  },
-)
+
+let groupedSpaces = computed(() => {
+  let _groups = useGroupedSpaces({
+    filterFn: (space) => !space.archived_at && joinedSpaces.data?.includes(space.name),
+  })
+  for (let group of _groups.value) {
+    isGroupOpen[group.name] = true
+  }
+  return _groups.value
+})
 
 const navigation = computed(() => {
   return [
