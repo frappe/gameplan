@@ -244,7 +244,9 @@ onMounted(() => {
 })
 
 async function scrollToUnread() {
-  await until(() => discussion.doc).toBeTruthy()
+  if (!discussion.doc) {
+    await until(() => discussion.doc).toBeTruthy()
+  }
 
   updateUrlSlug()
 
