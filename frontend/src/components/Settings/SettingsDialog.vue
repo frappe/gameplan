@@ -16,8 +16,8 @@
               :key="tab.label"
               @click="activeTab = tab"
             >
-              <component :is="tab.icon" class="h-4 w-4 text-ink-gray-7" />
-              <span class="text-base text-ink-gray-8">
+              <component :is="tab.icon" class="h-4 w-4 text-ink-gray-6" />
+              <span class="text-base text-ink-gray-7">
                 {{ tab.label }}
               </span>
             </button>

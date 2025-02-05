@@ -45,7 +45,7 @@
                 >
                   <div
                     v-if="filteredOptions.length === 0"
-                    class="relative cursor-default select-none px-4 py-2 text-ink-gray-7"
+                    class="relative cursor-default select-none px-4 py-2 text-ink-gray-6"
                   >
                     No user found.
                   </div>
@@ -60,7 +60,7 @@
                       class="relative cursor-default select-none px-3 py-2"
                       :class="{
                         'bg-blue-500 text-ink-white': active,
-                        'text-ink-gray-9': !active,
+                        'text-ink-gray-8': !active,
                       }"
                     >
                       <span

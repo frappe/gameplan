@@ -28,7 +28,7 @@
         >
           <div class="border-b border-blue-600"></div>
           <span
-            class="absolute -top-2 left-1/2 -translate-x-1/2 bg-surface-white px-2 text-sm font-medium text-ink-blue-3"
+            class="absolute -top-2 left-1/2 -translate-x-1/2 bg-surface-white px-2 text-sm font-medium text-ink-blue-4"
           >
             New comments
           </span>
@@ -66,7 +66,7 @@
         >
           <div class="mb-4 flex items-center sm:hidden">
             <UserAvatar :user="$user().name" size="sm" />
-            <span class="ml-2 text-base font-medium text-ink-gray-9">
+            <span class="ml-2 text-base font-medium text-ink-gray-8">
               {{ $user().full_name }}
             </span>
           </div>

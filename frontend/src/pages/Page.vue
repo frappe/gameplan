@@ -55,7 +55,7 @@
         </span>
         <div class="mb-3 md:px-[70px]">
           <input
-            class="w-full border-0 p-0 pt-4 text-3xl font-semibold focus:outline-none focus:ring-0 bg-surface-white text-ink-gray-9"
+            class="w-full border-0 p-0 pt-4 text-3xl font-semibold focus:outline-none focus:ring-0 bg-surface-white text-ink-gray-8"
             type="text"
             v-model="title"
             @input="autosave"

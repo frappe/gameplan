@@ -6,7 +6,7 @@
         v-if="group.title && group.tasks.length"
         @click="isOpen[group.title] = !isOpen[group.title]"
       >
-        <span class="font-medium text-ink-gray-9">
+        <span class="font-medium text-ink-gray-8">
           {{ group.title }}
         </span>
         <span class="ml-2 text-sm text-ink-gray-5">{{ group.tasks.length }}</span>
@@ -52,7 +52,7 @@
                   </Dropdown>
                 </Tooltip>
                 <div
-                  class="ml-2.5 overflow-hidden text-ellipsis whitespace-nowrap text-base font-medium leading-4 text-ink-gray-9"
+                  class="ml-2.5 overflow-hidden text-ellipsis whitespace-nowrap text-base font-medium leading-4 text-ink-gray-8"
                 >
                   {{ d.title }}
                 </div>
@@ -92,7 +92,7 @@
                       class="h-2 w-2 rounded-full"
                       :class="{
                         'bg-surface-red-5': d.priority === 'High',
-                        'bg-surface-amber-3': d.priority === 'Medium',
+                        'bg-surface-amber-5': d.priority === 'Medium',
                         'bg-surface-gray-5': d.priority === 'Low',
                       }"
                     ></div>

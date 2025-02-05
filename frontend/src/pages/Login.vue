@@ -3,8 +3,8 @@
     <div class="mt-32 w-full px-4">
       <GameplanLogo class="mx-auto h-8 w-8" />
       <div class="mt-6 flex items-center justify-center space-x-1.5">
-        <span class="text-3xl font-semibold text-ink-gray-9">Login to</span>
-        <GameplanLogoType class="h-6 text-ink-gray-9" />
+        <span class="text-3xl font-semibold text-ink-gray-8">Login to</span>
+        <GameplanLogoType class="h-6 text-ink-gray-8" />
       </div>
       <div class="mx-auto mt-6 w-full px-4 sm:w-96">
         <form

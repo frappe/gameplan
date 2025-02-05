@@ -9,13 +9,13 @@
         <div class="relative">
           <div class="relative">
             <div class="absolute inset-y-0 left-0 flex items-center pl-4.5">
-              <LucideSearch class="h-4 w-4 text-ink-gray-7" />
+              <LucideSearch class="h-4 w-4 text-ink-gray-6" />
             </div>
             <input
               ref="inputRef"
               type="text"
               placeholder="Search"
-              class="w-full border-none bg-transparent py-3 pl-11.5 pr-4.5 text-base text-ink-gray-8 placeholder-ink-gray-4 focus:ring-0"
+              class="w-full border-none bg-transparent py-3 pl-11.5 pr-4.5 text-base text-ink-gray-7 placeholder-ink-gray-4 focus:ring-0"
               @input="onInput"
               @keydown="onKeyDown"
               v-model="query"

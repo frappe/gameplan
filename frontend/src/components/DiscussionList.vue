@@ -3,7 +3,7 @@
     <div class="mb-5" v-if="pinnedDiscussions.data?.length">
       <div class="px-3 flex items-center space-x-1 mb-2">
         <Pin class="h-4 w-4 text-ink-gray-4" />
-        <span class="text-ink-gray-9 text-base"> Pinned </span>
+        <span class="text-ink-gray-8 text-base"> Pinned </span>
       </div>
       <DiscussionRow
         v-for="(discussion, index) of pinnedDiscussions.data"

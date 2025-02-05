@@ -10,7 +10,7 @@
         </header>
         <div class="mx-auto w-full max-w-4xl pt-6">
           <div class="flex items-center justify-between px-3 sm:px-5">
-            <h2 class="text-xl font-semibold text-ink-gray-8">{{ people.length }} members</h2>
+            <h2 class="text-xl font-semibold text-ink-gray-7">{{ people.length }} members</h2>
             <div class="flex items-center gap-2">
               <TextInput
                 class="hidden sm:block"
@@ -72,7 +72,7 @@
                   <UserAvatar :user="user.user" size="2xl" />
                   <div class="ml-3 min-w-0">
                     <div class="flex items-center space-x-2">
-                      <div class="text-base font-medium text-ink-gray-9">
+                      <div class="text-base font-medium text-ink-gray-8">
                         {{ $user(user.user).full_name }}
                       </div>
                       <Badge v-if="$user(user.user).isGuest">Guest</Badge>
@@ -94,7 +94,7 @@
                 </div>
                 <div class="hidden sm:flex w-1/5 items-center justify-end text-right">
                   <router-link
-                    class="text-base text-ink-gray-5 hover:text-ink-gray-9"
+                    class="text-base text-ink-gray-5 hover:text-ink-gray-8"
                     :to="{
                       name: 'PersonProfilePosts',
                       params: { personId: user.name },
@@ -108,7 +108,7 @@
                   class="hidden sm:flex w-1/5 items-center justify-end text-right text-base text-ink-gray-5"
                 >
                   <router-link
-                    class="text-base text-ink-gray-5 hover:text-ink-gray-9"
+                    class="text-base text-ink-gray-5 hover:text-ink-gray-8"
                     :to="{
                       name: 'PersonProfileReplies',
                       params: { personId: user.name },

@@ -11,7 +11,7 @@
     v-model="show"
   >
     <template #body-content>
-      <p class="text-p-base text-ink-gray-8 mb-4">
+      <p class="text-p-base text-ink-gray-7 mb-4">
         This will move all discussions, tasks, and pages from the
         <span class="whitespace-nowrap font-semibold">{{ space?.title }}</span> space to the
         selected space. This change is irreversible!

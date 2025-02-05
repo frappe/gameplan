@@ -23,16 +23,16 @@
         <div class="flex items-start space-x-2">
           <UserAvatar size="sm" :user="d.from_user" v-if="d.from_user" />
           <div class="grid h-5 w-5 place-items-center" v-if="d.type === 'Reaction'">
-            <LucideHeart class="h-4 w-4 text-ink-gray-7" />
+            <LucideHeart class="h-4 w-4 text-ink-gray-6" />
           </div>
-          <div class="text-base text-ink-gray-9">
+          <div class="text-base text-ink-gray-8">
             {{ d.message }} {{ $dayjs(d.creation).fromNow() }}
           </div>
         </div>
         <div class="ml-2 flex shrink-0 items-center space-x-2">
           <router-link
             v-if="d.discussion || d.task"
-            class="block text-sm font-medium text-ink-gray-5 hover:text-ink-gray-7"
+            class="block text-sm font-medium text-ink-gray-5 hover:text-ink-gray-6"
             :to="
               d.discussion
                 ? {

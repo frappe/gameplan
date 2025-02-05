@@ -57,10 +57,10 @@
           </button>
         </div>
         <div class="ml-6 flex-1">
-          <h2 class="mt-2 text-3xl font-semibold text-ink-gray-9">
+          <h2 class="mt-2 text-3xl font-semibold text-ink-gray-8">
             {{ user ? user.full_name : profile.full_name }}
           </h2>
-          <p v-if="profile.bio" class="mt-2 text-base text-ink-gray-7">
+          <p v-if="profile.bio" class="mt-2 text-base text-ink-gray-6">
             {{ profile.bio }}
           </p>
         </div>

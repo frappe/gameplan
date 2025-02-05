@@ -16,7 +16,7 @@
         <component
           :is="tab.icon"
           class="h-6 w-6"
-          :class="[tab.isActive ? 'text-ink-gray-9' : 'text-ink-gray-5']"
+          :class="[tab.isActive ? 'text-ink-gray-8' : 'text-ink-gray-5']"
         />
       </button>
     </div>

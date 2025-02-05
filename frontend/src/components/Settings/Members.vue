@@ -19,10 +19,10 @@
         <div class="flex w-4/5 items-center">
           <UserAvatar :user="user.name" size="xl" />
           <div class="ml-3">
-            <div class="text-base text-ink-gray-9">
+            <div class="text-base text-ink-gray-8">
               {{ user.full_name }}
             </div>
-            <div class="mt-1 text-base text-ink-gray-7">
+            <div class="mt-1 text-base text-ink-gray-6">
               {{ user.email }}
             </div>
           </div>
@@ -207,7 +207,7 @@ function RoleOption({ active, role, onClick, selected }) {
     'button',
     {
       class: [
-        active ? 'bg-surface-gray-2' : 'text-ink-gray-9',
+        active ? 'bg-surface-gray-2' : 'text-ink-gray-8',
         'group flex w-full justify-between items-center rounded-md px-2 py-2 text-sm',
       ],
       onClick: !selected ? onClick : null,
@@ -216,7 +216,7 @@ function RoleOption({ active, role, onClick, selected }) {
       h('span', { class: 'whitespace-nowrap' }, role),
       selected
         ? h(LucideCheck, {
-            class: ['h-4 w-4 shrink-0 text-ink-gray-7'],
+            class: ['h-4 w-4 shrink-0 text-ink-gray-6'],
             'aria-hidden': true,
           })
         : null,

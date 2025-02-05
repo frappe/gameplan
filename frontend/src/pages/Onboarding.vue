@@ -9,13 +9,13 @@
           <div
             v-for="link in navigation"
             :key="link.name"
-            class="flex items-center rounded px-2 py-1 text-ink-gray-8 transition"
+            class="flex items-center rounded px-2 py-1 text-ink-gray-7 transition"
             activeClass="bg-surface-selected shadow-sm"
             inactiveClass="hover:bg-surface-gray-2"
           >
             <div class="flex w-full items-center space-x-2">
               <span class="grid h-5 w-6 place-items-center">
-                <component :is="link.icon" class="h-4 w-4 text-ink-gray-7" />
+                <component :is="link.icon" class="h-4 w-4 text-ink-gray-6" />
               </span>
               <span class="text-sm">{{ link.name }}</span>
             </div>
@@ -28,7 +28,7 @@
             <h3 class="text-sm text-ink-gray-5">Spaces</h3>
           </div>
           <div class="mb-2 mt-0.5 space-y-0.5">
-            <div class="flex h-7 items-center rounded px-2 text-ink-gray-8 transition">
+            <div class="flex h-7 items-center rounded px-2 text-ink-gray-7 transition">
               <span class="inline-flex min-w-0 items-center space-x-2">
                 <span class="flex-shrink-0 flex h-5 w-6 items-center justify-center text-xl">
                   {{ space.icon }}
@@ -44,11 +44,11 @@
     </div>
     <div class="max-w-4xl mx-auto px-4 pt-14">
       <div class="max-w-xl mx-auto">
-        <div class="text-2xl font-semibold text-ink-gray-9">Welcome to Gameplan</div>
+        <div class="text-2xl font-semibold text-ink-gray-8">Welcome to Gameplan</div>
 
         <div class="mt-2 pt-8 border-t">
-          <h2 class="text-base font-medium text-ink-gray-9 mb-2">Let's create your first space</h2>
-          <p class="text-p-sm text-ink-gray-7">
+          <h2 class="text-base font-medium text-ink-gray-8 mb-2">Let's create your first space</h2>
+          <p class="text-p-sm text-ink-gray-6">
             A space is where your discussions live. Create one for your team, project, or any topic
             you want to discuss and organize.
           </p>
@@ -87,8 +87,8 @@
           </div>
         </div>
         <div class="mt-8 border-t pt-8">
-          <h3 class="text-base font-medium text-ink-gray-9 mb-2">Invite team members</h3>
-          <p class="text-sm text-ink-gray-7">
+          <h3 class="text-base font-medium text-ink-gray-8 mb-2">Invite team members</h3>
+          <p class="text-sm text-ink-gray-6">
             Add email addresses of people you'd like to invite to this space
           </p>
           <div class="mt-3">

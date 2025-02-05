@@ -26,10 +26,10 @@
             ]"
             v-model="role"
           />
-          <p class="mt-2 text-base text-ink-gray-9">{{ description }}</p>
+          <p class="mt-2 text-base text-ink-gray-8">{{ description }}</p>
         </div>
         <div v-if="role === 'Gameplan Guest'">
-          <label class="text-sm leading-4 text-ink-gray-7"> Invite Guest to Projects </label>
+          <label class="text-sm leading-4 text-ink-gray-6"> Invite Guest to Projects </label>
           <div class="mt-1 flex flex-wrap gap-2">
             <Button
               v-for="project in projects"
@@ -68,7 +68,7 @@
           :key="user.name"
         >
           <div class="w-4/5 text-base">
-            <span class="text-ink-gray-9">
+            <span class="text-ink-gray-8">
               {{ user.email }}
             </span>
             <span class="text-ink-gray-5"> ({{ user.role.replace('Gameplan ', '') }}) </span>

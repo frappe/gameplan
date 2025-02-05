@@ -33,11 +33,11 @@
             </UserProfileLink>
             <div class="flex flex-col md:block">
               <UserProfileLink
-                class="text-base font-medium text-ink-gray-9 hover:text-ink-blue-3"
+                class="text-base font-medium text-ink-gray-8 hover:text-ink-blue-4"
                 :user="discussion.doc.owner"
               >
                 {{ $user(discussion.doc.owner).full_name }}
-                <span class="hidden md:inline text-ink-gray-8">&nbsp;&middot;&nbsp;</span>
+                <span class="hidden md:inline text-ink-gray-7">&nbsp;&middot;&nbsp;</span>
               </UserProfileLink>
               <time
                 class="text-base text-ink-gray-5"
@@ -65,9 +65,9 @@
             <div class="flex items-start justify-between space-x-1">
               <h1 v-if="!editingPost" class="flex items-center text-2xl font-semibold">
                 <Tooltip v-if="discussion.doc.closed_at" text="This discussion is closed">
-                  <LucideLock class="mr-2 h-4 w-4 text-ink-gray-7" :stroke-width="2" />
+                  <LucideLock class="mr-2 h-4 w-4 text-ink-gray-6" :stroke-width="2" />
                 </Tooltip>
-                <span class="text-ink-gray-9">
+                <span class="text-ink-gray-8">
                   {{ discussion.doc.title }}
                 </span>
               </h1>
@@ -81,7 +81,7 @@
                 }}
               </span>
               <template v-if="discussion.doc.views > 1">
-                <span class="px-1.5 text-ink-gray-8">&middot;</span>
+                <span class="px-1.5 text-ink-gray-7">&middot;</span>
                 <span class="text-ink-gray-5"> {{ discussion.doc.views }} views </span>
               </template>
             </div>
@@ -96,7 +96,7 @@
                 <input
                   v-if="editingPost"
                   type="text"
-                  class="w-full rounded border-0 text-ink-gray-9 px-0 py-0.5 text-2xl font-semibold focus:ring-0"
+                  class="w-full rounded border-0 text-ink-gray-8 px-0 py-0.5 text-2xl font-semibold focus:ring-0"
                   ref="title"
                   v-model="discussion.doc.title"
                   placeholder="Title"
@@ -189,7 +189,7 @@
     <div v-if="!isMobile" class="fixed bottom-3 h-9 grid place-content-center right-3 z-[2]">
       <Button variant="ghost" v-show="isScrolled" @click="scrollToTop">
         <template #prefix>
-          <LucideArrowUp class="h-5 w-5 text-ink-gray-7" />
+          <LucideArrowUp class="h-5 w-5 text-ink-gray-6" />
         </template>
         Scroll to top
       </Button>

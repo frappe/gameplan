@@ -1,7 +1,7 @@
 <template>
   <Dialog :options="{ title: 'New Space' }" v-model="show">
     <template #body-content>
-      <p class="text-p-base text-ink-gray-7">
+      <p class="text-p-base text-ink-gray-6">
         Spaces keep discussions, tasks, and pages in one place. Use them to group by team, project
         or any topic.
       </p>

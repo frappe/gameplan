@@ -26,7 +26,7 @@
               />
               <div
                 class="overflow-hidden text-ellipsis whitespace-nowrap leading-none"
-                :class="discussion.unread ? 'text-ink-gray-9' : 'text-ink-gray-9'"
+                :class="discussion.unread ? 'text-ink-gray-8' : 'text-ink-gray-8'"
               >
                 <span
                   class="overflow-hidden text-ellipsis whitespace-nowrap text-base"

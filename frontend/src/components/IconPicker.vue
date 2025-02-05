@@ -26,7 +26,7 @@
           </div>
           <div class="w-96"></div>
           <div class="px-3" v-for="(emojis, group) in emojiGroups" :key="group">
-            <div class="sticky top-0 bg-surface-white pb-2 pt-3 text-sm text-ink-gray-7">
+            <div class="sticky top-0 bg-surface-white pb-2 pt-3 text-sm text-ink-gray-6">
               {{ group }}
             </div>
             <div class="grid w-96 grid-cols-12 place-items-center">

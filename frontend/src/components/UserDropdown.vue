@@ -7,12 +7,12 @@
       >
         <GameplanLogo class="w-8 h-8 rounded" />
         <div class="ml-2 flex flex-col">
-          <div class="text-base font-medium text-ink-gray-9 leading-none">Gameplan</div>
-          <div class="mt-1 hidden text-sm text-ink-gray-7 sm:inline leading-none">
+          <div class="text-base font-medium text-ink-gray-8 leading-none">Gameplan</div>
+          <div class="mt-1 hidden text-sm text-ink-gray-6 sm:inline leading-none">
             {{ user.full_name }}
           </div>
         </div>
-        <LucideChevronDown class="ml-auto hidden h-4 w-4 sm:inline text-ink-gray-8" />
+        <LucideChevronDown class="ml-auto hidden h-4 w-4 sm:inline text-ink-gray-7" />
       </button>
     </template>
   </Dropdown>

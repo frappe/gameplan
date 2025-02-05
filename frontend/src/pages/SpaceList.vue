@@ -29,7 +29,7 @@
     </div>
     <div class="mb-8" v-for="group in groupedSpaces" :key="group.name">
       <div class="px-3 pb-2 flex items-center justify-between">
-        <div class="text-ink-gray-9 text-base">
+        <div class="text-ink-gray-8 text-base">
           {{ noCategories ? 'All spaces' : group.title || group.name }}
         </div>
         <DropdownMoreOptions
@@ -82,7 +82,7 @@
           </span>
           <div class="min-w-0 flex-1">
             <div class="flex min-w-0 items-center">
-              <div class="overflow-hidden text-ellipsis whitespace-nowrap text-ink-gray-9">
+              <div class="overflow-hidden text-ellipsis whitespace-nowrap text-ink-gray-8">
                 <span class="overflow-hidden text-ellipsis whitespace-nowrap text-base font-medium">
                   {{ d.title }}
                   <LucideLock

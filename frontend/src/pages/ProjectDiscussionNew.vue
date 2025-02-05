@@ -7,13 +7,13 @@
         </UserProfileLink>
         <div class="flex w-full items-center">
           <div>
-            <span class="text-base text-ink-gray-9">
-              <UserProfileLink class="font-medium hover:text-ink-blue-3" :user="$user().name">
+            <span class="text-base text-ink-gray-8">
+              <UserProfileLink class="font-medium hover:text-ink-blue-4" :user="$user().name">
                 {{ $user().full_name }}
               </UserProfileLink>
               in
               <router-link
-                class="hover:text-ink-blue-3"
+                class="hover:text-ink-blue-4"
                 :to="{
                   name: 'Team',
                   params: {
@@ -25,7 +25,7 @@
               </router-link>
               <span class="text-ink-gray-4"> &mdash; </span>
               <router-link
-                class="hover:text-ink-blue-3"
+                class="hover:text-ink-blue-4"
                 :to="{
                   name: 'Project',
                   params: {

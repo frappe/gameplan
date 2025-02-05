@@ -3,8 +3,8 @@
     <div class="border flex rounded-md p-3 border-outline-gray-2 dark:bg-gray-900">
       <div class="flex-1">
         <div class="flex items-center">
-          <LucideWarning class="size-4 shrink-0 mr-2.5 text-ink-gray-9" />
-          <h2 class="text-p-base text-ink-gray-9 font-medium">You haven't posted in a while</h2>
+          <LucideWarning class="size-4 shrink-0 mr-2.5 text-ink-gray-8" />
+          <h2 class="text-p-base text-ink-gray-8 font-medium">You haven't posted in a while</h2>
         </div>
         <div class="ml-6.5">
           <p class="text-ink-gray-6 text-p-base">

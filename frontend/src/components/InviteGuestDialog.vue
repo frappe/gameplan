@@ -5,7 +5,7 @@
         <div class="flex items-center gap-4" v-for="user in users" :key="user.name">
           <UserAvatar :user="user.pending ? user.email : user.user" />
           <div class="text-base">
-            <span class="text-ink-gray-9">
+            <span class="text-ink-gray-8">
               {{ user.pending ? user.email : $user(user.user).full_name }}
             </span>
             <span class="text-ink-gray-5" v-if="user.pending"> (Pending)</span>

@@ -4,7 +4,7 @@
     width="16"
     height="16"
     fill="none"
-    class="text-ink-gray-7"
+    class="text-ink-gray-6"
     :aria-label="status"
   >
     <path

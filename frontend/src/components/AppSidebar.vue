@@ -25,13 +25,13 @@
           v-for="link in navigation"
           :key="link.name"
           :to="link.route"
-          class="flex items-center rounded px-2 py-1 text-ink-gray-8 transition"
+          class="flex items-center rounded px-2 py-1 text-ink-gray-7 transition"
           activeClass="bg-surface-selected shadow-sm"
           inactiveClass="hover:bg-surface-gray-2"
         >
           <div class="flex w-full items-center space-x-2">
             <span class="grid h-5 w-6 place-items-center">
-              <component :is="link.icon" class="h-4 w-4 text-ink-gray-7" />
+              <component :is="link.icon" class="h-4 w-4 text-ink-gray-6" />
             </span>
             <span class="text-sm">{{ link.name }}</span>
             <span v-if="link.count" class="!ml-auto block text-xs text-ink-gray-5">
@@ -41,7 +41,7 @@
         </AppLink>
         <button
           v-if="sessionUser.isNotGuest"
-          class="flex w-full items-center rounded px-2 py-1 text-ink-gray-8"
+          class="flex w-full items-center rounded px-2 py-1 text-ink-gray-7"
           :class="[
             testRoute(/Search/) ? 'bg-surface-selected shadow-sm' : 'hover:bg-surface-gray-2',
           ]"
@@ -49,7 +49,7 @@
         >
           <div class="flex w-full items-center">
             <span class="grid h-5 w-6 place-items-center">
-              <LucideSearch class="h-4 w-4 text-ink-gray-7" />
+              <LucideSearch class="h-4 w-4 text-ink-gray-6" />
             </span>
             <span class="ml-2 text-sm">Search</span>
             <span class="ml-auto text-sm text-ink-gray-4">
@@ -70,7 +70,7 @@
         <div class="space-x-1 flex items-center">
           <Button variant="ghost" @click="showAddTeamDialog = true">
             <template #icon>
-              <LucidePlus class="h-4 w-4 text-ink-gray-7" />
+              <LucidePlus class="h-4 w-4 text-ink-gray-6" />
             </template>
           </Button>
         </div>
@@ -91,7 +91,7 @@
               :class="[isGroupOpen[group.name] ? 'rotate-90' : 'rotate-0']"
             />
             <div class="flex w-full items-center">
-              <span class="text-sm text-ink-gray-8">{{ group.title }}</span>
+              <span class="text-sm text-ink-gray-7">{{ group.title }}</span>
             </div>
           </button>
           <div
@@ -103,7 +103,7 @@
               v-for="space in group.spaces"
               :key="space.name"
               :to="{ name: 'Space', params: { spaceId: space.name } }"
-              class="flex h-7 items-center rounded px-2 text-ink-gray-8 transition"
+              class="flex h-7 items-center rounded px-2 text-ink-gray-7 transition"
               activeClass="bg-surface-selected shadow-sm"
               inactiveClass="hover:bg-surface-gray-2"
             >

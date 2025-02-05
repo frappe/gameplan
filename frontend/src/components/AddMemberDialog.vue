@@ -14,7 +14,7 @@
           </span>
           <button
             @click="membersToAdd = membersToAdd.filter((a) => a != user)"
-            class="grid h-4 w-4 place-items-center rounded text-ink-gray-8"
+            class="grid h-4 w-4 place-items-center rounded text-ink-gray-7"
           >
             <LucideX class="h-4 w-4" />
           </button>
@@ -38,7 +38,7 @@
           <li class="flex w-full items-center py-2" v-for="member in members" :key="member.name">
             <UserAvatar :user="member.user" />
             <div class="ml-3">
-              <div class="text-base font-medium text-ink-gray-8">
+              <div class="text-base font-medium text-ink-gray-7">
                 {{ $user(member.user).full_name }}
               </div>
               <div class="text-sm text-ink-gray-5">
