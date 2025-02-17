@@ -312,3 +312,13 @@ export interface GPActivity extends DocType {
   /** Data: Code */
   data?: string
 }
+
+// Last updated: 2025-02-17 15:53:30.361197
+export interface GPSearchFeedback extends DocType {
+  /** User: Link (User) */
+  user: string
+  /** Helpful: Select */
+  helpful: '' | 'Yes' | 'No'
+  /** Query: Data */
+  query?: string
+}

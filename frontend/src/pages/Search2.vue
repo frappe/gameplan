@@ -35,31 +35,60 @@
         </div>
 
         <!-- Search Summary -->
-        <div class="mt-3 px-2.5 text-sm">
-          <template v-if="newSearch && query.length > 3">
-            <p class="text-ink-gray-6">Press enter to search</p>
-          </template>
-          <template v-else-if="search.loading">
-            <p class="text-ink-gray-6">Searching...</p>
-          </template>
-          <template v-else-if="searchResponse?.summary">
-            <p class="text-ink-gray-6">
-              Showing {{ searchResponse.summary.filtered_matches }} out of
-              {{ searchResponse.summary.total_matches }} matches ({{
-                searchResponse.summary.duration
-              }}s)
-            </p>
-            <p v-if="searchResponse.summary.corrected_words" class="mt-1">
-              <span class="text-ink-gray-5">Searched for:</span>
-              <span
-                v-for="(corrected, original) in searchResponse.summary.corrected_words"
-                :key="original"
-                class="ml-1 font-medium text-primary"
-              >
-                {{ corrected }}
-              </span>
-            </p>
-          </template>
+        <div class="mt-2 px-2.5 text-sm flex items-center justify-between h-6">
+          <div>
+            <template v-if="newSearch && query.length > 3">
+              <p class="text-ink-gray-6">Press enter to search</p>
+            </template>
+            <template v-else-if="search.loading">
+              <p class="text-ink-gray-6">Searching...</p>
+            </template>
+            <template v-else-if="searchResponse?.summary">
+              <p class="text-ink-gray-6">
+                Showing {{ searchResponse.summary.filtered_matches }} out of
+                {{ searchResponse.summary.total_matches }} matches ({{
+                  searchResponse.summary.duration
+                }}s)
+              </p>
+              <p v-if="searchResponse.summary.corrected_words" class="mt-1">
+                <span class="text-ink-gray-5">Searched for:</span>
+                <span
+                  v-for="(corrected, original) in searchResponse.summary.corrected_words"
+                  :key="original"
+                  class="ml-1 font-medium text-primary"
+                >
+                  {{ corrected }}
+                </span>
+              </p>
+            </template>
+          </div>
+
+          <!-- Inline Feedback Section -->
+          <div
+            v-if="searchResponse?.results?.length && !feedbackGiven"
+            class="flex items-center gap-2"
+          >
+            <span class="text-ink-gray-6">Helpful?</span>
+            <div class="flex items-center gap-1">
+              <Tooltip text="Yes, results were helpful">
+                <button
+                  @click="submitFeedback(true)"
+                  class="p-1 hover:bg-surface-gray-2 rounded-full transition-colors"
+                >
+                  <LucideThumbsUp class="size-4 text-ink-gray-7" />
+                </button>
+              </Tooltip>
+              <Tooltip text="No, results were not helpful">
+                <button
+                  @click="submitFeedback(false)"
+                  class="p-1 hover:bg-surface-gray-2 rounded-full transition-colors"
+                >
+                  <LucideThumbsDown class="size-4 text-ink-gray-7" />
+                </button>
+              </Tooltip>
+            </div>
+          </div>
+          <div v-else-if="feedbackGiven" class="text-ink-gray-6">Thanks for your feedback!</div>
         </div>
 
         <div class="mt-5">
@@ -101,9 +130,13 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Breadcrumbs, TextInput, debounce, usePageMeta } from 'frappe-ui'
-import { useCall } from 'frappe-ui/src/data-fetching'
+import { Breadcrumbs, TextInput, debounce, usePageMeta, Tooltip } from 'frappe-ui'
+import { useCall, useNewDoc } from 'frappe-ui/src/data-fetching'
 import LucideX from '~icons/lucide/x'
+import LucideThumbsUp from '~icons/lucide/thumbs-up'
+import LucideThumbsDown from '~icons/lucide/thumbs-down'
+import { GPSearchFeedback } from '@/types/doctypes'
+import { useSessionUser } from '@/data/users'
 
 interface SearchSummary {
   duration: number
@@ -145,10 +178,10 @@ function getStorageKey(query: string) {
   return `${STORAGE_KEY_PREFIX}${query}`
 }
 
-// Initialize state
 const query = ref('')
 const searchResponse = ref<SearchResponse | null>(null)
 const newSearch = ref(true)
+const feedbackGiven = ref(false)
 
 function loadSearchState(searchQuery: string) {
   const saved = localStorage.getItem(getStorageKey(searchQuery))
@@ -213,6 +246,7 @@ function clearSearch() {
   query.value = ''
   searchResponse.value = null
   newSearch.value = true
+  feedbackGiven.value = false
   clearStoredSearches()
   router.replace({ query: {} })
 }
@@ -287,6 +321,18 @@ function getItemRoute(item: SearchResultItem) {
     default:
       return {}
   }
+}
+
+function submitFeedback(isHelpful: boolean) {
+  let feedback = useNewDoc<GPSearchFeedback>('GP Search Feedback', {
+    helpful: isHelpful ? 'Yes' : 'No',
+    user: useSessionUser().name,
+    query: query.value,
+  })
+
+  feedback.submit().then(() => {
+    feedbackGiven.value = true
+  })
 }
 </script>
 <style>
