@@ -1,14 +1,13 @@
 # Copyright (c) 2022, Frappe Technologies Pvt. Ltd. and Contributors
 # MIT License. See license.txt
 
-from html import unescape
 
 import frappe
-from bleach import clean
 from frappe.utils import cint
 from pypika.terms import ExistsCriterion
 
 import gameplan
+from gameplan.utils import html_to_text_preview
 
 
 @frappe.whitelist()
@@ -169,16 +168,3 @@ def clause_discussions_bookmarked_by_user(user):
 	Bookmark = frappe.qb.DocType("GP Bookmark")
 	bookmarked_discussions = Bookmark.select(Bookmark.discussion).where(Bookmark.user == user)
 	return Discussion.name.isin(bookmarked_discussions)
-
-
-def html_to_text_preview(html):
-	"""Convert HTML to text preview of 100 characters"""
-
-	length = 50
-	text = clean(html or "", tags=[], strip=True)
-	text = unescape(text)
-	text = text.strip()[:length]
-	if len(text) == length:
-		text += "..."
-
-	return text

@@ -66,6 +66,11 @@ let router = createRouter({
       component: () => import('@/pages/Search.vue'),
     },
     {
+      path: '/search2',
+      name: 'Search2',
+      component: () => import('@/pages/Search2.vue'),
+    },
+    {
       path: '/onboarding',
       name: 'Onboarding',
       component: () => import('@/pages/Onboarding.vue'),

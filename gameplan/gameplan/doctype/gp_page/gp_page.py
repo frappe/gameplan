@@ -4,7 +4,7 @@
 # import frappe
 from frappe.model.document import Document
 
-from gameplan.search import GameplanSearch
+from gameplan.search2 import GameplanSearch
 from gameplan.utils import url_safe_slug
 
 

@@ -5,9 +5,11 @@
 import inspect
 import re
 from functools import wraps
+from html import unescape
 from urllib.parse import urlparse
 
 import frappe
+from bleach import clean
 from bs4 import BeautifulSoup
 
 
@@ -75,3 +77,22 @@ def url_safe_slug(text):
 	slug = "-".join(slug)
 	slug = re.sub("[-]+", "-", slug)
 	return slug
+
+
+def html_to_text(html, ignore=None):
+	"""Strip HTML tags and unescape HTML entities"""
+
+	text = clean(html or "", tags=ignore or [], strip=True)
+	text = unescape(text)
+	return text
+
+
+def html_to_text_preview(html, preview_length=50):
+	"""Convert HTML to text preview of 100 characters"""
+
+	text = html_to_text(html)
+	text = text.strip()[:preview_length]
+	if len(text) == preview_length:
+		text += "..."
+
+	return text

@@ -9,7 +9,7 @@ from gameplan.gameplan.doctype.gp_notification.gp_notification import GPNotifica
 from gameplan.mixins.activity import HasActivity
 from gameplan.mixins.mentions import HasMentions
 from gameplan.mixins.reactions import HasReactions
-from gameplan.search import GameplanSearch
+from gameplan.search2 import GameplanSearch
 from gameplan.utils import remove_empty_trailing_paragraphs, url_safe_slug
 
 
@@ -71,6 +71,7 @@ class GPDiscussion(HasActivity, HasMentions, HasReactions, Document):
 	def on_trash(self):
 		self.remove_bookmark()
 		self.update_discussions_count()
+		self.remove_search_index()
 
 	def validate(self):
 		self.content = remove_empty_trailing_paragraphs(self.content)
@@ -179,6 +180,10 @@ class GPDiscussion(HasActivity, HasMentions, HasReactions, Document):
 		if self.has_value_changed("title") or self.has_value_changed("content"):
 			search = GameplanSearch()
 			search.index_doc(self)
+
+	def remove_search_index(self):
+		search = GameplanSearch()
+		search.remove_doc(self)
 
 	def update_participants_count(self):
 		participants = frappe.db.get_all(

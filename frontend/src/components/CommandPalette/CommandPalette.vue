@@ -315,7 +315,7 @@ function generateSearchResults() {
   let fullTextSearchItem = {
     title: `Search for "${query.value}"`,
     icon: () => h(LucideFileSearch),
-    route: { name: 'Search', query: { q: query.value } },
+    route: { name: 'Search2', query: { q: query.value } },
   }
 
   if (query.value.length > 2) {

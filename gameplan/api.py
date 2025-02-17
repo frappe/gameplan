@@ -432,3 +432,12 @@ def search(query, start=0):
 		"total": result.total,
 		"duration": result.duration,
 	}
+
+
+@frappe.whitelist()
+def search2(query):
+	from gameplan.search2 import GameplanSearch
+
+	search = GameplanSearch()
+	result = search.search(query)
+	return result
