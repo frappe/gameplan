@@ -259,6 +259,7 @@ function updateQuery(value: string) {
 
 const submit = debounce(function (text: string) {
   newSearch.value = false
+  feedbackGiven.value = false
   query.value = text
   router.replace({ query: text ? { q: text } : {} })
   search.submit({ query: text })
