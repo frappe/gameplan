@@ -53,11 +53,11 @@ class GameplanSearch:
 			},
 		}
 
-	def search(self, query):
+	def search(self, query, title_only=False):
 		if not query:
 			return []
 
-		search_response = self.fts.search(query)
+		search_response = self.fts.search(query, title_only=title_only)
 		results = search_response["results"]
 		summary = search_response["summary"]
 
@@ -103,7 +103,7 @@ class GameplanSearch:
 					{
 						"id": result["id"],
 						"title": result.get("title"),
-						"content": result["content"],
+						"content": result.get("content", ""),
 						"timestamp": result["timestamp"],
 						"score": result["score"],
 						"doctype": doctype,

@@ -135,7 +135,7 @@ const activeItemRef = ref(null)
 const router = useRouter()
 
 const titleSearch = useCall({
-  url: '/api/v2/method/gameplan.command_palette.search',
+  url: '/api/v2/method/gameplan.command_palette.search2',
   immediate: false,
   transform(groups) {
     for (let group of groups) {
@@ -145,7 +145,7 @@ const titleSearch = useCall({
             name: 'Discussion',
             params: {
               postId: item.name,
-              spaceId: item.payload.project,
+              spaceId: item.project,
             },
           }
           return item
@@ -157,7 +157,7 @@ const titleSearch = useCall({
             name: item.project ? 'SpaceTask' : 'Task',
             params: {
               taskId: item.name,
-              spaceId: item.payload.project,
+              spaceId: item.project,
             },
           }
           return item
@@ -169,7 +169,7 @@ const titleSearch = useCall({
             name: 'SpacePage',
             params: {
               pageId: item.name,
-              spaceId: item.payload.project,
+              spaceId: item.project,
             },
           }
           return item
@@ -500,3 +500,9 @@ onBeforeUnmount(() => {
   hideCommandPalette()
 })
 </script>
+<style>
+mark {
+  background-color: theme('colors.amber.100');
+  font-weight: 500;
+}
+</style>

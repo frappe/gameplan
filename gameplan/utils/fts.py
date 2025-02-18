@@ -276,7 +276,7 @@ class FullTextSearch:
 		self._debug(f"Fuzzy matches for '{query_word}': {results[:3]}")
 		return results
 
-	def _bm25_score(self, query_words):
+	def _bm25_score(self, query_words, title_only=False):
 		"""Calculate BM25 scores for documents given the query words."""
 		# Filter out stop words but keep track of original words
 		filtered_map = [(w, orig) for orig in query_words if (w := orig.lower()) not in self.stop_words]
@@ -297,13 +297,29 @@ class FullTextSearch:
 			if filtered not in self.inverted_index:
 				self._debug(f"Word '{filtered}' not found in index")
 				continue
-			num_docs_with_word = len(self.inverted_index[filtered])
+
+			# For title_only search, only consider documents where the word appears in title
+			docs_with_word = []
+			if title_only:
+				docs_with_word = [
+					(doc_id, freq)
+					for doc_id, freq in self.inverted_index[filtered]
+					if doc_id in self.title_words
+					and filtered in set(w.lower() for w in self.title_words[doc_id])
+				]
+			else:
+				docs_with_word = self.inverted_index[filtered]
+
+			num_docs_with_word = len(docs_with_word)
+			if num_docs_with_word == 0:
+				continue
+
 			idf = math.log((num_docs - num_docs_with_word + 0.5) / (num_docs_with_word + 0.5) + 1)
 			self._debug(f"\nWord: '{filtered}'")
 			self._debug(f"Found in {num_docs_with_word} documents")
 			self._debug(f"IDF score: {idf:.4f}")
 
-			for doc_id, freq in self.inverted_index[filtered]:
+			for doc_id, freq in docs_with_word:
 				doc_len = self.doc_lengths[doc_id]
 				tf = freq
 				score = idf * ((tf * (k1 + 1)) / (tf + k1 * (1 - b + b * (doc_len / self.avg_doc_length))))
@@ -311,7 +327,6 @@ class FullTextSearch:
 				self.matched_words[doc_id].add(filtered)
 				self.matched_word_variations[doc_id].update([filtered, original])
 				self.score_components[doc_id]["bm25"] += score
-				# self._debug(f"  Doc {doc_id}: freq={freq}, score contribution={score:.4f}")
 
 		return doc_scores
 
@@ -427,10 +442,10 @@ class FullTextSearch:
 
 		return "..." + "...".join(preview) + "..."
 
-	def search(self, query):
+	def search(self, query, title_only=False):
 		"""Main search function with improved title matching and content highlighting."""
 		start_time = time.time()
-		self._debug(f"\n=== Search Query: '{query}' ===")
+		self._debug(f"\n=== Search Query: '{query}' (title_only: {title_only}) ===")
 		self._load_index_from_redis()
 
 		query_words = re.findall(r"\w+", query.lower())
@@ -445,7 +460,7 @@ class FullTextSearch:
 			if corrected != word:
 				self._debug(f"Corrected '{word}' to '{corrected}'")
 
-		doc_scores = self._bm25_score(corrected_query_words)
+		doc_scores = self._bm25_score(corrected_query_words, title_only)
 		self._debug("\nInitial BM25 top scores:")
 		for doc_id, score in sorted(doc_scores.items(), key=lambda x: x[1], reverse=True)[:3]:
 			self._debug(f"Doc {doc_id}: {score:.4f}")
@@ -471,15 +486,15 @@ class FullTextSearch:
 					f"  Matched words: {sorted(self.matched_words[doc_id])}\n"
 					f"  Word variations: {sorted(self.matched_word_variations[doc_id])}\n"
 				)
-				results.append(
-					{
-						"id": doc_id,
-						"title": self._highlight_text(doc_content["title"], doc_id),
-						"content": self._create_preview(doc_content["content"], doc_id),
-						"score": score,
-						"timestamp": self.doc_timestamps[doc_id],
-					}
-				)
+				result = {
+					"id": doc_id,
+					"title": self._highlight_text(doc_content["title"], doc_id),
+					"score": score,
+					"timestamp": self.doc_timestamps[doc_id],
+				}
+				if not title_only:
+					result["content"] = self._create_preview(doc_content["content"], doc_id)
+				results.append(result)
 
 		duration = time.time() - start_time
 		corrected_words = (
@@ -492,6 +507,7 @@ class FullTextSearch:
 			"total_matches": total_matches,
 			"returned_matches": len(results),
 			"corrected_words": corrected_words,
+			"title_only": title_only,
 		}
 
 		self._debug(f"\nReturning top {len(results)} results out of {len(final_scores)} matches")
