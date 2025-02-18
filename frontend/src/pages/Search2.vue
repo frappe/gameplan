@@ -35,7 +35,7 @@
         </div>
 
         <!-- Search Summary -->
-        <div class="mt-2 px-2.5 text-sm flex items-center justify-between h-6">
+        <div class="mt-2 px-2.5 text-sm flex items-center justify-between min-h-6">
           <div>
             <template v-if="newSearch && query.length > 3">
               <p class="text-ink-gray-6">Press enter to search</p>
