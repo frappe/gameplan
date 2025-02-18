@@ -313,7 +313,7 @@ export interface GPActivity extends DocType {
   data?: string
 }
 
-// Last updated: 2025-02-17 15:53:30.361197
+// Last updated: 2025-02-17 15:58:11.863114
 export interface GPSearchFeedback extends DocType {
   /** User: Link (User) */
   user: string
