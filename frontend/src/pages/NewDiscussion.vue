@@ -26,9 +26,7 @@
         </div>
         <div class="hidden shrink-0 space-x-2 sm:block">
           <Button @click="discard">Discard</Button>
-          <Button variant="solid" :loading="discussions.insert.loading" @click="publish">
-            Publish
-          </Button>
+          <Button variant="solid" :loading="publishing" @click="publish"> Publish </Button>
         </div>
       </div>
       <ErrorMessage :message="errorMessage || discussions.insert.error" />
@@ -60,9 +58,7 @@
             <TextEditorFixedMenu class="overflow-x-auto" :buttons="textEditorMenuButtons" />
             <div class="mt-2 shrink-0 space-x-2 text-right sm:hidden">
               <Button @click="discard">Discard</Button>
-              <Button variant="solid" :loading="discussions.insert.loading" @click="publish">
-                Publish
-              </Button>
+              <Button variant="solid" :loading="publishing" @click="publish"> Publish </Button>
             </div>
           </div>
         </template>
@@ -93,6 +89,7 @@ const selectedSpace = ref<{ label: string; value: string } | null>(null)
 const textEditorRef = useTemplateRef('textEditorRef')
 const discussions = useDoctype<GPDiscussion>('GP Discussion')
 const errorMessage = ref<string | null>(null)
+const publishing = ref(false)
 
 const draftDiscussion = useLocalStorage(
   'newDiscussion',
@@ -127,6 +124,7 @@ function publish() {
     return
   }
   errorMessage.value = null
+  publishing.value = true
 
   return discussions.insert
     .submit({
@@ -144,12 +142,16 @@ function publish() {
       })
       resetValues()
     })
+    .catch(() => {
+      publishing.value = false
+    })
 }
 
 function resetValues() {
   selectedSpace.value = null
   draftDiscussion.value.title = ''
   draftDiscussion.value.content = ''
+  publishing.value = false
 }
 
 function discard() {
