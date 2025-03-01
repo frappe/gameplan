@@ -19,6 +19,7 @@
     "fuzzysort": "^2.0.4",
     "gemoji": "^7.1.0",
     "htmldiff-js": "^1.0.5",
+    "reka-ui": "^2.0.2",
     "socket.io-client": "^4.7.2",
     "vue": "^3.5.13",
     "vue-router": "^4.5.0"

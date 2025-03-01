@@ -15,6 +15,9 @@ interface UserInfo {
   user_profile: string
   image_background_color: string
   is_image_background_removed: number
+  discussions_count_3m: number
+  comments_count_3m: number
+  bio: string
   role: 'Gameplan Admin' | 'Gameplan Member' | 'Gameplan Guest'
   isGuest?: boolean
   isNotGuest?: boolean

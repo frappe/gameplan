@@ -3,6 +3,7 @@
 
 
 import frappe
+from frappe.query_builder.functions import Count
 from frappe.utils import cstr, split_emails, validate_email_address
 
 import gameplan
@@ -26,16 +27,32 @@ def get_user_info(user=None):
 		distinct=True,
 	).run(as_dict=1)
 
+	# Get discussion counts for last 3 months
+	Discussion = frappe.qb.DocType("GP Discussion")
+	discussion_counts = (
+		frappe.qb.from_(Discussion)
+		.select(Discussion.owner, Count(Discussion.name).as_("count"))
+		.where(Discussion.creation >= frappe.utils.add_months(frappe.utils.now(), -3))
+		.where(Discussion.owner.isin([u.name for u in users]))
+		.groupby(Discussion.owner)
+	).run(as_dict=1)
+	discussion_count_map = {d.owner: d.count for d in discussion_counts}
+
+	# Get comment counts for last 3 months
+	Comment = frappe.qb.DocType("GP Comment")
+	comment_counts = (
+		frappe.qb.from_(Comment)
+		.select(Comment.owner, Count(Comment.name).as_("count"))
+		.where(Comment.creation >= frappe.utils.add_months(frappe.utils.now(), -3))
+		.where(Comment.owner.isin([u.name for u in users]))
+		.groupby(Comment.owner)
+	).run(as_dict=1)
+	comment_count_map = {c.owner: c.count for c in comment_counts}
+
 	roles = frappe.db.get_all("Has Role", filters={"parenttype": "User"}, fields=["role", "parent"])
 	user_profiles = frappe.db.get_all(
 		"GP User Profile",
-		fields=[
-			"user",
-			"name",
-			"image",
-			"image_background_color",
-			"is_image_background_removed",
-		],
+		fields=["user", "name", "image", "image_background_color", "is_image_background_removed", "bio"],
 		filters={"user": ["in", [u.name for u in users]]},
 	)
 	user_profile_map = {u.user: u for u in user_profiles}
@@ -48,11 +65,17 @@ def get_user_info(user=None):
 			user.user_image = user_profile.image
 			user.image_background_color = user_profile.image_background_color
 			user.is_image_background_removed = user_profile.is_image_background_removed
+			user.bio = user_profile.bio
 		user_roles = [r.role for r in roles if r.parent == user.name]
 		user.role = None
 		for role in ["Gameplan Guest", "Gameplan Member", "Gameplan Admin"]:
 			if role in user_roles:
 				user.role = role
+
+		# Add discussion and comment counts
+		user.discussions_count_3m = discussion_count_map.get(user.name, 0)
+		user.comments_count_3m = comment_count_map.get(user.name, 0)
+
 	return users
 
 
@@ -168,8 +191,6 @@ def get_unsplash_photos(keyword=None):
 
 @frappe.whitelist()
 def get_unread_items():
-	from frappe.query_builder.functions import Count
-
 	Discussion = frappe.qb.DocType("GP Discussion")
 	Visit = frappe.qb.DocType("GP Discussion Visit")
 	query = (

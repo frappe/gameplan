@@ -9,7 +9,7 @@
         class="flex items-center text-base text-ink-gray-8 sticky top-0 pt-14 pb-2 bg-surface-white z-[1]"
       >
         <UserProfileLink class="mr-3" :user="user.name">
-          <UserAvatar size="lg" :user="user.name" />
+          <UserAvatarWithHover size="lg" :user="user.name" />
         </UserProfileLink>
         <div class="md:flex md:items-center">
           <UserProfileLink class="font-medium hover:text-ink-blue-4" :user="user.name">
@@ -110,7 +110,7 @@ import UserProfileLink from './UserProfileLink.vue'
 import CommentEditor from './CommentEditor.vue'
 import Reactions from './Reactions.vue'
 import RevisionsDialog from './RevisionsDialog.vue'
-import UserAvatar from './UserAvatar.vue'
+import UserAvatarWithHover from './UserAvatarWithHover.vue'
 import { GPComment } from '@/types/doctypes'
 import { isSessionUser } from '@/data/session'
 import { createDialog } from '@/utils/dialogs'

@@ -69,7 +69,7 @@
                 exact-active-class="!bg-surface-gray-2"
               >
                 <div class="flex w-full sm:w-3/5 items-center">
-                  <UserAvatar :user="user.user" size="2xl" />
+                  <UserAvatarWithHover :user="user.user" size="2xl" />
                   <div class="ml-3 min-w-0">
                     <div class="flex items-center space-x-2">
                       <div class="text-base font-medium text-ink-gray-8">
@@ -138,6 +138,7 @@
 <script>
 import { Breadcrumbs, Badge, Input, Select, TextInput } from 'frappe-ui'
 import { showSettingsDialog } from '@/components/Settings/SettingsDialog.vue'
+import UserAvatarWithHover from '@/components/UserAvatarWithHover.vue'
 
 export default {
   name: 'People',

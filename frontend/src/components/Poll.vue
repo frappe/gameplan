@@ -9,7 +9,7 @@
     >
       <UserInfo :email="_poll.owner" v-slot="{ user }">
         <UserProfileLink class="mr-3" :user="user.name">
-          <UserAvatar :user="user.name" />
+          <UserAvatarWithHover :user="user.name" size="lg" />
         </UserProfileLink>
         <div class="md:flex md:items-center">
           <UserProfileLink class="font-medium hover:text-ink-blue-4" :user="user.name">
@@ -126,6 +126,7 @@ import UserAvatar from './UserAvatar.vue'
 import UserProfileLink from './UserProfileLink.vue'
 import { copyToClipboard } from '@/utils'
 import Reactions from './Reactions.vue'
+import UserAvatarWithHover from './UserAvatarWithHover.vue'
 
 export default {
   name: 'Poll',

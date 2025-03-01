@@ -11,13 +11,17 @@
     v-bind="$attrs"
   />
 </template>
-<script>
+<script setup lang="ts">
 import { Avatar } from 'frappe-ui'
 
-export default {
-  name: 'UserAvatar',
+defineOptions({
   inheritAttrs: false,
-  components: { Avatar },
-  props: ['user'],
-}
+})
+
+defineProps({
+  user: {
+    type: String,
+    required: true,
+  },
+})
 </script>

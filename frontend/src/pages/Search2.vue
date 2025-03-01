@@ -107,7 +107,7 @@
               class="flex space-x-2 overflow-hidden rounded px-2.5 py-3 hover:bg-surface-gray-2"
             >
               <div>
-                <UserAvatar :user="item.author" />
+                <UserAvatarWithHover :user="item.author" />
               </div>
               <div class="w-full">
                 <div class="flex items-center">
@@ -146,6 +146,7 @@ import LucideThumbsUp from '~icons/lucide/thumbs-up'
 import LucideThumbsDown from '~icons/lucide/thumbs-down'
 import { GPSearchFeedback } from '@/types/doctypes'
 import { useSessionUser } from '@/data/users'
+import UserAvatarWithHover from '@/components/UserAvatarWithHover.vue'
 
 interface SearchSummary {
   duration: number

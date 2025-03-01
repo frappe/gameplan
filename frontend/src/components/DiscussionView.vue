@@ -29,7 +29,7 @@
         <div>
           <div class="pb-2 pt-14 flex w-full items-center sticky top-0 z-[1] bg-surface-white">
             <UserProfileLink class="mr-3" :user="discussion.doc.owner">
-              <UserAvatar size="lg" :user="discussion.doc.owner" />
+              <UserAvatarWithHover size="lg" :user="discussion.doc.owner" />
             </UserProfileLink>
             <div class="flex flex-col md:block">
               <UserProfileLink
@@ -203,6 +203,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { Autocomplete, Avatar, Dropdown, Dialog, Tooltip, usePageMeta } from 'frappe-ui'
 import { until } from '@vueuse/core'
 import Reactions from './Reactions.vue'
+import UserAvatarWithHover from './UserAvatarWithHover.vue'
 import CommentsArea from '@/components/CommentsArea.vue'
 import CommentEditor from './CommentEditor.vue'
 import UserProfileLink from './UserProfileLink.vue'

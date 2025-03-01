@@ -15,7 +15,7 @@
         <template v-slot="{ user }">
           <div class="flex items-center space-x-3">
             <div class="relative flex">
-              <UserAvatar :user="user.name" size="2xl" />
+              <UserAvatarWithHover :user="user.name" size="2xl" />
             </div>
           </div>
           <div class="min-w-0 flex-1">
@@ -97,7 +97,7 @@
 <script setup lang="ts">
 import { Tooltip } from 'frappe-ui'
 import { dayjs } from '@/utils/dayjs'
-import UserAvatar from './UserAvatar.vue'
+import UserAvatarWithHover from './UserAvatarWithHover.vue'
 import UserInfo from './UserInfo.vue'
 import { useSpace } from '@/data/spaces'
 import { Discussion } from '@/data/discussions'
