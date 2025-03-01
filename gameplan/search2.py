@@ -13,6 +13,10 @@ from gameplan.utils.fts import FullTextSearch
 INDEX_BUILD_FLAG = "discussions_index_in_progress"
 
 
+class GameplanSearchIndexMissingError(Exception):
+	pass
+
+
 class GameplanSearch:
 	def __init__(self) -> None:
 		self.fts = FullTextSearch()
@@ -53,7 +57,15 @@ class GameplanSearch:
 			},
 		}
 
+	def raise_if_not_indexed(self):
+		if not self.index_exists():
+			raise GameplanSearchIndexMissingError(
+				"Search index does not exist. Please build the index first."
+			)
+
 	def search(self, query, title_only=False):
+		self.raise_if_not_indexed()
+
 		if not query:
 			return []
 
@@ -142,6 +154,7 @@ class GameplanSearch:
 
 	def remove_doc(self, doc):
 		"""Remove a single document from the index"""
+		self.raise_if_not_indexed()
 		doc_id = f"{doc.doctype}:{doc.name}"
 		self.fts.remove_document(doc_id)
 

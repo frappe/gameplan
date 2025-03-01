@@ -8,7 +8,7 @@ from gameplan.extends.client import check_permissions
 from gameplan.gameplan.doctype.gp_notification.gp_notification import GPNotification
 from gameplan.mixins.activity import HasActivity
 from gameplan.mixins.mentions import HasMentions
-from gameplan.search2 import GameplanSearch
+from gameplan.search2 import GameplanSearch, GameplanSearchIndexMissingError
 
 
 class GPTask(HasMentions, HasActivity, Document):
@@ -57,8 +57,11 @@ class GPTask(HasMentions, HasActivity, Document):
 
 	def on_trash(self):
 		self.update_tasks_count()
-		search = GameplanSearch()
-		search.remove_doc(self)
+		try:
+			search = GameplanSearch()
+			search.remove_doc(self)
+		except GameplanSearchIndexMissingError:
+			pass
 
 	def update_tasks_count(self):
 		if not self.project:

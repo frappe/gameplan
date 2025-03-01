@@ -37,7 +37,16 @@
         <!-- Search Summary -->
         <div class="mt-2 px-2.5 text-sm flex items-center justify-between min-h-6">
           <div>
-            <template v-if="newSearch && query.length > 3">
+            <template v-if="search.error">
+              <ErrorMessage
+                :message="
+                  search.error.type == 'GameplanSearchIndexMissingError'
+                    ? 'Search index does not exist. Please build the index first.'
+                    : search.error
+                "
+              />
+            </template>
+            <template v-else-if="newSearch && query.length > 3">
               <p class="text-ink-gray-6">Press enter to search</p>
             </template>
             <template v-else-if="search.loading">

@@ -6,7 +6,7 @@ from frappe.model.document import Document
 
 from gameplan.mixins.mentions import HasMentions
 from gameplan.mixins.reactions import HasReactions
-from gameplan.search2 import GameplanSearch
+from gameplan.search2 import GameplanSearch, GameplanSearchIndexMissingError
 from gameplan.utils import remove_empty_trailing_paragraphs
 
 
@@ -64,5 +64,8 @@ class GPComment(HasMentions, HasReactions, Document):
 			search.index_doc(self)
 
 	def remove_search_index(self):
-		search = GameplanSearch()
-		search.remove_doc(self)
+		try:
+			search = GameplanSearch()
+			search.remove_doc(self)
+		except GameplanSearchIndexMissingError:
+			pass
