@@ -7,12 +7,7 @@
         <GameplanLogoType class="h-6 text-ink-gray-8" />
       </div>
       <div class="mx-auto mt-6 w-full px-4 sm:w-96">
-        <form
-          v-if="showEmailLogin"
-          method="POST"
-          action="/api/method/login"
-          @submit.prevent="submit"
-        >
+        <form v-if="showEmailLogin" @submit.prevent="submit">
           <div>
             <FormControl
               variant="outline"

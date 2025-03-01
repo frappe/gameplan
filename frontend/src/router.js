@@ -24,11 +24,6 @@ let router = createRouter({
       redirect: { name: 'Discussions' },
     },
     {
-      path: '/login',
-      name: 'Login',
-      component: () => import('@/pages/Login.vue'),
-    },
-    {
       name: 'Discussions',
       path: '/discussions',
       component: () => import('@/pages/Discussions.vue'),
@@ -364,6 +359,7 @@ router.beforeEach(async (to, from) => {
   if (to.name === 'Login' && session.isLoggedIn) {
     return { name: 'Home' }
   } else if (to.name !== 'Login' && !session.isLoggedIn) {
+    window.location.href = '/login'
     return { name: 'Login' }
   }
 })

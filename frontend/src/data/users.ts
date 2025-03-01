@@ -39,7 +39,7 @@ export let users = useCall<UserInfo[]>({
   },
   onError(error) {
     if (error && error.type === 'AuthenticationError') {
-      router.push('/login')
+      window.location.href = '/login'
     }
   },
   immediate: false,
