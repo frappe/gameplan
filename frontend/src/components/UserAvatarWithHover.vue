@@ -19,8 +19,7 @@
             {{ $user(user).discussions_count_3m }}
             {{ pluralize($user(user).discussions_count_3m, 'post', 'posts') }},
             {{ $user(user).comments_count_3m }}
-            {{ pluralize($user(user).comments_count_3m, 'comment', 'comments') }} in the last 3
-            months
+            {{ pluralize($user(user).comments_count_3m, 'reply', 'replies') }} in the last 3 months
           </div>
         </div>
       </HoverCardContent>
