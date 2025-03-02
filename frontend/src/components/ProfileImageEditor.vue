@@ -1,5 +1,9 @@
 <template>
-  <FileUploader @success="(file) => setUserImage(file.file_url)" :validateFile="validateFile">
+  <FileUploader
+    @success="(file) => setUserImage(file.file_url)"
+    :validateFile="validateFile"
+    :uploadArgs="{ optimize: true }"
+  >
     <template v-slot="{ file, progress, error, uploading, openFileSelector }">
       <div class="flex flex-col items-center">
         <button class="group relative rounded-full border-2" @click="openFileSelector">
