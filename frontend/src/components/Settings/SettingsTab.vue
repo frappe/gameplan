@@ -8,11 +8,3 @@
     </div>
   </div>
 </template>
-<script>
-import { teams } from '@/data/teams'
-import router from '@/router'
-
-export default {
-  name: 'SettingsTabDialog',
-}
-</script>

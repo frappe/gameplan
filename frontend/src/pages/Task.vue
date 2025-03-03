@@ -3,45 +3,56 @@
     <header
       class="sticky top-0 z-10 flex items-center justify-between border-b bg-surface-white px-5 py-2.5"
     >
-      <Breadcrumbs class="h-7" :items="breadcrumbs" />
+      <SpaceBreadcrumbs
+        v-if="space"
+        :spaceId="space.name"
+        :items="[
+          {
+            label: 'Tasks',
+            route: { name: 'SpaceTasks' },
+          },
+          {
+            label: task.doc ? task.doc.title : route.params.taskId.toString(),
+            route: { name: 'Task' },
+          },
+        ]"
+      />
+      <Breadcrumbs
+        v-else
+        class="h-7"
+        :items="[
+          {
+            label: 'My Tasks',
+            route: { name: 'MyTasks' },
+          },
+          {
+            label: task.doc ? task.doc.title : route.params.taskId.toString(),
+            route: { name: 'Task' },
+          },
+        ]"
+      />
     </header>
     <div>
       <TaskDetail :taskId="taskId" />
     </div>
   </div>
 </template>
-<script setup>
-import { Breadcrumbs, getCachedDocumentResource, usePageMeta } from 'frappe-ui'
-import { computed } from 'vue'
+<script setup lang="ts">
 import { useRoute } from 'vue-router'
+import { Breadcrumbs, usePageMeta } from 'frappe-ui'
+import SpaceBreadcrumbs from '@/components/SpaceBreadcrumbs.vue'
+import TaskDetail from '@/components/TaskDetail.vue'
+import { useTask } from '@/data/tasks'
+import { useSpace } from '@/data/spaces'
 
-const props = defineProps({
-  taskId: {
-    type: String,
-    required: true,
-  },
-})
-
-let route = useRoute()
-let breadcrumbs = computed(() => {
-  let task = getCachedDocumentResource('GP Task', route.params.taskId)
-  let items = [
-    {
-      label: 'My Tasks',
-      route: { name: 'MyTasks' },
-    },
-    {
-      label: task?.doc ? task.doc.title : route.params.taskId,
-      route: { name: 'Task' },
-    },
-  ]
-  return items
-})
+const props = defineProps<{ taskId: string }>()
+const task = useTask(() => props.taskId)
+const space = useSpace(() => task.doc?.project)
+const route = useRoute()
 
 usePageMeta(() => {
-  let task = getCachedDocumentResource('GP Task', route.params.taskId)
   return {
-    title: task?.doc?.title || `Task #${props.taskId}`,
+    title: `${task.doc?.title} | ${space.value?.title || 'My Tasks'}`,
   }
 })
 </script>

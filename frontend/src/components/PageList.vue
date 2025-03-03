@@ -13,7 +13,7 @@
         class="flex h-15 items-start rounded-md p-2.5 hover:bg-surface-gray-2"
       >
         <div>
-          <div class="text-base font-medium leading-4 text-ink-gray-9">
+          <div class="text-base font-medium leading-4 text-ink-gray-8">
             {{ page.title }}
           </div>
           <div class="mt-1.5 flex items-center">

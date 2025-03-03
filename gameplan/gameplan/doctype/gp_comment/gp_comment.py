@@ -6,12 +6,12 @@ from frappe.model.document import Document
 
 from gameplan.mixins.mentions import HasMentions
 from gameplan.mixins.reactions import HasReactions
-from gameplan.search import GameplanSearch
+from gameplan.search2 import GameplanSearch, GameplanSearchIndexMissingError
 from gameplan.utils import remove_empty_trailing_paragraphs
 
 
 class GPComment(HasMentions, HasReactions, Document):
-	on_delete_set_null = ["GP Notification"]
+	on_delete_set_null = ["GP Notification", "GP Discussion"]
 	mentions_field = "content"
 
 	def before_insert(self):
@@ -24,40 +24,48 @@ class GPComment(HasMentions, HasReactions, Document):
 				frappe.throw("Cannot add comment to a closed discussion")
 
 	def after_insert(self):
-		if self.reference_doctype not in ["GP Discussion", "GP Task"]:
-			return
-		reference_doc = frappe.get_doc(self.reference_doctype, self.reference_name)
-		if reference_doc.meta.has_field("last_post_at"):
-			reference_doc.set("last_post_at", frappe.utils.now())
-		if reference_doc.meta.has_field("last_post_by"):
-			reference_doc.set("last_post_by", frappe.session.user)
-		if reference_doc.meta.has_field("comments_count"):
-			reference_doc.set("comments_count", reference_doc.comments_count + 1)
-		if reference_doc.doctype == "GP Discussion":
-			reference_doc.update_participants_count()
-			reference_doc.track_visit()
-		reference_doc.save(ignore_permissions=True)
+		self.update_discussion_meta()
+		self.update_task_meta()
 
-	def on_trash(self):
-		if self.reference_doctype not in ["GP Discussion", "GP Task"]:
+	def after_delete(self):
+		self.update_discussion_meta()
+		self.update_task_meta()
+
+	def update_discussion_meta(self):
+		if self.reference_doctype != "GP Discussion":
 			return
-		reference_doc = frappe.get_doc(self.reference_doctype, self.reference_name)
-		if reference_doc.meta.has_field("comments_count"):
-			reference_doc.db_set("comments_count", reference_doc.comments_count - 1)
+		discussion = frappe.get_doc("GP Discussion", self.reference_name)
+		discussion.update_last_post()
+		discussion.update_post_count()
+		discussion.update_participants_count()
+		discussion.track_visit()
+		discussion.save(ignore_permissions=True)
+
+	def update_task_meta(self):
+		if self.reference_doctype != "GP Task":
+			return
+		frappe.get_doc("GP Task", self.reference_name).update_comments_count()
 
 	def validate(self):
 		self.content = remove_empty_trailing_paragraphs(self.content)
 		self.de_duplicate_reactions()
 
 	def on_update(self):
-		self.update_discussion_index()
+		self.update_search_index()
 		self.notify_mentions()
 		self.notify_reactions()
 
-	def update_discussion_index(self):
+	def on_trash(self):
+		self.remove_search_index()
+
+	def update_search_index(self):
 		if self.reference_doctype in ["GP Discussion", "GP Task"]:
 			search = GameplanSearch()
-			if self.deleted_at:
-				search.remove_doc(self)
-			else:
-				search.index_doc(self)
+			search.index_doc(self)
+
+	def remove_search_index(self):
+		try:
+			search = GameplanSearch()
+			search.remove_doc(self)
+		except GameplanSearchIndexMissingError:
+			pass

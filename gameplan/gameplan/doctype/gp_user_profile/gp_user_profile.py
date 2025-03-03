@@ -158,3 +158,16 @@ def remove_imgbg_in_background(profile_name, default_color=None):
 	profile.image_background_color = default_color
 	profile.save()
 	gameplan.refetch_resource("Users", user=profile.user)
+
+
+@frappe.whitelist()
+def get_last_post():
+	result = frappe.db.get_list(
+		"GP Discussion",
+		filters={"owner": frappe.session.user},
+		fields=["creation"],
+		order_by="creation desc",
+		limit=1,
+		pluck="creation",
+	)
+	return result[0] if result else None
