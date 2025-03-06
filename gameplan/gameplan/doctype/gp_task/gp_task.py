@@ -46,8 +46,11 @@ class GPTask(HasMentions, HasActivity, Document):
 
 	def update_search_index(self):
 		if self.has_value_changed("title") or self.has_value_changed("description"):
-			search = GameplanSearch()
-			search.index_doc(self)
+			try:
+				search = GameplanSearch()
+				search.index_doc(self)
+			except GameplanSearchIndexMissingError:
+				pass
 
 	def update_comments_count(self):
 		comments_count = frappe.db.count(

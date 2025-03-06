@@ -60,8 +60,11 @@ class GPComment(HasMentions, HasReactions, Document):
 
 	def update_search_index(self):
 		if self.reference_doctype in ["GP Discussion", "GP Task"]:
-			search = GameplanSearch()
-			search.index_doc(self)
+			try:
+				search = GameplanSearch()
+				search.index_doc(self)
+			except GameplanSearchIndexMissingError:
+				pass
 
 	def remove_search_index(self):
 		try:

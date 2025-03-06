@@ -148,6 +148,7 @@ class GameplanSearch:
 
 	def index_doc(self, doc):
 		"""Index a single document"""
+		self.raise_if_not_indexed()
 		document = self._prepare_document(doc)
 		if document:
 			self.fts.index_document(document)
