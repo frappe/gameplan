@@ -322,3 +322,17 @@ export interface GPSearchFeedback extends DocType {
   /** Query: Data */
   query?: string
 }
+
+// Last updated: 2025-03-06 13:03:57.610208
+export interface GPDraft extends DocType {
+  /** Title: Data */
+  title?: string
+  /** Content: Text Editor */
+  content?: string
+  /** Type: Select */
+  type?: 'Discussion' | 'Comment'
+  /** Project: Link (GP Project) */
+  project?: string
+  /** Team: Link (GP Team) */
+  team?: string
+}

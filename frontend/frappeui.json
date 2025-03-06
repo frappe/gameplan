@@ -15,7 +15,8 @@
         "gp_user_profile",
         "gp_notification",
         "gp_activity",
-        "gp_search_feedback"
+        "gp_search_feedback",
+        "gp_draft"
       ]
     }
   }

@@ -13,7 +13,7 @@
 
     <div class="mb-4 flex items-center px-3">
       <TabButtons :buttons="feedOptions" v-model="feedType" />
-      <div class="ml-auto flex space-x-2">
+      <div class="ml-auto flex space-x-2" v-if="feedType !== 'drafts'">
         <Button
           v-if="$refs.discussionListRef?.discussions.loading"
           :loading="$refs.discussionListRef?.discussions.loading"
@@ -23,7 +23,10 @@
         <Select class="pr-7" :options="orderOptions" v-model="orderBy" />
       </div>
     </div>
-    <KeepAlive>
+    <div v-if="feedType == 'drafts'">
+      <DraftDiscussions />
+    </div>
+    <KeepAlive v-else>
       <DiscussionList
         ref="discussionListRef"
         routeName="ProjectDiscussion"
@@ -42,8 +45,9 @@ import { Breadcrumbs, Select, TabButtons, usePageMeta } from 'frappe-ui'
 import DiscussionList from '@/components/DiscussionList.vue'
 import LastPostReminder from '@/components/LastPostReminder.vue'
 import { useLocalStorage } from '@vueuse/core'
+import DraftDiscussions from '@/components/DraftDiscussions.vue'
 
-const feedType = useLocalStorage<'following' | 'participating' | 'recent'>(
+const feedType = useLocalStorage<'following' | 'participating' | 'recent' | 'drafts'>(
   'homeFeedType',
   'following',
 )
@@ -55,6 +59,10 @@ const filters = computed(() => {
 
 const feedOptions = [
   {
+    label: 'All',
+    value: 'recent',
+  },
+  {
     label: 'Following',
     value: 'following',
   },
@@ -63,8 +71,8 @@ const feedOptions = [
     value: 'participating',
   },
   {
-    label: 'All',
-    value: 'recent',
+    label: 'Drafts',
+    value: 'drafts',
   },
 ]
 

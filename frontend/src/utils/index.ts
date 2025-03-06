@@ -1,4 +1,6 @@
-export { dayjs } from './dayjs'
+import { dayjs as _dayjs } from './dayjs'
+
+export const dayjs = _dayjs
 
 export function getImgDimensions(
   imgSrc: string,
@@ -53,4 +55,14 @@ export function getPlatform(): 'win' | 'mac' | 'linux' | undefined {
   } else if (ua.indexOf('x11') > -1 || ua.indexOf('linux') > -1) {
     return 'linux'
   }
+}
+
+export function relativeTimestamp(timestamp: string): string {
+  if (dayjs().diff(timestamp, 'day') < 3) {
+    return dayjs(timestamp).fromNow()
+  }
+  if (dayjs().diff(timestamp, 'year') < 1) {
+    return dayjs(timestamp).format('D MMM')
+  }
+  return dayjs(timestamp).format('D MMM YYYY')
 }

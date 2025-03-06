@@ -2,7 +2,13 @@
   <PageHeader>
     <Breadcrumbs
       class="h-7"
-      :items="[{ label: 'New Discussion', route: { name: 'NewDiscussion' } }]"
+      :items="[
+        { label: 'Discussions', route: { name: 'Discussions' } },
+        {
+          label: draftDoc?.doc ? `${draftDiscussion.title} (Draft)` : 'New Discussion',
+          route: { name: 'NewDiscussion' },
+        },
+      ]"
     />
   </PageHeader>
   <div class="mx-auto max-w-4xl pt-4 sm:px-5">
@@ -22,10 +28,16 @@
             v-model="selectedSpace"
             :options="spaceOptions"
             placeholder="Select Space"
+            @update:model-value="updateDraftDebounced"
           />
         </div>
         <div class="hidden shrink-0 space-x-2 sm:block">
-          <Button @click="discard">Discard</Button>
+          <div class="inline-flex text-ink-gray-5 text-sm" v-if="savingDraft">Saving...</div>
+          <Button v-if="draftDoc?.doc" @click="deleteDraft"> Delete </Button>
+          <Button v-else @click="discard"> Discard </Button>
+          <Button v-if="!draftDoc?.doc" @click="saveDraft" :loading="savingDraft">
+            Save as draft
+          </Button>
           <Button variant="solid" :loading="publishing" @click="publish"> Publish </Button>
         </div>
       </div>
@@ -33,6 +45,7 @@
       <textarea
         class="mt-1 w-full resize-none border-0 px-0 py-0.5 text-3xl font-bold placeholder-gray-400 focus:ring-0"
         v-model="draftDiscussion.title"
+        @update:model-value="updateDraftDebounced"
         placeholder="Title"
         rows="1"
         wrap="soft"
@@ -50,14 +63,24 @@
         class="mt-1"
         editor-class="rounded-b-lg max-w-[unset] prose-sm h-[calc(100vh-340px)] sm:h-[calc(100vh-250px)] overflow-auto"
         :content="draftDiscussion.content"
-        @change="draftDiscussion.content = $event"
+        @change="
+          (content) => {
+            draftDiscussion.content = content
+            updateDraftDebounced()
+          }
+        "
         placeholder="Write something..."
       >
         <template v-slot:bottom>
           <div class="mt-2 flex flex-col justify-between sm:flex-row sm:items-center">
             <TextEditorFixedMenu class="overflow-x-auto" :buttons="textEditorMenuButtons" />
             <div class="mt-2 shrink-0 space-x-2 text-right sm:hidden">
-              <Button @click="discard">Discard</Button>
+              <div class="inline-flex text-ink-gray-5 text-sm" v-if="savingDraft">Saving...</div>
+              <Button v-if="draftDoc?.doc" @click="deleteDraft"> Delete </Button>
+              <Button v-else @click="discard"> Discard </Button>
+              <Button v-if="!draftDoc?.doc" @click="saveDraft" :loading="savingDraft">
+                Save as draft
+              </Button>
               <Button variant="solid" :loading="publishing" @click="publish"> Publish </Button>
             </div>
           </div>
@@ -67,11 +90,11 @@
   </div>
 </template>
 <script setup lang="ts">
-import { computed, onMounted, ref, useTemplateRef } from 'vue'
+import { onMounted, ref, useTemplateRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Autocomplete, Breadcrumbs, TextEditorFixedMenu } from 'frappe-ui'
+import { Autocomplete, Breadcrumbs, TextEditorFixedMenu, debounce } from 'frappe-ui'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
-import { useDoctype } from 'frappe-ui/src/data-fetching'
+import { useDoc, useDoctype, useNewDoc } from 'frappe-ui/src/data-fetching'
 import { useSessionUser } from '@/data/users'
 import PageHeader from '@/components/PageHeader.vue'
 import TextEditor from '@/components/TextEditor.vue'
@@ -79,7 +102,7 @@ import UserProfileLink from '@/components/UserProfileLink.vue'
 import { focus as vFocus } from '@/directives'
 import { createDialog } from '@/utils/dialogs'
 import { useLocalStorage } from '@vueuse/core'
-import { GPDiscussion } from '@/types/doctypes'
+import { GPDiscussion, GPDraft } from '@/types/doctypes'
 
 const currentRoute = useRoute()
 const sessionUser = useSessionUser()
@@ -90,6 +113,16 @@ const textEditorRef = useTemplateRef('textEditorRef')
 const discussions = useDoctype<GPDiscussion>('GP Discussion')
 const errorMessage = ref<string | null>(null)
 const publishing = ref(false)
+
+const savingDraft = ref(false)
+const draftId = currentRoute.query.draft as string
+let draftDoc: ReturnType<typeof useDoc<GPDraft>> | null = null
+if (draftId) {
+  draftDoc = useDoc<GPDraft>({
+    doctype: 'GP Draft',
+    name: draftId,
+  })
+}
 
 const draftDiscussion = useLocalStorage(
   'newDiscussion',
@@ -104,15 +137,28 @@ const spaceOptions = useGroupedSpaceOptions({ filterFn: (space) => !space.archiv
 
 onMounted(() => {
   if (currentRoute.query?.spaceId) {
-    let spaceOption = spaceOptions.value
-      .map((group) => group.items)
-      .flat()
-      .find((space) => space.value.toString() === currentRoute.query.spaceId)
-    if (spaceOption) {
-      selectedSpace.value = spaceOption
-    }
+    selectSpaceById(currentRoute.query.spaceId as string)
   }
+
+  // if draft is present, load it
+  draftDoc?.onSuccess((doc) => {
+    draftDiscussion.value.title = doc.title || ''
+    draftDiscussion.value.content = doc.content || ''
+    if (doc.project) {
+      selectSpaceById(doc.project)
+    }
+  })
 })
+
+function selectSpaceById(spaceId: string) {
+  let spaceOption = spaceOptions.value
+    .map((group) => group.items)
+    .flat()
+    .find((space) => space.value.toString() === spaceId)
+  if (spaceOption) {
+    selectedSpace.value = spaceOption
+  }
+}
 
 function publish() {
   if (!draftDiscussion.value.title) {
@@ -141,6 +187,9 @@ function publish() {
         },
       })
       resetValues()
+      if (draftDoc?.doc) {
+        draftDoc.delete.submit()
+      }
     })
     .catch(() => {
       publishing.value = false
@@ -152,6 +201,73 @@ function resetValues() {
   draftDiscussion.value.title = ''
   draftDiscussion.value.content = ''
   publishing.value = false
+}
+
+function saveDraft() {
+  if (!draftDiscussion.value.title || !draftDiscussion.value.content) {
+    errorMessage.value = 'Please enter title and content before saving draft.'
+    return
+  }
+  savingDraft.value = true
+  let draft = useNewDoc<GPDraft>('GP Draft', {
+    title: draftDiscussion.value.title,
+    content: draftDiscussion.value.content,
+    project: selectedSpace.value?.value,
+    type: 'Discussion',
+  })
+  draft
+    .submit()
+    .then((doc) => {
+      router.replace({ name: 'NewDiscussion', query: { draft: doc.name } })
+      draftDoc = useDoc<GPDraft>({
+        doctype: 'GP Draft',
+        name: doc.name,
+      })
+    })
+    .finally(() => (savingDraft.value = false))
+}
+
+const updateDraftDebounced = debounce(updateDraft, 500)
+
+function updateDraft() {
+  if (!draftDiscussion.value.title || !draftDiscussion.value.content) {
+    return
+  }
+  if (
+    draftDoc?.doc &&
+    (draftDoc.doc.title !== draftDiscussion.value.title ||
+      draftDoc.doc.content !== draftDiscussion.value.content ||
+      draftDoc.doc.project !== selectedSpace.value?.value)
+  ) {
+    savingDraft.value = true
+    draftDoc.setValue
+      .submit({
+        title: draftDiscussion.value.title,
+        content: draftDiscussion.value.content,
+        project: selectedSpace.value?.value,
+      })
+      .finally(() => (savingDraft.value = false))
+  }
+}
+
+function deleteDraft() {
+  createDialog({
+    title: 'Delete draft',
+    message: 'Are you sure you want to delete this draft?',
+    actions: [
+      {
+        label: 'Delete draft',
+        onClick: ({ close }) => {
+          return draftDoc?.delete.submit().then(() => {
+            resetValues()
+            close()
+            router.back()
+          })
+        },
+        variant: 'solid',
+      },
+    ],
+  })
 }
 
 function discard() {

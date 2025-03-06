@@ -74,7 +74,7 @@
           <div class="ml-auto">
             <Tooltip :text="dayjs(discussion.last_post_at).format('D MMM YYYY [at] h:mm A')">
               <div class="shrink-0 whitespace-nowrap text-sm text-ink-gray-5 text-right">
-                {{ discussionTimestamp(discussion) }}
+                {{ relativeTimestamp(discussion.last_post_at || discussion.creation) }}
               </div>
             </Tooltip>
             <div class="mt-1.5 flex items-center justify-end space-x-3">
@@ -101,6 +101,7 @@ import UserAvatarWithHover from './UserAvatarWithHover.vue'
 import UserInfo from './UserInfo.vue'
 import { useSpace } from '@/data/spaces'
 import { Discussion } from '@/data/discussions'
+import { relativeTimestamp } from '@/utils'
 
 import LucideReply from '~icons/lucide/reply'
 import LucideBarChart2 from '~icons/lucide/bar-chart-2'
@@ -113,17 +114,6 @@ const props = defineProps<{
   total: number
   showSpaceName: boolean
 }>()
-
-function discussionTimestamp(d) {
-  let timestamp = d.last_post_at || d.creation
-  if (dayjs().diff(timestamp, 'day') < 3) {
-    return dayjs(timestamp).fromNow()
-  }
-  if (dayjs().diff(timestamp, 'year') < 1) {
-    return dayjs(timestamp).format('D MMM')
-  }
-  return dayjs(timestamp).format('D MMM YYYY')
-}
 
 function isSpacePrivate(spaceId: string) {
   return useSpace(spaceId).value?.is_private
