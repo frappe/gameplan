@@ -17,13 +17,11 @@
             <span class="hidden md:inline">&nbsp;&middot;&nbsp;</span>
           </UserProfileLink>
           <div>
-            <time
-              class="text-ink-gray-5"
-              :datetime="_poll.creation"
-              :title="$dayjs(_poll.creation)"
-            >
-              {{ $dayjs(_poll.creation).fromNow() }}
-            </time>
+            <Tooltip :text="$dayjs(_poll.creation).format('D MMM YYYY [at] h:mm A')">
+              <time class="text-ink-gray-5" :datetime="_poll.creation">
+                {{ $dayjs(_poll.creation).fromNow() }}
+              </time>
+            </Tooltip>
           </div>
         </div>
       </UserInfo>

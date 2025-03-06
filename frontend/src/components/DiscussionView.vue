@@ -39,13 +39,11 @@
                 {{ $user(discussion.doc.owner).full_name }}
                 <span class="hidden md:inline text-ink-gray-7">&nbsp;&middot;&nbsp;</span>
               </UserProfileLink>
-              <time
-                class="text-base text-ink-gray-5"
-                :datetime="discussion.doc.creation"
-                :title="$dayjs(discussion.doc.creation).toString()"
-              >
-                {{ $dayjs(discussion.doc.creation).fromNow() }}
-              </time>
+              <Tooltip :text="$dayjs(discussion.doc.creation).format('D MMM YYYY [at] h:mm A')">
+                <time class="text-base text-ink-gray-5" :datetime="discussion.doc.creation">
+                  {{ $dayjs(discussion.doc.creation).fromNow() }}
+                </time>
+              </Tooltip>
             </div>
             <div class="ml-auto flex space-x-2">
               <Dropdown
