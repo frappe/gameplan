@@ -35,7 +35,7 @@ class HasActivity:
 
 		frappe.publish_realtime(
 			"new_activity",
-			{"reference_doctype": self.doctype, "reference_name": self.name},
+			{"reference_doctype": self.doctype, "reference_name": str(self.name)},
 			after_commit=True,
 		)
 

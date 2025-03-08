@@ -7,12 +7,12 @@
       >
         <GameplanLogo class="w-8 h-8 rounded" />
         <div class="ml-2 flex flex-col">
-          <div class="text-base font-medium text-ink-gray-9 leading-none">Gameplan</div>
-          <div class="mt-1 hidden text-sm text-ink-gray-7 sm:inline leading-none">
+          <div class="text-base font-medium text-ink-gray-8 leading-none">Gameplan</div>
+          <div class="mt-1 hidden text-sm text-ink-gray-6 sm:inline leading-none">
             {{ user.full_name }}
           </div>
         </div>
-        <LucideChevronDown class="ml-auto hidden h-4 w-4 sm:inline text-ink-gray-8" />
+        <LucideChevronDown class="ml-auto hidden h-4 w-4 sm:inline text-ink-gray-7" />
       </button>
     </template>
   </Dropdown>
@@ -23,11 +23,13 @@ import { Dropdown } from 'frappe-ui'
 import { showSettingsDialog } from '@/components/Settings/SettingsDialog.vue'
 import LucideCreditCard from '~icons/lucide/credit-card'
 import LucideMoon from '~icons/lucide/moon'
+import LucideListRestart from '~icons/lucide/list-restart'
 import GameplanLogo from './GameplanLogo.vue'
-import { getUser } from '@/data/users'
+import { useUser } from '@/data/users'
 import { session } from '@/data/session'
+import { clear as clearIndexDb } from 'idb-keyval'
 
-const user = getUser()
+const user = useUser()
 
 const dropdownItems = computed(() => [
   {
@@ -50,6 +52,11 @@ const dropdownItems = computed(() => [
     onClick: toggleTheme,
   },
   {
+    icon: LucideListRestart,
+    label: 'Clear cache',
+    onClick: clearCache,
+  },
+  {
     icon: () => h(LucideCreditCard),
     label: 'Subscription',
     condition: () => user.isNotGuest && window.frappecloud_host && window.site_name,
@@ -69,6 +76,15 @@ function toggleTheme() {
   let theme = currentTheme === 'dark' ? 'light' : 'dark'
   document.documentElement.setAttribute('data-theme', theme)
   localStorage.setItem('theme', theme)
+}
+
+function clearCache() {
+  localStorage.clear()
+  sessionStorage.clear()
+  clearIndexDb().then(() => {
+    console.log('Cache cleared')
+    window.location.reload()
+  })
 }
 
 onMounted(() => {

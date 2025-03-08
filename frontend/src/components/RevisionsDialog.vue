@@ -8,7 +8,7 @@
           </UserProfileLink>
           <div>
             <UserProfileLink
-              class="font-medium text-ink-gray-9 hover:text-ink-blue-3"
+              class="font-medium text-ink-gray-8 hover:text-ink-blue-4"
               :user="user.name"
             >
               {{ user.full_name }}

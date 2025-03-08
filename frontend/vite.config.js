@@ -10,8 +10,11 @@ import IconsResolver from 'unplugin-icons/resolver'
 import LucideIcons from './lucideIcons'
 
 export default defineConfig({
+  define: {
+    __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: 'false',
+  },
   plugins: [
-    frappeui(),
+    frappeui({ enableDocTypeInterfaces: true }),
     vue(),
     vueJsx(),
     Components({
@@ -43,6 +46,9 @@ export default defineConfig({
       },
     },
   ],
+  server: {
+    allowedHosts: true,
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, 'src'),

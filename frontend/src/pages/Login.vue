@@ -3,16 +3,11 @@
     <div class="mt-32 w-full px-4">
       <GameplanLogo class="mx-auto h-8 w-8" />
       <div class="mt-6 flex items-center justify-center space-x-1.5">
-        <span class="text-3xl font-semibold text-ink-gray-9">Login to</span>
-        <GameplanLogoType class="h-6 text-ink-gray-9" />
+        <span class="text-3xl font-semibold text-ink-gray-8">Login to</span>
+        <GameplanLogoType class="h-6 text-ink-gray-8" />
       </div>
       <div class="mx-auto mt-6 w-full px-4 sm:w-96">
-        <form
-          v-if="showEmailLogin"
-          method="POST"
-          action="/api/method/login"
-          @submit.prevent="submit"
-        >
+        <form v-if="showEmailLogin" @submit.prevent="submit">
           <div>
             <FormControl
               variant="outline"
@@ -40,7 +35,7 @@
             Login
           </Button>
           <button
-            v-if="authProviders.data.length"
+            v-if="authProviders.data?.length"
             class="mt-2 w-full py-2 text-base text-ink-gray-5"
             @click="showEmailLogin = false"
           >
@@ -64,9 +59,10 @@
     </div>
   </div>
 </template>
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue'
-import { FormControl, createResource } from 'frappe-ui'
+import { FormControl } from 'frappe-ui'
+import { useCall } from 'frappe-ui/src/data-fetching'
 import { session } from '@/data/session'
 import GameplanLogo from '@/components/GameplanLogo.vue'
 import GameplanLogoType from '@/components/GameplanLogoType.vue'
@@ -75,19 +71,25 @@ let showEmailLogin = ref(false)
 let email = ref('')
 let password = ref('')
 
-let authProviders = createResource({
-  url: 'gameplan.api.oauth_providers',
-  auto: true,
+interface OAuthProviders {
+  name: string
+  provider_name: string
+  auth_url: string
+  icon: string
+}
+
+let authProviders = useCall<OAuthProviders[]>({
+  url: '/api/v2/method/gameplan.api.oauth_providers',
+  immediate: true,
   onSuccess(data) {
     showEmailLogin.value = data.length === 0
   },
 })
-authProviders.fetch()
 
 function submit() {
   session.login.submit({
-    email: email.value,
-    password: password.value,
+    usr: email,
+    pwd: password,
   })
 }
 </script>

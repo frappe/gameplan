@@ -21,7 +21,7 @@
     </div>
     <div
       v-if="$resources.search.params && $resources.search.data"
-      class="mt-4 text-base font-semibold text-ink-gray-8"
+      class="mt-4 text-base font-semibold text-ink-gray-7"
     >
       About {{ $resources.search.data.total }} results for "{{ $resources.search.params?.query }}"
       ({{ $resources.search.data.duration.toFixed(2) }}
@@ -47,7 +47,7 @@
           </div>
           <div
             v-if="item.content"
-            class="mt-1 text-p-base text-ink-gray-7"
+            class="mt-1 text-p-base text-ink-gray-6"
             v-html="trimContent(item.content)"
           ></div>
         </router-link>

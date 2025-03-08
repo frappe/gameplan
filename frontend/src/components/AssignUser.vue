@@ -26,7 +26,7 @@
             >
               <span
                 class="mr-2 text-base"
-                :class="selected ? 'text-ink-gray-9 font-medium' : 'text-ink-gray-5'"
+                :class="selected ? 'text-ink-gray-8 font-medium' : 'text-ink-gray-5'"
               >
                 {{ user.full_name }}
               </span>

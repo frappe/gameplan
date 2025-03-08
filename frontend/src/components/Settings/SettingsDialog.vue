@@ -16,8 +16,8 @@
               :key="tab.label"
               @click="activeTab = tab"
             >
-              <component :is="tab.icon" class="h-4 w-4 text-ink-gray-7" />
-              <span class="text-base text-ink-gray-8">
+              <component :is="tab.icon" class="h-4 w-4 text-ink-gray-6" />
+              <span class="text-base text-ink-gray-7">
                 {{ tab.label }}
               </span>
             </button>
@@ -34,7 +34,6 @@
 import { markRaw, ref } from 'vue'
 import { Dialog } from 'frappe-ui'
 import Members from './Members.vue'
-import ArchivedTeams from './ArchivedTeams.vue'
 import InvitePeople from './InvitePeople.vue'
 import SettingsTabDialog from './SettingsTab.vue'
 import LucideUsers from '~icons/lucide/users'
@@ -52,11 +51,6 @@ let tabs = [
     label: 'Invites',
     icon: LucideUsersPlus,
     component: markRaw(InvitePeople),
-  },
-  {
-    label: 'Archive',
-    icon: LucideFolderMinus,
-    component: markRaw(ArchivedTeams),
   },
   {
     label: 'Settings',
