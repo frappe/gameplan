@@ -43,7 +43,7 @@ def on_login(login_manager):
 
 
 def get_default_route():
-	if not frappe.db.get_all("GP Team", limit=1):
+	if not frappe.db.get_all("GP Project", limit=1):
 		return "/onboarding"
 	else:
 		return "/home"

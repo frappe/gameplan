@@ -1,7 +1,7 @@
 <template>
   <div class="py-6">
     <div class="mb-4.5 flex items-center justify-between">
-      <h2 class="text-xl font-semibold text-ink-gray-9">Tasks</h2>
+      <h2 class="text-xl font-semibold text-ink-gray-8">Tasks</h2>
       <div class="flex items-stretch space-x-2">
         <Button variant="solid" @click="showNewTaskDialog">
           <template #prefix>
@@ -18,7 +18,7 @@
 <script setup>
 import { ref } from 'vue'
 import { Select, getCachedListResource } from 'frappe-ui'
-import { getUser } from '@/data/users'
+import { useUser } from '@/data/users'
 import { computed } from 'vue'
 
 const props = defineProps({
@@ -39,7 +39,7 @@ function showNewTaskDialog() {
   newTaskDialog.value.show({
     defaults: {
       project: props.project.name,
-      assigned_to: getUser('sessionUser').name,
+      assigned_to: useUser('sessionUser').name,
     },
     onSuccess: () => {
       let tasks = getCachedListResource(['Tasks', listOptions.value])

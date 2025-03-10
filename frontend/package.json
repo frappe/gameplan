@@ -15,13 +15,14 @@
     "@vueuse/core": "^10.1.2",
     "dayjs": "^1.10.7",
     "feather-icons": "^4.28.0",
-    "frappe-ui": "^0.1.93",
+    "frappe-ui": "^0.1.114",
     "fuzzysort": "^2.0.4",
     "gemoji": "^7.1.0",
     "htmldiff-js": "^1.0.5",
+    "reka-ui": "^2.0.2",
     "socket.io-client": "^4.7.2",
-    "vue": "3.4.12",
-    "vue-router": "^4.2.2"
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.0"
   },
   "devDependencies": {
     "@tailwindcss/container-queries": "^0.1.1",
@@ -29,7 +30,7 @@
     "@vitejs/plugin-vue-jsx": "^3.0.1",
     "autoprefixer": "^10.4.2",
     "cypress": "10.11.0",
-    "lucide-static": "^0.257.0",
+    "lucide-static": "^0.469.0",
     "postcss": "^8.4.5",
     "prettier": "^3.3.3",
     "prettier-plugin-tailwindcss": "^0.6.8",

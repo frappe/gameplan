@@ -14,6 +14,8 @@
   "content",
   "reactions",
   "last_post_at",
+  "last_post_type",
+  "last_post",
   "last_post_by",
   "closed_at",
   "closed_by",
@@ -115,11 +117,23 @@
    "fieldtype": "Link",
    "label": "Pinned By",
    "options": "User"
+  },
+  {
+   "fieldname": "last_post_type",
+   "fieldtype": "Select",
+   "label": "Last Post Type",
+   "options": "\nGP Comment\nGP Poll"
+  },
+  {
+   "fieldname": "last_post",
+   "fieldtype": "Dynamic Link",
+   "label": "Last Post",
+   "options": "last_post_type"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-02-06 12:11:11.919002",
+ "modified": "2025-01-22 16:06:16.029266",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "GP Discussion",

@@ -16,7 +16,7 @@
         <component
           :is="tab.icon"
           class="h-6 w-6"
-          :class="[tab.isActive ? 'text-ink-gray-9' : 'text-ink-gray-5']"
+          :class="[tab.isActive ? 'text-ink-gray-8' : 'text-ink-gray-5']"
         />
       </button>
     </div>
@@ -50,18 +50,16 @@ export default {
           isActive: /MyTasks|Task/g.test(this.$route.name),
         },
         {
-          name: 'Teams',
+          name: 'Spaces',
           icon: LucideLayoutGrid,
-          route: { name: 'Teams' },
+          route: { name: 'Spaces' },
           isActive: [
-            'Teams',
-            'TeamOverview',
-            'ProjectOverview',
-            'ProjectDiscussions',
-            'ProjectDiscussion',
-            'ProjectDiscussionNew',
-            'ProjectTasks',
-            'ProjectTaskDetail',
+            'Spaces',
+            'Space',
+            'SpaceDiscussions',
+            'SpaceDiscussion',
+            'SpaceTasks',
+            'SpaceTask',
           ].includes(this.$route.name),
         },
         {

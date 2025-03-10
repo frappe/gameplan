@@ -4,7 +4,7 @@
 # import frappe
 from frappe.model.document import Document
 
-from gameplan.search import GameplanSearch
+from gameplan.search2 import GameplanSearch, GameplanSearchIndexMissingError
 from gameplan.utils import url_safe_slug
 
 
@@ -17,12 +17,18 @@ class GPPage(Document):
 
 	def update_search_index(self):
 		if self.has_value_changed("title") or self.has_value_changed("content"):
-			search = GameplanSearch()
-			search.index_doc(self)
+			try:
+				search = GameplanSearch()
+				search.index_doc(self)
+			except GameplanSearchIndexMissingError:
+				pass
 
 	def on_trash(self):
-		search = GameplanSearch()
-		search.remove_doc(self)
+		try:
+			search = GameplanSearch()
+			search.remove_doc(self)
+		except GameplanSearchIndexMissingError:
+			pass
 
 
 def has_permission(doc, user, ptype):
