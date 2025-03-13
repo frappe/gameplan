@@ -75,6 +75,7 @@ let drafts = useList<Draft>({
     'project',
     'project.title as project_title',
     'creation',
+    'modified',
     'owner',
   ],
 })
