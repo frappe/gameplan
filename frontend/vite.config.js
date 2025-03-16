@@ -4,47 +4,44 @@ import vueJsx from '@vitejs/plugin-vue-jsx'
 import path from 'path'
 import { visualizer } from 'rollup-plugin-visualizer'
 import frappeui from 'frappe-ui/vite'
-import Icons from 'unplugin-icons/vite'
-import Components from 'unplugin-vue-components/vite'
-import IconsResolver from 'unplugin-icons/resolver'
-import LucideIcons from './lucideIcons'
 
 export default defineConfig({
   define: {
     __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: 'false',
   },
   plugins: [
-    frappeui({ enableDocTypeInterfaces: true }),
+    frappeui({
+      frappeProxy: true,
+      lucideIcons: true,
+      jinjaBootData: true,
+      frappeTypes: {
+        input: {
+          gameplan: [
+            'gp_project',
+            'gp_member',
+            'gp_team',
+            'gp_comment',
+            'gp_discussion',
+            'gp_page',
+            'gp_task',
+            'gp_poll',
+            'gp_guest_access',
+            'gp_invitation',
+            'gp_user_profile',
+            'gp_notification',
+            'gp_activity',
+            'gp_search_feedback',
+            'gp_draft',
+          ],
+        },
+      },
+      buildConfig: {
+        indexHtmlPath: '../gameplan/www/g.html',
+      },
+    }),
     vue(),
     vueJsx(),
-    Components({
-      resolvers: [IconsResolver({ prefix: false, enabledCollections: ['lucide'] })],
-    }),
-    Icons({
-      customCollections: {
-        lucide: LucideIcons,
-      },
-    }),
     visualizer({ emitFile: true }),
-    {
-      name: 'transform-index.html',
-      transformIndexHtml(html, context) {
-        if (!context.server) {
-          return html.replace(
-            /<\/body>/,
-            `
-            <script>
-                {% for key in boot %}
-                window["{{ key }}"] = {{ boot[key] | tojson }};
-                {% endfor %}
-            </script>
-            </body>
-            `,
-          )
-        }
-        return html
-      },
-    },
   ],
   server: {
     allowedHosts: true,
@@ -57,13 +54,5 @@ export default defineConfig({
   },
   optimizeDeps: {
     include: ['feather-icons', 'showdown', 'tailwind.config.js'],
-  },
-  build: {
-    outDir: '../gameplan/public/frontend',
-    emptyOutDir: true,
-    commonjsOptions: {
-      include: [/tailwind.config.js/, /node_modules/],
-    },
-    sourcemap: true,
   },
 })
