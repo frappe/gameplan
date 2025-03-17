@@ -1,15 +1,6 @@
 <template>
   <Dialog
-    :options="{
-      title: 'New Task',
-      actions: [
-        {
-          label: 'Create',
-          variant: 'solid',
-          onClick: onCreateClick,
-        },
-      ],
-    }"
+    :options="{ title: 'New Task' }"
     :disableOutsideClickToClose="disableOutsideClickToClose"
     v-model="showDialog"
   >
@@ -21,8 +12,14 @@
           autocomplete="off"
           required
           ref="titleInput"
+          @keydown.enter="onCreateClick"
         />
-        <FormControl label="Description" type="textarea" v-model="newTask.doc.description" />
+        <FormControl
+          label="Description"
+          type="textarea"
+          v-model="newTask.doc.description"
+          @keydown.enter="onCreateClick"
+        />
         <div class="grid grid-cols-2 gap-2">
           <Autocomplete
             placeholder="Assign a user"
@@ -63,6 +60,14 @@
         <ErrorMessage class="mt-2" :message="newTask.error" />
       </div>
     </template>
+    <template #actions>
+      <Button class="w-full relative" variant="solid" @click="onCreateClick">
+        Create
+        <div class="absolute right-0 top-0 h-7 pr-2 flex items-center justify-center">
+          <KeyboardShortcut ctrl> Enter </KeyboardShortcut>
+        </div>
+      </Button>
+    </template>
   </Dialog>
 </template>
 <script setup lang="ts">
@@ -74,6 +79,7 @@ import { GPTask } from '@/types/doctypes'
 import { showDialog, newTask, _onSuccess } from './state'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { useSpace } from '@/data/spaces'
+import KeyboardShortcut from '../KeyboardShortcut.vue'
 
 const titleInput = useTemplateRef('titleInput')
 let spaceOptions = useGroupedSpaceOptions({ filterFn: (space) => !space.archived_at })
@@ -101,7 +107,11 @@ const assignableUsers = computed(() => {
   }))
 })
 
-function onCreateClick({ close }) {
+function onCreateClick(e: KeyboardEvent) {
+  if (e instanceof KeyboardEvent && !(e.ctrlKey || e.metaKey)) {
+    return
+  }
+
   if (!newTask.value) return
   if (!newTask.value.doc.title) {
     newTask.value.error = new Error('Task title is required')
@@ -109,14 +119,12 @@ function onCreateClick({ close }) {
   }
   newTask.value.doc.assigned_to = newTask.value.doc.assigned_to?.value
 
-  if (newTask.value.doc.project) {
+  if (newTask.value.doc.project?.value) {
     newTask.value.doc.project = newTask.value.doc.project?.value
-  } else {
-    newTask.value.doc.project = ''
   }
 
   return newTask.value.submit().then((doc) => {
-    close()
+    showDialog.value = false
     _onSuccess.value(doc)
   })
 }

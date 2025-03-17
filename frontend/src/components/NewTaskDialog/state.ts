@@ -9,7 +9,6 @@ export const _onSuccess = ref<(doc: GPTask) => void>(() => {})
 export function showNewTaskDialog({ defaults = {}, onSuccess = (doc: GPTask) => {} } = {}) {
   newTask.value = newDraftTask()
   Object.assign(newTask.value.doc, defaults || {})
-  console.log('newTask.value.doc', newTask.value.doc)
   showDialog.value = true
   _onSuccess.value = onSuccess
 }
