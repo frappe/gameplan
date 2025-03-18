@@ -24,7 +24,11 @@
         />
       </div>
       <div class="pb-6 mt-3 sm:mt-4">
-        <TaskList :listOptions="{ filters }" :groupByStatus="true" ref="taskList" />
+        <TaskList
+          :listOptions="{ filters, pageLength: 999999 }"
+          :groupByStatus="true"
+          ref="taskList"
+        />
       </div>
     </div>
   </div>
