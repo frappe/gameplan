@@ -116,6 +116,16 @@ const publishing = ref(false)
 
 const savingDraft = ref(false)
 const draftId = currentRoute.query.draft as string
+
+const draftDiscussion = useLocalStorage(
+  draftId ? `draft_discussion_${draftId}` : 'new_discussion',
+  {
+    title: '',
+    content: '',
+  },
+  { deep: true },
+)
+
 let draftDoc: ReturnType<typeof useDoc<GPDraft>> | null = null
 if (draftId) {
   draftDoc = useDoc<GPDraft>({
@@ -123,15 +133,6 @@ if (draftId) {
     name: draftId,
   })
 }
-
-const draftDiscussion = useLocalStorage(
-  'newDiscussion',
-  {
-    title: '',
-    content: '',
-  },
-  { deep: true },
-)
 
 const spaceOptions = useGroupedSpaceOptions({ filterFn: (space) => !space.archived_at })
 
@@ -141,13 +142,20 @@ onMounted(() => {
   }
 
   // if draft is present, load it
-  draftDoc?.onSuccess((doc) => {
-    draftDiscussion.value.title = doc.title || ''
-    draftDiscussion.value.content = doc.content || ''
-    if (doc.project) {
-      selectSpaceById(doc.project)
-    }
-  })
+  if (draftDoc) {
+    draftDoc.onSuccess((doc) => {
+      draftDiscussion.value.title = doc.title || ''
+      draftDiscussion.value.content = doc.content || ''
+      if (doc.project) {
+        selectSpaceById(doc.project)
+      }
+    })
+  } else {
+    // Clear localStorage values when starting a new discussion
+    draftDiscussion.value.title = ''
+    draftDiscussion.value.content = ''
+    selectedSpace.value = null
+  }
 })
 
 function selectSpaceById(spaceId: string) {
@@ -218,6 +226,16 @@ function saveDraft() {
   draft
     .submit()
     .then((doc) => {
+      // Save current content to the new draft's localStorage key
+      const newStorageKey = `draft_discussion_${doc.name}`
+      localStorage.setItem(
+        newStorageKey,
+        JSON.stringify({
+          title: draftDiscussion.value.title,
+          content: draftDiscussion.value.content,
+        }),
+      )
+
       router.replace({ name: 'NewDiscussion', query: { draft: doc.name } })
       draftDoc = useDoc<GPDraft>({
         doctype: 'GP Draft',

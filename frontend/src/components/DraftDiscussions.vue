@@ -78,6 +78,7 @@ let drafts = useList<Draft>({
     'modified',
     'owner',
   ],
+  orderBy: 'creation desc',
 })
 
 function contentPreview(content?: string) {
