@@ -24,6 +24,7 @@ class FullTextSearch:
 		self.max_results = max_results
 		self.matched_words = defaultdict(set)
 		self.matched_word_variations = defaultdict(set)  # Track variations per document
+		self.matched_positions = defaultdict(dict)  # Track positions of matched words
 		self.stop_words = {
 			"a",
 			"an",
@@ -143,12 +144,24 @@ class FullTextSearch:
 		self.title_words = getattr(self, "title_words", {})
 		self.title_words[doc_id] = title_words
 
-		# Process word frequencies
+		# Process word frequencies and positions
 		word_freq = defaultdict(lambda: {"title": 0, "content": 0})
+		word_positions = defaultdict(lambda: {"title": [], "content": []})
 
-		# Update trigrams and word frequencies
-		for word, section in [(w, "title") for w in title_words] + [(w, "content") for w in content_words]:
-			word_freq[word][section] += 1
+		# Update trigrams, word frequencies and positions
+		title_pos = 0
+		for word in title_words:
+			word_freq[word]["title"] += 1
+			word_positions[word]["title"].append(title_pos)
+			title_pos += 1
+			for trigram in self._generate_trigrams(word):
+				self.trigram_index[trigram].add(word)
+
+		content_pos = 0
+		for word in content_words:
+			word_freq[word]["content"] += 1
+			word_positions[word]["content"].append(content_pos)
+			content_pos += 1
 			for trigram in self._generate_trigrams(word):
 				self.trigram_index[trigram].add(word)
 
@@ -156,7 +169,7 @@ class FullTextSearch:
 		total_words = len(title_words) * 3 + len(content_words)
 		self.doc_lengths[doc_id] = total_words
 
-		return word_freq, total_words
+		return word_freq, word_positions, total_words
 
 	def _save_index_to_redis(self):
 		"""Serialize and save the index to Redis with consistent key naming"""
@@ -169,6 +182,7 @@ class FullTextSearch:
 			"doc_timestamps": self.doc_timestamps,
 			"title_words": {k: list(v) for k, v in self.title_words.items()},
 			"doc_contents": self.doc_contents,
+			"word_positions": json.dumps(self.word_positions),
 		}
 
 		for key, value in data.items():
@@ -182,11 +196,12 @@ class FullTextSearch:
 		self.inverted_index = defaultdict(list)
 		self.trigram_index = defaultdict(set)
 		self.doc_lengths = {}
+		self.word_positions = defaultdict(lambda: defaultdict(dict))
 		total_length = 0
 
 		for i, doc in enumerate(self.documents):
 			doc_id = doc["id"]
-			word_freq, doc_length = self._process_document_content(
+			word_freq, positions, doc_length = self._process_document_content(
 				doc_id, doc["title"], doc["content"], doc["timestamp"]
 			)
 			total_length += doc_length
@@ -194,6 +209,7 @@ class FullTextSearch:
 			for word, freqs in word_freq.items():
 				total_freq = freqs["title"] * 3 + freqs["content"]
 				self.inverted_index[word].append((doc_id, total_freq))
+				self.word_positions[word][doc_id] = positions[word]
 
 			if not hasattr(frappe.local, "request"):
 				update_progress_bar("Indexing documents", i + 1, total_docs, absolute=True)
@@ -226,6 +242,7 @@ class FullTextSearch:
 				"doc_timestamps",
 				"title_words",
 				"doc_contents",
+				"word_positions",
 			]
 		}
 
@@ -246,6 +263,8 @@ class FullTextSearch:
 			self.title_words = {k: set(v) for k, v in data["title_words"].items()}
 		if data["doc_contents"]:
 			self.doc_contents = data["doc_contents"]
+		if data["word_positions"]:
+			self.word_positions = defaultdict(lambda: defaultdict(dict), json.loads(data["word_positions"]))
 
 		self._index_loaded = True
 
@@ -276,6 +295,55 @@ class FullTextSearch:
 		self._debug(f"Fuzzy matches for '{query_word}': {results[:3]}")
 		return results
 
+	def _calculate_proximity_score(self, doc_id, query_words):
+		"""Calculate proximity score based on the closeness of query terms in the document."""
+		if len(query_words) < 2:
+			return 1.0  # No proximity boost for single word queries
+
+		# Filter to words that actually appear in the document
+		filtered_words = [
+			w for w in query_words if w in self.word_positions and doc_id in self.word_positions[w]
+		]
+		if len(filtered_words) < 2:
+			return 1.0  # Need at least 2 words to calculate proximity
+
+		# Get all positions for each word
+		all_positions = []
+		for word in filtered_words:
+			word_pos = []
+			if "title" in self.word_positions[word][doc_id]:
+				# Title positions get a bonus by multiplying by 0.5
+				word_pos.extend([p * 0.5 for p in self.word_positions[word][doc_id]["title"]])
+			if "content" in self.word_positions[word][doc_id]:
+				word_pos.extend(self.word_positions[word][doc_id]["content"])
+			all_positions.append(word_pos)
+
+		# Calculate minimum span covering all query terms
+		min_span = float("inf")
+
+		# Only calculate spans if we have positions for all words
+		if all(pos for pos in all_positions):
+			# For each position of the first word
+			for pos1 in all_positions[0]:
+				# Find closest positions of other words
+				max_distance = 0
+				for positions in all_positions[1:]:
+					# Find the closest position
+					closest = min(positions, key=lambda x: abs(x - pos1))
+					distance = abs(closest - pos1)
+					max_distance = max(max_distance, distance)
+
+				# Update minimum span
+				min_span = min(min_span, max_distance)
+
+		# Convert span to score (smaller spans get higher scores)
+		if min_span == float("inf"):
+			return 1.0
+
+		# Logarithmic scaling to prevent excessive influence
+		proximity_score = 1.0 + 0.25 * math.log(1.0 + 10.0 / max(1, min_span))
+		return proximity_score
+
 	def _bm25_score(self, query_words, title_only=False):
 		"""Calculate BM25 scores for documents given the query words."""
 		# Filter out stop words but keep track of original words
@@ -289,6 +357,7 @@ class FullTextSearch:
 		doc_scores = defaultdict(float)
 		self.matched_words.clear()  # Reset matched words for new search
 		self.matched_word_variations.clear()  # Reset variations
+		self.matched_positions.clear()  # Reset positions
 		num_docs = self.document_count
 		k1, b = 1.2, 0.75  # BM25 parameters
 		self.score_components = defaultdict(lambda: {"bm25": 0})
@@ -326,9 +395,38 @@ class FullTextSearch:
 				doc_scores[doc_id] += score
 				self.matched_words[doc_id].add(filtered)
 				self.matched_word_variations[doc_id].update([filtered, original])
+
+				# Store positions for proximity scoring
+				if doc_id in self.word_positions.get(filtered, {}):
+					self.matched_positions[doc_id][filtered] = self.word_positions[filtered][doc_id]
+
 				self.score_components[doc_id]["bm25"] += score
 
 		return doc_scores
+
+	def _boost_proximity(self, doc_scores, query_words):
+		"""Apply boost based on proximity of query terms in documents."""
+		self._debug("\nApplying proximity boost:")
+		# Filter out stop words but keep track of original words
+		filtered_words = [w.lower() for w in query_words if w.lower() not in self.stop_words]
+
+		if not filtered_words:
+			filtered_words = [w.lower() for w in query_words]
+
+		if len(filtered_words) < 2:
+			self._debug("Skipping proximity boost for single-word query")
+			return doc_scores
+
+		boosted_scores = {}
+		for doc_id, score in doc_scores.items():
+			proximity_score = self._calculate_proximity_score(doc_id, filtered_words)
+			boosted_scores[doc_id] = score * proximity_score
+			self.score_components[doc_id]["proximity"] = proximity_score
+			self._debug(
+				f"Doc {doc_id}: Proximity boost {proximity_score:.3f}x ({score:.4f} ->"
+				" {boosted_scores[doc_id]:.4f})"
+			)
+		return boosted_scores
 
 	def _boost_recency(self, doc_scores, alpha=0.001):
 		"""Boost scores based on recency (documents with newer timestamps get a slight boost)."""
@@ -460,10 +558,25 @@ class FullTextSearch:
 			if corrected != word:
 				self._debug(f"Corrected '{word}' to '{corrected}'")
 
+		# Calculate base BM25 scores
 		doc_scores = self._bm25_score(corrected_query_words, title_only)
-		self._debug("\nInitial BM25 top scores:")
+		self._debug("\nInitial BM25 scores:")
 		for doc_id, score in sorted(doc_scores.items(), key=lambda x: x[1], reverse=True)[:3]:
+			title = self.doc_contents[doc_id]["title"]
+			content = self.doc_contents[doc_id]["content"]
 			self._debug(f"Doc {doc_id}: {score:.4f}")
+			self._debug(f"  Title: {title[:50]}")
+			self._debug(f"  Content: {content[:100]}")
+
+		# Apply proximity boost as a separate step
+		doc_scores = self._boost_proximity(doc_scores, corrected_query_words)
+		self._debug("\nScores after proximity boost:")
+		for doc_id, score in sorted(doc_scores.items(), key=lambda x: x[1], reverse=True)[:3]:
+			title = self.doc_contents[doc_id]["title"]
+			content = self.doc_contents[doc_id]["content"]
+			self._debug(f"Doc {doc_id}: {score:.4f}")
+			self._debug(f"  Title: {title[:50]}")
+			self._debug(f"  Content: {content[:100]}")
 
 		doc_scores = self._boost_title_matches(query_words, doc_scores)
 		final_scores = self._boost_recency(doc_scores)
@@ -481,6 +594,7 @@ class FullTextSearch:
 					f"Doc {doc_id}: {doc_content['title'][:50]}\n"
 					f"  Final score: {score:.4f}\n"
 					f"  BM25 score: {components['bm25']:.4f}\n"
+					f"  Proximity boost: {components.get('proximity', 1.0):.2f}x\n"
 					f"  Title boost: {components.get('title_boost', 1.0):.2f}x\n"
 					f"  Recency boost: {components.get('recency_boost', 1.0):.3f}x\n"
 					f"  Matched words: {sorted(self.matched_words[doc_id])}\n"
