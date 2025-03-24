@@ -126,12 +126,13 @@ const draftDiscussion = useLocalStorage(
   { deep: true },
 )
 
-let draftDoc: ReturnType<typeof useDoc<GPDraft>> | null = null
+interface DraftMethods {
+  publish: () => string
+}
+
+let draftDoc: ReturnType<typeof useDoc<GPDraft, DraftMethods>> | null = null
 if (draftId) {
-  draftDoc = useDoc<GPDraft>({
-    doctype: 'GP Draft',
-    name: draftId,
-  })
+  fetchDraftDoc(draftId)
 }
 
 const spaceOptions = useGroupedSpaceOptions({ filterFn: (space) => !space.archived_at })
@@ -158,6 +159,16 @@ onMounted(() => {
   }
 })
 
+function fetchDraftDoc(draftId: string) {
+  draftDoc = useDoc<GPDraft, DraftMethods>({
+    doctype: 'GP Draft',
+    name: draftId,
+    methods: {
+      publish: 'publish',
+    },
+  })
+}
+
 function selectSpaceById(spaceId: string) {
   let spaceOption = spaceOptions.value
     .map((group) => group.items)
@@ -180,6 +191,19 @@ function publish() {
   errorMessage.value = null
   publishing.value = true
 
+  if (draftDoc?.doc) {
+    return draftDoc.publish.submit().then((discussionId) => {
+      router.replace({
+        name: 'Discussion',
+        params: {
+          spaceId: selectedSpace.value?.value || selectedSpace.value,
+          postId: discussionId,
+        },
+      })
+      resetValues()
+    })
+  }
+
   return discussions.insert
     .submit({
       project: selectedSpace.value?.value,
@@ -195,9 +219,6 @@ function publish() {
         },
       })
       resetValues()
-      if (draftDoc?.doc) {
-        draftDoc.delete.submit()
-      }
     })
     .catch(() => {
       publishing.value = false
@@ -237,9 +258,14 @@ function saveDraft() {
       )
 
       router.replace({ name: 'NewDiscussion', query: { draft: doc.name } })
-      draftDoc = useDoc<GPDraft>({
-        doctype: 'GP Draft',
-        name: doc.name,
+      fetchDraftDoc(doc.name)
+
+      draftDoc?.onSuccess((doc) => {
+        draftDiscussion.value.title = doc.title || ''
+        draftDiscussion.value.content = doc.content || ''
+        if (doc.project) {
+          selectSpaceById(doc.project)
+        }
       })
     })
     .finally(() => (savingDraft.value = false))
@@ -263,6 +289,9 @@ function updateDraft() {
         title: draftDiscussion.value.title,
         content: draftDiscussion.value.content,
         project: selectedSpace.value?.value,
+      })
+      .then((doc) => {
+        draftDiscussion.value.content = doc.content
       })
       .finally(() => (savingDraft.value = false))
   }
