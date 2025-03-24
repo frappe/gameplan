@@ -14,13 +14,13 @@
   <div class="mx-auto max-w-4xl pt-4 sm:px-5">
     <div class="rounded-lg border p-4">
       <div class="mb-3 flex items-center space-x-2">
-        <UserProfileLink :user="sessionUser.name">
-          <UserAvatar size="lg" :user="sessionUser.name" />
+        <UserProfileLink :user="author.name">
+          <UserAvatar size="lg" :user="author.name" />
         </UserProfileLink>
         <div class="flex w-full items-center">
           <span class="mr-2 text-base text-gray-900">
-            <UserProfileLink class="font-medium hover:text-blue-600" :user="sessionUser.name">
-              {{ sessionUser.full_name }}
+            <UserProfileLink class="font-medium hover:text-blue-600" :user="author.name">
+              {{ author.full_name }}
             </UserProfileLink>
             in
           </span>
@@ -29,19 +29,37 @@
             :options="spaceOptions"
             placeholder="Select Space"
             @update:model-value="updateDraftDebounced"
+            :class="[author.name !== sessionUser.name ? 'pointer-events-none' : '']"
           />
         </div>
         <div class="hidden shrink-0 space-x-2 sm:block">
           <div class="inline-flex text-ink-gray-5 text-sm" v-if="savingDraft">Saving...</div>
-          <Button v-if="draftDoc?.doc" @click="deleteDraft"> Delete </Button>
+          <Button
+            v-if="draftDoc?.doc"
+            @click="deleteDraft"
+            :disabled="sessionUser.name != author.name"
+          >
+            Delete
+          </Button>
           <Button v-else @click="discard"> Discard </Button>
           <Button v-if="!draftDoc?.doc" @click="saveDraft" :loading="savingDraft">
             Save as draft
           </Button>
-          <Button variant="solid" :loading="publishing" @click="publish"> Publish </Button>
+          <Tooltip text="You cannot publish this draft" :disabled="sessionUser.name == author.name">
+            <Button
+              variant="solid"
+              :loading="publishing"
+              @click="publish"
+              :disabled="sessionUser.name != author.name"
+            >
+              Publish
+            </Button>
+          </Tooltip>
         </div>
       </div>
-      <ErrorMessage :message="errorMessage || discussions.insert.error" />
+      <ErrorMessage
+        :message="errorMessage || discussions.insert.error || draftDoc?.publish.error"
+      />
       <textarea
         class="mt-1 w-full resize-none border-0 px-0 py-0.5 text-3xl font-bold placeholder-gray-400 focus:ring-0"
         v-model="draftDiscussion.title"
@@ -52,6 +70,7 @@
         maxlength="140"
         v-focus
         @keydown.enter.prevent="textEditorRef.editor.commands.focus()"
+        :disabled="sessionUser.name != author.name"
         @input="
           (e) => {
             e.target.style.height = e.target.scrollHeight + 'px'
@@ -69,11 +88,16 @@
             updateDraftDebounced()
           }
         "
+        :editable="author.name === sessionUser.name"
         placeholder="Write something..."
       >
         <template v-slot:bottom>
           <div class="mt-2 flex flex-col justify-between sm:flex-row sm:items-center">
-            <TextEditorFixedMenu class="overflow-x-auto" :buttons="textEditorMenuButtons" />
+            <TextEditorFixedMenu
+              class="overflow-x-auto"
+              :buttons="textEditorMenuButtons"
+              v-if="author.name === sessionUser.name"
+            />
             <div class="mt-2 shrink-0 space-x-2 text-right sm:hidden">
               <div class="inline-flex text-ink-gray-5 text-sm" v-if="savingDraft">Saving...</div>
               <Button v-if="draftDoc?.doc" @click="deleteDraft"> Delete </Button>
@@ -90,12 +114,12 @@
   </div>
 </template>
 <script setup lang="ts">
-import { onMounted, ref, useTemplateRef } from 'vue'
+import { computed, onMounted, ref, useTemplateRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Autocomplete, Breadcrumbs, TextEditorFixedMenu, debounce } from 'frappe-ui'
+import { Autocomplete, Breadcrumbs, TextEditorFixedMenu, Tooltip, debounce } from 'frappe-ui'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { useDoc, useDoctype, useNewDoc } from 'frappe-ui/src/data-fetching'
-import { useSessionUser } from '@/data/users'
+import { useSessionUser, useUser } from '@/data/users'
 import PageHeader from '@/components/PageHeader.vue'
 import TextEditor from '@/components/TextEditor.vue'
 import UserProfileLink from '@/components/UserProfileLink.vue'
@@ -126,12 +150,13 @@ const draftDiscussion = useLocalStorage(
   { deep: true },
 )
 
-let draftDoc: ReturnType<typeof useDoc<GPDraft>> | null = null
+interface DraftMethods {
+  publish: () => string
+}
+
+let draftDoc: ReturnType<typeof useDoc<GPDraft, DraftMethods>> | null = null
 if (draftId) {
-  draftDoc = useDoc<GPDraft>({
-    doctype: 'GP Draft',
-    name: draftId,
-  })
+  fetchDraftDoc(draftId)
 }
 
 const spaceOptions = useGroupedSpaceOptions({ filterFn: (space) => !space.archived_at })
@@ -158,6 +183,16 @@ onMounted(() => {
   }
 })
 
+function fetchDraftDoc(draftId: string) {
+  draftDoc = useDoc<GPDraft, DraftMethods>({
+    doctype: 'GP Draft',
+    name: draftId,
+    methods: {
+      publish: 'publish',
+    },
+  })
+}
+
 function selectSpaceById(spaceId: string) {
   let spaceOption = spaceOptions.value
     .map((group) => group.items)
@@ -180,6 +215,19 @@ function publish() {
   errorMessage.value = null
   publishing.value = true
 
+  if (draftDoc?.doc) {
+    return draftDoc.publish.submit().then((discussionId) => {
+      router.replace({
+        name: 'Discussion',
+        params: {
+          spaceId: selectedSpace.value?.value || selectedSpace.value,
+          postId: discussionId,
+        },
+      })
+      resetValues()
+    })
+  }
+
   return discussions.insert
     .submit({
       project: selectedSpace.value?.value,
@@ -195,9 +243,6 @@ function publish() {
         },
       })
       resetValues()
-      if (draftDoc?.doc) {
-        draftDoc.delete.submit()
-      }
     })
     .catch(() => {
       publishing.value = false
@@ -237,9 +282,14 @@ function saveDraft() {
       )
 
       router.replace({ name: 'NewDiscussion', query: { draft: doc.name } })
-      draftDoc = useDoc<GPDraft>({
-        doctype: 'GP Draft',
-        name: doc.name,
+      fetchDraftDoc(doc.name)
+
+      draftDoc?.onSuccess((doc) => {
+        draftDiscussion.value.title = doc.title || ''
+        draftDiscussion.value.content = doc.content || ''
+        if (doc.project) {
+          selectSpaceById(doc.project)
+        }
       })
     })
     .finally(() => (savingDraft.value = false))
@@ -263,6 +313,9 @@ function updateDraft() {
         title: draftDiscussion.value.title,
         content: draftDiscussion.value.content,
         project: selectedSpace.value?.value,
+      })
+      .then((doc) => {
+        draftDiscussion.value.content = doc.content
       })
       .finally(() => (savingDraft.value = false))
   }
@@ -309,6 +362,10 @@ function discard() {
     router.back()
   }
 }
+
+const author = computed(() => {
+  return useUser(draftDoc ? draftDoc.doc?.owner : sessionUser.name)
+})
 
 const textEditorMenuButtons = [
   'Paragraph',

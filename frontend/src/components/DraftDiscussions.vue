@@ -11,31 +11,33 @@
           :to="{ name: 'NewDiscussion', query: { draft: draft.name } }"
         >
           <UserAvatarWithHover :user="draft.owner" size="2xl" />
-          <div class="ml-4">
-            <div
-              class="overflow-hidden text-ellipsis whitespace-nowrap leading-none text-ink-gray-8"
-            >
-              <span class="overflow-hidden text-ellipsis whitespace-nowrap text-base font-medium">
+          <div class="ml-4 flex-1 min-w-0">
+            <div class="flex items-center min-w-0">
+              <span
+                class="overflow-hidden text-ellipsis whitespace-nowrap leading-none text-ink-gray-8 text-base font-medium"
+              >
                 {{ draft.title }}
               </span>
             </div>
-            <div
-              class="overflow-hidden text-ellipsis whitespace-nowrap text-base inline-flex items-center text-ink-gray-5"
-            >
-              <div v-if="draft.project_title" class="inline-flex items-center">
-                <span>{{ draft.project_title }}</span>
-                <LucideLock
-                  v-if="isSpacePrivate(draft.project)"
-                  class="h-3 w-3 text-ink-gray-6 ml-0.5"
-                />
-                <span>:&nbsp;</span>
+            <div class="flex mt-1.5 items-center min-w-0">
+              <div
+                class="overflow-hidden text-ellipsis whitespace-nowrap text-base inline-flex items-center text-ink-gray-5"
+              >
+                <div v-if="draft.project_title" class="inline-flex items-center">
+                  <span>{{ draft.project_title }}</span>
+                  <LucideLock
+                    v-if="isSpacePrivate(draft.project)"
+                    class="h-3 w-3 text-ink-gray-6 ml-0.5"
+                  />
+                  <span>:&nbsp;</span>
+                </div>
+                <span class="overflow-hidden text-ellipsis whitespace-nowrap">
+                  {{ contentPreview(draft.content) }}
+                </span>
               </div>
-              <span>
-                {{ contentPreview(draft.content) }}
-              </span>
             </div>
           </div>
-          <div class="ml-auto">
+          <div class="ml-auto shrink-0">
             <Tooltip :text="$dayjs(draft.modified).format('D MMM YYYY [at] h:mm A')">
               <div class="shrink-0 whitespace-nowrap text-sm text-ink-gray-5 text-right">
                 {{ relativeTimestamp(draft.modified) }}
