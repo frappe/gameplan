@@ -2,11 +2,11 @@
   <div class="relative flex h-full flex-col" v-if="users.isFinished">
     <div class="h-full flex-1">
       <div class="flex h-full">
-        <div class="relative block min-h-0 flex-shrink-0 overflow-hidden hover:overflow-auto">
+        <ScrollAreaRoot class="relative block min-h-0 flex-shrink-0">
           <slot name="sidebar" />
           <AppSidebar />
-        </div>
-        <div class="w-full overflow-auto bg-surface-white" id="scrollContainer">
+        </ScrollAreaRoot>
+        <ScrollContainer>
           <div
             v-if="$readOnlyMode"
             class="right-0 top-0 mb-3 bg-surface-gray-2 py-3 text-sm text-ink-gray-5"
@@ -16,7 +16,7 @@
             </div>
           </div>
           <slot />
-        </div>
+        </ScrollContainer>
       </div>
     </div>
     <CommandPalette />
@@ -24,6 +24,8 @@
   </div>
 </template>
 <script setup lang="ts">
+import { ScrollAreaRoot } from 'reka-ui'
+import ScrollContainer from './ScrollContainer.vue'
 import AppSidebar from './AppSidebar.vue'
 import CommandPalette from './CommandPalette/CommandPalette.vue'
 import SettingsDialog from './Settings/SettingsDialog.vue'

@@ -2,7 +2,7 @@
   <Dropdown :options="dropdownItems">
     <template v-slot="{ open }">
       <button
-        class="flex w-[15rem] items-center rounded-md px-2 py-2 text-left"
+        class="flex w-[14rem] items-center rounded-md px-2 py-2 text-left"
         :class="open ? 'bg-surface-selected shadow-sm' : 'hover:bg-surface-gray-3'"
       >
         <GameplanLogo class="w-8 h-8 rounded" />

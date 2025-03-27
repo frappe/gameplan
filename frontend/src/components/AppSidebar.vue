@@ -1,20 +1,6 @@
 <template>
-  <div
-    class="absolute right-0 z-10 h-full w-1 cursor-col-resize bg-surface-gray-4 opacity-0 transition-opacity hover:opacity-100"
-    :class="{ 'opacity-100': sidebarResizing }"
-    @mousedown="startResize"
-  />
-  <div
-    v-show="sidebarResizing"
-    class="fixed z-20 mt-3 -translate-x-[130%] rounded-md bg-surface-gray-6 px-2 py-1 text-base text-ink-white"
-    :style="{ left: sidebarWidth + 'px' }"
-  >
-    {{ sidebarWidth }}
-  </div>
-
-  <div
-    class="inline-flex h-full flex-1 flex-col overflow-auto border-r bg-surface-menu-bar pb-40"
-    :style="{ width: `${sidebarWidth}px` }"
+  <ScrollAreaViewport
+    class="inline-flex h-full flex-1 flex-col overflow-y-auto border-r bg-surface-menu-bar pb-40 w-60"
   >
     <div class="flex flex-col px-2 py-2">
       <UserDropdown />
@@ -128,7 +114,8 @@
       </nav>
     </div>
     <NewSpaceDialog v-model="showAddTeamDialog" />
-  </div>
+  </ScrollAreaViewport>
+  <ScrollBar />
 </template>
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
@@ -137,11 +124,12 @@ import { noCategories, useGroupedSpaces } from '@/data/groupedSpaces'
 import { unreadNotifications } from '@/data/notifications'
 import { joinedSpaces } from '@/data/spaces'
 import { useSessionUser } from '@/data/users'
-import { useSidebarResize } from '@/utils/sidebarResize'
 import NewSpaceDialog from './NewSpaceDialog.vue'
 import AppLink from './AppLink.vue'
 import { showCommandPalette } from '@/components/CommandPalette/commandPalette.ts'
 import UserDropdown from './UserDropdown.vue'
+import { ScrollAreaViewport } from 'reka-ui'
+import ScrollBar from './ScrollBar.vue'
 
 import ChevronTriangle from './icons/ChevronTriangle.vue'
 import LucideFiles from '~icons/lucide/files'
@@ -151,7 +139,6 @@ import LucideNewspaper from '~icons/lucide/newspaper'
 import LucidePlus from '~icons/lucide/plus'
 import LucideUsers2 from '~icons/lucide/users-2'
 
-const { startResize, sidebarResizing, sidebarWidth } = useSidebarResize()
 const showAddTeamDialog = ref(false)
 
 const route = useRoute()
