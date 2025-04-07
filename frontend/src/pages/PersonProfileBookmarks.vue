@@ -1,6 +1,6 @@
 <template>
   <div class="pb-16">
-    <DiscussionList :filters="{ user_bookmarks: true }" :show-pinned="false" />
+    <DiscussionList :filters="{ feed_type: 'bookmarks' }" :show-pinned="false" />
   </div>
 </template>
 <script setup lang="ts">

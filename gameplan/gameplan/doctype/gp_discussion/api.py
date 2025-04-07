@@ -18,7 +18,6 @@ def get_discussions(filters=None, order_by=None, start=None, limit=None):
 	filters = frappe.parse_json(filters) if filters else None
 	feed_type = filters.pop("feed_type", None) if filters else None
 	participator = filters.pop("participator", None) if filters else None
-	user_bookmarks = filters.pop("user_bookmarks", None) if filters else None
 	limit = cint(limit)
 	order_by = order_by or "last_post_at desc"
 	order_field, order_direction = order_by.split(" ", 1)
@@ -52,7 +51,7 @@ def get_discussions(filters=None, order_by=None, start=None, limit=None):
 	if participator:
 		query = query.where(clause_discussions_commented_by_user(participator))
 
-	if user_bookmarks:
+	if feed_type == "bookmarks":
 		query = query.where(clause_discussions_bookmarked_by_user(frappe.session.user))
 
 	if feed_type == "unread":

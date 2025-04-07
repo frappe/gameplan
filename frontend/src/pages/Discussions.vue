@@ -47,7 +47,7 @@ import LastPostReminder from '@/components/LastPostReminder.vue'
 import { useLocalStorage } from '@vueuse/core'
 import DraftDiscussions from '@/components/DraftDiscussions.vue'
 
-const feedType = useLocalStorage<'following' | 'participating' | 'recent' | 'drafts'>(
+const feedType = useLocalStorage<'following' | 'participating' | 'recent' | 'bookmarks' | 'drafts'>(
   'homeFeedType',
   'following',
 )
@@ -69,6 +69,10 @@ const feedOptions = [
   {
     label: 'Participating',
     value: 'participating',
+  },
+  {
+    label: 'Bookmarks',
+    value: 'bookmarks',
   },
   {
     label: 'Drafts',
