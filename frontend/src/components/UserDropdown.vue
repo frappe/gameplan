@@ -14,22 +14,27 @@
         </div>
         <LucideChevronDown class="ml-auto hidden h-4 w-4 sm:inline text-ink-gray-7" />
       </button>
+      <AboutDialog v-model="showAboutDialog" />
     </template>
   </Dropdown>
 </template>
 <script setup>
-import { h, computed, onMounted } from 'vue'
+import { h, computed, onMounted, ref } from 'vue'
 import { Dropdown } from 'frappe-ui'
 import { showSettingsDialog } from '@/components/Settings/SettingsDialog.vue'
-import LucideCreditCard from '~icons/lucide/credit-card'
-import LucideMoon from '~icons/lucide/moon'
-import LucideListRestart from '~icons/lucide/list-restart'
 import GameplanLogo from './GameplanLogo.vue'
+import AboutDialog from './AboutDialog.vue'
 import { useUser } from '@/data/users'
 import { session } from '@/data/session'
 import { clear as clearIndexDb } from 'idb-keyval'
 
+import LucideCreditCard from '~icons/lucide/credit-card'
+import LucideMoon from '~icons/lucide/moon'
+import LucideListRestart from '~icons/lucide/list-restart'
+import LucideInfo from '~icons/lucide/info'
+
 const user = useUser()
+const showAboutDialog = ref(false)
 
 const dropdownItems = computed(() => [
   {
@@ -55,6 +60,13 @@ const dropdownItems = computed(() => [
     icon: LucideListRestart,
     label: 'Clear cache',
     onClick: clearCache,
+  },
+  {
+    icon: LucideInfo,
+    label: 'About',
+    onClick: () => {
+      showAboutDialog.value = true
+    },
   },
   {
     icon: () => h(LucideCreditCard),
