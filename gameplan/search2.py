@@ -147,7 +147,11 @@ class GameplanSearch:
 		self.fts.index_documents(documents)
 
 	def index_doc(self, doc):
-		"""Index a single document"""
+		"""Index a single document in background"""
+		frappe.enqueue("gameplan.search2.index_document", doctype=doc.doctype, docname=doc.name)
+
+	def _index_doc(self, doctype, docname):
+		doc = frappe.get_doc(doctype, docname)
 		self.raise_if_not_indexed()
 		document = self._prepare_document(doc)
 		if document:
@@ -155,8 +159,12 @@ class GameplanSearch:
 
 	def remove_doc(self, doc):
 		"""Remove a single document from the index"""
+		frappe.enqueue("gameplan.search2.remove_document", doctype=doc.doctype, docname=doc.name)
+
+	def _remove_doc(self, doctype, docname):
+		"""Remove a single document from the index"""
 		self.raise_if_not_indexed()
-		doc_id = f"{doc.doctype}:{doc.name}"
+		doc_id = f"{doctype}:{docname}"
 		self.fts.remove_document(doc_id)
 
 	def index_exists(self):
@@ -241,3 +249,13 @@ def build_index_if_not_exists():
 	search = GameplanSearch()
 	if not search.index_exists() or not frappe.cache.exists(INDEX_BUILD_FLAG):
 		build_index()
+
+
+def index_document(doctype, docname):
+	search = GameplanSearch()
+	search._index_doc(doctype, docname)
+
+
+def remove_document(doctype, docname):
+	search = GameplanSearch()
+	search._remove_doc(doctype, docname)
