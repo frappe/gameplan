@@ -633,7 +633,7 @@ class FullTextSearch:
 		doc_id = document["id"]
 
 		# Use helper method to process document content
-		word_freq, total_words = self._process_document_content(
+		word_freq, word_positions, total_words = self._process_document_content(
 			doc_id, document["title"], document["content"], document["timestamp"]
 		)
 
@@ -643,6 +643,8 @@ class FullTextSearch:
 			if word in self.inverted_index:
 				self.inverted_index[word] = [(d, f) for d, f in self.inverted_index[word] if d != doc_id]
 			self.inverted_index[word].append((doc_id, total_freq))
+			# Update word positions
+			self.word_positions[word][doc_id] = word_positions[word]
 
 		# Update document count and average length
 		self.document_count = len(self.doc_lengths)
@@ -670,8 +672,15 @@ class FullTextSearch:
 			if not self.inverted_index[word]:
 				del self.inverted_index[word]
 
+		# Remove from word_positions
+		for word in list(self.word_positions.keys()):
+			if doc_id in self.word_positions[word]:
+				del self.word_positions[word][doc_id]
+			if not self.word_positions[word]:
+				del self.word_positions[word]
+
 		# Remove from doc_lengths
-		# old_length = self.doc_lengths.pop(doc_id)
+		self.doc_lengths.pop(doc_id, None)
 
 		# Update document count and average length
 		self.document_count = len(self.doc_lengths)
