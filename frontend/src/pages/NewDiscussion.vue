@@ -295,7 +295,7 @@ function saveDraft() {
     .finally(() => (savingDraft.value = false))
 }
 
-const updateDraftDebounced = debounce(updateDraft, 500)
+const updateDraftDebounced = debounce(updateDraft, 1000)
 
 function updateDraft() {
   if (!draftDiscussion.value.title || !draftDiscussion.value.content) {
