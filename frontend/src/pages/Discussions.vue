@@ -11,7 +11,7 @@
   <div class="mx-auto max-w-4xl pt-5 sm:px-5">
     <LastPostReminder class="px-3 mb-4" />
 
-    <div class="mb-4 flex items-center px-3">
+    <div class="overflow-x-auto flex gap-2 px-3 mb-4 items-center">
       <TabButtons :buttons="feedOptions" v-model="feedType" />
       <div class="ml-auto flex space-x-2" v-if="feedType !== 'drafts'">
         <Button
@@ -20,7 +20,7 @@
         >
           Loading...
         </Button>
-        <Select class="pr-7" :options="orderOptions" v-model="orderBy" />
+        <Select class="pr-7 shrink-0 min-w-28" :options="orderOptions" v-model="orderBy" />
       </div>
     </div>
     <div v-if="feedType == 'drafts'">
