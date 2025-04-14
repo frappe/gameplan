@@ -46,19 +46,15 @@
         </button>
       </nav>
       <div class="mt-6 flex items-center justify-between px-2">
-        <AppLink
-          class="flex w-full items-center justify-between group px-2 py-1.5 rounded hover:bg-surface-gray-2"
-          :to="{ name: 'Spaces' }"
-        >
-          <h3 class="text-sm text-ink-gray-5">Spaces</h3>
-          <span class="text-sm text-ink-gray-5 invisible group-hover:visible">Show all</span>
-        </AppLink>
+        <h3 class="px-2 py-1.5 text-sm text-ink-gray-5">Spaces</h3>
         <div class="space-x-1 flex items-center">
-          <Button variant="ghost" @click="showAddTeamDialog = true">
-            <template #icon>
-              <LucidePlus class="h-4 w-4 text-ink-gray-6" />
-            </template>
-          </Button>
+          <DropdownMoreOptions
+            placement="right"
+            :options="[
+              { label: 'View all spaces', onClick: () => $router.push({ name: 'Spaces' }) },
+              { label: 'New Space', onClick: () => (showAddTeamDialog = true) },
+            ]"
+          />
         </div>
       </div>
       <nav class="mt-1 space-y-1 px-2">

@@ -16,7 +16,30 @@
   </PageHeader>
   <NewSpaceDialog v-model="newSpaceDialog" :category="categoryForNewSpace" />
   <div class="mx-auto max-w-3xl px-2 sm:px-5 pb-20 sm:pb-80">
-    <div class="mt-5 mb-3 flex px-2.5">
+    <div class="px-2.5 mt-5 mb-3">
+      <div
+        class="py-2.5 px-3.5 flex gap-2.5 items-start text-ink-gray-8 rounded-md bg-surface-gray-1 border-outline-gray-1 text-p-base"
+      >
+        <svg
+          class="w-4 h-5 shrink-0 text-gray-600"
+          viewBox="0 0 16 16"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            fill-rule="evenodd"
+            clip-rule="evenodd"
+            d="M8 15C11.866 15 15 11.866 15 8C15 4.13401 11.866 1 8 1C4.13401 1 1 4.13401 1 8C1 11.866 4.13401 15 8 15ZM8 5.75C8.48325 5.75 8.875 5.35825 8.875 4.875C8.875 4.39175 8.48325 4 8 4C7.51675 4 7.125 4.39175 7.125 4.875C7.125 5.35825 7.51675 5.75 8 5.75ZM8 6.93604C8.27614 6.93604 8.5 7.15989 8.5 7.43604V11.1435C8.5 11.4196 8.27614 11.6435 8 11.6435C7.72386 11.6435 7.5 11.4196 7.5 11.1435V7.43604C7.5 7.15989 7.72386 6.93604 8 6.93604Z"
+            fill="currentColor"
+          />
+        </svg>
+        <p>
+          Spaces keep discussions, tasks, and pages in one place. Use them to group by team, project
+          or any topic. Spaces you join will show up on your sidebar.
+        </p>
+      </div>
+    </div>
+    <div class="mt-3 mb-3 flex px-2.5">
       <TabButtons
         :buttons="[{ label: 'Public' }, { label: 'Private' }, { label: 'Archived' }]"
         v-model="currentTab"
