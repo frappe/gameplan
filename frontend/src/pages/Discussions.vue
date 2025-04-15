@@ -47,10 +47,9 @@ import LastPostReminder from '@/components/LastPostReminder.vue'
 import { useLocalStorage } from '@vueuse/core'
 import DraftDiscussions from '@/components/DraftDiscussions.vue'
 
-const feedType = useLocalStorage<'following' | 'participating' | 'recent' | 'bookmarks' | 'drafts'>(
-  'homeFeedType',
-  'following',
-)
+type FeedType = 'following' | 'participating' | 'recent' | 'bookmarks' | 'drafts' | 'unread'
+
+const feedType = useLocalStorage<FeedType>('homeFeedType', 'following')
 const orderBy = ref('last_post_at desc')
 
 const filters = computed(() => {
@@ -61,6 +60,10 @@ const feedOptions = [
   {
     label: 'All',
     value: 'recent',
+  },
+  {
+    label: 'Unread',
+    value: 'unread',
   },
   {
     label: 'Following',
