@@ -1,5 +1,10 @@
 <template>
-  <FTextEditor :mentions="users" v-bind="$attrs" ref="textEditor">
+  <FTextEditor
+    :mentions="users"
+    :image-upload-function="imageUploadFunction"
+    v-bind="$attrs"
+    ref="textEditor"
+  >
     <template #editor="props">
       <slot name="editor" v-bind="props" />
     </template>
@@ -13,11 +18,21 @@
 </template>
 <script>
 import { TextEditor as FTextEditor } from 'frappe-ui'
+import { useFileUpload } from 'frappe-ui/src/utils/useFileUpload'
+
 export default {
   name: 'TextEditor',
   inheritAttrs: false,
   components: { FTextEditor },
   expose: ['editor'],
+  methods: {
+    imageUploadFunction(file) {
+      let fileUpload = useFileUpload()
+      return fileUpload.upload(file).then((fileDoc) => {
+        return { src: fileDoc.file_url }
+      })
+    },
+  },
   computed: {
     editor() {
       return this.$refs.textEditor.editor
