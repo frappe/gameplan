@@ -1,4 +1,4 @@
-import { computed } from 'vue'
+import { computed, MaybeRefOrGetter, toValue } from 'vue'
 import { useList } from 'frappe-ui/src/data-fetching'
 import { GPTeam } from '@/types/doctypes'
 
@@ -21,6 +21,16 @@ export let teams = useList<Team>({
 export let activeTeams = computed(() => {
   return (teams.data || []).filter((team) => !team.archived_at)
 })
+
+export let useTeam = (teamId?: MaybeRefOrGetter<string>) => {
+  return computed(() => {
+    let _teamId = toValue(teamId)
+    if (!_teamId) {
+      return null
+    }
+    return getTeam(_teamId)
+  })
+}
 
 export let getTeam = (teamId: string) => {
   return (teams.data || []).find((team) => team.name.toString() === teamId.toString())

@@ -51,7 +51,10 @@
       </EmptyStateBox>
     </div>
     <div class="mb-8" v-for="group in groupedSpaces" :key="group.name">
-      <div class="px-3 pb-2 flex items-center justify-between">
+      <div
+        class="px-3 pb-2 flex items-center justify-between"
+        :ref="(el) => (groupRefs[group.name] = el as HTMLElement)"
+      >
         <div class="text-ink-gray-8 text-base">
           {{ noCategories ? 'All spaces' : group.title || group.name }}
         </div>
@@ -183,7 +186,7 @@
   </Dialog>
 </template>
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { onMounted, reactive, ref, nextTick } from 'vue'
 import { Breadcrumbs, TabButtons } from 'frappe-ui'
 import { useDoctype } from 'frappe-ui/src/data-fetching'
 import { noCategories, useGroupedSpaces } from '@/data/groupedSpaces'
@@ -192,14 +195,18 @@ import NewSpaceDialog from '@/components/NewSpaceDialog.vue'
 import SpaceOptions from '@/components/SpaceOptions.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import DropdownMoreOptions from '@/components/DropdownMoreOptions.vue'
-import { GPProject } from '@/types/GPProject'
-import { GPTeam } from '@/types/doctypes'
+import { GPTeam, GPProject } from '@/types/doctypes'
 import LucideLock from '~icons/lucide/lock'
 import EmptyStateBox from '@/components/EmptyStateBox.vue'
+import { useRoute } from 'vue-router'
+import { scrollTo } from '@/utils/scrollContainer'
+import { getScrollContainer } from '@/utils/scrollContainer'
 
 const teams = useDoctype<GPTeam>('GP Team')
 const currentTab = ref('Public')
 const categoryForNewSpace = ref('')
+const groupRefs: Record<string, HTMLElement> = {}
+const route = useRoute()
 
 const groupedSpaces = useGroupedSpaces({
   filterFn: (space) =>
@@ -220,6 +227,26 @@ const editCategoryDialog = reactive({
 })
 
 let spaces = useDoctype<GPProject>('GP Project')
+
+onMounted(async () => {
+  if (route.query.teamId) {
+    await nextTick()
+    setTimeout(() => {
+      scrollToCategory(route.query.teamId as string)
+    }, 100)
+  }
+})
+
+function scrollToCategory(categoryId: string) {
+  const scrollContainer = getScrollContainer()
+  const element = groupRefs[categoryId]
+  if (element) {
+    const rect = element.getBoundingClientRect()
+    const scrollTop = scrollContainer.scrollTop
+    const offsetPosition = rect.top + scrollTop - 56
+    scrollTo({ top: offsetPosition })
+  }
+}
 
 function joinSpace(space) {
   spaces.runDocMethod

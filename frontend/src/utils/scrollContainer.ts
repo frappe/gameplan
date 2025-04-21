@@ -9,7 +9,7 @@ export function scrollTo(...options) {
 
 export function getScrollContainer() {
   // window.scrollContainer is reference to the scroll container in DesktopLayout.vue and MobileLayout.vue
-  return window.scrollContainer
+  return window.scrollContainer as HTMLElement
 }
 
 export function useScrollPosition(options = { threshold: 200 }) {

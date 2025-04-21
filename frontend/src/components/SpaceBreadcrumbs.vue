@@ -3,8 +3,8 @@
     class="space-breadcrumbs"
     :items="[
       {
-        label: 'Spaces',
-        route: { name: 'Spaces' },
+        label: category?.title || 'Spaces',
+        route: { name: 'Spaces', query: category ? { teamId: category.name } : undefined },
       },
       {
         label: space?.title,
@@ -30,6 +30,7 @@ import { Breadcrumbs } from 'frappe-ui'
 import { useSpace } from '@/data/spaces'
 import LucideLock from '~icons/lucide/lock'
 import { RouteComponent } from 'vue-router'
+import { useTeam } from '@/data/teams'
 
 const props = defineProps<{
   spaceId: string
@@ -43,6 +44,7 @@ const props = defineProps<{
 }>()
 
 const space = useSpace(() => props.spaceId)
+const category = useTeam(() => space.value?.team)
 </script>
 
 <style>
