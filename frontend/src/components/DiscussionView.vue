@@ -325,7 +325,9 @@ function updateUrlSlug() {
 
 const space = useSpace(() => discussion.doc?.project)
 
-const spaceOptions = useGroupedSpaceOptions()
+const spaceOptions = useGroupedSpaceOptions({
+  filterFn: (space) => !space.archived_at && space.name !== discussion.doc?.project,
+})
 
 const actions = computed(() => [
   {

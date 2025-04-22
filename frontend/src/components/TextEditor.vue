@@ -1,10 +1,5 @@
 <template>
-  <FTextEditor
-    :mentions="users"
-    :image-upload-function="imageUploadFunction"
-    v-bind="$attrs"
-    ref="textEditor"
-  >
+  <FTextEditor :mentions="users" :upload-function="uploadFunction" v-bind="$attrs" ref="textEditor">
     <template #editor="props">
       <slot name="editor" v-bind="props" />
     </template>
@@ -26,7 +21,7 @@ export default {
   components: { FTextEditor },
   expose: ['editor'],
   methods: {
-    imageUploadFunction(file) {
+    uploadFunction(file) {
       let fileUpload = useFileUpload()
       return fileUpload.upload(file).then((fileDoc) => {
         return { src: fileDoc.file_url }

@@ -10,113 +10,88 @@
         },
       ]"
     />
-  </PageHeader>
-  <div class="mx-auto max-w-4xl pt-4 sm:px-5">
-    <div class="rounded-lg border p-4">
-      <div class="mb-3 flex items-center space-x-2">
-        <UserProfileLink :user="author.name">
-          <UserAvatar size="lg" :user="author.name" />
-        </UserProfileLink>
-        <div class="flex w-full items-center">
-          <span class="mr-2 text-base text-gray-900">
-            <UserProfileLink class="font-medium hover:text-blue-600" :user="author.name">
-              {{ author.full_name }}
-            </UserProfileLink>
-            in
-          </span>
-          <Autocomplete
-            v-model="selectedSpace"
-            :options="spaceOptions"
-            placeholder="Select Space"
-            @update:model-value="updateDraftDebounced"
-            :class="[author.name !== sessionUser.name ? 'pointer-events-none' : '']"
-          />
-        </div>
-        <div class="hidden shrink-0 space-x-2 sm:block">
-          <div class="inline-flex text-ink-gray-5 text-sm" v-if="savingDraft">Saving...</div>
-          <Button
-            v-if="draftDoc?.doc"
-            @click="deleteDraft"
-            :disabled="sessionUser.name != author.name"
-          >
-            Delete
-          </Button>
-          <Button v-else @click="discard"> Discard </Button>
-          <Button v-if="!draftDoc?.doc" @click="saveDraft" :loading="savingDraft">
-            Save as draft
-          </Button>
-          <Tooltip text="You cannot publish this draft" :disabled="sessionUser.name == author.name">
-            <Button
-              variant="solid"
-              :loading="publishing"
-              @click="publish"
-              :disabled="sessionUser.name != author.name"
-            >
-              Publish
-            </Button>
-          </Tooltip>
-        </div>
-      </div>
-      <ErrorMessage
-        :message="errorMessage || discussions.insert.error || draftDoc?.publish.error"
-      />
-      <textarea
-        class="mt-1 w-full resize-none border-0 px-0 py-0.5 text-3xl font-bold placeholder-gray-400 focus:ring-0"
-        v-model="draftDiscussion.title"
-        @update:model-value="updateDraftDebounced"
-        placeholder="Title"
-        rows="1"
-        wrap="soft"
-        maxlength="140"
-        v-focus
-        @keydown.enter.prevent="textEditorRef.editor.commands.focus()"
-        :disabled="sessionUser.name != author.name"
-        @input="
-          (e) => {
-            e.target.style.height = e.target.scrollHeight + 'px'
-          }
-        "
-      ></textarea>
-      <TextEditor
-        ref="textEditorRef"
-        class="mt-1"
-        editor-class="rounded-b-lg max-w-[unset] prose-sm h-[calc(100vh-340px)] sm:h-[calc(100vh-250px)] overflow-auto"
-        :content="draftDiscussion.content"
-        @change="
-          (content) => {
-            draftDiscussion.content = content
-            updateDraftDebounced()
-          }
-        "
-        :editable="author.name === sessionUser.name"
-        placeholder="Write something..."
-      >
-        <template v-slot:bottom>
-          <div class="mt-2 flex flex-col justify-between sm:flex-row sm:items-center">
-            <TextEditorFixedMenu
-              class="overflow-x-auto"
-              :buttons="textEditorMenuButtons"
-              v-if="author.name === sessionUser.name"
-            />
-            <div class="mt-2 shrink-0 space-x-2 text-right sm:hidden">
-              <div class="inline-flex text-ink-gray-5 text-sm" v-if="savingDraft">Saving...</div>
-              <Button v-if="draftDoc?.doc" @click="deleteDraft"> Delete </Button>
-              <Button v-else @click="discard"> Discard </Button>
-              <Button v-if="!draftDoc?.doc" @click="saveDraft" :loading="savingDraft">
-                Save as draft
-              </Button>
-              <Button variant="solid" :loading="publishing" @click="publish"> Publish </Button>
-            </div>
-          </div>
-        </template>
-      </TextEditor>
+    <div class="hidden shrink-0 space-x-2 sm:block">
+      <div class="inline-flex text-ink-gray-5 text-sm" v-if="savingDraft">Saving...</div>
+      <Button v-if="draftDoc?.doc" @click="deleteDraft" :disabled="sessionUser.name != author.name">
+        Delete
+      </Button>
+      <Button v-else @click="discard"> Discard </Button>
+      <Button v-if="!draftDoc?.doc" @click="saveDraft" :loading="savingDraft">
+        Save as draft
+      </Button>
+      <Tooltip text="You cannot publish this draft" :disabled="sessionUser.name == author.name">
+        <Button
+          variant="solid"
+          :loading="publishing"
+          @click="publish"
+          :disabled="sessionUser.name != author.name"
+        >
+          Publish
+        </Button>
+      </Tooltip>
     </div>
+  </PageHeader>
+  <div class="mx-auto max-w-3xl px-4 xl:px-0">
+    <div class="pt-14 mb-2 flex items-center space-x-3">
+      <UserProfileLink :user="author.name">
+        <UserAvatar size="lg" :user="author.name" />
+      </UserProfileLink>
+      <div class="flex w-full items-center">
+        <span class="mr-2 text-base text-gray-900">
+          <UserProfileLink class="font-medium hover:text-blue-600" :user="author.name">
+            {{ author.full_name }}
+          </UserProfileLink>
+          in
+        </span>
+        <Combobox
+          :options="spaceOptions.map((d) => ({ group: d.group, options: d.items }))"
+          v-model="selectedSpace"
+          @update:model-value="updateDraftDebounced"
+          placeholder="Select Space"
+          :class="[author.name !== sessionUser.name ? 'pointer-events-none' : '']"
+        />
+      </div>
+    </div>
+    <ErrorMessage :message="errorMessage || discussions.insert.error || draftDoc?.publish.error" />
+    <textarea
+      class="mt-1 w-full resize-none border-0 px-0 py-0.5 text-2xl text-ink-gray-8 font-semibold placeholder-gray-400 focus:ring-0"
+      v-model="draftDiscussion.title"
+      @update:model-value="updateDraftDebounced"
+      placeholder="Title"
+      rows="1"
+      wrap="soft"
+      maxlength="140"
+      v-focus
+      @keydown.enter.prevent="textEditorRef.editor.commands.focus()"
+      @keydown.down.prevent="textEditorRef.editor.commands.focus()"
+      :disabled="sessionUser.name != author.name"
+      @input="
+        (e) => {
+          e.target.style.height = e.target.scrollHeight + 'px'
+        }
+      "
+    ></textarea>
+    <TextEditor
+      ref="textEditorRef"
+      class="mt-1 pb-40"
+      editor-class="rounded-b-lg max-w-[unset] min-h-[calc(100vh-350px)] prose-sm overflow-auto"
+      :content="draftDiscussion.content"
+      @change="
+        (content) => {
+          draftDiscussion.content = content
+          updateDraftDebounced()
+        }
+      "
+      :editable="author.name === sessionUser.name"
+      placeholder="Write something, '/' for commands"
+    >
+    </TextEditor>
   </div>
 </template>
 <script setup lang="ts">
 import { computed, onMounted, ref, useTemplateRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Autocomplete, Breadcrumbs, TextEditorFixedMenu, Tooltip, debounce } from 'frappe-ui'
+import { Breadcrumbs, Tooltip, debounce, Combobox } from 'frappe-ui'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { useDoc, useDoctype, useNewDoc } from 'frappe-ui/src/data-fetching'
 import { useSessionUser, useUser } from '@/data/users'
@@ -132,7 +107,7 @@ const currentRoute = useRoute()
 const sessionUser = useSessionUser()
 const router = useRouter()
 
-const selectedSpace = ref<{ label: string; value: string } | null>(null)
+const selectedSpace = ref<string | null>(null)
 const textEditorRef = useTemplateRef('textEditorRef')
 const discussions = useDoctype<GPDiscussion>('GP Discussion')
 const errorMessage = ref<string | null>(null)
@@ -194,13 +169,9 @@ function fetchDraftDoc(draftId: string) {
 }
 
 function selectSpaceById(spaceId: string) {
-  let spaceOption = spaceOptions.value
-    .map((group) => group.items)
-    .flat()
-    .find((space) => space.value.toString() === spaceId)
-  if (spaceOption) {
-    selectedSpace.value = spaceOption
-  }
+  setTimeout(() => {
+    selectedSpace.value = spaceId
+  }, 0)
 }
 
 function publish() {
@@ -220,7 +191,7 @@ function publish() {
       router.replace({
         name: 'Discussion',
         params: {
-          spaceId: selectedSpace.value?.value || selectedSpace.value,
+          spaceId: selectedSpace.value,
           postId: discussionId,
         },
       })
@@ -230,7 +201,7 @@ function publish() {
 
   return discussions.insert
     .submit({
-      project: selectedSpace.value?.value,
+      project: selectedSpace.value,
       title: draftDiscussion.value.title,
       content: draftDiscussion.value.content,
     })
@@ -265,7 +236,7 @@ function saveDraft() {
   let draft = useNewDoc<GPDraft>('GP Draft', {
     title: draftDiscussion.value.title,
     content: draftDiscussion.value.content,
-    project: selectedSpace.value?.value,
+    project: selectedSpace.value,
     type: 'Discussion',
   })
   draft
@@ -305,14 +276,14 @@ function updateDraft() {
     draftDoc?.doc &&
     (draftDoc.doc.title !== draftDiscussion.value.title ||
       draftDoc.doc.content !== draftDiscussion.value.content ||
-      draftDoc.doc.project !== selectedSpace.value?.value)
+      draftDoc.doc.project !== selectedSpace.value)
   ) {
     savingDraft.value = true
     draftDoc.setValue
       .submit({
         title: draftDiscussion.value.title,
         content: draftDiscussion.value.content,
-        project: selectedSpace.value?.value,
+        project: selectedSpace.value,
       })
       .then((doc) => {
         draftDiscussion.value.content = doc.content
