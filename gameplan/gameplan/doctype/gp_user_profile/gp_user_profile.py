@@ -162,7 +162,7 @@ def remove_imgbg_in_background(profile_name, default_color=None):
 
 @frappe.whitelist()
 def get_last_post():
-	result = frappe.db.get_list(
+	discussions = frappe.db.get_list(
 		"GP Discussion",
 		filters={"owner": frappe.session.user},
 		fields=["creation"],
@@ -170,4 +170,16 @@ def get_last_post():
 		limit=1,
 		pluck="creation",
 	)
-	return result[0] if result else None
+	comments = frappe.db.get_list(
+		"GP Comment",
+		filters={"owner": frappe.session.user},
+		fields=["creation"],
+		order_by="creation desc",
+		limit=1,
+		pluck="creation",
+	)
+	posts = discussions + comments
+	if not posts:
+		return None
+	posts.sort(reverse=True)
+	return posts[0]
