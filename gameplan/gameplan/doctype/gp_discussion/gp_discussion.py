@@ -114,9 +114,13 @@ class GPDiscussion(HasActivity, HasMentions, HasReactions, Document):
 		if not project or project == self.project:
 			return
 
+		old_project = self.project
 		self.project = project
 		self.team = frappe.db.get_value("GP Project", project, "team")
 		self.save()
+		# update the discussion counts
+		self.update_discussions_count()
+		frappe.get_doc("GP Project", old_project).update_discussions_count()
 
 	@frappe.whitelist()
 	def close_discussion(self):
