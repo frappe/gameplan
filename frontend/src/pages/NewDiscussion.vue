@@ -11,13 +11,15 @@
       ]"
     />
     <div class="hidden shrink-0 space-x-2 sm:block">
-      <div class="inline-flex text-ink-gray-5 text-sm" v-if="savingDraft">Saving...</div>
       <Button v-if="draftDoc?.doc" @click="deleteDraft" :disabled="sessionUser.name != author.name">
         Delete
       </Button>
       <Button v-else @click="discard"> Discard </Button>
-      <Button v-if="!draftDoc?.doc" @click="saveDraft" :loading="savingDraft">
-        Save as draft
+      <Button @click="saveDraft" :loading="savingDraft" :disabled="!isDraftChanged || savingDraft">
+        Save Draft
+        <template #suffix>
+          <KeyboardShortcut ctrl> S </KeyboardShortcut>
+        </template>
       </Button>
       <Tooltip text="You cannot publish this draft" :disabled="sessionUser.name == author.name">
         <Button
@@ -46,7 +48,6 @@
         <Combobox
           :options="spaceOptions.map((d) => ({ group: d.group, options: d.items }))"
           v-model="selectedSpace"
-          @update:model-value="updateDraftDebounced"
           placeholder="Select Space"
           :class="[author.name !== sessionUser.name ? 'pointer-events-none' : '']"
         />
@@ -56,7 +57,6 @@
     <textarea
       class="mt-1 w-full resize-none border-0 px-0 py-0.5 text-2xl text-ink-gray-8 font-semibold placeholder-gray-400 focus:ring-0"
       v-model="draftDiscussion.title"
-      @update:model-value="updateDraftDebounced"
       placeholder="Title"
       rows="1"
       wrap="soft"
@@ -79,7 +79,6 @@
       @change="
         (content) => {
           draftDiscussion.content = content
-          updateDraftDebounced()
         }
       "
       :editable="author.name === sessionUser.name"
@@ -89,9 +88,9 @@
   </div>
 </template>
 <script setup lang="ts">
-import { computed, onMounted, ref, useTemplateRef } from 'vue'
+import { computed, onMounted, ref, useTemplateRef, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Breadcrumbs, Tooltip, debounce, Combobox } from 'frappe-ui'
+import { Breadcrumbs, Tooltip, Combobox } from 'frappe-ui'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { useDoc, useDoctype, useNewDoc } from 'frappe-ui/src/data-fetching'
 import { useSessionUser, useUser } from '@/data/users'
@@ -125,6 +124,23 @@ const draftDiscussion = useLocalStorage(
   { deep: true },
 )
 
+// Computed property to check if there are unsaved changes
+const isDraftChanged = computed(() => {
+  const currentTitle = draftDiscussion.value.title
+  const currentContent = draftDiscussion.value.content
+  const currentSpace = selectedSpace.value
+
+  if (draftDoc?.doc) {
+    return (
+      currentTitle !== (draftDoc.doc.title || '') ||
+      currentContent !== (draftDoc.doc.content || '') ||
+      currentSpace !== (draftDoc.doc.project || null)
+    )
+  } else {
+    return !!(currentTitle || currentContent || currentSpace)
+  }
+})
+
 interface DraftMethods {
   publish: () => string
 }
@@ -136,12 +152,21 @@ if (draftId) {
 
 const spaceOptions = useGroupedSpaceOptions({ filterFn: (space) => !space.archived_at })
 
+// Keyboard shortcut handler
+const handleKeyDown = (event: KeyboardEvent) => {
+  if ((event.metaKey || event.ctrlKey) && event.key === 's') {
+    event.preventDefault()
+    if (isDraftChanged.value && !savingDraft.value) {
+      saveDraft()
+    }
+  }
+}
+
 onMounted(() => {
   if (currentRoute.query?.spaceId) {
     selectSpaceById(currentRoute.query.spaceId as string)
   }
 
-  // if draft is present, load it
   if (draftDoc) {
     draftDoc.onSuccess((doc) => {
       draftDiscussion.value.title = doc.title || ''
@@ -151,11 +176,16 @@ onMounted(() => {
       }
     })
   } else {
-    // Clear localStorage values when starting a new discussion
     draftDiscussion.value.title = ''
     draftDiscussion.value.content = ''
     selectedSpace.value = null
   }
+
+  window.addEventListener('keydown', handleKeyDown)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeyDown)
 })
 
 function fetchDraftDoc(draftId: string) {
@@ -232,54 +262,13 @@ function saveDraft() {
     errorMessage.value = 'Please enter title and content before saving draft.'
     return
   }
+
   savingDraft.value = true
-  let draft = useNewDoc<GPDraft>('GP Draft', {
-    title: draftDiscussion.value.title,
-    content: draftDiscussion.value.content,
-    project: selectedSpace.value,
-    type: 'Discussion',
-  })
-  draft
-    .submit()
-    .then((doc) => {
-      // Save current content to the new draft's localStorage key
-      const newStorageKey = `draft_discussion_${doc.name}`
-      localStorage.setItem(
-        newStorageKey,
-        JSON.stringify({
-          title: draftDiscussion.value.title,
-          content: draftDiscussion.value.content,
-        }),
-      )
+  const startTime = Date.now()
+  let savePromise: Promise<any>
 
-      router.replace({ name: 'NewDiscussion', query: { draft: doc.name } })
-      fetchDraftDoc(doc.name)
-
-      draftDoc?.onSuccess((doc) => {
-        draftDiscussion.value.title = doc.title || ''
-        draftDiscussion.value.content = doc.content || ''
-        if (doc.project) {
-          selectSpaceById(doc.project)
-        }
-      })
-    })
-    .finally(() => (savingDraft.value = false))
-}
-
-const updateDraftDebounced = debounce(updateDraft, 1000)
-
-function updateDraft() {
-  if (!draftDiscussion.value.title || !draftDiscussion.value.content) {
-    return
-  }
-  if (
-    draftDoc?.doc &&
-    (draftDoc.doc.title !== draftDiscussion.value.title ||
-      draftDoc.doc.content !== draftDiscussion.value.content ||
-      draftDoc.doc.project !== selectedSpace.value)
-  ) {
-    savingDraft.value = true
-    draftDoc.setValue
+  if (draftDoc?.doc) {
+    savePromise = draftDoc.setValue
       .submit({
         title: draftDiscussion.value.title,
         content: draftDiscussion.value.content,
@@ -288,8 +277,42 @@ function updateDraft() {
       .then((doc) => {
         draftDiscussion.value.content = doc.content
       })
-      .finally(() => (savingDraft.value = false))
+  } else {
+    let draft = useNewDoc<GPDraft>('GP Draft', {
+      title: draftDiscussion.value.title,
+      content: draftDiscussion.value.content,
+      project: selectedSpace.value,
+      type: 'Discussion',
+    })
+    savePromise = draft.submit().then((doc) => {
+      const newStorageKey = `draft_discussion_${doc.name}`
+      localStorage.setItem(
+        newStorageKey,
+        JSON.stringify({
+          title: draftDiscussion.value.title,
+          content: draftDiscussion.value.content,
+        }),
+      )
+      localStorage.removeItem('new_discussion')
+
+      router.replace({ name: 'NewDiscussion', query: { draft: doc.name } })
+      fetchDraftDoc(doc.name)
+    })
   }
+
+  savePromise.finally(() => {
+    const endTime = Date.now()
+    const duration = endTime - startTime
+    const remainingTime = 1000 - duration
+
+    if (remainingTime > 0) {
+      setTimeout(() => {
+        savingDraft.value = false
+      }, remainingTime)
+    } else {
+      savingDraft.value = false
+    }
+  })
 }
 
 function deleteDraft() {
