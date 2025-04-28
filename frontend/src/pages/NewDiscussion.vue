@@ -89,7 +89,7 @@
 </template>
 <script setup lang="ts">
 import { computed, onMounted, ref, useTemplateRef, onUnmounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
 import { Breadcrumbs, Tooltip, Combobox } from 'frappe-ui'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { useDoc, useDoctype, useNewDoc } from 'frappe-ui/src/data-fetching'
@@ -113,10 +113,12 @@ const errorMessage = ref<string | null>(null)
 const publishing = ref(false)
 
 const savingDraft = ref(false)
-const draftId = currentRoute.query.draft as string
+let draftId = currentRoute.query.draft as string
+
+const getStorageKey = () => (draftId ? `draft_discussion_${draftId}` : 'new_discussion')
 
 const draftDiscussion = useLocalStorage(
-  draftId ? `draft_discussion_${draftId}` : 'new_discussion',
+  getStorageKey(),
   {
     title: '',
     content: '',
@@ -182,10 +184,40 @@ onMounted(() => {
   }
 
   window.addEventListener('keydown', handleKeyDown)
+  window.addEventListener('beforeunload', handleBeforeUnload)
 })
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyDown)
+  window.removeEventListener('beforeunload', handleBeforeUnload)
+})
+
+const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+  if (isDraftChanged.value) {
+    event.preventDefault()
+  }
+}
+
+onBeforeRouteLeave((to, from, next) => {
+  if (isDraftChanged.value) {
+    createDialog({
+      title: 'Unsaved Changes',
+      message: 'You have unsaved changes. Would you like to save them?',
+      actions: [
+        {
+          label: 'Save Draft',
+          variant: 'solid',
+          onClick: async ({ close }) => {
+            await saveDraft()
+            close()
+            next()
+          },
+        },
+      ],
+    })
+  } else {
+    next()
+  }
 })
 
 function fetchDraftDoc(draftId: string) {
@@ -255,6 +287,7 @@ function resetValues() {
   draftDiscussion.value.title = ''
   draftDiscussion.value.content = ''
   publishing.value = false
+  localStorage.removeItem(getStorageKey())
 }
 
 function saveDraft() {
@@ -276,6 +309,7 @@ function saveDraft() {
       })
       .then((doc) => {
         draftDiscussion.value.content = doc.content
+        localStorage.setItem(getStorageKey(), JSON.stringify(draftDiscussion.value))
       })
   } else {
     let draft = useNewDoc<GPDraft>('GP Draft', {
@@ -296,11 +330,12 @@ function saveDraft() {
       localStorage.removeItem('new_discussion')
 
       router.replace({ name: 'NewDiscussion', query: { draft: doc.name } })
+      draftId = doc.name
       fetchDraftDoc(doc.name)
     })
   }
 
-  savePromise.finally(() => {
+  return savePromise.finally(() => {
     const endTime = Date.now()
     const duration = endTime - startTime
     const remainingTime = 1000 - duration
