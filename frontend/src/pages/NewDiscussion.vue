@@ -249,16 +249,26 @@ function publish() {
   publishing.value = true
 
   if (draftDoc?.doc) {
-    return draftDoc.publish.submit().then((discussionId) => {
-      router.replace({
-        name: 'Discussion',
-        params: {
-          spaceId: selectedSpace.value,
-          postId: discussionId,
-        },
+    return draftDoc.setValue
+      .submit({
+        title: draftDiscussion.value.title,
+        content: draftDiscussion.value.content,
+        project: selectedSpace.value,
       })
-      resetValues()
-    })
+      .then(() => draftDoc?.publish.submit())
+      .then((discussionId) => {
+        router.replace({
+          name: 'Discussion',
+          params: {
+            spaceId: selectedSpace.value,
+            postId: discussionId,
+          },
+        })
+        resetValues()
+      })
+      .catch(() => {
+        publishing.value = false
+      })
   }
 
   return discussions.insert
