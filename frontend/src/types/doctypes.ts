@@ -323,7 +323,7 @@ export interface GPSearchFeedback extends DocType {
   query?: string
 }
 
-// Last updated: 2025-03-06 13:03:57.610208
+// Last updated: 2025-03-08 16:00:25.825860
 export interface GPDraft extends DocType {
   /** Title: Data */
   title?: string
