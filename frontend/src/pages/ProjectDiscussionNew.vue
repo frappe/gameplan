@@ -88,7 +88,7 @@
 </template>
 <script>
 import TextEditor from '@/components/TextEditor.vue'
-import { focus } from '@/directives'
+import { vFocus } from '@/directives'
 import UserProfileLink from '@/components/UserProfileLink.vue'
 import TextEditorFixedMenu from 'frappe-ui/src/components/TextEditor/TextEditorFixedMenu.vue'
 
@@ -96,7 +96,7 @@ export default {
   name: 'ProjectDiscussionNew',
   props: ['project'],
   components: { TextEditor, UserProfileLink, TextEditorFixedMenu },
-  directives: { focus },
+  directives: { focus: vFocus },
   data() {
     let draftPost = this.getDraftPost()
     return {
