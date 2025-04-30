@@ -39,15 +39,15 @@
         <UserAvatar size="lg" :user="author.name" />
       </UserProfileLink>
       <div class="flex w-full items-center">
-        <span class="mr-2 text-base text-gray-900">
-          <UserProfileLink class="font-medium hover:text-blue-600" :user="author.name">
+        <span class="mr-2 text-base text-ink-gray-9">
+          <UserProfileLink class="font-medium hover:text-ink-gray-8" :user="author.name">
             {{ author.full_name }}
           </UserProfileLink>
           in
         </span>
         <Combobox
           :options="spaceOptions.map((d) => ({ group: d.group, options: d.items }))"
-          v-model="selectedSpace"
+          v-model="draftDiscussion.project"
           placeholder="Select Space"
           :class="[author.name !== sessionUser.name ? 'pointer-events-none' : '']"
         />
@@ -55,8 +55,8 @@
     </div>
     <ErrorMessage :message="errorMessage || discussions.insert.error || draftDoc?.publish.error" />
     <textarea
-      class="mt-1 w-full resize-none border-0 px-0 py-0.5 text-2xl text-ink-gray-8 font-semibold placeholder-gray-400 focus:ring-0"
-      v-model="draftDiscussion.title"
+      class="mt-1 w-full bg-transparent resize-none border-0 px-0 py-0.5 text-2xl text-ink-gray-8 font-semibold placeholder-ink-gray-3 focus:ring-0"
+      :value="draftDiscussion.title"
       placeholder="Title"
       rows="1"
       wrap="soft"
@@ -67,7 +67,9 @@
       :disabled="sessionUser.name != author.name"
       @input="
         (e) => {
-          e.target.style.height = e.target.scrollHeight + 'px'
+          const target = e.target as HTMLTextAreaElement
+          draftDiscussion.title = target.value
+          target.style.height = target.scrollHeight + 'px'
         }
       "
     ></textarea>
@@ -77,7 +79,7 @@
       editor-class="rounded-b-lg max-w-[unset] min-h-[calc(100vh-350px)] prose-sm overflow-auto"
       :content="draftDiscussion.content"
       @change="
-        (content) => {
+        (content: string) => {
           draftDiscussion.content = content
         }
       "
@@ -98,7 +100,7 @@ import { useSessionUser, useUser } from '@/data/users'
 import PageHeader from '@/components/PageHeader.vue'
 import TextEditor from '@/components/TextEditor.vue'
 import UserProfileLink from '@/components/UserProfileLink.vue'
-import { focus as vFocus } from '@/directives'
+import { vFocus } from '@/directives'
 import { createDialog } from '@/utils/dialogs'
 import { useLocalStorage } from '@vueuse/core'
 import { GPDiscussion, GPDraft } from '@/types/doctypes'
@@ -107,7 +109,6 @@ const currentRoute = useRoute()
 const sessionUser = useSessionUser()
 const router = useRouter()
 
-const selectedSpace = ref<string | null>(null)
 const textEditorRef = useTemplateRef('textEditorRef')
 const discussions = useDoctype<GPDiscussion>('GP Discussion')
 const errorMessage = ref<string | null>(null)
@@ -123,6 +124,7 @@ const draftDiscussion = useLocalStorage(
   {
     title: '',
     content: '',
+    project: null as string | null,
   },
   { deep: true },
 )
@@ -131,16 +133,17 @@ const draftDiscussion = useLocalStorage(
 const isDraftChanged = computed(() => {
   const currentTitle = draftDiscussion.value.title
   const currentContent = draftDiscussion.value.content
-  const currentSpace = selectedSpace.value
+  const currentProject = draftDiscussion.value.project
 
-  if (draftDoc?.doc) {
+  if (draftDoc.value?.doc) {
+    let project = draftDoc.value.doc.project?.toString() || null
     return (
-      currentTitle !== (draftDoc.doc.title || '') ||
-      currentContent !== (draftDoc.doc.content || '') ||
-      currentSpace !== (draftDoc.doc.project || null)
+      currentTitle !== (draftDoc.value.doc.title || '') ||
+      currentContent !== (draftDoc.value.doc.content || '') ||
+      currentProject !== project
     )
   } else {
-    return !!(currentTitle || currentContent || currentSpace)
+    return !!(currentTitle || currentContent || currentProject)
   }
 })
 
@@ -148,7 +151,7 @@ interface DraftMethods {
   publish: () => string
 }
 
-let draftDoc: ReturnType<typeof useDoc<GPDraft, DraftMethods>> | null = null
+let draftDoc = ref<ReturnType<typeof useDoc<GPDraft, DraftMethods>> | null>(null)
 if (draftId) {
   fetchDraftDoc(draftId)
 }
@@ -166,22 +169,18 @@ const handleKeyDown = (event: KeyboardEvent) => {
 }
 
 onMounted(() => {
-  if (currentRoute.query?.spaceId) {
-    selectSpaceById(currentRoute.query.spaceId as string)
-  }
-
-  if (draftDoc) {
-    draftDoc.onSuccess((doc) => {
-      draftDiscussion.value.title = doc.title || ''
-      draftDiscussion.value.content = doc.content || ''
-      if (doc.project) {
-        selectSpaceById(doc.project)
+  if (draftDoc.value) {
+    draftDoc.value.onSuccess((doc) => {
+      if (draftDoc.value?.doc?.name === doc.name) {
+        draftDiscussion.value.title = doc.title || ''
+        draftDiscussion.value.content = doc.content || ''
+        draftDiscussion.value.project = doc.project || null
       }
     })
   } else {
     draftDiscussion.value.title = ''
     draftDiscussion.value.content = ''
-    selectedSpace.value = null
+    draftDiscussion.value.project = (currentRoute.query.spaceId as string) || null
   }
 
   window.addEventListener('keydown', handleKeyDown)
@@ -203,15 +202,28 @@ onBeforeRouteLeave((to, from, next) => {
   if (isDraftChanged.value) {
     createDialog({
       title: 'Unsaved Changes',
-      message: 'You have unsaved changes. Would you like to save them?',
+      message: 'You have unsaved changes. Do you want to save them before leaving?',
       actions: [
+        {
+          label: 'Discard',
+          variant: 'subtle',
+          onClick: ({ close }) => {
+            resetValues()
+            close()
+            next()
+          },
+        },
         {
           label: 'Save Draft',
           variant: 'solid',
           onClick: async ({ close }) => {
-            await saveDraft()
-            close()
-            next()
+            try {
+              await saveDraft()
+              close()
+              next()
+            } catch (e) {
+              console.error('Failed to save draft before leaving:', e)
+            }
           },
         },
       ],
@@ -222,46 +234,56 @@ onBeforeRouteLeave((to, from, next) => {
 })
 
 function fetchDraftDoc(draftId: string) {
-  draftDoc = useDoc<GPDraft, DraftMethods>({
+  draftDoc.value = useDoc<GPDraft, DraftMethods>({
     doctype: 'GP Draft',
     name: draftId,
     methods: {
       publish: 'publish',
     },
   })
+  return draftDoc.value.onSuccess(() => updateLocalDraft())
 }
 
-function selectSpaceById(spaceId: string) {
-  setTimeout(() => {
-    selectedSpace.value = spaceId
-  }, 0)
+function updateLocalDraft() {
+  if (!draftDoc.value?.doc) return
+  let doc = draftDoc.value.doc
+  draftDiscussion.value.title = doc.title || ''
+  draftDiscussion.value.content = doc.content || ''
+  draftDiscussion.value.project = doc.project ? doc.project.toString() : null
+}
+
+function validateDraft(checkProject = true): boolean {
+  errorMessage.value = null // Reset error message first
+  if (!draftDiscussion.value.title) {
+    errorMessage.value = 'Please enter title.'
+    return false
+  }
+  if (checkProject && !draftDiscussion.value.project) {
+    errorMessage.value = 'Please select a space.'
+    return false
+  }
+  return true
 }
 
 function publish() {
-  if (!draftDiscussion.value.title) {
-    errorMessage.value = 'Please enter title before publishing.'
+  if (!validateDraft(true)) {
     return
   }
-  if (!selectedSpace.value) {
-    errorMessage.value = 'Please select a space before publishing.'
-    return
-  }
-  errorMessage.value = null
   publishing.value = true
 
-  if (draftDoc?.doc) {
-    return draftDoc.setValue
+  if (draftDoc.value?.doc) {
+    return draftDoc.value.setValue
       .submit({
         title: draftDiscussion.value.title,
         content: draftDiscussion.value.content,
-        project: selectedSpace.value,
+        project: draftDiscussion.value.project,
       })
-      .then(() => draftDoc?.publish.submit())
+      .then(() => draftDoc.value?.publish.submit())
       .then((discussionId) => {
         router.replace({
           name: 'Discussion',
           params: {
-            spaceId: selectedSpace.value,
+            spaceId: draftDiscussion.value.project,
             postId: discussionId,
           },
         })
@@ -274,9 +296,9 @@ function publish() {
 
   return discussions.insert
     .submit({
-      project: selectedSpace.value,
       title: draftDiscussion.value.title,
       content: draftDiscussion.value.content,
+      project: draftDiscussion.value.project,
     })
     .then((doc) => {
       router.replace({
@@ -294,71 +316,83 @@ function publish() {
 }
 
 function resetValues() {
-  selectedSpace.value = null
+  draftDiscussion.value.project = null
   draftDiscussion.value.title = ''
   draftDiscussion.value.content = ''
   publishing.value = false
   localStorage.removeItem(getStorageKey())
 }
 
-function saveDraft() {
-  if (!draftDiscussion.value.title || !draftDiscussion.value.content) {
-    errorMessage.value = 'Please enter title and content before saving draft.'
+async function executeWithMinDuration(asyncFn: () => Promise<any>, minDurationMs: number = 1000) {
+  const startTime = Date.now()
+  try {
+    const result = await asyncFn()
+    const endTime = Date.now()
+    const duration = endTime - startTime
+    const remainingTime = minDurationMs - duration
+
+    if (remainingTime > 0) {
+      await new Promise((resolve) => setTimeout(resolve, remainingTime))
+    }
+    return result
+  } catch (error) {
+    const endTime = Date.now()
+    const duration = endTime - startTime
+    const remainingTime = minDurationMs - duration
+    if (remainingTime > 0) {
+      await new Promise((resolve) => setTimeout(resolve, remainingTime))
+    }
+    throw error
+  }
+}
+
+async function _updateDraft() {
+  if (!draftDoc.value?.doc) return
+
+  await draftDoc.value.setValue.submit({
+    title: draftDiscussion.value.title,
+    content: draftDiscussion.value.content,
+    project: draftDiscussion.value.project,
+  })
+}
+
+async function _createDraft() {
+  let draft = useNewDoc<GPDraft>('GP Draft', {
+    title: draftDiscussion.value.title,
+    content: draftDiscussion.value.content,
+    project: draftDiscussion.value.project,
+    type: 'Discussion',
+  })
+
+  const doc = await draft.submit()
+
+  router.replace({ name: 'NewDiscussion', query: { draft: doc.name } })
+  draftId = doc.name
+  fetchDraftDoc(doc.name)
+}
+
+async function saveDraft() {
+  if (!validateDraft(false)) {
     return
   }
 
   savingDraft.value = true
-  const startTime = Date.now()
-  let savePromise: Promise<any>
+  errorMessage.value = null
 
-  if (draftDoc?.doc) {
-    savePromise = draftDoc.setValue
-      .submit({
-        title: draftDiscussion.value.title,
-        content: draftDiscussion.value.content,
-        project: selectedSpace.value,
-      })
-      .then((doc) => {
-        draftDiscussion.value.content = doc.content
-        localStorage.setItem(getStorageKey(), JSON.stringify(draftDiscussion.value))
-      })
-  } else {
-    let draft = useNewDoc<GPDraft>('GP Draft', {
-      title: draftDiscussion.value.title,
-      content: draftDiscussion.value.content,
-      project: selectedSpace.value,
-      type: 'Discussion',
+  try {
+    await executeWithMinDuration(async () => {
+      if (draftDoc.value?.doc) {
+        await _updateDraft()
+      } else {
+        await _createDraft()
+      }
     })
-    savePromise = draft.submit().then((doc) => {
-      const newStorageKey = `draft_discussion_${doc.name}`
-      localStorage.setItem(
-        newStorageKey,
-        JSON.stringify({
-          title: draftDiscussion.value.title,
-          content: draftDiscussion.value.content,
-        }),
-      )
-      localStorage.removeItem('new_discussion')
-
-      router.replace({ name: 'NewDiscussion', query: { draft: doc.name } })
-      draftId = doc.name
-      fetchDraftDoc(doc.name)
-    })
+  } catch (error) {
+    console.error('Error saving draft:', error)
+    errorMessage.value = 'Failed to save draft.'
+  } finally {
+    savingDraft.value = false
   }
-
-  return savePromise.finally(() => {
-    const endTime = Date.now()
-    const duration = endTime - startTime
-    const remainingTime = 1000 - duration
-
-    if (remainingTime > 0) {
-      setTimeout(() => {
-        savingDraft.value = false
-      }, remainingTime)
-    } else {
-      savingDraft.value = false
-    }
-  })
 }
 
 function deleteDraft() {
@@ -369,7 +403,7 @@ function deleteDraft() {
       {
         label: 'Delete draft',
         onClick: ({ close }) => {
-          return draftDoc?.delete.submit().then(() => {
+          return draftDoc.value?.delete.submit().then(() => {
             resetValues()
             close()
             router.back()
@@ -404,47 +438,6 @@ function discard() {
 }
 
 const author = computed(() => {
-  return useUser(draftDoc ? draftDoc.doc?.owner : sessionUser.name)
+  return useUser(draftDoc.value ? draftDoc.value.doc?.owner : sessionUser.name)
 })
-
-const textEditorMenuButtons = [
-  'Paragraph',
-  ['Heading 2', 'Heading 3', 'Heading 4', 'Heading 5', 'Heading 6'],
-  'Separator',
-  'Bold',
-  'Italic',
-  'Separator',
-  'Bullet List',
-  'Numbered List',
-  'Separator',
-  'Align Left',
-  'Align Center',
-  'Align Right',
-  'FontColor',
-  'Separator',
-  'Image',
-  'Video',
-  'Link',
-  'Blockquote',
-  'Code',
-  'Horizontal Rule',
-  [
-    'InsertTable',
-    'AddColumnBefore',
-    'AddColumnAfter',
-    'DeleteColumn',
-    'AddRowBefore',
-    'AddRowAfter',
-    'DeleteRow',
-    'MergeCells',
-    'SplitCell',
-    'ToggleHeaderColumn',
-    'ToggleHeaderRow',
-    'ToggleHeaderCell',
-    'DeleteTable',
-  ],
-  'Separator',
-  'Undo',
-  'Redo',
-]
 </script>
