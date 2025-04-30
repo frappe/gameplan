@@ -1,7 +1,27 @@
 import { reactive, ref } from 'vue'
-import { Dialog, ErrorMessage } from 'frappe-ui'
+import { Dialog, ErrorMessage, Button, type ButtonProps } from 'frappe-ui'
 
-let dialogs = ref([])
+type DialogActionContext = {
+  close: () => void
+}
+type DialogAction = ButtonProps & {
+  onClick?: (context: DialogActionContext) => void | Promise<void>
+}
+
+interface DialogOptions {
+  title?: string
+  message?: string
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl' | '6xl' | '7xl'
+  actions?: Array<DialogAction>
+  position?: 'top' | 'center'
+  show: boolean
+  key?: string
+  error?: string
+}
+
+type UserDialogOptions = Omit<DialogOptions, 'show' | 'key'>
+
+let dialogs = ref<Array<DialogOptions>>([])
 
 export let Dialogs = {
   name: 'Dialogs',
@@ -19,16 +39,58 @@ export let Dialogs = {
               <ErrorMessage class="mt-2" message={dialog.error} />,
             ]
           },
+          actions: ({ close }) => {
+            let fullWidth = dialog.actions?.length === 1
+            return (
+              <div class="flex justify-end gap-2">
+                {dialog.actions?.map((action) => {
+                  return (
+                    <Button
+                      key={action.label}
+                      {...buttonProps(action, close)}
+                      class={fullWidth ? 'w-full' : ''}
+                    >
+                      {action.label}
+                    </Button>
+                  )
+                })}
+              </div>
+            )
+          },
         }}
       </Dialog>
     ))
   },
 }
 
-export function createDialog(dialogOptions) {
-  let dialog = reactive(dialogOptions)
-  dialog.key = 'dialog-' + dialogs.value.length
-  dialog.show = false
+function buttonProps(action: DialogAction, close: () => void): ButtonProps {
+  let _action = reactive({
+    ...action,
+    loading: false,
+    onClick: !action.onClick
+      ? close
+      : async () => {
+          _action.loading = true
+          try {
+            if (action.onClick) {
+              await action.onClick({ close })
+            }
+          } finally {
+            _action.loading = false
+          }
+        },
+  })
+
+  return _action
+}
+
+export function createDialog(userDialogOptions: UserDialogOptions) {
+  let dialog = reactive<DialogOptions>({
+    ...userDialogOptions,
+    show: false,
+    key: 'dialog-' + dialogs.value.length,
+  })
+
   setTimeout(() => {
     dialog.show = true
   }, 0)

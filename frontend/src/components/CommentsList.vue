@@ -332,9 +332,6 @@ function discardComment() {
           },
           variant: 'solid',
         },
-        {
-          label: 'Keep comment',
-        },
       ],
     })
   } else {

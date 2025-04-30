@@ -426,15 +426,15 @@ function discardComment() {
       message: 'Are you sure you want to discard your comment?',
       actions: [
         {
+          label: 'Keep comment',
+        },
+        {
           label: 'Discard comment',
           onClick: ({ close }) => {
             resetCommentState()
             close()
           },
           variant: 'solid',
-        },
-        {
-          label: 'Keep comment',
         },
       ],
     })
