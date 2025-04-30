@@ -82,7 +82,8 @@
         }
       "
       :editable="author.name === sessionUser.name"
-      placeholder="Write something, '/' for commands"
+      placeholder="Type '/' for commands or select text to format"
+      :bubbleMenu="true"
     >
     </TextEditor>
   </div>
