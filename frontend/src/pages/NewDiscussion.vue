@@ -113,6 +113,7 @@ const textEditorRef = useTemplateRef('textEditorRef')
 const discussions = useDoctype<GPDiscussion>('GP Discussion')
 const errorMessage = ref<string | null>(null)
 const publishing = ref(false)
+const isDeletingDraft = ref(false)
 
 const savingDraft = ref(false)
 let draftId = currentRoute.query.draft as string
@@ -199,6 +200,10 @@ const handleBeforeUnload = (event: BeforeUnloadEvent) => {
 }
 
 onBeforeRouteLeave((to, from, next) => {
+  if (isDeletingDraft.value) {
+    next()
+    return
+  }
   if (isDraftChanged.value) {
     createDialog({
       title: 'Unsaved Changes',
@@ -405,6 +410,7 @@ function deleteDraft() {
         onClick: ({ close }) => {
           return draftDoc.value?.delete.submit().then(() => {
             resetValues()
+            isDeletingDraft.value = true
             close()
             router.back()
           })
