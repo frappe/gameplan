@@ -8,7 +8,6 @@ else
     echo "pnpm is already installed."
 fi
 
-echo "Running pnpm -h:"
-pnpm -h
+echo "pnpm version: $(pnpm --version)"
 
 exit 0

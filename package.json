@@ -1,14 +1,14 @@
 {
     "private": true,
-    "aworkspaces": ["frontend", "frappe-ui"],
     "scripts": {
-        "check-pnpm": "chmod +x ./install-pnpm.sh && ./install-pnpm.sh",
-        "postinstall": "cd frontend && yarn install",
-        "dev": "cd frontend && yarn dev",
-        "build": "yarn check-pnpm && cd frontend && yarn build",
-        "disable-workspaces": "sed -i '' 's/\"workspaces\"/\"aworkspaces\"/g' package.json",
-        "enable-workspaces": "sed -i '' 's/\"aworkspaces\"/\"workspaces\"/g' package.json && rm -rf node_modules ./frontend/node_modules/ frappe-ui/node_modules/ && yarn install",
-        "upgrade-frappeui": "cd frontend && yarn add frappe-ui@latest && cd ..",
-        "disable-workspaces-and-upgrade-frappeui": "yarn disable-aworkspaces && yarn upgrade-frappeui"
+        "check-pnpm": "chmod +x ./scripts/install-pnpm.sh && ./scripts/install-pnpm.sh",
+        "frontend_pnpm_install": "cd frontend && pnpm install",
+        "postinstall": "pnpm run frontend_pnpm_install",
+        "dev": "cd frontend && pnpm dev",
+        "build": "pnpm check-pnpm && cd frontend && pnpm build",
+        "disable-workspaces": "chmod +x ./scripts/manage_workspaces.sh && ./scripts/manage_workspaces.sh disable",
+        "enable-workspaces": "chmod +x ./scripts/manage_workspaces.sh && ./scripts/manage_workspaces.sh enable",
+        "upgrade-frappeui": "cd frontend && pnpm add frappe-ui@latest && cd ..",
+        "disable-workspaces-and-upgrade-frappeui": "pnpm disable-workspaces && pnpm upgrade-frappeui"
     }
 }
