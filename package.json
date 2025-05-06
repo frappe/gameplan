@@ -2,7 +2,7 @@
     "private": true,
     "scripts": {
         "check-pnpm": "chmod +x ./scripts/install-pnpm.sh && ./scripts/install-pnpm.sh",
-        "frontend_pnpm_install": "cd frontend && pnpm install",
+        "frontend_pnpm_install": "pnpm check-pnpm && cd frontend && pnpm install",
         "postinstall": "pnpm run frontend_pnpm_install",
         "dev": "cd frontend && pnpm dev",
         "build": "pnpm check-pnpm && cd frontend && pnpm build",
