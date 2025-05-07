@@ -222,3 +222,31 @@ def leave_spaces(spaces: list[str] = None):
 		return
 	for space in spaces:
 		frappe.get_doc("GP Project", space).leave()
+
+
+@frappe.whitelist()
+def get_unread_count():
+	from frappe.query_builder.functions import Count
+
+	user = frappe.session.user
+	joined_projects = list(get_joined_spaces())
+
+	if not joined_projects:
+		return {}
+
+	gd = frappe.qb.DocType("GP Discussion").as_("gd")
+	gdv = frappe.qb.DocType("GP Discussion Visit").as_("gdv")
+
+	query = (
+		frappe.qb.from_(gd)
+		.select(gd.project, Count(gd.name).as_("unread_count"))
+		.left_join(gdv)
+		.on((gd.name == gdv.discussion) & (gdv.user == user))
+		.where(gd.project.isin(joined_projects) & ((gdv.name.isnull()) | (gd.last_post_at > gdv.last_visit)))
+		.groupby(gd.project)
+	)
+
+	result = query.run(as_dict=True)
+	unread_counts_dict = {row["project"]: row["unread_count"] for row in result}
+
+	return unread_counts_dict

@@ -89,14 +89,20 @@
               activeClass="bg-surface-selected shadow-sm"
               inactiveClass="hover:bg-surface-gray-2"
             >
-              <span class="inline-flex min-w-0 items-center space-x-2">
+              <span class="inline-flex min-w-0 items-center w-full">
                 <span class="flex-shrink-0 flex h-5 w-6 items-center justify-center text-xl">
                   {{ space.icon }}
                 </span>
-                <span class="truncate text-sm flex-grow">
+                <span class="truncate text-sm flex-grow w-full ml-2">
                   {{ space.title }}
                 </span>
-                <LucideLock v-if="space.is_private" class="flex-shrink-0 h-3 w-3" />
+                <LucideLock v-if="space.is_private" class="flex-shrink-0 h-3 w-3 ml-2" />
+                <span
+                  v-if="getSpaceUnreadCount(space.name) > 0"
+                  class="ml-auto pl-2 text-xs text-ink-gray-5"
+                >
+                  {{ getSpaceUnreadCount(space.name) }}
+                </span>
               </span>
             </AppLink>
             <div
@@ -118,7 +124,7 @@ import { computed, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { noCategories, useGroupedSpaces } from '@/data/groupedSpaces'
 import { unreadNotifications } from '@/data/notifications'
-import { joinedSpaces } from '@/data/spaces'
+import { joinedSpaces, unreadCount } from '@/data/spaces'
 import { useSessionUser } from '@/data/users'
 import NewSpaceDialog from './NewSpaceDialog.vue'
 import AppLink from './AppLink.vue'
@@ -151,6 +157,10 @@ let groupedSpaces = computed(() => {
   }
   return _groups.value
 })
+
+function getSpaceUnreadCount(spaceId: string) {
+  return unreadCount.data?.[spaceId] || 0
+}
 
 const navigation = computed(() => {
   return [

@@ -255,3 +255,7 @@ class GPDiscussion(HasActivity, HasMentions, HasReactions, Document):
 		project_name, archived_at = frappe.db.get_value("GP Project", self.project, ["name", "archived_at"])
 		if archived_at:
 			frappe.throw(f"Project {project_name} is archived. Cannot create discussions.")
+
+
+def on_doctype_update():
+	frappe.db.add_index("GP Discussion", ["project", "last_post_at"])

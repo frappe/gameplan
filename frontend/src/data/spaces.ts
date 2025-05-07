@@ -45,6 +45,9 @@ export let spaces = useList<Space>({
     return data
   },
   immediate: true,
+  onSuccess() {
+    unreadCount.submit()
+  },
 })
 
 export function useSpace(name: MaybeRefOrGetter<string | undefined>) {
@@ -64,3 +67,9 @@ export const joinedSpaces = useCall<string[]>({
 export function hasJoined(spaceId: MaybeRefOrGetter<string>) {
   return joinedSpaces.data?.includes(toValue(spaceId))
 }
+
+export const unreadCount = useCall({
+  url: '/api/v2/method/GP Project/get_unread_count',
+  immediate: false,
+  cacheKey: 'unreadCount',
+})
