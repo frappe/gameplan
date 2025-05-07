@@ -1,6 +1,8 @@
-// const
-module.exports = {
-  presets: [require('frappe-ui/src/tailwind/preset')],
+import frappeUIPreset from 'frappe-ui/src/tailwind/preset'
+import containerQueries from '@tailwindcss/container-queries'
+
+export default {
+  presets: [frappeUIPreset],
   content: [
     './index.html',
     './src/**/*.{vue,js,ts,jsx,tsx}',
@@ -29,5 +31,5 @@ module.exports = {
       },
     },
   },
-  plugins: [require('@tailwindcss/container-queries')],
+  plugins: [containerQueries],
 }
