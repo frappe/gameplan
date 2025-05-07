@@ -3,8 +3,8 @@
     "type": "module",
     "scripts": {
         "check-pnpm": "chmod +x ./scripts/install-pnpm.sh && ./scripts/install-pnpm.sh",
-        "frontend_pnpm_install": "pnpm check-pnpm && cd frontend && pnpm install",
-        "postinstall": "pnpm run frontend_pnpm_install",
+        "frontend_pnpm_install": "npm run check-pnpm && cd frontend && pnpm install",
+        "postinstall": "npm run frontend_pnpm_install",
         "dev": "cd frontend && pnpm dev",
         "build": "pnpm check-pnpm && cd frontend && pnpm build",
         "disable-workspaces": "chmod +x ./scripts/manage_workspaces.sh && ./scripts/manage_workspaces.sh disable",
