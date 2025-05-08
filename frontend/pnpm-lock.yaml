@@ -27,8 +27,8 @@ importers:
         specifier: ^4.28.0
         version: 4.29.2
       frappe-ui:
-        specifier: ^0.1.140
-        version: 0.1.140(@babel/parser@7.27.2)(@vue/compiler-sfc@3.5.13)(highlight.js@11.11.1)(tailwindcss@3.4.17)(vue-router@4.5.1(vue@3.5.13(typescript@5.8.3)))(vue-template-compiler@2.7.16)(vue@3.5.13(typescript@5.8.3))
+        specifier: ^0.1.141
+        version: 0.1.141(@babel/parser@7.27.2)(@vue/compiler-sfc@3.5.13)(highlight.js@11.11.1)(vue-router@4.5.1(vue@3.5.13(typescript@5.8.3)))(vue-template-compiler@2.7.16)(vue@3.5.13(typescript@5.8.3))
       fuzzysort:
         specifier: ^2.0.4
         version: 2.0.4
@@ -1295,8 +1295,8 @@ packages:
   fraction.js@4.3.7:
     resolution: {integrity: sha512-ZsDfxO51wGAXREY55a7la9LScWpwv9RxIrYABrlvOFBlH/ShPnrtsXeuUIfXKKOVicNxQ+o8JTbJvjS4M89yew==}
 
-  frappe-ui@0.1.140:
-    resolution: {integrity: sha512-MADPkrhxcROgnAjgfsIR7XaeVm3drSZ2vGbfG4DlCTYlGnUmi3ltZ80LIbqtzFr5MgAJtqChgPL4zByZes4CMQ==}
+  frappe-ui@0.1.141:
+    resolution: {integrity: sha512-5jM+ifUpjaTYKSaWUDirtyc6QNcqwbZ4Zb9A6d8ym4Bb9FjKXPUvAh8TcoCWDR1QQgurCxBY0P9tHc5VclKvUw==}
     peerDependencies:
       vue: '>=3.5.0'
       vue-router: ^4.1.6
@@ -2746,7 +2746,7 @@ snapshots:
       '@antfu/install-pkg': 1.1.0
       '@antfu/utils': 8.1.1
       '@iconify/types': 2.0.0
-      debug: 4.4.0(supports-color@8.1.1)
+      debug: 4.4.0
       globals: 15.15.0
       kolorist: 1.8.0
       local-pkg: 1.1.1
@@ -2851,18 +2851,16 @@ snapshots:
     dependencies:
       tailwindcss: 3.4.17
 
-  '@tailwindcss/forms@0.5.10(tailwindcss@3.4.17)':
+  '@tailwindcss/forms@0.5.10':
     dependencies:
       mini-svg-data-uri: 1.4.4
-      tailwindcss: 3.4.17
 
-  '@tailwindcss/typography@0.5.16(tailwindcss@3.4.17)':
+  '@tailwindcss/typography@0.5.16':
     dependencies:
       lodash.castarray: 4.4.0
       lodash.isplainobject: 4.0.6
       lodash.merge: 4.6.2
       postcss-selector-parser: 6.0.10
-      tailwindcss: 3.4.17
 
   '@tanstack/virtual-core@3.13.8': {}
 
@@ -3538,6 +3536,10 @@ snapshots:
     dependencies:
       ms: 2.1.3
 
+  debug@4.4.0:
+    dependencies:
+      ms: 2.1.3
+
   debug@4.4.0(supports-color@8.1.1):
     dependencies:
       ms: 2.1.3
@@ -3738,13 +3740,13 @@ snapshots:
 
   fraction.js@4.3.7: {}
 
-  frappe-ui@0.1.140(@babel/parser@7.27.2)(@vue/compiler-sfc@3.5.13)(highlight.js@11.11.1)(tailwindcss@3.4.17)(vue-router@4.5.1(vue@3.5.13(typescript@5.8.3)))(vue-template-compiler@2.7.16)(vue@3.5.13(typescript@5.8.3)):
+  frappe-ui@0.1.141(@babel/parser@7.27.2)(@vue/compiler-sfc@3.5.13)(highlight.js@11.11.1)(vue-router@4.5.1(vue@3.5.13(typescript@5.8.3)))(vue-template-compiler@2.7.16)(vue@3.5.13(typescript@5.8.3)):
     dependencies:
       '@floating-ui/vue': 1.1.6(vue@3.5.13(typescript@5.8.3))
       '@headlessui/vue': 1.7.23(vue@3.5.13(typescript@5.8.3))
       '@popperjs/core': 2.11.8
-      '@tailwindcss/forms': 0.5.10(tailwindcss@3.4.17)
-      '@tailwindcss/typography': 0.5.16(tailwindcss@3.4.17)
+      '@tailwindcss/forms': 0.5.10
+      '@tailwindcss/typography': 0.5.16
       '@tiptap/core': 2.12.0(@tiptap/pm@2.12.0)
       '@tiptap/extension-code-block': 2.12.0(@tiptap/core@2.12.0(@tiptap/pm@2.12.0))(@tiptap/pm@2.12.0)
       '@tiptap/extension-code-block-lowlight': 2.12.0(@tiptap/core@2.12.0(@tiptap/pm@2.12.0))(@tiptap/extension-code-block@2.12.0(@tiptap/core@2.12.0(@tiptap/pm@2.12.0))(@tiptap/pm@2.12.0))(@tiptap/pm@2.12.0)(highlight.js@11.11.1)(lowlight@3.3.0)
@@ -3798,7 +3800,6 @@ snapshots:
       - highlight.js
       - supports-color
       - svelte
-      - tailwindcss
       - utf-8-validate
       - vue-template-compiler
       - vue-template-es2015-compiler
@@ -4726,7 +4727,7 @@ snapshots:
     dependencies:
       '@antfu/install-pkg': 1.1.0
       '@iconify/utils': 2.3.0
-      debug: 4.4.0(supports-color@8.1.1)
+      debug: 4.4.0
       local-pkg: 1.1.1
       unplugin: 2.3.2
     optionalDependencies:
@@ -4743,7 +4744,7 @@ snapshots:
   unplugin-vue-components@28.5.0(@babel/parser@7.27.2)(vue@3.5.13(typescript@5.8.3)):
     dependencies:
       chokidar: 3.6.0
-      debug: 4.4.0(supports-color@8.1.1)
+      debug: 4.4.0
       local-pkg: 1.1.1
       magic-string: 0.30.17
       mlly: 1.7.4
