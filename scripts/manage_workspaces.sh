@@ -13,7 +13,7 @@ disable_workspaces() {
     else
         echo "pnpm-workspace.yaml not found. Assuming workspaces are already disabled or file is misnamed."
     fi
-    pnpm pkg set scripts.postinstall="pnpm run frontend_pnpm_install"
+    pnpm pkg set scripts.postinstall="npm run frontend_pnpm_install"
     echo "Root postinstall script restored to run frontend_pnpm_install."
     echo "Workspaces disabled."
 }
