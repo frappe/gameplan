@@ -11,7 +11,12 @@
               </template>
             </Button>
           </IconPicker>
-          <TextInput class="w-full" placeholder="Space name" v-model="space.title" />
+          <TextInput
+            class="w-full"
+            placeholder="Space name"
+            v-model="space.title"
+            v-focus:autoselect
+          />
         </div>
 
         <div class="flex items-center space-x-2">
@@ -47,6 +52,7 @@ import IconPicker from './IconPicker.vue'
 import { useSpace } from '@/data/spaces'
 import { useDoctype } from 'frappe-ui/src/data-fetching'
 import { GPProject } from '@/types/doctypes'
+import { vFocus } from '@/directives'
 
 const props = defineProps<{ spaceId: string }>()
 const show = defineModel<boolean>()
