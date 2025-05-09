@@ -78,13 +78,13 @@ class GPTask(HasMentions, HasActivity, Document):
 
 @frappe.whitelist()
 def get_list(
-	fields=None,
+	fields: str = None,
 	filters: str = None,
-	order_by=None,
-	start=0,
-	limit=20,
-	group_by=None,
-	parent=None,
+	order_by: str = None,
+	start: int = 0,
+	limit: int = 20,
+	group_by: str = None,
+	parent: str = None,
 	debug=False,
 ):
 	doctype = "GP Task"
