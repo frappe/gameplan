@@ -124,7 +124,7 @@ import { computed, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { noCategories, useGroupedSpaces } from '@/data/groupedSpaces'
 import { unreadNotifications } from '@/data/notifications'
-import { joinedSpaces, unreadCount } from '@/data/spaces'
+import { joinedSpaces, getSpaceUnreadCount } from '@/data/spaces'
 import { useSessionUser } from '@/data/users'
 import NewSpaceDialog from './NewSpaceDialog.vue'
 import AppLink from './AppLink.vue'
@@ -157,10 +157,6 @@ let groupedSpaces = computed(() => {
   }
   return _groups.value
 })
-
-function getSpaceUnreadCount(spaceId: string) {
-  return unreadCount.data?.[spaceId] || 0
-}
 
 const navigation = computed(() => {
   return [

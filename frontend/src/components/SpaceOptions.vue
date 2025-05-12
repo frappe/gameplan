@@ -15,7 +15,7 @@ import ChangeSpaceCategoryDialog from './ChangeSpaceCategoryDialog.vue'
 import EditSpaceDialog from './EditSpaceDialog.vue'
 import ManageMembersDialog from './ManageMembersDialog.vue'
 import { createDialog } from '@/utils/dialogs'
-import { useSpace } from '@/data/spaces'
+import { unreadCount, useSpace } from '@/data/spaces'
 import { GPProject } from '@/types/doctypes'
 
 import LucideUserPlus from '~icons/lucide/user-plus'
@@ -24,6 +24,7 @@ import LucideMerge from '~icons/lucide/merge'
 import LucideArchive from '~icons/lucide/archive'
 import LucideTrash2 from '~icons/lucide/trash-2'
 import LucideLogOut from '~icons/lucide/log-out'
+import LucideCheck from '~icons/lucide/check'
 
 defineOptions({
   inheritAttrs: false,
@@ -46,6 +47,35 @@ const options = computed(() => [
     label: 'Edit',
     icon: LucideEdit,
     onClick: () => (showSpaceEditDialog.value = true),
+    condition: () => !space.value?.archived_at,
+  },
+  {
+    label: 'Mark all as read',
+    icon: LucideCheck,
+    onClick: () => {
+      createDialog({
+        title: 'Are you sure?',
+        message:
+          'This action will mark all discussions in this space as read. This action cannot be undone.',
+        actions: [
+          {
+            label: 'Mark all as read',
+            variant: 'solid',
+            onClick: ({ close }) => {
+              return spaces.runDocMethod
+                .submit({
+                  method: 'mark_all_as_read',
+                  name: props.spaceId,
+                })
+                .then(() => {
+                  close()
+                  unreadCount.reload()
+                })
+            },
+          },
+        ],
+      })
+    },
     condition: () => !space.value?.archived_at,
   },
   {

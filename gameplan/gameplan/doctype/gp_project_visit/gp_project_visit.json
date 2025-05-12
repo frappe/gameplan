@@ -10,7 +10,8 @@
   "user",
   "project",
   "team",
-  "last_visit"
+  "last_visit",
+  "mark_all_read_at"
  ],
  "fields": [
   {
@@ -37,12 +38,18 @@
    "label": "Team",
    "options": "GP Team",
    "read_only": 1
+  },
+  {
+   "fieldname": "mark_all_read_at",
+   "fieldtype": "Datetime",
+   "label": "Mark All Read At"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-01-31 15:15:34.092861",
- "modified_by": "Administrator",
+ "modified": "2025-05-12 13:01:27.784470",
+ "modified_by": "faris@erpnext.com",
  "module": "Gameplan",
  "name": "GP Project Visit",
  "owner": "Administrator",
@@ -95,6 +102,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

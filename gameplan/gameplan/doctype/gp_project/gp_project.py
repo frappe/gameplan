@@ -176,6 +176,27 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 				self.save()
 				break
 
+	@frappe.whitelist()
+	def mark_all_as_read(self):
+		"""Mark all discussions as read using a project-level timestamp."""
+		user = frappe.session.user
+		project_name = self.name
+		now = frappe.utils.now()
+
+		project_visit_name = frappe.db.get_value("GP Project Visit", {"user": user, "project": project_name})
+		if project_visit_name:
+			project_visit_doc = frappe.get_doc("GP Project Visit", project_visit_name)
+			project_visit_doc.set("mark_all_read_at", now)
+			project_visit_doc.last_visit = now
+			project_visit_doc.save(ignore_permissions=True)
+		else:
+			project_visit_doc = frappe.new_doc("GP Project Visit")
+			project_visit_doc.user = user
+			project_visit_doc.project = project_name
+			project_visit_doc.last_visit = now
+			project_visit_doc.set("mark_all_read_at", now)
+			project_visit_doc.insert(ignore_permissions=True)
+
 
 def get_meta_tags(url):
 	response = requests.get(url, timeout=2, allow_redirects=True)
@@ -225,6 +246,15 @@ def leave_spaces(spaces: list[str] = None):
 
 
 @frappe.whitelist()
+def mark_all_as_read(spaces: list[str] = None):
+	"""Mark all unread discussions as read for multiple spaces at once."""
+	if not spaces:
+		return
+	for space in spaces:
+		frappe.get_doc("GP Project", space).mark_all_as_read()
+
+
+@frappe.whitelist()
 def get_unread_count():
 	from frappe.query_builder.functions import Count
 
@@ -236,13 +266,29 @@ def get_unread_count():
 
 	gd = frappe.qb.DocType("GP Discussion").as_("gd")
 	gdv = frappe.qb.DocType("GP Discussion Visit").as_("gdv")
+	gpv = frappe.qb.DocType("GP Project Visit").as_("gpv")
 
 	query = (
 		frappe.qb.from_(gd)
 		.select(gd.project, Count(gd.name).as_("unread_count"))
 		.left_join(gdv)
 		.on((gd.name == gdv.discussion) & (gdv.user == user))
-		.where(gd.project.isin(joined_projects) & ((gdv.name.isnull()) | (gd.last_post_at > gdv.last_visit)))
+		.left_join(gpv)
+		.on((gd.project == gpv.project) & (gpv.user == user))
+		.where(
+			# Case 1: Project has a mark_all_read_at timestamp from GP Project Visit
+			(
+				gpv.name.isnotnull()
+				& gpv.mark_all_read_at.isnotnull()
+				& (gd.last_post_at > gpv.mark_all_read_at)
+			)
+			# Case 2: Project does not have mark_all_read_at, or it's null.
+			# Use individual discussion visit logic.
+			| (
+				(gpv.name.isnull() | gpv.mark_all_read_at.isnull())
+				& ((gdv.name.isnull()) | (gd.last_post_at > gdv.last_visit))
+			)
+		)
 		.groupby(gd.project)
 	)
 

@@ -71,6 +71,11 @@
               },
             },
             {
+              label: 'Mark all as read',
+              condition: () => group.title !== 'Uncategorized' && group.spaces.length > 0,
+              onClick: () => markAllAsRead(group),
+            },
+            {
               label: 'Join all',
               onClick: () => joinSpaces(group.spaces.map((d) => d.name)),
             },
@@ -125,6 +130,10 @@
                 <span>
                   {{ d.discussions_count }}
                   {{ d.discussions_count == 1 ? 'post' : 'posts' }}
+                </span>
+                <span v-if="getSpaceUnreadCount(d.name) > 0">, </span>
+                <span v-if="getSpaceUnreadCount(d.name) > 0">
+                  {{ getSpaceUnreadCount(d.name) }} unread
                 </span>
               </div>
             </div>
@@ -190,7 +199,7 @@ import { onMounted, reactive, ref, nextTick } from 'vue'
 import { Breadcrumbs, TabButtons } from 'frappe-ui'
 import { useDoctype } from 'frappe-ui/src/data-fetching'
 import { noCategories, useGroupedSpaces } from '@/data/groupedSpaces'
-import { hasJoined, joinedSpaces } from '@/data/spaces'
+import { hasJoined, joinedSpaces, getSpaceUnreadCount, unreadCount } from '@/data/spaces'
 import NewSpaceDialog from '@/components/NewSpaceDialog.vue'
 import SpaceOptions from '@/components/SpaceOptions.vue'
 import PageHeader from '@/components/PageHeader.vue'
@@ -201,6 +210,7 @@ import EmptyStateBox from '@/components/EmptyStateBox.vue'
 import { useRoute } from 'vue-router'
 import { scrollTo } from '@/utils/scrollContainer'
 import { getScrollContainer } from '@/utils/scrollContainer'
+import { createDialog } from '@/utils/dialogs'
 
 const teams = useDoctype<GPTeam>('GP Team')
 const currentTab = ref('Public')
@@ -292,6 +302,33 @@ function unarchiveSpace(space) {
   spaces.runDocMethod.submit({
     method: 'unarchive',
     name: space.name,
+  })
+}
+
+function markAllAsRead(group) {
+  const spaceIds = group.spaces.map((d) => d.name)
+  createDialog({
+    title: 'Mark all as read',
+    message: `Are you sure you want to mark all discussions in ${group.title} as read? This action cannot be undone.`,
+    actions: [
+      {
+        label: 'Mark all as read',
+        variant: 'solid',
+        onClick: ({ close }) => {
+          return spaces.runMethod
+            .submit({
+              method: 'mark_all_as_read',
+              params: {
+                spaces: spaceIds,
+              },
+            })
+            .then(() => {
+              close()
+              unreadCount.reload()
+            })
+        },
+      },
+    ],
   })
 }
 
