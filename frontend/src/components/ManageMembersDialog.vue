@@ -1,7 +1,42 @@
 <template>
   <Dialog :options="{ title: 'Manage Members' }" v-model="show">
     <template #body-content v-if="space">
-      <div class="mt-4 space-y-2">
+      <div class="mt-6 flex items-end gap-2">
+        <div class="w-full">
+          <FormLabel label="Add a member" class="mb-1.5" />
+          <Combobox
+            :options="addableUsers"
+            v-model="selectedUser"
+            placeholder="Jane Doe"
+            v-focus:autoselect
+          />
+        </div>
+        <Button
+          class="ml-auto w-13 shrink-0"
+          @click="addMember"
+          :loading="spaces.runDocMethod.isLoading(space.name, 'add_member')"
+        >
+          Add
+        </Button>
+      </div>
+      <div class="mt-4 flex items-end gap-2">
+        <FormControl
+          class="w-full"
+          label="Invite a guest"
+          v-model="guestEmail"
+          placeholder="jane@example.com"
+          @keydown.enter="invite"
+        />
+        <Button
+          class="ml-auto w-13"
+          @click="invite"
+          :loading="spaces.runDocMethod.isLoading(space.name, 'invite_guest')"
+        >
+          Invite
+        </Button>
+      </div>
+      <ErrorMessage class="mt-2" :message="spaces.runDocMethod.error" />
+      <div class="mt-6 space-y-2">
         <div class="flex items-center gap-4" v-for="user in space.members" :key="user.user">
           <UserAvatar :user="user.user" />
           <div class="text-base">
@@ -34,46 +69,17 @@
         </div>
         <Dialog :options="removeDialog.options" v-model="removeDialog.open" />
       </div>
-      <div class="mt-6 flex items-end gap-2">
-        <div class="w-full">
-          <label class="block text-xs text-ink-gray-5 mb-1.5">Add a member</label>
-          <Autocomplete :options="addableUsers" v-model="selectedUser" />
-        </div>
-        <Button
-          class="ml-auto w-13 shrink-0"
-          @click="addMember"
-          :loading="spaces.runDocMethod.isLoading(space.name, 'add_member')"
-        >
-          Add
-        </Button>
-      </div>
-      <div class="mt-4 flex items-end gap-2">
-        <FormControl
-          class="w-full"
-          label="Invite a guest"
-          v-model="guestEmail"
-          placeholder="jane@example.com"
-          @keydown.enter="invite"
-        />
-        <Button
-          class="ml-auto w-13"
-          @click="invite"
-          :loading="spaces.runDocMethod.isLoading(space.name, 'invite_guest')"
-        >
-          Invite
-        </Button>
-      </div>
-      <ErrorMessage class="mt-2" :message="spaces.runDocMethod.error" />
     </template>
   </Dialog>
 </template>
 <script setup lang="ts">
 import { ref, computed, reactive, watch } from 'vue'
-import { Autocomplete, Tooltip } from 'frappe-ui'
+import { Combobox, FormLabel, toast, Tooltip } from 'frappe-ui'
 import { useDoctype, useList } from 'frappe-ui/src/data-fetching'
 import { useSpace } from '@/data/spaces'
 import { useUser, users } from '@/data/users'
 import { GPGuestAccess, GPInvitation, GPProject } from '@/types/doctypes'
+import { vFocus } from '@/directives'
 
 const props = defineProps<{ spaceId: string }>()
 const show = defineModel<boolean>()
@@ -123,7 +129,7 @@ let addableUsers = computed(() => {
     .map((user) => ({ value: user.name, label: user.full_name }))
 })
 
-let selectedUser = ref<{ label: string; value: string } | null>(null)
+let selectedUser = ref<string | null>(null)
 let guestEmail = ref('')
 
 function addMember() {
@@ -132,10 +138,13 @@ function addMember() {
       .submit({
         name: space.value.name,
         method: 'add_member',
-        params: { user: selectedUser.value.value },
+        params: { user: selectedUser.value },
       })
       .then(() => {
         selectedUser.value = null
+        let fullName = useUser(selectedUser.value).full_name
+        let spaceName = useSpace(space.value?.name).value?.title
+        toast.success(`${fullName} added to ${spaceName}`)
         guests.reload()
       })
   }
