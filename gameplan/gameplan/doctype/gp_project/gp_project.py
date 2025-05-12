@@ -92,7 +92,7 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 
 	@frappe.whitelist()
 	def move_to_team(self, team=None):
-		if team is None or self.team == team:
+		if self.team == team:
 			return
 		self.team = team
 		self.save()
