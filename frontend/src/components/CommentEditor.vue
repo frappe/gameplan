@@ -7,6 +7,8 @@
     :starterkit-options="{ heading: { levels: [2, 3, 4, 5, 6] } }"
     :placeholder="placeholder"
     :editable="editable"
+    @rich-quote="$emit('rich-quote', $event)"
+    @rich-quote-click="$emit('rich-quote-click', $event)"
   >
     <template v-slot:editor="{ editor }">
       <EditorContent :class="[editable && 'max-h-[50vh] overflow-y-auto']" :editor="editor" />
@@ -56,7 +58,7 @@ export default {
       default: () => ({}),
     },
   },
-  emits: ['change'],
+  emits: ['change', 'rich-quote', 'rich-quote-click'],
   expose: ['editor'],
   components: { TextEditor, TextEditorFixedMenu, EditorContent },
   computed: {

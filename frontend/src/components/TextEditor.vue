@@ -1,5 +1,11 @@
 <template>
-  <FTextEditor :mentions="users" :upload-function="uploadFunction" v-bind="$attrs" ref="textEditor">
+  <FTextEditor
+    :mentions="users"
+    :upload-function="uploadFunction"
+    v-bind="$attrs"
+    :extensions="extensions"
+    ref="textEditor"
+  >
     <template #editor="props">
       <slot name="editor" v-bind="props" />
     </template>
@@ -14,6 +20,8 @@
 <script>
 import { TextEditor as FTextEditor } from 'frappe-ui'
 import { useFileUpload } from 'frappe-ui/src/utils/useFileUpload'
+import FloatingQuoteButton from './RichQuoteExtension/floating-quote-button'
+import RichQuoteNodeExtension from './RichQuoteExtension/rich-quote-node-extension'
 
 export default {
   name: 'TextEditor',
@@ -39,6 +47,20 @@ export default {
           label: user.full_name.trimEnd(),
           value: user.name,
         }))
+    },
+    extensions() {
+      return [
+        FloatingQuoteButton.configure({
+          onClick: (html) => {
+            this.$emit('rich-quote', html)
+          },
+        }),
+        RichQuoteNodeExtension.configure({
+          onClick: ({ quoteId, author, content }) => {
+            this.$emit('rich-quote-click', { quoteId, author, content })
+          },
+        }),
+      ]
     },
   },
 }

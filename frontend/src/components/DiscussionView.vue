@@ -88,6 +88,7 @@
             :class="{
               'rounded-lg border p-4 focus-within:border-outline-gray-3': editingPost,
             }"
+            ref="mainPostContentEl"
           >
             <div v-if="editingPost" class="w-full">
               <div class="mb-2">
@@ -105,6 +106,12 @@
             <CommentEditor
               :value="discussion.doc.content"
               @change="discussion.doc.content = $event"
+              @rich-quote="
+                handleRichQuote($event, {
+                  id: `discussion:${discussion.doc.name}`,
+                  author: discussion.doc.owner,
+                })
+              "
               :submitButtonProps="{
                 variant: 'solid',
                 onClick: () => {
@@ -140,6 +147,9 @@
           :newCommentsFrom="discussion.doc.last_unread_comment?.toString()"
           :read-only-mode="readOnlyMode"
           :disable-new-comment="Boolean(discussion.doc.closed_at)"
+          @rich-quote="handleRichQuote"
+          @rich-quote-click="handleRichQuoteClick"
+          ref="commentsArea"
         />
         <Dialog
           :options="{
@@ -196,7 +206,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, onMounted, reactive } from 'vue'
+import { ref, computed, nextTick, onMounted, reactive, useTemplateRef } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Autocomplete, Avatar, Dropdown, Dialog, Tooltip, usePageMeta } from 'frappe-ui'
 import { until } from '@vueuse/core'
@@ -214,6 +224,7 @@ import { useDiscussion } from '@/data/discussions'
 import { createDialog } from '@/utils/dialogs'
 import { useScrollPosition } from '@/utils/scrollContainer'
 import { isMobile } from '@/utils/composables'
+import { useRichQuoteHandler } from '@/components/RichQuoteExtension/useRichQuoteHandler'
 
 import LucideArrowUp from '~icons/lucide/arrow-up'
 
@@ -224,7 +235,15 @@ const props = defineProps<{
 
 const router = useRouter()
 const route = useRoute()
+const commentsArea = useTemplateRef('commentsArea')
+const mainPostContentEl = ref<HTMLElement | null>(null)
+
 const { isScrolled, scrollToTop } = useScrollPosition()
+
+const { handleRichQuote, handleRichQuoteClick } = useRichQuoteHandler(
+  commentsArea,
+  mainPostContentEl,
+)
 
 const editingPost = ref(false)
 const discussionMoveDialog = reactive<{

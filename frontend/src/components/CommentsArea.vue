@@ -42,6 +42,10 @@
           "
           :readOnlyMode="readOnlyMode"
           :comments="comments"
+          @rich-quote="
+            $emit('rich-quote', $event, { id: `comment:${item.name}`, author: item.owner })
+          "
+          @rich-quote-click="$emit('rich-quote-click', $event)"
         />
         <Activity
           :class="[
@@ -97,7 +101,8 @@
         </div>
         <CommentEditor
           ref="newCommentEditor"
-          v-show="newCommentType == 'Comment'"
+          v-if="showCommentBox && newCommentType == 'Comment'"
+          :key="commentEditorKey"
           :value="newComment"
           @change="onNewCommentChange"
           :submitButtonProps="{
@@ -109,7 +114,7 @@
           :discardButtonProps="{
             onClick: discardComment,
           }"
-          :editable="showCommentBox"
+          :editable="true"
           placeholder="Add a comment..."
         />
         <PollEditor
@@ -130,7 +135,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, nextTick, onMounted, onUnmounted, watch, useTemplateRef } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useList } from 'frappe-ui/src/data-fetching'
 import { TabButtons, ErrorMessage } from 'frappe-ui'
@@ -168,6 +173,11 @@ const props = withDefaults(defineProps<Props>(), {
   disableNewComment: false,
 })
 
+defineEmits<{
+  (e: 'rich-quote', quote: string, author: string): void
+  (e: 'rich-quote-click', payload: object): void
+}>()
+
 const router = useRouter()
 const route = useRoute()
 const socket = useSocket()
@@ -187,9 +197,10 @@ const newPoll = ref({
 const newMessagesFrom = ref(props.newCommentsFrom)
 const highlightedItem = ref<{ doctype: string; name: string } | null>(null)
 const addCommentHeight = ref(0)
-const newCommentEditor = ref(null)
+const newCommentEditor = useTemplateRef('newCommentEditor')
 const addComment = ref(null)
 let mutationObserver: MutationObserver | undefined
+const commentEditorKey = ref(0)
 
 const comments = useList<GPComment>({
   doctype: 'GP Comment',
@@ -297,14 +308,48 @@ const editorObject = computed<Editor | null>(() => {
   return newCommentEditor.value?.editor || null
 })
 
+defineExpose({
+  editorObject,
+  openCommentBox,
+  scrollToCommentById,
+  getCommentContentElement,
+  highlightComment,
+})
+
 function draftCommentKey(): string {
   return `draft-comment-${props.doctype}-${props.name}`
+}
+
+function openCommentBox() {
+  showCommentBox.value = true
+  newCommentType.value = 'Comment'
+}
+
+function getCommentContentElement(id) {
+  const comment = timelineItems.value?.find((c) => c.name === id)
+  if (comment?.$el) {
+    return comment.$el
+  }
+}
+
+function highlightComment(id: string) {
+  const comment = timelineItems.value?.find((c) => c.doctype == 'GP Comment' && c.name === id)
+  if (comment) {
+    highlightedItem.value = {
+      doctype: comment.doctype,
+      name: comment.name,
+    }
+    setTimeout(() => {
+      highlightedItem.value = null
+    }, 10000)
+  }
 }
 
 function resetCommentState() {
   localStorage.removeItem(draftCommentKey())
   newComment.value = ''
   showCommentBox.value = false
+  commentEditorKey.value++
   newCommentType.value = 'Comment'
   newPoll.value = {
     title: '',
@@ -345,6 +390,13 @@ async function scrollToEnd() {
 function _scrollToEnd() {
   const scrollContainer = getScrollContainer()
   scrollContainer.scrollTop = scrollContainer.scrollHeight
+}
+
+function scrollToCommentById(id: string) {
+  const item = timelineItems.value.find((item) => item.name === id)
+  if (item) {
+    scrollToItem(item)
+  }
 }
 
 async function scrollToItem(item: any) {
@@ -453,7 +505,7 @@ watch(showCommentBox, (val) => {
 })
 
 onMounted(() => {
-  if (!editorObject.value?.isEmpty) {
+  if (!commentEmpty.value) {
     showCommentBox.value = true
   }
   socket.on('new_activity', (data) => {

@@ -7,7 +7,7 @@ import { until } from '@vueuse/core'
 
 let defaultRoute = window.default_route
 if (!defaultRoute || defaultRoute?.includes('{{')) {
-  defaultRoute = '/discussions'
+  defaultRoute = '/home'
 }
 
 let router = createRouter({
@@ -20,7 +20,6 @@ let router = createRouter({
     {
       path: '/home',
       name: 'Home',
-      component: () => import('@/pages/Home.vue'),
       redirect: { name: 'Discussions' },
     },
     {
