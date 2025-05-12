@@ -20,7 +20,6 @@ import App from './App.vue'
 import './index.css'
 import { dayjs, getPlatform } from './utils'
 import { createDialog } from './utils/dialogs'
-import { createToast } from './utils/toasts'
 import { useUser, users } from './data/users'
 import { isSessionUser, session } from './data/session'
 import { initSocket } from './socket'
@@ -48,7 +47,6 @@ for (let key in globalComponents) {
 }
 app.config.globalProperties.$dayjs = dayjs
 app.config.globalProperties.$dialog = createDialog
-app.config.globalProperties.$toast = createToast
 app.config.globalProperties.$log = console.log.bind(console)
 app.config.globalProperties.$user = useUser
 app.config.globalProperties.$users = users
@@ -89,7 +87,6 @@ if (import.meta.env.DEV) {
   window.$users = users
   window.$session = session
   window.$dialog = createDialog
-  window.$toast = createToast
   window.$request = request
   window.$frappeRequest = frappeRequest
   window.$router = router
