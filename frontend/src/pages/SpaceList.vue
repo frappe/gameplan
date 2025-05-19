@@ -39,7 +39,17 @@
         </p>
       </div>
     </div>
-    <div class="mt-3 mb-3 flex px-2.5">
+    <div class="mt-3 mb-3 flex px-2.5 items-center justify-between gap-2.5">
+      <TextInput
+        v-model="query"
+        placeholder="Search"
+        class="w-full"
+        v-focus="!!!$route.query.teamId"
+      >
+        <template #prefix>
+          <LucideSearch class="size-4 text-ink-gray-5" />
+        </template>
+      </TextInput>
       <TabButtons
         :buttons="[{ label: 'Public' }, { label: 'Private' }, { label: 'Archived' }]"
         v-model="currentTab"
@@ -211,10 +221,12 @@ import { useRoute } from 'vue-router'
 import { scrollTo } from '@/utils/scrollContainer'
 import { getScrollContainer } from '@/utils/scrollContainer'
 import { createDialog } from '@/utils/dialogs'
+import { vFocus } from '@/directives'
 
 const teams = useDoctype<GPTeam>('GP Team')
 const currentTab = ref('Public')
 const categoryForNewSpace = ref('')
+const query = ref('')
 const groupRefs: Record<string, HTMLElement> = {}
 const route = useRoute()
 
@@ -226,7 +238,7 @@ const groupedSpaces = useGroupedSpaces({
         Private: space.is_private,
         Archived: space.archived_at,
       }[currentTab.value],
-    ),
+    ) && (query.value ? space.title.toLowerCase().includes(query.value.toLowerCase()) : true),
 })
 
 const newSpaceDialog = ref(false)

@@ -6,6 +6,9 @@ interface FocusDirective extends ObjectDirective<HTMLElement> {
 
 const focusDirective: FocusDirective = {
   mounted(el, binding) {
+    if (binding.value === false) {
+      return
+    }
     let firstFocusableElement = getFirstFocusableElement(el)
     if (firstFocusableElement) {
       firstFocusableElement.focus()
