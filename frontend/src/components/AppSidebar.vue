@@ -7,24 +7,33 @@
     </div>
     <div class="flex-1">
       <nav class="space-y-0.5 px-2">
-        <AppLink
-          v-for="link in navigation"
-          :key="link.name"
-          :to="link.route"
-          class="flex items-center rounded px-2 py-1 text-ink-gray-7 transition"
-          activeClass="bg-surface-selected shadow-sm"
-          inactiveClass="hover:bg-surface-gray-2"
+        <AppSidebarLink
+          class="group"
+          :to="{ name: 'Home' }"
+          :isActive="testRoute(/Discussions|Spaces/g)"
         >
-          <div class="flex w-full items-center space-x-2">
-            <span class="grid h-5 w-6 place-items-center">
-              <component :is="link.icon" class="h-4 w-4 text-ink-gray-6" />
-            </span>
-            <span class="text-sm">{{ link.name }}</span>
-            <span v-if="link.count" class="!ml-auto block text-xs text-ink-gray-5">
+          <template #prefix><LucideNewspaper class="h-4 w-4 text-ink-gray-6" /></template>
+          Home
+          <template #suffix>
+            <button
+              @click.stop.prevent="showHomePageSettingsDialog = true"
+              class="group-hover:opacity-100 opacity-0 transition-opacity flex items-center justify-center p-0.5 hover:bg-surface-gray-1 rounded-sm"
+            >
+              <LucideSettings2 class="h-4 w-4 text-ink-gray-6" />
+            </button>
+          </template>
+        </AppSidebarLink>
+        <AppSidebarLink v-for="link in navigation" :key="link.name" :to="link.route">
+          <template #prefix>
+            <component :is="link.icon" class="h-4 w-4 text-ink-gray-6" />
+          </template>
+          {{ link.name }}
+          <template #suffix>
+            <span v-if="link.count" class="block text-xs text-ink-gray-5">
               {{ link.count }}
             </span>
-          </div>
-        </AppLink>
+          </template>
+        </AppSidebarLink>
         <button
           v-if="sessionUser.isNotGuest"
           class="flex w-full items-center rounded px-2 py-1 text-ink-gray-7"
@@ -118,6 +127,7 @@
     <NewSpaceDialog v-model="showAddTeamDialog" />
   </ScrollAreaViewport>
   <ScrollBar />
+  <HomePageSettingsDialog v-model="showHomePageSettingsDialog" />
 </template>
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
@@ -132,6 +142,7 @@ import { showCommandPalette } from '@/components/CommandPalette/commandPalette.t
 import UserDropdown from './UserDropdown.vue'
 import { ScrollAreaViewport } from 'reka-ui'
 import ScrollBar from './ScrollBar.vue'
+import HomePageSettingsDialog from './HomePageSettingsDialog.vue'
 
 import ChevronTriangle from './icons/ChevronTriangle.vue'
 import LucideFiles from '~icons/lucide/files'
@@ -140,8 +151,10 @@ import LucideListTodo from '~icons/lucide/list-todo'
 import LucideNewspaper from '~icons/lucide/newspaper'
 import LucidePlus from '~icons/lucide/plus'
 import LucideUsers2 from '~icons/lucide/users-2'
+import LucideSettings2 from '~icons/lucide/settings-2'
 
 const showAddTeamDialog = ref(false)
+const showHomePageSettingsDialog = ref(false)
 
 const route = useRoute()
 const sessionUser = useSessionUser()
@@ -160,14 +173,6 @@ let groupedSpaces = computed(() => {
 
 const navigation = computed(() => {
   return [
-    {
-      name: 'Home',
-      icon: LucideNewspaper,
-      route: {
-        name: 'Discussions',
-      },
-      open: true,
-    },
     {
       name: 'Inbox',
       icon: LucideInbox,
