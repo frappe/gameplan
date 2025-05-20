@@ -68,7 +68,7 @@ export function hasJoined(spaceId: MaybeRefOrGetter<string>) {
   return joinedSpaces.data?.includes(toValue(spaceId))
 }
 
-export const unreadCount = useCall<Array<Record<number, number>>>({
+export const unreadCount = useCall<{ [spaceId: number]: number }>({
   url: '/api/v2/method/GP Project/get_unread_count',
   immediate: false,
   cacheKey: 'unreadCount',
@@ -76,5 +76,5 @@ export const unreadCount = useCall<Array<Record<number, number>>>({
 
 export function getSpaceUnreadCount(spaceId: string) {
   let spaceIdInt = parseInt(spaceId)
-  return unreadCount.data?.[spaceIdInt] || 0
+  return unreadCount.data?.[spaceIdInt] ?? 0
 }

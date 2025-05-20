@@ -60,71 +60,42 @@
         <div class="text-ink-gray-5 text-base">No spaces</div>
       </EmptyStateBox>
     </div>
-    <div class="mb-8" v-for="group in groupedSpaces" :key="group.name">
-      <div
-        class="px-3 pb-2 flex items-center justify-between"
-        :ref="(el) => (groupRefs[group.name] = el as HTMLElement)"
-      >
-        <div class="text-ink-gray-8 text-base">
-          {{ noCategories ? 'All spaces' : group.title || group.name }}
+    <div>
+      <div class="mt-12" v-for="group in groupedSpaces" :key="group.name">
+        <div
+          class="px-3 flex items-center gap-2 sticky top-12 py-2 bg-surface-white"
+          :ref="(el) => (groupRefs[group.name] = el as HTMLElement)"
+        >
+          <div class="text-base text-ink-gray-8">
+            {{ noCategories ? 'All spaces' : group.title || group.name }}
+          </div>
+          <Badge v-if="getCategoryUnreadCount(group.name) > 0">
+            {{ getCategoryUnreadCount(group.name) }}
+          </Badge>
+          <DropdownMoreOptions
+            class="ml-auto"
+            placement="right"
+            :options="categoryOptions(group)"
+          />
         </div>
-        <DropdownMoreOptions
-          placement="right"
-          :options="[
-            {
-              label: 'Edit',
-              condition: () => group.title !== 'Uncategorized',
-              onClick: () => {
-                editCategoryDialog.category = group
-                editCategoryDialog.categoryTitle = group.title
-                editCategoryDialog.show = true
+        <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 px-3">
+          <router-link
+            v-for="(d, index) in group.spaces"
+            :key="d.name"
+            class="rounded-md flex flex-col focus:outline-none focus-visible:ring-outline-gray-3 focus-visible:ring-2 justify-between border p-3 hover:bg-surface-gray-2 group transition-colors"
+            :to="{
+              name: 'Space',
+              params: {
+                spaceId: d.name,
               },
-            },
-            {
-              label: 'Mark all as read',
-              condition: () => group.title !== 'Uncategorized' && group.spaces.length > 0,
-              onClick: () => markAllAsRead(group),
-            },
-            {
-              label: 'Join all',
-              onClick: () => joinSpaces(group.spaces.map((d) => d.name)),
-            },
-            {
-              label: 'Leave all',
-              onClick: () => leaveSpaces(group.spaces.map((d) => d.name)),
-            },
-            {
-              label: 'New space',
-              onClick: () => {
-                if (group.title !== 'Uncategorized') {
-                  categoryForNewSpace = group.name
-                }
-                newSpaceDialog = true
-              },
-            },
-          ]"
-        />
-      </div>
-      <div class="border-b mx-3"></div>
-      <router-link
-        v-for="(d, index) in group.spaces"
-        :key="d.name"
-        :to="{
-          name: 'Space',
-          params: {
-            spaceId: d.name,
-          },
-        }"
-        class="group relative block rounded-[10px] transition hover:bg-surface-gray-2"
-      >
-        <div class="flex h-full items-center space-x-4 overflow-hidden px-3 py-2">
-          <span class="font-[emoji] text-2xl self-start mt-0.5">
-            {{ d.icon }}
-          </span>
-          <div class="min-w-0 flex-1">
-            <div class="flex min-w-0 items-center">
-              <div class="overflow-hidden text-ellipsis whitespace-nowrap text-ink-gray-8">
-                <span class="overflow-hidden text-ellipsis whitespace-nowrap text-base font-medium">
+            }"
+          >
+            <div class="flex items-start w-full space-x-2">
+              <div class="inline-flex">
+                <span class="text-lg mr-1.5 font-[emoji] leading-5">
+                  {{ d.icon }}
+                </span>
+                <span class="text-base leading-5 text-ink-gray-9 font-medium">
                   {{ d.title }}
                   <LucideLock
                     v-if="d.is_private"
@@ -132,53 +103,77 @@
                   />
                 </span>
               </div>
+              <div class="!ml-auto flex">
+                <Badge v-if="getSpaceUnreadCount(d.name) > 0" class="group-hover:bg-surface-white">
+                  {{ getSpaceUnreadCount(d.name) }}
+                </Badge>
+              </div>
             </div>
-            <div class="mt-1 flex min-w-0 items-center">
-              <div
-                class="overflow-hidden text-ellipsis whitespace-nowrap text-base text-ink-gray-5"
-              >
-                <span>
+            <div class="mt-2.5 flex items-center justify-between">
+              <div>
+                <span class="text-ink-gray-5 text-base" v-if="d.discussions_count ?? 0 > 0">
                   {{ d.discussions_count }}
                   {{ d.discussions_count == 1 ? 'post' : 'posts' }}
                 </span>
-                <span v-if="getSpaceUnreadCount(d.name) > 0">, </span>
-                <span v-if="getSpaceUnreadCount(d.name) > 0">
-                  {{ getSpaceUnreadCount(d.name) }} unread
-                </span>
+              </div>
+
+              <div class="flex items-center space-x-1" @click.prevent>
+                <template v-if="!d.archived_at">
+                  <Tooltip :text="'Leave space'" v-if="hasJoined(d.name)">
+                    <Button
+                      variant="ghost"
+                      class="group-hover:opacity-100 sm:opacity-0 transition-opacity opacity-100"
+                      @click="leaveSpace(d)"
+                      :loading="isMethodLoading(d.name, 'leave')"
+                    >
+                      <template #icon>
+                        <LucideUserRoundMinus class="size-4" />
+                      </template>
+                    </Button>
+                  </Tooltip>
+                  <Tooltip :text="'Join space'" v-else>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      class="group-hover:opacity-100 sm:opacity-0 transition-opacity opacity-100"
+                      @click="joinSpace(d)"
+                      :loading="isMethodLoading(d.name, 'join')"
+                    >
+                      <template #icon>
+                        <LucideUserRoundPlus class="h-4 w-4" />
+                      </template>
+                    </Button>
+                  </Tooltip>
+                  <SpaceOptions
+                    class="group-hover:opacity-100 sm:opacity-0 transition-opacity opacity-100"
+                    placement="right"
+                    :spaceId="d.name"
+                  />
+                </template>
+                <template v-else>
+                  <Tooltip :text="'Unarchive space'">
+                    <Button
+                      size="sm"
+                      @click="unarchiveSpace(d)"
+                      variant="ghost"
+                      class="group-hover:opacity-100 sm:opacity-0 transition-opacity opacity-100"
+                    >
+                      <template #icon>
+                        <LucideArchiveRestore class="size-4" />
+                      </template>
+                    </Button>
+                  </Tooltip>
+                </template>
               </div>
             </div>
-          </div>
-          <div class="ml-auto">
-            <div class="flex items-center space-x-1" v-if="!d.archived_at" @click.prevent>
-              <Button
-                class="w-16"
-                v-if="hasJoined(d.name)"
-                @click="leaveSpace(d)"
-                :loading="isMethodLoading(d.name, 'leave')"
-              >
-                Leave
-              </Button>
-              <Button
-                class="w-16"
-                v-else
-                @click="joinSpace(d)"
-                :loading="isMethodLoading(d.name, 'join')"
-              >
-                Join
-              </Button>
-              <SpaceOptions placement="right" :spaceId="d.name" />
-            </div>
-            <div v-else @click.prevent>
-              <Button @click="unarchiveSpace(d)">Unarchive</Button>
-            </div>
-          </div>
+          </router-link>
         </div>
-      </router-link>
+      </div>
     </div>
   </div>
   <Dialog :options="{ title: 'Change category title' }" v-model="editCategoryDialog.show">
     <template #body-content>
-      <FormControl label="Title" v-model="editCategoryDialog.categoryTitle" />
+      <FormControl label="Title" v-model="editCategoryDialog.categoryTitle" v-focus:autoselect />
     </template>
     <template #actions>
       <div class="flex justify-end">
@@ -206,7 +201,8 @@
 </template>
 <script setup lang="ts">
 import { onMounted, reactive, ref, nextTick } from 'vue'
-import { Breadcrumbs, TabButtons } from 'frappe-ui'
+import type { UnwrapRef } from 'vue'
+import { Badge, Breadcrumbs, TabButtons, Button, Tooltip } from 'frappe-ui'
 import { useDoctype } from 'frappe-ui/src/data-fetching'
 import { noCategories, useGroupedSpaces } from '@/data/groupedSpaces'
 import { hasJoined, joinedSpaces, getSpaceUnreadCount, unreadCount } from '@/data/spaces'
@@ -215,7 +211,6 @@ import SpaceOptions from '@/components/SpaceOptions.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import DropdownMoreOptions from '@/components/DropdownMoreOptions.vue'
 import { GPTeam, GPProject } from '@/types/doctypes'
-import LucideLock from '~icons/lucide/lock'
 import EmptyStateBox from '@/components/EmptyStateBox.vue'
 import { useRoute } from 'vue-router'
 import { scrollTo } from '@/utils/scrollContainer'
@@ -346,5 +341,55 @@ function markAllAsRead(group) {
 
 function isMethodLoading(docname, method) {
   return spaces.runDocMethod.isLoading(docname, method)
+}
+
+type GroupedSpaceItem = UnwrapRef<ReturnType<typeof useGroupedSpaces>>[number]
+
+function categoryOptions(group: GroupedSpaceItem) {
+  return [
+    {
+      label: 'Edit',
+      condition: () => group.title !== 'Uncategorized',
+      onClick: () => {
+        editCategoryDialog.category = group
+        editCategoryDialog.categoryTitle = group.title
+        editCategoryDialog.show = true
+      },
+    },
+    {
+      label: 'Mark all as read',
+      condition: () => group.title !== 'Uncategorized' && group.spaces.length > 0,
+      onClick: () => markAllAsRead(group),
+    },
+    {
+      label: 'Join all',
+      onClick: () => joinSpaces(group.spaces.map((d) => d.name)),
+    },
+    {
+      label: 'Leave all',
+      onClick: () => leaveSpaces(group.spaces.map((d) => d.name)),
+    },
+    {
+      label: 'New space',
+      onClick: () => {
+        if (group.title !== 'Uncategorized') {
+          categoryForNewSpace.value = group.name
+        }
+        newSpaceDialog.value = true
+      },
+    },
+  ]
+}
+
+function getCategoryUnreadCount(categoryId: string) {
+  let count = 0
+  for (const group of groupedSpaces.value) {
+    if (group.name === categoryId) {
+      for (const space of group.spaces) {
+        count += getSpaceUnreadCount(space.name)
+      }
+    }
+  }
+  return count
 }
 </script>

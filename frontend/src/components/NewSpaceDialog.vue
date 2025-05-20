@@ -21,6 +21,7 @@
             id="new-space-name"
             v-model="newSpace.doc.title"
             autocomplete="off"
+            v-focus
           />
         </div>
         <div class="flex gap-2">
@@ -64,6 +65,7 @@ import { GPProject } from '@/types/doctypes'
 import { spaces } from '@/data/spaces'
 import { computed, ref, watch } from 'vue'
 import { activeTeams } from '@/data/teams'
+import { vFocus } from '@/directives'
 
 const props = defineProps<{
   category?: string
