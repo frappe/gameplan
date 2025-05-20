@@ -23,7 +23,12 @@
             </button>
           </template>
         </AppSidebarLink>
-        <AppSidebarLink v-for="link in navigation" :key="link.name" :to="link.route">
+        <AppSidebarLink
+          v-for="link in navigation"
+          :key="link.name"
+          :to="link.route"
+          :isActive="link.isActive"
+        >
           <template #prefix>
             <component :is="link.icon" class="h-4 w-4 text-ink-gray-6" />
           </template>
@@ -180,6 +185,7 @@ const navigation = computed(() => {
         name: 'Notifications',
       },
       count: unreadNotifications.data || 0,
+      isActive: testRoute(/Notifications/g),
     },
     {
       name: 'Tasks',
