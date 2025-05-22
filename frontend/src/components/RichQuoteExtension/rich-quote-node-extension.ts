@@ -4,7 +4,7 @@ import RichQuoteNodeView from './RichQuoteNodeView.vue'
 
 export interface RichQuoteOptions {
   HTMLAttributes: Record<string, any>
-  onClick?: (props: { quoteId: string; author: string }) => void
+  onClick?: (props: { quoteId: string; author: string; content: string }) => void
 }
 
 declare module '@tiptap/core' {
