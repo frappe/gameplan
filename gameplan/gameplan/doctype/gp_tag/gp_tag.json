@@ -1,63 +1,27 @@
 {
  "actions": [],
+ "allow_rename": 1,
  "autoname": "autoincrement",
- "creation": "2022-05-17 19:44:16.153834",
+ "creation": "2025-05-22 12:12:57.477422",
  "doctype": "DocType",
- "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "content",
-  "reference_doctype",
-  "reference_name",
-  "deleted_at",
-  "reactions",
-  "tags"
+  "label"
  ],
  "fields": [
   {
-   "fieldname": "content",
-   "fieldtype": "Text Editor",
-   "in_list_view": 1,
-   "label": "Content",
-   "reqd": 1
-  },
-  {
-   "fieldname": "reference_doctype",
-   "fieldtype": "Link",
-   "label": "Reference DocType",
-   "options": "DocType"
-  },
-  {
-   "fieldname": "reference_name",
-   "fieldtype": "Dynamic Link",
-   "label": "Reference Name",
-   "options": "reference_doctype"
-  },
-  {
-   "fieldname": "reactions",
-   "fieldtype": "Table",
-   "label": "Reactions",
-   "options": "GP Reaction"
-  },
-  {
-   "fieldname": "deleted_at",
-   "fieldtype": "Datetime",
-   "label": "Deleted At"
-  },
-  {
-   "fieldname": "tags",
-   "fieldtype": "Table",
-   "label": "Tags",
-   "options": "GP Tag Link"
+   "fieldname": "label",
+   "fieldtype": "Data",
+   "label": "Label"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-05-22 13:12:51.415148",
+ "modified": "2025-05-22 12:26:40.729595",
  "modified_by": "Administrator",
  "module": "Gameplan",
- "name": "GP Comment",
+ "name": "GP Tag",
  "naming_rule": "Autoincrement",
  "owner": "Administrator",
  "permissions": [
@@ -110,8 +74,9 @@
   }
  ],
  "row_format": "Dynamic",
- "sort_field": "modified",
+ "show_title_field_in_link": 1,
+ "sort_field": "creation",
  "sort_order": "DESC",
  "states": [],
- "track_changes": 1
+ "title_field": "label"
 }

@@ -13,6 +13,7 @@
   "slug",
   "content",
   "reactions",
+  "tags",
   "last_post_at",
   "last_post_type",
   "last_post",
@@ -129,11 +130,18 @@
    "fieldtype": "Dynamic Link",
    "label": "Last Post",
    "options": "last_post_type"
+  },
+  {
+   "fieldname": "tags",
+   "fieldtype": "Table",
+   "label": "Tags",
+   "options": "GP Tag Link"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-01-22 16:06:16.029266",
+ "modified": "2025-05-22 13:12:36.398541",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "GP Discussion",
@@ -188,6 +196,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "show_title_field_in_link": 1,
  "sort_field": "modified",
  "sort_order": "DESC",

@@ -32,6 +32,7 @@ export default defineConfig({
             'gp_activity',
             'gp_search_feedback',
             'gp_draft',
+            'gp_tag',
           ],
         },
       },

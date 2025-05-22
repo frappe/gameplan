@@ -113,6 +113,7 @@ import UserAvatarWithHover from './UserAvatarWithHover.vue'
 import { GPComment } from '@/types/doctypes'
 import { isSessionUser } from '@/data/session'
 import { createDialog } from '@/utils/dialogs'
+import { tags } from '@/data/tags'
 
 interface Props {
   comment: GPComment
@@ -136,6 +137,7 @@ const setEditing = (name: string, value: boolean) => {
 const updateComment = (comment: GPComment) => {
   editableComment.value?.update().then(() => {
     setEditing(comment.name, false)
+    tags.reload()
   })
 }
 

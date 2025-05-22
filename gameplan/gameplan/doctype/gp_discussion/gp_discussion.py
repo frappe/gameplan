@@ -9,11 +9,12 @@ from gameplan.gameplan.doctype.gp_notification.gp_notification import GPNotifica
 from gameplan.mixins.activity import HasActivity
 from gameplan.mixins.mentions import HasMentions
 from gameplan.mixins.reactions import HasReactions
+from gameplan.mixins.tags import HasTags
 from gameplan.search2 import GameplanSearch, GameplanSearchIndexMissingError
 from gameplan.utils import remove_empty_trailing_paragraphs, url_safe_slug
 
 
-class GPDiscussion(HasActivity, HasMentions, HasReactions, Document):
+class GPDiscussion(HasActivity, HasMentions, HasReactions, HasTags, Document):
 	# Class Configuration
 	on_delete_cascade = ["GP Comment", "GP Discussion Visit", "GP Activity", "GP Poll"]
 	on_delete_set_null = ["GP Notification"]
@@ -25,6 +26,7 @@ class GPDiscussion(HasActivity, HasMentions, HasReactions, Document):
 		"Discussion Unpinned",
 	]
 	mentions_field = "content"
+	tags_field = "content"
 
 	# Lifecycle Methods
 	def as_dict(self, *args, **kwargs):
@@ -87,6 +89,7 @@ class GPDiscussion(HasActivity, HasMentions, HasReactions, Document):
 
 	def before_save(self):
 		self.update_slug()
+		self.update_tags()
 
 	# Whitelisted Methods
 	@frappe.whitelist()

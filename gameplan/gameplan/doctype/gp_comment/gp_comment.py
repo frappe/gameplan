@@ -6,13 +6,15 @@ from frappe.model.document import Document
 
 from gameplan.mixins.mentions import HasMentions
 from gameplan.mixins.reactions import HasReactions
+from gameplan.mixins.tags import HasTags
 from gameplan.search2 import GameplanSearch, GameplanSearchIndexMissingError
 from gameplan.utils import remove_empty_trailing_paragraphs
 
 
-class GPComment(HasMentions, HasReactions, Document):
+class GPComment(HasMentions, HasReactions, HasTags, Document):
 	on_delete_set_null = ["GP Notification", "GP Discussion"]
 	mentions_field = "content"
+	tags_field = "content"
 
 	def before_insert(self):
 		if self.reference_doctype not in ["GP Discussion"]:
@@ -30,6 +32,9 @@ class GPComment(HasMentions, HasReactions, Document):
 	def after_delete(self):
 		self.update_discussion_meta()
 		self.update_task_meta()
+
+	def before_save(self):
+		self.update_tags()
 
 	def update_discussion_meta(self):
 		if self.reference_doctype != "GP Discussion":

@@ -117,7 +117,7 @@ export interface GPNotification extends DocType {
   team?: string
 }
 
-// Last updated: 2025-01-22 16:06:16.029266
+// Last updated: 2025-05-22 13:12:36.398541
 export interface GPDiscussion extends DocType {
   /** Project: Link (GP Project) */
   project: string
@@ -153,6 +153,8 @@ export interface GPDiscussion extends DocType {
   last_post_type: 'GP Comment' | 'GP Poll'
   /** Last Post: Dynamic Link (last_post_type) */
   last_post?: string
+  /** Tags: Table (GP Tag Link) */
+  tags: GPTagLink[]
 }
 
 // Last updated: 2023-02-13 21:00:23.191195
@@ -245,7 +247,7 @@ export interface GPReaction extends ChildDocType {
   user?: string
 }
 
-// Last updated: 2023-01-12 17:30:44.294192
+// Last updated: 2025-05-22 13:12:51.415148
 export interface GPComment extends DocType {
   /** Content: Text Editor */
   content: string
@@ -257,6 +259,8 @@ export interface GPComment extends DocType {
   reactions: GPReaction[]
   /** Deleted At: Datetime */
   deleted_at?: string
+  /** Tags: Table (GP Tag Link) */
+  tags: GPTagLink[]
 }
 
 // Last updated: 2023-05-05 17:19:19.900086
@@ -335,4 +339,18 @@ export interface GPDraft extends DocType {
   project?: string
   /** Team: Link (GP Team) */
   team?: string
+}
+
+// Last updated: 2025-05-22 13:12:57.407226
+export interface GPTagLink extends ChildDocType {
+  /** Tag: Link (GP Tag) */
+  tag?: string
+  /** Label: Data */
+  label?: string
+}
+
+// Last updated: 2025-05-22 12:26:40.729595
+export interface GPTag extends DocType {
+  /** Label: Data */
+  label?: string
 }

@@ -104,6 +104,7 @@ import { vFocus } from '@/directives'
 import { createDialog } from '@/utils/dialogs'
 import { useLocalStorage } from '@vueuse/core'
 import { GPDiscussion, GPDraft } from '@/types/doctypes'
+import { tags } from '@/data/tags'
 
 const currentRoute = useRoute()
 const sessionUser = useSessionUser()
@@ -293,6 +294,7 @@ function publish() {
           },
         })
         resetValues()
+        tags.reload()
       })
       .catch(() => {
         publishing.value = false

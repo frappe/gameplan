@@ -150,6 +150,7 @@ import { createDialog } from '@/utils/dialogs'
 import { useSocket } from '@/socket'
 import { GPActivity, GPComment, GPPoll } from '@/types/doctypes'
 import type { Editor } from '@tiptap/vue-3'
+import { tags } from '@/data/tags'
 
 interface Props {
   doctype: string
@@ -374,6 +375,7 @@ async function submitComment() {
     })
     .then(() => {
       resetCommentState()
+      tags.reload()
     })
 }
 

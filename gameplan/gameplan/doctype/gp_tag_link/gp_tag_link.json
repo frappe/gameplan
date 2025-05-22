@@ -1,0 +1,43 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-05-22 12:22:12.241569",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "tag",
+  "label"
+ ],
+ "fields": [
+  {
+   "fieldname": "tag",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Tag",
+   "options": "GP Tag"
+  },
+  {
+   "fetch_from": "tag.label",
+   "fieldname": "label",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Label",
+   "read_only": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-05-22 13:12:57.407226",
+ "modified_by": "Administrator",
+ "module": "Gameplan",
+ "name": "GP Tag Link",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}

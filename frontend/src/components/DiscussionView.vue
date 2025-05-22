@@ -114,13 +114,7 @@
               "
               :submitButtonProps="{
                 variant: 'solid',
-                onClick: () => {
-                  discussion.setValue.submit({
-                    title: discussion.doc?.title,
-                    content: discussion.doc?.content,
-                  })
-                  editingPost = false
-                },
+                onClick: updatePost,
                 loading: discussion.setValue.loading,
               }"
               :discardButtonProps="{
@@ -221,6 +215,7 @@ import { copyToClipboard } from '@/utils'
 import { useSpace } from '@/data/spaces'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { useDiscussion } from '@/data/discussions'
+import { tags } from '@/data/tags'
 import { createDialog } from '@/utils/dialogs'
 import { useScrollPosition } from '@/utils/scrollContainer'
 import { isMobile } from '@/utils/composables'
@@ -326,6 +321,18 @@ function moveToSpace() {
         discussionMoveDialog.show = true
       })
   }
+}
+
+function updatePost() {
+  discussion.setValue
+    .submit({
+      title: discussion.doc?.title,
+      content: discussion.doc?.content,
+    })
+    .then(() => {
+      tags.reload()
+    })
+  editingPost.value = false
 }
 
 function updateUrlSlug() {
