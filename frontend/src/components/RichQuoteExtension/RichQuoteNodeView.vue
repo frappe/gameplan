@@ -1,6 +1,6 @@
 <template>
   <NodeViewWrapper
-    class="relative mt-2 first:mt-0 bg-surface-gray-1 border border-outline-gray-1 rounded overflow-hidden"
+    class="relative mt-2 first:mt-0 border-l-[6px] hover:border-outline-gray-2 transition-colors overflow-hidden"
     :data-rich-quote-id="node.attrs.quoteId"
   >
     <button
@@ -11,7 +11,7 @@
       <UserAvatar size="xs" :user="node.attrs.author" />
       <div class="text-xs">{{ useUser(node.attrs.author).full_name.trim() }}:</div>
     </div>
-    <NodeViewContent class="p-2" />
+    <NodeViewContent class="px-2 py-0" />
   </NodeViewWrapper>
 </template>
 <script setup lang="ts">
