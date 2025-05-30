@@ -7,14 +7,15 @@ from gameplan.demo.team_projects import generate_teams_and_projects
 from gameplan.demo.user import generate_users
 
 
-def generate():
+def generate(ignore_real_data=False):
 	"""Generate demo data for Gameplan including 35 users for Techflow Inc."""
 
-	# Check for existing real data and warn user
-	warnings, _ = check_for_real_data()
-	if not confirm_operation("generate", warnings):
-		print("❌ Demo data generation cancelled by user")
-		return
+	if not ignore_real_data:
+		# Check for existing real data and warn user
+		warnings, _ = check_for_real_data()
+		if not confirm_operation("generate", warnings):
+			print("❌ Demo data generation cancelled by user")
+			return
 
 	frappe.conf.disable_gameplan_search = True
 
@@ -27,14 +28,15 @@ def generate():
 	print("\n🎉 Demo data generation completed!")
 
 
-def clear():
+def clear(ignore_real_data=False):
 	"""Clear all demo data by directly deleting from database tables."""
 
-	# Check for existing real data and warn user
-	warnings, real_users_count = check_for_real_data()
-	if real_users_count > 0 and not confirm_operation("clear", warnings):
-		print("❌ Demo data clearing cancelled by user")
-		return
+	if not ignore_real_data:
+		# Check for existing real data and warn user
+		warnings, real_users_count = check_for_real_data()
+		if real_users_count > 0 and not confirm_operation("clear", warnings):
+			print("❌ Demo data clearing cancelled by user")
+			return
 
 	print("🧹 Clearing all demo data...")
 
@@ -196,3 +198,18 @@ def confirm_operation(operation_name, warnings):
 
 	response = input(f"\nAre you sure you want to {operation_name}? (y/N): ").strip().lower()
 	return response in ["y", "yes"]
+
+
+def demo_data_enabled():
+	"""Check if demo data generation is enabled in site config."""
+	return frappe.conf.get("gameplan_demo_enabled", False)
+
+
+def generate_data_daily():
+	"""Generate daily demo data for Gameplan. Executed by scheduler."""
+	if not demo_data_enabled():
+		return
+
+	clear(ignore_real_data=True)
+	print()
+	generate(ignore_real_data=True)

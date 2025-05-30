@@ -88,9 +88,10 @@ def run_git_command(command):
 def login_as_demo_user_if_enabled():
 	from random import choice
 
+	from gameplan.demo.demo import demo_data_enabled
 	from gameplan.demo.discussions_comments import get_random_users
 
-	if frappe.form_dict.demo and not frappe.conf.get("gameplan_demo_enabled", False):
+	if frappe.form_dict.demo and not demo_data_enabled():
 		frappe.throw("Not found", frappe.DoesNotExistError)
 
 	if frappe.session.user != "Guest":
