@@ -57,6 +57,11 @@ class GameplanSearch:
 			},
 		}
 
+	def is_search_enabled(self):
+		"""Check if search functionality is disabled via site config"""
+		disabled = frappe.conf.get("disable_gameplan_search", False)
+		return not disabled
+
 	def raise_if_not_indexed(self):
 		if not self.index_exists():
 			raise GameplanSearchIndexMissingError(
@@ -64,6 +69,9 @@ class GameplanSearch:
 			)
 
 	def search(self, query, title_only=False):
+		if not self.is_search_enabled():
+			return {"results": [], "summary": {"total_matches": 0, "filtered_matches": 0}}
+
 		self.raise_if_not_indexed()
 
 		if not query:
@@ -136,6 +144,9 @@ class GameplanSearch:
 		}
 
 	def build_index(self):
+		if not self.is_search_enabled():
+			return
+
 		records = self.get_records()
 		documents = []
 
@@ -148,6 +159,8 @@ class GameplanSearch:
 
 	def index_doc(self, doc):
 		"""Index a single document in background"""
+		if not self.is_search_enabled():
+			return
 		frappe.enqueue("gameplan.search2.index_document", doctype=doc.doctype, docname=doc.name)
 
 	def _index_doc(self, doctype, docname):
@@ -159,6 +172,8 @@ class GameplanSearch:
 
 	def remove_doc(self, doc):
 		"""Remove a single document from the index"""
+		if not self.is_search_enabled():
+			return
 		frappe.enqueue("gameplan.search2.remove_document", doctype=doc.doctype, docname=doc.name)
 
 	def _remove_doc(self, doctype, docname):
@@ -234,28 +249,39 @@ class GameplanSearch:
 
 
 def build_index():
-	frappe.cache().set_value(INDEX_BUILD_FLAG, True)
 	search = GameplanSearch()
+	if not search.is_search_enabled():
+		return
+	frappe.cache().set_value(INDEX_BUILD_FLAG, True)
 	search.build_index()
 	frappe.cache().set_value(INDEX_BUILD_FLAG, False)
 
 
 def build_index_in_background():
+	search = GameplanSearch()
+	if not search.is_search_enabled():
+		return
 	if not frappe.cache().get_value("discussions_index_in_progress"):
 		frappe.enqueue(build_index, queue="long")
 
 
 def build_index_if_not_exists():
 	search = GameplanSearch()
+	if not search.is_search_enabled():
+		return
 	if not search.index_exists() or not frappe.cache.exists(INDEX_BUILD_FLAG):
 		build_index()
 
 
 def index_document(doctype, docname):
 	search = GameplanSearch()
+	if not search.is_search_enabled():
+		return
 	search._index_doc(doctype, docname)
 
 
 def remove_document(doctype, docname):
 	search = GameplanSearch()
+	if not search.is_search_enabled():
+		return
 	search._remove_doc(doctype, docname)

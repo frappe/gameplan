@@ -24,6 +24,9 @@ ignore = [
     "W191", # indentation contains tabs
 ]
 
+[tool.ruff.lint.per-file-ignores]
+"**/demo/**" = ["E501"] # Disable line too long for demo files
+
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "tab"

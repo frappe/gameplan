@@ -12,6 +12,7 @@ no_cache = 1
 
 
 def get_context():
+	login_as_demo_user_if_enabled()
 	csrf_token = frappe.sessions.get_csrf_token()
 	frappe.db.commit()
 	context = frappe._dict()
@@ -82,3 +83,20 @@ def run_git_command(command):
 			title="Git Command Error",
 		)
 		return ""
+
+
+def login_as_demo_user_if_enabled():
+	from random import choice
+
+	from gameplan.demo.discussions_comments import get_random_users
+
+	if frappe.form_dict.demo and not frappe.conf.get("gameplan_demo_enabled", False):
+		frappe.throw("Not found", frappe.DoesNotExistError)
+
+	if frappe.session.user != "Guest":
+		return
+
+	# login as a random demo user
+	users = get_random_users(10)
+	random_user = choice(users)
+	frappe.local.login_manager.login_as(random_user)
