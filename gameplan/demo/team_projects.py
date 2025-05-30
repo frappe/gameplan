@@ -28,7 +28,7 @@ def generate_teams_and_projects():
 	for team in created_teams:
 		projects_to_create += generate_projects_data_for_team(team)
 
-	for project_data in projects_to_create:
+	for i, project_data in enumerate(projects_to_create):
 		frappe.utils.update_progress_bar("Creating Projects", i, len(projects_to_create), absolute=True)
 		project = create_project(project_data)
 		if project:
@@ -41,6 +41,9 @@ def generate_teams_and_projects():
 		absolute=True,
 	)
 	print()
+
+	# Assign users to projects with realistic variations
+	assign_users_to_projects(created_projects)
 
 	frappe.db.commit()
 
@@ -254,12 +257,6 @@ def create_project(project_data):
 		project_doc.team = project_data["team"]
 		project_doc.icon = project_data["icon"]
 		project_doc.is_private = project_data["is_private"]
-
-		project_members = get_random_users(count=5)
-		# Add members
-		for user in project_members:
-			project_doc.append("members", {"user": user})
-
 		project_doc.insert()
 		return project_doc
 
@@ -295,4 +292,123 @@ def get_random_users(count=5):
 
 	except Exception as e:
 		print(f"Error getting random users: {str(e)}")
+		return ["Administrator"]
+
+
+def assign_users_to_projects(projects):
+	"""Assign users to projects with realistic variations in involvement levels."""
+	# Get all Techflow users
+	all_users = get_all_techflow_users()
+
+	# Create user archetypes with different involvement levels
+	heavy_contributors = all_users[: int(len(all_users) * 0.15)]  # 15% - high involvement
+	active_members = all_users[int(len(all_users) * 0.15) : int(len(all_users) * 0.4)]  # 25% - medium-high
+	regular_members = all_users[int(len(all_users) * 0.4) : int(len(all_users) * 0.75)]  # 35% - medium
+	occasional_members = all_users[int(len(all_users) * 0.75) :]  # 25% - low involvement
+
+	# Shuffle to randomize which users get which archetype
+	random.shuffle(all_users)
+	heavy_contributors = all_users[: int(len(all_users) * 0.15)]
+	active_members = all_users[int(len(all_users) * 0.15) : int(len(all_users) * 0.4)]
+	regular_members = all_users[int(len(all_users) * 0.4) : int(len(all_users) * 0.75)]
+	occasional_members = all_users[int(len(all_users) * 0.75) :]
+
+	# Track user assignments
+	user_stats = {user: {"projects": 0, "teams": set()} for user in all_users}
+
+	# Assign users to projects based on their archetype
+	for project in projects:
+		project_members = []
+
+		# Heavy contributors: 80-90% chance to be in any project
+		for user in heavy_contributors:
+			if random.random() < 0.85:
+				project_members.append(user)
+
+		# Active members: 50-70% chance
+		for user in active_members:
+			if random.random() < 0.6:
+				project_members.append(user)
+
+		# Regular members: 30-50% chance
+		for user in regular_members:
+			if random.random() < 0.4:
+				project_members.append(user)
+
+		# Occasional members: 15-25% chance
+		for user in occasional_members:
+			if random.random() < 0.2:
+				project_members.append(user)
+
+		# Ensure each project has at least 3 members and at most 8
+		if len(project_members) < 3:
+			# Add more users randomly
+			remaining_users = [u for u in all_users if u not in project_members]
+			needed = 3 - len(project_members)
+			project_members.extend(random.sample(remaining_users, min(needed, len(remaining_users))))
+
+		if len(project_members) > 8:
+			# Randomly remove some members
+			project_members = random.sample(project_members, 8)
+
+		# Add members to project
+		for user in project_members:
+			project.append("members", {"user": user})
+			user_stats[user]["projects"] += 1
+			user_stats[user]["teams"].add(project.team)
+
+		project.save()
+
+	# Ensure minimum requirements: every user in at least 4 projects across 3 teams
+	for user in all_users:
+		stats = user_stats[user]
+
+		if stats["projects"] < 4 or len(stats["teams"]) < 3:
+			# Find projects to add this user to
+			suitable_projects = []
+			for project in projects:
+				current_members = [m.user for m in project.members]
+				if user not in current_members:
+					# Prefer projects from teams the user hasn't been in
+					priority = 0 if project.team not in stats["teams"] else 1
+					suitable_projects.append((priority, project))
+
+			# Sort by priority and add user to projects
+			suitable_projects.sort(key=lambda x: x[0])
+
+			added = 0
+			for _priority, project in suitable_projects:
+				if stats["projects"] >= 4 and len(stats["teams"]) >= 3:
+					break
+
+				project.append("members", {"user": user})
+				project.save()
+				stats["projects"] += 1
+				stats["teams"].add(project.team)
+				added += 1
+
+				if added >= 5:  # Don't add to too many projects at once
+					break
+
+
+def get_all_techflow_users():
+	"""Get all Techflow users for tracking assignments."""
+	try:
+		# Get users from the @techflow.com domain
+		users = frappe.get_all(
+			"User",
+			filters={"email": ["like", "%@techflow.com"], "enabled": 1},
+			fields=["name"],
+		)
+
+		if not users:
+			# If no Techflow users, get random active users
+			users = frappe.get_all(
+				"User", filters={"enabled": 1, "user_type": "System User"}, fields=["name"], limit=20
+			)
+
+		return [user.name for user in users]
+
+	except Exception as e:
+		print(f"Error getting Techflow users: {str(e)}")
 		return ["Administrator"]
