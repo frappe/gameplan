@@ -11,7 +11,7 @@
           <span class="flex-shrink-0">
             <span class="h-6 w-6 rounded-full">{{ team.icon }}</span>
           </span>
-          <span class="text-base font-medium text-ink-gray-9">
+          <span class="text-base font-medium text-ink-gray-8">
             {{ team.title }}
           </span>
         </div>

@@ -17,7 +17,7 @@ class GPDiscussionVisit(Document):
 
 
 def on_doctype_update():
-	frappe.db.add_index("GP Discussion Visit", ["discussion", "user"])
+	frappe.db.add_index("GP Discussion Visit", ["user", "discussion", "last_visit"])
 
 
 def after_doctype_insert():

@@ -13,7 +13,10 @@
   "slug",
   "content",
   "reactions",
+  "tags",
   "last_post_at",
+  "last_post_type",
+  "last_post",
   "last_post_by",
   "closed_at",
   "closed_by",
@@ -115,11 +118,30 @@
    "fieldtype": "Link",
    "label": "Pinned By",
    "options": "User"
+  },
+  {
+   "fieldname": "last_post_type",
+   "fieldtype": "Select",
+   "label": "Last Post Type",
+   "options": "\nGP Comment\nGP Poll"
+  },
+  {
+   "fieldname": "last_post",
+   "fieldtype": "Dynamic Link",
+   "label": "Last Post",
+   "options": "last_post_type"
+  },
+  {
+   "fieldname": "tags",
+   "fieldtype": "Table",
+   "label": "Tags",
+   "options": "GP Tag Link"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-02-06 12:11:11.919002",
+ "modified": "2025-05-22 13:12:36.398541",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "GP Discussion",
@@ -174,6 +196,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "show_title_field_in_link": 1,
  "sort_field": "modified",
  "sort_order": "DESC",

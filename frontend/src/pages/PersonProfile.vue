@@ -27,7 +27,7 @@
         "
       />
     </div>
-    <div class="mx-auto -mt-4 max-w-4xl translate-x-0 sm:px-5">
+    <div class="mx-auto -mt-4 max-w-4xl translate-x-0 px-5">
       <div class="flex items-center">
         <div class="-mx-1 inline-flex translate-y-0">
           <ImagePreview v-model:show="imagePreview.show" :imageUrl="imagePreview.imageUrl" />
@@ -39,7 +39,7 @@
                 imagePreview.show = true
               }
             "
-            class="rounded-full bg-surface-white outline-none hover:brightness-110 focus-visible:ring focus-visible:ring-outline-gray-3"
+            class="rounded-full shrink-0 bg-surface-white outline-none hover:brightness-110 focus-visible:ring focus-visible:ring-outline-gray-3"
           >
             <UserImage
               class="h-[100px] w-[100px] rounded-full border-4 border-outline-white object-cover"
@@ -56,29 +56,36 @@
             <span v-if="$isSessionUser(profile.user)"> Upload Image </span>
           </button>
         </div>
-        <div class="ml-6">
-          <h2 class="mt-2 text-3xl font-semibold text-ink-gray-9">
+        <div class="ml-6 flex-1">
+          <h2 class="mt-2 text-3xl font-semibold text-ink-gray-8">
             {{ user ? user.full_name : profile.full_name }}
           </h2>
-          <p v-if="profile.bio" class="mt-2 text-base text-ink-gray-7">
+          <p v-if="profile.bio" class="mt-2 text-base text-ink-gray-6">
             {{ profile.bio }}
           </p>
         </div>
-        <Button v-if="$isSessionUser(profile.user)" @click="editDialog.show = true" class="ml-auto">
-          <template #prefix><LucideEdit class="w-4" /></template>
-          Edit Profile
-        </Button>
+        <div v-if="$isSessionUser(profile.user)">
+          <Button @click="editDialog.show = true" class="hidden sm:flex">
+            <template #prefix><LucideEdit class="w-4" /></template>
+            Edit Profile
+          </Button>
+          <Button label="Edit Profile" @click="editDialog.show = true" class="sm:hidden">
+            <template #icon><LucideEdit class="w-4" /></template>
+          </Button>
+        </div>
       </div>
 
       <div class="mb-4 mt-6">
         <TabButtons
           class="inline-block"
-          :buttons="[
-            { label: 'About' },
-            { label: 'Posts' },
-            { label: 'Replies' },
-            { label: 'Bookmarks' },
-          ]"
+          :buttons="
+            [
+              { label: 'About' },
+              { label: 'Posts' },
+              { label: 'Replies' },
+              $isSessionUser(profile.user) ? { label: 'Bookmarks' } : null,
+            ].filter(Boolean)
+          "
           v-model="activeTab"
         />
       </div>
@@ -125,6 +132,7 @@ import ImagePreview from '../components/ImagePreview.vue'
 import ColorPicker from '@/components/ColorPicker.vue'
 import ProfileImageEditor from '@/components/ProfileImageEditor.vue'
 import UserImage from '@/components/UserImage.vue'
+import { isSessionUser } from '@/data/session'
 
 export default {
   name: 'PersonProfile',

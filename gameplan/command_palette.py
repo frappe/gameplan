@@ -16,7 +16,7 @@ def search(query):
 	if len(query_parts) == 1 and not query_parts[0].endswith("*"):
 		query = f"{query_parts[0]}*"
 	if len(query_parts) > 1:
-		query = " ".join([f"%%{q}%%" for q in query_parts])
+		query = " ".join([f"%{q}%" for q in query_parts])
 
 	query = f"@title:({query})"
 	result = search.search(query, start=0, sort_by="modified desc", with_payloads=True)
@@ -37,4 +37,29 @@ def search(query):
 	out = []
 	for key in groups:
 		out.append({"title": key, "items": groups[key]})
+	return out
+
+
+@frappe.whitelist()
+def search2(query):
+	from gameplan.search2 import GameplanSearch
+
+	search = GameplanSearch()
+	result = search.search(query, title_only=True)
+
+	groups = {}
+	for r in result["results"]:
+		doctype = r["doctype"]
+
+		if doctype == "GP Discussion":
+			groups.setdefault("Discussions", []).append(r)
+		elif doctype == "GP Task":
+			groups.setdefault("Tasks", []).append(r)
+		elif doctype == "GP Page":
+			groups.setdefault("Pages", []).append(r)
+
+	out = []
+	for key in groups:
+		out.append({"title": key, "items": groups[key]})
+
 	return out

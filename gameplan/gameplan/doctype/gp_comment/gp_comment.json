@@ -9,8 +9,9 @@
   "content",
   "reference_doctype",
   "reference_name",
+  "deleted_at",
   "reactions",
-  "deleted_at"
+  "tags"
  ],
  "fields": [
   {
@@ -42,11 +43,18 @@
    "fieldname": "deleted_at",
    "fieldtype": "Datetime",
    "label": "Deleted At"
+  },
+  {
+   "fieldname": "tags",
+   "fieldtype": "Table",
+   "label": "Tags",
+   "options": "GP Tag Link"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-01-12 17:30:44.294192",
+ "modified": "2025-05-22 13:12:51.415148",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "GP Comment",
@@ -101,6 +109,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

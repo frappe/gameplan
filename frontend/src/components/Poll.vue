@@ -1,23 +1,27 @@
 <template>
-  <div class="py-6 transition-shadow" :class="{ ring: highlight }">
-    <div class="mb-2 flex items-center text-base text-ink-gray-9">
+  <div class="relative">
+    <div
+      v-if="highlight"
+      class="absolute inset-0 translate-y- z-[5] rounded border-2 -mx-4 -mb-4 mt-11 pointer-events-none"
+    />
+    <div
+      class="pb-2 flex items-center text-base text-ink-gray-8 pt-15 top-0 sticky bg-surface-white"
+    >
       <UserInfo :email="_poll.owner" v-slot="{ user }">
         <UserProfileLink class="mr-3" :user="user.name">
-          <UserAvatar :user="user.name" />
+          <UserAvatarWithHover :user="user.name" size="lg" />
         </UserProfileLink>
         <div class="md:flex md:items-center">
-          <UserProfileLink class="font-medium hover:text-ink-blue-3" :user="user.name">
+          <UserProfileLink class="font-medium hover:text-ink-blue-4" :user="user.name">
             {{ user.full_name }}
             <span class="hidden md:inline">&nbsp;&middot;&nbsp;</span>
           </UserProfileLink>
           <div>
-            <time
-              class="text-ink-gray-5"
-              :datetime="_poll.creation"
-              :title="$dayjs(_poll.creation)"
-            >
-              {{ $dayjs(_poll.creation).fromNow() }}
-            </time>
+            <Tooltip :text="$dayjs(_poll.creation).format('D MMM YYYY [at] h:mm A')">
+              <time class="text-ink-gray-5" :datetime="_poll.creation">
+                {{ $dayjs(_poll.creation).fromNow() }}
+              </time>
+            </Tooltip>
           </div>
         </div>
       </UserInfo>
@@ -40,7 +44,7 @@
         />
       </div>
     </div>
-    <div class="text-base font-semibold">{{ _poll.title }}</div>
+    <div class="text-base text-ink-gray-8 font-semibold">{{ _poll.title }}</div>
     <div class="mt-1 text-sm text-ink-gray-5">
       <span v-if="_poll.multiple_answers"> Multiple answers &middot; </span>
       <span v-if="_poll.anonymous"> Anonymous &middot; </span>
@@ -49,7 +53,7 @@
     </div>
     <div class="my-4 space-y-2">
       <button
-        class="group flex items-center text-ink-gray-9"
+        class="group flex items-center text-ink-gray-8"
         v-for="option in _poll.options"
         :key="option.idx"
         @click="submitVote(option)"
@@ -72,7 +76,7 @@
           />
         </div>
         <div class="flex items-baseline">
-          <div class="text-base">{{ option.title }}</div>
+          <div class="text-base text-ink-gray-8">{{ option.title }}</div>
           <div class="ml-1 text-base text-ink-gray-5" v-if="participated">
             ({{ option.percentage }}%)
           </div>
@@ -82,29 +86,31 @@
     <div class="mt-3">
       <Reactions doctype="GP Poll" :name="poll.name" :reactions="_poll.reactions" />
     </div>
-    <Dialog :options="{ title: 'Poll results' }" v-model="showDialog" v-if="pollResults">
+    <Dialog :options="{ title: 'Poll results' }" v-model="showDialog">
       <template #body-content>
-        <h2 class="text-lg font-semibold">{{ _poll.title }}</h2>
-        <div class="mt-2 space-y-4">
+        <h2 class="text-lg font-medium text-ink-gray-8">{{ _poll.title }}</h2>
+        <div v-if="!pollResults" class="text-base text-ink-gray-6 mt-2">No votes yet</div>
+        <div class="mt-6 space-y-6">
           <div v-for="option in pollResults" :key="option.title">
-            <div class="flex items-center">
-              <h3 class="text-base font-medium">{{ option.title }}</h3>
-
-              <div class="mx-2 flex-1 border-b"></div>
+            <div class="flex items-center mb-2">
+              <h3 class="text-base text-ink-gray-8 font-medium">{{ option.title }}</h3>
+              <div class="mx-2 flex-1 border-b border-outline-gray-2"></div>
               <div class="text-base text-ink-gray-5">
                 {{ option.votes }} {{ option.votes === 1 ? 'vote' : 'votes' }}
               </div>
               <div class="ml-1 text-base text-ink-gray-5">({{ option.percentage }}%)</div>
             </div>
-            <div class="py-2" v-for="user in option.voters" :key="user">
-              <UserInfo :email="user" v-slot="{ user: _user }">
-                <UserProfileLink :user="_user.name">
-                  <div class="flex items-center space-x-2">
-                    <UserAvatar size="sm" :user="_user.name" />
-                    <span class="text-base">{{ _user.full_name }}</span>
-                  </div>
-                </UserProfileLink>
-              </UserInfo>
+            <div class="space-y-2">
+              <div class="flex" v-for="user in option.voters" :key="user">
+                <UserInfo :email="user" v-slot="{ user: _user }">
+                  <UserProfileLink :user="_user.name">
+                    <div class="flex items-center space-x-2">
+                      <UserAvatar size="sm" :user="_user.name" />
+                      <span class="text-base text-ink-gray-8">{{ _user.full_name }}</span>
+                    </div>
+                  </UserProfileLink>
+                </UserInfo>
+              </div>
             </div>
           </div>
         </div>
@@ -118,6 +124,7 @@ import UserAvatar from './UserAvatar.vue'
 import UserProfileLink from './UserProfileLink.vue'
 import { copyToClipboard } from '@/utils'
 import Reactions from './Reactions.vue'
+import UserAvatarWithHover from './UserAvatarWithHover.vue'
 
 export default {
   name: 'Poll',
@@ -151,7 +158,6 @@ export default {
         type: 'document',
         doctype: 'GP Poll',
         name: this.poll.name,
-        auto: false,
         realtime: true,
         whitelistedMethods: {
           submitVote: 'submit_vote',
@@ -234,7 +240,7 @@ export default {
         {
           label: 'Show results',
           icon: 'bar-chart-2',
-          condition: () => this.pollResults,
+          condition: () => !this._poll.anonymous,
           onClick: () => {
             this.showDialog = true
           },

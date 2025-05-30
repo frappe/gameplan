@@ -6,7 +6,7 @@
           aria-label="Add a reaction"
           :disabled="isLoading"
           @click="togglePopover()"
-          class="flex h-full items-center justify-center rounded-full bg-surface-gray-2 px-2 py-1 text-ink-gray-7 transition hover:bg-surface-gray-3"
+          class="flex h-full items-center justify-center rounded-full bg-surface-gray-2 px-2 py-1 text-ink-gray-6 transition hover:bg-surface-gray-3"
           :class="{ 'bg-surface-gray-3': isOpen }"
         >
           <ReactionFaceIcon />
@@ -39,7 +39,7 @@
         :class="[
           reactions.userReacted
             ? 'bg-surface-amber-2 text-amber-700 hover:bg-amber-200'
-            : 'bg-surface-gray-2 text-ink-gray-7 hover:bg-surface-gray-3',
+            : 'bg-surface-gray-2 text-ink-gray-6 hover:bg-surface-gray-3',
         ]"
         @click="toggleReaction(emoji)"
       >

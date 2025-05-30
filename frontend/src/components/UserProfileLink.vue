@@ -10,17 +10,19 @@
     <slot />
   </span>
 </template>
-<script>
-export default {
-  name: 'UserProfileLink',
-  props: ['user'],
-  computed: {
-    userProfileName() {
-      return this.$user(this.user).user_profile || null
-    },
-    canVisitProfile() {
-      return this.userProfileName && this.$user().isNotGuest
-    },
-  },
-}
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useSessionUser, useUser } from '@/data/users'
+
+const props = defineProps<{
+  user: string | null | undefined
+}>()
+
+const userProfileName = computed(() => {
+  return useUser(props.user).user_profile || null
+})
+
+const canVisitProfile = computed(() => {
+  return userProfileName.value && useSessionUser().isNotGuest
+})
 </script>
