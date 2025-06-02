@@ -27,7 +27,7 @@
             </div>
           </div>
         </div>
-        <div class="flex w-1/5">
+        <div class="flex w-1/5 justify-end">
           <Dropdown
             :options="getDropdownOptions(user)"
             :button="{
