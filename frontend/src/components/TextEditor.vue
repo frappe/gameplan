@@ -44,10 +44,17 @@ const editor = computed(() => {
 })
 
 const users = computed(() => {
-  return activeUsers.value.map((user) => ({
-    label: user.full_name.trimEnd(),
-    value: user.name,
-  }))
+  return [
+    {
+      label: 'Everyone',
+      value: '_everyone_',
+    },
+  ].concat(
+    activeUsers.value.map((user) => ({
+      label: user.full_name.trimEnd(),
+      value: user.name,
+    })),
+  )
 })
 
 const tags = computed(() => {
