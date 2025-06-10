@@ -1,30 +1,119 @@
+[build-system]
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
+
 [project]
 name = "gameplan"
-authors = [
-    { name = "Frappe Technologies Pvt Ltd", email = "developers@frappe.io" },
-]
-description = "Team discussion and collaboration tool"
-requires-python = ">=3.10"
+authors = [{name = "Frappe Technologies Pvt. Ltd.", email = "developers@frappe.io"}]
+description = "Open Source Discussions Platform for Remote Teams"
 readme = "README.md"
+requires-python = ">=3.10"
+license = {file = "LICENSE"}
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Web Environment",
+    "Framework :: Flask",
+    "Intended Audience :: End Users/Desktop",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: GNU Affero General Public License v3",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
+    "Topic :: Communications :: Chat",
+    "Topic :: Office/Business :: Groupware",
+    "Topic :: Internet :: WWW/HTTP :: Dynamic Content :: Content Management System",
+]
 dynamic = ["version"]
-dependencies = ["rembg>=2.0.49,<2.1", "numpy==1.26.1", "onnxruntime==1.16.2"]
+dependencies = [
+    "frappe>=15.0.0-dev",
+    # Communication and Real-time
+    "socketio~=5.10.0",
+    "websockets~=12.0",
+    # Content Processing
+    "markdown~=3.5.1",
+    "beautifulsoup4~=4.12.2",
+    "bleach~=6.1.0",
+    "html2text~=2020.1.16",
+    "lxml~=4.9.3",
+    # Notifications
+    "email-reply-parser~=0.5.12",
+    "twilio~=8.10.0",
+    "sendgrid~=6.10.0",
+    "slack-sdk~=3.26.1",
+    # File Processing
+    "python-docx~=1.1.0",
+    "openpyxl~=3.1.2",
+    "PyPDF2~=3.0.1",
+    # Utilities
+    "python-dateutil~=2.8.2",
+    "markupsafe~=2.1.3",
+    "validators~=0.22.0",
+    # Docker specific additions
+    "gevent~=23.9.1",
+    "psycopg2-binary~=2.9.9",
+    "supervisor~=4.2.5",
+    "gunicorn~=21.2.0",
+]
 
-[build-system]
-requires = ["flit_core >=3.4,<4"]
-build-backend = "flit_core.buildapi"
+[project.optional-dependencies]
+dev = [
+    "coverage~=7.3.2",
+    "Faker~=20.1.0",
+    "hypothesis~=6.88.4",
+    "unittest-xml-reporting~=3.2.0",
+]
+
+[project.urls]
+Homepage = "https://frappe.io/gameplan"
+Documentation = "https://docs.frappe.io/gameplan"
+Repository = "https://github.com/alazab-group/gameplan"
+Changelog = "https://github.com/alazab-group/gameplan/releases"
+
+[project.scripts]
+gameplan = "gameplan.utils.bench_helper:main"
 
 [tool.ruff]
 line-length = 110
 target-version = "py310"
 
 [tool.ruff.lint]
-select = ["F", "E", "W", "I", "UP", "B"]
+select = [
+    "F",
+    "E",
+    "W",
+    "I",
+    "UP",
+    "B",
+    "RUF",
+]
 ignore = [
-    "F403", # can't detect undefined names from * import
-    "W191", # indentation contains tabs
+    "B017", # assertRaises(Exception) - too broad
+    "B018", # useless expression
+    "B023", # function definition in loop
+    "B904", # raise ... from e
+    "E501", # line too long
+    "F401", # module imported but unused
+    "F403", # star import used
+    "F405", # name may be undefined due to star import
+    "RUF012", # mutable class attributes
 ]
 
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "tab"
-docstring-code-format = true
+
+[tool.coverage.run]
+source = ["gameplan"]
+omit = [
+    "*/tests/*",
+    "*/commands/*",
+    "*/patches/*",
+    "*/migrations/*",
+    "*/__pycache__/*",
+]
+
+[tool.coverage.report]
+skip_covered = true
+show_missing = true
