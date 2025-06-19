@@ -61,6 +61,7 @@
             @input="autosave"
             @keydown.enter="textEditor?.editor?.commands.focus()"
             ref="titleInput"
+            placeholder="Title"
           />
         </div>
         <TextEditor
