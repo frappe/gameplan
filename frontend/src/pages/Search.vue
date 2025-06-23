@@ -56,13 +56,18 @@
   </div>
 </template>
 <script>
-import { Breadcrumbs, TextInput } from 'frappe-ui'
+import { Breadcrumbs, TextInput, dayjsLocal } from 'frappe-ui'
 
 export default {
   name: 'AppSearch',
   data() {
     return {
       query: '',
+    }
+  },
+  setup() {
+    return {
+      dayjsLocal,
     }
   },
   mounted() {
@@ -128,10 +133,10 @@ export default {
     },
     timestamp(d) {
       let timestamp = d.modified
-      if (this.$dayjs().diff(timestamp, 'day') < 25) {
-        return this.$dayjs(timestamp).fromNow()
+      if (dayjsLocal().diff(timestamp, 'day') < 25) {
+        return dayjsLocal(timestamp).fromNow()
       }
-      return this.$dayjs(timestamp).format('D MMM YYYY')
+      return dayjsLocal(timestamp).format('D MMM YYYY')
     },
     getRoute(item) {
       if (item.doctype === 'GP Discussion') {

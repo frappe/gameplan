@@ -23,7 +23,7 @@
             </div>
             <span class="px-2 text-ink-gray-5">&middot;</span>
             <span class="text-base text-ink-gray-5">
-              Updated {{ $dayjs(page.modified).fromNow() }}
+              Updated {{ dayjsLocal(page.modified).fromNow() }}
             </span>
           </div>
         </div>
@@ -39,7 +39,7 @@
   </div>
 </template>
 <script setup>
-import { createListResource } from 'frappe-ui'
+import { createListResource, dayjsLocal } from 'frappe-ui'
 
 let props = defineProps({
   listOptions: {

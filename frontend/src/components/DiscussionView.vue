@@ -39,9 +39,9 @@
                 {{ $user(discussion.doc.owner).full_name }}
                 <span class="hidden md:inline text-ink-gray-7">&nbsp;&middot;&nbsp;</span>
               </UserProfileLink>
-              <Tooltip :text="$dayjs(discussion.doc.creation).format('D MMM YYYY [at] h:mm A')">
+              <Tooltip :text="dayjsLocal(discussion.doc.creation).format('D MMM YYYY [at] h:mm A')">
                 <time class="text-base text-ink-gray-5" :datetime="discussion.doc.creation">
-                  {{ $dayjs(discussion.doc.creation).fromNow() }}
+                  {{ dayjsLocal(discussion.doc.creation).fromNow() }}
                 </time>
               </Tooltip>
             </div>
@@ -202,7 +202,7 @@
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted, reactive, useTemplateRef } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Autocomplete, Avatar, Dropdown, Dialog, Tooltip, usePageMeta } from 'frappe-ui'
+import { Autocomplete, Avatar, Dropdown, Dialog, Tooltip, usePageMeta, dayjsLocal } from 'frappe-ui'
 import { until } from '@vueuse/core'
 import Reactions from './Reactions.vue'
 import UserAvatarWithHover from './UserAvatarWithHover.vue'

@@ -67,7 +67,7 @@
         </div>
       </div>
       <div class="ml-auto">
-        <Tooltip :text="dayjs(discussion.last_post_at).format('D MMM YYYY [at] h:mm A')">
+        <Tooltip :text="dayjsLocal(discussion.last_post_at).format('D MMM YYYY [at] h:mm A')">
           <div class="shrink-0 whitespace-nowrap text-sm text-ink-gray-5 text-right">
             {{ relativeTimestamp(discussion.last_post_at || discussion.creation) }}
           </div>
@@ -88,8 +88,7 @@
   </router-link>
 </template>
 <script setup lang="ts">
-import { Tooltip } from 'frappe-ui'
-import { dayjs } from '@/utils'
+import { Tooltip, dayjsLocal } from 'frappe-ui'
 import UserAvatarWithHover from './UserAvatarWithHover.vue'
 import { useSpace } from '@/data/spaces'
 import { Discussion } from '@/data/discussions'

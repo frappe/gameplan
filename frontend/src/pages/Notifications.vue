@@ -26,7 +26,7 @@
             <LucideHeart class="h-4 w-4 text-ink-gray-6" />
           </div>
           <div class="text-base text-ink-gray-8">
-            {{ d.message }} {{ $dayjs(d.creation).fromNow() }}
+            {{ d.message }} {{ dayjsLocal(d.creation).fromNow() }}
           </div>
         </div>
         <div class="ml-2 flex shrink-0 items-center space-x-2">
@@ -74,7 +74,7 @@
   </div>
 </template>
 <script>
-import { TabButtons, Tooltip, Breadcrumbs } from 'frappe-ui'
+import { TabButtons, Tooltip, Breadcrumbs, dayjsLocal } from 'frappe-ui'
 import Link from '@/components/Link.vue'
 
 export default {
@@ -90,6 +90,11 @@ export default {
     }
   },
   components: { TabButtons, Tooltip, Link, Breadcrumbs },
+  setup() {
+    return {
+      dayjsLocal,
+    }
+  },
   resources: {
     unreadNotifications() {
       if (this.activeTab !== 'Unread') return

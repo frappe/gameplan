@@ -65,16 +65,16 @@
           <span class="text-ink-gray-7">{{ activity.data.new_value }}</span>
         </template> </span
       >&nbsp;
-      <Tooltip :text="$dayjs(activity.creation).format('D MMM YYYY [at] h:mm A')">
+      <Tooltip :text="dayjsLocal(activity.creation).format('D MMM YYYY [at] h:mm A')">
         <time class="text-ink-gray-5" :datetime="activity.creation">
-          {{ $dayjs(activity.creation).fromNow() }}
+          {{ dayjsLocal(activity.creation).fromNow() }}
         </time>
       </Tooltip>
     </p>
   </div>
 </template>
 <script>
-import { Tooltip } from 'frappe-ui'
+import { dayjsLocal, Tooltip } from 'frappe-ui'
 import UserProfileLink from './UserProfileLink.vue'
 import { projectTitle } from '@/utils/formatters'
 

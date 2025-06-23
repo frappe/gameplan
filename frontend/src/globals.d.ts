@@ -3,7 +3,6 @@
 
 import { isSessionUser } from './data/session'
 import { useUser } from './data/users'
-import { dayjs } from './utils'
 import { getPlatform } from './utils'
 
 declare module '@vue/runtime-core' {
@@ -27,7 +26,6 @@ declare module 'vue' {
   interface ComponentCustomProperties {
     $platform: ReturnType<typeof getPlatform>
     $user: typeof useUser
-    $dayjs: typeof dayjs
     $isSessionUser: typeof isSessionUser
   }
 }

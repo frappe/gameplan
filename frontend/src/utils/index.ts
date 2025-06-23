@@ -1,7 +1,5 @@
 import { dayjsLocal } from 'frappe-ui'
 
-export const dayjs = dayjsLocal
-
 export function getImgDimensions(
   imgSrc: string,
 ): Promise<{ width: number; height: number; ratio: number }> {
@@ -58,11 +56,11 @@ export function getPlatform(): 'win' | 'mac' | 'linux' | undefined {
 }
 
 export function relativeTimestamp(timestamp: string): string {
-  if (dayjs().diff(timestamp, 'day') < 3) {
-    return dayjs(timestamp).fromNow()
+  if (dayjsLocal().diff(timestamp, 'day') < 3) {
+    return dayjsLocal(timestamp).fromNow()
   }
-  if (dayjs().diff(timestamp, 'year') < 1) {
-    return dayjs(timestamp).format('D MMM')
+  if (dayjsLocal().diff(timestamp, 'year') < 1) {
+    return dayjsLocal(timestamp).format('D MMM')
   }
-  return dayjs(timestamp).format('D MMM YYYY')
+  return dayjsLocal(timestamp).format('D MMM YYYY')
 }

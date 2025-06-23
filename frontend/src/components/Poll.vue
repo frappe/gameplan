@@ -17,9 +17,9 @@
             <span class="hidden md:inline">&nbsp;&middot;&nbsp;</span>
           </UserProfileLink>
           <div>
-            <Tooltip :text="$dayjs(_poll.creation).format('D MMM YYYY [at] h:mm A')">
+            <Tooltip :text="dayjsLocal(_poll.creation).format('D MMM YYYY [at] h:mm A')">
               <time class="text-ink-gray-5" :datetime="_poll.creation">
-                {{ $dayjs(_poll.creation).fromNow() }}
+                {{ dayjsLocal(_poll.creation).fromNow() }}
               </time>
             </Tooltip>
           </div>
@@ -119,12 +119,11 @@
   </div>
 </template>
 <script>
-import { Dropdown, Dialog, Tooltip } from 'frappe-ui'
+import { Dropdown, Dialog, Tooltip, dayjsLocal } from 'frappe-ui'
 import UserAvatar from './UserAvatar.vue'
 import UserProfileLink from './UserProfileLink.vue'
 import { copyToClipboard } from '@/utils'
 import Reactions from './Reactions.vue'
-import UserAvatarWithHover from './UserAvatarWithHover.vue'
 
 export default {
   name: 'Poll',
@@ -150,6 +149,11 @@ export default {
   data() {
     return {
       showDialog: false,
+    }
+  },
+  setup() {
+    return {
+      dayjsLocal,
     }
   },
   resources: {
@@ -251,7 +255,7 @@ export default {
           condition: () =>
             !this._poll.anonymous &&
             this.participated &&
-            (!this._poll.stopped_at || this.$dayjs().isBefore(this._poll.stopped_at)),
+            (!this._poll.stopped_at || dayjsLocal().isBefore(this._poll.stopped_at)),
           onClick: () => {
             this.$dialog({
               title: 'Retract vote',
@@ -294,17 +298,17 @@ export default {
       ]
     },
     isStopped() {
-      return this._poll.stopped_at && this.$dayjs().isAfter(this._poll.stopped_at)
+      return this._poll.stopped_at && dayjsLocal().isAfter(this._poll.stopped_at)
     },
     stopTime() {
       let timestamp = this._poll.stopped_at
-      if (this.$dayjs().diff(timestamp, 'day') < 7) {
-        return `Ended ${this.$dayjs(timestamp).fromNow()}`
+      if (dayjsLocal().diff(timestamp, 'day') < 7) {
+        return `Ended ${dayjsLocal(timestamp).fromNow()}`
       }
-      if (this.$dayjs().diff(timestamp, 'year') < 1) {
-        return `Ended at ${this.$dayjs(timestamp).format('D MMM, h:mm A')}`
+      if (dayjsLocal().diff(timestamp, 'year') < 1) {
+        return `Ended at ${dayjsLocal(timestamp).format('D MMM, h:mm A')}`
       }
-      return `Ended at ${this.$dayjs(timestamp).format('D MMM YYYY, h:mm A')}`
+      return `Ended at ${dayjsLocal(timestamp).format('D MMM YYYY, h:mm A')}`
     },
     _poll() {
       return this.$resources.poll.doc || this.poll

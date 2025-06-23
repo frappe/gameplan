@@ -25,8 +25,8 @@
 </template>
 <script setup lang="ts">
 import { useCall } from 'frappe-ui/src/data-fetching'
-import { dayjs } from '@/utils'
-import { computed, ref } from 'vue'
+import { dayjs } from 'frappe-ui'
+import { computed } from 'vue'
 import { useLocalStorage } from '@vueuse/core'
 import LucideWarning from '~icons/lucide/message-square-warning'
 import LucideX from '~icons/lucide/x'

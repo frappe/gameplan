@@ -64,7 +64,7 @@
                   class="text-ink-gray-6"
                   v-if="project.tasks_count + project.discussions_count == 0"
                 >
-                  {{ $dayjs(project.creation).fromNow() }}
+                  {{ dayjsLocal(project.creation).fromNow() }}
                 </span>
               </p>
             </div>
@@ -118,7 +118,7 @@
   </div>
 </template>
 <script>
-import { Dialog, FormControl, TextInput, TabButtons } from 'frappe-ui'
+import { Dialog, FormControl, TextInput, TabButtons, dayjsLocal } from 'frappe-ui'
 import { projects, getTeamProjects, getTeamArchivedProjects } from '@/data/projects'
 
 export default {
@@ -129,6 +129,11 @@ export default {
     TabButtons,
     TextInput,
     FormControl,
+  },
+  setup() {
+    return {
+      dayjsLocal,
+    }
   },
   data() {
     return {

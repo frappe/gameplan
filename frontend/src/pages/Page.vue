@@ -44,14 +44,14 @@
           <span> Autosaving... </span>
         </div>
         <span v-else class="hidden text-sm text-ink-gray-5 sm:block">
-          Updated {{ $dayjs(page.doc.modified).format('lll') }}
+          Updated {{ dayjsLocal(page.doc.modified).format('lll') }}
         </span>
       </div>
     </header>
     <div class="mx-auto w-full max-w-4xl px-5">
       <div class="py-6" v-if="page.doc">
         <span class="text-sm text-ink-gray-5 sm:hidden">
-          Updated {{ $dayjs(page.doc.modified).format('lll') }}
+          Updated {{ dayjsLocal(page.doc.modified).format('lll') }}
         </span>
         <div class="mb-3 md:px-[70px]">
           <input
@@ -85,7 +85,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, useTemplateRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Breadcrumbs, TextEditor, usePageMeta, debounce } from 'frappe-ui'
+import { Breadcrumbs, TextEditor, usePageMeta, debounce, dayjsLocal } from 'frappe-ui'
 import { useDoc } from 'frappe-ui/src/data-fetching'
 import { useSpace } from '@/data/spaces'
 import { GPPage } from '@/types/doctypes'

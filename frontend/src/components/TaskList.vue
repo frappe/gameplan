@@ -81,7 +81,7 @@
                   <div class="flex items-center">
                     <LucideCalendar class="h-3 w-3 text-ink-gray-5" />
                     <span class="ml-2 whitespace-nowrap text-base text-ink-gray-5">
-                      {{ $dayjs(d.due_date).format('D MMM') }}</span
+                      {{ dayjsLocal(d.due_date).format('D MMM') }}</span
                     >
                   </div>
                 </template>
@@ -123,8 +123,8 @@
   </EmptyStateBox>
 </template>
 <script setup lang="ts">
-import { h, ref, computed, watch } from 'vue'
-import { Dropdown, LoadingIndicator, Tooltip } from 'frappe-ui'
+import { h, ref, computed } from 'vue'
+import { Dropdown, LoadingIndicator, Tooltip, dayjsLocal } from 'frappe-ui'
 import EmptyStateBox from './EmptyStateBox.vue'
 import TaskStatusIcon from './NewTaskDialog/TaskStatusIcon.vue'
 import { useList } from 'frappe-ui/src/data-fetching'

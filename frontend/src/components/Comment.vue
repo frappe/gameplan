@@ -17,14 +17,14 @@
             <span class="hidden md:inline">&nbsp;&middot;&nbsp;</span>
           </UserProfileLink>
           <div>
-            <Tooltip :text="$dayjs(comment.creation).format('D MMM YYYY [at] h:mm A')">
+            <Tooltip :text="dayjsLocal(comment.creation).format('D MMM YYYY [at] h:mm A')">
               <time class="text-ink-gray-5" :datetime="comment.creation">
-                {{ $dayjs(comment.creation).fromNow() }}
+                {{ dayjsLocal(comment.creation).fromNow() }}
               </time>
             </Tooltip>
             <Tooltip
               v-if="comment.modified > comment.creation"
-              :text="$dayjs(comment.modified).format('D MMM YYYY [at] h:mm A')"
+              :text="dayjsLocal(comment.modified).format('D MMM YYYY [at] h:mm A')"
             >
               <span class="text-ink-gray-5"> &nbsp;&middot; Edited </span>
             </Tooltip>
@@ -102,7 +102,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { Dropdown, Tooltip } from 'frappe-ui'
+import { Dropdown, Tooltip, dayjsLocal } from 'frappe-ui'
 import { useList } from 'frappe-ui/src/data-fetching'
 import { copyToClipboard } from '@/utils'
 import UserProfileLink from './UserProfileLink.vue'

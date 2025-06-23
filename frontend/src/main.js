@@ -18,7 +18,7 @@ import * as Sentry from '@sentry/vue'
 import router from './router'
 import App from './App.vue'
 import './index.css'
-import { dayjs, getPlatform } from './utils'
+import { getPlatform } from './utils'
 import { createDialog } from './utils/dialogs'
 import { useUser, users } from './data/users'
 import { isSessionUser, session } from './data/session'
@@ -45,7 +45,7 @@ app.mixin(resetDataMixin)
 for (let key in globalComponents) {
   app.component(key, globalComponents[key])
 }
-app.config.globalProperties.$dayjs = dayjs
+
 app.config.globalProperties.$dialog = createDialog
 app.config.globalProperties.$log = console.log.bind(console)
 app.config.globalProperties.$user = useUser
@@ -84,7 +84,6 @@ if (import.meta.env.PROD && window.gameplan_frontend_sentry_dsn) {
 }
 
 if (import.meta.env.DEV) {
-  window.$dayjs = dayjs
   window.$user = useUser
   window.$users = users
   window.$session = session

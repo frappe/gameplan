@@ -119,7 +119,7 @@
                     &middot; {{ item.doctype.replace('GP ', '') }}
                   </span>
                   <div class="ml-auto text-sm text-ink-gray-5">
-                    {{ $dayjs.unix(item.timestamp).format('lll') }}
+                    {{ dayjs.unix(item.timestamp).format('lll') }}
                   </div>
                 </div>
                 <div
@@ -139,7 +139,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Breadcrumbs, TextInput, debounce, usePageMeta, Tooltip } from 'frappe-ui'
+import { Breadcrumbs, TextInput, debounce, usePageMeta, Tooltip, dayjs } from 'frappe-ui'
 import { useCall, useNewDoc } from 'frappe-ui/src/data-fetching'
 import LucideX from '~icons/lucide/x'
 import LucideThumbsUp from '~icons/lucide/thumbs-up'

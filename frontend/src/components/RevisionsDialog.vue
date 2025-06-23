@@ -16,9 +16,9 @@
             <time
               class="block text-ink-gray-5"
               :datetime="currentRevision.creation"
-              :title="$dayjs(currentRevision.creation)"
+              :title="dayjsLocal(currentRevision.creation)"
             >
-              {{ $dayjs(currentRevision.creation).format('LLL') }}
+              {{ dayjsLocal(currentRevision.creation).format('LLL') }}
             </time>
           </div>
         </UserInfo>
@@ -40,6 +40,7 @@
   </Dialog>
 </template>
 <script>
+import { dayjsLocal } from 'frappe-ui'
 import HtmlDiff from 'htmldiff-js'
 import UserProfileLink from './UserProfileLink.vue'
 
@@ -94,6 +95,11 @@ export default {
         }
       },
     },
+  },
+  setup() {
+    return {
+      dayjsLocal,
+    }
   },
   data() {
     return {

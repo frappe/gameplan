@@ -38,7 +38,7 @@
             </div>
           </div>
           <div class="ml-auto shrink-0">
-            <Tooltip :text="$dayjs(draft.modified).format('D MMM YYYY [at] h:mm A')">
+            <Tooltip :text="dayjsLocal(draft.modified).format('D MMM YYYY [at] h:mm A')">
               <div class="shrink-0 whitespace-nowrap text-sm text-ink-gray-5 text-right">
                 {{ relativeTimestamp(draft.modified) }}
               </div>
@@ -54,7 +54,7 @@
   </div>
 </template>
 <script setup lang="ts">
-import { Tooltip } from 'frappe-ui'
+import { Tooltip, dayjsLocal } from 'frappe-ui'
 import { GPDraft } from '@/types/doctypes'
 import { useList } from 'frappe-ui/src/data-fetching'
 import UserAvatarWithHover from './UserAvatarWithHover.vue'
