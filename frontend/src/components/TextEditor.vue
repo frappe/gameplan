@@ -3,7 +3,6 @@
     ref="textEditor"
     :mentions="users"
     :tags="tags"
-    :upload-function="uploadFunction"
     :extensions="extensions"
     v-bind="$attrs"
   >
@@ -22,7 +21,6 @@
 <script setup lang="ts">
 import { computed, useTemplateRef } from 'vue'
 import { TextEditor as FTextEditor } from 'frappe-ui'
-import { useFileUpload } from 'frappe-ui/src/utils/useFileUpload'
 import FloatingQuoteButton from './RichQuoteExtension/floating-quote-button'
 import RichQuoteNodeExtension from './RichQuoteExtension/rich-quote-node-extension'
 import { activeUsers } from '@/data/users'
@@ -31,13 +29,6 @@ import { tags as _tags } from '@/data/tags'
 const textEditor = useTemplateRef<InstanceType<FTextEditor>>('textEditor')
 
 const emit = defineEmits(['rich-quote', 'rich-quote-click'])
-
-const uploadFunction = (file: File) => {
-  let fileUpload = useFileUpload()
-  return fileUpload.upload(file).then((fileDoc) => {
-    return { src: fileDoc.file_url }
-  })
-}
 
 const editor = computed(() => {
   return textEditor.value?.editor
