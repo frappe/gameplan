@@ -6,6 +6,7 @@ import subprocess
 
 import frappe
 from frappe import safe_decode
+from frappe.utils import get_system_timezone
 from frappe.utils.telemetry import capture
 
 no_cache = 1
@@ -39,6 +40,7 @@ def get_boot():
 			"read_only_mode": frappe.flags.read_only,
 			"gameplan_frontend_sentry_dsn": frappe.conf.gameplan_frontend_sentry_dsn,
 			"app_version": get_app_version(),
+			"system_timezone": get_system_timezone(),
 		}
 	)
 

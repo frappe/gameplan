@@ -61,11 +61,13 @@ if (import.meta.env.DEV) {
     for (let key in values) {
       window[key] = values[key]
     }
+    window.system_timezone && setConfig('systemTimezone', window.system_timezone)
     socket = initSocket()
     app.config.globalProperties.$socket = socket
     app.mount('#app')
   })
 } else {
+  window.system_timezone && setConfig('systemTimezone', window.system_timezone)
   socket = initSocket()
   app.config.globalProperties.$socket = socket
   app.mount('#app')

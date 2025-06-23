@@ -89,7 +89,7 @@
 </template>
 <script setup lang="ts">
 import { Tooltip } from 'frappe-ui'
-import { dayjs } from '@/utils/dayjs'
+import { dayjs } from '@/utils'
 import UserAvatarWithHover from './UserAvatarWithHover.vue'
 import { useSpace } from '@/data/spaces'
 import { Discussion } from '@/data/discussions'

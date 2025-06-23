@@ -1,6 +1,6 @@
-import { dayjs as _dayjs } from './dayjs'
+import { dayjsLocal } from 'frappe-ui'
 
-export const dayjs = _dayjs
+export const dayjs = dayjsLocal
 
 export function getImgDimensions(
   imgSrc: string,
