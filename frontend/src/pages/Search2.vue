@@ -54,19 +54,14 @@
             </template>
             <template v-else-if="searchResponse?.summary">
               <p class="text-ink-gray-6">
-                Showing {{ searchResponse.summary.filtered_matches }} out of
-                {{ searchResponse.summary.total_matches }} matches ({{
+                {{ searchResponse.summary.filtered_matches }} matches ({{
                   searchResponse.summary.duration
                 }}s)
               </p>
-              <p v-if="searchResponse.summary.corrected_words" class="mt-1">
+              <p v-if="searchResponse.summary.corrected_query" class="mt-1">
                 <span class="text-ink-gray-5">Searched for:</span>
-                <span
-                  v-for="(corrected, original) in searchResponse.summary.corrected_words"
-                  :key="original"
-                  class="ml-1 font-medium text-primary"
-                >
-                  {{ corrected }}
+                <span class="ml-1 font-medium text-primary">
+                  {{ searchResponse.summary.corrected_query }}
                 </span>
               </p>
             </template>
@@ -154,6 +149,7 @@ interface SearchSummary {
   returned_matches: number
   filtered_matches: number
   corrected_words?: Record<string, string>
+  corrected_query?: string
 }
 
 interface SearchResultItem {
@@ -230,7 +226,7 @@ const router = useRouter()
 const route = useRoute()
 
 const search = useCall<SearchResponse, SearchParams>({
-  url: '/api/v2/method/gameplan.api.search2',
+  url: '/api/v2/method/gameplan.api.search_sqlite',
   immediate: false,
   onSuccess(response) {
     searchResponse.value = response
