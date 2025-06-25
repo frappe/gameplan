@@ -465,9 +465,25 @@ def search2(query):
 
 
 @frappe.whitelist()
-def search_sqlite(query):
+def search_sqlite(query, filters=None):
 	from gameplan.search_sqlite import GameplanSearch
 
 	search = GameplanSearch()
-	result = search.search(query)
+
+	# Parse filters if provided as JSON string
+	if filters and isinstance(filters, str):
+		import json
+
+		filters = json.loads(filters)
+
+	result = search.search(query, filters=filters)
 	return result
+
+
+@frappe.whitelist()
+def get_search_filter_options():
+	"""Get available filter options for advanced search"""
+	from gameplan.search_sqlite import GameplanSearch
+
+	search = GameplanSearch()
+	return search.get_filter_options()
