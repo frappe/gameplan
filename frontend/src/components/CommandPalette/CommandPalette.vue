@@ -236,6 +236,12 @@ const shortcuts = computed((): CommandPaletteGroup[] => [
     title: 'Jump to',
     items: [
       {
+        title: 'Advanced Search',
+        name: 'search',
+        icon: () => h(LucideSearch),
+        route: { name: 'Search2' },
+      },
+      {
         title: 'Home',
         name: 'home',
         icon: () => h(LucideHome),

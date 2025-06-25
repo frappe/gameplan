@@ -9,9 +9,11 @@
       <div class="mx-auto mt-6 max-w-4xl px-4 sm:px-5">
         <div class="flex items-center space-x-2 px-2.5">
           <TextInput
+            ref="searchInput"
             class="flex-1"
-            placeholder="Search"
+            placeholder="Search or press / to focus"
             autocomplete="off"
+            v-focus
             :model-value="query"
             @update:model-value="updateQuery"
             @keydown="newSearch = true"
@@ -181,9 +183,9 @@
   </div>
 </template>
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed, useTemplateRef } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Breadcrumbs, TextInput, debounce, usePageMeta, Tooltip, dayjs, Button } from 'frappe-ui'
+import { Breadcrumbs, TextInput, debounce, usePageMeta, Tooltip, dayjs } from 'frappe-ui'
 import { useCall, useNewDoc } from 'frappe-ui/src/data-fetching'
 import LucideX from '~icons/lucide/x'
 import LucideThumbsUp from '~icons/lucide/thumbs-up'
@@ -196,6 +198,7 @@ import MultiSelect from '@/components/MultiSelect.vue'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { activeTeams } from '@/data/teams'
 import { activeUsers } from '@/data/users'
+import { vFocus } from '@/directives'
 
 // Type Definitions
 interface SearchSummary {
@@ -264,7 +267,9 @@ const searchResponse = ref<SearchResponse | null>(null)
 const newSearch = ref(true)
 const feedbackGiven = ref(false)
 const activeFilters = ref<SearchFilters>({})
-const showFilters = ref(false)
+
+// Template Refs
+const searchInput = useTemplateRef<typeof TextInput>('searchInput')
 
 // Composables and External Data
 const router = useRouter()
@@ -370,6 +375,24 @@ const authorsFilterOptions = computed(() => {
   }))
 })
 
+// Keyboard shortcut handler
+function handleKeyPress(event: KeyboardEvent) {
+  // Focus search input when "/" is pressed
+  if (event.key === '/' && !isInputFocused()) {
+    event.preventDefault()
+    searchInput.value?.el?.focus()
+  }
+}
+
+function isInputFocused() {
+  const activeElement = document.activeElement
+  return (
+    activeElement?.tagName === 'INPUT' ||
+    activeElement?.tagName === 'TEXTAREA' ||
+    (activeElement as HTMLElement)?.contentEditable === 'true'
+  )
+}
+
 // Lifecycle Hooks
 onMounted(() => {
   const searchQuery = route.query.q as string
@@ -381,6 +404,13 @@ onMounted(() => {
   } else {
     clearStoredSearches()
   }
+  // Add global keyboard shortcut listener
+  document.addEventListener('keydown', handleKeyPress)
+})
+
+onUnmounted(() => {
+  // Clean up event listener
+  document.removeEventListener('keydown', handleKeyPress)
 })
 
 // Page Meta Configuration
@@ -463,18 +493,6 @@ function removeFilter(type: keyof SearchFilters, value: string) {
       }
       submit()
     }
-  }
-}
-
-function clearAllFilters() {
-  activeFilters.value = {}
-  submit()
-}
-
-function toggleFilterPanel() {
-  showFilters.value = !showFilters.value
-  if (showFilters.value && filterOptions.data?.authors.length === 0) {
-    filterOptions.submit()
   }
 }
 
