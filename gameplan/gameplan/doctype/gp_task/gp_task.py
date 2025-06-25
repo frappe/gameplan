@@ -8,7 +8,7 @@ from gameplan.extends.client import check_permissions
 from gameplan.gameplan.doctype.gp_notification.gp_notification import GPNotification
 from gameplan.mixins.activity import HasActivity
 from gameplan.mixins.mentions import HasMentions
-from gameplan.search2 import GameplanSearch, GameplanSearchIndexMissingError
+from gameplan.search_sqlite import GameplanSearch, GameplanSearchIndexMissingError
 
 
 class GPTask(HasMentions, HasActivity, Document):

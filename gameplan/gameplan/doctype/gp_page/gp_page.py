@@ -4,7 +4,7 @@
 # import frappe
 from frappe.model.document import Document
 
-from gameplan.search2 import GameplanSearch, GameplanSearchIndexMissingError
+from gameplan.search_sqlite import GameplanSearch, GameplanSearchIndexMissingError
 from gameplan.utils import url_safe_slug
 
 
