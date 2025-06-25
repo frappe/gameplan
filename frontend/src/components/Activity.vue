@@ -51,11 +51,11 @@
           changed project
           <span v-if="activity.data.old_value">from&nbsp;</span>
           <span class="text-ink-gray-7">
-            {{ projectTitle(activity.data.old_value) }}
+            {{ spaceTitle(activity.data.old_value) }}
           </span>
           to
           <span class="text-ink-gray-7">
-            {{ projectTitle(activity.data.new_value) }}
+            {{ spaceTitle(activity.data.new_value) }}
           </span>
         </template>
         <template v-else>
@@ -73,20 +73,26 @@
     </p>
   </div>
 </template>
-<script>
+<script setup lang="ts">
 import { dayjsLocal, Tooltip } from 'frappe-ui'
 import UserProfileLink from './UserProfileLink.vue'
-import { projectTitle } from '@/utils/formatters'
+import { spaceTitle } from '@/utils/formatters'
 
-export default {
-  name: 'Activity',
-  props: {
-    activity: {
-      type: Object,
-      required: true,
-    },
-  },
-  components: { UserProfileLink, Tooltip },
-  methods: { projectTitle },
+interface Activity {
+  action: string
+  user: string
+  creation: string
+  data: {
+    old_title?: string
+    new_title?: string
+    field?: string
+    field_label?: string
+    old_value?: string
+    new_value?: string
+  }
 }
+
+defineProps<{
+  activity: Activity
+}>()
 </script>
