@@ -15,7 +15,7 @@
             :model-value="query"
             @update:model-value="updateQuery"
             @keydown="newSearch = true"
-            @keydown.enter="(e) => submit(e.target.value)"
+            @keydown.enter="() => submit()"
           >
             <template #prefix>
               <LucideSearch class="w-4 text-ink-gray-5" />
@@ -32,6 +32,48 @@
               </div>
             </template>
           </TextInput>
+        </div>
+
+        <!-- Filter Panel -->
+        <div class="mt-2 px-2.5">
+          <div class="flex gap-2 items-center">
+            <!-- Authors Filter -->
+            <MultiSelect
+              :options="authorsFilterOptions"
+              :model-value="activeFilters.owner || []"
+              @update:model-value="(values) => updateFilter('owner', values)"
+              placeholder="Author"
+              label="Author"
+              selection-text="users"
+            />
+
+            <!-- Projects Filter -->
+            <MultiSelect
+              :options="spacesFilterOptions"
+              :model-value="activeFilters.project || []"
+              @update:model-value="(values) => updateFilter('project', values)"
+              placeholder="Space"
+              label="Space"
+            />
+
+            <!-- Teams Filter -->
+            <MultiSelect
+              :options="teamsFilterOptions"
+              :model-value="activeFilters.team || []"
+              @update:model-value="(values) => updateFilter('team', values)"
+              placeholder="Team"
+              label="Team"
+            />
+
+            <!-- Document Type Filter -->
+            <MultiSelect
+              :options="filterOptions.data?.doctypes || []"
+              :model-value="activeFilters.doctype || []"
+              @update:model-value="(values) => updateFilter('doctype', values)"
+              placeholder="Type"
+              label="Type"
+            />
+          </div>
         </div>
 
         <!-- Search Summary -->
@@ -53,17 +95,24 @@
               <p class="text-ink-gray-6">Searching...</p>
             </template>
             <template v-else-if="searchResponse?.summary">
-              <p class="text-ink-gray-6">
-                {{ searchResponse.summary.filtered_matches }} matches ({{
-                  searchResponse.summary.duration
-                }}s)
-              </p>
-              <p v-if="searchResponse.summary.corrected_query" class="mt-1">
-                <span class="text-ink-gray-5">Searched for:</span>
-                <span class="ml-1 font-medium text-primary">
-                  {{ searchResponse.summary.corrected_query }}
-                </span>
-              </p>
+              <div class="space-y-1">
+                <p class="text-ink-gray-6">
+                  {{ searchResponse.summary.filtered_matches }} matches ({{
+                    searchResponse.summary.duration
+                  }}s)
+                  <span v-if="hasActiveFilters()">
+                    •
+                    {{ Object.keys(searchResponse.summary.applied_filters || {}).length }} filter(s)
+                    applied
+                  </span>
+                </p>
+                <p v-if="searchResponse.summary.corrected_query" class="text-ink-gray-6">
+                  <span class="text-ink-gray-5">Searched for:</span>
+                  <span class="ml-1 font-medium text-primary">
+                    {{ searchResponse.summary.corrected_query }}
+                  </span>
+                </p>
+              </div>
             </template>
           </div>
 
@@ -132,17 +181,23 @@
   </div>
 </template>
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Breadcrumbs, TextInput, debounce, usePageMeta, Tooltip, dayjs } from 'frappe-ui'
+import { Breadcrumbs, TextInput, debounce, usePageMeta, Tooltip, dayjs, Button } from 'frappe-ui'
 import { useCall, useNewDoc } from 'frappe-ui/src/data-fetching'
 import LucideX from '~icons/lucide/x'
 import LucideThumbsUp from '~icons/lucide/thumbs-up'
 import LucideThumbsDown from '~icons/lucide/thumbs-down'
+import LucideSearch from '~icons/lucide/search'
 import { GPSearchFeedback } from '@/types/doctypes'
 import { useSessionUser } from '@/data/users'
 import UserAvatarWithHover from '@/components/UserAvatarWithHover.vue'
+import MultiSelect from '@/components/MultiSelect.vue'
+import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
+import { activeTeams } from '@/data/teams'
+import { activeUsers } from '@/data/users'
 
+// Type Definitions
 interface SearchSummary {
   duration: number
   total_matches: number
@@ -150,6 +205,7 @@ interface SearchSummary {
   filtered_matches: number
   corrected_words?: Record<string, string>
   corrected_query?: string
+  applied_filters?: SearchFilters
 }
 
 interface SearchResultItem {
@@ -160,6 +216,7 @@ interface SearchResultItem {
   doctype: string
   name: string
   project: string
+  team?: string
   reference_doctype: string
   reference_name: string
   timestamp: number
@@ -174,20 +231,257 @@ interface SearchResponse {
 
 interface SearchParams {
   query: string
+  filters?: string
 }
 
-// Constants
+interface SearchFilters {
+  owner?: string[]
+  project?: string[]
+  team?: string[]
+  doctype?: string[]
+}
+
+interface FilterOption {
+  value: string
+  label: string
+  count?: number
+  image?: string
+}
+
+interface FilterOptions {
+  authors: FilterOption[]
+  projects: FilterOption[]
+  teams: FilterOption[]
+  doctypes: FilterOption[]
+}
+
+// Constants and Configuration
 const STORAGE_KEY_PREFIX = 'gameplan_search:'
 
-// Get storage key for specific query
-function getStorageKey(query: string) {
-  return `${STORAGE_KEY_PREFIX}${query}`
-}
-
+// Reactive State
 const query = ref('')
 const searchResponse = ref<SearchResponse | null>(null)
 const newSearch = ref(true)
 const feedbackGiven = ref(false)
+const activeFilters = ref<SearchFilters>({})
+const showFilters = ref(false)
+
+// Composables and External Data
+const router = useRouter()
+const route = useRoute()
+const groupedSpaces = useGroupedSpaceOptions()
+
+// API Calls Setup
+const search = useCall<SearchResponse, SearchParams>({
+  url: '/api/v2/method/gameplan.api.search_sqlite',
+  immediate: false,
+  onSuccess(response) {
+    searchResponse.value = response
+    if (query.value) {
+      saveSearchState(query.value, response)
+    }
+  },
+})
+
+const filterOptions = useCall<FilterOptions>({
+  url: '/api/v2/method/gameplan.api.get_search_filter_options',
+  immediate: true,
+  initialData: {
+    authors: [],
+    projects: [],
+    teams: [],
+    doctypes: [],
+  },
+})
+
+// Computed Properties for Filter Options
+const spacesFilterOptions = computed(() => {
+  const projectCounts = new Map()
+
+  // Create a map of project counts from the filter options API
+  if (filterOptions.data?.projects) {
+    filterOptions.data.projects.forEach((project) => {
+      projectCounts.set(project.value, project.count)
+    })
+  }
+
+  // Handle both flat and grouped space options
+  const spaces = groupedSpaces.value
+  if (!spaces || spaces.length === 0) {
+    return []
+  }
+
+  const firstItem = spaces[0]
+
+  // Check if it's grouped (has 'group' property) or flat (has 'label' property)
+  if (firstItem && 'group' in firstItem) {
+    // It's grouped - transform each group
+    return spaces.map((group: any) => ({
+      ...group,
+      items: group.items.map((space: any) => ({
+        ...space,
+        count: projectCounts.get(Number(space.value)) || 0,
+      })),
+    }))
+  } else if (firstItem && 'label' in firstItem) {
+    // It's flat - transform directly
+    return spaces.map((space: any) => ({
+      ...space,
+      count: projectCounts.get(space.value) || 0,
+    }))
+  }
+
+  return []
+})
+
+const teamsFilterOptions = computed(() => {
+  const teamCounts = new Map()
+
+  // Create a map of team counts from the filter options API
+  if (filterOptions.data?.teams) {
+    filterOptions.data.teams.forEach((team) => {
+      teamCounts.set(team.value, team.count)
+    })
+  }
+
+  return activeTeams.value.map((team) => ({
+    value: team.name,
+    label: team.title,
+    icon: team.icon,
+    count: teamCounts.get(team.name) || 0,
+  }))
+})
+
+const authorsFilterOptions = computed(() => {
+  const authorCounts = new Map()
+
+  // Create a map of author counts from the filter options API
+  if (filterOptions.data?.authors) {
+    filterOptions.data.authors.forEach((author) => {
+      authorCounts.set(author.value, author.count)
+    })
+  }
+
+  return activeUsers.value.map((user) => ({
+    value: user.name,
+    label: user.full_name,
+    image: user.user_image,
+    count: authorCounts.get(user.name) || 0,
+  }))
+})
+
+// Lifecycle Hooks
+onMounted(() => {
+  const searchQuery = route.query.q as string
+  if (searchQuery) {
+    query.value = searchQuery
+    if (!loadSearchState(searchQuery)) {
+      submit()
+    }
+  } else {
+    clearStoredSearches()
+  }
+})
+
+// Page Meta Configuration
+usePageMeta(() => {
+  return {
+    title: 'Search',
+  }
+})
+
+// Search and Query Management
+function updateQuery(value: string) {
+  query.value = value
+  router.replace({ query: value ? { q: value } : {} })
+}
+
+const submit = debounce(function (text?: string) {
+  newSearch.value = false
+  feedbackGiven.value = false
+  if (text !== undefined) {
+    query.value = text
+  }
+
+  const searchQuery = text || query.value
+  router.replace({ query: searchQuery ? { q: searchQuery } : {} })
+
+  const params: SearchParams = { query: searchQuery }
+
+  // Add filters if any are active
+  if (hasActiveFilters()) {
+    params.filters = JSON.stringify(activeFilters.value)
+  }
+
+  search.submit(params)
+}, 300)
+
+function clearSearch() {
+  query.value = ''
+  searchResponse.value = null
+  newSearch.value = true
+  feedbackGiven.value = false
+  clearStoredSearches()
+  router.replace({ query: {} })
+}
+
+// Filter Management
+function hasActiveFilters(): boolean {
+  return Object.values(activeFilters.value).some((filter) =>
+    Array.isArray(filter) ? filter.length > 0 : Boolean(filter),
+  )
+}
+
+function updateFilter(type: keyof SearchFilters, values: string[]) {
+  if (values.length === 0) {
+    delete activeFilters.value[type]
+  } else {
+    activeFilters.value[type] = values
+  }
+  submit()
+}
+
+function addFilter(type: keyof SearchFilters, value: string) {
+  if (!activeFilters.value[type]) {
+    activeFilters.value[type] = []
+  }
+  const currentFilter = activeFilters.value[type] as string[]
+  if (!currentFilter.includes(value)) {
+    currentFilter.push(value)
+    submit()
+  }
+}
+
+function removeFilter(type: keyof SearchFilters, value: string) {
+  const currentFilter = activeFilters.value[type] as string[]
+  if (currentFilter) {
+    const index = currentFilter.indexOf(value)
+    if (index > -1) {
+      currentFilter.splice(index, 1)
+      if (currentFilter.length === 0) {
+        delete activeFilters.value[type]
+      }
+      submit()
+    }
+  }
+}
+
+function clearAllFilters() {
+  activeFilters.value = {}
+  submit()
+}
+
+function toggleFilterPanel() {
+  showFilters.value = !showFilters.value
+  if (showFilters.value && filterOptions.data?.authors.length === 0) {
+    filterOptions.submit()
+  }
+}
+
+// Search State Persistence
+function getStorageKey(query: string) {
+  return `${STORAGE_KEY_PREFIX}${query}`
+}
 
 function loadSearchState(searchQuery: string) {
   const saved = localStorage.getItem(getStorageKey(searchQuery))
@@ -196,6 +490,10 @@ function loadSearchState(searchQuery: string) {
     // Check if stored result is less than 30 minutes old
     if (Date.now() - state.timestamp < 30 * 60 * 1000) {
       searchResponse.value = state.results
+      // Restore active filters if they exist
+      if (state.filters) {
+        activeFilters.value = state.filters
+      }
       newSearch.value = false
       return true
     }
@@ -208,6 +506,7 @@ function loadSearchState(searchQuery: string) {
 function saveSearchState(searchQuery: string, results: SearchResponse) {
   const state = {
     results,
+    filters: activeFilters.value,
     timestamp: Date.now(),
   }
   localStorage.setItem(getStorageKey(searchQuery), JSON.stringify(state))
@@ -222,61 +521,7 @@ function clearStoredSearches() {
   }
 }
 
-const router = useRouter()
-const route = useRoute()
-
-const search = useCall<SearchResponse, SearchParams>({
-  url: '/api/v2/method/gameplan.api.search_sqlite',
-  immediate: false,
-  onSuccess(response) {
-    searchResponse.value = response
-    if (query.value) {
-      saveSearchState(query.value, response)
-    }
-  },
-})
-
-onMounted(() => {
-  const searchQuery = route.query.q as string
-  if (searchQuery) {
-    query.value = searchQuery
-    if (!loadSearchState(searchQuery)) {
-      submit(searchQuery)
-    }
-  } else {
-    clearStoredSearches()
-  }
-})
-
-function clearSearch() {
-  query.value = ''
-  searchResponse.value = null
-  newSearch.value = true
-  feedbackGiven.value = false
-  clearStoredSearches()
-  router.replace({ query: {} })
-}
-
-// Update URL when query changes
-function updateQuery(value: string) {
-  query.value = value
-  router.replace({ query: value ? { q: value } : {} })
-}
-
-const submit = debounce(function (text: string) {
-  newSearch.value = false
-  feedbackGiven.value = false
-  query.value = text
-  router.replace({ query: text ? { q: text } : {} })
-  search.submit({ query: text })
-}, 300)
-
-usePageMeta(() => {
-  return {
-    title: 'Search',
-  }
-})
-
+// Navigation and Routing
 function getItemRoute(item: SearchResultItem) {
   switch (item.doctype) {
     case 'GP Discussion':
@@ -285,6 +530,9 @@ function getItemRoute(item: SearchResultItem) {
         params: {
           spaceId: item.project,
           postId: item.name,
+        },
+        query: {
+          comment: 'first_post',
         },
       }
     case 'GP Task':
@@ -330,6 +578,7 @@ function getItemRoute(item: SearchResultItem) {
   }
 }
 
+// Feedback System
 function submitFeedback(isHelpful: boolean) {
   let feedback = useNewDoc<GPSearchFeedback>('GP Search Feedback', {
     helpful: isHelpful ? 'Yes' : 'No',
