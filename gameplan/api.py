@@ -462,3 +462,12 @@ def search2(query):
 	search = GameplanSearch()
 	result = search.search(query)
 	return result
+
+
+@frappe.whitelist()
+def search_sqlite(query):
+	from gameplan.search_sqlite import GameplanSearch
+
+	search = GameplanSearch()
+	result = search.search(query)
+	return result

@@ -25,7 +25,7 @@
           <div
             ref="scrollContainerRef"
             class="max-h-96 overflow-auto border-t border-outline-gray-1 dark:border-outline-gray-2"
-            @click="$refs.inputRef.focus()"
+            @click="inputRef?.focus()"
           >
             <div
               class="mb-2 mt-4.5 first:mt-3"
@@ -48,7 +48,7 @@
                   :class="[item.isActive ? 'bg-surface-gray-3' : '']"
                   :ref="
                     (el) => {
-                      if (item.isActive) activeItemRef = el
+                      if (item.isActive) activeItemRef = el as HTMLDivElement
                     }
                   "
                 >
@@ -94,8 +94,19 @@
 </template>
 
 <script setup lang="ts">
-import { h, ref, computed, onMounted, onBeforeUnmount, watch, nextTick, markRaw } from 'vue'
-import { useRouter } from 'vue-router'
+import {
+  h,
+  ref,
+  computed,
+  onMounted,
+  onBeforeUnmount,
+  watch,
+  nextTick,
+  markRaw,
+  useTemplateRef,
+  type Component,
+} from 'vue'
+import { RouteLocationRaw, useRouter } from 'vue-router'
 import { debounce } from 'frappe-ui'
 import { useCall, useNewDoc } from 'frappe-ui/src/data-fetching'
 import fuzzysort from 'fuzzysort'
@@ -126,89 +137,132 @@ import { showNewTaskDialog } from '../NewTaskDialog'
 import { GPPage } from '@/types/doctypes'
 
 const query = ref('')
-const filteredOptions = ref([])
-const inputRef = ref(null)
-const groupedSearchResults = ref([])
-const scrollContainerRef = ref(null)
-const activeItemRef = ref(null)
+const filteredOptions = ref<CommandPaletteItem[]>([])
+const inputRef = useTemplateRef<HTMLInputElement>('inputRef')
+const groupedSearchResults = ref<CommandPaletteGroup[]>([])
+const scrollContainerRef = useTemplateRef<HTMLDivElement>('scrollContainerRef')
+const activeItemRef = ref<HTMLDivElement | null>(null)
 
 const router = useRouter()
 
-const titleSearch = useCall({
-  url: '/api/v2/method/gameplan.command_palette.search2',
+interface SearchResult {
+  title: string
+  items: SearchResultItem[]
+}
+
+interface SearchResultItem {
+  author: string
+  content: string
+  doctype: string
+  id: string
+  name: string
+  project: string
+  reference_doctype?: string
+  reference_name?: string
+  score: number
+  timestamp: number
+  title: string
+}
+
+interface CommandPaletteItem extends Partial<SearchResultItem> {
+  title: string
+  name: string
+  doctype?: string
+  route?: RouteLocationRaw
+  isActive?: boolean
+  group?: string
+  type?: string
+  modified?: string
+  icon?: Component
+  onClick?: () => void
+  condition?: () => boolean | undefined
+  disabled?: boolean
+}
+
+interface CommandPaletteGroup {
+  title: string
+  items: CommandPaletteItem[]
+  component?: Component
+}
+
+const titleSearch = useCall<SearchResult[], { query: string }>({
+  url: '/api/v2/method/gameplan.command_palette.search_sqlite',
   immediate: false,
-  transform(groups) {
-    for (let group of groups) {
-      if (group.title === 'Discussions') {
-        group.items = group.items.map((item) => {
-          item.route = {
-            name: 'Discussion',
-            params: {
-              postId: item.name,
-              spaceId: item.project,
-            },
-          }
-          return item
-        })
-      }
-      if (group.title === 'Tasks') {
-        group.items = group.items.map((item) => {
-          item.route = {
-            name: item.project ? 'SpaceTask' : 'Task',
-            params: {
-              taskId: item.name,
-              spaceId: item.project,
-            },
-          }
-          return item
-        })
-      }
-      if (group.title === 'Pages') {
-        group.items = group.items.map((item) => {
-          item.route = {
-            name: 'SpacePage',
-            params: {
-              pageId: item.name,
-              spaceId: item.project,
-            },
-          }
-          return item
-        })
-      }
-    }
-    return groups
-  },
 })
 
-const submitSearch = debounce((query) => titleSearch.submit({ query }), 300)
+const debouncedTitleSearch = debounce(() => titleSearch.submit({ query: query.value }), 500)
 
-const shortcuts = computed(() => [
+const transformedSearchResults = computed(() => {
+  if (!titleSearch.data) return []
+
+  return titleSearch.data.map((group) => ({
+    title: group.title,
+    items: group.items.map((item) => {
+      const baseItem: CommandPaletteItem = { ...item }
+
+      if (group.title === 'Discussions') {
+        baseItem.route = {
+          name: 'Discussion',
+          params: {
+            postId: item.name,
+            spaceId: item.project,
+          },
+        }
+      } else if (group.title === 'Tasks') {
+        baseItem.route = {
+          name: item.project ? 'SpaceTask' : 'Task',
+          params: {
+            taskId: item.name,
+            spaceId: item.project,
+          },
+        }
+      } else if (group.title === 'Pages') {
+        baseItem.route = {
+          name: 'SpacePage',
+          params: {
+            pageId: item.name,
+            spaceId: item.project,
+          },
+        }
+      }
+
+      return baseItem
+    }),
+  }))
+})
+
+const shortcuts = computed((): CommandPaletteGroup[] => [
   {
     title: 'Jump to',
     items: [
       {
         title: 'Home',
+        name: 'home',
         icon: () => h(LucideHome),
         route: { name: 'Home' },
       },
       {
         title: 'Tasks',
+        name: 'tasks',
         icon: () => h(LucideListTodo),
         route: { name: 'MyTasks' },
       },
       {
         title: 'Pages',
+        name: 'pages',
         icon: () => h(LucideFiles),
         route: { name: 'MyPages' },
       },
       {
         title: 'People',
+        name: 'people',
         icon: () => h(LucideUsers),
         route: { name: 'People' },
         condition: () => useUser().isNotGuest,
       },
       {
         title: 'Inbox',
+        name: 'inbox',
         icon: () => h(LucideBell),
         route: { name: 'Notifications' },
         condition: () => useUser().isNotGuest,
@@ -224,6 +278,7 @@ const shortcuts = computed(() => [
     items: [
       {
         title: 'Add Discussion',
+        name: 'add-discussion',
         icon: () => h(LucideMessageSquarePlus),
         onClick() {
           let spaceId = router.currentRoute.value.params?.spaceId ?? null
@@ -232,6 +287,7 @@ const shortcuts = computed(() => [
       },
       {
         title: 'Add Task',
+        name: 'add-task',
         icon: () => h(LucideSquarePlus),
         onClick() {
           let spaceId = router.currentRoute.value?.params?.spaceId ?? null
@@ -255,6 +311,7 @@ const shortcuts = computed(() => [
       },
       {
         title: 'Add Page',
+        name: 'add-page',
         icon: () => h(LucideFilePlus),
         onClick() {
           let spaceId = router.currentRoute.value.params?.spaceId ?? null
@@ -284,12 +341,13 @@ const shortcuts = computed(() => [
 
 function generateSearchResults() {
   let groups = [{ title: 'Spaces', component: markRaw(ItemProject) }, { title: 'People' }]
-  let itemsByGroup = {}
+  let itemsByGroup: Record<string, CommandPaletteItem[]> = {}
   for (const group of groups) {
     itemsByGroup[group.title] = []
   }
+
   for (const item of filteredOptions.value) {
-    itemsByGroup[item.group].push(item)
+    itemsByGroup[item.group || '']?.push(item)
   }
   let localResults = groups
     .map((group) => ({
@@ -298,13 +356,13 @@ function generateSearchResults() {
     }))
     .filter((group) => group.items.length > 0)
 
-  let titleSearchResults = query.value.length > 2 && titleSearch.data ? titleSearch.data : []
+  let titleSearchResults = query.value.length > 2 ? transformedSearchResults.value : []
 
   // Filter shortcuts based on query
   let filteredShortcuts = shortcuts.value
     .map((group) => ({
       ...group,
-      items: group.items.filter((item) =>
+      items: group.items.filter((item: CommandPaletteItem) =>
         item.title.toLowerCase().includes(query.value.toLowerCase()),
       ),
     }))
@@ -312,8 +370,10 @@ function generateSearchResults() {
 
   let results = [...localResults, ...titleSearchResults]
 
-  let fullTextSearchItem = {
+  let fullTextSearchItem: CommandPaletteItem = {
     title: `Search for "${query.value}"`,
+    name: 'search-full-text',
+    doctype: 'Search',
     icon: () => h(LucideFileSearch),
     route: { name: 'Search2', query: { q: query.value } },
   }
@@ -344,12 +404,12 @@ function generateSearchResults() {
 }
 
 // Watch dependencies and update results
-watch([query, filteredOptions, () => titleSearch.data], generateSearchResults, {
+watch([query, filteredOptions, transformedSearchResults], generateSearchResults, {
   immediate: true,
 })
 
 const searchList = computed(() => {
-  let list = []
+  let list: CommandPaletteItem[] = []
   for (const project of spaces.data || []) {
     list.push({
       type: 'Project',
@@ -372,7 +432,7 @@ const searchList = computed(() => {
       doctype: 'GP User Profile',
       name: user.name,
       title: user.full_name,
-      modified: user.modified,
+      //   modified: user.modified,
       icon: () => h(UserAvatar, { user: user.email, size: 'sm' }),
       route: {
         name: 'PersonProfile',
@@ -383,8 +443,8 @@ const searchList = computed(() => {
   return list
 })
 
-function onInput(e) {
-  query.value = e.target.value
+function onInput(e: Event) {
+  query.value = (e.target as HTMLInputElement).value
   if (query.value) {
     let results = fuzzysort
       .go(query.value, searchList.value, {
@@ -397,14 +457,14 @@ function onInput(e) {
     filteredOptions.value = results
 
     if (query.value.length > 2) {
-      submitSearch(query.value)
+      debouncedTitleSearch()
     }
   } else {
     filteredOptions.value = []
   }
 }
 
-function onSelection(value) {
+function onSelection(value: CommandPaletteItem) {
   if (value) {
     if (value.route) {
       router.push(value.route)
@@ -415,7 +475,7 @@ function onSelection(value) {
   }
 }
 
-function onKeyDown(e) {
+function onKeyDown(e: KeyboardEvent) {
   if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
     e.preventDefault()
     navigateList(e.key === 'ArrowDown' ? 1 : -1)
@@ -437,7 +497,7 @@ function onKeyDown(e) {
   }
 }
 
-function navigateList(direction) {
+function navigateList(direction: number) {
   if (!groupedSearchResults.value.length) return
 
   const allItems = groupedSearchResults.value.flatMap((group) => group.items)
@@ -463,7 +523,7 @@ function scrollActiveItemIntoView() {
   }
 }
 
-function onItemHover(hoveredItem) {
+function onItemHover(hoveredItem: CommandPaletteItem) {
   for (let group of groupedSearchResults.value) {
     for (let item of group.items) {
       item.isActive = false
@@ -485,7 +545,11 @@ watch(show, (value) => {
 
 function addKeyboardShortcut() {
   window.addEventListener('keydown', (e) => {
-    if (e.key === 'k' && (e.ctrlKey || e.metaKey) && !e.target.classList.contains('ProseMirror')) {
+    if (
+      e.key === 'k' &&
+      (e.ctrlKey || e.metaKey) &&
+      !(e.target as HTMLElement).classList.contains('ProseMirror')
+    ) {
       toggleCommandPalette()
       e.preventDefault()
     }
