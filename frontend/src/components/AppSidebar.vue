@@ -37,27 +37,14 @@
             <span v-if="link.count" class="block text-xs text-ink-gray-5">
               {{ link.count }}
             </span>
+            <span v-if="link.name === 'Search'">
+              <span class="text-sm text-ink-gray-4">
+                <template v-if="$platform === 'mac'">⌘K</template>
+                <template v-else>Ctrl+K</template>
+              </span>
+            </span>
           </template>
         </AppSidebarLink>
-        <button
-          v-if="sessionUser.isNotGuest"
-          class="flex w-full items-center rounded px-2 py-1 text-ink-gray-7"
-          :class="[
-            testRoute(/Search/) ? 'bg-surface-selected shadow-sm' : 'hover:bg-surface-gray-2',
-          ]"
-          @click="showCommandPalette"
-        >
-          <div class="flex w-full items-center">
-            <span class="grid h-5 w-6 place-items-center">
-              <LucideSearch class="h-4 w-4 text-ink-gray-6" />
-            </span>
-            <span class="ml-2 text-sm">Search</span>
-            <span class="ml-auto text-sm text-ink-gray-4">
-              <template v-if="$platform === 'mac'">⌘K</template>
-              <template v-else>Ctrl+K</template>
-            </span>
-          </div>
-        </button>
       </nav>
       <div class="mt-6 flex items-center justify-between px-2">
         <h3 class="px-2 py-1.5 text-sm text-ink-gray-5">Spaces</h3>
@@ -143,7 +130,6 @@ import { joinedSpaces, getSpaceUnreadCount } from '@/data/spaces'
 import { useSessionUser } from '@/data/users'
 import NewSpaceDialog from './NewSpaceDialog.vue'
 import AppLink from './AppLink.vue'
-import { showCommandPalette } from '@/components/CommandPalette/commandPalette.ts'
 import UserDropdown from './UserDropdown.vue'
 import { ScrollAreaViewport } from 'reka-ui'
 import ScrollBar from './ScrollBar.vue'
@@ -154,9 +140,9 @@ import LucideFiles from '~icons/lucide/files'
 import LucideInbox from '~icons/lucide/inbox'
 import LucideListTodo from '~icons/lucide/list-todo'
 import LucideNewspaper from '~icons/lucide/newspaper'
-import LucidePlus from '~icons/lucide/plus'
 import LucideUsers2 from '~icons/lucide/users-2'
 import LucideSettings2 from '~icons/lucide/settings-2'
+import LucideSearch from '~icons/lucide/search'
 
 const showAddTeamDialog = ref(false)
 const showHomePageSettingsDialog = ref(false)
@@ -211,6 +197,14 @@ const navigation = computed(() => {
       },
       isActive: testRoute(/People|PersonProfile/g),
       condition: () => sessionUser.isNotGuest,
+    },
+    {
+      name: 'Search',
+      icon: LucideSearch,
+      route: {
+        name: 'Search2',
+      },
+      isActive: testRoute(/Search/g),
     },
   ].filter((nav) => (nav.condition ? nav.condition() : true))
 })
