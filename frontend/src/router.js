@@ -57,11 +57,6 @@ let router = createRouter({
       component: () => import('@/pages/People.vue'),
     },
     {
-      path: '/search',
-      name: 'Search',
-      component: () => import('@/pages/Search.vue'),
-    },
-    {
       path: '/search2',
       name: 'Search2',
       component: () => import('@/pages/Search2.vue'),
