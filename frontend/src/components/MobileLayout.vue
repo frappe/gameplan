@@ -72,7 +72,7 @@ export default {
         {
           name: 'Search',
           icon: LucideSearch,
-          route: { name: 'Search2' },
+          route: { name: 'Search' },
           isActive: this.$route.name === 'Search',
           condition: () => this.$user().isNotGuest,
         },

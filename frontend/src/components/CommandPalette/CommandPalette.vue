@@ -239,7 +239,7 @@ const shortcuts = computed((): CommandPaletteGroup[] => [
         title: 'Advanced Search',
         name: 'search',
         icon: () => h(LucideSearch),
-        route: { name: 'Search2' },
+        route: { name: 'Search' },
       },
       {
         title: 'Home',
@@ -381,7 +381,7 @@ function generateSearchResults() {
     name: 'search-full-text',
     doctype: 'Search',
     icon: () => h(LucideFileSearch),
-    route: { name: 'Search2', query: { q: query.value } },
+    route: { name: 'Search', query: { q: query.value } },
   }
 
   if (query.value.length > 2) {

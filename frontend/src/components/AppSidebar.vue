@@ -202,7 +202,7 @@ const navigation = computed(() => {
       name: 'Search',
       icon: LucideSearch,
       route: {
-        name: 'Search2',
+        name: 'Search',
       },
       isActive: testRoute(/Search/g),
     },
