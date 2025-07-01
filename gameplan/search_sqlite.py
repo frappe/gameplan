@@ -6,6 +6,7 @@ import datetime
 import os
 import re
 import sqlite3
+import time
 
 import frappe
 from bs4 import BeautifulSoup
@@ -26,13 +27,19 @@ SIMILARITY_TRIGRAM_WEIGHT = 0.7
 SIMILARITY_SEQUENCE_WEIGHT = 0.3
 FREQUENCY_BOOST_FACTOR = 1000
 MAX_FREQUENCY_BOOST = 1.2
-RECENCY_DECAY_RATE = 0.001
-MIN_RECENCY_BOOST = 0.5
+RECENCY_DECAY_RATE = 0.01
+MIN_RECENCY_BOOST = 0.3
 TITLE_EXACT_MATCH_BOOST = 2.0
 TITLE_PARTIAL_MATCH_BOOST = 1.5
 DISCUSSION_BOOST = 1.2
 COMMENT_BOOST = 1.0
 DEFAULT_DOCTYPE_BOOST = 1.0
+
+# Time-based recency categories for aggressive boosting
+RECENT_HOURS_BOOST = 2.0  # Documents from last 24 hours
+RECENT_WEEK_BOOST = 1.5  # Documents from last 7 days
+RECENT_MONTH_BOOST = 1.2  # Documents from last 30 days
+RECENT_QUARTER_BOOST = 1.1  # Documents from last 90 days
 
 
 class GameplanSearchIndexMissingError(Exception):
@@ -45,7 +52,10 @@ class GameplanSearch:
 
 	Provides full-text search with advanced features:
 	- Spelling correction using trigram similarity
-	- Custom scoring with recency and relevance boosts
+	- Time-based recency boost with categorical scoring (24hrs/week/month/quarter)
+	- Linear decay for documents older than 90 days
+	- Custom scoring with title matching and document type boosts
+	- Ranking tracking (original BM25 vs modified scores)
 	- Filtering by author, project, team, and document type
 	- Permission-aware search results
 	"""
@@ -112,8 +122,6 @@ class GameplanSearch:
 		if not query:
 			return self._empty_search_result(title_only, filters)
 
-		import time
-
 		start_time = time.time()
 
 		# Prepare filters if provided
@@ -123,7 +131,7 @@ class GameplanSearch:
 		expanded_query, corrections = self._expand_query_with_corrections(query)
 		fts_query = self._prepare_fts_query(expanded_query)
 
-		conn = self._get_connection()
+		conn = self._get_connection(read_only=True)
 		try:
 			raw_results = self._execute_search_query(conn, fts_query, title_only, filters)
 			total_matches = len(raw_results)
@@ -153,59 +161,75 @@ class GameplanSearch:
 		}
 
 	def build_index(self):
-		"""Build the complete search index from scratch."""
+		"""Build the complete search index from scratch using atomic replacement."""
 		if not self.is_search_enabled():
 			return
 
-		if not hasattr(frappe.local, "request"):
-			update_progress_bar("Setting up search tables", 0, 100, absolute=True)
+		# Use temporary database path for atomic replacement
+		temp_db_path = self._get_db_path(is_temp=True)
+		original_db_path = self.db_path
 
-		self._ensure_fts_table()
+		# Remove temp file if it exists
+		if os.path.exists(temp_db_path):
+			os.unlink(temp_db_path)
 
-		if not hasattr(frappe.local, "request"):
-			update_progress_bar("Clearing existing index", 10, 100, absolute=True)
+		# Temporarily switch to temp database for building
+		self.db_path = temp_db_path
 
-		# Clear existing index
-		conn = self._get_connection()
 		try:
-			conn.execute("DELETE FROM gameplan_fts")
-			conn.commit()
+			if not hasattr(frappe.local, "request"):
+				update_progress_bar("Setting up search tables", 0, 100, absolute=True)
+
+			# Setup tables in temp database
+			self._ensure_fts_table()
+
+			if not hasattr(frappe.local, "request"):
+				update_progress_bar("Fetching records", 20, 100, absolute=True)
+
+			records = self.get_records()
+			documents = []
+
+			if not hasattr(frappe.local, "request"):
+				update_progress_bar("Preparing documents", 30, 100, absolute=True)
+
+			total_records = len(records)
+			for i, doc in enumerate(records):
+				document = self._prepare_document(doc)
+				if document:
+					documents.append(document)
+
+				# Update progress during document preparation
+				if not hasattr(frappe.local, "request") and i % 100 == 0:
+					progress = 30 + int((i / total_records) * 20)  # 30-50% range
+					update_progress_bar("Preparing documents", progress, 100, absolute=True)
+
+			if not hasattr(frappe.local, "request"):
+				update_progress_bar("Indexing documents", 50, 100, absolute=True)
+
+			self._index_documents(documents)
+
+			if not hasattr(frappe.local, "request"):
+				update_progress_bar("Building spell correction vocabulary", 80, 100, absolute=True)
+
+			# Build vocabulary for spelling correction
+			self._build_vocabulary(documents)
+
+			# Atomic replacement: move temp database to final location
+			if os.path.exists(original_db_path):
+				os.unlink(original_db_path)
+			os.rename(temp_db_path, original_db_path)
+
+			if not hasattr(frappe.local, "request"):
+				update_progress_bar("Search index build complete", 100, 100, absolute=True)
+
+		except Exception:
+			# Clean up temp file on error
+			if os.path.exists(temp_db_path):
+				os.unlink(temp_db_path)
+			raise
 		finally:
-			conn.close()
-
-		if not hasattr(frappe.local, "request"):
-			update_progress_bar("Fetching records", 20, 100, absolute=True)
-
-		records = self.get_records()
-		documents = []
-
-		if not hasattr(frappe.local, "request"):
-			update_progress_bar("Preparing documents", 30, 100, absolute=True)
-
-		total_records = len(records)
-		for i, doc in enumerate(records):
-			document = self._prepare_document(doc)
-			if document:
-				documents.append(document)
-
-			# Update progress during document preparation
-			if not hasattr(frappe.local, "request") and i % 100 == 0:
-				progress = 30 + int((i / total_records) * 20)  # 30-50% range
-				update_progress_bar("Preparing documents", progress, 100, absolute=True)
-
-		if not hasattr(frappe.local, "request"):
-			update_progress_bar("Indexing documents", 50, 100, absolute=True)
-
-		self._index_documents(documents)
-
-		if not hasattr(frappe.local, "request"):
-			update_progress_bar("Building spell correction vocabulary", 80, 100, absolute=True)
-
-		# Build vocabulary for spelling correction
-		self._build_vocabulary(documents)
-
-		if not hasattr(frappe.local, "request"):
-			update_progress_bar("Search index build complete", 100, 100, absolute=True)
+			# Restore original database path
+			self.db_path = original_db_path
 
 	def index_doc(self, doc):
 		"""Index a single document in background."""
@@ -235,7 +259,7 @@ class GameplanSearch:
 		if not accessible_projects:
 			return {"authors": [], "projects": [], "teams": [], "doctypes": []}
 
-		conn = self._get_connection()
+		conn = self._get_connection(read_only=True)
 		try:
 			project_placeholders = ",".join(["?" for _ in accessible_projects])
 
@@ -349,7 +373,7 @@ class GameplanSearch:
 		if not os.path.exists(self.db_path):
 			return False
 
-		conn = self._get_connection()
+		conn = self._get_connection(read_only=True)
 		try:
 			cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='gameplan_fts'")
 			table_exists = cursor.fetchone() is not None
@@ -495,7 +519,7 @@ class GameplanSearch:
 		return cursor.fetchall()
 
 	def _process_search_results(self, raw_results, accessible_projects, query):
-		"""Process and filter search results."""
+		"""Process and filter search results with original and modified rankings."""
 		filtered_results = []
 		query_words = query.split()
 
@@ -516,8 +540,8 @@ class GameplanSearch:
 						comment_projects[key] = project
 					except Exception:
 						comment_projects[key] = None
-
-		for row in raw_results:
+		# 1-based ranking
+		for original_rank, row in enumerate(raw_results, 1):
 			project = row["project"]
 
 			# For comments, get project from our batch lookup
@@ -536,6 +560,8 @@ class GameplanSearch:
 						"content": row["content"] or "",
 						"timestamp": row["timestamp"],
 						"score": score,
+						"original_rank": original_rank,
+						"bm25_score": row["bm25_score"],
 						"doctype": row["doctype"],
 						"name": row["name"],
 						"project": project,
@@ -546,12 +572,17 @@ class GameplanSearch:
 					}
 				)
 
+		# Sort by custom score (descending - higher is better)
+		filtered_results.sort(key=lambda x: x["score"], reverse=True)
+
+		# Add modified ranking after custom scoring
+		for i, result in enumerate(filtered_results):
+			result["modified_rank"] = i + 1
+
 		return filtered_results
 
 	def _calculate_advanced_score(self, row, query, query_words):
 		"""Apply advanced heuristics to improve search scoring."""
-		import time
-
 		# Base BM25 score from FTS5 (negative value, lower = better)
 		bm25_score = abs(row["bm25_score"]) if row["bm25_score"] is not None else 0
 		base_score = 1.0 / (1.0 + bm25_score) if bm25_score > 0 else 0.5
@@ -566,13 +597,28 @@ class GameplanSearch:
 		elif any(word.lower() in original_title for word in query_words):
 			title_boost = TITLE_PARTIAL_MATCH_BOOST
 
-		# Recency boost (slight preference for newer content)
+		# Time-based recency boost with aggressive categories
 		current_time = time.time()
 		doc_timestamp = row["timestamp"] if row["timestamp"] is not None else current_time
-		days_old = (current_time - doc_timestamp) / (24 * 3600)
-		recency_boost = max(
-			MIN_RECENCY_BOOST, 1.0 - (days_old * RECENCY_DECAY_RATE)
-		)  # Very slight decay over time
+		hours_old = (current_time - doc_timestamp) / 3600
+		days_old = hours_old / 24
+
+		# Apply categorical time-based boosts
+		if hours_old <= 24:
+			recency_boost = RECENT_HOURS_BOOST
+		elif days_old <= 7:
+			recency_boost = RECENT_WEEK_BOOST
+		elif days_old <= 30:
+			recency_boost = RECENT_MONTH_BOOST
+		elif days_old <= 90:
+			recency_boost = RECENT_QUARTER_BOOST
+		else:
+			# Older documents get linear decay
+			# Start linear decay from the 90-day boost value
+			days_beyond_90 = days_old - 90
+			recency_boost = max(
+				MIN_RECENCY_BOOST, RECENT_QUARTER_BOOST - (days_beyond_90 * RECENCY_DECAY_RATE)
+			)
 
 		# Document type boost (discussions > comments > other doctypes)
 		doctype_boost = {
@@ -618,7 +664,7 @@ class GameplanSearch:
 		word_trigrams = self._generate_trigrams(word)
 		word_length = len(word)
 
-		conn = self._get_connection()
+		conn = self._get_connection(read_only=True)
 		try:
 			# Find candidate words that share trigrams (MUCH faster than checking all words)
 			placeholders = ",".join("?" * len(word_trigrams))
@@ -695,7 +741,7 @@ class GameplanSearch:
 					word_freq[word] += 1
 
 		# Store vocabulary and build trigram index
-		conn = self._get_connection()
+		conn = self._get_connection(read_only=False)
 		try:
 			conn.execute("DELETE FROM gameplan_vocabulary")
 			conn.execute("DELETE FROM gameplan_trigrams")
@@ -721,21 +767,35 @@ class GameplanSearch:
 
 	# Database and Infrastructure Methods
 
-	def _get_connection(self):
-		"""Get SQLite connection with FTS5 support."""
+	def _get_connection(self, read_only=False):
+		"""Get SQLite connection with FTS5 support and performance optimizations."""
 		try:
 			conn = sqlite3.connect(self.db_path)
 			conn.row_factory = sqlite3.Row
+
+			# Apply performance optimizations
+			cursor = conn.cursor()
+			self._set_pragmas(cursor, read_only)
+
 			# Test the connection
-			conn.execute("SELECT 1")
+			cursor.execute("SELECT 1")
 			return conn
 		except sqlite3.Error as e:
 			frappe.log_error(f"Failed to connect to search database: {e}")
 			raise GameplanSearchIndexMissingError(f"Search database connection failed: {e}") from e
 
+	def _set_pragmas(self, cursor, is_read=False):
+		"""Set SQLite performance pragmas."""
+		cursor.execute("PRAGMA journal_mode = WAL;")  # Write-Ahead Logging for concurrency
+		cursor.execute("PRAGMA synchronous = NORMAL;")  # Better performance vs FULL
+		cursor.execute("PRAGMA cache_size = -8192;")  # 8MB cache
+		cursor.execute("PRAGMA temp_store = MEMORY;")  # Memory temp storage
+		if is_read:
+			cursor.execute("PRAGMA query_only = 1;")  # Read-only optimization
+
 	def _ensure_fts_table(self):
 		"""Create FTS5 table and vocabulary table with proper schema."""
-		conn = self._get_connection()
+		conn = self._get_connection(read_only=False)
 		try:
 			# Drop existing tables to ensure clean schema
 			conn.execute("DROP TABLE IF EXISTS gameplan_vocabulary")
@@ -755,7 +815,8 @@ class GameplanSearch:
 					owner UNINDEXED,
 					team UNINDEXED,
 					reference_doctype UNINDEXED,
-					reference_name UNINDEXED
+					reference_name UNINDEXED,
+					tokenize="unicode61 remove_diacritics 2 tokenchars '-_'"
 				)
 			""")
 
@@ -794,7 +855,7 @@ class GameplanSearch:
 		if not documents:
 			return
 
-		conn = self._get_connection()
+		conn = self._get_connection(read_only=False)
 		try:
 			insert_sql = """
 				INSERT INTO gameplan_fts
@@ -877,7 +938,7 @@ class GameplanSearch:
 		self.raise_if_not_indexed()
 		doc_id = f"{doctype}:{docname}"
 
-		conn = self._get_connection()
+		conn = self._get_connection(read_only=False)
 		try:
 			conn.execute("DELETE FROM gameplan_fts WHERE doc_id = ?", (doc_id,))
 			conn.commit()
@@ -928,10 +989,13 @@ class GameplanSearch:
 			},
 		}
 
-	def _get_db_path(self):
+	def _get_db_path(self, is_temp=False):
 		"""Get the path for the SQLite FTS database."""
 		site_path = frappe.get_site_path()
-		return os.path.join(site_path, "gameplan_search.db")
+		db_path = os.path.join(site_path, "gameplan_search.db")
+		if is_temp:
+			return db_path.replace(".db", ".temp.db")
+		return db_path
 
 	def _prepare_fts_query(self, query):
 		"""Prepare query for FTS5 with proper escaping and operators."""
