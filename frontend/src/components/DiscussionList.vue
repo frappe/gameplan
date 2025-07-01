@@ -42,6 +42,7 @@
 
 <script setup lang="ts">
 import { computed, toValue } from 'vue'
+import type { OrderBy } from 'frappe-ui/src/data-fetching/useList/types'
 import { UseDiscussionOptions, useDiscussions } from '@/data/discussions'
 import DiscussionRow from './DiscussionRow.vue'
 import EmptyStateBox from './EmptyStateBox.vue'
@@ -65,7 +66,7 @@ const discussions = useDiscussions({
 
 const pinnedDiscussions = useDiscussions({
   filters: () => ({ ...toValue(props.filters), pinned_at: ['is', 'set'] }),
-  orderBy: 'pinned_at desc',
+  orderBy: 'pinned_at desc' as OrderBy,
   limit: 99999,
   cacheKey: props.cacheKey ? ['pinned', props.cacheKey] : undefined,
   immediate: props.showPinned,

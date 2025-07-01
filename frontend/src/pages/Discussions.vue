@@ -9,21 +9,21 @@
     </Button>
   </header>
   <div class="mx-auto max-w-4xl pt-5 sm:px-5">
-    <LastPostReminder class="px-3 mb-4" />
+    <LastPostReminder class="px-3 mb-3" />
 
-    <div class="overflow-x-auto flex gap-2 px-3 mb-4 items-center">
-      <TabButtons :buttons="feedOptions" v-model="feedType" />
-      <div class="ml-auto flex space-x-2" v-if="feedType !== 'drafts'">
+    <div class="overflow-x-auto flex gap-2 px-3 py-1 mb-3 items-center">
+      <TabButtons :buttons="feedOptions" v-model="currentFeedType" />
+      <div class="ml-auto flex space-x-2" v-if="currentFeedType !== 'drafts'">
         <Button
-          v-if="$refs.discussionListRef?.discussions.loading"
-          :loading="$refs.discussionListRef?.discussions.loading"
+          v-if="discussionListRef?.discussions?.loading"
+          :loading="discussionListRef?.discussions?.loading"
         >
           Loading...
         </Button>
         <Select class="pr-7 shrink-0 min-w-28" :options="orderOptions" v-model="orderBy" />
       </div>
     </div>
-    <div v-if="feedType == 'drafts'">
+    <div v-if="currentFeedType == 'drafts'">
       <DraftDiscussions />
     </div>
     <KeepAlive v-else>
@@ -32,7 +32,7 @@
         routeName="ProjectDiscussion"
         :filters="filters"
         :orderBy="orderBy"
-        :cacheKey="`HomeDiscussions-${feedType}`"
+        :cacheKey="`HomeDiscussions-${currentFeedType}`"
         :key="JSON.stringify(filters)"
       />
     </KeepAlive>
@@ -40,20 +40,37 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, useTemplateRef } from 'vue'
 import { Breadcrumbs, Select, TabButtons, usePageMeta } from 'frappe-ui'
+import type { OrderBy } from 'frappe-ui/src/data-fetching/useList/types'
 import DiscussionList from '@/components/DiscussionList.vue'
 import LastPostReminder from '@/components/LastPostReminder.vue'
-import { useLocalStorage } from '@vueuse/core'
 import DraftDiscussions from '@/components/DraftDiscussions.vue'
+import { useRouter } from 'vue-router'
 
 type FeedType = 'following' | 'participating' | 'recent' | 'bookmarks' | 'drafts' | 'unread'
 
-const feedType = useLocalStorage<FeedType>('homeFeedType', 'following')
-const orderBy = ref('last_post_at desc')
+interface Props {
+  feedType?: FeedType
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  feedType: 'recent',
+})
+
+const router = useRouter()
+const orderBy = ref<OrderBy>('last_post_at desc')
+const discussionListRef = useTemplateRef('discussionListRef')
+
+const currentFeedType = computed({
+  get: () => props.feedType,
+  set: (value: FeedType) => {
+    router.push({ name: 'DiscussionsTab', params: { feedType: value } })
+  },
+})
 
 const filters = computed(() => {
-  return feedType.value ? { feed_type: feedType.value } : null
+  return currentFeedType.value ? { feed_type: currentFeedType.value } : undefined
 })
 
 const feedOptions = [
@@ -86,16 +103,16 @@ const feedOptions = [
 const orderOptions = [
   {
     label: 'Sort by',
-    value: '',
+    value: '' as const,
     disabled: true,
   },
   {
     label: 'Last post',
-    value: 'last_post_at desc',
+    value: 'last_post_at desc' as OrderBy,
   },
   {
     label: 'Created',
-    value: 'creation desc',
+    value: 'creation desc' as OrderBy,
   },
 ]
 

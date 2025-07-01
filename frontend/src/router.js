@@ -22,12 +22,24 @@ let router = createRouter({
     {
       path: '/home',
       name: 'Home',
-      redirect: { name: preferredHomePage.value },
+      redirect: () => {
+        if (preferredHomePage.value === 'Discussions') {
+          return { name: 'DiscussionsTab', params: { feedType: 'recent' } }
+        }
+        return { name: preferredHomePage.value }
+      },
     },
     {
       name: 'Discussions',
       path: '/discussions',
       component: () => import('@/pages/Discussions.vue'),
+      redirect: { name: 'DiscussionsTab', params: { feedType: 'recent' } },
+    },
+    {
+      name: 'DiscussionsTab',
+      path: '/discussions/:feedType',
+      component: () => import('@/pages/Discussions.vue'),
+      props: true,
     },
     {
       name: 'MyTasks',
