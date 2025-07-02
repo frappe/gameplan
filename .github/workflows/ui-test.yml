@@ -50,6 +50,10 @@ jobs:
           node-version: 18
           check-latest: true
 
+      - uses: pnpm/action-setup@v2
+        with:
+          version: latest
+
       - name: Add to Hosts
         run: |
           echo "127.0.0.1 gameplan.test" | sudo tee -a /etc/hosts
@@ -63,17 +67,18 @@ jobs:
             ${{ runner.os }}-pip-
             ${{ runner.os }}-
 
-      - name: Get yarn cache directory path
-        id: yarn-cache-dir-path
-        run: echo "::set-output name=dir::$(yarn cache dir)"
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
 
       - uses: actions/cache@v3
-        id: yarn-cache
+        name: Setup pnpm cache
         with:
-          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
-          key: ${{ runner.os }}-yarn-ui-${{ hashFiles('**/yarn.lock') }}
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
-            ${{ runner.os }}-yarn-ui-
+            ${{ runner.os }}-pnpm-store-
 
       - name: Cache cypress binary
         uses: actions/cache@v3
@@ -96,7 +101,7 @@ jobs:
           bench --site gameplan.test execute frappe.tests.ui_test_helpers.create_test_user
 
       - name: UI Tests
-        run: cd ~/frappe-bench/apps/gameplan/frontend && yarn test
+        run: cd ~/frappe-bench/apps/gameplan/frontend && pnpm test
         env:
           CYPRESS_BASE_URL: http://gameplan.test:8000
           CYPRESS_RECORD_KEY: 9c23c39a-b56b-46d5-b673-44faf1f1da83
