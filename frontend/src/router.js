@@ -148,7 +148,7 @@ let router = createRouter({
     {
       name: 'NewDiscussion',
       path: '/new-discussion',
-      component: () => import('@/pages/NewDiscussion.vue'),
+      component: () => import('@/pages/NewDiscussion/NewDiscussion.vue'),
     },
     {
       path: '/people/:personId',

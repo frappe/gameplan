@@ -112,6 +112,9 @@ importers:
       lucide-static:
         specifier: ^0.479.0
         version: 0.479.0
+      marked:
+        specifier: ^15.0.12
+        version: 15.0.12
       ora:
         specifier: 5.4.1
         version: 5.4.1
@@ -133,9 +136,6 @@ importers:
       reka-ui:
         specifier: ^2.0.2
         version: 2.2.1(typescript@5.8.3)(vue@3.5.13(typescript@5.8.3))
-      showdown:
-        specifier: ^2.1.0
-        version: 2.1.0
       socket.io-client:
         specifier: ^4.5.1
         version: 4.8.1
@@ -212,9 +212,6 @@ importers:
       '@vueuse/core':
         specifier: ^10.1.2
         version: 10.11.1(vue@3.5.13(typescript@5.8.3))
-      dayjs:
-        specifier: ^1.10.7
-        version: 1.11.13
       feather-icons:
         specifier: ^4.28.0
         version: 4.29.2
@@ -1722,10 +1719,6 @@ packages:
     resolution: {integrity: sha512-P0CysNDQ7rtVw4QIQtm+MRxV66vKFSvlsQvGYXZWR3qFU0jlMKHZZZgw8e+8DSah4UDKMqnknRDQz+xuQXQ/Zg==}
     engines: {node: '>= 6'}
 
-  commander@9.5.0:
-    resolution: {integrity: sha512-KRs7WVDKg86PWiuAqhDrAQnTXZKraVcCc6vFdL14qrZ/DcWwuRo7VoiYXalXO7S5GKpqYiVEwCbgFDfxNHKJBQ==}
-    engines: {node: ^12.20.0 || >=14}
-
   common-tags@1.8.2:
     resolution: {integrity: sha512-gk/Z852D2Wtb//0I+kRFNKKE9dIIVirjoqPoA1wJU+XePVXZfGeBpk45+A1rKO4Q43prqWBNY/MiIeRLbPWUaA==}
     engines: {node: '>=4.0.0'}
@@ -2560,6 +2553,11 @@ packages:
     resolution: {integrity: sha512-a54IwgWPaeBCAAsv13YgmALOF1elABB08FxO9i+r4VFk5Vl4pKokRPeX8u5TCgSsPi6ec1otfLjdOpVcgbpshg==}
     hasBin: true
 
+  marked@15.0.12:
+    resolution: {integrity: sha512-8dD6FusOQSrpv9Z1rdNMdlSgQOIP880DHqnohobOmYLElGEqAL/JvxvuxZO16r4HtjTlfPRDC1hbvxC9dPN2nA==}
+    engines: {node: '>= 18'}
+    hasBin: true
+
   math-intrinsics@1.1.0:
     resolution: {integrity: sha512-/IXtbwEk5HTPyEwyKX6hGkYXxM9nbj64B+ilVJnC/R6B0pH5G4V3b0pVbL7DBj4tkhBAppbQUlf6F6Xl9LHu1g==}
     engines: {node: '>= 0.4'}
@@ -3165,10 +3163,6 @@ packages:
   shiki-es@0.2.0:
     resolution: {integrity: sha512-RbRMD+IuJJseSZljDdne9ThrUYrwBwJR04FvN4VXpfsU3MNID5VJGHLAD5je/HGThCyEKNgH+nEkSFEWKD7C3Q==}
     deprecated: Please migrate to https://github.com/antfu/shikiji
-
-  showdown@2.1.0:
-    resolution: {integrity: sha512-/6NVYu4U819R2pUIk79n67SYgJHWCce0a5xTP979WbNp0FL9MN1I1QK662IDU1b6JzKTvmhgI7T7JYIxBi3kMQ==}
-    hasBin: true
 
   side-channel-list@1.0.0:
     resolution: {integrity: sha512-FCLHtRD/gnpCiCHEiJLOwdmFP+wzCmDEkc9y7NsYxeF4u7Btsn1ZuwgwJGxImImHicJArLP4R0yX4c2KCrMrTA==}
@@ -5241,8 +5235,6 @@ snapshots:
 
   commander@5.1.0: {}
 
-  commander@9.5.0: {}
-
   common-tags@1.8.2: {}
 
   confbox@0.1.8: {}
@@ -6200,6 +6192,8 @@ snapshots:
       punycode.js: 2.3.1
       uc.micro: 2.1.0
 
+  marked@15.0.12: {}
+
   math-intrinsics@1.1.0: {}
 
   mdurl@1.0.1: {}
@@ -6785,10 +6779,6 @@ snapshots:
   shell-quote@1.8.2: {}
 
   shiki-es@0.2.0: {}
-
-  showdown@2.1.0:
-    dependencies:
-      commander: 9.5.0
 
   side-channel-list@1.0.0:
     dependencies:
