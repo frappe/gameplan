@@ -100,6 +100,9 @@ jobs:
           bench --site gameplan.test execute frappe.utils.install.complete_setup_wizard
           bench --site gameplan.test execute frappe.tests.ui_test_helpers.create_test_user
 
+      - name: Install Frontend Dependencies
+        run: cd ~/frappe-bench/apps/gameplan/frontend && pnpm install
+
       - name: UI Tests
         run: cd ~/frappe-bench/apps/gameplan/frontend && pnpm test
         env:
