@@ -1,14 +1,9 @@
 {
   "compilerOptions": {
-    "allowJs": true,
-    "baseUrl": "../node_modules",
-    "types": ["cypress"],
-    "target": "es2018",
-    "lib": ["es2018", "dom"],
-    "moduleResolution": "node",
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "strict": false
+    "target": "es5",
+    "lib": ["es5", "dom"],
+    "sourceMap": true,
+    "types": ["cypress", "node"]
   },
-  "include": ["**/*.ts", "**/*.tsx", "support/**/*.*"]
+  "include": ["**/*.ts"]
 }
