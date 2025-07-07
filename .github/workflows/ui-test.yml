@@ -100,19 +100,11 @@ jobs:
           bench --site gameplan.test execute frappe.utils.install.complete_setup_wizard
           bench --site gameplan.test execute frappe.tests.ui_test_helpers.create_test_user
 
-      - name: Install Frontend Dependencies
-        uses: cypress-io/github-action@v6
-        with:
-          # Install dependencies and build but don't run tests yet
-          runTests: false
-          working-directory: ~/frappe-bench/apps/gameplan/frontend
-          install-command: pnpm install
 
       - name: UI Tests
         uses: cypress-io/github-action@v6
         with:
-          working-directory: ../frontend
-          install: false  # Dependencies already installed above
+          working-directory: ${GITHUB_WORKSPACE}/frappe-bench/apps/gameplan/frontend
           record: true
           key: 9c23c39a-b56b-46d5-b673-44faf1f1da83
         env:
