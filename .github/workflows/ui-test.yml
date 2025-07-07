@@ -111,7 +111,7 @@ jobs:
       - name: UI Tests
         uses: cypress-io/github-action@v6
         with:
-          working-directory: ~/frappe-bench/apps/gameplan/frontend
+          working-directory: ../frontend
           install: false  # Dependencies already installed above
           record: true
           key: 9c23c39a-b56b-46d5-b673-44faf1f1da83
