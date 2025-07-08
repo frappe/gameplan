@@ -1,5 +1,6 @@
-import { ref, computed, onMounted, onUnmounted, type ComputedRef, type Ref } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, type ComputedRef, type Ref } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
+import { debounce } from 'frappe-ui'
 import { createDialog } from '@/utils/dialogs'
 import type {
   SaveDraftFunction,
@@ -7,6 +8,7 @@ import type {
   TextEditorRef,
   KeyboardEventHandler,
   BeforeUnloadEventHandler,
+  DraftDocument,
 } from './types'
 
 export function useUIBehavior(
@@ -17,16 +19,43 @@ export function useUIBehavior(
   isDeletingDraft: Ref<boolean>,
   saveDraft: SaveDraftFunction,
   resetValues: ResetValuesFunction,
+  draftDoc: Ref<DraftDocument>,
   textEditorRef?: TextEditorRef,
 ) {
   // Editor state
   const isTextareaFocused = ref(false)
   const isComboboxFocused = ref(false)
   const hasEditorBeenFocused = ref(false)
+  const hasInitialSave = ref(false)
 
   const showFixedMenu = computed(() => {
     return hasEditorBeenFocused.value && !isTextareaFocused.value && !isComboboxFocused.value
   })
+
+  const canAutosave = computed(() => {
+    return draftDoc.value?.doc || hasInitialSave.value
+  })
+
+  const triggerFirstSave = async () => {
+    if (isDraftChanged.value && !savingDraft.value) {
+      try {
+        await saveDraft()
+        hasInitialSave.value = true
+      } catch (error) {
+        console.error('First draft save failed on title blur:', error)
+      }
+    }
+  }
+
+  const debouncedAutosave = debounce(async () => {
+    if (isDraftChanged.value && !savingDraft.value && canAutosave.value) {
+      try {
+        await saveDraft()
+      } catch (error) {
+        console.error('Autosave failed:', error)
+      }
+    }
+  }, 1000)
 
   function handleTextareaFocus() {
     isTextareaFocused.value = true
@@ -35,6 +64,12 @@ export function useUIBehavior(
 
   function handleTextareaBlur() {
     isTextareaFocused.value = false
+    if (canAutosave.value) {
+      debouncedAutosave()
+    } else {
+      // If we don't have an existing draft, we need to trigger the first save
+      triggerFirstSave()
+    }
   }
 
   function handleComboboxFocus() {
@@ -44,6 +79,7 @@ export function useUIBehavior(
 
   function handleComboboxBlur() {
     isComboboxFocused.value = false
+    debouncedAutosave()
   }
 
   function setupEditorListeners(editorRef: TextEditorRef) {
@@ -52,6 +88,11 @@ export function useUIBehavior(
       if (editor) {
         editor.on('focus', () => {
           hasEditorBeenFocused.value = true
+        })
+
+        editor.on('update', () => {
+          console.log('update')
+          nextTick(() => debouncedAutosave())
         })
       }
     }, 100)
@@ -87,6 +128,7 @@ export function useUIBehavior(
     // Clean up editor listeners
     if (textEditorRef?.value?.editor) {
       textEditorRef.value.editor.off('focus')
+      textEditorRef.value.editor.off('update')
     }
   })
 
