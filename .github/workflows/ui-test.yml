@@ -100,11 +100,13 @@ jobs:
           bench --site gameplan.test execute frappe.utils.install.complete_setup_wizard
           bench --site gameplan.test execute frappe.tests.ui_test_helpers.create_test_user
 
-      - name: Install Frontend Dependencies
-        run: cd ~/frappe-bench/apps/gameplan/frontend && pnpm install
 
       - name: UI Tests
-        run: cd ~/frappe-bench/apps/gameplan/frontend && pnpm test
+        uses: cypress-io/github-action@v6
+        with:
+          working-directory: frontend
+          record: true
+          key: 9c23c39a-b56b-46d5-b673-44faf1f1da83
         env:
           CYPRESS_BASE_URL: http://gameplan.test:8000
           CYPRESS_RECORD_KEY: 9c23c39a-b56b-46d5-b673-44faf1f1da83
