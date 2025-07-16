@@ -46,6 +46,15 @@ export default defineConfig({
   ],
   server: {
     allowedHosts: true,
+    fs: {
+      allow: [
+        // Allow serving files from project root, node_modules, and frappe-ui. To fix the error:
+        // The request url "~/frappe-bench/apps/gameplan/frappe-ui/src/fonts/Inter/Inter-Medium.woff2" is outside of Vite serving allow list.
+        '..',
+        'node_modules',
+        '../frappe-ui',
+      ],
+    },
   },
   resolve: {
     alias: {
