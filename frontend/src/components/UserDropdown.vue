@@ -19,7 +19,7 @@
   </Dropdown>
 </template>
 <script setup>
-import { h, computed, onMounted, ref } from 'vue'
+import { h, computed, ref } from 'vue'
 import { Dropdown } from 'frappe-ui'
 import { showSettingsDialog } from '@/components/Settings/SettingsDialog.vue'
 import GameplanLogo from './GameplanLogo.vue'
@@ -27,6 +27,7 @@ import AboutDialog from './AboutDialog.vue'
 import { useUser } from '@/data/users'
 import { session } from '@/data/session'
 import { clear as clearIndexDb } from 'idb-keyval'
+import { useTheme } from '@/utils/useTheme'
 
 import LucideCreditCard from '~icons/lucide/credit-card'
 import LucideMoon from '~icons/lucide/moon'
@@ -35,6 +36,7 @@ import LucideInfo from '~icons/lucide/info'
 
 const user = useUser()
 const showAboutDialog = ref(false)
+const { setTheme } = useTheme()
 
 const dropdownItems = computed(() => [
   {
@@ -54,7 +56,23 @@ const dropdownItems = computed(() => [
   {
     icon: LucideMoon,
     label: 'Toggle theme',
-    onClick: toggleTheme,
+    submenu: [
+      {
+        label: 'Light Mode',
+        icon: 'sun',
+        onClick: () => setTheme('light'),
+      },
+      {
+        label: 'Dark Mode',
+        icon: 'moon',
+        onClick: () => setTheme('dark'),
+      },
+      {
+        label: 'System Default',
+        icon: 'monitor',
+        onClick: () => setTheme('system'),
+      },
+    ],
   },
   {
     icon: LucideListRestart,
@@ -83,13 +101,6 @@ const dropdownItems = computed(() => [
   },
 ])
 
-function toggleTheme() {
-  const currentTheme = document.documentElement.getAttribute('data-theme')
-  let theme = currentTheme === 'dark' ? 'light' : 'dark'
-  document.documentElement.setAttribute('data-theme', theme)
-  localStorage.setItem('theme', theme)
-}
-
 function clearCache() {
   localStorage.clear()
   sessionStorage.clear()
@@ -98,11 +109,4 @@ function clearCache() {
     window.location.reload()
   })
 }
-
-onMounted(() => {
-  const theme = localStorage.getItem('theme')
-  if (['light', 'dark'].includes(theme)) {
-    document.documentElement.setAttribute('data-theme', theme)
-  }
-})
 </script>

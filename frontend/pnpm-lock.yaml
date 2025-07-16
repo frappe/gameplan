@@ -30,8 +30,8 @@ importers:
         specifier: ^4.28.0
         version: 4.29.2
       frappe-ui:
-        specifier: ^0.1.166
-        version: 0.1.166(@babel/parser@7.27.2)(@vue/compiler-sfc@3.5.13)(tailwindcss@3.4.17)(vue-router@4.5.1(vue@3.5.13(typescript@5.8.3)))(vue-template-compiler@2.7.16)(vue@3.5.13(typescript@5.8.3))
+        specifier: ^0.1.174
+        version: 0.1.174(@babel/parser@7.27.2)(@vue/compiler-sfc@3.5.13)(tailwindcss@3.4.17)(vue-router@4.5.1(vue@3.5.13(typescript@5.8.3)))(vue-template-compiler@2.7.16)(vue@3.5.13(typescript@5.8.3))
       fuzzysort:
         specifier: ^2.0.4
         version: 2.0.4
@@ -398,6 +398,9 @@ packages:
   '@iconify/utils@2.3.0':
     resolution: {integrity: sha512-GmQ78prtwYW6EtzXRU1rY+KwOKfz32PD7iJh6Iyqw68GiKuoZ2A6pRtzWONz5VQJbp50mEjXh/7NkumtrAgRKA==}
 
+  '@interactjs/types@1.10.27':
+    resolution: {integrity: sha512-BUdv0cvs4H5ODuwft2Xp4eL8Vmi3LcihK42z0Ft/FbVJZoRioBsxH+LlsBdK4tAie7PqlKGy+1oyOncu1nQ6eA==}
+
   '@internationalized/date@3.8.0':
     resolution: {integrity: sha512-J51AJ0fEL68hE4CwGPa6E0PO6JDaVLd8aln48xFCSy7CZkZc96dGEGmLs2OEEbBxcsVZtfrqkXJwI2/MSG8yKw==}
 
@@ -425,6 +428,9 @@ packages:
 
   '@jridgewell/trace-mapping@0.3.25':
     resolution: {integrity: sha512-vNk6aEwybGtawWmy/PzwnGDOjCkLWSD2wqvjGGAgOAwCGWySYXfYoxt00IJkTF+8Lb57DwOb3Aa0o9CApepiYQ==}
+
+  '@juggle/resize-observer@3.4.0':
+    resolution: {integrity: sha512-dfLbk+PwWvFzSxwk3n5ySL0hfBog779o8h68wK/7/APo/7cgyWp5jcXockbxdk5kFRkbeXWm4Fbi9FrdN381sA==}
 
   '@nodelib/fs.scandir@2.1.5':
     resolution: {integrity: sha512-vq24Bq3ym5HEQm2NKCr3yXDwjc7vTsEThRDnkp2DK9p1uqLR+DHurm/NOTo0KG7HYHU7eppKZj3MyqYuMBf62g==}
@@ -757,6 +763,14 @@ packages:
 
   '@types/yauzl@2.10.3':
     resolution: {integrity: sha512-oJoftv0LSuaDZE3Le4DbKX+KS9G36NzOeSap90UIK0yMA/NhKJhqlSGtNDORNRaIbQfzjXDrQa0ytJ6mNRGz/Q==}
+
+  '@vexip-ui/hooks@2.9.2':
+    resolution: {integrity: sha512-zdwcTZUHYD/5aqndmUulyia4tPMI3FB09PUn674hZiQlkslO1KiH56WAI8R75wbvzPSmmhl5IA3VcbBZeaFEcw==}
+    peerDependencies:
+      vue: ^3.2.25
+
+  '@vexip-ui/utils@2.16.4':
+    resolution: {integrity: sha512-KX+Q4EsuwDp6ZlRJ7OAkiYxu52D5CVM8zpqQz/FXYV+JUtzl9T3dvxgtA8gQ0wm5Sh/xT6jp8Wo4X7tLAzRh/A==}
 
   '@vitejs/plugin-vue-jsx@3.1.0':
     resolution: {integrity: sha512-w9M6F3LSEU5kszVb9An2/MmXNxocAnUb3WhRr8bHlimhDrXNt6n6D2nJQR3UXpGlZHh/EsgouOHCsM8V3Ln+WA==}
@@ -1313,8 +1327,8 @@ packages:
   fraction.js@4.3.7:
     resolution: {integrity: sha512-ZsDfxO51wGAXREY55a7la9LScWpwv9RxIrYABrlvOFBlH/ShPnrtsXeuUIfXKKOVicNxQ+o8JTbJvjS4M89yew==}
 
-  frappe-ui@0.1.166:
-    resolution: {integrity: sha512-VSv2OE/JHa4ReOW0/9SafRzvQ6Dkxa1Bz6u58UU8FvagqpJVorQJlm2854LXuCk1IDV+uulPCr7uxiC8kwcjFw==}
+  frappe-ui@0.1.174:
+    resolution: {integrity: sha512-wCstZW/KjCu5VW1v7vETNx5AKUgQM3+DnIMJFPE1eK13Z4aOXwyhXB98VEOSTG19cdL4PAyIDyaZoWW9YaQHJA==}
     peerDependencies:
       vue: '>=3.5.0'
       vue-router: ^4.1.6
@@ -1394,6 +1408,11 @@ packages:
   graceful-fs@4.2.11:
     resolution: {integrity: sha512-RbJ5/jmFcNNCcDV5o9eTnBLJ/HszWV0P73bc+Ff4nS/rJj+YaS6IGyiOL0VoBYX+l1Wrl3k63h/KrH+nhJ0XvQ==}
 
+  grid-layout-plus@1.1.0:
+    resolution: {integrity: sha512-Q5uj0U5nx6xfHg8G1CDRJAEg+/40RVJl5jjRImcRwC78BxoJrEkTneT1pyxYMlbZ8fpGPT6QdHJQkD4+W6gt5A==}
+    peerDependencies:
+      vue: ^3.0.0
+
   has-flag@4.0.0:
     resolution: {integrity: sha512-EykJT/Q1KjTWctppgIAgfSO0tKVuZUjhgMr17kqTumMl6Afv3EISleU7qZUzoXDFTAHTDC4NOoG/ZxU3EvlMPQ==}
     engines: {node: '>=8'}
@@ -1449,6 +1468,9 @@ packages:
   ini@2.0.0:
     resolution: {integrity: sha512-7PnF4oN3CvZF23ADhA5wRaYEQpJ8qygSkbtTXWBeXWXmEVRXK+1ITciHWwHhsjv1TmW0MgacIv6hEi5pX5NQdA==}
     engines: {node: '>=10'}
+
+  interactjs@1.10.27:
+    resolution: {integrity: sha512-y/8RcCftGAF24gSp76X2JS3XpHiUvDQyhF8i7ujemBz77hwiHDuJzftHx7thY8cxGogwGiPJ+o97kWB6eAXnsA==}
 
   is-binary-path@2.1.0:
     resolution: {integrity: sha512-ZMERYes6pDydyuGidse7OsHxtbI7WVeUEozgR/g7rd0xUimYNlvZRE/K2MgZTjWy725IfelLeVcEM97mmtRGXw==}
@@ -2776,6 +2798,8 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  '@interactjs/types@1.10.27': {}
+
   '@internationalized/date@3.8.0':
     dependencies:
       '@swc/helpers': 0.5.17
@@ -2809,6 +2833,8 @@ snapshots:
     dependencies:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.0
+
+  '@juggle/resize-observer@3.4.0': {}
 
   '@nodelib/fs.scandir@2.1.5':
     dependencies:
@@ -3145,6 +3171,15 @@ snapshots:
     dependencies:
       '@types/node': 20.19.4
     optional: true
+
+  '@vexip-ui/hooks@2.9.2(vue@3.5.13(typescript@5.8.3))':
+    dependencies:
+      '@floating-ui/dom': 1.7.0
+      '@juggle/resize-observer': 3.4.0
+      '@vexip-ui/utils': 2.16.4
+      vue: 3.5.13(typescript@5.8.3)
+
+  '@vexip-ui/utils@2.16.4': {}
 
   '@vitejs/plugin-vue-jsx@3.1.0(vite@4.5.14(@types/node@20.19.4))(vue@3.5.13(typescript@5.8.3))':
     dependencies:
@@ -3781,7 +3816,7 @@ snapshots:
 
   fraction.js@4.3.7: {}
 
-  frappe-ui@0.1.166(@babel/parser@7.27.2)(@vue/compiler-sfc@3.5.13)(tailwindcss@3.4.17)(vue-router@4.5.1(vue@3.5.13(typescript@5.8.3)))(vue-template-compiler@2.7.16)(vue@3.5.13(typescript@5.8.3)):
+  frappe-ui@0.1.174(@babel/parser@7.27.2)(@vue/compiler-sfc@3.5.13)(tailwindcss@3.4.17)(vue-router@4.5.1(vue@3.5.13(typescript@5.8.3)))(vue-template-compiler@2.7.16)(vue@3.5.13(typescript@5.8.3)):
     dependencies:
       '@floating-ui/vue': 1.1.6(vue@3.5.13(typescript@5.8.3))
       '@headlessui/vue': 1.7.23(vue@3.5.13(typescript@5.8.3))
@@ -3814,6 +3849,7 @@ snapshots:
       dompurify: 3.2.6
       echarts: 5.6.0
       feather-icons: 4.29.2
+      grid-layout-plus: 1.1.0(vue@3.5.13(typescript@5.8.3))
       highlight.js: 11.11.1
       idb-keyval: 6.2.1
       lowlight: 3.3.0
@@ -3927,6 +3963,13 @@ snapshots:
 
   graceful-fs@4.2.11: {}
 
+  grid-layout-plus@1.1.0(vue@3.5.13(typescript@5.8.3)):
+    dependencies:
+      '@vexip-ui/hooks': 2.9.2(vue@3.5.13(typescript@5.8.3))
+      '@vexip-ui/utils': 2.16.4
+      interactjs: 1.10.27
+      vue: 3.5.13(typescript@5.8.3)
+
   has-flag@4.0.0: {}
 
   has-symbols@1.1.0: {}
@@ -3967,6 +4010,10 @@ snapshots:
   inherits@2.0.4: {}
 
   ini@2.0.0: {}
+
+  interactjs@1.10.27:
+    dependencies:
+      '@interactjs/types': 1.10.27
 
   is-binary-path@2.1.0:
     dependencies:
