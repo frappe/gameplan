@@ -1,5 +1,5 @@
 <template>
-  <ScrollAreaViewport class="w-full overflow-auto bg-surface-white" id="scrollContainer">
+  <ScrollAreaViewport class="w-full isolate overflow-auto bg-surface-white" id="scrollContainer">
     <slot />
   </ScrollAreaViewport>
   <ScrollBar />

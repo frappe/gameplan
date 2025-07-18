@@ -19,7 +19,8 @@
             v-model="task.doc.title"
             v-focus
           />
-          <Dropdown
+          <DropdownMoreOptions
+            placement="right"
             :options="[
               {
                 label: 'Delete',
@@ -44,11 +45,7 @@
                 },
               },
             ]"
-          >
-            <Button variant="ghost">
-              <template #icon><LucideMoreHorizontal class="h-4 w-4" /></template>
-            </Button>
-          </Dropdown>
+          />
         </div>
         <TextEditor
           ref="description"
@@ -177,6 +174,7 @@ import TextEditor from '@/components/TextEditor.vue'
 import CommentsList from '@/components/CommentsList.vue'
 import TaskStatusIcon from '@/components/NewTaskDialog/TaskStatusIcon.vue'
 import TaskPriorityIcon from '@/components/icons/TaskPriorityIcon.vue'
+import DropdownMoreOptions from './DropdownMoreOptions.vue'
 import { Autocomplete, Dropdown, LoadingText, DatePicker, Button, debounce } from 'frappe-ui'
 import { vFocus } from '@/directives'
 import { activeUsers } from '@/data/users'

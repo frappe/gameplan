@@ -4,7 +4,7 @@
       <div class="flex items-center space-x-1">
         <SpaceBreadcrumbs :spaceId="spaceId" />
       </div>
-      <SpaceOptions :spaceId="spaceId" />
+      <SpaceOptions :spaceId="spaceId" placement="right" />
     </PageHeader>
     <component class="flex-1" v-if="space" :is="Component" :space="space" />
     <div class="p-5 max-w-4xl mx-auto" v-if="spaceList.isFinished && !space">
