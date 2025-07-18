@@ -10,17 +10,23 @@
         },
       ]"
     />
-    <div class="hidden shrink-0 space-x-2 sm:block">
-      <Button v-if="draftDoc?.doc" @click="deleteDraft" :disabled="sessionUser.name != author.name">
-        Delete
-      </Button>
-      <Button v-else @click="discard"> Discard </Button>
-      <Button @click="saveDraft" :loading="savingDraft" :disabled="!isDraftChanged || savingDraft">
-        Save Draft
-        <template #suffix>
-          <KeyboardShortcut ctrl> S </KeyboardShortcut>
-        </template>
-      </Button>
+    <div class="hidden shrink-0 space-x-2 sm:flex">
+      <DropdownMoreOptions
+        :options="[
+          {
+            label: 'Delete',
+            condition: () => draftDoc?.doc && sessionUser.name == author.name,
+            onClick: deleteDraft,
+          },
+          { label: 'Discard', condition: () => !draftDoc?.doc, onClick: discard },
+          {
+            label: 'Save Draft',
+            condition: () => isDraftChanged && !savingDraft,
+            onClick: saveDraft,
+          },
+        ]"
+        placement="right"
+      />
       <Tooltip text="You cannot publish this draft" :disabled="sessionUser.name == author.name">
         <Button
           variant="solid"
@@ -39,6 +45,7 @@
 import { Breadcrumbs, Tooltip } from 'frappe-ui'
 import PageHeader from '@/components/PageHeader.vue'
 import { useNewDiscussionContext } from './useNewDiscussion'
+import DropdownMoreOptions from '@/components/DropdownMoreOptions.vue'
 
 const {
   draftDoc,
