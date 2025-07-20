@@ -226,7 +226,7 @@ def get_joined_spaces():
 		"GP Guest Access", filters={"user": user}, fields=["project"]
 	).run(as_dict=True, pluck="project")
 
-	return map(str, set(projects + guest_access_projects))
+	return list(map(str, set(projects + guest_access_projects)))
 
 
 @frappe.whitelist()
@@ -256,10 +256,10 @@ def mark_all_as_read(spaces: list[str] = None):
 
 @frappe.whitelist()
 def get_unread_count():
-	from frappe.query_builder.functions import Count
+	from frappe.query_builder.functions import Count, Sum
 
 	user = frappe.session.user
-	joined_projects = list(get_joined_spaces())
+	joined_projects = get_joined_spaces()
 
 	if not joined_projects:
 		return {}
@@ -268,31 +268,46 @@ def get_unread_count():
 	gdv = frappe.qb.DocType("GP Discussion Visit").as_("gdv")
 	gpv = frappe.qb.DocType("GP Project Visit").as_("gpv")
 
-	query = (
+	# Case 1: Projects with mark_all_read_at timestamp
+	# Check if discussion's last_post_at is after the project's mark_all_read_at
+	query1 = (
 		frappe.qb.from_(gd)
 		.select(gd.project, Count(gd.name).as_("unread_count"))
-		.left_join(gdv)
-		.on((gd.name == gdv.discussion) & (gdv.user == user))
+		.inner_join(gpv)
+		.on((gd.project == gpv.project) & (gpv.user == user) & gpv.mark_all_read_at.isnotnull())
+		.where(gd.last_post_at > gpv.mark_all_read_at)
+		.groupby(gd.project)
+	)
+
+	# Case 2: Projects without mark_all_read_at (or NULL)
+	# Fall back to individual discussion visit tracking
+	query2 = (
+		frappe.qb.from_(gd)
+		.select(gd.project, Count(gd.name).as_("unread_count"))
 		.left_join(gpv)
 		.on((gd.project == gpv.project) & (gpv.user == user))
+		.left_join(gdv)
+		.on((gd.name == gdv.discussion) & (gdv.user == user))
 		.where(
-			# Case 1: Project has a mark_all_read_at timestamp from GP Project Visit
-			(
-				gpv.name.isnotnull()
-				& gpv.mark_all_read_at.isnotnull()
-				& (gd.last_post_at > gpv.mark_all_read_at)
-			)
-			# Case 2: Project does not have mark_all_read_at, or it's null.
-			# Use individual discussion visit logic.
-			| (
-				(gpv.name.isnull() | gpv.mark_all_read_at.isnull())
-				& ((gdv.name.isnull()) | (gd.last_post_at > gdv.last_visit))
-			)
+			(gpv.name.isnull() | gpv.mark_all_read_at.isnull())
+			& (gdv.name.isnull() | (gd.last_post_at > gdv.last_visit))
 		)
 		.groupby(gd.project)
 	)
 
-	result = query.run(as_dict=True)
+	# Combine both queries using pypika's UNION operator
+	union_query = query1 + query2
+
+	# Create outer query to sum the unread counts per project
+	combined = union_query.as_("combined")
+
+	final_query = (
+		frappe.qb.from_(combined)
+		.select(combined.project, Sum(combined.unread_count).as_("unread_count"))
+		.groupby(combined.project)
+	)
+
+	result = final_query.run(as_dict=True)
 	unread_counts_dict = {row["project"]: row["unread_count"] for row in result}
 
 	return unread_counts_dict

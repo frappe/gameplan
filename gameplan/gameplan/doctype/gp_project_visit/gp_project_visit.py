@@ -11,3 +11,11 @@ class GPProjectVisit(Document):
 		ProjectVisit = frappe.qb.DocType("GP Project Visit")
 		query = query.where(ProjectVisit.user == frappe.session.user)
 		return query
+
+
+def on_doctype_update():
+	add_indexes()
+
+
+def add_indexes():
+	frappe.db.add_index("GP Project Visit", ["user", "project"])
