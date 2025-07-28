@@ -30,8 +30,8 @@ importers:
         specifier: ^4.28.0
         version: 4.29.2
       frappe-ui:
-        specifier: ^0.1.177
-        version: 0.1.177(@babel/parser@7.27.2)(@vue/compiler-sfc@3.5.13)(tailwindcss@3.4.17)(vue-router@4.5.1(vue@3.5.13(typescript@5.8.3)))(vue-template-compiler@2.7.16)(vue@3.5.13(typescript@5.8.3))
+        specifier: ^0.1.178
+        version: 0.1.178(@babel/parser@7.27.2)(@vue/compiler-sfc@3.5.13)(tailwindcss@3.4.17)(vue-router@4.5.1(vue@3.5.13(typescript@5.8.3)))(vue-template-compiler@2.7.16)(vue@3.5.13(typescript@5.8.3))
       fuzzysort:
         specifier: ^2.0.4
         version: 2.0.4
@@ -391,9 +391,6 @@ packages:
     engines: {node: '>=10'}
     peerDependencies:
       vue: ^3.2.0
-
-  '@iconify-json/lucide@1.2.57':
-    resolution: {integrity: sha512-I1CIObdPBIL/9v75KKoyHWNhq+qqN6ef8+iJY4AVpHLtnRu0Vbp6K0TKcoYZ70U+EgiL6krEbFdcjK3+fwpfHQ==}
 
   '@iconify/types@2.0.0':
     resolution: {integrity: sha512-+wluvCrRhXrhyOmRDJ3q8mux9JkKy5SJ/v8ol2tu4FVjyYvtEzkc/3pK15ET6RKg4b4w4BmTk1+gsCUhf21Ykg==}
@@ -1378,8 +1375,8 @@ packages:
   fraction.js@4.3.7:
     resolution: {integrity: sha512-ZsDfxO51wGAXREY55a7la9LScWpwv9RxIrYABrlvOFBlH/ShPnrtsXeuUIfXKKOVicNxQ+o8JTbJvjS4M89yew==}
 
-  frappe-ui@0.1.177:
-    resolution: {integrity: sha512-vJLwgeKFqt0cr2oWugvXuPIpoeLSLyaXrci1pdYQeb6a84eWNSXSCun/GE+5VOvIGBTrIgfgcNEwf4PTfs7lNA==}
+  frappe-ui@0.1.178:
+    resolution: {integrity: sha512-yS7JjF4yoTod1jvtfv1U5lGUSppQMhzPGZ9hSN3WYfPc58ZKAmkwLXSUkl+NN2zHQQe3AZwbmKer83cjYvaVJw==}
     peerDependencies:
       vue: '>=3.5.0'
       vue-router: ^4.1.6
@@ -1691,6 +1688,9 @@ packages:
 
   lucide-static@0.469.0:
     resolution: {integrity: sha512-ravTgZodIVLO53rJyjIq0iuCRHs+kjd3dAfOcTbA41KCDfdy0Pt6Me8akkhda3jRpbIxjKe1PpYZOg2eQnI/lA==}
+
+  lucide-static@0.479.0:
+    resolution: {integrity: sha512-E+w3/8lKFpey3lZNKZfzHQGX+t/CH/afpPDdQxjBgStZ2bXY+CxI5KFX9TW818gYndLjV43fZJ7FqAO9kTCK4A==}
 
   magic-string@0.30.17:
     resolution: {integrity: sha512-sNPKHvyjVf7gyjwS4xGTaW/mCnF8wnjtifKBEhxfZ7E/S8tQ0rssrwGNn6q8JH/ohItJfSQp9mBtQYuTlH5QnA==}
@@ -2856,10 +2856,6 @@ snapshots:
       '@tanstack/vue-virtual': 3.13.8(vue@3.5.13(typescript@5.8.3))
       vue: 3.5.13(typescript@5.8.3)
 
-  '@iconify-json/lucide@1.2.57':
-    dependencies:
-      '@iconify/types': 2.0.0
-
   '@iconify/types@2.0.0': {}
 
   '@iconify/utils@2.3.0':
@@ -3964,11 +3960,10 @@ snapshots:
 
   fraction.js@4.3.7: {}
 
-  frappe-ui@0.1.177(@babel/parser@7.27.2)(@vue/compiler-sfc@3.5.13)(tailwindcss@3.4.17)(vue-router@4.5.1(vue@3.5.13(typescript@5.8.3)))(vue-template-compiler@2.7.16)(vue@3.5.13(typescript@5.8.3)):
+  frappe-ui@0.1.178(@babel/parser@7.27.2)(@vue/compiler-sfc@3.5.13)(tailwindcss@3.4.17)(vue-router@4.5.1(vue@3.5.13(typescript@5.8.3)))(vue-template-compiler@2.7.16)(vue@3.5.13(typescript@5.8.3)):
     dependencies:
       '@floating-ui/vue': 1.1.6(vue@3.5.13(typescript@5.8.3))
       '@headlessui/vue': 1.7.23(vue@3.5.13(typescript@5.8.3))
-      '@iconify-json/lucide': 1.2.57
       '@popperjs/core': 2.11.8
       '@tailwindcss/forms': 0.5.10(tailwindcss@3.4.17)
       '@tailwindcss/typography': 0.5.16(tailwindcss@3.4.17)
@@ -4004,6 +3999,7 @@ snapshots:
       highlight.js: 11.11.1
       idb-keyval: 6.2.1
       lowlight: 3.3.0
+      lucide-static: 0.479.0
       marked: 15.0.12
       ora: 5.4.1
       prettier: 3.5.3
@@ -4309,6 +4305,8 @@ snapshots:
       yallist: 3.1.1
 
   lucide-static@0.469.0: {}
+
+  lucide-static@0.479.0: {}
 
   magic-string@0.30.17:
     dependencies:
