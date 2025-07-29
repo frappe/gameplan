@@ -59,7 +59,6 @@ class GameplanSearch(SQLiteSearch):
 		if not document:
 			return None
 
-		# Add Gameplan-specific metadata that needs special handling
 		if doc.doctype == "GP Comment":
 			# For comments, we need to resolve the project from the reference
 			project, team = self._get_project_team_for_comment(doc)
@@ -150,17 +149,7 @@ class GameplanSearch(SQLiteSearch):
 
 		return None, None
 
-	def get_scoring_pipeline(self):
-		"""
-		Return the scoring pipeline for Gameplan search.
-		"""
-		return [
-			self._get_base_score,
-			self._get_title_boost,
-			self._get_recency_boost,
-			self._get_gameplan_doctype_boost,
-		]
-
+	@SQLiteSearch.scoring_function
 	def _get_gameplan_doctype_boost(self, row, query, query_words):
 		"""
 		Provide custom scoring boosts for Gameplan document types.
@@ -266,46 +255,7 @@ class GameplanSearchIndexMissingError(SQLiteSearchIndexMissingError):
 	pass
 
 
-# Module-level Functions
-
-
 def build_index():
 	"""Build search index in the current process."""
 	search = GameplanSearch()
-	frappe.cache().set_value(INDEX_BUILD_FLAG, True)
 	search.build_index()
-	frappe.cache().set_value(INDEX_BUILD_FLAG, False)
-
-
-def build_index_in_background():
-	"""Enqueue index building in background."""
-	search = GameplanSearch()
-	if not search.is_search_enabled():
-		return
-	if not frappe.cache().get_value("discussions_index_in_progress"):
-		frappe.enqueue("gameplan.search_sqlite.build_index", queue="long")
-
-
-def build_index_if_not_exists():
-	"""Build index if it doesn't exist."""
-	search = GameplanSearch()
-	if not search.is_search_enabled():
-		return
-	if not search.index_exists() or not frappe.cache.exists(INDEX_BUILD_FLAG):
-		build_index_in_background()
-
-
-def index_document(doctype, docname):
-	"""Index a single document (background job)."""
-	search = GameplanSearch()
-	if not search.is_search_enabled():
-		return
-	search._index_doc(doctype, docname)
-
-
-def remove_document(doctype, docname):
-	"""Remove a single document from index (background job)."""
-	search = GameplanSearch()
-	if not search.is_search_enabled():
-		return
-	search._remove_doc(doctype, docname)
