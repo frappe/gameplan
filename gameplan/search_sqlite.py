@@ -129,12 +129,24 @@ class GameplanSearch(SQLiteSearch):
 		return [cstr(p) for p in projects]
 
 	def _get_project_team_for_comment(self, doc):
-		"""Resolve project for a comment document."""
+		"""Resolve project for a comment document with caching."""
 		# Comments are linked to other documents, need to find the project from the reference
 		if doc.reference_doctype and doc.reference_name:
+			if not hasattr(self, "_comment_project_cache"):
+				self._comment_project_cache = {}
+
+			cache_key = f"{doc.reference_doctype}:{doc.reference_name}"
+
+			if cache_key in self._comment_project_cache:
+				return self._comment_project_cache[cache_key]
+
 			result = frappe.db.get_value(doc.reference_doctype, doc.reference_name, ["project", "team"])
 			if result:
-				return result[0], result[1]  # Return project and team
+				project_team = (result[0], result[1])
+				self._comment_project_cache[cache_key] = project_team
+				return project_team
+			else:
+				self._comment_project_cache[cache_key] = (None, None)
 
 		return None, None
 
