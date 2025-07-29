@@ -165,7 +165,7 @@
                     &middot; {{ item.doctype.replace('GP ', '') }}
                   </span>
                   <div class="ml-auto text-sm text-ink-gray-5">
-                    {{ dayjs.unix(item.timestamp).format('lll') }}
+                    {{ dayjs.unix(item.modified).format('lll') }}
                   </div>
                 </div>
                 <div
@@ -218,7 +218,7 @@ interface SearchResultItem {
   team?: string
   reference_doctype: string
   reference_name: string
-  timestamp: number
+  modified: number
   author: string
   score: number
 }

@@ -174,8 +174,6 @@ class GameplanSearch(SQLiteSearch):
 
 		accessible_projects = self._get_accessible_projects()
 
-		print(f"Accessible projects for user {frappe.session.user}: {accessible_projects}")
-
 		# If no accessible projects, return empty results
 		if not accessible_projects:
 			return {"authors": {}, "projects": {}, "teams": {}, "doctypes": {}}
@@ -203,8 +201,6 @@ class GameplanSearch(SQLiteSearch):
             """.format(",".join(["?"] * len(accessible_projects)))
 
 			projects_with_count = conn.execute(projects_query, accessible_projects).fetchall()
-
-			print(projects_with_count)
 
 			# Get teams
 			teams_query = """
