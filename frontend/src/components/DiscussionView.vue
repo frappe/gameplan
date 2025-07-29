@@ -158,7 +158,7 @@
           v-model="discussionMoveDialog.show"
         >
           <template #body-content>
-            <Autocomplete
+            <Combobox
               :options="spaceOptions"
               v-model="discussionMoveDialog.project"
               placeholder="Select a project"
@@ -174,7 +174,7 @@
             >
               {{
                 discussionMoveDialog.project
-                  ? `Move to ${discussionMoveDialog.project.label}`
+                  ? `Move to ${useSpace(discussionMoveDialog.project).value?.title}`
                   : 'Move'
               }}
             </Button>
@@ -202,7 +202,7 @@
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted, reactive, useTemplateRef } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Autocomplete, Avatar, Dropdown, Dialog, Tooltip, usePageMeta, dayjsLocal } from 'frappe-ui'
+import { Combobox, Avatar, Dropdown, Dialog, Tooltip, usePageMeta, dayjsLocal } from 'frappe-ui'
 import { until } from '@vueuse/core'
 import Reactions from './Reactions.vue'
 import UserAvatarWithHover from './UserAvatarWithHover.vue'
@@ -243,7 +243,7 @@ const { handleRichQuote, handleRichQuoteClick } = useRichQuoteHandler(
 const editingPost = ref(false)
 const discussionMoveDialog = reactive<{
   show: boolean
-  project: { label: string; value: string } | null
+  project: string | null
 }>({
   show: false,
   project: null,
@@ -298,10 +298,10 @@ function copyLink() {
 }
 
 function moveToSpace() {
-  if (discussionMoveDialog.project?.value) {
+  if (discussionMoveDialog.project) {
     discussion.moveToProject
       .submit({
-        project: discussionMoveDialog.project.value,
+        project: discussionMoveDialog.project,
       })
       .then(() => {
         nextTick(() => {
