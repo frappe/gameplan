@@ -7,7 +7,6 @@ from frappe.model.document import Document
 from gameplan.mixins.mentions import HasMentions
 from gameplan.mixins.reactions import HasReactions
 from gameplan.mixins.tags import HasTags
-from gameplan.search_sqlite import GameplanSearch, GameplanSearchIndexMissingError
 from gameplan.utils import remove_empty_trailing_paragraphs
 
 
@@ -56,24 +55,5 @@ class GPComment(HasMentions, HasReactions, HasTags, Document):
 		self.de_duplicate_reactions()
 
 	def on_update(self):
-		self.update_search_index()
 		self.notify_mentions()
 		self.notify_reactions()
-
-	def on_trash(self):
-		self.remove_search_index()
-
-	def update_search_index(self):
-		if self.reference_doctype in ["GP Discussion", "GP Task"]:
-			try:
-				search = GameplanSearch()
-				search.index_doc(self)
-			except GameplanSearchIndexMissingError:
-				pass
-
-	def remove_search_index(self):
-		try:
-			search = GameplanSearch()
-			search.remove_doc(self)
-		except GameplanSearchIndexMissingError:
-			pass

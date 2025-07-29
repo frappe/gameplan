@@ -10,7 +10,6 @@ from gameplan.mixins.activity import HasActivity
 from gameplan.mixins.mentions import HasMentions
 from gameplan.mixins.reactions import HasReactions
 from gameplan.mixins.tags import HasTags
-from gameplan.search_sqlite import GameplanSearch, GameplanSearchIndexMissingError
 from gameplan.utils import remove_empty_trailing_paragraphs, url_safe_slug
 
 
@@ -73,7 +72,6 @@ class GPDiscussion(HasActivity, HasMentions, HasReactions, HasTags, Document):
 	def on_trash(self):
 		self.remove_bookmark()
 		self.update_discussions_count()
-		self.remove_search_index()
 
 	def validate(self):
 		self.content = remove_empty_trailing_paragraphs(self.content)
@@ -85,7 +83,6 @@ class GPDiscussion(HasActivity, HasMentions, HasReactions, HasTags, Document):
 		self.notify_reactions()
 		self.log_title_update()
 		self.update_participants_count()
-		self.update_search_index()
 
 	def before_save(self):
 		self.update_slug()
@@ -182,21 +179,6 @@ class GPDiscussion(HasActivity, HasMentions, HasReactions, HasTags, Document):
 
 	def update_slug(self):
 		self.slug = url_safe_slug(self.title)
-
-	def update_search_index(self):
-		if self.has_value_changed("title") or self.has_value_changed("content"):
-			try:
-				search = GameplanSearch()
-				search.index_doc(self)
-			except GameplanSearchIndexMissingError as _:
-				pass
-
-	def remove_search_index(self):
-		try:
-			search = GameplanSearch()
-			search.remove_doc(self)
-		except GameplanSearchIndexMissingError as _:
-			pass
 
 	def update_participants_count(self):
 		participants = frappe.db.get_all(

@@ -8,7 +8,6 @@ from gameplan.extends.client import check_permissions
 from gameplan.gameplan.doctype.gp_notification.gp_notification import GPNotification
 from gameplan.mixins.activity import HasActivity
 from gameplan.mixins.mentions import HasMentions
-from gameplan.search_sqlite import GameplanSearch, GameplanSearchIndexMissingError
 
 
 class GPTask(HasMentions, HasActivity, Document):
@@ -27,7 +26,6 @@ class GPTask(HasMentions, HasActivity, Document):
 	def on_update(self):
 		self.notify_mentions()
 		self.log_value_updates()
-		self.update_search_index()
 
 	def log_value_updates(self):
 		fields = ["title", "description", "status", "priority", "assigned_to", "due_date", "project"]
@@ -44,14 +42,6 @@ class GPTask(HasMentions, HasActivity, Document):
 					},
 				)
 
-	def update_search_index(self):
-		if self.has_value_changed("title") or self.has_value_changed("description"):
-			try:
-				search = GameplanSearch()
-				search.index_doc(self)
-			except GameplanSearchIndexMissingError:
-				pass
-
 	def update_comments_count(self):
 		comments_count = frappe.db.count(
 			"GP Comment", {"reference_doctype": "GP Task", "reference_name": self.name}
@@ -60,11 +50,6 @@ class GPTask(HasMentions, HasActivity, Document):
 
 	def on_trash(self):
 		self.update_tasks_count()
-		try:
-			search = GameplanSearch()
-			search.remove_doc(self)
-		except GameplanSearchIndexMissingError:
-			pass
 
 	def update_tasks_count(self):
 		if not self.project:

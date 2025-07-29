@@ -69,7 +69,7 @@
 
             <!-- Document Type Filter -->
             <MultiSelect
-              :options="filterOptions.data?.doctypes || []"
+              :options="doctypesFilterOptions"
               :model-value="activeFilters.doctype || []"
               @update:model-value="(values) => updateFilter('doctype', values)"
               placeholder="Type"
@@ -165,7 +165,7 @@
                     &middot; {{ item.doctype.replace('GP ', '') }}
                   </span>
                   <div class="ml-auto text-sm text-ink-gray-5">
-                    {{ dayjs.unix(item.timestamp).format('lll') }}
+                    {{ dayjs.unix(item.modified).format('lll') }}
                   </div>
                 </div>
                 <div
@@ -187,10 +187,6 @@ import { ref, onMounted, onUnmounted, computed, useTemplateRef } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Breadcrumbs, TextInput, debounce, usePageMeta, Tooltip, dayjs } from 'frappe-ui'
 import { useCall, useNewDoc } from 'frappe-ui/src/data-fetching'
-import LucideX from '~icons/lucide/x'
-import LucideThumbsUp from '~icons/lucide/thumbs-up'
-import LucideThumbsDown from '~icons/lucide/thumbs-down'
-import LucideSearch from '~icons/lucide/search'
 import { GPSearchFeedback } from '@/types/doctypes'
 import { useSessionUser } from '@/data/users'
 import UserAvatarWithHover from '@/components/UserAvatarWithHover.vue'
@@ -222,7 +218,7 @@ interface SearchResultItem {
   team?: string
   reference_doctype: string
   reference_name: string
-  timestamp: number
+  modified: number
   author: string
   score: number
 }
@@ -252,10 +248,10 @@ interface FilterOption {
 }
 
 interface FilterOptions {
-  authors: FilterOption[]
-  projects: FilterOption[]
-  teams: FilterOption[]
-  doctypes: FilterOption[]
+  authors: Record<string, number>
+  projects: Record<string, number>
+  teams: Record<string, number>
+  doctypes: Record<string, number>
 }
 
 // Constants and Configuration
@@ -292,21 +288,26 @@ const filterOptions = useCall<FilterOptions>({
   url: '/api/v2/method/gameplan.api.get_search_filter_options',
   immediate: true,
   initialData: {
-    authors: [],
-    projects: [],
-    teams: [],
-    doctypes: [],
+    authors: {},
+    projects: {},
+    teams: {},
+    doctypes: {},
   },
 })
 
 // Computed Properties for Filter Options
 const spacesFilterOptions = computed(() => {
+  // Convert the projects dict from API to a Map for lookups
   const projectCounts = new Map()
-
-  // Create a map of project counts from the filter options API
   if (filterOptions.data?.projects) {
-    filterOptions.data.projects.forEach((project) => {
-      projectCounts.set(project.value, project.count)
+    Object.entries(filterOptions.data.projects).forEach(([projectName, count]) => {
+      projectCounts.set(projectName, count)
+      // Also handle numeric conversion for project IDs
+      try {
+        projectCounts.set(Number(projectName), count)
+      } catch (e) {
+        // Ignore conversion errors
+      }
     })
   }
 
@@ -325,14 +326,14 @@ const spacesFilterOptions = computed(() => {
       ...group,
       items: group.items.map((space: any) => ({
         ...space,
-        count: projectCounts.get(Number(space.value)) || 0,
+        count: projectCounts.get(space.value) || projectCounts.get(Number(space.value)) || 0,
       })),
     }))
   } else if (firstItem && 'label' in firstItem) {
     // It's flat - transform directly
     return spaces.map((space: any) => ({
       ...space,
-      count: projectCounts.get(space.value) || 0,
+      count: projectCounts.get(space.value) || projectCounts.get(Number(space.value)) || 0,
     }))
   }
 
@@ -340,12 +341,11 @@ const spacesFilterOptions = computed(() => {
 })
 
 const teamsFilterOptions = computed(() => {
+  // Convert the teams dict from API to a Map for lookups
   const teamCounts = new Map()
-
-  // Create a map of team counts from the filter options API
   if (filterOptions.data?.teams) {
-    filterOptions.data.teams.forEach((team) => {
-      teamCounts.set(team.value, team.count)
+    Object.entries(filterOptions.data.teams).forEach(([teamName, count]) => {
+      teamCounts.set(teamName, count)
     })
   }
 
@@ -358,12 +358,11 @@ const teamsFilterOptions = computed(() => {
 })
 
 const authorsFilterOptions = computed(() => {
+  // Convert the authors dict from API to a Map for lookups
   const authorCounts = new Map()
-
-  // Create a map of author counts from the filter options API
   if (filterOptions.data?.authors) {
-    filterOptions.data.authors.forEach((author) => {
-      authorCounts.set(author.value, author.count)
+    Object.entries(filterOptions.data.authors).forEach(([authorName, count]) => {
+      authorCounts.set(authorName, count)
     })
   }
 
@@ -372,6 +371,30 @@ const authorsFilterOptions = computed(() => {
     label: user.full_name,
     image: user.user_image,
     count: authorCounts.get(user.name) || 0,
+  }))
+})
+
+const doctypesFilterOptions = computed(() => {
+  // Convert the doctypes dict from API to a Map for lookups
+  const doctypeCounts = new Map()
+  if (filterOptions.data?.doctypes) {
+    Object.entries(filterOptions.data.doctypes).forEach(([doctypeName, count]) => {
+      doctypeCounts.set(doctypeName, count)
+    })
+  }
+
+  // Static mapping of doctypes with their display labels
+  const doctypeMapping = [
+    { value: 'GP Discussion', label: 'Discussion' },
+    { value: 'GP Task', label: 'Task' },
+    { value: 'GP Page', label: 'Page' },
+    { value: 'GP Comment', label: 'Comment' },
+  ]
+
+  return doctypeMapping.map((doctype) => ({
+    value: doctype.value,
+    label: doctype.label,
+    count: doctypeCounts.get(doctype.value) || 0,
   }))
 })
 
