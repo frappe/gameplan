@@ -85,13 +85,16 @@ website_redirects = [
 # 	"filters": "gameplan.utils.jinja_filters"
 # }
 
+# Full Text Search
+# ------------------
+
+sqlite_search = ["gameplan.search_sqlite.GameplanSearch"]
+
 # Installation
 # ------------
 
 before_install = "gameplan.install.before_install"
 after_install = "gameplan.install.after_install"
-
-after_migrate = ["gameplan.search_sqlite.build_index_in_background"]
 
 # Uninstallation
 # ------------
@@ -147,7 +150,6 @@ on_login = "gameplan.www.g.on_login"
 # ---------------
 
 scheduler_events = {
-	"all": ["gameplan.search_sqlite.build_index_if_not_exists"],
 	"hourly": ["gameplan.gameplan.doctype.gp_invitation.gp_invitation.expire_invitations"],
 	"daily": ["gameplan.demo.demo.generate_data_daily"],
 }
