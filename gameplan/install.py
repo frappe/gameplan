@@ -20,6 +20,10 @@ def check_frappe_version():
 
 
 def download_rembg_model():
-	from rembg import new_session
+	try:
+		from rembg import new_session
 
-	new_session()
+		new_session()
+	except ImportError:
+		# rembg is optional dependency, skip if not installed
+		pass

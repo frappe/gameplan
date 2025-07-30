@@ -34,14 +34,14 @@
         <ErrorMessage class="mt-4" :message="profile.removeImageBackground.error || error" />
         <div class="mt-4 flex items-center gap-4">
           <Button
-            v-if="profile.doc.image && profile.doc.original_image"
+            v-if="profile.doc.image && profile.doc.original_image && isBackgroundRemovalAvailable"
             @click="profile.revertImageBackground.submit()"
             :loading="profile.revertImageBackground.loading"
           >
             Revert To Original
           </Button>
           <Button
-            v-if="profile.doc.image && !profile.doc.original_image"
+            v-if="profile.doc.image && !profile.doc.original_image && isBackgroundRemovalAvailable"
             @click="
               profile.removeImageBackground.submit({
                 default_color: getRandomColor(),
@@ -52,7 +52,7 @@
             Set Colored Background
           </Button>
           <ColorPicker
-            v-if="profile.doc.is_image_background_removed"
+            v-if="profile.doc.is_image_background_removed && isBackgroundRemovalAvailable"
             v-model="profile.doc.image_background_color"
             @update:modelValue="
               profile.setValue.submit({
@@ -79,6 +79,16 @@ export default {
   name: 'ProfileImageEditor',
   props: ['profile'],
   components: { FileUploader, ColorPicker },
+  data() {
+    return {
+      isBackgroundRemovalAvailable: false,
+    }
+  },
+  mounted() {
+    this.profile.isBackgroundRemovalAvailable.submit().then((result) => {
+      this.isBackgroundRemovalAvailable = result
+    })
+  },
   methods: {
     setUserImage(url) {
       this.profile.setImage.submit({ image: url })

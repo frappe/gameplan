@@ -33,6 +33,11 @@ class GPUserProfile(Document):
 
 	@frappe.whitelist()
 	def remove_image_background(self, default_color=None):
+		from gameplan.gameplan.doctype.gp_user_profile.profile_photo import is_rembg_available
+
+		if not is_rembg_available():
+			frappe.throw("Background removal feature is not available. Please install the rembg package.")
+
 		if not self.image:
 			frappe.throw("Profile image not found")
 
@@ -63,6 +68,12 @@ class GPUserProfile(Document):
 			self.image_background_color = None
 			self.save()
 			gameplan.refetch_resource("Users")
+
+	@frappe.whitelist()
+	def is_background_removal_available(self):
+		from gameplan.gameplan.doctype.gp_user_profile.profile_photo import is_rembg_available
+
+		return is_rembg_available()
 
 
 def create_user_profile(doc, method=None):
