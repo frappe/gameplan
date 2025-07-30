@@ -168,6 +168,7 @@ export default {
           setImage: 'set_image',
           removeImageBackground: 'remove_image_background',
           revertImageBackground: 'revert_image_background',
+          isBackgroundRemovalAvailable: 'is_background_removal_available',
         },
       }
     },
