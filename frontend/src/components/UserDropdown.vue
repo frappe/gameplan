@@ -21,7 +21,7 @@
 <script setup>
 import { h, computed, ref } from 'vue'
 import { Dropdown } from 'frappe-ui'
-import { showSettingsDialog } from '@/components/Settings/SettingsDialog.vue'
+import { showSettingsDialog } from '@/components/Settings'
 import GameplanLogo from './GameplanLogo.vue'
 import AboutDialog from './AboutDialog.vue'
 import { useUser } from '@/data/users'

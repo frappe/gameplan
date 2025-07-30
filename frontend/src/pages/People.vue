@@ -137,7 +137,7 @@
 </template>
 <script>
 import { Breadcrumbs, Badge, Input, Select, TextInput } from 'frappe-ui'
-import { showSettingsDialog } from '@/components/Settings/SettingsDialog.vue'
+import { showSettingsDialog } from '@/components/Settings'
 import UserAvatarWithHover from '@/components/UserAvatarWithHover.vue'
 
 export default {

@@ -3,7 +3,9 @@
     <template #body>
       <div class="flex" :style="{ height: 'calc(100vh - 8rem)' }">
         <div class="flex w-52 shrink-0 flex-col bg-surface-menu-bar p-2">
-          <h1 class="px-2 pt-2 text-lg font-semibold">Settings</h1>
+          <Dialog.Title as-child>
+            <h1 class="px-2 pt-2 text-lg font-semibold">Settings</h1>
+          </Dialog.Title>
           <div class="mt-3">
             <button
               class="flex h-7 w-full items-center gap-2 rounded px-2 py-1"
@@ -30,9 +32,11 @@
     </template>
   </Dialog>
 </template>
-<script>
-import { markRaw, ref } from 'vue'
+
+<script setup lang="ts">
+import { markRaw, onMounted, type Component } from 'vue'
 import { Dialog } from 'frappe-ui'
+import { show, activeTab, registerTabs } from './index'
 import Members from './Members.vue'
 import InvitePeople from './InvitePeople.vue'
 import SettingsTabDialog from './SettingsTab.vue'
@@ -41,7 +45,13 @@ import LucideUsersPlus from '~icons/lucide/user-plus'
 import LucideFolderMinus from '~icons/lucide/folder-minus'
 import LucideSettings from '~icons/lucide/settings'
 
-let tabs = [
+interface Tab {
+  label: string
+  icon: Component
+  component: Component
+}
+
+const tabs: Tab[] = [
   {
     label: 'Members',
     icon: LucideUsers,
@@ -59,25 +69,8 @@ let tabs = [
   },
 ]
 
-let show = ref(false)
-let activeTab = ref(null)
-
-export function showSettingsDialog(defaultTab = null) {
-  show.value = true
-  if (defaultTab) {
-    activeTab.value = tabs.find((tab) => tab.label == defaultTab)
-  } else {
-    activeTab.value = tabs[0]
-  }
-}
-
-export default {
-  name: 'SettingsDialog',
-  components: {
-    Dialog,
-  },
-  setup() {
-    return { tabs, show, activeTab }
-  },
-}
+// Register tabs on component mount
+onMounted(() => {
+  registerTabs(tabs)
+})
 </script>
