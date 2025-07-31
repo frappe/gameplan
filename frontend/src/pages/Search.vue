@@ -75,6 +75,15 @@
               placeholder="Type"
               label="Type"
             />
+
+            <!-- Tags Filter -->
+            <MultiSelect
+              :options="tagsFilterOptions"
+              :model-value="activeFilters.tags || []"
+              @update:model-value="(values) => updateFilter('tags', values)"
+              placeholder="Tags"
+              label="Tags"
+            />
           </div>
         </div>
 
@@ -238,6 +247,7 @@ interface SearchFilters {
   project?: string[]
   team?: string[]
   doctype?: string[]
+  tags?: string[]
 }
 
 interface FilterOption {
@@ -252,6 +262,7 @@ interface FilterOptions {
   projects: Record<string, number>
   teams: Record<string, number>
   doctypes: Record<string, number>
+  tags: Record<string, number>
 }
 
 // Constants and Configuration
@@ -292,6 +303,7 @@ const filterOptions = useCall<FilterOptions>({
     projects: {},
     teams: {},
     doctypes: {},
+    tags: {},
   },
 })
 
@@ -396,6 +408,21 @@ const doctypesFilterOptions = computed(() => {
     label: doctype.label,
     count: doctypeCounts.get(doctype.value) || 0,
   }))
+})
+
+const tagsFilterOptions = computed(() => {
+  // Convert the tags dict from API to filter options
+  if (!filterOptions.data?.tags) {
+    return []
+  }
+
+  return Object.entries(filterOptions.data.tags)
+    .map(([tagName, count]) => ({
+      value: tagName,
+      label: tagName,
+      count: count,
+    }))
+    .sort((a, b) => b.count - a.count) // Sort by count descending
 })
 
 // Keyboard shortcut handler
