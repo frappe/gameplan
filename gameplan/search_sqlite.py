@@ -23,11 +23,7 @@ class GameplanSearch(SQLiteSearch):
 	INDEX_NAME = "gameplan_search.db"
 
 	INDEX_SCHEMA = {
-		"metadata_fields": [
-			"team",
-			"project",
-			"owner",
-		],
+		"metadata_fields": ["team", "project", "tags", "owner"],
 		"tokenizer": "unicode61 remove_diacritics 2 tokenchars '-_'",
 	}
 
@@ -65,7 +61,58 @@ class GameplanSearch(SQLiteSearch):
 			document["project"] = project
 			document["team"] = team
 
+		if doc.doctype in ["GP Discussion", "GP Comment"]:
+			# Use cached tags lookup instead of individual queries
+			tags = self._get_tags_for_document(doc.doctype, doc.name)
+			document["tags"] = " ".join(tags) if tags else None
+
 		return document
+
+	def _get_tags_for_document(self, doctype, docname):
+		"""Get tags for a specific document using cached tag data or fallback query."""
+		# If we have a tags cache (bulk indexing), use it
+		if hasattr(self, "_tags_cache"):
+			cache_key = f"{doctype}:{docname}"
+			return self._tags_cache.get(cache_key, [])
+
+		# Fallback: single document query (for individual reindexing)
+		tags = frappe.qb.get_query(
+			"GP Tag Link",
+			fields=["label"],
+			filters={"parenttype": doctype, "parent": docname, "parentfield": "tags"},
+		).run(pluck=True)
+		return tags or []
+
+	def _load_all_tags(self):
+		"""Load all tags for GP Discussion and GP Comment documents into memory."""
+		self._tags_cache = {}
+
+		# Fetch all tag links for discussions and comments in one query
+		tag_links = frappe.qb.get_query(
+			"GP Tag Link",
+			fields=["parenttype", "parent", "label"],
+			filters={"parenttype": ("in", ["GP Discussion", "GP Comment"]), "parentfield": "tags"},
+		).run(as_dict=True)
+
+		# Group tags by document
+		for tag_link in tag_links:
+			cache_key = f"{tag_link['parenttype']}:{tag_link['parent']}"
+			if cache_key not in self._tags_cache:
+				self._tags_cache[cache_key] = []
+			self._tags_cache[cache_key].append(tag_link["label"])
+
+	def build_index(self):
+		"""Build search index with optimized tag loading."""
+		# Pre-load all tags for bulk indexing performance
+		self._load_all_tags()
+
+		try:
+			# Call parent build_index method
+			super().build_index()
+		finally:
+			# Clear tags cache after indexing to free memory
+			if hasattr(self, "_tags_cache"):
+				delattr(self, "_tags_cache")
 
 	def get_search_filters(self):
 		"""
@@ -159,6 +206,20 @@ class GameplanSearch(SQLiteSearch):
 			return 1.2
 		return 1.0
 
+	def search(self, query, title_only=False, filters=None):
+		"""
+		Enhanced search method that handles tag filtering using LIKE operations.
+		"""
+		# Convert tag filters to LIKE filters for the parent search
+		if filters and "tags" in filters:
+			tag_filters = filters.pop("tags")
+			if tag_filters and isinstance(tag_filters, list) and len(tag_filters) > 0:
+				# Convert to LIKE filter format for space-separated tag matching
+				filters["tags"] = ["LIKE", tag_filters]
+
+		# Call parent search with the converted filters
+		return super().search(query, title_only, filters)
+
 	def get_filter_options(self):
 		"""
 		Return filter options for the search interface.
@@ -169,15 +230,16 @@ class GameplanSearch(SQLiteSearch):
 				- projects: dict mapping project names to counts
 				- teams: dict mapping team names to counts
 				- doctypes: dict mapping doctype names to counts
+				- tags: dict mapping tag names to counts
 		"""
 		if not self.is_search_enabled() or not self.index_exists():
-			return {"authors": {}, "projects": {}, "teams": {}, "doctypes": {}}
+			return {"authors": {}, "projects": {}, "teams": {}, "doctypes": {}, "tags": {}}
 
 		accessible_projects = self._get_accessible_projects()
 
 		# If no accessible projects, return empty results
 		if not accessible_projects:
-			return {"authors": {}, "projects": {}, "teams": {}, "doctypes": {}}
+			return {"authors": {}, "projects": {}, "teams": {}, "doctypes": {}, "tags": {}}
 
 		conn = self._get_connection(read_only=True)
 		try:
@@ -223,8 +285,24 @@ class GameplanSearch(SQLiteSearch):
             """.format(",".join(["?"] * len(accessible_projects)))
 			doctypes = conn.execute(doctypes_query, accessible_projects).fetchall()
 
+			# Get tags - split the tags field and count individual tags
+			tags_query = """
+                SELECT tags
+                FROM search_fts
+                WHERE tags IS NOT NULL AND tags != '' AND project IN ({})
+            """.format(",".join(["?"] * len(accessible_projects)))
+			tags_result = conn.execute(tags_query, accessible_projects).fetchall()
+
 		finally:
 			conn.close()
+
+		# Process tags - count individual tags from space-separated strings
+		tag_counts = {}
+		for row in tags_result:
+			if row["tags"]:
+				individual_tags = row["tags"].split()
+				for tag in individual_tags:
+					tag_counts[tag] = tag_counts.get(tag, 0) + 1
 
 		# Get project names for accessible projects with counts
 		projects = []
@@ -248,6 +326,7 @@ class GameplanSearch(SQLiteSearch):
 			"projects": project_counts,
 			"teams": team_counts,
 			"doctypes": doctype_counts,
+			"tags": tag_counts,
 		}
 
 
