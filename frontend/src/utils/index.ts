@@ -1,4 +1,4 @@
-import { dayjsLocal } from 'frappe-ui'
+import { dayjsLocal, toast } from 'frappe-ui'
 
 export function getImgDimensions(
   imgSrc: string,
@@ -19,13 +19,29 @@ export function htmlToText(html: string): string {
   return tmp.textContent || tmp.innerText || ''
 }
 
-export function copyToClipboard(text: string): void {
-  let textField = document.createElement('textarea')
-  textField.value = text
-  document.body.appendChild(textField)
-  textField.select()
-  document.execCommand('copy')
-  textField.remove()
+export async function copyToClipboard(text: string): Promise<void> {
+  try {
+    // Use modern Clipboard API if available
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text)
+      toast.success('Copied to clipboard')
+      return
+    }
+
+    // Fallback for older browsers or non-secure contexts
+    let textField = document.createElement('textarea')
+    textField.value = text
+    document.body.appendChild(textField)
+    textField.focus()
+    textField.select()
+    document.execCommand('copy')
+    textField.remove()
+    toast.success('Copied to clipboard')
+  } catch (error) {
+    toast.error('Failed to copy to clipboard')
+    console.error('Failed to copy text to clipboard:', error)
+    throw error
+  }
 }
 
 export function getScrollParent(node: HTMLElement | null): HTMLElement | null {
