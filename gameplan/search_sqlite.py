@@ -23,7 +23,7 @@ class GameplanSearch(SQLiteSearch):
 	INDEX_NAME = "gameplan_search.db"
 
 	INDEX_SCHEMA = {
-		"metadata_fields": ["team", "project", "tags", "owner"],
+		"metadata_fields": ["team", "project", "tags", "owner", "reference_doctype", "reference_name"],
 		"tokenizer": "unicode61 remove_diacritics 2 tokenchars '-_'",
 	}
 
