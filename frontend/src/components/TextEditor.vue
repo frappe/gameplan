@@ -1,7 +1,7 @@
 <template>
   <FTextEditor
     ref="textEditor"
-    :mentions="users"
+    :mentions="{ mentions: users, component: TextEditorMentionComponent }"
     :tags="tags"
     :extensions="extensions"
     v-bind="$attrs"
@@ -23,10 +23,11 @@ import { computed, useTemplateRef } from 'vue'
 import { TextEditor as FTextEditor } from 'frappe-ui'
 import FloatingQuoteButton from './RichQuoteExtension/floating-quote-button'
 import RichQuoteNodeExtension from './RichQuoteExtension/rich-quote-node-extension'
+import TextEditorMentionComponent from './TextEditorMentionComponent.vue'
 import { activeUsers } from '@/data/users'
 import { tags as _tags } from '@/data/tags'
 
-const textEditor = useTemplateRef<InstanceType<FTextEditor>>('textEditor')
+const textEditor = useTemplateRef<InstanceType<typeof FTextEditor>>('textEditor')
 
 const emit = defineEmits(['rich-quote', 'rich-quote-click'])
 
