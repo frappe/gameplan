@@ -1,13 +1,16 @@
 <template>
   <FrappeUIProvider>
-    <ScrollAreaRoot class="h-full overflow-hidden">
-      <router-view v-if="['Onboarding', 'Login'].includes($route.name)" />
-      <Layout class="hello" v-else-if="$session.isLoggedIn">
-        <router-view />
-      </Layout>
-    </ScrollAreaRoot>
-    <NewTaskDialog />
-    <Dialogs />
+    <!-- Added global font size wrapper -->
+    <div class="text-lg">
+      <ScrollAreaRoot class="h-full overflow-hidden">
+        <router-view v-if="['Onboarding', 'Login'].includes($route.name)" />
+        <Layout class="hello" v-else-if="$session.isLoggedIn">
+          <router-view />
+        </Layout>
+      </ScrollAreaRoot>
+      <NewTaskDialog />
+      <Dialogs />
+    </div>
   </FrappeUIProvider>
 </template>
 
