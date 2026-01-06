@@ -3,7 +3,7 @@
     <Breadcrumbs
       class="h-7"
       :items="[
-        { label: 'Drafts', route: { name: 'Discussions' } },
+        { label: 'Drafts', route: { name: 'Drafts' } },
         {
           label: draftDoc?.doc ? draftData.title : 'New Discussion',
           route: { name: 'NewDiscussion' },
