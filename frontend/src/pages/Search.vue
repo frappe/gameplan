@@ -167,7 +167,7 @@
               <div class="w-full">
                 <div class="flex items-center">
                   <div v-if="item.title" class="text-base font-medium text-ink-gray-9" v-html="item.title" />
-                  <div class="text-base font-medium" v-else>
+                  <div class="text-base font-medium text-ink-gray-9" v-else>
                     {{ $user(item.author).full_name }}
                   </div>
                   <span class="px-1 leading-none text-sm text-ink-gray-5">
