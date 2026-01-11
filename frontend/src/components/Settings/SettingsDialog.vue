@@ -4,7 +4,7 @@
       <div class="flex" :style="{ height: 'calc(100vh - 8rem)' }">
         <div class="flex w-52 shrink-0 flex-col bg-surface-menu-bar p-2">
           <Dialog.Title as-child>
-            <h1 class="px-2 pt-2 text-lg font-semibold">Settings</h1>
+            <h1 class="px-2 pt-2 text-lg font-semibold text-ink-gray-9">Settings</h1>
           </Dialog.Title>
           <div class="mt-3">
             <button

@@ -1,7 +1,7 @@
 <template>
   <div class="flex min-h-0 flex-col">
     <div class="flex items-center justify-between">
-      <h2 class="text-xl font-semibold leading-none">Members</h2>
+      <h2 class="text-xl font-semibold leading-none text-ink-gray-9">Members</h2>
       <div class="flex items-center gap-4">
         <FormControl placeholder="Search" @input="search = $event.target.value" :debounce="300">
           <template #prefix>
