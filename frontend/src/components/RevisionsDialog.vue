@@ -1,20 +1,20 @@
 <template>
-  <Dialog :options="{ title, size: '3xl' }" v-model="showDialog">
+  <Dialog :options="{ title, size: '5xl' }" v-model="showDialog">
     <template #body-content>
-      <div v-if="orderedRevisions.length" class="grid gap-4 lg:grid-cols-[240px_minmax(0,1fr)]">
-        <div class="overflow-hidden rounded-md border border-outline-gray-2 bg-surface-gray-1">
-          <div class="max-h-[60vh] overflow-y-auto" role="listbox">
+      <div v-if="orderedRevisions.length" class="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
+        <div class="">
+          <div class="max-h-[60vh] space-y-1 overflow-y-auto" role="listbox">
             <button
               v-for="(revision, index) in orderedRevisions"
               :key="`${revision.creation}-${index}`"
-              class="w-full border-b border-outline-gray-2 px-3 py-2 text-left last:border-b-0"
+              class="w-full rounded-md px-3 py-2 text-left last:border-b-0 transition-colors"
               role="option"
               :aria-selected="index === currentRevisionIndex"
               :aria-label="`Revision from ${dayjsLocal(revision.creation).format('LLL')}`"
               :class="
                 index === currentRevisionIndex
-                  ? 'bg-surface-gray-3 text-ink-gray-9'
-                  : 'text-ink-gray-7 hover:bg-surface-gray-2'
+                  ? 'bg-surface-gray-2 hover:bg-surface-gray-3 text-ink-gray-9'
+                  : 'text-ink-gray-7 hover:bg-surface-gray-1'
               "
               type="button"
               @click="currentRevisionIndex = index"
@@ -22,7 +22,7 @@
               <div class="text-sm font-medium">
                 {{ dayjsLocal(revision.creation).format('LLL') }}
               </div>
-              <div class="text-xs text-ink-gray-5">{{ revision.owner }}</div>
+              <div class="mt-0.5 text-sm text-ink-gray-5">{{ revision.owner }}</div>
             </button>
           </div>
         </div>
@@ -32,7 +32,7 @@
               <UserProfileLink class="mr-3" :user="user.name">
                 <UserAvatar :user="user.name" />
               </UserProfileLink>
-              <div>
+              <div class="space-y-0.5">
                 <UserProfileLink
                   class="font-medium text-ink-gray-8 hover:text-ink-blue-4"
                   :user="user.name"
@@ -52,7 +52,7 @@
           <div
             v-if="currentRevision"
             v-html="htmlDiff"
-            class="ProseMirror prose prose-sm rounded-md prose-p:my-1 prose-table:table-fixed prose-th:relative prose-th:border prose-th:border-outline-gray-2 prose-th:bg-surface-gray-2 prose-th:p-2 prose-td:relative prose-td:border prose-td:border-outline-gray-2 prose-td:p-2"
+            class="ProseMirror max-w-none prose prose-sm rounded-md prose-p:my-1 prose-table:table-fixed prose-th:relative prose-th:border prose-th:border-outline-gray-2 prose-th:bg-surface-gray-2 prose-th:p-2 prose-td:relative prose-td:border prose-td:border-outline-gray-2 prose-td:p-2"
           />
         </div>
       </div>
@@ -92,7 +92,9 @@ const showDialog = computed({
   },
 })
 
-const revisionUrl = computed(() => `/api/v2/document/${props.doctype}/${props.name}/method/get_revisions`)
+const revisionUrl = computed(
+  () => `/api/v2/document/${props.doctype}/${props.name}/method/get_revisions`,
+)
 const revisions = useCall<Revision[], { fieldname: string }>({
   url: revisionUrl,
   immediate: false,
