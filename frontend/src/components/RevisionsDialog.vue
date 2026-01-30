@@ -3,11 +3,11 @@
     <template #body-content>
       <div v-if="orderedRevisions.length" class="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
         <div class="">
-          <div class="max-h-[60vh] space-y-1 overflow-y-auto" role="listbox">
+          <div class="max-h-[60vh] space-y-1 -m-1 p-1 overflow-y-auto" role="listbox">
             <button
               v-for="(revision, index) in orderedRevisions"
               :key="`${revision.creation}-${index}`"
-              class="w-full rounded-md px-3 py-2 text-left last:border-b-0 transition-colors"
+              class="w-full rounded-md px-3 py-2 text-left last:border-b-0 transition-colors focus:outline-none focus-visible:ring focus-visible:ring-outline-gray-2"
               role="option"
               :aria-selected="index === currentRevisionIndex"
               :aria-label="`Revision from ${dayjsLocal(revision.creation).format('LLL')}`"
