@@ -1,5 +1,5 @@
 <template>
-  <Dialog :options="{ title, size: '5xl' }" v-model="showDialog">
+  <Dialog v-if="!isMobile" :options="{ title, size: '5xl' }" v-model="showDialog">
     <template #body-content>
       <div v-if="orderedRevisions.length" class="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
         <div class="">
@@ -58,11 +58,71 @@
       </div>
     </template>
   </Dialog>
+
+  <BottomSheet v-else v-model="sheetVisible" @close-complete="handleSheetCloseComplete">
+    <div v-if="orderedRevisions.length" class="flex flex-col">
+      <div class="sticky top-0 z-10 bg-surface-white pb-2 pt-1">
+        <div class="flex items-center justify-center gap-1">
+          <button
+            v-for="(revision, index) in orderedRevisions"
+            :key="`${revision.creation}-${index}`"
+            class="rounded-full"
+            type="button"
+            :aria-label="`Go to revision ${index + 1}`"
+            :aria-selected="index === currentRevisionIndex"
+            @click="currentRevisionIndex = index"
+          >
+            <Motion
+              :initial="false"
+              class="block size-2 rounded-full"
+              :class="index === currentRevisionIndex ? 'bg-surface-gray-7' : 'bg-surface-gray-3'"
+              :animate="{
+                scale: index === currentRevisionIndex ? 1.2 : 1,
+                opacity: index === currentRevisionIndex ? 1 : 0.7,
+              }"
+              :transition="{ type: 'spring', stiffness: 200, damping: 10 }"
+            />
+          </button>
+        </div>
+      </div>
+
+      <div ref="previewRef" class="flex-1 overflow-y-auto px-4 pb-6">
+        <div class="mb-3 flex items-center text-sm" v-if="currentRevision">
+          <UserInfo :email="currentRevision.owner" v-slot="{ user }">
+            <UserProfileLink class="mr-3" :user="user.name">
+              <UserAvatar :user="user.name" />
+            </UserProfileLink>
+            <div class="space-y-0.5">
+              <UserProfileLink class="font-medium text-ink-gray-8" :user="user.name">
+                {{ user.full_name }}
+              </UserProfileLink>
+              <time
+                class="block text-ink-gray-5"
+                :datetime="currentRevision.creation"
+                :title="dayjsLocal(currentRevision.creation)"
+              >
+                {{ dayjsLocal(currentRevision.creation).format('LLL') }}
+              </time>
+            </div>
+          </UserInfo>
+        </div>
+        <div
+          v-if="sheetContentReady && currentRevision"
+          v-html="htmlDiff"
+          class="ProseMirror max-w-none prose prose-sm rounded-md prose-p:my-1 prose-table:table-fixed prose-th:relative prose-th:border prose-th:border-outline-gray-2 prose-th:bg-surface-gray-2 prose-th:p-2 prose-td:relative prose-td:border prose-td:border-outline-gray-2 prose-td:p-2"
+        />
+        <div v-else class="h-40 rounded-md bg-surface-gray-1" aria-hidden="true" />
+      </div>
+    </div>
+  </BottomSheet>
 </template>
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useMediaQuery, usePointerSwipe } from '@vueuse/core'
 import { dayjsLocal, useCall } from 'frappe-ui'
 import HtmlDiff from 'htmldiff-js'
+import { Motion } from 'motion-v'
+import BottomSheet from './BottomSheet.vue'
 import UserProfileLink from './UserProfileLink.vue'
 
 interface Revision {
@@ -83,6 +143,7 @@ const props = defineProps<Props>()
 const emit = defineEmits<{ (e: 'update:modelValue', value: boolean): void }>()
 
 const currentRevisionIndex = ref(0)
+const isMobile = useMediaQuery('(max-width: 1024px)')
 const showDialog = computed({
   get() {
     return props.modelValue
@@ -91,6 +152,19 @@ const showDialog = computed({
     emit('update:modelValue', value)
   },
 })
+
+const isSheetReady = computed(() => revisions.data !== undefined)
+const sheetVisible = computed({
+  get() {
+    return showDialog.value && isSheetReady.value
+  },
+  set(value: boolean) {
+    showDialog.value = value
+  },
+})
+const sheetContentReady = ref(false)
+
+const previewRef = ref<HTMLElement | null>(null)
 
 const revisionUrl = computed(
   () => `/api/v2/document/${props.doctype}/${props.name}/method/get_revisions`,
@@ -131,6 +205,50 @@ const title = computed(() => {
 
 const currentRevision = computed(() => {
   return orderedRevisions.value[currentRevisionIndex.value] ?? null
+})
+
+const handleSheetCloseComplete = () => {
+  currentRevisionIndex.value = 0
+  sheetContentReady.value = false
+}
+
+watch(
+  () => sheetVisible.value,
+  (value) => {
+    if (!value) {
+      sheetContentReady.value = false
+      return
+    }
+    sheetContentReady.value = true
+  },
+)
+
+const goNextRevision = () => {
+  if (!orderedRevisions.value.length) return
+  currentRevisionIndex.value = Math.min(
+    currentRevisionIndex.value + 1,
+    orderedRevisions.value.length - 1,
+  )
+}
+
+const goPreviousRevision = () => {
+  if (!orderedRevisions.value.length) return
+  currentRevisionIndex.value = Math.max(currentRevisionIndex.value - 1, 0)
+}
+
+const { distanceX } = usePointerSwipe(previewRef, {
+  pointerTypes: ['touch'],
+  onSwipeEnd(_, direction) {
+    if (!isMobile.value) return
+    if (Math.abs(distanceX.value) < 60) return
+    if (direction === 'left') {
+      goNextRevision()
+      return
+    }
+    if (direction === 'right') {
+      goPreviousRevision()
+    }
+  },
 })
 
 const htmlDiff = computed(() => {
