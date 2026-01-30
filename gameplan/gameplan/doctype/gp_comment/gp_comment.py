@@ -8,7 +8,7 @@ from gameplan.gameplan.doctype.gp_unread_record.gp_unread_record import GPUnread
 from gameplan.mixins.mentions import HasMentions
 from gameplan.mixins.reactions import HasReactions
 from gameplan.mixins.tags import HasTags
-from gameplan.utils import remove_empty_trailing_paragraphs
+from gameplan.utils import get_document_revisions, remove_empty_trailing_paragraphs
 
 
 class GPComment(HasMentions, HasReactions, HasTags, Document):
@@ -73,29 +73,4 @@ class GPComment(HasMentions, HasReactions, HasTags, Document):
 
 	@frappe.whitelist()
 	def get_revisions(self, fieldname="content"):
-		revisions = frappe.qb.get_query(
-			"Version",
-			fields=["data", "creation", "owner"],
-			filters={
-				"ref_doctype": self.doctype,
-				"docname": self.name,
-				"data": ["like", f'%"{fieldname}"%'],
-			},
-			order_by="creation desc",
-		).run(as_dict=True)
-		response = []
-		for revision in revisions:
-			data = frappe.parse_json(revision.data) if revision.data else {}
-			changes = data.get("changed") or []
-			change = next((change for change in changes if change[0] == fieldname), None)
-			if not change:
-				continue
-			response.append(
-				{
-					"owner": revision.owner,
-					"creation": revision.creation,
-					"old_value": change[1] or "",
-					"new_value": change[2] or "",
-				}
-			)
-		return response
+		return get_document_revisions(self.doctype, self.name, fieldname)

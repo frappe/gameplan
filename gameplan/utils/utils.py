@@ -96,3 +96,32 @@ def html_to_text_preview(html, preview_length=50):
 		text += "..."
 
 	return text
+
+
+def get_document_revisions(doctype, name, fieldname="content"):
+	revisions = frappe.qb.get_query(
+		"Version",
+		fields=["data", "creation", "owner"],
+		filters={
+			"ref_doctype": doctype,
+			"docname": name,
+			"data": ["like", f'%["{fieldname}",%'],
+		},
+		order_by="creation desc",
+	).run(as_dict=True)
+	response = []
+	for revision in revisions:
+		data = frappe.parse_json(revision.data) if revision.data else {}
+		changes = data.get("changed") or []
+		change = next((change for change in changes if change[0] == fieldname), None)
+		if not change:
+			continue
+		response.append(
+			{
+				"owner": revision.owner,
+				"creation": revision.creation,
+				"old_value": change[1] or "",
+				"new_value": change[2] or "",
+			}
+		)
+	return response

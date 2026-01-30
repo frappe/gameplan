@@ -90,9 +90,10 @@ watch(
 )
 
 function previous() {
+  const maxIndex = Math.max((revisions.data?.length ?? 0) - 1, 0)
   let index = currentRevisionIndex.value + 1
-  if (index > (revisions.data?.length ?? 0) - 1) {
-    index = (revisions.data?.length ?? 1) - 1
+  if (index > maxIndex) {
+    index = maxIndex
   }
   currentRevisionIndex.value = index
 }
