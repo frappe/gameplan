@@ -124,6 +124,35 @@ class GPDiscussion(HasActivity, HasMentions, HasReactions, HasTags, Document):
 		GPNotification.clear_notifications(discussion=self.name)
 
 	@frappe.whitelist()
+	def get_revisions(self, fieldname="content"):
+		revisions = frappe.qb.get_query(
+			"Version",
+			fields=["data", "creation", "owner"],
+			filters={
+				"ref_doctype": self.doctype,
+				"docname": self.name,
+				"data": ["like", f'%"{fieldname}"%'],
+			},
+			order_by="creation desc",
+		).run(as_dict=True)
+		response = []
+		for revision in revisions:
+			data = frappe.parse_json(revision.data) if revision.data else {}
+			changes = data.get("changed") or []
+			change = next((change for change in changes if change[0] == fieldname), None)
+			if not change:
+				continue
+			response.append(
+				{
+					"owner": revision.owner,
+					"creation": revision.creation,
+					"old_value": change[1] or "",
+					"new_value": change[2] or "",
+				}
+			)
+		return response
+
+	@frappe.whitelist()
 	def move_to_project(self, project):
 		if not project or project == self.project:
 			return

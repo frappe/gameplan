@@ -39,140 +39,110 @@
     </template>
   </Dialog>
 </template>
-<script>
-import { dayjsLocal } from 'frappe-ui'
+<script setup lang="ts">
+import { computed, ref, watch } from 'vue'
+import { dayjsLocal, useCall } from 'frappe-ui'
 import HtmlDiff from 'htmldiff-js'
 import UserProfileLink from './UserProfileLink.vue'
 
-export default {
-  name: 'RevisionsDialog',
-  props: {
-    modelValue: {
-      type: Boolean,
-      default: false,
-    },
-    doctype: {
-      type: String,
-      required: true,
-    },
-    name: {
-      type: [String, Number],
-      required: true,
-    },
-    fieldname: {
-      type: String,
-      required: true,
-    },
-  },
-  components: { UserProfileLink },
-  resources: {
-    revisions() {
-      return {
-        type: 'list',
-        doctype: 'Version',
-        fields: ['data', 'creation', 'owner'],
-        orderBy: 'creation desc',
-        filters: {
-          ref_doctype: this.doctype,
-          docname: this.name,
-          data: ['like', `%"${this.fieldname}"%`],
-        },
-        transform(data) {
-          return data.map((revision) => {
-            revision.data = JSON.parse(revision.data)
-            return revision
-          })
-        },
-      }
-    },
-  },
-  watch: {
-    showDialog: {
-      immediate: true,
-      handler(value) {
-        if (value) {
-          this.$resources.revisions.list.fetch()
-        }
-      },
-    },
-  },
-  setup() {
-    return {
-      dayjsLocal,
-    }
-  },
-  data() {
-    return {
-      currentRevisionIndex: 0,
-    }
-  },
-  methods: {
-    previous() {
-      let index = this.currentRevisionIndex
-      index = index + 1
-      if (index > this.$resources.revisions.data.length - 1) {
-        index = this.$resources.revisions.data.length - 1
-      }
-      this.currentRevisionIndex = index
-    },
-    next() {
-      let index = this.currentRevisionIndex
-      index = index - 1
-      if (index < 0) {
-        index = 0
-      }
-      this.currentRevisionIndex = index
-    },
-  },
-  computed: {
-    title() {
-      if (this.$resources.revisions.data) {
-        if (this.$resources.revisions.data.length === 0) return 'No Revisions'
-        if (this.$resources.revisions.data.length === 1) return '1 Revision'
-        return `${this.$resources.revisions.data.length} Revisions`
-      } else {
-        return 'Loading...'
-      }
-    },
-    hasPrevious() {
-      if (!this.currentRevision) return false
-      return this.currentRevisionIndex < this.$resources.revisions.data.length - 1
-    },
-    hasNext() {
-      if (!this.currentRevision) return false
-      return this.currentRevisionIndex > 0
-    },
-    currentRevision() {
-      if (!this.$resources.revisions.data) {
-        return null
-      }
-      return this.$resources.revisions.data[this.currentRevisionIndex]
-    },
-    htmlDiff() {
-      if (!this.currentRevision) {
-        return null
-      }
-      let change = this.currentRevision.data.changed.find((change) => change[0] === this.fieldname)
-      if (!change) {
-        return null
-      }
-      let oldHtml = change[1]
-      let newHtml = change[2]
-
-      // because of commonjs and esm shenanigans
-      let makeDiff = HtmlDiff.default?.execute || HtmlDiff.execute
-      return makeDiff(oldHtml, newHtml)
-    },
-    showDialog: {
-      get() {
-        return this.modelValue
-      },
-      set(value) {
-        this.$emit('update:modelValue', value)
-      },
-    },
-  },
+interface Revision {
+  owner: string
+  creation: string
+  old_value: string
+  new_value: string
 }
+
+interface Props {
+  modelValue: boolean
+  doctype: string
+  name: string | number
+  fieldname: string
+}
+
+const props = defineProps<Props>()
+const emit = defineEmits<{ (e: 'update:modelValue', value: boolean): void }>()
+
+const currentRevisionIndex = ref(0)
+const showDialog = computed({
+  get() {
+    return props.modelValue
+  },
+  set(value: boolean) {
+    emit('update:modelValue', value)
+  },
+})
+
+const revisionUrl = computed(() => `/api/v2/document/${props.doctype}/${props.name}/method/get_revisions`)
+const revisions = useCall<Revision[], { fieldname: string }>({
+  url: revisionUrl,
+  immediate: false,
+})
+
+watch(
+  () => showDialog.value,
+  (value) => {
+    if (value) {
+      currentRevisionIndex.value = 0
+      revisions.submit({ fieldname: props.fieldname })
+    }
+  },
+  { immediate: true },
+)
+
+function previous() {
+  let index = currentRevisionIndex.value + 1
+  if (index > (revisions.data?.length ?? 0) - 1) {
+    index = (revisions.data?.length ?? 1) - 1
+  }
+  currentRevisionIndex.value = index
+}
+
+function next() {
+  let index = currentRevisionIndex.value - 1
+  if (index < 0) {
+    index = 0
+  }
+  currentRevisionIndex.value = index
+}
+
+const title = computed(() => {
+  if (revisions.data) {
+    if (revisions.data.length === 0) return 'No Revisions'
+    if (revisions.data.length === 1) return '1 Revision'
+    return `${revisions.data.length} Revisions`
+  }
+  return 'Loading...'
+})
+
+const currentRevision = computed(() => {
+  if (!revisions.data) {
+    return null
+  }
+  return revisions.data[currentRevisionIndex.value]
+})
+
+const hasPrevious = computed(() => {
+  if (!currentRevision.value || !revisions.data) return false
+  return currentRevisionIndex.value < revisions.data.length - 1
+})
+
+const hasNext = computed(() => {
+  if (!currentRevision.value) return false
+  return currentRevisionIndex.value > 0
+})
+
+const htmlDiff = computed(() => {
+  if (!currentRevision.value) {
+    return null
+  }
+
+  const oldHtml = currentRevision.value.old_value
+  const newHtml = currentRevision.value.new_value
+
+  // because of commonjs and esm shenanigans
+  const makeDiff = HtmlDiff.default?.execute || HtmlDiff.execute
+  return makeDiff(oldHtml, newHtml)
+})
 </script>
 <style>
 ins {
