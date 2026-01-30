@@ -1,40 +1,60 @@
 <template>
   <Dialog :options="{ title, size: '3xl' }" v-model="showDialog">
     <template #body-content>
-      <div class="mb-2 flex items-center text-base" v-if="currentRevision">
-        <UserInfo :email="currentRevision.owner" v-slot="{ user }">
-          <UserProfileLink class="mr-3" :user="user.name">
-            <UserAvatar :user="user.name" />
-          </UserProfileLink>
-          <div>
-            <UserProfileLink
-              class="font-medium text-ink-gray-8 hover:text-ink-blue-4"
-              :user="user.name"
+      <div v-if="orderedRevisions.length" class="grid gap-4 lg:grid-cols-[240px_minmax(0,1fr)]">
+        <div class="overflow-hidden rounded-md border border-outline-gray-2 bg-surface-gray-1">
+          <div class="max-h-[60vh] overflow-y-auto" role="listbox">
+            <button
+              v-for="(revision, index) in orderedRevisions"
+              :key="`${revision.creation}-${index}`"
+              class="w-full border-b border-outline-gray-2 px-3 py-2 text-left last:border-b-0"
+              role="option"
+              :aria-selected="index === currentRevisionIndex"
+              :aria-label="`Revision from ${dayjsLocal(revision.creation).format('LLL')}`"
+              :class="
+                index === currentRevisionIndex
+                  ? 'bg-surface-gray-3 text-ink-gray-9'
+                  : 'text-ink-gray-7 hover:bg-surface-gray-2'
+              "
+              type="button"
+              @click="currentRevisionIndex = index"
             >
-              {{ user.full_name }}
-            </UserProfileLink>
-            <time
-              class="block text-ink-gray-5"
-              :datetime="currentRevision.creation"
-              :title="dayjsLocal(currentRevision.creation)"
-            >
-              {{ dayjsLocal(currentRevision.creation).format('LLL') }}
-            </time>
+              <div class="text-sm font-medium">
+                {{ dayjsLocal(revision.creation).format('LLL') }}
+              </div>
+              <div class="text-xs text-ink-gray-5">{{ revision.owner }}</div>
+            </button>
           </div>
-        </UserInfo>
-      </div>
-      <div
-        v-if="currentRevision"
-        v-html="htmlDiff"
-        class="ProseMirror prose prose-sm rounded-md prose-p:my-1 prose-table:table-fixed prose-th:relative prose-th:border prose-th:border-outline-gray-2 prose-th:bg-surface-gray-2 prose-th:p-2 prose-td:relative prose-td:border prose-td:border-outline-gray-2 prose-td:p-2"
-      />
-    </template>
-    <template v-if="currentRevision && (hasNext || hasPrevious)" #actions>
-      <div class="flex w-full justify-between">
-        <div>
-          <Button @click="previous" v-if="hasPrevious"> Previous </Button>
         </div>
-        <Button @click="next" v-if="hasNext">Next</Button>
+        <div class="min-w-0">
+          <div class="mb-2 flex items-center text-base" v-if="currentRevision">
+            <UserInfo :email="currentRevision.owner" v-slot="{ user }">
+              <UserProfileLink class="mr-3" :user="user.name">
+                <UserAvatar :user="user.name" />
+              </UserProfileLink>
+              <div>
+                <UserProfileLink
+                  class="font-medium text-ink-gray-8 hover:text-ink-blue-4"
+                  :user="user.name"
+                >
+                  {{ user.full_name }}
+                </UserProfileLink>
+                <time
+                  class="block text-ink-gray-5"
+                  :datetime="currentRevision.creation"
+                  :title="dayjsLocal(currentRevision.creation)"
+                >
+                  {{ dayjsLocal(currentRevision.creation).format('LLL') }}
+                </time>
+              </div>
+            </UserInfo>
+          </div>
+          <div
+            v-if="currentRevision"
+            v-html="htmlDiff"
+            class="ProseMirror prose prose-sm rounded-md prose-p:my-1 prose-table:table-fixed prose-th:relative prose-th:border prose-th:border-outline-gray-2 prose-th:bg-surface-gray-2 prose-th:p-2 prose-td:relative prose-td:border prose-td:border-outline-gray-2 prose-td:p-2"
+          />
+        </div>
       </div>
     </template>
   </Dialog>
@@ -89,22 +109,14 @@ watch(
   { immediate: true },
 )
 
-function previous() {
-  const maxIndex = Math.max((revisions.data?.length ?? 0) - 1, 0)
-  let index = currentRevisionIndex.value + 1
-  if (index > maxIndex) {
-    index = maxIndex
+const orderedRevisions = computed(() => {
+  if (!revisions.data) {
+    return []
   }
-  currentRevisionIndex.value = index
-}
-
-function next() {
-  let index = currentRevisionIndex.value - 1
-  if (index < 0) {
-    index = 0
-  }
-  currentRevisionIndex.value = index
-}
+  return [...revisions.data].sort(
+    (first, second) => dayjsLocal(second.creation).valueOf() - dayjsLocal(first.creation).valueOf(),
+  )
+})
 
 const title = computed(() => {
   if (revisions.data) {
@@ -116,20 +128,7 @@ const title = computed(() => {
 })
 
 const currentRevision = computed(() => {
-  if (!revisions.data) {
-    return null
-  }
-  return revisions.data[currentRevisionIndex.value]
-})
-
-const hasPrevious = computed(() => {
-  if (!currentRevision.value || !revisions.data) return false
-  return currentRevisionIndex.value < revisions.data.length - 1
-})
-
-const hasNext = computed(() => {
-  if (!currentRevision.value) return false
-  return currentRevisionIndex.value > 0
+  return orderedRevisions.value[currentRevisionIndex.value] ?? null
 })
 
 const htmlDiff = computed(() => {
