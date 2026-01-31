@@ -15,6 +15,7 @@ class HasMentions:
 			return
 
 		mentions = extract_mentions(self.get(mentions_field))
+		notified_users = set()
 		for mention in mentions:
 			# Handle special "everyone" mention
 			if mention.email == "_everyone_":
@@ -22,12 +23,15 @@ class HasMentions:
 				continue
 
 			self._notify_user(mention.email, is_everyone=False)
-		self._notify_rich_quote_authors(mentions_field)
+			notified_users.add(mention.email)
+		self._notify_rich_quote_authors(mentions_field, notified_users)
 
-	def _notify_rich_quote_authors(self, mentions_field):
+	def _notify_rich_quote_authors(self, mentions_field, notified_users):
 		authors = extract_rich_quote_authors(self.get(mentions_field))
 		for author in authors:
-			if author == self.owner:
+			if author == self.owner or author == frappe.session.user:
+				continue
+			if author in notified_users:
 				continue
 			self._notify_user(author, is_everyone=False, notification_type="Rich Quote")
 
