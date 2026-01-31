@@ -76,17 +76,11 @@ class HasMentions:
 		author = get_fullname(self.owner)
 		in_task = "GP Task" in [self.doctype, self.get("reference_doctype")]
 		post_label = "task" if in_task else "post"
-		match notification_type:
-			case "Rich Quote":
-				return f"{author} quoted you in a {post_label}"
-			case "Mention":
-				if is_everyone:
-					return f"{author} mentioned everyone in a {post_label}"
-				return f"{author} mentioned you in a {post_label}"
-			case _:
-				if is_everyone:
-					return f"{author} mentioned everyone in a {post_label}"
-				return f"{author} mentioned you in a {post_label}"
+		if notification_type == "Rich Quote":
+			return f"{author} quoted you in a {post_label}"
+		if is_everyone:
+			return f"{author} mentioned everyone in a {post_label}"
+		return f"{author} mentioned you in a {post_label}"
 
 	def _get_all_active_gameplan_users(self):
 		"""Get all active Gameplan users except guests"""
