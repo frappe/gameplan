@@ -19,11 +19,12 @@
   </Dropdown>
 </template>
 <script setup>
-import { h, computed, ref } from 'vue'
+import { h, computed, ref, markRaw } from 'vue'
 import { Dropdown } from 'frappe-ui'
 import { showSettingsDialog } from '@/components/Settings'
 import GameplanLogo from './GameplanLogo.vue'
 import AboutDialog from './AboutDialog.vue'
+import Apps from './Apps.vue'
 import { useUser } from '@/data/users'
 import { session } from '@/data/session'
 import { clear as clearIndexDb } from 'idb-keyval'
@@ -46,6 +47,9 @@ const dropdownItems = computed(() => [
       name: 'PersonProfile',
       params: { personId: user.user_profile },
     },
+  },
+  {
+    component: markRaw(Apps),
   },
   {
     icon: 'settings',
