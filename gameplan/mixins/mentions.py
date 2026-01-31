@@ -29,7 +29,7 @@ class HasMentions:
 	def _notify_rich_quote_authors(self, mentions_field, notified_users):
 		authors = extract_rich_quote_authors(self.get(mentions_field))
 		for author in authors:
-			if author == self.owner or author == frappe.session.user:
+			if author == self.owner:
 				continue
 			if author in notified_users:
 				continue
@@ -78,13 +78,15 @@ class HasMentions:
 
 	def _get_notification_message(self, is_everyone, notification_type):
 		author = get_fullname(self.owner)
-		in_task = "GP Task" in [self.doctype, self.get("reference_doctype")]
-		post_label = "task" if in_task else "post"
+		post_label = "task" if self._is_task_context() else "post"
 		if notification_type == "Rich Quote":
 			return f"{author} quoted you in a {post_label}"
 		if is_everyone:
 			return f"{author} mentioned everyone in a {post_label}"
 		return f"{author} mentioned you in a {post_label}"
+
+	def _is_task_context(self):
+		return "GP Task" in [self.doctype, self.get("reference_doctype")]
 
 	def _get_all_active_gameplan_users(self):
 		"""Get all active Gameplan users except guests"""
