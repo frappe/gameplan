@@ -26,7 +26,7 @@
           class="flex items-center gap-2 rounded p-1.5 hover:bg-surface-gray-2"
         >
           <img class="h-6 w-6" :src="app.logo" />
-          <span class="w-full max-w-18 truncate">
+          <span class="w-full max-w-[4.5rem] truncate">
             {{ app.title }}
           </span>
         </a>
@@ -57,7 +57,7 @@ const apps = createResource({
         route: '/app',
       },
     ]
-    data.map((app) => {
+    data.forEach((app) => {
       if (app.name === 'gameplan') return
       _apps.push({
         name: app.name,
