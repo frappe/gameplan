@@ -37,7 +37,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Type",
-   "options": "Mention\nReaction",
+   "options": "Mention\nReaction\nRich Quote",
    "reqd": 1
   },
   {

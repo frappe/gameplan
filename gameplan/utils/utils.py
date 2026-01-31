@@ -31,6 +31,20 @@ def extract_mentions(html):
 	return mentions
 
 
+def extract_rich_quote_authors(html):
+	if not html:
+		return []
+	soup = BeautifulSoup(html, "html.parser")
+	authors = []
+	seen = set()
+	for tag in soup.find_all("blockquote", attrs={"data-author": True}):
+		author = tag.get("data-author")
+		if author and author not in seen:
+			authors.append(author)
+			seen.add(author)
+	return authors
+
+
 def remove_empty_trailing_paragraphs(html):
 	from bs4 import BeautifulSoup
 

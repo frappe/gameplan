@@ -100,7 +100,7 @@ export interface GPNotification extends DocType {
   /** To User: Link (User) */
   to_user: string
   /** Type: Select */
-  type: 'Mention' | 'Reaction'
+  type: 'Mention' | 'Reaction' | 'Rich Quote'
   /** Message: Text Editor */
   message?: string
   /** Read: Check */
