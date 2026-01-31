@@ -25,8 +25,8 @@
           :href="app.route"
           class="flex items-center gap-2 rounded p-1.5 hover:bg-surface-gray-2"
         >
-          <img class="h-6 w-6" :src="app.logo" />
-          <span class="w-full max-w-[4.5rem] truncate">
+          <img class="h-6 w-6" :src="app.logo" :alt="app.title" />
+          <span class="w-full truncate">
             {{ app.title }}
           </span>
         </a>
