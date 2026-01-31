@@ -57,20 +57,20 @@ describe('Comment', () => {
       .then((comment) => {
         cy.intercept({
           method: 'POST',
-          url: '/api/method/gameplan.extends.client.batch',
-        }).as('batchRequest')
+          url: `/api/v2/document/GP%20Comment/${comment.name}/method/react`,
+        }).as('reactRequest')
         // add a reaction
         cy.get(`div[data-id=${comment.name}] button[aria-label="Add a reaction"]`).click()
         cy.get('button:contains("👍"):visible').click()
-        cy.wait('@batchRequest')
+        cy.wait('@reactRequest')
         cy.get('button:contains("👍 1")').should('exist')
 
         // remove a reaction
         cy.get(`div[data-id=${comment.name}] button[aria-label="Add a reaction"]`).click()
         cy.get('button:contains("💖"):visible').click()
-        cy.wait('@batchRequest')
+        cy.wait('@reactRequest')
         cy.get('button:contains("💖 1")').should('exist').click()
-        cy.wait('@batchRequest')
+        cy.wait('@reactRequest')
         cy.get('button:contains("💖 1")').should('not.exist')
 
         // edit comment
