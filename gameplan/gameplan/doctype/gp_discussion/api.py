@@ -189,15 +189,11 @@ def include_last_post_content(discussions):
 
 def clause_discussions_commented_by_user(user):
 	Discussion = frappe.qb.DocType("GP Discussion")
-	commented_in = list(
-		set(
-			frappe.db.get_all(
-				"GP Comment",
-				fields=["reference_name"],
-				filters={"reference_doctype": "GP Discussion", "owner": user},
-				pluck="reference_name",
-			)
-		)
+	Comment = frappe.qb.DocType("GP Comment")
+	commented_in = (
+		frappe.qb.from_(Comment)
+		.select(Comment.reference_name)
+		.where((Comment.reference_doctype == "GP Discussion") & (Comment.owner == user))
 	)
 	return Discussion.name.isin(commented_in)
 
