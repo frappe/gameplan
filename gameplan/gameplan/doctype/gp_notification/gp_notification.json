@@ -86,7 +86,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-01-12 16:56:50.063064",
+ "modified": "2026-02-01 13:07:33.079297",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "GP Notification",
@@ -140,6 +140,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []
