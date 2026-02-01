@@ -25,7 +25,6 @@ class TestGPDiscussion(FrappeTestCase):
 
 		# Ensure the user has no comments
 		frappe.db.delete("GP Comment", {"owner": test_user})
-		frappe.db.commit()
 
 		# This should not raise an SQL error (MariaDB error 1064)
 		clause = clause_discussions_commented_by_user(test_user)
@@ -35,12 +34,8 @@ class TestGPDiscussion(FrappeTestCase):
 		query = frappe.qb.from_(Discussion).select(Discussion.name).where(clause).limit(1)
 
 		# This should execute without error
-		try:
-			result = query.run()
-			# If we get here, the query executed successfully
-			self.assertIsInstance(result, list)
-		except Exception as e:
-			self.fail(f"Query execution failed with error: {e}")
+		result = query.run()
+		self.assertIsInstance(result, list)
 
 		# Cleanup
 		frappe.db.rollback()
