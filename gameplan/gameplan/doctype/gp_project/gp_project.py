@@ -95,7 +95,7 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 		self.db_set("tasks_count", total_tasks)
 
 	@frappe.whitelist()
-	def move_to_team(self, team=None):
+	def move_to_team(self, team: str = None):
 		if self.team == team:
 			return
 		self.team = team
@@ -107,7 +107,7 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 				doc.save()
 
 	@frappe.whitelist()
-	def merge_with_project(self, project=None):
+	def merge_with_project(self, project: str = None):
 		if not project or self.name == project:
 			return
 		if isinstance(project, str):
@@ -117,11 +117,11 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 		return self.rename(project, merge=True, validate_rename=False, force=True)
 
 	@frappe.whitelist()
-	def invite_guest(self, email):
+	def invite_guest(self, email: str):
 		invite_by_email(email, role="Gameplan Guest", projects=[self.name])
 
 	@frappe.whitelist()
-	def remove_guest(self, email):
+	def remove_guest(self, email: str):
 		name = frappe.db.get_value("GP Guest Access", {"project": self.name, "user": email})
 		if name:
 			frappe.delete_doc("GP Guest Access", name)
@@ -162,7 +162,7 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 		frappe.delete_doc("GP Followed Project", follow_id)
 
 	@frappe.whitelist()
-	def add_member(self, user):
+	def add_member(self, user: str):
 		if user not in [d.user for d in self.members]:
 			self.append("members", {"user": user})
 			self.save()

@@ -7,8 +7,7 @@ import frappe
 
 class HasReactions:
 	@frappe.whitelist()
-	def react(self, operations=None):
-		operations = frappe.parse_json(operations) or []
+	def react(self, operations: list[dict] = None):
 		if not isinstance(operations, list):
 			frappe.throw("Invalid reactions payload")
 

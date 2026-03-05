@@ -6,7 +6,7 @@ import frappe
 
 class ManageMembersMixin:
 	@frappe.whitelist()
-	def invite_members(self, emails):
+	def invite_members(self, emails: list[str]):
 		existing_members = [d.email for d in self.members]
 		for email in emails:
 			if not frappe.utils.validate_email_address(email):
@@ -68,7 +68,7 @@ class ManageMembersMixin:
 				return user
 
 	@frappe.whitelist()
-	def remove_member(self, user):
+	def remove_member(self, user: str):
 		for member in self.members:
 			if member.user == user:
 				self.remove(member)

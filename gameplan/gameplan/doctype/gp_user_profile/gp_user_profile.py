@@ -23,7 +23,7 @@ class GPUserProfile(Document):
 		return append_number_if_name_exists(self.doctype, cleanup_page_name(full_name))
 
 	@frappe.whitelist()
-	def set_image(self, image):
+	def set_image(self, image: str | None):
 		self.image = image
 		self.is_image_background_removed = False
 		self.image_background_color = None
@@ -32,7 +32,7 @@ class GPUserProfile(Document):
 		gameplan.refetch_resource("Users")
 
 	@frappe.whitelist()
-	def remove_image_background(self, default_color=None):
+	def remove_image_background(self, default_color: str = None):
 		from gameplan.gameplan.doctype.gp_user_profile.profile_photo import is_rembg_available
 
 		if not is_rembg_available():

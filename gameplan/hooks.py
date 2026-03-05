@@ -7,6 +7,7 @@ app_license = "AGPLv3"
 app_icon_url = "/assets/gameplan/manifest/favicon-180.png"
 app_icon_title = "Gameplan"
 app_icon_route = "/g"
+require_type_annotated_api_methods = True
 
 add_to_apps_screen = [
 	{

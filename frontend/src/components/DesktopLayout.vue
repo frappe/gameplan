@@ -1,5 +1,5 @@
 <template>
-  <div class="relative flex h-full flex-col" v-if="users.isFinished">
+  <div class="relative flex h-full flex-col" v-if="hasLoadedUsers">
     <div class="h-full flex-1 standalone:border-t">
       <div class="flex h-full">
         <ScrollAreaRoot class="relative block min-h-0 flex-shrink-0">
@@ -24,10 +24,23 @@
   </div>
 </template>
 <script setup lang="ts">
+import { ref, watch } from 'vue'
 import { ScrollAreaRoot } from 'reka-ui'
 import ScrollContainer from './ScrollContainer.vue'
 import AppSidebar from './AppSidebar.vue'
 import CommandPalette from './CommandPalette/CommandPalette.vue'
 import SettingsDialog from './Settings/SettingsDialog.vue'
 import { users } from '@/data/users'
+
+const hasLoadedUsers = ref(false)
+
+watch(
+  () => users.isFinished,
+  (isFinished) => {
+    if (isFinished) {
+      hasLoadedUsers.value = true
+    }
+  },
+  { immediate: true },
+)
 </script>

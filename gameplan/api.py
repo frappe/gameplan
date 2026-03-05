@@ -7,11 +7,10 @@ from frappe.query_builder.functions import Count
 from frappe.utils import split_emails, validate_email_address
 
 import gameplan
-from gameplan.utils import validate_type
 
 
 @frappe.whitelist(allow_guest=True)
-def get_user_info(user=None):
+def get_user_info(user: str = None):
 	if frappe.session.user == "Guest":
 		frappe.throw("Authentication failed", exc=frappe.AuthenticationError)
 
@@ -80,7 +79,6 @@ def get_user_info(user=None):
 
 
 @frappe.whitelist()
-@validate_type
 def change_user_role(user: str, role: str):
 	if gameplan.is_guest():
 		frappe.throw("Only Admin can change user roles")
@@ -99,7 +97,6 @@ def change_user_role(user: str, role: str):
 
 
 @frappe.whitelist()
-@validate_type
 def remove_user(user: str):
 	user_doc = frappe.get_doc("User", user)
 	user_doc.enabled = 0
@@ -108,7 +105,6 @@ def remove_user(user: str):
 
 
 @frappe.whitelist()
-@validate_type
 def invite_by_email(emails: str, role: str, projects: list = None):
 	if not emails:
 		return
@@ -151,7 +147,6 @@ def unread_notifications():
 
 
 @frappe.whitelist(allow_guest=True)
-@validate_type
 def accept_invitation(key: str = None):
 	if not key:
 		frappe.throw("Invalid or expired key")
@@ -180,7 +175,7 @@ def accept_invitation(key: str = None):
 
 
 @frappe.whitelist()
-def get_unsplash_photos(keyword=None):
+def get_unsplash_photos(keyword: str = None):
 	from gameplan.unsplash import get_by_keyword, get_list
 
 	if keyword:
@@ -223,7 +218,7 @@ def get_unread_items():
 
 
 @frappe.whitelist()
-def get_unread_items_by_project(projects):
+def get_unread_items_by_project(projects: str):
 	from frappe.query_builder.functions import Count
 
 	project_names = frappe.parse_json(projects)
@@ -333,7 +328,7 @@ def active_projects():
 
 
 @frappe.whitelist()
-def onboarding(space, icon, emails):
+def onboarding(space: str, icon: str, emails: str):
 	emails = frappe.parse_json(emails)
 	project = frappe.get_doc(doctype="GP Project", title=space, icon=icon).insert()
 	invite_by_email(", ".join(emails), role="Gameplan Member")
@@ -379,7 +374,7 @@ def oauth_providers():
 
 
 @frappe.whitelist()
-def search_sqlite(query, filters=None):
+def search_sqlite(query: str, filters: str = None):
 	from gameplan.search_sqlite import GameplanSearch
 
 	search = GameplanSearch()

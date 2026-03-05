@@ -40,7 +40,7 @@ class GPPoll(Document, GPPollAttributes):
 		discussion.save(ignore_permissions=True)
 
 	@frappe.whitelist()
-	def submit_vote(self, option):
+	def submit_vote(self, option: str):
 		self.check_if_stopped()
 
 		if self.anonymous:
@@ -97,13 +97,3 @@ class GPPoll(Document, GPPollAttributes):
 	def check_if_stopped(self):
 		if self.stopped_at and self.stopped_at < frappe.utils.now_datetime():
 			frappe.throw(frappe._("Poll has ended"))
-
-
-@frappe.whitelist()
-def get_list(fields, filters=None, start=0, limit=20, order_by=None):
-	query = frappe.qb.get_query(
-		"GP Poll", fields=fields, filters=filters, start=start, limit=limit, order_by=order_by
-	)
-
-	data = query.run(as_dict=1)
-	return data

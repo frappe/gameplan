@@ -3,6 +3,7 @@
 
 import frappe
 from frappe.model.document import Document
+from frappe.types import DF
 from frappe.utils import cstr
 
 import gameplan
@@ -13,6 +14,8 @@ from gameplan.mixins.mentions import HasMentions
 from gameplan.mixins.reactions import HasReactions
 from gameplan.mixins.tags import HasTags
 from gameplan.utils import get_document_revisions, remove_empty_trailing_paragraphs, url_safe_slug
+
+PinScope = DF.Literal["Global", "Space"]
 
 
 class GPDiscussion(HasActivity, HasMentions, HasReactions, HasTags, Document):
@@ -126,11 +129,11 @@ class GPDiscussion(HasActivity, HasMentions, HasReactions, HasTags, Document):
 		GPNotification.clear_notifications(discussion=self.name)
 
 	@frappe.whitelist()
-	def get_revisions(self, fieldname="content"):
+	def get_revisions(self, fieldname: str = "content"):
 		return get_document_revisions(self.doctype, self.name, fieldname)
 
 	@frappe.whitelist()
-	def move_to_project(self, project):
+	def move_to_project(self, project: str):
 		return move_discussion(self, project)
 
 	@frappe.whitelist()
@@ -152,7 +155,7 @@ class GPDiscussion(HasActivity, HasMentions, HasReactions, HasTags, Document):
 		self.save()
 
 	@frappe.whitelist()
-	def pin_discussion(self, pin_scope="Global"):
+	def pin_discussion(self, pin_scope: PinScope = "Global"):
 		if self.pinned_at:
 			return
 		self.pinned_at = frappe.utils.now()

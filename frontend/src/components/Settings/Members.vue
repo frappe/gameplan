@@ -42,167 +42,174 @@
     </ul>
   </div>
 </template>
-<script>
-import { h, computed } from 'vue'
-import { Dropdown } from 'frappe-ui'
+<script setup lang="ts">
+import { computed, h, ref } from 'vue'
+import { Dropdown, useCall } from 'frappe-ui'
 import { users, activeUsers } from '@/data/users'
+import { createDialog } from '@/utils/dialogs'
 import LucideCheck from '~icons/lucide/check'
 
-export default {
-  name: 'Members',
-  components: { Dropdown },
-  resources: {
-    changeUserRole() {
-      return {
-        url: 'gameplan.api.change_user_role',
-        onSuccess(user) {
-          users.setData((data) => {
-            return data.map((_user) => {
-              if (_user.name === user.name) {
-                return user
-              }
-              return _user
-            })
-          })
-        },
-      }
-    },
-    removeUser() {
-      return {
-        url: 'gameplan.api.remove_user',
-        onSuccess(user) {
-          users.setData((data) => data.filter((_user) => _user.name !== user))
-        },
-      }
-    },
-  },
-  data() {
-    return {
-      search: '',
-    }
-  },
-  computed: {
-    filteredUsers() {
-      if (!this.search) {
-        return activeUsers.value
-      }
-      return activeUsers.value.filter((user) => {
-        let term = this.search.toLowerCase()
-        return user.name.toLowerCase().includes(term) || user.full_name.toLowerCase().includes(term)
-      })
-    },
-  },
-  methods: {
-    changeUserRole({ user, role }) {
-      this.$dialog({
-        title: 'Change Role',
-        message: `Are you sure you want to change ${user.full_name}'s role to ${role}?`,
-        error: computed(() => this.$resources.changeUserRole.error),
-        actions: [
-          {
-            label: 'Change Role',
-            variant: 'solid',
-            onClick: (close) => {
-              return this.$resources.changeUserRole.submit(
-                { user: user.name, role },
-                { onSuccess: close },
-              )
-            },
-          },
-          {
-            label: 'Cancel',
-          },
-        ],
-      })
-    },
-    removeUser(user) {
-      this.$dialog({
-        title: 'Remove User',
-        message: `Are you sure you want to remove ${user.full_name} (${user.email})?`,
-        error: computed(() => this.$resources.removeUser.error),
-        actions: [
-          {
-            label: 'Remove User',
-            variant: 'solid',
-            theme: 'red',
-            onClick: (close) => {
-              return this.$resources.removeUser.submit({ user: user.name }, { onSuccess: close })
-            },
-          },
-          {
-            label: 'Cancel',
-          },
-        ],
-      })
-    },
-    getUserRole(user) {
-      return (user.role || '').replace('Gameplan', '')
-    },
-    getDropdownOptions(user) {
-      return [
-        {
-          label: 'Admin',
-          component: (props) =>
-            RoleOption({
-              role: 'Admin',
-              active: props.active,
-              selected: user.role === 'Gameplan Admin',
-              onClick: () =>
-                this.changeUserRole({
-                  user: user,
-                  role: 'Gameplan Admin',
-                }),
-            }),
-        },
-        {
-          label: 'Member',
-          component: (props) =>
-            RoleOption({
-              role: 'Member',
-              active: props.active,
-              selected: user.role === 'Gameplan Member',
-              onClick: () =>
-                this.changeUserRole({
-                  user: user,
-                  role: 'Gameplan Member',
-                }),
-            }),
-        },
-        {
-          label: 'Guest',
-          component: (props) =>
-            RoleOption({
-              role: 'Guest',
-              active: props.active,
-              selected: user.role === 'Gameplan Guest',
-              onClick: () =>
-                this.changeUserRole({
-                  user: user,
-                  role: 'Gameplan Guest',
-                }),
-            }),
-        },
-        {
-          label: 'Remove',
-          component: (props) =>
-            h(
-              'button',
-              {
-                class: [
-                  props.active ? 'bg-surface-gray-2' : '',
-                  'group flex w-full items-center text-ink-red-3 rounded-md px-2 py-2 text-sm',
-                ],
-                onClick: () => this.removeUser(user),
-              },
-              'Remove',
-            ),
-        },
-      ]
-    },
-  },
+type MemberRole = 'Gameplan Admin' | 'Gameplan Member' | 'Gameplan Guest'
+
+type MemberUser = {
+  name: string
+  full_name: string
+  email: string
+  role?: MemberRole
 }
 
-function RoleOption({ active, role, onClick, selected }) {
+type DropdownRenderProps = {
+  active: boolean
+}
+
+const search = ref('')
+
+const changeUserRoleCall = useCall<undefined, { user: string; role: MemberRole }>({
+  url: '/api/v2/method/gameplan.api.change_user_role',
+  method: 'POST',
+  immediate: false,
+  onSuccess: () => {
+    users.reload()
+  },
+})
+
+const removeUserCall = useCall<undefined, { user: string }>({
+  url: '/api/v2/method/gameplan.api.remove_user',
+  method: 'POST',
+  immediate: false,
+  onSuccess: () => {
+    users.reload()
+  },
+})
+
+const filteredUsers = computed(() => {
+  let term = search.value.trim().toLowerCase()
+  if (!term) {
+    return activeUsers.value
+  }
+  return activeUsers.value.filter((user) => {
+    return user.name.toLowerCase().includes(term) || user.full_name.toLowerCase().includes(term)
+  })
+})
+
+function changeUserRole({ user, role }: { user: MemberUser; role: MemberRole }) {
+  createDialog({
+    title: 'Change Role',
+    message: `Are you sure you want to change ${user.full_name}'s role to ${role}?`,
+    actions: [
+      {
+        label: 'Change Role',
+        variant: 'solid',
+        loading: changeUserRoleCall.loading,
+        onClick: ({ close }) => {
+          return changeUserRoleCall.submit({ user: user.name, role }).then(close)
+        },
+      },
+      {
+        label: 'Cancel',
+      },
+    ],
+  })
+}
+
+function removeUser(user: MemberUser) {
+  createDialog({
+    title: 'Remove User',
+    message: `Are you sure you want to remove ${user.full_name} (${user.email})?`,
+    actions: [
+      {
+        label: 'Remove User',
+        variant: 'solid',
+        theme: 'red',
+        loading: removeUserCall.loading,
+        onClick: ({ close }) => {
+          return removeUserCall.submit({ user: user.name }).then(close)
+        },
+      },
+      {
+        label: 'Cancel',
+      },
+    ],
+  })
+}
+
+function getUserRole(user: MemberUser) {
+  return (user.role || '').replace('Gameplan', '')
+}
+
+function getDropdownOptions(user: MemberUser) {
+  return [
+    {
+      label: 'Admin',
+      component: (props: DropdownRenderProps) =>
+        RoleOption({
+          role: 'Admin',
+          active: props.active,
+          selected: user.role === 'Gameplan Admin',
+          onClick: () =>
+            changeUserRole({
+              user,
+              role: 'Gameplan Admin',
+            }),
+        }),
+    },
+    {
+      label: 'Member',
+      component: (props: DropdownRenderProps) =>
+        RoleOption({
+          role: 'Member',
+          active: props.active,
+          selected: user.role === 'Gameplan Member',
+          onClick: () =>
+            changeUserRole({
+              user,
+              role: 'Gameplan Member',
+            }),
+        }),
+    },
+    {
+      label: 'Guest',
+      component: (props: DropdownRenderProps) =>
+        RoleOption({
+          role: 'Guest',
+          active: props.active,
+          selected: user.role === 'Gameplan Guest',
+          onClick: () =>
+            changeUserRole({
+              user,
+              role: 'Gameplan Guest',
+            }),
+        }),
+    },
+    {
+      label: 'Remove',
+      component: (props: DropdownRenderProps) =>
+        h(
+          'button',
+          {
+            class: [
+              props.active ? 'bg-surface-gray-2' : '',
+              'group flex w-full items-center text-ink-red-3 rounded-md px-2 py-2 text-sm',
+            ],
+            onClick: () => removeUser(user),
+          },
+          'Remove',
+        ),
+    },
+  ]
+}
+
+function RoleOption({
+  active,
+  role,
+  onClick,
+  selected,
+}: {
+  active: boolean
+  role: 'Admin' | 'Member' | 'Guest'
+  onClick: () => void
+  selected: boolean
+}) {
   return h(
     'button',
     {

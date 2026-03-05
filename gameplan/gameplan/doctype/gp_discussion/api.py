@@ -12,7 +12,7 @@ from gameplan.utils import html_to_text_preview
 
 
 @frappe.whitelist()
-def get_discussions(filters=None, order_by=None, start=None, limit=None):
+def get_discussions(filters: dict | str = None, order_by: str = None, start: int = None, limit: int = None):
 	if not frappe.has_permission("GP Discussion", "read"):
 		frappe.throw("Insufficient Permission for GP Discussion", frappe.PermissionError)
 

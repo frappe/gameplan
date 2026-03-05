@@ -54,13 +54,13 @@ class GPTeam(Archivable, Document):
 			self.append("members", {"email": email, "user": email, "status": "Accepted"})
 
 	@frappe.whitelist()
-	def add_members(self, users):
+	def add_members(self, users: list[str]):
 		for user in users:
 			self.add_member(user)
 		self.save()
 
 	@frappe.whitelist()
-	def remove_member(self, user):
+	def remove_member(self, user: str):
 		for member in self.members:
 			if member.user == user:
 				self.remove(member)

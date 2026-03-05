@@ -73,7 +73,7 @@ class GPComment(HasMentions, HasReactions, HasTags, Document):
 		self.notify_reactions()
 
 	@frappe.whitelist()
-	def get_revisions(self, fieldname="content"):
+	def get_revisions(self, fieldname: str = "content"):
 		return get_document_revisions(self.doctype, self.name, fieldname)
 
 

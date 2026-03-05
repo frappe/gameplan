@@ -6,7 +6,7 @@ import frappe
 
 
 @frappe.whitelist()
-def search_sqlite(query):
+def search_sqlite(query: str):
 	"""Search using SQLite FTS for command palette"""
 	from gameplan.search_sqlite import GameplanSearch, GameplanSearchIndexMissingError
 
