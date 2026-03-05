@@ -158,7 +158,10 @@ on_login = "gameplan.www.g.on_login"
 # ---------------
 
 scheduler_events = {
-	"hourly": ["gameplan.gameplan.doctype.gp_invitation.gp_invitation.expire_invitations"],
+	"hourly": [
+		"gameplan.gameplan.doctype.gp_invitation.gp_invitation.expire_invitations",
+		"gameplan.gameplan.doctype.gp_draft.gp_draft.publish_scheduled_drafts",
+	],
 	"daily": ["gameplan.demo.demo.generate_data_daily"],
 }
 

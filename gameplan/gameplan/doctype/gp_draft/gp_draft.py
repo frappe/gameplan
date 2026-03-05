@@ -5,6 +5,7 @@ import re
 
 import frappe
 from frappe.model.document import Document
+from frappe.utils import now
 
 
 class GPDraft(Document):
@@ -55,3 +56,26 @@ def remove_query_params_from_images(content):
 	# presence of fid=<name> in the image url prevents the image from being displayed
 	pattern = r'(src="[^"]+)\?[^"]*(")'
 	return re.sub(pattern, r"\1\2", content)
+
+
+def publish_scheduled_drafts():
+	"""Publish drafts that are scheduled to be published"""
+	scheduled_drafts = frappe.db.get_all(
+		"GP Draft",
+		filters=[
+			["scheduled_at", "<=", now()],
+			["scheduled_at", "is", "set"],
+		],
+		fields=["name", "owner"],
+	)
+
+	for draft_info in scheduled_drafts:
+		try:
+			draft = frappe.get_doc("GP Draft", draft_info.name)
+			if draft.type == "Discussion":
+				draft.publish()
+		except Exception as e:
+			frappe.log_error(
+				message=str(e),
+				title=f"Failed to publish scheduled draft {draft_info.name}",
+			)

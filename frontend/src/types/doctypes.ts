@@ -341,6 +341,8 @@ export interface GPDraft extends DocType {
   project?: string
   /** Team: Link (GP Team) */
   team?: string
+  /** Scheduled At: Datetime */
+  scheduled_at?: string
 }
 
 // Last updated: 2025-05-22 13:12:57.407226

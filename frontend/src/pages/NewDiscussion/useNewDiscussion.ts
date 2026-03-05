@@ -26,6 +26,7 @@ export function useNewDiscussion(textEditorRef?: TextEditorRef) {
       title: '',
       content: '',
       project: null as string | null,
+      scheduled_at: null as string | null,
     },
     { deep: true },
   )
@@ -42,16 +43,19 @@ export function useNewDiscussion(textEditorRef?: TextEditorRef) {
     const currentTitle = draftData.value.title
     const currentContent = draftData.value.content
     const currentProject = draftData.value.project
+    const currentScheduledAt = draftData.value.scheduled_at
 
     if (draftDoc.value?.doc) {
       let project = draftDoc.value.doc.project?.toString() || null
+      let scheduledAt = draftDoc.value.doc.scheduled_at || null
       return (
         currentTitle !== (draftDoc.value.doc.title || '') ||
         currentContent !== (draftDoc.value.doc.content || '') ||
-        currentProject !== project
+        currentProject !== project ||
+        currentScheduledAt !== scheduledAt
       )
     } else {
-      return !!(currentTitle || currentContent || currentProject)
+      return !!(currentTitle || currentContent || currentProject || currentScheduledAt)
     }
   })
 
@@ -68,6 +72,7 @@ export function useNewDiscussion(textEditorRef?: TextEditorRef) {
       title: draftData.value.title,
       content: draftData.value.content,
       project: draftData.value.project || undefined,
+      scheduled_at: draftData.value.scheduled_at || undefined,
     })
   }
 
@@ -77,6 +82,7 @@ export function useNewDiscussion(textEditorRef?: TextEditorRef) {
       content: draftData.value.content,
       project: draftData.value.project || undefined,
       type: 'Discussion',
+      scheduled_at: draftData.value.scheduled_at || undefined,
     })
 
     const doc = await draft.submit()
@@ -106,7 +112,7 @@ export function useNewDiscussion(textEditorRef?: TextEditorRef) {
 
   // Watch for changes and auto-save
   watch(
-    () => [draftData.value.title, draftData.value.content, draftData.value.project],
+    () => [draftData.value.title, draftData.value.content, draftData.value.project, draftData.value.scheduled_at],
     () => {
       if (canAutoSave.value) {
         debouncedAutoSave()
@@ -156,12 +162,14 @@ export function useNewDiscussion(textEditorRef?: TextEditorRef) {
     draftData.value.title = doc.title || ''
     draftData.value.content = doc.content || ''
     draftData.value.project = doc.project ? doc.project.toString() : null
+    draftData.value.scheduled_at = doc.scheduled_at || null
   }
 
   function resetValues() {
     draftData.value.project = null
     draftData.value.title = ''
     draftData.value.content = ''
+    draftData.value.scheduled_at = null
     localStorage.removeItem(getStorageKey())
   }
 
@@ -207,6 +215,11 @@ export function useNewDiscussion(textEditorRef?: TextEditorRef) {
     immediateSave()
   }
 
+  const handleScheduledAtChange = () => {
+    hasInteracted.value = true
+    immediateSave()
+  }
+
   // Publish functionality
   function publish() {
     if (!validateDraft(true)) {
@@ -222,6 +235,7 @@ export function useNewDiscussion(textEditorRef?: TextEditorRef) {
           title: draftData.value.title,
           content: draftData.value.content,
           project: projectValue,
+          scheduled_at: draftData.value.scheduled_at || undefined,
         })
         .then(() => {
           isPublishingSuccessfully.value = true
@@ -421,6 +435,7 @@ export function useNewDiscussion(textEditorRef?: TextEditorRef) {
     handleTitleInput,
     handleTitleBlur,
     handleSpaceChange,
+    handleScheduledAtChange,
     immediateSave,
 
     // Lifecycle

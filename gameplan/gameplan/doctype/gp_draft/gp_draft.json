@@ -9,7 +9,8 @@
   "content",
   "type",
   "project",
-  "team"
+  "team",
+  "scheduled_at"
  ],
  "fields": [
   {
@@ -41,6 +42,11 @@
    "fieldtype": "Link",
    "label": "Team",
    "options": "GP Team"
+  },
+  {
+   "fieldname": "scheduled_at",
+   "fieldtype": "Datetime",
+   "label": "Scheduled At"
   }
  ],
  "index_web_pages_for_search": 1,

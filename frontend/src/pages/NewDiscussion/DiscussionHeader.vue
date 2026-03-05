@@ -11,6 +11,19 @@
       ]"
     />
     <div class="hidden shrink-0 space-x-2 sm:flex">
+      <div class="flex items-center gap-2">
+        <DatePicker
+          v-model="draftData.scheduled_at"
+          variant="subtle"
+          placeholder="Schedule"
+          :format="`D MMM, YYYY 'at' h:mm A`"
+          @update:modelValue="handleScheduledAtChange"
+        >
+          <template #prefix>
+            <LucideClock class="h-4 w-4" />
+          </template>
+        </DatePicker>
+      </div>
       <DropdownMoreOptions
         :options="[
           {
@@ -42,7 +55,7 @@
 </template>
 
 <script setup lang="ts">
-import { Breadcrumbs, Tooltip } from 'frappe-ui'
+import { Breadcrumbs, Tooltip, DatePicker } from 'frappe-ui'
 import PageHeader from '@/components/PageHeader.vue'
 import { useNewDiscussionContext } from './useNewDiscussion'
 import DropdownMoreOptions from '@/components/DropdownMoreOptions.vue'
@@ -59,5 +72,6 @@ const {
   publish,
   publishing,
   immediateSave,
+  handleScheduledAtChange,
 } = useNewDiscussionContext()
 </script>
