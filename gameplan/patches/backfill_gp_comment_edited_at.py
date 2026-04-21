@@ -17,4 +17,5 @@ def execute():
 		latest_revisions[version.docname] = version.creation
 
 	for comment, edited_at in latest_revisions.items():
-		frappe.db.set_value("GP Comment", comment, "edited_at", edited_at, update_modified=False)
+		if frappe.db.exists("GP Comment", comment):
+			frappe.db.set_value("GP Comment", comment, "edited_at", edited_at, update_modified=False)
