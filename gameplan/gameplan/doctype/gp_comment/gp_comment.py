@@ -70,7 +70,7 @@ class GPComment(HasMentions, HasReactions, HasTags, Document):
 		self.content = sanitize_content(self.content)
 
 	def set_edited_at(self):
-		if self.is_new() or not self.get_doc_before_save():
+		if not self.get_doc_before_save():
 			return
 
 		if self.has_value_changed("content"):

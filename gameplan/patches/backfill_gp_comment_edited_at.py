@@ -15,5 +15,6 @@ def execute():
 		set comment.edited_at = revisions.edited_at
 		where comment.edited_at is null
 		""",
+		# Version.data stores changed fields as JSON arrays like ["content", old, new].
 		('%["content",%',),
 	)
