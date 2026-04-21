@@ -222,11 +222,12 @@ const comments = useList<GPComment>({
     'name',
     'content',
     'owner',
-    'creation',
-    'modified',
-    'deleted_at',
-    { reactions: ['name', 'user', 'emoji'] },
-  ],
+     'creation',
+     'modified',
+     'edited_at',
+     'deleted_at',
+     { reactions: ['name', 'user', 'emoji'] },
+   ],
   transform(data) {
     return data.map((d) => ({ ...d, doctype: 'GP Comment' }))
   },

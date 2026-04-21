@@ -41,6 +41,7 @@ class GPComment(HasMentions, HasReactions, HasTags, Document):
 		self.update_task_meta()
 
 	def before_save(self):
+		self.set_edited_at()
 		self.update_tags()
 
 	def update_discussion_meta(self):
@@ -67,6 +68,13 @@ class GPComment(HasMentions, HasReactions, HasTags, Document):
 
 		self.content = remove_empty_trailing_paragraphs(self.content)
 		self.content = sanitize_content(self.content)
+
+	def set_edited_at(self):
+		if self.is_new() or not self.get_doc_before_save():
+			return
+
+		if self.has_value_changed("content"):
+			self.edited_at = frappe.utils.now()
 
 	def on_update(self):
 		self.notify_mentions()
