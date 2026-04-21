@@ -130,7 +130,14 @@ const newCommentEditor = ref(null)
 const comments = useList<
   Pick<
     GPComment,
-    'name' | 'content' | 'owner' | 'creation' | 'modified' | 'edited_at' | 'deleted_at' | 'reactions'
+    | 'name'
+    | 'content'
+    | 'owner'
+    | 'creation'
+    | 'modified'
+    | 'edited_at'
+    | 'deleted_at'
+    | 'reactions'
   >
 >({
   doctype: 'GP Comment',
