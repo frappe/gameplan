@@ -23,8 +23,8 @@
               </time>
             </Tooltip>
             <Tooltip
-              v-if="comment.modified > comment.creation"
-              :text="dayjsLocal(comment.modified).format('D MMM YYYY [at] h:mm A')"
+              v-if="comment.edited_at"
+              :text="dayjsLocal(comment.edited_at).format('D MMM YYYY [at] h:mm A')"
             >
               <span class="text-ink-gray-5"> &nbsp;&middot; Edited </span>
             </Tooltip>
@@ -180,7 +180,7 @@ const dropdownOptions = computed(() => [
     label: 'Revisions',
     icon: 'rotate-ccw',
     onClick: () => (showRevisionsDialog.value = true),
-    condition: () => props.comment.modified > props.comment.creation,
+    condition: () => Boolean(props.comment.edited_at),
   },
   {
     label: 'Copy link',

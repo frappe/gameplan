@@ -64,6 +64,7 @@ describe('Comment', () => {
         cy.get('button:contains("👍"):visible').click()
         cy.wait('@reactRequest')
         cy.get('button:contains("👍 1")').should('exist')
+        cy.get(`div[data-id=${comment.name}]`).contains('Edited').should('not.exist')
 
         // remove a reaction
         cy.get(`div[data-id=${comment.name}] button[aria-label="Add a reaction"]`).click()
@@ -82,6 +83,7 @@ describe('Comment', () => {
           .type('{enter}@john{enter}', { delay: 100 }) // mention user
         cy.button('Submit').click()
         cy.get(`div[data-id=${comment.name}]`).contains('This is an edited comment').should('exist')
+        cy.get(`div[data-id=${comment.name}]`).contains('Edited').should('exist')
         cy.get(
           `div[data-id=${comment.name}] [data-type="mention"][data-id="john@example.com"]`,
         ).should('exist')

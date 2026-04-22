@@ -224,6 +224,7 @@ const comments = useList<GPComment>({
     'owner',
     'creation',
     'modified',
+    'edited_at',
     'deleted_at',
     { reactions: ['name', 'user', 'emoji'] },
   ],

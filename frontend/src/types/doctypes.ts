@@ -257,6 +257,8 @@ export interface GPComment extends DocType {
   reference_doctype?: string
   /** Reference Name: Dynamic Link (reference_doctype) */
   reference_name?: string
+  /** Edited At: Datetime */
+  edited_at?: string
   /** Reactions: Table (GP Reaction) */
   reactions: GPReaction[]
   /** Deleted At: Datetime */
