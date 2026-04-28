@@ -40,7 +40,7 @@
         <Dropdown
           v-show="!isEditing"
           class="ml-auto"
-          placement="right"
+          align="end"
           :button="{
             icon: 'more-horizontal',
             variant: 'ghost',

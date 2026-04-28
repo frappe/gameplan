@@ -4,7 +4,7 @@
     <div class="flex items-center gap-2">
       <template v-if="!isBulkDeleteMode">
         <DropdownMoreOptions
-          placement="right"
+          align="end"
           :options="[
             {
               label: 'Delete drafts',
@@ -13,15 +13,18 @@
             },
           ]"
         />
-        <Button variant="solid" :route="{ name: 'NewDiscussion' }">
-          <template #prefix><LucidePlus class="h-4 w-4" /></template>
+        <Button icon-left="lucide-plus" variant="solid" :route="{ name: 'NewDiscussion' }">
           Add new
         </Button>
       </template>
       <template v-else>
         <Button variant="ghost" @click="cancelBulkDelete">Cancel</Button>
-        <Button v-if="selectedDrafts.length > 0" theme="red" @click="showDeleteConfirm = true">
-          <template #prefix><LucideTrash2 class="mr-1 h-4 w-4" /></template>
+        <Button
+          v-if="selectedDrafts.length > 0"
+          theme="red"
+          icon-left="lucide-trash-2"
+          @click="showDeleteConfirm = true"
+        >
           Delete {{ selectedDrafts.length }} draft{{ selectedDrafts.length > 1 ? 's' : '' }}
         </Button>
       </template>
@@ -30,7 +33,7 @@
   <div class="body-container pt-5 pb-40">
     <div>
       <EmptyStateBox v-if="drafts.data?.length === 0" class="mx-3">
-        <LucideCoffee class="h-7 w-7 text-ink-gray-4" />
+        <span class="lucide-coffee h-7 w-7 text-ink-gray-4" />
         No drafts
       </EmptyStateBox>
       <div class="-mx-3" v-else>
@@ -84,9 +87,9 @@
                   >
                     <div v-if="draft.project_title" class="inline-flex items-center">
                       <span>{{ draft.project_title }}</span>
-                      <LucideLock
+                      <span
                         v-if="isSpacePrivate(draft.project)"
-                        class="h-3 w-3 text-ink-gray-6 ml-0.5"
+                        class="lucide-lock h-3 w-3 text-ink-gray-6 ml-0.5"
                       />
                       <span>:&nbsp;</span>
                     </div>

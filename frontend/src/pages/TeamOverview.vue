@@ -13,10 +13,12 @@
         <h2 class="text-2xl font-semibold text-ink-gray-8">Projects</h2>
         <div class="flex items-stretch space-x-2">
           <TabButtons :buttons="[{ label: 'Active' }, { label: 'Archived' }]" v-model="activeTab" />
-          <Button v-if="teamProjects.length" @click="createNewProjectDialog = true" variant="solid">
-            <template #prefix>
-              <LucidePlus class="h-4 w-4" />
-            </template>
+          <Button
+            v-if="teamProjects.length"
+            icon-left="lucide-plus"
+            variant="solid"
+            @click="createNewProjectDialog = true"
+          >
             Add Project
           </Button>
         </div>
@@ -38,7 +40,7 @@
                   <span class="absolute inset-0" aria-hidden="true" />
                   <span class="inline-flex items-center">
                     {{ project.title }}
-                    <LucideLock v-if="project.is_private" class="ml-1 h-3 w-3" />
+                    <span v-if="project.is_private" class="lucide-lock ml-1 h-3 w-3" />
                   </span>
                 </router-link>
               </h3>
@@ -78,7 +80,7 @@
           <div
             class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-surface-gray-2 transition-colors group-hover:bg-surface-white"
           >
-            <LucidePlus class="w-5 text-ink-gray-5" />
+            <span class="lucide-plus w-5 text-ink-gray-5" />
           </div>
           <div>
             <h3 class="text-lg font-medium text-ink-gray-8">Add Project</h3>

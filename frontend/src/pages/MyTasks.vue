@@ -2,12 +2,7 @@
   <div>
     <PageHeader>
       <Breadcrumbs class="h-7" :items="[{ label: 'My Tasks', route: { name: 'MyTasks' } }]" />
-      <Button variant="solid" @click="openNewTaskDialog">
-        <template #prefix>
-          <LucidePlus class="h-4 w-4" />
-        </template>
-        Add new
-      </Button>
+      <Button variant="solid" icon-left="lucide-plus" @click="openNewTaskDialog"> Add new </Button>
     </PageHeader>
 
     <div class="body-container">

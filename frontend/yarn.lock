@@ -2047,9 +2047,9 @@ framer-motion@^12.25.0:
     motion-utils "^12.36.0"
     tslib "^2.4.0"
 
-frappe-ui@frappe/frappe-ui#better-prose-styles:
-  version "0.1.272"
-  resolved "https://codeload.github.com/frappe/frappe-ui/tar.gz/e33b27eb640919820fe99ad65fc49f9865fde7f1"
+frappe-ui@frappe/frappe-ui#main:
+  version "0.1.278"
+  resolved "https://codeload.github.com/frappe/frappe-ui/tar.gz/70dd3e7a03a12f3bc758c9e44df7ada5a4140e05"
   dependencies:
     "@floating-ui/dom" "^1.7.4"
     "@floating-ui/vue" "^1.1.6"

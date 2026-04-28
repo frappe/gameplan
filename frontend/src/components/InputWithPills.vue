@@ -16,7 +16,7 @@
         {{ option.displayValue || option.label }}
 
         <button class="ml-1 rounded-full p-1 hover:bg-surface-gray-2" @click="removeOption(option)">
-          <LucideX class="h-3 w-3" />
+          <span class="lucide-x h-3 w-3" />
         </button>
       </div>
       <Combobox v-model="selectedValue">

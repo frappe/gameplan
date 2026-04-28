@@ -49,7 +49,7 @@
               <Dropdown
                 v-if="!readOnlyMode"
                 class="ml-auto"
-                placement="right"
+                align="end"
                 :button="{
                   icon: 'more-horizontal',
                   variant: 'ghost',
@@ -63,7 +63,7 @@
             <div class="flex items-start justify-between space-x-1">
               <h1 v-if="!editingPost" class="flex items-center text-2xl font-semibold">
                 <Tooltip v-if="discussion.doc.closed_at" text="This discussion is closed">
-                  <LucideLock class="mr-2 h-4 w-4 text-ink-gray-6" :stroke-width="2" />
+                  <span class="lucide-lock mr-2 h-4 w-4 text-ink-gray-6" />
                 </Tooltip>
                 <span class="text-ink-gray-8">
                   {{ discussion.doc.title }}
@@ -243,7 +243,7 @@
     <div v-if="!isMobile" class="fixed bottom-3 h-9 grid place-content-center right-3 z-[2]">
       <Button variant="ghost" v-show="isScrolled" @click="scrollToTop">
         <template #prefix>
-          <LucideArrowUp class="h-5 w-5 text-ink-gray-6" />
+          <span class="lucide-arrow-up h-5 w-5 text-ink-gray-6" />
         </template>
         Scroll to top
       </Button>
@@ -283,8 +283,6 @@ import { isMobile } from '@/composables/isMobile'
 import { useRichQuoteHandler } from '@/components/RichQuoteExtension/useRichQuoteHandler'
 import { refreshUnreadCountForProjects } from '@/data/unreadCount'
 import { isSessionUser } from '@/data/session'
-
-import LucideArrowUp from '~icons/lucide/arrow-up'
 
 const props = defineProps<{
   postId: string

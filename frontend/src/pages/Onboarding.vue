@@ -15,7 +15,7 @@
           >
             <div class="flex w-full items-center space-x-2">
               <span class="grid h-5 w-6 place-items-center">
-                <component :is="link.icon" class="h-4 w-4 text-ink-gray-6" />
+                <span :class="[link.icon, 'h-4 w-4 text-ink-gray-6']" />
               </span>
               <span class="text-sm">{{ link.name }}</span>
             </div>
@@ -58,7 +58,7 @@
                 <Button>
                   <template #icon>
                     <span v-if="space.icon">{{ space.icon }}</span>
-                    <LucidePlus v-else class="h-4 w-4" />
+                    <span v-else class="lucide-plus h-4 w-4" />
                   </template>
                 </Button>
               </IconPicker>
@@ -131,14 +131,6 @@ import UserDropdown from '@/components/UserDropdown.vue'
 import { joinedSpaces, spaces } from '@/data/spaces'
 import { teams } from '@/data/teams'
 
-import LucideFiles from '~icons/lucide/files'
-import LucideInbox from '~icons/lucide/inbox'
-import LucideListTodo from '~icons/lucide/list-todo'
-import LucideNewspaper from '~icons/lucide/newspaper'
-import LucidePlus from '~icons/lucide/plus'
-import LucideUsers2 from '~icons/lucide/users-2'
-import LucideSearch from '~icons/lucide/search'
-
 const space = reactive({
   title: '',
   icon: '',
@@ -198,27 +190,27 @@ function submit() {
 const navigation = [
   {
     name: 'Home',
-    icon: LucideNewspaper,
+    icon: 'lucide-newspaper',
   },
   {
     name: 'Inbox',
-    icon: LucideInbox,
+    icon: 'lucide-inbox',
   },
   {
     name: 'Tasks',
-    icon: LucideListTodo,
+    icon: 'lucide-list-todo',
   },
   {
     name: 'Pages',
-    icon: LucideFiles,
+    icon: 'lucide-files',
   },
   {
     name: 'People',
-    icon: LucideUsers2,
+    icon: 'lucide-users-2',
   },
   {
     name: 'Search',
-    icon: LucideSearch,
+    icon: 'lucide-search',
   },
 ]
 </script>

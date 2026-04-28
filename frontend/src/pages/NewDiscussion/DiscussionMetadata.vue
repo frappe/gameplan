@@ -11,6 +11,7 @@
         in
       </span>
       <Combobox
+        trigger="button"
         :options="formattedSpaceOptions"
         v-model="draftData.project"
         placeholder="Select Space"
@@ -26,11 +27,6 @@ import { Combobox } from 'frappe-ui'
 import UserProfileLink from '@/components/UserProfileLink.vue'
 import { useNewDiscussionContext } from './useNewDiscussion'
 
-const {
-  author,
-  sessionUser,
-  draftData,
-  formattedSpaceOptions,
-  handleSpaceChange,
-} = useNewDiscussionContext()
+const { author, sessionUser, draftData, formattedSpaceOptions, handleSpaceChange } =
+  useNewDiscussionContext()
 </script>

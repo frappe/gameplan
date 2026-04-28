@@ -3,7 +3,7 @@
     <div class="border flex rounded-md p-3 border-outline-gray-2 dark:bg-gray-900">
       <div class="flex-1">
         <div class="flex items-center">
-          <LucideWarning class="size-4 shrink-0 mr-2.5 text-ink-gray-8" />
+          <span class="lucide-warning size-4 shrink-0 mr-2.5 text-ink-gray-8" />
           <h2 class="text-p-base text-ink-gray-8 font-medium">You haven't posted in a while</h2>
         </div>
         <div class="ml-6.5">
@@ -14,11 +14,7 @@
         </div>
       </div>
       <div class="ml-auto">
-        <Button @click="dismiss" variant="ghost">
-          <template #icon>
-            <LucideX class="size-4" />
-          </template>
-        </Button>
+        <Button icon="lucide-x" variant="ghost" @click="dismiss" />
       </div>
     </div>
   </div>
@@ -28,9 +24,6 @@ import { useCall } from 'frappe-ui'
 import { dayjs } from 'frappe-ui'
 import { computed } from 'vue'
 import { useLocalStorage } from '@vueuse/core'
-import LucideWarning from '~icons/lucide/message-square-warning'
-import LucideX from '~icons/lucide/x'
-
 let lastPostAt = useCall<string>({
   url: `/api/v2/method/GP User Profile/get_last_post`,
   cacheKey: 'last_post_at',

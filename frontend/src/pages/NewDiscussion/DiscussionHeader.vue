@@ -26,7 +26,7 @@
             onClick: immediateSave,
           },
         ]"
-        placement="right"
+        align="end"
       />
       <Tooltip text="You cannot publish this draft" :disabled="sessionUser.name == author.name">
         <Button

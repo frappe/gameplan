@@ -20,7 +20,7 @@
             v-focus
           />
           <DropdownMoreOptions
-            placement="right"
+            align="end"
             :options="[
               {
                 label: 'Delete',
@@ -115,7 +115,7 @@
             :options="assignableUsers"
             v-model="task.doc.assigned_to"
             @update:modelValue="changeAssignee"
-            placement="end"
+            align="end"
           />
         </div>
         <div>Due Date</div>

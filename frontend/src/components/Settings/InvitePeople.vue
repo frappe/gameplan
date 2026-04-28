@@ -35,8 +35,6 @@
               :options="groupedSpaceOptions"
               v-model="selectedProjects"
               placeholder="Select spaces"
-              label="Spaces"
-              selection-text="spaces"
             />
 
             {{ selectedProjects }}
@@ -79,12 +77,9 @@
               <div class="flex">
                 <Button
                   v-if="!pendingToDelete || pendingToDelete != invitation.name"
+                  icon="lucide-x"
                   @click="pendingToDelete = invitation.name"
-                >
-                  <template #icon>
-                    <LucideX class="w-4" />
-                  </template>
-                </Button>
+                />
                 <Button
                   v-else
                   @click="() => pendingInvitations.delete.submit({ name: invitation.name })"
@@ -106,10 +101,9 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { Tooltip } from 'frappe-ui'
+import { MultiSelect, Tooltip } from 'frappe-ui'
 import { useCall, useList } from 'frappe-ui'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
-import MultiSelect from '@/components/MultiSelect.vue'
 import { GPInvitation } from '@/types/doctypes'
 
 type Role = 'Gameplan Admin' | 'Gameplan Member' | 'Gameplan Guest'

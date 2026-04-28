@@ -31,14 +31,15 @@
     />
     <div class="px-2 sm:px-0">
       <EmptyStateBox class="mx-3" v-if="!discussions.loading && discussions.data?.length === 0">
-        <LucideCoffee class="h-7 w-7 text-ink-gray-4" />
+        <span class="lucide-coffee h-7 w-7 text-ink-gray-4" />
         No discussions
       </EmptyStateBox>
       <div class="flex items-center justify-center p-3" v-if="discussions.hasNextPage">
-        <Button @click="discussions.next" :loading="discussions.loading">
-          <template #prefix>
-            <LucideRefreshCw class="h-4 w-4" />
-          </template>
+        <Button
+          icon-left="lucide-refresh-cw"
+          @click="discussions.next"
+          :loading="discussions.loading"
+        >
           {{ discussions.loading ? 'Loading...' : 'Load more' }}
         </Button>
       </div>

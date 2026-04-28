@@ -1,8 +1,7 @@
 <template>
   <div class="mt-5 body-container">
     <SpaceHeaderActions>
-      <Button variant="solid" @click="createNewPage">
-        <template #prefix><LucidePlus class="w-4" /></template>
+      <Button variant="solid" icon-left="lucide-plus" @click="createNewPage">
         <span class="whitespace-nowrap"> Add new </span>
       </Button>
     </SpaceHeaderActions>
@@ -23,12 +22,12 @@
             onClick: () => (orderBy = 'creation desc'),
           },
         ]"
-        placement="right"
+        align="end"
       >
         <template #default>
           <Button>
             <template #prefix>
-              <ArrowDownUp class="mr-1.5 h-4 w-4 leading-none" :stroke-width="1.5" />
+              <span class="lucide-arrow-down-up mr-1.5 h-4 w-4 leading-none" />
             </template>
             {{
               orderBy === 'title asc'
@@ -54,7 +53,6 @@ import { Dropdown, useNewDoc, UseListOptions } from 'frappe-ui'
 import SpaceTabs from '@/components/SpaceTabs.vue'
 import SpaceHeaderActions from '@/components/SpaceHeaderActions.vue'
 import PageGrid from './PageGrid.vue'
-import ArrowDownUp from '~icons/lucide/arrow-up-down'
 import { GPPage } from '@/types/doctypes'
 
 const props = defineProps<{

@@ -26,15 +26,19 @@
         </div>
       </UserInfo>
       <div class="ml-auto flex items-center space-x-2">
-        <Button v-if="!isStopped && $isSessionUser(_poll.owner)" variant="ghost" @click="stopPoll">
-          <template #prefix><LucideMinusCircle class="w-4" /></template>
+        <Button
+          v-if="!isStopped && $isSessionUser(_poll.owner)"
+          variant="ghost"
+          icon-left="lucide-minus-circle"
+          @click="stopPoll"
+        >
           Stop Poll
         </Button>
         <Tooltip v-else text="This is a poll">
-          <LucideBarChart2 class="h-4 w-4 -rotate-90" />
+          <span class="lucide-bar-chart-2 h-4 w-4 -rotate-90" />
         </Tooltip>
         <Dropdown
-          placement="right"
+          align="end"
           :button="{
             icon: 'more-horizontal',
             variant: 'ghost',
@@ -69,11 +73,7 @@
                 : 'border-outline-gray-2 group-hover:border-outline-gray-3'
           "
         >
-          <LucideCheck
-            v-if="isVotedByUser(option.title)"
-            class="h-3 w-3 text-ink-white"
-            :stroke-width="2.5"
-          />
+          <span v-if="isVotedByUser(option.title)" class="lucide-check h-3 w-3 text-ink-white" />
         </div>
         <div class="flex items-baseline">
           <div class="text-base text-ink-gray-8">{{ option.title }}</div>

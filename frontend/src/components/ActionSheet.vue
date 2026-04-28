@@ -18,7 +18,7 @@
               <div class="absolute right-0 inset-y-0 flex items-center pr-4">
                 <Button variant="ghost" @click="emit('update:modelValue', false)">
                   <template #icon>
-                    <LucideX class="text-ink-gray-5" />
+                    <span class="lucide-x text-ink-gray-5" />
                   </template>
                 </Button>
               </div>

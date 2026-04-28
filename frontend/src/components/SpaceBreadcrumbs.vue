@@ -9,7 +9,7 @@
       {
         label: space?.title,
         prefix: h('span', { class: 'grid place-items-center font-[emoji] text-lg' }, space?.icon),
-        suffix: space?.is_private ? LucideLock : null,
+        suffix: space?.is_private ? 'lucide-lock' : null,
         route: { name: 'Space', params: { spaceId } },
       },
       ...(items || []),
@@ -19,7 +19,7 @@
       <component :is="item.prefix" v-if="item.prefix" class="mr-1.5 size-4 text-ink-gray-6" />
     </template>
     <template #suffix="{ item }">
-      <component :is="item.suffix" v-if="item.suffix" class="ml-1.5 size-3.5 text-ink-gray-6" />
+      <span v-if="item.suffix" :class="[item.suffix, 'ml-1.5 size-3.5 text-ink-gray-6']" />
     </template>
   </Breadcrumbs>
 </template>
@@ -28,7 +28,6 @@
 import { h } from 'vue'
 import { Breadcrumbs } from 'frappe-ui'
 import { useSpace } from '@/data/spaces'
-import LucideLock from '~icons/lucide/lock'
 import { RouteComponent } from 'vue-router'
 import { useTeam } from '@/data/teams'
 

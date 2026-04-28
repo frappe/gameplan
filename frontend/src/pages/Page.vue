@@ -38,17 +38,17 @@
       />
       <div class="ml-2 shrink-0" v-if="page.doc">
         <DropdownMoreOptions
-          placement="right"
+          align="end"
           :options="[
             {
               label: 'Saved ' + relativeTimestamp(page.doc.modified),
               onClick: () => save(),
               loading: isAutosaving,
-              icon: LucideSave,
+              icon: 'lucide-save',
             },
             {
               label: 'Delete',
-              icon: LucideTrash2,
+              icon: 'lucide-trash-2',
               onClick: () => {
                 createDialog({
                   title: 'Delete Page',
@@ -122,9 +122,6 @@ import SpaceBreadcrumbs from '@/components/SpaceBreadcrumbs.vue'
 import DropdownMoreOptions from '@/components/DropdownMoreOptions.vue'
 import { createDialog } from '@/utils/dialogs'
 import { relativeTimestamp } from '@/utils'
-import LucideSave from '~icons/lucide/save'
-import LucideTrash2 from '~icons/lucide/trash-2'
-
 const props = defineProps<{
   pageId: string
   slug: string

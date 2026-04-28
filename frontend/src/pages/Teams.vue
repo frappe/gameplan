@@ -13,8 +13,8 @@
               {{ team.icon }}
             </span>
             <span class="text-lg font-medium">{{ team.title }}</span>
-            <LucideLock v-if="team.is_private" class="ml-2 h-3 w-3" />
-            <LucideChevronRight class="ml-auto h-5 w-5 text-ink-gray-5" />
+            <span v-if="team.is_private" class="lucide-lock ml-2 h-3 w-3" />
+            <span class="lucide-chevron-right ml-auto h-5 w-5 text-ink-gray-5" />
           </div>
         </template>
       </Links>

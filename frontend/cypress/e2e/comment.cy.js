@@ -75,8 +75,7 @@ describe('Comment', () => {
         cy.get('button:contains("💖 1")').should('not.exist')
 
         // edit comment
-        cy.get(`div[data-id=${comment.name}] button[aria-label="Comment Options"]`).click()
-        cy.button('Edit').click()
+        cy.selectDropdownOption('Comment Options', 'Edit')
         cy.get('[contenteditable=true]')
           .clear()
           .type('This is an edited comment')
@@ -93,8 +92,7 @@ describe('Comment', () => {
           method: 'DELETE',
           url: `/api/v2/document/GP%20Comment/${comment.name}`,
         }).as('deleteComment')
-        cy.get(`div[data-id=${comment.name}] button[aria-label="Comment Options"]`).click()
-        cy.button('Delete').click()
+        cy.selectDropdownOption('Comment Options', 'Delete')
         cy.dialog('button:contains("Delete")').click()
         cy.wait('@deleteComment')
         cy.get(`div[data-id=${comment.name}]`).should('not.exist')

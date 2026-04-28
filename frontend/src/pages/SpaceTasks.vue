@@ -1,12 +1,7 @@
 <template>
   <div class="mt-5 body-container">
     <SpaceHeaderActions>
-      <Button variant="solid" @click="openNewTaskDialog">
-        <template #prefix>
-          <LucidePlus class="h-4 w-4" />
-        </template>
-        Add new
-      </Button>
+      <Button variant="solid" icon-left="lucide-plus" @click="openNewTaskDialog"> Add new </Button>
     </SpaceHeaderActions>
     <div class="mb-4 flex items-center">
       <SpaceTabs :spaceId="spaceId" />

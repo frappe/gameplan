@@ -65,13 +65,15 @@
           </p>
         </div>
         <div v-if="$isSessionUser(profile.user)">
-          <Button @click="editDialog.show = true" class="hidden sm:flex">
-            <template #prefix><LucideEdit class="w-4" /></template>
+          <Button icon-left="lucide-edit" @click="editDialog.show = true" class="hidden sm:flex">
             Edit Profile
           </Button>
-          <Button label="Edit Profile" @click="editDialog.show = true" class="sm:hidden">
-            <template #icon><LucideEdit class="w-4" /></template>
-          </Button>
+          <Button
+            label="Edit Profile"
+            icon="lucide-edit"
+            @click="editDialog.show = true"
+            class="sm:hidden"
+          />
         </div>
       </div>
 

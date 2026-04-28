@@ -60,10 +60,9 @@
             <Tooltip :text="user.pending ? 'Delete invite' : 'Remove guest user'">
               <Button
                 :label="user.pending ? 'Delete invite' : 'Remove guest user'"
+                icon="lucide-x"
                 @click="remove(user)"
-              >
-                <template #icon><LucideX class="w-4" /></template>
-              </Button>
+              />
             </Tooltip>
           </div>
         </div>

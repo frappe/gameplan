@@ -18,7 +18,7 @@
             @keydown.enter="() => submit()"
           >
             <template #prefix>
-              <LucideSearch class="w-4 text-ink-gray-5" />
+              <span class="lucide-search w-4 text-ink-gray-5" />
             </template>
             <template #suffix>
               <div class="flex items-center">
@@ -27,7 +27,7 @@
                   @click="clearSearch"
                   class="p-1 size-6 grid place-content-center focus:outline-none focus:ring focus:ring-outline-gray-3 rounded"
                 >
-                  <LucideX class="w-4 text-ink-gray-7" />
+                  <span class="lucide-x w-4 text-ink-gray-7" />
                 </button>
               </div>
             </template>
@@ -43,45 +43,112 @@
               :model-value="activeFilters.owner || []"
               @update:model-value="(values) => updateFilter('owner', values)"
               placeholder="Author"
-              label="Author"
-              selection-text="users"
-            />
+            >
+              <template #trigger="{ open, selectedOptions, toggleOpen }">
+                <Button variant="outline" @click="toggleOpen">
+                  <div
+                    class="flex min-h-[20px] items-center"
+                    :class="{ 'gap-2': selectedOptions.length > 0 }"
+                  >
+                    <template v-if="selectedOptions.length > 0">
+                      <div class="isolate flex -space-x-2">
+                        <Avatar
+                          v-for="(opt, i) in selectedOptions.slice(0, 3)"
+                          :key="opt.value"
+                          :image="opt.image"
+                          :label="opt.label"
+                          class="border-2 border-white flex-shrink-0"
+                          size="xs"
+                          :style="{ zIndex: 10 - i }"
+                        />
+                      </div>
+                      <span class="text-ink-gray-7">
+                        {{
+                          selectedOptions.length === 1
+                            ? selectedOptions[0].label
+                            : `${selectedOptions.length} users`
+                        }}
+                      </span>
+                    </template>
+                    <span v-else class="text-ink-gray-4">Author</span>
+                  </div>
+                  <template #suffix>
+                    <span
+                      class="lucide-chevron-down ml-2 h-4 w-4 transition-transform"
+                      :class="{ 'rotate-180': open }"
+                    />
+                  </template>
+                </Button>
+              </template>
+              <template #item-prefix="{ item }">
+                <Avatar :image="item.image" :label="item.label" size="xs" />
+              </template>
+              <template #item-suffix="{ item }">
+                <span v-if="(item.count ?? 0) > 0" class="text-xs text-ink-gray-5">{{
+                  item.count
+                }}</span>
+              </template>
+            </MultiSelect>
 
             <!-- Projects Filter -->
             <MultiSelect
+              variant="outline"
               :options="spacesFilterOptions"
               :model-value="activeFilters.project || []"
               @update:model-value="(values) => updateFilter('project', values)"
               placeholder="Space"
-              label="Space"
-            />
+            >
+              <template #item-suffix="{ item }">
+                <span v-if="(item.count ?? 0) > 0" class="text-xs text-ink-gray-5">{{
+                  item.count
+                }}</span>
+              </template>
+            </MultiSelect>
 
             <!-- Teams Filter -->
             <MultiSelect
+              variant="outline"
               :options="teamsFilterOptions"
               :model-value="activeFilters.team || []"
               @update:model-value="(values) => updateFilter('team', values)"
-              placeholder="Team"
-              label="Team"
-            />
+              placeholder="Category"
+            >
+              <template #item-suffix="{ item }">
+                <span v-if="(item.count ?? 0) > 0" class="text-xs text-ink-gray-5">{{
+                  item.count
+                }}</span>
+              </template>
+            </MultiSelect>
 
             <!-- Document Type Filter -->
             <MultiSelect
+              variant="outline"
               :options="doctypesFilterOptions"
               :model-value="activeFilters.doctype || []"
               @update:model-value="(values) => updateFilter('doctype', values)"
               placeholder="Type"
-              label="Type"
-            />
+            >
+              <template #item-suffix="{ item }">
+                <span v-if="(item.count ?? 0) > 0" class="text-xs text-ink-gray-5">{{
+                  item.count
+                }}</span>
+              </template>
+            </MultiSelect>
 
             <!-- Tags Filter -->
             <MultiSelect
+              variant="outline"
               :options="tagsFilterOptions"
               :model-value="activeFilters.tags || []"
               @update:model-value="(values) => updateFilter('tags', values)"
               placeholder="Tags"
-              label="Tags"
-            />
+            >
+              <template #item-suffix="{ item }">
+                <span v-if="(item.count ?? 0) > 0" class="text-xs text-ink-gray-5">{{
+                  item.count
+                }}</span>
+              </template>
+            </MultiSelect>
           </div>
         </div>
 
@@ -137,7 +204,7 @@
                   @click="submitFeedback(true)"
                   class="p-1 hover:bg-surface-gray-2 rounded-full transition-colors"
                 >
-                  <LucideThumbsUp class="size-4 text-ink-gray-7" />
+                  <span class="lucide-thumbs-up size-4 text-ink-gray-7" />
                 </button>
               </Tooltip>
               <Tooltip text="No, results were not helpful">
@@ -145,7 +212,7 @@
                   @click="submitFeedback(false)"
                   class="p-1 hover:bg-surface-gray-2 rounded-full transition-colors"
                 >
-                  <LucideThumbsDown class="size-4 text-ink-gray-7" />
+                  <span class="lucide-thumbs-down size-4 text-ink-gray-7" />
                 </button>
               </Tooltip>
             </div>
@@ -196,13 +263,22 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, useTemplateRef } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Breadcrumbs, TextInput, debounce, usePageMeta, Tooltip, dayjs } from 'frappe-ui'
+import {
+  Avatar,
+  Breadcrumbs,
+  Button,
+  MultiSelect,
+  TextInput,
+  Tooltip,
+  dayjs,
+  debounce,
+  usePageMeta,
+} from 'frappe-ui'
 import PageHeader from '@/components/PageHeader.vue'
 import { useCall, useNewDoc } from 'frappe-ui'
 import { GPSearchFeedback } from '@/types/doctypes'
 import { useSessionUser } from '@/data/users'
 import UserAvatarWithHover from '@/components/UserAvatarWithHover.vue'
-import MultiSelect from '@/components/MultiSelect.vue'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { activeTeams } from '@/data/teams'
 import { activeUsers } from '@/data/users'
@@ -339,7 +415,7 @@ const spacesFilterOptions = computed(() => {
     // It's grouped - transform each group
     return spaces.map((group: any) => ({
       ...group,
-      items: group.items.map((space: any) => ({
+      options: group.options.map((space: any) => ({
         ...space,
         count: projectCounts.get(space.value) || projectCounts.get(Number(space.value)) || 0,
       })),
@@ -367,7 +443,6 @@ const teamsFilterOptions = computed(() => {
   return activeTeams.value.map((team) => ({
     value: team.name,
     label: team.title,
-    icon: team.icon,
     count: teamCounts.get(team.name) || 0,
   }))
 })

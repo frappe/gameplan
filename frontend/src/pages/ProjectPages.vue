@@ -18,17 +18,16 @@
               onClick: () => (orderBy = 'creation desc'),
             },
           ]"
-          placement="center"
+          align="center"
         >
           <Button>
             <div class="flex items-center">
-              <ArrowDownUp class="mr-1.5 h-4 w-4 leading-none" :stroke-width="1.5" />
+              <span class="lucide-arrow-down-up mr-1.5 h-4 w-4 leading-none" />
               <span> Sort </span>
             </div>
           </Button>
         </Dropdown>
-        <Button variant="solid" @click="$resources.newPage.submit()">
-          <template #prefix><LucidePlus class="w-4" /></template>
+        <Button variant="solid" icon-left="lucide-plus" @click="$resources.newPage.submit()">
           Add new
         </Button>
       </div>
@@ -38,13 +37,12 @@
 </template>
 <script>
 import { Dropdown } from 'frappe-ui'
-import ArrowDownUp from '~icons/lucide/arrow-up-down'
 import PageGrid from './PageGrid.vue'
 
 export default {
   name: 'ProjectPages',
   props: ['project'],
-  components: { Dropdown, ArrowDownUp, PageGrid },
+  components: { Dropdown, PageGrid },
   data() {
     return {
       orderBy: 'modified desc',

@@ -56,13 +56,13 @@
               <div class="flex items-center min-w-0">
                 <div class="text-ink-gray-5">
                   <Tooltip v-if="discussion.closed_at" text="Closed">
-                    <LucideLock class="size-4 p-[1px] mr-1" />
+                    <span class="lucide-lock size-4 p-[1px] mr-1" />
                   </Tooltip>
                   <Tooltip v-else-if="discussion.last_post_type == 'GP Comment'" text="Comment">
-                    <LucideReply class="size-4 mr-1" />
+                    <span class="lucide-reply size-4 mr-1" />
                   </Tooltip>
                   <Tooltip v-else-if="discussion.last_post_type == 'GP Poll'" text="Poll">
-                    <LucideAlignLeft class="size-4 p-[1px] mr-1" />
+                    <span class="lucide-align-left size-4 p-[1px] mr-1" />
                   </Tooltip>
                 </div>
                 <div>
@@ -71,9 +71,9 @@
                   </span>
                   <span class="inline-flex items-center" v-if="showSpaceName">
                     &nbsp;in {{ discussion.project_title }}
-                    <LucideLock
+                    <span
                       v-if="isSpacePrivate(discussion.project)"
-                      class="h-3 w-3 text-ink-gray-6 ml-0.5"
+                      class="lucide-lock h-3 w-3 text-ink-gray-6 ml-0.5"
                     /> </span
                   >:&nbsp;
                 </div>
@@ -92,7 +92,7 @@
           </Tooltip>
           <div class="mt-1.5 flex items-center justify-end space-x-3">
             <Tooltip text="Ongoing poll" v-if="discussion.ongoing_polls?.length">
-              <LucideBarChart2 class="h-4 w-4 -rotate-90" />
+              <span class="lucide-bar-chart-2 h-4 w-4 -rotate-90" />
             </Tooltip>
             <Tooltip v-if="discussion.unread">
               <div
@@ -134,11 +134,6 @@ import UserAvatarWithHover from './UserAvatarWithHover.vue'
 import { useSpace } from '@/data/spaces'
 import { Discussion } from '@/data/discussions'
 import { relativeTimestamp } from '@/utils'
-
-import LucideReply from '~icons/lucide/reply'
-import LucideBarChart2 from '~icons/lucide/bar-chart-2'
-import LucideLock from '~icons/lucide/lock'
-import LucideAlignLeft from '~icons/lucide/align-left'
 
 const props = defineProps<{
   discussion: Discussion

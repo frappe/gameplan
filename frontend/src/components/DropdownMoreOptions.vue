@@ -3,7 +3,7 @@
     <template #default="{ open }">
       <Button :label="label" :variant="open ? 'subtle' : 'ghost'">
         <template #icon>
-          <LucideMoreHorizontal class="h-4 w-4 text-ink-gray-6" />
+          <span class="lucide-more-horizontal h-4 w-4 text-ink-gray-6" />
         </template>
       </Button>
     </template>
@@ -11,8 +11,6 @@
 </template>
 <script setup lang="ts">
 import { Button, Dropdown } from 'frappe-ui'
-import LucideMoreHorizontal from '~icons/lucide/more-horizontal'
-
 defineOptions({
   inheritAttrs: false,
 })

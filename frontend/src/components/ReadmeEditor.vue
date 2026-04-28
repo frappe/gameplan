@@ -22,12 +22,11 @@
       v-if="editable"
     >
       <Tooltip v-if="!editReadme && !$readOnlyMode" text="Edit">
-        <Button variant="ghost" label="Edit" @click="editReadmeAndFocus">
-          <template #icon><LucideEdit2 class="w-4" /> </template>
-        </Button>
+        <Button variant="ghost" label="Edit" icon="lucide-edit-2" @click="editReadmeAndFocus" />
       </Tooltip>
       <template v-if="editReadme">
         <Button
+          icon-left="lucide-save"
           @click="
             () => {
               editReadme = false
@@ -35,10 +34,10 @@
             }
           "
         >
-          <template #prefix><LucideSave class="w-4" /></template>
           Save
         </Button>
         <Button
+          icon-left="lucide-rotate-ccw"
           @click="
             () => {
               editReadme = false
@@ -46,7 +45,6 @@
             }
           "
         >
-          <template #prefix><LucideRotateCcw class="w-4" /></template>
           Discard
         </Button>
       </template>
@@ -59,11 +57,7 @@
       <Tooltip text="Expand/Collapse">
         <!-- TODO: Tooltip bug, button click fires twice -->
         <div>
-          <Button variant="ghost" @click="expand = !expand">
-            <template #icon>
-              <LucideUnfoldVertical class="w-4" />
-            </template>
-          </Button>
+          <Button variant="ghost" icon="lucide-unfold-vertical" @click="expand = !expand" />
         </div>
       </Tooltip>
     </div>

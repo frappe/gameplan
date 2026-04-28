@@ -1,8 +1,11 @@
 <template>
   <div class="flex items-center">
     <div class="flex items-center rounded-xl">
-      <Button v-if="!team.doc.members.length" @click="inviteMemberDialog = true">
-        <template #prefix><LucideUserPlus class="w-4" /></template>
+      <Button
+        v-if="!team.doc.members.length"
+        icon-left="lucide-user-plus"
+        @click="inviteMemberDialog = true"
+      >
         Add Members
       </Button>
       <template v-else>

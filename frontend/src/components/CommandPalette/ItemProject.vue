@@ -4,18 +4,16 @@
     <span v-if="category" class="font-medium inline-flex items-end text-ink-gray-5">
       {{ category?.title }}
       <div class="h-4 grid place-content-center mx-1">
-        <LucideChevronRight class="size-3 text-ink-gray-5" />
+        <span class="lucide-chevron-right size-3 text-ink-gray-5" />
       </div>
     </span>
     <span class="font-medium text-ink-gray-7"> {{ item.title }}&nbsp; </span>
-    <LucideLock class="size-3 text-ink-gray-6 ml-0.5" v-if="space.is_private" />
+    <span class="lucide-lock size-3 text-ink-gray-6 ml-0.5" v-if="space.is_private" />
   </div>
 </template>
 <script setup lang="ts">
 import { useSpace } from '@/data/spaces'
 import { useTeam } from '@/data/teams'
-import LucideLock from '~icons/lucide/lock'
-
 const props = defineProps({
   item: {
     type: Object,

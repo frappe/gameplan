@@ -17,7 +17,7 @@
                 :text="`${appVersion.commit_message} - ${appVersion.commit_date}`"
                 placement="top"
               >
-                <LucideInfo class="size-3.5 text-ink-gray-8 ml-1" />
+                <span class="lucide-info size-3.5 text-ink-gray-8 ml-1" />
               </Tooltip>
             </div>
           </div>
@@ -31,7 +31,7 @@
             target="_blank"
             :href="link.url"
           >
-            <component v-if="link.icon" :is="link.icon" class="size-4 mr-2 text-ink-gray-7" />
+            <span v-if="link.icon" :class="[link.icon, 'size-4 mr-2 text-ink-gray-7']" />
             <span class="text-base text-ink-gray-8">
               {{ link.label }}
             </span>
@@ -48,33 +48,28 @@
 <script setup lang="ts">
 import { Tooltip } from 'frappe-ui'
 import GameplanLogo from './GameplanLogo.vue'
-import LucideGlobe from '~icons/lucide/globe'
-import LucideGitHub from '~icons/lucide/github'
-import LucideHeadset from '~icons/lucide/headset'
-import LucideBug from '~icons/lucide/bug'
-
 let show = defineModel()
 
 let links = [
   {
     label: 'Website',
     url: 'https://frappe.io/gameplan',
-    icon: LucideGlobe,
+    icon: 'lucide-globe',
   },
   {
     label: 'GitHub Repository',
     url: 'https://github.com/frappe/gameplan',
-    icon: LucideGitHub,
+    icon: 'lucide-github',
   },
   {
     label: 'Report an Issue',
     url: 'https://github.com/frappe/gameplan/issues',
-    icon: LucideBug,
+    icon: 'lucide-bug',
   },
   {
     label: 'Contact Support',
     url: 'https://support.frappe.io',
-    icon: LucideHeadset,
+    icon: 'lucide-headset',
   },
 ]
 

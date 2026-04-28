@@ -79,7 +79,7 @@
                 <template v-if="d.due_date">
                   <div class="px-2 leading-none text-ink-gray-5">&middot;</div>
                   <div class="flex items-center">
-                    <LucideCalendar class="h-3 w-3 text-ink-gray-5" />
+                    <span class="lucide-calendar h-3 w-3 text-ink-gray-5" />
                     <span class="ml-2 whitespace-nowrap text-base text-ink-gray-5">
                       {{ dayjsLocal(d.due_date).format('D MMM') }}</span
                     >
@@ -104,7 +104,7 @@
               </div>
             </div>
             <div class="sm:invisible group-hover:visible">
-              <DropdownMoreOptions :options="dropdownOptions(d.name)" placement="right" />
+              <DropdownMoreOptions :options="dropdownOptions(d.name)" align="end" />
             </div>
           </router-link>
           <div class="mx-2.5 border-b" v-if="index < group.tasks.length - 1"></div>
@@ -117,7 +117,7 @@
       <ErrorMessage :message="tasks.error" />
     </template>
     <template v-else>
-      <LucideCoffee class="h-7 w-7 text-ink-gray-4" />
+      <span class="lucide-coffee h-7 w-7 text-ink-gray-4" />
       No tasks
     </template>
   </EmptyStateBox>

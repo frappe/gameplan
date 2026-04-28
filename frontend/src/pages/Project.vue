@@ -18,31 +18,35 @@
             text="This project is only visible to team members"
           >
             <Badge size="lg">
-              <template #prefix><LucideLock class="w-3" /></template>
+              <template #prefix><span class="lucide-lock w-3" /></template>
               Private
             </Badge>
           </Tooltip>
           <Badge size="lg" v-if="project.doc.archived_at">
-            <template #prefix><LucideArchive class="w-3" /></template>
+            <template #prefix><span class="lucide-archive w-3" /></template>
             Archived
           </Badge>
           <template v-if="!isMobile">
             <Button
               v-if="project.doc.is_followed"
+              icon-left="lucide-bell"
               @click="project.unfollow.submit()"
               :loading="project.unfollow.loading"
             >
-              <template #prefix><LucideBell class="w-4" /></template>
               Following
             </Button>
-            <Button v-else @click="project.follow.submit()" :loading="project.follow.loading">
-              <template #prefix><LucideBellPlus class="w-4" /></template>
+            <Button
+              v-else
+              icon-left="lucide-bell-plus"
+              @click="project.follow.submit()"
+              :loading="project.follow.loading"
+            >
               Follow
             </Button>
           </template>
           <Dropdown
             v-if="$user().isNotGuest"
-            placement="left"
+            align="start"
             :button="{
               icon: 'more-horizontal',
               variant: 'ghost',
@@ -51,48 +55,48 @@
             :options="[
               {
                 label: 'Edit',
-                icon: 'edit',
+                icon: 'lucide-edit',
                 onClick: () => (projectEditDialog.show = true),
                 condition: () => !project.doc.archived_at,
               },
               {
                 label: 'Follow',
-                icon: 'plus',
+                icon: 'lucide-plus',
                 onClick: () => project.follow.submit(),
                 condition: () => isMobile && !project.doc.is_followed,
               },
               {
                 label: 'Following',
-                icon: 'check',
+                icon: 'lucide-check',
                 onClick: () => project.unfollow.submit(),
                 condition: () => isMobile && project.doc.is_followed,
               },
               {
                 label: 'Manage Guests',
-                icon: 'user-plus',
+                icon: 'lucide-user-plus',
                 onClick: () => (inviteGuestDialog.show = true),
                 condition: () => !project.doc.archived_at,
               },
               {
                 label: 'Move to another team',
-                icon: 'log-out',
+                icon: 'lucide-log-out',
                 onClick: () => (projectMoveDialog.show = true),
                 condition: () => !project.doc.archived_at,
               },
               {
                 label: 'Merge with another project',
-                icon: LucideMerge,
+                icon: 'lucide-merge',
                 onClick: () => (projectMergeDialog.show = true),
               },
               {
                 label: 'Archive this project',
-                icon: 'trash-2',
+                icon: 'lucide-trash-2',
                 onClick: archiveProject,
                 condition: () => !project.doc.archived_at,
               },
               {
                 label: 'Unarchive this project',
-                icon: 'trash-2',
+                icon: 'lucide-trash-2',
                 onClick: unarchiveProject,
                 condition: () => project.doc.archived_at,
               },
@@ -293,8 +297,6 @@ import Tabs from '@/components/Tabs.vue'
 import InviteGuestDialog from '@/components/InviteGuestDialog.vue'
 import { projects } from '@/data/projects'
 import { activeTeams, teams } from '@/data/teams'
-import PinIcon from '~icons/lucide/pin'
-import LucideMerge from '~icons/lucide/merge'
 import { isMobile as useMobile } from '@/composables/isMobile'
 
 export default {
@@ -318,8 +320,6 @@ export default {
   setup() {
     const isMobile = useMobile()
     return {
-      PinIcon,
-      LucideMerge,
       isMobile,
     }
   },
