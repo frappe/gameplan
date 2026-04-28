@@ -66,10 +66,8 @@
             variant="ghost"
             @click="toggleAllGroups"
             :tooltip="allGroupsExpanded ? 'Collapse all' : 'Expand all'"
-          >
-            <span v-if="allGroupsExpanded" class="lucide-fold-vertical size-4 text-ink-gray-6" />
-            <span v-else class="lucide-unfold-vertical size-4 text-ink-gray-6" />
-          </Button>
+            :icon="allGroupsExpanded ? 'lucide-fold-vertical' : 'lucide-unfold-vertical'"
+          />
           <Dropdown
             align="end"
             :options="[
@@ -90,9 +88,8 @@
               :variant="open ? 'subtle' : 'ghost'"
               class="transition-opacity focus:opacity-100"
               :class="{ 'opacity-100': showButtons || open, 'opacity-0': !showButtons && !open }"
-            >
-              <span class="lucide-more-horizontal size-4 text-ink-gray-6" />
-            </Button>
+              icon="lucide-more-horizontal"
+            />
           </Dropdown>
         </div>
       </div>
