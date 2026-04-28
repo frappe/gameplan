@@ -22,7 +22,7 @@
         >
           <Button>
             <div class="flex items-center">
-              <ArrowDownUp class="mr-1.5 h-4 w-4 leading-none" :stroke-width="1.5" />
+              <span class="lucide-arrow-down-up mr-1.5 h-4 w-4 leading-none" />
               <span> Sort </span>
             </div>
           </Button>
@@ -43,7 +43,7 @@ import PageGrid from './PageGrid.vue'
 export default {
   name: 'ProjectPages',
   props: ['project'],
-  components: { Dropdown, ArrowDownUp, PageGrid },
+  components: { Dropdown, PageGrid },
   data() {
     return {
       orderBy: 'modified desc',

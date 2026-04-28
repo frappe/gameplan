@@ -28,7 +28,7 @@
         <template #default>
           <Button>
             <template #prefix>
-              <ArrowDownUp class="mr-1.5 h-4 w-4 leading-none" :stroke-width="1.5" />
+              <span class="lucide-arrow-down-up mr-1.5 h-4 w-4 leading-none" />
             </template>
             {{
               orderBy === 'title asc'

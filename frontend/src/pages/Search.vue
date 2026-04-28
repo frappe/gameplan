@@ -43,9 +43,16 @@
               :model-value="activeFilters.owner || []"
               @update:model-value="(values) => updateFilter('owner', values)"
               placeholder="Author"
-              label="Author"
-              selection-text="users"
-            />
+            >
+              <template #item-prefix="{ item }">
+                <Avatar v-if="item.image" :image="item.image" :label="item.label" size="sm" />
+              </template>
+              <template #item-suffix="{ item }">
+                <span v-if="(item.count ?? 0) > 0" class="text-xs text-ink-gray-5">{{
+                  item.count
+                }}</span>
+              </template>
+            </MultiSelect>
 
             <!-- Projects Filter -->
             <MultiSelect
@@ -53,8 +60,13 @@
               :model-value="activeFilters.project || []"
               @update:model-value="(values) => updateFilter('project', values)"
               placeholder="Space"
-              label="Space"
-            />
+            >
+              <template #item-suffix="{ item }">
+                <span v-if="(item.count ?? 0) > 0" class="text-xs text-ink-gray-5">{{
+                  item.count
+                }}</span>
+              </template>
+            </MultiSelect>
 
             <!-- Teams Filter -->
             <MultiSelect
@@ -62,8 +74,13 @@
               :model-value="activeFilters.team || []"
               @update:model-value="(values) => updateFilter('team', values)"
               placeholder="Team"
-              label="Team"
-            />
+            >
+              <template #item-suffix="{ item }">
+                <span v-if="(item.count ?? 0) > 0" class="text-xs text-ink-gray-5">{{
+                  item.count
+                }}</span>
+              </template>
+            </MultiSelect>
 
             <!-- Document Type Filter -->
             <MultiSelect
@@ -71,8 +88,13 @@
               :model-value="activeFilters.doctype || []"
               @update:model-value="(values) => updateFilter('doctype', values)"
               placeholder="Type"
-              label="Type"
-            />
+            >
+              <template #item-suffix="{ item }">
+                <span v-if="(item.count ?? 0) > 0" class="text-xs text-ink-gray-5">{{
+                  item.count
+                }}</span>
+              </template>
+            </MultiSelect>
 
             <!-- Tags Filter -->
             <MultiSelect
@@ -80,8 +102,13 @@
               :model-value="activeFilters.tags || []"
               @update:model-value="(values) => updateFilter('tags', values)"
               placeholder="Tags"
-              label="Tags"
-            />
+            >
+              <template #item-suffix="{ item }">
+                <span v-if="(item.count ?? 0) > 0" class="text-xs text-ink-gray-5">{{
+                  item.count
+                }}</span>
+              </template>
+            </MultiSelect>
           </div>
         </div>
 
@@ -196,13 +223,21 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, useTemplateRef } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Breadcrumbs, TextInput, debounce, usePageMeta, Tooltip, dayjs } from 'frappe-ui'
+import {
+  Avatar,
+  Breadcrumbs,
+  MultiSelect,
+  TextInput,
+  Tooltip,
+  dayjs,
+  debounce,
+  usePageMeta,
+} from 'frappe-ui'
 import PageHeader from '@/components/PageHeader.vue'
 import { useCall, useNewDoc } from 'frappe-ui'
 import { GPSearchFeedback } from '@/types/doctypes'
 import { useSessionUser } from '@/data/users'
 import UserAvatarWithHover from '@/components/UserAvatarWithHover.vue'
-import MultiSelect from '@/components/MultiSelect.vue'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { activeTeams } from '@/data/teams'
 import { activeUsers } from '@/data/users'
@@ -339,7 +374,7 @@ const spacesFilterOptions = computed(() => {
     // It's grouped - transform each group
     return spaces.map((group: any) => ({
       ...group,
-      items: group.items.map((space: any) => ({
+      options: group.options.map((space: any) => ({
         ...space,
         count: projectCounts.get(space.value) || projectCounts.get(Number(space.value)) || 0,
       })),

@@ -35,8 +35,6 @@
               :options="groupedSpaceOptions"
               v-model="selectedProjects"
               placeholder="Select spaces"
-              label="Spaces"
-              selection-text="spaces"
             />
 
             {{ selectedProjects }}
@@ -106,10 +104,9 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { Tooltip } from 'frappe-ui'
+import { MultiSelect, Tooltip } from 'frappe-ui'
 import { useCall, useList } from 'frappe-ui'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
-import MultiSelect from '@/components/MultiSelect.vue'
 import { GPInvitation } from '@/types/doctypes'
 
 type Role = 'Gameplan Admin' | 'Gameplan Member' | 'Gameplan Guest'

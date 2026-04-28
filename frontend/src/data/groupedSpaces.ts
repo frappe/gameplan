@@ -53,18 +53,14 @@ export function useGroupedSpaceOptions({ filterFn = (_p: Space) => true }: Optio
       }))
     }
 
-    return groupedSpaces.map((group) => {
-      let options = group.spaces.map((space) => ({
+    return groupedSpaces.map((group) => ({
+      group: group.title,
+      options: group.spaces.map((space) => ({
         label: space.title,
         value: space.name,
         icon: space.icon,
-      }))
-      return {
-        group: group.title,
-        items: options,
-        options,
-      }
-    })
+      })),
+    }))
   })
 }
 
