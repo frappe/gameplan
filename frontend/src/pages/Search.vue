@@ -92,6 +92,7 @@
 
             <!-- Projects Filter -->
             <MultiSelect
+              variant="outline"
               :options="spacesFilterOptions"
               :model-value="activeFilters.project || []"
               @update:model-value="(values) => updateFilter('project', values)"
@@ -106,10 +107,11 @@
 
             <!-- Teams Filter -->
             <MultiSelect
+              variant="outline"
               :options="teamsFilterOptions"
               :model-value="activeFilters.team || []"
               @update:model-value="(values) => updateFilter('team', values)"
-              placeholder="Team"
+              placeholder="Category"
             >
               <template #item-suffix="{ item }">
                 <span v-if="(item.count ?? 0) > 0" class="text-xs text-ink-gray-5">{{
@@ -120,6 +122,7 @@
 
             <!-- Document Type Filter -->
             <MultiSelect
+              variant="outline"
               :options="doctypesFilterOptions"
               :model-value="activeFilters.doctype || []"
               @update:model-value="(values) => updateFilter('doctype', values)"
@@ -134,6 +137,7 @@
 
             <!-- Tags Filter -->
             <MultiSelect
+              variant="outline"
               :options="tagsFilterOptions"
               :model-value="activeFilters.tags || []"
               @update:model-value="(values) => updateFilter('tags', values)"
@@ -439,7 +443,6 @@ const teamsFilterOptions = computed(() => {
   return activeTeams.value.map((team) => ({
     value: team.name,
     label: team.title,
-    icon: team.icon,
     count: teamCounts.get(team.name) || 0,
   }))
 })
