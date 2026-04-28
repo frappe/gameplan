@@ -70,7 +70,7 @@
                         }}
                       </span>
                     </template>
-                    <span v-else class="text-ink-gray-6">Author</span>
+                    <span v-else class="text-ink-gray-4">Author</span>
                   </div>
                   <template #suffix>
                     <span
