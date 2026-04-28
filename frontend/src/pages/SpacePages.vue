@@ -1,8 +1,7 @@
 <template>
   <div class="mt-5 body-container">
     <SpaceHeaderActions>
-      <Button variant="solid" @click="createNewPage">
-        <template #prefix><span class="lucide-plus w-4" /></template>
+      <Button variant="solid" icon-left="lucide-plus" @click="createNewPage">
         <span class="whitespace-nowrap"> Add new </span>
       </Button>
     </SpaceHeaderActions>

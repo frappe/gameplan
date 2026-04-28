@@ -14,11 +14,7 @@
         </div>
       </div>
       <div class="ml-auto">
-        <Button @click="dismiss" variant="ghost">
-          <template #icon>
-            <span class="lucide-x size-4" />
-          </template>
-        </Button>
+        <Button icon="lucide-x" variant="ghost" @click="dismiss" />
       </div>
     </div>
   </div>

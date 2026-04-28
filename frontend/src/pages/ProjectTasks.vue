@@ -3,10 +3,7 @@
     <div class="mb-4.5 flex items-center justify-between">
       <h2 class="text-xl font-semibold text-ink-gray-8">Tasks</h2>
       <div class="flex items-stretch space-x-2">
-        <Button variant="solid" @click="showNewTaskDialog">
-          <template #prefix>
-            <span class="lucide-plus h-4 w-4" />
-          </template>
+        <Button variant="solid" icon-left="lucide-plus" @click="showNewTaskDialog">
           Add new
         </Button>
       </div>

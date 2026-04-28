@@ -77,12 +77,9 @@
               <div class="flex">
                 <Button
                   v-if="!pendingToDelete || pendingToDelete != invitation.name"
+                  icon="lucide-x"
                   @click="pendingToDelete = invitation.name"
-                >
-                  <template #icon>
-                    <span class="lucide-x w-4" />
-                  </template>
-                </Button>
+                />
                 <Button
                   v-else
                   @click="() => pendingInvitations.delete.submit({ name: invitation.name })"

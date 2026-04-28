@@ -35,10 +35,11 @@
         No discussions
       </EmptyStateBox>
       <div class="flex items-center justify-center p-3" v-if="discussions.hasNextPage">
-        <Button @click="discussions.next" :loading="discussions.loading">
-          <template #prefix>
-            <span class="lucide-refresh-cw h-4 w-4" />
-          </template>
+        <Button
+          icon-left="lucide-refresh-cw"
+          @click="discussions.next"
+          :loading="discussions.loading"
+        >
           {{ discussions.loading ? 'Loading...' : 'Load more' }}
         </Button>
       </div>

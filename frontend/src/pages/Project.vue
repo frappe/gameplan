@@ -29,14 +29,18 @@
           <template v-if="!isMobile">
             <Button
               v-if="project.doc.is_followed"
+              icon-left="lucide-bell"
               @click="project.unfollow.submit()"
               :loading="project.unfollow.loading"
             >
-              <template #prefix><span class="lucide-bell w-4" /></template>
               Following
             </Button>
-            <Button v-else @click="project.follow.submit()" :loading="project.follow.loading">
-              <template #prefix><span class="lucide-bell-plus w-4" /></template>
+            <Button
+              v-else
+              icon-left="lucide-bell-plus"
+              @click="project.follow.submit()"
+              :loading="project.follow.loading"
+            >
               Follow
             </Button>
           </template>

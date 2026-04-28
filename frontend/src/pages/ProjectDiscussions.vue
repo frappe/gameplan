@@ -5,12 +5,10 @@
         <h2 class="text-xl font-semibold">Discussions</h2>
         <Button
           variant="solid"
+          icon-left="lucide-plus"
           v-if="!$readOnlyMode && !project.doc.archived_at"
           :route="{ name: 'ProjectDiscussionNew' }"
         >
-          <template #prefix>
-            <span class="lucide-plus h-4 w-4" />
-          </template>
           Add new
         </Button>
       </div>

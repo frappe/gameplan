@@ -47,13 +47,10 @@
             </div>
             <Button
               class="ml-auto"
+              icon="lucide-x"
               @click="resource.removeMember.submit({ user: member.user })"
               :disabled="resource.removeMember.loading"
-            >
-              <template #icon>
-                <span class="lucide-x h-4 w-4" />
-              </template>
-            </Button>
+            />
           </li>
         </ul>
       </div>

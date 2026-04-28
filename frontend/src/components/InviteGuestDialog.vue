@@ -12,9 +12,7 @@
           </div>
           <div class="ml-auto">
             <Tooltip :text="user.pending ? 'Remove invite' : 'Remove user'">
-              <Button label="Remove" @click="remove(user)">
-                <template #icon><span class="lucide-x w-4" /></template>
-              </Button>
+              <Button label="Remove" icon="lucide-x" @click="remove(user)" />
             </Tooltip>
           </div>
         </div>

@@ -35,8 +35,11 @@
                   <span class="lucide-arrow-down-up w-4 text-ink-gray-5" />
                 </template>
               </Select>
-              <Button variant="solid" @click="showSettingsDialog('Invites')">
-                <template #prefix><span class="lucide-user-plus-2 w-4" /></template>
+              <Button
+                variant="solid"
+                icon-left="lucide-user-plus-2"
+                @click="showSettingsDialog('Invites')"
+              >
                 Invite
               </Button>
             </div>

@@ -2,6 +2,7 @@
   <PageHeader>
     <Breadcrumbs class="h-7" :items="[{ label: 'Spaces', route: { name: 'Spaces' } }]" />
     <Button
+      icon-left="lucide-plus"
       @click="
         () => {
           categoryForNewSpace = ''
@@ -9,7 +10,6 @@
         }
       "
     >
-      <template #prefix><span class="lucide-plus h-4 w-4" /></template>
       Add new
     </Button>
   </PageHeader>

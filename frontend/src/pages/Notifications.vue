@@ -59,11 +59,7 @@
             {{ d.discussion ? 'View Discussion' : d.task ? 'View Task' : '' }}
           </router-link>
           <Tooltip text="Mark as read">
-            <Button v-if="!d.read" variant="ghost" @click="markAsRead(d.name)">
-              <template #icon>
-                <span class="lucide-x w-4" />
-              </template>
-            </Button>
+            <Button v-if="!d.read" variant="ghost" icon="lucide-x" @click="markAsRead(d.name)" />
           </Tooltip>
         </div>
       </div>

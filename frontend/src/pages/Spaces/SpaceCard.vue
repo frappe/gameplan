@@ -66,14 +66,11 @@
           <Tooltip :text="'Unarchive space'">
             <Button
               size="sm"
+              icon="lucide-archive-restore"
               @click="unarchiveSpace(space)"
               variant="ghost"
               class="group-hover:opacity-100 sm:opacity-0 transition-opacity opacity-100"
-            >
-              <template #icon>
-                <span class="lucide-archive-restore size-4" />
-              </template>
-            </Button>
+            />
           </Tooltip>
         </template>
       </div>

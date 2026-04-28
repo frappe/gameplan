@@ -19,8 +19,12 @@
       </template>
       <template v-else>
         <Button variant="ghost" @click="cancelBulkDelete">Cancel</Button>
-        <Button v-if="selectedDrafts.length > 0" theme="red" @click="showDeleteConfirm = true">
-          <template #prefix><span class="lucide-trash-2 mr-1 h-4 w-4" /></template>
+        <Button
+          v-if="selectedDrafts.length > 0"
+          theme="red"
+          icon-left="lucide-trash-2"
+          @click="showDeleteConfirm = true"
+        >
           Delete {{ selectedDrafts.length }} draft{{ selectedDrafts.length > 1 ? 's' : '' }}
         </Button>
       </template>

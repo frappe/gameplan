@@ -27,8 +27,7 @@
             </div>
           </Button>
         </Dropdown>
-        <Button variant="solid" @click="$resources.newPage.submit()">
-          <template #prefix><span class="lucide-plus w-4" /></template>
+        <Button variant="solid" icon-left="lucide-plus" @click="$resources.newPage.submit()">
           Add new
         </Button>
       </div>

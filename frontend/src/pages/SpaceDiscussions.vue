@@ -12,8 +12,11 @@
             },
           ]"
         />
-        <Button variant="solid" :route="{ name: 'NewDiscussion', query: { spaceId: spaceId } }">
-          <template #prefix><span class="lucide-plus h-4 w-4" /></template>
+        <Button
+          variant="solid"
+          icon-left="lucide-plus"
+          :route="{ name: 'NewDiscussion', query: { spaceId: spaceId } }"
+        >
           Add new
         </Button>
       </template>
@@ -21,10 +24,10 @@
         <Button variant="ghost" @click="cancelBulkMove">Cancel</Button>
         <Button
           variant="solid"
+          icon-left="lucide-log-out"
           @click="showMoveDialog = true"
           :disabled="selectedDiscussions.length === 0"
         >
-          <template #prefix><span class="lucide-log-out mr-1 h-4 w-4" /></template>
           <template v-if="selectedDiscussions.length === 0">Move discussions</template>
           <template v-else>
             Move {{ selectedDiscussions.length }} discussion{{

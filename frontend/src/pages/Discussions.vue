@@ -1,8 +1,7 @@
 <template>
   <PageHeader>
     <Breadcrumbs class="h-7" :items="[{ label: 'Discussions', route: { name: 'Discussions' } }]" />
-    <Button variant="solid" :route="{ name: 'NewDiscussion' }">
-      <template #prefix><span class="lucide-plus h-4 w-4" /></template>
+    <Button variant="solid" icon-left="lucide-plus" :route="{ name: 'NewDiscussion' }">
       Add new
     </Button>
   </PageHeader>

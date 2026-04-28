@@ -26,8 +26,12 @@
         </div>
       </UserInfo>
       <div class="ml-auto flex items-center space-x-2">
-        <Button v-if="!isStopped && $isSessionUser(_poll.owner)" variant="ghost" @click="stopPoll">
-          <template #prefix><span class="lucide-minus-circle w-4" /></template>
+        <Button
+          v-if="!isStopped && $isSessionUser(_poll.owner)"
+          variant="ghost"
+          icon-left="lucide-minus-circle"
+          @click="stopPoll"
+        >
           Stop Poll
         </Button>
         <Tooltip v-else text="This is a poll">
