@@ -23,7 +23,7 @@
     >
       <Tooltip v-if="!editReadme && !$readOnlyMode" text="Edit">
         <Button variant="ghost" label="Edit" @click="editReadmeAndFocus">
-          <template #icon><LucideEdit2 class="w-4" /> </template>
+          <template #icon><span class="lucide-edit-2 w-4" /> </template>
         </Button>
       </Tooltip>
       <template v-if="editReadme">
@@ -35,7 +35,7 @@
             }
           "
         >
-          <template #prefix><LucideSave class="w-4" /></template>
+          <template #prefix><span class="lucide-save w-4" /></template>
           Save
         </Button>
         <Button
@@ -46,7 +46,7 @@
             }
           "
         >
-          <template #prefix><LucideRotateCcw class="w-4" /></template>
+          <template #prefix><span class="lucide-rotate-ccw w-4" /></template>
           Discard
         </Button>
       </template>
@@ -61,7 +61,7 @@
         <div>
           <Button variant="ghost" @click="expand = !expand">
             <template #icon>
-              <LucideUnfoldVertical class="w-4" />
+              <span class="lucide-unfold-vertical w-4" />
             </template>
           </Button>
         </div>

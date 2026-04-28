@@ -9,7 +9,7 @@
         <div class="relative">
           <div class="relative">
             <div class="absolute inset-y-0 left-0 flex items-center pl-4.5">
-              <LucideSearch class="h-4 w-4 text-ink-gray-6" />
+              <span class="lucide-search h-4 w-4 text-ink-gray-6" />
             </div>
             <input
               ref="inputRef"
@@ -65,16 +65,16 @@
           <div class="flex items-center gap-4">
             <div class="flex items-center gap-1">
               <KeyboardShortcut bg>
-                <LucideArrowDown class="size-4" />
+                <span class="lucide-arrow-down size-4" />
               </KeyboardShortcut>
               <KeyboardShortcut bg>
-                <LucideArrowUp class="size-4" />
+                <span class="lucide-arrow-up size-4" />
               </KeyboardShortcut>
               <span class="ml-1">to navigate</span>
             </div>
             <div class="flex items-center gap-1">
               <KeyboardShortcut bg>
-                <LucideCornerDownLeft class="size-4" />
+                <span class="lucide-corner-down-left size-4" />
               </KeyboardShortcut>
               <span class="ml-1">to select</span>
             </div>
@@ -118,21 +118,6 @@ import { spaces, useSpace } from '@/data/spaces'
 import { hideCommandPalette, show, toggleCommandPalette } from './commandPalette'
 import KeyboardShortcut from '../KeyboardShortcut.vue'
 
-import LucideHome from '~icons/lucide/home'
-import LucideUsers from '~icons/lucide/users'
-import LucideBell from '~icons/lucide/bell'
-import LucideFileSearch from '~icons/lucide/file-search'
-import LucideSearch from '~icons/lucide/search'
-import LucideCornerDownLeft from '~icons/lucide/corner-down-left'
-import LucideArrowDown from '~icons/lucide/arrow-down'
-import LucideArrowUp from '~icons/lucide/arrow-up'
-import LucideListTodo from '~icons/lucide/list-todo'
-import LucideFiles from '~icons/lucide/files'
-import LucidePlus from '~icons/lucide/plus'
-import LucideMessageSquare from '~icons/lucide/message-square'
-import LucideMessageSquarePlus from '~icons/lucide/message-square-plus'
-import LucideFilePlus from '~icons/lucide/file-plus'
-import LucideSquarePlus from '~icons/lucide/square-plus'
 import { showNewTaskDialog } from '../NewTaskDialog'
 import { GPPage } from '@/types/doctypes'
 
@@ -238,38 +223,38 @@ const shortcuts = computed((): CommandPaletteGroup[] => [
       {
         title: 'Advanced Search',
         name: 'search',
-        icon: () => h(LucideSearch),
+        icon: 'lucide-search',
         route: { name: 'Search' },
       },
       {
         title: 'Home',
         name: 'home',
-        icon: () => h(LucideHome),
+        icon: 'lucide-home',
         route: { name: 'Home' },
       },
       {
         title: 'Tasks',
         name: 'tasks',
-        icon: () => h(LucideListTodo),
+        icon: 'lucide-list-todo',
         route: { name: 'MyTasks' },
       },
       {
         title: 'Pages',
         name: 'pages',
-        icon: () => h(LucideFiles),
+        icon: 'lucide-files',
         route: { name: 'MyPages' },
       },
       {
         title: 'People',
         name: 'people',
-        icon: () => h(LucideUsers),
+        icon: 'lucide-users',
         route: { name: 'People' },
         condition: () => useUser().isNotGuest,
       },
       {
         title: 'Inbox',
         name: 'inbox',
-        icon: () => h(LucideBell),
+        icon: 'lucide-bell',
         route: { name: 'Notifications' },
         condition: () => useUser().isNotGuest,
       },
@@ -286,7 +271,7 @@ const shortcuts = computed((): CommandPaletteGroup[] => [
         title: 'Add Discussion',
         name: 'add-discussion',
         search: 'Add Discussion New Discussion',
-        icon: () => h(LucideMessageSquarePlus),
+        icon: 'lucide-message-square-plus',
         onClick() {
           let spaceId = router.currentRoute.value.params?.spaceId ?? null
           router.push({ name: 'NewDiscussion', query: { spaceId } })
@@ -296,7 +281,7 @@ const shortcuts = computed((): CommandPaletteGroup[] => [
         title: 'Add Task',
         name: 'add-task',
         search: 'Add Task New Task',
-        icon: () => h(LucideSquarePlus),
+        icon: 'lucide-square-plus',
         onClick() {
           let spaceId = router.currentRoute.value?.params?.spaceId ?? null
           showNewTaskDialog({
@@ -321,7 +306,7 @@ const shortcuts = computed((): CommandPaletteGroup[] => [
         title: 'Add Page',
         name: 'add-page',
         search: 'Add Page New Page',
-        icon: () => h(LucideFilePlus),
+        icon: 'lucide-file-plus',
         onClick() {
           let spaceId = router.currentRoute.value.params?.spaceId ?? null
 
@@ -383,7 +368,7 @@ function generateSearchResults() {
     title: `Search for "${query.value}"`,
     name: 'search-full-text',
     doctype: 'Search',
-    icon: () => h(LucideFileSearch),
+    icon: 'lucide-file-search',
     route: { name: 'Search', query: { q: query.value } },
   }
 

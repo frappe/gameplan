@@ -5,7 +5,7 @@
       <div class="flex items-stretch space-x-2">
         <Button variant="solid" @click="showNewTaskDialog">
           <template #prefix>
-            <LucidePlus class="h-4 w-4" />
+            <span class="lucide-plus h-4 w-4" />
           </template>
           Add new
         </Button>

@@ -2,7 +2,7 @@
   <div class="mt-5 body-container">
     <SpaceHeaderActions>
       <Button variant="solid" @click="createNewPage">
-        <template #prefix><LucidePlus class="w-4" /></template>
+        <template #prefix><span class="lucide-plus w-4" /></template>
         <span class="whitespace-nowrap"> Add new </span>
       </Button>
     </SpaceHeaderActions>
@@ -54,7 +54,6 @@ import { Dropdown, useNewDoc, UseListOptions } from 'frappe-ui'
 import SpaceTabs from '@/components/SpaceTabs.vue'
 import SpaceHeaderActions from '@/components/SpaceHeaderActions.vue'
 import PageGrid from './PageGrid.vue'
-import ArrowDownUp from '~icons/lucide/arrow-up-down'
 import { GPPage } from '@/types/doctypes'
 
 const props = defineProps<{

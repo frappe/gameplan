@@ -17,10 +17,8 @@
         class="flex flex-col items-center justify-center py-3 transition active:scale-95"
         @click="onTabClick(tab)"
       >
-        <component
-          :is="tab.icon"
-          class="h-6 w-6"
-          :class="[tab.isActive ? 'text-ink-gray-8' : 'text-ink-gray-5']"
+        <span
+          :class="[tab.icon, 'h-6 w-6', tab.isActive ? 'text-ink-gray-8' : 'text-ink-gray-5']"
         />
       </button>
     </div>
@@ -29,13 +27,6 @@
 <script>
 import { scrollTo } from '@/utils/scrollContainer'
 import { isNewCommentOpen as isNewCommentOpenRef } from '@/data/newComment'
-import LucideUsers2 from '~icons/lucide/users-2'
-import LucideSearch from '~icons/lucide/search'
-import LucideInbox from '~icons/lucide/inbox'
-import LucideLayoutGrid from '~icons/lucide/layout-grid'
-import LucideListTodo from '~icons/lucide/list-todo'
-import LucideNewspaper from '~icons/lucide/newspaper'
-
 export default {
   name: 'MobileLayout',
   computed: {
@@ -46,19 +37,19 @@ export default {
       return [
         {
           name: 'Discussions',
-          icon: LucideNewspaper,
+          icon: 'lucide-newspaper',
           route: { name: 'Discussions' },
           isActive: this.$route.name === 'Discussions',
         },
         {
           name: 'MyTasks',
-          icon: LucideListTodo,
+          icon: 'lucide-list-todo',
           route: { name: 'MyTasks' },
           isActive: /MyTasks|Task/g.test(this.$route.name),
         },
         {
           name: 'Spaces',
-          icon: LucideLayoutGrid,
+          icon: 'lucide-layout-grid',
           route: { name: 'Spaces' },
           isActive: [
             'Spaces',
@@ -71,21 +62,21 @@ export default {
         },
         {
           name: 'People',
-          icon: LucideUsers2,
+          icon: 'lucide-users-2',
           route: { name: 'People' },
           isActive: /People|PersonProfile/g.test(this.$route.name),
           condition: () => this.$user().isNotGuest,
         },
         {
           name: 'Search',
-          icon: LucideSearch,
+          icon: 'lucide-search',
           route: { name: 'Search' },
           isActive: this.$route.name === 'Search',
           condition: () => this.$user().isNotGuest,
         },
         {
           name: 'Notifications',
-          icon: LucideInbox,
+          icon: 'lucide-inbox',
           route: { name: 'Notifications' },
           isActive: this.$route.name === 'Notifications',
         },

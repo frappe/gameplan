@@ -18,7 +18,7 @@
                 :debounce="500"
               >
                 <template #prefix>
-                  <LucideSearch class="w-4 text-ink-gray-5" />
+                  <span class="lucide-search w-4 text-ink-gray-5" />
                 </template>
               </TextInput>
               <Select
@@ -32,11 +32,11 @@
                 v-model="orderBy"
               >
                 <template #prefix>
-                  <LucideArrowDownUp class="w-4 text-ink-gray-5" />
+                  <span class="lucide-arrow-down-up w-4 text-ink-gray-5" />
                 </template>
               </Select>
               <Button variant="solid" @click="showSettingsDialog('Invites')">
-                <template #prefix><LucideUserPlus2 class="w-4" /></template>
+                <template #prefix><span class="lucide-user-plus-2 w-4" /></template>
                 Invite
               </Button>
             </div>
@@ -50,7 +50,7 @@
               :debounce="500"
             >
               <template #prefix>
-                <LucideSearch class="w-4 text-ink-gray-5" />
+                <span class="lucide-search w-4 text-ink-gray-5" />
               </template>
             </TextInput>
           </div>

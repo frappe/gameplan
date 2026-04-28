@@ -82,7 +82,7 @@
                   @click="pendingToDelete = invitation.name"
                 >
                   <template #icon>
-                    <LucideX class="w-4" />
+                    <span class="lucide-x w-4" />
                   </template>
                 </Button>
                 <Button

@@ -17,11 +17,11 @@
           "
         >
           <template #prefix>
-            <LucideNewspaper
+            <span
               v-if="preferredHomePage === 'Discussions'"
-              class="h-4 w-4 text-ink-gray-6"
+              class="lucide-newspaper h-4 w-4 text-ink-gray-6"
             />
-            <LucideLayoutGrid v-else class="h-4 w-4 text-ink-gray-6" />
+            <span v-else class="lucide-layout-grid h-4 w-4 text-ink-gray-6" />
           </template>
           {{ preferredHomePage }}
           <template #suffix>
@@ -30,7 +30,7 @@
               class="transition-opacity flex items-center justify-center p-0.5 hover:bg-surface-gray-1 rounded-sm"
               :class="{ 'opacity-100': showButtons, 'opacity-0': !showButtons }"
             >
-              <LucideSettings2 class="h-4 w-4 text-ink-gray-6" />
+              <span class="lucide-settings-2 h-4 w-4 text-ink-gray-6" />
             </button>
           </template>
         </AppSidebarLink>
@@ -41,7 +41,7 @@
           :isActive="link.isActive"
         >
           <template #prefix>
-            <component :is="link.icon" class="h-4 w-4 text-ink-gray-6" />
+            <span :class="[link.icon, 'h-4 w-4 text-ink-gray-6']" />
           </template>
           {{ link.name }}
           <template #suffix>
@@ -67,8 +67,8 @@
             @click="toggleAllGroups"
             :tooltip="allGroupsExpanded ? 'Collapse all' : 'Expand all'"
           >
-            <LucideFoldVertical v-if="allGroupsExpanded" class="size-4 text-ink-gray-6" />
-            <LucideUnfoldVertical v-else class="size-4 text-ink-gray-6" />
+            <span v-if="allGroupsExpanded" class="lucide-fold-vertical size-4 text-ink-gray-6" />
+            <span v-else class="lucide-unfold-vertical size-4 text-ink-gray-6" />
           </Button>
           <Dropdown
             placement="right"
@@ -76,12 +76,12 @@
               {
                 label: 'Show all spaces',
                 onClick: () => setSpaceFilter('all'),
-                icon: spaceFilter === 'all' ? LucideCheck : undefined,
+                icon: spaceFilter === 'all' ? 'lucide-check' : undefined,
               },
               {
                 label: 'Show joined spaces',
                 onClick: () => setSpaceFilter('joined'),
-                icon: spaceFilter === 'joined' ? LucideCheck : undefined,
+                icon: spaceFilter === 'joined' ? 'lucide-check' : undefined,
               },
             ]"
             v-slot="{ open }"
@@ -91,7 +91,7 @@
               class="transition-opacity focus:opacity-100"
               :class="{ 'opacity-100': showButtons || open, 'opacity-0': !showButtons && !open }"
             >
-              <LucideMoreHorizontal class="size-4 text-ink-gray-6" />
+              <span class="lucide-more-horizontal size-4 text-ink-gray-6" />
             </Button>
           </Dropdown>
         </div>
@@ -135,7 +135,7 @@
                 <span class="truncate text-sm flex-grow w-full ml-2">
                   {{ space.title }}
                 </span>
-                <LucideLock v-if="space.is_private" class="flex-shrink-0 h-3 w-3 ml-2" />
+                <span v-if="space.is_private" class="lucide-lock flex-shrink-0 h-3 w-3 ml-2" />
                 <span
                   v-if="getSpaceUnreadCount(space.name) > 0"
                   class="ml-auto pl-2 text-xs text-ink-gray-5"
@@ -178,21 +178,6 @@ import ScrollBar from './ScrollBar.vue'
 import HomePageSettingsDialog from './HomePageSettingsDialog.vue'
 
 import ChevronTriangle from './icons/ChevronTriangle.vue'
-import LucideFiles from '~icons/lucide/files'
-import LucideInbox from '~icons/lucide/inbox'
-import LucideListTodo from '~icons/lucide/list-todo'
-import LucideNewspaper from '~icons/lucide/newspaper'
-import LucideUsers2 from '~icons/lucide/users-2'
-import LucideSettings2 from '~icons/lucide/settings-2'
-import LucideSearch from '~icons/lucide/search'
-import LucideLayoutGrid from '~icons/lucide/layout-grid'
-import LucideLock from '~icons/lucide/lock'
-import LucideCheck from '~icons/lucide/check'
-import LucideUnfoldVertical from '~icons/lucide/unfold-vertical'
-import LucideFoldVertical from '~icons/lucide/fold-vertical'
-import LucideMoreHorizontal from '~icons/lucide/more-horizontal'
-import LucidePencilLine from '~icons/lucide/pencil-line'
-
 const showAddTeamDialog = ref(false)
 const showHomePageSettingsDialog = ref(false)
 const preferredHomePage = usePreferredHomePage()
@@ -242,7 +227,7 @@ const navigation = computed(() => {
   return [
     {
       name: 'Spaces',
-      icon: LucideLayoutGrid,
+      icon: 'lucide-layout-grid',
       route: {
         name: 'Spaces',
       },
@@ -251,7 +236,7 @@ const navigation = computed(() => {
     },
     {
       name: 'Discussions',
-      icon: LucideNewspaper,
+      icon: 'lucide-newspaper',
       route: {
         name: 'DiscussionsTab',
         params: { feedType: 'recent' },
@@ -261,7 +246,7 @@ const navigation = computed(() => {
     },
     {
       name: 'Inbox',
-      icon: LucideInbox,
+      icon: 'lucide-inbox',
       route: {
         name: 'Notifications',
       },
@@ -270,7 +255,7 @@ const navigation = computed(() => {
     },
     {
       name: 'Drafts',
-      icon: LucidePencilLine,
+      icon: 'lucide-pencil-line',
       route: {
         name: 'Drafts',
       },
@@ -278,7 +263,7 @@ const navigation = computed(() => {
     },
     {
       name: 'Tasks',
-      icon: LucideListTodo,
+      icon: 'lucide-list-todo',
       route: {
         name: 'MyTasks',
       },
@@ -286,7 +271,7 @@ const navigation = computed(() => {
     },
     {
       name: 'Pages',
-      icon: LucideFiles,
+      icon: 'lucide-files',
       route: {
         name: 'MyPages',
       },
@@ -294,7 +279,7 @@ const navigation = computed(() => {
     },
     {
       name: 'People',
-      icon: LucideUsers2,
+      icon: 'lucide-users-2',
       route: {
         name: 'People',
       },
@@ -303,7 +288,7 @@ const navigation = computed(() => {
     },
     {
       name: 'Search',
-      icon: LucideSearch,
+      icon: 'lucide-search',
       route: {
         name: 'Search',
       },

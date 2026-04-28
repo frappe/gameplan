@@ -66,11 +66,11 @@
         </div>
         <div v-if="$isSessionUser(profile.user)">
           <Button @click="editDialog.show = true" class="hidden sm:flex">
-            <template #prefix><LucideEdit class="w-4" /></template>
+            <template #prefix><span class="lucide-edit w-4" /></template>
             Edit Profile
           </Button>
           <Button label="Edit Profile" @click="editDialog.show = true" class="sm:hidden">
-            <template #icon><LucideEdit class="w-4" /></template>
+            <template #icon><span class="lucide-edit w-4" /></template>
           </Button>
         </div>
       </div>

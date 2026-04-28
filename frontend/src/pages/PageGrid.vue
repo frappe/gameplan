@@ -2,7 +2,7 @@
   <div v-if="pages.data?.length === 0">
     <div class="col-span-full">
       <EmptyStateBox class="body-container">
-        <LucideCoffee class="h-7 w-7 text-ink-gray-4" />
+        <span class="lucide-coffee h-7 w-7 text-ink-gray-4" />
         No pages
       </EmptyStateBox>
     </div>

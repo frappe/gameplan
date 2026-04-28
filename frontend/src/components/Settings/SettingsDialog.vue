@@ -18,7 +18,7 @@
               :key="tab.label"
               @click="activeTab = tab"
             >
-              <component :is="tab.icon" class="h-4 w-4 text-ink-gray-6" />
+              <span :class="[tab.icon, 'h-4 w-4 text-ink-gray-6']" />
               <span class="text-base text-ink-gray-7">
                 {{ tab.label }}
               </span>
@@ -40,11 +40,6 @@ import { show, activeTab, registerTabs } from './index'
 import Members from './Members.vue'
 import InvitePeople from './InvitePeople.vue'
 import SettingsTabDialog from './SettingsTab.vue'
-import LucideUsers from '~icons/lucide/users'
-import LucideUsersPlus from '~icons/lucide/user-plus'
-import LucideFolderMinus from '~icons/lucide/folder-minus'
-import LucideSettings from '~icons/lucide/settings'
-
 interface Tab {
   label: string
   icon: Component
@@ -54,17 +49,17 @@ interface Tab {
 const tabs: Tab[] = [
   {
     label: 'Members',
-    icon: LucideUsers,
+    icon: 'lucide-users',
     component: markRaw(Members),
   },
   {
     label: 'Invites',
-    icon: LucideUsersPlus,
+    icon: 'lucide-user-plus',
     component: markRaw(InvitePeople),
   },
   {
     label: 'Settings',
-    icon: LucideSettings,
+    icon: 'lucide-settings',
     component: markRaw(SettingsTabDialog),
   },
 ]

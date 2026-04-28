@@ -28,7 +28,7 @@
           </Button>
         </Dropdown>
         <Button variant="solid" @click="$resources.newPage.submit()">
-          <template #prefix><LucidePlus class="w-4" /></template>
+          <template #prefix><span class="lucide-plus w-4" /></template>
           Add new
         </Button>
       </div>
@@ -38,7 +38,6 @@
 </template>
 <script>
 import { Dropdown } from 'frappe-ui'
-import ArrowDownUp from '~icons/lucide/arrow-up-down'
 import PageGrid from './PageGrid.vue'
 
 export default {

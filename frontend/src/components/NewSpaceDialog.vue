@@ -11,7 +11,7 @@
             <Button>
               <template #icon>
                 <span v-if="newSpace.doc.icon">{{ newSpace.doc.icon }}</span>
-                <LucidePlus v-else class="h-4 w-4" />
+                <span v-else class="lucide-plus h-4 w-4" />
               </template>
             </Button>
           </IconPicker>
@@ -34,7 +34,7 @@
               :open-on-focus="true"
             >
               <template #create-new="{ searchTerm }">
-                <LucidePlus class="h-4 w-4 mr-2" />
+                <span class="lucide-plus h-4 w-4 mr-2" />
                 <span> Add New Category: "{{ searchTerm }}" </span>
               </template>
             </Combobox>

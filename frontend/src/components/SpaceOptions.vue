@@ -23,15 +23,6 @@ import { useSpace, hasJoined, joinSpace, leaveSpace } from '@/data/spaces'
 import { markSpaceAsRead } from '@/data/unreadCount'
 import { GPProject } from '@/types/doctypes'
 
-import LucideUserPlus from '~icons/lucide/user-plus'
-import LucideEdit from '~icons/lucide/edit'
-import LucideMerge from '~icons/lucide/merge'
-import LucideArchive from '~icons/lucide/archive'
-import LucideTrash2 from '~icons/lucide/trash-2'
-import LucideLogOut from '~icons/lucide/log-out'
-import LucideCheck from '~icons/lucide/check'
-import LucideLogIn from '~icons/lucide/log-in'
-
 defineOptions({
   inheritAttrs: false,
 })
@@ -51,13 +42,13 @@ const inviteGuestDialog = ref(false)
 const options = computed(() => [
   {
     label: 'Edit',
-    icon: LucideEdit,
+    icon: 'lucide-edit',
     onClick: () => (showSpaceEditDialog.value = true),
     condition: () => !space.value?.archived_at,
   },
   {
     label: 'Mark all as read',
-    icon: LucideCheck,
+    icon: 'lucide-check',
     onClick: () => {
       createDialog({
         title: 'Are you sure?',
@@ -78,7 +69,7 @@ const options = computed(() => [
   },
   {
     label: hasJoined(props.spaceId) ? 'Leave space' : 'Join space',
-    icon: hasJoined(props.spaceId) ? LucideLogOut : LucideLogIn,
+    icon: hasJoined(props.spaceId) ? 'lucide-log-out' : 'lucide-log-in',
     onClick: () => {
       if (space.value) {
         if (hasJoined(props.spaceId)) {
@@ -92,24 +83,24 @@ const options = computed(() => [
   },
   {
     label: 'Manage Members',
-    icon: LucideUserPlus,
+    icon: 'lucide-user-plus',
     onClick: () => (inviteGuestDialog.value = true),
     condition: () => !space.value?.archived_at,
   },
   {
     label: 'Change Category',
-    icon: LucideLogOut,
+    icon: 'lucide-log-out',
     onClick: () => (showSpaceCategoryDialog.value = true),
     condition: () => !space.value?.archived_at,
   },
   {
     label: 'Merge',
-    icon: LucideMerge,
+    icon: 'lucide-merge',
     onClick: () => (showSpaceMergeDialog.value = true),
   },
   {
     label: 'Archive',
-    icon: LucideArchive,
+    icon: 'lucide-archive',
     onClick: () => {
       createDialog({
         title: 'Archive space',
@@ -136,7 +127,7 @@ const options = computed(() => [
   },
   {
     label: 'Delete',
-    icon: LucideTrash2,
+    icon: 'lucide-trash-2',
     onClick: () => {
       let message = `This will permanently delete the space and all its content. This action cannot be undone.`
       if (space.value?.discussions_count && space.value?.tasks_count) {

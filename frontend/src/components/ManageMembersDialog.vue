@@ -62,7 +62,7 @@
                 :label="user.pending ? 'Delete invite' : 'Remove guest user'"
                 @click="remove(user)"
               >
-                <template #icon><LucideX class="w-4" /></template>
+                <template #icon><span class="lucide-x w-4" /></template>
               </Button>
             </Tooltip>
           </div>

@@ -9,7 +9,7 @@
           :route="{ name: 'ProjectDiscussionNew' }"
         >
           <template #prefix>
-            <LucidePlus class="h-4 w-4" />
+            <span class="lucide-plus h-4 w-4" />
           </template>
           Add new
         </Button>

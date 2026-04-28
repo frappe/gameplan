@@ -47,8 +47,8 @@
             <span v-else class="text-ink-gray-6">{{ placeholder }}</span>
           </div>
           <template #suffix>
-            <LucideChevronDown
-              class="ml-2 h-4 w-4 transition-transform duration-200"
+            <span
+              class="lucide-chevron-down ml-2 h-4 w-4 transition-transform duration-200"
               :class="{ 'rotate-180': isOpen }"
             />
           </template>
@@ -70,7 +70,7 @@
           />
           <Button variant="ghost" size="sm" v-if="selectedCount > 0" @click="clearAll">
             <template #icon>
-              <LucideX class="size-4" />
+              <span class="lucide-x size-4" />
             </template>
           </Button>
         </div>

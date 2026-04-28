@@ -18,7 +18,7 @@
             @keydown.enter="() => submit()"
           >
             <template #prefix>
-              <LucideSearch class="w-4 text-ink-gray-5" />
+              <span class="lucide-search w-4 text-ink-gray-5" />
             </template>
             <template #suffix>
               <div class="flex items-center">
@@ -27,7 +27,7 @@
                   @click="clearSearch"
                   class="p-1 size-6 grid place-content-center focus:outline-none focus:ring focus:ring-outline-gray-3 rounded"
                 >
-                  <LucideX class="w-4 text-ink-gray-7" />
+                  <span class="lucide-x w-4 text-ink-gray-7" />
                 </button>
               </div>
             </template>
@@ -137,7 +137,7 @@
                   @click="submitFeedback(true)"
                   class="p-1 hover:bg-surface-gray-2 rounded-full transition-colors"
                 >
-                  <LucideThumbsUp class="size-4 text-ink-gray-7" />
+                  <span class="lucide-thumbs-up size-4 text-ink-gray-7" />
                 </button>
               </Tooltip>
               <Tooltip text="No, results were not helpful">
@@ -145,7 +145,7 @@
                   @click="submitFeedback(false)"
                   class="p-1 hover:bg-surface-gray-2 rounded-full transition-colors"
                 >
-                  <LucideThumbsDown class="size-4 text-ink-gray-7" />
+                  <span class="lucide-thumbs-down size-4 text-ink-gray-7" />
                 </button>
               </Tooltip>
             </div>

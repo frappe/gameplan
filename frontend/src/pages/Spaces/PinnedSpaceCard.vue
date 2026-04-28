@@ -16,7 +16,10 @@
         </span>
         <span class="text-base leading-5 text-ink-gray-9 font-medium truncate flex-1">
           {{ space.title }}
-          <LucideLock v-if="space.is_private" class="h-3 w-3 text-ink-gray-6 inline ml-1 mb-0.5" />
+          <span
+            v-if="space.is_private"
+            class="lucide-lock h-3 w-3 text-ink-gray-6 inline ml-1 mb-0.5"
+          />
         </span>
       </div>
       <div class="ml-auto flex">
@@ -40,7 +43,7 @@
             @click="unpinSpace(space.name)"
             :loading="isPinActionLoading(space.name)"
           >
-            <LucidePinOff class="size-4" />
+            <span class="lucide-pin-off size-4" />
           </Button>
           <Button
             v-else
@@ -51,7 +54,7 @@
             @click="pinSpace(space.name)"
             :loading="isPinActionLoading(space.name)"
           >
-            <LucidePin class="size-4" />
+            <span class="lucide-pin size-4" />
           </Button>
           <div
             class="group-hover:opacity-100 sm:opacity-0 transition-opacity opacity-100 has-[[data-state=open]]:opacity-100 focus-within:opacity-100"
@@ -68,7 +71,7 @@
               class="group-hover:opacity-100 sm:opacity-0 transition-opacity opacity-100"
             >
               <template #icon>
-                <LucideArchiveRestore class="size-4" />
+                <span class="lucide-archive-restore size-4" />
               </template>
             </Button>
           </Tooltip>

@@ -16,7 +16,7 @@
             @click="membersToAdd = membersToAdd.filter((a) => a != user)"
             class="grid h-4 w-4 place-items-center rounded text-ink-gray-7"
           >
-            <LucideX class="h-4 w-4" />
+            <span class="lucide-x h-4 w-4" />
           </button>
         </li>
       </ul>
@@ -51,7 +51,7 @@
               :disabled="resource.removeMember.loading"
             >
               <template #icon>
-                <LucideX class="h-4 w-4" />
+                <span class="lucide-x h-4 w-4" />
               </template>
             </Button>
           </li>

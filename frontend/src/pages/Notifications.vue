@@ -21,7 +21,7 @@
         <div class="flex items-start space-x-2">
           <UserAvatar size="sm" :user="d.from_user" v-if="d.from_user" />
           <div class="grid h-5 w-5 place-items-center" v-if="d.type === 'Reaction'">
-            <LucideHeart class="h-4 w-4 text-ink-gray-6" />
+            <span class="lucide-heart h-4 w-4 text-ink-gray-6" />
           </div>
           <div class="text-base text-ink-gray-8">
             {{ d.message }} {{ dayjsLocal(d.creation).fromNow() }}
@@ -61,7 +61,7 @@
           <Tooltip text="Mark as read">
             <Button v-if="!d.read" variant="ghost" @click="markAsRead(d.name)">
               <template #icon>
-                <LucideX class="w-4" />
+                <span class="lucide-x w-4" />
               </template>
             </Button>
           </Tooltip>

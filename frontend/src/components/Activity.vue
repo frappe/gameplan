@@ -3,13 +3,19 @@
     <div
       class="mr-3 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-surface-gray-2 text-ink-gray-8"
     >
-      <LucideLock class="h-4 w-4" v-if="activity.action === 'Discussion Closed'" />
-      <LucideUnlock class="h-4 w-4" v-else-if="activity.action === 'Discussion Reopened'" />
-      <LucideEdit3 class="h-4 w-4" v-else-if="activity.action === 'Discussion Title Changed'" />
-      <LucidePin class="h-4 w-4" v-else-if="activity.action === 'Discussion Pinned'" />
-      <LucidePinOff class="h-4 w-4" v-else-if="activity.action === 'Discussion Unpinned'" />
-      <LucideCornerUpRight class="h-4 w-4" v-else-if="activity.action === 'Discussion Moved'" />
-      <LucideEdit3 class="h-4 w-4" v-else-if="activity.action === 'Task Value Changed'" />
+      <span class="lucide-lock h-4 w-4" v-if="activity.action === 'Discussion Closed'" />
+      <span class="lucide-unlock h-4 w-4" v-else-if="activity.action === 'Discussion Reopened'" />
+      <span
+        class="lucide-edit-3 h-4 w-4"
+        v-else-if="activity.action === 'Discussion Title Changed'"
+      />
+      <span class="lucide-pin h-4 w-4" v-else-if="activity.action === 'Discussion Pinned'" />
+      <span class="lucide-pin-off h-4 w-4" v-else-if="activity.action === 'Discussion Unpinned'" />
+      <span
+        class="lucide-corner-up-right h-4 w-4"
+        v-else-if="activity.action === 'Discussion Moved'"
+      />
+      <span class="lucide-edit-3 h-4 w-4" v-else-if="activity.action === 'Task Value Changed'" />
     </div>
     <p>
       <UserInfo :email="activity.user" v-slot="{ user }">

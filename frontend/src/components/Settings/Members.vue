@@ -5,7 +5,7 @@
       <div class="flex items-center gap-4">
         <FormControl placeholder="Search" @input="search = $event.target.value" :debounce="300">
           <template #prefix>
-            <LucideSearch class="h-4 w-4 text-ink-gray-4" />
+            <span class="lucide-search h-4 w-4 text-ink-gray-4" />
           </template>
         </FormControl>
       </div>
@@ -46,8 +46,6 @@
 import { h, computed } from 'vue'
 import { Dropdown } from 'frappe-ui'
 import { users, activeUsers } from '@/data/users'
-import LucideCheck from '~icons/lucide/check'
-
 export default {
   name: 'Members',
   components: { Dropdown },
@@ -215,8 +213,8 @@ function RoleOption({ active, role, onClick, selected }) {
     [
       h('span', { class: 'whitespace-nowrap' }, role),
       selected
-        ? h(LucideCheck, {
-            class: ['h-4 w-4 shrink-0 text-ink-gray-6'],
+        ? h('span', {
+            class: ['lucide-check', 'h-4 w-4 shrink-0 text-ink-gray-6'],
             'aria-hidden': true,
           })
         : null,

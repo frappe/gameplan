@@ -12,7 +12,7 @@
             {{ user.full_name }}
           </div>
         </div>
-        <LucideChevronDown class="ml-auto hidden h-4 w-4 sm:inline text-ink-gray-7" />
+        <span class="lucide-chevron-down ml-auto hidden h-4 w-4 sm:inline text-ink-gray-7" />
       </button>
       <AboutDialog v-model="showAboutDialog" />
     </template>
@@ -30,12 +30,6 @@ import { session } from '@/data/session'
 import { clear as clearIndexDb } from 'idb-keyval'
 import { useTheme } from '@/utils/useTheme'
 
-import LucideCreditCard from '~icons/lucide/credit-card'
-import LucideMoon from '~icons/lucide/moon'
-import LucideListRestart from '~icons/lucide/list-restart'
-import LucideInfo from '~icons/lucide/info'
-import LucideLayoutGrid from '~icons/lucide/layout-grid'
-
 const user = useUser()
 const showAboutDialog = ref(false)
 const { setTheme } = useTheme()
@@ -50,7 +44,7 @@ const dropdownItems = computed(() => [
     },
   },
   {
-    icon: LucideLayoutGrid,
+    icon: 'lucide-layout-grid',
     label: 'Apps',
     submenu: [
       {
@@ -65,7 +59,7 @@ const dropdownItems = computed(() => [
     condition: () => user.isNotGuest,
   },
   {
-    icon: LucideMoon,
+    icon: 'lucide-moon',
     label: 'Toggle theme',
     submenu: [
       {
@@ -86,19 +80,19 @@ const dropdownItems = computed(() => [
     ],
   },
   {
-    icon: LucideListRestart,
+    icon: 'lucide-list-restart',
     label: 'Clear cache',
     onClick: clearCache,
   },
   {
-    icon: LucideInfo,
+    icon: 'lucide-info',
     label: 'About',
     onClick: () => {
       showAboutDialog.value = true
     },
   },
   {
-    icon: () => h(LucideCreditCard),
+    icon: () => h('span', { class: 'lucide-credit-card' }),
     label: 'Subscription',
     condition: () => user.isNotGuest && window.frappecloud_host && window.site_name,
     onClick: () => {

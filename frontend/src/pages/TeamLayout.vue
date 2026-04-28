@@ -9,7 +9,7 @@
     <div class="space-y-2">
       <div>Invalid team or not permitted to access</div>
       <Button :route="{ name: 'Home' }">
-        <template #prefix><LucideHome class="w-4" /></template>
+        <template #prefix><span class="lucide-home w-4" /></template>
         Home
       </Button>
     </div>

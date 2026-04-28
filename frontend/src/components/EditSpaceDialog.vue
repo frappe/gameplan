@@ -7,7 +7,7 @@
             <Button>
               <template #icon>
                 <span v-if="space.icon">{{ space.icon }}</span>
-                <LucidePlus v-else class="h-4 w-4" />
+                <span v-else class="lucide-plus h-4 w-4" />
               </template>
             </Button>
           </IconPicker>
