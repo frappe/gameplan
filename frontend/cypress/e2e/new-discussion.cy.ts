@@ -42,7 +42,7 @@ describe('New Discussion - Draft Functionality', () => {
     // create the draft
     cy.get('textarea[placeholder="Title"]').type('My Draft Discussion{enter}')
     cy.get('[contenteditable=true]').click().type('This is my draft content that should be saved.')
-    cy.combobox('Select Space').click().type('Gameplan').type('{enter}')
+    cy.selectCombobox('Select Space', 'Gameplan')
     cy.wait(500) // wait for draft to be saved
 
     // Go back to drafts

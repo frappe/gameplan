@@ -99,8 +99,16 @@ Cypress.Commands.add('button', { prevSubject: 'optional' }, (subject, text: stri
 })
 
 Cypress.Commands.add('combobox', { prevSubject: 'optional' }, (subject, placeholder: string) => {
-  const selector = `input[placeholder="${placeholder}"][role="combobox"]`
-  return subject ? cy.wrap(subject).find(selector) : cy.get(selector)
+  const inputSelector = `input[placeholder="${placeholder}"][role="combobox"]`
+  const root = subject ? cy.wrap(subject) : cy.get('body')
+  return root.then(($root) => {
+    const $input = $root.find(`${inputSelector}:visible`)
+    if ($input.length) return cy.wrap($input.first())
+    // Button-mode trigger: the search input lives inside the popover and only
+    // exists once the trigger is clicked. Return the trigger button so callers
+    // can `.click()` it; use `selectCombobox` to also type + select an option.
+    return cy.wrap($root).contains('button[aria-haspopup="listbox"]', placeholder)
+  })
 })
 
 Cypress.Commands.add('iconButton', { prevSubject: 'optional' }, (subject, text: string) => {
@@ -113,11 +121,15 @@ Cypress.Commands.add('dialog', (selector: string) => {
 })
 
 Cypress.Commands.add('selectCombobox', (placeholder: string, option: string) => {
-  // Click the combobox input to open dropdown
-  cy.get(`input[placeholder="${placeholder}"][role="combobox"]:visible`)
-    .click()
-    .clear()
-    .type(`${option}`)
+  const inputSelector = `input[placeholder="${placeholder}"][role="combobox"]:visible`
+  cy.get('body').then(($body) => {
+    if (!$body.find(inputSelector).length) {
+      // Button-mode trigger: open the popover so the search input mounts.
+      cy.contains('button[aria-haspopup="listbox"]', placeholder).click()
+    }
+  })
+
+  cy.get(inputSelector).click().clear().type(`${option}`)
 
   // Select the option from the dropdown
   cy.get('[role="option"]').contains(option).click()
@@ -125,7 +137,7 @@ Cypress.Commands.add('selectCombobox', (placeholder: string, option: string) => 
 
 Cypress.Commands.add('selectDropdownOption', (dropdownName: string, option: string) => {
   cy.get(`button[aria-haspopup=menu][aria-label="${dropdownName}"]`).click()
-  cy.get(`button[role="menuitem"]:contains("${option}"):visible`).click()
+  cy.get(`[role="menuitem"]:contains("${option}"):visible`).click()
 })
 
 // Export for ES module compatibility

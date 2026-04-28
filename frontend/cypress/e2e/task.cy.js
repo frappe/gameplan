@@ -72,6 +72,6 @@ describe('Task', () => {
       })
 
     cy.contains('div', 'Status').next('div').find('button').click()
-    cy.contains('button', 'Done').should('be.visible').click()
+    cy.get('[role="menuitem"]:contains("Done"):visible').click()
   })
 })
