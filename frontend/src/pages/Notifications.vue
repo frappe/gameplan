@@ -71,6 +71,7 @@
 import { TabButtons, Tooltip, Breadcrumbs, dayjsLocal } from 'frappe-ui'
 import PageHeader from '@/components/PageHeader.vue'
 import Link from '@/components/Link.vue'
+import { unreadNotifications } from '@/data/notifications'
 
 export default {
   name: 'Notifications',
@@ -143,7 +144,7 @@ export default {
       return {
         url: 'gameplan.api.mark_all_notifications_as_read',
         onSuccess() {
-          this.$getResource('Unread Notifications Count')?.reload()
+          unreadNotifications.reload()
           this.$resources.unreadNotifications.reload()
         },
       }
@@ -165,14 +166,14 @@ export default {
         },
         {
           onSuccess: () => {
-            this.$getResource('Unread Notifications Count')?.reload()
+            unreadNotifications.reload()
           },
         },
       )
     },
   },
   mounted() {
-    this.$getResource('Unread Notifications Count')?.reload()
+    unreadNotifications.reload()
   },
 }
 </script>
