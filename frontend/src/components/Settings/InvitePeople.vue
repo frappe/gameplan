@@ -36,8 +36,6 @@
               v-model="selectedProjects"
               placeholder="Select spaces"
             />
-
-            {{ selectedProjects }}
           </div>
         </div>
         <ErrorMessage :message="inviteByEmail.error" />
