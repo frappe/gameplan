@@ -58,7 +58,7 @@
                           :image="opt.image"
                           :label="opt.label"
                           class="border-2 border-white flex-shrink-0"
-                          size="sm"
+                          size="xs"
                           :style="{ zIndex: 10 - i }"
                         />
                       </div>
@@ -81,7 +81,7 @@
                 </Button>
               </template>
               <template #item-prefix="{ item }">
-                <Avatar :image="item.image" :label="item.label" size="sm" />
+                <Avatar :image="item.image" :label="item.label" size="xs" />
               </template>
               <template #item-suffix="{ item }">
                 <span v-if="(item.count ?? 0) > 0" class="text-xs text-ink-gray-5">{{
