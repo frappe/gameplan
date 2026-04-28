@@ -81,7 +81,7 @@
                 </Button>
               </template>
               <template #item-prefix="{ item }">
-                <Avatar v-if="item.image" :image="item.image" :label="item.label" size="sm" />
+                <Avatar :image="item.image" :label="item.label" size="sm" />
               </template>
               <template #item-suffix="{ item }">
                 <span v-if="(item.count ?? 0) > 0" class="text-xs text-ink-gray-5">{{
