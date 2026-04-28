@@ -15,7 +15,6 @@ export default defineConfig(async ({ mode }): Promise<UserConfig> => {
 
   const baseAliases = {
     '@': path.resolve(__dirname, 'src'),
-    'tailwind.config.js': path.resolve(__dirname, 'tailwind.config.js'),
   }
 
   return {
@@ -67,7 +66,7 @@ export default defineConfig(async ({ mode }): Promise<UserConfig> => {
       },
     },
     optimizeDeps: {
-      include: ['feather-icons', 'tailwind.config.js'],
+      include: ['feather-icons'],
     },
   }
 })

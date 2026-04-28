@@ -12,7 +12,7 @@
         <div
           class="relative max-h-96 overflow-y-auto rounded-lg p-2 shadow-lg ring-1 ring-black ring-opacity-5"
         >
-          <div class="grid grid-cols-10 place-items-center gap-1">
+          <div class="grid grid-cols-11 place-items-center gap-1">
             <button
               class="h-4 w-4 rounded-full"
               :style="{ backgroundColor: color }"
@@ -31,7 +31,7 @@
 </template>
 <script>
 import { Popover } from 'frappe-ui'
-import { theme } from '@/utils/theme'
+import tailwindColors from 'tailwindcss/colors'
 import { getRandomNumber } from '@/utils'
 
 export default {
@@ -59,7 +59,8 @@ export default {
 }
 
 export function getColors(name) {
-  return Object.keys(theme.colors[name]).map((key) => theme.colors[name][key])
+  const palette = tailwindColors[name]
+  return Object.keys(palette).map((key) => palette[key])
 }
 
 function getAllColors() {
