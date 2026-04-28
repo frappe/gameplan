@@ -42,7 +42,7 @@
           </template>
           <Dropdown
             v-if="$user().isNotGuest"
-            placement="left"
+            align="start"
             :button="{
               icon: 'more-horizontal',
               variant: 'ghost',

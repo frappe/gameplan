@@ -18,7 +18,7 @@
               onClick: () => (orderBy = 'creation desc'),
             },
           ]"
-          placement="center"
+          align="center"
         >
           <Button>
             <div class="flex items-center">

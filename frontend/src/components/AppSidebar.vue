@@ -71,7 +71,7 @@
             <span v-else class="lucide-unfold-vertical size-4 text-ink-gray-6" />
           </Button>
           <Dropdown
-            placement="right"
+            align="end"
             :options="[
               {
                 label: 'Show all spaces',

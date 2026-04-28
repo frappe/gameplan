@@ -104,7 +104,7 @@
               </div>
             </div>
             <div class="sm:invisible group-hover:visible">
-              <DropdownMoreOptions :options="dropdownOptions(d.name)" placement="right" />
+              <DropdownMoreOptions :options="dropdownOptions(d.name)" align="end" />
             </div>
           </router-link>
           <div class="mx-2.5 border-b" v-if="index < group.tasks.length - 1"></div>

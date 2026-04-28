@@ -3,7 +3,7 @@
     <SpaceHeaderActions>
       <template v-if="!isBulkMoveMode">
         <DropdownMoreOptions
-          placement="right"
+          align="end"
           :options="[
             {
               label: 'Move discussions',

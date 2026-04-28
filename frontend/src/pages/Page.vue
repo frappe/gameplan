@@ -38,7 +38,7 @@
       />
       <div class="ml-2 shrink-0" v-if="page.doc">
         <DropdownMoreOptions
-          placement="right"
+          align="end"
           :options="[
             {
               label: 'Saved ' + relativeTimestamp(page.doc.modified),

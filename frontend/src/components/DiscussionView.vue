@@ -49,7 +49,7 @@
               <Dropdown
                 v-if="!readOnlyMode"
                 class="ml-auto"
-                placement="right"
+                align="end"
                 :button="{
                   icon: 'more-horizontal',
                   variant: 'ghost',

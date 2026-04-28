@@ -54,7 +54,7 @@
                   variant: 'ghost',
                 }"
                 :options="getDropdownOptions(d)"
-                placement="right"
+                align="end"
               />
             </div>
           </div>

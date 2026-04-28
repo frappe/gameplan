@@ -59,7 +59,7 @@
           <div
             class="group-hover:opacity-100 sm:opacity-0 transition-opacity opacity-100 has-[[data-state=open]]:opacity-100 focus-within:opacity-100"
           >
-            <SpaceOptions placement="right" :spaceId="space.name" />
+            <SpaceOptions align="end" :spaceId="space.name" />
           </div>
         </template>
         <template v-else>

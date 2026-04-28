@@ -34,7 +34,7 @@
           <span class="lucide-bar-chart-2 h-4 w-4 -rotate-90" />
         </Tooltip>
         <Dropdown
-          placement="right"
+          align="end"
           :button="{
             icon: 'more-horizontal',
             variant: 'ghost',

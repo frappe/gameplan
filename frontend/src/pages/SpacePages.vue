@@ -23,7 +23,7 @@
             onClick: () => (orderBy = 'creation desc'),
           },
         ]"
-        placement="right"
+        align="end"
       >
         <template #default>
           <Button>

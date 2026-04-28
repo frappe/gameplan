@@ -31,7 +31,7 @@
           <TeamMembers :team="team" />
           <Dropdown
             v-if="!team.doc.archived_at"
-            placement="left"
+            align="start"
             :options="[
               {
                 label: 'Set cover image',

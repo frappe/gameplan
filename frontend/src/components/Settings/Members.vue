@@ -35,7 +35,7 @@
               iconRight: 'chevron-down',
               variant: 'ghost',
             }"
-            placement="right"
+            align="end"
           ></Dropdown>
         </div>
       </li>

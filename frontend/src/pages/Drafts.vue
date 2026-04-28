@@ -4,7 +4,7 @@
     <div class="flex items-center gap-2">
       <template v-if="!isBulkDeleteMode">
         <DropdownMoreOptions
-          placement="right"
+          align="end"
           :options="[
             {
               label: 'Delete drafts',
