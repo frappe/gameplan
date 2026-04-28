@@ -44,6 +44,42 @@
               @update:model-value="(values) => updateFilter('owner', values)"
               placeholder="Author"
             >
+              <template #trigger="{ open, selectedOptions, toggleOpen }">
+                <Button variant="outline" @click="toggleOpen">
+                  <div
+                    class="flex min-h-[20px] items-center"
+                    :class="{ 'gap-2': selectedOptions.length > 0 }"
+                  >
+                    <template v-if="selectedOptions.length > 0">
+                      <div class="isolate flex -space-x-2">
+                        <Avatar
+                          v-for="(opt, i) in selectedOptions.slice(0, 3)"
+                          :key="opt.value"
+                          :image="opt.image"
+                          :label="opt.label"
+                          class="border-2 border-white flex-shrink-0"
+                          size="sm"
+                          :style="{ zIndex: 10 - i }"
+                        />
+                      </div>
+                      <span class="text-ink-gray-7">
+                        {{
+                          selectedOptions.length === 1
+                            ? selectedOptions[0].label
+                            : `${selectedOptions.length} users`
+                        }}
+                      </span>
+                    </template>
+                    <span v-else class="text-ink-gray-6">Author</span>
+                  </div>
+                  <template #suffix>
+                    <span
+                      class="lucide-chevron-down ml-2 h-4 w-4 transition-transform"
+                      :class="{ 'rotate-180': open }"
+                    />
+                  </template>
+                </Button>
+              </template>
               <template #item-prefix="{ item }">
                 <Avatar v-if="item.image" :image="item.image" :label="item.label" size="sm" />
               </template>
@@ -226,6 +262,7 @@ import { useRouter, useRoute } from 'vue-router'
 import {
   Avatar,
   Breadcrumbs,
+  Button,
   MultiSelect,
   TextInput,
   Tooltip,
