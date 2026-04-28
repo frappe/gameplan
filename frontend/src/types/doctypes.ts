@@ -93,7 +93,7 @@ export interface GPMember extends ChildDocType {
   user?: string
 }
 
-// Last updated: 2023-01-12 16:56:50.063064
+// Last updated: 2026-02-01 13:07:33.079297
 export interface GPNotification extends DocType {
   /** From User: Link (User) */
   from_user?: string
