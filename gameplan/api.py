@@ -437,7 +437,7 @@ def search(query, start=0):
 
 def can_access_gameplan():
 	"""Check if the app should be shown in /apps"""
-	from frappe.utils.modules import get_modules_from_all_apps_for_user
+	from frappe.config import get_modules_from_all_apps_for_user
 
 	if frappe.session.user == "Administrator":
 		return True
