@@ -32,12 +32,7 @@
               :options="categoryOptions"
               v-model="selectedCategory"
               :open-on-focus="true"
-            >
-              <template #create-new="{ searchTerm }">
-                <span class="lucide-plus h-4 w-4 mr-2" />
-                <span> Add New Category: "{{ searchTerm }}" </span>
-              </template>
-            </Combobox>
+            />
           </div>
         </div>
         <div class="flex items-center space-x-2">
@@ -74,9 +69,9 @@ import {
 } from 'frappe-ui'
 import IconPicker from './IconPicker.vue'
 import { useNewDoc } from 'frappe-ui'
-import { GPProject } from '@/types/doctypes'
+import { GPProject, GPTeam } from '@/types/doctypes'
 import { spaces } from '@/data/spaces'
-import { computed, ref, watch } from 'vue'
+import { computed, h, ref, watch } from 'vue'
 import { activeTeams, teams } from '@/data/teams'
 import { vFocus } from '@/directives'
 import { until } from '@vueuse/core'
@@ -104,28 +99,31 @@ watch(show, (value: boolean) => {
   }
 })
 
-const createNewOption = {
-  type: 'custom' as const,
-  key: 'create_new',
-  label: 'Create new',
-  slotName: 'create-new',
-  condition: ({ searchTerm }) => searchTerm.length > 0,
-  onClick: ({ searchTerm }) => {
-    let categoriesCount = activeTeams.value.length
-    return teams.insert.submit({ title: searchTerm }).then(async (team) => {
-      if (team) {
-        await until(() => activeTeams.value.length > categoriesCount).toBeTruthy()
-        selectCategory(team.name)
-      }
-    })
-  },
-} as ComboboxOption
-
 const categoryOptions = computed((): ComboboxOption[] => {
   let categories = activeTeams.value.map((team) => ({
     label: team.title,
     value: team.name,
   }))
+
+  const createNewOption = {
+    type: 'custom' as const,
+    key: 'create_new',
+    label: 'Create new',
+    slots: {
+      prefix: () => h('span', { class: 'lucide-plus' }),
+      label: ({ query }) => `Create New: ${query}`,
+    },
+    condition: ({ query }) =>
+      query.length > 0 && !activeTeams.value.map((team) => team.title).includes(query),
+    onClick: async ({ query }) => {
+      let currentActiveTeamsCount = activeTeams.value.length
+      const team = (await teams.insert.submit({ title: query })) as unknown as GPTeam
+      if (team) {
+        await until(() => activeTeams.value.length > currentActiveTeamsCount).toBeTruthy()
+        selectCategory(team.name)
+      }
+    },
+  } as ComboboxOption
 
   return [...categories, createNewOption]
 })
