@@ -100,7 +100,7 @@ import Comment from './Comment.vue'
 import Activity from './Activity.vue'
 import UserAvatar from './UserAvatar.vue'
 import { getScrollContainer } from '@/utils/scrollContainer'
-import { createDialog } from '@/utils/dialogs'
+import { dialog } from 'frappe-ui'
 import { useSocket } from '@/socket'
 import { GPActivity, GPComment } from '@/types/doctypes'
 
@@ -328,19 +328,11 @@ function scrollToEnd() {
 // Add these functions after the existing methods
 function discardComment() {
   if (!editorObject.value?.isEmpty) {
-    createDialog({
+    dialog.danger({
       title: 'Discard comment',
       message: 'Are you sure you want to discard your comment?',
-      actions: [
-        {
-          label: 'Discard comment',
-          onClick: ({ close }) => {
-            resetCommentState()
-            close()
-          },
-          variant: 'solid',
-        },
-      ],
+      confirmLabel: 'Discard comment',
+      onConfirm: resetCommentState,
     })
   } else {
     resetCommentState()

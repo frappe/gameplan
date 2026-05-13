@@ -96,24 +96,22 @@
     </div>
     <Dialog
       v-if="$isSessionUser(profile.user)"
-      :options="{ title: 'Edit Profile' }"
-      v-model="editDialog.show"
+      title="Edit Profile"
+      v-model:open="editDialog.show"
       @after-leave="discard"
     >
-      <template #body-content>
-        <div class="space-y-4">
-          <ProfileImageEditor :profile="$resources.profile" v-if="editDialog.editingProfilePhoto" />
-          <template v-else>
-            <div class="flex items-center gap-4">
-              <UserAvatar size="lg" :user="profile.user" />
-              <Button @click="editDialog.editingProfilePhoto = true"> Edit Profile Photo </Button>
-            </div>
-            <FormControl label="First Name" v-model="user.first_name" />
-            <FormControl label="Last Name" v-model="user.last_name" />
-            <FormControl label="Bio" v-model="profile.bio" type="textarea" maxlength="280" />
-          </template>
-        </div>
-      </template>
+      <div class="space-y-4">
+        <ProfileImageEditor :profile="$resources.profile" v-if="editDialog.editingProfilePhoto" />
+        <template v-else>
+          <div class="flex items-center gap-4">
+            <UserAvatar size="lg" :user="profile.user" />
+            <Button @click="editDialog.editingProfilePhoto = true"> Edit Profile Photo </Button>
+          </div>
+          <FormControl label="First Name" v-model="user.first_name" />
+          <FormControl label="Last Name" v-model="user.last_name" />
+          <FormControl label="Bio" v-model="profile.bio" type="textarea" maxlength="280" />
+        </template>
+      </div>
       <template #actions>
         <Button
           variant="solid"

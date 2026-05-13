@@ -90,7 +90,7 @@
 import TextEditor from '@/components/TextEditor.vue'
 import { vFocus } from '@/directives'
 import UserProfileLink from '@/components/UserProfileLink.vue'
-import { TextEditorFixedMenu } from 'frappe-ui'
+import { TextEditorFixedMenu, dialog } from 'frappe-ui'
 
 export default {
   name: 'ProjectDiscussionNew',
@@ -158,23 +158,15 @@ export default {
     },
     discard() {
       if (!this.$refs.textEditor.editor.isEmpty || this.title) {
-        this.$dialog({
+        dialog.danger({
           title: 'Discard post',
           message: 'Are you sure you want to discard your post?',
-          actions: [
-            {
-              label: 'Discard post',
-              onClick: (close) => {
-                localStorage.removeItem(this.draftPostKey())
-                this.$router.push({ name: 'ProjectDiscussions' })
-                close()
-              },
-              variant: 'solid',
-            },
-            {
-              label: 'Keep post',
-            },
-          ],
+          confirmLabel: 'Discard post',
+          cancelLabel: 'Keep post',
+          onConfirm: () => {
+            localStorage.removeItem(this.draftPostKey())
+            this.$router.push({ name: 'ProjectDiscussions' })
+          },
         })
       } else {
         localStorage.removeItem(this.draftPostKey())

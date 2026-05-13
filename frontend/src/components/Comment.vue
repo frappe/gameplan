@@ -112,7 +112,7 @@ import RevisionsDialog from './RevisionsDialog.vue'
 import UserAvatarWithHover from './UserAvatarWithHover.vue'
 import { GPComment } from '@/types/doctypes'
 import { isSessionUser } from '@/data/session'
-import { createDialog } from '@/utils/dialogs'
+import { dialog } from 'frappe-ui'
 import { tags } from '@/data/tags'
 
 interface Props {
@@ -191,19 +191,10 @@ const dropdownOptions = computed(() => [
     label: 'Delete',
     icon: 'trash',
     onClick: () => {
-      createDialog({
+      dialog.danger({
         title: 'Delete comment',
         message: 'Are you sure you want to delete this comment?',
-        actions: [
-          {
-            label: 'Delete',
-            variant: 'solid',
-            theme: 'red',
-            onClick: ({ close }) => {
-              return props.comments.delete.submit({ name: props.comment.name }).then(close)
-            },
-          },
-        ],
+        onConfirm: () => props.comments.delete.submit({ name: props.comment.name }),
       })
     },
     condition: () =>

@@ -1,28 +1,27 @@
 <template>
   <Dialog
-    :options="{
-      title: 'Merge with another space',
-    }"
+    title="Merge with another space"
     @after-leave="
       () => {
         selectedSpace = null
       }
     "
-    v-model="show"
+    v-model:open="show"
   >
-    <template #body-content>
-      <p class="text-p-base text-ink-gray-7 mb-4">
-        This will move all discussions, tasks, and pages from the
-        <span class="whitespace-nowrap font-semibold">{{ space?.title }}</span> space to the
-        selected space. This change is irreversible!
-      </p>
-      <Combobox
-        :options="groupedSpaceOptions"
-        v-model="selectedSpace"
-        placeholder="Select a space"
-      />
-      <ErrorMessage class="mt-2" :message="spaces.runDocMethod.error" />
-    </template>
+    <p class="text-p-base text-ink-gray-7 mb-4">
+      This will move all discussions, tasks, and pages from the
+      <span class="whitespace-nowrap font-semibold">{{ space?.title }}</span> space to the selected
+      space. This change is irreversible!
+    </p>
+    <Combobox
+      :options="groupedSpaceOptions"
+      v-model="selectedSpace"
+      placeholder="Select a space"
+      class="w-full"
+      open-on-click
+      autofocus
+    />
+    <ErrorMessage class="mt-2" :message="spaces.runDocMethod.error" />
     <template #actions>
       <Button
         class="w-full"

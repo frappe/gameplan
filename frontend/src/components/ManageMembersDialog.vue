@@ -1,6 +1,6 @@
 <template>
-  <Dialog :options="{ title: 'Manage Members' }" v-model="show">
-    <template #body-content v-if="space">
+  <Dialog title="Manage Members" v-model:open="show">
+    <template v-if="space">
       <div class="mt-6 flex items-end gap-2">
         <div class="w-full">
           <FormLabel label="Add a member" class="mb-1.5" />
@@ -8,8 +8,14 @@
             :options="addableUsers"
             v-model="selectedUser"
             placeholder="Jane Doe"
-            v-focus:autoselect
-          />
+            class="w-full"
+            open-on-click
+            autofocus
+          >
+            <template #item-prefix="{ item }">
+              <UserAvatar :user="item.value" size="xs" />
+            </template>
+          </Combobox>
         </div>
         <Button
           class="ml-auto w-13 shrink-0"
@@ -66,7 +72,7 @@
             </Tooltip>
           </div>
         </div>
-        <Dialog :options="removeDialog.options" v-model="removeDialog.open" />
+        <Dialog v-bind="removeDialog.options || {}" v-model:open="removeDialog.open" />
       </div>
     </template>
   </Dialog>
@@ -77,7 +83,6 @@ import { Combobox, FormLabel, toast, Tooltip, useDoctype, useList } from 'frappe
 import { useSpace } from '@/data/spaces'
 import { useUser, users } from '@/data/users'
 import { GPGuestAccess, GPInvitation, GPProject } from '@/types/doctypes'
-import { vFocus } from '@/directives'
 
 const props = defineProps<{ spaceId: string }>()
 const show = defineModel<boolean>()
@@ -139,9 +144,9 @@ function addMember() {
         params: { user: selectedUser.value },
       })
       .then(() => {
-        selectedUser.value = null
         let fullName = useUser(selectedUser.value).full_name
         let spaceName = useSpace(space.value?.name).value?.title
+        selectedUser.value = null
         toast.success(`${fullName} added to ${spaceName}`)
         guests.reload()
       })

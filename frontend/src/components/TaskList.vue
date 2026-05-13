@@ -124,14 +124,13 @@
 </template>
 <script setup lang="ts">
 import { h, ref, computed } from 'vue'
-import { Dropdown, LoadingIndicator, Tooltip, dayjsLocal } from 'frappe-ui'
+import { Dropdown, LoadingIndicator, Tooltip, dayjsLocal, dialog } from 'frappe-ui'
 import EmptyStateBox from './EmptyStateBox.vue'
 import TaskStatusIcon from './NewTaskDialog/TaskStatusIcon.vue'
 import { useList } from 'frappe-ui'
 import { GPTask } from '@/types/doctypes'
 import { UseListOptions } from 'frappe-ui'
 import DropdownMoreOptions from './DropdownMoreOptions.vue'
-import { createDialog } from '@/utils/dialogs'
 
 interface Props {
   groupByStatus?: boolean
@@ -216,17 +215,10 @@ function dropdownOptions(name: string) {
     {
       label: 'Delete',
       onClick: () => {
-        createDialog({
+        dialog.danger({
           title: 'Delete Task',
           message: 'Are you sure you want to delete this task?',
-          actions: [
-            {
-              label: 'Delete',
-              onClick: ({ close }) => {
-                return tasks.delete.submit({ name }).then(close)
-              },
-            },
-          ],
+          onConfirm: () => tasks.delete.submit({ name }),
         })
       },
     },

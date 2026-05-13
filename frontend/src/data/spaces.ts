@@ -1,7 +1,6 @@
 import { computed, MaybeRefOrGetter, toValue } from 'vue'
-import { useCall, useList, useDoctype } from 'frappe-ui'
+import { useCall, useList, useDoctype, dialog } from 'frappe-ui'
 import { GPProject, GPMember } from '@/types/doctypes'
-import { createDialog } from '@/utils/dialogs'
 import { getProjectUnreadCount, markSpacesAsRead } from './unreadCount'
 
 interface Member extends Pick<GPMember, 'user'> {}
@@ -131,18 +130,11 @@ export function unarchiveSpace(space: Space) {
 }
 
 export function markAllAsRead(spaceIds: string[], groupTitle: string) {
-  createDialog({
+  dialog.confirm({
     title: 'Mark all as read',
     message: `Are you sure you want to mark all discussions in ${groupTitle} as read? This action cannot be undone.`,
-    actions: [
-      {
-        label: 'Mark all as read',
-        variant: 'solid',
-        onClick: ({ close }) => {
-          return markSpacesAsRead(spaceIds).then(close)
-        },
-      },
-    ],
+    confirmLabel: 'Mark all as read',
+    onConfirm: () => markSpacesAsRead(spaceIds),
   })
 }
 

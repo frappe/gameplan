@@ -50,25 +50,17 @@
               label: 'Delete',
               icon: 'lucide-trash-2',
               onClick: () => {
-                createDialog({
+                dialog.danger({
                   title: 'Delete Page',
                   message: 'Are you sure you want to delete this page?',
-                  actions: [
-                    {
-                      label: 'Delete',
-                      loading: page.delete.loading,
-                      onClick: ({ close }) => {
-                        return page.delete.submit().then(() => {
-                          if (history.state.back == null) {
-                            router.push({ name: 'MyPages' })
-                          } else {
-                            router.back()
-                          }
-                          close()
-                        })
-                      },
-                    },
-                  ],
+                  onConfirm: async () => {
+                    await page.delete.submit()
+                    if (history.state.back == null) {
+                      router.push({ name: 'MyPages' })
+                    } else {
+                      router.back()
+                    }
+                  },
                 })
               },
             },
@@ -115,12 +107,11 @@ import { ref, computed, onMounted, onBeforeUnmount, useTemplateRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Breadcrumbs, TextEditor, usePageMeta, debounce, dayjsLocal } from 'frappe-ui'
 import PageHeader from '@/components/PageHeader.vue'
-import { useDoc } from 'frappe-ui'
+import { useDoc, dialog } from 'frappe-ui'
 import { useSpace } from '@/data/spaces'
 import { GPPage } from '@/types/doctypes'
 import SpaceBreadcrumbs from '@/components/SpaceBreadcrumbs.vue'
 import DropdownMoreOptions from '@/components/DropdownMoreOptions.vue'
-import { createDialog } from '@/utils/dialogs'
 import { relativeTimestamp } from '@/utils'
 const props = defineProps<{
   pageId: string

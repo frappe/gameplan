@@ -118,19 +118,17 @@
   </div>
 
   <Dialog
-    :options="{
-      title: 'Delete drafts',
-      message: 'Are you sure you want to delete selected drafts? This action cannot be undone.',
-      actions: [
-        {
-          label: 'Delete',
-          variant: 'solid',
-          theme: 'red',
-          onClick: deleteDrafts,
-        },
-      ],
-    }"
-    v-model="showDeleteConfirm"
+    title="Delete drafts"
+    message="Are you sure you want to delete selected drafts? This action cannot be undone."
+    :actions="[
+      {
+        label: 'Delete',
+        variant: 'solid',
+        theme: 'red',
+        onClick: deleteDrafts,
+      },
+    ]"
+    v-model:open="showDeleteConfirm"
   />
 </template>
 <script setup lang="ts">

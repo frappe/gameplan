@@ -1,60 +1,58 @@
 <template>
-  <Dialog :options="{ title: 'Add members' }" @close="resetValues" v-model="open">
-    <template #body-content>
-      <ul v-if="membersToAdd.length" class="flex flex-wrap gap-2 py-2">
-        <li
-          class="flex items-center space-x-2 rounded bg-surface-gray-2 px-2 py-1.5"
-          v-for="user in membersToAdd"
-          :key="user.email"
-          :title="user.email"
+  <Dialog title="Add members" @close="resetValues" v-model:open="open">
+    <ul v-if="membersToAdd.length" class="flex flex-wrap gap-2 py-2">
+      <li
+        class="flex items-center space-x-2 rounded bg-surface-gray-2 px-2 py-1.5"
+        v-for="user in membersToAdd"
+        :key="user.email"
+        :title="user.email"
+      >
+        <UserAvatar :user="user.name" size="sm" />
+        <span class="text-base" :class="{ 'ml-2': !user.user_image }">
+          {{ user.full_name || user.email }}
+        </span>
+        <button
+          @click="membersToAdd = membersToAdd.filter((a) => a != user)"
+          class="grid h-4 w-4 place-items-center rounded text-ink-gray-7"
         >
-          <UserAvatar :user="user.name" size="sm" />
-          <span class="text-base" :class="{ 'ml-2': !user.user_image }">
-            {{ user.full_name || user.email }}
-          </span>
-          <button
-            @click="membersToAdd = membersToAdd.filter((a) => a != user)"
-            class="grid h-4 w-4 place-items-center rounded text-ink-gray-7"
-          >
-            <span class="lucide-x h-4 w-4" />
-          </button>
+          <span class="lucide-x h-4 w-4" />
+        </button>
+      </li>
+    </ul>
+    <div>
+      <Autocomplete
+        :options="invitableUsers"
+        v-model="selectedUser"
+        placeholder="Add member by name"
+      >
+        <template #item-prefix="{ option }">
+          <UserAvatar :user="option.email" size="sm" />
+        </template>
+      </Autocomplete>
+      <ErrorMessage class="mt-2" :message="resource.addMembers.error" />
+    </div>
+    <div class="mt-4" v-show="!addMembersIntent">
+      <h4 class="text-base font-medium">Members</h4>
+      <ul role="list" class="mt-2 divide-y">
+        <li class="flex w-full items-center py-2" v-for="member in members" :key="member.name">
+          <UserAvatar :user="member.user" />
+          <div class="ml-3">
+            <div class="text-base font-medium text-ink-gray-7">
+              {{ $user(member.user).full_name }}
+            </div>
+            <div class="text-sm text-ink-gray-5">
+              {{ $user(member.user).email }}
+            </div>
+          </div>
+          <Button
+            class="ml-auto"
+            icon="lucide-x"
+            @click="resource.removeMember.submit({ user: member.user })"
+            :disabled="resource.removeMember.loading"
+          />
         </li>
       </ul>
-      <div>
-        <Autocomplete
-          :options="invitableUsers"
-          v-model="selectedUser"
-          placeholder="Add member by name"
-        >
-          <template #item-prefix="{ option }">
-            <UserAvatar :user="option.email" size="sm" />
-          </template>
-        </Autocomplete>
-        <ErrorMessage class="mt-2" :message="resource.addMembers.error" />
-      </div>
-      <div class="mt-4" v-show="!addMembersIntent">
-        <h4 class="text-base font-medium">Members</h4>
-        <ul role="list" class="mt-2 divide-y">
-          <li class="flex w-full items-center py-2" v-for="member in members" :key="member.name">
-            <UserAvatar :user="member.user" />
-            <div class="ml-3">
-              <div class="text-base font-medium text-ink-gray-7">
-                {{ $user(member.user).full_name }}
-              </div>
-              <div class="text-sm text-ink-gray-5">
-                {{ $user(member.user).email }}
-              </div>
-            </div>
-            <Button
-              class="ml-auto"
-              icon="lucide-x"
-              @click="resource.removeMember.submit({ user: member.user })"
-              :disabled="resource.removeMember.loading"
-            />
-          </li>
-        </ul>
-      </div>
-    </template>
+    </div>
     <template #actions v-if="membersToAdd.length">
       <Button
         class="w-full"

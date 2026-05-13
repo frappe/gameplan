@@ -157,7 +157,7 @@ import PollEditor from './PollEditor.vue'
 import Poll from './Poll.vue'
 import UserAvatar from './UserAvatar.vue'
 import { getScrollContainer } from '@/utils/scrollContainer'
-import { createDialog } from '@/utils/dialogs'
+import { dialog } from 'frappe-ui'
 import { useSocket } from '@/socket'
 import { GPActivity, GPComment, GPPoll } from '@/types/doctypes'
 import type { Editor } from '@tiptap/vue-3'
@@ -489,22 +489,12 @@ function onNewCommentChange(content: string) {
 
 function discardComment() {
   if (!editorObject.value?.isEmpty) {
-    createDialog({
+    dialog.danger({
       title: 'Discard comment',
       message: 'Are you sure you want to discard your comment?',
-      actions: [
-        {
-          label: 'Keep comment',
-        },
-        {
-          label: 'Discard comment',
-          onClick: ({ close }) => {
-            resetCommentState()
-            close()
-          },
-          variant: 'solid',
-        },
-      ],
+      confirmLabel: 'Discard comment',
+      cancelLabel: 'Keep comment',
+      onConfirm: resetCommentState,
     })
   } else {
     resetCommentState()

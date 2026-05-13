@@ -1,31 +1,29 @@
 <template>
-  <Dialog :options="{ title: 'Manage Guests' }" v-model="inviteGuestDialog">
-    <template #body-content>
-      <div class="my-4 space-y-2">
-        <div class="flex items-center gap-4" v-for="user in users" :key="user.name">
-          <UserAvatar :user="user.pending ? user.email : user.user" />
-          <div class="text-base">
-            <span class="text-ink-gray-8">
-              {{ user.pending ? user.email : $user(user.user).full_name }}
-            </span>
-            <span class="text-ink-gray-5" v-if="user.pending"> (Pending)</span>
-          </div>
-          <div class="ml-auto">
-            <Tooltip :text="user.pending ? 'Remove invite' : 'Remove user'">
-              <Button label="Remove" icon="lucide-x" @click="remove(user)" />
-            </Tooltip>
-          </div>
+  <Dialog title="Manage Guests" v-model:open="inviteGuestDialog">
+    <div class="my-4 space-y-2">
+      <div class="flex items-center gap-4" v-for="user in users" :key="user.name">
+        <UserAvatar :user="user.pending ? user.email : user.user" />
+        <div class="text-base">
+          <span class="text-ink-gray-8">
+            {{ user.pending ? user.email : $user(user.user).full_name }}
+          </span>
+          <span class="text-ink-gray-5" v-if="user.pending"> (Pending)</span>
         </div>
-        <Dialog :options="removeDialog.options" v-model="removeDialog.open" />
+        <div class="ml-auto">
+          <Tooltip :text="user.pending ? 'Remove invite' : 'Remove user'">
+            <Button label="Remove" icon="lucide-x" @click="remove(user)" />
+          </Tooltip>
+        </div>
       </div>
-      <FormControl
-        label="Email"
-        v-model="email"
-        placeholder="jane@example.com"
-        @keydown.enter="invite"
-      />
-      <ErrorMessage class="mt-2" :message="project.inviteGuest.error" />
-    </template>
+      <Dialog v-bind="removeDialog.options || {}" v-model:open="removeDialog.open" />
+    </div>
+    <FormControl
+      label="Email"
+      v-model="email"
+      placeholder="jane@example.com"
+      @keydown.enter="invite"
+    />
+    <ErrorMessage class="mt-2" :message="project.inviteGuest.error" />
     <template #actions>
       <Button class="w-full" variant="solid" @click="invite" :loading="project.inviteGuest.loading">
         Invite
@@ -100,7 +98,7 @@ function remove(user) {
           label: 'Delete',
           variant: 'solid',
           theme: 'red',
-          onClick: (close) => {
+          onClick: ({ close }) => {
             return pending.delete.submit(user.name).then(close)
           },
         },
@@ -115,7 +113,7 @@ function remove(user) {
           label: 'Delete',
           variant: 'solid',
           theme: 'red',
-          onClick: (close) => {
+          onClick: ({ close }) => {
             return props.project.removeGuest.submit(
               { email: user.user },
               {

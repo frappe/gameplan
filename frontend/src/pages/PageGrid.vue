@@ -65,9 +65,8 @@
 </template>
 
 <script setup lang="ts">
-import { Dropdown, useList, UseListOptions } from 'frappe-ui'
+import { Dropdown, useList, UseListOptions, dialog } from 'frappe-ui'
 import EmptyStateBox from '@/components/EmptyStateBox.vue'
-import { createDialog } from '@/utils/dialogs'
 import { GPPage } from '@/types/doctypes'
 import { useSpace } from '@/data/spaces'
 
@@ -101,20 +100,10 @@ const getDropdownOptions = (page: Page) => [
     label: 'Delete',
     icon: 'trash',
     onClick: () => {
-      createDialog({
+      dialog.danger({
         title: 'Delete Page',
         message: 'Are you sure you want to delete this page?',
-        actions: [
-          {
-            label: 'Delete',
-            onClick: ({ close }) => {
-              close()
-              return pages.delete.submit({ name: page.name })
-            },
-            variant: 'solid',
-            theme: 'red',
-          },
-        ],
+        onConfirm: () => pages.delete.submit({ name: page.name }),
       })
     },
   },

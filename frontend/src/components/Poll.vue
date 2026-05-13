@@ -86,40 +86,38 @@
     <div class="mt-3">
       <Reactions doctype="GP Poll" :name="poll.name" :reactions="_poll.reactions" />
     </div>
-    <Dialog :options="{ title: 'Poll results' }" v-model="showDialog">
-      <template #body-content>
-        <h2 class="text-lg font-medium text-ink-gray-8">{{ _poll.title }}</h2>
-        <div v-if="!pollResults" class="text-base text-ink-gray-6 mt-2">No votes yet</div>
-        <div class="mt-6 space-y-6">
-          <div v-for="option in pollResults" :key="option.title">
-            <div class="flex items-center mb-2">
-              <h3 class="text-base text-ink-gray-8 font-medium">{{ option.title }}</h3>
-              <div class="mx-2 flex-1 border-b border-outline-gray-2"></div>
-              <div class="text-base text-ink-gray-5">
-                {{ option.votes }} {{ option.votes === 1 ? 'vote' : 'votes' }}
-              </div>
-              <div class="ml-1 text-base text-ink-gray-5">({{ option.percentage }}%)</div>
+    <Dialog title="Poll results" v-model:open="showDialog">
+      <h2 class="text-lg font-medium text-ink-gray-8">{{ _poll.title }}</h2>
+      <div v-if="!pollResults" class="text-base text-ink-gray-6 mt-2">No votes yet</div>
+      <div class="mt-6 space-y-6">
+        <div v-for="option in pollResults" :key="option.title">
+          <div class="flex items-center mb-2">
+            <h3 class="text-base text-ink-gray-8 font-medium">{{ option.title }}</h3>
+            <div class="mx-2 flex-1 border-b border-outline-gray-2"></div>
+            <div class="text-base text-ink-gray-5">
+              {{ option.votes }} {{ option.votes === 1 ? 'vote' : 'votes' }}
             </div>
-            <div class="space-y-2">
-              <div class="flex" v-for="user in option.voters" :key="user">
-                <UserInfo :email="user" v-slot="{ user: _user }">
-                  <UserProfileLink :user="_user.name">
-                    <div class="flex items-center space-x-2">
-                      <UserAvatar size="sm" :user="_user.name" />
-                      <span class="text-base text-ink-gray-8">{{ _user.full_name }}</span>
-                    </div>
-                  </UserProfileLink>
-                </UserInfo>
-              </div>
+            <div class="ml-1 text-base text-ink-gray-5">({{ option.percentage }}%)</div>
+          </div>
+          <div class="space-y-2">
+            <div class="flex" v-for="user in option.voters" :key="user">
+              <UserInfo :email="user" v-slot="{ user: _user }">
+                <UserProfileLink :user="_user.name">
+                  <div class="flex items-center space-x-2">
+                    <UserAvatar size="sm" :user="_user.name" />
+                    <span class="text-base text-ink-gray-8">{{ _user.full_name }}</span>
+                  </div>
+                </UserProfileLink>
+              </UserInfo>
             </div>
           </div>
         </div>
-      </template>
+      </div>
     </Dialog>
   </div>
 </template>
 <script>
-import { Dropdown, Dialog, Tooltip, dayjsLocal } from 'frappe-ui'
+import { Dropdown, Dialog, Tooltip, dayjsLocal, dialog } from 'frappe-ui'
 import UserAvatar from './UserAvatar.vue'
 import UserProfileLink from './UserProfileLink.vue'
 import { copyToClipboard } from '@/utils'
@@ -174,18 +172,11 @@ export default {
   methods: {
     submitVote(option) {
       if (this._poll.anonymous) {
-        this.$dialog({
+        dialog.confirm({
           title: 'Anonymous poll',
           message: `This poll is anonymous. Once you vote, you cannot retract your vote. You are voting for "${option.title}". Continue?`,
-          actions: [
-            {
-              label: `Vote for "${option.title}"`,
-              variant: 'solid',
-              onClick: (close) => {
-                this.$resources.poll.submitVote.submit({ option: option.title }).then(close)
-              },
-            },
-          ],
+          confirmLabel: `Vote for "${option.title}"`,
+          onConfirm: () => this.$resources.poll.submitVote.submit({ option: option.title }),
         })
       } else {
         if (this.$resources.poll.doc) {
@@ -198,17 +189,11 @@ export default {
       }
     },
     stopPoll() {
-      this.$dialog({
+      dialog.danger({
         title: 'Stop poll',
         message: 'After the poll is stopped, no one will be able to vote on it. Continue?',
-        actions: [
-          {
-            label: 'Stop',
-            variant: 'solid',
-            theme: 'red',
-            onClick: (close) => this.$resources.poll.stopPoll.submit().then(close),
-          },
-        ],
+        confirmLabel: 'Stop',
+        onConfirm: () => this.$resources.poll.stopPoll.submit(),
       })
     },
     isVotedByUser(option) {
@@ -257,17 +242,11 @@ export default {
             this.participated &&
             (!this._poll.stopped_at || dayjsLocal().isBefore(this._poll.stopped_at)),
           onClick: () => {
-            this.$dialog({
+            dialog.danger({
               title: 'Retract vote',
               message: 'Are you sure you want to retract your vote?',
-              actions: [
-                {
-                  label: 'Retract vote',
-                  variant: 'solid',
-                  theme: 'red',
-                  onClick: (close) => this.$resources.poll.retractVote.submit().then(close),
-                },
-              ],
+              confirmLabel: 'Retract vote',
+              onConfirm: () => this.$resources.poll.retractVote.submit(),
             })
           },
         },
@@ -281,17 +260,10 @@ export default {
           icon: 'trash',
           condition: () => this.$isSessionUser(this._poll.owner),
           onClick: () => {
-            this.$dialog({
+            dialog.danger({
               title: 'Delete poll',
               message: 'Are you sure you want to delete this poll?',
-              actions: [
-                {
-                  label: 'Delete',
-                  variant: 'solid',
-                  theme: 'red',
-                  onClick: (close) => this.$resources.poll.delete.submit().then(close),
-                },
-              ],
+              onConfirm: () => this.$resources.poll.delete.submit(),
             })
           },
         },
