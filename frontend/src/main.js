@@ -20,7 +20,6 @@ import router from './router'
 import App from './App.vue'
 import './index.css'
 import { getPlatform } from './utils'
-import { createDialog } from './utils/dialogs'
 import { useUser, users } from './data/users'
 import { isSessionUser, session } from './data/session'
 import { initSocket } from './socket'
@@ -47,7 +46,6 @@ for (let key in globalComponents) {
   app.component(key, globalComponents[key])
 }
 
-app.config.globalProperties.$dialog = createDialog
 app.config.globalProperties.$log = console.log.bind(console)
 app.config.globalProperties.$user = useUser
 app.config.globalProperties.$users = users
@@ -92,7 +90,6 @@ if (import.meta.env.DEV) {
   window.$user = useUser
   window.$users = users
   window.$session = session
-  window.$dialog = createDialog
   window.$request = request
   window.$frappeRequest = frappeRequest
   window.$router = router

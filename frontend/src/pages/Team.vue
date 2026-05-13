@@ -72,7 +72,7 @@
   </div>
 </template>
 <script>
-import { Breadcrumbs, Dropdown, Badge, Tooltip } from 'frappe-ui'
+import { Breadcrumbs, Dropdown, Badge, Tooltip, dialog } from 'frappe-ui'
 import IconPicker from '@/components/IconPicker.vue'
 import Tabs from '@/components/Tabs.vue'
 
@@ -97,23 +97,14 @@ export default {
       this.team.setValue.submit({ icon })
     },
     archiveTeam() {
-      this.$dialog({
+      dialog.confirm({
         title: 'Archive Team',
         message: 'Are you sure you want to archive the team?',
-        actions: [
-          {
-            label: 'Archive',
-            variant: 'solid',
-            onClick: (close) => {
-              return this.team.archive.submit(null, {
-                onSuccess: () => {
-                  this.$router.replace({ name: 'Home' })
-                  close()
-                },
-              })
-            },
-          },
-        ],
+        confirmLabel: 'Archive',
+        onConfirm: async () => {
+          await this.team.archive.submit()
+          this.$router.replace({ name: 'Home' })
+        },
       })
     },
   },

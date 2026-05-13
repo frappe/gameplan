@@ -32,7 +32,7 @@
             :options="getDropdownOptions(user)"
             :button="{
               label: getUserRole(user),
-              iconRight: 'chevron-down',
+              iconRight: 'lucide-chevron-down',
               variant: 'ghost',
             }"
             align="end"
@@ -43,8 +43,8 @@
   </div>
 </template>
 <script>
-import { h, computed } from 'vue'
-import { Dropdown } from 'frappe-ui'
+import { h } from 'vue'
+import { Dropdown, dialog } from 'frappe-ui'
 import { users, activeUsers } from '@/data/users'
 export default {
   name: 'Members',
@@ -92,45 +92,19 @@ export default {
   },
   methods: {
     changeUserRole({ user, role }) {
-      this.$dialog({
+      dialog.confirm({
         title: 'Change Role',
         message: `Are you sure you want to change ${user.full_name}'s role to ${role}?`,
-        error: computed(() => this.$resources.changeUserRole.error),
-        actions: [
-          {
-            label: 'Change Role',
-            variant: 'solid',
-            onClick: (close) => {
-              return this.$resources.changeUserRole.submit(
-                { user: user.name, role },
-                { onSuccess: close },
-              )
-            },
-          },
-          {
-            label: 'Cancel',
-          },
-        ],
+        confirmLabel: 'Change Role',
+        onConfirm: () => this.$resources.changeUserRole.submit({ user: user.name, role }),
       })
     },
     removeUser(user) {
-      this.$dialog({
+      dialog.danger({
         title: 'Remove User',
         message: `Are you sure you want to remove ${user.full_name} (${user.email})?`,
-        error: computed(() => this.$resources.removeUser.error),
-        actions: [
-          {
-            label: 'Remove User',
-            variant: 'solid',
-            theme: 'red',
-            onClick: (close) => {
-              return this.$resources.removeUser.submit({ user: user.name }, { onSuccess: close })
-            },
-          },
-          {
-            label: 'Cancel',
-          },
-        ],
+        confirmLabel: 'Remove User',
+        onConfirm: () => this.$resources.removeUser.submit({ user: user.name }),
       })
     },
     getUserRole(user) {

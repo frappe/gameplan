@@ -1,53 +1,48 @@
 <template>
-  <Dialog
-    :options="{ title: 'New Task' }"
-    :disableOutsideClickToClose="disableOutsideClickToClose"
-    v-model="showDialog"
-  >
-    <template #body-content>
-      <div class="space-y-4" v-if="newTask">
-        <FormControl
-          label="Title"
-          v-model="newTask.doc.title"
-          autocomplete="off"
-          required
-          ref="titleInput"
-          @keydown.enter="onCreateClick"
+  <Dialog title="New Task" :dismissable="!disableOutsideClickToClose" v-model:open="showDialog">
+    <div class="space-y-4" v-if="newTask">
+      <FormControl
+        label="Title"
+        v-model="newTask.doc.title"
+        autocomplete="off"
+        required
+        autofocus
+        @keydown.enter="onCreateClick"
+      />
+      <FormControl
+        label="Description"
+        type="textarea"
+        v-model="newTask.doc.description"
+        @keydown.enter="onCreateClick"
+      />
+      <div class="grid grid-cols-2 gap-2">
+        <Combobox
+          placeholder="Assign a user"
+          :options="assignableUsers"
+          v-model="newTask.doc.assigned_to"
         />
-        <FormControl
-          label="Description"
-          type="textarea"
-          v-model="newTask.doc.description"
-          @keydown.enter="onCreateClick"
+        <DatePicker
+          v-model="newTask.doc.due_date"
+          placeholder="Set due date"
+          format="D MMM, YYYY"
         />
-        <div class="grid grid-cols-2 gap-2">
-          <Combobox
-            placeholder="Assign a user"
-            :options="assignableUsers"
-            v-model="newTask.doc.assigned_to"
-          />
-          <DatePicker
-            v-model="newTask.doc.due_date"
-            placeholder="Set due date"
-            format="D MMM, YYYY"
-          />
-          <Combobox
-            placeholder="Select space"
-            :options="spaceOptions"
-            v-model="newTask.doc.project"
-          />
-          <Dropdown class="w-full" :options="statusOptions()">
-            <Button>
-              <template #prefix v-if="newTask.doc.status">
-                <TaskStatusIcon :status="newTask.doc.status" />
-              </template>
-              {{ newTask.doc.status }}
-            </Button>
-          </Dropdown>
-        </div>
-        <ErrorMessage class="mt-2" :message="newTask.error" />
+        <Combobox
+          placeholder="Select space"
+          :options="spaceOptions"
+          v-model="newTask.doc.project"
+        />
+        <Dropdown class="w-full" :options="statusOptions()">
+          <Button>
+            <template #prefix v-if="newTask.doc.status">
+              <TaskStatusIcon :status="newTask.doc.status" />
+            </template>
+            {{ newTask.doc.status }}
+          </Button>
+        </Dropdown>
       </div>
-    </template>
+      <ErrorMessage class="mt-2" :message="newTask.error" />
+    </div>
+
     <template #actions>
       <Button class="w-full relative" variant="solid" @click="onCreateClick">
         Create
@@ -59,7 +54,7 @@
   </Dialog>
 </template>
 <script setup lang="ts">
-import { computed, h, useTemplateRef, watch } from 'vue'
+import { computed, h } from 'vue'
 import { Dialog, FormControl, Dropdown, Combobox, DatePicker } from 'frappe-ui'
 import TaskStatusIcon from './TaskStatusIcon.vue'
 import { activeUsers } from '@/data/users'
@@ -68,7 +63,6 @@ import { showDialog, newTask, _onSuccess } from './state'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import KeyboardShortcut from '../KeyboardShortcut.vue'
 
-const titleInput = useTemplateRef('titleInput')
 let spaceOptions = useGroupedSpaceOptions({ filterFn: (space) => !space.archived_at })
 
 function statusOptions() {
@@ -113,13 +107,5 @@ function onCreateClick(e: KeyboardEvent) {
 
 let disableOutsideClickToClose = computed(() => {
   return newTask.value?.loading || newTask.value?.doc?.title != ''
-})
-
-watch(showDialog, (val) => {
-  if (val) {
-    setTimeout(() => {
-      titleInput.value.$el?.querySelector('input')?.focus()
-    }, 100)
-  }
 })
 </script>

@@ -87,23 +87,21 @@
           </div>
         </button>
       </ul>
-      <Dialog :options="{ title: 'Create project' }" v-model="createNewProjectDialog">
-        <template #body-content>
-          <div class="space-y-5">
-            <FormControl label="Title" v-model="newProject.title" @keydown.enter="createProject" />
-            <FormControl
-              v-if="!team.doc.is_private"
-              type="select"
-              label="Visibility"
-              :options="[
-                { label: 'Visible to everyone', value: 0 },
-                { label: 'Visible to team members (Private)', value: 1 },
-              ]"
-              v-model="newProject.is_private"
-            />
-            <ErrorMessage :message="projects.insert.error" />
-          </div>
-        </template>
+      <Dialog title="Create project" v-model:open="createNewProjectDialog">
+        <div class="space-y-5">
+          <FormControl label="Title" v-model="newProject.title" @keydown.enter="createProject" />
+          <FormControl
+            v-if="!team.doc.is_private"
+            type="select"
+            label="Visibility"
+            :options="[
+              { label: 'Visible to everyone', value: 0 },
+              { label: 'Visible to team members (Private)', value: 1 },
+            ]"
+            v-model="newProject.is_private"
+          />
+          <ErrorMessage :message="projects.insert.error" />
+        </div>
         <template #actions>
           <Button
             size="md"

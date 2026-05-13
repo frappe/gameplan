@@ -104,69 +104,61 @@
           />
         </div>
         <Dialog
-          :options="{
-            title: 'Edit Project',
-            actions: [
-              {
-                label: 'Save',
-                variant: 'solid',
-                onClick({ close }) {
-                  return project.setValue
-                    .submit({
-                      title: project.doc.title,
-                      is_private: project.doc.is_private,
-                    })
-                    .then(close)
-                },
+          title="Edit Project"
+          :actions="[
+            {
+              label: 'Save',
+              variant: 'solid',
+              onClick({ close }) {
+                return project.setValue
+                  .submit({
+                    title: project.doc.title,
+                    is_private: project.doc.is_private,
+                  })
+                  .then(close)
               },
-            ],
-          }"
-          v-model="projectEditDialog.show"
+            },
+          ]"
+          v-model:open="projectEditDialog.show"
         >
-          <template #body-content>
-            <FormControl
-              class="mb-2"
-              label="Title"
-              v-model="project.doc.title"
-              placeholder="Project title"
-            />
-            <FormControl
-              v-if="!team.doc.is_private"
-              label="Visibility"
-              type="select"
-              :options="[
-                { label: 'Visible to everyone', value: 0 },
-                { label: 'Visible to team members (Private)', value: 1 },
-              ]"
-              v-model="project.doc.is_private"
-            />
-            <ErrorMessage class="mt-2" :message="project.setValue.error" />
-          </template>
+          <FormControl
+            class="mb-2"
+            label="Title"
+            v-model="project.doc.title"
+            placeholder="Project title"
+          />
+          <FormControl
+            v-if="!team.doc.is_private"
+            label="Visibility"
+            type="select"
+            :options="[
+              { label: 'Visible to everyone', value: 0 },
+              { label: 'Visible to team members (Private)', value: 1 },
+            ]"
+            v-model="project.doc.is_private"
+          />
+          <ErrorMessage class="mt-2" :message="project.setValue.error" />
         </Dialog>
         <Dialog
-          :options="{
-            title: 'Move project to another team',
-          }"
+          title="Move project to another team"
           @close="
             () => {
               projectMoveDialog.team = null
               project.moveToTeam.reset()
             }
           "
-          v-model="projectMoveDialog.show"
+          v-model:open="projectMoveDialog.show"
         >
-          <template #body-content>
-            <Autocomplete
-              :options="moveToTeamsList"
-              v-model="projectMoveDialog.team"
-              placeholder="Select a team"
-            >
-              <template #item-prefix="{ option }">
-                <span class="mr-2">{{ option.icon }}</span>
-              </template>
-            </Autocomplete>
-            <ErrorMessage class="mt-2" :message="project.moveToTeam.error" />
-          </template>
+          <Autocomplete
+            :options="moveToTeamsList"
+            v-model="projectMoveDialog.team"
+            placeholder="Select a team"
+          >
+            <template #item-prefix="{ option }">
+              <span class="mr-2">{{ option.icon }}</span>
+            </template>
+          </Autocomplete>
+          <ErrorMessage class="mt-2" :message="project.moveToTeam.error" />
           <template #actions>
             <Button
               class="w-full"
@@ -195,35 +187,31 @@
           </template>
         </Dialog>
         <Dialog
-          :options="{
-            title: 'Merge with another project',
-          }"
+          title="Merge with another project"
           @close="
             () => {
               projectMergeDialog.project = null
               project.mergeWithProject.reset()
             }
           "
-          v-model="projectMergeDialog.show"
+          v-model:open="projectMergeDialog.show"
         >
-          <template #body-content>
-            <p class="text-p-base text-ink-gray-7 mb-4">
-              This will move all discussions, tasks, and pages from the
-              <span class="whitespace-nowrap font-semibold">{{ project.doc.title }}</span> project
-              to the selected project. This change is irreversible!
-            </p>
-            {{ projectMergeDialog.project }}
-            <Autocomplete
-              :options="mergeProjectsList"
-              v-model="projectMergeDialog.project"
-              placeholder="Select a project"
-            >
-              <template #item-prefix="{ option }">
-                <span class="mr-2">{{ option.icon }}</span>
-              </template>
-            </Autocomplete>
-            <ErrorMessage class="mt-2" :message="project.mergeWithProject.error" />
-          </template>
+          <p class="text-p-base text-ink-gray-7 mb-4">
+            This will move all discussions, tasks, and pages from the
+            <span class="whitespace-nowrap font-semibold">{{ project.doc.title }}</span> project to
+            the selected project. This change is irreversible!
+          </p>
+          {{ projectMergeDialog.project }}
+          <Autocomplete
+            :options="mergeProjectsList"
+            v-model="projectMergeDialog.project"
+            placeholder="Select a project"
+          >
+            <template #item-prefix="{ option }">
+              <span class="mr-2">{{ option.icon }}</span>
+            </template>
+          </Autocomplete>
+          <ErrorMessage class="mt-2" :message="project.mergeWithProject.error" />
           <template #actions>
             <Button
               class="w-full"
@@ -289,6 +277,7 @@ import {
   Tooltip,
   Select,
   Textarea,
+  dialog,
 } from 'frappe-ui'
 import Pie from '@/components/Pie.vue'
 import IconPicker from '@/components/IconPicker.vue'
@@ -479,40 +468,19 @@ export default {
   },
   methods: {
     archiveProject() {
-      this.$dialog({
+      dialog.confirm({
         title: 'Archive project',
         message: 'Are you sure you want to archive this project?',
-        actions: [
-          {
-            label: 'Archive',
-            variant: 'solid',
-            onClick: (close) => {
-              return this.project.archive.submit(null, {
-                onSuccess: close,
-              })
-            },
-          },
-        ],
+        confirmLabel: 'Archive',
+        onConfirm: () => this.project.archive.submit(),
       })
     },
     unarchiveProject() {
-      this.$dialog({
+      dialog.confirm({
         title: 'Unarchive Project',
         message: 'Are you sure you want to unarchive this project?',
-        actions: [
-          {
-            label: 'Unarchive',
-            variant: 'solid',
-            onClick: (close) => {
-              return this.project.unarchive.submit(null, {
-                onSuccess: close,
-              })
-            },
-          },
-          {
-            label: 'Cancel',
-          },
-        ],
+        confirmLabel: 'Unarchive',
+        onConfirm: () => this.project.unarchive.submit(),
       })
     },
     onProjectMove() {

@@ -1,8 +1,6 @@
 <template>
-  <Dialog :options="{ title: 'Change category title' }" v-model="show">
-    <template #body-content>
-      <FormControl label="Title" v-model="categoryTitle" v-focus:autoselect />
-    </template>
+  <Dialog title="Change category title" v-model:open="show">
+    <FormControl label="Title" v-model="categoryTitle" autofocus />
     <template #actions>
       <div class="flex justify-end">
         <Button
@@ -22,7 +20,6 @@
 import { ref, watch } from 'vue'
 import { Dialog, FormControl, Button } from 'frappe-ui'
 import { useDoctype } from 'frappe-ui'
-import { vFocus } from '@/directives'
 import type { GPTeam } from '@/types/doctypes'
 import type { GroupedSpaceItem } from '@/data/groupedSpaces'
 

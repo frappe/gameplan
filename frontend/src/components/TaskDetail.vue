@@ -24,25 +24,7 @@
             :options="[
               {
                 label: 'Delete',
-                onClick: () => {
-                  $dialog({
-                    title: 'Delete task',
-                    message: 'Are you sure you want to delete this task?',
-                    actions: [
-                      {
-                        label: 'Delete',
-                        theme: 'red',
-                        variant: 'solid',
-                        onClick({ close }) {
-                          return task.delete.submit().then(() => {
-                            close()
-                            $router.back()
-                          })
-                        },
-                      },
-                    ],
-                  })
-                },
+                onClick: deleteTask,
               },
             ]"
           />
@@ -176,7 +158,7 @@ import CommentsList from '@/components/CommentsList.vue'
 import TaskStatusIcon from '@/components/NewTaskDialog/TaskStatusIcon.vue'
 import TaskPriorityIcon from '@/components/icons/TaskPriorityIcon.vue'
 import DropdownMoreOptions from './DropdownMoreOptions.vue'
-import { Dropdown, LoadingText, DatePicker, Button, Combobox } from 'frappe-ui'
+import { Dropdown, LoadingText, DatePicker, Button, Combobox, dialog } from 'frappe-ui'
 import { vFocus } from '@/directives'
 import { activeUsers } from '@/data/users'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
@@ -191,6 +173,17 @@ const router = useRouter()
 const route = useRoute()
 
 const task = useTask(() => props.taskId)
+
+function deleteTask() {
+  dialog.danger({
+    title: 'Delete task',
+    message: 'Are you sure you want to delete this task?',
+    onConfirm: async () => {
+      await task.delete.submit()
+      router.back()
+    },
+  })
+}
 
 task.onSuccess((doc) => {
   if (['Task', 'SpaceTask'].includes(route.name as string) && route.params.taskId === doc.name) {

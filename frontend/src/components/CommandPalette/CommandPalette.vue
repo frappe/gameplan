@@ -1,95 +1,89 @@
 <template>
-  <Dialog
-    v-model="show"
-    :options="{ size: 'xl', position: 'top' }"
-    @after-leave="filteredOptions = []"
-  >
-    <template #body>
-      <div class="flex flex-col">
+  <Dialog v-model:open="show" size="xl" position="top" bare @after-leave="filteredOptions = []">
+    <div class="flex flex-col">
+      <div class="relative">
         <div class="relative">
-          <div class="relative">
-            <div class="absolute inset-y-0 left-0 flex items-center pl-4.5">
-              <span class="lucide-search h-4 w-4 text-ink-gray-6" />
-            </div>
-            <input
-              ref="inputRef"
-              type="text"
-              placeholder="Search"
-              class="w-full border-none bg-transparent py-3 pl-11.5 pr-4.5 text-base text-ink-gray-7 placeholder-ink-gray-4 focus:ring-0"
-              @input="onInput"
-              @keydown="onKeyDown"
-              v-model="query"
-              autocomplete="off"
-            />
+          <div class="absolute inset-y-0 left-0 flex items-center pl-4.5">
+            <span class="lucide-search h-4 w-4 text-ink-gray-6" />
           </div>
-          <div
-            ref="scrollContainerRef"
-            class="max-h-96 overflow-auto border-t border-outline-gray-1 dark:border-outline-gray-2"
-            @click="inputRef?.focus()"
-          >
-            <div
-              class="mb-2 mt-4.5 first:mt-3"
-              v-for="group in groupedSearchResults"
-              :key="group.title"
-            >
-              <div class="mb-2.5 px-4.5 text-base text-ink-gray-5" v-if="!group.hideTitle">
-                {{ group.title }}
-              </div>
-              <div
-                v-for="item in group.items"
-                :key="`${item.doctype}:${item.name}`"
-                class="px-2.5"
-                :class="{ 'pointer-events-none opacity-50': item.disabled }"
-              >
-                <div
-                  @click="onSelection(item)"
-                  @mouseover="onItemHover(item)"
-                  class="rounded"
-                  :class="[item.isActive ? 'bg-surface-gray-3' : '']"
-                  :ref="
-                    (el) => {
-                      if (item.isActive) activeItemRef = el as HTMLDivElement
-                    }
-                  "
-                >
-                  <component v-if="group.component" :is="group.component" :item="item" />
-                  <Item v-else :item="item" />
-                </div>
-              </div>
-            </div>
-          </div>
+          <input
+            ref="inputRef"
+            type="text"
+            placeholder="Search"
+            class="w-full border-none bg-transparent py-3 pl-11.5 pr-4.5 text-base text-ink-gray-7 placeholder-ink-gray-4 focus:ring-0"
+            @input="onInput"
+            @keydown="onKeyDown"
+            v-model="query"
+            autocomplete="off"
+          />
         </div>
         <div
-          class="mt-2 flex items-center justify-between border-t border-outline-gray-1 px-2.5 py-2 text-xs text-ink-gray-6 dark:border-outline-gray-2"
+          ref="scrollContainerRef"
+          class="max-h-96 overflow-auto border-t border-outline-gray-1 dark:border-outline-gray-2"
+          @click="inputRef?.focus()"
         >
-          <div class="flex items-center gap-4">
-            <div class="flex items-center gap-1">
-              <KeyboardShortcut bg>
-                <span class="lucide-arrow-down size-4" />
-              </KeyboardShortcut>
-              <KeyboardShortcut bg>
-                <span class="lucide-arrow-up size-4" />
-              </KeyboardShortcut>
-              <span class="ml-1">to navigate</span>
+          <div
+            class="mb-2 mt-4.5 first:mt-3"
+            v-for="group in groupedSearchResults"
+            :key="group.title"
+          >
+            <div class="mb-2.5 px-4.5 text-base text-ink-gray-5" v-if="!group.hideTitle">
+              {{ group.title }}
             </div>
-            <div class="flex items-center gap-1">
-              <KeyboardShortcut bg>
-                <span class="lucide-corner-down-left size-4" />
-              </KeyboardShortcut>
-              <span class="ml-1">to select</span>
+            <div
+              v-for="item in group.items"
+              :key="`${item.doctype}:${item.name}`"
+              class="px-2.5"
+              :class="{ 'pointer-events-none opacity-50': item.disabled }"
+            >
+              <div
+                @click="onSelection(item)"
+                @mouseover="onItemHover(item)"
+                class="rounded"
+                :class="[item.isActive ? 'bg-surface-gray-3' : '']"
+                :ref="
+                  (el) => {
+                    if (item.isActive) activeItemRef = el as HTMLDivElement
+                  }
+                "
+              >
+                <component v-if="group.component" :is="group.component" :item="item" />
+                <Item v-else :item="item" />
+              </div>
             </div>
-            <div class="flex items-center gap-1">
-              <KeyboardShortcut bg>esc</KeyboardShortcut>
-              <span class="ml-1">to close</span>
-            </div>
-          </div>
-          <div class="flex items-center gap-1">
-            <KeyboardShortcut bg ctrl>K</KeyboardShortcut>
-            <span class="ml-1">to open</span>
           </div>
         </div>
       </div>
-    </template>
+      <div
+        class="mt-2 flex items-center justify-between border-t border-outline-gray-1 px-2.5 py-2 text-xs text-ink-gray-6 dark:border-outline-gray-2"
+      >
+        <div class="flex items-center gap-4">
+          <div class="flex items-center gap-1">
+            <KeyboardShortcut bg>
+              <span class="lucide-arrow-down size-4" />
+            </KeyboardShortcut>
+            <KeyboardShortcut bg>
+              <span class="lucide-arrow-up size-4" />
+            </KeyboardShortcut>
+            <span class="ml-1">to navigate</span>
+          </div>
+          <div class="flex items-center gap-1">
+            <KeyboardShortcut bg>
+              <span class="lucide-corner-down-left size-4" />
+            </KeyboardShortcut>
+            <span class="ml-1">to select</span>
+          </div>
+          <div class="flex items-center gap-1">
+            <KeyboardShortcut bg>esc</KeyboardShortcut>
+            <span class="ml-1">to close</span>
+          </div>
+        </div>
+        <div class="flex items-center gap-1">
+          <KeyboardShortcut bg ctrl>K</KeyboardShortcut>
+          <span class="ml-1">to open</span>
+        </div>
+      </div>
+    </div>
   </Dialog>
 </template>
 

@@ -1,12 +1,11 @@
 import { ref, computed, onMounted, provide, inject, watch, type InjectionKey } from 'vue'
 import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
 import { useLocalStorage } from '@vueuse/core'
-import { useDoc, useNewDoc, useDoctype } from 'frappe-ui'
+import { useDoc, useNewDoc, useDoctype, dialog } from 'frappe-ui'
 import { debounce } from 'frappe-ui'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { useSessionUser, useUser } from '@/data/users'
 import { tags } from '@/data/tags'
-import { createDialog } from '@/utils/dialogs'
 import type { TextEditorRef, DraftDocumentCallback, DraftDocument, DraftMethods } from './types'
 import type { GPDraft, GPDiscussion } from '@/types/doctypes'
 
@@ -279,42 +278,29 @@ export function useNewDiscussion(textEditorRef?: TextEditorRef) {
   }
 
   function deleteDraft() {
-    createDialog({
+    dialog.danger({
       title: 'Delete draft',
       message: 'Are you sure you want to delete this draft?',
-      actions: [
-        {
-          label: 'Delete draft',
-          onClick: ({ close }) => {
-            return draftDoc.value?.delete.submit().then(() => {
-              resetValues()
-              isDeletingDraft.value = true
-              close()
-              router.back()
-            })
-          },
-          variant: 'solid',
-        },
-      ],
+      confirmLabel: 'Delete draft',
+      onConfirm: async () => {
+        await draftDoc.value?.delete.submit()
+        resetValues()
+        isDeletingDraft.value = true
+        router.back()
+      },
     })
   }
 
   function discard() {
     if (!textEditorRef?.value?.editor?.isEmpty || draftData.value.title) {
-      createDialog({
+      dialog.danger({
         title: 'Discard post',
         message: 'Are you sure you want to discard your post?',
-        actions: [
-          {
-            label: 'Discard post',
-            onClick: ({ close }) => {
-              resetValues()
-              router.back()
-              close()
-            },
-            variant: 'solid',
-          },
-        ],
+        confirmLabel: 'Discard post',
+        onConfirm: () => {
+          resetValues()
+          router.back()
+        },
       })
     } else {
       router.back()
@@ -364,33 +350,24 @@ export function useNewDiscussion(textEditorRef?: TextEditorRef) {
         return
       }
       if (isDraftChanged.value) {
-        createDialog({
+        // Save Draft → onConfirm; Discard / Escape / outside-click → onCancel.
+        dialog.confirm({
           title: 'Unsaved Changes',
           message: 'You have unsaved changes. Do you want to save them before leaving?',
-          actions: [
-            {
-              label: 'Discard',
-              variant: 'subtle',
-              onClick: ({ close }) => {
-                resetValues()
-                close()
-                next()
-              },
-            },
-            {
-              label: 'Save Draft',
-              variant: 'solid',
-              onClick: async ({ close }) => {
-                try {
-                  immediateSave()
-                  close()
-                  next()
-                } catch (e) {
-                  console.error('Failed to save draft before leaving:', e)
-                }
-              },
-            },
-          ],
+          confirmLabel: 'Save Draft',
+          cancelLabel: 'Discard',
+          onConfirm: () => {
+            try {
+              immediateSave()
+            } catch (e) {
+              console.error('Failed to save draft before leaving:', e)
+            }
+            next()
+          },
+          onCancel: () => {
+            resetValues()
+            next()
+          },
         })
       } else {
         next()

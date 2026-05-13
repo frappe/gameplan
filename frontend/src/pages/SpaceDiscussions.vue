@@ -50,22 +50,19 @@
       @toggle-selection="toggleSelection"
     />
     <Dialog
-      :options="{
-        title: 'Move discussions to another space',
-      }"
+      title="Move discussions to another space"
       @close="resetMoveDialog"
-      v-model="showMoveDialog"
+      v-model:open="showMoveDialog"
     >
-      <template #body-content>
-        <Combobox
-          :options="spaceOptions"
-          v-model="selectedSpace"
-          placeholder="Select a space"
-          open-on-focus
-          v-focus
-        />
-        <ErrorMessage class="mt-2" :message="bulkMoveDiscussions.error" />
-      </template>
+      <Combobox
+        :options="spaceOptions"
+        v-model="selectedSpace"
+        placeholder="Select a space"
+        class="w-full"
+        open-on-click
+        autofocus
+      />
+      <ErrorMessage class="mt-2" :message="bulkMoveDiscussions.error" />
       <template #actions>
         <Button
           class="w-full"
@@ -89,7 +86,6 @@ import SpaceTabs from '@/components/SpaceTabs.vue'
 import DropdownMoreOptions from '@/components/DropdownMoreOptions.vue'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { useSpace, spaces } from '@/data/spaces'
-import { vFocus } from '@/directives'
 
 interface BulkUpdateResponse {
   moved: string[]

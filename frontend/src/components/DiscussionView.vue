@@ -146,25 +146,23 @@
           ref="commentsArea"
         />
         <Dialog
-          :options="{
-            title: 'Move discussion to another space',
-          }"
+          title="Move discussion to another space"
           @close="
             () => {
               discussionMoveDialog.project = null
-              // discussion.moveToProject.reset()
             }
           "
-          v-model="discussionMoveDialog.show"
+          v-model:open="discussionMoveDialog.show"
         >
-          <template #body-content>
-            <Combobox
-              :options="spaceOptions"
-              v-model="discussionMoveDialog.project"
-              placeholder="Select a project"
-            />
-            <ErrorMessage class="mt-2" :message="discussion.moveToProject.error" />
-          </template>
+          <Combobox
+            :options="spaceOptions"
+            v-model="discussionMoveDialog.project"
+            placeholder="Select a project"
+            class="w-full"
+            autofocus
+            open-on-click
+          />
+          <ErrorMessage class="mt-2" :message="discussion.moveToProject.error" />
           <template #actions>
             <Button
               class="w-full"
@@ -181,35 +179,31 @@
           </template>
         </Dialog>
         <Dialog
-          :options="{
-            title: 'Pin discussion',
-          }"
+          title="Pin discussion"
           @close="
             () => {
               pinDialog.show = false
               pinDialog.pinGlobally = false
             }
           "
-          v-model="pinDialog.show"
+          v-model:open="pinDialog.show"
         >
-          <template #body-content>
-            <p class="text-p-base text-ink-gray-6 mb-3">
-              When a discussion is pinned, it shows up on top of the discussion list.
-            </p>
+          <p class="text-p-base text-ink-gray-6 mb-3">
+            When a discussion is pinned, it shows up on top of the discussion list.
+          </p>
 
-            <div class="space-y-2">
-              <label class="flex items-center justify-between">
-                <div>
-                  <div class="text-base font-medium text-ink-gray-9 mb-1">Pin Globally</div>
-                  <div class="text-sm text-ink-gray-5" v-if="pinDialog.pinGlobally">
-                    Show in all discussions
-                  </div>
-                  <div class="text-sm text-ink-gray-5" v-else>Show in {{ space?.title }} only</div>
+          <div class="space-y-2">
+            <label class="flex items-center justify-between">
+              <div>
+                <div class="text-base font-medium text-ink-gray-9 mb-1">Pin Globally</div>
+                <div class="text-sm text-ink-gray-5" v-if="pinDialog.pinGlobally">
+                  Show in all discussions
                 </div>
-                <Switch size="sm" v-model="pinDialog.pinGlobally" />
-              </label>
-            </div>
-          </template>
+                <div class="text-sm text-ink-gray-5" v-else>Show in {{ space?.title }} only</div>
+              </div>
+              <Switch size="sm" v-model="pinDialog.pinGlobally" />
+            </label>
+          </div>
           <template #actions>
             <div class="flex">
               <Button
@@ -263,6 +257,7 @@ import {
   usePageMeta,
   dayjsLocal,
   Switch,
+  dialog,
 } from 'frappe-ui'
 import { until } from '@vueuse/core'
 import Reactions from './Reactions.vue'
@@ -277,7 +272,6 @@ import { useSpace } from '@/data/spaces'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { useDiscussion } from '@/data/discussions'
 import { tags } from '@/data/tags'
-import { createDialog } from '@/utils/dialogs'
 import { useScrollPosition } from '@/utils/scrollContainer'
 import { isMobile } from '@/composables/isMobile'
 import { useRichQuoteHandler } from '@/components/RichQuoteExtension/useRichQuoteHandler'
@@ -478,17 +472,12 @@ const actions = computed(() => [
           ? 'This discussion is pinned globally across all spaces.'
           : `This discussion is pinned in ${space.value?.title} only.`
 
-      createDialog({
+      dialog.confirm({
         title: 'Unpin discussion',
         message: `${scopeText} Do you want to unpin it?`,
-        icon: { name: 'arrow-down-left' },
-        actions: [
-          {
-            label: 'Unpin',
-            onClick: ({ close }) => discussion.unpinDiscussion.submit().then(close),
-            variant: 'solid',
-          },
-        ],
+        icon: 'lucide-arrow-down-left',
+        confirmLabel: 'Unpin',
+        onConfirm: () => discussion.unpinDiscussion.submit(),
       })
     },
   },
@@ -497,18 +486,13 @@ const actions = computed(() => [
     icon: 'lock',
     condition: () => !discussion.doc?.closed_at,
     onClick: () => {
-      createDialog({
+      dialog.confirm({
         title: 'Close discussion',
         message:
           'When a discussion is closed, commenting is disabled. Anyone can re-open the discussion later. Do you want to close this discussion?',
-        icon: { name: 'lock' },
-        actions: [
-          {
-            label: 'Close',
-            onClick: ({ close }) => discussion.closeDiscussion.submit().then(close),
-            variant: 'solid',
-          },
-        ],
+        icon: 'lucide-lock',
+        confirmLabel: 'Close',
+        onConfirm: () => discussion.closeDiscussion.submit(),
       })
     },
   },
@@ -517,17 +501,12 @@ const actions = computed(() => [
     icon: 'unlock',
     condition: () => discussion.doc?.closed_at,
     onClick: () => {
-      createDialog({
+      dialog.confirm({
         title: 'Re-open discussion',
         message: 'Do you want to re-open this discussion? Anyone can comment on it again.',
-        icon: { name: 'unlock' },
-        actions: [
-          {
-            label: 'Re-open',
-            onClick: ({ close }) => discussion.reopenDiscussion.submit().then(close),
-            variant: 'solid',
-          },
-        ],
+        icon: 'lucide-unlock',
+        confirmLabel: 'Re-open',
+        onConfirm: () => discussion.reopenDiscussion.submit(),
       })
     },
   },
@@ -549,22 +528,13 @@ const actions = computed(() => [
     icon: 'trash',
     condition: () => !!discussion.doc?.owner && isSessionUser(discussion.doc.owner),
     onClick: () => {
-      createDialog({
+      dialog.danger({
         title: 'Delete',
         message: 'Are you sure you want to delete this post? This is irreversible!',
-        actions: [
-          {
-            label: 'Delete',
-            variant: 'solid',
-            theme: 'red',
-            onClick: ({ close }) => {
-              return discussion.delete.submit().then(() => {
-                router.replace({ name: 'Space' })
-                close()
-              })
-            },
-          },
-        ],
+        onConfirm: async () => {
+          await discussion.delete.submit()
+          router.replace({ name: 'Space' })
+        },
       })
     },
   },

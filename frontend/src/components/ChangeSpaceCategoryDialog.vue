@@ -1,20 +1,14 @@
 <template>
-  <Dialog
-    :options="{
-      title: 'Change Category',
-    }"
-    @after-leave="() => (selectedTeam = null)"
-    v-model="show"
-  >
-    <template #body-content>
-      <Combobox
-        :options="teamOptions"
-        v-model="selectedTeam"
-        placeholder="Select a category"
-        v-focus
-      />
-      <ErrorMessage class="mt-2" :message="spaces.runDocMethod.error" />
-    </template>
+  <Dialog title="Change Category" @after-leave="setCurrentTeam" v-model:open="show">
+    <Combobox
+      :options="teamOptions"
+      v-model="selectedTeam"
+      placeholder="Select a category"
+      class="w-full"
+      open-on-click
+      autofocus
+    />
+    <ErrorMessage class="mt-2" :message="spaces.runDocMethod.error" />
     <template #actions>
       <Button
         class="w-full"
@@ -35,7 +29,6 @@ import { activeTeams } from '@/data/teams'
 import { useSpace } from '@/data/spaces'
 import { useDoctype } from 'frappe-ui'
 import { GPProject } from '@/types/doctypes'
-import { vFocus } from '@/directives'
 
 const props = defineProps<{
   spaceId: string
@@ -52,10 +45,19 @@ const teamOptions = computed(() => {
   }))
 })
 
-const selectedTeam = ref<string | null>(space.value?.team?.toString() ?? null)
+const selectedTeam = ref<string | null>(null)
 const selectedTeamLabel = computed(() => {
   return teamOptions.value.find((team) => team.value === selectedTeam.value)?.label ?? ''
 })
+
+setCurrentTeam()
+
+function setCurrentTeam() {
+  let currentTeam = space.value?.team?.toString()
+  if (currentTeam) {
+    selectedTeam.value = currentTeam
+  }
+}
 
 function submit() {
   spaces.runDocMethod

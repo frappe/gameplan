@@ -2049,7 +2049,7 @@ framer-motion@^12.25.0:
 
 frappe-ui@frappe/frappe-ui#main:
   version "0.1.278"
-  resolved "https://codeload.github.com/frappe/frappe-ui/tar.gz/70dd3e7a03a12f3bc758c9e44df7ada5a4140e05"
+  resolved "https://codeload.github.com/frappe/frappe-ui/tar.gz/9167ae61a9cc839bf14df58bf778b737af53e2cc"
   dependencies:
     "@floating-ui/dom" "^1.7.4"
     "@floating-ui/vue" "^1.1.6"

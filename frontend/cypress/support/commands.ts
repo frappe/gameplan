@@ -122,10 +122,24 @@ Cypress.Commands.add('dialog', (selector: string) => {
 
 Cypress.Commands.add('selectCombobox', (placeholder: string, option: string) => {
   const inputSelector = `input[placeholder="${placeholder}"][role="combobox"]:visible`
+  const buttonSelector = `button[aria-haspopup="listbox"]`
+
+  // Retry until either an input-mode trigger or a button-mode trigger is present.
+  // Dialog-hosted comboboxes mount via reka-ui's DialogPortal after a tick, so a
+  // one-shot DOM check can miss them.
+  cy.get('body').should(($body) => {
+    const hasInput = $body.find(inputSelector).length > 0
+    const hasButton = $body
+      .find(buttonSelector)
+      .filter((_, el) => Cypress.$(el).is(':visible') && el.textContent?.includes(placeholder))
+      .length > 0
+    expect(hasInput || hasButton, `trigger for "${placeholder}" mounted`).to.be.true
+  })
+
   cy.get('body').then(($body) => {
     if (!$body.find(inputSelector).length) {
       // Button-mode trigger: open the popover so the search input mounts.
-      cy.contains('button[aria-haspopup="listbox"]', placeholder).click()
+      cy.contains(buttonSelector, placeholder).click()
     }
   })
 

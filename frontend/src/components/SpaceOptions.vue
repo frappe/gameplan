@@ -12,13 +12,12 @@
 </template>
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { useDoctype } from 'frappe-ui'
+import { useDoctype, dialog } from 'frappe-ui'
 import DropdownMoreOptions from './DropdownMoreOptions.vue'
 import MergeSpaceDialog from './MergeSpaceDialog.vue'
 import ChangeSpaceCategoryDialog from './ChangeSpaceCategoryDialog.vue'
 import EditSpaceDialog from './EditSpaceDialog.vue'
 import ManageMembersDialog from './ManageMembersDialog.vue'
-import { createDialog } from '@/utils/dialogs'
 import { useSpace, hasJoined, joinSpace, leaveSpace } from '@/data/spaces'
 import { markSpaceAsRead } from '@/data/unreadCount'
 import { GPProject } from '@/types/doctypes'
@@ -50,19 +49,12 @@ const options = computed(() => [
     label: 'Mark all as read',
     icon: 'lucide-check',
     onClick: () => {
-      createDialog({
+      dialog.confirm({
         title: 'Are you sure?',
         message:
           'This action will mark all discussions in this space as read. This action cannot be undone.',
-        actions: [
-          {
-            label: 'Mark all as read',
-            variant: 'solid',
-            onClick: ({ close }) => {
-              return markSpaceAsRead(props.spaceId).then(close)
-            },
-          },
-        ],
+        confirmLabel: 'Mark all as read',
+        onConfirm: () => markSpaceAsRead(props.spaceId),
       })
     },
     condition: () => !space.value?.archived_at,
@@ -102,25 +94,12 @@ const options = computed(() => [
     label: 'Archive',
     icon: 'lucide-archive',
     onClick: () => {
-      createDialog({
+      dialog.confirm({
         title: 'Archive space',
         message:
           'You cannot create new discussions, pages or tasks in an archived space. It will remain read-only. You can unarchive it again at any time.',
-        actions: [
-          {
-            label: 'Archive',
-            variant: 'solid',
-            loading: spaces.runDocMethod.loading,
-            onClick: ({ close }) => {
-              spaces.runDocMethod
-                .submit({
-                  method: 'archive',
-                  name: props.spaceId,
-                })
-                .then(close)
-            },
-          },
-        ],
+        confirmLabel: 'Archive',
+        onConfirm: () => spaces.runDocMethod.submit({ method: 'archive', name: props.spaceId }),
       })
     },
     condition: () => !space.value?.archived_at,
@@ -135,18 +114,10 @@ const options = computed(() => [
       } else if (space.value?.discussions_count) {
         message = `This will permanently delete the space and all its content. This space has ${space.value?.discussions_count} discussions. This action cannot be undone.`
       }
-      createDialog({
+      dialog.danger({
         title: 'Delete space',
         message,
-        actions: [
-          {
-            label: 'Delete',
-            theme: 'red',
-            variant: 'solid',
-            loading: spaces.delete.loading,
-            onClick: ({ close }) => spaces.delete.submit({ name: props.spaceId }).then(close),
-          },
-        ],
+        onConfirm: () => spaces.delete.submit({ name: props.spaceId }),
       })
     },
     condition: () => !space.value?.archived_at,

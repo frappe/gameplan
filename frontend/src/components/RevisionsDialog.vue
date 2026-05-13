@@ -1,62 +1,60 @@
 <template>
-  <Dialog v-if="!isMobile" :options="{ title, size: '5xl' }" v-model="showDialog">
-    <template #body-content>
-      <div v-if="orderedRevisions.length" class="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
-        <div class="">
-          <div class="max-h-[60vh] space-y-1 -m-1 p-1 overflow-y-auto" role="listbox">
-            <button
-              v-for="(revision, index) in orderedRevisions"
-              :key="`${revision.creation}-${index}`"
-              class="w-full rounded-md px-3 py-2 text-left last:border-b-0 transition-colors focus:outline-none focus-visible:ring focus-visible:ring-outline-gray-2"
-              role="option"
-              :aria-selected="index === currentRevisionIndex"
-              :aria-label="`Revision from ${dayjsLocal(revision.creation).format('LLL')}`"
-              :class="
-                index === currentRevisionIndex
-                  ? 'bg-surface-gray-2 hover:bg-surface-gray-3 text-ink-gray-9'
-                  : 'text-ink-gray-7 hover:bg-surface-gray-1'
-              "
-              type="button"
-              @click="currentRevisionIndex = index"
-            >
-              <div class="text-sm font-medium">
-                {{ dayjsLocal(revision.creation).format('LLL') }}
-              </div>
-              <div class="mt-0.5 text-sm text-ink-gray-5">{{ revision.owner }}</div>
-            </button>
-          </div>
-        </div>
-        <div class="min-w-0">
-          <div class="mb-2 flex items-center text-base" v-if="currentRevision">
-            <UserInfo :email="currentRevision.owner" v-slot="{ user }">
-              <UserProfileLink class="mr-3" :user="user.name">
-                <UserAvatar :user="user.name" />
-              </UserProfileLink>
-              <div class="space-y-0.5">
-                <UserProfileLink
-                  class="font-medium text-ink-gray-8 hover:text-ink-blue-4"
-                  :user="user.name"
-                >
-                  {{ user.full_name }}
-                </UserProfileLink>
-                <time
-                  class="block text-ink-gray-5"
-                  :datetime="currentRevision.creation"
-                  :title="dayjsLocal(currentRevision.creation)"
-                >
-                  {{ dayjsLocal(currentRevision.creation).format('LLL') }}
-                </time>
-              </div>
-            </UserInfo>
-          </div>
-          <div
-            v-if="currentRevision"
-            v-html="htmlDiff"
-            class="ProseMirror max-w-none prose prose-v3 rounded-md prose-table:table-fixed prose-th:relative prose-th:border prose-th:border-outline-gray-2 prose-th:bg-surface-gray-2 prose-th:p-2 prose-td:relative prose-td:border prose-td:border-outline-gray-2 prose-td:p-2"
-          />
+  <Dialog v-if="!isMobile" :title="title" size="5xl" v-model:open="showDialog">
+    <div v-if="orderedRevisions.length" class="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
+      <div class="">
+        <div class="max-h-[60vh] space-y-1 -m-1 p-1 overflow-y-auto" role="listbox">
+          <button
+            v-for="(revision, index) in orderedRevisions"
+            :key="`${revision.creation}-${index}`"
+            class="w-full rounded-md px-3 py-2 text-left last:border-b-0 transition-colors focus:outline-none focus-visible:ring focus-visible:ring-outline-gray-2"
+            role="option"
+            :aria-selected="index === currentRevisionIndex"
+            :aria-label="`Revision from ${dayjsLocal(revision.creation).format('LLL')}`"
+            :class="
+              index === currentRevisionIndex
+                ? 'bg-surface-gray-2 hover:bg-surface-gray-3 text-ink-gray-9'
+                : 'text-ink-gray-7 hover:bg-surface-gray-1'
+            "
+            type="button"
+            @click="currentRevisionIndex = index"
+          >
+            <div class="text-sm font-medium">
+              {{ dayjsLocal(revision.creation).format('LLL') }}
+            </div>
+            <div class="mt-0.5 text-sm text-ink-gray-5">{{ revision.owner }}</div>
+          </button>
         </div>
       </div>
-    </template>
+      <div class="min-w-0">
+        <div class="mb-2 flex items-center text-base" v-if="currentRevision">
+          <UserInfo :email="currentRevision.owner" v-slot="{ user }">
+            <UserProfileLink class="mr-3" :user="user.name">
+              <UserAvatar :user="user.name" />
+            </UserProfileLink>
+            <div class="space-y-0.5">
+              <UserProfileLink
+                class="font-medium text-ink-gray-8 hover:text-ink-blue-4"
+                :user="user.name"
+              >
+                {{ user.full_name }}
+              </UserProfileLink>
+              <time
+                class="block text-ink-gray-5"
+                :datetime="currentRevision.creation"
+                :title="dayjsLocal(currentRevision.creation)"
+              >
+                {{ dayjsLocal(currentRevision.creation).format('LLL') }}
+              </time>
+            </div>
+          </UserInfo>
+        </div>
+        <div
+          v-if="currentRevision"
+          v-html="htmlDiff"
+          class="ProseMirror max-w-none prose prose-v3 rounded-md prose-table:table-fixed prose-th:relative prose-th:border prose-th:border-outline-gray-2 prose-th:bg-surface-gray-2 prose-th:p-2 prose-td:relative prose-td:border prose-td:border-outline-gray-2 prose-td:p-2"
+        />
+      </div>
+    </div>
   </Dialog>
 
   <BottomSheet :title v-else v-model="sheetVisible" @close-complete="handleSheetCloseComplete">

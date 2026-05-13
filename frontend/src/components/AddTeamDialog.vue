@@ -1,27 +1,25 @@
 <template>
-  <Dialog :options="{ title: 'Add Team' }" v-model="showDialog">
-    <template #body-content>
-      <div class="space-y-4">
-        <FormControl
-          label="Team Name"
-          type="text"
-          v-model="newTeam.title"
-          placeholder="Team Name"
-          @keydown.enter="createTeam($event.target.value)"
-          autocomplete="off"
-        />
-        <FormControl
-          type="select"
-          label="Visibility"
-          :options="[
-            { label: 'Visible to everyone', value: 0 },
-            { label: 'Visible to team members (Private)', value: 1 },
-          ]"
-          v-model="newTeam.is_private"
-        />
-        <ErrorMessage :message="teams.insert.error?.messages" />
-      </div>
-    </template>
+  <Dialog title="Add Team" v-model:open="showDialog">
+    <div class="space-y-4">
+      <FormControl
+        label="Team Name"
+        type="text"
+        v-model="newTeam.title"
+        placeholder="Team Name"
+        @keydown.enter="createTeam($event.target.value)"
+        autocomplete="off"
+      />
+      <FormControl
+        type="select"
+        label="Visibility"
+        :options="[
+          { label: 'Visible to everyone', value: 0 },
+          { label: 'Visible to team members (Private)', value: 1 },
+        ]"
+        v-model="newTeam.is_private"
+      />
+      <ErrorMessage :message="teams.insert.error?.messages" />
+    </div>
     <template #actions>
       <Button
         variant="solid"
