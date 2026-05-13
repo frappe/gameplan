@@ -32,7 +32,7 @@
             :options="getDropdownOptions(user)"
             :button="{
               label: getUserRole(user),
-              iconRight: 'chevron-down',
+              iconRight: 'lucide-chevron-down',
               variant: 'ghost',
             }"
             align="end"
