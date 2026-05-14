@@ -12,6 +12,7 @@ interface UserInfo {
   user_image: string
   full_name: string
   user_type: string
+  weekly_digest: boolean
   user_profile: string
   image_background_color: string
   is_image_background_removed: number
@@ -62,6 +63,7 @@ function getPlaceholderUser(email: string, full_name: string) {
     email: email,
     full_name: full_name,
     user_image: '',
+    weekly_digest: false,
     role: 'Gameplan Member',
     enabled: 1,
     user_profile: '',
