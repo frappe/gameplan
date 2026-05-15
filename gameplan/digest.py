@@ -47,7 +47,21 @@ def send_inactivity_digest_weekly():
 		print(f"Error sending inactivity digest: {str(e)}")
 		
 	
+from werkzeug.wrappers import Response
 
+
+@frappe.whitelist(allow_guest=True)
+def preview_digest(user="narayan.gawas@spit.ac.in"):
+	digest = build_user_digest(user)
+
+	user_doc = frappe.get_doc("User", user)
+
+	html = render_digest_email(user_doc, digest)
+
+	return Response(
+		html,
+		content_type="text/html; charset=utf-8",
+	)
 
 def get_inactive_digest_users(inactive_days: int = INACTIVE_DAYS):
 	"""Return opted-in users whose last activity is older than the inactivity threshold.
@@ -94,6 +108,37 @@ def build_user_digest(user: str, window_days: int = DIGEST_WINDOW_DAYS):
 	return digest
 
 
+# def get_new_discussions_in_user_spaces(user: str, window_start):
+# 	return frappe.db.sql(
+# 		"""
+# 		select
+# 			discussion.name,
+# 			discussion.title,
+# 			discussion.slug,
+# 			discussion.project,
+# 			project.title as project_title,
+# 			discussion.owner,
+# 			discussion.creation
+# 		from `tabGP Discussion` discussion
+# 		inner join `tabGP Project` project on project.name = discussion.project
+# 		where discussion.creation >= %(window_start)s
+# 			and discussion.owner != %(user)s
+# 			and project.archived_at is null
+# 			and exists (
+# 				select 1
+# 				from `tabGP Member` member
+# 				where member.parenttype = 'GP Project'
+# 					and member.parent = discussion.project
+# 					and member.user = %(user)s
+# 			)
+# 		order by discussion.creation desc
+# 		limit %(limit)s
+# 		""",
+# 		{"user": user, "window_start": window_start, "limit": DIGEST_LIMIT},
+# 		as_dict=True,
+# 	)
+
+
 def get_new_discussions_in_user_spaces(user: str, window_start):
 	return frappe.db.sql(
 		"""
@@ -106,21 +151,19 @@ def get_new_discussions_in_user_spaces(user: str, window_start):
 			discussion.owner,
 			discussion.creation
 		from `tabGP Discussion` discussion
-		inner join `tabGP Project` project on project.name = discussion.project
+		inner join `tabGP Project` project
+			on project.name = discussion.project
 		where discussion.creation >= %(window_start)s
 			and discussion.owner != %(user)s
 			and project.archived_at is null
-			and exists (
-				select 1
-				from `tabGP Member` member
-				where member.parenttype = 'GP Project'
-					and member.parent = discussion.project
-					and member.user = %(user)s
-			)
 		order by discussion.creation desc
 		limit %(limit)s
 		""",
-		{"user": user, "window_start": window_start, "limit": DIGEST_LIMIT},
+		{
+			"user": user,
+			"window_start": window_start,
+			"limit": DIGEST_LIMIT,
+		},
 		as_dict=True,
 	)
 
@@ -181,19 +224,8 @@ def has_digest_items(digest: dict) -> bool:
 	return any(digest.get(key) for key in ("new_discussions", "thread_replies", "notifications"))
 
 
-# def render_digest_email(user, digest: dict) -> str:
-# 	name = escape(user.full_name or user.name)
-# 	return f"""
-# 		<p>Hi {name},</p>
-# 		<p>You have been away from Gameplan for at least {INACTIVE_DAYS} days. Here is what changed in the last {DIGEST_WINDOW_DAYS} days.</p>
-# 		{render_discussion_list("New discussions in your spaces", digest["new_discussions"])}
-# 		{render_reply_list("Replies on threads you are in", digest["thread_replies"])}
-# 		{render_notification_list("Unread mentions and direct notifications", digest["notifications"])}
-# 		<p><a href="{get_url('/g')}">Open Gameplan</a></p>
-# 	"""
 
 
-```python
 def render_digest_email(user, digest: dict) -> str:
 	name = escape(user.full_name or user.name)
 
@@ -255,7 +287,9 @@ def render_digest_email(user, digest: dict) -> str:
 					">
 						Hi <strong>{name}</strong>,
 						<br /><br />
-						Here’s what changed in the last
+						You've been away from Gameplan for at least
+						<strong>{INACTIVE_DAYS} days</strong>.
+						Here's what changed in the last
 						<strong>{DIGEST_WINDOW_DAYS} days</strong>.
 					</p>
 				</div>
@@ -281,7 +315,7 @@ def render_digest_email(user, digest: dict) -> str:
 					else ""
 				}
 
-				<!-- Sections -->
+				<!-- New Discussions -->
 				{
 					render_discussion_list(
 						"🆕 New discussions in your spaces",
@@ -291,6 +325,7 @@ def render_digest_email(user, digest: dict) -> str:
 					else ""
 				}
 
+				<!-- Thread Replies -->
 				{
 					render_reply_list(
 						"💬 Replies on threads you are in",
@@ -300,6 +335,7 @@ def render_digest_email(user, digest: dict) -> str:
 					else ""
 				}
 
+				<!-- Notifications -->
 				{
 					render_notification_list(
 						"🔔 Unread mentions and notifications",
@@ -349,6 +385,35 @@ def render_digest_email(user, digest: dict) -> str:
 	"""
 
 
+def render_stat_card(label, value):
+	return f"""
+	<div style="
+		flex:1;
+		min-width:160px;
+		background:#f9fafb;
+		border:1px solid #e5e7eb;
+		border-radius:12px;
+		padding:16px;
+	">
+		<div style="
+			font-size:13px;
+			color:#6b7280;
+			margin-bottom:8px;
+		">
+			{label}
+		</div>
+
+		<div style="
+			font-size:28px;
+			font-weight:700;
+			color:#111827;
+		">
+			{value}
+		</div>
+	</div>
+	"""
+
+
 def render_empty_digest():
 	return """
 	<div style="
@@ -385,38 +450,151 @@ def render_empty_digest():
 		</p>
 	</div>
 	"""
-```
+
+
+def render_section(title: str, content: str) -> str:
+	return f"""
+	<div style="margin-bottom:28px;">
+
+		<h2 style="
+			font-size:18px;
+			font-weight:700;
+			margin:0 0 14px 0;
+			color:#111827;
+		">
+			{escape(title)}
+		</h2>
+
+		{content}
+
+	</div>
+	"""
 
 
 def render_discussion_list(title: str, rows: list) -> str:
 	if not rows:
 		return ""
+
 	items = "\n".join(
-		f'<li><a href="{discussion_url(row)}">{escape(row.title)}</a> <span style="color: #667085;">in {escape(row.project_title or "a space")}</span></li>'
+		f'''
+		<a
+			href="{discussion_url(row)}"
+			style="
+				display:block;
+				padding:16px;
+				margin-bottom:12px;
+				border:1px solid #e5e7eb;
+				border-radius:12px;
+				text-decoration:none;
+				background:#ffffff;
+			"
+		>
+			<div style="
+				font-size:15px;
+				font-weight:600;
+				color:#111827;
+				margin-bottom:6px;
+				line-height:1.5;
+			">
+				{escape(row.title)}
+			</div>
+
+			<div style="
+				font-size:13px;
+				color:#6b7280;
+			">
+				in {escape(row.project_title or "a space")}
+			</div>
+		</a>
+		'''
 		for row in rows
 	)
-	return f"<h3>{escape(title)}</h3><ul>{items}</ul>"
+
+	return render_section(title, items)
 
 
 def render_reply_list(title: str, rows: list) -> str:
 	if not rows:
 		return ""
+
 	items = "\n".join(
-		f'<li><a href="{discussion_url(row)}">{escape(row.title)}</a> <span style="color: #667085;">in {escape(row.project_title or "a space")}</span></li>'
+		f'''
+		<a
+			href="{discussion_url(row)}"
+			style="
+				display:block;
+				padding:16px;
+				margin-bottom:12px;
+				border:1px solid #e5e7eb;
+				border-radius:12px;
+				text-decoration:none;
+				background:#ffffff;
+			"
+		>
+			<div style="
+				font-size:15px;
+				font-weight:600;
+				color:#111827;
+				margin-bottom:6px;
+				line-height:1.5;
+			">
+				{escape(row.title)}
+			</div>
+
+			<div style="
+				font-size:13px;
+				color:#6b7280;
+			">
+				New reply in {escape(row.project_title or "a space")}
+			</div>
+		</a>
+		'''
 		for row in rows
 	)
-	return f"<h3>{escape(title)}</h3><ul>{items}</ul>"
+
+	return render_section(title, items)
 
 
 def render_notification_list(title: str, rows: list) -> str:
 	if not rows:
 		return ""
+
 	items = "\n".join(
-		f'<li><a href="{notification_url(row)}">{escape(row.type)}</a>: {escape(strip_html_tags(row.message or ""))}</li>'
+		f'''
+		<a
+			href="{notification_url(row)}"
+			style="
+				display:block;
+				padding:16px;
+				margin-bottom:12px;
+				border:1px solid #e5e7eb;
+				border-radius:12px;
+				text-decoration:none;
+				background:#ffffff;
+			"
+		>
+			<div style="
+				font-size:15px;
+				font-weight:600;
+				color:#111827;
+				margin-bottom:6px;
+			">
+				{escape(row.type or "Notification")}
+			</div>
+
+			<div style="
+				font-size:13px;
+				color:#6b7280;
+				line-height:1.5;
+			">
+				{escape(strip_html_tags(row.message or ""))}
+			</div>
+		</a>
+		'''
 		for row in rows
 	)
-	return f"<h3>{escape(title)}</h3><ul>{items}</ul>"
 
+	return render_section(title, items)
 
 def discussion_url(row) -> str:
 	slug = f"/{row.slug}" if row.get("slug") else ""
