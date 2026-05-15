@@ -16,9 +16,9 @@
 
       <div class="mt-3 flex items-center justify-between gap-4">
         <div>
-          <p class="text-sm font-medium text-ink-gray-8">Weekly digest</p>
+          <p class="text-sm font-medium text-ink-gray-8">Inactivity digest</p>
           <p class="mt-1 text-sm text-ink-gray-5">
-            Get a weekly email summary of updates from your projects if you've been inactive for a while.
+            Email me a catch-up summary when I have been inactive for 7 days.
           </p>
         </div>
 

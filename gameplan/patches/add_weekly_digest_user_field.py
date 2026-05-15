@@ -7,9 +7,9 @@ def execute():
 			"User": [
 				{
 					"fieldname": "weekly_digest",
-					"label": "Weekly Digest",
+					"label": "Inactivity Digest",
 					"fieldtype": "Check",
-					"default": "0",
+					"default": "1",
 					"insert_after": "thread_notify",
 				}
 			]
