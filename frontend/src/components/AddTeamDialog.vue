@@ -1,16 +1,14 @@
 <template>
   <Dialog title="Add Team" v-model:open="showDialog">
     <div class="space-y-4">
-      <FormControl
+      <TextInput
         label="Team Name"
         type="text"
         v-model="newTeam.title"
         placeholder="Team Name"
         @keydown.enter="createTeam($event.target.value)"
-        autocomplete="off"
       />
-      <FormControl
-        type="select"
+      <Select
         label="Visibility"
         :options="[
           { label: 'Visible to everyone', value: 0 },
@@ -33,10 +31,12 @@
   </Dialog>
 </template>
 <script>
+import { Select, TextInput } from 'frappe-ui'
 import { teams } from '@/data/teams'
 
 export default {
   name: 'AddTeamDialog',
+  components: { Select, TextInput },
   props: ['show'],
   emits: ['success', 'update:show'],
   data() {

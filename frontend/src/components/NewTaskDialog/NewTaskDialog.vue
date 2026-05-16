@@ -4,7 +4,6 @@
       <FormControl
         label="Title"
         v-model="newTask.doc.title"
-        autocomplete="off"
         required
         autofocus
         @keydown.enter="onCreateClick"

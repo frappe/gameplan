@@ -127,10 +127,9 @@
             v-model="project.doc.title"
             placeholder="Project title"
           />
-          <FormControl
+          <Select
             v-if="!team.doc.is_private"
             label="Visibility"
-            type="select"
             :options="[
               { label: 'Visible to everyone', value: 0 },
               { label: 'Visible to team members (Private)', value: 1 },

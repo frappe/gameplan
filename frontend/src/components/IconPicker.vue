@@ -19,7 +19,6 @@
                 placeholder="Search by keyword"
                 v-model="search"
                 :debounce="300"
-                autocomplete="off"
               />
             </div>
             <Button @click="setRandom">Random</Button>
