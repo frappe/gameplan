@@ -1,5 +1,5 @@
 <template>
-  <Dialog title="New Task" :dismissable="!disableOutsideClickToClose" v-model:open="showDialog">
+  <Dialog title="New Task" :dismissible="!disableOutsideClickToClose" v-model:open="showDialog">
     <div class="space-y-4" v-if="newTask">
       <FormControl
         label="Title"
