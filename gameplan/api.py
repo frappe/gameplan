@@ -22,7 +22,15 @@ def get_user_info(user=None):
 	users = frappe.qb.get_query(
 		"User",
 		filters=filters,
-		fields=["name", "email", "enabled", "user_image", "full_name", "user_type"],
+		fields=[
+			"name",
+			"email",
+			"enabled",
+			"user_image",
+			"full_name",
+			"user_type",
+			"weekly_digest",
+		],
 		order_by="full_name asc",
 		distinct=True,
 	).run(as_dict=1)
@@ -77,6 +85,16 @@ def get_user_info(user=None):
 		user.comments_count_3m = comment_count_map.get(user.name, 0)
 
 	return users
+
+
+@frappe.whitelist()
+@validate_type
+def update_weekly_digest(weekly_digest: bool):
+	if frappe.session.user == "Guest":
+		frappe.throw("Authentication failed", exc=frappe.AuthenticationError)
+
+	frappe.db.set_value("User", frappe.session.user, "weekly_digest", weekly_digest)
+	return weekly_digest
 
 
 @frappe.whitelist()

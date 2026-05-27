@@ -30,3 +30,4 @@ gameplan.gameplan.doctype.gp_unread_record.patches.migrate_to_unread_records
 gameplan.gameplan.doctype.gp_pinned_project.patches.delete_pinned_projects_for_archived_spaces
 gameplan.gameplan.doctype.gp_discussion.patches.set_default_pin_scope
 gameplan.gameplan.doctype.gp_comment.patches.backfill_gp_comment_edited_at
+gameplan.patches.add_weekly_digest_user_field

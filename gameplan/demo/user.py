@@ -165,7 +165,37 @@ def generate_users_data():
 			"years_experience": random.randint(1, 15),
 		}
 
+		narayan ={
+			"email": "narayan.gawas@spit.ac.in",
+			"first_name": "Narayan",
+			"last_name": "Gawas",
+			"avatar_url": avatar_url,
+			"department": department,
+			"job_title": job_title,
+			"bio": bio,
+			"readme": readme_content,
+			"location": random.choice(
+				[
+					"San Francisco, CA",
+					"New York, NY",
+					"Austin, TX",
+					"Seattle, WA",
+					"Boston, MA",
+					"London, UK",
+					"Berlin, Germany",
+					"Toronto, Canada",
+					"Remote",
+					"Amsterdam, Netherlands",
+					"Barcelona, Spain",
+					"Sydney, Australia",
+				]
+			),
+			"years_experience": random.randint(1, 15),
+
+		} 
+
 		users.append(user)
+		users.append(narayan)
 
 	return users
 
@@ -279,6 +309,7 @@ def create_user_and_profile(user_data):
 				"last_name": user_data["last_name"],
 				"user_image": user_data.get("avatar_url"),
 				"send_welcome_email": 0,
+				"new_password": "Test@123",
 				"user_type": "System User",
 				"roles": [{"role": "Gameplan Member"}],
 			}
