@@ -16,7 +16,7 @@
           <div class="bg-surface-white">
             <div class="flex items-center -ml-2 pt-2 pb-1">
               <div class="hidden sm:flex transition-opacity duration-100">
-                <TextEditorFixedMenu :buttons="true" />
+                <EditorFixedMenu :editor="editor" :items="gameplanToolbar" />
               </div>
             </div>
           </div>
@@ -34,7 +34,8 @@
 
 <script setup lang="ts">
 import { useTemplateRef } from 'vue'
-import { TextEditorFixedMenu } from 'frappe-ui'
+import { EditorFixedMenu } from 'frappe-ui/editor'
+import { gameplanToolbar } from '@/components/editor/toolbars'
 import TextEditor from '@/components/TextEditor.vue'
 import DiscussionHeader from './DiscussionHeader.vue'
 import DiscussionMetadata from './DiscussionMetadata.vue'

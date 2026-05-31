@@ -95,6 +95,7 @@
           "
           placeholder="Start writing here..."
           :bubbleMenu="true"
+          :suggestions="false"
           ref="textEditor"
         />
       </div>
@@ -105,7 +106,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, useTemplateRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Breadcrumbs, TextEditor, usePageMeta, debounce, dayjsLocal } from 'frappe-ui'
+import { Breadcrumbs, usePageMeta, debounce, dayjsLocal } from 'frappe-ui'
+import TextEditor from '@/components/TextEditor.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import { useDoc, dialog } from 'frappe-ui'
 import { useSpace } from '@/data/spaces'

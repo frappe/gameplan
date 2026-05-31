@@ -15,13 +15,14 @@
       :disabled="sessionUser.name != author.name"
       @input="handleTitleInput"
     />
-    <TextEditorContent :editor="editor" />
+    <EditorContent :editor="editor" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { onMounted, nextTick, useTemplateRef } from 'vue'
-import { ErrorMessage, TextEditorContent } from 'frappe-ui'
+import { ErrorMessage } from 'frappe-ui'
+import { EditorContent } from 'frappe-ui/editor'
 import { useNewDiscussionContext } from './useNewDiscussion'
 import type { TextEditorInstance } from './types'
 

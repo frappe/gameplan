@@ -8,7 +8,7 @@
   </div>
 </template>
 <script>
-import { Avatar, TextEditor } from 'frappe-ui'
+import { Avatar } from 'frappe-ui'
 import Link from '@/components/Link.vue'
 import Reactions from '@/components/Reactions.vue'
 import DiscussionList from '@/components/DiscussionList.vue'
@@ -19,7 +19,6 @@ export default {
   name: 'ProjectDiscussion',
   props: ['team', 'project', 'teamId', 'projectId', 'postId', 'slug'],
   components: {
-    TextEditor,
     Avatar,
     Link,
     Reactions,
