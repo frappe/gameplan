@@ -10,7 +10,6 @@
             ref="searchInput"
             class="flex-1"
             placeholder="Search or press / to focus"
-            autocomplete="off"
             v-focus
             :model-value="query"
             @update:model-value="updateQuery"

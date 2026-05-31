@@ -71,7 +71,8 @@ describe('Task', () => {
         task.due_date = date.toISOString().split('T')[0]
       })
 
-    cy.contains('div', 'Status').next('div').find('button').click()
-    cy.get('[role="menuitem"]:contains("Done"):visible').click()
+    cy.get('body').type('{esc}')
+    cy.contains('div', 'Status').next('div').find('[role="combobox"]').click()
+    cy.get('[role="option"]:contains("Done"):visible').click()
   })
 })

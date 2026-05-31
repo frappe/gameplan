@@ -7,7 +7,7 @@ description = "Team discussion and collaboration tool"
 requires-python = ">=3.10"
 readme = "README.md"
 dynamic = ["version"]
-dependencies = ["faker==37.3.0", "bleach~=6.3.0", "bleach-allowlist~=1.0.3"]
+dependencies = ["faker==37.3.0", "bleach~=6.3.0", "tinycss2~=1.5", "bleach-allowlist~=1.0.3"]
 
 [build-system]
 requires = ["flit_core >=3.4,<4"]

@@ -71,8 +71,8 @@ const newPage = useNewDoc<GPPage>('GP Page', {
 function createNewPage() {
   newPage.submit().then((doc) => {
     router.push({
-      name: 'Page',
-      params: { pageId: doc.name },
+      name: 'SpacePage',
+      params: { spaceId: props.spaceId, pageId: doc.name },
     })
   })
 }

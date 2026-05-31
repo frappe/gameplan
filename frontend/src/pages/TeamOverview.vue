@@ -90,9 +90,8 @@
       <Dialog title="Create project" v-model:open="createNewProjectDialog">
         <div class="space-y-5">
           <FormControl label="Title" v-model="newProject.title" @keydown.enter="createProject" />
-          <FormControl
+          <Select
             v-if="!team.doc.is_private"
-            type="select"
             label="Visibility"
             :options="[
               { label: 'Visible to everyone', value: 0 },
@@ -118,7 +117,7 @@
   </div>
 </template>
 <script>
-import { Dialog, FormControl, TextInput, TabButtons, dayjsLocal } from 'frappe-ui'
+import { Dialog, FormControl, Select, TextInput, TabButtons, dayjsLocal } from 'frappe-ui'
 import { projects, getTeamProjects, getTeamArchivedProjects } from '@/data/projects'
 
 export default {
@@ -129,6 +128,7 @@ export default {
     TabButtons,
     TextInput,
     FormControl,
+    Select,
   },
   setup() {
     return {

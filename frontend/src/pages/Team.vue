@@ -35,20 +35,20 @@
             :options="[
               {
                 label: 'Set cover image',
-                icon: 'image',
+                icon: 'lucide-image',
                 condition: () => !team.doc.cover_image,
                 onClick: () => (showCoverImage = true),
               },
               {
                 label: 'Archive',
-                icon: 'trash-2',
+                icon: 'lucide-trash-2',
                 onClick: () => archiveTeam(),
               },
             ]"
             :button="{
               label: 'Options',
               variant: 'ghost',
-              icon: 'more-horizontal',
+              icon: 'lucide-more-horizontal',
             }"
           />
         </div>

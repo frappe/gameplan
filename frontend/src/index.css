@@ -9,7 +9,10 @@
   cv11  — single-story lowercase 'a': cleaner, more contemporary feel
 */
 html {
-  font-feature-settings: 'calt' 1, 'cv01' 1, 'cv03' 1, 'cv04' 1, 'cv11' 1;
+  font-feature-settings:
+    'calt' 1,
+    'cv01' 1,
+    'cv11' 1;
 }
 
 /* ProseMirror disables ligatures by default; restore so the font-feature-settings

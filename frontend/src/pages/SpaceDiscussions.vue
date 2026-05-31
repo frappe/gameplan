@@ -7,7 +7,7 @@
           :options="[
             {
               label: 'Move discussions',
-              icon: 'log-out',
+              icon: 'lucide-log-out',
               onClick: () => (isBulkMoveMode = true),
             },
           ]"
@@ -15,7 +15,7 @@
         <Button
           variant="solid"
           icon-left="lucide-plus"
-          :route="{ name: 'NewDiscussion', query: { spaceId: spaceId } }"
+          @click="router.push({ name: 'NewDiscussion', query: { spaceId: spaceId } })"
         >
           Add new
         </Button>
@@ -79,6 +79,7 @@
 </template>
 <script setup lang="ts">
 import { computed, ref, useTemplateRef } from 'vue'
+import { useRouter } from 'vue-router'
 import { Combobox, Dialog, ErrorMessage, useCall, toast } from 'frappe-ui'
 import DiscussionList from '@/components/DiscussionList.vue'
 import SpaceHeaderActions from '@/components/SpaceHeaderActions.vue'
@@ -104,6 +105,7 @@ const selectedDiscussions = ref<string[]>([])
 const showMoveDialog = ref(false)
 const selectedSpace = ref<string | null>(null)
 const discussionListRef = useTemplateRef('discussionListRef')
+const router = useRouter()
 const selectedSpaceTitle = computed(() => {
   return selectedSpace.value ? useSpace(selectedSpace.value).value?.title : ''
 })

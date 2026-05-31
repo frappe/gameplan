@@ -71,9 +71,9 @@
         @change="onNewPostChange"
         placeholder="Write something..."
       >
-        <template v-slot:bottom>
+        <template #bottom="{ editor }">
           <div class="mt-2 flex flex-col justify-between sm:flex-row sm:items-center">
-            <TextEditorFixedMenu class="overflow-x-auto" :buttons="textEditorMenuButtons" />
+            <EditorFixedMenu class="overflow-x-auto" :editor="editor" :items="gameplanToolbar" />
             <div class="mt-2 shrink-0 space-x-2 text-right sm:hidden">
               <Button @click="discard">Discard</Button>
               <Button variant="solid" :loading="$resources.newDiscussion.loading" @click="publish">
@@ -90,18 +90,21 @@
 import TextEditor from '@/components/TextEditor.vue'
 import { vFocus } from '@/directives'
 import UserProfileLink from '@/components/UserProfileLink.vue'
-import { TextEditorFixedMenu, dialog } from 'frappe-ui'
+import { dialog } from 'frappe-ui'
+import { EditorFixedMenu } from 'frappe-ui/editor'
+import { gameplanToolbar } from '@/components/editor/toolbars'
 
 export default {
   name: 'ProjectDiscussionNew',
   props: ['project'],
-  components: { TextEditor, UserProfileLink, TextEditorFixedMenu },
+  components: { TextEditor, UserProfileLink, EditorFixedMenu },
   directives: { focus: vFocus },
   data() {
     let draftPost = this.getDraftPost()
     return {
       title: draftPost?.title || '',
       content: draftPost?.content || '',
+      gameplanToolbar,
     }
   },
   resources: {
@@ -197,50 +200,6 @@ export default {
     },
     draftPostKey() {
       return `draft-post-${this.project.doc.name}`
-    },
-  },
-  computed: {
-    textEditorMenuButtons() {
-      return [
-        'Paragraph',
-        ['Heading 2', 'Heading 3', 'Heading 4', 'Heading 5', 'Heading 6'],
-        'Separator',
-        'Bold',
-        'Italic',
-        'Separator',
-        'Bullet List',
-        'Numbered List',
-        'Separator',
-        'Align Left',
-        'Align Center',
-        'Align Right',
-        'FontColor',
-        'Separator',
-        'Image',
-        'Video',
-        'Link',
-        'Blockquote',
-        'Code',
-        'Horizontal Rule',
-        [
-          'InsertTable',
-          'AddColumnBefore',
-          'AddColumnAfter',
-          'DeleteColumn',
-          'AddRowBefore',
-          'AddRowAfter',
-          'DeleteRow',
-          'MergeCells',
-          'SplitCell',
-          'ToggleHeaderColumn',
-          'ToggleHeaderRow',
-          'ToggleHeaderCell',
-          'DeleteTable',
-        ],
-        'Separator',
-        'Undo',
-        'Redo',
-      ]
     },
   },
 }

@@ -19,19 +19,13 @@
           placeholder="Space name"
           id="new-space-name"
           v-model="newSpace.doc.title"
-          autocomplete="off"
           autofocus
         />
       </div>
       <div class="flex gap-2">
         <div class="size-7 shrink-0"></div>
         <div class="w-full">
-          <Combobox
-            placeholder="Category"
-            :options="categoryOptions"
-            v-model="selectedCategory"
-            :open-on-focus="true"
-          />
+          <Combobox placeholder="Category" :options="categoryOptions" v-model="selectedCategory" />
         </div>
       </div>
       <div class="flex items-center space-x-2">

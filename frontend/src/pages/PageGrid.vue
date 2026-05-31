@@ -49,7 +49,7 @@
             <div class="shrink-0 ml-1 invisible group-hover:visible">
               <Dropdown
                 :button="{
-                  icon: 'more-horizontal',
+                  icon: 'lucide-more-horizontal',
                   label: 'Page Options',
                   variant: 'ghost',
                 }"
@@ -98,7 +98,7 @@ function getSpace(page: Page) {
 const getDropdownOptions = (page: Page) => [
   {
     label: 'Delete',
-    icon: 'trash',
+    icon: 'lucide-trash',
     onClick: () => {
       dialog.danger({
         title: 'Delete Page',

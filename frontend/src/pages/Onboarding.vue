@@ -73,7 +73,6 @@
                     (value) => (space.title = value.length <= 50 ? value : value.slice(0, 50))
                   "
                   maxlength="50"
-                  autocomplete="off"
                   description="Give your space a short and descriptive name"
                 >
                   <template #suffix>

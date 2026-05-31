@@ -40,7 +40,7 @@
         <Dropdown
           align="end"
           :button="{
-            icon: 'more-horizontal',
+            icon: 'lucide-more-horizontal',
             variant: 'ghost',
             label: 'Poll Options',
           }"
@@ -228,7 +228,7 @@ export default {
       return [
         {
           label: 'Show results',
-          icon: 'bar-chart-2',
+          icon: 'lucide-bar-chart-2',
           condition: () => !this._poll.anonymous,
           onClick: () => {
             this.showDialog = true
@@ -236,7 +236,7 @@ export default {
         },
         {
           label: 'Retract vote',
-          icon: 'corner-up-left',
+          icon: 'lucide-corner-up-left',
           condition: () =>
             !this._poll.anonymous &&
             this.participated &&
@@ -252,12 +252,12 @@ export default {
         },
         {
           label: 'Copy link',
-          icon: 'link',
+          icon: 'lucide-link',
           onClick: this.copyLink,
         },
         {
           label: 'Delete',
-          icon: 'trash',
+          icon: 'lucide-trash',
           condition: () => this.$isSessionUser(this._poll.owner),
           onClick: () => {
             dialog.danger({

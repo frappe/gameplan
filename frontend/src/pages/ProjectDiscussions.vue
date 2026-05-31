@@ -21,7 +21,7 @@
   </div>
 </template>
 <script>
-import { Avatar, TextEditor } from 'frappe-ui'
+import { Avatar } from 'frappe-ui'
 import Link from '@/components/Link.vue'
 import Reactions from '@/components/Reactions.vue'
 import DiscussionList from '@/components/DiscussionList.vue'
@@ -31,7 +31,6 @@ export default {
   name: 'ProjectDiscussions',
   props: ['project', 'postId'],
   components: {
-    TextEditor,
     Avatar,
     Link,
     Reactions,

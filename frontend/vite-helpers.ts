@@ -39,8 +39,24 @@ export function getLocalFrappeUIDevConfig({
 
   const localFrappeUIAliases: Record<string, string> = useLocalFrappeUI
     ? {
+        // Subpath exports (./editor) must be aliased explicitly: the bare
+        // `frappe-ui` alias rewrites to a directory path and bypasses the
+        // package exports map, so `frappe-ui/editor` would not resolve in dev.
+        'frappe-ui/editor': path.resolve(
+          localFrappeUIPath,
+          'src',
+          'molecules',
+          'editor',
+          'index.ts',
+        ),
         'frappe-ui/style.css': path.resolve(localFrappeUIPath, 'src', 'style.css'),
         'frappe-ui': localFrappeUIPath,
+        // frappe-ui's editor source uses its own internal path aliases; when
+        // consuming it as source in dev they must be mapped to frappe-ui's src.
+        '@components': path.resolve(localFrappeUIPath, 'src', 'components'),
+        '@molecules': path.resolve(localFrappeUIPath, 'src', 'molecules'),
+        '@composables': path.resolve(localFrappeUIPath, 'src', 'composables'),
+        '@utils': path.resolve(localFrappeUIPath, 'src', 'utils'),
       }
     : {}
 
