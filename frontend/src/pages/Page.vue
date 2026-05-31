@@ -115,7 +115,7 @@ import DropdownMoreOptions from '@/components/DropdownMoreOptions.vue'
 import { relativeTimestamp } from '@/utils'
 const props = defineProps<{
   pageId: string
-  slug: string
+  slug?: string
   spaceId?: string
 }>()
 
