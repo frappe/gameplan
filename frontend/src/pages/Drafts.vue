@@ -8,12 +8,16 @@
           :options="[
             {
               label: 'Delete drafts',
-              icon: 'trash-2',
+              icon: 'lucide-trash-2',
               onClick: () => (isBulkDeleteMode = true),
             },
           ]"
         />
-        <Button icon-left="lucide-plus" variant="solid" :route="{ name: 'NewDiscussion' }">
+        <Button
+          icon-left="lucide-plus"
+          variant="solid"
+          @click="router.push({ name: 'NewDiscussion' })"
+        >
           Add new
         </Button>
       </template>
@@ -149,6 +153,7 @@ import { useSpace } from '@/data/spaces'
 import { relativeTimestamp } from '@/utils'
 import PageHeader from '@/components/PageHeader.vue'
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { motion, AnimatePresence } from 'motion-v'
 import DropdownMoreOptions from '@/components/DropdownMoreOptions.vue'
 
@@ -167,6 +172,7 @@ interface DeleteDraftsResponse {
 const isBulkDeleteMode = ref(false)
 const selectedDrafts = ref<string[]>([])
 const showDeleteConfirm = ref(false)
+const router = useRouter()
 
 function toggleSelection(name: string) {
   if (selectedDrafts.value.includes(name)) {

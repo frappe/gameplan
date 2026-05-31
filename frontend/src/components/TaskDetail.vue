@@ -134,16 +134,16 @@
         <div>Status</div>
         <div>
           <Select v-model="task.doc.status" :options="statusOptions" placeholder="Set status">
-            <template #item-prefix="{ option }">
-              <TaskStatusIcon :status="option.value" />
+            <template #item-prefix="{ item }">
+              <TaskStatusIcon :status="item.value" />
             </template>
           </Select>
         </div>
         <div>Priority</div>
         <div>
           <Select v-model="task.doc.priority" :options="priorityOptions" placeholder="Set priority">
-            <template #item-prefix="{ option }">
-              <TaskPriorityIcon :priority="option.value" />
+            <template #item-prefix="{ item }">
+              <TaskPriorityIcon :priority="item.value" />
             </template>
           </Select>
         </div>

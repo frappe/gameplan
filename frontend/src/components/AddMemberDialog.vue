@@ -20,15 +20,11 @@
       </li>
     </ul>
     <div>
-      <Autocomplete
-        :options="invitableUsers"
-        v-model="selectedUser"
-        placeholder="Add member by name"
-      >
-        <template #item-prefix="{ option }">
-          <UserAvatar :user="option.email" size="sm" />
+      <Combobox :options="invitableUsers" v-model="selectedUser" placeholder="Add member by name">
+        <template #item-prefix="{ item }">
+          <UserAvatar :user="item.email" size="sm" />
         </template>
-      </Autocomplete>
+      </Combobox>
       <ErrorMessage class="mt-2" :message="resource.addMembers.error" />
     </div>
     <div class="mt-4" v-show="!addMembersIntent">
@@ -66,8 +62,7 @@
   </Dialog>
 </template>
 <script>
-import { Autocomplete, ErrorMessage } from 'frappe-ui'
-import { Combobox, ComboboxInput, ComboboxOptions, ComboboxOption } from '@headlessui/vue'
+import { Combobox, ErrorMessage } from 'frappe-ui'
 import { activeUsers } from '@/data/users'
 
 export default {
@@ -76,10 +71,6 @@ export default {
   components: {
     ErrorMessage,
     Combobox,
-    ComboboxInput,
-    ComboboxOptions,
-    ComboboxOption,
-    Autocomplete,
   },
   data() {
     return {
@@ -90,8 +81,10 @@ export default {
     }
   },
   watch: {
-    selectedUser(user) {
-      if (user === null) return
+    selectedUser(value) {
+      if (value === null) return
+      let user = this.invitableUsers.find((user) => user.value === value)
+      if (!user) return
       if (!this.membersToAdd.includes(user)) {
         this.membersToAdd.push(user)
         this.query = ''
@@ -151,7 +144,7 @@ export default {
 
           if (emailRegex.test(this.query)) {
             users.push({
-              icon: 'mail',
+              icon: 'lucide-mail',
               email: this.query,
             })
           }

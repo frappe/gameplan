@@ -51,7 +51,7 @@
                 class="ml-auto"
                 align="end"
                 :button="{
-                  icon: 'more-horizontal',
+                  icon: 'lucide-more-horizontal',
                   variant: 'ghost',
                   label: 'Discussion Options',
                 }"
@@ -422,24 +422,24 @@ const spaceOptions = useGroupedSpaceOptions({
 const actions = computed(() => [
   {
     label: 'Edit',
-    icon: 'edit',
+    icon: 'lucide-edit',
     onClick: () => {
       editingPost.value = true
     },
   },
   {
     label: 'Revisions',
-    icon: 'rotate-ccw',
+    icon: 'lucide-rotate-ccw',
     onClick: () => (showRevisionsDialog.value = true),
   },
   {
     label: 'Copy link',
-    icon: 'link',
+    icon: 'lucide-link',
     onClick: copyLink,
   },
   {
     label: 'Mark as unread',
-    icon: 'mail',
+    icon: 'lucide-mail',
     onClick: () => {
       discussion.markAsUnread.submit().then(() => {
         if (discussion.doc?.project) {
@@ -450,13 +450,13 @@ const actions = computed(() => [
   },
   {
     label: 'Bookmark',
-    icon: 'bookmark',
+    icon: 'lucide-bookmark',
     onClick: () => discussion.addBookmark.submit(),
     condition: () => !discussion.doc?.is_bookmarked,
   },
   {
     label: 'Pin discussion...',
-    icon: 'arrow-up-left',
+    icon: 'lucide-arrow-up-left',
     condition: () => !discussion.doc?.pinned_at,
     onClick: () => {
       pinDialog.show = true
@@ -464,7 +464,7 @@ const actions = computed(() => [
   },
   {
     label: 'Unpin discussion...',
-    icon: 'arrow-down-left',
+    icon: 'lucide-arrow-down-left',
     condition: () => !!discussion.doc?.pinned_at,
     onClick: () => {
       const scopeText =
@@ -483,7 +483,7 @@ const actions = computed(() => [
   },
   {
     label: 'Close discussion...',
-    icon: 'lock',
+    icon: 'lucide-lock',
     condition: () => !discussion.doc?.closed_at,
     onClick: () => {
       dialog.confirm({
@@ -498,7 +498,7 @@ const actions = computed(() => [
   },
   {
     label: 'Re-open discussion...',
-    icon: 'unlock',
+    icon: 'lucide-unlock',
     condition: () => discussion.doc?.closed_at,
     onClick: () => {
       dialog.confirm({
@@ -512,20 +512,20 @@ const actions = computed(() => [
   },
   {
     label: 'Remove Bookmark',
-    icon: 'bookmark',
+    icon: 'lucide-bookmark',
     onClick: () => discussion.removeBookmark.submit(),
     condition: () => discussion.doc?.is_bookmarked,
   },
   {
     label: 'Move to...',
-    icon: 'log-out',
+    icon: 'lucide-log-out',
     onClick: () => {
       discussionMoveDialog.show = true
     },
   },
   {
     label: 'Delete',
-    icon: 'trash',
+    icon: 'lucide-trash',
     condition: () => !!discussion.doc?.owner && isSessionUser(discussion.doc.owner),
     onClick: () => {
       dialog.danger({

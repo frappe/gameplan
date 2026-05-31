@@ -42,7 +42,7 @@
           class="ml-auto"
           align="end"
           :button="{
-            icon: 'more-horizontal',
+            icon: 'lucide-more-horizontal',
             variant: 'ghost',
             label: 'Comment Options',
           }"
@@ -172,24 +172,24 @@ const copyLink = (comment: GPComment) => {
 const dropdownOptions = computed(() => [
   {
     label: 'Edit',
-    icon: 'edit',
+    icon: 'lucide-edit',
     onClick: () => startEditing(),
     condition: () => !props.comment.deleted_at && !props.readOnlyMode,
   },
   {
     label: 'Revisions',
-    icon: 'rotate-ccw',
+    icon: 'lucide-rotate-ccw',
     onClick: () => (showRevisionsDialog.value = true),
     condition: () => Boolean(props.comment.edited_at),
   },
   {
     label: 'Copy link',
-    icon: 'link',
+    icon: 'lucide-link',
     onClick: () => copyLink(props.comment),
   },
   {
     label: 'Delete',
-    icon: 'trash',
+    icon: 'lucide-trash',
     onClick: () => {
       dialog.danger({
         title: 'Delete comment',

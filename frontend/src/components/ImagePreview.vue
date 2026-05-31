@@ -5,7 +5,7 @@
       class="fixed inset-0 z-20 bg-black-overlay-200 dark:backdrop-filter dark:backdrop-blur-[1px]"
     >
       <div class="absolute right-0 p-4 text-right">
-        <Button icon="x" @click="$emit('update:show', false)"> </Button>
+        <Button icon="lucide-x" @click="$emit('update:show', false)"> </Button>
       </div>
       <div
         class="flex h-full items-center justify-center"

@@ -48,7 +48,7 @@
             v-if="$user().isNotGuest"
             align="start"
             :button="{
-              icon: 'more-horizontal',
+              icon: 'lucide-more-horizontal',
               variant: 'ghost',
               label: 'Options',
             }"
@@ -148,15 +148,15 @@
           "
           v-model:open="projectMoveDialog.show"
         >
-          <Autocomplete
+          <Combobox
             :options="moveToTeamsList"
             v-model="projectMoveDialog.team"
             placeholder="Select a team"
           >
-            <template #item-prefix="{ option }">
-              <span class="mr-2">{{ option.icon }}</span>
+            <template #item-prefix="{ item }">
+              <span class="mr-2">{{ item.icon }}</span>
             </template>
-          </Autocomplete>
+          </Combobox>
           <ErrorMessage class="mt-2" :message="project.moveToTeam.error" />
           <template #actions>
             <Button
@@ -166,10 +166,10 @@
               @click="
                 () => {
                   project.moveToTeam.submit(
-                    { team: projectMoveDialog.team?.value },
+                    { team: projectMoveDialog.team },
                     {
                       validate() {
-                        if (!projectMoveDialog.team?.value) {
+                        if (!projectMoveDialog.team) {
                           return 'Team is required to move this project'
                         }
                       },
@@ -181,7 +181,7 @@
                 }
               "
             >
-              {{ projectMoveDialog.team ? `Move to ${projectMoveDialog.team.label}` : 'Move' }}
+              {{ projectMoveDialog.team ? `Move to ${selectedMoveTeam.label}` : 'Move' }}
             </Button>
           </template>
         </Dialog>
@@ -200,16 +200,15 @@
             <span class="whitespace-nowrap font-semibold">{{ project.doc.title }}</span> project to
             the selected project. This change is irreversible!
           </p>
-          {{ projectMergeDialog.project }}
-          <Autocomplete
+          <Combobox
             :options="mergeProjectsList"
             v-model="projectMergeDialog.project"
             placeholder="Select a project"
           >
-            <template #item-prefix="{ option }">
-              <span class="mr-2">{{ option.icon }}</span>
+            <template #item-prefix="{ item }">
+              <span class="mr-2">{{ item.icon }}</span>
             </template>
-          </Autocomplete>
+          </Combobox>
           <ErrorMessage class="mt-2" :message="project.mergeWithProject.error" />
           <template #actions>
             <Button
@@ -219,19 +218,19 @@
               @click="
                 () => {
                   project.mergeWithProject.submit(
-                    { project: projectMergeDialog.project?.value },
+                    { project: projectMergeDialog.project },
                     {
                       validate() {
-                        if (!projectMergeDialog.project?.value) {
+                        if (!projectMergeDialog.project) {
                           return 'Please select a project to merge'
                         }
                       },
                       onSuccess() {
-                        if (projectMergeDialog.project.value) {
+                        if (projectMergeDialog.project) {
                           projectMergeDialog.show = false
                           return $router.replace({
                             name: 'Project',
-                            params: { projectId: projectMergeDialog.project.value },
+                            params: { projectId: projectMergeDialog.project },
                           })
                         }
                       },
@@ -241,9 +240,7 @@
               "
             >
               {{
-                projectMergeDialog.project
-                  ? `Merge with ${projectMergeDialog.project.label}`
-                  : 'Merge'
+                projectMergeDialog.project ? `Merge with ${selectedMergeProject.label}` : 'Merge'
               }}
             </Button>
           </template>
@@ -267,7 +264,7 @@
 </template>
 <script>
 import {
-  Autocomplete,
+  Combobox,
   Dropdown,
   FormControl,
   Breadcrumbs,
@@ -297,7 +294,7 @@ export default {
     IconPicker,
     Links,
     Tabs,
-    Autocomplete,
+    Combobox,
     Tooltip,
     InviteGuestDialog,
     FormControl,
@@ -337,6 +334,16 @@ export default {
           value: d.name.toString(),
           icon: d.icon,
         }))
+    },
+    selectedMoveTeam() {
+      return this.moveToTeamsList.find((team) => team.value === this.projectMoveDialog.team) || {}
+    },
+    selectedMergeProject() {
+      return (
+        this.mergeProjectsList.find(
+          (project) => project.value === this.projectMergeDialog.project,
+        ) || {}
+      )
     },
     task() {
       let task = null
@@ -486,8 +493,8 @@ export default {
       this.projectMoveDialog.show = false
       projects.reload()
       for (let team of teams.data || []) {
-        if ([this.team.doc.name, this.projectMoveDialog.team.value].includes(team.name)) {
-          if (this.projectMoveDialog.team.value === team.name) {
+        if ([this.team.doc.name, this.projectMoveDialog.team].includes(team.name)) {
+          if (this.projectMoveDialog.team === team.name) {
             team.open = true
           }
         }
@@ -495,7 +502,7 @@ export default {
       this.$router.push({
         name: 'ProjectOverview',
         params: {
-          teamId: this.projectMoveDialog.team.value,
+          teamId: this.projectMoveDialog.team,
           projectId: this.project.name,
         },
       })

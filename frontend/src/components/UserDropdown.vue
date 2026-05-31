@@ -36,7 +36,7 @@ const { setTheme } = useTheme()
 
 const dropdownItems = computed(() => [
   {
-    icon: 'user',
+    icon: 'lucide-user',
     label: 'My Profile',
     route: {
       name: 'PersonProfile',
@@ -53,7 +53,7 @@ const dropdownItems = computed(() => [
     ],
   },
   {
-    icon: 'settings',
+    icon: 'lucide-settings',
     label: 'Settings & Members',
     onClick: () => showSettingsDialog(),
     condition: () => user.isNotGuest,
@@ -64,17 +64,17 @@ const dropdownItems = computed(() => [
     submenu: [
       {
         label: 'Light Mode',
-        icon: 'sun',
+        icon: 'lucide-sun',
         onClick: () => setTheme('light'),
       },
       {
         label: 'Dark Mode',
-        icon: 'moon',
+        icon: 'lucide-moon',
         onClick: () => setTheme('dark'),
       },
       {
         label: 'System Default',
-        icon: 'monitor',
+        icon: 'lucide-monitor',
         onClick: () => setTheme('system'),
       },
     ],
@@ -100,7 +100,7 @@ const dropdownItems = computed(() => [
     },
   },
   {
-    icon: 'log-out',
+    icon: 'lucide-log-out',
     label: 'Log out',
     onClick: () => session.logout.submit(),
   },
