@@ -7,6 +7,8 @@ on:
 
 permissions:
   contents: read
+  checks: write
+  pull-requests: write
 
 jobs:
   test:
@@ -87,11 +89,27 @@ jobs:
         uses: cypress-io/github-action@v6
         with:
           working-directory: frontend
-          record: true
-          key: 9c23c39a-b56b-46d5-b673-44faf1f1da83
         env:
           CYPRESS_BASE_URL: http://gameplan.test:8000
-          CYPRESS_RECORD_KEY: 9c23c39a-b56b-46d5-b673-44faf1f1da83
+
+      - name: Publish test report comment
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: ${{ always() && github.event_name == 'pull_request' }}
+        with:
+          check_name: UI Test Results
+          comment_mode: always
+          files: frontend/cypress/results/*.xml
+
+      - name: Upload failure screenshots & videos
+        uses: actions/upload-artifact@v4
+        if: ${{ failure() }}
+        with:
+          name: cypress-failure-artifacts
+          path: |
+            frontend/cypress/screenshots
+            frontend/cypress/videos
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Stop server
         run: |

@@ -8,7 +8,7 @@
     "build": "vite build",
     "serve": "vite preview",
     "test-local": "cypress open --e2e --browser chrome",
-    "test": "cypress run --record --key 9c23c39a-b56b-46d5-b673-44faf1f1da83"
+    "test": "cypress run"
   },
   "dependencies": {
     "@headlessui/vue": "^1.7.14",
@@ -39,6 +39,7 @@
     "autoprefixer": "^10.4.2",
     "cypress": "14.5.1",
     "lucide-static": "^0.469.0",
+    "mocha-junit-reporter": "^2.2.1",
     "postcss": "^8.4.5",
     "prettier": "^3.3.3",
     "prettier-plugin-tailwindcss": "^0.6.8",
