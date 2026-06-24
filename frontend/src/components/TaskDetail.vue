@@ -131,7 +131,12 @@
         </div>
         <div>Status</div>
         <div>
-          <Select v-model="task.doc.status" :options="statusOptions" placeholder="Set status">
+          <Select
+            :modelValue="task.doc.status"
+            :options="statusOptions"
+            placeholder="Set status"
+            @update:modelValue="(status) => task.setValue.submit({ status })"
+          >
             <template #item-prefix="{ item }">
               <TaskStatusIcon :status="item.value" />
             </template>
@@ -139,7 +144,12 @@
         </div>
         <div>Priority</div>
         <div>
-          <Select v-model="task.doc.priority" :options="priorityOptions" placeholder="Set priority">
+          <Select
+            :modelValue="task.doc.priority"
+            :options="priorityOptions"
+            placeholder="Set priority"
+            @update:modelValue="(priority) => task.setValue.submit({ priority })"
+          >
             <template #item-prefix="{ item }">
               <TaskPriorityIcon :priority="item.value" />
             </template>
