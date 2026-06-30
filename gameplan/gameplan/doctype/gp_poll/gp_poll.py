@@ -5,10 +5,12 @@ import frappe
 from frappe.model.document import Document
 from frappe.utils import flt
 
+from gameplan.mixins.reactions import HasReactions
+
 from .gp_poll_attributes import GPPollAttributes
 
 
-class GPPoll(Document, GPPollAttributes):
+class GPPoll(HasReactions, Document, GPPollAttributes):
 	on_delete_set_null = ["GP Discussion"]
 
 	def before_insert(self):
@@ -22,6 +24,7 @@ class GPPoll(Document, GPPollAttributes):
 
 	def validate(self):
 		self.total_votes = len(self.votes)
+		self.de_duplicate_reactions()
 
 	def after_insert(self):
 		self.update_discussion_meta()
