@@ -1,5 +1,6 @@
 # Copyright (c) 2025, Frappe Technologies Pvt. Ltd. and Contributors
 
+import re
 from urllib.parse import urlparse
 
 from bleach import clean
@@ -62,6 +63,24 @@ def iframe_attribute_filter(tag, name, value):
 	return False
 
 
+# Matches an <img> tag that carries no `src` attribute. The negative lookahead
+# requires whitespace before `src=` so it does not match `data-src` and similar.
+_SRCLESS_IMG = re.compile(r"<img\b(?![^>]*\ssrc\s*=)[^>]*>", re.IGNORECASE)
+
+
+def remove_srcless_images(html):
+	"""Drop <img> tags that have no usable `src`.
+
+	The editor inserts an image with a temporary `blob:`/`data:` preview URL while
+	the upload is in flight and swaps in the real `/private/files/...` URL once it
+	completes. If content is saved before that swap (or the upload failed), the
+	preview src is stripped by `clean()` above (blob:/data: are not allowed
+	protocols), leaving a broken, invisible `<img>`. Remove it instead of
+	persisting an empty placeholder.
+	"""
+	return _SRCLESS_IMG.sub("", html)
+
+
 def sanitize_content(html):
 	"""
 	Sanitize HTML tags, attributes and style to prevent XSS attacks
@@ -103,4 +122,4 @@ def sanitize_content(html):
 		protocols={"cid", "http", "https", "mailto"},
 	)
 
-	return escaped_html
+	return remove_srcless_images(escaped_html)
