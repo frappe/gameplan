@@ -68,20 +68,28 @@ import CommunityImage from '@/components/CommunityImage.vue'
 import GameplanLogo from '@/components/GameplanLogo.vue'
 import MobileHeader from '@/components/MobileHeader.vue'
 import MobileListRow from '@/components/MobileListRow.vue'
-import { activeCommunities, availableCommunities, communities } from '@/data/communities'
+import {
+  activeCommunities,
+  availableCommunities,
+  communities,
+  navigationCommunities,
+} from '@/data/communities'
 import { communityState } from '@/data/communityState'
 import { getSpaceUnreadCount, spaces } from '@/data/spaces'
+import { session } from '@/data/session'
 
 const router = useRouter()
 const editMode = ref(false)
 const selectedCommunityNames = ref<string[]>([])
 
 const manageableCommunities = computed(() => {
+  if (session.canBrowsePublicWeb) return []
+
   return availableCommunities.value.filter((community) => !community.archived_at)
 })
 
 const visibleCommunities = computed(() => {
-  return editMode.value ? manageableCommunities.value : activeCommunities.value
+  return editMode.value ? manageableCommunities.value : navigationCommunities.value
 })
 
 const updateJoinedTeams = useCall<string[], { teams: string[] }>({
@@ -96,7 +104,11 @@ function onCommunityClick(communityId: string) {
     return
   }
 
-  communityState.change(communityId)
+  if (session.canBrowsePublicWeb) {
+    communityState.scope(communityId)
+  } else {
+    communityState.change(communityId)
+  }
   router.push({ name: 'Discussions', params: { communityId } })
 }
 

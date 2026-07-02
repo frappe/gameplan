@@ -1,6 +1,12 @@
 import { computed, reactive, ref } from 'vue'
 import { useLocalStorage } from '@vueuse/core'
-import { activeCommunities, getActiveCommunity, getCommunity } from './communities'
+import {
+  activeCommunities,
+  getActiveCommunity,
+  getCommunity,
+  navigationCommunities,
+} from './communities'
+import { session } from './session'
 
 const selectedCommunityId = useLocalStorage<string | null>('gameplan:communityId', null)
 const routeCommunityId = ref<string | null>(null)
@@ -16,6 +22,10 @@ const joinedCommunityId = computed(() => {
 const communityId = computed(() => {
   if (routeCommunityId.value && getCommunity(routeCommunityId.value)) {
     return routeCommunityId.value
+  }
+
+  if (session.canBrowsePublicWeb) {
+    return navigationCommunities.value[0]?.name ?? null
   }
 
   return joinedCommunityId.value

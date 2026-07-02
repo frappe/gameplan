@@ -1,27 +1,31 @@
 <template>
   <Avatar
     v-if="user"
-    :label="$user(user).full_name"
-    :image="$user(user).user_image"
+    :label="userInfo.full_name"
+    :image="userInfo.user_image"
     :style="{
-      backgroundColor: $user(user).image_background_color || null,
-      filter: $user(user).isDisabled ? 'grayscale(1)' : null,
+      backgroundColor: userInfo.image_background_color || null,
+      filter: userInfo.isDisabled ? 'grayscale(1)' : null,
     }"
-    :title="$user(user).isDisabled ? 'User is disabled' : null"
+    :title="userInfo.isDisabled ? 'User is disabled' : null"
     v-bind="$attrs"
   />
 </template>
 <script setup lang="ts">
+import { computed } from 'vue'
 import { Avatar } from 'frappe-ui'
+import { useUser } from '@/data/users'
 
 defineOptions({
   inheritAttrs: false,
 })
 
-defineProps({
+const props = defineProps({
   user: {
     type: String,
     required: true,
   },
 })
+
+const userInfo = computed(() => useUser(props.user))
 </script>

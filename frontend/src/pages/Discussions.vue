@@ -31,7 +31,7 @@
       >
         {{ community.title }}
       </router-link>
-      <Dropdown :options="actionOptions">
+      <Dropdown v-if="visibleActionOptions.length" :options="visibleActionOptions">
         <template #default="{ open }">
           <Button
             :variant="open ? 'subtle' : 'ghost'"
@@ -44,6 +44,7 @@
     </div>
     <div class="flex items-center gap-2">
       <Button
+        v-if="session.isAuthenticated"
         variant="solid"
         icon-left="lucide-plus"
         :route="{ name: 'NewDiscussion', params: { communityId } }"
@@ -53,7 +54,7 @@
     </div>
   </PageHeader>
   <div class="body-container pt-5 pb-40">
-    <LastPostReminder class="mb-3" />
+    <LastPostReminder v-if="session.isAuthenticated" class="mb-3" />
 
     <div class="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <TabButtons :options="feedTabs" v-model="currentFeed" size="sm">
@@ -139,6 +140,7 @@ import {
 import { canManageCommunity } from '@/utils/permissions'
 import { showCommunitiesSettings } from '@/components/Settings'
 import { useCommandPaletteCommands } from '@/components/CommandPalette/registry'
+import { session } from '@/data/session'
 
 type FeedType = 'recent' | 'unread' | 'participating'
 
@@ -195,14 +197,18 @@ const feedTabs = computed(() => [
     label: 'All Discussions',
     value: 'recent',
   },
-  {
-    label: 'Participating',
-    value: 'participating',
-  },
-  {
-    label: 'Unread',
-    value: 'unread',
-  },
+  ...(session.canBrowsePublicWeb
+    ? []
+    : [
+        {
+          label: 'Participating',
+          value: 'participating',
+        },
+        {
+          label: 'Unread',
+          value: 'unread',
+        },
+      ]),
 ])
 const currentFeed = computed({
   get() {
@@ -230,8 +236,12 @@ const actionOptions = computed<DropdownOptions>(() => [
     label: 'Mark all as read...',
     icon: 'lucide-check',
     onClick: openMarkAllAsReadDialog,
+    condition: () => session.isAuthenticated,
   },
 ])
+const visibleActionOptions = computed<DropdownOptions>(() => {
+  return actionOptions.value.filter((action) => !action.condition || action.condition())
+})
 const canManageCurrentCommunity = computed(() => canManageCommunity(community.value, sessionUser))
 
 useCommandPaletteCommands(

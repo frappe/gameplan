@@ -1,6 +1,7 @@
 import { useDoctype } from 'frappe-ui'
 import { GPProject } from '@/types/doctypes'
 import { reactive } from 'vue'
+import { session } from './session'
 
 interface ProjectUnreadCount {
   [spaceId: string]: number
@@ -20,8 +21,11 @@ const participatingUnreadCounts = reactive<ParticipatingUnreadCount>({})
 const unreadCountApi = useDoctype('GP Unread Record')
 const participatingCountApi = useDoctype('GP Unread Record')
 const markReadApi = useDoctype('GP Unread Record')
+let didLoadProjectUnreadCounts = false
 
 function loadProjectUnreadCounts(projects?: string[]) {
+  if (session.canBrowsePublicWeb) return Promise.resolve({})
+
   return unreadCountApi.runMethod
     .submit({ method: 'get_unread_count', params: { projects } })
     .then((data: ProjectUnreadCount) => {
@@ -42,10 +46,14 @@ function loadProjectUnreadCounts(projects?: string[]) {
     })
 }
 
-// load unread count for all projects once
-loadProjectUnreadCounts()
+function ensureProjectUnreadCountsLoaded() {
+  if (didLoadProjectUnreadCounts || session.canBrowsePublicWeb) return
+  didLoadProjectUnreadCounts = true
+  loadProjectUnreadCounts()
+}
 
 export function getProjectUnreadCount(spaceId: string) {
+  ensureProjectUnreadCountsLoaded()
   return unreadCounts[spaceId] ?? 0
 }
 
@@ -57,6 +65,8 @@ const participatingRequestSeq: Record<string, number> = {}
 
 /** Fetch (and cache) the participating unread count for a community. */
 export function fetchParticipatingUnreadCount(team: string) {
+  if (session.canBrowsePublicWeb) return Promise.resolve(0)
+
   const seq = (participatingRequestSeq[team] ?? 0) + 1
   participatingRequestSeq[team] = seq
   return participatingCountApi.runMethod
@@ -79,6 +89,8 @@ export function getParticipatingUnreadCount(team: string) {
  *   before that day. Omit to mark every unread discussion read.
  */
 export function markCommunityAsRead(team: string, before?: string) {
+  if (session.canBrowsePublicWeb) return Promise.resolve([{}, 0])
+
   return markReadApi.runMethod
     .submit({ method: 'mark_all_as_read_for_team', params: { team, before } })
     .then(() => {
@@ -95,6 +107,8 @@ export function markCommunityAsRead(team: string, before?: string) {
 const Project = useDoctype<GPProject>('GP Project')
 
 export function markSpaceAsRead(spaceId: string) {
+  if (session.canBrowsePublicWeb) return Promise.resolve({})
+
   return Project.runDocMethod
     .submit({
       name: spaceId,
@@ -106,6 +120,8 @@ export function markSpaceAsRead(spaceId: string) {
 }
 
 export function markSpacesAsRead(spaceIds: string[]) {
+  if (session.canBrowsePublicWeb) return Promise.resolve({})
+
   return Project.runMethod
     .submit({
       method: 'mark_all_as_read',

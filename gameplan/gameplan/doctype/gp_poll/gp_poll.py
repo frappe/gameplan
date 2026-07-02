@@ -5,6 +5,9 @@ import frappe
 from frappe.model.document import Document
 from frappe.utils import flt
 
+from gameplan.permissions import content_has_permission, poll_query_conditions
+from gameplan.public_web import is_anonymous_user
+
 from .gp_poll_attributes import GPPollAttributes
 
 
@@ -41,6 +44,8 @@ class GPPoll(Document, GPPollAttributes):
 
 	@frappe.whitelist()
 	def submit_vote(self, option):
+		if is_anonymous_user():
+			frappe.throw(frappe._("Login required to vote"), frappe.PermissionError)
 		self.check_if_stopped()
 
 		if self.anonymous:
@@ -77,6 +82,8 @@ class GPPoll(Document, GPPollAttributes):
 
 	@frappe.whitelist()
 	def retract_vote(self):
+		if is_anonymous_user():
+			frappe.throw(frappe._("Login required to vote"), frappe.PermissionError)
 		self.check_if_stopped()
 		if self.anonymous:
 			frappe.throw(frappe._("Cannot retract vote for anonymous poll"))
@@ -102,8 +109,22 @@ class GPPoll(Document, GPPollAttributes):
 @frappe.whitelist()
 def get_list(fields, filters=None, start=0, limit=20, order_by=None):
 	query = frappe.qb.get_query(
-		"GP Poll", fields=fields, filters=filters, start=start, limit=limit, order_by=order_by
+		"GP Poll",
+		fields=fields,
+		filters=filters,
+		start=start,
+		limit=limit,
+		order_by=order_by,
+		ignore_permissions=False,
 	)
 
 	data = query.run(as_dict=1)
 	return data
+
+
+def get_permission_query_conditions(user):
+	return poll_query_conditions(user)
+
+
+def has_permission(doc, ptype="read", user=None):
+	return content_has_permission(doc, ptype, user)

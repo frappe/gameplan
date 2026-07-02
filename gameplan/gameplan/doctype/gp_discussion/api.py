@@ -11,7 +11,7 @@ from gameplan.permissions import apply_accessible_project_filter
 from gameplan.utils import html_to_text_preview
 
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def get_discussions(filters=None, order_by=None, start=None, limit=None):
 	if not frappe.has_permission("GP Discussion", "read"):
 		frappe.throw("Insufficient Permission for GP Discussion", frappe.PermissionError)

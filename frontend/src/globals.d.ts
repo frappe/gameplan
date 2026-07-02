@@ -1,10 +1,6 @@
 // defining global components and properties here for autocompletion
 // https://github.com/johnsoncodehk/volar/tree/master/extensions/vscode-vue-language-features
 
-import { isSessionUser } from './data/session'
-import { useUser } from './data/users'
-import { getPlatform } from './utils'
-
 declare module '@vue/runtime-core' {
   export interface GlobalComponents {
     RouterLink: (typeof import('vue-router'))['RouterLink']
@@ -21,17 +17,27 @@ declare module '@vue/runtime-core' {
   }
 }
 
-declare module 'vue' {
-  interface ComponentCustomProperties {
-    $platform: ReturnType<typeof getPlatform>
-    $user: typeof useUser
-    $isSessionUser: typeof isSessionUser
-  }
-}
-
 declare global {
+  interface ImportMetaEnv {
+    readonly DEV: boolean
+    readonly PROD: boolean
+    readonly MODE: string
+    readonly BASE_URL: string
+    readonly SSR: boolean
+  }
+
+  interface ImportMeta {
+    readonly env: ImportMetaEnv
+  }
+
   interface Window {
     site_name: string
+    gameplan_public_web_enabled?: boolean
+    gameplan_frontend_sentry_dsn?: string | null
+    is_public_visitor?: boolean
+    max_file_size?: number | string | null
+    read_only_mode?: boolean
+    system_timezone?: string | null
   }
 }
 

@@ -77,6 +77,7 @@ import MobileHeaderTitle from '@/components/MobileHeaderTitle.vue'
 import SpaceIcon from '@/components/SpaceIcon.vue'
 import { useCommunity } from '@/data/communities'
 import { readOnlyMode } from '@/data/readOnlyMode'
+import { session } from '@/data/session'
 
 const props = defineProps<{
   communityId: string
@@ -88,7 +89,9 @@ const community = useCommunity(() => props.communityId)
 const menuOpen = ref(false)
 const spaces = useDoctype<GPProject>('GP Project')
 const space = useSpace(() => props.spaceId)
-const canEditSpace = computed(() => !readOnlyMode && !space.value?.archived_at)
+const canEditSpace = computed(
+  () => session.isAuthenticated && !readOnlyMode && !space.value?.archived_at,
+)
 
 // A space can only be reached under the community that owns it. If the URL carries a stale
 // community (e.g. after a move), heal it to the canonical route instead of rendering a mismatch.
@@ -106,6 +109,8 @@ watch(
 )
 
 onMounted(() => {
+  if (session.canBrowsePublicWeb) return
+
   spaces.runDocMethod.submit({
     method: 'track_visit',
     name: props.spaceId,

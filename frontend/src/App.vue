@@ -2,14 +2,14 @@
   <FrappeUIProvider>
     <ScrollAreaRoot class="h-full overflow-hidden">
       <router-view v-if="['Onboarding', 'Login'].includes($route.name)" />
-      <Layout v-else-if="$session.isLoggedIn">
+      <Layout v-else-if="session.isLoggedIn || session.canBrowsePublicWeb">
         <!-- While on a /settings/* URL, keep rendering the page the dialog was
              opened over (displayedRoute) so it stays visible behind the overlay. -->
         <router-view :route="displayedRoute" />
       </Layout>
     </ScrollAreaRoot>
-    <NewTaskDialog />
-    <SettingsDialog v-if="$session.isLoggedIn && users.isFinished" />
+    <NewTaskDialog v-if="session.isLoggedIn" />
+    <SettingsDialog v-if="session.isLoggedIn && users.isFinished" />
   </FrappeUIProvider>
 </template>
 

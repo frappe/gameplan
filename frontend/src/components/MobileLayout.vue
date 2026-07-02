@@ -58,6 +58,7 @@ import { scrollTo } from '@/utils/scrollContainer'
 import ReadOnlyBanner from './ReadOnlyBanner.vue'
 import UserAvatar from './UserAvatar.vue'
 import { readOnlyMode } from '@/data/readOnlyMode'
+import { session } from '@/data/session'
 
 interface MobileTab {
   name: 'Home' | 'Notifications' | 'Search' | 'You'
@@ -75,32 +76,38 @@ const isHomeRoute = computed(() => {
   return route.name === 'Home' || onCommunityRoute.value
 })
 
-const tabs = computed<MobileTab[]>(() => [
-  {
+const tabs = computed<MobileTab[]>(() => {
+  const homeTab: MobileTab = {
     name: 'Home',
     icon: 'lucide-home',
     route: { name: 'Home' },
     isActive: isHomeRoute.value,
-  },
-  {
-    name: 'Notifications',
-    icon: 'lucide-bell',
-    route: { name: 'Notifications' },
-    isActive: route.name === 'Notifications',
-  },
-  {
-    name: 'Search',
-    icon: 'lucide-search',
-    route: { name: 'Search' },
-    isActive: route.name === 'Search',
-  },
-  {
-    name: 'You',
-    icon: 'lucide-menu',
-    route: { name: 'More' },
-    isActive: isMoreRoute(),
-  },
-])
+  }
+
+  if (session.canBrowsePublicWeb) return [homeTab]
+
+  return [
+    homeTab,
+    {
+      name: 'Notifications',
+      icon: 'lucide-bell',
+      route: { name: 'Notifications' },
+      isActive: route.name === 'Notifications',
+    },
+    {
+      name: 'Search',
+      icon: 'lucide-search',
+      route: { name: 'Search' },
+      isActive: route.name === 'Search',
+    },
+    {
+      name: 'You',
+      icon: 'lucide-menu',
+      route: { name: 'More' },
+      isActive: isMoreRoute(),
+    },
+  ]
+})
 
 function isMoreRoute() {
   const name = route.name?.toString() || ''

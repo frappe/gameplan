@@ -7,6 +7,7 @@ import frappe
 import requests
 from bs4 import BeautifulSoup
 from frappe.model.document import Document
+from frappe.utils import cint
 
 from gameplan.api import _invite_by_email
 from gameplan.gameplan.doctype.gp_unread_record.gp_unread_record import GPUnreadRecord
@@ -21,6 +22,8 @@ from gameplan.permissions import (
 )
 
 DEFAULT_SPACE_ICON = "lucide-hash"
+PRIVATE_VISIBILITY = "Private"
+MEMBERS_VISIBILITY = "Members"
 PROJECT_TEAM_DOCTYPES = [
 	"GP Discussion",
 	"GP Draft",
@@ -56,6 +59,21 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 	def before_validate(self):
 		if not self.icon or not self.icon.startswith("lucide-"):
 			self.icon = DEFAULT_SPACE_ICON
+		self.sync_legacy_visibility()
+
+	def sync_legacy_visibility(self):
+		if not self.visibility:
+			self.visibility = PRIVATE_VISIBILITY if cint(self.is_private) else MEMBERS_VISIBILITY
+		elif self.is_new() and cint(self.is_private) and self.visibility == MEMBERS_VISIBILITY:
+			self.visibility = PRIVATE_VISIBILITY
+		elif (
+			not self.is_new()
+			and self.has_value_changed("is_private")
+			and not self.has_value_changed("visibility")
+		):
+			self.visibility = PRIVATE_VISIBILITY if cint(self.is_private) else MEMBERS_VISIBILITY
+
+		self.is_private = 1 if self.visibility == PRIVATE_VISIBILITY else 0
 
 	def before_insert(self):
 		self.append("members", {"user": frappe.session.user})

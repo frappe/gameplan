@@ -17,7 +17,7 @@
       </div>
 
       <div
-        v-if="activeCommunities.length"
+        v-if="railCommunities.length"
         class="flex min-h-0 w-full flex-1 flex-col items-center border-t pt-3"
       >
         <div class="flex min-h-0 w-[50px] flex-1 flex-col items-center">
@@ -36,7 +36,7 @@
               class="h-full w-[50px] overflow-x-hidden overflow-y-auto pb-3 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             >
               <div class="flex w-[50px] flex-col items-center gap-3">
-                <TooltipRoot v-for="community in activeCommunities" :key="community.name">
+                <TooltipRoot v-for="community in railCommunities" :key="community.name">
                   <TooltipTrigger as-child>
                     <button
                       type="button"
@@ -78,7 +78,7 @@
             </div>
           </div>
 
-          <TooltipRoot>
+          <TooltipRoot v-if="session.isAuthenticated">
             <TooltipTrigger as-child>
               <Button
                 variant="ghost"
@@ -111,8 +111,11 @@
         />
       </div>
 
-      <div v-if="!activeCommunities.length" class="flex-1" />
-      <div class="mb-3 mt-3 flex w-full flex-col items-center gap-0.5 border-t py-3">
+      <div v-if="!railCommunities.length" class="flex-1" />
+      <div
+        v-if="personalShortcuts.length"
+        class="mb-3 mt-3 flex w-full flex-col items-center gap-0.5 border-t py-3"
+      >
         <RailIcon
           v-for="item in personalShortcuts"
           :key="item.label"
@@ -124,7 +127,7 @@
           @click="goTo(item)"
         />
       </div>
-      <UserDropdown>
+      <UserDropdown v-if="session.isAuthenticated">
         <template #trigger="{ open }">
           <button
             type="button"
@@ -149,12 +152,13 @@ import { useEventListener, useResizeObserver } from '@vueuse/core'
 import { Button, TooltipBubble } from 'frappe-ui'
 import type { RouteLocationRaw } from 'vue-router'
 import { communityState } from '@/data/communityState'
-import { activeCommunities } from '@/data/communities'
+import { navigationCommunities } from '@/data/communities'
 import type { Community } from '@/data/communities'
 import { unreadNotifications } from '@/data/notifications'
 import { currentSidebarBadgeStyle } from '@/data/sidebarPreferences'
 import { getSpaceUnreadCount, spaces } from '@/data/spaces'
 import { isGameplanAdmin, useSessionUser } from '@/data/users'
+import { session } from '@/data/session'
 import { useCanManageCommunities } from '@/composables/useCanManageCommunities'
 import { showCommunitiesSettings } from '@/components/Settings'
 import { unreadAriaLabel } from '@/utils/formatters'
@@ -199,7 +203,9 @@ useEventListener(() => communityScrollEl.value, 'scroll', updateCommunityScrollS
 })
 useResizeObserver(() => communityScrollEl.value, updateCommunityScrollState)
 
-watch(activeCommunities, () => nextTick(updateCommunityScrollState), { flush: 'post' })
+const railCommunities = computed(() => navigationCommunities.value)
+
+watch(railCommunities, () => nextTick(updateCommunityScrollState), { flush: 'post' })
 
 const homeRoute = computed<RouteLocationRaw>(() => {
   if (communityState.id) {
@@ -223,43 +229,51 @@ const adminShortcuts = computed<RailItem[]>(() => {
 const canManageCommunities = useCanManageCommunities()
 
 const mainShortcuts = computed<RailItem[]>(() => [
-  {
-    label: 'Search',
-    icon: 'lucide-search',
-    isActive: isRoute('Search'),
-    route: { name: 'Search' },
-  },
-  {
-    label: 'People',
-    icon: 'lucide-users-2',
-    isActive: isRoute(
-      'People',
-      'PersonProfile',
-      'PersonProfileProfile',
-      'PersonProfileAboutMe',
-      'PersonProfilePosts',
-      'PersonProfileReplies',
-    ),
-    route: { name: 'People' },
-  },
+  ...(session.canBrowsePublicWeb
+    ? []
+    : [
+        {
+          label: 'Search',
+          icon: 'lucide-search',
+          isActive: isRoute('Search'),
+          route: { name: 'Search' },
+        },
+        {
+          label: 'People',
+          icon: 'lucide-users-2',
+          isActive: isRoute(
+            'People',
+            'PersonProfile',
+            'PersonProfileProfile',
+            'PersonProfileAboutMe',
+            'PersonProfilePosts',
+            'PersonProfileReplies',
+          ),
+          route: { name: 'People' },
+        },
+      ]),
   ...adminShortcuts.value,
 ])
 
-const personalShortcuts = computed<RailItem[]>(() => [
-  {
-    label: 'Notifications',
-    icon: 'lucide-bell',
-    isActive: isRoute('Notifications'),
-    route: { name: 'Notifications' },
-    unreadCount: unreadNotifications.data || 0,
-  },
-  {
-    label: 'Drafts',
-    icon: 'lucide-pencil-line',
-    isActive: isRoute('Drafts'),
-    route: { name: 'Drafts' },
-  },
-])
+const personalShortcuts = computed<RailItem[]>(() => {
+  if (session.canBrowsePublicWeb) return []
+
+  return [
+    {
+      label: 'Notifications',
+      icon: 'lucide-bell',
+      isActive: isRoute('Notifications'),
+      route: { name: 'Notifications' },
+      unreadCount: unreadNotifications.data || 0,
+    },
+    {
+      label: 'Drafts',
+      icon: 'lucide-pencil-line',
+      isActive: isRoute('Drafts'),
+      route: { name: 'Drafts' },
+    },
+  ]
+})
 
 function goTo(item: RailItem) {
   if (item.onClick) {
@@ -273,7 +287,11 @@ function goTo(item: RailItem) {
 }
 
 function goToCommunity(community: Community) {
-  communityState.change(community.name)
+  if (session.canBrowsePublicWeb) {
+    communityState.scope(community.name)
+  } else {
+    communityState.change(community.name)
+  }
   router.push({ name: 'Discussions', params: { communityId: community.name } })
 }
 

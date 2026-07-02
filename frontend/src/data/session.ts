@@ -15,9 +15,18 @@ interface LoginParams {
 
 type LogoutResponse = void
 
-export let sessionUser = ref<string | null>(getSessionUserFromCookie())
+export let sessionUser = ref<string>(getSessionUserFromCookie())
 
 export let session = reactive({
+  user: sessionUser,
+  isAnonymous: computed(() => sessionUser.value === 'Guest'),
+  isAuthenticated: computed(() => sessionUser.value !== 'Guest'),
+  isLoggedIn: computed(() => sessionUser.value !== 'Guest'),
+  canBrowsePublicWeb: computed(
+    () =>
+      sessionUser.value === 'Guest' &&
+      Boolean(window.gameplan_public_web_enabled && window.is_public_visitor),
+  ),
   login: useCall<LoginResponse, LoginParams>({
     url: '/api/v2/method/login',
     immediate: false,
@@ -37,8 +46,6 @@ export let session = reactive({
       window.location.href = '/login'
     },
   }),
-  user: sessionUser,
-  isLoggedIn: computed(() => sessionUser.value != null),
 })
 
 export function isSessionUser(user: string) {
@@ -47,9 +54,5 @@ export function isSessionUser(user: string) {
 
 function getSessionUserFromCookie() {
   let cookies = new URLSearchParams(document.cookie.split('; ').join('&'))
-  let _sessionUser = cookies.get('user_id')
-  if (_sessionUser === 'Guest') {
-    _sessionUser = null
-  }
-  return _sessionUser
+  return cookies.get('user_id') || 'Guest'
 }

@@ -23,7 +23,7 @@
       :class="{ 'mr-3 mt-3': border || editReadme }"
       v-if="editable"
     >
-      <Tooltip v-if="!editReadme && !$readOnlyMode" text="Edit">
+      <Tooltip v-if="!editReadme && !readOnlyMode" text="Edit">
         <Button variant="ghost" label="Edit" icon="lucide-edit-2" @click="editReadmeAndFocus" />
       </Tooltip>
       <template v-if="editReadme">
@@ -119,6 +119,7 @@ export default {
       readme,
       readmeElement,
       readmeHeight: height,
+      readOnlyMode: Boolean(window.read_only_mode),
     }
   },
   methods: {

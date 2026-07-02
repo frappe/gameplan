@@ -38,7 +38,7 @@ interface UserInfo {
   email_digest_day_of_week?: EmailDigestDayOfWeek
   email_digest_last_sent_on?: string
   bio: string
-  role: 'Gameplan Admin' | 'Gameplan Member' | 'Gameplan Guest'
+  role: 'Guest' | 'Gameplan Admin' | 'Gameplan Member' | 'Gameplan Guest'
   isGuest?: boolean
   isNotGuest?: boolean
   isDisabled?: boolean
@@ -74,20 +74,20 @@ export function useUser(email?: string | null) {
   if (!email || email === 'sessionUser') {
     email = session.user
   }
-  if (!email) return getPlaceholderUser('guest@example.com', 'Guest')
   if (!usersByName[email]) {
-    usersByName[email] = getPlaceholderUser(email, email.split('@')[0])
+    usersByName[email] = getPlaceholderUser(email)
   }
   return usersByName[email]
 }
 
-function getPlaceholderUser(email: string, full_name: string) {
+function getPlaceholderUser(email: string) {
+  const isAnonymous = email === 'Guest'
   return {
     name: email,
-    email: email,
-    full_name: full_name,
+    email: isAnonymous ? '' : email,
+    full_name: isAnonymous ? 'Guest' : email.split('@')[0],
     user_image: '',
-    role: 'Gameplan Member',
+    role: isAnonymous ? 'Guest' : 'Gameplan Member',
     enabled: 1,
     user_profile: '',
     image_background_color: '',

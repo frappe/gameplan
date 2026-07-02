@@ -69,7 +69,7 @@
                 class="text-md-medium text-ink-gray-8 hover:text-ink-blue-8 sm:text-base-medium"
                 :user="discussion.doc.owner"
               >
-                {{ $user(discussion.doc.owner).full_name }}
+                {{ useUser(discussion.doc.owner).full_name }}
                 <span class="hidden md:inline text-ink-gray-7">&nbsp;&middot;&nbsp;</span>
               </UserProfileLink>
               <Tooltip :text="dayjsLocal(discussion.doc.creation).format('D MMM YYYY [at] h:mm A')">
@@ -322,12 +322,13 @@ import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { useDiscussion } from '@/data/discussions'
 import { useDraftSync } from '@/data/useDraftSync'
 import { tags } from '@/data/tags'
+import { session } from '@/data/session'
 import { getScrollContainer, useScrollPosition } from '@/utils/scrollContainer'
 import { isMobile as useIsMobile } from '@/composables/isMobile'
 import { provideRichQuotes } from '@/components/RichQuoteExtension/useRichQuotes'
 import QuoteBacklinksPopover from '@/components/RichQuoteExtension/QuoteBacklinksPopover.vue'
 import { refreshUnreadCountForProjects } from '@/data/unreadCount'
-import { useSessionUser } from '@/data/users'
+import { useSessionUser, useUser } from '@/data/users'
 import { canDeleteContent } from '@/utils/permissions'
 import { useCommandPaletteCommands } from './CommandPalette/registry'
 
@@ -487,7 +488,7 @@ async function scrollToUnread() {
     }
   }
 
-  if (route.name === 'Discussion' && route.params.postId === doc?.name) {
+  if (session.isAuthenticated && route.name === 'Discussion' && route.params.postId === doc?.name) {
     discussion.trackVisit.submit().then(() => {
       refreshUnreadCountForProjects([doc.project])
     })

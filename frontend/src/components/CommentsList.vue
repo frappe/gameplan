@@ -56,7 +56,7 @@
         @click="openCommentBoxFromRow"
       >
         <div class="mr-3 hidden h-8 items-center sm:flex">
-          <UserAvatar :user="$user().name" size="md" />
+          <UserAvatar :user="sessionUser.name" size="md" />
         </div>
         <div class="relative w-full" v-show="!showCommentBox">
           <button
@@ -73,9 +73,9 @@
           @keydown.meta.enter.capture.stop="submitComment"
         >
           <div class="mb-4 flex items-center sm:hidden">
-            <UserAvatar :user="$user().name" size="sm" />
+            <UserAvatar :user="sessionUser.name" size="sm" />
             <span class="ml-2 text-base-medium text-ink-gray-8">
-              {{ $user().full_name }}
+              {{ sessionUser.full_name }}
             </span>
           </div>
           <CommentEditor
@@ -115,6 +115,8 @@ import { useSocket, type NewActivityEvent } from '@/socket'
 import { GPActivity, GPComment } from '@/types/doctypes'
 import type { Space } from '@/data/spaces'
 import { useDraftSync } from '@/data/useDraftSync'
+import { session } from '@/data/session'
+import { useSessionUser } from '@/data/users'
 
 interface Props {
   doctype: string
@@ -130,10 +132,12 @@ const props = withDefaults(defineProps<Props>(), {
   readOnlyMode: false,
   disableNewComment: false,
 })
+const sessionUser = useSessionUser()
 
 const router = useRouter()
 const route = useRoute()
 const socket = useSocket()
+const canBrowsePublicWeb = session.canBrowsePublicWeb
 
 const showCommentBox = ref(false)
 
@@ -146,6 +150,7 @@ const draft = useDraftSync({
     referenceDoctype: props.doctype,
     referenceName: props.name,
   }),
+  enabled: () => !props.readOnlyMode,
   initialPayload: () => ({ content: '' }),
 })
 const draftData = draft.data
@@ -209,6 +214,7 @@ interface Activity extends Pick<GPActivity, 'name' | 'user' | 'action' | 'creati
 
 const activities = useList<Activity>({
   doctype: 'GP Activity',
+  immediate: !canBrowsePublicWeb,
   fields: ['name', 'user', 'action', 'data', 'creation'],
   filters: {
     reference_doctype: props.doctype,
@@ -415,13 +421,13 @@ watch(
   { immediate: true },
 )
 
-socket.on('new_activity', (data: NewActivityEvent) => {
+socket?.on('new_activity', (data: NewActivityEvent) => {
   if (data.reference_doctype === props.doctype && data.reference_name === props.name) {
     activities.reload()
   }
 })
 
 onUnmounted(() => {
-  socket.off('new_activity')
+  socket?.off('new_activity')
 })
 </script>

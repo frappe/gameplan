@@ -98,8 +98,8 @@
               class="flex w-full items-center gap-3 text-left sm:gap-0 sm:rounded-lg sm:border sm:bg-surface-base sm:px-2 sm:py-2 sm:text-base sm:text-ink-gray-5 sm:shadow-sm sm:hover:border-outline-gray-3 sm:hover:bg-surface-gray-1"
               @click="openCommentBox"
             >
-              <UserAvatar class="sm:hidden" :user="$user().name" size="xl" />
-              <UserAvatar class="mr-3 hidden sm:inline-block" :user="$user().name" size="sm" />
+              <UserAvatar class="sm:hidden" :user="sessionUser.name" size="xl" />
+              <UserAvatar class="mr-3 hidden sm:inline-block" :user="sessionUser.name" size="sm" />
               <span
                 class="flex h-8 min-w-0 flex-1 items-center rounded-md bg-surface-gray-2 px-3 text-md text-ink-gray-5 sm:hidden"
               >
@@ -117,8 +117,8 @@
             @keydown.enter.prevent="restoreComposer"
             @keydown.space.prevent="restoreComposer"
           >
-            <UserAvatar class="sm:hidden" :user="$user().name" size="xl" />
-            <UserAvatar class="mr-3 hidden sm:inline-block" :user="$user().name" size="sm" />
+            <UserAvatar class="sm:hidden" :user="sessionUser.name" size="xl" />
+            <UserAvatar class="mr-3 hidden sm:inline-block" :user="sessionUser.name" size="sm" />
             <span
               class="flex h-8 min-w-0 flex-1 items-center truncate rounded-md bg-surface-gray-2 px-3 text-md text-ink-gray-5 sm:h-auto sm:bg-transparent sm:px-0 sm:text-base sm:text-ink-gray-6"
             >
@@ -154,12 +154,12 @@
               <span class="h-1 w-10 rounded-full bg-surface-gray-4" />
             </button>
             <div class="mb-3 flex items-center gap-2">
-              <UserAvatar class="sm:hidden" :user="$user().name" size="lg" />
-              <UserAvatar class="hidden sm:inline-block" :user="$user().name" size="md" />
+              <UserAvatar class="sm:hidden" :user="sessionUser.name" size="lg" />
+              <UserAvatar class="hidden sm:inline-block" :user="sessionUser.name" size="md" />
               <span
                 class="min-w-0 flex-1 truncate text-lg-medium text-ink-gray-8 sm:text-base-medium"
               >
-                {{ $user().full_name }}
+                {{ sessionUser.full_name }}
               </span>
               <div class="hidden sm:block">
                 <TabButtons
@@ -274,6 +274,7 @@ import { useSessionUser } from '@/data/users'
 import type { Space } from '@/data/spaces'
 import { isMobile } from '@/composables/isMobile'
 import { needsMobileCommentGap } from '@/utils/commentTimeline'
+import { session } from '@/data/session'
 
 interface Props {
   doctype: string
@@ -328,6 +329,7 @@ const router = useRouter()
 const route = useRoute()
 const socket = useSocket()
 const sessionUser = useSessionUser()
+const canBrowsePublicWeb = session.canBrowsePublicWeb
 const isMobileViewport = isMobile()
 
 const showCommentBox = ref(false)
@@ -348,6 +350,7 @@ const draft = useDraftSync({
     referenceDoctype: props.doctype,
     referenceName: props.name,
   }),
+  enabled: () => !props.readOnlyMode,
   initialPayload: () => ({ content: '' }),
 })
 const draftData = draft.data
@@ -413,6 +416,7 @@ const comments = useList<GPComment>({
 
 const activities = useList<GPActivity>({
   doctype: 'GP Activity',
+  immediate: !canBrowsePublicWeb,
   fields: ['name', 'user', 'action', 'data', 'creation'],
   filters: {
     reference_doctype: props.doctype,
@@ -836,7 +840,7 @@ onMounted(() => {
     scrollToComment: scrollToCommentById,
     highlightComment,
   })
-  socket.on('new_activity', (data: NewActivityEvent) => {
+  socket?.on('new_activity', (data: NewActivityEvent) => {
     if (data.reference_doctype === props.doctype && data.reference_name === props.name) {
       activities.reload()
     }
@@ -847,7 +851,7 @@ onMounted(() => {
 onUnmounted(() => {
   richQuotes?.setReplyTarget(null)
   richQuotes?.setCommentNavigator(null)
-  socket.off('new_activity')
+  socket?.off('new_activity')
   mutationObserver?.disconnect()
   resizeObserver?.disconnect()
   stopComposerResize()

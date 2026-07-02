@@ -13,6 +13,7 @@ from gameplan.mixins.mentions import HasMentions
 from gameplan.mixins.reactions import HasReactions
 from gameplan.mixins.tags import HasTags
 from gameplan.permissions import content_has_permission, discussion_query_conditions
+from gameplan.public_web import is_anonymous_user
 from gameplan.utils import get_document_revisions, remove_empty_trailing_paragraphs, url_safe_slug
 
 
@@ -113,6 +114,8 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 	# Whitelisted Methods
 	@frappe.whitelist()
 	def track_visit(self):
+		if is_anonymous_user():
+			return
 		if frappe.flags.read_only:
 			return
 
@@ -137,6 +140,8 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 
 	@frappe.whitelist()
 	def mark_as_unread(self):
+		if is_anonymous_user():
+			frappe.throw(frappe._("Login required"), frappe.PermissionError)
 		if frappe.flags.read_only:
 			return
 
@@ -190,12 +195,16 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 
 	@frappe.whitelist()
 	def add_bookmark(self):
+		if is_anonymous_user():
+			frappe.throw(frappe._("Login required"), frappe.PermissionError)
 		if self.is_bookmarked():
 			return
 		frappe.new_doc("GP Bookmark", discussion=self.name, user=frappe.session.user).insert()
 
 	@frappe.whitelist()
 	def remove_bookmark(self):
+		if is_anonymous_user():
+			frappe.throw(frappe._("Login required"), frappe.PermissionError)
 		bookmark = frappe.db.get_value(
 			"GP Bookmark", {"discussion": self.name, "user": frappe.session.user}, "name"
 		)

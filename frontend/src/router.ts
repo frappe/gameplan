@@ -37,6 +37,17 @@ type ProjectContentDoc = {
 
 const discussionFeeds = ['recent', 'unread', 'participating']
 const projectContentDocRequests = new Map<string, Promise<ProjectContentDoc | null>>()
+const PUBLIC_WEB_VISIBILITY = 'Public Web'
+const PUBLIC_VISITOR_ROUTE_NAMES = new Set([
+  'Home',
+  'Discussions',
+  'DiscussionsTab',
+  'Space',
+  'SpaceDiscussions',
+  'Discussion',
+  'NoCommunities',
+  'NotFound',
+])
 
 // Redirect-style guards still need a component record so Vue Router matches them consistently.
 const RouteGuard = { render: () => null }
@@ -128,6 +139,14 @@ const routes: RouteRecordRaw[] = [
 
       if (feedType === 'bookmarks') {
         return { name: 'Bookmarks' }
+      }
+
+      if (session.canBrowsePublicWeb && feedType !== 'recent') {
+        return {
+          name: 'Discussions',
+          params: { communityId: routeParam(to.params.communityId) },
+          replace: true,
+        }
       }
 
       if (discussionFeeds.includes(feedType)) {
@@ -736,12 +755,13 @@ router.beforeEach(async (to, from) => {
     return { name: 'Home' }
   }
 
-  if (to.name !== 'Login' && !session.isLoggedIn) {
+  const canBrowseRouteAsGuest = canBrowseRouteWithoutLogin(to)
+  if (to.name !== 'Login' && !session.isLoggedIn && !canBrowseRouteAsGuest) {
     window.location.href = '/login'
     return { name: 'Login' }
   }
 
-  if (!users.isFinished) {
+  if (!canBrowseRouteAsGuest && !users.isFinished) {
     try {
       await users.promise
     } catch (error) {
@@ -824,6 +844,32 @@ router.beforeEach(async (to, from) => {
 
 export default router
 
+function canBrowseRouteWithoutLogin(to: RouteLocationNormalized) {
+  if (session.isAuthenticated) return false
+
+  if (typeof to.name === 'string' && PUBLIC_VISITOR_ROUTE_NAMES.has(to.name)) {
+    return true
+  }
+
+  return (
+    to.path === '/' ||
+    to.path === '/community' ||
+    isPublicCommunityRoute(to.path) ||
+    to.path.startsWith('/discussions') ||
+    isLegacyPublicSpaceRoute(to.path)
+  )
+}
+
+function isPublicCommunityRoute(path: string) {
+  return /^\/community\/[^/]+(?:\/menu|\/discussions(?:\/[^/]+)?|\/space\/[^/]+(?:\/discussions|\/discussion\/[^/]+(?:\/[^/]+)?)?)?$/.test(
+    path,
+  )
+}
+
+function isLegacyPublicSpaceRoute(path: string) {
+  return /^\/space\/[^/]+(?:\/discussions|\/discussion\/[^/]+(?:\/[^/]+)?)?$/.test(path)
+}
+
 async function ensureCommunityDataLoaded() {
   await Promise.all([waitForResource(communities), waitForResource(spaces)])
 }
@@ -845,6 +891,10 @@ export function getHomeRoute(): RouteLocationRaw {
 }
 
 function getDesktopHomeRoute(): RouteLocationRaw {
+  if (session.canBrowsePublicWeb) {
+    return getPublicHomeRoute()
+  }
+
   // Home resolves to the active community when possible; onboarding stays only for truly empty sites.
   if (communityState.id) {
     return {
@@ -860,6 +910,36 @@ function getDesktopHomeRoute(): RouteLocationRaw {
   // The site has communities/spaces but the user has joined none. Admins manage
   // them from the NoCommunities page (which opens the Communities settings tab).
   return { name: 'NoCommunities' }
+}
+
+function getPublicHomeRoute(): RouteLocationRaw {
+  if (communityState.id && hasPublicWebSpace(communityState.id)) {
+    return {
+      name: 'Discussions',
+      params: { communityId: communityState.id },
+    }
+  }
+
+  const community = (communities.data ?? []).find((community) => hasPublicWebSpace(community.name))
+  if (community) {
+    return {
+      name: 'Discussions',
+      params: { communityId: community.name },
+    }
+  }
+
+  return { name: 'NoCommunities' }
+}
+
+function hasPublicWebSpace(communityId: string) {
+  return Boolean(
+    spaces.data?.some(
+      (space) =>
+        space.team?.toString() === communityId.toString() &&
+        !space.archived_at &&
+        space.visibility === PUBLIC_WEB_VISIBILITY,
+    ),
+  )
 }
 
 function isMobileViewport() {

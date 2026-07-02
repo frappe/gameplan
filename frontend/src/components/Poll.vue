@@ -25,7 +25,7 @@
       </div>
       <div class="ml-auto flex items-center space-x-2">
         <Button
-          v-if="!isStopped && $isSessionUser(_poll.owner)"
+          v-if="!readOnlyMode && !isStopped && isSessionUser(_poll.owner)"
           variant="ghost"
           icon-left="lucide-minus-circle"
           @click="stopPoll"
@@ -59,7 +59,7 @@
         v-for="option in _poll.options"
         :key="option.idx"
         @click="submitVote(option)"
-        :disabled="participated || isStopped || $resources.poll.submitVote.loading"
+        :disabled="readOnlyMode || participated || isStopped || $resources.poll.submitVote.loading"
       >
         <div
           class="mr-2 h-4 w-4 rounded-full border-2 text-sm"
@@ -82,7 +82,12 @@
       </button>
     </div>
     <div class="mt-3">
-      <Reactions doctype="GP Poll" :name="poll.name" :reactions="_poll.reactions" />
+      <Reactions
+        doctype="GP Poll"
+        :name="poll.name"
+        :reactions="_poll.reactions"
+        :read-only-mode="readOnlyMode"
+      />
     </div>
     <Dialog title="Poll results" v-model:open="showDialog">
       <h2 class="text-xl-medium text-ink-gray-8">{{ _poll.title }}</h2>
@@ -119,6 +124,7 @@ import UserAvatarWithHover from './UserAvatarWithHover.vue'
 import UserProfileLink from './UserProfileLink.vue'
 import { copyToClipboard } from '@/utils'
 import Reactions from './Reactions.vue'
+import { isSessionUser } from '@/data/session'
 import { useUser, useSessionUser } from '@/data/users'
 import { canDeleteContent } from '@/utils/permissions'
 
@@ -137,6 +143,10 @@ export default {
     space: {
       type: Object,
       default: null,
+    },
+    readOnlyMode: {
+      type: Boolean,
+      default: false,
     },
   },
   emits: ['vote'],
@@ -157,6 +167,7 @@ export default {
   setup() {
     return {
       dayjsLocal,
+      isSessionUser,
     }
   },
   resources: {
@@ -176,6 +187,7 @@ export default {
   },
   methods: {
     submitVote(option) {
+      if (this.readOnlyMode) return
       if (this._poll.anonymous) {
         dialog.confirm({
           title: 'Anonymous poll',
@@ -203,7 +215,7 @@ export default {
     },
     isVotedByUser(option) {
       return this._poll.votes.find(
-        (vote) => vote.option === option && vote.user === this.$user().name,
+        (vote) => vote.option === option && vote.user === useSessionUser().name,
       )
     },
     copyLink() {
@@ -217,7 +229,7 @@ export default {
       return useUser(this._poll.owner)
     },
     participated() {
-      return this._poll.votes.some((d) => d.user === this.$user().name) ?? false
+      return this._poll.votes.some((d) => d.user === useSessionUser().name) ?? false
     },
     pollResults() {
       if (!this.$resources.poll.doc || this._poll.anonymous) return null
@@ -246,6 +258,7 @@ export default {
           label: 'Retract vote',
           icon: 'lucide-corner-up-left',
           condition: () =>
+            !this.readOnlyMode &&
             !this._poll.anonymous &&
             this.participated &&
             (!this._poll.stopped_at || dayjsLocal().isBefore(this._poll.stopped_at)),
@@ -266,7 +279,8 @@ export default {
         {
           label: 'Delete',
           icon: 'lucide-trash',
-          condition: () => canDeleteContent(this._poll, this.space, useSessionUser()),
+          condition: () =>
+            !this.readOnlyMode && canDeleteContent(this._poll, this.space, useSessionUser()),
           onClick: () => {
             dialog.danger({
               title: 'Delete poll',

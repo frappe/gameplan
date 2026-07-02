@@ -9,12 +9,14 @@
   />
 </template>
 <script>
+import { useUser } from '@/data/users'
+
 export default {
   name: 'UserImage',
   props: ['user'],
   computed: {
     _user() {
-      return this.$user(this.user)
+      return useUser(this.user)
     },
   },
 }

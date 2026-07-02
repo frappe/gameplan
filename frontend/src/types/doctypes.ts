@@ -258,6 +258,8 @@ export interface GPProject extends DocType {
   archived_by?: string
   /** Is Private: Check */
   is_private: 0 | 1
+  /** Visibility: Select */
+  visibility: 'Private' | 'Members' | 'Public Web'
   /** Is Followed: Check */
   is_followed: 0 | 1
 }

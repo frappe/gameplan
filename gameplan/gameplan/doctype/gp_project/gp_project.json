@@ -11,6 +11,7 @@
   "column_break_2",
   "team",
   "is_private",
+  "visibility",
   "section_break_5",
   "description",
   "readme",
@@ -100,6 +101,13 @@
    "label": "Is Private"
   },
   {
+   "default": "Members",
+   "fieldname": "visibility",
+   "fieldtype": "Select",
+   "label": "Visibility",
+   "options": "Private\nMembers\nPublic Web"
+  },
+  {
    "default": "0",
    "fieldname": "is_followed",
    "fieldtype": "Check",
@@ -170,6 +178,10 @@
    "role": "Gameplan Guest",
    "share": 1,
    "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Guest"
   }
  ],
  "show_title_field_in_link": 1,

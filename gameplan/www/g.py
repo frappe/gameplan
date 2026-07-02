@@ -10,6 +10,9 @@ from frappe.core.api.file import get_max_file_size
 from frappe.utils import get_system_timezone
 from frappe.utils.telemetry import capture
 
+from gameplan.public_web import can_anonymous_read
+from gameplan.public_web import is_enabled as public_web_enabled
+
 no_cache = 1
 
 
@@ -38,6 +41,8 @@ def get_boot():
 			"frappe_version": frappe.__version__,
 			"default_route": get_default_route(),
 			"site_name": frappe.local.site,
+			"gameplan_public_web_enabled": public_web_enabled(),
+			"is_public_visitor": can_anonymous_read(),
 			"read_only_mode": frappe.flags.read_only,
 			"gameplan_frontend_sentry_dsn": frappe.conf.gameplan_frontend_sentry_dsn,
 			"max_file_size": get_max_file_size(),

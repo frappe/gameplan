@@ -5,41 +5,48 @@ import { getProjectUnreadCount, markSpacesAsRead } from './unreadCount'
 import { useSessionUser } from './users'
 import { canManageSpace } from '@/utils/permissions'
 import { readOnlyMode } from './readOnlyMode'
+import { session } from './session'
 
 interface Member extends Pick<GPMember, 'user'> {}
 
-export interface Space
-  extends Pick<
-    GPProject,
-    | 'name'
-    | 'title'
-    | 'icon'
-    | 'team'
-    | 'archived_at'
-    | 'is_private'
-    | 'modified'
-    | 'tasks_count'
-    | 'discussions_count'
-  > {
+export interface Space extends Pick<
+  GPProject,
+  | 'name'
+  | 'title'
+  | 'icon'
+  | 'team'
+  | 'archived_at'
+  | 'is_private'
+  | 'visibility'
+  | 'modified'
+  | 'tasks_count'
+  | 'discussions_count'
+> {
   team_title: string
-  members: Member[]
+  members?: Member[]
+}
+
+const spaceFields: (string | { members: string[] })[] = [
+  'name',
+  'title',
+  'icon',
+  'team',
+  'archived_at',
+  'is_private',
+  'visibility',
+  'modified',
+  'tasks_count',
+  'discussions_count',
+  'team.title as team_title',
+]
+
+if (session.isAuthenticated) {
+  spaceFields.push({ members: ['user'] })
 }
 
 export let spaces = useList<Space>({
   doctype: 'GP Project',
-  fields: [
-    'name',
-    'title',
-    'icon',
-    'team',
-    'archived_at',
-    'is_private',
-    'modified',
-    'tasks_count',
-    'discussions_count',
-    'team.title as team_title',
-    { members: ['user'] },
-  ],
+  fields: spaceFields,
   initialData: [],
   orderBy: 'title asc',
   limit: 99999,
@@ -72,8 +79,10 @@ export function useSpacePermissions(spaceId: MaybeRefOrGetter<string | undefined
   const space = useSpace(spaceId)
   const sessionUser = useSessionUser()
   const isArchived = computed(() => Boolean(space.value?.archived_at))
-  const canEditSpace = computed(() => !readOnlyMode && !isArchived.value)
-  const canManageAccess = computed(() => !readOnlyMode && canManageSpace(space.value, sessionUser))
+  const canEditSpace = computed(() => session.isAuthenticated && !readOnlyMode && !isArchived.value)
+  const canManageAccess = computed(
+    () => session.isAuthenticated && !readOnlyMode && canManageSpace(space.value, sessionUser),
+  )
   return { space, isArchived, canEditSpace, canManageAccess }
 }
 
@@ -85,6 +94,7 @@ export const joinedSpaces = useCall<string[]>({
   url: '/api/v2/method/GP Project/get_joined_spaces',
   cacheKey: 'joinedSpaces',
   initialData: [],
+  immediate: session.isAuthenticated,
 })
 
 export function hasJoined(spaceId: MaybeRefOrGetter<string>) {

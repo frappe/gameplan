@@ -1,4 +1,5 @@
 import { useCall } from 'frappe-ui'
+import { session } from './session'
 
 interface AppInfo {
   name: string
@@ -10,7 +11,7 @@ interface AppInfo {
 export const installedApps = useCall<AppInfo[]>({
   url: '/api/v2/method/frappe.apps.get_apps',
   cacheKey: 'apps',
-  immediate: true,
+  immediate: session.isAuthenticated,
   transform(data) {
     let _apps = [
       {

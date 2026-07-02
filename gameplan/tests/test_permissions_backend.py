@@ -18,6 +18,7 @@ from gameplan.tests.utils import create_guest, create_member, create_project, cr
 class PermissionBackendTestCase(FrappeTestCase):
 	def setUp(self):
 		frappe.set_user("Administrator")
+		self._public_web_enabled = frappe.conf.get("gameplan_public_web_enabled")
 		self.admin = create_user("perm_global_admin@example.com", "Global Admin", "Gameplan Admin")
 		self.alice = create_member("perm_alice@example.com", "Alice")
 		self.bob = create_member("perm_bob@example.com", "Bob")
@@ -26,6 +27,10 @@ class PermissionBackendTestCase(FrappeTestCase):
 
 	def tearDown(self):
 		frappe.set_user("Administrator")
+		if self._public_web_enabled is None:
+			frappe.conf.pop("gameplan_public_web_enabled", None)
+		else:
+			frappe.conf.gameplan_public_web_enabled = self._public_web_enabled
 		frappe.db.rollback()
 
 	def create_community(self, title, *, is_private=0, members=None, admins=None):
@@ -36,8 +41,10 @@ class PermissionBackendTestCase(FrappeTestCase):
 			team.append("members", {"user": user, "is_admin": 1})
 		return team.insert(ignore_permissions=True)
 
-	def create_space(self, title, team, *, is_private=0, members=None):
+	def create_space(self, title, team, *, is_private=0, visibility=None, members=None):
 		project = create_project(title, team, is_private=is_private)
+		if visibility:
+			project.visibility = visibility
 		for user in members or []:
 			project.append("members", {"user": user})
 		project.save(ignore_permissions=True)
@@ -56,7 +63,8 @@ class PermissionBackendTestCase(FrappeTestCase):
 
 	def create_discussion(self, title, project, *, owner=None):
 		doc = frappe.get_doc(doctype="GP Discussion", title=title, project=project, content="Test")
-		doc.insert(ignore_permissions=True)
+		with patch("frappe.model.document.run_server_script_for_doc_event"):
+			doc.insert(ignore_permissions=True)
 		if owner:
 			frappe.db.set_value("GP Discussion", doc.name, "owner", owner, update_modified=False)
 			doc.reload()
@@ -69,11 +77,28 @@ class PermissionBackendTestCase(FrappeTestCase):
 			reference_name=discussion.name,
 			content="Test",
 		)
-		doc.insert(ignore_permissions=True)
+		with patch("frappe.model.document.run_server_script_for_doc_event"):
+			doc.insert(ignore_permissions=True)
 		if owner:
 			frappe.db.set_value("GP Comment", doc.name, "owner", owner, update_modified=False)
 			doc.reload()
 		return doc
+
+	def create_poll(self, discussion, *, owner=None):
+		doc = frappe.get_doc(
+			doctype="GP Poll",
+			discussion=discussion.name,
+			title="Test Poll",
+			options=[{"title": "Yes"}, {"title": "No"}],
+		)
+		doc.insert(ignore_permissions=True)
+		if owner:
+			frappe.db.set_value("GP Poll", doc.name, "owner", owner, update_modified=False)
+			doc.reload()
+		return doc
+
+	def set_public_web_enabled(self, enabled):
+		frappe.conf.gameplan_public_web_enabled = 1 if enabled else 0
 
 
 class TestCommunityVisibility(PermissionBackendTestCase):
@@ -268,6 +293,71 @@ class TestContentPermissions(PermissionBackendTestCase):
 		frappe.db.set_value("GP Page", doc.name, "owner", owner, update_modified=False)
 		doc.reload()
 		return doc
+
+
+class TestPublicWebPermissions(PermissionBackendTestCase):
+	def test_switch_off_blocks_anonymous_public_web_space(self):
+		self.set_public_web_enabled(False)
+		team = self.create_community("Public Web Off Community", members=[self.alice.name])
+		space = self.create_space("Public Web Off Space", team.name, visibility="Public Web")
+		discussion = self.create_discussion("Public Web Off Discussion", space.name, owner=self.alice.name)
+
+		self.assert_cannot_read_doc("GP Team", team.name, "Guest")
+		self.assert_cannot_read_doc("GP Project", space.name, "Guest")
+		self.assert_cannot_read_doc("GP Discussion", discussion.name, "Guest")
+
+	def test_anonymous_can_read_public_web_discussion_comments_and_polls(self):
+		self.set_public_web_enabled(True)
+		team = self.create_community("Public Web Community", members=[self.alice.name])
+		space = self.create_space("Public Web Space", team.name, visibility="Public Web")
+		discussion = self.create_discussion("Public Web Discussion", space.name, owner=self.alice.name)
+		comment = self.create_comment(discussion, owner=self.alice.name)
+		poll = self.create_poll(discussion, owner=self.alice.name)
+
+		self.assert_can_read_doc("GP Team", team.name, "Guest")
+		self.assert_can_read_doc("GP Project", space.name, "Guest")
+		self.assert_can_read_doc("GP Discussion", discussion.name, "Guest")
+		self.assert_can_read_doc("GP Comment", comment.name, "Guest")
+		self.assert_can_read_doc("GP Poll", poll.name, "Guest")
+
+	def test_anonymous_cannot_read_members_or_private_space_content(self):
+		self.set_public_web_enabled(True)
+		team = self.create_community("Members Web Community", members=[self.alice.name])
+		members_space = self.create_space("Members Only Space", team.name)
+		private_space = self.create_space("Private Only Space", team.name, is_private=1)
+		members_discussion = self.create_discussion(
+			"Members Discussion", members_space.name, owner=self.alice.name
+		)
+		private_discussion = self.create_discussion(
+			"Private Discussion", private_space.name, owner=self.alice.name
+		)
+
+		self.assert_cannot_read_doc("GP Project", members_space.name, "Guest")
+		self.assert_cannot_read_doc("GP Project", private_space.name, "Guest")
+		self.assert_cannot_read_doc("GP Discussion", members_discussion.name, "Guest")
+		self.assert_cannot_read_doc("GP Discussion", private_discussion.name, "Guest")
+
+	def test_anonymous_public_web_access_is_read_only(self):
+		self.set_public_web_enabled(True)
+		team = self.create_community("Read Only Web Community", members=[self.alice.name])
+		space = self.create_space("Read Only Web Space", team.name, visibility="Public Web")
+		discussion = self.create_discussion("Read Only Web Discussion", space.name, owner=self.alice.name)
+		poll = self.create_poll(discussion, owner=self.alice.name)
+
+		self.assertFalse(frappe.has_permission("GP Discussion", "write", doc=discussion.name, user="Guest"))
+		self.assertFalse(frappe.has_permission("GP Poll", "write", doc=poll.name, user="Guest"))
+
+		frappe.set_user("Guest")
+		comment = frappe.get_doc(
+			doctype="GP Comment",
+			reference_doctype="GP Discussion",
+			reference_name=discussion.name,
+			content="Anonymous write",
+		)
+		with self.assertRaises(frappe.PermissionError):
+			comment.insert()
+		with self.assertRaises(frappe.PermissionError):
+			poll.submit_vote("Yes")
 
 
 class TestPermissionAwareQueries(PermissionBackendTestCase):

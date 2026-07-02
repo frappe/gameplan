@@ -66,6 +66,10 @@
   },
   {
    "read": 1,
+   "role": "Guest"
+  },
+  {
+   "read": 1,
    "role": "Gameplan Member"
   },
   {

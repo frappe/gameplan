@@ -71,7 +71,7 @@
                 </div>
                 <div>
                   <span>
-                    {{ $user(discussion.last_post_by).full_name.trim() }}
+                    {{ useUser(discussion.last_post_by).full_name.trim() }}
                   </span>
                   <span class="inline-flex items-center" v-if="showSpaceName">
                     &nbsp;in {{ discussion.project_title }}
@@ -135,6 +135,7 @@ import UserAvatarWithHover from './UserAvatarWithHover.vue'
 import { getSpace, useSpace } from '@/data/spaces'
 import { Discussion } from '@/data/discussions'
 import { relativeTimestamp } from '@/utils'
+import { useUser } from '@/data/users'
 
 const props = defineProps<{
   discussion: Discussion

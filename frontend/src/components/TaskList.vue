@@ -80,7 +80,7 @@
                 <div class="hidden items-center @md:flex" v-if="d.assigned_to">
                   <div class="px-2 leading-none text-ink-gray-5">&middot;</div>
                   <span class="whitespace-nowrap text-base text-ink-gray-5">
-                    {{ $user(d.assigned_to).full_name }}
+                    {{ useUser(d.assigned_to).full_name }}
                   </span>
                 </div>
 
@@ -140,7 +140,7 @@ import { GPTask } from '@/types/doctypes'
 import { getSpace } from '@/data/spaces'
 import { UseListOptions } from 'frappe-ui'
 import DropdownMoreOptions from './DropdownMoreOptions.vue'
-import { useSessionUser } from '@/data/users'
+import { useSessionUser, useUser } from '@/data/users'
 import { canDeleteContent } from '@/utils/permissions'
 
 interface Props {

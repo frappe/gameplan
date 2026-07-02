@@ -107,9 +107,9 @@
                   <div class="ml-3 min-w-0 flex-1">
                     <div class="flex items-center space-x-2">
                       <div class="text-base-medium text-ink-gray-8">
-                        {{ $user(user.user).full_name }}
+                        {{ useUser(user.user).full_name }}
                       </div>
-                      <Badge v-if="$user(user.user).isGuest">Guest</Badge>
+                      <Badge v-if="useUser(user.user).isGuest">Guest</Badge>
                     </div>
                     <div
                       v-if="user.bio"
@@ -176,7 +176,7 @@ import MobileBackButton from '@/components/MobileBackButton.vue'
 import MobileHeader from '@/components/MobileHeader.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import { showSettingsDialog } from '@/components/Settings'
-import { isGameplanAdmin } from '@/data/users'
+import { isGameplanAdmin, useSessionUser, useUser } from '@/data/users'
 import UserAvatarWithHover from '@/components/UserAvatarWithHover.vue'
 import ReactionFaceIcon from '@/components/ReactionFaceIcon.vue'
 
@@ -205,6 +205,7 @@ export default {
     return {
       showSettingsDialog,
       isAdmin: computed(() => isGameplanAdmin()),
+      useUser,
     }
   },
   resources: {
@@ -229,7 +230,7 @@ export default {
   computed: {
     people() {
       if (!this.profiles.length) return []
-      let myProfile = this.profiles.find((p) => p.user == this.$user().name)
+      let myProfile = this.profiles.find((p) => p.user == useSessionUser().name)
       if (this.search) {
         return this.profiles.filter((p) => {
           return (
@@ -252,12 +253,12 @@ export default {
     },
     profiles() {
       return (this.$resources.profiles.data || [])
-        .filter((profile) => this.$user(profile.user).isNotGuest)
+        .filter((profile) => useUser(profile.user).isNotGuest)
         .map((profile) => {
           return {
             ...profile,
-            email: this.$user(profile.user).email,
-            full_name: this.$user(profile.user).full_name,
+            email: useUser(profile.user).email,
+            full_name: useUser(profile.user).full_name,
           }
         })
     },

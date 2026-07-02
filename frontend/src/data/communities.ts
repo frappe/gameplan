@@ -2,6 +2,7 @@ import { computed, MaybeRefOrGetter, toValue } from 'vue'
 import { useList } from 'frappe-ui'
 import { GPTeam, GPMember } from '@/types/doctypes'
 import { communityOrder } from './communityOrder'
+import { session } from './session'
 
 export interface CommunityMember extends Pick<GPMember, 'user' | 'is_admin'> {
   user: string
@@ -12,22 +13,27 @@ export interface Community extends Pick<
   GPTeam,
   'name' | 'title' | 'icon' | 'image' | 'modified' | 'creation' | 'archived_at' | 'is_private'
 > {
-  members: CommunityMember[]
+  members?: CommunityMember[]
+}
+
+const communityFields: (string | { members: string[] })[] = [
+  'name',
+  'title',
+  'icon',
+  'image',
+  'modified',
+  'creation',
+  'archived_at',
+  'is_private',
+]
+
+if (session.isAuthenticated) {
+  communityFields.push({ members: ['user', 'is_admin'] })
 }
 
 export let communities = useList<Community>({
   doctype: 'GP Team',
-  fields: [
-    'name',
-    'title',
-    'icon',
-    'image',
-    'modified',
-    'creation',
-    'archived_at',
-    'is_private',
-    { members: ['user', 'is_admin'] },
-  ],
+  fields: communityFields,
   orderBy: 'title asc',
   initialData: [],
   cacheKey: ['Communities', 'with-image'],
@@ -47,6 +53,16 @@ export let availableCommunities = computed(() => {
 
 export let activeCommunities = computed(() => {
   return sortCommunitiesByUserOrder(availableCommunities.value.filter(isCommunityJoined))
+})
+
+export let navigationCommunities = computed(() => {
+  if (session.canBrowsePublicWeb) {
+    return [...availableCommunities.value].sort((left, right) =>
+      left.title.localeCompare(right.title),
+    )
+  }
+
+  return activeCommunities.value
 })
 
 export let useCommunity = (communityId: MaybeRefOrGetter<string | undefined>) => {
@@ -72,8 +88,9 @@ export let getActiveCommunity = (communityId: string) => {
 }
 
 export function isCommunityJoined(community: Community) {
-  let user = getSessionUserFromCookie()
-  return Boolean(user && community.members?.some((member) => member.user === user))
+  if (session.isAnonymous) return false
+
+  return Boolean(community.members?.some((member) => member.user === session.user))
 }
 
 function sortCommunitiesByUserOrder(communities: Community[]) {
@@ -88,10 +105,4 @@ function sortCommunitiesByUserOrder(communities: Community[]) {
 
     return left.title.localeCompare(right.title)
   })
-}
-
-function getSessionUserFromCookie() {
-  let cookies = new URLSearchParams(document.cookie.split('; ').join('&'))
-  let user = cookies.get('user_id')
-  return user === 'Guest' ? null : user
 }

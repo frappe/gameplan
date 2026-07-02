@@ -56,7 +56,7 @@
         </div>
         <div class="truncate text-base text-ink-gray-6">{{ emoji.keywords || '' }}</div>
         <div>
-          <Tooltip :text="$user(emoji.owner).full_name">
+          <Tooltip :text="useUser(emoji.owner).full_name">
             <UserAvatar :user="emoji.owner" size="sm" />
           </Tooltip>
         </div>
@@ -142,6 +142,7 @@ import {
 } from 'frappe-ui'
 import { customEmojis, type CustomEmoji } from '@/data/customEmojis'
 import UserAvatar from '@/components/UserAvatar.vue'
+import { useUser } from '@/data/users'
 
 const search = ref('')
 const showUploadDialog = ref(false)

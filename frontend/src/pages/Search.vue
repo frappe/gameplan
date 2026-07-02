@@ -233,7 +233,7 @@
                     v-html="item.title"
                   />
                   <div class="text-base-medium text-ink-gray-9" v-else>
-                    {{ $user(item.author).full_name }}
+                    {{ useUser(item.author).full_name }}
                   </div>
                   <span class="px-1 leading-none text-sm text-ink-gray-5">
                     &middot; {{ item.doctype.replace('GP ', '') }}
@@ -258,6 +258,7 @@
 </template>
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, useTemplateRef } from 'vue'
+import { useUser } from '@/data/users'
 import { useRouter, useRoute } from 'vue-router'
 import {
   Avatar,

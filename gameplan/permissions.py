@@ -3,6 +3,8 @@ from frappe import _
 from frappe.utils import cint
 
 import gameplan
+from gameplan.public_web import PUBLIC_WEB_VISIBILITY, is_anonymous_user
+from gameplan.public_web import is_enabled as public_web_enabled
 
 READ_PERMISSIONS = {"read", "select", "print", "email", "export", "share", "report"}
 
@@ -66,6 +68,8 @@ def can_manage_community(user, team):
 def can_view_community(user, team):
 	if is_global_admin(user):
 		return True
+	if is_anonymous_user(user):
+		return public_web_enabled() and has_public_web_space(get_doc_name(team))
 	if gameplan.is_guest(user):
 		return False
 	team_name = get_doc_name(team)
@@ -85,6 +89,8 @@ def can_view_space(user, project):
 	project = get_project_info(project)
 	if not project:
 		return False
+	if is_anonymous_user(user):
+		return public_web_enabled() and project.visibility == PUBLIC_WEB_VISIBILITY
 	if gameplan.is_guest(user):
 		return has_guest_access(user, project.name)
 	if cint(project.is_private):
@@ -119,6 +125,8 @@ def can_view_content(user, doc):
 
 
 def can_create_content(user, doc):
+	if is_anonymous_user(user):
+		return False
 	if gameplan.is_guest(user):
 		return doc.doctype == "GP Comment" and can_view_content(user, doc)
 	if not get_content_project(doc):
@@ -127,6 +135,8 @@ def can_create_content(user, doc):
 
 
 def can_edit_content(user, doc):
+	if is_anonymous_user(user):
+		return False
 	if gameplan.is_guest(user):
 		return False
 	if is_global_admin(user):
@@ -145,7 +155,7 @@ def can_edit_content(user, doc):
 def can_delete_content(user, doc):
 	if is_global_admin(user):
 		return True
-	if gameplan.is_guest(user):
+	if is_anonymous_user(user) or gameplan.is_guest(user):
 		return False
 	if not can_view_content(user, doc):
 		return False
@@ -180,6 +190,9 @@ def task_query_conditions(user=None, **kwargs):
 
 def page_query_conditions(user=None, **kwargs):
 	user = user or frappe.session.user
+	if is_anonymous_user(user):
+		Page = frappe.qb.DocType("GP Page")
+		return criterion_sql(Page.name == "")
 	if is_global_admin(user):
 		return None
 	Page = frappe.qb.DocType("GP Page")
@@ -196,6 +209,19 @@ def comment_query_conditions(user=None, **kwargs):
 
 	Comment = frappe.qb.DocType("GP Comment")
 	Discussion = frappe.qb.DocType("GP Discussion")
+	if is_anonymous_user(user):
+		discussion_query = (
+			frappe.qb.from_(Discussion)
+			.select(Discussion.name)
+			.where(accessible_project_criterion(Discussion.project, user))
+		)
+		criterion = (
+			(Comment.reference_doctype == "GP Discussion")
+			& Comment.reference_name.isin(discussion_query)
+			& Comment.deleted_at.isnull()
+		)
+		return criterion_sql(criterion)
+
 	Task = frappe.qb.DocType("GP Task")
 	discussion_query = (
 		frappe.qb.from_(Discussion)
@@ -222,10 +248,27 @@ def draft_query_conditions(user=None, **kwargs):
 	return criterion_sql(Draft.owner == user)
 
 
+def poll_query_conditions(user=None, **kwargs):
+	user = user or frappe.session.user
+	if is_global_admin(user):
+		return None
+	Poll = frappe.qb.DocType("GP Poll")
+	Discussion = frappe.qb.DocType("GP Discussion")
+	discussion_query = (
+		frappe.qb.from_(Discussion)
+		.select(Discussion.name)
+		.where(accessible_project_criterion(Discussion.project, user))
+	)
+	return criterion_sql(Poll.discussion.isin(discussion_query))
+
+
 def content_project_query_conditions(doctype, user=None):
 	user = user or frappe.session.user
 	if is_global_admin(user):
 		return None
+	if is_anonymous_user(user) and doctype in {"GP Task", "GP Page"}:
+		DocType = frappe.qb.DocType(doctype)
+		return criterion_sql(DocType.name == "")
 	DocType = frappe.qb.DocType(doctype)
 	return criterion_sql(accessible_project_criterion(DocType.project, user))
 
@@ -234,6 +277,14 @@ def team_access_criterion(Team, user=None):
 	user = user or frappe.session.user
 	if is_global_admin(user):
 		return None
+	if is_anonymous_user(user):
+		if not public_web_enabled():
+			return Team.name == ""
+		Project = frappe.qb.DocType("GP Project")
+		public_web_teams = (
+			frappe.qb.from_(Project).select(Project.team).where(Project.visibility == PUBLIC_WEB_VISIBILITY)
+		)
+		return Team.name.isin(public_web_teams)
 	if gameplan.is_guest(user):
 		return Team.name == ""
 	return (Team.is_private == 0) | is_member_parent("GP Team", Team.name, user)
@@ -243,6 +294,10 @@ def project_access_criterion(Project, user=None):
 	user = user or frappe.session.user
 	if is_global_admin(user):
 		return None
+	if is_anonymous_user(user):
+		if not public_web_enabled():
+			return Project.name == ""
+		return Project.visibility == PUBLIC_WEB_VISIBILITY
 	if gameplan.is_guest(user):
 		GuestAccess = frappe.qb.DocType("GP Guest Access")
 		return Project.name.isin(
@@ -341,9 +396,21 @@ def has_guest_access(user, project):
 	return bool(frappe.db.exists("GP Guest Access", {"user": user, "project": project}))
 
 
+def has_public_web_space(team):
+	return bool(
+		frappe.db.exists(
+			"GP Project",
+			{"team": team, "visibility": PUBLIC_WEB_VISIBILITY},
+		)
+	)
+
+
 def get_content_project(doc):
 	if doc.doctype in {"GP Discussion", "GP Task", "GP Page"}:
 		return get_doc_value(doc, "project")
+	if doc.doctype == "GP Poll":
+		discussion = get_doc_value(doc, "discussion")
+		return frappe.db.get_value("GP Discussion", discussion, "project") if discussion else None
 	if doc.doctype != "GP Comment":
 		return None
 	if doc.reference_doctype in {"GP Discussion", "GP Task"}:
@@ -357,10 +424,13 @@ def get_project_info(project):
 			name=project.name,
 			team=project.team,
 			is_private=project.is_private,
+			visibility=project.visibility,
 		)
 	if not project:
 		return None
-	return frappe.db.get_value("GP Project", project, ["name", "team", "is_private"], as_dict=True)
+	return frappe.db.get_value(
+		"GP Project", project, ["name", "team", "is_private", "visibility"], as_dict=True
+	)
 
 
 def get_doc_name(doc_or_name):

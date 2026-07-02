@@ -8,6 +8,7 @@ from frappe.query_builder.functions import Count
 from frappe.utils import split_emails, validate_email_address
 
 import gameplan
+from gameplan.public_web import can_anonymous_read
 from gameplan.utils import validate_type
 
 
@@ -20,6 +21,8 @@ def require_admin():
 @frappe.whitelist(allow_guest=True)
 def get_user_info(user=None):
 	if frappe.session.user == "Guest":
+		if can_anonymous_read():
+			return get_public_user_info(user)
 		frappe.throw("Authentication failed", exc=frappe.AuthenticationError)
 
 	filters = {"roles.role": ["like", "Gameplan %"]}
@@ -107,6 +110,41 @@ def get_user_info(user=None):
 	if gameplan.is_guest():
 		for user in users:
 			user.pop("email", None)
+
+	return users
+
+
+def get_public_user_info(user=None):
+	filters = {"roles.role": ["like", "Gameplan %"], "enabled": 1}
+	if user:
+		filters["name"] = user
+
+	users = frappe.qb.get_query(
+		"User",
+		filters=filters,
+		fields=["name", "enabled", "user_image", "full_name", "user_type", "creation"],
+		order_by="full_name asc",
+		distinct=True,
+	).run(as_dict=1)
+	user_names = [user.name for user in users]
+	user_profiles = frappe.db.get_all(
+		"GP User Profile",
+		fields=["user", "name", "image", "image_background_color", "is_image_background_removed", "bio"],
+		filters={"user": ["in", user_names]},
+	)
+	user_profile_map = {profile.user: profile for profile in user_profiles}
+	for user in users:
+		user.email = ""
+		user.role = "Gameplan Member"
+		user.discussions_count_3m = 0
+		user.comments_count_3m = 0
+		user_profile = user_profile_map.get(user.name)
+		if user_profile:
+			user.user_profile = user_profile.name
+			user.user_image = user_profile.image
+			user.image_background_color = user_profile.image_background_color
+			user.is_image_background_removed = user_profile.is_image_background_removed
+			user.bio = user_profile.bio
 
 	return users
 

@@ -2,7 +2,10 @@
   <div class="flex h-full w-56 flex-col bg-surface-sidebar">
     <template v-if="communityState.doc">
       <div class="flex shrink-0 items-center p-2">
-        <AppDropdown />
+        <AppDropdown v-if="session.isAuthenticated" />
+        <div v-else class="flex h-9 min-w-0 items-center px-2 text-lg-medium text-ink-gray-7">
+          <span class="truncate">Gameplan</span>
+        </div>
       </div>
 
       <ScrollAreaRoot class="relative flex min-h-0 flex-1 flex-col">
@@ -11,7 +14,7 @@
             <div class="flex h-7 items-center justify-between pl-2 text-base text-ink-gray-5">
               <span>Spaces</span>
               <div class="flex items-center">
-                <Dropdown :options="spaceSortOptions" align="end">
+                <Dropdown v-if="session.isAuthenticated" :options="spaceSortOptions" align="end">
                   <template #trigger="{ open }">
                     <Button
                       variant="ghost"
@@ -24,6 +27,7 @@
                   </template>
                 </Dropdown>
                 <Button
+                  v-if="session.isAuthenticated"
                   variant="ghost"
                   size="sm"
                   icon="lucide-plus text-ink-gray-5"
@@ -59,7 +63,10 @@
                     />
                   </span>
                 </AppLink>
-                <div class="relative mr-1 flex h-7 w-7 shrink-0 items-center justify-end">
+                <div
+                  v-if="session.isAuthenticated"
+                  class="relative mr-1 flex h-7 w-7 shrink-0 items-center justify-end"
+                >
                   <span
                     v-if="getSpaceUnreadCount(space.name) > 0"
                     class="absolute right-1 text-xs text-ink-gray-5 transition-opacity group-hover/space:opacity-0 group-focus-within/space:opacity-0"
@@ -87,7 +94,11 @@
               >
                 {{ communitySpaces.emptyMessage }}
                 <Button
-                  v-if="communitySpaces.archived.length === 0 && !communitySpaces.hasHiddenInactive"
+                  v-if="
+                    session.isAuthenticated &&
+                    communitySpaces.archived.length === 0 &&
+                    !communitySpaces.hasHiddenInactive
+                  "
                   size="sm"
                   icon-left="lucide-plus"
                   class="mt-2"
@@ -105,6 +116,7 @@
   </div>
 
   <NewSpaceDialog
+    v-if="session.isAuthenticated"
     v-model="showNewSpaceDialog"
     :lockedCommunityId="communityState.id ?? undefined"
   />
@@ -126,6 +138,7 @@ import {
   type SpaceSidebarSort,
 } from '@/data/sidebarPreferences'
 import { getSpaceUnreadCount, markAllAsRead, spaces, type Space } from '@/data/spaces'
+import { session } from '@/data/session'
 import AppLink from './AppLink.vue'
 import AppDropdown from './AppDropdown.vue'
 import NewSpaceDialog from './NewSpaceDialog.vue'
