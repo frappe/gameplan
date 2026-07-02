@@ -1,7 +1,5 @@
 import { computed, MaybeRef, reactive, ref } from 'vue'
 import { useCall } from 'frappe-ui'
-import { users } from './users'
-import router from '@/router'
 
 interface LoginResponse {
   user: string
@@ -30,7 +28,11 @@ export let session = reactive({
   login: useCall<LoginResponse, LoginParams>({
     url: '/api/v2/method/login',
     immediate: false,
-    onSuccess(data) {
+    async onSuccess(data) {
+      const [{ users }, { default: router }] = await Promise.all([
+        import('./users'),
+        import('@/router'),
+      ])
       users.reload()
       sessionUser.value = getSessionUserFromCookie()
       session.login.reset()

@@ -1,6 +1,5 @@
 import { computed, reactive } from 'vue'
 import { useCall } from 'frappe-ui'
-import router from '@/router'
 import { setCommunityOrder } from './communityOrder'
 import { loadQuickReactionSlots } from './reactionPreferences'
 import { setSidebarBadgeStyle, type SidebarBadgeStyle } from './sidebarPreferences'
