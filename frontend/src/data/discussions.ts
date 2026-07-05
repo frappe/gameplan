@@ -43,6 +43,7 @@ export function useDiscussions(options: UseDiscussionOptions) {
     url: '/api/v2/method/gameplan.gameplan.doctype.gp_discussion.api.get_discussions',
     doctype: 'GP Discussion',
     cacheKey: options.cacheKey ? ['Discussions', options.cacheKey] : undefined,
+    staleOnError: true,
     filters: options.filters,
     limit: options.limit || 50,
     orderBy: options.orderBy,
@@ -97,6 +98,7 @@ export function useDiscussion(discussionId: MaybeRefOrGetter<string>) {
     discussionsCache[name] = useDoc<Discussion, DiscussionMethods>({
       doctype: 'GP Discussion',
       name: discussionId,
+      staleOnError: true,
       methods: {
         trackVisit: 'track_visit',
         markAsUnread: 'mark_as_unread',

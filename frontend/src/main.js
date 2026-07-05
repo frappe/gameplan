@@ -22,6 +22,7 @@ import { useUser, users } from './data/users'
 import { isSessionUser, session } from './data/session'
 import { initSocket } from './socket'
 import resetDataMixin from './utils/resetDataMixin'
+import { setupOfflineSupport } from './offline'
 
 let globalComponents = {
   Button,
@@ -81,6 +82,7 @@ function setupApp() {
   socket = initSocket()
   app.config.globalProperties.$socket = socket
   app.mount('#app')
+  setupOfflineSupport()
 }
 
 // Sentry error logging. Loaded lazily (dynamic import) so the ~250 KB SDK stays

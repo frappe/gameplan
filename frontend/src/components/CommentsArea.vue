@@ -389,6 +389,7 @@ const composerStorageKey = computed(() => {
 const comments = useList<GPComment>({
   doctype: 'GP Comment',
   cacheKey: ['Comments', props.doctype, props.name],
+  staleOnError: true,
   fields: [
     'name',
     'content',
@@ -424,6 +425,8 @@ const comments = useList<GPComment>({
 
 const activities = useList<GPActivity>({
   doctype: 'GP Activity',
+  cacheKey: ['Activities', props.doctype, props.name],
+  staleOnError: true,
   fields: ['name', 'user', 'action', 'data', 'creation'],
   filters: {
     reference_doctype: props.doctype,
@@ -455,6 +458,8 @@ watch(
 
 const polls = useList<GPPoll>({
   doctype: 'GP Poll',
+  cacheKey: ['Polls', props.name],
+  staleOnError: true,
   fields: [
     'name',
     'title',

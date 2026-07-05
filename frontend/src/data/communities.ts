@@ -32,6 +32,7 @@ export let communities = useList<Community>({
   orderBy: 'title asc',
   initialData: [],
   cacheKey: ['Communities', 'with-image'],
+  staleOnError: true,
   limit: 999,
   transform(data) {
     for (let community of data) {

@@ -172,6 +172,7 @@ const comments = useList<
 >({
   doctype: 'GP Comment',
   cacheKey: ['Comments', props.doctype, props.name],
+  staleOnError: true,
   fields: [
     'name',
     'content',
@@ -212,6 +213,8 @@ interface Activity extends Pick<GPActivity, 'name' | 'user' | 'action' | 'creati
 
 const activities = useList<Activity>({
   doctype: 'GP Activity',
+  cacheKey: ['Activities', props.doctype, props.name],
+  staleOnError: true,
   fields: ['name', 'user', 'action', 'data', 'creation'],
   filters: {
     reference_doctype: props.doctype,

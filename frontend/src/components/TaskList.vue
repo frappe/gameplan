@@ -179,6 +179,7 @@ const tasks = useList<GPTask>({
   orderBy: props.listOptions.orderBy,
   limit: props.listOptions.pageLength,
   cacheKey: ['Tasks', props.listOptions],
+  staleOnError: true,
 })
 
 const tasksByStatus = computed(() => {

@@ -140,6 +140,7 @@ const contentField = useTemplateRef<HTMLElement>('contentField')
 const page = useDoc<GPPage>({
   doctype: 'GP Page',
   name: () => props.pageId,
+  staleOnError: true,
 })
 
 // Read from the document, not from the fetch response. The body renders as soon

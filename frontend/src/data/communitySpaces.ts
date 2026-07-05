@@ -14,6 +14,7 @@ const INACTIVE_SPACE_MONTHS = 2
 const spaceActivity = useCall<Record<string, string | null>>({
   url: '/api/v2/method/GP Project/get_activity',
   cacheKey: 'spaceActivity',
+  staleOnError: true,
   initialData: {},
   immediate: true,
 })

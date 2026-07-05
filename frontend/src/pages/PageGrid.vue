@@ -96,6 +96,7 @@ const pages = useList<Page>({
   filters: props.listOptions.filters,
   orderBy: props.listOptions.orderBy,
   cacheKey: ['Pages', props.listOptions],
+  staleOnError: true,
 })
 
 function getSpace(page: Page) {

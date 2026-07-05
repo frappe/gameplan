@@ -75,6 +75,7 @@ function mergeUserInfo(user: UserInfo) {
 export let users = useCall<UserInfo[]>({
   url: '/api/v2/method/gameplan.api.get_user_info',
   cacheKey: 'Users',
+  staleOnError: true,
   initialData: [],
   transform(data) {
     for (let user of data) {

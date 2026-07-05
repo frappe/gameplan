@@ -396,6 +396,7 @@ function useNotificationList(read: 0 | 1, cacheKey: string) {
     // which makes a "load more" button unsafe on a list that mark-as-read reloads.
     limit: 100,
     cacheKey,
+    staleOnError: true,
   })
 }
 

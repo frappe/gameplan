@@ -86,6 +86,7 @@ const profileResource = useDoc<GPUserProfile, ProfileMethods>({
     setImage: 'set_image',
     setCoverImagePosition: 'set_cover_image_position',
   },
+  staleOnError: true,
 })
 
 const profile = computed(() => profileResource.doc)

@@ -77,7 +77,10 @@ function loadProjectUnreadCounts(projects?: string[]) {
           unreadCounts[spaceId] = Number(count) || 0
         }
         return counts
-      }),
+      })
+      // Offline / network failure: keep serving the last known counts rather than
+      // rejecting and blanking the UI.
+      .catch(() => unreadCounts),
   )
 }
 
@@ -100,10 +103,14 @@ export function fetchParticipatingUnreadCount(team: string) {
   return queued(participatingCountApi, () =>
     participatingCountApi.runMethod
       .submit({ method: 'get_participating_unread_count', params: { team } })
-      .then((count: number) => {
+      .then((count: number | null) => {
+        // Offline / network failure surfaces as a null response here — keep the last known
+        // count instead of zeroing it out.
+        if (count == null) return participatingUnreadCounts[team] ?? 0
         participatingUnreadCounts[team] = Number(count) || 0
         return participatingUnreadCounts[team]
-      }),
+      })
+      .catch(() => participatingUnreadCounts[team] ?? 0),
   )
 }
 

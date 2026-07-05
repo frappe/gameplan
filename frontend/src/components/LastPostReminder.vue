@@ -27,6 +27,7 @@ import { useLocalStorage } from '@vueuse/core'
 let lastPostAt = useCall<string>({
   url: `/api/v2/method/GP User Profile/get_last_post`,
   cacheKey: 'last_post_at',
+  staleOnError: true,
 })
 
 const daysSinceLastPost = computed(() => {
