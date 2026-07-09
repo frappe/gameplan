@@ -1,4 +1,11 @@
 app_name = "gameplan"
+
+# Load sync views at import time so `@view(...)` registrations happen before any pull.
+# `sync_doctypes` opts these doctypes into the Sync Log write path.
+sync_doctypes = ["GP Discussion", "GP Comment", "GP Poll", "GP Project"]
+
+# Side-effect import: registers @view() decorators with frappe.sync.
+from gameplan import sync as _sync_views  # noqa: F401, E402
 app_title = "Gameplan"
 app_publisher = "Frappe Technologies Pvt Ltd"
 app_description = "Team discussion and collaboration tool"
