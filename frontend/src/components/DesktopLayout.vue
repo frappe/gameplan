@@ -46,6 +46,6 @@ const onCommunityRoute = computed(() => {
 
 <style scoped>
 .gameplan-desktop-shell :deep([data-slot='desktop-shell-content']) {
-  @apply my-1 mr-1 rounded-lg bg-surface-base shadow-sm dark:m-0 dark:rounded-none dark:border-l dark:shadow-none;
+  @apply border-l bg-surface-base;
 }
 </style>

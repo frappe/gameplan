@@ -78,10 +78,8 @@
         </div>
       </div>
     </div>
-    <div class="flex min-w-0 flex-1 py-1 pr-1 dark:p-0">
-      <div
-        class="flex min-w-0 flex-1 overflow-hidden rounded-lg bg-surface-base shadow-sm dark:rounded-none dark:border-l dark:shadow-none"
-      >
+    <div class="flex min-w-0 flex-1">
+      <div class="flex min-w-0 flex-1 overflow-hidden border-l bg-surface-base">
         <ScrollArea class="block min-h-0 flex-1" viewport-class="isolate bg-surface-base">
           <div class="body-container pt-14 pb-14">
             <div class="max-w-xl mx-auto">
