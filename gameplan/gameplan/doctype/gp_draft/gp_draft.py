@@ -110,7 +110,7 @@ def find_my_draft(
 	return frappe.get_doc("GP Draft", name).as_dict()
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["GET"])
 def get_my_drafts():
 	"""Return the current user's new-content drafts, enriched for the Drafts list.
 
@@ -141,16 +141,15 @@ def get_my_drafts():
 		ignore_permissions=False,
 	).run(as_dict=True)
 
-	# Collapse duplicate comment singletons (a rare create race can leave more than one row for
-	# one reply): rows are newest-first, so keep the first per (reference_doctype, reference_name)
-	# and delete the stale siblings — the Drafts list then shows one entry per reply.
+	# A rare create race can leave multiple drafts for one reply. Keep the response stable without
+	# trying to self-heal here: Frappe rolls back writes at the end of GET requests, so deleting a
+	# stale sibling would appear to succeed while leaving the database unchanged.
 	seen = set()
 	deduped = []
 	for r in rows:
 		if r.type == "Comment" and r.reference_name:
 			key = (r.reference_doctype, r.reference_name)
 			if key in seen:
-				frappe.delete_doc("GP Draft", r.name, ignore_permissions=False, delete_permanently=True)
 				continue
 			seen.add(key)
 		deduped.append(r)
