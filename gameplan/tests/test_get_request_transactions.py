@@ -1,8 +1,6 @@
 # Copyright (c) 2026, Frappe Technologies Pvt Ltd and Contributors
 # See license.txt
 
-from unittest.mock import patch
-
 import frappe
 from frappe.auth import CookieManager, LoginManager
 from frappe.tests.test_api import FrappeAPITestCase
@@ -82,8 +80,8 @@ class TestGetRequestTransactions(FrappeAPITestCase):
 		self.assertEqual(frappe.db.get_value("GP Invitation", invitation.name, "status"), "Accepted")
 		self.assertTrue(frappe.db.get_value("GP Invitation", invitation.name, "accepted_at"))
 
-	def test_get_my_drafts_deduplicates_response_without_cleanup(self):
-		"""A GET returns one row per reply without attempting a rolled-back delete."""
+	def test_get_my_drafts_post_persists_duplicate_cleanup(self):
+		"""The POST returns the newest reply draft and permanently removes stale duplicates."""
 		suffix = frappe.generate_hash(length=8)
 		user = create_member(f"get_drafts_{suffix}@example.com", "GET Drafts")
 		self.users.append(user.name)
@@ -106,14 +104,12 @@ class TestGetRequestTransactions(FrappeAPITestCase):
 		frappe.db.commit()
 		self.login_as(user.name)
 
-		with patch("frappe.delete_doc", side_effect=AssertionError("GET attempted draft cleanup")) as delete:
-			response = self.get(self.method("gameplan.gameplan.doctype.gp_draft.gp_draft.get_my_drafts"))
+		response = self.post(self.method("gameplan.gameplan.doctype.gp_draft.gp_draft.get_my_drafts"), {})
 
 		self.assertEqual(response.status_code, 200, response.text)
-		delete.assert_not_called()
 		self.assertEqual([draft["name"] for draft in response.json["message"]], [newer.name])
 		frappe.db.rollback()
 		stored = frappe.get_all(
 			"GP Draft", filters={"owner": user.name, **fields}, order_by="modified desc", pluck="name"
 		)
-		self.assertEqual(stored, [newer.name, older.name])
+		self.assertEqual(stored, [newer.name])
