@@ -127,6 +127,8 @@ jobs:
           fi
 
           echo "Testing migration from ${baseline_sha} to ${candidate_sha}"
+          cp .github/helper/install_dependencies.sh "${RUNNER_TEMP}/install_dependencies.sh"
+          cp .github/helper/install.sh "${RUNNER_TEMP}/install_gameplan.sh"
           git branch -f ci-migration-candidate "${candidate_sha}"
           git switch -C ci-migration-baseline "${baseline_sha}"
 
@@ -157,8 +159,8 @@ jobs:
         env:
           FRAPPE_BRANCH: version-16
         run: |
-          bash ${GITHUB_WORKSPACE}/.github/helper/install_dependencies.sh
-          bash ${GITHUB_WORKSPACE}/.github/helper/install.sh
+          bash "${RUNNER_TEMP}/install_dependencies.sh"
+          bash "${RUNNER_TEMP}/install_gameplan.sh"
           cd ~/frappe-bench
           bench --site gameplan.test execute gameplan.demo.demo.generate
 
