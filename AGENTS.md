@@ -19,16 +19,16 @@ UI/product language is **Community** and **Space**; the schema still uses old na
 
 ## Commands
 
-Local dev site is `gameplan-demo.test` (CI uses `gameplan.test`).
+Local site names vary by development environment (CI uses `gameplan.test`). `gameplan-demo.test` is reserved for destructive E2E tests.
 
 - `yarn dev` — Vite frontend on :8080 (unlinks local frappe-ui, uses published package)
 - `yarn dev:frappe-ui` — same, but symlinks `node_modules/frappe-ui` → `./frappe-ui/` for library work
 - `yarn build` / `bench start` (from `frappe-bench/`) — build frontend / run backend
-- Backend tests: `bench --site gameplan-demo.test run-tests --app gameplan` (or `--module <path>`, `--test <method>`).
+- Backend tests: `bench --site <site> run-tests --app gameplan` (or `--module <path>`, `--test <method>`).
 - E2E: `cd frontend && yarn test` (Cypress, specs in `frontend/cypress/e2e/`). **Always run Cypress against the demo site `gameplan-demo.test`, never another local site** — specs call `gameplan.test_api.clear_data`, which deletes ALL Gameplan data on whichever site the request resolves to. Requires `enable_ui_tests: 1` in that site's `site_config.json`. Before running, confirm the local `frappe serve` actually resolves `gameplan-demo.test:8000` to the demo site (host aliasing can route it to the default/dev site and wipe real data).
 - frappe-ui units: `cd frappe-ui && yarn test` (Vitest)
 - Lint: `pre-commit run --all-files` (ruff for Python — tabs, double quotes, line 110; Prettier for frontend)
-- Login to site by fetching sid: bench --site gameplan-demo.test browse --user <user> --sid
+- Generate a browser session ID with `bench --site <site> browse --user <user> --sid`.
 
 ## Frontend conventions
 
@@ -53,11 +53,13 @@ Local dev site is `gameplan-demo.test` (CI uses `gameplan.test`).
 
 ## Feature Verification
 
-When building a feature with UI, always verify it in browser. Use in-app browser if available, otherwise use Chrome Devtools MCP. Create a test user (or users) for yourself on the local site you are testing.
+When building a feature with UI, always verify it in browser. Use the in-app browser if available, otherwise use Chrome Devtools MCP. Create a test user (or users) for yourself on the local site you are testing.
+
+When a PR needs visual evidence, upload before/after screenshots as GitHub attachments in the PR description. Never add screenshot files to the repository.
 
 ## Code comments
 
-Explain *why*, not *what*. JSDoc/TSDoc for complex functions/composables. No comments for self-explanatory code.
+Explain _why_, not _what_. JSDoc/TSDoc for complex functions/composables. No comments for self-explanatory code.
 
 ## Codebase health
 
