@@ -88,3 +88,105 @@ jobs:
       - name: Show bench output
         if: ${{ always() }}
         run: cat ~/frappe-bench/bench_start.log || true
+
+  migrate:
+    runs-on: ubuntu-latest
+    if: ${{ github.repository_owner == 'frappe' }}
+    timeout-minutes: 60
+
+    name: Existing Site Migration (Frappe v16)
+
+    services:
+      mariadb:
+        image: mariadb:10.6
+        env:
+          MARIADB_ROOT_PASSWORD: 123
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=5s --health-timeout=2s --health-retries=3
+
+    steps:
+      - name: Clone candidate and history
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Select deployed baseline
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          candidate_sha="$(git rev-parse HEAD)"
+          baseline_sha="${PR_BASE_SHA}"
+
+          if ! git cat-file -e "${baseline_sha}^{commit}" 2>/dev/null; then
+            baseline_sha="${BEFORE_SHA}"
+          fi
+          if ! git cat-file -e "${baseline_sha}^{commit}" 2>/dev/null; then
+            baseline_sha="$(git rev-parse HEAD^)"
+          fi
+
+          echo "Testing migration from ${baseline_sha} to ${candidate_sha}"
+          git branch -f ci-migration-candidate "${candidate_sha}"
+          git switch -C ci-migration-baseline "${baseline_sha}"
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.14"
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 24
+          check-latest: true
+
+      - name: Add to Hosts
+        run: |
+          echo "127.0.0.1 gameplan.test" | sudo tee -a /etc/hosts
+
+      - name: Cache pip
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-v16-migrate-${{ hashFiles('**/*requirements.txt', '**/pyproject.toml', '**/setup.py') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-v16-
+            ${{ runner.os }}-pip-
+
+      - name: Install baseline and seed existing data
+        env:
+          FRAPPE_BRANCH: version-16
+        run: |
+          bash ${GITHUB_WORKSPACE}/.github/helper/install_dependencies.sh
+          bash ${GITHUB_WORKSPACE}/.github/helper/install.sh
+          cd ~/frappe-bench
+          bench --site gameplan.test execute gameplan.demo.demo.generate
+
+      - name: Update existing site to candidate
+        run: |
+          git -C "${GITHUB_WORKSPACE}" switch ci-migration-candidate
+          git -C ~/frappe-bench/apps/gameplan fetch "${GITHUB_WORKSPACE}" ci-migration-candidate
+          git -C ~/frappe-bench/apps/gameplan checkout -B ci-migration-candidate FETCH_HEAD
+
+          cd ~/frappe-bench
+          bench setup requirements
+          CI=Yes bench build --app gameplan
+          bench --site gameplan.test migrate
+          bench --site gameplan.test migrate
+
+      - name: Run migration and v16 boundary tests
+        working-directory: /home/runner/frappe-bench
+        run: |
+          bench --site gameplan.test run-tests --module gameplan.tests.test_community_migrations
+          bench --site gameplan.test run-tests --module gameplan.tests.test_attachments
+          bench --site gameplan.test run-tests --module gameplan.tests.test_v16_api_compat
+
+      - name: Stop server
+        if: ${{ always() }}
+        run: |
+          ps -ef | grep "[f]rappe serve" | awk '{print $2}' | xargs kill -s SIGINT || true
+          sleep 5
+
+      - name: Show bench output
+        if: ${{ always() }}
+        run: cat ~/frappe-bench/bench_start.log || true

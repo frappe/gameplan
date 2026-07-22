@@ -99,6 +99,17 @@ class TestV16APICompatibility(FrappeAPITestCase):
 		frappe.db.rollback()
 		self.assertFalse(frappe.db.exists("GP Member", {"parent": space_id, "user": self.member.name}))
 
+	def test_member_is_included_by_add_to_apps_screen_hook_over_http(self):
+		"""Frappe boot calls the configured hook with no arguments for each app."""
+		frappe.db.commit()
+		self.login_as(self.member.name)
+
+		response = self.get(self.method("frappe.apps.get_apps"))
+
+		self.assertEqual(response.status_code, 200, response.text)
+		apps = response.json["data"]
+		self.assertIn("gameplan", [app["name"] for app in apps])
+
 	def test_bulk_delete_drafts_checks_each_document_permission_over_http(self):
 		own_drafts = [
 			self.create_draft(self.member.name, "First draft"),
