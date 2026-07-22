@@ -229,7 +229,7 @@ function cancelBulkDelete() {
 }
 
 let deleteDraftsCall = useCall<DeleteDraftsResponse, { names: string[] }>({
-  url: '/api/v2/document/GP Draft/bulk_delete',
+  url: '/api/v2/method/GP Draft/bulk_delete',
   method: 'POST',
   immediate: false,
 })
@@ -274,6 +274,7 @@ function deleteDrafts() {
 // the bare GP Draft row can't express, so the client just renders and routes.
 let drafts = useCall<DraftRow[]>({
   url: '/api/v2/method/gameplan.gameplan.doctype.gp_draft.gp_draft.get_my_drafts',
+  method: 'POST',
   // get_my_drafts is owner-scoped on the server; scope the client cache to the session user
   // too, so a same-tab account switch can't briefly show the previous user's draft rows.
   cacheKey: ['drafts', session.user],
