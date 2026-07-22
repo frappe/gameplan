@@ -111,7 +111,10 @@
       </ListRow>
     </List>
 
-    <div v-else class="rounded border border-dashed border-outline-gray-2 px-6 py-12 text-center">
+    <div
+      v-else
+      class="ml-4 rounded border border-dashed border-outline-gray-2 px-6 py-12 text-center sm:ml-3"
+    >
       <div class="mx-auto grid size-10 place-items-center rounded bg-surface-gray-2">
         <span class="lucide-bell-check size-5 text-ink-gray-5" aria-hidden="true" />
       </div>
