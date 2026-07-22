@@ -255,7 +255,10 @@ def commit_draft(name: str, reference_doctype: str, reference_name: str):
 
 @frappe.whitelist(methods=["POST"])
 def bulk_delete(names: list[str]):
-	"""Delete drafts with the same per-document permission checks as Frappe's v17 API."""
+	"""Frappe v16 shim for the per-DocType bulk-delete endpoint added in v17.
+
+	Remove this duplicate once Gameplan's minimum supported Frappe version is v17.
+	"""
 	if not isinstance(names, list):
 		frappe.throw("'names' must be a list", frappe.ValidationError)
 
