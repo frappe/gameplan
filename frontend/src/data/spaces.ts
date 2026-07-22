@@ -8,19 +8,18 @@ import { readOnlyMode } from './readOnlyMode'
 
 interface Member extends Pick<GPMember, 'user'> {}
 
-export interface Space
-  extends Pick<
-    GPProject,
-    | 'name'
-    | 'title'
-    | 'icon'
-    | 'team'
-    | 'archived_at'
-    | 'is_private'
-    | 'modified'
-    | 'tasks_count'
-    | 'discussions_count'
-  > {
+export interface Space extends Pick<
+  GPProject,
+  | 'name'
+  | 'title'
+  | 'icon'
+  | 'team'
+  | 'archived_at'
+  | 'is_private'
+  | 'modified'
+  | 'tasks_count'
+  | 'discussions_count'
+> {
   team_title: string
   members: Member[]
 }
@@ -98,10 +97,10 @@ export function getSpaceUnreadCount(spaceId: string) {
 const spaceDoctype = useDoctype<GPProject>('GP Project')
 
 export function joinSpace(space: Space) {
-  return spaceDoctype.runDocMethod
+  return spaceDoctype.runMethod
     .submit({
-      method: 'join',
-      name: space.name,
+      method: 'join_spaces',
+      params: { spaces: [space.name] },
     })
     .then(() => {
       joinedSpaces.reload()
@@ -122,10 +121,10 @@ export function joinSpaces(spaceIds: string[]) {
 }
 
 export function leaveSpace(space: Space) {
-  return spaceDoctype.runDocMethod
+  return spaceDoctype.runMethod
     .submit({
-      method: 'leave',
-      name: space.name,
+      method: 'leave_spaces',
+      params: { spaces: [space.name] },
     })
     .then(() => {
       joinedSpaces.reload()

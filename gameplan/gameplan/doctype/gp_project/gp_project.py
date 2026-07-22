@@ -107,8 +107,10 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 		if name:
 			frappe.delete_doc("GP Guest Access", name)
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def track_visit(self):
+		if not can_view_space(frappe.session.user, self):
+			frappe.throw("Not permitted", frappe.PermissionError)
 		if frappe.flags.read_only:
 			return
 
@@ -144,7 +146,7 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 				self.save(ignore_permissions=True)
 				break
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def join(self):
 		if not can_view_space(frappe.session.user, self):
 			frappe.throw("Not permitted", frappe.PermissionError)
@@ -155,8 +157,10 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 			self.append("members", {"user": user})
 			self.save(ignore_permissions=True)
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def leave(self):
+		if not can_view_space(frappe.session.user, self):
+			frappe.throw("Not permitted", frappe.PermissionError)
 		user = frappe.session.user
 		for member in self.members:
 			if member.user == user:
@@ -173,9 +177,11 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 		):
 			frappe.delete_doc("GP Pinned Project", pin, ignore_permissions=True)
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def mark_all_as_read(self):
 		"""Mark all discussions as read using a project-level timestamp."""
+		if not can_view_space(frappe.session.user, self):
+			frappe.throw("Not permitted", frappe.PermissionError)
 		user = frappe.session.user
 		project_name = self.name
 		now = frappe.utils.now()
@@ -279,6 +285,11 @@ def leave_spaces(spaces: list[str] = None):
 		return
 	for space in spaces:
 		frappe.get_doc("GP Project", space).leave()
+
+
+@frappe.whitelist(methods=["POST"])
+def track_visit(space: str):
+	frappe.get_doc("GP Project", space).track_visit()
 
 
 @frappe.whitelist(methods=["POST"])

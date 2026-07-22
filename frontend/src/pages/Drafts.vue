@@ -229,7 +229,7 @@ function cancelBulkDelete() {
 }
 
 let deleteDraftsCall = useCall<DeleteDraftsResponse, { names: string[] }>({
-  url: '/api/v2/document/GP Draft/bulk_delete',
+  url: '/api/v2/method/GP Draft/bulk_delete',
   method: 'POST',
   immediate: false,
 })

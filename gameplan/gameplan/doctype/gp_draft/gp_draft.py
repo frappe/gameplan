@@ -254,6 +254,39 @@ def commit_draft(name: str, reference_doctype: str, reference_name: str):
 	draft.commit(reference_doctype, reference_name)
 
 
+@frappe.whitelist(methods=["POST"])
+def bulk_delete(names: list[str]):
+	"""Delete drafts with the same per-document permission checks as Frappe's v17 API."""
+	if not isinstance(names, list):
+		frappe.throw("'names' must be a list", frappe.ValidationError)
+
+	deleted = []
+	failed = []
+	for name in names:
+		if not isinstance(name, str | int):
+			failed.append({"name": name, "error": "'name' must be a string or integer"})
+			continue
+
+		name = str(name)
+		frappe.db.savepoint("bulk_delete_drafts")
+		try:
+			draft = frappe.get_doc("GP Draft", name)
+			draft.check_permission("delete")
+			draft.delete()
+			deleted.append(name)
+		except Exception as exc:
+			frappe.db.rollback(save_point="bulk_delete_drafts")
+			failed.append({"name": name, "error": str(exc)})
+
+	return {
+		"deleted": deleted,
+		"failed": failed,
+		"total": len(names),
+		"success_count": len(deleted),
+		"failure_count": len(failed),
+	}
+
+
 def remove_query_params_from_images(content):
 	# replace strings like src="/path/to/image.jpg?fid=param" with src="/path/to/image.jpg"
 	# because when we publish draft, images linked to the draft are deleted

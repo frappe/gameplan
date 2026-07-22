@@ -114,9 +114,9 @@ watch(
 )
 
 onMounted(() => {
-  spaces.runDocMethod.submit({
+  spaces.runMethod.submit({
     method: 'track_visit',
-    name: props.spaceId,
+    params: { space: props.spaceId },
   })
 })
 </script>
