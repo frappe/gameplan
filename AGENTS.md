@@ -53,9 +53,9 @@ Local site names vary by development environment (CI uses `gameplan.test`). `gam
 
 ## Feature Verification
 
-When building a feature with UI, always verify it in browser. Use the in-app browser if available, otherwise use Chrome Devtools MCP. Create a test user (or users) for yourself on the local site you are testing. Environment-specific browser routing and authentication instructions belong in the development machine's global `AGENTS.md`, not this repository file.
+When building a feature with UI, always verify it in browser. Use the in-app browser if available, otherwise use Chrome Devtools MCP. Create a test user (or users) for yourself on the local site you are testing.
 
-- When a PR needs visual evidence, upload before/after screenshots as GitHub attachments in the PR description. Never add screenshot files to the repository.
+When a PR needs visual evidence, upload before/after screenshots as GitHub attachments in the PR description. Never add screenshot files to the repository.
 
 ## Code comments
 
