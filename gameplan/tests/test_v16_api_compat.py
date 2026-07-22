@@ -35,6 +35,7 @@ class TestV16APICompatibility(FrappeAPITestCase):
 		frappe.local.login_manager.login_as(user)
 		self.TEST_CLIENT.set_cookie(key="sid", value=frappe.session.sid)
 		frappe.set_user("Administrator")
+		frappe.db.commit()
 
 	def create_space(self):
 		team = create_team(f"API Boundary {frappe.generate_hash(length=8)}")
