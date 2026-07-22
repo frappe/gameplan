@@ -107,9 +107,7 @@ class TestGetRequestTransactions(FrappeAPITestCase):
 		self.login_as(user.name)
 
 		with patch("frappe.delete_doc", side_effect=AssertionError("GET attempted draft cleanup")) as delete:
-			response = self.get(
-				self.method("gameplan.gameplan.doctype.gp_draft.gp_draft.get_my_drafts")
-			)
+			response = self.get(self.method("gameplan.gameplan.doctype.gp_draft.gp_draft.get_my_drafts"))
 
 		self.assertEqual(response.status_code, 200, response.text)
 		delete.assert_not_called()
