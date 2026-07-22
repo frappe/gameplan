@@ -163,6 +163,12 @@ jobs:
           bash "${RUNNER_TEMP}/install_gameplan.sh"
           cd ~/frappe-bench
           bench --site gameplan.test execute gameplan.demo.demo.generate
+          discussion_count="$(bench --site gameplan.test execute frappe.db.count --args '["GP Discussion"]')"
+          if ! [[ "${discussion_count}" =~ ^[1-9][0-9]*$ ]]; then
+            echo "Expected the baseline fixture to contain discussions, got: ${discussion_count}"
+            exit 1
+          fi
+          echo "BASELINE_DISCUSSION_COUNT=${discussion_count}" >> "${GITHUB_ENV}"
 
       - name: Update existing site to candidate
         run: |
@@ -175,6 +181,12 @@ jobs:
           CI=Yes bench build --app gameplan
           bench --site gameplan.test migrate
           bench --site gameplan.test migrate
+
+          discussion_count="$(bench --site gameplan.test execute frappe.db.count --args '["GP Discussion"]')"
+          if [ "${discussion_count}" -ne "${BASELINE_DISCUSSION_COUNT}" ]; then
+            echo "Discussion count changed during migration: ${BASELINE_DISCUSSION_COUNT} -> ${discussion_count}"
+            exit 1
+          fi
 
       - name: Run migration and v16 boundary tests
         working-directory: /home/runner/frappe-bench
