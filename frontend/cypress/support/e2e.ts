@@ -15,6 +15,7 @@
 
 // Import commands using ES2015 syntax:
 import './commands'
+import './personas'
 
 // "ResizeObserver loop completed with undelivered notifications" is a benign
 // browser warning emitted while layout settles (e.g. after dialogs/menus open).
