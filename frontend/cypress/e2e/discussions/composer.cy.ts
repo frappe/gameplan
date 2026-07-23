@@ -1,35 +1,26 @@
-// High-order coverage for the Phase 06 scoped composer + drafts work:
+// The scoped composer and the drafts page:
 // - the only "+ New discussion" entry point is inside the community discussions
 //   list and opens the scoped composer (`/community/:communityId/new-discussion`)
 // - publishing lands on the scoped `Discussion` route
 // - the global Drafts page exposes no "+ New" affordance
 // - a legacy draft without a project still opens via `/new-discussion?draft=...`
+//
+// `onboarded` is enough of a world here: the composer only needs one community with
+// one pickable space, and no existing discussion takes part in any of these checks.
+import { resetData } from '../../support/seed'
+
 describe('Community composer and drafts', () => {
-  const community = 'engineering'
-  let spaceId: string
+  let community: string
+  let space: string
+  // The auto-created space in the seeded community, and the only pickable option.
+  const spaceTitle = 'General'
 
   beforeEach(() => {
-    cy.login()
-    cy.request({
-      method: 'POST',
-      url: '/api/method/gameplan.test_api.clear_data',
+    resetData('onboarded').then((ids) => {
+      community = ids.community as string
+      space = ids.space as string
     })
-
-    // One joined public community with a space, so it is a valid landing
-    // destination and the scoped-route guard does not 404.
-    cy.request('POST', '/api/method/frappe.client.insert_many', {
-      docs: [
-        { doctype: 'GP Team', title: 'Engineering' },
-        { doctype: 'GP Project', title: 'Gameplan', team: community },
-      ],
-    })
-      .its('body.message')
-      .then((names) => {
-        spaceId = String(names[1])
-        cy.request('POST', '/api/v2/method/GP Team/update_joined_teams', {
-          teams: [community],
-        })
-      })
+    cy.loginAs('member')
   })
 
   it('opens the scoped composer from the community discussions list and publishes there', () => {
@@ -56,7 +47,7 @@ describe('Community composer and drafts', () => {
     // The metadata combobox can sit under the sticky editor toolbar, so force
     // the trigger open, then pick the option.
     cy.contains('button[aria-haspopup="listbox"]', 'Select Space').click({ force: true })
-    cy.get('[role="option"]').contains('Gameplan').click()
+    cy.get('[role="option"]').contains(spaceTitle).click()
 
     // Retries until an autosave carrying the content (and so the title) has completed.
     cy.wrap(null).should(() => expect(draftContentSaved, 'draft content autosaved').to.be.true)
@@ -64,7 +55,7 @@ describe('Community composer and drafts', () => {
     cy.button('Publish').click()
 
     // Publishing lands on the canonical scoped Discussion route.
-    cy.url().should('include', `/community/${community}/space/${spaceId}/discussion/`)
+    cy.url().should('include', `/community/${community}/space/${space}/discussion/`)
     cy.contains('Scoped composer discussion').should('exist')
   })
 
@@ -75,7 +66,8 @@ describe('Community composer and drafts', () => {
   })
 
   it('opens a legacy draft without a project on the unscoped route', () => {
-    // A draft with no project/community stays on the legacy composer route.
+    // A draft with no project/community is a malformed historical artifact — that
+    // malformedness is the thing under test, so it is built inline, not seeded.
     cy.request('POST', '/api/method/frappe.client.insert', {
       doc: {
         doctype: 'GP Draft',
@@ -85,7 +77,7 @@ describe('Community composer and drafts', () => {
       },
     })
       .its('body.message.name')
-      .then((draftName) => {
+      .then((draftName: string) => {
         cy.visit('/g/drafts')
         cy.contains('Legacy unscoped draft').click()
 
