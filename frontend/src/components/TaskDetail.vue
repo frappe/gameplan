@@ -47,7 +47,7 @@
           <Combobox
             placeholder="Assign a user"
             :options="assignableUsers"
-            v-model="task.doc.assigned_to"
+            :modelValue="task.doc.assigned_to"
             @update:modelValue="changeAssignee"
           />
           <DatePicker
@@ -95,7 +95,7 @@
             class="w-full"
             placeholder="Assign a user"
             :options="assignableUsers"
-            v-model="task.doc.assigned_to"
+            :modelValue="task.doc.assigned_to"
             @update:modelValue="changeAssignee"
             align="end"
           >
@@ -305,15 +305,17 @@ useCommandPaletteCommands(
   }),
 )
 
-function changeAssignee(option: string) {
-  if (option === '<no_assignee>') {
-    option = ''
-  }
-  task.setValue.submit({ assigned_to: option })
+// The combobox emits null while its search text is being cleared, before the user has
+// picked anything. Saving that would unassign the task (and log an activity for it) every
+// time someone types to filter the list. Clearing is a deliberate choice made through the
+// "<no_assignee>" option instead.
+function changeAssignee(option: string | null) {
+  if (option == null) return
+  task.setValue.submit({ assigned_to: option === '<no_assignee>' ? '' : option })
 }
 
-function changeSpace(option: string) {
-  if (!task.doc) return
+function changeSpace(option: string | null) {
+  if (!task.doc || option == null) return
   task.doc.project = option
   task.setValue.submit({ project: option }).then(updateRoute)
 }
