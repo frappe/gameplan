@@ -1,13 +1,14 @@
-// Onboarding now creates a Community + a first Space (Phase 08). The GP Team
-// after_insert hook also auto-creates a public `General` space, so a freshly
-// onboarded site lands with two spaces, scoped to the new community's discussions.
+// Onboarding creates a Community + a first Space. The GP Team after_insert hook
+// also auto-creates a public `General` space, so a freshly onboarded site lands
+// with two spaces, scoped to the new community's discussions.
+//
+// Seeds nothing: an empty Gameplan is what puts a user on the onboarding wizard.
+import { resetData } from '../../support/seed'
+
 describe('Onboarding', () => {
   beforeEach(() => {
-    cy.login()
-    cy.request({
-      method: 'POST',
-      url: '/api/method/gameplan.test_api.clear_data',
-    })
+    resetData()
+    cy.loginAs('admin')
   })
 
   it('creates a community + first space and lands on community discussions', () => {
