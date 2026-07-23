@@ -50,7 +50,7 @@ def content_has_permission(doc, ptype="read", user=None, **kwargs):
 	if ptype == "create":
 		return can_create_content(user, doc)
 	if ptype == "write":
-		return can_edit_content(user, doc)
+		return can_write_content(user, doc)
 	if ptype == "delete":
 		return can_delete_content(user, doc)
 	return True
@@ -126,7 +126,123 @@ def can_create_content(user, doc):
 	return can_view_content(user, doc)
 
 
+# Per-doctype fields a non-editor is allowed to change while still holding `write`.
+# These are interaction (not content) fields — reacting is participation, not an
+# edit — so changing only these keeps the write permission for guests/space viewers.
+INTERACTION_SAFE_FIELDS = {
+	"GP Discussion": {"reactions"},
+	"GP Comment": {"reactions"},
+	"GP Page": set(),
+	"GP Task": set(),
+}
+
+# Standard row-level fields ignored when diffing a child table for changes.
+_ROW_META_FIELDS = {
+	"name",
+	"idx",
+	"creation",
+	"modified",
+	"modified_by",
+	"owner",
+	"parent",
+	"parentfield",
+	"parenttype",
+	"docstatus",
+}
+
+
+def can_interact_with_content(user, doc):
+	"""Whether `user` can reach `doc` to participate (react/comment) at all.
+
+	True for anyone who can view the content's space (members and granted guests
+	alike) and, for personal/space-less content, its owner. This is the floor for the
+	`write` permission; whether a specific *edit* is allowed on top of it is decided
+	by can_edit_content / _protected_fields_changed.
+	"""
+	if is_global_admin(user):
+		return True
+	if not can_view_content(user, doc):
+		return False
+	if get_content_project(doc):
+		return True
+	return get_doc_value(doc, "owner") == user
+
+
+def can_write_content(user, doc):
+	"""Back the doctype `write` permission — "may interact with this document".
+
+	Editors (can_edit_content: global admins, space-viewing members, owners, and
+	guests on their OWN content) always hold write. Non-editors who can still reach
+	the content (space viewers — guests included — and owners of personal content)
+	hold write only for interaction: the save must not touch anything beyond the
+	interaction-safe fields (reactions).
+
+	This is checked in two contexts (see _protected_fields_changed): on a CLEAN doc
+	(the v2 doc-method gate and list/UI permission checks) it reports no changes, so
+	a guest passes and can reach react(); on the DIRTY in-memory doc at save time it
+	diffs against the DB row and rejects any edit to protected fields.
+	"""
+	if can_edit_content(user, doc):
+		return True
+	if not can_interact_with_content(user, doc):
+		return False
+	return not _protected_fields_changed(doc)
+
+
+def _protected_fields_changed(doc):
+	"""Whether `doc` has pending changes to any field a non-editor may not touch.
+
+	Compares the in-memory document against its stored row, ignoring the doctype's
+	interaction-safe fields. Uses the mid-save snapshot (get_doc_before_save) when it
+	is already loaded, otherwise reads the row from the DB — this is what makes it
+	correct for BOTH a clean doc (nothing loaded/changed -> False) and a dirty doc at
+	save-time write check (before-save snapshot not yet loaded -> read DB and diff).
+	"""
+	if not hasattr(doc, "doctype"):
+		return False
+	if doc.get("__islocal") or not doc.get("name"):
+		# Create path — not this gate's concern (create is a separate permission).
+		return False
+
+	safe_fields = INTERACTION_SAFE_FIELDS.get(doc.doctype, set())
+
+	before = doc.get_doc_before_save()
+	if before is None:
+		before = frappe.get_doc(doc.doctype, doc.name)
+	if before is None:
+		# No stored row to compare against; treat as unchanged.
+		return False
+
+	for df in doc.meta.fields:
+		fieldname = df.fieldname
+		if fieldname in safe_fields:
+			continue
+		if df.fieldtype in ("Table", "Table MultiSelect"):
+			if _child_table_changed(doc.get(fieldname), before.get(fieldname)):
+				return True
+		elif doc.get(fieldname) != before.get(fieldname):
+			return True
+	return False
+
+
+def _child_table_changed(current_rows, previous_rows):
+	def normalize(rows):
+		normalized = []
+		for row in rows or []:
+			row_dict = row.as_dict() if hasattr(row, "as_dict") else dict(row)
+			normalized.append({k: v for k, v in row_dict.items() if k not in _ROW_META_FIELDS})
+		return normalized
+
+	return normalize(current_rows) != normalize(previous_rows)
+
+
 def can_edit_content(user, doc):
+	"""Business rule for who may change a document's own content.
+
+	Enforced at save time by ProtectedEditMixin (not by has_permission `write`,
+	which is the broader can_interact_with_content). Also mirrored in the frontend
+	(utils/permissions.ts::canEditContent) to gate edit affordances.
+	"""
 	if is_global_admin(user):
 		return True
 	if not can_view_content(user, doc):
@@ -134,13 +250,12 @@ def can_edit_content(user, doc):
 	if gameplan.is_guest(user):
 		# Guests are participants in the spaces they're granted, but only on their
 		# OWN content — they may edit posts/comments they authored, never anyone
-		# else's. (Reacting is a view-level action, gated in HasReactions.react,
-		# not an edit — so it is not routed through this write gate.)
+		# else's.
 		return get_doc_value(doc, "owner") == user
 	# Gameplan is community-driven: content inside a space is owned by the
 	# community, so any member who can access the space may edit it (and run
-	# lifecycle actions like pin/close that route through the write gate).
-	# Personal content with no space stays editable only by its owner.
+	# lifecycle actions like pin/close). Personal content with no space stays
+	# editable only by its owner.
 	if get_content_project(doc):
 		return True
 	return get_doc_value(doc, "owner") == user
@@ -149,12 +264,14 @@ def can_edit_content(user, doc):
 def can_delete_content(user, doc):
 	if is_global_admin(user):
 		return True
-	if gameplan.is_guest(user):
-		return False
 	if not can_view_content(user, doc):
 		return False
 	if get_doc_value(doc, "owner") == user:
+		# Owners — members and guests alike — may delete content they authored.
 		return True
+	if gameplan.is_guest(user):
+		# Beyond their own content, guests have no delete rights.
+		return False
 	project = get_content_project(doc)
 	if not project:
 		return False

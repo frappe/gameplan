@@ -21,13 +21,13 @@ class HasReactions:
 		user = frappe.session.user
 
 		# Reacting is a participation action available to anyone who can VIEW the
-		# content — members and guests alike in the spaces they can reach — not an
-		# edit of the content itself, so it is gated on view rather than write.
-		# Each operation below only ever touches the acting user's own reaction row
-		# (matched on `user` == frappe.session.user), so the save can safely ignore
-		# the write permission without letting anyone mutate others' data or the
-		# post. This is what lets a guest react to a member's post while still being
-		# unable to edit it.
+		# content — members and guests alike in the spaces they can reach. Each
+		# operation below only ever touches the acting user's own reaction row
+		# (matched on `user` == frappe.session.user), so this cannot mutate others'
+		# data or the post body. The save runs through the normal permission path:
+		# guests hold write ("may interact") on content in a space they can access,
+		# and ProtectedEditMixin lets a non-editor's save through as long as only
+		# interaction-safe fields (reactions) changed.
 		if not can_view_content(user, self):
 			frappe.throw(_("You do not have access to react to this"), frappe.PermissionError)
 		reactions = list(self.get("reactions") or [])
@@ -52,7 +52,7 @@ class HasReactions:
 
 		self.set("reactions", reactions)
 		self.de_duplicate_reactions()
-		self.save(ignore_permissions=True)
+		self.save()
 		return self.get("reactions")
 
 	def notify_reactions(self):
