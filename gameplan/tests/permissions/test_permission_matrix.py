@@ -19,7 +19,10 @@ from gameplan.tests.fixtures import (
 	create_comment,
 	create_community,
 	create_discussion,
+	create_member,
+	create_page,
 	create_space,
+	create_task,
 	grant_guest_access,
 )
 
@@ -32,6 +35,7 @@ EXPECTATIONS = {
 		"admin": (True, True, True),
 		"member": (True, True, True),  # owner of the content
 		"second_member": (True, True, False),  # community member, not owner
+		"community_admin": (True, True, True),  # may moderate anything in the community
 		"outsider": (True, True, False),  # Gameplan Member, not in community
 		"guest": (False, False, False),  # guest access only to the private space
 	},
@@ -39,6 +43,10 @@ EXPECTATIONS = {
 		"admin": (True, True, True),
 		"member": (True, True, True),  # space member + owner
 		"second_member": (False, False, False),  # community member but not space member
+		# A community admin's moderation power stops at the private-space boundary:
+		# can_view_space requires space membership when the space is private, so the
+		# admin cannot even read the content, let alone delete it.
+		"community_admin": (False, False, False),
 		"outsider": (False, False, False),
 		# Member-OWNED content. write == "may interact" (react/comment), which a
 		# guest with space access holds even on someone else's post: a clean-doc
@@ -56,7 +64,12 @@ EXPECTATIONS = {
 class TestPermissionMatrix(GameplanTestCase):
 	def setUp(self):
 		super().setUp()
-		self.community = create_community("Matrix Community", members=[self.member, self.second_member])
+		self.community_admin = create_member("matrix_community_admin@example.com", "Community Admin")
+		self.community = create_community(
+			"Matrix Community",
+			members=[self.member, self.second_member],
+			admins=[self.community_admin],
+		)
 		self.public_space = create_space("Matrix Public Space", self.community)
 		self.private_space = create_space(
 			"Matrix Private Space", self.community, is_private=1, members=[self.member]
@@ -66,10 +79,11 @@ class TestPermissionMatrix(GameplanTestCase):
 		self.content = {}
 		for kind, space in (("public_space", self.public_space), ("private_space", self.private_space)):
 			discussion = create_discussion(f"{kind} discussion", space, owner=self.member)
-			comment = create_comment(discussion, owner=self.member)
 			self.content[kind] = {
 				"GP Discussion": discussion,
-				"GP Comment": comment,
+				"GP Comment": create_comment(discussion, owner=self.member),
+				"GP Page": create_page(f"{kind} page", space, owner=self.member),
+				"GP Task": create_task(f"{kind} task", space, owner=self.member),
 			}
 
 	def actor(self, name):
