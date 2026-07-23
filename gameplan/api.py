@@ -266,6 +266,31 @@ def get_search_filter_options():
 	return search.get_filter_options()
 
 
+# Doctypes whose controllers mix in HasReactions (gameplan/mixins/reactions.py).
+REACTABLE_DOCTYPES = {"GP Discussion", "GP Comment"}
+
+
+@frappe.whitelist(methods=["POST"])
+@validate_type
+def react(doctype: str, name, operations=None):
+	# `name` is intentionally untyped: GP Discussion uses integer autoincrement
+	# names while GP Comment uses string hashes, so it arrives as int or str.
+	"""Toggle the current user's reactions on a reactable document.
+
+	Thin wrapper over HasReactions.react. Reacting is view-gated inside that
+	method (members and guests alike may react to anything they can see), so this
+	adds no ignore_permissions and no extra access widening. It exists only
+	because Frappe's v2 execute_doc_method requires WRITE for a POST doc-method,
+	which 403s a guest on the doctype-scoped /method/react route even though
+	react() itself permits them. Routing through a plain whitelisted endpoint
+	skips that write gate while keeping react()'s own view gate intact.
+	"""
+	if doctype not in REACTABLE_DOCTYPES:
+		frappe.throw(_("Cannot react to {0}").format(doctype), frappe.PermissionError)
+	doc = frappe.get_doc(doctype, name)
+	return doc.react(operations=operations)
+
+
 def can_access_gameplan():
 	"""Check if the app should be shown in /apps"""
 	from frappe.utils.modules import get_modules_from_all_apps_for_user

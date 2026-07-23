@@ -16,6 +16,7 @@ current behaviour is characterised here and flagged as an open product question.
 
 import frappe
 
+import gameplan.api
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
 	create_comment,
@@ -126,6 +127,27 @@ class TestGuestParticipation(GameplanTestCase):
 			discussion = frappe.get_doc("GP Discussion", self.other_discussion.name)
 			with self.assertRaises(frappe.PermissionError):
 				discussion.react(operations=REACTION_ADD)
+
+	# --- (b) react over the HTTP endpoint (gameplan.api.react) -----------------------
+	# The doctype-scoped /method/react route needs WRITE (Frappe v2), which 403s a
+	# guest; gameplan.api.react is the view-gated module endpoint the frontend uses
+	# instead. These exercise that endpoint as the acting user.
+
+	def test_guest_can_react_via_api_endpoint(self):
+		with self.as_user(self.guest):
+			gameplan.api.react("GP Discussion", self.discussion.name, operations=REACTION_ADD)
+		self.discussion.reload()
+		self.assertTrue(any(r.user == self.guest.name for r in self.discussion.reactions))
+
+	def test_react_via_api_endpoint_denied_in_ungranted_space(self):
+		with self.as_user(self.guest):
+			with self.assertRaises(frappe.PermissionError):
+				gameplan.api.react("GP Discussion", self.other_discussion.name, operations=REACTION_ADD)
+
+	def test_react_via_api_endpoint_rejects_non_reactable_doctype(self):
+		with self.as_user(self.guest):
+			with self.assertRaises(frappe.PermissionError):
+				gameplan.api.react("GP Project", self.space.name, operations=REACTION_ADD)
 
 	# --- characterization: guest deleting their OWN content -------------------------
 
