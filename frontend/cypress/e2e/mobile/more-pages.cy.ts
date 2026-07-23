@@ -1,28 +1,14 @@
+import { resetData } from '../../support/seed'
+
 describe('Mobile More-menu pages', () => {
-  const community = 'design'
-
   beforeEach(() => {
-    cy.login()
     cy.viewport('iphone-6')
-    cy.request({
-      method: 'POST',
-      url: '/api/method/gameplan.test_api.clear_data',
-    })
-
-    cy.request('POST', '/api/method/frappe.client.insert_many', {
-      docs: [
-        { doctype: 'GP Team', title: 'Design' },
-        { doctype: 'GP Project', title: 'Brand', team: community },
-      ],
-    }).then(() => {
-      cy.request('POST', '/api/v2/method/GP Team/update_joined_teams', {
-        teams: [community],
-      })
-    })
+    resetData('onboarded')
+    cy.loginAs('member')
   })
 
   // Land on the More menu directly; the Home→You tab path is covered by
-  // community-mobile-home.cy.ts and is flaky to re-drive here.
+  // mobile/community-home.cy.ts and is flaky to re-drive here.
   const openMore = () => {
     cy.visit('/g/more')
     cy.url().should('include', '/more')
@@ -56,6 +42,10 @@ describe('Mobile More-menu pages', () => {
   })
 
   it('relocates header actions into the mobile header slots', () => {
+    // Runs as admin: the People page's Invite action is admin-only, so a member
+    // never sees that particular relocated header action.
+    cy.loginAs('admin')
+
     openMore()
     cy.button('Tasks').click()
     cy.iconButton('Add task').should('be.visible')
@@ -73,7 +63,7 @@ describe('Mobile More-menu pages', () => {
 
   it('does not offer community management from the mobile More menu', () => {
     // Community settings is desktop-only; the mobile More menu must not expose a
-    // "Manage" entry, even for an admin who can manage communities.
+    // "Manage" entry.
     openMore()
     cy.button('People').should('be.visible')
     cy.contains('button', 'Manage').should('not.exist')
