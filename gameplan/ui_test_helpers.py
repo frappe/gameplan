@@ -94,12 +94,19 @@ def _as_user(user):
 	and rewriting `owner` afterwards would leave the seeded owner holding an unread
 	record for their own post — a state the product can never produce.
 	"""
-	original = frappe.session.user
+	original_user = frappe.session.user
+	original_sid = frappe.session.sid
+	original_data = frappe.session.data
 	frappe.set_user(user)
 	try:
 		yield
 	finally:
-		frappe.set_user(original)
+		frappe.set_user(original_user)
+		# frappe.set_user() also overwrites session.sid (with the username) and clears
+		# session.data. Left that way, the caller's real session no longer resolves and
+		# every request after this one in the same Cypress session falls back to Guest.
+		frappe.session.sid = original_sid
+		frappe.session.data = original_data
 
 
 def _create_community(title):
