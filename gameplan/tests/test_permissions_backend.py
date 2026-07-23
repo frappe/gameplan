@@ -233,21 +233,36 @@ class TestContentPermissions(PermissionBackendTestCase):
 			frappe.has_permission("GP Discussion", "delete", doc=discussion.name, user=self.bob.name)
 		)
 
-	def test_guest_with_space_access_can_read_but_not_edit_discussion(self):
+	def test_guest_with_space_access_can_interact_but_not_edit_discussion(self):
 		team = self.create_community("Guest Content Community", members=[self.alice.name])
 		space = self.create_space("Guest Content Space", team.name)
 		discussion = self.create_discussion("Guest Readable Discussion", space.name, owner=self.alice.name)
 		grant_guest_access(self.guest.name, space.name)
 
+		# read: yes. write: yes as "may interact" — a clean-doc permission check finds
+		# no protected-field change, so the guest passes it (this is the gate the react
+		# doc-method goes through). delete: no (not the owner). Actually EDITING the
+		# post's content is still blocked, but at save time, not by this gate — see the
+		# real-save assertion below and features/test_guest_participation.py.
 		self.assertTrue(
 			frappe.has_permission("GP Discussion", "read", doc=discussion.name, user=self.guest.name)
 		)
-		self.assertFalse(
+		self.assertTrue(
 			frappe.has_permission("GP Discussion", "write", doc=discussion.name, user=self.guest.name)
 		)
 		self.assertFalse(
 			frappe.has_permission("GP Discussion", "delete", doc=discussion.name, user=self.guest.name)
 		)
+
+		# A real attempt to change the member's post content is rejected at save time.
+		frappe.set_user(self.guest.name)
+		try:
+			doc = frappe.get_doc("GP Discussion", discussion.name)
+			doc.title = "Guest tampering"
+			with self.assertRaises(frappe.PermissionError):
+				doc.save()
+		finally:
+			frappe.set_user("Administrator")
 
 	def test_private_page_is_owner_only_and_project_page_inherits_space(self):
 		team = self.create_community("Page Permission Community", members=[self.alice.name, self.bob.name])

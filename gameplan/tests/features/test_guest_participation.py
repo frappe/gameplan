@@ -6,17 +6,24 @@
 Guests are participants, not read-only viewers. In a space they've been granted
 access to, a guest CAN:
   (a) edit their OWN content,
-  (b) react to posts and comments (anyone's, since reacting is a view-level action),
-  (c) comment on discussions.
+  (b) delete their OWN content,
+  (c) react to posts and comments (anyone's — reacting is interaction, not editing),
+  (d) comment on discussions.
 
-A guest can NOT edit anyone else's content, and gets nothing at all outside the
-spaces they were granted. Deleting one's own content is NOT part of the spec; the
-current behaviour is characterised here and flagged as an open product question.
+A guest can NOT edit or delete anyone else's content, and gets nothing at all
+outside the spaces they were granted.
+
+Permission model (see gameplan/permissions.py): the doctype `write` permission
+means "may interact with this document" and is held by anyone who can reach the
+space, guests included — that is what lets react()'s plain save() through. Editing
+*someone else's* content is a separate business rule (can_edit_content) enforced on
+the modified document at save time by content_has_permission's write branch, which
+allows a non-editor's save only when nothing beyond interaction-safe fields
+(reactions) changed.
 """
 
 import frappe
 
-import gameplan.api
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
 	create_comment,
@@ -50,7 +57,7 @@ class TestGuestParticipation(GameplanTestCase):
 		# Member-owned content in the space the guest cannot reach.
 		self.other_discussion = create_discussion("Ungranted discussion", self.other_space, owner=self.member)
 
-	# --- (c) comment on discussions -------------------------------------------------
+	# --- (d) comment on discussions -------------------------------------------------
 
 	def test_guest_can_create_comment_in_granted_space(self):
 		with self.as_user(self.guest):
@@ -93,7 +100,23 @@ class TestGuestParticipation(GameplanTestCase):
 			with self.assertRaises(frappe.PermissionError):
 				discussion.save()
 
-	# --- (b) react to posts and comments --------------------------------------------
+	# --- members keep the permissive edit model (regression) ------------------------
+
+	def test_member_can_edit_others_content_in_space(self):
+		"""The write=interact model must not narrow member editing: any member who can
+		reach a space may still edit content there, even another member's post."""
+		# Give second_member access to the space, then have them edit member's post.
+		space = frappe.get_doc("GP Project", self.space.name)
+		space.append("members", {"user": self.second_member.name})
+		space.save()
+		with self.as_user(self.second_member):
+			discussion = frappe.get_doc("GP Discussion", self.discussion.name)
+			discussion.title = "Edited by another member"
+			discussion.save()
+			discussion.reload()
+		self.assertEqual(discussion.title, "Edited by another member")
+
+	# --- (c) react to posts and comments (plain save / doc-method path) -------------
 
 	def test_guest_can_react_to_discussion(self):
 		with self.as_user(self.guest):
@@ -108,6 +131,14 @@ class TestGuestParticipation(GameplanTestCase):
 			comment.react(operations=REACTION_ADD)
 			comment.reload()
 		self.assertTrue(any(r.user == self.guest.name for r in comment.reactions))
+
+	def test_guest_holds_write_on_members_content_in_granted_space(self):
+		"""write == "may interact": a guest holds it on a member's post in a granted
+		space (a clean-doc permission check reports no protected changes). This is the
+		gate the react doc-method passes through before react() runs."""
+		self.assertTrue(
+			frappe.has_permission("GP Discussion", "write", doc=self.discussion.name, user=self.guest.name)
+		)
 
 	# --- nothing outside granted spaces ---------------------------------------------
 
@@ -128,39 +159,16 @@ class TestGuestParticipation(GameplanTestCase):
 			with self.assertRaises(frappe.PermissionError):
 				discussion.react(operations=REACTION_ADD)
 
-	# --- (b) react over the HTTP endpoint (gameplan.api.react) -----------------------
-	# The doctype-scoped /method/react route needs WRITE (Frappe v2), which 403s a
-	# guest; gameplan.api.react is the view-gated module endpoint the frontend uses
-	# instead. These exercise that endpoint as the acting user.
+	def test_guest_has_no_write_in_ungranted_space(self):
+		self.assertFalse(
+			frappe.has_permission(
+				"GP Discussion", "write", doc=self.other_discussion.name, user=self.guest.name
+			)
+		)
 
-	def test_guest_can_react_via_api_endpoint(self):
-		with self.as_user(self.guest):
-			gameplan.api.react("GP Discussion", self.discussion.name, operations=REACTION_ADD)
-		self.discussion.reload()
-		self.assertTrue(any(r.user == self.guest.name for r in self.discussion.reactions))
+	# --- (b) delete own content -----------------------------------------------------
 
-	def test_react_via_api_endpoint_denied_in_ungranted_space(self):
-		with self.as_user(self.guest):
-			with self.assertRaises(frappe.PermissionError):
-				gameplan.api.react("GP Discussion", self.other_discussion.name, operations=REACTION_ADD)
-
-	def test_react_via_api_endpoint_rejects_non_reactable_doctype(self):
-		with self.as_user(self.guest):
-			with self.assertRaises(frappe.PermissionError):
-				gameplan.api.react("GP Project", self.space.name, operations=REACTION_ADD)
-
-	# --- characterization: guest deleting their OWN content -------------------------
-
-	def test_guest_delete_own_comment_characterization(self):
-		"""Characterises current behaviour only: a guest currently CANNOT delete
-		even their own comment (GP Comment has no `delete` DocPerm for Gameplan
-		Guest, and can_delete_content denies guests outright).
-
-		OPEN PRODUCT QUESTION (2026-07-24 guest participation spec): should a guest
-		be allowed to delete content they authored? Not specified, so behaviour is
-		left unchanged and merely pinned here. Update this test if the policy is
-		decided.
-		"""
+	def test_guest_can_delete_own_comment(self):
 		with self.as_user(self.guest):
 			comment = frappe.get_doc(
 				doctype="GP Comment",
@@ -168,5 +176,10 @@ class TestGuestParticipation(GameplanTestCase):
 				reference_name=self.discussion.name,
 				content="Guest reply to delete",
 			).insert()
+			frappe.delete_doc("GP Comment", comment.name)
+		self.assertFalse(frappe.db.exists("GP Comment", comment.name))
+
+	def test_guest_cannot_delete_members_comment(self):
+		with self.as_user(self.guest):
 			with self.assertRaises(frappe.PermissionError):
-				frappe.delete_doc("GP Comment", comment.name)
+				frappe.delete_doc("GP Comment", self.member_comment.name)

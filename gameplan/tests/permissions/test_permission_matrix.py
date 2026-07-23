@@ -40,12 +40,15 @@ EXPECTATIONS = {
 		"member": (True, True, True),  # space member + owner
 		"second_member": (False, False, False),  # community member but not space member
 		"outsider": (False, False, False),
-		# This row is for member-OWNED content: guests edit only their own, never
-		# others', so write/delete here are False. Guests are still participants in
-		# granted spaces (edit own content, react, comment) — see
-		# features/test_guest_participation.py and
-		# test_permissions_backend.test_guest_with_space_access_can_read_but_not_edit_discussion.
-		"guest": (True, False, False),
+		# Member-OWNED content. write == "may interact" (react/comment), which a
+		# guest with space access holds even on someone else's post: a clean-doc
+		# permission check reports no protected-field change, so it passes. Editing
+		# another's content is blocked separately at save time by
+		# content_has_permission's write branch (see
+		# permissions._protected_fields_changed and
+		# features/test_guest_participation.py). delete stays False: a guest may
+		# delete only content they own.
+		"guest": (True, True, False),
 	},
 }
 

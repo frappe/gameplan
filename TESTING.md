@@ -105,16 +105,33 @@ To extend it:
 - **New actor or space** — add rows/blocks to `EXPECTATIONS` with the expected
   `(read, write, delete)` tuple.
 
+#### Permission tiers
+
+The content doctypes model three tiers, and it matters which one a check is about:
+
+- **read = view.** Can the user see this content's space?
+- **write = interact.** Anyone who can reach a space — members and granted guests
+  alike — holds `write` on its content. `write` means "may participate" (react,
+  comment), *not* "may edit anything". This is why the matrix shows guest `write` as
+  `True` on member-owned content, and why `react()`'s plain `save()` succeeds for a
+  guest. The gate lives in `permissions.content_has_permission`'s write branch: for a
+  non-editor it allows the save only when nothing beyond interaction-safe fields
+  (the `reactions` child table) changed. That helper (`_protected_fields_changed`)
+  must work in two contexts — a **clean** doc (the permission gate / UI checks report
+  "no changes" so guests pass) and a **dirty** in-memory doc at save time (it reads
+  the stored row and diffs to catch a real edit) — so it never relies on
+  `has_value_changed()`/`get_doc_before_save()` alone.
+- **edit-others and delete = business rules.** Editing someone else's content is
+  blocked at save time by the write branch above (via `can_edit_content`); deleting is
+  gated by `can_delete_content`. These are the genuinely restricted actions.
+
 #### Guest policy (2026-07-24)
 
 Guests are participants, not read-only viewers. In a space they've been granted
-access to, a guest **can** edit their own content, react to any post or comment, and
-comment on discussions. A guest **cannot** touch anyone else's content (the matrix
-rows are for member-owned content, so guest `write`/`delete` there are `False`), and
-gets nothing at all outside the spaces they were granted. The full spec lives in
-`features/test_guest_participation.py`. Note: whether a guest may delete their own
-content is an open product question — current behavior (cannot) is characterized
-there, not asserted as intended.
+access to, a guest **can** edit their own content, **delete** their own content, react
+to any post or comment, and comment on discussions. A guest **cannot** edit or delete
+anyone else's content, and gets nothing at all outside the spaces they were granted.
+The full spec lives in `features/test_guest_participation.py`.
 
 ### When a test fails
 
