@@ -11,6 +11,8 @@ behind `enable_ui_tests` in site_config.json, exactly like test_api.py.
 state, then optionally builds a named scenario and returns its ids dict.
 """
 
+from contextlib import contextmanager
+
 import frappe
 
 PERSONAS = [
@@ -21,6 +23,8 @@ PERSONAS = [
 ]
 
 MEMBER = "member@example.com"
+SECOND_MEMBER = "member2@example.com"
+GUEST = "guest@example.com"
 
 
 def whitelist(fn):
@@ -81,10 +85,27 @@ def _reset_personas():
 # -- scenario builders -------------------------------------------------------
 
 
+@contextmanager
+def _as_user(user):
+	"""Run a block as `user` so documents get the right owner at insert time.
+
+	Owner matters beyond the `owner` column: GP Discussion's `after_insert` creates an
+	unread record for every space member *except* the owner. Inserting as Administrator
+	and rewriting `owner` afterwards would leave the seeded owner holding an unread
+	record for their own post — a state the product can never produce.
+	"""
+	original = frappe.session.user
+	frappe.set_user(user)
+	try:
+		yield
+	finally:
+		frappe.set_user(original)
+
+
 def _create_community(title):
 	"""Community that always includes member + member2 so their sidebars resolve."""
 	community = frappe.get_doc(doctype="GP Team", title=title)
-	for email in (MEMBER, "member2@example.com"):
+	for email in (MEMBER, SECOND_MEMBER):
 		community.append("members", {"user": email})
 	community.insert(ignore_permissions=True)
 	return community
@@ -102,13 +123,11 @@ def _create_space(title, community, *, is_private=0, members=()):
 	return space
 
 
-def _create_discussion(title, space):
-	"""Discussion owned by member@example.com (owner rewritten after insert)."""
-	discussion = frappe.get_doc(
-		doctype="GP Discussion", title=title, project=space, content="Seed content"
-	).insert(ignore_permissions=True)
-	frappe.db.set_value("GP Discussion", discussion.name, "owner", MEMBER, update_modified=False)
-	return discussion
+def _create_discussion(title, space, *, content="Seed content", owner=MEMBER):
+	with _as_user(owner):
+		return frappe.get_doc(doctype="GP Discussion", title=title, project=space, content=content).insert(
+			ignore_permissions=True
+		)
 
 
 def _onboarded():
@@ -123,7 +142,11 @@ def _space_with_discussion():
 	return {
 		"community": community.name,
 		"space": space.name,
+		# The empty auto-created General space: a second space to move content into, and
+		# the one place a spec can assert an empty state.
+		"general_space": _general_space(community),
 		"discussion": discussion.name,
+		"discussion_slug": discussion.slug,
 	}
 
 
@@ -131,14 +154,43 @@ def _private_space_with_guest():
 	community = _create_community("Acme")
 	general = _general_space(community)
 	private_space = _create_space("Secret Plans", community, is_private=1, members=[MEMBER])
-	frappe.get_doc(doctype="GP Guest Access", user="guest@example.com", project=private_space.name).insert(
+	frappe.get_doc(doctype="GP Guest Access", user=GUEST, project=private_space.name).insert(
 		ignore_permissions=True
 	)
-	discussion = _create_discussion("Secret thread", private_space.name)
+	# Both discussions share the word "roadmap" so a single search separates who may see
+	# what: member is in the private space, member2 is only in the community.
+	public_discussion = _create_discussion(
+		"Public roadmap", general, content="Roadmap notes everyone in the community can read."
+	)
+	discussion = _create_discussion(
+		"Secret thread", private_space.name, content="Roadmap notes only the space members can read."
+	)
 	return {
 		"community": community.name,
 		"space": general,
 		"private_space": private_space.name,
+		"discussion": discussion.name,
+		"public_discussion": public_discussion.name,
+	}
+
+
+def _unread_discussion():
+	"""One community, two spaces, and a post the member has not read.
+
+	The unread record is not seeded: GP Discussion's `after_insert` creates one for every
+	space member except the owner, so a post written by member2 is genuinely unread for
+	member.
+	"""
+	community = _create_community("Acme")
+	general = _general_space(community)
+	second_space = _create_space("Product", community)
+	discussion = _create_discussion(
+		"Unread thread", general, content="Something to catch up on.", owner=SECOND_MEMBER
+	)
+	return {
+		"community": community.name,
+		"space": general,
+		"second_space": second_space.name,
 		"discussion": discussion.name,
 	}
 
@@ -159,6 +211,7 @@ SCENARIOS = {
 	"space_with_discussion": _space_with_discussion,
 	"private_space_with_guest": _private_space_with_guest,
 	"two_communities": _two_communities,
+	"unread_discussion": _unread_discussion,
 }
 
 

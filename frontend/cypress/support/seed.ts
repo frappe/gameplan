@@ -6,12 +6,18 @@ export type Scenario =
   | 'space_with_discussion'
   | 'private_space_with_guest'
   | 'two_communities'
+  | 'unread_discussion'
 
 export interface SeedIds {
   community?: string
   space?: string
+  /** The empty auto-created General space, when the scenario's `space` is a named one. */
+  general_space?: string
+  second_space?: string
   private_space?: string
   discussion?: string
+  discussion_slug?: string
+  public_discussion?: string
   communities?: string[]
   spaces?: string[]
 }

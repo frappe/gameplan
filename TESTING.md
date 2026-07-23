@@ -112,7 +112,7 @@ The content doctypes model three tiers, and it matters which one a check is abou
 - **read = view.** Can the user see this content's space?
 - **write = interact.** Anyone who can reach a space — members and granted guests
   alike — holds `write` on its content. `write` means "may participate" (react,
-  comment), *not* "may edit anything". This is why the matrix shows guest `write` as
+  comment), _not_ "may edit anything". This is why the matrix shows guest `write` as
   `True` on member-owned content, and why `react()`'s plain `save()` succeeds for a
   guest. The gate lives in `permissions.content_has_permission`'s write branch: for a
   non-editor it allows the save only when nothing beyond interaction-safe fields
@@ -194,12 +194,20 @@ resetData("space_with_discussion").then(({ space, discussion }) => {
 cy.loginAs("member");
 ```
 
-| Scenario                   | Seeds                                                                                         | Returned ids                                        |
-| -------------------------- | --------------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| `onboarded`                | Community "Acme" with an auto-created General space                                           | `community`, `space`                                |
-| `space_with_discussion`    | Public space "Engineering" with a discussion "Welcome thread"                                 | `community`, `space`, `discussion`                  |
-| `private_space_with_guest` | Private space "Secret Plans" (member is a space member, guest has access); `space` is General | `community`, `space`, `private_space`, `discussion` |
-| `two_communities`          | Communities "Alpha"/"Beta", one public space each                                             | `communities` (2), `spaces` (2)                     |
+Every scenario's community includes `member` and `member2`, so both personas can reach it
+without any join step. Content is created **as its owner**, which also settles unread state:
+a discussion is unread for every space member except the person who wrote it.
+
+| Scenario                   | Seeds                                                                                                                                 | Returned ids                                                             |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `onboarded`                | Community "Acme" with an auto-created General space                                                                                   | `community`, `space`                                                     |
+| `space_with_discussion`    | Public space "Engineering" with a discussion "Welcome thread" by `member`; General is left empty                                      | `community`, `space`, `general_space`, `discussion`, `discussion_slug`   |
+| `private_space_with_guest` | Private space "Secret Plans" (member is a space member, guest has access) plus a public discussion in General; both mention "roadmap" | `community`, `space`, `private_space`, `discussion`, `public_discussion` |
+| `two_communities`          | Communities "Alpha"/"Beta", one public space each                                                                                     | `communities` (2), `spaces` (2)                                          |
+| `unread_discussion`        | Community "Acme" with General + "Product"; a discussion in General written by `member2`, so it is unread for `member`                 | `community`, `space`, `second_space`, `discussion`                       |
+
+For a search test, call `gameplan.ui_test_helpers.rebuild_search_index` after seeding — the
+SQLite index is built on demand, not by the seed.
 
 Log in as a persona with `cy.loginAs(persona)` where persona is one of `admin`,
 `member`, `secondMember`, `guest`, `outsider` (all seeded with password `admin`).
