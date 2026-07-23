@@ -530,26 +530,34 @@ function routeParam(value: string | string[] | undefined) {
 }
 
 function moveToSpace() {
-  if (discussionMoveDialog.project) {
+  const targetSpace = discussionMoveDialog.project
+  if (targetSpace) {
     discussion.moveToProject
       .submit({
-        project: discussionMoveDialog.project,
+        project: targetSpace,
       })
       .then(() => {
         nextTick(() => {
           discussionMoveDialog.show = false
           discussionMoveDialog.project = null
 
-          const communityId = discussion.doc?.project
-            ? getSpace(discussion.doc.project)?.team
-            : null
-
+          // Route to the space we asked for, not the one read back off the doc: the doc's
+          // refetch lands after this callback, so reading discussion.doc.project here still
+          // returns the old space and the URL stays on it - leaving the sidebar highlighting
+          // a space the discussion no longer belongs to.
+          //
+          // The slug has to be passed too. A move never changes it, but the canonical-route
+          // guard treats a missing slug as "not canonical yet" and falls back to fetching the
+          // discussion from the server - a request it memoizes for a second, so a move made
+          // soon after the page loaded is answered with the pre-move copy and the URL bounces
+          // straight back to the old space.
           router.replace({
             name: 'Discussion',
             params: {
-              communityId,
-              spaceId: discussion.doc?.project,
+              communityId: getSpace(targetSpace)?.team,
+              spaceId: targetSpace,
               postId: discussion.doc?.name,
+              slug: route.params.slug,
             },
           })
         })
@@ -652,10 +660,12 @@ function canonicalizeRoute() {
   // routes through the server canonicalization. Acceptable because moving a discussion is rare and
   // the alternative (stranding the new space under the wrong community) is worse. If this becomes a
   // real problem, fetch the destination space here instead of relying on it already being cached.
+  // Spaces autoname to integers, so doc.project arrives as a number while route params are
+  // always strings - compare them as strings or every load looks like a mismatch.
   const spaceMismatch =
     canonicalSpaceId &&
     canonicalCommunityId &&
-    routeParam(route.params.spaceId) !== canonicalSpaceId
+    routeParam(route.params.spaceId) !== String(canonicalSpaceId)
   const slugMismatch = !route.params.slug || route.params.slug !== doc.slug
   if (!spaceMismatch && !slugMismatch) return
 
