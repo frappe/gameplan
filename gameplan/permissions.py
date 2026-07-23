@@ -66,9 +66,13 @@ def can_manage_community(user, team):
 def can_view_community(user, team):
 	if is_global_admin(user):
 		return True
-	if gameplan.is_guest(user):
-		return False
 	team_name = get_doc_name(team)
+	if gameplan.is_guest(user):
+		# Guests never join a community, but they must be able to READ the community
+		# that holds a space they've been granted — otherwise the SPA can't render the
+		# shell around that space. Access is exactly the communities of their granted
+		# spaces, nothing else.
+		return guest_can_view_community(user, team_name)
 	is_private = (
 		team.is_private
 		if hasattr(team, "doctype")
@@ -356,7 +360,10 @@ def team_access_criterion(Team, user=None):
 	if is_global_admin(user):
 		return None
 	if gameplan.is_guest(user):
-		return Team.name == ""
+		# A guest sees exactly the communities that hold a space they've been granted
+		# guest access to (via GP Guest Access). Without this the guest's GP Team list
+		# is empty and the SPA 404s every community/space/discussion route.
+		return Team.name.isin(guest_accessible_team_query(user))
 	return (Team.is_private == 0) | is_member_parent("GP Team", Team.name, user)
 
 
@@ -460,6 +467,36 @@ def is_space_member(user, project):
 
 def has_guest_access(user, project):
 	return bool(frappe.db.exists("GP Guest Access", {"user": user, "project": project}))
+
+
+def guest_accessible_team_query(user):
+	"""Subquery of GP Team names that hold a space `user` has guest access to."""
+	Project = frappe.qb.DocType("GP Project")
+	GuestAccess = frappe.qb.DocType("GP Guest Access")
+	return (
+		frappe.qb.from_(GuestAccess)
+		.join(Project)
+		.on(GuestAccess.project == Project.name)
+		.where(GuestAccess.user == user)
+		.select(Project.team)
+	)
+
+
+def guest_can_view_community(user, team):
+	"""Whether `user` (a guest) holds guest access to any space under `team`."""
+	Project = frappe.qb.DocType("GP Project")
+	GuestAccess = frappe.qb.DocType("GP Guest Access")
+	rows = (
+		frappe.qb.from_(GuestAccess)
+		.join(Project)
+		.on(GuestAccess.project == Project.name)
+		.where(GuestAccess.user == user)
+		.where(Project.team == team)
+		.select(GuestAccess.name)
+		.limit(1)
+		.run()
+	)
+	return bool(rows)
 
 
 def get_content_project(doc):
