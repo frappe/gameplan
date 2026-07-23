@@ -74,3 +74,27 @@ export function canDeleteContent(
   if (!space) return false
   return isCommunityAdmin(getCommunity(space.team), user.name)
 }
+
+/**
+ * Mirror of backend `can_edit_content` (gameplan/permissions.py): global admins
+ * always; a guest only on content they authored (guests are participants but may
+ * edit just their own posts/comments); any member on content inside a space
+ * (Gameplan is community-driven, so space content is member-editable and edits
+ * are transparent via revisions); personal content with no space only by its
+ * owner. Callers render this only for content the user can already view, which
+ * is the backend's view-gate precondition.
+ *
+ * `space` is the content's space (GP Project); pass null/undefined for personal
+ * content with no space.
+ */
+export function canEditContent(
+  content: ContentDoc,
+  space: Space | null | undefined,
+  user: PermissionUser,
+) {
+  if (!content || !user.name) return false
+  if (isGlobalAdmin(user)) return true
+  if (isGuest(user)) return content.owner === user.name
+  if (space) return true
+  return content.owner === user.name
+}

@@ -327,7 +327,7 @@ import { provideRichQuotes } from '@/components/RichQuoteExtension/useRichQuotes
 import QuoteBacklinksPopover from '@/components/RichQuoteExtension/QuoteBacklinksPopover.vue'
 import { refreshUnreadCountForProjects } from '@/data/unreadCount'
 import { useSessionUser } from '@/data/users'
-import { canDeleteContent } from '@/utils/permissions'
+import { canDeleteContent, canEditContent } from '@/utils/permissions'
 import { useCommandPaletteCommands } from './CommandPalette/registry'
 
 const props = defineProps<{
@@ -690,6 +690,7 @@ const actions = computed(() => [
     label: 'Edit',
     icon: 'lucide-edit',
     onClick: startEditingPost,
+    condition: () => canEditContent(discussion.doc, space.value, useSessionUser()),
   },
   {
     label: 'Revisions',

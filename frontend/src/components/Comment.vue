@@ -111,7 +111,7 @@ import { tags } from '@/data/tags'
 import { useDraftSync } from '@/data/useDraftSync'
 import { useUser, useSessionUser } from '@/data/users'
 import type { Space } from '@/data/spaces'
-import { canDeleteContent } from '@/utils/permissions'
+import { canDeleteContent, canEditContent } from '@/utils/permissions'
 
 interface Props {
   comment: GPComment
@@ -193,7 +193,10 @@ const dropdownOptions = computed(() => [
     label: 'Edit',
     icon: 'lucide-edit',
     onClick: () => startEditing(),
-    condition: () => !props.comment.deleted_at && !props.readOnlyMode,
+    condition: () =>
+      !props.comment.deleted_at &&
+      !props.readOnlyMode &&
+      canEditContent(props.comment, props.space, useSessionUser()),
   },
   {
     label: 'Revisions',

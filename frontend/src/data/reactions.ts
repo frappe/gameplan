@@ -50,8 +50,14 @@ export function useReactions(options: UseReactionsOptions) {
     }
   }
 
-  const react = useCall<Reaction[], { operations: ReactionOperation[] }>({
-    url: computed(() => `/api/v2/document/${doctype.value}/${name.value}/method/react`),
+  const react = useCall<
+    Reaction[],
+    { doctype: string; name: string | number; operations: ReactionOperation[] }
+  >({
+    // A dedicated module endpoint rather than the doctype-scoped /method/react:
+    // Frappe's v2 doc-method POST handler requires WRITE, which 403s a guest who
+    // may legitimately react. gameplan.api.react is view-gated internally instead.
+    url: '/api/v2/method/gameplan.api.react',
     method: 'POST',
     immediate: false,
     onSuccess(reactions) {
@@ -91,7 +97,7 @@ export function useReactions(options: UseReactionsOptions) {
       if (!operations.length) {
         return
       }
-      react.submit({ operations })
+      react.submit({ doctype: doctype.value, name: name.value, operations })
     }, 1000)
   }
 
