@@ -105,6 +105,25 @@ To extend it:
 - **New actor or space** — add rows/blocks to `EXPECTATIONS` with the expected
   `(read, write, delete)` tuple.
 
+#### Guest policy (2026-07-24)
+
+Guests are participants, not read-only viewers. In a space they've been granted
+access to, a guest **can** edit their own content, react to any post or comment, and
+comment on discussions. A guest **cannot** touch anyone else's content (the matrix
+rows are for member-owned content, so guest `write`/`delete` there are `False`), and
+gets nothing at all outside the spaces they were granted. The full spec lives in
+`features/test_guest_participation.py`. Note: whether a guest may delete their own
+content is an open product question — current behavior (cannot) is characterized
+there, not asserted as intended.
+
+### When a test fails
+
+A red test means one side is wrong — the test or the code — and you decide which
+against product intent, not against whichever is easier to change. If the code
+violates the intended behavior, fix the code; never bend a passing assertion onto
+buggy behavior just to go green. Only update a test when the intended behavior itself
+changed (cite the decision in the commit message, as the guest policy above did).
+
 ### How to run
 
 Always run against the local demo site, never a dev site with real data.
