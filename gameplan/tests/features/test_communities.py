@@ -1,15 +1,18 @@
 # Copyright (c) 2022, Frappe Technologies Pvt Ltd and Contributors
 # See license.txt
 
+"""Community (GP Team) behaviour: the General space, joined-community state, and
+moving spaces between communities via merge or move_to_team."""
+
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from gameplan.gameplan.doctype.gp_team.gp_team import update_joined_teams
 from gameplan.gameplan.doctype.gp_user_profile.gp_user_profile import get_session_user_profile
-from gameplan.tests.fixtures import create_discussion, create_member, create_space
+from gameplan.tests.fixtures import create_community, create_discussion, create_member, create_space
 
 
-class TestGPTeam(FrappeTestCase):
+class TestCommunities(FrappeTestCase):
 	def tearDown(self):
 		frappe.set_user("Administrator")
 		frappe.db.rollback()
@@ -99,3 +102,21 @@ class TestGPTeam(FrappeTestCase):
 		self.assertEqual(frappe.db.get_value("GP Discussion", discussion.name, "team"), target.name)
 		self.assertEqual(frappe.db.get_value("GP Task", task.name, "team"), target.name)
 		self.assertEqual(frappe.db.get_value("GP Page", page.name, "team"), target.name)
+
+	def test_move_to_team_repoints_discussions_and_tasks(self):
+		source = create_community("Bulk Source Team")
+		target = create_community("Bulk Target Team")
+		project = create_space("Bulk Move Space", source.name)
+		discussion = create_discussion("D1", project.name, content="x")
+		task = frappe.get_doc(doctype="GP Task", title="T1", project=project.name).insert(
+			ignore_permissions=True
+		)
+
+		# Inserting child docs bumps the project's modified timestamp via counter
+		# hooks; reload so move_to_team's save sees the latest (as a fresh API call would).
+		project.reload()
+		project.move_to_team(target.name)
+
+		self.assertEqual(frappe.db.get_value("GP Project", project.name, "team"), target.name)
+		self.assertEqual(frappe.db.get_value("GP Discussion", discussion.name, "team"), target.name)
+		self.assertEqual(frappe.db.get_value("GP Task", task.name, "team"), target.name)
