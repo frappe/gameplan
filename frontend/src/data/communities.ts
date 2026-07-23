@@ -2,6 +2,7 @@ import { computed, MaybeRefOrGetter, toValue } from 'vue'
 import { useList } from 'frappe-ui'
 import { GPTeam, GPMember } from '@/types/doctypes'
 import { communityOrder } from './communityOrder'
+import { useSessionUser } from './users'
 
 export interface CommunityMember extends Pick<GPMember, 'user' | 'is_admin'> {
   user: string
@@ -73,7 +74,12 @@ export let getActiveCommunity = (communityId: string) => {
 
 export function isCommunityJoined(community: Community) {
   let user = getSessionUserFromCookie()
-  return Boolean(user && community.members?.some((member) => member.user === user))
+  if (!user) return false
+  // Guests never become community members; the backend only returns communities that
+  // hold a space they've been granted, so every fetched community is one they should
+  // see in the shell.
+  if (useSessionUser().isGuest) return true
+  return Boolean(community.members?.some((member) => member.user === user))
 }
 
 function sortCommunitiesByUserOrder(communities: Community[]) {
