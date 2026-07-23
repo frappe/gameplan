@@ -16,7 +16,7 @@ from gameplan.gameplan.doctype.gp_team.patches.join_active_users_to_communities 
 from gameplan.gameplan.doctype.gp_user_profile.patches.backfill_community_order import (
 	execute as backfill_community_order,
 )
-from gameplan.tests.utils import create_guest, create_member, create_project, create_team
+from gameplan.tests.fixtures import create_community, create_guest, create_member, create_space
 
 
 def _make_orphan_project(title):
@@ -85,8 +85,8 @@ class TestAssignDefaultTeamMigration(FrappeTestCase):
 		self.assertEqual(frappe.db.count("GP Project", {"team": default_team}), first_count)
 
 	def test_null_team_discussion_visible_after_backfill(self):
-		team = create_team("Backfill Team")
-		project = create_project("Backfill Space", team.name)
+		team = create_community("Backfill Team")
+		project = create_space("Backfill Space", team.name)
 
 		discussion = frappe.get_doc(
 			doctype="GP Discussion",
@@ -113,8 +113,8 @@ class TestFetchFromTeam(FrappeTestCase):
 		frappe.db.rollback()
 
 	def test_fetch_from_populates_team_on_new_discussion(self):
-		team = create_team("Fetch From Team")
-		project = create_project("Fetch From Space", team.name)
+		team = create_community("Fetch From Team")
+		project = create_space("Fetch From Space", team.name)
 
 		discussion = frappe.get_doc(
 			doctype="GP Discussion",
@@ -205,8 +205,8 @@ class TestBackfillCommunityOrderMigration(FrappeTestCase):
 
 	def test_backfills_joined_communities_by_title(self):
 		member = create_member("test_community_order_backfill@example.com")
-		zebra = create_team("Zebra Community")
-		alpha = create_team("Alpha Community")
+		zebra = create_community("Zebra Community")
+		alpha = create_community("Alpha Community")
 		_add_team_member(zebra.name, member.name)
 		_add_team_member(alpha.name, member.name)
 		_clear_community_order(member.name)
@@ -217,8 +217,8 @@ class TestBackfillCommunityOrderMigration(FrappeTestCase):
 
 	def test_does_not_overwrite_existing_community_order(self):
 		member = create_member("test_existing_community_order@example.com")
-		first = create_team("First Existing Order Community")
-		second = create_team("Second Existing Order Community")
+		first = create_community("First Existing Order Community")
+		second = create_community("Second Existing Order Community")
 		_add_team_member(first.name, member.name)
 		_add_team_member(second.name, member.name)
 		existing_order = [second.name, first.name]
@@ -236,7 +236,7 @@ def _uncategorized_exists():
 def _categorize_everything():
 	"""Force a fully-categorized state for the no-Default test (rolled back afterwards)."""
 	frappe.db.delete("GP Team", {"title": "Default"})
-	team = create_team("Catch All Team")
+	team = create_community("Catch All Team")
 	frappe.db.sql(
 		"UPDATE `tabGP Project` SET team = %s WHERE team IS NULL OR team = ''",
 		team.name,
@@ -245,8 +245,8 @@ def _categorize_everything():
 
 def _create_team_and_project(title):
 	frappe.set_user("Administrator")
-	team = create_team(f"{title} Team")
-	project = create_project(f"{title} Space", team.name)
+	team = create_community(f"{title} Team")
+	project = create_space(f"{title} Space", team.name)
 	return team, project
 
 

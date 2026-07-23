@@ -10,7 +10,7 @@ from gameplan.gameplan.doctype.gp_user_profile.gp_user_profile import (
 	has_permission,
 	save_my_bento_cards,
 )
-from gameplan.tests.utils import create_member
+from gameplan.tests.fixtures import create_member
 
 
 def get_profile(user):

@@ -4,7 +4,7 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from gameplan.search_sqlite import GameplanSearch
-from gameplan.tests.utils import create_project, create_team
+from gameplan.tests.fixtures import create_community, create_space
 
 
 class TestableGameplanSearch(GameplanSearch):
@@ -57,8 +57,8 @@ class TestGameplanSearchRanking(FrappeTestCase):
 		self.search.drop_index()
 		# Create an owned public space rather than relying on ambient data — a fresh
 		# CI site has no GP Project, which made setUp raise IndexError.
-		team = create_team("Search Ranking Team")
-		self.project = create_project("Search Ranking Space", team.name)
+		team = create_community("Search Ranking Team")
+		self.project = create_space("Search Ranking Space", team.name)
 
 	def tearDown(self):
 		frappe.set_user("Administrator")

@@ -13,7 +13,7 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from gameplan.api import mark_all_notifications_as_read
-from gameplan.tests.utils import create_member, create_project, create_team
+from gameplan.tests.fixtures import create_community, create_member, create_space
 
 
 def _make_notification(to_user, read=0):
@@ -43,8 +43,8 @@ class TestBulkUpdates(FrappeTestCase):
 
 	def test_clear_notifications_marks_matching_rows_read(self):
 		user = create_member("bulk_clear_user@example.com")
-		team = create_team("Bulk Clear Team")
-		project = create_project("Bulk Clear Space", team.name)
+		team = create_community("Bulk Clear Team")
+		project = create_space("Bulk Clear Space", team.name)
 		discussion = frappe.get_doc(
 			doctype="GP Discussion", title="Clear D1", project=project.name, content="x"
 		).insert(ignore_permissions=True)
@@ -66,9 +66,9 @@ class TestBulkUpdates(FrappeTestCase):
 		self.assertEqual(frappe.db.get_value("GP Notification", unrelated.name, "read"), 0)
 
 	def test_move_to_team_repoints_discussions_and_tasks(self):
-		source = create_team("Bulk Source Team")
-		target = create_team("Bulk Target Team")
-		project = create_project("Bulk Move Space", source.name)
+		source = create_community("Bulk Source Team")
+		target = create_community("Bulk Target Team")
+		project = create_space("Bulk Move Space", source.name)
 		discussion = frappe.get_doc(
 			doctype="GP Discussion", title="D1", project=project.name, content="x"
 		).insert(ignore_permissions=True)

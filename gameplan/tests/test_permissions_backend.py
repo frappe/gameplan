@@ -12,7 +12,7 @@ from gameplan.gameplan.doctype.gp_member.patches.backfill_team_admins import (
 	execute as backfill_team_admins,
 )
 from gameplan.search_sqlite import GameplanSearch
-from gameplan.tests.utils import create_guest, create_member, create_project, create_user, grant_guest_access
+from gameplan.tests.fixtures import create_guest, create_member, create_space, create_user, grant_guest_access
 
 
 class PermissionBackendTestCase(FrappeTestCase):
@@ -37,7 +37,7 @@ class PermissionBackendTestCase(FrappeTestCase):
 		return team.insert(ignore_permissions=True)
 
 	def create_space(self, title, team, *, is_private=0, members=None):
-		project = create_project(title, team, is_private=is_private)
+		project = create_space(title, team, is_private=is_private)
 		for user in members or []:
 			project.append("members", {"user": user})
 		project.save(ignore_permissions=True)

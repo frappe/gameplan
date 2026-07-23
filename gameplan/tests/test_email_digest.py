@@ -17,7 +17,7 @@ from gameplan.email_digest import (
 	is_digest_due,
 	send_digest_for_profile,
 )
-from gameplan.tests.utils import create_discussion, create_member, create_project, create_team
+from gameplan.tests.fixtures import create_community, create_discussion, create_member, create_space
 
 
 class TestEmailDigest(FrappeTestCase):
@@ -87,9 +87,9 @@ class TestEmailDigest(FrappeTestCase):
 		author_profile = frappe.get_doc("GP User Profile", {"user": author.name})
 		author_profile.image = "/files/digest-author.png"
 		author_profile.save(ignore_permissions=True)
-		team = create_team("Digest Team")
+		team = create_community("Digest Team")
 		frappe.db.set_value("GP Team", team.name, "image", "/files/digest-team.png", update_modified=False)
-		project = create_project("Digest Space", team.name)
+		project = create_space("Digest Space", team.name)
 		discussion = create_discussion("Digest Discussion", project.name)
 		frappe.db.set_value(
 			"GP Discussion",
@@ -107,8 +107,8 @@ class TestEmailDigest(FrappeTestCase):
 				"is_unread": 1,
 			}
 		).insert(ignore_permissions=True)
-		other_team = create_team("Digest Other Team")
-		other_project = create_project("Digest Other Space", other_team.name)
+		other_team = create_community("Digest Other Team")
+		other_project = create_space("Digest Other Space", other_team.name)
 		other_discussion = create_discussion("Digest Other Discussion", other_project.name)
 		frappe.get_doc(
 			{
@@ -234,8 +234,8 @@ class TestEmailDigest(FrappeTestCase):
 		)
 
 	def test_unread_discussions_are_sorted_by_popularity(self):
-		team = create_team("Digest Popularity Team")
-		project = create_project("Digest Popularity Space", team.name)
+		team = create_community("Digest Popularity Team")
+		project = create_space("Digest Popularity Space", team.name)
 		self.create_unread_discussion(project.name, "Quiet Recent Discussion", 0, "2026-06-30 10:00:00")
 		self.create_unread_discussion(
 			project.name,
@@ -277,10 +277,10 @@ class TestEmailDigest(FrappeTestCase):
 		self.assertEqual(discussions[0].popularity_score, 10)
 
 	def test_unread_discussions_are_sorted_by_community_popularity(self):
-		aggregate_team = create_team("Digest Aggregate Team")
-		aggregate_project = create_project("Digest Aggregate Space", aggregate_team.name)
-		single_team = create_team("Digest Single Team")
-		single_project = create_project("Digest Single Space", single_team.name)
+		aggregate_team = create_community("Digest Aggregate Team")
+		aggregate_project = create_space("Digest Aggregate Space", aggregate_team.name)
+		single_team = create_community("Digest Single Team")
+		single_project = create_space("Digest Single Space", single_team.name)
 		self.create_unread_discussion(
 			aggregate_project.name,
 			"Aggregate Popular One",
@@ -312,12 +312,12 @@ class TestEmailDigest(FrappeTestCase):
 		)
 
 	def test_unread_discussions_are_balanced_across_popular_communities(self):
-		dominant_team = create_team("Digest Dominant Team")
-		dominant_project = create_project("Digest Dominant Space", dominant_team.name)
-		secondary_team = create_team("Digest Secondary Team")
-		secondary_project = create_project("Digest Secondary Space", secondary_team.name)
-		tertiary_team = create_team("Digest Tertiary Team")
-		tertiary_project = create_project("Digest Tertiary Space", tertiary_team.name)
+		dominant_team = create_community("Digest Dominant Team")
+		dominant_project = create_space("Digest Dominant Space", dominant_team.name)
+		secondary_team = create_community("Digest Secondary Team")
+		secondary_project = create_space("Digest Secondary Space", secondary_team.name)
+		tertiary_team = create_community("Digest Tertiary Team")
+		tertiary_project = create_space("Digest Tertiary Space", tertiary_team.name)
 		for index, score in enumerate([100, 90, 80, 70, 60], start=1):
 			self.create_unread_discussion(
 				dominant_project.name,

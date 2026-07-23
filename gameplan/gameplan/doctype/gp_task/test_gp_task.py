@@ -5,15 +5,21 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from gameplan.gameplan.doctype.gp_task.gp_task import has_permission
-from gameplan.tests.utils import create_guest, create_member, create_project, create_team, grant_guest_access
+from gameplan.tests.fixtures import (
+	create_community,
+	create_guest,
+	create_member,
+	create_space,
+	grant_guest_access,
+)
 
 
 class TestGPTaskPermissions(FrappeTestCase):
 	def setUp(self):
 		self.member = create_member("test_task_member@example.com")
 		self.guest = create_guest("test_task_guest@example.com")
-		self.team = create_team("Task Perm Team")
-		self.project = create_project("Task Perm Project", self.team.name)
+		self.team = create_community("Task Perm Team")
+		self.project = create_space("Task Perm Project", self.team.name)
 
 	def tearDown(self):
 		frappe.set_user("Administrator")

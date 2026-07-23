@@ -4,7 +4,7 @@
 import frappe
 from frappe.tests import IntegrationTestCase, UnitTestCase
 
-from gameplan.tests.utils import create_member
+from gameplan.tests.fixtures import create_member
 
 # On IntegrationTestCase, the doctype test records and all
 # link-field test record dependencies are recursively loaded
@@ -82,11 +82,11 @@ class IntegrationTestGPDraft(IntegrationTestCase):
 		one reply. Reads collapse them: find_my_draft keeps the newest and deletes the rest, so the
 		composer resumes a single draft and the duplicate can't linger."""
 		from gameplan.gameplan.doctype.gp_draft.gp_draft import find_my_draft
-		from gameplan.tests.utils import create_discussion, create_project, create_team
+		from gameplan.tests.fixtures import create_community, create_discussion, create_space
 
 		# reference_name is a Dynamic Link, validated on insert — point at a real discussion.
-		team = create_team("Draft Heal Team")
-		project = create_project("Draft Heal Space", team.name)
+		team = create_community("Draft Heal Team")
+		project = create_space("Draft Heal Space", team.name)
 		discussion = create_discussion("Draft Heal Target", project.name)
 
 		alice = create_member("draft_alice@example.com", "Alice")

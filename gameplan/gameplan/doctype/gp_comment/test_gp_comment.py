@@ -5,12 +5,12 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from gameplan.gameplan.doctype.gp_comment.gp_comment import has_permission
-from gameplan.tests.utils import (
+from gameplan.tests.fixtures import (
+	create_community,
 	create_discussion,
 	create_guest,
 	create_member,
-	create_project,
-	create_team,
+	create_space,
 	grant_guest_access,
 )
 
@@ -19,8 +19,8 @@ class TestGPCommentPermissions(FrappeTestCase):
 	def setUp(self):
 		self.member = create_member("test_comment_member@example.com")
 		self.guest = create_guest("test_comment_guest@example.com")
-		self.team = create_team("Comment Perm Team")
-		self.project = create_project("Comment Perm Project", self.team.name)
+		self.team = create_community("Comment Perm Team")
+		self.project = create_space("Comment Perm Project", self.team.name)
 		self.discussion = create_discussion("Comment Perm Discussion", self.project.name)
 
 	def tearDown(self):

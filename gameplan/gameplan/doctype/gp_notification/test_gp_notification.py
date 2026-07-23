@@ -5,7 +5,7 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from gameplan.gameplan.doctype.gp_notification.gp_notification import GPNotification
-from gameplan.tests.utils import create_discussion, create_member, create_project, create_team
+from gameplan.tests.fixtures import create_community, create_discussion, create_member, create_space
 
 
 class TestGPNotification(FrappeTestCase):
@@ -15,8 +15,8 @@ class TestGPNotification(FrappeTestCase):
 
 	def test_clear_notifications_handles_empty_link_values_for_autoincrement_names(self):
 		user = create_member("test_notification_empty_link@example.com")
-		team = create_team("Notification Empty Link Team")
-		project = create_project("Notification Empty Link Space", team.name)
+		team = create_community("Notification Empty Link Team")
+		project = create_space("Notification Empty Link Space", team.name)
 		discussion = create_discussion("Notification Empty Link Discussion", project.name)
 		comment = frappe.get_doc(
 			doctype="GP Comment",

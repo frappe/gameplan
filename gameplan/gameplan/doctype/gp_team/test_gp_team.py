@@ -6,7 +6,7 @@ from frappe.tests.utils import FrappeTestCase
 
 from gameplan.gameplan.doctype.gp_team.gp_team import update_joined_teams
 from gameplan.gameplan.doctype.gp_user_profile.gp_user_profile import get_session_user_profile
-from gameplan.tests.utils import create_discussion, create_member, create_project
+from gameplan.tests.fixtures import create_discussion, create_member, create_space
 
 
 class TestGPTeam(FrappeTestCase):
@@ -80,7 +80,7 @@ class TestGPTeam(FrappeTestCase):
 		target = frappe.get_doc(doctype="GP Team", title="Merge Target Team").insert(ignore_permissions=True)
 		source.add_member(source_member.name, is_admin=1)
 		source.save(ignore_permissions=True)
-		project = create_project("Merge Source Space", source.name)
+		project = create_space("Merge Source Space", source.name)
 		discussion = create_discussion("Merge Source Discussion", project.name)
 		task = frappe.get_doc(doctype="GP Task", title="Merge Source Task", project=project.name).insert(
 			ignore_permissions=True

@@ -13,11 +13,11 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from gameplan.api import get_user_info, invite_by_email
-from gameplan.tests.utils import (
+from gameplan.tests.fixtures import (
+	create_community,
 	create_guest,
 	create_member,
-	create_project,
-	create_team,
+	create_space,
 	create_user,
 )
 
@@ -89,8 +89,8 @@ class TestApiSecurity(FrappeTestCase):
 		through the trusted internal helper rather than the admin-gated endpoint.
 		"""
 		member = create_member("sec_space_member@example.com")
-		team = create_team("Sec Team")
-		project = create_project("Sec Space", team.name, is_private=1)
+		team = create_community("Sec Team")
+		project = create_space("Sec Space", team.name, is_private=1)
 		project.append("members", {"user": member.name})
 		project.save(ignore_permissions=True)
 

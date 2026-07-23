@@ -9,21 +9,21 @@ from gameplan.gameplan.doctype.gp_discussion.api import (
 	get_discussions,
 )
 from gameplan.gameplan.doctype.gp_discussion.gp_discussion import has_permission
-from gameplan.tests.utils import (
+from gameplan.tests.fixtures import (
+	create_community,
 	create_discussion,
 	create_guest,
 	create_member,
-	create_project,
-	create_team,
+	create_space,
 	grant_guest_access,
 )
 
 
 class TestGPDiscussion(FrappeTestCase):
 	def test_get_discussions_excludes_archived_spaces(self):
-		team = create_team("Archived Discussion Filter Team")
-		active_project = create_project("Active Discussion Filter Space", team.name)
-		archived_project = create_project("Archived Discussion Filter Space", team.name)
+		team = create_community("Archived Discussion Filter Team")
+		active_project = create_space("Active Discussion Filter Space", team.name)
+		archived_project = create_space("Archived Discussion Filter Space", team.name)
 		active_discussion = create_discussion("Visible discussion", active_project.name)
 		archived_discussion = create_discussion("Hidden discussion", archived_project.name)
 
@@ -75,8 +75,8 @@ class TestGPDiscussionPermissions(FrappeTestCase):
 	def setUp(self):
 		self.member = create_member("test_disc_member@example.com")
 		self.guest = create_guest("test_disc_guest@example.com")
-		self.team = create_team("Discussion Perm Team")
-		self.project = create_project("Discussion Perm Project", self.team.name)
+		self.team = create_community("Discussion Perm Team")
+		self.project = create_space("Discussion Perm Project", self.team.name)
 
 	def tearDown(self):
 		frappe.set_user("Administrator")

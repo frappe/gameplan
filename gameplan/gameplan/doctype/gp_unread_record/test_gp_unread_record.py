@@ -5,7 +5,7 @@ import frappe
 from frappe.tests import IntegrationTestCase
 
 from gameplan.gameplan.doctype.gp_unread_record.gp_unread_record import GPUnreadRecord
-from gameplan.tests.utils import create_discussion, create_member, create_project, create_team
+from gameplan.tests.fixtures import create_community, create_discussion, create_member, create_space
 
 # On IntegrationTestCase, the doctype test records and all
 # link-field test record dependencies are recursively loaded
@@ -23,10 +23,10 @@ class IntegrationTestGPUnreadRecord(IntegrationTestCase):
 	def test_mark_all_as_read_for_team_marks_accessible_community_projects(self):
 		suffix = frappe.generate_hash(length=8)
 		user = create_member(f"team-unread-member-{suffix}@example.com", "Team Unread Member")
-		source_team = create_team(f"Team Unread Source {suffix}")
-		other_team = create_team(f"Team Unread Other {suffix}")
-		source_project = create_project(f"Team Unread Source Space {suffix}", source_team.name)
-		other_project = create_project(f"Team Unread Other Space {suffix}", other_team.name)
+		source_team = create_community(f"Team Unread Source {suffix}")
+		other_team = create_community(f"Team Unread Other {suffix}")
+		source_project = create_space(f"Team Unread Source Space {suffix}", source_team.name)
+		other_project = create_space(f"Team Unread Other Space {suffix}", other_team.name)
 		source_discussion = create_discussion(f"Team Unread Source Discussion {suffix}", source_project.name)
 		other_discussion = create_discussion(f"Team Unread Other Discussion {suffix}", other_project.name)
 		source_unread_record = create_unread_record(user.name, source_discussion.name, source_project.name)
@@ -46,8 +46,8 @@ class IntegrationTestGPUnreadRecord(IntegrationTestCase):
 	def test_mark_all_as_read_for_team_updates_existing_project_visit(self):
 		suffix = frappe.generate_hash(length=8)
 		user = create_member(f"team-visit-member-{suffix}@example.com", "Team Visit Member")
-		team = create_team(f"Team Visit Source {suffix}")
-		project = create_project(f"Team Visit Source Space {suffix}", team.name)
+		team = create_community(f"Team Visit Source {suffix}")
+		project = create_space(f"Team Visit Source Space {suffix}", team.name)
 		discussion = create_discussion(f"Team Visit Source Discussion {suffix}", project.name)
 		unread_record = create_unread_record(user.name, discussion.name, project.name)
 		old_timestamp = frappe.utils.get_datetime("2026-01-01 00:00:00")
@@ -74,8 +74,8 @@ class IntegrationTestGPUnreadRecord(IntegrationTestCase):
 	def test_mark_all_as_read_for_team_with_before_marks_only_older_discussions(self):
 		suffix = frappe.generate_hash(length=8)
 		user = create_member(f"team-before-member-{suffix}@example.com", "Team Before Member")
-		team = create_team(f"Team Before Source {suffix}")
-		project = create_project(f"Team Before Source Space {suffix}", team.name)
+		team = create_community(f"Team Before Source {suffix}")
+		project = create_space(f"Team Before Source Space {suffix}", team.name)
 
 		old_discussion = create_discussion(f"Team Before Old Discussion {suffix}", project.name)
 		new_discussion = create_discussion(f"Team Before New Discussion {suffix}", project.name)
@@ -95,8 +95,8 @@ class IntegrationTestGPUnreadRecord(IntegrationTestCase):
 	def test_mark_all_as_read_for_team_before_is_inclusive_of_that_whole_day(self):
 		suffix = frappe.generate_hash(length=8)
 		user = create_member(f"team-boundary-member-{suffix}@example.com", "Team Boundary Member")
-		team = create_team(f"Team Boundary Source {suffix}")
-		project = create_project(f"Team Boundary Source Space {suffix}", team.name)
+		team = create_community(f"Team Boundary Source {suffix}")
+		project = create_space(f"Team Boundary Source Space {suffix}", team.name)
 
 		# `before` is 2026-01-15: a discussion late on that day is included (inclusive),
 		# one early on the next day is excluded.
@@ -117,8 +117,8 @@ class IntegrationTestGPUnreadRecord(IntegrationTestCase):
 	def test_mark_all_as_read_for_team_with_before_sets_watermark_to_cutoff(self):
 		suffix = frappe.generate_hash(length=8)
 		user = create_member(f"team-watermark-member-{suffix}@example.com", "Team Watermark Member")
-		team = create_team(f"Team Watermark Source {suffix}")
-		project = create_project(f"Team Watermark Source Space {suffix}", team.name)
+		team = create_community(f"Team Watermark Source {suffix}")
+		project = create_space(f"Team Watermark Source Space {suffix}", team.name)
 		discussion = create_discussion(f"Team Watermark Discussion {suffix}", project.name)
 		set_last_post_at(discussion.name, "2026-01-10 09:00:00")
 		create_unread_record(user.name, discussion.name, project.name)
@@ -149,8 +149,8 @@ class IntegrationTestGPUnreadRecord(IntegrationTestCase):
 	def test_mark_all_as_read_for_team_without_before_sets_watermark_to_now(self):
 		suffix = frappe.generate_hash(length=8)
 		user = create_member(f"team-now-member-{suffix}@example.com", "Team Now Member")
-		team = create_team(f"Team Now Source {suffix}")
-		project = create_project(f"Team Now Source Space {suffix}", team.name)
+		team = create_community(f"Team Now Source {suffix}")
+		project = create_space(f"Team Now Source Space {suffix}", team.name)
 		discussion = create_discussion(f"Team Now Discussion {suffix}", project.name)
 		create_unread_record(user.name, discussion.name, project.name)
 
@@ -173,8 +173,8 @@ class IntegrationTestGPUnreadRecord(IntegrationTestCase):
 	def test_mark_all_as_read_for_team_with_before_never_rewinds_a_newer_watermark(self):
 		suffix = frappe.generate_hash(length=8)
 		user = create_member(f"team-rewind-member-{suffix}@example.com", "Team Rewind Member")
-		team = create_team(f"Team Rewind Source {suffix}")
-		project = create_project(f"Team Rewind Source Space {suffix}", team.name)
+		team = create_community(f"Team Rewind Source {suffix}")
+		project = create_space(f"Team Rewind Source Space {suffix}", team.name)
 		discussion = create_discussion(f"Team Rewind Discussion {suffix}", project.name)
 		set_last_post_at(discussion.name, "2026-01-10 09:00:00")
 		create_unread_record(user.name, discussion.name, project.name)
@@ -202,8 +202,8 @@ class IntegrationTestGPUnreadRecord(IntegrationTestCase):
 
 		suffix = frappe.generate_hash(length=8)
 		user = create_member(f"team-clamp-member-{suffix}@example.com", "Team Clamp Member")
-		team = create_team(f"Team Clamp Source {suffix}")
-		project = create_project(f"Team Clamp Source Space {suffix}", team.name)
+		team = create_community(f"Team Clamp Source {suffix}")
+		project = create_space(f"Team Clamp Source Space {suffix}", team.name)
 		discussion = create_discussion(f"Team Clamp Discussion {suffix}", project.name)
 		record = create_unread_record(user.name, discussion.name, project.name)
 
@@ -227,7 +227,7 @@ class IntegrationTestGPUnreadRecord(IntegrationTestCase):
 
 		suffix = frappe.generate_hash(length=8)
 		user = create_member(f"team-bad-date-member-{suffix}@example.com", "Team Bad Date Member")
-		team = create_team(f"Team Bad Date Source {suffix}")
+		team = create_community(f"Team Bad Date Source {suffix}")
 
 		frappe.set_user(user.name)
 		with self.assertRaises(frappe.exceptions.ValidationError):
@@ -241,8 +241,8 @@ class IntegrationTestGPUnreadRecord(IntegrationTestCase):
 		# cutoff and is intentionally left untouched rather than guessed into the read set.
 		suffix = frappe.generate_hash(length=8)
 		user = create_member(f"team-null-lpa-member-{suffix}@example.com", "Team Null LPA Member")
-		team = create_team(f"Team Null LPA Source {suffix}")
-		project = create_project(f"Team Null LPA Source Space {suffix}", team.name)
+		team = create_community(f"Team Null LPA Source {suffix}")
+		project = create_space(f"Team Null LPA Source Space {suffix}", team.name)
 		discussion = create_discussion(f"Team Null LPA Discussion {suffix}", project.name)
 		frappe.db.set_value("GP Discussion", discussion.name, "last_post_at", None, update_modified=False)
 		record = create_unread_record(user.name, discussion.name, project.name)
@@ -261,10 +261,10 @@ class IntegrationTestGPUnreadRecord(IntegrationTestCase):
 		# an old discussion in another community must not be cleared by this team's mark-all.
 		suffix = frappe.generate_hash(length=8)
 		user = create_member(f"team-scope-member-{suffix}@example.com", "Team Scope Member")
-		source_team = create_team(f"Team Scope Source {suffix}")
-		other_team = create_team(f"Team Scope Other {suffix}")
-		source_project = create_project(f"Team Scope Source Space {suffix}", source_team.name)
-		other_project = create_project(f"Team Scope Other Space {suffix}", other_team.name)
+		source_team = create_community(f"Team Scope Source {suffix}")
+		other_team = create_community(f"Team Scope Other {suffix}")
+		source_project = create_space(f"Team Scope Source Space {suffix}", source_team.name)
+		other_project = create_space(f"Team Scope Other Space {suffix}", other_team.name)
 		source_discussion = create_discussion(f"Team Scope Source Discussion {suffix}", source_project.name)
 		other_discussion = create_discussion(f"Team Scope Other Discussion {suffix}", other_project.name)
 		# Both are old enough to fall before the cutoff; only the source team's should clear.
@@ -284,9 +284,9 @@ class IntegrationTestGPUnreadRecord(IntegrationTestCase):
 		# attributed to (and stuck in) the old space.
 		suffix = frappe.generate_hash(length=8)
 		user = create_member(f"realign-member-{suffix}@example.com", "Realign Member")
-		team = create_team(f"Realign Team {suffix}")
-		old_project = create_project(f"Realign Old Space {suffix}", team.name)
-		new_project = create_project(f"Realign New Space {suffix}", team.name)
+		team = create_community(f"Realign Team {suffix}")
+		old_project = create_space(f"Realign Old Space {suffix}", team.name)
+		new_project = create_space(f"Realign New Space {suffix}", team.name)
 		discussion = create_discussion(f"Realign Discussion {suffix}", new_project.name)
 		# Record left pointing at the old space, as if the discussion was moved after creation.
 		record = create_unread_record(user.name, discussion.name, old_project.name)
@@ -302,9 +302,9 @@ class IntegrationTestGPUnreadRecord(IntegrationTestCase):
 
 		suffix = frappe.generate_hash(length=8)
 		user = create_member(f"move-member-{suffix}@example.com", "Move Member")
-		team = create_team(f"Move Team {suffix}")
-		source_project = create_project(f"Move Source Space {suffix}", team.name)
-		target_project = create_project(f"Move Target Space {suffix}", team.name)
+		team = create_community(f"Move Team {suffix}")
+		source_project = create_space(f"Move Source Space {suffix}", team.name)
+		target_project = create_space(f"Move Target Space {suffix}", team.name)
 		discussion = create_discussion(f"Move Discussion {suffix}", source_project.name)
 		record = create_unread_record(user.name, discussion.name, source_project.name)
 
