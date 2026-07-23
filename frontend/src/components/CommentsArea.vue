@@ -263,7 +263,7 @@ import Poll from './Poll.vue'
 import UserAvatar from './UserAvatar.vue'
 import { getScrollContainer } from 'frappe-ui'
 import { dialog } from 'frappe-ui'
-import { useSocket, type NewActivityEvent } from '@/socket'
+import { subscribeToDoc, useSocket, type NewActivityEvent } from '@/socket'
 import { GPActivity, GPComment, GPPoll } from '@/types/doctypes'
 import type { Editor } from '@tiptap/vue-3'
 import { tags } from '@/data/tags'
@@ -327,6 +327,7 @@ const props = withDefaults(defineProps<Props>(), {
 const router = useRouter()
 const route = useRoute()
 const socket = useSocket()
+let unsubscribeFromDoc: (() => void) | null = null
 const sessionUser = useSessionUser()
 const isMobileViewport = useIsMobile()
 
@@ -840,8 +841,12 @@ onMounted(() => {
     scrollToComment: scrollToCommentById,
     highlightComment,
   })
+  unsubscribeFromDoc = subscribeToDoc(props.doctype, String(props.name))
   socket.on('new_activity', (data: NewActivityEvent) => {
-    if (data.reference_doctype === props.doctype && data.reference_name === props.name) {
+    // The payload stringifies the id (activity.py) but doctypes that autoname to an
+    // integer hand this component a number, so a strict compare never matches and the
+    // timeline silently stops updating. Compare as strings.
+    if (data.reference_doctype === props.doctype && data.reference_name === String(props.name)) {
       activities.reload()
     }
   })
@@ -852,6 +857,7 @@ onUnmounted(() => {
   richQuotes?.setReplyTarget(null)
   richQuotes?.setCommentNavigator(null)
   socket.off('new_activity')
+  unsubscribeFromDoc?.()
   mutationObserver?.disconnect()
   resizeObserver?.disconnect()
   stopComposerResize()

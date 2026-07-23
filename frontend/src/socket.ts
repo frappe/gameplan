@@ -46,6 +46,25 @@ export function useSocket() {
   return socket
 }
 
+/**
+ * Join a document's realtime room so this tab receives events published for it
+ * (see `frappe.publish_realtime(..., doctype=, docname=)`).
+ *
+ * The realtime server permission-checks every subscription, so a user who cannot read
+ * the document simply never joins. Re-subscribes on reconnect, since rooms are lost
+ * when the socket drops. Returns the unsubscribe function.
+ */
+export function subscribeToDoc(doctype: string, name: string) {
+  const subscribe = () => socket?.emit('doc_subscribe', doctype, name)
+  subscribe()
+  socket?.on('connect', subscribe)
+
+  return () => {
+    socket?.off('connect', subscribe)
+    socket?.emit('doc_unsubscribe', doctype, name)
+  }
+}
+
 function isReloadableResource(resource: unknown): resource is ReloadableResource {
   return Boolean(
     resource &&

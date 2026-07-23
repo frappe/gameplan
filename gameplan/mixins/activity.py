@@ -33,9 +33,15 @@ class HasActivity:
 			data=data,
 		).insert(ignore_permissions=True)
 
+		# Publish into the document's own room. Without doctype/docname this falls back to the
+		# site room, which only Desk (System User) sockets join - so Gameplan members, who are
+		# Website Users, never saw the timeline update live. Subscribers are permission-checked
+		# by the realtime server, so joining the room already implies read access.
 		frappe.publish_realtime(
 			"new_activity",
 			{"reference_doctype": self.doctype, "reference_name": str(self.name)},
+			doctype=self.doctype,
+			docname=self.name,
 			after_commit=True,
 		)
 
