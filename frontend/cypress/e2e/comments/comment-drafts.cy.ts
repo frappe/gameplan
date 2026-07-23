@@ -1,47 +1,24 @@
+import { resetData } from '../../support/seed'
+
 // A half-written reply auto-saves as a comment draft (GP Draft, type=Comment). These
 // tests verify it surfaces on the global Drafts list and that opening it lands on the
 // discussion with the reply composer restored — the feature added alongside the
 // new-discussion drafts that the list already showed.
-describe('Drafts - Comment Drafts', () => {
-  const community = 'engineering'
-  let spaceId: string
-  let discussionId: string
-
+describe('Comment drafts', () => {
+  const discussionTitle = 'Welcome thread'
   const replyText = 'This is a half-written reply that should be saved as a draft.'
 
-  beforeEach(() => {
-    cy.login()
-    cy.request({
-      method: 'POST',
-      url: '/api/method/gameplan.test_api.clear_data',
-    })
+  let community: string
+  let space: string
+  let discussion: string
 
-    cy.request('POST', '/api/method/frappe.client.insert_many', {
-      docs: [
-        { doctype: 'GP Team', title: 'Engineering' },
-        { doctype: 'GP Project', title: 'Gameplan', team: community },
-      ],
+  beforeEach(() => {
+    resetData('space_with_discussion').then((ids) => {
+      community = String(ids.community)
+      space = String(ids.space)
+      discussion = String(ids.discussion)
     })
-      .its('body.message')
-      .then((data) => {
-        spaceId = String(data[1])
-        // Scoped routes only resolve a joined community.
-        cy.request('POST', '/api/v2/method/GP Team/update_joined_teams', {
-          teams: [community],
-        })
-        cy.request('POST', '/api/method/frappe.client.insert', {
-          doc: {
-            doctype: 'GP Discussion',
-            project: spaceId,
-            title: 'Test discussion',
-            content: 'This is a test discussion',
-          },
-        })
-          .its('body.message')
-          .then((discussion) => {
-            discussionId = String(discussion.name)
-          })
-      })
+    cy.loginAs('member')
   })
 
   // The Drafts list fetches via get_my_drafts; waiting on it avoids a detached-element
@@ -54,7 +31,7 @@ describe('Drafts - Comment Drafts', () => {
     // The draft is created lazily on the first push via frappe.client.insert.
     cy.intercept('POST', '/api/method/frappe.client.insert').as('draftInsert')
 
-    cy.visit(`/g/community/${community}/space/${spaceId}/discussion/${discussionId}`)
+    cy.visit(`/g/community/${community}/space/${space}/discussion/${discussion}`)
 
     // Start a reply but never submit it — typing alone auto-saves a comment draft.
     cy.button('Add a comment').click()
@@ -66,13 +43,13 @@ describe('Drafts - Comment Drafts', () => {
     interceptDrafts()
     cy.visit('/g/drafts')
     cy.wait('@getDrafts') // let the list settle before asserting/clicking
-    cy.contains('Test discussion').should('exist')
+    cy.contains(discussionTitle).should('exist')
     cy.contains(replyText).should('exist')
     cy.get('.lucide-reply').should('exist')
 
     // Opening it lands on the discussion with the composer restored.
     cy.contains(replyText).click()
-    cy.url().should('include', `/space/${spaceId}/discussion/${discussionId}`)
+    cy.url().should('include', `/space/${space}/discussion/${discussion}`)
     cy.get('[contenteditable=true]').should('be.visible').should('contain.text', replyText)
   })
 
@@ -80,7 +57,7 @@ describe('Drafts - Comment Drafts', () => {
     cy.intercept('POST', '/api/method/frappe.client.insert').as('draftInsert')
     cy.intercept('POST', '/api/v2/document/GP%20Comment').as('comment')
 
-    cy.visit(`/g/community/${community}/space/${spaceId}/discussion/${discussionId}`)
+    cy.visit(`/g/community/${community}/space/${space}/discussion/${discussion}`)
 
     cy.button('Add a comment').click()
     cy.get('[contenteditable=true]').should('be.visible').click().type(replyText)
