@@ -127,12 +127,16 @@ def can_create_content(user, doc):
 
 
 def can_edit_content(user, doc):
-	if gameplan.is_guest(user):
-		return False
 	if is_global_admin(user):
 		return True
 	if not can_view_content(user, doc):
 		return False
+	if gameplan.is_guest(user):
+		# Guests are participants in the spaces they're granted, but only on their
+		# OWN content — they may edit posts/comments they authored, never anyone
+		# else's. (Reacting is a view-level action, gated in HasReactions.react,
+		# not an edit — so it is not routed through this write gate.)
+		return get_doc_value(doc, "owner") == user
 	# Gameplan is community-driven: content inside a space is owned by the
 	# community, so any member who can access the space may edit it (and run
 	# lifecycle actions like pin/close that route through the write gate).
