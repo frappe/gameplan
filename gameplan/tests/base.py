@@ -8,11 +8,7 @@ from contextlib import contextmanager
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
-from gameplan.tests.fixtures import create_admin, create_guest, create_member
-
-
-def _name(doc_or_name):
-	return doc_or_name if isinstance(doc_or_name, str) else doc_or_name.name
+from gameplan.tests.fixtures import _name, create_admin, create_guest, create_member
 
 
 class GameplanTestCase(FrappeTestCase):

@@ -8,10 +8,16 @@ Builders accept either a doc or a name wherever a linked record is expected.
 """
 
 import frappe
+from frappe.model.document import Document
 
 
 def _name(doc_or_name):
-	return doc_or_name if isinstance(doc_or_name, str) else doc_or_name.name
+	"""Unwrap a Document to its name; pass any bare identifier straight through.
+
+	Not an `isinstance(str)` check: several Gameplan doctypes (GP Project,
+	GP Discussion) autoname to integers, so a valid name is not always a string.
+	"""
+	return doc_or_name.name if isinstance(doc_or_name, Document) else doc_or_name
 
 
 def create_user(email, first_name, role=None):
