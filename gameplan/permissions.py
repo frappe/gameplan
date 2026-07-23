@@ -239,8 +239,8 @@ def _child_table_changed(current_rows, previous_rows):
 def can_edit_content(user, doc):
 	"""Business rule for who may change a document's own content.
 
-	Enforced at save time by ProtectedEditMixin (not by has_permission `write`,
-	which is the broader can_interact_with_content). Also mirrored in the frontend
+	Enforced at save time by can_write_content and _protected_fields_changed in
+	the has_permission write check. Also mirrored in the frontend
 	(utils/permissions.ts::canEditContent) to gate edit affordances.
 	"""
 	if is_global_admin(user):

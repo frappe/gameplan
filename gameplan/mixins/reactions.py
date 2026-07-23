@@ -26,7 +26,7 @@ class HasReactions:
 		# (matched on `user` == frappe.session.user), so this cannot mutate others'
 		# data or the post body. The save runs through the normal permission path:
 		# guests hold write ("may interact") on content in a space they can access,
-		# and ProtectedEditMixin lets a non-editor's save through as long as only
+		# and can_write_content lets a non-editor's save through as long as only
 		# interaction-safe fields (reactions) changed.
 		if not can_view_content(user, self):
 			frappe.throw(_("You do not have access to react to this"), frappe.PermissionError)
