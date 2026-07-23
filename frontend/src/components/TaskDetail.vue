@@ -132,7 +132,14 @@
         </div>
         <div>Status</div>
         <div>
-          <Select v-model="task.doc.status" :options="statusOptions" placeholder="Set status">
+          <!-- statusOptions carry an onClick for the mobile Dropdown; Select ignores it, so
+               the desktop control has to persist the change itself. -->
+          <Select
+            v-model="task.doc.status"
+            :options="statusOptions"
+            placeholder="Set status"
+            @update:modelValue="task.setValue.submit({ status: $event })"
+          >
             <template #item-prefix="{ item }">
               <TaskStatusIcon :status="item.value" />
             </template>
@@ -140,7 +147,12 @@
         </div>
         <div>Priority</div>
         <div>
-          <Select v-model="task.doc.priority" :options="priorityOptions" placeholder="Set priority">
+          <Select
+            v-model="task.doc.priority"
+            :options="priorityOptions"
+            placeholder="Set priority"
+            @update:modelValue="task.setValue.submit({ priority: $event })"
+          >
             <template #item-prefix="{ item }">
               <TaskPriorityIcon :priority="item.value" />
             </template>
