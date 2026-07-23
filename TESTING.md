@@ -247,15 +247,15 @@ cd frontend && yarn test
 
 ## 5. Migration status
 
-The foundation for the new layout is in place (this step). The legacy tests are still
-present and green; they migrate into the new layout in Step 2.
+The migration is done. Everything described above is the current state, not a plan:
 
-Still present:
+- Backend tests all live under `gameplan/tests/{features,permissions,platform}/`. No
+  `test_*.py` remains beside a doctype, and the old `tests/utils.py` is gone — builders
+  live in `fixtures.py`.
+- All 21 specs sit in the grouped folders under `cypress/e2e/`, seed through
+  `resetData(scenario)`, and log in with `cy.loginAs(persona)`.
+- `gameplan/test_api.py` is deleted. `gameplan/ui_test_helpers.py` is the only seed
+  surface, and like its predecessor every entry point is gated on `enable_ui_tests`.
 
-- Flat backend files: `gameplan/tests/test_*.py`
-- Per-doctype tests: `gameplan/gameplan/doctype/*/test_gp_*.py`
-- `gameplan/test_api.py` — the legacy seed endpoint (`clear_data`), used by the
-  existing specs. It gets deleted in Step 2.
-- 21 flat specs directly under `cypress/e2e/`.
-
-Step 2 moves these into the grouped layout above and removes `test_api.py`.
+What is not done yet is coverage: Step 3 of `TEST_SUITE_PLAN.md` lists the features that
+still have no test at either layer.

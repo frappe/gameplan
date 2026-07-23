@@ -3,9 +3,9 @@
 
 """Cypress seed API for Gameplan E2E tests.
 
-This is the new seed surface (eventually replacing test_api.py). It is intentionally
-NOT named test_* so that backend test discovery ignores it. Every entry point is gated
-behind `enable_ui_tests` in site_config.json, exactly like test_api.py.
+This is the only seed surface for Cypress. It is intentionally NOT named test_* so that
+backend test discovery ignores it, and every entry point is gated behind
+`enable_ui_tests` in site_config.json.
 
 `reset(scenario=None)` wipes all Gameplan data, forces the four persona users into a known
 state, then optionally builds a named scenario and returns its ids dict.
