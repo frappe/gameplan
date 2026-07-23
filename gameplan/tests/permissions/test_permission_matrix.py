@@ -40,7 +40,10 @@ EXPECTATIONS = {
 		"member": (True, True, True),  # space member + owner
 		"second_member": (False, False, False),  # community member but not space member
 		"outsider": (False, False, False),
-		# Guests are read-only even with space access; see
+		# This row is for member-OWNED content: guests edit only their own, never
+		# others', so write/delete here are False. Guests are still participants in
+		# granted spaces (edit own content, react, comment) — see
+		# features/test_guest_participation.py and
 		# test_permissions_backend.test_guest_with_space_access_can_read_but_not_edit_discussion.
 		"guest": (True, False, False),
 	},
