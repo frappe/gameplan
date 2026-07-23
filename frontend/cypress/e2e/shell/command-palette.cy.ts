@@ -1,82 +1,62 @@
+// The command palette: how it opens, how the active row behaves while a query is
+// typed, and how results are grouped under their parent heading.
+import { resetData } from '../../support/seed'
+
 describe('Command palette', () => {
-  const community = 'frappe-cloud'
+  let community: string
+  let communityTitle: string
   let generalSpace: string
-  let uxSpace: string
-  let discussionId: string
 
   beforeEach(() => {
-    cy.login()
-    cy.request({
-      method: 'POST',
-      url: '/api/method/gameplan.test_api.clear_data',
+    resetData('unread_discussion').then((seeded) => {
+      community = String(seeded.community)
+      generalSpace = String(seeded.space)
+    })
+    // Two tests let the real search endpoint answer. Rebuilding the index ties its
+    // results to the world we just seeded instead of whatever was indexed before.
+    cy.request('POST', '/api/method/gameplan.ui_test_helpers.rebuild_search_index')
+    // Spaces are grouped under their community's *title*, and the seed yields ids,
+    // so read the title back instead of repeating a literal in the assertions.
+    cy.then(() => cy.request(`/api/v2/document/GP%20Team/${community}`)).then((response) => {
+      communityTitle = String(response.body.data.title)
     })
     cy.clearLocalStorage()
-
-    cy.request('POST', '/api/method/frappe.client.insert_many', {
-      docs: [
-        { doctype: 'GP Team', title: 'Frappe Cloud' },
-        { doctype: 'GP Team', title: 'Design Systems' },
-        { doctype: 'GP Project', title: 'General', team: community },
-        { doctype: 'GP Project', title: 'UX', team: community },
-        { doctype: 'GP Project', title: 'Research', team: 'design-systems' },
-      ],
-    })
-      .its('body.message')
-      .then((names) => {
-        generalSpace = String(names[2])
-        uxSpace = String(names[3])
-
-        return cy.request('POST', '/api/v2/method/GP Team/update_joined_teams', {
-          teams: [community, 'design-systems'],
-        })
-      })
-      .then(() => {
-        return cy.request('POST', '/api/method/frappe.client.insert', {
-          doc: {
-            doctype: 'GP Discussion',
-            title: 'Palette unread discussion',
-            content: 'Needs command palette coverage',
-            project: generalSpace,
-          },
-        })
-      })
-      .its('body.message')
-      .then((discussion) => {
-        discussionId = discussion.name
-
-        return cy.request('POST', '/api/method/frappe.client.insert', {
-          doc: {
-            doctype: 'GP Unread Record',
-            user: 'Administrator',
-            discussion: discussionId,
-            project: generalSpace,
-            is_unread: 1,
-          },
-        })
-      })
+    cy.loginAs('member')
   })
 
   it('ignores stale server search responses and keeps the active row stable', () => {
+    // The palette debounces its server search, so typing "mar" and then "k" fires two
+    // requests. The first one belongs to a query the user has already moved past, and
+    // its answer must never reach the list.
+    //
+    // The stub decides the order, not the clock: the stale reply is held open until
+    // this test releases it, so "mark" always lands first and "mar" always lands last.
+    let releaseStaleResponse: (() => void) | undefined
+
     cy.intercept('GET', '**/gameplan.command_palette.search_sqlite*', (req) => {
-      const query = new URL(req.url).searchParams.get('query')
+      const query = String(req.query.query ?? '')
+
       if (query === 'mar') {
-        req.reply({
-          delay: 900,
-          body: {
-            data: [
-              {
-                title: 'Discussions',
-                items: [searchResultItem('Old Mar Discussion', generalSpace)],
-              },
-            ],
-          },
+        req.alias = 'staleSearch'
+        return new Promise<void>((resolve) => {
+          releaseStaleResponse = resolve
+        }).then(() => {
+          req.reply({
+            body: {
+              data: [
+                {
+                  title: 'Discussions',
+                  items: [searchResultItem('Old Mar Discussion', generalSpace)],
+                },
+              ],
+            },
+          })
         })
-        return
       }
 
       if (query === 'mark') {
+        req.alias = 'freshSearch'
         req.reply({
-          delay: 10,
           body: {
             data: [
               {
@@ -94,12 +74,23 @@ describe('Command palette', () => {
 
     visitCommunityDiscussions()
     openCommandPalette()
+
     commandPaletteInput().type('mar')
-    cy.wait(650)
+    // Only type the "k" once the stale request is actually in flight; typing sooner
+    // would restart the debounce and there would be no stale response to ignore.
+    cy.wrap(null, { log: false }).should(() => {
+      expect(releaseStaleResponse, 'stale search request in flight').to.be.a('function')
+    })
+
     commandPaletteInput().type('k')
     commandPaletteInput().invoke('attr', 'aria-activedescendant').as('activeRow')
 
-    cy.wait(1000)
+    cy.wait('@freshSearch')
+    cy.get('[role="listbox"]').should('contain', 'New Mark Discussion')
+
+    cy.then(() => releaseStaleResponse?.())
+    cy.wait('@staleSearch')
+
     cy.get('[role="listbox"]').should('contain', 'New Mark Discussion')
     cy.get('[role="listbox"]').should('not.contain', 'Old Mar Discussion')
     cy.get<string>('@activeRow').then((activeRow) => {
@@ -124,10 +115,13 @@ describe('Command palette', () => {
       cy.get('[role="option"][aria-selected="true"]').should('have.attr', 'id', $options[1].id)
     })
 
-    commandPaletteInput().type('frappe')
+    commandPaletteInput().type(communityTitle)
 
     assertFirstOptionActive()
-    cy.get('[role="option"][aria-selected="true"]').should('not.contain', 'Search for "frappe"')
+    cy.get('[role="option"][aria-selected="true"]').should(
+      'not.contain',
+      `Search for "${communityTitle}"`,
+    )
   })
 
   it('keeps the mark-all-as-read dialog open when selected with Enter', () => {
@@ -153,14 +147,20 @@ describe('Command palette', () => {
       cy.contains('[role="option"]', 'Notifications').should('exist')
     })
 
-    commandPaletteInput().clear().type('frappe')
-    cy.get('[role="option"][aria-selected="true"]').should('not.contain', 'Search for "frappe"')
-    resultGroup('Frappe Cloud').within(() => {
+    // Every space carries its community title in its search text, so searching the
+    // community name matches both seeded spaces and leaves the grouping to assert.
+    commandPaletteInput().clear().type(communityTitle)
+    cy.get('[role="option"][aria-selected="true"]').should(
+      'not.contain',
+      `Search for "${communityTitle}"`,
+    )
+    resultGroup(communityTitle).within(() => {
       cy.contains('[role="option"]', 'General').should('exist')
-      cy.contains('[role="option"]', 'UX').should('exist')
-      cy.contains('[role="option"]', 'Frappe Cloud').should('not.exist')
+      cy.contains('[role="option"]', 'Product').should('exist')
+      // The community itself sits under "Communities", never inside its own group.
+      cy.contains('[role="option"]', communityTitle).should('not.exist')
     })
-    cy.contains('[role="option"]', 'Search for "frappe"').should('exist')
+    cy.contains('[role="option"]', `Search for "${communityTitle}"`).should('exist')
   })
 
   function visitCommunityDiscussions() {
@@ -196,7 +196,7 @@ describe('Command palette', () => {
 
   function searchResultItem(title: string, project: string) {
     return {
-      author: 'Administrator',
+      author: 'member@example.com',
       content: '',
       doctype: 'GP Discussion',
       id: title,
