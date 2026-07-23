@@ -685,12 +685,19 @@ const spaceOptions = useGroupedSpaceOptions({
   filterFn: (space) => !space.archived_at && space.name !== discussion.doc?.project,
 })
 
+// Edit and the lifecycle actions (pin/close/move) all change the post itself, so
+// they follow the same business rule as editing — hidden from guests on posts they
+// don't own. Mirrors backend can_edit_content (see utils/permissions.ts).
+const canEditDiscussion = computed(() =>
+  canEditContent(discussion.doc, space.value, useSessionUser()),
+)
+
 const actions = computed(() => [
   {
     label: 'Edit',
     icon: 'lucide-edit',
     onClick: startEditingPost,
-    condition: () => canEditContent(discussion.doc, space.value, useSessionUser()),
+    condition: () => canEditDiscussion.value,
   },
   {
     label: 'Revisions',
@@ -722,7 +729,7 @@ const actions = computed(() => [
   {
     label: 'Pin discussion...',
     icon: 'lucide-arrow-up-left',
-    condition: () => !discussion.doc?.pinned_at,
+    condition: () => canEditDiscussion.value && !discussion.doc?.pinned_at,
     onClick: () => {
       pinDialog.show = true
     },
@@ -730,7 +737,7 @@ const actions = computed(() => [
   {
     label: 'Unpin discussion...',
     icon: 'lucide-arrow-down-left',
-    condition: () => !!discussion.doc?.pinned_at,
+    condition: () => canEditDiscussion.value && !!discussion.doc?.pinned_at,
     onClick: () => {
       const pinScope = discussion.doc?.pin_scope
       const scopeText =
@@ -750,7 +757,7 @@ const actions = computed(() => [
   {
     label: 'Close discussion...',
     icon: 'lucide-lock',
-    condition: () => !discussion.doc?.closed_at,
+    condition: () => canEditDiscussion.value && !discussion.doc?.closed_at,
     onClick: () => {
       dialog.confirm({
         title: 'Close discussion',
@@ -765,7 +772,7 @@ const actions = computed(() => [
   {
     label: 'Re-open discussion...',
     icon: 'lucide-unlock',
-    condition: () => discussion.doc?.closed_at,
+    condition: () => canEditDiscussion.value && !!discussion.doc?.closed_at,
     onClick: () => {
       dialog.confirm({
         title: 'Re-open discussion',
@@ -785,6 +792,7 @@ const actions = computed(() => [
   {
     label: 'Move to...',
     icon: 'lucide-log-out',
+    condition: () => canEditDiscussion.value,
     onClick: () => {
       discussionMoveDialog.show = true
     },
