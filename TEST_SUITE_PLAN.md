@@ -87,10 +87,22 @@ executing this; check `git log feat/test-foundation` for how far it got):
    `guest@example.com`): react, comment, edit own, delete own, no edit/lifecycle
    affordances on others' content.
 
-Status 2026-07-24: items 1-6 complete and verified — full backend suite green (exit 0), frontend build green; item 7 (browser verification) running next.
+Status 2026-07-24: items 1-7 complete and verified — full backend suite green
+(191 tests, exit 0), frontend build green. Browser verification complete: as a
+guest, all 7 UI checks passed — sees the community and only the granted "Secret
+Plans" space (not "General"), opens the discussion, reacts (persists on reload),
+comments, edits and deletes own comment, and has NO Edit / Pin / Close / Move on
+the member's post; member sanity login navigates normally and keeps every
+lifecycle action. No console errors. No caveats.
 
 Known real bugs already fixed on the branch: `can_edit_content` denied guests
 unconditionally (now owner-exception); guests saw Edit on everyone's comments.
+Guest had zero SPA navigation — `team_access_criterion` returned no communities
+(`Team.name == ""`), so a guest's GP Team list was empty and every community/
+space/discussion route 404'd ("No communities available"); `can_view_community`
+also blocked the team-read path. Fixed: guests now get the communities of their
+granted spaces (list + read), and the frontend shell treats a guest as joined to
+every community it fetches.
 
 ## Step 2 — Migrate existing tests into the new structure (NOT STARTED)
 
