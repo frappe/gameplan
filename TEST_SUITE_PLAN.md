@@ -104,7 +104,7 @@ also blocked the team-read path. Fixed: guests now get the communities of their
 granted spaces (list + read), and the frontend shell treats a guest as joined to
 every community it fetches.
 
-## Step 2 — Migrate existing tests into the new structure (NOT STARTED)
+## Step 2 — Migrate existing tests into the new structure (COMPLETE)
 
 No behavior changes; green before and after. Mechanical, good for parallel
 agents.
@@ -138,6 +138,36 @@ community-smoke / community-naming overlap); move specs onto
 `resetData()` / `cy.loginAs()`; extract duplicated helpers (rail switcher,
 user normalization — the latter dies with the new seed API); then delete
 `gameplan/test_api.py`.
+
+Status 2026-07-24: complete and verified. Backend files are re-homed into
+`features/` and `platform/`, the per-doctype and stub files are gone, and
+`tests/utils.py` is replaced by `fixtures.py`. All 21 Cypress specs are
+TypeScript, live in feature folders, and seed through `resetData(scenario)` /
+`cy.loginAs(persona)` — so `gameplan/test_api.py` is deleted and
+`gameplan/ui_test_helpers.py` is the only seed surface (5 scenarios).
+
+Verification: backend suite green — 177 tests across the three batches
+(16 + 106 + 55), exit 0. Cypress green — 52 tests across 21 specs, all passing.
+`pre-commit run --all-files` clean.
+
+Real product bugs the migration surfaced, all fixed on the branch (the old
+specs hid them by running as Administrator or by asserting on the wrong
+request):
+
+- Task Status and Priority were never saved on desktop. The options carry an
+  `onClick` for the mobile `Dropdown`, but frappe-ui's `Select` ignores it, so
+  the desktop control changed the label and wrote nothing.
+- Picking a task assignee saved twice. The combobox emits `null` while its
+  search text is cleared, which unassigned the task (and logged an activity)
+  before the real choice landed.
+- Moving a discussion left the URL and sidebar on the old space. The redirect
+  omitted the slug, which pushed the router off its local fast path onto a
+  server lookup it caches for a second — answering with the pre-move copy and
+  bouncing the URL straight back.
+- Live timeline updates never reached ordinary users. `log_activity` published
+  `new_activity` with no room, which falls back to the site room that only Desk
+  (System User) sockets join; Gameplan members are Website Users. It now
+  publishes into the document's room and the comment components subscribe to it.
 
 ## Step 3 — Fill coverage gaps (NOT STARTED)
 

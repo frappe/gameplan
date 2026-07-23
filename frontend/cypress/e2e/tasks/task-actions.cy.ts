@@ -29,33 +29,32 @@ describe('Task actions', () => {
     // open it from the space's task list
     cy.contains('a', 'First Task').click()
 
+    // Every edit below saves through the same endpoint, so one alias covers them all.
+    // Separate aliases on an identical matcher would all capture the same requests and
+    // each wait would read whichever response arrived first.
+    cy.intercept('PUT', '/api/v2/document/GP%20Task/*').as('saveTask')
+
     // rename it — the title input saves on blur
-    cy.intercept('PUT', '/api/v2/document/GP%20Task/*').as('setTitle')
     cy.get('input[placeholder="Title"]').click().clear({ force: true }).type('Edited Task Title')
     cy.get('input[placeholder="Title"]').blur()
-    cy.wait('@setTitle').its('response.body.data.title').should('eq', 'Edited Task Title')
+    cy.wait('@saveTask').its('response.body.data.title').should('eq', 'Edited Task Title')
 
     // assign it to the community's other member
-    cy.intercept('PUT', '/api/v2/document/GP%20Task/*').as('setAssignee')
     cy.selectCombobox('Assign a user', 'Second Member')
-    cy.wait('@setAssignee')
-      .its('response.body.data.assigned_to')
-      .should('eq', 'member2@example.com')
+    cy.wait('@saveTask').its('response.body.data.assigned_to').should('eq', 'member2@example.com')
 
     // set a due date — Enter commits the typed date and closes the calendar, which
     // would otherwise stay open and overlay the Status control below it.
     const dueDate = new Date().toISOString().split('T')[0]
-    cy.intercept('PUT', '/api/v2/document/GP%20Task/*').as('setDueDate')
     cy.get('input[placeholder="Due date"]:visible')
       .click()
       .clear()
       .type(`${dueDate}{enter}`, { force: true })
-    cy.wait('@setDueDate').its('response.body.data.due_date').should('eq', dueDate)
+    cy.wait('@saveTask').its('response.body.data.due_date').should('eq', dueDate)
 
     // mark it done
-    cy.intercept('PUT', '/api/v2/document/GP%20Task/*').as('setStatus')
     cy.contains('div', 'Status').next('div').find('[role="combobox"]').click()
     cy.get('[role="option"]:contains("Done"):visible').click()
-    cy.wait('@setStatus').its('response.body.data.status').should('eq', 'Done')
+    cy.wait('@saveTask').its('response.body.data.status').should('eq', 'Done')
   })
 })
