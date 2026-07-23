@@ -3,11 +3,14 @@
 
 
 import frappe
+from frappe import _
 
 
 class HasReactions:
 	@frappe.whitelist()
 	def react(self, operations=None):
+		from gameplan.permissions import can_view_content
+
 		operations = frappe.parse_json(operations) or []
 		if not isinstance(operations, list):
 			frappe.throw("Invalid reactions payload")
@@ -16,6 +19,17 @@ class HasReactions:
 			return self.get("reactions")
 
 		user = frappe.session.user
+
+		# Reacting is a participation action available to anyone who can VIEW the
+		# content — members and guests alike in the spaces they can reach — not an
+		# edit of the content itself, so it is gated on view rather than write.
+		# Each operation below only ever touches the acting user's own reaction row
+		# (matched on `user` == frappe.session.user), so the save can safely ignore
+		# the write permission without letting anyone mutate others' data or the
+		# post. This is what lets a guest react to a member's post while still being
+		# unable to edit it.
+		if not can_view_content(user, self):
+			frappe.throw(_("You do not have access to react to this"), frappe.PermissionError)
 		reactions = list(self.get("reactions") or [])
 
 		for operation in operations:
@@ -38,7 +52,7 @@ class HasReactions:
 
 		self.set("reactions", reactions)
 		self.de_duplicate_reactions()
-		self.save()
+		self.save(ignore_permissions=True)
 		return self.get("reactions")
 
 	def notify_reactions(self):
