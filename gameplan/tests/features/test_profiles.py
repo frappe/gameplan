@@ -26,7 +26,7 @@ def reset_profile(user):
 	profile.save(ignore_permissions=True)
 
 
-class TestGPUserProfile(FrappeTestCase):
+class TestProfiles(FrappeTestCase):
 	def setUp(self):
 		self.alice = create_member("test_alice@example.com", "Alice")
 		self.bob = create_member("test_bob@example.com", "Bob")

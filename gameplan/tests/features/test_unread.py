@@ -7,18 +7,10 @@ from frappe.tests import IntegrationTestCase
 from gameplan.gameplan.doctype.gp_unread_record.gp_unread_record import GPUnreadRecord
 from gameplan.tests.fixtures import create_community, create_discussion, create_member, create_space
 
-# On IntegrationTestCase, the doctype test records and all
-# link-field test record dependencies are recursively loaded
-# Use these module variables to add/remove to/from that list
-EXTRA_TEST_RECORD_DEPENDENCIES = []  # eg. ["User"]
-IGNORE_TEST_RECORD_DEPENDENCIES = []  # eg. ["User"]
 
-
-class IntegrationTestGPUnreadRecord(IntegrationTestCase):
-	"""
-	Integration tests for GPUnreadRecord.
-	Use this class for testing interactions between multiple components.
-	"""
+class TestUnread(IntegrationTestCase):
+	"""Unread watermarks: mark-all-as-read across a community, and how records
+	realign when a discussion moves between spaces."""
 
 	def test_mark_all_as_read_for_team_marks_accessible_community_projects(self):
 		suffix = frappe.generate_hash(length=8)

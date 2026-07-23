@@ -19,7 +19,7 @@ from gameplan.tests.fixtures import (
 )
 
 
-class TestGPDiscussion(FrappeTestCase):
+class TestDiscussions(FrappeTestCase):
 	def test_get_discussions_excludes_archived_spaces(self):
 		team = create_community("Archived Discussion Filter Team")
 		active_project = create_space("Active Discussion Filter Space", team.name)
@@ -71,7 +71,7 @@ class TestGPDiscussion(FrappeTestCase):
 		frappe.db.rollback()
 
 
-class TestGPDiscussionPermissions(FrappeTestCase):
+class TestDiscussionPermissions(FrappeTestCase):
 	def setUp(self):
 		self.member = create_member("test_disc_member@example.com")
 		self.guest = create_guest("test_disc_guest@example.com")

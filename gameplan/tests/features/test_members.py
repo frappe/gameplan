@@ -22,7 +22,7 @@ from gameplan.tests.fixtures import (
 )
 
 
-class TestApiSecurity(FrappeTestCase):
+class TestMemberManagement(FrappeTestCase):
 	def setUp(self):
 		frappe.set_user("Administrator")
 

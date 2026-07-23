@@ -44,7 +44,7 @@ class TestableGameplanSearch(GameplanSearch):
 		return docs
 
 
-class TestGameplanSearchRanking(FrappeTestCase):
+class TestSearchRanking(FrappeTestCase):
 	def setUp(self):
 		frappe.set_user("Administrator")
 		frappe.flags.gameplan_search_test_docnames = {
