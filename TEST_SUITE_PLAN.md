@@ -183,9 +183,37 @@ Priority order:
      (`serve_default_site`), so Cypress must run against a demo-pinned server
      (`bench --site gameplan-demo.test serve --port 8001`), and the demo site
      needs `mute_emails:1` (its `frappe serve` has no `dev_server`, so invite
-     emails 501 on the missing outgoing account). Full suite there: 49/53 green;
-     3 unrelated failures (move-and-archive, task-actions, a discussions spec)
-     look like input/timing races, not caused by this slice.
+     emails 501 on the missing outgoing account). Full suite there: **52/53
+     passing, 1 pending, 0 failing** (see "Pre-existing failures resolved" below).
+
+### Pre-existing failures resolved (2026-07-25)
+
+Four Step-2-era failures were root-caused (all against the demo site on `:8001`):
+
+- **`spaces/move-and-archive.cy.ts`** — the pin-cleanup assertion did a `POST`
+  `frappe.client.get_list` after `cy.visit` had installed a session CSRF token;
+  a `cy.request` `POST` doesn't send that token, so Frappe rejected it with
+  `CSRFTokenError`. Switched the read to `GET` (reads aren't CSRF-checked). 2/2 green.
+- **`discussions/discussion-actions.cy.ts`** (rename + close) — the timeline only
+  refreshed on the realtime `new_activity` echo, even for the acting user's own
+  action. That echo never arrives in local dev: the app (`:8080`) and socketio
+  (`:9000`) are different origins, so the `SameSite` session cookie is dropped on
+  the socket handshake and the tab connects as Guest. Product fix: `CommentsArea`
+  now reloads activities whenever the acting client's own action changes the
+  discussion doc (a new `activityVersion` prop bound to `discussion.doc.modified`),
+  instead of depending on the socket. Backend activity creation was verified
+  correct (`log_title_update` / `close_discussion`). 6/6 green.
+- **`tasks/task-actions.cy.ts`** — real frappe-ui Dialog focus bug (reka-ui
+  `DialogOverlay`'s `@pointerdown.left.prevent` cancels click-to-focus on nested
+  fields; verified in real Chrome). Fix belongs upstream (committed locally on
+  `forge/fix-dialog-click-focus`); test is `it.skip` until a fixed frappe-ui ships.
+  This is the one pending test.
+- **`members/member-management.cy.ts`** (invite) — same frappe-ui overlay root
+  cause, but *not* a real user bug: the Users tab is a reka Tabs trigger that
+  activates on `mousedown`; Cypress fires `pointerdown` first, the overlay cancels
+  it, and Cypress then suppresses the synthetic `mousedown`. Native mouse and
+  keyboard both work, so real users are fine. The test now activates the tab with
+  `{enter}` (a real a11y path, forward-compatible with the frappe-ui fix). 2/2 green.
 2. Polls (vote/retract/stop/one-vote guard + E2E create-vote-stop).
 3. Notifications (mention/reply → GP Notification; badge; mark-all-read; E2E).
 4. Reactions + bookmarks E2E (backend already covered by guest work).
