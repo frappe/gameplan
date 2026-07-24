@@ -163,6 +163,7 @@
           :read-only-mode="readOnlyMode"
           :disable-new-comment="Boolean(discussion.doc.closed_at)"
           :hide-new-comment="editingPost"
+          :activity-version="discussion.doc.modified"
           ref="commentsArea"
         />
         <QuoteBacklinksPopover :store="richQuotes" @select="scrollToQuotingComment" />
