@@ -48,3 +48,30 @@ export function resetData(scenario?: Scenario): Cypress.Chainable<SeedIds> {
     })
     .then((response) => response.body.message as SeedIds)
 }
+
+export interface Invitation {
+  name: string
+  email: string
+  key: string
+}
+
+/**
+ * Mint a pending invitation and return its key, so a spec can drive the
+ * accept journey without going through the admin invite UI first.
+ *
+ * Requires an Administrator session (call after `resetData`, before switching
+ * personas with `cy.loginAs`).
+ */
+export function createInvitation(
+  email: string,
+  role = 'Gameplan Member',
+): Cypress.Chainable<Invitation> {
+  cy.login()
+  return cy
+    .request({
+      method: 'POST',
+      url: '/api/method/gameplan.ui_test_helpers.create_invitation',
+      body: { email, role },
+    })
+    .then((response) => response.body.message as Invitation)
+}

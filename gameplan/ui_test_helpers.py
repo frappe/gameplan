@@ -227,3 +227,26 @@ def rebuild_search_index():
 	from gameplan.search_sqlite import GameplanSearch
 
 	GameplanSearch().build_index()
+
+
+@whitelist
+def create_invitation(email, role="Gameplan Member", projects=None):
+	"""Mint a pending GP Invitation and return its key so a spec can drive the
+	accept journey (visit /api/method/gameplan.api.accept_invitation?key=...).
+
+	`invite_via_email` short-circuits when `dev_server` is set, so we toggle it
+	to keep the seed from sending (or failing to send) a real email.
+	"""
+	previous = getattr(frappe.local, "dev_server", None)
+	frappe.local.dev_server = True
+	try:
+		invitation = frappe.get_doc(
+			doctype="GP Invitation",
+			email=email,
+			role=role,
+			projects=frappe.as_json(projects) if projects else None,
+		).insert(ignore_permissions=True)
+	finally:
+		frappe.local.dev_server = previous
+
+	return {"name": invitation.name, "email": invitation.email, "key": invitation.key}
