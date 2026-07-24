@@ -65,10 +65,18 @@ describe('Moving and archiving a space', () => {
     cy.wait('@archiveSpace')
     cy.contains('[role=dialog]', 'Archive space').should('not.exist')
 
-    cy.request('POST', '/api/method/frappe.client.get_list', {
-      doctype: 'GP Pinned Project',
-      filters: { project: space },
-      fields: ['name'],
+    // Read via GET: this runs after openCommunitySpaces() has done a cy.visit,
+    // so the SPA boot has installed a session CSRF token. A POST cy.request()
+    // doesn't send that token and Frappe rejects it with CSRFTokenError; a GET
+    // (a read) is not CSRF-checked.
+    cy.request({
+      method: 'GET',
+      url: '/api/method/frappe.client.get_list',
+      qs: {
+        doctype: 'GP Pinned Project',
+        filters: JSON.stringify({ project: space }),
+        fields: JSON.stringify(['name']),
+      },
     })
       .its('body.message')
       .should('have.length', 0)
