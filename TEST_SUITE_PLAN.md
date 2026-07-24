@@ -169,14 +169,23 @@ request):
   (System User) sockets join; Gameplan members are Website Users. It now
   publishes into the document's room and the comment components subscribe to it.
 
-## Step 3 — Fill coverage gaps (NOT STARTED)
+## Step 3 — Fill coverage gaps (IN PROGRESS)
 
 Each area lands as a vertical slice: backend feature file + one E2E happy path.
 Priority order:
 
-1. Invitations (`features/test_invitations.py` — create/accept/expire, role
-   assignment, `accept_invitation` endpoint; security-sensitive, currently an
-   empty stub).
+1. Invitations — DONE (2026-07-24). Backend `features/test_invitations.py`
+   (18 tests: create/accept/expire, role assignment, `accept_invitation`
+   endpoint routing) + E2E `members/accept-invitation.cy.ts` (invitee accepts
+   the link → user minted → password-setup redirect), with a `create_invitation`
+   seed helper. Both green.
+   - Local env note: on this devbox `:8000` serves the dev site
+     (`serve_default_site`), so Cypress must run against a demo-pinned server
+     (`bench --site gameplan-demo.test serve --port 8001`), and the demo site
+     needs `mute_emails:1` (its `frappe serve` has no `dev_server`, so invite
+     emails 501 on the missing outgoing account). Full suite there: 49/53 green;
+     3 unrelated failures (move-and-archive, task-actions, a discussions spec)
+     look like input/timing races, not caused by this slice.
 2. Polls (vote/retract/stop/one-vote guard + E2E create-vote-stop).
 3. Notifications (mention/reply → GP Notification; badge; mark-all-read; E2E).
 4. Reactions + bookmarks E2E (backend already covered by guest work).
