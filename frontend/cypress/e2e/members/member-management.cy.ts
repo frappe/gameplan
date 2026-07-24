@@ -35,7 +35,16 @@ describe('Member management', () => {
     openSettings()
     // Invites live on the admin-only "Users" tab, behind an "Invite" button that
     // opens the InvitePeople dialog.
-    cy.scope('dialog').contains('button', 'Users').click()
+    //
+    // Activate the tab by keyboard, not click: the tab list is a reka-ui Tabs whose
+    // trigger activates on `mousedown`. Cypress fires `pointerdown` first, and the
+    // frappe-ui DialogOverlay's `@pointerdown.left.prevent` cancels it, which makes
+    // Cypress suppress the synthetic `mousedown` the trigger needs — so a `.click()`
+    // silently fails to switch tabs. Real users are unaffected (a native mousedown
+    // still fires), and this is the same upstream frappe-ui overlay bug tracked in
+    // tasks/task-actions.cy.ts. Enter is a legitimate real activation path and works
+    // both now and after the frappe-ui fix lands.
+    cy.scope('dialog').contains('button', 'Users').focus().type('{enter}')
     cy.scope('dialog').contains('button', 'Invite').click()
 
     // :visible — the Profile tab's Bio textarea stays mounted (hidden) in the
