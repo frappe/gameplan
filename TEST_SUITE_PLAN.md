@@ -184,12 +184,29 @@ Priority order:
    view).
 6. Discussion lifecycle backend (pin/close/comment-count/last_post side
    effects).
-7. Pages (edit content, private vs space visibility + E2E).
-8. Profile/settings (bento cards, custom emoji, quick reactions + E2E).
-9. Search page E2E (filters; index hooks backend).
-10. Space membership E2E (join/leave/follow, mark-space-read).
-11. Mobile variants: create discussion + comment on iphone-6 viewport.
-12. Remaining `api.py` endpoint tests (`onboarding`, `unread_notifications`,
+7. Realtime activity broadcast — currently has NO direct coverage; the
+   `new_activity` room bug (fixed in Step 2) shipped unnoticed because the only
+   thing exercising the path is an incidental assertion in
+   `discussions/discussion-actions.cy.ts` (feed shows the rename/close), which
+   can't tell "arrived via socket" from "the save reloaded the list", tests only
+   same-tab/same-user, and points at the wrong feature when it breaks.
+   - Backend: assert `log_activity` calls `frappe.publish_realtime("new_activity",
+     …)` with `doctype`/`docname` set (i.e. the document room, not the site
+     room). Mock `publish_realtime` — cheap and deterministic, and it pins the
+     exact regression that shipped. Also assert `subscribeToDoc`'s contract
+     indirectly if practical.
+   - E2E (harder, real value): two sessions in one spec — member2 has the
+     discussion open while member renames/closes it, and the change arrives in
+     member2's feed with no reload. Needs the socket connected; assert on a live
+     DOM update, not a `cy.reload()`. If a two-session spec proves too flaky,
+     fall back to asserting `subscribeToDoc` joins on mount / leaves on unmount
+     (frappe-ui Vitest or a focused unit test) so the client half is still pinned.
+8. Pages (edit content, private vs space visibility + E2E).
+9. Profile/settings (bento cards, custom emoji, quick reactions + E2E).
+10. Search page E2E (filters; index hooks backend).
+11. Space membership E2E (join/leave/follow, mark-space-read).
+12. Mobile variants: create discussion + comment on iphone-6 viewport.
+13. Remaining `api.py` endpoint tests (`onboarding`, `unread_notifications`,
     `can_access_gameplan`, `get_search_filter_options`).
 
 ## Step 4 — CI guardrails (NOT STARTED)
