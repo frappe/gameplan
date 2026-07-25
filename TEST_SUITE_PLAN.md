@@ -304,7 +304,9 @@ Four Step-2-era failures were root-caused (all against the demo site on `:8001`)
      is created through the v2 API before the first `cy.visit`, rather than by a
      new seed scenario). Whoever restarts that server should also run
      `bench --site gameplan-demo.test clear-cache` so the new hooks are picked up.
-5. Guest access E2E — WRITTEN, not yet verified locally (2026-07-26). E2E
+     Both specs have since been re-run against a fresh server (see item 5) and
+     stay green with the new hooks live.
+5. Guest access E2E — DONE, verified (2026-07-26). E2E
    `members/guest-access.cy.ts` walks the guest's whole scoped view on the
    `private_space_with_guest` scenario: lands in the community of their granted
    space, sees "Secret Plans" but neither "General" nor its post, opens the
@@ -315,25 +317,35 @@ Four Step-2-era failures were root-caused (all against the demo site on `:8001`)
    discussion feed drops posts from spaces they were never granted) — the file
    only had `has_permission` checks, which a list query can bypass. Full backend
    suite green (288 tests across the three batches, exit 0).
-   - **Blocked locally, not in CI**: the shared `:8001` demo server is a
-     long-running `frappe serve` started **Jul 23 01:50**, before
+   - Spec is green: **1/1, exit 0**, and the full Cypress suite alongside it is
+     **27 specs / 58 tests, 58 passing, 0 failing, 0 pending**.
+   - **The stale-runner trap that first made it look broken** (worth knowing, it
+     will recur): the spec was initially written against the `:8001` demo server,
+     a `frappe serve` started **Jul 23 01:50** — before
      `0d6270a fix(permissions): guests see communities of their granted spaces`
      (Jul 24 02:54). A running server never re-imports a changed module, so it
-     still answers a guest's GP Team list with the pre-fix `Team.name == ""` —
-     empty. The guest therefore has no community, `/g` resolves to
-     `/g/onboarding`, and every guest route 404s exactly as the old bug did
-     (verified: a deep link to the granted discussion renders nothing either).
-     Restart that server (`bench --site gameplan-demo.test serve --port 8001`)
-     plus `bench --site gameplan-demo.test clear-cache` and re-run the spec.
-     Restarting also puts the Jul 24-26 backend work live for the first time
-     (guest team scoping, GP Poll and GP Bookmark permission hooks), so re-run
-     the whole Cypress suite after it.
-   - Every selector the spec uses was validated against the same seeded
-     scenario as `member` (sidebar space link, space route, discussion row,
-     comment composer + intercept, reaction picker + pill, Discussion Options
-     items) — that scratch run passed, so what is unverified locally is strictly
-     the guest-only rendering, which was browser-verified by hand on 2026-07-24
-     (see the Interlude above).
+     kept answering a guest's GP Team list with the pre-fix `Team.name == ""` —
+     empty. The guest had no community, `/g` resolved to `/g/onboarding`, and
+     every guest route 404'd exactly as the old bug did. The failure looked like
+     a spec or product defect and was neither.
+     - Proof of the diagnosis: as `guest@example.com` over HTTP,
+       `GET /api/v2/document/GP Team` returned `{"data": []}` on the Jul-23
+       server and `[{"name": "acme"}]` on a server started from the same working
+       tree. `bench clear-cache` does **not** fix it — the stale code is in the
+       process, not the cache.
+     - Resolution: ran the suite against a freshly started demo-pinned server
+       (`bench --site gameplan-demo.test serve --port 8002`) instead. That also
+       puts the Jul 24-26 backend work in front of the browser for the first
+       time — guest team scoping, GP Poll and GP Bookmark permission hooks — so
+       the 58/58 above is the first genuinely current green baseline. The earlier
+       "52/53, 1 pending" number was measured against pre-Jul-23 backend code.
+     - The spec is deliberately **not** `it.skip`'d: it passes on current code,
+       which is what CI runs. Quarantining it would have hidden real coverage to
+       accommodate a stale local process.
+     - `:8001` is still stale and should be killed by whoever owns that process;
+       an agent cannot (`kill` is refused by the permission classifier). Until
+       then, start your own runner rather than trusting `:8001`, and see the
+       runner-freshness check in TESTING.md § "How to run".
 6. Discussion lifecycle backend (pin/close/comment-count/last_post side
    effects).
 7. Realtime activity broadcast — currently has NO direct coverage; the

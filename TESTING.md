@@ -243,6 +243,16 @@ cd frontend && yarn test
 - **Warning:** the seed/reset endpoints wipe ALL Gameplan data on whichever site the
   request resolves to. Confirm the request actually reaches the demo site before
   running.
+- **The server must be running current code.** A long-lived `frappe serve` keeps the
+  Python it booted with, so a spec covering a backend change made after the server
+  started fails in a way that looks like a product or spec defect. `clear-cache` does
+  not help — only a restart does. When a spec fails on an assertion the backend suite
+  proves, check the server's age before touching the spec:
+
+  ```bash
+  ps -o lstart= -p "$(ss -ltnp | grep -oP ':8001.*pid=\K[0-9]+' | head -1)"
+  git log -1 --format=%cd   # newer than the server? restart it, then re-run
+  ```
 
 ## 4. CI
 
