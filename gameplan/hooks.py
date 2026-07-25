@@ -123,6 +123,7 @@ permission_query_conditions = {
 	"GP Poll": "gameplan.gameplan.doctype.gp_poll.gp_poll.get_permission_query_conditions",
 	"GP Page": "gameplan.gameplan.doctype.gp_page.gp_page.get_permission_query_conditions",
 	"GP Draft": "gameplan.permissions.draft_query_conditions",
+	"GP Bookmark": "gameplan.permissions.bookmark_query_conditions",
 }
 
 has_permission = {
@@ -134,6 +135,7 @@ has_permission = {
 	"GP Poll": "gameplan.gameplan.doctype.gp_poll.gp_poll.has_permission",
 	"GP Page": "gameplan.gameplan.doctype.gp_page.gp_page.has_permission",
 	"GP User Profile": "gameplan.gameplan.doctype.gp_user_profile.gp_user_profile.has_permission",
+	"GP Bookmark": "gameplan.permissions.bookmark_has_permission",
 }
 
 # DocType Class

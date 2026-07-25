@@ -76,7 +76,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		GPUnreadRecord.create_unread_records_for_discussion(self)
 
 	def on_trash(self):
-		self.remove_bookmark()
+		self.remove_all_bookmarks()
 		self.update_discussions_count()
 		GPUnreadRecord.delete_unread_records_for_discussion(self.name)
 
@@ -204,6 +204,17 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		frappe.get_doc("GP Bookmark", bookmark).delete()
 
 	# Utility Methods
+	def remove_all_bookmarks(self):
+		"""Drop every user's bookmark of this discussion, not just the acting user's.
+
+		`discussion` is a Link field, so a bookmark left behind by anyone else makes
+		frappe's link check refuse the delete outright. The rows belong to other users
+		(bookmark_has_permission scopes them), so this cascade runs privileged — it is a
+		consequence of an already-authorised discussion delete.
+		"""
+		for name in frappe.get_all("GP Bookmark", filters={"discussion": self.name}, pluck="name"):
+			frappe.delete_doc("GP Bookmark", name, ignore_permissions=True)
+
 	def is_bookmarked(self):
 		return bool(frappe.db.exists("GP Bookmark", {"discussion": self.name, "user": frappe.session.user}))
 

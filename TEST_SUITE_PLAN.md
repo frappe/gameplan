@@ -276,7 +276,34 @@ Four Step-2-era failures were root-caused (all against the demo site on `:8001`)
      whose link is NULL is filtered out. The condition belongs on the ON clause
      (or needs an `OR <link> IS NULL`). Until it lands, Notifications.vue fetches
      the target titles per doctype; the workaround names the cause.
-4. Reactions + bookmarks E2E (backend already covered by guest work).
+4. Reactions + bookmarks — DONE (2026-07-26). Backend `features/test_bookmarks.py`
+   (19 tests: add/remove/idempotence, per-user `is_bookmarked`, privacy, the
+   `feed_type: "bookmarks"` feed, delete cascade) + `features/test_reactions.py`
+   (18 tests: the `react` operation contract — (user, emoji) identity, batches,
+   junk payloads, reactions surviving an edit; who may react stays in
+   `test_guest_participation.py` and what a reaction notifies in
+   `test_notifications.py`) + E2E `discussions/reactions.cy.ts` (react to the post
+   and to a reply, both survive a reload) and `discussions/bookmarks.cy.ts`
+   (bookmark → find it under Bookmarks → remove it). All green.
+   - Product bugs fixed on the way (GP Bookmark had **no** `has_permission` /
+     `permission_query_conditions` hook at all):
+     - Every Gameplan user could list, read and delete **everyone else's**
+       bookmarks through the generic list/document API, and could create a bookmark
+       in someone else's name. Bookmarks are now scoped to their `user` the way
+       drafts are scoped to their owner.
+     - A discussion anyone else had bookmarked could not be deleted at all:
+       `on_trash` removed only the acting user's bookmark, so frappe's link check
+       refused the delete (`LinkExistsError`). It now clears every user's bookmark
+       for that discussion (privileged cascade of an already-authorised delete).
+   - Assumption taken: no global-admin exception on the bookmark scoping — a
+     reading list is personal, nothing in Gameplan reads another user's, and the
+     closest precedent (`draft_query_conditions`) has none either.
+   - Local env note: the demo server on `:8001` is a long-running `frappe serve`
+     with no code reload, so it still runs the Python it started with. The two new
+     specs were written to need no backend change (the reply in `reactions.cy.ts`
+     is created through the v2 API before the first `cy.visit`, rather than by a
+     new seed scenario). Whoever restarts that server should also run
+     `bench --site gameplan-demo.test clear-cache` so the new hooks are picked up.
 5. Guest access E2E (invite guest, guest's scoped read-only-plus-participation
    view).
 6. Discussion lifecycle backend (pin/close/comment-count/last_post side

@@ -374,6 +374,28 @@ def draft_query_conditions(user=None, **kwargs):
 	return criterion_sql(Draft.owner == user)
 
 
+def bookmark_query_conditions(user=None, **kwargs):
+	# A bookmark is a personal row — the same rule as a draft (see draft_query_conditions):
+	# only the user it belongs to may enumerate it. Deliberately no global-admin exception:
+	# nothing in Gameplan reads another user's reading list, and without this every
+	# Gameplan user could list everyone's bookmarks through the generic list API.
+	user = user or frappe.session.user
+	Bookmark = frappe.qb.DocType("GP Bookmark")
+	return criterion_sql(Bookmark.user == user)
+
+
+def bookmark_has_permission(doc, ptype="read", user=None, **kwargs):
+	"""A bookmark belongs to exactly one user: only they may read, add or remove it.
+
+	Without this, the doctype's role permissions alone let any Gameplan user read,
+	rewrite or delete someone else's bookmark by name — and create one in their name.
+	"""
+	user = user or frappe.session.user
+	if not hasattr(doc, "doctype"):
+		return True
+	return get_doc_value(doc, "user") == user
+
+
 def content_project_query_conditions(doctype, user=None):
 	user = user or frappe.session.user
 	if is_global_admin(user):
