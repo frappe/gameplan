@@ -214,7 +214,7 @@ Four Step-2-era failures were root-caused (all against the demo site on `:8001`)
   it, and Cypress then suppresses the synthetic `mousedown`. Native mouse and
   keyboard both work, so real users are fine. The test now activates the tab with
   `{enter}` (a real a11y path, forward-compatible with the frappe-ui fix). 2/2 green.
-2. Polls — DONE (2026-07-26). Backend `features/test_polls.py` (29 tests: tally
+2. Polls — DONE (2026-07-26). Backend `features/test_polls.py` (34 tests: tally
    math, one-vote guard, retraction, anonymous polls, multiple-answer polls,
    stopping, and who may vote/stop/delete) + E2E `polls/poll-lifecycle.cy.ts`
    (member creates a poll → votes → tally updates → stops it), with a
@@ -225,6 +225,14 @@ Four Step-2-era failures were root-caused (all against the demo site on `:8001`)
      not in the poll (and divided by zero on an anonymous poll's first bad vote);
      `multiple_answers` was stored and rendered but never honoured; and
      `check_if_stopped` compared a string to a datetime right after `stop_poll`.
+   - Follow-up fix (review): the vote methods run over `run_doc_method`, which
+     builds the doc from the caller's own JSON and checks only `read`, and the vote
+     then saves with `ignore_permissions` — so any reader (a guest included) could
+     rewrite a poll's title, options and flags, or clear `stopped_at` to vote on an
+     ended poll, by tampering with the payload. All three whitelisted methods now
+     call `GPPoll.discard_client_state()` (a reload) first, so only server-computed
+     state reaches the write. Locked by `TestTamperedVotePayload` (4 tests) and
+     `test_guest_voting_cannot_rewrite_the_poll`.
    - Assumptions taken (see commit message): voting is participation, so guests
      may vote (and create a poll) in a space they've been granted; anonymous
      polls stay one-vote-per-voter even with `multiple_answers`, since an

@@ -44,6 +44,7 @@ class GPPoll(Document, GPPollAttributes):
 
 	@frappe.whitelist()
 	def submit_vote(self, option):
+		self.discard_client_state()
 		self.check_if_stopped()
 		self.check_can_participate()
 		selected = self.get_option(option)
@@ -67,6 +68,7 @@ class GPPoll(Document, GPPollAttributes):
 
 	@frappe.whitelist()
 	def retract_vote(self, option=None):
+		self.discard_client_state()
 		self.check_if_stopped()
 		self.check_can_participate()
 		if self.anonymous:
@@ -80,10 +82,24 @@ class GPPoll(Document, GPPollAttributes):
 
 	@frappe.whitelist()
 	def stop_poll(self):
+		self.discard_client_state()
 		if frappe.session.user != self.owner:
 			frappe.throw(_("Only owner can stop the poll"), frappe.PermissionError)
 		self.stopped_at = frappe.utils.now()
 		self.save()
+
+	def discard_client_state(self):
+		"""Re-read the stored poll, dropping any field values the caller sent.
+
+		These methods are reachable over `/api/method/run_doc_method`, which builds the
+		document out of the request's own JSON and checks only `read`. Every field on
+		`self` therefore starts out caller-controlled — including the ones these methods
+		read to decide what is allowed (`stopped_at`, `discussion`, `anonymous`,
+		`multiple_answers`) and the ones the following save writes back. Reloading first
+		is what keeps a mere reader from smuggling a rewritten title, new options or a
+		cleared `stopped_at` into a vote.
+		"""
+		self.reload()
 
 	def save_after_voting(self):
 		"""Persist a vote without requiring write access to the poll itself.
@@ -93,6 +109,10 @@ class GPPoll(Document, GPPollAttributes):
 		tallies. A plain `save()` would instead ask for `write`, which a guest only holds
 		while nothing outside the interaction-safe fields changed — that check exists to
 		stop a non-editor rewriting a poll's title or options, and it must keep doing so.
+
+		Bypassing that check is only safe because `discard_client_state` has already
+		thrown away everything the caller sent, so this save can carry nothing but the
+		server-computed vote rows and tallies.
 		"""
 		self.save(ignore_permissions=True)
 

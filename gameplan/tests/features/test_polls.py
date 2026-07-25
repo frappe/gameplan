@@ -6,7 +6,9 @@
 A poll is content that lives inside a discussion, so it takes that discussion's space
 for access: everyone who can reach the space may vote, and nobody else can even see it.
 Voting itself is participation (like reacting), which is why the vote methods are the
-gate rather than the `write` permission — see GPPoll.save_after_voting.
+gate rather than the `write` permission — see GPPoll.save_after_voting. That save skips
+permissions, so the methods first throw away everything the caller sent
+(GPPoll.discard_client_state); TestTamperedVotePayload locks that.
 """
 
 import frappe
@@ -286,6 +288,78 @@ class TestStoppingAPoll(PollTestCase):
 		self.assertEqual(poll.total_votes, 1)
 
 
+class TestTamperedVotePayload(PollTestCase):
+	"""A vote may carry nothing but the vote.
+
+	`submit_vote`, `retract_vote` and `stop_poll` are reachable over `run_doc_method`,
+	which builds the document from the caller's own JSON and checks only `read` — so any
+	reader can hand these methods a poll whose title, options, flags or `stopped_at` they
+	rewrote, and the vote save deliberately runs with `ignore_permissions`. These tests
+	stand in for that endpoint by mutating the doc before calling the method, and lock the
+	guarantee that only server-computed state ever reaches the database.
+	"""
+
+	def tampered(self, poll):
+		copy = frappe.get_doc("GP Poll", poll.name)
+		copy.title = "HIJACKED"
+		copy.anonymous = 1
+		copy.multiple_answers = 1
+		copy.options[0].title = "Pwned option"
+		return copy
+
+	def assert_poll_intact(self, poll):
+		poll.reload()
+		self.assertEqual(poll.title, "Ship on Friday?")
+		self.assertEqual([option.title for option in poll.options], ["Yes", "No"])
+		self.assertFalse(poll.anonymous)
+		self.assertFalse(poll.multiple_answers)
+
+	def test_submit_vote_discards_the_fields_the_caller_sent(self):
+		poll = self.poll()
+
+		with self.as_user(self.second_member):
+			self.tampered(poll).submit_vote("Yes")
+
+		self.assert_poll_intact(poll)
+		# ...and the vote still lands, against the poll's real option
+		self.assertEqual([(v.user, v.option) for v in poll.votes], [(self.second_member.name, "Yes")])
+		self.assertEqual(self.option(poll, "Yes").votes, 1)
+
+	def test_retract_vote_discards_the_fields_the_caller_sent(self):
+		poll = self.poll()
+		self.vote(poll, self.second_member, "Yes")
+
+		with self.as_user(self.second_member):
+			self.tampered(poll).retract_vote()
+
+		self.assert_poll_intact(poll)
+		self.assertEqual(poll.votes, [])
+
+	def test_stop_poll_discards_the_fields_the_caller_sent(self):
+		poll = self.poll()
+
+		with self.as_user(self.member):
+			self.tampered(poll).stop_poll()
+
+		self.assert_poll_intact(poll)
+		self.assertIsNotNone(poll.stopped_at)
+
+	def test_clearing_stopped_at_in_the_payload_does_not_reopen_the_poll(self):
+		poll = self.poll()
+		with self.as_user(self.member):
+			poll.stop_poll()
+
+		with self.as_user(self.second_member):
+			reopened = frappe.get_doc("GP Poll", poll.name)
+			reopened.stopped_at = None
+			with self.assertRaises(frappe.ValidationError):
+				reopened.submit_vote("Yes")
+
+		poll.reload()
+		self.assertIsNotNone(poll.stopped_at)
+		self.assertEqual(poll.total_votes, 0)
+
+
 class TestWhoMayVote(PollTestCase):
 	def setUp(self):
 		super().setUp()
@@ -381,3 +455,20 @@ class TestGuestPollParticipation(GameplanTestCase):
 
 		poll.reload()
 		self.assertEqual(poll.title, "Lunch?")
+
+	def test_guest_voting_cannot_rewrite_the_poll(self):
+		"""The vote save bypasses permissions, so it must carry nothing the guest sent."""
+		poll = create_poll("Lunch?", self.discussion, owner=self.member)
+
+		with self.as_user(self.guest):
+			tampered = frappe.get_doc("GP Poll", poll.name)
+			tampered.title = "GUEST HIJACKED"
+			tampered.options[0].title = "Pwned option"
+			tampered.anonymous = 1
+			tampered.submit_vote("Yes")
+
+		poll.reload()
+		self.assertEqual(poll.title, "Lunch?")
+		self.assertEqual([option.title for option in poll.options], ["Yes", "No"])
+		self.assertFalse(poll.anonymous)
+		self.assertEqual([(v.user, v.option) for v in poll.votes], [(self.guest.name, "Yes")])

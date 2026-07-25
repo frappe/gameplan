@@ -142,8 +142,10 @@ INTERACTION_SAFE_FIELDS = {
 	"GP Page": set(),
 	"GP Task": set(),
 	# Votes are deliberately NOT listed: a vote goes through GPPoll.submit_vote, which
-	# gates on participation and only touches the caller's own row. Leaving the vote
-	# tables protected here is what stops a non-editor rewriting a poll by plain save.
+	# gates on participation, re-reads the stored poll (GPPoll.discard_client_state) so
+	# nothing the caller sent survives, and only touches the caller's own row. Leaving
+	# the vote tables protected here is what stops a non-editor rewriting a poll by
+	# plain save.
 	"GP Poll": {"reactions"},
 }
 
