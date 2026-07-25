@@ -25,6 +25,7 @@ from gameplan.api import mark_all_notifications_as_read, unread_notifications
 from gameplan.gameplan.doctype.gp_notification.gp_notification import GPNotification
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
+	_name,
 	create_comment,
 	create_community,
 	create_discussion,
@@ -45,14 +46,6 @@ def quote_html(author, quoted="Original words", body="Answering that"):
 	return f'<blockquote data-author="{email}"><p>{quoted}</p></blockquote><p>{body}</p>'
 
 
-def notifications_for(user, **filters):
-	return frappe.get_all(
-		"GP Notification",
-		filters={"to_user": user if isinstance(user, str) else user.name, **filters},
-		fields=["name", "type", "message", "from_user", "discussion", "comment", "task", "read"],
-	)
-
-
 def _make_notification(to_user, **kwargs):
 	return frappe.get_doc(doctype="GP Notification", to_user=to_user, type="Mention", **kwargs).insert(
 		ignore_permissions=True
@@ -60,17 +53,34 @@ def _make_notification(to_user, **kwargs):
 
 
 class NotificationTestCase(GameplanTestCase):
-	"""Personas plus a community/space both members can reach."""
+	"""Personas plus a community/space both members can reach.
+
+	The site can already hold notifications addressed to these same persona emails (the
+	Cypress seed uses them too, and an E2E run leaves its mention behind). So instead of
+	wiping the table — which would clear another suite's rows and hide ordering bugs —
+	every assertion here is scoped: `notifications_for` ignores rows that predate the
+	test, and the count tests assert a delta against the endpoint's starting value.
+	"""
 
 	def setUp(self):
 		super().setUp()
-		# Rows left on the site by an earlier run (the Cypress seed uses these same
-		# persona emails) would leak into every "nobody was notified" assertion and into
-		# the unread count, so each test starts from an empty table. The delete is rolled
-		# back with the rest of the test.
-		frappe.db.delete("GP Notification")
+		self.notifications_before = set(frappe.get_all("GP Notification", pluck="name"))
 		self.community = create_community("Acme", members=[self.member, self.second_member])
 		self.space = create_space("Engineering", self.community)
+
+	def notifications_for(self, user, **filters):
+		"""The GP Notification rows this test created for `user`."""
+		rows = frappe.get_all(
+			"GP Notification",
+			filters={"to_user": _name(user), **filters},
+			fields=["name", "type", "message", "from_user", "discussion", "comment", "task", "read"],
+		)
+		return [row for row in rows if row.name not in self.notifications_before]
+
+	def unread_count(self, user):
+		"""What `gameplan.api.unread_notifications` reports for `user` right now."""
+		with self.as_user(user):
+			return unread_notifications()
 
 
 class TestMentionNotifications(NotificationTestCase):
@@ -80,7 +90,7 @@ class TestMentionNotifications(NotificationTestCase):
 				"Mention thread", self.space, content=mention_html(self.second_member, "Second Member")
 			)
 
-		rows = notifications_for(self.second_member)
+		rows = self.notifications_for(self.second_member)
 		self.assertEqual(len(rows), 1)
 		self.assertEqual(rows[0].type, "Mention")
 		self.assertEqual(rows[0].from_user, self.member.name)
@@ -93,7 +103,7 @@ class TestMentionNotifications(NotificationTestCase):
 		with self.as_user(self.member):
 			comment = create_comment(discussion, content=mention_html(self.second_member, "Second Member"))
 
-		rows = notifications_for(self.second_member)
+		rows = self.notifications_for(self.second_member)
 		self.assertEqual(len(rows), 1)
 		self.assertEqual(str(rows[0].comment), str(comment.name))
 		# The discussion link is what makes the bell row navigable (Notifications.vue).
@@ -103,7 +113,7 @@ class TestMentionNotifications(NotificationTestCase):
 		with self.as_user(self.member):
 			create_discussion("Self mention", self.space, content=mention_html(self.member, "Member"))
 
-		self.assertEqual(notifications_for(self.member), [])
+		self.assertEqual(self.notifications_for(self.member), [])
 
 	def test_editing_a_post_does_not_duplicate_an_existing_mention(self):
 		with self.as_user(self.member):
@@ -113,16 +123,16 @@ class TestMentionNotifications(NotificationTestCase):
 			discussion.content = mention_html(self.second_member, "Second Member", body="Hey, edited")
 			discussion.save()
 
-		self.assertEqual(len(notifications_for(self.second_member)), 1)
+		self.assertEqual(len(self.notifications_for(self.second_member)), 1)
 
 	def test_everyone_mention_notifies_the_other_members_but_not_the_author(self):
 		with self.as_user(self.member):
 			create_discussion("Everyone thread", self.space, content=mention_html("_everyone_", "Everyone"))
 
-		rows = notifications_for(self.second_member)
+		rows = self.notifications_for(self.second_member)
 		self.assertEqual(len(rows), 1)
 		self.assertIn("mentioned everyone", rows[0].message)
-		self.assertEqual(notifications_for(self.member), [])
+		self.assertEqual(self.notifications_for(self.member), [])
 
 	def test_everyone_mention_skips_users_who_cannot_see_the_space(self):
 		"""An @everyone in a private space must not reach the whole site.
@@ -139,8 +149,8 @@ class TestMentionNotifications(NotificationTestCase):
 				"Everyone thread", private_space, content=mention_html("_everyone_", "Everyone")
 			)
 
-		self.assertEqual(len(notifications_for(self.second_member)), 1)
-		self.assertEqual(notifications_for(self.outsider), [])
+		self.assertEqual(len(self.notifications_for(self.second_member)), 1)
+		self.assertEqual(self.notifications_for(self.outsider), [])
 
 	def test_mentioning_a_user_who_cannot_see_the_space_creates_no_notification(self):
 		"""The mention autocomplete offers every active user, not just space members."""
@@ -148,14 +158,14 @@ class TestMentionNotifications(NotificationTestCase):
 		with self.as_user(self.member):
 			create_discussion("Secret thread", private_space, content=mention_html(self.outsider, "Outsider"))
 
-		self.assertEqual(notifications_for(self.outsider), [])
+		self.assertEqual(self.notifications_for(self.outsider), [])
 
 	def test_rich_quote_notifies_the_quoted_author(self):
 		discussion = create_discussion("Plain thread", self.space, owner=self.second_member)
 		with self.as_user(self.member):
 			create_comment(discussion, content=quote_html(self.second_member))
 
-		rows = notifications_for(self.second_member)
+		rows = self.notifications_for(self.second_member)
 		self.assertEqual(len(rows), 1)
 		self.assertEqual(rows[0].type, "Rich Quote")
 		self.assertIn("quoted you", rows[0].message)
@@ -165,7 +175,7 @@ class TestMentionNotifications(NotificationTestCase):
 		with self.as_user(self.member):
 			create_comment(discussion, content=quote_html(self.member))
 
-		self.assertEqual(notifications_for(self.member), [])
+		self.assertEqual(self.notifications_for(self.member), [])
 
 	def test_a_mentioned_quoted_author_is_notified_only_once(self):
 		discussion = create_discussion("Plain thread", self.space, owner=self.second_member)
@@ -173,7 +183,7 @@ class TestMentionNotifications(NotificationTestCase):
 		with self.as_user(self.member):
 			create_comment(discussion, content=content)
 
-		rows = notifications_for(self.second_member)
+		rows = self.notifications_for(self.second_member)
 		self.assertEqual(len(rows), 1)
 		self.assertEqual(rows[0].type, "Mention")
 
@@ -187,7 +197,7 @@ class TestReplyNotifications(NotificationTestCase):
 		with self.as_user(self.second_member):
 			create_comment(self.discussion, content=mention_html(self.member, "Member"))
 
-		rows = notifications_for(self.member)
+		rows = self.notifications_for(self.member)
 		self.assertEqual(len(rows), 1)
 		self.assertEqual(rows[0].from_user, self.second_member.name)
 		self.assertEqual(str(rows[0].discussion), str(self.discussion.name))
@@ -196,7 +206,7 @@ class TestReplyNotifications(NotificationTestCase):
 		with self.as_user(self.second_member):
 			create_comment(self.discussion, content=quote_html(self.member))
 
-		rows = notifications_for(self.member)
+		rows = self.notifications_for(self.member)
 		self.assertEqual(len(rows), 1)
 		self.assertEqual(rows[0].type, "Rich Quote")
 
@@ -210,7 +220,7 @@ class TestReplyNotifications(NotificationTestCase):
 		with self.as_user(self.second_member):
 			comment = create_comment(self.discussion, content="<p>Just replying</p>")
 
-		self.assertEqual(notifications_for(self.member), [])
+		self.assertEqual(self.notifications_for(self.member), [])
 		self.assertTrue(
 			frappe.db.exists(
 				"GP Unread Record",
@@ -222,8 +232,8 @@ class TestReplyNotifications(NotificationTestCase):
 		with self.as_user(self.member):
 			create_comment(self.discussion, content="<p>Following up on my own post</p>")
 
-		self.assertEqual(notifications_for(self.member), [])
-		self.assertEqual(notifications_for(self.second_member), [])
+		self.assertEqual(self.notifications_for(self.member), [])
+		self.assertEqual(self.notifications_for(self.second_member), [])
 
 
 class TestReactionNotifications(NotificationTestCase):
@@ -238,7 +248,7 @@ class TestReactionNotifications(NotificationTestCase):
 	def test_reaction_notifies_the_post_owner(self):
 		self._react(self.discussion, self.second_member)
 
-		rows = notifications_for(self.member)
+		rows = self.notifications_for(self.member)
 		self.assertEqual(len(rows), 1)
 		self.assertEqual(rows[0].type, "Reaction")
 		self.assertEqual(rows[0].message, "1 person reacted to your post")
@@ -247,34 +257,36 @@ class TestReactionNotifications(NotificationTestCase):
 	def test_reacting_to_your_own_post_creates_no_notification(self):
 		self._react(self.discussion, self.member)
 
-		self.assertEqual(notifications_for(self.member), [])
+		self.assertEqual(self.notifications_for(self.member), [])
 
 	def test_your_own_reaction_is_not_counted_in_the_message(self):
 		self._react(self.discussion, self.second_member)
 		self._react(self.discussion, self.member, emoji="💖")
 
-		rows = notifications_for(self.member)
+		rows = self.notifications_for(self.member)
 		self.assertEqual(len(rows), 1)
 		self.assertEqual(rows[0].message, "1 person reacted to your post")
 
 
 class TestUnreadNotificationsCount(NotificationTestCase):
 	def test_counts_only_the_session_users_unread_rows(self):
+		before = {
+			user.name: self.unread_count(user)
+			for user in (self.member, self.second_member, self.outsider)
+		}
 		_make_notification(self.member.name, read=0)
 		_make_notification(self.member.name, read=0)
 		_make_notification(self.member.name, read=1)
 		_make_notification(self.second_member.name, read=0)
 
-		with self.as_user(self.member):
-			self.assertEqual(unread_notifications(), 2)
-		with self.as_user(self.second_member):
-			self.assertEqual(unread_notifications(), 1)
-		with self.as_user(self.outsider):
-			self.assertEqual(unread_notifications(), 0)
+		# Two of member's four rows are unread and one belongs to member2; the count is
+		# per session user and ignores rows already marked read.
+		self.assertEqual(self.unread_count(self.member), before[self.member.name] + 2)
+		self.assertEqual(self.unread_count(self.second_member), before[self.second_member.name] + 1)
+		self.assertEqual(self.unread_count(self.outsider), before[self.outsider.name])
 
 	def test_a_new_mention_increments_the_count(self):
-		with self.as_user(self.second_member):
-			self.assertEqual(unread_notifications(), 0)
+		before = self.unread_count(self.second_member)
 
 		space = create_space("Product", self.community)
 		with self.as_user(self.member):
@@ -282,8 +294,7 @@ class TestUnreadNotificationsCount(NotificationTestCase):
 				"Mention thread", space, content=mention_html(self.second_member, "Second Member")
 			)
 
-		with self.as_user(self.second_member):
-			self.assertEqual(unread_notifications(), 1)
+		self.assertEqual(self.unread_count(self.second_member), before + 1)
 
 
 class TestMarkNotificationsAsRead(NotificationTestCase):
@@ -293,7 +304,9 @@ class TestMarkNotificationsAsRead(NotificationTestCase):
 
 		with self.as_user(self.member):
 			mark_all_notifications_as_read()
-			self.assertEqual(unread_notifications(), 0)
+
+		# Nothing of member's is left unread, whatever the table held before.
+		self.assertEqual(self.unread_count(self.member), 0)
 
 	def test_mark_all_notifications_as_read_leaves_other_users_alone(self):
 		mine = _make_notification(self.member.name, read=0)
