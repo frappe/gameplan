@@ -304,8 +304,36 @@ Four Step-2-era failures were root-caused (all against the demo site on `:8001`)
      is created through the v2 API before the first `cy.visit`, rather than by a
      new seed scenario). Whoever restarts that server should also run
      `bench --site gameplan-demo.test clear-cache` so the new hooks are picked up.
-5. Guest access E2E (invite guest, guest's scoped read-only-plus-participation
-   view).
+5. Guest access E2E — WRITTEN, not yet verified locally (2026-07-26). E2E
+   `members/guest-access.cy.ts` walks the guest's whole scoped view on the
+   `private_space_with_guest` scenario: lands in the community of their granted
+   space, sees "Secret Plans" but neither "General" nor its post, opens the
+   member's discussion, comments, reacts, and finds no Edit / Pin / Close / Move
+   in Discussion Options. Backend gap it leans on is now closed:
+   `permissions/test_guest_access.py` gained the two query-level tests the UI
+   depends on (a guest's GP Project list is exactly their granted spaces; their
+   discussion feed drops posts from spaces they were never granted) — the file
+   only had `has_permission` checks, which a list query can bypass. Full backend
+   suite green (288 tests across the three batches, exit 0).
+   - **Blocked locally, not in CI**: the shared `:8001` demo server is a
+     long-running `frappe serve` started **Jul 23 01:50**, before
+     `0d6270a fix(permissions): guests see communities of their granted spaces`
+     (Jul 24 02:54). A running server never re-imports a changed module, so it
+     still answers a guest's GP Team list with the pre-fix `Team.name == ""` —
+     empty. The guest therefore has no community, `/g` resolves to
+     `/g/onboarding`, and every guest route 404s exactly as the old bug did
+     (verified: a deep link to the granted discussion renders nothing either).
+     Restart that server (`bench --site gameplan-demo.test serve --port 8001`)
+     plus `bench --site gameplan-demo.test clear-cache` and re-run the spec.
+     Restarting also puts the Jul 24-26 backend work live for the first time
+     (guest team scoping, GP Poll and GP Bookmark permission hooks), so re-run
+     the whole Cypress suite after it.
+   - Every selector the spec uses was validated against the same seeded
+     scenario as `member` (sidebar space link, space route, discussion row,
+     comment composer + intercept, reaction picker + pill, Discussion Options
+     items) — that scratch run passed, so what is unverified locally is strictly
+     the guest-only rendering, which was browser-verified by hand on 2026-07-24
+     (see the Interlude above).
 6. Discussion lifecycle backend (pin/close/comment-count/last_post side
    effects).
 7. Realtime activity broadcast — currently has NO direct coverage; the
