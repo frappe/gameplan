@@ -212,6 +212,15 @@ SQLite index is built on demand, not by the seed.
 Log in as a persona with `cy.loginAs(persona)` where persona is one of `admin`,
 `member`, `secondMember`, `guest`, `outsider` (all seeded with password `admin`).
 
+**Switching personas mid-test:** once a page has been loaded, use
+`cy.switchUser(persona)` instead of `cy.loginAs`. Frappe re-sets the `sid` cookie on
+every response for the session that request ran under
+(`CookieManager.init_cookies`), so a request the old page still has in flight can land
+after the login and hand the previous user's cookie back — the next `cy.visit` then
+boots as the old user and the test fails on whatever it asserts about the new one.
+`switchUser` unloads the page first (aborting those requests) and only continues once
+the server names the acting user.
+
 ### Conventions
 
 - **No bare `cy.wait(ms)`.** Wait on an intercept alias instead. The only exception is

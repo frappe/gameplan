@@ -37,8 +37,10 @@ describe('Notifications', () => {
     cy.button('Submit').click()
     cy.wait('@comment').its('response.body.data.content').should('contain', 'member@example.com')
 
-    // member lands on an unread badge in the rail
-    cy.loginAs('member')
+    // member lands on an unread badge in the rail. `switchUser` (not `loginAs`) because
+    // member2's page is still loaded: its in-flight requests would otherwise re-set the
+    // `sid` cookie back to member2 and boot the next visit as the wrong user.
+    cy.switchUser('member')
     // The count is a `useCall` GET, so its URL carries a (here empty) query string —
     // hence the trailing glob.
     cy.intercept('GET', '**/gameplan.api.unread_notifications*').as('unreadCount')
