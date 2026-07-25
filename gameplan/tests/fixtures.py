@@ -102,6 +102,21 @@ def create_page(title, space=None, *, content="Test content", owner=None):
 	return doc
 
 
+def create_poll(title, discussion, *, options=("Yes", "No"), anonymous=0, multiple_answers=0, owner=None):
+	doc = frappe.get_doc(
+		doctype="GP Poll",
+		title=title,
+		discussion=_name(discussion),
+		anonymous=anonymous,
+		multiple_answers=multiple_answers,
+		options=[{"title": option} for option in options],
+	)
+	doc.insert(ignore_permissions=True)
+	if owner:
+		set_owner(doc, owner)
+	return doc
+
+
 def grant_guest_access(user, space):
 	filters = {"user": _name(user), "project": _name(space)}
 	if frappe.db.exists("GP Guest Access", filters):

@@ -87,7 +87,7 @@ wherever a linked record is expected.
 
 - `create_user`, `create_admin`, `create_member`, `create_guest`
 - `create_community` (GP Team) and `create_space` (GP Project)
-- `create_discussion`, `create_comment`, `create_task`, `create_page`
+- `create_discussion`, `create_comment`, `create_task`, `create_page`, `create_poll`
 - `grant_guest_access`
 - `set_owner` (re-own a doc after insert, so content can belong to a persona)
 

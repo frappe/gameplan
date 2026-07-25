@@ -2,8 +2,11 @@
 # For license information, please see license.txt
 
 import frappe
+from frappe import _
 from frappe.model.document import Document
-from frappe.utils import flt
+from frappe.utils import flt, get_datetime
+
+from gameplan.permissions import can_view_content, content_has_permission, poll_query_conditions
 
 from .gp_poll_attributes import GPPollAttributes
 
@@ -18,7 +21,7 @@ class GPPoll(Document, GPPollAttributes):
 		# dont allow duplicate options
 		options = [d.title for d in self.options]
 		if len(set(options)) != len(options):
-			frappe.throw(frappe._("Duplicate options not allowed"))
+			frappe.throw(_("Duplicate options not allowed"))
 
 	def validate(self):
 		self.total_votes = len(self.votes)
@@ -42,68 +45,98 @@ class GPPoll(Document, GPPollAttributes):
 	@frappe.whitelist()
 	def submit_vote(self, option):
 		self.check_if_stopped()
+		self.check_can_participate()
+		selected = self.get_option(option)
 
 		if self.anonymous:
-			self.submit_anonymous_vote(option)
+			# An anonymous vote records the voter without their choice, so there is no row
+			# to tie a second answer to (or to retract later): one vote per voter, always.
+			if self.has_voted():
+				return
+			self.append("votes", {"user": frappe.session.user})
+			selected.votes = (selected.votes or 0) + 1
 		else:
-			self.submit_non_anonymous_vote(option)
-
-	def submit_anonymous_vote(self, option):
-		for d in self.votes:
-			if d.user == frappe.session.user:
+			# One vote per user — or, on a multiple-answer poll, one vote per user per
+			# option, so voting again for the same option stays a no-op.
+			if self.has_voted(option=selected.title if self.multiple_answers else None):
 				return
-		for _option in self.options:
-			if _option.title == option:
-				self.append("votes", {"user": frappe.session.user})
-				_option.votes += 1
-				break
+			self.append("votes", {"user": frappe.session.user, "option": selected.title})
 
-		self.total_votes = len(self.votes)
-		for _option in self.options:
-			_option.percentage = flt(_option.votes * 100 / self.total_votes, 2)
-		self.save()
-
-	def submit_non_anonymous_vote(self, option):
-		for d in self.votes:
-			if d.user == frappe.session.user:
-				return
-
-		self.append("votes", {"user": frappe.session.user, "option": option})
-		self.total_votes = len(self.votes)
-		for _option in self.options:
-			_option.votes = len([d for d in self.votes if d.option == _option.title])
-			_option.percentage = flt(_option.votes * 100 / self.total_votes, 2)
-		self.save()
+		self.update_tallies()
+		self.save_after_voting()
 
 	@frappe.whitelist()
-	def retract_vote(self):
+	def retract_vote(self, option=None):
 		self.check_if_stopped()
+		self.check_can_participate()
 		if self.anonymous:
-			frappe.throw(frappe._("Cannot retract vote for anonymous poll"))
-		self.votes = [d for d in self.votes if d.user != frappe.session.user]
-		self.total_votes = len(self.votes)
-		for _option in self.options:
-			_option.votes = len([d for d in self.votes if d.option == _option.title])
-			_option.percentage = flt(_option.votes * 100 / self.total_votes, 2) if self.total_votes else 0
-		self.save()
+			frappe.throw(_("Cannot retract vote for anonymous poll"))
+		user = frappe.session.user
+		self.votes = [
+			d for d in self.votes if not (d.user == user and (option is None or d.option == option))
+		]
+		self.update_tallies()
+		self.save_after_voting()
 
 	@frappe.whitelist()
 	def stop_poll(self):
 		if frappe.session.user != self.owner:
-			frappe.throw(frappe._("Only owner can stop the poll"))
+			frappe.throw(_("Only owner can stop the poll"), frappe.PermissionError)
 		self.stopped_at = frappe.utils.now()
 		self.save()
 
+	def save_after_voting(self):
+		"""Persist a vote without requiring write access to the poll itself.
+
+		Voting is participation, like reacting: the gate is `check_can_participate`, and
+		the vote methods only ever touch the acting user's own vote row plus the derived
+		tallies. A plain `save()` would instead ask for `write`, which a guest only holds
+		while nothing outside the interaction-safe fields changed — that check exists to
+		stop a non-editor rewriting a poll's title or options, and it must keep doing so.
+		"""
+		self.save(ignore_permissions=True)
+
+	def check_can_participate(self):
+		if not can_view_content(frappe.session.user, self):
+			frappe.throw(_("You do not have access to this poll"), frappe.PermissionError)
+
+	def get_option(self, title):
+		for option in self.options:
+			if option.title == title:
+				return option
+		frappe.throw(_("{0} is not an option in this poll").format(title))
+
+	def has_voted(self, option=None, user=None):
+		user = user or frappe.session.user
+		return any(d.user == user and (option is None or d.option == option) for d in self.votes)
+
+	def update_tallies(self):
+		"""Recompute the derived counts from the vote rows.
+
+		`total_votes` counts vote rows, so on a multiple-answer poll it counts answers
+		rather than voters — which keeps the option percentages adding up to 100%.
+		"""
+		self.total_votes = len(self.votes)
+		if not self.anonymous:
+			# An anonymous vote row has no option, so its per-option counter is
+			# incremented when the vote is cast and cannot be recomputed here.
+			for option in self.options:
+				option.votes = len([d for d in self.votes if d.option == option.title])
+		for option in self.options:
+			option.percentage = (
+				flt((option.votes or 0) * 100 / self.total_votes, 2) if self.total_votes else 0
+			)
+
 	def check_if_stopped(self):
-		if self.stopped_at and self.stopped_at < frappe.utils.now_datetime():
-			frappe.throw(frappe._("Poll has ended"))
+		# `stopped_at` is a string on the doc that just ran stop_poll() and a datetime once
+		# read back from the database, so normalise it before comparing.
+		if self.stopped_at and get_datetime(self.stopped_at) < frappe.utils.now_datetime():
+			frappe.throw(_("Poll has ended"))
 
 
-@frappe.whitelist()
-def get_list(fields, filters=None, start=0, limit=20, order_by=None):
-	query = frappe.qb.get_query(
-		"GP Poll", fields=fields, filters=filters, start=start, limit=limit, order_by=order_by
-	)
+def get_permission_query_conditions(user):
+	return poll_query_conditions(user)
 
-	data = query.run(as_dict=1)
-	return data
+
+def has_permission(doc, ptype="read", user=None):
+	return content_has_permission(doc, ptype, user)

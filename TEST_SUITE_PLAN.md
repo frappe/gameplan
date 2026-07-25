@@ -214,7 +214,27 @@ Four Step-2-era failures were root-caused (all against the demo site on `:8001`)
   it, and Cypress then suppresses the synthetic `mousedown`. Native mouse and
   keyboard both work, so real users are fine. The test now activates the tab with
   `{enter}` (a real a11y path, forward-compatible with the frappe-ui fix). 2/2 green.
-2. Polls (vote/retract/stop/one-vote guard + E2E create-vote-stop).
+2. Polls — DONE (2026-07-26). Backend `features/test_polls.py` (29 tests: tally
+   math, one-vote guard, retraction, anonymous polls, multiple-answer polls,
+   stopping, and who may vote/stop/delete) + E2E `polls/poll-lifecycle.cy.ts`
+   (member creates a poll → votes → tally updates → stops it), with a
+   `create_poll` builder. Both green.
+   - Product bugs fixed on the way: GP Poll had **no** `has_permission` /
+     `permission_query_conditions` hook, so any Gameplan user could read and vote
+     on polls in spaces they cannot see; `submit_vote` accepted options that were
+     not in the poll (and divided by zero on an anonymous poll's first bad vote);
+     `multiple_answers` was stored and rendered but never honoured; and
+     `check_if_stopped` compared a string to a datetime right after `stop_poll`.
+   - Assumptions taken (see commit message): voting is participation, so guests
+     may vote (and create a poll) in a space they've been granted; anonymous
+     polls stay one-vote-per-voter even with `multiple_answers`, since an
+     anonymous vote row carries no option; `total_votes` counts vote rows, so
+     percentages still total 100% on a multiple-answer poll.
+   - Still owner-only: `stop_poll`. A global/community admin can delete a poll but
+     cannot stop it — flagged for a product decision, not changed here.
+   - Not reachable from the UI yet: multiple-answer polls (`PollEditor` has no
+     toggle and `Poll.vue` disables the options after the first vote). Poll.vue
+     also still uses the legacy `run_doc_method` resource API rather than v2.
 3. Notifications (mention/reply → GP Notification; badge; mark-all-read; E2E).
 4. Reactions + bookmarks E2E (backend already covered by guest work).
 5. Guest access E2E (invite guest, guest's scoped read-only-plus-participation

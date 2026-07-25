@@ -124,7 +124,10 @@ def can_view_content(user, doc):
 
 def can_create_content(user, doc):
 	if gameplan.is_guest(user):
-		return doc.doctype == "GP Comment" and can_view_content(user, doc)
+		# Guests participate in the discussions they can reach: a comment, and a poll on
+		# a discussion, are both participation. Everything else (discussions, tasks,
+		# pages) stays closed to them.
+		return doc.doctype in {"GP Comment", "GP Poll"} and can_view_content(user, doc)
 	if not get_content_project(doc):
 		return is_global_admin(user) or not get_doc_value(doc, "owner") or get_doc_value(doc, "owner") == user
 	return can_view_content(user, doc)
@@ -138,6 +141,10 @@ INTERACTION_SAFE_FIELDS = {
 	"GP Comment": {"reactions"},
 	"GP Page": set(),
 	"GP Task": set(),
+	# Votes are deliberately NOT listed: a vote goes through GPPoll.submit_vote, which
+	# gates on participation and only touches the caller's own row. Leaving the vote
+	# tables protected here is what stops a non-editor rewriting a poll by plain save.
+	"GP Poll": {"reactions"},
 }
 
 # Standard row-level fields ignored when diffing a child table for changes.
@@ -336,6 +343,24 @@ def comment_query_conditions(user=None, **kwargs):
 	return criterion_sql(criterion)
 
 
+def poll_query_conditions(user=None, **kwargs):
+	user = user or frappe.session.user
+	if is_global_admin(user):
+		return None
+
+	Poll = frappe.qb.DocType("GP Poll")
+	Discussion = frappe.qb.DocType("GP Discussion")
+	discussion_query = (
+		frappe.qb.from_(Discussion)
+		.select(Discussion.name)
+		.where(accessible_project_criterion(Discussion.project, user))
+	)
+	# A poll with no discussion never reaches the UI, but it is still someone's row —
+	# keep it visible to its owner only, the way a space-less page is.
+	criterion = Poll.discussion.isin(discussion_query) | (Poll.discussion.isnull() & (Poll.owner == user))
+	return criterion_sql(criterion)
+
+
 def draft_query_conditions(user=None, **kwargs):
 	# Drafts are private to their owner in list/report queries. Share-by-link still works:
 	# that reads a single draft by name through the doctype's open `read` permission, which
@@ -502,6 +527,10 @@ def guest_can_view_community(user, team):
 def get_content_project(doc):
 	if doc.doctype in {"GP Discussion", "GP Task", "GP Page"}:
 		return get_doc_value(doc, "project")
+	if doc.doctype == "GP Poll":
+		# A poll lives in a discussion, and takes that discussion's space.
+		discussion = get_doc_value(doc, "discussion")
+		return frappe.db.get_value("GP Discussion", discussion, "project") if discussion else None
 	if doc.doctype != "GP Comment":
 		return None
 	if doc.reference_doctype in {"GP Discussion", "GP Task"}:

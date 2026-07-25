@@ -120,6 +120,7 @@ permission_query_conditions = {
 	"GP Discussion": "gameplan.gameplan.doctype.gp_discussion.gp_discussion.get_permission_query_conditions",
 	"GP Task": "gameplan.gameplan.doctype.gp_task.gp_task.get_permission_query_conditions",
 	"GP Comment": "gameplan.gameplan.doctype.gp_comment.gp_comment.get_permission_query_conditions",
+	"GP Poll": "gameplan.gameplan.doctype.gp_poll.gp_poll.get_permission_query_conditions",
 	"GP Page": "gameplan.gameplan.doctype.gp_page.gp_page.get_permission_query_conditions",
 	"GP Draft": "gameplan.permissions.draft_query_conditions",
 }
@@ -130,6 +131,7 @@ has_permission = {
 	"GP Discussion": "gameplan.gameplan.doctype.gp_discussion.gp_discussion.has_permission",
 	"GP Task": "gameplan.gameplan.doctype.gp_task.gp_task.has_permission",
 	"GP Comment": "gameplan.gameplan.doctype.gp_comment.gp_comment.has_permission",
+	"GP Poll": "gameplan.gameplan.doctype.gp_poll.gp_poll.has_permission",
 	"GP Page": "gameplan.gameplan.doctype.gp_page.gp_page.has_permission",
 	"GP User Profile": "gameplan.gameplan.doctype.gp_user_profile.gp_user_profile.has_permission",
 }
