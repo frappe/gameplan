@@ -62,10 +62,13 @@ class HasReactions:
 		if len(self.get("reactions")) == 0:
 			return
 
-		people = list(set([r.user for r in self.get("reactions")]))
+		# Your own reaction never notifies you and is never counted: the row would
+		# otherwise read "1 person reacted to your post" about yourself.
+		people = list({r.user for r in self.get("reactions") if r.user != self.owner})
+		if not people:
+			return
+
 		match len(people):
-			case 0:
-				message = ""
 			case 1:
 				message = "1 person reacted to your post"
 			case _:

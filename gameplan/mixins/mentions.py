@@ -29,25 +29,34 @@ class HasMentions:
 	def _notify_rich_quote_authors(self, mentions_field, notified_users):
 		authors = extract_rich_quote_authors(self.get(mentions_field))
 		for author in authors:
-			if author == self.owner:
-				continue
 			if author in notified_users:
 				continue
 			self._notify_user(author, is_everyone=False, notification_type="Rich Quote")
 
 	def _notify_everyone_mention(self):
 		"""Handle @everyone mentions by notifying all relevant users"""
-		users_to_notify = self._get_all_active_gameplan_users()
-
-		for user_email in users_to_notify:
-			# Skip notifying the author
-			if user_email == self.owner:
-				continue
-			# Create notifications for each user
+		for user_email in self._get_all_active_gameplan_users():
 			self._notify_user(user_email, is_everyone=True)
+
+	def _can_notify(self, user_email):
+		"""Nobody gets notified about their own post, or about content they cannot open.
+
+		The mention autocomplete offers every active user and @everyone fans out to all
+		of them, so both can address people outside the space. A notification row links
+		the discussion/task and the bell shows its title, so notifying someone without
+		access would leak that title and hand them a dead link.
+		"""
+		from gameplan.permissions import can_view_content
+
+		if user_email == self.owner:
+			return False
+		return can_view_content(user_email, self)
 
 	def _notify_user(self, user_email, is_everyone=False, notification_type="Mention"):
 		"""Create a notification for a specific user"""
+		if not self._can_notify(user_email):
+			return
+
 		values = frappe._dict(
 			from_user=self.owner,
 			to_user=user_email,

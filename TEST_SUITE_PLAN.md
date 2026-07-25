@@ -243,7 +243,39 @@ Four Step-2-era failures were root-caused (all against the demo site on `:8001`)
    - Not reachable from the UI yet: multiple-answer polls (`PollEditor` has no
      toggle and `Poll.vue` disables the options after the first vote). Poll.vue
      also still uses the legacy `run_doc_method` resource API rather than v2.
-3. Notifications (mention/reply → GP Notification; badge; mark-all-read; E2E).
+3. Notifications — DONE (2026-07-26). Backend `features/test_notifications.py`
+   (23 tests: mention in a post/comment, @everyone, rich quote, no duplicate on
+   edit, no self-notification, reaction notifications, the `unread_notifications`
+   count, `mark_all_notifications_as_read` and `clear_notifications` scoping) +
+   E2E `notifications/notifications.cy.ts` (member2 mentions member → unread
+   badge → list → mark all read → badge clears). Both green.
+   - Product decision taken (see commit message), needs Faris's confirmation:
+     **a plain reply creates no GP Notification.** GP Notification is "someone
+     addressed you" (Mention / Rich Quote / Reaction); a reply reaches the
+     discussion owner through GP Unread Record, which is also how the email
+     digest splits its two sections (`get_unread_notifications` vs
+     `get_unread_discussions`). A `Reply` type would duplicate every unread count
+     and drown the bell on a busy thread. The plan line above said
+     "mention/reply → GP Notification", hence the flag.
+   - Product bugs fixed on the way:
+     - Mentioning yourself notified you. Reacting to your own post notified you,
+       and your own reaction was counted in "N people reacted to your post".
+     - @everyone notified every active Gameplan user, and the mention picker
+       offers every active user, so both could notify people with no access to
+       the space — leaking the discussion title into their bell and handing them
+       a dead link. Both now gated on `can_view_content`.
+     - The notification list was **empty for every user** (a 2026-06-24
+       regression), and "Mark all as read" never marked anything: the `useCall`
+       URL was relative (`gameplan.api.…` → POST `/g/gameplan.api.…`, which the
+       SPA route answers with its own HTML and a 200), and the list joined
+       `discussion.title` **and** `task.title` in one query while a notification
+       only ever links one of the two (see the frappe bug below).
+   - Upstream (frappe, not fixed here): `LinkTableField.apply_join` in
+     `frappe/database/query.py` LEFT JOINs a linked doctype but adds that
+     doctype's `permission_query_conditions` to the outer WHERE, so every row
+     whose link is NULL is filtered out. The condition belongs on the ON clause
+     (or needs an `OR <link> IS NULL`). Until it lands, Notifications.vue fetches
+     the target titles per doctype; the workaround names the cause.
 4. Reactions + bookmarks E2E (backend already covered by guest work).
 5. Guest access E2E (invite guest, guest's scoped read-only-plus-participation
    view).

@@ -138,18 +138,15 @@ import {
 import { List, ListRow, ListCell } from 'frappe-ui/list'
 import ReactionFaceIcon from '@/components/ReactionFaceIcon.vue'
 import UserAvatarWithHover from '@/components/UserAvatarWithHover.vue'
+import { getCommunity } from '@/data/communities'
 import { unreadNotifications } from '@/data/notifications'
+import { getSpace } from '@/data/spaces'
 import { useSessionUser } from '@/data/users'
 import type { GPNotification } from '@/types/doctypes'
 
 type ActiveTab = 'Unread' | 'Read'
 
-interface NotificationRow extends GPNotification {
-  discussion_title?: string
-  task_title?: string
-  project_title?: string
-  team_title?: string
-}
+type NotificationRow = GPNotification
 
 const activeTab = ref<ActiveTab>('Unread')
 const sessionUser = useSessionUser()
@@ -166,17 +163,26 @@ const notificationFields = [
   'task',
   'project',
   'team',
-  'discussion.title as discussion_title',
-  'task.title as task_title',
-  'project.title as project_title',
-  'team.title as team_title',
 ]
 
 const unreadNotificationList = useNotificationList(0, 'Unread Notifications')
 const readNotificationList = useNotificationList(1, 'Read Notifications')
 
+const loadedNotifications = computed<NotificationRow[]>(() => [
+  ...(unreadNotificationList.data ?? []),
+  ...(readNotificationList.data ?? []),
+])
+
+const discussionTitles = useLinkedTitles('GP Discussion', () =>
+  linkedIds(loadedNotifications.value, 'discussion'),
+)
+const taskTitles = useLinkedTitles('GP Task', () => linkedIds(loadedNotifications.value, 'task'))
+
 const markAllAsRead = useCall({
-  url: 'gameplan.api.mark_all_notifications_as_read',
+  // `useCall` takes the URL verbatim (unlike the legacy `resources` API, it does not
+  // expand a dotted method path), so a relative one would POST to /g/<method> — which
+  // the SPA route answers with its own HTML, 200 and all, marking nothing read.
+  url: '/api/v2/method/gameplan.api.mark_all_notifications_as_read',
   method: 'POST',
   immediate: false,
   onSuccess() {
@@ -252,11 +258,42 @@ function notificationIcon(notification: NotificationRow) {
 }
 
 function notificationTargetTitle(notification: NotificationRow) {
-  return notification.discussion_title || notification.task_title || null
+  if (notification.discussion) return discussionTitles.value.get(String(notification.discussion))
+  if (notification.task) return taskTitles.value.get(String(notification.task))
+  return null
 }
 
 function notificationLocation(notification: NotificationRow) {
-  return [notification.team_title, notification.project_title].filter(Boolean).join(' / ')
+  const community = notification.team ? getCommunity(notification.team)?.title : null
+  const space = notification.project ? getSpace(notification.project)?.title : null
+  return [community, space].filter(Boolean).join(' / ')
+}
+
+function linkedIds(notifications: NotificationRow[], field: 'discussion' | 'task') {
+  return [...new Set(notifications.map((row) => row[field]).filter(Boolean))].map(String)
+}
+
+/**
+ * Titles of the discussions/tasks the notifications point at.
+ *
+ * These used to be joined into the notification query itself
+ * (`discussion.title as discussion_title`), which silently emptied the whole
+ * list: frappe's list API LEFT JOINs the linked doctype but puts that doctype's
+ * permission condition in the outer WHERE (`LinkTableField.apply_join` in
+ * frappe/database/query.py), so a row whose link is NULL fails the condition and
+ * disappears. Every notification links either a discussion or a task, never
+ * both, so asking for both titles dropped every row. Inline the joins again once
+ * frappe moves those conditions onto the ON clause.
+ */
+function useLinkedTitles(doctype: 'GP Discussion' | 'GP Task', ids: () => string[]) {
+  const list = useList<{ name: string; title: string }>({
+    doctype,
+    fields: ['name', 'title'],
+    // An impossible name keeps the request harmless while nothing is loaded yet.
+    filters: () => ({ name: ['in', ids().length ? ids() : ['']] }),
+    limit: 100,
+  })
+  return computed(() => new Map((list.data ?? []).map((doc) => [String(doc.name), doc.title])))
 }
 
 function shortTimestamp(timestamp: string) {
