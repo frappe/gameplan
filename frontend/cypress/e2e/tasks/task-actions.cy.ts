@@ -14,16 +14,7 @@ describe('Task actions', () => {
     cy.loginAs('member')
   })
 
-  // SKIPPED: blocked on an upstream frappe-ui Dialog focus bug. reka-ui's
-  // DialogOverlay has an internal `@pointerdown.left.prevent`, and frappe-ui
-  // (>= v1.0.0-beta.25) nests the dialog content inside that overlay, so a
-  // pointerdown on any field bubbles up and its preventDefault cancels the
-  // browser's focus-on-click. Only the auto-focused Title field is usable;
-  // clicking the Description textarea can't focus it, so the description leaks
-  // into the title. Fix lives in frappe-ui's Dialog.vue (make DialogContent a
-  // sibling of DialogOverlay). Re-enable once a fixed frappe-ui is published,
-  // and click + wait for focus before typing the description.
-  it.skip('creates a task and sets its title, assignee, due date, and status', () => {
+  it('creates a task and sets its title, assignee, due date, and status', () => {
     cy.visit(`/g/community/${community}/space/${space}/tasks`)
     cy.get('[role=radio][aria-checked="true"]').contains('Tasks').should('exist')
 
