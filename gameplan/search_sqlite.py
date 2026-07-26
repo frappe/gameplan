@@ -423,7 +423,21 @@ class GameplanSearchIndexMissingError(SQLiteSearchIndexMissingError):
 	pass
 
 
-def build_index():
-	"""Build search index in the current process."""
+def rebuild_index():
+	"""Rebuild the search index from scratch in the current process.
+
+	Dropping the file first is what makes this a *re*build. ``SQLiteSearch.build_index``
+	only issues ``DELETE FROM search_fts`` on the fresh-file path — the ``DELETE`` is
+	guarded by ``temp_db_path``, which is set only when ``index_exists()`` is false — so
+	calling it over an existing index upserts the current database on top of whatever
+	the index already held. Every row for a document that has since been deleted
+	survives, which is how an index ends up with orders of magnitude more rows than the
+	site has documents.
+
+	Callers are the flows that have just replaced the entire corpus (demo reseed, UI
+	test scenario reset), so a stale row is never merely out of date — it points at a
+	document that no longer exists.
+	"""
 	search = GameplanSearch()
+	search.drop_index()
 	search.build_index()

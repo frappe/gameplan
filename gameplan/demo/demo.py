@@ -198,9 +198,11 @@ def _reset_sequences():
 
 
 def _rebuild_search_index():
-	from gameplan.search_sqlite import build_index
+	# rebuild_index, not build_index: clear() has just deleted every row the previous
+	# index described, and build_index alone never removes stale rows.
+	from gameplan.search_sqlite import rebuild_index
 
 	try:
-		build_index()
+		rebuild_index()
 	except Exception:
 		frappe.log_error(title="Demo Search Index Rebuild Error")

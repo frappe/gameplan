@@ -9,6 +9,7 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from gameplan.tests.fixtures import _name, create_admin, create_guest, create_member
+from gameplan.tests.search_isolation import guard_real_index
 
 
 class GameplanTestCase(FrappeTestCase):
@@ -24,6 +25,11 @@ class GameplanTestCase(FrappeTestCase):
 
 	def setUp(self):
 		frappe.set_user("Administrator")
+		# The SQLite search index is a file outside the MariaDB transaction, so a leak
+		# into it survives rollback. Guarding here rather than only in the search tests is
+		# deliberate: the leak arrives through frappe's update_doc_index doc_event, so any
+		# test that saves a discussion, comment, task or page can cause it.
+		guard_real_index(self)
 		self.admin = create_admin()
 		self.member = create_member("member@example.com", "Member")
 		self.second_member = create_member("member2@example.com", "Second Member")

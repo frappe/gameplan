@@ -3,14 +3,13 @@
 
 """Contracts and access guards for Gameplan's cross-cutting API endpoints."""
 
-from unittest.mock import patch
-
 import frappe
 
 from gameplan.api import can_access_gameplan, get_search_filter_options, onboarding
 from gameplan.search_sqlite import GameplanSearch
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import create_community, create_discussion, create_space, create_user
+from gameplan.tests.search_isolation import IsolatedSearchIndex
 
 EMPTY_FILTER_OPTIONS = {
 	"authors": {},
@@ -70,22 +69,19 @@ class TestOnboardingEndpoint(APIEndpointTestCase):
 		self.assertFalse(frappe.db.exists("GP Team", {"title": "Forbidden API Community"}))
 
 
-class TestSearchFilterOptionsEndpoint(APIEndpointTestCase):
+class TestSearchFilterOptionsEndpoint(IsolatedSearchIndex, APIEndpointTestCase):
+	INDEX_NAME = "test_gameplan_search_filter_options.db"
+
 	def setUp(self):
 		super().setUp()
-		self.index_name_patch = patch.object(
-			GameplanSearch,
-			"INDEX_NAME",
-			"test_gameplan_search_filter_options.db",
-		)
-		self.index_name_patch.start()
-		self.addCleanup(self.index_name_patch.stop)
+		# Must happen before the first indexable document: the doc_event hook builds a
+		# fresh GameplanSearch, which resolves db_path from INDEX_NAME at construction.
+		self.isolate_search_index()
 		self.search = GameplanSearch()
 		self.search.drop_index()
 
-	def tearDown(self):
-		self.search.drop_index()
-		super().tearDown()
+	def test_filter_options_use_an_isolated_database(self):
+		self.assert_uses_isolated_index(self.search)
 
 	def test_returns_a_stable_empty_contract_without_an_index(self):
 		with self.as_user(self.member):

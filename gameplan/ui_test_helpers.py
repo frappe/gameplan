@@ -278,9 +278,15 @@ SCENARIOS = {
 
 @whitelist
 def rebuild_search_index():
-	from gameplan.search_sqlite import GameplanSearch
+	"""Rebuild the search index from scratch, discarding rows from earlier scenarios.
 
-	GameplanSearch().build_index()
+	A bare `build_index()` would not: `reset()` has just deleted every Gameplan row, and
+	`build_index` only clears `search_fts` when it is creating the index file, so each
+	scenario's rows would pile up on the last one's. See `rebuild_index`.
+	"""
+	from gameplan.search_sqlite import rebuild_index
+
+	rebuild_index()
 
 
 @whitelist

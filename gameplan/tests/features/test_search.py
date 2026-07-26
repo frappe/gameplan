@@ -8,6 +8,7 @@ from gameplan.api import search_sqlite
 from gameplan.search_sqlite import GameplanSearch
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import create_comment, create_community, create_space, grant_guest_access
+from gameplan.tests.search_isolation import IsolatedSearchIndex
 
 
 class TestableGameplanSearch(GameplanSearch):
@@ -47,9 +48,16 @@ class TestableGameplanSearch(GameplanSearch):
 		return docs
 
 
-class TestSearchRanking(FrappeTestCase):
+class TestSearchRanking(IsolatedSearchIndex, FrappeTestCase):
+	# The corpus is controlled explicitly through TestableGameplanSearch, so
+	# GameplanSearch.INDEX_NAME is deliberately NOT patched to this file: incidental
+	# doc_event writes must stay no-ops against the package-level throwaway index
+	# rather than leak into the ranking corpus.
+	INDEX_NAME = TestableGameplanSearch.INDEX_NAME
+
 	def setUp(self):
 		frappe.set_user("Administrator")
+		self.guard_real_search_index()
 		frappe.flags.gameplan_search_test_docnames = {
 			"GP Discussion": [],
 			"GP Task": [],
@@ -65,8 +73,10 @@ class TestSearchRanking(FrappeTestCase):
 
 	def tearDown(self):
 		frappe.set_user("Administrator")
-		self.search.drop_index()
 		frappe.db.rollback()
+
+	def test_ranking_corpus_lives_in_an_isolated_database(self):
+		self.assert_uses_isolated_index(self.search)
 
 	def search_results(self, query):
 		self.search.build_index()
@@ -249,14 +259,14 @@ class TestSearchRanking(FrappeTestCase):
 		)
 
 
-class TestSearchIndexLifecycle(GameplanTestCase):
+class TestSearchIndexLifecycle(IsolatedSearchIndex, GameplanTestCase):
 	INDEX_NAME = "test_gameplan_search_hooks.db"
 
 	def setUp(self):
 		super().setUp()
-		self.index_name_patch = patch.object(GameplanSearch, "INDEX_NAME", self.INDEX_NAME)
-		self.index_name_patch.start()
-		self.addCleanup(self.index_name_patch.stop)
+		# Must happen before the first indexable document: the doc_event hook builds a
+		# fresh GameplanSearch, which resolves db_path from INDEX_NAME at construction.
+		self.isolate_search_index()
 		self.community = create_community(
 			"Search Index Lifecycle Community",
 			is_private=1,
@@ -271,11 +281,6 @@ class TestSearchIndexLifecycle(GameplanTestCase):
 		self.search = GameplanSearch()
 		self.search.drop_index()
 		self.search.build_index()
-
-	def tearDown(self):
-		frappe.set_user("Administrator")
-		self.search.drop_index()
-		super().tearDown()
 
 	def create_discussion(self, title, content, space=None):
 		return frappe.get_doc(
@@ -296,8 +301,7 @@ class TestSearchIndexLifecycle(GameplanTestCase):
 			)["results"]
 
 	def test_index_lifecycle_uses_an_isolated_database(self):
-		self.assertEqual(self.search.INDEX_NAME, "test_gameplan_search_hooks.db")
-		self.assertNotEqual(self.search.INDEX_NAME, "gameplan_search.db")
+		self.assert_uses_isolated_index(self.search)
 
 	def test_content_is_indexed_on_create(self):
 		discussion = self.create_discussion(
