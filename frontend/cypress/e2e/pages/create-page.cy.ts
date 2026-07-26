@@ -25,7 +25,7 @@ describe('Pages in a space', () => {
     cy.intercept('PUT', '/api/v2/document/GP%20Page/*').as('savePage')
     const pageContent = 'This handbook edit must survive a reload.'
     cy.get('[contenteditable=true]').should('be.visible').click().type(pageContent)
-    cy.wait('@savePage')
+    cy.wait('@savePage').its('response.body.data.content').should('contain', pageContent)
 
     cy.reload()
     cy.get('[contenteditable=true]').should('be.visible').should('contain.text', pageContent)

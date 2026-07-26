@@ -336,7 +336,8 @@ cd frontend && yarn test
 - **UI tests** (`ui-test.yml`) run Cypress and produce JUnit results. A markdown
   report is built from the JUnit XML and posted as a sticky comment on the PR
   (`ui-test-report.yml` handles fork PRs, where the token is read-only).
-- Cypress retries failed specs twice in run mode (`retries.runMode: 2`).
+- Cypress does not retry failed tests in run mode (`retries.runMode: 0`), so a
+  journey that passes only on a later attempt cannot report green.
 
 ## 5. Migration status
 

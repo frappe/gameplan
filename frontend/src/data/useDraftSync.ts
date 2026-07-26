@@ -155,7 +155,9 @@ export function useDraftSync(options: UseDraftSyncOptions) {
     broadcastDraftChange(record.key)
   }
 
-  async function pushToServer() {
+  let activePush: Promise<void> | null = null
+
+  async function persistToServer() {
     if (!isEnabled() || !dirty.value || !canSave(data.value)) return
     saving.value = true
     try {
@@ -190,6 +192,14 @@ export function useDraftSync(options: UseDraftSyncOptions) {
     } finally {
       saving.value = false
     }
+  }
+
+  function pushToServer() {
+    if (activePush) return activePush
+    activePush = persistToServer().finally(() => {
+      activePush = null
+    })
+    return activePush
   }
 
   const debouncedPush = debounce(pushToServer, debounceMs)
@@ -327,6 +337,8 @@ export function useDraftSync(options: UseDraftSyncOptions) {
 
   /** Discard the draft entirely: delete the server row (if any) and the local copy. */
   async function clear() {
+    debouncedPush.cancel?.()
+    if (activePush) await activePush
     const name = serverName.value
     await forget()
     if (name) {
@@ -342,6 +354,7 @@ export function useDraftSync(options: UseDraftSyncOptions) {
    *  migrate attachments server-side, delete the row, drop the local copy. */
   async function commit() {
     debouncedPush.cancel?.()
+    if (activePush) await activePush
     const name = serverName.value
     const id = toValue(identity)
     const localKey = key.value

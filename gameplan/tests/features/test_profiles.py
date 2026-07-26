@@ -4,6 +4,7 @@
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
+from gameplan.api import get_user_info
 from gameplan.gameplan.doctype.gp_user_profile.gp_user_profile import (
 	get_bento_cards,
 	get_my_bento_cards,
@@ -468,6 +469,16 @@ class TestQuickReactions(GameplanTestCase):
 		self.assertEqual(get_quick_reactions(self.member.name), ["👍"])
 		self.assertEqual(get_quick_reactions(self.second_member.name), ["🚀"])
 
+	def test_other_members_quick_reactions_are_private_in_user_info(self):
+		self.save_quick_reactions(self.member, ["👍"])
+
+		with self.as_user(self.second_member):
+			users = get_user_info(self.member.name)
+
+		self.assertEqual(len(users), 1)
+		self.assertEqual(users[0].name, self.member.name)
+		self.assertNotIn("quick_reaction_emojis", users[0])
+
 	def test_member_cannot_change_another_members_quick_reactions(self):
 		with self.as_user(self.second_member):
 			profile = get_profile(self.member.name)
@@ -503,14 +514,28 @@ class TestQuickReactions(GameplanTestCase):
 
 		self.assertEqual(get_quick_reactions(self.member.name), ["👍", "", "/files/party.gif"])
 
-	def test_unrelated_profile_save_preserves_quick_reaction_json_representation(self):
+	def test_first_save_keeps_canonical_quick_reaction_json(self):
 		quick_reactions = '["👍",""]'
 
 		with self.as_user(self.member):
 			profile = get_profile(self.member.name)
 			profile.quick_reaction_emojis = quick_reactions
 			profile.save()
-			profile.bio = "Unrelated profile edit"
-			profile.save()
 
 		self.assertEqual(get_profile(self.member.name).quick_reaction_emojis, quick_reactions)
+
+	def test_caller_json_formatting_is_canonicalized(self):
+		with self.as_user(self.member):
+			profile = get_profile(self.member.name)
+			profile.quick_reaction_emojis = '   ["👍", ""]   '
+			profile.save()
+
+		self.assertEqual(get_profile(self.member.name).quick_reaction_emojis, '["👍",""]')
+
+	def test_trimmed_quick_reactions_use_canonical_json(self):
+		with self.as_user(self.member):
+			profile = get_profile(self.member.name)
+			profile.quick_reaction_emojis = '["  👍  ",""]'
+			profile.save()
+
+		self.assertEqual(get_profile(self.member.name).quick_reaction_emojis, '["👍",""]')

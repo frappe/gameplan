@@ -502,9 +502,7 @@ def normalize_quick_reaction_emojis(value):
 			seen.add(emoji)
 		normalized_slots.append(emoji)
 
-	if isinstance(value, str) and slots == normalized_slots:
-		return value
-	return frappe.as_json(normalized_slots)
+	return frappe.as_json(normalized_slots, indent=None, separators=(",", ":"), ensure_ascii=False)
 
 
 @frappe.whitelist()

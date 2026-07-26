@@ -27,6 +27,8 @@ describe('Comment actions', () => {
       times: 1,
     }).as('comment')
     cy.button('Add a comment').click()
+    cy.iconButton('Minimize comment box').should('be.visible').click()
+    cy.iconButton('Expand comment box').should('be.visible').click()
     // Click the editor to settle focus before typing — relying on the auto-focus
     // via cy.focused() races the just-mounted ProseMirror view and drops the
     // first keystroke. Submit via the button (not {enter}) to avoid a premature
@@ -88,7 +90,9 @@ describe('Comment actions', () => {
         }).as('deleteComment')
         cy.selectDropdownOption('Comment Options', 'Delete')
         cy.dialog('button:contains("Delete")').click()
-        cy.wait('@deleteComment').its('response.statusCode').should('eq', 202)
+        cy.wait('@deleteComment').then(({ response }) => {
+          expect(response?.statusCode, JSON.stringify(response?.body)).to.equal(202)
+        })
         cy.get(commentSelector).should('not.exist')
       })
   })

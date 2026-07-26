@@ -8,7 +8,7 @@
             variant="subtle"
             size="xs"
             icon="lucide-chevron-left"
-            aria-label="Back to communities"
+            label="Back to communities"
             @click="showCommunities"
           />
           <h2 class="min-w-0 truncate text-lg-semibold text-ink-gray-8">

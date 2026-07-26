@@ -23,7 +23,7 @@ describe('Profile settings', () => {
     cy.intercept('PUT', '**/api/v2/document/GP%20User%20Profile/*', (request) => {
       const body = request.body as Record<string, unknown>
       if ('bio' in body) request.alias = 'saveBio'
-      if ('quick_reaction_emojis' in body) request.alias = 'saveQuickReactions'
+      else if ('quick_reaction_emojis' in body) request.alias = 'saveQuickReactions'
     })
     cy.visit('/g/settings/profile')
     cy.get('[role="dialog"]').contains('h2', 'Profile').should('be.visible')

@@ -113,6 +113,11 @@ One test map mirroring the product's feature catalog, at three layers:
     `ProfileBentoEditorPanel` keeps its `lg` breakpoint and the profile spec uses a
     1280×900 viewport. Search suites redirect `GameplanSearch.INDEX_NAME` so they
     never drop or rebuild the site's real `gameplan_search.db`.
+26. **Cypress run mode has no retries.** Commit `e811650` overclaimed in its
+    subject: it stabilized several journeys but never changed the retry
+    configuration, so flaky tests could still pass on a later attempt. The
+    correction sets `retries.runMode` to `0` and fixes the live comment-action
+    flake caused by an edit-draft push racing draft commit.
 
 The permission tier supporting these decisions treats frappe `write` on content
 as “may interact” (react, comment, vote). Who may edit or delete content is

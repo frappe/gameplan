@@ -129,7 +129,7 @@
                 class="shrink-0"
                 variant="ghost"
                 icon="lucide-maximize-2"
-                aria-label="Expand comment box"
+                label="Expand comment box"
                 @click.stop="expandComposer"
               />
             </Tooltip>
@@ -186,7 +186,7 @@
                   class="hidden sm:inline-flex"
                   variant="ghost"
                   icon="lucide-minimize-2"
-                  aria-label="Minimize comment box"
+                  label="Minimize comment box"
                   @click="minimizeComposer"
                 />
               </Tooltip>
