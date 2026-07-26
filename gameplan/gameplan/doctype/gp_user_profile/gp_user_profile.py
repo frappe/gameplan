@@ -22,10 +22,14 @@ PROFILE_BENTO_CARD_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{1,80}$")
 PROFILE_BENTO_URL_CONTROL_CHAR_PATTERN = re.compile(r"[\x00-\x20\x7f]")
 PROFILE_BENTO_ALLOWED_URL_SCHEMES = {"http", "https"}
 PROFILE_BENTO_MAX_CARDS = 40
+QUICK_REACTION_MAX_SLOTS = 20
 
 
 class GPUserProfile(HasAttachments, Document):
 	attachments_field = "readme"
+
+	def validate(self):
+		self.quick_reaction_emojis = normalize_quick_reaction_emojis(self.quick_reaction_emojis)
 
 	def autoname(self):
 		self.name = self.generate_name()
@@ -469,6 +473,36 @@ def truncate(value, length):
 	if value is None:
 		return None
 	return str(value)[:length]
+
+
+def normalize_quick_reaction_emojis(value):
+	if value in (None, ""):
+		return None
+
+	try:
+		slots = frappe.parse_json(value)
+	except (TypeError, ValueError):
+		frappe.throw("Quick reactions must be valid JSON")
+
+	if not isinstance(slots, list):
+		frappe.throw("Quick reactions must be a list")
+	if len(slots) > QUICK_REACTION_MAX_SLOTS:
+		frappe.throw(f"Profiles can have at most {QUICK_REACTION_MAX_SLOTS} quick reactions")
+
+	normalized_slots = []
+	seen = set()
+	for slot in slots:
+		if not isinstance(slot, str):
+			frappe.throw("Each quick reaction must be a string")
+
+		emoji = slot.strip()
+		if emoji and emoji in seen:
+			frappe.throw(f"Duplicate quick reaction: {emoji}")
+		if emoji:
+			seen.add(emoji)
+		normalized_slots.append(emoji)
+
+	return frappe.as_json(normalized_slots)
 
 
 @frappe.whitelist()

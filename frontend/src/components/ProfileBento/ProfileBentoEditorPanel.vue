@@ -1,5 +1,5 @@
 <template>
-  <aside class="hidden w-[320px] shrink-0 lg:block">
+  <aside class="hidden w-[320px] shrink-0 md:block">
     <div class="sticky top-5 space-y-4">
       <div
         v-if="card"

@@ -10,6 +10,7 @@ from gameplan.gameplan.doctype.gp_user_profile.gp_user_profile import (
 	has_permission,
 	save_my_bento_cards,
 )
+from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import create_member
 
 
@@ -23,7 +24,32 @@ def reset_profile(user):
 	profile.image = None
 	profile.cover_image = None
 	profile.cover_image_position = None
+	profile.quick_reaction_emojis = None
 	profile.save(ignore_permissions=True)
+
+
+def make_bento_card(card_id="intro", **values):
+	return {
+		"id": card_id,
+		"type": "Card",
+		"size": "1x1",
+		"title": "Intro",
+		"text": "Building async tools.",
+		**values,
+	}
+
+
+def create_custom_emoji(title="party-parrot"):
+	return frappe.get_doc(
+		doctype="GP Custom Emoji",
+		title=title,
+		image=f"/files/{title}.gif",
+		keywords="party, celebrate",
+	).insert()
+
+
+def get_quick_reactions(user):
+	return frappe.parse_json(get_profile(user).quick_reaction_emojis)
 
 
 class TestProfiles(FrappeTestCase):
@@ -293,3 +319,183 @@ class TestProfiles(FrappeTestCase):
 					}
 				]
 			)
+
+	def test_blank_bento_card_can_be_saved(self):
+		frappe.set_user(self.alice.name)
+
+		response = save_my_bento_cards(
+			[
+				{
+					"id": "gap",
+					"type": "Blank",
+					"size": "1x2",
+				}
+			]
+		)
+
+		self.assertEqual(
+			response["cards"],
+			[
+				{
+					"id": "gap",
+					"type": "Blank",
+					"size": "1x2",
+					"title": None,
+					"imageRendering": "Cover",
+					"imagePosition": 50,
+				}
+			],
+		)
+
+	def test_bento_card_ids_must_be_unique(self):
+		frappe.set_user(self.alice.name)
+
+		with self.assertRaises(frappe.ValidationError):
+			save_my_bento_cards([make_bento_card(), make_bento_card()])
+
+	def test_bento_card_ids_reject_unsafe_characters(self):
+		frappe.set_user(self.alice.name)
+
+		with self.assertRaises(frappe.ValidationError):
+			save_my_bento_cards([make_bento_card("intro card")])
+
+	def test_profile_bento_layout_has_a_card_limit(self):
+		frappe.set_user(self.alice.name)
+
+		with self.assertRaises(frappe.ValidationError):
+			save_my_bento_cards([make_bento_card(f"card-{index}") for index in range(41)])
+
+	def test_bento_card_size_must_be_supported(self):
+		frappe.set_user(self.alice.name)
+
+		with self.assertRaises(frappe.ValidationError):
+			save_my_bento_cards([make_bento_card(size="3x3")])
+
+	def test_bento_card_image_rendering_must_be_supported(self):
+		frappe.set_user(self.alice.name)
+
+		with self.assertRaises(frappe.ValidationError):
+			save_my_bento_cards([make_bento_card(imageRendering="Stretch")])
+
+	def test_bento_image_position_is_clamped_to_the_card(self):
+		frappe.set_user(self.alice.name)
+
+		response = save_my_bento_cards(
+			[
+				make_bento_card("top", image="/files/top.png", imagePosition=-10),
+				make_bento_card("bottom", image="/files/bottom.png", imagePosition=125),
+			]
+		)
+
+		self.assertEqual([card["imagePosition"] for card in response["cards"]], [0, 100])
+
+	def test_bento_cards_accept_the_json_payload_sent_over_http(self):
+		frappe.set_user(self.alice.name)
+
+		response = save_my_bento_cards(frappe.as_json([make_bento_card()]))
+
+		self.assertEqual([card["id"] for card in response["cards"]], ["intro"])
+
+
+class TestCustomEmojis(GameplanTestCase):
+	def setUp(self):
+		super().setUp()
+		frappe.set_user("Administrator")
+		self.emoji = create_custom_emoji()
+
+	def test_custom_emoji_library_is_readable_by_every_gameplan_role(self):
+		for user in (self.admin, self.member, self.guest):
+			with self.subTest(user=user.name), self.as_user(user):
+				names = frappe.get_list("GP Custom Emoji", pluck="name")
+				self.assertIn(self.emoji.name, names)
+
+	def test_gameplan_admin_can_manage_custom_emojis(self):
+		with self.as_user(self.admin):
+			emoji = create_custom_emoji("ship-it")
+			emoji.keywords = "ship, done"
+			emoji.save()
+			emoji.reload()
+			self.assertEqual(emoji.keywords, "ship, done")
+			emoji.delete()
+
+		self.assertFalse(frappe.db.exists("GP Custom Emoji", emoji.name))
+
+	def test_member_cannot_create_custom_emoji(self):
+		with self.as_user(self.member), self.assertRaises(frappe.PermissionError):
+			create_custom_emoji("member-emoji")
+
+	def test_member_cannot_edit_custom_emoji(self):
+		with self.as_user(self.member):
+			emoji = frappe.get_doc("GP Custom Emoji", self.emoji.name)
+			emoji.keywords = "changed"
+			with self.assertRaises(frappe.PermissionError):
+				emoji.save()
+
+	def test_member_cannot_delete_custom_emoji(self):
+		with self.as_user(self.member):
+			emoji = frappe.get_doc("GP Custom Emoji", self.emoji.name)
+			with self.assertRaises(frappe.PermissionError):
+				emoji.delete()
+
+
+class TestQuickReactions(GameplanTestCase):
+	def setUp(self):
+		super().setUp()
+		frappe.set_user("Administrator")
+		reset_profile(self.member.name)
+		reset_profile(self.second_member.name)
+
+	def save_quick_reactions(self, user, slots):
+		with self.as_user(user):
+			profile = get_profile(user.name)
+			profile.quick_reaction_emojis = frappe.as_json(slots)
+			profile.save()
+
+	def test_member_can_save_unicode_and_custom_quick_reactions(self):
+		slots = ["👍", "/files/party-parrot.gif", "", "🚀"]
+
+		self.save_quick_reactions(self.member, slots)
+
+		self.assertEqual(get_quick_reactions(self.member.name), slots)
+
+	def test_quick_reactions_are_private_to_each_profile(self):
+		self.save_quick_reactions(self.member, ["👍"])
+		self.save_quick_reactions(self.second_member, ["🚀"])
+
+		self.assertEqual(get_quick_reactions(self.member.name), ["👍"])
+		self.assertEqual(get_quick_reactions(self.second_member.name), ["🚀"])
+
+	def test_member_cannot_change_another_members_quick_reactions(self):
+		with self.as_user(self.second_member):
+			profile = get_profile(self.member.name)
+			profile.quick_reaction_emojis = frappe.as_json(["🚀"])
+			with self.assertRaises(frappe.PermissionError):
+				profile.save()
+
+	def test_quick_reactions_allow_twenty_slots(self):
+		slots = [f"emoji-{index}" for index in range(20)]
+
+		self.save_quick_reactions(self.member, slots)
+
+		self.assertEqual(get_quick_reactions(self.member.name), slots)
+
+	def test_quick_reactions_reject_more_than_twenty_slots(self):
+		with self.assertRaises(frappe.ValidationError):
+			self.save_quick_reactions(self.member, [f"emoji-{index}" for index in range(21)])
+
+	def test_quick_reactions_reject_duplicates(self):
+		with self.assertRaises(frappe.ValidationError):
+			self.save_quick_reactions(self.member, ["👍", "", "👍"])
+
+	def test_quick_reactions_reject_non_string_slots(self):
+		with self.assertRaises(frappe.ValidationError):
+			self.save_quick_reactions(self.member, ["👍", 42])
+
+	def test_quick_reactions_reject_non_list_json(self):
+		with self.assertRaises(frappe.ValidationError):
+			self.save_quick_reactions(self.member, {"first": "👍"})
+
+	def test_quick_reactions_are_trimmed_before_save(self):
+		self.save_quick_reactions(self.member, ["  👍  ", "", "  /files/party.gif "])
+
+		self.assertEqual(get_quick_reactions(self.member.name), ["👍", "", "/files/party.gif"])

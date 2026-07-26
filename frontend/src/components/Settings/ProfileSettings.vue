@@ -140,9 +140,9 @@ interface UserDoc {
   full_name?: string
 }
 
-const emit = defineEmits<{
-  (event: 'close-dialog'): void
-}>()
+// Declared so the parent's @close-dialog isn't treated as a failed attribute
+// fallthrough (this component renders a fragment). Route navigation closes Settings.
+defineEmits<{ (event: 'close-dialog'): void }>()
 
 const profileAutosaveToastId = 'profile-settings-autosave'
 
@@ -322,12 +322,10 @@ async function removeAvatar() {
 
 function goToMyProfile() {
   if (!sessionUser.user_profile) return
-  emit('close-dialog')
   router.push({ name: 'PersonProfileProfile', params: { personId: sessionUser.user_profile } })
 }
 
 function goToProfileCustomize() {
-  emit('close-dialog')
   router.push({ name: 'ProfileCustomize' })
 }
 
