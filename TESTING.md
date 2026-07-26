@@ -221,6 +221,30 @@ boots as the old user and the test fails on whatever it asserts about the new on
 `switchUser` unloads the page first (aborting those requests) and only continues once
 the server names the acting user.
 
+### Acting as a second user while a page is open
+
+`cy.request` shares the browser's cookie jar, so it always acts as whoever the open
+page is logged in as. When a spec needs _someone else_ to change something while the
+page under test stays loaded, use the `requestAsUser` Node task
+(`cypress.config.ts`), which logs in and calls the API in a session of its own:
+
+```ts
+cy.task("requestAsUser", {
+  user: "member@example.com",
+  path: `/api/v2/document/GP Discussion/${discussion}/method/close_discussion`,
+});
+```
+
+`discussions/realtime-activity.cy.ts` uses it for the live-update path.
+
+**Realtime caveat on a local bench:** the socket cannot authenticate for the demo
+site here. Under `developer_mode` the realtime server validates each session against
+`common_site_config.json`'s `webserver_port` (`:8000`), and that server is pinned to
+`default_site`, so a demo-site `sid` is unknown there and the tab connects as Guest —
+never joining any document room. Specs that need an inbound event hand the frame to
+the page's own engine instead; the server half is covered in
+`features/test_realtime_activity.py`.
+
 ### Conventions
 
 - **No bare `cy.wait(ms)`.** Wait on an intercept alias instead. The only exception is

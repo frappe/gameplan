@@ -377,23 +377,49 @@ Four Step-2-era failures were root-caused (all against the demo site on `:8001`)
    - Assumption taken: pinning/closing are edits, so the existing
      `can_edit_content` gate (any member who can reach the space; guests never)
      is the rule — matching the frontend's `canEditDiscussion` affordance gate.
-7. Realtime activity broadcast — currently has NO direct coverage; the
-   `new_activity` room bug (fixed in Step 2) shipped unnoticed because the only
-   thing exercising the path is an incidental assertion in
-   `discussions/discussion-actions.cy.ts` (feed shows the rename/close), which
-   can't tell "arrived via socket" from "the save reloaded the list", tests only
-   same-tab/same-user, and points at the wrong feature when it breaks.
-   - Backend: assert `log_activity` calls `frappe.publish_realtime("new_activity",
-     …)` with `doctype`/`docname` set (i.e. the document room, not the site
-     room). Mock `publish_realtime` — cheap and deterministic, and it pins the
-     exact regression that shipped. Also assert `subscribeToDoc`'s contract
-     indirectly if practical.
-   - E2E (harder, real value): two sessions in one spec — member2 has the
-     discussion open while member renames/closes it, and the change arrives in
-     member2's feed with no reload. Needs the socket connected; assert on a live
-     DOM update, not a `cy.reload()`. If a two-session spec proves too flaky,
-     fall back to asserting `subscribeToDoc` joins on mount / leaves on unmount
-     (frappe-ui Vitest or a focused unit test) so the client half is still pinned.
+7. Realtime activity broadcast — DONE, with one documented simulation
+   (2026-07-26). The `new_activity` room bug (fixed in Step 2) had shipped
+   unnoticed because the only thing exercising the path was an incidental
+   assertion in `discussions/discussion-actions.cy.ts`.
+   - Backend: `features/test_realtime_activity.py` (17 tests) mocks
+     `frappe.publish_realtime` and pins the broadcast on three axes: the **room**
+     (`doctype`/`docname` set → the document room; no `user=`; `after_commit`),
+     the **payload** (`reference_doctype` + a _stringified_ `reference_name`,
+     which is what the listeners compare against), and **coverage** (close,
+     reopen, pin, unpin, rename, move, a task value change — plus: one broadcast
+     per activity row, nothing for a save that writes no activity, nothing for a
+     rejected action). Removing `doctype=`/`docname=` from the mixin fails 9 of
+     the 17, so the exact regression is pinned.
+   - E2E: `discussions/realtime-activity.cy.ts`. `member2` opens the discussion,
+     `member` closes it from a session of their own, and the timeline entry
+     appears with no reload; navigating away unsubscribes. Both socket-room
+     emits (`doc_subscribe` on mount, `doc_unsubscribe` on unmount) are asserted
+     against a spy on the app's own socket
+     (`#app.__vue_app__.config.globalProperties.$socket`).
+   - The second session runs through a new `requestAsUser` Cypress **Node task**
+     (`cypress.config.ts`), not `cy.request`: `cy.request` shares the browser's
+     cookie jar, so it can only ever act as whoever the open page is logged in
+     as. Reusable by any future spec that needs "someone else did this while I
+     was looking at it".
+   - **Simulated hop (bench limitation, not a product gap):** the socket cannot
+     authenticate for `gameplan-demo.test` on this devbox. Under `developer_mode`
+     the realtime server validates every session against
+     `common_site_config.json`'s `webserver_port`
+     (`frappe/realtime/utils.js::get_url`), i.e. `:8000` — and that server is pinned to `default_site`
+     (`gameplan.localhost`) by `frappe/utils/bench_helper.py::get_sites`. The
+     demo-site `sid` is unknown there, so the tab connects as **Guest** and is
+     refused the document room. Verified with the same demo-site session:
+     `get_user_info` on `:8002` identifies `member2@example.com`, while the
+     realtime server's `:8000` authentication target identifies it as Guest.
+     (The earlier "SameSite cookie is dropped on the handshake" theory in the
+     Step-2 notes is wrong — the cookie is sent; it is validated against the
+     wrong site.) The spec therefore hands the frame to the page's engine
+     (`socket.io.engine.emit('data', …)`), so the real decoder, namespace routing
+     and listener dispatch still run and only the network hop is skipped.
+     Disabling `CommentsArea`'s `new_activity` handler makes the spec fail, so the
+     client realtime path is load-bearing, not decorative. Fixing the environment
+     needs a restart of the `:8000` server (or of the realtime server after a
+     `webserver_port` change), which is Faris's call.
 8. Pages (edit content, private vs space visibility + E2E).
 9. Profile/settings (bento cards, custom emoji, quick reactions + E2E).
 10. Search page E2E (filters; index hooks backend).
