@@ -346,8 +346,37 @@ Four Step-2-era failures were root-caused (all against the demo site on `:8001`)
        an agent cannot (`kill` is refused by the permission classifier). Until
        then, start your own runner rather than trusting `:8001`, and see the
        runner-freshness check in TESTING.md § "How to run".
-6. Discussion lifecycle backend (pin/close/comment-count/last_post side
-   effects).
+6. Discussion lifecycle backend — DONE (2026-07-26). Backend-only slice: the E2E
+   happy paths (comment, rename, close, move) already live in
+   `discussions/discussion-actions.cy.ts`, so no new spec.
+   `features/test_discussions.py` gained 41 tests in five classes — `TestPinning`
+   (scope Category vs Space, who pinned it, idempotent re-pin, unpin, activity
+   log, a guest cannot pin, pinning is not a post), `TestClosingAndReopening`
+   (closed_at/closed_by, activities, a closed thread refuses comments *and*
+   polls, close/reopen idempotence, a guest cannot close), `TestCommentsCount`
+   (add/delete a comment, polls count too, an edit does not),
+   `TestLastPost` (a comment/poll becomes the last post, newest wins, deleting
+   the newest falls back to the previous) and `TestParticipants` (distinct
+   posters incl. the author, guests count, deleting someone's only comment drops
+   them). Full backend suite green (338 tests across the three batches, exit 0);
+   `discussions/` + `comments/` specs re-run green (20/20) against the
+   demo-pinned `:8002` server.
+   - Product bugs fixed on the way:
+     - Deleting the only reply left the thread pointing at it: the delete cascade
+       nulls `last_post`/`last_post_type`, but `update_last_post` had no branch
+       for an empty thread, so `last_post_at` (the feed's sort key) and
+       `last_post_by` (its author line) stayed at the deleted comment. The
+       discussion is now its own last post again.
+     - A closed discussion still accepted **polls**. `GPComment.before_insert`
+       refuses a comment, but nothing refused a poll — the rule was enforced only
+       by the UI hiding the composer. `GPPoll.before_insert` now checks it too.
+   - Test-local helper (not a fixture): comments are inserted *as* their author,
+     because participants/last-post bookkeeping keys off `owner` and
+     `create_comment(owner=...)` rewrites the owner only after those side effects
+     have run.
+   - Assumption taken: pinning/closing are edits, so the existing
+     `can_edit_content` gate (any member who can reach the space; guests never)
+     is the rule — matching the frontend's `canEditDiscussion` affordance gate.
 7. Realtime activity broadcast — currently has NO direct coverage; the
    `new_activity` room bug (fixed in Step 2) shipped unnoticed because the only
    thing exercising the path is an incidental assertion in

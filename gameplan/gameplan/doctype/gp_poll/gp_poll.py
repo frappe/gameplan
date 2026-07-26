@@ -27,6 +27,7 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 	on_delete_set_null = ["GP Discussion"]
 
 	def before_insert(self):
+		self.check_if_discussion_is_closed()
 		self.options = [d for d in self.options if d.title]
 		for option in self.options:
 			option.title = option.title.strip()
@@ -34,6 +35,16 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 		options = [d.title for d in self.options]
 		if len(set(options)) != len(options):
 			frappe.throw(_("Duplicate options not allowed"))
+
+	def check_if_discussion_is_closed(self):
+		"""A poll is a post in the thread just like a comment, so a closed discussion
+		refuses it too (GPComment.before_insert does the same). The UI hides the whole
+		composer when a discussion is closed, which left this unenforced on the server.
+		"""
+		if not self.discussion:
+			return
+		if frappe.db.get_value("GP Discussion", self.discussion, "closed_at"):
+			frappe.throw(_("Cannot add a poll to a closed discussion"))
 
 	def validate(self):
 		self.total_votes = len(self.votes)

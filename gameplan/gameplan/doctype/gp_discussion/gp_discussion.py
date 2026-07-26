@@ -259,6 +259,15 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 			update_last_post_fields("GP Comment", last_comment)
 		elif last_poll:
 			update_last_post_fields("GP Poll", last_poll)
+		else:
+			# Nothing left in the thread (the last reply was deleted): the discussion is its
+			# own last post again. Without this the feed keeps sorting and attributing the
+			# thread by a reply that no longer exists — `last_post` itself is nulled by the
+			# delete cascade, but `last_post_at` / `last_post_by` would stay behind.
+			self.last_post_type = None
+			self.last_post = None
+			self.last_post_at = self.creation
+			self.last_post_by = self.owner
 
 	def update_post_count(self):
 		comments_count = frappe.db.count(
