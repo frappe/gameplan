@@ -10,6 +10,7 @@ from gameplan.search_sqlite import GameplanSearch
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import create_community, create_discussion, create_space, create_user
 from gameplan.tests.search_isolation import IsolatedSearchIndex
+from gameplan.ui_test_helpers import create_invitation, rebuild_search_index, reset
 
 EMPTY_FILTER_OPTIONS = {
 	"authors": {},
@@ -25,6 +26,15 @@ class APIEndpointTestCase(GameplanTestCase):
 		"""Assert the public Frappe boundary rejects an unauthenticated caller."""
 		with self.as_user("Guest"), self.assertRaises(frappe.PermissionError):
 			frappe.is_whitelisted(endpoint)
+
+
+class TestUITestHelperHTTPMethods(GameplanTestCase):
+	def test_ui_test_mutations_are_post_only(self):
+		for endpoint in (reset, rebuild_search_index, create_invitation):
+			self.assertEqual(
+				frappe.allowed_http_methods_for_whitelisted_func[endpoint],
+				["POST"],
+			)
 
 
 class TestOnboardingEndpoint(APIEndpointTestCase):

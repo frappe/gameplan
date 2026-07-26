@@ -68,7 +68,7 @@ describe('Guest access', () => {
 
     // ...but nothing that changes the member's post itself. The menu still opens (Copy
     // link proves it rendered), it just carries none of the owner-only actions.
-    cy.get('body').type('{esc}')
+    cy.dismissEmojiPicker()
     cy.get('button[aria-haspopup=menu][aria-label="Discussion Options"]').click()
     cy.get('[role="menuitem"]:contains("Copy link"):visible').should('exist')
     for (const action of ['Edit', 'Pin discussion', 'Close discussion', 'Move to']) {

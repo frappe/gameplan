@@ -7,7 +7,7 @@ from frappe import _
 
 
 class HasReactions:
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def react(self, operations=None):
 		from gameplan.permissions import can_view_content
 

@@ -12,6 +12,7 @@ state, then optionally builds a named scenario and returns its ids dict.
 """
 
 from contextlib import contextmanager
+from functools import wraps
 
 import frappe
 
@@ -28,10 +29,13 @@ GUEST = "guest@example.com"
 
 
 def whitelist(fn):
-	if not frappe.conf.enable_ui_tests:
-		frappe.throw("Cannot run UI tests. Set 'enable_ui_tests' in site_config.json to continue.")
+	@wraps(fn)
+	def guarded(*args, **kwargs):
+		if not frappe.conf.enable_ui_tests:
+			frappe.throw("Cannot run UI tests. Set 'enable_ui_tests' in site_config.json to continue.")
+		return fn(*args, **kwargs)
 
-	return frappe.whitelist()(fn)
+	return frappe.whitelist(methods=["POST"])(guarded)
 
 
 @whitelist

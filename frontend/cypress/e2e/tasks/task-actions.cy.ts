@@ -35,7 +35,7 @@ describe('Task actions', () => {
     cy.intercept('PUT', '/api/v2/document/GP%20Task/*').as('saveTask')
 
     // rename it — the title input saves on blur
-    cy.get('input[placeholder="Title"]').click().clear({ force: true }).type('Edited Task Title')
+    cy.get('input[placeholder="Title"]').click().type('{selectall}Edited Task Title')
     cy.get('input[placeholder="Title"]').blur()
     cy.wait('@saveTask').its('response.body.data.title').should('eq', 'Edited Task Title')
 

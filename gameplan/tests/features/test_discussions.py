@@ -425,6 +425,17 @@ class TestLastPost(DiscussionLifecycleTestCase):
 		self.assertEqual(discussion.last_post_by, self.member.name)
 		self.assertEqual(get_datetime(discussion.last_post_at), get_datetime(discussion.creation))
 
+	def test_deleting_the_only_poll_returns_the_discussion_to_being_its_own_last_post(self):
+		poll = self.poll_as(self.second_member)
+
+		self.delete_as(poll, self.second_member)
+
+		discussion = self.stored()
+		self.assertFalse(discussion.last_post)
+		self.assertFalse(discussion.last_post_type)
+		self.assertEqual(discussion.last_post_by, self.member.name)
+		self.assertEqual(get_datetime(discussion.last_post_at), get_datetime(discussion.creation))
+
 	def test_the_feed_shows_the_author_while_nobody_has_replied(self):
 		with self.as_user(self.member):
 			[row] = [d for d in get_discussions(filters={"project": self.space.name}, limit=20)]

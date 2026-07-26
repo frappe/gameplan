@@ -298,7 +298,7 @@ The migration is done. Everything described above is the current state, not a pl
 - Backend tests all live under `gameplan/tests/{features,permissions,platform}/`. No
   `test_*.py` remains beside a doctype, and the old `tests/utils.py` is gone — builders
   live in `fixtures.py`.
-- All 21 specs sit in the grouped folders under `cypress/e2e/`, seed through
+- All 33 specs sit in the grouped folders under `cypress/e2e/`, seed through
   `resetData(scenario)`, and log in with `cy.loginAs(persona)`.
 - `gameplan/test_api.py` is deleted. `gameplan/ui_test_helpers.py` is the only seed
   surface, and like its predecessor every entry point is gated on `enable_ui_tests`.

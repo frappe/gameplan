@@ -4,7 +4,7 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import flt, get_datetime
+from frappe.utils import flt
 
 from gameplan.mixins.reactions import HasReactions
 from gameplan.permissions import (
@@ -75,8 +75,8 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 	@frappe.whitelist(methods=["POST"])
 	def submit_vote(self, option):
 		self.discard_client_state()
-		self.check_if_stopped()
 		self.check_can_participate()
+		self.check_if_stopped()
 		selected = self.get_option(option)
 
 		if self.anonymous:
@@ -99,8 +99,8 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 	@frappe.whitelist(methods=["POST"])
 	def retract_vote(self, option=None):
 		self.discard_client_state()
-		self.check_if_stopped()
 		self.check_can_participate()
+		self.check_if_stopped()
 		if self.anonymous:
 			frappe.throw(_("Cannot retract vote for anonymous poll"))
 		user = frappe.session.user
@@ -179,9 +179,7 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 			)
 
 	def check_if_stopped(self):
-		# `stopped_at` is a string on the doc that just ran stop_poll() and a datetime once
-		# read back from the database, so normalise it before comparing.
-		if self.stopped_at and get_datetime(self.stopped_at) < frappe.utils.now_datetime():
+		if self.stopped_at and self.stopped_at < frappe.utils.now_datetime():
 			frappe.throw(_("Poll has ended"))
 
 

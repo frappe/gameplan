@@ -414,6 +414,17 @@ class TestWhoMayVote(PollTestCase):
 		poll.reload()
 		self.assertEqual(poll.total_votes, 0)
 
+	def test_stopped_poll_does_not_leak_its_state_outside_the_space(self):
+		poll = self.private_poll()
+		with self.as_user(self.member):
+			poll.stop_poll()
+
+		with (
+			self.as_user(self.second_member),
+			self.assertRaisesRegex(frappe.PermissionError, "You do not have access to this poll"),
+		):
+			frappe.get_doc("GP Poll", poll.name).submit_vote("Yes")
+
 	def test_only_the_owner_and_moderators_may_delete_a_poll(self):
 		poll = self.poll()
 
@@ -435,7 +446,8 @@ class TestWhoMayVote(PollTestCase):
 
 
 class TestGuestPollParticipation(GameplanTestCase):
-	"""Guests are participants in the spaces they are granted: they may vote there."""
+	"""Guests are participants in the spaces they are granted: they may create, vote,
+	and react to polls there."""
 
 	def setUp(self):
 		super().setUp()
@@ -448,6 +460,34 @@ class TestGuestPollParticipation(GameplanTestCase):
 		self.discussion = create_discussion("Guest poll thread", self.space, owner=self.member)
 		self.other_discussion = create_discussion("Closed thread", self.other_space, owner=self.member)
 
+	def test_guest_can_create_a_poll_but_not_a_discussion_in_a_granted_space(self):
+		with self.as_user(self.guest):
+			poll = frappe.get_doc(
+				doctype="GP Poll",
+				title="Guest lunch poll",
+				discussion=self.discussion.name,
+				options=[{"title": "Yes"}, {"title": "No"}],
+			).insert()
+
+			with self.assertRaises(frappe.PermissionError):
+				frappe.get_doc(
+					doctype="GP Discussion",
+					title="Guest-created discussion",
+					content="<p>Not participation content</p>",
+					project=self.space.name,
+				).insert()
+
+		self.assertEqual(poll.owner, self.guest.name)
+
+	def test_guest_cannot_create_a_poll_outside_their_granted_spaces(self):
+		with self.as_user(self.guest), self.assertRaises(frappe.PermissionError):
+			frappe.get_doc(
+				doctype="GP Poll",
+				title="Hidden poll",
+				discussion=self.other_discussion.name,
+				options=[{"title": "Yes"}, {"title": "No"}],
+			).insert()
+
 	def test_guest_can_vote_in_a_granted_space(self):
 		poll = create_poll("Lunch?", self.discussion, owner=self.member)
 
@@ -456,6 +496,15 @@ class TestGuestPollParticipation(GameplanTestCase):
 		poll.reload()
 
 		self.assertEqual([(v.user, v.option) for v in poll.votes], [(self.guest.name, "Yes")])
+
+	def test_guest_can_react_to_a_poll_in_a_granted_space(self):
+		poll = create_poll("Lunch?", self.discussion, owner=self.member)
+
+		with self.as_user(self.guest):
+			frappe.get_doc("GP Poll", poll.name).react(operations=[{"emoji": "👍", "operation": "add"}])
+
+		poll.reload()
+		self.assertEqual([(row.user, row.emoji) for row in poll.reactions], [(self.guest.name, "👍")])
 
 	def test_guest_cannot_vote_outside_their_granted_spaces(self):
 		poll = create_poll("Lunch?", self.other_discussion, owner=self.member)

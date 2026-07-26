@@ -23,7 +23,12 @@ const markReadApi = useDoctype('GP Unread Record')
 
 function loadProjectUnreadCounts(projects?: string[]) {
   return unreadCountApi.runMethod
-    .submit({ method: 'get_unread_count', params: { projects } })
+    .submit({
+      method: 'get_unread_count',
+      // Autoincremented Space names can arrive on a freshly loaded document as
+      // numbers, while the whitelisted endpoint deliberately accepts list[str].
+      params: { projects: projects?.map(String) },
+    })
     .then((data: ProjectUnreadCount) => {
       // A full reload (no project filter) is authoritative: the backend omits spaces whose
       // count is now zero, so clear stale positives before applying the response — otherwise

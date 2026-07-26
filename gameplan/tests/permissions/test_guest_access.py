@@ -10,6 +10,7 @@ participation policy, specced in features/test_guest_participation.py.
 
 import frappe
 
+from gameplan.extends.client import get_list as get_client_list
 from gameplan.gameplan.doctype.gp_discussion.api import get_discussions
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import create_community, create_discussion, create_space, grant_guest_access
@@ -32,7 +33,13 @@ class TestGuestAccess(GameplanTestCase):
 		"""The sidebar is a GP Project list, so the grant has to hold at query level too —
 		a `has_permission` check alone would still leave every space in the guest's rail."""
 		with self.as_user(self.guest):
-			listed = {str(space) for space in frappe.get_list("GP Project", pluck="name")}
+			rows = get_client_list(
+				doctype="GP Project",
+				fields=["name", "team.title as team_title"],
+				limit=99999,
+			)
+			listed = {str(row.name) for row in rows}
+			team_titles = {str(row.name): row.team_title for row in rows}
 
 		# Expected set is computed from the guest's own grants, so the assertion stays
 		# exact on a shared site that may hold other committed GP Guest Access rows.
@@ -41,6 +48,7 @@ class TestGuestAccess(GameplanTestCase):
 		self.assertEqual(listed, {str(space) for space in granted})
 		self.assertIn(str(self.granted_space.name), listed)
 		self.assertNotIn(str(self.public_space.name), listed)
+		self.assertEqual(team_titles[str(self.granted_space.name)], self.community.title)
 
 	def test_guest_discussion_feed_contains_only_posts_in_granted_spaces(self):
 		"""What the guest clicks through to: the feed must drop posts from spaces they

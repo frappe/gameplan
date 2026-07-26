@@ -45,12 +45,14 @@ describe('Notifications', () => {
     // hence the trailing glob.
     cy.intercept('GET', '**/gameplan.api.unread_notifications*').as('unreadCount')
     cy.visit('/g/')
-    cy.wait('@unreadCount')
+    cy.wait('@unreadCount').its('response.statusCode').should('eq', 200)
     cy.get('button[aria-label="Notifications, 1 unread"]').should('exist').click()
 
     // ... which opens onto the mention itself
-    cy.contains('Second Member mentioned you in a post').should('be.visible')
-    cy.contains('Welcome thread').should('be.visible')
+    cy.contains('Second Member mentioned you in a post')
+      .should('be.visible')
+      .closest('a')
+      .within(() => cy.contains('Welcome thread').should('be.visible'))
 
     // marking everything read empties the list and drops the badge
     cy.intercept('POST', '**/gameplan.api.mark_all_notifications_as_read*').as('markAllAsRead')

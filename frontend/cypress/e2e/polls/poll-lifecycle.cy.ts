@@ -102,6 +102,7 @@ describe('Poll lifecycle', () => {
     cy.switchUser('admin')
     cy.visit(`/g/community/${community}/space/${space}/discussion/${discussion}`)
     cy.contains('Ship on Friday?').should('be.visible')
+    pollAnswer('Yes').should('be.enabled')
     cy.button('Stop Poll').click()
     cy.dialog('button:contains("Stop")').click()
     cy.wait('@stopPoll')

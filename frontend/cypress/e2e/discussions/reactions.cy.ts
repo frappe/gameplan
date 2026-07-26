@@ -54,15 +54,6 @@ describe('Reactions', () => {
   // unambiguous.
   const pickEmoji = (emoji: string) => cy.get(`button:contains("${emoji}"):visible`).click()
 
-  // A hover card stays open as long as the pointer rests on it, and Cypress leaves its
-  // synthetic pointer wherever it last clicked. Dismiss the post's picker before
-  // opening the reply's, or both emoji grids are on screen and the next pick is
-  // ambiguous.
-  const dismissPicker = () => {
-    cy.get('body').type('{esc}')
-    cy.get(`button:contains("${GRID_ONLY_EMOJI}")`).should('not.exist')
-  }
-
   it('reacts to a discussion and to a comment, and both survive a reload', () => {
     cy.intercept('POST', `/api/v2/document/GP%20Discussion/${discussion}/method/react`).as(
       'reactToPost',
@@ -77,13 +68,13 @@ describe('Reactions', () => {
     postReactionPicker().click()
     pickEmoji(POST_EMOJI)
     cy.wait('@reactToPost')
-    dismissPicker()
+    cy.dismissEmojiPicker(GRID_ONLY_EMOJI)
 
     // React to member2's reply.
     cy.get(commentSelector()).find('button[aria-label="Add a reaction"]').click()
     pickEmoji(COMMENT_EMOJI)
     cy.wait('@reactToComment')
-    dismissPicker()
+    cy.dismissEmojiPicker(GRID_ONLY_EMOJI)
 
     // The pill separates emoji and count with a non-breaking space, so match on a
     // regex (\s covers U+00A0) rather than a literal space.

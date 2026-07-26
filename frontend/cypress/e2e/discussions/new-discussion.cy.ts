@@ -21,7 +21,7 @@ describe('New discussion drafts', () => {
     cy.visit(`/g/community/${community}/new-discussion`)
     cy.get('textarea[placeholder="Title"]').type('Stored Draft Title')
     cy.get('[contenteditable=true]').click().type('Stored draft body.')
-    cy.contains('button[aria-haspopup="listbox"]', 'Select Space').click({ force: true })
+    cy.contains('button[aria-haspopup="listbox"]', 'Select Space').click()
     cy.get('[role="option"]').contains(spaceTitle).click()
     cy.url().should('include', 'draft=')
   }
@@ -52,7 +52,7 @@ describe('New discussion drafts', () => {
     // Create the draft. A draft is only persisted once a space is chosen.
     cy.get('textarea[placeholder="Title"]').type('My Draft Discussion{enter}')
     cy.get('[contenteditable=true]').click().type(draftContent)
-    cy.contains('button[aria-haspopup="listbox"]', 'Select Space').click({ force: true })
+    cy.contains('button[aria-haspopup="listbox"]', 'Select Space').click()
     cy.get('[role="option"]').contains(spaceTitle).click()
     // Retries until an autosave carrying the content has completed.
     cy.wrap(null).should(() => expect(draftContentSaved, 'draft content autosaved').to.be.true)

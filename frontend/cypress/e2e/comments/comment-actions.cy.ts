@@ -51,6 +51,7 @@ describe('Comment actions', () => {
         cy.get(`${commentSelector} button[aria-label="Add a reaction"]`).click()
         cy.get('button:contains("👍"):visible').click()
         cy.wait('@reactRequest')
+        cy.dismissEmojiPicker()
         // The reaction pill separates emoji and count with a non-breaking space,
         // so match with a regex (\s covers U+00A0) instead of a literal space.
         cy.contains('button', /👍\s*1/).should('exist')
@@ -60,6 +61,7 @@ describe('Comment actions', () => {
         cy.get(`${commentSelector} button[aria-label="Add a reaction"]`).click()
         cy.get('button:contains("💖"):visible').click()
         cy.wait('@reactRequest')
+        cy.dismissEmojiPicker()
         cy.contains('button', /💖\s*1/)
           .should('exist')
           .click()
@@ -86,7 +88,7 @@ describe('Comment actions', () => {
         }).as('deleteComment')
         cy.selectDropdownOption('Comment Options', 'Delete')
         cy.dialog('button:contains("Delete")').click()
-        cy.wait('@deleteComment')
+        cy.wait('@deleteComment').its('response.statusCode').should('eq', 202)
         cy.get(commentSelector).should('not.exist')
       })
   })

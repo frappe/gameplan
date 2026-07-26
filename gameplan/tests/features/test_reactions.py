@@ -18,6 +18,7 @@ file owns — is the operation contract of `react`:
 
 import frappe
 
+from gameplan.mixins.reactions import HasReactions
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
 	create_comment,
@@ -160,6 +161,21 @@ class TestReact(ReactionTestCase):
 		self.assertEqual(updated.title, original.title)
 		self.assertEqual(updated.content, original.content)
 		self.assertEqual(updated.owner, original.owner)
+
+	def test_reacting_does_not_mark_a_comment_as_edited(self):
+		self.assertFalse(frappe.db.get_value("GP Comment", self.comment.name, "edited_at"))
+
+		self.react(self.comment, self.second_member, [add(THUMBS_UP)])
+
+		self.assertFalse(frappe.db.get_value("GP Comment", self.comment.name, "edited_at"))
+
+
+class TestReactionMutationHTTPMethods(GameplanTestCase):
+	def test_react_is_post_only(self):
+		self.assertEqual(
+			frappe.allowed_http_methods_for_whitelisted_func[HasReactions.react],
+			["POST"],
+		)
 
 
 class TestReactPayload(ReactionTestCase):

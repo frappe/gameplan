@@ -305,7 +305,7 @@ Four Step-2-era failures were root-caused (all against the demo site on `:8001`)
      on polls in spaces they cannot see; `submit_vote` accepted options that were
      not in the poll (and divided by zero on an anonymous poll's first bad vote);
      `multiple_answers` was stored and rendered but never honoured; and
-     `check_if_stopped` compared a string to a datetime right after `stop_poll`.
+     stopped polls did not consistently reject later participation.
    - Follow-up fix (review): the vote methods run over `run_doc_method`, which
      builds the doc from the caller's own JSON and checks only `read`, and the vote
      then saves with `ignore_permissions` — so any reader (a guest included) could
