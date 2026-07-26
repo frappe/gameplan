@@ -7,16 +7,21 @@ join, leave, manage members or invite guests."""
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
+from gameplan.gameplan.doctype.gp_project import gp_project as gp_project_module
 from gameplan.gameplan.doctype.gp_project.gp_project import (
 	GPProject,
-	follow_spaces,
 	get_activity,
 	track_visits,
-	unfollow_spaces,
 )
 from gameplan.search_sqlite import GameplanSearch
 from gameplan.tests.base import GameplanTestCase
-from gameplan.tests.fixtures import create_community, create_discussion, create_member, create_space
+from gameplan.tests.fixtures import (
+	create_community,
+	create_discussion,
+	create_member,
+	create_space,
+	grant_guest_access,
+)
 
 
 class TestSpaces(FrappeTestCase):
@@ -195,63 +200,6 @@ class TestSpaceMembership(GameplanTestCase):
 			space.invite_guest("blocked_perm_guest@example.com")
 
 
-class TestSpaceFollowing(GameplanTestCase):
-	def setUp(self):
-		super().setUp()
-		self.community = create_community("Following Community", members=[self.member, self.second_member])
-		self.space = create_space("Following Space", self.community)
-
-	def test_following_is_idempotent_and_scoped_to_the_current_user(self):
-		with self.as_user(self.member):
-			space = frappe.get_doc("GP Project", self.space.name)
-			follow_spaces([str(self.space.name)])
-			follow_spaces([str(self.space.name)])
-			self.assertTrue(space.is_followed)
-
-		self.assertEqual(
-			frappe.db.count("GP Followed Project", {"project": self.space.name, "user": self.member.name}),
-			1,
-		)
-		with self.as_user(self.second_member):
-			self.assertFalse(frappe.get_doc("GP Project", self.space.name).is_followed)
-
-	def test_unfollowing_is_idempotent_and_leaves_other_users_follow_alone(self):
-		for user in (self.member, self.second_member):
-			with self.as_user(user):
-				frappe.get_doc("GP Project", self.space.name).follow()
-
-		with self.as_user(self.member):
-			space = frappe.get_doc("GP Project", self.space.name)
-			unfollow_spaces([str(self.space.name)])
-			unfollow_spaces([str(self.space.name)])
-			self.assertFalse(space.is_followed)
-
-		self.assertTrue(
-			frappe.db.exists(
-				"GP Followed Project",
-				{"project": self.space.name, "user": self.second_member.name},
-			)
-		)
-
-	def test_member_cannot_follow_an_inaccessible_space(self):
-		private_community = create_community(
-			"Private Following Community", is_private=1, members=[self.member]
-		)
-		private_space = create_space(
-			"Private Following Space", private_community, is_private=1, members=[self.member]
-		)
-
-		with self.as_user(self.outsider), self.assertRaises(frappe.PermissionError):
-			private_space.follow()
-
-		self.assertFalse(
-			frappe.db.exists(
-				"GP Followed Project",
-				{"project": private_space.name, "user": self.outsider.name},
-			)
-		)
-
-
 class TestSpaceReadState(GameplanTestCase):
 	def setUp(self):
 		super().setUp()
@@ -292,21 +240,27 @@ class TestSpaceReadState(GameplanTestCase):
 		self.assertTrue(visit.mark_all_read_at)
 
 	def test_visiting_a_space_upserts_the_current_users_visit(self):
+		old_last_visit = "2026-01-01 00:00:00"
+		visit = frappe.get_doc(
+			doctype="GP Project Visit",
+			user=self.member.name,
+			project=self.space.name,
+			last_visit=old_last_visit,
+		).insert(ignore_permissions=True)
+
 		with self.as_user(self.member):
-			track_visits([str(self.space.name)])
-			track_visits([str(self.space.name)])
+			frappe.get_doc("GP Project", self.space.name).track_visit()
+			frappe.get_doc("GP Project", self.space.name).track_visit()
 
 		self.assertEqual(
 			frappe.db.count("GP Project Visit", {"user": self.member.name, "project": self.space.name}),
 			1,
 		)
-		visit = frappe.db.get_value(
-			"GP Project Visit",
-			{"user": self.member.name, "project": self.space.name},
-			["last_visit", "mark_all_read_at"],
-			as_dict=True,
+		visit.reload()
+		self.assertGreater(
+			frappe.utils.get_datetime(visit.last_visit),
+			frappe.utils.get_datetime(old_last_visit),
 		)
-		self.assertTrue(visit.last_visit)
 		self.assertIsNone(visit.mark_all_read_at)
 
 	def test_member_cannot_track_a_visit_to_an_inaccessible_space(self):
@@ -316,7 +270,7 @@ class TestSpaceReadState(GameplanTestCase):
 		)
 
 		with self.as_user(self.outsider), self.assertRaises(frappe.PermissionError):
-			track_visits([str(private_space.name)])
+			private_space.track_visit()
 
 		self.assertFalse(
 			frappe.db.exists(
@@ -326,12 +280,13 @@ class TestSpaceReadState(GameplanTestCase):
 		)
 
 	def test_marking_a_space_read_updates_the_existing_visit(self):
+		old_timestamp = "2026-01-01 00:00:00"
 		visit = frappe.get_doc(
 			doctype="GP Project Visit",
 			user=self.member.name,
 			project=self.space.name,
-			last_visit="2026-01-01 00:00:00",
-			mark_all_read_at="2026-01-01 00:00:00",
+			last_visit=old_timestamp,
+			mark_all_read_at=old_timestamp,
 		).insert(ignore_permissions=True)
 
 		with self.as_user(self.member):
@@ -344,7 +299,36 @@ class TestSpaceReadState(GameplanTestCase):
 		visit.reload()
 		self.assertGreater(
 			frappe.utils.get_datetime(visit.mark_all_read_at),
-			frappe.utils.get_datetime("2026-01-01 00:00:00"),
+			frappe.utils.get_datetime(old_timestamp),
+		)
+		self.assertGreater(
+			frappe.utils.get_datetime(visit.last_visit),
+			frappe.utils.get_datetime(old_timestamp),
+		)
+
+	def test_guest_with_space_access_can_record_a_visit(self):
+		grant_guest_access(self.guest, self.space)
+
+		with self.as_user(self.guest):
+			frappe.get_doc("GP Project", self.space.name).track_visit()
+
+		self.assertTrue(
+			frappe.db.get_value(
+				"GP Project Visit",
+				{"user": self.guest.name, "project": self.space.name},
+				"last_visit",
+			)
+		)
+
+	def test_guest_without_space_access_cannot_record_a_visit(self):
+		with self.as_user(self.guest), self.assertRaises(frappe.PermissionError):
+			frappe.get_doc("GP Project", self.space.name).track_visit()
+
+		self.assertFalse(
+			frappe.db.exists(
+				"GP Project Visit",
+				{"user": self.guest.name, "project": self.space.name},
+			)
 		)
 
 	def test_member_cannot_mark_an_inaccessible_space_read(self):
@@ -367,16 +351,18 @@ class TestSpaceReadState(GameplanTestCase):
 
 
 class TestSpaceMutationHTTPMethods(GameplanTestCase):
+	def test_following_is_not_a_space_api(self):
+		for method in ("follow", "unfollow"):
+			self.assertFalse(hasattr(GPProject, method))
+		for endpoint in ("follow_spaces", "unfollow_spaces"):
+			self.assertFalse(hasattr(gp_project_module, endpoint))
+
 	def test_space_membership_mutations_are_post_only(self):
 		for method in (
 			GPProject.join,
 			GPProject.leave,
-			GPProject.follow,
-			GPProject.unfollow,
 			GPProject.track_visit,
 			GPProject.mark_all_as_read,
 			track_visits,
-			follow_spaces,
-			unfollow_spaces,
 		):
 			self.assertEqual(frappe.allowed_http_methods_for_whitelisted_func[method], ["POST"])

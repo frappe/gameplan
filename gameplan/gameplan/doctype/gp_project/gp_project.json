@@ -19,8 +19,7 @@
   "tasks_count",
   "discussions_count",
   "archived_at",
-  "archived_by",
-  "is_followed"
+  "archived_by"
  ],
  "fields": [
   {
@@ -98,13 +97,6 @@
    "fieldname": "is_private",
    "fieldtype": "Check",
    "label": "Is Private"
-  },
-  {
-   "default": "0",
-   "fieldname": "is_followed",
-   "fieldtype": "Check",
-   "is_virtual": 1,
-   "label": "Is Followed"
   }
  ],
  "index_web_pages_for_search": 1,

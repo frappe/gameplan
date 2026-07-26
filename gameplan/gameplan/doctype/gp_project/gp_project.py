@@ -125,26 +125,6 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 			visit.last_visit = frappe.utils.now()
 			visit.insert(ignore_permissions=True)
 
-	@property
-	def is_followed(self):
-		return bool(
-			frappe.db.exists("GP Followed Project", {"project": self.name, "user": frappe.session.user})
-		)
-
-	@frappe.whitelist(methods=["POST"])
-	def follow(self):
-		self.require_view_access()
-		if not self.is_followed:
-			frappe.get_doc(doctype="GP Followed Project", project=self.name).insert(ignore_permissions=True)
-
-	@frappe.whitelist(methods=["POST"])
-	def unfollow(self):
-		follow_id = frappe.db.get_value(
-			"GP Followed Project", {"project": self.name, "user": frappe.session.user}
-		)
-		if follow_id:
-			frappe.delete_doc("GP Followed Project", follow_id, ignore_permissions=True)
-
 	@frappe.whitelist()
 	def add_member(self, user):
 		require_can_manage_space_members(self)
@@ -306,22 +286,6 @@ def track_visits(spaces: list[str] = None):
 		return
 	for space in spaces:
 		frappe.get_doc("GP Project", space).track_visit()
-
-
-@frappe.whitelist(methods=["POST"])
-def follow_spaces(spaces: list[str] = None):
-	if not spaces:
-		return
-	for space in spaces:
-		frappe.get_doc("GP Project", space).follow()
-
-
-@frappe.whitelist(methods=["POST"])
-def unfollow_spaces(spaces: list[str] = None):
-	if not spaces:
-		return
-	for space in spaces:
-		frappe.get_doc("GP Project", space).unfollow()
 
 
 @frappe.whitelist(methods=["POST"])

@@ -323,18 +323,6 @@ class Seeder:
 			update_modified=False,
 		)
 
-	def _event_follow(self, event, actor, ts):
-		space = self._ref_name(event["on"])
-		doc = frappe.get_doc(
-			{
-				"doctype": "GP Followed Project",
-				"user": actor,
-				"project": space,
-				"team": frappe.db.get_value("GP Project", space, "team"),
-			}
-		).insert(ignore_permissions=True)
-		self._backdate("GP Followed Project", doc.name, ts)
-
 	def _event_pin(self, event, actor, ts):
 		space = self._ref_name(event["on"])
 		doc = frappe.get_doc(

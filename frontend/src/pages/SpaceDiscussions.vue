@@ -98,7 +98,6 @@ import { showCommunitiesSettings } from '@/components/Settings'
 import {
   useSpace,
   useSpacePermissions,
-  useSpaceFollowing,
   spaces,
   hasJoined,
   joinSpaces,
@@ -135,7 +134,6 @@ const {
   canEditSpace,
   canManageAccess,
 } = useSpacePermissions(() => props.spaceId)
-const following = useSpaceFollowing(() => props.spaceId)
 const isJoined = computed(() => hasJoined(props.spaceId))
 const showSpaceAccessDialog = ref(false)
 
@@ -169,12 +167,6 @@ const spaceActions = computed(() => [
       if (!currentSpace.value) return
       return isJoined.value ? leaveSpaces([props.spaceId]) : joinSpaces([props.spaceId])
     },
-    condition: () => canEditSpace.value,
-  },
-  {
-    label: following.isFollowed.value ? 'Unfollow space' : 'Follow space',
-    icon: following.isFollowed.value ? 'lucide-bell-off' : 'lucide-bell-plus',
-    onClick: () => (following.isFollowed.value ? following.unfollow() : following.follow()),
     condition: () => canEditSpace.value,
   },
   {

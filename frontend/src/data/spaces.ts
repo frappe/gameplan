@@ -1,5 +1,5 @@
 import { computed, MaybeRefOrGetter, toValue } from 'vue'
-import { useCall, useList, useDoc, useDoctype, dialog } from 'frappe-ui'
+import { useCall, useList, useDoctype, dialog } from 'frappe-ui'
 import { GPProject, GPMember } from '@/types/doctypes'
 import { getProjectUnreadCount, markSpacesAsRead } from './unreadCount'
 import { useSessionUser } from './users'
@@ -8,19 +8,18 @@ import { readOnlyMode } from './readOnlyMode'
 
 interface Member extends Pick<GPMember, 'user'> {}
 
-export interface Space
-  extends Pick<
-    GPProject,
-    | 'name'
-    | 'title'
-    | 'icon'
-    | 'team'
-    | 'archived_at'
-    | 'is_private'
-    | 'modified'
-    | 'tasks_count'
-    | 'discussions_count'
-  > {
+export interface Space extends Pick<
+  GPProject,
+  | 'name'
+  | 'title'
+  | 'icon'
+  | 'team'
+  | 'archived_at'
+  | 'is_private'
+  | 'modified'
+  | 'tasks_count'
+  | 'discussions_count'
+> {
   team_title: string
   members: Member[]
 }
@@ -96,39 +95,16 @@ export function getSpaceUnreadCount(spaceId: string) {
 }
 
 export function trackSpaceVisit(spaceId: string) {
-  return spaceDoctype.runMethod.submit({
+  return spaceVisitApi.runMethod.submit({
     method: 'track_visits',
     params: { spaces: [spaceId] },
   })
 }
 
-export function useSpaceFollowing(spaceId: MaybeRefOrGetter<string>) {
-  const space = useDoc<GPProject>({
-    doctype: 'GP Project',
-    name: spaceId,
-  })
-  const isFollowed = computed(() => Boolean(space.doc?.is_followed))
-
-  async function follow() {
-    await spaceDoctype.runMethod.submit({
-      method: 'follow_spaces',
-      params: { spaces: [toValue(spaceId)] },
-    })
-    await space.reload()
-  }
-
-  async function unfollow() {
-    await spaceDoctype.runMethod.submit({
-      method: 'unfollow_spaces',
-      params: { spaces: [toValue(spaceId)] },
-    })
-    await space.reload()
-  }
-
-  return { isFollowed, follow, unfollow }
-}
-
 const spaceDoctype = useDoctype<GPProject>('GP Project')
+// Mount-time visit tracking can overlap a menu action. Keep it off spaceDoctype's single
+// shared runMethod request so the two calls cannot cross-resolve each other's state.
+const spaceVisitApi = useDoctype<GPProject>('GP Project')
 
 export function joinSpace(space: Space) {
   return spaceDoctype.runDocMethod

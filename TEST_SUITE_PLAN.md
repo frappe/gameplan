@@ -44,6 +44,16 @@ One test map mirroring the product's feature catalog, at three layers:
 - Rejected along the way (do not resurrect): a generic `gameplan.api.react`
   endpoint; an upstream frappe `permission_type` change. Both were made
   unnecessary by the tier model above.
+- **Space mutation HTTP methods**: `GPProject.track_visit`, `join`, `leave`, and
+  `mark_all_as_read` are explicit POST-only exceptions to the deferred endpoint
+  audit. The other mutating `GP Project` methods remain on that separate branch.
+- **Space following is removed**: it had no notification, digest, or other product
+  consumer. The `GP Followed Project` DocType remains only for a future migration
+  decision; no product code creates or reads it.
+- **Guest space visits**: a guest may record a visit in a space they were granted
+  and may not record one anywhere else.
+- **Archived space membership**: archived spaces remain viewable, but their action
+  menu offers neither Join nor Leave because archiving freezes participation.
 - Open: none currently.
 
 ## Step 1 — Foundation (DONE, verified)
@@ -423,7 +433,26 @@ Four Step-2-era failures were root-caused (all against the demo site on `:8001`)
 8. Pages (edit content, private vs space visibility + E2E).
 9. Profile/settings (bento cards, custom emoji, quick reactions + E2E).
 10. Search page E2E (filters; index hooks backend).
-11. Space membership E2E (join/leave/follow, mark-space-read).
+11. Space membership — DONE (2026-07-26). Backend
+    `features/test_spaces.py` has 22 tests: join/leave behavior, guest visit
+    allow/deny, both existing-visit timestamp update branches, the four approved
+    POST-only instance methods, and the removed follow API contract. E2E
+    `spaces/membership.cy.ts` has two paths: join → visible joined state → mark
+    read → the actual sidebar unread count clears → leave, plus archived spaces
+    exposing read actions but no Join/Leave.
+    - The dead follow/unfollow methods, bulk endpoints, composable, menu actions,
+      virtual field, generated type, and demo-seed writer are removed.
+      `GP Followed Project` itself stays until a migration explicitly deletes the
+      DocType/table; remaining references are its own controller/schema plus
+      legacy cascade/team-sync/migration cleanup.
+    - The review-prescribed document-scoped visit call exposed a real integration
+      bug: Frappe v2 maps a POST document method to `write`, while `GP Project`
+      write means space-management access. A visible member who has not joined
+      therefore gets 403. The POST-only `track_visits` controller endpoint stays
+      because it applies the method's explicit view-access gate; its frontend call
+      uses a dedicated `useDoctype` instance so it cannot race with join/leave.
+    - Verification: focused backend 22/22, E2E 2/2 at `retries=0`, frontend build
+      green, and full backend 422/422 (16 + 295 + 111), all exit 0.
 12. Mobile variants: create discussion + comment on iphone-6 viewport.
 13. Remaining `api.py` endpoint tests (`onboarding`, `unread_notifications`,
     `can_access_gameplan`, `get_search_filter_options`).

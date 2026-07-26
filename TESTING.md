@@ -129,9 +129,11 @@ The content doctypes model three tiers, and it matters which one a check is abou
 
 Guests are participants, not read-only viewers. In a space they've been granted
 access to, a guest **can** edit their own content, **delete** their own content, react
-to any post or comment, and comment on discussions. A guest **cannot** edit or delete
-anyone else's content, and gets nothing at all outside the spaces they were granted.
-The full spec lives in `features/test_guest_participation.py`.
+to any post or comment, comment on discussions, create and vote in polls, and record
+space visits. A guest **cannot** edit or delete anyone else's content, and gets
+nothing at all outside the spaces they were granted. The full spec lives in
+`features/test_guest_participation.py`, `features/test_polls.py`, and
+`features/test_spaces.py`.
 
 ### When a test fails
 
