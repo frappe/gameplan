@@ -211,11 +211,12 @@ class TestReplyNotifications(NotificationTestCase):
 		self.assertEqual(rows[0].type, "Rich Quote")
 
 	def test_plain_reply_reaches_the_owner_through_unread_records_not_the_bell(self):
-		"""Replies are an unread-record concern, not a bell notification.
+		"""Settled product decision: replies are not bell notifications.
 
-		Notifying on every reply would double up with the space/discussion unread
-		counts (and the digest's "unread discussions" section) and would make the bell
-		unusable on a busy thread.
+		The bell means someone addressed you specifically. Plain replies instead reach
+		the discussion owner through GP Unread Record and the digest; notifying on every
+		reply would duplicate those unread signals and make the bell unusable on a busy
+		thread.
 		"""
 		with self.as_user(self.second_member):
 			comment = create_comment(self.discussion, content="<p>Just replying</p>")

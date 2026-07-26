@@ -29,40 +29,103 @@ One test map mirroring the product's feature catalog, at three layers:
 
 ## Product decisions made during this work
 
-- **Guest policy**: guests are participants in spaces they have access to —
-  they can comment, react, edit their OWN content, delete their OWN content.
-  They cannot touch others' content and get nothing outside granted spaces.
-- **Permission tier model**: frappe `write` on content means "may interact"
-  (react, comment, vote) — guests with space access hold write. Who may edit or
-  delete whose content is business logic in the `content_has_permission` hook
-  (`gameplan/permissions.py`): editors pass outright; interactors pass only if
-  no protected fields are changing on the doc instance (interaction-safe
-  allowlist per doctype, e.g. the reactions child table). The field diff must
-  handle both hook contexts: clean-doc gate checks (v2 POST doc-method gate;
-  `get_doc_before_save()` is unpopulated — fall back to DB-row diff) and
-  dirty-doc save-time checks.
-- Rejected along the way (do not resurrect): a generic `gameplan.api.react`
-  endpoint; an upstream frappe `permission_type` change. Both were made
-  unnecessary by the tier model above.
-- **Space mutation HTTP methods**: `GPProject.track_visit`, `join`, `leave`, and
-  `mark_all_as_read` are explicit POST-only exceptions to the deferred endpoint
-  audit. The other mutating `GP Project` methods remain on that separate branch.
-- **Space following is removed**: it had no notification, digest, or other product
-  consumer. The `GP Followed Project` DocType remains only for a future migration
-  decision; no product code creates or reads it.
-- **Guest space visits**: a guest may record a visit in a space they were granted
-  and may not record one anywhere else.
-- **Archived space membership**: archived spaces remain viewable, but their action
-  menu offers neither Join nor Leave because archiving freezes participation.
-- **Archived Space pages and tasks**: create, update, direct delete, and moves into
-  or out of an archived Space are refused at the backend boundary. Reads, comments,
-  and the parent Space's delete cascade remain available.
-- **Known archive limitation**: discussion creation is blocked by a pre-existing
-  guard, but existing discussions can still be renamed or deleted, and comments can
-  still be added to discussions and tasks. Task comments update `comments_count`
-  through `db_set`, outside the page/task save guard.
-- Open: whether archiving should also freeze discussion edits/deletes and comments
-  is a product decision; this test-suite slice deliberately does not change them.
+1. **Multiple-answer polls stay and get a complete UI.** `PollEditor` exposes the
+   `multiple_answers` toggle, poll options behave like checkboxes, and each answer
+   can be retracted. The existing backend behavior is a supported product path,
+   not dead schema.
+2. **A plain reply does not create a bell notification.** The bell means someone
+   addressed you specifically (Mention, Reaction, or Rich Quote). Replies reach
+   the discussion owner through `GP Unread Record` and the email digest, avoiding
+   duplicate unread signals and an unusably noisy bell.
+3. **Global and community admins may stop someone else's poll.** Stopping and
+   deleting a poll have the same authority; keeping stop owner-only was an
+   unintended asymmetry.
+4. **Bookmarks are strictly private, including from global admins.** A reading
+   list is personal and follows the draft model rather than Gameplan's usual
+   global-admin query exception.
+5. **Polls are guest participation.** A guest with access to a Space may create a
+   poll on a reachable discussion and vote in polls there, alongside the existing
+   rights to comment, react, edit/delete their own content, and record visits.
+   Guests still get nothing outside Spaces explicitly granted to them.
+6. **Pin, close, and reopen stay available to any non-guest member who can reach
+   the Space.** These are community content edits, not owner- or admin-only
+   moderation actions.
+7. **The reka-ui dropdown body-lock defect stays for now.** It leaves the page
+   mouse-inert for a measured 14–330 ms after a selection because
+   `DismissableLayer` releases the lock only when the menu unmounts. The tests
+   wait for unmount; changing `modal` or opening an upstream issue is deferred.
+8. **A multiple-answer poll counts answer rows and labels them “answers.”**
+   Percentages therefore continue to total 100%, while wording such as “3 answers
+   from 2 people” avoids presenting answer rows as voter count.
+9. **Reacting to a poll should notify its author.** `GP Notification` needs a
+   `poll` link plus reaction-notification wiring equivalent to discussions and
+   comments; this requires a schema change and migration.
+10. **Mentioning someone who cannot see the Space stays silent.** This prevents
+    inaccessible Space information leaking through notifications. Warning the
+    author that the mention was suppressed is a known UX gap, not work for this
+    branch.
+11. **The frappe `LinkTableField.apply_join` defect is already fixed on
+    `develop`, but not in this bench's `version-16`.** The notification workaround
+    stays until the bench runs a frappe version that folds permission conditions
+    into the JOIN's `ON` clause. Requesting a version-16 backport remains Faris's
+    decision.
+12. **Draft loading blocks editing.** The composer is non-editable and clearly
+    says the draft is loading until the fetch settles, eliminating the race in
+    which typing could be lost or overwrite the saved draft.
+13. **Guests see neither “New space” nor “Sort spaces.”** A guest cannot create a
+    Space, and neither affordance belongs in their navigation.
+14. **Poll actions use `/api/v2`.** `Poll.vue` moves off the legacy
+    `run_doc_method` resource API in line with the frontend API convention.
+15. **Two discussion lifecycle behaviors are intentional.** Deleting the only
+    reply makes the discussion itself the last post again, and a closed
+    discussion rejects new polls as well as new comments.
+16. **Archived Spaces stay viewable while participation freezes.** Their action
+    menu offers neither Join nor Leave, and polls retain the read-only “Show
+    results” and “Copy link” actions. Voting and stopping are blocked.
+17. **The remaining mutating endpoints without explicit POST methods move to a
+    dedicated later branch.** Each call site must be audited before flipping its
+    endpoint; this test-suite branch does not bulk-change the roughly 41
+    outstanding methods. The working checklist lives in `audit-post-methods.md`.
+18. **Install and run `pre-commit` before pushing.** The documented lint command
+    has not run on this machine because `pre-commit` is absent; final branch
+    delivery owns installing and running it.
+19. **Realtime must be exercised genuinely end to end on this machine.** The
+    frame-injection simulation is temporary and must be replaced after fixing the
+    local demo-site socket authentication path.
+20. **Step 4 CI guardrails remain out of scope.** Finish Step 3, then hand the
+    branch over without expanding into coverage/nightly/sharding work.
+21. **Four Space mutation methods are explicit POST-only exceptions to decision
+    17.** `GPProject.track_visit`, `join`, `leave`, and `mark_all_as_read` stay
+    POST-only. The other mutating `GP Project` methods remain in the later audit;
+    the doctype is only half-flipped.
+22. **Space following is removed.** It had no notification, digest, or other
+    product consumer, so its endpoints, composable, and menu affordance stay
+    deleted. The `GP Followed Project` DocType remains only until a migration
+    explicitly removes it.
+23. **Archived Spaces are enforced at the backend for pages and tasks.** Create,
+    update, direct delete, and moves into or out of an archived Space are refused.
+    Reads, comments, and the parent Space's delete cascade remain available.
+24. **Guests may record Space visits.** A guest may track a visit only in a Space
+    they were granted; following no longer exists.
+25. **Tests must not change product layout or the live search index.**
+    `ProfileBentoEditorPanel` keeps its `lg` breakpoint and the profile spec uses a
+    1280×900 viewport. Search suites redirect `GameplanSearch.INDEX_NAME` so they
+    never drop or rebuild the site's real `gameplan_search.db`.
+
+The permission tier supporting these decisions treats frappe `write` on content
+as “may interact” (react, comment, vote). Who may edit or delete content is
+business logic in `content_has_permission`: editors pass outright; interactors
+pass only when no protected field changes. The diff handles both clean document
+permission checks and dirty save-time checks.
+
+Rejected along the way (do not resurrect): a generic `gameplan.api.react`
+endpoint and an upstream frappe `permission_type` change. The permission tier
+made both unnecessary.
+
+Known archive limitation: discussion creation is blocked, but existing
+discussions can still be renamed or deleted, and comments can still be added to
+discussions and tasks. Whether archiving should freeze those actions remains a
+separate product decision.
 
 ## Step 1 — Foundation (DONE, verified)
 

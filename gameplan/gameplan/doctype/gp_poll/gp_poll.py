@@ -7,7 +7,12 @@ from frappe.model.document import Document
 from frappe.utils import flt, get_datetime
 
 from gameplan.mixins.reactions import HasReactions
-from gameplan.permissions import can_view_content, content_has_permission, poll_query_conditions
+from gameplan.permissions import (
+	can_delete_content,
+	can_view_content,
+	content_has_permission,
+	poll_query_conditions,
+)
 
 from .gp_poll_attributes import GPPollAttributes
 
@@ -107,8 +112,8 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 	@frappe.whitelist()
 	def stop_poll(self):
 		self.discard_client_state()
-		if frappe.session.user != self.owner:
-			frappe.throw(_("Only owner can stop the poll"), frappe.PermissionError)
+		if not can_delete_content(frappe.session.user, self):
+			frappe.throw(_("Only the owner or an admin can stop the poll"), frappe.PermissionError)
 		self.stopped_at = frappe.utils.now()
 		self.save()
 

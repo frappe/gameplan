@@ -376,7 +376,7 @@ def draft_query_conditions(user=None, **kwargs):
 
 def bookmark_query_conditions(user=None, **kwargs):
 	# A bookmark is a personal row — the same rule as a draft (see draft_query_conditions):
-	# only the user it belongs to may enumerate it. Deliberately no global-admin exception:
+	# only the user it belongs to may enumerate it. Decision 4: deliberately no global-admin exception:
 	# nothing in Gameplan reads another user's reading list, and without this every
 	# Gameplan user could list everyone's bookmarks through the generic list API.
 	user = user or frappe.session.user

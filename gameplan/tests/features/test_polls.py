@@ -240,6 +240,27 @@ class TestStoppingAPoll(PollTestCase):
 
 		self.assertIsNotNone(poll.stopped_at)
 
+	def test_global_admin_can_stop_another_members_poll(self):
+		poll = self.poll()
+
+		with self.as_user(self.admin):
+			poll.stop_poll()
+		poll.reload()
+
+		self.assertIsNotNone(poll.stopped_at)
+
+	def test_community_admin_can_stop_another_members_poll(self):
+		poll = self.poll()
+		community = frappe.get_doc("GP Team", self.community.name)
+		community.get_member(self.second_member.name).is_admin = 1
+		community.save(ignore_permissions=True)
+
+		with self.as_user(self.second_member):
+			poll.stop_poll()
+		poll.reload()
+
+		self.assertIsNotNone(poll.stopped_at)
+
 	def test_another_member_cannot_stop_the_poll(self):
 		poll = self.poll()
 

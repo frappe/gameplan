@@ -139,6 +139,20 @@ class TestBookmarkPrivacy(BookmarkTestCase):
 			frappe.has_permission("GP Bookmark", "read", doc=self.other_bookmark, user=self.member.name)
 		)
 
+	def test_a_global_admin_cannot_read_another_users_bookmark(self):
+		self.assertFalse(
+			frappe.has_permission("GP Bookmark", "read", doc=self.member_bookmark, user=self.admin.name)
+		)
+
+	def test_a_global_admin_lists_only_their_own_bookmarks(self):
+		self.add_bookmark(self.discussion, self.admin)
+		admin_bookmark = bookmark_rows(user=self.admin)[0].name
+
+		with self.as_user(self.admin):
+			names = [row.name for row in frappe.get_list("GP Bookmark", fields=["name"])]
+
+		self.assertEqual(names, [admin_bookmark])
+
 	def test_a_user_cannot_delete_another_users_bookmark(self):
 		with self.as_user(self.member):
 			with self.assertRaises(frappe.PermissionError):
