@@ -14,3 +14,4 @@ class GPPollAttributes:
 	total_votes: int
 	stopped_at: datetime.datetime
 	anonymous: bool
+	reactions: list

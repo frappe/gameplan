@@ -6,12 +6,24 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt, get_datetime
 
+from gameplan.mixins.reactions import HasReactions
 from gameplan.permissions import can_view_content, content_has_permission, poll_query_conditions
 
 from .gp_poll_attributes import GPPollAttributes
 
 
-class GPPoll(Document, GPPollAttributes):
+class GPPoll(HasReactions, Document, GPPollAttributes):
+	"""A poll posted inside a discussion.
+
+	It carries a `reactions` table and the UI hangs the same Reactions component off it
+	as it does off a discussion or a comment, so it mixes in HasReactions. What it does
+	NOT do is call `notify_reactions` on update: GP Notification has no `poll` link
+	field, so a poll-reaction notification has nothing to point at, and the mixin's
+	de-duplicating lookup (keyed on to_user + type + reference) would then latch onto an
+	unrelated Reaction notification for the same user. Notifying a poll's author needs a
+	product decision on where that notification leads first.
+	"""
+
 	on_delete_set_null = ["GP Discussion"]
 
 	def before_insert(self):
@@ -25,6 +37,7 @@ class GPPoll(Document, GPPollAttributes):
 
 	def validate(self):
 		self.total_votes = len(self.votes)
+		self.de_duplicate_reactions()
 
 	def after_insert(self):
 		self.update_discussion_meta()

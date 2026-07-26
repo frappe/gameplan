@@ -25,7 +25,7 @@
       </div>
       <div class="ml-auto flex items-center space-x-2">
         <Button
-          v-if="!isStopped && $isSessionUser(_poll.owner)"
+          v-if="!isStopped && !readOnlyMode && $isSessionUser(_poll.owner)"
           variant="ghost"
           icon-left="lucide-minus-circle"
           @click="stopPoll"
@@ -59,14 +59,14 @@
         v-for="option in _poll.options"
         :key="option.idx"
         @click="submitVote(option)"
-        :disabled="participated || isStopped || $resources.poll.submitVote.loading"
+        :disabled="participated || isStopped || readOnlyMode || $resources.poll.submitVote.loading"
       >
         <div
           class="mr-2 h-4 w-4 rounded-full border-2 text-sm"
           :class="
             isVotedByUser(option.title)
               ? 'border-gray-900 bg-surface-gray-10'
-              : participated || isStopped
+              : participated || isStopped || readOnlyMode
                 ? 'border-outline-gray-2'
                 : 'border-outline-gray-2 group-hover:border-outline-gray-3'
           "
@@ -82,7 +82,12 @@
       </button>
     </div>
     <div class="mt-3">
-      <Reactions doctype="GP Poll" :name="poll.name" :reactions="_poll.reactions" />
+      <Reactions
+        doctype="GP Poll"
+        :name="poll.name"
+        v-model:reactions="_poll.reactions"
+        :read-only-mode="readOnlyMode"
+      />
     </div>
     <Dialog title="Poll results" v-model:open="showDialog">
       <h2 class="text-xl-medium text-ink-gray-8">{{ _poll.title }}</h2>
@@ -137,6 +142,11 @@ export default {
     space: {
       type: Object,
       default: null,
+    },
+    // Archived space or site-wide read-only: the poll is visible but inert.
+    readOnlyMode: {
+      type: Boolean,
+      default: false,
     },
   },
   emits: ['vote'],
@@ -246,6 +256,7 @@ export default {
           label: 'Retract vote',
           icon: 'lucide-corner-up-left',
           condition: () =>
+            !this.readOnlyMode &&
             !this._poll.anonymous &&
             this.participated &&
             (!this._poll.stopped_at || dayjsLocal().isBefore(this._poll.stopped_at)),
@@ -266,7 +277,8 @@ export default {
         {
           label: 'Delete',
           icon: 'lucide-trash',
-          condition: () => canDeleteContent(this._poll, this.space, useSessionUser()),
+          condition: () =>
+            !this.readOnlyMode && canDeleteContent(this._poll, this.space, useSessionUser()),
           onClick: () => {
             dialog.danger({
               title: 'Delete poll',

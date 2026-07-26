@@ -59,6 +59,59 @@ describe('Poll lifecycle', () => {
     cy.contains('button', 'Stop Poll').should('not.exist')
     cy.contains('button', 'Yes').should('be.disabled')
   })
+
+  // A poll is a post like any other, so it carries reactions too. Reacting to it used
+  // to blow up: GP Poll rendered the Reactions widget without mixing in HasReactions,
+  // so the `react` doc-method the widget posts to did not exist.
+  it('reacts to a poll, and the reaction survives a reload', () => {
+    const EMOJI = '👍'
+    let poll: string
+
+    // The poll belongs to member2 — this spec is about reacting to it, not about
+    // composing one (the flow above owns that). Created before the first `cy.visit`,
+    // which is what keeps `loginAs` safe and the request free of a session CSRF token.
+    cy.loginAs('secondMember')
+    cy.request({
+      method: 'POST',
+      url: '/api/v2/document/GP%20Poll',
+      body: {
+        title: 'Ship on Friday?',
+        discussion,
+        options: [{ title: 'Yes' }, { title: 'No' }],
+      },
+    }).then((response) => {
+      poll = String(response.body.data.name)
+    })
+    cy.loginAs('member')
+
+    cy.intercept('POST', '/api/v2/document/GP%20Poll/*/method/react').as('reactToPoll')
+    cy.visit(`/g/community/${community}/space/${space}/discussion/${discussion}`)
+    cy.contains('Ship on Friday?').should('be.visible')
+
+    // Two reaction widgets are on the page, in document order: the discussion's own
+    // above the timeline, the poll's inside it. Nothing else is seeded in between.
+    cy.get('button[aria-label="Add a reaction"]').last().click()
+    cy.get(`button:contains("${EMOJI}"):visible`).click()
+    cy.wait('@reactToPoll')
+      .its('request.url')
+      .should((url: string) => expect(url).to.contain(poll))
+
+    // The pill separates emoji and count with a non-breaking space, so match on a
+    // regex (\s covers U+00A0) rather than a literal space.
+    const pill = new RegExp(`${EMOJI}\\s*1`)
+    // Only the poll was reacted to, so exactly one pill exists on the page.
+    const assertPollReactionShown = () =>
+      cy
+        .get('button')
+        .filter((_, el) => pill.test(el.textContent ?? ''))
+        .should('have.length', 1)
+
+    assertPollReactionShown()
+
+    cy.reload()
+    cy.contains('Ship on Friday?').should('be.visible')
+    assertPollReactionShown()
+  })
 })
 
 function labelledInput(label: string) {
