@@ -32,73 +32,10 @@
 {"id": "creators-press", "t": "-27d 03:23", "type": "space", "actor": "maya", "community": "marketing-hub", "title": "Creators & Press", "icon": "lucide-video", "description": "Streamer, creator, and press outreach."}
 {"id": "pitch-room", "t": "-27d 03:24", "type": "space", "actor": "grace", "community": "project-bluebird", "title": "Pitch Room", "icon": "lucide-lightbulb", "description": "Quiet ideas for the next thing.", "is_private": true}
 {"id": "prototype-builds", "t": "-27d 03:25", "type": "space", "actor": "grace", "community": "project-bluebird", "title": "Prototype Builds", "icon": "lucide-flask-conical", "description": "Rough builds of the secret second game.", "is_private": true}
-{"t": "-27d 03:36", "type": "follow", "actor": "maya", "on": "game-design"}
-{"t": "-27d 03:37", "type": "follow", "actor": "maya", "on": "engineering"}
-{"t": "-27d 03:38", "type": "follow", "actor": "maya", "on": "qa-playtests"}
-{"t": "-27d 03:39", "type": "follow", "actor": "maya", "on": "releases"}
-{"t": "-27d 03:40", "type": "follow", "actor": "maya", "on": "announcements"}
-{"t": "-27d 03:41", "type": "follow", "actor": "maya", "on": "art"}
-{"t": "-27d 03:42", "type": "follow", "actor": "maya", "on": "watercooler"}
-{"t": "-27d 03:43", "type": "follow", "actor": "maya", "on": "people-ops"}
-{"t": "-27d 03:44", "type": "follow", "actor": "maya", "on": "pitch-room"}
-{"t": "-27d 03:45", "type": "follow", "actor": "maya", "on": "prototype-builds"}
-{"t": "-27d 03:46", "type": "follow", "actor": "grace", "on": "announcements"}
-{"t": "-27d 03:47", "type": "follow", "actor": "grace", "on": "releases"}
-{"t": "-27d 03:48", "type": "follow", "actor": "grace", "on": "people-ops"}
-{"t": "-27d 03:49", "type": "follow", "actor": "grace", "on": "pitch-room"}
-{"t": "-27d 03:50", "type": "follow", "actor": "grace", "on": "prototype-builds"}
-{"t": "-27d 03:51", "type": "follow", "actor": "jonas", "on": "game-design"}
-{"t": "-27d 03:52", "type": "follow", "actor": "jonas", "on": "engineering"}
-{"t": "-27d 03:53", "type": "follow", "actor": "jonas", "on": "art"}
-{"t": "-27d 03:54", "type": "follow", "actor": "jonas", "on": "releases"}
-{"t": "-27d 03:55", "type": "follow", "actor": "jonas", "on": "pitch-room"}
-{"t": "-27d 03:56", "type": "follow", "actor": "jonas", "on": "prototype-builds"}
-{"t": "-27d 03:57", "type": "follow", "actor": "lena", "on": "art"}
-{"t": "-27d 03:58", "type": "follow", "actor": "lena", "on": "game-design"}
-{"t": "-27d 03:59", "type": "follow", "actor": "lena", "on": "marketing"}
-{"t": "-27d 04:00", "type": "follow", "actor": "tomas", "on": "art"}
-{"t": "-27d 04:01", "type": "follow", "actor": "tomas", "on": "game-design"}
-{"t": "-27d 04:02", "type": "follow", "actor": "tomas", "on": "pitch-room"}
-{"t": "-27d 04:03", "type": "follow", "actor": "tomas", "on": "prototype-builds"}
-{"t": "-27d 04:04", "type": "follow", "actor": "kenji", "on": "art"}
-{"t": "-27d 04:05", "type": "follow", "actor": "kenji", "on": "engineering"}
-{"t": "-27d 04:06", "type": "follow", "actor": "kenji", "on": "audio-music"}
-{"t": "-27d 04:07", "type": "follow", "actor": "priya", "on": "engineering"}
-{"t": "-27d 04:08", "type": "follow", "actor": "priya", "on": "releases"}
-{"t": "-27d 04:09", "type": "follow", "actor": "priya", "on": "qa-playtests"}
-{"t": "-27d 04:10", "type": "follow", "actor": "marcus", "on": "engineering"}
-{"t": "-27d 04:11", "type": "follow", "actor": "marcus", "on": "qa-playtests"}
-{"t": "-27d 04:12", "type": "follow", "actor": "marcus", "on": "game-design"}
-{"t": "-27d 04:13", "type": "follow", "actor": "marcus", "on": "watercooler"}
-{"t": "-27d 04:14", "type": "follow", "actor": "zoe", "on": "engineering"}
-{"t": "-27d 04:15", "type": "follow", "actor": "zoe", "on": "releases"}
-{"t": "-27d 04:16", "type": "follow", "actor": "zoe", "on": "watercooler"}
-{"t": "-27d 04:17", "type": "follow", "actor": "sam", "on": "audio-music"}
-{"t": "-27d 04:18", "type": "follow", "actor": "sam", "on": "watercooler"}
-{"t": "-27d 04:19", "type": "follow", "actor": "ingrid", "on": "game-design"}
-{"t": "-27d 04:20", "type": "follow", "actor": "ingrid", "on": "art"}
-{"t": "-27d 04:21", "type": "follow", "actor": "ingrid", "on": "pitch-room"}
-{"t": "-27d 04:22", "type": "follow", "actor": "ingrid", "on": "prototype-builds"}
-{"t": "-27d 04:23", "type": "follow", "actor": "dev", "on": "qa-playtests"}
-{"t": "-27d 04:24", "type": "follow", "actor": "dev", "on": "engineering"}
-{"t": "-27d 04:25", "type": "follow", "actor": "dev", "on": "releases"}
-{"t": "-27d 04:26", "type": "follow", "actor": "chloe", "on": "watercooler"}
-{"t": "-27d 04:27", "type": "follow", "actor": "chloe", "on": "marketing"}
-{"t": "-27d 04:28", "type": "follow", "actor": "chloe", "on": "player-feedback"}
-{"t": "-27d 04:29", "type": "follow", "actor": "chloe", "on": "creators-press"}
-{"t": "-27d 04:30", "type": "follow", "actor": "antoine", "on": "marketing"}
 {"id": "d-worldmap-v2-proposal", "t": "-27d 04:30", "type": "discussion", "actor": "jonas", "space": "game-design", "title": "RFC: World map v2, four quadrants around a central lobby", "content": "<h2>Proposal</h2><p>I want to move Common Room from “one long clubhouse with rooms hanging off it” to a clearer four-quadrant world map: Cafe, Library, Game Room, and Conference Hall around a central Common Room lobby.</p><p>The lobby becomes the place you always understand. You spawn there, you can see where people are headed, and every room is one screen-ish away without making the clubhouse feel like a hallway with opinions.</p><p><img src=\"{{file:worldmap-v2-blockout.png}}\"></p><p>This is also the first map built on the new prefab/room pipeline. Each quadrant is a room prefab with a fixed doorway contract, 16x16 tile alignment, and a shared “edge vocabulary” so we can swap room interiors without re-stitching the whole map. The pitch is: one stable world shape, many room passes.</p><p>Why these four:</p><ul><li><strong>Cafe:</strong> short hangs, ambient arrivals, tiny rituals.</li><li><strong>Library:</strong> quieter browsing, sitting together without talking, collections later.</li><li><strong>Game Room:</strong> toy-like interactions, low-pressure minigames, social objects.</li><li><strong>Conference Hall:</strong> events, bigger gatherings, maybe structured activities, maybe nothing yet.</li></ul><p>I am not precious about the exact dimensions. I am precious about the center being legible and the player never needing a map to understand “where the hangout is.” Please pull at the weak parts.</p>", "pinned": true}
-{"t": "-27d 04:31", "type": "follow", "actor": "antoine", "on": "creators-press"}
-{"t": "-27d 04:32", "type": "follow", "actor": "antoine", "on": "releases"}
-{"t": "-27d 04:33", "type": "follow", "actor": "hana", "on": "people-ops"}
 {"t": "-27d 04:33", "type": "react", "actor": "maya", "on": "d-worldmap-v2-proposal", "emoji": "👍"}
-{"t": "-27d 04:34", "type": "follow", "actor": "hana", "on": "announcements"}
 {"t": "-27d 04:34", "type": "react", "actor": "marcus", "on": "d-worldmap-v2-proposal", "emoji": "🔥"}
-{"t": "-27d 04:35", "type": "follow", "actor": "hana", "on": "watercooler"}
-{"t": "-27d 04:36", "type": "follow", "actor": "felix", "on": "engineering"}
 {"t": "-27d 04:36", "type": "react", "actor": "tomas", "on": "d-worldmap-v2-proposal", "emoji": "🔥"}
-{"t": "-27d 04:37", "type": "follow", "actor": "felix", "on": "game-design"}
-{"t": "-27d 04:38", "type": "follow", "actor": "felix", "on": "watercooler"}
 {"t": "-27d 04:39", "type": "pin", "actor": "maya", "on": "announcements"}
 {"t": "-27d 04:40", "type": "pin", "actor": "maya", "on": "releases"}
 {"t": "-27d 04:41", "type": "pin", "actor": "grace", "on": "announcements"}

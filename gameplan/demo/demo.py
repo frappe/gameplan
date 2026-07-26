@@ -48,6 +48,19 @@ def generate(fixture_path: str | None = None, force: bool = False):
 		print(f"Demo fixture not found at {events_path}. Nothing to generate.")
 		return
 
+	# clear() commits, so validate the whole log first: a fixture the seeder cannot
+	# finish would otherwise leave the site wiped and the replay half-applied
+	# (the failed events roll back, the committed delete does not).
+	problems = Seeder.validate_events(events_path)
+	if problems:
+		shown = "\n".join(problems[:5])
+		if len(problems) > 5:
+			shown += f"\n... and {len(problems) - 5} more"
+		frappe.throw(
+			f"Refusing to clear the site: {events_path} cannot be replayed.\n{shown}",
+			title="Invalid Demo Fixture",
+		)
+
 	if not clear(force=force):
 		# Guard refused (real data present); never replay on top of it.
 		return

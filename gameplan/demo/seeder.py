@@ -53,6 +53,41 @@ class Seeder:
 
 	# ---- public entry point -------------------------------------------------
 
+	@classmethod
+	def validate_events(cls, events_path: str) -> list[str]:
+		"""Report problems that would make :meth:`run` fail part-way through the log.
+
+		:func:`gameplan.demo.demo.generate` commits a full ``clear()`` before the
+		replay starts, so an event the seeder cannot handle empties the site and
+		*then* raises. Everything checkable without a database round trip is
+		checked here so ``generate`` can refuse before anything is deleted.
+
+		Cross-references (``id`` / ``on`` / ``actor`` lookups) and ``{{...}}``
+		placeholder targets still need the replay itself; this is the static half.
+		"""
+		problems = []
+		with open(events_path, encoding="utf-8") as f:
+			for number, line in enumerate(f, start=1):
+				if not line.strip():
+					continue
+				try:
+					event = json.loads(line)
+				except json.JSONDecodeError as error:
+					problems.append(f"line {number}: invalid JSON ({error})")
+					continue
+
+				event_type = event.get("type")
+				if not event_type:
+					problems.append(f"line {number}: missing 'type'")
+				elif not hasattr(cls, f"_event_{event_type}"):
+					problems.append(f"line {number}: no handler for event type {event_type!r}")
+
+				timestamp = event.get("t")
+				if timestamp is not None and not _TIME_RE.match(timestamp):
+					problems.append(f"line {number}: invalid relative time {timestamp!r}")
+
+		return problems
+
 	def run(self, events_path: str):
 		with open(events_path, encoding="utf-8") as f:
 			events = [json.loads(line) for line in f if line.strip()]
