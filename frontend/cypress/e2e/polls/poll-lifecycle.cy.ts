@@ -1,5 +1,10 @@
 import { resetData } from '../../support/seed'
 
+type AppSocket = {
+  nsp: string
+  io: { engine: { emit: (event: string, data: string) => void } }
+}
+
 // One flow: the poll a member creates is the poll they vote in and then stop, so
 // there is nothing to seed beyond the discussion it lives in.
 describe('Poll lifecycle', () => {
@@ -16,13 +21,13 @@ describe('Poll lifecycle', () => {
     cy.loginAs('member')
   })
 
-  it('creates a poll, votes in it, sees the tally, and stops it', () => {
+  it('creates a multiple-answer poll, toggles answers, receives a live tally, and stops it', () => {
+    let poll: string
+
     cy.intercept('GET', `/api/v2/document/GP%20Discussion/${discussion}`).as('getDiscussion')
-    // Poll.vue still drives its doc methods through the legacy run_doc_method endpoint,
-    // so alias each call by the method it carries rather than by URL.
-    cy.intercept('POST', '/api/method/run_doc_method*', (req) => {
-      if (req.body?.method) req.alias = req.body.method
-    })
+    cy.intercept('POST', '/api/v2/document/GP%20Poll/*/method/submit_vote').as('submitVote')
+    cy.intercept('POST', '/api/v2/document/GP%20Poll/*/method/retract_vote').as('retractVote')
+    cy.intercept('POST', '/api/v2/document/GP%20Poll/*/method/stop_poll').as('stopPoll')
     cy.visit(`/g/community/${community}/space/${space}/discussion/${discussion}`)
     cy.wait('@getDiscussion')
 
@@ -35,29 +40,73 @@ describe('Poll lifecycle', () => {
     labelledInput('Question').type('Ship on Friday?')
     cy.get('input[placeholder="Option 1"]').type('Yes')
     cy.get('input[placeholder="Option 2"]').type('No')
+    labelledCheckbox('Multiple answers').check()
     cy.button('Submit').click()
-    cy.wait('@createPoll').its('response.body.data.title').should('equal', 'Ship on Friday?')
+    cy.wait('@createPoll').then(({ response }) => {
+      expect(response?.body.data.title).to.equal('Ship on Friday?')
+    })
 
     cy.contains('Ship on Friday?').should('be.visible')
-    cy.contains('0 votes').should('exist')
+    cy.contains('0 answers').should('exist')
 
-    // vote
-    cy.contains('button', 'Yes').click()
-    cy.wait('@submit_vote')
+    // Each answer is a real checkbox: it is independently keyboard reachable,
+    // exposes its checked state, and posts the option through the v2 doc method.
+    pollAnswer('Yes').focus().type(' ')
+    cy.wait('@submitVote').then(({ request }) => {
+      expect(request.body.option).to.equal('Yes')
+      const match = request.url.match(/GP(?:%20| )Poll\/([^/]+)\/method/)
+      expect(match, 'poll method URL').to.not.be.null
+      poll = decodeURIComponent(match![1])
+    })
+    pollAnswer('No').check()
+    cy.wait('@submitVote').its('request.body.option').should('equal', 'No')
 
-    // the tally updates for the voter: one vote, all of it on "Yes"
-    cy.contains('1 vote').should('exist')
-    cy.contains('button', 'Yes').contains('(100%)').should('exist')
-    cy.contains('button', 'No').contains('(0%)').should('exist')
+    cy.contains('2 answers').should('exist')
+    pollAnswer('Yes').should('be.checked')
+    pollAnswer('No').should('be.checked')
+    pollAnswer('Yes').parent().contains('(50%)').should('exist')
+    pollAnswer('No').parent().contains('(50%)').should('exist')
 
-    // stop the poll
+    // Deselecting one checkbox retracts only that option.
+    pollAnswer('Yes').uncheck()
+    cy.wait('@retractVote').its('request.body.option').should('equal', 'Yes')
+    cy.contains('1 answer').should('exist')
+    pollAnswer('Yes').should('not.be.checked')
+    pollAnswer('No').should('be.checked')
+    pollAnswer('Yes').parent().contains('(0%)').should('exist')
+    pollAnswer('No').parent().contains('(100%)').should('exist')
+
+    // A second user's answer reaches this already-open poll through the document
+    // update listener. The local bench cannot authenticate demo-site sockets, so
+    // deliver the server frame through the page's real socket.io decoder.
+    cy.then(() => {
+      cy.task('requestAsUser', {
+        user: 'member2@example.com',
+        path: `/api/v2/document/GP Poll/${poll}/method/submit_vote`,
+        body: { option: 'Yes' },
+      })
+    })
+    cy.contains('1 answer').should('exist')
+    cy.then(() => {
+      deliverSocketEvent('doc_update', {
+        doctype: 'GP Poll',
+        name: poll,
+      })
+    })
+    cy.contains('2 answers').should('exist')
+
+    // Moderators can stop polls they do not own. Switch sessions safely before
+    // exercising the global-admin affordance and backend gate.
+    cy.switchUser('admin')
+    cy.visit(`/g/community/${community}/space/${space}/discussion/${discussion}`)
+    cy.contains('Ship on Friday?').should('be.visible')
     cy.button('Stop Poll').click()
     cy.dialog('button:contains("Stop")').click()
-    cy.wait('@stop_poll')
+    cy.wait('@stopPoll')
 
     cy.contains('Ended').should('exist')
     cy.contains('button', 'Stop Poll').should('not.exist')
-    cy.contains('button', 'Yes').should('be.disabled')
+    pollAnswer('Yes').should('be.disabled')
   })
 
   // A poll is a post like any other, so it carries reactions too. Reacting to it used
@@ -116,4 +165,27 @@ describe('Poll lifecycle', () => {
 
 function labelledInput(label: string) {
   return cy.contains('label', label).then(($label) => cy.get(`[id="${$label.attr('for')}"]`))
+}
+
+function labelledCheckbox(label: string) {
+  return cy
+    .get('label')
+    .filter((_, element) => element.textContent?.trim() === label)
+    .should('have.length', 1)
+    .then(($label) => cy.get(`input[type="checkbox"][id="${$label.attr('for')}"]`))
+}
+
+function pollAnswer(label: string) {
+  return cy.get(`input[type="checkbox"][aria-label="${label}"]`)
+}
+
+function deliverSocketEvent(event: string, payload: unknown) {
+  cy.window({ log: false })
+    .its('document')
+    .then((doc) => {
+      const app = (doc.querySelector('#app') as { __vue_app__?: any } | null)?.__vue_app__
+      const socket = app?.config?.globalProperties?.$socket as AppSocket | undefined
+      expect(socket, 'app socket').to.exist
+      socket!.io.engine.emit('data', `2${socket!.nsp},${JSON.stringify([event, payload])}`)
+    })
 }

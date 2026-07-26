@@ -71,7 +71,7 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 		discussion.track_visit()
 		discussion.save(ignore_permissions=True)
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def submit_vote(self, option):
 		self.discard_client_state()
 		self.check_if_stopped()
@@ -95,7 +95,7 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 		self.update_tallies()
 		self.save_after_voting()
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def retract_vote(self, option=None):
 		self.discard_client_state()
 		self.check_if_stopped()
@@ -109,7 +109,7 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 		self.update_tallies()
 		self.save_after_voting()
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def stop_poll(self):
 		self.discard_client_state()
 		if not can_delete_content(frappe.session.user, self):
@@ -120,13 +120,14 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 	def discard_client_state(self):
 		"""Re-read the stored poll, dropping any field values the caller sent.
 
-		These methods are reachable over `/api/method/run_doc_method`, which builds the
-		document out of the request's own JSON and checks only `read`. Every field on
-		`self` therefore starts out caller-controlled — including the ones these methods
-		read to decide what is allowed (`stopped_at`, `discussion`, `anonymous`,
-		`multiple_answers`) and the ones the following save writes back. Reloading first
-		is what keeps a mere reader from smuggling a rewritten title, new options or a
-		cleared `stopped_at` into a vote.
+		The v2 document-method route loads the stored document, but its POST permission
+		is deliberately Gameplan's interaction tier: guests and members who may
+		participate can invoke these methods without being allowed to edit poll fields.
+		The vote save then bypasses write permission so it can persist that interaction.
+		Reloading before the business checks makes the method's invariant explicit:
+		`stopped_at`, `discussion`, `anonymous`, `multiple_answers`, options, and every
+		field written back come from storage, even if another whitelisted document
+		surface or in-process caller hands the method a dirty instance.
 		"""
 		self.reload()
 

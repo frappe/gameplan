@@ -7,13 +7,14 @@ A poll is content that lives inside a discussion, so it takes that discussion's 
 for access: everyone who can reach the space may vote, and nobody else can even see it.
 Voting itself is participation (like reacting), which is why the vote methods are the
 gate rather than the `write` permission — see GPPoll.save_after_voting. That save skips
-permissions, so the methods first throw away everything the caller sent
-(GPPoll.discard_client_state); TestTamperedVotePayload locks that.
+permissions, so the methods first restore all poll state from storage
+(GPPoll.discard_client_state); TestTamperedVotePayload locks that invariant.
 """
 
 import frappe
 from frappe.utils import add_days, now_datetime
 
+from gameplan.gameplan.doctype.gp_poll.gp_poll import GPPoll
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
 	create_community,
@@ -312,12 +313,11 @@ class TestStoppingAPoll(PollTestCase):
 class TestTamperedVotePayload(PollTestCase):
 	"""A vote may carry nothing but the vote.
 
-	`submit_vote`, `retract_vote` and `stop_poll` are reachable over `run_doc_method`,
-	which builds the document from the caller's own JSON and checks only `read` — so any
-	reader can hand these methods a poll whose title, options, flags or `stopped_at` they
-	rewrote, and the vote save deliberately runs with `ignore_permissions`. These tests
-	stand in for that endpoint by mutating the doc before calling the method, and lock the
-	guarantee that only server-computed state ever reaches the database.
+	The v2 document-method route loads stored state, but participants can invoke these
+	methods through Gameplan's interaction-level `write` permission and the vote save
+	deliberately runs with `ignore_permissions`. These tests call the same public methods
+	on a dirty document to lock the stronger invariant that only server-loaded state can
+	reach the database, regardless of the whitelisted surface or in-process caller.
 	"""
 
 	def tampered(self, poll):
@@ -379,6 +379,12 @@ class TestTamperedVotePayload(PollTestCase):
 		poll.reload()
 		self.assertIsNotNone(poll.stopped_at)
 		self.assertEqual(poll.total_votes, 0)
+
+
+class TestPollMutationHTTPMethods(GameplanTestCase):
+	def test_poll_mutations_are_post_only(self):
+		for method in (GPPoll.submit_vote, GPPoll.retract_vote, GPPoll.stop_poll):
+			self.assertEqual(frappe.allowed_http_methods_for_whitelisted_func[method], ["POST"])
 
 
 class TestWhoMayVote(PollTestCase):
