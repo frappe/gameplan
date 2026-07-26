@@ -142,9 +142,14 @@
                 ? 'flex h-full flex-col'
                 : 'border-t border-outline-gray-2 sm:rounded-lg sm:border-t-0'
             "
+            :aria-busy="isDraftLoading"
+            :inert="isDraftLoading"
             @keydown.ctrl.enter.capture.stop="submitComment"
             @keydown.meta.enter.capture.stop="submitComment"
           >
+            <div v-if="isDraftLoading" role="status" class="mb-2 text-sm text-ink-gray-5">
+              Loading draft…
+            </div>
             <button
               type="button"
               class="absolute left-1/2 top-0 z-10 hidden h-6 w-24 -translate-x-1/2 cursor-ns-resize touch-none items-center justify-center rounded-full opacity-60 transition-opacity hover:opacity-100 focus:opacity-100 group-hover/comment-composer:opacity-100 sm:flex"
@@ -201,7 +206,7 @@
               :discardButtonProps="{
                 onClick: discardComment,
               }"
-              :editable="true"
+              :editable="!isDraftLoading"
               :max-height="activeComposerEditorMaxHeightStyle"
               :min-height="activeComposerEditorMinHeightStyle"
               v-model:toolbar-expanded="composerToolbarExpanded"
@@ -356,6 +361,7 @@ const draft = useDraftSync({
   initialPayload: () => ({ content: '' }),
 })
 const draftData = draft.data
+const isDraftLoading = draft.isLoading
 const newPoll = ref({
   title: '',
   multiple_answers: false,

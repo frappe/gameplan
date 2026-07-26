@@ -131,7 +131,7 @@ import SpaceIcon from './SpaceIcon.vue'
 import LucideLock from '~icons/lucide/lock'
 
 const route = useRoute()
-const sessionUser = useSessionUser()
+const sessionUser = computed(() => useSessionUser())
 
 const spacesList = computed(() => communitySpaces.list)
 const hasCustomSpaceSidebarOptions = computed(() => {

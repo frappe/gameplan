@@ -351,6 +351,22 @@ class TestReactionNotifications(NotificationTestCase):
 		self.assertEqual(str(discussion_row.discussion), str(self.discussion.name))
 		self.assertEqual(discussion_row.message, "1 person reacted to your post")
 
+	def test_comment_and_discussion_reactions_create_distinct_notifications(self):
+		comment = create_comment(self.discussion, owner=self.member)
+		self._react(comment, self.second_member)
+
+		self._react(self.discussion, self.second_member)
+
+		rows = self.notifications_for(self.member)
+		self.assertEqual(len(rows), 2)
+		comment_row = next(row for row in rows if row.comment)
+		discussion_row = next(row for row in rows if not row.comment)
+		self.assertEqual(str(comment_row.comment), str(comment.name))
+		self.assertEqual(str(comment_row.discussion), str(self.discussion.name))
+		self.assertEqual(comment_row.message, "1 person reacted to your post")
+		self.assertEqual(str(discussion_row.discussion), str(self.discussion.name))
+		self.assertEqual(discussion_row.message, "1 person reacted to your post")
+
 
 class TestUnreadNotificationsCount(NotificationTestCase):
 	def test_anonymous_caller_is_denied(self):

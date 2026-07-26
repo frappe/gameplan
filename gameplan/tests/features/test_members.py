@@ -51,6 +51,19 @@ class TestMemberManagement(FrappeTestCase):
 
 		self.assertIn("Gameplan Admin", frappe.get_roles(target.name))
 
+	def test_changing_role_removes_all_previous_gameplan_roles(self):
+		admin = create_user("sec_multi_role_admin@example.com", "Admin", "Gameplan Admin")
+		target = create_member("sec_multi_role_target@example.com")
+		target.add_roles("Gameplan Guest")
+
+		frappe.set_user(admin.name)
+		target_profile = frappe.get_doc("GP User Profile", {"user": target.name})
+		user_info = target_profile.change_user_role(role="Gameplan Admin")
+
+		gameplan_roles = [role for role in frappe.get_roles(target.name) if role.startswith("Gameplan ")]
+		self.assertEqual(gameplan_roles, ["Gameplan Admin"])
+		self.assertEqual(user_info.role, "Gameplan Admin")
+
 	def test_member_cannot_disable_user(self):
 		"""A Member must not be able to disable another account."""
 		member = create_member("sec_member2@example.com")

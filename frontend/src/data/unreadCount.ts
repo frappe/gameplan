@@ -115,7 +115,7 @@ export function markSpacesAsRead(spaceIds: string[]) {
     .submit({
       method: 'mark_all_as_read',
       params: {
-        spaces: spaceIds,
+        spaces: spaceIds.map(String),
       },
     })
     .then(() => {

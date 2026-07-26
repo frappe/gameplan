@@ -92,4 +92,34 @@ describe('Comment actions', () => {
         cy.get(commentSelector).should('not.exist')
       })
   })
+
+  it('blocks comment editing until its draft finishes loading', () => {
+    cy.request('POST', '/api/v2/document/GP%20Comment', {
+      reference_doctype: 'GP Discussion',
+      reference_name: discussion,
+      content: '<p>Comment waiting to be edited</p>',
+    }).then(({ body }) => {
+      const commentSelector = `div[data-id="${body.data.name}"]`
+      cy.intercept(/find_my_draft/, (request) => {
+        request.continue((response) => response.setDelay(1500))
+      }).as('editDraft')
+      cy.visit(`/g/community/${community}/space/${space}/discussion/${discussion}`)
+
+      cy.get(commentSelector).should('be.visible')
+      cy.selectDropdownOption('Comment Options', 'Edit')
+      cy.get(commentSelector).contains('[role="status"]', 'Loading draft…').should('be.visible')
+      cy.get(commentSelector)
+        .find('[contenteditable]')
+        .should('have.attr', 'contenteditable', 'false')
+
+      cy.wait('@editDraft')
+      cy.get(commentSelector).contains('[role="status"]', 'Loading draft…').should('not.exist')
+      cy.get(commentSelector)
+        .find('[contenteditable]')
+        .should('have.attr', 'contenteditable', 'true')
+        .click()
+        .type('{moveToEnd} after load')
+        .should('contain.text', 'Comment waiting to be edited after load')
+    })
+  })
 })

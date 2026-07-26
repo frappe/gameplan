@@ -72,4 +72,25 @@ describe('Comment drafts', () => {
     cy.wait('@getDrafts')
     cy.contains(replyText).should('not.exist')
   })
+
+  it('blocks a new comment until its draft finishes loading', () => {
+    cy.intercept(/find_my_draft/, (request) => {
+      request.continue((response) => response.setDelay(5000))
+    }).as('commentDraft')
+    cy.visit(`/g/community/${community}/space/${space}/discussion/${discussion}`)
+
+    cy.button('Add a comment').click()
+    cy.get('[aria-busy="true"]').contains('[role="status"]', 'Loading draft…').should('exist')
+    cy.get('[aria-busy="true"]')
+      .find('[contenteditable]')
+      .should('have.attr', 'contenteditable', 'false')
+
+    cy.wait('@commentDraft')
+    cy.contains('[role="status"]', 'Loading draft…').should('not.exist')
+    cy.get('[aria-busy="false"] [contenteditable="true"]')
+      .should('have.attr', 'contenteditable', 'true')
+      .click()
+      .type('Keystrokes after draft loading stay in the reply')
+      .should('contain.text', 'Keystrokes after draft loading stay in the reply')
+  })
 })

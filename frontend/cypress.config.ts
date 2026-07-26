@@ -13,7 +13,13 @@ interface RealtimePreflightOptions {
   password?: string
 }
 
-const DEMO_SITE = 'gameplan-demo.test'
+interface RealtimePreflightResult {
+  available: boolean
+  reason?: string
+}
+
+const REALTIME_AUTH_PORT = Number(process.env.GAMEPLAN_REALTIME_AUTH_PORT || 8000)
+const SOCKET_PORT = Number(process.env.GAMEPLAN_SOCKET_PORT || 9000)
 
 function originAtPort(baseUrl: string, port: number) {
   const url = new URL(baseUrl)
@@ -35,12 +41,12 @@ async function login(baseUrl: string, user: string, password: string) {
     .join('; ')
 }
 
-function serverStartCommand(port: number) {
-  return `bench --site ${DEMO_SITE} serve --port ${port}`
+function serverStartCommand(site: string, port: number) {
+  return `bench --site ${site} serve --port ${port}`
 }
 
-async function assertDemoSite(baseUrl: string, port: number, purpose: string) {
-  const startCommand = serverStartCommand(port)
+async function assertDemoSite(baseUrl: string, port: number, purpose: string, expectedSite: string) {
+  const startCommand = serverStartCommand(expectedSite, port)
   let response: Response
   try {
     response = await fetch(`${baseUrl}/api/method/gameplan.www.g.get_context_for_dev`, {
@@ -51,29 +57,67 @@ async function assertDemoSite(baseUrl: string, port: number, purpose: string) {
   } catch (error) {
     throw new Error(
       `${purpose} on :${port} is not responding. Start it with: ${startCommand}. ` +
-        `Run it from the frappe-bench directory. Original error: ${String(error)}`,
+      `Run it from the frappe-bench directory. Original error: ${String(error)}`,
     )
+  }
+
+  const text = await response.text()
+  let payload: {
+    message?: { site_name?: string }
+    exception?: string
+    exc_type?: string
+    _server_messages?: string
+  } = {}
+  try {
+    payload = JSON.parse(text)
+  } catch {
+    // The status-specific diagnostic below still names an unavailable probe.
   }
 
   if (!response.ok) {
+    const failure = [payload.exception, payload.exc_type, payload._server_messages, text]
+      .filter(Boolean)
+      .join(' ')
+    if (failure.includes('This method is only meant for developer mode')) {
+      throw new Error(
+        `${purpose} on :${port} resolves to a Frappe site, but developer_mode is disabled. ` +
+          `Enable developer_mode for the realtime site probe, then restart the server.`,
+      )
+    }
+    if (
+      response.status === 404 ||
+      failure.includes('Failed to get method') ||
+      failure.includes('MethodNotFound')
+    ) {
+      throw new Error(
+        `${purpose} on :${port} is responding, but the Gameplan site probe endpoint is disabled ` +
+          `or unavailable (${response.status}). Confirm Gameplan is installed and ` +
+          `gameplan.www.g.get_context_for_dev is enabled.`,
+      )
+    }
     throw new Error(
-      `${purpose} on :${port} did not resolve to ${DEMO_SITE} (${response.status}). ` +
-        `Start it from the frappe-bench directory with: ${startCommand}`,
+      `${purpose} on :${port} failed the Gameplan site probe (${response.status}). ` +
+        `Start ${expectedSite} from the frappe-bench directory with: ${startCommand}`,
     )
   }
 
-  const payload = (await response.json()) as { message?: { site_name?: string } }
-  if (payload.message?.site_name !== DEMO_SITE) {
+  if (payload.message?.site_name !== expectedSite) {
     throw new Error(
       `${purpose} on :${port} resolved to ${payload.message?.site_name ?? 'an unknown site'}, ` +
-        `not ${DEMO_SITE}. Start it from the frappe-bench directory with: ${startCommand}`,
+        `not ${expectedSite}. Start it from the frappe-bench directory with: ${startCommand}`,
     )
   }
 }
 
-async function assertUserResolves(baseUrl: string, port: number, user: string, password: string) {
-  const purpose = port === 8000 ? 'Realtime authentication target' : 'Cypress web server'
-  const startCommand = serverStartCommand(port)
+async function assertUserResolves(
+  baseUrl: string,
+  port: number,
+  purpose: string,
+  expectedSite: string,
+  user: string,
+  password: string,
+) {
+  const startCommand = serverStartCommand(expectedSite, port)
   try {
     const cookie = await login(baseUrl, user, password)
     const response = await fetch(`${baseUrl}/api/method/frappe.auth.get_logged_user`, {
@@ -96,7 +140,7 @@ async function assertUserResolves(baseUrl: string, port: number, user: string, p
 
 async function assertSocketServer(baseUrl: string) {
   const socketUrl = new URL(baseUrl)
-  socketUrl.port = '9000'
+  socketUrl.port = String(SOCKET_PORT)
   socketUrl.pathname = '/socket.io/'
   socketUrl.search = `EIO=4&transport=polling&t=${Date.now()}`
   const startCommand = 'bench socketio'
@@ -106,7 +150,7 @@ async function assertSocketServer(baseUrl: string) {
     response = await fetch(socketUrl, { headers: { Origin: new URL(baseUrl).origin } })
   } catch (error) {
     throw new Error(
-      `Socket.IO server on :9000 is not listening. Start it with: ${startCommand}. ` +
+      `Socket.IO server on :${SOCKET_PORT} is not listening. Start it with: ${startCommand}. ` +
         `Run it from the frappe-bench directory. Original error: ${String(error)}`,
     )
   }
@@ -114,7 +158,7 @@ async function assertSocketServer(baseUrl: string) {
   const body = await response.text()
   if (!response.ok || !body.startsWith('0{')) {
     throw new Error(
-      `Socket.IO server on :9000 failed its polling handshake (${response.status}). ` +
+      `Socket.IO server on :${SOCKET_PORT} failed its polling handshake (${response.status}). ` +
         `Start it from the frappe-bench directory with: ${startCommand}`,
     )
   }
@@ -130,24 +174,48 @@ async function assertSocketServer(baseUrl: string) {
 async function realtimePreflight(
   baseUrl: string | null,
   { user, password = 'admin' }: RealtimePreflightOptions = {},
-) {
+): Promise<RealtimePreflightResult> {
   if (!baseUrl) throw new Error('Cypress baseUrl is required for the realtime preflight')
-  if (new URL(baseUrl).port !== '8002') {
-    throw new Error(`Realtime E2E must run against ${DEMO_SITE}:8002, received ${baseUrl}`)
+  if (process.env.SKIP_REALTIME_E2E) {
+    const reason = `Realtime E2E skipped: ${process.env.SKIP_REALTIME_E2E}`
+    console.warn(reason)
+    return { available: false, reason }
   }
 
-  const webServer = originAtPort(baseUrl, 8002)
-  const authServer = originAtPort(baseUrl, 8000)
-  await assertDemoSite(webServer, 8002, 'Cypress web server')
-  await assertDemoSite(authServer, 8000, 'Realtime authentication target')
+  const configuredUrl = new URL(baseUrl)
+  const expectedSite = configuredUrl.hostname
+  const webPort = Number(configuredUrl.port || (configuredUrl.protocol === 'https:' ? 443 : 80))
+  const webServer = configuredUrl.origin
+  const authServer = originAtPort(baseUrl, REALTIME_AUTH_PORT)
+  await assertDemoSite(webServer, webPort, 'Cypress web server', expectedSite)
+  await assertDemoSite(
+    authServer,
+    REALTIME_AUTH_PORT,
+    'Realtime authentication target',
+    expectedSite,
+  )
   await assertSocketServer(baseUrl)
 
   if (user) {
-    await assertUserResolves(webServer, 8002, user, password)
-    await assertUserResolves(authServer, 8000, user, password)
+    await assertUserResolves(
+      webServer,
+      webPort,
+      'Cypress web server',
+      expectedSite,
+      user,
+      password,
+    )
+    await assertUserResolves(
+      authServer,
+      REALTIME_AUTH_PORT,
+      'Realtime authentication target',
+      expectedSite,
+      user,
+      password,
+    )
   }
 
-  return null
+  return { available: true }
 }
 
 /**
@@ -195,7 +263,7 @@ export default defineConfig({
   },
   video: true,
   e2e: {
-    baseUrl: 'http://gameplan-demo.test:8000',
+    baseUrl: 'http://gameplan-demo.test:8002',
     supportFile: 'cypress/support/e2e.ts',
     specPattern: 'cypress/e2e/**/*.{js,jsx,ts,tsx}',
     setupNodeEvents(on, config) {

@@ -37,11 +37,16 @@ describe('Realtime activity', () => {
   let space: string
   let discussion: string
 
-  beforeEach(() => {
+  beforeEach(function () {
     // Check the exact sites before resetData can wipe anything. The second call,
     // after seeding, also proves fresh sessions resolve as the watching persona on
     // both the browser server and Socket.IO's :8000 authentication target.
-    cy.task('realtimePreflight')
+    cy.task<RealtimePreflightResult>('realtimePreflight').then((preflight) => {
+      if (!preflight.available) {
+        cy.log(preflight.reason ?? 'Realtime E2E capability unavailable')
+        this.skip()
+      }
+    })
     resetData('space_with_discussion').then((ids) => {
       community = ids.community as string
       space = ids.space as string
@@ -95,3 +100,8 @@ describe('Realtime activity', () => {
     )
   })
 })
+
+interface RealtimePreflightResult {
+  available: boolean
+  reason?: string
+}

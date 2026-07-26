@@ -11,6 +11,7 @@ from gameplan.gameplan.doctype.gp_project import gp_project as gp_project_module
 from gameplan.gameplan.doctype.gp_project.gp_project import (
 	GPProject,
 	get_activity,
+	mark_all_as_read,
 	track_visits,
 )
 from gameplan.search_sqlite import GameplanSearch
@@ -238,6 +239,19 @@ class TestSpaceReadState(GameplanTestCase):
 		)
 		self.assertTrue(visit.last_visit)
 		self.assertTrue(visit.mark_all_read_at)
+
+	def test_bulk_mark_read_accepts_numeric_space_names_from_the_list_api(self):
+		with self.as_user(self.member):
+			mark_all_as_read(spaces=[int(self.space.name)])
+
+		self.assertEqual(
+			frappe.db.get_value(
+				"GP Unread Record",
+				{"user": self.member.name, "discussion": self.discussion.name},
+				"is_unread",
+			),
+			0,
+		)
 
 	def test_visiting_a_space_upserts_the_current_users_visit(self):
 		old_last_visit = "2026-01-01 00:00:00"

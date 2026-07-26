@@ -58,7 +58,12 @@ def _delete_gameplan_data():
 	for doctype in frappe.get_all("DocType", filters={"module": "Gameplan"}, pluck="name"):
 		frappe.db.delete(doctype)
 
-	frappe.get_doc("User", "Administrator").add_roles("Gameplan Admin")
+	administrator = frappe.get_doc("User", "Administrator")
+	for role in list(administrator.roles):
+		if role.role.startswith("Gameplan "):
+			administrator.remove(role)
+	administrator.append_roles("Gameplan Admin")
+	administrator.save(ignore_permissions=True)
 
 
 def _reset_personas():

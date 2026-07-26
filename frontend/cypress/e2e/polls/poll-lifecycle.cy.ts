@@ -43,6 +43,7 @@ describe('Poll lifecycle', () => {
     cy.get('input[placeholder="Option 1"]').type('Yes')
     cy.get('input[placeholder="Option 2"]').type('No')
     labelledCheckbox('Multiple answers').check()
+    labelledCheckbox('Anonymous').should('be.disabled')
     cy.button('Submit').click()
     cy.wait('@createPoll').then(({ response }) => {
       expect(response?.body.data.title).to.equal('Ship on Friday?')

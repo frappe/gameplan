@@ -58,7 +58,7 @@ class GPUserProfile(HasAttachments, Document):
 			return get_user_info(self.user)[0]
 
 		user_doc = frappe.get_doc("User", self.user)
-		for _role in user_doc.roles:
+		for _role in list(user_doc.roles):
 			if _role.role in ["Gameplan Guest", "Gameplan Member", "Gameplan Admin"]:
 				user_doc.remove(_role)
 		user_doc.append_roles(role)

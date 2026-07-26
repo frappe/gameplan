@@ -32,13 +32,13 @@ describe('Guest access', () => {
     cy.visit('/g')
     cy.url().should('include', `/community/${community}/`)
 
-    // Sidebar management controls stay out of a guest's navigation.
-    cy.get('button[aria-label="Sort spaces"]').should('not.exist')
-    cy.get('button[aria-label="New space"]').should('not.exist')
-
     // Only the granted space is reachable: it is in the sidebar, General is not, and
     // neither is the post General holds.
     cy.contains('a', 'Secret Plans').should('be.visible')
+    // Prove the sidebar rendered before making negative assertions about controls
+    // inside it; otherwise an unmounted sidebar would satisfy both vacuously.
+    cy.get('button[aria-label="Sort spaces"]').should('not.exist')
+    cy.get('button[aria-label="New space"]').should('not.exist')
     cy.contains('a', 'General').should('not.exist')
     cy.contains('Public roadmap').should('not.exist')
 

@@ -265,36 +265,36 @@ def update_project_team_reference(doctype: str, project: str, team: str | None):
 
 
 @frappe.whitelist(methods=["POST"])
-def join_spaces(spaces: list[str] = None):
+def join_spaces(spaces: list[str | int] = None):
 	if not spaces:
 		return
 	for space in spaces:
-		frappe.get_doc("GP Project", space).join()
+		frappe.get_doc("GP Project", str(space)).join()
 
 
 @frappe.whitelist(methods=["POST"])
-def leave_spaces(spaces: list[str] = None):
+def leave_spaces(spaces: list[str | int] = None):
 	if not spaces:
 		return
 	for space in spaces:
-		frappe.get_doc("GP Project", space).leave()
+		frappe.get_doc("GP Project", str(space)).leave()
 
 
 @frappe.whitelist(methods=["POST"])
-def track_visits(spaces: list[str] = None):
+def track_visits(spaces: list[str | int] = None):
 	if not spaces:
 		return
 	for space in spaces:
-		frappe.get_doc("GP Project", space).track_visit()
+		frappe.get_doc("GP Project", str(space)).track_visit()
 
 
 @frappe.whitelist(methods=["POST"])
-def mark_all_as_read(spaces: list[str] = None):
+def mark_all_as_read(spaces: list[str | int] = None):
 	"""Mark all unread discussions as read for multiple spaces at once."""
 	if not spaces:
 		return
 	for space in spaces:
-		frappe.get_doc("GP Project", space).mark_all_as_read()
+		frappe.get_doc("GP Project", str(space)).mark_all_as_read()
 
 
 @frappe.whitelist()

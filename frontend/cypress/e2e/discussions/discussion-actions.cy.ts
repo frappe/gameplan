@@ -107,6 +107,28 @@ describe('Discussion actions', () => {
     cy.contains('p', 'adding more content').should('exist')
   })
 
+  it('blocks post editing until its draft finishes loading', () => {
+    cy.intercept(/find_my_draft/, (request) => {
+      request.continue((response) => response.setDelay(1500))
+    }).as('editDraft')
+    visitSeededDiscussion()
+
+    cy.selectDropdownOption('Discussion Options', 'Edit')
+    cy.contains('[role="status"]', 'Loading draft…').should('be.visible')
+    cy.get('input[placeholder="Title"]').should('be.disabled')
+    cy.get('[contenteditable]').should('have.attr', 'contenteditable', 'false')
+
+    cy.wait('@editDraft')
+    cy.contains('[role="status"]', 'Loading draft…').should('not.exist')
+    cy.get('input[placeholder="Title"]').should('be.enabled').type(' after load')
+    cy.get('[contenteditable]')
+      .should('have.attr', 'contenteditable', 'true')
+      .click()
+      .type('{moveToEnd} after load')
+    cy.get('input[placeholder="Title"]').should('have.value', 'Welcome thread after load')
+    cy.get('[contenteditable]').should('contain.text', 'after load')
+  })
+
   it('moves a discussion to another space', () => {
     visitSeededDiscussion()
 

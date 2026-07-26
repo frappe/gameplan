@@ -38,9 +38,18 @@ describe('Space membership', () => {
     cy.get('[role="menuitem"]:visible').contains('Leave space').should('be.visible')
     cy.get('[role="menuitem"]:visible').should('not.contain.text', 'Follow space')
     cy.get('[role="menuitem"]:visible').should('not.contain.text', 'Unfollow space')
+    cy.get('body').type('{esc}')
+
+    // Exercise the sidebar's bulk endpoint: autonumbered Space ids can originate as
+    // numbers in list responses, but the typed API contract receives strings.
+    spaceRow('General').trigger('mouseover')
+    spaceRow('General').find('button[aria-label="General options"]').click()
     cy.get('[role="menuitem"]:visible').contains('Mark all as read').click()
     cy.scope('dialog').button('Mark all as read').click()
-    cy.wait('@markSpaceRead').its('response.statusCode').should('eq', 200)
+    cy.wait('@markSpaceRead').then(({ request, response }) => {
+      expect(request.body.spaces).to.deep.equal([space])
+      expect(response?.statusCode).to.equal(200)
+    })
     spaceRow('General').find('[data-slot="sidebar-item-suffix"]').should('not.contain.text', '1')
 
     cy.selectDropdownOption('Space actions', 'Leave space')

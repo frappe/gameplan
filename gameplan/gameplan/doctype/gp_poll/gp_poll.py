@@ -31,6 +31,8 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 
 	def before_insert(self):
 		self.check_if_discussion_is_closed()
+		if self.anonymous and self.multiple_answers:
+			frappe.throw(_("Anonymous polls cannot allow multiple answers"))
 		self.options = [d for d in self.options if d.title]
 		for option in self.options:
 			option.title = option.title.strip()

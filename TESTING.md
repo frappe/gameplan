@@ -259,6 +259,12 @@ failure messages for all three required processes:
 - Socket.IO must accept a polling handshake on `:9000` (start with
   `bench socketio`).
 
+The site and web port come from `CYPRESS_BASE_URL`; the authentication and socket
+ports default to `:8000` and `:9000` and can be overridden with
+`GAMEPLAN_REALTIME_AUTH_PORT` and `GAMEPLAN_SOCKET_PORT`. CI does not start Socket.IO,
+so its workflow sets `SKIP_REALTIME_E2E` and reports this spec as deliberately pending
+with the reason in the runner log.
+
 After seeding, the preflight mints a new persona session on each web port and resolves
 the acting user immediately in the same Cypress task. It does not inspect process
 names, and it never carries a sid from one Cypress step to another.

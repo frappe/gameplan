@@ -50,7 +50,10 @@
         :options="dropdownOptions"
       />
     </div>
-    <div class="flex-1">
+    <div class="flex-1" :aria-busy="isDraftLoading" :inert="isDraftLoading">
+      <div v-if="isDraftLoading" role="status" class="mb-2 text-sm text-ink-gray-5">
+        Loading draft…
+      </div>
       <div
         :class="{
           'w-full rounded-lg border bg-surface-base p-4 focus-within:border-outline-gray-3':
@@ -65,7 +68,7 @@
           :author="comment.owner"
           :value="isEditing ? draftData.content : comment.content"
           @change="onEditorChange"
-          :editable="isEditing"
+          :editable="isEditing && !isDraftLoading"
           :submitButtonProps="{
             onClick: () => updateComment(),
             loading: isUpdating,
@@ -142,6 +145,7 @@ const draft = useDraftSync({
   initialPayload: () => ({ content: props.comment.content ?? '' }),
 })
 const draftData = draft.data
+const isDraftLoading = draft.isLoading
 
 const onEditorChange = (value: string) => {
   if (isEditing.value) draftData.value.content = value

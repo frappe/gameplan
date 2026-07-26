@@ -18,7 +18,7 @@ export type EmailDigestDayOfWeek =
 
 let usersByName = reactive<Record<string, UserInfo>>({})
 
-interface UserInfo {
+export interface UserInfo {
   name: string
   email: string
   enabled: number
@@ -44,21 +44,30 @@ interface UserInfo {
   isDisabled?: boolean
 }
 
+function mergeUserInfo(user: UserInfo) {
+  user.isGuest = user.role === 'Gameplan Guest'
+  user.isNotGuest = !user.isGuest
+  user.isDisabled = user.enabled === 0
+  const existing = usersByName[user.name]
+  if (existing) {
+    Object.assign(existing, user)
+  } else {
+    usersByName[user.name] = user
+  }
+  if (user.name === session.user) {
+    setCommunityOrder(user.community_order)
+    loadQuickReactionSlots(user.quick_reaction_emojis, user.user_profile)
+    setSidebarBadgeStyle(user.sidebar_badge_style)
+  }
+}
+
 export let users = useCall<UserInfo[]>({
   url: '/api/v2/method/gameplan.api.get_user_info',
   cacheKey: 'Users',
   initialData: [],
   transform(data) {
     for (let user of data) {
-      user.isGuest = user.role === 'Gameplan Guest'
-      user.isNotGuest = !user.isGuest
-      user.isDisabled = user.enabled === 0
-      usersByName[user.name] = user
-      if (user.name === session.user) {
-        setCommunityOrder(user.community_order)
-        loadQuickReactionSlots(user.quick_reaction_emojis, user.user_profile)
-        setSidebarBadgeStyle(user.sidebar_badge_style)
-      }
+      mergeUserInfo(user)
     }
     return data
   },
@@ -69,6 +78,12 @@ export let users = useCall<UserInfo[]>({
   },
   immediate: false,
 })
+
+export function updateUserInfo(user: UserInfo) {
+  mergeUserInfo(user)
+  const listedUser = users.data?.find((item) => item.name === user.name)
+  if (listedUser) Object.assign(listedUser, user)
+}
 
 export function useUser(email?: string | null) {
   if (!email || email === 'sessionUser') {

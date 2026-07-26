@@ -73,4 +73,28 @@ describe('Member management', () => {
     cy.visit('/g/people')
     cy.contains('button', 'Invite').should('not.exist')
   })
+
+  it('updates the sidebar when the current user becomes a guest', () => {
+    cy.loginAs('admin')
+    cy.intercept('POST', '**/method/change_user_role').as('changeOwnRole')
+    openSettings()
+    cy.scope('dialog').contains('button', 'Users').focus().type('{enter}')
+    cy.contains('[data-slot="list-row"]', 'Administrator').should('be.visible')
+
+    cy.contains('[data-slot="list-row"]', 'Administrator')
+      .contains('button', 'Admin')
+      .click()
+    cy.get('[role="option"]:visible').contains('Guest').click()
+    cy.dialog('button').contains('Change Role').click()
+    cy.wait('@changeOwnRole').then(({ response }) => {
+      expect(response?.statusCode).to.equal(200)
+      expect(response?.body.data.role).to.equal('Gameplan Guest')
+    })
+    cy.contains('[data-slot="list-row"]', 'Administrator').contains('button', 'Guest')
+
+    cy.get('body').type('{esc}')
+    cy.contains('a', 'General').should('be.visible')
+    cy.get('button[aria-label="Sort spaces"]').should('not.exist')
+    cy.get('button[aria-label="New space"]').should('not.exist')
+  })
 })

@@ -100,6 +100,7 @@ export function useDraftSync(options: UseDraftSyncOptions) {
   })
 
   const isEnabled = () => toValue(options.enabled ?? true)
+  const isLoading = computed(() => isEnabled() && !ready.value)
 
   // Suppress the change-watcher while we apply a restored/loaded payload.
   const applying = ref(false)
@@ -376,6 +377,7 @@ export function useDraftSync(options: UseDraftSyncOptions) {
   return {
     data,
     ready,
+    isLoading,
     saving,
     savedAt,
     /** There are local edits not yet pushed to the server. */

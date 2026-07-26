@@ -120,7 +120,10 @@
               </template>
             </div>
           </div>
-          <div ref="mainPostContentEl">
+          <div ref="mainPostContentEl" :aria-busy="isPostDraftLoading" :inert="isPostDraftLoading">
+            <div v-if="isPostDraftLoading" role="status" class="mb-2 text-sm text-ink-gray-5">
+              Loading draft…
+            </div>
             <div v-if="editingPost" class="w-full">
               <div class="mb-2">
                 <input
@@ -130,13 +133,14 @@
                   ref="title"
                   v-model="postDraftData.title"
                   placeholder="Title"
+                  :disabled="isPostDraftLoading"
                 />
               </div>
             </div>
             <DiscussionViewEditor
               ref="postEditor"
               :content="editingPost ? postDraftData.content : discussion.doc.content"
-              :editable="editingPost"
+              :editable="editingPost && !isPostDraftLoading"
               :saving="discussion.setValue.loading"
               :can-save="canSavePost"
               :quote-source-id="`discussion:${discussion.doc.name}`"
@@ -411,6 +415,7 @@ const postDraft = useDraftSync({
   }),
 })
 const postDraftData = postDraft.data
+const isPostDraftLoading = postDraft.isLoading
 
 function onPostEditorChange(value: string) {
   if (editingPost.value) postDraftData.value.content = value

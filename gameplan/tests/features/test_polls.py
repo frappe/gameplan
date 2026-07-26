@@ -220,15 +220,12 @@ class TestMultipleAnswerPoll(PollTestCase):
 		self.assertEqual(poll.votes, [])
 		self.assertEqual(poll.total_votes, 0)
 
-	def test_anonymous_multiple_answer_poll_still_allows_only_one_vote(self):
-		# An anonymous vote row carries no option, so a second answer could never be told
-		# apart from a double vote. Anonymity wins: one vote per voter.
-		poll = self.poll(anonymous=1, multiple_answers=1)
-
-		self.vote(poll, self.member, "Yes")
-		self.vote(poll, self.member, "No")
-
-		self.assertEqual(poll.total_votes, 1)
+	def test_anonymous_multiple_answer_poll_is_rejected(self):
+		with self.assertRaisesRegex(
+			frappe.ValidationError,
+			"Anonymous polls cannot allow multiple answers",
+		):
+			self.poll(anonymous=1, multiple_answers=1)
 
 
 class TestStoppingAPoll(PollTestCase):

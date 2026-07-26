@@ -57,7 +57,7 @@ export function useNewDiscussion() {
 
   // Drafts are owner-scoped on the server, so the author is always the current user.
   const author = computed(() => useUser(sessionUser.name))
-  const isDraftLoading = computed(() => !draft.ready.value)
+  const isDraftLoading = draft.isLoading
   const isComposerEditable = computed(
     () => author.value.name === sessionUser.name && !isDraftLoading.value,
   )

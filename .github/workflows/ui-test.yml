@@ -93,6 +93,7 @@ jobs:
           working-directory: frontend
         env:
           CYPRESS_BASE_URL: http://gameplan.test:8000
+          SKIP_REALTIME_E2E: Socket.IO is not started by the UI test workflow
 
       # Same-repo PRs have a read-write token, so comment directly here for instant
       # feedback. Fork PRs (read-only token) are handled by ui-test-report.yml, which

@@ -91,9 +91,10 @@ class HasReactions:
 
 		lookup = values.copy()
 		if self.doctype == "GP Discussion":
-			# Poll notifications also carry their discussion for routing. Excluding
-			# them here keeps a later discussion reaction from overwriting the poll row.
+			# Poll and comment notifications also carry their discussion for routing.
+			# Excluding both keeps a later discussion reaction from overwriting either row.
 			lookup.poll = ["is", "not set"]
+			lookup.comment = ["is", "not set"]
 
 		if frappe.db.exists("GP Notification", lookup):
 			doc = frappe.get_doc("GP Notification", lookup)
