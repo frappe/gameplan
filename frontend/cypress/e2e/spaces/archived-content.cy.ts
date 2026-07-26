@@ -4,6 +4,7 @@ describe('Archived space content', () => {
   let community: string
   let space: string
   let page: string
+  let task: string
 
   beforeEach(() => {
     resetData('onboarded').then((ids) => {
@@ -21,6 +22,8 @@ describe('Archived space content', () => {
         title: 'Archived follow-up',
         description: '<p>Existing work stays available.</p>',
         project: space,
+      }).then(({ body }) => {
+        task = String(body.data.name)
       })
       cy.request('POST', `/api/v2/document/GP%20Project/${space}/method/archive`)
     })
@@ -40,7 +43,28 @@ describe('Archived space content', () => {
     cy.iconButton('Page Options').should('not.exist')
 
     cy.visit(`/g/community/${community}/space/${space}/tasks`)
-    cy.contains('Archived follow-up').should('be.visible')
+    cy.contains('a', 'Archived follow-up').should('be.visible')
     cy.button('Add new').should('not.exist')
+    cy.contains('a', 'Archived follow-up').click()
+    cy.url().should('include', `/tasks/${task}`)
+
+    let updateRequests = 0
+    cy.intercept('PUT', `/api/v2/document/GP%20Task/${task}`, () => {
+      updateRequests += 1
+    })
+
+    cy.get('input[placeholder="Title"]')
+      .should('have.value', 'Archived follow-up')
+      .and('have.attr', 'readonly')
+    cy.get('input[placeholder="Title"]').focus().blur()
+    cy.get('[contenteditable=false]').should('contain.text', 'Existing work stays available.')
+    cy.contains('div', /^Assignee$/).next('div').find('button').should('be.disabled')
+    cy.get('input[placeholder="Due date"]:visible').should('be.disabled')
+    cy.contains('div', /^Space$/).next('div').find('button').should('be.disabled')
+    cy.contains('div', /^Status$/).next('div').find('[role="combobox"]').should('be.disabled')
+    cy.contains('div', /^Priority$/).next('div').find('[role="combobox"]').should('be.disabled')
+    cy.get('input[placeholder="Title"]').parent().find('button[aria-haspopup="menu"]').should('not.exist')
+    cy.contains('Cannot modify tasks.').should('not.exist')
+    cy.then(() => expect(updateRequests, 'task update requests').to.equal(0))
   })
 })

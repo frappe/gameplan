@@ -8,6 +8,7 @@ from frappe.utils import cstr
 from gameplan.gameplan.doctype.gp_notification.gp_notification import GPNotification
 from gameplan.gameplan.doctype.gp_unread_record.gp_unread_record import GPUnreadRecord
 from gameplan.mixins.activity import HasActivity
+from gameplan.mixins.archivable import check_if_space_is_archived
 from gameplan.mixins.attachments import HasAttachments
 from gameplan.mixins.mentions import HasMentions
 from gameplan.mixins.reactions import HasReactions
@@ -67,7 +68,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		return d
 
 	def before_insert(self):
-		self.check_if_project_is_archived()
+		check_if_space_is_archived(self, action="create", content_type="discussions")
 		self.last_post_at = frappe.utils.now()
 		self.update_participants_count()
 
@@ -285,11 +286,6 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 				"Discussion Title Changed",
 				data={"old_title": self.get_doc_before_save().title, "new_title": self.title},
 			)
-
-	def check_if_project_is_archived(self):
-		project_name, archived_at = frappe.db.get_value("GP Project", self.project, ["name", "archived_at"])
-		if archived_at:
-			frappe.throw(f"Project {project_name} is archived. Cannot create discussions.")
 
 
 def on_doctype_update():

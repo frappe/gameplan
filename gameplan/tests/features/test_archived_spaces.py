@@ -44,7 +44,10 @@ class TestArchivedPageMutations(ArchivedSpaceTestCase):
 		with self.as_user(self.member):
 			page = frappe.get_doc("GP Page", self.page.name)
 			page.content = "<p>Blocked edit</p>"
-			with self.assertRaisesRegex(frappe.ValidationError, "archived"):
+			with self.assertRaisesRegex(
+				frappe.ValidationError,
+				r"Space Archived Content Space is archived\. Cannot modify pages\.",
+			):
 				page.save()
 
 		self.page.reload()
@@ -52,7 +55,10 @@ class TestArchivedPageMutations(ArchivedSpaceTestCase):
 
 	def test_cannot_delete_a_page_in_an_archived_space(self):
 		with self.as_user(self.member):
-			with self.assertRaisesRegex(frappe.ValidationError, "archived"):
+			with self.assertRaisesRegex(
+				frappe.ValidationError,
+				r"Space Archived Content Space is archived\. Cannot delete pages\.",
+			):
 				frappe.delete_doc("GP Page", self.page.name)
 
 		self.assertTrue(frappe.db.exists("GP Page", self.page.name))
@@ -80,10 +86,86 @@ class TestArchivedTaskMutations(ArchivedSpaceTestCase):
 
 	def test_cannot_delete_a_task_in_an_archived_space(self):
 		with self.as_user(self.member):
-			with self.assertRaisesRegex(frappe.ValidationError, "archived"):
+			with self.assertRaisesRegex(
+				frappe.ValidationError,
+				r"Space Archived Content Space is archived\. Cannot delete tasks\.",
+			):
 				frappe.delete_doc("GP Task", self.task.name)
 
 		self.assertTrue(frappe.db.exists("GP Task", self.task.name))
+
+
+class TestArchivedContentMoves(ArchivedSpaceTestCase):
+	def setUp(self):
+		super().setUp()
+		self.live_space = create_space("Live Destination", self.community)
+		self.other_live_space = create_space("Other Live Destination", self.community)
+
+	def test_cannot_move_a_page_out_of_an_archived_space(self):
+		with self.as_user(self.member):
+			page = frappe.get_doc("GP Page", self.page.name)
+			page.project = self.live_space.name
+			page.title = "Escaped and renamed"
+			with self.assertRaisesRegex(frappe.ValidationError, "archived"):
+				page.save()
+
+		self.page.reload()
+		self.assertEqual(self.page.project, str(self.space.name))
+		self.assertEqual(self.page.title, "Existing Page")
+
+	def test_cannot_move_a_task_out_of_an_archived_space(self):
+		with self.as_user(self.member):
+			task = frappe.get_doc("GP Task", self.task.name)
+			task.project = self.live_space.name
+			task.title = "Escaped and renamed"
+			with self.assertRaisesRegex(frappe.ValidationError, "archived"):
+				task.save()
+
+		self.task.reload()
+		self.assertEqual(self.task.project, str(self.space.name))
+		self.assertEqual(self.task.title, "Existing Task")
+
+	def test_cannot_move_a_page_into_an_archived_space(self):
+		page = create_page("Live Page", self.live_space, owner=self.member)
+
+		with self.as_user(self.member):
+			page.project = self.space.name
+			with self.assertRaisesRegex(frappe.ValidationError, "archived"):
+				page.save()
+
+		page.reload()
+		self.assertEqual(page.project, str(self.live_space.name))
+
+	def test_cannot_move_a_task_into_an_archived_space(self):
+		task = create_task("Live Task", self.live_space, owner=self.member)
+
+		with self.as_user(self.member):
+			task.project = self.space.name
+			with self.assertRaisesRegex(frappe.ValidationError, "archived"):
+				task.save()
+
+		task.reload()
+		self.assertEqual(task.project, str(self.live_space.name))
+
+	def test_can_move_a_page_between_live_spaces(self):
+		page = create_page("Live Page", self.live_space, owner=self.member)
+
+		with self.as_user(self.member):
+			page.project = self.other_live_space.name
+			page.save()
+
+		page.reload()
+		self.assertEqual(page.project, str(self.other_live_space.name))
+
+	def test_can_move_a_task_between_live_spaces(self):
+		task = create_task("Live Task", self.live_space, owner=self.member)
+
+		with self.as_user(self.member):
+			task.project = self.other_live_space.name
+			task.save()
+
+		task.reload()
+		self.assertEqual(task.project, str(self.other_live_space.name))
 
 
 class TestArchivedContentReadsAndRecovery(ArchivedSpaceTestCase):
@@ -181,6 +263,20 @@ class TestArchivedContentReadsAndRecovery(ArchivedSpaceTestCase):
 		self.assertFalse(frappe.db.exists("GP Page", self.page.name))
 		self.assertFalse(frappe.db.exists("GP Task", self.task.name))
 
-	def test_discussion_creation_in_an_archived_space_remains_blocked(self):
+	def test_preexisting_discussion_creation_guard_rejects_an_archived_space(self):
+		# This behavior predates the page/task enforcement and does not claim coverage
+		# for archived discussion edits, deletes, or comments.
 		with self.assertRaisesRegex(frappe.ValidationError, "archived"):
 			create_discussion("Blocked Discussion", self.space)
+
+	def test_preexisting_discussion_creation_guard_tolerates_a_missing_space(self):
+		missing_space = create_space("Deleted Space", self.community)
+		frappe.db.delete("GP Project", {"name": missing_space.name})
+		discussion = frappe.get_doc(
+			doctype="GP Discussion",
+			title="Orphaned Discussion",
+			project=missing_space.name,
+			content="Test content",
+		)
+
+		discussion.before_insert()

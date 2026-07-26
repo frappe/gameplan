@@ -186,7 +186,7 @@ const pageActions = computed(() => [
     label: 'Delete',
     icon: 'lucide-trash-2',
     onClick: deletePage,
-    condition: () => canDeleteContent(page.doc, space.value, useSessionUser()),
+    condition: () => canEditPage.value && canDeleteContent(page.doc, space.value, useSessionUser()),
   },
 ])
 
@@ -249,7 +249,8 @@ useCommandPaletteCommands(
         icon: 'lucide-trash-2',
         aliases: ['remove page', 'delete document'],
         onClick: deletePage,
-        condition: () => canDeleteContent(page.doc, space.value, useSessionUser()),
+        condition: () =>
+          canEditPage.value && canDeleteContent(page.doc, space.value, useSessionUser()),
         defaultScore: 1,
       },
     ]

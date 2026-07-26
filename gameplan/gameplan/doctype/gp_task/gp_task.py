@@ -7,6 +7,7 @@ from frappe.model.document import Document
 from gameplan.extends.client import check_permissions
 from gameplan.gameplan.doctype.gp_notification.gp_notification import GPNotification
 from gameplan.mixins.activity import HasActivity
+from gameplan.mixins.archivable import check_if_space_is_archived
 from gameplan.mixins.mentions import HasMentions
 from gameplan.permissions import content_has_permission, task_query_conditions
 
@@ -22,7 +23,7 @@ class GPTask(HasMentions, HasActivity, Document):
 			self.status = "Backlog"
 
 	def validate(self):
-		self.check_if_project_is_archived()
+		check_if_space_is_archived(self, action="modify", content_type="tasks")
 
 	def after_insert(self):
 		self.update_tasks_count()
@@ -54,21 +55,13 @@ class GPTask(HasMentions, HasActivity, Document):
 
 	def on_trash(self):
 		if not self.flags.from_gameplan_delete_cascade:
-			self.check_if_project_is_archived()
+			check_if_space_is_archived(self, action="delete", content_type="tasks")
 		self.update_tasks_count()
 
 	def update_tasks_count(self):
 		if not self.project:
 			return
 		frappe.get_doc("GP Project", self.project).update_tasks_count()
-
-	def check_if_project_is_archived(self):
-		if not self.project:
-			return
-
-		project = frappe.db.get_value("GP Project", self.project, ["name", "archived_at"], as_dict=True)
-		if project and project.archived_at:
-			frappe.throw(f"Project {project.name} is archived. Cannot modify tasks.")
 
 	@frappe.whitelist()
 	def track_visit(self):

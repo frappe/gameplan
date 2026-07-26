@@ -42,7 +42,10 @@
       />
     </PageHeader>
     <div>
-      <TaskDetail :taskId="taskId" />
+      <TaskDetail
+        :task-id="taskId"
+        :read-only-mode="Boolean(space?.archived_at) || $readOnlyMode"
+      />
     </div>
   </div>
 </template>

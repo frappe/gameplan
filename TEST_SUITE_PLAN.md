@@ -54,10 +54,15 @@ One test map mirroring the product's feature catalog, at three layers:
   and may not record one anywhere else.
 - **Archived space membership**: archived spaces remain viewable, but their action
   menu offers neither Join nor Leave because archiving freezes participation.
-- **Archived space content**: pages and tasks in an archived space are read-only at
-  the backend boundary — create, update, and direct delete are refused while reads
+- **Archived Space pages and tasks**: create, update, direct delete, and moves into
+  or out of an archived Space are refused at the backend boundary. Reads, comments,
   and the parent Space's delete cascade remain available.
-- Open: none currently.
+- **Known archive limitation**: discussion creation is blocked by a pre-existing
+  guard, but existing discussions can still be renamed or deleted, and comments can
+  still be added to discussions and tasks. Task comments update `comments_count`
+  through `db_set`, outside the page/task save guard.
+- Open: whether archiving should also freeze discussion edits/deletes and comments
+  is a product decision; this test-suite slice deliberately does not change them.
 
 ## Step 1 — Foundation (DONE, verified)
 

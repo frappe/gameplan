@@ -14,7 +14,7 @@ def on_trash(doc, method):
 			frappe.delete_doc(
 				doctype,
 				record.name,
-				flags={"from_gameplan_delete_cascade": True},
+				flags={"from_gameplan_delete_cascade": doc.doctype},
 			)
 
 	to_set_null = getattr(doc, "on_delete_set_null", [])
@@ -32,7 +32,11 @@ def on_trash(doc, method):
 def delete_linked_records(doctype, name, linked_doctypes):
 	for linked_doctype in linked_doctypes:
 		for record in get_linked_records(doctype, name, linked_doctype):
-			frappe.delete_doc(linked_doctype, record.name)
+			frappe.delete_doc(
+				linked_doctype,
+				record.name,
+				flags={"from_gameplan_delete_cascade": doctype},
+			)
 
 
 def get_linked_records(link_doctype, link_name, doctype):
