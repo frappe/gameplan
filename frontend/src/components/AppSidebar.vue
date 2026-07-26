@@ -14,7 +14,7 @@
         <div>
           <div class="flex h-7 items-center justify-between">
             <SidebarLabel>Spaces</SidebarLabel>
-            <div class="flex items-center">
+            <div v-if="!sessionUser.isGuest" class="flex items-center">
               <Dropdown :options="spaceSortOptions" align="end">
                 <template #trigger="{ open }">
                   <Button
@@ -124,12 +124,14 @@ import {
   type SpaceSidebarSort,
 } from '@/data/sidebarPreferences'
 import { getSpaceUnreadCount, markAllAsRead, type Space } from '@/data/spaces'
+import { useSessionUser } from '@/data/users'
 import AppDropdown from './AppDropdown.vue'
 import NewSpaceDialog from './NewSpaceDialog.vue'
 import SpaceIcon from './SpaceIcon.vue'
 import LucideLock from '~icons/lucide/lock'
 
 const route = useRoute()
+const sessionUser = useSessionUser()
 
 const spacesList = computed(() => communitySpaces.list)
 const hasCustomSpaceSidebarOptions = computed(() => {

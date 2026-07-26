@@ -32,6 +32,10 @@ describe('Guest access', () => {
     cy.visit('/g')
     cy.url().should('include', `/community/${community}/`)
 
+    // Sidebar management controls stay out of a guest's navigation.
+    cy.get('button[aria-label="Sort spaces"]').should('not.exist')
+    cy.get('button[aria-label="New space"]').should('not.exist')
+
     // Only the granted space is reachable: it is in the sidebar, General is not, and
     // neither is the post General holds.
     cy.contains('a', 'Secret Plans').should('be.visible')
@@ -70,5 +74,13 @@ describe('Guest access', () => {
     for (const action of ['Edit', 'Pin discussion', 'Close discussion', 'Move to']) {
       cy.get(`[role="menuitem"]:contains("${action}")`).should('not.exist')
     }
+  })
+
+  it('keeps space controls available to members', () => {
+    cy.loginAs('member')
+    cy.visit(`/g/community/${community}/space/${privateSpace}`)
+
+    cy.iconButton('Sort spaces').should('be.visible')
+    cy.iconButton('New space').should('be.visible')
   })
 })
