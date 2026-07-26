@@ -54,6 +54,9 @@ One test map mirroring the product's feature catalog, at three layers:
   and may not record one anywhere else.
 - **Archived space membership**: archived spaces remain viewable, but their action
   menu offers neither Join nor Leave because archiving freezes participation.
+- **Archived space content**: pages and tasks in an archived space are read-only at
+  the backend boundary — create, update, and direct delete are refused while reads
+  and the parent Space's delete cascade remain available.
 - Open: none currently.
 
 ## Step 1 — Foundation (DONE, verified)

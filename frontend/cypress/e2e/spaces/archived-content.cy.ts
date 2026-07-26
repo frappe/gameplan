@@ -1,0 +1,46 @@
+import { resetData } from '../../support/seed'
+
+describe('Archived space content', () => {
+  let community: string
+  let space: string
+  let page: string
+
+  beforeEach(() => {
+    resetData('onboarded').then((ids) => {
+      community = String(ids.community)
+      space = String(ids.space)
+
+      cy.request('POST', '/api/v2/document/GP%20Page', {
+        title: 'Archived handbook',
+        content: '<p>Existing guidance stays available.</p>',
+        project: space,
+      }).then(({ body }) => {
+        page = String(body.data.name)
+      })
+      cy.request('POST', '/api/v2/document/GP%20Task', {
+        title: 'Archived follow-up',
+        description: '<p>Existing work stays available.</p>',
+        project: space,
+      })
+      cy.request('POST', `/api/v2/document/GP%20Project/${space}/method/archive`)
+    })
+    cy.loginAs('member')
+  })
+
+  it('keeps pages and tasks viewable without creation or editing controls', () => {
+    cy.visit(`/g/community/${community}/space/${space}/pages`)
+    cy.contains('a', 'Archived handbook').should('be.visible')
+    cy.button('Add new').should('not.exist')
+    cy.contains('a', 'Archived handbook').click()
+    cy.url().should('include', `/space/${space}/pages/${page}`)
+    cy.get('input[placeholder="Title"]')
+      .should('have.value', 'Archived handbook')
+      .and('have.attr', 'readonly')
+    cy.get('[contenteditable=false]').should('contain.text', 'Existing guidance stays available.')
+    cy.iconButton('Page Options').should('not.exist')
+
+    cy.visit(`/g/community/${community}/space/${space}/tasks`)
+    cy.contains('Archived follow-up').should('be.visible')
+    cy.button('Add new').should('not.exist')
+  })
+})
