@@ -9,6 +9,7 @@ import { tags } from '@/data/tags'
 import type { GPDiscussion } from '@/types/doctypes'
 
 const PUBLISH_DRAFT = 'gameplan.gameplan.doctype.gp_draft.gp_draft.publish_draft'
+const LOADING_STATUS_DELAY_MS = 200
 
 /** Title or non-empty body — the threshold for persisting a draft at all. */
 function hasMeaningfulContent(payload: Partial<DraftPayload>): boolean {
@@ -56,6 +57,27 @@ export function useNewDiscussion() {
 
   // Drafts are owner-scoped on the server, so the author is always the current user.
   const author = computed(() => useUser(sessionUser.name))
+  const isDraftLoading = computed(() => !draft.ready.value)
+  const isComposerEditable = computed(
+    () => author.value.name === sessionUser.name && !isDraftLoading.value,
+  )
+  const showDraftLoadingStatus = ref(false)
+
+  // Keep fast IndexedDB/server restores visually quiet, but expose a real status when a
+  // request is slow enough that the temporarily disabled composer needs explanation.
+  watch(
+    isDraftLoading,
+    (loading, _wasLoading, onCleanup) => {
+      showDraftLoadingStatus.value = false
+      if (!loading) return
+
+      const timer = window.setTimeout(() => {
+        showDraftLoadingStatus.value = isDraftLoading.value
+      }, LOADING_STATUS_DELAY_MS)
+      onCleanup(() => window.clearTimeout(timer))
+    },
+    { immediate: true },
+  )
 
   // In scoped mode the picker only offers spaces from the route's community; the
   // legacy route keeps the full grouped list.
@@ -258,6 +280,9 @@ export function useNewDiscussion() {
     spaceOptions,
 
     // State
+    isDraftLoading,
+    isComposerEditable,
+    showDraftLoadingStatus,
     publishing,
     isPublishingSuccessfully,
     isDeletingDraft,

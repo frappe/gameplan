@@ -17,6 +17,15 @@ describe('New discussion drafts', () => {
     cy.loginAs('member')
   })
 
+  function createStoredDraft() {
+    cy.visit(`/g/community/${community}/new-discussion`)
+    cy.get('textarea[placeholder="Title"]').type('Stored Draft Title')
+    cy.get('[contenteditable=true]').click().type('Stored draft body.')
+    cy.contains('button[aria-haspopup="listbox"]', 'Select Space').click({ force: true })
+    cy.get('[role="option"]').contains(spaceTitle).click()
+    cy.url().should('include', 'draft=')
+  }
+
   it('saves a draft while composing and publishes it into the chosen space', () => {
     // The community discussions list is the only "+ New discussion" entry point.
     cy.visit(`/g/community/${community}/discussions`)
@@ -71,30 +80,57 @@ describe('New discussion drafts', () => {
     cy.contains('My Draft Discussion').should('not.exist')
   })
 
-  it('keeps what you type while the draft is still loading', () => {
-    // The composer is typeable the moment it renders, but its draft load (IndexedDB +
-    // the `?draft=` server fetch) finishes later and used to overwrite `draftData`,
-    // silently swallowing whatever had been typed in the meantime — in practice the
-    // first keystroke or two. Slowing the fetch down turns that race into a certainty.
-    cy.visit(`/g/community/${community}/new-discussion`)
-    cy.get('textarea[placeholder="Title"]').type('Stored Draft Title')
-    cy.get('[contenteditable=true]').click().type('Stored draft body.')
-    cy.contains('button[aria-haspopup="listbox"]', 'Select Space').click({ force: true })
-    cy.get('[role="option"]').contains(spaceTitle).click()
-    cy.url().should('include', 'draft=')
-
+  it('blocks editing while a saved draft is loading', () => {
+    createStoredDraft()
     cy.intercept('POST', '**/api/method/frappe.client.get', (req) => {
       req.continue((res) => res.setDelay(3000))
     }).as('draftFetch')
 
     cy.url().then((composerUrl) => {
       cy.visit(composerUrl)
-      // Types while the draft fetch is still in flight.
-      cy.get('textarea[placeholder="Title"]').type('Typed While Loading')
+      cy.contains('[role="status"]', 'Loading draft…').should('be.visible')
+      cy.get('textarea[placeholder="Title"]').should('be.disabled')
+      cy.get('[aria-label="Discussion content"]').should('have.attr', 'contenteditable', 'false')
+      cy.contains('button[aria-haspopup="listbox"]', spaceTitle).should('be.disabled')
+
       cy.wait('@draftFetch')
-      // The typing survives; the fields the user did not touch still come from the draft.
-      cy.get('textarea[placeholder="Title"]').should('have.value', 'Typed While Loading')
+      cy.contains('[role="status"]', 'Loading draft…').should('not.exist')
+      cy.get('textarea[placeholder="Title"]')
+        .should('be.enabled')
+        .and('have.value', 'Stored Draft Title')
+      cy.get('[aria-label="Discussion content"]').should('have.attr', 'contenteditable', 'true')
+      cy.contains('button[aria-haspopup="listbox"]', spaceTitle).should('be.enabled')
       cy.contains('Stored draft body.').should('exist')
+    })
+  })
+
+  it('allows editing when a saved draft fails to load', () => {
+    createStoredDraft()
+    cy.intercept('POST', '**/api/method/frappe.client.get', {
+      statusCode: 500,
+      delay: 500,
+      body: { exception: 'Draft lookup failed' },
+    }).as('failedDraftFetch')
+
+    cy.url().then((composerUrl) => {
+      cy.visit(composerUrl)
+      cy.contains('[role="status"]', 'Loading draft…').should('be.visible')
+      cy.get('textarea[placeholder="Title"]').should('be.disabled')
+      cy.get('[aria-label="Discussion content"]').should('have.attr', 'contenteditable', 'false')
+      cy.contains('button[aria-haspopup="listbox"]', spaceTitle).should('be.disabled')
+
+      cy.wait('@failedDraftFetch')
+      cy.contains('[role="status"]', 'Loading draft…').should('not.exist')
+      cy.get('textarea[placeholder="Title"]')
+        .should('be.enabled')
+        .type(' after failure')
+        .should('have.value', 'Stored Draft Title after failure')
+      cy.get('[aria-label="Discussion content"]')
+        .should('have.attr', 'contenteditable', 'true')
+        .click()
+        .type(' Still editable.')
+      cy.contains('button[aria-haspopup="listbox"]', spaceTitle).should('be.enabled')
+      cy.contains('Stored draft body. Still editable.').should('exist')
     })
   })
 

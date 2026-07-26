@@ -8,20 +8,24 @@
         <button
           v-if="sessionUser.name == author.name"
           type="button"
-          class="inline-flex size-8 shrink-0 items-center justify-center rounded text-ink-gray-7 transition hover:bg-surface-gray-2 active:bg-surface-gray-3"
+          class="inline-flex size-8 shrink-0 items-center justify-center rounded text-ink-gray-7 transition hover:bg-surface-gray-2 active:bg-surface-gray-3 disabled:cursor-not-allowed disabled:opacity-50"
           aria-label="Delete draft"
           title="Delete draft"
+          :disabled="isDraftLoading"
           @click.prevent.stop="deleteDraft"
         >
           <span class="lucide-trash-2 size-4" aria-hidden="true" />
         </button>
-        <Tooltip text="You cannot publish this draft" :disabled="sessionUser.name == author.name">
+        <Tooltip
+          :text="isDraftLoading ? 'Draft is loading' : 'You cannot publish this draft'"
+          :disabled="isComposerEditable"
+        >
           <Button
             variant="solid"
             size="md"
             :loading="publishing"
             @click="publish"
-            :disabled="sessionUser.name != author.name"
+            :disabled="!isComposerEditable"
           >
             Publish
           </Button>
@@ -47,19 +51,23 @@
       <button
         v-if="sessionUser.name == author.name"
         type="button"
-        class="inline-flex size-8 shrink-0 items-center justify-center rounded text-ink-gray-7 transition hover:bg-surface-gray-2 active:bg-surface-gray-3"
+        class="inline-flex size-8 shrink-0 items-center justify-center rounded text-ink-gray-7 transition hover:bg-surface-gray-2 active:bg-surface-gray-3 disabled:cursor-not-allowed disabled:opacity-50"
         aria-label="Delete draft"
         title="Delete draft"
+        :disabled="isDraftLoading"
         @click.prevent.stop="deleteDraft"
       >
         <span class="lucide-trash-2 size-4" aria-hidden="true" />
       </button>
-      <Tooltip text="You cannot publish this draft" :disabled="sessionUser.name == author.name">
+      <Tooltip
+        :text="isDraftLoading ? 'Draft is loading' : 'You cannot publish this draft'"
+        :disabled="isComposerEditable"
+      >
         <Button
           variant="solid"
           :loading="publishing"
           @click="publish"
-          :disabled="sessionUser.name != author.name"
+          :disabled="!isComposerEditable"
         >
           Publish
         </Button>
@@ -82,8 +90,17 @@ import {
 import { useNewDiscussionContext } from './useNewDiscussion'
 import DiscussionSpaceSelector from './DiscussionSpaceSelector.vue'
 
-const { isPersisted, draftData, sessionUser, author, deleteDraft, publish, publishing } =
-  useNewDiscussionContext()
+const {
+  isPersisted,
+  draftData,
+  sessionUser,
+  author,
+  isDraftLoading,
+  isComposerEditable,
+  deleteDraft,
+  publish,
+  publishing,
+} = useNewDiscussionContext()
 
 const route = useRoute()
 const mobileTitle = computed(() => (isPersisted.value ? 'Draft' : 'New Discussion'))

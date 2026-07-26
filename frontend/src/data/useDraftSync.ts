@@ -111,18 +111,6 @@ export function useDraftSync(options: UseDraftSyncOptions) {
     })
   }
 
-  /**
-   * Whether a field holds something the user would be upset to lose. Used to tell a real
-   * keystroke apart from the editor's own initialisation write (TipTap normalises empty
-   * content to `<p></p>` the moment it mounts), so only the former survives a load.
-   */
-  function isMeaningfulValue(field: keyof DraftPayload, value: unknown): boolean {
-    if (typeof value !== 'string') return Boolean(value)
-    const trimmed = value.trim()
-    if (field === 'content') return trimmed !== '' && trimmed !== '<p></p>'
-    return trimmed !== ''
-  }
-
   function payloadFromDoc(doc: Record<string, any>): DraftPayload {
     const payload: DraftPayload = { content: doc.content ?? '' }
     if ('title' in data.value) payload.title = doc.title ?? ''
@@ -239,24 +227,6 @@ export function useDraftSync(options: UseDraftSyncOptions) {
   async function load() {
     if (ready.value || loading.value) return
     loading.value = true
-    // The composer is already on screen and typeable while this runs (IndexedDB read +
-    // an optional server fetch), so whatever the user types now must survive the load —
-    // otherwise the loaded payload overwrites it and the first keystrokes vanish.
-    // `typedDuringLoad` also stands in for the change-watcher, which ignores edits made
-    // before `ready`, so those keystrokes still get persisted.
-    const pristine = { ...data.value }
-    let typedDuringLoad: (keyof DraftPayload)[] = []
-    const collectUserEdits = () => {
-      typedDuringLoad = (Object.keys(data.value) as (keyof DraftPayload)[]).filter(
-        (field) =>
-          data.value[field] !== pristine[field] && isMeaningfulValue(field, data.value[field]),
-      )
-    }
-    const keepUserEdits = (payload: DraftPayload): Partial<DraftPayload> => {
-      const merged: Partial<DraftPayload> = { ...payload }
-      for (const field of typedDuringLoad) delete merged[field]
-      return merged
-    }
     try {
       // The IndexedDB store is origin-wide, so on a shared browser profile a record under this
       // deterministic key may belong to a previously logged-in user. Only restore a record we
@@ -272,46 +242,35 @@ export function useDraftSync(options: UseDraftSyncOptions) {
       // our edits to their server row — that write is forbidden and would retry-toast forever.
       // Forking (serverName = null) lets the reader's edits insert their own draft instead.
       const serverIsForeign = Boolean(server?.owner && server.owner !== session.user)
-      collectUserEdits()
 
       if (local && local.updatedAt > (local.syncedAt ?? 0)) {
         // Un-pushed local edits take precedence over the server copy.
-        applyPayload(keepUserEdits(local.payload))
+        applyPayload(local.payload)
         serverName.value = local.serverName ?? server?.name ?? serverName.value
         updatedAt.value = local.updatedAt
         syncedAt.value = local.syncedAt
         previousKey = local.key
         restored.value = hasContent(local.payload)
       } else if (server) {
-        applyPayload(keepUserEdits(payloadFromDoc(server)))
+        applyPayload(payloadFromDoc(server))
         serverName.value = serverIsForeign ? null : server.name
         syncedAt.value = Date.now()
         updatedAt.value = syncedAt.value
         await persistLocal()
         restored.value = hasContent(payloadFromDoc(server))
       } else if (local) {
-        applyPayload(keepUserEdits(local.payload))
+        applyPayload(local.payload)
         serverName.value = local.serverName ?? null
         updatedAt.value = local.updatedAt
         syncedAt.value = local.syncedAt
         previousKey = local.key
         restored.value = hasContent(local.payload)
       } else if (initialPayload) {
-        applyPayload(keepUserEdits(initialPayload()))
+        applyPayload(initialPayload())
       }
     } finally {
       ready.value = true
       loading.value = false
-    }
-
-    // Edits made while the load was in flight predate `ready`, so the change-watcher
-    // skipped them. Persist them now, exactly as the watcher would have.
-    if (typedDuringLoad.length) {
-      updatedAt.value = Date.now()
-      if (canSave(data.value)) {
-        void persistLocal()
-        debouncedPush()
-      }
     }
   }
 
