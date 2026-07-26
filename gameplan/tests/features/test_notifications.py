@@ -269,10 +269,13 @@ class TestReactionNotifications(NotificationTestCase):
 
 
 class TestUnreadNotificationsCount(NotificationTestCase):
+	def test_anonymous_caller_is_denied(self):
+		with self.as_user("Guest"), self.assertRaises(frappe.PermissionError):
+			frappe.is_whitelisted(unread_notifications)
+
 	def test_counts_only_the_session_users_unread_rows(self):
 		before = {
-			user.name: self.unread_count(user)
-			for user in (self.member, self.second_member, self.outsider)
+			user.name: self.unread_count(user) for user in (self.member, self.second_member, self.outsider)
 		}
 		_make_notification(self.member.name, read=0)
 		_make_notification(self.member.name, read=0)
