@@ -71,6 +71,33 @@ describe('New discussion drafts', () => {
     cy.contains('My Draft Discussion').should('not.exist')
   })
 
+  it('keeps what you type while the draft is still loading', () => {
+    // The composer is typeable the moment it renders, but its draft load (IndexedDB +
+    // the `?draft=` server fetch) finishes later and used to overwrite `draftData`,
+    // silently swallowing whatever had been typed in the meantime — in practice the
+    // first keystroke or two. Slowing the fetch down turns that race into a certainty.
+    cy.visit(`/g/community/${community}/new-discussion`)
+    cy.get('textarea[placeholder="Title"]').type('Stored Draft Title')
+    cy.get('[contenteditable=true]').click().type('Stored draft body.')
+    cy.contains('button[aria-haspopup="listbox"]', 'Select Space').click({ force: true })
+    cy.get('[role="option"]').contains(spaceTitle).click()
+    cy.url().should('include', 'draft=')
+
+    cy.intercept('POST', '**/api/method/frappe.client.get', (req) => {
+      req.continue((res) => res.setDelay(3000))
+    }).as('draftFetch')
+
+    cy.url().then((composerUrl) => {
+      cy.visit(composerUrl)
+      // Types while the draft fetch is still in flight.
+      cy.get('textarea[placeholder="Title"]').type('Typed While Loading')
+      cy.wait('@draftFetch')
+      // The typing survives; the fields the user did not touch still come from the draft.
+      cy.get('textarea[placeholder="Title"]').should('have.value', 'Typed While Loading')
+      cy.contains('Stored draft body.').should('exist')
+    })
+  })
+
   it('shows the publish button on the mobile composer', () => {
     cy.viewport('iphone-6')
     cy.visit(`/g/community/${community}/new-discussion`)

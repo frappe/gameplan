@@ -157,6 +157,12 @@ Cypress.Commands.add('selectCombobox', (placeholder: string, option: string) => 
 Cypress.Commands.add('selectDropdownOption', (dropdownName: string, option: string) => {
   cy.get(`button[aria-haspopup=menu][aria-label="${dropdownName}"]`).click()
   cy.get(`[role="menuitem"]:contains("${option}"):visible`).click()
+  // A modal reka menu locks the page while it is open (`pointer-events: none` on
+  // <body>) and only releases that lock when the menu content unmounts at the end of
+  // its exit animation — reka's DismissableLayer never restores the flag itself. Until
+  // then the page is dead to the mouse for a real user too, so wait for the menu to be
+  // gone rather than forcing a click through the lock.
+  cy.get('[role="menu"]').should('not.exist')
 })
 
 // Export for ES module compatibility
