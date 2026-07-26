@@ -140,7 +140,7 @@ class GameplanSearch(SQLiteSearch):
 				cstr(project)
 				for project in (
 					requested_projects
-					if isinstance(requested_projects, (list, tuple, set))
+					if isinstance(requested_projects, list | tuple | set)
 					else [requested_projects]
 				)
 			}

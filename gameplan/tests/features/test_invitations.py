@@ -105,9 +105,7 @@ class TestInvitationCreation(InvitationTestCase):
 
 		_invite_by_email("existing-then-guest@example.com", role="Gameplan Guest", projects=[space.name])
 
-		self.assertTrue(
-			frappe.db.exists("GP Invitation", {"email": "existing-then-guest@example.com"})
-		)
+		self.assertTrue(frappe.db.exists("GP Invitation", {"email": "existing-then-guest@example.com"}))
 
 
 class TestInvitationAccept(InvitationTestCase):
@@ -143,9 +141,7 @@ class TestInvitationAccept(InvitationTestCase):
 		invitation.accept()
 
 		self.assertTrue(
-			frappe.db.exists(
-				"GP Guest Access", {"user": "guest-accept@example.com", "project": space.name}
-			)
+			frappe.db.exists("GP Guest Access", {"user": "guest-accept@example.com", "project": space.name})
 		)
 
 	def test_accept_expired_invitation_is_rejected(self):
@@ -175,9 +171,7 @@ class TestAcceptInvitationEndpoint(InvitationTestCase):
 
 		# get_password_link commits a reset-key write; stub it to keep the test
 		# transaction rolled back and to pin the redirect target deterministically.
-		with patch.object(
-			type(invitation), "get_password_link", return_value="/update-password?key=stub"
-		):
+		with patch.object(type(invitation), "get_password_link", return_value="/update-password?key=stub"):
 			accept_invitation(key=invitation.key)
 
 		self.assertEqual(frappe.local.response.get("type"), "redirect")
