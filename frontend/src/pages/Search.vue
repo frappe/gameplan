@@ -182,7 +182,10 @@
             <template v-else-if="searchResponse?.summary">
               <div class="space-y-1">
                 <p class="text-ink-gray-6">
-                  {{ visibleSearchResults.length }} matches ({{ searchResponse.summary.duration }}s)
+                  {{ visibleSearchResults.length }}
+                  {{ visibleSearchResults.length === 1 ? 'match' : 'matches' }} ({{
+                    searchResponse.summary.duration
+                  }}s)
                   <span v-if="hasActiveFilters()">
                     •
                     {{ Object.keys(searchResponse.summary.applied_filters || {}).length }} filter(s)

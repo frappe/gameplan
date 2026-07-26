@@ -37,7 +37,7 @@ describe('Search page', () => {
     cy.contains('Engineering roadmap page').should('not.exist')
 
     selectFilter('Tags', 'launch')
-    cy.contains('1 matches').should('contain', '5 filter(s) applied')
+    cy.contains('p', /^1 match \(/).should('contain', '5 filter(s) applied')
     cy.contains('Untagged roadmap').should('not.exist')
     cy.contains('Launch roadmap').should('be.visible').click()
     cy.url().should('match', /\/g\/community\/acme\/space\/\d+\/discussion\/\d+\/launch-roadmap$/)

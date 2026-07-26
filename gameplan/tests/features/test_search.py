@@ -1,10 +1,13 @@
+import json
 from unittest.mock import patch
 
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
+from gameplan.api import search_sqlite
 from gameplan.search_sqlite import GameplanSearch
-from gameplan.tests.fixtures import create_community, create_space
+from gameplan.tests.base import GameplanTestCase
+from gameplan.tests.fixtures import create_comment, create_community, create_space, grant_guest_access
 
 
 class TestableGameplanSearch(GameplanSearch):
@@ -246,11 +249,25 @@ class TestSearchRanking(FrappeTestCase):
 		)
 
 
-class TestSearchIndexLifecycle(FrappeTestCase):
+class TestSearchIndexLifecycle(GameplanTestCase):
+	INDEX_NAME = "test_gameplan_search_hooks.db"
+
 	def setUp(self):
-		frappe.set_user("Administrator")
-		community = create_community("Search Index Lifecycle Community")
-		self.space = create_space("Search Index Lifecycle Space", community)
+		super().setUp()
+		self.index_name_patch = patch.object(GameplanSearch, "INDEX_NAME", self.INDEX_NAME)
+		self.index_name_patch.start()
+		self.addCleanup(self.index_name_patch.stop)
+		self.community = create_community(
+			"Search Index Lifecycle Community",
+			is_private=1,
+			members=[self.member, self.second_member],
+		)
+		self.space = create_space(
+			"Search Index Lifecycle Space",
+			self.community,
+			is_private=1,
+			members=[self.member, self.second_member],
+		)
 		self.search = GameplanSearch()
 		self.search.drop_index()
 		self.search.build_index()
@@ -258,7 +275,7 @@ class TestSearchIndexLifecycle(FrappeTestCase):
 	def tearDown(self):
 		frappe.set_user("Administrator")
 		self.search.drop_index()
-		frappe.db.rollback()
+		super().tearDown()
 
 	def create_discussion(self, title, content, space=None):
 		return frappe.get_doc(
@@ -270,6 +287,17 @@ class TestSearchIndexLifecycle(FrappeTestCase):
 
 	def result_ids(self, query):
 		return {result["id"] for result in self.search.search(query)["results"]}
+
+	def search_as(self, user, query, filters=None):
+		with self.as_user(user):
+			return search_sqlite(
+				query,
+				filters=json.dumps(filters) if filters is not None else None,
+			)["results"]
+
+	def test_index_lifecycle_uses_an_isolated_database(self):
+		self.assertEqual(self.search.INDEX_NAME, "test_gameplan_search_hooks.db")
+		self.assertNotEqual(self.search.INDEX_NAME, "gameplan_search.db")
 
 	def test_content_is_indexed_on_create(self):
 		discussion = self.create_discussion(
@@ -320,3 +348,151 @@ class TestSearchIndexLifecycle(FrappeTestCase):
 		)["results"]
 
 		self.assertEqual([result["id"] for result in results], [f"GP Discussion:{expected.name}"])
+
+	def test_inaccessible_space_filter_returns_no_results(self):
+		inaccessible_space = create_space(
+			"Inaccessible Search Space",
+			self.community,
+			is_private=1,
+			members=[self.member],
+		)
+		self.create_discussion(
+			"Private filtered result",
+			"privatefilterneedle must not leak through a requested space",
+			space=inaccessible_space,
+		)
+
+		results = self.search_as(
+			self.second_member,
+			"privatefilterneedle",
+			filters={"project": [str(inaccessible_space.name)]},
+		)
+
+		self.assertEqual(results, [])
+
+	def test_mixed_space_filter_returns_only_accessible_results(self):
+		inaccessible_space = create_space(
+			"Mixed Inaccessible Search Space",
+			self.community,
+			is_private=1,
+			members=[self.member],
+		)
+		expected = self.create_discussion(
+			"Accessible mixed result",
+			"mixedfilterneedle in an accessible space",
+		)
+		self.create_discussion(
+			"Inaccessible mixed result",
+			"mixedfilterneedle in a space the caller cannot access",
+			space=inaccessible_space,
+		)
+
+		results = self.search_as(
+			self.second_member,
+			"mixedfilterneedle",
+			filters={"project": [str(self.space.name), str(inaccessible_space.name)]},
+		)
+
+		self.assertEqual([result["id"] for result in results], [f"GP Discussion:{expected.name}"])
+
+	def test_guest_space_filter_is_limited_to_granted_spaces(self):
+		grant_guest_access(self.guest, self.space)
+		inaccessible_space = create_space(
+			"Guest Inaccessible Search Space",
+			self.community,
+			is_private=1,
+			members=[self.member],
+		)
+		expected = self.create_discussion(
+			"Granted guest result",
+			"guestfilterneedle in the granted space",
+		)
+		self.create_discussion(
+			"Ungranted guest result",
+			"guestfilterneedle in an ungranted space",
+			space=inaccessible_space,
+		)
+
+		results = self.search_as(
+			self.guest,
+			"guestfilterneedle",
+			filters={"project": [str(self.space.name), str(inaccessible_space.name)]},
+		)
+
+		self.assertEqual([result["id"] for result in results], [f"GP Discussion:{expected.name}"])
+
+	def test_empty_permission_intersection_blocks_all_matching_documents(self):
+		inaccessible_space = create_space(
+			"Empty Intersection Search Space",
+			self.community,
+			is_private=1,
+			members=[self.member],
+		)
+		self.create_discussion(
+			"Accessible empty-intersection result",
+			"emptyintersectionneedle in an accessible space",
+		)
+		self.create_discussion(
+			"Inaccessible empty-intersection result",
+			"emptyintersectionneedle in the requested inaccessible space",
+			space=inaccessible_space,
+		)
+
+		results = self.search_as(
+			self.second_member,
+			"emptyintersectionneedle",
+			filters={"project": [str(inaccessible_space.name)]},
+		)
+
+		self.assertEqual(results, [])
+
+	def test_tag_filter_matches_a_discussion_with_multiple_tags(self):
+		discussion = self.create_discussion(
+			"Multiple tag search result",
+			"<p>multitagneedle belongs to two tags.</p>"
+			'<span class="tag-item" data-tag-label="launch">#launch</span>'
+			'<span class="tag-item" data-tag-label="planning">#planning</span>',
+		)
+		self.search.build_index()
+
+		results = self.search_as(
+			self.member,
+			"multitagneedle",
+			filters={"tags": ["launch"]},
+		)
+
+		self.assertEqual([result["id"] for result in results], [f"GP Discussion:{discussion.name}"])
+
+	def test_tagged_discussion_is_searchable_after_incremental_indexing(self):
+		discussion = self.create_discussion(
+			"Incrementally tagged search result",
+			"<p>incrementaltagneedle is indexed after the bulk build.</p>"
+			'<span class="tag-item" data-tag-label="incremental">#incremental</span>',
+		)
+
+		results = self.search_as(
+			self.member,
+			"incrementaltagneedle",
+			filters={"tags": ["incremental"]},
+		)
+
+		self.assertEqual([result["id"] for result in results], [f"GP Discussion:{discussion.name}"])
+
+	def test_comment_hook_indexes_its_space_and_community(self):
+		discussion = self.create_discussion(
+			"Comment hook parent",
+			"A parent for comment index coverage",
+		)
+		comment = create_comment(
+			discussion,
+			content="commenthookneedle resolves its parent space and community",
+			owner=self.member,
+		)
+
+		results = self.search_as(
+			self.member,
+			"commenthookneedle",
+			filters={"project": [self.space.name], "team": [self.community.name]},
+		)
+
+		self.assertEqual([result["id"] for result in results], [f"GP Comment:{comment.name}"])

@@ -203,6 +203,7 @@ a discussion is unread for every space member except the person who wrote it.
 | `onboarded`                | Community "Acme" with an auto-created General space                                                                                   | `community`, `space`                                                     |
 | `space_with_discussion`    | Public space "Engineering" with a discussion "Welcome thread" by `member`; General is left empty                                      | `community`, `space`, `general_space`, `discussion`, `discussion_slug`   |
 | `private_space_with_guest` | Private space "Secret Plans" (member is a space member, guest has access) plus a public discussion in General; both mention "roadmap" | `community`, `space`, `private_space`, `discussion`, `public_discussion` |
+| `search_page`              | Six "roadmap" results across two communities, spaces, authors, doctypes, and tags for exercising every search filter                  | `community`, `space`, `discussion`                                       |
 | `two_communities`          | Communities "Alpha"/"Beta", one public space each                                                                                     | `communities` (2), `spaces` (2)                                          |
 | `unread_discussion`        | Community "Acme" with General + "Product"; a discussion in General written by `member2`, so it is unread for `member`                 | `community`, `space`, `second_space`, `discussion`                       |
 

@@ -3,6 +3,8 @@
 
 """Contracts and access guards for Gameplan's cross-cutting API endpoints."""
 
+from unittest.mock import patch
+
 import frappe
 
 from gameplan.api import can_access_gameplan, get_search_filter_options, onboarding
@@ -71,6 +73,13 @@ class TestOnboardingEndpoint(APIEndpointTestCase):
 class TestSearchFilterOptionsEndpoint(APIEndpointTestCase):
 	def setUp(self):
 		super().setUp()
+		self.index_name_patch = patch.object(
+			GameplanSearch,
+			"INDEX_NAME",
+			"test_gameplan_search_filter_options.db",
+		)
+		self.index_name_patch.start()
+		self.addCleanup(self.index_name_patch.stop)
 		self.search = GameplanSearch()
 		self.search.drop_index()
 
