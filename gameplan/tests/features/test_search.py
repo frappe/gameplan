@@ -244,3 +244,79 @@ class TestSearchRanking(FrappeTestCase):
 				f"GP Discussion:{partial.name}",
 			],
 		)
+
+
+class TestSearchIndexLifecycle(FrappeTestCase):
+	def setUp(self):
+		frappe.set_user("Administrator")
+		community = create_community("Search Index Lifecycle Community")
+		self.space = create_space("Search Index Lifecycle Space", community)
+		self.search = GameplanSearch()
+		self.search.drop_index()
+		self.search.build_index()
+
+	def tearDown(self):
+		frappe.set_user("Administrator")
+		self.search.drop_index()
+		frappe.db.rollback()
+
+	def create_discussion(self, title, content, space=None):
+		return frappe.get_doc(
+			doctype="GP Discussion",
+			title=title,
+			project=(space or self.space).name,
+			content=content,
+		).insert(ignore_permissions=True)
+
+	def result_ids(self, query):
+		return {result["id"] for result in self.search.search(query)["results"]}
+
+	def test_content_is_indexed_on_create(self):
+		discussion = self.create_discussion(
+			"Create hook coverage",
+			"createhookneedle appears only after the index already exists",
+		)
+
+		self.assertIn(f"GP Discussion:{discussion.name}", self.result_ids("createhookneedle"))
+
+	def test_content_is_reindexed_on_update(self):
+		discussion = self.create_discussion(
+			"Update hook coverage",
+			"oldhookneedle is replaced when the discussion changes",
+		)
+
+		discussion.content = "newhookneedle appears only in the saved revision"
+		discussion.save(ignore_permissions=True)
+
+		self.assertNotIn(f"GP Discussion:{discussion.name}", self.result_ids("oldhookneedle"))
+		self.assertIn(f"GP Discussion:{discussion.name}", self.result_ids("newhookneedle"))
+
+	def test_content_is_removed_from_index_on_delete(self):
+		discussion = self.create_discussion(
+			"Delete hook coverage",
+			"deletehookneedle disappears with the discussion",
+		)
+		self.assertIn(f"GP Discussion:{discussion.name}", self.result_ids("deletehookneedle"))
+
+		discussion.delete(ignore_permissions=True)
+
+		self.assertNotIn(f"GP Discussion:{discussion.name}", self.result_ids("deletehookneedle"))
+
+	def test_space_filter_narrows_accessible_results(self):
+		other_space = create_space("Other Search Space", self.space.team)
+		expected = self.create_discussion(
+			"Filtered search result",
+			"spacefilterneedle in the selected space",
+		)
+		self.create_discussion(
+			"Other search result",
+			"spacefilterneedle in another accessible space",
+			space=other_space,
+		)
+
+		results = self.search.search(
+			"spacefilterneedle",
+			filters={"project": [self.space.name]},
+		)["results"]
+
+		self.assertEqual([result["id"] for result in results], [f"GP Discussion:{expected.name}"])

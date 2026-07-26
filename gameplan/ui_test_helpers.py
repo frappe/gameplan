@@ -66,6 +66,8 @@ def _reset_personas():
 		if frappe.db.exists("User", email):
 			user = frappe.get_doc("User", email)
 			user.first_name = first_name
+			user.middle_name = None
+			user.last_name = None
 		else:
 			user = frappe.get_doc(
 				doctype="User",
@@ -133,6 +135,13 @@ def _create_space(title, community, *, is_private=0, members=()):
 def _create_discussion(title, space, *, content="Seed content", owner=MEMBER):
 	with _as_user(owner):
 		return frappe.get_doc(doctype="GP Discussion", title=title, project=space, content=content).insert(
+			ignore_permissions=True
+		)
+
+
+def _create_page(title, space, *, content="Seed content", owner=MEMBER):
+	with _as_user(owner):
+		return frappe.get_doc(doctype="GP Page", title=title, project=space, content=content).insert(
 			ignore_permissions=True
 		)
 
@@ -213,10 +222,55 @@ def _two_communities():
 	}
 
 
+def _search_page():
+	acme = _create_community("Acme")
+	general = _general_space(acme)
+	engineering = _create_space("Engineering", acme)
+	beta = _create_community("Beta")
+	beta_space = _create_space("Beta Space", beta)
+
+	launch_tag = '<span class="tag-item" data-tag-label="launch">#launch</span>'
+	target = _create_discussion(
+		"Launch roadmap",
+		engineering.name,
+		content=f"<p>The launch roadmap is ready.</p>{launch_tag}",
+	)
+	_create_discussion(
+		"Design roadmap",
+		engineering.name,
+		content=f"<p>A roadmap written by another author.</p>{launch_tag}",
+		owner=SECOND_MEMBER,
+	)
+	_create_discussion(
+		"Beta roadmap",
+		beta_space.name,
+		content=f"<p>A roadmap in another community.</p>{launch_tag}",
+	)
+	_create_discussion(
+		"General roadmap",
+		general,
+		content=f"<p>A roadmap in another space.</p>{launch_tag}",
+	)
+	_create_page("Engineering roadmap page", engineering.name)
+	_create_discussion(
+		"Untagged roadmap",
+		engineering.name,
+		content='<p>A roadmap with a different tag.</p><span class="tag-item" '
+		'data-tag-label="planning">#planning</span>',
+	)
+
+	return {
+		"community": acme.name,
+		"space": engineering.name,
+		"discussion": target.name,
+	}
+
+
 SCENARIOS = {
 	"onboarded": _onboarded,
 	"space_with_discussion": _space_with_discussion,
 	"private_space_with_guest": _private_space_with_guest,
+	"search_page": _search_page,
 	"two_communities": _two_communities,
 	"unread_discussion": _unread_discussion,
 }

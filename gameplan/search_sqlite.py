@@ -131,6 +131,22 @@ class GameplanSearch(SQLiteSearch):
 		Return permission filters based on accessible projects.
 		"""
 		accessible_projects = self._get_accessible_projects()
+		# Frappe's SQLiteSearch overwrites a user filter when a permission filter uses
+		# the same field. An upstream intersection API still needs opening; until then,
+		# fold the selected spaces into Gameplan's permission filter so it only narrows.
+		requested_projects = getattr(self, "_requested_projects", None)
+		if requested_projects is not None:
+			requested_projects = {
+				cstr(project)
+				for project in (
+					requested_projects
+					if isinstance(requested_projects, (list, tuple, set))
+					else [requested_projects]
+				)
+			}
+			accessible_projects = [
+				project for project in accessible_projects if cstr(project) in requested_projects
+			]
 
 		if not accessible_projects:
 			# No accessible projects - return impossible condition
@@ -278,15 +294,20 @@ class GameplanSearch(SQLiteSearch):
 		"""
 		Enhanced search method that handles tag filtering using LIKE operations.
 		"""
-		# Convert tag filters to LIKE filters for the parent search
-		if filters and "tags" in filters:
-			tag_filters = filters.pop("tags")
-			if tag_filters and isinstance(tag_filters, list) and len(tag_filters) > 0:
-				# Convert to LIKE filter format for space-separated tag matching
-				filters["tags"] = ["LIKE", tag_filters]
+		filters = filters.copy() if filters else {}
+		self._requested_projects = filters.get("project")
+		try:
+			# Convert tag filters to LIKE filters for the parent search
+			if "tags" in filters:
+				tag_filters = filters.pop("tags")
+				if tag_filters and isinstance(tag_filters, list) and len(tag_filters) > 0:
+					# Convert to LIKE filter format for space-separated tag matching
+					filters["tags"] = ["LIKE", tag_filters]
 
-		# Call parent search with the converted filters
-		return super().search(query, title_only, filters)
+			# Call parent search with the converted filters
+			return super().search(query, title_only, filters)
+		finally:
+			del self._requested_projects
 
 	def get_filter_options(self):
 		"""
