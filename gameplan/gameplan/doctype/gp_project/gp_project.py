@@ -107,10 +107,11 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 		if name:
 			frappe.delete_doc("GP Guest Access", name)
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def track_visit(self):
 		if frappe.flags.read_only:
 			return
+		self.require_view_access()
 
 		values = {"user": frappe.session.user, "project": self.name}
 		existing = frappe.db.get_value("GP Project Visit", values)
@@ -130,6 +131,20 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 			frappe.db.exists("GP Followed Project", {"project": self.name, "user": frappe.session.user})
 		)
 
+	@frappe.whitelist(methods=["POST"])
+	def follow(self):
+		self.require_view_access()
+		if not self.is_followed:
+			frappe.get_doc(doctype="GP Followed Project", project=self.name).insert(ignore_permissions=True)
+
+	@frappe.whitelist(methods=["POST"])
+	def unfollow(self):
+		follow_id = frappe.db.get_value(
+			"GP Followed Project", {"project": self.name, "user": frappe.session.user}
+		)
+		if follow_id:
+			frappe.delete_doc("GP Followed Project", follow_id, ignore_permissions=True)
+
 	@frappe.whitelist()
 	def add_member(self, user):
 		require_can_manage_space_members(self)
@@ -144,18 +159,21 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 				self.save(ignore_permissions=True)
 				break
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def join(self):
+		self.require_view_access()
+		self.add_member_row(frappe.session.user)
+
+	def require_view_access(self):
 		if not can_view_space(frappe.session.user, self):
 			frappe.throw("Not permitted", frappe.PermissionError)
-		self.add_member_row(frappe.session.user)
 
 	def add_member_row(self, user):
 		if user not in [d.user for d in self.members]:
 			self.append("members", {"user": user})
 			self.save(ignore_permissions=True)
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def leave(self):
 		user = frappe.session.user
 		for member in self.members:
@@ -173,9 +191,10 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 		):
 			frappe.delete_doc("GP Pinned Project", pin, ignore_permissions=True)
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def mark_all_as_read(self):
 		"""Mark all discussions as read using a project-level timestamp."""
+		self.require_view_access()
 		user = frappe.session.user
 		project_name = self.name
 		now = frappe.utils.now()
@@ -279,6 +298,30 @@ def leave_spaces(spaces: list[str] = None):
 		return
 	for space in spaces:
 		frappe.get_doc("GP Project", space).leave()
+
+
+@frappe.whitelist(methods=["POST"])
+def track_visits(spaces: list[str] = None):
+	if not spaces:
+		return
+	for space in spaces:
+		frappe.get_doc("GP Project", space).track_visit()
+
+
+@frappe.whitelist(methods=["POST"])
+def follow_spaces(spaces: list[str] = None):
+	if not spaces:
+		return
+	for space in spaces:
+		frappe.get_doc("GP Project", space).follow()
+
+
+@frappe.whitelist(methods=["POST"])
+def unfollow_spaces(spaces: list[str] = None):
+	if not spaces:
+		return
+	for space in spaces:
+		frappe.get_doc("GP Project", space).unfollow()
 
 
 @frappe.whitelist(methods=["POST"])

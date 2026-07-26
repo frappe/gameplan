@@ -74,11 +74,9 @@ import {
   PageHeaderMobileTitle,
   PageHeader,
   Button,
-  useDoctype,
 } from 'frappe-ui'
 import SpaceHeaderActionsTarget from '@/components/SpaceHeaderActionsTarget.vue'
-import { useSpace, spaces as spaceList } from '@/data/spaces'
-import { GPProject } from '@/types/doctypes'
+import { useSpace, spaces as spaceList, trackSpaceVisit } from '@/data/spaces'
 import CommunityMenu from '@/components/CommunityMenu.vue'
 import EmptyStateBox from '@/components/EmptyStateBox.vue'
 import SpaceBreadcrumbs from '@/components/SpaceBreadcrumbs.vue'
@@ -94,7 +92,6 @@ const props = defineProps<{
 const router = useRouter()
 const community = useCommunity(() => props.communityId)
 const menuOpen = ref(false)
-const spaces = useDoctype<GPProject>('GP Project')
 const space = useSpace(() => props.spaceId)
 const canEditSpace = computed(() => !readOnlyMode && !space.value?.archived_at)
 
@@ -114,9 +111,6 @@ watch(
 )
 
 onMounted(() => {
-  spaces.runDocMethod.submit({
-    method: 'track_visit',
-    name: props.spaceId,
-  })
+  trackSpaceVisit(props.spaceId)
 })
 </script>

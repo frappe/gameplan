@@ -1,5 +1,5 @@
 import { computed, MaybeRefOrGetter, toValue } from 'vue'
-import { useCall, useList, useDoctype, dialog } from 'frappe-ui'
+import { useCall, useList, useDoc, useDoctype, dialog } from 'frappe-ui'
 import { GPProject, GPMember } from '@/types/doctypes'
 import { getProjectUnreadCount, markSpacesAsRead } from './unreadCount'
 import { useSessionUser } from './users'
@@ -93,6 +93,39 @@ export function hasJoined(spaceId: MaybeRefOrGetter<string>) {
 
 export function getSpaceUnreadCount(spaceId: string) {
   return getProjectUnreadCount(spaceId)
+}
+
+export function trackSpaceVisit(spaceId: string) {
+  return spaceDoctype.runMethod.submit({
+    method: 'track_visits',
+    params: { spaces: [spaceId] },
+  })
+}
+
+export function useSpaceFollowing(spaceId: MaybeRefOrGetter<string>) {
+  const space = useDoc<GPProject>({
+    doctype: 'GP Project',
+    name: spaceId,
+  })
+  const isFollowed = computed(() => Boolean(space.doc?.is_followed))
+
+  async function follow() {
+    await spaceDoctype.runMethod.submit({
+      method: 'follow_spaces',
+      params: { spaces: [toValue(spaceId)] },
+    })
+    await space.reload()
+  }
+
+  async function unfollow() {
+    await spaceDoctype.runMethod.submit({
+      method: 'unfollow_spaces',
+      params: { spaces: [toValue(spaceId)] },
+    })
+    await space.reload()
+  }
+
+  return { isFollowed, follow, unfollow }
 }
 
 const spaceDoctype = useDoctype<GPProject>('GP Project')

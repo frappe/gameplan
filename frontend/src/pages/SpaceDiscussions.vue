@@ -98,7 +98,11 @@ import { showCommunitiesSettings } from '@/components/Settings'
 import {
   useSpace,
   useSpacePermissions,
+  useSpaceFollowing,
   spaces,
+  hasJoined,
+  joinSpaces,
+  leaveSpaces,
   markAllAsRead,
   archiveSpace,
   unarchiveSpace,
@@ -131,6 +135,8 @@ const {
   canEditSpace,
   canManageAccess,
 } = useSpacePermissions(() => props.spaceId)
+const following = useSpaceFollowing(() => props.spaceId)
+const isJoined = computed(() => hasJoined(props.spaceId))
 const showSpaceAccessDialog = ref(false)
 
 // The space's community, so the "Settings" shortcut can jump to its Spaces admin
@@ -155,6 +161,21 @@ const spaceActions = computed(() => [
     label: 'Mark all as read',
     icon: 'lucide-check',
     onClick: () => currentSpace.value && markAllAsRead([props.spaceId], currentSpace.value.title),
+  },
+  {
+    label: isJoined.value ? 'Leave space' : 'Join space',
+    icon: isJoined.value ? 'lucide-log-out' : 'lucide-log-in',
+    onClick: () => {
+      if (!currentSpace.value) return
+      return isJoined.value ? leaveSpaces([props.spaceId]) : joinSpaces([props.spaceId])
+    },
+    condition: () => canEditSpace.value,
+  },
+  {
+    label: following.isFollowed.value ? 'Unfollow space' : 'Follow space',
+    icon: following.isFollowed.value ? 'lucide-bell-off' : 'lucide-bell-plus',
+    onClick: () => (following.isFollowed.value ? following.unfollow() : following.follow()),
+    condition: () => canEditSpace.value,
   },
   {
     label: 'Manage access',
