@@ -172,7 +172,7 @@
                   class="sm:hidden"
                   variant="ghost"
                   :icon="isComposerFullscreen ? 'lucide-minimize-2' : 'lucide-maximize-2'"
-                  :aria-label="isComposerFullscreen ? 'Minimize comment box' : 'Expand comment box'"
+                  :label="isComposerFullscreen ? 'Minimize comment box' : 'Expand comment box'"
                   @click="toggleMobileComposerFullscreen"
                 />
               </Tooltip>

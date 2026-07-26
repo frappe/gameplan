@@ -229,7 +229,10 @@ class TestProfiles(FrappeTestCase):
 		frappe.set_user(self.alice.name)
 		for card_type in ("Text", "Image"):
 			with self.subTest(card_type=card_type):
-				with self.assertRaises(frappe.ValidationError):
+				with self.assertRaisesRegex(
+					frappe.ValidationError,
+					f"^Invalid card type: {card_type}$",
+				):
 					save_my_bento_cards(
 						[
 							{
@@ -260,7 +263,7 @@ class TestProfiles(FrappeTestCase):
 
 	def test_bento_card_type_must_be_title_case(self):
 		frappe.set_user(self.alice.name)
-		with self.assertRaises(frappe.ValidationError):
+		with self.assertRaisesRegex(frappe.ValidationError, "^Invalid card type: text$"):
 			save_my_bento_cards(
 				[
 					{
@@ -368,13 +371,13 @@ class TestProfiles(FrappeTestCase):
 	def test_bento_card_size_must_be_supported(self):
 		frappe.set_user(self.alice.name)
 
-		with self.assertRaises(frappe.ValidationError):
+		with self.assertRaisesRegex(frappe.ValidationError, "^Invalid card size: 3x3$"):
 			save_my_bento_cards([make_bento_card(size="3x3")])
 
 	def test_bento_card_image_rendering_must_be_supported(self):
 		frappe.set_user(self.alice.name)
 
-		with self.assertRaises(frappe.ValidationError):
+		with self.assertRaisesRegex(frappe.ValidationError, "^Invalid image rendering: Stretch$"):
 			save_my_bento_cards([make_bento_card(imageRendering="Stretch")])
 
 	def test_bento_image_position_is_clamped_to_the_card(self):
@@ -458,7 +461,7 @@ class TestQuickReactions(GameplanTestCase):
 
 		self.assertEqual(get_quick_reactions(self.member.name), slots)
 
-	def test_quick_reactions_are_private_to_each_profile(self):
+	def test_quick_reactions_are_independent_for_each_profile(self):
 		self.save_quick_reactions(self.member, ["👍"])
 		self.save_quick_reactions(self.second_member, ["🚀"])
 
@@ -499,3 +502,15 @@ class TestQuickReactions(GameplanTestCase):
 		self.save_quick_reactions(self.member, ["  👍  ", "", "  /files/party.gif "])
 
 		self.assertEqual(get_quick_reactions(self.member.name), ["👍", "", "/files/party.gif"])
+
+	def test_unrelated_profile_save_preserves_quick_reaction_json_representation(self):
+		quick_reactions = '["👍",""]'
+
+		with self.as_user(self.member):
+			profile = get_profile(self.member.name)
+			profile.quick_reaction_emojis = quick_reactions
+			profile.save()
+			profile.bio = "Unrelated profile edit"
+			profile.save()
+
+		self.assertEqual(get_profile(self.member.name).quick_reaction_emojis, quick_reactions)

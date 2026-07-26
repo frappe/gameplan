@@ -18,8 +18,13 @@ describe('Profile settings', () => {
   })
 
   it('edits the profile, adds a bento card, and sets quick reactions', () => {
+    cy.viewport(1280, 900)
     cy.intercept('PUT', '**/api/v2/document/User/*').as('saveName')
-    cy.intercept('PUT', '**/api/v2/document/GP%20User%20Profile/*').as('saveBio')
+    cy.intercept('PUT', '**/api/v2/document/GP%20User%20Profile/*', (request) => {
+      const body = request.body as Record<string, unknown>
+      if ('bio' in body) request.alias = 'saveBio'
+      if ('quick_reaction_emojis' in body) request.alias = 'saveQuickReactions'
+    })
     cy.visit('/g/settings/profile')
     cy.get('[role="dialog"]').contains('h2', 'Profile').should('be.visible')
 
@@ -69,7 +74,6 @@ describe('Profile settings', () => {
 
     cy.visit('/g/settings/preferences')
     cy.get('[role="dialog"]').contains('h2', 'Preferences').should('be.visible')
-    cy.intercept('PUT', '**/api/v2/document/GP%20User%20Profile/*').as('saveQuickReactions')
     cy.get('[role="dialog"]').contains('button', '👍').click()
     cy.get('input[placeholder="Search by keyword"]:visible').type('grinning face')
     cy.get('button[title="grinning face"]:visible').click()

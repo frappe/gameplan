@@ -22,19 +22,23 @@ describe('Mobile discussion creation', () => {
     cy.visit(`/g/community/${community}/space/${space}/discussions`)
     cy.get('[aria-label="New discussion"]').should('be.visible').click()
 
-    cy.get('div[contenteditable=true]')
-      .should('be.visible')
-      .click()
-      .type('A discussion created from a phone.')
     cy.get('textarea[placeholder="Title"]')
       .should('be.visible')
       .type('Mobile discussion')
       .should('have.value', 'Mobile discussion')
+    cy.get('div[contenteditable=true]')
+      .should('be.visible')
+      .click()
+      .type('A discussion created from a phone.')
+      .should('have.focus')
     cy.button('Publish').click()
 
     cy.wait('@publishDiscussion')
       .its('response.body.message')
       .then((discussion: string) => {
+        cy.request(`/api/v2/document/GP%20Discussion/${discussion}`)
+          .its('body.data.project')
+          .should('equal', space)
         cy.url().should(
           'include',
           `/g/community/${community}/space/${space}/discussion/${discussion}/mobile-discussion`,
@@ -44,6 +48,7 @@ describe('Mobile discussion creation', () => {
 
     cy.intercept('POST', '/api/v2/document/GP%20Comment').as('postComment')
     cy.button('Add a comment').click()
+    cy.iconButton('Expand comment box').should('be.visible')
     cy.get('[contenteditable=true]')
       .should('be.visible')
       .click()

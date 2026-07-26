@@ -62,6 +62,7 @@ class TestPageCreation(PageTestCase):
 				title="Private Scratchpad",
 				content="<p>First draft</p>",
 			).insert()
+			page.reload()
 
 		self.assertEqual(page.owner, self.member.name)
 		self.assertIsNone(page.project)
@@ -75,9 +76,10 @@ class TestPageCreation(PageTestCase):
 				project=self.space.name,
 				content="<p>Shared draft</p>",
 			).insert()
+			page.reload()
 
 		self.assertEqual(page.owner, self.second_member.name)
-		self.assertEqual(page.project, self.space.name)
+		self.assertEqual(page.project, str(self.space.name))
 		self.assertEqual(page.content, "<p>Shared draft</p>")
 
 	def test_guest_cannot_create_a_page_in_a_granted_space(self):
