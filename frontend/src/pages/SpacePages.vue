@@ -57,6 +57,8 @@ import PageGrid from './PageGrid.vue'
 import { GPPage } from '@/types/doctypes'
 import { useSpace } from '@/data/spaces'
 import { readOnlyMode } from '@/data/readOnlyMode'
+import { useSessionUser } from '@/data/users'
+import { isGuest } from '@/utils/permissions'
 
 const props = defineProps<{
   spaceId: string
@@ -65,7 +67,9 @@ const props = defineProps<{
 const router = useRouter()
 const space = useSpace(() => props.spaceId)
 const orderBy: UseListOptions<GPPage>['orderBy'] = ref('modified desc')
-const canEditSpace = computed(() => !readOnlyMode && !space.value?.archived_at)
+const canEditSpace = computed(
+  () => !readOnlyMode && !space.value?.archived_at && !isGuest(useSessionUser()),
+)
 
 const newPage = useNewDoc<GPPage>('GP Page', {
   project: props.spaceId,
