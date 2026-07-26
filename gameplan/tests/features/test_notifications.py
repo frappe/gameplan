@@ -30,6 +30,7 @@ from gameplan.tests.fixtures import (
 	create_community,
 	create_discussion,
 	create_member,
+	create_poll,
 	create_space,
 )
 
@@ -73,7 +74,17 @@ class NotificationTestCase(GameplanTestCase):
 		rows = frappe.get_all(
 			"GP Notification",
 			filters={"to_user": _name(user), **filters},
-			fields=["name", "type", "message", "from_user", "discussion", "comment", "task", "read"],
+			fields=[
+				"name",
+				"type",
+				"message",
+				"from_user",
+				"discussion",
+				"comment",
+				"poll",
+				"task",
+				"read",
+			],
 		)
 		return [row for row in rows if row.name not in self.notifications_before]
 
@@ -268,6 +279,53 @@ class TestReactionNotifications(NotificationTestCase):
 		self.assertEqual(len(rows), 1)
 		self.assertEqual(rows[0].message, "1 person reacted to your post")
 
+	def test_reaction_on_a_poll_notifies_its_author(self):
+		poll = create_poll("Ship on Friday?", self.discussion, owner=self.member)
+
+		self._react(poll, self.second_member)
+
+		rows = self.notifications_for(self.member)
+		self.assertEqual(len(rows), 1)
+		self.assertEqual(rows[0].type, "Reaction")
+		self.assertEqual(rows[0].message, "1 person reacted to your post")
+		self.assertEqual(str(rows[0].poll), str(poll.name))
+		self.assertEqual(str(rows[0].discussion), str(self.discussion.name))
+
+	def test_reacting_to_your_own_poll_creates_no_notification(self):
+		poll = create_poll("Ship on Friday?", self.discussion, owner=self.member)
+
+		self._react(poll, self.member)
+
+		self.assertEqual(self.notifications_for(self.member), [])
+
+	def test_poll_reaction_does_not_notify_an_author_who_cannot_see_the_space(self):
+		private_space = create_space(
+			"Secret Plans", self.community, is_private=1, members=[self.member, self.second_member]
+		)
+		discussion = create_discussion("Secret thread", private_space, owner=self.member)
+		poll = create_poll("Secret poll", discussion, owner=self.outsider)
+
+		self._react(poll, self.second_member)
+
+		self.assertEqual(self.notifications_for(self.outsider), [])
+
+	def test_poll_and_discussion_reactions_create_distinct_notifications(self):
+		poll = create_poll("Ship on Friday?", self.discussion, owner=self.member)
+		self._react(poll, self.second_member)
+		self._react(poll, self.admin, emoji="💖")
+
+		self._react(self.discussion, self.second_member)
+
+		rows = self.notifications_for(self.member)
+		self.assertEqual(len(rows), 2)
+		poll_row = next(row for row in rows if row.poll)
+		discussion_row = next(row for row in rows if not row.poll)
+		self.assertEqual(str(poll_row.poll), str(poll.name))
+		self.assertEqual(str(poll_row.discussion), str(self.discussion.name))
+		self.assertEqual(poll_row.message, "2 people reacted to your post")
+		self.assertEqual(str(discussion_row.discussion), str(self.discussion.name))
+		self.assertEqual(discussion_row.message, "1 person reacted to your post")
+
 
 class TestUnreadNotificationsCount(NotificationTestCase):
 	def test_anonymous_caller_is_denied(self):
@@ -344,3 +402,24 @@ class TestMarkNotificationsAsRead(NotificationTestCase):
 
 		self.assertEqual(frappe.db.get_value("GP Notification", matching.name, "read"), 1)
 		self.assertEqual(frappe.db.get_value("GP Notification", unrelated.name, "read"), 0)
+
+	def test_clear_notifications_marks_only_the_matching_poll_notification_read(self):
+		discussion = create_discussion("Poll notification thread", self.space)
+		poll = create_poll("Clear this poll", discussion)
+		matching = _make_notification(self.member.name, poll=poll.name, read=0)
+		unrelated = _make_notification(self.member.name, discussion=discussion.name, read=0)
+
+		GPNotification.clear_notifications(poll=poll.name, user=self.member.name)
+
+		self.assertEqual(frappe.db.get_value("GP Notification", matching.name, "read"), 1)
+		self.assertEqual(frappe.db.get_value("GP Notification", unrelated.name, "read"), 0)
+
+	def test_deleting_a_poll_clears_its_notification_link(self):
+		discussion = create_discussion("Delete poll notification thread", self.space)
+		poll = create_poll("Delete this poll", discussion, owner=self.member)
+		notification = _make_notification(self.member.name, poll=poll.name, read=0)
+
+		with self.as_user(self.member):
+			frappe.delete_doc("GP Poll", poll.name)
+
+		self.assertIsNone(frappe.db.get_value("GP Notification", notification.name, "poll"))

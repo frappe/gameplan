@@ -128,6 +128,8 @@ export interface GPNotification extends DocType {
   comment?: string
   /** Discussion: Link (GP Discussion) */
   discussion?: string
+  /** Poll: Link (GP Poll) */
+  poll?: string
   /** Task: Link (GP Task) */
   task?: string
   /** Project: Link (GP Project) */

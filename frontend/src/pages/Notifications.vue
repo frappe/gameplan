@@ -160,6 +160,7 @@ const notificationFields = [
   'creation',
   'comment',
   'discussion',
+  'poll',
   'task',
   'project',
   'team',
@@ -176,6 +177,7 @@ const loadedNotifications = computed<NotificationRow[]>(() => [
 const discussionTitles = useLinkedTitles('GP Discussion', () =>
   linkedIds(loadedNotifications.value, 'discussion'),
 )
+const pollTitles = useLinkedTitles('GP Poll', () => linkedIds(loadedNotifications.value, 'poll'))
 const taskTitles = useLinkedTitles('GP Task', () => linkedIds(loadedNotifications.value, 'task'))
 
 const markAllAsRead = useCall({
@@ -235,7 +237,11 @@ function notificationRoute(notification: NotificationRow): RouteLocationRaw | nu
         spaceId: notification.project,
         postId: notification.discussion,
       },
-      query: notification.comment ? { comment: notification.comment } : undefined,
+      query: notification.poll
+        ? { poll: notification.poll }
+        : notification.comment
+          ? { comment: notification.comment }
+          : undefined,
     }
   }
   if (notification.task) {
@@ -258,6 +264,7 @@ function notificationIcon(notification: NotificationRow) {
 }
 
 function notificationTargetTitle(notification: NotificationRow) {
+  if (notification.poll) return pollTitles.value.get(String(notification.poll))
   if (notification.discussion) return discussionTitles.value.get(String(notification.discussion))
   if (notification.task) return taskTitles.value.get(String(notification.task))
   return null
@@ -269,23 +276,24 @@ function notificationLocation(notification: NotificationRow) {
   return [community, space].filter(Boolean).join(' / ')
 }
 
-function linkedIds(notifications: NotificationRow[], field: 'discussion' | 'task') {
+function linkedIds(notifications: NotificationRow[], field: 'discussion' | 'poll' | 'task') {
   return [...new Set(notifications.map((row) => row[field]).filter(Boolean))].map(String)
 }
 
 /**
- * Titles of the discussions/tasks the notifications point at.
+ * Titles of the discussions, polls, and tasks the notifications point at.
  *
  * These used to be joined into the notification query itself
  * (`discussion.title as discussion_title`), which silently emptied the whole
  * list: frappe's list API LEFT JOINs the linked doctype but puts that doctype's
  * permission condition in the outer WHERE (`LinkTableField.apply_join` in
  * frappe/database/query.py), so a row whose link is NULL fails the condition and
- * disappears. Every notification links either a discussion or a task, never
- * both, so asking for both titles dropped every row. Inline the joins again once
- * frappe moves those conditions onto the ON clause.
+ * disappears. Asking for multiple nullable linked titles therefore dropped
+ * valid rows. This is fixed on upstream `develop` and `version-16-hotfix`, but
+ * not `version-16`; keep the separate queries until the hotfix merges forward
+ * and this bench moves to a frappe version that carries it.
  */
-function useLinkedTitles(doctype: 'GP Discussion' | 'GP Task', ids: () => string[]) {
+function useLinkedTitles(doctype: 'GP Discussion' | 'GP Poll' | 'GP Task', ids: () => string[]) {
   const list = useList<{ name: string; title: string }>({
     doctype,
     fields: ['name', 'title'],

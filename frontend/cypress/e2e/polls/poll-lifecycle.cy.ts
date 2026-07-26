@@ -11,12 +11,14 @@ describe('Poll lifecycle', () => {
   let community: string
   let space: string
   let discussion: string
+  let discussionSlug: string
 
   beforeEach(() => {
     resetData('space_with_discussion').then((ids) => {
       community = String(ids.community)
       space = String(ids.space)
       discussion = String(ids.discussion)
+      discussionSlug = String(ids.discussion_slug)
     })
     cy.loginAs('member')
   })
@@ -160,6 +162,25 @@ describe('Poll lifecycle', () => {
     cy.reload()
     cy.contains('Ship on Friday?').should('be.visible')
     assertPollReactionShown()
+
+    // The poll author receives a usable bell entry: it names the poll and routes
+    // back to the discussion with the poll query that scrolls the timeline to it.
+    cy.switchUser('secondMember')
+    cy.intercept('GET', '**/gameplan.api.unread_notifications*').as('unreadCount')
+    cy.visit('/g/')
+    cy.wait('@unreadCount')
+    cy.get('button[aria-label="Notifications, 1 unread"]').click()
+    cy.contains('1 person reacted to your post').should('be.visible')
+    cy.contains('Ship on Friday?').should('be.visible')
+    cy.contains('1 person reacted to your post').click()
+    cy.location('pathname').should(
+      'eq',
+      `/g/community/${community}/space/${space}/discussion/${discussion}/${discussionSlug}`,
+    )
+    cy.location('search').should((search) => {
+      expect(search).to.equal(`?poll=${poll}`)
+    })
+    cy.contains('Ship on Friday?').should('be.visible')
   })
 })
 

@@ -21,15 +21,13 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 	"""A poll posted inside a discussion.
 
 	It carries a `reactions` table and the UI hangs the same Reactions component off it
-	as it does off a discussion or a comment, so it mixes in HasReactions. What it does
-	NOT do is call `notify_reactions` on update: GP Notification has no `poll` link
-	field, so a poll-reaction notification has nothing to point at, and the mixin's
-	de-duplicating lookup (keyed on to_user + type + reference) would then latch onto an
-	unrelated Reaction notification for the same user. Notifying a poll's author needs a
-	product decision on where that notification leads first.
+	as it does off a discussion or a comment, so it mixes in HasReactions and notifies
+	its author when another user reacts. The notification carries both the poll and its
+	discussion for routing; HasReactions keeps its lookup distinct from the discussion's
+	own reaction notification.
 	"""
 
-	on_delete_set_null = ["GP Discussion"]
+	on_delete_set_null = ["GP Discussion", "GP Notification"]
 
 	def before_insert(self):
 		self.check_if_discussion_is_closed()
@@ -60,6 +58,9 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 
 	def after_delete(self):
 		self.update_discussion_meta()
+
+	def on_update(self):
+		self.notify_reactions()
 
 	def update_discussion_meta(self):
 		if not self.discussion:

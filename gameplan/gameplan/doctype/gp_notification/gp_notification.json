@@ -12,6 +12,7 @@
   "message",
   "comment",
   "discussion",
+  "poll",
   "task",
   "project",
   "team",
@@ -62,6 +63,12 @@
    "fieldtype": "Link",
    "label": "Discussion",
    "options": "GP Discussion"
+  },
+  {
+   "fieldname": "poll",
+   "fieldtype": "Link",
+   "label": "Poll",
+   "options": "GP Poll"
   },
   {
    "fieldname": "task",

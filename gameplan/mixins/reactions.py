@@ -56,6 +56,8 @@ class HasReactions:
 		return self.get("reactions")
 
 	def notify_reactions(self):
+		from gameplan.permissions import can_view_content
+
 		previous = self.get_doc_before_save()
 		if previous and len(previous.get("reactions")) == len(self.get("reactions")):
 			return
@@ -66,6 +68,8 @@ class HasReactions:
 		# otherwise read "1 person reacted to your post" about yourself.
 		people = list({r.user for r in self.get("reactions") if r.user != self.owner})
 		if not people:
+			return
+		if not can_view_content(self.owner, self):
 			return
 
 		match len(people):
@@ -81,9 +85,18 @@ class HasReactions:
 			values.discussion = self.name
 		elif self.doctype == "GP Comment":
 			values.comment = self.name
+		elif self.doctype == "GP Poll":
+			values.poll = self.name
+			values.discussion = self.discussion
 
-		if frappe.db.exists("GP Notification", values):
-			doc = frappe.get_doc("GP Notification", values)
+		lookup = values.copy()
+		if self.doctype == "GP Discussion":
+			# Poll notifications also carry their discussion for routing. Excluding
+			# them here keeps a later discussion reaction from overwriting the poll row.
+			lookup.poll = ["is", "not set"]
+
+		if frappe.db.exists("GP Notification", lookup):
+			doc = frappe.get_doc("GP Notification", lookup)
 		else:
 			doc = frappe.get_doc(doctype="GP Notification")
 			doc.update(values)
