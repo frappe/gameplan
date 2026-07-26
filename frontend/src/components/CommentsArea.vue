@@ -435,14 +435,11 @@ const activities = useList<GPActivity>({
 })
 
 // The timeline normally updates live via the `new_activity` socket event (see
-// onMounted). That echo is best-effort, though: in local dev the app (:8080) and
-// socketio (:9000) are different origins, so the SameSite session cookie is dropped
-// on the socket handshake, this tab connects as Guest, and never joins the doc room.
-// Independent of realtime, the user who just renamed/closed/moved the discussion
-// should see their own action recorded at once. The parent bumps `activityVersion`
-// with the doc's `modified` on every such action, so reload the timeline when it
-// changes (skipping the initial undefined -> value transition on first load, when
-// the list has already fetched on mount).
+// onMounted). Independent of that server round trip, the user who just
+// renamed/closed/moved the discussion should see their own action recorded at once.
+// The parent bumps `activityVersion` with the doc's `modified` on every such action,
+// so reload the timeline when it changes (skipping the initial undefined -> value
+// transition on first load, when the list has already fetched on mount).
 watch(
   () => props.activityVersion,
   (next, prev) => {

@@ -240,13 +240,54 @@ cy.task("requestAsUser", {
 
 `discussions/realtime-activity.cy.ts` uses it for the live-update path.
 
-**Realtime caveat on a local bench:** the socket cannot authenticate for the demo
-site here. Under `developer_mode` the realtime server validates each session against
-`common_site_config.json`'s `webserver_port` (`:8000`), and that server is pinned to
-`default_site`, so a demo-site `sid` is unknown there and the tab connects as Guest —
-never joining any document room. Specs that need an inbound event hand the frame to
-the page's own engine instead; the server half is covered in
-`features/test_realtime_activity.py`.
+**Realtime on a local bench:** genuine delivery works when both web ports resolve to
+the demo site. Under `developer_mode`,
+`apps/frappe/realtime/utils.js::get_url` rewrites the socket origin's port to
+`common_site_config.json`'s `webserver_port` (`:8000`). Cypress drives the
+demo-pinned server on `:8002`, while the socket server validates its sid against the
+demo-pinned server on `:8000`. The earlier SameSite theory was wrong: the cookie is
+sent; it was being validated against a different site.
+
+`discussions/realtime-activity.cy.ts` has a behavioral preflight with distinct
+failure messages for all three required processes:
+
+- `:8002` must respond as `gameplan-demo.test` (start with
+  `bench --site gameplan-demo.test serve --port 8002`);
+- `:8000`, the realtime authentication target, must also respond as
+  `gameplan-demo.test` (start with
+  `bench --site gameplan-demo.test serve --port 8000`);
+- Socket.IO must accept a polling handshake on `:9000` (start with
+  `bench socketio`).
+
+After seeding, the preflight mints a new persona session on each web port and resolves
+the acting user immediately in the same Cypress task. It does not inspect process
+names, and it never carries a sid from one Cypress step to another.
+
+Three traps matter when checking this manually:
+
+1. `frappe.realtime.get_user_info` returns `{}` unless the request includes
+   `X-Frappe-Socket-Secret`; `{}` means “missing secret,” not “Guest” or “wrong
+   site.” Get the secret with
+   `bench --site gameplan-demo.test execute frappe.realtime.get_socketio_secret`.
+2. Test-suite pressure can expire sessions within minutes. Mint the sid and resolve
+   it in the same step; otherwise `session_expired` / `Guest` can be misdiagnosed as
+   a site-routing failure.
+3. `bench browse --user X --sid` is unavailable in Frappe v16.28. Log in with
+   `POST /api/method/login` and password `admin`. Curl stores the HttpOnly sid on a
+   `#HttpOnly_` line; extract it from the cookie jar with
+   `awk -F'\t' '$6=="sid"{print $7}' jar`.
+
+Known Frappe limitation, deliberately without a PR yet: in `developer_mode`,
+`get_url` discards the request origin's port unconditionally. The rewrite is needed
+when the origin is Vite on `:8080`, which is not a Frappe server, but a bench serving
+two sites on two real web ports can authenticate sockets for only the site on
+`webserver_port`. A future fix should prefer an origin that answers as a Frappe site
+and fall back to `webserver_port`; Faris chose to raise that upstream later.
+
+A genuine two-browser version remains an explicit follow-up. Cypress has no native
+multi-session support, so it would need `cy.session` juggling or an iframe and would
+be the most flake-prone spec in the suite. The current reliable version keeps one
+browser watching while a separate server-side session makes the change.
 
 ### Conventions
 

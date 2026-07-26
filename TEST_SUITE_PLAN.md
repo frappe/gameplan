@@ -89,9 +89,11 @@ One test map mirroring the product's feature catalog, at three layers:
 18. **Install and run `pre-commit` before pushing.** The documented lint command
     has not run on this machine because `pre-commit` is absent; final branch
     delivery owns installing and running it.
-19. **Realtime must be exercised genuinely end to end on this machine.** The
-    frame-injection simulation is temporary and must be replaced after fixing the
-    local demo-site socket authentication path.
+19. **Realtime is exercised genuinely end to end on this machine.** A reliable
+    server-driven second session replaced frame injection after the local demo-site
+    socket authentication path was fixed. A two-browser version remains an explicit,
+    deliberately deferred follow-up because Cypress has no native multi-session
+    support.
 20. **Step 4 CI guardrails remain out of scope.** Finish Step 3, then hand the
     branch over without expanding into coverage/nightly/sharding work.
 21. **Four Space mutation methods are explicit POST-only exceptions to decision
@@ -277,13 +279,14 @@ Four Step-2-era failures were root-caused (all against the demo site on `:8001`)
   `CSRFTokenError`. Switched the read to `GET` (reads aren't CSRF-checked). 2/2 green.
 - **`discussions/discussion-actions.cy.ts`** (rename + close) — the timeline only
   refreshed on the realtime `new_activity` echo, even for the acting user's own
-  action. That echo never arrives in local dev: the app (`:8080`) and socketio
-  (`:9000`) are different origins, so the `SameSite` session cookie is dropped on
-  the socket handshake and the tab connects as Guest. Product fix: `CommentsArea`
-  now reloads activities whenever the acting client's own action changes the
-  discussion doc (a new `activityVersion` prop bound to `discussion.doc.modified`),
-  instead of depending on the socket. Backend activity creation was verified
-  correct (`log_title_update` / `close_discussion`). 6/6 green.
+  action. That echo did not arrive in the old local setup because Socket.IO
+  validated the demo sid against `webserver_port` (`:8000`), which then served a
+  different site; the cookie was sent but resolved as Guest. Product fix:
+  `CommentsArea` now reloads activities whenever the acting client's own action
+  changes the discussion doc (a new `activityVersion` prop bound to
+  `discussion.doc.modified`), instead of depending on the socket. Backend activity
+  creation was verified correct (`log_title_update` / `close_discussion`). 6/6
+  green.
 - **`tasks/task-actions.cy.ts`** — real frappe-ui Dialog focus bug (reka-ui
   `DialogOverlay`'s `@pointerdown.left.prevent` cancels click-to-focus on nested
   fields; verified in real Chrome). Fix belongs upstream (committed locally on
@@ -458,7 +461,7 @@ Four Step-2-era failures were root-caused (all against the demo site on `:8001`)
    - Assumption taken: pinning/closing are edits, so the existing
      `can_edit_content` gate (any member who can reach the space; guests never)
      is the rule — matching the frontend's `canEditDiscussion` affordance gate.
-7. Realtime activity broadcast — DONE, with one documented simulation
+7. Realtime activity broadcast — DONE, genuinely end to end
    (2026-07-26). The `new_activity` room bug (fixed in Step 2) had shipped
    unnoticed because the only thing exercising the path was an incidental
    assertion in `discussions/discussion-actions.cy.ts`.
@@ -482,25 +485,30 @@ Four Step-2-era failures were root-caused (all against the demo site on `:8001`)
      cookie jar, so it can only ever act as whoever the open page is logged in
      as. Reusable by any future spec that needs "someone else did this while I
      was looking at it".
-   - **Simulated hop (bench limitation, not a product gap):** the socket cannot
-     authenticate for `gameplan-demo.test` on this devbox. Under `developer_mode`
-     the realtime server validates every session against
-     `common_site_config.json`'s `webserver_port`
-     (`frappe/realtime/utils.js::get_url`), i.e. `:8000` — and that server is pinned to `default_site`
-     (`gameplan.localhost`) by `frappe/utils/bench_helper.py::get_sites`. The
-     demo-site `sid` is unknown there, so the tab connects as **Guest** and is
-     refused the document room. Verified with the same demo-site session:
-     `get_user_info` on `:8002` identifies `member2@example.com`, while the
-     realtime server's `:8000` authentication target identifies it as Guest.
-     (The earlier "SameSite cookie is dropped on the handshake" theory in the
-     Step-2 notes is wrong — the cookie is sent; it is validated against the
-     wrong site.) The spec therefore hands the frame to the page's engine
-     (`socket.io.engine.emit('data', …)`), so the real decoder, namespace routing
-     and listener dispatch still run and only the network hop is skipped.
-     Disabling `CommentsArea`'s `new_activity` handler makes the spec fail, so the
-     client realtime path is load-bearing, not decorative. Fixing the environment
-     needs a restart of the `:8000` server (or of the realtime server after a
-     `webserver_port` change), which is Faris's call.
+   - **Genuine hop:** the environment now has demo-pinned Frappe servers on both
+     `:8002` (Cypress) and `:8000` (the Socket.IO authentication target). The
+     watching `member2` tab joins the document room, `member` closes the discussion
+     through a separate Node session, and the real server event makes the timeline
+     update without a reload. The spec no longer injects a Socket.IO frame.
+   - The root cause was `frappe/realtime/utils.js::get_url`: under
+     `developer_mode` it discards the socket origin's port and replaces it with
+     `common_site_config.json`'s `webserver_port` (`:8000`). That port previously
+     served another site, so the demo sid resolved as Guest. Pinning `:8000` to
+     `gameplan-demo.test` fixed it. The earlier SameSite theory was wrong — the
+     cookie is sent; it is validated against the wrong site.
+   - A behavioral preflight checks that `:8002` and `:8000` both resolve to the
+     demo site, that `:9000` accepts a Socket.IO handshake, and that newly minted
+     persona sessions resolve immediately on both web ports. Its failures name the
+     affected process and the command that starts it.
+   - Known Frappe limitation, deliberately no PR yet: the unconditional port
+     rewrite supports Vite on `:8080`, but a bench serving two sites on two real
+     ports can authenticate only the site on `webserver_port`. A future upstream
+     fix should prefer a Frappe origin and fall back to `webserver_port`; Faris
+     chose to raise it later.
+   - A two-browser follow-up is explicitly not done. Cypress has no native
+     multi-session support, so it needs `cy.session` juggling or an iframe and
+     would be the most flake-prone spec in the suite. The server-driven second
+     session closes Step 3 with reliable genuine delivery.
 8. Pages (edit content, private vs space visibility + E2E).
 9. Profile/settings (bento cards, custom emoji, quick reactions + E2E).
 10. Search page E2E (filters; index hooks backend).

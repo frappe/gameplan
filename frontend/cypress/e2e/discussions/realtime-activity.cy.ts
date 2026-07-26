@@ -9,15 +9,11 @@
 // The change itself is made by a *real* second session (`member`, via the
 // `requestAsUser` Node task) while the browser stays logged in as `member2` and
 // never reloads — so the timeline entry that shows up can only have come from
-// the socket event, not from the acting user's own save.
-//
-// What is simulated: the delivery hop, and only that. See `deliverSocketEvent`.
+// genuine delivery through the document room, not from the acting user's own save.
 import { resetData } from '../../support/seed'
 
 type AppSocket = {
-  nsp: string
   emit: (...args: unknown[]) => unknown
-  io: { engine: { emit: (event: string, data: string) => void } }
 }
 
 /**
@@ -36,44 +32,29 @@ function appSocket(): Cypress.Chainable<AppSocket> {
     })
 }
 
-/**
- * Deliver a server event to the page's socket.
- *
- * The frame is handed to the engine, so the real socket.io decoder, namespace
- * routing and listener dispatch all run — only the network hop is skipped.
- *
- * It has to be skipped on a local bench: the realtime server authenticates every
- * socket by calling the site named by `webserver_port` in `common_site_config.json`
- * (`apps/frappe/realtime/utils.js::get_url` under `developer_mode`), which is a
- * different site than the one Cypress drives. The session is unknown there, so the
- * tab connects as Guest and is refused the document room. That is a bench-layout
- * problem, not a Gameplan one — the server half (the event goes to the *document*
- * room, addressed and shaped exactly as below) is pinned in
- * `gameplan/tests/features/test_realtime_activity.py`.
- */
-function deliverSocketEvent(event: string, payload: unknown) {
-  appSocket().then((socket) => {
-    socket.io.engine.emit('data', `2${socket.nsp},${JSON.stringify([event, payload])}`)
-  })
-}
-
 describe('Realtime activity', () => {
   let community: string
   let space: string
   let discussion: string
 
   beforeEach(() => {
+    // Check the exact sites before resetData can wipe anything. The second call,
+    // after seeding, also proves fresh sessions resolve as the watching persona on
+    // both the browser server and Socket.IO's :8000 authentication target.
+    cy.task('realtimePreflight')
     resetData('space_with_discussion').then((ids) => {
       community = ids.community as string
       space = ids.space as string
       discussion = ids.discussion as string
     })
+    cy.task('realtimePreflight', { user: 'member2@example.com' })
     cy.loginAs('secondMember')
   })
 
   it("shows another member's change in an open discussion without a reload", () => {
     // Land on the space first so the socket exists before the discussion mounts:
     // the subscribe happens on mount, and a spy installed afterwards would miss it.
+    cy.intercept('GET', '/api/v2/document/GP%20Activity*').as('getActivities')
     cy.visit(`/g/community/${community}/space/${space}/discussions`)
     appSocket().then((socket) => {
       cy.spy(socket, 'emit').as('socketEmit')
@@ -81,6 +62,7 @@ describe('Realtime activity', () => {
 
     cy.contains('Welcome thread').click()
     cy.contains('h1', 'Welcome thread').should('be.visible')
+    cy.wait('@getActivities')
 
     cy.get('@socketEmit').should(
       'have.been.calledWith',
@@ -95,15 +77,10 @@ describe('Realtime activity', () => {
       user: 'member@example.com',
       path: `/api/v2/document/GP Discussion/${discussion}/method/close_discussion`,
     })
-    // Nothing tells this tab about it yet, so the timeline that shows the close
-    // below can only have come from the event.
-    cy.contains('closed this discussion').should('not.exist')
 
-    deliverSocketEvent('new_activity', {
-      reference_doctype: 'GP Discussion',
-      reference_name: String(discussion),
-    })
-
+    // The only reload after the initial fetch is initiated by CommentsArea's
+    // `new_activity` listener. There is no navigation or browser reload.
+    cy.wait('@getActivities')
     cy.contains('closed this discussion').should('be.visible')
 
     // Leaving the discussion leaves its room, so a tab that has moved on stops

@@ -28,7 +28,11 @@ Local dev site is `gameplan-demo.test` (CI uses `gameplan.test`).
 - E2E: `cd frontend && yarn test` (Cypress, specs in `frontend/cypress/e2e/`). **Always run Cypress against the demo site `gameplan-demo.test`, never another local site** — specs call `gameplan.ui_test_helpers.reset`, which deletes ALL Gameplan data on whichever site the request resolves to. Requires `enable_ui_tests: 1` in that site's `site_config.json`. Before running, confirm the local `frappe serve` actually resolves `gameplan-demo.test:8000` to the demo site (host aliasing can route it to the default/dev site and wipe real data).
 - frappe-ui units: `cd frappe-ui && yarn test` (Vitest)
 - Lint: `pre-commit run --all-files` (ruff for Python — tabs, double quotes, line 110; Prettier for frontend)
-- Login to site by fetching sid: bench --site gameplan-demo.test browse --user <user> --sid
+- Login over HTTP with a seeded user and password `admin`:
+  `curl -sS -c jar -X POST http://gameplan-demo.test:8002/api/method/login
+  --data-urlencode 'usr=<user>' --data-urlencode 'pwd=admin'`. Extract the HttpOnly
+  sid with `awk -F'\t' '$6=="sid"{print $7}' jar` (`bench browse --user X --sid` is
+  not available in Frappe v16.28).
 
 ## Frontend conventions
 
