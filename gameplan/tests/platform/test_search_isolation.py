@@ -32,6 +32,10 @@ from gameplan.tests.search_isolation import (
 	row_count,
 )
 
+# The files SQLite parks next to a WAL database. Named here so the cleanup and the
+# assertion that follows it can never drift apart.
+_SQLITE_SIDECARS = ("-wal", "-shm")
+
 
 class TestSearchIndexIsolation(GameplanTestCase):
 	def setUp(self):
@@ -102,8 +106,8 @@ class TestRealIndexGuard(FrappeTestCase):
 
 		class Probe(unittest.TestCase):
 			def runTest(self):
-				# Started before the guard so it stops after it: cleanups run LIFO, and
-				# the guard resolves real_index_path() again from its cleanup.
+				# Started before guard_real_index, which resolves real_index_path() once
+				# and captures the result — so the patch has to be live at that call.
 				patcher = patch("gameplan.tests.search_isolation.real_index_path", return_value=watched)
 				patcher.start()
 				self.addCleanup(patcher.stop)
@@ -134,6 +138,7 @@ class TestRealIndexGuard(FrappeTestCase):
 		result = self.run_guarded(lambda: _write(self.watched, b"appeared out of nowhere"))
 
 		self.assertEqual(len(result.failures), 1)
+		self.assertIn("real search index changed", result.failures[0][1])
 
 	def test_reading_the_row_count_does_not_trip_the_guard(self):
 		"""``row_count`` must not create the WAL sidecars a plain ``mode=ro`` open would.
@@ -141,19 +146,22 @@ class TestRealIndexGuard(FrappeTestCase):
 		Those files land in the site directory next to the live index, which is exactly
 		what a "this file was not touched" guard must not do.
 		"""
-		connection = sqlite3.connect(self.watched)
-		connection.execute("PRAGMA journal_mode = WAL")
-		connection.execute("CREATE TABLE search_fts (name)")
-		connection.execute("INSERT INTO search_fts VALUES ('needle')")
-		connection.commit()
-		connection.close()
+		_write_wal_index(self.watched)
+		# Whether closing a WAL writer unlinks its own -wal/-shm is a property of the local
+		# SQLite build, not of anything under test: SQLite 3.51 on macOS leaves them, the
+		# SQLite on CI's Ubuntu image removes them. Clearing them here is what keeps the
+		# assertions below about row_count rather than about the setup writer.
+		_remove_sidecars(self.watched)
 
 		result = self.run_guarded(lambda: self.assertEqual(row_count(self.watched), 1))
 
 		self.assertEqual(result.failures, [])
 		self.assertEqual(result.errors, [])
-		self.assertFalse(os.path.exists(self.watched + "-wal"))
-		self.assertFalse(os.path.exists(self.watched + "-shm"))
+		for suffix in _SQLITE_SIDECARS:
+			self.assertFalse(
+				os.path.exists(self.watched + suffix),
+				f"row_count() left a {suffix} file beside the index it read",
+			)
 
 
 class TestSearchIndexRebuild(IsolatedSearchIndex, GameplanTestCase):
@@ -205,3 +213,27 @@ class TestSearchIndexRebuild(IsolatedSearchIndex, GameplanTestCase):
 def _write(path, content: bytes):
 	with open(path, "wb") as f:
 		f.write(content)
+
+
+def _write_wal_index(path):
+	"""Build a one-row WAL-mode stand-in index with every row in the main file.
+
+	The checkpoint is load-bearing: ``row_count`` opens with ``immutable=1``, which
+	ignores the write-ahead log entirely, so rows still parked in an un-checkpointed
+	``-wal`` are invisible to it — it would not even find the table.
+	"""
+	connection = sqlite3.connect(path)
+	try:
+		connection.execute("PRAGMA journal_mode = WAL")
+		connection.execute("CREATE TABLE search_fts (name)")
+		connection.execute("INSERT INTO search_fts VALUES ('needle')")
+		connection.commit()
+		connection.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+	finally:
+		connection.close()
+
+
+def _remove_sidecars(path):
+	for suffix in _SQLITE_SIDECARS:
+		if os.path.exists(path + suffix):
+			os.unlink(path + suffix)
