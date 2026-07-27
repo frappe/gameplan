@@ -41,6 +41,14 @@ class GPComment(HasAttachments, HasMentions, HasReactions, HasTags, Document):
 			GPUnreadRecord.delete_unread_records_for_comment(self.name)
 
 	def after_delete(self):
+		if self.flags.from_gameplan_delete_cascade == "GP Discussion":
+			# The discussion is being deleted and we are one of its children. Refreshing
+			# its counters is pointless, and `track_visit` would insert a fresh GP
+			# Discussion Visit row. That row happens to be swept today only because
+			# "GP Comment" precedes "GP Discussion Visit" in GPDiscussion's cascade list
+			# — reorder that list and the row survives to trip the parent's link check,
+			# which is exactly how GP Poll broke. Do not rely on the ordering.
+			return
 		self.update_discussion_meta()
 		self.update_task_meta()
 
