@@ -7,7 +7,13 @@ from frappe.tests.utils import FrappeTestCase
 from gameplan.api import search_sqlite
 from gameplan.search_sqlite import GameplanSearch
 from gameplan.tests.base import GameplanTestCase
-from gameplan.tests.fixtures import create_comment, create_community, create_space, grant_guest_access
+from gameplan.tests.fixtures import (
+	create_comment,
+	create_community,
+	create_space,
+	drain_search_index_queue,
+	grant_guest_access,
+)
 from gameplan.tests.search_isolation import IsolatedSearchIndex
 
 
@@ -293,6 +299,19 @@ class TestSearchIndexLifecycle(IsolatedSearchIndex, GameplanTestCase):
 	def result_ids(self, query):
 		return {result["id"] for result in self.search.search(query)["results"]}
 
+	def queued_ids(self):
+		if not self.search._table_exists("search_index_queue"):
+			return None
+		return {row["doc_id"] for row in self.search.sql("SELECT doc_id FROM search_index_queue")}
+
+	def assert_hook_indexed_or_queued(self, doc, query):
+		doc_id = f"{doc.doctype}:{doc.name}"
+		queued_ids = self.queued_ids()
+		if queued_ids is None:
+			self.assertIn(doc_id, self.result_ids(query))
+		else:
+			self.assertIn(doc_id, queued_ids)
+
 	def search_as(self, user, query, filters=None):
 		with self.as_user(user):
 			return search_sqlite(
@@ -309,6 +328,8 @@ class TestSearchIndexLifecycle(IsolatedSearchIndex, GameplanTestCase):
 			"createhookneedle appears only after the index already exists",
 		)
 
+		self.assert_hook_indexed_or_queued(discussion, "createhookneedle")
+		drain_search_index_queue()
 		self.assertIn(f"GP Discussion:{discussion.name}", self.result_ids("createhookneedle"))
 
 	def test_content_is_reindexed_on_update(self):
@@ -316,10 +337,14 @@ class TestSearchIndexLifecycle(IsolatedSearchIndex, GameplanTestCase):
 			"Update hook coverage",
 			"oldhookneedle is replaced when the discussion changes",
 		)
+		drain_search_index_queue()
+		self.assertIn(f"GP Discussion:{discussion.name}", self.result_ids("oldhookneedle"))
 
 		discussion.content = "newhookneedle appears only in the saved revision"
 		discussion.save(ignore_permissions=True)
 
+		self.assert_hook_indexed_or_queued(discussion, "newhookneedle")
+		drain_search_index_queue()
 		self.assertNotIn(f"GP Discussion:{discussion.name}", self.result_ids("oldhookneedle"))
 		self.assertIn(f"GP Discussion:{discussion.name}", self.result_ids("newhookneedle"))
 
@@ -328,11 +353,15 @@ class TestSearchIndexLifecycle(IsolatedSearchIndex, GameplanTestCase):
 			"Delete hook coverage",
 			"deletehookneedle disappears with the discussion",
 		)
+		drain_search_index_queue()
 		self.assertIn(f"GP Discussion:{discussion.name}", self.result_ids("deletehookneedle"))
 
 		discussion.delete(ignore_permissions=True)
 
 		self.assertNotIn(f"GP Discussion:{discussion.name}", self.result_ids("deletehookneedle"))
+		queued_ids = self.queued_ids()
+		if queued_ids is not None:
+			self.assertNotIn(f"GP Discussion:{discussion.name}", queued_ids)
 
 	def test_space_filter_narrows_accessible_results(self):
 		other_space = create_space("Other Search Space", self.space.team)
@@ -345,6 +374,7 @@ class TestSearchIndexLifecycle(IsolatedSearchIndex, GameplanTestCase):
 			"spacefilterneedle in another accessible space",
 			space=other_space,
 		)
+		drain_search_index_queue()
 
 		results = self.search.search(
 			"spacefilterneedle",
@@ -365,6 +395,7 @@ class TestSearchIndexLifecycle(IsolatedSearchIndex, GameplanTestCase):
 			"privatefilterneedle must not leak through a requested space",
 			space=inaccessible_space,
 		)
+		drain_search_index_queue()
 
 		results = self.search_as(
 			self.second_member,
@@ -390,6 +421,7 @@ class TestSearchIndexLifecycle(IsolatedSearchIndex, GameplanTestCase):
 			"mixedfilterneedle in a space the caller cannot access",
 			space=inaccessible_space,
 		)
+		drain_search_index_queue()
 
 		results = self.search_as(
 			self.second_member,
@@ -416,6 +448,7 @@ class TestSearchIndexLifecycle(IsolatedSearchIndex, GameplanTestCase):
 			"guestfilterneedle in an ungranted space",
 			space=inaccessible_space,
 		)
+		drain_search_index_queue()
 
 		results = self.search_as(
 			self.guest,
@@ -441,6 +474,7 @@ class TestSearchIndexLifecycle(IsolatedSearchIndex, GameplanTestCase):
 			"emptyintersectionneedle in the requested inaccessible space",
 			space=inaccessible_space,
 		)
+		drain_search_index_queue()
 
 		results = self.search_as(
 			self.second_member,
@@ -474,6 +508,8 @@ class TestSearchIndexLifecycle(IsolatedSearchIndex, GameplanTestCase):
 			'<span class="tag-item" data-tag-label="incremental">#incremental</span>',
 		)
 
+		self.assert_hook_indexed_or_queued(discussion, "incrementaltagneedle")
+		drain_search_index_queue()
 		results = self.search_as(
 			self.member,
 			"incrementaltagneedle",
@@ -493,6 +529,8 @@ class TestSearchIndexLifecycle(IsolatedSearchIndex, GameplanTestCase):
 			owner=self.member,
 		)
 
+		self.assert_hook_indexed_or_queued(comment, "commenthookneedle")
+		drain_search_index_queue()
 		results = self.search_as(
 			self.member,
 			"commenthookneedle",

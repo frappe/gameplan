@@ -8,6 +8,7 @@ Builders accept either a doc or a name wherever a linked record is expected.
 """
 
 import frappe
+import frappe.search.sqlite_search
 from frappe.model.document import Document
 
 
@@ -143,3 +144,16 @@ def declared_http_methods(function) -> set[str]:
 	if declared is None:
 		raise AssertionError(f"{function} is not whitelisted")
 	return set(declared)
+
+
+def drain_search_index_queue():
+	"""Synchronously process queued index writes when the installed Frappe uses them.
+
+	version-16 indexes documents inside the doc hook and has no queue processor. On
+	develop, the hook only enqueues the document for a scheduled job, so tests that
+	need a populated search corpus must explicitly cross that eventual-consistency
+	boundary.
+	"""
+	drain = getattr(frappe.search.sqlite_search, "index_docs_in_queue", None)
+	if drain:
+		drain()
