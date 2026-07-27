@@ -100,10 +100,10 @@ export function markCommunityAsRead(team: string, before?: string) {
 const Project = useDoctype<GPProject>('GP Project')
 
 export function markSpaceAsRead(spaceId: string) {
-  return Project.runDocMethod
+  return Project.runMethod
     .submit({
-      name: spaceId,
       method: 'mark_all_as_read',
+      params: { spaces: [String(spaceId)] },
     })
     .then(() => {
       return refreshUnreadCountForProjects([spaceId])

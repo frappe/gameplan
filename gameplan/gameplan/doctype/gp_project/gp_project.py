@@ -109,9 +109,9 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 
 	@frappe.whitelist(methods=["POST"])
 	def track_visit(self):
+		self.require_view_access()
 		if frappe.flags.read_only:
 			return
-		self.require_view_access()
 
 		values = {"user": frappe.session.user, "project": self.name}
 		existing = frappe.db.get_value("GP Project Visit", values)
@@ -155,6 +155,7 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 
 	@frappe.whitelist(methods=["POST"])
 	def leave(self):
+		self.require_view_access()
 		user = frappe.session.user
 		for member in self.members:
 			if member.user == user:
@@ -286,6 +287,11 @@ def track_visits(spaces: list[str | int] = None):
 		return
 	for space in spaces:
 		frappe.get_doc("GP Project", str(space)).track_visit()
+
+
+@frappe.whitelist(methods=["POST"])
+def track_visit(space: str | int):
+	frappe.get_doc("GP Project", str(space)).track_visit()
 
 
 @frappe.whitelist(methods=["POST"])

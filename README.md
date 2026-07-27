@@ -58,6 +58,18 @@ It takes care of installation, setup, upgrades, monitoring, maintenance and supp
 	</a>
 </div>
 
+## Supported versions
+
+Gameplan supports Frappe v16 and newer only. Use the following branch pairings:
+
+| Gameplan | Frappe | Recommended for |
+| --- | --- | --- |
+| `develop` | `version-16` | Stable Frappe v16 installations |
+| `develop` | `develop` | Testing upcoming Frappe releases |
+
+Gameplan does not have a separate `version-16` branch. Its `develop` branch is the supported branch for
+both pairings. Frappe v15 and older releases are not supported.
+
 ## Development setup
 ### Docker
 You need Docker, docker-compose and git setup on your machine. Refer [Docker documentation](https://docs.docker.com/). After that, run the following commands:
@@ -78,31 +90,63 @@ Use the following credentials to log in:
 
 ### Local Development (without Docker)
 
-This app depends on the `develop` branch of [frappe](https://github.com/frappe/frappe).
-
 #### Prerequisites
-- Frappe-bench set up locally ([installation guide](https://frappeframework.com/docs/v14/user/en/installation))
-- Node.js and yarn
+
+- The dependencies required by Frappe v16, including Python 3.14, Node.js 24, and Yarn 1.22. See the
+  current [Frappe installation guide](https://docs.frappe.io/framework/user/en/installation).
+- Bench CLI
 - The local frappe-ui copy is included in `./frappe-ui/` for development
 
 #### Step 1: Set up the Backend
 
-1. In your frappe-bench directory, run the following commands in separate terminal sessions:
-    ```sh
-    # Terminal 1 - Start the Frappe server
-    cd frappe-bench
-    bench start
-    ```
+Create a Frappe v16 bench and install Gameplan's `develop` branch:
 
-2. Open a new terminal session for the remaining setup:
-    ```sh
-    cd frappe-bench
-    bench new-site gameplan.test
-    bench get-app gameplan
-    bench --site gameplan.test install-app gameplan
-    bench --site gameplan.test add-to-hosts
-    bench --site gameplan.test browse --user Administrator
-    ```
+```sh
+bench init --frappe-branch version-16 frappe-bench
+cd frappe-bench
+bench new-site gameplan.test
+bench get-app --branch develop https://github.com/frappe/gameplan
+bench --site gameplan.test install-app gameplan
+bench --site gameplan.test add-to-hosts
+bench build --apps gameplan
+```
+
+Start the development processes in one terminal:
+
+```sh
+bench start
+```
+
+In another terminal, create an authenticated browser session when needed:
+
+```sh
+bench --site gameplan.test browse --user Administrator
+```
+
+To test against the next Frappe release instead, initialize the bench with
+`--frappe-branch develop`. Keep Gameplan on `develop` in both cases.
+
+#### Move an existing Gameplan installation from `main` to `develop`
+
+Back up the site first, then switch only Gameplan to its supported branch. If the bench is still on an
+older Frappe release, switch Frappe to `version-16` as well:
+
+```sh
+cd frappe-bench
+bench --site gameplan.test backup
+bench switch-to-branch develop gameplan
+# Run the next command only when moving the bench to stable Frappe v16.
+# Keep Frappe on develop when testing the upcoming release.
+bench switch-to-branch version-16 frappe
+bench setup requirements
+bench --site gameplan.test migrate
+bench build --apps gameplan
+bench restart
+```
+
+Replace `gameplan.test` with the real site name. Review custom apps before switching a shared bench,
+because every installed app must support Frappe v16. There is no Gameplan `version-16` branch to switch
+to.
 
 #### Step 2: Set up the Frontend
 
@@ -111,72 +155,40 @@ This app depends on the `develop` branch of [frappe](https://github.com/frappe/f
     cd frappe-bench/apps/gameplan
     ```
 
-2. Initialize and update the frappe-ui submodule (required):
+2. Initialize the pinned frappe-ui submodule:
     ```sh
-    # If frappe-ui is not initialized
-    git submodule init
-    git submodule update
-
-    # To pull the latest version of frappe-ui
-    git submodule update --remote
+    git submodule update --init --recursive
     ```
 
 3. Install frontend dependencies:
     ```sh
-    yarn install
+    yarn install --frozen-lockfile
     ```
 
-4. **Optional: For local frappe-ui development**, install frappe-ui dependencies (use `yarn` in frappe-ui):
-    ```sh
-    cd frappe-ui
-    yarn install
-    cd ..
-    ```
-
-5. Start the Vite development server:
+4. Start the Vite development server with the published frappe-ui package:
     ```sh
     yarn dev
     ```
 
+5. **Optional: For frappe-ui contributors**, install the submodule dependencies and use the local
+   checkout:
+    ```sh
+    (cd frappe-ui && yarn install --frozen-lockfile)
+    yarn dev:frappe-ui
+    ```
+
 6. Access the application at `http://gameplan.test:8080/g`
 
-#### How Local Vite Aliasing Works
+#### How local frappe-ui development works
 
-Gameplan uses a custom Vite configuration to support local development with a bundled copy of frappe-ui. Here's how it works:
-
-- The `./frappe-ui/` directory is a local copy of the frappe-ui library bundled with Gameplan
-- During development (`vite dev`), Vite automatically detects if local frappe-ui dependencies are installed
-- If they are installed, Vite aliases all imports of `frappe-ui` to use the local copy instead of the npm package
-
-**Alias Configuration**:
-The Vite config (`frontend/vite.config.js`) implements smart aliasing:
-
-```javascript
-// Development mode: Uses local frappe-ui if node_modules exist
-const useLocalFrappeUI = isDev && existsSync(path.join(localFrappeUIPath, 'node_modules'))
-
-// CSS must be aliased before the general module alias
-const localFrappeUIAliases = useLocalFrappeUI ? {
-  'frappe-ui/style.css': path.resolve(localFrappeUIPath, 'src', 'style.css'),
-  'frappe-ui': localFrappeUIPath,
-} : {}
-```
-
-**Dependency Resolution**:
-- TipTap packages are specially handled to resolve from the local frappe-ui's `node_modules` when using the local copy
-- This prevents version conflicts between frappe-ui and gameplan dependencies
-- The config automatically falls back to the npm package if local frappe-ui is not available
-
-**When to Install frappe-ui Dependencies**:
-- Only needed if you're modifying frappe-ui components or contributing to frappe-ui development
-- Use `yarn install` in the `frappe-ui` directory
-- For normal Gameplan development, the npm package version will be used automatically
-- If you see a warning about frappe-ui dependencies not being installed, run `cd frappe-ui && yarn install` only if you need local development
+`yarn dev` uses the published frappe-ui version pinned in `frontend/package.json`. The
+`yarn dev:frappe-ui` command replaces that installed package with a symlink to the pinned `./frappe-ui/`
+submodule for library development. Running `yarn dev` again restores the published package.
 
 **Contributing to frappe-ui**:
 - The `frappe-ui` directory is a Git submodule pointing to the [frappe/frappe-ui](https://github.com/frappe/frappe-ui) repository
 - If you make changes to frappe-ui, you must submit them as a separate Pull Request to the [frappe-ui repository](https://github.com/frappe/frappe-ui)
-- Changes to frappe-ui submodule commits in Gameplan are intentionally not committed to keep the submodule independently versioned
+- Update the submodule only through a reviewed Gameplan change; do not use `git submodule update --remote`
 - Test your frappe-ui changes locally with Gameplan before submitting a PR
 
 #### Frontend Development Environment

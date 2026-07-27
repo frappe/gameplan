@@ -110,7 +110,7 @@ def find_my_draft(
 	return frappe.get_doc("GP Draft", name).as_dict()
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def get_my_drafts():
 	"""Return the current user's new-content drafts, enriched for the Drafts list.
 
@@ -141,9 +141,8 @@ def get_my_drafts():
 		ignore_permissions=False,
 	).run(as_dict=True)
 
-	# Collapse duplicate comment singletons (a rare create race can leave more than one row for
-	# one reply): rows are newest-first, so keep the first per (reference_doctype, reference_name)
-	# and delete the stale siblings — the Drafts list then shows one entry per reply.
+	# A rare create race can leave multiple drafts for one reply. This endpoint is POST-only so the
+	# stale siblings are committed as deleted instead of reappearing after the newest draft is used.
 	seen = set()
 	deduped = []
 	for r in rows:
@@ -252,6 +251,42 @@ def commit_draft(name: str, reference_doctype: str, reference_name: str):
 	See GPDraft.commit for the attachment-migration rationale."""
 	draft = frappe.get_doc("GP Draft", name)
 	draft.commit(reference_doctype, reference_name)
+
+
+@frappe.whitelist(methods=["POST"])
+def bulk_delete(names: list[str]):
+	"""Frappe v16 shim for the per-DocType bulk-delete endpoint added in v17.
+
+	Remove this duplicate once Gameplan's minimum supported Frappe version is v17.
+	"""
+	if not isinstance(names, list):
+		frappe.throw("'names' must be a list", frappe.ValidationError)
+
+	deleted = []
+	failed = []
+	for name in names:
+		if not isinstance(name, str | int):
+			failed.append({"name": name, "error": "'name' must be a string or integer"})
+			continue
+
+		name = str(name)
+		frappe.db.savepoint("bulk_delete_drafts")
+		try:
+			draft = frappe.get_doc("GP Draft", name)
+			draft.check_permission("delete")
+			draft.delete()
+			deleted.append(name)
+		except Exception as exc:
+			frappe.db.rollback(save_point="bulk_delete_drafts")
+			failed.append({"name": name, "error": str(exc)})
+
+	return {
+		"deleted": deleted,
+		"failed": failed,
+		"total": len(names),
+		"success_count": len(deleted),
+		"failure_count": len(failed),
+	}
 
 
 def remove_query_params_from_images(content):

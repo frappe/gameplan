@@ -19,7 +19,8 @@ UI/product language is **Community** and **Space**; the schema still uses old na
 
 ## Commands
 
-Local dev site is `gameplan-demo.test` (CI uses `gameplan.test`).
+Local site names vary by development environment. This repository's local test commands use the
+disposable `gameplan-demo.test` site; CI uses `gameplan.test`.
 
 - `yarn dev` — Vite frontend on :8080 (unlinks local frappe-ui, uses published package)
 - `yarn dev:frappe-ui` — same, but symlinks `node_modules/frappe-ui` → `./frappe-ui/` for library work
@@ -57,11 +58,13 @@ Local dev site is `gameplan-demo.test` (CI uses `gameplan.test`).
 
 ## Feature Verification
 
-When building a feature with UI, always verify it in browser. Use in-app browser if available, otherwise use Chrome Devtools MCP. Create a test user (or users) for yourself on the local site you are testing.
+When building a feature with UI, always verify it in browser. Use the in-app browser if available, otherwise use Chrome Devtools MCP. Create a test user (or users) for yourself on the local site you are testing.
+
+When a PR needs visual evidence, upload before/after screenshots as GitHub attachments in the PR description. Never add screenshot files to the repository.
 
 ## Code comments
 
-Explain *why*, not *what*. JSDoc/TSDoc for complex functions/composables. No comments for self-explanatory code.
+Explain _why_, not _what_. JSDoc/TSDoc for complex functions/composables. No comments for self-explanatory code.
 
 ## Codebase health
 
