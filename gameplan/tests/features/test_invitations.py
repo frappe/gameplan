@@ -18,7 +18,7 @@ domain behavior underneath it:
 from unittest.mock import MagicMock, patch
 
 import frappe
-from frappe.utils import add_days, now
+from frappe.utils import add_days, now, today
 
 from gameplan.api import _invite_by_email, accept_invitation
 from gameplan.gameplan.doctype.gp_invitation.gp_invitation import expire_invitations
@@ -179,7 +179,10 @@ class TestAcceptInvitationEndpoint(InvitationTestCase):
 
 	def test_existing_user_with_password_is_logged_in(self):
 		create_member("has-password@example.com")
-		frappe.db.set_value("User", "has-password@example.com", "last_password_reset_date", now())
+		# A Date field, so it must hold a date. MariaDB coerces a datetime silently, but the
+		# SQLite backend stores the string as given and frappe's `date` converter then fails
+		# to parse it on every subsequent read of the row.
+		frappe.db.set_value("User", "has-password@example.com", "last_password_reset_date", today())
 		invitation = self.make_invitation("has-password@example.com", role="Gameplan Admin")
 
 		previous = getattr(frappe.local, "login_manager", None)
