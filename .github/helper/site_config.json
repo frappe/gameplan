@@ -5,6 +5,7 @@
     "db_password": "test_gameplan",
     "allow_tests": true,
     "enable_ui_tests": true,
+    "developer_mode": 1,
     "ignore_csrf": 1,
     "db_type": "mariadb",
     "auto_email_id": "test@example.com",

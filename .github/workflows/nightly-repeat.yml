@@ -43,8 +43,8 @@ jobs:
           node-version: 24
           check-latest: true
 
-      - name: Add demo site to hosts
-        run: echo "127.0.0.1 gameplan-demo.test" | sudo tee -a /etc/hosts
+      - name: Add to Hosts
+        run: echo "127.0.0.1 gameplan.test" | sudo tee -a /etc/hosts
 
       - name: Cache pip
         uses: actions/cache@v3
@@ -66,17 +66,14 @@ jobs:
           bash "${GITHUB_WORKSPACE}/.github/helper/install_dependencies.sh"
           bash "${GITHUB_WORKSPACE}/.github/helper/install.sh"
         env:
-          TEST_SITE_NAME: gameplan-demo.test
           BEFORE: ${{ env.GITHUB_EVENT_PATH.before }}
           AFTER: ${{ env.GITHUB_EVENT_PATH.after }}
 
-      - name: Complete site setup
+      # Mirrors ui-test.yml exactly. A repeat lane that ran a different site, port or server
+      # would find flakes the PR lane cannot hit and miss the ones it can.
+      - name: Site Setup
         working-directory: /home/runner/frappe-bench
-        run: bench --site gameplan-demo.test execute frappe.utils.install.complete_setup_wizard
-
-      - name: Start Cypress web server on port 8002
-        working-directory: /home/runner/frappe-bench
-        run: bench --site gameplan-demo.test serve --port 8002 > nightly_web.log 2>&1 &
+        run: bench --site gameplan.test execute frappe.utils.install.complete_setup_wizard
 
       # Cypress itself runs specs serially. Keeping every iteration in this one step
       # also guarantees no suite can overlap another against the shared site.
@@ -84,7 +81,7 @@ jobs:
         id: cypress
         working-directory: /home/runner/frappe-bench/apps/gameplan/frontend
         env:
-          CYPRESS_BASE_URL: http://gameplan-demo.test:8002
+          CYPRESS_BASE_URL: http://gameplan.test:8000
         run: |
           results_root="${RUNNER_TEMP}/nightly-cypress"
           logs_root="${RUNNER_TEMP}/nightly-cypress-logs"
@@ -133,7 +130,7 @@ jobs:
             exit 1
           fi
 
-      - name: Stop servers
+      - name: Stop server
         if: ${{ always() }}
         run: |
           ps -ef | grep "[f]rappe serve" | awk '{print $2}' | xargs kill -s SIGINT || true
@@ -141,6 +138,4 @@ jobs:
 
       - name: Show bench output
         if: ${{ always() }}
-        run: |
-          cat ~/frappe-bench/bench_start.log || true
-          cat ~/frappe-bench/nightly_web.log || true
+        run: cat ~/frappe-bench/bench_start.log || true

@@ -2,8 +2,6 @@
 set -e
 cd ~ || exit
 
-TEST_SITE_NAME="${TEST_SITE_NAME:-gameplan.test}"
-
 echo "Setting Up Bench..."
 
 pip install frappe-bench
@@ -18,12 +16,8 @@ bench get-app gameplan "${GITHUB_WORKSPACE}"
 
 echo "Setting Up Sites & Database..."
 
-mkdir ~/frappe-bench/sites/"${TEST_SITE_NAME}"
-cp "${GITHUB_WORKSPACE}/.github/helper/site_config.json" \
-  ~/frappe-bench/sites/"${TEST_SITE_NAME}"/site_config.json
-if [ "${TEST_SITE_NAME}" != "gameplan.test" ]; then
-  bench --site "${TEST_SITE_NAME}" set-config host_name "http://${TEST_SITE_NAME}:8000"
-fi
+mkdir ~/frappe-bench/sites/gameplan.test
+cp "${GITHUB_WORKSPACE}/.github/helper/site_config.json" ~/frappe-bench/sites/gameplan.test/site_config.json
 
 mariadb --host 127.0.0.1 --port 3306 -u root -p123 -e "SET GLOBAL character_set_server = 'utf8mb4'";
 mariadb --host 127.0.0.1 --port 3306 -u root -p123 -e "SET GLOBAL collation_server = 'utf8mb4_unicode_ci'";
@@ -52,13 +46,13 @@ bench start &> bench_start.log &
 CI=Yes bench build &
 build_pid=$!
 
-bench --site "${TEST_SITE_NAME}" reinstall --yes
-bench --site "${TEST_SITE_NAME}" install-app gameplan
+bench --site gameplan.test reinstall --yes
+bench --site gameplan.test install-app gameplan
 # The v16 migration job copies this helper from the PR candidate and then runs it against
 # the *baseline* checkout, which predates the rename of the module-level index builder. Try
 # the current name first and fall back, so the baseline install still gets an index.
-bench --site "${TEST_SITE_NAME}" execute gameplan.search_sqlite.rebuild_index \
-  || bench --site "${TEST_SITE_NAME}" execute gameplan.search_sqlite.build_index
+bench --site gameplan.test execute gameplan.search_sqlite.rebuild_index \
+  || bench --site gameplan.test execute gameplan.search_sqlite.build_index
 
 # wait till assets are built succesfully
 wait $build_pid
