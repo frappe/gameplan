@@ -25,10 +25,14 @@ def main() -> int:
 		f"| Lines | {root.get('lines-covered', '0')} | {root.get('lines-valid', '0')} "
 		f"| {percent(root.get('line-rate'))} |"
 	)
-	print(
-		f"| Branches | {root.get('branches-covered', '0')} | {root.get('branches-valid', '0')} "
-		f"| {percent(root.get('branch-rate'))} |"
-	)
+	# frappe runs coverage without branch measurement, which reports zero of zero
+	# branches. Printing that as 0.0% reads as "no branch coverage" rather than
+	# "not measured", so omit the row entirely when there is nothing to report.
+	if int(root.get("branches-valid") or 0):
+		print(
+			f"| Branches | {root.get('branches-covered', '0')} | {root.get('branches-valid', '0')} "
+			f"| {percent(root.get('branch-rate'))} |"
+		)
 	print("\nCoverage is informational only; no minimum threshold is enforced.")
 	return 0
 
