@@ -122,6 +122,64 @@ def can_view_content(user, doc):
 	return get_doc_value(doc, "owner") == user
 
 
+def users_who_can_view_content(users, doc):
+	"""The subset of `users` that can_view_content would return True for.
+
+	Same rule, resolved with a fixed handful of queries instead of two or three per
+	user. For fan-outs over a whole site — an `@everyone` mention, a digest audience —
+	the per-user form makes the query count grow with the member list.
+
+	Mirrors can_view_space/can_view_community with the membership rows loaded up front;
+	keep the two in step.
+	"""
+	users = list(dict.fromkeys(users))
+	project = get_content_project(doc)
+	if not project:
+		return [user for user in users if can_view_content(user, doc)]
+
+	project_info = get_project_info(project)
+	if not project_info:
+		return []
+
+	space_members = _member_users("GP Project", project_info.name)
+	community_members = _member_users("GP Team", project_info.team) if project_info.team else set()
+	guests = _guest_users(project_info.name)
+	community_is_private = (
+		cint(frappe.db.get_value("GP Team", project_info.team, "is_private")) if project_info.team else 0
+	)
+
+	def allowed(user):
+		if is_global_admin(user):
+			return True
+		if gameplan.is_guest(user):
+			return user in guests
+		if cint(project_info.is_private):
+			return user in space_members
+		return not community_is_private or user in community_members
+
+	return [user for user in users if allowed(user)]
+
+
+def _member_users(parenttype, parent):
+	"""Every user on `parent`'s membership table, as a set."""
+	Member = frappe.qb.DocType("GP Member")
+	rows = (
+		frappe.qb.from_(Member)
+		.select(Member.user)
+		.where(Member.parenttype == parenttype)
+		.where(Member.parent == parent)
+		.run()
+	)
+	return {row[0] for row in rows}
+
+
+def _guest_users(project):
+	"""Every user holding guest access to `project`, as a set."""
+	GuestAccess = frappe.qb.DocType("GP Guest Access")
+	rows = frappe.qb.from_(GuestAccess).select(GuestAccess.user).where(GuestAccess.project == project).run()
+	return {row[0] for row in rows}
+
+
 def can_create_content(user, doc):
 	if gameplan.is_guest(user):
 		# Guests participate in the discussions they can reach: a comment, and a poll on
@@ -147,6 +205,16 @@ INTERACTION_SAFE_FIELDS = {
 	# the vote tables protected here is what stops a non-editor rewriting a poll by
 	# plain save.
 	"GP Poll": {"reactions"},
+}
+
+# Per-doctype fields that only the content's owner (or a moderator who could delete it)
+# may change. Everyone who can reach a space may edit the content in it — see
+# can_edit_content — but a poll's ballot and lifecycle are not shared property: stopping
+# a poll, rewriting its options, or touching the recorded votes is the author's call.
+# GPPoll.stop_poll enforces this for the whitelisted method; the entry below is what
+# closes the plain `PUT /api/v2/document/GP Poll/<name>` route, which never reaches it.
+OWNER_ONLY_FIELDS = {
+	"GP Poll": {"stopped_at", "votes", "options", "total_votes"},
 }
 
 # Standard row-level fields ignored when diffing a child table for changes.
@@ -194,7 +262,12 @@ def can_write_content(user, doc):
 	(the v2 doc-method gate and list/UI permission checks) it reports no changes, so
 	a guest passes and can reach react(); on the DIRTY in-memory doc at save time it
 	diffs against the DB row and rejects any edit to protected fields.
+
+	Above all of that sits _owner_only_write_allowed: a few fields (a poll's ballot and
+	lifecycle) are the author's even for an editor, so they are ruled out first.
 	"""
+	if not _owner_only_write_allowed(user, doc):
+		return False
 	if can_edit_content(user, doc):
 		return True
 	if not can_interact_with_content(user, doc):
@@ -202,33 +275,65 @@ def can_write_content(user, doc):
 	return not _protected_fields_changed(doc)
 
 
+def _owner_only_write_allowed(user, doc):
+	"""Whether `doc`'s pending changes keep clear of its OWNER_ONLY_FIELDS.
+
+	Checked ahead of the editor rule, because "any member may edit the content in a
+	space they can reach" must not double as permission to stop someone else's poll or
+	replace its ballot. Ownership here is exactly can_delete_content — owner, community
+	admin or global admin — so moderation keeps working.
+	"""
+	fields = OWNER_ONLY_FIELDS.get(getattr(doc, "doctype", None))
+	if not fields:
+		return True
+	if can_delete_content(user, doc):
+		return True
+	return not _fields_changed(doc, fields)
+
+
 def _protected_fields_changed(doc):
 	"""Whether `doc` has pending changes to any field a non-editor may not touch.
 
 	Compares the in-memory document against its stored row, ignoring the doctype's
-	interaction-safe fields. Uses the mid-save snapshot (get_doc_before_save) when it
-	is already loaded, otherwise reads the row from the DB — this is what makes it
-	correct for BOTH a clean doc (nothing loaded/changed -> False) and a dirty doc at
+	interaction-safe fields.
+	"""
+	before = _stored_version(doc)
+	if before is None:
+		return False
+	safe_fields = INTERACTION_SAFE_FIELDS.get(doc.doctype, set())
+	protected = {df.fieldname for df in doc.meta.fields if df.fieldname not in safe_fields}
+	return _any_field_changed(doc, before, protected)
+
+
+def _fields_changed(doc, fieldnames):
+	"""Whether `doc` has pending changes to any of `fieldnames`."""
+	before = _stored_version(doc)
+	if before is None:
+		return False
+	return _any_field_changed(doc, before, fieldnames)
+
+
+def _stored_version(doc):
+	"""The saved row behind `doc`, or None when there is nothing to diff against.
+
+	Uses the mid-save snapshot (get_doc_before_save) when it is already loaded,
+	otherwise reads the row from the DB — this is what makes the diffs correct for BOTH
+	a clean doc (nothing loaded/changed -> no differences) and a dirty doc at the
 	save-time write check (before-save snapshot not yet loaded -> read DB and diff).
 	"""
 	if not hasattr(doc, "doctype"):
-		return False
+		return None
 	if doc.get("__islocal") or not doc.get("name"):
 		# Create path — not this gate's concern (create is a separate permission).
-		return False
-
-	safe_fields = INTERACTION_SAFE_FIELDS.get(doc.doctype, set())
-
+		return None
 	before = doc.get_doc_before_save()
-	if before is None:
-		before = frappe.get_doc(doc.doctype, doc.name)
-	if before is None:
-		# No stored row to compare against; treat as unchanged.
-		return False
+	return before if before is not None else frappe.get_doc(doc.doctype, doc.name)
 
+
+def _any_field_changed(doc, before, fieldnames):
 	for df in doc.meta.fields:
 		fieldname = df.fieldname
-		if fieldname in safe_fields:
+		if fieldname not in fieldnames:
 			continue
 		if df.fieldtype in ("Table", "Table MultiSelect"):
 			if _child_table_changed(doc.get(fieldname), before.get(fieldname)):
@@ -274,7 +379,25 @@ def can_edit_content(user, doc):
 	return get_doc_value(doc, "owner") == user
 
 
+def is_delete_cascade(doc):
+	"""Whether `doc` is being deleted as a child of a Gameplan cascade delete.
+
+	`gameplan/mixins/on_delete.py` sets this flag on every record it removes on behalf
+	of a parent; `frappe.model.delete_doc` applies it before the delete permission check.
+	Nothing reachable over HTTP can set it — `frappe.client.delete` and the v2 delete
+	route pass no flags.
+	"""
+	flags = getattr(doc, "flags", None)
+	return bool(flags and flags.get("from_gameplan_delete_cascade"))
+
+
 def can_delete_content(user, doc):
+	if is_delete_cascade(doc):
+		# The parent delete was already authorised, and its children go with it: a
+		# discussion owner removing their own thread takes the comments and polls other
+		# members posted in it. Re-asking the per-child rule here would let one other
+		# member's poll veto the thread owner's delete, and roll the whole thing back.
+		return True
 	if is_global_admin(user):
 		return True
 	if not can_view_content(user, doc):

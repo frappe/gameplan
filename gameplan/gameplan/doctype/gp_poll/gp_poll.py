@@ -60,6 +60,12 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 		self.update_discussion_meta()
 
 	def after_delete(self):
+		if self.flags.from_gameplan_delete_cascade == "GP Discussion":
+			# The discussion is being deleted and we are one of its children. Refreshing
+			# its counters is pointless, and `track_visit` would insert a fresh GP
+			# Discussion Visit row — the cascade sweeps those *before* it reaches the
+			# polls, so the new row survives and trips the parent's link check.
+			return
 		self.update_discussion_meta()
 
 	def on_update(self):
@@ -91,10 +97,14 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 			self.append("votes", {"user": frappe.session.user})
 			selected.votes = (selected.votes or 0) + 1
 		else:
-			# One vote per user — or, on a multiple-answer poll, one vote per user per
-			# option, so voting again for the same option stays a no-op.
-			if self.has_voted(option=selected.title if self.multiple_answers else None):
+			if self.has_voted(option=selected.title):
+				# Already this voter's answer for this option. On a multiple-answer poll
+				# the way to undo an answer is retract_vote, not a second submit.
 				return
+			if not self.multiple_answers:
+				# One answer per voter, but a voter may change their mind: the new answer
+				# replaces the previous one rather than being ignored.
+				self.votes = [d for d in self.votes if d.user != frappe.session.user]
 			self.append("votes", {"user": frappe.session.user, "option": selected.title})
 
 		self.update_tallies()
@@ -171,7 +181,14 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 		"""Recompute the derived counts from the vote rows.
 
 		`total_votes` counts vote rows, so on a multiple-answer poll it counts answers
-		rather than voters — which keeps the option percentages adding up to 100%.
+		rather than voters — which is what the UI labels "N answers from M people".
+
+		A percentage answers "how many of the people who voted chose this?", so it is a
+		share of the *voters*, not of the answer rows. On a single-answer poll those are
+		the same number. On a multiple-answer poll they are not, and dividing by the
+		rows would report a two-option voter as 50/50 when they in fact picked both;
+		the shares add up to more than 100% instead, which is how "select all that
+		apply" results are read everywhere else.
 		"""
 		self.total_votes = len(self.votes)
 		if not self.anonymous:
@@ -179,10 +196,14 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 			# incremented when the vote is cast and cannot be recomputed here.
 			for option in self.options:
 				option.votes = len([d for d in self.votes if d.option == option.title])
+		voters = self.count_voters()
 		for option in self.options:
-			option.percentage = (
-				flt((option.votes or 0) * 100 / self.total_votes, 2) if self.total_votes else 0
-			)
+			option.percentage = flt((option.votes or 0) * 100 / voters, 2) if voters else 0
+
+	def count_voters(self):
+		"""How many distinct people have voted. One vote row per voter, except on a
+		multiple-answer poll, where a voter has one row per option they picked."""
+		return len({d.user for d in self.votes})
 
 	def check_if_stopped(self):
 		# Every caller reloads first, so Frappe has normalised the stored Datetime to a

@@ -9,6 +9,10 @@ Voting itself is participation (like reacting), which is why the vote methods ar
 gate rather than the `write` permission — see GPPoll.save_after_voting. That save skips
 permissions, so the methods first restore all poll state from storage
 (GPPoll.discard_client_state); TestTamperedVotePayload locks that invariant.
+
+The other half of that rule is that a poll's ballot and lifecycle belong to its author:
+`write` alone must not let another member stop a poll or rewrite its votes, whether they
+go through `stop_poll` or straight at the document — TestPollFieldProtection locks that.
 """
 
 import frappe
@@ -72,16 +76,45 @@ class TestPollVoting(PollTestCase):
 		self.assertEqual(self.option(poll, "Yes").percentage, 50)
 		self.assertEqual(self.option(poll, "No").percentage, 50)
 
-	def test_one_vote_per_user(self):
+	def test_voting_again_replaces_the_previous_answer(self):
+		"""A voter may change their mind: one answer per voter, and it is the latest one."""
 		poll = self.poll()
 		self.vote(poll, self.member, "Yes")
 
-		# Voting again — even for another option — leaves the first vote standing.
 		self.vote(poll, self.member, "No")
 
 		self.assertEqual(poll.total_votes, 1)
+		self.assertEqual([(v.user, v.option) for v in poll.votes], [(self.member.name, "No")])
+		self.assertEqual(self.option(poll, "Yes").votes, 0)
+		self.assertEqual(self.option(poll, "Yes").percentage, 0)
+		self.assertEqual(self.option(poll, "No").votes, 1)
+		self.assertEqual(self.option(poll, "No").percentage, 100)
+
+	def test_repeating_the_same_answer_changes_nothing(self):
+		poll = self.poll()
+		self.vote(poll, self.member, "Yes")
+
+		self.vote(poll, self.member, "Yes")
+
+		self.assertEqual(poll.total_votes, 1)
 		self.assertEqual([(v.user, v.option) for v in poll.votes], [(self.member.name, "Yes")])
-		self.assertEqual(self.option(poll, "No").votes, 0)
+
+	def test_changing_a_vote_leaves_the_other_voters_alone(self):
+		poll = self.poll()
+		self.vote(poll, self.member, "Yes")
+		self.vote(poll, self.second_member, "Yes")
+
+		self.vote(poll, self.member, "No")
+
+		self.assertEqual(poll.total_votes, 2)
+		self.assertEqual(
+			sorted((v.user, v.option) for v in poll.votes),
+			sorted([(self.member.name, "No"), (self.second_member.name, "Yes")]),
+		)
+		self.assertEqual(self.option(poll, "Yes").votes, 1)
+		self.assertEqual(self.option(poll, "No").votes, 1)
+		self.assertEqual(self.option(poll, "Yes").percentage, 50)
+		self.assertEqual(self.option(poll, "No").percentage, 50)
 
 	def test_vote_for_an_option_that_does_not_exist_is_rejected(self):
 		poll = self.poll()
@@ -170,8 +203,10 @@ class TestAnonymousPoll(PollTestCase):
 class TestMultipleAnswerPoll(PollTestCase):
 	"""`multiple_answers` lifts the one-vote guard to one vote per user *per option*.
 
-	Percentages stay a share of the vote rows cast, so they still add up to 100%: on a
-	multiple-answer poll `total_votes` counts answers, not voters.
+	A percentage answers "how many of the people who voted picked this?", so it is a
+	share of the voters, not of the answer rows. On a multiple-answer poll the shares can
+	therefore add up to more than 100% — the standard for "select all that apply" — and
+	they read against the UI's own label, "N answers from M people".
 	"""
 
 	def test_a_voter_can_pick_several_options(self):
@@ -185,7 +220,22 @@ class TestMultipleAnswerPoll(PollTestCase):
 		self.assertEqual(self.option(poll, "Yes").votes, 1)
 		self.assertEqual(self.option(poll, "Later").votes, 1)
 		self.assertEqual(self.option(poll, "No").votes, 0)
-		self.assertEqual(self.option(poll, "Yes").percentage, 50)
+		# The only voter picked both, so both are at 100% of the people who voted.
+		self.assertEqual(self.option(poll, "Yes").percentage, 100)
+		self.assertEqual(self.option(poll, "Later").percentage, 100)
+
+	def test_percentages_are_a_share_of_the_voters_not_of_the_answers(self):
+		poll = self.poll(multiple_answers=1, options=("Yes", "No", "Later"))
+
+		self.vote(poll, self.member, "Yes")
+		self.vote(poll, self.member, "Later")
+		self.vote(poll, self.second_member, "Yes")
+
+		# Three answers from two people: everyone picked "Yes", half also picked "Later".
+		self.assertEqual(poll.total_votes, 3)
+		self.assertEqual(self.option(poll, "Yes").percentage, 100)
+		self.assertEqual(self.option(poll, "Later").percentage, 50)
+		self.assertEqual(self.option(poll, "No").percentage, 0)
 
 	def test_repeat_vote_for_the_same_option_is_ignored(self):
 		poll = self.poll(multiple_answers=1)
@@ -322,6 +372,8 @@ class TestArchivedPoll(PollTestCase):
 
 		with self.as_user(self.second_member):
 			poll = frappe.get_doc("GP Poll", self.poll_doc.name)
+			# frappe.get_doc runs no permission check of its own, so ask for one.
+			poll.check_permission("read")
 
 		self.assertEqual(poll.title, "Ship on Friday?")
 
@@ -444,6 +496,134 @@ class TestTamperedVotePayload(PollTestCase):
 		poll.reload()
 		self.assertIsNotNone(poll.stopped_at)
 		self.assertEqual(poll.total_votes, 0)
+
+
+class TestPollFieldProtection(PollTestCase):
+	"""A poll's ballot and lifecycle belong to its author, not to the space.
+
+	`stop_poll` says so, but the whitelisted method is not the only way in: content
+	inside a space is editable by every member who can reach it, so a plain
+	`PUT /api/v2/document/GP Poll/<name>` lands on `save()` and never passes through
+	`stop_poll`. These tests drive that same `save()`, loading the poll inside the other
+	member's session — the builder leaves `ignore_permissions` on the doc it returns, so
+	reusing that object would skip the check under test.
+	"""
+
+	def test_another_member_cannot_stop_the_poll_by_saving_it(self):
+		poll = self.poll()
+
+		with self.as_user(self.second_member), self.assertRaises(frappe.PermissionError):
+			tampered = frappe.get_doc("GP Poll", poll.name)
+			tampered.stopped_at = frappe.utils.now()
+			tampered.save()
+
+		poll.reload()
+		self.assertIsNone(poll.stopped_at)
+
+	def test_another_member_cannot_rewrite_the_recorded_votes(self):
+		poll = self.poll()
+		self.vote(poll, self.member, "Yes")
+
+		with self.as_user(self.second_member), self.assertRaises(frappe.PermissionError):
+			tampered = frappe.get_doc("GP Poll", poll.name)
+			tampered.votes = []
+			tampered.save()
+
+		poll.reload()
+		self.assertEqual([(v.user, v.option) for v in poll.votes], [(self.member.name, "Yes")])
+
+	def test_another_member_cannot_rewrite_the_options(self):
+		poll = self.poll()
+
+		with self.as_user(self.second_member), self.assertRaises(frappe.PermissionError):
+			tampered = frappe.get_doc("GP Poll", poll.name)
+			tampered.options[0].title = "Pwned option"
+			tampered.save()
+
+		poll.reload()
+		self.assertEqual([option.title for option in poll.options], ["Yes", "No"])
+
+	def test_another_member_cannot_inflate_the_vote_count(self):
+		poll = self.poll()
+
+		with self.as_user(self.second_member), self.assertRaises(frappe.PermissionError):
+			tampered = frappe.get_doc("GP Poll", poll.name)
+			tampered.total_votes = 99
+			tampered.save()
+
+		poll.reload()
+		self.assertEqual(poll.total_votes, 0)
+
+	def test_the_owner_may_still_save_the_poll(self):
+		poll = self.poll()
+
+		with self.as_user(self.member):
+			owned = frappe.get_doc("GP Poll", poll.name)
+			owned.stopped_at = frappe.utils.now()
+			owned.save()
+
+		poll.reload()
+		self.assertIsNotNone(poll.stopped_at)
+
+	def test_a_community_admin_may_still_moderate_the_poll(self):
+		poll = self.poll()
+		community = frappe.get_doc("GP Team", self.community.name)
+		community.get_member(self.second_member.name).is_admin = 1
+		community.save(ignore_permissions=True)
+
+		with self.as_user(self.second_member):
+			moderated = frappe.get_doc("GP Poll", poll.name)
+			moderated.stopped_at = frappe.utils.now()
+			moderated.save()
+
+		poll.reload()
+		self.assertIsNotNone(poll.stopped_at)
+
+	def test_the_guard_does_not_block_voting(self):
+		"""Voting writes the very fields the guard protects, which is why it runs through
+		submit_vote and its own participation gate rather than the `write` permission."""
+		poll = self.poll()
+
+		self.vote(poll, self.second_member, "Yes")
+
+		self.assertEqual([(v.user, v.option) for v in poll.votes], [(self.second_member.name, "Yes")])
+
+	def test_the_guard_does_not_block_reacting(self):
+		poll = self.poll()
+
+		with self.as_user(self.second_member):
+			frappe.get_doc("GP Poll", poll.name).react(operations=[{"emoji": "👍", "operation": "add"}])
+
+		poll.reload()
+		self.assertEqual([(row.user, row.emoji) for row in poll.reactions], [(self.second_member.name, "👍")])
+
+
+class TestDeletingAPoll(PollTestCase):
+	"""Deleting a discussion takes the polls inside it, whoever posted them.
+
+	The delete cascade in `gameplan/mixins/on_delete.py` removes each child on behalf of
+	a parent whose own delete was already authorised, so the per-poll owner rule must not
+	be re-applied to it — otherwise one other member's poll vetoes the thread owner's
+	delete and rolls the whole operation back.
+	"""
+
+	def test_discussion_owner_can_delete_a_thread_holding_another_members_poll(self):
+		poll = create_poll("Second member's poll", self.discussion, owner=self.second_member)
+
+		with self.as_user(self.member):
+			frappe.delete_doc("GP Discussion", self.discussion.name)
+
+		self.assertFalse(frappe.db.exists("GP Poll", poll.name))
+		self.assertFalse(frappe.db.exists("GP Discussion", self.discussion.name))
+
+	def test_the_cascade_exemption_does_not_reach_a_direct_delete(self):
+		poll = create_poll("Second member's poll", self.discussion, owner=self.second_member)
+
+		# `member` owns the discussion but not the poll, and is no kind of admin.
+		with self.as_user(self.member), self.assertRaises(frappe.PermissionError):
+			frappe.delete_doc("GP Poll", poll.name)
+
+		self.assertTrue(frappe.db.exists("GP Poll", poll.name))
 
 
 class TestPollMutationHTTPMethods(GameplanTestCase):

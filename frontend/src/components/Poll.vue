@@ -78,14 +78,14 @@
         v-for="option in _poll.options"
         :key="option.idx"
         @click="submitVote(option)"
-        :disabled="participated || isStopped || readOnlyMode || actionLoading"
+        :disabled="voteIsFinal || isStopped || readOnlyMode || actionLoading"
       >
         <div
           class="mr-2 h-4 w-4 rounded-full border-2 text-sm"
           :class="
             isVotedByUser(option.title)
               ? 'border-outline-gray-9 bg-surface-gray-10'
-              : participated || isStopped || readOnlyMode
+              : voteIsFinal || isStopped || readOnlyMode
                 ? 'border-outline-gray-2'
                 : 'border-outline-gray-2 group-hover:border-outline-gray-3'
           "
@@ -194,6 +194,9 @@ const participated = computed(() =>
 const supportsMultipleAnswers = computed(
   () => Boolean(_poll.value.multiple_answers) && !Boolean(_poll.value.anonymous),
 )
+// An anonymous poll records that you voted but not what you chose, so there is no answer
+// to replace or retract: that vote is final. Every other poll lets you change your mind.
+const voteIsFinal = computed(() => Boolean(_poll.value.anonymous) && participated.value)
 const actionLoading = computed(
   () =>
     pollResource.submitVote.loading ||
@@ -305,6 +308,8 @@ async function handlePollUpdate(data: { doctype?: string; name?: string | number
 }
 
 async function submitVote(option: GPPollOption) {
+  // Already this voter's answer — the server would no-op, so skip the round trip.
+  if (isVotedByUser(option.title)) return
   if (_poll.value.anonymous) {
     dialog.confirm({
       title: 'Anonymous poll',
