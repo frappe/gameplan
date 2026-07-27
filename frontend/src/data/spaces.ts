@@ -66,21 +66,32 @@ export function useSpace(name: MaybeRefOrGetter<string | undefined>) {
  * about who may edit vs. manage a space. `canEditSpace` covers non-destructive edits on a live
  * space; `canManageAccess` mirrors the backend `can_manage_space` and additionally gates the
  * destructive/admin actions (manage access, archive, unarchive); `canChangeMembership` gates
- * joining and leaving, which is neither an edit nor an admin action.
+ * joining and leaving, and `canMoveDiscussions` the bulk move. The last two are neither edits
+ * nor admin actions, and both are closed to guests.
  *
- * Membership is kept off `canEditSpace` because a guest may edit content in a space they were
- * granted, yet has no membership to change: `get_joined_spaces` unions GP Member rows with
- * GP Guest Access rows, so a granted space looks "joined" to a guest while `leave_spaces` only
- * touches member rows. Offering them the control produces a button that can never do anything.
+ * They are kept off `canEditSpace` because a guest may edit content in a space they were
+ * granted while being unable to do either of these. For membership, `get_joined_spaces` unions
+ * GP Member rows with GP Guest Access rows, so a granted space looks "joined" to a guest while
+ * `leave_spaces` only touches member rows; for the move, the backend refuses it outright.
+ * Either way, offering the control produces a button that can never do anything.
  */
 export function useSpacePermissions(spaceId: MaybeRefOrGetter<string | undefined>) {
   const space = useSpace(spaceId)
   const sessionUser = useSessionUser()
   const isArchived = computed(() => Boolean(space.value?.archived_at))
+  const isGuestUser = computed(() => isGuest(sessionUser))
   const canEditSpace = computed(() => !readOnlyMode && !isArchived.value)
   const canManageAccess = computed(() => !readOnlyMode && canManageSpace(space.value, sessionUser))
-  const canChangeMembership = computed(() => canEditSpace.value && !isGuest(sessionUser))
-  return { space, isArchived, canEditSpace, canManageAccess, canChangeMembership }
+  const canChangeMembership = computed(() => canEditSpace.value && !isGuestUser.value)
+  const canMoveDiscussions = computed(() => canEditSpace.value && !isGuestUser.value)
+  return {
+    space,
+    isArchived,
+    canEditSpace,
+    canManageAccess,
+    canChangeMembership,
+    canMoveDiscussions,
+  }
 }
 
 export function getSpace(name: string) {

@@ -134,6 +134,7 @@ const {
   canEditSpace,
   canManageAccess,
   canChangeMembership,
+  canMoveDiscussions,
 } = useSpacePermissions(() => props.spaceId)
 const isJoined = computed(() => hasJoined(props.spaceId))
 const showSpaceAccessDialog = ref(false)
@@ -180,7 +181,7 @@ const spaceActions = computed(() => [
     label: 'Move discussions',
     icon: 'lucide-log-out',
     onClick: () => (isBulkMoveMode.value = true),
-    condition: () => canEditSpace.value,
+    condition: () => canMoveDiscussions.value,
   },
   {
     label: 'Archive',

@@ -140,5 +140,9 @@ describe('Private space membership', () => {
     cy.get('[role="menuitem"]:visible').contains('Copy link').should('be.visible')
     cy.get('[role="menuitem"]:visible').should('not.contain.text', 'Leave space')
     cy.get('[role="menuitem"]:visible').should('not.contain.text', 'Join space')
+
+    // Same class of dead control: the backend refuses a bulk move from a guest, so
+    // offering the mode only leads to a rejected request.
+    cy.get('[role="menuitem"]:visible').should('not.contain.text', 'Move discussions')
   })
 })
