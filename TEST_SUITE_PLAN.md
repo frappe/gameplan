@@ -616,11 +616,15 @@ Project` DocType removal (needs a migration); the upstream Frappe
   lower-cost role as compatibility lanes rather than collecting the same Python
   line coverage three times.
 - **Complete:** A scheduled and manually dispatchable lane runs all 33 Cypress
-  specs five times serially against `gameplan-demo.test`, with zero retries. Its
-  job summary attributes failures to both iteration and spec, and its 60-minute
-  cap bounds the current roughly 30 minutes of repeated test execution.
-- **Complete:** CI now exercises realtime rather than skipping it (commit
-  `42d1fcb`).
+  specs five times serially, with zero retries. It targets the same site, port and
+  server as `ui-test.yml` on purpose — a repeat lane running a different target
+  would surface flakes the pull-request lane cannot hit while missing the ones it
+  can. Its job summary attributes failures to both iteration and spec, and its
+  60-minute cap bounds the current roughly 30 minutes of repeated execution.
+- **Complete:** CI now exercises realtime rather than skipping it. The skip claimed
+  Socket.IO was not running, but `bench start` runs it from the Procfile; the spec's
+  preflight additionally needs `developer_mode`, which the CI site now sets like the
+  local test site always has.
 - **Deliberately deferred:** Sharding `ui-test.yml`; the full 33-spec suite takes
   about six minutes, which does not yet justify the coordination complexity.
 - **Not needed:** Minimal Vitest setup; Step 3 did not surface pure logic that was
