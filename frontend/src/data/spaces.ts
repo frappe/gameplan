@@ -3,7 +3,7 @@ import { useCall, useList, useDoctype, dialog } from 'frappe-ui'
 import { GPProject, GPMember } from '@/types/doctypes'
 import { getProjectUnreadCount, markSpacesAsRead } from './unreadCount'
 import { useSessionUser } from './users'
-import { canManageSpace } from '@/utils/permissions'
+import { canManageSpace, isGuest } from '@/utils/permissions'
 import { readOnlyMode } from './readOnlyMode'
 
 interface Member extends Pick<GPMember, 'user'> {}
@@ -65,7 +65,13 @@ export function useSpace(name: MaybeRefOrGetter<string | undefined>) {
  * menu). Kept in one place so a permission-rule change can't leave the two menus disagreeing
  * about who may edit vs. manage a space. `canEditSpace` covers non-destructive edits on a live
  * space; `canManageAccess` mirrors the backend `can_manage_space` and additionally gates the
- * destructive/admin actions (manage access, archive, unarchive).
+ * destructive/admin actions (manage access, archive, unarchive); `canChangeMembership` gates
+ * joining and leaving, which is neither an edit nor an admin action.
+ *
+ * Membership is kept off `canEditSpace` because a guest may edit content in a space they were
+ * granted, yet has no membership to change: `get_joined_spaces` unions GP Member rows with
+ * GP Guest Access rows, so a granted space looks "joined" to a guest while `leave_spaces` only
+ * touches member rows. Offering them the control produces a button that can never do anything.
  */
 export function useSpacePermissions(spaceId: MaybeRefOrGetter<string | undefined>) {
   const space = useSpace(spaceId)
@@ -73,7 +79,8 @@ export function useSpacePermissions(spaceId: MaybeRefOrGetter<string | undefined
   const isArchived = computed(() => Boolean(space.value?.archived_at))
   const canEditSpace = computed(() => !readOnlyMode && !isArchived.value)
   const canManageAccess = computed(() => !readOnlyMode && canManageSpace(space.value, sessionUser))
-  return { space, isArchived, canEditSpace, canManageAccess }
+  const canChangeMembership = computed(() => canEditSpace.value && !isGuest(sessionUser))
+  return { space, isArchived, canEditSpace, canManageAccess, canChangeMembership }
 }
 
 export function getSpace(name: string) {
@@ -117,19 +124,6 @@ export function joinSpace(space: Space) {
     })
 }
 
-export function joinSpaces(spaceIds: string[]) {
-  return spaceDoctype.runMethod
-    .submit({
-      method: 'join_spaces',
-      params: {
-        spaces: spaceIds,
-      },
-    })
-    .then(() => {
-      joinedSpaces.reload()
-    })
-}
-
 export function leaveSpace(space: Space) {
   return spaceDoctype.runMethod
     .submit({
@@ -141,17 +135,21 @@ export function leaveSpace(space: Space) {
     })
 }
 
-export function leaveSpaces(spaceIds: string[]) {
-  return spaceDoctype.runMethod
-    .submit({
-      method: 'leave_spaces',
-      params: {
-        spaces: spaceIds,
-      },
-    })
-    .then(() => {
-      joinedSpaces.reload()
-    })
+/**
+ * Ask before leaving. Leaving a public space is reversible from the space itself, but a
+ * private space's view permission *is* its membership (backend `can_view_space`), so the
+ * moment you leave you can no longer see the space — or the Join action on it. Getting back
+ * in needs another member (or a global admin) to add you, which is worth a warning up front.
+ */
+export function confirmLeaveSpace(space: Space) {
+  dialog.confirm({
+    title: `Leave "${space.title}"?`,
+    message: space.is_private
+      ? "This space is private. You won't be able to rejoin unless a member adds you back."
+      : 'You can rejoin at any time.',
+    confirmLabel: 'Leave',
+    onConfirm: () => leaveSpace(space),
+  })
 }
 
 export function archiveSpace(space: Space) {

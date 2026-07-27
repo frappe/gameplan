@@ -100,8 +100,8 @@ import {
   useSpacePermissions,
   spaces,
   hasJoined,
-  joinSpaces,
-  leaveSpaces,
+  joinSpace,
+  confirmLeaveSpace,
   markAllAsRead,
   archiveSpace,
   unarchiveSpace,
@@ -133,6 +133,7 @@ const {
   isArchived,
   canEditSpace,
   canManageAccess,
+  canChangeMembership,
 } = useSpacePermissions(() => props.spaceId)
 const isJoined = computed(() => hasJoined(props.spaceId))
 const showSpaceAccessDialog = ref(false)
@@ -165,9 +166,9 @@ const spaceActions = computed(() => [
     icon: isJoined.value ? 'lucide-log-out' : 'lucide-log-in',
     onClick: () => {
       if (!currentSpace.value) return
-      return isJoined.value ? leaveSpaces([props.spaceId]) : joinSpaces([props.spaceId])
+      return isJoined.value ? confirmLeaveSpace(currentSpace.value) : joinSpace(currentSpace.value)
     },
-    condition: () => canEditSpace.value,
+    condition: () => canChangeMembership.value,
   },
   {
     label: 'Manage access',
