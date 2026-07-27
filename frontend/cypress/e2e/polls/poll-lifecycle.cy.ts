@@ -67,8 +67,11 @@ describe('Poll lifecycle', () => {
     cy.contains('2 answers from 1 person').should('exist')
     pollAnswer('Yes').should('be.checked')
     pollAnswer('No').should('be.checked')
-    pollAnswer('Yes').parent().contains('(50%)').should('exist')
-    pollAnswer('No').parent().contains('(50%)').should('exist')
+    // A percentage is a share of the people who voted, not of the answer rows, so the
+    // one voter who picked both options puts both at 100%. On "select all that apply"
+    // the shares are meant to add up to more than 100%.
+    pollAnswer('Yes').parent().contains('(100%)').should('exist')
+    pollAnswer('No').parent().contains('(100%)').should('exist')
 
     // Deselecting one checkbox retracts only that option.
     pollAnswer('Yes').uncheck()
