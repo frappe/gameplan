@@ -32,6 +32,31 @@ DEMO_FILE_FOLDER = "Home/Gameplan Demo"
 _TIME_RE = re.compile(r"^\s*([+-]?\d+)d(?:\s+(\d{1,2}):(\d{2}))?\s*$")
 _PLACEHOLDER_RE = re.compile(r"\{\{(file|emoji|user):([^}]+)\}\}")
 
+# Event fields that name a symbolic `id` declared by an earlier event, and the event
+# types that id is allowed to have been declared by. Drives the static reference pass
+# in Seeder.validate_events; keep it in step with the _event_* handlers.
+_ID_REFERENCE_KINDS: dict[str, dict[str, set[str]]] = {
+	"space": {"community": {"community"}},
+	"discussion": {"space": {"space"}},
+	"comment": {"on": {"discussion", "task"}},
+	"react": {"on": {"discussion", "comment", "task", "page", "poll"}},
+	"task": {"space": {"space"}},
+	"task_update": {"on": {"task"}},
+	"page": {"space": {"space"}},
+	"poll": {"on": {"discussion"}},
+	"vote": {"on": {"poll"}},
+	"bookmark": {"on": {"discussion"}},
+	"pin": {"on": {"space"}},
+	"visit": {"on": {"discussion"}},
+	"draft": {"space": {"space"}},
+}
+
+# Event fields holding a single user slug (declared by an earlier `user` event).
+_USER_SLUG_FIELDS = ("actor", "assigned_to")
+
+# Event fields holding the name of a file that must exist in the fixture's files/ dir.
+_FILE_NAME_FIELDS = ("avatar", "cover", "logo", "image")
+
 
 class Seeder:
 	def __init__(self, fixture_dir: str):
@@ -59,34 +84,149 @@ class Seeder:
 
 		:func:`gameplan.demo.demo.generate` commits a full ``clear()`` before the
 		replay starts, so an event the seeder cannot handle empties the site and
-		*then* raises. Everything checkable without a database round trip is
-		checked here so ``generate`` can refuse before anything is deleted.
+		*then* raises — the delete is committed, the half-applied replay is not, and
+		the site is left with no demo data at all. Everything checkable without a
+		database round trip is checked here so ``generate`` can refuse before
+		anything is deleted.
 
-		Cross-references (``id`` / ``on`` / ``actor`` lookups) and ``{{...}}``
-		placeholder targets still need the replay itself; this is the static half.
+		That includes cross-references, which are the likeliest way to break a
+		hand-edited fixture: dropping one ``space`` line leaves every discussion in it
+		pointing at nothing. Every ``on`` / ``space`` / ``community`` id, every actor,
+		member and assignee slug, every ``{{...}}`` placeholder and every named file
+		must already be declared by an *earlier* line — the replay is chronological, so
+		a reference that only resolves later fails there too.
 		"""
-		problems = []
+		problems: list[str] = []
+		events: list[tuple[int, dict]] = []
 		with open(events_path, encoding="utf-8") as f:
 			for number, line in enumerate(f, start=1):
 				if not line.strip():
 					continue
 				try:
-					event = json.loads(line)
+					events.append((number, json.loads(line)))
 				except json.JSONDecodeError as error:
 					problems.append(f"line {number}: invalid JSON ({error})")
-					continue
 
-				event_type = event.get("type")
-				if not event_type:
-					problems.append(f"line {number}: missing 'type'")
-				elif not hasattr(cls, f"_event_{event_type}"):
-					problems.append(f"line {number}: no handler for event type {event_type!r}")
+		files_dir = os.path.join(os.path.dirname(events_path), "files")
+		ids: dict[str, str] = {}  # symbolic id -> the event type that declared it
+		user_slugs: set[str] = set()
+		emoji_slugs: set[str] = set()
 
-				timestamp = event.get("t")
-				if timestamp is not None and not _TIME_RE.match(timestamp):
-					problems.append(f"line {number}: invalid relative time {timestamp!r}")
+		for number, event in events:
+			event_type = event.get("type")
+			if not event_type:
+				problems.append(f"line {number}: missing 'type'")
+				event_type = None
+			elif not hasattr(cls, f"_event_{event_type}"):
+				problems.append(f"line {number}: no handler for event type {event_type!r}")
+				# Nothing is known about an unhandled event's shape, so its references
+				# are not worth guessing at — the missing handler is the real problem.
+				event_type = None
+
+			timestamp = event.get("t")
+			if timestamp is not None and not _TIME_RE.match(timestamp):
+				problems.append(f"line {number}: invalid relative time {timestamp!r}")
+
+			if not event_type:
+				continue
+
+			problems.extend(
+				cls._reference_problems(number, event, event_type, ids, user_slugs, emoji_slugs, files_dir)
+			)
+			# Declarations are recorded only after this event's own references have been
+			# checked, so nothing can satisfy a reference to itself.
+			cls._record_declarations(event, event_type, ids, user_slugs, emoji_slugs)
 
 		return problems
+
+	@classmethod
+	def _reference_problems(
+		cls,
+		number: int,
+		event: dict,
+		event_type: str,
+		ids: dict[str, str],
+		user_slugs: set[str],
+		emoji_slugs: set[str],
+		files_dir: str,
+	) -> list[str]:
+		"""Every reference on one event that does not resolve against the lines above it."""
+		problems = []
+
+		for field, kinds in _ID_REFERENCE_KINDS.get(event_type, {}).items():
+			target = event.get(field)
+			if target is None:
+				continue
+			if target not in ids:
+				problems.append(f"line {number}: {event_type} {field!r} references unknown id {target!r}")
+			elif ids[target] not in kinds:
+				problems.append(
+					f"line {number}: {event_type} {field!r} references {target!r}, declared by a "
+					f"{ids[target]!r} event; expected one of {sorted(kinds)}"
+				)
+
+		for slug in cls._user_slug_references(event):
+			if slug not in user_slugs:
+				problems.append(f"line {number}: references unknown user slug {slug!r}")
+
+		file_names = {event.get(field) for field in _FILE_NAME_FIELDS if event.get(field)}
+		for kind, key in cls._placeholders(event):
+			if kind == "file":
+				file_names.add(key)
+			elif kind == "user" and key not in user_slugs:
+				problems.append(f"line {number}: placeholder {{{{user:{key}}}}} names no user declared above")
+			elif kind == "emoji" and key not in emoji_slugs:
+				problems.append(
+					f"line {number}: placeholder {{{{emoji:{key}}}}} names no custom emoji declared above"
+				)
+
+		for name in sorted(file_names):
+			if not os.path.exists(os.path.join(files_dir, name)):
+				problems.append(f"line {number}: file {name!r} is missing from {files_dir}")
+
+		return problems
+
+	@staticmethod
+	def _record_declarations(
+		event: dict,
+		event_type: str,
+		ids: dict[str, str],
+		user_slugs: set[str],
+		emoji_slugs: set[str],
+	):
+		symbolic_id = event.get("id")
+		if symbolic_id:
+			ids[symbolic_id] = event_type
+		slug = event.get("slug")
+		if slug and event_type == "user":
+			user_slugs.add(slug)
+		elif slug and event_type == "custom_emoji":
+			emoji_slugs.add(slug)
+
+	@staticmethod
+	def _user_slug_references(event: dict) -> list[str]:
+		"""Every user slug the event names, from whichever field carries it."""
+		slugs = [event.get(field) for field in _USER_SLUG_FIELDS]
+		slugs += event.get("members") or []
+		changes = event.get("changes")
+		if isinstance(changes, dict):
+			slugs.append(changes.get("assigned_to"))
+		return [slug for slug in slugs if slug]
+
+	@staticmethod
+	def _placeholders(event: dict) -> list[tuple[str, str]]:
+		"""Every ``{{kind:key}}`` placeholder found in the event's string values."""
+		found: list[tuple[str, str]] = []
+		pending = [event]
+		while pending:
+			value = pending.pop()
+			if isinstance(value, dict):
+				pending.extend(value.values())
+			elif isinstance(value, list):
+				pending.extend(value)
+			elif isinstance(value, str):
+				found.extend(_PLACEHOLDER_RE.findall(value))
+		return found
 
 	def run(self, events_path: str):
 		with open(events_path, encoding="utf-8") as f:

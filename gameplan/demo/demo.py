@@ -50,7 +50,9 @@ def generate(fixture_path: str | None = None, force: bool = False):
 
 	# clear() commits, so validate the whole log first: a fixture the seeder cannot
 	# finish would otherwise leave the site wiped and the replay half-applied
-	# (the failed events roll back, the committed delete does not).
+	# (the failed events roll back, the committed delete does not). validate_events
+	# resolves cross-references statically too, so a hand-edit that drops a `space`
+	# line is caught here rather than mid-replay.
 	problems = Seeder.validate_events(events_path)
 	if problems:
 		shown = "\n".join(problems[:5])
