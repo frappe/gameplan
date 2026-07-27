@@ -93,7 +93,9 @@ jobs:
           working-directory: frontend
         env:
           CYPRESS_BASE_URL: http://gameplan.test:8000
-          SKIP_REALTIME_E2E: Socket.IO is not started by the UI test workflow
+          # No SKIP_REALTIME_E2E: `bench start` runs the Procfile's socketio process, so the
+          # realtime service is listening on 9000 and the spec's preflight can reach it. The
+          # skip predated that being checked and made the suite's realtime coverage dead.
 
       # Same-repo PRs have a read-write token, so comment directly here for instant
       # feedback. Fork PRs (read-only token) are handled by ui-test-report.yml, which
