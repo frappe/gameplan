@@ -603,22 +603,28 @@ Four Step-2-era failures were root-caused against the then-current local runner:
 backend **505 tests, exit 0**; Cypress **33 specs / 75 tests, 0 failed, 0 pending**
 at `retries=0` (run-mode retries are disabled — decision 26).
 
-Deliberately not done, and tracked as such rather than forgotten: Step 4 below;
-the `GP Followed Project` DocType removal (needs a migration); the upstream Frappe
+Deliberately not done, and tracked as such rather than forgotten: the `GP Followed
+Project` DocType removal (needs a migration); the upstream Frappe
 `realtime/utils.js::get_url` port-rewrite fix; a two-browser realtime spec
 (decision 19); and the archive limitation noted above, which is a product decision.
 
-## Step 4 — CI guardrails (IN PROGRESS)
+## Step 4 — CI guardrails (COMPLETE)
 
 - **Complete:** Backend coverage is collected on pull requests in the canonical
   MariaDB/Frappe `develop` lane and rendered in that check's job summary. It is
   informational only, with no minimum threshold. SQLite and v16 retain their
   lower-cost role as compatibility lanes rather than collecting the same Python
   line coverage three times.
-- Optional nightly repeat lane to surface intermittent failures beyond the
-  no-retry PR run.
-- Shard `ui-test.yml` by top-level spec folder once suite grows (~30 specs).
-- Optional: minimal Vitest setup if Step 3 surfaces awkward-to-E2E pure logic.
+- **Complete:** A scheduled and manually dispatchable lane runs all 33 Cypress
+  specs five times serially against `gameplan-demo.test`, with zero retries. Its
+  job summary attributes failures to both iteration and spec, and its 60-minute
+  cap bounds the current roughly 30 minutes of repeated test execution.
+- **Complete:** CI now exercises realtime rather than skipping it (commit
+  `42d1fcb`).
+- **Deliberately deferred:** Sharding `ui-test.yml`; the full 33-spec suite takes
+  about six minutes, which does not yet justify the coordination complexity.
+- **Not needed:** Minimal Vitest setup; Step 3 did not surface pure logic that was
+  awkward to cover at the backend or E2E boundary.
 
 ## Environment notes (local)
 

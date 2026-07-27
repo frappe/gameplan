@@ -1,0 +1,146 @@
+name: Nightly Cypress Repeat
+
+on:
+  schedule:
+    - cron: "30 18 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-cypress-repeat
+  cancel-in-progress: false
+
+jobs:
+  repeat:
+    runs-on: ubuntu-latest
+    if: ${{ github.repository_owner == 'frappe' }}
+    timeout-minutes: 60
+
+    name: Cypress ×5
+
+    services:
+      mariadb:
+        image: mariadb:10.6
+        env:
+          MARIADB_ROOT_PASSWORD: 123
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=5s --health-timeout=2s --health-retries=3
+
+    steps:
+      - name: Clone
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.14"
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 24
+          check-latest: true
+
+      - name: Add demo site to hosts
+        run: echo "127.0.0.1 gameplan-demo.test" | sudo tee -a /etc/hosts
+
+      - name: Cache pip
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/*requirements.txt', '**/pyproject.toml', '**/setup.py') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+            ${{ runner.os }}-
+
+      - name: Cache Cypress binary
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/Cypress
+          key: ${{ runner.os }}-cypress
+
+      - name: Install dependencies
+        run: |
+          bash "${GITHUB_WORKSPACE}/.github/helper/install_dependencies.sh"
+          bash "${GITHUB_WORKSPACE}/.github/helper/install.sh"
+        env:
+          TEST_SITE_NAME: gameplan-demo.test
+          BEFORE: ${{ env.GITHUB_EVENT_PATH.before }}
+          AFTER: ${{ env.GITHUB_EVENT_PATH.after }}
+
+      - name: Complete site setup
+        working-directory: /home/runner/frappe-bench
+        run: bench --site gameplan-demo.test execute frappe.utils.install.complete_setup_wizard
+
+      - name: Start Cypress web server on port 8002
+        working-directory: /home/runner/frappe-bench
+        run: bench --site gameplan-demo.test serve --port 8002 > nightly_web.log 2>&1 &
+
+      # Cypress itself runs specs serially. Keeping every iteration in this one step
+      # also guarantees no suite can overlap another against the shared site.
+      - name: Run Cypress five times serially
+        id: cypress
+        working-directory: /home/runner/frappe-bench/apps/gameplan/frontend
+        env:
+          CYPRESS_BASE_URL: http://gameplan-demo.test:8002
+        run: |
+          results_root="${RUNNER_TEMP}/nightly-cypress"
+          logs_root="${RUNNER_TEMP}/nightly-cypress-logs"
+          mkdir -p "${results_root}" "${logs_root}"
+          overall_status=0
+
+          for iteration in 1 2 3 4 5; do
+            iteration_dir="${results_root}/iteration-${iteration}"
+            mkdir -p "${iteration_dir}"
+            rm -f cypress/results/*.xml
+
+            set +e
+            yarn test > "${logs_root}/iteration-${iteration}.log" 2>&1
+            iteration_status=$?
+            set -e
+
+            cp cypress/results/*.xml "${iteration_dir}/" 2>/dev/null || true
+            echo "${iteration_status}" > "${iteration_dir}/exit-code"
+            if [ "${iteration_status}" -ne 0 ]; then
+              overall_status=1
+            fi
+          done
+
+          echo "failed=${overall_status}" >> "$GITHUB_OUTPUT"
+
+      - name: Write nightly summary
+        if: ${{ always() }}
+        run: python .github/scripts/nightly_junit_to_markdown.py "$RUNNER_TEMP/nightly-cypress" 5 >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload repeat results and logs
+        uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: nightly-cypress-results
+          path: |
+            ${{ runner.temp }}/nightly-cypress
+            ${{ runner.temp }}/nightly-cypress-logs
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Fail if an iteration failed
+        if: ${{ always() }}
+        run: |
+          if [ "${{ steps.cypress.outputs.failed }}" != "0" ]; then
+            echo "At least one Cypress iteration failed; see the job summary and artifacts."
+            exit 1
+          fi
+
+      - name: Stop servers
+        if: ${{ always() }}
+        run: |
+          ps -ef | grep "[f]rappe serve" | awk '{print $2}' | xargs kill -s SIGINT || true
+          sleep 5
+
+      - name: Show bench output
+        if: ${{ always() }}
+        run: |
+          cat ~/frappe-bench/bench_start.log || true
+          cat ~/frappe-bench/nightly_web.log || true
