@@ -123,11 +123,16 @@ def can_view_content(user, doc):
 
 
 def users_who_can_view_content(users, doc):
-	"""The subset of `users` that can_view_content would return True for.
+	"""The subset of `users` that can_view_content would return True for, order preserved.
 
 	Same rule, resolved with a fixed handful of queries instead of two or three per
 	user. For fan-outs over a whole site — an `@everyone` mention, a digest audience —
 	the per-user form makes the query count grow with the member list.
+
+	Duplicates in `users` are collapsed (the roles join hands back a user twice when
+	they hold both Gameplan roles). Callers wanting to exclude someone — an @everyone
+	must not notify its own author — filter before calling: this answers only "who can
+	see it".
 
 	Mirrors can_view_space/can_view_community with the membership rows loaded up front;
 	keep the two in step.
@@ -135,7 +140,11 @@ def users_who_can_view_content(users, doc):
 	users = list(dict.fromkeys(users))
 	project = get_content_project(doc)
 	if not project:
-		return [user for user in users if can_view_content(user, doc)]
+		# can_view_content's own space-less fallback, inlined rather than called per
+		# user: it would re-resolve the project for every user (a query each, for a
+		# GP Comment) and give back exactly this answer.
+		owner = get_doc_value(doc, "owner")
+		return [user for user in users if is_global_admin(user) or user == owner]
 
 	project_info = get_project_info(project)
 	if not project_info:

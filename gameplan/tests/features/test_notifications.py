@@ -20,6 +20,7 @@ digest mirrors the same split: `get_unread_notifications` vs `get_unread_discuss
 """
 
 import frappe
+from frappe.utils import cint
 
 from gameplan.api import mark_all_notifications_as_read, unread_notifications
 from gameplan.gameplan.doctype.gp_notification.gp_notification import GPNotification
@@ -164,6 +165,29 @@ class TestMentionNotifications(NotificationTestCase):
 		self.assertEqual(len(self.notifications_for(self.second_member)), 1)
 		self.assertEqual(self.notifications_for(self.outsider), [])
 
+	def test_everyone_mention_in_a_private_community_reaches_only_that_community(self):
+		"""A private COMMUNITY confines @everyone even when the space itself is public.
+
+		`is_private` on the space is only half the rule: a public space inside a private
+		community is still invisible to non-members (can_view_space falls through to
+		can_view_community), so the batched audience resolver has to apply the community
+		check too. Everything else here exercises a private space, which short-circuits
+		before that branch is ever reached.
+		"""
+		private_community = create_community(
+			"Black Ops", is_private=1, members=[self.member, self.second_member]
+		)
+		space = create_space("Recon", private_community)
+		self.assertEqual(cint(space.is_private), 0, "the space must stay public — the community is the gate")
+
+		with self.as_user(self.member):
+			create_discussion("Everyone thread", space, content=mention_html("_everyone_", "Everyone"))
+
+		rows = self.notifications_for(self.second_member)
+		self.assertEqual(len(rows), 1)
+		self.assertIn("mentioned everyone", rows[0].message)
+		self.assertEqual(self.notifications_for(self.outsider), [])
+
 	def test_mentioning_a_user_who_cannot_see_the_space_creates_no_notification(self):
 		"""The mention autocomplete offers every active user, not just space members."""
 		private_space = create_space("Secret Plans", self.community, is_private=1, members=[self.member])
@@ -222,6 +246,53 @@ class TestMentionNotifications(NotificationTestCase):
 		rows = self.notifications_for(self.second_member)
 		self.assertEqual(len(rows), 1)
 		self.assertEqual(rows[0].type, "Mention")
+
+
+class TestEveryoneMentionQueryCount(NotificationTestCase):
+	"""Resolving an @everyone audience must cost a fixed number of queries.
+
+	Asking `can_view_content` once per user costs 2-3 queries each, so an @everyone on
+	a 500-member site put ~1,500 synchronous queries inline in the request that created
+	the discussion. `gameplan.permissions.users_who_can_view_content` replaced that with
+	a handful of set-based reads; without a guard the per-user form can quietly come
+	back — it is the obvious way to write this and nothing else fails when it does.
+
+	Only the audience *resolution* is pinned. Writing the notification rows is
+	genuinely one insert per recipient and is supposed to scale.
+	"""
+
+	# The six reads users_who_can_view_content needs, whatever the member list holds:
+	# the active-user roster, GP Project (name/team/is_private), the GP Project and
+	# GP Team membership rows, GP Guest Access, and GP Team.is_private.
+	AUDIENCE_QUERY_BUDGET = 6
+
+	def test_everyone_audience_query_count_does_not_grow_with_the_member_list(self):
+		discussion = create_discussion("Everyone thread", self.space, owner=self.member)
+		doc = frappe.get_doc("GP Discussion", discussion.name)
+
+		# Resolve once before every measurement: the first call to see a newly created
+		# user pays for frappe's own per-user role cache (frappe.get_roles, ~8 queries
+		# each) and for any cold doctype meta. Neither is Gameplan's fan-out, and
+		# counting them would measure frappe's cache, not this resolver.
+		doc._everyone_audience()
+		with self.assertQueryCount(self.AUDIENCE_QUERY_BUDGET):
+			small_audience = doc._everyone_audience()
+
+		extra_members = [
+			create_member(f"everyone_scale_{index}@example.com", f"Scale {index}") for index in range(20)
+		]
+		community = frappe.get_doc("GP Team", self.community.name)
+		for user in extra_members:
+			community.append("members", {"user": user.name})
+		community.save(ignore_permissions=True)
+
+		doc._everyone_audience()
+		with self.assertQueryCount(self.AUDIENCE_QUERY_BUDGET):
+			large_audience = doc._everyone_audience()
+
+		# The resolver really did answer for 20 more people at the same query cost —
+		# otherwise a budget this size could be met by simply returning nothing.
+		self.assertEqual(len(large_audience), len(small_audience) + len(extra_members))
 
 
 class TestReplyNotifications(NotificationTestCase):
