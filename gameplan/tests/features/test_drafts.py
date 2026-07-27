@@ -93,3 +93,32 @@ class TestDrafts(IntegrationTestCase):
 		remaining = frappe.get_all("GP Draft", filters={"owner": alice.name, **ref}, pluck="name")
 		self.assertEqual(remaining, [newer.name])
 		self.assertFalse(frappe.db.exists("GP Draft", older.name))
+
+	def test_deleting_a_comment_removes_its_edit_draft(self):
+		from gameplan.tests.fixtures import (
+			create_comment,
+			create_community,
+			create_discussion,
+			create_space,
+		)
+
+		alice = create_member("draft_comment_owner@example.com", "Draft Comment Owner")
+		community = create_community("Draft Comment Community", members=[alice])
+		space = create_space("Draft Comment Space", community)
+		discussion = create_discussion("Draft Comment Discussion", space, owner=alice)
+		comment = create_comment(discussion, content="Comment with an edit draft", owner=alice)
+
+		frappe.set_user(alice.name)
+		draft = frappe.get_doc(
+			doctype="GP Draft",
+			type="Comment",
+			mode="Edit",
+			reference_doctype="GP Comment",
+			reference_name=str(comment.name),
+			content="Uncommitted edit",
+		).insert()
+
+		frappe.delete_doc("GP Comment", comment.name)
+
+		self.assertFalse(frappe.db.exists("GP Comment", comment.name))
+		self.assertFalse(frappe.db.exists("GP Draft", draft.name))

@@ -14,6 +14,7 @@ from gameplan.utils import get_document_revisions, remove_empty_trailing_paragra
 
 
 class GPComment(HasAttachments, HasMentions, HasReactions, HasTags, Document):
+	on_delete_cascade = ["GP Draft"]
 	on_delete_set_null = ["GP Notification", "GP Discussion"]
 	mentions_field = "content"
 	tags_field = "content"
