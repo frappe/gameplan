@@ -2,7 +2,6 @@
 # See license.txt
 
 import frappe
-from frappe.tests.utils import FrappeTestCase
 from frappe.utils import get_datetime
 
 from gameplan.gameplan.doctype.gp_discussion.api import (
@@ -14,15 +13,13 @@ from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
 	create_community,
 	create_discussion,
-	create_guest,
-	create_member,
 	create_poll,
 	create_space,
 	grant_guest_access,
 )
 
 
-class TestDiscussions(FrappeTestCase):
+class TestDiscussions(GameplanTestCase):
 	def test_get_discussions_excludes_archived_spaces(self):
 		team = create_community("Archived Discussion Filter Team")
 		active_project = create_space("Active Discussion Filter Space", team.name)
@@ -70,24 +67,17 @@ class TestDiscussions(FrappeTestCase):
 		result = query.run()
 		self.assertIsInstance(result, (list, tuple))
 
-		# Cleanup
-		frappe.db.rollback()
 
-
-class TestDiscussionPermissions(FrappeTestCase):
+class TestDiscussionPermissions(GameplanTestCase):
 	def setUp(self):
-		self.member = create_member("test_disc_member@example.com")
-		self.guest = create_guest("test_disc_guest@example.com")
-		self.team = create_community("Discussion Perm Team")
-		self.project = create_space("Discussion Perm Project", self.team.name)
-
-	def tearDown(self):
-		frappe.set_user("Administrator")
+		super().setUp()
+		self.community = create_community("Discussion Perm Community")
+		self.space = create_space("Discussion Perm Space", self.community)
 
 	def _discussion(self):
 		doc = frappe.new_doc("GP Discussion")
 		doc.title = "Sample discussion"
-		doc.project = self.project.name
+		doc.project = self.space.name
 		return doc
 
 	def test_member_can_access(self):
@@ -98,7 +88,7 @@ class TestDiscussionPermissions(FrappeTestCase):
 		self.assertFalse(has_permission(self._discussion(), "read", self.guest.name))
 
 	def test_guest_with_access_allowed(self):
-		grant_guest_access(self.guest.name, self.project.name)
+		grant_guest_access(self.guest, self.space)
 		self.assertTrue(has_permission(self._discussion(), "read", self.guest.name))
 
 

@@ -5,9 +5,13 @@
 
 Permissive philosophy (see AGENTS.md and test_permissions_backend.py):
   - Members create and edit anything they can see (edits are shown in revisions).
-  - Delete is the only gated action: owner, community admin, or global admin.
+  - Delete is the only gated action: owner, global admin, or — within the spaces they
+    can see — community admin.
   - Private spaces are visible only to their members and to guests granted access;
-    content inherits its space's visibility.
+    content inherits its space's visibility. Visibility is checked first, so this bounds
+    the previous rule: a community admin who is not a member of a private space in their
+    own community cannot read its content, and therefore cannot moderate or delete it
+    either. That is intended — see the `community_admin` rows below.
 
 This table is the source of truth for who may read/write/delete content. To extend:
   - Add content doctypes to the world builder in setUp (append to self.content).
@@ -36,7 +40,7 @@ EXPECTATIONS = {
 		"admin": (True, True, True),
 		"member": (True, True, True),  # owner of the content
 		"second_member": (True, True, False),  # community member, not owner
-		"community_admin": (True, True, True),  # may moderate anything in the community
+		"community_admin": (True, True, True),  # may moderate anything they can see
 		"outsider": (True, True, False),  # Gameplan Member, not in community
 		"guest": (False, False, False),  # guest access only to the private space
 	},

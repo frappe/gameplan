@@ -16,6 +16,9 @@ fall outside that shape and are covered here:
 import frappe
 
 from gameplan.gameplan.doctype.gp_comment.gp_comment import has_permission as comment_has_permission
+from gameplan.gameplan.doctype.gp_discussion.gp_discussion import (
+	has_permission as discussion_has_permission,
+)
 from gameplan.gameplan.doctype.gp_page.gp_page import has_permission as page_has_permission
 from gameplan.gameplan.doctype.gp_task.gp_task import has_permission as task_has_permission
 from gameplan.tests.base import GameplanTestCase
@@ -46,6 +49,11 @@ class TestPersonalContent(GameplanTestCase):
 class TestUnsavedContent(GameplanTestCase):
 	"""The doctype hooks run before a doc has a name — they must still resolve the space."""
 
+	# `write` is asserted alongside `read` because the create-time gate is a write check
+	# in practice: the client saves a new doc, and it is `write` that the generic save
+	# path consults once the doctype hook has resolved the space.
+	ACTIONS = ("read", "write")
+
 	def setUp(self):
 		super().setUp()
 		self.community = create_community("Unsaved Content Community", members=[self.member])
@@ -59,6 +67,13 @@ class TestUnsavedContent(GameplanTestCase):
 
 	def _unsaved_content(self):
 		return {
+			# GP Discussion has its own hook (hooks.py) and its own create gate, so it has
+			# to be exercised here too: a regression letting an ungranted guest create a
+			# discussion would otherwise ship green.
+			"GP Discussion": (
+				discussion_has_permission,
+				self._unsaved("GP Discussion", title="A discussion", project=self.space.name),
+			),
 			"GP Comment": (
 				comment_has_permission,
 				self._unsaved(
@@ -78,18 +93,42 @@ class TestUnsavedContent(GameplanTestCase):
 			),
 		}
 
-	def test_member_can_read_unsaved_content_in_a_visible_space(self):
+	def test_member_can_read_and_write_unsaved_content_in_a_visible_space(self):
 		for doctype, (has_permission, doc) in self._unsaved_content().items():
-			with self.subTest(doctype=doctype):
-				self.assertTrue(has_permission(doc, "read", self.member.name))
+			for action in self.ACTIONS:
+				with self.subTest(doctype=doctype, action=action):
+					self.assertTrue(has_permission(doc, action, self.member.name))
 
-	def test_guest_can_read_unsaved_content_only_in_a_granted_space(self):
+	def test_guest_can_reach_unsaved_content_only_in_a_granted_space(self):
 		for doctype, (has_permission, doc) in self._unsaved_content().items():
-			with self.subTest(doctype=doctype, granted=False):
-				self.assertFalse(has_permission(doc, "read", self.guest.name))
+			for action in self.ACTIONS:
+				with self.subTest(doctype=doctype, action=action, granted=False):
+					self.assertFalse(has_permission(doc, action, self.guest.name))
 
 		grant_guest_access(self.guest, self.space)
 
 		for doctype, (has_permission, doc) in self._unsaved_content().items():
-			with self.subTest(doctype=doctype, granted=True):
-				self.assertTrue(has_permission(doc, "read", self.guest.name))
+			for action in self.ACTIONS:
+				with self.subTest(doctype=doctype, action=action, granted=True):
+					self.assertTrue(has_permission(doc, action, self.guest.name))
+
+	def test_a_granted_guest_may_only_create_comments(self):
+		"""Reaching a space is not permission to post in it.
+
+		`write` is deliberately permissive for a granted guest (it is what lets them
+		react and reply), so the doctype-level restriction lives in the `create` check:
+		a guest contributes comments and polls, never discussions, pages or tasks.
+		"""
+		grant_guest_access(self.guest, self.space)
+
+		for doctype, (has_permission, doc) in self._unsaved_content().items():
+			with self.subTest(doctype=doctype):
+				self.assertEqual(
+					bool(has_permission(doc, "create", self.guest.name)),
+					doctype == "GP Comment",
+				)
+
+	def test_a_member_can_create_every_kind_of_content_in_a_visible_space(self):
+		for doctype, (has_permission, doc) in self._unsaved_content().items():
+			with self.subTest(doctype=doctype):
+				self.assertTrue(has_permission(doc, "create", self.member.name))

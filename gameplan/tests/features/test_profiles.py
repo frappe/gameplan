@@ -2,7 +2,6 @@
 # See license.txt
 
 import frappe
-from frappe.tests.utils import FrappeTestCase
 
 from gameplan.api import get_user_info
 from gameplan.gameplan.doctype.gp_user_profile.gp_user_profile import (
@@ -53,15 +52,13 @@ def get_quick_reactions(user):
 	return frappe.parse_json(get_profile(user).quick_reaction_emojis)
 
 
-class TestProfiles(FrappeTestCase):
+class TestProfiles(GameplanTestCase):
 	def setUp(self):
+		super().setUp()
 		self.alice = create_member("test_alice@example.com", "Alice")
 		self.bob = create_member("test_bob@example.com", "Bob")
 		reset_profile(self.alice.name)
 		reset_profile(self.bob.name)
-
-	def tearDown(self):
-		frappe.set_user("Administrator")
 
 	def test_owner_can_edit_own_bio(self):
 		profile = get_profile(self.alice.name)

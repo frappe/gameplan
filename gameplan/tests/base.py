@@ -12,10 +12,15 @@ from gameplan.tests.fixtures import _name, create_admin, create_guest, create_me
 from gameplan.tests.search_isolation import guard_real_index
 
 
+def _restore_session_and_rollback():
+	frappe.set_user("Administrator")
+	frappe.db.rollback()
+
+
 class GameplanTestCase(FrappeTestCase):
 	"""Base test case wiring up the standard persona cast and permission helpers.
 
-	Personas (created fresh in every test, rolled back in tearDown):
+	Personas (created fresh in every test, rolled back after it):
 	- admin: Gameplan Admin (global admin)
 	- member: Gameplan Member, the owner of test content
 	- second_member: another Gameplan Member
@@ -24,6 +29,12 @@ class GameplanTestCase(FrappeTestCase):
 	"""
 
 	def setUp(self):
+		# Registered before anything else, so it runs last (cleanups are LIFO) and — unlike
+		# tearDown — still runs when setUp itself raises. unittest skips tearDown in that
+		# case, which used to leave a half-built persona set sitting in an open transaction
+		# until the next class's setUpClass called frappe.db.commit() and made it permanent
+		# on the site.
+		self.addCleanup(_restore_session_and_rollback)
 		frappe.set_user("Administrator")
 		# The SQLite search index is a file outside the MariaDB transaction, so a leak
 		# into it survives rollback. Guarding here rather than only in the search tests is
@@ -37,8 +48,9 @@ class GameplanTestCase(FrappeTestCase):
 		self.outsider = create_member("outsider@example.com", "Outsider")
 
 	def tearDown(self):
+		# The rollback lives in the setUp cleanup above; this only restores the session user
+		# early, before the other cleanups (e.g. the search-index guard) run.
 		frappe.set_user("Administrator")
-		frappe.db.rollback()
 
 	@contextmanager
 	def as_user(self, user):

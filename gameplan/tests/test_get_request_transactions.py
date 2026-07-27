@@ -1,51 +1,202 @@
 # Copyright (c) 2026, Frappe Technologies Pvt Ltd and Contributors
 # See license.txt
 
+"""Frappe rolls the database transaction back at the end of every GET request
+(`frappe/app.py::sync_database`), whatever the handler did. A mutation left reachable by
+GET therefore runs, calls `save()` without error, and is then silently discarded.
+
+This module guards that from both ends:
+
+- `TestWhitelistedEndpointHttpMethods` enumerates *every* `@frappe.whitelist()` under
+  `gameplan/` and requires it to declare an unsafe HTTP method, unless it is on an
+  explicit allowlist below. Enumerating rather than listing the mutating endpoints is
+  the whole point: a newly added mutating endpoint is caught by default.
+- `TestGetRequestTransactions` drives the real HTTP stack for the interesting cases —
+  mutations refused over GET, and the invitation link, which is deliberately GET-reachable
+  and has to survive that rollback.
+"""
+
+import ast
+import importlib
+import pathlib
+
 import frappe
 from frappe.auth import CookieManager, LoginManager
 from frappe.tests.test_api import FrappeAPITestCase
+from frappe.tests.utils import FrappeTestCase
 from frappe.utils import get_test_client, set_request, today
 
-from gameplan.gameplan.doctype.gp_discussion.gp_discussion import GPDiscussion
-from gameplan.gameplan.doctype.gp_draft.gp_draft import GPDraft, find_my_draft
-from gameplan.gameplan.doctype.gp_project.gp_project import GPProject
-from gameplan.gameplan.doctype.gp_task.gp_task import GPTask
-from gameplan.gameplan.doctype.gp_team.gp_team import GPTeam
-from gameplan.mixins.archivable import Archivable
-from gameplan.mixins.manage_members import ManageMembersMixin
+import gameplan
 from gameplan.tests.fixtures import declared_http_methods
 from gameplan.tests.utils import create_discussion, create_member, create_project, create_team
 
-MUTATING_ENDPOINT_FUNCTIONS = {
-	"GP Discussion.track_visit": GPDiscussion.track_visit,
-	"GP Discussion.mark_as_unread": GPDiscussion.mark_as_unread,
-	"GP Discussion.move_to_project": GPDiscussion.move_to_project,
-	"GP Discussion.close_discussion": GPDiscussion.close_discussion,
-	"GP Discussion.reopen_discussion": GPDiscussion.reopen_discussion,
-	"GP Discussion.pin_discussion": GPDiscussion.pin_discussion,
-	"GP Discussion.unpin_discussion": GPDiscussion.unpin_discussion,
-	"GP Discussion.add_bookmark": GPDiscussion.add_bookmark,
-	"GP Discussion.remove_bookmark": GPDiscussion.remove_bookmark,
-	"GP Draft.publish": GPDraft.publish,
-	"gp_draft.find_my_draft": find_my_draft,
-	"GP Project.move_to_team": GPProject.move_to_team,
-	"GP Project.merge_with_project": GPProject.merge_with_project,
-	"GP Project.invite_guest": GPProject.invite_guest,
-	"GP Project.remove_guest": GPProject.remove_guest,
-	"GP Project.add_member": GPProject.add_member,
-	"GP Project.remove_member": GPProject.remove_member,
-	"GP Project.archive": GPProject.archive,
-	"GP Task.track_visit": GPTask.track_visit,
-	"GP Team.add_members": GPTeam.add_members,
-	"GP Team.remove_member": GPTeam.remove_member,
-	"GP Team.remove_guest_access": GPTeam.remove_guest_access,
-	"GP Team.remove_guest_invitation": GPTeam.remove_guest_invitation,
-	"GP Team.merge_into_team": GPTeam.merge_into_team,
-	"GP Team.set_member_admin": GPTeam.set_member_admin,
-	"Archivable.archive": Archivable.archive,
-	"Archivable.unarchive": Archivable.unarchive,
-	"ManageMembersMixin.remove_member": ManageMembersMixin.remove_member,
+# Names that register a function with frappe's whitelist. `whitelist_for_tests` wraps
+# `frappe.whitelist`, and `gameplan.ui_test_helpers` defines a module-local `whitelist`
+# decorator that does the same — all three must be discovered.
+WHITELIST_DECORATOR_NAMES = {"whitelist", "whitelist_for_tests"}
+
+# The methods whose handlers Frappe lets commit. Anything else (GET, HEAD, OPTIONS) is
+# rolled back, so a mutation must declare at least one of these and none of the others.
+UNSAFE_HTTP_METHODS = frozenset({"POST", "PUT", "DELETE", "PATCH"})
+
+# Endpoints that only read. Being rolled back at the end of the request costs them
+# nothing, so they may stay GET-reachable. Every whitelisted endpoint that is NOT listed
+# here (or in DELIBERATE_GET_MUTATIONS) must declare an unsafe method.
+READ_ONLY_ENDPOINTS = frozenset(
+	{
+		# Directory and notification reads.
+		"gameplan.api.get_user_info",
+		"gameplan.api.unread_notifications",
+		"gameplan.api.get_unsplash_photos",
+		# Search. The SQLite index lives outside the transaction, but these only query it.
+		"gameplan.api.search_sqlite",
+		"gameplan.api.get_search_filter_options",
+		"gameplan.command_palette.search_sqlite",
+		# Permission-checked list/report queries.
+		"gameplan.extends.client.get_list",
+		"gameplan.gameplan.doctype.gp_discussion.api.get_discussions",
+		"gameplan.gameplan.doctype.gp_task.gp_task.get_list",
+		"gameplan.gameplan.doctype.gp_user_profile.gp_user_profile.get_list",
+		# Revision history.
+		"gameplan.gameplan.doctype.gp_comment.gp_comment.GPComment.get_revisions",
+		"gameplan.gameplan.doctype.gp_discussion.gp_discussion.GPDiscussion.get_revisions",
+		# Space membership, activity and unread counters.
+		"gameplan.gameplan.doctype.gp_project.gp_project.get_joined_spaces",
+		"gameplan.gameplan.doctype.gp_project.gp_project.get_activity",
+		"gameplan.gameplan.doctype.gp_project.gp_project.get_unread_count",
+		"gameplan.gameplan.doctype.gp_unread_record.api.get_unread_count",
+		"gameplan.gameplan.doctype.gp_unread_record.api.get_participating_unread_count",
+		# Profile reads.
+		"gameplan.gameplan.doctype.gp_user_profile.gp_user_profile.get_last_post",
+		"gameplan.gameplan.doctype.gp_user_profile.gp_user_profile.get_my_bento_cards",
+		"gameplan.gameplan.doctype.gp_user_profile.gp_user_profile.get_bento_cards",
+	}
+)
+
+# The only mutations allowed to stay GET-reachable. Both are the target of a link in an
+# outbound email, so the browser arrives with a plain navigation and cannot POST, and
+# both commit explicitly (via session creation) rather than relying on the request's
+# transaction. The two `..._invitation_acceptance_persists_after_get` tests below prove
+# that the commit really happens.
+DELIBERATE_GET_MUTATIONS = {
+	"gameplan.api.accept_invitation": "invitation email link; the login it performs commits",
+	"gameplan.email_digest.open_digest_preferences": "digest email link; logs the user in, then redirects",
 }
+
+GET_REACHABLE_ENDPOINTS = READ_ONLY_ENDPOINTS | frozenset(DELIBERATE_GET_MUTATIONS)
+
+# A floor on what the AST walk must find, so a walker that silently stops matching
+# decorators fails loudly instead of vacuously passing every assertion below.
+MINIMUM_DISCOVERED_ENDPOINTS = 70
+
+
+def _whitelisted_qualnames(tree: ast.Module) -> list[list[str]]:
+	"""Dotted name parts of every whitelisted function in a parsed module.
+
+	A walk rather than a regex so a decorator inside a class body is attributed to that
+	class (`GPDiscussion.close_discussion`), and so a `# @frappe.whitelist()` in a
+	comment or docstring cannot be mistaken for one.
+	"""
+	found: list[list[str]] = []
+	scope: list[str] = []
+
+	def visit(node):
+		for child in ast.iter_child_nodes(node):
+			if isinstance(child, ast.ClassDef):
+				scope.append(child.name)
+				visit(child)
+				scope.pop()
+			elif isinstance(child, ast.FunctionDef | ast.AsyncFunctionDef):
+				for decorator in child.decorator_list:
+					call = decorator.func if isinstance(decorator, ast.Call) else decorator
+					if ast.unparse(call).split(".")[-1] in WHITELIST_DECORATOR_NAMES:
+						found.append([*scope, child.name])
+						break
+				scope.append(child.name)
+				visit(child)
+				scope.pop()
+			else:
+				visit(child)
+
+	visit(tree)
+	return found
+
+
+def discover_whitelisted_endpoints() -> dict[str, object]:
+	"""Every whitelisted function under `gameplan/`, as dotted path -> function object.
+
+	Discovery is static (so nothing can be forgotten) but the returned value is the live
+	object, because what Frappe actually enforces is
+	`frappe.allowed_http_methods_for_whitelisted_func`, which is keyed by function.
+	"""
+	package = pathlib.Path(gameplan.__file__).parent
+	endpoints = {}
+	for path in sorted(package.rglob("*.py")):
+		module_name = ".".join(path.relative_to(package.parent).with_suffix("").parts)
+		module_name = module_name.removesuffix(".__init__")
+		source = path.read_text(encoding="utf-8")
+		qualnames = _whitelisted_qualnames(ast.parse(source, str(path)))
+		if not qualnames:
+			continue
+		module = importlib.import_module(module_name)
+		for parts in qualnames:
+			function = module
+			for part in parts:
+				function = getattr(function, part)
+			endpoints[".".join([module_name, *parts])] = function
+	return endpoints
+
+
+class TestWhitelistedEndpointHttpMethods(FrappeTestCase):
+	"""Every whitelisted endpoint must be POST-only unless it is an allowlisted read."""
+
+	def setUp(self):
+		super().setUp()
+		self.endpoints = discover_whitelisted_endpoints()
+
+	def test_the_endpoint_walk_finds_the_whole_app(self):
+		self.assertGreaterEqual(
+			len(self.endpoints),
+			MINIMUM_DISCOVERED_ENDPOINTS,
+			f"Only {len(self.endpoints)} whitelisted endpoints were discovered under "
+			f"{pathlib.Path(gameplan.__file__).parent}. The guard below is vacuous if the "
+			"walk stops matching decorators — check WHITELIST_DECORATOR_NAMES.",
+		)
+
+	def test_every_whitelisted_endpoint_is_post_only(self):
+		for endpoint, function in sorted(self.endpoints.items()):
+			if endpoint in GET_REACHABLE_ENDPOINTS:
+				continue
+			with self.subTest(endpoint=endpoint):
+				declared = declared_http_methods(function)
+				self.assertTrue(
+					declared and declared <= UNSAFE_HTTP_METHODS,
+					f"{endpoint} declares {sorted(declared)}. Frappe rolls the transaction back at "
+					"the end of every GET request, so a mutation reachable by GET runs, saves "
+					'without error and is then discarded. Add methods=["POST"] to its '
+					"@frappe.whitelist(), or — if it only reads — add it to READ_ONLY_ENDPOINTS.",
+				)
+
+	def test_the_get_reachable_allowlists_have_no_stale_entries(self):
+		"""A renamed or deleted endpoint must not leave a silent hole in the allowlist."""
+		for endpoint in sorted(GET_REACHABLE_ENDPOINTS):
+			with self.subTest(endpoint=endpoint):
+				self.assertIn(
+					endpoint,
+					self.endpoints,
+					f"{endpoint} is allowlisted as GET-reachable but no longer exists. "
+					"Remove the stale entry.",
+				)
+
+	def test_the_two_deliberate_get_mutations_are_the_only_ones(self):
+		"""Locked down by name: adding a third needs a deliberate edit here, with a reason."""
+		self.assertEqual(
+			sorted(DELIBERATE_GET_MUTATIONS),
+			[
+				"gameplan.api.accept_invitation",
+				"gameplan.email_digest.open_digest_preferences",
+			],
+		)
 
 
 class TestGetRequestTransactions(FrappeAPITestCase):
@@ -92,11 +243,6 @@ class TestGetRequestTransactions(FrappeAPITestCase):
 			if frappe.db.exists("User", user):
 				frappe.delete_doc("User", user, ignore_permissions=True, force=True)
 		frappe.db.commit()
-
-	def test_mutating_endpoint_functions_are_post_only(self):
-		for endpoint, function in MUTATING_ENDPOINT_FUNCTIONS.items():
-			with self.subTest(endpoint=endpoint):
-				self.assertEqual(declared_http_methods(function), {"POST"})
 
 	def test_discussion_close_rejects_get_and_post_persists(self):
 		team = create_team(f"POST Discussion {frappe.generate_hash(length=8)}")

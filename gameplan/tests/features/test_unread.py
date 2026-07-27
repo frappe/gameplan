@@ -2,15 +2,24 @@
 # See license.txt
 
 import frappe
-from frappe.tests import IntegrationTestCase
 
+from gameplan.gameplan.doctype.gp_unread_record.api import (
+	get_participating_unread_count,
+	get_unread_count,
+)
 from gameplan.gameplan.doctype.gp_unread_record.gp_unread_record import GPUnreadRecord
+from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import create_community, create_discussion, create_member, create_space
 
 
-class TestUnread(IntegrationTestCase):
+class TestUnread(GameplanTestCase):
 	"""Unread watermarks: mark-all-as-read across a community, and how records
-	realign when a discussion moves between spaces."""
+	realign when a discussion moves between spaces.
+
+	On GameplanTestCase for its per-test rollback — every method here writes users,
+	communities, spaces and unread records, and its old tearDown restored the session
+	user without rolling any of it back.
+	"""
 
 	def test_mark_all_as_read_for_team_marks_accessible_community_projects(self):
 		suffix = frappe.generate_hash(length=8)
@@ -304,9 +313,207 @@ class TestUnread(IntegrationTestCase):
 
 		self.assertEqual(frappe.db.get_value("GP Unread Record", record, "project"), str(target_project.name))
 
-	def tearDown(self):
-		frappe.set_user("Administrator")
-		super().tearDown()
+
+class TestUnreadRecordLifecycle(GameplanTestCase):
+	"""Who gets an unread record, who does not, and what the counters then report.
+
+	The space is private and explicitly membered on purpose: a public space fans the
+	records out to every enabled non-guest user on the site (see
+	`GPUnreadRecord._get_project_members`), which makes "exactly who got a record"
+	impossible to assert.
+	"""
+
+	def setUp(self):
+		super().setUp()
+		self.reader = create_member("unread_reader@example.com", "Unread Reader")
+		self.community = create_community(
+			"Unread Community", members=[self.member, self.second_member, self.reader]
+		)
+		self.space = create_space(
+			"Unread Space",
+			self.community,
+			is_private=1,
+			members=[self.member, self.second_member, self.reader],
+		)
+
+	def post_discussion(self, user, title="Unread thread"):
+		"""Insert a discussion AS `user`.
+
+		The fan-out keys off the discussion's `owner`, and only an insert running as that
+		user sets it — hence this rather than `create_discussion(..., owner=...)`, which
+		rewrites the owner after `after_insert` has already run.
+		"""
+		with self.as_user(user):
+			return frappe.get_doc(
+				doctype="GP Discussion", title=title, project=self.space.name, content="Body"
+			).insert()
+
+	def post_comment(self, user, discussion, content="A reply"):
+		with self.as_user(user):
+			return frappe.get_doc(
+				doctype="GP Comment",
+				reference_doctype="GP Discussion",
+				reference_name=discussion.name,
+				content=content,
+			).insert()
+
+	def records_for(self, user, discussion):
+		return frappe.get_all(
+			"GP Unread Record",
+			filters={"user": user.name, "discussion": str(discussion.name)},
+			fields=["name", "comment", "is_unread"],
+			order_by="name asc",
+		)
+
+	def unread_count(self, user, space=None):
+		space = space or self.space
+		return GPUnreadRecord.get_unread_count_for_projects(user.name, [str(space.name)])
+
+	def test_the_author_gets_no_unread_record_for_their_own_discussion(self):
+		discussion = self.post_discussion(self.member)
+
+		self.assertEqual(self.records_for(self.member, discussion), [])
+		self.assertEqual(len(self.records_for(self.second_member, discussion)), 1)
+		self.assertEqual(len(self.records_for(self.reader, discussion)), 1)
+
+	def test_the_commenter_gets_no_unread_record_for_their_own_comment(self):
+		discussion = self.post_discussion(self.member)
+
+		comment = self.post_comment(self.second_member, discussion)
+
+		# The author of the thread is unread on the reply, and on nothing else.
+		[author_record] = self.records_for(self.member, discussion)
+		self.assertEqual(str(author_record.comment), str(comment.name))
+		# The commenter keeps only their pre-existing discussion-level record.
+		[commenter_record] = self.records_for(self.second_member, discussion)
+		self.assertFalse(commenter_record.comment)
+
+	def test_the_unread_count_is_scoped_to_the_user(self):
+		self.post_discussion(self.member)
+
+		space = str(self.space.name)
+		self.assertEqual(self.unread_count(self.second_member), {space: 1})
+		self.assertEqual(self.unread_count(self.reader), {space: 1})
+		# The author has no record, and someone outside the space can never have one.
+		self.assertEqual(self.unread_count(self.member), {space: 0})
+		self.assertEqual(self.unread_count(self.outsider), {space: 0})
+
+	def test_the_unread_count_endpoint_answers_for_the_session_user(self):
+		self.post_discussion(self.member)
+		space = str(self.space.name)
+
+		with self.as_user(self.second_member):
+			self.assertEqual(get_unread_count([space]), {space: 1})
+		with self.as_user(self.member):
+			self.assertEqual(get_unread_count([space]), {space: 0})
+
+	def test_marking_a_space_as_read_is_idempotent(self):
+		discussion = self.post_discussion(self.member)
+		space = str(self.space.name)
+
+		GPUnreadRecord.mark_all_as_read_for_project(space, self.second_member.name)
+		after_first = self.records_for(self.second_member, discussion)
+		GPUnreadRecord.mark_all_as_read_for_project(space, self.second_member.name)
+
+		self.assertEqual([record.is_unread for record in after_first], [0])
+		# Running it again neither resurfaces the record nor adds a second one.
+		self.assertEqual(self.records_for(self.second_member, discussion), after_first)
+		self.assertEqual(self.unread_count(self.second_member), {space: 0})
+
+	def test_marking_a_space_as_read_only_clears_your_own_records(self):
+		self.post_discussion(self.member)
+		space = str(self.space.name)
+
+		GPUnreadRecord.mark_all_as_read_for_project(space, self.second_member.name)
+
+		self.assertEqual(self.unread_count(self.second_member), {space: 0})
+		self.assertEqual(self.unread_count(self.reader), {space: 1})
+
+	def test_marking_a_space_as_read_leaves_other_spaces_alone(self):
+		other_space = create_space(
+			"Other Unread Space",
+			self.community,
+			is_private=1,
+			members=[self.member, self.second_member],
+		)
+		self.post_discussion(self.member)
+		with self.as_user(self.member):
+			frappe.get_doc(
+				doctype="GP Discussion", title="Elsewhere", project=other_space.name, content="Body"
+			).insert()
+
+		GPUnreadRecord.mark_all_as_read_for_project(str(self.space.name), self.second_member.name)
+
+		self.assertEqual(self.unread_count(self.second_member), {str(self.space.name): 0})
+		self.assertEqual(self.unread_count(self.second_member, other_space), {str(other_space.name): 1})
+
+	def test_deleting_a_discussion_removes_its_unread_records(self):
+		discussion = self.post_discussion(self.member)
+		self.assertEqual(len(self.records_for(self.second_member, discussion)), 1)
+
+		with self.as_user(self.member):
+			frappe.delete_doc("GP Discussion", discussion.name)
+
+		self.assertEqual(self.records_for(self.second_member, discussion), [])
+		self.assertEqual(self.unread_count(self.second_member), {str(self.space.name): 0})
+
+	def test_deleting_a_comment_removes_only_that_comments_unread_records(self):
+		discussion = self.post_discussion(self.member)
+		comment = self.post_comment(self.second_member, discussion)
+
+		with self.as_user(self.second_member):
+			frappe.delete_doc("GP Comment", comment.name)
+
+		# The thread author's only record was the one for that comment.
+		self.assertEqual(self.records_for(self.member, discussion), [])
+		# The commenter's discussion-level record predates the comment and survives it.
+		self.assertEqual(len(self.records_for(self.second_member, discussion)), 1)
+
+	def test_replying_marks_the_thread_read_for_the_replier(self):
+		"""GP Comment.update_discussion_meta calls track_visit, so posting is also a read."""
+		discussion = self.post_discussion(self.member)
+		self.assertEqual(self.unread_count(self.second_member), {str(self.space.name): 1})
+
+		self.post_comment(self.second_member, discussion)
+
+		self.assertEqual(self.unread_count(self.second_member), {str(self.space.name): 0})
+		# Everyone else is left unread — on the new comment for the thread's author, and
+		# still on the thread itself for the bystander.
+		self.assertEqual(self.unread_count(self.member), {str(self.space.name): 1})
+		self.assertEqual(self.unread_count(self.reader), {str(self.space.name): 1})
+
+	def test_participating_count_only_counts_unread_threads_you_took_part_in(self):
+		# Owned but never unread: the author gets no record for their own thread.
+		self.post_discussion(self.member, "Mine")
+		theirs = self.post_discussion(self.second_member, "Theirs")
+
+		# Unread but not participated in: `member` has a record for `theirs` and has not
+		# posted in it.
+		self.assertEqual(GPUnreadRecord.get_participating_unread_count(self.member.name), 0)
+
+		# Participated in but no longer unread: replying marks the thread read for the
+		# replier, so a reply alone cannot make it count.
+		self.post_comment(self.member, theirs)
+		self.assertEqual(GPUnreadRecord.get_participating_unread_count(self.member.name), 0)
+
+		# Both: someone else posts after them.
+		self.post_comment(self.second_member, theirs, "Last word")
+
+		self.assertEqual(GPUnreadRecord.get_participating_unread_count(self.member.name), 1)
+		# `reader` is unread on the same thread but has never posted in it, and nobody
+		# outside the space sees it at all.
+		self.assertEqual(GPUnreadRecord.get_participating_unread_count(self.reader.name), 0)
+		self.assertEqual(GPUnreadRecord.get_participating_unread_count(self.outsider.name), 0)
+
+	def test_the_participating_count_endpoint_answers_for_the_session_user(self):
+		theirs = self.post_discussion(self.second_member, "Theirs")
+		self.post_comment(self.member, theirs)
+		self.post_comment(self.second_member, theirs, "Last word")
+
+		with self.as_user(self.member):
+			self.assertEqual(get_participating_unread_count(), 1)
+		with self.as_user(self.reader):
+			self.assertEqual(get_participating_unread_count(), 0)
 
 
 def set_last_post_at(discussion: str, last_post_at: str):

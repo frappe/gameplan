@@ -7,7 +7,6 @@ from urllib.parse import parse_qs, urlparse
 
 import frappe
 from frappe.email.email_body import get_formatted_html
-from frappe.tests.utils import FrappeTestCase
 from frappe.utils import get_url
 from frappe.utils.jinja import get_email_from_template
 
@@ -17,11 +16,17 @@ from gameplan.email_digest import (
 	is_digest_due,
 	send_digest_for_profile,
 )
+from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import create_community, create_discussion, create_member, create_space
 
 
-class TestEmailDigest(FrappeTestCase):
+class TestEmailDigest(GameplanTestCase):
+	"""On GameplanTestCase for its per-test rollback: this class had no tearDown at all,
+	so every community, space, discussion and unread record it wrote stayed on the site
+	and leaked into the next test method."""
+
 	def setUp(self):
+		super().setUp()
 		self.user = create_member(f"digest-{frappe.generate_hash(length=8)}@example.com", "Digest Member")
 		self.profile = frappe.get_doc("GP User Profile", {"user": self.user.name})
 		self.profile.email_digest_frequency = "Weekly"

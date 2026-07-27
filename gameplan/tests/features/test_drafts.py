@@ -4,17 +4,14 @@
 """Draft behaviour: the one-draft-per-target rule and self-healing on read."""
 
 import frappe
-from frappe.tests import IntegrationTestCase
 
+from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import create_member
 
 
-class TestDrafts(IntegrationTestCase):
-	def setUp(self):
-		frappe.set_user("Administrator")
-
-	def tearDown(self):
-		frappe.set_user("Administrator")
+class TestDrafts(GameplanTestCase):
+	"""On GameplanTestCase for its per-test rollback: these tests insert drafts and
+	switch users, and without one the rows stay visible to the next test method."""
 
 	def test_draft_is_writable_only_by_its_owner(self):
 		"""A draft is readable by any member (a shared draft URL resolves), but writes are
