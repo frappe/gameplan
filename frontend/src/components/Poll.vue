@@ -206,14 +206,14 @@ const isStopped = computed(
 )
 const totalLabel = computed(() => {
   const total = _poll.value.total_votes || 0
-  const noun = _poll.value.multiple_answers
-    ? total === 1
-      ? 'answer'
-      : 'answers'
-    : total === 1
-      ? 'vote'
-      : 'votes'
-  return `${total} ${noun}`
+  if (!_poll.value.multiple_answers) {
+    return `${total} ${total === 1 ? 'vote' : 'votes'}`
+  }
+
+  const voters = new Set(_poll.value.votes.map((vote) => vote.user)).size
+  return `${total} ${total === 1 ? 'answer' : 'answers'} from ${voters} ${
+    voters === 1 ? 'person' : 'people'
+  }`
 })
 const stopTime = computed(() => {
   const timestamp = _poll.value.stopped_at

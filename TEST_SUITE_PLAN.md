@@ -54,9 +54,10 @@ One test map mirroring the product's feature catalog, at three layers:
    mouse-inert for a measured 14–330 ms after a selection because
    `DismissableLayer` releases the lock only when the menu unmounts. The tests
    wait for unmount; changing `modal` or opening an upstream issue is deferred.
-8. **A multiple-answer poll counts answer rows and labels them “answers.”**
-   Percentages therefore continue to total 100%, while wording such as “3 answers
-   from 2 people” avoids presenting answer rows as voter count.
+8. **A multiple-answer poll reports answers and distinct people.** `total_votes`
+   remains the answer-row count, so percentages continue to total 100%. The UI
+   renders both dimensions with correct grammar (“1 answer from 1 person”, “3
+   answers from 2 people”); single-answer polls keep the existing “N votes” label.
 9. **Reacting to a poll should notify its author.** `GP Notification` needs a
    `poll` link plus reaction-notification wiring equivalent to discussions and
    comments; this requires a schema change and migration.
@@ -80,8 +81,9 @@ One test map mirroring the product's feature catalog, at three layers:
     reply makes the discussion itself the last post again, and a closed
     discussion rejects new polls as well as new comments.
 16. **Archived Spaces stay viewable while participation freezes.** Their action
-    menu offers neither Join nor Leave, and polls retain the read-only “Show
-    results” and “Copy link” actions. Voting and stopping are blocked.
+    menu offers neither Join nor Leave. Poll document methods reject voting,
+    retracting, and stopping, while the UI keeps polls readable with only the
+    read-only “Show results” and “Copy link” actions.
 17. **The remaining mutating endpoints without explicit POST methods move to a
     dedicated later branch.** Each call site must be audited before flipping its
     endpoint; this test-suite branch does not bulk-change the roughly 41
@@ -106,7 +108,8 @@ One test map mirroring the product's feature catalog, at three layers:
     explicitly removes it.
 23. **Archived Spaces are enforced at the backend for pages and tasks.** Create,
     update, direct delete, and moves into or out of an archived Space are refused.
-    Reads, comments, and the parent Space's delete cascade remain available.
+    Reads, comments, and the parent Space's delete cascade remain available. Poll
+    participation is governed separately by decision 16.
 24. **Guests may record Space visits.** A guest may track a visit only in a Space
     they were granted; following no longer exists.
 25. **Tests must not change product layout or the live search index.**
@@ -118,6 +121,9 @@ One test map mirroring the product's feature catalog, at three layers:
     configuration, so flaky tests could still pass on a later attempt. The
     correction sets `retries.runMode` to `0` and fixes the live comment-action
     flake caused by an edit-draft push racing draft commit.
+27. **The Cypress site/port map has one source of truth.** Current local and CI
+    targets, the realtime authentication route, and the retired historical runner
+    are documented in `TESTING.md` § “Test targets and ports (authoritative).”
 
 The permission tier supporting these decisions treats frappe `write` on content
 as “may interact” (react, comment, vote). Who may edit or delete content is
@@ -267,16 +273,15 @@ Priority order:
    endpoint routing) + E2E `members/accept-invitation.cy.ts` (invitee accepts
    the link → user minted → password-setup redirect), with a `create_invitation`
    seed helper. Both green.
-   - Local env note: on this devbox `:8000` serves the dev site
-     (`serve_default_site`), so Cypress must run against a demo-pinned server
-     (`bench --site gameplan-demo.test serve --port 8001`), and the demo site
-     needs `mute_emails:1` (its `frappe serve` has no `dev_server`, so invite
-     emails 501 on the missing outgoing account). Full suite there: **52/53
-     passing, 1 pending, 0 failing** (see "Pre-existing failures resolved" below).
+   - Historical environment note: the first verification used a now-retired local
+     runner and needed `mute_emails:1` because its `frappe serve` had no
+     `dev_server`, so invite emails 501'd on the missing outgoing account. The
+     current target map is authoritative in `TESTING.md` § “Test targets and
+     ports.”
 
 ### Pre-existing failures resolved (2026-07-25)
 
-Four Step-2-era failures were root-caused (all against the demo site on `:8001`):
+Four Step-2-era failures were root-caused against the then-current local runner:
 
 - **`spaces/move-and-archive.cy.ts`** — the pin-cleanup assertion did a `POST`
   `frappe.client.get_list` after `cy.visit` had installed a session CSRF token;
@@ -387,14 +392,9 @@ Four Step-2-era failures were root-caused (all against the demo site on `:8001`)
    - Assumption taken: no global-admin exception on the bookmark scoping — a
      reading list is personal, nothing in Gameplan reads another user's, and the
      closest precedent (`draft_query_conditions`) has none either.
-   - Local env note: the demo server on `:8001` is a long-running `frappe serve`
-     with no code reload, so it still runs the Python it started with. The two new
-     specs were written to need no backend change (the reply in `reactions.cy.ts`
-     is created through the v2 API before the first `cy.visit`, rather than by a
-     new seed scenario). Whoever restarts that server should also run
-     `bench --site gameplan-demo.test clear-cache` so the new hooks are picked up.
-     Both specs have since been re-run against a fresh server (see item 5) and
-     stay green with the new hooks live.
+   - Historical environment note: these specs first ran against a stale local
+     process, then stayed green against the current runner with the new hooks
+     loaded. See `TESTING.md` § “Test targets and ports” for the current setup.
 5. Guest access E2E — DONE, verified (2026-07-26). E2E
    `members/guest-access.cy.ts` walks the guest's whole scoped view on the
    `private_space_with_guest` scenario: lands in the community of their granted
@@ -408,33 +408,12 @@ Four Step-2-era failures were root-caused (all against the demo site on `:8001`)
    suite green (288 tests across the three batches, exit 0).
    - Spec is green: **1/1, exit 0**, and the full Cypress suite alongside it is
      **27 specs / 58 tests, 58 passing, 0 failing, 0 pending**.
-   - **The stale-runner trap that first made it look broken** (worth knowing, it
-     will recur): the spec was initially written against the `:8001` demo server,
-     a `frappe serve` started **Jul 23 01:50** — before
-     `0d6270a fix(permissions): guests see communities of their granted spaces`
-     (Jul 24 02:54). A running server never re-imports a changed module, so it
-     kept answering a guest's GP Team list with the pre-fix `Team.name == ""` —
-     empty. The guest had no community, `/g` resolved to `/g/onboarding`, and
-     every guest route 404'd exactly as the old bug did. The failure looked like
-     a spec or product defect and was neither.
-     - Proof of the diagnosis: as `guest@example.com` over HTTP,
-       `GET /api/v2/document/GP Team` returned `{"data": []}` on the Jul-23
-       server and `[{"name": "acme"}]` on a server started from the same working
-       tree. `bench clear-cache` does **not** fix it — the stale code is in the
-       process, not the cache.
-     - Resolution: ran the suite against a freshly started demo-pinned server
-       (`bench --site gameplan-demo.test serve --port 8002`) instead. That also
-       puts the Jul 24-26 backend work in front of the browser for the first
-       time — guest team scoping, GP Poll and GP Bookmark permission hooks — so
-       the 58/58 above is the first genuinely current green baseline. The earlier
-       "52/53, 1 pending" number was measured against pre-Jul-23 backend code.
-     - The spec is deliberately **not** `it.skip`'d: it passes on current code,
-       which is what CI runs. Quarantining it would have hidden real coverage to
-       accommodate a stale local process.
-     - `:8001` is still stale and should be killed by whoever owns that process;
-       an agent cannot (`kill` is refused by the permission classifier). Until
-       then, start your own runner rather than trusting `:8001`, and see the
-       runner-freshness check in TESTING.md § "How to run".
+   - **Historical stale-runner diagnosis:** the first run used an old process
+     started before the guest community-scoping fix, so it reproduced the old
+     empty-community behavior even though the working tree was correct.
+     `bench clear-cache` could not reload Python modules; a current process made
+     the spec green. The spec remains enabled, and the current runner/freshness
+     procedure lives in `TESTING.md`.
 6. Discussion lifecycle backend — DONE (2026-07-26). Backend-only slice: the E2E
    happy paths (comment, rename, close, move) already live in
    `discussions/discussion-actions.cy.ts`, so no new spec.
@@ -490,20 +469,20 @@ Four Step-2-era failures were root-caused (all against the demo site on `:8001`)
      cookie jar, so it can only ever act as whoever the open page is logged in
      as. Reusable by any future spec that needs "someone else did this while I
      was looking at it".
-   - **Genuine hop:** the environment now has demo-pinned Frappe servers on both
-     `:8002` (Cypress) and `:8000` (the Socket.IO authentication target). The
-     watching `member2` tab joins the document room, `member` closes the discussion
-     through a separate Node session, and the real server event makes the timeline
-     update without a reload. The spec no longer injects a Socket.IO frame.
+   - **Genuine hop:** using the local process map documented in `TESTING.md`,
+     the watching `member2` tab joins the document room, `member` closes the
+     discussion through a separate Node session, and the real server event makes
+     the timeline update without a reload. The spec no longer injects a Socket.IO
+     frame.
    - The root cause was `frappe/realtime/utils.js::get_url`: under
      `developer_mode` it discards the socket origin's port and replaces it with
      `common_site_config.json`'s `webserver_port` (`:8000`). That port previously
      served another site, so the demo sid resolved as Guest. Pinning `:8000` to
      `gameplan-demo.test` fixed it. The earlier SameSite theory was wrong — the
      cookie is sent; it is validated against the wrong site.
-   - A behavioral preflight checks that `:8002` and `:8000` both resolve to the
-     demo site, that `:9000` accepts a Socket.IO handshake, and that newly minted
-     persona sessions resolve immediately on both web ports. Its failures name the
+   - A behavioral preflight checks the configured Cypress server, realtime
+     authentication target, and Socket.IO handshake, then resolves newly minted
+     persona sessions immediately on both web roles. Its failures name the
      affected process and the command that starts it.
    - Known Frappe limitation, deliberately no PR yet: the unconditional port
      rewrite supports Vite on `:8080`, but a bench serving two sites on two real
@@ -544,7 +523,8 @@ Four Step-2-era failures were root-caused (all against the demo site on `:8001`)
 ## Step 4 — CI guardrails (NOT STARTED)
 
 - Coverage report on backend runs (visible, not a gate).
-- Nightly no-retry Cypress lane to surface flakes (PR lane keeps retries=2).
+- Optional nightly repeat lane to surface intermittent failures beyond the
+  no-retry PR run.
 - Shard `ui-test.yml` by top-level spec folder once suite grows (~30 specs).
 - Optional: minimal Vitest setup if Step 3 surfaces awkward-to-E2E pure logic.
 
@@ -552,6 +532,8 @@ Four Step-2-era failures were root-caused (all against the demo site on `:8001`)
 
 - Tests run ONLY on site `gameplan-demo.test` (disposable; `enable_ui_tests`).
   Never `gameplan.frappe.test`.
+- Local/CI Cypress routing is authoritative in `TESTING.md` § “Test targets and
+  ports.”
 - Backend tests need the bench Redis daemons (ports 13000/11000) running.
 - 2026-07-24: removed stale `gameplan-settings-exploration` line from bench
   `sites/apps.txt` (fork of gameplan; its module name could never import and it

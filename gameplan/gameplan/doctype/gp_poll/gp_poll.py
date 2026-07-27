@@ -6,6 +6,7 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt
 
+from gameplan.mixins.archivable import check_if_space_is_archived
 from gameplan.mixins.reactions import HasReactions
 from gameplan.permissions import (
 	can_delete_content,
@@ -78,6 +79,7 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 	def submit_vote(self, option):
 		self.discard_client_state()
 		self.check_can_participate()
+		check_if_space_is_archived(self, action="vote in", content_type="polls")
 		self.check_if_stopped()
 		selected = self.get_option(option)
 
@@ -102,6 +104,7 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 	def retract_vote(self, option=None):
 		self.discard_client_state()
 		self.check_can_participate()
+		check_if_space_is_archived(self, action="retract votes from", content_type="polls")
 		self.check_if_stopped()
 		if self.anonymous:
 			frappe.throw(_("Cannot retract vote for anonymous poll"))
@@ -117,6 +120,7 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 		self.discard_client_state()
 		if not can_delete_content(frappe.session.user, self):
 			frappe.throw(_("Only the owner or an admin can stop the poll"), frappe.PermissionError)
+		check_if_space_is_archived(self, action="stop", content_type="polls")
 		self.stopped_at = frappe.utils.now()
 		self.save()
 
@@ -181,6 +185,9 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 			)
 
 	def check_if_stopped(self):
+		# Every caller reloads first, so Frappe has normalised the stored Datetime to a
+		# datetime object. `stop_poll` assigns a string, but no comparison is made until
+		# the next vote/retract call reloads the document.
 		if self.stopped_at and self.stopped_at < frappe.utils.now_datetime():
 			frappe.throw(_("Poll has ended"))
 

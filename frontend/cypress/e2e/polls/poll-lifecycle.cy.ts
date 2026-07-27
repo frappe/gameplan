@@ -50,7 +50,7 @@ describe('Poll lifecycle', () => {
     })
 
     cy.contains('Ship on Friday?').should('be.visible')
-    cy.contains('0 answers').should('exist')
+    cy.contains('0 answers from 0 people').should('exist')
 
     // Each answer is a real checkbox: it is independently keyboard reachable,
     // exposes its checked state, and posts the option through the v2 doc method.
@@ -64,7 +64,7 @@ describe('Poll lifecycle', () => {
     pollAnswer('No').check()
     cy.wait('@submitVote').its('request.body.option').should('equal', 'No')
 
-    cy.contains('2 answers').should('exist')
+    cy.contains('2 answers from 1 person').should('exist')
     pollAnswer('Yes').should('be.checked')
     pollAnswer('No').should('be.checked')
     pollAnswer('Yes').parent().contains('(50%)').should('exist')
@@ -73,7 +73,7 @@ describe('Poll lifecycle', () => {
     // Deselecting one checkbox retracts only that option.
     pollAnswer('Yes').uncheck()
     cy.wait('@retractVote').its('request.body.option').should('equal', 'Yes')
-    cy.contains('1 answer').should('exist')
+    cy.contains('1 answer from 1 person').should('exist')
     pollAnswer('Yes').should('not.be.checked')
     pollAnswer('No').should('be.checked')
     pollAnswer('Yes').parent().contains('(0%)').should('exist')
@@ -89,14 +89,14 @@ describe('Poll lifecycle', () => {
         body: { option: 'Yes' },
       })
     })
-    cy.contains('1 answer').should('exist')
+    cy.contains('1 answer from 1 person').should('exist')
     cy.then(() => {
       deliverSocketEvent('doc_update', {
         doctype: 'GP Poll',
         name: poll,
       })
     })
-    cy.contains('2 answers').should('exist')
+    cy.contains('2 answers from 2 people').should('exist')
 
     // Moderators can stop polls they do not own. Switch sessions safely before
     // exercising the global-admin affordance and backend gate.
@@ -183,6 +183,38 @@ describe('Poll lifecycle', () => {
       expect(search).to.equal(`?poll=${poll}`)
     })
     cy.contains('Ship on Friday?').should('be.visible')
+  })
+
+  it('keeps a poll readable but inert after its space is archived', () => {
+    cy.request({
+      method: 'POST',
+      url: '/api/v2/document/GP%20Poll',
+      body: {
+        title: 'Archived poll',
+        discussion,
+        options: [{ title: 'Yes' }, { title: 'No' }],
+      },
+    })
+    cy.loginAs('admin')
+    cy.request('POST', `/api/v2/document/GP%20Project/${space}/method/archive`)
+    cy.loginAs('member')
+
+    cy.visit(`/g/community/${community}/space/${space}/discussion/${discussion}`)
+    cy.contains('Archived poll').should('be.visible')
+    cy.contains('button', 'Stop Poll').should('not.exist')
+    cy.contains('button', 'Yes').should('be.disabled')
+
+    cy.iconButton('Poll Options').click()
+    cy.get('[role="menuitem"]:visible').contains('Show results').should('be.visible')
+    cy.get('[role="menuitem"]:visible').contains('Copy link').should('be.visible')
+    cy.get('[role="menuitem"]:visible').should('not.contain.text', 'Retract vote')
+    cy.get('[role="menuitem"]:visible').should('not.contain.text', 'Delete')
+    cy.get('[role="menuitem"]:visible').contains('Show results').click()
+    cy.contains('[role="dialog"]', 'Poll results').should('be.visible')
+    cy.get('body').type('{esc}')
+
+    cy.selectDropdownOption('Poll Options', 'Copy link')
+    cy.contains('Copied to clipboard').should('be.visible')
   })
 })
 

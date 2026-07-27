@@ -307,6 +307,73 @@ class TestStoppingAPoll(PollTestCase):
 		self.assertEqual(poll.total_votes, 1)
 
 
+class TestArchivedPoll(PollTestCase):
+	def setUp(self):
+		super().setUp()
+		self.poll_doc = self.poll()
+
+	def archive_space(self):
+		self.space.reload()
+		self.space.archive()
+
+	def test_poll_in_an_archived_space_remains_readable(self):
+		self.archive_space()
+
+		with self.as_user(self.second_member):
+			poll = frappe.get_doc("GP Poll", self.poll_doc.name)
+
+		self.assertEqual(poll.title, "Ship on Friday?")
+
+	def test_cannot_vote_in_an_archived_space(self):
+		self.archive_space()
+
+		with (
+			self.as_user(self.second_member),
+			self.assertRaisesRegex(
+				frappe.ValidationError,
+				r"Space Poll Space is archived\. Cannot vote in polls\.",
+			),
+		):
+			self.poll_doc.submit_vote("Yes")
+
+		self.poll_doc.reload()
+		self.assertEqual(self.poll_doc.total_votes, 0)
+
+	def test_cannot_retract_a_vote_in_an_archived_space(self):
+		self.vote(self.poll_doc, self.second_member, "Yes")
+		self.archive_space()
+
+		with (
+			self.as_user(self.second_member),
+			self.assertRaisesRegex(
+				frappe.ValidationError,
+				r"Space Poll Space is archived\. Cannot retract votes from polls\.",
+			),
+		):
+			self.poll_doc.retract_vote()
+
+		self.poll_doc.reload()
+		self.assertEqual(
+			[(vote.user, vote.option) for vote in self.poll_doc.votes],
+			[(self.second_member.name, "Yes")],
+		)
+
+	def test_cannot_stop_a_poll_in_an_archived_space(self):
+		self.archive_space()
+
+		with (
+			self.as_user(self.member),
+			self.assertRaisesRegex(
+				frappe.ValidationError,
+				r"Space Poll Space is archived\. Cannot stop polls\.",
+			),
+		):
+			self.poll_doc.stop_poll()
+
+		self.poll_doc.reload()
+		self.assertIsNone(self.poll_doc.stopped_at)
+
+
 class TestTamperedVotePayload(PollTestCase):
 	"""A vote may carry nothing but the vote.
 

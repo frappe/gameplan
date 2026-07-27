@@ -240,30 +240,39 @@ cy.task("requestAsUser", {
 
 `discussions/realtime-activity.cy.ts` uses it for the live-update path.
 
-**Realtime on a local bench:** genuine delivery works when both web ports resolve to
-the demo site. Under `developer_mode`,
+### Test targets and ports (authoritative)
+
+This is the source of truth for Cypress site/port routing:
+
+- **Local:** `frontend/cypress.config.ts` defaults to
+  `http://gameplan-demo.test:8002`. Start it with
+  `bench --site gameplan-demo.test serve --port 8002`. All local Cypress runs and
+  seed/reset calls use this disposable demo site.
+- **Local realtime authentication:** `:8000` is a second
+  `gameplan-demo.test`-pinned Frappe server used by Socket.IO to authenticate the
+  browser session. Start it with
+  `bench --site gameplan-demo.test serve --port 8000`. Socket.IO itself listens on
+  `:9000` (`bench socketio`). Do not point Cypress or seed/reset calls at `:8000`;
+  it is an authentication target, not the configured local test runner.
+- **CI:** `.github/workflows/ui-test.yml` overrides `CYPRESS_BASE_URL` with
+  `http://gameplan.test:8000`. CI does not start Socket.IO, so it sets
+  `SKIP_REALTIME_E2E` and reports the realtime spec as pending.
+- **Retired:** `:8001` was a historical local runner. It is not part of the current
+  setup and must not be used.
+
+**Realtime on a local bench:** genuine delivery uses the three local processes
+listed above. Under `developer_mode`,
 `apps/frappe/realtime/utils.js::get_url` rewrites the socket origin's port to
-`common_site_config.json`'s `webserver_port` (`:8000`). Cypress drives the
-demo-pinned server on `:8002`, while the socket server validates its sid against the
-demo-pinned server on `:8000`. The earlier SameSite theory was wrong: the cookie is
-sent; it was being validated against a different site.
+`common_site_config.json`'s `webserver_port`. The earlier SameSite theory was wrong:
+the cookie is sent; it was being validated against a different site.
 
 `discussions/realtime-activity.cy.ts` has a behavioral preflight with distinct
-failure messages for all three required processes:
-
-- `:8002` must respond as `gameplan-demo.test` (start with
-  `bench --site gameplan-demo.test serve --port 8002`);
-- `:8000`, the realtime authentication target, must also respond as
-  `gameplan-demo.test` (start with
-  `bench --site gameplan-demo.test serve --port 8000`);
-- Socket.IO must accept a polling handshake on `:9000` (start with
-  `bench socketio`).
+failure messages for the configured Cypress server, realtime authentication
+target, and Socket.IO server.
 
 The site and web port come from `CYPRESS_BASE_URL`; the authentication and socket
 ports default to `:8000` and `:9000` and can be overridden with
-`GAMEPLAN_REALTIME_AUTH_PORT` and `GAMEPLAN_SOCKET_PORT`. CI does not start Socket.IO,
-so its workflow sets `SKIP_REALTIME_E2E` and reports this spec as deliberately pending
-with the reason in the runner log.
+`GAMEPLAN_REALTIME_AUTH_PORT` and `GAMEPLAN_SOCKET_PORT`.
 
 After seeding, the preflight mints a new persona session on each web port and resolves
 the acting user immediately in the same Cypress task. It does not inspect process
@@ -324,7 +333,7 @@ cd frontend && yarn test
   proves, check the server's age before touching the spec:
 
   ```bash
-  ps -o lstart= -p "$(ss -ltnp | grep -oP ':8001.*pid=\K[0-9]+' | head -1)"
+  ps -o lstart= -p "$(pgrep -fo 'serve --port 8002')"
   git log -1 --format=%cd   # newer than the server? restart it, then re-run
   ```
 

@@ -30,12 +30,14 @@ def check_if_space_is_archived(doc, *, action, content_type):
 
 	A save that changes `project` touches both the destination on the current
 	document and the source on the stored document. Checking both prevents content
-	from escaping an archived Space as part of the same save.
+	from escaping an archived Space as part of the same save. Polls reach their
+	Space through a discussion; resolving that link here keeps every archive gate
+	on the same path.
 	"""
-	space_names = [doc.get("project")]
+	space_names = [_get_space_name(doc)]
 	previous_doc = doc.get_doc_before_save()
 	if previous_doc:
-		space_names.append(previous_doc.get("project"))
+		space_names.append(_get_space_name(previous_doc))
 
 	for space_name in dict.fromkeys(space_names):
 		space = frappe.db.get_value(
@@ -52,3 +54,10 @@ def check_if_space_is_archived(doc, *, action, content_type):
 					content_type,
 				)
 			)
+
+
+def _get_space_name(doc):
+	if space_name := doc.get("project"):
+		return space_name
+	if discussion_name := doc.get("discussion"):
+		return frappe.db.get_value("GP Discussion", discussion_name, "project")
