@@ -26,6 +26,7 @@ from gameplan.tests.fixtures import (
 	create_discussion,
 	create_poll,
 	create_space,
+	declared_http_methods,
 )
 
 THUMBS_UP = "\U0001f44d"
@@ -172,10 +173,7 @@ class TestReact(ReactionTestCase):
 
 class TestReactionMutationHTTPMethods(GameplanTestCase):
 	def test_react_is_post_only(self):
-		self.assertEqual(
-			frappe.allowed_http_methods_for_whitelisted_func[HasReactions.react],
-			["POST"],
-		)
+		self.assertEqual(declared_http_methods(HasReactions.react), {"POST"})
 
 
 class TestReactPayload(ReactionTestCase):

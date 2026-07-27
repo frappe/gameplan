@@ -130,3 +130,16 @@ def set_owner(doc, user):
 	frappe.db.set_value(doc.doctype, doc.name, "owner", _name(user), update_modified=False)
 	doc.reload()
 	return doc
+
+
+def declared_http_methods(function) -> set[str]:
+	"""The HTTP methods a whitelisted function declares, as a set.
+
+	Frappe stores these as a list on version-16 and as a tuple on develop, so an equality
+	assertion against a literal passes on one branch and fails on the other. Comparing sets
+	keeps the guard tests honest about what they actually mean.
+	"""
+	declared = frappe.allowed_http_methods_for_whitelisted_func.get(function)
+	if declared is None:
+		raise AssertionError(f"{function} is not whitelisted")
+	return set(declared)

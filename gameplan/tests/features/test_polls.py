@@ -21,6 +21,7 @@ from gameplan.tests.fixtures import (
 	create_discussion,
 	create_poll,
 	create_space,
+	declared_http_methods,
 	grant_guest_access,
 )
 
@@ -448,7 +449,7 @@ class TestTamperedVotePayload(PollTestCase):
 class TestPollMutationHTTPMethods(GameplanTestCase):
 	def test_poll_mutations_are_post_only(self):
 		for method in (GPPoll.submit_vote, GPPoll.retract_vote, GPPoll.stop_poll):
-			self.assertEqual(frappe.allowed_http_methods_for_whitelisted_func[method], ["POST"])
+			self.assertEqual(declared_http_methods(method), {"POST"})
 
 
 class TestWhoMayVote(PollTestCase):

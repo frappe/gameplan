@@ -13,6 +13,7 @@ from gameplan.gameplan.doctype.gp_task.gp_task import GPTask
 from gameplan.gameplan.doctype.gp_team.gp_team import GPTeam
 from gameplan.mixins.archivable import Archivable
 from gameplan.mixins.manage_members import ManageMembersMixin
+from gameplan.tests.fixtures import declared_http_methods
 from gameplan.tests.utils import create_discussion, create_member, create_project, create_team
 
 MUTATING_ENDPOINT_FUNCTIONS = {
@@ -93,13 +94,9 @@ class TestGetRequestTransactions(FrappeAPITestCase):
 		frappe.db.commit()
 
 	def test_mutating_endpoint_functions_are_post_only(self):
-		# Frappe stores the declared methods as a list on v16 and as a tuple on develop, so
-		# compare the contents rather than the container the running version happens to use.
 		for endpoint, function in MUTATING_ENDPOINT_FUNCTIONS.items():
 			with self.subTest(endpoint=endpoint):
-				declared = frappe.allowed_http_methods_for_whitelisted_func.get(function)
-				self.assertIsNotNone(declared, f"{endpoint} is not whitelisted")
-				self.assertEqual(set(declared), {"POST"})
+				self.assertEqual(declared_http_methods(function), {"POST"})
 
 	def test_discussion_close_rejects_get_and_post_persists(self):
 		team = create_team(f"POST Discussion {frappe.generate_hash(length=8)}")

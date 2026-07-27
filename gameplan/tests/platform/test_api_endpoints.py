@@ -8,7 +8,13 @@ import frappe
 from gameplan.api import can_access_gameplan, get_search_filter_options, onboarding
 from gameplan.search_sqlite import GameplanSearch
 from gameplan.tests.base import GameplanTestCase
-from gameplan.tests.fixtures import create_community, create_discussion, create_space, create_user
+from gameplan.tests.fixtures import (
+	create_community,
+	create_discussion,
+	create_space,
+	create_user,
+	declared_http_methods,
+)
 from gameplan.tests.search_isolation import IsolatedSearchIndex
 from gameplan.ui_test_helpers import create_invitation, rebuild_search_index, reset
 
@@ -31,10 +37,7 @@ class APIEndpointTestCase(GameplanTestCase):
 class TestUITestHelperHTTPMethods(GameplanTestCase):
 	def test_ui_test_mutations_are_post_only(self):
 		for endpoint in (reset, rebuild_search_index, create_invitation):
-			self.assertEqual(
-				frappe.allowed_http_methods_for_whitelisted_func[endpoint],
-				["POST"],
-			)
+			self.assertEqual(declared_http_methods(endpoint), {"POST"})
 
 
 class TestOnboardingEndpoint(APIEndpointTestCase):

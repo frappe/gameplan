@@ -21,6 +21,7 @@ from gameplan.tests.fixtures import (
 	create_discussion,
 	create_member,
 	create_space,
+	declared_http_methods,
 	grant_guest_access,
 )
 
@@ -379,4 +380,4 @@ class TestSpaceMutationHTTPMethods(GameplanTestCase):
 			GPProject.mark_all_as_read,
 			track_visits,
 		):
-			self.assertEqual(frappe.allowed_http_methods_for_whitelisted_func[method], ["POST"])
+			self.assertEqual(declared_http_methods(method), {"POST"})
