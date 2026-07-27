@@ -48,7 +48,7 @@ build_pid=$!
 
 bench --site gameplan.test reinstall --yes
 bench --site gameplan.test install-app gameplan
-bench --site gameplan.test execute gameplan.search_sqlite.build_index
+bench --site gameplan.test execute gameplan.search_sqlite.rebuild_index
 
 # wait till assets are built succesfully
 wait $build_pid

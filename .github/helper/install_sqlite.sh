@@ -58,7 +58,7 @@ echo "Installing Gameplan app..."
 timeout 600 bench --site gameplan.test install-app gameplan </dev/null
 
 echo "Building search index..."
-timeout 300 bench --site gameplan.test execute gameplan.search_sqlite.build_index </dev/null
+timeout 300 bench --site gameplan.test execute gameplan.search_sqlite.rebuild_index </dev/null
 
 # Wait for the asset build started above to finish before tests run.
 wait $build_pid
