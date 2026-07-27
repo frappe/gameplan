@@ -93,12 +93,13 @@ class TestGetRequestTransactions(FrappeAPITestCase):
 		frappe.db.commit()
 
 	def test_mutating_endpoint_functions_are_post_only(self):
+		# Frappe stores the declared methods as a list on v16 and as a tuple on develop, so
+		# compare the contents rather than the container the running version happens to use.
 		for endpoint, function in MUTATING_ENDPOINT_FUNCTIONS.items():
 			with self.subTest(endpoint=endpoint):
-				self.assertEqual(
-					frappe.allowed_http_methods_for_whitelisted_func.get(function),
-					["POST"],
-				)
+				declared = frappe.allowed_http_methods_for_whitelisted_func.get(function)
+				self.assertIsNotNone(declared, f"{endpoint} is not whitelisted")
+				self.assertEqual(set(declared), {"POST"})
 
 	def test_discussion_close_rejects_get_and_post_persists(self):
 		team = create_team(f"POST Discussion {frappe.generate_hash(length=8)}")
