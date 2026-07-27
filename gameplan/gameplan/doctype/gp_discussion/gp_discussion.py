@@ -112,7 +112,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		self.content = sanitize_content(self.content)
 
 	# Whitelisted Methods
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def track_visit(self):
 		if frappe.flags.read_only:
 			return
@@ -136,7 +136,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		# also mark notifications as read
 		GPNotification.clear_notifications(discussion=self.name)
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def mark_as_unread(self):
 		if frappe.flags.read_only:
 			return
@@ -147,11 +147,11 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 	def get_revisions(self, fieldname="content"):
 		return get_document_revisions(self.doctype, self.name, fieldname)
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def move_to_project(self, project):
 		return move_discussion(self, project)
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def close_discussion(self):
 		if self.closed_at:
 			return
@@ -160,7 +160,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		self.log_activity("Discussion Closed")
 		self.save()
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def reopen_discussion(self):
 		if not self.closed_at:
 			return
@@ -169,7 +169,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		self.log_activity("Discussion Reopened")
 		self.save()
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def pin_discussion(self, pin_scope="Category"):
 		if self.pinned_at:
 			return
@@ -179,7 +179,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		self.log_activity("Discussion Pinned")
 		self.save()
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def unpin_discussion(self):
 		if not self.pinned_at:
 			return
@@ -189,13 +189,13 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		self.log_activity("Discussion Unpinned")
 		self.save()
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def add_bookmark(self):
 		if self.is_bookmarked():
 			return
 		frappe.new_doc("GP Bookmark", discussion=self.name, user=frappe.session.user).insert()
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def remove_bookmark(self):
 		bookmark = frappe.db.get_value(
 			"GP Bookmark", {"discussion": self.name, "user": frappe.session.user}, "name"

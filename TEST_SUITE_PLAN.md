@@ -84,23 +84,72 @@ One test map mirroring the product's feature catalog, at three layers:
     menu offers neither Join nor Leave. Poll document methods reject voting,
     retracting, and stopping, while the UI keeps polls readable with only the
     read-only “Show results” and “Copy link” actions.
-17. **The remaining mutating endpoints without explicit POST methods move to a
-    dedicated later branch.** Each call site must be audited before flipping its
-    endpoint; this test-suite branch does not bulk-change them.
-    - Measured 2026-07-27: **46** `@frappe.whitelist()` methods carry no explicit
-      `methods=`, of which roughly half mutate. (An earlier "roughly 41" estimate
-      was imprecise, and no `audit-post-methods.md` checklist was ever written —
-      that reference has been removed rather than left dangling.) A keyword scan
-      misclassifies this set in both directions: several endpoints mutate through a
-      delegated helper (`mark_as_unread`, `move_to_project`, `merge_with_project`,
-      `invite_guest`, `add_member`, `gp_task.track_visit`, `merge_into_team`), so
-      the follow-up branch must classify by behavior, not by grep.
-    - Note that many are already *called* correctly: `useDoc({ methods })` issues
-      `POST /api/v2/document/<doctype>/<name>/method/<method>`. The missing
-      decorator leaves a GET door open beside the POST the app actually uses.
-    - `gameplan.api.accept_invitation` is a deliberate permanent exception: it is
-      reached by clicking a link in an invitation email, so it must stay
-      GET-reachable.
+17. **Every Gameplan mutation declares an unsafe HTTP method.** The original
+    46-entry audit is closed: 28 remaining mutating functions moved to
+    `methods=["POST"]`, 16 are reads, `get_my_drafts` was already POST-only, and
+    `gameplan.api.accept_invitation` is the one deliberate GET mutation because an
+    invitation email opens it as a browser navigation.
+    - Every SPA caller was already safe, so no application call site needed changing.
+      Discussion/task methods use `useDoc({ methods })`; Space/Community administration
+      uses `useDoctype().runDocMethod`; and the draft composable uses frappe-ui's
+      `call()`, which always POSTs.
+    - The audit's `ManageMembersMixin.remove_member` inheritance claim was stale:
+      only `GPProject` inherits that mixin in this tree, and `GPProject` overrides
+      `remove_member`. The dead base method is still POST-only so it cannot reopen a
+      GET mutation if reused later.
+    - Frappe `version-16` does not enforce a whitelisted function's declared methods
+      on `/api/v2/document/.../method/...`; upstream Frappe commit `99cf7d98e7`
+      fixes that on `develop`. Gameplan keeps the correct declarations and has no
+      local framework workaround.
+
+    | Endpoint | Classification | Evidence / action |
+    |---|---|---|
+    | `api.get_user_info` | Read | User directory query; bare whitelist retained. |
+    | `api.unread_notifications` | Read | Counts unread notification rows. |
+    | `api.accept_invitation` | GET mutation exception | Email-link navigation; both redirect branches persist over real HTTP. |
+    | `api.get_unsplash_photos` | Read | Fetches/caches image search results. |
+    | `api.search_sqlite` | Read | Searches the FTS index. |
+    | `api.get_search_filter_options` | Read | Builds filter options from accessible content. |
+    | `command_palette.search_sqlite` | Read | Searches titles in the FTS index. |
+    | `extends.client.get_list` | Read | Permission-aware list query. |
+    | `GP Comment.get_revisions` | Read | Returns stored document revisions. |
+    | `gp_discussion.api.get_discussions` | Read | Permission-aware discussion feed query. |
+    | `GP Discussion.track_visit` | Mutation → POST | Upserts a visit and clears unread/notification state. |
+    | `GP Discussion.mark_as_unread` | Mutation → POST | Delegates to unread-record persistence. |
+    | `GP Discussion.get_revisions` | Read | Returns stored document revisions. |
+    | `GP Discussion.move_to_project` | Mutation → POST | Delegates to `move_discussion`, which saves and logs activity. |
+    | `GP Discussion.close_discussion` | Mutation → POST | Saves close metadata and activity. |
+    | `GP Discussion.reopen_discussion` | Mutation → POST | Clears close metadata and saves activity. |
+    | `GP Discussion.pin_discussion` | Mutation → POST | Saves pin metadata and activity. |
+    | `GP Discussion.unpin_discussion` | Mutation → POST | Clears pin metadata and saves activity. |
+    | `GP Discussion.add_bookmark` | Mutation → POST | Inserts a private bookmark. |
+    | `GP Discussion.remove_bookmark` | Mutation → POST | Deletes a private bookmark. |
+    | `GP Draft.publish` | Mutation → POST | Inserts a discussion, migrates files, and deletes the draft. |
+    | `gp_draft.find_my_draft` | Mutation → POST | Self-heals duplicate singleton drafts by deleting stale rows. |
+    | `gp_draft.get_my_drafts` | Mutation, already POST | Self-heals duplicate reply drafts; retained as POST. |
+    | `GP Project.move_to_team` | Mutation → POST | Saves the Space and rewrites linked Community references. |
+    | `GP Project.merge_with_project` | Mutation → POST | Renames/merges the source Space. |
+    | `GP Project.invite_guest` | Mutation → POST | Delegates to invitation creation. |
+    | `GP Project.remove_guest` | Mutation → POST | Deletes guest access. |
+    | `GP Project.add_member` | Mutation → POST | Delegates to member-row save. |
+    | `GP Project.remove_member` | Mutation → POST | Removes a member row and saves. |
+    | `GP Project.archive` | Mutation → POST | Archives the Space and deletes the acting user's pin. |
+    | `gp_project.get_joined_spaces` | Read | Lists joined and guest-access Spaces. |
+    | `gp_project.get_activity` | Read | Aggregates latest accessible activity timestamps. |
+    | `gp_project.get_unread_count` | Read | Aggregates unread counts. |
+    | `GP Task.track_visit` | Mutation → POST | Clears task notifications. |
+    | `gp_task.get_list` | Read | Permission-aware task list query. |
+    | `GP Team.add_members` | Mutation → POST | Appends member rows and saves. |
+    | `GP Team.remove_member` | Mutation → POST | Removes membership/private-Space rows and saves. |
+    | `GP Team.remove_guest_access` | Mutation → POST | Deletes guest-access rows. |
+    | `GP Team.remove_guest_invitation` | Mutation → POST | Rewrites or deletes a pending invitation. |
+    | `GP Team.merge_into_team` | Mutation → POST | Moves Spaces, copies members, and archives the source Community. |
+    | `GP Team.set_member_admin` | Mutation → POST | Updates the admin flag and saves. |
+    | `gp_user_profile.get_list` | Read | Returns profiles plus aggregate activity counts. |
+    | `gp_user_profile.get_last_post` | Read | Returns the current user's latest post timestamp. |
+    | `Archivable.archive` | Mutation → POST | Saves archive metadata; inherited by Community. |
+    | `Archivable.unarchive` | Mutation → POST | Clears archive metadata; inherited by Community and Space. |
+    | `ManageMembersMixin.remove_member` | Mutation → POST | Saves a member removal; currently overridden by its only inheritor. |
 18. **Install and run `pre-commit` before pushing.** The documented lint command
     has not run on this machine because `pre-commit` is absent; final branch
     delivery owns installing and running it.
@@ -551,14 +600,13 @@ Four Step-2-era failures were root-caused against the then-current local runner:
     Commit `ac7f6fa`.
 
 **Step 3 is complete.** All 13 priority areas have landed. Final measured state:
-backend **493 tests, exit 0**; Cypress **33 specs / 74 tests, 0 failed, 0 pending**
+backend **505 tests, exit 0**; Cypress **33 specs / 75 tests, 0 failed, 0 pending**
 at `retries=0` (run-mode retries are disabled — decision 26).
 
 Deliberately not done, and tracked as such rather than forgotten: Step 4 below;
-decision 17's endpoint sweep; the `GP Followed Project` DocType removal (needs a
-migration); the upstream Frappe `realtime/utils.js::get_url` port-rewrite fix; a
-two-browser realtime spec (decision 19); and the archive limitation noted above,
-which is a product decision.
+the `GP Followed Project` DocType removal (needs a migration); the upstream Frappe
+`realtime/utils.js::get_url` port-rewrite fix; a two-browser realtime spec
+(decision 19); and the archive limitation noted above, which is a product decision.
 
 ## Step 4 — CI guardrails (NOT STARTED)
 

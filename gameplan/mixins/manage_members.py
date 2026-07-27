@@ -25,7 +25,7 @@ class ManageMembersMixin:
 				self.save()
 				return user
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def remove_member(self, user):
 		for member in self.members:
 			if member.user == user:

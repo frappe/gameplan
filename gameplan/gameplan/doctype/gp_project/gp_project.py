@@ -71,7 +71,7 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 		total_tasks = frappe.db.count("GP Task", filters={"project": self.name})
 		self.db_set("tasks_count", total_tasks)
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def move_to_team(self, team=None):
 		if self.team == team:
 			return
@@ -83,7 +83,7 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 		for doctype in PROJECT_TEAM_DOCTYPES:
 			update_project_team_reference(doctype, self.name, self.team)
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def merge_with_project(self, project=None):
 		if not project or self.name == project:
 			return
@@ -93,14 +93,14 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 			frappe.throw(f'Invalid Project "{project}"')
 		return self.rename(project, merge=True, validate_rename=False, force=True)
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def invite_guest(self, email):
 		require_can_invite_guest(self)
 		# Trusted path: a space member invites a guest to this space. The role is
 		# hardcoded (non-escalating), so it bypasses invite_by_email's admin gate.
 		_invite_by_email(email, role="Gameplan Guest", projects=[self.name])
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def remove_guest(self, email):
 		require_can_invite_guest(self)
 		name = frappe.db.get_value("GP Guest Access", {"project": self.name, "user": email})
@@ -125,12 +125,12 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 			visit.last_visit = frappe.utils.now()
 			visit.insert(ignore_permissions=True)
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def add_member(self, user):
 		require_can_manage_space_members(self)
 		self.add_member_row(user)
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def remove_member(self, user):
 		require_can_manage_space_members(self)
 		for member in self.members:
@@ -163,7 +163,7 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 				self.save(ignore_permissions=True)
 				break
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def archive(self):
 		super().archive()
 		# delete pinned projects

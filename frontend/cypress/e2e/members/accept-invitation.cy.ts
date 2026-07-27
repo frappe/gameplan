@@ -21,9 +21,43 @@ describe('Accept invitation', () => {
 
     // The invitation is now consumed and the invitee is a real Gameplan Member.
     cy.request({
-      method: 'POST',
+      method: 'GET',
       url: '/api/method/frappe.client.get_value',
-      body: { doctype: 'GP Invitation', filters: { email }, fieldname: 'status' },
+      qs: {
+        doctype: 'GP Invitation',
+        filters: JSON.stringify({ email }),
+        fieldname: 'status',
+      },
+    })
+      .its('body.message.status')
+      .should('eq', 'Accepted')
+  })
+
+  it('accepts an invitation for an existing member and opens Gameplan', () => {
+    const email = 'member@example.com'
+
+    // The endpoint uses this field to distinguish an established account from
+    // one that still needs its first password.
+    cy.request('POST', '/api/method/frappe.client.set_value', {
+      doctype: 'User',
+      name: email,
+      fieldname: 'last_password_reset_date',
+      value: '2026-07-27',
+    })
+
+    createInvitation(email).then(({ key }) => {
+      cy.visit(`/api/method/gameplan.api.accept_invitation?key=${key}`)
+      cy.location('pathname').should('match', /^\/g(?:\/|$)/)
+    })
+
+    cy.request({
+      method: 'GET',
+      url: '/api/method/frappe.client.get_value',
+      qs: {
+        doctype: 'GP Invitation',
+        filters: JSON.stringify({ email }),
+        fieldname: 'status',
+      },
     })
       .its('body.message.status')
       .should('eq', 'Accepted')

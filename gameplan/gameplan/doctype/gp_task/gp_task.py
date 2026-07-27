@@ -63,7 +63,7 @@ class GPTask(HasMentions, HasActivity, Document):
 			return
 		frappe.get_doc("GP Project", self.project).update_tasks_count()
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def track_visit(self):
 		GPNotification.clear_notifications(task=self.name)
 

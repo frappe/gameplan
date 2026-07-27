@@ -12,13 +12,13 @@ class Archivable:
 	`archived_by` (Link to User) fields are required for this mixin to work.
 	"""
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def archive(self):
 		self.archived_at = frappe.utils.now()
 		self.archived_by = frappe.session.user
 		self.save()
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def unarchive(self):
 		self.archived_at = None
 		self.archived_by = None
