@@ -78,7 +78,17 @@ jobs:
       - name: Run Tests
         working-directory: /home/runner/frappe-bench
         run: |
-          bench --site gameplan.test run-tests --app gameplan
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            bench --site gameplan.test run-tests --app gameplan --coverage
+          else
+            bench --site gameplan.test run-tests --app gameplan
+          fi
+
+      # Job summaries need no write permission, so this is also safe and visible on
+      # fork PRs whose GITHUB_TOKEN is read-only.
+      - name: Report backend coverage
+        if: ${{ always() && github.event_name == 'pull_request' }}
+        run: python .github/scripts/coverage_to_markdown.py ~/frappe-bench/sites/coverage.xml >> "$GITHUB_STEP_SUMMARY"
 
       - name: Stop server
         if: ${{ always() }}

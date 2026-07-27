@@ -608,9 +608,13 @@ the `GP Followed Project` DocType removal (needs a migration); the upstream Frap
 `realtime/utils.js::get_url` port-rewrite fix; a two-browser realtime spec
 (decision 19); and the archive limitation noted above, which is a product decision.
 
-## Step 4 — CI guardrails (NOT STARTED)
+## Step 4 — CI guardrails (IN PROGRESS)
 
-- Coverage report on backend runs (visible, not a gate).
+- **Complete:** Backend coverage is collected on pull requests in the canonical
+  MariaDB/Frappe `develop` lane and rendered in that check's job summary. It is
+  informational only, with no minimum threshold. SQLite and v16 retain their
+  lower-cost role as compatibility lanes rather than collecting the same Python
+  line coverage three times.
 - Optional nightly repeat lane to surface intermittent failures beyond the
   no-retry PR run.
 - Shard `ui-test.yml` by top-level spec folder once suite grows (~30 specs).
