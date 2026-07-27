@@ -300,9 +300,16 @@ class TestSearchIndexLifecycle(IsolatedSearchIndex, GameplanTestCase):
 		return {result["id"] for result in self.search.search(query)["results"]}
 
 	def queued_ids(self):
+		"""Doc ids waiting in the develop-only index queue, or None on version-16.
+
+		``read_only=True`` is load-bearing: every other mode of ``SQLiteSearch.sql`` returns
+		a cursor whose connection it has already closed in a ``finally``, so iterating the
+		result raises ``ProgrammingError``. Only the read-only path fetches before closing.
+		"""
 		if not self.search._table_exists("search_index_queue"):
 			return None
-		return {row["doc_id"] for row in self.search.sql("SELECT doc_id FROM search_index_queue")}
+		rows = self.search.sql("SELECT doc_id FROM search_index_queue", read_only=True)
+		return {row["doc_id"] for row in rows}
 
 	def assert_hook_indexed_or_queued(self, doc, query):
 		doc_id = f"{doc.doctype}:{doc.name}"
