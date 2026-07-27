@@ -181,11 +181,49 @@ shell/
 mobile/
 ```
 
+### Enabling the seed API
+
+`gameplan/ui_test_helpers.py` deletes every Gameplan row and every framework `User`
+except the personas. Bench installs an app by putting its repo directory on `sys.path`,
+so that file exists on every server that runs Gameplan and packaging cannot exclude it.
+It is therefore gated at runtime, three ways, and **all three must hold** or the seed
+call throws and every spec fails in its `beforeEach`:
+
+| Gate                                                 | Where it comes from                           | How to satisfy it locally                                                                                |
+| ---------------------------------------------------- | --------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Test mode (`frappe.tests.utils.whitelist_for_tests`) | test run, dev server + `allow_tests`, or `CI` | `allow_tests: 1` in `site_config.json` **and** a dev server (see below)                                  |
+| `enable_ui_tests`                                    | `site_config.json`, read with `cint`          | `enable_ui_tests: 1` — a number or JSON boolean, not the quoted string `"true"`, which `cint` reads as 0 |
+| System Manager                                       | `frappe.only_for`                             | nothing to do: Cypress seeds as Administrator, whom `only_for` waves through                             |
+
+The dev-server part is the one that bites. `frappe._dev_server` is read from the
+`DEV_SERVER` environment variable, which `bench start` sets and a bare
+`bench --site … serve` does not. So start the local Cypress target as either:
+
+```bash
+bench start                                                     # sets DEV_SERVER itself
+DEV_SERVER=1 bench --site gameplan-demo.test serve --port 8002  # standalone server
+```
+
+CI needs no special handling: GitHub Actions exports `CI`, the workflow runs
+`bench start`, and `.github/helper/site_config.json` carries both `allow_tests` and
+`enable_ui_tests`.
+
+`create_invitation` will only mint `Gameplan Member` and `Gameplan Guest` invitations.
+`gameplan.api.accept_invitation` is `allow_guest` and GET-reachable and appends the
+invitation's role to the accepting user, so an unrestricted role here would let anyone
+grant themselves `Gameplan Admin`.
+
 ### Seeding data
 
 Reset and seed data with `resetData(scenario)` from `cypress/support/seed.ts`. One call
-logs in as Administrator, wipes all Gameplan data, resets the persona users, and seeds
-the scenario. It yields the ids of the seeded records.
+proves the responding site is the one `baseUrl` names, logs in as Administrator, wipes
+all Gameplan data, resets the persona users, and seeds the scenario. It yields the ids
+of the seeded records.
+
+The site check is the `assertConfiguredSite` Node task in `cypress.config.ts`: it asks
+the server for its own site name rather than trusting the URL, so host aliasing, a
+`--site`-pinned server or a stale `default_site` cannot silently route the wipe at a
+site with real data. It is memoized per origin, so it costs one request per run.
 
 ```ts
 import { resetData } from "../support/seed";
@@ -246,17 +284,22 @@ This is the source of truth for Cypress site/port routing:
 
 - **Local:** `frontend/cypress.config.ts` defaults to
   `http://gameplan-demo.test:8002`. Start it with
-  `bench --site gameplan-demo.test serve --port 8002`. All local Cypress runs and
-  seed/reset calls use this disposable demo site.
+  `DEV_SERVER=1 bench --site gameplan-demo.test serve --port 8002` — without
+  `DEV_SERVER` the seed API's test-mode gate refuses (see "Enabling the seed API"
+  above). All local Cypress runs and seed/reset calls use this disposable demo site.
 - **Local realtime authentication:** `:8000` is a second
   `gameplan-demo.test`-pinned Frappe server used by Socket.IO to authenticate the
   browser session. Start it with
-  `bench --site gameplan-demo.test serve --port 8000`. Socket.IO itself listens on
-  `:9000` (`bench socketio`). Do not point Cypress or seed/reset calls at `:8000`;
-  it is an authentication target, not the configured local test runner.
+  `DEV_SERVER=1 bench --site gameplan-demo.test serve --port 8000`. Socket.IO itself
+  listens on `:9000` (`bench socketio`). Do not point Cypress or seed/reset calls at
+  `:8000`; it is an authentication target, not the configured local test runner.
 - **CI:** `.github/workflows/ui-test.yml` overrides `CYPRESS_BASE_URL` with
-  `http://gameplan.test:8000`. CI does not start Socket.IO, so it sets
-  `SKIP_REALTIME_E2E` and reports the realtime spec as pending.
+  `http://gameplan.test:8000`. CI runs `bench start`, whose Procfile starts Socket.IO,
+  so the realtime spec runs for real. `SKIP_REALTIME_E2E` is deliberately **not** set:
+  the preflight throws when it is set and `CI` is set, because a skipped spec rolls up
+  as a passing one and the variable would silently delete the suite's only genuine
+  socket-delivery coverage. Locally the variable still just skips the spec — a bench
+  without `bench socketio` running is a normal state.
 - **Retired:** `:8001` was a historical local runner. It is not part of the current
   setup and must not be used.
 
@@ -322,10 +365,13 @@ cd frontend && yarn test
 ```
 
 - Run only against `gameplan-demo.test`, never another local site.
-- The target site needs `enable_ui_tests: 1` in its `site_config.json`.
+- The target site needs `enable_ui_tests: 1` and `allow_tests: 1` in its
+  `site_config.json`, and its server must have been started with `DEV_SERVER` set —
+  see "Enabling the seed API" above.
 - **Warning:** the seed/reset endpoints wipe ALL Gameplan data on whichever site the
-  request resolves to. Confirm the request actually reaches the demo site before
-  running.
+  request resolves to. `resetData` proves the responding site's identity first and
+  fails the spec if it is not the site `baseUrl` names, but do not rely on that alone
+  when running anything by hand.
 - **The server must be running current code.** A long-lived `frappe serve` keeps the
   Python it booted with, so a spec covering a backend change made after the server
   started fails in a way that looks like a product or spec defect. `clear-cache` does
@@ -358,7 +404,8 @@ The migration is done. Everything described above is the current state, not a pl
 - All 33 specs sit in the grouped folders under `cypress/e2e/`, seed through
   `resetData(scenario)`, and log in with `cy.loginAs(persona)`.
 - `gameplan/test_api.py` is deleted. `gameplan/ui_test_helpers.py` is the only seed
-  surface, and like its predecessor every entry point is gated on `enable_ui_tests`.
+  surface, and every entry point is behind the three gates described in
+  "Enabling the seed API" above.
 
 What is not done yet is coverage: Step 3 of `TEST_SUITE_PLAN.md` lists the features that
 still have no test at either layer.

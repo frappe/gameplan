@@ -42,10 +42,18 @@ async function login(baseUrl: string, user: string, password: string) {
 }
 
 function serverStartCommand(site: string, port: number) {
-  return `bench --site ${site} serve --port ${port}`
+  // DEV_SERVER is what makes `frappe._dev_server` true, which the seed API's
+  // `whitelist_for_tests` gate requires (`bench start` sets it; a bare `bench serve`
+  // does not). Without it every spec fails on its first `resetData`.
+  return `DEV_SERVER=1 bench --site ${site} serve --port ${port}`
 }
 
-async function assertDemoSite(baseUrl: string, port: number, purpose: string, expectedSite: string) {
+async function assertDemoSite(
+  baseUrl: string,
+  port: number,
+  purpose: string,
+  expectedSite: string,
+) {
   const startCommand = serverStartCommand(expectedSite, port)
   let response: Response
   try {
@@ -57,7 +65,7 @@ async function assertDemoSite(baseUrl: string, port: number, purpose: string, ex
   } catch (error) {
     throw new Error(
       `${purpose} on :${port} is not responding. Start it with: ${startCommand}. ` +
-      `Run it from the frappe-bench directory. Original error: ${String(error)}`,
+        `Run it from the frappe-bench directory. Original error: ${String(error)}`,
     )
   }
 
@@ -81,7 +89,8 @@ async function assertDemoSite(baseUrl: string, port: number, purpose: string, ex
     if (failure.includes('This method is only meant for developer mode')) {
       throw new Error(
         `${purpose} on :${port} resolves to a Frappe site, but developer_mode is disabled. ` +
-          `Enable developer_mode for the realtime site probe, then restart the server.`,
+          `Every spec probes the site's identity before seeding, so enable developer_mode ` +
+          `in site_config.json and restart the server.`,
       )
     }
     if (
@@ -107,6 +116,33 @@ async function assertDemoSite(baseUrl: string, port: number, purpose: string, ex
         `not ${expectedSite}. Start it from the frappe-bench directory with: ${startCommand}`,
     )
   }
+}
+
+/** Origins already proven to answer as the site their hostname names. */
+let verifiedOrigin: string | null = null
+
+/**
+ * Prove the configured `baseUrl` reaches the site its hostname names, before any spec
+ * seeds anything.
+ *
+ * `gameplan.ui_test_helpers.reset` deletes every Gameplan row and every framework `User`
+ * except the personas, on whichever site answers the request — and host aliasing, a
+ * `--site`-pinned server or a stale `default_site` can quietly point that at a site with
+ * real data. The probe reads the responding site's own name rather than trusting the URL.
+ *
+ * Memoized per origin: `resetData` runs in nearly every `beforeEach` in the suite, and
+ * the identity of a server cannot change without it being restarted, which ends the run.
+ */
+async function assertConfiguredSite(baseUrl: string | null) {
+  if (!baseUrl) throw new Error('Cypress baseUrl is required for the site check')
+  const configuredUrl = new URL(baseUrl)
+  if (verifiedOrigin === configuredUrl.origin) return null
+
+  const webPort = Number(configuredUrl.port || (configuredUrl.protocol === 'https:' ? 443 : 80))
+  await assertDemoSite(configuredUrl.origin, webPort, 'Cypress web server', configuredUrl.hostname)
+  verifiedOrigin = configuredUrl.origin
+  // Cypress tasks may not resolve to `undefined`.
+  return null
 }
 
 async function assertUserResolves(
@@ -178,6 +214,19 @@ async function realtimePreflight(
   if (!baseUrl) throw new Error('Cypress baseUrl is required for the realtime preflight')
   if (process.env.SKIP_REALTIME_E2E) {
     const reason = `Realtime E2E skipped: ${process.env.SKIP_REALTIME_E2E}`
+    // The realtime spec is the suite's only genuine socket-delivery coverage. Letting the
+    // variable turn it into `this.skip()` in CI deletes that coverage while the run stays
+    // green, so CI refuses it outright — re-adding the variable reddens the run instead.
+    // Locally it stays a skip: a bench without `bench socketio` running is a normal state.
+    if (process.env.CI) {
+      throw new Error(
+        `SKIP_REALTIME_E2E is set in CI (${process.env.SKIP_REALTIME_E2E}). It would skip the ` +
+          `only spec that proves realtime delivery, and a skipped spec reports as passing. ` +
+          `CI runs 'bench start', which starts the Procfile's socketio process, so the ` +
+          `variable is not needed — remove it from the workflow. If realtime coverage is ` +
+          `genuinely being dropped, delete the spec deliberately instead of muting it.`,
+      )
+    }
     console.warn(reason)
     return { available: false, reason }
   }
@@ -197,14 +246,7 @@ async function realtimePreflight(
   await assertSocketServer(baseUrl)
 
   if (user) {
-    await assertUserResolves(
-      webServer,
-      webPort,
-      'Cypress web server',
-      expectedSite,
-      user,
-      password,
-    )
+    await assertUserResolves(webServer, webPort, 'Cypress web server', expectedSite, user, password)
     await assertUserResolves(
       authServer,
       REALTIME_AUTH_PORT,
@@ -268,6 +310,7 @@ export default defineConfig({
     specPattern: 'cypress/e2e/**/*.{js,jsx,ts,tsx}',
     setupNodeEvents(on, config) {
       on('task', {
+        assertConfiguredSite: () => assertConfiguredSite(config.baseUrl),
         realtimePreflight: (options) => realtimePreflight(config.baseUrl, options ?? undefined),
         requestAsUser: (options) => requestAsUser(config.baseUrl, options),
       })

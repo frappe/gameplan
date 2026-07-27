@@ -40,6 +40,15 @@ export interface SeedIds {
  * @param scenario - Optional scenario name to seed after the reset
  */
 export function resetData(scenario?: Scenario): Cypress.Chainable<SeedIds> {
+  // Fail closed before the wipe. `reset` deletes every Gameplan row and every framework
+  // `User` bar the personas on whichever site answers `baseUrl` — and host aliasing, a
+  // `--site`-pinned server or a stale `default_site` can point that at a site with real
+  // data. The task asks the responding site for its own name instead of trusting the URL.
+  //
+  // This lives here rather than in `support/e2e.ts` because it must run immediately
+  // before the destructive call, not merely once per spec file. It is memoized per origin
+  // in the Node task, so it costs one request per Cypress run, not one per test.
+  cy.task('assertConfiguredSite')
   cy.login()
   return cy
     .request({
@@ -57,6 +66,15 @@ export interface Invitation {
 }
 
 /**
+ * The roles the seed endpoint will mint an invitation for.
+ *
+ * `Gameplan Admin` is deliberately absent: `gameplan.api.accept_invitation` is
+ * `allow_guest` and GET-reachable, so an invitation for an admin role is a
+ * self-service privilege escalation. The backend rejects it too.
+ */
+export type InvitableRole = 'Gameplan Member' | 'Gameplan Guest'
+
+/**
  * Mint a pending invitation and return its key, so a spec can drive the
  * accept journey without going through the admin invite UI first.
  *
@@ -65,7 +83,7 @@ export interface Invitation {
  */
 export function createInvitation(
   email: string,
-  role = 'Gameplan Member',
+  role: InvitableRole = 'Gameplan Member',
 ): Cypress.Chainable<Invitation> {
   cy.login()
   return cy

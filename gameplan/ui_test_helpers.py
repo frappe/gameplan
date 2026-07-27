@@ -4,8 +4,8 @@
 """Cypress seed API for Gameplan E2E tests.
 
 This is the only seed surface for Cypress. It is intentionally NOT named test_* so that
-backend test discovery ignores it, and every entry point is gated behind
-`enable_ui_tests` in site_config.json.
+backend test discovery ignores it, and every entry point goes through the layered
+`whitelist` gate below.
 
 `reset(scenario=None)` wipes all Gameplan data, forces the four persona users into a known
 state, then optionally builds a named scenario and returns its ids dict.
@@ -15,6 +15,14 @@ from contextlib import contextmanager
 from functools import wraps
 
 import frappe
+from frappe.tests.utils import whitelist_for_tests
+from frappe.utils import cint
+
+# Roles this seed API may mint an invitation for. `gameplan.api.accept_invitation` is
+# `allow_guest`, GET-reachable, and hands the invitation's role straight to
+# `user.append_roles`, so an unrestricted `role` here would be a privilege-escalation
+# primitive: mint yourself a "Gameplan Admin" invitation, then open the link.
+INVITABLE_ROLES = ("Gameplan Member", "Gameplan Guest")
 
 PERSONAS = [
 	("member@example.com", "Member", "Gameplan Member"),
@@ -29,13 +37,38 @@ GUEST = "guest@example.com"
 
 
 def whitelist(fn):
+	"""POST-only whitelist for the Cypress seed API, behind three independent gates.
+
+	These endpoints delete every Gameplan row and every framework `User` bar the
+	personas, so one truthy config key is not a boundary worth having. Bench installs an
+	app by putting its repo directory on `sys.path`, so this file is present on every
+	production server and packaging cannot exclude it — the gating has to be at runtime.
+
+	Gate 1 is frappe's own `whitelist_for_tests`, which refuses unless the process is a
+	test run, a dev server (`bench start`, or `DEV_SERVER=1 bench serve`) with
+	`allow_tests` in the site config, or CI. A production server is none of those, which
+	makes this module dead there whatever `site_config.json` says.
+
+	Gate 2 is `enable_ui_tests`, read through `cint` so a *string* like "0" or "false" in
+	`site_config.json` reads as disabled rather than as a truthy string.
+
+	Gate 3 is System Manager. Cypress drives every one of these as Administrator, whom
+	`frappe.only_for` waves through, so the check only costs a logged-in non-admin — which
+	is exactly who should not be able to wipe the site.
+	"""
+
 	@wraps(fn)
 	def guarded(*args, **kwargs):
-		if not frappe.conf.enable_ui_tests:
-			frappe.throw("Cannot run UI tests. Set 'enable_ui_tests' in site_config.json to continue.")
+		if not cint(frappe.conf.enable_ui_tests):
+			frappe.throw(
+				"Cannot run UI tests. Set 'enable_ui_tests' to 1 in site_config.json to continue. "
+				'The value is read with cint, so the quoted strings "true"/"false"/"0" all read '
+				"as disabled — use a number or a JSON boolean."
+			)
+		frappe.only_for("System Manager", message=True)
 		return fn(*args, **kwargs)
 
-	return frappe.whitelist(methods=["POST"])(guarded)
+	return whitelist_for_tests(methods=["POST"])(guarded)
 
 
 @whitelist
@@ -303,9 +336,20 @@ def create_invitation(email, role="Gameplan Member", projects=None):
 	"""Mint a pending GP Invitation and return its key so a spec can drive the
 	accept journey (visit /api/method/gameplan.api.accept_invitation?key=...).
 
+	`role` is restricted to `INVITABLE_ROLES`: the accept endpoint is `allow_guest` and
+	GET-reachable, so a caller-chosen role would let anyone hand themselves
+	"Gameplan Admin" by minting an invitation and opening its link. The specs only ever
+	need the two non-privileged roles.
+
 	`invite_via_email` short-circuits when `dev_server` is set, so we toggle it
 	to keep the seed from sending (or failing to send) a real email.
 	"""
+	if role not in INVITABLE_ROLES:
+		frappe.throw(
+			f"Cannot mint an invitation for role {role!r}. "
+			f"This seed endpoint only issues: {', '.join(INVITABLE_ROLES)}."
+		)
+
 	previous = getattr(frappe.local, "dev_server", None)
 	frappe.local.dev_server = True
 	try:
