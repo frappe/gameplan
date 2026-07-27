@@ -606,9 +606,16 @@ Four Step-2-era failures were root-caused against the then-current local runner:
     is covered in `features/test_notifications.py` alongside the rest of the bell.
     Commit `ac7f6fa`.
 
-**Step 3 is complete.** All 13 priority areas have landed. Final measured state:
-backend **505 tests, exit 0**; Cypress **33 specs / 75 tests, 0 failed, 0 pending**
-at `retries=0` (run-mode retries are disabled — decision 26).
+**Step 3 is complete.** All 13 priority areas have landed. Measured state after the
+branch review remediation (`prd/branch-review-remediation.md`): backend **543 tests,
+exit 0**; Cypress **33 specs / 78 tests, 0 failed, 0 pending** at `retries=0`
+(run-mode retries are disabled — decision 26).
+
+The count this line carried before the remediation — 505 backend tests — was never
+accurate: the suite measured 511 at the merge-base. Re-measure rather than
+extrapolate when updating it, and read the whole `bench run-tests` output; it prints
+three separate unittest summaries, so piping to `tail` hides the earlier batches and
+replaces the exit code with `tail`'s.
 
 Deliberately not done, and tracked as such rather than forgotten: the `GP Followed
 Project` DocType removal (needs a migration); the upstream Frappe
