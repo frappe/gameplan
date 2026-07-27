@@ -27,7 +27,9 @@ describe('Task actions', () => {
     cy.wait('@createTask').its('response.body.data.title').should('eq', 'First Task')
 
     // open it from the space's task list
+    cy.intercept('POST', '/api/v2/document/GP%20Task/*/method/track_visit').as('trackVisit')
     cy.contains('a', 'First Task').click()
+    cy.wait('@trackVisit')
 
     // Every edit below saves through the same endpoint, so one alias covers them all.
     // Separate aliases on an identical matcher would all capture the same requests and
