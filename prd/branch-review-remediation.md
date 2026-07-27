@@ -4,7 +4,9 @@ Work list from an adversarial review of this branch. Written as a handoff: a fre
 session can pick this up with no other context.
 
 > **Status: implemented (2026-07-28).** All six work groups, both blockers and all six
-> decisions have landed. Measured after the work: backend **543 tests, exit 0**; Cypress
+> decisions have landed, plus the two adjacent defects the work surfaced (a guest-visible
+> "Move discussions", and the same cascade hazard latent in `gp_comment.py`). Measured
+> after the work: backend **545 tests, exit 0**; Cypress
 > **33 specs / 78 tests, 0 failed, 0 pending**; `pre-commit run --all-files` clean;
 > `yarn build` green. Section 1's "expected today: exit 1, 505 tests" never reproduced on
 > Linux — see the note under B2. Sections 1–4 are kept as the record of what was found and

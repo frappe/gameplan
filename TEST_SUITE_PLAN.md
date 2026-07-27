@@ -607,7 +607,7 @@ Four Step-2-era failures were root-caused against the then-current local runner:
     Commit `ac7f6fa`.
 
 **Step 3 is complete.** All 13 priority areas have landed. Measured state after the
-branch review remediation (`prd/branch-review-remediation.md`): backend **543 tests,
+branch review remediation (`prd/branch-review-remediation.md`): backend **545 tests,
 exit 0**; Cypress **33 specs / 78 tests, 0 failed, 0 pending** at `retries=0`
 (run-mode retries are disabled — decision 26).
 
