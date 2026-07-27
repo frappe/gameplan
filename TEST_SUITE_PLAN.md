@@ -86,8 +86,21 @@ One test map mirroring the product's feature catalog, at three layers:
     read-only “Show results” and “Copy link” actions.
 17. **The remaining mutating endpoints without explicit POST methods move to a
     dedicated later branch.** Each call site must be audited before flipping its
-    endpoint; this test-suite branch does not bulk-change the roughly 41
-    outstanding methods. The working checklist lives in `audit-post-methods.md`.
+    endpoint; this test-suite branch does not bulk-change them.
+    - Measured 2026-07-27: **46** `@frappe.whitelist()` methods carry no explicit
+      `methods=`, of which roughly half mutate. (An earlier "roughly 41" estimate
+      was imprecise, and no `audit-post-methods.md` checklist was ever written —
+      that reference has been removed rather than left dangling.) A keyword scan
+      misclassifies this set in both directions: several endpoints mutate through a
+      delegated helper (`mark_as_unread`, `move_to_project`, `merge_with_project`,
+      `invite_guest`, `add_member`, `gp_task.track_visit`, `merge_into_team`), so
+      the follow-up branch must classify by behavior, not by grep.
+    - Note that many are already *called* correctly: `useDoc({ methods })` issues
+      `POST /api/v2/document/<doctype>/<name>/method/<method>`. The missing
+      decorator leaves a GET door open beside the POST the app actually uses.
+    - `gameplan.api.accept_invitation` is a deliberate permanent exception: it is
+      reached by clicking a link in an invitation email, so it must stay
+      GET-reachable.
 18. **Install and run `pre-commit` before pushing.** The documented lint command
     has not run on this machine because `pre-commit` is absent; final branch
     delivery owns installing and running it.
@@ -263,7 +276,7 @@ request):
   (System User) sockets join; Gameplan members are Website Users. It now
   publishes into the document's room and the comment components subscribe to it.
 
-## Step 3 — Fill coverage gaps (IN PROGRESS)
+## Step 3 — Fill coverage gaps (COMPLETE)
 
 Each area lands as a vertical slice: backend feature file + one E2E happy path.
 Priority order:
@@ -299,9 +312,9 @@ Four Step-2-era failures were root-caused against the then-current local runner:
   green.
 - **`tasks/task-actions.cy.ts`** — real frappe-ui Dialog focus bug (reka-ui
   `DialogOverlay`'s `@pointerdown.left.prevent` cancels click-to-focus on nested
-  fields; verified in real Chrome). Fix belongs upstream (committed locally on
-  `forge/fix-dialog-click-focus`); test is `it.skip` until a fixed frappe-ui ships.
-  This is the one pending test.
+  fields; verified in real Chrome). Fix belonged upstream and **shipped in
+  frappe-ui `1.0.0-beta.26`** (PR #857), so the test was un-skipped.
+  **Resolved — the suite has no skipped or pending tests.**
 - **`members/member-management.cy.ts`** (invite) — same frappe-ui overlay root
   cause, but *not* a real user bug: the Users tab is a reka Tabs trigger that
   activates on `mousedown`; Cypress fires `pointerdown` first, the overlay cancels
@@ -493,9 +506,21 @@ Four Step-2-era failures were root-caused against the then-current local runner:
      multi-session support, so it needs `cy.session` juggling or an iframe and
      would be the most flake-prone spec in the suite. The server-driven second
      session closes Step 3 with reliable genuine delivery.
-8. Pages (edit content, private vs space visibility + E2E).
-9. Profile/settings (bento cards, custom emoji, quick reactions + E2E).
-10. Search page E2E (filters; index hooks backend).
+8. Pages — DONE (2026-07-26). Backend `features/test_pages.py` (10 tests: edit
+   content, private vs space visibility, the `has_permission` hook) + E2E
+   `pages/create-page.cy.ts`. Commit `ea8c9bf`.
+9. Profile/settings — DONE (2026-07-26). Backend `features/test_profiles.py`
+   (46 tests: bento cards, custom emoji, quick reactions and their canonical
+   JSON form, per-profile privacy of quick reactions) + E2E
+   `profile/profile-settings.cy.ts`. Commits `1d3f2ad`, later hardened by
+   `4c20bce`.
+10. Search — DONE (2026-07-26). Backend `features/test_search.py` (20 tests:
+    index hooks, permission filters, ranking) + E2E `search/search-page.cy.ts`
+    and `search/search-privacy.cy.ts`. Commits `43d32cb`, `0ee3100`, `d8d9399`.
+    - The suite redirects `GameplanSearch.INDEX_NAME` to a throwaway file so it
+      never drops or rebuilds the site's real `gameplan_search.db` (decision 25).
+      The FTS5 index lives outside the MariaDB transaction, so rolled-back test
+      documents would otherwise leave permanent rows in the live index.
 11. Space membership — DONE (2026-07-26). Backend
     `features/test_spaces.py` has 22 tests: join/leave behavior, guest visit
     allow/deny, both existing-visit timestamp update branches, the four approved
@@ -516,9 +541,24 @@ Four Step-2-era failures were root-caused against the then-current local runner:
       uses a dedicated `useDoctype` instance so it cannot race with join/leave.
     - Verification: focused backend 22/22, E2E 2/2 at `retries=0`, frontend build
       green, and full backend 422/422 (16 + 295 + 111), all exit 0.
-12. Mobile variants: create discussion + comment on iphone-6 viewport.
-13. Remaining `api.py` endpoint tests (`onboarding`, `unread_notifications`,
-    `can_access_gameplan`, `get_search_filter_options`).
+12. Mobile variants — DONE (2026-07-26). E2E `mobile/create-discussion.cy.ts`,
+    plus `mobile/community-home.cy.ts` and `mobile/more-pages.cy.ts` on a mobile
+    viewport. Commit `cea8a15`.
+13. Remaining `api.py` endpoint tests — DONE (2026-07-26).
+    `platform/test_api_endpoints.py` (13 tests) covers `onboarding`,
+    `can_access_gameplan`, and `get_search_filter_options`; `unread_notifications`
+    is covered in `features/test_notifications.py` alongside the rest of the bell.
+    Commit `ac7f6fa`.
+
+**Step 3 is complete.** All 13 priority areas have landed. Final measured state:
+backend **493 tests, exit 0**; Cypress **33 specs / 74 tests, 0 failed, 0 pending**
+at `retries=0` (run-mode retries are disabled — decision 26).
+
+Deliberately not done, and tracked as such rather than forgotten: Step 4 below;
+decision 17's endpoint sweep; the `GP Followed Project` DocType removal (needs a
+migration); the upstream Frappe `realtime/utils.js::get_url` port-rewrite fix; a
+two-browser realtime spec (decision 19); and the archive limitation noted above,
+which is a product decision.
 
 ## Step 4 — CI guardrails (NOT STARTED)
 
