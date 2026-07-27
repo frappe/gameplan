@@ -75,6 +75,12 @@ jobs:
           BEFORE: ${{ env.GITHUB_EVENT_PATH.before }}
           AFTER: ${{ env.GITHUB_EVENT_PATH.after }}
 
+      # frappe.coverage imports `coverage` from the bench env, which a fresh bench does
+      # not install. Without this the --coverage run below dies before a single test.
+      - name: Install coverage
+        if: ${{ github.event_name == 'pull_request' }}
+        run: ~/frappe-bench/env/bin/pip install coverage
+
       - name: Run Tests
         working-directory: /home/runner/frappe-bench
         run: |
@@ -85,10 +91,14 @@ jobs:
           fi
 
       # Job summaries need no write permission, so this is also safe and visible on
-      # fork PRs whose GITHUB_TOKEN is read-only.
+      # fork PRs whose GITHUB_TOKEN is read-only. Coverage is reporting, not a gate:
+      # if the report cannot be produced, say so rather than reddening a passing suite.
       - name: Report backend coverage
         if: ${{ always() && github.event_name == 'pull_request' }}
-        run: python .github/scripts/coverage_to_markdown.py ~/frappe-bench/sites/coverage.xml >> "$GITHUB_STEP_SUMMARY"
+        run: |
+          python .github/scripts/coverage_to_markdown.py ~/frappe-bench/sites/coverage.xml \
+            >> "$GITHUB_STEP_SUMMARY" \
+            || echo "Backend coverage report unavailable for this run." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Stop server
         if: ${{ always() }}
