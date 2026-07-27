@@ -5,6 +5,7 @@ describe('Archived space content', () => {
   let space: string
   let page: string
   let task: string
+  let discussion: string
 
   beforeEach(() => {
     resetData('onboarded').then((ids) => {
@@ -24,6 +25,13 @@ describe('Archived space content', () => {
         project: space,
       }).then(({ body }) => {
         task = String(body.data.name)
+      })
+      cy.request('POST', '/api/v2/document/GP%20Discussion', {
+        title: 'Archived discussion',
+        content: '<p>Existing discussion stays available.</p>',
+        project: space,
+      }).then(({ body }) => {
+        discussion = String(body.data.name)
       })
       cy.request('POST', `/api/v2/document/GP%20Project/${space}/method/archive`)
     })
@@ -66,5 +74,17 @@ describe('Archived space content', () => {
     cy.get('input[placeholder="Title"]').parent().find('button[aria-haspopup="menu"]').should('not.exist')
     cy.contains('Cannot modify tasks.').should('not.exist')
     cy.then(() => expect(updateRequests, 'task update requests').to.equal(0))
+  })
+
+  it('offers no way to comment on a discussion or a task', () => {
+    // Each half asserts the content rendered first, so an absent composer cannot be
+    // mistaken for a page that never loaded.
+    cy.visit(`/g/community/${community}/space/${space}/discussion/${discussion}`)
+    cy.contains('Existing discussion stays available.').should('be.visible')
+    cy.contains('Add a comment').should('not.exist')
+
+    cy.visit(`/g/community/${community}/space/${space}/tasks/${task}`)
+    cy.get('[contenteditable=false]').should('contain.text', 'Existing work stays available.')
+    cy.contains('Add a comment').should('not.exist')
   })
 })

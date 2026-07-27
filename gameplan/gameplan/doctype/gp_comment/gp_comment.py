@@ -5,6 +5,7 @@ import frappe
 from frappe.model.document import Document
 
 from gameplan.gameplan.doctype.gp_unread_record.gp_unread_record import GPUnreadRecord
+from gameplan.mixins.archivable import check_if_space_is_archived
 from gameplan.mixins.attachments import HasAttachments
 from gameplan.mixins.mentions import HasMentions
 from gameplan.mixins.reactions import HasReactions
@@ -63,6 +64,14 @@ class GPComment(HasAttachments, HasMentions, HasReactions, HasTags, Document):
 		frappe.get_doc("GP Task", self.reference_name).update_comments_count()
 
 	def validate(self):
+		# Gate the content itself, not every save. `HasReactions.react` saves the whole
+		# comment, so a blanket guard here would refuse reactions on an archived Space's
+		# comments while still allowing them on its discussions, which only guard
+		# `before_insert`. Reactions stay allowed on both; the UI hides them either way.
+		if self.is_new():
+			check_if_space_is_archived(self, action="add", content_type="comments")
+		elif self.has_value_changed("content"):
+			check_if_space_is_archived(self, action="edit", content_type="comments")
 		self.sanitize_content()
 		self.de_duplicate_reactions()
 

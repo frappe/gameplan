@@ -92,7 +92,13 @@
             @update:modelValue="changeSpace"
           />
         </div>
-        <CommentsList class="mt-8" doctype="GP Task" :name="taskId" :space="space" />
+        <CommentsList
+          class="mt-8"
+          doctype="GP Task"
+          :name="taskId"
+          :space="space"
+          :read-only-mode="readOnlyMode"
+        />
       </div>
     </div>
     <div class="hidden w-[20rem] shrink-0 border-l sm:block">

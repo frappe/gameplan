@@ -61,3 +61,5 @@ def _get_space_name(doc):
 		return space_name
 	if discussion_name := doc.get("discussion"):
 		return frappe.db.get_value("GP Discussion", discussion_name, "project")
+	if doc.get("reference_doctype") in {"GP Discussion", "GP Task"}:
+		return frappe.db.get_value(doc.reference_doctype, doc.reference_name, "project")

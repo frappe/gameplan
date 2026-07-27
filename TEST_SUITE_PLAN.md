@@ -197,10 +197,17 @@ Rejected along the way (do not resurrect): a generic `gameplan.api.react`
 endpoint and an upstream frappe `permission_type` change. The permission tier
 made both unnecessary.
 
+Archiving now also freezes commenting: a comment cannot be added to a discussion
+or a task in an archived Space, and an existing comment's content cannot be
+edited. Reactions stay allowed at the backend — `HasReactions.react` saves the
+whole document, so a blanket guard would have refused reactions on an archived
+Space's comments while its discussions still accepted them. The UI hides
+reactions in archived Spaces regardless.
+
 Known archive limitation: discussion creation is blocked, but existing
-discussions can still be renamed or deleted, and comments can still be added to
-discussions and tasks. Whether archiving should freeze those actions remains a
-separate product decision.
+discussions can still be renamed or deleted, and comments can still be deleted.
+Whether archiving should freeze those actions remains a separate product
+decision.
 
 ## Step 1 — Foundation (DONE, verified)
 
