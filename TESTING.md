@@ -261,6 +261,20 @@ Both consumers are self-contained — no Codecov, no shields.io:
   would have them clobbering each other. The badges therefore always show `develop`,
   not the branch you are reading.
 
+  Publishing lives in a **separate `badge` job** in each workflow, gated on a push
+  to `develop` and holding the only `contents: write` in the file. The test job
+  stays `contents: read` and hands the rendered SVG over as an artifact, because
+  it checks out and executes pull-request code — `install.sh`, the frontend build,
+  the specs — and a repo-write token there would be a write credential handed to
+  code under review. Note that a job-level `permissions:` block *replaces* the
+  workflow-level one rather than adding to it, so a job needing both has to say
+  both.
+
+  The badge jobs are deliberately not `continue-on-error`. The first version was,
+  and it reported success while a 403 published nothing, leaving the README badge
+  404ing with no signal anywhere. By the time they run the suite has passed, so a
+  red run blocks nobody and is the only thing that says the badge is stale.
+
 ## 3. E2E tests (Cypress)
 
 E2E specs drive a real browser against a real backend. They cover the happy path a
