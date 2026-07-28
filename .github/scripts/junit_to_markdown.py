@@ -21,6 +21,8 @@ import os
 import re
 import xml.etree.ElementTree as ET
 
+import safe_xml
+
 # A stack trace is worth linking to, not inlining — enough of the message to
 # recognise the failure, and the run log for the rest.
 MAX_MESSAGE_CHARS = 300
@@ -43,8 +45,8 @@ def clean(text: str) -> str:
 	return text.replace("`", "'")
 
 
-def iter_roots(path: str):
-	"""Yield every XML document in a file.
+def iter_roots(raw: bytes):
+	"""Yield every XML document in one file's bytes.
 
 	`bench run-tests` runs its suite in batches and xmlrunner writes one complete
 	document per batch into the same stream, so the file holds several concatenated
@@ -52,12 +54,13 @@ def iter_roots(path: str):
 	real 545-test output dies with "junk after document element". Cypress writes one
 	document per spec file, so the single-document path stays exact and the split is
 	only a fallback.
-	"""
-	with open(path, "rb") as handle:
-		raw = handle.read()
 
+	Every document is checked for entity declarations individually. Checking the
+	file as a whole would only inspect the first document's prolog, leaving the
+	later ones — equally fork-controlled — unguarded.
+	"""
 	try:
-		yield ET.fromstring(raw)
+		yield safe_xml.fromstring(raw)
 		return
 	except ET.ParseError:
 		pass
@@ -70,15 +73,15 @@ def iter_roots(path: str):
 		if not chunk:
 			continue
 		try:
-			yield ET.fromstring(chunk)
+			yield safe_xml.fromstring(chunk)
 		except ET.ParseError:
 			continue
 
 
-def parse_file(path: str):
+def parse_file(raw: bytes, path: str):
 	"""Return (group_rows, failures) for one XML file."""
 	rows, failures = [], []
-	for root in iter_roots(path):
+	for root in iter_roots(raw):
 		file_rows, file_failures = parse_root(root, path)
 		rows.extend(file_rows)
 		failures.extend(file_failures)
@@ -151,11 +154,22 @@ def main() -> int:
 	else:
 		files = [args.results] if os.path.exists(args.results) else []
 
+	# On fork pull requests these files are whatever the fork chose to upload, and a
+	# privileged reporter parses them. The budget bounds total bytes and file count
+	# across the directory; individual documents are size-capped and refused if they
+	# declare entities. Exhausting it aborts the report rather than reading on —
+	# a report is worth less than a reporter that can be made to run out of memory.
+	budget = safe_xml.Budget()
 	rows, failures = [], []
 	for path in files:
 		try:
-			file_rows, file_failures = parse_file(path)
-		except ET.ParseError:
+			raw = budget.read(path)
+		except ValueError as exc:
+			print(f"**{args.label}** ⚠️ test results were not readable: {exc}")
+			return 0
+		try:
+			file_rows, file_failures = parse_file(raw, path)
+		except (ET.ParseError, ValueError):
 			continue
 		rows.extend(file_rows)
 		failures.extend(file_failures)

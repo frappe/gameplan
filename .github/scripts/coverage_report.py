@@ -21,7 +21,8 @@ drops, and the report footer always names it.
 import argparse
 import sys
 import xml.etree.ElementTree as ET
-import xml.parsers.expat as expat
+
+import safe_xml
 
 
 class Profile:
@@ -110,56 +111,17 @@ class File:
 # ElementTree expands internal entities, so an untrusted report could otherwise
 # exhaust the runner ("billion laughs").
 #
-# Only `<!ENTITY` is refused, not `<!DOCTYPE` — nyc's Cobertura output legitimately
-# carries a doctype pointing at the Cobertura DTD, and expat never fetches an
-# external DTD (no external-entity handler is installed), so a doctype on its own
+# Size caps and entity-declaration refusal live in safe_xml, shared with the JUnit
+# renderer: both are handed fork-controlled artifacts by the privileged reporters,
+# and a guard that only one of them remembers to apply is not a guard.
+#
+# Note that `<!DOCTYPE` itself is fine — nyc's Cobertura output legitimately points
+# at the Cobertura DTD, and expat fetches no external DTD, so a doctype on its own
 # expands nothing. Entity *declarations* are the whole attack.
-MAX_REPORT_BYTES = 16 * 1024 * 1024
-
-
-class _PrologParsed(Exception):
-	"""Raised to stop expat once the root element starts."""
-
-
-def reject_entity_declarations(raw: bytes) -> None:
-	"""Refuse a document that declares XML entities, whatever its encoding.
-
-	On fork pull requests this XML is attacker-controlled, and a few nested internal
-	entities expand to gigabytes ("billion laughs"). Searching the raw bytes for
-	`<!ENTITY` does not work: a document declares its own encoding, so the identical
-	declaration written in UTF-16 shares no bytes with the ASCII needle and slips
-	past while expat parses and expands it regardless.
-
-	Asking expat instead means the check runs after decoding and holds for every
-	encoding. Entity declarations live in the DOCTYPE, which precedes the root
-	element, so parsing stops as soon as that element opens — the prolog alone is
-	enough to decide, and nothing large is ever expanded.
-	"""
-	parser = expat.ParserCreate()
-
-	def refuse(*_args):
-		raise ValueError("refusing to parse a coverage report that declares XML entities")
-
-	parser.EntityDeclHandler = refuse
-	parser.UnparsedEntityDeclHandler = refuse
-	parser.StartElementHandler = lambda *_args: (_ for _ in ()).throw(_PrologParsed())
-
-	try:
-		parser.Parse(raw, True)
-	except _PrologParsed:
-		pass
-	except expat.ExpatError as exc:
-		raise ValueError(f"coverage report is not valid XML: {exc}") from exc
 
 
 def parse(path: str) -> list[File]:
-	with open(path, "rb") as handle:
-		raw = handle.read(MAX_REPORT_BYTES + 1)
-	if len(raw) > MAX_REPORT_BYTES:
-		raise ValueError(f"coverage report is larger than {MAX_REPORT_BYTES} bytes")
-	reject_entity_declarations(raw)
-
-	root = ET.fromstring(raw)
+	root = safe_xml.fromstring(safe_xml.read_capped(path))
 	files = []
 	for element in root.iter("class"):
 		lines = element.find("lines")

@@ -241,9 +241,16 @@ Both consumers are self-contained — no Codecov, no shields.io:
   repo. Those jobs resolve which PR to comment on from the `workflow_run` event's
   `head_sha` and `head_repository` via the API — never from an uploaded artifact,
   which a fork controls and could point at any PR in the repo. A commit can belong to
-  several open PRs, so the match must be exactly one or the job comments nowhere. For
-  the same reason the report script caps the XML it will read and refuses one that
-  declares XML entities.
+  several open PRs, so the match must be exactly one or the job comments nowhere.
+
+  Those jobs also parse artifacts the fork produced — both coverage XML and JUnit
+  XML — so every read goes through `.github/scripts/safe_xml.py`, which caps size
+  per document and across a directory and refuses any document declaring XML
+  entities (a few nested ones expand to gigabytes). It is shared rather than
+  reimplemented per renderer precisely because a guard only one of them remembers
+  to apply is not a guard. Note it asks expat rather than scanning bytes for
+  `<!ENTITY`: XML declares its own encoding, so the same declaration in UTF-16
+  shares no bytes with an ASCII needle and would slip straight past.
 - **The README badges** are `coverage.svg` on the orphan `badges-backend` and
   `badges-frontend` branches, linked by raw URL. `server-tests.yml` and `ui-test.yml`
   republish them on pushes to `develop`, and only when the rendered SVG actually
