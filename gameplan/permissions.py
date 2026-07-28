@@ -50,7 +50,7 @@ def content_has_permission(doc, ptype="read", user=None, **kwargs):
 	if ptype == "create":
 		return can_create_content(user, doc)
 	if ptype == "write":
-		return can_edit_content(user, doc)
+		return can_write_content(user, doc)
 	if ptype == "delete":
 		return can_delete_content(user, doc)
 	return True
@@ -66,9 +66,13 @@ def can_manage_community(user, team):
 def can_view_community(user, team):
 	if is_global_admin(user):
 		return True
-	if gameplan.is_guest(user):
-		return False
 	team_name = get_doc_name(team)
+	if gameplan.is_guest(user):
+		# Guests never join a community, but they must be able to READ the community
+		# that holds a space they've been granted — otherwise the SPA can't render the
+		# shell around that space. Access is exactly the communities of their granted
+		# spaces, nothing else.
+		return guest_can_view_community(user, team_name)
 	is_private = (
 		team.is_private
 		if hasattr(team, "doctype")
@@ -118,39 +122,301 @@ def can_view_content(user, doc):
 	return get_doc_value(doc, "owner") == user
 
 
+def users_who_can_view_content(users, doc):
+	"""The subset of `users` that can_view_content would return True for, order preserved.
+
+	Same rule, resolved with a fixed handful of queries instead of two or three per
+	user. For fan-outs over a whole site — an `@everyone` mention, a digest audience —
+	the per-user form makes the query count grow with the member list.
+
+	Duplicates in `users` are collapsed (the roles join hands back a user twice when
+	they hold both Gameplan roles). Callers wanting to exclude someone — an @everyone
+	must not notify its own author — filter before calling: this answers only "who can
+	see it".
+
+	Mirrors can_view_space/can_view_community with the membership rows loaded up front;
+	keep the two in step.
+	"""
+	users = list(dict.fromkeys(users))
+	project = get_content_project(doc)
+	if not project:
+		# can_view_content's own space-less fallback, inlined rather than called per
+		# user: it would re-resolve the project for every user (a query each, for a
+		# GP Comment) and give back exactly this answer.
+		owner = get_doc_value(doc, "owner")
+		return [user for user in users if is_global_admin(user) or user == owner]
+
+	project_info = get_project_info(project)
+	if not project_info:
+		return []
+
+	space_members = _member_users("GP Project", project_info.name)
+	community_members = _member_users("GP Team", project_info.team) if project_info.team else set()
+	guests = _guest_users(project_info.name)
+	community_is_private = (
+		cint(frappe.db.get_value("GP Team", project_info.team, "is_private")) if project_info.team else 0
+	)
+
+	def allowed(user):
+		if is_global_admin(user):
+			return True
+		if gameplan.is_guest(user):
+			return user in guests
+		if cint(project_info.is_private):
+			return user in space_members
+		return not community_is_private or user in community_members
+
+	return [user for user in users if allowed(user)]
+
+
+def _member_users(parenttype, parent):
+	"""Every user on `parent`'s membership table, as a set."""
+	Member = frappe.qb.DocType("GP Member")
+	rows = (
+		frappe.qb.from_(Member)
+		.select(Member.user)
+		.where(Member.parenttype == parenttype)
+		.where(Member.parent == parent)
+		.run()
+	)
+	return {row[0] for row in rows}
+
+
+def _guest_users(project):
+	"""Every user holding guest access to `project`, as a set."""
+	GuestAccess = frappe.qb.DocType("GP Guest Access")
+	rows = frappe.qb.from_(GuestAccess).select(GuestAccess.user).where(GuestAccess.project == project).run()
+	return {row[0] for row in rows}
+
+
 def can_create_content(user, doc):
 	if gameplan.is_guest(user):
-		return doc.doctype == "GP Comment" and can_view_content(user, doc)
+		# Guests participate in the discussions they can reach: a comment, and a poll on
+		# a discussion, are both participation. Everything else (discussions, tasks,
+		# pages) stays closed to them.
+		return doc.doctype in {"GP Comment", "GP Poll"} and can_view_content(user, doc)
 	if not get_content_project(doc):
 		return is_global_admin(user) or not get_doc_value(doc, "owner") or get_doc_value(doc, "owner") == user
 	return can_view_content(user, doc)
 
 
-def can_edit_content(user, doc):
-	if gameplan.is_guest(user):
-		return False
+# Per-doctype fields a non-editor is allowed to change while still holding `write`.
+# These are interaction (not content) fields — reacting is participation, not an
+# edit — so changing only these keeps the write permission for guests/space viewers.
+INTERACTION_SAFE_FIELDS = {
+	"GP Discussion": {"reactions"},
+	"GP Comment": {"reactions"},
+	"GP Page": set(),
+	"GP Task": set(),
+	# Votes are deliberately NOT listed: a vote goes through GPPoll.submit_vote, which
+	# gates on participation, re-reads the stored poll (GPPoll.discard_client_state) so
+	# nothing the caller sent survives, and only touches the caller's own row. Leaving
+	# the vote tables protected here is what stops a non-editor rewriting a poll by
+	# plain save.
+	"GP Poll": {"reactions"},
+}
+
+# Per-doctype fields that only the content's owner (or a moderator who could delete it)
+# may change. Everyone who can reach a space may edit the content in it — see
+# can_edit_content — but a poll's ballot and lifecycle are not shared property: stopping
+# a poll, rewriting its options, or touching the recorded votes is the author's call.
+# GPPoll.stop_poll enforces this for the whitelisted method; the entry below is what
+# closes the plain `PUT /api/v2/document/GP Poll/<name>` route, which never reaches it.
+OWNER_ONLY_FIELDS = {
+	"GP Poll": {"stopped_at", "votes", "options", "total_votes"},
+}
+
+# Standard row-level fields ignored when diffing a child table for changes.
+_ROW_META_FIELDS = {
+	"name",
+	"idx",
+	"creation",
+	"modified",
+	"modified_by",
+	"owner",
+	"parent",
+	"parentfield",
+	"parenttype",
+	"docstatus",
+}
+
+
+def can_interact_with_content(user, doc):
+	"""Whether `user` can reach `doc` to participate (react/comment) at all.
+
+	True for anyone who can view the content's space (members and granted guests
+	alike) and, for personal/space-less content, its owner. This is the floor for the
+	`write` permission; whether a specific *edit* is allowed on top of it is decided
+	by can_edit_content / _protected_fields_changed.
+	"""
 	if is_global_admin(user):
 		return True
 	if not can_view_content(user, doc):
 		return False
-	# Gameplan is community-driven: content inside a space is owned by the
-	# community, so any member who can access the space may edit it (and run
-	# lifecycle actions like pin/close that route through the write gate).
-	# Personal content with no space stays editable only by its owner.
 	if get_content_project(doc):
 		return True
 	return get_doc_value(doc, "owner") == user
 
 
-def can_delete_content(user, doc):
+def can_write_content(user, doc):
+	"""Back the doctype `write` permission — "may interact with this document".
+
+	Editors (can_edit_content: global admins, space-viewing members, owners, and
+	guests on their OWN content) always hold write. Non-editors who can still reach
+	the content (space viewers — guests included — and owners of personal content)
+	hold write only for interaction: the save must not touch anything beyond the
+	interaction-safe fields (reactions).
+
+	This is checked in two contexts (see _protected_fields_changed): on a CLEAN doc
+	(the v2 doc-method gate and list/UI permission checks) it reports no changes, so
+	a guest passes and can reach react(); on the DIRTY in-memory doc at save time it
+	diffs against the DB row and rejects any edit to protected fields.
+
+	Above all of that sits _owner_only_write_allowed: a few fields (a poll's ballot and
+	lifecycle) are the author's even for an editor, so they are ruled out first.
+	"""
+	if not _owner_only_write_allowed(user, doc):
+		return False
+	if can_edit_content(user, doc):
+		return True
+	if not can_interact_with_content(user, doc):
+		return False
+	return not _protected_fields_changed(doc)
+
+
+def _owner_only_write_allowed(user, doc):
+	"""Whether `doc`'s pending changes keep clear of its OWNER_ONLY_FIELDS.
+
+	Checked ahead of the editor rule, because "any member may edit the content in a
+	space they can reach" must not double as permission to stop someone else's poll or
+	replace its ballot. Ownership here is exactly can_delete_content — owner, community
+	admin or global admin — so moderation keeps working.
+	"""
+	fields = OWNER_ONLY_FIELDS.get(getattr(doc, "doctype", None))
+	if not fields:
+		return True
+	if can_delete_content(user, doc):
+		return True
+	return not _fields_changed(doc, fields)
+
+
+def _protected_fields_changed(doc):
+	"""Whether `doc` has pending changes to any field a non-editor may not touch.
+
+	Compares the in-memory document against its stored row, ignoring the doctype's
+	interaction-safe fields.
+	"""
+	before = _stored_version(doc)
+	if before is None:
+		return False
+	safe_fields = INTERACTION_SAFE_FIELDS.get(doc.doctype, set())
+	protected = {df.fieldname for df in doc.meta.fields if df.fieldname not in safe_fields}
+	return _any_field_changed(doc, before, protected)
+
+
+def _fields_changed(doc, fieldnames):
+	"""Whether `doc` has pending changes to any of `fieldnames`."""
+	before = _stored_version(doc)
+	if before is None:
+		return False
+	return _any_field_changed(doc, before, fieldnames)
+
+
+def _stored_version(doc):
+	"""The saved row behind `doc`, or None when there is nothing to diff against.
+
+	Uses the mid-save snapshot (get_doc_before_save) when it is already loaded,
+	otherwise reads the row from the DB — this is what makes the diffs correct for BOTH
+	a clean doc (nothing loaded/changed -> no differences) and a dirty doc at the
+	save-time write check (before-save snapshot not yet loaded -> read DB and diff).
+	"""
+	if not hasattr(doc, "doctype"):
+		return None
+	if doc.get("__islocal") or not doc.get("name"):
+		# Create path — not this gate's concern (create is a separate permission).
+		return None
+	before = doc.get_doc_before_save()
+	return before if before is not None else frappe.get_doc(doc.doctype, doc.name)
+
+
+def _any_field_changed(doc, before, fieldnames):
+	for df in doc.meta.fields:
+		fieldname = df.fieldname
+		if fieldname not in fieldnames:
+			continue
+		if df.fieldtype in ("Table", "Table MultiSelect"):
+			if _child_table_changed(doc.get(fieldname), before.get(fieldname)):
+				return True
+		elif doc.get(fieldname) != before.get(fieldname):
+			return True
+	return False
+
+
+def _child_table_changed(current_rows, previous_rows):
+	def normalize(rows):
+		normalized = []
+		for row in rows or []:
+			row_dict = row.as_dict() if hasattr(row, "as_dict") else dict(row)
+			normalized.append({k: v for k, v in row_dict.items() if k not in _ROW_META_FIELDS})
+		return normalized
+
+	return normalize(current_rows) != normalize(previous_rows)
+
+
+def can_edit_content(user, doc):
+	"""Business rule for who may change a document's own content.
+
+	Enforced at save time by can_write_content and _protected_fields_changed in
+	the has_permission write check. Also mirrored in the frontend
+	(utils/permissions.ts::canEditContent) to gate edit affordances.
+	"""
 	if is_global_admin(user):
 		return True
-	if gameplan.is_guest(user):
+	if not can_view_content(user, doc):
 		return False
+	if gameplan.is_guest(user):
+		# Guests are participants in the spaces they're granted, but only on their
+		# OWN content — they may edit posts/comments they authored, never anyone
+		# else's.
+		return get_doc_value(doc, "owner") == user
+	# Gameplan is community-driven: content inside a space is owned by the
+	# community, so any member who can access the space may edit it (and run
+	# lifecycle actions like pin/close). Personal content with no space stays
+	# editable only by its owner.
+	if get_content_project(doc):
+		return True
+	return get_doc_value(doc, "owner") == user
+
+
+def is_delete_cascade(doc):
+	"""Whether `doc` is being deleted as a child of a Gameplan cascade delete.
+
+	`gameplan/mixins/on_delete.py` sets this flag on every record it removes on behalf
+	of a parent; `frappe.model.delete_doc` applies it before the delete permission check.
+	Nothing reachable over HTTP can set it — `frappe.client.delete` and the v2 delete
+	route pass no flags.
+	"""
+	flags = getattr(doc, "flags", None)
+	return bool(flags and flags.get("from_gameplan_delete_cascade"))
+
+
+def can_delete_content(user, doc):
+	if is_delete_cascade(doc):
+		# The parent delete was already authorised, and its children go with it: a
+		# discussion owner removing their own thread takes the comments and polls other
+		# members posted in it. Re-asking the per-child rule here would let one other
+		# member's poll veto the thread owner's delete, and roll the whole thing back.
+		return True
+	if is_global_admin(user):
+		return True
 	if not can_view_content(user, doc):
 		return False
 	if get_doc_value(doc, "owner") == user:
+		# Owners — members and guests alike — may delete content they authored.
 		return True
+	if gameplan.is_guest(user):
+		# Beyond their own content, guests have no delete rights.
+		return False
 	project = get_content_project(doc)
 	if not project:
 		return False
@@ -211,6 +477,24 @@ def comment_query_conditions(user=None, **kwargs):
 	return criterion_sql(criterion)
 
 
+def poll_query_conditions(user=None, **kwargs):
+	user = user or frappe.session.user
+	if is_global_admin(user):
+		return None
+
+	Poll = frappe.qb.DocType("GP Poll")
+	Discussion = frappe.qb.DocType("GP Discussion")
+	discussion_query = (
+		frappe.qb.from_(Discussion)
+		.select(Discussion.name)
+		.where(accessible_project_criterion(Discussion.project, user))
+	)
+	# A poll with no discussion never reaches the UI, but it is still someone's row —
+	# keep it visible to its owner only, the way a space-less page is.
+	criterion = Poll.discussion.isin(discussion_query) | (Poll.discussion.isnull() & (Poll.owner == user))
+	return criterion_sql(criterion)
+
+
 def draft_query_conditions(user=None, **kwargs):
 	# Drafts are private to their owner in list/report queries. Share-by-link still works:
 	# that reads a single draft by name through the doctype's open `read` permission, which
@@ -220,6 +504,28 @@ def draft_query_conditions(user=None, **kwargs):
 	user = user or frappe.session.user
 	Draft = frappe.qb.DocType("GP Draft")
 	return criterion_sql(Draft.owner == user)
+
+
+def bookmark_query_conditions(user=None, **kwargs):
+	# A bookmark is a personal row — the same rule as a draft (see draft_query_conditions):
+	# only the user it belongs to may enumerate it. Decision 4: deliberately no global-admin exception:
+	# nothing in Gameplan reads another user's reading list, and without this every
+	# Gameplan user could list everyone's bookmarks through the generic list API.
+	user = user or frappe.session.user
+	Bookmark = frappe.qb.DocType("GP Bookmark")
+	return criterion_sql(Bookmark.user == user)
+
+
+def bookmark_has_permission(doc, ptype="read", user=None, **kwargs):
+	"""A bookmark belongs to exactly one user: only they may read, add or remove it.
+
+	Without this, the doctype's role permissions alone let any Gameplan user read,
+	rewrite or delete someone else's bookmark by name — and create one in their name.
+	"""
+	user = user or frappe.session.user
+	if not hasattr(doc, "doctype"):
+		return True
+	return get_doc_value(doc, "user") == user
 
 
 def content_project_query_conditions(doctype, user=None):
@@ -235,7 +541,10 @@ def team_access_criterion(Team, user=None):
 	if is_global_admin(user):
 		return None
 	if gameplan.is_guest(user):
-		return Team.name == ""
+		# A guest sees exactly the communities that hold a space they've been granted
+		# guest access to (via GP Guest Access). Without this the guest's GP Team list
+		# is empty and the SPA 404s every community/space/discussion route.
+		return Team.name.isin(guest_accessible_team_query(user))
 	return (Team.is_private == 0) | is_member_parent("GP Team", Team.name, user)
 
 
@@ -341,9 +650,43 @@ def has_guest_access(user, project):
 	return bool(frappe.db.exists("GP Guest Access", {"user": user, "project": project}))
 
 
+def guest_accessible_team_query(user):
+	"""Subquery of GP Team names that hold a space `user` has guest access to."""
+	Project = frappe.qb.DocType("GP Project")
+	GuestAccess = frappe.qb.DocType("GP Guest Access")
+	return (
+		frappe.qb.from_(GuestAccess)
+		.join(Project)
+		.on(GuestAccess.project == Project.name)
+		.where(GuestAccess.user == user)
+		.select(Project.team)
+	)
+
+
+def guest_can_view_community(user, team):
+	"""Whether `user` (a guest) holds guest access to any space under `team`."""
+	Project = frappe.qb.DocType("GP Project")
+	GuestAccess = frappe.qb.DocType("GP Guest Access")
+	rows = (
+		frappe.qb.from_(GuestAccess)
+		.join(Project)
+		.on(GuestAccess.project == Project.name)
+		.where(GuestAccess.user == user)
+		.where(Project.team == team)
+		.select(GuestAccess.name)
+		.limit(1)
+		.run()
+	)
+	return bool(rows)
+
+
 def get_content_project(doc):
 	if doc.doctype in {"GP Discussion", "GP Task", "GP Page"}:
 		return get_doc_value(doc, "project")
+	if doc.doctype == "GP Poll":
+		# A poll lives in a discussion, and takes that discussion's space.
+		discussion = get_doc_value(doc, "discussion")
+		return frappe.db.get_value("GP Discussion", discussion, "project") if discussion else None
 	if doc.doctype != "GP Comment":
 		return None
 	if doc.reference_doctype in {"GP Discussion", "GP Task"}:

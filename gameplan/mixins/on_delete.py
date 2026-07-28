@@ -9,7 +9,13 @@ def on_trash(doc, method):
 	to_delete = getattr(doc, "on_delete_cascade", [])
 	for doctype in to_delete:
 		for record in get_linked_records(doc.doctype, doc.name, doctype):
-			frappe.delete_doc(doctype, record.name)
+			# Child-level delete guards must not block the parent operation that owns
+			# this cascade, such as deleting an archived Space with pages and tasks.
+			frappe.delete_doc(
+				doctype,
+				record.name,
+				flags={"from_gameplan_delete_cascade": doc.doctype},
+			)
 
 	to_set_null = getattr(doc, "on_delete_set_null", [])
 	for doctype in to_set_null:
@@ -26,7 +32,11 @@ def on_trash(doc, method):
 def delete_linked_records(doctype, name, linked_doctypes):
 	for linked_doctype in linked_doctypes:
 		for record in get_linked_records(doctype, name, linked_doctype):
-			frappe.delete_doc(linked_doctype, record.name)
+			frappe.delete_doc(
+				linked_doctype,
+				record.name,
+				flags={"from_gameplan_delete_cascade": doctype},
+			)
 
 
 def get_linked_records(link_doctype, link_name, doctype):

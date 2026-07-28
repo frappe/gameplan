@@ -48,6 +48,21 @@ def generate(fixture_path: str | None = None, force: bool = False):
 		print(f"Demo fixture not found at {events_path}. Nothing to generate.")
 		return
 
+	# clear() commits, so validate the whole log first: a fixture the seeder cannot
+	# finish would otherwise leave the site wiped and the replay half-applied
+	# (the failed events roll back, the committed delete does not). validate_events
+	# resolves cross-references statically too, so a hand-edit that drops a `space`
+	# line is caught here rather than mid-replay.
+	problems = Seeder.validate_events(events_path)
+	if problems:
+		shown = "\n".join(problems[:5])
+		if len(problems) > 5:
+			shown += f"\n... and {len(problems) - 5} more"
+		frappe.throw(
+			f"Refusing to clear the site: {events_path} cannot be replayed.\n{shown}",
+			title="Invalid Demo Fixture",
+		)
+
 	if not clear(force=force):
 		# Guard refused (real data present); never replay on top of it.
 		return
@@ -185,9 +200,11 @@ def _reset_sequences():
 
 
 def _rebuild_search_index():
-	from gameplan.search_sqlite import build_index
+	# rebuild_index, not build_index: clear() has just deleted every row the previous
+	# index described, and build_index alone never removes stale rows.
+	from gameplan.search_sqlite import rebuild_index
 
 	try:
-		build_index()
+		rebuild_index()
 	except Exception:
 		frappe.log_error(title="Demo Search Index Rebuild Error")

@@ -12,7 +12,7 @@ class GPNotification(Document):
 		gameplan.refetch_resource("Unread Notifications Count", user=self.to_user)
 
 	@staticmethod
-	def clear_notifications(discussion=None, comment=None, task=None, user=None):
+	def clear_notifications(discussion=None, comment=None, poll=None, task=None, user=None):
 		if not user:
 			user = frappe.session.user
 		filters = {"to_user": user}
@@ -20,6 +20,8 @@ class GPNotification(Document):
 			filters["discussion"] = str(discussion)
 		if comment:
 			filters["comment"] = str(comment)
+		if poll:
+			filters["poll"] = str(poll)
 		if task:
 			filters["task"] = str(task)
 

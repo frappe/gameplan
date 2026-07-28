@@ -166,6 +166,7 @@ def unread_notifications():
 	return res[0].count
 
 
+# Invitation emails open in a browser navigation, so this endpoint must remain GET-reachable.
 @frappe.whitelist(allow_guest=True)
 @validate_type
 def accept_invitation(key: str = None):

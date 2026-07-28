@@ -2,32 +2,74 @@
 # For license information, please see license.txt
 
 import frappe
+from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt
+
+from gameplan.mixins.archivable import check_if_space_is_archived
+from gameplan.mixins.reactions import HasReactions
+from gameplan.permissions import (
+	can_delete_content,
+	can_view_content,
+	content_has_permission,
+	poll_query_conditions,
+)
 
 from .gp_poll_attributes import GPPollAttributes
 
 
-class GPPoll(Document, GPPollAttributes):
-	on_delete_set_null = ["GP Discussion"]
+class GPPoll(HasReactions, Document, GPPollAttributes):
+	"""A poll posted inside a discussion.
+
+	It carries a `reactions` table and the UI hangs the same Reactions component off it
+	as it does off a discussion or a comment, so it mixes in HasReactions and notifies
+	its author when another user reacts. The notification carries both the poll and its
+	discussion for routing; HasReactions keeps its lookup distinct from the discussion's
+	own reaction notification.
+	"""
+
+	on_delete_set_null = ["GP Discussion", "GP Notification"]
 
 	def before_insert(self):
+		self.check_if_discussion_is_closed()
+		if self.anonymous and self.multiple_answers:
+			frappe.throw(_("Anonymous polls cannot allow multiple answers"))
 		self.options = [d for d in self.options if d.title]
 		for option in self.options:
 			option.title = option.title.strip()
 		# dont allow duplicate options
 		options = [d.title for d in self.options]
 		if len(set(options)) != len(options):
-			frappe.throw(frappe._("Duplicate options not allowed"))
+			frappe.throw(_("Duplicate options not allowed"))
+
+	def check_if_discussion_is_closed(self):
+		"""A poll is a post in the thread just like a comment, so a closed discussion
+		refuses it too (GPComment.before_insert does the same). The UI hides the whole
+		composer when a discussion is closed, which left this unenforced on the server.
+		"""
+		if not self.discussion:
+			return
+		if frappe.db.get_value("GP Discussion", self.discussion, "closed_at"):
+			frappe.throw(_("Cannot add a poll to a closed discussion"))
 
 	def validate(self):
 		self.total_votes = len(self.votes)
+		self.de_duplicate_reactions()
 
 	def after_insert(self):
 		self.update_discussion_meta()
 
 	def after_delete(self):
+		if self.flags.from_gameplan_delete_cascade == "GP Discussion":
+			# The discussion is being deleted and we are one of its children. Refreshing
+			# its counters is pointless, and `track_visit` would insert a fresh GP
+			# Discussion Visit row — the cascade sweeps those *before* it reaches the
+			# polls, so the new row survives and trips the parent's link check.
+			return
 		self.update_discussion_meta()
+
+	def on_update(self):
+		self.notify_reactions()
 
 	def update_discussion_meta(self):
 		if not self.discussion:
@@ -39,71 +81,141 @@ class GPPoll(Document, GPPollAttributes):
 		discussion.track_visit()
 		discussion.save(ignore_permissions=True)
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def submit_vote(self, option):
+		self.discard_client_state()
+		self.check_can_participate()
+		check_if_space_is_archived(self, action="vote in", content_type="polls")
 		self.check_if_stopped()
+		selected = self.get_option(option)
 
 		if self.anonymous:
-			self.submit_anonymous_vote(option)
+			# An anonymous vote records the voter without their choice, so there is no row
+			# to tie a second answer to (or to retract later): one vote per voter, always.
+			if self.has_voted():
+				return
+			self.append("votes", {"user": frappe.session.user})
+			selected.votes = (selected.votes or 0) + 1
 		else:
-			self.submit_non_anonymous_vote(option)
-
-	def submit_anonymous_vote(self, option):
-		for d in self.votes:
-			if d.user == frappe.session.user:
+			if self.has_voted(option=selected.title):
+				# Already this voter's answer for this option. On a multiple-answer poll
+				# the way to undo an answer is retract_vote, not a second submit.
 				return
-		for _option in self.options:
-			if _option.title == option:
-				self.append("votes", {"user": frappe.session.user})
-				_option.votes += 1
-				break
+			if not self.multiple_answers:
+				# One answer per voter, but a voter may change their mind: the new answer
+				# replaces the previous one rather than being ignored.
+				self.votes = [d for d in self.votes if d.user != frappe.session.user]
+			self.append("votes", {"user": frappe.session.user, "option": selected.title})
 
-		self.total_votes = len(self.votes)
-		for _option in self.options:
-			_option.percentage = flt(_option.votes * 100 / self.total_votes, 2)
-		self.save()
+		self.update_tallies()
+		self.save_after_voting()
 
-	def submit_non_anonymous_vote(self, option):
-		for d in self.votes:
-			if d.user == frappe.session.user:
-				return
-
-		self.append("votes", {"user": frappe.session.user, "option": option})
-		self.total_votes = len(self.votes)
-		for _option in self.options:
-			_option.votes = len([d for d in self.votes if d.option == _option.title])
-			_option.percentage = flt(_option.votes * 100 / self.total_votes, 2)
-		self.save()
-
-	@frappe.whitelist()
-	def retract_vote(self):
+	@frappe.whitelist(methods=["POST"])
+	def retract_vote(self, option=None):
+		self.discard_client_state()
+		self.check_can_participate()
+		check_if_space_is_archived(self, action="retract votes from", content_type="polls")
 		self.check_if_stopped()
 		if self.anonymous:
-			frappe.throw(frappe._("Cannot retract vote for anonymous poll"))
-		self.votes = [d for d in self.votes if d.user != frappe.session.user]
-		self.total_votes = len(self.votes)
-		for _option in self.options:
-			_option.votes = len([d for d in self.votes if d.option == _option.title])
-			_option.percentage = flt(_option.votes * 100 / self.total_votes, 2) if self.total_votes else 0
-		self.save()
+			frappe.throw(_("Cannot retract vote for anonymous poll"))
+		user = frappe.session.user
+		self.votes = [
+			d for d in self.votes if not (d.user == user and (option is None or d.option == option))
+		]
+		self.update_tallies()
+		self.save_after_voting()
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def stop_poll(self):
-		if frappe.session.user != self.owner:
-			frappe.throw(frappe._("Only owner can stop the poll"))
+		self.discard_client_state()
+		if not can_delete_content(frappe.session.user, self):
+			frappe.throw(_("Only the owner or an admin can stop the poll"), frappe.PermissionError)
+		check_if_space_is_archived(self, action="stop", content_type="polls")
 		self.stopped_at = frappe.utils.now()
 		self.save()
 
+	def discard_client_state(self):
+		"""Re-read the stored poll, dropping any field values the caller sent.
+
+		The v2 document-method route loads the stored document, but its POST permission
+		is deliberately Gameplan's interaction tier: guests and members who may
+		participate can invoke these methods without being allowed to edit poll fields.
+		The vote save then bypasses write permission so it can persist that interaction.
+		Reloading before the business checks makes the method's invariant explicit:
+		`stopped_at`, `discussion`, `anonymous`, `multiple_answers`, options, and every
+		field written back come from storage, even if another whitelisted document
+		surface or in-process caller hands the method a dirty instance.
+		"""
+		self.reload()
+
+	def save_after_voting(self):
+		"""Persist a vote without requiring write access to the poll itself.
+
+		Voting is participation, like reacting: the gate is `check_can_participate`, and
+		the vote methods only ever touch the acting user's own vote row plus the derived
+		tallies. A plain `save()` would instead ask for `write`, which a guest only holds
+		while nothing outside the interaction-safe fields changed — that check exists to
+		stop a non-editor rewriting a poll's title or options, and it must keep doing so.
+
+		Bypassing that check is only safe because `discard_client_state` has already
+		thrown away everything the caller sent, so this save can carry nothing but the
+		server-computed vote rows and tallies.
+		"""
+		self.save(ignore_permissions=True)
+
+	def check_can_participate(self):
+		if not can_view_content(frappe.session.user, self):
+			frappe.throw(_("You do not have access to this poll"), frappe.PermissionError)
+
+	def get_option(self, title):
+		for option in self.options:
+			if option.title == title:
+				return option
+		frappe.throw(_("{0} is not an option in this poll").format(title))
+
+	def has_voted(self, option=None, user=None):
+		user = user or frappe.session.user
+		return any(d.user == user and (option is None or d.option == option) for d in self.votes)
+
+	def update_tallies(self):
+		"""Recompute the derived counts from the vote rows.
+
+		`total_votes` counts vote rows, so on a multiple-answer poll it counts answers
+		rather than voters — which is what the UI labels "N answers from M people".
+
+		A percentage answers "how many of the people who voted chose this?", so it is a
+		share of the *voters*, not of the answer rows. On a single-answer poll those are
+		the same number. On a multiple-answer poll they are not, and dividing by the
+		rows would report a two-option voter as 50/50 when they in fact picked both;
+		the shares add up to more than 100% instead, which is how "select all that
+		apply" results are read everywhere else.
+		"""
+		self.total_votes = len(self.votes)
+		if not self.anonymous:
+			# An anonymous vote row has no option, so its per-option counter is
+			# incremented when the vote is cast and cannot be recomputed here.
+			for option in self.options:
+				option.votes = len([d for d in self.votes if d.option == option.title])
+		voters = self.count_voters()
+		for option in self.options:
+			option.percentage = flt((option.votes or 0) * 100 / voters, 2) if voters else 0
+
+	def count_voters(self):
+		"""How many distinct people have voted. One vote row per voter, except on a
+		multiple-answer poll, where a voter has one row per option they picked."""
+		return len({d.user for d in self.votes})
+
 	def check_if_stopped(self):
+		# Every caller reloads first, so Frappe has normalised the stored Datetime to a
+		# datetime object. `stop_poll` assigns a string, but no comparison is made until
+		# the next vote/retract call reloads the document.
 		if self.stopped_at and self.stopped_at < frappe.utils.now_datetime():
-			frappe.throw(frappe._("Poll has ended"))
+			frappe.throw(_("Poll has ended"))
 
 
-@frappe.whitelist()
-def get_list(fields, filters=None, start=0, limit=20, order_by=None):
-	query = frappe.qb.get_query(
-		"GP Poll", fields=fields, filters=filters, start=start, limit=limit, order_by=order_by
-	)
+def get_permission_query_conditions(user):
+	return poll_query_conditions(user)
 
-	data = query.run(as_dict=1)
-	return data
+
+def has_permission(doc, ptype="read", user=None):
+	return content_has_permission(doc, ptype, user)

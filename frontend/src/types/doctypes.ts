@@ -128,6 +128,8 @@ export interface GPNotification extends DocType {
   comment?: string
   /** Discussion: Link (GP Discussion) */
   discussion?: string
+  /** Poll: Link (GP Poll) */
+  poll?: string
   /** Task: Link (GP Task) */
   task?: string
   /** Project: Link (GP Project) */
@@ -258,8 +260,6 @@ export interface GPProject extends DocType {
   archived_by?: string
   /** Is Private: Check */
   is_private: 0 | 1
-  /** Is Followed: Check */
-  is_followed: 0 | 1
 }
 
 // Last updated: 2022-08-11 18:36:55.799372

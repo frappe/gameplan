@@ -50,7 +50,10 @@
         :options="dropdownOptions"
       />
     </div>
-    <div class="flex-1">
+    <div class="flex-1" :aria-busy="isDraftLoading" :inert="isDraftLoading">
+      <div v-if="isDraftLoading" role="status" class="mb-2 text-sm text-ink-gray-5">
+        Loading draft…
+      </div>
       <div
         :class="{
           'w-full rounded-lg border bg-surface-base p-4 focus-within:border-outline-gray-3':
@@ -65,7 +68,7 @@
           :author="comment.owner"
           :value="isEditing ? draftData.content : comment.content"
           @change="onEditorChange"
-          :editable="isEditing"
+          :editable="isEditing && !isDraftLoading"
           :submitButtonProps="{
             onClick: () => updateComment(),
             loading: isUpdating,
@@ -111,7 +114,7 @@ import { tags } from '@/data/tags'
 import { useDraftSync } from '@/data/useDraftSync'
 import { useUser, useSessionUser } from '@/data/users'
 import type { Space } from '@/data/spaces'
-import { canDeleteContent } from '@/utils/permissions'
+import { canDeleteContent, canEditContent } from '@/utils/permissions'
 
 interface Props {
   comment: GPComment
@@ -142,6 +145,7 @@ const draft = useDraftSync({
   initialPayload: () => ({ content: props.comment.content ?? '' }),
 })
 const draftData = draft.data
+const isDraftLoading = draft.isLoading
 
 const onEditorChange = (value: string) => {
   if (isEditing.value) draftData.value.content = value
@@ -193,7 +197,10 @@ const dropdownOptions = computed(() => [
     label: 'Edit',
     icon: 'lucide-edit',
     onClick: () => startEditing(),
-    condition: () => !props.comment.deleted_at && !props.readOnlyMode,
+    condition: () =>
+      !props.comment.deleted_at &&
+      !props.readOnlyMode &&
+      canEditContent(props.comment, props.space, useSessionUser()),
   },
   {
     label: 'Revisions',

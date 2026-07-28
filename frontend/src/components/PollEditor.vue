@@ -20,6 +20,14 @@
       type="checkbox"
       label="Anonymous"
       v-model="poll.anonymous"
+      :disabled="poll.multiple_answers"
+      @change="$emit('update:poll', poll)"
+    />
+    <FormControl
+      type="checkbox"
+      label="Multiple answers"
+      v-model="poll.multiple_answers"
+      :disabled="poll.anonymous"
       @change="$emit('update:poll', poll)"
     />
     <div class="flex items-center justify-between gap-2">

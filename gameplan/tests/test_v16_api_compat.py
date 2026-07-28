@@ -83,7 +83,10 @@ class TestV16APICompatibility(FrappeAPITestCase):
 		frappe.db.rollback()
 		self.assertTrue(frappe.db.exists("GP Project Visit", {"project": space_id, "user": self.member.name}))
 
-		mark_read = self.post(self.method("GP Project", "mark_all_as_read"), {"spaces": [space_id]})
+		mark_read = self.post(
+			self.method("GP Project", "mark_all_as_read"),
+			{"spaces": [int(space_id)]},
+		)
 		self.assertEqual(mark_read.status_code, 200, mark_read.text)
 		frappe.db.rollback()
 		self.assertTrue(

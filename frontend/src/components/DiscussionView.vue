@@ -120,7 +120,10 @@
               </template>
             </div>
           </div>
-          <div ref="mainPostContentEl">
+          <div ref="mainPostContentEl" :aria-busy="isPostDraftLoading" :inert="isPostDraftLoading">
+            <div v-if="isPostDraftLoading" role="status" class="mb-2 text-sm text-ink-gray-5">
+              Loading draft…
+            </div>
             <div v-if="editingPost" class="w-full">
               <div class="mb-2">
                 <input
@@ -130,13 +133,14 @@
                   ref="title"
                   v-model="postDraftData.title"
                   placeholder="Title"
+                  :disabled="isPostDraftLoading"
                 />
               </div>
             </div>
             <DiscussionViewEditor
               ref="postEditor"
               :content="editingPost ? postDraftData.content : discussion.doc.content"
-              :editable="editingPost"
+              :editable="editingPost && !isPostDraftLoading"
               :saving="discussion.setValue.loading"
               :can-save="canSavePost"
               :quote-source-id="`discussion:${discussion.doc.name}`"
@@ -163,6 +167,7 @@
           :read-only-mode="readOnlyMode"
           :disable-new-comment="Boolean(discussion.doc.closed_at)"
           :hide-new-comment="editingPost"
+          :activity-version="discussion.doc.modified"
           ref="commentsArea"
         />
         <QuoteBacklinksPopover :store="richQuotes" @select="scrollToQuotingComment" />
@@ -327,7 +332,7 @@ import { provideRichQuotes } from '@/components/RichQuoteExtension/useRichQuotes
 import QuoteBacklinksPopover from '@/components/RichQuoteExtension/QuoteBacklinksPopover.vue'
 import { refreshUnreadCountForProjects } from '@/data/unreadCount'
 import { useSessionUser } from '@/data/users'
-import { canDeleteContent } from '@/utils/permissions'
+import { canDeleteContent, canEditContent } from '@/utils/permissions'
 import { useCommandPaletteCommands } from './CommandPalette/registry'
 
 const props = defineProps<{
@@ -410,6 +415,7 @@ const postDraft = useDraftSync({
   }),
 })
 const postDraftData = postDraft.data
+const isPostDraftLoading = postDraft.isLoading
 
 function onPostEditorChange(value: string) {
   if (editingPost.value) postDraftData.value.content = value
@@ -530,26 +536,34 @@ function routeParam(value: string | string[] | undefined) {
 }
 
 function moveToSpace() {
-  if (discussionMoveDialog.project) {
+  const targetSpace = discussionMoveDialog.project
+  if (targetSpace) {
     discussion.moveToProject
       .submit({
-        project: discussionMoveDialog.project,
+        project: targetSpace,
       })
       .then(() => {
         nextTick(() => {
           discussionMoveDialog.show = false
           discussionMoveDialog.project = null
 
-          const communityId = discussion.doc?.project
-            ? getSpace(discussion.doc.project)?.team
-            : null
-
+          // Route to the space we asked for, not the one read back off the doc: the doc's
+          // refetch lands after this callback, so reading discussion.doc.project here still
+          // returns the old space and the URL stays on it - leaving the sidebar highlighting
+          // a space the discussion no longer belongs to.
+          //
+          // The slug has to be passed too. A move never changes it, but the canonical-route
+          // guard treats a missing slug as "not canonical yet" and falls back to fetching the
+          // discussion from the server - a request it memoizes for a second, so a move made
+          // soon after the page loaded is answered with the pre-move copy and the URL bounces
+          // straight back to the old space.
           router.replace({
             name: 'Discussion',
             params: {
-              communityId,
-              spaceId: discussion.doc?.project,
+              communityId: getSpace(targetSpace)?.team,
+              spaceId: targetSpace,
               postId: discussion.doc?.name,
+              slug: route.params.slug,
             },
           })
         })
@@ -652,10 +666,12 @@ function canonicalizeRoute() {
   // routes through the server canonicalization. Acceptable because moving a discussion is rare and
   // the alternative (stranding the new space under the wrong community) is worse. If this becomes a
   // real problem, fetch the destination space here instead of relying on it already being cached.
+  // Spaces autoname to integers, so doc.project arrives as a number while route params are
+  // always strings - compare them as strings or every load looks like a mismatch.
   const spaceMismatch =
     canonicalSpaceId &&
     canonicalCommunityId &&
-    routeParam(route.params.spaceId) !== canonicalSpaceId
+    routeParam(route.params.spaceId) !== String(canonicalSpaceId)
   const slugMismatch = !route.params.slug || route.params.slug !== doc.slug
   if (!spaceMismatch && !slugMismatch) return
 
@@ -685,11 +701,19 @@ const spaceOptions = useGroupedSpaceOptions({
   filterFn: (space) => !space.archived_at && space.name !== discussion.doc?.project,
 })
 
+// Edit and the lifecycle actions (pin/close/move) all change the post itself, so
+// they follow the same business rule as editing — hidden from guests on posts they
+// don't own. Mirrors backend can_edit_content (see utils/permissions.ts).
+const canEditDiscussion = computed(() =>
+  canEditContent(discussion.doc, space.value, useSessionUser()),
+)
+
 const actions = computed(() => [
   {
     label: 'Edit',
     icon: 'lucide-edit',
     onClick: startEditingPost,
+    condition: () => canEditDiscussion.value,
   },
   {
     label: 'Revisions',
@@ -721,7 +745,7 @@ const actions = computed(() => [
   {
     label: 'Pin discussion...',
     icon: 'lucide-arrow-up-left',
-    condition: () => !discussion.doc?.pinned_at,
+    condition: () => canEditDiscussion.value && !discussion.doc?.pinned_at,
     onClick: () => {
       pinDialog.show = true
     },
@@ -729,7 +753,7 @@ const actions = computed(() => [
   {
     label: 'Unpin discussion...',
     icon: 'lucide-arrow-down-left',
-    condition: () => !!discussion.doc?.pinned_at,
+    condition: () => canEditDiscussion.value && !!discussion.doc?.pinned_at,
     onClick: () => {
       const pinScope = discussion.doc?.pin_scope
       const scopeText =
@@ -749,7 +773,7 @@ const actions = computed(() => [
   {
     label: 'Close discussion...',
     icon: 'lucide-lock',
-    condition: () => !discussion.doc?.closed_at,
+    condition: () => canEditDiscussion.value && !discussion.doc?.closed_at,
     onClick: () => {
       dialog.confirm({
         title: 'Close discussion',
@@ -764,7 +788,7 @@ const actions = computed(() => [
   {
     label: 'Re-open discussion...',
     icon: 'lucide-unlock',
-    condition: () => discussion.doc?.closed_at,
+    condition: () => canEditDiscussion.value && !!discussion.doc?.closed_at,
     onClick: () => {
       dialog.confirm({
         title: 'Re-open discussion',
@@ -784,6 +808,7 @@ const actions = computed(() => [
   {
     label: 'Move to...',
     icon: 'lucide-log-out',
+    condition: () => canEditDiscussion.value,
     onClick: () => {
       discussionMoveDialog.show = true
     },

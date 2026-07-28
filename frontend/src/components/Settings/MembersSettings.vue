@@ -129,7 +129,7 @@ import {
   ListRows,
 } from 'frappe-ui/list'
 import InvitePeople from './InvitePeople.vue'
-import { users, activeUsers } from '@/data/users'
+import { users, activeUsers, updateUserInfo, type UserInfo } from '@/data/users'
 import { GPInvitation } from '@/types/doctypes'
 
 type SortField = 'name' | 'role' | 'creation'
@@ -180,11 +180,11 @@ const targetProfile = ref('')
 function profileMethodUrl(method: string) {
   return computed(() => `/api/v2/document/GP User Profile/${targetProfile.value}/method/${method}`)
 }
-const changeUserRoleCall = useCall<unknown, { role: string }>({
+const changeUserRoleCall = useCall<UserInfo, { role: string }>({
   url: profileMethodUrl('change_user_role'),
   method: 'POST',
   immediate: false,
-  onSuccess: () => users.reload(),
+  onSuccess: updateUserInfo,
 })
 const disableUserCall = useCall<unknown>({
   url: profileMethodUrl('disable_user'),

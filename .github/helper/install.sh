@@ -48,7 +48,11 @@ build_pid=$!
 
 bench --site gameplan.test reinstall --yes
 bench --site gameplan.test install-app gameplan
-bench --site gameplan.test execute gameplan.search_sqlite.build_index
+# The v16 migration job copies this helper from the PR candidate and then runs it against
+# the *baseline* checkout, which predates the rename of the module-level index builder. Try
+# the current name first and fall back, so the baseline install still gets an index.
+bench --site gameplan.test execute gameplan.search_sqlite.rebuild_index \
+  || bench --site gameplan.test execute gameplan.search_sqlite.build_index
 
 # wait till assets are built succesfully
 wait $build_pid

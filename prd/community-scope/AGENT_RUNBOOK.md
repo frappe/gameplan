@@ -26,7 +26,7 @@ Read in order: `PLAN.md` → `DECISIONS.md` → `CODE_STYLE.md` → the specific
 - **Build (compile gate):** `cd frontend && yarn build` must succeed. There is no separate typecheck/lint script (no `vue-tsc`/`eslint`), so the build is the only compile gate — treat a build failure as a hard fail.
 - **Frontend behavior — Cypress (required every phase):** run the spec(s) named in the phase's "Cypress coverage" section, headless:
   - `cd frontend && yarn test` (full suite) or `npx cypress run --spec "cypress/e2e/<phase-spec>.cy.ts"` (single spec, faster during iteration).
-  - Cypress targets `http://gameplan-demo.test:8000` (see `frontend/cypress.config.ts`). **That site must be running and built**, and is wiped by `POST /api/method/gameplan.test_api.clear_data`. It is the disposable test site — never point Cypress at a site with real data.
+  - Cypress targets `http://gameplan-demo.test:8000` (see `frontend/cypress.config.ts`). **That site must be running and built**, and is wiped by `POST /api/method/gameplan.ui_test_helpers.reset`. It is the disposable test site — never point Cypress at a site with real data.
   - Use the existing custom commands: `cy.login()`, `cy.scope('sidebar'|'dialog'|'header'|'body')`, `cy.button(text)`, `cy.combobox(placeholder)`. Mirror `cypress/e2e/onboarding.cy.js`.
 - **Backend (Phase 08 and any backend change):** `bench --site gameplan.frappe.test run-tests --app gameplan` (or `--module <dotted.path>` for speed). For migrations, run `bench --site <test-site> migrate` **twice** and confirm the second run is a no-op (idempotency).
 

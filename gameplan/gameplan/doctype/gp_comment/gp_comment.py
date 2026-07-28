@@ -5,6 +5,7 @@ import frappe
 from frappe.model.document import Document
 
 from gameplan.gameplan.doctype.gp_unread_record.gp_unread_record import GPUnreadRecord
+from gameplan.mixins.archivable import check_if_space_is_archived
 from gameplan.mixins.attachments import HasAttachments
 from gameplan.mixins.mentions import HasMentions
 from gameplan.mixins.reactions import HasReactions
@@ -14,6 +15,7 @@ from gameplan.utils import get_document_revisions, remove_empty_trailing_paragra
 
 
 class GPComment(HasAttachments, HasMentions, HasReactions, HasTags, Document):
+	on_delete_cascade = ["GP Draft"]
 	on_delete_set_null = ["GP Notification", "GP Discussion"]
 	mentions_field = "content"
 	tags_field = "content"
@@ -39,6 +41,14 @@ class GPComment(HasAttachments, HasMentions, HasReactions, HasTags, Document):
 			GPUnreadRecord.delete_unread_records_for_comment(self.name)
 
 	def after_delete(self):
+		if self.flags.from_gameplan_delete_cascade == "GP Discussion":
+			# The discussion is being deleted and we are one of its children. Refreshing
+			# its counters is pointless, and `track_visit` would insert a fresh GP
+			# Discussion Visit row. That row happens to be swept today only because
+			# "GP Comment" precedes "GP Discussion Visit" in GPDiscussion's cascade list
+			# — reorder that list and the row survives to trip the parent's link check,
+			# which is exactly how GP Poll broke. Do not rely on the ordering.
+			return
 		self.update_discussion_meta()
 		self.update_task_meta()
 
@@ -62,6 +72,14 @@ class GPComment(HasAttachments, HasMentions, HasReactions, HasTags, Document):
 		frappe.get_doc("GP Task", self.reference_name).update_comments_count()
 
 	def validate(self):
+		# Gate the content itself, not every save. `HasReactions.react` saves the whole
+		# comment, so a blanket guard here would refuse reactions on an archived Space's
+		# comments while still allowing them on its discussions, which only guard
+		# `before_insert`. Reactions stay allowed on both; the UI hides them either way.
+		if self.is_new():
+			check_if_space_is_archived(self, action="add", content_type="comments")
+		elif self.has_value_changed("content"):
+			check_if_space_is_archived(self, action="edit", content_type="comments")
 		self.sanitize_content()
 		self.de_duplicate_reactions()
 

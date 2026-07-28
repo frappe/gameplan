@@ -110,7 +110,7 @@ import DropdownMoreOptions from '@/components/DropdownMoreOptions.vue'
 import { readOnlyMode } from '@/data/readOnlyMode'
 import { relativeTimestamp } from '@/utils'
 import { useSessionUser } from '@/data/users'
-import { canDeleteContent } from '@/utils/permissions'
+import { canDeleteContent, canEditContent } from '@/utils/permissions'
 import { useCommandPaletteCommands } from '@/components/CommandPalette/registry'
 const props = defineProps<{
   communityId?: string
@@ -146,7 +146,12 @@ const isDirty = computed(() => {
 })
 
 const space = useSpace(() => page.doc?.project || props.spaceId)
-const canEditPage = computed(() => !readOnlyMode && !space.value?.archived_at)
+const canEditPage = computed(
+  () =>
+    !readOnlyMode &&
+    !space.value?.archived_at &&
+    canEditContent(page.doc, space.value, useSessionUser()),
+)
 
 const pageTitle = computed(() => {
   return page.doc?.title || props.pageId
@@ -181,7 +186,7 @@ const pageActions = computed(() => [
     label: 'Delete',
     icon: 'lucide-trash-2',
     onClick: deletePage,
-    condition: () => canDeleteContent(page.doc, space.value, useSessionUser()),
+    condition: () => canEditPage.value && canDeleteContent(page.doc, space.value, useSessionUser()),
   },
 ])
 
@@ -244,7 +249,8 @@ useCommandPaletteCommands(
         icon: 'lucide-trash-2',
         aliases: ['remove page', 'delete document'],
         onClick: deletePage,
-        condition: () => canDeleteContent(page.doc, space.value, useSessionUser()),
+        condition: () =>
+          canEditPage.value && canDeleteContent(page.doc, space.value, useSessionUser()),
         defaultScore: 1,
       },
     ]

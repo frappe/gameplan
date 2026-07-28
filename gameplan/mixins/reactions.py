@@ -3,11 +3,14 @@
 
 
 import frappe
+from frappe import _
 
 
 class HasReactions:
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def react(self, operations=None):
+		from gameplan.permissions import can_view_content
+
 		operations = frappe.parse_json(operations) or []
 		if not isinstance(operations, list):
 			frappe.throw("Invalid reactions payload")
@@ -16,6 +19,17 @@ class HasReactions:
 			return self.get("reactions")
 
 		user = frappe.session.user
+
+		# Reacting is a participation action available to anyone who can VIEW the
+		# content — members and guests alike in the spaces they can reach. Each
+		# operation below only ever touches the acting user's own reaction row
+		# (matched on `user` == frappe.session.user), so this cannot mutate others'
+		# data or the post body. The save runs through the normal permission path:
+		# guests hold write ("may interact") on content in a space they can access,
+		# and can_write_content lets a non-editor's save through as long as only
+		# interaction-safe fields (reactions) changed.
+		if not can_view_content(user, self):
+			frappe.throw(_("You do not have access to react to this"), frappe.PermissionError)
 		reactions = list(self.get("reactions") or [])
 
 		for operation in operations:
@@ -42,16 +56,23 @@ class HasReactions:
 		return self.get("reactions")
 
 	def notify_reactions(self):
+		from gameplan.permissions import can_view_content
+
 		previous = self.get_doc_before_save()
 		if previous and len(previous.get("reactions")) == len(self.get("reactions")):
 			return
 		if len(self.get("reactions")) == 0:
 			return
 
-		people = list(set([r.user for r in self.get("reactions")]))
+		# Your own reaction never notifies you and is never counted: the row would
+		# otherwise read "1 person reacted to your post" about yourself.
+		people = list({r.user for r in self.get("reactions") if r.user != self.owner})
+		if not people:
+			return
+		if not can_view_content(self.owner, self):
+			return
+
 		match len(people):
-			case 0:
-				message = ""
 			case 1:
 				message = "1 person reacted to your post"
 			case _:
@@ -64,9 +85,19 @@ class HasReactions:
 			values.discussion = self.name
 		elif self.doctype == "GP Comment":
 			values.comment = self.name
+		elif self.doctype == "GP Poll":
+			values.poll = self.name
+			values.discussion = self.discussion
 
-		if frappe.db.exists("GP Notification", values):
-			doc = frappe.get_doc("GP Notification", values)
+		lookup = values.copy()
+		if self.doctype == "GP Discussion":
+			# Poll and comment notifications also carry their discussion for routing.
+			# Excluding both keeps a later discussion reaction from overwriting either row.
+			lookup.poll = ["is", "not set"]
+			lookup.comment = ["is", "not set"]
+
+		if frappe.db.exists("GP Notification", lookup):
+			doc = frappe.get_doc("GP Notification", lookup)
 		else:
 			doc = frappe.get_doc(doctype="GP Notification")
 			doc.update(values)

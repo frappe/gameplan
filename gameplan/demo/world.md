@@ -91,7 +91,7 @@ Running bits (use sparingly, ≤3 times each):
 
 **Maya as viewer** means the seeder gives her: authored posts and comments,
 received reactions and @-mentions, notifications (mix of read/unread), a
-discussion draft in progress, bookmarks, partially-read threads, followed
+discussion draft in progress, bookmarks, partially-read threads, pinned
 spaces, and a personalized quick-reaction row (studio custom emojis mixed in).
 Logging in as Maya must feel like returning from a day off.
 

@@ -129,7 +129,7 @@
                 class="shrink-0"
                 variant="ghost"
                 icon="lucide-maximize-2"
-                aria-label="Expand comment box"
+                label="Expand comment box"
                 @click.stop="expandComposer"
               />
             </Tooltip>
@@ -142,9 +142,14 @@
                 ? 'flex h-full flex-col'
                 : 'border-t border-outline-gray-2 sm:rounded-lg sm:border-t-0'
             "
+            :aria-busy="isDraftLoading"
+            :inert="isDraftLoading"
             @keydown.ctrl.enter.capture.stop="submitComment"
             @keydown.meta.enter.capture.stop="submitComment"
           >
+            <div v-if="isDraftLoading" role="status" class="mb-2 text-sm text-ink-gray-5">
+              Loading draft…
+            </div>
             <button
               type="button"
               class="absolute left-1/2 top-0 z-10 hidden h-6 w-24 -translate-x-1/2 cursor-ns-resize touch-none items-center justify-center rounded-full opacity-60 transition-opacity hover:opacity-100 focus:opacity-100 group-hover/comment-composer:opacity-100 sm:flex"
@@ -172,7 +177,7 @@
                   class="sm:hidden"
                   variant="ghost"
                   :icon="isComposerFullscreen ? 'lucide-minimize-2' : 'lucide-maximize-2'"
-                  :aria-label="isComposerFullscreen ? 'Minimize comment box' : 'Expand comment box'"
+                  :label="isComposerFullscreen ? 'Minimize comment box' : 'Expand comment box'"
                   @click="toggleMobileComposerFullscreen"
                 />
               </Tooltip>
@@ -181,7 +186,7 @@
                   class="hidden sm:inline-flex"
                   variant="ghost"
                   icon="lucide-minimize-2"
-                  aria-label="Minimize comment box"
+                  label="Minimize comment box"
                   @click="minimizeComposer"
                 />
               </Tooltip>
@@ -201,7 +206,7 @@
               :discardButtonProps="{
                 onClick: discardComment,
               }"
-              :editable="true"
+              :editable="!isDraftLoading"
               :max-height="activeComposerEditorMaxHeightStyle"
               :min-height="activeComposerEditorMinHeightStyle"
               v-model:toolbar-expanded="composerToolbarExpanded"
@@ -263,7 +268,7 @@ import Poll from './Poll.vue'
 import UserAvatar from './UserAvatar.vue'
 import { getScrollContainer } from 'frappe-ui'
 import { dialog } from 'frappe-ui'
-import { useSocket, type NewActivityEvent } from '@/socket'
+import { subscribeToDoc, useSocket, type NewActivityEvent } from '@/socket'
 import { GPActivity, GPComment, GPPoll } from '@/types/doctypes'
 import type { Editor } from '@tiptap/vue-3'
 import { tags } from '@/data/tags'
@@ -286,6 +291,10 @@ interface Props {
   disableNewComment?: boolean
   // transient: hide the fixed comment bar while the post itself is being edited
   hideNewComment?: boolean
+  // Bumped by the parent whenever this client's own action changes the reference
+  // document (pass its `modified`). Lets the timeline refresh for the acting user
+  // without waiting on the `new_activity` socket echo — see the watch below.
+  activityVersion?: string | number
 }
 
 interface NewPoll {
@@ -327,6 +336,7 @@ const props = withDefaults(defineProps<Props>(), {
 const router = useRouter()
 const route = useRoute()
 const socket = useSocket()
+let unsubscribeFromDoc: (() => void) | null = null
 const sessionUser = useSessionUser()
 const isMobileViewport = useIsMobile()
 
@@ -351,6 +361,7 @@ const draft = useDraftSync({
   initialPayload: () => ({ content: '' }),
 })
 const draftData = draft.data
+const isDraftLoading = draft.isLoading
 const newPoll = ref({
   title: '',
   multiple_answers: false,
@@ -428,6 +439,19 @@ const activities = useList<GPActivity>({
     }))
   },
 })
+
+// The timeline normally updates live via the `new_activity` socket event (see
+// onMounted). Independent of that server round trip, the user who just
+// renamed/closed/moved the discussion should see their own action recorded at once.
+// The parent bumps `activityVersion` with the doc's `modified` on every such action,
+// so reload the timeline when it changes (skipping the initial undefined -> value
+// transition on first load, when the list has already fetched on mount).
+watch(
+  () => props.activityVersion,
+  (next, prev) => {
+    if (prev !== undefined && next !== prev) activities.reload()
+  },
+)
 
 const polls = useList<GPPoll>({
   doctype: 'GP Poll',
@@ -840,8 +864,12 @@ onMounted(() => {
     scrollToComment: scrollToCommentById,
     highlightComment,
   })
+  unsubscribeFromDoc = subscribeToDoc(props.doctype, String(props.name))
   socket.on('new_activity', (data: NewActivityEvent) => {
-    if (data.reference_doctype === props.doctype && data.reference_name === props.name) {
+    // The payload stringifies the id (activity.py) but doctypes that autoname to an
+    // integer hand this component a number, so a strict compare never matches and the
+    // timeline silently stops updating. Compare as strings.
+    if (data.reference_doctype === props.doctype && data.reference_name === String(props.name)) {
       activities.reload()
     }
   })
@@ -852,6 +880,7 @@ onUnmounted(() => {
   richQuotes?.setReplyTarget(null)
   richQuotes?.setCommentNavigator(null)
   socket.off('new_activity')
+  unsubscribeFromDoc?.()
   mutationObserver?.disconnect()
   resizeObserver?.disconnect()
   stopComposerResize()

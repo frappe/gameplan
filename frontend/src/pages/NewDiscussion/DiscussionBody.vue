@@ -1,5 +1,15 @@
 <template>
-  <div>
+  <div :aria-busy="isDraftLoading">
+    <div
+      v-if="showDraftLoadingStatus"
+      class="mb-3 flex items-center gap-2 text-sm text-ink-gray-5"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+    >
+      <LoadingIndicator class="size-3" aria-hidden="true" />
+      <span>Loading draft…</span>
+    </div>
     <ErrorMessage :message="errorMessage || publishError" />
     <textarea
       ref="titleTextarea"
@@ -12,17 +22,17 @@
       @keydown.enter.prevent="editor.commands.focus()"
       @keydown.down.prevent="editor.commands.focus()"
       @blur="handleTitleBlur"
-      :disabled="sessionUser.name != author.name"
+      :disabled="!isComposerEditable"
       @input="handleTitleInput"
     />
-    <EditorContent :editor="editor" :class="editorClass" />
+    <EditorContent :editor="editor" :class="editorClass" aria-label="Discussion content" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { nextTick, onMounted, watch } from 'vue'
+import { nextTick, watch } from 'vue'
 import { useTextareaAutosize } from '@vueuse/core'
-import { ErrorMessage } from 'frappe-ui'
+import { ErrorMessage, LoadingIndicator } from 'frappe-ui'
 import { EditorContent } from 'frappe-ui/editor'
 import { useNewDiscussionContext } from './useNewDiscussion'
 import type { Editor } from '@tiptap/core'
@@ -46,8 +56,9 @@ const {
   errorMessage,
   publishError,
   draftData,
-  sessionUser,
-  author,
+  isDraftLoading,
+  isComposerEditable,
+  showDraftLoadingStatus,
   handleTitleInput,
   handleTitleBlur,
 } = useNewDiscussionContext()
@@ -58,16 +69,13 @@ watch(
   { flush: 'post' },
 )
 
-onMounted(() => {
-  let focusInterval: number = setInterval(() => {
-    if (document.activeElement === titleTextarea.value) {
-      clearInterval(focusInterval)
-      return
-    }
-    if (titleTextarea.value) {
-      titleTextarea.value?.focus()
-      clearInterval(focusInterval)
-    }
-  }, 100)
-})
+watch(
+  isComposerEditable,
+  async (editable) => {
+    if (!editable) return
+    await nextTick()
+    titleTextarea.value?.focus()
+  },
+  { immediate: true, flush: 'post' },
+)
 </script>

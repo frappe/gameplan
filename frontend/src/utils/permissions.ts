@@ -54,10 +54,11 @@ type ContentDoc = { owner?: string | null } | null | undefined
 
 /**
  * Mirror of backend `can_delete_content` (gameplan/permissions.py): global admins
- * always; guests never; the content owner; otherwise a community admin of the
- * content's space's community. Gameplan is permissive — members can create and
- * edit freely (edits are transparent via revisions) — so DELETE is the one
- * content action that stays gated.
+ * always; the content owner (members and guests alike may delete what they
+ * authored); guests have no further delete rights; otherwise a community admin of
+ * the content's space's community. Gameplan is permissive — members create and edit
+ * freely (edits are transparent via revisions) — so DELETE-others is the one content
+ * action that stays gated.
  *
  * `space` is the content's space (GP Project); pass null/undefined for personal
  * content with no space, where only the owner or a global admin can delete.
@@ -69,8 +70,32 @@ export function canDeleteContent(
 ) {
   if (!content || !user.name) return false
   if (isGlobalAdmin(user)) return true
-  if (isGuest(user)) return false
   if (content.owner === user.name) return true
+  if (isGuest(user)) return false
   if (!space) return false
   return isCommunityAdmin(getCommunity(space.team), user.name)
+}
+
+/**
+ * Mirror of backend `can_edit_content` (gameplan/permissions.py): global admins
+ * always; a guest only on content they authored (guests are participants but may
+ * edit just their own posts/comments); any member on content inside a space
+ * (Gameplan is community-driven, so space content is member-editable and edits
+ * are transparent via revisions); personal content with no space only by its
+ * owner. Callers render this only for content the user can already view, which
+ * is the backend's view-gate precondition.
+ *
+ * `space` is the content's space (GP Project); pass null/undefined for personal
+ * content with no space.
+ */
+export function canEditContent(
+  content: ContentDoc,
+  space: Space | null | undefined,
+  user: PermissionUser,
+) {
+  if (!content || !user.name) return false
+  if (isGlobalAdmin(user)) return true
+  if (isGuest(user)) return content.owner === user.name
+  if (space) return true
+  return content.owner === user.name
 }

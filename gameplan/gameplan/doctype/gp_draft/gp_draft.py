@@ -19,7 +19,7 @@ class GPDraft(Document):
 		query = query.where(GPDraft.owner == frappe.session.user)
 		return query
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def publish(self):
 		if self.owner != frappe.session.user:
 			frappe.throw("You are not allowed to publish this draft")
@@ -83,7 +83,7 @@ def _keep_newest_singleton(filters: dict) -> str | None:
 	return names[0] if names else None
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def find_my_draft(
 	type: str,
 	mode: str = "New",

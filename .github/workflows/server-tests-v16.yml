@@ -191,8 +191,8 @@ jobs:
       - name: Run migration and v16 boundary tests
         working-directory: /home/runner/frappe-bench
         run: |
-          bench --site gameplan.test run-tests --module gameplan.tests.test_community_migrations
-          bench --site gameplan.test run-tests --module gameplan.tests.test_attachments
+          bench --site gameplan.test run-tests --module gameplan.tests.platform.test_migrations
+          bench --site gameplan.test run-tests --module gameplan.tests.platform.test_attachments
           bench --site gameplan.test run-tests --module gameplan.tests.test_v16_api_compat
 
       - name: Stop server

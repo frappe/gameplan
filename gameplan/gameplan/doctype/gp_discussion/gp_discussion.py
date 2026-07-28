@@ -8,6 +8,7 @@ from frappe.utils import cstr
 from gameplan.gameplan.doctype.gp_notification.gp_notification import GPNotification
 from gameplan.gameplan.doctype.gp_unread_record.gp_unread_record import GPUnreadRecord
 from gameplan.mixins.activity import HasActivity
+from gameplan.mixins.archivable import check_if_space_is_archived
 from gameplan.mixins.attachments import HasAttachments
 from gameplan.mixins.mentions import HasMentions
 from gameplan.mixins.reactions import HasReactions
@@ -67,7 +68,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		return d
 
 	def before_insert(self):
-		self.check_if_project_is_archived()
+		check_if_space_is_archived(self, action="create", content_type="discussions")
 		self.last_post_at = frappe.utils.now()
 		self.update_participants_count()
 
@@ -76,7 +77,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		GPUnreadRecord.create_unread_records_for_discussion(self)
 
 	def on_trash(self):
-		self.remove_bookmark()
+		self.remove_all_bookmarks()
 		self.update_discussions_count()
 		GPUnreadRecord.delete_unread_records_for_discussion(self.name)
 
@@ -111,7 +112,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		self.content = sanitize_content(self.content)
 
 	# Whitelisted Methods
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def track_visit(self):
 		if frappe.flags.read_only:
 			return
@@ -135,7 +136,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		# also mark notifications as read
 		GPNotification.clear_notifications(discussion=self.name)
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def mark_as_unread(self):
 		if frappe.flags.read_only:
 			return
@@ -146,11 +147,11 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 	def get_revisions(self, fieldname="content"):
 		return get_document_revisions(self.doctype, self.name, fieldname)
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def move_to_project(self, project):
 		return move_discussion(self, project)
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def close_discussion(self):
 		if self.closed_at:
 			return
@@ -159,7 +160,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		self.log_activity("Discussion Closed")
 		self.save()
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def reopen_discussion(self):
 		if not self.closed_at:
 			return
@@ -168,7 +169,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		self.log_activity("Discussion Reopened")
 		self.save()
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def pin_discussion(self, pin_scope="Category"):
 		if self.pinned_at:
 			return
@@ -178,7 +179,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		self.log_activity("Discussion Pinned")
 		self.save()
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def unpin_discussion(self):
 		if not self.pinned_at:
 			return
@@ -188,13 +189,13 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		self.log_activity("Discussion Unpinned")
 		self.save()
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def add_bookmark(self):
 		if self.is_bookmarked():
 			return
 		frappe.new_doc("GP Bookmark", discussion=self.name, user=frappe.session.user).insert()
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def remove_bookmark(self):
 		bookmark = frappe.db.get_value(
 			"GP Bookmark", {"discussion": self.name, "user": frappe.session.user}, "name"
@@ -204,6 +205,17 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		frappe.get_doc("GP Bookmark", bookmark).delete()
 
 	# Utility Methods
+	def remove_all_bookmarks(self):
+		"""Drop every user's bookmark of this discussion, not just the acting user's.
+
+		`discussion` is a Link field, so a bookmark left behind by anyone else makes
+		frappe's link check refuse the delete outright. The rows belong to other users
+		(bookmark_has_permission scopes them), so this cascade runs privileged — it is a
+		consequence of an already-authorised discussion delete.
+		"""
+		for name in frappe.get_all("GP Bookmark", filters={"discussion": self.name}, pluck="name"):
+			frappe.delete_doc("GP Bookmark", name, ignore_permissions=True)
+
 	def is_bookmarked(self):
 		return bool(frappe.db.exists("GP Bookmark", {"discussion": self.name, "user": frappe.session.user}))
 
@@ -248,6 +260,15 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 			update_last_post_fields("GP Comment", last_comment)
 		elif last_poll:
 			update_last_post_fields("GP Poll", last_poll)
+		else:
+			# Nothing left in the thread (the last reply was deleted): the discussion is its
+			# own last post again. Without this the feed keeps sorting and attributing the
+			# thread by a reply that no longer exists — `last_post` itself is nulled by the
+			# delete cascade, but `last_post_at` / `last_post_by` would stay behind.
+			self.last_post_type = None
+			self.last_post = None
+			self.last_post_at = self.creation
+			self.last_post_by = self.owner
 
 	def update_post_count(self):
 		comments_count = frappe.db.count(
@@ -265,11 +286,6 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 				"Discussion Title Changed",
 				data={"old_title": self.get_doc_before_save().title, "new_title": self.title},
 			)
-
-	def check_if_project_is_archived(self):
-		project_name, archived_at = frappe.db.get_value("GP Project", self.project, ["name", "archived_at"])
-		if archived_at:
-			frappe.throw(f"Project {project_name} is archived. Cannot create discussions.")
 
 
 def on_doctype_update():

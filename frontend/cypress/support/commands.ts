@@ -59,6 +59,12 @@ declare global {
        * @param option - Option text to select from the dropdown
        */
       selectDropdownOption(dropdownName: string, option: string): Chainable<void>
+
+      /**
+       * Close the portalled emoji picker and wait until its grid is unmounted.
+       * @param probeEmoji - Emoji that appears only in the open grid
+       */
+      dismissEmojiPicker(probeEmoji?: string): Chainable<void>
     }
   }
 }
@@ -97,10 +103,7 @@ Cypress.Commands.add('button', { prevSubject: 'optional' }, (subject, text: stri
   const root = subject ? cy.wrap(subject) : cy
   // frappe-ui's Button renders as a router-link/anchor (not a <button>) when
   // given a `route` or `link` prop, so match button-styled anchors as well.
-  return root.contains(
-    'button:visible, a.inline-flex.items-center.justify-center:visible',
-    text,
-  )
+  return root.contains('button:visible, a.inline-flex.items-center.justify-center:visible', text)
 })
 
 Cypress.Commands.add('combobox', { prevSubject: 'optional' }, (subject, placeholder: string) => {
@@ -134,10 +137,11 @@ Cypress.Commands.add('selectCombobox', (placeholder: string, option: string) => 
   // one-shot DOM check can miss them.
   cy.get('body').should(($body) => {
     const hasInput = $body.find(inputSelector).length > 0
-    const hasButton = $body
-      .find(buttonSelector)
-      .filter((_, el) => Cypress.$(el).is(':visible') && el.textContent?.includes(placeholder))
-      .length > 0
+    const hasButton =
+      $body
+        .find(buttonSelector)
+        .filter((_, el) => Cypress.$(el).is(':visible') && el.textContent?.includes(placeholder))
+        .length > 0
     expect(hasInput || hasButton, `trigger for "${placeholder}" mounted`).to.be.true
   })
 
@@ -157,6 +161,18 @@ Cypress.Commands.add('selectCombobox', (placeholder: string, option: string) => 
 Cypress.Commands.add('selectDropdownOption', (dropdownName: string, option: string) => {
   cy.get(`button[aria-haspopup=menu][aria-label="${dropdownName}"]`).click()
   cy.get(`[role="menuitem"]:contains("${option}"):visible`).click()
+  // A modal reka menu locks the page while it is open (`pointer-events: none` on
+  // <body>) and only releases that lock when the menu content unmounts at the end of
+  // its exit animation — reka's DismissableLayer never restores the flag itself. Until
+  // then the page is dead to the mouse for a real user too, so wait for the menu to be
+  // gone rather than forcing a click through the lock. An upstream reka-ui issue still
+  // needs opening so this wait can be removed when the dependency fix reaches frappe-ui.
+  cy.get('[role="menu"]').should('not.exist')
+})
+
+Cypress.Commands.add('dismissEmojiPicker', (probeEmoji = '🤯') => {
+  cy.get('body').type('{esc}')
+  cy.get(`button:contains("${probeEmoji}")`).should('not.exist')
 })
 
 // Export for ES module compatibility

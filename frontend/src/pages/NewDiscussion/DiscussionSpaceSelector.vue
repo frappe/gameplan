@@ -4,7 +4,7 @@
     :options="spaceOptions"
     v-model="draftData.project"
     placeholder="Select Space"
-    :class="[author.name !== sessionUser.name ? 'pointer-events-none' : '']"
+    :disabled="!isComposerEditable"
     @change="handleSpaceChange"
   >
     <template #item-prefix="{ item }">
@@ -18,8 +18,7 @@ import { Combobox } from 'frappe-ui'
 import SpaceIcon from '@/components/SpaceIcon.vue'
 import { useNewDiscussionContext } from './useNewDiscussion'
 
-const { author, sessionUser, draftData, spaceOptions, handleSpaceChange } =
-  useNewDiscussionContext()
+const { draftData, spaceOptions, isComposerEditable, handleSpaceChange } = useNewDiscussionContext()
 
 function optionIcon(item: unknown) {
   if (!item || typeof item !== 'object' || !('icon' in item)) return null

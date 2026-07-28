@@ -71,7 +71,7 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 		total_tasks = frappe.db.count("GP Task", filters={"project": self.name})
 		self.db_set("tasks_count", total_tasks)
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def move_to_team(self, team=None):
 		if self.team == team:
 			return
@@ -83,7 +83,7 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 		for doctype in PROJECT_TEAM_DOCTYPES:
 			update_project_team_reference(doctype, self.name, self.team)
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def merge_with_project(self, project=None):
 		if not project or self.name == project:
 			return
@@ -93,14 +93,14 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 			frappe.throw(f'Invalid Project "{project}"')
 		return self.rename(project, merge=True, validate_rename=False, force=True)
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def invite_guest(self, email):
 		require_can_invite_guest(self)
 		# Trusted path: a space member invites a guest to this space. The role is
 		# hardcoded (non-escalating), so it bypasses invite_by_email's admin gate.
 		_invite_by_email(email, role="Gameplan Guest", projects=[self.name])
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def remove_guest(self, email):
 		require_can_invite_guest(self)
 		name = frappe.db.get_value("GP Guest Access", {"project": self.name, "user": email})
@@ -109,8 +109,7 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 
 	@frappe.whitelist(methods=["POST"])
 	def track_visit(self):
-		if not can_view_space(frappe.session.user, self):
-			frappe.throw("Not permitted", frappe.PermissionError)
+		self.require_view_access()
 		if frappe.flags.read_only:
 			return
 
@@ -126,18 +125,12 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 			visit.last_visit = frappe.utils.now()
 			visit.insert(ignore_permissions=True)
 
-	@property
-	def is_followed(self):
-		return bool(
-			frappe.db.exists("GP Followed Project", {"project": self.name, "user": frappe.session.user})
-		)
-
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def add_member(self, user):
 		require_can_manage_space_members(self)
 		self.add_member_row(user)
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def remove_member(self, user):
 		require_can_manage_space_members(self)
 		for member in self.members:
@@ -148,9 +141,12 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 
 	@frappe.whitelist(methods=["POST"])
 	def join(self):
+		self.require_view_access()
+		self.add_member_row(frappe.session.user)
+
+	def require_view_access(self):
 		if not can_view_space(frappe.session.user, self):
 			frappe.throw("Not permitted", frappe.PermissionError)
-		self.add_member_row(frappe.session.user)
 
 	def add_member_row(self, user):
 		if user not in [d.user for d in self.members]:
@@ -159,8 +155,7 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 
 	@frappe.whitelist(methods=["POST"])
 	def leave(self):
-		if not can_view_space(frappe.session.user, self):
-			frappe.throw("Not permitted", frappe.PermissionError)
+		self.require_view_access()
 		user = frappe.session.user
 		for member in self.members:
 			if member.user == user:
@@ -168,7 +163,7 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 				self.save(ignore_permissions=True)
 				break
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def archive(self):
 		super().archive()
 		# delete pinned projects
@@ -180,8 +175,7 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 	@frappe.whitelist(methods=["POST"])
 	def mark_all_as_read(self):
 		"""Mark all discussions as read using a project-level timestamp."""
-		if not can_view_space(frappe.session.user, self):
-			frappe.throw("Not permitted", frappe.PermissionError)
+		self.require_view_access()
 		user = frappe.session.user
 		project_name = self.name
 		now = frappe.utils.now()
@@ -272,33 +266,41 @@ def update_project_team_reference(doctype: str, project: str, team: str | None):
 
 
 @frappe.whitelist(methods=["POST"])
-def join_spaces(spaces: list[str] = None):
+def join_spaces(spaces: list[str | int] = None):
 	if not spaces:
 		return
 	for space in spaces:
-		frappe.get_doc("GP Project", space).join()
+		frappe.get_doc("GP Project", str(space)).join()
 
 
 @frappe.whitelist(methods=["POST"])
-def leave_spaces(spaces: list[str] = None):
+def leave_spaces(spaces: list[str | int] = None):
 	if not spaces:
 		return
 	for space in spaces:
-		frappe.get_doc("GP Project", space).leave()
+		frappe.get_doc("GP Project", str(space)).leave()
 
 
 @frappe.whitelist(methods=["POST"])
-def track_visit(space: str):
-	frappe.get_doc("GP Project", space).track_visit()
+def track_visits(spaces: list[str | int] = None):
+	if not spaces:
+		return
+	for space in spaces:
+		frappe.get_doc("GP Project", str(space)).track_visit()
 
 
 @frappe.whitelist(methods=["POST"])
-def mark_all_as_read(spaces: list[str] = None):
+def track_visit(space: str | int):
+	frappe.get_doc("GP Project", str(space)).track_visit()
+
+
+@frappe.whitelist(methods=["POST"])
+def mark_all_as_read(spaces: list[str | int] = None):
 	"""Mark all unread discussions as read for multiple spaces at once."""
 	if not spaces:
 		return
 	for space in spaces:
-		frappe.get_doc("GP Project", space).mark_all_as_read()
+		frappe.get_doc("GP Project", str(space)).mark_all_as_read()
 
 
 @frappe.whitelist()

@@ -67,14 +67,14 @@ class GPTeam(Archivable, Document):
 			{"email": email, "user": email, "status": "Accepted", "is_admin": is_admin},
 		)
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def add_members(self, users):
 		require_can_manage_community(self)
 		for user in users:
 			self.add_member(user)
 		self.save()
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def remove_member(self, user):
 		require_can_manage_community(self)
 		member = self.get_member(user)
@@ -86,13 +86,13 @@ class GPTeam(Archivable, Document):
 		self.remove_private_space_memberships(user)
 		self.save()
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def remove_guest_access(self, user):
 		require_can_manage_community(self)
 		for access_name in self.get_guest_access_names(user):
 			frappe.delete_doc("GP Guest Access", access_name, ignore_permissions=True)
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def remove_guest_invitation(self, invitation):
 		require_can_manage_community(self)
 		invitation = frappe.get_doc("GP Invitation", invitation)
@@ -114,7 +114,7 @@ class GPTeam(Archivable, Document):
 
 		frappe.delete_doc("GP Invitation", invitation.name, ignore_permissions=True)
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def merge_into_team(self, team: str):
 		if self.archived_at:
 			frappe.throw(_("Cannot merge an archived community"))
@@ -127,7 +127,7 @@ class GPTeam(Archivable, Document):
 		self.copy_members_to(target)
 		self.archive()
 
-	@frappe.whitelist()
+	@frappe.whitelist(methods=["POST"])
 	def set_member_admin(self, user, is_admin):
 		require_can_manage_community(self)
 		member = self.get_member(user)
