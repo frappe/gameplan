@@ -261,6 +261,14 @@ Both consumers are self-contained — no Codecov, no shields.io:
   would have them clobbering each other. The badges therefore always show `develop`,
   not the branch you are reading.
 
+  Publishing needs `contents: write` **on the job**, not just the workflow — a
+  job-level `permissions:` block replaces the workflow-level one outright instead
+  of adding to it, so a job that declares `pull-requests: write` and forgets
+  `contents: write` cannot push the badge. That failure is a 403 at `git push`,
+  long after the suite is green, which is why these steps are not
+  `continue-on-error`: the first version was, and it reported success while
+  publishing nothing and leaving the README badge 404ing.
+
 ## 3. E2E tests (Cypress)
 
 E2E specs drive a real browser against a real backend. They cover the happy path a

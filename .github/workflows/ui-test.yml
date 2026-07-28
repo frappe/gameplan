@@ -18,6 +18,15 @@ jobs:
     if: ${{ github.repository_owner == 'frappe' }}
     timeout-minutes: 60
 
+    # contents: write force-pushes the frontend badge to its orphan branch on
+    # develop; pull-requests: write posts the test report. Both are needed here
+    # because a job-level block replaces the workflow-level one outright rather
+    # than adding to it — declaring only contents: write would silently drop the
+    # ability to comment. Fork pull requests get a read-only token regardless.
+    permissions:
+      contents: write
+      pull-requests: write
+
     strategy:
       fail-fast: false
 
@@ -158,9 +167,14 @@ jobs:
             --body-file "${RUNNER_TEMP}/frontend-section.md" \
             --footer "<sub>Updated for commit ${{ github.event.pull_request.head.sha }}.</sub>"
 
+      # Deliberately NOT continue-on-error. It was, and that hid a 403 from a
+      # missing contents: write for a whole release cycle: the step reported
+      # success, published nothing, and the README badge 404'd with no signal
+      # anywhere. This only runs on a push to develop, where the suite has
+      # already passed and reddening the run blocks nobody — a stale badge is
+      # worth exactly one red run to find out about.
       - name: Publish frontend coverage badge
         if: ${{ steps.report.outputs.built == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/develop' }}
-        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bash .github/scripts/publish_badge.sh "${RUNNER_TEMP}/frontend-coverage.svg" badges-frontend

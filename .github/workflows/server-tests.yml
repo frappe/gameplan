@@ -162,9 +162,10 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
+      # Not continue-on-error, for the reason spelled out in ui-test.yml: a badge
+      # that silently fails to publish is a 404 in the README with no signal.
       - name: Publish coverage badge
         if: ${{ steps.report.outputs.built == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/develop' }}
-        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bash .github/scripts/publish_badge.sh "${RUNNER_TEMP}/coverage.svg" badges-backend
