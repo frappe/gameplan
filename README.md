@@ -8,6 +8,12 @@
 <a href="https://dashboard.cypress.io/projects/y2q697/runs">
     <img alt="cypress" src="https://img.shields.io/endpoint?url=https://dashboard.cypress.io/badge/simple/y2q697/main&style=flat&logo=cypress">
 </a>
+<a href="https://github.com/frappe/gameplan/actions/workflows/server-tests.yml">
+    <img alt="backend test coverage" src="https://raw.githubusercontent.com/frappe/gameplan/badges-backend/coverage.svg">
+</a>
+<a href="https://github.com/frappe/gameplan/actions/workflows/ui-test.yml">
+    <img alt="frontend test coverage" src="https://raw.githubusercontent.com/frappe/gameplan/badges-frontend/coverage.svg">
+</a>
 
 
 

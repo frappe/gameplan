@@ -7,3 +7,6 @@ cypress/results
 cypress/screenshots
 cypress/videos
 cypress/downloads
+coverage
+.nyc_output
+.nyc_merged

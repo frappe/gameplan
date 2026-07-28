@@ -73,6 +73,9 @@ jobs:
           path: ~/.cache/Cypress
           key: ${{ runner.os }}-cypress
 
+      # GAMEPLAN_COVERAGE instruments the frontend bundle this step builds, which is
+      # what Cypress then drives. It is scoped to this workflow on purpose: it roughly
+      # doubles bundle size and slows every expression, so no production build sets it.
       - name: Install Dependencies
         run: |
           bash ${GITHUB_WORKSPACE}/.github/helper/install_dependencies.sh
@@ -80,6 +83,7 @@ jobs:
         env:
           BEFORE: ${{ env.GITHUB_EVENT_PATH.before }}
           AFTER: ${{ env.GITHUB_EVENT_PATH.after }}
+          GAMEPLAN_COVERAGE: "1"
 
       - name: Site Setup
         run: |
@@ -97,37 +101,91 @@ jobs:
           # realtime service is listening on 9000 and the spec's preflight can reach it. The
           # skip predated that being checked and made the suite's realtime coverage dead.
 
-      # Same-repo PRs have a read-write token, so comment directly here for instant
-      # feedback. Fork PRs (read-only token) are handled by ui-test-report.yml, which
-      # consumes the artifacts uploaded below — hence the same-repo-only guard.
-      - name: Build markdown report
-        if: ${{ always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
-        run: python .github/scripts/junit_to_markdown.py frontend/cypress/results "${{ github.event.pull_request.head.sha }}" > "$RUNNER_TEMP/ui-test-report.md"
+      # Merges the zeroed instrument-time baseline under the runtime data before
+      # reporting. Without it the 33 lazy routes no spec visits would be absent from
+      # the report rather than counted as 0%, which flatters the number by shrinking
+      # the denominator. See frontend/vite.config.ts.
+      #
+      # The baseline has to be carried across trees first: `bench get-app` clones the
+      # workspace into the bench, so the instrumented build wrote it under
+      # apps/gameplan/frontend while Cypress wrote .nyc_output here.
+      #
+      # COVERAGE_ROOT is what makes that split survive the merge. The instrumented
+      # bundle records absolute paths in the bench tree, and nyc discards every entry
+      # that falls outside its own cwd — so merging from this tree silently yields
+      # 0/0 rather than failing. It must point at the tree the coverage paths name.
+      #
+      # Results and coverage form one section of a single PR comment shared with the
+      # backend job — see .github/scripts/pr_comment.py.
+      - name: Build frontend report
+        id: report
+        if: ${{ always() }}
+        run: |
+          python .github/scripts/junit_to_markdown.py frontend/cypress/results \
+            --label Cypress --kind spec \
+            --run-url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            > "${RUNNER_TEMP}/frontend-section.md"
 
-      - name: Comment results on PR (same-repo)
-        uses: marocchino/sticky-pull-request-comment@v2
-        if: ${{ always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
-        with:
-          header: ui-test-results
-          path: ${{ runner.temp }}/ui-test-report.md
+          mkdir -p frontend/coverage
+          if cp ~/frappe-bench/apps/gameplan/frontend/coverage/baseline.json frontend/coverage/baseline.json \
+            && (cd frontend && COVERAGE_ROOT="${HOME}/frappe-bench/apps/gameplan/frontend" yarn coverage:merge) \
+            && python .github/scripts/coverage_report.py frontend/coverage/cobertura-coverage.xml \
+              --profile frontend --compact \
+              --markdown "${RUNNER_TEMP}/frontend-coverage.md" \
+              --badge "${RUNNER_TEMP}/frontend-coverage.svg"; then
+            echo "built=true" >> "$GITHUB_OUTPUT"
+            printf '\n' >> "${RUNNER_TEMP}/frontend-section.md"
+            cat "${RUNNER_TEMP}/frontend-coverage.md" >> "${RUNNER_TEMP}/frontend-section.md"
+          else
+            echo "built=false" >> "$GITHUB_OUTPUT"
+            printf '\nFrontend coverage was unavailable for this run.\n' >> "${RUNNER_TEMP}/frontend-section.md"
+          fi
+          cat "${RUNNER_TEMP}/frontend-section.md" >> "$GITHUB_STEP_SUMMARY"
 
-      # Uploaded for the workflow_run reporter (fork PRs): the JUnit XML plus the
-      # event payload, which the report job needs to resolve which PR to comment on.
-      - name: Upload test results
+      # Same-repo PRs have a read-write token, so write directly here for instant
+      # feedback. Fork PRs (read-only token) are handled by ui-test-report.yml from
+      # the artifacts below — hence the same-repo-only guard.
+      - name: Comment on PR (same-repo)
+        if: ${{ always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python .github/scripts/pr_comment.py \
+            --repo "${GITHUB_REPOSITORY}" \
+            --pr "${{ github.event.pull_request.number }}" \
+            --section frontend \
+            --body-file "${RUNNER_TEMP}/frontend-section.md" \
+            --footer "<sub>Updated for commit ${{ github.event.pull_request.head.sha }}.</sub>"
+
+      - name: Publish frontend coverage badge
+        if: ${{ steps.report.outputs.built == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/develop' }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash .github/scripts/publish_badge.sh "${RUNNER_TEMP}/frontend-coverage.svg" badges-frontend
+
+      # Staged into one directory so the artifact's internal layout does not depend on
+      # where upload-artifact decides the common ancestor of its inputs is. JUnit lives
+      # in its own subdirectory: the reporter hands that whole directory to the JUnit
+      # parser, and the Cobertura file must not be in it.
+      - name: Stage frontend results
+        if: ${{ always() }}
+        run: |
+          mkdir -p "${RUNNER_TEMP}/frontend-results/junit"
+          cp frontend/cypress/results/*.xml "${RUNNER_TEMP}/frontend-results/junit/" || true
+          cp frontend/coverage/cobertura-coverage.xml "${RUNNER_TEMP}/frontend-results/" || true
+
+      # Consumed by the workflow_run reporter (fork PRs), which re-renders both in the
+      # trusted context. The event payload is deliberately NOT uploaded: that job
+      # resolves the PR from the event's own head_sha, never from fork-controlled input.
+      - name: Upload frontend results
         uses: actions/upload-artifact@v4
         if: ${{ always() }}
         with:
-          name: cypress-results
-          path: frontend/cypress/results/*.xml
+          name: frontend-results
+          path: ${{ runner.temp }}/frontend-results
           if-no-files-found: warn
-          retention-days: 7
-
-      - name: Upload event file
-        uses: actions/upload-artifact@v4
-        if: ${{ always() }}
-        with:
-          name: cypress-event
-          path: ${{ github.event_path }}
           retention-days: 7
 
       - name: Upload failure screenshots & videos

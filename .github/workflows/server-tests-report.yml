@@ -1,12 +1,12 @@
-name: UI Test Report
+name: Server Test Coverage Report
 
-# Runs after "UI Test" completes. Triggered by workflow_run, it executes in the
-# base-repo (trusted) context with a read-write token, so it can post a results
-# comment even when the test run came from a fork PR — where the test workflow's
-# own token is read-only and cannot comment.
+# Runs after "Server Tests" completes. Triggered by workflow_run, it executes in the
+# base-repo (trusted) context with a read-write token, so it can post the coverage
+# comment even when the run came from a fork PR — where the test workflow's own token
+# is read-only and cannot comment.
 on:
   workflow_run:
-    workflows: ["UI Test"]
+    workflows: ["Server Tests"]
     types:
       - completed
 
@@ -18,9 +18,9 @@ permissions:
 jobs:
   report:
     runs-on: ubuntu-latest
-    # Fork PRs only — same-repo PRs comment inline from ui-test.yml, so skipping them
-    # here avoids a duplicate comment. (head_repository differs from the base repo
-    # only when the run originated from a fork.)
+    # Fork PRs only — same-repo PRs comment inline from server-tests.yml, so skipping
+    # them here avoids a duplicate comment. (head_repository differs from the base
+    # repo only when the run originated from a fork.)
     if: >-
       github.event.workflow_run.conclusion != 'skipped'
       && github.repository_owner == 'frappe'
@@ -40,10 +40,14 @@ jobs:
           path: artifacts
 
       # Resolved from the workflow_run event's own head_sha and head_repository, both
-      # trusted. Reading the number out of the uploaded event.json instead would let a
-      # fork name any PR in the repo and have this write-authorized token comment on
-      # it. A commit can belong to several open PRs, so this must resolve to exactly
-      # one match; anything ambiguous comments nowhere rather than guessing.
+      # trusted, via the API. Reading the number out of an uploaded event.json instead
+      # would let a fork name any PR in the repo and have this write-authorized token
+      # comment on it.
+      #
+      # A commit can belong to more than one open PR, so matching is narrowed to PRs
+      # whose head is exactly this SHA on exactly this fork, and it must resolve to
+      # exactly one. Anything ambiguous comments nowhere rather than guessing — the
+      # report is worth less than a comment landing on an unrelated PR.
       - name: Resolve PR number
         id: pr
         env:
@@ -69,21 +73,20 @@ jobs:
 
       # Both XML inputs are fork-controlled, so the coverage script caps their size
       # and refuses entity declarations before parsing.
-      - name: Build frontend report
+      - name: Build backend report
         if: ${{ steps.pr.outputs.number != '' }}
         run: |
-          python .github/scripts/junit_to_markdown.py artifacts/frontend-results/junit \
-            --label Cypress --kind spec \
+          python .github/scripts/junit_to_markdown.py artifacts/backend-results/backend-junit.xml \
+            --label Backend --kind module \
             --run-url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${{ github.event.workflow_run.id }}" \
-            > "${RUNNER_TEMP}/frontend-section.md"
+            > "${RUNNER_TEMP}/backend-section.md"
 
-          if python .github/scripts/coverage_report.py \
-              artifacts/frontend-results/cobertura-coverage.xml \
-              --profile frontend --compact --markdown "${RUNNER_TEMP}/frontend-coverage.md"; then
-            printf '\n' >> "${RUNNER_TEMP}/frontend-section.md"
-            cat "${RUNNER_TEMP}/frontend-coverage.md" >> "${RUNNER_TEMP}/frontend-section.md"
+          if python .github/scripts/coverage_report.py artifacts/backend-results/coverage.xml \
+              --profile backend --compact --markdown "${RUNNER_TEMP}/coverage-part.md"; then
+            printf '\n' >> "${RUNNER_TEMP}/backend-section.md"
+            cat "${RUNNER_TEMP}/coverage-part.md" >> "${RUNNER_TEMP}/backend-section.md"
           else
-            printf '\nFrontend coverage was unavailable for this run.\n' >> "${RUNNER_TEMP}/frontend-section.md"
+            printf '\nBackend coverage was unavailable for this run.\n' >> "${RUNNER_TEMP}/backend-section.md"
           fi
 
       - name: Comment on PR (fork)
@@ -95,6 +98,6 @@ jobs:
           python .github/scripts/pr_comment.py \
             --repo "${GITHUB_REPOSITORY}" \
             --pr "${{ steps.pr.outputs.number }}" \
-            --section frontend \
-            --body-file "${RUNNER_TEMP}/frontend-section.md" \
+            --section backend \
+            --body-file "${RUNNER_TEMP}/backend-section.md" \
             --footer "<sub>Updated for commit ${{ github.event.workflow_run.head_sha }}.</sub>"

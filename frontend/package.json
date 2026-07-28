@@ -8,7 +8,8 @@
     "build": "vite build",
     "serve": "vite preview",
     "test-local": "cypress open --e2e --browser chrome",
-    "test": "cypress run"
+    "test": "cypress run",
+    "coverage:merge": "rm -rf .nyc_merged && mkdir -p .nyc_merged && cp coverage/baseline.json .nyc_merged/baseline.json && cp .nyc_output/out.json .nyc_merged/out.json && nyc report --nycrc-path \"$PWD/.nycrc.json\" --temp-dir \"$PWD/.nyc_merged\" --cwd \"${COVERAGE_ROOT:-$PWD}\" --report-dir \"$PWD/coverage\""
   },
   "dependencies": {
     "@floating-ui/vue": "^1.1.6",
@@ -32,6 +33,7 @@
     "vue-virtual-scroller": "2.0.0-beta.8"
   },
   "devDependencies": {
+    "@cypress/code-coverage": "^3.14.7",
     "@tailwindcss/container-queries": "^0.1.1",
     "@types/node": "^20.19.4",
     "@vitejs/plugin-vue": "^6.0.5",
@@ -39,13 +41,15 @@
     "autoprefixer": "^10.4.2",
     "cypress": "14.5.1",
     "mocha-junit-reporter": "^2.2.1",
+    "nyc": "^18.0.0",
     "postcss": "^8.4.5",
     "prettier": "^3.3.3",
     "prettier-plugin-tailwindcss": "^0.6.8",
     "rollup-plugin-visualizer": "^5.8.2",
     "tailwindcss": "^3.4.15",
     "typescript": "^5.8.3",
-    "vite": "^8.0.1"
+    "vite": "^8.0.1",
+    "vite-plugin-istanbul": "^9.0.1"
   },
   "resolutions": {
     "@tiptap/core": "3.26.0",

@@ -18,6 +18,14 @@ jobs:
     if: ${{ github.repository_owner == 'frappe' }}
     timeout-minutes: 60
 
+    # contents: write pushes the regenerated README badge on develop;
+    # pull-requests: write posts the coverage comment. Fork pull requests get a
+    # read-only token regardless, which is why the comment step is best-effort
+    # and the job summary always carries the same report.
+    permissions:
+      contents: write
+      pull-requests: write
+
     strategy:
       fail-fast: false
 
@@ -75,30 +83,91 @@ jobs:
           BEFORE: ${{ env.GITHUB_EVENT_PATH.before }}
           AFTER: ${{ env.GITHUB_EVENT_PATH.after }}
 
-      # frappe.coverage imports `coverage` from the bench env, which a fresh bench does
-      # not install. Without this the --coverage run below dies before a single test.
-      - name: Install coverage
-        if: ${{ github.event_name == 'pull_request' }}
-        run: ~/frappe-bench/env/bin/pip install coverage
+      # Neither is in a fresh bench env: frappe.coverage imports `coverage` (without it
+      # the --coverage run dies before a single test), and unittest-xml-reporting is
+      # only in frappe's optional `test` extra. Missing xmlrunner is not fatal — frappe
+      # falls back to the plain runner — but the report would then lose the list of
+      # which tests failed, which is the point of collecting it.
+      - name: Install coverage and JUnit reporting
+        run: ~/frappe-bench/env/bin/pip install coverage unittest-xml-reporting
 
+      # The JUnit XML is what lets the PR comment name the tests that failed instead
+      # of just linking to the log.
       - name: Run Tests
         working-directory: /home/runner/frappe-bench
         run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            bench --site gameplan.test run-tests --app gameplan --coverage
-          else
-            bench --site gameplan.test run-tests --app gameplan
-          fi
+          bench --site gameplan.test run-tests --app gameplan --coverage \
+            --junit-xml-output "${RUNNER_TEMP}/backend-junit.xml"
 
-      # Job summaries need no write permission, so this is also safe and visible on
-      # fork PRs whose GITHUB_TOKEN is read-only. Coverage is reporting, not a gate:
-      # if the report cannot be produced, say so rather than reddening a passing suite.
-      - name: Report backend coverage
+      # Reporting, not a gate: if a report cannot be produced, say so rather than
+      # reddening a suite that passed. Results and coverage are one section of a
+      # single PR comment shared with the UI job — see .github/scripts/pr_comment.py.
+      - name: Build backend report
+        id: report
+        if: ${{ always() }}
+        run: |
+          python .github/scripts/junit_to_markdown.py "${RUNNER_TEMP}/backend-junit.xml" \
+            --label Backend --kind module \
+            --run-url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            > "${RUNNER_TEMP}/backend-section.md"
+
+          if python .github/scripts/coverage_report.py ~/frappe-bench/sites/coverage.xml \
+              --markdown "${RUNNER_TEMP}/coverage-part.md" \
+              --badge "${RUNNER_TEMP}/coverage.svg" --compact; then
+            echo "built=true" >> "$GITHUB_OUTPUT"
+            printf '\n' >> "${RUNNER_TEMP}/backend-section.md"
+            cat "${RUNNER_TEMP}/coverage-part.md" >> "${RUNNER_TEMP}/backend-section.md"
+          else
+            echo "built=false" >> "$GITHUB_OUTPUT"
+            printf '\nBackend coverage was unavailable for this run.\n' >> "${RUNNER_TEMP}/backend-section.md"
+          fi
+          cat "${RUNNER_TEMP}/backend-section.md" >> "$GITHUB_STEP_SUMMARY"
+
+      # Same-repo PRs have a read-write token, so write directly here. Fork PRs
+      # (read-only token) are handled by server-tests-report.yml from the artifacts
+      # below — hence the same-repo-only guard.
+      - name: Comment on PR (same-repo)
+        if: ${{ always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python .github/scripts/pr_comment.py \
+            --repo "${GITHUB_REPOSITORY}" \
+            --pr "${{ github.event.pull_request.number }}" \
+            --section backend \
+            --body-file "${RUNNER_TEMP}/backend-section.md" \
+            --footer "<sub>Updated for commit ${{ github.event.pull_request.head.sha }}.</sub>"
+
+      # Uploaded for the workflow_run reporter (fork PRs), which re-renders both in
+      # the trusted context. Deliberately the only artifacts: that job resolves the
+      # PR to comment on from the event's head_sha, never from anything uploaded here.
+      # Staged into one directory first: upload-artifact roots a multi-path artifact at
+      # the least common ancestor of those paths, which for a bench path and a runner
+      # temp path is /home/runner — so the reporter would have to know both absolute
+      # layouts. A flat directory keeps the artifact's shape stable.
+      - name: Stage backend results
         if: ${{ always() && github.event_name == 'pull_request' }}
         run: |
-          python .github/scripts/coverage_to_markdown.py ~/frappe-bench/sites/coverage.xml \
-            >> "$GITHUB_STEP_SUMMARY" \
-            || echo "Backend coverage report unavailable for this run." >> "$GITHUB_STEP_SUMMARY"
+          mkdir -p "${RUNNER_TEMP}/backend-results"
+          cp ~/frappe-bench/sites/coverage.xml "${RUNNER_TEMP}/backend-results/" || true
+          cp "${RUNNER_TEMP}/backend-junit.xml" "${RUNNER_TEMP}/backend-results/" || true
+
+      - name: Upload backend results
+        uses: actions/upload-artifact@v4
+        if: ${{ always() && github.event_name == 'pull_request' }}
+        with:
+          name: backend-results
+          path: ${{ runner.temp }}/backend-results
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Publish coverage badge
+        if: ${{ steps.report.outputs.built == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/develop' }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash .github/scripts/publish_badge.sh "${RUNNER_TEMP}/coverage.svg" badges-backend
 
       - name: Stop server
         if: ${{ always() }}

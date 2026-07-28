@@ -1,4 +1,6 @@
 import { defineConfig } from 'cypress'
+// @ts-expect-error @cypress/code-coverage ships untyped plugin entry points.
+import registerCodeCoverageTasks from '@cypress/code-coverage/task'
 
 interface RequestAsUserOptions {
   user: string
@@ -314,6 +316,10 @@ export default defineConfig({
         realtimePreflight: (options) => realtimePreflight(config.baseUrl, options ?? undefined),
         requestAsUser: (options) => requestAsUser(config.baseUrl, options),
       })
+      // Registers its own tasks and nyc reporting. It is a no-op unless the app
+      // under test was built with GAMEPLAN_COVERAGE=1, so a normal local run is
+      // unaffected beyond a one-line "coverage not collected" warning.
+      registerCodeCoverageTasks(on, config)
       return config
     },
   },

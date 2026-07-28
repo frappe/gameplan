@@ -13,6 +13,10 @@ Each layer owns a different kind of check. Put a test in the layer that owns it.
 | Cypress E2E                        | Real browser + backend | User journeys, one happy path per feature, UI/routing/mobile behavior |
 | Vitest (planned, not set up yet)   | Node                   | Pure frontend logic only (no DOM, no network)                         |
 
+Frontend coverage is collected from the Cypress layer, not from Vitest — see
+§ 2 "Coverage". There is still no unit-test runner; `src/utils` and `src/composables`
+together are ~630 of 27k frontend lines, which is why one has not earned its keep.
+
 The rule:
 
 - Permission matrices and edge cases **never** go in E2E. They live in the backend
@@ -154,6 +158,108 @@ bench --site gameplan-demo.test run-tests --app gameplan
 # Just the permission matrix
 bench --site gameplan-demo.test run-tests --module gameplan.tests.permissions.test_permission_matrix
 ```
+
+### Coverage
+
+Both layers are measured, and both are **informational** — no minimum is enforced
+and no check fails on coverage. Both emit Cobertura XML, so one script renders both;
+`--profile` picks the denominator, area map and caveat.
+
+```bash
+# Backend — writes sites/coverage.xml
+# (needs coverage in the bench env: env/bin/pip install coverage)
+bench --site gameplan-demo.test run-tests --app gameplan --coverage
+python .github/scripts/coverage_report.py ~/benches/frappe-bench/sites/coverage.xml \
+  --profile backend
+
+# Frontend — needs an instrumented build, then the usual Cypress run
+cd frontend && GAMEPLAN_COVERAGE=1 yarn build   # from the bench: GAMEPLAN_COVERAGE=1 bench build --app gameplan
+yarn test
+yarn coverage:merge
+python ../.github/scripts/coverage_report.py coverage/cobertura-coverage.xml \
+  --profile frontend
+```
+
+#### The two numbers are not comparable
+
+The backend number comes from unit and integration tests that assert on what they
+execute. The frontend number comes from Cypress driving an instrumented build, so a
+line counts as covered when it **ran** — a happy-path spec marks everything it
+renders past, asserted or not. Read the frontend number to find untouched areas, not
+as a quality score, and do not read the gap between the two as a quality gap. The
+report footer says so on every frontend comment.
+
+#### What is excluded, and why the denominator is honest
+
+`coverage_report.py` measures **product code only**. For the backend this matters a
+lot: `frappe.coverage` points coverage at the whole app directory, so an unfiltered
+report counts the test suite itself — ~100% covered by construction — and inflates
+the headline (87.6% unfiltered against 83.7% real, when this was written). Each
+profile's `excluded` tuple is the filter, and the report footer always names what it
+dropped.
+
+The frontend has the mirror-image trap. 33 routes are lazy `() => import(...)`, so a
+page no spec visits never registers in `window.__coverage__` and would drop out of
+the report entirely — flattering the percentage by shrinking the denominator rather
+than counting the file as 0%. `frontend/vite.config.ts` therefore writes a zeroed
+baseline of every instrumented file at build time, and `yarn coverage:merge` merges
+it *under* the runtime data. Untouched files count as 0%, which is the honest number.
+
+`GAMEPLAN_COVERAGE=1` is what enables instrumentation. Only `ui-test.yml` sets it:
+it roughly doubles bundle size and slows every expression, so no production build
+should ever carry it.
+
+One more trap, specific to CI. `bench get-app` **clones** the repo into the bench
+rather than symlinking it, so the instrumented build writes its baseline under
+`~/frappe-bench/apps/gameplan/frontend` while Cypress writes `.nyc_output` in the
+workspace checkout — two trees. The recorded coverage paths belong to the bench
+tree, and nyc silently discards every entry outside its own cwd, so merging from
+the workspace yields `0/0` and a report with nothing in it rather than an error.
+`COVERAGE_ROOT` (consumed by `coverage:merge`) points nyc at the tree the paths
+name. Locally it is unset and everything is one tree, which is exactly why this
+only ever breaks in CI.
+
+#### Where the numbers show up
+
+Both consumers are self-contained — no Codecov, no shields.io:
+
+- **Pull requests** get exactly one **Test report** comment, plus the same content in
+  each job summary. Server Tests and UI Tests finish at different times and each knows
+  only half the story, so `.github/scripts/pr_comment.py` gives each a named section of
+  one comment rather than a comment each. Every workflow rewrites only its own section.
+
+  The comment is written to be skimmed: one status line per layer, the failing tests
+  named in full underneath it, and everything that passed folded into a `<details>`.
+  Nobody should have to expand anything to learn whether the run is red or which test
+  broke.
+
+  Two workflows editing one comment can race — the API has no compare-and-swap — so
+  each writer verifies its section survived and re-applies it if not. Both writers
+  doing this is what makes the comment converge.
+
+  Fork PRs are served by the `*-report.yml` companions, which run in the trusted base
+  repo. Those jobs resolve which PR to comment on from the `workflow_run` event's
+  `head_sha` and `head_repository` via the API — never from an uploaded artifact,
+  which a fork controls and could point at any PR in the repo. A commit can belong to
+  several open PRs, so the match must be exactly one or the job comments nowhere.
+
+  Those jobs also parse artifacts the fork produced — both coverage XML and JUnit
+  XML — so every read goes through `.github/scripts/safe_xml.py`, which caps size
+  per document and across a directory and refuses any document declaring XML
+  entities (a few nested ones expand to gigabytes). It is shared rather than
+  reimplemented per renderer precisely because a guard only one of them remembers
+  to apply is not a guard. Note it asks expat rather than scanning bytes for
+  `<!ENTITY`: XML declares its own encoding, so the same declaration in UTF-16
+  shares no bytes with an ASCII needle and would slip straight past.
+- **The README badges** are `coverage.svg` on the orphan `badges-backend` and
+  `badges-frontend` branches, linked by raw URL. `server-tests.yml` and `ui-test.yml`
+  republish them on pushes to `develop`, and only when the rendered SVG actually
+  changed, via `.github/scripts/publish_badge.sh`. They are kept off `develop` on
+  purpose: a commit per coverage change is noise in the history people read. Each
+  branch is force-pushed to a single commit, so neither accumulates, and they are
+  separate branches because both workflows fire on the same push and a shared branch
+  would have them clobbering each other. The badges therefore always show `develop`,
+  not the branch you are reading.
 
 ## 3. E2E tests (Cypress)
 
@@ -388,6 +494,15 @@ cd frontend && yarn test
 - **Server tests** run the full backend suite twice: on MariaDB (`server-tests.yml`)
   and on SQLite (`server-tests-sqlite.yml`), both via
   `bench --site gameplan.test run-tests --app gameplan`.
+- **Backend coverage** is collected only in the canonical MariaDB lane
+  (`server-tests.yml`), which runs with `--coverage`. SQLite and v16 stay cheaper
+  compatibility lanes rather than measuring the same Python lines three times.
+- **Frontend coverage** rides on `ui-test.yml`, which builds with
+  `GAMEPLAN_COVERAGE=1` so Cypress drives an instrumented bundle.
+- Both post a sticky PR comment and a job summary (`server-tests-report.yml` and
+  `ui-test-report.yml` handle fork PRs, where the token is read-only), and on pushes
+  to `develop` both republish their README badge. See § 2 "Coverage" for what the
+  numbers do and do not count, and why they are not comparable to each other.
 - **UI tests** (`ui-test.yml`) run Cypress and produce JUnit results. A markdown
   report is built from the JUnit XML and posted as a sticky comment on the PR
   (`ui-test-report.yml` handles fork PRs, where the token is read-only).
