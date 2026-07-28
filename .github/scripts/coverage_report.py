@@ -21,6 +21,7 @@ drops, and the report footer always names it.
 import argparse
 import sys
 import xml.etree.ElementTree as ET
+import xml.parsers.expat as expat
 
 
 class Profile:
@@ -116,13 +117,47 @@ class File:
 MAX_REPORT_BYTES = 16 * 1024 * 1024
 
 
+class _PrologParsed(Exception):
+	"""Raised to stop expat once the root element starts."""
+
+
+def reject_entity_declarations(raw: bytes) -> None:
+	"""Refuse a document that declares XML entities, whatever its encoding.
+
+	On fork pull requests this XML is attacker-controlled, and a few nested internal
+	entities expand to gigabytes ("billion laughs"). Searching the raw bytes for
+	`<!ENTITY` does not work: a document declares its own encoding, so the identical
+	declaration written in UTF-16 shares no bytes with the ASCII needle and slips
+	past while expat parses and expands it regardless.
+
+	Asking expat instead means the check runs after decoding and holds for every
+	encoding. Entity declarations live in the DOCTYPE, which precedes the root
+	element, so parsing stops as soon as that element opens — the prolog alone is
+	enough to decide, and nothing large is ever expanded.
+	"""
+	parser = expat.ParserCreate()
+
+	def refuse(*_args):
+		raise ValueError("refusing to parse a coverage report that declares XML entities")
+
+	parser.EntityDeclHandler = refuse
+	parser.UnparsedEntityDeclHandler = refuse
+	parser.StartElementHandler = lambda *_args: (_ for _ in ()).throw(_PrologParsed())
+
+	try:
+		parser.Parse(raw, True)
+	except _PrologParsed:
+		pass
+	except expat.ExpatError as exc:
+		raise ValueError(f"coverage report is not valid XML: {exc}") from exc
+
+
 def parse(path: str) -> list[File]:
 	with open(path, "rb") as handle:
 		raw = handle.read(MAX_REPORT_BYTES + 1)
 	if len(raw) > MAX_REPORT_BYTES:
 		raise ValueError(f"coverage report is larger than {MAX_REPORT_BYTES} bytes")
-	if b"<!ENTITY" in raw:
-		raise ValueError("refusing to parse a coverage report that declares XML entities")
+	reject_entity_declarations(raw)
 
 	root = ET.fromstring(raw)
 	files = []

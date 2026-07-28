@@ -43,9 +43,50 @@ def clean(text: str) -> str:
 	return text.replace("`", "'")
 
 
+def iter_roots(path: str):
+	"""Yield every XML document in a file.
+
+	`bench run-tests` runs its suite in batches and xmlrunner writes one complete
+	document per batch into the same stream, so the file holds several concatenated
+	`<?xml ...?>` documents and is not well-formed as a whole — a plain parse of the
+	real 545-test output dies with "junk after document element". Cypress writes one
+	document per spec file, so the single-document path stays exact and the split is
+	only a fallback.
+	"""
+	with open(path, "rb") as handle:
+		raw = handle.read()
+
+	try:
+		yield ET.fromstring(raw)
+		return
+	except ET.ParseError:
+		pass
+
+	# Split only at a declaration that starts its own line, so a declaration quoted
+	# inside a failure message does not cut the document in half. Chunks that still
+	# do not parse are skipped rather than failing the whole report.
+	for chunk in re.split(rb"\n(?=<\?xml)", raw):
+		chunk = chunk.strip()
+		if not chunk:
+			continue
+		try:
+			yield ET.fromstring(chunk)
+		except ET.ParseError:
+			continue
+
+
 def parse_file(path: str):
 	"""Return (group_rows, failures) for one XML file."""
-	root = ET.parse(path).getroot()
+	rows, failures = [], []
+	for root in iter_roots(path):
+		file_rows, file_failures = parse_root(root, path)
+		rows.extend(file_rows)
+		failures.extend(file_failures)
+	return rows, failures
+
+
+def parse_root(root, path: str):
+	"""Return (group_rows, failures) for one parsed document."""
 	rows, failures = [], []
 
 	for suite in root.findall(".//testsuite"):
