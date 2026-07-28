@@ -89,12 +89,18 @@ def parse_root(root, path: str):
 	"""Return (group_rows, failures) for one parsed document."""
 	rows, failures = [], []
 
-	for suite in root.findall(".//testsuite"):
+	# Cypress names the spec on a "Root Suite" that holds no test cases, while the
+	# suites that do hold them carry no file at all — so a per-suite lookup alone
+	# falls through to the artifact filename and the table reads as a list of
+	# hashes. Fall back to whichever suite in this document does name a file.
+	document_file = next((s.get("file") for s in root.iter("testsuite") if s.get("file")), None)
+
+	for suite in root.iter("testsuite"):
 		cases = suite.findall("testcase")
 		if not cases:
 			continue
 
-		source = suite.get("file") or path
+		source = suite.get("file") or document_file or path
 		group = os.path.basename(source)
 
 		total = len(cases)
