@@ -155,13 +155,29 @@ def totals(files: list[File]) -> tuple[int, int, float]:
 	return covered, statements, (100.0 * covered / statements if statements else 0.0)
 
 
-def render_markdown(files: list[File], profile: Profile) -> str:
+def render_markdown(files: list[File], profile: Profile, compact: bool = False) -> str:
+	"""Full standalone report, or a fragment for the shared PR comment.
+
+	Compact mode leads with the percentage alone and folds the tables away: in the
+	PR comment this sits under a test-result line that has already earned the
+	reader's attention, and the number is the part worth reading at a glance.
+	"""
 	covered, statements, rate = totals(files)
-	out = [
-		f"## {profile.heading}",
-		"",
-		f"**{rate:.1f}%** of product statements covered ({covered:,} / {statements:,}).",
-		"",
+	if compact:
+		out = [
+			f"Coverage **{rate:.1f}%** ({covered:,} / {statements:,} statements)",
+			"",
+			f"<details><summary>{profile.heading} by area</summary>",
+			"",
+		]
+	else:
+		out = [
+			f"## {profile.heading}",
+			"",
+			f"**{rate:.1f}%** of product statements covered ({covered:,} / {statements:,}).",
+			"",
+		]
+	out += [
 		"| Area | Covered | Statements | Coverage |",
 		"| --- | --: | --: | --: |",
 	]
@@ -179,10 +195,17 @@ def render_markdown(files: list[File], profile: Profile) -> str:
 	# can act on. Small files are noise here, so only real modules are listed.
 	weakest = sorted((f for f in files if f.statements >= 20), key=lambda f: f.rate)[:10]
 	if weakest:
-		out += ["", "<details><summary>Least-covered modules</summary>", ""]
+		# Already inside a <details> when compact; nesting a second one buries it.
+		out.append("")
+		if not compact:
+			out += ["<details><summary>Least-covered modules</summary>", ""]
+		else:
+			out.append("**Least covered**")
+			out.append("")
 		out += ["| File | Coverage |", "| --- | --: |"]
 		out += [f"| `{f.name}` | {f.rate:.1f}% ({f.covered}/{f.statements}) |" for f in weakest]
-		out.append("</details>")
+		if not compact:
+			out.append("</details>")
 
 	excluded = ", ".join(f"{label} (`{prefix}`)" for prefix, label in profile.excluded)
 	out += [
@@ -190,6 +213,8 @@ def render_markdown(files: list[File], profile: Profile) -> str:
 		f"<sub>{profile.caveat} Excluded: {excluded}. "
 		"Coverage is informational — no minimum threshold is enforced.</sub>",
 	]
+	if compact:
+		out += ["", "</details>"]
 	return "\n".join(out) + "\n"
 
 
@@ -260,6 +285,11 @@ def main() -> int:
 	)
 	parser.add_argument("--markdown", help="write the Markdown summary here (default: stdout)")
 	parser.add_argument("--badge", help="write the README badge SVG here")
+	parser.add_argument(
+		"--compact",
+		action="store_true",
+		help="render as a fragment for the shared PR comment rather than a standalone report",
+	)
 	args = parser.parse_args()
 	profile = PROFILES[args.profile]
 
@@ -275,7 +305,7 @@ def main() -> int:
 		print(f"No product files found in {args.coverage_xml}", file=sys.stderr)
 		return 1
 
-	markdown = render_markdown(files, profile)
+	markdown = render_markdown(files, profile, compact=args.compact)
 	if args.markdown:
 		with open(args.markdown, "w") as handle:
 			handle.write(markdown)

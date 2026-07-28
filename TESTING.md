@@ -213,7 +213,20 @@ should ever carry it.
 
 Both consumers are self-contained — no Codecov, no shields.io:
 
-- **Pull requests** get each table as its own sticky comment and in the job summary.
+- **Pull requests** get exactly one **Test report** comment, plus the same content in
+  each job summary. Server Tests and UI Tests finish at different times and each knows
+  only half the story, so `.github/scripts/pr_comment.py` gives each a named section of
+  one comment rather than a comment each. Every workflow rewrites only its own section.
+
+  The comment is written to be skimmed: one status line per layer, the failing tests
+  named in full underneath it, and everything that passed folded into a `<details>`.
+  Nobody should have to expand anything to learn whether the run is red or which test
+  broke.
+
+  Two workflows editing one comment can race — the API has no compare-and-swap — so
+  each writer verifies its section survived and re-applies it if not. Both writers
+  doing this is what makes the comment converge.
+
   Fork PRs are served by the `*-report.yml` companions, which run in the trusted base
   repo. Those jobs resolve which PR to comment on from the `workflow_run` event's
   `head_sha` and `head_repository` via the API — never from an uploaded artifact,

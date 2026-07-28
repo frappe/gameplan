@@ -67,30 +67,34 @@ jobs:
             echo "number=" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Build markdown report
+      # Both XML inputs are fork-controlled, so the coverage script caps their size
+      # and refuses entity declarations before parsing.
+      - name: Build frontend report
         if: ${{ steps.pr.outputs.number != '' }}
-        run: python .github/scripts/junit_to_markdown.py artifacts/cypress-results "${{ github.event.workflow_run.head_sha }}" > "$RUNNER_TEMP/ui-test-report.md"
+        run: |
+          python .github/scripts/junit_to_markdown.py artifacts/frontend-results/junit \
+            --label Cypress --kind spec \
+            --run-url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${{ github.event.workflow_run.id }}" \
+            > "${RUNNER_TEMP}/frontend-section.md"
 
-      - name: Comment results on PR (fork)
-        uses: marocchino/sticky-pull-request-comment@v2
-        if: ${{ steps.pr.outputs.number != '' }}
-        with:
-          header: ui-test-results
-          number: ${{ steps.pr.outputs.number }}
-          path: ${{ runner.temp }}/ui-test-report.md
+          if python .github/scripts/coverage_report.py \
+              artifacts/frontend-results/cobertura-coverage.xml \
+              --profile frontend --compact --markdown "${RUNNER_TEMP}/frontend-coverage.md"; then
+            printf '\n' >> "${RUNNER_TEMP}/frontend-section.md"
+            cat "${RUNNER_TEMP}/frontend-coverage.md" >> "${RUNNER_TEMP}/frontend-section.md"
+          else
+            printf '\nFrontend coverage was unavailable for this run.\n' >> "${RUNNER_TEMP}/frontend-section.md"
+          fi
 
-      # The XML is fork-controlled, so the script caps its size and refuses entity
-      # declarations before parsing.
-      - name: Build frontend coverage report
-        id: coverage
+      - name: Comment on PR (fork)
         if: ${{ steps.pr.outputs.number != '' }}
         continue-on-error: true
-        run: python .github/scripts/coverage_report.py artifacts/frontend-coverage/cobertura-coverage.xml --profile frontend --markdown "$RUNNER_TEMP/frontend-coverage.md"
-
-      - name: Comment frontend coverage on PR (fork)
-        uses: marocchino/sticky-pull-request-comment@v2
-        if: ${{ steps.pr.outputs.number != '' && steps.coverage.outcome == 'success' }}
-        with:
-          header: frontend-coverage
-          number: ${{ steps.pr.outputs.number }}
-          path: ${{ runner.temp }}/frontend-coverage.md
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python .github/scripts/pr_comment.py \
+            --repo "${GITHUB_REPOSITORY}" \
+            --pr "${{ steps.pr.outputs.number }}" \
+            --section frontend \
+            --body-file "${RUNNER_TEMP}/frontend-section.md" \
+            --footer "<sub>Updated for commit ${{ github.event.workflow_run.head_sha }}.</sub>"

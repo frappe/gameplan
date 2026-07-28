@@ -71,16 +71,33 @@ jobs:
             echo "number=" >> "$GITHUB_OUTPUT"
           fi
 
-      # The XML is fork-controlled, so the script caps its size and refuses entity
-      # declarations before parsing.
-      - name: Build markdown report
+      # Both XML inputs are fork-controlled, so the coverage script caps their size
+      # and refuses entity declarations before parsing.
+      - name: Build backend report
         if: ${{ steps.pr.outputs.number != '' }}
-        run: python .github/scripts/coverage_report.py artifacts/backend-coverage/coverage.xml --profile backend --markdown "$RUNNER_TEMP/coverage.md"
+        run: |
+          python .github/scripts/junit_to_markdown.py artifacts/backend-results/backend-junit.xml \
+            --label Backend --kind module \
+            --run-url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${{ github.event.workflow_run.id }}" \
+            > "${RUNNER_TEMP}/backend-section.md"
 
-      - name: Comment coverage on PR (fork)
-        uses: marocchino/sticky-pull-request-comment@v2
+          if python .github/scripts/coverage_report.py artifacts/backend-results/coverage.xml \
+              --profile backend --compact --markdown "${RUNNER_TEMP}/coverage-part.md"; then
+            printf '\n' >> "${RUNNER_TEMP}/backend-section.md"
+            cat "${RUNNER_TEMP}/coverage-part.md" >> "${RUNNER_TEMP}/backend-section.md"
+          else
+            printf '\nBackend coverage was unavailable for this run.\n' >> "${RUNNER_TEMP}/backend-section.md"
+          fi
+
+      - name: Comment on PR (fork)
         if: ${{ steps.pr.outputs.number != '' }}
-        with:
-          header: backend-coverage
-          number: ${{ steps.pr.outputs.number }}
-          path: ${{ runner.temp }}/coverage.md
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python .github/scripts/pr_comment.py \
+            --repo "${GITHUB_REPOSITORY}" \
+            --pr "${{ steps.pr.outputs.number }}" \
+            --section backend \
+            --body-file "${RUNNER_TEMP}/backend-section.md" \
+            --footer "<sub>Updated for commit ${{ github.event.workflow_run.head_sha }}.</sub>"
