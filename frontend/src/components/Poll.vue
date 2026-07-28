@@ -4,8 +4,13 @@
       v-if="highlight"
       class="absolute inset-0 translate-y- z-[5] rounded border-2 -mx-4 -mb-4 mt-11 pointer-events-none"
     />
+    <!-- Mirrors the comment header (Comment.vue). Two parts matter and both were missing:
+         `z-[1]`, or the option rows (positioned so the result bar can fill behind them)
+         paint over this header; and `sm:pt-14`, which pads the pinned header out to the
+         app header's height so scrolled-up content is masked rather than showing through
+         the strip above it. The previous `pt-15` was not a real utility, so it did nothing. -->
     <div
-      class="pb-2 flex items-center text-base text-ink-gray-8 pt-15 top-0 sticky bg-surface-base"
+      class="sticky -top-px z-[1] -mx-2 flex items-center bg-surface-base px-2 pb-2 pt-2 text-base text-ink-gray-8 sm:top-0 sm:pt-14"
     >
       <UserProfileLink class="mr-3" :user="owner.name">
         <UserAvatarWithHover :user="owner.name" size="lg" />
@@ -53,53 +58,55 @@
       <span>{{ totalLabel }}</span>
       <span v-if="_poll.stopped_at"> &middot; {{ stopTime }} </span>
     </div>
-    <div class="my-4 space-y-2">
-      <Checkbox
-        v-if="supportsMultipleAnswers"
+    <!-- Twitter-style: once results are visible the row itself becomes the bar, with the
+         share filled in behind the label. Capped to a readable measure — a bar spanning
+         the full thread width reads as a progress indicator, not a share of the vote. -->
+    <div class="my-4 max-w-sm space-y-1.5">
+      <div
         v-for="option in _poll.options"
         :key="option.idx"
-        v-model="selectedAnswers[option.title]"
-        :aria-label="option.title"
-        :disabled="isStopped || readOnlyMode || actionLoading"
-        @update:model-value="toggleAnswer(option, $event)"
-      >
-        <template #label>
-          <span class="flex items-baseline">
-            <span class="text-base text-ink-gray-8">{{ option.title }}</span>
-            <span class="ml-1 text-base text-ink-gray-5" v-if="participated">
-              ({{ option.percentage }}%)
-            </span>
-          </span>
-        </template>
-      </Checkbox>
-      <button
-        v-else
-        class="group flex items-center text-ink-gray-8"
-        v-for="option in _poll.options"
-        :key="option.idx"
-        @click="submitVote(option)"
-        :disabled="voteIsFinal || isStopped || readOnlyMode || actionLoading"
+        class="relative -mx-2 overflow-hidden rounded"
+        :data-poll-option="option.title"
       >
         <div
-          class="mr-2 h-4 w-4 rounded-full border-2 text-sm"
-          :class="
-            isVotedByUser(option.title)
-              ? 'border-outline-gray-9 bg-surface-gray-10'
-              : voteIsFinal || isStopped || readOnlyMode
-                ? 'border-outline-gray-2'
-                : 'border-outline-gray-2 group-hover:border-outline-gray-3'
-          "
-        >
-          <span v-if="isVotedByUser(option.title)" class="lucide-check h-3 w-3 text-ink-base" />
-        </div>
-        <div class="flex items-baseline">
-          <div class="text-base text-ink-gray-8">{{ option.title }}</div>
-          <div class="ml-1 text-base text-ink-gray-5" v-if="participated">
-            ({{ option.percentage }}%)
+          v-if="showResults"
+          class="absolute inset-y-0 left-0 rounded transition-[width] duration-500 ease-out"
+          :class="isVotedByUser(option.title) ? 'bg-surface-gray-4' : 'bg-surface-gray-2'"
+          :style="{ width: `${option.percentage || 0}%` }"
+          aria-hidden="true"
+        />
+        <div class="relative flex h-7 items-center justify-between gap-3 px-2">
+          <!-- Checkbox's own label is top-aligned to the first line of a wrapping label,
+               which leaves the box high against a single-line one. Pair it with our own
+               <label for> instead so the row can centre them. -->
+          <div class="flex min-w-0 items-center gap-2">
+            <Checkbox
+              size="md"
+              :id="optionId(option)"
+              :model-value="selectedAnswers[option.title] ?? false"
+              :disabled="isOptionDisabled"
+              :aria-label="option.title"
+              @update:model-value="toggleOption(option, Boolean($event))"
+            />
+            <label
+              :for="optionId(option)"
+              class="truncate text-base leading-6 text-ink-gray-8 select-none"
+              :class="[
+                isOptionDisabled ? 'cursor-default' : 'cursor-pointer',
+                { 'font-medium': isVotedByUser(option.title) },
+              ]"
+            >
+              {{ option.title }}
+            </label>
           </div>
+          <span v-if="showResults" class="shrink-0 text-sm leading-6 tabular-nums text-ink-gray-7">
+            {{ formatPercentage(option.percentage) }}%
+          </span>
         </div>
-      </button>
+      </div>
     </div>
+    <!-- The tick moves optimistically, so a rejected vote has to say why it snapped back. -->
+    <ErrorMessage class="-mt-2 mb-3" :message="voteError" />
     <div class="mt-3">
       <Reactions
         doctype="GP Poll"
@@ -138,7 +145,16 @@
 </template>
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
-import { Checkbox, Dropdown, Dialog, Tooltip, dayjsLocal, dialog, useDoc } from 'frappe-ui'
+import {
+  Checkbox,
+  Dropdown,
+  Dialog,
+  ErrorMessage,
+  Tooltip,
+  dayjsLocal,
+  dialog,
+  useDoc,
+} from 'frappe-ui'
 import UserAvatar from './UserAvatar.vue'
 import UserAvatarWithHover from './UserAvatarWithHover.vue'
 import UserProfileLink from './UserProfileLink.vue'
@@ -175,6 +191,12 @@ const showDialog = ref(false)
 const sessionUser = useSessionUser()
 const socket = useSocket()
 const selectedAnswers = reactive<Record<string, boolean>>({})
+// An anonymous vote records the voter but not their choice, so the server can never tell
+// us which option to tick. Remember it for this mount so the poll doesn't look untouched
+// the instant after you vote; it is gone on the next load, which is the point of anonymity.
+const anonymousChoice = ref<string | null>(null)
+let voteQueue: Promise<void> = Promise.resolve()
+let clickCount = 0
 
 const pollResource = useDoc<GPPoll, PollMethods>({
   doctype: 'GP Poll',
@@ -191,18 +213,19 @@ const owner = computed(() => useUser(_poll.value.owner))
 const participated = computed(() =>
   _poll.value.votes.some((vote) => vote.user === sessionUser.name),
 )
-const supportsMultipleAnswers = computed(
-  () => Boolean(_poll.value.multiple_answers) && !Boolean(_poll.value.anonymous),
+const voteError = computed(
+  () => pollResource.submitVote.error?.message || pollResource.retractVote.error?.message || null,
 )
 // An anonymous poll records that you voted but not what you chose, so there is no answer
 // to replace or retract: that vote is final. Every other poll lets you change your mind.
 const voteIsFinal = computed(() => Boolean(_poll.value.anonymous) && participated.value)
-const actionLoading = computed(
-  () =>
-    pollResource.submitVote.loading ||
-    pollResource.retractVote.loading ||
-    pollResource.stopPoll.loading,
-)
+// Tallies stay hidden until the viewer has skin in the game, so early voters can't
+// be nudged by the running result. A stopped poll has nothing left to influence.
+const showResults = computed(() => participated.value || isStopped.value)
+// Deliberately not disabled while a vote is in flight: the tick updates optimistically,
+// so greying every option for the round trip just makes a click flicker. Overlapping
+// clicks are handled by queueing them instead (see queueVote).
+const isOptionDisabled = computed(() => isStopped.value || props.readOnlyMode || voteIsFinal.value)
 const canDeletePoll = computed(() => canDeleteContent(_poll.value, props.space, sessionUser))
 const isStopped = computed(
   () => Boolean(_poll.value.stopped_at) && dayjsLocal().isAfter(_poll.value.stopped_at),
@@ -279,7 +302,9 @@ const dropdownOptions = computed(() => [
       dialog.danger({
         title: 'Delete poll',
         message: 'Are you sure you want to delete this poll?',
-        onConfirm: () => pollResource.delete.submit(),
+        onConfirm: async () => {
+          await pollResource.delete.submit()
+        },
       })
     },
   },
@@ -307,27 +332,72 @@ async function handlePollUpdate(data: { doctype?: string; name?: string | number
   }
 }
 
-async function submitVote(option: GPPollOption) {
-  // Already this voter's answer — the server would no-op, so skip the round trip.
-  if (isVotedByUser(option.title)) return
-  if (_poll.value.anonymous) {
+/**
+ * Every poll type votes through the same checkbox. What differs is what a tick means:
+ * on a multiple-answer poll each option stands alone, on a single-answer poll ticking a
+ * new option replaces the previous answer, and an anonymous vote is confirmed once and
+ * never changed.
+ */
+async function toggleOption(option: GPPollOption, checked: boolean) {
+  // Drive the tick from our own state rather than the checkbox's: a cancelled dialog or a
+  // rejected request has to snap it back, and syncSelectedAnswers is the one thing that
+  // knows what the server actually recorded.
+  if (checked && !_poll.value.multiple_answers) {
+    // One answer per voter, so the previous tick has to clear the moment the new one
+    // lands — submit_vote drops it server-side, but not until the round trip returns.
+    for (const title of Object.keys(selectedAnswers)) selectedAnswers[title] = false
+  }
+  selectedAnswers[option.title] = checked
+  const click = ++clickCount
+
+  await queueVote(async () => {
+    if (!checked) {
+      await retractVote(_poll.value.multiple_answers ? option.title : undefined)
+      return
+    }
+
+    if (_poll.value.anonymous) {
+      await confirmAnonymousVote(option)
+      return
+    }
+
+    // On a single-answer poll submit_vote replaces this voter's previous answer itself,
+    // so one call covers changing your mind as well as casting a first vote.
+    await castVote(option.title)
+  })
+
+  // Only the newest click reconciles against the server. An earlier one settling late
+  // would otherwise overwrite the tick the user has since moved, undoing it on screen.
+  if (click === clickCount) syncSelectedAnswers()
+}
+
+/**
+ * Run vote actions one at a time. The options stay enabled during a request so a click
+ * registers instantly, which means a fast toggle can fire a second action before the
+ * first returns — and `submit_vote` / `retract_vote` both read-modify-write the vote
+ * table, so overlapping calls would race on stale rows.
+ */
+function queueVote(action: () => Promise<void>) {
+  // Swallow at the tail so one failure neither stalls the queue nor stops the caller
+  // reconciling — the failed call's `error` is what surfaces to the user.
+  voteQueue = voteQueue.then(action, action).catch(() => {})
+  return voteQueue
+}
+
+function confirmAnonymousVote(option: GPPollOption) {
+  return new Promise<void>((resolve) => {
     dialog.confirm({
       title: 'Anonymous poll',
       message: `This poll is anonymous. Once you vote, you cannot retract your vote. You are voting for "${option.title}". Continue?`,
       confirmLabel: `Vote for "${option.title}"`,
-      onConfirm: () => castVote(option.title),
+      onConfirm: async () => {
+        anonymousChoice.value = option.title
+        await castVote(option.title)
+        resolve()
+      },
+      onCancel: () => resolve(),
     })
-    return
-  }
-  await castVote(option.title)
-}
-
-async function toggleAnswer(option: GPPollOption, checked: boolean) {
-  if (checked) {
-    await castVote(option.title)
-  } else {
-    await retractVote(option.title)
-  }
+  })
 }
 
 async function castVote(option: string) {
@@ -368,7 +438,18 @@ function syncSelectedAnswers() {
 }
 
 function isVotedByUser(option: string) {
+  if (_poll.value.anonymous) return anonymousChoice.value === option
   return _poll.value.votes.some((vote) => vote.option === option && vote.user === sessionUser.name)
+}
+
+function formatPercentage(percentage?: number) {
+  return Math.round(percentage || 0)
+}
+
+/** Ties each option's <label for> to its checkbox. Both parts are numeric, so it is a
+ *  valid id even though option titles are free text. */
+function optionId(option: GPPollOption) {
+  return `poll-${props.poll.name}-option-${option.idx}`
 }
 
 function copyLink() {

@@ -70,8 +70,8 @@ describe('Poll lifecycle', () => {
     // A percentage is a share of the people who voted, not of the answer rows, so the
     // one voter who picked both options puts both at 100%. On "select all that apply"
     // the shares are meant to add up to more than 100%.
-    pollAnswer('Yes').parent().contains('(100%)').should('exist')
-    pollAnswer('No').parent().contains('(100%)').should('exist')
+    assertShare('Yes', '100%')
+    assertShare('No', '100%')
 
     // Deselecting one checkbox retracts only that option.
     pollAnswer('Yes').uncheck()
@@ -79,8 +79,8 @@ describe('Poll lifecycle', () => {
     cy.contains('1 answer from 1 person').should('exist')
     pollAnswer('Yes').should('not.be.checked')
     pollAnswer('No').should('be.checked')
-    pollAnswer('Yes').parent().contains('(0%)').should('exist')
-    pollAnswer('No').parent().contains('(100%)').should('exist')
+    assertShare('Yes', '0%')
+    assertShare('No', '100%')
 
     // A second user's answer reaches this already-open poll through the document
     // update listener. The local bench cannot authenticate demo-site sockets, so
@@ -205,7 +205,7 @@ describe('Poll lifecycle', () => {
     cy.visit(`/g/community/${community}/space/${space}/discussion/${discussion}`)
     cy.contains('Archived poll').should('be.visible')
     cy.contains('button', 'Stop Poll').should('not.exist')
-    cy.contains('button', 'Yes').should('be.disabled')
+    pollAnswer('Yes').should('be.disabled')
 
     cy.iconButton('Poll Options').click()
     cy.get('[role="menuitem"]:visible').contains('Show results').should('be.visible')
@@ -235,6 +235,23 @@ function labelledCheckbox(label: string) {
 
 function pollAnswer(label: string) {
   return cy.get(`input[type="checkbox"][aria-label="${label}"]`)
+}
+
+/** The option's whole row: the checkbox, its share of the vote, and the bar behind them. */
+function pollAnswerRow(label: string) {
+  return cy.get(`[data-poll-option="${label}"]`)
+}
+
+/**
+ * Assert an option's share exactly. A substring match would not do: `contains('0%')`
+ * also matches "100%", so the assertion that a retracted option drops to 0% could not
+ * fail for the bug it exists to catch.
+ */
+function assertShare(label: string, share: string) {
+  pollAnswerRow(label)
+    .contains('span', /^\s*\d+%\s*$/)
+    .invoke('text')
+    .then((text) => expect(text.trim()).to.equal(share))
 }
 
 function deliverSocketEvent(event: string, payload: unknown) {
