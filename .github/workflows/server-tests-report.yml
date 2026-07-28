@@ -1,0 +1,54 @@
+name: Server Test Coverage Report
+
+# Runs after "Server Tests" completes. Triggered by workflow_run, it executes in the
+# base-repo (trusted) context with a read-write token, so it can post the coverage
+# comment even when the run came from a fork PR — where the test workflow's own token
+# is read-only and cannot comment.
+on:
+  workflow_run:
+    workflows: ["Server Tests"]
+    types:
+      - completed
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: write
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    # Fork PRs only — same-repo PRs comment inline from server-tests.yml, so skipping
+    # them here avoids a duplicate comment. (head_repository differs from the base
+    # repo only when the run originated from a fork.)
+    if: >-
+      github.event.workflow_run.conclusion != 'skipped'
+      && github.repository_owner == 'frappe'
+      && github.event.workflow_run.event == 'pull_request'
+      && github.event.workflow_run.head_repository.full_name != github.repository
+    steps:
+      # Checks out the default branch (trusted), not the fork PR code — we only need
+      # the report script here, never the untrusted branch under test.
+      - name: Checkout report script
+        uses: actions/checkout@v4
+
+      - name: Download artifacts from test run
+        uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+          path: artifacts
+
+      - name: Resolve PR number
+        id: pr
+        run: echo "number=$(jq -r '.pull_request.number' artifacts/backend-coverage-event/event.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Build markdown report
+        run: python .github/scripts/coverage_report.py artifacts/backend-coverage/coverage.xml --markdown "$RUNNER_TEMP/coverage.md"
+
+      - name: Comment coverage on PR (fork)
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: backend-coverage
+          number: ${{ steps.pr.outputs.number }}
+          path: ${{ runner.temp }}/coverage.md

@@ -155,6 +155,38 @@ bench --site gameplan-demo.test run-tests --app gameplan
 bench --site gameplan-demo.test run-tests --module gameplan.tests.permissions.test_permission_matrix
 ```
 
+### Coverage
+
+Coverage is measured on the backend suite only, and it is **informational** — no
+minimum is enforced and no check fails on it.
+
+```bash
+# Writes sites/coverage.xml (needs `coverage` in the bench env: env/bin/pip install coverage)
+bench --site gameplan-demo.test run-tests --app gameplan --coverage
+
+# Render it: the same report CI posts, plus the README badge
+python .github/scripts/coverage_report.py ~/benches/frappe-bench/sites/coverage.xml
+```
+
+`.github/scripts/coverage_report.py` measures **product code only**. This matters:
+`frappe.coverage` points coverage at the whole app directory, so an unfiltered
+report counts the test suite itself — which is ~100% covered by construction and
+inflates the headline (87.6% unfiltered against 83.7% real, when this was written).
+The script's `EXCLUDED` tuple is the filter, and the report footer always names what
+it dropped: the test suite, `ui_test_helpers.py`, the demo data generator, the
+one-off Discourse importer, patches, and desk config stubs.
+
+Two consumers, both self-contained (no Codecov or shields.io in the loop):
+
+- **Pull requests** get the full table as a sticky comment and in the job summary.
+- **The README badge** is `.github/badges/coverage.svg`, a generated SVG committed
+  to the repo. `server-tests.yml` regenerates it on every push to `develop` and
+  commits it back when the number moved. It therefore always shows `develop`, not
+  the branch you are reading.
+
+Where the number is thin, prefer a backend test — the least-covered modules are
+listed in the report itself.
+
 ## 3. E2E tests (Cypress)
 
 E2E specs drive a real browser against a real backend. They cover the happy path a
@@ -388,6 +420,12 @@ cd frontend && yarn test
 - **Server tests** run the full backend suite twice: on MariaDB (`server-tests.yml`)
   and on SQLite (`server-tests-sqlite.yml`), both via
   `bench --site gameplan.test run-tests --app gameplan`.
+- **Coverage** is collected only in the canonical MariaDB lane (`server-tests.yml`),
+  which runs with `--coverage`. It is posted as a sticky PR comment and job summary
+  (`server-tests-report.yml` handles fork PRs, where the token is read-only), and on
+  pushes to `develop` it regenerates the README badge. SQLite and v16 stay cheaper
+  compatibility lanes rather than measuring the same Python lines three times.
+  See § 2 "Coverage" for what the number does and does not count.
 - **UI tests** (`ui-test.yml`) run Cypress and produce JUnit results. A markdown
   report is built from the JUnit XML and posted as a sticky comment on the PR
   (`ui-test-report.yml` handles fork PRs, where the token is read-only).

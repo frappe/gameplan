@@ -18,6 +18,14 @@ jobs:
     if: ${{ github.repository_owner == 'frappe' }}
     timeout-minutes: 60
 
+    # contents: write pushes the regenerated README badge on develop;
+    # pull-requests: write posts the coverage comment. Fork pull requests get a
+    # read-only token regardless, which is why the comment step is best-effort
+    # and the job summary always carries the same report.
+    permissions:
+      contents: write
+      pull-requests: write
+
     strategy:
       fail-fast: false
 
@@ -78,27 +86,86 @@ jobs:
       # frappe.coverage imports `coverage` from the bench env, which a fresh bench does
       # not install. Without this the --coverage run below dies before a single test.
       - name: Install coverage
-        if: ${{ github.event_name == 'pull_request' }}
         run: ~/frappe-bench/env/bin/pip install coverage
 
       - name: Run Tests
         working-directory: /home/runner/frappe-bench
         run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            bench --site gameplan.test run-tests --app gameplan --coverage
+          bench --site gameplan.test run-tests --app gameplan --coverage
+
+      # Coverage is reporting, not a gate: if the report cannot be produced, say so
+      # rather than reddening a suite that passed.
+      - name: Build coverage report
+        id: coverage
+        if: ${{ always() }}
+        run: |
+          if python .github/scripts/coverage_report.py ~/frappe-bench/sites/coverage.xml \
+              --markdown "${RUNNER_TEMP}/coverage.md" \
+              --badge .github/badges/coverage.svg; then
+            echo "built=true" >> "$GITHUB_OUTPUT"
+            cat "${RUNNER_TEMP}/coverage.md" >> "$GITHUB_STEP_SUMMARY"
           else
-            bench --site gameplan.test run-tests --app gameplan
+            echo "built=false" >> "$GITHUB_OUTPUT"
+            echo "Backend coverage report unavailable for this run." >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      # Job summaries need no write permission, so this is also safe and visible on
-      # fork PRs whose GITHUB_TOKEN is read-only. Coverage is reporting, not a gate:
-      # if the report cannot be produced, say so rather than reddening a passing suite.
-      - name: Report backend coverage
+      # Same-repo PRs have a read-write token, so comment directly here. Fork PRs
+      # (read-only token) are handled by server-tests-report.yml, which consumes the
+      # artifacts uploaded below — hence the same-repo-only guard.
+      - name: Comment coverage on PR (same-repo)
+        uses: marocchino/sticky-pull-request-comment@v2
+        if: ${{ always() && steps.coverage.outputs.built == 'true' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
+        with:
+          header: backend-coverage
+          path: ${{ runner.temp }}/coverage.md
+
+      # Uploaded for the workflow_run reporter (fork PRs): the raw coverage XML,
+      # which that job re-renders itself, plus the event payload it needs to resolve
+      # which PR to comment on.
+      - name: Upload coverage results
+        uses: actions/upload-artifact@v4
         if: ${{ always() && github.event_name == 'pull_request' }}
+        with:
+          name: backend-coverage
+          path: /home/runner/frappe-bench/sites/coverage.xml
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Upload event file
+        uses: actions/upload-artifact@v4
+        if: ${{ always() && github.event_name == 'pull_request' }}
+        with:
+          name: backend-coverage-event
+          path: ${{ github.event_path }}
+          retention-days: 7
+
+      # The README badge is a checked-in SVG, so develop is the only branch whose
+      # coverage it can claim to show. [skip ci] keeps this push from re-triggering
+      # the workflow that produced it. continue-on-error because a badge that cannot
+      # be pushed (branch protection, a racing push) must not redden a green suite.
+      - name: Update README coverage badge
+        if: ${{ steps.coverage.outputs.built == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/develop' }}
+        continue-on-error: true
         run: |
-          python .github/scripts/coverage_to_markdown.py ~/frappe-bench/sites/coverage.xml \
-            >> "$GITHUB_STEP_SUMMARY" \
-            || echo "Backend coverage report unavailable for this run." >> "$GITHUB_STEP_SUMMARY"
+          if git diff --quiet -- .github/badges/coverage.svg; then
+            echo "Coverage badge unchanged."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/badges/coverage.svg
+          git commit -m "chore: update coverage badge [skip ci]"
+
+          for attempt in 1 2 3; do
+            if git push origin HEAD:develop; then
+              exit 0
+            fi
+            echo "Push rejected, rebasing on develop (attempt ${attempt})."
+            git pull --rebase origin develop || exit 1
+          done
+          echo "Could not push the coverage badge after 3 attempts."
+          exit 1
 
       - name: Stop server
         if: ${{ always() }}
