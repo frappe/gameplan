@@ -179,10 +179,17 @@ one-off Discourse importer, patches, and desk config stubs.
 Two consumers, both self-contained (no Codecov or shields.io in the loop):
 
 - **Pull requests** get the full table as a sticky comment and in the job summary.
-- **The README badge** is `.github/badges/coverage.svg`, a generated SVG committed
-  to the repo. `server-tests.yml` regenerates it on every push to `develop` and
-  commits it back when the number moved. It therefore always shows `develop`, not
-  the branch you are reading.
+  Fork PRs are served by `server-tests-report.yml`, which runs in the trusted base
+  repo. That job resolves which PR to comment on from the `workflow_run` event's
+  `head_sha` via the API — never from an uploaded artifact, which a fork controls
+  and could point at any PR in the repo. For the same reason the report script caps
+  the XML it will read and refuses one that declares a DTD.
+- **The README badge** is `coverage.svg` on the orphan `badges` branch, which the
+  README links by raw URL. `server-tests.yml` republishes it on pushes to `develop`
+  and only when the rendered SVG actually changed. It is kept off `develop` on
+  purpose: a commit per coverage change is noise in the history people read. The
+  branch is force-pushed to a single commit, so it does not accumulate either.
+  The badge therefore always shows `develop`, not the branch you are reading.
 
 Where the number is thin, prefer a backend test — the least-covered modules are
 listed in the report itself.

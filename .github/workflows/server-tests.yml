@@ -101,7 +101,7 @@ jobs:
         run: |
           if python .github/scripts/coverage_report.py ~/frappe-bench/sites/coverage.xml \
               --markdown "${RUNNER_TEMP}/coverage.md" \
-              --badge .github/badges/coverage.svg; then
+              --badge "${RUNNER_TEMP}/coverage.svg"; then
             echo "built=true" >> "$GITHUB_OUTPUT"
             cat "${RUNNER_TEMP}/coverage.md" >> "$GITHUB_STEP_SUMMARY"
           else
@@ -119,9 +119,9 @@ jobs:
           header: backend-coverage
           path: ${{ runner.temp }}/coverage.md
 
-      # Uploaded for the workflow_run reporter (fork PRs): the raw coverage XML,
-      # which that job re-renders itself, plus the event payload it needs to resolve
-      # which PR to comment on.
+      # Uploaded for the workflow_run reporter (fork PRs), which re-renders it in the
+      # trusted context. Deliberately the only artifact: that job resolves the PR to
+      # comment on from the event's head_sha, never from anything uploaded here.
       - name: Upload coverage results
         uses: actions/upload-artifact@v4
         if: ${{ always() && github.event_name == 'pull_request' }}
@@ -131,41 +131,38 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
-      - name: Upload event file
-        uses: actions/upload-artifact@v4
-        if: ${{ always() && github.event_name == 'pull_request' }}
-        with:
-          name: backend-coverage-event
-          path: ${{ github.event_path }}
-          retention-days: 7
-
-      # The README badge is a checked-in SVG, so develop is the only branch whose
-      # coverage it can claim to show. [skip ci] keeps this push from re-triggering
-      # the workflow that produced it. continue-on-error because a badge that cannot
-      # be pushed (branch protection, a racing push) must not redden a green suite.
-      - name: Update README coverage badge
+      # The badge lives on an orphan `badges` branch, never on develop — a commit per
+      # coverage change would be pure noise in the history everyone reads. That branch
+      # is force-pushed to a single commit each time, so it never accumulates either,
+      # and develop's tree and history are untouched. The README points at its raw URL.
+      #
+      # continue-on-error because a badge that cannot be pushed must not redden a
+      # green suite. No [skip ci] needed: no workflow watches this branch.
+      - name: Publish coverage badge
         if: ${{ steps.coverage.outputs.built == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/develop' }}
         continue-on-error: true
+        env:
+          BADGE: ${{ runner.temp }}/coverage.svg
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if git diff --quiet -- .github/badges/coverage.svg; then
+          if git fetch --depth=1 origin badges 2>/dev/null \
+            && git show FETCH_HEAD:coverage.svg 2>/dev/null | diff -q - "$BADGE" >/dev/null; then
             echo "Coverage badge unchanged."
             exit 0
           fi
 
+          # Built as a throwaway single-commit repo rather than an orphan branch in
+          # this checkout, so develop's index is never involved.
+          work="$(mktemp -d)"
+          cp "$BADGE" "${work}/coverage.svg"
+          cd "$work"
+          git init -q
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add .github/badges/coverage.svg
-          git commit -m "chore: update coverage badge [skip ci]"
-
-          for attempt in 1 2 3; do
-            if git push origin HEAD:develop; then
-              exit 0
-            fi
-            echo "Push rejected, rebasing on develop (attempt ${attempt})."
-            git pull --rebase origin develop || exit 1
-          done
-          echo "Could not push the coverage badge after 3 attempts."
-          exit 1
+          git add coverage.svg
+          git commit -q -m "chore: coverage badge for ${GITHUB_SHA}"
+          git push --force \
+            "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:badges
 
       - name: Stop server
         if: ${{ always() }}

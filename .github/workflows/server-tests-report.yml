@@ -39,15 +39,32 @@ jobs:
           github-token: ${{ github.token }}
           path: artifacts
 
+      # Resolved from head_sha (trusted — it comes from the workflow_run event, not
+      # from the run's artifacts) via the API. Reading the number out of an uploaded
+      # event.json instead would let a fork name any PR in the repo and have this
+      # write-authorized token comment on it.
       - name: Resolve PR number
         id: pr
-        run: echo "number=$(jq -r '.pull_request.number' artifacts/backend-coverage-event/event.json)" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          number="$(gh api "repos/${REPO}/commits/${HEAD_SHA}/pulls" \
+            --jq '[.[] | select(.state == "open")] | .[0].number // empty')"
+          if [ -z "$number" ]; then
+            echo "No open pull request for ${HEAD_SHA}; nothing to comment on."
+          fi
+          echo "number=${number}" >> "$GITHUB_OUTPUT"
 
+      # The XML is fork-controlled, so the script caps its size and refuses a DTD.
       - name: Build markdown report
+        if: ${{ steps.pr.outputs.number != '' }}
         run: python .github/scripts/coverage_report.py artifacts/backend-coverage/coverage.xml --markdown "$RUNNER_TEMP/coverage.md"
 
       - name: Comment coverage on PR (fork)
         uses: marocchino/sticky-pull-request-comment@v2
+        if: ${{ steps.pr.outputs.number != '' }}
         with:
           header: backend-coverage
           number: ${{ steps.pr.outputs.number }}

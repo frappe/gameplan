@@ -62,8 +62,22 @@ class File:
 		return 100.0 * self.covered / self.statements if self.statements else 100.0
 
 
+# A real coverage.xml for this app is well under a megabyte. The cap and the DTD
+# refusal below matter because the fork reporter parses a file a fork produced:
+# ElementTree expands internal entities, so an untrusted report could otherwise
+# exhaust the runner ("billion laughs"). Coverage XML never legitimately has a DTD.
+MAX_REPORT_BYTES = 16 * 1024 * 1024
+
+
 def parse(path: str) -> list[File]:
-	root = ET.parse(path).getroot()
+	with open(path, "rb") as handle:
+		raw = handle.read(MAX_REPORT_BYTES + 1)
+	if len(raw) > MAX_REPORT_BYTES:
+		raise ValueError(f"coverage report is larger than {MAX_REPORT_BYTES} bytes")
+	if b"<!DOCTYPE" in raw or b"<!ENTITY" in raw:
+		raise ValueError("refusing to parse a coverage report that declares a DTD")
+
+	root = ET.fromstring(raw)
 	files = []
 	for element in root.iter("class"):
 		lines = element.find("lines")
@@ -197,7 +211,7 @@ def main() -> int:
 
 	try:
 		files = [f for f in parse(args.coverage_xml) if is_product(f.name)]
-	except (FileNotFoundError, ET.ParseError) as exc:
+	except (FileNotFoundError, ET.ParseError, ValueError) as exc:
 		# Coverage is reporting, not a gate: a missing report says so rather than
 		# reddening a suite that passed.
 		print(f"Coverage results were unavailable: {exc}", file=sys.stderr)
