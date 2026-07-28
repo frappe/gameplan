@@ -73,6 +73,9 @@ jobs:
           path: ~/.cache/Cypress
           key: ${{ runner.os }}-cypress
 
+      # GAMEPLAN_COVERAGE instruments the frontend bundle this step builds, which is
+      # what Cypress then drives. It is scoped to this workflow on purpose: it roughly
+      # doubles bundle size and slows every expression, so no production build sets it.
       - name: Install Dependencies
         run: |
           bash ${GITHUB_WORKSPACE}/.github/helper/install_dependencies.sh
@@ -80,6 +83,7 @@ jobs:
         env:
           BEFORE: ${{ env.GITHUB_EVENT_PATH.before }}
           AFTER: ${{ env.GITHUB_EVENT_PATH.after }}
+          GAMEPLAN_COVERAGE: "1"
 
       - name: Site Setup
         run: |
@@ -110,6 +114,56 @@ jobs:
         with:
           header: ui-test-results
           path: ${{ runner.temp }}/ui-test-report.md
+
+      # Merges the zeroed instrument-time baseline under the runtime data before
+      # reporting. Without it the 33 lazy routes no spec visits would be absent from
+      # the report rather than counted as 0%, which flatters the number by shrinking
+      # the denominator. See frontend/vite.config.ts.
+      #
+      # The baseline has to be carried across trees first: `bench get-app` clones the
+      # workspace into the bench, so the instrumented build wrote it under
+      # apps/gameplan/frontend while Cypress wrote .nyc_output here.
+      - name: Build frontend coverage report
+        id: coverage
+        if: ${{ always() }}
+        working-directory: frontend
+        run: |
+          mkdir -p coverage
+          if cp ~/frappe-bench/apps/gameplan/frontend/coverage/baseline.json coverage/baseline.json \
+            && yarn coverage:merge \
+            && python ../.github/scripts/coverage_report.py coverage/cobertura-coverage.xml \
+              --profile frontend \
+              --markdown "${RUNNER_TEMP}/frontend-coverage.md" \
+              --badge "${RUNNER_TEMP}/frontend-coverage.svg"; then
+            echo "built=true" >> "$GITHUB_OUTPUT"
+            cat "${RUNNER_TEMP}/frontend-coverage.md" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "built=false" >> "$GITHUB_OUTPUT"
+            echo "Frontend coverage report unavailable for this run." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Comment frontend coverage on PR (same-repo)
+        uses: marocchino/sticky-pull-request-comment@v2
+        if: ${{ always() && steps.coverage.outputs.built == 'true' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
+        with:
+          header: frontend-coverage
+          path: ${{ runner.temp }}/frontend-coverage.md
+
+      - name: Upload frontend coverage
+        uses: actions/upload-artifact@v4
+        if: ${{ always() && github.event_name == 'pull_request' }}
+        with:
+          name: frontend-coverage
+          path: frontend/coverage/cobertura-coverage.xml
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Publish frontend coverage badge
+        if: ${{ steps.coverage.outputs.built == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/develop' }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash .github/scripts/publish_badge.sh "${RUNNER_TEMP}/frontend-coverage.svg" badges-frontend
 
       # Uploaded for the workflow_run reporter (fork PRs): the JUnit XML plus the
       # event payload, which the report job needs to resolve which PR to comment on.

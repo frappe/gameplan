@@ -131,38 +131,12 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
-      # The badge lives on an orphan `badges` branch, never on develop — a commit per
-      # coverage change would be pure noise in the history everyone reads. That branch
-      # is force-pushed to a single commit each time, so it never accumulates either,
-      # and develop's tree and history are untouched. The README points at its raw URL.
-      #
-      # continue-on-error because a badge that cannot be pushed must not redden a
-      # green suite. No [skip ci] needed: no workflow watches this branch.
       - name: Publish coverage badge
         if: ${{ steps.coverage.outputs.built == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/develop' }}
         continue-on-error: true
         env:
-          BADGE: ${{ runner.temp }}/coverage.svg
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          if git fetch --depth=1 origin badges 2>/dev/null \
-            && git show FETCH_HEAD:coverage.svg 2>/dev/null | diff -q - "$BADGE" >/dev/null; then
-            echo "Coverage badge unchanged."
-            exit 0
-          fi
-
-          # Built as a throwaway single-commit repo rather than an orphan branch in
-          # this checkout, so develop's index is never involved.
-          work="$(mktemp -d)"
-          cp "$BADGE" "${work}/coverage.svg"
-          cd "$work"
-          git init -q
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add coverage.svg
-          git commit -q -m "chore: coverage badge for ${GITHUB_SHA}"
-          git push --force \
-            "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:badges
+        run: bash .github/scripts/publish_badge.sh "${RUNNER_TEMP}/coverage.svg" badges-backend
 
       - name: Stop server
         if: ${{ always() }}

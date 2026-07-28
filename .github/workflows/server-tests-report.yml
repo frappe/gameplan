@@ -39,28 +39,43 @@ jobs:
           github-token: ${{ github.token }}
           path: artifacts
 
-      # Resolved from head_sha (trusted — it comes from the workflow_run event, not
-      # from the run's artifacts) via the API. Reading the number out of an uploaded
-      # event.json instead would let a fork name any PR in the repo and have this
-      # write-authorized token comment on it.
+      # Resolved from the workflow_run event's own head_sha and head_repository, both
+      # trusted, via the API. Reading the number out of an uploaded event.json instead
+      # would let a fork name any PR in the repo and have this write-authorized token
+      # comment on it.
+      #
+      # A commit can belong to more than one open PR, so matching is narrowed to PRs
+      # whose head is exactly this SHA on exactly this fork, and it must resolve to
+      # exactly one. Anything ambiguous comments nowhere rather than guessing — the
+      # report is worth less than a comment landing on an unrelated PR.
       - name: Resolve PR number
         id: pr
         env:
           GH_TOKEN: ${{ github.token }}
           HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          HEAD_REPO: ${{ github.event.workflow_run.head_repository.full_name }}
           REPO: ${{ github.repository }}
         run: |
-          number="$(gh api "repos/${REPO}/commits/${HEAD_SHA}/pulls" \
-            --jq '[.[] | select(.state == "open")] | .[0].number // empty')"
-          if [ -z "$number" ]; then
-            echo "No open pull request for ${HEAD_SHA}; nothing to comment on."
-          fi
-          echo "number=${number}" >> "$GITHUB_OUTPUT"
+          matches="$(gh api "repos/${REPO}/commits/${HEAD_SHA}/pulls" --paginate \
+            --jq "[.[]
+              | select(.state == \"open\")
+              | select(.head.sha == \"${HEAD_SHA}\")
+              | select(.head.repo.full_name == \"${HEAD_REPO}\")
+              | .number]")"
+          count="$(jq -r 'length' <<<"$matches")"
 
-      # The XML is fork-controlled, so the script caps its size and refuses a DTD.
+          if [ "$count" = "1" ]; then
+            echo "number=$(jq -r '.[0]' <<<"$matches")" >> "$GITHUB_OUTPUT"
+          else
+            echo "Expected exactly one open PR at ${HEAD_SHA} on ${HEAD_REPO}, found ${count}; not commenting."
+            echo "number=" >> "$GITHUB_OUTPUT"
+          fi
+
+      # The XML is fork-controlled, so the script caps its size and refuses entity
+      # declarations before parsing.
       - name: Build markdown report
         if: ${{ steps.pr.outputs.number != '' }}
-        run: python .github/scripts/coverage_report.py artifacts/backend-coverage/coverage.xml --markdown "$RUNNER_TEMP/coverage.md"
+        run: python .github/scripts/coverage_report.py artifacts/backend-coverage/coverage.xml --profile backend --markdown "$RUNNER_TEMP/coverage.md"
 
       - name: Comment coverage on PR (fork)
         uses: marocchino/sticky-pull-request-comment@v2

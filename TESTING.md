@@ -13,6 +13,10 @@ Each layer owns a different kind of check. Put a test in the layer that owns it.
 | Cypress E2E                        | Real browser + backend | User journeys, one happy path per feature, UI/routing/mobile behavior |
 | Vitest (planned, not set up yet)   | Node                   | Pure frontend logic only (no DOM, no network)                         |
 
+Frontend coverage is collected from the Cypress layer, not from Vitest — see
+§ 2 "Coverage". There is still no unit-test runner; `src/utils` and `src/composables`
+together are ~630 of 27k frontend lines, which is why one has not earned its keep.
+
 The rule:
 
 - Permission matrices and edge cases **never** go in E2E. They live in the backend
@@ -157,42 +161,75 @@ bench --site gameplan-demo.test run-tests --module gameplan.tests.permissions.te
 
 ### Coverage
 
-Coverage is measured on the backend suite only, and it is **informational** — no
-minimum is enforced and no check fails on it.
+Both layers are measured, and both are **informational** — no minimum is enforced
+and no check fails on coverage. Both emit Cobertura XML, so one script renders both;
+`--profile` picks the denominator, area map and caveat.
 
 ```bash
-# Writes sites/coverage.xml (needs `coverage` in the bench env: env/bin/pip install coverage)
+# Backend — writes sites/coverage.xml
+# (needs coverage in the bench env: env/bin/pip install coverage)
 bench --site gameplan-demo.test run-tests --app gameplan --coverage
+python .github/scripts/coverage_report.py ~/benches/frappe-bench/sites/coverage.xml \
+  --profile backend
 
-# Render it: the same report CI posts, plus the README badge
-python .github/scripts/coverage_report.py ~/benches/frappe-bench/sites/coverage.xml
+# Frontend — needs an instrumented build, then the usual Cypress run
+cd frontend && GAMEPLAN_COVERAGE=1 yarn build   # from the bench: GAMEPLAN_COVERAGE=1 bench build --app gameplan
+yarn test
+yarn coverage:merge
+python ../.github/scripts/coverage_report.py coverage/cobertura-coverage.xml \
+  --profile frontend
 ```
 
-`.github/scripts/coverage_report.py` measures **product code only**. This matters:
-`frappe.coverage` points coverage at the whole app directory, so an unfiltered
-report counts the test suite itself — which is ~100% covered by construction and
-inflates the headline (87.6% unfiltered against 83.7% real, when this was written).
-The script's `EXCLUDED` tuple is the filter, and the report footer always names what
-it dropped: the test suite, `ui_test_helpers.py`, the demo data generator, the
-one-off Discourse importer, patches, and desk config stubs.
+#### The two numbers are not comparable
 
-Two consumers, both self-contained (no Codecov or shields.io in the loop):
+The backend number comes from unit and integration tests that assert on what they
+execute. The frontend number comes from Cypress driving an instrumented build, so a
+line counts as covered when it **ran** — a happy-path spec marks everything it
+renders past, asserted or not. Read the frontend number to find untouched areas, not
+as a quality score, and do not read the gap between the two as a quality gap. The
+report footer says so on every frontend comment.
 
-- **Pull requests** get the full table as a sticky comment and in the job summary.
-  Fork PRs are served by `server-tests-report.yml`, which runs in the trusted base
-  repo. That job resolves which PR to comment on from the `workflow_run` event's
-  `head_sha` via the API — never from an uploaded artifact, which a fork controls
-  and could point at any PR in the repo. For the same reason the report script caps
-  the XML it will read and refuses one that declares a DTD.
-- **The README badge** is `coverage.svg` on the orphan `badges` branch, which the
-  README links by raw URL. `server-tests.yml` republishes it on pushes to `develop`
-  and only when the rendered SVG actually changed. It is kept off `develop` on
-  purpose: a commit per coverage change is noise in the history people read. The
-  branch is force-pushed to a single commit, so it does not accumulate either.
-  The badge therefore always shows `develop`, not the branch you are reading.
+#### What is excluded, and why the denominator is honest
 
-Where the number is thin, prefer a backend test — the least-covered modules are
-listed in the report itself.
+`coverage_report.py` measures **product code only**. For the backend this matters a
+lot: `frappe.coverage` points coverage at the whole app directory, so an unfiltered
+report counts the test suite itself — ~100% covered by construction — and inflates
+the headline (87.6% unfiltered against 83.7% real, when this was written). Each
+profile's `excluded` tuple is the filter, and the report footer always names what it
+dropped.
+
+The frontend has the mirror-image trap. 33 routes are lazy `() => import(...)`, so a
+page no spec visits never registers in `window.__coverage__` and would drop out of
+the report entirely — flattering the percentage by shrinking the denominator rather
+than counting the file as 0%. `frontend/vite.config.ts` therefore writes a zeroed
+baseline of every instrumented file at build time, and `yarn coverage:merge` merges
+it *under* the runtime data. Untouched files count as 0%, which is the honest number.
+
+`GAMEPLAN_COVERAGE=1` is what enables instrumentation. Only `ui-test.yml` sets it:
+it roughly doubles bundle size and slows every expression, so no production build
+should ever carry it.
+
+#### Where the numbers show up
+
+Both consumers are self-contained — no Codecov, no shields.io:
+
+- **Pull requests** get each table as its own sticky comment and in the job summary.
+  Fork PRs are served by the `*-report.yml` companions, which run in the trusted base
+  repo. Those jobs resolve which PR to comment on from the `workflow_run` event's
+  `head_sha` and `head_repository` via the API — never from an uploaded artifact,
+  which a fork controls and could point at any PR in the repo. A commit can belong to
+  several open PRs, so the match must be exactly one or the job comments nowhere. For
+  the same reason the report script caps the XML it will read and refuses one that
+  declares XML entities.
+- **The README badges** are `coverage.svg` on the orphan `badges-backend` and
+  `badges-frontend` branches, linked by raw URL. `server-tests.yml` and `ui-test.yml`
+  republish them on pushes to `develop`, and only when the rendered SVG actually
+  changed, via `.github/scripts/publish_badge.sh`. They are kept off `develop` on
+  purpose: a commit per coverage change is noise in the history people read. Each
+  branch is force-pushed to a single commit, so neither accumulates, and they are
+  separate branches because both workflows fire on the same push and a shared branch
+  would have them clobbering each other. The badges therefore always show `develop`,
+  not the branch you are reading.
 
 ## 3. E2E tests (Cypress)
 
@@ -427,12 +464,15 @@ cd frontend && yarn test
 - **Server tests** run the full backend suite twice: on MariaDB (`server-tests.yml`)
   and on SQLite (`server-tests-sqlite.yml`), both via
   `bench --site gameplan.test run-tests --app gameplan`.
-- **Coverage** is collected only in the canonical MariaDB lane (`server-tests.yml`),
-  which runs with `--coverage`. It is posted as a sticky PR comment and job summary
-  (`server-tests-report.yml` handles fork PRs, where the token is read-only), and on
-  pushes to `develop` it regenerates the README badge. SQLite and v16 stay cheaper
+- **Backend coverage** is collected only in the canonical MariaDB lane
+  (`server-tests.yml`), which runs with `--coverage`. SQLite and v16 stay cheaper
   compatibility lanes rather than measuring the same Python lines three times.
-  See § 2 "Coverage" for what the number does and does not count.
+- **Frontend coverage** rides on `ui-test.yml`, which builds with
+  `GAMEPLAN_COVERAGE=1` so Cypress drives an instrumented bundle.
+- Both post a sticky PR comment and a job summary (`server-tests-report.yml` and
+  `ui-test-report.yml` handle fork PRs, where the token is read-only), and on pushes
+  to `develop` both republish their README badge. See § 2 "Coverage" for what the
+  numbers do and do not count, and why they are not comparable to each other.
 - **UI tests** (`ui-test.yml`) run Cypress and produce JUnit results. A markdown
   report is built from the JUnit XML and posted as a sticky comment on the PR
   (`ui-test-report.yml` handles fork PRs, where the token is read-only).

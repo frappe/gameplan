@@ -2,9 +2,26 @@ import { defineConfig, type PluginOption } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueJsx from '@vitejs/plugin-vue-jsx'
 import path from 'path'
+import fs from 'fs'
 import { visualizer } from 'rollup-plugin-visualizer'
+import istanbul from 'vite-plugin-istanbul'
 // @ts-expect-error frappe-ui/vite ships untyped JS; drop this once it gains types.
 import frappeui from 'frappe-ui/vite'
+
+// Instrumented only when GAMEPLAN_COVERAGE=1, which `ui-test.yml` sets for its build
+// alone. Instrumentation roughly doubles bundle size and slows every expression, so
+// it must never reach a production build — hence an explicit opt-in rather than a
+// mode check, which `bench build` would trip.
+const coverage = process.env.GAMEPLAN_COVERAGE === '1'
+
+// Every file the instrumenter touched, with all counters still at zero.
+//
+// 33 of the app's routes are lazy `() => import(...)`, so a page no spec ever visits
+// never registers in the browser's `window.__coverage__` and would drop out of the
+// report entirely — inflating the percentage by shrinking the denominator instead of
+// counting the file as 0%. Writing this baseline and merging it under the runtime
+// data puts those files back at zero, which is the honest number.
+const instrumented = new Map<string, unknown>()
 
 // frappe-ui is resolved through node_modules — the published package by default,
 // or the local ../frappe-ui checkout when symlinked via `yarn dev:local`. Either
@@ -44,7 +61,37 @@ export default defineConfig({
     vue(),
     vueJsx(),
     visualizer({ emitFile: true }) as PluginOption,
-  ],
+    // `extension` must list .vue explicitly: the plugin's default covers .js/.ts
+    // only, which would silently report on the ~600 lines of utils and composables
+    // and skip all 22k lines of components and pages. forceBuildInstrument and
+    // checkProd are both required because Cypress runs against `bench build`
+    // output, which is a production `vite build`.
+    coverage &&
+      (istanbul({
+        include: 'src/*',
+        extension: ['.js', '.ts', '.vue', '.jsx', '.tsx'],
+        forceBuildInstrument: true,
+        checkProd: false,
+        onCover: (_fileName, fileCoverage) => {
+          instrumented.set((fileCoverage as { path: string }).path, fileCoverage)
+        },
+      }) as PluginOption),
+    coverage &&
+      ({
+        name: 'gameplan-coverage-baseline',
+        closeBundle() {
+          // Anchored to this config's directory, not the process CWD: `bench build`
+          // does not necessarily invoke vite from frontend/.
+          const dir = path.resolve(__dirname, 'coverage')
+          fs.mkdirSync(dir, { recursive: true })
+          fs.writeFileSync(
+            path.join(dir, 'baseline.json'),
+            JSON.stringify(Object.fromEntries(instrumented)),
+          )
+          console.log(`[coverage] baseline written for ${instrumented.size} files`)
+        },
+      } as PluginOption),
+  ].filter(Boolean),
   server: {
     host: '0.0.0.0',
     allowedHosts: true,

@@ -146,6 +146,13 @@ describe('Poll lifecycle', () => {
 
     // Two reaction widgets are on the page, in document order: the discussion's own
     // above the timeline, the poll's inside it. Nothing else is seeded in between.
+    //
+    // Assert both are mounted before taking `.last()`. Without this the poll's widget
+    // can still be rendering, so `.last()` silently resolves to the discussion's and
+    // the reaction goes to the wrong document — the wait below then fails with "no
+    // request ever occurred", blaming the intercept rather than the race. Reliably
+    // reproducible on the istanbul-instrumented build, which is slower.
+    cy.get('button[aria-label="Add a reaction"]').should('have.length', 2)
     cy.get('button[aria-label="Add a reaction"]').last().click()
     cy.get(`button:contains("${EMOJI}"):visible`).click()
     cy.wait('@reactToPoll')

@@ -1,45 +1,87 @@
 #!/usr/bin/env python3
-"""Turn coverage.py XML into the two things Gameplan reports coverage with:
+"""Turn a Cobertura XML report into the two things Gameplan reports coverage with:
 
 a Markdown summary (job summary + pull request comment) and a self-contained SVG
 badge for the README. No external badge or coverage service is involved.
 
 	python .github/scripts/coverage_report.py sites/coverage.xml \
-		--markdown coverage.md --badge .github/badges/coverage.svg
+		--profile backend --markdown coverage.md --badge coverage.svg
+
+Both layers emit Cobertura, so one script serves both: coverage.py for the Python
+suite, nyc for the istanbul-instrumented Cypress run. `--profile` selects which
+denominator, area map and caveat apply.
 
 The measured denominator is *product* code. `frappe.coverage` points coverage at
-the whole app directory, so an unfiltered report counts the test suite itself --
-which is ~100% covered by construction and silently inflates the headline (87.6%
-against 83.7% at the time this was written). EXCLUDED is what that filter drops.
+the whole app directory, so an unfiltered backend report counts the test suite
+itself -- which is ~100% covered by construction and silently inflates the headline
+(87.6% against 83.7% at the time this was written). `excluded` is what that filter
+drops, and the report footer always names it.
 """
 
 import argparse
 import sys
 import xml.etree.ElementTree as ET
 
-# Not product code: the test suite and its seed API are covered by definition,
-# and the rest is developer or one-off tooling that ships behind no user path.
-EXCLUDED = (
-	("gameplan/tests/", "test suite"),
-	("gameplan/ui_test_helpers.py", "Cypress seed API"),
-	("gameplan/demo/", "demo data generator"),
-	("gameplan/migrate_from_discourse/", "one-off Discourse importer"),
-	("gameplan/patches/", "migration patches"),
-	("gameplan/config/", "desk config stubs"),
-)
 
-# Longest prefix wins, so doctype-local api.py lands under DocTypes rather than API.
-AREAS = (
-	("gameplan/gameplan/doctype/", "DocTypes"),
-	("gameplan/mixins/", "Mixins"),
-	("gameplan/utils/", "Utilities"),
-	("gameplan/permissions.py", "Permissions"),
-	("gameplan/search_sqlite.py", "Search"),
-	("gameplan/api.py", "HTTP API"),
-	("gameplan/www/", "HTTP API"),
-	("gameplan/extends/", "HTTP API"),
-	("gameplan/email_digest.py", "Email digest"),
-)
+class Profile:
+	def __init__(self, heading, badge_label, excluded, areas, caveat):
+		self.heading = heading
+		self.badge_label = badge_label
+		self.excluded = excluded
+		self.areas = areas
+		self.caveat = caveat
+
+
+PROFILES = {
+	# Not product code: the test suite and its seed API are covered by definition,
+	# and the rest is developer or one-off tooling that ships behind no user path.
+	"backend": Profile(
+		heading="Backend coverage",
+		badge_label="coverage",
+		excluded=(
+			("gameplan/tests/", "test suite"),
+			("gameplan/ui_test_helpers.py", "Cypress seed API"),
+			("gameplan/demo/", "demo data generator"),
+			("gameplan/migrate_from_discourse/", "one-off Discourse importer"),
+			("gameplan/patches/", "migration patches"),
+			("gameplan/config/", "desk config stubs"),
+		),
+		# Longest prefix wins, so a doctype-local api.py lands under DocTypes.
+		areas=(
+			("gameplan/gameplan/doctype/", "DocTypes"),
+			("gameplan/mixins/", "Mixins"),
+			("gameplan/utils/", "Utilities"),
+			("gameplan/permissions.py", "Permissions"),
+			("gameplan/search_sqlite.py", "Search"),
+			("gameplan/api.py", "HTTP API"),
+			("gameplan/www/", "HTTP API"),
+			("gameplan/extends/", "HTTP API"),
+			("gameplan/email_digest.py", "Email digest"),
+		),
+		caveat="Measured over product code only.",
+	),
+	# The frontend number comes from Cypress driving an instrumented build, so it
+	# says a line *ran*, not that a spec asserted anything about it. It is not the
+	# same kind of number as the backend's and should not be read against it.
+	"frontend": Profile(
+		heading="Frontend coverage",
+		badge_label="frontend",
+		excluded=(("src/types/", "generated doctype types"),),
+		areas=(
+			("src/components/", "Components"),
+			("src/pages/", "Pages"),
+			("src/data/", "Data layer"),
+			("src/utils/", "Utilities"),
+			("src/composables/", "Composables"),
+			("src/directives/", "Directives"),
+		),
+		caveat=(
+			"Collected by Cypress against an istanbul-instrumented build, so it marks "
+			"lines that **ran**, not lines a spec asserted on — read it to find untouched "
+			"areas, not as a quality score against the backend number."
+		),
+	),
+}
 
 BADGE_COLORS = (
 	(90, "#4c1"),  # brightgreen
@@ -62,10 +104,15 @@ class File:
 		return 100.0 * self.covered / self.statements if self.statements else 100.0
 
 
-# A real coverage.xml for this app is well under a megabyte. The cap and the DTD
+# A real report for this app is well under a megabyte. The cap and the entity
 # refusal below matter because the fork reporter parses a file a fork produced:
 # ElementTree expands internal entities, so an untrusted report could otherwise
-# exhaust the runner ("billion laughs"). Coverage XML never legitimately has a DTD.
+# exhaust the runner ("billion laughs").
+#
+# Only `<!ENTITY` is refused, not `<!DOCTYPE` — nyc's Cobertura output legitimately
+# carries a doctype pointing at the Cobertura DTD, and expat never fetches an
+# external DTD (no external-entity handler is installed), so a doctype on its own
+# expands nothing. Entity *declarations* are the whole attack.
 MAX_REPORT_BYTES = 16 * 1024 * 1024
 
 
@@ -74,8 +121,8 @@ def parse(path: str) -> list[File]:
 		raw = handle.read(MAX_REPORT_BYTES + 1)
 	if len(raw) > MAX_REPORT_BYTES:
 		raise ValueError(f"coverage report is larger than {MAX_REPORT_BYTES} bytes")
-	if b"<!DOCTYPE" in raw or b"<!ENTITY" in raw:
-		raise ValueError("refusing to parse a coverage report that declares a DTD")
+	if b"<!ENTITY" in raw:
+		raise ValueError("refusing to parse a coverage report that declares XML entities")
 
 	root = ET.fromstring(raw)
 	files = []
@@ -89,17 +136,17 @@ def parse(path: str) -> list[File]:
 	return files
 
 
-def is_product(name: str) -> bool:
-	return not name.startswith(tuple(prefix for prefix, _ in EXCLUDED))
+def is_product(name: str, profile: Profile) -> bool:
+	return not name.startswith(tuple(prefix for prefix, _ in profile.excluded))
 
 
-def area_of(name: str) -> str:
+def area_of(name: str, profile: Profile) -> str:
 	match = max(
-		(prefix for prefix, _ in AREAS if name.startswith(prefix)),
+		(prefix for prefix, _ in profile.areas if name.startswith(prefix)),
 		key=len,
 		default="",
 	)
-	return dict(AREAS).get(match, "Other")
+	return dict(profile.areas).get(match, "Other")
 
 
 def totals(files: list[File]) -> tuple[int, int, float]:
@@ -108,10 +155,10 @@ def totals(files: list[File]) -> tuple[int, int, float]:
 	return covered, statements, (100.0 * covered / statements if statements else 0.0)
 
 
-def render_markdown(files: list[File]) -> str:
+def render_markdown(files: list[File], profile: Profile) -> str:
 	covered, statements, rate = totals(files)
 	out = [
-		"## Backend coverage",
+		f"## {profile.heading}",
 		"",
 		f"**{rate:.1f}%** of product statements covered ({covered:,} / {statements:,}).",
 		"",
@@ -121,7 +168,7 @@ def render_markdown(files: list[File]) -> str:
 
 	by_area: dict[str, list[File]] = {}
 	for file in files:
-		by_area.setdefault(area_of(file.name), []).append(file)
+		by_area.setdefault(area_of(file.name, profile), []).append(file)
 
 	for area, group in sorted(by_area.items(), key=lambda item: -sum(f.statements for f in item[1])):
 		area_covered, area_statements, area_rate = totals(group)
@@ -137,10 +184,10 @@ def render_markdown(files: list[File]) -> str:
 		out += [f"| `{f.name}` | {f.rate:.1f}% ({f.covered}/{f.statements}) |" for f in weakest]
 		out.append("</details>")
 
-	excluded = ", ".join(f"{label} (`{prefix}`)" for prefix, label in EXCLUDED)
+	excluded = ", ".join(f"{label} (`{prefix}`)" for prefix, label in profile.excluded)
 	out += [
 		"",
-		f"<sub>Measured over product code only. Excluded: {excluded}. "
+		f"<sub>{profile.caveat} Excluded: {excluded}. "
 		"Coverage is informational — no minimum threshold is enforced.</sub>",
 	]
 	return "\n".join(out) + "\n"
@@ -170,8 +217,8 @@ def badge_text(text: str, centre: int, width: int) -> list[str]:
 	]
 
 
-def render_badge(rate: float) -> str:
-	label, message = "coverage", f"{rate:.1f}%"
+def render_badge(rate: float, label: str) -> str:
+	message = f"{rate:.1f}%"
 	color = next(color for threshold, color in BADGE_COLORS if rate >= threshold)
 	label_width = round(text_width(label)) + 20
 	message_width = round(text_width(message)) + 20
@@ -205,12 +252,19 @@ def render_badge(rate: float) -> str:
 def main() -> int:
 	parser = argparse.ArgumentParser(description=__doc__)
 	parser.add_argument("coverage_xml", nargs="?", default="coverage.xml")
+	parser.add_argument(
+		"--profile",
+		choices=sorted(PROFILES),
+		default="backend",
+		help="which denominator, area map and caveat to apply (default: backend)",
+	)
 	parser.add_argument("--markdown", help="write the Markdown summary here (default: stdout)")
 	parser.add_argument("--badge", help="write the README badge SVG here")
 	args = parser.parse_args()
+	profile = PROFILES[args.profile]
 
 	try:
-		files = [f for f in parse(args.coverage_xml) if is_product(f.name)]
+		files = [f for f in parse(args.coverage_xml) if is_product(f.name, profile)]
 	except (FileNotFoundError, ET.ParseError, ValueError) as exc:
 		# Coverage is reporting, not a gate: a missing report says so rather than
 		# reddening a suite that passed.
@@ -221,7 +275,7 @@ def main() -> int:
 		print(f"No product files found in {args.coverage_xml}", file=sys.stderr)
 		return 1
 
-	markdown = render_markdown(files)
+	markdown = render_markdown(files, profile)
 	if args.markdown:
 		with open(args.markdown, "w") as handle:
 			handle.write(markdown)
@@ -230,7 +284,7 @@ def main() -> int:
 
 	if args.badge:
 		with open(args.badge, "w") as handle:
-			handle.write(render_badge(totals(files)[2]))
+			handle.write(render_badge(totals(files)[2], profile.badge_label))
 
 	return 0
 

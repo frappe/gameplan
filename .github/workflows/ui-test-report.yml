@@ -39,16 +39,58 @@ jobs:
           github-token: ${{ github.token }}
           path: artifacts
 
+      # Resolved from the workflow_run event's own head_sha and head_repository, both
+      # trusted. Reading the number out of the uploaded event.json instead would let a
+      # fork name any PR in the repo and have this write-authorized token comment on
+      # it. A commit can belong to several open PRs, so this must resolve to exactly
+      # one match; anything ambiguous comments nowhere rather than guessing.
       - name: Resolve PR number
         id: pr
-        run: echo "number=$(jq -r '.pull_request.number' artifacts/cypress-event/event.json)" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          HEAD_REPO: ${{ github.event.workflow_run.head_repository.full_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          matches="$(gh api "repos/${REPO}/commits/${HEAD_SHA}/pulls" --paginate \
+            --jq "[.[]
+              | select(.state == \"open\")
+              | select(.head.sha == \"${HEAD_SHA}\")
+              | select(.head.repo.full_name == \"${HEAD_REPO}\")
+              | .number]")"
+          count="$(jq -r 'length' <<<"$matches")"
+
+          if [ "$count" = "1" ]; then
+            echo "number=$(jq -r '.[0]' <<<"$matches")" >> "$GITHUB_OUTPUT"
+          else
+            echo "Expected exactly one open PR at ${HEAD_SHA} on ${HEAD_REPO}, found ${count}; not commenting."
+            echo "number=" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Build markdown report
+        if: ${{ steps.pr.outputs.number != '' }}
         run: python .github/scripts/junit_to_markdown.py artifacts/cypress-results "${{ github.event.workflow_run.head_sha }}" > "$RUNNER_TEMP/ui-test-report.md"
 
       - name: Comment results on PR (fork)
         uses: marocchino/sticky-pull-request-comment@v2
+        if: ${{ steps.pr.outputs.number != '' }}
         with:
           header: ui-test-results
           number: ${{ steps.pr.outputs.number }}
           path: ${{ runner.temp }}/ui-test-report.md
+
+      # The XML is fork-controlled, so the script caps its size and refuses entity
+      # declarations before parsing.
+      - name: Build frontend coverage report
+        id: coverage
+        if: ${{ steps.pr.outputs.number != '' }}
+        continue-on-error: true
+        run: python .github/scripts/coverage_report.py artifacts/frontend-coverage/cobertura-coverage.xml --profile frontend --markdown "$RUNNER_TEMP/frontend-coverage.md"
+
+      - name: Comment frontend coverage on PR (fork)
+        uses: marocchino/sticky-pull-request-comment@v2
+        if: ${{ steps.pr.outputs.number != '' && steps.coverage.outcome == 'success' }}
+        with:
+          header: frontend-coverage
+          number: ${{ steps.pr.outputs.number }}
+          path: ${{ runner.temp }}/frontend-coverage.md

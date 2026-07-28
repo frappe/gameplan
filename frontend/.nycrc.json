@@ -1,0 +1,6 @@
+{
+  "extension": [".js", ".cjs", ".mjs", ".ts", ".tsx", ".jsx", ".vue"],
+  "all": false,
+  "reporter": ["cobertura", "text-summary"],
+  "report-dir": "coverage"
+}
