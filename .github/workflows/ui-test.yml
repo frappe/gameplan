@@ -18,14 +18,17 @@ jobs:
     if: ${{ github.repository_owner == 'frappe' }}
     timeout-minutes: 60
 
-    # contents: write force-pushes the frontend badge to its orphan branch on
-    # develop; pull-requests: write posts the test report. Both are needed here
-    # because a job-level block replaces the workflow-level one outright rather
-    # than adding to it — declaring only contents: write would silently drop the
-    # ability to comment. Fork pull requests get a read-only token regardless.
+    # Stays contents: read. This job checks out and executes pull-request code —
+    # install.sh, the frontend build, the specs themselves — so a repo-write token
+    # here would be a write credential handed to code under review. Badge
+    # publishing needs that token, so it lives in the push-only `badge` job below
+    # and this one just hands the rendered SVG over as an artifact.
     permissions:
-      contents: write
+      contents: read
       pull-requests: write
+
+    outputs:
+      badge: ${{ steps.report.outputs.built }}
 
     strategy:
       fail-fast: false
@@ -167,17 +170,13 @@ jobs:
             --body-file "${RUNNER_TEMP}/frontend-section.md" \
             --footer "<sub>Updated for commit ${{ github.event.pull_request.head.sha }}.</sub>"
 
-      # Deliberately NOT continue-on-error. It was, and that hid a 403 from a
-      # missing contents: write for a whole release cycle: the step reported
-      # success, published nothing, and the README badge 404'd with no signal
-      # anywhere. This only runs on a push to develop, where the suite has
-      # already passed and reddening the run blocks nobody — a stale badge is
-      # worth exactly one red run to find out about.
-      - name: Publish frontend coverage badge
+      - name: Upload coverage badge
+        uses: actions/upload-artifact@v4
         if: ${{ steps.report.outputs.built == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/develop' }}
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: bash .github/scripts/publish_badge.sh "${RUNNER_TEMP}/frontend-coverage.svg" badges-frontend
+        with:
+          name: frontend-badge
+          path: ${{ runner.temp }}/frontend-coverage.svg
+          retention-days: 1
 
       # Staged into one directory so the artifact's internal layout does not depend on
       # where upload-artifact decides the common ancestor of its inputs is. JUnit lives
@@ -221,3 +220,30 @@ jobs:
       - name: Show bench output
         if: ${{ always() }}
         run: cat ~/frappe-bench/bench_start.log || true
+
+  # Separated from the test job on purpose. Publishing needs contents: write, and
+  # the test job executes pull-request code — granting it there would hand a
+  # repo-write credential to code under review. This job runs only on a push to
+  # develop, where the code is already merged, and touches nothing but the badge.
+  #
+  # Not continue-on-error: the first version was, and it reported success while a
+  # 403 published nothing, leaving the README badge 404ing with no signal. Here
+  # the suite has already passed, so a red run blocks nobody.
+  badge:
+    name: Publish frontend coverage badge
+    runs-on: ubuntu-latest
+    needs: test
+    if: ${{ needs.test.outputs.badge == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/develop' }}
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: frontend-badge
+          path: badge
+
+      - env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash .github/scripts/publish_badge.sh badge/frontend-coverage.svg badges-frontend
