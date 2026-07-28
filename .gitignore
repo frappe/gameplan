@@ -12,3 +12,4 @@ gameplan/www/g.html
 build
 frontend/components.d.ts
 sites/
+.mutation/
