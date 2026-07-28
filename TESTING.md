@@ -209,6 +209,16 @@ it *under* the runtime data. Untouched files count as 0%, which is the honest nu
 it roughly doubles bundle size and slows every expression, so no production build
 should ever carry it.
 
+One more trap, specific to CI. `bench get-app` **clones** the repo into the bench
+rather than symlinking it, so the instrumented build writes its baseline under
+`~/frappe-bench/apps/gameplan/frontend` while Cypress writes `.nyc_output` in the
+workspace checkout — two trees. The recorded coverage paths belong to the bench
+tree, and nyc silently discards every entry outside its own cwd, so merging from
+the workspace yields `0/0` and a report with nothing in it rather than an error.
+`COVERAGE_ROOT` (consumed by `coverage:merge`) points nyc at the tree the paths
+name. Locally it is unset and everything is one tree, which is exactly why this
+only ever breaks in CI.
+
 #### Where the numbers show up
 
 Both consumers are self-contained — no Codecov, no shields.io:

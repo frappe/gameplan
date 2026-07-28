@@ -110,6 +110,11 @@ jobs:
       # workspace into the bench, so the instrumented build wrote it under
       # apps/gameplan/frontend while Cypress wrote .nyc_output here.
       #
+      # COVERAGE_ROOT is what makes that split survive the merge. The instrumented
+      # bundle records absolute paths in the bench tree, and nyc discards every entry
+      # that falls outside its own cwd — so merging from this tree silently yields
+      # 0/0 rather than failing. It must point at the tree the coverage paths name.
+      #
       # Results and coverage form one section of a single PR comment shared with the
       # backend job — see .github/scripts/pr_comment.py.
       - name: Build frontend report
@@ -123,7 +128,7 @@ jobs:
 
           mkdir -p frontend/coverage
           if cp ~/frappe-bench/apps/gameplan/frontend/coverage/baseline.json frontend/coverage/baseline.json \
-            && (cd frontend && yarn coverage:merge) \
+            && (cd frontend && COVERAGE_ROOT="${HOME}/frappe-bench/apps/gameplan/frontend" yarn coverage:merge) \
             && python .github/scripts/coverage_report.py frontend/coverage/cobertura-coverage.xml \
               --profile frontend --compact \
               --markdown "${RUNNER_TEMP}/frontend-coverage.md" \
