@@ -1,13 +1,12 @@
 # Copyright (c) 2022, Frappe Technologies Pvt Ltd and contributors
 # For license information, please see license.txt
 
-from urllib.parse import urljoin
-
 import frappe
-import requests
-from bs4 import BeautifulSoup
+from frappe import _
 from frappe.model.document import Document
+from frappe.utils import cint
 
+import gameplan
 from gameplan.api import _invite_by_email
 from gameplan.gameplan.doctype.gp_unread_record.gp_unread_record import GPUnreadRecord
 from gameplan.mixins.archivable import Archivable
@@ -15,6 +14,7 @@ from gameplan.mixins.manage_members import ManageMembersMixin
 from gameplan.permissions import (
 	apply_accessible_project_filter,
 	apply_project_query_filter,
+	can_manage_space,
 	can_view_space,
 	require_can_invite_guest,
 	require_can_manage_space_members,
@@ -49,10 +49,6 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 	def get_list_query(query):
 		return apply_project_query_filter(query)
 
-	def as_dict(self, *args, **kwargs) -> dict:
-		d = super().as_dict(*args, **kwargs)
-		return d
-
 	def before_validate(self):
 		if not self.icon or not self.icon.startswith("lucide-"):
 			self.icon = DEFAULT_SPACE_ICON
@@ -85,13 +81,48 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 
 	@frappe.whitelist(methods=["POST"])
 	def merge_with_project(self, project=None):
-		if not project or self.name == project:
+		if not project:
 			return
-		if isinstance(project, str):
-			project = int(project)
-		if not frappe.db.exists("GP Project", project):
+		# Coerce BEFORE comparing. GP Project autoincrements, so self.name is an int, while
+		# MergeSpaceDialog sends the target as a string: comparing first sees "7" != 7, the
+		# self-merge guard falls through, and the rename below deletes this Space and leaves
+		# every discussion in it pointing at nothing.
+		target = cint(project)
+		if target == cint(self.name):
+			return
+		self.require_can_manage_merge(target)
+		if not frappe.db.exists("GP Project", target):
 			frappe.throw(f'Invalid Project "{project}"')
-		return self.rename(project, merge=True, validate_rename=False, force=True)
+		# validate_rename stays off: this doctype autoincrements, and validate_rename runs
+		# the new name through validate_name, which for an autoincrement doctype rewinds the
+		# table's sequence to the merge target's id — every subsequent insert would then
+		# collide with an existing row. Turning it off drops FIVE guards, not just that one,
+		# so each is re-established above: source-exists (this is a loaded doc), old != new,
+		# target-exists, and write permission on both source and target. The only one not
+		# reproduced is validate_rename's `SELECT ... FOR UPDATE` lock on the target row,
+		# which frappe does not expose separately.
+		return self.rename(target, merge=True, validate_rename=False, force=True)
+
+	def require_can_manage_merge(self, target):
+		"""A merge empties this Space into `target`, so it needs manage rights on both.
+
+		The v2 method route only checks write on the document the method is called on,
+		and the rename it guards skips frappe's own "write permission on the merge target"
+		check along with the rest of validate_rename — leaving the target ungated.
+
+		Runs BEFORE the target-exists check: `frappe.db.exists` answers for every Space on
+		the site, so rejecting an unknown id with a different error than a forbidden one
+		would let any Space manager enumerate GP Project ids, private Spaces included.
+		"""
+		user = frappe.session.user
+		# Guests hold GP Member rows on the private Spaces they're granted, which is enough
+		# for can_manage_space — same reason can_invite_guest rules them out up front. Guest
+		# access is read-and-participate; a merge destroys a Space.
+		if gameplan.is_guest(user):
+			frappe.throw(_("Only space managers can merge spaces"), frappe.PermissionError)
+		for space in (self, target):
+			if not can_manage_space(user, space):
+				frappe.throw(_("Only space managers can merge spaces"), frappe.PermissionError)
 
 	@frappe.whitelist(methods=["POST"])
 	def invite_guest(self, email):
@@ -198,35 +229,34 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 			project_visit_doc.insert(ignore_permissions=True)
 
 
-def get_meta_tags(url):
-	response = requests.get(url, timeout=2, allow_redirects=True)
-	soup = BeautifulSoup(response.text, "html.parser")
-	title = soup.find("title").text.strip()
-
-	image = None
-	favicon = soup.find("link", rel="icon")
-	if favicon:
-		image = favicon["href"]
-
-	if image and image.startswith("/"):
-		image = urljoin(url, image)
-
-	return {"title": title, "image": image}
-
-
 @frappe.whitelist()
 def get_joined_spaces():
-	user = frappe.session.user
-	projects = frappe.qb.get_query(
-		"GP Project",
-		filters={"members.user": user},
-		fields=["name"],
-	).run(as_dict=True, pluck="name")
-	guest_access_projects = frappe.qb.get_query(
-		"GP Guest Access", filters={"user": user}, fields=["project"]
-	).run(as_dict=True, pluck="project")
+	"""Every Space the user is in, whether as a member or as an invited guest.
 
-	return list(map(str, set(projects + guest_access_projects)))
+	Both sources are normalised to `str` as they are read: GP Project autoincrements,
+	so a membership row yields the name as an int while the guest grant stores the
+	same name in a link column as a str. Left mixed, they dedupe against nothing and
+	a Space held both ways is reported twice.
+	"""
+	user = frappe.session.user
+	member_spaces = [
+		str(name)
+		for name in frappe.qb.get_query(
+			"GP Project",
+			filters={"members.user": user},
+			fields=["name"],
+		).run(pluck="name")
+	]
+	guest_spaces = [
+		str(project)
+		for project in frappe.qb.get_query("GP Guest Access", filters={"user": user}, fields=["project"]).run(
+			pluck="project"
+		)
+	]
+
+	# dict.fromkeys, not set: the order has to be stable so callers (and the sidebar)
+	# see the same list twice in a row.
+	return list(dict.fromkeys(member_spaces + guest_spaces))
 
 
 @frappe.whitelist()
@@ -305,9 +335,12 @@ def mark_all_as_read(spaces: list[str | int] = None):
 
 @frappe.whitelist()
 def get_unread_count():
-	from frappe.query_builder.functions import Count, Sum
+	from frappe.query_builder.functions import Count
 
 	user = frappe.session.user
+	# Scopes the count below — without it the query answered for every Space on the site,
+	# so anyone in at least one Space was handed unread counts for private Spaces they
+	# cannot open. The empty case has to short-circuit: `IN ()` is not valid SQL.
 	joined_projects = get_joined_spaces()
 
 	if not joined_projects:
@@ -317,46 +350,34 @@ def get_unread_count():
 	gdv = frappe.qb.DocType("GP Discussion Visit").as_("gdv")
 	gpv = frappe.qb.DocType("GP Project Visit").as_("gpv")
 
-	# Case 1: Projects with mark_all_read_at timestamp
-	# Check if discussion's last_post_at is after the project's mark_all_read_at
-	query1 = (
-		frappe.qb.from_(gd)
-		.select(gd.project, Count(gd.name).as_("unread_count"))
-		.inner_join(gpv)
-		.on((gd.project == gpv.project) & (gpv.user == user) & gpv.mark_all_read_at.isnotnull())
-		.where(gd.last_post_at > gpv.mark_all_read_at)
-		.groupby(gd.project)
+	# A Space is read-tracked one of two ways: by its own "mark all read" timestamp once
+	# it has one, and by per-discussion visits until then.
+	marked_read = gpv.mark_all_read_at.isnotnull() & (gd.last_post_at > gpv.mark_all_read_at)
+	never_marked_read = (gpv.name.isnull() | gpv.mark_all_read_at.isnull()) & (
+		gdv.name.isnull() | (gd.last_post_at > gdv.last_visit)
 	)
 
-	# Case 2: Projects without mark_all_read_at (or NULL)
-	# Fall back to individual discussion visit tracking
-	query2 = (
+	# One OR'd predicate over a single pair of joins rather than a UNION of the two cases:
+	# frappe's SQLite query builder (frappe/query_builder/builder.py::SQLite) leaves
+	# pypika's wrap_set_operation_queries at its default True, so a set operation renders
+	# with each term in parentheses and SQLite rejects the compound SELECT outright
+	# ("near UNION: syntax error").
+	#
+	# COUNT is DISTINCT because the two predicates are exclusive per JOINED ROW, not per
+	# discussion: GP Project Visit has no unique constraint on (user, project) and
+	# track_visit is a get-then-insert, so a Space can carry two visit rows for one user —
+	# one with mark_all_read_at, one without — and each discussion then satisfies both
+	# branches on different rows. The UNION this replaced deduped for the same reason.
+	query = (
 		frappe.qb.from_(gd)
-		.select(gd.project, Count(gd.name).as_("unread_count"))
+		.select(gd.project, Count(gd.name).distinct().as_("unread_count"))
 		.left_join(gpv)
 		.on((gd.project == gpv.project) & (gpv.user == user))
 		.left_join(gdv)
 		.on((gd.name == gdv.discussion) & (gdv.user == user))
-		.where(
-			(gpv.name.isnull() | gpv.mark_all_read_at.isnull())
-			& (gdv.name.isnull() | (gd.last_post_at > gdv.last_visit))
-		)
+		.where(gd.project.isin(joined_projects))
+		.where(marked_read | never_marked_read)
 		.groupby(gd.project)
 	)
 
-	# Combine both queries using pypika's UNION operator
-	union_query = query1 + query2
-
-	# Create outer query to sum the unread counts per project
-	combined = union_query.as_("combined")
-
-	final_query = (
-		frappe.qb.from_(combined)
-		.select(combined.project, Sum(combined.unread_count).as_("unread_count"))
-		.groupby(combined.project)
-	)
-
-	result = final_query.run(as_dict=True)
-	unread_counts_dict = {row["project"]: row["unread_count"] for row in result}
-
-	return unread_counts_dict
+	return {row["project"]: row["unread_count"] for row in query.run(as_dict=True)}

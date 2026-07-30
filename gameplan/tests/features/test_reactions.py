@@ -15,10 +15,11 @@ file owns — is the operation contract of `react`:
 - garbage in a batch is ignored, not stored,
 - reacting never touches the post itself.
 
-One notification property lives here rather than in the notifications spec: the unread
-flag `notify_reactions` resets on every reaction (`TestReactionNotificationUnreadState`).
-That spec covers what a reaction notification says and which post it points at; whether
-the row arrives unread is a property of this mixin's write path and nothing asserted it.
+Two notification properties live here rather than in the notifications spec, because both
+are properties of this mixin's write path rather than of the notification itself: the
+unread flag resets on every reaction (`TestReactionNotificationUnreadState`), and only an
+ADDED reaction notifies at all (`TestWhichReactionChangesNotify`). That spec covers what a
+reaction notification says and which post it points at.
 """
 
 import frappe
@@ -323,6 +324,83 @@ class TestReactionNotificationUnreadState(ReactionTestCase):
 		# is the only thing that can raise the badge.
 		self.assertEqual(len(self.reaction_notifications(self.member, self.discussion)), 1)
 		self.assertEqual(self.bell_count(self.member), 1)
+
+
+class TestWhichReactionChangesNotify(ReactionTestCase):
+	"""Only a reaction someone *added* is news to the post owner.
+
+	`notify_reactions` runs on every save of the post, so it has to work out what
+	actually changed in the reactions table. A withdrawal is not news — the owner
+	already saw that reaction and cleared the bell, and re-raising it says "1 person
+	reacted to your post" about a reaction that no longer exists. Swapping one emoji
+	for another in a single batch (the debounced tap-tap the frontend sends) leaves
+	the table the same size but *is* a new reaction, and has to notify.
+	"""
+
+	def bell_count(self, user):
+		with self.as_user(user):
+			return unread_notifications()
+
+	def clear_bell(self, user):
+		with self.as_user(user):
+			mark_all_notifications_as_read()
+
+	def notification(self, user, discussion):
+		return frappe.db.get_value(
+			"GP Notification",
+			{"to_user": user.name, "type": "Reaction", "discussion": discussion.name},
+			["read", "message"],
+			as_dict=True,
+		)
+
+	def test_withdrawing_a_reaction_does_not_re_light_a_cleared_bell(self):
+		self.react(self.discussion, self.second_member, [add(THUMBS_UP)])
+		self.react(self.discussion, self.admin, [add(HEART)])
+		self.clear_bell(self.member)
+
+		self.react(self.discussion, self.admin, [remove(HEART)])
+
+		self.assertEqual(self.bell_count(self.member), 0)
+		self.assertEqual(self.notification(self.member, self.discussion).read, 1)
+
+	def test_swapping_one_emoji_for_another_notifies(self):
+		"""Remove + add in one batch keeps the table the same size, but the heart is a
+		reaction the owner has never been told about."""
+		self.react(self.discussion, self.second_member, [add(THUMBS_UP)])
+		self.clear_bell(self.member)
+
+		self.react(self.discussion, self.second_member, [remove(THUMBS_UP), add(HEART)])
+
+		self.assertEqual(self.bell_count(self.member), 1)
+
+	def test_a_save_that_leaves_the_reactions_alone_does_not_notify(self):
+		self.react(self.discussion, self.second_member, [add(THUMBS_UP)])
+		self.clear_bell(self.member)
+
+		with self.as_user(self.member):
+			discussion = frappe.get_doc("GP Discussion", self.discussion.name)
+			discussion.title = "Welcome thread (edited)"
+			discussion.save()
+
+		self.assertEqual(self.bell_count(self.member), 0)
+
+	def test_the_owner_reacting_to_their_own_post_never_lights_their_own_bell(self):
+		"""Own reactions are excluded from the count, so adding one is not news either —
+		even once someone else's reaction has put a notification row on the post."""
+		self.react(self.discussion, self.second_member, [add(THUMBS_UP)])
+		self.clear_bell(self.member)
+
+		self.react(self.discussion, self.member, [add(HEART)])
+
+		self.assertEqual(self.bell_count(self.member), 0)
+
+	def test_the_message_counts_everyone_holding_a_reaction_after_the_change(self):
+		self.react(self.discussion, self.second_member, [add(THUMBS_UP)])
+		self.react(self.discussion, self.admin, [add(THUMBS_UP)])
+
+		self.assertEqual(
+			self.notification(self.member, self.discussion).message, "2 people reacted to your post"
+		)
 
 
 class TestReactionsSurviveAnEdit(ReactionTestCase):

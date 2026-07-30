@@ -1,16 +1,24 @@
 # Copyright (c) 2023, Frappe Technologies Pvt Ltd and Contributors
 # See license.txt
 
+import unittest
+from datetime import timedelta
+
 import frappe
 from frappe.utils import get_datetime
 
 from gameplan.gameplan.doctype.gp_discussion.api import (
 	clause_discussions_commented_by_user,
 	get_discussions,
+	parse_offset,
 )
 from gameplan.gameplan.doctype.gp_discussion.gp_discussion import has_permission
 from gameplan.gameplan.doctype.gp_unread_record.gp_unread_record import GPUnreadRecord
 from gameplan.tests.base import GameplanTestCase
+
+# The poll boundary belongs to the poll suite; the feed is its second reader, so it
+# borrows the same frozen instant rather than inventing one that could drift.
+from gameplan.tests.features.test_polls import STOP_INSTANT, frozen_clock
 from gameplan.tests.fixtures import (
 	create_community,
 	create_discussion,
@@ -573,6 +581,69 @@ class TestFeedPaging(DiscussionFeedTestCase):
 		self.assertEqual(first_page, names[:2])
 		self.assertEqual(second_page, names[2:])
 
+	def test_a_start_that_is_not_a_number_pages_from_the_beginning(self):
+		"""`start` is spliced into OFFSET. It used to go there as whatever string the
+		client sent — `start="1); DROP TABLE ..."` landed in the statement verbatim and
+		the database refused the whole query — so anything that is not a number now
+		means "no offset" rather than a 500.
+		"""
+		names = [str(thread.name) for thread in self.threads]
+
+		page = self.feed_names(
+			self.member, limit=2, order_by="name asc", start="1); DROP TABLE `tabGP Discussion`; --"
+		)
+
+		self.assertEqual(page, names[:2])
+
+	def test_a_negative_start_pages_from_the_beginning(self):
+		names = [str(thread.name) for thread in self.threads]
+
+		page = self.feed_names(self.member, limit=2, order_by="name asc", start=-5)
+
+		self.assertEqual(page, names[:2])
+
+
+class TestOffsetParsing(unittest.TestCase):
+	"""`parse_offset` is tested apart from the feed because the case that matters most —
+	a negative offset — is a syntax error on MariaDB but silently equals zero on the
+	SQLite bench, so a query-level test cannot tell the clamp from its absence.
+	"""
+
+	def test_a_number_is_kept(self):
+		self.assertEqual(parse_offset("2"), 2)
+
+	def test_sql_dressed_up_as_a_number_becomes_no_offset(self):
+		self.assertEqual(parse_offset("1); DROP TABLE `tabGP Discussion`; --"), 0)
+		self.assertEqual(parse_offset("0 UNION SELECT 1"), 0)
+
+	def test_a_negative_offset_is_clamped(self):
+		self.assertEqual(parse_offset(-5), 0)
+
+	def test_no_offset_at_all_is_the_first_page(self):
+		self.assertEqual(parse_offset(None), 0)
+
+
+class TestFeedFilterInput(DiscussionFeedTestCase):
+	"""`filters` reaches the query builder as the client sent it, so the endpoint has to
+	answer for the shapes a client can send."""
+
+	def test_a_filter_value_carrying_sql_is_matched_as_text(self):
+		"""Filter values are escaped by the query builder, so a value with a quote and a
+		tautology in it is a title nobody has, not a clause that widens the feed.
+		"""
+		self.post(self.member, "Ordinary thread")
+
+		self.assertEqual(self.feed_names(self.member, filters={"title": "x' OR 1=1 -- "}), [])
+
+	def test_a_filters_argument_that_is_not_a_mapping_is_refused(self):
+		"""`feed_type` and `participator` are lifted out of `filters` by key, so a JSON
+		list used to blow up on `.pop()` — an unhandled 500 on a whitelisted endpoint.
+		"""
+		with self.as_user(self.member), self.assertRaises(frappe.ValidationError):
+			# Straight to the endpoint: `feed()` normalises filters into a dict, which is
+			# exactly the shape this test needs to get past.
+			get_discussions(filters='["name", "asc"]', limit=20)
+
 
 class TestEmptyFeed(DiscussionFeedTestCase):
 	def test_a_feed_with_nothing_in_it_is_an_empty_list(self):
@@ -697,6 +768,97 @@ class TestFeedOngoingPolls(DiscussionFeedTestCase):
 		[row] = self.feed(self.member)
 
 		self.assertEqual(row.ongoing_polls, [])
+
+	def test_the_feed_and_the_ballot_close_at_the_same_instant(self):
+		"""The feed and the poll doctype are two readers of one rule, so they have to
+		agree microsecond for microsecond: while the feed still offers a poll the ballot
+		must still take a vote, and the instant it stops offering it the ballot must
+		refuse. They used to disagree at exactly `stopped_at` — the feed hid a poll the
+		doctype would happily have recorded a vote on.
+		"""
+		discussion = self.post(self.member, "Has a poll about to stop")
+		poll = create_poll("Ship on Friday?", discussion)
+		frappe.db.set_value("GP Poll", poll.name, "stopped_at", STOP_INSTANT, update_modified=False)
+		poll.reload()
+
+		with frozen_clock(STOP_INSTANT - timedelta(microseconds=1)):
+			[still_open] = self.feed(self.member)
+			with self.as_user(self.member):
+				poll.submit_vote("Yes")
+
+		with frozen_clock(STOP_INSTANT):
+			[now_closed] = self.feed(self.member)
+			with self.as_user(self.member), self.assertRaises(frappe.ValidationError):
+				poll.submit_vote("No")
+
+		self.assertEqual([str(p.name) for p in still_open.ongoing_polls], [str(poll.name)])
+		self.assertEqual(now_closed.ongoing_polls, [])
+
+
+class TestFeedSorting(DiscussionFeedTestCase):
+	"""`order_by` comes straight off the query string and is spliced into the query, so
+	it is checked against the sorts the feed actually offers before it gets there."""
+
+	def setUp(self):
+		super().setUp()
+		self.older = self.post(self.member, "Older")
+		self.newer = self.post(self.member, "Newer")
+		# Two posts a few microseconds apart would sort correctly by luck; fixed stamps
+		# make "newest first" mean something.
+		self.stamp(self.older, "2024-01-01 00:00:00")
+		self.stamp(self.newer, "2024-06-01 00:00:00")
+
+	def stamp(self, discussion, last_post_at):
+		frappe.db.set_value(
+			"GP Discussion", discussion.name, "last_post_at", last_post_at, update_modified=False
+		)
+
+	def test_newest_first_is_the_default(self):
+		self.assertEqual(self.feed_names(self.member), [str(self.newer.name), str(self.older.name)])
+
+	def test_oldest_first_reverses_the_feed(self):
+		names = self.feed_names(self.member, order_by="last_post_at asc")
+
+		self.assertEqual(names, [str(self.older.name), str(self.newer.name)])
+
+	def test_every_sort_the_app_asks_for_is_accepted(self):
+		"""The three sorts the feed's Select offers, the pinned strip's own sort, and the
+		upper-case spelling frappe-ui's OrderBy type also allows."""
+		for order_by in (
+			"last_post_at desc",
+			"last_post_at asc",
+			"creation desc",
+			"pinned_at desc",
+			"last_post_at DESC",
+		):
+			with self.subTest(order_by=order_by):
+				self.assertEqual(len(self.feed(self.member, order_by=order_by)), 2)
+
+	def test_a_bare_field_sorts_newest_first(self):
+		"""A directionless `order_by` is what raised the original 500. It is a shape
+		Frappe's own query engine accepts and reads as descending
+		(`frappe.database.query.Engine._validate_order_by`), so it keeps that meaning
+		here instead of being rejected.
+		"""
+		names = self.feed_names(self.member, order_by="last_post_at")
+
+		self.assertEqual(names, [str(self.newer.name), str(self.older.name)])
+
+	def test_a_field_the_feed_does_not_sort_by_is_refused(self):
+		with self.assertRaises(frappe.ValidationError):
+			self.feed(self.member, order_by="content desc")
+
+	def test_a_direction_that_is_not_asc_or_desc_is_refused(self):
+		with self.assertRaises(frappe.ValidationError):
+			self.feed(self.member, order_by="last_post_at sideways")
+
+	def test_a_multi_token_sort_is_refused_rather_than_being_spliced_in(self):
+		"""Three tokens never burst the old `split(" ", 1)` — maxsplit swept everything
+		after the field into the direction half, so this reached the database as
+		`ORDER BY "last_post_at" desc, name asc`: arbitrary trailing SQL, quietly executed.
+		"""
+		with self.assertRaises(frappe.ValidationError):
+			self.feed(self.member, order_by="last_post_at desc, name asc")
 
 
 class TestFeedLastPostPreview(DiscussionFeedTestCase):

@@ -53,6 +53,14 @@ def content_has_permission(doc, ptype="read", user=None, **kwargs):
 		return can_write_content(user, doc)
 	if ptype == "delete":
 		return can_delete_content(user, doc)
+	# Defer, don't decide. A has_permission hook can only ever DENY — frappe's
+	# has_controller_permissions treats a falsy answer as "blocked" and never grants
+	# anything the role layer withheld — so True is the correct answer for a permission
+	# type Gameplan does not model (submit/cancel/amend/import, or a site's custom
+	# Permission Type). It also carries a live caller: frappe.permissions.get_doc_permissions
+	# invokes the hook with ptype=None to evaluate the whole permission dict, and a False
+	# here collapses that dict to {None: 0}, i.e. the document reads as having no
+	# permissions at all. See tests/permissions/test_permission_defaults.py.
 	return True
 
 
@@ -248,6 +256,14 @@ def can_interact_with_content(user, doc):
 	alike) and, for personal/space-less content, its owner. This is the floor for the
 	`write` permission; whether a specific *edit* is allowed on top of it is decided
 	by can_edit_content / _protected_fields_changed.
+
+	Two of the branches below never fire from its only caller: can_write_content reaches
+	here only once can_edit_content has said False, and an admin or the owner of
+	space-less content is always an editor. They stay because this is a named predicate
+	about who may reach content at all, not a private tail of can_write_content: dropping
+	the admin line makes it answer False for a global admin on another user's personal
+	page, and dropping the owner line at the end turns the space-less case into an
+	unconditional True the moment can_view_content's own space-less rule loosens.
 	"""
 	if is_global_admin(user):
 		return True
@@ -255,6 +271,8 @@ def can_interact_with_content(user, doc):
 		return False
 	if get_content_project(doc):
 		return True
+	# Today can_view_content has already established owner == user for space-less content,
+	# so this only ever returns True — it is the deny-by-default that keeps that true.
 	return get_doc_value(doc, "owner") == user
 
 
@@ -419,6 +437,12 @@ def can_delete_content(user, doc):
 		return False
 	project = get_content_project(doc)
 	if not project:
+		# Space-less content has no community to moderate it: only its owner and the
+		# global admin, both handled above. Unreachable today (a non-owner who is not a
+		# global admin fails the can_view_content check above for space-less content) and
+		# the line below would deny too — get_project_info(None) is None. Kept as the
+		# explicit statement of the rule: that "would deny too" rests on an implicit
+		# falsy chain, and this is the one function where the rule should be readable.
 		return False
 	project_info = get_project_info(project)
 	return bool(project_info and is_community_admin(user, project_info.team))

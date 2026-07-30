@@ -15,8 +15,13 @@ The other half of that rule is that a poll's ballot and lifecycle belong to its 
 go through `stop_poll` or straight at the document — TestPollFieldProtection locks that.
 """
 
+from contextlib import contextmanager
+from datetime import timedelta
+from unittest.mock import patch
+
 import frappe
-from frappe.utils import add_days, now_datetime
+import frappe.utils.data
+from frappe.utils import add_days, get_datetime, now_datetime
 
 from gameplan.gameplan.doctype.gp_poll.gp_poll import GPPoll
 from gameplan.tests.base import GameplanTestCase
@@ -28,6 +33,27 @@ from gameplan.tests.fixtures import (
 	declared_http_methods,
 	grant_guest_access,
 )
+
+# A fixed instant to stop a poll at. Far enough ahead that the real clock never reaches
+# it, so a test that forgets to freeze the clock fails instead of passing by accident.
+STOP_INSTANT = get_datetime("2099-01-01 09:00:00.500000")
+
+
+@contextmanager
+def frozen_clock(instant):
+	"""Hold the whole request at `instant`.
+
+	A poll closes on a microsecond boundary, and a test that waited for real time to
+	pass could only ever observe one side of it. `frappe.utils` re-exports
+	`now_datetime` under its own name, so both that binding and the definition in
+	`frappe.utils.data` (which `frappe.utils.now` calls) have to be replaced before
+	every reader of the clock agrees on where the boundary is.
+	"""
+	with (
+		patch.object(frappe.utils, "now_datetime", return_value=instant),
+		patch.object(frappe.utils.data, "now_datetime", return_value=instant),
+	):
+		yield
 
 
 class PollTestCase(GameplanTestCase):
@@ -355,6 +381,54 @@ class TestStoppingAPoll(PollTestCase):
 
 		self.vote(poll, self.second_member, "Yes")
 
+		self.assertEqual(poll.total_votes, 1)
+
+
+class TestTheStopInstant(PollTestCase):
+	"""`stopped_at` names the moment the poll stops, not the last moment it runs.
+
+	`stop_poll` stamps it with the current time, so if that exact microsecond still
+	counted as open a vote could land after the stop was recorded. The boundary is
+	therefore inclusive, and the discussion feed reads the same rule — see
+	TestFeedOngoingPolls.test_the_feed_and_the_ballot_close_at_the_same_instant.
+	"""
+
+	def stopping_poll(self):
+		poll = self.poll()
+		frappe.db.set_value("GP Poll", poll.name, "stopped_at", STOP_INSTANT, update_modified=False)
+		poll.reload()
+		return poll
+
+	def test_a_vote_at_the_stop_instant_is_refused(self):
+		poll = self.stopping_poll()
+
+		with frozen_clock(STOP_INSTANT), self.as_user(self.second_member):
+			with self.assertRaises(frappe.ValidationError):
+				poll.submit_vote("Yes")
+
+		poll.reload()
+		self.assertEqual(poll.total_votes, 0)
+
+	def test_a_vote_a_microsecond_earlier_is_accepted(self):
+		"""The other side of the same boundary: closing it one tick early would end
+		every poll before the instant it advertises."""
+		poll = self.stopping_poll()
+
+		with frozen_clock(STOP_INSTANT - timedelta(microseconds=1)), self.as_user(self.second_member):
+			poll.submit_vote("Yes")
+
+		poll.reload()
+		self.assertEqual(poll.total_votes, 1)
+
+	def test_a_retraction_at_the_stop_instant_is_refused(self):
+		poll = self.stopping_poll()
+		self.vote(poll, self.second_member, "Yes")
+
+		with frozen_clock(STOP_INSTANT), self.as_user(self.second_member):
+			with self.assertRaises(frappe.ValidationError):
+				poll.retract_vote()
+
+		poll.reload()
 		self.assertEqual(poll.total_votes, 1)
 
 
