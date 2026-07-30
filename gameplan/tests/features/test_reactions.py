@@ -14,10 +14,16 @@ file owns — is the operation contract of `react`:
   a quick toggle),
 - garbage in a batch is ignored, not stored,
 - reacting never touches the post itself.
+
+One notification property lives here rather than in the notifications spec: the unread
+flag `notify_reactions` resets on every reaction (`TestReactionNotificationUnreadState`).
+That spec covers what a reaction notification says and which post it points at; whether
+the row arrives unread is a property of this mixin's write path and nothing asserted it.
 """
 
 import frappe
 
+from gameplan.api import mark_all_notifications_as_read, unread_notifications
 from gameplan.mixins.reactions import HasReactions
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
@@ -272,6 +278,51 @@ class TestPollReactions(ReactionTestCase):
 		self.assertEqual([(v.user, v.option) for v in poll.votes], [(self.member.name, "Yes")])
 		self.assertEqual(poll.total_votes, 1)
 		self.assertEqual([o.title for o in poll.options], ["Yes", "No"])
+
+
+class TestReactionNotificationUnreadState(ReactionTestCase):
+	"""A reaction has to leave the post owner's bell unread, every time.
+
+	`notify_reactions` reuses one notification row per post, so `read = 0` is not a
+	default that happens to hold — it is the only thing that raises the badge again for
+	the second, third and tenth reactor after the owner has cleared it once. Drop it and
+	reactions become a channel that lights up exactly once and then goes silent.
+	"""
+
+	def bell_count(self, user):
+		"""What the bell badge shows for `user` (gameplan.api.unread_notifications)."""
+		with self.as_user(user):
+			return unread_notifications()
+
+	def clear_bell(self, user):
+		with self.as_user(user):
+			mark_all_notifications_as_read()
+
+	def reaction_notifications(self, user, discussion):
+		return frappe.get_all(
+			"GP Notification",
+			filters={"to_user": user.name, "type": "Reaction", "discussion": discussion.name},
+			pluck="name",
+		)
+
+	def test_a_reaction_lights_the_post_owners_bell(self):
+		self.clear_bell(self.member)
+
+		self.react(self.discussion, self.second_member, [add(THUMBS_UP)])
+
+		self.assertEqual(self.bell_count(self.member), 1)
+
+	def test_a_later_reaction_re_lights_a_bell_the_owner_already_cleared(self):
+		self.react(self.discussion, self.second_member, [add(THUMBS_UP)])
+		self.clear_bell(self.member)
+		self.assertEqual(self.bell_count(self.member), 0)
+
+		self.react(self.discussion, self.admin, [add(HEART)])
+
+		# One row, re-flagged rather than a second row appearing: on this path the reset
+		# is the only thing that can raise the badge.
+		self.assertEqual(len(self.reaction_notifications(self.member, self.discussion)), 1)
+		self.assertEqual(self.bell_count(self.member), 1)
 
 
 class TestReactionsSurviveAnEdit(ReactionTestCase):

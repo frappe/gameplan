@@ -9,6 +9,7 @@ from gameplan.gameplan.doctype.gp_discussion.api import (
 	get_discussions,
 )
 from gameplan.gameplan.doctype.gp_discussion.gp_discussion import has_permission
+from gameplan.gameplan.doctype.gp_unread_record.gp_unread_record import GPUnreadRecord
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
 	create_community,
@@ -481,3 +482,247 @@ class TestParticipants(DiscussionLifecycleTestCase):
 		self.delete_as(first, self.second_member)
 
 		self.assertEqual(self.stored().participants_count, 2)
+
+
+class DiscussionFeedTestCase(GameplanTestCase):
+	"""World for `get_discussions`, the query behind every discussion feed.
+
+	One community with two public spaces. `member` joined the first, `second_member`
+	joined the second — so every space has a member, and exactly one of them is the
+	reader. That asymmetry is deliberate: a feed scoped "by membership" and a feed
+	scoped "by *anyone's* membership" only differ when someone else has joined
+	somewhere the reader has not.
+	"""
+
+	def setUp(self):
+		super().setUp()
+		self.community = create_community("Feed Co", members=[self.member, self.second_member])
+		self.space = create_space("Joined", self.community, members=[self.member])
+		self.other_space = create_space("Not joined", self.community, members=[self.second_member])
+
+	def feed(self, user, limit=20, **kwargs):
+		"""`get_discussions` as `user`, scoped to this community unless told otherwise."""
+		filters = dict(kwargs.pop("filters", None) or {})
+		filters.setdefault("team", self.community.name)
+		with self.as_user(user):
+			return get_discussions(filters=filters, limit=limit, **kwargs)
+
+	def feed_names(self, user, **kwargs):
+		return [str(d.name) for d in self.feed(user, **kwargs)]
+
+	def post(self, user, title, space=None, content="<p>Body</p>"):
+		"""Start a discussion as `user`.
+
+		Inserted through the session rather than `create_discussion(owner=...)`: both the
+		owner and the unread records that get built on insert key off the acting user, and
+		rewriting the owner afterwards happens too late for the unread fan-out.
+		"""
+		return self._insert_as(
+			user,
+			doctype="GP Discussion",
+			title=title,
+			project=(space or self.space).name,
+			content=content,
+		)
+
+	def comment(self, discussion, user, content="<p>A reply</p>"):
+		return self._insert_as(
+			user,
+			doctype="GP Comment",
+			reference_doctype="GP Discussion",
+			reference_name=discussion.name,
+			content=content,
+		)
+
+	def _insert_as(self, user, **fields):
+		with self.as_user(user):
+			return frappe.get_doc(**fields).insert()
+
+	def rows_by_name(self, user):
+		return {str(row.name): row for row in self.feed(user)}
+
+
+class TestFeedPaging(DiscussionFeedTestCase):
+	"""`limit` and `start` page the feed; `has_next_page` tells the client whether to
+	ask for another page. All three come out of one deliberately over-fetched row."""
+
+	def setUp(self):
+		super().setUp()
+		self.threads = [self.post(self.member, f"Thread {index}") for index in range(3)]
+
+	def test_a_full_page_reports_that_more_are_waiting(self):
+		rows = self.feed(self.member, limit=2)
+
+		self.assertEqual(len(rows), 2)
+		self.assertIs(frappe.response["has_next_page"], True)
+
+	def test_the_last_page_reports_that_nothing_is_waiting(self):
+		"""Exactly `limit` rows left is the case that decides the over-fetch: the extra
+		row is what separates "a full page" from "a full page and then some"."""
+		rows = self.feed(self.member, limit=3)
+
+		self.assertEqual(len(rows), 3)
+		self.assertIs(frappe.response["has_next_page"], False)
+
+	def test_start_skips_the_rows_already_shown(self):
+		names = [str(thread.name) for thread in self.threads]
+
+		first_page = self.feed_names(self.member, limit=2, order_by="name asc")
+		second_page = self.feed_names(self.member, limit=2, start=2, order_by="name asc")
+
+		self.assertEqual(first_page, names[:2])
+		self.assertEqual(second_page, names[2:])
+
+
+class TestEmptyFeed(DiscussionFeedTestCase):
+	def test_a_feed_with_nothing_in_it_is_an_empty_list(self):
+		"""The enrichment steps run in sequence and hand their result to the next one, so
+		an empty feed is the case where a dropped return value blows up the whole endpoint."""
+		self.assertEqual(self.feed(self.member), [])
+
+
+class TestFeedUnreadCounts(DiscussionFeedTestCase):
+	"""Every row carries `unread`: how many posts in that thread this reader has not
+	seen. It is per-reader, so it must never be assembled from anyone else's records."""
+
+	def test_the_author_has_nothing_to_catch_up_on_but_everyone_else_does(self):
+		self.post(self.second_member, "Fresh thread")
+
+		[author_row] = self.feed(self.second_member)
+		[reader_row] = self.feed(self.member)
+
+		self.assertEqual(author_row.unread, 0)
+		self.assertEqual(reader_row.unread, 1)
+
+	def test_each_new_post_adds_to_the_count(self):
+		discussion = self.post(self.second_member, "Fresh thread")
+		self.comment(discussion, self.second_member)
+
+		[row] = self.feed(self.member)
+
+		self.assertEqual(row.unread, 2)
+
+	def test_reading_a_thread_returns_its_count_to_zero(self):
+		discussion = self.post(self.second_member, "Fresh thread")
+
+		GPUnreadRecord.mark_discussion_as_read_for_user(str(discussion.name), self.member.name)
+
+		[row] = self.feed(self.member)
+		self.assertEqual(row.unread, 0)
+
+
+class TestFollowingFeed(DiscussionFeedTestCase):
+	""" "Following" is scoped by space membership — the spaces *this* reader joined."""
+
+	def test_it_shows_only_threads_in_spaces_the_reader_joined(self):
+		joined = self.post(self.member, "In the space I joined", self.space)
+		elsewhere = self.post(self.member, "In a space someone else joined", self.other_space)
+
+		names = self.feed_names(self.member, filters={"feed_type": "following"})
+
+		self.assertIn(str(joined.name), names)
+		self.assertNotIn(str(elsewhere.name), names)
+
+
+class TestUnreadFeed(DiscussionFeedTestCase):
+	""" "Unread" is scoped by this reader's own outstanding unread records."""
+
+	def setUp(self):
+		super().setUp()
+		self.theirs = self.post(self.second_member, "New to me")
+		self.mine = self.post(self.member, "Written by me")
+
+	def unread_feed(self):
+		return self.feed_names(self.member, filters={"feed_type": "unread"})
+
+	def test_it_shows_a_thread_the_reader_has_not_seen(self):
+		self.assertIn(str(self.theirs.name), self.unread_feed())
+
+	def test_it_hides_a_thread_the_reader_has_nothing_outstanding_in(self):
+		"""The reader wrote this one, so only *other* people have unread records for it."""
+		self.assertNotIn(str(self.mine.name), self.unread_feed())
+
+	def test_reading_a_thread_drops_it_from_the_feed(self):
+		GPUnreadRecord.mark_discussion_as_read_for_user(str(self.theirs.name), self.member.name)
+
+		self.assertNotIn(str(self.theirs.name), self.unread_feed())
+
+
+class TestParticipatingFeed(DiscussionFeedTestCase):
+	""" "Participating" is the threads the reader started or replied to."""
+
+	def setUp(self):
+		super().setUp()
+		self.started = self.post(self.member, "I started this")
+		self.replied_to = self.post(self.second_member, "Someone else started this")
+		self.comment(self.replied_to, self.member)
+		self.untouched = self.post(self.second_member, "Nothing to do with me")
+		self.comment(self.untouched, self.second_member)
+
+	def participating(self):
+		return self.feed_names(self.member, filters={"feed_type": "participating"})
+
+	def test_it_shows_threads_the_reader_started(self):
+		self.assertIn(str(self.started.name), self.participating())
+
+	def test_it_shows_threads_the_reader_replied_to(self):
+		self.assertIn(str(self.replied_to.name), self.participating())
+
+	def test_it_hides_threads_only_other_people_touched(self):
+		self.assertNotIn(str(self.untouched.name), self.participating())
+
+	def test_the_default_feed_is_not_filtered_by_participation(self):
+		self.assertIn(str(self.untouched.name), self.feed_names(self.member))
+
+
+class TestFeedOngoingPolls(DiscussionFeedTestCase):
+	"""Each row carries the polls still open in that thread, so the feed can render a
+	vote prompt without a second request."""
+
+	def test_a_thread_carries_its_own_polls_and_nobody_elses(self):
+		with_poll = self.post(self.member, "Has a poll")
+		without_poll = self.post(self.member, "Has no poll")
+		poll = create_poll("Ship on Friday?", with_poll)
+
+		rows = self.rows_by_name(self.member)
+
+		self.assertEqual([str(p.name) for p in rows[str(with_poll.name)].ongoing_polls], [str(poll.name)])
+		self.assertEqual(rows[str(without_poll.name)].ongoing_polls, [])
+
+	def test_a_poll_that_has_stopped_is_no_longer_ongoing(self):
+		discussion = self.post(self.member, "Has a stopped poll")
+		poll = create_poll("Ship on Friday?", discussion)
+		frappe.db.set_value("GP Poll", poll.name, "stopped_at", "2020-01-01 00:00:00", update_modified=False)
+
+		[row] = self.feed(self.member)
+
+		self.assertEqual(row.ongoing_polls, [])
+
+
+class TestFeedLastPostPreview(DiscussionFeedTestCase):
+	"""Each row carries a one-line preview of the newest post: a comment's text, a
+	poll's title, or the discussion's own body while nobody has replied."""
+
+	def test_it_previews_the_last_comment(self):
+		discussion = self.post(self.member, "Thread")
+		self.comment(discussion, self.second_member, "<p>The latest reply</p>")
+
+		[row] = self.feed(self.member)
+
+		self.assertEqual(row.last_comment_content, "The latest reply")
+
+	def test_it_names_the_last_poll(self):
+		discussion = self.post(self.member, "Thread")
+		with self.as_user(self.second_member):
+			create_poll("Ship on Friday?", discussion)
+
+		[row] = self.feed(self.member)
+
+		self.assertEqual(row.last_poll_title, "Ship on Friday?")
+
+	def test_a_thread_with_no_replies_previews_its_own_body(self):
+		self.post(self.member, "Thread", content="<p>The opening post</p>")
+
+		[row] = self.feed(self.member)
+
+		self.assertEqual(row.last_comment_content, "The opening post")
