@@ -13,12 +13,13 @@ import time
 from pathlib import Path
 
 from . import journal as journal_mod
-from . import mutators, safety
+from . import mutators, safety, scope
 from .config import (
 	APP_ROOT,
 	BACKUP_DIR,
 	JOURNAL_PATH,
 	MAX_CONSECUTIVE_NO_VERDICT,
+	MODULE_STATUSES,
 	NO_VERDICT_STATUSES,
 	RETRYABLE_STATUSES,
 	STATUS_BASELINE_SKIP,
@@ -28,6 +29,8 @@ from .config import (
 	STATUS_KILLED,
 	STATUS_KILLED_BY_OTHER_SUITE,
 	STATUS_KILLED_IMPORT_ERROR,
+	STATUS_MODULE_CURRENT,
+	STATUS_MODULE_SKIP,
 	STATUS_SURVIVED,
 	STATUS_TIMEOUT,
 	STATUS_UNCONFIRMED,
@@ -43,6 +46,11 @@ EXIT_OK = 0
 EXIT_ABORTED = 1
 EXIT_USAGE = 2
 EXIT_NOTHING_MEASURED = 3
+# The wall-clock budget ran out with mutants still pending. A *fourth* outcome on purpose:
+# folding it into 0 makes a nightly that is falling behind indistinguishable from one that
+# finished the corpus, and folding it into a failure pages a human every single night for
+# the design working exactly as intended.
+EXIT_BUDGET_EXHAUSTED = 4
 
 
 def _log(message: str) -> None:
@@ -169,6 +177,8 @@ def run_campaign(
 	mutate_strings: bool = False,
 	assume_yes: bool = False,
 	journal_path: Path | None = None,
+	budget_seconds: float | None = None,
+	changed_files: list[str] | None = None,
 ) -> int:
 	from .config import DEFAULT_SITE, DEFAULT_TIMEOUT
 
@@ -177,6 +187,9 @@ def run_campaign(
 	journal_path = journal_path or JOURNAL_PATH
 
 	targets = target_map(tier)
+	if only_module and changed_files is not None:
+		_log("--module and --changed-files-from both narrow the target set; pass only one.")
+		return EXIT_USAGE
 	if only_module:
 		rel = only_module
 		if rel not in targets:
@@ -187,6 +200,23 @@ def run_campaign(
 			targets = {rel: merged[rel]}
 		else:
 			targets = {rel: targets[rel]}
+	if changed_files is not None:
+		targets = scope.changed_targets(changed_files, targets)
+		if not targets:
+			# Not a failure and not a silent pass: there is genuinely nothing in this diff
+			# that this harness can measure. Returning before the lock keeps the common
+			# frontend-only pull request fast.
+			_log(f"none of the {len(changed_files)} changed file(s) map to a mutation target.")
+			_log("nothing to measure.")
+			return EXIT_OK
+		_log(f"diff-scoped to {len(targets)} target(s): {', '.join(targets)}")
+
+	# Started here rather than inside the lock so setup done on our behalf - orphan
+	# recovery, the git cleanliness check - is spent from the same allowance. A budget the
+	# clock only starts on the first mutant is not a wall-clock budget.
+	budget = scope.Budget(budget_seconds)
+	if budget_seconds is not None:
+		_log(f"budget: {budget_seconds:g}s of mutation work")
 
 	try:
 		lock = safety.CampaignLock()
@@ -204,6 +234,7 @@ def run_campaign(
 			mutate_strings=mutate_strings,
 			assume_yes=assume_yes,
 			journal_path=journal_path,
+			budget=budget,
 		)
 	finally:
 		lock.release()
@@ -223,6 +254,43 @@ def _guard_for(abs_path: Path) -> safety.FileGuard:
 	return guard
 
 
+def _module_record(rel_path: str, status: str, reason: str, tests_sha: str) -> dict:
+	"""A journal record about a MODULE rather than a mutant, keyed "baseline:<path>".
+
+	Two things are said with it, and the second exists only to retract the first:
+
+	A SKIP says "this module produced no measurement, and here is why". Every path that
+	drops a module has to leave one. The report's only way to notice a module that fell out
+	of the corpus is the journal, so a skip that only ever reached stdout is a module that
+	goes quietly unmeasured for ever while its stale verdicts keep counting toward the
+	published score.
+
+	STATUS_MODULE_CURRENT says "this module has a current score". It is written whenever a
+	run establishes that, and it is the only thing that can retire a skip.
+
+	The key is FIXED per module and identical for both, so the journal's last-wins merge
+	leaves exactly one of them and it is authoritative. That is the whole design: currency
+	is a fact recorded under the key it supersedes, not something the reader infers from
+	how far down the file a mutant record happens to sit. See STATUS_MODULE_CURRENT.
+	"""
+	return {
+		"key": f"baseline:{rel_path}",
+		"module": rel_path,
+		"file": rel_path,
+		"line": 0,
+		"col": 0,
+		"function": "",
+		"mutator": "",
+		"original_segment": "",
+		"mutated_segment": "",
+		"status": status,
+		"duration_s": 0.0,
+		"killed_by_test_module": None,
+		"tests_sha": tests_sha,
+		"reason": reason,
+	}
+
+
 def _campaign_exit_code(
 	targeted: int,
 	skipped: int,
@@ -230,6 +298,8 @@ def _campaign_exit_code(
 	evaluated: int,
 	aborted: bool,
 	limit: int | None = None,
+	budget_stopped: bool = False,
+	budget_seconds: float | None = None,
 ) -> int:
 	"""Exit code for a finished campaign.
 
@@ -239,14 +309,33 @@ def _campaign_exit_code(
 	ways of ending with an empty scoreboard get different codes: having nothing to do
 	because every mutant is already journalled is a real success, while measuring nothing
 	because the environment is broken is a failure.
+
+	The order of the checks is the contract, strongest evidence of breakage first:
+
+	1. an abort outranks everything - the circuit breaker fired, nothing else is credible;
+	2. then "measured nothing", including when the budget is what stopped us. A run that
+	burned its whole allowance without landing a single verdict is a broken site, not a
+	budget working as designed, and it must page someone rather than report "stopped early,
+	resuming tomorrow" for a week;
+	3. then the budget - work remains, but real work was done;
+	4. otherwise success.
+
+	Note the shape of rule 2: it fires on ``budget_stopped`` even when ``pending`` is 0.
+	``pending`` only counts modules the loop actually reached, so a budget that expired
+	before the FIRST module was inspected reports 0 pending and would otherwise slip
+	through as "stopped on budget, resuming tomorrow" - green, for ever, having run no
+	tests at all.
 	"""
 	if aborted:
 		return EXIT_ABORTED
 	if targeted and skipped == targeted:
 		return EXIT_NOTHING_MEASURED
-	# ``--limit 0`` is an explicit request to evaluate nothing, so it is not a failure.
-	if pending and not evaluated and limit != 0:
+	# ``--limit 0`` and ``--budget-seconds 0`` are explicit requests to evaluate nothing,
+	# so neither is a failure.
+	if (pending or budget_stopped) and not evaluated and limit != 0 and budget_seconds != 0:
 		return EXIT_NOTHING_MEASURED
+	if budget_stopped:
+		return EXIT_BUDGET_EXHAUSTED
 	return EXIT_OK
 
 
@@ -258,7 +347,9 @@ def _run_campaign_locked(
 	mutate_strings: bool,
 	assume_yes: bool,
 	journal_path: Path,
+	budget: scope.Budget | None = None,
 ) -> int:
+	budget = budget or scope.Budget(None)
 	if not check_orphans(assume_yes=assume_yes):
 		return 1
 
@@ -274,19 +365,49 @@ def _run_campaign_locked(
 	safety.install_handlers()
 	BACKUP_DIR.mkdir(parents=True, exist_ok=True)
 
-	done = journal_mod.completed_keys(journal_path, exclude_statuses=RETRYABLE_STATUSES)
+	# What each module's verdicts were produced BY. A verdict is only settled while the
+	# tests that produced it are unchanged; see scope.test_fingerprint for the reasoning
+	# and for the cost this deliberately accepts.
+	fingerprints = {rel: scope.test_fingerprint(tests, APP_ROOT) for rel, tests in targets.items()}
+	done = journal_mod.completed_keys(
+		journal_path, exclude_statuses=RETRYABLE_STATUSES, fingerprints=fingerprints
+	)
+	# Least-recently-measured first. Only matters under a budget, where the tail of the
+	# list never gets reached - see scope.round_robin_order. NO module-level record counts
+	# as a measurement: a skip would sort the module the gate wants re-measured last, and a
+	# "score is current" record written just before the budget expired would do the same to
+	# a module whose mutants never ran.
+	order = scope.round_robin_order(
+		list(targets),
+		scope.last_measured_positions(
+			journal_mod.read_records(journal_path), ignore_statuses=MODULE_STATUSES
+		),
+	)
 	evaluated = 0
 	pending_total = 0
-	skipped_modules = 0
+	# (module, reason) for every module that produced no measurement, so the tail of the
+	# run can name them instead of printing a count nobody can act on.
+	skipped: list[tuple[str, str]] = []
 	consecutive_no_verdict = 0
 	aborted = False
+	budget_stopped = False
 
 	with journal_mod.Journal(journal_path) as journal:
-		for rel_path, test_modules in targets.items():
+		for rel_path in order:
+			test_modules = targets[rel_path]
+			if budget.expired:
+				# Checked before the module rather than only before each mutant: a
+				# baseline pass is several minutes of test runs, and starting one with no
+				# allowance left overruns the budget by more than a mutant would.
+				_log(f"budget exhausted ({budget.describe()}); stopping before {rel_path}")
+				budget_stopped = True
+				break
 			abs_path = APP_ROOT / rel_path
 			if not abs_path.exists():
+				reason = f"{rel_path} does not exist (renamed or deleted without updating config.py)"
 				_log(f"skipping missing file {rel_path}")
-				skipped_modules += 1
+				skipped.append((rel_path, reason))
+				journal.append(_module_record(rel_path, STATUS_MODULE_SKIP, reason, fingerprints[rel_path]))
 				continue
 
 			_log(f"=== {rel_path} ===")
@@ -294,36 +415,13 @@ def _run_campaign_locked(
 				guard = _guard_for(abs_path)
 			except (safety.LockError, safety.RestoreError, OSError) as exc:
 				_log(f"skipping {rel_path}: {exc}")
-				skipped_modules += 1
+				reason = f"could not take a restorable backup: {exc}"
+				skipped.append((rel_path, reason))
+				journal.append(_module_record(rel_path, STATUS_MODULE_SKIP, reason, fingerprints[rel_path]))
 				continue
 
 			safety.register(guard)
 			try:
-				_log(f"baseline: {len(test_modules)} test module(s)...")
-				ok, reason = _baseline_ok(site, test_modules, timeout)
-				if not ok:
-					_log(f"baseline RED -> skipping module. {reason}")
-					skipped_modules += 1
-					journal.append(
-						{
-							"key": f"baseline:{rel_path}",
-							"module": rel_path,
-							"file": rel_path,
-							"line": 0,
-							"col": 0,
-							"function": "",
-							"mutator": "",
-							"original_segment": "",
-							"mutated_segment": "",
-							"status": STATUS_BASELINE_SKIP,
-							"duration_s": 0.0,
-							"killed_by_test_module": None,
-							"reason": reason,
-						}
-					)
-					continue
-				_log("baseline GREEN")
-
 				# Read the source through the guard, after _guard_for has had its chance to
 				# undo a crashed run's leftover mutant. Sites collected from mutated source
 				# get content-derived keys that match nothing on a clean tree, so every
@@ -333,9 +431,63 @@ def _run_campaign_locked(
 				pending_total += len(pending)
 				_log(f"{len(sites)} mutant(s), {len(sites) - len(pending)} already journaled")
 
+				# Before the baseline, not after: the baseline exists to make this module's
+				# verdicts trustworthy, and a module with no pending mutant produces none.
+				# Paying for its test modules anyway is what turns a budgeted nightly into a
+				# run that spends most of its allowance re-proving settled work - the whole
+				# corpus is ~17 bench invocations of baseline before a single mutation.
+				if not pending:
+					# Settled, and that has to be SAID: every mutant of this module has a
+					# verdict produced by the tests exactly as they are now. Without this
+					# record a module that was skipped once and then has nothing pending
+					# never runs a baseline again, so nothing can ever clear the skip and
+					# the gate stays red for ever - the self-sustaining failure this
+					# record exists to make impossible.
+					journal.append(
+						_module_record(
+							rel_path,
+							STATUS_MODULE_CURRENT,
+							f"all {len(sites)} mutant(s) already settled against the current tests",
+							fingerprints[rel_path],
+						)
+					)
+					continue
+
+				_log(f"baseline: {len(test_modules)} test module(s)...")
+				ok, reason = _baseline_ok(site, test_modules, timeout)
+				if not ok:
+					_log(f"baseline RED -> skipping module. {reason}")
+					skipped.append((rel_path, f"red baseline: {reason}"))
+					journal.append(
+						_module_record(rel_path, STATUS_BASELINE_SKIP, reason, fingerprints[rel_path])
+					)
+					continue
+				_log("baseline GREEN")
+				# Journalled here, before the mutants rather than after them: this is the
+				# record that retires any earlier skip, and it has to survive the run being
+				# cut short by the budget, the circuit breaker or a hard kill - which is
+				# precisely when a stale skip would otherwise outlive its cause.
+				journal.append(
+					_module_record(
+						rel_path,
+						STATUS_MODULE_CURRENT,
+						f"baseline green; measuring {len(pending)} pending mutant(s)",
+						fingerprints[rel_path],
+					)
+				)
+
 				for site_obj in pending:
 					if limit is not None and evaluated >= limit:
 						_log(f"limit of {limit} mutants reached")
+						break
+					if budget.expired:
+						# Between mutants, with the file already restored by the previous
+						# iteration's guard.restore(). This is the only place the budget may
+						# stop the loop: a check inside _evaluate_mutant would abandon a
+						# mutated source file on disk, which is the one failure this harness
+						# exists to make impossible.
+						_log(f"budget exhausted ({budget.describe()}); stopping cleanly")
+						budget_stopped = True
 						break
 					built = mutators.build_mutant(
 						guard.source, site_obj.node_index, site_obj.mutator, site_obj.param
@@ -355,6 +507,9 @@ def _run_campaign_locked(
 							"status": status,
 							"duration_s": duration,
 							"killed_by_test_module": killed_by,
+							# The provenance of this verdict: which test files, at which
+							# bytes, produced it. Change them and it stops being settled.
+							"tests_sha": fingerprints[rel_path],
 						}
 					)
 					journal.append(record)
@@ -388,26 +543,35 @@ def _run_campaign_locked(
 				guard.release()
 				safety.unregister(guard)
 
-			if aborted or (limit is not None and evaluated >= limit):
+			if aborted or budget_stopped or (limit is not None and evaluated >= limit):
 				break
 
 	_log(f"done. evaluated {evaluated} mutant(s). journal: {journal_path}")
 	code = _campaign_exit_code(
 		targeted=len(targets),
-		skipped=skipped_modules,
+		skipped=len(skipped),
 		pending=pending_total,
 		evaluated=evaluated,
 		aborted=aborted,
 		limit=limit,
+		budget_stopped=budget_stopped,
+		budget_seconds=budget.seconds,
 	)
+	if code == EXIT_BUDGET_EXHAUSTED:
+		_log(
+			f"STOPPED ON BUDGET: {evaluated} mutant(s) evaluated, work remains. This is not a "
+			f"failure - the journal is the resume point and the next run continues from here."
+		)
 	if code == EXIT_NOTHING_MEASURED:
 		_log(
-			f"NOTHING MEASURED: {skipped_modules} of {len(targets)} target module(s) were "
+			f"NOTHING MEASURED: {len(skipped)} of {len(targets)} target module(s) were "
 			f"skipped and no mutant was evaluated. Reporting failure - a green exit here "
 			f"would claim a passing campaign for a run that measured nothing."
 		)
-	elif skipped_modules:
-		_log(f"WARNING: {skipped_modules} of {len(targets)} target module(s) were skipped.")
+	if skipped:
+		_log(f"WARNING: {len(skipped)} of {len(targets)} target module(s) were skipped:")
+		for rel_path, reason in skipped:
+			_log(f"  {rel_path}: {reason}")
 	return code
 
 

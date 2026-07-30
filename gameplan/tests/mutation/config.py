@@ -96,6 +96,25 @@ STATUS_KILLED_IMPORT_ERROR = "killed-import-error"
 STATUS_KILLED_BY_OTHER_SUITE = "killed-by-other-suite"
 STATUS_SURVIVED = "survived"
 STATUS_BASELINE_SKIP = "baseline-skip"
+# The module was never even offered to the suite: its source file is gone (usually a
+# rename that config.py did not follow) or its FileGuard could not be built. Journalled
+# for the same reason as a red baseline - a module that silently drops out of the corpus
+# while its stale verdicts keep counting toward the published score is the exact failure
+# this harness is supposed to make impossible.
+STATUS_MODULE_SKIP = "module-skip"
+# The opposite claim, and the record that CLEARS a skip: "this module has a current
+# score". Written whenever a run establishes that - a green baseline, or a module whose
+# every mutant is already settled against the current tests.
+#
+# It exists because a skip's key is fixed per module ("baseline:<path>"), so without a
+# later record under the same key nothing ever supersedes it and the skip is immortal.
+# Inferring instead that "a mutant record further down the journal means the skip is old"
+# is the bug this replaces: journal position is only meaningful over the WHOLE journal,
+# and every caller of the report is free to filter it (--new-since, --prune-stale). A
+# filtered view then keeps the skip, loses the evidence that aged it out, and resurrects a
+# dead skip - turning every pull request red for a module it never touched. Currency is
+# therefore stated as data, under the key it supersedes, and no filter can separate them.
+STATUS_MODULE_CURRENT = "module-current"
 # The harness itself blew up on this mutant (bad AST rewrite, unwritable file).
 STATUS_ERROR = "error"
 # The suite never started: bench failed to launch, the site was locked, the disk filled up.
@@ -113,6 +132,25 @@ STATUS_UNCONFIRMED = "unconfirmed"
 # Legacy: campaigns run before timeouts were demoted to non-verdicts journalled this.
 # Kept only so those cached fake kills are re-evaluated rather than counted.
 STATUS_KILLED_TIMEOUT = "killed-timeout"
+
+# Records that describe a MODULE rather than a mutant. They are never scored and never
+# retried (there is no mutant to retry); they exist so that "this module produced no
+# measurement tonight" is a fact in the journal instead of a line of stdout nobody reads.
+SKIP_STATUSES = frozenset(
+	{
+		STATUS_BASELINE_SKIP,
+		STATUS_MODULE_SKIP,
+	}
+)
+
+# Every record that describes a MODULE rather than a mutant, i.e. every record keyed
+# "baseline:<path>". They all share one key per module, so the journal's last-wins merge
+# leaves exactly one of them per module and that one IS the module's current state: either
+# "no current score" (a skip) or "score is current" (STATUS_MODULE_CURRENT). Report
+# filters must keep or drop them as a class - never score them, never count them as a
+# measurement in the rotation, and never let a filter keep the skip while dropping what
+# supersedes it.
+MODULE_STATUSES = SKIP_STATUSES | {STATUS_MODULE_CURRENT}
 
 KILLED_STATUSES = frozenset(
 	{

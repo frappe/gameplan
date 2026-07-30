@@ -405,10 +405,23 @@ def unregister(guard: FileGuard) -> None:
 
 
 def restore_all() -> None:
-	"""Best-effort restore of every registered guard. Never raises."""
+	"""Best-effort restore-and-release of every registered guard. Never raises.
+
+	``release`` rather than ``restore``: it restores first and only then drops the sidecar,
+	so the backup is deleted exactly when it has provably done its job. Leaving the sidecar
+	behind used to look like the safer choice, but the file is already back - what remains
+	is a manifest describing a crash that has been fully undone, and the next run has no
+	way to tell it from a real one. It classifies the target as an orphan, and if the file
+	has changed since (a new commit, a fresh clone at another revision) it classifies it
+	"unknown" and REFUSES TO START, which ``--yes`` cannot override. That is a permanently
+	wedged campaign as the price of a backup nobody needs.
+
+	If the restore fails, ``release`` raises before unlinking anything, so the one case
+	where the sidecar is still the only copy of the original keeps it.
+	"""
 	for guard in list(_ACTIVE_GUARDS):
 		try:
-			guard.restore()
+			guard.release()
 		except Exception as exc:  # noqa: BLE001 - last-ditch handler, must not raise
 			print(f"[mutation] CRITICAL: could not restore {guard.path}: {exc}", file=sys.stderr)
 		else:

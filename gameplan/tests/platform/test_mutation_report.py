@@ -173,7 +173,7 @@ class MutationReportTest(unittest.TestCase):
 		self.assertIsNone(summary["modules"]["gameplan/foo.py"]["baseline_skip"])
 		self.assertEqual(summary["modules"]["gameplan/foo.py"]["score"], 0.5)
 		text = report_mod.render_text(summary)
-		self.assertNotIn("Skipped (red baseline)", text)
+		self.assertNotIn("Skipped - measured nothing this run", text)
 
 	def test_baseline_skip_after_the_mutants_marks_the_score_stale(self):
 		summary = self.summarise(
@@ -187,7 +187,7 @@ class MutationReportTest(unittest.TestCase):
 		self.assertEqual(summary["modules"]["gameplan/foo.py"]["baseline_skip"], "red baseline")
 		text = report_mod.render_text(summary)
 		self.assertIn("STALE", text)
-		self.assertIn("Skipped (red baseline)", text)
+		self.assertIn("Skipped - measured nothing this run", text)
 		self.assertIn("(stale: skipped, red baseline)", report_mod.render_markdown(summary))
 
 	def test_baseline_skip_alone_still_reported(self):
@@ -274,9 +274,11 @@ class MutationReportTest(unittest.TestCase):
 class MutationReportExitCodeTest(unittest.TestCase):
 	"""The report is a CI gate, so its exit code has to carry the same honesty as its text.
 
-	Three outcomes, three codes: measured-and-good, measured-and-below-threshold, and
-	could-not-measure. Collapsing the third into either of the others is how a nightly
-	ends up reporting a healthy suite for a run in which nothing was ever executed.
+	Four outcomes, four codes: measured-and-good, measured-and-below-threshold,
+	measured-and-got-no-verdict, and nothing-to-report. Collapsing any of the last two into
+	either of the first is how a nightly ends up reporting a healthy suite for a run in
+	which nothing was ever executed - or how a pull-request job turns "my one measurement
+	timed out" into "this pull request changed no mutable behaviour".
 	"""
 
 	def setUp(self) -> None:
@@ -292,13 +294,24 @@ class MutationReportExitCodeTest(unittest.TestCase):
 				for record in records:
 					handle.write(json.dumps(record, sort_keys=True) + "\n")
 		buffer = io.StringIO()
-		with contextlib.redirect_stdout(buffer):
+		errors = io.StringIO()
+		# stdout is the report itself (it is piped into a job summary and into json.load),
+		# so every human-facing notice must be on stderr. Captured separately here so a
+		# regression that puts chatter back on stdout fails a test instead of a CI job.
+		with contextlib.redirect_stdout(buffer), contextlib.redirect_stderr(errors):
 			code = report_mod.report(journal_path=journal, **kwargs)
-		return code, buffer.getvalue()
+		self.stdout = buffer.getvalue()
+		self.stderr = errors.getvalue()
+		return code, self.stdout
 
-	def test_exit_codes_are_three_distinct_values(self):
-		codes = {report_mod.EXIT_OK, report_mod.EXIT_BELOW_THRESHOLD, report_mod.EXIT_NOTHING_MEASURED}
-		self.assertEqual(len(codes), 3)
+	def test_exit_codes_are_four_distinct_values(self):
+		codes = {
+			report_mod.EXIT_OK,
+			report_mod.EXIT_BELOW_THRESHOLD,
+			report_mod.EXIT_NOTHING_MEASURED,
+			report_mod.EXIT_NOTHING_TO_REPORT,
+		}
+		self.assertEqual(len(codes), 4)
 		self.assertEqual(report_mod.EXIT_OK, 0)
 		self.assertNotEqual(report_mod.EXIT_NOTHING_MEASURED, report_mod.EXIT_BELOW_THRESHOLD)
 
@@ -312,16 +325,27 @@ class MutationReportExitCodeTest(unittest.TestCase):
 		code, out = self.run_report([_record("k1", STATUS_INFRA_ERROR), _record("k2", STATUS_INFRA_ERROR)])
 		self.assertEqual(code, report_mod.EXIT_NOTHING_MEASURED)
 		self.assertIn("NOTHING MEASURED", out)
-		self.assertIn("FAIL", out)
+		self.assertIn("FAIL", self.stderr)
 
-	def test_missing_journal_is_nothing_measured_not_success(self):
+	def test_missing_journal_has_nothing_to_report_and_does_not_succeed(self):
 		code, out = self.run_report(None)
-		self.assertEqual(code, report_mod.EXIT_NOTHING_MEASURED)
-		self.assertIn("no results", out)
+		self.assertEqual(code, report_mod.EXIT_NOTHING_TO_REPORT)
+		self.assertNotEqual(code, report_mod.EXIT_OK)
+		self.assertIn("no results", self.stderr)
+		# Rendered, not silent: both CI gates parse this stdout, and a step that prints
+		# nothing forces its caller to guess whether the report was empty or crashed.
+		self.assertIn("Nothing to report", out)
 
-	def test_empty_journal_is_nothing_measured_not_success(self):
+	def test_empty_journal_has_nothing_to_report_and_does_not_succeed(self):
 		code, _out = self.run_report([])
-		self.assertEqual(code, report_mod.EXIT_NOTHING_MEASURED)
+		self.assertEqual(code, report_mod.EXIT_NOTHING_TO_REPORT)
+		self.assertNotEqual(code, report_mod.EXIT_OK)
+
+	def test_an_empty_result_set_and_a_verdictless_one_do_not_share_a_code(self):
+		"""They license opposite statements: "nothing to say" vs "the measurement broke"."""
+		empty, _ = self.run_report([])
+		verdictless, _ = self.run_report([_record("k1", STATUS_INFRA_ERROR)])
+		self.assertNotEqual(empty, verdictless)
 
 	def test_report_still_renders_when_it_gates(self):
 		"""The numbers are the point; the exit code only decides whether a machine acts."""
@@ -337,7 +361,7 @@ class MutationReportExitCodeTest(unittest.TestCase):
 		records = [_record("k1", STATUS_KILLED), _record("k2", STATUS_SURVIVED)]
 		code, out = self.run_report(records, fail_under=80)
 		self.assertEqual(code, report_mod.EXIT_BELOW_THRESHOLD)
-		self.assertIn("below --fail-under 80%", out)
+		self.assertIn("below --fail-under 80%", self.stderr)
 
 	def test_fail_under_passes_a_score_that_meets_it(self):
 		records = [_record("k1", STATUS_KILLED), _record("k2", STATUS_SURVIVED)]

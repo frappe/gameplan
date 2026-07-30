@@ -30,10 +30,11 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from gameplan.tests.mutation import campaign, cli, mutators, safety
+from gameplan.tests.mutation import campaign, cli, mutators, safety, scope
 from gameplan.tests.mutation import report as report_mod
 from gameplan.tests.mutation.config import (
 	JOURNAL_PATH,
+	MODULE_STATUSES,
 	STATUS_KILLED,
 	STATUS_TIMEOUT,
 	VERIFY_PATH,
@@ -246,6 +247,14 @@ class CampaignLoopTestCase(unittest.TestCase):
 			encoding="utf-8",
 		)
 
+	def fingerprint(self, test_modules: list[str]) -> str:
+		"""What the campaign stamps on a verdict, for journals a test writes by hand.
+
+		A verdict is only settled while the tests behind it are unchanged, so a hand-written
+		record without this is stale by construction and would be re-measured.
+		"""
+		return scope.test_fingerprint(test_modules, self.app_root)
+
 	def journal_records(self) -> list[dict]:
 		if not self.journal.exists():
 			return []
@@ -309,7 +318,9 @@ class CampaignOrderingTest(CampaignLoopTestCase):
 		self.run_campaign({"pkg/compare.py": ["tests.test_compare"]})
 
 		expected = {s.key for s in mutators.collect_sites(ORIGINAL, "pkg/compare.py")}
-		journalled = {r["key"] for r in self.journal_records()}
+		# Mutant records only. A campaign also journals statements about the MODULE under
+		# a fixed "baseline:<path>" key, which is not a site and has no content hash.
+		journalled = {r["key"] for r in self.journal_records() if r["status"] not in MODULE_STATUSES}
 		self.assertTrue(journalled)
 		self.assertTrue(journalled <= expected)
 
@@ -320,7 +331,13 @@ class CampaignOrderingTest(CampaignLoopTestCase):
 		with open(self.journal, "w", encoding="utf-8") as handle:
 			for site in sites:
 				record = site.to_dict()
-				record.update({"module": "pkg/compare.py", "status": STATUS_KILLED})
+				record.update(
+					{
+						"module": "pkg/compare.py",
+						"status": STATUS_KILLED,
+						"tests_sha": self.fingerprint(["tests.test_compare"]),
+					}
+				)
 				handle.write(json.dumps(record, sort_keys=True) + "\n")
 		self.plant_crashed_run(path, ORIGINAL, LEFTOVER_MUTANT)
 

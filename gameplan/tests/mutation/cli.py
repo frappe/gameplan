@@ -18,13 +18,21 @@ RUN_EXIT_CODES = """exit codes:
   2  bad arguments (e.g. a module with no test mapping)
   3  nothing measured: every targeted module was skipped, or no pending mutant could
      be evaluated. Distinct from 0 so a nightly cannot read a broken site as success.
+  4  --budget-seconds ran out with mutants still pending. Work was done and journalled;
+     the next run resumes from it. NOT a failure - a budgeted nightly ends here most
+     nights, and a job that treats this as red pages someone every night for nothing.
 """
 
 REPORT_EXIT_CODES = """exit codes:
   0  a score was measured, and it meets --fail-under if given
   1  a score was measured and is below --fail-under
-  3  nothing measured: no results, or every mutant produced a non-verdict. This is not
-     a score of 0% and deliberately does not share an exit code with one.
+  3  nothing measured: mutants were considered and every one produced a non-verdict
+     (broken site, timeouts). This is not a score of 0% and deliberately does not share
+     an exit code with one.
+  5  nothing to report: the result set held no mutant verdict (it was empty, or it held
+     only module-level records). Distinct from 3 because "nothing was due" is a benign
+     outcome, while 3 is a degraded measurement - a caller that conflates them publishes
+     a claim about the code for a run whose signal broke, or calls a quiet night broken.
 """
 
 
@@ -50,6 +58,21 @@ def build_parser() -> argparse.ArgumentParser:
 	run.add_argument("--mutate-strings", action="store_true", help="also mutate string literals (noisy here)")
 	run.add_argument("--yes", action="store_true", help="auto-restore orphaned backups without prompting")
 	run.add_argument("--journal", type=Path, default=JOURNAL_PATH)
+	run.add_argument(
+		"--budget-seconds",
+		type=float,
+		default=None,
+		metavar="SECONDS",
+		help="stop cleanly between mutants once this much wall clock has been used (exit 4)",
+	)
+	run.add_argument(
+		"--changed-files-from",
+		dest="changed_files_from",
+		type=Path,
+		default=None,
+		metavar="PATH",
+		help='restrict targets to those implicated by a "git diff --name-only" list ("-" for stdin)',
+	)
 
 	rep = sub.add_parser(
 		"report",
@@ -68,11 +91,42 @@ def build_parser() -> argparse.ArgumentParser:
 		help="stage-2 results to merge in (default: the sibling of --journal)",
 	)
 	rep.add_argument(
+		"--new-since",
+		dest="new_since",
+		type=Path,
+		default=None,
+		metavar="PATH",
+		help="report only mutants absent from the journal at PATH (what this run added)",
+	)
+	rep.add_argument(
+		"--prune-stale",
+		dest="prune_stale",
+		action="store_true",
+		help="drop verdicts whose mutation site no longer exists in the source (needs the source tree)",
+	)
+	rep.add_argument(
 		"--fail-under",
 		type=float,
 		default=None,
 		metavar="PERCENT",
 		help="exit 1 if the overall mutation score is below this percentage",
+	)
+
+	# Deliberately not part of `report`: the report says what was DECIDED, and a run can
+	# decide nothing after hours of work (every re-measured verdict came back the same).
+	# A job summary that shows only the first cannot tell a quiet night from a dead one.
+	work = sub.add_parser(
+		"work",
+		help="say what a run actually did, whether or not it changed any verdict",
+		description="Print one line describing the work a run appended to the journal.",
+	)
+	work.add_argument("--journal", type=Path, default=JOURNAL_PATH)
+	work.add_argument(
+		"--since",
+		type=Path,
+		default=None,
+		metavar="PATH",
+		help="snapshot of the journal taken before the run (default: count the whole journal)",
 	)
 
 	ver = sub.add_parser("verify", help="re-run survivors against the full suite")
@@ -99,10 +153,20 @@ def main(argv: list[str] | None = None) -> int:
 	# campaign import chain is broken.
 	from . import campaign
 	from . import report as report_mod
+	from .scope import read_changed_paths
 
 	args = build_parser().parse_args(argv)
 
 	if args.command == "run":
+		changed_files = None
+		if args.changed_files_from is not None:
+			try:
+				changed_files = read_changed_paths(str(args.changed_files_from))
+			except OSError as exc:
+				# Usage, not "nothing measured": CI asked us to scope to a diff and the
+				# diff is missing, so we have no idea what we were meant to measure.
+				print(f"[mutation] cannot read --changed-files-from: {exc}", flush=True)
+				return 2
 		return campaign.run_campaign(
 			tier=args.tier,
 			only_module=args.module,
@@ -112,6 +176,8 @@ def main(argv: list[str] | None = None) -> int:
 			mutate_strings=args.mutate_strings,
 			assume_yes=args.yes,
 			journal_path=args.journal,
+			budget_seconds=args.budget_seconds,
+			changed_files=changed_files,
 		)
 	if args.command == "report":
 		return report_mod.report(
@@ -119,7 +185,13 @@ def main(argv: list[str] | None = None) -> int:
 			fmt=args.fmt,
 			verify_path=args.verify_path or report_mod.verify_path_for(args.journal),
 			fail_under=args.fail_under,
+			new_since=args.new_since,
+			prune_stale=args.prune_stale,
 		)
+	if args.command == "work":
+		# Always 0: this is an observation, not a gate. A job summary interpolates it.
+		print(report_mod.render_work(report_mod.work_done(args.journal, args.since)))
+		return 0
 	if args.command == "verify":
 		return campaign.verify(
 			journal_path=args.journal,

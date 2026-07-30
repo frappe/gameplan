@@ -273,9 +273,27 @@ class TestStatusVocabularyInvariants(unittest.TestCase):
 		accounted = (
 			config.KILLED_STATUSES
 			| config.NO_VERDICT_STATUSES
-			| {config.STATUS_SURVIVED, config.STATUS_BASELINE_SKIP}
+			# MODULE_STATUSES, not SKIP_STATUSES: a module-level record can also say the
+			# opposite of a skip ("this module has a current score"), and that one is not
+			# a skip while still being unscoreable.
+			| config.MODULE_STATUSES
+			| {config.STATUS_SURVIVED}
 		)
 		self.assertEqual(self.all_statuses() - accounted, set())
+
+	def test_a_module_skip_is_never_scored_and_never_a_kill(self):
+		"""Skips describe a module, not a mutant: they must not reach either side of a ratio."""
+		self.assertEqual(config.SKIP_STATUSES & config.KILLED_STATUSES, frozenset())
+		self.assertEqual(config.SKIP_STATUSES & config.NO_VERDICT_STATUSES, frozenset())
+		self.assertEqual(config.SKIP_STATUSES & config.RETRYABLE_STATUSES, frozenset())
+
+	def test_every_module_level_record_is_unscoreable(self):
+		"""Same rule for the record that CLEARS a skip: it is a statement, not a mutant."""
+		self.assertTrue(config.SKIP_STATUSES <= config.MODULE_STATUSES)
+		self.assertIn(config.STATUS_MODULE_CURRENT, config.MODULE_STATUSES)
+		self.assertEqual(config.MODULE_STATUSES & config.KILLED_STATUSES, frozenset())
+		self.assertEqual(config.MODULE_STATUSES & config.NO_VERDICT_STATUSES, frozenset())
+		self.assertEqual(config.MODULE_STATUSES & config.RETRYABLE_STATUSES, frozenset())
 
 	def test_legacy_killed_timeout_is_demoted_not_counted(self):
 		"""Journals written before timeouts were demoted must be re-evaluated, not scored."""

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+from collections.abc import Mapping
 from pathlib import Path
 from typing import IO
 
@@ -59,17 +60,40 @@ def read_records(path: Path) -> list[dict]:
 	return records
 
 
-def completed_keys(path: Path, exclude_statuses: frozenset[str] | set[str] | None = None) -> set[str]:
+def completed_keys(
+	path: Path,
+	exclude_statuses: frozenset[str] | set[str] | None = None,
+	fingerprints: Mapping[str, str] | None = None,
+) -> set[str]:
 	"""Keys that count as done for resume purposes.
 
 	``exclude_statuses`` keeps transient outcomes (a bench that failed to spawn, a
 	locked site) out of the set so the next run re-evaluates them instead of leaving
 	them stuck at their non-verdict forever.
+
+	``fingerprints`` maps a module to the fingerprint of the test files that currently
+	decide its verdicts (see ``scope.test_fingerprint``). A record whose stored
+	``tests_sha`` differs is STALE: the verdict is a fact about a suite that no longer
+	exists, so it is dropped from the "done" set and re-measured. A record with no
+	``tests_sha`` at all - written before verdicts carried their provenance - is stale for
+	the same reason: we cannot show which suite produced it. Pass ``None`` to disable the
+	check entirely (the verify stage re-runs against the full suite, so a per-module
+	fingerprint says nothing about it).
 	"""
 	exclude = exclude_statuses or frozenset()
+	done = set()
 	# Keyed on the *latest* record so a re-run that errored is retried again, and a
 	# re-run that produced a real verdict is not.
-	return {key for key, record in latest_by_key(path).items() if record.get("status") not in exclude}
+	for key, record in latest_by_key(path).items():
+		if record.get("status") in exclude:
+			continue
+		if fingerprints is not None:
+			module = record.get("module") or record.get("file")
+			current = fingerprints.get(module) if isinstance(module, str) else None
+			if current is not None and record.get("tests_sha") != current:
+				continue
+		done.add(key)
+	return done
 
 
 def latest_by_key(path: Path) -> dict[str, dict]:
