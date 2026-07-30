@@ -15,7 +15,13 @@ never announces a change that did not happen. Frappe dedupes identical (event, m
 room) triples within a request, so publishing the same event twice for one user emits once.
 """
 
-from frappe.realtime import publish_to_user, publish_to_website
+from frappe import realtime
+
+# `realtime.publish_realtime` rather than the newer named helpers (`publish_to_user`,
+# `publish_to_website`): those only exist on frappe develop, and Gameplan is also tested
+# against v16, where importing them fails at module load. Going through the module object
+# instead of importing the function also keeps `patch("frappe.realtime.publish_realtime")`
+# effective in tests, since the lookup happens at call time.
 
 # `gameplan:` namespaces these against frappe's own realtime events (`list_update`,
 # `doc_update`, ...) and against other apps sharing the site.
@@ -29,12 +35,12 @@ def notify_unread_counts_changed(users: str | list[str]):
 	if isinstance(users, str):
 		users = [users]
 	for user in {user for user in users if user}:
-		publish_to_user(user, UNREAD_COUNTS_CHANGED, after_commit=True)
+		realtime.publish_realtime(UNREAD_COUNTS_CHANGED, user=user, after_commit=True)
 
 
 def notify_notification_count_changed(user: str):
 	"""Tell one user that their unread notification count moved."""
-	publish_to_user(user, NOTIFICATION_COUNT_CHANGED, after_commit=True)
+	realtime.publish_realtime(NOTIFICATION_COUNT_CHANGED, user=user, after_commit=True)
 
 
 def notify_users_changed():
@@ -48,4 +54,4 @@ def notify_users_changed():
 	and Gameplan members are Website Users, so a plain roomless broadcast would reach
 	nobody here. Every socket joins the website room.
 	"""
-	publish_to_website(USERS_CHANGED, after_commit=True)
+	realtime.publish_realtime(USERS_CHANGED, room=realtime.get_website_room(), after_commit=True)
