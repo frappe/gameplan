@@ -1,6 +1,8 @@
 # Copyright (c) 2025, Frappe Technologies Pvt Ltd and Contributors
 # See license.txt
 
+from unittest.mock import patch
+
 import frappe
 
 from gameplan.gameplan.doctype.gp_unread_record.api import (
@@ -8,8 +10,23 @@ from gameplan.gameplan.doctype.gp_unread_record.api import (
 	get_unread_count,
 )
 from gameplan.gameplan.doctype.gp_unread_record.gp_unread_record import GPUnreadRecord
+from gameplan.realtime import UNREAD_COUNTS_CHANGED
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import create_community, create_discussion, create_member, create_space
+
+
+def unread_count_events(publish_realtime):
+	"""The users told their unread counts changed, in the order they were told.
+
+	Asserts at `frappe.realtime.publish_realtime` — the wire boundary every named publisher
+	funnels into — rather than at Gameplan's own helper, so the event name and target room
+	that actually ship are covered. Posting also publishes `new_activity`, hence the filter.
+	"""
+	return [
+		call.kwargs.get("user")
+		for call in publish_realtime.call_args_list
+		if call.args and call.args[0] == UNREAD_COUNTS_CHANGED
+	]
 
 
 class TestUnread(GameplanTestCase):
@@ -313,6 +330,63 @@ class TestUnread(GameplanTestCase):
 
 		self.assertEqual(frappe.db.get_value("GP Unread Record", record, "project"), str(target_project.name))
 
+	def test_mark_discussion_as_read_notifies_that_user_over_realtime(self):
+		"""Without this push, another open tab's sidebar/rail unread dot stays stale until
+		a manual reload — see the `gameplan:unread_counts_changed` listener in
+		frontend/src/data/unreadCount.ts."""
+		suffix = frappe.generate_hash(length=8)
+		user = create_member(f"rt-read-member-{suffix}@example.com", "RT Read Member")
+		team = create_community(f"RT Read Team {suffix}")
+		project = create_space(f"RT Read Space {suffix}", team.name)
+		discussion = create_discussion(f"RT Read Discussion {suffix}", project.name)
+		create_unread_record(user.name, discussion.name, project.name)
+
+		with patch("frappe.realtime.publish_realtime") as publish_realtime:
+			GPUnreadRecord.mark_discussion_as_read_for_user(discussion.name, user.name)
+
+		self.assertEqual(unread_count_events(publish_realtime), [user.name])
+
+	def test_mark_discussion_as_unread_notifies_that_user_over_realtime(self):
+		suffix = frappe.generate_hash(length=8)
+		user = create_member(f"rt-unread-member-{suffix}@example.com", "RT Unread Member")
+		team = create_community(f"RT Unread Team {suffix}")
+		project = create_space(f"RT Unread Space {suffix}", team.name)
+		discussion = create_discussion(f"RT Unread Discussion {suffix}", project.name)
+		create_unread_record(user.name, discussion.name, project.name)
+		GPUnreadRecord.mark_discussion_as_read_for_user(discussion.name, user.name)
+
+		with patch("frappe.realtime.publish_realtime") as publish_realtime:
+			GPUnreadRecord.mark_discussion_as_unread_for_user(discussion.name, user.name)
+
+		self.assertEqual(unread_count_events(publish_realtime), [user.name])
+
+	def test_mark_all_as_read_for_project_notifies_that_user_over_realtime(self):
+		suffix = frappe.generate_hash(length=8)
+		user = create_member(f"rt-project-member-{suffix}@example.com", "RT Project Member")
+		team = create_community(f"RT Project Team {suffix}")
+		project = create_space(f"RT Project Space {suffix}", team.name)
+		discussion = create_discussion(f"RT Project Discussion {suffix}", project.name)
+		create_unread_record(user.name, discussion.name, project.name)
+
+		with patch("frappe.realtime.publish_realtime") as publish_realtime:
+			GPUnreadRecord.mark_all_as_read_for_project(project.name, user.name)
+
+		self.assertEqual(unread_count_events(publish_realtime), [user.name])
+
+	def test_mark_all_as_read_for_team_notifies_that_user_over_realtime(self):
+		suffix = frappe.generate_hash(length=8)
+		user = create_member(f"rt-team-member-{suffix}@example.com", "RT Team Member")
+		team = create_community(f"RT Team Team {suffix}")
+		project = create_space(f"RT Team Space {suffix}", team.name)
+		discussion = create_discussion(f"RT Team Discussion {suffix}", project.name)
+		create_unread_record(user.name, discussion.name, project.name)
+
+		frappe.set_user(user.name)
+		with patch("frappe.realtime.publish_realtime") as publish_realtime:
+			GPUnreadRecord.mark_all_as_read_for_team(team.name, user.name)
+
+		self.assertEqual(unread_count_events(publish_realtime), [user.name])
+
 
 class TestUnreadRecordLifecycle(GameplanTestCase):
 	"""Who gets an unread record, who does not, and what the counters then report.
@@ -504,6 +578,32 @@ class TestUnreadRecordLifecycle(GameplanTestCase):
 		# outside the space sees it at all.
 		self.assertEqual(GPUnreadRecord.get_participating_unread_count(self.reader.name), 0)
 		self.assertEqual(GPUnreadRecord.get_participating_unread_count(self.outsider.name), 0)
+
+	def test_posting_a_discussion_notifies_every_recipient_over_realtime(self):
+		"""Without this push, a space's unread dot only updates for tabs that happen to
+		reload — see the `gameplan:unread_counts_changed` listener in
+		frontend/src/data/unreadCount.ts. (The space's implicit Administrator member,
+		auto-added by GPProject.before_insert, is also notified here since these fixtures
+		are built as Administrator; that's incidental to this test, not the behavior
+		under test.)"""
+		with patch("frappe.realtime.publish_realtime") as publish_realtime:
+			self.post_discussion(self.member)
+
+		notified_users = set(unread_count_events(publish_realtime))
+		self.assertTrue({self.second_member.name, self.reader.name} <= notified_users)
+		self.assertNotIn(self.member.name, notified_users)
+
+	def test_posting_a_comment_notifies_every_recipient_over_realtime(self):
+		discussion = self.post_discussion(self.member)
+
+		with patch("frappe.realtime.publish_realtime") as publish_realtime:
+			self.post_comment(self.second_member, discussion)
+
+		# The thread author (member) and the reader are notified of the new unread comment;
+		# the commenter (second_member) is notified too, but via a different path — posting
+		# also runs track_visit(), which marks the thread read for the replier themselves.
+		notified_users = set(unread_count_events(publish_realtime))
+		self.assertTrue({self.member.name, self.reader.name, self.second_member.name} <= notified_users)
 
 	def test_the_participating_count_endpoint_answers_for_the_session_user(self):
 		theirs = self.post_discussion(self.second_member, "Theirs")

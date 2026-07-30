@@ -4,12 +4,12 @@
 import frappe
 from frappe.model.document import Document
 
-import gameplan
+from gameplan.realtime import notify_notification_count_changed
 
 
 class GPNotification(Document):
 	def after_insert(self):
-		gameplan.refetch_resource("Unread Notifications Count", user=self.to_user)
+		notify_notification_count_changed(self.to_user)
 
 	@staticmethod
 	def clear_notifications(discussion=None, comment=None, poll=None, task=None, user=None):
@@ -31,4 +31,4 @@ class GPNotification(Document):
 			query = query.where(Notification[field] == value)
 		query.run()
 
-		gameplan.refetch_resource("Unread Notifications Count", user=user)
+		notify_notification_count_changed(user)
