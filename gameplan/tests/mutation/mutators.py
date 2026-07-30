@@ -10,12 +10,19 @@ source text is guaranteed pristine at address time because the harness restores 
 file after every run. It is NOT stable across edits to the file: anything re-applying
 a journalled mutant later must re-derive the site from the current source via its
 ``key`` (see ``campaign._verify_one``), never trust a stored ``node_index``.
+
+Every text that feeds a mutant key comes from ``ast.unparse``, never from the raw
+source. Unparsing normalises formatting and drops comments, so a reformat or a comment
+edit cannot invalidate a journalled verdict; only a real change to the code the key
+describes can. See ``mutant_key`` for the full stability envelope.
 """
 
 from __future__ import annotations
 
 import ast
+import copy
 import hashlib
+from collections import Counter
 from dataclasses import dataclass, field
 
 # Comparison operators are flipped to their adjacent/negated form. Boundary flips
@@ -145,20 +152,21 @@ def _excluded_ids(tree: ast.AST) -> set[int]:
 	return excluded
 
 
-def _qualnames(tree: ast.AST) -> dict[int, str]:
-	"""Map every node id to the dotted name of its enclosing class/function scope."""
-	names: dict[int, str] = {}
+def _scopes(tree: ast.AST) -> dict[int, tuple[str, ast.AST]]:
+	"""Map every node id to its enclosing class/function scope: dotted name and node."""
+	scopes: dict[int, tuple[str, ast.AST]] = {}
 
-	def visit(node: ast.AST, scope: str) -> None:
-		names[id(node)] = scope
+	def visit(node: ast.AST, name: str, owner: ast.AST) -> None:
+		scopes[id(node)] = (name, owner)
 		for child in ast.iter_child_nodes(node):
-			child_scope = scope
+			child_name, child_owner = name, owner
 			if isinstance(child, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
-				child_scope = f"{scope}.{child.name}" if scope else child.name
-			visit(child, child_scope)
+				child_name = f"{name}.{child.name}" if name else child.name
+				child_owner = child
+			visit(child, child_name, child_owner)
 
-	visit(tree, "")
-	return names
+	visit(tree, "", tree)
+	return scopes
 
 
 def _enclosing_statement(node: ast.AST, parents: dict[int, tuple[ast.AST, str, int | None]]) -> ast.AST:
@@ -171,29 +179,103 @@ def _enclosing_statement(node: ast.AST, parents: dict[int, tuple[ast.AST, str, i
 	return current
 
 
-def _segment(source: str, node: ast.AST) -> str:
-	try:
-		text = ast.get_source_segment(source, node)
-	except (ValueError, IndexError):
-		text = None
-	if text is None:
-		try:
-			text = ast.unparse(node)
-		except Exception:  # noqa: BLE001 - segment text is cosmetic, never fatal
-			text = f"<{type(node).__name__}>"
+def _normalise(text: str) -> str:
 	return " ".join(text.split())
 
 
+def _segment(node: ast.AST) -> str:
+	"""Normalised source-equivalent text of one node.
+
+	Unparsed rather than sliced out of the source: the slice would carry the file's
+	comments and line breaks into the mutant key, and it would not be comparable with
+	``mutated_segment``, which ``build_mutant`` produces with ``ast.unparse``.
+	"""
+	try:
+		return _normalise(ast.unparse(node))
+	except Exception:  # noqa: BLE001 - segment text is cosmetic, never fatal
+		return f"<{type(node).__name__}>"
+
+
+def _statement_header(node: ast.AST) -> str:
+	"""The statement's own line, without the block it introduces.
+
+	``ast.unparse`` always renders a header on one line, so the first line of a
+	compound statement is exactly its header. Excluding the body is what keeps a
+	mutant in an ``if``/``for``/``def`` header independent of every edit inside the
+	block it governs.
+	"""
+	if getattr(node, "decorator_list", None):
+		# Decorators unparse *above* the def line and would hide the signature, where
+		# default-argument mutants live.
+		node = copy.copy(node)
+		node.decorator_list = []
+	try:
+		text = ast.unparse(node)
+	except Exception:  # noqa: BLE001 - context text is cosmetic, never fatal
+		return f"<{type(node).__name__}>"
+	return _normalise(text.split("\n", 1)[0])
+
+
+def _scope_path(node: ast.AST, parents: dict[int, tuple[ast.AST, str, int | None]], scope: ast.AST) -> str:
+	"""Structural route from ``scope`` down to ``node``, e.g. ``body[3]/orelse[0]/test``.
+
+	Unique per node and blind to comments and formatting, so it can tell two otherwise
+	identical mutation sites apart. Positional, though: it is only ever used together
+	with a fingerprint of the whole scope, so that a deletion or a reorder changes the
+	fingerprint rather than quietly handing one site another's route.
+	"""
+	steps: list[str] = []
+	current = node
+	while current is not scope:
+		entry = parents.get(id(current))
+		if entry is None:
+			break
+		parent, field_name, index = entry
+		steps.append(field_name if index is None else f"{field_name}[{index}]")
+		current = parent
+	return "/".join(reversed(steps))
+
+
+def _digest(payload: str) -> str:
+	return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
 def mutant_key(
-	rel_path: str, mutator: str, function: str, original: str, mutated: str, context: str, ordinal: int
+	rel_path: str,
+	mutator: str,
+	param: int | None,
+	function: str,
+	original: str,
+	mutated: str,
+	context: str,
+	discriminator: str,
 ) -> str:
 	"""Stable identity for a mutant.
 
 	Deliberately excludes line/column: editing a file shifts every line below the edit,
-	which would make a line-based key skip brand-new mutants and re-run stale ones.
+	which would make a line-based key skip brand-new mutants and re-run stale ones. Every
+	component is unparsed AST text, so comments and formatting are invisible to the key.
+
+	``context`` is the enclosing statement's header only, and ``discriminator`` comes from
+	``collect_sites``: empty when nothing else in the file shares those components, and a
+	scope fingerprint when something does. The envelope this buys:
+
+	* reformatting, comment edits and edits inside an unrelated block: key unchanged.
+	* The site's own code changes: key changes, and the mutant is re-run.
+	* Two or more sites in one scope identical in every other component: each is pinned to
+	its route through a fingerprint of that whole scope, so deleting or reordering one
+	re-keys the group and every member is re-evaluated. A bare positional ordinal instead
+	hands the deleted site's verdict to a survivor, which is the one failure mode a
+	resumable journal must never have.
+
+	The residual: a mutant deleted and an identical one later added to the same scope,
+	with no other change to that scope, reuses the old key. Both are the same mutation of
+	the same statement, so the inherited verdict is at least about the same code.
 	"""
-	payload = "\x00".join([rel_path, mutator, function, original, mutated, context, str(ordinal)])
-	return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+	payload = "\x00".join(
+		[rel_path, mutator, str(param), function, original, mutated, context, discriminator]
+	)
+	return _digest(payload)
 
 
 def _candidate_specs(
@@ -339,16 +421,37 @@ def build_mutant(source: str, node_index: int, mutator: str, param: int | None) 
 	return mutated_text, " ".join(ast.unparse(rendered).split())
 
 
+@dataclass
+class _Draft:
+	"""A discovered site, before its ambiguity with other sites has been resolved."""
+
+	node_index: int
+	mutator: str
+	param: int | None
+	line: int
+	col: int
+	function: str
+	original_segment: str
+	mutated_segment: str
+	context: str
+	scope: ast.AST
+	path: str
+
+	@property
+	def ident(self) -> tuple[str, str, str, str, str]:
+		"""Everything about the mutant except where in its scope it sits."""
+		return (self.mutator, self.function, self.original_segment, self.mutated_segment, self.context)
+
+
 def collect_sites(source: str, rel_path: str, mutate_strings: bool = False) -> list[MutationSite]:
 	"""Discover every viable mutation site in ``source``."""
 	tree = ast.parse(source)
 	excluded = _excluded_ids(tree)
-	qualnames = _qualnames(tree)
+	scopes = _scopes(tree)
 	parents = _parent_map(tree)
 	nodes = list(ast.walk(tree))
 
-	sites: list[MutationSite] = []
-	seen_ordinals: dict[tuple[str, str, str, str, str], int] = {}
+	drafts: list[_Draft] = []
 	seen_texts: set[str] = set()
 
 	for node_index, mutator, param in _candidate_specs(tree, excluded, mutate_strings):
@@ -360,30 +463,67 @@ def collect_sites(source: str, rel_path: str, mutate_strings: bool = False) -> l
 		# the same module. build_mutant only compares against the pristine baseline, so
 		# it cannot see that. Without this, the duplicate burns a second full bench run
 		# and counts twice in the score denominator.
-		text_hash = hashlib.sha256(mutated_text.encode("utf-8")).hexdigest()
+		text_hash = _digest(mutated_text)
 		if text_hash in seen_texts:
 			continue
 		seen_texts.add(text_hash)
 		node = nodes[node_index]
-		original_segment = _segment(source, node)
-		context = _segment(source, _enclosing_statement(node, parents))
-		function = qualnames.get(id(node), "")
-		ident = (mutator, function, original_segment, mutated_segment, context)
-		ordinal = seen_ordinals.get(ident, 0)
-		seen_ordinals[ident] = ordinal + 1
-		sites.append(
-			MutationSite(
-				rel_path=rel_path,
+		statement = _enclosing_statement(node, parents)
+		function, scope = scopes.get(id(node), ("", tree))
+		drafts.append(
+			_Draft(
 				node_index=node_index,
 				mutator=mutator,
 				param=param,
 				line=getattr(node, "lineno", 0),
 				col=getattr(node, "col_offset", 0),
 				function=function,
-				original_segment=original_segment,
+				original_segment=_segment(node),
 				mutated_segment=mutated_segment,
+				context=_statement_header(statement),
+				scope=scope,
+				path=_scope_path(node, parents, scope),
+			)
+		)
+
+	# A site nothing else in the file can be confused with needs no discriminator, and
+	# leaving it out is what keeps its key alive across edits elsewhere in the file.
+	# Sites that ARE confusable get one built from their route through the scope plus a
+	# fingerprint of the whole scope: the route separates them, and the fingerprint means
+	# any edit to that scope - a deletion, a reorder, a new duplicate - re-keys every
+	# member of the group, so they are re-measured instead of one silently inheriting
+	# another's verdict. Scope text is unparsed, so comments and layout do not disturb it.
+	group_sizes = Counter(draft.ident for draft in drafts)
+	scope_texts: dict[int, str] = {}
+
+	sites: list[MutationSite] = []
+	for draft in drafts:
+		discriminator = ""
+		if group_sizes[draft.ident] > 1:
+			text = scope_texts.get(id(draft.scope))
+			if text is None:
+				text = scope_texts[id(draft.scope)] = _segment(draft.scope)
+			discriminator = _digest(f"{draft.path}\x00{text}")[:16]
+		sites.append(
+			MutationSite(
+				rel_path=rel_path,
+				node_index=draft.node_index,
+				mutator=draft.mutator,
+				param=draft.param,
+				line=draft.line,
+				col=draft.col,
+				function=draft.function,
+				original_segment=draft.original_segment,
+				mutated_segment=draft.mutated_segment,
 				key=mutant_key(
-					rel_path, mutator, function, original_segment, mutated_segment, context, ordinal
+					rel_path,
+					draft.mutator,
+					draft.param,
+					draft.function,
+					draft.original_segment,
+					draft.mutated_segment,
+					draft.context,
+					discriminator,
 				),
 			)
 		)

@@ -7,6 +7,10 @@ Two things here are load-bearing:
 * Timeouts kill the whole process group. ``bench`` spawns python children; killing
   only the parent leaves them holding the test site's lock, which then breaks every
   subsequent mutant run and silently invalidates the campaign.
+
+``RunResult`` deliberately exposes *facts about the output* rather than a verdict.
+Deciding what an outcome means about a mutant is ``campaign.classify``'s job, and
+keeping the two apart is what makes the classification unit-testable without a site.
 """
 
 from __future__ import annotations
@@ -21,15 +25,26 @@ from .config import BENCH_ROOT
 
 RAN_TESTS_RE = re.compile(r"^Ran (\d+) tests?", re.MULTILINE)
 
-# Markers that mean the module never got as far as executing tests. These make a
-# non-zero exit a much weaker signal than a genuine assertion failure.
+# ``unittest.TextTestRunner`` closes every suite it finishes with exactly one of these
+# at the start of a line, after the "Ran N tests" line. Their presence is the only
+# positive proof that the runner reached the end of a suite and announced a result,
+# rather than being killed somewhere in the middle. Frappe subclasses TextTestRunner
+# and does not override that tail, and it runs one suite per app+category, so a healthy
+# invocation can print several of these.
+VERDICT_RE = re.compile(r"^(?:OK|FAILED|NO TESTS RAN)\b", re.MULTILINE)
+# The only line that means "the test suite judged something to have failed". A non-zero
+# exit code on its own does not: bench, the site loader and the process supervisor can
+# all produce one without a single assertion having been evaluated.
+FAILURE_VERDICT_RE = re.compile(r"^FAILED\b", re.MULTILINE)
+
+# Markers that mean a module never got as far as executing tests. On their own they are
+# far too weak to score anything - see ``RunResult.mutant_broke_import``.
 IMPORT_ERROR_MARKERS = (
 	"ImportError",
 	"ModuleNotFoundError",
 	"SyntaxError",
 	"IndentationError",
 	"Failed to import test module",
-	"ImportError: Failed to import",
 )
 
 
@@ -42,34 +57,63 @@ class RunResult:
 
 	@property
 	def tests_ran(self) -> int | None:
-		"""Number of tests unittest reported running, or None if it never said."""
+		"""Total tests unittest reported running, or None if it never said.
+
+		Summed across suites because bench prints one "Ran N tests" block per
+		app+category. This answers "did anything execute at all", NOT "did the run
+		finish" - use ``reached_verdict`` for that.
+		"""
 		matches = RAN_TESTS_RE.findall(self.output)
 		if not matches:
 			return None
 		return sum(int(m) for m in matches)
 
 	@property
-	def looks_like_import_error(self) -> bool:
-		"""The mutant broke the module before any test could run.
+	def reached_verdict(self) -> bool:
+		"""The test runner itself announced a result (OK / FAILED / NO TESTS RAN)."""
+		return bool(VERDICT_RE.search(self.output))
 
-		Requires an actual import/syntax marker in the output. Treating "no ``Ran N
-		tests`` line" as sufficient made every bench or site failure look like a mutant
-		kill, which inflates the score to 100% while nothing is being tested at all.
+	@property
+	def suite_reported_failure(self) -> bool:
+		"""The test suite declared a failure, as opposed to the process merely dying."""
+		return bool(FAILURE_VERDICT_RE.search(self.output))
+
+	@property
+	def has_import_error_marker(self) -> bool:
+		return any(marker in self.output for marker in IMPORT_ERROR_MARKERS)
+
+	def blames_file(self, rel_path: str | None) -> bool:
+		"""The output contains a traceback frame in ``rel_path``.
+
+		Matched on the path form only. Any Python traceback through that file prints
+		``File "<abs path>"``, and the absolute path ends with the repo-relative one,
+		so this is both reliable and much harder to trip accidentally than the dotted
+		module name (which shows up in ordinary log lines and error messages).
+		"""
+		if not rel_path:
+			return False
+		return rel_path in self.output
+
+	def mutant_broke_import(self, rel_path: str | None) -> bool:
+		"""The mutant made its own module unimportable - a genuine detection.
+
+		All three conditions are required, because each one alone is a known way to
+		score an infrastructure failure as a kill:
+
+		* non-zero exit, not a timeout;
+		* zero tests executed - if tests ran, the module imported fine and any import
+		marker in the output belongs to something else;
+		* the traceback actually names the file we mutated - a broken venv, a missing
+		app or a bench wrapper traceback all emit "ImportError" while saying nothing
+		whatsoever about the mutant.
 		"""
 		if self.timed_out or self.passed:
 			return False
-		return any(marker in self.output for marker in IMPORT_ERROR_MARKERS)
-
-	@property
-	def looks_like_infra_error(self) -> bool:
-		"""Non-zero exit, no tests ran, and no sign the mutant caused it.
-
-		A locked site, a bench that failed to start, a missing site, a full disk. Says
-		nothing about the mutant, so it must be reported rather than scored.
-		"""
-		if self.timed_out or self.passed or self.looks_like_import_error:
+		if self.tests_ran not in (0, None):
 			return False
-		return self.tests_ran in (0, None)
+		if not self.has_import_error_marker:
+			return False
+		return self.blames_file(rel_path)
 
 	@property
 	def passed(self) -> bool:

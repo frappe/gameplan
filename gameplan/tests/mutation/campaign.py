@@ -18,40 +18,67 @@ from .config import (
 	APP_ROOT,
 	BACKUP_DIR,
 	JOURNAL_PATH,
-	MAX_CONSECUTIVE_INFRA_ERRORS,
+	MAX_CONSECUTIVE_NO_VERDICT,
+	NO_VERDICT_STATUSES,
 	RETRYABLE_STATUSES,
 	STATUS_BASELINE_SKIP,
 	STATUS_ERROR,
+	STATUS_INCOMPLETE,
 	STATUS_INFRA_ERROR,
 	STATUS_KILLED,
 	STATUS_KILLED_BY_OTHER_SUITE,
 	STATUS_KILLED_IMPORT_ERROR,
-	STATUS_KILLED_TIMEOUT,
 	STATUS_SURVIVED,
+	STATUS_TIMEOUT,
+	STATUS_UNCONFIRMED,
 	VERIFY_PATH,
 	target_map,
 )
 from .runner import RunResult, run_tests
+
+# Exit codes. A nightly job keys off these, so they are part of the interface: a run
+# that measured nothing must never share a code with a run that measured everything and
+# liked what it saw. See ``_campaign_exit_code``. report.py mirrors these numbers.
+EXIT_OK = 0
+EXIT_ABORTED = 1
+EXIT_USAGE = 2
+EXIT_NOTHING_MEASURED = 3
 
 
 def _log(message: str) -> None:
 	print(f"[mutation] {message}", flush=True)
 
 
-def classify(result: RunResult) -> str:
-	"""Map a test-run outcome to a mutant status."""
+def classify(result: RunResult, mutated_file: str | None = None) -> str:
+	"""Map a test-run outcome to a mutant status.
+
+	A "killed" status is a claim that the TEST SUITE DETECTED the mutation. Anything
+	that did not come from the suite making that judgement resolves to a non-verdict:
+	it is an absence of evidence, not evidence of coverage. See the invariant in
+	config.py for why that distinction is load-bearing (non-verdicts stay out of the
+	score and are retried; kills are cached forever).
+
+	``mutated_file`` is the repo-relative path currently holding the mutant. Without
+	it an import failure cannot be attributed to the mutant, so it is not scored.
+	"""
 	if result.timed_out:
-		return STATUS_KILLED_TIMEOUT
+		# Never a kill. A mutant that spun forever and a box that was merely busy (or a
+		# site still holding a lock from the previous run) produce identical evidence:
+		# a process we killed before it said anything about anything. Telling them
+		# apart would need a control re-run costing another full timeout per mutant and
+		# would still misjudge a loaded machine. So: no verdict, retry it later.
+		return STATUS_TIMEOUT
 	if result.passed:
-		return STATUS_SURVIVED
-	# Non-zero, but a broken import is a much weaker signal than a caught assertion.
-	if result.looks_like_import_error:
+		# Exit 0 with the runner never announcing a result is not a survivor; it is a
+		# bench invocation that never reached the suite.
+		return STATUS_SURVIVED if result.reached_verdict else STATUS_INFRA_ERROR
+	if result.mutant_broke_import(mutated_file):
 		return STATUS_KILLED_IMPORT_ERROR
-	# Non-zero with no tests run and nothing pointing at the mutant: the suite never
-	# happened. Not a verdict, so it is neither killed nor survived.
-	if result.looks_like_infra_error:
-		return STATUS_INFRA_ERROR
-	return STATUS_KILLED
+	if result.suite_reported_failure:
+		return STATUS_KILLED
+	# Non-zero exit and the suite never declared a failure. Tests had started -> it died
+	# mid-flight; no tests at all -> it never started. Neither judged the mutant.
+	return STATUS_INCOMPLETE if result.tests_ran else STATUS_INFRA_ERROR
 
 
 def _describe_orphan(manifest: dict) -> None:
@@ -156,7 +183,7 @@ def run_campaign(
 			merged = target_map("all")
 			if rel not in merged:
 				_log(f"no test mapping for {rel!r}; add it to config.TIER1/TIER2 first.")
-				return 2
+				return EXIT_USAGE
 			targets = {rel: merged[rel]}
 		else:
 			targets = {rel: targets[rel]}
@@ -180,6 +207,47 @@ def run_campaign(
 		)
 	finally:
 		lock.release()
+
+
+def _guard_for(abs_path: Path) -> safety.FileGuard:
+	"""FileGuard for one target, with any crashed run's leftover mutant already undone.
+
+	``install_backup`` is the only thing that recovers the original from an existing
+	sidecar backup, so it must run before anything else looks at the file. Reading the
+	source or running the baseline first would measure the previous run's mutant, and a
+	module with nothing pending would return without ever calling it - leaving the mutant
+	on disk for the rest of the campaign and for whoever next opens the file.
+	"""
+	guard = safety.FileGuard(abs_path)
+	guard.install_backup()
+	return guard
+
+
+def _campaign_exit_code(
+	targeted: int,
+	skipped: int,
+	pending: int,
+	evaluated: int,
+	aborted: bool,
+	limit: int | None = None,
+) -> int:
+	"""Exit code for a finished campaign.
+
+	Success has to mean "we measured what we set out to measure", not merely "nothing
+	raised". A nightly whose site is down skips every module and evaluates nothing, which
+	to any caller checking for exit 0 is indistinguishable from a clean sweep. So the two
+	ways of ending with an empty scoreboard get different codes: having nothing to do
+	because every mutant is already journalled is a real success, while measuring nothing
+	because the environment is broken is a failure.
+	"""
+	if aborted:
+		return EXIT_ABORTED
+	if targeted and skipped == targeted:
+		return EXIT_NOTHING_MEASURED
+	# ``--limit 0`` is an explicit request to evaluate nothing, so it is not a failure.
+	if pending and not evaluated and limit != 0:
+		return EXIT_NOTHING_MEASURED
+	return EXIT_OK
 
 
 def _run_campaign_locked(
@@ -208,7 +276,9 @@ def _run_campaign_locked(
 
 	done = journal_mod.completed_keys(journal_path, exclude_statuses=RETRYABLE_STATUSES)
 	evaluated = 0
-	consecutive_infra = 0
+	pending_total = 0
+	skipped_modules = 0
+	consecutive_no_verdict = 0
 	aborted = False
 
 	with journal_mod.Journal(journal_path) as journal:
@@ -216,44 +286,53 @@ def _run_campaign_locked(
 			abs_path = APP_ROOT / rel_path
 			if not abs_path.exists():
 				_log(f"skipping missing file {rel_path}")
+				skipped_modules += 1
 				continue
 
 			_log(f"=== {rel_path} ===")
-			_log(f"baseline: {len(test_modules)} test module(s)...")
-			ok, reason = _baseline_ok(site, test_modules, timeout)
-			if not ok:
-				_log(f"baseline RED -> skipping module. {reason}")
-				journal.append(
-					{
-						"key": f"baseline:{rel_path}",
-						"module": rel_path,
-						"file": rel_path,
-						"line": 0,
-						"col": 0,
-						"function": "",
-						"mutator": "",
-						"original_segment": "",
-						"mutated_segment": "",
-						"status": STATUS_BASELINE_SKIP,
-						"duration_s": 0.0,
-						"killed_by_test_module": None,
-						"reason": reason,
-					}
-				)
-				continue
-			_log("baseline GREEN")
-
-			guard = safety.FileGuard(abs_path)
-			sites = mutators.collect_sites(guard.source, rel_path, mutate_strings=mutate_strings)
-			pending = [s for s in sites if s.key not in done]
-			_log(f"{len(sites)} mutant(s), {len(sites) - len(pending)} already journaled")
-
-			if not pending:
+			try:
+				guard = _guard_for(abs_path)
+			except (safety.LockError, safety.RestoreError, OSError) as exc:
+				_log(f"skipping {rel_path}: {exc}")
+				skipped_modules += 1
 				continue
 
-			guard.install_backup()
 			safety.register(guard)
 			try:
+				_log(f"baseline: {len(test_modules)} test module(s)...")
+				ok, reason = _baseline_ok(site, test_modules, timeout)
+				if not ok:
+					_log(f"baseline RED -> skipping module. {reason}")
+					skipped_modules += 1
+					journal.append(
+						{
+							"key": f"baseline:{rel_path}",
+							"module": rel_path,
+							"file": rel_path,
+							"line": 0,
+							"col": 0,
+							"function": "",
+							"mutator": "",
+							"original_segment": "",
+							"mutated_segment": "",
+							"status": STATUS_BASELINE_SKIP,
+							"duration_s": 0.0,
+							"killed_by_test_module": None,
+							"reason": reason,
+						}
+					)
+					continue
+				_log("baseline GREEN")
+
+				# Read the source through the guard, after _guard_for has had its chance to
+				# undo a crashed run's leftover mutant. Sites collected from mutated source
+				# get content-derived keys that match nothing on a clean tree, so every
+				# mutant would be re-evaluated under a key the journal can never resume.
+				sites = mutators.collect_sites(guard.source, rel_path, mutate_strings=mutate_strings)
+				pending = [s for s in sites if s.key not in done]
+				pending_total += len(pending)
+				_log(f"{len(sites)} mutant(s), {len(sites) - len(pending)} already journaled")
+
 				for site_obj in pending:
 					if limit is not None and evaluated >= limit:
 						_log(f"limit of {limit} mutants reached")
@@ -266,7 +345,7 @@ def _run_campaign_locked(
 					mutated_source, _ = built
 
 					status, killed_by, duration = _evaluate_mutant(
-						guard, mutated_source, site, test_modules, timeout
+						guard, mutated_source, site, test_modules, timeout, rel_path
 					)
 					evaluated += 1
 					record = site_obj.to_dict()
@@ -285,20 +364,27 @@ def _run_campaign_locked(
 						f"({duration}s)"
 					)
 
-					if status == STATUS_INFRA_ERROR:
-						consecutive_infra += 1
-						if consecutive_infra >= MAX_CONSECUTIVE_INFRA_ERRORS:
+					# Every non-verdict trips the breaker, not just infra-error: a wedged
+					# site shows up as a run of timeouts just as readily as a run of
+					# failures to start, and both mean the campaign has stopped
+					# measuring anything.
+					if status in NO_VERDICT_STATUSES:
+						consecutive_no_verdict += 1
+						if consecutive_no_verdict >= MAX_CONSECUTIVE_NO_VERDICT:
 							_log(
-								f"{consecutive_infra} consecutive runs never executed a test "
-								f"(locked site? bench broken?). Aborting instead of scoring noise."
+								f"{consecutive_no_verdict} consecutive runs produced no verdict "
+								f"(timeouts? locked site? bench broken?). "
+								f"Aborting instead of scoring noise."
 							)
 							aborted = True
 							break
 					else:
-						consecutive_infra = 0
+						consecutive_no_verdict = 0
 			finally:
 				# try/finally is the first line of defence; atexit and the signal
-				# handlers cover the paths this cannot reach.
+				# handlers cover the paths this cannot reach. It also guarantees that the
+				# recovery done by _guard_for is committed even for a module that turned
+				# out to have nothing pending.
 				guard.release()
 				safety.unregister(guard)
 
@@ -306,7 +392,23 @@ def _run_campaign_locked(
 				break
 
 	_log(f"done. evaluated {evaluated} mutant(s). journal: {journal_path}")
-	return 1 if aborted else 0
+	code = _campaign_exit_code(
+		targeted=len(targets),
+		skipped=skipped_modules,
+		pending=pending_total,
+		evaluated=evaluated,
+		aborted=aborted,
+		limit=limit,
+	)
+	if code == EXIT_NOTHING_MEASURED:
+		_log(
+			f"NOTHING MEASURED: {skipped_modules} of {len(targets)} target module(s) were "
+			f"skipped and no mutant was evaluated. Reporting failure - a green exit here "
+			f"would claim a passing campaign for a run that measured nothing."
+		)
+	elif skipped_modules:
+		_log(f"WARNING: {skipped_modules} of {len(targets)} target module(s) were skipped.")
+	return code
 
 
 def _evaluate_mutant(
@@ -315,6 +417,7 @@ def _evaluate_mutant(
 	site: str,
 	test_modules: list[str],
 	timeout: int,
+	rel_path: str,
 ) -> tuple[str, str | None, float]:
 	"""Apply one mutant, run its mapped tests in sequence, restore, and classify."""
 	started = time.monotonic()
@@ -323,15 +426,36 @@ def _evaluate_mutant(
 		guard.apply(mutated_source)
 		for module in test_modules:
 			result = run_tests(site, module, timeout)
-			status = classify(result)
+			status = classify(result, rel_path)
 			if status != STATUS_SURVIVED:
-				return status, module, round(time.monotonic() - started, 2)
+				# Only a real kill names a killing module. Attributing a non-verdict to
+				# a test module reads as coverage in the journal when it is the exact
+				# opposite: that module's run never judged anything.
+				blamed = module if status not in NO_VERDICT_STATUSES else None
+				return status, blamed, round(time.monotonic() - started, 2)
 		return STATUS_SURVIVED, None, round(time.monotonic() - started, 2)
 	except Exception as exc:  # noqa: BLE001 - one bad mutant must not end the campaign
 		_log(f"  error while evaluating mutant: {exc}")
 		return STATUS_ERROR, None, round(time.monotonic() - started, 2)
 	finally:
 		guard.restore()
+
+
+def _control_ok(site: str, timeout: int) -> tuple[bool, str, RunResult]:
+	"""Run the FULL suite unmutated. Returns (healthy, reason-if-not, result).
+
+	"Healthy" means the suite ran to completion and passed, so any failure seen with a
+	mutant applied can be attributed to the mutant rather than to the suite.
+	"""
+	result = run_tests(site, None, timeout)
+	if result.timed_out:
+		return False, f"control run timed out after {timeout}s (raise --timeout)", result
+	if not result.passed:
+		tail = " | ".join(result.output.strip().splitlines()[-5:])
+		return False, f"control run is RED (exit {result.returncode}): {tail}", result
+	if not result.reached_verdict or result.tests_ran in (0, None):
+		return False, "control run never reported a result", result
+	return True, "", result
 
 
 def verify(
@@ -363,6 +487,7 @@ def verify(
 		_log("no survivors to verify.")
 		return 0
 
+	aborted = False
 	try:
 		lock = safety.CampaignLock()
 		lock.acquire()
@@ -383,21 +508,14 @@ def verify(
 		safety.install_handlers()
 
 		# Control run. Without it, a full suite that is red or slow for reasons that have
-		# nothing to do with mutation marks every survivor as killed-by-other-suite (or
-		# killed-timeout), and those verdicts supersede stage 1 in the report - producing
-		# exactly the "100%, no survivors" result the campaign exists to disprove.
+		# nothing to do with mutation marks every survivor as killed-by-other-suite, and
+		# those verdicts supersede stage 1 in the report - producing exactly the
+		# "100%, no survivors" result the campaign exists to disprove.
 		_log("control: running the FULL suite unmutated...")
-		control = run_tests(site, None, control_timeout)
-		if control.timed_out:
-			_log(f"control run timed out after {control_timeout}s. Raise --timeout. aborting.")
-			return 1
-		if not control.passed:
-			tail = " | ".join(control.output.strip().splitlines()[-5:])
-			_log(f"control run is RED (exit {control.returncode}): {tail}")
+		healthy, reason, control = _control_ok(site, control_timeout)
+		if not healthy:
+			_log(f"{reason}. aborting.")
 			_log("fix the suite first; every survivor would be scored against a red baseline.")
-			return 1
-		if control.tests_ran in (0, None):
-			_log("control run reported no tests. aborting.")
 			return 1
 		# Derive the per-mutant budget from what the suite actually costs rather than a
 		# fixed multiple of the per-module default.
@@ -412,15 +530,26 @@ def verify(
 		_log(f"{len(records)} survivor(s), {len(pending)} to verify against the full suite")
 
 		count = 0
+		consecutive_no_verdict = 0
 		sites_cache: dict[tuple[str, str], dict[str, mutators.MutationSite]] = {}
 		with journal_mod.Journal(verify_path) as out:
 			for record in pending:
 				if limit is not None and count >= limit:
 					break
-				# One bad survivor must not end the stage, exactly as in stage 1.
 				try:
-					done = _verify_one(record, site, timeout, sites_cache, out)
-				except Exception as exc:  # noqa: BLE001 - isolate per survivor
+					status = _verify_one(record, site, timeout, sites_cache, out)
+				except safety.RestoreError as exc:
+					# NOT isolated like the rest. The working tree still holds this
+					# mutant: every later survivor would be measured against doubly
+					# mutated source, and the next FileGuard for this file would
+					# overwrite the pristine backup with the mutant, destroying the
+					# only copy that can undo it.
+					_log(f"CRITICAL: could not restore {record['file']}: {exc}")
+					_log("the working tree is still mutated. Aborting the verify stage.")
+					_log("run 'python -m gameplan.tests.mutation restore' before anything else.")
+					aborted = True
+					break
+				except Exception as exc:  # noqa: BLE001 - isolate one bad survivor
 					_log(f"  error while verifying {record['key'][:12]}: {exc}")
 					failed = dict(record)
 					failed.update(
@@ -432,14 +561,29 @@ def verify(
 						}
 					)
 					out.append(failed)
-					done = False
-				if done:
-					count += 1
+					status = STATUS_ERROR
+				if status is None:
+					continue
+				count += 1
+				# Same breaker as stage 1. A verify pass is far longer than a campaign,
+				# so a suite that degrades halfway through has plenty of time to
+				# reclassify every remaining survivor if nothing stops it.
+				if status in NO_VERDICT_STATUSES:
+					consecutive_no_verdict += 1
+					if consecutive_no_verdict >= MAX_CONSECUTIVE_NO_VERDICT:
+						_log(
+							f"{consecutive_no_verdict} consecutive survivors produced no "
+							f"verdict. The suite or the site is unhealthy; aborting."
+						)
+						aborted = True
+						break
+				else:
+					consecutive_no_verdict = 0
 	finally:
 		lock.release()
 
 	_log(f"verify done. results: {verify_path}")
-	return 0
+	return 1 if aborted else 0
 
 
 def _verify_sites(
@@ -463,12 +607,17 @@ def _verify_one(
 	timeout: int,
 	sites_cache: dict[tuple[str, str], dict[str, mutators.MutationSite]],
 	out: journal_mod.Journal,
-) -> bool:
-	"""Re-apply one survivor against the full suite. Returns True if it was evaluated."""
+) -> str | None:
+	"""Re-apply one survivor against the full suite.
+
+	Returns the status journalled for it, or None if the mutant was skipped without
+	being evaluated. Lets ``safety.RestoreError`` escape: the caller must treat a
+	working tree it could not clean as fatal, never as one bad survivor.
+	"""
 	abs_path = APP_ROOT / record["file"]
 	if not abs_path.exists():
 		_log(f"  skipping {record['key'][:12]}: {record['file']} no longer exists")
-		return False
+		return None
 
 	guard = safety.FileGuard(abs_path)
 	# Re-derive the site from the current source by its content-based key. The journalled
@@ -478,12 +627,12 @@ def _verify_one(
 	site_obj = _verify_sites(record["file"], guard, sites_cache).get(record["key"])
 	if site_obj is None:
 		_log(f"  skipping stale mutant {record['key'][:12]} (site no longer exists in {record['file']})")
-		return False
+		return None
 
 	built = mutators.build_mutant(guard.source, site_obj.node_index, site_obj.mutator, site_obj.param)
 	if built is None:
 		_log(f"  skipping stale mutant {record['key'][:12]} (no longer produces a mutant)")
-		return False
+		return None
 	mutated_source, mutated_segment = built
 	if record.get("mutated_segment") and mutated_segment != record["mutated_segment"]:
 		# Belt and braces: the key matched but the rendered mutation did not.
@@ -491,7 +640,7 @@ def _verify_one(
 			f"  skipping {record['key'][:12]}: rebuilt mutation {mutated_segment!r} "
 			f"!= journalled {record['mutated_segment']!r}"
 		)
-		return False
+		return None
 
 	guard.install_backup()
 	safety.register(guard)
@@ -499,16 +648,29 @@ def _verify_one(
 	try:
 		guard.apply(mutated_source)
 		result = run_tests(site, None, timeout)
-		status = classify(result)
-		if status == STATUS_SURVIVED:
-			final = STATUS_SURVIVED
-		elif status in {STATUS_KILLED_TIMEOUT, STATUS_INFRA_ERROR}:
-			final = status
-		else:
-			final = STATUS_KILLED_BY_OTHER_SUITE
+		status = classify(result, record["file"])
 	finally:
+		# Restores first, so the control re-run below measures a pristine tree. If the
+		# restore fails this raises out of _verify_one on purpose.
 		guard.release()
 		safety.unregister(guard)
+
+	if status == STATUS_SURVIVED or status in NO_VERDICT_STATUSES:
+		final = status
+	else:
+		# The full suite claims to kill a mutant that its own module's tests missed, and
+		# that verdict permanently supersedes stage 1 in the report. One --failfast run
+		# over 500+ tests is not enough evidence: a flaky test, data leaked by an earlier
+		# mutant, or a site that degraded mid-pass all look exactly like this. Confirm
+		# the suite is still green without the mutant before believing it.
+		_log(f"  {record['key'][:12]} looks killed by the full suite; confirming with a control run")
+		healthy, reason, _control = _control_ok(site, timeout)
+		if healthy:
+			final = STATUS_KILLED_BY_OTHER_SUITE
+		else:
+			_log(f"  control re-run unhealthy: {reason}")
+			_log("  the suite, not the mutant, is the variable. Recording no verdict.")
+			final = STATUS_UNCONFIRMED
 
 	new_record = dict(record)
 	new_record.update(
@@ -524,4 +686,4 @@ def _verify_one(
 	)
 	out.append(new_record)
 	_log(f"  L{site_obj.line} {record['mutator']}: {final}")
-	return True
+	return final

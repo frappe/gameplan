@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import atexit
 import difflib
+import fcntl
 import hashlib
 import json
 import os
@@ -94,6 +95,15 @@ def write_atomic(path: Path, data: bytes) -> None:
 		raise
 
 
+def _read_json(path: Path) -> dict:
+	"""Parse a sidecar json file. A missing or corrupt one reads as ``{}``."""
+	try:
+		payload = json.loads(path.read_text())
+	except (OSError, ValueError):
+		return {}
+	return payload if isinstance(payload, dict) else {}
+
+
 def pid_is_alive(pid: int | None) -> bool:
 	if not pid or pid <= 0:
 		return False
@@ -119,35 +129,93 @@ class CampaignLock:
 	def __init__(self, path: Path = LOCK_PATH) -> None:
 		self.path = path
 		self._held = False
+		self._fd: int | None = None
 
 	def _read_owner(self) -> int | None:
-		try:
-			payload = json.loads(self.path.read_text())
-		except (OSError, ValueError):
-			return None
+		payload = _read_json(self.path)
 		pid = payload.get("pid")
 		return pid if isinstance(pid, int) else None
 
+	def _flock_is_held(self) -> bool:
+		"""True if some open file description still holds the advisory lock.
+
+		The kernel drops an ``flock`` however the owning process dies, so this answers
+		"is the owner still running?" without trusting a pid that may since have been
+		recycled onto an unrelated process.
+		"""
+		try:
+			fd = os.open(self.path, os.O_RDONLY)
+		except OSError:
+			return False
+		try:
+			try:
+				fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+			except OSError:
+				return True
+			# We took it only to ask the question; hand it straight back.
+			fcntl.flock(fd, fcntl.LOCK_UN)
+			return False
+		finally:
+			os.close(fd)
+
+	def _is_live(self) -> bool:
+		"""Whether the existing lock file must be left alone."""
+		owner = self._read_owner()
+		if owner == os.getpid():
+			# Our own leftover, and flock would report it held by our own descriptor.
+			return False
+		if self._flock_is_held():
+			return True
+		# A lock file we cannot parse has an unknown owner, and an unknown owner cannot
+		# be proven dead. Refusing is recoverable by hand; stealing is not.
+		return owner is None or pid_is_alive(owner)
+
+	def _claim(self, payload: bytes) -> bool:
+		"""Publish a fully-formed lock file at ``self.path``. False if one already exists.
+
+		``os.link`` fails when the destination exists, so the lock becomes visible only
+		once it already holds the owning pid. Creating an empty file and writing the pid
+		afterwards would leave a window in which a second process reads no owner, calls
+		the live lock stale, and steals it.
+		"""
+		fd, tmp_name = tempfile.mkstemp(dir=self.path.parent, prefix=f".{self.path.name}.", suffix=".tmp")
+		try:
+			with os.fdopen(fd, "wb") as handle:
+				handle.write(payload)
+				handle.flush()
+				os.fsync(handle.fileno())
+			os.chmod(tmp_name, 0o644)
+			try:
+				os.link(tmp_name, self.path)
+			except FileExistsError:
+				return False
+		finally:
+			os.unlink(tmp_name)
+		return True
+
 	def acquire(self) -> None:
 		self.path.parent.mkdir(parents=True, exist_ok=True)
+		payload = json.dumps({"pid": os.getpid(), "started": time.time()}).encode("utf-8")
 		for _ in range(2):
-			try:
-				fd = os.open(self.path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
-			except FileExistsError:
-				owner = self._read_owner()
-				if pid_is_alive(owner) and owner != os.getpid():
+			if not self._claim(payload):
+				if self._is_live():
+					owner = self._read_owner()
 					raise LockError(
 						f"another mutation run (pid {owner}) is using this working tree. "
 						f"Wait for it, or remove {self.path} if you are sure it is dead."
-					) from None
-				# Stale lock from a crashed run: its pid is gone, so reclaim it.
+					)
+				# Stale lock from a crashed run: nobody holds it any more, so reclaim it.
 				try:
 					self.path.unlink()
 				except FileNotFoundError:
 					pass
 				continue
-			with os.fdopen(fd, "w") as handle:
-				json.dump({"pid": os.getpid(), "started": time.time()}, handle)
+			# Held for as long as this process lives, so a SIGKILL leaves a lock file
+			# that the next run can prove is stale rather than merely guess about.
+			# Blocking, because the only descriptor that can be contending here is
+			# another process's liveness probe, which holds it for an instant.
+			self._fd = os.open(self.path, os.O_RDONLY)
+			fcntl.flock(self._fd, fcntl.LOCK_EX)
 			self._held = True
 			return
 		raise LockError(f"could not acquire {self.path}")
@@ -161,6 +229,9 @@ class CampaignLock:
 				self.path.unlink()
 			except FileNotFoundError:
 				pass
+		if self._fd is not None:
+			os.close(self._fd)
+			self._fd = None
 		self._held = False
 
 	def __enter__(self) -> CampaignLock:
@@ -207,13 +278,66 @@ class FileGuard:
 		write_atomic(self.manifest_path, json.dumps(manifest, indent=2).encode("utf-8"))
 
 	def install_backup(self) -> None:
-		"""Persist the pristine copy before the first mutation of this file."""
+		"""Persist the pristine copy before the first mutation of this file.
+
+		A backup already sitting at our slug is never a leftover to overwrite: the slug
+		is derived from the target path alone, so it is the pristine copy an earlier run
+		took of *this* file and never put back. Overwriting it with what is on disk now
+		would promote that run's mutant to "the original", and every later restore would
+		then faithfully write the mutant back.
+		"""
 		if self._backed_up:
 			return
 		BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+		if self.backup_path.exists():
+			self._adopt_existing_backup()
+			return
 		write_atomic(self.backup_path, self.original_bytes)
 		self._write_manifest(None)
 		self._backed_up = True
+
+	def _adopt_existing_backup(self) -> None:
+		"""Take over an unreleased backup, undoing the crashed run's mutation first."""
+		if _manifest_owned_by_other_live_process(self.manifest_path):
+			raise LockError(
+				f"{self.backup_path} belongs to a mutation run that is still alive "
+				f"(pid {_read_json(self.manifest_path).get('pid')}). Wait for it to finish."
+			)
+		pristine = self.backup_path.read_bytes()
+		pristine_sha = sha256_bytes(pristine)
+		manifest = _read_json(self.manifest_path)
+		recorded_sha = manifest.get("sha256")
+		if recorded_sha and recorded_sha != pristine_sha:
+			raise RestoreError(
+				f"backup {self.backup_path} is itself corrupt: its sha256 {pristine_sha} does not "
+				f"match the {recorded_sha} recorded in {self.manifest_path}. Resolve it by hand."
+			)
+
+		if pristine_sha != self.original_sha:
+			# The bytes we read at construction are a previous run's mutant, not the
+			# original. Only the mutant it recorded may be overwritten; anything else is
+			# an edit made since the crash and may be the only copy in existence.
+			if manifest.get("mutated_sha256") != self.original_sha:
+				raise RestoreError(
+					f"{self.path} matches neither the pristine backup {self.backup_path} nor the "
+					f"mutant recorded in {self.manifest_path}, so it has been edited since an "
+					f"earlier run crashed. Inspect it, then either copy the backup over it or "
+					f"delete the backup to keep what is on disk."
+				)
+			write_atomic(self.path, pristine)
+			current = sha256_bytes(self.path.read_bytes())
+			if current != pristine_sha:
+				raise RestoreError(f"failed to restore {self.path} from {self.backup_path}")
+			self.original_bytes = pristine
+			self.original_sha = pristine_sha
+			print(
+				f"[mutation] recovered {self.path} from {self.backup_path}: "
+				f"a previous run left a mutant on disk.",
+				file=sys.stderr,
+			)
+
+		self._backed_up = True
+		self._write_manifest(None)
 
 	def apply(self, mutated_source: str) -> None:
 		data = mutated_source.encode("utf-8")
@@ -233,7 +357,10 @@ class FileGuard:
 				f"failed to restore {self.path}: sha256 {current} != expected {self.original_sha}. "
 				f"Pristine copy is at {self.backup_path}"
 			)
-		if self._backed_up:
+		# Stamping our pid on a manifest another live process owns would erase the only
+		# record that its backup is not ours to delete - and that record is exactly what
+		# release() reads a moment later.
+		if self._backed_up and not _manifest_owned_by_other_live_process(self.manifest_path):
 			self._write_manifest(None)
 
 	def release(self) -> None:
@@ -256,11 +383,7 @@ class FileGuard:
 
 
 def _manifest_owned_by_other_live_process(manifest_path: Path) -> bool:
-	try:
-		manifest = json.loads(manifest_path.read_text())
-	except (OSError, ValueError):
-		return False
-	pid = manifest.get("pid")
+	pid = _read_json(manifest_path).get("pid")
 	return pid != os.getpid() and pid_is_alive(pid)
 
 
@@ -385,9 +508,8 @@ def find_orphaned_backups() -> list[dict]:
 		return []
 	orphans = []
 	for manifest_path in sorted(BACKUP_DIR.glob("*.json")):
-		try:
-			manifest = json.loads(manifest_path.read_text())
-		except (OSError, ValueError):
+		manifest = _read_json(manifest_path)
+		if not manifest.get("path"):
 			continue
 		orig_path = manifest_path.with_suffix(".orig")
 		if not orig_path.exists():
@@ -487,9 +609,17 @@ def git_is_clean(rel_paths: list[str]) -> tuple[bool, list[str]]:
 
 	A clean tree is the escape hatch of last resort: if the process is SIGKILLed and
 	the sidecar backup is also lost, ``git checkout -- <file>`` still recovers it.
+
+	"Clean" therefore has to mean *recoverable*, not merely "git diff is silent". A file
+	git does not track, or one flagged assume-unchanged/skip-worktree, produces no diff
+	at all while having no committed copy to check out - the promise in the paragraph
+	above would be false for it, so it counts as dirty.
 	"""
 	dirty: list[str] = []
 	for rel in rel_paths:
+		if not _git_has_recoverable_copy(rel):
+			dirty.append(rel)
+			continue
 		for args in (["diff", "--quiet", "--"], ["diff", "--cached", "--quiet", "--"]):
 			result = subprocess.run(
 				["git", *args, rel],
@@ -500,3 +630,21 @@ def git_is_clean(rel_paths: list[str]) -> tuple[bool, list[str]]:
 				dirty.append(rel)
 				break
 	return (not dirty), dirty
+
+
+def _git_has_recoverable_copy(rel: str) -> bool:
+	"""True if ``git checkout -- rel`` would actually restore the file's committed bytes."""
+	result = subprocess.run(
+		["git", "ls-files", "-v", "--error-unmatch", "--", rel],
+		cwd=APP_ROOT,
+		capture_output=True,
+		text=True,
+	)
+	if result.returncode != 0:
+		# Untracked, or not a git repository at all.
+		return False
+	# ``ls-files -v`` prefixes each path with its index tag. "H" is an ordinary cached
+	# entry; lowercase means assume-unchanged and "S" means skip-worktree, both of which
+	# make git ignore the working-tree copy on diff *and* on checkout.
+	tag = result.stdout[:1]
+	return tag == "H"

@@ -24,8 +24,8 @@ DEFAULT_TIMEOUT = 120
 
 # Every mutant needs the test site to itself. Once the site is wedged (a leftover
 # process holding the lock, a bench that will not start), every remaining mutant
-# produces the same infrastructure failure, so bail instead of scoring noise.
-MAX_CONSECUTIVE_INFRA_ERRORS = 3
+# produces the same non-verdict, so bail instead of scoring noise.
+MAX_CONSECUTIVE_NO_VERDICT = 3
 
 # Source module -> test modules that are expected to cover it. Tier 1 is the
 # security/correctness-critical core; tier 2 is everything else worth measuring.
@@ -73,33 +73,75 @@ TIER2: dict[str, list[str]] = {
 
 # Mutant outcome vocabulary. Kept explicit because the report and the verify stage
 # both key off these exact strings.
+#
+# THE INVARIANT THAT HOLDS THIS HARNESS TOGETHER
+# ----------------------------------------------
+# Every status is either a VERDICT - the test suite itself judged this mutant - or a
+# NON-VERDICT - something other than the suite decided the outcome (a timeout, a wedged
+# site, a broken venv, a runner that died mid-suite, a harness bug). A "kill" is a claim
+# that the tests detected the mutation; a non-verdict is an ABSENCE of evidence, never
+# evidence of coverage. Resolving that ambiguity toward "killed" inflates the score and,
+# because the resume logic caches completed work, caches the lie forever. So:
+#
+#     NO_VERDICT_STATUSES & KILLED_STATUSES == frozenset()   never counted as a kill
+#     NO_VERDICT_STATUSES <= NON_SCORING_STATUSES            never reaches the score
+#     NO_VERDICT_STATUSES <= RETRYABLE_STATUSES              never cached as done
+#
+# If you add a status, decide which side of that line it falls on. Anything that is not
+# a judgement made by the test suite goes in NO_VERDICT_STATUSES. The three relations
+# above are asserted by gameplan/tests/platform/test_mutation_classification.py, so
+# breaking one fails the suite instead of silently inflating the mutation score.
 STATUS_KILLED = "killed"
 STATUS_KILLED_IMPORT_ERROR = "killed-import-error"
-STATUS_KILLED_TIMEOUT = "killed-timeout"
 STATUS_KILLED_BY_OTHER_SUITE = "killed-by-other-suite"
 STATUS_SURVIVED = "survived"
 STATUS_BASELINE_SKIP = "baseline-skip"
+# The harness itself blew up on this mutant (bad AST rewrite, unwritable file).
 STATUS_ERROR = "error"
-# The suite never ran: bench failed to start, the site was locked, the disk filled up.
-# Says nothing about the mutant, so it must never reach the score.
+# The suite never started: bench failed to launch, the site was locked, the disk filled up.
 STATUS_INFRA_ERROR = "infra-error"
+# The run exceeded its budget and was killed. A hung run is not a detection: nothing in
+# the suite ever asserted anything about the mutant. See runner/classify for why we do
+# not try to separate "mutant caused an infinite loop" from "the box was busy".
+STATUS_TIMEOUT = "timeout"
+# The suite started and then died without printing a judgement (OOM, lost site lock,
+# a crashed worker). Whatever it had run so far proves nothing about this mutant.
+STATUS_INCOMPLETE = "incomplete"
+# Verify only: the full suite failed with the mutant applied, but the control re-run
+# without it failed too, so the suite - not the mutant - is the variable.
+STATUS_UNCONFIRMED = "unconfirmed"
+# Legacy: campaigns run before timeouts were demoted to non-verdicts journalled this.
+# Kept only so those cached fake kills are re-evaluated rather than counted.
+STATUS_KILLED_TIMEOUT = "killed-timeout"
 
 KILLED_STATUSES = frozenset(
 	{
 		STATUS_KILLED,
 		STATUS_KILLED_IMPORT_ERROR,
-		STATUS_KILLED_TIMEOUT,
 		STATUS_KILLED_BY_OTHER_SUITE,
 	}
 )
 
-# Outcomes that carry no verdict about the mutant. They are excluded from both the
-# numerator and the denominator of the mutation score, and reported on their own.
-NON_SCORING_STATUSES = frozenset({STATUS_ERROR, STATUS_INFRA_ERROR})
+# Outcomes where the suite never delivered a judgement about the mutant.
+NO_VERDICT_STATUSES = frozenset(
+	{
+		STATUS_ERROR,
+		STATUS_INFRA_ERROR,
+		STATUS_TIMEOUT,
+		STATUS_INCOMPLETE,
+		STATUS_UNCONFIRMED,
+		STATUS_KILLED_TIMEOUT,
+	}
+)
+
+# Excluded from both the numerator and the denominator of the mutation score, and
+# reported on their own. Counting them as kills reports 100% for a suite that never ran;
+# counting them in the denominator alone punishes the tests for an infrastructure fault.
+NON_SCORING_STATUSES = NO_VERDICT_STATUSES
 
 # ...and because their cause is transient, they are re-evaluated on the next run
 # instead of being treated as completed work by the resume logic.
-RETRYABLE_STATUSES = NON_SCORING_STATUSES
+RETRYABLE_STATUSES = NO_VERDICT_STATUSES
 
 
 def target_map(tier: str) -> dict[str, list[str]]:
