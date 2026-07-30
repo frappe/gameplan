@@ -672,6 +672,96 @@ class TestPollFieldProtection(PollTestCase):
 		self.assertEqual([(row.user, row.emoji) for row in poll.reactions], [(self.second_member.name, "👍")])
 
 
+class TestPollInAClosedDiscussion(PollTestCase):
+	"""A closed discussion refuses a poll, exactly as it refuses a comment.
+
+	The composer disappears client-side once a thread is closed, so nothing in the UI ever
+	exercises the server guard — which is precisely why it needs a test of its own.
+	"""
+
+	def close(self):
+		with self.as_user(self.member):
+			frappe.get_doc("GP Discussion", self.discussion.name).close_discussion()
+
+	def reopen(self):
+		with self.as_user(self.member):
+			frappe.get_doc("GP Discussion", self.discussion.name).reopen_discussion()
+
+	def test_a_poll_cannot_be_added_to_a_closed_discussion(self):
+		self.close()
+
+		with self.assertRaisesRegex(frappe.ValidationError, "Cannot add a poll to a closed discussion"):
+			create_poll("Too late?", self.discussion)
+
+		self.assertEqual(frappe.db.count("GP Poll", {"discussion": self.discussion.name}), 0)
+
+	def test_the_guard_only_bites_while_the_discussion_is_closed(self):
+		"""The other side of the same rule: an open thread — and a reopened one — still
+		takes polls, so the guard cannot simply refuse everything."""
+		poll = self.poll()
+		self.close()
+		self.reopen()
+
+		reopened_poll = create_poll("Back on?", self.discussion)
+
+		self.assertTrue(frappe.db.exists("GP Poll", poll.name))
+		self.assertTrue(frappe.db.exists("GP Poll", reopened_poll.name))
+
+
+class TestPollUpdatesItsDiscussion(PollTestCase):
+	"""Posting a poll is posting in the thread, so the thread's counters have to move.
+
+	The feed sorts and attributes a thread by `last_post_at` / `last_post_by` and shows
+	`comments_count` and `participants_count` on the row, so a poll that left them alone
+	would make an active thread look untouched since its last comment. Deleting the poll
+	has to walk all of that back — `GPPoll.after_delete` refreshes the same fields.
+	"""
+
+	def meta(self):
+		return frappe.db.get_value(
+			"GP Discussion",
+			self.discussion.name,
+			["comments_count", "participants_count", "last_post_type", "last_post", "last_post_by"],
+			as_dict=True,
+		)
+
+	def last_post_at(self):
+		return frappe.db.get_value("GP Discussion", self.discussion.name, "last_post_at")
+
+	def test_posting_a_poll_moves_the_threads_counters(self):
+		self.assertEqual(self.meta().comments_count, 0)
+
+		with self.as_user(self.second_member):
+			poll = create_poll("Ship on Friday?", self.discussion)
+
+		meta = self.meta()
+		self.assertEqual(meta.comments_count, 1)
+		# The thread's owner plus the poll's author — a poll's author is a participant in
+		# the thread just as a commenter is.
+		self.assertEqual(meta.participants_count, 2)
+		self.assertEqual(meta.last_post_type, "GP Poll")
+		self.assertEqual(str(meta.last_post), str(poll.name))
+		self.assertEqual(meta.last_post_by, self.second_member.name)
+		self.assertEqual(self.last_post_at(), get_datetime(poll.creation))
+
+	def test_deleting_the_poll_moves_them_back(self):
+		with self.as_user(self.second_member):
+			poll = create_poll("Ship on Friday?", self.discussion)
+		self.assertEqual(self.meta().comments_count, 1)
+
+		with self.as_user(self.second_member):
+			frappe.delete_doc("GP Poll", poll.name)
+
+		meta = self.meta()
+		self.assertEqual(meta.comments_count, 0)
+		self.assertEqual(meta.participants_count, 1)
+		self.assertIsNone(meta.last_post_type)
+		self.assertFalse(meta.last_post)
+		self.assertEqual(meta.last_post_by, self.member.name)
+		# Nothing left in the thread, so the discussion is its own last post again.
+		self.assertEqual(self.last_post_at(), get_datetime(self.discussion.creation))
+
+
 class TestDeletingAPoll(PollTestCase):
 	"""Deleting a discussion takes the polls inside it, whoever posted them.
 

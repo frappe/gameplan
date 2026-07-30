@@ -29,12 +29,42 @@ MAX_CONSECUTIVE_NO_VERDICT = 3
 
 # Source module -> test modules that are expected to cover it. Tier 1 is the
 # security/correctness-critical core; tier 2 is everything else worth measuring.
+#
+# WHAT BELONGS IN A TARGET'S LIST
+# -------------------------------
+# Stage 1 asks one question - "do the tests that OWN this module pin its behaviour?" -
+# so the list is deliberately narrower than "every test file that happens to execute a
+# line of it". Stage 2 (verify) is where the whole suite gets a say. Add a module here
+# only when it is the primary - usually the only - place some behaviour of the target is
+# asserted. Adding one because it merely touches the target buys nothing and costs on
+# every mutant.
+#
+# The cost is real and asymmetric. campaign.run_one_mutant runs the list IN ORDER and
+# stops at the first kill, so a module costs its own runtime once per mutant that
+# survived everything before it - never once per mutant. The same 7s module is ~18
+# minutes on permissions.py (~150 survivors) and under a minute on gp_poll.py (~9).
+# Hence the ordering rule: the module that owns most of the target goes first, so the
+# later entries are only ever paid for the mutants nothing before them caught.
+#
+# The other cost is invalidation: a target's list feeds scope.test_fingerprint, so
+# editing the list re-measures every verdict that target already had. That is intended
+# - a verdict produced by a different set of tests is stale, not settled.
 TIER1: dict[str, list[str]] = {
 	"gameplan/permissions.py": [
 		"gameplan.tests.permissions.test_permission_matrix",
 		"gameplan.tests.permissions.test_content_access",
 		"gameplan.tests.permissions.test_guest_access",
 		"gameplan.tests.permissions.test_visibility",
+		# Written FOR this file: it calls content_has_permission, can_interact_with_content
+		# and can_delete_content directly with assertIs, to pin the defaults that mutation
+		# testing flagged as survivors. Read its module docstring before deleting a branch
+		# it covers - and before adding a test for one it says it cannot reach.
+		"gameplan.tests.permissions.test_permission_defaults",
+		# The community half of guest access. test_guest_access above scopes a guest to
+		# their granted SPACES; nothing there reads a GP Team, so can_view_community's
+		# guest branch and team_access_criterion's guest criterion answer to this module
+		# alone - see its "SPA navigation" section, which exists to pin exactly those two.
+		"gameplan.tests.features.test_guest_participation",
 	],
 	"gameplan/email_digest.py": [
 		"gameplan.tests.features.test_email_digest",
@@ -53,21 +83,45 @@ TIER1: dict[str, list[str]] = {
 TIER2: dict[str, list[str]] = {
 	"gameplan/gameplan/doctype/gp_user_profile/gp_user_profile.py": [
 		"gameplan.tests.features.test_profiles",
+		# test_profiles covers bento cards, emojis and quick reactions; the account-
+		# management methods on the same doctype (change_user_role, disable_user) are
+		# specced only here, as the privilege-escalation guards they are.
+		"gameplan.tests.features.test_members",
 	],
 	"gameplan/api.py": [
 		"gameplan.tests.platform.test_api_endpoints",
+		# api.py is a grab-bag, and two of its endpoints are owned by feature specs
+		# rather than by the endpoint suite: _invite_by_email and accept_invitation are
+		# called directly by test_invitations...
+		"gameplan.tests.features.test_invitations",
+		# ...and invite_by_email's admin gate and role allow-list, plus get_user_info's
+		# "strip other members' emails for a guest" branch, only by test_members.
+		"gameplan.tests.features.test_members",
 	],
 	"gameplan/gameplan/doctype/gp_draft/gp_draft.py": [
 		"gameplan.tests.features.test_drafts",
 	],
 	"gameplan/gameplan/doctype/gp_poll/gp_poll.py": [
 		"gameplan.tests.features.test_polls",
+		# ongoing_polls_clause has no caller inside the poll doctype - it is the feed's
+		# query-builder mirror of poll_has_stopped, and the test that holds the two in
+		# step at the closing instant is TestFeedOngoingPolls, which lives with the feed.
+		"gameplan.tests.features.test_discussions",
 	],
 	"gameplan/gameplan/doctype/gp_discussion/api.py": [
 		"gameplan.tests.features.test_discussions",
+		# The bookmarks feed is the one feed_type test_discussions does not exercise:
+		# clause_discussions_bookmarked_by_user is reached only from the Bookmarks page,
+		# which is specced with the rest of bookmarking.
+		"gameplan.tests.features.test_bookmarks",
 	],
 	"gameplan/mixins/reactions.py": [
 		"gameplan.tests.features.test_reactions",
+		# test_reactions owns WHICH change notifies (add/withdraw/swap/own reaction);
+		# WHO gets the row and WHICH row it lands in - the can_view_content guard and the
+		# per-doctype dispatch that keeps a poll, comment and discussion reaction on
+		# separate notifications - are pinned by TestReactionNotifications instead.
+		"gameplan.tests.features.test_notifications",
 	],
 }
 

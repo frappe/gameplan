@@ -15,11 +15,12 @@ file owns — is the operation contract of `react`:
 - garbage in a batch is ignored, not stored,
 - reacting never touches the post itself.
 
-Two notification properties live here rather than in the notifications spec, because both
-are properties of this mixin's write path rather than of the notification itself: the
-unread flag resets on every reaction (`TestReactionNotificationUnreadState`), and only an
-ADDED reaction notifies at all (`TestWhichReactionChangesNotify`). That spec covers what a
-reaction notification says and which post it points at.
+Some notification behaviour lives here rather than in the notifications spec, because it
+belongs to this mixin's write path rather than to the notification itself: the unread flag
+resets on every reaction (`TestReactionNotificationUnreadState`), only an ADDED reaction
+notifies at all (`TestWhichReactionChangesNotify`), and one row is reused per post, which
+makes the row's link fields both its routing and its identity
+(`TestReactionNotificationRouting`). The notifications spec covers what the message says.
 """
 
 import frappe
@@ -401,6 +402,110 @@ class TestWhichReactionChangesNotify(ReactionTestCase):
 		self.assertEqual(
 			self.notification(self.member, self.discussion).message, "2 people reacted to your post"
 		)
+
+
+class TestReactionNotificationRouting(ReactionTestCase):
+	"""A reaction notification has to name the post that was reacted to.
+
+	The bell renders each row as a link, so the row carries the post in its own link field
+	— `comment`, `poll` or `discussion` — and a reply additionally carries the thread it
+	lives in, which is what lets the client open the thread and scroll to the reply.
+
+	`notify_reactions` reuses one row per post rather than inserting one per reaction, so
+	the same fields double as the lookup key. That makes them load-bearing twice over: a
+	key that is not specific enough makes a reaction on a thread and a reaction on a reply
+	inside it land on one row, and the second one silently overwrites the first.
+	"""
+
+	def notifications(self, user):
+		rows = frappe.get_all(
+			"GP Notification",
+			filters={"to_user": user.name, "type": "Reaction"},
+			fields=["name", "discussion", "comment", "poll"],
+			order_by="creation asc",
+		)
+		# Link fields come back as "" or None depending on the backend; normalise so the
+		# assertions below read as "points nowhere" rather than at one storage detail.
+		return [
+			frappe._dict(
+				name=row.name,
+				discussion=str(row.discussion) if row.discussion else None,
+				comment=str(row.comment) if row.comment else None,
+				poll=str(row.poll) if row.poll else None,
+			)
+			for row in rows
+		]
+
+	def test_a_comment_reaction_points_at_the_comment_and_its_thread(self):
+		self.react(self.comment, self.second_member, [add(THUMBS_UP)])
+
+		rows = self.notifications(self.member)
+		self.assertEqual(len(rows), 1)
+		self.assertEqual(rows[0].comment, str(self.comment.name))
+		self.assertEqual(rows[0].discussion, str(self.discussion.name))
+		self.assertIsNone(rows[0].poll)
+
+	def test_a_poll_reaction_points_at_the_poll_and_its_thread(self):
+		self.react(self.poll, self.second_member, [add(THUMBS_UP)])
+
+		rows = self.notifications(self.member)
+		self.assertEqual(len(rows), 1)
+		self.assertEqual(rows[0].poll, str(self.poll.name))
+		self.assertEqual(rows[0].discussion, str(self.discussion.name))
+		self.assertIsNone(rows[0].comment)
+
+	def test_a_discussion_reaction_points_at_the_discussion_alone(self):
+		self.react(self.discussion, self.second_member, [add(THUMBS_UP)])
+
+		rows = self.notifications(self.member)
+		self.assertEqual(len(rows), 1)
+		self.assertEqual(rows[0].discussion, str(self.discussion.name))
+		self.assertIsNone(rows[0].comment)
+		self.assertIsNone(rows[0].poll)
+
+	def test_a_thread_and_a_reply_inside_it_get_their_own_notifications(self):
+		"""Both rows carry the same discussion, so only the emptiness of `comment` tells
+		the thread's row apart from the reply's — the lookup has to say so."""
+		self.react(self.comment, self.second_member, [add(THUMBS_UP)])
+		self.react(self.discussion, self.second_member, [add(THUMBS_UP)])
+
+		rows = self.notifications(self.member)
+		self.assertEqual(len(rows), 2)
+		self.assertEqual(len({row.name for row in rows}), 2)
+		self.assertEqual({row.comment for row in rows}, {str(self.comment.name), None})
+
+	def test_a_thread_and_a_poll_inside_it_get_their_own_notifications(self):
+		self.react(self.poll, self.second_member, [add(THUMBS_UP)])
+		self.react(self.discussion, self.second_member, [add(THUMBS_UP)])
+
+		rows = self.notifications(self.member)
+		self.assertEqual(len(rows), 2)
+		self.assertEqual(len({row.name for row in rows}), 2)
+		self.assertEqual({row.poll for row in rows}, {str(self.poll.name), None})
+
+	def test_the_order_the_reactions_arrive_in_does_not_merge_them(self):
+		"""The reverse of the two tests above: the thread's row exists first, and the
+		reply's reaction must still get a row of its own rather than claiming that one."""
+		self.react(self.discussion, self.second_member, [add(THUMBS_UP)])
+		self.react(self.comment, self.second_member, [add(THUMBS_UP)])
+		self.react(self.poll, self.second_member, [add(THUMBS_UP)])
+
+		rows = self.notifications(self.member)
+		self.assertEqual(len(rows), 3)
+		self.assertEqual(
+			{(row.comment, row.poll) for row in rows},
+			{(None, None), (str(self.comment.name), None), (None, str(self.poll.name))},
+		)
+
+	def test_two_replies_in_one_thread_get_their_own_notifications(self):
+		other_comment = create_comment(self.discussion, content="Second reply", owner=self.member)
+
+		self.react(self.comment, self.second_member, [add(THUMBS_UP)])
+		self.react(other_comment, self.second_member, [add(THUMBS_UP)])
+
+		rows = self.notifications(self.member)
+		self.assertEqual(len(rows), 2)
+		self.assertEqual({row.comment for row in rows}, {str(self.comment.name), str(other_comment.name)})
 
 
 class TestReactionsSurviveAnEdit(ReactionTestCase):

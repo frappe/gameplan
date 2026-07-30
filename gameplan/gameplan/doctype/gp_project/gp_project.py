@@ -101,7 +101,11 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 		# target-exists, and write permission on both source and target. The only one not
 		# reproduced is validate_rename's `SELECT ... FOR UPDATE` lock on the target row,
 		# which frappe does not expose separately.
-		return self.rename(target, merge=True, validate_rename=False, force=True)
+		#
+		# `force` is deliberately not passed with it: rename_doc reads force only inside
+		# the `if validate:` block it hands to validate_rename, so with validate off the
+		# argument reaches nothing.
+		return self.rename(target, merge=True, validate_rename=False)
 
 	def require_can_manage_merge(self, target):
 		"""A merge empties this Space into `target`, so it needs manage rights on both.
@@ -197,10 +201,19 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 	@frappe.whitelist(methods=["POST"])
 	def archive(self):
 		super().archive()
-		# delete pinned projects
-		for pin in frappe.db.get_all(
-			"GP Pinned Project", filters={"project": self.name, "user": frappe.session.user}, pluck="name"
-		):
+		# Everyone's pin, not just the archiver's. Archiving retires the Space for the
+		# whole site, so a pin left on another user's sidebar points at something they
+		# cannot open. The patch
+		# gp_pinned_project/patches/delete_pinned_projects_for_archived_spaces.py exists
+		# only to clear that state out, and a session-scoped delete regenerates its
+		# precondition on every archive.
+		pins = frappe.qb.get_query(
+			"GP Pinned Project",
+			filters={"project": self.name},
+			fields=["name"],
+			ignore_permissions=True,
+		).run(pluck="name")
+		for pin in pins:
 			frappe.delete_doc("GP Pinned Project", pin, ignore_permissions=True)
 
 	@frappe.whitelist(methods=["POST"])
