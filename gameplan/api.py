@@ -8,6 +8,7 @@ from frappe.query_builder.functions import Count
 from frappe.utils import split_emails, validate_email_address
 
 import gameplan
+from gameplan.realtime import notify_notification_count_changed
 from gameplan.utils import validate_type
 
 
@@ -214,7 +215,7 @@ def mark_all_notifications_as_read():
 		.set(Notification.read, 1)
 		.where((Notification.to_user == frappe.session.user) & (Notification.read == 0))
 	).run()
-	gameplan.refetch_resource("Unread Notifications Count", user=frappe.session.user)
+	notify_notification_count_changed(frappe.session.user)
 
 
 @frappe.whitelist(methods=["POST"])

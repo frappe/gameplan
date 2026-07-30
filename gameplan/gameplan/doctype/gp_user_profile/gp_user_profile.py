@@ -10,10 +10,10 @@ from frappe.model.naming import append_number_if_name_exists
 from frappe.query_builder.functions import Count
 from frappe.website.utils import cleanup_page_name
 
-import gameplan
 from gameplan.api import get_user_info, require_admin
 from gameplan.extends.client import check_permissions
 from gameplan.mixins.attachments import HasAttachments
+from gameplan.realtime import notify_users_changed
 
 PROFILE_BENTO_CARD_TYPES = {"Card", "Blank"}
 PROFILE_BENTO_CARD_SIZES = {"1x1", "1x2", "2x1", "2x2", "4x1", "4x2"}
@@ -48,7 +48,7 @@ class GPUserProfile(HasAttachments, Document):
 		self.image_background_color = None
 		self.original_image = None
 		self.save()
-		gameplan.refetch_resource("Users")
+		notify_users_changed()
 
 	@frappe.whitelist(methods=["POST"])
 	def change_user_role(self, role):

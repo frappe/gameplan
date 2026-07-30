@@ -5,6 +5,7 @@ import { setCommunityOrder } from './communityOrder'
 import { loadQuickReactionSlots } from './reactionPreferences'
 import { setSidebarBadgeStyle, type SidebarBadgeStyle } from './sidebarPreferences'
 import { session } from './session'
+import { onSocketEvent } from '@/socket'
 
 export type EmailDigestFrequency = 'Off' | 'Weekly' | 'Fortnightly' | 'Monthly'
 export type EmailDigestDayOfWeek =
@@ -77,6 +78,14 @@ export let users = useCall<UserInfo[]>({
     }
   },
   immediate: false,
+})
+
+// A profile edit changes what everyone else renders (avatar, name, role), so the backend
+// broadcasts this to every session. Skipped until the list has actually loaded: `users` is
+// `immediate: false` and App.vue fetches it once the session is known, and reloading before
+// that would race that first fetch on the same instance.
+onSocketEvent('gameplan:users_changed', () => {
+  if (users.data) users.reload()
 })
 
 export function updateUserInfo(user: UserInfo) {

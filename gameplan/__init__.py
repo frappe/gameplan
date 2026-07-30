@@ -29,9 +29,3 @@ def is_admin(user=None):
 		return True
 	roles = frappe.get_roles(user)
 	return "Gameplan Admin" in roles or "System Manager" in roles
-
-
-def refetch_resource(cache_key: str | list, user=None):
-	frappe.publish_realtime(
-		"refetch_resource", {"cache_key": cache_key}, user=user or frappe.session.user, after_commit=True
-	)
