@@ -4,16 +4,9 @@
 import frappe
 from frappe.model.document import Document
 
-import gameplan
-
 
 class GPDiscussionVisit(Document):
-	def after_insert(self):
-		gameplan.refetch_resource("UnreadItems", user=self.user)
-
-	def on_change(self):
-		if self.has_value_changed("last_visit"):
-			gameplan.refetch_resource("UnreadItems", user=self.user)
+	pass
 
 
 def on_doctype_update():

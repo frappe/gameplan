@@ -6,6 +6,9 @@ from datetime import timedelta
 import frappe
 from frappe.model.document import Document, bulk_insert
 
+import gameplan
+from gameplan.realtime import notify_unread_counts_changed
+
 
 class GPUnreadRecord(Document):
 	@staticmethod
@@ -35,6 +38,7 @@ class GPUnreadRecord(Document):
 			)
 
 		GPUnreadRecord._bulk_create_unread_records(records)
+		GPUnreadRecord._notify_unread_counts_changed(record.user for record in records)
 
 	@staticmethod
 	def create_unread_records_for_comment(comment_doc):
@@ -69,6 +73,7 @@ class GPUnreadRecord(Document):
 			)
 
 		GPUnreadRecord._bulk_create_unread_records(records)
+		GPUnreadRecord._notify_unread_counts_changed(record.user for record in records)
 
 	@staticmethod
 	def delete_unread_records_for_discussion(discussion: str):
@@ -129,7 +134,9 @@ class GPUnreadRecord(Document):
 				& (UnreadRecord.is_unread == 1)
 			)
 		)
-		return query.run(as_dict=1)
+		result = query.run(as_dict=1)
+		GPUnreadRecord._notify_unread_counts_changed(user)
+		return result
 
 	@staticmethod
 	def mark_discussion_as_unread_for_user(discussion, user):
@@ -148,13 +155,14 @@ class GPUnreadRecord(Document):
 			frappe.db.set_value(
 				"GP Unread Record", discussion_level_record, "is_unread", 1, update_modified=False
 			)
+			GPUnreadRecord._notify_unread_counts_changed(user)
 			return discussion_level_record
 
 		project = frappe.db.get_value("GP Discussion", discussion, "project")
 		if not project:
 			return
 
-		return (
+		name = (
 			frappe.get_doc(
 				{
 					"doctype": "GP Unread Record",
@@ -168,6 +176,8 @@ class GPUnreadRecord(Document):
 			.insert(ignore_permissions=True)
 			.name
 		)
+		GPUnreadRecord._notify_unread_counts_changed(user)
+		return name
 
 	@staticmethod
 	def mark_all_as_read_for_project(project, user):
@@ -183,7 +193,9 @@ class GPUnreadRecord(Document):
 				& (UnreadRecord.is_unread == 1)
 			)
 		)
-		return query.run(as_dict=1)
+		result = query.run(as_dict=1)
+		GPUnreadRecord._notify_unread_counts_changed(user)
+		return result
 
 	@staticmethod
 	def mark_all_as_read_for_team(team, user, before=None):
@@ -218,6 +230,7 @@ class GPUnreadRecord(Document):
 		(frappe.qb.update(UnreadRecord).set(UnreadRecord.is_unread, 0).where(condition)).run()
 
 		GPUnreadRecord.update_project_visits_for_mark_all_read(projects, user, cutoff)
+		GPUnreadRecord._notify_unread_counts_changed(user)
 		return projects
 
 	@staticmethod
@@ -392,8 +405,6 @@ class GPUnreadRecord(Document):
 	@staticmethod
 	def _get_project_members(project_name):
 		"""Get all users who have access to the project"""
-		import gameplan
-
 		project = frappe.db.get_value("GP Project", project_name, ["name", "is_private"], as_dict=True)
 
 		all_users = set()
@@ -423,6 +434,16 @@ class GPUnreadRecord(Document):
 		all_users.update(guest_users)
 
 		return list(all_users)
+
+	@staticmethod
+	def _notify_unread_counts_changed(users):
+		"""Signal each user's open tabs that their unread counts are stale.
+
+		Without this, `frontend/src/data/unreadCount.ts` only refreshes after this tab's own
+		mark-as-read/visit calls, so another tab (or a space getting a new unread discussion
+		while you're looking elsewhere) stays stale until a manual reload.
+		"""
+		notify_unread_counts_changed(users)
 
 	@staticmethod
 	def _bulk_create_unread_records(records):
