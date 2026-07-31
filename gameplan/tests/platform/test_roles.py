@@ -19,7 +19,7 @@ import frappe
 from frappe.core.doctype.role.role import Role
 from frappe.tests.utils import FrappeTestCase
 
-from gameplan.roles import GAMEPLAN_ROLES, sync_roles
+from gameplan.roles import GAMEPLAN_ROLES, setup_roles, sync_roles
 
 TEST_ROLE = "Gameplan Test Role"
 
@@ -34,9 +34,25 @@ class TestGameplanRoles(FrappeTestCase):
 		self.assertEqual([f for f in fixtures if f.get("dt") == "Role"], [])
 
 	def test_missing_role_is_created_without_desk_access(self):
-		"""Getting in before frappe's make_module_and_roles, which would use desk_access = 1."""
 		with patch("gameplan.roles.GAMEPLAN_ROLES", (TEST_ROLE,)):
 			sync_roles()
+
+		self.assertEqual(frappe.db.get_value("Role", TEST_ROLE, "desk_access"), 0)
+
+	def test_install_clears_desk_access_frappe_already_granted(self):
+		"""install_app syncs doctypes before after_install, so make_module_and_roles wins
+		the race and creates every role named in a permission with desk_access = 1. Install
+		has to correct that, or a fresh site makes every Gameplan member a System User."""
+		frappe.get_doc(doctype="Role", role_name=TEST_ROLE, desk_access=1).insert()
+
+		with patch("gameplan.roles.GAMEPLAN_ROLES", (TEST_ROLE,)):
+			setup_roles()
+
+		self.assertEqual(frappe.db.get_value("Role", TEST_ROLE, "desk_access"), 0)
+
+	def test_install_creates_a_missing_role_without_desk_access(self):
+		with patch("gameplan.roles.GAMEPLAN_ROLES", (TEST_ROLE,)):
+			setup_roles()
 
 		self.assertEqual(frappe.db.get_value("Role", TEST_ROLE, "desk_access"), 0)
 

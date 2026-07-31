@@ -1,7 +1,7 @@
 # Copyright (c) 2026, Frappe Technologies Pvt. Ltd. and Contributors
 # MIT License. See license.txt
 
-"""The roles Gameplan assigns to its users, and the code that creates them.
+"""The roles Gameplan assigns to its users, and the code that sets them up.
 
 These used to ship as a `Role` fixture. Fixture sync is not an upsert: `import_doc`
 deletes the old row and re-inserts it, and a fresh insert has no "before save" doc, so
@@ -11,16 +11,22 @@ resulting user save crashes migrate outright, because `User.on_update` enqueues
 `create_contact` with the lazily-loaded user document and the dynamically built
 `LazyUser` class cannot be pickled (fixed upstream in frappe#41187, not on version-16).
 
-So this module creates roles that are missing and otherwise **never writes to an existing
-Role**. Two reasons, and the second is the important one:
+Hence two entry points, because install and migrate own different things:
 
-- Writing re-triggers the crash above, from a hook that runs inside migrate. Since the
-  failure aborts and rolls back migrate, the write never lands and the next migrate tries
-  the exact same write — a permanent deadlock rather than a one-off error.
-- `desk_access` on a live site is an operator's call, not ours. It decides whether members
-  are System Users or Website Users, which controls desk access and Frappe Cloud billing.
-  gameplan.frappe.cloud has run with `desk_access = 1` on Gameplan Member and Admin since
-  someone set it deliberately; resetting it would silently demote ~80 accounts.
+- `setup_roles()` runs at install, where Gameplan defines what its roles mean. It forces
+  `desk_access = 0` so members are Website Users. It has to *correct* the value rather
+  than just create the roles: `install_app` syncs doctypes before calling `after_install`,
+  and frappe's `make_module_and_roles` will already have created every role named in a
+  doctype's permissions with `desk_access = 1`. Writing here is safe because
+  `frappe.flags.in_install` makes `Role.on_update` return early.
+
+- `sync_roles()` runs after migrate and only creates roles that went missing. It must
+  never write to an existing Role. Beyond re-triggering the crash above, a failed write
+  inside migrate is a *deadlock*: the exception rolls migrate back, so the write never
+  lands and the next migrate retries it identically. And `desk_access` on a live site is
+  the operator's call — it decides System User vs Website User, which governs desk access
+  and Frappe Cloud billing. gameplan.frappe.cloud deliberately runs Gameplan Member and
+  Gameplan Admin with `desk_access = 1`; resetting it would demote ~80 accounts.
 """
 
 import frappe
@@ -29,14 +35,19 @@ import frappe
 GAMEPLAN_ROLES = ("Gameplan Guest", "Gameplan Member", "Gameplan Admin")
 
 
-def sync_roles():
-	"""Create any Gameplan role that does not exist yet. Never modify one that does.
+def setup_roles():
+	"""Install-time setup: the Gameplan roles exist and none of them grant desk access."""
+	for role_name in GAMEPLAN_ROLES:
+		if not frappe.db.exists("Role", role_name):
+			frappe.get_doc(doctype="Role", role_name=role_name, desk_access=0).insert(ignore_permissions=True)
+		elif frappe.db.get_value("Role", role_name, "desk_access"):
+			role = frappe.get_doc("Role", role_name)
+			role.desk_access = 0
+			role.save(ignore_permissions=True)
 
-	New roles are created without desk access, so Gameplan members are Website Users by
-	default. This matters because frappe's `make_module_and_roles` auto-creates roles named
-	in a doctype's permissions with `desk_access = 1` — getting in first is the only way to
-	pick the default, and once a role exists its `desk_access` belongs to the operator.
-	"""
+
+def sync_roles():
+	"""Post-migrate repair: create roles that went missing, and touch nothing else."""
 	existing = set(frappe.get_all("Role", filters={"name": ("in", GAMEPLAN_ROLES)}, pluck="name"))
 
 	for role_name in GAMEPLAN_ROLES:
