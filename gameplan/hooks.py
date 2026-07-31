@@ -98,8 +98,8 @@ sqlite_search = ["gameplan.search_sqlite.GameplanSearch"]
 before_install = "gameplan.install.before_install"
 after_install = "gameplan.install.after_install"
 
-# Re-asserts that the Gameplan roles exist without desk access. A no-op unless a role went
-# missing (frappe recreates roles named in doctype permissions with desk_access = 1).
+# Creates any Gameplan role that went missing. A no-op on a healthy site — it never writes
+# to a Role that already exists, so migrate cannot trip Role.on_update. See gameplan/roles.py.
 after_migrate = ["gameplan.roles.sync_roles"]
 
 # Uninstallation
