@@ -824,6 +824,15 @@ watch(
   { immediate: true },
 )
 
+watch(
+  () => route.query.comment,
+  (commentId) => {
+    if (!commentId || !comments.data?.length) return
+    const comment = comments.data.find((c) => c.name === commentId)
+    if (comment) scrollToItem(comment)
+  },
+)
+
 // Reopen the composer if a saved draft is restored for this discussion.
 watch(
   () => draft.ready.value,
