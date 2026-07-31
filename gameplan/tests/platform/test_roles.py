@@ -13,6 +13,8 @@ deadlock, not a one-off error — the write never lands, so the next migrate ret
 tests here pin the one rule that avoids it: create what is missing, touch nothing else.
 """
 
+import io
+from contextlib import redirect_stdout
 from unittest.mock import patch
 
 import frappe
@@ -64,7 +66,7 @@ class TestGameplanRoles(FrappeTestCase):
 		"""
 		frappe.get_doc(doctype="Role", role_name=TEST_ROLE, desk_access=1).insert()
 
-		with patch("gameplan.roles.GAMEPLAN_ROLES", (TEST_ROLE,)):
+		with patch("gameplan.roles.GAMEPLAN_ROLES", (TEST_ROLE,)), redirect_stdout(io.StringIO()):
 			sync_roles()
 
 		self.assertEqual(frappe.db.get_value("Role", TEST_ROLE, "desk_access"), 1)
@@ -77,12 +79,32 @@ class TestGameplanRoles(FrappeTestCase):
 		"""
 		frappe.get_doc(doctype="Role", role_name=TEST_ROLE, desk_access=1).insert()
 
-		with patch.object(Role, "on_update", autospec=True) as on_update:
+		with patch.object(Role, "on_update", autospec=True) as on_update, redirect_stdout(io.StringIO()):
 			sync_roles()
 			with patch("gameplan.roles.GAMEPLAN_ROLES", (TEST_ROLE,)):
 				sync_roles()
 
 		on_update.assert_not_called()
+
+	def test_a_role_granting_desk_access_is_reported_not_corrected(self):
+		"""Deleting a Gameplan role gets it recreated by make_module_and_roles with
+		desk_access = 1 during the same migrate. We cannot fix that silently, so it has to
+		at least show up in the migrate output."""
+		frappe.get_doc(doctype="Role", role_name=TEST_ROLE, desk_access=1).insert()
+
+		output = io.StringIO()
+		with patch("gameplan.roles.GAMEPLAN_ROLES", (TEST_ROLE,)), redirect_stdout(output):
+			sync_roles()
+
+		self.assertIn(TEST_ROLE, output.getvalue())
+		self.assertEqual(frappe.db.get_value("Role", TEST_ROLE, "desk_access"), 1)
+
+	def test_nothing_is_reported_when_no_role_grants_desk_access(self):
+		output = io.StringIO()
+		with patch("gameplan.roles.GAMEPLAN_ROLES", (TEST_ROLE,)), redirect_stdout(output):
+			sync_roles()
+
+		self.assertEqual(output.getvalue(), "")
 
 	def test_all_gameplan_roles_exist(self):
 		for role in GAMEPLAN_ROLES:

@@ -47,9 +47,32 @@ def setup_roles():
 
 
 def sync_roles():
-	"""Post-migrate repair: create roles that went missing, and touch nothing else."""
-	existing = set(frappe.get_all("Role", filters={"name": ("in", GAMEPLAN_ROLES)}, pluck="name"))
+	"""Post-migrate repair: create roles that went missing, and touch nothing else.
+
+	Report — rather than fix — a role that grants desk access. Deleting a Gameplan role
+	gets it recreated by `make_module_and_roles` with `desk_access = 1` during the same
+	migrate's doctype sync, and this cannot silently correct that: the write would demote
+	users, and if it raised it would roll migrate back and retry forever. Whether a
+	Gameplan role grants desk access is the operator's call either way, so say what is
+	true and let them decide.
+	"""
+	desk_access_by_role = dict(
+		frappe.get_all(
+			"Role",
+			filters={"name": ("in", GAMEPLAN_ROLES)},
+			fields=["name", "desk_access"],
+			as_list=True,
+		)
+	)
 
 	for role_name in GAMEPLAN_ROLES:
-		if role_name not in existing:
+		if role_name not in desk_access_by_role:
 			frappe.get_doc(doctype="Role", role_name=role_name, desk_access=0).insert(ignore_permissions=True)
+
+	if granting_desk_access := sorted(
+		role for role, desk_access in desk_access_by_role.items() if desk_access
+	):
+		print(
+			f"Gameplan roles granting desk access: {', '.join(granting_desk_access)}. "
+			"Users holding them are System Users. Set desk_access = 0 if that is not intended."
+		)
