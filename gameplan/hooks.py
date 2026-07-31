@@ -49,9 +49,9 @@ email_css = ["/assets/gameplan/css/email_digest.css"]
 
 # Fixtures
 
-fixtures = [
-	{"dt": "Role", "filters": [["role_name", "like", "Gameplan %"]]},
-]
+# The Gameplan roles are *not* fixtures. Fixture sync deletes and re-inserts every row on
+# each migrate, which fires Role.on_update and re-evaluates every user holding the role.
+# gameplan.roles.sync_roles keeps the same invariant and only writes when something drifted.
 
 # Home Pages
 # ----------
@@ -97,6 +97,10 @@ sqlite_search = ["gameplan.search_sqlite.GameplanSearch"]
 
 before_install = "gameplan.install.before_install"
 after_install = "gameplan.install.after_install"
+
+# Re-asserts that the Gameplan roles exist without desk access. A no-op unless a role went
+# missing (frappe recreates roles named in doctype permissions with desk_access = 1).
+after_migrate = ["gameplan.roles.sync_roles"]
 
 # Uninstallation
 # ------------
