@@ -7,9 +7,9 @@ def before_install():
 
 
 def after_install():
-	from gameplan.roles import sync_roles
+	from gameplan.roles import setup_roles
 
-	sync_roles()
+	setup_roles()
 	download_rembg_model()
 
 
