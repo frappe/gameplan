@@ -4,7 +4,7 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import flt
+from frappe.utils import DATETIME_FORMAT, flt, get_datetime
 
 from gameplan.mixins.archivable import check_if_space_is_archived
 from gameplan.mixins.reactions import HasReactions
@@ -16,6 +16,36 @@ from gameplan.permissions import (
 )
 
 from .gp_poll_attributes import GPPollAttributes
+
+
+def poll_has_stopped(stopped_at, now=None) -> bool:
+	"""Whether a poll with this `stopped_at` is closed at `now`.
+
+	`stopped_at` is the instant the poll stops, not the last instant it runs: `stop_poll`
+	stamps it with the current time, so if that exact microsecond still counted as open a
+	vote could land after the stop was recorded. The boundary is therefore inclusive — at
+	`stopped_at` the ballot is shut.
+
+	This is the one place that rule is written down. `ongoing_polls_clause` is its query
+	mirror for callers that must ask the database instead (the discussion feed), and
+	TestFeedOngoingPolls.test_the_feed_and_the_ballot_close_at_the_same_instant pins the
+	two together so they cannot drift apart again.
+	"""
+	if not stopped_at:
+		return False
+	return get_datetime(stopped_at) <= (now or frappe.utils.now_datetime())
+
+
+def ongoing_polls_clause(Poll, now=None):
+	"""Query-builder mirror of `poll_has_stopped`: the polls still open at `now`.
+
+	A poll with no `stopped_at` runs until someone stops it, so it is always ongoing.
+	SQLite compares datetimes as text, so `now` is rendered in the same format Frappe
+	stored the column in — otherwise the two mirrors would part company on the
+	microseconds, which is the exact boundary they exist to keep in step.
+	"""
+	now = now or frappe.utils.now_datetime()
+	return Poll.stopped_at.isnull() | (Poll.stopped_at > now.strftime(DATETIME_FORMAT))
 
 
 class GPPoll(HasReactions, Document, GPPollAttributes):
@@ -206,10 +236,7 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 		return len({d.user for d in self.votes})
 
 	def check_if_stopped(self):
-		# Every caller reloads first, so Frappe has normalised the stored Datetime to a
-		# datetime object. `stop_poll` assigns a string, but no comparison is made until
-		# the next vote/retract call reloads the document.
-		if self.stopped_at and self.stopped_at < frappe.utils.now_datetime():
+		if poll_has_stopped(self.stopped_at):
 			frappe.throw(_("Poll has ended"))
 
 

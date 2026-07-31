@@ -1,0 +1,372 @@
+name: Mutation Nightly
+
+# A BUDGETED, RESUMABLE GRIND.
+#
+# The full corpus is about 2 hours of mutant evaluation (measured: 1139 mutants, mean
+# 6.8s, p90 10.9s) plus a baseline pass per module, which is too close to the Actions
+# ceiling to run in one job alongside provisioning. Instead this runs for a fixed slice of
+# wall clock each night, resuming from a journal carried between runs in the Actions
+# cache, and works through the target map least-recently-measured first. A few nights
+# cover everything; then it starts again on whatever changed or produced no verdict.
+#
+# Two rejected alternatives, recorded so they are not re-proposed: a diff-only nightly is
+# silent on quiet days (and quiet days are when regressions land unnoticed), and a
+# rotating-module nightly lets a regression in one module wait two weeks to surface.
+#
+# The budget is enforced INSIDE the harness (--budget-seconds), never by killing the job.
+# The harness mutates source files in place; a process killed between "apply" and
+# "restore" leaves a mutant on disk. timeout-minutes below is therefore a backstop set
+# well above the budget, not the mechanism.
+
+on:
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+    inputs:
+      budget-seconds:
+        description: "Seconds of mutation work before stopping cleanly"
+        required: false
+        default: "2700"
+
+permissions:
+  contents: read
+
+# Two nightlies at once would mutate the same source tree in two checkouts and, worse,
+# race to save the same journal cache - the loser's night of work is simply lost.
+concurrency:
+  group: mutation-nightly
+  cancel-in-progress: false
+
+env:
+  SITE: gameplan.test
+  BENCH: /home/runner/frappe-bench
+  # Rolling cache key. See the restore/save steps for why it is not a fixed string.
+  #
+  # v2, not v1: v1 caches were taken of the WHOLE .mutation/ directory and may contain
+  # crash-recovery sidecars from an interrupted run. Restoring one of those onto a fresh
+  # runner wedges the campaign permanently (see the restore step), so the lineage is
+  # abandoned rather than inherited. Bump this again if the journal format ever breaks.
+  #
+  # Cost of the bump, so it is not mistaken for a fault: the first few nights rebuild the
+  # corpus from scratch and exit 4 (stopped on budget) until they catch up. Verdicts from
+  # a v1 journal would have been re-measured anyway - they predate the test fingerprint,
+  # so nothing records which suite produced them.
+  JOURNAL_CACHE_PREFIX: mutation-journal-v2-
+
+jobs:
+  grind:
+    runs-on: ubuntu-latest
+    if: ${{ github.repository_owner == 'frappe' }}
+    # Budget (45m) + provisioning (~15m) + reporting, with room to spare so the runner
+    # never hard-kills the harness mid-mutant.
+    timeout-minutes: 90
+
+    name: Mutation campaign (budgeted)
+
+    steps:
+      - name: Clone
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.14"
+
+      # frappe v17-dev's engine check rejects Node 20, and --skip-assets does not skip
+      # the `yarn install --check-files` that runs with it.
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 24
+          check-latest: true
+
+      - name: Add to Hosts
+        run: echo "127.0.0.1 ${SITE}" | sudo tee -a /etc/hosts
+
+      - name: Cache pip
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/*requirements.txt', '**/pyproject.toml', '**/setup.py') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+            ${{ runner.os }}-
+
+      # install_sqlite.sh creates the site fresh and BUILDS THE FRONTEND ASSETS, waiting
+      # for the build before it returns. Both matter here:
+      #   * never `bench migrate` a SQLite site - frappe/patches/v16_0/hash_oauth_bearer_tokens.py
+      #     has no sqlite branch and dies;
+      #   * without built assets the email-digest tests error, that module's baseline goes
+      #     red, and the harness skips the whole module while the job still looks like it
+      #     ran. That trap cost a module's entire score once already, so the assets are
+      #     asserted below and a red baseline fails this job loudly.
+      - name: Install Dependencies
+        run: |
+          bash "${GITHUB_WORKSPACE}/.github/helper/install_dependencies.sh"
+          bash "${GITHUB_WORKSPACE}/.github/helper/install_sqlite.sh"
+
+      - name: Assert the bench is fit to mutate
+        run: |
+          manifest="${BENCH}/sites/assets/assets.json"
+          if [ ! -s "${manifest}" ]; then
+            echo "::error::${manifest} is missing or empty - bench build did not finish."
+            echo "Tests that render a page would error, the baseline would go red, and the"
+            echo "harness would skip those modules while still reporting a completed run."
+            exit 1
+          fi
+          # The harness refuses to mutate a file it could not restore with `git checkout --`,
+          # so a non-git copy of the app makes every target "dirty" and the campaign never
+          # starts. Fail here, where the reason is obvious.
+          if ! git -C "${BENCH}/apps/gameplan" rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+            echo "::error::${BENCH}/apps/gameplan is not a git checkout; the harness cannot"
+            echo "guarantee it could undo a mutant after a hard crash and will refuse to run."
+            exit 1
+          fi
+          mkdir -p "${BENCH}/apps/gameplan/.mutation"
+
+      # JOURNAL PERSISTENCE - the crux of the whole design.
+      #
+      # .mutation/ is gitignored and Actions runners are ephemeral, so without this the
+      # nightly restarts from zero every night and never gets past the first module.
+      #
+      # WHAT IS CACHED: the two journal files, NEVER the directory.
+      #
+      # .mutation/ also holds backup/<slug>.orig + .json (crash-recovery sidecars) and
+      # campaign.lock. Both are bound to one working tree and one process, and caching
+      # them transplants them onto the next runner, where they are lies: the sidecar
+      # describes a crash in a tree that no longer exists, and the lock names a pid on
+      # another machine. The harness then does exactly what it should - it refuses to
+      # touch a file whose contents match neither the backup nor the recorded mutant -
+      # and the campaign exits 1 every night, on a poison it re-caches every night,
+      # failing every pull request too, until someone purges the cache by hand.
+      #
+      # Only the journals are legitimately transferable: they are append-only records of
+      # completed work, meaningful on any machine. Everything else stays behind.
+      #
+      # The key is rolling: it embeds run_id/run_attempt, so the exact key NEVER matches an
+      # existing cache and the restore always falls through to `restore-keys`, which does a
+      # prefix match and returns the MOST RECENTLY CREATED cache under that prefix - i.e.
+      # last night's journal. The save step then writes a brand-new entry under today's
+      # unique key. That is what makes the cache round-trip.
+      #
+      # The obvious alternative - one fixed key with actions/cache@v4 - is the classic trap:
+      # after the first night the key hits, and a hit means the post-save step does nothing,
+      # so the journal is frozen at night one for ever.
+      #
+      # First run of all: no cache under the prefix, restore is a no-op, and the harness
+      # starts the corpus from scratch. Nothing here needs to know which case it is in,
+      # which is why there is no `if:` on any of it.
+      #
+      # THE PATH LIST IS PART OF THE CACHE'S IDENTITY. actions/cache derives an entry's
+      # version from the raw `path` input, so a restore only matches entries saved under
+      # the same list, byte for byte. mutation-pr.yml restores from this same lineage:
+      # add a file here, or reorder these two lines, without making the identical edit
+      # there, and every pull request silently misses the seed journal and measures from
+      # scratch - green, and indistinguishable from a legitimate first run. Pinned by
+      # test_mutation_ci.py::CachedStateTest.
+      - name: Restore the mutation journal
+        id: journal-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ${{ env.BENCH }}/apps/gameplan/.mutation/journal.jsonl
+            ${{ env.BENCH }}/apps/gameplan/.mutation/verify.jsonl
+          key: ${{ env.JOURNAL_CACHE_PREFIX }}${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            ${{ env.JOURNAL_CACHE_PREFIX }}
+
+      - name: Snapshot what the journal restored
+        run: |
+          journal="${BENCH}/apps/gameplan/.mutation/journal.jsonl"
+          # Guarantees the save step below always has a file to save, whatever happens to
+          # the campaign - including a job cancelled mid-mutant.
+          touch "${journal}"
+          # The "before" snapshot is what `report --new-since` subtracts, so the summary can
+          # show what THIS night decided (new mutants AND changed verdicts) instead of
+          # republishing a 1000-line corpus report that is identical to yesterday's.
+          cp "${journal}" "${RUNNER_TEMP}/before.jsonl"
+          if [ -s "${journal}" ]; then
+            echo "Resuming from $(wc -l < "${journal}") journalled mutant(s)."
+            echo "Restored from cache key: ${{ steps.journal-restore.outputs.cache-matched-key }}"
+          else
+            echo "No journal restored - this run starts the corpus from scratch."
+          fi
+
+      # `set +e` because every exit code here is meaningful and the gate step below is what
+      # decides which of them are failures. In particular exit 4 (stopped on budget) is the
+      # expected outcome most nights and must not end the job.
+      - name: Run the budgeted campaign
+        id: campaign
+        working-directory: /home/runner/frappe-bench
+        env:
+          BUDGET_SECONDS: ${{ github.event.inputs.budget-seconds || '2700' }}
+        run: |
+          set +e
+          ./env/bin/python -m gameplan.tests.mutation run \
+            --tier all \
+            --site "${SITE}" \
+            --timeout 300 \
+            --budget-seconds "${BUDGET_SECONDS}" \
+            --yes
+          status=$?
+          set -e
+          echo "status=${status}" >> "$GITHUB_OUTPUT"
+          echo "budget=${BUDGET_SECONDS}" >> "$GITHUB_OUTPUT"
+          echo "Campaign exited ${status}."
+
+      # Immediately after the run and unconditionally: a night's work that is not cached is
+      # a night's work repeated. Even an aborted campaign journalled real verdicts, and its
+      # non-verdicts are retryable by construction, so saving is always correct.
+      # Skipped only if the campaign never ran at all (provisioning failed), in which case
+      # there is nothing to save and a failing save would just mask the real error.
+      - name: Save the mutation journal
+        if: ${{ always() && steps.campaign.conclusion != 'skipped' }}
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ${{ env.BENCH }}/apps/gameplan/.mutation/journal.jsonl
+            ${{ env.BENCH }}/apps/gameplan/.mutation/verify.jsonl
+          key: ${{ env.JOURNAL_CACHE_PREFIX }}${{ github.run_id }}-${{ github.run_attempt }}
+
+      # --prune-stale everywhere: the journal is cumulative and mutant keys are
+      # content-derived, so a refactor leaves verdicts about statements that no longer
+      # exist. Kept, they inflate the published percentage and print survivor line numbers
+      # into code that has moved.
+      - name: Publish the report
+        if: ${{ always() }}
+        id: report
+        working-directory: /home/runner/frappe-bench
+        run: |
+          set +e
+          ./env/bin/python -m gameplan.tests.mutation report --format json --prune-stale \
+            > "${RUNNER_TEMP}/report.json"
+          json_status=$?
+          ./env/bin/python -m gameplan.tests.mutation report --format md --prune-stale \
+            > "${RUNNER_TEMP}/report.md"
+          ./env/bin/python -m gameplan.tests.mutation report --format md --prune-stale \
+            --new-since "${RUNNER_TEMP}/before.jsonl" > "${RUNNER_TEMP}/tonight.md"
+          tonight_status=$?
+          # What the night DID, which is not the same question as what it decided: a night
+          # that re-measures 400 mutants and confirms every verdict decides nothing, and
+          # would otherwise read exactly like a night whose campaign never started.
+          work="$(./env/bin/python -m gameplan.tests.mutation work \
+            --since "${RUNNER_TEMP}/before.jsonl")"
+          set -e
+          echo "status=${json_status}" >> "$GITHUB_OUTPUT"
+          {
+            echo "## Mutation nightly"
+            echo
+            echo "Campaign exit code: \`${{ steps.campaign.outputs.status }}\` (4 = stopped on budget, work remains)"
+            echo "Budget: \`${{ steps.campaign.outputs.budget }}\`s"
+            echo
+            if [ "${json_status}" -eq 0 ]; then
+              ./env/bin/python -c "import json,sys; s=json.load(open(sys.argv[1])); o=s['overall']; print('**Corpus: %s** - %d/%d killed, %d with no verdict, across %d module(s).' % ('n/a' if o['score'] is None else '%.0f%%' % (o['score'] * 100), o['killed'], o['scored'], o['unscored'], len(s['modules'])))" "${RUNNER_TEMP}/report.json"
+            else
+              echo "> The cumulative report produced no score (exit ${json_status}). See the job log."
+            fi
+            echo
+            echo "### Decided tonight"
+            echo
+            echo "New mutants and CHANGED verdicts only. A mutant that was killed yesterday and"
+            echo "survives today appears here - that is the regression this job exists to catch."
+            echo
+            echo "${work}"
+            echo
+            # The rendered table is printed on EVERY path, including the ones below that
+            # add an interpretation. It is the only place a module that measured nothing is
+            # named, so an arm that discards it hides exactly the thing worth reading.
+            case "${tonight_status}" in
+              0) ;;
+              5)
+                echo "No new mutants and no verdict changed. Whatever ran tonight agreed with"
+                echo "the journal, so there is no regression to look at."
+                echo
+                ;;
+              3)
+                echo "> Every mutant decided tonight produced a NON-verdict (exit 3): they timed"
+                echo "> out, or the site never got far enough to judge them. Degraded, not a result."
+                echo
+                ;;
+              *)
+                echo "> The \"decided tonight\" report itself failed (exit ${tonight_status}). See the job log."
+                echo
+                ;;
+            esac
+            cat "${RUNNER_TEMP}/tonight.md" || true
+            echo
+            echo "The full cumulative report (every survivor) is in the \`mutation-journal\` artifact."
+          } >> "$GITHUB_STEP_SUMMARY"
+          cat "${RUNNER_TEMP}/report.md" || true
+
+      - name: Upload the journal
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-journal
+          path: |
+            ${{ env.BENCH }}/apps/gameplan/.mutation/journal.jsonl
+            ${{ runner.temp }}/report.md
+            ${{ runner.temp }}/report.json
+            ${{ runner.temp }}/tonight.md
+          if-no-files-found: warn
+          retention-days: 14
+
+      # WHAT MAKES THIS JOB RED
+      #
+      # Only a broken signal. A low mutation score is a fact about the test suite that a
+      # human reads off the summary above; failing on it would either be ignored or gamed,
+      # and it is deliberately not gated (no --fail-under anywhere in this workflow).
+      #
+      # Red:  campaign exit 1 (aborted, or refused to start)
+      #       campaign exit 2 (bad invocation - this workflow is misconfigured)
+      #       campaign exit 3 (nothing measured at all)
+      #       report non-zero (no scoreable result in the journal)
+      #       any module skipped (red baseline, missing source, unbackupable file): it has
+      #       no current score, and a silently unmeasured module is what this job is for
+      # Green: campaign exit 0 (corpus complete or nothing pending)
+      #        campaign exit 4 (stopped on budget - the design working as intended)
+      - name: Gate on the mutation signal
+        if: ${{ always() }}
+        working-directory: /home/runner/frappe-bench
+        run: |
+          failed=0
+
+          case "${{ steps.campaign.outputs.status }}" in
+            0) echo "Campaign completed everything that was pending." ;;
+            4) echo "Campaign stopped on budget with work remaining. Resuming tomorrow." ;;
+            # Exit 1 covers every "refused to run or gave up" path, and this gate cannot
+            # tell them apart - so it names them instead of asserting one.
+            1) echo "::error::Campaign exited 1: it aborted or refused to start. Read the campaign step's log for which - the no-verdict circuit breaker, an orphaned backup from a crashed run, a lock held by another process, or uncommitted changes in a target file."; failed=1 ;;
+            2) echo "::error::Campaign refused to start (bad arguments). This workflow needs fixing."; failed=1 ;;
+            # Exit 3 has three causes and this gate cannot tell them apart either, so it
+            # names them rather than asserting one. Budget-before-baseline became a real
+            # cause once a test-file edit started invalidating a whole module at a time.
+            3) echo "::error::Campaign measured nothing. Read the campaign step's log for which - every targeted module was skipped (red baseline, missing source, or an unbackupable file), or the budget expired before a single baseline pass finished. This is not a score of 0%."; failed=1 ;;
+            *) echo "::error::Campaign exited with unexpected status '${{ steps.campaign.outputs.status }}'."; failed=1 ;;
+          esac
+
+          if [ "${{ steps.report.outputs.status }}" != "0" ]; then
+            echo "::error::The report has no scoreable result (exit ${{ steps.report.outputs.status }})."
+            failed=1
+          else
+            # A skipped module drops out of the corpus ENTIRELY while the run still looks
+            # successful, so it has to be surfaced from the report rather than from the
+            # exit code (which only fails when EVERY module was skipped).
+            skipped=$(./env/bin/python -c "import json,sys; s=json.load(open(sys.argv[1]))['skipped_modules']; print('\n'.join(f'{m} [{i[\"kind\"]}]: {i[\"reason\"]}' for m, i in sorted(s.items())))" "${RUNNER_TEMP}/report.json")
+            if [ -n "${skipped}" ]; then
+              echo "::error::These modules measured nothing and have no current score:"
+              echo "${skipped}"
+              failed=1
+            fi
+          fi
+
+          exit "${failed}"
+
+      - name: Stop server
+        if: ${{ always() }}
+        run: |
+          ps -ef | grep "[f]rappe serve" | awk '{print $2}' | xargs kill -s SIGINT || true
+          sleep 5
+
+      - name: Show bench output
+        if: ${{ always() }}
+        run: cat ~/frappe-bench/bench_start.log || true

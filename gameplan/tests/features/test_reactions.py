@@ -14,10 +14,18 @@ file owns — is the operation contract of `react`:
   a quick toggle),
 - garbage in a batch is ignored, not stored,
 - reacting never touches the post itself.
+
+Some notification behaviour lives here rather than in the notifications spec, because it
+belongs to this mixin's write path rather than to the notification itself: the unread flag
+resets on every reaction (`TestReactionNotificationUnreadState`), only an ADDED reaction
+notifies at all (`TestWhichReactionChangesNotify`), and one row is reused per post, which
+makes the row's link fields both its routing and its identity
+(`TestReactionNotificationRouting`). The notifications spec covers what the message says.
 """
 
 import frappe
 
+from gameplan.api import mark_all_notifications_as_read, unread_notifications
 from gameplan.mixins.reactions import HasReactions
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
@@ -272,6 +280,232 @@ class TestPollReactions(ReactionTestCase):
 		self.assertEqual([(v.user, v.option) for v in poll.votes], [(self.member.name, "Yes")])
 		self.assertEqual(poll.total_votes, 1)
 		self.assertEqual([o.title for o in poll.options], ["Yes", "No"])
+
+
+class TestReactionNotificationUnreadState(ReactionTestCase):
+	"""A reaction has to leave the post owner's bell unread, every time.
+
+	`notify_reactions` reuses one notification row per post, so `read = 0` is not a
+	default that happens to hold — it is the only thing that raises the badge again for
+	the second, third and tenth reactor after the owner has cleared it once. Drop it and
+	reactions become a channel that lights up exactly once and then goes silent.
+	"""
+
+	def bell_count(self, user):
+		"""What the bell badge shows for `user` (gameplan.api.unread_notifications)."""
+		with self.as_user(user):
+			return unread_notifications()
+
+	def clear_bell(self, user):
+		with self.as_user(user):
+			mark_all_notifications_as_read()
+
+	def reaction_notifications(self, user, discussion):
+		return frappe.get_all(
+			"GP Notification",
+			filters={"to_user": user.name, "type": "Reaction", "discussion": discussion.name},
+			pluck="name",
+		)
+
+	def test_a_reaction_lights_the_post_owners_bell(self):
+		self.clear_bell(self.member)
+
+		self.react(self.discussion, self.second_member, [add(THUMBS_UP)])
+
+		self.assertEqual(self.bell_count(self.member), 1)
+
+	def test_a_later_reaction_re_lights_a_bell_the_owner_already_cleared(self):
+		self.react(self.discussion, self.second_member, [add(THUMBS_UP)])
+		self.clear_bell(self.member)
+		self.assertEqual(self.bell_count(self.member), 0)
+
+		self.react(self.discussion, self.admin, [add(HEART)])
+
+		# One row, re-flagged rather than a second row appearing: on this path the reset
+		# is the only thing that can raise the badge.
+		self.assertEqual(len(self.reaction_notifications(self.member, self.discussion)), 1)
+		self.assertEqual(self.bell_count(self.member), 1)
+
+
+class TestWhichReactionChangesNotify(ReactionTestCase):
+	"""Only a reaction someone *added* is news to the post owner.
+
+	`notify_reactions` runs on every save of the post, so it has to work out what
+	actually changed in the reactions table. A withdrawal is not news — the owner
+	already saw that reaction and cleared the bell, and re-raising it says "1 person
+	reacted to your post" about a reaction that no longer exists. Swapping one emoji
+	for another in a single batch (the debounced tap-tap the frontend sends) leaves
+	the table the same size but *is* a new reaction, and has to notify.
+	"""
+
+	def bell_count(self, user):
+		with self.as_user(user):
+			return unread_notifications()
+
+	def clear_bell(self, user):
+		with self.as_user(user):
+			mark_all_notifications_as_read()
+
+	def notification(self, user, discussion):
+		return frappe.db.get_value(
+			"GP Notification",
+			{"to_user": user.name, "type": "Reaction", "discussion": discussion.name},
+			["read", "message"],
+			as_dict=True,
+		)
+
+	def test_withdrawing_a_reaction_does_not_re_light_a_cleared_bell(self):
+		self.react(self.discussion, self.second_member, [add(THUMBS_UP)])
+		self.react(self.discussion, self.admin, [add(HEART)])
+		self.clear_bell(self.member)
+
+		self.react(self.discussion, self.admin, [remove(HEART)])
+
+		self.assertEqual(self.bell_count(self.member), 0)
+		self.assertEqual(self.notification(self.member, self.discussion).read, 1)
+
+	def test_swapping_one_emoji_for_another_notifies(self):
+		"""Remove + add in one batch keeps the table the same size, but the heart is a
+		reaction the owner has never been told about."""
+		self.react(self.discussion, self.second_member, [add(THUMBS_UP)])
+		self.clear_bell(self.member)
+
+		self.react(self.discussion, self.second_member, [remove(THUMBS_UP), add(HEART)])
+
+		self.assertEqual(self.bell_count(self.member), 1)
+
+	def test_a_save_that_leaves_the_reactions_alone_does_not_notify(self):
+		self.react(self.discussion, self.second_member, [add(THUMBS_UP)])
+		self.clear_bell(self.member)
+
+		with self.as_user(self.member):
+			discussion = frappe.get_doc("GP Discussion", self.discussion.name)
+			discussion.title = "Welcome thread (edited)"
+			discussion.save()
+
+		self.assertEqual(self.bell_count(self.member), 0)
+
+	def test_the_owner_reacting_to_their_own_post_never_lights_their_own_bell(self):
+		"""Own reactions are excluded from the count, so adding one is not news either —
+		even once someone else's reaction has put a notification row on the post."""
+		self.react(self.discussion, self.second_member, [add(THUMBS_UP)])
+		self.clear_bell(self.member)
+
+		self.react(self.discussion, self.member, [add(HEART)])
+
+		self.assertEqual(self.bell_count(self.member), 0)
+
+	def test_the_message_counts_everyone_holding_a_reaction_after_the_change(self):
+		self.react(self.discussion, self.second_member, [add(THUMBS_UP)])
+		self.react(self.discussion, self.admin, [add(THUMBS_UP)])
+
+		self.assertEqual(
+			self.notification(self.member, self.discussion).message, "2 people reacted to your post"
+		)
+
+
+class TestReactionNotificationRouting(ReactionTestCase):
+	"""A reaction notification has to name the post that was reacted to.
+
+	The bell renders each row as a link, so the row carries the post in its own link field
+	— `comment`, `poll` or `discussion` — and a reply additionally carries the thread it
+	lives in, which is what lets the client open the thread and scroll to the reply.
+
+	`notify_reactions` reuses one row per post rather than inserting one per reaction, so
+	the same fields double as the lookup key. That makes them load-bearing twice over: a
+	key that is not specific enough makes a reaction on a thread and a reaction on a reply
+	inside it land on one row, and the second one silently overwrites the first.
+	"""
+
+	def notifications(self, user):
+		rows = frappe.get_all(
+			"GP Notification",
+			filters={"to_user": user.name, "type": "Reaction"},
+			fields=["name", "discussion", "comment", "poll"],
+			order_by="creation asc",
+		)
+		# Link fields come back as "" or None depending on the backend; normalise so the
+		# assertions below read as "points nowhere" rather than at one storage detail.
+		return [
+			frappe._dict(
+				name=row.name,
+				discussion=str(row.discussion) if row.discussion else None,
+				comment=str(row.comment) if row.comment else None,
+				poll=str(row.poll) if row.poll else None,
+			)
+			for row in rows
+		]
+
+	def test_a_comment_reaction_points_at_the_comment_and_its_thread(self):
+		self.react(self.comment, self.second_member, [add(THUMBS_UP)])
+
+		rows = self.notifications(self.member)
+		self.assertEqual(len(rows), 1)
+		self.assertEqual(rows[0].comment, str(self.comment.name))
+		self.assertEqual(rows[0].discussion, str(self.discussion.name))
+		self.assertIsNone(rows[0].poll)
+
+	def test_a_poll_reaction_points_at_the_poll_and_its_thread(self):
+		self.react(self.poll, self.second_member, [add(THUMBS_UP)])
+
+		rows = self.notifications(self.member)
+		self.assertEqual(len(rows), 1)
+		self.assertEqual(rows[0].poll, str(self.poll.name))
+		self.assertEqual(rows[0].discussion, str(self.discussion.name))
+		self.assertIsNone(rows[0].comment)
+
+	def test_a_discussion_reaction_points_at_the_discussion_alone(self):
+		self.react(self.discussion, self.second_member, [add(THUMBS_UP)])
+
+		rows = self.notifications(self.member)
+		self.assertEqual(len(rows), 1)
+		self.assertEqual(rows[0].discussion, str(self.discussion.name))
+		self.assertIsNone(rows[0].comment)
+		self.assertIsNone(rows[0].poll)
+
+	def test_a_thread_and_a_reply_inside_it_get_their_own_notifications(self):
+		"""Both rows carry the same discussion, so only the emptiness of `comment` tells
+		the thread's row apart from the reply's — the lookup has to say so."""
+		self.react(self.comment, self.second_member, [add(THUMBS_UP)])
+		self.react(self.discussion, self.second_member, [add(THUMBS_UP)])
+
+		rows = self.notifications(self.member)
+		self.assertEqual(len(rows), 2)
+		self.assertEqual(len({row.name for row in rows}), 2)
+		self.assertEqual({row.comment for row in rows}, {str(self.comment.name), None})
+
+	def test_a_thread_and_a_poll_inside_it_get_their_own_notifications(self):
+		self.react(self.poll, self.second_member, [add(THUMBS_UP)])
+		self.react(self.discussion, self.second_member, [add(THUMBS_UP)])
+
+		rows = self.notifications(self.member)
+		self.assertEqual(len(rows), 2)
+		self.assertEqual(len({row.name for row in rows}), 2)
+		self.assertEqual({row.poll for row in rows}, {str(self.poll.name), None})
+
+	def test_the_order_the_reactions_arrive_in_does_not_merge_them(self):
+		"""The reverse of the two tests above: the thread's row exists first, and the
+		reply's reaction must still get a row of its own rather than claiming that one."""
+		self.react(self.discussion, self.second_member, [add(THUMBS_UP)])
+		self.react(self.comment, self.second_member, [add(THUMBS_UP)])
+		self.react(self.poll, self.second_member, [add(THUMBS_UP)])
+
+		rows = self.notifications(self.member)
+		self.assertEqual(len(rows), 3)
+		self.assertEqual(
+			{(row.comment, row.poll) for row in rows},
+			{(None, None), (str(self.comment.name), None), (None, str(self.poll.name))},
+		)
+
+	def test_two_replies_in_one_thread_get_their_own_notifications(self):
+		other_comment = create_comment(self.discussion, content="Second reply", owner=self.member)
+
+		self.react(self.comment, self.second_member, [add(THUMBS_UP)])
+		self.react(other_comment, self.second_member, [add(THUMBS_UP)])
+
+		rows = self.notifications(self.member)
+		self.assertEqual(len(rows), 2)
+		self.assertEqual({row.comment for row in rows}, {str(self.comment.name), str(other_comment.name)})
 
 
 class TestReactionsSurviveAnEdit(ReactionTestCase):

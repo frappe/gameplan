@@ -1,19 +1,24 @@
 # Copyright (c) 2026, Frappe Technologies Pvt Ltd and contributors
 # See license.txt
 
+from contextlib import contextmanager
 from datetime import date
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 from urllib.parse import parse_qs, urlparse
 
 import frappe
 from frappe.email.email_body import get_formatted_html
-from frappe.utils import get_url
+from frappe.utils import add_to_date, get_url, now_datetime
 from frappe.utils.jinja import get_email_from_template
 
 from gameplan.email_digest import (
+	DIGEST_PREFERENCES_REDIRECT,
 	get_due_profiles,
+	get_safe_digest_redirect,
 	get_unread_discussions,
 	is_digest_due,
+	is_valid_digest_login_link,
+	open_digest_preferences,
 	send_digest_for_profile,
 )
 from gameplan.tests.base import GameplanTestCase
@@ -419,3 +424,141 @@ class TestEmailDigest(GameplanTestCase):
 		self.assertEqual(query["redirect"], [redirect])
 		self.assertIn("expires", query)
 		self.assertIn("_signature", query)
+
+
+def as_expires(moment):
+	return moment.strftime("%Y-%m-%d %H:%M:%S")
+
+
+class TestDigestLoginLink(GameplanTestCase):
+	"""Pins the gates behind `open_digest_preferences`, which is `allow_guest` and logs a user in.
+
+	`verify_request`'s HMAC is the primary defense — nobody forges a link without the site
+	secret. These cover the layer behind it, so a refactor cannot silently drop the expiry
+	check, the `enabled` check or the redirect allowlist. The two regressions they exist to
+	catch: an expired digest link working forever, and an offboarded user logging in from an
+	old digest email.
+	"""
+
+	def setUp(self):
+		super().setUp()
+		self.link_user = create_member(
+			f"digest-link-{frappe.generate_hash(length=8)}@example.com", "Link User"
+		)
+		self.future = as_expires(add_to_date(now_datetime(), days=1))
+		self.past = as_expires(add_to_date(now_datetime(), days=-1))
+
+	@contextmanager
+	def isolated_response(self):
+		"""Swap in a throwaway `frappe.local.response`.
+
+		Both branches under test write to the shared response — `respond_as_web_page` on
+		rejection, the redirect keys on success — and that dict outlives the test.
+		"""
+		previous = frappe.local.response
+		frappe.local.response = frappe._dict()
+		try:
+			yield frappe.local.response
+		finally:
+			frappe.local.response = previous
+
+	def test_link_for_an_enabled_user_before_expiry_is_valid(self):
+		with self.isolated_response():
+			self.assertIs(is_valid_digest_login_link(self.link_user.name, self.future), True)
+
+	def test_link_is_rejected_when_either_user_or_expiry_is_missing(self):
+		"""A missing field is rejected outright, before the clock is ever consulted.
+
+		Asserting the clock goes untouched is the point, not incidental strictness. A
+		missing `expires` would otherwise reach `get_datetime(None) < now_datetime()`,
+		which compares "now" against a "now" sampled microseconds later — it rejects by
+		accident, and only because evaluating the left side takes non-zero time.
+		"""
+		for user, expires in ((None, self.future), (self.link_user.name, None), (None, None)):
+			with (
+				self.subTest(user=user, expires=expires),
+				self.isolated_response(),
+				patch("gameplan.email_digest.now_datetime") as clock,
+			):
+				self.assertIs(is_valid_digest_login_link(user, expires), False)
+				clock.assert_not_called()
+
+	def test_expired_link_is_rejected(self):
+		with self.isolated_response():
+			self.assertIs(is_valid_digest_login_link(self.link_user.name, self.past), False)
+
+	def test_link_is_valid_up_to_and_including_its_expiry_moment(self):
+		# Truncated to the second because that is the resolution `get_signed_digest_url`
+		# writes; a microsecond of drift would make this an expired-link test by accident.
+		frozen = now_datetime().replace(microsecond=0)
+
+		with self.isolated_response(), patch("gameplan.email_digest.now_datetime", return_value=frozen):
+			self.assertIs(is_valid_digest_login_link(self.link_user.name, as_expires(frozen)), True)
+
+	def test_link_for_a_disabled_user_is_rejected(self):
+		frappe.db.set_value("User", self.link_user.name, "enabled", 0, update_modified=False)
+
+		with self.isolated_response():
+			self.assertIs(is_valid_digest_login_link(self.link_user.name, self.future), False)
+
+	def test_link_for_a_deleted_user_is_rejected(self):
+		with self.isolated_response():
+			self.assertIs(is_valid_digest_login_link("digest-ghost@example.com", self.future), False)
+
+	def test_in_app_redirect_is_preserved(self):
+		self.assertEqual(get_safe_digest_redirect("/g/spaces"), "/g/spaces")
+
+	def test_offsite_redirects_fall_back_to_the_preferences_page(self):
+		hostile = (
+			"//evil.example.com",
+			"https://evil.example.com",
+			"/g\\evil.example.com",
+			"\\\\evil.example.com",
+			"/other",
+		)
+
+		for redirect in hostile:
+			with self.subTest(redirect=redirect):
+				self.assertEqual(get_safe_digest_redirect(redirect), DIGEST_PREFERENCES_REDIRECT)
+
+	def test_endpoint_stays_reachable_without_a_session(self):
+		# The link is opened from an email client, so losing allow_guest would break every
+		# digest link for logged-out readers.
+		with self.as_user("Guest"):
+			frappe.is_whitelisted(open_digest_preferences)
+
+	def test_signed_valid_link_logs_the_user_in_and_redirects(self):
+		response, login_manager = self.open_preferences(
+			verified=True, expires=self.future, redirect="/g/spaces"
+		)
+
+		login_manager.login_as.assert_called_once_with(self.link_user.name)
+		self.assertEqual(response["type"], "redirect")
+		self.assertEqual(response["location"], "/g/spaces")
+
+	def test_unsigned_request_does_not_log_the_user_in(self):
+		response, login_manager = self.open_preferences(verified=False, expires=self.future)
+
+		login_manager.login_as.assert_not_called()
+		self.assertNotIn("location", response)
+
+	def test_invalid_link_does_not_log_the_user_in(self):
+		response, login_manager = self.open_preferences(verified=True, expires=self.past)
+
+		login_manager.login_as.assert_not_called()
+		self.assertNotIn("location", response)
+
+	def open_preferences(self, verified, expires, redirect=DIGEST_PREFERENCES_REDIRECT):
+		"""Call the endpoint with the signature check stubbed and the login manager faked.
+
+		Returns `(response, login_manager)` to assert on.
+		"""
+		login_manager = MagicMock()
+		with (
+			self.isolated_response() as response,
+			patch("gameplan.email_digest.verify_request", return_value=verified),
+			patch.object(frappe.local, "login_manager", login_manager, create=True),
+		):
+			open_digest_preferences(user=self.link_user.name, redirect=redirect, expires=expires)
+
+		return response, login_manager

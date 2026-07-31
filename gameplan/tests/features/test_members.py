@@ -9,6 +9,8 @@ authenticated Gameplan user (incl. a Guest) could change roles, disable
 accounts, or send invites. The contract: only admins may call them.
 """
 
+from unittest.mock import patch
+
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
@@ -108,10 +110,23 @@ class TestMemberManagement(FrappeTestCase):
 		project.save(ignore_permissions=True)
 
 		frappe.set_user(member.name)
-		project.invite_guest("invited_guest@example.com")
+		# GP Invitation.after_insert emails the invitee, so without this the assertion
+		# under test would hinge on the site having an outgoing Email Account (CI mutes
+		# mail via site config; a plain dev site raises OutgoingEmailError). Same mute as
+		# InvitationTestCase in test_invitations.py.
+		with patch("frappe.sendmail"):
+			project.invite_guest("invited_guest@example.com")
 
 		frappe.set_user("Administrator")
-		self.assertTrue(frappe.db.exists("GP Invitation", {"email": "invited_guest@example.com"}))
+		invitation = frappe.db.get_value(
+			"GP Invitation",
+			{"email": "invited_guest@example.com"},
+			["role", "projects"],
+			as_dict=True,
+		)
+		self.assertIsNotNone(invitation)
+		self.assertEqual(invitation.role, "Gameplan Guest")
+		self.assertEqual(frappe.parse_json(invitation.projects), [project.name])
 
 	def test_get_user_info_hides_email_from_guest(self):
 		"""A Guest caller must not receive other members' email addresses."""

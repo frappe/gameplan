@@ -55,20 +55,30 @@ class HasReactions:
 		self.save()
 		return self.get("reactions")
 
+	def reaction_keys(self):
+		"""A reaction is identified by (user, emoji) — the same identity `react` uses."""
+		return {(reaction.user, reaction.emoji) for reaction in (self.get("reactions") or [])}
+
 	def notify_reactions(self):
 		from gameplan.permissions import can_view_content
 
+		# Only a reaction that was ADDED is news. Sizes are the wrong test in both
+		# directions: a withdrawal changes the count too (and would re-raise a bell the
+		# owner already cleared, about a reaction that no longer exists), while swapping
+		# one emoji for another in a single save leaves the count equal even though the
+		# new emoji is a reaction the owner has never been told about.
 		previous = self.get_doc_before_save()
-		if previous and len(previous.get("reactions")) == len(self.get("reactions")):
-			return
-		if len(self.get("reactions")) == 0:
-			return
-
+		previous_keys = previous.reaction_keys() if previous else set()
 		# Your own reaction never notifies you and is never counted: the row would
 		# otherwise read "1 person reacted to your post" about yourself.
-		people = list({r.user for r in self.get("reactions") if r.user != self.owner})
-		if not people:
+		added = {key for key in self.reaction_keys() - previous_keys if key[0] != self.owner}
+		if not added:
 			return
+
+		# Several changes can land in one save (the frontend debounces a quick tap-tap
+		# into one batch). The message describes the post as it now stands, not the
+		# delta, so it stays true however many rows moved.
+		people = list({r.user for r in self.get("reactions") if r.user != self.owner})
 		if not can_view_content(self.owner, self):
 			return
 

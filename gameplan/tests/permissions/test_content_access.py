@@ -21,6 +21,7 @@ from gameplan.gameplan.doctype.gp_discussion.gp_discussion import (
 )
 from gameplan.gameplan.doctype.gp_page.gp_page import has_permission as page_has_permission
 from gameplan.gameplan.doctype.gp_task.gp_task import has_permission as task_has_permission
+from gameplan.permissions import users_who_can_view_content
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
 	create_community,
@@ -44,6 +45,46 @@ class TestPersonalContent(GameplanTestCase):
 		# In a space: visibility is the space's, not the owner's.
 		self.assert_allowed(space_page, "read", self.member)
 		self.assert_not_allowed(space_page, "read", self.second_member)
+
+	def test_a_global_admin_can_still_moderate_personal_content(self):
+		"""Owner-only stops at the global admin, who has to be able to moderate anything.
+
+		Space-less content is the one shape with no space to inherit that from, so the
+		admin exemption has to be spelled out in can_view_content itself.
+		"""
+		page = create_page("Moderated Private Page", owner=self.member)
+
+		for action in ("read", "write", "delete"):
+			with self.subTest(action=action):
+				self.assert_allowed(page, action, self.admin)
+				self.assert_not_allowed(page, action, self.second_member)
+
+
+class TestContentAudience(GameplanTestCase):
+	"""users_who_can_view_content resolves a whole audience in one pass — the @everyone
+	fan-out and the digest audience. Its answer has to be can_view_content's answer: a
+	user in it gets a notification carrying the content's title and a link to it, so
+	anyone who lands in it wrongly is handed something they cannot open.
+	"""
+
+	def test_a_public_space_audience_reaches_beyond_the_community_membership(self):
+		"""A public space in a public community is open to every member of the site.
+
+		Only guests are the exception: their access is a per-space grant, never the
+		"public" default.
+		"""
+		community = create_community("Audience Community", members=[self.member])
+		space = create_space("Audience Space", community)
+		discussion = create_discussion("Audience thread", space, owner=self.member)
+
+		audience = users_who_can_view_content(
+			# second_member is in no community at all; the duplicate and the ungranted
+			# guest are the docstring's other two contracts.
+			[self.member.name, self.second_member.name, self.member.name, self.guest.name],
+			discussion,
+		)
+
+		self.assertEqual(audience, [self.member.name, self.second_member.name])
 
 
 class TestUnsavedContent(GameplanTestCase):

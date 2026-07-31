@@ -3,14 +3,27 @@
 
 """Contracts and access guards for Gameplan's cross-cutting API endpoints."""
 
-import frappe
+import json
+from unittest.mock import patch
 
-from gameplan.api import can_access_gameplan, get_search_filter_options, onboarding
+import frappe
+from frappe.utils import add_days, now
+
+from gameplan.api import (
+	can_access_gameplan,
+	get_search_filter_options,
+	get_user_info,
+	invite_by_email,
+	onboarding,
+	search_sqlite,
+)
 from gameplan.search_sqlite import GameplanSearch
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
+	create_comment,
 	create_community,
 	create_discussion,
+	create_member,
 	create_space,
 	create_user,
 	declared_http_methods,
@@ -61,6 +74,19 @@ class TestOnboardingEndpoint(APIEndpointTestCase):
 		self.assertEqual(space.team, community.name)
 		self.assertEqual(space.icon, "lucide-users")
 		self.assertEqual(space.is_private, 1)
+
+	def test_the_first_space_is_public_unless_the_signup_asks_for_privacy(self):
+		"""Signup omits is_private, and the default decides whether a brand-new
+		community's first space is visible to the teammates invited alongside it."""
+		with self.as_user(self.member):
+			result = onboarding(
+				community="API Default Privacy Community",
+				space="API Default Privacy Space",
+				icon="lucide-users",
+				emails="[]",
+			)
+
+		self.assertEqual(frappe.db.get_value("GP Project", result["space"], "is_private"), 0)
 
 	def test_anonymous_caller_is_denied(self):
 		self.assert_anonymous_denied(onboarding)
@@ -193,3 +219,157 @@ class TestCanAccessGameplan(APIEndpointTestCase):
 			result = can_access_gameplan()
 
 		self.assertIs(result, False)
+
+
+class TestGetUserInfoEndpoint(APIEndpointTestCase):
+	"""The member directory the SPA boots from: who exists, who "I" am, and how active.
+
+	The email-visibility split (guests never see other members' addresses) lives in
+	`test_members.py`; this class owns the shape of a row.
+	"""
+
+	def user_info(self, caller, target):
+		with self.as_user(caller):
+			rows = get_user_info(target.name)
+		self.assertEqual([row.name for row in rows], [target.name])
+		return rows[0]
+
+	def test_an_anonymous_caller_reaches_the_endpoint_and_is_told_to_authenticate(self):
+		"""Deliberately guest-reachable: the SPA needs the 401 that AuthenticationError
+		produces to send the visitor to log in. Closing the whitelist to guests would
+		return 403 instead, which the frontend treats as "logged in, but forbidden"."""
+		with self.as_user("Guest"):
+			frappe.is_whitelisted(get_user_info)
+
+			with self.assertRaises(frappe.AuthenticationError):
+				get_user_info()
+
+	def test_reports_the_session_user_and_their_highest_gameplan_role(self):
+		info = self.user_info(self.member, self.member)
+
+		self.assertIs(info.session_user, True)
+		self.assertEqual(info.role, "Gameplan Member")
+
+	def test_another_member_is_not_reported_as_the_session_user(self):
+		info = self.user_info(self.member, self.second_member)
+
+		self.assertNotIn("session_user", info)
+		self.assertEqual(info.role, "Gameplan Member")
+
+	def test_a_user_holding_two_gameplan_roles_appears_once_at_the_higher_role(self):
+		"""The role filter joins Has Role, so a member later promoted to admin matches
+		twice; without deduplication the directory lists them twice."""
+		promoted = create_member("api-promoted@example.com", "Promoted Member")
+		promoted.add_roles("Gameplan Admin")
+
+		with self.as_user(self.member):
+			rows = get_user_info()
+
+		matches = [row for row in rows if row.name == promoted.name]
+		self.assertEqual(len(matches), 1)
+		self.assertEqual(matches[0].role, "Gameplan Admin")
+
+	def test_counts_the_authors_own_discussions_and_comments(self):
+		author = create_member("api-counts-author@example.com", "Counts Author")
+		space = create_space("API Counts Space", create_community("API Counts Community"))
+		discussion = create_discussion("Counted discussion", space, owner=author)
+		create_comment(discussion, owner=author)
+
+		info = self.user_info(self.member, author)
+
+		self.assertEqual(info.discussions_count_3m, 1)
+		self.assertEqual(info.comments_count_3m, 1)
+
+	def test_a_user_with_no_activity_counts_zero(self):
+		quiet = create_member("api-counts-quiet@example.com", "Quiet Member")
+
+		info = self.user_info(self.member, quiet)
+
+		self.assertEqual(info.discussions_count_3m, 0)
+		self.assertEqual(info.comments_count_3m, 0)
+
+	def test_activity_older_than_three_months_is_left_out(self):
+		"""The two counts are labelled "3m" in the profile; widening the window silently
+		would restate a dormant account as an active one."""
+		author = create_member("api-counts-stale@example.com", "Stale Author")
+		space = create_space("API Stale Space", create_community("API Stale Community"))
+		discussion = create_discussion("Stale discussion", space, owner=author)
+		comment = create_comment(discussion, owner=author)
+		# 100 days is outside a 3-month window but inside a 4-month one, so an off-by-one
+		# on the window boundary changes both counts.
+		long_ago = add_days(now(), -100)
+		frappe.db.set_value("GP Discussion", discussion.name, "creation", long_ago, update_modified=False)
+		frappe.db.set_value("GP Comment", comment.name, "creation", long_ago, update_modified=False)
+
+		info = self.user_info(self.member, author)
+
+		self.assertEqual(info.discussions_count_3m, 0)
+		self.assertEqual(info.comments_count_3m, 0)
+
+
+class TestInviteByEmailEndpoint(APIEndpointTestCase):
+	"""The admin gate and role allowlist are covered in `test_members.py`, and the
+	de-duplication rules in `test_invitations.py`; what is left — and what nothing else
+	asserts — is that an authorized invite actually creates the invitations."""
+
+	def setUp(self):
+		super().setUp()
+		# GP Invitation.after_insert emails the invitee; a bare dev site has no outgoing
+		# account and raises, so mute the send for the whole case.
+		sendmail = patch("frappe.sendmail")
+		sendmail.start()
+		self.addCleanup(sendmail.stop)
+
+	def test_an_admin_invite_creates_an_invitation_per_address(self):
+		emails = ["api-invitee-one@example.com", "api-invitee-two@example.com"]
+
+		with self.as_user(self.admin):
+			invite_by_email(", ".join(emails), role="Gameplan Member")
+
+		for email in emails:
+			with self.subTest(email=email):
+				self.assertTrue(
+					frappe.db.exists("GP Invitation", {"email": email, "role": "Gameplan Member"})
+				)
+
+	def test_an_unparseable_address_is_dropped_instead_of_failing_the_whole_invite(self):
+		"""Admins paste address lists; one typo must not discard the other invites."""
+		with self.as_user(self.admin):
+			invite_by_email("api-invitee-valid@example.com, not-an-email", role="Gameplan Member")
+
+		self.assertTrue(frappe.db.exists("GP Invitation", {"email": "api-invitee-valid@example.com"}))
+		self.assertFalse(frappe.db.exists("GP Invitation", {"email": "not-an-email"}))
+
+
+class TestSearchEndpoint(IsolatedSearchIndex, APIEndpointTestCase):
+	INDEX_NAME = "test_gameplan_search_api_endpoint.db"
+
+	def setUp(self):
+		super().setUp()
+		# Must happen before the first indexable document: the doc_event hook builds a
+		# fresh GameplanSearch, which resolves db_path from INDEX_NAME at construction.
+		self.isolate_search_index()
+		self.search = GameplanSearch()
+		self.search.drop_index()
+
+	def test_filters_are_accepted_as_json_and_as_an_already_parsed_object(self):
+		"""Both call shapes are real: a query-string caller sends the filters as a JSON
+		string, while a JSON request body arrives already parsed as a dict."""
+		community = create_community("API Search Community")
+		space = create_space("API Search Space", community)
+		create_discussion("Search endpoint coverage", space, content="apisearchneedle", owner=self.member)
+		self.search.build_index()
+		filters = {"project": [str(space.name)]}
+
+		with self.as_user(self.member):
+			from_object = search_sqlite("apisearchneedle", filters=filters)
+			from_json = search_sqlite("apisearchneedle", filters=json.dumps(filters))
+
+		self.assertTrue(from_object["results"])
+		self.assertEqual(
+			[result["id"] for result in from_object["results"]],
+			[result["id"] for result in from_json["results"]],
+		)
+
+	def test_anonymous_caller_is_denied(self):
+		self.assert_anonymous_denied(search_sqlite)

@@ -15,8 +15,13 @@ The other half of that rule is that a poll's ballot and lifecycle belong to its 
 go through `stop_poll` or straight at the document — TestPollFieldProtection locks that.
 """
 
+from contextlib import contextmanager
+from datetime import timedelta
+from unittest.mock import patch
+
 import frappe
-from frappe.utils import add_days, now_datetime
+import frappe.utils.data
+from frappe.utils import add_days, get_datetime, now_datetime
 
 from gameplan.gameplan.doctype.gp_poll.gp_poll import GPPoll
 from gameplan.tests.base import GameplanTestCase
@@ -28,6 +33,27 @@ from gameplan.tests.fixtures import (
 	declared_http_methods,
 	grant_guest_access,
 )
+
+# A fixed instant to stop a poll at. Far enough ahead that the real clock never reaches
+# it, so a test that forgets to freeze the clock fails instead of passing by accident.
+STOP_INSTANT = get_datetime("2099-01-01 09:00:00.500000")
+
+
+@contextmanager
+def frozen_clock(instant):
+	"""Hold the whole request at `instant`.
+
+	A poll closes on a microsecond boundary, and a test that waited for real time to
+	pass could only ever observe one side of it. `frappe.utils` re-exports
+	`now_datetime` under its own name, so both that binding and the definition in
+	`frappe.utils.data` (which `frappe.utils.now` calls) have to be replaced before
+	every reader of the clock agrees on where the boundary is.
+	"""
+	with (
+		patch.object(frappe.utils, "now_datetime", return_value=instant),
+		patch.object(frappe.utils.data, "now_datetime", return_value=instant),
+	):
+		yield
 
 
 class PollTestCase(GameplanTestCase):
@@ -358,6 +384,54 @@ class TestStoppingAPoll(PollTestCase):
 		self.assertEqual(poll.total_votes, 1)
 
 
+class TestTheStopInstant(PollTestCase):
+	"""`stopped_at` names the moment the poll stops, not the last moment it runs.
+
+	`stop_poll` stamps it with the current time, so if that exact microsecond still
+	counted as open a vote could land after the stop was recorded. The boundary is
+	therefore inclusive, and the discussion feed reads the same rule — see
+	TestFeedOngoingPolls.test_the_feed_and_the_ballot_close_at_the_same_instant.
+	"""
+
+	def stopping_poll(self):
+		poll = self.poll()
+		frappe.db.set_value("GP Poll", poll.name, "stopped_at", STOP_INSTANT, update_modified=False)
+		poll.reload()
+		return poll
+
+	def test_a_vote_at_the_stop_instant_is_refused(self):
+		poll = self.stopping_poll()
+
+		with frozen_clock(STOP_INSTANT), self.as_user(self.second_member):
+			with self.assertRaises(frappe.ValidationError):
+				poll.submit_vote("Yes")
+
+		poll.reload()
+		self.assertEqual(poll.total_votes, 0)
+
+	def test_a_vote_a_microsecond_earlier_is_accepted(self):
+		"""The other side of the same boundary: closing it one tick early would end
+		every poll before the instant it advertises."""
+		poll = self.stopping_poll()
+
+		with frozen_clock(STOP_INSTANT - timedelta(microseconds=1)), self.as_user(self.second_member):
+			poll.submit_vote("Yes")
+
+		poll.reload()
+		self.assertEqual(poll.total_votes, 1)
+
+	def test_a_retraction_at_the_stop_instant_is_refused(self):
+		poll = self.stopping_poll()
+		self.vote(poll, self.second_member, "Yes")
+
+		with frozen_clock(STOP_INSTANT), self.as_user(self.second_member):
+			with self.assertRaises(frappe.ValidationError):
+				poll.retract_vote()
+
+		poll.reload()
+		self.assertEqual(poll.total_votes, 1)
+
+
 class TestArchivedPoll(PollTestCase):
 	def setUp(self):
 		super().setUp()
@@ -596,6 +670,96 @@ class TestPollFieldProtection(PollTestCase):
 
 		poll.reload()
 		self.assertEqual([(row.user, row.emoji) for row in poll.reactions], [(self.second_member.name, "👍")])
+
+
+class TestPollInAClosedDiscussion(PollTestCase):
+	"""A closed discussion refuses a poll, exactly as it refuses a comment.
+
+	The composer disappears client-side once a thread is closed, so nothing in the UI ever
+	exercises the server guard — which is precisely why it needs a test of its own.
+	"""
+
+	def close(self):
+		with self.as_user(self.member):
+			frappe.get_doc("GP Discussion", self.discussion.name).close_discussion()
+
+	def reopen(self):
+		with self.as_user(self.member):
+			frappe.get_doc("GP Discussion", self.discussion.name).reopen_discussion()
+
+	def test_a_poll_cannot_be_added_to_a_closed_discussion(self):
+		self.close()
+
+		with self.assertRaisesRegex(frappe.ValidationError, "Cannot add a poll to a closed discussion"):
+			create_poll("Too late?", self.discussion)
+
+		self.assertEqual(frappe.db.count("GP Poll", {"discussion": self.discussion.name}), 0)
+
+	def test_the_guard_only_bites_while_the_discussion_is_closed(self):
+		"""The other side of the same rule: an open thread — and a reopened one — still
+		takes polls, so the guard cannot simply refuse everything."""
+		poll = self.poll()
+		self.close()
+		self.reopen()
+
+		reopened_poll = create_poll("Back on?", self.discussion)
+
+		self.assertTrue(frappe.db.exists("GP Poll", poll.name))
+		self.assertTrue(frappe.db.exists("GP Poll", reopened_poll.name))
+
+
+class TestPollUpdatesItsDiscussion(PollTestCase):
+	"""Posting a poll is posting in the thread, so the thread's counters have to move.
+
+	The feed sorts and attributes a thread by `last_post_at` / `last_post_by` and shows
+	`comments_count` and `participants_count` on the row, so a poll that left them alone
+	would make an active thread look untouched since its last comment. Deleting the poll
+	has to walk all of that back — `GPPoll.after_delete` refreshes the same fields.
+	"""
+
+	def meta(self):
+		return frappe.db.get_value(
+			"GP Discussion",
+			self.discussion.name,
+			["comments_count", "participants_count", "last_post_type", "last_post", "last_post_by"],
+			as_dict=True,
+		)
+
+	def last_post_at(self):
+		return frappe.db.get_value("GP Discussion", self.discussion.name, "last_post_at")
+
+	def test_posting_a_poll_moves_the_threads_counters(self):
+		self.assertEqual(self.meta().comments_count, 0)
+
+		with self.as_user(self.second_member):
+			poll = create_poll("Ship on Friday?", self.discussion)
+
+		meta = self.meta()
+		self.assertEqual(meta.comments_count, 1)
+		# The thread's owner plus the poll's author — a poll's author is a participant in
+		# the thread just as a commenter is.
+		self.assertEqual(meta.participants_count, 2)
+		self.assertEqual(meta.last_post_type, "GP Poll")
+		self.assertEqual(str(meta.last_post), str(poll.name))
+		self.assertEqual(meta.last_post_by, self.second_member.name)
+		self.assertEqual(self.last_post_at(), get_datetime(poll.creation))
+
+	def test_deleting_the_poll_moves_them_back(self):
+		with self.as_user(self.second_member):
+			poll = create_poll("Ship on Friday?", self.discussion)
+		self.assertEqual(self.meta().comments_count, 1)
+
+		with self.as_user(self.second_member):
+			frappe.delete_doc("GP Poll", poll.name)
+
+		meta = self.meta()
+		self.assertEqual(meta.comments_count, 0)
+		self.assertEqual(meta.participants_count, 1)
+		self.assertIsNone(meta.last_post_type)
+		self.assertFalse(meta.last_post)
+		self.assertEqual(meta.last_post_by, self.member.name)
+		# Nothing left in the thread, so the discussion is its own last post again.
+		self.assertEqual(self.last_post_at(), get_datetime(self.discussion.creation))
 
 
 class TestDeletingAPoll(PollTestCase):
