@@ -209,6 +209,16 @@ def include_ongoing_polls(discussions):
 
 
 def include_last_post_content(discussions):
+	"""Attach a one-line preview of each discussion's newest post.
+
+	The two sides of the lookup are keyed differently by the schema, so the `cint` below
+	is load-bearing rather than defensive. `GP Comment` and `GP Poll` are `autoincrement`
+	doctypes, so their `name` comes back from the database as an integer, while
+	`GP Discussion.last_post` is a Dynamic Link — a varchar — and comes back as `"41"`.
+	Keying the maps on the raw name and coercing the discussion side is what makes the
+	two meet; normalising the other direction instead would work equally well, but doing
+	neither silently drops every preview.
+	"""
 	Comment = frappe.qb.DocType("GP Comment")
 
 	last_comments_name = [d.last_post for d in discussions if d.last_post_type == "GP Comment"]
