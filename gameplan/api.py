@@ -9,6 +9,7 @@ from frappe.utils import split_emails, validate_email_address
 
 import gameplan
 from gameplan.realtime import notify_notification_count_changed
+from gameplan.roles import GAMEPLAN_ROLES
 from gameplan.utils import validate_type
 
 
@@ -96,7 +97,8 @@ def get_user_info(user=None):
 				user.email_digest_last_sent_on = user_profile.email_digest_last_sent_on
 		user_roles = [r.role for r in roles if r.parent == user.name]
 		user.role = None
-		for role in ["Gameplan Guest", "Gameplan Member", "Gameplan Admin"]:
+		# GAMEPLAN_ROLES is ordered by privilege, so the last match is the effective role.
+		for role in GAMEPLAN_ROLES:
 			if role in user_roles:
 				user.role = role
 
@@ -116,7 +118,7 @@ def get_user_info(user=None):
 @validate_type
 def invite_by_email(emails: str, role: str, projects: list = None):
 	require_admin()
-	if role not in ["Gameplan Guest", "Gameplan Member", "Gameplan Admin"]:
+	if role not in GAMEPLAN_ROLES:
 		frappe.throw(_("Invalid role: {0}").format(role), frappe.ValidationError)
 	return _invite_by_email(emails, role, projects)
 
@@ -280,7 +282,7 @@ def can_access_gameplan():
 		return False
 
 	roles = set(frappe.get_roles())
-	allowed_roles = set(["System Manager", "Gameplan Admin", "Gameplan Member", "Gameplan Guest"])
+	allowed_roles = {"System Manager", *GAMEPLAN_ROLES}
 	if roles.intersection(allowed_roles):
 		return True
 
