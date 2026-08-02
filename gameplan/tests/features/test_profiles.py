@@ -10,6 +10,9 @@ from gameplan.gameplan.doctype.gp_user_profile.gp_user_profile import (
 	has_permission,
 	save_my_bento_cards,
 )
+from gameplan.gameplan.doctype.gp_user_profile.patches.bind_starter_bento_cards import (
+	execute as bind_starter_bento_cards,
+)
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import create_member
 
@@ -21,9 +24,12 @@ def get_profile(user):
 def reset_profile(user):
 	profile = get_profile(user)
 	profile.set("bento_cards", [])
+	profile.layout_customized = 0
 	profile.image = None
 	profile.cover_image = None
 	profile.cover_image_position = None
+	profile.bio = None
+	profile.readme = None
 	profile.quick_reaction_emojis = None
 	profile.save(ignore_permissions=True)
 
@@ -37,6 +43,31 @@ def make_bento_card(card_id="intro", **values):
 		"text": "Building async tools.",
 		**values,
 	}
+
+
+def make_bound_card(card_id, field, **values):
+	return {
+		"id": card_id,
+		"type": "Card",
+		"size": "1x1",
+		"title": field,
+		"source": "field",
+		"field": field,
+		**values,
+	}
+
+
+def fill_profile(user, **values):
+	"""Populate every bound profile field so the full default layout is produced."""
+	profile = get_profile(user)
+	profile.image = "/files/avatar.png"
+	profile.cover_image = "/files/cover.png"
+	profile.cover_image_position = 30
+	profile.bio = "Building async tools."
+	profile.readme = "<p>Long form about me.</p>"
+	profile.update(values)
+	profile.save(ignore_permissions=True)
+	return profile
 
 
 def create_custom_emoji(title="party-parrot"):
@@ -92,32 +123,56 @@ class TestProfiles(GameplanTestCase):
 		profile.save()
 		self.assertEqual(get_profile(self.alice.name).bio, "hello, I am Alice")
 
-	def test_new_profile_page_is_off_by_default(self):
+	def test_default_bento_layout_binds_every_populated_profile_field(self):
+		frappe.set_user(self.alice.name)
+		fill_profile(self.alice.name)
+
+		response = get_my_bento_cards()
+
+		self.assertTrue(response["is_default"])
+		self.assertEqual(
+			[card["id"] for card in response["cards"]],
+			["cover", "avatar", "full-name", "bio", "about"],
+		)
+		self.assertEqual(
+			[card["field"] for card in response["cards"]],
+			["cover_image", "image", "full_name", "bio", "readme"],
+		)
+		self.assertEqual(
+			[card["format"] for card in response["cards"]],
+			["image", "image", "text", "text", "html"],
+		)
+		self.assertTrue(all(card["source"] == "field" for card in response["cards"]))
+		self.assertEqual(response["cards"][0]["image"], "/files/cover.png")
+		self.assertEqual(response["cards"][0]["imagePosition"], 30)
+		self.assertEqual(response["cards"][2]["text"], "Alice")
+		self.assertEqual(response["cards"][4]["text"], "<p>Long form about me.</p>")
+
+	def test_default_bento_layout_omits_empty_profile_fields(self):
 		frappe.set_user(self.alice.name)
 		profile = get_profile(self.alice.name)
 		profile.image = "/files/avatar.png"
-		profile.cover_image = "/files/cover.png"
+		profile.bio = "   "
+		# An empty TipTap document still round-trips as markup, so it must read as empty.
+		profile.readme = "<p></p>"
 		profile.save(ignore_permissions=True)
 
 		response = get_my_bento_cards()
 
 		self.assertTrue(response["is_default"])
-		self.assertEqual(response["cards"], [])
+		self.assertEqual([card["id"] for card in response["cards"]], ["avatar", "full-name"])
 
 	def test_starter_bento_cards_use_title_case_select_values(self):
 		frappe.set_user(self.alice.name)
-		profile = get_profile(self.alice.name)
-		profile.image = "/files/avatar.png"
-		profile.cover_image = "/files/cover.png"
-		profile.save(ignore_permissions=True)
+		fill_profile(self.alice.name)
 
 		response = get_my_bento_cards()
 		card_types = [card["type"] for card in response["starter_cards"]]
 		card_sizes = [card["size"] for card in response["starter_cards"]]
 		rendering_values = [card["imageRendering"] for card in response["starter_cards"] if card.get("image")]
 
-		self.assertEqual(card_types, ["Card", "Card", "Card", "Card"])
-		self.assertEqual(card_sizes, ["4x1", "1x1", "1x1", "2x1"])
+		self.assertEqual(card_types, ["Card"] * 5)
+		self.assertEqual(card_sizes, ["4x1", "1x1", "1x1", "2x1", "4x2"])
 		self.assertEqual(rendering_values, ["Cover", "Cover"])
 
 	def test_starter_bento_cards_skip_missing_images(self):
@@ -131,30 +186,29 @@ class TestProfiles(GameplanTestCase):
 		self.assertTrue(response["is_default"])
 		self.assertEqual(
 			[card["id"] for card in response["starter_cards"]],
-			["avatar", "full-name", "bio"],
+			["avatar", "full-name"],
 		)
 
 	def test_first_bento_save_persists_starter_cards(self):
 		frappe.set_user(self.alice.name)
-		profile = get_profile(self.alice.name)
-		profile.image = "/files/avatar.png"
-		profile.cover_image = "/files/cover.png"
-		profile.save(ignore_permissions=True)
+		fill_profile(self.alice.name)
 
 		default_response = get_my_bento_cards()
 		save_response = save_my_bento_cards(default_response["starter_cards"])
 		profile = get_profile(self.alice.name)
 
 		self.assertFalse(save_response["is_default"])
-		self.assertEqual(len(profile.bento_cards), 4)
+		self.assertEqual(len(profile.bento_cards), 5)
 		self.assertEqual(profile.bento_cards[0].card_id, "cover")
+		self.assertTrue(all(row.source == "field" for row in profile.bento_cards))
+		# A bound card never stores its value; it is resolved on every read.
+		self.assertTrue(all(not row.text and not row.image for row in profile.bento_cards))
 
-	def test_saved_starter_bento_cards_are_not_rehydrated(self):
+	def test_saved_bento_cards_follow_later_profile_edits(self):
 		frappe.set_user(self.alice.name)
-		default_response = get_my_bento_cards()
-		bio_card = next(card for card in default_response["starter_cards"] if card["id"] == "bio")
-		original_bio_text = bio_card["text"]
-		save_my_bento_cards(default_response["starter_cards"])
+		fill_profile(self.alice.name)
+		save_my_bento_cards(get_my_bento_cards()["starter_cards"])
+
 		profile = get_profile(self.alice.name)
 		profile.bio = "Updated profile bio"
 		profile.save()
@@ -163,7 +217,33 @@ class TestProfiles(GameplanTestCase):
 		bio_card = next(card for card in response["cards"] if card["id"] == "bio")
 
 		self.assertFalse(response["is_default"])
-		self.assertEqual(bio_card["text"], original_bio_text)
+		self.assertEqual(bio_card["text"], "Updated profile bio")
+
+	def test_saved_bound_card_disappears_when_its_field_is_cleared(self):
+		frappe.set_user(self.alice.name)
+		fill_profile(self.alice.name)
+		save_my_bento_cards(get_my_bento_cards()["starter_cards"])
+
+		profile = get_profile(self.alice.name)
+		profile.bio = None
+		profile.save()
+
+		response = get_my_bento_cards()
+
+		self.assertNotIn("bio", [card["id"] for card in response["cards"]])
+
+	def test_default_and_saved_layouts_are_identical(self):
+		"""The two read paths must agree, so a profile looks the same after its first save."""
+		frappe.set_user(self.alice.name)
+		fill_profile(self.alice.name)
+
+		default_response = get_my_bento_cards()
+		save_my_bento_cards(default_response["starter_cards"])
+		saved_response = get_my_bento_cards()
+
+		self.assertTrue(default_response["is_default"])
+		self.assertFalse(saved_response["is_default"])
+		self.assertEqual(saved_response["cards"], default_response["cards"])
 
 	def test_any_member_can_read_profile_bento_cards(self):
 		alice_profile = get_profile(self.alice.name)
@@ -172,8 +252,88 @@ class TestProfiles(GameplanTestCase):
 
 		self.assertEqual(response["profile"], alice_profile.name)
 		self.assertTrue(response["is_default"])
-		self.assertEqual(response["cards"], [])
+		self.assertEqual([card["id"] for card in response["cards"]], ["full-name"])
 		self.assertNotIn("starter_cards", response)
+
+	def test_bound_bio_card_keeps_the_full_bio_while_custom_text_is_capped(self):
+		frappe.set_user(self.alice.name)
+		long_bio = "b" * 280
+		profile = get_profile(self.alice.name)
+		profile.bio = long_bio
+		profile.save(ignore_permissions=True)
+
+		response = save_my_bento_cards(
+			[
+				make_bound_card("bio", "bio", size="2x1"),
+				make_bento_card("note", text="c" * 280),
+			]
+		)
+
+		bio_card = next(card for card in response["cards"] if card["id"] == "bio")
+		note_card = next(card for card in response["cards"] if card["id"] == "note")
+		self.assertEqual(bio_card["text"], long_bio)
+		self.assertEqual(note_card["text"], "c" * 140)
+
+	def test_layout_customized_flips_on_the_first_save_including_an_empty_layout(self):
+		frappe.set_user(self.alice.name)
+		self.assertFalse(get_profile(self.alice.name).layout_customized)
+
+		save_my_bento_cards([make_bento_card()])
+		self.assertTrue(get_profile(self.alice.name).layout_customized)
+
+		response = save_my_bento_cards([])
+
+		self.assertTrue(get_profile(self.alice.name).layout_customized)
+		self.assertFalse(response["is_default"])
+		self.assertEqual(response["cards"], [])
+
+	def test_bound_bento_cards_reject_a_duplicate_field(self):
+		frappe.set_user(self.alice.name)
+
+		with self.assertRaisesRegex(frappe.ValidationError, "^Duplicate bound field: bio$"):
+			save_my_bento_cards([make_bound_card("bio", "bio"), make_bound_card("bio-again", "bio")])
+
+	def test_bound_bento_cards_reject_an_unknown_field(self):
+		frappe.set_user(self.alice.name)
+
+		with self.assertRaisesRegex(frappe.ValidationError, "^Invalid bound field: email$"):
+			save_my_bento_cards([make_bound_card("email", "email")])
+
+	def test_blank_bento_cards_cannot_be_bound(self):
+		frappe.set_user(self.alice.name)
+
+		with self.assertRaisesRegex(frappe.ValidationError, "type Card"):
+			save_my_bento_cards([make_bound_card("gap", "bio", type="Blank")])
+
+	def test_patch_converts_saved_starter_cards_into_bound_cards(self):
+		frappe.set_user(self.alice.name)
+		save_my_bento_cards(
+			[
+				make_bento_card("cover", image="/files/cover.png", text=None, size="4x1"),
+				make_bento_card("avatar", image="/files/avatar.png", text=None),
+				make_bento_card("full-name", text="Alice"),
+				make_bento_card("bio", text="Frozen bio copy", size="2x1"),
+				make_bento_card("note", text="A custom card"),
+			]
+		)
+		frappe.db.set_value("GP User Profile", get_profile(self.alice.name).name, "layout_customized", 0)
+
+		bind_starter_bento_cards()
+
+		profile = get_profile(self.alice.name)
+		self.assertEqual(
+			[(row.card_id, row.source, row.get("field")) for row in profile.bento_cards],
+			[
+				("cover", "field", "cover_image"),
+				("avatar", "field", "image"),
+				("full-name", "field", "full_name"),
+				("bio", "field", "bio"),
+				("note", "custom", None),
+			],
+		)
+		self.assertTrue(all(not row.text and not row.image for row in profile.bento_cards[:4]))
+		self.assertEqual(profile.bento_cards[4].text, "A custom card")
+		self.assertTrue(profile.layout_customized)
 
 	def test_owner_can_save_bento_cards(self):
 		frappe.set_user(self.alice.name)
@@ -344,6 +504,7 @@ class TestProfiles(GameplanTestCase):
 					"title": None,
 					"imageRendering": "Cover",
 					"imagePosition": 50,
+					"source": "custom",
 				}
 			],
 		)

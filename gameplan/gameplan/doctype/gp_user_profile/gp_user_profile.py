@@ -16,13 +16,28 @@ from gameplan.mixins.attachments import HasAttachments
 from gameplan.realtime import notify_users_changed
 
 PROFILE_BENTO_CARD_TYPES = {"Card", "Blank"}
+PROFILE_BENTO_CARD_SOURCES = {"custom", "field"}
 PROFILE_BENTO_CARD_SIZES = {"1x1", "1x2", "2x1", "2x2", "4x1", "4x2"}
 PROFILE_BENTO_IMAGE_RENDERING = {"Cover", "Natural", "Fit"}
 PROFILE_BENTO_CARD_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{1,80}$")
 PROFILE_BENTO_URL_CONTROL_CHAR_PATTERN = re.compile(r"[\x00-\x20\x7f]")
 PROFILE_BENTO_ALLOWED_URL_SCHEMES = {"http", "https"}
 PROFILE_BENTO_MAX_CARDS = 40
+PROFILE_BENTO_DEFAULT_IMAGE_POSITION = 50
+PROFILE_BENTO_HTML_TAG_PATTERN = re.compile(r"<[^>]*>")
+PROFILE_BENTO_HTML_MEDIA_PATTERN = re.compile(r"<\s*(img|video|audio|iframe|embed)\b", re.IGNORECASE)
 QUICK_REACTION_MAX_SLOTS = 20
+
+# Profile fields a bento card may bind to. The order is the default layout order:
+# row 1 is the cover (4 columns), row 2 is avatar + name + bio (1 + 1 + 2), and
+# About fills rows 3-4.
+PROFILE_BENTO_BOUND_FIELDS = {
+	"cover_image": {"id": "cover", "size": "4x1", "title": "Cover image", "kind": "image"},
+	"image": {"id": "avatar", "size": "1x1", "title": "Avatar", "kind": "image"},
+	"full_name": {"id": "full-name", "size": "1x1", "title": "Full name", "kind": "text"},
+	"bio": {"id": "bio", "size": "2x1", "title": "Bio", "kind": "text"},
+	"readme": {"id": "about", "size": "4x2", "title": "About", "kind": "html"},
+}
 
 
 class GPUserProfile(HasAttachments, Document):
@@ -218,6 +233,9 @@ def save_my_bento_cards(cards: list | str):
 	profile = get_session_user_profile()
 	check_profile_bento_save_permission(profile)
 	profile.set("bento_cards", normalize_bento_cards(cards))
+	# Set unconditionally, so saving an empty layout ("nothing on my profile") sticks
+	# instead of falling back to the computed default on the next read.
+	profile.layout_customized = 1
 	profile.save(ignore_permissions=True)
 	return get_profile_bento_response(profile)
 
@@ -240,22 +258,21 @@ def get_session_user_profile():
 
 
 def get_profile_bento_cards(profile):
-	return [profile_bento_row_to_card(row) for row in profile.get("bento_cards")]
+	cards = (profile_bento_row_to_card(row, profile) for row in profile.get("bento_cards"))
+	# Bound cards resolve to None when the profile field they point at is empty.
+	return [card for card in cards if card is not None]
 
 
 def get_profile_bento_response(profile, include_starter_cards=False):
+	is_default = not profile.layout_customized
 	response = {
 		"profile": profile.name,
-		"cards": get_profile_bento_cards(profile),
-		"is_default": not has_saved_bento_cards(profile),
+		"cards": get_profile_bento_default_cards(profile) if is_default else get_profile_bento_cards(profile),
+		"is_default": is_default,
 	}
-	if include_starter_cards and response["is_default"]:
+	if include_starter_cards and is_default:
 		response["starter_cards"] = get_profile_bento_starter_cards(profile)
 	return response
-
-
-def has_saved_bento_cards(profile):
-	return bool(profile.get("bento_cards"))
 
 
 def check_profile_bento_save_permission(profile):
@@ -277,10 +294,11 @@ def normalize_bento_cards(cards):
 		frappe.throw(f"Profiles can have at most {PROFILE_BENTO_MAX_CARDS} bento cards")
 
 	seen_card_ids = set()
-	return [normalize_bento_card(card, seen_card_ids) for card in cards]
+	seen_bound_fields = set()
+	return [normalize_bento_card(card, seen_card_ids, seen_bound_fields) for card in cards]
 
 
-def normalize_bento_card(card, seen_card_ids):
+def normalize_bento_card(card, seen_card_ids, seen_bound_fields):
 	if not isinstance(card, dict):
 		frappe.throw("Each bento card must be an object")
 
@@ -293,18 +311,23 @@ def normalize_bento_card(card, seen_card_ids):
 
 	card_type = require_allowed_value(card.get("type"), PROFILE_BENTO_CARD_TYPES, "Card type")
 	size = require_allowed_value(card.get("size"), PROFILE_BENTO_CARD_SIZES, "Card size")
+	source = normalize_bento_card_source(card.get("source"))
+	field = normalize_bento_card_field(card, source, card_type, seen_bound_fields)
 	image_rendering = optional_allowed_value(
 		card.get("imageRendering") or card.get("image_rendering") or "Cover",
 		PROFILE_BENTO_IMAGE_RENDERING,
 		"Image rendering",
 	)
-	text = normalize_bento_card_text(card.get("text"), card_type)
-	image = normalize_bento_card_image(card.get("image"), card_type)
-	if card_type == "Card" and not text and not image:
+	# A bound card never stores its value; it is resolved from the profile on every read.
+	text = None if source == "field" else normalize_bento_card_text(card.get("text"), card_type)
+	image = None if source == "field" else normalize_bento_card_image(card.get("image"), card_type)
+	if source == "custom" and card_type == "Card" and not text and not image:
 		frappe.throw("Cards must have text or an image")
 
 	return {
 		"card_id": card_id,
+		"source": source,
+		"field": field,
 		"type": card_type,
 		"size": size,
 		"title": truncate(card.get("title"), 140),
@@ -321,13 +344,49 @@ def normalize_bento_card(card, seen_card_ids):
 	}
 
 
-def profile_bento_row_to_card(row):
+def normalize_bento_card_source(value):
+	return optional_allowed_value(value, PROFILE_BENTO_CARD_SOURCES, "Card source") or "custom"
+
+
+def normalize_bento_card_field(card, source, card_type, seen_bound_fields):
+	field = (card.get("field") or "").strip() or None
+	if source != "field":
+		return None
+
+	if card_type != "Card":
+		frappe.throw("Only cards of type Card can be bound to a profile field")
+	if not field:
+		frappe.throw("Bound cards must name a profile field")
+	if field not in PROFILE_BENTO_BOUND_FIELDS:
+		frappe.throw(f"Invalid bound field: {field}")
+	if field in seen_bound_fields:
+		frappe.throw(f"Duplicate bound field: {field}")
+	seen_bound_fields.add(field)
+	return field
+
+
+def profile_bento_row_to_card(row, profile):
+	"""Build the API shape for one stored row, or None when a bound field is empty."""
+	source = row.get("source") or "custom"
+	if source == "field":
+		return build_bound_bento_card(
+			profile,
+			row.get("field"),
+			card_id=row.card_id,
+			size=row.size,
+			title=row.title,
+			image_rendering=row.image_rendering or "Cover",
+			image_position=row.image_position,
+			url=row.url,
+		)
+
 	card = {
 		"id": row.card_id,
 		"type": row.type,
 		"size": row.size,
 		"title": row.title,
 		"imageRendering": row.image_rendering or "Cover",
+		"source": "custom",
 	}
 	if row.text:
 		card["text"] = row.text
@@ -341,59 +400,96 @@ def profile_bento_row_to_card(row):
 	return card
 
 
-def get_profile_bento_starter_cards(profile):
-	display_name = profile.full_name or frappe.db.get_value("User", profile.user, "full_name") or profile.user
-	cards = get_default_profile_image_cards(profile)
-	cards.extend(
-		[
-			{
-				"id": "full-name",
-				"type": "Card",
-				"size": "1x1",
-				"title": "Full name",
-				"text": display_name,
-			},
-			{
-				"id": "bio",
-				"type": "Card",
-				"size": "2x1",
-				"title": "Bio",
-				"text": profile.bio or "No bio yet.",
-			},
-		]
-	)
-	return cards
+def build_bound_bento_card(
+	profile,
+	field,
+	card_id,
+	size,
+	title,
+	image_rendering="Cover",
+	image_position=None,
+	url=None,
+):
+	spec = PROFILE_BENTO_BOUND_FIELDS.get(field)
+	if not spec:
+		return None
+
+	value = resolve_profile_bound_value(profile, field)
+	if value is None:
+		return None
+
+	kind = spec["kind"]
+	card = {
+		"id": card_id,
+		"type": "Card",
+		"size": size,
+		"title": title,
+		"imageRendering": image_rendering,
+		"source": "field",
+		"field": field,
+		"format": kind,
+	}
+	card["image" if kind == "image" else "text"] = value
+	if url:
+		card["url"] = url
+	if image_position is not None:
+		card["imagePosition"] = image_position
+
+	return card
 
 
-def get_default_profile_image_cards(profile):
+def resolve_profile_bound_value(profile, field):
+	"""Current value of a bound profile field, or None when it counts as empty."""
+	if field == "full_name":
+		full_name = profile.full_name or frappe.db.get_value("User", profile.user, "full_name")
+		return full_name or profile.user or None
+
+	value = profile.get(field)
+	if field == "readme":
+		return value if html_has_content(value) else None
+	if isinstance(value, str):
+		value = value.strip()
+	return value or None
+
+
+def html_has_content(value):
+	"""True when HTML carries visible content. An empty TipTap doc is `<p></p>`."""
+	if not value:
+		return False
+	if PROFILE_BENTO_HTML_MEDIA_PATTERN.search(value):
+		return True
+	text = PROFILE_BENTO_HTML_TAG_PATTERN.sub("", value).replace("&nbsp;", " ")
+	return bool(text.strip())
+
+
+def get_profile_bento_default_cards(profile):
+	"""The computed default layout: one bound card per non-empty profile field."""
 	cards = []
-	if profile.cover_image:
-		cards.append(
-			{
-				"id": "cover",
-				"type": "Card",
-				"size": "4x1",
-				"title": "Cover image",
-				"image": profile.cover_image,
-				"imageRendering": "Cover",
-				"imagePosition": profile.cover_image_position
-				if profile.cover_image_position is not None
-				else 50,
-			}
+	for field, spec in PROFILE_BENTO_BOUND_FIELDS.items():
+		card = build_bound_bento_card(
+			profile,
+			field,
+			card_id=spec["id"],
+			size=spec["size"],
+			title=spec["title"],
+			image_position=default_bound_image_position(profile, field),
 		)
-	if profile.image:
-		cards.append(
-			{
-				"id": "avatar",
-				"type": "Card",
-				"size": "1x1",
-				"title": "Avatar",
-				"image": profile.image,
-				"imageRendering": "Cover",
-				"imagePosition": 50,
-			}
-		)
+		if card is not None:
+			cards.append(card)
 	return cards
+
+
+def default_bound_image_position(profile, field):
+	if field == "cover_image" and profile.cover_image_position is not None:
+		# cover_image_position is a Float on the profile, image_position an Int on the card.
+		# Clamp to the same range the save path uses, so the computed default and the
+		# stored row round-trip to the same value.
+		return min(100, max(0, int(profile.cover_image_position)))
+	return PROFILE_BENTO_DEFAULT_IMAGE_POSITION
+
+
+def get_profile_bento_starter_cards(profile):
+	return get_profile_bento_default_cards(profile)
 
 
 def require_card_value(value, label):
