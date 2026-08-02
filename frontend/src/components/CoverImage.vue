@@ -106,7 +106,8 @@ export default {
     validatedImageUrl: {
       async handler(newVal, oldVal) {
         if (newVal !== oldVal) {
-          this.imageDimensions = await getImgDimensions(newVal)
+          // null when there is no cover, or when the image failed to load.
+          this.imageDimensions = newVal ? await getImgDimensions(newVal) : null
         }
       },
       immediate: true,
