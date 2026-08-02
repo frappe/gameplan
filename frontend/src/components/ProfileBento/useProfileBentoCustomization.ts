@@ -1,5 +1,12 @@
 import { computed, ref, toRaw } from 'vue'
-import { profileTextLimit, type ProfileBentoCard, type ProfileCardType } from './types'
+import {
+  profileBoundFields,
+  profileTextLimit,
+  type ProfileBentoCard,
+  type ProfileBoundField,
+  type ProfileBoundFieldSpec,
+  type ProfileCardType,
+} from './types'
 
 export interface ProfileBentoCardSource {
   load: () => ProfileBentoCardLoadResult | Promise<ProfileBentoCardLoadResult>
@@ -11,15 +18,20 @@ export type ProfileBentoCardLoadResult =
   | {
       cards: ProfileBentoCard[]
       isDefault?: boolean
-      starterCards?: ProfileBentoCard[]
     }
 
-export function useProfileBentoCustomization(source: ProfileBentoCardSource) {
+/** Current value of each bound profile field, so a re-ticked card shows its value. */
+export type ProfileBoundValues = Partial<Record<ProfileBoundField, string>>
+
+export function useProfileBentoCustomization(
+  source: ProfileBentoCardSource,
+  options: { boundValues?: () => ProfileBoundValues } = {},
+) {
   const cards = ref<ProfileBentoCard[]>([])
-  const starterCards = ref<ProfileBentoCard[]>([])
   const selectedCardId = ref('')
-  const isNewProfilePage = ref(false)
   const isSaving = ref(false)
+  /** True while the draft mirrors the computed default instead of stored rows. */
+  const isDefaultLayout = ref(false)
   const savedSnapshot = ref('')
 
   const selectedCard = computed(() => {
@@ -34,11 +46,24 @@ export function useProfileBentoCustomization(source: ProfileBentoCardSource) {
     return serializeCards(cards.value) !== savedSnapshot.value
   })
 
+  /**
+   * The checklist has no state of its own: a field is ticked exactly when a card
+   * bound to it is in the draft, so removing the card in the grid unticks the row.
+   */
+  const boundFieldsInDraft = computed(() => {
+    let fields = new Set<ProfileBoundField>()
+    for (let card of cards.value) {
+      if (card.source === 'field' && card.field) fields.add(card.field as ProfileBoundField)
+    }
+    return fields
+  })
+
   async function loadDraft() {
     let loadResult = await source.load()
-    isNewProfilePage.value = isDefaultLoadResult(loadResult)
-    starterCards.value = cloneCards(getStarterCards(loadResult))
-    cards.value = isNewProfilePage.value ? [] : cloneCards(getLoadedCards(loadResult))
+    // `cards` is the layout either way — the computed default before the first
+    // save, the stored rows after it. Only the dirty baseline differs.
+    isDefaultLayout.value = isDefaultLoadResult(loadResult)
+    cards.value = cloneCards(getLoadedCards(loadResult))
     selectedCardId.value = ''
     savedSnapshot.value = serializeCards(cards.value)
   }
@@ -48,22 +73,58 @@ export function useProfileBentoCustomization(source: ProfileBentoCardSource) {
     try {
       await source.save(cloneCards(cards.value))
       savedSnapshot.value = serializeCards(cards.value)
-      isNewProfilePage.value = false
+      isDefaultLayout.value = false
     } finally {
       isSaving.value = false
     }
-  }
-
-  function startWithStarterCards() {
-    if (!isNewProfilePage.value) return
-    cards.value = cloneCards(starterCards.value)
-    selectedCardId.value = cards.value[0]?.id || ''
   }
 
   function addCard(type: ProfileCardType) {
     let card = createCard(type)
     cards.value.push(card)
     selectedCardId.value = card.id
+  }
+
+  function toggleBoundField(field: ProfileBoundField, ticked: boolean) {
+    let existing = cards.value.find((card) => card.source === 'field' && card.field === field)
+    if (ticked) {
+      if (existing) return
+      addBoundCard(field)
+      return
+    }
+    if (existing) removeCard(existing.id)
+  }
+
+  function addBoundCard(field: ProfileBoundField) {
+    let spec = profileBoundFields.find((boundField) => boundField.field === field)
+    if (!spec) return
+
+    let card = createBoundCard(spec, options.boundValues?.()[field])
+    cards.value.push(card)
+    selectedCardId.value = card.id
+  }
+
+  function createBoundCard(spec: ProfileBoundFieldSpec, value?: string): ProfileBentoCard {
+    let card: ProfileBentoCard = {
+      id: uniqueCardId(spec.id),
+      type: 'Card',
+      size: spec.size,
+      title: spec.title,
+      source: 'field',
+      field: spec.field,
+      format: spec.format,
+      imageRendering: 'Cover',
+      imagePosition: 50,
+    }
+    // The value is resolved server-side on every read; this copy only exists so
+    // the editor can preview the card it just added.
+    if (value) card[spec.format === 'image' ? 'image' : 'text'] = value
+    return card
+  }
+
+  function uniqueCardId(preferredId: string) {
+    if (!cards.value.some((card) => card.id === preferredId)) return preferredId
+    return `${preferredId}-${Date.now()}`
   }
 
   function removeCard(cardId: string) {
@@ -119,17 +180,17 @@ export function useProfileBentoCustomization(source: ProfileBentoCardSource) {
 
   return {
     cards,
-    starterCards,
+    boundFieldsInDraft,
     selectedCardId,
     selectedCard,
     selectedTextCharactersLeft,
-    isNewProfilePage,
+    isDefaultLayout,
     isDirty,
     isSaving,
     loadDraft,
     saveDraft,
-    startWithStarterCards,
     addCard,
+    toggleBoundField,
     reorderCards,
     removeCard,
     removeSelectedCard,
@@ -164,7 +225,9 @@ function createCard(type: ProfileCardType): ProfileBentoCard {
 }
 
 function isImageCapableCard(card: ProfileBentoCard) {
-  return card.type === 'Card' || card.type === 'Image' || card.type === 'Text'
+  // A bound card's image comes from the profile; an uploaded one would be
+  // dropped on save.
+  return card.source === 'custom' && card.type !== 'Blank'
 }
 
 function cloneCards(cards: ProfileBentoCard[]) {
@@ -177,10 +240,6 @@ function getLoadedCards(loadResult: ProfileBentoCardLoadResult) {
 
 function isDefaultLoadResult(loadResult: ProfileBentoCardLoadResult) {
   return !Array.isArray(loadResult) && Boolean(loadResult.isDefault)
-}
-
-function getStarterCards(loadResult: ProfileBentoCardLoadResult) {
-  return Array.isArray(loadResult) ? [] : loadResult.starterCards || []
 }
 
 function serializeCards(cards: ProfileBentoCard[]) {

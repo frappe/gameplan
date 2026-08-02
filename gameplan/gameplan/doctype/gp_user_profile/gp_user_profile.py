@@ -250,7 +250,7 @@ def get_list(
 def get_my_bento_cards():
 	profile = get_session_user_profile()
 	profile.check_permission("read")
-	return get_profile_bento_response(profile, include_starter_cards=True)
+	return get_profile_bento_response(profile)
 
 
 @frappe.whitelist(methods=["POST"])
@@ -288,16 +288,13 @@ def get_profile_bento_cards(profile):
 	return [card for card in cards if card is not None]
 
 
-def get_profile_bento_response(profile, include_starter_cards=False):
+def get_profile_bento_response(profile):
 	is_default = not profile.layout_customized
-	response = {
+	return {
 		"profile": profile.name,
 		"cards": get_profile_bento_default_cards(profile) if is_default else get_profile_bento_cards(profile),
 		"is_default": is_default,
 	}
-	if include_starter_cards and is_default:
-		response["starter_cards"] = get_profile_bento_starter_cards(profile)
-	return response
 
 
 def check_profile_bento_save_permission(profile):
@@ -511,10 +508,6 @@ def default_bound_image_position(profile, field):
 		# stored row round-trip to the same value.
 		return min(100, max(0, int(profile.cover_image_position)))
 	return PROFILE_BENTO_DEFAULT_IMAGE_POSITION
-
-
-def get_profile_bento_starter_cards(profile):
-	return get_profile_bento_default_cards(profile)
 
 
 def require_card_value(value, label):

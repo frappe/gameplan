@@ -162,20 +162,20 @@ class TestProfiles(GameplanTestCase):
 		self.assertTrue(response["is_default"])
 		self.assertEqual([card["id"] for card in response["cards"]], ["avatar", "full-name"])
 
-	def test_starter_bento_cards_use_title_case_select_values(self):
+	def test_default_bento_cards_use_title_case_select_values(self):
 		frappe.set_user(self.alice.name)
 		fill_profile(self.alice.name)
 
 		response = get_my_bento_cards()
-		card_types = [card["type"] for card in response["starter_cards"]]
-		card_sizes = [card["size"] for card in response["starter_cards"]]
-		rendering_values = [card["imageRendering"] for card in response["starter_cards"] if card.get("image")]
+		card_types = [card["type"] for card in response["cards"]]
+		card_sizes = [card["size"] for card in response["cards"]]
+		rendering_values = [card["imageRendering"] for card in response["cards"] if card.get("image")]
 
 		self.assertEqual(card_types, ["Card"] * 5)
 		self.assertEqual(card_sizes, ["4x1", "1x1", "1x1", "2x1", "4x2"])
 		self.assertEqual(rendering_values, ["Cover", "Cover"])
 
-	def test_starter_bento_cards_skip_missing_images(self):
+	def test_default_bento_cards_skip_missing_images(self):
 		frappe.set_user(self.alice.name)
 		profile = get_profile(self.alice.name)
 		profile.image = "/files/avatar.png"
@@ -185,16 +185,16 @@ class TestProfiles(GameplanTestCase):
 
 		self.assertTrue(response["is_default"])
 		self.assertEqual(
-			[card["id"] for card in response["starter_cards"]],
+			[card["id"] for card in response["cards"]],
 			["avatar", "full-name"],
 		)
 
-	def test_first_bento_save_persists_starter_cards(self):
+	def test_first_bento_save_persists_the_default_layout(self):
 		frappe.set_user(self.alice.name)
 		fill_profile(self.alice.name)
 
 		default_response = get_my_bento_cards()
-		save_response = save_my_bento_cards(default_response["starter_cards"])
+		save_response = save_my_bento_cards(default_response["cards"])
 		profile = get_profile(self.alice.name)
 
 		self.assertFalse(save_response["is_default"])
@@ -207,7 +207,7 @@ class TestProfiles(GameplanTestCase):
 	def test_saved_bento_cards_follow_later_profile_edits(self):
 		frappe.set_user(self.alice.name)
 		fill_profile(self.alice.name)
-		save_my_bento_cards(get_my_bento_cards()["starter_cards"])
+		save_my_bento_cards(get_my_bento_cards()["cards"])
 
 		profile = get_profile(self.alice.name)
 		profile.bio = "Updated profile bio"
@@ -222,7 +222,7 @@ class TestProfiles(GameplanTestCase):
 	def test_saved_bound_card_disappears_when_its_field_is_cleared(self):
 		frappe.set_user(self.alice.name)
 		fill_profile(self.alice.name)
-		save_my_bento_cards(get_my_bento_cards()["starter_cards"])
+		save_my_bento_cards(get_my_bento_cards()["cards"])
 
 		profile = get_profile(self.alice.name)
 		profile.bio = None
@@ -238,7 +238,7 @@ class TestProfiles(GameplanTestCase):
 		fill_profile(self.alice.name)
 
 		default_response = get_my_bento_cards()
-		save_my_bento_cards(default_response["starter_cards"])
+		save_my_bento_cards(default_response["cards"])
 		saved_response = get_my_bento_cards()
 
 		self.assertTrue(default_response["is_default"])
@@ -254,6 +254,18 @@ class TestProfiles(GameplanTestCase):
 		self.assertTrue(response["is_default"])
 		self.assertEqual([card["id"] for card in response["cards"]], ["full-name"])
 		self.assertNotIn("starter_cards", response)
+
+	def test_bento_response_never_carries_starter_cards(self):
+		"""`cards` is the layout, default or saved. There is no separate seed list."""
+		frappe.set_user(self.alice.name)
+		fill_profile(self.alice.name)
+
+		default_response = get_my_bento_cards()
+		saved_response = save_my_bento_cards(default_response["cards"])
+
+		self.assertNotIn("starter_cards", default_response)
+		self.assertNotIn("starter_cards", saved_response)
+		self.assertNotIn("starter_cards", get_my_bento_cards())
 
 	def test_bound_bio_card_keeps_the_full_bio_while_custom_text_is_capped(self):
 		frappe.set_user(self.alice.name)
@@ -304,7 +316,7 @@ class TestProfiles(GameplanTestCase):
 		"""Both read paths must land on the same position after a reposition."""
 		frappe.set_user(self.alice.name)
 		fill_profile(self.alice.name)
-		save_my_bento_cards(get_my_bento_cards()["starter_cards"])
+		save_my_bento_cards(get_my_bento_cards()["cards"])
 
 		get_profile(self.alice.name).set_cover_image_position(80)
 

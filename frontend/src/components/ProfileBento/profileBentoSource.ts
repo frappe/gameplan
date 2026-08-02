@@ -8,8 +8,8 @@ import type {
 interface ProfileBentoResponse {
   profile: string
   cards: ProfileBentoCard[]
+  /** False once a layout has been saved; `cards` is then the stored rows. */
   is_default: boolean
-  starter_cards?: ProfileBentoCard[]
 }
 
 const getBentoCardsMethod =
@@ -44,6 +44,5 @@ function getLoadResultFromResponse(
   return {
     cards: response.cards || [],
     isDefault: response.is_default,
-    starterCards: response.starter_cards || [],
   }
 }

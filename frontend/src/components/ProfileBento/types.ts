@@ -42,14 +42,61 @@ export interface ProfileFieldEditor {
   save: (update: ProfileFieldUpdate) => Promise<void>
 }
 
-/** Bound fields a card can edit in place. */
-export const profileEditableFields = [
-  'cover_image',
-  'image',
-  'full_name',
-  'bio',
-  'readme',
-] as const
+/** A profile field a bento card can bind to. */
+export type ProfileBoundField = 'cover_image' | 'image' | 'full_name' | 'bio' | 'readme'
+
+export interface ProfileBoundFieldSpec {
+  field: ProfileBoundField
+  /** Card id the default layout uses for this field. */
+  id: string
+  size: ProfileCardSize
+  title: string
+  format: ProfileCardFormat
+}
+
+/**
+ * Mirrors `PROFILE_BENTO_BOUND_FIELDS` in `gp_user_profile.py`, in the same
+ * order — the order the computed default lays the cards out in. The customize
+ * checklist adds a card straight from this table, so the two must stay in step;
+ * the server re-derives everything but size, title and url on read anyway.
+ */
+export const profileBoundFields: ProfileBoundFieldSpec[] = [
+  {
+    field: 'cover_image',
+    id: 'cover',
+    size: '4x1',
+    title: 'Cover image',
+    format: 'image',
+  },
+  {
+    field: 'image',
+    id: 'avatar',
+    size: '1x1',
+    title: 'Avatar',
+    format: 'image',
+  },
+  {
+    field: 'full_name',
+    id: 'full-name',
+    size: '1x1',
+    title: 'Full name',
+    format: 'text',
+  },
+  {
+    field: 'bio',
+    id: 'bio',
+    size: '2x1',
+    title: 'Bio',
+    format: 'text',
+  },
+  {
+    field: 'readme',
+    id: 'about',
+    size: '4x2',
+    title: 'About',
+    format: 'html',
+  },
+]
 
 export const profileBioLimit = 280
 

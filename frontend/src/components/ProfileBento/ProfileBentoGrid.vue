@@ -30,6 +30,7 @@
         :dragging="draggingCardId === card.id"
         :selected="selectedCardId === card.id"
         :interactive="interactive"
+        :editor="interactive"
         :repositioning="repositioningCardId === card.id"
         :show-size="showSize"
         :can-expand="canExpand(card)"
@@ -67,7 +68,12 @@
       :animate="{ scale: 1.03, opacity: 0.96 }"
       :transition="floatingTransition"
     >
-      <ProfileBentoCard :card="draggingCard" :interactive="false" :show-size="showSize" />
+      <ProfileBentoCard
+        :card="draggingCard"
+        :interactive="false"
+        :editor="interactive"
+        :show-size="showSize"
+      />
     </motion.div>
   </Teleport>
 </template>

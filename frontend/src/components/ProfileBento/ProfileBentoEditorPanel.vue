@@ -1,6 +1,46 @@
 <template>
   <aside class="hidden w-[320px] shrink-0 lg:block">
     <div class="sticky top-5 space-y-4">
+      <!-- The checklist is always here, and holds no state of its own: a row is
+           ticked exactly when a card bound to that field is in the layout, so
+           removing the card in the grid unticks the row. -->
+      <div
+        class="rounded-lg border border-outline-gray-2 bg-surface-base p-5"
+        data-profile-info-checklist
+        data-profile-keep-selection
+      >
+        <h2 class="text-base font-medium text-ink-gray-9">Profile info</h2>
+        <p class="mt-1 text-sm leading-5 text-ink-gray-5">
+          Pick what your profile page shows. Each card stays in sync with your profile.
+        </p>
+        <!-- `Checkbox` is `inline-flex`, so the rows need an explicit column. -->
+        <div class="mt-4 flex flex-col items-start gap-3">
+          <Checkbox
+            v-for="boundField in profileBoundFields"
+            :key="boundField.field"
+            :label="boundField.title"
+            :model-value="boundFields.has(boundField.field)"
+            :data-profile-bound-field="boundField.field"
+            @update:model-value="toggleBoundField(boundField.field, $event)"
+          />
+        </div>
+        <p
+          v-if="isEmptyLayout"
+          class="mt-4 border-t border-outline-gray-2 pt-3 text-sm leading-5 text-ink-gray-6"
+          data-profile-empty-layout-notice
+        >
+          Nothing is selected, so your profile page will be empty.
+        </p>
+        <p
+          v-if="isDefaultLayout"
+          class="mt-4 border-t border-outline-gray-2 pt-3 text-sm leading-5 text-ink-gray-6"
+          data-profile-default-layout-notice
+        >
+          This is the default layout. Once you save, your profile keeps the layout you saved and
+          stops following changes to the default.
+        </p>
+      </div>
+
       <div
         v-if="card"
         class="rounded-lg border border-outline-gray-2 bg-surface-base p-5"
@@ -13,6 +53,11 @@
         </div>
 
         <div class="mt-4 space-y-3">
+          <p v-if="isBoundCard" class="text-sm leading-5 text-ink-gray-5">
+            This card shows your {{ boundFieldTitle }} straight from your profile. Change the value
+            on your profile page or in Settings — it is never stored on the card.
+          </p>
+
           <TextInput
             v-if="card.type !== 'Blank'"
             label="Title"
@@ -22,7 +67,7 @@
           >
           </TextInput>
           <Textarea
-            v-if="isContentCard"
+            v-if="isCustomContentCard"
             label="Text"
             class="w-full"
             :rows="4"
@@ -69,7 +114,7 @@
                 Reposition
               </Button>
             </div>
-            <div class="flex items-center justify-between gap-3">
+            <div v-if="isCustomContentCard" class="flex items-center justify-between gap-3">
               <div class="space-y-1.5">
                 <FormLabel label="Image" size="md" />
                 <FileUploader
@@ -103,7 +148,7 @@
 
       <div
         v-else
-        class="flex min-h-40 flex-col items-start justify-center gap-4 rounded-lg border border-dashed border-outline-gray-2 p-5 text-left"
+        class="flex flex-col items-start gap-4 rounded-lg border border-dashed border-outline-gray-2 p-5 text-left"
       >
         <div class="space-y-1">
           <div class="text-base font-medium text-ink-gray-7">Build with cards</div>
@@ -126,6 +171,7 @@
 import { computed } from 'vue'
 import {
   Button,
+  Checkbox,
   ErrorMessage,
   FileUploader,
   FormLabel,
@@ -134,9 +180,11 @@ import {
   TextInput,
 } from 'frappe-ui'
 import {
+  profileBoundFields,
   profileCardSizes,
   profileImageRenderingOptions,
   type ProfileBentoCard,
+  type ProfileBoundField,
   type ProfileCardSize,
   type ProfileCardType,
   type ProfileImageRendering,
@@ -149,12 +197,19 @@ interface UploadedFile {
 const props = defineProps<{
   card?: ProfileBentoCard
   textCharactersLeft: number
+  /** Bound fields present in the layout. The checklist reads its ticks from this. */
+  boundFields: Set<ProfileBoundField>
+  /** True while the layout is still the computed default (nothing saved yet). */
+  isDefaultLayout?: boolean
+  /** True when the layout has no cards at all. */
+  isEmptyLayout?: boolean
 }>()
 
 const emit = defineEmits<{
   addCard: [type: ProfileCardType]
   remove: []
   repositionImage: []
+  toggleBoundField: [field: ProfileBoundField, ticked: boolean]
   uploadImage: [fileUrl: string]
   updateImageRendering: [value: ProfileImageRendering]
   updateSize: [value: ProfileCardSize]
@@ -163,13 +218,25 @@ const emit = defineEmits<{
   updateUrl: [value: string]
 }>()
 
-const editorLabelClass = 'text-base text-ink-gray-5'
 const profileCardSizeButtons = profileCardSizes.map((size) => ({ label: size }))
 const isContentCard = computed(() => {
   return Boolean(props.card) && props.card?.type !== 'Blank'
 })
+const isBoundCard = computed(() => {
+  return isContentCard.value && props.card?.source === 'field'
+})
+/**
+ * A bound card's text and image come from the profile and are discarded on save,
+ * so it gets no text box and no image upload — only layout controls.
+ */
+const isCustomContentCard = computed(() => isContentCard.value && !isBoundCard.value)
+const boundFieldTitle = computed(() => {
+  let spec = profileBoundFields.find((boundField) => boundField.field === props.card?.field)
+  return (spec?.title || props.card?.title || 'profile info').toLowerCase()
+})
 const cardTypeLabel = computed(() => {
-  return props.card?.type === 'Blank' ? 'Blank card' : 'Profile card'
+  if (props.card?.type === 'Blank') return 'Blank card'
+  return isBoundCard.value ? 'Profile info card' : 'Profile card'
 })
 const hasImage = computed(() => {
   return isContentCard.value && Boolean(props.card?.image)
@@ -180,6 +247,10 @@ const canRepositionImage = computed(() => {
 const imageUploadButtonLabel = computed(() => {
   return hasImage.value ? 'Change image' : 'Upload'
 })
+
+function toggleBoundField(field: ProfileBoundField, ticked: unknown) {
+  emit('toggleBoundField', field, Boolean(ticked))
+}
 
 function updateImage(file: UploadedFile) {
   emit('uploadImage', file.file_url)

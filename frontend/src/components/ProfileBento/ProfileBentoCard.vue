@@ -31,6 +31,17 @@
     <div v-if="card.type === 'Blank'" class="h-full" />
 
     <div
+      v-else-if="showBoundEmptyPlaceholder"
+      class="flex flex-col justify-center p-3 sm:p-4"
+      :class="flow ? 'min-h-[6.5rem]' : 'h-full'"
+      data-profile-card-empty
+    >
+      <p class="text-sm font-medium leading-snug text-ink-gray-4 sm:text-base">
+        {{ card.title }} — empty
+      </p>
+    </div>
+
+    <div
       v-else-if="showHtmlLayout"
       class="relative overflow-hidden"
       :class="flow ? '' : 'h-full'"
@@ -288,6 +299,12 @@ const props = defineProps<{
   card: ProfileBentoCard
   selected?: boolean
   interactive?: boolean
+  /**
+   * Rendered inside the customize editor. Kept separate from `interactive`,
+   * which controls interaction (drag, select, remove) and is off for the drag
+   * ghost — the ghost still has to look like the tile it was lifted from.
+   */
+  editor?: boolean
   draggable?: boolean
   dragging?: boolean
   repositioning?: boolean
@@ -398,6 +415,11 @@ const cardChromeClass = computed(() => {
       ? 'border border-outline-gray-4 ring-2 ring-outline-gray-2'
       : 'border border-transparent hover:bg-surface-gray-2'
   }
+  if (showBoundEmptyPlaceholder.value) {
+    return props.selected
+      ? 'border border-dashed border-outline-gray-4 ring-2 ring-outline-gray-2'
+      : 'border border-dashed border-outline-gray-3 hover:border-outline-gray-4'
+  }
   if (showImageLayout.value) {
     if (!imageUrl.value && !props.selected) return 'border border-outline-gray-2'
     return props.selected
@@ -429,17 +451,32 @@ const cardTypeLabel = computed(() => {
   return props.card.type === 'Blank' ? 'blank' : 'profile'
 })
 
+/**
+ * Intentional, editor-only divergence from the profile page.
+ *
+ * A bound card whose profile field is empty is dropped from the layout entirely
+ * on the profile page — no placeholder, identically for the owner and a visitor
+ * (see `get_profile_bento_cards`). But a field ticked in the customize checklist
+ * still needs a tile the user can select, resize and drag, so the editor shows a
+ * muted placeholder for it — and only the editor.
+ */
+const showBoundEmptyPlaceholder = computed(() => {
+  if (!props.editor || props.card.type === 'Blank') return false
+  return props.card.source === 'field' && !props.card.text && !props.card.image
+})
+
 const showHtmlLayout = computed(() => {
+  if (showBoundEmptyPlaceholder.value) return false
   return props.card.type !== 'Blank' && props.card.format === 'html'
 })
 
 const showImageLayout = computed(() => {
-  if (showHtmlLayout.value) return false
+  if (showHtmlLayout.value || showBoundEmptyPlaceholder.value) return false
   return props.card.type === 'Image' || Boolean(imageUrl.value)
 })
 
 const showTextLayout = computed(() => {
-  return !showImageLayout.value && !showHtmlLayout.value
+  return !showImageLayout.value && !showHtmlLayout.value && !showBoundEmptyPlaceholder.value
 })
 
 const rootStyle = computed(() => {

@@ -3,7 +3,7 @@
     <PageHeader>
       <Breadcrumbs class="h-7" :items="profileCustomizeBreadcrumbs" />
       <div
-        v-if="showProfileBuilder"
+        v-if="!isLoadingDraft"
         class="flex shrink-0 items-center gap-2"
         data-profile-keep-selection
       >
@@ -34,28 +34,6 @@
       Loading profile page...
     </div>
 
-    <div
-      v-else-if="!showProfileBuilder"
-      class="mx-auto flex min-h-[520px] w-full max-w-[720px] items-center px-4 py-12 sm:px-6"
-    >
-      <div class="space-y-5">
-        <div class="space-y-2">
-          <p class="text-sm font-medium text-ink-gray-5">Profile page setup</p>
-          <h1 class="text-3xl font-semibold text-ink-gray-9">Build your profile page</h1>
-          <p class="max-w-[560px] text-base leading-7 text-ink-gray-6">
-            Start from your name, bio, avatar, and cover photo. Nothing appears on your profile page
-            until you save it.
-          </p>
-        </div>
-        <div class="flex flex-wrap gap-2">
-          <Button variant="solid" icon-left="lucide-sparkles" @click="startProfileBuilder">
-            Start with basics
-          </Button>
-          <Button :route="profileRoute">Back to profile</Button>
-        </div>
-      </div>
-    </div>
-
     <div v-else class="mx-auto flex w-full max-w-[1180px] gap-6 px-4 pb-32 pt-6 sm:px-6 sm:pb-40">
       <main class="min-w-0 flex-1">
         <ProfileBentoGrid
@@ -76,8 +54,12 @@
       <ProfileBentoEditorPanel
         :card="selectedCard"
         :text-characters-left="selectedTextCharactersLeft"
+        :bound-fields="boundFieldsInDraft"
+        :is-default-layout="isDefaultLayout"
+        :is-empty-layout="cards.length === 0"
         @add-card="addCard"
         @reposition-image="beginImageReposition"
+        @toggle-bound-field="toggleBoundField"
         @upload-image="updateSelectedImage"
         @update-image-rendering="(imageRendering) => updateSelectedCard({ imageRendering })"
         @update-size="(size) => updateSelectedCard({ size })"
@@ -92,13 +74,15 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useEventListener } from '@vueuse/core'
-import { PageHeader, Breadcrumbs, Button, toast, usePageMeta } from 'frappe-ui'
+import { PageHeader, Breadcrumbs, Button, toast, useDoc, usePageMeta } from 'frappe-ui'
 import ProfileBentoEditorPanel from '@/components/ProfileBento/ProfileBentoEditorPanel.vue'
 import ProfileBentoGrid from '@/components/ProfileBento/ProfileBentoGrid.vue'
 import { createServerProfileBentoSource } from '@/components/ProfileBento/profileBentoSource'
+import { resolveProfileBoundValues } from '@/components/ProfileBento/profileBoundValues'
 import { profileCardTypeOptions } from '@/components/ProfileBento/types'
 import { useProfileBentoCustomization } from '@/components/ProfileBento/useProfileBentoCustomization'
 import { useSessionUser } from '@/data/users'
+import type { GPUserProfile } from '@/types/doctypes'
 
 const sessionUser = useSessionUser()
 const profileCustomizeBreadcrumbs = computed(() => [
@@ -112,22 +96,32 @@ const profileCustomizeBreadcrumbs = computed(() => [
   { label: 'Customize', route: { name: 'ProfileCustomize' }, isPageTitle: true },
 ])
 
+/**
+ * The owner's profile, read only so that ticking a field in the checklist can
+ * preview the card's real value. The server still resolves every bound card on
+ * read; nothing here is ever saved onto the layout.
+ */
+const profileResource = useDoc<GPUserProfile>({
+  doctype: 'GP User Profile',
+  name: () => sessionUser.user_profile || '',
+})
+
 const profileBentoSource = createServerProfileBentoSource()
 const isLoadingDraft = ref(true)
-const hasStartedProfileBuilder = ref(false)
 const repositioningCardId = ref('')
 const {
   cards,
+  boundFieldsInDraft,
   selectedCardId,
   selectedCard,
   selectedTextCharactersLeft,
-  isNewProfilePage,
+  isDefaultLayout,
   isDirty,
   isSaving,
   loadDraft,
   saveDraft,
-  startWithStarterCards,
   addCard,
+  toggleBoundField,
   reorderCards,
   removeCard,
   removeSelectedCard,
@@ -135,14 +129,9 @@ const {
   updateSelectedImage,
   setCardImage,
   updateSelectedText,
-} = useProfileBentoCustomization(profileBentoSource)
-
-const profileRoute = computed(() =>
-  sessionUser.user_profile
-    ? { name: 'PersonProfileProfile', params: { personId: sessionUser.user_profile } }
-    : { name: 'People' },
-)
-const showProfileBuilder = computed(() => !isNewProfilePage.value || hasStartedProfileBuilder.value)
+} = useProfileBentoCustomization(profileBentoSource, {
+  boundValues: () => resolveProfileBoundValues(profileResource.doc),
+})
 
 onMounted(loadProfileBentoDraft)
 useEventListener(window, 'keydown', handleCustomizeKeydown)
@@ -160,11 +149,6 @@ async function loadProfileBentoDraft() {
   } finally {
     isLoadingDraft.value = false
   }
-}
-
-function startProfileBuilder() {
-  startWithStarterCards()
-  hasStartedProfileBuilder.value = true
 }
 
 function handleCustomizeKeydown(event: KeyboardEvent) {
