@@ -91,7 +91,7 @@ describe('Profile bento cards', () => {
     cy.request('POST', `/api/method/${bentoMethod}.get_my_bento_cards`)
       .then(({ body }) =>
         cy.request('POST', `/api/method/${bentoMethod}.save_my_bento_cards`, {
-          cards: body.message.starter_cards,
+          cards: body.message.cards,
         }),
       )
       .then(({ body }) => {
