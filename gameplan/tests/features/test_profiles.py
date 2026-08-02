@@ -287,6 +287,50 @@ class TestProfiles(GameplanTestCase):
 		self.assertFalse(response["is_default"])
 		self.assertEqual(response["cards"], [])
 
+	def test_cover_reposition_moves_the_computed_default(self):
+		"""With no saved layout the cover's position comes from the profile field."""
+		frappe.set_user(self.alice.name)
+		fill_profile(self.alice.name)
+
+		get_profile(self.alice.name).set_cover_image_position(80)
+
+		response = get_my_bento_cards()
+		cover_card = next(card for card in response["cards"] if card["id"] == "cover")
+		self.assertTrue(response["is_default"])
+		self.assertEqual(cover_card["imagePosition"], 80)
+		self.assertFalse(get_profile(self.alice.name).layout_customized)
+
+	def test_cover_reposition_moves_a_saved_layout_and_the_profile_field(self):
+		"""Both read paths must land on the same position after a reposition."""
+		frappe.set_user(self.alice.name)
+		fill_profile(self.alice.name)
+		save_my_bento_cards(get_my_bento_cards()["starter_cards"])
+
+		get_profile(self.alice.name).set_cover_image_position(80)
+
+		profile = get_profile(self.alice.name)
+		cover_row = next(row for row in profile.bento_cards if row.field == "cover_image")
+		self.assertEqual(cover_row.image_position, 80)
+		self.assertEqual(int(profile.cover_image_position), 80)
+
+		cover_card = next(card for card in get_my_bento_cards()["cards"] if card["id"] == "cover")
+		self.assertEqual(cover_card["imagePosition"], 80)
+
+	def test_cover_reposition_clamps_out_of_range_values(self):
+		frappe.set_user(self.alice.name)
+		fill_profile(self.alice.name)
+
+		get_profile(self.alice.name).set_cover_image_position(140)
+
+		self.assertEqual(int(get_profile(self.alice.name).cover_image_position), 100)
+
+	def test_member_cannot_reposition_another_profiles_cover(self):
+		alice_profile = get_profile(self.alice.name)
+		frappe.set_user(self.bob.name)
+
+		with self.assertRaises(frappe.PermissionError):
+			alice_profile.set_cover_image_position(80)
+
 	def test_bound_bento_cards_reject_a_duplicate_field(self):
 		frappe.set_user(self.alice.name)
 

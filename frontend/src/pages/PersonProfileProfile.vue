@@ -7,14 +7,14 @@
       <Skeleton class="aspect-square rounded-xl sm:col-span-1" />
       <Skeleton class="aspect-[2/1] rounded-xl sm:col-span-2" />
     </div>
-    <ProfileBentoGrid v-else :cards="bentoCards" />
+    <ProfileBentoGrid v-else :cards="bentoCards" :field-editor="fieldEditor" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { Skeleton } from 'frappe-ui'
 import ProfileBentoGrid from '@/components/ProfileBento/ProfileBentoGrid.vue'
-import type { ProfileBentoCard } from '@/components/ProfileBento/types'
+import type { ProfileBentoCard, ProfileFieldEditor } from '@/components/ProfileBento/types'
 import type { GPUserProfile } from '@/types/doctypes'
 
 defineOptions({
@@ -28,5 +28,7 @@ defineProps<{
   bentoCards: ProfileBentoCard[]
   bentoCardsLoaded: boolean
   isOwnProfile: boolean
+  /** Set only when the viewer owns this profile; enables inline card editing. */
+  fieldEditor?: ProfileFieldEditor
 }>()
 </script>

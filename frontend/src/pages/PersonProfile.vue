@@ -33,21 +33,20 @@
         </Button>
       </div>
 
-      <router-view
-        :profile="profileChildResource"
-        :bento-cards="profileBentoCards"
-        :bento-cards-loaded="profileBentoLoaded"
-        :is-own-profile="isOwnProfile"
-      />
+      <router-view v-bind="routeProps" />
     </div>
   </div>
+
+  <NotFound v-else-if="profileNotFound" />
 </template>
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { PageHeader, Breadcrumbs, Button, TabButtons, useDoc, usePageMeta } from 'frappe-ui'
+import NotFound from '@/pages/NotFound.vue'
 import { showSettingsDialog } from '@/components/Settings'
 import { getProfileBentoCards } from '@/components/ProfileBento/profileBentoSource'
+import { useProfileFieldEditing } from '@/components/ProfileBento/useProfileFieldEditing'
 import type { ProfileBentoCard } from '@/components/ProfileBento/types'
 import { useSessionUser } from '@/data/users'
 import type { GPUserProfile } from '@/types/doctypes'
@@ -60,6 +59,11 @@ const props = defineProps<{
   personId: string
 }>()
 
+interface ProfileMethods {
+  setImage: (data: { image: string | null }) => void
+  setCoverImagePosition: (data: { position: number }) => void
+}
+
 const route = useRoute()
 const router = useRouter()
 const sessionUser = useSessionUser()
@@ -67,9 +71,13 @@ const personId = computed(() => {
   return props.personId || route.params.personId?.toString() || 'missing-profile'
 })
 
-const profileResource = useDoc<GPUserProfile>({
+const profileResource = useDoc<GPUserProfile, ProfileMethods>({
   doctype: 'GP User Profile',
   name: personId,
+  methods: {
+    setImage: 'set_image',
+    setCoverImagePosition: 'set_cover_image_position',
+  },
 })
 
 const profile = computed(() => profileResource.doc)
@@ -78,11 +86,23 @@ const profileChildResource = computed(() => ({
   doc: profile.value,
 }))
 const isOwnProfile = computed(() => profile.value?.user === sessionUser.name)
+// A profile that never loaded used to render an empty page; show the not-found
+// state instead. `isFinished` keeps the first paint on the loading branch.
+const profileNotFound = computed(() => {
+  return !profile.value && (Boolean(profileResource.error) || profileResource.isFinished)
+})
 
 const profileBentoCards = ref<ProfileBentoCard[]>([])
 const profileBentoLoaded = ref(false)
 let profileBentoLoadId = 0
 let loadedProfileBentoName = ''
+
+const fieldEditor = useProfileFieldEditing({
+  profile: profileResource,
+  userId: () => (isOwnProfile.value && profile.value?.user) || '',
+  enabled: () => isOwnProfile.value,
+  onSaved: refreshProfile,
+})
 
 const profileBreadcrumbs = computed(() => [
   { label: 'People', route: { name: 'People' } },
@@ -92,6 +112,22 @@ const profileBreadcrumbs = computed(() => [
     isPageTitle: true,
   },
 ])
+
+/**
+ * Only the Profile tab takes the bento props. Posts and Replies render a single
+ * root element, so anything they do not declare would land on it as an attribute.
+ */
+const routeProps = computed(() => {
+  let baseProps = { profile: profileChildResource.value }
+  if (route.name !== 'PersonProfileProfile') return baseProps
+  return {
+    ...baseProps,
+    bentoCards: profileBentoCards.value,
+    bentoCardsLoaded: profileBentoLoaded.value,
+    isOwnProfile: isOwnProfile.value,
+    fieldEditor: fieldEditor.value,
+  }
+})
 
 const activeTab = computed({
   get() {
@@ -141,6 +177,15 @@ async function loadProfileBentoCards(profileName?: string) {
     profileBentoCards.value = loadResult.cards
     profileBentoLoaded.value = true
   }
+}
+
+/**
+ * Bound cards resolve their value on the server, so an inline edit is only
+ * visible once the cards are read again. The profile doc comes along for the
+ * header and for fields written through `User` rather than the profile.
+ */
+async function refreshProfile() {
+  await Promise.all([profileResource.reload(), loadProfileBentoCards(profile.value?.name)])
 }
 
 usePageMeta(() => {

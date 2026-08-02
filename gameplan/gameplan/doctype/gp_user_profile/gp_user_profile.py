@@ -66,6 +66,31 @@ class GPUserProfile(HasAttachments, Document):
 		notify_users_changed()
 
 	@frappe.whitelist(methods=["POST"])
+	def set_cover_image_position(self, position):
+		"""Reposition the cover from the profile page.
+
+		The cover is read back from two places: the computed default seeds
+		`imagePosition` from `cover_image_position`, while a saved layout stores it on
+		the bound row. Writing both keeps them in agreement whatever
+		`layout_customized` says, and avoids re-posting the whole layout just to nudge
+		one image (which would drop the rows of bound fields that are currently empty,
+		because the read path omits them).
+		"""
+		check_profile_bento_save_permission(self)
+
+		position = optional_int_range(position, 0, 100, "Image position")
+		if position is None:
+			frappe.throw("Image position is required")
+
+		self.cover_image_position = position
+		for row in self.get("bento_cards"):
+			if row.get("source") == "field" and row.get("field") == "cover_image":
+				row.image_position = position
+		self.save(ignore_permissions=True)
+
+		return {"cover_image_position": self.cover_image_position}
+
+	@frappe.whitelist(methods=["POST"])
 	def change_user_role(self, role):
 		require_admin()
 

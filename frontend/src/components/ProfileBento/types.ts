@@ -22,6 +22,37 @@ export interface ProfileBentoCard {
   format?: ProfileCardFormat
 }
 
+/** A write a bound card can ask for. Each one targets a profile (or User) field. */
+export type ProfileFieldUpdate =
+  | { field: 'bio' | 'readme'; value: string }
+  | { field: 'image' | 'cover_image'; value: string }
+  | { field: 'cover_image_position'; value: number }
+  | { field: 'full_name'; firstName: string; lastName: string }
+
+/**
+ * Inline editing of bound cards, supplied by the profile page when the viewer
+ * owns the profile. Deliberately separate from the grid's `interactive` prop,
+ * which means "customize page" (drag to reorder, card selection).
+ */
+export interface ProfileFieldEditor {
+  /** `User.first_name` / `User.last_name`, for the two-input full-name editor. */
+  firstName: string
+  lastName: string
+  /** Rejects when the write fails; the caller keeps the draft and shows the error. */
+  save: (update: ProfileFieldUpdate) => Promise<void>
+}
+
+/** Bound fields a card can edit in place. */
+export const profileEditableFields = [
+  'cover_image',
+  'image',
+  'full_name',
+  'bio',
+  'readme',
+] as const
+
+export const profileBioLimit = 280
+
 export const profileCardSizes: ProfileCardSize[] = ['1x1', '1x2', '2x1', '2x2', '4x1', '4x2']
 export const profileImageRenderingOptions: Array<{
   label: string

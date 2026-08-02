@@ -36,6 +36,13 @@ export const defaultProfileBentoColumns = 4
  */
 export const profileBentoFlowCollapsedHeight = 240
 
+/**
+ * Ceiling for an image card in the flow layout. A full-width square (1x1) is
+ * inside the portrait aspect cap but still fills a phone screen, so the height
+ * needs its own limit.
+ */
+export const profileBentoFlowImageMaxHeight = 320
+
 export function createProfileBentoLayout(
   items: ProfileBentoLayoutItem[],
   containerWidth: number,

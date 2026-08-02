@@ -7,9 +7,11 @@
       :card="card"
       :can-expand="canExpand(card)"
       :expanded="expandedCardIds.has(card.id)"
+      :field-editor="fieldEditor"
       :show-size="showSize"
       @toggle-expanded="toggleExpanded(card.id)"
       @update:content-height="setCardContentHeight(card.id, $event)"
+      @update:editing="setCardEditing(card.id, $event)"
     />
   </div>
 
@@ -32,6 +34,7 @@
         :show-size="showSize"
         :can-expand="canExpand(card)"
         :expanded="expandedCardIds.has(card.id)"
+        :field-editor="fieldEditor"
         @cancel-image-reposition="$emit('cancelImageReposition')"
         @pointer-down="startPointerDrag(card.id, $event)"
         @remove="$emit('remove', card.id)"
@@ -39,6 +42,7 @@
         @select="$emit('select', card.id)"
         @toggle-expanded="toggleExpanded(card.id)"
         @update:content-height="setCardContentHeight(card.id, $event)"
+        @update:editing="setCardEditing(card.id, $event)"
         @upload-image="$emit('uploadImage', { cardId: card.id, fileUrl: $event })"
       />
     </motion.div>
@@ -83,7 +87,7 @@ import {
   profileBentoRowsForHeight,
   type ProfileBentoLayoutRect,
 } from './profileBentoLayout'
-import type { ProfileBentoCard as ProfileBentoCardType } from './types'
+import type { ProfileBentoCard as ProfileBentoCardType, ProfileFieldEditor } from './types'
 
 const props = defineProps<{
   cards: ProfileBentoCardType[]
@@ -91,6 +95,8 @@ const props = defineProps<{
   interactive?: boolean
   repositioningCardId?: string
   showSize?: boolean
+  /** Owner-only inline editing of bound cards. Unrelated to `interactive`. */
+  fieldEditor?: ProfileFieldEditor
 }>()
 
 const emit = defineEmits<{
@@ -117,6 +123,7 @@ const pendingDragCardId = ref('')
 const gridElement = ref<HTMLElement | null>(null)
 const { width: gridWidth } = useElementSize(gridElement)
 const expandedCardIds = ref(new Set<string>())
+const editingCardIds = ref(new Set<string>())
 const cardContentHeights = ref<Record<string, number>>({})
 
 // Below `sm` the packer is bypassed entirely: four columns of absolutely
@@ -166,8 +173,10 @@ const packedLayout = computed(() => {
  * original layout. The cost is up to one cell of slack under the last line.
  */
 function expandedRowSpan(card: ProfileBentoCardType) {
-  if (!expandedCardIds.value.has(card.id) || !canExpand(card)) return undefined
-  let height = cardContentHeights.value[card.id] + expandedToggleHeight
+  if (card.format !== 'html' || !expandedCardIds.value.has(card.id)) return undefined
+  let height = cardContentHeights.value[card.id] || 0
+  // No room to reserve for the toggle while editing: it is hidden then.
+  if (!editingCardIds.value.has(card.id)) height += expandedToggleHeight
   return profileBentoRowsForHeight(height, cellSize.value, gridGap)
 }
 
@@ -178,6 +187,9 @@ function collapsedHeight(card: ProfileBentoCardType) {
 
 function canExpand(card: ProfileBentoCardType) {
   if (card.format !== 'html') return false
+  // While editing the card is already grown, and a "Read more" control on top of
+  // an open editor is meaningless.
+  if (editingCardIds.value.has(card.id)) return false
   let contentHeight = cardContentHeights.value[card.id] || 0
   // A couple of pixels of sub-pixel rounding is not "more to read".
   return contentHeight > collapsedHeight(card) + 4
@@ -188,6 +200,20 @@ function toggleExpanded(cardId: string) {
     expandedCardIds.value.delete(cardId)
   } else {
     expandedCardIds.value.add(cardId)
+  }
+}
+
+/**
+ * An open editor decides its own height, so the card is grown to fit it and
+ * collapsed again once editing ends.
+ */
+function setCardEditing(cardId: string, editing: boolean) {
+  if (editing) {
+    editingCardIds.value.add(cardId)
+    expandedCardIds.value.add(cardId)
+  } else {
+    editingCardIds.value.delete(cardId)
+    expandedCardIds.value.delete(cardId)
   }
 }
 
