@@ -1,5 +1,19 @@
 <template>
-  <section ref="gridElement" class="relative min-w-0" :style="gridStyle">
+  <div v-if="flowLayout" class="flex min-w-0 flex-col gap-3">
+    <ProfileBentoCard
+      v-for="card in flowCards"
+      :key="card.id"
+      flow
+      :card="card"
+      :can-expand="canExpand(card)"
+      :expanded="expandedCardIds.has(card.id)"
+      :show-size="showSize"
+      @toggle-expanded="toggleExpanded(card.id)"
+      @update:content-height="setCardContentHeight(card.id, $event)"
+    />
+  </div>
+
+  <section v-else ref="gridElement" class="relative min-w-0" :style="gridStyle">
     <motion.div
       v-for="card in visibleCards"
       :key="card.id"
@@ -16,11 +30,15 @@
         :interactive="interactive"
         :repositioning="repositioningCardId === card.id"
         :show-size="showSize"
+        :can-expand="canExpand(card)"
+        :expanded="expandedCardIds.has(card.id)"
         @cancel-image-reposition="$emit('cancelImageReposition')"
         @pointer-down="startPointerDrag(card.id, $event)"
         @remove="$emit('remove', card.id)"
         @save-image-position="$emit('saveImagePosition', $event)"
         @select="$emit('select', card.id)"
+        @toggle-expanded="toggleExpanded(card.id)"
+        @update:content-height="setCardContentHeight(card.id, $event)"
         @upload-image="$emit('uploadImage', { cardId: card.id, fileUrl: $event })"
       />
     </motion.div>
@@ -52,10 +70,19 @@
 
 <script setup lang="ts">
 import { computed, nextTick, ref, useSlots } from 'vue'
-import { useElementSize } from '@vueuse/core'
+import { useElementSize, useMediaQuery } from '@vueuse/core'
 import { motion } from 'motion-v'
 import ProfileBentoCard from './ProfileBentoCard.vue'
-import { createProfileBentoLayout, type ProfileBentoLayoutRect } from './profileBentoLayout'
+import {
+  createProfileBentoLayout,
+  defaultProfileBentoColumns,
+  profileBentoCardRows,
+  profileBentoCellSize,
+  profileBentoFlowCollapsedHeight,
+  profileBentoHeightForRows,
+  profileBentoRowsForHeight,
+  type ProfileBentoLayoutRect,
+} from './profileBentoLayout'
 import type { ProfileBentoCard as ProfileBentoCardType } from './types'
 
 const props = defineProps<{
@@ -77,6 +104,8 @@ const emit = defineEmits<{
 
 const addCardLayoutId = '__profile-add-card__'
 const gridGap = 12
+// Room under an expanded card so the "Show less" control never sits on the text.
+const expandedToggleHeight = 36
 const slots = useSlots()
 const draggingCardId = ref('')
 const dragCards = ref<ProfileBentoCardType[]>([])
@@ -87,11 +116,26 @@ const dragSize = ref({ width: 0, height: 0 })
 const pendingDragCardId = ref('')
 const gridElement = ref<HTMLElement | null>(null)
 const { width: gridWidth } = useElementSize(gridElement)
+const expandedCardIds = ref(new Set<string>())
+const cardContentHeights = ref<Record<string, number>>({})
+
+// Below `sm` the packer is bypassed entirely: four columns of absolutely
+// positioned squares do not survive a phone width. The customization grid keeps
+// the packer at every width so drag-to-reorder stays available.
+const isSmallScreen = useMediaQuery('(max-width: 639px)')
+const flowLayout = computed(() => isSmallScreen.value && !props.interactive)
 
 const floatingTransition = { type: 'spring', stiffness: 420, damping: 34, mass: 0.7 }
 
 const visibleCards = computed(() => {
   return draggingCardId.value ? dragCards.value : props.cards
+})
+
+// A spacer only means something inside a packed grid.
+const flowCards = computed(() => props.cards.filter((card) => card.type !== 'Blank'))
+
+const cellSize = computed(() => {
+  return profileBentoCellSize(gridWidth.value, gridGap, defaultProfileBentoColumns)
 })
 
 const hasAddCardSlot = computed(() => Boolean(slots.default))
@@ -105,12 +149,51 @@ const cardWrapperClass = computed(() => {
 })
 
 const packedLayout = computed(() => {
-  let items = visibleCards.value.map((card) => ({ id: card.id, size: card.size }))
+  let items = visibleCards.value.map((card) => ({
+    id: card.id,
+    size: card.size,
+    rows: expandedRowSpan(card),
+  }))
   if (hasAddCardSlot.value) {
-    items.push({ id: addCardLayoutId, size: '2x1' })
+    items.push({ id: addCardLayoutId, size: '2x1', rows: undefined })
   }
-  return createProfileBentoLayout(items, gridWidth.value, gridGap)
+  return createProfileBentoLayout(items, gridWidth.value, gridGap, defaultProfileBentoColumns)
 })
+
+/**
+ * An expanded HTML card grows to the smallest whole number of rows that fits its
+ * content, so the packer stays an integer grid and collapsing restores the exact
+ * original layout. The cost is up to one cell of slack under the last line.
+ */
+function expandedRowSpan(card: ProfileBentoCardType) {
+  if (!expandedCardIds.value.has(card.id) || !canExpand(card)) return undefined
+  let height = cardContentHeights.value[card.id] + expandedToggleHeight
+  return profileBentoRowsForHeight(height, cellSize.value, gridGap)
+}
+
+function collapsedHeight(card: ProfileBentoCardType) {
+  if (flowLayout.value) return profileBentoFlowCollapsedHeight
+  return profileBentoHeightForRows(profileBentoCardRows(card.size), cellSize.value, gridGap)
+}
+
+function canExpand(card: ProfileBentoCardType) {
+  if (card.format !== 'html') return false
+  let contentHeight = cardContentHeights.value[card.id] || 0
+  // A couple of pixels of sub-pixel rounding is not "more to read".
+  return contentHeight > collapsedHeight(card) + 4
+}
+
+function toggleExpanded(cardId: string) {
+  if (expandedCardIds.value.has(cardId)) {
+    expandedCardIds.value.delete(cardId)
+  } else {
+    expandedCardIds.value.add(cardId)
+  }
+}
+
+function setCardContentHeight(cardId: string, height: number) {
+  cardContentHeights.value[cardId] = height
+}
 
 const gridStyle = computed(() => {
   return {
