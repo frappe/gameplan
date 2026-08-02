@@ -342,9 +342,9 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/pages/PersonProfileProfile.vue'),
       },
       {
-        name: 'PersonProfileAboutMe',
+        // The About tab is now a card in the profile grid.
         path: 'about',
-        component: () => import('@/pages/PersonProfileAboutMe.vue'),
+        redirect: (to) => ({ name: 'PersonProfileProfile', params: to.params }),
       },
       {
         name: 'PersonProfilePosts',

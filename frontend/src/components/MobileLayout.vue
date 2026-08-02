@@ -76,7 +76,6 @@ const isMoreRoute = computed(() => {
     'People',
     'PersonProfile',
     'PersonProfileProfile',
-    'PersonProfileAboutMe',
     'PersonProfilePosts',
     'PersonProfileReplies',
     'MyPages',

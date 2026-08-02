@@ -193,7 +193,6 @@ const mainShortcuts = computed<RailShortcut[]>(() => [
       'People',
       'PersonProfile',
       'PersonProfileProfile',
-      'PersonProfileAboutMe',
       'PersonProfilePosts',
       'PersonProfileReplies',
     ),

@@ -20,16 +20,11 @@
     <div class="mx-auto w-full max-w-[860px] px-3 py-4 sm:px-5 sm:py-6">
       <div class="mb-4 flex items-center justify-between gap-3">
         <TabButtons
-          :buttons="[
-            { label: 'Profile' },
-            { label: 'About' },
-            { label: 'Posts' },
-            { label: 'Replies' },
-          ]"
+          :buttons="[{ label: 'Profile' }, { label: 'Posts' }, { label: 'Replies' }]"
           v-model="activeTab"
         />
         <Button
-          v-if="isOwnProfile && activeTab === 'Profile' && hasProfilePage"
+          v-if="isOwnProfile && activeTab === 'Profile'"
           class="shrink-0"
           icon-left="lucide-layout-dashboard"
           :route="{ name: 'ProfileCustomize' }"
@@ -42,7 +37,6 @@
         :profile="profileChildResource"
         :bento-cards="profileBentoCards"
         :bento-cards-loaded="profileBentoLoaded"
-        :has-profile-page="hasProfilePage"
         :is-own-profile="isOwnProfile"
       />
     </div>
@@ -87,7 +81,6 @@ const isOwnProfile = computed(() => profile.value?.user === sessionUser.name)
 
 const profileBentoCards = ref<ProfileBentoCard[]>([])
 const profileBentoLoaded = ref(false)
-const hasProfilePage = ref(false)
 let profileBentoLoadId = 0
 let loadedProfileBentoName = ''
 
@@ -105,7 +98,6 @@ const activeTab = computed({
     return (
       {
         PersonProfileProfile: 'Profile',
-        PersonProfileAboutMe: 'About',
         PersonProfilePosts: 'Posts',
         PersonProfileReplies: 'Replies',
       }[route.name as string] || 'Profile'
@@ -114,7 +106,6 @@ const activeTab = computed({
   set(value) {
     let profileRoute = {
       Profile: { name: 'PersonProfileProfile' },
-      About: { name: 'PersonProfileAboutMe' },
       Posts: { name: 'PersonProfilePosts' },
       Replies: { name: 'PersonProfileReplies' },
     }[value]
@@ -136,14 +127,12 @@ async function loadProfileBentoCards(profileName?: string) {
     loadedProfileBentoName = ''
     profileBentoCards.value = []
     profileBentoLoaded.value = false
-    hasProfilePage.value = false
     return
   }
 
   if (profileName !== loadedProfileBentoName) {
     profileBentoCards.value = []
     profileBentoLoaded.value = false
-    hasProfilePage.value = false
   }
 
   let loadResult = await getProfileBentoCards(profileName)
@@ -151,7 +140,6 @@ async function loadProfileBentoCards(profileName?: string) {
     loadedProfileBentoName = profileName
     profileBentoCards.value = loadResult.cards
     profileBentoLoaded.value = true
-    hasProfilePage.value = !loadResult.isDefault
   }
 }
 
