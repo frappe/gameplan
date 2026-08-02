@@ -54,8 +54,8 @@
 
         <div class="mt-4 space-y-3">
           <p v-if="isBoundCard" class="text-sm leading-5 text-ink-gray-5">
-            This card shows your {{ boundFieldTitle }} straight from your profile. Change the value
-            on your profile page or in Settings — it is never stored on the card.
+            This card shows {{ boundFieldTitle }} straight from your profile. Change the value on
+            your profile page or in Settings — it is never stored on the card.
           </p>
 
           <TextInput
@@ -231,8 +231,9 @@ const isBoundCard = computed(() => {
  */
 const isCustomContentCard = computed(() => isContentCard.value && !isBoundCard.value)
 const boundFieldTitle = computed(() => {
+  // Used verbatim, not lowercased: "your about" reads badly where "your bio" does not.
   let spec = profileBoundFields.find((boundField) => boundField.field === props.card?.field)
-  return (spec?.title || props.card?.title || 'profile info').toLowerCase()
+  return spec?.title || props.card?.title || 'this field'
 })
 const cardTypeLabel = computed(() => {
   if (props.card?.type === 'Blank') return 'Blank card'
