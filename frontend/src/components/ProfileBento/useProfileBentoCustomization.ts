@@ -148,6 +148,7 @@ function createCard(type: ProfileCardType): ProfileBentoCard {
       type,
       size: '1x1',
       title: 'Blank',
+      source: 'custom',
     }
   }
   return {
@@ -155,6 +156,7 @@ function createCard(type: ProfileCardType): ProfileBentoCard {
     type: 'Card',
     size: '2x1',
     title: 'New card',
+    source: 'custom',
     text: 'Share a short introduction, link, or image.',
     imageRendering: 'Cover',
     imagePosition: 50,
