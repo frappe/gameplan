@@ -62,6 +62,8 @@ describe('Profile settings', () => {
         text: 'Async first, with written decisions.',
         imageRendering: 'Cover',
         imagePosition: 50,
+        // An author-typed card is `custom`; only bound cards resolve from the profile.
+        source: 'custom',
       })
     })
     cy.contains('Profile layout saved').should('be.visible')
