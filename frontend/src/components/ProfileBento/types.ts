@@ -52,6 +52,15 @@ export interface ProfileBoundFieldSpec {
   size: ProfileCardSize
   title: string
   format: ProfileCardFormat
+  /**
+   * What the card shows on the customize canvas while the field has no value.
+   *
+   * The prompt names the thing to add rather than restating the title, because
+   * the title is already on the checklist beside it. Icon classes must appear
+   * as literals somewhere Tailwind scans, and this table is that place.
+   */
+  emptyIcon: string
+  emptyPrompt: string
 }
 
 /**
@@ -67,6 +76,8 @@ export const profileBoundFields: ProfileBoundFieldSpec[] = [
     size: '4x1',
     title: 'Cover image',
     format: 'image',
+    emptyIcon: 'lucide-image',
+    emptyPrompt: 'Add a cover image',
   },
   {
     field: 'image',
@@ -74,6 +85,8 @@ export const profileBoundFields: ProfileBoundFieldSpec[] = [
     size: '1x1',
     title: 'Avatar',
     format: 'image',
+    emptyIcon: 'lucide-user-round',
+    emptyPrompt: 'Add a photo',
   },
   {
     field: 'full_name',
@@ -81,6 +94,8 @@ export const profileBoundFields: ProfileBoundFieldSpec[] = [
     size: '1x1',
     title: 'Full name',
     format: 'text',
+    emptyIcon: 'lucide-type',
+    emptyPrompt: 'Add your name',
   },
   {
     field: 'bio',
@@ -88,6 +103,8 @@ export const profileBoundFields: ProfileBoundFieldSpec[] = [
     size: '2x1',
     title: 'Bio',
     format: 'text',
+    emptyIcon: 'lucide-quote',
+    emptyPrompt: 'Add a short bio',
   },
   {
     field: 'readme',
@@ -95,6 +112,8 @@ export const profileBoundFields: ProfileBoundFieldSpec[] = [
     size: '4x2',
     title: 'About',
     format: 'html',
+    emptyIcon: 'lucide-file-text',
+    emptyPrompt: 'Write about yourself',
   },
 ]
 

@@ -86,7 +86,7 @@ describe('Profile customize editor', () => {
     checklistRow('bio').should('not.be.checked')
     checklistRow('bio').check()
 
-    card('bio').find('[data-profile-card-empty]').should('contain.text', 'Bio — empty')
+    card('bio').find('[data-profile-card-empty]').should('contain.text', 'Add a short bio')
     saveLayout()
 
     // The profile page drops the empty bound card entirely — the placeholder is
@@ -250,7 +250,7 @@ describe('Profile customize editor — bound values', () => {
     visitCustomize()
 
     checklistRow('bio').check()
-    card('bio').find('[data-profile-card-empty]').should('contain.text', 'Bio — empty')
+    card('bio').find('[data-profile-card-empty]').should('contain.text', 'Add a short bio')
 
     cy.intercept('PUT', '**/api/v2/document/GP%20User%20Profile/*').as('saveProfile')
     panelField('bio').type('Filled in from the panel.').blur()

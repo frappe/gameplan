@@ -50,15 +50,21 @@
 
     <div v-if="card.type === 'Blank'" class="h-full" />
 
+    <!-- Centred, not top-left: the tile is a slot waiting to be filled, and an
+         icon over a prompt reads as one at any size. The title is left out on
+         purpose, since the checklist beside the canvas already names the card. -->
     <div
       v-else-if="showBoundEmptyPlaceholder"
-      class="flex flex-col justify-center p-3 sm:p-4"
+      class="flex flex-col items-center justify-center gap-2 p-3 text-center sm:p-4"
       :class="flow ? 'min-h-[6.5rem]' : 'h-full'"
       data-profile-card-empty
     >
-      <p class="text-sm font-medium leading-snug text-ink-gray-4 sm:text-base">
-        {{ card.title }} — empty
-      </p>
+      <span
+        class="flex size-8 shrink-0 items-center justify-center rounded-full bg-surface-gray-2 text-ink-gray-5"
+      >
+        <span class="size-4" :class="emptyState.icon" aria-hidden="true" />
+      </span>
+      <p class="text-sm font-medium leading-snug text-ink-gray-6">{{ emptyState.prompt }}</p>
     </div>
 
     <div
@@ -229,7 +235,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useElementSize } from '@vueuse/core'
-import type { ProfileBentoCard } from './types'
+import { profileBoundFields, type ProfileBentoCard } from './types'
 import {
   profileBentoFlowCollapsedHeight,
   profileBentoFlowImageMaxHeight,
@@ -380,6 +386,17 @@ const cardTypeLabel = computed(() => {
 const showBoundEmptyPlaceholder = computed(() => {
   if (!props.editor || props.card.type === 'Blank') return false
   return props.card.source === 'field' && !props.card.text && !props.card.image
+})
+
+/**
+ * The icon and prompt for an empty bound card. Falls back to the card's own
+ * title for a bound field this build does not know about, which can only happen
+ * against a newer server that added one.
+ */
+const emptyState = computed(() => {
+  let spec = profileBoundFields.find((boundField) => boundField.field === props.card.field)
+  if (spec) return { icon: spec.emptyIcon, prompt: spec.emptyPrompt }
+  return { icon: 'lucide-plus', prompt: `Add ${props.card.title.toLowerCase()}` }
 })
 
 const showHtmlLayout = computed(() => {
