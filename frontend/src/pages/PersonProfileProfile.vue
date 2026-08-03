@@ -21,8 +21,8 @@
           class="mt-2 max-w-md text-center text-p-sm text-ink-gray-5"
           data-profile-saved-layout-hint
         >
-          Add your photo and bio in profile settings. Your page keeps the layout you saved — restore
-          the default, or use Customize to choose what it shows.
+          Add your photo and bio in profile settings. Your page keeps the layout you saved, so
+          restore the default or use Customize to choose what it shows.
         </p>
         <p v-else class="mt-2 max-w-md text-center text-p-sm text-ink-gray-5">
           Add your photo and bio in profile settings. Use Customize to choose what your page shows.

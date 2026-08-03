@@ -82,7 +82,7 @@
             class="text-sm leading-5 text-ink-gray-5"
             data-profile-bound-save-notice
           >
-            {{ boundFieldTitle }} saves to your profile as soon as you change it — the layout still
+            {{ boundFieldTitle }} saves to your profile as soon as you change it. The layout still
             saves when you press Save.
           </p>
 
