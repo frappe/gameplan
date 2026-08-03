@@ -14,7 +14,17 @@
       <span class="lucide-user-round mb-3 size-7 text-ink-gray-4" aria-hidden="true" />
       <template v-if="isOwnProfile">
         <div class="text-base text-ink-gray-7">Your profile is empty</div>
-        <p class="mt-2 max-w-md text-center text-p-sm text-ink-gray-5">
+        <!-- A saved layout is the one cause of a blank page the settings dialog
+             cannot fix, so say so and offer the way back. -->
+        <p
+          v-if="hasSavedLayout"
+          class="mt-2 max-w-md text-center text-p-sm text-ink-gray-5"
+          data-profile-saved-layout-hint
+        >
+          Add your photo and bio in profile settings. Your page keeps the layout you saved — restore
+          the default, or use Customize to choose what it shows.
+        </p>
+        <p v-else class="mt-2 max-w-md text-center text-p-sm text-ink-gray-5">
           Add your photo and bio in profile settings. Use Customize to choose what your page shows.
         </p>
         <!-- The two places a profile gets filled in: its values, then its layout. -->
@@ -27,6 +37,14 @@
             Edit profile
           </Button>
           <Button icon-left="lucide-layout-grid" @click="customizeLayout">Customize</Button>
+          <Button
+            v-if="hasSavedLayout"
+            icon-left="lucide-rotate-ccw"
+            data-profile-restore-default-layout
+            @click="$emit('restoreDefaultLayout')"
+          >
+            Restore default layout
+          </Button>
         </div>
       </template>
       <p v-else class="max-w-md text-center text-p-sm text-ink-gray-5">
@@ -71,12 +89,18 @@ const props = withDefaults(
     profile: { doc?: GPUserProfile | null }
     bentoCards?: ProfileBentoCard[]
     bentoCardsLoaded?: boolean
+    /** False once this profile has a saved layout rather than the computed default. */
+    bentoIsDefault?: boolean
     isOwnProfile?: boolean
     /** Set only when the viewer owns this profile; enables the card edit buttons. */
     fieldEditor?: ProfileFieldEditor
   }>(),
-  { bentoCards: () => [] },
+  { bentoCards: () => [], bentoIsDefault: true },
 )
+
+defineEmits<{
+  restoreDefaultLayout: []
+}>()
 
 const router = useRouter()
 const showAboutDialog = ref(false)
@@ -96,6 +120,9 @@ const aboutText = computed(() => {
 const isProfileEmpty = computed(() => {
   return (props.bentoCards ?? []).every((card) => card.field === 'full_name')
 })
+
+/** Only a saved layout can be restored; the default is already what it would restore to. */
+const hasSavedLayout = computed(() => props.bentoIsDefault === false)
 
 /**
  * The profile page shows a bound field, it never edits one. Each card's edit

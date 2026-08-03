@@ -69,8 +69,10 @@
         :field-editor="fieldEditor"
         :is-default-layout="isDefaultLayout"
         :is-empty-layout="cards.length === 0"
+        :is-resetting="isResetting"
         @add-card="addCard"
         @reposition-image="beginImageReposition"
+        @restore-default-layout="restoreDefaultLayout"
         @toggle-bound-field="toggleBoundField"
         @upload-image="updateSelectedImage"
         @update-image-rendering="(imageRendering) => updateSelectedCard({ imageRendering })"
@@ -92,9 +94,11 @@ import ProfileBentoEditorPanel from '@/components/ProfileBento/ProfileBentoEdito
 import ProfileBentoGrid from '@/components/ProfileBento/ProfileBentoGrid.vue'
 import { createServerProfileBentoSource } from '@/components/ProfileBento/profileBentoSource'
 import { applyProfileBoundValues } from '@/components/ProfileBento/profileBoundValues'
+import { confirmRestoreDefaultLayout } from '@/components/ProfileBento/restoreDefaultLayout'
 import { useProfileBentoCustomization } from '@/components/ProfileBento/useProfileBentoCustomization'
 import { useProfileFieldEditing } from '@/components/ProfileBento/useProfileFieldEditing'
 import { useSessionUser } from '@/data/users'
+import { getServerErrorMessage, isPermissionError } from '@/utils/errorMessage'
 import type { GPUserProfile } from '@/types/doctypes'
 
 const sessionUser = useSessionUser()
@@ -154,7 +158,9 @@ const {
   isDefaultLayout,
   isDirty,
   isSaving,
+  isResetting,
   loadDraft,
+  resetDraft,
   saveDraft,
   addCard,
   toggleBoundField,
@@ -258,6 +264,15 @@ async function saveProfileBentoDraft() {
   }
 }
 
+/**
+ * Restoring discards the saved layout on the server, not just in the draft, so
+ * it asks first — and it takes any unsaved edits with it, which the leave-guard
+ * never gets a chance to ask about because nobody is leaving.
+ */
+function restoreDefaultLayout() {
+  confirmRestoreDefaultLayout(resetDraft, { hasUnsavedChanges: isDirty.value })
+}
+
 function clearSelectionOnOutsideClick(event: MouseEvent) {
   if (!selectedCardId.value) return
   if (!(event.target instanceof HTMLElement)) return
@@ -312,31 +327,9 @@ function isDialogTarget(target: EventTarget | null) {
 }
 
 function getSaveErrorMessage(error: unknown) {
-  if (error instanceof Error && error.exc_type === 'PermissionError') {
+  if (isPermissionError(error)) {
     return 'You do not have permission to save this profile layout'
   }
-
-  let message = extractServerMessage(error)
-  return message || 'Could not save profile layout'
-}
-
-/**
- * frappe-ui's `frappeRequest` puts the clean `frappe.throw()` text on the
- * error's `messages` array (parsed out of `_server_messages`). The plain
- * `message` is the noisy "<method> <ExcType>" string, so prefer `messages`.
- */
-function extractServerMessage(error: unknown): string {
-  if (error instanceof Error && Array.isArray((error as { messages?: unknown }).messages)) {
-    let messages = (error as { messages: unknown[] }).messages.filter(
-      (message): message is string => typeof message === 'string',
-    )
-    if (messages.length) return stripHtml(messages.join('\n'))
-  }
-  if (error instanceof Error && error.message) return stripHtml(error.message)
-  return typeof error === 'string' ? error : ''
-}
-
-function stripHtml(value: string) {
-  return value.replace(/<[^>]*>/g, '').trim()
+  return getServerErrorMessage(error) || 'Could not save profile layout'
 }
 </script>

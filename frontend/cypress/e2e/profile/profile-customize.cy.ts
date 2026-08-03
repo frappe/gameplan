@@ -125,6 +125,32 @@ describe('Profile customize editor', () => {
     cy.get('article[data-profile-card-id]').should('exist')
     cardIdsInOrder().should('deep.equal', ['avatar', 'full-name', 'bio'])
   })
+
+  it('restores the default layout, but only once the question is answered', () => {
+    cy.loginAs('member')
+    visitCustomize()
+
+    // Nothing to restore until a layout is saved: the page already is the default.
+    restoreButton().should('not.exist')
+    checklistRow('cover_image').uncheck()
+    saveLayout()
+    cardIdsInOrder().should('deep.equal', ['avatar', 'full-name', 'bio', 'about'])
+
+    // Cancelling is not "restore later", it is "do nothing".
+    restoreButton().click()
+    cy.get('[role="dialog"]').contains('button', 'Keep my layout').click()
+    cardIdsInOrder().should('deep.equal', ['avatar', 'full-name', 'bio', 'about'])
+    layoutCustomized(memberProfile).should('equal', 1)
+
+    restoreDefaultLayout()
+
+    cardIdsInOrder().should('deep.equal', defaultCardOrder)
+    layoutCustomized(memberProfile).should('equal', 0)
+    // Back behind the one-way door, so the notice returns and Save has nothing to do.
+    cy.get('[data-profile-default-layout-notice]').should('be.visible')
+    restoreButton().should('not.exist')
+    headerSaveButton().should('be.disabled')
+  })
 })
 
 // Two save speeds share this screen. A bound card's value belongs to the profile
@@ -300,6 +326,17 @@ function saveLayout() {
   cy.intercept('POST', '**/method/*save_my_bento_cards').as('saveLayout')
   cy.contains('button', 'Save').click()
   return cy.wait('@saveLayout').its('response.statusCode').should('equal', 200)
+}
+
+function restoreButton() {
+  return cy.get('button[data-profile-restore-default-layout]')
+}
+
+function restoreDefaultLayout() {
+  cy.intercept('POST', '**/method/*reset_my_bento_cards').as('resetLayout')
+  restoreButton().click()
+  cy.get('[role="dialog"]').contains('button', 'Restore default').click()
+  return cy.wait('@resetLayout').its('response.statusCode').should('equal', 200)
 }
 
 function checklistRow(field: string) {

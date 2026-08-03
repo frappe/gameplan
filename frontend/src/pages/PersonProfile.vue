@@ -49,7 +49,11 @@ import { routerViewLocationKey, useRoute, useRouter } from 'vue-router'
 import { PageHeader, Breadcrumbs, Button, TabButtons, useDoc, usePageMeta } from 'frappe-ui'
 import NotFound from '@/pages/NotFound.vue'
 import { showSettingsDialog } from '@/components/Settings'
-import { getProfileBentoCards } from '@/components/ProfileBento/profileBentoSource'
+import {
+  getProfileBentoCards,
+  resetProfileBentoCards,
+} from '@/components/ProfileBento/profileBentoSource'
+import { confirmRestoreDefaultLayout } from '@/components/ProfileBento/restoreDefaultLayout'
 import { useProfileFieldEditing } from '@/components/ProfileBento/useProfileFieldEditing'
 import type { ProfileBentoCard } from '@/components/ProfileBento/types'
 import { useSessionUser } from '@/data/users'
@@ -98,6 +102,8 @@ const profileNotFound = computed(() => {
 
 const profileBentoCards = ref<ProfileBentoCard[]>([])
 const profileBentoLoaded = ref(false)
+/** False once this profile has a saved layout, which is the only thing to restore. */
+const profileBentoIsDefault = ref(true)
 let profileBentoLoadId = 0
 let loadedProfileBentoName = ''
 
@@ -137,8 +143,12 @@ const routeProps = computed(() => {
     ...baseProps,
     bentoCards: profileBentoCards.value,
     bentoCardsLoaded: profileBentoLoaded.value,
+    bentoIsDefault: profileBentoIsDefault.value,
     isOwnProfile: isOwnProfile.value,
     fieldEditor: fieldEditor.value,
+    // A listener belongs here rather than on the router-view for the same reason
+    // the props do: only the Profile tab declares it.
+    onRestoreDefaultLayout: restoreDefaultLayout,
   }
 })
 
@@ -188,8 +198,22 @@ async function loadProfileBentoCards(profileName?: string) {
   if (loadId === profileBentoLoadId) {
     loadedProfileBentoName = profileName
     profileBentoCards.value = loadResult.cards
+    profileBentoIsDefault.value = loadResult.isDefault
     profileBentoLoaded.value = true
   }
+}
+
+/**
+ * Offered from the empty state, where a saved layout that hides everything is
+ * the likeliest reason the page is blank. The reset drops the stored rows; the
+ * reload goes back through the guarded read path so a profile switch mid-flight
+ * still wins.
+ */
+function restoreDefaultLayout() {
+  confirmRestoreDefaultLayout(async () => {
+    await resetProfileBentoCards()
+    await loadProfileBentoCards(profile.value?.name)
+  })
 }
 
 /**

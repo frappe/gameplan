@@ -8,6 +8,7 @@ from gameplan.gameplan.doctype.gp_user_profile.gp_user_profile import (
 	get_bento_cards,
 	get_my_bento_cards,
 	has_permission,
+	reset_my_bento_cards,
 	save_my_bento_cards,
 )
 from gameplan.gameplan.doctype.gp_user_profile.patches.bind_starter_bento_cards import (
@@ -302,6 +303,54 @@ class TestProfiles(GameplanTestCase):
 		self.assertTrue(get_profile(self.alice.name).layout_customized)
 		self.assertFalse(response["is_default"])
 		self.assertEqual(response["cards"], [])
+
+	def test_reset_restores_the_computed_default_layout(self):
+		"""The way back out of the one-way door a first save closes."""
+		frappe.set_user(self.alice.name)
+		fill_profile(self.alice.name)
+		default_response = get_my_bento_cards()
+		save_my_bento_cards([make_bound_card("bio", "bio", size="2x1")])
+
+		response = reset_my_bento_cards()
+
+		self.assertTrue(response["is_default"])
+		self.assertEqual(response["cards"], default_response["cards"])
+		# Both halves have to go: the rows are what a read returns, the flag is
+		# what makes it prefer them.
+		profile = get_profile(self.alice.name)
+		self.assertEqual(profile.bento_cards, [])
+		self.assertFalse(profile.layout_customized)
+		self.assertTrue(get_my_bento_cards()["is_default"])
+
+	def test_reset_leaves_every_bound_profile_value_alone(self):
+		"""Restoring a layout must not read as "clear my profile"."""
+		frappe.set_user(self.alice.name)
+		fill_profile(self.alice.name)
+		save_my_bento_cards([make_bento_card()])
+
+		reset_my_bento_cards()
+
+		profile = get_profile(self.alice.name)
+		self.assertEqual(profile.bio, "Building async tools.")
+		self.assertEqual(profile.readme, "<p>Long form about me.</p>")
+		self.assertEqual(profile.image, "/files/avatar.png")
+		self.assertEqual(profile.cover_image, "/files/cover.png")
+		self.assertEqual(int(profile.cover_image_position), 30)
+
+	def test_reset_on_a_never_saved_layout_changes_nothing(self):
+		frappe.set_user(self.alice.name)
+		fill_profile(self.alice.name)
+
+		response = reset_my_bento_cards()
+
+		self.assertTrue(response["is_default"])
+		self.assertEqual(response["cards"], get_my_bento_cards()["cards"])
+		self.assertFalse(get_profile(self.alice.name).layout_customized)
+
+	def test_logged_out_user_cannot_reset_bento_cards(self):
+		frappe.set_user("Guest")
+		with self.assertRaises(frappe.PermissionError):
+			reset_my_bento_cards()
 
 	def test_cover_reposition_moves_the_computed_default(self):
 		"""With no saved layout the cover's position comes from the profile field."""

@@ -49,6 +49,23 @@
           This is the default layout. Once you save, your profile keeps the layout you saved and
           stops following changes to the default.
         </p>
+        <!-- The way back through that one-way door. It only makes sense once a
+             layout has been saved: before that the page already is the default. -->
+        <div v-else class="mt-4 border-t border-outline-gray-2 pt-3">
+          <p class="text-sm leading-5 text-ink-gray-6">
+            Your page keeps the layout you saved. Restore the default to follow your profile info
+            again.
+          </p>
+          <Button
+            class="mt-3"
+            icon-left="lucide-rotate-ccw"
+            data-profile-restore-default-layout
+            :loading="isResetting"
+            @click="$emit('restoreDefaultLayout')"
+          >
+            Restore default layout
+          </Button>
+        </div>
       </div>
 
       <div v-if="card" class="rounded-lg border border-outline-gray-2 bg-surface-base p-4 lg:p-5">
@@ -315,12 +332,15 @@ const props = defineProps<{
   isDefaultLayout?: boolean
   /** True when the layout has no cards at all. */
   isEmptyLayout?: boolean
+  /** True while the saved layout is being discarded. */
+  isResetting?: boolean
 }>()
 
 const emit = defineEmits<{
   addCard: [type: ProfileCardType]
   remove: []
   repositionImage: []
+  restoreDefaultLayout: []
   toggleBoundField: [field: ProfileBoundField, ticked: boolean]
   uploadImage: [fileUrl: string]
   updateImageRendering: [value: ProfileImageRendering]

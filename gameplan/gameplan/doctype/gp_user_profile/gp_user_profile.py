@@ -264,6 +264,22 @@ def save_my_bento_cards(cards: list | str):
 	return get_profile_bento_response(profile)
 
 
+@frappe.whitelist(methods=["POST"])
+def reset_my_bento_cards():
+	"""Drop the saved layout so the profile follows the computed default again.
+
+	The inverse of `save_my_bento_cards`, and it has to clear both halves: the rows
+	are what a read returns, and `layout_customized` is what makes it prefer them.
+	Bound values are untouched — they live on the profile, never on the layout.
+	"""
+	profile = get_session_user_profile()
+	check_profile_bento_save_permission(profile)
+	profile.set("bento_cards", [])
+	profile.layout_customized = 0
+	profile.save(ignore_permissions=True)
+	return get_profile_bento_response(profile)
+
+
 @frappe.whitelist(methods=["GET", "POST"])
 def get_bento_cards(profile: str):
 	profile_doc = frappe.get_doc("GP User Profile", profile)

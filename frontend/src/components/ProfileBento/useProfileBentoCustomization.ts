@@ -11,6 +11,8 @@ import {
 export interface ProfileBentoCardSource {
   load: () => ProfileBentoCardLoadResult | Promise<ProfileBentoCardLoadResult>
   save: (cards: ProfileBentoCard[]) => void | Promise<void>
+  /** Discards the saved layout and returns the default the profile falls back to. */
+  reset: () => ProfileBentoCardLoadResult | Promise<ProfileBentoCardLoadResult>
 }
 
 export type ProfileBentoCardLoadResult =
@@ -27,6 +29,7 @@ export function useProfileBentoCustomization(source: ProfileBentoCardSource) {
   const cards = ref<ProfileBentoCard[]>([])
   const selectedCardId = ref('')
   const isSaving = ref(false)
+  const isResetting = ref(false)
   /** True while the draft mirrors the computed default instead of stored rows. */
   const isDefaultLayout = ref(false)
   const savedSnapshot = ref('')
@@ -56,9 +59,26 @@ export function useProfileBentoCustomization(source: ProfileBentoCardSource) {
   })
 
   async function loadDraft() {
-    let loadResult = await source.load()
-    // `cards` is the layout either way — the computed default before the first
-    // save, the stored rows after it. Only the dirty baseline differs.
+    applyLoadResult(await source.load())
+  }
+
+  /**
+   * Back to the computed default. The server answers with that default, so the
+   * draft is replaced from the response rather than read back a second time —
+   * and a failed reset leaves the current draft exactly as it was.
+   */
+  async function resetDraft() {
+    isResetting.value = true
+    try {
+      applyLoadResult(await source.reset())
+    } finally {
+      isResetting.value = false
+    }
+  }
+
+  /** `cards` is the layout either way — the computed default before the first
+   * save, the stored rows after it. Only the dirty baseline differs. */
+  function applyLoadResult(loadResult: ProfileBentoCardLoadResult) {
     isDefaultLayout.value = isDefaultLoadResult(loadResult)
     cards.value = cloneCards(getLoadedCards(loadResult)).map(stripBoundValue)
     selectedCardId.value = ''
@@ -180,7 +200,9 @@ export function useProfileBentoCustomization(source: ProfileBentoCardSource) {
     isDefaultLayout,
     isDirty,
     isSaving,
+    isResetting,
     loadDraft,
+    resetDraft,
     saveDraft,
     addCard,
     toggleBoundField,

@@ -80,6 +80,36 @@ describe('Profile bento cards', () => {
     cy.switchUser('outsider')
     visitProfile(outsiderProfile)
     assertEmptyProfile(true)
+    // Nothing was ever saved, so there is no layout to restore — the page is
+    // blank because the fields are, and the settings dialog is the fix.
+    cy.get('[data-profile-restore-default-layout]').should('not.exist')
+  })
+
+  it('restores the default layout from the empty state of a saved-empty layout', () => {
+    setProfileFields(memberProfile, {
+      bio: 'Async first, with written decisions.',
+      readme: '<p>I look after the docs nobody else wants to write.</p>',
+      image: avatarImage,
+      cover_image: coverImage,
+    })
+
+    cy.loginAs('member')
+    // A filled-in profile behind a saved layout that shows none of it: the one
+    // blank page profile settings cannot explain or fix.
+    cy.request('POST', `/api/method/${bentoMethod}.save_my_bento_cards`, { cards: [] })
+
+    visitProfile(memberProfile)
+    cy.get('[data-profile-empty-state]').should('be.visible')
+    cy.get('[data-profile-saved-layout-hint]').should('be.visible')
+
+    cy.intercept('POST', '**/method/*reset_my_bento_cards').as('resetLayout')
+    cy.get('[data-profile-restore-default-layout]').click()
+    cy.get('[role="dialog"]').contains('button', 'Restore default').click()
+    cy.wait('@resetLayout').its('response.statusCode').should('equal', 200)
+
+    // The whole profile is back, without a reload.
+    cy.get('[data-profile-empty-state]').should('not.exist')
+    cardIdsInOrder().should('deep.equal', defaultCardOrder)
   })
 
   it('shows the new bio after the bio is edited', () => {
