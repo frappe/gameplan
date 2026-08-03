@@ -237,6 +237,28 @@ class TestMentionNotifications(NotificationTestCase):
 
 		self.assertEqual(self.notifications_for(self.member), [])
 
+	def test_a_mention_of_a_deleted_user_does_not_block_the_post(self):
+		"""A mention outlives the account it names, and GP Notification.to_user is a Link.
+
+		Publishing a draft written before the mentioned user was deleted used to fail with
+		LinkValidationError, taking the whole discussion insert with it.
+		"""
+		with self.as_user(self.member):
+			discussion = create_discussion(
+				"Ghost mention", self.space, content=mention_html("ghost@example.com", "Ghost")
+			)
+
+		self.assertTrue(frappe.db.exists("GP Discussion", discussion.name))
+		self.assertEqual(self.notifications_for("ghost@example.com"), [])
+
+	def test_a_rich_quote_of_a_deleted_author_does_not_block_the_post(self):
+		discussion = create_discussion("Plain thread", self.space, owner=self.member)
+		with self.as_user(self.member):
+			comment = create_comment(discussion, content=quote_html("ghost@example.com"))
+
+		self.assertTrue(frappe.db.exists("GP Comment", comment.name))
+		self.assertEqual(self.notifications_for("ghost@example.com"), [])
+
 	def test_a_mentioned_quoted_author_is_notified_only_once(self):
 		discussion = create_discussion("Plain thread", self.space, owner=self.second_member)
 		content = quote_html(self.second_member) + mention_html(self.second_member, "Second Member")

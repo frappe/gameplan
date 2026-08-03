@@ -99,6 +99,7 @@ import { createServerProfileBentoSource } from '@/components/ProfileBento/profil
 import { profileCardTypeOptions } from '@/components/ProfileBento/types'
 import { useProfileBentoCustomization } from '@/components/ProfileBento/useProfileBentoCustomization'
 import { useSessionUser } from '@/data/users'
+import { extractServerMessage } from '@/utils'
 
 const sessionUser = useSessionUser()
 const profileCustomizeBreadcrumbs = computed(() => [
@@ -221,25 +222,5 @@ function getSaveErrorMessage(error: unknown) {
 
   let message = extractServerMessage(error)
   return message || 'Could not save profile layout'
-}
-
-/**
- * frappe-ui's `frappeRequest` puts the clean `frappe.throw()` text on the
- * error's `messages` array (parsed out of `_server_messages`). The plain
- * `message` is the noisy "<method> <ExcType>" string, so prefer `messages`.
- */
-function extractServerMessage(error: unknown): string {
-  if (error instanceof Error && Array.isArray((error as { messages?: unknown }).messages)) {
-    let messages = (error as { messages: unknown[] }).messages.filter(
-      (message): message is string => typeof message === 'string',
-    )
-    if (messages.length) return stripHtml(messages.join('\n'))
-  }
-  if (error instanceof Error && error.message) return stripHtml(error.message)
-  return typeof error === 'string' ? error : ''
-}
-
-function stripHtml(value: string) {
-  return value.replace(/<[^>]*>/g, '').trim()
 }
 </script>

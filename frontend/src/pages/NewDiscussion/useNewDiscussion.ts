@@ -6,6 +6,7 @@ import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { getSpace } from '@/data/spaces'
 import { useSessionUser, useUser } from '@/data/users'
 import { tags } from '@/data/tags'
+import { extractServerMessage } from '@/utils'
 import type { GPDiscussion } from '@/types/doctypes'
 
 const PUBLISH_DRAFT = 'gameplan.gameplan.doctype.gp_draft.gp_draft.publish_draft'
@@ -203,7 +204,7 @@ export function useNewDiscussion() {
         tags.reload()
       }
     } catch (error: any) {
-      publishError.value = error?.message || String(error)
+      publishError.value = extractServerMessage(error) || 'Could not publish this post.'
       publishing.value = false
     } finally {
       isPublishingSuccessfully.value = false
