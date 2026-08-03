@@ -16,7 +16,7 @@ describe('Profile customize editor', () => {
   let memberProfile: string
 
   beforeEach(() => {
-    // The editor aside, which holds the checklist, only exists from `lg` up.
+    // The editor aside, which holds the checklist, only exists from `md` up.
     cy.viewport(1280, 1000)
     resetData('space_with_discussion')
     // Still Administrator here, who may write every profile.
@@ -70,8 +70,15 @@ describe('Profile customize editor', () => {
   })
 
   it('shows a placeholder for a ticked field with no value, and hides it on the profile', () => {
-    // A profile with a name and nothing else, so the other four fields are empty.
-    setProfileFields(memberProfile, { bio: '', readme: '', image: '', cover_image: '' })
+    // Bio is the empty field under test. `readme` keeps a value so the profile
+    // page still renders a grid — on a wholly empty profile it shows the empty
+    // state instead, and "no bio card" would then pass for the wrong reason.
+    setProfileFields(memberProfile, {
+      bio: '',
+      readme: '<p>Still worth reading.</p>',
+      image: '',
+      cover_image: '',
+    })
 
     cy.loginAs('member')
     visitCustomize()
@@ -128,7 +135,7 @@ describe('Profile customize editor — bound values', () => {
   let memberProfile: string
 
   beforeEach(() => {
-    // The editor aside, which holds the value controls, only exists from `lg` up.
+    // The editor aside, which holds the value controls, only exists from `md` up.
     cy.viewport(1280, 1000)
     resetData('space_with_discussion')
     // Still Administrator here, who may write every profile.

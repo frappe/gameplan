@@ -69,17 +69,17 @@ describe('Profile bento cards', () => {
     card('about').should('contain.text', 'I look after the docs nobody else wants to write.')
   })
 
-  it('renders nothing but the name card when the profile is empty', () => {
+  it('shows the empty state instead of a grid when the profile is empty', () => {
     // `outsider` is seeded with a name and nothing else, so every other bound
     // field is empty and its card must be dropped rather than placeheld.
     cy.loginAs('secondMember')
     visitProfile(outsiderProfile)
-    assertOnlyNameCard()
+    assertEmptyProfile(false)
 
-    // Identical for the owner: no "add your bio" affordance in place of a card.
+    // The owner sees the same page, plus the two ways to fill it in.
     cy.switchUser('outsider')
     visitProfile(outsiderProfile)
-    assertOnlyNameCard()
+    assertEmptyProfile(true)
   })
 
   it('shows the new bio after the bio is edited', () => {
@@ -189,8 +189,10 @@ function setProfileFields(profile: string, values: Record<string, string>) {
 
 function visitProfile(profile: string) {
   cy.visit(`/g/people/${profile}`)
-  // The grid only mounts once the bento call resolves; the skeleton has no cards.
-  return cy.get('article[data-profile-card-id]').should('exist')
+  // Both branches mount only once the bento call resolves; the skeleton is neither.
+  return cy
+    .get('article[data-profile-card-id], [data-profile-empty-state]')
+    .should('exist')
 }
 
 function card(cardId: string) {
@@ -242,12 +244,21 @@ function assertAboutIsClipped(clipped: boolean) {
   })
 }
 
-function assertOnlyNameCard() {
-  cy.get('article[data-profile-card-id]').should('have.length', 1)
-  card('full-name').should('contain.text', personas.outsider.displayName)
-  cy.contains(
-    /no introduction|no profile page|build your profile|add image|click to upload/i,
-  ).should('not.exist')
+function assertEmptyProfile(owner: boolean) {
+  // A profile whose only bound value is its name has nothing worth a grid, so
+  // the empty state takes the whole page — no cards, and no per-field
+  // "add your bio" placeholder standing in for one.
+  cy.get('article[data-profile-card-id]').should('not.exist')
+  cy.get('[data-profile-empty-state]').should('be.visible')
+  cy.contains(/no introduction|add image|click to upload/i).should('not.exist')
+
+  if (owner) {
+    cy.get('[data-profile-empty-state]').contains('Your profile is empty')
+    cy.get('[data-profile-empty-state]').contains('button', 'Customize')
+  } else {
+    cy.get('[data-profile-empty-state]').contains('has not filled in their profile')
+    cy.get('[data-profile-empty-state]').find('button').should('not.exist')
+  }
 }
 
 function labelledTextarea(label: string) {

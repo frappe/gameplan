@@ -7,6 +7,33 @@
       <Skeleton class="aspect-square rounded-xl sm:col-span-1" />
       <Skeleton class="aspect-[2/1] rounded-xl sm:col-span-2" />
     </div>
+    <!-- Both branches wait for the cards, so the empty state never flashes. It
+         replaces the grid rather than sitting under it: a lone name card above
+         "your profile is empty" reads as a contradiction. -->
+    <EmptyStateBox v-else-if="isProfileEmpty" class="px-6" data-profile-empty-state>
+      <span class="lucide-user-round mb-3 size-7 text-ink-gray-4" aria-hidden="true" />
+      <template v-if="isOwnProfile">
+        <div class="text-base text-ink-gray-7">Your profile is empty</div>
+        <p class="mt-2 max-w-md text-center text-p-sm text-ink-gray-5">
+          Add your photo and bio in profile settings. Use Customize to choose what your page shows.
+        </p>
+        <!-- The two places a profile gets filled in: its values, then its layout. -->
+        <div class="mt-4 flex flex-wrap justify-center gap-2">
+          <Button
+            variant="solid"
+            icon-left="lucide-user-round"
+            @click="showSettingsDialog('Profile')"
+          >
+            Edit profile
+          </Button>
+          <Button icon-left="lucide-layout-grid" @click="customizeLayout">Customize</Button>
+        </div>
+      </template>
+      <p v-else class="max-w-md text-center text-p-sm text-ink-gray-5">
+        This person has not filled in their profile yet.
+      </p>
+    </EmptyStateBox>
+
     <ProfileBentoGrid
       v-else
       :cards="bentoCards"
@@ -21,7 +48,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Skeleton } from 'frappe-ui'
+import { Button, Skeleton } from 'frappe-ui'
+import EmptyStateBox from '@/components/EmptyStateBox.vue'
 import ProfileAboutDialog from '@/components/ProfileBento/ProfileAboutDialog.vue'
 import ProfileBentoGrid from '@/components/ProfileBento/ProfileBentoGrid.vue'
 import type { ProfileBentoCard, ProfileFieldEditor } from '@/components/ProfileBento/types'
@@ -58,6 +86,18 @@ const aboutText = computed(() => {
 })
 
 /**
+ * "Nothing worth reading on this page", which swaps the grid for the empty state.
+ * A bound field with no value produces no card, and `full_name` is always set, so
+ * a profile nobody has filled in still renders its name card — that near-empty
+ * page is the one real users land on, not a zero-card page. Treating the lone
+ * name card as empty covers both, since an empty list satisfies the same rule.
+ * Nothing is lost by dropping it: the name is already in the page header.
+ */
+const isProfileEmpty = computed(() => {
+  return (props.bentoCards ?? []).every((card) => card.field === 'full_name')
+})
+
+/**
  * The profile page shows a bound field, it never edits one. Each card's edit
  * button hands off to wherever that field is actually owned: About to its own
  * dialog (a rich text field needs the room), the cover to the customize page
@@ -74,6 +114,10 @@ function editCard(card: ProfileBentoCard) {
     return
   }
   showSettingsDialog('Profile')
+}
+
+function customizeLayout() {
+  router.push({ name: 'ProfileCustomize' })
 }
 
 async function saveAbout(value: string) {
