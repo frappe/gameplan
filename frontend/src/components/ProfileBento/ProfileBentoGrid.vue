@@ -72,7 +72,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, useSlots } from 'vue'
+import { computed, nextTick, onUnmounted, ref, useSlots } from 'vue'
 import { useElementSize, useMediaQuery } from '@vueuse/core'
 import { motion } from 'motion-v'
 import ProfileBentoCard from './ProfileBentoCard.vue'
@@ -155,11 +155,38 @@ const hasAddCardSlot = computed(() => Boolean(slots.default))
 
 const cardWrapperClass = computed(() => {
   let classes = ['absolute left-0 top-0 min-w-0']
-  if (props.interactive) {
+  if (props.interactive && !layoutTransitionSuppressed.value) {
     classes.push('transition-[height,transform,width] duration-200 ease-out')
   }
   return classes
 })
+
+/**
+ * Expanding an About card is a disclosure, not a move, so it lands instantly.
+ *
+ * The wrapper transition earns its keep during a drag, where tiles slide between
+ * slots, so it is dropped for the toggle rather than deleted. Vue flushes the
+ * flag and the new row span in one render, so the class is already gone from the
+ * element in the same style recalculation that applies the new rect — which is
+ * the whole trick: a transition cannot start on a property that is not
+ * transitioned at the moment it changes.
+ */
+const layoutTransitionSuppressed = ref(false)
+let layoutTransitionFrame = 0
+
+function suppressLayoutTransition() {
+  layoutTransitionSuppressed.value = true
+  cancelAnimationFrame(layoutTransitionFrame)
+  // Two frames: the first paints the new rect untransitioned, the second is
+  // where it is safe to hand the transition back for the next drag.
+  layoutTransitionFrame = requestAnimationFrame(() => {
+    layoutTransitionFrame = requestAnimationFrame(() => {
+      layoutTransitionSuppressed.value = false
+    })
+  })
+}
+
+onUnmounted(() => cancelAnimationFrame(layoutTransitionFrame))
 
 const packedLayout = computed(() => {
   let items = visibleCards.value.map((card) => ({
@@ -197,6 +224,7 @@ function canExpand(card: ProfileBentoCardType) {
 }
 
 function toggleExpanded(cardId: string) {
+  suppressLayoutTransition()
   if (expandedCardIds.value.has(cardId)) {
     expandedCardIds.value.delete(cardId)
   } else {
