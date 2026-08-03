@@ -126,6 +126,26 @@ describe('Profile customize editor', () => {
     cardIdsInOrder().should('deep.equal', ['avatar', 'full-name', 'bio'])
   })
 
+  it('reorders by where the dragged card is, not by where it was grabbed', () => {
+    cy.loginAs('member')
+    visitCustomize()
+
+    // About is the widest card on the canvas, so a corner grab leaves the
+    // pointer most of a card away from the middle. The middle is what decides
+    // the drop, which is the only reading that matches what the drag looks like.
+    let dropped = ['about', 'cover', 'avatar', 'full-name', 'bio']
+
+    cardIdsInOrder().should('deep.equal', defaultCardOrder)
+    dragCardOnto('about', 'cover', 'corner')
+    cardIdsInOrder().should('deep.equal', dropped)
+
+    // The same gesture grabbed dead centre has to land in the same place.
+    visitCustomize()
+    cardIdsInOrder().should('deep.equal', defaultCardOrder)
+    dragCardOnto('about', 'cover', 'centre')
+    cardIdsInOrder().should('deep.equal', dropped)
+  })
+
   it('restores the default layout, but only once the question is answered', () => {
     cy.loginAs('member')
     visitCustomize()
@@ -345,6 +365,80 @@ function checklistRow(field: string) {
 
 function card(cardId: string) {
   return cy.get(`article[data-profile-card-id="${cardId}"]`)
+}
+
+/**
+ * Drag one card until its own middle sits over another card's middle, holding it
+ * either dead centre or by its bottom-right corner. Both must reorder the same
+ * way: the grab offset moves the pointer, not the card.
+ */
+function dragCardOnto(sourceId: string, targetId: string, grab: 'centre' | 'corner') {
+  // This is the one test that reads real geometry, so it has to wait for the
+  // packer to measure the canvas. Until it does, every card sits at a few dozen
+  // pixels square and the drop point works out to somewhere inside the card
+  // being dragged.
+  laidOut(sourceId)
+  laidOut(targetId)
+
+  card(sourceId).then(($source) => {
+    let sourceElement = $source[0]
+    let source = sourceElement.getBoundingClientRect()
+    let view = sourceElement.ownerDocument.defaultView as Window
+
+    card(targetId).then(($target) => {
+      let target = $target[0].getBoundingClientRect()
+      let press =
+        grab === 'centre'
+          ? { x: source.left + source.width / 2, y: source.top + source.height / 2 }
+          : { x: source.right - 20, y: source.bottom - 20 }
+      // The drag starts on the first move past the 6px threshold, and the grab
+      // offset is read from that move, so it is the point to measure from.
+      let begin = { x: press.x + 10, y: press.y + 10 }
+      let offset = { x: begin.x - source.left, y: begin.y - source.top }
+      // Just short of the target's middle, so the before/after split is decided
+      // rather than sitting on the boundary.
+      let drop = {
+        x: target.left + target.width / 2 - 4 - source.width / 2 + offset.x,
+        y: target.top + target.height / 2 - 4 - source.height / 2 + offset.y,
+      }
+
+      // A frame between each step, because picking the card up is asynchronous:
+      // the grid only starts the floating drag on the move that passes its 6px
+      // threshold, and awaits a tick before the next move can find it.
+      firePointer(sourceElement, 'pointerdown', press.x, press.y)
+      firePointer(view, 'pointermove', begin.x, begin.y)
+      cy.get('[data-profile-drag-ghost="true"]').should('exist')
+      cy.then(() => firePointer(view, 'pointermove', drop.x, drop.y))
+      cy.then(() => firePointer(view, 'pointerup', drop.x, drop.y))
+      // The ghost is a card too, so it would show up in the order being asserted.
+      cy.get('[data-profile-drag-ghost="true"]').should('not.exist')
+    })
+  })
+}
+
+/** Wait until the packer has given a card its real size on the canvas. */
+function laidOut(cardId: string) {
+  card(cardId).should(($card) => {
+    expect($card[0].getBoundingClientRect().width).to.be.greaterThan(120)
+  })
+}
+
+function firePointer(target: EventTarget, type: string, x: number, y: number) {
+  let view = (target as Window).document
+    ? (target as Window)
+    : (target as Element).ownerDocument.defaultView
+  target.dispatchEvent(
+    new view!.PointerEvent(type, {
+      clientX: x,
+      clientY: y,
+      bubbles: true,
+      cancelable: true,
+      pointerId: 1,
+      isPrimary: true,
+      button: 0,
+      buttons: 1,
+    }),
+  )
 }
 
 function cardIdsInOrder() {

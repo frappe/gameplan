@@ -286,7 +286,7 @@ async function handlePointerMove(event: PointerEvent) {
   }
 
   if (!draggingCardId.value) return
-  moveFloatingCard(event)
+  moveFloatingCard()
 }
 
 function handlePointerUp() {
@@ -321,14 +321,27 @@ async function startFloatingDrag(cardId: string, event: PointerEvent) {
   await nextTick()
 }
 
-function moveFloatingCard(event: PointerEvent) {
-  let target = targetFromPoint(event.clientX, event.clientY)
+function moveFloatingCard() {
+  // The card decides what it is over, not the pointer. The ghost hangs off the
+  // pointer by wherever the card was grabbed, so probing at the pointer meant a
+  // card grabbed by a corner only reordered once the pointer itself reached a
+  // neighbour — half a card after it looked like it should have. Its centre is
+  // the point that matches what the drag looks like, whatever the grab offset.
+  let target = targetFromPoint(...floatingCardCenter())
   if (!target) return
 
   let nextCards = reorderedCards(target.cardId, target.position)
   if (sameOrder(nextCards, dragCards.value)) return
 
   dragCards.value = nextCards
+}
+
+/** Where the ghost's middle sits, in the same viewport space as the pointer. */
+function floatingCardCenter() {
+  return [
+    dragPointer.value.x - dragOffset.value.x + dragSize.value.width / 2,
+    dragPointer.value.y - dragOffset.value.y + dragSize.value.height / 2,
+  ] as const
 }
 
 function targetFromPoint(x: number, y: number) {
