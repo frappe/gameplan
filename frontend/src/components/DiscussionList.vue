@@ -89,10 +89,15 @@ const pinnedDiscussions = useDiscussions({
     const baseFilters = toValue(props.filters)
 
     if (baseFilters?.project) {
+      // A community pin is a superset of a space pin — "Show in all <community>
+      // discussions" has to include the discussion's own space, or the pin is
+      // invisible everywhere the author looks for it. This also brings back every
+      // pre-2025-10 pin, which set_default_pin_scope + rename_global_pin_scope_to_category
+      // stamped `Category` without ever asking the user to pick a scope.
       return {
         ...baseFilters,
         pinned_at: ['is', 'set'],
-        pin_scope: 'Space',
+        pin_scope: ['in', ['Space', 'Category']],
       }
     }
 
