@@ -18,6 +18,7 @@
         <Button
           variant="solid"
           icon-left="lucide-save"
+          data-profile-save-layout
           :loading="isSaving"
           :disabled="!isDirty"
           @click="saveProfileBentoDraft"
@@ -36,8 +37,11 @@
 
     <div v-else class="mx-auto flex w-full max-w-[1180px] gap-6 px-4 pb-32 pt-6 sm:px-6 sm:pb-40">
       <main class="min-w-0 flex-1">
+        <!-- No `field-editor` here on purpose: on this canvas a click selects a
+             card and a drag reorders it, so click-to-edit would fight both
+             gestures. Bound values are edited in the panel. -->
         <ProfileBentoGrid
-          :cards="cards"
+          :cards="canvasCards"
           :selected-card-id="selectedCardId"
           interactive
           :repositioning-card-id="repositioningCardId"
@@ -52,9 +56,10 @@
       </main>
 
       <ProfileBentoEditorPanel
-        :card="selectedCard"
+        :card="selectedCanvasCard"
         :text-characters-left="selectedTextCharactersLeft"
         :bound-fields="boundFieldsInDraft"
+        :field-editor="fieldEditor"
         :is-default-layout="isDefaultLayout"
         :is-empty-layout="cards.length === 0"
         @add-card="addCard"
@@ -78,9 +83,10 @@ import { PageHeader, Breadcrumbs, Button, toast, useDoc, usePageMeta } from 'fra
 import ProfileBentoEditorPanel from '@/components/ProfileBento/ProfileBentoEditorPanel.vue'
 import ProfileBentoGrid from '@/components/ProfileBento/ProfileBentoGrid.vue'
 import { createServerProfileBentoSource } from '@/components/ProfileBento/profileBentoSource'
-import { resolveProfileBoundValues } from '@/components/ProfileBento/profileBoundValues'
+import { applyProfileBoundValues } from '@/components/ProfileBento/profileBoundValues'
 import { profileCardTypeOptions } from '@/components/ProfileBento/types'
 import { useProfileBentoCustomization } from '@/components/ProfileBento/useProfileBentoCustomization'
+import { useProfileFieldEditing } from '@/components/ProfileBento/useProfileFieldEditing'
 import { useSessionUser } from '@/data/users'
 import type { GPUserProfile } from '@/types/doctypes'
 
@@ -96,14 +102,31 @@ const profileCustomizeBreadcrumbs = computed(() => [
   { label: 'Customize', route: { name: 'ProfileCustomize' }, isPageTitle: true },
 ])
 
+interface ProfileMethods {
+  setImage: (data: { image: string | null }) => void
+  setCoverImagePosition: (data: { position: number }) => void
+}
+
 /**
- * The owner's profile, read only so that ticking a field in the checklist can
- * preview the card's real value. The server still resolves every bound card on
- * read; nothing here is ever saved onto the layout.
+ * The owner's profile. The canvas resolves every bound card against it, and the
+ * panel's bound-field controls write straight to it. Nothing bound is ever saved
+ * onto the layout; the server resolves it again on every read.
  */
-const profileResource = useDoc<GPUserProfile>({
+const profileResource = useDoc<GPUserProfile, ProfileMethods>({
   doctype: 'GP User Profile',
   name: () => sessionUser.user_profile || '',
+  methods: {
+    setImage: 'set_image',
+    setCoverImagePosition: 'set_cover_image_position',
+  },
+})
+
+// This page is only ever your own profile, so editing is always enabled.
+const fieldEditor = useProfileFieldEditing({
+  profile: profileResource,
+  userId: () => profileResource.doc?.user || '',
+  enabled: () => true,
+  onSaved: () => profileResource.reload(),
 })
 
 const profileBentoSource = createServerProfileBentoSource()
@@ -129,8 +152,16 @@ const {
   updateSelectedImage,
   setCardImage,
   updateSelectedText,
-} = useProfileBentoCustomization(profileBentoSource, {
-  boundValues: () => resolveProfileBoundValues(profileResource.doc),
+} = useProfileBentoCustomization(profileBentoSource)
+
+/** The draft with every bound card's live profile value filled in for display. */
+const canvasCards = computed(() => applyProfileBoundValues(cards.value, profileResource.doc))
+const selectedCanvasCard = computed(() => {
+  return canvasCards.value.find((card) => card.id === selectedCardId.value)
+})
+const isBoundCoverSelected = computed(() => {
+  let card = selectedCanvasCard.value
+  return card?.source === 'field' && card.field === 'cover_image'
 })
 
 onMounted(loadProfileBentoDraft)
@@ -175,18 +206,37 @@ function clearSelectionOnOutsideClick(event: MouseEvent) {
   if (!(event.target instanceof HTMLElement)) return
 
   // Keep the selection for clicks on a card or on regions that intentionally
-  // drive it (the editor panel, the add-card buttons). Everything else clears.
-  if (event.target.closest('[data-profile-card-id], [data-profile-keep-selection]')) return
+  // drive it (the editor panel, the add-card buttons, a dialog the panel opened —
+  // which is teleported out of the aside). Everything else clears.
+  if (
+    event.target.closest('[data-profile-card-id], [data-profile-keep-selection], [role="dialog"]')
+  ) {
+    return
+  }
   selectedCardId.value = ''
 }
 
 function beginImageReposition() {
-  if (!selectedCard.value || selectedCard.value.type === 'Blank' || !selectedCard.value.image)
-    return
-  repositioningCardId.value = selectedCard.value.id
+  let card = selectedCanvasCard.value
+  if (!card || card.type === 'Blank' || !card.image) return
+  repositioningCardId.value = card.id
 }
 
-function saveImagePosition(imagePosition: number) {
+async function saveImagePosition(imagePosition: number) {
+  // The bound cover's position belongs to the image, not to the layout, so it is
+  // written to the profile right away instead of into the draft row.
+  if (isBoundCoverSelected.value) {
+    if (!fieldEditor.value) return
+    try {
+      await fieldEditor.value.save({ field: 'cover_image_position', value: imagePosition })
+    } catch {
+      // Reported by the field editor; keep the overlay open so the drag survives.
+      return
+    }
+    repositioningCardId.value = ''
+    return
+  }
+
   updateSelectedCard({ imagePosition })
   repositioningCardId.value = ''
 }

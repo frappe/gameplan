@@ -120,6 +120,147 @@ describe('Profile customize editor', () => {
   })
 })
 
+// Two save speeds share this screen. A bound card's value belongs to the profile
+// and is written the moment the control is committed; the layout stays a draft
+// until Save. So a value edit must persist on its own, must never land on the
+// bound row, and must not make the layout dirty.
+describe('Profile customize editor — bound values', () => {
+  let memberProfile: string
+
+  beforeEach(() => {
+    // The editor aside, which holds the value controls, only exists from `lg` up.
+    cy.viewport(1280, 1000)
+    resetData('space_with_discussion')
+    // Still Administrator here, who may write every profile.
+    profileNameFor(personas.member.email).then((name) => {
+      memberProfile = name
+      setProfileFields(name, {
+        bio: 'Async first, with written decisions.',
+        readme: '<p>I look after the docs nobody else wants to write.</p>',
+        image: avatarImage,
+        cover_image: coverImage,
+        cover_image_position: '30',
+      })
+    })
+  })
+
+  it('uploads a profile picture from the panel and shows it on the canvas', () => {
+    cy.loginAs('member')
+    visitCustomize()
+
+    card('avatar').click()
+    cy.intercept('POST', '**/method/set_image').as('setImage')
+    panelFileInput().selectFile(pngFile('new-avatar.png'), { force: true })
+
+    cy.wait('@setImage').its('response.statusCode').should('equal', 200)
+    card('avatar').find('img').should('have.attr', 'src').and('include', '/files/')
+  })
+
+  it('saves a bio typed in the panel without making the layout dirty', () => {
+    cy.loginAs('member')
+    visitCustomize()
+
+    card('bio').click()
+    cy.intercept('PUT', '**/api/v2/document/GP%20User%20Profile/*').as('saveProfile')
+    panelField('bio').clear().type('Now writing docs before code.').blur()
+
+    cy.wait('@saveProfile').its('request.body.bio').should('equal', 'Now writing docs before code.')
+    card('bio').should('contain.text', 'Now writing docs before code.')
+    // The layout never changed, so Save has nothing to commit.
+    headerSaveButton().should('be.disabled')
+  })
+
+  it('keeps a panel edit across a reload, with the layout still the default', () => {
+    cy.loginAs('member')
+    visitCustomize()
+
+    card('bio').click()
+    cy.intercept('PUT', '**/api/v2/document/GP%20User%20Profile/*').as('saveProfile')
+    panelField('bio').clear().type('Written before it is built.').blur()
+    cy.wait('@saveProfile')
+
+    // Deliberately no Save: the value is already on the profile, the layout is not.
+    cy.reload()
+    cy.get('[data-profile-info-checklist]').should('be.visible')
+    card('bio').should('contain.text', 'Written before it is built.')
+    cardIdsInOrder().should('deep.equal', defaultCardOrder)
+    layoutCustomized(memberProfile).should('equal', 0)
+  })
+
+  it('leaves the saved bound row empty after a bio edit', () => {
+    cy.loginAs('member')
+    visitCustomize()
+
+    // Save first, so the layout is stored rows rather than the computed default.
+    checklistRow('cover_image').uncheck()
+    saveLayout()
+
+    card('bio').click()
+    cy.intercept('PUT', '**/api/v2/document/GP%20User%20Profile/*').as('saveProfile')
+    panelField('bio').clear().type('Stored on the profile, not the card.').blur()
+    cy.wait('@saveProfile')
+
+    profileField(memberProfile, 'bio').should('equal', 'Stored on the profile, not the card.')
+    bentoRow(memberProfile, 'bio').then((row) => {
+      expect(row.source).to.equal('field')
+      expect(row.field).to.equal('bio')
+      expect(row.text || '').to.equal('')
+      expect(row.image || '').to.equal('')
+    })
+  })
+
+  it('fills a ticked but empty field from the panel', () => {
+    // A profile with a name and nothing else, so the other four fields are empty.
+    setProfileFields(memberProfile, { bio: '', readme: '', image: '', cover_image: '' })
+
+    cy.loginAs('member')
+    visitCustomize()
+
+    checklistRow('bio').check()
+    card('bio').find('[data-profile-card-empty]').should('contain.text', 'Bio — empty')
+
+    cy.intercept('PUT', '**/api/v2/document/GP%20User%20Profile/*').as('saveProfile')
+    panelField('bio').type('Filled in from the panel.').blur()
+    cy.wait('@saveProfile')
+
+    card('bio').find('[data-profile-card-empty]').should('not.exist')
+    card('bio').should('contain.text', 'Filled in from the panel.')
+  })
+
+  it('edits About through the panel dialog', () => {
+    cy.loginAs('member')
+    visitCustomize()
+
+    card('about').click()
+    cy.intercept('PUT', '**/api/v2/document/GP%20User%20Profile/*').as('saveProfile')
+    panel().contains('button', 'Edit about').click()
+    cy.get('[role="dialog"]').find('[contenteditable=true]').should('be.visible')
+    cy.get('[role="dialog"]').find('[contenteditable=true]').click().type(' And the rest.')
+    cy.get('[role="dialog"]').contains('button', 'Save').click()
+
+    cy.wait('@saveProfile').its('request.body.readme').should('contain', 'And the rest.')
+    cy.get('[role="dialog"]').should('not.exist')
+    card('about').should('contain.text', 'And the rest.')
+    headerSaveButton().should('be.disabled')
+  })
+
+  it('repositions the bound cover onto the profile, not onto the draft row', () => {
+    cy.loginAs('member')
+    visitCustomize()
+
+    card('cover').click()
+    cy.intercept('POST', '**/method/set_cover_image_position').as('setCoverPosition')
+    panel().contains('button', 'Reposition').click()
+    card('cover').button('Save').click()
+
+    cy.wait('@setCoverPosition').its('response.statusCode').should('equal', 200)
+    // Saved without dragging, so the seeded position round-trips unchanged.
+    profileField(memberProfile, 'cover_image_position').should('equal', 30)
+    layoutCustomized(memberProfile).should('equal', 0)
+    headerSaveButton().should('be.disabled')
+  })
+})
+
 /** The `GP User Profile` name, which is also the `:personId` route param. */
 function profileNameFor(email: string) {
   return cy
@@ -166,4 +307,71 @@ function cardIdsInOrder() {
   return cy
     .get('article[data-profile-card-id]')
     .then(($cards) => $cards.toArray().map((element) => element.dataset.profileCardId))
+}
+
+function profileField(profile: string, fieldname: string) {
+  return cy
+    .request({
+      url: '/api/v2/document/GP User Profile',
+      qs: {
+        filters: JSON.stringify([['name', '=', profile]]),
+        fields: JSON.stringify([fieldname]),
+      },
+    })
+    .then(({ body }) => body.data[0][fieldname])
+}
+
+function layoutCustomized(profile: string) {
+  return profileField(profile, 'layout_customized')
+}
+
+interface BentoRow {
+  card_id: string
+  source?: string
+  field?: string
+  text?: string
+  image?: string
+}
+
+/** The saved child row for a card, read straight from the document. */
+function bentoRow(profile: string, cardId: string) {
+  return cy
+    .request({ url: `/api/v2/document/GP User Profile/${encodeURIComponent(profile)}` })
+    .then(({ body }) => {
+      let rows = (body.data.bento_cards || []) as BentoRow[]
+      let row = rows.find((bentoCard) => bentoCard.card_id === cardId)
+      expect(row, `saved row for "${cardId}"`).to.exist
+      return row as BentoRow
+    })
+}
+
+/** The selected-card block of the editor aside. */
+function panel() {
+  return cy.get('aside')
+}
+
+function panelField(field: string) {
+  return cy.get(`[data-profile-panel-field="${field}"]`)
+}
+
+/** The aside's only file input: a bound image card offers no other uploader. */
+function panelFileInput() {
+  return panel().find('input[type=file]')
+}
+
+/** The layout's Save button, told apart from a card's own Save controls. */
+function headerSaveButton() {
+  return cy.get('button[data-profile-save-layout]')
+}
+
+// A 1x1 PNG, so an upload is a real image without shipping a fixture file.
+const onePixelPng =
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
+
+function pngFile(fileName: string) {
+  return {
+    contents: Cypress.Buffer.from(onePixelPng, 'base64'),
+    fileName,
+    mimeType: 'image/png',
+  }
 }

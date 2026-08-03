@@ -53,9 +53,14 @@
         </div>
 
         <div class="mt-4 space-y-3">
-          <p v-if="isBoundCard" class="text-sm leading-5 text-ink-gray-5">
-            This card shows {{ boundFieldTitle }} straight from your profile. Change the value on
-            your profile page or in Settings — it is never stored on the card.
+          <!-- Two save speeds on one screen, so say which is which. -->
+          <p
+            v-if="isBoundCard"
+            class="text-sm leading-5 text-ink-gray-5"
+            data-profile-bound-save-notice
+          >
+            {{ boundFieldTitle }} saves to your profile as soon as you change it — the layout still
+            saves when you press Save.
           </p>
 
           <TextInput
@@ -66,6 +71,92 @@
             @update:model-value="updateTitle"
           >
           </TextInput>
+
+          <!-- The value of a bound card lives on the profile, so it is edited
+               here and written straight through, never onto the draft row. -->
+          <template v-if="isBoundCard && fieldEditor">
+            <template v-if="boundField === 'full_name'">
+              <TextInput
+                label="First name"
+                class="w-full"
+                data-profile-panel-field="first_name"
+                :model-value="firstNameDraft"
+                @update:model-value="firstNameDraft = $event"
+                @blur="saveFullName"
+                @keydown.enter.prevent="saveFullName"
+              />
+              <TextInput
+                label="Last name"
+                class="w-full"
+                data-profile-panel-field="last_name"
+                :model-value="lastNameDraft"
+                @update:model-value="lastNameDraft = $event"
+                @blur="saveFullName"
+                @keydown.enter.prevent="saveFullName"
+              />
+            </template>
+
+            <Textarea
+              v-else-if="boundField === 'bio'"
+              label="Bio"
+              class="w-full"
+              data-profile-panel-field="bio"
+              :rows="4"
+              :maxlength="profileBioLimit"
+              :model-value="bioDraft"
+              placeholder="Write a short bio"
+              @update:model-value="bioDraft = $event"
+              @blur="saveBio"
+              @keydown.meta.enter.prevent="saveBio"
+              @keydown.ctrl.enter.prevent="saveBio"
+            >
+              <template #description>{{ bioCharactersLeft }} characters left</template>
+            </Textarea>
+
+            <!-- `readme` is a rich text field; it does not fit a 320px aside. -->
+            <div v-else-if="boundField === 'readme'" class="space-y-1.5">
+              <FormLabel label="About" size="md" />
+              <Button icon-left="lucide-edit-2" @click="openAboutDialog">Edit about</Button>
+            </div>
+
+            <div v-else-if="boundImageField" class="space-y-1.5">
+              <FormLabel :label="boundFieldTitle" size="md" />
+              <div class="flex flex-wrap items-center gap-2">
+                <FileUploader
+                  :fileTypes="['image/png', 'image/jpeg']"
+                  :uploadArgs="{ optimize: true }"
+                  :validateFile="validateImageFile"
+                  @success="uploadBoundImage"
+                >
+                  <template #default="{ progress, error, uploading, openFileSelector }">
+                    <div class="relative">
+                      <Button
+                        icon-left="lucide-upload"
+                        :loading="uploading || savingBoundField"
+                        @click="openFileSelector"
+                      >
+                        {{ uploading ? `${progress}%` : boundImageUploadLabel }}
+                      </Button>
+                      <ErrorMessage
+                        v-if="error"
+                        class="absolute right-0 top-9 z-10 w-52 rounded border border-outline-gray-2 bg-surface-base p-2 shadow-sm"
+                        :message="error"
+                      />
+                    </div>
+                  </template>
+                </FileUploader>
+                <Button
+                  v-if="hasImage"
+                  icon-left="lucide-trash-2"
+                  :disabled="savingBoundField"
+                  @click="removeBoundImage"
+                >
+                  Remove
+                </Button>
+              </div>
+            </div>
+          </template>
+
           <Textarea
             v-if="isCustomContentCard"
             label="Text"
@@ -164,14 +255,30 @@
         </div>
       </div>
     </div>
+
+    <Dialog v-model:open="showAboutDialog" title="About" size="3xl">
+      <!-- `ReadmeEditor` floats its Save/Discard buttons over its own top-right
+           corner, so the content needs room to start below them. -->
+      <ReadmeEditor
+        v-if="showAboutDialog"
+        v-model:editing="aboutEditing"
+        class="min-h-[16rem] pt-11"
+        data-profile-panel-field="readme"
+        :resource="aboutResource"
+        fieldname="readme"
+        :border="false"
+        placeholder="Write about yourself"
+      />
+    </Dialog>
   </aside>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, defineAsyncComponent, reactive, ref, watch } from 'vue'
 import {
   Button,
   Checkbox,
+  Dialog,
   ErrorMessage,
   FileUploader,
   FormLabel,
@@ -180,6 +287,7 @@ import {
   TextInput,
 } from 'frappe-ui'
 import {
+  profileBioLimit,
   profileBoundFields,
   profileCardSizes,
   profileImageRenderingOptions,
@@ -187,8 +295,13 @@ import {
   type ProfileBoundField,
   type ProfileCardSize,
   type ProfileCardType,
+  type ProfileFieldEditor,
+  type ProfileFieldUpdate,
   type ProfileImageRendering,
 } from './types'
+
+// Only the profile owner ever opens this, and it pulls in the rich-text editor.
+const ReadmeEditor = defineAsyncComponent(() => import('@/components/editor/ReadmeEditor.vue'))
 
 interface UploadedFile {
   file_url: string
@@ -199,6 +312,11 @@ const props = defineProps<{
   textCharactersLeft: number
   /** Bound fields present in the layout. The checklist reads its ticks from this. */
   boundFields: Set<ProfileBoundField>
+  /**
+   * Writes a bound card's value to the profile. Unlike the layout, these land
+   * immediately — they are not part of the draft the Save button commits.
+   */
+  fieldEditor?: ProfileFieldEditor
   /** True while the layout is still the computed default (nothing saved yet). */
   isDefaultLayout?: boolean
   /** True when the layout has no cards at all. */
@@ -225,15 +343,25 @@ const isContentCard = computed(() => {
 const isBoundCard = computed(() => {
   return isContentCard.value && props.card?.source === 'field'
 })
-/**
- * A bound card's text and image come from the profile and are discarded on save,
- * so it gets no text box and no image upload — only layout controls.
- */
+/** A custom card's text and image are part of the layout draft; a bound one's is not. */
 const isCustomContentCard = computed(() => isContentCard.value && !isBoundCard.value)
+const boundField = computed(() => {
+  return isBoundCard.value ? (props.card?.field as ProfileBoundField | undefined) : undefined
+})
+const boundImageField = computed(() => {
+  if (boundField.value === 'cover_image' || boundField.value === 'image') return boundField.value
+  return undefined
+})
 const boundFieldTitle = computed(() => {
   // Used verbatim, not lowercased: "your about" reads badly where "your bio" does not.
-  let spec = profileBoundFields.find((boundField) => boundField.field === props.card?.field)
-  return spec?.title || props.card?.title || 'this field'
+  let spec = profileBoundFields.find((field) => field.field === props.card?.field)
+  return spec?.title || props.card?.title || 'This field'
+})
+// The image controls name the field from the same spec the checklist reads, so
+// one card cannot be called "Avatar" in one half of the panel and "Profile
+// picture" in the other.
+const boundImageUploadLabel = computed(() => {
+  return `${hasImage.value ? 'Change' : 'Upload'} ${boundFieldTitle.value.toLowerCase()}`
 })
 const cardTypeLabel = computed(() => {
   if (props.card?.type === 'Blank') return 'Blank card'
@@ -249,8 +377,108 @@ const imageUploadButtonLabel = computed(() => {
   return hasImage.value ? 'Change image' : 'Upload'
 })
 
+const savingBoundField = ref(false)
+const bioDraft = ref('')
+const firstNameDraft = ref('')
+const lastNameDraft = ref('')
+const bioCharactersLeft = computed(() => profileBioLimit - bioDraft.value.length)
+
+// The stored value only changes once a write lands and the profile reloads, so
+// this never clobbers what is being typed.
+watch(
+  () => [props.card?.id, props.card?.text] as const,
+  () => {
+    bioDraft.value = props.card?.text || ''
+  },
+  { immediate: true },
+)
+
+watch(
+  () => [props.fieldEditor?.firstName, props.fieldEditor?.lastName] as const,
+  ([firstName, lastName]) => {
+    firstNameDraft.value = firstName || ''
+    lastNameDraft.value = lastName || ''
+  },
+  { immediate: true },
+)
+
+const showAboutDialog = ref(false)
+const aboutEditing = ref(false)
+const aboutDraft = reactive({ readme: '' })
+/**
+ * Adapter that lets the generic `ReadmeEditor` drive the bound `readme` field:
+ * the draft lives here and Save routes through the field editor, so the write
+ * lands on the profile and the canvas re-resolves.
+ */
+const aboutResource = {
+  doc: aboutDraft,
+  setValue: {
+    submit: (values: Record<string, string>) => {
+      return saveBoundField({ field: 'readme', value: values.readme })
+    },
+  },
+  reload: () => {
+    aboutDraft.readme = props.card?.text || ''
+  },
+}
+
+// `ReadmeEditor` closes itself on a successful save or a discard; that is the
+// dialog's only job here, so it closes with it.
+watch(aboutEditing, (editing) => {
+  if (!editing) showAboutDialog.value = false
+})
+
+function openAboutDialog() {
+  aboutDraft.readme = props.card?.text || ''
+  aboutEditing.value = true
+  showAboutDialog.value = true
+}
+
 function toggleBoundField(field: ProfileBoundField, ticked: unknown) {
   emit('toggleBoundField', field, Boolean(ticked))
+}
+
+async function saveBoundField(update: ProfileFieldUpdate) {
+  if (!props.fieldEditor) throw new Error('Not editable')
+
+  savingBoundField.value = true
+  try {
+    await props.fieldEditor.save(update)
+  } finally {
+    savingBoundField.value = false
+  }
+}
+
+/**
+ * The field editor already toasts a failure and the card keeps showing the
+ * stored value, so the control just holds on to the draft the user typed.
+ */
+function commitBoundField(update: ProfileFieldUpdate) {
+  saveBoundField(update).catch(() => {})
+}
+
+function saveBio() {
+  if (savingBoundField.value || bioDraft.value === (props.card?.text || '')) return
+  commitBoundField({ field: 'bio', value: bioDraft.value })
+}
+
+function saveFullName() {
+  if (savingBoundField.value) return
+
+  let firstName = firstNameDraft.value.trim()
+  let lastName = lastNameDraft.value.trim()
+  if (firstName === props.fieldEditor?.firstName && lastName === props.fieldEditor?.lastName) return
+  commitBoundField({ field: 'full_name', firstName, lastName })
+}
+
+function uploadBoundImage(file: UploadedFile) {
+  if (!boundImageField.value) return
+  commitBoundField({ field: boundImageField.value, value: file.file_url })
+}
+
+function removeBoundImage() {
+  if (!boundImageField.value) return
+  commitBoundField({ field: boundImageField.value, value: '' })
 }
 
 function updateImage(file: UploadedFile) {

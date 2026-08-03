@@ -23,10 +23,7 @@ export type ProfileBentoCardLoadResult =
 /** Current value of each bound profile field, so a re-ticked card shows its value. */
 export type ProfileBoundValues = Partial<Record<ProfileBoundField, string>>
 
-export function useProfileBentoCustomization(
-  source: ProfileBentoCardSource,
-  options: { boundValues?: () => ProfileBoundValues } = {},
-) {
+export function useProfileBentoCustomization(source: ProfileBentoCardSource) {
   const cards = ref<ProfileBentoCard[]>([])
   const selectedCardId = ref('')
   const isSaving = ref(false)
@@ -63,7 +60,7 @@ export function useProfileBentoCustomization(
     // `cards` is the layout either way — the computed default before the first
     // save, the stored rows after it. Only the dirty baseline differs.
     isDefaultLayout.value = isDefaultLoadResult(loadResult)
-    cards.value = cloneCards(getLoadedCards(loadResult))
+    cards.value = cloneCards(getLoadedCards(loadResult)).map(stripBoundValue)
     selectedCardId.value = ''
     savedSnapshot.value = serializeCards(cards.value)
   }
@@ -99,13 +96,13 @@ export function useProfileBentoCustomization(
     let spec = profileBoundFields.find((boundField) => boundField.field === field)
     if (!spec) return
 
-    let card = createBoundCard(spec, options.boundValues?.()[field])
+    let card = createBoundCard(spec)
     cards.value.push(card)
     selectedCardId.value = card.id
   }
 
-  function createBoundCard(spec: ProfileBoundFieldSpec, value?: string): ProfileBentoCard {
-    let card: ProfileBentoCard = {
+  function createBoundCard(spec: ProfileBoundFieldSpec): ProfileBentoCard {
+    return {
       id: uniqueCardId(spec.id),
       type: 'Card',
       size: spec.size,
@@ -116,10 +113,6 @@ export function useProfileBentoCustomization(
       imageRendering: 'Cover',
       imagePosition: 50,
     }
-    // The value is resolved server-side on every read; this copy only exists so
-    // the editor can preview the card it just added.
-    if (value) card[spec.format === 'image' ? 'image' : 'text'] = value
-    return card
   }
 
   function uniqueCardId(preferredId: string) {
@@ -232,6 +225,17 @@ function isImageCapableCard(card: ProfileBentoCard) {
 
 function cloneCards(cards: ProfileBentoCard[]) {
   return cards.map((card) => ({ ...toRaw(card) }))
+}
+
+/**
+ * The draft is the layout and nothing else. A bound card's value lives on the
+ * profile and is resolved for display (see `applyProfileBoundValues`), so the
+ * copy the read path sends along is dropped here rather than being carried
+ * around as a stale duplicate that the save path would discard anyway.
+ */
+function stripBoundValue(card: ProfileBentoCard): ProfileBentoCard {
+  if (card.source !== 'field') return card
+  return { ...card, text: undefined, image: undefined }
 }
 
 function getLoadedCards(loadResult: ProfileBentoCardLoadResult) {
