@@ -3,18 +3,10 @@
     <PageHeader>
       <Breadcrumbs class="h-7" :items="profileCustomizeBreadcrumbs" />
       <div
-        v-if="!isLoadingDraft"
+        v-if="canCustomize && !isLoadingDraft"
         class="flex shrink-0 items-center gap-2"
         data-profile-keep-selection
       >
-        <Button
-          v-for="option in profileCardTypeOptions"
-          :key="option.type"
-          :icon-left="option.icon"
-          @click="addCard(option.type)"
-        >
-          {{ option.label }}
-        </Button>
         <Button
           variant="solid"
           icon-left="lucide-save"
@@ -28,8 +20,24 @@
       </div>
     </PageHeader>
 
+    <!-- Customizing takes a canvas and an editor side by side, which does not fit
+         below `md`. Rendering the message instead of the grid keeps the drag
+         listeners off a screen that could never finish the job. -->
     <div
-      v-if="isLoadingDraft"
+      v-if="!canCustomize"
+      class="mx-auto w-full max-w-[1180px] px-4 py-12 sm:px-6"
+      data-profile-customize-too-narrow
+    >
+      <h2 class="text-lg font-semibold text-ink-gray-9">Customizing needs a wider screen</h2>
+      <p class="mt-2 max-w-md text-base leading-6 text-ink-gray-6">
+        There is no room here for the canvas and the editor side by side. Open this page on a wider
+        screen to change your profile layout.
+      </p>
+      <Button v-if="profileRoute" class="mt-4" :route="profileRoute">Back to profile</Button>
+    </div>
+
+    <div
+      v-else-if="isLoadingDraft"
       class="mx-auto flex w-full max-w-[1180px] px-4 py-12 text-base text-ink-gray-5 sm:px-6"
     >
       Loading profile page...
@@ -45,7 +53,6 @@
           :selected-card-id="selectedCardId"
           interactive
           :repositioning-card-id="repositioningCardId"
-          show-size
           @cancel-image-reposition="repositioningCardId = ''"
           @remove="removeCard"
           @reorder="reorderCards"
@@ -79,26 +86,30 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { useEventListener } from '@vueuse/core'
+import { useEventListener, useMediaQuery } from '@vueuse/core'
 import { PageHeader, Breadcrumbs, Button, toast, useDoc, usePageMeta } from 'frappe-ui'
 import ProfileBentoEditorPanel from '@/components/ProfileBento/ProfileBentoEditorPanel.vue'
 import ProfileBentoGrid from '@/components/ProfileBento/ProfileBentoGrid.vue'
 import { createServerProfileBentoSource } from '@/components/ProfileBento/profileBentoSource'
 import { applyProfileBoundValues } from '@/components/ProfileBento/profileBoundValues'
-import { profileCardTypeOptions } from '@/components/ProfileBento/types'
 import { useProfileBentoCustomization } from '@/components/ProfileBento/useProfileBentoCustomization'
 import { useProfileFieldEditing } from '@/components/ProfileBento/useProfileFieldEditing'
 import { useSessionUser } from '@/data/users'
 import type { GPUserProfile } from '@/types/doctypes'
 
 const sessionUser = useSessionUser()
+// The editor panel appears from `md` up; without it there is nothing to edit
+// with, so the canvas is not offered at all below that.
+const canCustomize = useMediaQuery('(min-width: 768px)')
+const profileRoute = computed(() => {
+  if (!sessionUser.user_profile) return undefined
+  return { name: 'PersonProfileProfile', params: { personId: sessionUser.user_profile } }
+})
 const profileCustomizeBreadcrumbs = computed(() => [
   { label: 'People', route: { name: 'People' } },
   {
     label: sessionUser.full_name || 'Profile',
-    route: sessionUser.user_profile
-      ? { name: 'PersonProfileProfile', params: { personId: sessionUser.user_profile } }
-      : undefined,
+    route: profileRoute.value,
   },
   { label: 'Customize', route: { name: 'ProfileCustomize' }, isPageTitle: true },
 ])
@@ -220,9 +231,10 @@ function clearSelectionOnOutsideClick(event: MouseEvent) {
   if (!selectedCardId.value) return
   if (!(event.target instanceof HTMLElement)) return
 
-  // Keep the selection for clicks on a card or on regions that intentionally
-  // drive it (the editor panel, the add-card buttons, a dialog the panel opened —
-  // which is teleported out of the aside). Everything else clears.
+  // Keep the selection for clicks on a card or on a region that drives it: the
+  // editor panel and the header actions both carry the marker, and a dialog the
+  // panel opened needs its own exemption because it is teleported out of the
+  // aside. Everything else clears.
   if (
     event.target.closest('[data-profile-card-id], [data-profile-keep-selection], [role="dialog"]')
   ) {

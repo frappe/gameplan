@@ -45,7 +45,7 @@ describe('Profile settings', () => {
 
     // The editor opens straight onto the layout — the default one until it is
     // saved — so a card is added on top of what is already there.
-    cy.get('header').contains('button', 'Card').click()
+    cy.get('aside').contains('button', 'Card').click()
     labelledInput('Title').clear().type('How I work')
     labelledTextarea('Text').clear().type('Async first, with written decisions.')
 

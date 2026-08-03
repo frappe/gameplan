@@ -8,7 +8,6 @@
       :can-edit="canEditCard(card)"
       :can-expand="canExpand(card)"
       :expanded="expandedCardIds.has(card.id)"
-      :show-size="showSize"
       @edit="$emit('edit', card)"
       @toggle-expanded="toggleExpanded(card.id)"
       @update:content-height="setCardContentHeight(card.id, $event)"
@@ -32,7 +31,6 @@
         :interactive="interactive"
         :editor="interactive"
         :repositioning="repositioningCardId === card.id"
-        :show-size="showSize"
         :can-edit="canEditCard(card)"
         :can-expand="canExpand(card)"
         :expanded="expandedCardIds.has(card.id)"
@@ -68,12 +66,7 @@
       :animate="{ scale: 1.03, opacity: 0.96 }"
       :transition="floatingTransition"
     >
-      <ProfileBentoCard
-        :card="draggingCard"
-        :interactive="false"
-        :editor="interactive"
-        :show-size="showSize"
-      />
+      <ProfileBentoCard :card="draggingCard" :interactive="false" :editor="interactive" />
     </motion.div>
   </Teleport>
 </template>
@@ -100,7 +93,6 @@ const props = defineProps<{
   selectedCardId?: string
   interactive?: boolean
   repositioningCardId?: string
-  showSize?: boolean
   /**
    * Offer the owner an edit button on every bound card. Unrelated to
    * `interactive`, which means "customize page".

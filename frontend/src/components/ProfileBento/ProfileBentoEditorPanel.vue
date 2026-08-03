@@ -1,13 +1,23 @@
 <template>
-  <aside class="hidden w-[320px] shrink-0 lg:block">
-    <div class="sticky top-5 space-y-4">
+  <!--
+    300px is the narrowest the panel can be at `md` and still fit the six size
+    tabs on one line, which is why the cards lose a little padding there rather
+    than the panel losing width.
+
+    The whole panel is the editor for the selected card, so no click inside it
+    may clear that selection. The marker sits on the root, not on each block, so
+    a block added later cannot miss it.
+  -->
+  <aside class="hidden w-[300px] shrink-0 md:block lg:w-[320px]" data-profile-keep-selection>
+    <!-- The negative margin buys the scrollbar and the focus rings room without
+         moving the cards: the padding puts their edges back where they were. -->
+    <div class="sticky top-5 -m-2 max-h-[calc(100vh-6rem)] space-y-4 overflow-y-auto p-2">
       <!-- The checklist is always here, and holds no state of its own: a row is
            ticked exactly when a card bound to that field is in the layout, so
            removing the card in the grid unticks the row. -->
       <div
-        class="rounded-lg border border-outline-gray-2 bg-surface-base p-5"
+        class="rounded-lg border border-outline-gray-2 bg-surface-base p-4 lg:p-5"
         data-profile-info-checklist
-        data-profile-keep-selection
       >
         <h2 class="text-base font-medium text-ink-gray-9">Profile info</h2>
         <p class="mt-1 text-sm leading-5 text-ink-gray-5">
@@ -41,11 +51,7 @@
         </p>
       </div>
 
-      <div
-        v-if="card"
-        class="rounded-lg border border-outline-gray-2 bg-surface-base p-5"
-        data-profile-keep-selection
-      >
+      <div v-if="card" class="rounded-lg border border-outline-gray-2 bg-surface-base p-4 lg:p-5">
         <div class="flex items-center justify-between gap-3">
           <div>
             <h2 class="text-base font-medium text-ink-gray-9">{{ cardTypeLabel }}</h2>
@@ -113,7 +119,7 @@
               <template #description>{{ bioCharactersLeft }} characters left</template>
             </Textarea>
 
-            <!-- `readme` is a rich text field; it does not fit a 320px aside. -->
+            <!-- `readme` is a rich text field; it does not fit an aside this narrow. -->
             <div v-else-if="boundField === 'readme'" class="space-y-1.5">
               <FormLabel label="About" size="md" />
               <Button icon-left="lucide-edit-2" @click="openAboutDialog">Edit about</Button>
@@ -239,7 +245,7 @@
 
       <div
         v-else
-        class="flex flex-col items-start gap-4 rounded-lg border border-dashed border-outline-gray-2 p-5 text-left"
+        class="flex flex-col items-start gap-4 rounded-lg border border-dashed border-outline-gray-2 p-4 text-left lg:p-5"
       >
         <div class="space-y-1">
           <div class="text-base font-medium text-ink-gray-7">Build with cards</div>
