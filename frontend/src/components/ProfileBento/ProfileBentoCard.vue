@@ -74,14 +74,14 @@
           class="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-surface-base via-surface-base/85 to-transparent"
           aria-hidden="true"
         />
-        <button
-          type="button"
-          class="absolute bottom-2 right-2 z-20 rounded-md px-2 py-1 text-xs font-medium text-ink-gray-7 underline-offset-2 transition hover:bg-surface-gray-2 hover:underline sm:text-sm"
+        <Button
+          class="absolute bottom-2 left-1/2 z-20 -translate-x-1/2"
+          variant="ghost"
+          size="sm"
+          :label="expanded ? 'Show less' : 'Read more'"
           @click.stop="$emit('toggleExpanded')"
           @pointerdown.stop
-        >
-          {{ expanded ? 'Show less' : 'Read more' }}
-        </button>
+        />
       </template>
     </div>
 
