@@ -44,6 +44,21 @@ describe('Profile card editing', () => {
     card('bio').should('contain.text', 'Async first, with written decisions.')
   })
 
+  // The header's edit button lives in a breadcrumb suffix slot, which renders
+  // inside that crumb's link — a click that follows the link too would navigate
+  // straight back off /settings and close the dialog again.
+  it('opens Settings → Profile from the page header and keeps the page behind it', () => {
+    cy.loginAs('member')
+    visitProfile(memberProfile)
+
+    cy.get('header').find('button[aria-label="Edit profile"]').click()
+
+    cy.get('[role="dialog"]').contains('h2', 'Profile').should('be.visible')
+    cy.location('pathname').should('equal', '/g/settings/profile')
+    // The dialog is an overlay, so the profile keeps rendering its cards behind it.
+    card('bio').should('contain.text', 'Async first, with written decisions.')
+  })
+
   it('opens Settings → Profile from the name and avatar cards', () => {
     cy.loginAs('member')
     visitProfile(memberProfile)

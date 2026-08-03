@@ -2,6 +2,9 @@
   <div v-if="profile" class="min-h-full bg-surface-base">
     <PageHeader>
       <Breadcrumbs class="h-7" :items="profileBreadcrumbs">
+        <!-- Breadcrumbs renders `suffix` inside the crumb's router-link, so this
+             click has to be kept from also following it — that navigation would
+             land back on the profile and close the settings dialog immediately. -->
         <template #suffix="{ item }">
           <Button
             v-if="isOwnProfile && item.isPageTitle"
@@ -11,7 +14,7 @@
             label="Edit profile"
             tooltip="Edit profile"
             class="ml-1 shrink-0"
-            @click="showSettingsDialog('Profile')"
+            @click.stop.prevent="showSettingsDialog('Profile')"
           />
         </template>
       </Breadcrumbs>
