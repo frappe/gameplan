@@ -26,9 +26,10 @@
           :buttons="[{ label: 'Profile' }, { label: 'Posts' }, { label: 'Replies' }]"
           v-model="activeTab"
         />
+        <!-- Hidden below `md`, where the customize page refuses to open anyway. -->
         <Button
           v-if="isOwnProfile && activeTab === 'Profile'"
-          class="shrink-0"
+          class="hidden shrink-0 md:inline-flex"
           icon-left="lucide-layout-dashboard"
           :route="{ name: 'ProfileCustomize' }"
         >

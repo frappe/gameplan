@@ -77,13 +77,14 @@
         <h2 class="text-lg-semibold text-ink-gray-8">Account</h2>
 
         <div class="mt-2 divide-y divide-outline-gray-1">
-          <SettingsRow
-            title="Public profile"
-            description="View your public page or customize its card layout"
-          >
+          <SettingsRow title="Public profile" :description="publicProfileDescription">
             <div class="flex gap-2">
               <Button icon-left="lucide-user" @click="goToMyProfile">View</Button>
-              <Button icon-left="lucide-layout-dashboard" @click="goToProfileCustomize">
+              <Button
+                v-if="canCustomizeProfile"
+                icon-left="lucide-layout-dashboard"
+                @click="goToProfileCustomize"
+              >
                 Customize
               </Button>
             </div>
@@ -111,6 +112,7 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { useMediaQuery } from '@vueuse/core'
 import {
   Button,
   Dialog,
@@ -183,6 +185,15 @@ const showAvatarEditor = ref(false)
 const selectedAvatarFile = ref<File | null>(null)
 const avatarFileInput = useTemplateRef<HTMLInputElement>('avatarFileInput')
 const hasAvatar = computed(() => Boolean(profile.value?.image))
+// The customize page puts an editor panel beside the bento canvas, which needs
+// at least `md`. Below that the page refuses to render, so don't offer the entry
+// point or promise layout editing in the copy.
+const canCustomizeProfile = useMediaQuery('(min-width: 768px)')
+const publicProfileDescription = computed(() =>
+  canCustomizeProfile.value
+    ? 'View your public page or customize its card layout'
+    : 'View your public page',
+)
 const avatarOptions = computed<DropdownOptions>(() => [
   {
     label: 'Change image',

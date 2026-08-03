@@ -109,7 +109,7 @@
 
 <script setup lang="ts">
 import { h, ref, computed, onBeforeUnmount, watch, nextTick, markRaw, useTemplateRef } from 'vue'
-import { useEventListener } from '@vueuse/core'
+import { useEventListener, useMediaQuery } from '@vueuse/core'
 import { useRouter } from 'vue-router'
 import { Dialog, dayjs, debounce, useCall, useNewDoc } from 'frappe-ui'
 import { activeUsers, isGameplanAdmin, useSessionUser, useUser } from '@/data/users'
@@ -157,6 +157,9 @@ const currentSpace = computed(() => {
   return typeof spaceId === 'string' ? getSpace(spaceId) : null
 })
 const canCreateFromPalette = computed(() => !readOnlyMode && !currentSpace.value?.archived_at)
+// The profile customize page needs an editor panel beside the canvas, so it only
+// renders from `md` up. Read inside a condition so `shortcuts` re-evaluates on resize.
+const canCustomizeProfile = useMediaQuery('(min-width: 768px)')
 const normalizedQuery = computed(() => query.value.trim())
 const serverSearchQuery = ref('')
 const serverSearchResults = ref<SearchResult[]>([])
@@ -288,7 +291,7 @@ const shortcuts = computed((): CommandPaletteGroup[] => [
         icon: 'lucide-user-pen',
         aliases: ['profile bento', 'edit profile'],
         route: { name: 'ProfileCustomize' },
-        condition: () => useUser().isNotGuest,
+        condition: () => useUser().isNotGuest && canCustomizeProfile.value,
       },
     ].filter((item) => (item.condition ? item.condition() : true)),
   },
