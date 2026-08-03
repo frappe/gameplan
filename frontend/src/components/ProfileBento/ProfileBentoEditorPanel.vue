@@ -168,6 +168,17 @@
                     </div>
                   </template>
                 </FileUploader>
+                <!-- Only the cover: an avatar is a picture of a person, and a
+                     stock photo is never the right one. -->
+                <Button
+                  v-if="boundImageField === 'cover_image'"
+                  icon-left="lucide-image"
+                  data-profile-unsplash-open
+                  :disabled="savingBoundField"
+                  @click="showUnsplashPicker = true"
+                >
+                  Unsplash
+                </Button>
                 <Button
                   v-if="hasImage"
                   icon-left="lucide-trash-2"
@@ -284,6 +295,13 @@
       :text="card?.text"
       :save="(value: string) => saveBoundField({ field: 'readme', value })"
     />
+
+    <UnsplashPicker
+      v-model:open="showUnsplashPicker"
+      title="Choose a cover image"
+      placeholder="Search Unsplash for a place, a mood, a texture"
+      @select="applyUnsplashCover"
+    />
   </aside>
 </template>
 
@@ -300,6 +318,7 @@ import {
   TextInput,
 } from 'frappe-ui'
 import ProfileAboutDialog from './ProfileAboutDialog.vue'
+import { UnsplashPicker, type UnsplashPhoto } from '@/components/UnsplashPicker'
 import {
   profileBioLimit,
   profileBoundFields,
@@ -417,6 +436,7 @@ watch(
 )
 
 const showAboutDialog = ref(false)
+const showUnsplashPicker = ref(false)
 
 function openAboutDialog() {
   showAboutDialog.value = true
@@ -462,6 +482,16 @@ function saveFullName() {
 function uploadBoundImage(file: UploadedFile) {
   if (!boundImageField.value) return
   commitBoundField({ field: boundImageField.value, value: file.file_url })
+}
+
+/**
+ * An Unsplash photo is hotlinked, not copied into a Frappe File: `cover_image`
+ * is an `Attach Image`, which is a plain text column with no local-path rule, and
+ * Unsplash's guidelines ask that their URLs be used directly. It goes through
+ * the same write path as an upload, so nothing downstream has to tell them apart.
+ */
+function applyUnsplashCover(photo: UnsplashPhoto) {
+  commitBoundField({ field: 'cover_image', value: photo.url })
 }
 
 function removeBoundImage() {
