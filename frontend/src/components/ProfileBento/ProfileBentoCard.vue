@@ -76,9 +76,12 @@
         <div class="prose prose-v3 max-w-none" v-html="card.text" />
       </div>
       <template v-if="canExpand">
+        <!-- The fade has to end in the card's own background, which dark mode
+             changes (see `cardShellClass`) — `surface-base` there is the page
+             behind the card, and would read as a dark band over the text. -->
         <div
           v-if="!expanded"
-          class="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-surface-base via-surface-base/85 to-transparent"
+          class="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-surface-base via-surface-base/85 to-transparent dark:from-surface-elevation-1 dark:via-surface-elevation-1/85"
           aria-hidden="true"
         />
         <Button
@@ -302,6 +305,16 @@ const dragStartY = ref(0)
 const dragStartPosition = ref(50)
 const imageDimensions = ref<ImgDimensions | null>(null)
 
+/**
+ * Light mode tells a card apart from the page with an outline; dark mode does it
+ * with the card's own surface instead (see `cardShellClass`), so the resting
+ * border only goes *transparent* — dropping the 1px would resize every card
+ * between themes. Three states keep their border in both, because the border is
+ * the only thing drawing them: selection, the dashed "nothing here yet"
+ * placeholder, and an image card with no image. `hover:` still wins over
+ * `dark:` — frappe-ui's dark variant is a zero-specificity `:where()` selector —
+ * so the hover outline survives in dark without a `dark:hover:` restatement.
+ */
 const cardChromeClass = computed(() => {
   if (props.card.type === 'Blank') {
     if (!props.interactive) return 'border-0 ring-0 shadow-none'
@@ -322,13 +335,18 @@ const cardChromeClass = computed(() => {
   }
   return props.selected
     ? 'border border-outline-gray-4 ring-2 ring-outline-gray-2'
-    : 'border border-outline-gray-2 hover:border-outline-gray-3'
+    : 'border border-outline-gray-2 hover:border-outline-gray-3 dark:border-transparent'
 })
 
+// `surface-base` and `surface-elevation-1` are the same white in light mode, so
+// the dark variant is what actually lifts the card off the page there. A Blank
+// card is a spacer and stays invisible in both themes; an image card has no body
+// of its own, but still needs the surface under the frames that do not fill it —
+// an empty slot, or a `Fit`/`Natural` image narrower than its tile.
 const cardShellClass = computed(() => {
   if (props.card.type === 'Blank') return ''
-  if (showImageLayout.value) return ''
-  return 'bg-surface-base'
+  if (showImageLayout.value) return 'dark:bg-surface-elevation-1'
+  return 'bg-surface-base dark:bg-surface-elevation-1'
 })
 
 // `touch-none` only while the card is actually draggable: the reorder gesture is
