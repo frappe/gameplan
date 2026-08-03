@@ -1,5 +1,5 @@
 <template>
-  <div class="flex select-none items-stretch space-x-1.5">
+  <div class="flex select-none flex-wrap items-stretch gap-1.5">
     <HoverCard
       v-model:open="isPickerOpen"
       side="bottom"
