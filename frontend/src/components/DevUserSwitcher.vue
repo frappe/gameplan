@@ -67,13 +67,10 @@
             </p>
           </div>
 
-          <!-- Signing in needs a password, and every seeded user on a local site
-               shares one. It is only revealed once it turns out to be wrong, so
-               the common case stays a single click. -->
-          <div v-if="showPassword" class="space-y-1.5 border-t border-outline-gray-2 p-3">
-            <FormLabel label="Password" size="sm" />
-            <TextInput v-model="password" size="sm" type="password" @keydown.enter="retry" />
-            <p v-if="error" class="text-p-xs text-ink-gray-5">{{ error }}</p>
+          <!-- Usually the site config key is missing, and the message says which
+               one. Long enough to need its own scroll rather than a taller panel. -->
+          <div v-if="error" class="border-t border-outline-gray-2 p-3">
+            <p class="max-h-24 overflow-y-auto text-p-xs leading-4 text-ink-gray-5">{{ error }}</p>
           </div>
         </div>
       </PopoverContent>
@@ -83,17 +80,15 @@
 
 <script setup lang="ts">
 /**
- * A floating "log in as somebody else" control, mounted only by a dev build.
+ * A floating "become somebody else" control, mounted only by a dev build.
  *
- * It signs in for real rather than impersonating: frappe's `impersonate` needs
- * the System Manager role, so the first switch to an ordinary member would be
- * one-way. A plain login works from any user, and costs no backend surface —
- * an endpoint that hands out sessions is not something to add for convenience.
+ * The switch is password-less, through an endpoint gated on running as a dev
+ * server with an explicit site config key — see `gameplan/dev_user_switcher.py`,
+ * which also explains why frappe's own `impersonate` is the wrong tool.
  */
 import { computed, ref } from 'vue'
-import { useLocalStorage } from '@vueuse/core'
 import { PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from 'reka-ui'
-import { FormLabel, LoadingIndicator, TextInput, useCall } from 'frappe-ui'
+import { LoadingIndicator, TextInput, useCall } from 'frappe-ui'
 import UserAvatar from '@/components/UserAvatar.vue'
 import { activeUsers, useSessionUser, type UserInfo } from '@/data/users'
 
@@ -104,17 +99,10 @@ const sessionUser = useSessionUser()
 const isOpen = ref(false)
 const query = ref('')
 const switchingTo = ref('')
-const failedUser = ref('')
 const error = ref('')
-const showPassword = ref(false)
-// Every seeded user on a local bench shares `admin`. Kept per browser so a site
-// with a different one is typed in once.
-const password = useLocalStorage('gameplan:dev-switcher-password', 'admin')
 
-// v1 on purpose, against the house rule: `login` is a `cmd`, not a dotted path,
-// so /api/v2/method/login answers 200 with `{}` and leaves the session alone.
-const login = useCall<{ full_name: string }, { usr: string; pwd: string }>({
-  url: '/api/method/login',
+const switchUser = useCall<{ user: string }, { user: string }>({
+  url: '/api/v2/method/gameplan.dev_user_switcher.switch_user',
   method: 'POST',
   immediate: false,
 })
@@ -143,11 +131,10 @@ async function switchTo(email: string) {
   switchingTo.value = email
   error.value = ''
   try {
-    await login.submit({ usr: email, pwd: password.value })
-    // Ask the cookie, not the call. `useCall` resolves rather than rejects on an
-    // HTTP error, and a v1 response puts its payload at the top level instead of
-    // under `data`, so neither a thrown error nor the return value says whether
-    // this worked. Frappe rewrites `user_id` only once the session really moved.
+    await switchUser.submit({ user: email })
+    // Ask the cookie, not the call. `useCall` resolves rather than rejects when
+    // the request fails, so its return value never says whether this worked.
+    // Frappe rewrites `user_id` only once the session really moved.
     if (sessionUserFromCookie() === email) {
       // A hard reload, not a route push: the session user is baked into the boot
       // payload, the socket rooms and every cached resource, and none of that is
@@ -155,28 +142,22 @@ async function switchTo(email: string) {
       window.location.reload()
       return
     }
-    fail(email, login.error?.message)
+    error.value = readableError(switchUser.error, email)
   } catch (e) {
-    fail(email, e instanceof Error ? e.message : undefined)
+    error.value = readableError(e, email)
+  } finally {
+    switchingTo.value = ''
   }
 }
 
-function fail(email: string, message?: string) {
-  failedUser.value = email
-  // Frappe answers a wrong password with a bare "UNAUTHORIZED", which says
-  // nothing about the one field there is to change. Anything that reads like a
-  // real sentence is worth showing; a lone status word is not.
-  const isBareStatus = !message || !message.includes(' ')
-  error.value = isBareStatus ? `Wrong password for ${email}. Press enter to retry.` : message
-  showPassword.value = true
-  switchingTo.value = ''
+function readableError(error: unknown, email: string) {
+  const message = error instanceof Error ? error.message : ''
+  // The gate messages say which config key to set, which is the whole point of
+  // showing them. `frappe.throw` prefixes the exception class name; drop it.
+  return message.replace(/^\w*Error:\s*/, '') || `Could not switch to ${email}.`
 }
 
 function sessionUserFromCookie() {
   return new URLSearchParams(document.cookie.split('; ').join('&')).get('user_id')
-}
-
-function retry() {
-  if (failedUser.value) switchTo(failedUser.value)
 }
 </script>

@@ -34,6 +34,12 @@ disposable `gameplan-demo.test` site; CI uses `gameplan.test`.
   --data-urlencode 'usr=<user>' --data-urlencode 'pwd=admin'`. Extract the HttpOnly
   sid with `awk -F'\t' '$6=="sid"{print $7}' jar` (`bench browse --user X --sid` is
   not available in Frappe v16.28).
+- Switching users while clicking around: a dev build shows a floating switcher at the
+  bottom left (`frontend/src/components/DevUserSwitcher.vue`). It needs
+  `enable_dev_user_switcher: 1` in that site's `site_config.json` **and** a server
+  started as a dev server (`bench start`, or `DEV_SERVER=1 bench serve`) — the same
+  DEV_SERVER gate the seed API uses. It is never in a production build: `App.vue`
+  mounts it behind `import.meta.env.DEV`, which folds away at build time.
 
 ## Frontend conventions
 
