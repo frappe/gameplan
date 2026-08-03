@@ -131,7 +131,7 @@
 </template>
 <script setup lang="ts">
 import { computed, onScopeDispose, ref } from 'vue'
-import { useDebounceFn } from '@vueuse/core'
+import { useDebounceFn, watchDebounced } from '@vueuse/core'
 import type { RouteLocationRaw } from 'vue-router'
 import {
   PageHeader,
@@ -306,7 +306,10 @@ function notificationLocation(notification: NotificationRow) {
 }
 
 function linkedIds(notifications: NotificationRow[], field: 'discussion' | 'poll' | 'task') {
-  return [...new Set(notifications.map((row) => row[field]).filter(Boolean))].map(String)
+  // Sorted because order is meaningless to an `in` filter but not to `useList`, which
+  // refetches whenever the request URL changes. Marking a notification read reorders the
+  // list without changing which documents it points at; sorting keeps that a no-op.
+  return [...new Set(notifications.map((row) => row[field]).filter(Boolean))].map(String).sort()
 }
 
 /**
@@ -323,12 +326,27 @@ function linkedIds(notifications: NotificationRow[], field: 'discussion' | 'poll
  * and this bench moves to a frappe version that carries it.
  */
 function useLinkedTitles(doctype: 'GP Discussion' | 'GP Poll' | 'GP Task', ids: () => string[]) {
+  // `queryIds` only ever holds a settled, non-empty id set, and that is what the lookup is
+  // keyed on. The unread and read lists resolve a beat apart, so the ids arrive in more than
+  // one step: fetching on each step fired a query for the empty set on mount and then a
+  // second query that aborted the first, and `useList` reports an aborted fetch as an error.
+  const queryIds = ref<string[]>([])
+  watchDebounced(
+    computed(ids),
+    (settledIds) => {
+      if (settledIds.length) queryIds.value = settledIds
+    },
+    { debounce: 150 },
+  )
+
   const list = useList<{ name: string; title: string }>({
     doctype,
     fields: ['name', 'title'],
-    // An impossible name keeps the request harmless while nothing is loaded yet.
-    filters: () => ({ name: ['in', ids().length ? ids() : ['']] }),
+    filters: () => ({ name: ['in', queryIds.value] }),
     limit: 100,
+    // Nothing to look up until the notifications land; the first id set starts the request,
+    // and an id set that repeats leaves the request URL unchanged, so it does not refetch.
+    immediate: false,
   })
   return computed(() => new Map((list.data ?? []).map((doc) => [String(doc.name), doc.title])))
 }
