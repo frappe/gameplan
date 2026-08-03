@@ -4,8 +4,16 @@
       v-if="highlight"
       class="absolute inset-0 translate-y- z-[5] rounded border-2 -mx-4 -mb-4 mt-11 pointer-events-none"
     />
+    <!--
+      The author row is opaque, so while it is sticky it paints over the top of
+      the comment's own body once the comment is taller than the scrollport —
+      fine when reading, but it buries the line you are typing while editing
+      (worst on a phone, where it eats ~56px of a keyboard-shrunk viewport).
+      Same treatment the post editor already gets in DiscussionView.
+    -->
     <div
-      class="sticky -top-px z-[1] flex items-center bg-surface-base pb-2 pt-2 text-md text-ink-gray-8 sm:top-0 sm:pt-14 sm:text-base"
+      class="flex items-center bg-surface-base pb-2 pt-2 text-md text-ink-gray-8 sm:pt-14 sm:text-base"
+      :class="{ 'sticky -top-px z-[1] sm:top-0': !isEditing }"
     >
       <UserProfileLink class="mr-3" :user="author.name">
         <UserAvatarWithHover class="sm:hidden" size="xl" :user="author.name" />
