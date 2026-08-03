@@ -69,12 +69,11 @@ class GPUserProfile(HasAttachments, Document):
 	def set_cover_image_position(self, position):
 		"""Reposition the cover from the profile page.
 
-		The cover is read back from two places: the computed default seeds
-		`imagePosition` from `cover_image_position`, while a saved layout stores it on
-		the bound row. Writing both keeps them in agreement whatever
-		`layout_customized` says, and avoids re-posting the whole layout just to nudge
-		one image (which would drop the rows of bound fields that are currently empty,
-		because the read path omits them).
+		`cover_image_position` is what every read path reports for a bound cover (see
+		`bound_bento_image_position`), so this is the only write that matters. The bound
+		row is mirrored anyway so a stored row never holds a misleading value. Doing it
+		here rather than re-posting the whole layout also avoids dropping the rows of
+		bound fields that are currently empty, because the read path omits them.
 		"""
 		check_profile_bento_save_permission(self)
 
@@ -441,6 +440,7 @@ def build_bound_bento_card(
 		return None
 
 	kind = spec["kind"]
+	image_position = bound_bento_image_position(profile, field, image_position)
 	card = {
 		"id": card_id,
 		"type": "Card",
@@ -494,20 +494,29 @@ def get_profile_bento_default_cards(profile):
 			card_id=spec["id"],
 			size=spec["size"],
 			title=spec["title"],
-			image_position=default_bound_image_position(profile, field),
+			image_position=PROFILE_BENTO_DEFAULT_IMAGE_POSITION,
 		)
 		if card is not None:
 			cards.append(card)
 	return cards
 
 
-def default_bound_image_position(profile, field):
-	if field == "cover_image" and profile.cover_image_position is not None:
-		# cover_image_position is a Float on the profile, image_position an Int on the card.
-		# Clamp to the same range the save path uses, so the computed default and the
-		# stored row round-trip to the same value.
-		return min(100, max(0, int(profile.cover_image_position)))
-	return PROFILE_BENTO_DEFAULT_IMAGE_POSITION
+def bound_bento_image_position(profile, field, stored_position=None):
+	"""Where a bound card's image sits.
+
+	For a bound cover the profile is the single source of truth: the position belongs
+	to the image, not to the layout, so `profile.cover_image_position` wins over
+	whatever a stored row carries. That makes the computed default and a saved layout
+	agree by construction — a stale `imagePosition` posted back with the layout can no
+	longer revert a reposition. Every other bound field keeps the layout's value.
+	"""
+	if field != "cover_image":
+		return stored_position
+	if profile.cover_image_position is None:
+		return PROFILE_BENTO_DEFAULT_IMAGE_POSITION
+	# cover_image_position is a Float on the profile, image_position an Int on the card.
+	# Clamp to the same range the save path uses.
+	return min(100, max(0, int(profile.cover_image_position)))
 
 
 def require_card_value(value, label):

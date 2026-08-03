@@ -244,6 +244,10 @@ class TestProfiles(GameplanTestCase):
 		self.assertTrue(default_response["is_default"])
 		self.assertFalse(saved_response["is_default"])
 		self.assertEqual(saved_response["cards"], default_response["cards"])
+		# Called out explicitly: the cover's position is the field most likely to drift
+		# between the two paths, because a stored row carries a copy of it.
+		saved_cover = next(card for card in saved_response["cards"] if card["id"] == "cover")
+		self.assertEqual(saved_cover["imagePosition"], 30)
 
 	def test_any_member_can_read_profile_bento_cards(self):
 		alice_profile = get_profile(self.alice.name)
@@ -327,6 +331,29 @@ class TestProfiles(GameplanTestCase):
 
 		cover_card = next(card for card in get_my_bento_cards()["cards"] if card["id"] == "cover")
 		self.assertEqual(cover_card["imagePosition"], 80)
+
+	def test_cover_reposition_survives_a_layout_save_of_stale_cards(self):
+		"""A stale `imagePosition` in a layout draft must not revert a reposition.
+
+		The customize page repositions the cover the moment the control is committed,
+		but its layout draft still holds the card list from before that write. Saving
+		the layout posts the old position back. The cover's position lives on the
+		profile, so the reposition wins.
+		"""
+		frappe.set_user(self.alice.name)
+		fill_profile(self.alice.name)
+		stale_cards = get_my_bento_cards()["cards"]
+		save_my_bento_cards(stale_cards)
+
+		get_profile(self.alice.name).set_cover_image_position(70)
+		response = save_my_bento_cards(stale_cards)
+
+		cover_card = next(card for card in response["cards"] if card["id"] == "cover")
+		self.assertEqual(cover_card["imagePosition"], 70)
+		self.assertEqual(int(get_profile(self.alice.name).cover_image_position), 70)
+
+		reread = next(card for card in get_my_bento_cards()["cards"] if card["id"] == "cover")
+		self.assertEqual(reread["imagePosition"], 70)
 
 	def test_cover_reposition_clamps_out_of_range_values(self):
 		frappe.set_user(self.alice.name)
