@@ -15,10 +15,17 @@
     @keydown.space.self.prevent="selectCard"
     @pointerdown="startPointerDrag"
   >
-    <div>
+    <!-- One row rather than two buttons stacked on the same corner: the callers
+         keep `interactive` and `canEdit` apart, but nothing here enforces it and
+         a control hidden under another control is unreachable. The wider gap on
+         a coarse pointer keeps the enlarged tap areas below from meeting. -->
+    <div
+      v-if="interactive || canEdit"
+      class="absolute right-3 top-3 z-20 flex items-center gap-2 [@media(pointer:coarse)]:gap-5"
+    >
       <Button
         v-if="interactive"
-        class="absolute right-3 top-3 z-10 opacity-0 transition-opacity group-hover:opacity-100"
+        :class="overlayButtonClass"
         variant="outline"
         size="xs"
         icon="lucide-x"
@@ -30,7 +37,7 @@
            or the customize page — so this only says where to go, it never edits. -->
       <Button
         v-if="canEdit"
-        class="absolute right-3 top-3 z-20 opacity-0 transition-opacity focus:opacity-100 group-hover:opacity-100"
+        :class="overlayButtonClass"
         variant="outline"
         size="sm"
         icon="lucide-edit-2"
@@ -213,10 +220,6 @@
       rel="noreferrer"
       :aria-label="card.title"
     />
-
-    <div v-if="showSize">
-      <Badge>{{ card.size }}</Badge>
-    </div>
   </article>
 </template>
 
@@ -228,7 +231,7 @@ import {
   profileBentoFlowCollapsedHeight,
   profileBentoFlowImageMaxHeight,
 } from './profileBentoLayout'
-import { Badge, Button, FileUploader, Spinner } from 'frappe-ui'
+import { Button, FileUploader, Spinner } from 'frappe-ui'
 import { getImgDimensions, type ImgDimensions } from '@/utils'
 
 const props = defineProps<{
@@ -244,7 +247,6 @@ const props = defineProps<{
   draggable?: boolean
   dragging?: boolean
   repositioning?: boolean
-  showSize?: boolean
   /** Single-column flow layout (mobile): the card sizes itself instead of being positioned. */
   flow?: boolean
   expanded?: boolean
@@ -281,6 +283,16 @@ const imageGradientClassBySize: Record<ProfileBentoCard['size'], string> = {
   '4x1': 'h-20',
   '4x2': 'h-32',
 }
+
+/**
+ * Both overlay controls are revealed on hover, and a touch device never hovers —
+ * yet they stay tappable, so the corner of a card fires a button nobody can see.
+ * Anything that cannot hover therefore gets them permanently visible, and a
+ * coarse pointer grows the tap area to ~44px with a transparent pseudo-element
+ * so the button keeps its small drawn size on a desktop.
+ */
+const overlayButtonClass =
+  'relative transition-opacity [@media(hover:hover)]:opacity-0 focus:opacity-100 group-hover:opacity-100 [@media(pointer:coarse)]:after:absolute [@media(pointer:coarse)]:after:-inset-2.5'
 
 const imageFrame = ref<HTMLElement | null>(null)
 const htmlStack = ref<HTMLElement | null>(null)
@@ -319,10 +331,15 @@ const cardShellClass = computed(() => {
   return 'bg-surface-base'
 })
 
+// `touch-none` only while the card is actually draggable: the reorder gesture is
+// built on raw pointer events, and without it a touch device hands the gesture
+// to the scroller first. The read-only profile page must keep scrolling, so it
+// never gets it — and it has to survive the dragging branch too, since dropping
+// `touch-action` mid-gesture is what lets the page scroll away under the drag.
 const dragClass = computed(() => {
   if (!props.draggable) return ''
-  if (props.dragging) return 'cursor-grabbing opacity-20 scale-[0.98]'
-  return 'cursor-grab select-none touch-none active:cursor-grabbing'
+  if (props.dragging) return 'touch-none select-none cursor-grabbing opacity-20 scale-[0.98]'
+  return 'touch-none select-none cursor-grab active:cursor-grabbing'
 })
 
 const textClass = computed(() => {
