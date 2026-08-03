@@ -43,8 +43,13 @@
       Loading profile page...
     </div>
 
-    <div v-else class="mx-auto flex w-full max-w-[1180px] gap-6 px-4 pb-32 pt-6 sm:px-6 sm:pb-40">
-      <main class="min-w-0 flex-1">
+    <!-- The canvas rides the page scroll; the panel sticks and scrolls on its
+         own, so the editor for the selected card stays put while the canvas
+         moves under it. The vertical padding belongs to the canvas alone — the
+         panel has to reach the top of the scroll region to stick flush against
+         it, and carries its own padding inside its scroller. -->
+    <div v-else class="mx-auto flex w-full max-w-[1180px] gap-6 px-4 sm:px-6">
+      <main class="min-w-0 flex-1 py-6">
         <!-- No `editable-cards` here on purpose: on this canvas a click selects a
              card and a drag reorders it, so a per-card edit button would fight
              both gestures. Bound values are edited in the panel. -->

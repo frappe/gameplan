@@ -9,285 +9,296 @@
     a block added later cannot miss it.
   -->
   <aside class="hidden w-[300px] shrink-0 md:block lg:w-[320px]" data-profile-keep-selection>
-    <!-- The negative margin buys the scrollbar and the focus rings room without
-         moving the cards: the padding puts their edges back where they were. -->
-    <div class="sticky top-5 -m-2 max-h-[calc(100vh-6rem)] space-y-4 overflow-y-auto p-2">
-      <!-- The checklist is always here, and holds no state of its own: a row is
+    <!-- Sticky, so the canvas scrolls with the page underneath while the editor
+         for the selected card stays where it was. It sits flush against the top
+         of the scroll region — the vertical padding is inside the ScrollArea, so
+         the panel is exactly as tall as the space it sticks in and the first
+         card still has room to breathe.
+
+         A definite height, not a cap: ScrollArea's viewport is `h-full`, which
+         resolves to `auto` inside a box that only has a max-height, and then
+         nothing scrolls at all. -->
+    <div class="sticky top-0" :style="panelStyle">
+      <!-- The negative margin buys the scrollbar and the focus rings room
+           without moving the cards: the padding puts their edges back. -->
+      <ScrollArea class="-mx-2 h-full" viewport-class="space-y-4 px-2 py-6">
+        <!-- The checklist is always here, and holds no state of its own: a row is
            ticked exactly when a card bound to that field is in the layout, so
            removing the card in the grid unticks the row. -->
-      <div
-        class="rounded-lg border border-outline-gray-2 bg-surface-base p-4 lg:p-5"
-        data-profile-info-checklist
-      >
-        <h2 class="text-base font-medium text-ink-gray-9">Profile info</h2>
-        <p class="mt-1 text-sm leading-5 text-ink-gray-5">
-          Pick what your profile page shows. Each card stays in sync with your profile.
-        </p>
-        <!-- `Checkbox` is `inline-flex`, so the rows need an explicit column. -->
-        <div class="mt-4 flex flex-col items-start gap-3">
-          <Checkbox
-            v-for="boundField in profileBoundFields"
-            :key="boundField.field"
-            :label="boundField.title"
-            :model-value="boundFields.has(boundField.field)"
-            :data-profile-bound-field="boundField.field"
-            @update:model-value="toggleBoundField(boundField.field, $event)"
-          />
-        </div>
-        <p
-          v-if="isEmptyLayout"
-          class="mt-4 border-t border-outline-gray-2 pt-3 text-sm leading-5 text-ink-gray-6"
-          data-profile-empty-layout-notice
+        <div
+          class="rounded-lg border border-outline-gray-2 bg-surface-base p-4 lg:p-5"
+          data-profile-info-checklist
         >
-          Nothing is selected, so your profile page will be empty.
-        </p>
-        <p
-          v-if="isDefaultLayout"
-          class="mt-4 border-t border-outline-gray-2 pt-3 text-sm leading-5 text-ink-gray-6"
-          data-profile-default-layout-notice
-        >
-          This is the default layout. Once you save, your profile keeps the layout you saved and
-          stops following changes to the default.
-        </p>
-        <!-- The way back through that one-way door. It only makes sense once a
-             layout has been saved: before that the page already is the default. -->
-        <div v-else class="mt-4 border-t border-outline-gray-2 pt-3">
-          <p class="text-sm leading-5 text-ink-gray-6">
-            Your page keeps the layout you saved. Restore the default to follow your profile info
-            again.
+          <h2 class="text-base font-medium text-ink-gray-9">Profile info</h2>
+          <p class="mt-1 text-sm leading-5 text-ink-gray-5">
+            Pick what your profile page shows. Each card stays in sync with your profile.
           </p>
-          <Button
-            class="mt-3"
-            icon-left="lucide-rotate-ccw"
-            data-profile-restore-default-layout
-            :loading="isResetting"
-            @click="$emit('restoreDefaultLayout')"
+          <!-- `Checkbox` is `inline-flex`, so the rows need an explicit column. -->
+          <div class="mt-4 flex flex-col items-start gap-3">
+            <Checkbox
+              v-for="boundField in profileBoundFields"
+              :key="boundField.field"
+              :label="boundField.title"
+              :model-value="boundFields.has(boundField.field)"
+              :data-profile-bound-field="boundField.field"
+              @update:model-value="toggleBoundField(boundField.field, $event)"
+            />
+          </div>
+          <p
+            v-if="isEmptyLayout"
+            class="mt-4 border-t border-outline-gray-2 pt-3 text-sm leading-5 text-ink-gray-6"
+            data-profile-empty-layout-notice
           >
-            Restore default layout
-          </Button>
-        </div>
-      </div>
-
-      <div v-if="card" class="rounded-lg border border-outline-gray-2 bg-surface-base p-4 lg:p-5">
-        <div class="flex items-center justify-between gap-3">
-          <div>
-            <h2 class="text-base font-medium text-ink-gray-9">{{ cardTypeLabel }}</h2>
+            Nothing is selected, so your profile page will be empty.
+          </p>
+          <p
+            v-if="isDefaultLayout"
+            class="mt-4 border-t border-outline-gray-2 pt-3 text-sm leading-5 text-ink-gray-6"
+            data-profile-default-layout-notice
+          >
+            This is the default layout. Once you save, your profile keeps the layout you saved and
+            stops following changes to the default.
+          </p>
+          <!-- The way back through that one-way door. It only makes sense once a
+             layout has been saved: before that the page already is the default. -->
+          <div v-else class="mt-4 border-t border-outline-gray-2 pt-3">
+            <p class="text-sm leading-5 text-ink-gray-6">
+              Your page keeps the layout you saved. Restore the default to follow your profile info
+              again.
+            </p>
+            <Button
+              class="mt-3"
+              icon-left="lucide-rotate-ccw"
+              data-profile-restore-default-layout
+              :loading="isResetting"
+              @click="$emit('restoreDefaultLayout')"
+            >
+              Restore default layout
+            </Button>
           </div>
         </div>
 
-        <div class="mt-4 space-y-3">
-          <!-- Two save speeds on one screen, so say which is which. -->
-          <p
-            v-if="isBoundCard"
-            class="text-sm leading-5 text-ink-gray-5"
-            data-profile-bound-save-notice
-          >
-            {{ boundFieldTitle }} saves to your profile as soon as you change it. The layout still
-            saves when you press Save.
-          </p>
+        <div v-if="card" class="rounded-lg border border-outline-gray-2 bg-surface-base p-4 lg:p-5">
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <h2 class="text-base font-medium text-ink-gray-9">{{ cardTypeLabel }}</h2>
+            </div>
+          </div>
 
-          <TextInput
-            v-if="card.type !== 'Blank'"
-            label="Title"
-            class="w-full"
-            :model-value="card.title"
-            @update:model-value="updateTitle"
-          >
-          </TextInput>
+          <div class="mt-4 space-y-3">
+            <!-- Two save speeds on one screen, so say which is which. -->
+            <p
+              v-if="isBoundCard"
+              class="text-sm leading-5 text-ink-gray-5"
+              data-profile-bound-save-notice
+            >
+              {{ boundFieldTitle }} saves to your profile as soon as you change it. The layout still
+              saves when you press Save.
+            </p>
 
-          <!-- The value of a bound card lives on the profile, so it is edited
+            <TextInput
+              v-if="card.type !== 'Blank'"
+              label="Title"
+              class="w-full"
+              :model-value="card.title"
+              @update:model-value="updateTitle"
+            >
+            </TextInput>
+
+            <!-- The value of a bound card lives on the profile, so it is edited
                here and written straight through, never onto the draft row. -->
-          <template v-if="isBoundCard && fieldEditor">
-            <template v-if="boundField === 'full_name'">
-              <TextInput
-                label="First name"
+            <template v-if="isBoundCard && fieldEditor">
+              <template v-if="boundField === 'full_name'">
+                <TextInput
+                  label="First name"
+                  class="w-full"
+                  data-profile-panel-field="first_name"
+                  :model-value="firstNameDraft"
+                  @update:model-value="firstNameDraft = $event"
+                  @blur="saveFullName"
+                  @keydown.enter.prevent="saveFullName"
+                />
+                <TextInput
+                  label="Last name"
+                  class="w-full"
+                  data-profile-panel-field="last_name"
+                  :model-value="lastNameDraft"
+                  @update:model-value="lastNameDraft = $event"
+                  @blur="saveFullName"
+                  @keydown.enter.prevent="saveFullName"
+                />
+              </template>
+
+              <Textarea
+                v-else-if="boundField === 'bio'"
+                label="Bio"
                 class="w-full"
-                data-profile-panel-field="first_name"
-                :model-value="firstNameDraft"
-                @update:model-value="firstNameDraft = $event"
-                @blur="saveFullName"
-                @keydown.enter.prevent="saveFullName"
-              />
-              <TextInput
-                label="Last name"
-                class="w-full"
-                data-profile-panel-field="last_name"
-                :model-value="lastNameDraft"
-                @update:model-value="lastNameDraft = $event"
-                @blur="saveFullName"
-                @keydown.enter.prevent="saveFullName"
-              />
+                data-profile-panel-field="bio"
+                :rows="4"
+                :maxlength="profileBioLimit"
+                :model-value="bioDraft"
+                placeholder="Write a short bio"
+                @update:model-value="bioDraft = $event"
+                @blur="saveBio"
+                @keydown.meta.enter.prevent="saveBio"
+                @keydown.ctrl.enter.prevent="saveBio"
+              >
+                <template #description>{{ bioCharactersLeft }} characters left</template>
+              </Textarea>
+
+              <!-- `readme` is a rich text field; it does not fit an aside this narrow. -->
+              <div v-else-if="boundField === 'readme'" class="space-y-1.5">
+                <FormLabel label="About" size="md" />
+                <Button icon-left="lucide-edit-2" @click="openAboutDialog">Edit about</Button>
+              </div>
+
+              <div v-else-if="boundImageField" class="space-y-1.5">
+                <FormLabel :label="boundFieldTitle" size="md" />
+                <div class="flex flex-wrap items-center gap-2">
+                  <FileUploader
+                    :fileTypes="['image/png', 'image/jpeg']"
+                    :uploadArgs="{ optimize: true }"
+                    :validateFile="validateImageFile"
+                    @success="uploadBoundImage"
+                  >
+                    <template #default="{ progress, error, uploading, openFileSelector }">
+                      <div class="relative">
+                        <Button
+                          icon-left="lucide-upload"
+                          :loading="uploading || savingBoundField"
+                          @click="openFileSelector"
+                        >
+                          {{ uploading ? `${progress}%` : boundImageUploadLabel }}
+                        </Button>
+                        <ErrorMessage
+                          v-if="error"
+                          class="absolute right-0 top-9 z-10 w-52 rounded border border-outline-gray-2 bg-surface-base p-2 shadow-sm"
+                          :message="error"
+                        />
+                      </div>
+                    </template>
+                  </FileUploader>
+                  <!-- Only the cover: an avatar is a picture of a person, and a
+                     stock photo is never the right one. -->
+                  <Button
+                    v-if="boundImageField === 'cover_image'"
+                    icon-left="lucide-image"
+                    data-profile-unsplash-open
+                    :disabled="savingBoundField"
+                    @click="showUnsplashPicker = true"
+                  >
+                    Unsplash
+                  </Button>
+                  <Button
+                    v-if="hasImage"
+                    icon-left="lucide-trash-2"
+                    :disabled="savingBoundField"
+                    @click="removeBoundImage"
+                  >
+                    Remove
+                  </Button>
+                </div>
+              </div>
             </template>
 
             <Textarea
-              v-else-if="boundField === 'bio'"
-              label="Bio"
+              v-if="isCustomContentCard"
+              label="Text"
               class="w-full"
-              data-profile-panel-field="bio"
               :rows="4"
-              :maxlength="profileBioLimit"
-              :model-value="bioDraft"
-              placeholder="Write a short bio"
-              @update:model-value="bioDraft = $event"
-              @blur="saveBio"
-              @keydown.meta.enter.prevent="saveBio"
-              @keydown.ctrl.enter.prevent="saveBio"
+              :model-value="card.text"
+              @update:model-value="updateText"
             >
-              <template #description>{{ bioCharactersLeft }} characters left</template>
+              <template #description>{{ textCharactersLeft }} characters left</template>
             </Textarea>
+            <TextInput
+              v-if="isContentCard"
+              label="URL"
+              class="w-full"
+              type="url"
+              :model-value="card.url"
+              placeholder="https://example.com"
+              @update:model-value="updateUrl"
+            >
+            </TextInput>
 
-            <!-- `readme` is a rich text field; it does not fit an aside this narrow. -->
-            <div v-else-if="boundField === 'readme'" class="space-y-1.5">
-              <FormLabel label="About" size="md" />
-              <Button icon-left="lucide-edit-2" @click="openAboutDialog">Edit about</Button>
+            <div class="space-y-1.5">
+              <FormLabel label="Size" size="md" />
+              <TabButtons
+                :buttons="profileCardSizeButtons"
+                :model-value="card.size"
+                @update:model-value="updateSize"
+              />
             </div>
 
-            <div v-else-if="boundImageField" class="space-y-1.5">
-              <FormLabel :label="boundFieldTitle" size="md" />
-              <div class="flex flex-wrap items-center gap-2">
-                <FileUploader
-                  :fileTypes="['image/png', 'image/jpeg']"
-                  :uploadArgs="{ optimize: true }"
-                  :validateFile="validateImageFile"
-                  @success="uploadBoundImage"
-                >
-                  <template #default="{ progress, error, uploading, openFileSelector }">
-                    <div class="relative">
-                      <Button
-                        icon-left="lucide-upload"
-                        :loading="uploading || savingBoundField"
-                        @click="openFileSelector"
-                      >
-                        {{ uploading ? `${progress}%` : boundImageUploadLabel }}
-                      </Button>
-                      <ErrorMessage
-                        v-if="error"
-                        class="absolute right-0 top-9 z-10 w-52 rounded border border-outline-gray-2 bg-surface-base p-2 shadow-sm"
-                        :message="error"
-                      />
-                    </div>
-                  </template>
-                </FileUploader>
-                <!-- Only the cover: an avatar is a picture of a person, and a
-                     stock photo is never the right one. -->
+            <div v-if="isContentCard">
+              <div v-if="hasImage" class="mb-3 space-y-3">
+                <div class="space-y-1.5">
+                  <FormLabel label="Rendering" size="md" />
+                  <TabButtons
+                    :options="profileImageRenderingOptions"
+                    :model-value="card.imageRendering || 'Cover'"
+                    @update:model-value="updateImageRendering"
+                  />
+                </div>
                 <Button
-                  v-if="boundImageField === 'cover_image'"
-                  icon-left="lucide-image"
-                  data-profile-unsplash-open
-                  :disabled="savingBoundField"
-                  @click="showUnsplashPicker = true"
+                  v-if="canRepositionImage"
+                  icon-left="lucide-move-vertical"
+                  @click="$emit('repositionImage')"
                 >
-                  Unsplash
-                </Button>
-                <Button
-                  v-if="hasImage"
-                  icon-left="lucide-trash-2"
-                  :disabled="savingBoundField"
-                  @click="removeBoundImage"
-                >
-                  Remove
+                  Reposition
                 </Button>
               </div>
-            </div>
-          </template>
-
-          <Textarea
-            v-if="isCustomContentCard"
-            label="Text"
-            class="w-full"
-            :rows="4"
-            :model-value="card.text"
-            @update:model-value="updateText"
-          >
-            <template #description>{{ textCharactersLeft }} characters left</template>
-          </Textarea>
-          <TextInput
-            v-if="isContentCard"
-            label="URL"
-            class="w-full"
-            type="url"
-            :model-value="card.url"
-            placeholder="https://example.com"
-            @update:model-value="updateUrl"
-          >
-          </TextInput>
-
-          <div class="space-y-1.5">
-            <FormLabel label="Size" size="md" />
-            <TabButtons
-              :buttons="profileCardSizeButtons"
-              :model-value="card.size"
-              @update:model-value="updateSize"
-            />
-          </div>
-
-          <div v-if="isContentCard">
-            <div v-if="hasImage" class="mb-3 space-y-3">
-              <div class="space-y-1.5">
-                <FormLabel label="Rendering" size="md" />
-                <TabButtons
-                  :options="profileImageRenderingOptions"
-                  :model-value="card.imageRendering || 'Cover'"
-                  @update:model-value="updateImageRendering"
-                />
-              </div>
-              <Button
-                v-if="canRepositionImage"
-                icon-left="lucide-move-vertical"
-                @click="$emit('repositionImage')"
-              >
-                Reposition
-              </Button>
-            </div>
-            <div v-if="isCustomContentCard" class="flex items-center justify-between gap-3">
-              <div class="space-y-1.5">
-                <FormLabel label="Image" size="md" />
-                <FileUploader
-                  :fileTypes="['image/png', 'image/jpeg']"
-                  :uploadArgs="{ optimize: true }"
-                  :validateFile="validateImageFile"
-                  @success="updateImage"
-                >
-                  <template #default="{ progress, error, uploading, openFileSelector }">
-                    <div class="relative">
-                      <Button
-                        icon-left="lucide-upload"
-                        :loading="uploading"
-                        @click="openFileSelector"
-                      >
-                        {{ uploading ? `${progress}%` : imageUploadButtonLabel }}
-                      </Button>
-                      <ErrorMessage
-                        v-if="error"
-                        class="absolute right-0 top-9 z-10 w-52 rounded border border-outline-gray-2 bg-surface-base p-2 shadow-sm"
-                        :message="error"
-                      />
-                    </div>
-                  </template>
-                </FileUploader>
+              <div v-if="isCustomContentCard" class="flex items-center justify-between gap-3">
+                <div class="space-y-1.5">
+                  <FormLabel label="Image" size="md" />
+                  <FileUploader
+                    :fileTypes="['image/png', 'image/jpeg']"
+                    :uploadArgs="{ optimize: true }"
+                    :validateFile="validateImageFile"
+                    @success="updateImage"
+                  >
+                    <template #default="{ progress, error, uploading, openFileSelector }">
+                      <div class="relative">
+                        <Button
+                          icon-left="lucide-upload"
+                          :loading="uploading"
+                          @click="openFileSelector"
+                        >
+                          {{ uploading ? `${progress}%` : imageUploadButtonLabel }}
+                        </Button>
+                        <ErrorMessage
+                          v-if="error"
+                          class="absolute right-0 top-9 z-10 w-52 rounded border border-outline-gray-2 bg-surface-base p-2 shadow-sm"
+                          :message="error"
+                        />
+                      </div>
+                    </template>
+                  </FileUploader>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div
-        v-else
-        class="flex flex-col items-start gap-4 rounded-lg border border-dashed border-outline-gray-2 p-4 text-left lg:p-5"
-      >
-        <div class="space-y-1">
-          <div class="text-base font-medium text-ink-gray-7">Build with cards</div>
-          <p class="text-sm leading-5 text-ink-gray-5">
-            Add a card or spacer, or select an item on the canvas to edit it.
-          </p>
+        <div
+          v-else
+          class="flex flex-col items-start gap-4 rounded-lg border border-dashed border-outline-gray-2 p-4 text-left lg:p-5"
+        >
+          <div class="space-y-1">
+            <div class="text-base font-medium text-ink-gray-7">Build with cards</div>
+            <p class="text-sm leading-5 text-ink-gray-5">
+              Add a card or spacer, or select an item on the canvas to edit it.
+            </p>
+          </div>
+          <div class="flex items-center gap-2">
+            <Button icon-left="lucide-square" @click="$emit('addCard', 'Card')">Card</Button>
+            <Button icon-left="lucide-square-dashed" @click="$emit('addCard', 'Blank')">
+              Spacer
+            </Button>
+          </div>
         </div>
-        <div class="flex items-center gap-2">
-          <Button icon-left="lucide-square" @click="$emit('addCard', 'Card')">Card</Button>
-          <Button icon-left="lucide-square-dashed" @click="$emit('addCard', 'Blank')">
-            Spacer
-          </Button>
-        </div>
-      </div>
+      </ScrollArea>
     </div>
 
     <ProfileAboutDialog
@@ -307,12 +318,15 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useElementSize } from '@vueuse/core'
 import {
+  activeScrollContainer,
   Button,
   Checkbox,
   ErrorMessage,
   FileUploader,
   FormLabel,
+  ScrollArea,
   TabButtons,
   Textarea,
   TextInput,
@@ -368,6 +382,18 @@ const emit = defineEmits<{
   updateTitle: [value: string]
   updateUrl: [value: string]
 }>()
+
+/**
+ * The panel's height, measured off the shell's scroll element rather than the
+ * viewport. The shell teleports the page header out of its scroll region, so
+ * that element is exactly the box the sticky panel can occupy, and `100vh`
+ * would overshoot it by the header and leave the last control unreachable.
+ */
+const { height: shellHeight } = useElementSize(activeScrollContainer)
+const panelStyle = computed(() => {
+  if (!shellHeight.value) return undefined
+  return { height: `${shellHeight.value}px` }
+})
 
 const profileCardSizeButtons = profileCardSizes.map((size) => ({ label: size }))
 const isContentCard = computed(() => {
