@@ -256,29 +256,19 @@
       </div>
     </div>
 
-    <Dialog v-model:open="showAboutDialog" title="About" size="3xl">
-      <!-- `ReadmeEditor` floats its Save/Discard buttons over its own top-right
-           corner, so the content needs room to start below them. -->
-      <ReadmeEditor
-        v-if="showAboutDialog"
-        v-model:editing="aboutEditing"
-        class="min-h-[16rem] pt-11"
-        data-profile-panel-field="readme"
-        :resource="aboutResource"
-        fieldname="readme"
-        :border="false"
-        placeholder="Write about yourself"
-      />
-    </Dialog>
+    <ProfileAboutDialog
+      v-model:open="showAboutDialog"
+      :text="card?.text"
+      :save="(value: string) => saveBoundField({ field: 'readme', value })"
+    />
   </aside>
 </template>
 
 <script setup lang="ts">
-import { computed, defineAsyncComponent, reactive, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import {
   Button,
   Checkbox,
-  Dialog,
   ErrorMessage,
   FileUploader,
   FormLabel,
@@ -286,6 +276,7 @@ import {
   Textarea,
   TextInput,
 } from 'frappe-ui'
+import ProfileAboutDialog from './ProfileAboutDialog.vue'
 import {
   profileBioLimit,
   profileBoundFields,
@@ -299,9 +290,6 @@ import {
   type ProfileFieldUpdate,
   type ProfileImageRendering,
 } from './types'
-
-// Only the profile owner ever opens this, and it pulls in the rich-text editor.
-const ReadmeEditor = defineAsyncComponent(() => import('@/components/editor/ReadmeEditor.vue'))
 
 interface UploadedFile {
   file_url: string
@@ -403,34 +391,8 @@ watch(
 )
 
 const showAboutDialog = ref(false)
-const aboutEditing = ref(false)
-const aboutDraft = reactive({ readme: '' })
-/**
- * Adapter that lets the generic `ReadmeEditor` drive the bound `readme` field:
- * the draft lives here and Save routes through the field editor, so the write
- * lands on the profile and the canvas re-resolves.
- */
-const aboutResource = {
-  doc: aboutDraft,
-  setValue: {
-    submit: (values: Record<string, string>) => {
-      return saveBoundField({ field: 'readme', value: values.readme })
-    },
-  },
-  reload: () => {
-    aboutDraft.readme = props.card?.text || ''
-  },
-}
-
-// `ReadmeEditor` closes itself on a successful save or a discard; that is the
-// dialog's only job here, so it closes with it.
-watch(aboutEditing, (editing) => {
-  if (!editing) showAboutDialog.value = false
-})
 
 function openAboutDialog() {
-  aboutDraft.readme = props.card?.text || ''
-  aboutEditing.value = true
   showAboutDialog.value = true
 }
 
