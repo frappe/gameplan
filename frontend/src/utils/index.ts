@@ -13,6 +13,18 @@ export function getImgDimensions(
   })
 }
 
+/**
+ * True when editor content still holds an image whose upload hasn't resolved.
+ * The editor inserts a `blob:`/`data:` preview while uploading and swaps in the
+ * real `/private/files/...` URL once done. Saving before that swap persists a
+ * preview src that the backend sanitizer strips, leaving a broken, invisible
+ * image — so callers should block submission until this returns false.
+ */
+export function hasPendingImageUpload(html: string | null | undefined): boolean {
+  if (!html) return false
+  return /<img\b[^>]*\ssrc\s*=\s*["'](?:blob:|data:)/i.test(html)
+}
+
 export async function copyToClipboard(text: string): Promise<void> {
   try {
     // Use modern Clipboard API if available

@@ -6,6 +6,7 @@ import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { getSpace } from '@/data/spaces'
 import { useSessionUser, useUser } from '@/data/users'
 import { tags } from '@/data/tags'
+import { hasPendingImageUpload } from '@/utils'
 import type { GPDiscussion } from '@/types/doctypes'
 
 const PUBLISH_DRAFT = 'gameplan.gameplan.doctype.gp_draft.gp_draft.publish_draft'
@@ -142,6 +143,10 @@ export function useNewDiscussion() {
     }
     if (checkProject && !draftData.value.project) {
       errorMessage.value = 'Please select a space.'
+      return false
+    }
+    if (hasPendingImageUpload(draftData.value.content)) {
+      errorMessage.value = 'Please wait for the image to finish uploading.'
       return false
     }
     return true

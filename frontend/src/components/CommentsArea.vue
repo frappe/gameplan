@@ -201,7 +201,7 @@
                 variant: 'solid',
                 onClick: submitComment,
                 loading: comments.insert.loading,
-                disabled: commentEmpty,
+                disabled: commentEmpty || commentHasPendingUpload,
               }"
               :discardButtonProps="{
                 onClick: discardComment,
@@ -259,7 +259,8 @@ import {
 } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useEventListener } from '@vueuse/core'
-import { useList, TabButtons, ErrorMessage, Button, Tooltip } from 'frappe-ui'
+import { useList, TabButtons, ErrorMessage, Button, Tooltip, toast } from 'frappe-ui'
+import { hasPendingImageUpload } from '@/utils'
 import CommentEditor from '@/components/editor/CommentEditor.vue'
 import Comment from './Comment.vue'
 import Activity from './Activity.vue'
@@ -508,6 +509,10 @@ const commentEmpty = computed(() => {
   return !draftData.value.content || draftData.value.content === '<p></p>'
 })
 
+// Block sending while an image is still uploading — its content carries a
+// transient blob:/data: src that the backend strips, which would drop the image.
+const commentHasPendingUpload = computed(() => hasPendingImageUpload(draftData.value.content))
+
 const editorObject = computed<Editor | null>(() => {
   return newCommentEditor.value?.editor || null
 })
@@ -655,6 +660,11 @@ function resetCommentState() {
 
 async function submitComment() {
   if (commentEmpty.value || comments.insert.loading) return
+  // Safety net for keyboard submit (Ctrl/Cmd+Enter) which bypasses the disabled button.
+  if (commentHasPendingUpload.value) {
+    toast.error('Please wait for the image to finish uploading')
+    return
+  }
 
   const comment = await comments.insert.submit({
     reference_doctype: props.doctype,
