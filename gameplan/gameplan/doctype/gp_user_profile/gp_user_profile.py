@@ -156,6 +156,9 @@ def on_user_update(doc, method=None):
 		profile.enabled = doc.enabled
 		profile.full_name = doc.full_name
 		profile.save(ignore_permissions=True)
+		# A rename changes what *other* sessions render, and their cached user list has
+		# no other reason to refetch.
+		notify_users_changed()
 
 
 @frappe.whitelist()
