@@ -68,6 +68,13 @@ class HasMentions:
 
 		if user_email == self.owner:
 			return False
+		# A mention or rich quote outlives the account it points at: delete the user (or
+		# paste content quoting one) and the email stays in the HTML forever. None of the
+		# permission checks below require the User row to exist, and GP Notification.to_user
+		# is a Link — so without this the notification insert raises LinkValidationError and
+		# takes the whole post save down with it.
+		if not frappe.db.exists("User", user_email):
+			return False
 		return can_view_content(user_email, self)
 
 	def _notify_user(self, user_email, is_everyone=False, notification_type="Mention"):
