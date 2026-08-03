@@ -137,6 +137,14 @@
                 />
               </div>
             </div>
+            <!-- An empty body renders as nothing at all, which reads as a broken page rather
+                 than an empty post. Say so explicitly. -->
+            <p
+              v-if="!editingPost && isEditorContentEmpty(discussion.doc.content)"
+              class="text-p-base text-ink-gray-5"
+            >
+              This post has no content.
+            </p>
             <DiscussionViewEditor
               ref="postEditor"
               :content="editingPost ? postDraftData.content : discussion.doc.content"
@@ -267,6 +275,17 @@
           again.
         </p>
       </EmptyStateBox>
+      <!-- Fetch finished, but there is no doc and no recognised not-found/forbidden error.
+           Fail visibly instead of rendering a blank page. Gated on isFinished so the
+           pre-fetch tick (useFetch defers its first execute by a microtask) doesn't flash
+           an error. -->
+      <EmptyStateBox v-else-if="discussion.isFinished" class="mx-auto mt-14 max-w-2xl px-6">
+        <LucideTriangleAlert class="mb-3 size-7 text-ink-gray-4" />
+        <div class="text-base text-ink-gray-7">Could not load this discussion</div>
+        <p class="mt-2 max-w-md text-center text-p-sm text-ink-gray-5">
+          Something went wrong while loading it. Refresh to try again.
+        </p>
+      </EmptyStateBox>
     </div>
     <div
       v-if="!isMobileViewport && !editingPost"
@@ -320,7 +339,7 @@ import UserProfileLink from './UserProfileLink.vue'
 const RevisionsDialog = defineAsyncComponent(() => import('./RevisionsDialog.vue'))
 import SpaceBreadcrumbs from './SpaceBreadcrumbs.vue'
 import EmptyStateBox from './EmptyStateBox.vue'
-import { copyToClipboard } from '@/utils'
+import { copyToClipboard, isEditorContentEmpty } from '@/utils'
 import { getSpace, useSpace } from '@/data/spaces'
 import { useCommunity } from '@/data/communities'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
@@ -574,7 +593,13 @@ function moveToSpace() {
   }
 }
 
-const canSavePost = computed(() => Boolean(postDraftData.value.title?.trim()))
+// A post needs both halves: saving an empty body over a real one leaves a post that renders
+// as a blank page for everyone, with no way back except the revision history.
+const canSavePost = computed(
+  () =>
+    Boolean(postDraftData.value.title?.trim()) &&
+    !isEditorContentEmpty(postDraftData.value.content),
+)
 
 // Read content from the editor's own serializer rather than discussion.doc.content:
 // the editor re-normalizes HTML on load and writes it back, so the stored value

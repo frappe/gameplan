@@ -6,7 +6,7 @@ import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { getSpace } from '@/data/spaces'
 import { useSessionUser, useUser } from '@/data/users'
 import { tags } from '@/data/tags'
-import { extractServerMessage } from '@/utils'
+import { extractServerMessage, isEditorContentEmpty } from '@/utils'
 import type { GPDiscussion } from '@/types/doctypes'
 
 const PUBLISH_DRAFT = 'gameplan.gameplan.doctype.gp_draft.gp_draft.publish_draft'
@@ -14,9 +14,7 @@ const LOADING_STATUS_DELAY_MS = 200
 
 /** Title or non-empty body — the threshold for persisting a draft at all. */
 function hasMeaningfulContent(payload: Partial<DraftPayload>): boolean {
-  const body = (payload.content ?? '').trim()
-  const title = (payload.title ?? '').trim()
-  return title.length > 0 || (body.length > 0 && body !== '<p></p>')
+  return (payload.title ?? '').trim().length > 0 || !isEditorContentEmpty(payload.content)
 }
 
 export function useNewDiscussion() {
@@ -176,6 +174,16 @@ export function useNewDiscussion() {
     publishing.value = true
     try {
       await draft.flush()
+
+      // publish_draft builds the discussion from the SERVER row, so a draft that is still
+      // dirty after a flush would be published minus whatever failed to push — most often
+      // as an empty body. Stop instead of shipping a post the author didn't write.
+      if (draft.serverName.value && draft.dirty.value) {
+        publishError.value =
+          'Could not save your draft to the server. Check your connection and try again.'
+        publishing.value = false
+        return
+      }
 
       let discussionId: string | undefined
       if (draft.serverName.value) {

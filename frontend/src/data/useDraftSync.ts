@@ -15,6 +15,7 @@
 import { ref, computed, watch, toValue, nextTick, onScopeDispose, type MaybeRefOrGetter } from 'vue'
 import { call, debounce, toast, dayjsLocal } from 'frappe-ui'
 import { session } from './session'
+import { isEditorContentEmpty } from '@/utils'
 import {
   getDraftRecord,
   putDraftRecord,
@@ -53,9 +54,7 @@ export interface UseDraftSyncOptions {
 }
 
 function hasContent(payload: DraftPayload): boolean {
-  const body = (payload.content ?? '').trim()
-  const title = (payload.title ?? '').trim()
-  return (body.length > 0 && body !== '<p></p>') || title.length > 0
+  return !isEditorContentEmpty(payload.content) || (payload.title ?? '').trim().length > 0
 }
 
 let instanceCounter = 0
@@ -159,23 +158,30 @@ export function useDraftSync(options: UseDraftSyncOptions) {
 
   async function persistToServer() {
     if (!isEnabled() || !dirty.value || !canSave(data.value)) return
+    // Snapshot what we are about to send, and the edit clock it belongs to, BEFORE the
+    // request goes out. Marking the draft synced as of the response time would mark every
+    // keystroke typed while the request was in flight as already pushed — those edits go
+    // permanently un-synced, and publishing (which builds the discussion from the server
+    // row, not the local buffer) then produces a post with an empty body.
+    const pushedAt = updatedAt.value
+    const fields = payloadFields()
     saving.value = true
     try {
       if (serverName.value) {
         await call('frappe.client.set_value', {
           doctype: 'GP Draft',
           name: serverName.value,
-          fieldname: payloadFields(),
+          fieldname: fields,
         })
       } else {
         const doc = await call('frappe.client.insert', {
-          doc: { doctype: 'GP Draft', ...identityFields(), ...payloadFields() },
+          doc: { doctype: 'GP Draft', ...identityFields(), ...fields },
         })
         serverName.value = doc.name
         onCreate?.(doc.name)
       }
-      syncedAt.value = Date.now()
-      savedAt.value = syncedAt.value
+      syncedAt.value = Math.max(syncedAt.value ?? 0, pushedAt)
+      savedAt.value = Date.now()
       await persistLocal()
       pushFailed.value = false
     } catch (error) {
@@ -194,12 +200,16 @@ export function useDraftSync(options: UseDraftSyncOptions) {
     }
   }
 
-  function pushToServer() {
-    if (activePush) return activePush
-    activePush = persistToServer().finally(() => {
-      activePush = null
+  // Chain behind an in-flight push rather than joining it: that request was built from an
+  // older snapshot, so returning its promise would report edits made since as pushed. The
+  // chained run is free when nothing changed — persistToServer() bails on `!dirty`.
+  function pushToServer(): Promise<void> {
+    const next = (activePush ?? Promise.resolve()).then(persistToServer)
+    const push = next.finally(() => {
+      if (activePush === push) activePush = null
     })
-    return activePush
+    activePush = push
+    return push
   }
 
   const debouncedPush = debounce(pushToServer, debounceMs)
@@ -328,7 +338,9 @@ export function useDraftSync(options: UseDraftSyncOptions) {
     broadcastDraftChange(localKey)
   }
 
-  /** Force any pending change to the server now (creating the row if needed). */
+  /** Force any pending change to the server now (creating the row if needed). Chains behind
+   *  an in-flight push, so on return the server row reflects the local buffer — unless
+   *  `dirty` is still true, which means the push failed. */
   async function flush() {
     debouncedPush.cancel?.()
     await pushToServer()

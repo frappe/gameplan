@@ -77,6 +77,25 @@ export function relativeTimestamp(timestamp: string): string {
 }
 
 /**
+ * Whether an editor body carries nothing a reader would see.
+ *
+ * TipTap serializes an untouched document as `<p></p>`, so a plain emptiness check on the
+ * HTML string is not enough. Media-only bodies (an image, a video, an attachment) have no
+ * text but are meaningful, so the check is deliberately structural: strip tags that render
+ * nothing on their own and see whether any markup or text survives.
+ */
+export function isEditorContentEmpty(content: string | null | undefined): boolean {
+  const html = (content ?? '').trim()
+  if (!html) return true
+  const stripped = html
+    .replace(/<(p|div|br|span)\b[^>]*>/gi, '')
+    .replace(/<\/(p|div|span)>/gi, '')
+    .replace(/&nbsp;/gi, ' ')
+    .trim()
+  return stripped.length === 0
+}
+
+/**
  * Pull the human-readable text out of a frappe-ui request error.
  *
  * `frappeRequest`/`call` put the clean `frappe.throw()` text on the error's
