@@ -26,6 +26,19 @@
         @click.stop="$emit('remove')"
         @pointerdown.stop
       />
+      <!-- The owner edits a bound card's value elsewhere — settings, a dialog,
+           or the customize page — so this only says where to go, it never edits. -->
+      <Button
+        v-if="canEdit"
+        class="absolute right-3 top-3 z-20 opacity-0 transition-opacity focus:opacity-100 group-hover:opacity-100"
+        variant="outline"
+        size="sm"
+        icon="lucide-edit-2"
+        :label="`Edit ${card.title}`"
+        data-profile-card-edit
+        @click.stop="$emit('edit')"
+        @pointerdown.stop
+      />
     </div>
 
     <div v-if="card.type === 'Blank'" class="h-full" />
@@ -51,31 +64,10 @@
         <div class="flex items-center gap-1.5 pb-2 text-xs font-medium text-ink-gray-5 sm:text-sm">
           {{ card.title }}
         </div>
-        <ReadmeEditor
-          v-if="editingReadme"
-          v-model:editing="editingReadme"
-          class="relative z-10"
-          :resource="readmeResource"
-          fieldname="readme"
-          :border="false"
-          placeholder="Write about yourself"
-          @click.stop
-          @pointerdown.stop
-        />
         <!-- `readme` is a Text Editor field: frappe sanitizes it on save. Same
              prose pair the editor and every other read-only render use. -->
-        <div v-else class="prose prose-v3 max-w-none" v-html="card.text" />
+        <div class="prose prose-v3 max-w-none" v-html="card.text" />
       </div>
-      <Button
-        v-if="canEditField && !editingReadme"
-        class="absolute right-3 top-3 z-20 opacity-0 transition-opacity focus:opacity-100 group-hover:opacity-100"
-        variant="outline"
-        size="sm"
-        icon="lucide-edit-2"
-        :label="`Edit ${card.title}`"
-        @click.stop="editingReadme = true"
-        @pointerdown.stop
-      />
       <template v-if="canExpand">
         <div
           v-if="!expanded"
@@ -102,25 +94,7 @@
         {{ card.title }}
         <span v-if="card.url" class="lucide-arrow-up-right size-3.5" aria-hidden="true" />
       </div>
-      <ProfileBentoFieldEditor
-        v-if="editingTextField && fieldEditor"
-        :field="editingTextField"
-        :value="card.text"
-        :editor="fieldEditor"
-        @close="editingTextField = null"
-      />
-      <button
-        v-else-if="editableTextField"
-        type="button"
-        class="relative z-10 -m-1 block w-full rounded-md p-1 text-left transition hover:bg-surface-gray-2"
-        :aria-label="`Edit ${card.title}`"
-        data-profile-field-edit-trigger
-        @click.stop="editingTextField = editableTextField"
-        @pointerdown.stop
-      >
-        <p :class="textClass">{{ textCardBody }}</p>
-      </button>
-      <p v-else :class="textClass">{{ textCardBody }}</p>
+      <p :class="textClass">{{ textCardBody }}</p>
     </div>
 
     <div v-else class="h-full">
@@ -207,39 +181,7 @@
           <p :class="imageBodyTextClass">{{ imageCardBody }}</p>
         </div>
         <div
-          v-if="canEditField && imageUrl && !isRepositioning"
-          class="absolute bottom-3 right-3 z-20 flex items-center gap-2 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100"
-          @click.stop
-          @pointerdown.stop
-        >
-          <FileUploader
-            :fileTypes="['image/png', 'image/jpeg']"
-            :uploadArgs="{ optimize: true }"
-            :validateFile="validateImageFile"
-            @success="replaceBoundImage"
-          >
-            <template #default="{ uploading, openFileSelector }">
-              <Button
-                :loading="uploading"
-                :icon="compactImageControls ? 'lucide-image-up' : undefined"
-                :icon-left="compactImageControls ? undefined : 'lucide-image-up'"
-                :label="compactImageControls ? 'Change image' : undefined"
-                @click="openFileSelector"
-              >
-                <template v-if="!compactImageControls">Change</template>
-              </Button>
-            </template>
-          </FileUploader>
-          <Button
-            v-if="canRepositionImage"
-            icon-left="lucide-move-vertical"
-            @click="startInlineReposition"
-          >
-            Reposition
-          </Button>
-        </div>
-        <div
-          v-if="isRepositioning && imageUrl"
+          v-if="repositioning && imageUrl"
           class="absolute inset-0 z-10 flex touch-none select-none items-center justify-center bg-surface-gray-9/35"
           :class="draggingImage ? 'cursor-grabbing' : 'cursor-grab'"
           @click.stop
@@ -255,10 +197,8 @@
               data-image-reposition-control
               @pointerdown.stop
             >
-              <Button :loading="savingImagePosition" @click.stop="saveImagePosition">Save</Button>
-              <Button :disabled="savingImagePosition" @click.stop="cancelImageReposition">
-                Cancel
-              </Button>
+              <Button @click.stop="saveImagePosition">Save</Button>
+              <Button @click.stop="$emit('cancelImageReposition')">Cancel</Button>
             </div>
           </div>
         </div>
@@ -281,19 +221,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineAsyncComponent, reactive, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useElementSize } from '@vueuse/core'
-import type { ProfileBentoCard, ProfileFieldEditor } from './types'
+import type { ProfileBentoCard } from './types'
 import {
   profileBentoFlowCollapsedHeight,
   profileBentoFlowImageMaxHeight,
 } from './profileBentoLayout'
-import ProfileBentoFieldEditor from './ProfileBentoFieldEditor.vue'
 import { Badge, Button, FileUploader, Spinner } from 'frappe-ui'
 import { getImgDimensions, type ImgDimensions } from '@/utils'
-
-// Only the profile owner ever mounts this, and it pulls in the rich-text editor.
-const ReadmeEditor = defineAsyncComponent(() => import('@/components/editor/ReadmeEditor.vue'))
 
 const props = defineProps<{
   card: ProfileBentoCard
@@ -314,15 +250,16 @@ const props = defineProps<{
   expanded?: boolean
   canExpand?: boolean
   /**
-   * Inline editing of the bound profile field this card shows. Set only for the
-   * owner's own profile page — deliberately separate from `interactive`, which
-   * means "customize page".
+   * Show the edit affordance for the bound profile field this card displays. Set
+   * only on the owner's own profile page — deliberately separate from
+   * `interactive`, which means "customize page".
    */
-  fieldEditor?: ProfileFieldEditor
+  canEdit?: boolean
 }>()
 
 const emit = defineEmits<{
   cancelImageReposition: []
+  edit: []
   pointerDown: [event: PointerEvent]
   remove: []
   saveImagePosition: [position: number]
@@ -330,7 +267,6 @@ const emit = defineEmits<{
   toggleExpanded: []
   uploadImage: [fileUrl: string]
   'update:contentHeight': [height: number]
-  'update:editing': [editing: boolean]
 }>()
 
 interface UploadedFile {
@@ -353,60 +289,6 @@ const draggingImage = ref(false)
 const dragStartY = ref(0)
 const dragStartPosition = ref(50)
 const imageDimensions = ref<ImgDimensions | null>(null)
-const editingTextField = ref<'bio' | 'full_name' | null>(null)
-const editingReadme = ref(false)
-const localRepositioning = ref(false)
-const savingImagePosition = ref(false)
-
-/** True while the card shows an editor instead of its stored value. */
-const isEditing = computed(() => {
-  return Boolean(editingTextField.value) || editingReadme.value || localRepositioning.value
-})
-
-watch(isEditing, (editing) => emit('update:editing', editing))
-
-/** Bound cards are editable in place; custom cards are edited on the customize page. */
-const canEditField = computed(() => {
-  return Boolean(props.fieldEditor) && props.card.source === 'field' && !props.interactive
-})
-
-const editableTextField = computed<'bio' | 'full_name' | null>(() => {
-  if (!canEditField.value) return null
-  if (props.card.field === 'bio') return 'bio'
-  // The two-input name editor needs the User doc; it may still be in flight.
-  if (props.card.field === 'full_name' && props.fieldEditor?.firstName) return 'full_name'
-  return null
-})
-
-const compactImageControls = computed(() => props.card.size === '1x1')
-const canRepositionImage = computed(() => props.card.field === 'cover_image')
-const isRepositioning = computed(() => props.repositioning || localRepositioning.value)
-
-/**
- * Adapter that lets the generic `ReadmeEditor` drive this card's bound `readme`
- * field: the draft lives here, and Save routes through the page's field editor
- * so the grid re-resolves instead of the card patching itself.
- */
-const readmeDraft = reactive({ readme: props.card.text || '' })
-const readmeResource = {
-  doc: readmeDraft,
-  setValue: {
-    submit: (values: Record<string, string>) => {
-      if (!props.fieldEditor) return Promise.reject(new Error('Not editable'))
-      return props.fieldEditor.save({ field: 'readme', value: values.readme })
-    },
-  },
-  reload: () => {
-    readmeDraft.readme = props.card.text || ''
-  },
-}
-
-watch(
-  () => props.card.text,
-  (text) => {
-    if (!editingReadme.value) readmeDraft.readme = text || ''
-  },
-)
 
 const cardChromeClass = computed(() => {
   if (props.card.type === 'Blank') {
@@ -527,7 +409,7 @@ const imageStyle = computed(() => {
 })
 
 const currentImagePosition = computed(() => {
-  if (isRepositioning.value) return clampPosition(tempImagePosition.value)
+  if (props.repositioning) return clampPosition(tempImagePosition.value)
   return clampPosition(props.card.imagePosition ?? 50)
 })
 
@@ -606,7 +488,7 @@ watch(htmlStackHeight, (height) => {
 })
 
 watch(
-  () => [isRepositioning.value, props.card.imagePosition] as const,
+  () => [props.repositioning, props.card.imagePosition] as const,
   ([repositioning]) => {
     if (repositioning) {
       tempImagePosition.value = clampPosition(props.card.imagePosition ?? 50)
@@ -664,47 +546,8 @@ function endImageReposition(event: PointerEvent) {
   }
 }
 
-function startInlineReposition() {
-  tempImagePosition.value = clampPosition(props.card.imagePosition ?? 50)
-  localRepositioning.value = true
-}
-
-async function saveImagePosition() {
-  let position = clampPosition(tempImagePosition.value)
-  if (!localRepositioning.value) {
-    emit('saveImagePosition', position)
-    return
-  }
-  if (savingImagePosition.value || !props.fieldEditor) return
-
-  savingImagePosition.value = true
-  try {
-    await props.fieldEditor.save({ field: 'cover_image_position', value: position })
-    localRepositioning.value = false
-  } catch {
-    // The field editor already reported it; stay open so the drag is not lost.
-  } finally {
-    savingImagePosition.value = false
-  }
-}
-
-function cancelImageReposition() {
-  if (localRepositioning.value) {
-    localRepositioning.value = false
-    return
-  }
-  emit('cancelImageReposition')
-}
-
-async function replaceBoundImage(file: UploadedFile) {
-  if (!props.fieldEditor || !props.card.field) return
-  if (props.card.field !== 'image' && props.card.field !== 'cover_image') return
-
-  try {
-    await props.fieldEditor.save({ field: props.card.field, value: file.file_url })
-  } catch {
-    // Reported by the field editor; the card keeps showing the stored image.
-  }
+function saveImagePosition() {
+  emit('saveImagePosition', clampPosition(tempImagePosition.value))
 }
 
 function getVerticalOverflow() {

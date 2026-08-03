@@ -30,9 +30,9 @@ export type ProfileFieldUpdate =
   | { field: 'full_name'; firstName: string; lastName: string }
 
 /**
- * Inline editing of bound cards, supplied by the profile page when the viewer
- * owns the profile. Deliberately separate from the grid's `interactive` prop,
- * which means "customize page" (drag to reorder, card selection).
+ * Writes a bound card's value back to the profile. Supplied by the customize
+ * page's panel, and by the profile page for its About dialog — the one place
+ * that knows which document each bound field actually lives on.
  */
 export interface ProfileFieldEditor {
   /** `User.first_name` / `User.last_name`, for the two-input full-name editor. */

@@ -37,9 +37,9 @@
 
     <div v-else class="mx-auto flex w-full max-w-[1180px] gap-6 px-4 pb-32 pt-6 sm:px-6 sm:pb-40">
       <main class="min-w-0 flex-1">
-        <!-- No `field-editor` here on purpose: on this canvas a click selects a
-             card and a drag reorders it, so click-to-edit would fight both
-             gestures. Bound values are edited in the panel. -->
+        <!-- No `editable-cards` here on purpose: on this canvas a click selects a
+             card and a drag reorders it, so a per-card edit button would fight
+             both gestures. Bound values are edited in the panel. -->
         <ProfileBentoGrid
           :cards="canvasCards"
           :selected-card-id="selectedCardId"
@@ -78,6 +78,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { useEventListener } from '@vueuse/core'
 import { PageHeader, Breadcrumbs, Button, toast, useDoc, usePageMeta } from 'frappe-ui'
 import ProfileBentoEditorPanel from '@/components/ProfileBento/ProfileBentoEditorPanel.vue'
@@ -129,6 +130,7 @@ const fieldEditor = useProfileFieldEditing({
   onSaved: () => profileResource.reload(),
 })
 
+const route = useRoute()
 const profileBentoSource = createServerProfileBentoSource()
 const isLoadingDraft = ref(true)
 const repositioningCardId = ref('')
@@ -177,9 +179,22 @@ usePageMeta(() => {
 async function loadProfileBentoDraft() {
   try {
     await loadDraft()
+    selectCardFromRoute()
   } finally {
     isLoadingDraft.value = false
   }
+}
+
+/**
+ * `?field=cover_image` deep-links a bound card, so the edit button on the
+ * profile page lands on the tile it came from instead of an unselected canvas.
+ */
+function selectCardFromRoute() {
+  let field = route.query.field
+  if (typeof field !== 'string') return
+
+  let card = cards.value.find((item) => item.source === 'field' && item.field === field)
+  if (card) selectedCardId.value = card.id
 }
 
 function handleCustomizeKeydown(event: KeyboardEvent) {

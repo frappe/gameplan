@@ -36,7 +36,7 @@ const failureMessages: Record<ProfileFieldUpdate['field'], string> = {
 }
 
 /**
- * Inline editing of the bound profile cards.
+ * Writing the profile fields the bound cards display.
  *
  * Every write lands on the profile (or `User`) document — never on the bento
  * layout — so `layout_customized` stays 0 and the owner keeps getting the
