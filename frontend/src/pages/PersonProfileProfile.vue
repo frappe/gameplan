@@ -34,14 +34,21 @@ defineOptions({
 
 // `profile` is passed by PersonProfile's router-view. Declaring it keeps it out
 // of `$attrs`, where an object prop would land on the root element as an attribute.
-const props = defineProps<{
-  profile: { doc?: GPUserProfile | null }
-  bentoCards: ProfileBentoCard[]
-  bentoCardsLoaded: boolean
-  isOwnProfile: boolean
-  /** Set only when the viewer owns this profile; enables the card edit buttons. */
-  fieldEditor?: ProfileFieldEditor
-}>()
+//
+// The bento props are optional because the parent only binds them while the
+// Profile tab is the route being rendered. Treat their absence as "not loaded
+// yet" and show the skeleton — never dereference them.
+const props = withDefaults(
+  defineProps<{
+    profile: { doc?: GPUserProfile | null }
+    bentoCards?: ProfileBentoCard[]
+    bentoCardsLoaded?: boolean
+    isOwnProfile?: boolean
+    /** Set only when the viewer owns this profile; enables the card edit buttons. */
+    fieldEditor?: ProfileFieldEditor
+  }>(),
+  { bentoCards: () => [] },
+)
 
 const router = useRouter()
 const showAboutDialog = ref(false)

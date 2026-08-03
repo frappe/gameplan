@@ -40,8 +40,8 @@
   <NotFound v-else-if="profileNotFound" />
 </template>
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { computed, inject, ref, watch } from 'vue'
+import { routerViewLocationKey, useRoute, useRouter } from 'vue-router'
 import { PageHeader, Breadcrumbs, Button, TabButtons, useDoc, usePageMeta } from 'frappe-ui'
 import NotFound from '@/pages/NotFound.vue'
 import { showSettingsDialog } from '@/components/Settings'
@@ -114,12 +114,21 @@ const profileBreadcrumbs = computed(() => [
 ])
 
 /**
+ * Which tab is on screen. Not the same as `route.name`: `App.vue` keeps this page
+ * rendered behind the settings overlay with `<router-view :route>`, and there
+ * `useRoute()` reports the /settings URL while the nested view still shows a
+ * profile tab. A router-view provides the location it displays, so read that.
+ */
+const displayedRoute = inject(routerViewLocationKey)
+const displayedRouteName = computed(() => displayedRoute?.value.name ?? route.name)
+
+/**
  * Only the Profile tab takes the bento props. Posts and Replies render a single
  * root element, so anything they do not declare would land on it as an attribute.
  */
 const routeProps = computed(() => {
   let baseProps = { profile: profileChildResource.value }
-  if (route.name !== 'PersonProfileProfile') return baseProps
+  if (displayedRouteName.value !== 'PersonProfileProfile') return baseProps
   return {
     ...baseProps,
     bentoCards: profileBentoCards.value,
@@ -136,7 +145,7 @@ const activeTab = computed({
         PersonProfileProfile: 'Profile',
         PersonProfilePosts: 'Posts',
         PersonProfileReplies: 'Replies',
-      }[route.name as string] || 'Profile'
+      }[displayedRouteName.value as string] || 'Profile'
     )
   },
   set(value) {
