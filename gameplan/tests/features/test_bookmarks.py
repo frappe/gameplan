@@ -97,6 +97,20 @@ class TestAddAndRemoveBookmark(BookmarkTestCase):
 		with self.as_user(self.second_member):
 			self.assertFalse(frappe.get_doc("GP Discussion", self.discussion.name).as_dict().is_bookmarked)
 
+	def test_as_dict_survives_a_round_trip_through_the_client(self):
+		"""A saved doc comes back from the client carrying the keys `as_dict` added.
+
+		`is_bookmarked` is not a docfield, so `Document.update` sets it as a plain
+		attribute. If a method shared that name it would be shadowed by the bool and the
+		re-serialisation frappe does after every save would blow up.
+		"""
+		self.add_bookmark(self.discussion, self.member)
+
+		with self.as_user(self.member):
+			posted_back = frappe.get_doc(frappe.get_doc("GP Discussion", self.discussion.name).as_dict())
+
+			self.assertTrue(posted_back.as_dict().is_bookmarked)
+
 	def test_deleting_a_discussion_removes_every_users_bookmark(self):
 		"""A bookmark points at a discussion with a Link field, so a leftover row both
 		blocks the delete (link check) and dangles for the user who bookmarked it."""
