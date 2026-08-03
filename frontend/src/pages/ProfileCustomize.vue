@@ -85,9 +85,9 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { onBeforeRouteLeave, useRoute } from 'vue-router'
 import { useEventListener, useMediaQuery } from '@vueuse/core'
-import { PageHeader, Breadcrumbs, Button, toast, useDoc, usePageMeta } from 'frappe-ui'
+import { PageHeader, Breadcrumbs, Button, dialog, toast, useDoc, usePageMeta } from 'frappe-ui'
 import ProfileBentoEditorPanel from '@/components/ProfileBento/ProfileBentoEditorPanel.vue'
 import ProfileBentoGrid from '@/components/ProfileBento/ProfileBentoGrid.vue'
 import { createServerProfileBentoSource } from '@/components/ProfileBento/profileBentoSource'
@@ -209,14 +209,45 @@ function selectCardFromRoute() {
 }
 
 function handleCustomizeKeydown(event: KeyboardEvent) {
+  if (isEditableTarget(event.target)) return
+
+  if (event.key === 'Escape') {
+    // A dialog the panel opened takes Escape for itself; closing it should not
+    // also drop the selection the panel was editing.
+    if (!selectedCardId.value || isDialogTarget(event.target)) return
+    event.preventDefault()
+    selectedCardId.value = ''
+    return
+  }
+
   // On Mac the "delete" key emits "Backspace"; "Delete" is the forward-delete.
   if (event.key !== 'Delete' && event.key !== 'Backspace') return
-  if (event.metaKey || event.ctrlKey || event.altKey || isEditableTarget(event.target)) return
+  if (event.metaKey || event.ctrlKey || event.altKey) return
   if (!selectedCard.value) return
 
   event.preventDefault()
   removeSelectedCard()
 }
+
+/**
+ * Only the layout is a draft: a bound card's value is already on the profile by
+ * the time the user leaves, so it is never what this asks about.
+ */
+onBeforeRouteLeave(() => {
+  if (!isDirty.value) return true
+
+  return new Promise<boolean>((resolve) => {
+    // `confirm`, not `danger`: this screen stays on gray, with no red anywhere.
+    dialog.confirm({
+      title: 'Discard layout changes',
+      message: 'Your profile layout has unsaved changes. Leaving now discards them.',
+      confirmLabel: 'Discard changes',
+      cancelLabel: 'Keep editing',
+      onConfirm: () => resolve(true),
+      onCancel: () => resolve(false),
+    })
+  })
+})
 
 async function saveProfileBentoDraft() {
   try {
@@ -273,6 +304,11 @@ function isEditableTarget(target: EventTarget | null) {
   return Boolean(
     target.closest('input, textarea, select, [contenteditable="true"], [role="textbox"]'),
   )
+}
+
+function isDialogTarget(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) return false
+  return Boolean(target.closest('[role="dialog"]'))
 }
 
 function getSaveErrorMessage(error: unknown) {
