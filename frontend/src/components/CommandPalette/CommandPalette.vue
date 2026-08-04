@@ -468,6 +468,17 @@ function groupRegisteredCommands() {
   return groups
 }
 
+/**
+ * Every person appears once per destination, titled "<name> / <tab>" so the name a query
+ * matches on stays at the front. The three rows share a cluster key, which holds them
+ * together in the results instead of letting another person's rows slot between them.
+ */
+const personTabs = [
+  { route: 'PersonProfileProfile', label: 'Profile', keywords: 'profile about bio' },
+  { route: 'PersonProfilePosts', label: 'Posts', keywords: 'posts discussions written' },
+  { route: 'PersonProfileReplies', label: 'Replies', keywords: 'replies comments' },
+] as const
+
 const searchList = computed(() => {
   let list: CommandPaletteItem[] = []
   for (const community of activeCommunities.value) {
@@ -502,19 +513,22 @@ const searchList = computed(() => {
   }
 
   for (const user of activeUsers.value) {
-    list.push({
-      type: 'People',
-      group: 'people',
-      doctype: 'GP User Profile',
-      name: user.name,
-      title: user.full_name,
-      search: `${user.full_name} ${user.email}`,
-      icon: () => h(UserAvatar, { user: user.email, size: 'sm' }),
-      route: {
-        name: 'PersonProfileProfile',
-        params: { personId: user.user_profile },
-      },
-    })
+    for (const tab of personTabs) {
+      list.push({
+        type: 'People',
+        group: 'people',
+        cluster: user.name,
+        doctype: 'GP User Profile',
+        name: `${user.name}:${tab.route}`,
+        title: `${user.full_name} / ${tab.label}`,
+        search: `${user.full_name} ${user.email} ${tab.keywords}`,
+        icon: () => h(UserAvatar, { user: user.email, size: 'sm' }),
+        route: {
+          name: tab.route,
+          params: { personId: user.user_profile },
+        },
+      })
+    }
   }
   return list
 })

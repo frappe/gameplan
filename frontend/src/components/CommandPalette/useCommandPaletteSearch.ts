@@ -32,13 +32,16 @@ export function useCommandPaletteSearch(options: CommandPaletteSearchOptions) {
       return
     }
 
-    filteredOptions.value = fuzzysort
-      .go(options.query.value, toValue(options.localItems), {
+    const localItems = toValue(options.localItems)
+    const ranked = fuzzysort
+      .go(options.query.value, localItems, {
         key: 'search',
         limit: 100,
         threshold: -10000,
       })
       .map((result) => result.obj)
+
+    filteredOptions.value = clusterRelatedItems(ranked, localItems)
   }
 
   function generateSearchResults({ preserveActive = true } = {}) {
@@ -197,6 +200,43 @@ export function useCommandPaletteSearch(options: CommandPaletteSearchOptions) {
     navigateList,
     updateLocalResults,
   }
+}
+
+/**
+ * Keep the rows that describe one thing together.
+ *
+ * Fuzzysort scores every row on its own, so a person's Profile/Posts/Replies can end up
+ * split by another person who happened to score between them. Rows sharing a `cluster`
+ * move as a unit to the rank of their best match, in the order they were declared.
+ */
+function clusterRelatedItems(ranked: CommandPaletteItem[], source: CommandPaletteItem[]) {
+  const sourceIndex = new Map(source.map((item, index) => [item, index]))
+  const members = new Map<string, CommandPaletteItem[]>()
+
+  for (const item of ranked) {
+    if (!item.cluster) continue
+    const existing = members.get(item.cluster)
+    if (existing) existing.push(item)
+    else members.set(item.cluster, [item])
+  }
+  if (!members.size) return ranked
+
+  for (const group of members.values()) {
+    group.sort((a, b) => (sourceIndex.get(a) ?? 0) - (sourceIndex.get(b) ?? 0))
+  }
+
+  const placed = new Set<string>()
+  const result: CommandPaletteItem[] = []
+  for (const item of ranked) {
+    if (!item.cluster) {
+      result.push(item)
+      continue
+    }
+    if (placed.has(item.cluster)) continue
+    placed.add(item.cluster)
+    result.push(...(members.get(item.cluster) ?? []))
+  }
+  return result
 }
 
 function getMatchingCommands(items: CommandPaletteItem[], searchQuery: string) {

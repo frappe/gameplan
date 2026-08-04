@@ -15,6 +15,11 @@ export interface CommandPaletteItem extends Partial<
   route?: RouteLocationRaw
   isActive?: boolean
   group?: string
+  /**
+   * Items sharing this key stay adjacent in the results, at the rank of whichever one
+   * matched best — e.g. the Profile/Posts/Replies rows for one person.
+   */
+  cluster?: string
   type?: string
   icon?: Component | string
   onClick?: () => void
