@@ -74,6 +74,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onUnmounted, ref, useSlots } from 'vue'
 import { useElementSize, useMediaQuery } from '@vueuse/core'
+import { activeScrollContainer } from 'frappe-ui'
 import { motion } from 'motion-v'
 import ProfileBentoCard from './ProfileBentoCard.vue'
 import {
@@ -124,6 +125,13 @@ const dragSize = ref({ width: 0, height: 0 })
 /** Where the ghost's middle was when the order last changed. See `travelledSinceReorder`. */
 const lastReorderCenter = ref<{ x: number; y: number } | null>(null)
 const reorderDeadBand = 12
+// How near an edge of the scroll container starts an autoscroll, and the pixels
+// per frame it runs at. The floor matters as much as the ceiling: entering the
+// zone has to move the page at once, or the shallow end reads as a dead strip.
+const autoScrollZone = 60
+const autoScrollMinSpeed = 2
+const autoScrollMaxSpeed = 18
+let autoScrollFrame = 0
 const pendingDragCardId = ref('')
 const gridElement = ref<HTMLElement | null>(null)
 const { width: gridWidth } = useElementSize(gridElement)
@@ -189,7 +197,10 @@ function suppressLayoutTransition() {
   })
 }
 
-onUnmounted(() => cancelAnimationFrame(layoutTransitionFrame))
+onUnmounted(() => {
+  cancelAnimationFrame(layoutTransitionFrame)
+  stopAutoScroll()
+})
 
 const packedLayout = computed(() => {
   let items = visibleCards.value.map((card) => ({
@@ -322,7 +333,83 @@ async function startFloatingDrag(cardId: string, event: PointerEvent) {
   dragOffset.value = { x: event.clientX - rect.left, y: event.clientY - rect.top }
   dragSize.value = { width: rect.width, height: rect.height }
   document.body.classList.add('cursor-grabbing')
+  startAutoScroll()
   await nextTick()
+}
+
+/**
+ * Keep scrolling while the card is held near an edge of the scroll container.
+ *
+ * This needs an animation frame loop of its own rather than a few lines in
+ * `handlePointerMove`, because a pointer parked in the hot zone stops sending
+ * events — and that is the whole case the feature exists for. A layout taller
+ * than the viewport cannot be crossed in one gesture otherwise: the drag runs
+ * out of screen with nothing left to aim at.
+ *
+ * The canvas rides the page scroll, so the element to move is the shell's
+ * scroll container, not the grid. The ghost is `fixed` and driven by the
+ * pointer, so it stays under the finger while the page travels underneath it.
+ */
+function startAutoScroll() {
+  cancelAnimationFrame(autoScrollFrame)
+  autoScrollFrame = requestAnimationFrame(autoScrollTick)
+}
+
+function autoScrollTick() {
+  autoScrollFrame = requestAnimationFrame(autoScrollTick)
+
+  let container = activeScrollContainer.value
+  let velocity = autoScrollVelocity(container)
+  if (!container || !velocity) return
+
+  let before = container.scrollTop
+  container.scrollTop = before + velocity
+  let scrolled = container.scrollTop - before
+  // Already at the top or the bottom. Nothing moved, so nothing can have
+  // changed places either.
+  if (!scrolled) return
+
+  // The ghost holds still in the viewport while the grid slides past under it,
+  // so `lastReorderCenter` — a viewport point — would make the dead band read
+  // every autoscrolled frame as "hasn't moved" and the order would never
+  // change. Sliding the stored point by however far the content went puts the
+  // comparison back into the grid's own space, where the travel is real.
+  let last = lastReorderCenter.value
+  if (last) lastReorderCenter.value = { x: last.x, y: last.y - scrolled }
+
+  // `insertionIndex()` reads the grid's rect live, so re-running the reorder is
+  // enough to follow the scroll. No pointer event is needed, and none is coming.
+  moveFloatingCard()
+}
+
+function stopAutoScroll() {
+  cancelAnimationFrame(autoScrollFrame)
+  autoScrollFrame = 0
+}
+
+/**
+ * Pixels to scroll this frame: nothing outside the hot zones, and faster the
+ * deeper into one the pointer is, so the edge of a zone is a crawl and the edge
+ * of the screen is a sprint.
+ */
+function autoScrollVelocity(container: HTMLElement | null) {
+  if (!container) return 0
+
+  let bounds = container.getBoundingClientRect()
+  let y = dragPointer.value.y
+  let above = autoScrollZone - (y - bounds.top)
+  let below = autoScrollZone - (bounds.bottom - y)
+
+  if (above > 0) return -autoScrollSpeed(above)
+  if (below > 0) return autoScrollSpeed(below)
+  return 0
+}
+
+function autoScrollSpeed(depth: number) {
+  // Capped, because past the edge of the container the depth keeps growing with
+  // however far the pointer has left the window.
+  let ratio = Math.min(depth, autoScrollZone) / autoScrollZone
+  return autoScrollMinSpeed + ratio * (autoScrollMaxSpeed - autoScrollMinSpeed)
 }
 
 /**
@@ -446,6 +533,7 @@ function cardElementFor(cardId: string) {
 }
 
 function resetDragState() {
+  stopAutoScroll()
   draggingCardId.value = ''
   dragCards.value = []
   lastReorderCenter.value = null

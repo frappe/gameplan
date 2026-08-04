@@ -176,6 +176,62 @@ describe('Profile customize editor', () => {
     cardIdsInOrder().should('deep.equal', ['cover', 'full-name', 'bio', 'avatar', 'about'])
   })
 
+  it('scrolls the page while a card is held against the bottom edge', () => {
+    // Short enough that the layout runs off the bottom of the screen. That is
+    // the only case this exists for: without an autoscroll the gesture runs out
+    // of screen long before it runs out of layout, and the cards below the fold
+    // are unreachable in one drag.
+    cy.viewport(1280, 600)
+    cy.loginAs('member')
+    visitCustomize()
+
+    cardIdsInOrder().should('deep.equal', defaultCardOrder)
+    settled('cover')
+
+    cy.window().then((win) => {
+      let scroller = shellScroller(win)
+      let bounds = scroller.getBoundingClientRect()
+      expect(
+        scroller.scrollHeight,
+        'the page is taller than the screen, so there is something to scroll to',
+      ).to.be.greaterThan(scroller.clientHeight)
+      expect(scroller.scrollTop, 'the page starts at the top').to.equal(0)
+
+      let sourceElement = cardIn(win, 'cover')
+      let source = sourceElement.getBoundingClientRect()
+      let press = { x: source.left + source.width / 2, y: source.top + source.height / 2 }
+      let begin = { x: press.x + 10, y: press.y + 10 }
+      // Two pixels off the bottom of the scroll region: inside the hot zone, and
+      // deep enough in it to run at close to full speed.
+      let hold = { x: press.x, y: bounds.bottom - 2 }
+
+      firePointer(win, sourceElement, 'pointerdown', press.x, press.y)
+      firePointer(win, win, 'pointermove', begin.x, begin.y)
+      cy.get('[data-profile-drag-ghost="true"]').should('exist')
+      cy.then(() => firePointer(win, win, 'pointermove', hold.x, hold.y))
+
+      // Nothing else is sent from here. A held pointer emits no events, so a
+      // page that keeps moving proves the scroll has a loop of its own.
+      cy.wrap(null).should(() => {
+        expect(
+          scroller.scrollTop,
+          'the page keeps scrolling with the pointer standing still',
+        ).to.be.closeTo(scroller.scrollHeight - scroller.clientHeight, 2)
+      })
+
+      cy.then(() => firePointer(win, win, 'pointerup', hold.x, hold.y))
+      cy.get('[data-profile-drag-ghost="true"]').should('not.exist')
+    })
+
+    // The reorder has to follow the scroll, not just the pointer. The ghost holds
+    // still on screen the whole time, so a drop that reads its travel in screen
+    // space sees none of this and leaves the card exactly where it started.
+    cardIdsInOrder().should((ids) => {
+      expect(ids, 'the card is still in the layout').to.include('cover')
+      expect(ids[ids.length - 1], 'the card scrolled to the end and landed there').to.equal('cover')
+    })
+  })
+
   it('restores the default layout, but only once the question is answered', () => {
     cy.loginAs('member')
     visitCustomize()
@@ -456,6 +512,19 @@ function dragCardOnto(
 
 function cardIn(win: Window, cardId: string) {
   return win.document.querySelector(`article[data-profile-card-id="${cardId}"]`) as HTMLElement
+}
+
+/**
+ * The shell's scroll region, which is what the customize canvas rides.
+ *
+ * `data-slot` is frappe-ui's own hook for reaching into a shell. The step
+ * through it is what keeps this off the editor panel's ScrollArea, which
+ * carries the same reka viewport attribute and scrolls separately.
+ */
+function shellScroller(win: Window) {
+  return win.document.querySelector(
+    '[data-slot="desktop-shell-content"] > * > [data-reka-scroll-area-viewport]',
+  ) as HTMLElement
 }
 
 /**
