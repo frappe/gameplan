@@ -146,19 +146,34 @@ describe('Profile customize editor', () => {
     cardIdsInOrder().should('deep.equal', dropped)
   })
 
-  it('reorders from the gutter between two cards, which is on neither of them', () => {
+  it('drops into the gutter between two cards, which is on neither of them', () => {
     cy.loginAs('member')
     visitCustomize()
 
     cardIdsInOrder().should('deep.equal', defaultCardOrder)
 
     // Full name sits mid-row with Bio beside it, so the seam on its right has a
-    // card on either side and none under it. The drop still has to be Full
-    // name's slot, because that is the slot the dragged card is nearest: a
-    // reading that asks "which card am I over?" answers nothing here, and every
-    // seam would be a dead strip running the height of the canvas.
+    // card on either side and none under it. It means what it looks like: put
+    // the card between those two. A reading that asks "which card am I over?"
+    // has no answer here, and every seam is a dead strip down the canvas.
     dragCardOnto('about', 'full-name', { land: 'seam' })
-    cardIdsInOrder().should('deep.equal', ['cover', 'avatar', 'about', 'full-name', 'bio'])
+    cardIdsInOrder().should('deep.equal', ['cover', 'avatar', 'full-name', 'about', 'bio'])
+  })
+
+  it('moves a card past a row as soon as it clears the row', () => {
+    cy.loginAs('member')
+    visitCustomize()
+
+    cardIdsInOrder().should('deep.equal', defaultCardOrder)
+
+    // Avatar dragged down into the top-left of About, which is four columns
+    // wide and two rows tall. Its middle is barely inside About and still 300px
+    // from About's own middle, so anything that ranks cards by distance to their
+    // centres leaves Avatar where it was until the drag is halfway down a
+    // two-row card. Clearing the row it was in is enough: Avatar goes to the end
+    // of that row, which is the last place before About.
+    dragCardOnto('avatar', 'about', { land: 'top-left' })
+    cardIdsInOrder().should('deep.equal', ['cover', 'full-name', 'bio', 'avatar', 'about'])
   })
 
   it('restores the default layout, but only once the question is answered', () => {
@@ -387,14 +402,13 @@ function card(cardId: string) {
  * dead centre or by its bottom-right corner. Both must reorder the same way: the
  * grab offset moves the pointer, not the card.
  *
- * `land` says where the dragged card's middle ends up. `'middle'` is the
- * target's own middle; `'seam'` is the gutter just past its right edge, which
- * sits on no card at all and is still nearest the target's slot.
+ * `land` says where the dragged card's middle ends up: the target's own middle,
+ * the gutter just past its right edge, or barely inside its top-left corner.
  */
 function dragCardOnto(
   sourceId: string,
   targetId: string,
-  options: { grab?: 'centre' | 'corner'; land?: 'middle' | 'seam' } = {},
+  options: { grab?: 'centre' | 'corner'; land?: 'middle' | 'seam' | 'top-left' } = {},
 ) {
   let { grab = 'centre', land = 'middle' } = options
 
@@ -414,12 +428,13 @@ function dragCardOnto(
     // offset is read from that move, so it is the point to measure from.
     let begin = { x: press.x + 10, y: press.y + 10 }
     let offset = { x: begin.x - source.left, y: begin.y - source.top }
-    // Just short of the target's middle, so a reading that splits the target in
+    // `middle` stops just short of it, so a reading that splits the target in
     // two is decided rather than sitting on the boundary.
-    let landing =
-      land === 'middle'
-        ? { x: target.left + target.width / 2 - 4, y: target.top + target.height / 2 - 4 }
-        : { x: target.right + 6, y: target.top + target.height / 2 }
+    let landing = {
+      middle: { x: target.left + target.width / 2 - 4, y: target.top + target.height / 2 - 4 },
+      seam: { x: target.right + 6, y: target.top + target.height / 2 },
+      'top-left': { x: target.left + target.width / 4, y: target.top + target.height / 8 },
+    }[land]
     // The pointer, worked back from where the dragged card has to end up.
     let drop = {
       x: landing.x - source.width / 2 + offset.x,

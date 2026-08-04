@@ -326,34 +326,37 @@ async function startFloatingDrag(cardId: string, event: PointerEvent) {
 }
 
 /**
- * Put the dragged card in whichever slot its own middle is closest to.
+ * Move the dragged card to the place its own middle reads as, in reading order.
  *
- * The grid is a packed wall of tiles of five different sizes, so the older
- * "which card am I over, and am I past its middle?" reading had no good answer
- * anywhere: the 12px seams between tiles were dead space that reordered nothing,
- * and the before/after test mixed both axes, so the top-right of a tile counted
- * as after while its top-left counted as before.
+ * What the grid stores is a list; what it shows is a packed wall of tiles in
+ * five sizes. Reordering is picking a place in that list, so the honest question
+ * is "how many cards come before this point?" rather than "which card is nearest
+ * it?" — the second one has to be translated into the first, and the translation
+ * is where it went wrong.
  *
- * Nearest slot centre has neither problem. Every point on the canvas belongs to
- * exactly one slot, seams included, and the answer is an index rather than a
- * side, so it says what the drop will do instead of approximating it. This is
- * what dnd-kit calls `closestCenter`, and it is the collision strategy it
- * recommends for grids over rectangle intersection for the same reason.
+ * Nearest slot centre answered left-to-right well and top-to-bottom badly,
+ * because a tile's centre is only representative when the tile is small. Dragging
+ * the avatar down over About, which is four columns wide, left its middle 300px
+ * from About's, so the drag had to reach halfway down a two-row card before
+ * anything moved. Counting is immune: the moment the ghost's middle clears a
+ * row, everything in that row counts, whatever shape it is.
  *
- * It also settles itself. Once the card has taken slot i, the slot nearest the
- * ghost is the one the card is already in, so holding still changes nothing.
+ * It is also monotonic, which is the property that makes a drag feel like it
+ * obeys you. Down and to the right always means later in the list, up and to the
+ * left always means earlier. Nearest-centre had no such guarantee.
  */
 function moveFloatingCard() {
   let center = floatingCardCenter()
   if (!travelledSinceReorder(center)) return
 
-  let slotIndex = nearestSlotIndex(center)
+  let index = insertionIndex(center)
   let sourceIndex = dragCards.value.findIndex((card) => card.id === draggingCardId.value)
-  if (slotIndex === -1 || sourceIndex === -1 || slotIndex === sourceIndex) return
+  // Inserting a card back at the index it already holds is the whole array over
+  // again, so this is also the "nothing changed" test.
+  if (index === -1 || sourceIndex === -1 || index === sourceIndex) return
 
-  let nextCards = [...dragCards.value]
-  let [movingCard] = nextCards.splice(sourceIndex, 1)
-  nextCards.splice(slotIndex, 0, movingCard)
+  let nextCards = dragCards.value.filter((card) => card.id !== draggingCardId.value)
+  nextCards.splice(index, 0, dragCards.value[sourceIndex])
 
   dragCards.value = nextCards
   lastReorderCenter.value = center
@@ -382,7 +385,7 @@ function floatingCardCenter() {
  * one — one `getBoundingClientRect` for the whole grid instead of a hit test per
  * pointermove.
  */
-function nearestSlotIndex(center: { x: number; y: number }) {
+function insertionIndex(center: { x: number; y: number }) {
   let origin = gridElement.value?.getBoundingClientRect()
   if (!origin) return -1
 
@@ -392,30 +395,41 @@ function nearestSlotIndex(center: { x: number; y: number }) {
   let x = center.x - origin.left
   let y = center.y - origin.top
 
-  let bestIndex = -1
-  let bestDistance = Infinity
-  dragCards.value.forEach((card, index) => {
-    let rect = packedLayout.value.rects.get(card.id)
-    if (!rect) return
+  let index = 0
+  for (let card of dragCards.value) {
+    // Counted among the others, never against itself: the dragged card's own
+    // slot is the hole it came out of, and a hole cannot be before or after.
+    if (card.id === draggingCardId.value) continue
 
-    let distance = Math.hypot(rect.left + rect.width / 2 - x, rect.top + rect.height / 2 - y)
-    if (distance < bestDistance) {
-      bestDistance = distance
-      bestIndex = index
-    }
-  })
-  return bestIndex
+    let rect = packedLayout.value.rects.get(card.id)
+    if (rect && readsBefore(rect, x, y)) index += 1
+  }
+  return index
+}
+
+/**
+ * Whether a slot reads before a point: on an earlier row, or to its left on the
+ * same one.
+ *
+ * "Earlier row" is the slot's own edges rather than a row number, because rows
+ * are not a thing the packer keeps — a two-row card shares a band with the
+ * one-row cards beside it, and this reads that correctly without being told.
+ */
+function readsBefore(rect: ProfileBentoLayoutRect, x: number, y: number) {
+  if (rect.top + rect.height <= y) return true
+  if (rect.top >= y) return false
+  return rect.left + rect.width / 2 < x
 }
 
 /**
  * A little real pointer travel is required between one reorder and the next.
  *
  * A reorder repacks every tile under the ghost, so the following pointermove is
- * measured against slots that have all moved. With cards of five sizes, two
- * neighbouring orders can each look best from the other's layout, and the grid
- * would then flicker between them while the pointer sits still. Sortable calls
- * this swap glitching and cures it by shrinking the swap zone; the same cure
- * here is a short dead band, small enough that no deliberate move notices it.
+ * counted against slots that have all moved. With cards of five sizes, two
+ * neighbouring orders can each read as correct from the other's layout, and the
+ * grid would then flicker between them while the pointer sits still. Sortable
+ * calls this swap glitching and cures it by shrinking the swap zone; the same
+ * cure here is a short dead band, small enough that no deliberate move notices.
  */
 function travelledSinceReorder(center: { x: number; y: number }) {
   let last = lastReorderCenter.value
