@@ -244,7 +244,7 @@ import {
   profileBentoFlowImageMaxHeight,
 } from './profileBentoLayout'
 import { Button, FileUploader, Spinner } from 'frappe-ui'
-import { getImgDimensions, type ImgDimensions } from '@/utils'
+import { useProfileImageReposition } from './useProfileImageReposition'
 
 const props = defineProps<{
   card: ProfileBentoCard
@@ -308,13 +308,7 @@ const overlayButtonClass =
   'relative transition-opacity [@media(hover:hover)]:opacity-0 focus:opacity-100 group-hover:opacity-100 [@media(pointer:coarse)]:after:absolute [@media(pointer:coarse)]:after:-inset-2.5'
 
 const cardElement = useTemplateRef<HTMLElement>('cardElement')
-const imageFrame = ref<HTMLElement | null>(null)
 const htmlStack = ref<HTMLElement | null>(null)
-const tempImagePosition = ref(50)
-const draggingImage = ref(false)
-const dragStartY = ref(0)
-const dragStartPosition = ref(50)
-const imageDimensions = ref<ImgDimensions | null>(null)
 
 /**
  * Light mode tells a card apart from the page with an outline; dark mode does it
@@ -459,17 +453,6 @@ const imageClass = computed(() => {
   }[imageRendering.value]
 })
 
-const imageStyle = computed(() => {
-  return {
-    objectPosition: `center ${currentImagePosition.value}%`,
-  }
-})
-
-const currentImagePosition = computed(() => {
-  if (props.repositioning) return clampPosition(tempImagePosition.value)
-  return clampPosition(props.card.imagePosition ?? 50)
-})
-
 const imageCaptionClass = computed(() => {
   if (!imageUrl.value) return ''
   if (imageRendering.value !== 'Cover') return ''
@@ -504,6 +487,22 @@ const imageRendering = computed(() => {
 
 const imageUrl = computed(() => {
   return props.card.image
+})
+
+const {
+  imageFrame,
+  draggingImage,
+  imageStyle,
+  loadImageDimensions,
+  startImageReposition,
+  moveImageReposition,
+  endImageReposition,
+  saveImagePosition,
+} = useProfileImageReposition({
+  imageUrl: () => imageUrl.value,
+  savedPosition: () => props.card.imagePosition,
+  repositioning: () => Boolean(props.repositioning),
+  onSave: (position) => emit('saveImagePosition', position),
 })
 
 const textCardBody = computed(() => {
@@ -585,90 +584,4 @@ watch(htmlStackHeight, (height) => {
   if (!showHtmlLayout.value || !height) return
   emit('update:contentHeight', height)
 })
-
-watch(
-  () => [props.repositioning, props.card.imagePosition] as const,
-  ([repositioning]) => {
-    if (repositioning) {
-      tempImagePosition.value = clampPosition(props.card.imagePosition ?? 50)
-    }
-  },
-)
-
-watch(
-  imageUrl,
-  async (url) => {
-    imageDimensions.value = url ? await getImgDimensions(url) : null
-  },
-  { immediate: true },
-)
-
-async function loadImageDimensions() {
-  if (!imageUrl.value) return
-  imageDimensions.value = await getImgDimensions(imageUrl.value)
-}
-
-function startImageReposition(event: PointerEvent) {
-  if (event.button !== 0 || isImageRepositionControl(event.target)) return
-
-  let verticalOverflow = getVerticalOverflow()
-  if (!verticalOverflow) return
-
-  draggingImage.value = true
-  dragStartY.value = event.clientY
-  dragStartPosition.value = clampPosition(tempImagePosition.value)
-  event.currentTarget.setPointerCapture(event.pointerId)
-}
-
-function isImageRepositionControl(target: EventTarget | null) {
-  if (!(target instanceof HTMLElement)) return false
-  return Boolean(target.closest('[data-image-reposition-control]'))
-}
-
-function moveImageReposition(event: PointerEvent) {
-  if (!draggingImage.value) return
-
-  let verticalOverflow = getVerticalOverflow()
-  if (!verticalOverflow) return
-
-  let deltaY = dragStartY.value - event.clientY
-  let deltaPosition = (deltaY * 100) / verticalOverflow
-  tempImagePosition.value = clampPosition(dragStartPosition.value + deltaPosition)
-}
-
-function endImageReposition(event: PointerEvent) {
-  if (!draggingImage.value) return
-
-  draggingImage.value = false
-  if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-    event.currentTarget.releasePointerCapture(event.pointerId)
-  }
-}
-
-function saveImagePosition() {
-  emit('saveImagePosition', clampPosition(tempImagePosition.value))
-}
-
-function getVerticalOverflow() {
-  if (!imageFrame.value) return 0
-
-  let { width, height } = imageFrame.value.getBoundingClientRect()
-  let imageRatio = getImageRatio()
-  if (!imageRatio) return 0
-
-  let imageHeight = width / imageRatio
-  return Math.max(0, imageHeight - height)
-}
-
-function getImageRatio() {
-  if (imageDimensions.value?.ratio) return imageDimensions.value.ratio
-
-  let image = imageFrame.value?.querySelector('img')
-  if (!image?.naturalWidth || !image.naturalHeight) return 0
-  return image.naturalWidth / image.naturalHeight
-}
-
-function clampPosition(position: number) {
-  return Math.min(100, Math.max(0, Number(position) || 0))
-}
 </script>
