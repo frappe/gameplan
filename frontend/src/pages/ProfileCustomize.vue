@@ -7,6 +7,29 @@
         class="flex shrink-0 items-center gap-2"
         data-profile-keep-selection
       >
+        <!-- The state of the saved layout belongs next to the button that
+             changes it, not inside the profile-info checklist, which is about
+             what the page shows rather than how it is stored. Before the first
+             save these are two ends of one fact, so only one is ever on screen:
+             the page is following the default, or it has a layout of its own
+             that can be given up. -->
+        <Tooltip
+          v-if="isDefaultLayout"
+          text="Once you save, your page keeps the layout you saved and stops following changes to the default."
+        >
+          <span class="text-sm text-ink-gray-5" data-profile-default-layout-notice>
+            Default layout
+          </span>
+        </Tooltip>
+        <Button
+          v-else
+          icon-left="lucide-rotate-ccw"
+          data-profile-restore-default-layout
+          :loading="isResetting"
+          @click="restoreDefaultLayout"
+        >
+          Restore default
+        </Button>
         <Button
           variant="solid"
           icon-left="lucide-save"
@@ -65,6 +88,22 @@
           @select="selectedCardId = $event"
           @upload-image="({ cardId, fileUrl }) => setCardImage(cardId, fileUrl)"
         />
+
+        <p
+          v-if="cards.length === 0"
+          class="rounded-lg border border-dashed border-outline-gray-2 p-6 text-sm leading-5 text-ink-gray-6"
+          data-profile-empty-layout-notice
+        >
+          Nothing is selected, so your profile page will be empty.
+        </p>
+
+        <!-- Dragging is not available to everyone, so the way round it has to be
+             findable rather than merely present. It sits under the canvas
+             because that is the thing it is about. -->
+        <p class="mt-4 text-sm leading-5 text-ink-gray-5" data-profile-keyboard-hint>
+          Drag a card to move it, or select one and use the arrow keys: left and right move it one
+          place, up and down move it a row.
+        </p>
       </main>
 
       <ProfileBentoEditorPanel
@@ -72,12 +111,9 @@
         :text-characters-left="selectedTextCharactersLeft"
         :bound-fields="boundFieldsInDraft"
         :field-editor="fieldEditor"
-        :is-default-layout="isDefaultLayout"
-        :is-empty-layout="cards.length === 0"
-        :is-resetting="isResetting"
         @add-card="addCard"
+        @clear-selection="selectedCardId = ''"
         @reposition-image="beginImageReposition"
-        @restore-default-layout="restoreDefaultLayout"
         @toggle-bound-field="toggleBoundField"
         @upload-image="updateSelectedImage"
         @update-image-rendering="(imageRendering) => updateSelectedCard({ imageRendering })"
@@ -94,7 +130,16 @@
 import { computed, onMounted, ref } from 'vue'
 import { onBeforeRouteLeave, useRoute } from 'vue-router'
 import { useEventListener, useMediaQuery } from '@vueuse/core'
-import { PageHeader, Breadcrumbs, Button, dialog, toast, useDoc, usePageMeta } from 'frappe-ui'
+import {
+  PageHeader,
+  Breadcrumbs,
+  Button,
+  dialog,
+  toast,
+  Tooltip,
+  useDoc,
+  usePageMeta,
+} from 'frappe-ui'
 import ProfileBentoEditorPanel from '@/components/ProfileBento/ProfileBentoEditorPanel.vue'
 import ProfileBentoGrid from '@/components/ProfileBento/ProfileBentoGrid.vue'
 import { createServerProfileBentoSource } from '@/components/ProfileBento/profileBentoSource'

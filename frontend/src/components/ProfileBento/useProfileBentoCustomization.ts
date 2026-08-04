@@ -112,13 +112,19 @@ export function useProfileBentoCustomization(source: ProfileBentoCardSource) {
     if (existing) removeCard(existing.id)
   }
 
+  /**
+   * Ticking a field adds its card without selecting it.
+   *
+   * Unlike `addCard`, which makes an empty card that is useless until it is
+   * filled in, this one arrives complete: the value is already on the profile.
+   * Selecting it would also swap the panel away from the checklist mid-tick,
+   * which is the wrong thing to do to someone working down a list.
+   */
   function addBoundCard(field: ProfileBoundField) {
     let spec = profileBoundFields.find((boundField) => boundField.field === field)
     if (!spec) return
 
-    let card = createBoundCard(spec)
-    cards.value.push(card)
-    selectedCardId.value = card.id
+    cards.value.push(createBoundCard(spec))
   }
 
   function createBoundCard(spec: ProfileBoundFieldSpec): ProfileBentoCard {

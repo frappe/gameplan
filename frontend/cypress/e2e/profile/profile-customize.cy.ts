@@ -59,6 +59,25 @@ describe('Profile customize editor', () => {
     card('bio').find('[data-profile-card-empty]').should('not.exist')
   })
 
+  it('shows one thing at a time in the panel, and a way back', () => {
+    cy.loginAs('member')
+    visitCustomize()
+
+    // Selecting a card hands it the whole panel. Stacking the editor under the
+    // checklist put the control you just asked for below five checkboxes you
+    // were not using.
+    card('bio').click()
+    cy.get('[data-profile-info-checklist]').should('not.exist')
+    cy.get('[data-profile-card-editor]').should('contain.text', 'Bio')
+    panelField('bio').should('be.visible')
+
+    // And the way back has to be in the panel: clicking the canvas to deselect
+    // is not discoverable, and there is nowhere else to go from here.
+    cy.get('[data-profile-card-editor-back]').click()
+    cy.get('[data-profile-info-checklist]').should('be.visible')
+    cy.get('[data-profile-card-editor]').should('not.exist')
+  })
+
   it('unticks the checklist row when the card is removed in the grid', () => {
     cy.loginAs('member')
     visitCustomize()
@@ -483,8 +502,11 @@ describe('Profile customize editor — bound values', () => {
     cy.loginAs('member')
     visitCustomize()
 
+    // Ticking adds the card and leaves the checklist up, so a run down the list
+    // is not interrupted. Editing the value is a separate move: click the card.
     checklistRow('bio').check()
     card('bio').find('[data-profile-card-empty]').should('contain.text', 'Add a short bio')
+    card('bio').click()
 
     cy.intercept('PUT', '**/api/v2/document/GP%20User%20Profile/*').as('saveProfile')
     panelField('bio').type('Filled in from the panel.').blur()

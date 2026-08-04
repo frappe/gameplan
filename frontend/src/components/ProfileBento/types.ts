@@ -54,6 +54,15 @@ export interface ProfileFieldEditor {
 /** A profile field a bento card can bind to. */
 export type ProfileBoundField = 'cover_image' | 'image' | 'full_name' | 'bio' | 'readme'
 
+/**
+ * Which control the panel edits a bound field with.
+ *
+ * Named separately from `format` because the two answer different questions:
+ * `format` is how the card renders the value, this is how it is typed in. A
+ * name is one string on the card and two inputs in the panel.
+ */
+export type ProfileBoundEditor = 'name' | 'text' | 'richText' | 'image'
+
 export interface ProfileBoundFieldSpec {
   field: ProfileBoundField
   /** Card id the default layout uses for this field. */
@@ -61,6 +70,7 @@ export interface ProfileBoundFieldSpec {
   size: ProfileCardSize
   title: string
   format: ProfileCardFormat
+  editor: ProfileBoundEditor
   /**
    * What the card shows on the customize canvas while the field has no value.
    *
@@ -85,6 +95,7 @@ export const profileBoundFields: ProfileBoundFieldSpec[] = [
     size: '4x1',
     title: 'Cover image',
     format: 'image',
+    editor: 'image',
     emptyIcon: 'lucide-image',
     emptyPrompt: 'Add a cover image',
   },
@@ -94,6 +105,7 @@ export const profileBoundFields: ProfileBoundFieldSpec[] = [
     size: '1x1',
     title: 'Avatar',
     format: 'image',
+    editor: 'image',
     emptyIcon: 'lucide-user-round',
     emptyPrompt: 'Add a photo',
   },
@@ -103,6 +115,7 @@ export const profileBoundFields: ProfileBoundFieldSpec[] = [
     size: '1x1',
     title: 'Full name',
     format: 'text',
+    editor: 'name',
     emptyIcon: 'lucide-type',
     emptyPrompt: 'Add your name',
   },
@@ -112,6 +125,7 @@ export const profileBoundFields: ProfileBoundFieldSpec[] = [
     size: '2x1',
     title: 'Bio',
     format: 'text',
+    editor: 'text',
     emptyIcon: 'lucide-quote',
     emptyPrompt: 'Add a short bio',
   },
@@ -121,6 +135,7 @@ export const profileBoundFields: ProfileBoundFieldSpec[] = [
     size: '4x2',
     title: 'About',
     format: 'html',
+    editor: 'richText',
     emptyIcon: 'lucide-file-text',
     emptyPrompt: 'Write about yourself',
   },
