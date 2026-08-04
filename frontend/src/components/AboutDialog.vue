@@ -30,7 +30,8 @@
           target="_blank"
           :href="link.url"
         >
-          <span v-if="link.icon" :class="[link.icon, 'size-4 mr-2 text-ink-gray-7']" />
+          <GithubLogo v-if="link.icon === 'github'" class="size-4 mr-2 text-ink-gray-7" />
+          <span v-else-if="link.icon" :class="[link.icon, 'size-4 mr-2 text-ink-gray-7']" />
           <span class="text-base text-ink-gray-8">
             {{ link.label }}
           </span>
@@ -46,6 +47,7 @@
 <script setup lang="ts">
 import { Tooltip } from 'frappe-ui'
 import GameplanLogo from './GameplanLogo.vue'
+import GithubLogo from './GithubLogo.vue'
 let show = defineModel<boolean>()
 
 let links = [
@@ -57,7 +59,7 @@ let links = [
   {
     label: 'GitHub Repository',
     url: 'https://github.com/frappe/gameplan',
-    icon: 'lucide-github',
+    icon: 'github',
   },
   {
     label: 'Report an Issue',
