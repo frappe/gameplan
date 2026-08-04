@@ -298,6 +298,21 @@
             </Button>
           </div>
         </div>
+
+        <!-- Dragging is not available to everyone, so the way round it has to be
+             findable rather than merely present. It says "one place" and not
+             "left" because what the arrows move is the card's place in the
+             list: a packed wall of five tile sizes has no reliable up. -->
+        <div
+          class="rounded-lg border border-outline-gray-2 bg-surface-base p-4 lg:p-5"
+          data-profile-keyboard-hint
+        >
+          <h2 class="text-base font-medium text-ink-gray-9">Arrange without dragging</h2>
+          <p class="mt-1 text-sm leading-5 text-ink-gray-5">
+            Select a card, then hold {{ moveModifierLabel }} and press the left or right arrow to
+            move it one place. Up sends it to the start, down to the end.
+          </p>
+        </div>
       </ScrollArea>
     </div>
 
@@ -350,6 +365,16 @@ import {
 interface UploadedFile {
   file_url: string
 }
+
+// The card takes either modifier, so the hint names whichever one is under the
+// reader's hands. `userAgentData` is Chromium-only; the string is the fallback
+// every other browser still answers.
+const moveModifierLabel = /mac/i.test(
+  (navigator as { userAgentData?: { platform?: string } }).userAgentData?.platform ||
+    navigator.platform,
+)
+  ? 'Command'
+  : 'Ctrl'
 
 const props = defineProps<{
   card?: ProfileBentoCard

@@ -10,9 +10,11 @@
     :data-size="card.size"
     :role="interactive ? 'button' : undefined"
     :tabindex="interactive ? 0 : undefined"
+    :aria-keyshortcuts="interactive ? moveKeyShortcuts : undefined"
     @click="selectCard"
     @keydown.enter.self="selectCard"
     @keydown.space.self.prevent="selectCard"
+    @keydown.self="moveCard"
     @pointerdown="startPointerDrag"
   >
     <!-- One row rather than two buttons stacked on the same corner: the callers
@@ -235,7 +237,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useElementSize } from '@vueuse/core'
-import { profileBoundFields, type ProfileBentoCard } from './types'
+import { profileBoundFields, type ProfileBentoCard, type ProfileCardMove } from './types'
 import {
   profileBentoFlowCollapsedHeight,
   profileBentoFlowImageMaxHeight,
@@ -271,6 +273,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   cancelImageReposition: []
   edit: []
+  move: [move: ProfileCardMove]
   pointerDown: [event: PointerEvent]
   remove: []
   saveImagePosition: [position: number]
@@ -512,6 +515,41 @@ const imageCardBody = computed(() => {
 function selectCard() {
   if (!props.interactive) return
   emit('select')
+}
+
+const moveKeys: Record<string, ProfileCardMove> = {
+  ArrowLeft: 'earlier',
+  ArrowRight: 'later',
+  ArrowUp: 'start',
+  ArrowDown: 'end',
+}
+
+// Both, so the shortcut is the platform's own on either one.
+const moveKeyShortcuts = Object.keys(moveKeys)
+  .flatMap((key) => [`Meta+${key}`, `Control+${key}`])
+  .join(' ')
+
+/**
+ * Reorder from the keyboard, the alternative to dragging that WCAG 2.5.7 asks
+ * for.
+ *
+ * A modifier is required because a bare arrow key belongs to the scroller, and
+ * the canvas is routinely taller than the screen. It also keeps these keys from
+ * colliding with the arrows inside a card's own editor: the handler is `.self`,
+ * so it only ever sees keys aimed at the card itself.
+ */
+function moveCard(event: KeyboardEvent) {
+  if (!props.interactive) return
+  if (!event.metaKey && !event.ctrlKey) return
+  if (event.altKey || event.shiftKey) return
+
+  let move = moveKeys[event.key]
+  if (!move) return
+
+  // Cmd+Left is Back in a browser on a Mac, and this canvas has unsaved work to
+  // lose.
+  event.preventDefault()
+  emit('move', move)
 }
 
 function uploadImage(file: UploadedFile) {

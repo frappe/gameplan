@@ -22,6 +22,15 @@ export interface ProfileBentoCard {
   format?: ProfileCardFormat
 }
 
+/**
+ * A keyboard reorder step.
+ *
+ * Steps through the list rather than around the grid, because a packed wall of
+ * five tile sizes has no dependable "the card above this one" — but "the card
+ * before this one" is exactly what the layout is made of.
+ */
+export type ProfileCardMove = 'earlier' | 'later' | 'start' | 'end'
+
 /** A write a bound card can ask for. Each one targets a profile (or User) field. */
 export type ProfileFieldUpdate =
   | { field: 'bio' | 'readme'; value: string }

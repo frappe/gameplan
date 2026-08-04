@@ -36,6 +36,7 @@
         :expanded="expandedCardIds.has(card.id)"
         @cancel-image-reposition="$emit('cancelImageReposition')"
         @edit="$emit('edit', card)"
+        @move="moveCardWithKeyboard(card.id, $event)"
         @pointer-down="startPointerDrag(card.id, $event)"
         @remove="$emit('remove', card.id)"
         @save-image-position="$emit('saveImagePosition', $event)"
@@ -54,6 +55,12 @@
     >
       <slot />
     </motion.div>
+
+    <!-- A keyboard reorder slides the tiles and says nothing. Sighted users get
+         the movement; this is the same news for everyone else. -->
+    <p v-if="interactive" class="sr-only" aria-live="polite" data-profile-reorder-announcement>
+      {{ reorderAnnouncement }}
+    </p>
   </section>
 
   <Teleport to="body">
@@ -87,7 +94,7 @@ import {
   profileBentoRowsForHeight,
   type ProfileBentoLayoutRect,
 } from './profileBentoLayout'
-import type { ProfileBentoCard as ProfileBentoCardType } from './types'
+import type { ProfileBentoCard as ProfileBentoCardType, ProfileCardMove } from './types'
 
 const props = defineProps<{
   cards: ProfileBentoCardType[]
@@ -137,6 +144,7 @@ const gridElement = ref<HTMLElement | null>(null)
 const { width: gridWidth } = useElementSize(gridElement)
 const expandedCardIds = ref(new Set<string>())
 const cardContentHeights = ref<Record<string, number>>({})
+const reorderAnnouncement = ref('')
 
 /** Only a bound card has a profile field to send the owner off to edit. */
 function canEditCard(card: ProfileBentoCardType) {
@@ -522,6 +530,65 @@ function travelledSinceReorder(center: { x: number; y: number }) {
   let last = lastReorderCenter.value
   if (!last) return true
   return Math.hypot(center.x - last.x, center.y - last.y) > reorderDeadBand
+}
+
+/**
+ * Reorder from the keyboard.
+ *
+ * This is what the pointer path spends three functions working back to: a place
+ * in a list. A pointer names a place on screen, so the drag has to translate
+ * geometry into an index; a key press names the step directly, and there is
+ * nothing to translate.
+ */
+async function moveCardWithKeyboard(cardId: string, move: ProfileCardMove) {
+  // A card can be dragged and typed at by two hands at once, and the drag holds
+  // an order of its own that this would be editing behind its back.
+  if (!props.interactive || draggingCardId.value) return
+
+  let order = props.cards.map((card) => card.id)
+  let from = order.indexOf(cardId)
+  if (from === -1) return
+
+  let to = keyboardMoveTarget(move, from, order.length)
+  // Already at the end it was asked to go to.
+  if (to === from) return
+
+  order.splice(from, 1)
+  order.splice(to, 0, cardId)
+  emit('reorder', order)
+  // Same as a drop: the card being moved is the one the panel should be editing.
+  emit('select', cardId)
+  announceMove(cardId, to, order.length)
+
+  // The tiles re-render in the new list order, and a focused element moved in
+  // the DOM loses the focus on the way. Nothing else would put it back, and the
+  // next key press has nowhere to land without it.
+  await nextTick()
+  focusCard(cardId)
+}
+
+function keyboardMoveTarget(move: ProfileCardMove, from: number, total: number) {
+  if (move === 'start') return 0
+  if (move === 'end') return total - 1
+  let step = move === 'earlier' ? from - 1 : from + 1
+  // Clamped rather than wrapped: a card that falls off one end and reappears at
+  // the other is a surprise, and there is no undo here.
+  return Math.min(Math.max(step, 0), total - 1)
+}
+
+function announceMove(cardId: string, index: number, total: number) {
+  let card = props.cards.find((item) => item.id === cardId)
+  // A spacer has no title to announce, and "Card" is what the panel calls the
+  // untitled rest.
+  let name = card?.type === 'Blank' ? 'Spacer' : card?.title || 'Card'
+  reorderAnnouncement.value = `${name} moved to position ${index + 1} of ${total}`
+}
+
+/** The card's own focusable element, not the wrapper `cardElementFor` measures. */
+function focusCard(cardId: string) {
+  gridElement.value
+    ?.querySelector<HTMLElement>(`article[data-profile-card-id="${cardId}"]`)
+    ?.focus()
 }
 
 function movedEnough(event: PointerEvent) {

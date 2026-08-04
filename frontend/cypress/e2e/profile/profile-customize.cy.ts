@@ -233,6 +233,72 @@ describe('Profile customize editor', () => {
     })
   })
 
+  it('reorders from the keyboard, one place at a time', () => {
+    cy.loginAs('member')
+    visitCustomize()
+
+    expectCardOrder(defaultCardOrder)
+
+    // The step is through the list, not across the grid: what "one place later"
+    // means is the same whatever shape the tiles happen to be.
+    moveCard('avatar', 'ArrowRight')
+    expectCardOrder(['cover', 'full-name', 'avatar', 'bio', 'about'])
+    announcement().should('contain.text', 'Avatar moved to position 3 of 5')
+
+    moveCard('avatar', 'ArrowLeft')
+    expectCardOrder(defaultCardOrder)
+    announcement().should('contain.text', 'Avatar moved to position 2 of 5')
+
+    // Sending it to an end is one keystroke, so a card never has to be walked
+    // the length of a long layout.
+    moveCard('avatar', 'ArrowDown')
+    expectCardOrder(['cover', 'full-name', 'bio', 'about', 'avatar'])
+
+    moveCard('avatar', 'ArrowUp')
+    expectCardOrder(['avatar', 'cover', 'full-name', 'bio', 'about'])
+  })
+
+  it('keeps the moved card focused and selected, and stops at the ends', () => {
+    cy.loginAs('member')
+    visitCustomize()
+
+    expectCardOrder(defaultCardOrder)
+
+    // The tiles re-render in the new order, which moves the focused element in
+    // the DOM. Losing the focus there would make every move a one-off: the next
+    // key press has nowhere to land.
+    moveCard('cover', 'ArrowRight')
+    cy.focused().should('have.attr', 'data-profile-card-id', 'cover')
+    // A drop selects the card it moved, and so does this: the panel should be
+    // editing whatever was just rearranged.
+    card('cover').should('have.class', 'ring-2')
+
+    moveCard('cover', 'ArrowLeft')
+    expectCardOrder(defaultCardOrder)
+
+    // Clamped, not wrapped. Nothing moves and nothing is announced, because
+    // nothing happened.
+    moveCard('cover', 'ArrowLeft')
+    expectCardOrder(defaultCardOrder)
+    announcement().should('contain.text', 'Cover image moved to position 1 of 5')
+  })
+
+  it('leaves a bare arrow key alone, so the page still scrolls', () => {
+    cy.loginAs('member')
+    visitCustomize()
+
+    expectCardOrder(defaultCardOrder)
+
+    // Without the modifier these belong to the scroller. A canvas taller than
+    // the screen is the normal case, and it has to stay reachable.
+    card('avatar').focus().trigger('keydown', { key: 'ArrowRight' })
+    card('avatar').trigger('keydown', { key: 'ArrowDown' })
+    expectCardOrder(defaultCardOrder)
+    announcement().should(($region) => {
+      expect($region.text().trim(), 'nothing moved, so nothing is announced').to.equal('')
+    })
+  })
+
   it('restores the default layout, but only once the question is answered', () => {
     cy.loginAs('member')
     visitCustomize()
@@ -509,6 +575,35 @@ function dragCardOnto(
     // The ghost is a card too, so it would show up in the order being asserted.
     cy.get('[data-profile-drag-ghost="true"]').should('not.exist')
   })
+}
+
+/**
+ * Move a focused card with the keyboard.
+ *
+ * Both modifiers at once, because the card accepts either and a spec should not
+ * care which machine it is running on. The event is built in the app's own
+ * realm for the same reason the pointer events are: the handler is `.self`, so
+ * it only answers an event whose target is the card element itself.
+ */
+function moveCard(cardId: string, key: string) {
+  return cy.window().then((win) => {
+    let element = cardIn(win, cardId)
+    element.focus()
+    element.dispatchEvent(
+      new win.KeyboardEvent('keydown', {
+        key,
+        metaKey: true,
+        ctrlKey: true,
+        bubbles: true,
+        cancelable: true,
+      }),
+    )
+  })
+}
+
+/** The live region the grid speaks a keyboard reorder through. */
+function announcement() {
+  return cy.get('[data-profile-reorder-announcement]')
 }
 
 function cardIn(win: Window, cardId: string) {
