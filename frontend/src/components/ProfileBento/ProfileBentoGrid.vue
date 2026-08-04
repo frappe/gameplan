@@ -535,10 +535,9 @@ function travelledSinceReorder(center: { x: number; y: number }) {
 /**
  * Reorder from the keyboard.
  *
- * This is what the pointer path spends three functions working back to: a place
- * in a list. A pointer names a place on screen, so the drag has to translate
- * geometry into an index; a key press names the step directly, and there is
- * nothing to translate.
+ * Left and right name a step in the list directly. Up and down name a place on
+ * screen, so they go the same way round as a drag: work out the point, then ask
+ * the packer which index that point is.
  */
 async function moveCardWithKeyboard(cardId: string, move: ProfileCardMove) {
   // A card can be dragged and typed at by two hands at once, and the drag holds
@@ -549,7 +548,7 @@ async function moveCardWithKeyboard(cardId: string, move: ProfileCardMove) {
   let from = order.indexOf(cardId)
   if (from === -1) return
 
-  let to = keyboardMoveTarget(move, from, order.length)
+  let to = keyboardMoveTarget(move, cardId, from, order.length)
   // Already at the end it was asked to go to.
   if (to === from) return
 
@@ -567,13 +566,68 @@ async function moveCardWithKeyboard(cardId: string, move: ProfileCardMove) {
   focusCard(cardId)
 }
 
-function keyboardMoveTarget(move: ProfileCardMove, from: number, total: number) {
-  if (move === 'start') return 0
-  if (move === 'end') return total - 1
-  let step = move === 'earlier' ? from - 1 : from + 1
+function keyboardMoveTarget(move: ProfileCardMove, cardId: string, from: number, total: number) {
+  let step =
+    move === 'rowUp' || move === 'rowDown'
+      ? rowMoveTarget(move, cardId, from)
+      : from + (move === 'earlier' ? -1 : 1)
   // Clamped rather than wrapped: a card that falls off one end and reappears at
   // the other is a surprise, and there is no undo here.
   return Math.min(Math.max(step, 0), total - 1)
+}
+
+/**
+ * The index that puts the card in the row above or below the one it is in.
+ *
+ * Up goes to the head of the row above, down to the tail of the row below,
+ * rather than to whatever sits in the same column. A packed row has no gaps to
+ * aim at: the row above is full, or it would have swallowed a card already. So
+ * the only places in it are its two ends, and picking the near end is the one
+ * that always visibly moves the card. Aiming at a column instead would leave a
+ * full-width card exactly where it was, since a four-column card can never sit
+ * beside anything.
+ */
+function rowMoveTarget(move: ProfileCardMove, cardId: string, from: number) {
+  let band = rowBand(cardId)
+  if (!band) return from
+
+  let targetRow = move === 'rowUp' ? band.first - 1 : band.last + 1
+  if (targetRow < 0) return from
+
+  // Without the moved card, so an index into this list is where it should be
+  // spliced back in.
+  let others = visibleCards.value.filter((card) => card.id !== cardId)
+  let neighbours = others.filter((card) => coversRow(card.id, targetRow))
+  // Nothing below the last row, and nothing to do about it.
+  if (!neighbours.length) return from
+
+  // The packer fills in reading order, so first in the list is leftmost in the row.
+  let anchor = move === 'rowUp' ? neighbours[0] : neighbours[neighbours.length - 1]
+  let at = others.findIndex((card) => card.id === anchor.id)
+  return move === 'rowUp' ? at : at + 1
+}
+
+/**
+ * The rows a card spans, as row numbers.
+ *
+ * The packer works in pixels and keeps no row index, but every row is one cell
+ * plus one gap tall, so the number divides straight back out.
+ */
+function rowBand(cardId: string) {
+  let rect = packedLayout.value.rects.get(cardId)
+  let rowHeight = cellSize.value + gridGap
+  if (!rect || rowHeight <= 0) return null
+
+  return {
+    first: Math.round(rect.top / rowHeight),
+    last: Math.round((rect.top + rect.height - cellSize.value) / rowHeight),
+  }
+}
+
+/** Whether a card is in this row, including a tall card passing through it. */
+function coversRow(cardId: string, row: number) {
+  let band = rowBand(cardId)
+  return Boolean(band) && row >= band!.first && row <= band!.last
 }
 
 function announceMove(cardId: string, index: number, total: number) {

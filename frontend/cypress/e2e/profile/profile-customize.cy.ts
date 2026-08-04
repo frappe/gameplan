@@ -249,13 +249,43 @@ describe('Profile customize editor', () => {
     expectCardOrder(defaultCardOrder)
     announcement().should('contain.text', 'Avatar moved to position 2 of 5')
 
-    // Sending it to an end is one keystroke, so a card never has to be walked
-    // the length of a long layout.
-    moveCard('avatar', 'ArrowDown')
-    expectCardOrder(['cover', 'full-name', 'bio', 'about', 'avatar'])
-
+    // Up and down are a row, and the row above the avatar holds only the cover.
     moveCard('avatar', 'ArrowUp')
     expectCardOrder(['avatar', 'cover', 'full-name', 'bio', 'about'])
+
+    // Which the layout has now rearranged around, so down is a different list
+    // step than up was. That is the point of naming rows instead of positions.
+    moveCard('avatar', 'ArrowDown')
+    expectCardOrder(defaultCardOrder)
+  })
+
+  it('moves a card one row at a time, not to the end of the layout', () => {
+    cy.loginAs('member')
+    visitCustomize()
+
+    // The default packs into three bands: the cover across the top, then the
+    // avatar, name and bio side by side, then About across the bottom.
+    expectCardOrder(defaultCardOrder)
+
+    // About is two rows tall and four columns wide, so it can share a row with
+    // nothing. Up still has to mean the row above rather than the top of the
+    // layout, or a tall card at the bottom of a long wall can only be moved in
+    // one jump.
+    moveCard('about', 'ArrowUp')
+    expectCardOrder(['cover', 'about', 'avatar', 'full-name', 'bio'])
+    announcement().should('contain.text', 'About moved to position 2 of 5')
+
+    // The second press is what the first one was not: the top.
+    moveCard('about', 'ArrowUp')
+    expectCardOrder(['about', 'cover', 'avatar', 'full-name', 'bio'])
+
+    moveCard('about', 'ArrowDown')
+    expectCardOrder(['cover', 'about', 'avatar', 'full-name', 'bio'])
+
+    // Nothing above the top row. The cover stays where it is and says nothing.
+    moveCard('cover', 'ArrowUp')
+    expectCardOrder(['cover', 'about', 'avatar', 'full-name', 'bio'])
+    announcement().should('contain.text', 'About moved to position 2 of 5')
   })
 
   it('keeps the moved card focused and selected, and stops at the ends', () => {
@@ -283,16 +313,47 @@ describe('Profile customize editor', () => {
     announcement().should('contain.text', 'Cover image moved to position 1 of 5')
   })
 
-  it('leaves a bare arrow key alone, so the page still scrolls', () => {
+  it('gives a clicked card the focus, so the arrows have somewhere to land', () => {
+    cy.loginAs('member')
+    visitCustomize()
+
+    // The grid cancels the default on pointerdown to own the drag gesture, and
+    // that also cancels the focus the press would otherwise give the card. Left
+    // alone, clicking a card selected it while the keyboard stayed pointed at
+    // whatever was focused before, and every arrow went nowhere. Tabbing in was
+    // the only way to reach a card, which is not a way in at all.
+    pressCard('avatar')
+    cy.focused().should('have.attr', 'data-profile-card-id', 'avatar')
+  })
+
+  it('leaves a modified arrow key alone, so the browser keeps its own shortcuts', () => {
     cy.loginAs('member')
     visitCustomize()
 
     expectCardOrder(defaultCardOrder)
 
-    // Without the modifier these belong to the scroller. A canvas taller than
-    // the screen is the normal case, and it has to stay reachable.
-    card('avatar').focus().trigger('keydown', { key: 'ArrowRight' })
-    card('avatar').trigger('keydown', { key: 'ArrowDown' })
+    // Bare arrows are the reorder. Held with a modifier they are the browser's:
+    // Back, Forward, jump to the end of the page. Claiming those too would take
+    // more than this feature needs.
+    pressCard('avatar')
+    cy.window().then((win) => {
+      cardIn(win, 'avatar').dispatchEvent(
+        new win.KeyboardEvent('keydown', {
+          key: 'ArrowDown',
+          metaKey: true,
+          bubbles: true,
+          cancelable: true,
+        }),
+      )
+    })
+
+    // A fixed wait, which a spec normally has no business doing, is the honest
+    // shape for this one. There is no signal that a key was ignored, and
+    // `should` passes the instant its callback holds — which is instantly,
+    // because the tiles have not re-rendered yet. Every retrying assertion here
+    // would pass whether the key was honoured or not. The wait is what gives the
+    // move that must not happen room to happen.
+    cy.wait(500)
     expectCardOrder(defaultCardOrder)
     announcement().should(($region) => {
       expect($region.text().trim(), 'nothing moved, so nothing is announced').to.equal('')
@@ -578,26 +639,36 @@ function dragCardOnto(
 }
 
 /**
- * Move a focused card with the keyboard.
+ * Move a card with the keyboard, reaching it the way a person does.
  *
- * Both modifiers at once, because the card accepts either and a spec should not
- * care which machine it is running on. The event is built in the app's own
- * realm for the same reason the pointer events are: the handler is `.self`, so
- * it only answers an event whose target is the card element itself.
+ * The card is pressed rather than focused directly. Calling `.focus()` here
+ * would be the spec handing the feature the one thing it has to arrange for
+ * itself: the grid cancels the default on pointerdown to own the drag, which
+ * also cancels the focus, and a card the keyboard cannot reach has no
+ * shortcuts. A spec that focuses by hand passes either way.
+ *
+ * The event is built in the app's own realm for the same reason the pointer
+ * events are, and the handler is `.self`, so its target must be the card.
  */
 function moveCard(cardId: string, key: string) {
+  pressCard(cardId)
+  return cy.window().then((win) => {
+    cardIn(win, cardId).dispatchEvent(
+      new win.KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }),
+    )
+  })
+}
+
+/** A plain click on a card, through the gesture the grid actually listens for. */
+function pressCard(cardId: string) {
   return cy.window().then((win) => {
     let element = cardIn(win, cardId)
-    element.focus()
-    element.dispatchEvent(
-      new win.KeyboardEvent('keydown', {
-        key,
-        metaKey: true,
-        ctrlKey: true,
-        bubbles: true,
-        cancelable: true,
-      }),
-    )
+    let rect = element.getBoundingClientRect()
+    let x = rect.left + rect.width / 2
+    let y = rect.top + rect.height / 2
+    firePointer(win, element, 'pointerdown', x, y)
+    firePointer(win, element, 'pointerup', x, y)
+    element.dispatchEvent(new win.MouseEvent('click', { clientX: x, clientY: y, bubbles: true }))
   })
 }
 

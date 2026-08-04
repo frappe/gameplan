@@ -3,6 +3,7 @@
        aimed at the card itself. Without it, the space handler's preventDefault
        swallows every space typed into an inline editor inside the card. -->
   <article
+    ref="cardElement"
     class="group relative block w-full min-w-0 overflow-hidden rounded-xl text-left outline-none transition focus:outline-none focus-visible:outline-none"
     :class="[flow ? '' : 'h-full', cardChromeClass, cardShellClass, dragClass]"
     :style="rootStyle"
@@ -235,7 +236,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref, useTemplateRef, watch } from 'vue'
 import { useElementSize } from '@vueuse/core'
 import { profileBoundFields, type ProfileBentoCard, type ProfileCardMove } from './types'
 import {
@@ -306,6 +307,7 @@ const imageGradientClassBySize: Record<ProfileBentoCard['size'], string> = {
 const overlayButtonClass =
   'relative transition-opacity [@media(hover:hover)]:opacity-0 focus:opacity-100 group-hover:opacity-100 [@media(pointer:coarse)]:after:absolute [@media(pointer:coarse)]:after:-inset-2.5'
 
+const cardElement = useTemplateRef<HTMLElement>('cardElement')
 const imageFrame = ref<HTMLElement | null>(null)
 const htmlStack = ref<HTMLElement | null>(null)
 const tempImagePosition = ref(50)
@@ -520,34 +522,33 @@ function selectCard() {
 const moveKeys: Record<string, ProfileCardMove> = {
   ArrowLeft: 'earlier',
   ArrowRight: 'later',
-  ArrowUp: 'start',
-  ArrowDown: 'end',
+  ArrowUp: 'rowUp',
+  ArrowDown: 'rowDown',
 }
 
-// Both, so the shortcut is the platform's own on either one.
-const moveKeyShortcuts = Object.keys(moveKeys)
-  .flatMap((key) => [`Meta+${key}`, `Control+${key}`])
-  .join(' ')
+const moveKeyShortcuts = Object.keys(moveKeys).join(' ')
 
 /**
  * Reorder from the keyboard, the alternative to dragging that WCAG 2.5.7 asks
  * for.
  *
- * A modifier is required because a bare arrow key belongs to the scroller, and
- * the canvas is routinely taller than the screen. It also keeps these keys from
- * colliding with the arrows inside a card's own editor: the handler is `.self`,
- * so it only ever sees keys aimed at the card itself.
+ * The arrows are taken bare. Only a focused card ever sees them, and the
+ * handler is `.self`, so this claims them for exactly as long as a card is the
+ * thing being operated: everywhere else on the page they still scroll, and a
+ * card's own inline editor still gets its own caret keys.
+ *
+ * A modifier held with the arrow is left alone rather than treated as the same
+ * gesture, so the browser's Back, Forward and jump-to-end keep working from
+ * here.
  */
 function moveCard(event: KeyboardEvent) {
   if (!props.interactive) return
-  if (!event.metaKey && !event.ctrlKey) return
-  if (event.altKey || event.shiftKey) return
+  if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return
 
   let move = moveKeys[event.key]
   if (!move) return
 
-  // Cmd+Left is Back in a browser on a Mac, and this canvas has unsaved work to
-  // lose.
+  // Otherwise the page scrolls under the card that just moved.
   event.preventDefault()
   emit('move', move)
 }
@@ -565,6 +566,14 @@ function validateImageFile(file: File) {
 
 function startPointerDrag(event: PointerEvent) {
   if (!props.draggable || event.button !== 0) return
+
+  // Focus has to be taken by hand here. The grid calls `preventDefault()` on
+  // this event to own the gesture, and that also cancels the focus a press
+  // would otherwise give the card — so clicking a card selected it while
+  // leaving the keyboard pointed at whatever was focused before, and every
+  // reorder key went nowhere. Tabbing to the card was the only way in, which is
+  // not a way in at all.
+  cardElement.value?.focus()
   emit('pointerDown', event)
 }
 

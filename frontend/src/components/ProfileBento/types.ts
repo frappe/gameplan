@@ -25,11 +25,11 @@ export interface ProfileBentoCard {
 /**
  * A keyboard reorder step.
  *
- * Steps through the list rather than around the grid, because a packed wall of
- * five tile sizes has no dependable "the card above this one" — but "the card
- * before this one" is exactly what the layout is made of.
+ * Left and right step through the list, which is what the layout is made of.
+ * Up and down are asked for as they look on screen, and the grid works out
+ * which list position that comes to.
  */
-export type ProfileCardMove = 'earlier' | 'later' | 'start' | 'end'
+export type ProfileCardMove = 'earlier' | 'later' | 'rowUp' | 'rowDown'
 
 /** A write a bound card can ask for. Each one targets a profile (or User) field. */
 export type ProfileFieldUpdate =
