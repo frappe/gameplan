@@ -39,22 +39,17 @@ describe('Community discussion feeds', () => {
     cy.loginAs('admin')
     cy.visit(`/g/community/${community}/discussions`)
 
-    cy.scope('header')
-      .contains('a', 'Acme')
-      .parent()
-      .within(() => {
-        cy.iconButton('Community actions').should('be.visible')
-      })
+    cy.communityMenu('Acme').should('be.visible')
 
     // Community management lives in the Settings dialog: both actions open the
     // Communities tab at /g/settings/communities (the target community + view are
     // held in memory, not the URL).
-    cy.iconButton('Community actions').first().click()
+    cy.communityMenu('Acme').click()
     cy.get('[role="menuitem"]:visible').contains('Manage spaces').first().click()
     cy.url().should('include', '/g/settings/communities')
 
     cy.visit(`/g/community/${community}/discussions`)
-    cy.iconButton('Community actions').first().click()
+    cy.communityMenu('Acme').click()
     cy.get('[role="menuitem"]:visible').contains('Manage users').first().click()
     cy.url().should('include', '/g/settings/communities')
   })
@@ -63,7 +58,7 @@ describe('Community discussion feeds', () => {
     cy.visit(`/g/community/${community}/discussions/unread`)
     cy.contains('Unread thread').should('be.visible')
 
-    cy.iconButton('Community actions').first().click()
+    cy.communityMenu('Acme').click()
     cy.get('[role="menuitem"]:visible').contains('Mark all as read').first().click()
     cy.scope('dialog').button('Mark all as read').first().click()
 
