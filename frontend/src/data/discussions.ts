@@ -1,4 +1,4 @@
-import { MaybeRefOrGetter, toValue, watch } from 'vue'
+import { MaybeRefOrGetter, ref, toValue, watch } from 'vue'
 import { useDoc, useList } from 'frappe-ui'
 import { UseListOptions } from 'frappe-ui'
 import { useDocumentVisibility } from '@vueuse/core'
@@ -7,6 +7,20 @@ import { GPDiscussion } from '@/types/doctypes'
 // Reload the feed when the tab is re-activated after sitting in the background
 // for at least this long, so new posts show up without a manual refresh.
 const STALE_RELOAD_THRESHOLD = 2 * 60 * 1000
+
+const reloadSignal = ref(0)
+
+/**
+ * Reload every mounted discussion feed.
+ *
+ * A row's read state comes from the list response, not from the unread-count store, so an
+ * action taken outside a feed (marking a whole community read from the sidebar) leaves the
+ * rows looking unread until they refetch. Callers used to reach into `DiscussionList` through
+ * a template ref, which only works while the action lives on the same page as the list.
+ */
+export function reloadDiscussionLists() {
+  reloadSignal.value++
+}
 
 export interface Discussion extends GPDiscussion {
   project_title: string
@@ -44,6 +58,12 @@ export function useDiscussions(options: UseDiscussionOptions) {
     // Skip if it never loaded, is mid-fetch, or was refreshed recently.
     if (discussions.loading || !discussions.data) return
     if (Date.now() - lastLoadedAt < STALE_RELOAD_THRESHOLD) return
+    discussions.reload()
+  })
+
+  // Only feeds that have already loaded need a refresh; an untouched one fetches on demand.
+  watch(reloadSignal, () => {
+    if (!discussions.data) return
     discussions.reload()
   })
 
