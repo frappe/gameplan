@@ -1,5 +1,6 @@
 import { dialog, toast } from 'frappe-ui'
-import { getServerErrorMessage, isPermissionError } from '@/utils/errorMessage'
+import { extractServerMessage } from '@/utils'
+import { isPermissionError } from '@/utils/errorMessage'
 
 /**
  * Asks before throwing away a saved layout, then reports how it went.
@@ -43,5 +44,5 @@ function getRestoreErrorMessage(error: unknown) {
   if (isPermissionError(error)) {
     return 'You do not have permission to change this profile layout'
   }
-  return getServerErrorMessage(error) || 'Could not restore the default layout'
+  return extractServerMessage(error) || 'Could not restore the default layout'
 }

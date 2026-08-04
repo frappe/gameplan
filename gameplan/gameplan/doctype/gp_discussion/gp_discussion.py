@@ -63,7 +63,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 			pluck="name",
 		)
 		d.last_unread_poll = polls[0] if polls else None
-		d.is_bookmarked = self.is_bookmarked()
+		d.is_bookmarked = self.is_bookmarked_by_current_user()
 		d.views = frappe.db.count("GP Discussion Visit", {"discussion": self.name})
 		return d
 
@@ -191,7 +191,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 
 	@frappe.whitelist(methods=["POST"])
 	def add_bookmark(self):
-		if self.is_bookmarked():
+		if self.is_bookmarked_by_current_user():
 			return
 		frappe.new_doc("GP Bookmark", discussion=self.name, user=frappe.session.user).insert()
 
@@ -216,7 +216,14 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		for name in frappe.get_all("GP Bookmark", filters={"discussion": self.name}, pluck="name"):
 			frappe.delete_doc("GP Bookmark", name, ignore_permissions=True)
 
-	def is_bookmarked(self):
+	def is_bookmarked_by_current_user(self):
+		"""Deliberately not named `is_bookmarked` — `as_dict` publishes an `is_bookmarked` key.
+
+		That key is not a docfield, so when the client posts the dict back (desk save,
+		`frappe.get_doc(json)`) `Document.update` sets it as a plain instance attribute. A
+		method of the same name would be shadowed by that bool and the next `as_dict` would
+		raise `TypeError: 'bool' object is not callable`.
+		"""
 		return bool(frappe.db.exists("GP Bookmark", {"discussion": self.name, "user": frappe.session.user}))
 
 	def update_slug(self):
