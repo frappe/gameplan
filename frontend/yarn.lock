@@ -2500,10 +2500,10 @@ framer-motion@^12.25.0:
     motion-utils "^12.39.0"
     tslib "^2.4.0"
 
-frappe-ui@^1.0.0-beta.28:
-  version "1.0.0-beta.28"
-  resolved "https://registry.yarnpkg.com/frappe-ui/-/frappe-ui-1.0.0-beta.28.tgz#5b30d9fc83bffe2613a6948ef5c891c5dd571c74"
-  integrity sha512-dZ1zg77VfrCC5sIUYUBlSFhq/6w6NBnnotrg0DVXXoLFwvJ9/OR+08icPiCcCBJ/Fce+CwUstYC9qrp7QIlh8g==
+frappe-ui@^1.0.0-beta.31:
+  version "1.0.0-beta.31"
+  resolved "https://registry.yarnpkg.com/frappe-ui/-/frappe-ui-1.0.0-beta.31.tgz#99b04bc6547628248737fe1a015ae2f04c0406c2"
+  integrity sha512-5L8qrlfLMo2rKLtJ+IHXHh/NSzU2EQ+/HiZO6v+fzNRtQRV3qVaPgg2gNJYo81gXnHmG+2H6v4fsBxZOuajnjA==
   dependencies:
     "@codemirror/lang-css" "^6.3.0"
     "@codemirror/lang-html" "^6.4.9"
