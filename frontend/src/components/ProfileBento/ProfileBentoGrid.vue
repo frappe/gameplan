@@ -129,9 +129,6 @@ const dragStart = ref({ x: 0, y: 0 })
 const dragPointer = ref({ x: 0, y: 0 })
 const dragOffset = ref({ x: 0, y: 0 })
 const dragSize = ref({ width: 0, height: 0 })
-/** Where the ghost's middle was when the order last changed. See `travelledSinceReorder`. */
-const lastReorderCenter = ref<{ x: number; y: number } | null>(null)
-const reorderDeadBand = 12
 // How near an edge of the scroll container starts an autoscroll, and the pixels
 // per frame it runs at. The floor matters as much as the ceiling: entering the
 // zone has to move the page at once, or the shallow end reads as a dead strip.
@@ -219,6 +216,29 @@ const packedLayout = computed(() => {
   if (hasAddCardSlot.value) {
     items.push({ id: addCardLayoutId, size: '2x1', rows: undefined })
   }
+  return createProfileBentoLayout(items, gridWidth.value, gridGap, defaultProfileBentoColumns)
+})
+
+/**
+ * The layout a drag is measured against: every card except the one in hand.
+ *
+ * `packedLayout` cannot answer "where does this point belong", because it packs
+ * the order the drag is in the middle of choosing — hole and all. Reading it
+ * would close a loop: the index decides the layout, and the layout decides the
+ * index. Two neighbouring orders can each look correct from the other's
+ * geometry, so the grid flips between them while the pointer barely moves.
+ *
+ * Taking the dragged card out breaks the loop. What is left does not move for
+ * the rest of the gesture, so the index becomes a plain function of where the
+ * ghost is — the same point always gives the same answer, and re-asking costs
+ * nothing.
+ */
+const dragBaseLayout = computed(() => {
+  if (!draggingCardId.value) return null
+
+  let items = props.cards
+    .filter((card) => card.id !== draggingCardId.value)
+    .map((card) => ({ id: card.id, size: card.size, rows: expandedRowSpan(card) }))
   return createProfileBentoLayout(items, gridWidth.value, gridGap, defaultProfileBentoColumns)
 })
 
@@ -337,7 +357,6 @@ async function startFloatingDrag(cardId: string, event: PointerEvent) {
   let rect = cardElement.getBoundingClientRect()
   draggingCardId.value = cardId
   dragCards.value = [...props.cards]
-  lastReorderCenter.value = null
   dragOffset.value = { x: event.clientX - rect.left, y: event.clientY - rect.top }
   dragSize.value = { width: rect.width, height: rect.height }
   document.body.classList.add('cursor-grabbing')
@@ -372,18 +391,9 @@ function autoScrollTick() {
 
   let before = container.scrollTop
   container.scrollTop = before + velocity
-  let scrolled = container.scrollTop - before
   // Already at the top or the bottom. Nothing moved, so nothing can have
   // changed places either.
-  if (!scrolled) return
-
-  // The ghost holds still in the viewport while the grid slides past under it,
-  // so `lastReorderCenter` — a viewport point — would make the dead band read
-  // every autoscrolled frame as "hasn't moved" and the order would never
-  // change. Sliding the stored point by however far the content went puts the
-  // comparison back into the grid's own space, where the travel is real.
-  let last = lastReorderCenter.value
-  if (last) lastReorderCenter.value = { x: last.x, y: last.y - scrolled }
+  if (container.scrollTop === before) return
 
   // `insertionIndex()` reads the grid's rect live, so re-running the reorder is
   // enough to follow the scroll. No pointer event is needed, and none is coming.
@@ -436,25 +446,24 @@ function autoScrollSpeed(depth: number) {
  * anything moved. Counting is immune: the moment the ghost's middle clears a
  * row, everything in that row counts, whatever shape it is.
  *
- * It is also monotonic, which is the property that makes a drag feel like it
- * obeys you. Down and to the right always means later in the list, up and to the
- * left always means earlier. Nearest-centre had no such guarantee.
+ * Counted against `dragBaseLayout`, it is also monotonic, which is the property
+ * that makes a drag feel like it obeys you. Down and to the right always means
+ * later in the list, up and to the left always means earlier. Counting against
+ * the live layout was not: the answer moved the tiles the next answer would be
+ * read from.
  */
 function moveFloatingCard() {
-  let center = floatingCardCenter()
-  if (!travelledSinceReorder(center)) return
-
-  let index = insertionIndex(center)
+  let index = insertionIndex(floatingCardCenter())
   let sourceIndex = dragCards.value.findIndex((card) => card.id === draggingCardId.value)
   // Inserting a card back at the index it already holds is the whole array over
-  // again, so this is also the "nothing changed" test.
+  // again, so this is also the "nothing changed" test — and the one that makes
+  // calling this on every pointermove and every autoscroll frame free.
   if (index === -1 || sourceIndex === -1 || index === sourceIndex) return
 
   let nextCards = dragCards.value.filter((card) => card.id !== draggingCardId.value)
   nextCards.splice(index, 0, dragCards.value[sourceIndex])
 
   dragCards.value = nextCards
-  lastReorderCenter.value = center
 }
 
 /**
@@ -479,25 +488,25 @@ function floatingCardCenter() {
  * are going. Measuring the destination is both the stable answer and the cheap
  * one — one `getBoundingClientRect` for the whole grid instead of a hit test per
  * pointermove.
+ *
+ * Counting is order-independent, so `dragBaseLayout` holding a different order
+ * from `dragCards` does not matter. It holds the same cards, which is all the
+ * question needs.
  */
 function insertionIndex(center: { x: number; y: number }) {
+  let layout = dragBaseLayout.value
   let origin = gridElement.value?.getBoundingClientRect()
-  if (!origin) return -1
+  if (!layout || !origin) return -1
 
   // Slot rects are relative to the grid; the ghost's middle is in the viewport.
-  // The grid itself carries no size transition, so this rect is never mid-flight
-  // the way a tile's is.
+  // Reading the grid's own rect every time is also what follows an autoscroll:
+  // the ghost holds still on screen while this origin travels under it.
   let x = center.x - origin.left
   let y = center.y - origin.top
 
   let index = 0
-  for (let card of dragCards.value) {
-    // Counted among the others, never against itself: the dragged card's own
-    // slot is the hole it came out of, and a hole cannot be before or after.
-    if (card.id === draggingCardId.value) continue
-
-    let rect = packedLayout.value.rects.get(card.id)
-    if (rect && readsBefore(rect, x, y)) index += 1
+  for (let [, rect] of layout.rects) {
+    if (readsBefore(rect, x, y)) index += 1
   }
   return index
 }
@@ -514,22 +523,6 @@ function readsBefore(rect: ProfileBentoLayoutRect, x: number, y: number) {
   if (rect.top + rect.height <= y) return true
   if (rect.top >= y) return false
   return rect.left + rect.width / 2 < x
-}
-
-/**
- * A little real pointer travel is required between one reorder and the next.
- *
- * A reorder repacks every tile under the ghost, so the following pointermove is
- * counted against slots that have all moved. With cards of five sizes, two
- * neighbouring orders can each read as correct from the other's layout, and the
- * grid would then flicker between them while the pointer sits still. Sortable
- * calls this swap glitching and cures it by shrinking the swap zone; the same
- * cure here is a short dead band, small enough that no deliberate move notices.
- */
-function travelledSinceReorder(center: { x: number; y: number }) {
-  let last = lastReorderCenter.value
-  if (!last) return true
-  return Math.hypot(center.x - last.x, center.y - last.y) > reorderDeadBand
 }
 
 /**
@@ -657,7 +650,6 @@ function resetDragState() {
   stopAutoScroll()
   draggingCardId.value = ''
   dragCards.value = []
-  lastReorderCenter.value = null
   pendingDragCardId.value = ''
   document.body.classList.remove('cursor-grabbing')
 }
