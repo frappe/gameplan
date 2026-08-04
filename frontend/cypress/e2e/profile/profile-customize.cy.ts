@@ -638,7 +638,6 @@ function dragCardOnto(
   cy.window().then((win) => {
     let sourceElement = cardIn(win, sourceId)
     let source = sourceElement.getBoundingClientRect()
-    let target = cardIn(win, targetId).getBoundingClientRect()
 
     let press =
       grab === 'centre'
@@ -648,18 +647,7 @@ function dragCardOnto(
     // offset is read from that move, so it is the point to measure from.
     let begin = { x: press.x + 10, y: press.y + 10 }
     let offset = { x: begin.x - source.left, y: begin.y - source.top }
-    // `middle` stops just short of it, so a reading that splits the target in
-    // two is decided rather than sitting on the boundary.
-    let landing = {
-      middle: { x: target.left + target.width / 2 - 4, y: target.top + target.height / 2 - 4 },
-      seam: { x: target.right + 6, y: target.top + target.height / 2 },
-      'top-left': { x: target.left + target.width / 4, y: target.top + target.height / 8 },
-    }[land]
-    // The pointer, worked back from where the dragged card has to end up.
-    let drop = {
-      x: landing.x - source.width / 2 + offset.x,
-      y: landing.y - source.height / 2 + offset.y,
-    }
+    let drop = { x: 0, y: 0 }
 
     // A frame between each step, because picking the card up is asynchronous:
     // the grid only starts the floating drag on the move that passes its 6px
@@ -667,7 +655,26 @@ function dragCardOnto(
     firePointer(win, sourceElement, 'pointerdown', press.x, press.y)
     firePointer(win, win, 'pointermove', begin.x, begin.y)
     cy.get('[data-profile-drag-ghost="true"]').should('exist')
-    cy.then(() => firePointer(win, win, 'pointermove', drop.x, drop.y))
+    cy.then(() => {
+      // Read once the card is up, not before. Picking it up takes a frame, and a
+      // rect measured on the other side of one is the only rect the drop can
+      // trust. The dragged card keeps its slot while it floats, so nothing here
+      // has moved on account of the pickup itself.
+      let target = cardIn(win, targetId).getBoundingClientRect()
+      // `middle` stops just short of it, so a reading that splits the target in
+      // two is decided rather than sitting on the boundary.
+      let landing = {
+        middle: { x: target.left + target.width / 2 - 4, y: target.top + target.height / 2 - 4 },
+        seam: { x: target.right + 6, y: target.top + target.height / 2 },
+        'top-left': { x: target.left + target.width / 4, y: target.top + target.height / 8 },
+      }[land]
+      // The pointer, worked back from where the dragged card has to end up.
+      drop = {
+        x: landing.x - source.width / 2 + offset.x,
+        y: landing.y - source.height / 2 + offset.y,
+      }
+      firePointer(win, win, 'pointermove', drop.x, drop.y)
+    })
     cy.then(() => firePointer(win, win, 'pointerup', drop.x, drop.y))
     // The ghost is a card too, so it would show up in the order being asserted.
     cy.get('[data-profile-drag-ghost="true"]').should('not.exist')
@@ -744,11 +751,37 @@ function settled(cardId: string) {
   cy.get(`[data-profile-card-wrapper="true"][data-profile-card-id="${cardId}"]`).should(
     ($wrapper) => {
       let element = $wrapper[0]
-      let declared = Number.parseFloat(element.style.width)
-      expect(declared, 'the packer has given the card a width').to.be.greaterThan(0)
-      expect(element.getBoundingClientRect().width).to.be.closeTo(declared, 0.5)
+      let declared = declaredRect(element)
+      expect(declared.width, 'the packer has given the card a width').to.be.greaterThan(0)
+
+      let grid = element.parentElement.getBoundingClientRect()
+      let rect = element.getBoundingClientRect()
+      expect(rect.width, 'the card has reached its width').to.be.closeTo(declared.width, 0.5)
+      // Width is the measurement a repack is least likely to change, so on its
+      // own it agrees happily while the card is still sliding to a new row. A
+      // drop point is worked out from where a card is, so the place has to have
+      // arrived as well as the size.
+      expect(rect.left - grid.left, 'the card has reached its column').to.be.closeTo(
+        declared.left,
+        0.5,
+      )
+      expect(rect.top - grid.top, 'the card has reached its row').to.be.closeTo(declared.top, 0.5)
     },
   )
+}
+
+/**
+ * Where the packer is sending a card, read back off the element.
+ *
+ * The tiles are placed with `translate3d` and moved by a CSS transition, which
+ * interpolates the used value and leaves the inline style at the end of the
+ * journey. So this is the destination even halfway through the slide.
+ */
+function declaredRect(element: HTMLElement) {
+  let [left = 0, top = 0] = (element.style.transform.match(/-?[\d.]+px/g) || []).map((value) =>
+    Number.parseFloat(value),
+  )
+  return { left, top, width: Number.parseFloat(element.style.width) }
 }
 
 /** A pointer event built in the app's own realm, so its handlers accept it. */
