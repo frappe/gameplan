@@ -6,6 +6,9 @@
  */
 export interface UnsplashPhoto {
   id: string
+  /** The photo's own pixel size, used to reserve a tile's shape before it loads. */
+  width: number
+  height: number
   /** Small render for the grid. */
   thumb_url: string
   /** ~1080px render — the URL that gets stored and hotlinked. */

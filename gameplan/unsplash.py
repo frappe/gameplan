@@ -194,6 +194,10 @@ def _serialize_photo(photo: dict) -> dict:
 	`urls.regular` is what gets stored on the profile: `raw` has no sizing applied
 	and `full` is multi-megabyte, while `regular` is a ~1080px render that the
 	cover card can still narrow further with Unsplash's own query parameters.
+
+	The pixel dimensions are along so the picker can reserve each tile's shape
+	before its image arrives. Without them a wall of lazily loaded photos starts
+	as a row of zero-height boxes and reflows on every load.
 	"""
 	urls = photo.get("urls") or {}
 	user = photo.get("user") or {}
@@ -202,6 +206,8 @@ def _serialize_photo(photo: dict) -> dict:
 
 	return {
 		"id": photo.get("id"),
+		"width": cint(photo.get("width")),
+		"height": cint(photo.get("height")),
 		# `small` (~400px), not `thumb` (~200px): the picker's columns are wider
 		# than a thumb on any desktop dialog, and a stretched thumb looks soft.
 		"thumb_url": urls.get("small") or urls.get("thumb"),

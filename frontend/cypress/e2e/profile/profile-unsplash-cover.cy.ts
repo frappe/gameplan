@@ -19,6 +19,8 @@ const downloadLocation = 'https://api.unsplash.com/photos/abc123/download?ixid=x
 
 const photo = {
   id: 'abc123',
+  width: 4000,
+  height: 3000,
   thumb_url: '/assets/frappe/images/background.png',
   url: photoUrl,
   alt: 'a desk by a window',
@@ -145,6 +147,31 @@ describe('Profile cover image from Unsplash', () => {
     cy.get('[data-unsplash-results]').should('not.exist')
   })
 
+  it('stays exactly as tall whether it found photos or not', () => {
+    // A grid of photos is several times taller than a line of "nothing found",
+    // so a picker sized by its contents grows under the pointer the moment a
+    // search comes back. Both are measured with the dialog already open and
+    // still, so neither reading catches its opening animation.
+    stubSearch({ configured: true, topic: 'featured', total: 0, photos: [] })
+
+    openPicker()
+    cy.get('[data-unsplash-empty]').should('be.visible')
+
+    cy.window().then((win) => {
+      // Retried until it holds, which also waits out the dialog's own opening
+      // animation: it scales the dialog, and a scaled box reports a scaled
+      // height, so 99% of the pane would read as a different pane.
+      paneIsHalfTheViewport(win)
+
+      let photos = Array.from({ length: 12 }, (_, index) => ({ ...photo, id: `photo-${index}` }))
+      stubSearch({ configured: true, query: 'desk', total: 12, photos })
+      searchInput().type('desk')
+      cy.get('[data-unsplash-results]').should('be.visible')
+
+      paneIsHalfTheViewport(win)
+    })
+  })
+
   it('offers Unsplash for the cover but not for the avatar', () => {
     stubSearch({ configured: true, query: '', total: 0, photos: [] })
 
@@ -158,6 +185,13 @@ describe('Profile cover image from Unsplash', () => {
     unsplashButton().should('not.exist')
   })
 })
+
+/** The pane is 55vh in every state, which is what stops the dialog resizing. */
+function paneIsHalfTheViewport(win: Window) {
+  cy.get('[data-unsplash-pane]').should(($pane) => {
+    expect($pane[0].getBoundingClientRect().height).to.be.closeTo(win.innerHeight * 0.55, 1)
+  })
+}
 
 function stubSearch(body: Record<string, unknown>) {
   return cy.intercept('GET', searchUrl, { body: { data: body } }).as('search')

@@ -152,6 +152,8 @@ class TestUnsplashProxy(GameplanTestCase):
 			[
 				{
 					"id": "abc123",
+					"width": 4000,
+					"height": 3000,
 					"thumb_url": "https://images.unsplash.com/photo-abc123?w=400",
 					"url": "https://images.unsplash.com/photo-abc123?w=1080",
 					"alt": "a desk by a window",

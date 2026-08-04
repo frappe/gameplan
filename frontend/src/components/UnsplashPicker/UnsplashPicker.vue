@@ -29,90 +29,107 @@
         />
       </div>
 
-      <!-- One state at a time, in the order they can happen: a site that never
-           set a key, a request that failed, a request in flight, nothing found,
-           and then the results. -->
-      <div
-        v-if="notConfigured"
-        class="rounded border border-outline-gray-2 bg-surface-gray-1 p-4"
-        data-unsplash-not-configured
-      >
-        <p class="text-base font-medium text-ink-gray-8">Unsplash is not set up</p>
-        <p class="mt-1 text-sm leading-5 text-ink-gray-6">{{ notConfiguredMessage }}</p>
-      </div>
+      <!-- Every state fills the same box, so searching, finding nothing and
+           finding thirty photos all leave the dialog exactly as tall. A cap
+           would not do it: a spinner under a max-height is only as tall as a
+           spinner, and the dialog would still jump when the grid arrived. -->
+      <div class="h-[55vh]" data-unsplash-pane>
+        <!-- One state at a time, in the order they can happen: a site that never
+             set a key, a request that failed, a first request in flight, nothing
+             found, and then the results. -->
+        <div
+          v-if="notConfigured"
+          class="rounded border border-outline-gray-2 bg-surface-gray-1 p-4"
+          data-unsplash-not-configured
+        >
+          <p class="text-base font-medium text-ink-gray-8">Unsplash is not set up</p>
+          <p class="mt-1 text-sm leading-5 text-ink-gray-6">{{ notConfiguredMessage }}</p>
+        </div>
 
-      <ErrorMessage v-else-if="errorMessage" :message="errorMessage" data-unsplash-error />
+        <ErrorMessage v-else-if="errorMessage" :message="errorMessage" data-unsplash-error />
 
-      <div
-        v-else-if="loading"
-        class="flex h-64 flex-col items-center justify-center gap-2 text-ink-gray-5"
-        data-unsplash-loading
-      >
-        <LoadingIndicator class="size-5" />
-        <p class="text-sm">Searching Unsplash…</p>
-      </div>
+        <div
+          v-else-if="loading && !photos.length"
+          class="flex h-full flex-col items-center justify-center gap-2 text-ink-gray-5"
+          data-unsplash-loading
+        >
+          <LoadingIndicator class="size-5" />
+          <p class="text-sm">Searching Unsplash…</p>
+        </div>
 
-      <p
-        v-else-if="!photos.length"
-        class="flex h-64 items-center justify-center px-6 text-center text-sm leading-5 text-ink-gray-5"
-        data-unsplash-empty
-      >
-        {{ emptyMessage }}
-      </p>
+        <p
+          v-else-if="!photos.length"
+          class="flex h-full items-center justify-center px-6 text-center text-sm leading-5 text-ink-gray-5"
+          data-unsplash-empty
+        >
+          {{ emptyMessage }}
+        </p>
 
-      <!-- The height cap goes on the viewport, not on the root. The viewport is
-           the element reka gives `overflow-y: scroll`, and its `h-full` resolves
-           to auto inside a root that only has a max-height, so the root would
-           clip the grid and nothing would scroll. -->
-      <ScrollArea v-else viewport-class="max-h-[55vh] pr-3">
-        <!-- Columns rather than a grid: photos keep their own proportions and
-             stack with no dead space, which is the only way a wall of mixed
-             portrait and landscape shots packs tightly. -->
-        <ul class="columns-2 gap-1 sm:columns-3" data-unsplash-results>
-          <li
-            v-for="photo in photos"
-            :key="photo.id"
-            class="group relative mb-1 block break-inside-avoid overflow-hidden rounded"
+        <!-- `h-full` on the root, not a cap: the viewport reka gives
+             `overflow-y: scroll` is itself `h-full`, which resolves to auto
+             inside a box that only has a max-height, and then nothing scrolls. -->
+        <ScrollArea v-else class="h-full" viewport-class="pr-3">
+          <!-- Columns rather than a grid: photos keep their own proportions and
+               stack with no dead space, which is the only way a wall of mixed
+               portrait and landscape shots packs tightly.
+
+               Switching topics keeps the photos that are already there, dimmed,
+               rather than swapping them for a spinner. The pane cannot change
+               height either way, so a flash to empty and back buys nothing. -->
+          <ul
+            class="columns-2 gap-1 transition-opacity sm:columns-3"
+            :class="loading ? 'pointer-events-none opacity-40' : ''"
+            data-unsplash-results
           >
-            <img
-              :src="photo.thumb_url"
-              :alt="photo.alt || `Photo by ${photo.photographer_name}`"
-              class="block w-full bg-surface-gray-2"
-              loading="lazy"
-            />
-            <!-- The picker is the whole tile, laid over the image, because the
-                 credit below has to be a link and a link cannot live inside a
-                 button. Its label carries what the tile no longer says in text. -->
-            <button
-              type="button"
-              class="absolute inset-0 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-outline-gray-4 group-hover:bg-black/10"
-              :data-unsplash-photo="photo.id"
-              :aria-label="`Use this photo by ${photo.photographer_name}`"
-              @click="choose(photo)"
-            />
-            <!-- Unsplash requires the photographer to be credited wherever the
-                 photo is shown, with these UTM parameters on the link. The scrim
-                 is what keeps it readable over a pale photo.
-
-                 A literal white, not `text-ink-white`: that token is the ink for
-                 an inverted surface and flips to black in dark mode, which is
-                 exactly the wrong way round over a scrim that is always dark. -->
-            <p
-              class="pointer-events-none absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-black/70 to-transparent px-2 pb-1.5 pt-6 text-xs text-white"
+            <li
+              v-for="photo in photos"
+              :key="photo.id"
+              class="group relative mb-1 block break-inside-avoid overflow-hidden rounded"
             >
-              <a
-                :href="photo.photographer_url"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="pointer-events-auto hover:underline"
-                @click.stop
+              <!-- The tile takes the photo's own proportions up front, so the
+                   columns settle once instead of shuffling as each lazy image
+                   lands. -->
+              <img
+                :src="photo.thumb_url"
+                :alt="photo.alt || `Photo by ${photo.photographer_name}`"
+                class="block w-full bg-surface-gray-2"
+                :style="aspectRatio(photo)"
+                loading="lazy"
+              />
+              <!-- The picker is the whole tile, laid over the image, because the
+                   credit below has to be a link and a link cannot live inside a
+                   button. Its label carries what the tile no longer says in text. -->
+              <button
+                type="button"
+                class="absolute inset-0 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-outline-gray-4 group-hover:bg-black/10"
+                :data-unsplash-photo="photo.id"
+                :aria-label="`Use this photo by ${photo.photographer_name}`"
+                @click="choose(photo)"
+              />
+              <!-- Unsplash requires the photographer to be credited wherever the
+                   photo is shown, with these UTM parameters on the link. The scrim
+                   is what keeps it readable over a pale photo.
+
+                   A literal white, not `text-ink-white`: that token is the ink for
+                   an inverted surface and flips to black in dark mode, which is
+                   exactly the wrong way round over a scrim that is always dark. -->
+              <p
+                class="pointer-events-none absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-black/70 to-transparent px-2 pb-1.5 pt-6 text-xs text-white"
               >
-                {{ photo.photographer_name }}
-              </a>
-            </p>
-          </li>
-        </ul>
-      </ScrollArea>
+                <a
+                  :href="photo.photographer_url"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="pointer-events-auto hover:underline"
+                  @click.stop
+                >
+                  {{ photo.photographer_name }}
+                </a>
+              </p>
+            </li>
+          </ul>
+        </ScrollArea>
+      </div>
 
       <p class="text-xs text-ink-gray-5">
         Photos from
@@ -251,6 +268,17 @@ watch(debouncedQuery, (value) => {
   activeTopic.value = typed ? '' : defaultTopic
   runSearch()
 })
+
+/**
+ * The tile's shape, held before its image has loaded.
+ *
+ * Left off when Unsplash gave no dimensions, so the tile falls back to sizing
+ * itself from the image as it always did rather than collapsing to nothing.
+ */
+function aspectRatio(photo: UnsplashPhoto) {
+  if (!photo.width || !photo.height) return undefined
+  return { aspectRatio: `${photo.width} / ${photo.height}` }
+}
 
 function browseTopic(slug: string) {
   query.value = ''
