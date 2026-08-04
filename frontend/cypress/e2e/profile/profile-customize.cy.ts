@@ -136,14 +136,29 @@ describe('Profile customize editor', () => {
     let dropped = ['about', 'cover', 'avatar', 'full-name', 'bio']
 
     cardIdsInOrder().should('deep.equal', defaultCardOrder)
-    dragCardOnto('about', 'cover', 'corner')
+    dragCardOnto('about', 'cover', { grab: 'corner' })
     cardIdsInOrder().should('deep.equal', dropped)
 
     // The same gesture grabbed dead centre has to land in the same place.
     visitCustomize()
     cardIdsInOrder().should('deep.equal', defaultCardOrder)
-    dragCardOnto('about', 'cover', 'centre')
+    dragCardOnto('about', 'cover', { grab: 'centre' })
     cardIdsInOrder().should('deep.equal', dropped)
+  })
+
+  it('reorders from the gutter between two cards, which is on neither of them', () => {
+    cy.loginAs('member')
+    visitCustomize()
+
+    cardIdsInOrder().should('deep.equal', defaultCardOrder)
+
+    // Full name sits mid-row with Bio beside it, so the seam on its right has a
+    // card on either side and none under it. The drop still has to be Full
+    // name's slot, because that is the slot the dragged card is nearest: a
+    // reading that asks "which card am I over?" answers nothing here, and every
+    // seam would be a dead strip running the height of the canvas.
+    dragCardOnto('about', 'full-name', { land: 'seam' })
+    cardIdsInOrder().should('deep.equal', ['cover', 'avatar', 'about', 'full-name', 'bio'])
   })
 
   it('restores the default layout, but only once the question is answered', () => {
@@ -368,67 +383,91 @@ function card(cardId: string) {
 }
 
 /**
- * Drag one card until its own middle sits over another card's middle, holding it
- * either dead centre or by its bottom-right corner. Both must reorder the same
- * way: the grab offset moves the pointer, not the card.
+ * Drag one card until its own middle lands on another card, holding it either
+ * dead centre or by its bottom-right corner. Both must reorder the same way: the
+ * grab offset moves the pointer, not the card.
+ *
+ * `land` says where the dragged card's middle ends up. `'middle'` is the
+ * target's own middle; `'seam'` is the gutter just past its right edge, which
+ * sits on no card at all and is still nearest the target's slot.
  */
-function dragCardOnto(sourceId: string, targetId: string, grab: 'centre' | 'corner') {
-  // This is the one test that reads real geometry, so it has to wait for the
-  // packer to measure the canvas. Until it does, every card sits at a few dozen
-  // pixels square and the drop point works out to somewhere inside the card
-  // being dragged.
-  laidOut(sourceId)
-  laidOut(targetId)
+function dragCardOnto(
+  sourceId: string,
+  targetId: string,
+  options: { grab?: 'centre' | 'corner'; land?: 'middle' | 'seam' } = {},
+) {
+  let { grab = 'centre', land = 'middle' } = options
 
-  card(sourceId).then(($source) => {
-    let sourceElement = $source[0]
+  settled(sourceId)
+  settled(targetId)
+
+  cy.window().then((win) => {
+    let sourceElement = cardIn(win, sourceId)
     let source = sourceElement.getBoundingClientRect()
-    let view = sourceElement.ownerDocument.defaultView as Window
+    let target = cardIn(win, targetId).getBoundingClientRect()
 
-    card(targetId).then(($target) => {
-      let target = $target[0].getBoundingClientRect()
-      let press =
-        grab === 'centre'
-          ? { x: source.left + source.width / 2, y: source.top + source.height / 2 }
-          : { x: source.right - 20, y: source.bottom - 20 }
-      // The drag starts on the first move past the 6px threshold, and the grab
-      // offset is read from that move, so it is the point to measure from.
-      let begin = { x: press.x + 10, y: press.y + 10 }
-      let offset = { x: begin.x - source.left, y: begin.y - source.top }
-      // Just short of the target's middle, so the before/after split is decided
-      // rather than sitting on the boundary.
-      let drop = {
-        x: target.left + target.width / 2 - 4 - source.width / 2 + offset.x,
-        y: target.top + target.height / 2 - 4 - source.height / 2 + offset.y,
-      }
+    let press =
+      grab === 'centre'
+        ? { x: source.left + source.width / 2, y: source.top + source.height / 2 }
+        : { x: source.right - 20, y: source.bottom - 20 }
+    // The drag starts on the first move past the 6px threshold, and the grab
+    // offset is read from that move, so it is the point to measure from.
+    let begin = { x: press.x + 10, y: press.y + 10 }
+    let offset = { x: begin.x - source.left, y: begin.y - source.top }
+    // Just short of the target's middle, so a reading that splits the target in
+    // two is decided rather than sitting on the boundary.
+    let landing =
+      land === 'middle'
+        ? { x: target.left + target.width / 2 - 4, y: target.top + target.height / 2 - 4 }
+        : { x: target.right + 6, y: target.top + target.height / 2 }
+    // The pointer, worked back from where the dragged card has to end up.
+    let drop = {
+      x: landing.x - source.width / 2 + offset.x,
+      y: landing.y - source.height / 2 + offset.y,
+    }
 
-      // A frame between each step, because picking the card up is asynchronous:
-      // the grid only starts the floating drag on the move that passes its 6px
-      // threshold, and awaits a tick before the next move can find it.
-      firePointer(sourceElement, 'pointerdown', press.x, press.y)
-      firePointer(view, 'pointermove', begin.x, begin.y)
-      cy.get('[data-profile-drag-ghost="true"]').should('exist')
-      cy.then(() => firePointer(view, 'pointermove', drop.x, drop.y))
-      cy.then(() => firePointer(view, 'pointerup', drop.x, drop.y))
-      // The ghost is a card too, so it would show up in the order being asserted.
-      cy.get('[data-profile-drag-ghost="true"]').should('not.exist')
-    })
+    // A frame between each step, because picking the card up is asynchronous:
+    // the grid only starts the floating drag on the move that passes its 6px
+    // threshold, and awaits a tick before the next move can find it.
+    firePointer(win, sourceElement, 'pointerdown', press.x, press.y)
+    firePointer(win, win, 'pointermove', begin.x, begin.y)
+    cy.get('[data-profile-drag-ghost="true"]').should('exist')
+    cy.then(() => firePointer(win, win, 'pointermove', drop.x, drop.y))
+    cy.then(() => firePointer(win, win, 'pointerup', drop.x, drop.y))
+    // The ghost is a card too, so it would show up in the order being asserted.
+    cy.get('[data-profile-drag-ghost="true"]').should('not.exist')
   })
 }
 
-/** Wait until the packer has given a card its real size on the canvas. */
-function laidOut(cardId: string) {
-  card(cardId).should(($card) => {
-    expect($card[0].getBoundingClientRect().width).to.be.greaterThan(120)
-  })
+function cardIn(win: Window, cardId: string) {
+  return win.document.querySelector(`article[data-profile-card-id="${cardId}"]`) as HTMLElement
 }
 
-function firePointer(target: EventTarget, type: string, x: number, y: number) {
-  let view = (target as Window).document
-    ? (target as Window)
-    : (target as Element).ownerDocument.defaultView
+/**
+ * Wait until a card has stopped moving.
+ *
+ * Every tile carries a 200ms transition on width, height and transform, so a
+ * rect read while the canvas is still settling is neither the size the card had
+ * nor the size it is about to have. The inline style is the destination the
+ * packer wrote, so the card has arrived when its rect agrees with it. Waiting
+ * merely for "bigger than a placeholder" samples a different frame every run,
+ * and the drop point lands somewhere different each time.
+ */
+function settled(cardId: string) {
+  cy.get(`[data-profile-card-wrapper="true"][data-profile-card-id="${cardId}"]`).should(
+    ($wrapper) => {
+      let element = $wrapper[0]
+      let declared = Number.parseFloat(element.style.width)
+      expect(declared, 'the packer has given the card a width').to.be.greaterThan(0)
+      expect(element.getBoundingClientRect().width).to.be.closeTo(declared, 0.5)
+    },
+  )
+}
+
+/** A pointer event built in the app's own realm, so its handlers accept it. */
+function firePointer(win: Window, target: EventTarget, type: string, x: number, y: number) {
   target.dispatchEvent(
-    new view!.PointerEvent(type, {
+    new win.PointerEvent(type, {
       clientX: x,
       clientY: y,
       bubbles: true,

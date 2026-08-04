@@ -121,6 +121,9 @@ const dragStart = ref({ x: 0, y: 0 })
 const dragPointer = ref({ x: 0, y: 0 })
 const dragOffset = ref({ x: 0, y: 0 })
 const dragSize = ref({ width: 0, height: 0 })
+/** Where the ghost's middle was when the order last changed. See `travelledSinceReorder`. */
+const lastReorderCenter = ref<{ x: number; y: number } | null>(null)
+const reorderDeadBand = 12
 const pendingDragCardId = ref('')
 const gridElement = ref<HTMLElement | null>(null)
 const { width: gridWidth } = useElementSize(gridElement)
@@ -315,63 +318,109 @@ async function startFloatingDrag(cardId: string, event: PointerEvent) {
   let rect = cardElement.getBoundingClientRect()
   draggingCardId.value = cardId
   dragCards.value = [...props.cards]
+  lastReorderCenter.value = null
   dragOffset.value = { x: event.clientX - rect.left, y: event.clientY - rect.top }
   dragSize.value = { width: rect.width, height: rect.height }
   document.body.classList.add('cursor-grabbing')
   await nextTick()
 }
 
+/**
+ * Put the dragged card in whichever slot its own middle is closest to.
+ *
+ * The grid is a packed wall of tiles of five different sizes, so the older
+ * "which card am I over, and am I past its middle?" reading had no good answer
+ * anywhere: the 12px seams between tiles were dead space that reordered nothing,
+ * and the before/after test mixed both axes, so the top-right of a tile counted
+ * as after while its top-left counted as before.
+ *
+ * Nearest slot centre has neither problem. Every point on the canvas belongs to
+ * exactly one slot, seams included, and the answer is an index rather than a
+ * side, so it says what the drop will do instead of approximating it. This is
+ * what dnd-kit calls `closestCenter`, and it is the collision strategy it
+ * recommends for grids over rectangle intersection for the same reason.
+ *
+ * It also settles itself. Once the card has taken slot i, the slot nearest the
+ * ghost is the one the card is already in, so holding still changes nothing.
+ */
 function moveFloatingCard() {
-  // The card decides what it is over, not the pointer. The ghost hangs off the
-  // pointer by wherever the card was grabbed, so probing at the pointer meant a
-  // card grabbed by a corner only reordered once the pointer itself reached a
-  // neighbour — half a card after it looked like it should have. Its centre is
-  // the point that matches what the drag looks like, whatever the grab offset.
-  let target = targetFromPoint(...floatingCardCenter())
-  if (!target) return
+  let center = floatingCardCenter()
+  if (!travelledSinceReorder(center)) return
 
-  let nextCards = reorderedCards(target.cardId, target.position)
-  if (sameOrder(nextCards, dragCards.value)) return
-
-  dragCards.value = nextCards
-}
-
-/** Where the ghost's middle sits, in the same viewport space as the pointer. */
-function floatingCardCenter() {
-  return [
-    dragPointer.value.x - dragOffset.value.x + dragSize.value.width / 2,
-    dragPointer.value.y - dragOffset.value.y + dragSize.value.height / 2,
-  ] as const
-}
-
-function targetFromPoint(x: number, y: number) {
-  let elements = document.elementsFromPoint(x, y)
-  let cardElement = elements
-    .map((element) => element.closest<HTMLElement>('[data-profile-card-wrapper="true"]'))
-    .find((element) => element && element.dataset.profileCardId !== draggingCardId.value)
-  if (!cardElement?.dataset.profileCardId) return null
-
-  let rect = cardElement.getBoundingClientRect()
-  let after = y > rect.top + rect.height / 2 || x > rect.left + rect.width / 2
-  return {
-    cardId: cardElement.dataset.profileCardId,
-    position: after ? 'after' : 'before',
-  } as const
-}
-
-function reorderedCards(targetCardId: string, position: 'after' | 'before') {
+  let slotIndex = nearestSlotIndex(center)
   let sourceIndex = dragCards.value.findIndex((card) => card.id === draggingCardId.value)
-  let targetIndex = dragCards.value.findIndex((card) => card.id === targetCardId)
-  if (sourceIndex === -1 || targetIndex === -1) return dragCards.value
+  if (slotIndex === -1 || sourceIndex === -1 || slotIndex === sourceIndex) return
 
   let nextCards = [...dragCards.value]
   let [movingCard] = nextCards.splice(sourceIndex, 1)
-  let insertIndex = nextCards.findIndex((card) => card.id === targetCardId)
-  if (position === 'after') {
-    insertIndex += 1
+  nextCards.splice(slotIndex, 0, movingCard)
+
+  dragCards.value = nextCards
+  lastReorderCenter.value = center
+}
+
+/**
+ * Where the ghost's middle sits, in the same viewport space as the pointer.
+ *
+ * The ghost hangs off the pointer by wherever the card was grabbed, so the
+ * pointer is the wrong thing to measure with: a card held by a corner would
+ * reorder half a card later than it looks like it should.
+ */
+function floatingCardCenter() {
+  return {
+    x: dragPointer.value.x - dragOffset.value.x + dragSize.value.width / 2,
+    y: dragPointer.value.y - dragOffset.value.y + dragSize.value.height / 2,
   }
-  nextCards.splice(insertIndex, 0, movingCard)
-  return nextCards
+}
+
+/**
+ * Slot geometry comes from the packer, not from the DOM.
+ *
+ * The tiles are mid-transition for 200ms after every reorder, so their real
+ * rects are wherever they happen to have slid to; the packer's are where they
+ * are going. Measuring the destination is both the stable answer and the cheap
+ * one — one `getBoundingClientRect` for the whole grid instead of a hit test per
+ * pointermove.
+ */
+function nearestSlotIndex(center: { x: number; y: number }) {
+  let origin = gridElement.value?.getBoundingClientRect()
+  if (!origin) return -1
+
+  // Slot rects are relative to the grid; the ghost's middle is in the viewport.
+  // The grid itself carries no size transition, so this rect is never mid-flight
+  // the way a tile's is.
+  let x = center.x - origin.left
+  let y = center.y - origin.top
+
+  let bestIndex = -1
+  let bestDistance = Infinity
+  dragCards.value.forEach((card, index) => {
+    let rect = packedLayout.value.rects.get(card.id)
+    if (!rect) return
+
+    let distance = Math.hypot(rect.left + rect.width / 2 - x, rect.top + rect.height / 2 - y)
+    if (distance < bestDistance) {
+      bestDistance = distance
+      bestIndex = index
+    }
+  })
+  return bestIndex
+}
+
+/**
+ * A little real pointer travel is required between one reorder and the next.
+ *
+ * A reorder repacks every tile under the ghost, so the following pointermove is
+ * measured against slots that have all moved. With cards of five sizes, two
+ * neighbouring orders can each look best from the other's layout, and the grid
+ * would then flicker between them while the pointer sits still. Sortable calls
+ * this swap glitching and cures it by shrinking the swap zone; the same cure
+ * here is a short dead band, small enough that no deliberate move notices it.
+ */
+function travelledSinceReorder(center: { x: number; y: number }) {
+  let last = lastReorderCenter.value
+  if (!last) return true
+  return Math.hypot(center.x - last.x, center.y - last.y) > reorderDeadBand
 }
 
 function movedEnough(event: PointerEvent) {
@@ -382,13 +431,10 @@ function cardElementFor(cardId: string) {
   return gridElement.value?.querySelector<HTMLElement>(`[data-profile-card-id="${cardId}"]`)
 }
 
-function sameOrder(first: ProfileBentoCardType[], second: ProfileBentoCardType[]) {
-  return first.every((card, index) => card.id === second[index]?.id)
-}
-
 function resetDragState() {
   draggingCardId.value = ''
   dragCards.value = []
+  lastReorderCenter.value = null
   pendingDragCardId.value = ''
   document.body.classList.remove('cursor-grabbing')
 }
