@@ -124,6 +124,16 @@ export let activeUsers = computed(() => {
   return (users.data || []).filter((user) => user.enabled)
 })
 
+/**
+ * How many people the People page lists: enabled accounts, guests excluded.
+ *
+ * Derived from the already-loaded user list rather than a count query, so the rail can
+ * show it without a request of its own.
+ */
+export const memberCount = computed(() => {
+  return activeUsers.value.filter((user) => user.isNotGuest).length
+})
+
 export function useSessionUser() {
   return useUser('sessionUser')
 }

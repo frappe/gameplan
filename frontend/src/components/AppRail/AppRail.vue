@@ -1,89 +1,20 @@
 <template>
   <Rail :class="showBorder ? 'border-r' : ''">
-    <!-- Home is a bespoke button, not a RailItem: the logo fills the whole cell,
-         it has no tooltip, and its active/hover treatment (surface-base fill /
-         opacity dim) differs from the icon shortcuts. -->
-    <div class="mb-3 flex shrink-0 items-center justify-center">
-      <button
-        type="button"
-        class="flex size-7 items-center justify-center rounded-[7px] transition focus-visible:ring-0 focus-visible:focus-ring"
-        :class="isRoute('Home') ? 'bg-surface-base shadow-sm' : 'hover:opacity-90'"
-        aria-label="Home"
-        @click="goHome"
-      >
-        <GameplanLogo class="size-7 rounded-[7px]" />
-      </button>
+    <!-- Cancel Rail's own top padding and stand exactly one PageHeader tall (min-h-12),
+         so the divider below the logo continues the header's bottom border across the
+         rail instead of sitting a couple of pixels under it. -->
+    <div class="-mt-2.5 flex h-12 shrink-0 items-center justify-center">
+      <AppDropdown />
     </div>
 
-    <!-- Community list: a self-scrolling middle region that fades content under
-         whichever edge has more to scroll. `flex-1` pushes the shortcuts below
-         it to the bottom of the rail. The 50px columns bleed the list and its
-         gradients edge-to-edge into the rail's gutters. -->
-    <div
-      v-if="activeCommunities.length"
-      class="flex min-h-0 w-full flex-1 flex-col items-center border-t pt-3"
-    >
-      <div class="flex min-h-0 w-[50px] flex-1 flex-col items-center">
-        <div class="relative min-h-0 w-[50px] flex-1">
-          <div
-            v-show="showTopGradient"
-            class="pointer-events-none absolute left-0 top-0 z-10 h-4 w-[50px] bg-gradient-to-b from-surface-sidebar to-transparent"
-          />
-          <div
-            v-show="showBottomGradient"
-            class="pointer-events-none absolute bottom-0 left-0 z-10 h-4 w-[50px] bg-gradient-to-t from-surface-sidebar to-transparent"
-          />
-          <div
-            ref="communityScrollEl"
-            class="h-full w-[50px] overflow-y-auto overflow-x-hidden pb-3 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-          >
-            <div class="flex w-[50px] flex-col items-center gap-3">
-              <RailItem
-                v-for="community in activeCommunities"
-                :key="community.name"
-                :label="community.title"
-                :active="isActiveCommunity(community.name)"
-                :badge="getCommunityUnreadCount(community.name)"
-                :badge-style="badgeStyle"
-                @click="goToCommunity(community)"
-              >
-                <CommunityImage :community="community" class="size-7 transition" />
-              </RailItem>
-            </div>
-          </div>
-        </div>
-
-        <RailItem
-          label="Customize sidebar"
-          variant="ghost"
-          icon="lucide-settings-2"
-          class="mt-3"
-          @click="showCustomizeSidebar = true"
-        />
-      </div>
-    </div>
-
-    <!-- With no communities the scroll region collapses; this spacer keeps the
-         shortcuts pinned to the bottom of the rail. -->
-    <div v-else class="flex-1" />
-
-    <div class="mt-0.5 flex w-full flex-col items-center gap-0.5">
+    <!-- App-wide destinations sit directly under the logo, so their position never
+         shifts with how many communities you belong to. -->
+    <div class="flex w-full shrink-0 flex-col items-center gap-0.5 border-t pt-3">
       <RailItem
-        v-for="item in mainShortcuts"
+        v-for="item in shortcuts"
         :key="item.label"
         :label="item.label"
-        :icon="item.icon"
-        variant="ghost"
-        :active="item.isActive"
-        @click="goTo(item)"
-      />
-    </div>
-
-    <div class="mb-3 mt-3 flex w-full flex-col items-center gap-0.5 border-t py-3">
-      <RailItem
-        v-for="item in personalShortcuts"
-        :key="item.label"
-        :label="item.label"
+        :description="item.description"
         :icon="item.icon"
         variant="ghost"
         :active="item.isActive"
@@ -92,6 +23,48 @@
         @click="goTo(item)"
       />
     </div>
+
+    <!-- Community list: a self-scrolling region that fades content under whichever
+         edge has more to scroll. `flex-1` lets it absorb the leftover height and
+         keeps the avatar pinned to the bottom. The 50px columns bleed the list and
+         its gradients edge-to-edge into the rail's gutters. -->
+    <div
+      v-if="activeCommunities.length"
+      class="mb-3 mt-3 flex min-h-0 w-full flex-1 flex-col items-center border-t pt-3"
+    >
+      <div class="relative min-h-0 w-[50px] flex-1">
+        <div
+          v-show="showTopGradient"
+          class="pointer-events-none absolute left-0 top-0 z-10 h-4 w-[50px] bg-gradient-to-b from-surface-sidebar to-transparent"
+        />
+        <div
+          v-show="showBottomGradient"
+          class="pointer-events-none absolute bottom-0 left-0 z-10 h-4 w-[50px] bg-gradient-to-t from-surface-sidebar to-transparent"
+        />
+        <div
+          ref="communityScrollEl"
+          class="h-full w-[50px] overflow-y-auto overflow-x-hidden pb-3 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          <div class="flex w-[50px] flex-col items-center gap-3">
+            <RailItem
+              v-for="community in activeCommunities"
+              :key="community.name"
+              :label="community.title"
+              :active="isActiveCommunity(community.name)"
+              :badge="getCommunityUnreadCount(community.name)"
+              :badge-style="badgeStyle"
+              @click="goToCommunity(community)"
+            >
+              <CommunityImage :community="community" class="size-7 transition" />
+            </RailItem>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- With no communities the scroll region collapses; this spacer keeps the
+         avatar pinned to the bottom of the rail. -->
+    <div v-else class="flex-1" />
 
     <UserDropdown>
       <template #trigger="{ open }">
@@ -106,7 +79,7 @@
     </UserDropdown>
   </Rail>
 
-  <CustomizeSidebarDialog v-model="showCustomizeSidebar" />
+  <CustomizeSidebarDialog v-model="showCustomizeSidebarDialog" />
 </template>
 
 <script setup lang="ts">
@@ -118,15 +91,15 @@ import type { RouteLocationRaw } from 'vue-router'
 import { communityState } from '@/data/communityState'
 import { activeCommunities } from '@/data/communities'
 import type { Community } from '@/data/communities'
+import { draftCount } from '@/data/drafts'
 import { unreadNotifications } from '@/data/notifications'
 import { currentSidebarBadgeStyle } from '@/data/sidebarPreferences'
 import { getSpaceUnreadCount, spaces } from '@/data/spaces'
-import { useSessionUser } from '@/data/users'
-import { useCanManageCommunities } from '@/composables/useCanManageCommunities'
-import { showCommunitiesSettings } from '@/components/Settings'
+import { memberCount, useSessionUser } from '@/data/users'
+import AppDropdown from '../AppDropdown.vue'
 import CommunityImage from '../CommunityImage.vue'
-import GameplanLogo from '../GameplanLogo.vue'
 import CustomizeSidebarDialog from './CustomizeSidebarDialog.vue'
+import { showCustomizeSidebarDialog } from './customizeSidebar'
 import UserAvatar from '../UserAvatar.vue'
 import UserDropdown from '../UserDropdown.vue'
 
@@ -134,16 +107,15 @@ interface RailShortcut {
   label: string
   icon: string
   isActive: boolean
-  route?: RouteLocationRaw
-  onClick?: () => void
+  route: RouteLocationRaw
+  /** Second tooltip line, for a count the icon can't show. */
+  description?: string
   unreadCount?: number
 }
 
 const route = useRoute()
 const router = useRouter()
 const sessionUser = useSessionUser()
-const showCustomizeSidebar = ref(false)
-const canManageCommunities = useCanManageCommunities()
 
 const communityScrollEl = useTemplateRef<HTMLElement>('communityScrollEl')
 const showTopGradient = ref(false)
@@ -159,27 +131,7 @@ const badgeStyle = computed<'count' | 'dot'>(() =>
   currentSidebarBadgeStyle.value === 'Dot' ? 'dot' : 'count',
 )
 
-const homeRoute = computed<RouteLocationRaw>(() => {
-  if (communityState.id) {
-    return { name: 'Discussions', params: { communityId: communityState.id } }
-  }
-  return { name: 'Home' }
-})
-
-const adminShortcuts = computed<RailShortcut[]>(() => {
-  if (!canManageCommunities.value) return []
-
-  return [
-    {
-      label: 'Configure communities',
-      icon: 'lucide-building-2',
-      isActive: false,
-      onClick: () => showCommunitiesSettings(),
-    },
-  ]
-})
-
-const mainShortcuts = computed<RailShortcut[]>(() => [
+const shortcuts = computed<RailShortcut[]>(() => [
   {
     label: 'Search',
     icon: 'lucide-search',
@@ -193,16 +145,12 @@ const mainShortcuts = computed<RailShortcut[]>(() => [
       'People',
       'PersonProfile',
       'PersonProfileProfile',
-      'PersonProfileAboutMe',
       'PersonProfilePosts',
       'PersonProfileReplies',
     ),
     route: { name: 'People' },
+    description: countLabel(memberCount.value, 'member'),
   },
-  ...adminShortcuts.value,
-])
-
-const personalShortcuts = computed<RailShortcut[]>(() => [
   {
     label: 'Notifications',
     icon: 'lucide-bell',
@@ -215,18 +163,18 @@ const personalShortcuts = computed<RailShortcut[]>(() => [
     icon: 'lucide-pencil-line',
     isActive: isRoute('Drafts'),
     route: { name: 'Drafts' },
+    description: countLabel(draftCount.value, 'draft'),
   },
 ])
 
-function goTo(item: RailShortcut) {
-  if (item.onClick) {
-    item.onClick()
-    return
-  }
+/** "3 drafts", "1 draft", or nothing at all when there is no count worth showing. */
+function countLabel(count: number, noun: string) {
+  if (!count) return undefined
+  return `${count} ${noun}${count === 1 ? '' : 's'}`
+}
 
-  if (item.route) {
-    router.push(item.route)
-  }
+function goTo(item: RailShortcut) {
+  router.push(item.route)
 }
 
 function goToCommunity(community: Community) {
@@ -251,10 +199,6 @@ const unreadByCommunity = computed(() => {
 
 function getCommunityUnreadCount(communityId: string) {
   return unreadByCommunity.value[communityId] ?? 0
-}
-
-function goHome() {
-  router.push(homeRoute.value)
 }
 
 function isRoute(...names: string[]) {

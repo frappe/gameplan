@@ -45,12 +45,16 @@ export interface GPTask extends DocType {
   comments_count?: number
 }
 
-// Last updated: 2023-01-16 13:19:48.202430
+// Last updated: 2026-08-02 10:00:00.000000
 export interface GPUserProfile extends DocType {
   /** User: Link (User) */
   user: string
   /** Readme: Text Editor */
   readme?: string
+  /** Bento Cards: Table (GP Profile Bento Card) */
+  bento_cards: GPProfileBentoCard[]
+  /** Layout Customized: Check */
+  layout_customized: 0 | 1
   /** Full Name: Data */
   full_name?: string
   /** Cover Image: Attach Image */
@@ -59,8 +63,20 @@ export interface GPUserProfile extends DocType {
   cover_image_position?: number
   /** Bio: Data */
   bio?: string
+  /** Image: Attach Image */
+  image?: string
+  /** Is Image Background Removed: Check */
+  is_image_background_removed: 0 | 1
+  /** Original Image: Attach Image */
+  original_image?: string
+  /** Image Background Color: Color */
+  image_background_color?: string
+  /** Enabled: Check */
+  enabled: 0 | 1
   /** Community Order: JSON */
-  community_order?: unknown
+  community_order?: any
+  /** Quick Reaction Emojis: JSON */
+  quick_reaction_emojis?: any
   /** Sidebar Badge Style: Select */
   sidebar_badge_style?: 'Unread count' | 'Dot'
   /** Email Digest Frequency: Select */
@@ -76,16 +92,6 @@ export interface GPUserProfile extends DocType {
     | 'Sunday'
   /** Email Digest Last Sent On: Date */
   email_digest_last_sent_on?: string
-  /** Image: Attach Image */
-  image?: string
-  /** Is Image Background Removed: Check */
-  is_image_background_removed: 0 | 1
-  /** Original Image: Attach Image */
-  original_image?: string
-  /** Image Background Color: Color */
-  image_background_color?: string
-  /** Enabled: Check */
-  enabled: 0 | 1
 }
 
 // Last updated: 2024-02-06 12:18:02.871772
@@ -112,7 +118,7 @@ export interface GPMember extends ChildDocType {
   is_admin?: 0 | 1
 }
 
-// Last updated: 2026-02-01 13:07:33.079297
+// Last updated: 2026-07-31 10:15:00.000000
 export interface GPNotification extends DocType {
   /** From User: Link (User) */
   from_user?: string
@@ -400,4 +406,30 @@ export interface GPCustomEmoji extends DocType {
   image: string
   /** Keywords: Small Text */
   keywords?: string
+}
+
+// Last updated: 2026-08-02 10:00:00.000000
+export interface GPProfileBentoCard extends ChildDocType {
+  /** Card ID: Data */
+  card_id: string
+  /** Source: Select */
+  source?: 'custom' | 'field'
+  /** Field: Data */
+  field?: string
+  /** Type: Select */
+  type: 'Card' | 'Blank'
+  /** Size: Select */
+  size: '1x1' | '1x2' | '2x1' | '2x2' | '4x1' | '4x2'
+  /** Title: Data */
+  title?: string
+  /** Text: Small Text */
+  text?: string
+  /** URL: Data */
+  url?: string
+  /** Image: Attach Image */
+  image?: string
+  /** Image Rendering: Select */
+  image_rendering?: 'Cover' | 'Natural' | 'Fit'
+  /** Image Position: Int */
+  image_position?: number
 }

@@ -109,7 +109,7 @@
 
 <script setup lang="ts">
 import { h, ref, computed, onBeforeUnmount, watch, nextTick, markRaw, useTemplateRef } from 'vue'
-import { useEventListener } from '@vueuse/core'
+import { useEventListener, useMediaQuery } from '@vueuse/core'
 import { useRouter } from 'vue-router'
 import { Dialog, dayjs, debounce, useCall, useNewDoc } from 'frappe-ui'
 import { activeUsers, isGameplanAdmin, useSessionUser, useUser } from '@/data/users'
@@ -157,6 +157,9 @@ const currentSpace = computed(() => {
   return typeof spaceId === 'string' ? getSpace(spaceId) : null
 })
 const canCreateFromPalette = computed(() => !readOnlyMode && !currentSpace.value?.archived_at)
+// The profile customize page needs an editor panel beside the canvas, so it only
+// renders from `md` up. Read inside a condition so `shortcuts` re-evaluates on resize.
+const canCustomizeProfile = useMediaQuery('(min-width: 768px)')
 const normalizedQuery = computed(() => query.value.trim())
 const serverSearchQuery = ref('')
 const serverSearchResults = ref<SearchResult[]>([])
@@ -288,7 +291,7 @@ const shortcuts = computed((): CommandPaletteGroup[] => [
         icon: 'lucide-user-pen',
         aliases: ['profile bento', 'edit profile'],
         route: { name: 'ProfileCustomize' },
-        condition: () => useUser().isNotGuest,
+        condition: () => useUser().isNotGuest && canCustomizeProfile.value,
       },
     ].filter((item) => (item.condition ? item.condition() : true)),
   },
@@ -465,6 +468,17 @@ function groupRegisteredCommands() {
   return groups
 }
 
+/**
+ * Every person appears once per destination, titled "<name> / <tab>" so the name a query
+ * matches on stays at the front. The three rows share a cluster key, which holds them
+ * together in the results instead of letting another person's rows slot between them.
+ */
+const personTabs = [
+  { route: 'PersonProfileProfile', label: 'Profile', keywords: 'profile about bio' },
+  { route: 'PersonProfilePosts', label: 'Posts', keywords: 'posts discussions written' },
+  { route: 'PersonProfileReplies', label: 'Replies', keywords: 'replies comments' },
+] as const
+
 const searchList = computed(() => {
   let list: CommandPaletteItem[] = []
   for (const community of activeCommunities.value) {
@@ -499,19 +513,22 @@ const searchList = computed(() => {
   }
 
   for (const user of activeUsers.value) {
-    list.push({
-      type: 'People',
-      group: 'people',
-      doctype: 'GP User Profile',
-      name: user.name,
-      title: user.full_name,
-      search: `${user.full_name} ${user.email}`,
-      icon: () => h(UserAvatar, { user: user.email, size: 'sm' }),
-      route: {
-        name: 'PersonProfileProfile',
-        params: { personId: user.user_profile },
-      },
-    })
+    for (const tab of personTabs) {
+      list.push({
+        type: 'People',
+        group: 'people',
+        cluster: user.name,
+        doctype: 'GP User Profile',
+        name: `${user.name}:${tab.route}`,
+        title: `${user.full_name} / ${tab.label}`,
+        search: `${user.full_name} ${user.email} ${tab.keywords}`,
+        icon: () => h(UserAvatar, { user: user.email, size: 'sm' }),
+        route: {
+          name: tab.route,
+          params: { personId: user.user_profile },
+        },
+      })
+    }
   }
   return list
 })

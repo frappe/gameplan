@@ -18,11 +18,11 @@ describe('Member management', () => {
     })
   })
 
-  // Opens the global Settings dialog via the sidebar app dropdown. For admins it
-  // opens on the first tab (Profile).
+  // Opens the global Settings dialog from the app menu on the logo, at the top of
+  // the rail. For admins it opens on the first tab (Profile).
   function openSettings() {
     cy.visit(`/g/community/${community}/discussions`)
-    cy.contains('button', 'Gameplan').click()
+    cy.iconButton('Gameplan menu').click()
     cy.contains('[role="menuitem"]', 'Settings').click()
     // The dialog title is a visually-hidden (sr-only) accessible label, so assert
     // presence rather than visibility.

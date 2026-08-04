@@ -1,8 +1,8 @@
 <template>
   <Sidebar disable-collapse width="14rem">
     <template v-if="communityState.doc">
-      <div class="flex shrink-0 items-center p-2">
-        <AppDropdown />
+      <div class="flex shrink-0 items-center p-1.5">
+        <CommunityDropdown @new-space="openNewSpaceDialog" />
       </div>
 
       <!--
@@ -15,7 +15,7 @@
           <div class="flex h-7 items-center justify-between">
             <SidebarLabel>Spaces</SidebarLabel>
             <div v-if="!sessionUser.isGuest" class="flex items-center">
-              <Dropdown :options="spaceSortOptions" align="end">
+              <Dropdown :options="spaceSortMenuOptions" align="end">
                 <template #trigger="{ open }">
                   <Button
                     variant="ghost"
@@ -113,19 +113,12 @@
 import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { Button, Dropdown, Sidebar, SidebarItem, SidebarLabel, ScrollArea } from 'frappe-ui'
-import type { DropdownOptions } from 'frappe-ui'
 import { communityState } from '@/data/communityState'
 import { communitySpaces } from '@/data/communitySpaces'
-import {
-  currentHideInactiveSpaces,
-  currentSpaceSidebarSort,
-  setHideInactiveSpaces,
-  setSpaceSidebarSort,
-  type SpaceSidebarSort,
-} from '@/data/sidebarPreferences'
+import { hasCustomSpaceSidebarOptions, spaceSortMenuOptions } from '@/data/sidebarPreferences'
 import { getSpaceUnreadCount, markAllAsRead, type Space } from '@/data/spaces'
 import { useSessionUser } from '@/data/users'
-import AppDropdown from './AppDropdown.vue'
+import CommunityDropdown from './CommunityDropdown.vue'
 import NewSpaceDialog from './NewSpaceDialog.vue'
 import SpaceIcon from './SpaceIcon.vue'
 import LucideLock from '~icons/lucide/lock'
@@ -134,35 +127,7 @@ const route = useRoute()
 const sessionUser = computed(() => useSessionUser())
 
 const spacesList = computed(() => communitySpaces.list)
-const hasCustomSpaceSidebarOptions = computed(() => {
-  return currentSpaceSidebarSort.value !== 'Recent activity' || currentHideInactiveSpaces.value
-})
-
-const spaceSortOptions = computed<DropdownOptions>(() => [
-  {
-    group: 'Sort by',
-    options: spaceSortValues.map((sort) => ({
-      label: sort,
-      icon: currentSpaceSidebarSort.value === sort ? 'lucide-check' : null,
-      onClick: () => setSpaceSidebarSort(sort),
-    })),
-  },
-  {
-    group: 'Visibility',
-    options: [
-      {
-        label: 'Hide inactive spaces',
-        description: 'No activity for 2 months',
-        switch: true,
-        switchValue: currentHideInactiveSpaces.value,
-        onClick: setHideInactiveSpaces,
-      },
-    ],
-  },
-])
-
 const showNewSpaceDialog = ref(false)
-const spaceSortValues: SpaceSidebarSort[] = ['Recent activity', 'Alphabetical']
 
 const activeSpaceId = computed(() => {
   const routeName = route.name?.toString() || ''

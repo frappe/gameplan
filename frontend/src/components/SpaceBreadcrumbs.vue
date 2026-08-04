@@ -29,24 +29,20 @@ const props = defineProps<{
 
 const space = useSpace(() => props.spaceId)
 
+// The community is named in the sidebar, one column to the left, so repeating it
+// as the first crumb only costs horizontal room. The trail starts at the space.
 const breadcrumbItems = computed(() => {
-  const crumbs = []
-  if (space.value?.team) {
-    crumbs.push({
-      label: space.value.team_title,
-      route: { name: 'Discussions', params: { communityId: space.value.team } },
-    })
-  }
-  crumbs.push({
-    label: space.value?.title,
-    prefix: h(SpaceIcon, { icon: space.value?.icon }),
-    suffix: space.value?.is_private ? 'lucide-lock' : null,
-    route: space.value
-      ? { name: 'Space', params: { communityId: space.value.team, spaceId: space.value.name } }
-      : undefined,
-  })
-  crumbs.push(...(props.items || []))
-  return crumbs
+  return [
+    {
+      label: space.value?.title,
+      prefix: h(SpaceIcon, { icon: space.value?.icon }),
+      suffix: space.value?.is_private ? 'lucide-lock' : null,
+      route: space.value
+        ? { name: 'Space', params: { communityId: space.value.team, spaceId: space.value.name } }
+        : undefined,
+    },
+    ...(props.items || []),
+  ]
 })
 </script>
 

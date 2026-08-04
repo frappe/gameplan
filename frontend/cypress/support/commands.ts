@@ -41,6 +41,12 @@ declare global {
       iconButton(text: string): Chainable<JQuery<HTMLElement>>
 
       /**
+       * Custom command to get the community actions menu trigger
+       * @param title - Title of the community, which is what the trigger reads
+       */
+      communityMenu(title: string): Chainable<JQuery<HTMLElement>>
+
+      /**
        * Custom command to get elements within a dialog
        * @param selector - CSS selector within the dialog
        */
@@ -82,7 +88,7 @@ Cypress.Commands.add('login', (email?: string, password: string = 'admin') => {
 
 const scopeSelectors = {
   dialog: '[role="dialog"]',
-  sidebar: '[data-sidebar]',
+  sidebar: '[data-slot="sidebar"]',
   body: '#scrollContainer',
   header: 'header',
 } as const
@@ -122,6 +128,13 @@ Cypress.Commands.add('combobox', { prevSubject: 'optional' }, (subject, placehol
 Cypress.Commands.add('iconButton', { prevSubject: 'optional' }, (subject, text: string) => {
   const selector = `button[aria-label="${text}"]:visible`
   return subject ? cy.wrap(subject).find(selector) : cy.get(selector)
+})
+
+// Community actions hang off the community title at the top of the sidebar, so the
+// name of the community is how you reach them. One command because three specs need
+// this and the menu has moved once already.
+Cypress.Commands.add('communityMenu', (title: string) => {
+  return cy.scope('sidebar').contains('button', title)
 })
 
 Cypress.Commands.add('dialog', (selector: string) => {

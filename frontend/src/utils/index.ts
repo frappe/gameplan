@@ -1,13 +1,26 @@
 import { dayjsLocal, toast } from 'frappe-ui'
 
-export function getImgDimensions(
-  imgSrc: string,
-): Promise<{ width: number; height: number; ratio: number }> {
+export interface ImgDimensions {
+  width: number
+  height: number
+  ratio: number
+}
+
+/**
+ * Natural size of an image, or `null` when it cannot be loaded.
+ *
+ * Resolving on error matters: without it a broken or missing URL leaves the
+ * promise pending forever and every caller awaiting it stays suspended.
+ */
+export function getImgDimensions(imgSrc: string): Promise<ImgDimensions | null> {
   return new Promise((resolve) => {
     let img = new Image()
     img.onload = function () {
       let { width, height } = img
-      resolve({ width, height, ratio: width / height })
+      resolve(height ? { width, height, ratio: width / height } : null)
+    }
+    img.onerror = function () {
+      resolve(null)
     }
     img.src = imgSrc
   })

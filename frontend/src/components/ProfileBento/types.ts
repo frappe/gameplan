@@ -1,6 +1,9 @@
 export type ProfileCardType = 'Card' | 'Blank' | 'Text' | 'Image'
 export type ProfileCardSize = '1x1' | '1x2' | '2x1' | '2x2' | '4x1' | '4x2'
 export type ProfileImageRendering = 'Cover' | 'Natural' | 'Fit'
+/** `field` cards resolve their value from the profile at read time. */
+export type ProfileCardSource = 'custom' | 'field'
+export type ProfileCardFormat = 'text' | 'html' | 'image'
 
 export interface ProfileBentoCard {
   id: string
@@ -12,7 +15,133 @@ export interface ProfileBentoCard {
   image?: string
   imageRendering?: ProfileImageRendering
   imagePosition?: number
+  source: ProfileCardSource
+  /** Bound profile fieldname. Present only when `source === 'field'`. */
+  field?: string
+  /** How `text`/`image` should render. Omitted for custom cards. */
+  format?: ProfileCardFormat
 }
+
+/**
+ * A keyboard reorder step.
+ *
+ * Left and right step through the list, which is what the layout is made of.
+ * Up and down are asked for as they look on screen, and the grid works out
+ * which list position that comes to.
+ */
+export type ProfileCardMove = 'earlier' | 'later' | 'rowUp' | 'rowDown'
+
+/** A write a bound card can ask for. Each one targets a profile (or User) field. */
+export type ProfileFieldUpdate =
+  | { field: 'bio' | 'readme'; value: string }
+  | { field: 'image' | 'cover_image'; value: string }
+  | { field: 'cover_image_position'; value: number }
+  | { field: 'full_name'; firstName: string; lastName: string }
+
+/**
+ * Writes a bound card's value back to the profile. Supplied by the customize
+ * page's panel, and by the profile page for its About dialog — the one place
+ * that knows which document each bound field actually lives on.
+ */
+export interface ProfileFieldEditor {
+  /** `User.first_name` / `User.last_name`, for the two-input full-name editor. */
+  firstName: string
+  lastName: string
+  /** Rejects when the write fails; the caller keeps the draft and shows the error. */
+  save: (update: ProfileFieldUpdate) => Promise<void>
+}
+
+/** A profile field a bento card can bind to. */
+export type ProfileBoundField = 'cover_image' | 'image' | 'full_name' | 'bio' | 'readme'
+
+/**
+ * Which control the panel edits a bound field with.
+ *
+ * Named separately from `format` because the two answer different questions:
+ * `format` is how the card renders the value, this is how it is typed in. A
+ * name is one string on the card and two inputs in the panel.
+ */
+export type ProfileBoundEditor = 'name' | 'text' | 'richText' | 'image'
+
+export interface ProfileBoundFieldSpec {
+  field: ProfileBoundField
+  /** Card id the default layout uses for this field. */
+  id: string
+  size: ProfileCardSize
+  title: string
+  format: ProfileCardFormat
+  editor: ProfileBoundEditor
+  /**
+   * What the card shows on the customize canvas while the field has no value.
+   *
+   * The prompt names the thing to add rather than restating the title, because
+   * the title is already on the checklist beside it. Icon classes must appear
+   * as literals somewhere Tailwind scans, and this table is that place.
+   */
+  emptyIcon: string
+  emptyPrompt: string
+}
+
+/**
+ * Mirrors `PROFILE_BENTO_BOUND_FIELDS` in `gp_user_profile.py`, in the same
+ * order — the order the computed default lays the cards out in. The customize
+ * checklist adds a card straight from this table, so the two must stay in step;
+ * the server re-derives everything but size, title and url on read anyway.
+ */
+export const profileBoundFields: ProfileBoundFieldSpec[] = [
+  {
+    field: 'cover_image',
+    id: 'cover',
+    size: '4x1',
+    title: 'Cover image',
+    format: 'image',
+    editor: 'image',
+    emptyIcon: 'lucide-image',
+    emptyPrompt: 'Add a cover image',
+  },
+  {
+    field: 'image',
+    id: 'avatar',
+    size: '1x1',
+    title: 'Avatar',
+    format: 'image',
+    editor: 'image',
+    emptyIcon: 'lucide-user-round',
+    emptyPrompt: 'Add a photo',
+  },
+  {
+    field: 'full_name',
+    id: 'full-name',
+    size: '1x1',
+    title: 'Full name',
+    format: 'text',
+    editor: 'name',
+    emptyIcon: 'lucide-type',
+    emptyPrompt: 'Add your name',
+  },
+  {
+    field: 'bio',
+    id: 'bio',
+    size: '2x1',
+    title: 'Bio',
+    format: 'text',
+    editor: 'text',
+    emptyIcon: 'lucide-quote',
+    emptyPrompt: 'Add a short bio',
+  },
+  {
+    field: 'readme',
+    id: 'about',
+    size: '4x2',
+    title: 'About',
+    format: 'html',
+    editor: 'richText',
+    emptyIcon: 'lucide-file-text',
+    emptyPrompt: 'Write about yourself',
+  },
+]
+
+export const profileBioLimit = 280
 
 export const profileCardSizes: ProfileCardSize[] = ['1x1', '1x2', '2x1', '2x2', '4x1', '4x2']
 export const profileImageRenderingOptions: Array<{

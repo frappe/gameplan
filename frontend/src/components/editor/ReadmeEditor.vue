@@ -1,134 +1,39 @@
 <template>
-  <div
-    class="relative"
-    :class="{
-      'max-h-[150px] overflow-hidden': !expand && collapsible,
-    }"
-  >
-    <div ref="readmeElement">
-      <GPEditor
-        ref="readme"
-        :extensions="extensions"
-        editor-class="prose-v3"
-        :content="resource.doc[fieldname]"
-        :placeholder="placeholder"
-        @change="(val) => (resource.doc[fieldname] = val)"
-        :bubble-menu="gameplanToolbar"
-        :floating-menu="gameplanFloatingToolbar"
-        :editable="editReadme"
-      />
-    </div>
-    <div
-      class="absolute right-0 top-0 flex space-x-2"
-      :class="{ 'mr-3 mt-3': border || editReadme }"
-      v-if="editable"
-    >
-      <Tooltip v-if="!editReadme && !$readOnlyMode" text="Edit">
-        <Button variant="ghost" label="Edit" icon="lucide-edit-2" @click="editReadmeAndFocus" />
-      </Tooltip>
-      <template v-if="editReadme">
-        <Button
-          icon-left="lucide-save"
-          @click="
-            () => {
-              editReadme = false
-              resource.setValue.submit({ [fieldname]: resource.doc[fieldname] })
-            }
-          "
-        >
-          Save
-        </Button>
-        <Button
-          icon-left="lucide-rotate-ccw"
-          @click="
-            () => {
-              editReadme = false
-              resource.reload()
-            }
-          "
-        >
-          Discard
-        </Button>
-      </template>
-    </div>
-    <div
-      class="absolute bottom-0 right-0 flex"
-      :class="{ 'p-3': border || editReadme }"
-      v-if="collapsible && readmeHeight > 150"
-    >
-      <Tooltip text="Expand/Collapse">
-        <!-- TODO: Tooltip bug, button click fires twice -->
-        <div>
-          <Button variant="ghost" icon="lucide-unfold-vertical" @click="expand = !expand" />
-        </div>
-      </Tooltip>
-    </div>
-  </div>
+  <GPEditor
+    :extensions="extensions"
+    :content="modelValue"
+    editor-class="prose-v3"
+    :placeholder="placeholder"
+    :min-height="minHeight"
+    :max-height="maxHeight"
+    :bubble-menu="gameplanToolbar"
+    :floating-menu="gameplanFloatingToolbar"
+    autofocus
+    @change="(value) => (modelValue = value)"
+  />
 </template>
-<script>
-import { ref } from 'vue'
-import { Tooltip } from 'frappe-ui'
-import { useElementSize } from '@vueuse/core'
+
+<script setup lang="ts">
+// A plain rich-text field for `readme`, with no chrome of its own, so whoever
+// mounts it decides where saving lives — the About dialog puts Save and Discard
+// in the dialog footer. Kept as its own component so tiptap and the gameplan
+// toolbars land in the chunk this is async-imported into, not in the caller's.
 import GPEditor from '@/components/editor/GPEditor.vue'
-import { gameplanToolbar, gameplanFloatingToolbar } from '@/components/editor/toolbars'
+import { gameplanFloatingToolbar, gameplanToolbar } from '@/components/editor/toolbars'
 import { richTextExtensions } from '@/components/editor/richTextExtensions'
 
-export default {
-  name: 'ReadmeEditor',
-  props: {
-    resource: {
-      type: Object,
-      required: true,
-    },
-    fieldname: {
-      type: String,
-      required: true,
-    },
-    editable: {
-      type: Boolean,
-      default: true,
-    },
-    placeholder: {
-      type: String,
-    },
-    border: {
-      type: Boolean,
-      default: true,
-    },
-    collapsible: {
-      type: Boolean,
-      default: false,
-    },
-  },
-  components: { GPEditor, Tooltip },
-  data() {
-    return {
-      editReadme: false,
-      expand: false,
-      extensions: richTextExtensions(),
-      gameplanToolbar,
-      gameplanFloatingToolbar,
-    }
-  },
-  setup() {
-    const readme = ref(null)
-    const readmeElement = ref(null)
-    const { height } = useElementSize(readmeElement)
+defineOptions({ name: 'ReadmeEditor' })
 
-    return {
-      readme,
-      readmeElement,
-      readmeHeight: height,
-    }
-  },
-  methods: {
-    editReadmeAndFocus() {
-      this.editReadme = true
-      this.expand = true
-      this.$nextTick(() => {
-        this.$refs.readme.editor.commands.focus()
-      })
-    },
-  },
-}
+withDefaults(
+  defineProps<{
+    placeholder?: string
+    minHeight?: string
+    maxHeight?: string
+  }>(),
+  { minHeight: '16rem' },
+)
+
+const modelValue = defineModel<string>({ required: true })
+
+const extensions = richTextExtensions()
 </script>

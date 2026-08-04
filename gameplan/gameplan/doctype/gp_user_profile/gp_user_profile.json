@@ -19,6 +19,7 @@
   "readme",
   "bento_section",
   "bento_cards",
+  "layout_customized",
   "cover_image_section",
   "cover_image",
   "cover_image_position",
@@ -53,6 +54,12 @@
    "fieldtype": "Table",
    "label": "Bento Cards",
    "options": "GP Profile Bento Card"
+  },
+  {
+   "default": "0",
+   "fieldname": "layout_customized",
+   "fieldtype": "Check",
+   "label": "Layout Customized"
   },
   {
    "fetch_from": "user.full_name",
@@ -155,7 +162,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-01-16 13:19:48.202430",
+ "modified": "2026-08-02 10:00:00.000000",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "GP User Profile",

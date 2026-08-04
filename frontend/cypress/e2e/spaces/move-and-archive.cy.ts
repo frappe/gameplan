@@ -1,12 +1,12 @@
 import { resetData } from '../../support/seed'
 
-// Space management lives in the Settings dialog (Communities tab). The "Community
-// actions" menu on a community's discussions page opens that dialog straight onto
-// the community's spaces list, where each space exposes its "<title> Space Options"
-// menu.
+// Space management lives in the Settings dialog (Communities tab). The community
+// menu at the top of the sidebar opens that dialog straight onto the community's
+// spaces list, where each space exposes its "<title> Space Options" menu.
 describe('Moving and archiving a space', () => {
   // Titles are fixed by the `two_communities` scenario; ids are not, so they come
   // from the seed.
+  const alphaTitle = 'Alpha'
   const betaTitle = 'Beta'
   const spaceTitle = 'Alpha Space'
 
@@ -22,16 +22,16 @@ describe('Moving and archiving a space', () => {
     cy.loginAs('admin')
   })
 
-  function openCommunitySpaces(communityId: string) {
+  function openCommunitySpaces(communityId: string, title: string) {
     cy.visit(`/g/community/${communityId}/discussions`)
-    cy.iconButton('Community actions').first().click()
+    cy.communityMenu(title).click()
     cy.get('[role="menuitem"]:visible').contains('Manage spaces').first().click()
   }
 
   it('moves a space to another community', () => {
     cy.intercept('POST', '**/method/move_to_team').as('moveSpace')
 
-    openCommunitySpaces(alpha)
+    openCommunitySpaces(alpha, alphaTitle)
     cy.selectDropdownOption(`${spaceTitle} Space Options`, 'Change Community')
     cy.selectCombobox('Select a community', betaTitle)
     cy.button(`Move to ${betaTitle}`).click()
@@ -56,7 +56,7 @@ describe('Moving and archiving a space', () => {
       },
     })
 
-    openCommunitySpaces(alpha)
+    openCommunitySpaces(alpha, alphaTitle)
     cy.selectDropdownOption(`${spaceTitle} Space Options`, 'Archive')
     // The archive confirmation stacks on top of the still-open Settings dialog, so
     // scope to it by title instead of asserting "no dialog".
@@ -84,7 +84,7 @@ describe('Moving and archiving a space', () => {
     // Re-open the spaces list. Archived spaces are hidden until the visibility
     // filter is switched to "Archived", and render a disabled title input
     // (archived spaces are read-only).
-    openCommunitySpaces(alpha)
+    openCommunitySpaces(alpha, alphaTitle)
     cy.get('input[aria-label="Space title"]:disabled').should('not.exist')
     // The visibility filter is a reka-ui Select (role=combobox); its trigger shows
     // the current value "All (N)". Switch it to "Archived" to reveal the archived

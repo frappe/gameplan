@@ -3,6 +3,11 @@ import type { ProfileCardSize } from './types'
 export interface ProfileBentoLayoutItem {
   id: string
   size: ProfileCardSize
+  /**
+   * Row span override, used by cards that grow beyond their declared size
+   * (the expandable About card). Never shrinks a card below its declared rows.
+   */
+  rows?: number
 }
 
 export interface ProfileBentoLayoutRect {
@@ -23,21 +28,36 @@ interface ProfileBentoUnits {
   rows: number
 }
 
-const desktopColumns = 4
+export const defaultProfileBentoColumns = 4
+
+/**
+ * Collapsed height of an expandable HTML card in the single-column flow layout,
+ * where there is no packed cell height to collapse to.
+ */
+export const profileBentoFlowCollapsedHeight = 240
+
+/**
+ * Ceiling for an image card in the flow layout. A full-width square (1x1) is
+ * inside the portrait aspect cap but still fills a phone screen, so the height
+ * needs its own limit.
+ */
+export const profileBentoFlowImageMaxHeight = 320
 
 export function createProfileBentoLayout(
   items: ProfileBentoLayoutItem[],
   containerWidth: number,
   gap: number,
+  columns: number = defaultProfileBentoColumns,
 ): ProfileBentoLayout {
-  let cellSize = Math.max(1, (containerWidth - gap * (desktopColumns - 1)) / desktopColumns)
+  let columnCount = normalizeColumns(columns)
+  let cellSize = profileBentoCellSize(containerWidth, gap, columnCount)
   let occupied: boolean[][] = []
   let rects = new Map<string, ProfileBentoLayoutRect>()
   let rows = 0
 
   for (let item of items) {
-    let units = cardUnits(item.size)
-    let position = findOpenPosition(occupied, units)
+    let units = cardUnits(item.size, columnCount, item.rows)
+    let position = findOpenPosition(occupied, units, columnCount)
     occupyCells(occupied, position, units)
     rows = Math.max(rows, position.row + units.rows)
     rects.set(item.id, rectForItem(item.id, position, units, cellSize, gap))
@@ -49,9 +69,32 @@ export function createProfileBentoLayout(
   }
 }
 
-function findOpenPosition(occupied: boolean[][], units: ProfileBentoUnits) {
+export function profileBentoCellSize(containerWidth: number, gap: number, columns: number) {
+  let columnCount = normalizeColumns(columns)
+  return Math.max(1, (containerWidth - gap * (columnCount - 1)) / columnCount)
+}
+
+/** Smallest whole row span whose packed height covers `height` pixels. */
+export function profileBentoRowsForHeight(height: number, cellSize: number, gap: number) {
+  if (height <= 0) return 1
+  return Math.max(1, Math.ceil((height + gap) / (cellSize + gap)))
+}
+
+export function profileBentoHeightForRows(rows: number, cellSize: number, gap: number) {
+  return rows > 0 ? rows * cellSize + (rows - 1) * gap : 0
+}
+
+export function profileBentoCardRows(size: ProfileCardSize) {
+  return cardUnits(size, defaultProfileBentoColumns).rows
+}
+
+function normalizeColumns(columns: number) {
+  return Math.max(1, Math.floor(columns) || 1)
+}
+
+function findOpenPosition(occupied: boolean[][], units: ProfileBentoUnits, columnCount: number) {
   for (let row = 0; ; row++) {
-    for (let column = 0; column <= desktopColumns - units.columns; column++) {
+    for (let column = 0; column <= columnCount - units.columns; column++) {
       if (hasOpenCells(occupied, row, column, units)) {
         return { row, column }
       }
@@ -104,8 +147,12 @@ function rectForItem(
   }
 }
 
-function cardUnits(size: ProfileCardSize): ProfileBentoUnits {
-  return {
+function cardUnits(
+  size: ProfileCardSize,
+  columnCount: number,
+  rowsOverride?: number,
+): ProfileBentoUnits {
+  let units = {
     '1x1': { columns: 1, rows: 1 },
     '1x2': { columns: 1, rows: 2 },
     '2x1': { columns: 2, rows: 1 },
@@ -113,4 +160,12 @@ function cardUnits(size: ProfileCardSize): ProfileBentoUnits {
     '4x1': { columns: 4, rows: 1 },
     '4x2': { columns: 4, rows: 2 },
   }[size]
+
+  return {
+    // A card wider than the grid would make `findOpenPosition`'s column bound
+    // negative, so its inner loop never runs and the unbounded row loop spins
+    // forever. Clamping keeps every card placeable at any column count.
+    columns: Math.min(units.columns, columnCount),
+    rows: rowsOverride ? Math.max(units.rows, Math.floor(rowsOverride)) : units.rows,
+  }
 }
