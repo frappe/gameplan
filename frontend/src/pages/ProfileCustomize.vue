@@ -73,6 +73,14 @@
          it, and carries its own padding inside its scroller. -->
     <div v-else class="mx-auto flex w-full max-w-[1180px] gap-6 px-4 sm:px-6">
       <main class="min-w-0 flex-1 py-6">
+        <!-- Dragging is not available to everyone, so the way round it has to be
+             findable rather than merely present. Above the canvas, because a
+             layout taller than the screen would put it out of sight below. -->
+        <p class="mb-4 text-sm leading-5 text-ink-gray-5" data-profile-keyboard-hint>
+          Drag a card to move it, or select one and use the arrow keys: left and right move it one
+          place, up and down move it a row.
+        </p>
+
         <!-- No `editable-cards` here on purpose: on this canvas a click selects a
              card and a drag reorders it, so a per-card edit button would fight
              both gestures. Bound values are edited in the panel. -->
@@ -95,14 +103,6 @@
           data-profile-empty-layout-notice
         >
           Nothing is selected, so your profile page will be empty.
-        </p>
-
-        <!-- Dragging is not available to everyone, so the way round it has to be
-             findable rather than merely present. It sits under the canvas
-             because that is the thing it is about. -->
-        <p class="mt-4 text-sm leading-5 text-ink-gray-5" data-profile-keyboard-hint>
-          Drag a card to move it, or select one and use the arrow keys: left and right move it one
-          place, up and down move it a row.
         </p>
       </main>
 
@@ -328,11 +328,14 @@ function clearSelectionOnOutsideClick(event: MouseEvent) {
   if (!(event.target instanceof HTMLElement)) return
 
   // Keep the selection for clicks on a card or on a region that drives it: the
-  // editor panel and the header actions both carry the marker, and a dialog the
-  // panel opened needs its own exemption because it is teleported out of the
-  // aside. Everything else clears.
+  // editor panel's blocks and the header actions both carry the marker, and a
+  // dialog the panel opened needs its own exemption because it is teleported out
+  // of the aside. A scrollbar is nobody's idea of clicking away, and its thumb
+  // sits outside the panel's blocks. Everything else clears.
   if (
-    event.target.closest('[data-profile-card-id], [data-profile-keep-selection], [role="dialog"]')
+    event.target.closest(
+      '[data-profile-card-id], [data-profile-keep-selection], [role="dialog"], [data-scrollbarimpl]',
+    )
   ) {
     return
   }

@@ -78,6 +78,20 @@ describe('Profile customize editor', () => {
     cy.get('[data-profile-card-editor]').should('not.exist')
   })
 
+  it('drops the selection when the empty space under the panel is clicked', () => {
+    cy.loginAs('member')
+    visitCustomize()
+
+    card('bio').click()
+    cy.get('[data-profile-card-editor]').should('be.visible')
+
+    // The panel column is as tall as the page whatever it holds, so most of it
+    // is empty. A click down there is a click on nothing, and has to mean what
+    // a click on nothing means everywhere else on this page.
+    cy.get('aside [data-reka-scroll-area-viewport]').click('bottom')
+    cy.get('[data-profile-info-checklist]').should('be.visible')
+  })
+
   it('unticks the checklist row when the card is removed in the grid', () => {
     cy.loginAs('member')
     visitCustomize()
