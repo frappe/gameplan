@@ -35,7 +35,7 @@ describe('Profile customize editor', () => {
     cy.loginAs('member')
     visitCustomize()
 
-    cardIdsInOrder().should('deep.equal', defaultCardOrder)
+    expectCardOrder(defaultCardOrder)
     for (const field of ['cover_image', 'image', 'full_name', 'bio', 'readme']) {
       checklistRow(field).should('be.checked')
     }
@@ -115,7 +115,7 @@ describe('Profile customize editor', () => {
 
     checklistRow('cover_image').uncheck()
     checklistRow('readme').uncheck()
-    cardIdsInOrder().should('deep.equal', ['avatar', 'full-name', 'bio'])
+    expectCardOrder(['avatar', 'full-name', 'bio'])
     saveLayout()
 
     // Saved, so the layout is stored rows now and the notice is gone.
@@ -123,7 +123,7 @@ describe('Profile customize editor', () => {
 
     cy.visit(`/g/people/${memberProfile}`)
     cy.get('article[data-profile-card-id]').should('exist')
-    cardIdsInOrder().should('deep.equal', ['avatar', 'full-name', 'bio'])
+    expectCardOrder(['avatar', 'full-name', 'bio'])
   })
 
   it('reorders by where the dragged card is, not by where it was grabbed', () => {
@@ -135,36 +135,36 @@ describe('Profile customize editor', () => {
     // the drop, which is the only reading that matches what the drag looks like.
     let dropped = ['about', 'cover', 'avatar', 'full-name', 'bio']
 
-    cardIdsInOrder().should('deep.equal', defaultCardOrder)
+    expectCardOrder(defaultCardOrder)
     dragCardOnto('about', 'cover', { grab: 'corner' })
-    cardIdsInOrder().should('deep.equal', dropped)
+    expectCardOrder(dropped)
 
     // The same gesture grabbed dead centre has to land in the same place.
     visitCustomize()
-    cardIdsInOrder().should('deep.equal', defaultCardOrder)
+    expectCardOrder(defaultCardOrder)
     dragCardOnto('about', 'cover', { grab: 'centre' })
-    cardIdsInOrder().should('deep.equal', dropped)
+    expectCardOrder(dropped)
   })
 
   it('drops into the gutter between two cards, which is on neither of them', () => {
     cy.loginAs('member')
     visitCustomize()
 
-    cardIdsInOrder().should('deep.equal', defaultCardOrder)
+    expectCardOrder(defaultCardOrder)
 
     // Full name sits mid-row with Bio beside it, so the seam on its right has a
     // card on either side and none under it. It means what it looks like: put
     // the card between those two. A reading that asks "which card am I over?"
     // has no answer here, and every seam is a dead strip down the canvas.
     dragCardOnto('about', 'full-name', { land: 'seam' })
-    cardIdsInOrder().should('deep.equal', ['cover', 'avatar', 'full-name', 'about', 'bio'])
+    expectCardOrder(['cover', 'avatar', 'full-name', 'about', 'bio'])
   })
 
   it('moves a card past a row as soon as it clears the row', () => {
     cy.loginAs('member')
     visitCustomize()
 
-    cardIdsInOrder().should('deep.equal', defaultCardOrder)
+    expectCardOrder(defaultCardOrder)
 
     // Avatar dragged down into the top-left of About, which is four columns
     // wide and two rows tall. Its middle is barely inside About and still 300px
@@ -173,7 +173,7 @@ describe('Profile customize editor', () => {
     // two-row card. Clearing the row it was in is enough: Avatar goes to the end
     // of that row, which is the last place before About.
     dragCardOnto('avatar', 'about', { land: 'top-left' })
-    cardIdsInOrder().should('deep.equal', ['cover', 'full-name', 'bio', 'avatar', 'about'])
+    expectCardOrder(['cover', 'full-name', 'bio', 'avatar', 'about'])
   })
 
   it('scrolls the page while a card is held against the bottom edge', () => {
@@ -185,7 +185,7 @@ describe('Profile customize editor', () => {
     cy.loginAs('member')
     visitCustomize()
 
-    cardIdsInOrder().should('deep.equal', defaultCardOrder)
+    expectCardOrder(defaultCardOrder)
     settled('cover')
 
     cy.window().then((win) => {
@@ -226,7 +226,8 @@ describe('Profile customize editor', () => {
     // The reorder has to follow the scroll, not just the pointer. The ghost holds
     // still on screen the whole time, so a drop that reads its travel in screen
     // space sees none of this and leaves the card exactly where it started.
-    cardIdsInOrder().should((ids) => {
+    cy.get('article[data-profile-card-id]').should(($cards) => {
+      let ids = cardIdsOf($cards)
       expect(ids, 'the card is still in the layout').to.include('cover')
       expect(ids[ids.length - 1], 'the card scrolled to the end and landed there').to.equal('cover')
     })
@@ -240,17 +241,17 @@ describe('Profile customize editor', () => {
     restoreButton().should('not.exist')
     checklistRow('cover_image').uncheck()
     saveLayout()
-    cardIdsInOrder().should('deep.equal', ['avatar', 'full-name', 'bio', 'about'])
+    expectCardOrder(['avatar', 'full-name', 'bio', 'about'])
 
     // Cancelling is not "restore later", it is "do nothing".
     restoreButton().click()
     cy.get('[role="dialog"]').contains('button', 'Keep my layout').click()
-    cardIdsInOrder().should('deep.equal', ['avatar', 'full-name', 'bio', 'about'])
+    expectCardOrder(['avatar', 'full-name', 'bio', 'about'])
     layoutCustomized(memberProfile).should('equal', 1)
 
     restoreDefaultLayout()
 
-    cardIdsInOrder().should('deep.equal', defaultCardOrder)
+    expectCardOrder(defaultCardOrder)
     layoutCustomized(memberProfile).should('equal', 0)
     // Back behind the one-way door, so the notice returns and Save has nothing to do.
     cy.get('[data-profile-default-layout-notice]').should('be.visible')
@@ -322,7 +323,7 @@ describe('Profile customize editor — bound values', () => {
     cy.reload()
     cy.get('[data-profile-info-checklist]').should('be.visible')
     card('bio').should('contain.text', 'Written before it is built.')
-    cardIdsInOrder().should('deep.equal', defaultCardOrder)
+    expectCardOrder(defaultCardOrder)
     layoutCustomized(memberProfile).should('equal', 0)
   })
 
@@ -564,10 +565,23 @@ function firePointer(win: Window, target: EventTarget, type: string, x: number, 
   )
 }
 
-function cardIdsInOrder() {
-  return cy
-    .get('article[data-profile-card-id]')
-    .then(($cards) => $cards.toArray().map((element) => element.dataset.profileCardId))
+/**
+ * Wait until the canvas renders exactly this order.
+ *
+ * The assertion goes inside `should` rather than after a `then` that maps the
+ * ids out first. `cy.get(...).should(callback)` re-runs the query on every
+ * retry; a `then` runs once and freezes whatever the DOM held at that instant,
+ * so a reorder landing a tick later is never seen however long the assertion
+ * waits for it.
+ */
+function expectCardOrder(expected: string[]) {
+  return cy.get('article[data-profile-card-id]').should(($cards) => {
+    expect(cardIdsOf($cards)).to.deep.equal(expected)
+  })
+}
+
+function cardIdsOf($cards: JQuery<HTMLElement>) {
+  return $cards.toArray().map((element) => element.dataset.profileCardId)
 }
 
 function profileField(profile: string, fieldname: string) {
