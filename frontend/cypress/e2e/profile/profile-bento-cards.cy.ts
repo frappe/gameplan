@@ -134,6 +134,10 @@ describe('Profile bento cards', () => {
     cy.intercept('PUT', '**/api/v2/document/GP%20User%20Profile/*').as('saveProfile')
     cy.visit('/g/settings/profile')
     cy.get('[role="dialog"]').contains('h2', 'Profile').should('be.visible')
+    // The dialog renders before the profile it edits has arrived, so the field
+    // starts empty and fills in a moment later. Clearing it in that moment clears
+    // nothing, and the stored bio then lands in front of whatever gets typed.
+    labelledTextarea('Bio').should('have.value', 'Async first, with written decisions.')
     labelledTextarea('Bio').clear().type('Now writing docs before code.').blur()
     cy.wait('@saveProfile').its('request.body.bio').should('equal', 'Now writing docs before code.')
 
@@ -220,9 +224,7 @@ function setProfileFields(profile: string, values: Record<string, string>) {
 function visitProfile(profile: string) {
   cy.visit(`/g/people/${profile}`)
   // Both branches mount only once the bento call resolves; the skeleton is neither.
-  return cy
-    .get('article[data-profile-card-id], [data-profile-empty-state]')
-    .should('exist')
+  return cy.get('article[data-profile-card-id], [data-profile-empty-state]').should('exist')
 }
 
 function card(cardId: string) {
