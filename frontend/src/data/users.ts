@@ -1,4 +1,4 @@
-import { computed, reactive } from 'vue'
+import { computed, reactive, readonly, ref, watch } from 'vue'
 import { useCall } from 'frappe-ui'
 import router from '@/router'
 import { setCommunityOrder } from './communityOrder'
@@ -90,12 +90,45 @@ export let users = useCall<UserInfo[]>({
   immediate: false,
 })
 
+const firstFetchSettled = ref(false)
+
+/**
+ * True once the first `get_user_info` request has SETTLED — succeeded or failed — and
+ * never false again. It is `users.isFinished`, latched.
+ *
+ * Anything that renders the app shell must gate on this and NOT on `users.isFinished`
+ * directly. `isFinished` only means "no request in flight", so it flips back to false on
+ * every reload, and a profile edit anywhere broadcasts `gameplan:users_changed`, which
+ * reloads this list mid-session. Gating on it unmounts the whole layout and any open
+ * dialog for the length of that refetch: the app visibly blanks out. A refetch must never
+ * unmount anything.
+ *
+ * Settle, not success, is deliberate. A failed load (500, offline, permission error) has
+ * to leave the app mounted and degraded, the way `isFinished` did. Latching on success
+ * only would leave the shell unmounted forever after one bad response — a permanently
+ * blank page, which is worse than the bug being fixed here.
+ */
+export const usersReady = readonly(firstFetchSettled)
+
+// Latched from `isFinished` rather than from the onSuccess/onError hooks so it cannot
+// drift from what "the request has settled" means: onSuccess is skipped for a response
+// with no body, which would strand the flag at false. Never stopped, by design — this
+// module lives as long as the app.
+watch(
+  () => users.isFinished,
+  (isFinished) => {
+    if (isFinished) firstFetchSettled.value = true
+  },
+  { immediate: true },
+)
+
 // A profile edit changes what everyone else renders (avatar, name, role), so the backend
-// broadcasts this to every session. Skipped until the list has actually loaded: `users` is
+// broadcasts this to every session. Skipped until the first fetch has settled: `users` is
 // `immediate: false` and App.vue fetches it once the session is known, and reloading before
-// that would race that first fetch on the same instance.
+// that would race that first fetch on the same instance. After a failed first fetch this
+// does allow a reload, which is wanted — it is the one path that can recover the list.
 onSocketEvent('gameplan:users_changed', () => {
-  if (users.data) users.reload()
+  if (usersReady.value) users.reload()
 })
 
 export function updateUserInfo(user: UserInfo) {

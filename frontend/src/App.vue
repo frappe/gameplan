@@ -9,11 +9,10 @@
       </Layout>
     </div>
     <NewTaskDialog />
-    <SettingsDialog v-if="$session.isLoggedIn && users.isFinished" />
-    <component
-      :is="DevUserSwitcher"
-      v-if="DevUserSwitcher && $session.isLoggedIn && users.isFinished"
-    />
+    <!-- usersReady, not users.isFinished: a mid-session reload of the user list would
+         flip isFinished back to false and unmount the open settings dialog. -->
+    <SettingsDialog v-if="$session.isLoggedIn && usersReady" />
+    <component :is="DevUserSwitcher" v-if="DevUserSwitcher && $session.isLoggedIn && usersReady" />
   </FrappeUIProvider>
 </template>
 
@@ -21,7 +20,7 @@
 import { computed, defineAsyncComponent, nextTick, shallowRef, watch } from 'vue'
 import { loadRouteLocation, useRoute, useRouter } from 'vue-router'
 import { FrappeUIProvider } from 'frappe-ui'
-import { users } from '@/data/users'
+import { users, usersReady } from '@/data/users'
 import { session } from '@/data/session'
 import { useScreenSize } from 'frappe-ui'
 import { useTheme } from '@/utils/useTheme'
@@ -108,9 +107,9 @@ watch(
 // Back-compat: ?settings=notifications deep links now redirect to the canonical
 // settings URL.
 watch(
-  () => [route.query.settings, session.isLoggedIn, users.isFinished],
+  () => [route.query.settings, session.isLoggedIn, usersReady.value],
   async ([settings]) => {
-    if (settings !== 'notifications' || !session.isLoggedIn || !users.isFinished) return
+    if (settings !== 'notifications' || !session.isLoggedIn || !usersReady.value) return
 
     await nextTick()
     router.replace({ name: 'SettingsTab', params: { tab: 'notifications' } })

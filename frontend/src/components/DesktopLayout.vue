@@ -1,5 +1,7 @@
 <template>
-  <div class="relative flex h-full flex-col" v-if="users.isFinished">
+  <!-- usersReady, not users.isFinished: a mid-session reload of the user list would flip
+       isFinished back to false and unmount the entire shell — the app blanks out. -->
+  <div class="relative flex h-full flex-col" v-if="usersReady">
     <DesktopShell class="gameplan-desktop-shell h-full flex-1 standalone:border-t">
       <template #rail>
         <AppRail :show-border="onCommunityRoute" :show-community-active-state="onCommunityRoute" />
@@ -23,7 +25,7 @@ import AppSidebar from './AppSidebar.vue'
 import CommandPalette from './CommandPalette/CommandPalette.vue'
 import ReadOnlyBanner from './ReadOnlyBanner.vue'
 import { readOnlyMode } from '@/data/readOnlyMode'
-import { users } from '@/data/users'
+import { usersReady } from '@/data/users'
 import { settingsBackgroundPath } from '@/components/Settings'
 import { getHomeRoute } from '@/router'
 
