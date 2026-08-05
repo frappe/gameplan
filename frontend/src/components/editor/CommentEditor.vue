@@ -16,7 +16,11 @@ import {
   Paragraph,
   Separator,
   Strike,
-  type Editor,
+  // `Editor` in this package is the Vue component; the tiptap instance these
+  // helpers receive is `TiptapEditor`. Importing it from here rather than
+  // @tiptap/core keeps it on the same tiptap copy frappe-ui augments, so its
+  // editor commands are visible.
+  type TiptapEditor as Editor,
   type MenuItem,
 } from 'frappe-ui/editor'
 import EmojiPicker from '@/components/EmojiPicker.vue'
@@ -187,7 +191,9 @@ function canInsertCodeBlock(editor: Editor) {
       <QuoteReplyButton v-if="e" :editor="e" :source-id="quoteSourceId" :author="author ?? ''" />
     </template>
     <template v-if="editable" #bottom="{ editor: e }">
-      <div class="mt-2 flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+      <!-- The slot yields null until the editor mounts, and every control here
+      needs one. Same guard as the #top slot above. -->
+      <div v-if="e" class="mt-2 flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
         <div class="flex min-w-0 items-center gap-1 overflow-x-auto">
           <template v-if="toolbarExpanded">
             <EditorFixedMenu
