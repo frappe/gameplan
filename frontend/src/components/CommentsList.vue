@@ -78,8 +78,11 @@
               {{ $user().full_name }}
             </span>
           </div>
+          <!-- Bounded: this composer is pinned under the comment list, so it scrolls
+               internally past 50vh rather than pushing the task's comments off screen. -->
           <CommentEditor
             ref="newCommentEditor"
+            max-height="50vh"
             :value="draftData.content"
             @change="onNewCommentChange"
             :submitButtonProps="{

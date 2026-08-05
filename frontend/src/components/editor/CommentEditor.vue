@@ -37,6 +37,13 @@ const props = withDefaults(
     editable?: boolean
     submitButtonProps?: Record<string, any>
     discardButtonProps?: Record<string, any>
+    // Unset on purpose: the editor grows to its content by default, so editing an
+    // existing comment reads like editing a post body instead of a fixed box that
+    // scrolls internally. Only the new-comment composers pass a max-height — they
+    // sit at the bottom of a scrolling list, so an unbounded box would push the
+    // conversation off screen as you type. Don't reinstate a default here: a caller
+    // cannot opt out of one, since withDefaults substitutes it for an explicit
+    // `undefined`.
     maxHeight?: string
     minHeight?: string
     toolbarExpanded?: boolean
@@ -46,7 +53,7 @@ const props = withDefaults(
     // comment owner — stamped on quotes created from this comment's selection
     author?: string
   }>(),
-  { value: '', placeholder: null, editable: true, maxHeight: '50vh', toolbarExpanded: false },
+  { value: '', placeholder: null, editable: true, toolbarExpanded: false },
 )
 
 const emit = defineEmits<{
