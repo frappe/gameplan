@@ -66,7 +66,7 @@
             </UserProfileLink>
             <div class="flex flex-col md:block">
               <UserProfileLink
-                class="text-md-medium text-ink-gray-8 hover:text-ink-blue-8 sm:text-base-medium"
+                class="text-md-medium text-ink-gray-8 hover:text-ink-gray-9 sm:text-base-medium"
                 :user="discussion.doc.owner"
               >
                 {{ $user(discussion.doc.owner).full_name }}

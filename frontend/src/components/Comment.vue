@@ -21,7 +21,7 @@
       </UserProfileLink>
       <div class="md:flex md:items-center">
         <UserProfileLink
-          class="text-md-medium hover:text-ink-blue-8 sm:text-base sm:font-medium"
+          class="text-md-medium hover:text-ink-gray-9 sm:text-base sm:font-medium"
           :user="author.name"
         >
           {{ author.full_name }}
