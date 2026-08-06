@@ -43,12 +43,22 @@ export interface UserInfo {
   isGuest?: boolean
   isNotGuest?: boolean
   isDisabled?: boolean
+  /**
+   * True for a record `useUser` invented because the id is not in the store — either the
+   * user list has not loaded yet, or the user is not in it at all (`get_user_info` only
+   * returns users holding a Gameplan role). Its `full_name` is a guess (the local part of
+   * the email), so callers with a better name of their own should prefer theirs.
+   */
+  isPlaceholder?: boolean
 }
 
 function mergeUserInfo(user: UserInfo) {
   user.isGuest = user.role === 'Gameplan Guest'
   user.isNotGuest = !user.isGuest
   user.isDisabled = user.enabled === 0
+  // Set explicitly (not just left undefined) so merging a real record over a placeholder
+  // already in the store clears the flag — `Object.assign` only copies keys it has.
+  user.isPlaceholder = false
   const existing = usersByName[user.name]
   if (existing) {
     Object.assign(existing, user)
@@ -94,11 +104,29 @@ export function updateUserInfo(user: UserInfo) {
   if (listedUser) Object.assign(listedUser, user)
 }
 
-export function useUser(email?: string | null) {
-  if (!email || email === 'sessionUser') {
+// Shared so `useUser('')` is referentially stable across renders, and never lands in
+// `usersByName` (its key would be the empty string and the next unknown actor would
+// inherit whatever the last one merged into it).
+const unknownUser = getPlaceholderUser('', 'Unknown')
+
+/**
+ * Resolve a user id to its `UserInfo`, or to a placeholder (`isPlaceholder`) when the id
+ * is not in the store — the user list is still loading, or the user is not in it at all.
+ *
+ * "The session user" is what *calling it with no arguments* means, plus the explicit
+ * `'sessionUser'` sentinel. Any id that is actually passed resolves to that id, and an
+ * empty, `null` or `undefined` one resolves to the shared Unknown placeholder — never to
+ * the session user. That is why the sentinel is an arity check and not a parameter
+ * default: a default also fires for an explicitly passed `undefined`, which is how the
+ * viewer's own name ended up rendered as the actor on someone else's activity whenever
+ * the actor field came back empty.
+ */
+export function useUser(...args: [] | [email: string | null | undefined]): UserInfo {
+  let email = args.length === 0 ? session.user : args[0]
+  if (email === 'sessionUser') {
     email = session.user
   }
-  if (!email) return getPlaceholderUser('guest@example.com', 'Guest')
+  if (!email) return unknownUser
   if (!usersByName[email]) {
     usersByName[email] = getPlaceholderUser(email, email.split('@')[0])
   }
@@ -110,6 +138,7 @@ function getPlaceholderUser(email: string, full_name: string) {
     name: email,
     email: email,
     full_name: full_name,
+    isPlaceholder: true,
     user_image: '',
     role: 'Gameplan Member',
     enabled: 1,

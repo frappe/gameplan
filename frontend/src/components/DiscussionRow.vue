@@ -33,7 +33,7 @@
               </div>
               <div>
                 <span>
-                  {{ $user(discussion.last_post_by).full_name.trim() }}
+                  {{ $user(discussion.last_post_by || discussion.owner).full_name.trim() }}
                 </span>
                 <span class="inline-flex items-center" v-if="showSpaceName">
                   &nbsp;in {{ discussion.project_title }}

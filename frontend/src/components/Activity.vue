@@ -60,13 +60,16 @@
       </span>
       <span class="text-ink-gray-5" v-if="activity.action == 'Task Value Changed'">
         <template v-if="activity.data.field === 'assigned_to'">
-          assigned this to
-          <UserProfileLink
-            class="font-medium text-ink-gray-7 hover:text-ink-gray-5"
-            :user="assignedUser.name"
-          >
-            {{ assignedUser.full_name }}
-          </UserProfileLink>
+          <template v-if="assignedUser">
+            assigned this to
+            <UserProfileLink
+              class="font-medium text-ink-gray-7 hover:text-ink-gray-5"
+              :user="assignedUser.name"
+            >
+              {{ assignedUser.full_name }}
+            </UserProfileLink>
+          </template>
+          <template v-else>unassigned this</template>
         </template>
         <template v-else-if="activity.data.field === 'description'">
           updated the description
@@ -143,5 +146,9 @@ const props = defineProps<{
 }>()
 
 const user = computed(() => useUser(props.activity.user))
-const assignedUser = computed(() => useUser(props.activity.data.new_value))
+// Clearing an assignee logs the same activity with an empty new_value, so there is no
+// user to name — the template renders "unassigned this" instead.
+const assignedUser = computed(() =>
+  props.activity.data?.new_value ? useUser(props.activity.data.new_value) : null,
+)
 </script>
