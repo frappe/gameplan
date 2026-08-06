@@ -58,7 +58,7 @@
         <span class="text-sm text-ink-gray-5 sm:hidden">
           Updated {{ dayjsLocal(page.doc.modified).format('lll') }}
         </span>
-        <div class="mb-3 md:px-[70px]">
+        <div class="mb-3 md:px-[70px]" ref="titleField">
           <input
             class="w-full border-0 p-0 pt-4 text-5xl-semibold focus:outline-none focus:ring-0 bg-surface-base text-ink-gray-8"
             type="text"
@@ -70,19 +70,21 @@
             placeholder="Title"
           />
         </div>
-        <PageEditor
-          editor-class="rounded-b-lg max-w-[unset] prose-v3 pb-[50vh] md:px-[70px]"
-          :content="content"
-          :editable="canEditPage"
-          @change="
-            (value) => {
-              content = value
-              autosave()
-            }
-          "
-          placeholder="Start writing here..."
-          ref="textEditor"
-        />
+        <div ref="contentField">
+          <PageEditor
+            editor-class="rounded-b-lg max-w-[unset] prose-v3 pb-[50vh] md:px-[70px]"
+            :content="content"
+            :editable="canEditPage"
+            @change="
+              (value) => {
+                content = value
+                autosave()
+              }
+            "
+            placeholder="Start writing here..."
+            ref="textEditor"
+          />
+        </div>
       </div>
     </div>
   </div>
@@ -113,6 +115,7 @@ import { useSessionUser } from '@/data/users'
 import { canDeleteContent, canEditContent } from '@/utils/permissions'
 import { useCommandPaletteCommands } from '@/components/CommandPalette/registry'
 import { useOwnedRouteWrites } from '@/composables/useOwnedRouteWrites'
+import { useSyncedField } from '@/utils/useSyncedField'
 const props = defineProps<{
   communityId?: string
   pageId: string
@@ -131,20 +134,38 @@ const runWhenOwned = useOwnedRouteWrites(() => route.name === 'SpacePage' || rou
 
 const titleInput = useTemplateRef('titleInput')
 const textEditor = useTemplateRef('textEditor')
-
-const title = ref('')
-const content = ref('')
+const titleField = useTemplateRef<HTMLElement>('titleField')
+const contentField = useTemplateRef<HTMLElement>('contentField')
 
 const page = useDoc<GPPage>({
   doctype: 'GP Page',
   name: () => props.pageId,
 })
 
-page.onSuccess((doc) => {
-  title.value = doc.title || ''
-  content.value = doc.content || ''
+// Read from the document, not from the fetch response. The body renders as soon
+// as `page.doc` arrives, which can be the cached copy the doc store publishes
+// before the network one. Seeding only on the response left the inputs rendered
+// and empty until it landed, and overwrote anything typed in that gap.
+// See useSyncedField for how the two publishes are told apart.
+const title = useSyncedField({
+  source: () => page.doc?.title,
+  identity: () => page.doc?.name,
+  target: titleField,
+})
+const content = useSyncedField({
+  source: () => page.doc?.content,
+  identity: () => page.doc?.name,
+  target: contentField,
+})
+
+page.onSuccess(() => {
   updateUrlSlug()
-  titleInput.value?.focus()
+  // Only when nobody is working yet: on a slow response the body has been
+  // interactive since the cached copy rendered, and pulling focus to the title
+  // would yank someone out of the editor mid-sentence.
+  if (!document.activeElement || document.activeElement === document.body) {
+    titleInput.value?.focus()
+  }
 })
 
 const isDirty = computed(() => {
