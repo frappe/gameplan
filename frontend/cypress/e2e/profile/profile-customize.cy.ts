@@ -420,10 +420,11 @@ describe('Profile customize editor', () => {
   })
 })
 
-// Two save speeds share this screen. A bound card's value belongs to the profile
-// and is written the moment the control is committed; the layout stays a draft
-// until Save. So a value edit must persist on its own, must never land on the
-// bound row, and must not make the layout dirty.
+// One save speed on this screen. A bound card's value belongs to the profile
+// rather than to the layout, but it is edited here and stays local until Save is
+// pressed, exactly as a moved card does. So an edit must reach the server only on
+// Save, must never land on the bound row, and must not mark the layout as
+// customized when the layout itself did not change.
 describe('Profile customize editor — bound values', () => {
   let memberProfile: string
 
@@ -444,7 +445,7 @@ describe('Profile customize editor — bound values', () => {
     })
   })
 
-  it('uploads a profile picture from the panel and shows it on the canvas', () => {
+  it('uploads a profile picture from the panel and writes it on Save', () => {
     cy.loginAs('member')
     visitCustomize()
 
@@ -452,34 +453,73 @@ describe('Profile customize editor — bound values', () => {
     cy.intercept('POST', '**/method/set_image').as('setImage')
     panelFileInput().selectFile(pngFile('new-avatar.png'), { force: true })
 
+    // The file is uploaded, but the profile field it goes on is not written yet.
+    card('avatar').find('img').should('have.attr', 'src').and('include', '/files/')
+    cy.get('@setImage.all').should('have.length', 0)
+
+    headerSaveButton().click()
     cy.wait('@setImage').its('response.statusCode').should('equal', 200)
     card('avatar').find('img').should('have.attr', 'src').and('include', '/files/')
   })
 
-  it('saves a bio typed in the panel without making the layout dirty', () => {
+  it('holds a bio typed in the panel until Save is pressed', () => {
     cy.loginAs('member')
     visitCustomize()
 
+    // Nothing has been touched, so there is nothing for Save to do.
+    headerSaveButton().should('be.disabled')
+
     card('bio').click()
     cy.intercept('PUT', '**/api/v2/document/GP%20User%20Profile/*').as('saveProfile')
-    panelField('bio').clear().type('Now writing docs before code.').blur()
+    panelField('bio').clear().type('Now writing docs before code.')
 
-    cy.wait('@saveProfile').its('request.body.bio').should('equal', 'Now writing docs before code.')
+    // The canvas follows the typing, the server does not hear about it, and Save
+    // is the only way to make it.
     card('bio').should('contain.text', 'Now writing docs before code.')
-    // The layout never changed, so Save has nothing to commit.
+    headerSaveButton().should('be.enabled')
+    cy.get('@saveProfile.all').should('have.length', 0)
+
+    headerSaveButton().click()
+    cy.wait('@saveProfile').its('request.body.bio').should('equal', 'Now writing docs before code.')
+    profileField(memberProfile, 'bio').should('equal', 'Now writing docs before code.')
+    // Saved, so there is nothing left to save — and the layout never changed, so
+    // the profile is still following the default.
     headerSaveButton().should('be.disabled')
+    layoutCustomized(memberProfile).should('equal', 0)
   })
 
-  it('keeps a panel edit across a reload, with the layout still the default', () => {
+  it('warns before leaving with a bound value still unsaved', () => {
+    cy.loginAs('member')
+    visitCustomize()
+
+    card('bio').click()
+    panelField('bio').clear().type('Not saved yet.')
+
+    // The People crumb is a router link, so the page's own leave-guard gets asked.
+    cy.get('header').contains('a', 'People').click()
+    cy.get('[role="dialog"]').contains('Your profile has unsaved changes').should('be.visible')
+
+    cy.get('[role="dialog"]').contains('button', 'Keep editing').click()
+    cy.location('pathname').should('equal', '/g/profile/customize')
+    panelField('bio').should('have.value', 'Not saved yet.')
+
+    cy.get('header').contains('a', 'People').click()
+    cy.get('[role="dialog"]').contains('button', 'Discard changes').click()
+    cy.location('pathname').should('equal', '/g/people')
+    profileField(memberProfile, 'bio').should('equal', 'Async first, with written decisions.')
+  })
+
+  it('keeps a saved panel edit across a reload, with the layout still the default', () => {
     cy.loginAs('member')
     visitCustomize()
 
     card('bio').click()
     cy.intercept('PUT', '**/api/v2/document/GP%20User%20Profile/*').as('saveProfile')
-    panelField('bio').clear().type('Written before it is built.').blur()
+    panelField('bio').clear().type('Written before it is built.')
+    headerSaveButton().click()
     cy.wait('@saveProfile')
 
-    // Deliberately no Save: the value is already on the profile, the layout is not.
+    // The value is on the profile; the layout was never touched, so it is not.
     cy.reload()
     cy.get('[data-profile-info-checklist]').should('be.visible')
     card('bio').should('contain.text', 'Written before it is built.')
@@ -497,7 +537,8 @@ describe('Profile customize editor — bound values', () => {
 
     card('bio').click()
     cy.intercept('PUT', '**/api/v2/document/GP%20User%20Profile/*').as('saveProfile')
-    panelField('bio').clear().type('Stored on the profile, not the card.').blur()
+    panelField('bio').clear().type('Stored on the profile, not the card.')
+    headerSaveButton().click()
     cy.wait('@saveProfile')
 
     profileField(memberProfile, 'bio').should('equal', 'Stored on the profile, not the card.')
@@ -507,6 +548,27 @@ describe('Profile customize editor — bound values', () => {
       expect(row.text || '').to.equal('')
       expect(row.image || '').to.equal('')
     })
+  })
+
+  it('saves a value edit and a layout edit together', () => {
+    cy.loginAs('member')
+    visitCustomize()
+
+    // One press, two writes: the profile field and the stored layout.
+    card('bio').click()
+    panelField('bio').clear().type('Two changes, one Save.')
+    cy.get('[data-profile-card-editor-back]').click()
+    checklistRow('cover_image').uncheck()
+
+    cy.intercept('PUT', '**/api/v2/document/GP%20User%20Profile/*').as('saveProfile')
+    cy.intercept('POST', '**/method/*save_my_bento_cards').as('saveLayout')
+    headerSaveButton().click()
+
+    cy.wait('@saveProfile').its('request.body.bio').should('equal', 'Two changes, one Save.')
+    cy.wait('@saveLayout').its('response.statusCode').should('equal', 200)
+    cy.contains('Profile saved').should('be.visible')
+    headerSaveButton().should('be.disabled')
+    layoutCustomized(memberProfile).should('equal', 1)
   })
 
   it('fills a ticked but empty field from the panel', () => {
@@ -523,14 +585,15 @@ describe('Profile customize editor — bound values', () => {
     card('bio').click()
 
     cy.intercept('PUT', '**/api/v2/document/GP%20User%20Profile/*').as('saveProfile')
-    panelField('bio').type('Filled in from the panel.').blur()
+    panelField('bio').type('Filled in from the panel.')
+    headerSaveButton().click()
     cy.wait('@saveProfile')
 
     card('bio').find('[data-profile-card-empty]').should('not.exist')
     card('bio').should('contain.text', 'Filled in from the panel.')
   })
 
-  it('edits About through the panel dialog', () => {
+  it('edits About through the panel dialog, and writes it on Save', () => {
     cy.loginAs('member')
     visitCustomize()
 
@@ -541,13 +604,44 @@ describe('Profile customize editor — bound values', () => {
     cy.get('[role="dialog"]').find('[contenteditable=true]').click().type(' And the rest.')
     cy.get('[role="dialog"]').contains('button', 'Save').click()
 
-    cy.wait('@saveProfile').its('request.body.readme').should('contain', 'And the rest.')
+    // The dialog's Save puts the text into the draft; the page's Save writes it.
     cy.get('[role="dialog"]').should('not.exist')
     card('about').should('contain.text', 'And the rest.')
+    cy.get('@saveProfile.all').should('have.length', 0)
+
+    headerSaveButton().click()
+    cy.wait('@saveProfile').its('request.body.readme').should('contain', 'And the rest.')
     headerSaveButton().should('be.disabled')
   })
 
-  it('repositions the bound cover onto the profile, not onto the draft row', () => {
+  it('discards an About edit back to the stored text, not to what the dialog opened on', () => {
+    cy.loginAs('member')
+    visitCustomize()
+
+    card('about').click()
+    // Staged once and left unsaved, so reopening shows the edit rather than the
+    // stored text.
+    editAbout(' First pass.')
+    card('about').should('contain.text', 'First pass.')
+
+    // Discard is about the field, so it goes all the way back to the server's
+    // text, taking the earlier staged edit with it.
+    panel().contains('button', 'Edit about').click()
+    cy.get('[role="dialog"]').find('[contenteditable=true]').should('contain.text', 'First pass.')
+    cy.get('[role="dialog"]').find('[contenteditable=true]').click().type(' Second pass.')
+    cy.get('[role="dialog"]').contains('button', 'Discard').click()
+
+    cy.get('[role="dialog"]').should('not.exist')
+    card('about').should('contain.text', 'I look after the docs nobody else wants to write.')
+    card('about').should('not.contain.text', 'First pass.')
+    headerSaveButton().should('be.disabled')
+  })
+
+  // The position is a property of the image rather than of the layout, so it is
+  // staged onto the profile draft and never onto the bound row. Ending the drag
+  // is not saving: the card's own Save closes the overlay, and the page's Save is
+  // what writes — which, with nothing actually moved here, is nothing at all.
+  it('ends a cover reposition in the draft, not on the server', () => {
     cy.loginAs('member')
     visitCustomize()
 
@@ -556,11 +650,12 @@ describe('Profile customize editor — bound values', () => {
     panel().contains('button', 'Reposition').click()
     card('cover').button('Save').click()
 
-    cy.wait('@setCoverPosition').its('response.statusCode').should('equal', 200)
-    // Saved without dragging, so the seeded position round-trips unchanged.
+    // The overlay is gone, so the gesture finished, and nothing was written.
+    card('cover').button('Save').should('not.exist')
+    cy.get('@setCoverPosition.all').should('have.length', 0)
+    headerSaveButton().should('be.disabled')
     profileField(memberProfile, 'cover_image_position').should('equal', 30)
     layoutCustomized(memberProfile).should('equal', 0)
-    headerSaveButton().should('be.disabled')
   })
 })
 
@@ -594,7 +689,7 @@ function visitCustomize() {
 
 function saveLayout() {
   cy.intercept('POST', '**/method/*save_my_bento_cards').as('saveLayout')
-  cy.contains('button', 'Save').click()
+  headerSaveButton().click()
   return cy.wait('@saveLayout').its('response.statusCode').should('equal', 200)
 }
 
@@ -869,9 +964,21 @@ function panelFileInput() {
   return panel().find('input[type=file]')
 }
 
-/** The layout's Save button, told apart from a card's own Save controls. */
+/**
+ * The one Save on this screen, told apart from a card's own Save controls. It
+ * commits the layout and the staged profile info together.
+ */
 function headerSaveButton() {
-  return cy.get('button[data-profile-save-layout]')
+  return cy.get('button[data-profile-save]')
+}
+
+/** Open the About dialog, add to the text, and put the result in the draft. */
+function editAbout(text: string) {
+  panel().contains('button', 'Edit about').click()
+  cy.get('[role="dialog"]').find('[contenteditable=true]').should('be.visible')
+  cy.get('[role="dialog"]').find('[contenteditable=true]').click().type(text)
+  cy.get('[role="dialog"]').contains('button', 'Save').click()
+  return cy.get('[role="dialog"]').should('not.exist')
 }
 
 // A 1x1 PNG, so an upload is a real image without shipping a fixture file.

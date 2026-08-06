@@ -39,9 +39,9 @@ export type ProfileFieldUpdate =
   | { field: 'full_name'; firstName: string; lastName: string }
 
 /**
- * Writes a bound card's value back to the profile. Supplied by the customize
- * page's panel, and by the profile page for its About dialog — the one place
- * that knows which document each bound field actually lives on.
+ * Writes a bound card's value back to the profile. Supplied by the profile page
+ * for its About dialog, and by the customize page's field draft when its Save is
+ * pressed — the one place that knows which document each bound field lives on.
  */
 export interface ProfileFieldEditor {
   /** `User.first_name` / `User.last_name`, for the two-input full-name editor. */
@@ -49,6 +49,39 @@ export interface ProfileFieldEditor {
   lastName: string
   /** Rejects when the write fails; the caller keeps the draft and shows the error. */
   save: (update: ProfileFieldUpdate) => Promise<void>
+}
+
+/**
+ * Every bound field's value, in the shape the panel's controls type it in.
+ *
+ * A name is one string on the card and two inputs in the panel, so it is carried
+ * as two fields here rather than as the profile's joined `full_name`.
+ */
+export interface ProfileFieldValues {
+  bio: string
+  readme: string
+  image: string
+  cover_image: string
+  cover_image_position: number
+  firstName: string
+  lastName: string
+}
+
+/**
+ * The customize page's staged bound-field edits.
+ *
+ * The controls in the panel read `values` and write through `stage`. Nothing
+ * reaches the server until the page's Save button commits it, which is what puts
+ * a bound value on the same footing as the layout: one Save, one set of unsaved
+ * changes, one question when you leave with them.
+ */
+export interface ProfileFieldDraft {
+  /** What each field will hold once Save lands: the staged edit, or the stored value. */
+  values: ProfileFieldValues
+  /** Stages an edit in place of writing it. */
+  stage: (update: ProfileFieldUpdate) => void
+  /** Drops the staged edit for one field, back to what the server holds. */
+  reset: (field: ProfileFieldUpdate['field']) => void
 }
 
 /** A profile field a bento card can bind to. */

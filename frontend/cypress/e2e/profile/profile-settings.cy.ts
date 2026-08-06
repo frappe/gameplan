@@ -67,7 +67,7 @@ describe('Profile settings', () => {
         source: 'custom',
       })
     })
-    cy.contains('Profile layout saved').should('be.visible')
+    cy.contains('Profile saved').should('be.visible')
 
     cy.get('header')
       .contains('a', /^Maya(?:\s|$)/)

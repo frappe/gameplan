@@ -2,20 +2,14 @@
   <ProfileImageField
     :label="spec.title"
     :subject="spec.title"
-    :has-image="Boolean(card.image)"
-    :busy="saving"
-    @upload="saveImage"
-    @remove="saveImage('')"
+    :has-image="Boolean(image)"
+    @upload="stageImage"
+    @remove="stageImage('')"
   >
     <!-- Only the cover: an avatar is a picture of a person, and a stock photo is
          never the right one. -->
     <template v-if="isCover" #actions>
-      <Button
-        icon-left="lucide-image"
-        data-profile-unsplash-open
-        :disabled="saving"
-        @click="showPicker = true"
-      >
+      <Button icon-left="lucide-image" data-profile-unsplash-open @click="showPicker = true">
         Unsplash
       </Button>
     </template>
@@ -33,34 +27,35 @@
 import { computed, ref } from 'vue'
 import { Button } from 'frappe-ui'
 import ProfileImageField from '../ProfileImageField.vue'
-import { useBoundFieldSave } from './useBoundFieldSave'
 import { UnsplashPicker, type UnsplashPhoto } from '@/components/UnsplashPicker'
-import type { ProfileBentoCard, ProfileBoundFieldSpec, ProfileFieldEditor } from '../types'
+import type { ProfileBoundFieldSpec, ProfileFieldDraft } from '../types'
 
 const props = defineProps<{
   spec: ProfileBoundFieldSpec
-  card: ProfileBentoCard
-  fieldEditor: ProfileFieldEditor
+  draft: ProfileFieldDraft
 }>()
-
-const { saving, commit } = useBoundFieldSave(() => props.fieldEditor)
 
 const showPicker = ref(false)
 const isCover = computed(() => props.spec.field === 'cover_image')
+// The staged image if one was picked, otherwise whatever the profile holds. The
+// file is already uploaded by this point; only the profile field is staged.
+const image = computed(() => {
+  return isCover.value ? props.draft.values.cover_image : props.draft.values.image
+})
 
-function saveImage(url: string) {
+function stageImage(url: string) {
   if (props.spec.field !== 'cover_image' && props.spec.field !== 'image') return
-  commit({ field: props.spec.field, value: url })
+  props.draft.stage({ field: props.spec.field, value: url })
 }
 
 /**
  * An Unsplash photo is hotlinked, not copied into a Frappe File: `cover_image`
  * is an `Attach Image`, which is a plain text column with no local-path rule,
  * and Unsplash's guidelines ask that their URLs be used directly. It goes
- * through the same write path as an upload, so nothing downstream has to tell
- * them apart.
+ * through the same path as an upload, so nothing downstream has to tell them
+ * apart.
  */
 function applyUnsplashPhoto(photo: UnsplashPhoto) {
-  saveImage(photo.url)
+  stageImage(photo.url)
 }
 </script>

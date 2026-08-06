@@ -41,14 +41,15 @@ const failureMessages: Record<ProfileFieldUpdate['field'], string> = {
  * Every write lands on the profile (or `User`) document — never on the bento
  * layout — so `layout_customized` stays 0 and the owner keeps getting the
  * default layout as it evolves. `onSaved` re-reads the cards, because a bound
- * card resolves its value server-side and nothing is patched in place.
+ * card resolves its value server-side and nothing is patched in place. A caller
+ * that writes several fields in one go leaves it out and re-reads once itself.
  */
 export function useProfileFieldEditing(options: {
   profile: ProfileEditingResource
   /** The profile owner's `User` name. Empty when the viewer is not the owner. */
   userId: () => string
   enabled: () => boolean
-  onSaved: () => void | Promise<void>
+  onSaved?: () => void | Promise<void>
 }): ComputedRef<ProfileFieldEditor | undefined> {
   const sessionUser = useSessionUser()
   // `userId` is empty until the profile loads (and stays empty for a visitor),
@@ -65,7 +66,7 @@ export function useProfileFieldEditing(options: {
       toast.error(failureMessages[update.field])
       throw error
     }
-    await options.onSaved()
+    await options.onSaved?.()
   }
 
   async function write(update: ProfileFieldUpdate) {

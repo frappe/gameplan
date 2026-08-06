@@ -47,23 +47,14 @@
             </div>
 
             <div class="mt-4 space-y-3">
-              <!-- Two save speeds on one screen, so say which is which. -->
-              <p
-                v-if="boundSpec"
-                class="text-sm leading-5 text-ink-gray-5"
-                data-profile-bound-save-notice
-              >
-                This saves to your profile right away. The layout saves when you press Save.
-              </p>
-
-              <!-- A bound card's value lives on the profile, so the editor writes
-                 straight through and never onto the draft row. -->
+              <!-- A bound card's value lives on the profile, never on the draft
+                 row, so its control stages onto the field draft instead. Both
+                 drafts are committed by the one Save in the page header. -->
               <component
                 :is="profileBoundFieldEditors[boundSpec.editor]"
-                v-if="boundSpec && fieldEditor"
+                v-if="boundSpec"
                 :spec="boundSpec"
-                :card="card"
-                :field-editor="fieldEditor"
+                :draft="fieldDraft"
               />
 
               <template v-if="isCustomContentCard">
@@ -198,7 +189,7 @@ import {
   type ProfileBoundField,
   type ProfileCardSize,
   type ProfileCardType,
-  type ProfileFieldEditor,
+  type ProfileFieldDraft,
   type ProfileImageRendering,
 } from './types'
 
@@ -208,10 +199,10 @@ const props = defineProps<{
   /** Bound fields present in the layout. The checklist reads its ticks from this. */
   boundFields: Set<ProfileBoundField>
   /**
-   * Writes a bound card's value to the profile. Unlike the layout, these land
-   * immediately — they are not part of the draft the Save button commits.
+   * The staged values of the bound profile fields. A bound card's control reads
+   * and writes this, and the page's Save commits it alongside the layout.
    */
-  fieldEditor?: ProfileFieldEditor
+  fieldDraft: ProfileFieldDraft
 }>()
 
 const emit = defineEmits<{

@@ -10,9 +10,8 @@ import type { ProfileBoundEditor } from '../types'
  *
  * A table rather than a chain of `v-else-if` in the panel, so adding a sixth
  * bound field is a row in `profileBoundFields` and, at most, one entry here.
- * Every editor takes the same three props (`spec`, `card`, `fieldEditor`) and
- * writes through the field editor itself, which is what lets them be swapped by
- * name.
+ * Every editor takes the same two props (`spec` and `draft`) and stages its edit
+ * on the draft, which is what lets them be swapped by name.
  */
 export const profileBoundFieldEditors: Record<ProfileBoundEditor, Component> = {
   name: ProfileBoundNameField,
