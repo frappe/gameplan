@@ -45,3 +45,4 @@ gameplan.gameplan.doctype.gp_user_profile.patches.set_email_digest_off_by_defaul
 gameplan.gameplan.doctype.gp_comment.patches.add_owner_reference_index
 gameplan.gameplan.doctype.gp_user_profile.patches.bind_starter_bento_cards
 gameplan.patches.attach_profile_bento_card_images
+gameplan.patches.make_profile_avatars_public
