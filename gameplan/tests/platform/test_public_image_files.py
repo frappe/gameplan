@@ -246,6 +246,29 @@ class TestAvatarVisibility(PublishedFileTestCase):
 		)
 		self.assertEqual(self._avatar(), victim_file.file_url)
 
+	def test_a_refused_avatar_is_not_swapped_for_an_unrelated_public_image(self):
+		"""Refusing the file must not send the profile somewhere else instead.
+
+		When every file at a URL is refused, nothing moved, so the patch must not fall
+		through to the "finish an interrupted run" path that derives /files/<name> from
+		the private path. Avatars are named avatar.png, image.png, photo.jpg often enough
+		that some unrelated public file is already sitting there, and the profile would
+		come out of the run displaying a picture it has never had anything to do with.
+		"""
+		victim_file = self._make_private_file("collision", owner=self.other_member)
+		self._set_avatar(victim_file.file_url)
+		decoy = self._make_public_file("collision")
+		self.assertEqual(
+			decoy.file_url,
+			f"/files/{victim_file.file_name}",
+			"the decoy has to sit at the path the refused file would have moved to",
+		)
+
+		make_avatars_public()
+
+		self.assertEqual(self._avatar(), victim_file.file_url, "a refused avatar must not be repointed")
+		self.assertEqual(self._file(victim_file.name).is_private, 1)
+
 	def test_a_refusal_does_not_stop_the_rest_of_the_run(self):
 		"""One bad reference must not cost every other profile its avatar."""
 		borrowed = self._make_private_file("borrowed", owner=self.other_member)

@@ -15,6 +15,7 @@ register the rollback hook that moves it back if the transaction fails.
 """
 
 from collections.abc import Callable, Iterable
+from typing import NamedTuple
 
 import frappe
 
@@ -62,7 +63,11 @@ def publish_files_referenced_by(
 
 	for row in _iter_rows_with_private_files(doctype, fieldname, row_fields):
 		old_url = row.get(fieldname)
-		new_url = moved.get(old_url) or _publish_files_at(old_url, set(allowed_owners(row)), refused)
+		new_url = moved.get(old_url)
+		if not new_url:
+			attempt = _publish_files_at(old_url, set(allowed_owners(row)))
+			refused.update(attempt.refused)
+			new_url = attempt.new_url
 		if not new_url:
 			continue
 
@@ -83,22 +88,44 @@ def publish_files_referenced_by(
 	return repointed
 
 
-def _publish_files_at(file_url: str, allowed_owners: set[str], refused: set[str]) -> str | None:
-	"""Publish every private File at `file_url`; return the URL it moved to.
+class _PublishAttempt(NamedTuple):
+	"""What came of trying to publish the files at one URL.
 
-	A file whose owner is not in `allowed_owners` is left private and recorded in
-	`refused` instead.
+	`refused` is what separates "there is no private File at this URL" from "there is
+	one and it belongs to somebody else". Both leave `new_url` empty and they need
+	opposite handling, so the difference is carried here rather than left for the
+	caller to guess from a `None`.
+	"""
+
+	new_url: str | None
+	refused: frozenset[str]
+
+
+def _publish_files_at(file_url: str, allowed_owners: set[str]) -> _PublishAttempt:
+	"""Publish every private File at `file_url` and say where it went.
+
+	A file whose owner is not in `allowed_owners` is left private and reported as a
+	refusal instead.
 	"""
 	new_url = None
+	refused: set[str] = set()
 	for file in _get_private_files_at(file_url):
 		if file.owner not in allowed_owners:
 			refused.add(file.name)
 			continue
 		new_url = _publish_file(file.name) or new_url
 
+	if refused:
+		# Nothing was derived for a refusal on purpose. The refused bytes are still at
+		# this URL, and the public path below is guessed from the file name alone, which
+		# for an avatar is routinely something like avatar.png. Following it would swap a
+		# file we just declined to publish for whatever unrelated image happens to sit at
+		# that name. A refused reference is left exactly as it was.
+		return _PublishAttempt(new_url, frozenset(refused))
+
 	# Nothing private left to move can mean an earlier run moved the blob and stopped
 	# before repointing the document. Derive where it went so that gets finished.
-	return new_url or _find_public_file_url(file_url)
+	return _PublishAttempt(new_url or _find_public_file_url(file_url), frozenset())
 
 
 def _log_refused_files(doctype: str, fieldname: str, refused: set[str]) -> None:
