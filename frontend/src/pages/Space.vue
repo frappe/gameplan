@@ -66,7 +66,7 @@
 </template>
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import {
   BottomSheet,
   PageHeaderBackButton,
@@ -83,6 +83,7 @@ import SpaceBreadcrumbs from '@/components/SpaceBreadcrumbs.vue'
 import SpaceIcon from '@/components/SpaceIcon.vue'
 import { useCommunity } from '@/data/communities'
 import { readOnlyMode } from '@/data/readOnlyMode'
+import { useOwnedRouteWrites } from '@/composables/useOwnedRouteWrites'
 
 const props = defineProps<{
   communityId: string
@@ -90,25 +91,39 @@ const props = defineProps<{
 }>()
 
 const router = useRouter()
+// Named apart from the slot-scoped `route` in the template above: that one is the route
+// this page is rendering, this one is the URL the browser is actually on.
+const currentRoute = useRoute()
 const community = useCommunity(() => props.communityId)
 const menuOpen = ref(false)
 const space = useSpace(() => props.spaceId)
 const canEditSpace = computed(() => !readOnlyMode && !space.value?.archived_at)
 
+// This page also renders behind the settings overlay, where the URL belongs to /settings/*
+// and healing it from here would navigate the app off the settings route, closing the dialog.
+// Wait for the URL to be ours again instead — the mismatch is still worth correcting then.
+const runWhenOwned = useOwnedRouteWrites(
+  () => routeParam(currentRoute.params.spaceId) === props.spaceId,
+)
+
 // A space can only be reached under the community that owns it. If the URL carries a stale
 // community (e.g. after a move), heal it to the canonical route instead of rendering a mismatch.
-watch(
-  space,
-  (resolved) => {
-    if (resolved?.team && resolved.team !== props.communityId) {
-      router.replace({
-        name: 'Space',
-        params: { communityId: resolved.team, spaceId: props.spaceId },
-      })
-    }
-  },
-  { immediate: true },
-)
+// Reads its state when it runs, not when it was queued, so a deferred heal can't pair the
+// community of the space we started on with the space the URL ended up on.
+function healStaleCommunityInUrl() {
+  const canonicalCommunityId = space.value?.team
+  if (!canonicalCommunityId || canonicalCommunityId === props.communityId) return
+  router.replace({
+    name: 'Space',
+    params: { communityId: canonicalCommunityId, spaceId: props.spaceId },
+  })
+}
+
+watch(space, () => runWhenOwned(healStaleCommunityInUrl), { immediate: true })
+
+function routeParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value
+}
 
 onMounted(() => {
   trackSpaceVisit(props.spaceId)

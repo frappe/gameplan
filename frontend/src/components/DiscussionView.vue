@@ -353,6 +353,7 @@ import { refreshUnreadCountForProjects } from '@/data/unreadCount'
 import { useSessionUser } from '@/data/users'
 import { canDeleteContent, canEditContent } from '@/utils/permissions'
 import { useCommandPaletteCommands } from './CommandPalette/registry'
+import { useOwnedRouteWrites } from '@/composables/useOwnedRouteWrites'
 
 const props = defineProps<{
   postId: string
@@ -361,6 +362,10 @@ const props = defineProps<{
 
 const router = useRouter()
 const route = useRoute()
+// This view also renders behind the settings overlay, where the URL belongs to /settings/*.
+// Rewriting it from there would both throw (no postId param to spread) and navigate the app
+// off the settings route, closing the dialog. A page may only rewrite a URL it owns.
+const runWhenOwned = useOwnedRouteWrites(() => route.name === 'Discussion')
 const isMobileViewport = useIsMobile()
 const commentsArea = useTemplateRef('commentsArea')
 const postEditor = useTemplateRef<{ editor: Editor | null }>('postEditor')
@@ -502,6 +507,7 @@ async function scrollToUnread() {
 
   let doc = discussion.doc
   if (
+    route.name === 'Discussion' &&
     !route.query.comment &&
     !route.query.poll &&
     !route.query.fromSearch &&
@@ -670,7 +676,13 @@ function updatePost() {
   editSnapshot.value = null
 }
 
+// Runs once per visit, when the doc resolves — so if the URL is not ours at that moment,
+// the correction has to wait for it rather than be dropped for the rest of the visit.
 function canonicalizeRoute() {
+  runWhenOwned(applyCanonicalRoute)
+}
+
+function applyCanonicalRoute() {
   let doc = discussion.doc
   if (!doc) return
 

@@ -112,6 +112,7 @@ import { relativeTimestamp } from '@/utils'
 import { useSessionUser } from '@/data/users'
 import { canDeleteContent, canEditContent } from '@/utils/permissions'
 import { useCommandPaletteCommands } from '@/components/CommandPalette/registry'
+import { useOwnedRouteWrites } from '@/composables/useOwnedRouteWrites'
 const props = defineProps<{
   communityId?: string
   pageId: string
@@ -122,6 +123,11 @@ const props = defineProps<{
 const route = useRoute()
 const router = useRouter()
 const history = window.history
+
+// This page also renders behind the settings overlay, where the URL belongs to /settings/*.
+// Rewriting it from there would both throw (no pageId param to spread) and navigate the app
+// off the settings route, closing the dialog. A page may only rewrite a URL it owns.
+const runWhenOwned = useOwnedRouteWrites(() => route.name === 'SpacePage' || route.name === 'Page')
 
 const titleInput = useTemplateRef('titleInput')
 const textEditor = useTemplateRef('textEditor')
@@ -264,19 +270,29 @@ const handleKeyboardShortcuts = (e: KeyboardEvent) => {
   }
 }
 
+// Runs once per visit, when the doc resolves — so if the URL is not ours at that moment,
+// the correction has to wait for it rather than be dropped for the rest of the visit.
 const updateUrlSlug = () => {
-  if (!route.params.slug || route.params.slug !== page.doc?.slug) {
-    router.replace({
-      name: page.doc?.project ? 'SpacePage' : 'Page',
-      params: {
-        ...route.params,
-        communityId: page.doc?.project ? space.value?.team : undefined,
-        spaceId: page.doc?.project,
-        slug: page.doc?.slug,
-      },
-      query: route.query,
-    })
-  }
+  runWhenOwned(applyCanonicalSlug)
+}
+
+// Reads its state when it runs, not when it was queued, so a deferred correction can't
+// stamp the slug of the page we started on onto the page the URL ended up on.
+function applyCanonicalSlug() {
+  const doc = page.doc
+  if (!doc) return
+  if (route.params.slug && route.params.slug === doc.slug) return
+
+  router.replace({
+    name: doc.project ? 'SpacePage' : 'Page',
+    params: {
+      ...route.params,
+      communityId: doc.project ? space.value?.team : undefined,
+      spaceId: doc.project,
+      slug: doc.slug,
+    },
+    query: route.query,
+  })
 }
 
 onMounted(() => {
