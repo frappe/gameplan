@@ -13,6 +13,7 @@ the files uploaded while frappe-ui defaulted uploads to private.
 """
 
 import os
+from unittest.mock import patch
 
 import frappe
 from frappe.core.doctype.file.file import has_permission as file_has_permission
@@ -21,6 +22,7 @@ from frappe.tests.utils import FrappeTestCase
 from gameplan.patches.make_community_images_public import execute as make_community_images_public
 from gameplan.patches.make_profile_avatars_public import execute as make_avatars_public
 from gameplan.tests.fixtures import create_community
+from gameplan.utils import file_privacy
 
 # Publishing a file moves it on disk, and frappe registers an after_rollback hook to
 # move it back. That hook runs during the class-level DB rollback, which is after
@@ -514,6 +516,72 @@ class TestCommunityImageVisibility(PublishedFileTestCase):
 
 		self.assertEqual(self._image(), file.file_url)
 		self.assertEqual(self._file(file.name).is_private, 0)
+
+	def test_a_shared_url_is_refused_when_the_entitled_community_sorts_first(self):
+		"""Rows are read `name asc`, and the run remembers where each URL moved to.
+
+		The entitled community publishes the file, so by the time the borrower is
+		reached there is no private File left at that URL. The answer must still be the
+		refusal the borrower would have got had it been reached first.
+		"""
+		self._assert_a_borrowed_image_is_refused(
+			"order-entitled-first",
+			entitled_title="AAA Shared Image Community",
+			borrower_title="ZZZ Shared Image Borrower",
+			entitled_sorts_first=True,
+		)
+
+	def test_a_shared_url_is_refused_when_the_entitled_community_sorts_second(self):
+		"""The same two rows the other way round, where nothing has moved yet.
+
+		Paired with the test above so the outcome is pinned for both orderings. Nothing
+		about the data changed, only the names, and the run must not answer differently.
+		"""
+		self._assert_a_borrowed_image_is_refused(
+			"order-entitled-second",
+			entitled_title="ZZZ Shared Image Community",
+			borrower_title="AAA Shared Image Borrower",
+			entitled_sorts_first=False,
+		)
+
+	def _assert_a_borrowed_image_is_refused(
+		self, suffix, *, entitled_title, borrower_title, entitled_sorts_first
+	):
+		"""Two communities on one private URL, only one of them entitled to the file."""
+		uploader = _ensure_member(f"community_sharer_{suffix}@example.com")
+		entitled = create_community(entitled_title, admins=[uploader])
+		borrower = create_community(borrower_title)
+		self.assertEqual(
+			entitled.name < borrower.name,
+			entitled_sorts_first,
+			"the ordering under test is decided by the community names",
+		)
+
+		file = self._make_private_file(suffix, owner=uploader)
+		private_url = file.file_url
+		for community in (entitled, borrower):
+			frappe.db.set_value("GP Team", community.name, "image", private_url, update_modified=False)
+			# Both rows outlive this test, and a later run would repoint whatever is left
+			# pointing at a private URL whose file is public by then.
+			self.addCleanup(
+				frappe.db.set_value, "GP Team", community.name, "image", "", update_modified=False
+			)
+
+		refused = set()
+		with patch.object(
+			file_privacy, "_log_refused_files", lambda doctype, fieldname, names: refused.update(names)
+		):
+			make_community_images_public()
+
+		published = self._file(file.name)
+		self.assertEqual(published.is_private, 0, "the entitled community publishes the file")
+		self.assertEqual(frappe.db.get_value("GP Team", entitled.name, "image"), published.file_url)
+		self.assertEqual(
+			frappe.db.get_value("GP Team", borrower.name, "image"),
+			private_url,
+			"a community with no claim on the file must not be repointed at it",
+		)
+		self.assertIn(file.name, refused, "the refusal has to be counted whichever row came first")
 
 
 def _ensure_member(email):

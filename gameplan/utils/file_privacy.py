@@ -56,22 +56,35 @@ def publish_files_referenced_by(
 	repointed = 0
 	refused: set[str] = set()
 	# One URL can be shared by several documents. Remember where each one moved to,
-	# because after the first move there is no private file left to look up. Only a
-	# move is remembered: whether a file may be published depends on the row asking,
-	# so one row being refused must not decide the answer for the next one.
-	moved: dict[str, str] = {}
+	# because after the first move there is no private file left to look up. Who owned
+	# the files that moved is remembered with it, because whether a file may be
+	# published depends on the row asking and every row has to be asked the same
+	# question. Only a move is remembered: one row being refused must not decide the
+	# answer for the next one.
+	moved: dict[str, _MovedFiles] = {}
 
 	for row in _iter_rows_with_private_files(doctype, fieldname, row_fields):
 		old_url = row.get(fieldname)
-		new_url = moved.get(old_url)
-		if not new_url:
-			attempt = _publish_files_at(old_url, set(allowed_owners(row)))
+		allowed = set(allowed_owners(row))
+		already_moved = moved.get(old_url)
+		if already_moved:
+			# The same check `_publish_files_at` ran for the row that got here first.
+			# Without it the outcome would turn on which row `name asc` happened to put
+			# first: an unauthorized row would be refused when it sorts before the
+			# authorized one and repointed when it sorts after.
+			not_allowed = already_moved.not_allowed_for(allowed)
+			if not_allowed:
+				refused.update(not_allowed)
+				continue
+			new_url = already_moved.new_url
+		else:
+			attempt = _publish_files_at(old_url, allowed)
 			refused.update(attempt.refused)
+			if not attempt.new_url:
+				continue
+			moved[old_url] = _MovedFiles(attempt.new_url, attempt.published)
 			new_url = attempt.new_url
-		if not new_url:
-			continue
 
-		moved[old_url] = new_url
 		if new_url == old_url:
 			continue
 
@@ -88,6 +101,23 @@ def publish_files_referenced_by(
 	return repointed
 
 
+class _MovedFiles(NamedTuple):
+	"""Where the private files at one URL ended up, and who owned the ones that moved.
+
+	The owners are kept so a later row naming the same URL can be put through the same
+	`allowed_owners` check the first row went through. There is no way to look them up
+	again by then: the files are public, so `_get_private_files_at` finds nothing.
+	"""
+
+	new_url: str
+	# File name -> owner, for the files this run actually published.
+	owners: dict[str, str]
+
+	def not_allowed_for(self, allowed: set[str]) -> set[str]:
+		"""Names of the published files a row limited to `allowed` may not claim."""
+		return {name for name, owner in self.owners.items() if owner not in allowed}
+
+
 class _PublishAttempt(NamedTuple):
 	"""What came of trying to publish the files at one URL.
 
@@ -95,10 +125,14 @@ class _PublishAttempt(NamedTuple):
 	one and it belongs to somebody else". Both leave `new_url` empty and they need
 	opposite handling, so the difference is carried here rather than left for the
 	caller to guess from a `None`.
+
+	`published` is file name -> owner for the files that moved, which is what the
+	caller remembers so the next row naming this URL can be checked too.
 	"""
 
 	new_url: str | None
 	refused: frozenset[str]
+	published: dict[str, str]
 
 
 def _publish_files_at(file_url: str, allowed_owners: set[str]) -> _PublishAttempt:
@@ -109,11 +143,15 @@ def _publish_files_at(file_url: str, allowed_owners: set[str]) -> _PublishAttemp
 	"""
 	new_url = None
 	refused: set[str] = set()
+	published: dict[str, str] = {}
 	for file in _get_private_files_at(file_url):
 		if file.owner not in allowed_owners:
 			refused.add(file.name)
 			continue
-		new_url = _publish_file(file.name) or new_url
+		moved_to = _publish_file(file.name)
+		if moved_to:
+			published[file.name] = file.owner
+			new_url = moved_to
 
 	if refused:
 		# Nothing was derived for a refusal on purpose. The refused bytes are still at
@@ -121,11 +159,11 @@ def _publish_files_at(file_url: str, allowed_owners: set[str]) -> _PublishAttemp
 		# for an avatar is routinely something like avatar.png. Following it would swap a
 		# file we just declined to publish for whatever unrelated image happens to sit at
 		# that name. A refused reference is left exactly as it was.
-		return _PublishAttempt(new_url, frozenset(refused))
+		return _PublishAttempt(new_url, frozenset(refused), published)
 
 	# Nothing private left to move can mean an earlier run moved the blob and stopped
 	# before repointing the document. Derive where it went so that gets finished.
-	return _PublishAttempt(new_url or _find_public_file_url(file_url), frozenset())
+	return _PublishAttempt(new_url or _find_public_file_url(file_url), frozenset(), published)
 
 
 def _log_refused_files(doctype: str, fieldname: str, refused: set[str]) -> None:
