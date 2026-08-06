@@ -112,12 +112,19 @@ const textToolsItem: MenuItem = {
   isActive: () => props.toolbarExpanded,
 }
 
+// Both buttons open a suggestion menu, which can only be done by typing its
+// trigger char. The command owns that char: it takes it back out when the menu
+// is dismissed rather than used, and declines without touching the document
+// where no menu can open at all, such as inside code. It also focuses the
+// editor itself, so these calls need no `.focus()` of their own. Without that
+// focus the click would leave the caret on the button, and the button would
+// swallow the keystrokes meant for the menu.
 function openSlashCommands(editor: Editor) {
-  editor.chain().focus().insertContent(' /').run()
+  editor.commands.openSuggestionMenu('slashCommands')
 }
 
-function insertTrigger(editor: Editor, trigger: '@') {
-  editor.chain().focus().insertContent(` ${trigger}`).run()
+function openMentions(editor: Editor) {
+  editor.commands.openSuggestionMenu('mentionSuggestion')
 }
 
 function insertEmoji(editor: Editor, emoji: string) {
@@ -214,7 +221,7 @@ function canInsertCodeBlock(editor: Editor) {
                 icon="lucide-at-sign"
                 label="Mention"
                 tooltip="Mention"
-                @click="insertTrigger(e, '@')"
+                @click="openMentions(e)"
               />
               <EmojiPicker @select="insertEmoji(e, $event)">
                 <template #trigger>
