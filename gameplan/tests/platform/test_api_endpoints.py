@@ -269,6 +269,32 @@ class TestGetUserInfoEndpoint(APIEndpointTestCase):
 		self.assertEqual(len(matches), 1)
 		self.assertEqual(matches[0].role, "Gameplan Admin")
 
+	def test_an_empty_profile_image_leaves_the_users_own_avatar_alone(self):
+		"""Nothing copies User.user_image into GP User Profile.image, so an account that
+		only ever set an avatar in Frappe has one and not the other. Overwriting
+		unconditionally blanked those users in the app while email digests still drew
+		them, so the two renderers disagreed about the same person."""
+		framework_avatar = create_member("api-avatar-framework@example.com", "Framework Avatar")
+		frappe.db.set_value("User", framework_avatar.name, "user_image", "/files/framework-avatar.png")
+		profile = frappe.db.get_value("GP User Profile", {"user": framework_avatar.name})
+		frappe.db.set_value("GP User Profile", profile, "image", "")
+
+		info = self.user_info(self.member, framework_avatar)
+
+		self.assertEqual(info.user_image, "/files/framework-avatar.png")
+
+	def test_the_profile_image_wins_when_both_are_set(self):
+		"""The profile image is the one Gameplan lets you edit, so the fallback must not
+		invert into "whatever Frappe holds beats what the user just uploaded"."""
+		both = create_member("api-avatar-both@example.com", "Both Avatars")
+		frappe.db.set_value("User", both.name, "user_image", "/files/stale-avatar.png")
+		profile = frappe.db.get_value("GP User Profile", {"user": both.name})
+		frappe.db.set_value("GP User Profile", profile, "image", "/files/profile-avatar.png")
+
+		info = self.user_info(self.member, both)
+
+		self.assertEqual(info.user_image, "/files/profile-avatar.png")
+
 	def test_counts_the_authors_own_discussions_and_comments(self):
 		author = create_member("api-counts-author@example.com", "Counts Author")
 		space = create_space("API Counts Space", create_community("API Counts Community"))
