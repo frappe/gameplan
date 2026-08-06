@@ -268,9 +268,25 @@ const previewProfile = computed(() => {
     image: values.image,
     cover_image: values.cover_image,
     cover_image_position: values.cover_image_position,
-    full_name: [values.firstName, values.lastName].filter(Boolean).join(' '),
+    full_name: previewFullName(profile, values),
   }
 })
+
+/**
+ * The name the canvas should show.
+ *
+ * The two halves live on the `User` document, which is a second request that
+ * cannot start until the profile has said who owns it, so they are empty for a
+ * moment after the card is already on screen. Empty is not a name, and a card with
+ * no name falls back to showing the email address, which is a poor thing to put
+ * where someone's name was a moment ago. So until the halves arrive the card keeps
+ * the profile's stored `full_name`: the same name, and it came with the profile.
+ */
+function previewFullName(profile: GPUserProfile, values: ProfileFieldValues) {
+  let name = [values.firstName, values.lastName].filter(Boolean).join(' ')
+  if (name) return name
+  return fieldEditor.value?.isNameLoaded ? '' : profile.full_name
+}
 
 /** The layout draft with every bound card's value filled in for display. */
 const canvasCards = computed(() => applyProfileBoundValues(cards.value, previewProfile.value))

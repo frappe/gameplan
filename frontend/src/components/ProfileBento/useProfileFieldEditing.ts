@@ -99,6 +99,10 @@ export function useProfileFieldEditing(options: {
   return computed(() => {
     if (!options.enabled()) return undefined
     return {
+      // The `User` document is a second request that cannot start until the
+      // profile has named its owner, so the halves below are empty for a moment
+      // after the profile is already on screen. This says which it is.
+      isNameLoaded: Boolean(userResource.doc),
       firstName: userResource.doc?.first_name || '',
       lastName: userResource.doc?.last_name || '',
       save,

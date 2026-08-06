@@ -2,12 +2,13 @@ import { computed, ref, type ComputedRef, type Ref } from 'vue'
 import type {
   ProfileFieldDraft,
   ProfileFieldEditor,
+  ProfileFieldStage,
   ProfileFieldUpdate,
   ProfileFieldValues,
 } from './types'
 
 type StagedField = ProfileFieldUpdate['field']
-type StagedUpdates = Partial<Record<StagedField, ProfileFieldUpdate>>
+type StagedUpdates = Partial<Record<StagedField, ProfileFieldStage>>
 
 export interface ProfileFieldDraftOptions {
   /** Writes one field to its document. Absent while the viewer may not edit. */
@@ -53,11 +54,15 @@ export function useProfileFieldDraft(options: ProfileFieldDraftOptions): {
   })
 
   /** Only the fields whose staged value differs from the stored one are written. */
-  const changedUpdates = computed(() => {
+  const changedUpdates = computed<ProfileFieldUpdate[]>(() => {
     let stored = options.stored()
-    return Object.values(staged.value).filter(
-      (update): update is ProfileFieldUpdate => Boolean(update) && isChanged(update, stored),
-    )
+    let merged = values.value
+    let updates: ProfileFieldUpdate[] = []
+    for (let update of Object.values(staged.value)) {
+      if (!update || !isChanged(update, stored)) continue
+      updates.push(toWrite(update, merged))
+    }
+    return updates
   })
 
   const isDirty = computed(() => changedUpdates.value.length > 0)
@@ -68,8 +73,8 @@ export function useProfileFieldDraft(options: ProfileFieldDraftOptions): {
     reset,
   }))
 
-  function stage(update: ProfileFieldUpdate) {
-    staged.value = { ...staged.value, [update.field]: update }
+  function stage(update: ProfileFieldStage) {
+    staged.value = { ...staged.value, [update.field]: merge(staged.value[update.field], update) }
   }
 
   function reset(field: StagedField) {
@@ -117,10 +122,37 @@ export function useProfileFieldDraft(options: ProfileFieldDraftOptions): {
   return { draft, isDirty, isSaving, save, discard }
 }
 
-function applyUpdate(values: ProfileFieldValues, update: ProfileFieldUpdate) {
+/**
+ * Folds a new stage into the one already held for that field.
+ *
+ * Only a name has anything to fold: it is staged one input at a time, so typing a
+ * first name and then a last name has to end up with both rather than only the
+ * second. Every other field is one control and replaces itself.
+ */
+function merge(
+  previous: ProfileFieldStage | undefined,
+  next: ProfileFieldStage,
+): ProfileFieldStage {
+  if (next.field !== 'full_name' || previous?.field !== 'full_name') return next
+  return { ...previous, ...next }
+}
+
+/**
+ * A staged edit as the write it will become.
+ *
+ * Only a name needs filling in. It is staged a half at a time and written as a
+ * pair, so the half nobody typed is taken from the merged values, where it is
+ * whatever the `User` document holds by the time Save is pressed.
+ */
+function toWrite(update: ProfileFieldStage, values: ProfileFieldValues): ProfileFieldUpdate {
+  if (update.field !== 'full_name') return update
+  return { field: 'full_name', firstName: values.firstName, lastName: values.lastName }
+}
+
+function applyUpdate(values: ProfileFieldValues, update: ProfileFieldStage) {
   if (update.field === 'full_name') {
-    values.firstName = update.firstName
-    values.lastName = update.lastName
+    if (update.firstName !== undefined) values.firstName = update.firstName
+    if (update.lastName !== undefined) values.lastName = update.lastName
     return
   }
   if (update.field === 'cover_image_position') {
@@ -130,9 +162,14 @@ function applyUpdate(values: ProfileFieldValues, update: ProfileFieldUpdate) {
   values[update.field] = update.value
 }
 
-function isChanged(update: ProfileFieldUpdate, stored: ProfileFieldValues) {
+function isChanged(update: ProfileFieldStage, stored: ProfileFieldValues) {
   if (update.field === 'full_name') {
-    return update.firstName !== stored.firstName || update.lastName !== stored.lastName
+    // An untyped half is not a change: it has no staged value, so there is
+    // nothing to compare and nothing of it to write.
+    return (
+      (update.firstName !== undefined && update.firstName !== stored.firstName) ||
+      (update.lastName !== undefined && update.lastName !== stored.lastName)
+    )
   }
   if (update.field === 'cover_image_position') {
     return update.value !== stored.cover_image_position
