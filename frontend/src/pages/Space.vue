@@ -18,10 +18,7 @@
         <span class="size-4 shrink-0 text-ink-gray-5 lucide-chevron-down" aria-hidden="true" />
       </button>
       <template #left>
-        <PageHeaderBackButton
-          :to="{ name: 'Discussions', params: { communityId } }"
-          label="All discussions"
-        />
+        <PageHeaderBackButton :to="{ name: 'Discussions', params: { communityId } }" />
       </template>
       <template #right>
         <Button
