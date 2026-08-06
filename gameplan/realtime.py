@@ -15,7 +15,9 @@ never announces a change that did not happen. Frappe dedupes identical (event, m
 room) triples within a request, so publishing the same event twice for one user emits once.
 """
 
+import frappe
 from frappe import realtime
+from frappe.query_builder.functions import Count
 
 # `realtime.publish_realtime` rather than the newer named helpers (`publish_to_user`,
 # `publish_to_website`): those only exist on frappe develop, and Gameplan is also tested
@@ -39,8 +41,39 @@ def notify_unread_counts_changed(users: str | list[str]):
 
 
 def notify_notification_count_changed(user: str):
-	"""Tell one user that their unread notification count moved."""
-	realtime.publish_realtime(NOTIFICATION_COUNT_CHANGED, user=user, after_commit=True)
+	"""Tell one user that their unread notification count moved, and what it now is.
+
+	The number rides along so a tab can recognise the echo of its own change: this event
+	goes to every session of the user who caused it too, and a tab already showing that
+	number has nothing left to do. Anything else is news.
+
+	Time cannot make that call. Clicking a notification marks it read in the tab and, one
+	navigation later, has the server clear the rest of that thread's notifications
+	(`GPDiscussion.track_visit`), so any window wide enough to cover the echo also swallows
+	the genuine count change arriving right behind it.
+	"""
+	realtime.publish_realtime(
+		NOTIFICATION_COUNT_CHANGED,
+		message={"count": unread_notification_count(user)},
+		user=user,
+		after_commit=True,
+	)
+
+
+def unread_notification_count(user: str) -> int:
+	"""How many unread notifications `user` has right now.
+
+	Shared with `gameplan.api.unread_notifications`, which is what the badge fetches: the
+	pushed number and the fetched one have to be counted the same way, or the client cannot
+	compare them to tell an echo from a change.
+	"""
+	Notification = frappe.qb.DocType("GP Notification")
+	rows = (
+		frappe.qb.from_(Notification)
+		.select(Count(Notification.name))
+		.where((Notification.to_user == user) & (Notification.read == 0))
+	).run()
+	return rows[0][0] if rows else 0
 
 
 def notify_users_changed():

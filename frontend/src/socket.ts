@@ -22,7 +22,8 @@ export type NewActivityEvent = {
  */
 export type GameplanSocketEvents = {
   'gameplan:unread_counts_changed': void
-  'gameplan:notification_count_changed': void
+  /** `count` is the recipient's unread notification count after the change. */
+  'gameplan:notification_count_changed': { count: number }
   'gameplan:users_changed': void
 }
 

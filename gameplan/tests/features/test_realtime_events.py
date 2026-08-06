@@ -17,6 +17,7 @@ from unittest.mock import patch
 
 import frappe
 
+from gameplan.gameplan.doctype.gp_notification.gp_notification import GPNotification
 from gameplan.realtime import (
 	NOTIFICATION_COUNT_CHANGED,
 	UNREAD_COUNTS_CHANGED,
@@ -95,9 +96,38 @@ class TestRealtimeEvents(GameplanTestCase):
 
 		self.assertEqual(events_named(publish_realtime, NOTIFICATION_COUNT_CHANGED), [])
 
-	def test_clearing_notifications_tells_that_user(self):
-		from gameplan.gameplan.doctype.gp_notification.gp_notification import GPNotification
+	def test_the_notification_event_reports_that_user_s_own_unread_count(self):
+		"""The browser tells its own echo apart from a real change by the count reported.
 
+		A tab that marks a notification read reloads the badge itself, so the echo of that
+		write reports a number the tab already shows and can be dropped. Nothing else can
+		make that call: clicking a notification also navigates, and `track_visit` clears
+		the rest of that thread milliseconds later — a change any time-based guard would
+		swallow along with the echo. So the count has to be the recipient's own, counted
+		after the change.
+		"""
+		self.notification_for(self.second_member, read=0)
+		self.notification_for(self.second_member, read=1)
+		self.notification_for(self.member, read=0)
+
+		with patch("frappe.realtime.publish_realtime") as publish_realtime:
+			self.notification_for(self.second_member, read=0)
+
+		[call] = events_named(publish_realtime, NOTIFICATION_COUNT_CHANGED)
+		self.assertEqual(call.kwargs.get("user"), self.second_member.name)
+		self.assertEqual(call.kwargs.get("message"), {"count": 2})
+
+	def test_clearing_notifications_reports_the_count_left_behind(self):
+		self.notification_for(self.member, read=0)
+		self.notification_for(self.member, read=0)
+
+		with patch("frappe.realtime.publish_realtime") as publish_realtime:
+			GPNotification.clear_notifications(user=self.member.name)
+
+		[call] = events_named(publish_realtime, NOTIFICATION_COUNT_CHANGED)
+		self.assertEqual(call.kwargs.get("message"), {"count": 0})
+
+	def test_clearing_notifications_tells_that_user(self):
 		with patch("frappe.realtime.publish_realtime") as publish_realtime:
 			GPNotification.clear_notifications(user=self.member.name)
 
@@ -116,6 +146,58 @@ class TestRealtimeEvents(GameplanTestCase):
 		[call] = events_named(publish_realtime, USERS_CHANGED)
 		self.assertEqual(call.kwargs.get("room"), frappe.realtime.get_website_room())
 		self.assertIsNone(call.kwargs.get("user"))
+
+	def test_renaming_a_user_reaches_every_session_not_just_their_own(self):
+		"""A rename changes what *other* people render: their avatars, their mention lists,
+		every byline. Those sessions hold a cached user list with no other reason to
+		refetch, so `on_user_update` has to announce the change to all of them.
+		"""
+		user = frappe.get_doc("User", self.member.name)
+
+		with patch("frappe.realtime.publish_realtime") as publish_realtime:
+			user.first_name = "Renamed"
+			user.save(ignore_permissions=True)
+
+		[call] = events_named(publish_realtime, USERS_CHANGED)
+		self.assertEqual(call.kwargs.get("room"), frappe.realtime.get_website_room())
+		self.assertIsNone(call.kwargs.get("user"))
+
+	def test_disabling_a_user_reaches_every_session_not_just_their_own(self):
+		"""A disabled member drops out of the shared user list everyone else renders from,
+		and the session that flipped the switch is usually an admin's, not theirs."""
+		user = frappe.get_doc("User", self.second_member.name)
+
+		with patch("frappe.realtime.publish_realtime") as publish_realtime:
+			user.enabled = 0
+			user.save(ignore_permissions=True)
+
+		[call] = events_named(publish_realtime, USERS_CHANGED)
+		self.assertEqual(call.kwargs.get("room"), frappe.realtime.get_website_room())
+		self.assertIsNone(call.kwargs.get("user"))
+
+	def test_re_enabling_a_user_announces_itself_too(self):
+		"""The way back matters as much as the way out: without this the restored member
+		stays missing from every open session's user list."""
+		user = frappe.get_doc("User", self.second_member.name)
+		user.enabled = 0
+		user.save(ignore_permissions=True)
+
+		with patch("frappe.realtime.publish_realtime") as publish_realtime:
+			user.enabled = 1
+			user.save(ignore_permissions=True)
+
+		[call] = events_named(publish_realtime, USERS_CHANGED)
+		self.assertEqual(call.kwargs.get("room"), frappe.realtime.get_website_room())
+
+	def test_a_user_edit_that_changes_neither_name_nor_enabled_announces_nothing(self):
+		"""`on_user_update` runs on every User save, including ones nobody else can see."""
+		user = frappe.get_doc("User", self.member.name)
+
+		with patch("frappe.realtime.publish_realtime") as publish_realtime:
+			user.bio = "Writes things down"
+			user.save(ignore_permissions=True)
+
+		self.assertEqual(events_named(publish_realtime, USERS_CHANGED), [])
 
 	def test_every_event_is_held_until_the_transaction_commits(self):
 		"""A rolled-back request must not tell the browser about a change that never landed."""

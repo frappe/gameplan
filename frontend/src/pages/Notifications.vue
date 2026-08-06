@@ -131,7 +131,7 @@
 </template>
 <script setup lang="ts">
 import { computed, onScopeDispose, ref } from 'vue'
-import { useDebounceFn, watchDebounced } from '@vueuse/core'
+import { watchDebounced } from '@vueuse/core'
 import type { RouteLocationRaw } from 'vue-router'
 import {
   PageHeader,
@@ -149,10 +149,9 @@ import { List, ListRow, ListCell } from 'frappe-ui/list'
 import ReactionFaceIcon from '@/components/ReactionFaceIcon.vue'
 import UserAvatarWithHover from '@/components/UserAvatarWithHover.vue'
 import { getCommunity } from '@/data/communities'
-import { unreadNotifications } from '@/data/notifications'
+import { onRemoteNotificationChange, unreadNotifications } from '@/data/notifications'
 import { getSpace } from '@/data/spaces'
 import { useSessionUser } from '@/data/users'
-import { onSocketEvent } from '@/socket'
 import type { GPNotification } from '@/types/doctypes'
 
 type ActiveTab = 'Unread' | 'Read'
@@ -185,15 +184,14 @@ const readNotificationList = useNotificationList(1, 'Read Notifications')
 // The rail badge and these lists read the same state, so they have to move together.
 // Without this the badge would count a notification raised (or cleared from another tab)
 // while this page is open, and the list beneath it would keep showing something else.
-// Debounced because the same event also fires for this tab's own mark-as-read.
+// `onRemoteNotificationChange` hands over only the events reporting a count this tab is not
+// already showing, so its own writes — which reload these lists themselves — do not come
+// back around as a second reload.
 onScopeDispose(
-  onSocketEvent(
-    'gameplan:notification_count_changed',
-    useDebounceFn(() => {
-      unreadNotificationList.reload()
-      readNotificationList.reload()
-    }, 500),
-  ),
+  onRemoteNotificationChange(() => {
+    unreadNotificationList.reload()
+    readNotificationList.reload()
+  }),
 )
 
 const loadedNotifications = computed<NotificationRow[]>(() => [
@@ -252,6 +250,8 @@ function markAsRead(name: string) {
   // success. Asking for it twice aborted the first request, which left the abort error
   // parked in the list's `error` ref.
   unreadNotificationList.setValue.submit({ name, read: 1 }).then(() => {
+    // The badge reload is what makes the echo of this write recognisable: once it lands,
+    // the badge holds the same count the echo reports and the echo is dropped.
     unreadNotifications.reload()
     readNotificationList.reload()
   })
