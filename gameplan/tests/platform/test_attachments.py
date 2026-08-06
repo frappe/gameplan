@@ -12,6 +12,7 @@ import os
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
+from gameplan.patches.attach_profile_bento_card_images import execute as attach_bento_card_images
 from gameplan.patches.backfill_private_file_attachments import execute as backfill_attachments
 from gameplan.utils import extract_file_references, extract_file_urls
 
@@ -408,6 +409,141 @@ class TestContentAttachments(FrappeTestCase):
 		row = self._attached_to(f.name)
 		self.assertEqual(row.attached_to_doctype, "GP Discussion")
 		self.assertEqual(str(row.attached_to_name), str(discussion_name))
+
+
+class TestBentoCardImageAttachments(FrappeTestCase):
+	"""`GP Profile Bento Card` is a child table, and Frappe's attach_files_to_document
+	only walks Attach fields declared on the parent doctype's meta. A card image was
+	therefore never attached to anything, and an unattached private File falls through
+	File.has_permission to deny: the card rendered for its owner and 403'd for everyone
+	else. GP User Profile attaches them to itself instead.
+	"""
+
+	def setUp(self):
+		self.member_a = _ensure_member("bento_member_a@example.com")
+		self.member_b = _ensure_member("bento_member_b@example.com")
+		self.profile = frappe.db.get_value("GP User Profile", {"user": self.member_a}, "name")
+		self.assertIsNotNone(self.profile, "member_a should have a profile")
+
+	def _make_private_file(self, suffix, owner):
+		file = frappe.get_doc(
+			doctype="File",
+			file_name=f"bento_{suffix}.png",
+			is_private=1,
+			content=f"content-{suffix}".encode(),
+		)
+		file.insert(ignore_permissions=True)
+		path = file.get_full_path()
+		self.addCleanup(lambda: os.path.exists(path) and os.remove(path))
+		frappe.db.set_value("File", file.name, "owner", owner, update_modified=False)
+		file.reload()
+		return file
+
+	def _attached_to(self, file_name):
+		return frappe.db.get_value(
+			"File", file_name, ["attached_to_doctype", "attached_to_name"], as_dict=True
+		)
+
+	def _set_card_image(self, image, *, as_user=None):
+		"""Give the profile one image card, saved as `as_user` (default: the owner)."""
+		frappe.set_user(as_user or self.member_a)
+		try:
+			profile = frappe.get_doc("GP User Profile", self.profile)
+			profile.set("bento_cards", [])
+			profile.append(
+				"bento_cards",
+				{"card_id": "image-card", "type": "Card", "size": "2x1", "image": image},
+			)
+			profile.save(ignore_permissions=True)
+		finally:
+			frappe.set_user("Administrator")
+
+	def test_saving_a_profile_attaches_its_card_images(self):
+		file = self._make_private_file("save", owner=self.member_a)
+
+		self._set_card_image(file.file_url)
+
+		row = self._attached_to(file.name)
+		self.assertEqual(row.attached_to_doctype, "GP User Profile")
+		self.assertEqual(str(row.attached_to_name), str(self.profile))
+
+	def test_another_member_can_read_the_image_only_once_it_is_attached(self):
+		"""The payoff. Without the attachment this file is readable by its uploader and
+		nobody else, which is exactly what the reported broken images looked like."""
+		file = self._make_private_file("perm", owner=self.member_a)
+
+		self.assertFalse(
+			frappe.has_permission("File", "read", doc=file.name, user=self.member_b),
+			"an unattached private file must not be readable by another member",
+		)
+
+		self._set_card_image(file.file_url)
+
+		self.assertTrue(
+			frappe.has_permission("File", "read", doc=file.name, user=self.member_b),
+			"an attached private file must be readable by anyone who can read the profile",
+		)
+
+	def test_an_external_image_url_is_left_alone(self):
+		"""A card image is a plain Attach Image, so it can hold an Unsplash URL that has
+		no File row behind it. Resolving it must not raise."""
+		self._set_card_image("https://images.unsplash.com/photo-1")
+
+		self.assertEqual(
+			frappe.db.get_value("GP Profile Bento Card", {"parent": self.profile}, "image"),
+			"https://images.unsplash.com/photo-1",
+		)
+
+	def test_does_not_attach_a_file_uploaded_by_someone_else(self):
+		"""Otherwise anyone could paste another member's private file URL into a card and
+		publish it to every signed-in user."""
+		file = self._make_private_file("steal", owner=self.member_b)
+
+		self._set_card_image(file.file_url)
+
+		self.assertIsNone(self._attached_to(file.name).attached_to_doctype)
+
+	def test_patch_attaches_images_saved_before_the_fix(self):
+		file = self._make_private_file("patch", owner=self.member_a)
+		self._set_card_image(file.file_url)
+		# Undo the attachment the save just made, to stand in for a row written before
+		# GP User Profile learned to attach its card images.
+		frappe.db.set_value(
+			"File",
+			file.name,
+			{"attached_to_doctype": None, "attached_to_name": None},
+			update_modified=False,
+		)
+
+		attach_bento_card_images()
+
+		row = self._attached_to(file.name)
+		self.assertEqual(row.attached_to_doctype, "GP User Profile")
+		self.assertEqual(str(row.attached_to_name), str(self.profile))
+
+	def test_patch_is_safe_to_run_twice_and_over_a_deleted_file(self):
+		file = self._make_private_file("rerun", owner=self.member_a)
+		self._set_card_image(file.file_url)
+
+		attach_bento_card_images()
+		attach_bento_card_images()
+
+		row = self._attached_to(file.name)
+		self.assertEqual(str(row.attached_to_name), str(self.profile))
+
+		# The File row can be gone while the card still points at its URL.
+		frappe.delete_doc("File", file.name, force=True, ignore_permissions=True)
+		attach_bento_card_images()
+
+	def test_patch_does_not_attach_a_file_uploaded_by_someone_else(self):
+		"""The patch has no session user to trust, so only the profile user's own
+		uploads may be attached."""
+		file = self._make_private_file("patch-steal", owner=self.member_b)
+		self._set_card_image(file.file_url)
+
+		attach_bento_card_images()
+
+		self.assertIsNone(self._attached_to(file.name).attached_to_doctype)
 
 
 def _ensure_member(email):

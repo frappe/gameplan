@@ -51,6 +51,25 @@ class GPUserProfile(HasAttachments, Document):
 
 	def on_update(self):
 		self.attach_files_in_content()
+		self.attach_bento_card_images()
+
+	def attach_bento_card_images(self, allow_session_owner=True):
+		"""Attach the images on this profile's bento cards to the profile.
+
+		`GP Profile Bento Card` is a child table, and Frappe only auto-attaches Attach
+		fields declared on the parent doctype, so a card image is never attached to
+		anything. An unattached private File falls through `File.has_permission` to
+		deny, which would leave the card visible to its uploader and 403 for everyone
+		else. Attached to the profile, it inherits the profile's read permission,
+		which every signed-in user has.
+		"""
+		# The profile's own user is the only person who uploads their card images;
+		# `self.owner` is whoever created the User row, which is usually an admin.
+		allowed_owners = {self.user}
+		if allow_session_owner:
+			allowed_owners.add(frappe.session.user)
+
+		self.attach_files_at_urls((row.image for row in self.get("bento_cards")), allowed_owners)
 
 	def generate_name(self):
 		full_name = frappe.db.get_value("User", self.user, "full_name")
