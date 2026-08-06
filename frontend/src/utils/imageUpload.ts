@@ -10,22 +10,49 @@ import { useFileUpload, type UploadOptions, type UploadedFile } from 'frappe-ui'
  * public on another.
  *
  * `private: true` does not mean "only the uploader can see it". A private File is
- * readable by anyone who can read the document it is attached to. That makes the
- * attachment the thing that matters, so every kind below is listed with the
- * document its File ends up attached to, and there is a backend test proving it.
+ * readable by anyone who can read the document it is attached to, so for those
+ * kinds the attachment is the thing that matters and each one below names the
+ * document it attaches to.
+ *
+ * A kind is only public when something has to fetch it with **no session at all**,
+ * which today means an image rendered in an email. Attachment cannot help there,
+ * because there is nobody to delegate the permission to.
  */
 export const IMAGE_UPLOAD_KINDS = {
-  /** Profile photo. Attached to GP User Profile by `set_image`. */
-  avatar: { private: true, optimize: true, extensions: ['png', 'jpg', 'jpeg'] },
-  /** Profile or space cover. Attached to GP User Profile when the profile saves. */
-  cover: { private: true, optimize: true, extensions: ['png', 'jpg', 'jpeg'] },
-  /** Bento card image. Attached to GP User Profile by `attach_bento_card_images`. */
-  bentoCard: { private: true, optimize: true, extensions: ['png', 'jpg', 'jpeg'] },
-  /** Community image. Attached to GP Team when the community saves. */
-  communityImage: { private: true, optimize: true, extensions: ['png', 'jpg', 'jpeg'] },
   /**
-   * Custom emoji. Attached to GP Custom Emoji on insert. Never optimized: the
-   * whole point of a party parrot is that it is still animated afterwards.
+   * Profile photo.
+   *
+   * Public on purpose. Do not flip this back thinking it is an oversight: an
+   * avatar is fetched by readers with no session. Every digest email renders it
+   * as `<img src>` (gameplan/templates/emails/email_digest.html), and a mail
+   * client sends no cookie, so a private file 403s and the reader gets a broken
+   * image rather than the initials fallback. The planned anonymous read tier
+   * needs the same thing.
+   */
+  avatar: { private: false, optimize: true, extensions: ['png', 'jpg', 'jpeg'] },
+  /**
+   * Profile or space cover. Private: nothing renders a cover without a session.
+   * Readable because the File is attached to GP User Profile when it saves.
+   */
+  cover: { private: true, optimize: true, extensions: ['png', 'jpg', 'jpeg'] },
+  /**
+   * Bento card image. Private: only rendered on a profile page, behind login.
+   * Readable because `attach_bento_card_images` attaches it to GP User Profile.
+   */
+  bentoCard: { private: true, optimize: true, extensions: ['png', 'jpg', 'jpeg'] },
+  /**
+   * Community image.
+   *
+   * Public for the same reason as the avatar: digest emails group unread
+   * discussions by community and render this image with no session
+   * (`email_digest.format_discussion_groups`).
+   */
+  communityImage: { private: false, optimize: true, extensions: ['png', 'jpg', 'jpeg'] },
+  /**
+   * Custom emoji. Private: emails report reactions as a count ("3 reactions"),
+   * never as images, so nothing fetches one without a session. Readable because
+   * the File attaches to GP Custom Emoji on insert. Never optimized: the whole
+   * point of a party parrot is that it is still animated afterwards.
    */
   customEmoji: {
     private: true,
