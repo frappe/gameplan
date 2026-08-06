@@ -371,9 +371,10 @@ function showAvatar(notification: NotificationRow) {
 }
 
 function confirmMarkAllAsRead() {
-  dialog.confirm({
+  dialog.danger({
     title: 'Mark all as read',
-    message: 'Are you sure you want to mark all unread notifications as read?',
+    message:
+      'This clears every unread notification at once, so nothing is left flagged for you to come back to. You cannot undo this.',
     confirmLabel: 'Mark all as read',
     onConfirm: () => markAllAsRead.submit(),
   })
