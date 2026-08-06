@@ -86,7 +86,9 @@ class TestAvatarVisibility(PublishedFileTestCase):
 		self.member = _ensure_member("avatar_owner@example.com")
 		self.other_member = _ensure_member("avatar_reader@example.com")
 		self.profile = frappe.db.get_value("GP User Profile", {"user": self.member}, "name")
+		self.other_profile = frappe.db.get_value("GP User Profile", {"user": self.other_member}, "name")
 		self.assertIsNotNone(self.profile, "the member should have a profile")
+		self.assertIsNotNone(self.other_profile, "the other member should have a profile")
 
 	def _make_private_file(self, suffix, owner=None):
 		return super()._make_private_file(suffix, owner or self.member)
@@ -212,6 +214,103 @@ class TestAvatarVisibility(PublishedFileTestCase):
 
 		self.assertEqual(self._avatar(), file.file_url)
 		self.assertEqual(self._file(file.name).is_private, 0)
+
+	def test_it_refuses_to_publish_a_file_someone_else_uploaded(self):
+		"""An avatar URL is not proof that the file belongs to the profile.
+
+		`set_image` writes whatever URL it is handed, so a user can point their avatar at
+		another user's private upload. Publishing it would hand those bytes to anyone with
+		the link, and frappe would then rewrite the document that really owns the file to
+		the new public URL. Both have to be refused.
+		"""
+		victim_file = self._make_private_file("someone-elses", owner=self.other_member)
+		victim_profile = frappe.get_doc("GP User Profile", self.other_profile)
+		victim_profile.cover_image = victim_file.file_url
+		victim_profile.save(ignore_permissions=True)
+
+		self._set_avatar(victim_file.file_url)
+
+		make_avatars_public()
+
+		row = self._file(victim_file.name)
+		self.assertEqual(row.is_private, 1, "another user's private file must stay private")
+		self.assertEqual(row.file_url, victim_file.file_url)
+		self.assertFalse(
+			file_has_permission(frappe.get_doc("File", victim_file.name), "read", user="Guest"),
+			"a refused file must still be unreadable without a session",
+		)
+		# The victim's own document must come out of the run exactly as it went in.
+		self.assertEqual(
+			frappe.db.get_value("GP User Profile", self.other_profile, "cover_image"),
+			victim_file.file_url,
+		)
+		self.assertEqual(self._avatar(), victim_file.file_url)
+
+	def test_a_refusal_does_not_stop_the_rest_of_the_run(self):
+		"""One bad reference must not cost every other profile its avatar."""
+		borrowed = self._make_private_file("borrowed", owner=self.other_member)
+		own = self._make_private_file("own")
+		frappe.db.set_value(
+			"GP User Profile", self.other_profile, "image", borrowed.file_url, update_modified=False
+		)
+		self._set_avatar(own.file_url)
+
+		make_avatars_public()
+
+		self.assertEqual(self._file(own.name).is_private, 0)
+		self.assertEqual(self._avatar(), self._file(own.name).file_url)
+
+
+class TestAvatarFileOwnership(FrappeTestCase):
+	"""`set_image` is where the bad URL gets in, so it refuses one at the door too.
+
+	The patch guard stands on its own (a URL can also be written before this shipped),
+	but rejecting the write is what stops the reference existing in the first place.
+	"""
+
+	def setUp(self):
+		self.member = _ensure_member("avatar_setter@example.com")
+		self.other_member = _ensure_member("avatar_victim@example.com")
+		self.profile = frappe.get_doc("GP User Profile", {"user": self.member})
+
+	def _make_file(self, suffix, owner, is_private=1):
+		file = frappe.get_doc(
+			doctype="File",
+			file_name=f"set_image_{suffix}.png",
+			is_private=is_private,
+			content=f"set-image-{suffix}".encode(),
+		)
+		file.insert(ignore_permissions=True)
+		frappe.db.set_value("File", file.name, "owner", owner, update_modified=False)
+		file.reload()
+		self.addCleanup(frappe.delete_doc, "File", file.name, force=True, ignore_permissions=True)
+		return file
+
+	def test_it_accepts_a_file_the_profile_user_uploaded(self):
+		file = self._make_file("own", self.member)
+
+		self.profile.set_image(file.file_url)
+
+		self.assertEqual(frappe.db.get_value("GP User Profile", self.profile.name, "image"), file.file_url)
+
+	def test_it_refuses_a_private_file_someone_else_uploaded(self):
+		file = self._make_file("theirs", self.other_member)
+
+		with self.assertRaises(frappe.PermissionError):
+			self.profile.set_image(file.file_url)
+
+	def test_it_allows_clearing_the_image(self):
+		self.profile.set_image(None)
+
+		self.assertFalse(frappe.db.get_value("GP User Profile", self.profile.name, "image"))
+
+	def test_it_accepts_a_public_file_whoever_uploaded_it(self):
+		"""A public file is readable by everyone already, so naming one exposes nothing."""
+		file = self._make_file("public", self.other_member, is_private=0)
+
+		self.profile.set_image(file.file_url)
+
+		self.assertEqual(frappe.db.get_value("GP User Profile", self.profile.name, "image"), file.file_url)
 
 
 class TestCommunityImageVisibility(PublishedFileTestCase):
@@ -355,6 +454,34 @@ class TestCommunityImageVisibility(PublishedFileTestCase):
 		self.assertEqual(self._file(cover.name).is_private, 1)
 		self.assertEqual(self._image("cover_image"), cover.file_url)
 		self.assertEqual(self._file(image.name).is_private, 0)
+
+	def test_it_refuses_to_publish_a_file_no_community_admin_uploaded(self):
+		"""Only a community admin may set the image, so only their upload is published.
+
+		A file owned by anyone else got there by a document naming a URL it has no claim
+		on, and publishing it would expose an upload that belongs to somebody else.
+		"""
+		outsider = _ensure_member("community_outsider@example.com")
+		file = self._make_private_file("outsider", owner=outsider)
+		self._set_image(file.file_url)
+
+		make_community_images_public()
+
+		self.assertEqual(self._file(file.name).is_private, 1)
+		self.assertEqual(self._image(), file.file_url)
+
+	def test_it_publishes_an_image_a_community_admin_uploaded(self):
+		"""The creator is not the only person who may set the image."""
+		admin = _ensure_member("community_admin@example.com")
+		community = create_community("Admin Uploaded Image Community", admins=[admin])
+		file = self._make_private_file("admin-uploaded", owner=admin)
+		frappe.db.set_value("GP Team", community.name, "image", file.file_url, update_modified=False)
+
+		make_community_images_public()
+
+		row = self._file(file.name)
+		self.assertEqual(row.is_private, 0)
+		self.assertEqual(frappe.db.get_value("GP Team", community.name, "image"), row.file_url)
 
 	def test_an_already_public_community_image_is_left_where_it_is(self):
 		file = self._make_public_file("already-public")

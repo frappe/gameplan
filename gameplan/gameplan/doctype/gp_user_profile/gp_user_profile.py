@@ -77,12 +77,37 @@ class GPUserProfile(HasAttachments, Document):
 
 	@frappe.whitelist(methods=["POST"])
 	def set_image(self, image):
+		self.check_image_is_ours(image)
 		self.image = image
 		self.is_image_background_removed = False
 		self.image_background_color = None
 		self.original_image = None
 		self.save()
 		notify_users_changed()
+
+	def check_image_is_ours(self, image):
+		"""Refuse an avatar URL naming a private file this profile has no claim on.
+
+		The URL comes straight from the client and nothing downstream re-checks it, so
+		without this a user can point their avatar at any `/private/files/...` path they
+		can guess or read off another page. Same rule as
+		`HasAttachments._maybe_attach_file`: the file has to have been uploaded by the
+		profile's own user, or by whoever is setting it (an admin uploading on someone's
+		behalf). Only private files are checked, because a public file is readable by
+		everyone already and naming one exposes nothing.
+		"""
+		if not image:
+			return
+
+		owners = frappe.qb.get_query(
+			"File",
+			filters={"file_url": image, "is_private": 1},
+			fields=["owner"],
+		).run(pluck="owner")
+
+		allowed_owners = {self.user, frappe.session.user}
+		if any(owner not in allowed_owners for owner in owners):
+			frappe.throw("You can only use an image you uploaded", frappe.PermissionError)
 
 	@frappe.whitelist(methods=["POST"])
 	def set_cover_image_position(self, position):

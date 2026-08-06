@@ -16,4 +16,14 @@ from gameplan.utils.file_privacy import publish_files_referenced_by
 
 
 def execute():
-	publish_files_referenced_by("GP User Profile", "image")
+	# `set_image` writes whatever URL it is handed, so an avatar can name a file the
+	# profile's user never uploaded. Publish only a file that user uploaded themselves.
+	# `profile.owner` is no help here: it is whoever created the User row, usually an
+	# admin. An avatar an admin uploaded on someone else's behalf is refused and stays
+	# private, which is the safe half of that trade.
+	publish_files_referenced_by(
+		"GP User Profile",
+		"image",
+		allowed_owners=lambda row: {row.user},
+		row_fields=["user"],
+	)

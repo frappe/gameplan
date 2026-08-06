@@ -14,6 +14,8 @@ letting `File.handle_is_private_changed` move the blob, rewrite the URL, and
 register the rollback hook that moves it back if the transaction fails.
 """
 
+from collections.abc import Callable, Iterable
+
 import frappe
 
 BATCH_SIZE = 500
@@ -21,8 +23,27 @@ PRIVATE_PREFIX = "/private/files/"
 PUBLIC_PREFIX = "/files/"
 
 
-def publish_files_referenced_by(doctype: str, fieldname: str) -> int:
+def publish_files_referenced_by(
+	doctype: str,
+	fieldname: str,
+	allowed_owners: Callable[[frappe._dict], Iterable[str]],
+	row_fields: list[str] | None = None,
+) -> int:
 	"""Make public every private file that `doctype.fieldname` points at.
+
+	A File is resolved by URL, and nothing stops a document from naming a URL whose
+	bytes belong to somebody else: `GP User Profile.set_image` writes whatever URL it
+	is given. Publishing that file would hand a stranger's private upload to anyone
+	with the link, and frappe's `File.handle_is_private_changed` would then rewrite
+	the *victim's* own document to the new public URL. So every file is checked
+	against `allowed_owners(row)` first, the same rule `HasAttachments` uses before it
+	attaches a file to a document: only a file uploaded by someone entitled to put it
+	there is published. Which owners those are depends on who may write the field, so
+	each call site passes its own rule. `row_fields` names the extra columns the rule
+	needs, on top of `name` and `fieldname`.
+
+	The cost is a file an admin uploaded on someone else's behalf: it is refused, and
+	the count is logged so an operator can tell "nothing to do" from "refused 12".
 
 	Returns the number of references repointed, which is what a patch can log.
 
@@ -32,17 +53,21 @@ def publish_files_referenced_by(doctype: str, fieldname: str) -> int:
 	bytes rather than at nothing.
 	"""
 	repointed = 0
+	refused: set[str] = set()
 	# One URL can be shared by several documents. Remember where each one moved to,
-	# because after the first move there is no private file left to look up.
-	moved: dict[str, str | None] = {}
+	# because after the first move there is no private file left to look up. Only a
+	# move is remembered: whether a file may be published depends on the row asking,
+	# so one row being refused must not decide the answer for the next one.
+	moved: dict[str, str] = {}
 
-	for row in _iter_rows_with_private_files(doctype, fieldname):
+	for row in _iter_rows_with_private_files(doctype, fieldname, row_fields):
 		old_url = row.get(fieldname)
-		if old_url not in moved:
-			moved[old_url] = _publish_files_at(old_url)
+		new_url = moved.get(old_url) or _publish_files_at(old_url, set(allowed_owners(row)), refused)
+		if not new_url:
+			continue
 
-		new_url = moved[old_url]
-		if not new_url or new_url == old_url:
+		moved[old_url] = new_url
+		if new_url == old_url:
 			continue
 
 		# Frappe repoints the referencing field itself in handle_is_private_changed,
@@ -52,18 +77,39 @@ def publish_files_referenced_by(doctype: str, fieldname: str) -> int:
 		frappe.db.set_value(doctype, row.name, fieldname, new_url, update_modified=False)
 		repointed += 1
 
+	if refused:
+		_log_refused_files(doctype, fieldname, refused)
+
 	return repointed
 
 
-def _publish_files_at(file_url: str) -> str | None:
-	"""Publish every private File at `file_url`; return the URL it moved to."""
+def _publish_files_at(file_url: str, allowed_owners: set[str], refused: set[str]) -> str | None:
+	"""Publish every private File at `file_url`; return the URL it moved to.
+
+	A file whose owner is not in `allowed_owners` is left private and recorded in
+	`refused` instead.
+	"""
 	new_url = None
-	for name in _get_private_files_at(file_url):
-		new_url = _publish_file(name) or new_url
+	for file in _get_private_files_at(file_url):
+		if file.owner not in allowed_owners:
+			refused.add(file.name)
+			continue
+		new_url = _publish_file(file.name) or new_url
 
 	# Nothing private left to move can mean an earlier run moved the blob and stopped
 	# before repointing the document. Derive where it went so that gets finished.
 	return new_url or _find_public_file_url(file_url)
+
+
+def _log_refused_files(doctype: str, fieldname: str, refused: set[str]) -> None:
+	"""Say out loud that files were skipped, so a broken image later has an answer."""
+	message = (
+		f"Refused to publish {len(refused)} private file(s) referenced by {doctype}.{fieldname}: "
+		f"each is owned by someone who is not allowed to set that field, so publishing it "
+		f"would expose an upload that belongs to somebody else. Files: {sorted(refused)}"
+	)
+	print(message)
+	frappe.log_error(title=f"Skipped publishing files for {doctype}.{fieldname}", message=message)
 
 
 def _publish_file(name: str) -> str | None:
@@ -95,31 +141,39 @@ def _find_public_file_url(private_url: str) -> str | None:
 	return None
 
 
-def _get_private_files_at(file_url: str) -> list[str]:
+def _get_private_files_at(file_url: str):
 	return frappe.qb.get_query(
 		"File",
 		filters={"file_url": file_url, "is_private": 1},
-		fields=["name"],
+		fields=["name", "owner"],
 		order_by="name asc",
-	).run(pluck="name")
+	).run(as_dict=True)
 
 
-def _iter_rows_with_private_files(doctype: str, fieldname: str):
+def _iter_rows_with_private_files(doctype: str, fieldname: str, row_fields: list[str] | None = None):
 	last_name = None
-	while rows := _get_rows_with_private_files(doctype, fieldname, last_name):
+	while rows := _get_rows_with_private_files(doctype, fieldname, row_fields, last_name):
 		yield from rows
 		last_name = rows[-1].name
 
 
-def _get_rows_with_private_files(doctype: str, fieldname: str, after: str | None = None):
+def _get_rows_with_private_files(
+	doctype: str,
+	fieldname: str,
+	row_fields: list[str] | None = None,
+	after: str | None = None,
+):
 	filters = [[fieldname, "like", f"{PRIVATE_PREFIX}%"]]
 	if after:
 		filters.append(["name", ">", after])
 
+	fields = ["name", fieldname]
+	fields += [field for field in (row_fields or []) if field not in fields]
+
 	return frappe.qb.get_query(
 		doctype,
 		filters=filters,
-		fields=["name", fieldname],
+		fields=fields,
 		order_by="name asc",
 		limit=BATCH_SIZE,
 	).run(as_dict=True)
