@@ -8,7 +8,7 @@ import {
 import { until } from '@vueuse/core'
 import { call } from 'frappe-ui'
 import { session } from './data/session'
-import { users } from './data/users'
+import { users, usersReady } from './data/users'
 import { communities, getCommunity } from './data/communities'
 import { spaces, getSpace } from './data/spaces'
 import type { Space } from './data/spaces'
@@ -741,7 +741,9 @@ router.beforeEach(async (to, from) => {
     return { name: 'Login' }
   }
 
-  if (!users.isFinished) {
+  // Wait only for the first load. Gating on `users.isFinished` would also block every
+  // navigation behind a background reload of the user list (see `usersReady`).
+  if (!usersReady.value) {
     try {
       await users.promise
     } catch (error) {

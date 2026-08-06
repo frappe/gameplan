@@ -56,7 +56,7 @@ import {
 import { confirmRestoreDefaultLayout } from '@/components/ProfileBento/restoreDefaultLayout'
 import { useProfileFieldEditing } from '@/components/ProfileBento/useProfileFieldEditing'
 import type { ProfileBentoCard } from '@/components/ProfileBento/types'
-import { useSessionUser } from '@/data/users'
+import { useSessionUser, useUser } from '@/data/users'
 import type { GPUserProfile } from '@/types/doctypes'
 
 defineOptions({
@@ -100,6 +100,22 @@ const profileNotFound = computed(() => {
   return !profile.value && (Boolean(profileResource.error) || profileResource.isFinished)
 })
 
+// The name comes from the users store (User.full_name), not GP User Profile.full_name.
+// The latter is a copy kept in sync by a server hook, so the cached profile doc keeps
+// showing the old name after a rename; the store is refreshed by the users_changed event.
+//
+// The fallback is on `isPlaceholder`, not on a falsy name: an id the store does not know
+// gets a placeholder whose full_name is the email's local part ("faris"), which is truthy.
+// That happens on every cold load before the user list arrives, and permanently for anyone
+// `get_user_info` skips (it only returns holders of a Gameplan role), so the profile doc's
+// own copy of the name is the better answer there.
+const displayName = computed(() => {
+  let user = profile.value?.user
+  let storeUser = user ? useUser(user) : null
+  if (storeUser && !storeUser.isPlaceholder) return storeUser.full_name
+  return profile.value?.full_name || storeUser?.full_name || ''
+})
+
 const profileBentoCards = ref<ProfileBentoCard[]>([])
 const profileBentoLoaded = ref(false)
 /** False once this profile has a saved layout, which is the only thing to restore. */
@@ -117,7 +133,7 @@ const fieldEditor = useProfileFieldEditing({
 const profileBreadcrumbs = computed(() => [
   { label: 'People', route: { name: 'People' } },
   {
-    label: profile.value?.full_name || 'Profile',
+    label: displayName.value || 'Profile',
     route: { name: 'PersonProfileProfile', params: { personId: personId.value } },
     isPageTitle: true,
   },
@@ -227,7 +243,7 @@ async function refreshProfile() {
 
 usePageMeta(() => {
   return {
-    title: [profile.value?.full_name || '', 'Profile'].join(' | '),
+    title: [displayName.value, 'Profile'].join(' | '),
   }
 })
 </script>

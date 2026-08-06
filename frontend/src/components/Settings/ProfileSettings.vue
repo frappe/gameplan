@@ -41,7 +41,7 @@
         </div>
 
         <div class="grid gap-6 sm:grid-cols-2">
-          <div>
+          <div ref="firstNameField">
             <TextInput
               label="First name"
               class="w-full"
@@ -50,7 +50,7 @@
               @blur="saveName"
             />
           </div>
-          <div>
+          <div ref="lastNameField">
             <TextInput
               label="Last name"
               class="w-full"
@@ -61,7 +61,7 @@
           </div>
         </div>
 
-        <div>
+        <div ref="bioField">
           <Textarea
             label="Bio"
             class="w-full"
@@ -129,6 +129,7 @@ import type { DropdownOptions } from 'frappe-ui'
 import ProfileImageEditor from '@/components/ProfileImageEditor.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import { useSessionUser } from '@/data/users'
+import { useSyncedField } from '@/utils/useSyncedField'
 import type { GPUserProfile } from '@/types/doctypes'
 
 interface ProfileMethods {
@@ -176,9 +177,28 @@ const profileChildResource = computed(() => ({
   ...profileResource,
   doc: profile.value,
 }))
-const firstName = ref('')
-const lastName = ref('')
-const bio = ref('')
+const firstNameField = useTemplateRef<HTMLElement>('firstNameField')
+const lastNameField = useTemplateRef<HTMLElement>('lastNameField')
+const bioField = useTemplateRef<HTMLElement>('bioField')
+const userNameParts = computed(() => getUserNameParts(user.value))
+// These stay in step with the document until they are focused or typed in. See
+// useSyncedField for the doc store's double publish and why neither "always copy"
+// nor "copy once" is safe.
+const firstName = useSyncedField({
+  source: () => userNameParts.value.first_name,
+  identity: () => user.value?.name,
+  target: firstNameField,
+})
+const lastName = useSyncedField({
+  source: () => userNameParts.value.last_name,
+  identity: () => user.value?.name,
+  target: lastNameField,
+})
+const bio = useSyncedField({
+  source: () => profile.value?.bio,
+  identity: () => profile.value?.name,
+  target: bioField,
+})
 const savingName = computed(() => userResource.setValue.loading)
 const savingBio = computed(() => profileResource.setValue.loading)
 const showAvatarEditor = ref(false)
@@ -223,24 +243,6 @@ watch(
     if (sessionUser.name) {
       userResource.reload()
     }
-  },
-  { immediate: true },
-)
-
-watch(
-  user,
-  (currentUser) => {
-    let nameParts = getUserNameParts(currentUser)
-    firstName.value = nameParts.first_name
-    lastName.value = nameParts.last_name
-  },
-  { immediate: true },
-)
-
-watch(
-  profile,
-  (currentProfile) => {
-    bio.value = currentProfile?.bio || ''
   },
   { immediate: true },
 )

@@ -16,7 +16,11 @@ import {
   Paragraph,
   Separator,
   Strike,
-  type Editor,
+  // `Editor` in this package is the Vue component; the tiptap instance these
+  // helpers receive is `TiptapEditor`. Importing it from here rather than
+  // @tiptap/core keeps it on the same tiptap copy frappe-ui augments, so its
+  // editor commands are visible.
+  type TiptapEditor as Editor,
   type MenuItem,
 } from 'frappe-ui/editor'
 import EmojiPicker from '@/components/EmojiPicker.vue'
@@ -37,6 +41,13 @@ const props = withDefaults(
     editable?: boolean
     submitButtonProps?: Record<string, any>
     discardButtonProps?: Record<string, any>
+    // Unset on purpose: the editor grows to its content by default, so editing an
+    // existing comment reads like editing a post body instead of a fixed box that
+    // scrolls internally. Only the new-comment composers pass a max-height — they
+    // sit at the bottom of a scrolling list, so an unbounded box would push the
+    // conversation off screen as you type. Don't reinstate a default here: a caller
+    // cannot opt out of one, since withDefaults substitutes it for an explicit
+    // `undefined`.
     maxHeight?: string
     minHeight?: string
     toolbarExpanded?: boolean
@@ -46,7 +57,7 @@ const props = withDefaults(
     // comment owner — stamped on quotes created from this comment's selection
     author?: string
   }>(),
-  { value: '', placeholder: null, editable: true, maxHeight: '50vh', toolbarExpanded: false },
+  { value: '', placeholder: null, editable: true, toolbarExpanded: false },
 )
 
 const emit = defineEmits<{
@@ -105,12 +116,19 @@ const textToolsItem: MenuItem = {
   isActive: () => props.toolbarExpanded,
 }
 
+// Both buttons open a suggestion menu, which can only be done by typing its
+// trigger char. The command owns that char: it takes it back out when the menu
+// is dismissed rather than used, and declines without touching the document
+// where no menu can open at all, such as inside code. It also focuses the
+// editor itself, so these calls need no `.focus()` of their own. Without that
+// focus the click would leave the caret on the button, and the button would
+// swallow the keystrokes meant for the menu.
 function openSlashCommands(editor: Editor) {
-  editor.chain().focus().insertContent(' /').run()
+  editor.commands.openSuggestionMenu('slashCommands')
 }
 
-function insertTrigger(editor: Editor, trigger: '@') {
-  editor.chain().focus().insertContent(` ${trigger}`).run()
+function openMentions(editor: Editor) {
+  editor.commands.openSuggestionMenu('mentionSuggestion')
 }
 
 function insertEmoji(editor: Editor, emoji: string) {
@@ -173,7 +191,9 @@ function canInsertCodeBlock(editor: Editor) {
       <QuoteReplyButton v-if="e" :editor="e" :source-id="quoteSourceId" :author="author ?? ''" />
     </template>
     <template v-if="editable" #bottom="{ editor: e }">
-      <div class="mt-2 flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+      <!-- The slot yields null until the editor mounts, and every control here
+      needs one. Same guard as the #top slot above. -->
+      <div v-if="e" class="mt-2 flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
         <div class="flex min-w-0 items-center gap-1 overflow-x-auto">
           <template v-if="toolbarExpanded">
             <EditorFixedMenu
@@ -207,7 +227,7 @@ function canInsertCodeBlock(editor: Editor) {
                 icon="lucide-at-sign"
                 label="Mention"
                 tooltip="Mention"
-                @click="insertTrigger(e, '@')"
+                @click="openMentions(e)"
               />
               <EmojiPicker @select="insertEmoji(e, $event)">
                 <template #trigger>

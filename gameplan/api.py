@@ -8,7 +8,7 @@ from frappe.query_builder.functions import Count
 from frappe.utils import split_emails, validate_email_address
 
 import gameplan
-from gameplan.realtime import notify_notification_count_changed
+from gameplan.realtime import notify_notification_count_changed, unread_notification_count
 from gameplan.roles import GAMEPLAN_ROLES
 from gameplan.utils import validate_type
 
@@ -161,12 +161,7 @@ def _invite_by_email(emails: str, role: str, projects: list = None):
 
 @frappe.whitelist()
 def unread_notifications():
-	res = frappe.db.get_all(
-		"GP Notification",
-		[{"COUNT": "name", "as": "count"}],
-		{"to_user": frappe.session.user, "read": 0},
-	)
-	return res[0].count
+	return unread_notification_count(frappe.session.user)
 
 
 # Invitation emails open in a browser navigation, so this endpoint must remain GET-reachable.

@@ -1,12 +1,13 @@
 import { ref, computed, onMounted, provide, inject, watch, type InjectionKey } from 'vue'
 import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
 import { call, useDoctype, dialog } from 'frappe-ui'
+import { useOwnedRouteWrites } from '@/composables/useOwnedRouteWrites'
 import { useDraftSync, type DraftPayload } from '@/data/useDraftSync'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { getSpace } from '@/data/spaces'
 import { useSessionUser, useUser } from '@/data/users'
 import { tags } from '@/data/tags'
-import { extractServerMessage } from '@/utils'
+import { extractServerMessage, isEditorContentEmpty } from '@/utils'
 import type { GPDiscussion } from '@/types/doctypes'
 
 const PUBLISH_DRAFT = 'gameplan.gameplan.doctype.gp_draft.gp_draft.publish_draft'
@@ -14,9 +15,7 @@ const LOADING_STATUS_DELAY_MS = 200
 
 /** Title or non-empty body — the threshold for persisting a draft at all. */
 function hasMeaningfulContent(payload: Partial<DraftPayload>): boolean {
-  const body = (payload.content ?? '').trim()
-  const title = (payload.title ?? '').trim()
-  return title.length > 0 || (body.length > 0 && body !== '<p></p>')
+  return (payload.title ?? '').trim().length > 0 || !isEditorContentEmpty(payload.content)
 }
 
 export function useNewDiscussion() {
@@ -89,19 +88,39 @@ export function useNewDiscussion() {
 
   const immediateSave = () => draft.flush()
 
+  // The composer stays mounted behind the settings overlay, where the URL is /settings/*
+  // and every composer param reads as empty. A route sync issued then would navigate off
+  // /settings and close the dialog, so the syncs below wait until the composer owns the
+  // URL again. Waiting rather than skipping matters most for the draft name: it is written
+  // to the URL exactly once, and a draft with no ?draft= link is stranded after a reload.
+  const runWhenOwned = useOwnedRouteWrites(
+    () => route.name === 'NewDiscussion' || route.name === 'LegacyNewDiscussion',
+  )
+
   function syncDraftToRoute(name: string) {
-    if (communityId.value) {
-      router.replace({
-        name: 'NewDiscussion',
-        params: { communityId: communityId.value },
-        query: draftRouteQuery(name, draftData.value.project),
-      })
-    } else {
-      router.replace({
-        name: 'LegacyNewDiscussion',
-        query: draftRouteQuery(name, draftData.value.project),
-      })
-    }
+    runWhenOwned(() => {
+      // A deferred sync could land after the composer moved on to a different draft; never
+      // point the URL at a row this composer no longer holds.
+      if (draft.serverName.value !== name) return
+      if (communityId.value) {
+        router.replace({
+          name: 'NewDiscussion',
+          params: { communityId: communityId.value },
+          query: draftRouteQuery(name, draftData.value.project),
+        })
+      } else {
+        router.replace({
+          name: 'LegacyNewDiscussion',
+          query: draftRouteQuery(name, draftData.value.project),
+        })
+      }
+    })
+  }
+
+  // Keep the URL in step with the draft's space. Only ever called through runWhenOwned,
+  // which is what makes it safe for these to rewrite the route unconditionally.
+  function syncRouteToDraft() {
+    if (!normalizeDraftRoute()) syncSelectedSpaceToRoute(draftData.value.project)
   }
 
   // A draft opened on the legacy route that already belongs to a space is moved onto the
@@ -177,6 +196,16 @@ export function useNewDiscussion() {
     try {
       await draft.flush()
 
+      // publish_draft builds the discussion from the SERVER row, so a draft that is still
+      // dirty after a flush would be published minus whatever failed to push — most often
+      // as an empty body. Stop instead of shipping a post the author didn't write.
+      if (draft.serverName.value && draft.dirty.value) {
+        publishError.value =
+          'Could not save your draft to the server. Check your connection and try again.'
+        publishing.value = false
+        return
+      }
+
       let discussionId: string | undefined
       if (draft.serverName.value) {
         isPublishingSuccessfully.value = true
@@ -242,15 +271,15 @@ export function useNewDiscussion() {
         () => draft.ready.value,
         (ready) => {
           if (!ready) return
-          if (!normalizeDraftRoute()) syncSelectedSpaceToRoute(draftData.value.project)
+          runWhenOwned(syncRouteToDraft)
         },
         { immediate: true },
       )
       watch(
         () => draftData.value.project,
-        (spaceId) => {
+        () => {
           if (!draft.ready.value) return
-          if (!normalizeDraftRoute()) syncSelectedSpaceToRoute(spaceId)
+          runWhenOwned(syncRouteToDraft)
         },
       )
     })
