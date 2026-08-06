@@ -23,9 +23,7 @@
     <EmptyStateBox v-else>
       <span class="lucide-layers h-7 w-7 text-ink-gray-4" />
       <span class="mt-2">No space to post in</span>
-      <span class="mt-1 text-p-sm text-ink-gray-5">
-        Join a space, or ask an admin to add you to one.
-      </span>
+      <span class="mt-1 text-p-sm text-ink-gray-5">{{ emptyStateHint }}</span>
     </EmptyStateBox>
     <template #actions>
       <Button
@@ -49,9 +47,12 @@ import EmptyStateBox from './EmptyStateBox.vue'
 import SpaceIcon from './SpaceIcon.vue'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { canPostInSpace, getSpace, spaces } from '@/data/spaces'
+import { useSessionUser } from '@/data/users'
+import { isGuest } from '@/utils/permissions'
 
 const show = defineModel<boolean>()
 const router = useRouter()
+const sessionUser = useSessionUser()
 const selectedSpace = ref<string | null>(null)
 
 // Grouped by community, so one searchable list answers both "which community" and
@@ -79,6 +80,14 @@ const spaceOptions = computed(() => {
 })
 
 const hasSpaceToPostIn = computed(() => (spaces.data ?? []).some(canPostInSpace))
+
+// A guest can never start a discussion, in any space, so telling them to join one is
+// advice they cannot act on. Say what is actually true for them instead.
+const emptyStateHint = computed(() =>
+  isGuest(sessionUser)
+    ? 'Guests can reply to discussions, but not start them.'
+    : 'Join a space, or ask an admin to add you to one.',
+)
 
 function optionIcon(item: unknown) {
   if (!item || typeof item !== 'object' || !('icon' in item)) return null
