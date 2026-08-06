@@ -94,6 +94,18 @@ export function useSpacePermissions(spaceId: MaybeRefOrGetter<string | undefined
   }
 }
 
+/**
+ * Can new content (a discussion, page or task) be created in this space? The backend refuses
+ * posts in an archived space, and read-only mode blocks every write, so both are filtered out
+ * before a space is ever offered as a target. Membership is not part of the test: the spaces
+ * list is already permission-scoped server-side, so whatever is still in it is a space the
+ * user may post in. This mirrors `canEditSpace` from `useSpacePermissions`, for the cases
+ * where the space is one of many rather than the one on screen.
+ */
+export function canPostInSpace(space: Space | null | undefined) {
+  return Boolean(space) && !readOnlyMode && !space?.archived_at
+}
+
 export function getSpace(name: string) {
   return spaces.data?.find((space) => space.name.toString() === name.toString()) ?? null
 }
