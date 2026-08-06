@@ -80,6 +80,12 @@
         </ListCell>
         <ListCell class="justify-end">
           <div>
+            <!-- `creation`, not `modified`: marking a notification read is a PUT that bumps
+                 `modified`, so a Monday mention opened on Thursday would claim to be "a few
+                 seconds ago" for the rest of its life. The list is still ordered by
+                 `modified` so a re-lit notification resurfaces (see useNotificationList),
+                 which can read slightly out of order here — an honest timestamp out of order
+                 beats a wrong one in order. -->
             <time
               class="block shrink-0 whitespace-nowrap text-right text-sm text-ink-gray-5"
               :datetime="notification.creation"
@@ -124,7 +130,8 @@
   </div>
 </template>
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onScopeDispose, ref } from 'vue'
+import { useDebounceFn } from '@vueuse/core'
 import type { RouteLocationRaw } from 'vue-router'
 import {
   PageHeader,
@@ -145,6 +152,7 @@ import { getCommunity } from '@/data/communities'
 import { unreadNotifications } from '@/data/notifications'
 import { getSpace } from '@/data/spaces'
 import { useSessionUser } from '@/data/users'
+import { onSocketEvent } from '@/socket'
 import type { GPNotification } from '@/types/doctypes'
 
 type ActiveTab = 'Unread' | 'Read'
@@ -161,6 +169,8 @@ const notificationFields = [
   'read',
   'type',
   'creation',
+  // Not displayed — it is what the list is ordered by.
+  'modified',
   'comment',
   'discussion',
   'poll',
@@ -171,6 +181,20 @@ const notificationFields = [
 
 const unreadNotificationList = useNotificationList(0, 'Unread Notifications')
 const readNotificationList = useNotificationList(1, 'Read Notifications')
+
+// The rail badge and these lists read the same state, so they have to move together.
+// Without this the badge would count a notification raised (or cleared from another tab)
+// while this page is open, and the list beneath it would keep showing something else.
+// Debounced because the same event also fires for this tab's own mark-as-read.
+onScopeDispose(
+  onSocketEvent(
+    'gameplan:notification_count_changed',
+    useDebounceFn(() => {
+      unreadNotificationList.reload()
+      readNotificationList.reload()
+    }, 500),
+  ),
+)
 
 const loadedNotifications = computed<NotificationRow[]>(() => [
   ...(unreadNotificationList.data ?? []),
@@ -224,9 +248,11 @@ function openNotification(notification: NotificationRow) {
 }
 
 function markAsRead(name: string) {
+  // No `unreadNotificationList.reload()` here: `setValue` already re-runs its own list on
+  // success. Asking for it twice aborted the first request, which left the abort error
+  // parked in the list's `error` ref.
   unreadNotificationList.setValue.submit({ name, read: 1 }).then(() => {
     unreadNotifications.reload()
-    unreadNotificationList.reload()
     readNotificationList.reload()
   })
 }
@@ -340,7 +366,16 @@ function useNotificationList(read: 0 | 1, cacheKey: string) {
     doctype: 'GP Notification',
     filters: () => ({ to_user: sessionUser.name, read }),
     fields: notificationFields,
-    orderBy: 'creation desc',
+    // `modified desc`, not `creation desc`: a reaction notification is a single row that
+    // gets re-lit in place, so ordering by `creation` left a freshly raised notification
+    // buried at its original position — unreachable once newer ones pushed it off the page.
+    // The row still *displays* `creation`, because `modified` also moves when the row is
+    // marked read and would date every read notification to the moment it was opened.
+    orderBy: 'modified desc',
+    // The page has no pagination control, so the window has to be wide enough to hold a
+    // realistic backlog. `useList.reload()` refetches at the current offset and appends,
+    // which makes a "load more" button unsafe on a list that mark-as-read reloads.
+    limit: 100,
     cacheKey,
   })
 }

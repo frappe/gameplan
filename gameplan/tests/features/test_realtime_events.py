@@ -32,6 +32,16 @@ def events_named(publish_realtime, event):
 
 
 class TestRealtimeEvents(GameplanTestCase):
+	def notification_for(self, user, read):
+		return frappe.get_doc(
+			doctype="GP Notification",
+			to_user=user.name,
+			from_user=self.member.name,
+			type="Reaction",
+			message="1 person reacted to your post",
+			read=read,
+		).insert(ignore_permissions=True)
+
 	def test_a_new_notification_tells_its_recipient(self):
 		with patch("frappe.realtime.publish_realtime") as publish_realtime:
 			frappe.get_doc(
@@ -44,6 +54,46 @@ class TestRealtimeEvents(GameplanTestCase):
 
 		[call] = events_named(publish_realtime, NOTIFICATION_COUNT_CHANGED)
 		self.assertEqual(call.kwargs.get("user"), self.second_member.name)
+
+	def test_re_lighting_a_cleared_notification_tells_its_recipient_again(self):
+		"""A reaction rewrites the post's existing notification row instead of adding one.
+
+		`HasReactions.notify_reactions` resets `read` on that row, so the count moves on an
+		UPDATE. An insert-only hook left the badge stale in every open tab until a reload.
+		"""
+		notification = self.notification_for(self.second_member, read=1)
+
+		with patch("frappe.realtime.publish_realtime") as publish_realtime:
+			notification.read = 0
+			notification.flags.ignore_permissions = True
+			notification.save()
+
+		[call] = events_named(publish_realtime, NOTIFICATION_COUNT_CHANGED)
+		self.assertEqual(call.kwargs.get("user"), self.second_member.name)
+
+	def test_marking_one_notification_read_tells_that_user(self):
+		"""The bell's per-row mark-as-read is a PUT, so the other tabs only hear about it
+		if updates publish too."""
+		notification = self.notification_for(self.second_member, read=0)
+
+		with patch("frappe.realtime.publish_realtime") as publish_realtime:
+			notification.read = 1
+			notification.flags.ignore_permissions = True
+			notification.save()
+
+		[call] = events_named(publish_realtime, NOTIFICATION_COUNT_CHANGED)
+		self.assertEqual(call.kwargs.get("user"), self.second_member.name)
+
+	def test_an_edit_that_leaves_the_count_alone_announces_nothing(self):
+		"""Re-lighting an already-unread row rewrites its message; the count has not moved."""
+		notification = self.notification_for(self.second_member, read=0)
+
+		with patch("frappe.realtime.publish_realtime") as publish_realtime:
+			notification.message = "2 people reacted to your post"
+			notification.flags.ignore_permissions = True
+			notification.save()
+
+		self.assertEqual(events_named(publish_realtime, NOTIFICATION_COUNT_CHANGED), [])
 
 	def test_clearing_notifications_tells_that_user(self):
 		from gameplan.gameplan.doctype.gp_notification.gp_notification import GPNotification
