@@ -63,6 +63,8 @@
             <span class="lucide-bar-chart-2 h-4 w-4 -rotate-90" />
           </Tooltip>
           <Tooltip v-if="discussion.unread">
+            <!-- Amber is deliberate and owner-requested. Known AA trade: white on amber-600 is
+                 about 3.22:1, below the 4.5:1 floor. Do not swap it for a gray Badge. -->
             <div
               class="bg-amber-600 dark:bg-dark-amber-500 text-white rounded-full h-4 min-w-4 px-1 grid place-content-center text-xs"
             >
