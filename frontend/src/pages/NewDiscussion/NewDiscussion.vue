@@ -1,5 +1,10 @@
 <template>
+  <div v-if="!hasSpaceToPostIn" class="body-container py-8">
+    <NoSpaceToPostIn class="mx-auto max-w-2xl px-6" />
+  </div>
+
   <DiscussionEditor
+    v-else
     editor-class="max-w-[unset] min-h-[calc(100vh-200px)] pb-40 prose-v3 overflow-auto px-2 -mx-2"
     :content="draftData.content"
     @change="(content: string) => (draftData.content = content)"
@@ -52,13 +57,21 @@ import { PageHeaderBase } from 'frappe-ui'
 import { EditorFixedMenu } from 'frappe-ui/editor'
 import { gameplanToolbar, mobileDiscussionToolbar } from '@/components/editor/toolbars'
 import DiscussionEditor from '@/components/editor/DiscussionEditor.vue'
+import NoSpaceToPostIn from '@/components/NoSpaceToPostIn.vue'
 import DiscussionHeader from './DiscussionHeader.vue'
 import DiscussionSpaceSelector from './DiscussionSpaceSelector.vue'
 import DiscussionBody from './DiscussionBody.vue'
 import { provideNewDiscussion } from './useNewDiscussion'
 
-const { draftData, sessionUser, author, isDraftLoading, isComposerEditable, initialize } =
-  provideNewDiscussion()
+const {
+  draftData,
+  sessionUser,
+  author,
+  isDraftLoading,
+  isComposerEditable,
+  hasSpaceToPostIn,
+  initialize,
+} = provideNewDiscussion()
 
 initialize()
 </script>

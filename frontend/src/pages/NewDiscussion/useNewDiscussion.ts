@@ -4,7 +4,7 @@ import { call, useDoctype, dialog } from 'frappe-ui'
 import { useOwnedRouteWrites } from '@/composables/useOwnedRouteWrites'
 import { useDraftSync, type DraftPayload } from '@/data/useDraftSync'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
-import { getSpace } from '@/data/spaces'
+import { canPostInSpace, getSpace } from '@/data/spaces'
 import { useSessionUser, useUser } from '@/data/users'
 import { tags } from '@/data/tags'
 import { extractServerMessage, isEditorContentEmpty } from '@/utils'
@@ -80,11 +80,19 @@ export function useNewDiscussion() {
   )
 
   // In scoped mode the picker only offers spaces from the route's community; the
-  // legacy route keeps the full grouped list.
+  // legacy route keeps the full grouped list. `canPostInSpace` is the same predicate the
+  // space dialog filters on, so the composer cannot offer a space the dialog would not:
+  // it also rules out read-only mode and guests, who may comment but never start a
+  // discussion anywhere.
   const spaceOptions = useGroupedSpaceOptions({
     filterFn: (space) =>
-      !space.archived_at && (!isScoped.value || space.team === communityId.value),
+      canPostInSpace(space) && (!isScoped.value || space.team === communityId.value),
   })
+
+  // Typing the composer URL is the one way into it without going through the dialog, so
+  // this is where a user with nothing to pick lands. An empty picker says nothing; the
+  // shared empty state says why.
+  const hasSpaceToPostIn = computed(() => spaceOptions.value.length > 0)
 
   const immediateSave = () => draft.flush()
 
@@ -308,6 +316,7 @@ export function useNewDiscussion() {
     sessionUser,
     author,
     spaceOptions,
+    hasSpaceToPostIn,
 
     // State
     isDraftLoading,
