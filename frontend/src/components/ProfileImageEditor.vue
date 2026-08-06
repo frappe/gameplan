@@ -16,7 +16,8 @@
 
 <script setup lang="ts">
 import { computed, ref, useTemplateRef } from 'vue'
-import { Button, ErrorMessage, useFileUpload } from 'frappe-ui'
+import { Button, ErrorMessage } from 'frappe-ui'
+import { useImageUpload } from '@/utils/imageUpload'
 import AvatarCropper from './AvatarCropper.vue'
 import { useSessionUser } from '@/data/users'
 
@@ -50,7 +51,7 @@ const emit = defineEmits<{
 }>()
 
 const sessionUser = useSessionUser()
-const upload = useFileUpload()
+const upload = useImageUpload()
 const cropper = useTemplateRef<InstanceType<typeof AvatarCropper>>('cropper')
 const validationError = ref('')
 const saving = computed(() => upload.state.uploading || props.profile.setImage.loading)
@@ -79,11 +80,7 @@ async function saveCroppedImage() {
     let croppedFile = new File([blob], getCroppedFileName(props.file), {
       type: 'image/jpeg',
     })
-    // Explicitly private to match ProfileImageField, which writes the same avatar
-    // through FileUploader. useFileUpload defaults to public and FileUploader
-    // defaults to private, so an avatar's visibility followed whichever screen set
-    // it last. `set_image` saves the profile, and that attaches the File.
-    let file = await upload.upload(croppedFile, { optimize: true, private: true })
+    let file = await upload.upload(croppedFile, 'avatar')
     await setUserImage(file.file_url)
     emit('done')
   } catch {

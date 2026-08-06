@@ -1,10 +1,5 @@
 <template>
-  <FileUploader
-    :fileTypes="['image/png', 'image/jpeg']"
-    :uploadArgs="{ optimize: true }"
-    :validateFile="validateFile"
-    @success="saveImage"
-  >
+  <ImageUploader kind="communityImage" @success="saveImage">
     <template #default="{ file, progress, error, uploading, openFileSelector }">
       <div class="relative size-6">
         <button
@@ -38,12 +33,13 @@
         />
       </div>
     </template>
-  </FileUploader>
+  </ImageUploader>
 </template>
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from 'vue'
-import { ErrorMessage, FileUploader, useDoctype } from 'frappe-ui'
+import { ErrorMessage, useDoctype } from 'frappe-ui'
+import ImageUploader from '@/components/ImageUploader.vue'
 import CommunityImage from '@/components/CommunityImage.vue'
 import { communities, type Community } from '@/data/communities'
 import type { GPTeam } from '@/types/doctypes'
@@ -126,13 +122,6 @@ function trackCurrentFile(file: File | null) {
   currentFile.value = file
   uploadedPreviewFile.value = null
   uploadedImageUrl.value = ''
-}
-
-function validateFile(file: File) {
-  const extension = file.name.split('.').pop()?.toLowerCase()
-  if (!extension || !['png', 'jpg', 'jpeg'].includes(extension)) {
-    return 'Only PNG and JPG images are allowed'
-  }
 }
 
 function getErrorMessage(error: unknown) {

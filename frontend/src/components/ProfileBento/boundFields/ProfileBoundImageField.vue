@@ -1,6 +1,7 @@
 <template>
   <ProfileImageField
     :label="spec.title"
+    :kind="isCover ? 'cover' : 'avatar'"
     :subject="spec.title"
     :has-image="Boolean(image)"
     @upload="stageImage"

@@ -77,6 +77,7 @@
                 />
                 <ProfileImageField
                   label="Image"
+                  kind="bentoCard"
                   :has-image="hasImage"
                   :removable="false"
                   @upload="$emit('uploadImage', $event)"

@@ -2,17 +2,7 @@
   <div class="space-y-1.5">
     <FormLabel :label="label" size="md" />
     <div class="flex flex-wrap items-center gap-2">
-      <!-- `private` is spelled out because the two components that write a profile
-           image disagree by default: FileUploader uploads private, useFileUpload
-           (in ProfileImageEditor) uploads public. Private is right as long as the
-           File ends up attached to the doc, which is what makes it readable by
-           everyone who can read that doc. -->
-      <FileUploader
-        :fileTypes="['image/png', 'image/jpeg']"
-        :uploadArgs="{ optimize: true, private: true }"
-        :validateFile="validateImageFile"
-        @success="(file: UploadedFile) => emit('upload', file.file_url)"
-      >
+      <ImageUploader :kind="kind" @success="(file) => emit('upload', file.file_url)">
         <template #default="{ progress, error, uploading, openFileSelector }">
           <!-- Relative, so the error sits under the button that caused it instead
                of pushing every control below it down the panel. -->
@@ -31,7 +21,7 @@
             />
           </div>
         </template>
-      </FileUploader>
+      </ImageUploader>
 
       <slot name="actions" />
 
@@ -49,15 +39,15 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Button, ErrorMessage, FileUploader, FormLabel } from 'frappe-ui'
-
-interface UploadedFile {
-  file_url: string
-}
+import { Button, ErrorMessage, FormLabel } from 'frappe-ui'
+import ImageUploader from '@/components/ImageUploader.vue'
+import type { ImageUploadKind } from '@/utils/imageUpload'
 
 const props = withDefaults(
   defineProps<{
     label: string
+    /** Which image this field writes, which decides how the file is stored. */
+    kind: ImageUploadKind
     /** Names the thing being uploaded, so the button can say "Change avatar". */
     subject?: string
     hasImage?: boolean
@@ -79,11 +69,4 @@ const uploadLabel = computed(() => {
   let verb = props.hasImage ? 'Change' : 'Upload'
   return props.subject ? `${verb} ${props.subject.toLowerCase()}` : verb
 })
-
-function validateImageFile(file: File) {
-  let extension = file.name.split('.').pop()?.toLowerCase()
-  if (!extension || !['png', 'jpg', 'jpeg'].includes(extension)) {
-    return 'Only PNG and JPG images are allowed'
-  }
-}
 </script>
