@@ -542,7 +542,9 @@ function copyLink() {
   copyToClipboard(url)
 }
 
-// Undefined falls through to PageHeaderBackButton's router.back() fallback.
+// Cold-load fallback only: PageHeaderBackButton walks history when there is any.
+// Undefined leaves it with nothing to recover to, which is right for a discussion
+// reached without a community in the URL.
 const backRoute = computed<RouteLocationRaw | undefined>(() => {
   const communityId = routeParam(route.params.communityId)
   const spaceId = routeParam(route.params.spaceId)
