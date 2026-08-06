@@ -6,6 +6,11 @@ type FilterFunction = (project: Space) => boolean | undefined
 export type GroupedSpaceItem = Community & { spaces: Space[] }
 type Options = { filterFn?: FilterFunction }
 
+// Spaces with no community are collected under a synthetic group that carries this as
+// both its name and title. It is not a real community, so anything reading the owning
+// community off a group has to treat it as "none".
+const UNCATEGORIZED = 'Uncategorized'
+
 export function useGroupedSpaces({ filterFn = (_p: Space) => true }: Options = {}): Ref<
   GroupedSpaceItem[]
 > {
@@ -28,8 +33,8 @@ export function useGroupedSpaces({ filterFn = (_p: Space) => true }: Options = {
     })
     if (ungrouped.length) {
       groups.push({
-        name: 'Uncategorized',
-        title: 'Uncategorized',
+        name: UNCATEGORIZED,
+        title: UNCATEGORIZED,
         spaces: ungrouped,
         is_private: 0,
         creation: '',
@@ -45,11 +50,12 @@ export function useGroupedSpaceOptions({ filterFn = (_p: Space) => true }: Optio
   return computed(() => {
     let groupedSpaces = useGroupedSpaces({ filterFn }).value
 
-    if (groupedSpaces.length === 1 && groupedSpaces[0].title == 'Uncategorized') {
+    if (groupedSpaces.length === 1 && groupedSpaces[0].title == UNCATEGORIZED) {
       return groupedSpaces[0].spaces.map((space) => ({
         label: space.title,
         value: space.name,
         icon: space.icon,
+        community: null,
       }))
     }
 
@@ -59,6 +65,9 @@ export function useGroupedSpaceOptions({ filterFn = (_p: Space) => true }: Optio
         label: space.title,
         value: space.name,
         icon: space.icon,
+        // Title of the community that owns the space, for consumers that show the pair
+        // outside the grouped list, where the group header is not there to name it.
+        community: group.name === UNCATEGORIZED ? null : group.title,
       })),
     }))
   })

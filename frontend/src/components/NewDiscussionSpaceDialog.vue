@@ -15,6 +15,9 @@
         <template #item-prefix="{ item }">
           <SpaceIcon :icon="optionIcon(item)" class="size-4 text-ink-gray-6" />
         </template>
+        <template #item-label="{ item }">
+          <span class="truncate">{{ item.spaceTitle ?? item.label }}</span>
+        </template>
       </Combobox>
     </template>
     <EmptyStateBox v-else>
@@ -54,7 +57,27 @@ const selectedSpace = ref<string | null>(null)
 // Grouped by community, so one searchable list answers both "which community" and
 // "which space" in a single step. Same source as the composer's own space picker, so a
 // space offered here is always a space the composer will accept.
-const spaceOptions = useGroupedSpaceOptions({ filterFn: canPostInSpace })
+const groupedSpaceOptions = useGroupedSpaceOptions({ filterFn: canPostInSpace })
+
+// The combobox shows nothing but an option's `label` once the list closes, and a space
+// title on its own does not say where the discussion is going. So the label carries
+// "Community / Space", matching how notifications name a location, and the rows keep
+// the plain space title in `spaceTitle` because the group header already names the
+// community. A space with no community drops the separator with it.
+const spaceOptions = computed(() => {
+  return groupedSpaceOptions.value.map((entry) => {
+    if (!('options' in entry)) return entry
+    return {
+      ...entry,
+      options: entry.options.map((option) => ({
+        ...option,
+        label: [option.community, option.label].filter(Boolean).join(' / '),
+        spaceTitle: option.label,
+      })),
+    }
+  })
+})
+
 const hasSpaceToPostIn = computed(() => (spaces.data ?? []).some(canPostInSpace))
 
 function optionIcon(item: unknown) {
