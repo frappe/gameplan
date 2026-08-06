@@ -2,9 +2,14 @@
   <div class="space-y-1.5">
     <FormLabel :label="label" size="md" />
     <div class="flex flex-wrap items-center gap-2">
+      <!-- `private` is spelled out because the two components that write a profile
+           image disagree by default: FileUploader uploads private, useFileUpload
+           (in ProfileImageEditor) uploads public. Private is right as long as the
+           File ends up attached to the doc, which is what makes it readable by
+           everyone who can read that doc. -->
       <FileUploader
         :fileTypes="['image/png', 'image/jpeg']"
-        :uploadArgs="{ optimize: true }"
+        :uploadArgs="{ optimize: true, private: true }"
         :validateFile="validateImageFile"
         @success="(file: UploadedFile) => emit('upload', file.file_url)"
       >

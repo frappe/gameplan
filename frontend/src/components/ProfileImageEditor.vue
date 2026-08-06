@@ -79,7 +79,11 @@ async function saveCroppedImage() {
     let croppedFile = new File([blob], getCroppedFileName(props.file), {
       type: 'image/jpeg',
     })
-    let file = await upload.upload(croppedFile, { optimize: true })
+    // Explicitly private to match ProfileImageField, which writes the same avatar
+    // through FileUploader. useFileUpload defaults to public and FileUploader
+    // defaults to private, so an avatar's visibility followed whichever screen set
+    // it last. `set_image` saves the profile, and that attaches the File.
+    let file = await upload.upload(croppedFile, { optimize: true, private: true })
     await setUserImage(file.file_url)
     emit('done')
   } catch {
