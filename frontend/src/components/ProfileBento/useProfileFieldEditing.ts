@@ -98,6 +98,7 @@ export function useProfileFieldEditing(options: {
   return computed(() => {
     if (!options.enabled()) return undefined
     return {
+      userId: userResource.doc?.name || options.userId(),
       firstName: userResource.doc?.first_name || '',
       lastName: userResource.doc?.last_name || '',
       save,

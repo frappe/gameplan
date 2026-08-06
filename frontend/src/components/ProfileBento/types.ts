@@ -44,6 +44,12 @@ export type ProfileFieldUpdate =
  * that knows which document each bound field actually lives on.
  */
 export interface ProfileFieldEditor {
+  /**
+   * `User` name of the profile being edited. Editors sync their inputs against
+   * it, so a switch to another profile reseeds them instead of carrying a draft
+   * across.
+   */
+  userId: string
   /** `User.first_name` / `User.last_name`, for the two-input full-name editor. */
   firstName: string
   lastName: string
