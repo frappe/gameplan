@@ -1,60 +1,38 @@
 <template>
-  <div ref="textField">
-    <Textarea
-      :label="spec.title"
-      class="w-full"
-      :data-profile-panel-field="spec.field"
-      :rows="4"
-      :maxlength="profileBioLimit"
-      :model-value="draft"
-      :placeholder="spec.emptyPrompt"
-      @update:model-value="draft = $event"
-      @blur="saveText"
-      @keydown.meta.enter.prevent="saveText"
-      @keydown.ctrl.enter.prevent="saveText"
-    >
-      <template #description>{{ charactersLeft }} characters left</template>
-    </Textarea>
-  </div>
+  <Textarea
+    :label="spec.title"
+    class="w-full"
+    :data-profile-panel-field="spec.field"
+    :rows="4"
+    :maxlength="profileBioLimit"
+    :model-value="value"
+    :placeholder="spec.emptyPrompt"
+    @update:model-value="stageText"
+  >
+    <template #description>{{ charactersLeft }} characters left</template>
+  </Textarea>
 </template>
 
 <script setup lang="ts">
-import { computed, useTemplateRef } from 'vue'
+import { computed } from 'vue'
 import { Textarea } from 'frappe-ui'
-import { useSyncedField } from '@/utils/useSyncedField'
-import { useBoundFieldSave } from './useBoundFieldSave'
-import {
-  profileBioLimit,
-  type ProfileBentoCard,
-  type ProfileBoundFieldSpec,
-  type ProfileFieldEditor,
-} from '../types'
+import { profileBioLimit, type ProfileBoundFieldSpec, type ProfileFieldDraft } from '../types'
 
 const props = defineProps<{
   spec: ProfileBoundFieldSpec
-  card: ProfileBentoCard
-  fieldEditor: ProfileFieldEditor
+  draft: ProfileFieldDraft
 }>()
 
-const { saving, commit } = useBoundFieldSave(() => props.fieldEditor)
+// Straight onto the draft, with no local copy in between. A copy would have to be
+// re-seeded from the document, and a document publish landing mid-edit is exactly
+// what used to eat what was being typed.
+const value = computed(() => props.draft.values.bio)
+const charactersLeft = computed(() => profileBioLimit - value.value.length)
 
-const textField = useTemplateRef<HTMLElement>('textField')
-
-// See useSyncedField for why the doc store publishes a document more than once
-// and why a plain watcher cannot tell a fresh value from a stale one. The card
-// id is part of the identity because one panel edits whichever card is selected.
-const draft = useSyncedField({
-  source: () => props.card.text,
-  identity: () => `${props.fieldEditor.userId}/${props.card.id}`,
-  target: textField,
-})
-const charactersLeft = computed(() => profileBioLimit - draft.value.length)
-
-function saveText() {
-  if (saving.value || draft.value === (props.card.text || '')) return
+function stageText(text: string) {
   // Bio is the only short-text bound field, so the narrowing is a formality that
   // keeps the update union honest.
   if (props.spec.field !== 'bio') return
-  commit({ field: props.spec.field, value: draft.value })
+  props.draft.stage({ field: props.spec.field, value: text })
 }
 </script>

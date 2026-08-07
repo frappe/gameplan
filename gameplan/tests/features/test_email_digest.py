@@ -13,6 +13,7 @@ from frappe.utils.jinja import get_email_from_template
 
 from gameplan.email_digest import (
 	DIGEST_PREFERENCES_REDIRECT,
+	absolute_image_url,
 	get_due_profiles,
 	get_safe_digest_redirect,
 	get_unread_discussions,
@@ -243,6 +244,38 @@ class TestEmailDigest(GameplanTestCase):
 			date(2026, 6, 30),
 		)
 
+	def test_private_images_are_dropped_so_the_digest_shows_initials(self):
+		"""A mail client fetches images with no session, so a private file answers 403. Without
+		a URL the templates take their initials branch instead of rendering a broken image."""
+		message, discussions_markup = self.render_digest_with_images(
+			"/private/files/digest-author.png", "/private/files/digest-team.png"
+		)
+
+		self.assertNotIn("/private/files/", message)
+		self.assertNotIn("gp-email-digest__avatar-image", message)
+		self.assertNotIn('class="gp-email-digest__group-image"', discussions_markup)
+		self.assertIn("gp-email-digest__avatar-fallback", message)
+		self.assertIn("gp-email-digest__group-fallback", discussions_markup)
+
+	def test_public_images_are_still_rendered_in_the_digest(self):
+		message, discussions_markup = self.render_digest_with_images(
+			"/files/digest-author.png", "/files/digest-team.png"
+		)
+
+		self.assertIn("gp-email-digest__avatar-image", message)
+		self.assertIn(get_url("/files/digest-author.png"), message)
+		self.assertIn('class="gp-email-digest__group-image"', discussions_markup)
+		self.assertIn(get_url("/files/digest-team.png"), discussions_markup)
+		self.assertNotIn("gp-email-digest__avatar-fallback", message)
+		self.assertNotIn("gp-email-digest__group-fallback", discussions_markup)
+
+	def test_absolute_image_url_keeps_public_paths_and_drops_private_ones(self):
+		self.assertEqual(absolute_image_url("/files/avatar.png"), get_url("/files/avatar.png"))
+		self.assertEqual(absolute_image_url("files/avatar.png"), get_url("/files/avatar.png"))
+		self.assertIsNone(absolute_image_url("/private/files/avatar.png"))
+		self.assertIsNone(absolute_image_url("private/files/avatar.png"))
+		self.assertIsNone(absolute_image_url(None))
+
 	def test_unread_discussions_are_sorted_by_popularity(self):
 		team = create_community("Digest Popularity Team")
 		project = create_space("Digest Popularity Space", team.name)
@@ -372,6 +405,57 @@ class TestEmailDigest(GameplanTestCase):
 			frappe.db.get_value("GP User Profile", self.profile.name, "email_digest_last_sent_on"),
 			date(2026, 6, 30),
 		)
+
+	def render_digest_with_images(self, avatar, community_image):
+		"""Render the digest for a member with one unread notification and one unread discussion,
+		both from an author whose avatar is `avatar`, in a community whose image is `community_image`.
+
+		Returns the rendered HTML and the part of it after the "Unread discussions" heading, since
+		the community image only appears there.
+		"""
+		author = create_member(f"digest-author-{frappe.generate_hash(length=8)}@example.com", "Digest Author")
+		author_profile = frappe.get_doc("GP User Profile", {"user": author.name})
+		author_profile.image = avatar
+		author_profile.save(ignore_permissions=True)
+		team = create_community("Digest Image Team")
+		frappe.db.set_value("GP Team", team.name, "image", community_image, update_modified=False)
+		project = create_space("Digest Image Space", team.name)
+		discussion = create_discussion("Digest Image Discussion", project.name)
+		frappe.db.set_value(
+			"GP Discussion",
+			discussion.name,
+			{"owner": author.name, "last_post_by": author.name},
+			update_modified=False,
+		)
+		frappe.get_doc(
+			{
+				"doctype": "GP Unread Record",
+				"user": self.user.name,
+				"discussion": discussion.name,
+				"project": project.name,
+				"is_unread": 1,
+			}
+		).insert(ignore_permissions=True)
+		frappe.get_doc(
+			{
+				"doctype": "GP Notification",
+				"to_user": self.user.name,
+				"type": "Mention",
+				"message": "You were mentioned in the digest thread.",
+				"discussion": discussion.name,
+				"project": project.name,
+				"team": team.name,
+				"from_user": author.name,
+			}
+		).insert(ignore_permissions=True)
+
+		with patch("frappe.sendmail") as sendmail:
+			send_digest_for_profile(self.profile, date(2026, 6, 30))
+
+		sendmail.assert_called_once()
+		email = sendmail.call_args.kwargs
+		message, _text_content = get_email_from_template(email["template"], email["args"])
+		return message, message.split("Unread discussions", 1)[1]
 
 	def create_unread_discussion(self, project, title, comments_count, last_post_at):
 		discussion = create_discussion(title, project)

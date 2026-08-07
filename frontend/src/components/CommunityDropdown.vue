@@ -15,11 +15,11 @@
     </template>
   </Dropdown>
 
-  <Dialog v-model:open="showMarkAllAsReadDialog" title="Mark all as read">
+  <Dialog v-model:open="showMarkAllAsReadDialog" title="Mark all as read" :icon="dangerIcon">
     <div class="space-y-3">
       <p class="text-p-base text-ink-gray-7">
-        Mark discussions in {{ community?.title || 'this community' }} as read up to and including
-        the selected date. This cannot be undone.
+        This marks every discussion in {{ communityName }} as read, across all of its spaces, up to
+        and including {{ formattedMarkReadDate }}. You cannot undo this.
       </p>
       <DatePicker
         v-model="markReadBeforeDate"
@@ -30,8 +30,17 @@
       />
     </div>
     <template #actions>
-      <div class="flex justify-end">
-        <Button variant="solid" :loading="markingAllAsRead" @click="markAllAsRead">
+      <!-- Cancel sits first in the DOM so the destructive button is never the one the dialog
+           focuses on open, while the visual order stays cancel-left, confirm-right. -->
+      <div class="flex justify-end gap-2">
+        <Button
+          variant="outline"
+          :disabled="markingAllAsRead"
+          @click="showMarkAllAsReadDialog = false"
+        >
+          Cancel
+        </Button>
+        <Button variant="solid" theme="red" :loading="markingAllAsRead" @click="markAllAsRead">
           Mark all as read
         </Button>
       </div>
@@ -84,6 +93,16 @@ const showMergeDialog = ref(false)
 // dialog opens so a page left open past midnight still offers the real current day.
 const today = ref(dayjsLocal().format('YYYY-MM-DD'))
 const markReadBeforeDate = ref(today.value)
+
+// Matches what `dialog.danger` renders, so this hand-rolled dialog reads as the same
+// kind of action as the rest of the destructive confirms.
+const dangerIcon = { name: 'lucide-alert-triangle', theme: 'red' } as const
+
+const communityName = computed(() => community.value?.title || 'this community')
+// Same format as the DatePicker below, so the sentence and the field agree.
+const formattedMarkReadDate = computed(() =>
+  dayjsLocal(markReadBeforeDate.value).format('D MMM, YYYY'),
+)
 
 const canManageCurrentCommunity = computed(() => canManageCommunity(community.value, sessionUser))
 const canCreateSpace = computed(() => !sessionUser.isGuest)

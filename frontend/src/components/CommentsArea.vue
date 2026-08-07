@@ -26,9 +26,9 @@
           class="relative mb-4 mt-15"
           role="separator"
         >
-          <div class="border-b border-blue-600"></div>
+          <div class="border-b border-outline-gray-3"></div>
           <span
-            class="absolute -top-2 left-1/2 -translate-x-1/2 bg-surface-base px-2 text-sm-medium text-ink-blue-8"
+            class="absolute -top-2 left-1/2 -translate-x-1/2 bg-surface-base px-2 text-sm-medium text-ink-gray-7"
           >
             New comments
           </span>

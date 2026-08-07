@@ -18,14 +18,11 @@
         <span class="size-4 shrink-0 text-ink-gray-5 lucide-chevron-down" aria-hidden="true" />
       </button>
       <template #left>
-        <PageHeaderBackButton
-          :to="{ name: 'Discussions', params: { communityId } }"
-          label="All discussions"
-        />
+        <PageHeaderBackButton :to="{ name: 'Discussions', params: { communityId } }" />
       </template>
       <template #right>
         <Button
-          v-if="route.name === 'SpaceDiscussions' && canEditSpace"
+          v-if="route.name === 'SpaceDiscussions' && canStartDiscussion"
           variant="ghost"
           size="md"
           icon="lucide-plus"
@@ -76,13 +73,12 @@ import {
   Button,
 } from 'frappe-ui'
 import SpaceHeaderActionsTarget from '@/components/SpaceHeaderActionsTarget.vue'
-import { useSpace, spaces as spaceList, trackSpaceVisit } from '@/data/spaces'
+import { useSpace, canPostInSpace, spaces as spaceList, trackSpaceVisit } from '@/data/spaces'
 import CommunityMenu from '@/components/CommunityMenu.vue'
 import EmptyStateBox from '@/components/EmptyStateBox.vue'
 import SpaceBreadcrumbs from '@/components/SpaceBreadcrumbs.vue'
 import SpaceIcon from '@/components/SpaceIcon.vue'
 import { useCommunity } from '@/data/communities'
-import { readOnlyMode } from '@/data/readOnlyMode'
 import { useOwnedRouteWrites } from '@/composables/useOwnedRouteWrites'
 
 const props = defineProps<{
@@ -97,7 +93,9 @@ const currentRoute = useRoute()
 const community = useCommunity(() => props.communityId)
 const menuOpen = ref(false)
 const space = useSpace(() => props.spaceId)
-const canEditSpace = computed(() => !readOnlyMode && !space.value?.archived_at)
+// The mobile twin of the "Add new" button in SpaceDiscussions, so it asks the same
+// question: who may start a discussion here, not who may edit the space.
+const canStartDiscussion = computed(() => canPostInSpace(space.value))
 
 // This page also renders behind the settings overlay, where the URL belongs to /settings/*
 // and healing it from here would navigate the app off the settings route, closing the dialog.

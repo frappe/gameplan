@@ -16,7 +16,7 @@
         <UserAvatarWithHover :user="owner.name" size="lg" />
       </UserProfileLink>
       <div class="md:flex md:items-center">
-        <UserProfileLink class="font-medium hover:text-ink-blue-8" :user="owner.name">
+        <UserProfileLink class="font-medium hover:text-ink-gray-9" :user="owner.name">
           {{ owner.full_name }}
           <span class="hidden md:inline">&nbsp;&middot;&nbsp;</span>
         </UserProfileLink>

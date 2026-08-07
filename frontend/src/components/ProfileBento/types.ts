@@ -39,22 +39,70 @@ export type ProfileFieldUpdate =
   | { field: 'full_name'; firstName: string; lastName: string }
 
 /**
- * Writes a bound card's value back to the profile. Supplied by the customize
- * page's panel, and by the profile page for its About dialog — the one place
- * that knows which document each bound field actually lives on.
+ * An edit on its way to becoming a write.
+ *
+ * The same shape as `ProfileFieldUpdate` except for the name, where either half
+ * may be left out. The halves live on the `User` document, which is only fetched
+ * once the profile has said who owns it, so for a moment after the panel is on
+ * screen they are empty because they are unknown rather than because the name is
+ * blank. An input stages only the half it edits, and the other one keeps coming
+ * from the document until someone types in it too. Staging the pair would pin the
+ * untyped half to that empty value and Save would write the real one away.
+ */
+export type ProfileFieldStage =
+  | Exclude<ProfileFieldUpdate, { field: 'full_name' }>
+  | { field: 'full_name'; firstName?: string; lastName?: string }
+
+/**
+ * Writes a bound card's value back to the profile. Supplied by the profile page
+ * for its About dialog, and by the customize page's field draft when its Save is
+ * pressed — the one place that knows which document each bound field lives on.
  */
 export interface ProfileFieldEditor {
   /**
-   * `User` name of the profile being edited. Editors sync their inputs against
-   * it, so a switch to another profile reseeds them instead of carrying a draft
-   * across.
+   * False until the `User` document has arrived. Empty name halves mean nothing
+   * until it has, so a caller showing the name has to keep the one it already
+   * has rather than treat the pair as a name that is genuinely blank.
    */
-  userId: string
+  isNameLoaded: boolean
   /** `User.first_name` / `User.last_name`, for the two-input full-name editor. */
   firstName: string
   lastName: string
   /** Rejects when the write fails; the caller keeps the draft and shows the error. */
   save: (update: ProfileFieldUpdate) => Promise<void>
+}
+
+/**
+ * Every bound field's value, in the shape the panel's controls type it in.
+ *
+ * A name is one string on the card and two inputs in the panel, so it is carried
+ * as two fields here rather than as the profile's joined `full_name`.
+ */
+export interface ProfileFieldValues {
+  bio: string
+  readme: string
+  image: string
+  cover_image: string
+  cover_image_position: number
+  firstName: string
+  lastName: string
+}
+
+/**
+ * The customize page's staged bound-field edits.
+ *
+ * The controls in the panel read `values` and write through `stage`. Nothing
+ * reaches the server until the page's Save button commits it, which is what puts
+ * a bound value on the same footing as the layout: one Save, one set of unsaved
+ * changes, one question when you leave with them.
+ */
+export interface ProfileFieldDraft {
+  /** What each field will hold once Save lands: the staged edit, or the stored value. */
+  values: ProfileFieldValues
+  /** Stages an edit in place of writing it. */
+  stage: (update: ProfileFieldStage) => void
+  /** Drops the staged edit for one field, back to what the server holds. */
+  reset: (field: ProfileFieldUpdate['field']) => void
 }
 
 /** A profile field a bento card can bind to. */

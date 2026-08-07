@@ -1,63 +1,41 @@
 <template>
   <div class="space-y-3">
-    <div ref="firstNameField">
-      <TextInput
-        label="First name"
-        class="w-full"
-        data-profile-panel-field="first_name"
-        :model-value="firstName"
-        @update:model-value="firstName = $event"
-        @blur="saveName"
-        @keydown.enter.prevent="saveName"
-      />
-    </div>
-    <div ref="lastNameField">
-      <TextInput
-        label="Last name"
-        class="w-full"
-        data-profile-panel-field="last_name"
-        :model-value="lastName"
-        @update:model-value="lastName = $event"
-        @blur="saveName"
-        @keydown.enter.prevent="saveName"
-      />
-    </div>
+    <TextInput
+      label="First name"
+      class="w-full"
+      data-profile-panel-field="first_name"
+      :model-value="draft.values.firstName"
+      @update:model-value="stageFirstName"
+    />
+    <TextInput
+      label="Last name"
+      class="w-full"
+      data-profile-panel-field="last_name"
+      :model-value="draft.values.lastName"
+      @update:model-value="stageLastName"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { useTemplateRef } from 'vue'
 import { TextInput } from 'frappe-ui'
-import { useBoundFieldSave } from './useBoundFieldSave'
-import { useSyncedField } from '@/utils/useSyncedField'
-import type { ProfileFieldEditor } from '../types'
+import type { ProfileFieldDraft } from '../types'
 
-const props = defineProps<{ fieldEditor: ProfileFieldEditor }>()
+const props = defineProps<{ draft: ProfileFieldDraft }>()
 
-const { saving, commit } = useBoundFieldSave(() => props.fieldEditor)
+// A name is two inputs and one write, and each input stages only its own half.
+// The pair comes from the `User` document, which is not fetched until the profile
+// has said who owns it, so for a moment both halves are empty because they are
+// unknown. Staging the pair would pin the half nobody typed to that empty value,
+// and Save would write the real one away.
+//
+// Both inputs read the draft directly: there is no local copy for a late document
+// publish to overwrite, and nothing is written until the page's Save.
+function stageFirstName(firstName: string) {
+  props.draft.stage({ field: 'full_name', firstName })
+}
 
-const firstNameField = useTemplateRef<HTMLElement>('firstNameField')
-const lastNameField = useTemplateRef<HTMLElement>('lastNameField')
-
-// See useSyncedField for why the doc store publishes a document more than once
-// and why a plain watcher cannot tell a fresh value from a stale one.
-const firstName = useSyncedField({
-  source: () => props.fieldEditor.firstName,
-  identity: () => props.fieldEditor.userId,
-  target: firstNameField,
-})
-const lastName = useSyncedField({
-  source: () => props.fieldEditor.lastName,
-  identity: () => props.fieldEditor.userId,
-  target: lastNameField,
-})
-
-function saveName() {
-  if (saving.value) return
-
-  let first = firstName.value.trim()
-  let last = lastName.value.trim()
-  if (first === props.fieldEditor.firstName && last === props.fieldEditor.lastName) return
-  commit({ field: 'full_name', firstName: first, lastName: last })
+function stageLastName(lastName: string) {
+  props.draft.stage({ field: 'full_name', lastName })
 }
 </script>

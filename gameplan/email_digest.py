@@ -595,9 +595,14 @@ def absolute_image_url(image):
 		return None
 	if image.startswith(("http://", "https://", "data:")):
 		return image
-	if image.startswith("/"):
-		return get_url(image)
-	return get_url(f"/{image}")
+
+	path = image if image.startswith("/") else f"/{image}"
+	# A mail client fetches images without a session, so a private file answers 403 and the
+	# reader sees a broken image. The digest templates only fall back to initials when the URL
+	# is missing, so drop the URL and let that fallback run.
+	if path.startswith("/private/"):
+		return None
+	return get_url(path)
 
 
 def initials_for(label):

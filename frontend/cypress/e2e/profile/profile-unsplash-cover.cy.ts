@@ -75,12 +75,18 @@ describe('Profile cover image from Unsplash', () => {
 
     photoTile('abc123').click()
 
-    cy.wait('@saveProfile').its('request.body.cover_image').should('equal', photoUrl)
+    // Picking closes the picker and puts the photo on the canvas, and the
+    // download is reported to Unsplash there and then. The profile field is a
+    // staged change like any other on this screen, so it waits for Save.
     cy.wait('@track').its('request.body.download_location').should('equal', downloadLocation)
+    cy.get('[data-unsplash-picker]').should('not.exist')
+    card('cover').find('img').should('have.attr', 'src', photoUrl)
+    cy.get('@saveProfile.all').should('have.length', 0)
 
+    cy.get('button[data-profile-save]').click()
+    cy.wait('@saveProfile').its('request.body.cover_image').should('equal', photoUrl)
     // The remote URL is stored as-is: nothing re-hosts the image.
     profileField(memberProfile, 'cover_image').should('equal', photoUrl)
-    cy.get('[data-unsplash-picker]').should('not.exist')
     card('cover').find('img').should('have.attr', 'src', photoUrl)
   })
 

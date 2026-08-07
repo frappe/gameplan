@@ -7,25 +7,36 @@
       <PageHeaderBackButton v-else :to="{ name: 'More' }" />
     </template>
     <template #right>
-      <Button
-        v-if="!isBulkDeleteMode"
-        v-show="drafts.data?.length"
-        variant="ghost"
-        size="md"
-        @click="isBulkDeleteMode = true"
-      >
-        Select
-      </Button>
-      <Button
-        v-else
-        variant="subtle"
-        theme="red"
-        size="md"
-        :disabled="selectedDrafts.length === 0"
-        @click="showDeleteConfirm = true"
-      >
-        Delete{{ selectedDrafts.length ? ` ${selectedDrafts.length}` : '' }}
-      </Button>
+      <div class="flex items-center gap-2">
+        <template v-if="!isBulkDeleteMode">
+          <Button
+            v-show="drafts.data?.length"
+            variant="ghost"
+            size="md"
+            @click="isBulkDeleteMode = true"
+          >
+            Select
+          </Button>
+          <Button
+            v-if="!readOnlyMode"
+            variant="subtle"
+            size="md"
+            icon="lucide-plus"
+            label="New discussion"
+            @click="showNewDiscussionDialog = true"
+          />
+        </template>
+        <Button
+          v-else
+          variant="subtle"
+          theme="red"
+          size="md"
+          :disabled="selectedDrafts.length === 0"
+          @click="showDeleteConfirm = true"
+        >
+          Delete{{ selectedDrafts.length ? ` ${selectedDrafts.length}` : '' }}
+        </Button>
+      </div>
     </template>
   </PageHeaderMobile>
   <PageHeader class="hidden sm:flex">
@@ -39,6 +50,14 @@
           @click="isBulkDeleteMode = true"
         >
           Select
+        </Button>
+        <Button
+          v-if="!readOnlyMode"
+          variant="subtle"
+          icon-left="lucide-plus"
+          @click="showNewDiscussionDialog = true"
+        >
+          New discussion
         </Button>
       </template>
       <template v-else>
@@ -134,6 +153,8 @@
     ]"
     v-model:open="showDeleteConfirm"
   />
+
+  <NewDiscussionSpaceDialog v-model="showNewDiscussionDialog" />
 </template>
 <script setup lang="ts">
 import {
@@ -150,6 +171,8 @@ import {
 } from 'frappe-ui'
 import { List, ListRow, ListCell } from 'frappe-ui/list'
 import UserAvatarWithHover from '@/components/UserAvatarWithHover.vue'
+import NewDiscussionSpaceDialog from '@/components/NewDiscussionSpaceDialog.vue'
+import { readOnlyMode } from '@/data/readOnlyMode'
 import { relativeTimestamp } from '@/utils'
 import { onMounted, ref } from 'vue'
 import type { RouteLocationRaw } from 'vue-router'
@@ -167,6 +190,7 @@ interface DeleteDraftsResponse {
 const isBulkDeleteMode = ref(false)
 const selectedDrafts = ref<string[]>([])
 const showDeleteConfirm = ref(false)
+const showNewDiscussionDialog = ref(false)
 
 // Comment drafts always open their parent discussion with the reply composer focused
 // (?draft=comment) — never the new-discussion composer, which would resurface a saved reply

@@ -17,7 +17,7 @@
                 :debounce="300"
               />
             </div>
-            <FileUploader @success="(file) => $emit('select', file.file_url)">
+            <ImageUploader kind="cover" @success="(file) => $emit('select', file.file_url)">
               <template v-slot="{ file, progress, uploading, openFileSelector }">
                 <div class="w-full text-center">
                   <Button @click="openFileSelector" :loading="uploading">
@@ -25,7 +25,7 @@
                   </Button>
                 </div>
               </template>
-            </FileUploader>
+            </ImageUploader>
           </div>
           <div class="relative mt-2 grid w-[25.5rem] gap-2 bg-surface-base lg:grid-cols-2">
             <button
@@ -49,13 +49,14 @@
 
 <script>
 // import { Popover, PopoverButton, PopoverPanel } from '@headlessui/vue'
-import { Popover, FileUploader } from 'frappe-ui'
+import { Popover } from 'frappe-ui'
+import ImageUploader from '@/components/ImageUploader.vue'
 
 export default {
   name: 'UnsplashImageBrowser',
   components: {
     Popover,
-    FileUploader,
+    ImageUploader,
   },
   emits: ['select'],
   resources: {

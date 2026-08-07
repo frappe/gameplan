@@ -87,17 +87,13 @@
           />
           <span v-else class="lucide-image size-5 text-ink-gray-4" />
         </div>
-        <FileUploader
-          :fileTypes="['image/png', 'image/jpeg', 'image/gif', 'image/webp']"
-          :uploadArgs="{ optimize: false }"
-          @success="(file: { file_url: string }) => (form.image = file.file_url)"
-        >
+        <ImageUploader kind="customEmoji" @success="(file) => (form.image = file.file_url)">
           <template #default="{ uploading, progress, openFileSelector }">
             <Button :loading="uploading" @click="openFileSelector">
               {{ uploading ? `${progress}%` : form.image ? 'Replace image' : 'Choose image' }}
             </Button>
           </template>
-        </FileUploader>
+        </ImageUploader>
       </div>
 
       <FormControl type="text" label="Title" placeholder="party-parrot" v-model="form.title" />
@@ -132,7 +128,6 @@ import {
   Button,
   Dialog,
   ErrorMessage,
-  FileUploader,
   FormControl,
   SettingsBody,
   SettingsHeader,
@@ -141,6 +136,7 @@ import {
   toast,
 } from 'frappe-ui'
 import { customEmojis, type CustomEmoji } from '@/data/customEmojis'
+import ImageUploader from '@/components/ImageUploader.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 
 const search = ref('')

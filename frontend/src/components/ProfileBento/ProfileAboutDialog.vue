@@ -17,10 +17,15 @@ import { Dialog } from 'frappe-ui'
 const ReadmeEditor = defineAsyncComponent(() => import('@/components/editor/ReadmeEditor.vue'))
 
 const props = defineProps<{
-  /** Stored `readme` HTML the editor opens on. */
+  /** `readme` HTML the editor opens on. */
   text?: string
   /** Rejects when the write fails, so the draft stays open. */
   save: (value: string) => Promise<void>
+  /**
+   * Throws this field's unsaved changes away. Left out where there are none to
+   * throw away, and closing is the whole of discarding.
+   */
+  discard?: () => void
 }>()
 
 const open = defineModel<boolean>('open', { required: true })
@@ -29,13 +34,24 @@ const draft = ref('')
 const saving = ref(false)
 
 const actions = computed(() => [
-  { label: 'Discard', onClick: () => (open.value = false) },
+  { label: 'Discard', onClick: discardAbout },
   { label: 'Save', variant: 'solid', loading: saving.value, onClick: saveAbout },
 ])
 
 watch(open, (isOpen) => {
   if (isOpen) draft.value = props.text || ''
 })
+
+/**
+ * Discard is about the field, not about this dialog: it goes back to the text the
+ * server holds, which is also what the person sees on the page behind it. Closing
+ * on the text the dialog opened with would leave an edit staged that nothing else
+ * offers to undo.
+ */
+function discardAbout() {
+  props.discard?.()
+  open.value = false
+}
 
 async function saveAbout() {
   if (saving.value) return

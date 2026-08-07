@@ -30,13 +30,17 @@
         >
           Restore default
         </Button>
+        <!-- One Save for the whole screen. The layout and the profile info the
+             bound cards show are both edited here and both stay local until this
+             is pressed, so splitting them across two buttons would only make the
+             person guess which half of their work a press commits. -->
         <Button
           variant="solid"
           icon-left="lucide-save"
-          data-profile-save-layout
+          data-profile-save
           :loading="isSaving"
           :disabled="!isDirty"
-          @click="saveProfileBentoDraft"
+          @click="saveProfileChanges"
         >
           Save
         </Button>
@@ -110,7 +114,7 @@
         :card="selectedCanvasCard"
         :text-characters-left="selectedTextCharactersLeft"
         :bound-fields="boundFieldsInDraft"
-        :field-editor="fieldEditor"
+        :field-draft="fieldDraft.draft.value"
         @add-card="addCard"
         @clear-selection="selectedCardId = ''"
         @reposition-image="beginImageReposition"
@@ -127,7 +131,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute } from 'vue-router'
 import { useEventListener, useMediaQuery } from '@vueuse/core'
 import {
@@ -146,10 +150,12 @@ import { createServerProfileBentoSource } from '@/components/ProfileBento/profil
 import { applyProfileBoundValues } from '@/components/ProfileBento/profileBoundValues'
 import { confirmRestoreDefaultLayout } from '@/components/ProfileBento/restoreDefaultLayout'
 import { useProfileBentoCustomization } from '@/components/ProfileBento/useProfileBentoCustomization'
+import { useProfileFieldDraft } from '@/components/ProfileBento/useProfileFieldDraft'
 import { useProfileFieldEditing } from '@/components/ProfileBento/useProfileFieldEditing'
 import { useSessionUser } from '@/data/users'
 import { extractServerMessage } from '@/utils'
 import { isPermissionError } from '@/utils/errorMessage'
+import type { ProfileFieldValues } from '@/components/ProfileBento/types'
 import type { GPUserProfile } from '@/types/doctypes'
 
 const sessionUser = useSessionUser()
@@ -176,8 +182,8 @@ interface ProfileMethods {
 
 /**
  * The owner's profile. The canvas resolves every bound card against it, and the
- * panel's bound-field controls write straight to it. Nothing bound is ever saved
- * onto the layout; the server resolves it again on every read.
+ * panel's bound-field controls stage their edits against it. Nothing bound is
+ * ever saved onto the layout; the server resolves it again on every read.
  */
 const profileResource = useDoc<GPUserProfile, ProfileMethods>({
   doctype: 'GP User Profile',
@@ -188,11 +194,32 @@ const profileResource = useDoc<GPUserProfile, ProfileMethods>({
   },
 })
 
-// This page is only ever your own profile, so editing is always enabled.
+// This page is only ever your own profile, so editing is always enabled. No
+// `onSaved` here: the field draft writes several fields in one go and re-reads
+// once at the end rather than after each of them.
 const fieldEditor = useProfileFieldEditing({
   profile: profileResource,
   userId: () => profileResource.doc?.user || '',
   enabled: () => true,
+})
+
+/** What the server holds for every bound field, before anything is staged. */
+const storedFieldValues = computed<ProfileFieldValues>(() => {
+  let profile = profileResource.doc
+  return {
+    bio: profile?.bio || '',
+    readme: profile?.readme || '',
+    image: profile?.image || '',
+    cover_image: profile?.cover_image || '',
+    cover_image_position: profile?.cover_image_position ?? 50,
+    firstName: fieldEditor.value?.firstName || '',
+    lastName: fieldEditor.value?.lastName || '',
+  }
+})
+
+const fieldDraft = useProfileFieldDraft({
+  editor: () => fieldEditor.value,
+  stored: () => storedFieldValues.value,
   onSaved: () => profileResource.reload(),
 })
 
@@ -207,8 +234,8 @@ const {
   selectedCard,
   selectedTextCharactersLeft,
   isDefaultLayout,
-  isDirty,
-  isSaving,
+  isDirty: isLayoutDirty,
+  isSaving: isLayoutSaving,
   isResetting,
   loadDraft,
   resetDraft,
@@ -224,8 +251,45 @@ const {
   updateSelectedText,
 } = useProfileBentoCustomization(profileBentoSource)
 
-/** The draft with every bound card's live profile value filled in for display. */
-const canvasCards = computed(() => applyProfileBoundValues(cards.value, profileResource.doc))
+/**
+ * The profile as the canvas should show it: what the server holds, with the
+ * staged edits laid over the top. Reading the document directly would show the
+ * saved value back to someone who has just typed a new one.
+ */
+const previewProfile = computed(() => {
+  let profile = profileResource.doc
+  if (!profile) return profile
+
+  let values = fieldDraft.draft.value.values
+  return {
+    ...profile,
+    bio: values.bio,
+    readme: values.readme,
+    image: values.image,
+    cover_image: values.cover_image,
+    cover_image_position: values.cover_image_position,
+    full_name: previewFullName(profile, values),
+  }
+})
+
+/**
+ * The name the canvas should show.
+ *
+ * The two halves live on the `User` document, which is a second request that
+ * cannot start until the profile has said who owns it, so they are empty for a
+ * moment after the card is already on screen. Empty is not a name, and a card with
+ * no name falls back to showing the email address, which is a poor thing to put
+ * where someone's name was a moment ago. So until the halves arrive the card keeps
+ * the profile's stored `full_name`: the same name, and it came with the profile.
+ */
+function previewFullName(profile: GPUserProfile, values: ProfileFieldValues) {
+  let name = [values.firstName, values.lastName].filter(Boolean).join(' ')
+  if (name) return name
+  return fieldEditor.value?.isNameLoaded ? '' : profile.full_name
+}
+
+/** The layout draft with every bound card's value filled in for display. */
+const canvasCards = computed(() => applyProfileBoundValues(cards.value, previewProfile.value))
 const selectedCanvasCard = computed(() => {
   return canvasCards.value.find((card) => card.id === selectedCardId.value)
 })
@@ -233,6 +297,12 @@ const isBoundCoverSelected = computed(() => {
   let card = selectedCanvasCard.value
   return card?.source === 'field' && card.field === 'cover_image'
 })
+
+// Two drafts, one set of unsaved changes: the layout and the bound values are
+// edited on the same screen and committed by the same button, so everything that
+// asks "is there anything to save" asks it once, about both.
+const isDirty = computed(() => isLayoutDirty.value || fieldDraft.isDirty.value)
+const isSaving = computed(() => isLayoutSaving.value || fieldDraft.isSaving.value)
 
 onMounted(loadProfileBentoDraft)
 useEventListener(window, 'keydown', handleCustomizeKeydown)
@@ -287,42 +357,79 @@ function handleCustomizeKeydown(event: KeyboardEvent) {
 }
 
 /**
- * Only the layout is a draft: a bound card's value is already on the profile by
- * the time the user leaves, so it is never what this asks about.
+ * Both drafts are local until Save, so a bound value typed into the panel is an
+ * unsaved change exactly as a moved card is, and leaving with either one is worth
+ * a question.
  */
 onBeforeRouteLeave(() => {
   if (!isDirty.value) return true
 
+  // Leaving by clicking a link is also a click outside the panel, and the click
+  // handler gets there first: `clearSelectionOnOutsideClick` has already closed
+  // the panel by the time this guard is asked. So fall back to the card that
+  // click closed. A button called "Keep editing" has to hand back the card that
+  // was being edited, not an empty canvas with the staged edit nowhere in sight.
+  let editedCardId = selectedCardId.value || cardClosedByOutsideClick.value
+
   return new Promise<boolean>((resolve) => {
     // `confirm`, not `danger`: this screen stays on gray, with no red anywhere.
     dialog.confirm({
-      title: 'Discard layout changes',
-      message: 'Your profile layout has unsaved changes. Leaving now discards them.',
+      title: 'Discard changes',
+      message: 'Your profile has unsaved changes. Leaving now discards them.',
       confirmLabel: 'Discard changes',
       cancelLabel: 'Keep editing',
       onConfirm: () => resolve(true),
-      onCancel: () => resolve(false),
+      onCancel: () => {
+        selectedCardId.value = editedCardId
+        resolve(false)
+      },
     })
   })
 })
 
-async function saveProfileBentoDraft() {
-  try {
-    await saveDraft()
-    toast.success('Profile layout saved')
-  } catch (error) {
-    toast.error(getSaveErrorMessage(error))
+/**
+ * The bound values first, then the layout.
+ *
+ * The layout is only written when it actually changed: saving it marks the
+ * profile as customized, which is a one-way door out of the evolving default, and
+ * editing a bio is no reason to walk through it.
+ */
+async function saveProfileChanges() {
+  // A failed field write has already said so; the staged values stay put.
+  if (!(await fieldDraft.save())) return
+
+  if (isLayoutDirty.value) {
+    try {
+      await saveDraft()
+    } catch (error) {
+      toast.error(getSaveErrorMessage(error))
+      return
+    }
   }
+  toast.success('Profile saved')
 }
 
 /**
  * Restoring discards the saved layout on the server, not just in the draft, so
- * it asks first — and it takes any unsaved edits with it, which the leave-guard
- * never gets a chance to ask about because nobody is leaving.
+ * it asks first — and it takes any unsaved layout edits with it, which the
+ * leave-guard never gets a chance to ask about because nobody is leaving. Staged
+ * profile info survives: it is not part of the layout, as the question says.
  */
 function restoreDefaultLayout() {
-  confirmRestoreDefaultLayout(resetDraft, { hasUnsavedChanges: isDirty.value })
+  confirmRestoreDefaultLayout(resetDraft, { hasUnsavedChanges: isLayoutDirty.value })
 }
+
+/**
+ * The card the last outside click closed, kept only until the leave-guard has
+ * had its turn. Clicking a link both closes the panel and starts a navigation,
+ * and the panel closes first, so this is the guard's only way back to the card
+ * that was on screen when the leave was asked for. Selecting anything drops it,
+ * so it can never outlive the click it came from by more than one navigation.
+ */
+const cardClosedByOutsideClick = ref('')
+watch(selectedCardId, (cardId) => {
+  if (cardId) cardClosedByOutsideClick.value = ''
+})
 
 function clearSelectionOnOutsideClick(event: MouseEvent) {
   if (!selectedCardId.value) return
@@ -340,6 +447,7 @@ function clearSelectionOnOutsideClick(event: MouseEvent) {
   ) {
     return
   }
+  cardClosedByOutsideClick.value = selectedCardId.value
   selectedCardId.value = ''
 }
 
@@ -349,22 +457,15 @@ function beginImageReposition() {
   repositioningCardId.value = card.id
 }
 
-async function saveImagePosition(imagePosition: number) {
-  // The bound cover's position belongs to the image, not to the layout, so it is
-  // written to the profile right away instead of into the draft row.
+function saveImagePosition(imagePosition: number) {
+  // The bound cover's position belongs to the image, not to the layout, so it
+  // goes onto the field draft rather than the draft row. Either way the drag ends
+  // in a draft, and the page's Save is what writes it.
   if (isBoundCoverSelected.value) {
-    if (!fieldEditor.value) return
-    try {
-      await fieldEditor.value.save({ field: 'cover_image_position', value: imagePosition })
-    } catch {
-      // Reported by the field editor; keep the overlay open so the drag survives.
-      return
-    }
-    repositioningCardId.value = ''
-    return
+    fieldDraft.draft.value.stage({ field: 'cover_image_position', value: imagePosition })
+  } else {
+    updateSelectedCard({ imagePosition })
   }
-
-  updateSelectedCard({ imagePosition })
   repositioningCardId.value = ''
 }
 

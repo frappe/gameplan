@@ -51,6 +51,25 @@ class GPUserProfile(HasAttachments, Document):
 
 	def on_update(self):
 		self.attach_files_in_content()
+		self.attach_bento_card_images()
+
+	def attach_bento_card_images(self, allow_session_owner=True):
+		"""Attach the images on this profile's bento cards to the profile.
+
+		`GP Profile Bento Card` is a child table, and Frappe only auto-attaches Attach
+		fields declared on the parent doctype, so a card image is never attached to
+		anything. An unattached private File falls through `File.has_permission` to
+		deny, which would leave the card visible to its uploader and 403 for everyone
+		else. Attached to the profile, it inherits the profile's read permission,
+		which every signed-in user has.
+		"""
+		# The profile's own user is the only person who uploads their card images;
+		# `self.owner` is whoever created the User row, which is usually an admin.
+		allowed_owners = {self.user}
+		if allow_session_owner:
+			allowed_owners.add(frappe.session.user)
+
+		self.attach_files_at_urls((row.image for row in self.get("bento_cards")), allowed_owners)
 
 	def generate_name(self):
 		full_name = frappe.db.get_value("User", self.user, "full_name")
@@ -58,12 +77,37 @@ class GPUserProfile(HasAttachments, Document):
 
 	@frappe.whitelist(methods=["POST"])
 	def set_image(self, image):
+		self.check_image_is_ours(image)
 		self.image = image
 		self.is_image_background_removed = False
 		self.image_background_color = None
 		self.original_image = None
 		self.save()
 		notify_users_changed()
+
+	def check_image_is_ours(self, image):
+		"""Refuse an avatar URL naming a private file this profile has no claim on.
+
+		The URL comes straight from the client and nothing downstream re-checks it, so
+		without this a user can point their avatar at any `/private/files/...` path they
+		can guess or read off another page. Same rule as
+		`HasAttachments._maybe_attach_file`: the file has to have been uploaded by the
+		profile's own user, or by whoever is setting it (an admin uploading on someone's
+		behalf). Only private files are checked, because a public file is readable by
+		everyone already and naming one exposes nothing.
+		"""
+		if not image:
+			return
+
+		owners = frappe.qb.get_query(
+			"File",
+			filters={"file_url": image, "is_private": 1},
+			fields=["owner"],
+		).run(pluck="owner")
+
+		allowed_owners = {self.user, frappe.session.user}
+		if any(owner not in allowed_owners for owner in owners):
+			frappe.throw("You can only use an image you uploaded", frappe.PermissionError)
 
 	@frappe.whitelist(methods=["POST"])
 	def set_cover_image_position(self, position):

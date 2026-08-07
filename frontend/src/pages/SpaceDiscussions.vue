@@ -9,7 +9,7 @@
       />
     </SpaceHeaderActions>
     <SpaceHeaderActions>
-      <template v-if="canEditSpace && !isBulkMoveMode">
+      <template v-if="canStartDiscussion && !isBulkMoveMode">
         <Button
           variant="solid"
           icon-left="lucide-plus"
@@ -98,6 +98,7 @@ import { showCommunitiesSettings } from '@/components/Settings'
 import {
   useSpace,
   useSpacePermissions,
+  canPostInSpace,
   spaces,
   hasJoined,
   joinSpace,
@@ -136,6 +137,9 @@ const {
   canChangeMembership,
   canMoveDiscussions,
 } = useSpacePermissions(() => props.spaceId)
+// Not `canEditSpace`: that one is about editing the space, and it says yes to a guest,
+// who cannot start a discussion anywhere.
+const canStartDiscussion = computed(() => canPostInSpace(currentSpace.value))
 const isJoined = computed(() => hasJoined(props.spaceId))
 const showSpaceAccessDialog = ref(false)
 

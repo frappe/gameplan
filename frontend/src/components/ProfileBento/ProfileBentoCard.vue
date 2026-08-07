@@ -126,12 +126,10 @@
           :style="imageStyle"
           @load="loadImageDimensions"
         />
-        <FileUploader
+        <ImageUploader
           v-else-if="interactive"
           class="block h-full"
-          :fileTypes="['image/png', 'image/jpeg']"
-          :uploadArgs="{ optimize: true }"
-          :validateFile="validateImageFile"
+          kind="bentoCard"
           @success="uploadImage"
         >
           <template #default="{ progress, uploading, error, openFileSelector }">
@@ -169,7 +167,7 @@
               </div>
             </button>
           </template>
-        </FileUploader>
+        </ImageUploader>
         <div
           v-else
           class="flex h-full flex-col items-center justify-center gap-2 p-3 text-center text-ink-gray-5 sm:p-4"
@@ -243,7 +241,8 @@ import {
   profileBentoFlowCollapsedHeight,
   profileBentoFlowImageMaxHeight,
 } from './profileBentoLayout'
-import { Button, FileUploader, Spinner } from 'frappe-ui'
+import { Button, Spinner } from 'frappe-ui'
+import ImageUploader from '@/components/ImageUploader.vue'
 import { useProfileImageReposition } from './useProfileImageReposition'
 
 const props = defineProps<{
@@ -554,13 +553,6 @@ function moveCard(event: KeyboardEvent) {
 
 function uploadImage(file: UploadedFile) {
   emit('uploadImage', file.file_url)
-}
-
-function validateImageFile(file: File) {
-  const extension = file.name.split('.').pop()?.toLowerCase()
-  if (!extension || !['png', 'jpg', 'jpeg'].includes(extension)) {
-    return 'Only PNG and JPG images are allowed'
-  }
 }
 
 function startPointerDrag(event: PointerEvent) {

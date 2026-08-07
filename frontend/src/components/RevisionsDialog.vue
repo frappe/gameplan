@@ -32,7 +32,7 @@
           </UserProfileLink>
           <div class="space-y-0.5">
             <UserProfileLink
-              class="font-medium text-ink-gray-8 hover:text-ink-blue-8"
+              class="font-medium text-ink-gray-8 hover:text-ink-gray-9"
               :user="currentAuthor.name"
             >
               {{ currentAuthor.full_name }}

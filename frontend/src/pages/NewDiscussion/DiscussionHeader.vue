@@ -1,7 +1,7 @@
 <template>
   <PageHeaderMobile class="sm:hidden" :title="mobileTitle">
     <template #left>
-      <PageHeaderBackButton :to="{ name: 'Drafts' }" />
+      <PageHeaderBackButton :to="backRoute" />
     </template>
     <template #right>
       <div class="flex items-center gap-1">
@@ -78,7 +78,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, type RouteLocationRaw } from 'vue-router'
 import {
   PageHeaderBackButton,
   PageHeaderMobile,
@@ -104,6 +104,27 @@ const {
 
 const route = useRoute()
 const mobileTitle = computed(() => (isPersisted.value ? 'Draft' : 'New Discussion'))
+
+// Cold-load fallback only: with any in-app history the back button walks it instead.
+// A composer opened straight from a link belongs to a space, so send the user there.
+// Drafts is the last resort, for a draft that has not picked a space yet.
+const backRoute = computed<RouteLocationRaw>(() => {
+  const communityId = routeParam(route.params.communityId)
+  const spaceId = routeParam(route.query.spaceId) || draftData.value.project
+
+  if (communityId && spaceId) {
+    return { name: 'SpaceDiscussions', params: { communityId, spaceId } }
+  }
+  if (communityId) {
+    return { name: 'Discussions', params: { communityId } }
+  }
+  return { name: 'Drafts' }
+})
+
+function routeParam(value: unknown): string | undefined {
+  const resolved = Array.isArray(value) ? value[0] : value
+  return typeof resolved === 'string' && resolved ? resolved : undefined
+}
 
 const discussionRoute = computed(() => {
   if (!route.params.communityId) {

@@ -74,16 +74,27 @@ def extract_file_references(html):
 	references = set()
 	for tag in soup.find_all(["img", "a", "video", "source"]):
 		raw = tag.get("src") or tag.get("href")
-		if not raw:
-			continue
-		parsed = urlparse(raw)
-		if not is_same_origin_file_url(parsed):
-			continue
-		path = unquote(parsed.path)
-		if path.startswith(("/files/", "/private/files/")):
-			fid = parse_qs(parsed.query).get("fid", [None])[0]
-			references.add(FileReference(path, fid))
+		reference = file_reference_from_url(raw)
+		if reference:
+			references.add(reference)
 	return list(references)
+
+
+def file_reference_from_url(url):
+	"""Return a FileReference for a local Frappe file URL, or None for anything else.
+
+	Also used for plain `Attach`/`Attach Image` values, which may hold an external
+	URL (an Unsplash photo, say) that has no File row behind it.
+	"""
+	if not url:
+		return None
+	parsed = urlparse(url)
+	if not is_same_origin_file_url(parsed):
+		return None
+	path = unquote(parsed.path)
+	if not path.startswith(("/files/", "/private/files/")):
+		return None
+	return FileReference(path, parse_qs(parsed.query).get("fid", [None])[0])
 
 
 def is_same_origin_file_url(parsed):

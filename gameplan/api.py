@@ -84,7 +84,10 @@ def get_user_info(user=None):
 		user_profile = user_profile_map.get(user.name)
 		if user_profile:
 			user.user_profile = user_profile.name
-			user.user_image = user_profile.image
+			# Fall back to User.user_image when the profile has none, so an account that
+			# only ever set an avatar through Frappe keeps it. Email digests already
+			# resolve avatars this way (see gameplan.email_digest.get_user_avatar_map).
+			user.user_image = user_profile.image or user.user_image
 			user.image_background_color = user_profile.image_background_color
 			user.is_image_background_removed = user_profile.is_image_background_removed
 			user.bio = user_profile.bio
