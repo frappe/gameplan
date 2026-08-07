@@ -131,7 +131,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute } from 'vue-router'
 import { useEventListener, useMediaQuery } from '@vueuse/core'
 import {
@@ -364,6 +364,13 @@ function handleCustomizeKeydown(event: KeyboardEvent) {
 onBeforeRouteLeave(() => {
   if (!isDirty.value) return true
 
+  // Leaving by clicking a link is also a click outside the panel, and the click
+  // handler gets there first: `clearSelectionOnOutsideClick` has already closed
+  // the panel by the time this guard is asked. So fall back to the card that
+  // click closed. A button called "Keep editing" has to hand back the card that
+  // was being edited, not an empty canvas with the staged edit nowhere in sight.
+  let editedCardId = selectedCardId.value || cardClosedByOutsideClick.value
+
   return new Promise<boolean>((resolve) => {
     // `confirm`, not `danger`: this screen stays on gray, with no red anywhere.
     dialog.confirm({
@@ -372,7 +379,10 @@ onBeforeRouteLeave(() => {
       confirmLabel: 'Discard changes',
       cancelLabel: 'Keep editing',
       onConfirm: () => resolve(true),
-      onCancel: () => resolve(false),
+      onCancel: () => {
+        selectedCardId.value = editedCardId
+        resolve(false)
+      },
     })
   })
 })
@@ -409,6 +419,18 @@ function restoreDefaultLayout() {
   confirmRestoreDefaultLayout(resetDraft, { hasUnsavedChanges: isLayoutDirty.value })
 }
 
+/**
+ * The card the last outside click closed, kept only until the leave-guard has
+ * had its turn. Clicking a link both closes the panel and starts a navigation,
+ * and the panel closes first, so this is the guard's only way back to the card
+ * that was on screen when the leave was asked for. Selecting anything drops it,
+ * so it can never outlive the click it came from by more than one navigation.
+ */
+const cardClosedByOutsideClick = ref('')
+watch(selectedCardId, (cardId) => {
+  if (cardId) cardClosedByOutsideClick.value = ''
+})
+
 function clearSelectionOnOutsideClick(event: MouseEvent) {
   if (!selectedCardId.value) return
   if (!(event.target instanceof HTMLElement)) return
@@ -425,6 +447,7 @@ function clearSelectionOnOutsideClick(event: MouseEvent) {
   ) {
     return
   }
+  cardClosedByOutsideClick.value = selectedCardId.value
   selectedCardId.value = ''
 }
 
