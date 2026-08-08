@@ -275,6 +275,16 @@
           again.
         </p>
       </EmptyStateBox>
+      <!-- Same catch-all as below, but for the offline/network case: name the actual reason
+           (never cached, can't reach the server) instead of the generic "something went
+           wrong", and offer a Retry rather than telling the user to refresh. -->
+      <OfflineContentFallback
+        v-else-if="discussion.isFinished && isOfflineFailure"
+        class="mx-auto mt-14 max-w-2xl px-6"
+        title="This discussion isn't available offline"
+        message="It hasn't been saved for offline use yet. Reconnect and retry to load it."
+        @retry="discussion.reload()"
+      />
       <!-- Fetch finished, but there is no doc and no recognised not-found/forbidden error.
            Fail visibly instead of rendering a blank page. Gated on isFinished so the
            pre-fetch tick (useFetch defers its first execute by a microtask) doesn't flash
@@ -339,7 +349,9 @@ import UserProfileLink from './UserProfileLink.vue'
 const RevisionsDialog = defineAsyncComponent(() => import('./RevisionsDialog.vue'))
 import SpaceBreadcrumbs from './SpaceBreadcrumbs.vue'
 import EmptyStateBox from './EmptyStateBox.vue'
+import OfflineContentFallback from './OfflineContentFallback.vue'
 import { copyToClipboard, isEditorContentEmpty } from '@/utils'
+import { isBrowserOffline, isNetworkError } from '@/offline'
 import { getSpace, useSpace } from '@/data/spaces'
 import { useCommunity } from '@/data/communities'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
@@ -390,6 +402,9 @@ function isMissingOrForbidden(error: unknown): boolean {
   const type = (error as { type?: string } | null)?.type
   return type === 'DoesNotExistError' || type === 'PermissionError'
 }
+// A network failure (offline, or the request never reached the server) deserves its own
+// copy and a Retry — telling someone offline to "refresh" is misleading busywork.
+const isOfflineFailure = computed(() => isBrowserOffline() || isNetworkError(discussion.error))
 const showTitleInMobileHeader = ref(false)
 const mobileHeaderTitle = computed(() =>
   showTitleInMobileHeader.value ? discussion.doc?.title || 'Discussion' : 'Discussion',

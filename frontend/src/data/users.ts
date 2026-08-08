@@ -72,9 +72,22 @@ function mergeUserInfo(user: UserInfo) {
   }
 }
 
+// `session.user` itself is unsafe to read here: session.ts imports this module before its
+// own `session` export is assigned (session.ts -> users.ts, at session.ts's top), so at this
+// point in the module graph `session` is still uninitialized and `.user` throws. Read the
+// cookie directly instead - it's already set by the time the app boots, same technique
+// communities.ts uses for the same reason.
+function getSessionUserFromCookie(): string | null {
+  let cookies = new URLSearchParams(document.cookie.split('; ').join('&'))
+  let user = cookies.get('user_id')
+  return user === 'Guest' ? null : user
+}
+
 export let users = useCall<UserInfo[]>({
   url: '/api/v2/method/gameplan.api.get_user_info',
-  cacheKey: 'Users',
+  // Scoped to the session user so a second account on the same browser can't read the
+  // first account's cached user list while offline (review finding from PR #516).
+  cacheKey: ['Users', getSessionUserFromCookie()],
   staleOnError: true,
   initialData: [],
   transform(data) {

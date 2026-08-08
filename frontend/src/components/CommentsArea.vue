@@ -389,7 +389,10 @@ const composerStorageKey = computed(() => {
 
 const comments = useList<GPComment>({
   doctype: 'GP Comment',
-  cacheKey: ['Comments', props.doctype, props.name],
+  // Scoped to the session user: a discussion's comments can live in a private space,
+  // so a second account on the same browser must not see them cached offline before
+  // its own permission-checked fetch resolves (review finding from PR #516).
+  cacheKey: ['Comments', props.doctype, props.name, sessionUser.name],
   staleOnError: true,
   fields: [
     'name',
@@ -426,7 +429,7 @@ const comments = useList<GPComment>({
 
 const activities = useList<GPActivity>({
   doctype: 'GP Activity',
-  cacheKey: ['Activities', props.doctype, props.name],
+  cacheKey: ['Activities', props.doctype, props.name, sessionUser.name],
   staleOnError: true,
   fields: ['name', 'user', 'action', 'data', 'creation'],
   filters: {
@@ -459,7 +462,7 @@ watch(
 
 const polls = useList<GPPoll>({
   doctype: 'GP Poll',
-  cacheKey: ['Polls', props.name],
+  cacheKey: ['Polls', props.name, sessionUser.name],
   staleOnError: true,
   fields: [
     'name',

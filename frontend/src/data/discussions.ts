@@ -4,6 +4,7 @@ import { UseListOptions } from 'frappe-ui'
 import { useDocumentVisibility } from '@vueuse/core'
 import { GPDiscussion } from '@/types/doctypes'
 import { onReconnect } from '@/data/online'
+import { session } from './session'
 
 // Reload the feed when the tab is re-activated after sitting in the background
 // for at least this long, so new posts show up without a manual refresh.
@@ -48,7 +49,10 @@ export function useDiscussions(options: UseDiscussionOptions) {
   const discussions = useList<Discussion>({
     url: '/api/v2/method/gameplan.gameplan.doctype.gp_discussion.api.get_discussions',
     doctype: 'GP Discussion',
-    cacheKey: options.cacheKey ? ['Discussions', options.cacheKey] : undefined,
+    // Scoped to the session user, once here, so every caller (feed, space discussion
+    // list, bookmarks, pinned) picks up per-user offline cache scoping automatically —
+    // review finding from PR #516.
+    cacheKey: options.cacheKey ? ['Discussions', options.cacheKey, session.user] : undefined,
     staleOnError: true,
     filters: options.filters,
     limit: options.limit || 50,

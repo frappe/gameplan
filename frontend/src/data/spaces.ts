@@ -5,6 +5,7 @@ import { getProjectUnreadCount, markSpacesAsRead } from './unreadCount'
 import { useSessionUser } from './users'
 import { canManageSpace, isGuest } from '@/utils/permissions'
 import { readOnlyMode } from './readOnlyMode'
+import { session } from './session'
 
 interface Member extends Pick<GPMember, 'user'> {}
 
@@ -42,7 +43,9 @@ export let spaces = useList<Space>({
   initialData: [],
   orderBy: 'title asc',
   limit: 99999,
-  cacheKey: 'spaces',
+  // Scoped to the session user so a second account on the same browser can't read the
+  // first account's cached space list while offline (review finding from PR #516).
+  cacheKey: ['spaces', session.user],
   staleOnError: true,
   transform(data) {
     for (let space of data) {
@@ -118,7 +121,7 @@ export function getSpace(name: string) {
 
 export const joinedSpaces = useCall<string[]>({
   url: '/api/v2/method/GP Project/get_joined_spaces',
-  cacheKey: 'joinedSpaces',
+  cacheKey: ['joinedSpaces', session.user],
   staleOnError: true,
   initialData: [],
 })

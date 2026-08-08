@@ -43,7 +43,7 @@
               <div
                 class="mt-1.5 text-sm flex gap-1 text-ink-gray-6"
                 v-if="d.project"
-                :set="(space = getSpace(d))"
+                :set="space = getSpace(d)"
               >
                 <SpaceIcon :icon="space?.icon" class="size-4 text-ink-gray-6" />
                 <div>{{ space?.title }}</div>
@@ -74,6 +74,7 @@ import SpaceIcon from '@/components/SpaceIcon.vue'
 import { GPPage } from '@/types/doctypes'
 import { useSpace } from '@/data/spaces'
 import { useSessionUser } from '@/data/users'
+import { session } from '@/data/session'
 import { canDeleteContent } from '@/utils/permissions'
 
 const props = defineProps<{
@@ -84,18 +85,20 @@ const props = defineProps<{
   readOnly?: boolean
 }>()
 
-interface Page
-  extends Pick<
-    GPPage,
-    'name' | 'creation' | 'title' | 'content' | 'slug' | 'project' | 'team' | 'modified' | 'owner'
-  > {}
+interface Page extends Pick<
+  GPPage,
+  'name' | 'creation' | 'title' | 'content' | 'slug' | 'project' | 'team' | 'modified' | 'owner'
+> {}
 
 const pages = useList<Page>({
   doctype: 'GP Page',
   fields: ['name', 'creation', 'title', 'content', 'slug', 'project', 'team', 'modified', 'owner'],
   filters: props.listOptions.filters,
   orderBy: props.listOptions.orderBy,
-  cacheKey: ['Pages', props.listOptions],
+  // Scoped to the session user: a space's pages can be private, so a second account on
+  // the same browser must not see them cached offline before its own permission-checked
+  // fetch resolves (review finding from PR #516).
+  cacheKey: ['Pages', props.listOptions, session.user],
   staleOnError: true,
 })
 
