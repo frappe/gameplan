@@ -3,6 +3,7 @@ import { useDoc, useList } from 'frappe-ui'
 import { UseListOptions } from 'frappe-ui'
 import { useDocumentVisibility } from '@vueuse/core'
 import { GPDiscussion } from '@/types/doctypes'
+import { onReconnect } from '@/data/online'
 
 // Reload the feed when the tab is re-activated after sitting in the background
 // for at least this long, so new posts show up without a manual refresh.
@@ -21,6 +22,11 @@ const reloadSignal = ref(0)
 export function reloadDiscussionLists() {
   reloadSignal.value++
 }
+
+// US5 (seamless recovery): a discussion created or updated by someone else
+// while we were offline is invisible until something refetches. Mounted feeds
+// pick this signal up via the reloadSignal watcher below.
+onReconnect(reloadDiscussionLists)
 
 export interface Discussion extends GPDiscussion {
   project_title: string

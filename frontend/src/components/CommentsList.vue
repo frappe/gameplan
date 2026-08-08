@@ -118,6 +118,7 @@ import { subscribeToDoc, useSocket, type NewActivityEvent } from '@/socket'
 import { GPActivity, GPComment } from '@/types/doctypes'
 import type { Space } from '@/data/spaces'
 import { useDraftSync } from '@/data/useDraftSync'
+import { onReconnect } from '@/data/online'
 
 interface Props {
   doctype: string
@@ -230,6 +231,14 @@ const activities = useList<Activity>({
     }))
   },
 })
+
+// US5 (seamless recovery): mirrors the same reconnect reload in CommentsArea.vue
+// (discussion comments) for this task's comment/activity timeline.
+const unregisterReconnect = onReconnect(() => {
+  comments.reload()
+  activities.reload()
+})
+onUnmounted(unregisterReconnect)
 
 // Computed
 type GroupedActivity = {
