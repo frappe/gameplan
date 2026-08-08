@@ -841,7 +841,13 @@ export default router
 
 async function ensureCommunityDataLoaded() {
   await Promise.all([waitForResource(communities), waitForResource(spaces)])
-  if (isBrowserOffline()) {
+  // Right after a reload, navigator.onLine can briefly lag the browser's actual
+  // network state, so isBrowserOffline() alone can miss a reload that's genuinely
+  // offline. A resource that already finished with a network error is unambiguous
+  // proof the fresh fetch can't be trusted, so treat either signal the same way:
+  // give the IndexedDB cache a bounded chance to hydrate before the home route is
+  // decided from (possibly still-empty) `communities`/`spaces` data.
+  if (isNetworkUnreliable()) {
     await Promise.all([waitForOfflineCachedData(communities), waitForOfflineCachedData(spaces)])
   }
 }
@@ -884,6 +890,10 @@ function hasHydratedData(resource: ResourceLike) {
 }
 
 function isRouteValidationUnavailable() {
+  return isNetworkUnreliable()
+}
+
+function isNetworkUnreliable() {
   return isBrowserOffline() || hasNetworkError(communities) || hasNetworkError(spaces)
 }
 
