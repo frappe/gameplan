@@ -23,6 +23,9 @@ import { isSessionUser, session } from './data/session'
 import { initSocket } from './socket'
 import resetDataMixin from './utils/resetDataMixin'
 import { setupOfflineSupport } from './offline'
+// Side-effect import: registers this module's own session/reconnect watchers (see
+// data/offlinePrefetch.ts), same pattern as data/discussions.ts and data/unreadCount.ts.
+import './data/offlinePrefetch'
 
 let globalComponents = {
   Button,
