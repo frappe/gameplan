@@ -8,6 +8,7 @@ import frappe
 from frappe.model.document import Document
 from frappe.model.naming import append_number_if_name_exists
 from frappe.query_builder.functions import Count
+from frappe.utils import cint
 from frappe.website.utils import cleanup_page_name
 
 from gameplan.api import get_user_info, require_admin
@@ -208,7 +209,7 @@ def on_user_update(doc, method=None):
 @frappe.whitelist()
 def get_list(
 	fields=None,
-	filters: dict | None = None,
+	filters=None,
 	order_by=None,
 	start=0,
 	limit=20,
@@ -216,15 +217,24 @@ def get_list(
 	parent=None,
 	debug=False,
 ):
+	# `fields`/`filters` are typed `dict | list` shapes on the query builder, and
+	# `start`/`limit` are ints, but a GET caller (frappe-ui's `useList`, which this
+	# endpoint is built for) can only send everything JSON-encoded/stringified in the
+	# query string. `fields`/`filters` left type-hinted `dict | None` had Frappe's own
+	# request-typing coercion reject the string before this function body ever ran, so
+	# they're parsed by hand instead - the same way the builtin `/api/v2/document/<doctype>`
+	# list route and `gp_discussion.api.get_discussions` do it for the same reason.
+	# `start`/`limit` get the same treatment via `cint` - the query builder requires an
+	# actual int and rejects `"3"` outright.
 	doctype = "GP User Profile"
 	check_permissions(doctype, parent)
 	query = frappe.qb.get_query(
 		table=doctype,
-		fields=fields,
-		filters=filters,
+		fields=frappe.parse_json(fields) if fields else None,
+		filters=frappe.parse_json(filters) if filters else None,
 		order_by=order_by,
-		offset=start,
-		limit=limit,
+		offset=cint(start),
+		limit=cint(limit),
 		group_by=group_by,
 	)
 	data = query.run(as_dict=True, debug=debug)
