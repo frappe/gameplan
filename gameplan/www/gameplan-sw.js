@@ -1,5 +1,5 @@
 const CACHE_PREFIX = "gameplan-readonly-offline";
-const CACHE_VERSION = "v6";
+const CACHE_VERSION = "v7";
 const SHELL_CACHE = `${CACHE_PREFIX}:${CACHE_VERSION}:shell`;
 const ASSET_CACHE = `${CACHE_PREFIX}:${CACHE_VERSION}:assets`;
 // Avatars and other runtime images are user-visible content fetched by URL, with no
@@ -78,6 +78,21 @@ self.addEventListener("message", (event) => {
         .then(() => port?.postMessage({ ok: true }))
         .catch(() => port?.postMessage({ ok: false })),
     );
+    return;
+  }
+
+  if (type === "WARM_SHELL_CACHE") {
+    // Round-4 finding: guardAgainstUserSwitch (offline.ts) clears SHELL_CACHE after a
+    // detected user switch, and nothing repopulates it until the *next* successful
+    // online navigation to /g. If the browser goes offline before that happens, even a
+    // reload of the page already open fails with net::ERR_FAILED instead of the offline
+    // UI. offline.ts posts this message right after that clear resolves, at a moment
+    // it's known to be online (a user just logged in) - warmShellCache() is already
+    // best-effort per-URL, so this is harmless if connectivity drops mid-fetch.
+    // Deliberately a separate message from CLEAR_USER_CACHES (not folded into
+    // clearUserCaches itself): a plain logout also clears via CLEAR_USER_CACHES, and an
+    // empty shell cache is the intended post-logout state there.
+    event.waitUntil(warmShellCache());
   }
 });
 

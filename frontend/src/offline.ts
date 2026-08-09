@@ -7,6 +7,7 @@ const SERVICE_WORKER_URL = '/gameplan-sw.js'
 const SERVICE_WORKER_SCOPE = '/g'
 const CACHE_URLS_MESSAGE = 'CACHE_URLS'
 const CLEAR_USER_CACHES_MESSAGE = 'CLEAR_USER_CACHES'
+const WARM_SHELL_CACHE_MESSAGE = 'WARM_SHELL_CACHE'
 const SKIP_WAITING_MESSAGE = 'SKIP_WAITING'
 const LAST_SEEN_USER_STORAGE_KEY = 'gameplan:last-seen-user'
 
@@ -106,6 +107,23 @@ async function clearServiceWorkerCaches(): Promise<void> {
 }
 
 /**
+ * Round-4 finding: without this, the SW's SHELL_CACHE stays empty from the moment a
+ * user-switch clear runs (clearOfflineCaches, above) until the *next* successful online
+ * navigation to /g - if the browser goes offline before that happens, even a reload of
+ * the page already open fails with net::ERR_FAILED instead of falling back to the
+ * offline UI. Fired only after guardAgainstUserSwitch's clear resolves, a moment known
+ * to be online (a user just logged in). Deliberately not run after a plain logout
+ * (clearOfflineCaches's other call site, data/session.ts) - an empty shell cache is the
+ * intended post-logout state there, same as every other offline cache.
+ */
+async function rewarmShellCache(): Promise<void> {
+  if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return
+
+  const registration = await navigator.serviceWorker.getRegistration(SERVICE_WORKER_SCOPE)
+  registration?.active?.postMessage({ type: WARM_SHELL_CACHE_MESSAGE })
+}
+
+/**
  * Compares `user` against the last user this browser saw (persisted in localStorage so
  * it survives full reloads) and clears every offline cache when they differ. Returns
  * whether a switch was detected.
@@ -126,9 +144,9 @@ export function guardAgainstUserSwitch(user: string | null): boolean {
     // Unlike a plain logout (clearOfflineCaches alone), a detected switch to a
     // *different* user also wipes gameplan-drafts - the same-user recovery case that
     // policy exists for doesn't apply here.
-    Promise.all([clearOfflineCaches(), clearDraftStore()]).catch((error) =>
-      console.error('Failed to clear offline caches', error),
-    )
+    Promise.all([clearOfflineCaches(), clearDraftStore()])
+      .then(() => rewarmShellCache())
+      .catch((error) => console.error('Failed to clear offline caches', error))
   }
 
   if (user) {
