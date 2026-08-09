@@ -9,6 +9,8 @@
     "serve": "vite preview",
     "test-local": "cypress open --e2e --browser chrome",
     "test": "cypress run",
+    "test:offline": "node tests/offline/runner.js",
+    "test:offline:smoke": "node tests/offline/smoke-online.js && node tests/offline/smoke-online-people.js && node tests/offline/smoke-online-shared-computer.js",
     "coverage:merge": "rm -rf .nyc_merged && mkdir -p .nyc_merged && cp coverage/baseline.json .nyc_merged/baseline.json && cp .nyc_output/out.json .nyc_merged/out.json && nyc report --nycrc-path \"$PWD/.nycrc.json\" --temp-dir \"$PWD/.nyc_merged\" --cwd \"${COVERAGE_ROOT:-$PWD}\" --report-dir \"$PWD/coverage\""
   },
   "dependencies": {
@@ -42,6 +44,7 @@
     "cypress": "14.5.1",
     "mocha-junit-reporter": "^2.2.1",
     "nyc": "^18.0.0",
+    "playwright": "^1.62.1",
     "postcss": "^8.4.5",
     "prettier": "^3.3.3",
     "prettier-plugin-tailwindcss": "^0.6.8",
