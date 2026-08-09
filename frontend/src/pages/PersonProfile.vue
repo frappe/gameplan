@@ -41,21 +41,31 @@
     </div>
   </div>
 
+  <!-- Offline with no cached copy of this profile is not the same as a real 404: say so,
+       and offer a retry instead of the dead-end "doesn't exist" page (US6). -->
+  <OfflineContentFallback
+    v-else-if="profileLoadFailure"
+    class="mx-auto mt-16 max-w-md px-6"
+    :title="profileLoadFailure.title"
+    :message="profileLoadFailure.message"
+    @retry="profileResource.reload()"
+  />
   <NotFound v-else-if="profileNotFound" />
 </template>
 <script setup lang="ts">
-import { computed, inject, ref, watch } from 'vue'
+import { computed, inject } from 'vue'
 import { routerViewLocationKey, useRoute, useRouter } from 'vue-router'
 import { PageHeader, Breadcrumbs, Button, TabButtons, useDoc, usePageMeta } from 'frappe-ui'
 import NotFound from '@/pages/NotFound.vue'
+import OfflineContentFallback from '@/components/OfflineContentFallback.vue'
+import { isBrowserOffline, isNetworkError } from '@/offline'
 import { showSettingsDialog } from '@/components/Settings'
 import {
-  getProfileBentoCards,
   resetProfileBentoCards,
+  useProfileBento,
 } from '@/components/ProfileBento/profileBentoSource'
 import { confirmRestoreDefaultLayout } from '@/components/ProfileBento/restoreDefaultLayout'
 import { useProfileFieldEditing } from '@/components/ProfileBento/useProfileFieldEditing'
-import type { ProfileBentoCard } from '@/components/ProfileBento/types'
 import { useSessionUser, useUser } from '@/data/users'
 import type { GPUserProfile } from '@/types/doctypes'
 
@@ -95,9 +105,23 @@ const profileChildResource = computed(() => ({
   doc: profile.value,
 }))
 const isOwnProfile = computed(() => profile.value?.user === sessionUser.name)
+
+// Offline/network failure with nothing cached reads as a dead end otherwise indistinguishable
+// from a real 404 (US6). A genuine 404 or permission error surfaces through `profileNotFound`
+// below instead - `isNetworkError` only matches the TypeError a broken connection throws, not
+// an HTTP-level error response.
+const profileLoadFailure = computed(() => {
+  if (profile.value || !profileResource.error) return null
+  if (!isBrowserOffline() && !isNetworkError(profileResource.error)) return null
+  return {
+    title: "Can't load this profile while offline",
+    message: "This profile isn't available offline.",
+  }
+})
 // A profile that never loaded used to render an empty page; show the not-found
 // state instead. `isFinished` keeps the first paint on the loading branch.
 const profileNotFound = computed(() => {
+  if (profileLoadFailure.value) return false
   return !profile.value && (Boolean(profileResource.error) || profileResource.isFinished)
 })
 
@@ -117,12 +141,24 @@ const displayName = computed(() => {
   return profile.value?.full_name || storeUser?.full_name || ''
 })
 
-const profileBentoCards = ref<ProfileBentoCard[]>([])
-const profileBentoLoaded = ref(false)
-/** False once this profile has a saved layout, which is the only thing to restore. */
-const profileBentoIsDefault = ref(true)
-let profileBentoLoadId = 0
-let loadedProfileBentoName = ''
+const bento = useProfileBento(() => profile.value?.name)
+
+// Offline/network failure with nothing cached for this profile's bento cards - shown by
+// PersonProfileProfile.vue instead of treating an empty response as "profile has no
+// content" (US6). A non-network failure (permission error, 500) gets generic copy instead.
+const bentoFailure = computed(() => {
+  if (!bento.failed.value) return null
+  const offline = isBrowserOffline() || isNetworkError(bento.error.value)
+  return offline
+    ? {
+        title: "Can't load this while offline",
+        message: "This profile's cards haven't been saved for offline use yet.",
+      }
+    : {
+        title: 'Could not load this profile',
+        message: 'Something went wrong while loading this page. Retry to try again.',
+      }
+})
 
 const fieldEditor = useProfileFieldEditing({
   profile: profileResource,
@@ -150,22 +186,30 @@ const displayedRoute = inject(routerViewLocationKey)
 const displayedRouteName = computed(() => displayedRoute?.value.name ?? route.name)
 
 /**
- * Only the Profile tab takes the bento props. Posts and Replies render a single
- * root element, so anything they do not declare would land on it as an attribute.
+ * Each tab only takes the props it declares — an object prop it doesn't declare would
+ * land on its single root element as an attribute (Profile doesn't need `personId`: it
+ * reads bento data straight from this component's own `bento`; Posts/Replies use it to
+ * key their own offline cache).
  */
 const routeProps = computed(() => {
-  let baseProps = { profile: profileChildResource.value }
-  if (displayedRouteName.value !== 'PersonProfileProfile') return baseProps
+  if (displayedRouteName.value === 'PersonProfileProfile') {
+    return {
+      profile: profileChildResource.value,
+      bentoCards: bento.cards.value,
+      bentoCardsLoaded: bento.loaded.value,
+      bentoIsDefault: bento.isDefault.value,
+      bentoFailure: bentoFailure.value,
+      isOwnProfile: isOwnProfile.value,
+      fieldEditor: fieldEditor.value,
+      // Listeners belong here rather than on the router-view for the same reason
+      // the props do: only the Profile tab declares them.
+      onRestoreDefaultLayout: restoreDefaultLayout,
+      onRetryBento: () => bento.reload(),
+    }
+  }
   return {
-    ...baseProps,
-    bentoCards: profileBentoCards.value,
-    bentoCardsLoaded: profileBentoLoaded.value,
-    bentoIsDefault: profileBentoIsDefault.value,
-    isOwnProfile: isOwnProfile.value,
-    fieldEditor: fieldEditor.value,
-    // A listener belongs here rather than on the router-view for the same reason
-    // the props do: only the Profile tab declares it.
-    onRestoreDefaultLayout: restoreDefaultLayout,
+    profile: profileChildResource.value,
+    personId: personId.value,
   }
 })
 
@@ -191,45 +235,16 @@ const activeTab = computed({
   },
 })
 
-watch(
-  () => profile.value?.name,
-  () => loadProfileBentoCards(profile.value?.name),
-  { immediate: true },
-)
-
-async function loadProfileBentoCards(profileName?: string) {
-  let loadId = ++profileBentoLoadId
-  if (!profileName) {
-    loadedProfileBentoName = ''
-    profileBentoCards.value = []
-    profileBentoLoaded.value = false
-    return
-  }
-
-  if (profileName !== loadedProfileBentoName) {
-    profileBentoCards.value = []
-    profileBentoLoaded.value = false
-  }
-
-  let loadResult = await getProfileBentoCards(profileName)
-  if (loadId === profileBentoLoadId) {
-    loadedProfileBentoName = profileName
-    profileBentoCards.value = loadResult.cards
-    profileBentoIsDefault.value = loadResult.isDefault
-    profileBentoLoaded.value = true
-  }
-}
-
 /**
  * Offered from the empty state, where a saved layout that hides everything is
  * the likeliest reason the page is blank. The reset drops the stored rows; the
- * reload goes back through the guarded read path so a profile switch mid-flight
- * still wins.
+ * reload re-reads through `useProfileBento`'s per-profile resource, so a profile
+ * switch mid-flight still wins (it would just be reloading a different resource).
  */
 function restoreDefaultLayout() {
   confirmRestoreDefaultLayout(async () => {
     await resetProfileBentoCards()
-    await loadProfileBentoCards(profile.value?.name)
+    bento.reload()
   })
 }
 
@@ -239,7 +254,7 @@ function restoreDefaultLayout() {
  * header and for fields written through `User` rather than the profile.
  */
 async function refreshProfile() {
-  await Promise.all([profileResource.reload(), loadProfileBentoCards(profile.value?.name)])
+  await Promise.all([profileResource.reload(), bento.reload()])
 }
 
 usePageMeta(() => {
