@@ -1,7 +1,13 @@
 const CACHE_PREFIX = "gameplan-readonly-offline";
-const CACHE_VERSION = "v5";
+const CACHE_VERSION = "v6";
 const SHELL_CACHE = `${CACHE_PREFIX}:${CACHE_VERSION}:shell`;
 const ASSET_CACHE = `${CACHE_PREFIX}:${CACHE_VERSION}:assets`;
+// Avatars and other runtime images are user-visible content fetched by URL, with no
+// user scoping (unlike the app's IndexedDB caches - see offline.ts's clearOfflineCaches).
+// Keeping them in a separate bucket from ASSET_CACHE (hashed, content-addressed /assets
+// build output, which is identical for every user) lets CLEAR_USER_CACHES below wipe the
+// former on logout/user-switch without also evicting the latter.
+const RUNTIME_CACHE = `${CACHE_PREFIX}:${CACHE_VERSION}:runtime`;
 const APP_SHELL_URL = "/g";
 const OFFLINE_ASSET_MANIFEST_URL =
   "/assets/gameplan/frontend/gameplan-offline-assets.json";
@@ -16,7 +22,11 @@ const CACHEABLE_DESTINATIONS = new Set(["font", "image", "script", "style"]);
 
 self.addEventListener("install", (event) => {
   event.waitUntil(warmShellCache());
-  self.skipWaiting();
+  // No self.skipWaiting() here: when this install is replacing an already-active
+  // worker (a deploy landing under an open tab), the new worker should sit in
+  // `waiting` until the page confirms via SKIP_WAITING (offline.ts's update toast).
+  // Skipping unconditionally would swap the controller under a running tab with no
+  // warning. A first-ever install (no prior controller) activates regardless of this.
 });
 
 self.addEventListener("activate", (event) => {
@@ -49,10 +59,36 @@ self.addEventListener("fetch", (event) => {
 });
 
 self.addEventListener("message", (event) => {
-  if (event.data?.type !== "CACHE_URLS" || !Array.isArray(event.data.urls))
+  const type = event.data?.type;
+
+  if (type === "CACHE_URLS" && Array.isArray(event.data.urls)) {
+    event.waitUntil(cacheUrls(event.data.urls));
     return;
-  event.waitUntil(cacheUrls(event.data.urls));
+  }
+
+  if (type === "SKIP_WAITING") {
+    self.skipWaiting();
+    return;
+  }
+
+  if (type === "CLEAR_USER_CACHES") {
+    const port = event.ports[0];
+    event.waitUntil(
+      clearUserCaches()
+        .then(() => port?.postMessage({ ok: true }))
+        .catch(() => port?.postMessage({ ok: false })),
+    );
+  }
 });
+
+// Shared-computer safety (see clearOfflineCaches in offline.ts, called on logout and on
+// detecting a different session user at boot): wipe everything that can hold the
+// previous user's content. The app shell HTML and runtime images/files are the only
+// user-visible things this worker caches - ASSET_CACHE (hashed /assets build output) is
+// content-addressed and identical for every user, so it's left alone.
+async function clearUserCaches() {
+  await Promise.all([caches.delete(SHELL_CACHE), caches.delete(RUNTIME_CACHE)]);
+}
 
 async function warmShellCache() {
   const cache = await caches.open(SHELL_CACHE);
@@ -79,7 +115,7 @@ async function warmShellCache() {
 }
 
 async function deleteOldCaches() {
-  const currentCaches = new Set([SHELL_CACHE, ASSET_CACHE]);
+  const currentCaches = new Set([SHELL_CACHE, ASSET_CACHE, RUNTIME_CACHE]);
   const names = await caches.keys();
   await Promise.all(
     names
@@ -209,7 +245,7 @@ async function cacheFirst(request) {
 }
 
 async function staleWhileRevalidate(request) {
-  const cache = await caches.open(ASSET_CACHE);
+  const cache = await caches.open(RUNTIME_CACHE);
   const cached = await cache.match(request);
   const fetched = fetch(request)
     .then((response) => {
