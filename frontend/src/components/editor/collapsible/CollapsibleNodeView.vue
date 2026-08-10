@@ -8,16 +8,24 @@
       :aria-label="isOpen ? 'Collapse section' : 'Expand section'"
       @click="toggle"
     >
+      <!--
+        A solid triangle, the disclosure convention GitHub's <details> and
+        Notion's toggle both use. The same-colour stroke is what rounds the
+        three points: `stroke-linejoin: round` only softens corners that a
+        stroke actually draws, so a fill-only triangle stays sharp. The path is
+        drawn inset to leave room for it, keeping the outer size honest.
+        Arbitrary px because the spacing scale is integers only, so `size-3.25`
+        would silently not compile.
+      -->
       <svg
         viewBox="0 0 24 24"
-        fill="none"
+        fill="currentColor"
         stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
+        stroke-width="2.5"
         stroke-linejoin="round"
-        class="h-3.5 w-3.5"
+        class="size-[13px]"
       >
-        <path d="m9 18 6-6-6-6" />
+        <path d="M9.5 6.5 L18 12 L9.5 17.5 Z" />
       </svg>
     </button>
     <NodeViewContent class="gp-collapsible-body" />
