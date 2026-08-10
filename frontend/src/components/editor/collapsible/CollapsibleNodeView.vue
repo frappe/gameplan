@@ -3,7 +3,7 @@
     <button
       type="button"
       contenteditable="false"
-      class="gp-collapsible-toggle text-ink-gray-5 hover:bg-surface-gray-2 active:bg-surface-gray-3 h-6 w-6 rounded-3"
+      class="gp-collapsible-toggle text-ink-gray-5 hover:bg-surface-gray-2 active:bg-surface-gray-3 aria-expanded:bg-surface-gray-3 h-6 w-6 rounded-3"
       :aria-expanded="isOpen"
       :aria-label="isOpen ? 'Collapse section' : 'Expand section'"
       @click="toggle"
@@ -68,8 +68,12 @@ function toggle() {
 
 /*
  * A 24px rounded square matching `Button size="xs"` (h-6 w-6 rounded-3), sized
- * by utility classes on the element itself. Centred in the 28px gutter, which
- * puts its midpoint on the task-list checkbox's midpoint. It is
+ * by utility classes on the element itself. An expanded section holds the
+ * button in frappe-ui's on-state fill: the toolbar uses
+ * `aria-pressed:bg-surface-gray-3`, and this drives the same shade off
+ * `aria-expanded`, which is the correct attribute for a disclosure control.
+ * Centred in the 28px gutter, which puts its midpoint on the task-list
+ * checkbox's midpoint. It is
  * `contenteditable="false"` so ProseMirror treats it as a widget rather than
  * text; `user-select: none` keeps it out of a drag-selection of the title.
  */
