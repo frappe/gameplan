@@ -2,11 +2,11 @@
   <TabButtons :buttons="spaceTabs" :size="tabButtonSize" v-model="currentTab" />
 </template>
 <script setup lang="ts">
-import { useIsMobile } from 'frappe-ui'
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import type { PillSize } from 'frappe-ui'
 import { TabButtons } from 'frappe-ui'
+import { useIsMobile } from '@/utils/useIsMobile'
 
 const props = defineProps<{
   spaceId: string

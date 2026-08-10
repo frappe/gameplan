@@ -14,7 +14,7 @@ import { spaces, getSpace } from './data/spaces'
 import type { Space } from './data/spaces'
 import { communityState } from './data/communityState'
 import { settingsBackgroundPath } from './components/Settings'
-import { getScrollContainer, scrollTo } from 'frappe-ui'
+import { shellScrollContainer } from 'frappe-ui'
 
 declare const __FRONTEND_ROUTE__: string
 
@@ -721,13 +721,13 @@ const router = createRouter({
 const scrollPositions: Record<string, number> = {}
 
 function saveAndRestoreScrollPosition(to: RouteLocationNormalized, from: RouteLocationNormalized) {
-  let scrollContainer = getScrollContainer()
+  let scrollContainer = shellScrollContainer.value
   if (scrollContainer) {
     scrollPositions[from.path] = scrollContainer.scrollTop
   }
   if (scrollPositions[to.path] !== undefined && to.path !== from.path) {
     setTimeout(() => {
-      scrollTo({ top: scrollPositions[to.path] })
+      shellScrollContainer.value?.scrollTo({ top: scrollPositions[to.path] })
     }, 0)
   }
 }
