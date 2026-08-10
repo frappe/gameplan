@@ -1,5 +1,6 @@
 import { RichTextKit } from 'frappe-ui/editor'
 import { gameplanHeadingLevels, suggestionConfig, richQuoteExtensions } from './config'
+import { collapsibleExtensions, slashCommandsWithCollapsible } from './collapsible'
 
 /**
  * The rich extension stack (articles, pages, discussion bodies, task descriptions):
@@ -14,8 +15,13 @@ export function richTextExtensions(opts: { suggestions?: boolean } = {}) {
   return [
     RichTextKit.configure({
       heading: { levels: [...gameplanHeadingLevels] },
+      // The kit's stock slash registry is replaced by the same registry plus the
+      // gameplan-only "Collapsible section" command.
+      slashCommands: false,
       ...suggestionConfig(opts.suggestions ?? true),
     }),
+    slashCommandsWithCollapsible(),
+    ...collapsibleExtensions(),
     ...richQuoteExtensions(),
   ]
 }
