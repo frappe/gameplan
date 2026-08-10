@@ -24,6 +24,7 @@ import {
   Redo,
   type MenuItem,
 } from 'frappe-ui/editor'
+import { CollapsibleSection } from './collapsible'
 
 // The predefined items ship their own default icons from frappe-ui, so this is
 // just composition — no per-item icon plumbing.
@@ -56,6 +57,7 @@ export const gameplanToolbar: MenuItem[] = [
   Blockquote,
   InlineCode,
   HorizontalRule,
+  CollapsibleSection,
   Separator,
   InsertTable,
   Separator,
@@ -94,4 +96,5 @@ export const gameplanFloatingToolbar: MenuItem[] = [
   Blockquote,
   InlineCode,
   HorizontalRule,
+  CollapsibleSection,
 ]

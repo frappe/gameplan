@@ -73,11 +73,15 @@ def sanitize_content(html):
 	if not isinstance(html, str):
 		return html
 
+	# frappe's acceptable_elements has "details" but not "summary", so a collapsible
+	# section written in the editor would lose its title on save. "summary" carries
+	# no script or URL surface, so allowing it adds no XSS risk.
+	# TODO: drop once frappe adds "summary" to acceptable_elements upstream.
 	tags = (
 		list(acceptable_elements)
 		+ list(svg_elements)
 		+ list(mathml_elements)
-		+ ["html", "head", "meta", "link", "body", "style", "o:p", "iframe"]
+		+ ["html", "head", "meta", "link", "body", "style", "o:p", "iframe", "summary"]
 	)
 
 	def attributes_filter(tag, name, value):
