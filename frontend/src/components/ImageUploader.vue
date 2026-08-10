@@ -1,7 +1,8 @@
 <template>
   <FileUploader
     :fileTypes="fileTypes"
-    :uploadArgs="uploadArgs"
+    :private="uploadOptions.private"
+    :optimize="uploadOptions.optimize"
     :validateFile="validateFile"
     @success="(file: UploadedFile) => emit('success', file)"
     @failure="(error: unknown) => emit('failure', error)"
@@ -18,14 +19,14 @@
  *
  * It exists so privacy, optimization and accepted file types are decided once per
  * kind of image (see `utils/imageUpload.ts`) rather than at each call site. `kind`
- * is required and there is no `uploadArgs` escape hatch, so a new upload site
- * cannot quietly inherit whichever default its upload primitive happens to have.
+ * is required and there is no escape hatch for raw upload options, so a new upload
+ * site cannot quietly inherit whichever default its upload primitive happens to have.
  */
 import { computed } from 'vue'
 import { FileUploader, type FileUploaderSlotProps, type UploadedFile } from 'frappe-ui'
 import {
   imageFileTypes,
-  imageUploadArgs,
+  imageUploadOptions,
   validateImageFile,
   type ImageUploadKind,
 } from '@/utils/imageUpload'
@@ -44,7 +45,7 @@ defineSlots<{
 }>()
 
 const fileTypes = computed(() => imageFileTypes(props.kind))
-const uploadArgs = computed(() => imageUploadArgs(props.kind))
+const uploadOptions = computed(() => imageUploadOptions(props.kind))
 
 function validateFile(file: File) {
   return validateImageFile(props.kind, file)
