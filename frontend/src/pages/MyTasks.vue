@@ -22,7 +22,7 @@
     <div class="body-container">
       <div class="flex pt-3 sm:pt-5">
         <TabButtons
-          :buttons="[
+          :options="[
             { label: 'All', value: 'all' },
             { label: 'Assigned to me', value: 'assigned' },
             { label: 'Created by me', value: 'owner' },

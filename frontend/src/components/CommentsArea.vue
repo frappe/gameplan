@@ -168,7 +168,10 @@
               </span>
               <div class="hidden sm:block">
                 <TabButtons
-                  :buttons="[{ label: 'Comment' }, { label: 'Poll' }]"
+                  :options="[
+                    { value: 'Comment', label: 'Comment' },
+                    { value: 'Poll', label: 'Poll' },
+                  ]"
                   v-model="newCommentType"
                 />
               </div>
@@ -214,7 +217,10 @@
             >
               <template #actions-left>
                 <TabButtons
-                  :buttons="[{ label: 'Comment' }, { label: 'Poll' }]"
+                  :options="[
+                    { value: 'Comment', label: 'Comment' },
+                    { value: 'Poll', label: 'Poll' },
+                  ]"
                   v-model="newCommentType"
                 />
               </template>
@@ -233,7 +239,10 @@
             >
               <template #actions-left>
                 <TabButtons
-                  :buttons="[{ label: 'Comment' }, { label: 'Poll' }]"
+                  :options="[
+                    { value: 'Comment', label: 'Comment' },
+                    { value: 'Poll', label: 'Poll' },
+                  ]"
                   v-model="newCommentType"
                 />
               </template>
