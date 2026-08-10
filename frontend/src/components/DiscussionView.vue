@@ -346,7 +346,8 @@ import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { useDiscussion } from '@/data/discussions'
 import { useDraftSync } from '@/data/useDraftSync'
 import { tags } from '@/data/tags'
-import { useScrollContainer, useIsMobile } from 'frappe-ui'
+import { shellScrollContainer, useShellScrolled } from 'frappe-ui'
+import { useIsMobile } from '@/utils/useIsMobile'
 import { provideRichQuotes } from '@/components/RichQuoteExtension/useRichQuotes'
 import QuoteBacklinksPopover from '@/components/RichQuoteExtension/QuoteBacklinksPopover.vue'
 import { refreshUnreadCountForProjects } from '@/data/unreadCount'
@@ -372,7 +373,11 @@ const postEditor = useTemplateRef<{ editor: Editor | null }>('postEditor')
 const mainPostContentEl = ref<HTMLElement | null>(null)
 const postTitleEl = useTemplateRef<HTMLElement>('postTitleEl')
 
-const { isScrolled, scrollToTop, el: scrollContainerEl } = useScrollContainer()
+const isScrolled = useShellScrolled()
+const scrollContainerEl = shellScrollContainer
+function scrollToTop() {
+  shellScrollContainer.value?.scrollTo({ top: 0, behavior: 'smooth' })
+}
 const discussion = useDiscussion(() => props.postId)
 // In-app navigation skips the router's server canonicalization for speed, so a stale link to a
 // discussion deleted or moved out of reach after local data loaded would otherwise render a blank

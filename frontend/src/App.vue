@@ -22,7 +22,7 @@ import { loadRouteLocation, useRoute, useRouter } from 'vue-router'
 import { FrappeUIProvider } from 'frappe-ui'
 import { users, usersReady } from '@/data/users'
 import { session } from '@/data/session'
-import { useScreenSize } from 'frappe-ui'
+import { useIsMobile } from '@/utils/useIsMobile'
 import { useTheme } from '@/utils/useTheme'
 import { useCursorStyle } from '@/utils/useCursorStyle'
 import NewTaskDialog from './components/NewTaskDialog/NewTaskDialog.vue'
@@ -30,7 +30,7 @@ import SettingsDialog from './components/Settings/SettingsDialog.vue'
 import { settingsBackgroundPath } from './components/Settings'
 import { getHomeRoute } from '@/router'
 
-const screenSize = useScreenSize()
+const isMobileViewport = useIsMobile()
 const route = useRoute()
 const router = useRouter()
 useTheme()
@@ -43,7 +43,7 @@ const DevUserSwitcher = import.meta.env.DEV
 const MobileLayout = defineAsyncComponent(() => import('./components/MobileLayout.vue'))
 const DesktopLayout = defineAsyncComponent(() => import('./components/DesktopLayout.vue'))
 const Layout = computed(() => {
-  if (screenSize.width < 640) {
+  if (isMobileViewport.value) {
     return MobileLayout
   } else {
     return DesktopLayout

@@ -11,15 +11,15 @@
   </div>
 </template>
 <script setup>
-import { useScreenSize } from 'frappe-ui'
 import { defineAsyncComponent, computed } from 'vue'
 import { useReactions } from '@/data/reactions'
+import { useIsMobile } from '@/utils/useIsMobile'
 
-const screenSize = useScreenSize()
+const isMobileViewport = useIsMobile()
 const ReactionsMobile = defineAsyncComponent(() => import('./ReactionsMobile.vue'))
 const ReactionsDesktop = defineAsyncComponent(() => import('./ReactionsDesktop.vue'))
 const ReactionsUI = computed(() => {
-  if (screenSize.width < 640) {
+  if (isMobileViewport.value) {
     return ReactionsMobile
   } else {
     return ReactionsDesktop

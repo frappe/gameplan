@@ -171,7 +171,7 @@
 import { computed } from 'vue'
 import { useElementSize } from '@vueuse/core'
 import {
-  activeScrollContainer,
+  shellScrollContainer,
   Button,
   Checkbox,
   FormLabel,
@@ -225,7 +225,7 @@ const emit = defineEmits<{
  * that element is exactly the box the sticky panel can occupy, and `100vh`
  * would overshoot it by the header and leave the last control unreachable.
  */
-const { height: shellHeight } = useElementSize(activeScrollContainer)
+const { height: shellHeight } = useElementSize(shellScrollContainer)
 const panelStyle = computed(() => {
   if (!shellHeight.value) return undefined
   return { height: `${shellHeight.value}px` }
