@@ -395,7 +395,10 @@ function useNotificationList(read: 0 | 1, cacheKey: string) {
     // realistic backlog. `useList.reload()` refetches at the current offset and appends,
     // which makes a "load more" button unsafe on a list that mark-as-read reloads.
     limit: 100,
-    cacheKey,
+    // Scoped to the session user so a second account on the same browser can't read the
+    // first account's cached notifications while offline (review finding from PR #516).
+    cacheKey: [cacheKey, sessionUser.name],
+    staleOnError: true,
   })
 }
 

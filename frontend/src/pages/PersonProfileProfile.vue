@@ -7,7 +7,17 @@
       <Skeleton class="aspect-square rounded-xl sm:col-span-1" />
       <Skeleton class="aspect-[2/1] rounded-xl sm:col-span-2" />
     </div>
-    <!-- Both branches wait for the cards, so the empty state never flashes. It
+    <!-- Fetch failed and nothing is cached for this profile - distinct from a genuinely
+         empty profile (US6). Checked before the empty state so a failed fetch can't be
+         mistaken for "this person hasn't filled in their profile yet". -->
+    <OfflineContentFallback
+      v-else-if="bentoFailure"
+      class="px-6"
+      :title="bentoFailure.title"
+      :message="bentoFailure.message"
+      @retry="$emit('retryBento')"
+    />
+    <!-- Both remaining branches wait for the cards, so the empty state never flashes. It
          replaces the grid rather than sitting under it: a lone name card above
          "your profile is empty" reads as a contradiction. -->
     <EmptyStateBox v-else-if="isProfileEmpty" class="px-6" data-profile-empty-state>
@@ -68,6 +78,7 @@ import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Button, Skeleton } from 'frappe-ui'
 import EmptyStateBox from '@/components/EmptyStateBox.vue'
+import OfflineContentFallback from '@/components/OfflineContentFallback.vue'
 import ProfileAboutDialog from '@/components/ProfileBento/ProfileAboutDialog.vue'
 import ProfileBentoGrid from '@/components/ProfileBento/ProfileBentoGrid.vue'
 import type { ProfileBentoCard, ProfileFieldEditor } from '@/components/ProfileBento/types'
@@ -91,6 +102,8 @@ const props = withDefaults(
     bentoCardsLoaded?: boolean
     /** False once this profile has a saved layout rather than the computed default. */
     bentoIsDefault?: boolean
+    /** Set when the bento fetch failed and nothing was cached to fall back to (US6). */
+    bentoFailure?: { title: string; message: string } | null
     isOwnProfile?: boolean
     /** Set only when the viewer owns this profile; enables the card edit buttons. */
     fieldEditor?: ProfileFieldEditor
@@ -100,6 +113,7 @@ const props = withDefaults(
 
 defineEmits<{
   restoreDefaultLayout: []
+  retryBento: []
 }>()
 
 const router = useRouter()

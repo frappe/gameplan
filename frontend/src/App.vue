@@ -13,6 +13,7 @@
          flip isFinished back to false and unmount the open settings dialog. -->
     <SettingsDialog v-if="$session.isLoggedIn && usersReady" />
     <component :is="DevUserSwitcher" v-if="DevUserSwitcher && $session.isLoggedIn && usersReady" />
+    <OfflineIndicator />
   </FrappeUIProvider>
 </template>
 
@@ -27,6 +28,7 @@ import { useTheme } from '@/utils/useTheme'
 import { useCursorStyle } from '@/utils/useCursorStyle'
 import NewTaskDialog from './components/NewTaskDialog/NewTaskDialog.vue'
 import SettingsDialog from './components/Settings/SettingsDialog.vue'
+import OfflineIndicator from './components/OfflineIndicator.vue'
 import { settingsBackgroundPath } from './components/Settings'
 import { getHomeRoute } from '@/router'
 

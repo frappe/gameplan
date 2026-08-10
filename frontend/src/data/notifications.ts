@@ -1,9 +1,13 @@
 import { useCall } from 'frappe-ui'
 import { useDebounceFn } from '@vueuse/core'
 import { onSocketEvent } from '@/socket'
+import { session } from './session'
 
 export let unreadNotifications = useCall({
-  cacheKey: 'Unread Notifications Count',
+  // Scoped to the session user so a second account on the same browser can't read the
+  // first account's cached unread count while offline (review finding from PR #516).
+  cacheKey: ['Unread Notifications Count', session.user],
+  staleOnError: true,
   url: '/api/v2/method/gameplan.api.unread_notifications',
   initialData: 0,
 })

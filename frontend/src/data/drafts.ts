@@ -34,6 +34,7 @@ export const drafts = useCall<DraftRow[]>({
   // get_my_drafts is owner-scoped on the server; scope the client cache to the session user
   // too, so a same-tab account switch can't briefly show the previous user's draft rows.
   cacheKey: ['drafts', session.user],
+  staleOnError: true,
   immediate: true,
 })
 

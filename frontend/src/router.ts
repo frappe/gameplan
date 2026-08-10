@@ -6,6 +6,7 @@ import {
   type RouteRecordRaw,
 } from 'vue-router'
 import { until } from '@vueuse/core'
+import { watch } from 'vue'
 import { call } from 'frappe-ui'
 import { session } from './data/session'
 import { users, usersReady } from './data/users'
@@ -15,11 +16,14 @@ import type { Space } from './data/spaces'
 import { communityState } from './data/communityState'
 import { settingsBackgroundPath } from './components/Settings'
 import { getScrollContainer, scrollTo } from 'frappe-ui'
+import { isBrowserOffline, isNetworkError } from './offline'
 
 declare const __FRONTEND_ROUTE__: string
 
 type ResourceLike = {
   isFinished?: boolean
+  data?: unknown
+  error?: unknown
 }
 
 type RouteParamValue = string | string[]
@@ -36,7 +40,8 @@ type ProjectContentDoc = {
 }
 
 const discussionFeeds = ['recent', 'unread', 'participating']
-const projectContentDocRequests = new Map<string, Promise<ProjectContentDoc | null>>()
+const projectContentDocRequests = new Map<string, Promise<ProjectContentDoc | null | undefined>>()
+const OFFLINE_CACHE_HYDRATION_TIMEOUT = 3000
 
 // Redirect-style guards still need a component record so Vue Router matches them consistently.
 const RouteGuard = { render: () => null }
@@ -804,6 +809,10 @@ router.beforeEach(async (to, from) => {
   let space = to.params.spaceId ? getSpace(routeParam(to.params.spaceId)) : null
 
   if (to.params.spaceId && !space) {
+    if (isRouteValidationUnavailable()) {
+      communityState.scope(communityId)
+      return
+    }
     return { name: 'NotFound' }
   }
 
@@ -817,6 +826,10 @@ router.beforeEach(async (to, from) => {
   // Public communities are visible even when the user has not joined them, so route validity
   // cannot be tied to the active sidebar community list.
   if (!community) {
+    if (isRouteValidationUnavailable()) {
+      communityState.scope(communityId)
+      return
+    }
     return { name: 'NotFound' }
   }
 
@@ -831,6 +844,15 @@ export default router
 
 async function ensureCommunityDataLoaded() {
   await Promise.all([waitForResource(communities), waitForResource(spaces)])
+  // Right after a reload, navigator.onLine can briefly lag the browser's actual
+  // network state, so isBrowserOffline() alone can miss a reload that's genuinely
+  // offline. A resource that already finished with a network error is unambiguous
+  // proof the fresh fetch can't be trusted, so treat either signal the same way:
+  // give the IndexedDB cache a bounded chance to hydrate before the home route is
+  // decided from (possibly still-empty) `communities`/`spaces` data.
+  if (isNetworkUnreliable()) {
+    await Promise.all([waitForOfflineCachedData(communities), waitForOfflineCachedData(spaces)])
+  }
 }
 
 async function waitForResource(resource: ResourceLike) {
@@ -839,6 +861,47 @@ async function waitForResource(resource: ResourceLike) {
   }
 
   await until(() => resource?.isFinished).toBe(true)
+}
+
+function waitForOfflineCachedData(resource: ResourceLike) {
+  if (hasHydratedData(resource)) {
+    return Promise.resolve()
+  }
+
+  return new Promise<void>((resolve) => {
+    const timeout = window.setTimeout(done, OFFLINE_CACHE_HYDRATION_TIMEOUT)
+    const stop = watch(
+      () => resource.data,
+      () => {
+        if (hasHydratedData(resource)) {
+          done()
+        }
+      },
+    )
+
+    function done() {
+      window.clearTimeout(timeout)
+      stop()
+      resolve()
+    }
+  })
+}
+
+function hasHydratedData(resource: ResourceLike) {
+  const data = resource.data
+  return Array.isArray(data) ? data.length > 0 : data != null
+}
+
+function isRouteValidationUnavailable() {
+  return isNetworkUnreliable()
+}
+
+function isNetworkUnreliable() {
+  return isBrowserOffline() || hasNetworkError(communities) || hasNetworkError(spaces)
+}
+
+function hasNetworkError(resource: ResourceLike) {
+  return Boolean(resource?.error && isNetworkError(resource.error))
 }
 
 export function getHomeRoute(): RouteLocationRaw {
@@ -907,8 +970,14 @@ async function getCanonicalContentRoute(
   // space/slug rewrites to canonical.
   const isInAppNavigation = from.matched.length > 0
   if (isInAppNavigation && hasCanonicalLocalParams(to, descriptor)) return
+  if (isRouteValidationUnavailable() && hasCanonicalLocalParams(to, descriptor)) return
+  if (isRouteValidationUnavailable()) return
 
   const doc = await getProjectContentDoc(descriptor.doctype, documentName)
+  if (doc === undefined) {
+    if (hasCanonicalLocalParams(to, descriptor)) return
+    return
+  }
   if (!doc?.project) return { name: 'NotFound' }
 
   const space = await findSpace(String(doc.project))
@@ -996,7 +1065,8 @@ async function getProjectContentDoc(doctype: ContentRouteDescriptor['doctype'], 
 async function fetchProjectContentDoc(doctype: ContentRouteDescriptor['doctype'], name: string) {
   try {
     return await call<ProjectContentDoc>('frappe.client.get', { doctype, name })
-  } catch {
+  } catch (error) {
+    if (isNetworkError(error)) return undefined
     return null
   }
 }

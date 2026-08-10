@@ -3,6 +3,7 @@ import { GPProject } from '@/types/doctypes'
 import { reactive } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
 import { onSocketEvent } from '@/socket'
+import { onReconnect } from '@/data/online'
 
 interface ProjectUnreadCount {
   [spaceId: string]: number
@@ -77,7 +78,10 @@ function loadProjectUnreadCounts(projects?: string[]) {
           unreadCounts[spaceId] = Number(count) || 0
         }
         return counts
-      }),
+      })
+      // Offline / network failure: keep serving the last known counts rather than
+      // rejecting and blanking the UI.
+      .catch(() => unreadCounts),
   )
 }
 
@@ -100,10 +104,14 @@ export function fetchParticipatingUnreadCount(team: string) {
   return queued(participatingCountApi, () =>
     participatingCountApi.runMethod
       .submit({ method: 'get_participating_unread_count', params: { team } })
-      .then((count: number) => {
+      .then((count: number | null) => {
+        // Offline / network failure surfaces as a null response here — keep the last known
+        // count instead of zeroing it out.
+        if (count == null) return participatingUnreadCounts[team] ?? 0
         participatingUnreadCounts[team] = Number(count) || 0
         return participatingUnreadCounts[team]
-      }),
+      })
+      .catch(() => participatingUnreadCounts[team] ?? 0),
   )
 }
 
@@ -160,19 +168,23 @@ export function refreshUnreadCountForProjects(projects: string[]) {
   return loadProjectUnreadCounts(projects)
 }
 
+function refreshAllUnreadCounts() {
+  // Nothing awaits these; swallow failures so a dropped request doesn't surface as an
+  // unhandled rejection. The next signal (or a page load) refetches anyway.
+  Promise.allSettled([
+    loadProjectUnreadCounts(),
+    ...Object.keys(participatingUnreadCounts).map((team) => fetchParticipatingUnreadCount(team)),
+  ])
+}
+
 // The backend signals this after any create/mark-read change to GP Unread Record, so other tabs
 // (and spaces you're not currently viewing) pick up the change without a manual reload.
 // Debounced because one action fans out several signals — posting creates records for every
 // recipient and marks the thread read for the author — and each one costs a full map fetch plus
 // a request per cached community.
-onSocketEvent(
-  'gameplan:unread_counts_changed',
-  useDebounceFn(() => {
-    // Nothing awaits these; swallow failures so a dropped request doesn't surface as an
-    // unhandled rejection. The next signal (or a page load) refetches anyway.
-    Promise.allSettled([
-      loadProjectUnreadCounts(),
-      ...Object.keys(participatingUnreadCounts).map((team) => fetchParticipatingUnreadCount(team)),
-    ])
-  }, 500),
-)
+onSocketEvent('gameplan:unread_counts_changed', useDebounceFn(refreshAllUnreadCounts, 500))
+
+// US5 (seamless recovery): while offline the socket is disconnected too, so any
+// unread-count-changing activity from other users never reached us. Reload once
+// reconnected rather than waiting on the next unrelated socket signal.
+onReconnect(refreshAllUnreadCounts)

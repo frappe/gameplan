@@ -118,6 +118,8 @@ import { subscribeToDoc, useSocket, type NewActivityEvent } from '@/socket'
 import { GPActivity, GPComment } from '@/types/doctypes'
 import type { Space } from '@/data/spaces'
 import { useDraftSync } from '@/data/useDraftSync'
+import { onReconnect } from '@/data/online'
+import { session } from '@/data/session'
 
 interface Props {
   doctype: string
@@ -171,7 +173,11 @@ const comments = useList<
   >
 >({
   doctype: 'GP Comment',
-  cacheKey: ['Comments', props.doctype, props.name],
+  // Scoped to the session user: a discussion's comments can live in a private space,
+  // so a second account on the same browser must not see them cached offline before
+  // its own permission-checked fetch resolves (review finding from PR #516).
+  cacheKey: ['Comments', props.doctype, props.name, session.user],
+  staleOnError: true,
   fields: [
     'name',
     'content',
@@ -212,6 +218,8 @@ interface Activity extends Pick<GPActivity, 'name' | 'user' | 'action' | 'creati
 
 const activities = useList<Activity>({
   doctype: 'GP Activity',
+  cacheKey: ['Activities', props.doctype, props.name, session.user],
+  staleOnError: true,
   fields: ['name', 'user', 'action', 'data', 'creation'],
   filters: {
     reference_doctype: props.doctype,
@@ -227,6 +235,14 @@ const activities = useList<Activity>({
     }))
   },
 })
+
+// US5 (seamless recovery): mirrors the same reconnect reload in CommentsArea.vue
+// (discussion comments) for this task's comment/activity timeline.
+const unregisterReconnect = onReconnect(() => {
+  comments.reload()
+  activities.reload()
+})
+onUnmounted(unregisterReconnect)
 
 // Computed
 type GroupedActivity = {

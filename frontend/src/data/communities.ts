@@ -3,6 +3,7 @@ import { useList } from 'frappe-ui'
 import { GPTeam, GPMember } from '@/types/doctypes'
 import { communityOrder } from './communityOrder'
 import { useSessionUser } from './users'
+import { session } from './session'
 
 export interface CommunityMember extends Pick<GPMember, 'user' | 'is_admin'> {
   user: string
@@ -31,7 +32,10 @@ export let communities = useList<Community>({
   ],
   orderBy: 'title asc',
   initialData: [],
-  cacheKey: ['Communities', 'with-image'],
+  // Scoped to the session user so a second account on the same browser can't read the
+  // first account's cached community list while offline (review finding from PR #516).
+  cacheKey: ['Communities', 'with-image', session.user],
+  staleOnError: true,
   limit: 999,
   transform(data) {
     for (let community of data) {

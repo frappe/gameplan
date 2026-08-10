@@ -14,6 +14,7 @@
  */
 import { ref, computed, watch, toValue, nextTick, onScopeDispose, type MaybeRefOrGetter } from 'vue'
 import { call, debounce, toast, dayjsLocal } from 'frappe-ui'
+import { isNetworkError } from '@/offline'
 import { session } from './session'
 import { isEditorContentEmpty } from '@/utils'
 import {
@@ -240,6 +241,7 @@ export function useDraftSync(options: UseDraftSyncOptions) {
         })
       }
     } catch (error) {
+      if (isNetworkError(error)) return null
       console.error('Draft lookup failed', error)
     }
     return null

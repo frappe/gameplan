@@ -47,10 +47,22 @@
     <DiscussionList
       class="-mx-3"
       ref="discussionListRef"
+      v-show="!listFailure"
       :filters="() => ({ project: spaceId })"
       :cacheKey="`SpaceDiscussions-${spaceId}`"
       :selectable="isBulkMoveMode"
       v-model:selectedDiscussions="selectedDiscussions"
+    />
+    <!-- The list fetch failed and there's no cached page to fall back to (staleOnError already
+         covers the case where cached data exists - discussions.data stays non-null then, so
+         listFailure is false and DiscussionList keeps showing it). Without this, a failed fetch
+         renders as an empty list - indistinguishable from a space that genuinely has none. -->
+    <OfflineContentFallback
+      v-if="listFailure"
+      class="mx-auto mt-6 max-w-2xl px-6"
+      :title="listFailure.title"
+      :message="listFailure.message"
+      @retry="discussionsResource?.reload()"
     />
     <Dialog
       title="Move discussions to another space"
@@ -90,6 +102,8 @@ import SpaceHeaderActions from '@/components/SpaceHeaderActions.vue'
 import SpaceTabs from '@/components/SpaceTabs.vue'
 import DropdownMoreOptions from '@/components/DropdownMoreOptions.vue'
 import SpaceAccessDialog from '@/components/SpaceAccessDialog.vue'
+import OfflineContentFallback from '@/components/OfflineContentFallback.vue'
+import { isBrowserOffline, isNetworkError } from '@/offline'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { useCommunity } from '@/data/communities'
 import { useSessionUser } from '@/data/users'
@@ -129,6 +143,29 @@ const showMoveDialog = ref(false)
 const selectedSpace = ref<string | null>(null)
 const discussionListRef = useTemplateRef('discussionListRef')
 const router = useRouter()
+// DiscussionList owns the useList resource; reach into it through its exposed ref rather
+// than duplicating the fetch here, so this page can tell "loaded, genuinely empty" (handled
+// inside DiscussionList already) apart from "fetch failed, nothing cached" (not handled
+// there - see the v-show/OfflineContentFallback pairing below).
+const discussionsResource = computed(() => discussionListRef.value?.discussions)
+const listFailure = computed(() => {
+  const discussions = discussionsResource.value
+  if (!discussions) return null
+  const failed =
+    discussions.isFinished && !discussions.loading && discussions.error && discussions.data == null
+  if (!failed) return null
+
+  const offline = isBrowserOffline() || isNetworkError(discussions.error)
+  return offline
+    ? {
+        title: "Can't load this while offline",
+        message: "This space's discussions haven't been saved for offline use yet.",
+      }
+    : {
+        title: 'Could not load discussions',
+        message: 'Something went wrong while loading this list. Retry to try again.',
+      }
+})
 const {
   space: currentSpace,
   isArchived,
