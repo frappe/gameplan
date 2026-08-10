@@ -16,7 +16,7 @@
         @open-auto-focus.prevent
       >
         <div
-          class="max-w-[calc(100vw-2rem)] overflow-hidden rounded-lg bg-surface-elevation-2 text-base shadow-2xl ring-1 ring-black ring-opacity-5"
+          class="max-w-[calc(100vw-2rem)] overflow-hidden rounded-6 bg-surface-elevation-2 text-base shadow-2xl ring-1 ring-black ring-opacity-5"
           style="transform-origin: var(--reka-popover-content-transform-origin)"
         >
           <div class="relative">
@@ -27,7 +27,7 @@
                   :key="icon.class"
                   type="button"
                   role="option"
-                  class="flex size-8 items-center justify-center rounded text-ink-gray-7 hover:bg-surface-gray-2"
+                  class="flex size-8 items-center justify-center rounded-4 text-ink-gray-7 hover:bg-surface-gray-2"
                   :class="icon.class === modelValue ? 'bg-surface-gray-3 text-ink-gray-9' : ''"
                   :title="icon.label"
                   :aria-label="icon.label"

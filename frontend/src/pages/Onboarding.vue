@@ -24,7 +24,7 @@
             class="relative flex size-7 items-center justify-center rounded-[7px] bg-surface-gray-4"
           >
             <span
-              class="absolute -left-[11px] top-1/2 h-7 w-1 -translate-y-1/2 rounded-r bg-surface-gray-8"
+              class="absolute -left-[11px] top-1/2 h-7 w-1 -translate-y-1/2 rounded-r-4 bg-surface-gray-8"
             />
             <span class="text-2xs-medium uppercase text-ink-gray-7">{{ communityInitials }}</span>
           </span>
@@ -68,7 +68,7 @@
           <div class="flex h-7 items-center pl-2 text-base text-ink-gray-5">Spaces</div>
           <div class="mt-0.5">
             <div
-              class="flex h-7 items-center rounded bg-surface-elevation-3 pl-2 text-ink-gray-8 shadow-sm"
+              class="flex h-7 items-center rounded-4 bg-surface-elevation-3 pl-2 text-ink-gray-8 shadow-sm"
             >
               <SpaceIcon v-if="space.icon" :icon="space.icon" class="size-4 shrink-0" />
               <span v-else class="lucide-hash size-4 shrink-0 text-ink-gray-5" />

@@ -1,9 +1,4 @@
 @import 'frappe-ui/style.css';
-/* Editor and list CSS ship as bindingless side-effect imports inside
-   `frappe-ui/editor` / `frappe-ui/list`, which Rolldown tree-shakes out of
-   production builds (dev is unaffected) — so import them explicitly here. */
-@import 'frappe-ui/editor-style.css';
-@import 'frappe-ui/list-style.css';
 
 /*
   Inter OpenType features:

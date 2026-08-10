@@ -23,7 +23,7 @@
           <input
             v-model="title"
             aria-label="Space title"
-            class="h-7 min-w-0 flex-1 rounded border border-transparent bg-transparent py-0 pl-1 pr-2 text-base text-ink-gray-8 outline-none ring-0 transition-colors hover:border-outline-gray-2 focus:border-outline-gray-3 focus:ring-0 disabled:cursor-not-allowed disabled:text-ink-gray-6 disabled:hover:border-transparent"
+            class="h-7 min-w-0 flex-1 rounded-4 border border-transparent bg-transparent py-0 pl-1 pr-2 text-base text-ink-gray-8 outline-none ring-0 transition-colors hover:border-outline-gray-2 focus:border-outline-gray-3 focus:ring-0 disabled:cursor-not-allowed disabled:text-ink-gray-6 disabled:hover:border-transparent"
             :disabled="!canEditSpace"
             @blur="saveTitle"
             @keydown.enter.prevent="saveTitle"

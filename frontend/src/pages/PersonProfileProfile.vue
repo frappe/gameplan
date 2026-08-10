@@ -2,10 +2,10 @@
   <div class="pb-16">
     <!-- Mirrors the rendered layout: one column below `sm`, four above. -->
     <div v-if="!bentoCardsLoaded" class="grid grid-cols-1 gap-3 sm:grid-cols-4">
-      <Skeleton class="aspect-[4/1] rounded-xl sm:col-span-4" />
-      <Skeleton class="aspect-square rounded-xl sm:col-span-1" />
-      <Skeleton class="aspect-square rounded-xl sm:col-span-1" />
-      <Skeleton class="aspect-[2/1] rounded-xl sm:col-span-2" />
+      <Skeleton class="aspect-[4/1] rounded-7 sm:col-span-4" />
+      <Skeleton class="aspect-square rounded-7 sm:col-span-1" />
+      <Skeleton class="aspect-square rounded-7 sm:col-span-1" />
+      <Skeleton class="aspect-[2/1] rounded-7 sm:col-span-2" />
     </div>
     <!-- Both branches wait for the cards, so the empty state never flashes. It
          replaces the grid rather than sitting under it: a lone name card above

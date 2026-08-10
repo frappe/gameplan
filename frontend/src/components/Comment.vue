@@ -2,7 +2,7 @@
   <div class="relative" :data-id="comment.name">
     <div
       v-if="highlight"
-      class="absolute inset-0 translate-y- z-[5] rounded border-2 -mx-4 -mb-4 mt-11 pointer-events-none"
+      class="absolute inset-0 translate-y- z-[5] rounded-4 border-2 -mx-4 -mb-4 mt-11 pointer-events-none"
     />
     <!--
       The author row is opaque, so while it is sticky it paints over the top of
@@ -42,7 +42,7 @@
           <span v-if="isUpdating" class="italic text-ink-gray-5"> &nbsp;&middot; Sending... </span>
           <div v-if="updateError">
             &nbsp;&middot;
-            <span class="text-ink-red-8"> Error</span>
+            <span class="text-ink-red-7"> Error</span>
           </div>
         </div>
       </div>
@@ -64,7 +64,7 @@
       </div>
       <div
         :class="{
-          'w-full rounded-lg border bg-surface-base p-4 focus-within:border-outline-gray-3':
+          'w-full rounded-6 border bg-surface-base p-4 focus-within:border-outline-gray-3':
             isEditing,
         }"
         @keydown.ctrl.enter.capture.stop="updateComment()"

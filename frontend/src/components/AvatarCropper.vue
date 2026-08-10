@@ -101,7 +101,7 @@ const renderedSize = computed(() => {
   }
 })
 const frameClass = computed(() => [
-  'relative aspect-square w-full overflow-hidden rounded-lg bg-surface-gray-2 touch-none select-none',
+  'relative aspect-square w-full overflow-hidden rounded-6 bg-surface-gray-2 touch-none select-none',
   dragState.value ? 'cursor-grabbing' : 'cursor-grab',
 ])
 const imageWrapStyle = computed(() => ({

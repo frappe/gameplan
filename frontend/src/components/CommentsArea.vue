@@ -95,13 +95,13 @@
           <div v-if="!showCommentBox" class="sm:-mx-3">
             <button
               type="button"
-              class="flex w-full items-center gap-3 text-left sm:gap-0 sm:rounded-lg sm:bg-surface-elevation-2 sm:px-2 sm:py-2 sm:text-base sm:text-ink-gray-5 sm:hover:bg-surface-elevation-3 sm:shadow-md"
+              class="flex w-full items-center gap-3 text-left sm:gap-0 sm:rounded-6 sm:bg-surface-elevation-2 sm:px-2 sm:py-2 sm:text-base sm:text-ink-gray-5 sm:hover:bg-surface-elevation-3 sm:shadow-md"
               @click="openCommentBox"
             >
               <UserAvatar class="sm:hidden" :user="$user().name" size="xl" />
               <UserAvatar class="mr-3 hidden sm:inline-block" :user="$user().name" size="sm" />
               <span
-                class="flex h-8 min-w-0 flex-1 items-center rounded-md bg-surface-gray-2 px-3 text-md text-ink-gray-5 sm:hidden"
+                class="flex h-8 min-w-0 flex-1 items-center rounded-5 bg-surface-gray-2 px-3 text-md text-ink-gray-5 sm:hidden"
               >
                 Add a comment
               </span>
@@ -110,7 +110,7 @@
           </div>
           <div
             v-else-if="composerMinimized"
-            class="flex cursor-pointer items-center gap-3 text-left focus:outline-none sm:-mx-3 sm:gap-0 sm:rounded-lg sm:bg-surface-elevation-2 sm:py-1 sm:pl-2 sm:pr-1 sm:text-base sm:text-ink-gray-5 sm:shadow-md sm:hover:bg-surface-elevation-3 sm:focus:bg-surface-elevation-3"
+            class="flex cursor-pointer items-center gap-3 text-left focus:outline-none sm:-mx-3 sm:gap-0 sm:rounded-6 sm:bg-surface-elevation-2 sm:py-1 sm:pl-2 sm:pr-1 sm:text-base sm:text-ink-gray-5 sm:shadow-md sm:hover:bg-surface-elevation-3 sm:focus:bg-surface-elevation-3"
             role="button"
             tabindex="0"
             @click="restoreComposer"
@@ -120,7 +120,7 @@
             <UserAvatar class="sm:hidden" :user="$user().name" size="xl" />
             <UserAvatar class="mr-3 hidden sm:inline-block" :user="$user().name" size="sm" />
             <span
-              class="flex h-8 min-w-0 flex-1 items-center truncate rounded-md bg-surface-gray-2 px-3 text-md text-ink-gray-5 sm:h-auto sm:bg-transparent sm:px-0 sm:text-base sm:text-ink-gray-6"
+              class="flex h-8 min-w-0 flex-1 items-center truncate rounded-5 bg-surface-gray-2 px-3 text-md text-ink-gray-5 sm:h-auto sm:bg-transparent sm:px-0 sm:text-base sm:text-ink-gray-6"
             >
               {{ minimizedLabel }}
             </span>
@@ -140,7 +140,7 @@
             :class="
               isComposerFullscreen
                 ? 'flex h-full flex-col'
-                : 'border-t border-outline-gray-2 sm:rounded-lg sm:border-t-0'
+                : 'border-t border-outline-gray-2 sm:rounded-6 sm:border-t-0'
             "
             :aria-busy="isDraftLoading"
             :inert="isDraftLoading"

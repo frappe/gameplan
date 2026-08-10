@@ -1,5 +1,7 @@
 <template>
-  <div class="flex w-full min-w-0 items-center rounded px-2 py-2 text-base-medium text-ink-gray-7">
+  <div
+    class="flex w-full min-w-0 items-center rounded-4 px-2 py-2 text-base-medium text-ink-gray-7"
+  >
     <span
       v-if="typeof item.icon === 'string'"
       :class="[item.icon, 'mr-3 h-4 w-4 shrink-0 text-ink-gray-6']"

@@ -45,7 +45,7 @@
       <template v-else-if="discussion.doc">
         <div
           :class="{
-            'rounded-lg border mt-14 py-4 px-3 sm:px-5 -mx-3 sm:-mx-5 focus-within:border-outline-gray-3':
+            'rounded-6 border mt-14 py-4 px-3 sm:px-5 -mx-3 sm:-mx-5 focus-within:border-outline-gray-3':
               editingPost,
           }"
           @keydown.ctrl.enter.capture.stop="updatePost"

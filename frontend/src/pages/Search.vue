@@ -29,7 +29,7 @@
                     v-if="query"
                     @click="clearSearch"
                     aria-label="Clear search"
-                    class="p-1 size-6 grid place-content-center focus:outline-none focus:ring focus:ring-outline-gray-3 rounded"
+                    class="p-1 size-6 grid place-content-center focus:outline-none focus:ring focus:ring-outline-gray-3 rounded-4"
                   >
                     <span class="lucide-x w-4 text-ink-gray-7" />
                   </button>

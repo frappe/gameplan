@@ -32,7 +32,7 @@
              below a checklist that is not being used at the time. -->
           <div
             v-if="card"
-            class="rounded-lg border border-outline-gray-2 bg-surface-base p-4 lg:p-5"
+            class="rounded-6 border border-outline-gray-2 bg-surface-base p-4 lg:p-5"
             data-profile-card-editor
           >
             <div class="flex items-center gap-2">
@@ -126,7 +126,7 @@
           <!-- Two sections of one box, not two boxes: picking profile info and
              adding a card are both "what goes on the page", and a gap between
              them would say they were separate decisions. -->
-          <div v-else class="rounded-lg border border-outline-gray-2 bg-surface-base">
+          <div v-else class="rounded-6 border border-outline-gray-2 bg-surface-base">
             <!-- The checklist holds no state of its own: a row is ticked exactly
                when a card bound to that field is in the layout, so removing the
                card in the grid unticks the row. -->

@@ -4,7 +4,7 @@
        swallows every space typed into an inline editor inside the card. -->
   <article
     ref="cardElement"
-    class="group relative block w-full min-w-0 overflow-hidden rounded-xl text-left outline-none transition focus:outline-none focus-visible:outline-none"
+    class="group relative block w-full min-w-0 overflow-hidden rounded-7 text-left outline-none transition focus:outline-none focus-visible:outline-none"
     :class="[flow ? '' : 'h-full', cardChromeClass, cardShellClass, dragClass]"
     :style="rootStyle"
     :data-profile-card-id="card.id"
@@ -141,10 +141,10 @@
               @pointerdown.stop
             >
               <div
-                class="grid size-10 place-items-center rounded-lg border border-dashed bg-surface-base"
+                class="grid size-10 place-items-center rounded-6 border border-dashed bg-surface-base"
                 :class="
                   error
-                    ? 'border-outline-red-2 text-ink-red-3'
+                    ? 'border-outline-red-2 text-ink-red-2'
                     : 'border-outline-gray-3 text-ink-gray-6'
                 "
               >
@@ -156,7 +156,7 @@
                   aria-hidden="true"
                 />
               </div>
-              <div v-if="error" class="text-xs font-medium leading-snug text-ink-red-3 sm:text-sm">
+              <div v-if="error" class="text-xs font-medium leading-snug text-ink-red-2 sm:text-sm">
                 {{ error }}
               </div>
               <div v-else-if="showImageEmptyCopy" class="space-y-0.5">
@@ -173,7 +173,7 @@
           class="flex h-full flex-col items-center justify-center gap-2 p-3 text-center text-ink-gray-5 sm:p-4"
         >
           <div
-            class="grid size-10 place-items-center rounded-lg border border-dashed border-outline-gray-3 bg-surface-base text-ink-gray-6"
+            class="grid size-10 place-items-center rounded-6 border border-dashed border-outline-gray-3 bg-surface-base text-ink-gray-6"
           >
             <span class="lucide-image-plus size-5" aria-hidden="true" />
           </div>
