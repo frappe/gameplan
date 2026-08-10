@@ -232,7 +232,6 @@ import {
   Breadcrumbs,
   Badge,
   Button,
-  Input,
   Select,
   TextInput,
   usePageMeta,
@@ -249,7 +248,6 @@ export default {
   components: {
     Badge,
     Button,
-    Input,
     TextInput,
     Select,
     Breadcrumbs,

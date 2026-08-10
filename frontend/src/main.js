@@ -7,7 +7,6 @@ import {
   Dialog,
   Alert,
   Badge,
-  request,
   frappeRequest,
   FrappeUI,
   setConfig,
@@ -97,7 +96,6 @@ if (import.meta.env.DEV) {
   window.$user = useUser
   window.$users = users
   window.$session = session
-  window.$request = request
   window.$frappeRequest = frappeRequest
   window.$router = router
 }
