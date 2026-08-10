@@ -2,7 +2,7 @@
   <div class="relative">
     <div
       v-if="highlight"
-      class="absolute inset-0 translate-y- z-[5] rounded border-2 -mx-4 -mb-4 mt-11 pointer-events-none"
+      class="absolute inset-0 translate-y- z-[5] rounded-4 border-2 -mx-4 -mb-4 mt-11 pointer-events-none"
     />
     <!-- Mirrors the comment header (Comment.vue). Two parts matter and both were missing:
          `z-[1]`, or the option rows (positioned so the result bar can fill behind them)
@@ -65,12 +65,12 @@
       <div
         v-for="option in _poll.options"
         :key="option.idx"
-        class="relative -mx-2 overflow-hidden rounded"
+        class="relative -mx-2 overflow-hidden rounded-4"
         :data-poll-option="option.title"
       >
         <div
           v-if="showResults"
-          class="absolute inset-y-0 left-0 rounded transition-[width] duration-500 ease-out"
+          class="absolute inset-y-0 left-0 rounded-4 transition-[width] duration-500 ease-out"
           :class="isVotedByUser(option.title) ? 'bg-surface-gray-4' : 'bg-surface-gray-2'"
           :style="{ width: `${option.percentage || 0}%` }"
           aria-hidden="true"

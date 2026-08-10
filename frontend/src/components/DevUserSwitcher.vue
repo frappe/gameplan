@@ -27,7 +27,7 @@
         @open-auto-focus.prevent
       >
         <div
-          class="flex max-h-[70vh] w-80 max-w-[calc(100vw-1.5rem)] flex-col overflow-hidden rounded-lg bg-surface-elevation-2 shadow-2xl ring-1 ring-outline-gray-2"
+          class="flex max-h-[70vh] w-80 max-w-[calc(100vw-1.5rem)] flex-col overflow-hidden rounded-6 bg-surface-elevation-2 shadow-2xl ring-1 ring-outline-gray-2"
           style="transform-origin: var(--reka-popover-content-transform-origin)"
         >
           <div class="flex items-center justify-between gap-2 px-3 pt-3">
@@ -44,7 +44,7 @@
               v-for="user in filteredUsers"
               :key="user.name"
               type="button"
-              class="flex w-full items-center gap-2.5 rounded px-2 py-1.5 text-left hover:bg-surface-gray-2 disabled:opacity-60"
+              class="flex w-full items-center gap-2.5 rounded-4 px-2 py-1.5 text-left hover:bg-surface-gray-2 disabled:opacity-60"
               :disabled="Boolean(switchingTo)"
               @click="switchTo(user.name)"
             >

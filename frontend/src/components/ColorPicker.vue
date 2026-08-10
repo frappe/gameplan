@@ -10,7 +10,7 @@
     <template #body>
       <div class="left-1/2 mt-3 max-w-max -translate-x-1/2 transform px-4 sm:px-0">
         <div
-          class="relative max-h-96 overflow-y-auto rounded-lg bg-surface-elevation-2 p-2 shadow-lg ring-1 ring-black ring-opacity-5"
+          class="relative max-h-96 overflow-y-auto rounded-6 bg-surface-elevation-2 p-2 shadow-lg ring-1 ring-black ring-opacity-5"
         >
           <div class="grid grid-cols-11 place-items-center gap-1">
             <button

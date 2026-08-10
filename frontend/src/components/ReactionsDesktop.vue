@@ -54,7 +54,7 @@
       </button>
       <template #body>
         <div
-          class="max-w-[30ch] rounded bg-surface-gray-10 px-2 py-1 text-center text-p-xs text-ink-base shadow-xl"
+          class="max-w-[30ch] rounded-4 bg-surface-gray-10 px-2 py-1 text-center text-p-xs text-ink-base shadow-xl"
         >
           {{ toolTipText(reactions) }}
         </div>

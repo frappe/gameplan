@@ -103,7 +103,7 @@
 
         <p
           v-if="cards.length === 0"
-          class="rounded-lg border border-dashed border-outline-gray-2 p-6 text-sm leading-5 text-ink-gray-6"
+          class="rounded-6 border border-dashed border-outline-gray-2 p-6 text-sm leading-5 text-ink-gray-6"
           data-profile-empty-layout-notice
         >
           Nothing is selected, so your profile page will be empty.

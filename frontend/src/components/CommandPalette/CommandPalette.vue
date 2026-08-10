@@ -57,7 +57,7 @@
                 :id="getCommandPaletteItemElementId(item)"
                 @click="onSelection(item)"
                 @mousemove="onItemMouseMove(item, $event)"
-                class="rounded"
+                class="rounded-4"
                 :class="[item.isActive ? 'bg-surface-gray-3' : '']"
                 role="option"
                 :aria-selected="item.isActive ? 'true' : 'false'"

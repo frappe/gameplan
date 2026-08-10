@@ -1,5 +1,5 @@
 <template>
-  <div class="flex w-full min-w-0 items-center rounded px-2 py-2 text-base" v-if="space">
+  <div class="flex w-full min-w-0 items-center rounded-4 px-2 py-2 text-base" v-if="space">
     <SpaceIcon :icon="space.icon" class="mr-3 size-4 shrink-0 text-ink-gray-6" />
     <span
       v-if="community && !item.hideCommunity"

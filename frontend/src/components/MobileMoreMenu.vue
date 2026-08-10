@@ -28,7 +28,7 @@
         <div class="mb-2 pl-[18px] text-lg-medium text-ink-gray-5">
           {{ group.label }}
         </div>
-        <nav class="overflow-hidden rounded-xl bg-surface-base">
+        <nav class="overflow-hidden rounded-7 bg-surface-base">
           <button
             v-for="(item, index) in group.items"
             :key="item.label"

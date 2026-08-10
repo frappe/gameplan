@@ -74,7 +74,7 @@
                     pendingInvitations.delete.params.name === invitation.name
                   "
                 >
-                  <span class="text-ink-red-8"> Delete? </span>
+                  <span class="text-ink-red-7"> Delete? </span>
                 </Button>
               </div>
             </Tooltip>

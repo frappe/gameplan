@@ -16,7 +16,7 @@
             </Button>
             <ErrorMessage
               v-if="error"
-              class="absolute right-0 top-9 z-10 w-52 rounded border border-outline-gray-2 bg-surface-base p-2 shadow-sm"
+              class="absolute right-0 top-9 z-10 w-52 rounded-4 border border-outline-gray-2 bg-surface-base p-2 shadow-sm"
               :message="error"
             />
           </div>

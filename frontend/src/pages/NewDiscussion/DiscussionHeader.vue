@@ -8,7 +8,7 @@
         <button
           v-if="sessionUser.name == author.name"
           type="button"
-          class="inline-flex size-8 shrink-0 items-center justify-center rounded text-ink-gray-7 transition hover:bg-surface-gray-2 active:bg-surface-gray-3 disabled:cursor-not-allowed disabled:opacity-50"
+          class="inline-flex size-8 shrink-0 items-center justify-center rounded-4 text-ink-gray-7 transition hover:bg-surface-gray-2 active:bg-surface-gray-3 disabled:cursor-not-allowed disabled:opacity-50"
           aria-label="Delete draft"
           title="Delete draft"
           :disabled="isDraftLoading"
@@ -51,7 +51,7 @@
       <button
         v-if="sessionUser.name == author.name"
         type="button"
-        class="inline-flex size-8 shrink-0 items-center justify-center rounded text-ink-gray-7 transition hover:bg-surface-gray-2 active:bg-surface-gray-3 disabled:cursor-not-allowed disabled:opacity-50"
+        class="inline-flex size-8 shrink-0 items-center justify-center rounded-4 text-ink-gray-7 transition hover:bg-surface-gray-2 active:bg-surface-gray-3 disabled:cursor-not-allowed disabled:opacity-50"
         aria-label="Delete draft"
         title="Delete draft"
         :disabled="isDraftLoading"

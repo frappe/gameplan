@@ -9,11 +9,11 @@
         <div class="size-10 shrink-0 animate-pulse rounded-full bg-surface-gray-3" />
       </div>
       <div class="mx-3 min-w-0 flex-1 sm:ml-4 sm:mr-4">
-        <div class="h-4 w-4/5 max-w-80 animate-pulse rounded bg-surface-gray-3" />
-        <div class="mt-2 h-3.5 w-full max-w-[24rem] animate-pulse rounded bg-surface-gray-2" />
+        <div class="h-4 w-4/5 max-w-80 animate-pulse rounded-4 bg-surface-gray-3" />
+        <div class="mt-2 h-3.5 w-full max-w-[24rem] animate-pulse rounded-4 bg-surface-gray-2" />
       </div>
       <div class="ml-auto flex shrink-0 flex-col items-end">
-        <div class="h-3 w-10 animate-pulse rounded bg-surface-gray-2" />
+        <div class="h-3 w-10 animate-pulse rounded-4 bg-surface-gray-2" />
         <div class="mt-2 h-4 w-6 animate-pulse rounded-full bg-surface-gray-2" />
       </div>
     </div>

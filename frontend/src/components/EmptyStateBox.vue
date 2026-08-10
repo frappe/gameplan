@@ -1,6 +1,6 @@
 <template>
   <div
-    class="flex flex-col items-center rounded-lg border-2 border-dashed py-8 text-base text-ink-gray-5"
+    class="flex flex-col items-center rounded-6 border-2 border-dashed py-8 text-base text-ink-gray-5"
   >
     <slot />
   </div>

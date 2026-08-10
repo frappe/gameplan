@@ -28,7 +28,7 @@
                   :key="community.name"
                   data-sortable-section="shown"
                   :data-sortable-id="community.name"
-                  class="group relative flex min-h-8 w-full touch-none cursor-grab select-none items-center gap-2 rounded px-1.5 py-0.5 text-left text-ink-gray-8 hover:bg-surface-gray-1"
+                  class="group relative flex min-h-8 w-full touch-none cursor-grab select-none items-center gap-2 rounded-4 px-1.5 py-0.5 text-left text-ink-gray-8 hover:bg-surface-gray-1"
                   :class="getCommunityRowClasses(community.name)"
                   :style="getItemStyle(community.name, 'shown')"
                   @pointerdown="startPointerDrag($event, community.name, 'shown')"
@@ -84,7 +84,7 @@
                 :key="community.name"
                 data-sortable-section="hidden"
                 :data-sortable-id="community.name"
-                class="group relative flex min-h-8 w-full touch-none cursor-grab select-none items-center gap-2 rounded-md px-1.5 py-0.5 text-left text-ink-gray-8 hover:bg-surface-gray-1"
+                class="group relative flex min-h-8 w-full touch-none cursor-grab select-none items-center gap-2 rounded-5 px-1.5 py-0.5 text-left text-ink-gray-8 hover:bg-surface-gray-1"
                 :class="getCommunityRowClasses(community.name)"
                 :style="getItemStyle(community.name, 'hidden')"
                 @pointerdown="startPointerDrag($event, community.name, 'hidden')"
@@ -292,7 +292,7 @@ function getCommunityRowClasses(communityName: string) {
 
 function getCommunityListClasses(section: SidebarSection) {
   return [
-    'min-h-16 rounded-lg border border-outline-gray-2 px-1.5 py-2 transition-colors',
+    'min-h-16 rounded-6 border border-outline-gray-2 px-1.5 py-2 transition-colors',
     activeSection.value === section ? 'border-outline-gray-4' : '',
   ]
 }

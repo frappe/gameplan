@@ -77,7 +77,7 @@
     <div class="space-y-4">
       <ul v-if="membersToAdd.length" class="flex flex-wrap gap-2">
         <li
-          class="flex items-center gap-2 rounded bg-surface-gray-2 px-2 py-1.5"
+          class="flex items-center gap-2 rounded-4 bg-surface-gray-2 px-2 py-1.5"
           v-for="user in membersToAdd"
           :key="user.value"
         >

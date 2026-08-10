@@ -6,7 +6,7 @@
           <button
             v-for="(revision, index) in orderedRevisions"
             :key="`${revision.creation}-${index}`"
-            class="w-full rounded-md px-3 py-2 text-left last:border-b-0 transition-colors focus:outline-none focus-visible:ring focus-visible:ring-outline-gray-2"
+            class="w-full rounded-5 px-3 py-2 text-left last:border-b-0 transition-colors focus:outline-none focus-visible:ring focus-visible:ring-outline-gray-2"
             role="option"
             :aria-selected="index === currentRevisionIndex"
             :aria-label="`Revision from ${dayjsLocal(revision.creation).format('LLL')}`"
@@ -49,7 +49,7 @@
         <div
           v-if="currentRevision"
           v-html="htmlDiff"
-          class="ProseMirror max-w-none prose prose-v3 rounded-md prose-table:table-fixed prose-th:relative prose-th:border prose-th:border-outline-gray-2 prose-th:bg-surface-gray-2 prose-th:p-2 prose-td:relative prose-td:border prose-td:border-outline-gray-2 prose-td:p-2"
+          class="ProseMirror max-w-none prose prose-v3 rounded-5 prose-table:table-fixed prose-th:relative prose-th:border prose-th:border-outline-gray-2 prose-th:bg-surface-gray-2 prose-th:p-2 prose-td:relative prose-td:border prose-td:border-outline-gray-2 prose-td:p-2"
         />
       </div>
     </div>
@@ -103,9 +103,9 @@
         <div
           v-if="sheetContentReady && currentRevision"
           v-html="htmlDiff"
-          class="ProseMirror max-w-none prose prose-v3 rounded-md prose-table:table-fixed prose-th:relative prose-th:border prose-th:border-outline-gray-2 prose-th:bg-surface-gray-2 prose-th:p-2 prose-td:relative prose-td:border prose-td:border-outline-gray-2 prose-td:p-2"
+          class="ProseMirror max-w-none prose prose-v3 rounded-5 prose-table:table-fixed prose-th:relative prose-th:border prose-th:border-outline-gray-2 prose-th:bg-surface-gray-2 prose-th:p-2 prose-td:relative prose-td:border prose-td:border-outline-gray-2 prose-td:p-2"
         />
-        <div v-else class="h-40 rounded-md bg-surface-gray-1" aria-hidden="true" />
+        <div v-else class="h-40 rounded-5 bg-surface-gray-1" aria-hidden="true" />
       </div>
     </div>
   </BottomSheet>

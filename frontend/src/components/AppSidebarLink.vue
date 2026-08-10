@@ -2,7 +2,7 @@
   <AppLink
     :to="to"
     :isActive="isActive"
-    class="flex items-center rounded px-2 py-1 transition h-7"
+    class="flex items-center rounded-4 px-2 py-1 transition h-7"
     activeClass="bg-surface-elevation-3 shadow-sm text-ink-gray-8"
     inactiveClass="hover:bg-surface-gray-2 text-ink-gray-6"
   >

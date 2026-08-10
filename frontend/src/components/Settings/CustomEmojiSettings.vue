@@ -50,7 +50,7 @@
           <img
             :src="emoji.image"
             :alt="emoji.title"
-            class="size-6 shrink-0 rounded object-contain"
+            class="size-6 shrink-0 rounded-4 object-contain"
           />
           <span class="truncate text-base text-ink-gray-8">{{ emoji.title }}</span>
         </div>
@@ -77,13 +77,13 @@
     <div class="space-y-4">
       <div class="flex items-center gap-3">
         <div
-          class="flex size-10 shrink-0 items-center justify-center rounded border border-outline-gray-2 bg-surface-gray-1"
+          class="flex size-10 shrink-0 items-center justify-center rounded-4 border border-outline-gray-2 bg-surface-gray-1"
         >
           <img
             v-if="form.image"
             :src="form.image"
             alt="Preview"
-            class="h-full w-full rounded-md object-contain"
+            class="h-full w-full rounded-5 object-contain"
           />
           <span v-else class="lucide-image size-5 text-ink-gray-4" />
         </div>
