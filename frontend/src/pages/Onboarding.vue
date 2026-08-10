@@ -171,7 +171,7 @@
                 </div>
               </div>
               <div class="mt-4">
-                <ErrorMessage :message="onboarding.error" />
+                <ErrorMessage :message="errorMessage" />
               </div>
               <div class="mt-8 flex justify-end">
                 <Button
@@ -287,12 +287,26 @@ const onboarding = useCall<OnboardingResult, OnboardingParams>({
   },
 })
 
-function submit() {
-  onboarding.submit({
-    community: community.value,
-    space: space.title,
-    icon: space.icon,
-    emails: emailInput.value.split(/[\n,]/),
-  })
+// A `beforeSubmit` throw only rejects `submit()`; it no longer lands in
+// `onboarding.error`. Hold the validation message here so the same
+// ErrorMessage can show it.
+const validationError = ref('')
+
+// Validation wins while it is set, because no request runs in that case and
+// `onboarding.error` would still hold the previous failure.
+const errorMessage = computed(() => validationError.value || onboarding.error || undefined)
+
+async function submit() {
+  validationError.value = ''
+  try {
+    await onboarding.submit({
+      community: community.value,
+      space: space.title,
+      icon: space.icon,
+      emails: emailInput.value.split(/[\n,]/),
+    })
+  } catch (error) {
+    validationError.value = error instanceof Error ? error.message : String(error)
+  }
 }
 </script>
