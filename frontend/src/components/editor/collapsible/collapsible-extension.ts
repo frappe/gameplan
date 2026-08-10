@@ -11,9 +11,10 @@ import CollapsibleNodeView from './CollapsibleNodeView.vue'
  * Serialized as semantic `<details open><summary>…</summary><div
  * data-type="collapsible-content">…</div></details>` so it still collapses
  * natively wherever the stored HTML is rendered without the editor — email
- * digests, search previews. `<summary>` is not in frappe's `acceptable_elements`,
- * so `gameplan/utils/sanitizer.py` adds it to the allowed tag list; without that
- * bleach escapes the tag on save.
+ * digests, search previews. `details`, `summary` and the `open` attribute are all
+ * in frappe's sanitizer allowlist, so this shape survives a save untouched;
+ * `gameplan/tests/platform/test_collapsible_html.py` pins that, since a dropped
+ * tag or attribute fails silently rather than raising.
  *
  * The three nodes are separate on purpose: `collapsible` owns the open/closed
  * attribute and the node view, `collapsibleSummary` is a one-line inline
