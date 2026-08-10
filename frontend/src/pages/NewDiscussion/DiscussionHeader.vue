@@ -1,9 +1,9 @@
 <template>
   <PageHeaderMobile class="sm:hidden" :title="mobileTitle">
-    <template #left>
+    <template #prefix>
       <PageHeaderBackButton :to="backRoute" />
     </template>
-    <template #right>
+    <template #suffix>
       <div class="flex items-center gap-1">
         <button
           v-if="sessionUser.name == author.name"

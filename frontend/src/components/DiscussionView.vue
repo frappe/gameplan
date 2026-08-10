@@ -1,7 +1,7 @@
 <template>
   <div class="relative flex h-full flex-col" v-if="postId">
     <PageHeaderMobile class="sm:hidden" :title="mobileHeaderTitle">
-      <template #left>
+      <template #prefix>
         <PageHeaderBackButton :to="backRoute" />
       </template>
     </PageHeaderMobile>

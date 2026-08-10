@@ -1,6 +1,6 @@
 <template>
   <PageHeaderMobile v-if="communityState.doc" class="sm:hidden" :title="feedTitle">
-    <template #left>
+    <template #prefix>
       <PageHeaderBackButton :to="{ name: 'Home' }" />
     </template>
     <button

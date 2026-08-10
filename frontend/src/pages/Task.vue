@@ -1,7 +1,7 @@
 <template>
   <div>
     <PageHeaderMobile class="sm:hidden" :title="taskTitle">
-      <template #left>
+      <template #prefix>
         <PageHeaderBackButton :to="backRoute" />
       </template>
     </PageHeaderMobile>

@@ -11,16 +11,16 @@
         @click="menuOpen = true"
       >
         <PageHeaderMobileTitle :title="space?.title || 'Space'">
-          <template #icon>
+          <template #prefix>
             <SpaceIcon :icon="space?.icon" class="size-5 text-ink-gray-6" />
           </template>
         </PageHeaderMobileTitle>
         <span class="size-4 shrink-0 text-ink-gray-5 lucide-chevron-down" aria-hidden="true" />
       </button>
-      <template #left>
+      <template #prefix>
         <PageHeaderBackButton :to="{ name: 'Discussions', params: { communityId } }" />
       </template>
-      <template #right>
+      <template #suffix>
         <Button
           v-if="route.name === 'SpaceDiscussions' && canStartDiscussion"
           variant="ghost"
