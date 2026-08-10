@@ -85,10 +85,18 @@ function toggle() {
   align-items: center;
   justify-content: center;
   user-select: none;
+}
+
+/*
+ * Only the chevron turns. Rotating the button would spin its hover square with
+ * it, and the `>` keeps an outer section's open state off a nested section's
+ * chevron.
+ */
+.gp-collapsible-toggle > svg {
   transition: transform 150ms ease;
 }
 
-.gp-collapsible[data-open='true'] > .gp-collapsible-toggle {
+.gp-collapsible[data-open='true'] > .gp-collapsible-toggle > svg {
   transform: rotate(90deg);
 }
 
