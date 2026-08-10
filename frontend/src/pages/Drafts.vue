@@ -1,12 +1,12 @@
 <template>
   <PageHeaderMobile class="sm:hidden" title="Drafts">
-    <template #left>
+    <template #prefix>
       <Button v-if="isBulkDeleteMode" variant="ghost" size="md" @click="cancelBulkDelete">
         Cancel
       </Button>
       <PageHeaderBackButton v-else :to="{ name: 'More' }" />
     </template>
-    <template #right>
+    <template #suffix>
       <div class="flex items-center gap-2">
         <template v-if="!isBulkDeleteMode">
           <Button

@@ -1,10 +1,10 @@
 <template>
   <div>
     <PageHeaderMobile class="sm:hidden" :title="pageTitle">
-      <template #left>
+      <template #prefix>
         <PageHeaderBackButton :to="backRoute" :label="isSpacePage ? 'Pages' : 'My Pages'" />
       </template>
-      <template v-if="page.doc && canEditPage" #right>
+      <template v-if="page.doc && canEditPage" #suffix>
         <DropdownMoreOptions align="end" :options="pageActions" />
       </template>
     </PageHeaderMobile>

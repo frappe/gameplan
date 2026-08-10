@@ -1,10 +1,10 @@
 <template>
   <div>
     <PageHeaderMobile class="sm:hidden" title="Tasks">
-      <template #left>
+      <template #prefix>
         <PageHeaderBackButton :to="{ name: 'More' }" />
       </template>
-      <template #right>
+      <template #suffix>
         <Button
           variant="ghost"
           size="md"
