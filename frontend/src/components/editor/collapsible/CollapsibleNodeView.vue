@@ -82,26 +82,31 @@ function toggle() {
   transform: rotate(90deg);
 }
 
-.gp-collapsible-body > :deep(summary) {
+/*
+ * Descendant selectors, not direct-child ones: @tiptap/vue-3 injects its own
+ * `div[data-node-view-content-vue]` between the content element and the node's
+ * children, so `>` matches nothing. A nested collapsible picks up the same
+ * rules, which is what we want — and when an outer section is closed its whole
+ * subtree is hidden with it.
+ */
+.gp-collapsible :deep(summary) {
   display: block;
   font-weight: 500;
   cursor: text;
 }
 
 /* Suppress the native disclosure triangle; the gutter button replaces it. */
-.gp-collapsible-body > :deep(summary)::marker,
-.gp-collapsible-body > :deep(summary)::-webkit-details-marker {
+.gp-collapsible :deep(summary)::marker,
+.gp-collapsible :deep(summary)::-webkit-details-marker {
   display: none;
   content: '';
 }
 
-.gp-collapsible[data-open='false']
-  > .gp-collapsible-body
-  > :deep([data-type='collapsible-content']) {
+.gp-collapsible[data-open='false'] :deep([data-type='collapsible-content']) {
   display: none;
 }
 
-.gp-collapsible-body > :deep([data-type='collapsible-content']) {
+.gp-collapsible :deep([data-type='collapsible-content']) {
   margin-top: 0.25rem;
 }
 </style>

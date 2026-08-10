@@ -169,7 +169,13 @@ export const Collapsible = Node.create({
       new InputRule({
         // Notion's `>` is already blockquote in the starter kit, so the toggle
         // takes `>>`. Anything typed after it on the line becomes the title.
-        find: /^>>\s$/,
+        //
+        // `»` is not an alternative spelling — it is what the user's `>>` has
+        // already become. The Typography extension (loaded by RichTextKit, not
+        // by CommentKit) rewrites `>>` to a guillemet on the second keystroke,
+        // before the space that triggers this rule. Matching both is what makes
+        // the same trigger work in a discussion body and in a comment.
+        find: /^(?:>>|»)\s$/,
         handler: ({ state, range }) => {
           const $start = state.doc.resolve(range.from)
           const paragraph = $start.parent
