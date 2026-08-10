@@ -3,7 +3,7 @@
     <button
       type="button"
       contenteditable="false"
-      class="gp-collapsible-toggle text-ink-gray-5 hover:bg-surface-gray-2 rounded"
+      class="gp-collapsible-toggle text-ink-gray-5 hover:bg-surface-gray-2 active:bg-surface-gray-3 h-6 w-6 rounded-3"
       :aria-expanded="isOpen"
       :aria-label="isOpen ? 'Collapse section' : 'Expand section'"
       @click="toggle"
@@ -15,7 +15,7 @@
         stroke-width="2"
         stroke-linecap="round"
         stroke-linejoin="round"
-        class="h-4 w-4"
+        class="h-3.5 w-3.5"
       >
         <path d="m9 18 6-6-6-6" />
       </svg>
@@ -55,25 +55,35 @@ function toggle() {
 </script>
 
 <style scoped>
+/*
+ * 1.75rem puts the title on the same x as bullet-list and task-list text
+ * (measured in the editor: both land ~28px past the block's left edge), so a
+ * section reads as one more item in the same column rather than a block that
+ * starts somewhere new.
+ */
 .gp-collapsible {
   position: relative;
-  padding-left: 1.5rem;
+  padding-left: 1.75rem;
 }
 
 /*
- * The toggle sits in the gutter, aligned to the first line of the title. It is
+ * A 24px rounded square matching `Button size="xs"` (h-6 w-6 rounded-3), sized
+ * by utility classes on the element itself. Centred in the 28px gutter, which
+ * puts its midpoint on the task-list checkbox's midpoint. It is
  * `contenteditable="false"` so ProseMirror treats it as a widget rather than
  * text; `user-select: none` keeps it out of a drag-selection of the title.
  */
 .gp-collapsible-toggle {
   position: absolute;
   left: 0;
-  top: 0.125rem;
+  /* Centre on the title's first line, whatever its line-height. `1lh` is the
+   * same unit frappe-ui's task list uses; the plain `top: 0` above it is the
+   * fallback where the unit is unsupported. */
+  top: 0;
+  top: calc((1lh - 1.5rem) / 2);
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 1.25rem;
-  width: 1.25rem;
   user-select: none;
   transition: transform 150ms ease;
 }
