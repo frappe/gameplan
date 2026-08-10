@@ -1,10 +1,10 @@
 <template>
-  <TabButtons :buttons="spaceTabs" :size="tabButtonSize" v-model="currentTab" />
+  <TabButtons :options="spaceTabs" :size="tabButtonSize" v-model="currentTab" />
 </template>
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import type { PillSize } from 'frappe-ui'
+import type { TabsSize } from 'frappe-ui'
 import { TabButtons } from 'frappe-ui'
 import { useIsMobile } from '@/utils/useIsMobile'
 
@@ -22,7 +22,7 @@ const spaceTabs = [
   { label: 'Tasks', value: 'tasks' },
 ]
 
-const tabButtonSize = computed<PillSize>(() => (isMobileViewport.value ? 'md' : 'sm'))
+const tabButtonSize = computed<TabsSize>(() => (isMobileViewport.value ? 'md' : 'sm'))
 
 const currentTab = computed({
   get() {

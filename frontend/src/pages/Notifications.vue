@@ -6,7 +6,7 @@
 
   <div class="body-container pt-4 sm:pt-5">
     <div class="mb-3 flex items-center justify-between px-4 sm:px-3 gap-3">
-      <TabButtons :buttons="tabButtons" v-model="activeTab" />
+      <TabButtons :options="tabOptions" v-model="activeTab" />
       <Button
         @click="confirmMarkAllAsRead"
         :loading="markAllAsRead.loading"
@@ -223,7 +223,10 @@ const canMarkAllAsRead = computed(
   () => activeTab.value === 'Unread' && Boolean(unreadNotificationList.data?.length),
 )
 
-const tabButtons: { label: ActiveTab }[] = [{ label: 'Unread' }, { label: 'Read' }]
+const tabOptions: { value: ActiveTab; label: ActiveTab }[] = [
+  { value: 'Unread', label: 'Unread' },
+  { value: 'Read', label: 'Read' },
+]
 
 const notifications = computed(() =>
   activeTab.value === 'Unread' ? unreadNotificationList.data : readNotificationList.data,

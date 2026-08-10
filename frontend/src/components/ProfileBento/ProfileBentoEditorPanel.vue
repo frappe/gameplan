@@ -95,9 +95,11 @@
               <div class="space-y-1.5">
                 <FormLabel label="Size" size="md" />
                 <TabButtons
-                  :buttons="profileCardSizeButtons"
+                  :options="profileCardSizeOptions"
                   :model-value="card.size"
-                  @update:model-value="(size: ProfileCardSize) => $emit('updateSize', size)"
+                  @update:model-value="
+                    (size: TabValue) => $emit('updateSize', size as ProfileCardSize)
+                  "
                 />
               </div>
 
@@ -108,7 +110,8 @@
                     :options="profileImageRenderingOptions"
                     :model-value="card.imageRendering || 'Cover'"
                     @update:model-value="
-                      (value: ProfileImageRendering) => $emit('updateImageRendering', value)
+                      (value: TabValue) =>
+                        $emit('updateImageRendering', value as ProfileImageRendering)
                     "
                   />
                 </div>
@@ -179,6 +182,7 @@ import {
   TabButtons,
   Textarea,
   TextInput,
+  type TabValue,
 } from 'frappe-ui'
 import ProfileImageField from './ProfileImageField.vue'
 import { profileBoundFieldEditors } from './boundFields'
@@ -231,7 +235,7 @@ const panelStyle = computed(() => {
   return { height: `${shellHeight.value}px` }
 })
 
-const profileCardSizeButtons = profileCardSizes.map((size) => ({ label: size }))
+const profileCardSizeOptions = profileCardSizes.map((size) => ({ value: size, label: size }))
 
 const isContentCard = computed(() => Boolean(props.card) && props.card?.type !== 'Blank')
 /** The spec of the profile field this card is bound to, if it is bound to one. */
