@@ -235,6 +235,7 @@ import {
   Input,
   Select,
   TextInput,
+  usePageMeta,
 } from 'frappe-ui'
 import { List, ListCell, ListHeader, ListHeaderCell, ListRow } from 'frappe-ui/list'
 import { showSettingsDialog } from '@/components/Settings'
@@ -269,6 +270,7 @@ export default {
     }
   },
   setup() {
+    usePageMeta(() => ({ title: 'People' }))
     return {
       showSettingsDialog,
       isAdmin: computed(() => isGameplanAdmin()),
@@ -337,11 +339,6 @@ export default {
       }
       return url
     },
-  },
-  pageMeta() {
-    return {
-      title: 'People',
-    }
   },
 }
 </script>

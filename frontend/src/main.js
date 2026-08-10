@@ -1,7 +1,6 @@
 import { createApp } from 'vue'
 import {
   Button,
-  Input,
   TextInput,
   FormControl,
   ErrorMessage,
@@ -10,8 +9,8 @@ import {
   Badge,
   request,
   frappeRequest,
-  pageMetaPlugin,
   FrappeUI,
+  setConfig,
   useCall,
 } from 'frappe-ui'
 import router from './router'
@@ -26,7 +25,6 @@ import resetDataMixin from './utils/resetDataMixin'
 let globalComponents = {
   Button,
   TextInput,
-  Input,
   FormControl,
   ErrorMessage,
   Dialog,
@@ -34,7 +32,6 @@ let globalComponents = {
   Badge,
 }
 let app = createApp(App)
-app.use(pageMetaPlugin)
 app.use(router)
 app.mixin(resetDataMixin)
 for (let key in globalComponents) {
@@ -68,16 +65,14 @@ if (import.meta.env.DEV) {
 // Runs once boot values are on `window` (inline script in prod, the dev
 // context call above in dev) so frappe-ui gets its full config in one place.
 function setupApp() {
-  app.use(FrappeUI, {
-    call: false,
-    socketio: false,
-    config: {
-      resourceFetcher: frappeRequest,
-      defaultListUrl: 'gameplan.extends.client.get_list',
-      systemTimezone: window.system_timezone || null,
-      maxFileSize: window.max_file_size ? Number(window.max_file_size) : null,
-    },
-  })
+  // `resources: true` keeps the v1 resources Options API installed for
+  // UnsplashImageBrowser.vue and People.vue, the last two components declaring
+  // a `resources` option. Port both to createResource/useList to drop this.
+  app.use(FrappeUI, { resources: true })
+  setConfig('resourceFetcher', frappeRequest)
+  setConfig('defaultListUrl', 'gameplan.extends.client.get_list')
+  setConfig('systemTimezone', window.system_timezone || null)
+  setConfig('maxFileSize', window.max_file_size ? Number(window.max_file_size) : null)
   socket = initSocket()
   app.config.globalProperties.$socket = socket
   app.mount('#app')
