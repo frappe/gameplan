@@ -12,10 +12,7 @@
               <template v-else>{{ appVersion.tag }}</template>
             </div>
 
-            <Tooltip
-              :text="`${appVersion.commit_message} - ${appVersion.commit_date}`"
-              placement="top"
-            >
+            <Tooltip :text="`${appVersion.commit_message} - ${appVersion.commit_date}`" side="top">
               <span class="lucide-info size-3.5 text-ink-gray-8 ml-1" />
             </Tooltip>
           </div>

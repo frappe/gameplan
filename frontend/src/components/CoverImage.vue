@@ -40,8 +40,8 @@
             }
           "
         >
-          <template v-slot="{ togglePopover }">
-            <Button variant="outline" @click="togglePopover()"> Change Image </Button>
+          <template v-slot>
+            <Button variant="outline"> Change Image </Button>
           </template>
         </UnsplashImageBrowser>
         <Button v-if="editable" variant="outline" @click="beginReposition"> Reposition </Button>
@@ -62,8 +62,8 @@
           }
         "
       >
-        <template v-slot="{ togglePopover }">
-          <Button variant="outline" @click="togglePopover()"> Click to set cover image </Button>
+        <template v-slot>
+          <Button variant="outline"> Click to set cover image </Button>
         </template>
       </UnsplashImageBrowser>
     </div>

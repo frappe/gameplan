@@ -1,31 +1,27 @@
 <template>
-  <Popover transition="default">
-    <template #target="{ togglePopover, isOpen }">
-      <button @click="togglePopover()">
-        <slot v-bind="{ isOpen }">
+  <Popover>
+    <template #trigger="{ open }">
+      <button>
+        <slot v-bind="{ open }">
           <span class="text-base"> {{ modelValue || '' }} </span>
         </slot>
       </button>
     </template>
-    <template #body>
-      <div class="left-1/2 mt-3 max-w-max -translate-x-1/2 transform px-4 sm:px-0">
-        <div
-          class="relative max-h-96 overflow-y-auto rounded-6 bg-surface-elevation-2 p-2 shadow-lg ring-1 ring-black ring-opacity-5"
-        >
-          <div class="grid grid-cols-11 place-items-center gap-1">
-            <button
-              class="h-4 w-4 rounded-full"
-              :style="{ backgroundColor: color }"
-              v-for="color in colors"
-              :key="color"
-              @click="$emit('update:modelValue', color)"
-              :title="color"
-              :aria-label="color"
-              :aria-pressed="color === modelValue"
-            >
-              &nbsp;
-            </button>
-          </div>
+    <template #default>
+      <div class="max-h-96 max-w-max overflow-y-auto p-2">
+        <div class="grid grid-cols-11 place-items-center gap-1">
+          <button
+            class="h-4 w-4 rounded-full"
+            :style="{ backgroundColor: color }"
+            v-for="color in colors"
+            :key="color"
+            @click="$emit('update:modelValue', color)"
+            :title="color"
+            :aria-label="color"
+            :aria-pressed="color === modelValue"
+          >
+            &nbsp;
+          </button>
         </div>
       </div>
     </template>
