@@ -33,25 +33,33 @@
             v-for="(item, index) in group.items"
             :key="item.label"
             type="button"
-            class="flex min-h-14 w-full text-left transition active:bg-surface-gray-2"
+            class="block w-full text-left transition active:bg-surface-gray-2"
             @click="onItemClick(item)"
           >
-            <span class="flex w-14 shrink-0 items-center justify-center py-3">
-              <span :class="[item.icon, 'size-5 text-ink-gray-8']" aria-hidden="true" />
-            </span>
-            <span class="relative flex min-w-0 flex-1 items-center gap-3 py-3 pr-4">
-              <span
-                v-if="index > 0"
-                class="pointer-events-none absolute left-0 right-4 top-0 border-t"
-                aria-hidden="true"
-              />
-              <span class="min-w-0 flex-1 truncate text-lg text-ink-gray-9">
-                {{ item.label }}
+            <!--
+              The flex layout lives on this inner wrapper, not the <button>. iOS Safari
+              (WebKit) wraps a button's children in an anonymous box, so making the button
+              itself a flex container leaves the rows top-aligned instead of vertically
+              centered. Same pattern as MobileListRow.vue.
+            -->
+            <span class="flex min-h-14 w-full items-stretch">
+              <span class="flex w-14 shrink-0 items-center justify-center py-3">
+                <span :class="[item.icon, 'size-5 text-ink-gray-8']" aria-hidden="true" />
               </span>
-              <span v-if="item.value" class="shrink-0 text-md text-ink-gray-5">
-                {{ item.value }}
+              <span class="relative flex min-w-0 flex-1 items-center gap-3 py-3 pr-4">
+                <span
+                  v-if="index > 0"
+                  class="pointer-events-none absolute left-0 right-4 top-0 border-t"
+                  aria-hidden="true"
+                />
+                <span class="min-w-0 flex-1 truncate text-lg text-ink-gray-9">
+                  {{ item.label }}
+                </span>
+                <span v-if="item.value" class="shrink-0 text-md text-ink-gray-5">
+                  {{ item.value }}
+                </span>
+                <span class="size-4 shrink-0 text-ink-gray-4 lucide-chevron-right" />
               </span>
-              <span class="size-4 shrink-0 text-ink-gray-4 lucide-chevron-right" />
             </span>
           </button>
         </nav>
