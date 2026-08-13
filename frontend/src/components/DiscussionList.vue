@@ -16,10 +16,11 @@
     </div>
 
     <template v-if="isInitialLoading">
-      <DiscussionRowSkeleton
+      <ListRowSkeleton
         v-for="index in skeletonRowCount"
         :key="index"
         :show-separator="index < skeletonRowCount"
+        label="Loading discussion"
       />
     </template>
 
@@ -55,7 +56,7 @@ import type { OrderBy } from 'frappe-ui'
 import { List } from 'frappe-ui/list'
 import { UseDiscussionOptions, useDiscussions } from '@/data/discussions'
 import DiscussionRow from './DiscussionRow.vue'
-import DiscussionRowSkeleton from './DiscussionRowSkeleton.vue'
+import ListRowSkeleton from './ListRowSkeleton.vue'
 import EmptyStateBox from './EmptyStateBox.vue'
 import Pin from './icons/Pin.vue'
 

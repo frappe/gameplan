@@ -16,7 +16,19 @@
       </Button>
     </div>
 
-    <List v-if="notifications?.length" class="max-sm:list-gap-3 sm:list-gap-4 max-sm:list-row-px-4">
+    <template v-if="isInitialLoading">
+      <ListRowSkeleton
+        v-for="index in skeletonRowCount"
+        :key="index"
+        :show-separator="index < skeletonRowCount"
+        label="Loading notification"
+      />
+    </template>
+
+    <List
+      v-else-if="notifications?.length"
+      class="max-sm:list-gap-3 sm:list-gap-4 max-sm:list-row-px-4"
+    >
       <ListRow
         v-for="notification in notifications"
         :key="notification.name"
@@ -146,6 +158,7 @@ import {
   usePageMeta,
 } from 'frappe-ui'
 import { List, ListRow, ListCell } from 'frappe-ui/list'
+import ListRowSkeleton from '@/components/ListRowSkeleton.vue'
 import ReactionFaceIcon from '@/components/ReactionFaceIcon.vue'
 import UserAvatarWithHover from '@/components/UserAvatarWithHover.vue'
 import { getCommunity } from '@/data/communities'
@@ -231,6 +244,16 @@ const tabOptions: { value: ActiveTab; label: ActiveTab }[] = [
 const notifications = computed(() =>
   activeTab.value === 'Unread' ? unreadNotificationList.data : readNotificationList.data,
 )
+
+// Same guard as DiscussionList: without it the fetch's empty window renders the
+// "You're caught up" box, which contradicts the unread badge that brought the user here.
+// A cached list (`cacheKey`) fills `data` before the request settles, so the skeleton
+// only shows on a genuinely cold load.
+const skeletonRowCount = 3
+const activeList = computed(() =>
+  activeTab.value === 'Unread' ? unreadNotificationList : readNotificationList,
+)
+const isInitialLoading = computed(() => activeList.value.loading && !activeList.value.data?.length)
 
 const emptyStateTitle = computed(() =>
   activeTab.value === 'Unread' ? "You're caught up" : 'No read notifications',
