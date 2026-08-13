@@ -550,6 +550,8 @@ def migrate_users(only=None, commit_every=200):
 		seen += 1
 		if cstr(row.id) in existing:
 			continue
+		if created % 100 == 0:
+			drain_queue()
 		try:
 			user = create_user(row, context)
 		except Exception:
@@ -601,12 +603,45 @@ def create_user(row, context):
 	except frappe.NameError:
 		return email
 	except Exception:
-		# A username Frappe rejects must not cost us the account.
-		user.username = None
-		user.insert(ignore_permissions=True)
+		# `create_user_profile` commits inside User.after_insert, so a throw from a
+		# later hook leaves a usable account behind. Re-inserting it would only
+		# raise DuplicateEntryError.
+		if frappe.db.exists("User", email):
+			frappe.clear_last_message()
+		else:
+			# A username Frappe rejects must not cost us the account.
+			user.username = None
+			user.insert(ignore_permissions=True)
 
-	set_avatar(user, row, context)
-	return user.name
+	set_avatar(frappe._dict(name=email), row, context)
+	return email
+
+
+def drain_queue():
+	"""Drop this site's queued jobs so `User.on_update` never hits the ceiling.
+
+	`User.on_update` enqueues `create_contact` per user. A bench with no worker
+	fills the queue until `_check_queue_size` throws QueueOverloaded and every
+	later User insert fails. Gameplan never reads Contacts, so the jobs are dead
+	weight.
+
+	Only jobs belonging to the current site are removed. Redis is shared with
+	other benches on this machine and their jobs must survive.
+	"""
+	try:
+		from frappe.utils.background_jobs import get_queue
+
+		site = frappe.local.site
+		removed = 0
+		for queue_name in ("default", "short", "long"):
+			for job in get_queue(queue_name).get_jobs():
+				if (job.kwargs or {}).get("site") == site:
+					job.delete()
+					removed += 1
+		return removed
+	except Exception:
+		print(f"could not drain the job queue: {frappe.get_traceback(with_context=False)}")
+		return 0
 
 
 def set_avatar(user, row, context):
