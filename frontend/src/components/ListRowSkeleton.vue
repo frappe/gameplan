@@ -2,7 +2,7 @@
   <div
     class="relative block h-[68px] select-none sm:h-15 sm:rounded-[10px]"
     role="status"
-    aria-label="Loading discussion"
+    :aria-label="label"
   >
     <div class="flex h-[68px] items-center overflow-hidden px-4 py-2 sm:h-full sm:px-3">
       <div class="flex items-center space-x-3">
@@ -24,7 +24,11 @@
 </template>
 
 <script setup lang="ts">
-defineProps<{
-  showSeparator?: boolean
-}>()
+withDefaults(
+  defineProps<{
+    showSeparator?: boolean
+    label?: string
+  }>(),
+  { label: 'Loading' },
+)
 </script>
