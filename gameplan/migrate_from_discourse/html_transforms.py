@@ -198,6 +198,11 @@ _CATEGORY_PATH_RE = re.compile(r"^/c/(.+?)/?$")
 # pass must never absolutize these onto discuss.frappe.io.
 _LOCAL_HREF_PREFIXES = ("/files/", "/private/", "/api/", "/g/", "/app/", "/assets/")
 
+# Anchors the second pass must not touch: chrome, not prose.
+_CHROME_ANCHOR_CLASSES = frozenset(
+	{"mention", "mention-group", "hashtag", "hashtag-cooked", "anchor", "badge-category__wrapper"}
+)
+
 _POLL_MARKER = "data-discourse-poll"
 
 # Serialization that bleach reproduces byte for byte: bare `&` escaped, void
@@ -282,6 +287,37 @@ def _unwrap_lightboxes(soup: BeautifulSoup) -> None:
 		wrapper.unwrap()
 
 
+def _quote_header(soup: BeautifulSoup, aside: Tag, username: str | None) -> Tag | None:
+	"""Attribution line for a quote aside.
+
+	31% of quote asides (about 10k) quote a topic rather than a person and carry
+	no ``data-username``. Those fall back to the topic link from ``div.title``,
+	which the second pass can then point at the imported discussion.
+	"""
+	head = soup.new_tag("p")
+	strong = soup.new_tag("strong")
+	head.append(strong)
+
+	if username:
+		strong.string = f"@{username}:"
+		return head
+
+	for anchor in aside.select("div.title a[href]"):
+		if _has_class(anchor, "badge-category__wrapper"):
+			continue
+		label = _text(anchor)
+		if not label:
+			continue
+		link = soup.new_tag("a", href=anchor["href"])
+		link.string = label
+		strong.append(NavigableString("Quoted from "))
+		strong.append(link)
+		strong.append(NavigableString(":"))
+		return head
+
+	return None
+
+
 def _rewrite_quotes(soup: BeautifulSoup) -> None:
 	"""Rule 6. ``aside.quote`` -> a plain blockquote headed by the author."""
 	for aside in soup.select("aside.quote"):
@@ -294,11 +330,8 @@ def _rewrite_quotes(soup: BeautifulSoup) -> None:
 					username = match.group(1)
 
 		quote = soup.new_tag("blockquote")
-		if username:
-			head = soup.new_tag("p")
-			strong = soup.new_tag("strong")
-			strong.string = f"@{username}:"
-			head.append(strong)
+		head = _quote_header(soup, aside, username)
+		if head:
 			quote.append(head)
 
 		inner = aside.find("blockquote")
@@ -784,8 +817,7 @@ def rewrite_internal_links(html: str, resolve) -> tuple[str, int]:
 	for anchor in soup.find_all("a", href=True):
 		if anchor.find_parent("span", class_="mention"):
 			continue
-		classes = _classes(anchor)
-		if any(c in ("mention", "mention-group", "hashtag", "hashtag-cooked", "anchor", "badge-category__wrapper") for c in classes):
+		if any(c in _CHROME_ANCHOR_CLASSES for c in _classes(anchor)):
 			continue
 
 		href = anchor["href"].strip()
