@@ -656,8 +656,10 @@ class Maps:
 		self.project_by_category = {
 			cint(k): v for k, v in load_map("categories").items() if cint(k) in importable
 		}
+		# GP Project names are integers in the database and strings in the ID map.
 		self.team_by_project = {
-			p.name: p.team for p in frappe.get_all("GP Project", ["name", "team"])
+			cstr(p.name): p.team
+			for p in frappe.get_all("GP Project", ["name", "team"], limit_page_length=0)
 		}
 		self.user_by_discourse_id = load_map("users")
 		self.imported_topics = set(load_map("topics"))
@@ -856,7 +858,7 @@ def import_topic(topic, batch, maps, context):
 		slug=url_safe_slug(title),
 		content=content,
 		project=project,
-		team=maps.team_by_project.get(project),
+		team=maps.team_by_project.get(cstr(project)),
 		last_post_at=topic.last_posted_at or topic.created_at,
 		creation=topic.created_at,
 		modified=topic.updated_at or topic.created_at,
@@ -1016,8 +1018,18 @@ def backfill_denormalized_fields():
 	"""
 	backfill_slugs()
 
-	frappe.db.sql("drop temporary table if exists `_gp_stream`")
+	# `team` is a fetch_from field, so db_insert never fills it.
 	frappe.db.sql(
+		"""update `tabGP Discussion` d
+		join `tabGP Project` p on p.name = d.project
+		set d.team = p.team
+		where d.team is null or d.team = '' or d.team != p.team"""
+	)
+
+	# Frappe blocks DDL through db.sql because it implicitly commits; sql_ddl is
+	# the sanctioned door and commits first.
+	frappe.db.sql_ddl("drop temporary table if exists `_gp_stream`")
+	frappe.db.sql_ddl(
 		"""create temporary table `_gp_stream` (
 			discussion bigint not null,
 			post_name varchar(140) not null,
@@ -1081,7 +1093,7 @@ def backfill_denormalized_fields():
 			d.last_post_at = d.creation, d.last_post_by = d.owner
 		where s.discussion is null"""
 	)
-	frappe.db.sql("drop temporary table if exists `_gp_stream`")
+	frappe.db.sql_ddl("drop temporary table if exists `_gp_stream`")
 
 	frappe.db.sql(
 		"""update `tabGP Project` p
