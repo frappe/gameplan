@@ -57,9 +57,7 @@ POST_FILTER = "p.deleted_at is null and not p.hidden and p.post_type = 1"
 
 
 def get_connection_string():
-	dsn = frappe.conf.get("discourse_connection_string") or os.environ.get(
-		"DISCOURSE_CONNECTION_STRING"
-	)
+	dsn = frappe.conf.get("discourse_connection_string") or os.environ.get("DISCOURSE_CONNECTION_STRING")
 	if not dsn:
 		frappe.throw("Set `discourse_connection_string` in site_config.json")
 	return dsn
@@ -137,8 +135,8 @@ def stream_query(query, values=None, itersize=2000):
 def log_map(reference_doctype, reference_name, table, discourse_id):
 	frappe.db.sql(
 		"""insert into `tabDiscourse ID Map`
-			(name, creation, modified, owner, modified_by,
-			 reference_doctype, reference_name, discourse_table, discourse_id)
+			(name, creation, modified, owner, modified_by, reference_doctype,
+			reference_name, discourse_table, discourse_id)
 		values (%s, now(), now(), %s, %s, %s, %s, %s, %s)
 		on duplicate key update reference_name = values(reference_name)""",
 		(
@@ -188,7 +186,7 @@ def base62_to_sha1(value):
 		if index < 0:
 			return None
 		number = number * 62 + index
-	return "%040x" % number
+	return f"{number:040x}"
 
 
 class ImportContext:
@@ -693,8 +691,7 @@ class Maps:
 		}
 		# GP Project names are integers in the database and strings in the ID map.
 		self.team_by_project = {
-			cstr(p.name): p.team
-			for p in frappe.get_all("GP Project", ["name", "team"], limit_page_length=0)
+			cstr(p.name): p.team for p in frappe.get_all("GP Project", ["name", "team"], limit_page_length=0)
 		}
 		self.user_by_discourse_id = load_map("users")
 		self.imported_topics = set(load_map("topics"))
@@ -732,9 +729,7 @@ def migrate_posts(only=None, limit=None, start_after=0, batch_size=200, commit_e
 	failed = 0
 
 	while True:
-		topics = run_query(
-			TOPIC_BATCH_SQL, {"cats": cats, "after": last_id, "limit": batch_size}
-		)
+		topics = run_query(TOPIC_BATCH_SQL, {"cats": cats, "after": last_id, "limit": batch_size})
 		if not topics:
 			break
 		last_id = topics[-1].id
@@ -971,8 +966,7 @@ def import_comment(reply, discussion, batch, maps, context, post_authors, post_b
 
 def import_poll(poll, topic, discussion, batch, maps):
 	options = [
-		frappe.utils.strip_html(html or "").strip()
-		for html in (batch.poll_options.get(poll.id) or [])
+		frappe.utils.strip_html(html or "").strip() for html in (batch.poll_options.get(poll.id) or [])
 	]
 	options = [o[:140] for o in dict.fromkeys(o for o in options if o)]
 	if not options:
@@ -1207,9 +1201,7 @@ def make_link_resolver():
 			discussion = topics.get(key)
 			if not discussion:
 				return None
-			project = project_by_discussion.get(cint(discussion)) or project_by_discussion.get(
-				discussion
-			)
+			project = project_by_discussion.get(cint(discussion)) or project_by_discussion.get(discussion)
 			return f"/g/space/{project}/discussion/{discussion}" if project else None
 
 		if kind in ("u", "user", "users", "person"):
@@ -1251,9 +1243,7 @@ def rewrite_links(batch_size=500):
 			for row in rows:
 				html, rewritten = rewrite_internal_links(row.content or "", resolve)
 				if rewritten:
-					frappe.db.set_value(
-						doctype, row.name, "content", html, update_modified=False
-					)
+					frappe.db.set_value(doctype, row.name, "content", html, update_modified=False)
 					total_rows += 1
 					total_links += rewritten
 			frappe.db.commit()
@@ -1413,26 +1403,26 @@ def execute(
 	Phases run in order and are individually resumable: everything already in
 	`Discourse ID Map` is skipped, so a re-run costs a scan and inserts nothing.
 
-	    bench --site <site> execute gameplan.migrate_from_discourse.execute
-	    bench --site <site> execute gameplan.migrate_from_discourse.execute \\
-	        --kwargs "{'categories': [83], 'phases': 'categories,users,posts,backfill'}"
+		bench --site <site> execute gameplan.migrate_from_discourse.execute
+		bench --site <site> execute gameplan.migrate_from_discourse.execute \\
+			--kwargs "{'categories': [83], 'phases': 'categories,users,posts,backfill'}"
 
 	Args:
-	    phases: subset of ("categories", "users", "posts", "backfill", "links"),
-	        as a list or a comma-separated string. Default: all of them, in order.
-	    categories: Discourse category ids to limit the run to (smoke tests).
-	        Ancestors are still created so subcategories have a team.
-	    limit: stop after this many new discussions.
-	    start_after: resume the topic keyset scan after this Discourse topic id.
-	    batch_size: topics fetched per keyset batch.
-	    commit_every: commit after this many discussions.
-	    clear: run `clear_data()` first instead of importing.
-	    include_users_in_clear: also delete imported Users when clearing.
+		phases: subset of ("categories", "users", "posts", "backfill", "links"),
+			as a list or a comma-separated string. Default: all of them, in order.
+		categories: Discourse category ids to limit the run to (smoke tests).
+			Ancestors are still created so subcategories have a team.
+		limit: stop after this many new discussions.
+		start_after: resume the topic keyset scan after this Discourse topic id.
+		batch_size: topics fetched per keyset batch.
+		commit_every: commit after this many discussions.
+		clear: run `clear_data()` first instead of importing.
+		include_users_in_clear: also delete imported Users when clearing.
 
 	Rebuild search afterwards. `db_insert` bypasses every indexing hook, so nothing
 	imported is searchable until you run:
 
-	    bench --site <site> execute gameplan.search_sqlite.rebuild_index
+		bench --site <site> execute gameplan.search_sqlite.rebuild_index
 
 	(that is `GameplanSearch().drop_index()` followed by
 	`GameplanSearch.build_index`.)
