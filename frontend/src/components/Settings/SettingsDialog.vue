@@ -22,7 +22,7 @@
         </SettingsNavItem>
       </SettingsNavGroup>
     </SettingsSidebar>
-    <SettingsContent>
+    <SettingsContent class="settings-dialog-content">
       <!-- One reka-ui tabpanel per tab. unmount-on-hide=false keeps a visited
            panel mounted (just hidden) so switching back is instant and inactive
            tabs keep reacting to shared state (e.g. the active route); the v-if

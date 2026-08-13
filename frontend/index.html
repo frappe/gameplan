@@ -12,7 +12,7 @@
       never flashes white between the splash screen and Vue mounting. Setting
       data-theme alone is not enough: the bg-surface-base class only resolves
       once the Tailwind bundle loads, so we also paint an explicit background
-      color matching --surface-base (#ffffff / #171717) directly on <html>.
+      color matching the app chrome (#ffffff / #111111) directly on <html>.
       Mirrors the resolution logic in src/utils/useTheme.ts.
     -->
     <script>
@@ -24,12 +24,12 @@
             theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
           }
           document.documentElement.setAttribute('data-theme', theme)
-          document.documentElement.style.backgroundColor = theme === 'dark' ? '#171717' : '#ffffff'
+          document.documentElement.style.backgroundColor = theme === 'dark' ? '#111111' : '#ffffff'
         } catch (e) {}
       })()
     </script>
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
-    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#171717" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#111111" />
     <link rel="manifest" href="/assets/gameplan/manifest/site.webmanifest" />
     <link
       rel="icon"

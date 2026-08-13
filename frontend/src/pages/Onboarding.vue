@@ -1,5 +1,5 @@
 <template>
-  <div class="flex h-screen bg-surface-sidebar">
+  <div class="app-shell-background flex h-screen">
     <!--
       Live preview of the app the user is building. Mirrors the post-refactor
       shell — a community rail (AppRail) plus a space sidebar (AppSidebar) — so
@@ -10,7 +10,7 @@
     <div class="flex h-full select-none">
       <!-- Community rail -->
       <div
-        class="flex w-[50px] shrink-0 flex-col items-center border-r bg-surface-sidebar px-[11px] pb-3 pt-2.5"
+        class="app-shell-chrome flex w-[50px] shrink-0 flex-col items-center border-r px-[11px] pb-3 pt-2.5"
       >
         <div class="mb-3 flex shrink-0 items-center justify-center">
           <span
@@ -54,7 +54,7 @@
         </UserDropdown>
       </div>
       <!-- Space sidebar -->
-      <div class="pointer-events-none flex w-56 flex-col bg-surface-sidebar">
+      <div class="app-shell-chrome pointer-events-none flex w-56 flex-col">
         <div class="flex shrink-0 items-center gap-2 p-2">
           <span class="flex size-7 items-center justify-center rounded-[7px] bg-surface-gray-3">
             <span class="text-2xs-medium uppercase text-ink-gray-5">{{ communityInitials }}</span>
@@ -78,10 +78,8 @@
         </div>
       </div>
     </div>
-    <div class="flex min-w-0 flex-1 py-1 pr-1 dark:p-0">
-      <div
-        class="flex min-w-0 flex-1 overflow-hidden rounded-lg bg-surface-base shadow-sm dark:rounded-none dark:border-l dark:shadow-none"
-      >
+    <div class="flex min-w-0 flex-1 py-2 pr-2">
+      <div class="app-shell-card flex min-w-0 flex-1 overflow-hidden rounded-lg bg-surface-base">
         <ScrollContainer>
           <div class="body-container pt-14 pb-14">
             <div class="max-w-xl mx-auto">

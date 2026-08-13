@@ -1,9 +1,6 @@
 <template>
   <ScrollAreaRoot class="relative block min-h-0 flex-1">
-    <ScrollAreaViewport
-      class="h-full w-full isolate overflow-auto bg-surface-base"
-      id="scrollContainer"
-    >
+    <ScrollAreaViewport class="h-full w-full isolate overflow-auto" id="scrollContainer">
       <slot />
     </ScrollAreaViewport>
     <ScrollBar />

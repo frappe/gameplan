@@ -1,6 +1,6 @@
 <template>
   <div
-    class="flex h-full w-[50px] shrink-0 flex-col items-center bg-surface-sidebar px-[11px] pb-3 pt-2.5"
+    class="app-shell-chrome flex h-full w-[50px] shrink-0 flex-col items-center px-[11px] pb-3 pt-2.5"
     :class="showBorder ? 'border-r' : ''"
   >
     <TooltipProvider :delay-duration="0">

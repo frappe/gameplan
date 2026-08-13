@@ -1,5 +1,5 @@
 <template>
-  <div class="flex h-full w-56 flex-col bg-surface-sidebar">
+  <div class="app-shell-chrome flex h-full w-56 flex-col">
     <template v-if="communityState.doc">
       <div class="flex shrink-0 items-center p-2">
         <AppDropdown v-if="session.isAuthenticated" />

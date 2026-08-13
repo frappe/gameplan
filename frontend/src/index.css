@@ -22,6 +22,60 @@ html {
     'cv11' 1;
 }
 
+[data-theme='dark'] {
+  --surface-sidebar: oklch(0.17 0 0);
+}
+
+.app-shell-background,
+.app-shell-chrome {
+  background: var(--surface-sidebar);
+}
+
+[data-theme='dark'] .app-shell-background,
+[data-theme='dark'] .app-shell-chrome {
+  background: linear-gradient(180deg, oklch(0.18 0 0) 0%, oklch(0.12 0 0) 100%);
+}
+
+.app-shell-card {
+  position: relative;
+  box-shadow: var(--elevation-sm);
+}
+
+[data-theme='dark'] .app-shell-card {
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.16),
+    inset 1px 0 0 rgb(255 255 255 / 0.1),
+    inset -1px 0 0 rgb(255 255 255 / 0.07),
+    inset 0 -1px 0 rgb(255 255 255 / 0.05),
+    0 14px 18px -16px rgb(0 0 0 / 0.95);
+}
+
+[data-theme='dark'] .dialog-content:has(.settings-dialog-content) {
+  position: relative;
+  box-shadow: 0 20px 32px -24px rgb(0 0 0 / 0.95);
+}
+
+[data-theme='dark'] .dialog-content:has(.settings-dialog-content)::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  border-radius: inherit;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.16),
+    inset 1px 0 0 rgb(255 255 255 / 0.1),
+    inset -1px 0 0 rgb(255 255 255 / 0.07),
+    inset 0 -1px 0 rgb(255 255 255 / 0.05);
+}
+
+[data-theme='dark'] .dialog-content:has(.settings-dialog-content) [role='tablist'] {
+  background: oklch(0.220 0 0);
+  box-shadow:
+    inset -1px 0 0 rgb(0 0 0 / 0.5),
+    inset 0 1px 8px rgb(0 0 0 / 0.25);
+}
+
 /* ProseMirror disables ligatures by default; restore so the font-feature-settings
    set on html are inherited inside the editor */
 .ProseMirror {

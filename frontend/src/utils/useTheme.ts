@@ -4,7 +4,7 @@ export type Theme = 'light' | 'dark' | 'system'
 
 const THEME_COLORS = {
   light: '#ffffff',
-  dark: '#171717',
+  dark: '#111111',
 } as const
 
 const currentTheme: Ref<Theme> = ref('light')
