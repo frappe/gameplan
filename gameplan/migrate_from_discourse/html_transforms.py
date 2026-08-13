@@ -59,7 +59,7 @@ class TransformContext(Protocol):
 
 
 DISCOURSE_HOSTS = ("discuss.frappe.io", "discuss.erpnext.com")
-DISCOURSE_BASE_URL = "https://discuss.frappe.io"
+DISCOURSE_CANONICAL_HOST = "discuss.frappe.io"
 
 # Mirrors gameplan.utils.sanitizer.ALLOWED_IFRAME_DOMAINS. Duplicated so this
 # module imports without frappe; keep the two lists in step.
@@ -836,6 +836,8 @@ def rewrite_internal_links(html: str, resolve) -> tuple[str, int]:
 
 		if href.startswith("/"):
 			parts = urlsplit(href)
-			anchor["href"] = urlunsplit(("https", "discuss.frappe.io", parts.path, parts.query, parts.fragment))
+			anchor["href"] = urlunsplit(
+				("https", DISCOURSE_CANONICAL_HOST, parts.path, parts.query, parts.fragment)
+			)
 
 	return _serialize(soup), rewritten
