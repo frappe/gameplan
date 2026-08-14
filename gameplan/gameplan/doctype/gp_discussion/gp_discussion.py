@@ -297,6 +297,12 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 
 def on_doctype_update():
 	frappe.db.add_index("GP Discussion", ["project", "last_post_at"])
+	# The People page groups discussions by author for every profile it lists. Without this
+	# each of those group-bys scans the whole table — 716ms on an 80k-discussion site.
+	# Composite rather than a bare `owner`: schema sync drops any single-column index that
+	# its docfield does not mark `search_index`, and `owner` is a framework column with no
+	# docfield to mark. `creation` also bounds the recent-activity variants of the query.
+	frappe.db.add_index("GP Discussion", ["owner", "creation"])
 
 
 def move_discussion(discussion, project):
