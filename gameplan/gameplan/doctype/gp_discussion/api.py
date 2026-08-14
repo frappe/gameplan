@@ -93,32 +93,27 @@ def get_discussions(filters=None, order_by=None, start=None, limit=None):
 
 	Discussion = frappe.qb.DocType("GP Discussion")
 	Project = frappe.qb.DocType("GP Project")
-	Member = frappe.qb.DocType("GP Member")
 	UnreadRecord = frappe.qb.DocType("GP Unread Record")
 
-	member_exists = (
-		frappe.qb.from_(Member)
-		.select(Member.name)
-		.where(Member.parenttype == "GP Project")
-		.where(Member.parent == Project.name)
-		.where(Member.user == frappe.session.user)
-	)
-	query = (
-		frappe.qb.get_query(
-			Discussion,
-			fields=[Discussion.star, Project.title.as_("project_title")],
-			filters=filters,
-		)
-		.left_join(Project)
-		.on(Discussion.project == Project.name)
-		.where(Project.archived_at.isnull())
-		.limit(limit + 1)
-		.offset(start)
-	)
-	query = apply_accessible_project_filter(query, Discussion.project)
+	def base_query(fields):
+		"""The feed query minus the feed-specific clause, the sort and the page window.
 
-	if participator:
-		query = query.where(clause_discussions_commented_by_user(participator))
+		Every caller needs the same visibility rules — the project join, the archived-space
+		exclusion and the accessible-project filter — so they live here rather than being
+		re-stated by the `participating` branch, where leaving one out would leak rows.
+		"""
+		query = (
+			frappe.qb.get_query(Discussion, fields=fields, filters=filters)
+			.left_join(Project)
+			.on(Discussion.project == Project.name)
+			.where(Project.archived_at.isnull())
+		)
+		query = apply_accessible_project_filter(query, Discussion.project)
+		if participator:
+			query = query.where(clause_discussions_commented_by_user(participator))
+		return query
+
+	query = base_query([Discussion.star, Project.title.as_("project_title")]).limit(limit + 1).offset(start)
 
 	if feed_type == "bookmarks":
 		query = query.where(clause_discussions_bookmarked_by_user(frappe.session.user))
@@ -136,13 +131,23 @@ def get_discussions(filters=None, order_by=None, start=None, limit=None):
 		query = query.where(ExistsCriterion(unread_record_exists))
 
 	if feed_type == "following":
-		query = query.where(ExistsCriterion(member_exists))
+		# Resolving the joined spaces first and passing them as a literal list, rather than
+		# an EXISTS correlated on GP Member: the correlated form became a semi-join that
+		# scanned all 80,766 discussions (3.7s). There are at most a few hundred spaces.
+		joined_projects = joined_project_names()
+		if not joined_projects:
+			return empty_feed()
+		query = query.where(Discussion.project.isin(joined_projects))
 
 	if feed_type == "participating":
-		query = query.where(
-			(Discussion.owner == frappe.session.user)
-			| clause_discussions_commented_by_user(frappe.session.user)
-		)
+		# Two separately limited lookups instead of `owner = ? OR name IN (comments)`.
+		# MariaDB cannot index-merge across the subquery, so the OR degraded into a
+		# dependent subquery evaluated per row: 22.3s for an account with many comments,
+		# against 97ms and 7ms for the same two halves asked separately.
+		names = participating_discussion_names(base_query, order_field, order_direction, start + limit + 1)
+		if not names:
+			return empty_feed()
+		query = query.where(Discussion.name.isin(names))
 
 	query = query.orderby(Discussion[order_field], order=frappe._dict(value=order_direction))
 
@@ -156,6 +161,61 @@ def get_discussions(filters=None, order_by=None, start=None, limit=None):
 
 	frappe.response["has_next_page"] = has_next_page
 	return discussions
+
+
+def empty_feed():
+	"""The response shape `get_discussions` returns when a feed can have no rows at all.
+
+	Needed as an early exit rather than an empty `IN ()`, which is a MariaDB syntax error.
+	"""
+	frappe.response["has_next_page"] = False
+	return []
+
+
+def joined_project_names():
+	"""Spaces the session user is a member of, as the query builder wants them.
+
+	GP Project autoincrements, so `parent` comes back as an int on the membership row
+	while `GP Discussion.project` is a Link — a varchar. Compared unconverted the `IN`
+	list matches nothing.
+	"""
+	Member = frappe.qb.DocType("GP Member")
+	return [
+		str(parent)
+		for parent in (
+			frappe.qb.from_(Member)
+			.select(Member.parent)
+			.distinct()
+			.where(Member.parenttype == "GP Project")
+			.where(Member.user == frappe.session.user)
+			.run(pluck="parent")
+		)
+	]
+
+
+def participating_discussion_names(base_query, order_field, order_direction, depth):
+	"""Names of the discussions the session user started or replied to, top `depth` by sort.
+
+	Each half is asked separately and limited to `depth`, so the union is guaranteed to
+	contain the true top `depth` of the two combined — the caller re-sorts and pages over
+	it in SQL. Both halves carry the same visibility rules as the feed itself, so a limit
+	can never be filled with rows the caller would have filtered out afterwards.
+	"""
+	Discussion = frappe.qb.DocType("GP Discussion")
+	user = frappe.session.user
+	names = set()
+	for clause in (
+		Discussion.owner == user,
+		clause_discussions_commented_by_user(user),
+	):
+		names.update(
+			base_query([Discussion.name])
+			.where(clause)
+			.orderby(Discussion[order_field], order=frappe._dict(value=order_direction))
+			.limit(depth)
+			.run(pluck="name")
+		)
+	return list(names)
 
 
 def include_unread_counts(discussions):
