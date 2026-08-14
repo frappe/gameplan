@@ -59,6 +59,11 @@ def get_user_info(user=None):
 	comment_count_map = {c.owner: c.count for c in comment_counts}
 
 	roles = frappe.db.get_all("Has Role", filters={"parenttype": "User"}, fields=["role", "parent"])
+	# Group once instead of rescanning every role row per user. The nested scan below was
+	# O(users x roles): on a 21k-user site that is ~459M comparisons and 27s of the request.
+	roles_by_user = {}
+	for role_row in roles:
+		roles_by_user.setdefault(role_row.parent, []).append(role_row.role)
 	user_profiles = frappe.db.get_all(
 		"GP User Profile",
 		fields=[
@@ -98,7 +103,7 @@ def get_user_info(user=None):
 				user.email_digest_frequency = user_profile.email_digest_frequency
 				user.email_digest_day_of_week = user_profile.email_digest_day_of_week
 				user.email_digest_last_sent_on = user_profile.email_digest_last_sent_on
-		user_roles = [r.role for r in roles if r.parent == user.name]
+		user_roles = roles_by_user.get(user.name, [])
 		user.role = None
 		# GAMEPLAN_ROLES is ordered by privilege, so the last match is the effective role.
 		for role in GAMEPLAN_ROLES:
