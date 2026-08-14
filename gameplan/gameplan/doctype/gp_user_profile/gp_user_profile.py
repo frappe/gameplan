@@ -230,6 +230,12 @@ def get_list(
 	data = query.run(as_dict=True, debug=debug)
 	users = [d.user for d in data]
 
+	# The five count queries below all filter on `IN (users)`. An empty list renders as
+	# `IN ()`, which MariaDB rejects, so a page or filter that matched nobody returned
+	# HTTP 500 rather than an empty list.
+	if not users:
+		return data
+
 	Discussion = frappe.qb.DocType("GP Discussion")
 	discussions_count = (
 		frappe.qb.from_(Discussion)
