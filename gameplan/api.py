@@ -36,6 +36,12 @@ def get_user_info(user=None):
 		distinct=True,
 	).run(as_dict=1)
 
+	# Every query below filters on `owner IN (<these users>)`. An empty list renders as
+	# `IN ()`, which MariaDB rejects outright, so asking for a user with no Gameplan role
+	# — `?user=Administrator`, among others — returned HTTP 500 instead of an empty list.
+	if not users:
+		return []
+
 	# Get discussion counts for last 3 months
 	Discussion = frappe.qb.DocType("GP Discussion")
 	discussion_counts = (

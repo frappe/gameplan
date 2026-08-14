@@ -1,5 +1,6 @@
 # Copyright (c) 2022, Frappe Technologies Pvt. Ltd. and Contributors
 # MIT License. See license.txt
+import hashlib
 import re
 import time
 
@@ -19,6 +20,10 @@ from frappe.utils import cstr
 from gameplan.permissions import project_access_criterion
 
 INDEX_BUILD_FLAG = "discussions_index_in_progress"
+
+# How long the search filter counts may lag the index. Nothing invalidates them on write,
+# so this is the whole freshness guarantee.
+FILTER_OPTIONS_TTL = 5 * 60
 
 
 class GameplanSearch(SQLiteSearch):
@@ -330,6 +335,34 @@ class GameplanSearch(SQLiteSearch):
 		if not accessible_projects:
 			return {"authors": {}, "projects": {}, "teams": {}, "doctypes": {}, "tags": {}}
 
+		cache_key = self._filter_options_cache_key(accessible_projects)
+		cached = frappe.cache.get_value(cache_key)
+		if cached is not None:
+			return cached
+
+		options = self._compute_filter_options(accessible_projects)
+		frappe.cache.set_value(cache_key, options, expires_in_sec=FILTER_OPTIONS_TTL)
+		return options
+
+	@staticmethod
+	def _filter_options_cache_key(accessible_projects):
+		"""Key the cache on the space set, not the user.
+
+		Two things follow. A permission change moves the user to a different key at once,
+		so the cache can never hand back options for spaces the user just lost. And every
+		member of the same spaces — the common case — shares one entry instead of paying
+		for their own.
+		"""
+		digest = hashlib.sha1(",".join(sorted(accessible_projects)).encode()).hexdigest()
+		return f"gameplan_search_filter_options:{digest}"
+
+	def _compute_filter_options(self, accessible_projects):
+		"""The uncached scan. Four full GROUP BYs plus a tag-token count over every row.
+
+		Costs 1.8s on a 365k-row index and runs when the Search page mounts, before the
+		user has typed. The counts label filter checkboxes, so a few minutes of staleness
+		is invisible; that is what buys the cache above.
+		"""
 		conn = self._get_connection(read_only=True)
 		try:
 			# Get authors
