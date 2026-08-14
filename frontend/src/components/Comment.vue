@@ -15,7 +15,7 @@
       class="flex items-center bg-surface-base pb-2 pt-2 text-md text-ink-gray-8 sm:pt-14 sm:text-base"
       :class="{ 'sticky -top-px z-[1] sm:top-0': !isEditing }"
     >
-      <UserProfileLink class="mr-3" :user="author.name">
+      <UserProfileLink class="me-3" :user="author.name">
         <UserAvatarWithHover class="sm:hidden" size="xl" :user="author.name" />
         <UserAvatarWithHover class="hidden sm:inline-flex" size="lg" :user="author.name" />
       </UserProfileLink>
@@ -48,7 +48,7 @@
       </div>
       <Dropdown
         v-show="!isEditing"
-        class="ml-auto print:hidden"
+        class="ms-auto print:hidden"
         align="end"
         :button="{
           icon: 'lucide-more-horizontal',

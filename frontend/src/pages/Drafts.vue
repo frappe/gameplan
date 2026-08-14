@@ -116,7 +116,7 @@
                       <span>{{ draft.space_title }}</span>
                       <span
                         v-if="draft.is_private"
-                        class="lucide-lock h-3 w-3 text-ink-gray-6 ml-0.5"
+                        class="lucide-lock h-3 w-3 text-ink-gray-6 ms-0.5"
                       />
                       <span>:&nbsp;</span>
                     </div>
@@ -129,7 +129,7 @@
             </ListCell>
             <ListCell class="justify-end">
               <Tooltip :text="dayjsLocal(draft.modified).format('D MMM YYYY [at] h:mm A')">
-                <div class="shrink-0 whitespace-nowrap text-sm text-ink-gray-5 text-right">
+                <div class="shrink-0 whitespace-nowrap text-sm text-ink-gray-5 text-end">
                   {{ relativeTimestamp(draft.modified) }}
                 </div>
               </Tooltip>

@@ -17,16 +17,16 @@
         <div
           class="sticky -top-px z-[1] flex w-full items-center bg-surface-base pb-2 pt-2 sm:top-0 sm:pt-14"
         >
-          <Avatar size="xl" label="A" class="mr-3 shrink-0 animate-pulse sm:hidden">
+          <Avatar size="xl" label="A" class="me-3 shrink-0 animate-pulse sm:hidden">
             <div></div>
           </Avatar>
-          <Avatar size="lg" label="A" class="mr-3 hidden shrink-0 animate-pulse sm:inline-flex">
+          <Avatar size="lg" label="A" class="me-3 hidden shrink-0 animate-pulse sm:inline-flex">
             <div></div>
           </Avatar>
           <div class="flex flex-col md:block">
             <div class="text-base-medium bg-surface-gray-2 animate-pulse w-20 h-4"></div>
           </div>
-          <div class="ml-auto flex space-x-2">
+          <div class="ms-auto flex space-x-2">
             <Button>
               <template #icon>
                 <div class="animate-pulse w-20 h-8"></div>
@@ -37,8 +37,8 @@
         <div class="flex items-start justify-between space-x-1">
           <h1 class="flex items-center text-4xl-semibold animate-pulse">
             <span class="bg-surface-gray-3 h-5.5 w-32"> </span>
-            <span class="bg-surface-gray-3 h-5.5 w-20 ml-2"> </span>
-            <span class="bg-surface-gray-3 h-5.5 w-40 ml-2"> </span>
+            <span class="bg-surface-gray-3 h-5.5 w-20 ms-2"> </span>
+            <span class="bg-surface-gray-3 h-5.5 w-40 ms-2"> </span>
           </h1>
         </div>
       </div>
@@ -56,7 +56,7 @@
             class="flex w-full items-center bg-surface-base pb-2 pt-2"
             :class="editingPost ? 'sm:pt-0' : 'sticky -top-px z-[1] sm:top-0 sm:pt-14'"
           >
-            <UserProfileLink class="mr-3" :user="discussion.doc.owner">
+            <UserProfileLink class="me-3" :user="discussion.doc.owner">
               <UserAvatarWithHover class="sm:hidden" size="xl" :user="discussion.doc.owner" />
               <UserAvatarWithHover
                 class="hidden sm:inline-flex"
@@ -81,10 +81,10 @@
                 </time>
               </Tooltip>
             </div>
-            <div class="ml-auto flex space-x-2 print:hidden">
+            <div class="ms-auto flex space-x-2 print:hidden">
               <Dropdown
                 v-if="!readOnlyMode"
-                class="ml-auto"
+                class="ms-auto"
                 align="end"
                 :button="{
                   icon: 'lucide-more-horizontal',
@@ -99,7 +99,7 @@
             <div class="flex items-start justify-between space-x-1">
               <h1 v-if="!editingPost" class="flex items-center text-4xl-semibold" ref="postTitleEl">
                 <Tooltip v-if="discussion.doc.closed_at" text="This discussion is closed">
-                  <span class="lucide-lock mr-2 h-4 w-4 text-ink-gray-6" />
+                  <span class="lucide-lock me-2 h-4 w-4 text-ink-gray-6" />
                 </Tooltip>
                 <span class="text-ink-gray-8">
                   {{ discussion.doc.title }}
@@ -241,7 +241,7 @@
           <template #actions>
             <div class="flex">
               <Button
-                class="ml-auto"
+                class="ms-auto"
                 variant="solid"
                 :loading="discussion.pinDiscussion.loading"
                 @click="

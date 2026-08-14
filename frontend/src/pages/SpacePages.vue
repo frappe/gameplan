@@ -27,7 +27,7 @@
         <template #default>
           <Button>
             <template #prefix>
-              <span class="lucide-arrow-down-up mr-1.5 h-4 w-4 leading-none" />
+              <span class="lucide-arrow-down-up me-1.5 h-4 w-4 leading-none" />
             </template>
             {{
               orderBy === 'title asc'

@@ -1,7 +1,7 @@
 <template>
   <PageHeaderMobile title="Communities">
     <template #prefix>
-      <GameplanLogo class="ml-1 size-7 rounded-[7px]" />
+      <GameplanLogo class="ms-1 size-7 rounded-[7px]" />
     </template>
     <template #suffix>
       <Button

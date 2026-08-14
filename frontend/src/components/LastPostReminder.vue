@@ -3,17 +3,17 @@
     <div class="border flex rounded-5 p-3 border-outline-gray-2 dark:bg-gray-900">
       <div class="flex-1">
         <div class="flex items-center">
-          <span class="lucide-alert-triangle size-4 shrink-0 mr-2.5 text-ink-gray-8" />
+          <span class="lucide-alert-triangle size-4 shrink-0 me-2.5 text-ink-gray-8" />
           <h2 class="text-p-base-medium text-ink-gray-8">You haven't posted in a while</h2>
         </div>
-        <div class="ml-6.5">
+        <div class="ms-6.5">
           <p class="text-ink-gray-6 text-p-base">
             It's been {{ daysSinceLastPost }} days since your last post. Share your thoughts or
             updates to keep the conversation going.
           </p>
         </div>
       </div>
-      <div class="ml-auto">
+      <div class="ms-auto">
         <Button icon="lucide-x" variant="ghost" @click="dismiss" />
       </div>
     </div>

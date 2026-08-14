@@ -4,21 +4,21 @@
   >
     <span
       v-if="typeof item.icon === 'string'"
-      :class="[item.icon, 'mr-3 h-4 w-4 shrink-0 text-ink-gray-6']"
+      :class="[item.icon, 'me-3 h-4 w-4 shrink-0 text-ink-gray-6']"
     />
     <component
       v-else-if="item.icon"
       :is="item.icon"
-      class="mr-3 h-4 w-4 shrink-0 text-ink-gray-6"
+      class="me-3 h-4 w-4 shrink-0 text-ink-gray-6"
     />
     <span
       class="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap"
       v-html="item.title"
     />
-    <span v-if="item.modified" class="ml-auto shrink-0 whitespace-nowrap pl-2 text-ink-gray-5">
+    <span v-if="item.modified" class="ms-auto shrink-0 whitespace-nowrap ps-2 text-ink-gray-5">
       {{ dayjsLocal(item.modified).fromNow(true) }}
     </span>
-    <span v-else-if="item.suffix" class="ml-auto shrink-0 whitespace-nowrap pl-2 text-ink-gray-5">
+    <span v-else-if="item.suffix" class="ms-auto shrink-0 whitespace-nowrap ps-2 text-ink-gray-5">
       {{ item.suffix }}
     </span>
   </div>

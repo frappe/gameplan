@@ -13,7 +13,7 @@
             icon="lucide-edit"
             label="Edit profile"
             tooltip="Edit profile"
-            class="ml-1 shrink-0"
+            class="ms-1 shrink-0"
             @click.stop.prevent="showSettingsDialog('Profile')"
           />
         </template>

@@ -22,7 +22,7 @@
 
       <button
         v-if="pendingInvites.data?.length"
-        class="mt-2 flex w-full items-center justify-between gap-3 rounded-4 bg-surface-gray-2 px-3 py-2 text-left transition-colors hover:bg-surface-gray-3"
+        class="mt-2 flex w-full items-center justify-between gap-3 rounded-4 bg-surface-gray-2 px-3 py-2 text-start transition-colors hover:bg-surface-gray-3"
         @click="showInviteDialog = true"
       >
         <span class="flex items-center gap-2 text-base text-ink-gray-7">
@@ -66,7 +66,7 @@
         <ListRow>
           <ListCell>
             <UserAvatar :user="user.name" size="xl" />
-            <div class="ml-3 min-w-0">
+            <div class="ms-3 min-w-0">
               <div class="truncate text-base text-ink-gray-8">
                 {{ user.full_name }}
               </div>

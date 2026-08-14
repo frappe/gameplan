@@ -39,7 +39,7 @@
               </template>
             </Combobox>
             <Button
-              class="ml-auto w-13 shrink-0"
+              class="ms-auto w-13 shrink-0"
               @click="addMember"
               :loading="spaces.runDocMethod.isLoading(space.name, 'add_member')"
             >
@@ -84,7 +84,7 @@
               @keydown.enter="invite"
             />
             <Button
-              class="ml-auto w-13 shrink-0"
+              class="ms-auto w-13 shrink-0"
               @click="invite"
               :loading="spaces.runDocMethod.isLoading(space.name, 'invite_guest')"
             >
@@ -103,7 +103,7 @@
                   {{ user.pending ? 'Pending invitation' : useUser(user.user).email }}
                 </div>
               </div>
-              <div v-if="canInvite" class="ml-auto flex">
+              <div v-if="canInvite" class="ms-auto flex">
                 <Tooltip :text="user.pending ? 'Delete invite' : 'Remove guest'">
                   <Button
                     :label="user.pending ? 'Delete invite' : 'Remove guest'"

@@ -1,7 +1,7 @@
 <template>
   <button
     type="button"
-    class="block w-full text-left transition active:bg-surface-gray-2"
+    class="block w-full text-start transition active:bg-surface-gray-2"
     :class="active ? 'bg-surface-gray-2' : ''"
   >
     <!--
@@ -10,10 +10,10 @@
       container leaves the rows top-aligned instead of vertically centered.
     -->
     <span class="flex w-full items-stretch" :class="rowHeightClass">
-      <span class="flex shrink-0 items-center py-2.5 pl-4 pr-3">
+      <span class="flex shrink-0 items-center py-2.5 ps-4 pe-3">
         <slot name="icon" />
       </span>
-      <span class="relative flex min-w-0 flex-1 items-center gap-3 py-2.5 pr-4">
+      <span class="relative flex min-w-0 flex-1 items-center gap-3 py-2.5 pe-4">
         <span
           v-if="border"
           class="pointer-events-none absolute left-0 right-4 top-0 border-t"

@@ -49,7 +49,7 @@
           },
         ]"
       />
-      <div class="ml-2 shrink-0" v-if="page.doc && canEditPage">
+      <div class="ms-2 shrink-0" v-if="page.doc && canEditPage">
         <DropdownMoreOptions align="end" :options="pageActions" />
       </div>
     </PageHeader>

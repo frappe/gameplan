@@ -11,7 +11,7 @@
         <slot name="prefix" />
       </span>
       <span class="text-sm"><slot /></span>
-      <div v-if="$slots.suffix" class="!ml-auto">
+      <div v-if="$slots.suffix" class="!ms-auto">
         <slot name="suffix" />
       </div>
     </div>

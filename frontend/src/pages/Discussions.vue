@@ -43,7 +43,7 @@
         <template #suffix="{ button }">
           <span
             v-if="feedUnreadCount(String(button.value)) > 0"
-            class="ml-1 text-xs text-ink-gray-5"
+            class="ms-1 text-xs text-ink-gray-5"
           >
             {{ feedUnreadCount(String(button.value)) }}
           </span>

@@ -1,7 +1,7 @@
 <template>
   <div class="relative flex items-center text-p-base text-ink-gray-5">
     <div
-      class="mr-3 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-surface-gray-2 text-ink-gray-8"
+      class="me-3 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-surface-gray-2 text-ink-gray-8"
     >
       <span class="lucide-lock h-4 w-4" v-if="activity.action === 'Discussion Closed'" />
       <span class="lucide-unlock h-4 w-4" v-else-if="activity.action === 'Discussion Reopened'" />

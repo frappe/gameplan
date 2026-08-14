@@ -45,7 +45,7 @@
     <template #actions>
       <Button class="w-full relative" variant="solid" @click="onCreateClick">
         Create
-        <div class="absolute right-0 top-0 h-7 pr-2 flex items-center justify-center">
+        <div class="absolute right-0 top-0 h-7 pe-2 flex items-center justify-center">
           <KeyboardShortcut ctrl> Enter </KeyboardShortcut>
         </div>
       </Button>

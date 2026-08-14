@@ -68,7 +68,7 @@
         <!-- `h-full` on the root, not a cap: the viewport reka gives
              `overflow-y: scroll` is itself `h-full`, which resolves to auto
              inside a box that only has a max-height, and then nothing scrolls. -->
-        <ScrollArea v-else class="h-full" viewport-class="pr-3">
+        <ScrollArea v-else class="h-full" viewport-class="pe-3">
           <!-- Columns rather than a grid: photos keep their own proportions and
                stack with no dead space, which is the only way a wall of mixed
                portrait and landscape shots packs tightly.
