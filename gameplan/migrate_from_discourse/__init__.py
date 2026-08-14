@@ -1145,24 +1145,40 @@ def backfill_denormalized_fields():
 
 
 def backfill_slugs(batch_size=2000):
+	"""Write `slug` for any discussion that missed it at insert.
+
+	Pages by `name` rather than re-querying the empty-slug predicate. A title made
+	entirely of non-ASCII characters slugs to an empty string, so those rows still
+	match the predicate after a write; re-querying it would spin forever. This is
+	native behaviour, not an import defect: `GPDiscussion.update_slug` calls the
+	same `url_safe_slug`, so a Gameplan-native Arabic or Chinese title has an empty
+	slug too.
+	"""
 	updated = 0
+	empty = 0
+	last = 0
 	while True:
 		rows = frappe.db.sql(
 			"""select name, title from `tabGP Discussion`
-			where (slug is null or slug = '') and title is not null limit %s""",
-			(batch_size,),
+			where (slug is null or slug = '') and title is not null
+			and cast(name as unsigned) > %s
+			order by cast(name as unsigned) limit %s""",
+			(last, batch_size),
 			as_dict=True,
 		)
 		if not rows:
 			break
 		for row in rows:
-			frappe.db.set_value(
-				"GP Discussion", row.name, "slug", url_safe_slug(row.title), update_modified=False
-			)
-		updated += len(rows)
+			slug = url_safe_slug(row.title)
+			if slug:
+				frappe.db.set_value("GP Discussion", row.name, "slug", slug, update_modified=False)
+				updated += 1
+			else:
+				empty += 1
+		last = cint(rows[-1].name)
 		frappe.db.commit()
-	if updated:
-		print(f"backfill: {updated} slugs written")
+	if updated or empty:
+		print(f"backfill: {updated} slugs written, {empty} titles slug to empty (left blank)")
 
 
 # ---------------------------------------------------------------------------
