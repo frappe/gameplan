@@ -225,7 +225,7 @@
                 />
               </template>
             </CommentEditor>
-            <ErrorMessage :message="comments.insert.error" />
+            <ErrorMessage class="mt-2" :message="comments.insert.error" />
             <PollEditor
               v-show="newCommentType == 'Poll'"
               v-model:poll="newPoll"
@@ -247,7 +247,7 @@
                 />
               </template>
             </PollEditor>
-            <ErrorMessage :message="polls.insert.error" />
+            <ErrorMessage class="mt-2" :message="polls.insert.error" />
           </div>
         </div>
       </div>
