@@ -12,10 +12,11 @@ from frappe.tests.utils import FrappeTestCase
 from gameplan.gameplan.doctype.gp_member.patches.backfill_team_admins import (
 	execute as backfill_team_admins,
 )
-from gameplan.gameplan.doctype.gp_team.gp_team import update_joined_teams
+from gameplan.gameplan.doctype.gp_team.gp_team import join_team, leave_team, update_joined_teams
 from gameplan.gameplan.doctype.gp_user_profile.gp_user_profile import get_session_user_profile
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
+	_name,
 	create_community,
 	create_discussion,
 	create_member,
@@ -318,3 +319,109 @@ class TestCommunityAdminBackfill(GameplanTestCase):
 
 		community.reload()
 		self.assertTrue(any(row.user == self.member.name and row.is_admin for row in community.members))
+
+
+class TestCommunityJoinLeave(GameplanTestCase):
+	"""Joining and leaving a community as yourself, from the Communities settings list.
+
+	Membership is what puts a community and its public spaces in the sidebar, so these
+	two endpoints are the single-community counterpart of `update_joined_teams`.
+	"""
+
+	def _is_member(self, community, user):
+		community.reload()
+		return any(row.user == _name(user) for row in community.members)
+
+	def _sole_admin(self, community, user):
+		"""Strip every other admin row, leaving `user` as the community's only admin."""
+		community.reload()
+		for row in list(community.members):
+			if row.user != _name(user):
+				community.remove(row)
+		community.get_member(_name(user)).is_admin = 1
+		community.save(ignore_permissions=True)
+		return community
+
+	def test_member_joins_a_public_community(self):
+		community = create_community("Joinable Community")
+
+		with self.as_user(self.member):
+			join_team(community.name)
+
+		self.assertTrue(self._is_member(community, self.member))
+
+	def test_joining_twice_adds_one_membership_row(self):
+		community = create_community("Rejoinable Community", members=[self.member])
+
+		with self.as_user(self.member):
+			join_team(community.name)
+
+		community.reload()
+		self.assertEqual(len([row for row in community.members if row.user == self.member.name]), 1)
+
+	def test_member_cannot_join_a_private_community(self):
+		community = create_community("Invite Only Community", is_private=1)
+
+		with self.as_user(self.member), self.assertRaises(frappe.PermissionError):
+			join_team(community.name)
+
+		self.assertFalse(self._is_member(community, self.member))
+
+	def test_nobody_joins_an_archived_community(self):
+		community = create_community("Archived Joinable Community")
+		community.archive()
+
+		with self.as_user(self.member), self.assertRaises(frappe.ValidationError):
+			join_team(community.name)
+
+	def test_guest_cannot_join(self):
+		community = create_community("Guest Blocked Community")
+
+		with self.as_user(self.guest), self.assertRaises(frappe.PermissionError):
+			join_team(community.name)
+
+	def test_member_leaves_a_community(self):
+		community = create_community("Leavable Community", members=[self.member])
+
+		with self.as_user(self.member):
+			leave_team(community.name)
+
+		self.assertFalse(self._is_member(community, self.member))
+
+	def test_leaving_keeps_private_space_membership(self):
+		# Unlike an admin's remove_member, leaving is the sidebar's own toggle: it drops
+		# the community row only, so rejoining restores what the member had.
+		community = create_community("Self Leave Community", members=[self.member])
+		private_space = create_space("Self Leave Space", community, is_private=1, members=[self.member])
+
+		with self.as_user(self.member):
+			leave_team(community.name)
+
+		private_space.reload()
+		self.assertTrue(any(row.user == self.member.name for row in private_space.members))
+
+	def test_leaving_when_not_a_member_does_nothing(self):
+		community = create_community("Unjoined Community")
+
+		with self.as_user(self.outsider):
+			leave_team(community.name)
+
+		self.assertFalse(self._is_member(community, self.outsider))
+
+	def test_only_admin_cannot_leave(self):
+		community = self._sole_admin(
+			create_community("Sole Admin Community", admins=[self.member]), self.member
+		)
+
+		with self.as_user(self.member), self.assertRaises(frappe.ValidationError):
+			leave_team(community.name)
+
+		self.assertTrue(self._is_member(community, self.member))
+
+	def test_admin_leaves_when_another_admin_remains(self):
+		community = create_community("Shared Admin Community", admins=[self.member, self.second_member])
+
+		with self.as_user(self.member):
+			leave_team(community.name)
+
+		self.assertFalse(self._is_member(community, self.member))
