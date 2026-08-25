@@ -1,9 +1,12 @@
 <template>
+  <!-- No permitted action, no trigger: a member browsing a community's spaces in
+       settings would otherwise open an empty menu. -->
   <DropdownMoreOptions
+    v-if="permittedOptions.length"
     :label="`${space?.title} Space Options`"
     v-bind="$attrs"
     button-size="xs"
-    :options="options"
+    :options="permittedOptions"
   />
 
   <MergeSpaceDialog v-model="showSpaceMergeDialog" :spaceId="props.spaceId" />
@@ -82,6 +85,10 @@ const options = computed(() => [
     condition: () => canEditSpace.value,
   },
 ])
+
+const permittedOptions = computed(() =>
+  options.value.filter((option) => !option.condition || option.condition()),
+)
 
 useCommandPaletteCommands(
   computed(() =>

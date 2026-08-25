@@ -1,5 +1,5 @@
 import { computed, MaybeRefOrGetter, toValue } from 'vue'
-import { useList } from 'frappe-ui'
+import { dialog, useDoctype, useList } from 'frappe-ui'
 import { GPTeam, GPMember } from '@/types/doctypes'
 import { communityOrder } from './communityOrder'
 import { useSessionUser } from './users'
@@ -70,6 +70,44 @@ export let getActiveCommunity = (communityId: string) => {
   return activeCommunities.value.find(
     (community) => community.name.toString() === communityId.toString(),
   )
+}
+
+const communityDoctype = useDoctype<GPTeam>('GP Team')
+
+/**
+ * Join a community. Membership is what lists a community and its public spaces in
+ * the sidebar, so this is how a member gets to a public community they can already
+ * read. Private communities are invite only and the backend rejects them.
+ */
+export function joinCommunity(community: Community) {
+  return communityDoctype.runMethod
+    .submit({ method: 'join_team', params: { team: community.name } })
+    .then(() => communities.reload())
+}
+
+export function leaveCommunity(community: Community) {
+  return communityDoctype.runMethod
+    .submit({ method: 'leave_team', params: { team: community.name } })
+    .then(() => communities.reload())
+}
+
+/**
+ * Ask before leaving. A public community is one click away again, but a private one's
+ * view permission *is* its membership (backend `can_view_community`), so leaving hides
+ * it and its Join action for good. Mirrors `confirmLeaveSpace`.
+ *
+ * The dialog holds its loading state until the call settles and renders a rejection
+ * inline, which is where the "last admin cannot leave" message lands.
+ */
+export function confirmLeaveCommunity(community: Community) {
+  dialog.confirm({
+    title: `Leave "${community.title}"?`,
+    message: community.is_private
+      ? "This community is private. You won't be able to rejoin unless a member adds you back."
+      : 'Its spaces leave your sidebar. You can rejoin at any time.',
+    confirmLabel: 'Leave',
+    onConfirm: () => leaveCommunity(community),
+  })
 }
 
 export function isCommunityJoined(community: Community) {

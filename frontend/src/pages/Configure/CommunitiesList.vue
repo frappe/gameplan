@@ -6,10 +6,14 @@
   />
 
   <ConfigureEmptyState
-    v-if="!manageableCommunities.length"
+    v-if="!visibleCommunities.length"
     icon="lucide-blocks"
     title="No communities yet"
-    description="Create a community to group related spaces, members, and discussions."
+    :description="
+      showCreateCommunity
+        ? 'Create a community to group related spaces, members, and discussions.'
+        : 'A Gameplan Admin creates communities. Ask for one, or for an invite to a private community.'
+    "
   >
     <template #actions>
       <Button
@@ -68,7 +72,7 @@ import { List, ListHeader, ListHeaderCell } from 'frappe-ui/list'
 import { communities, type Community } from '@/data/communities'
 import { spaces } from '@/data/spaces'
 import { useSessionUser } from '@/data/users'
-import { getManageableCommunities, isGlobalAdmin } from '@/utils/permissions'
+import { isGlobalAdmin } from '@/utils/permissions'
 import ConfigureEmptyState from './ConfigureEmptyState.vue'
 import CommunityRow from './CommunityRow.vue'
 import CommunitiesListFilters from './CommunitiesListFilters.vue'
@@ -98,18 +102,19 @@ const emit = defineEmits<{
 
 const filteredCommunities = computed(() => {
   const term = search.value.trim().toLowerCase()
-  return manageableCommunities.value.filter(
+  return visibleCommunities.value.filter(
     (community) =>
       matchesScope(community, visibilityFilter.value) &&
       (!term || community.title.toLowerCase().includes(term)),
   )
 })
 
-const manageableCommunities = computed(() =>
-  getManageableCommunities(communities.data || [], sessionUser),
-)
+// Every community the user can read — public ones plus the private ones they belong
+// to; the backend list query scopes it. Members browse the full list to find one to
+// join, and each row only offers the actions that user can take.
+const visibleCommunities = computed(() => communities.data || [])
 const hasArchivedCommunities = computed(() =>
-  manageableCommunities.value.some((community) => community.archived_at),
+  visibleCommunities.value.some((community) => community.archived_at),
 )
 const showCreateCommunity = computed(() => isGlobalAdmin(sessionUser))
 
