@@ -3,7 +3,7 @@
        swaps between Join and Leave, so the row never shifts. -->
   <Button
     :size="size"
-    :variant="isJoined ? 'subtle' : 'solid'"
+    variant="subtle"
     :loading="isJoining"
     :label="isJoined ? `Leave ${community.title}` : `Join ${community.title}`"
     class="min-w-16 shrink-0"
