@@ -53,6 +53,13 @@ describe('Joining and leaving a community', () => {
     cy.get('button[aria-label="Upload image for Alpha"]').should('not.exist')
   })
 
+  it('opens the customize sidebar dialog from the communities tab', () => {
+    openCommunitiesSettings()
+
+    cy.contains('button', 'Customize sidebar').click()
+    cy.contains('[role="dialog"]', 'Shown in sidebar').should('be.visible')
+  })
+
   it('keeps the management actions for an admin, alongside join and leave', () => {
     cy.loginAs('admin')
     openCommunitiesSettings()

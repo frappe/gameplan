@@ -63,13 +63,20 @@
             v-model:search="search"
             v-model:visibility-filter="visibilityFilter"
           />
-          <Button
-            v-if="showNewCommunityButton"
-            icon-left="lucide-plus"
-            @click="newCommunityDialog = true"
-          >
-            New community
-          </Button>
+          <div class="flex shrink-0 items-center gap-2">
+            <!-- Which communities sit in the sidebar, and in what order, is the
+                 other half of joining one; the same dialog the app menu opens. -->
+            <Button icon-left="lucide-settings-2" @click="customizeSidebar">
+              Customize sidebar
+            </Button>
+            <Button
+              v-if="showNewCommunityButton"
+              icon-left="lucide-plus"
+              @click="newCommunityDialog = true"
+            >
+              New community
+            </Button>
+          </div>
         </div>
       </template>
     </div>
@@ -135,6 +142,7 @@ import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Button, SettingsBody, SettingsHeader, Select } from 'frappe-ui'
 import NewSpaceDialog from '@/components/NewSpaceDialog.vue'
+import { openCustomizeSidebarDialog } from '@/components/AppRail/customizeSidebar'
 import { communities } from '@/data/communities'
 import { useSessionUser } from '@/data/users'
 import { canManageCommunity, isGlobalAdmin } from '@/utils/permissions'
@@ -180,6 +188,11 @@ const showAddMembers = ref(false)
 const newSpaceDialog = ref(false)
 const newCommunityDialog = ref(false)
 
+// The dialog itself is mounted once in AppRail; this only flips its shared flag.
+function customizeSidebar() {
+  openCustomizeSidebarDialog()
+}
+
 const viewButtons = [
   { label: 'Spaces', value: 'spaces' },
   { label: 'Members', value: 'members' },
@@ -198,8 +211,8 @@ const showNewCommunityButton = computed(
 const canCreateSpace = computed(() =>
   Boolean(
     selectedCommunity.value &&
-      canManageSelectedCommunity.value &&
-      !selectedCommunity.value.archived_at,
+    canManageSelectedCommunity.value &&
+    !selectedCommunity.value.archived_at,
   ),
 )
 function openCommunitySpaces(communityId: string) {
