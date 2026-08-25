@@ -60,6 +60,25 @@ describe('Joining and leaving a community', () => {
     cy.contains('[role="dialog"]', 'Shown in sidebar').should('be.visible')
   })
 
+  it('offers no space management to a member who manages none', () => {
+    cy.visit('/g/settings/communities/alpha/spaces')
+    cy.contains('button:visible', 'Spaces').should('be.visible')
+
+    cy.contains('button', 'New space').should('not.exist')
+    cy.get('button[aria-label="Alpha Space Space Options"]').should('not.exist')
+    // Renaming a space is a write on GP Project, which the backend refuses here.
+    cy.get('input[aria-label="Space title"]:visible').first().should('be.disabled')
+  })
+
+  it('keeps the space management actions for an admin', () => {
+    cy.loginAs('admin')
+    cy.visit('/g/settings/communities/alpha/spaces')
+
+    cy.contains('button:visible', 'New space').should('be.visible')
+    cy.get('button[aria-label="Alpha Space Space Options"]:visible').should('be.visible')
+    cy.get('input[aria-label="Space title"]:visible').first().should('be.enabled')
+  })
+
   it('keeps the management actions for an admin, alongside join and leave', () => {
     cy.loginAs('admin')
     openCommunitiesSettings()

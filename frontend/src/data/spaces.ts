@@ -63,11 +63,12 @@ export function useSpace(name: MaybeRefOrGetter<string | undefined>) {
 /**
  * Shared gates for the space-action menus (the options dropdown and the discussions-header
  * menu). Kept in one place so a permission-rule change can't leave the two menus disagreeing
- * about who may edit vs. manage a space. `canEditSpace` covers non-destructive edits on a live
- * space; `canManageAccess` mirrors the backend `can_manage_space` and additionally gates the
- * destructive/admin actions (manage access, archive, unarchive); `canChangeMembership` gates
- * joining and leaving, and `canMoveDiscussions` the bulk move. The last two are neither edits
- * nor admin actions, and both are closed to guests.
+ * about who may edit vs. manage a space. `canEditSpace` only says the space is writable at all
+ * (live, and not read-only mode); `canManageAccess` mirrors the backend `can_manage_space`;
+ * `canEditSettings` is both, and gates everything that writes GP Project itself (rename, change
+ * community, merge, archive, delete); `canChangeMembership` gates joining and leaving, and
+ * `canMoveDiscussions` the bulk move. The last two are neither edits nor admin actions, and both
+ * are closed to guests.
  *
  * They are kept off `canEditSpace` because a guest may edit content in a space they were
  * granted while being unable to do either of these. For membership, `get_joined_spaces` unions
@@ -82,12 +83,18 @@ export function useSpacePermissions(spaceId: MaybeRefOrGetter<string | undefined
   const isGuestUser = computed(() => isGuest(sessionUser))
   const canEditSpace = computed(() => !readOnlyMode && !isArchived.value)
   const canManageAccess = computed(() => !readOnlyMode && canManageSpace(space.value, sessionUser))
+  // Renaming a space, moving it, merging it, archiving or deleting it are all writes
+  // on GP Project, which the backend gates with can_manage_space. canEditSpace only
+  // says the space is writable at all (not archived, not read-only), so it is never
+  // enough on its own — every member can read a public space they do not manage.
+  const canEditSettings = computed(() => canEditSpace.value && canManageAccess.value)
   const canChangeMembership = computed(() => canEditSpace.value && !isGuestUser.value)
   const canMoveDiscussions = computed(() => canEditSpace.value && !isGuestUser.value)
   return {
     space,
     isArchived,
     canEditSpace,
+    canEditSettings,
     canManageAccess,
     canChangeMembership,
     canMoveDiscussions,

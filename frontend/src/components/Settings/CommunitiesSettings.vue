@@ -27,7 +27,7 @@
           v-model:visibility-filter="spaceFilter"
         >
           <template #action>
-            <Button icon-left="lucide-plus" :disabled="!canCreateSpace" @click="openNewSpaceDialog">
+            <Button v-if="canCreateSpace" icon-left="lucide-plus" @click="openNewSpaceDialog">
               New space
             </Button>
           </template>

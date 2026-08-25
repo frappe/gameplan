@@ -32,7 +32,7 @@ const props = defineProps<{
   spaceId: string
 }>()
 
-const { space, canEditSpace, canManageAccess } = useSpacePermissions(() => props.spaceId)
+const { space, canEditSettings, canManageAccess } = useSpacePermissions(() => props.spaceId)
 const spaces = useDoctype<GPProject>('GP Project')
 
 const showSpaceMergeDialog = ref(false)
@@ -50,21 +50,19 @@ const options = computed(() => [
     label: 'Change Community',
     icon: 'lucide-log-out',
     onClick: () => (showSpaceCategoryDialog.value = true),
-    condition: () => canEditSpace.value,
+    condition: () => canEditSettings.value,
   },
   {
     label: 'Merge',
     icon: 'lucide-merge',
     onClick: () => (showSpaceMergeDialog.value = true),
-    condition: () => canEditSpace.value,
+    condition: () => canEditSettings.value,
   },
   {
     label: 'Archive',
     icon: 'lucide-archive',
     onClick: () => space.value && archiveSpace(space.value),
-    // Archiving is destructive — require manage access, matching the space header menu, so a
-    // regular member isn't offered an action they lack permission for.
-    condition: () => canEditSpace.value && canManageAccess.value,
+    condition: () => canEditSettings.value,
   },
   {
     label: 'Delete',
@@ -82,7 +80,7 @@ const options = computed(() => [
         onConfirm: () => spaces.delete.submit({ name: props.spaceId }),
       })
     },
-    condition: () => canEditSpace.value,
+    condition: () => canEditSettings.value,
   },
 ])
 
