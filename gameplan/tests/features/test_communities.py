@@ -425,3 +425,42 @@ class TestCommunityJoinLeave(GameplanTestCase):
 			leave_team(community.name)
 
 		self.assertFalse(self._is_member(community, self.member))
+
+
+class TestPrivateCommunitySerialisation(GameplanTestCase):
+	"""`GPTeam.as_dict` hides a private community from outsiders, but not from admins.
+
+	`frappe.api.v2.execute_doc_method` serialises the document AFTER running the requested
+	method, so a throw here does not just hide a field: it discards the write that already
+	ran and answers "Not permitted". Every whitelisted method on a private community an
+	admin does not belong to used to fail that way.
+	"""
+
+	def test_global_admin_can_serialise_a_private_community_they_do_not_belong_to(self):
+		community = create_community("Admin Serialised Community", is_private=1, admins=[self.member])
+
+		with self.as_user(self.admin):
+			self.assertEqual(community.as_dict().title, "Admin Serialised Community")
+
+	def test_member_of_a_private_community_can_serialise_it(self):
+		community = create_community("Member Serialised Community", is_private=1, members=[self.member])
+
+		with self.as_user(self.member):
+			self.assertEqual(community.as_dict().title, "Member Serialised Community")
+
+	def test_outsider_cannot_serialise_a_private_community(self):
+		community = create_community("Hidden Community", is_private=1, admins=[self.member])
+
+		with self.as_user(self.outsider), self.assertRaises(frappe.PermissionError):
+			community.as_dict()
+
+	def test_global_admin_archives_a_private_community_and_the_response_serialises(self):
+		community = create_community("Admin Archived Community", is_private=1, admins=[self.member])
+
+		# The two steps execute_doc_method runs, in order. The archive used to be rolled
+		# back because the serialisation that follows it threw.
+		with self.as_user(self.admin):
+			community.archive()
+			community.as_dict()
+
+		self.assertTrue(frappe.db.get_value("GP Team", community.name, "archived_at"))

@@ -9,7 +9,11 @@
     :options="permittedOptions"
   />
 
-  <MergeSpaceDialog v-model="showSpaceMergeDialog" :spaceId="props.spaceId" />
+  <MergeSpaceDialog
+    v-model="showSpaceMergeDialog"
+    :spaceId="props.spaceId"
+    @merged="emit('merged', $event)"
+  />
   <ChangeSpaceCategoryDialog v-model="showSpaceCategoryDialog" :spaceId="props.spaceId" />
   <SpaceAccessDialog v-model="showSpaceAccessDialog" :spaceId="props.spaceId" />
 </template>
@@ -30,6 +34,9 @@ defineOptions({
 
 const props = defineProps<{
   spaceId: string
+}>()
+const emit = defineEmits<{
+  (event: 'merged', spaceId: string): void
 }>()
 
 const { space, canEditSettings, canManageAccess } = useSpacePermissions(() => props.spaceId)

@@ -10,7 +10,11 @@ from pypika.terms import ExistsCriterion
 
 import gameplan
 from gameplan.mixins.archivable import Archivable
-from gameplan.permissions import apply_team_query_filter, require_can_manage_community
+from gameplan.permissions import (
+	apply_team_query_filter,
+	is_global_admin,
+	require_can_manage_community,
+)
 from gameplan.utils import validate_type
 
 
@@ -19,8 +23,17 @@ class GPTeam(Archivable, Document):
 	on_delete_set_null = ["GP Notification"]
 
 	def as_dict(self, *args, **kwargs) -> dict:
-		members = [m.user for m in self.members]
-		if self.is_private and frappe.session.user not in members:
+		"""Hide a private community from everyone but its members and global admins.
+
+		The admin bypass is not cosmetic. `frappe.api.v2.execute_doc_method` serialises the
+		document with `as_dict` AFTER running the requested method, so a throw here loses the
+		write that already ran: the request ends in a rollback and the admin sees only
+		"Not permitted". That silently broke every whitelisted method on a private community
+		an admin does not belong to — archive, merge_into_team, add_members, remove_member,
+		set_member_admin — even though `can_manage_community` grants all of them.
+		"""
+		user = frappe.session.user
+		if self.is_private and not is_global_admin(user) and user not in [m.user for m in self.members]:
 			frappe.throw("Not permitted", frappe.PermissionError)
 
 		d = super().as_dict(*args, **kwargs)
