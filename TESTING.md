@@ -149,10 +149,17 @@ changed (cite the decision in the commit message, as the guest policy above did)
 
 ### How to run
 
-Always run against a disposable test site, never a dev site with real data.
+`<site>` in every command below is a site whose data you are willing to lose. You
+have to know that independently. `"allow_tests": true` only means a site permits
+tests; it is not a claim that its data is expendable, and more than one site in a
+bench can carry it. Use it to rule sites out, never to pick one.
 
-`<site>` in every command below is your bench's test site. Resolve it once: run
-`ls sites/` and pick the site whose `site_config.json` has `"allow_tests": true`.
+The blast radius is the whole site. The Cypress suite calls
+`gameplan.ui_test_helpers.reset`, which deletes every Gameplan record and managed
+user on whichever site answers, not just the records a spec created. The backend
+suite writes fixtures of its own. Neither takes a backup.
+
+If your bench has no expendable site, create one before you run anything here.
 CI uses `gameplan.test`.
 
 ```bash

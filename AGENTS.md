@@ -59,7 +59,10 @@ still carries the old names. Do not rename the doctypes.
 
 Site names and ports vary per bench. Resolve them, do not assume.
 
-- Sites: `ls sites/`. Use the one with `"allow_tests": true` in its `site_config.json`.
+- Sites: `ls sites/`. Use a site whose data is expendable, and confirm that with the
+  human if you do not already know. `"allow_tests": true` permits tests; it does not
+  promise the data is disposable, and several sites can carry it. See the Cypress
+  trap above for the blast radius.
 - Vite dev port is `8080 + (webserver_port - 8000)`, read from
   `sites/common_site_config.json`.
 - Backend tests: `bench --site <site> run-tests --app gameplan` (also `--module`,
