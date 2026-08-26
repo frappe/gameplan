@@ -19,6 +19,10 @@ const documentScope = effectScope(true)
  * The composable returns a view onto the entry for the caller's *current* name, resolved on
  * every property read. A caller whose name changes therefore keeps reading the right
  * document without re-running setup.
+ *
+ * Read through the view every time. Anything captured from it once stays bound to the entry
+ * that was current at capture time: a destructured `doc`, a method held in a variable, or a
+ * callback handed to `onSuccess` during setup. Watch a property instead.
  */
 export function createSharedDoc<T extends object>(create: (name: string) => T) {
   const cache: Record<string, T> = {}
@@ -34,6 +38,10 @@ export function createSharedDoc<T extends object>(create: (name: string) => T) {
   return function useSharedDoc(name: MaybeRefOrGetter<string>): T {
     return new Proxy({} as T, {
       get: (_target, property) => Reflect.get(entryFor(name), property),
+      // Forwarded so a write cannot land on the empty target, where the `get` trap would
+      // never read it back and the value would disappear without an error.
+      set: (_target, property, value) => Reflect.set(entryFor(name), property, value),
+      deleteProperty: (_target, property) => Reflect.deleteProperty(entryFor(name), property),
       has: (_target, property) => Reflect.has(entryFor(name), property),
       ownKeys: () => Reflect.ownKeys(entryFor(name)),
       getOwnPropertyDescriptor: (_target, property) => {
