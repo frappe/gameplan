@@ -39,20 +39,26 @@
 </template>
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { Combobox } from 'frappe-ui'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { useDoctype } from 'frappe-ui'
 import { GPProject } from '@/types/doctypes'
-import { getSpace, useSpace } from '@/data/spaces'
+import { spaces as spaceList, useSpace } from '@/data/spaces'
 import { useSessionUser } from '@/data/users'
 import { canManageSpace, isGuest } from '@/utils/permissions'
 
 const props = defineProps<{
   spaceId: string
 }>()
+/**
+ * Where to go after a merge is the caller's decision, not this dialog's. Merging from the
+ * space you are reading has to move you off it; merging from a list of spaces should leave
+ * you on that list. Same split as MergeCommunityDialog.
+ */
+const emit = defineEmits<{
+  (event: 'merged', spaceId: string): void
+}>()
 
-const router = useRouter()
 const spaces = useDoctype<GPProject>('GP Project')
 const space = useSpace(() => props.spaceId)
 const sessionUser = useSessionUser()
@@ -105,16 +111,17 @@ function submit() {
         }
       },
     })
-    .then(() => {
-      if (selectedSpace.value) {
-        show.value = false
-        return router.replace({
-          name: 'Space',
-          params: {
-            communityId: getSpace(selectedSpace.value)?.team,
-            spaceId: selectedSpace.value,
-          },
-        })
+    .then(async () => {
+      const targetSpace = selectedSpace.value
+      // Close before reloading: this space no longer exists, so a reload while the dialog
+      // is still open re-renders it with an empty target list.
+      show.value = false
+      // The merged space is gone on the server. Until the list is refetched it stays in
+      // every space picker, and merging it a second time comes back as a raw
+      // "GP Project <id> not found".
+      await spaceList.reload()
+      if (targetSpace) {
+        emit('merged', targetSpace)
       }
     })
 }
