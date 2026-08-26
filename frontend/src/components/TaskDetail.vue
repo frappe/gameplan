@@ -194,7 +194,7 @@ import { LoadingText, DatePicker, Button, Combobox, Select, dialog } from 'frapp
 import { vFocus } from '@/directives'
 import { activeUsers } from '@/data/users'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
-import { getSpace } from '@/data/spaces'
+import { getSpace, useSpace } from '@/data/spaces'
 import { useTask } from '@/data/tasks'
 import { GPTask } from '@/types/doctypes'
 import { useSessionUser } from '@/data/users'
@@ -211,7 +211,10 @@ const router = useRouter()
 const route = useRoute()
 
 const task = useTask(() => props.taskId)
-const space = computed(() => getSpace(task.doc?.project))
+// `useSpace` rather than a bare `getSpace`, which throws on an undefined id. `canEditTask`
+// reads this, and the palette command conditions read `canEditTask` while the task the route
+// just moved to still has no document.
+const space = useSpace(() => task.doc?.project)
 const canEditTask = computed(
   () => !props.readOnlyMode && canEditContent(task.doc, space.value, useSessionUser()),
 )
