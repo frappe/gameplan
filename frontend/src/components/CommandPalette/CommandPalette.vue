@@ -127,7 +127,6 @@ import KeyboardShortcut from '../KeyboardShortcut.vue'
 import { showNewTaskDialog } from '../NewTaskDialog'
 import { GPPage } from '@/types/doctypes'
 import { showCommunitiesSettings, showSettingsDialog } from '@/components/Settings'
-import { useCanManageCommunities } from '@/composables/useCanManageCommunities'
 import {
   registeredCommands,
   type CommandPaletteGroup,
@@ -145,7 +144,6 @@ const commandPaletteListId = 'command-palette-listbox'
 
 const router = useRouter()
 const sessionUser = useSessionUser()
-const canManageCommunities = useCanManageCommunities()
 const activeCommunityIds = computed(
   () => new Set(activeCommunities.value.map((community) => community.name)),
 )
@@ -338,7 +336,8 @@ const shortcuts = computed((): CommandPaletteGroup[] => [
         search: 'Settings Communities manage communities manage spaces spaces settings',
         aliases: ['communities settings', 'manage spaces', 'spaces settings'],
         onClick: () => showCommunitiesSettings(),
-        condition: () => canManageCommunities.value,
+        // Matches the Communities settings tab: everyone browses it, to join or leave.
+        condition: () => !sessionUser.isGuest,
       },
       {
         title: 'Users',

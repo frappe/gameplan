@@ -212,6 +212,62 @@ class GPTeam(Archivable, Document):
 
 @frappe.whitelist(methods=["POST"])
 @validate_type
+def join_team(team: str):
+	"""Add the session user to one community.
+
+	Membership is what puts a community and its public spaces in the sidebar. This is
+	the single-community counterpart of `update_joined_teams`, which rewrites the whole
+	joined list. Only active, public communities can be joined; a private one is invite
+	only.
+
+	Lives at module level rather than on the doc because a plain member has no write
+	permission on GP Team, and the document method route demands one for POST.
+	"""
+	doc = get_team_for_membership_change(team)
+	if doc.is_private:
+		frappe.throw(_("This community is invite only"), frappe.PermissionError)
+
+	if doc.get_member(frappe.session.user):
+		return
+
+	doc.add_member(frappe.session.user)
+	doc.save(ignore_permissions=True)
+
+
+@frappe.whitelist(methods=["POST"])
+@validate_type
+def leave_team(team: str):
+	"""Remove the session user from one community.
+
+	Drops the membership row only, exactly like `update_joined_teams`, so rejoining a
+	public community restores what the member had. Private space memberships stay, in
+	contrast to `GPTeam.remove_member`, which an admin uses to revoke someone's access.
+	"""
+	doc = get_team_for_membership_change(team)
+	member = doc.get_member(frappe.session.user)
+	if not member:
+		return
+
+	if member.is_admin and doc.count_admins(excluding_user=frappe.session.user) == 0:
+		frappe.throw(_("Make someone else an admin before you leave this community"))
+
+	doc.remove(member)
+	doc.save(ignore_permissions=True)
+
+
+def get_team_for_membership_change(team: str):
+	if gameplan.is_guest():
+		frappe.throw(_("Guests cannot join or leave communities"), frappe.PermissionError)
+
+	doc = frappe.get_doc("GP Team", team)
+	doc.check_permission("read")
+	if doc.archived_at:
+		frappe.throw(_("This community is archived"))
+	return doc
+
+
+@frappe.whitelist(methods=["POST"])
+@validate_type
 def update_joined_teams(teams: list = None, sidebar_badge_style: str | None = None):
 	if gameplan.is_guest():
 		frappe.throw("Guests cannot manage communities")

@@ -55,7 +55,6 @@ import { show, activeTab, registerTabs, settingsBackgroundPath, type Tab } from 
 import { getHomeRoute } from '@/router'
 import UserAvatar from '@/components/UserAvatar.vue'
 import { isGameplanAdmin, useSessionUser } from '@/data/users'
-import { useCanManageCommunities } from '@/composables/useCanManageCommunities'
 import MembersSettings from './MembersSettings.vue'
 import CommunitiesSettings from './CommunitiesSettings.vue'
 import NotificationsSettings from './NotificationsSettings.vue'
@@ -79,7 +78,6 @@ interface TabGroup {
   tabs: SettingsTab[]
 }
 
-const canManageCommunities = useCanManageCommunities()
 const sessionUser = useSessionUser()
 
 const allTabs: SettingsTab[] = [
@@ -111,7 +109,9 @@ const allTabs: SettingsTab[] = [
     group: 'App settings',
     icon: 'lucide-building-2',
     component: markRaw(CommunitiesSettings),
-    condition: () => canManageCommunities.value,
+    // Every member browses communities here to join or leave one; the management
+    // actions inside the tab stay gated per community.
+    condition: () => !sessionUser.isGuest,
   },
   {
     label: 'Emojis',

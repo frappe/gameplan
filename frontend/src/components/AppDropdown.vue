@@ -22,17 +22,13 @@
 import { h, markRaw, ref } from 'vue'
 import { Dropdown } from 'frappe-ui'
 import { clear as clearIndexDb } from 'idb-keyval'
-import { showSettingsDialog } from '@/components/Settings'
+import { settingsShortcutLabel, showSettingsDialog } from '@/components/Settings'
 import AboutDialog from './AboutDialog.vue'
 import AppSelector from './AppSelector.vue'
 import GameplanLogo from './GameplanLogo.vue'
 import { openCustomizeSidebarDialog } from './AppRail/customizeSidebar'
 
 const showAboutDialog = ref(false)
-
-// Mirror the Cmd/Ctrl+Shift+, handler in SettingsDialog.vue.
-const isMac = /Mac/i.test(navigator.platform)
-const settingsShortcut = isMac ? '⌘⇧,' : 'Ctrl ⇧ ,'
 
 const dropdownItems = [
   {
@@ -49,7 +45,7 @@ const dropdownItems = [
     label: 'Settings',
     onClick: () => showSettingsDialog(),
     slots: {
-      suffix: () => h('span', { class: 'text-xs text-ink-gray-4' }, settingsShortcut),
+      suffix: () => h('span', { class: 'text-xs text-ink-gray-4' }, settingsShortcutLabel),
     },
   },
   {

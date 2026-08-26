@@ -47,6 +47,12 @@ export function registerTabs(tabsArray: Tab[]) {
 }
 
 /**
+ * Label for the Cmd/Ctrl+Shift+, shortcut that toggles the dialog (handled in
+ * SettingsDialog.vue). Shared so every menu entry shows the same hint.
+ */
+export const settingsShortcutLabel = /Mac/i.test(navigator.platform) ? '⌘⇧,' : 'Ctrl ⇧ ,'
+
+/**
  * Open the settings dialog at a tab, addressed by its display label. Kept for
  * back-compat with existing callers (e.g. `showSettingsDialog('Notifications')`).
  * Navigates to the tab's URL; SettingsDialog.vue reacts to the route change.

@@ -1,9 +1,12 @@
 <template>
+  <!-- No permitted action, no trigger: a member browsing a community's spaces in
+       settings would otherwise open an empty menu. -->
   <DropdownMoreOptions
+    v-if="permittedOptions.length"
     :label="`${space?.title} Space Options`"
     v-bind="$attrs"
     button-size="xs"
-    :options="options"
+    :options="permittedOptions"
   />
 
   <MergeSpaceDialog v-model="showSpaceMergeDialog" :spaceId="props.spaceId" />
@@ -29,7 +32,7 @@ const props = defineProps<{
   spaceId: string
 }>()
 
-const { space, canEditSpace, canManageAccess } = useSpacePermissions(() => props.spaceId)
+const { space, canEditSettings, canManageAccess } = useSpacePermissions(() => props.spaceId)
 const spaces = useDoctype<GPProject>('GP Project')
 
 const showSpaceMergeDialog = ref(false)
@@ -47,21 +50,19 @@ const options = computed(() => [
     label: 'Change Community',
     icon: 'lucide-log-out',
     onClick: () => (showSpaceCategoryDialog.value = true),
-    condition: () => canEditSpace.value,
+    condition: () => canEditSettings.value,
   },
   {
     label: 'Merge',
     icon: 'lucide-merge',
     onClick: () => (showSpaceMergeDialog.value = true),
-    condition: () => canEditSpace.value,
+    condition: () => canEditSettings.value,
   },
   {
     label: 'Archive',
     icon: 'lucide-archive',
     onClick: () => space.value && archiveSpace(space.value),
-    // Archiving is destructive — require manage access, matching the space header menu, so a
-    // regular member isn't offered an action they lack permission for.
-    condition: () => canEditSpace.value && canManageAccess.value,
+    condition: () => canEditSettings.value,
   },
   {
     label: 'Delete',
@@ -79,9 +80,13 @@ const options = computed(() => [
         onConfirm: () => spaces.delete.submit({ name: props.spaceId }),
       })
     },
-    condition: () => canEditSpace.value,
+    condition: () => canEditSettings.value,
   },
 ])
+
+const permittedOptions = computed(() =>
+  options.value.filter((option) => !option.condition || option.condition()),
+)
 
 useCommandPaletteCommands(
   computed(() =>
