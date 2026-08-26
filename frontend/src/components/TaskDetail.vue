@@ -183,7 +183,7 @@
 </template>
 
 <script setup lang="ts">
-import { h, computed } from 'vue'
+import { h, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import TaskDescriptionEditor from '@/components/editor/TaskDescriptionEditor.vue'
 import CommentsList from '@/components/CommentsList.vue'
@@ -229,11 +229,19 @@ function deleteTask() {
   })
 }
 
-task.onSuccess((doc) => {
-  if (['Task', 'SpaceTask'].includes(route.name as string) && route.params.taskId === doc.name) {
-    task.trackVisit.submit()
-  }
-})
+// Watched rather than registered through `task.onSuccess`. The task routes reuse this
+// component across tasks, and each task has its own shared entry, so a callback registered
+// during setup would stay on the first task's entry and leave every later task unvisited.
+watch(
+  () => task.doc?.name,
+  (name) => {
+    if (!name) return
+    if (['Task', 'SpaceTask'].includes(route.name as string) && route.params.taskId === name) {
+      task.trackVisit.submit()
+    }
+  },
+  { immediate: true },
+)
 
 const assignableUsers = computed<{ label: string; value: string }[]>(() => {
   return [
