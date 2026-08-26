@@ -54,10 +54,8 @@
         @click="emit('view-members', community.name)"
       />
     </ListCell>
-    <ListCell class="justify-end max-md:hidden">
+    <ListCell class="justify-end gap-1 max-md:hidden">
       <MembershipButton v-if="showMembershipButton" :community="community" size="sm" />
-    </ListCell>
-    <ListCell class="justify-end max-md:hidden">
       <CommunityOptions
         v-if="canManage"
         :community="community"

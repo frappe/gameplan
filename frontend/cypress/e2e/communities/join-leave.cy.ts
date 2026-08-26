@@ -86,5 +86,8 @@ describe('Joining and leaving a community', () => {
     cy.contains('button', 'New community').should('be.visible')
     cy.get('button[aria-label="Alpha Community Options"]:visible').should('be.visible')
     cy.get('button[aria-label="Leave Alpha"]:visible').should('be.visible')
+    // Two header buttons do not fit, so this one drops its text for the icon.
+    cy.get('button[aria-label="Customize sidebar"]:visible').should('be.visible')
+    cy.contains('button', 'Customize sidebar').should('not.exist')
   })
 })

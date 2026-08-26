@@ -66,9 +66,15 @@
           <div class="flex shrink-0 items-center gap-2">
             <!-- Which communities sit in the sidebar, and in what order, is the
                  other half of joining one; the same dialog the app menu opens. -->
-            <Button icon-left="lucide-settings-2" @click="customizeSidebar">
-              Customize sidebar
-            </Button>
+            <!-- Beside "New community" the header has no room to spare, so a
+                 manager gets the icon alone and the label in a tooltip. -->
+            <Button
+              :icon="showNewCommunityButton ? 'lucide-settings-2' : undefined"
+              :icon-left="showNewCommunityButton ? undefined : 'lucide-settings-2'"
+              :tooltip="showNewCommunityButton ? 'Customize sidebar' : undefined"
+              label="Customize sidebar"
+              @click="customizeSidebar"
+            />
             <Button
               v-if="showNewCommunityButton"
               icon-left="lucide-plus"
