@@ -23,7 +23,13 @@ from frappe.utils import add_days, now, today
 from gameplan.api import _invite_by_email, accept_invitation
 from gameplan.gameplan.doctype.gp_invitation.gp_invitation import expire_invitations
 from gameplan.tests.base import GameplanTestCase
-from gameplan.tests.fixtures import create_community, create_member, create_space
+from gameplan.tests.fixtures import (
+	create_community,
+	create_guest,
+	create_member,
+	create_space,
+	create_user,
+)
 
 
 class InvitationTestCase(GameplanTestCase):
@@ -88,6 +94,33 @@ class TestInvitationCreation(InvitationTestCase):
 		_invite_by_email("already-member@example.com", role="Gameplan Member")
 
 		self.assertFalse(frappe.db.exists("GP Invitation", {"email": "already-member@example.com"}))
+
+	def test_invite_reaches_an_existing_user_with_no_gameplan_role(self):
+		"""Signing in through OAuth mints a Website User with no role, so an account can
+		exist while its owner has no way into Gameplan. That account must not read as an
+		existing member, or the invite is dropped and the person stays locked out."""
+		create_user("oauth-signup@example.com", "Oauth Signup")
+
+		_invite_by_email("oauth-signup@example.com", role="Gameplan Member")
+
+		self.assertTrue(frappe.db.exists("GP Invitation", {"email": "oauth-signup@example.com"}))
+
+	def test_accepting_that_invite_grants_the_role_to_the_existing_account(self):
+		user = create_user("oauth-accept@example.com", "Oauth Accept")
+		_invite_by_email("oauth-accept@example.com", role="Gameplan Member")
+
+		invitation = frappe.get_doc("GP Invitation", {"email": "oauth-accept@example.com"})
+		invitation.accept()
+
+		self.assertEqual(frappe.db.count("User", {"email": "oauth-accept@example.com"}), 1)
+		self.assertIn("Gameplan Member", frappe.get_roles(user.name))
+
+	def test_invite_skips_a_user_who_already_holds_a_gameplan_role(self):
+		create_guest("already-guest@example.com")
+
+		_invite_by_email("already-guest@example.com", role="Gameplan Member")
+
+		self.assertFalse(frappe.db.exists("GP Invitation", {"email": "already-guest@example.com"}))
 
 	def test_invite_skips_duplicate_pending_invite(self):
 		_invite_by_email("dup@example.com", role="Gameplan Member")

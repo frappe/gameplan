@@ -138,7 +138,7 @@ def _invite_by_email(emails: str, role: str, projects: list = None):
 	email_list = split_emails(email_string)
 	if not email_list:
 		return
-	existing_members = frappe.db.get_all("User", filters={"email": ["in", email_list]}, pluck="email")
+	already_in_gameplan = emails_holding_a_gameplan_role(email_list)
 	existing_invites = frappe.db.get_all(
 		"GP Invitation",
 		filters={
@@ -151,7 +151,7 @@ def _invite_by_email(emails: str, role: str, projects: list = None):
 	if role == "Gameplan Guest":
 		to_invite = list(set(email_list) - set(existing_invites))
 	else:
-		to_invite = list(set(email_list) - set(existing_members) - set(existing_invites))
+		to_invite = list(set(email_list) - set(already_in_gameplan) - set(existing_invites))
 
 	if projects:
 		projects = frappe.as_json(projects, indent=None)
@@ -160,6 +160,28 @@ def _invite_by_email(emails: str, role: str, projects: list = None):
 		frappe.get_doc(doctype="GP Invitation", email=email, role=role, projects=projects).insert(
 			ignore_permissions=True
 		)
+
+
+def emails_holding_a_gameplan_role(email_list: list) -> list:
+	"""The subset of `email_list` whose User already holds a Gameplan role.
+
+	A member invite skips these, because the invitation would grant a role they have.
+	It must not skip every existing User: signing in through OAuth mints a Website User
+	with no role at all, so an account can exist on the site while its owner has no way
+	into Gameplan. Those people need the invite; `accept()` adds the role to the account
+	they already have.
+	"""
+	User = frappe.qb.DocType("User")
+	HasRole = frappe.qb.DocType("Has Role")
+	return (
+		frappe.qb.from_(User)
+		.join(HasRole)
+		.on((HasRole.parent == User.name) & (HasRole.parenttype == "User"))
+		.select(User.email)
+		.where(User.email.isin(email_list))
+		.where(HasRole.role.isin(GAMEPLAN_ROLES))
+		.run(pluck=True)
+	)
 
 
 @frappe.whitelist()
