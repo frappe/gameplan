@@ -54,9 +54,10 @@ def require_app_access():
 	"""Deny /g to a signed-in user who holds no Gameplan role.
 
 	Frappe renders a PermissionError from a www page as `NotPermittedPage`: HTTP 403,
-	this message, and a link back home. Without it the SPA loads, every list call is
-	denied, and the router mistakes the empty result for an empty site and shows
-	onboarding.
+	this message, and a way out. Which way out depends on the frappe version, so do not
+	rely on it: version-16 always offers Login, develop offers Home to a signed-in user.
+	Without this gate the SPA loads, every list call is denied, and the router mistakes
+	the empty result for an empty site and shows onboarding.
 
 	Guest falls through on purpose. Someone who has not signed in yet should be sent to
 	/login by the SPA, not told they lack a role.

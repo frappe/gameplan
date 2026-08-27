@@ -10,6 +10,7 @@ Users land in this state through OAuth, which mints a Website User with no role.
 """
 
 import frappe
+from frappe.utils import set_request
 from frappe.website.serve import get_response
 
 from gameplan.roles import has_app_access
@@ -48,9 +49,18 @@ class TestAppAccess(GameplanTestCase):
 			require_app_access()
 
 	def test_g_responds_403_with_the_message(self):
+		# NotPermittedPage builds its login link from `frappe.request.path`, and a unit
+		# test has no bound request. `set_request` is frappe's own helper for calling the
+		# renderer outside HTTP (see frappe.utils.get_html_for_route). Delete it again
+		# afterwards: frappe.local outlives the transaction rollback, so a request left
+		# bound here would change how a later test in the same shard behaves.
+		#
 		# Only the denied path is driven through the real renderer. `get_context` calls
 		# frappe.db.commit() once it is past the gate, which would write this test's
 		# personas onto the site for good; the throw lands before that line.
+		set_request(method="GET", path="/g")
+		self.addCleanup(delattr, frappe.local, "request")
+
 		with self.as_user(self.roleless):
 			response = get_response("/g")
 
