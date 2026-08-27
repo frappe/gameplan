@@ -56,13 +56,13 @@
           />
           <div class="min-w-0">
             <div class="text-base text-ink-gray-8">{{ group.label }}</div>
-            <div class="mt-0.5 break-words text-base text-ink-gray-5">
+            <div class="break-words text-p-base text-ink-gray-5">
               {{ group.emails.join(', ') }}
             </div>
           </div>
         </div>
       </div>
-      <p v-if="result?.skipped.length" class="mt-3 text-sm text-ink-gray-5">
+      <p v-if="result?.skipped.length" class="mt-3 text-p-sm text-ink-gray-5">
         Skipped emails already have access, have a pending invite, or belong to a disabled account.
       </p>
     </div>
