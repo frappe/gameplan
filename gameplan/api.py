@@ -8,6 +8,7 @@ from frappe.query_builder.functions import Count
 from frappe.utils import split_emails, validate_email_address
 
 import gameplan
+from gameplan.gameplan.doctype.gp_invitation.gp_invitation import grant_access
 from gameplan.realtime import notify_notification_count_changed, unread_notification_count
 from gameplan.roles import GAMEPLAN_ROLES
 from gameplan.utils import validate_type
@@ -126,18 +127,29 @@ def invite_by_email(emails: str, role: str, projects: list = None):
 	return _invite_by_email(emails, role, projects)
 
 
-def _invite_by_email(emails: str, role: str, projects: list = None):
+def _invite_by_email(emails: str, role: str, projects: list = None) -> dict:
 	"""Core invite logic, callable from trusted server code (e.g. onboarding).
 
 	The public invite_by_email wrapper adds the admin gate + role allowlist; this
 	helper assumes the caller has already authorized the invite and validated role.
+
+	Two outcomes, split on whether the person already has an account here:
+
+	No account: send the invitation email. Its link is what mints the User.
+
+	An enabled account with no Gameplan role: grant the role now. The email link would
+	create nothing and set no password, and an OAuth account (which is how people reach
+	this state) would be sent to /update-password for no reason.
+
+	Returns the three buckets so the caller can tell the admin what happened.
 	"""
+	result = {"granted": [], "invited": [], "skipped": []}
 	if not emails:
-		return
+		return result
 	email_string = validate_email_address(emails, throw=False)
 	email_list = split_emails(email_string)
 	if not email_list:
-		return
+		return result
 	already_in_gameplan = emails_holding_a_gameplan_role(email_list)
 	existing_invites = frappe.db.get_all(
 		"GP Invitation",
@@ -149,17 +161,49 @@ def _invite_by_email(emails: str, role: str, projects: list = None):
 	)
 
 	if role == "Gameplan Guest":
-		to_invite = list(set(email_list) - set(existing_invites))
+		to_invite = set(email_list) - set(existing_invites)
 	else:
-		to_invite = list(set(email_list) - set(already_in_gameplan) - set(existing_invites))
+		to_invite = set(email_list) - set(already_in_gameplan) - set(existing_invites)
 
+	accounts = existing_accounts(to_invite)
+	grantable = {email for email, enabled in accounts.items() if enabled}
+	# A disabled account is neither granted nor invited. The role would change nothing
+	# while the account cannot sign in, and mailing it an invite link is worse: accept()
+	# would hand the role to an account someone deliberately switched off.
+	to_invite -= set(accounts) - grantable
+
+	result["skipped"] = sorted(set(email_list) - to_invite)
 	if projects:
 		projects = frappe.as_json(projects, indent=None)
 
-	for email in to_invite:
-		frappe.get_doc(doctype="GP Invitation", email=email, role=role, projects=projects).insert(
-			ignore_permissions=True
-		)
+	for email in sorted(to_invite):
+		if email in grantable:
+			grant_access(email, role, projects)
+			result["granted"].append(email)
+		else:
+			frappe.get_doc(doctype="GP Invitation", email=email, role=role, projects=projects).insert(
+				ignore_permissions=True
+			)
+			result["invited"].append(email)
+
+	return result
+
+
+def existing_accounts(email_list) -> dict:
+	"""Map each email that already has a User on this site to whether it is enabled.
+
+	An enabled account can sign in today, so its owner needs a role, not an invitation.
+	A disabled one needs neither.
+	"""
+	email_list = list(email_list)
+	if not email_list:
+		return {}
+	rows = frappe.qb.get_query(
+		"User",
+		filters={"email": ["in", email_list]},
+		fields=["email", "enabled"],
+	).run(as_dict=True)
+	return {row.email: bool(row.enabled) for row in rows}
 
 
 def emails_holding_a_gameplan_role(email_list: list) -> list:

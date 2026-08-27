@@ -20,6 +20,10 @@ class GPInvitation(Document):
 		self.status = "Pending"
 
 	def after_insert(self):
+		# grant_access() accepts the invitation itself, so the key would be dead on
+		# arrival and the mail would ask for a step the invitee has already skipped.
+		if self.flags.skip_invite_email:
+			return
 		self.invite_via_email()
 
 	def invite_via_email(self):
@@ -36,6 +40,26 @@ class GPInvitation(Document):
 			subject=f"You have been invited to join {title}",
 			template=template,
 			args={"title": title, "invite_link": invite_link},
+			now=True,
+		)
+		self.db_set("email_sent_at", frappe.utils.now())
+
+	def notify_access_granted(self):
+		"""Tell someone their existing account can now open Gameplan.
+
+		No key and no link to accept: `grant_access` already did that. They sign in the
+		way they always have.
+		"""
+		app_link = frappe.utils.get_url("/g")
+		if frappe.local.dev_server:
+			print(f"Access granted to {self.email}: {app_link}")
+			return
+
+		frappe.sendmail(
+			recipients=self.email,
+			subject="You now have access to Gameplan",
+			template="gameplan_access_granted",
+			args={"app_link": app_link},
 			now=True,
 		)
 		self.db_set("email_sent_at", frappe.utils.now())
@@ -85,6 +109,22 @@ class GPInvitation(Document):
 		else:
 			user = frappe.get_doc("User", self.email)
 		return user
+
+
+def grant_access(email, role, projects=None):
+	"""Give an account that already exists its role now, with no email round trip.
+
+	The invitation row is still written and then accepted here, for two reasons. It
+	keeps `accept()` the single definition of what getting access means, including the
+	`GP Guest Access` rows a guest needs, so the two paths cannot drift. And it leaves
+	the same audit trail as any other invitation: who granted it, and when.
+	"""
+	invitation = frappe.get_doc(doctype="GP Invitation", email=email, role=role, projects=projects)
+	invitation.flags.skip_invite_email = True
+	invitation.insert(ignore_permissions=True)
+	invitation.accept()
+	invitation.notify_access_granted()
+	return invitation
 
 
 def expire_invitations():

@@ -38,7 +38,7 @@
           "
           :loading="inviteByEmail.loading"
         >
-          Send invitation
+          Invite
         </Button>
       </template>
     </div>
@@ -87,9 +87,10 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { Select, Tooltip } from 'frappe-ui'
+import { Select, Tooltip, toast } from 'frappe-ui'
 import { useCall, useList } from 'frappe-ui'
 import { GPInvitation } from '@/types/doctypes'
+import { users } from '@/data/users'
 
 type Role = 'Gameplan Admin' | 'Gameplan Member'
 
@@ -116,8 +117,38 @@ const pendingInvitations = useList<GPInvitation>({
   filters: { status: 'Pending' },
 })
 
+/**
+ * One call can end three ways per email, so the toast has to say which happened.
+ * `granted` already had an account here and now hold the role; `invited` were mailed
+ * an invitation link; `skipped` needed nothing or could take nothing (already in
+ * Gameplan, already invited, or a disabled account).
+ */
+interface InviteResult {
+  granted: string[]
+  invited: string[]
+  skipped: string[]
+}
+
+function plural(count: number, one: string, many: string) {
+  return `${count} ${count === 1 ? one : many}`
+}
+
+function summarize(result: InviteResult): string {
+  const parts: string[] = []
+  if (result.granted.length) {
+    parts.push(`${plural(result.granted.length, 'person', 'people')} given access`)
+  }
+  if (result.invited.length) {
+    parts.push(`${plural(result.invited.length, 'invitation', 'invitations')} sent`)
+  }
+  if (result.skipped.length) {
+    parts.push(`${result.skipped.length} skipped`)
+  }
+  return parts.join(', ')
+}
+
 const inviteByEmail = useCall<
-  undefined,
+  InviteResult,
   {
     emails: string
     role: string
@@ -127,10 +158,21 @@ const inviteByEmail = useCall<
   url: '/api/v2/method/gameplan.api.invite_by_email',
   method: 'POST',
   immediate: false,
-  onSuccess: () => {
+  onSuccess: (result) => {
+    if (result.granted.length || result.invited.length) {
+      toast.success(summarize(result))
+    } else {
+      toast.info('No one to invite. They already have access or a pending invitation.')
+    }
     role.value = 'Gameplan Member'
     emails.value = ''
     pendingInvitations.reload()
+    // Someone granted access holds a role now, so they belong in the members list
+    // behind this dialog. Reloading is safe here: the app gates on the `usersReady`
+    // latch, not on `users.isFinished`, which goes false during any refetch.
+    if (result.granted.length) {
+      users.reload()
+    }
   },
 })
 </script>
