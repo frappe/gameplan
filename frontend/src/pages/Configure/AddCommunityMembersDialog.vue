@@ -80,12 +80,10 @@
         </EmptyStateBox>
 
         <!-- list-row-px-2 matches the viewport's px-2 gutter, the same rule as
-             Search.vue: row content lines up with the search field above (and
-             so does the checkbox column), and only the highlight surface bleeds
-             one gutter past it on each side.
-             Dividers keep consecutive selected rows apart. They step up to
-             outline-gray-2 on a selected row, because outline-gray-1 is one
-             shade off the selected surface and disappears into it. -->
+             Search.vue: row content and the checkbox column line up with the
+             search field above.
+             The row carries no hover or selected surface: the checkbox is the
+             only selection state, so a 700-row list never washes grey. -->
         <List
           v-else
           selectable
@@ -94,7 +92,7 @@
           :row-height="52"
           divider="inset"
           aria-label="People you can add"
-          class="list-row-px-2 [&_[data-slot=list-row][data-state=selected]]:bg-surface-gray-2 sm:[&_[data-slot=list-row][data-state=selected]:hover]:bg-surface-gray-3 [&_[data-slot=list-row][data-state=selected]_[data-slot=list-divider]]:border-outline-gray-2"
+          class="list-row-px-2 sm:[&_[data-slot=list-row]:hover]:bg-transparent"
         >
           <!-- Virtualized: a full user list would otherwise mount one avatar per
                person at once. ListRows windows against the ScrollArea viewport. -->
