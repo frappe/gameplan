@@ -4,6 +4,8 @@
 import frappe
 from frappe.model.document import Document
 
+from gameplan.gameplan.doctype.gp_team.gp_team import get_public_team_names
+
 
 class GPInvitation(Document):
 	def before_insert(self):
@@ -72,6 +74,7 @@ class GPInvitation(Document):
 		user.append_roles(self.role)
 		user.save(ignore_permissions=True)
 		self.create_guest_access(user)
+		self.join_public_communities(user)
 
 		self.status = "Accepted"
 		self.accepted_at = frappe.utils.now()
@@ -95,6 +98,32 @@ class GPInvitation(Document):
 				guest_access.user = user.name
 				guest_access.project = project
 				guest_access.save(ignore_permissions=True)
+
+	def join_public_communities(self, user):
+		"""Put a new member in every public community, so the app is not empty on day one.
+
+		Membership is not what grants access here: a public community is already readable
+		by everyone (see `team_access_criterion`). It is what the sidebar lists, so without
+		this a new account signs in to an empty shell and has to go and find the
+		communities before anything appears.
+
+		Guests are skipped. Their reach is exactly the `GP Guest Access` rows
+		`create_guest_access` just wrote, and joining them to everything would undo that.
+		"""
+		if self.role == "Gameplan Guest":
+			return
+
+		for team_name in get_public_team_names():
+			team = frappe.get_doc("GP Team", team_name)
+			if team.get_member(user.name):
+				continue
+			team.add_member(user.name)
+			# Saving the community re-validates every row already in `members`, so one row
+			# left pointing at a deleted account would stop anyone new from joining. The row
+			# being added here is safe by construction: `user` is a User document that was
+			# just loaded or created.
+			team.flags.ignore_links = True
+			team.save(ignore_permissions=True)
 
 	def create_user_if_not_exists(self):
 		if not frappe.db.exists("User", self.email):

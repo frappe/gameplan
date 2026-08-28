@@ -257,6 +257,23 @@ def get_valid_sidebar_badge_style(sidebar_badge_style: str):
 	return sidebar_badge_style
 
 
+def get_public_team_names():
+	"""Every community anyone may join, newest last.
+
+	Public and not archived, which is the same pair of conditions
+	`get_accessible_team_names` applies to the public half of its result. This one takes
+	no user, so it can answer for an account that has no session yet.
+	"""
+	Team = frappe.qb.DocType("GP Team")
+	return (
+		frappe.qb.from_(Team)
+		.select(Team.name)
+		.where(Team.is_private == 0)
+		.where(Team.archived_at.isnull())
+		.orderby(Team.creation)
+	).run(pluck=True)
+
+
 def get_accessible_team_names():
 	Team = frappe.qb.DocType("GP Team")
 	Member = frappe.qb.DocType("GP Member")

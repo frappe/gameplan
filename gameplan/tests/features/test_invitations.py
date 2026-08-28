@@ -143,6 +143,24 @@ class TestInvitationCreation(InvitationTestCase):
 			frappe.db.exists("GP Guest Access", {"user": "oauth-guest@example.com", "project": space.name})
 		)
 
+	def test_a_directly_granted_member_joins_public_communities(self):
+		"""The direct path runs through accept(), so it inherits the join for free."""
+		create_user("oauth-joiner@example.com", "Oauth Joiner")
+		community = create_community("Direct Join Community")
+
+		_invite_by_email("oauth-joiner@example.com", role="Gameplan Member")
+
+		self.assertTrue(
+			frappe.db.exists(
+				"GP Member",
+				{
+					"parenttype": "GP Team",
+					"parent": community.name,
+					"user": "oauth-joiner@example.com",
+				},
+			)
+		)
+
 	def test_an_email_with_no_account_still_gets_the_invitation(self):
 		result = _invite_by_email("brand-new@example.com", role="Gameplan Member")
 
@@ -241,6 +259,72 @@ class TestInvitationAccept(InvitationTestCase):
 		self.assertTrue(
 			frappe.db.exists("GP Guest Access", {"user": "guest-accept@example.com", "project": space.name})
 		)
+
+	def joined_communities(self, email):
+		return set(
+			frappe.db.get_all(
+				"GP Member",
+				filters={"parenttype": "GP Team", "user": email},
+				pluck="parent",
+			)
+		)
+
+	def test_accept_joins_every_public_community(self):
+		"""A new member should land in a populated app, not an empty shell.
+
+		Membership does not gate a public community, it decides what the sidebar lists.
+		"""
+		first = create_community("Public One")
+		second = create_community("Public Two")
+		invitation = self.make_invitation("joiner@example.com")
+
+		invitation.accept()
+
+		joined = self.joined_communities("joiner@example.com")
+		self.assertIn(first.name, joined)
+		self.assertIn(second.name, joined)
+
+	def test_accept_leaves_private_communities_alone(self):
+		private = create_community("Private One", is_private=1)
+		invitation = self.make_invitation("no-private@example.com")
+
+		invitation.accept()
+
+		self.assertNotIn(private.name, self.joined_communities("no-private@example.com"))
+
+	def test_accept_leaves_archived_communities_alone(self):
+		archived = create_community("Archived One")
+		archived.db_set("archived_at", now())
+		invitation = self.make_invitation("no-archived@example.com")
+
+		invitation.accept()
+
+		self.assertNotIn(archived.name, self.joined_communities("no-archived@example.com"))
+
+	def test_a_guest_joins_nothing(self):
+		"""A guest's reach is the spaces they were granted, and nothing wider."""
+		community = create_community("Guest Blind Community")
+		space = create_space("Guest Blind Space", community, is_private=1)
+		invitation = self.make_invitation(
+			"guest-no-join@example.com", role="Gameplan Guest", projects=[space.name]
+		)
+
+		invitation.accept()
+
+		self.assertEqual(self.joined_communities("guest-no-join@example.com"), set())
+
+	def test_accept_does_not_duplicate_an_existing_membership(self):
+		member = create_member("already-in@example.com")
+		community = create_community("Already Joined", members=[member])
+		invitation = self.make_invitation("already-in@example.com", role="Gameplan Admin")
+
+		invitation.accept()
+
+		rows = frappe.db.count(
+			"GP Member",
+			{"parenttype": "GP Team", "parent": community.name, "user": "already-in@example.com"},
+		)
+		self.assertEqual(rows, 1)
 
 	def test_accept_expired_invitation_is_rejected(self):
 		invitation = self.make_invitation("too-late@example.com")
