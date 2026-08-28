@@ -5,16 +5,19 @@ import os
 import subprocess
 
 import frappe
-from frappe import safe_decode
+from frappe import _, safe_decode
 from frappe.core.api.file import get_max_file_size
 from frappe.utils import get_system_timezone
 from frappe.utils.telemetry import capture
+
+from gameplan.roles import has_app_access
 
 no_cache = 1
 
 
 def get_context():
 	login_as_demo_user_if_enabled()
+	require_app_access()
 	csrf_token = frappe.sessions.get_csrf_token()
 	frappe.db.commit()
 	context = frappe._dict()
@@ -44,6 +47,27 @@ def get_boot():
 			"app_version": get_app_version(),
 			"system_timezone": get_system_timezone(),
 		}
+	)
+
+
+def require_app_access():
+	"""Deny /g to a signed-in user who holds no Gameplan role.
+
+	Frappe renders a PermissionError from a www page as `NotPermittedPage`: HTTP 403,
+	this message, and a way out. Which way out depends on the frappe version, so do not
+	rely on it: version-16 always offers Login, develop offers Home to a signed-in user.
+	Without this gate the SPA loads, every list call is denied, and the router mistakes
+	the empty result for an empty site and shows onboarding.
+
+	Guest falls through on purpose. Someone who has not signed in yet should be sent to
+	/login by the SPA, not told they lack a role.
+	"""
+	if frappe.session.user == "Guest" or has_app_access():
+		return
+
+	frappe.throw(
+		_("You do not have access to Gameplan. Ask an admin to invite you."),
+		frappe.PermissionError,
 	)
 
 

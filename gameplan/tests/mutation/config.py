@@ -88,6 +88,12 @@ TIER2: dict[str, list[str]] = {
 		# specced only here, as the privilege-escalation guards they are.
 		"gameplan.tests.features.test_members",
 	],
+	"gameplan/gameplan/doctype/gp_invitation/gp_invitation.py": [
+		# accept() and grant_access() are the only code that hands a user a Gameplan
+		# role, and grant_access does it with no click to confirm. test_invitations owns
+		# every branch of both.
+		"gameplan.tests.features.test_invitations",
+	],
 	"gameplan/api.py": [
 		"gameplan.tests.platform.test_api_endpoints",
 		# api.py is a grab-bag, and two of its endpoints are owned by feature specs

@@ -76,3 +76,22 @@ def sync_roles():
 			f"Gameplan roles granting desk access: {', '.join(granting_desk_access)}. "
 			"Users holding them are System Users. Set desk_access = 0 if that is not intended."
 		)
+
+
+def has_app_access(user=None):
+	"""Whether `user` may open the Gameplan SPA at /g.
+
+	Every Gameplan doctype grants read to a Gameplan role (or System Manager), so a user
+	holding none of them is denied on the first list call the SPA makes. The frontend
+	cannot tell that 403 apart from an empty result, reads the site as brand new and
+	sends the user to onboarding, which then fails again on create. Answer the question
+	once, on the page, instead.
+
+	Users reach this state through OAuth: `login_via_oauth2` mints a Website User with no
+	role, so anyone who signs in with a social provider before being invited lands here.
+	"""
+	if not user:
+		user = frappe.session.user
+	if user == "Administrator":
+		return True
+	return bool(set(frappe.get_roles(user)) & {*GAMEPLAN_ROLES, "System Manager"})

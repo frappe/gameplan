@@ -38,10 +38,35 @@
           "
           :loading="inviteByEmail.loading"
         >
-          Send invitation
+          Invite
         </Button>
       </template>
     </div>
+
+    <!-- One call can end three ways per email, so the result is grouped instead of
+         summarized: the admin needs to see which address landed in which bucket.
+         It sits next to Pending Invites so all invite feedback is in one place. -->
+    <div v-if="resultGroups.length && !emails" class="mt-4 rounded-4 bg-surface-gray-2 p-3">
+      <div class="space-y-2">
+        <div v-for="group in resultGroups" :key="group.label" class="flex gap-2">
+          <span
+            :class="group.icon"
+            class="mt-0.5 size-4 shrink-0 text-ink-gray-5"
+            aria-hidden="true"
+          />
+          <div class="min-w-0">
+            <div class="text-base text-ink-gray-8">{{ group.label }}</div>
+            <div class="break-words text-p-base text-ink-gray-5">
+              {{ group.emails.join(', ') }}
+            </div>
+          </div>
+        </div>
+      </div>
+      <p v-if="result?.skipped.length" class="mt-3 text-p-sm text-ink-gray-5">
+        Skipped emails already have access, have a pending invite, or belong to a disabled account.
+      </p>
+    </div>
+
     <template v-if="pendingInvitations.data?.length && !emails">
       <div class="mt-4 flex items-center justify-between border-b py-2 text-base text-ink-gray-5">
         <div class="w-4/5">Pending Invites</div>
@@ -90,6 +115,7 @@ import { ref, computed } from 'vue'
 import { Select, Tooltip } from 'frappe-ui'
 import { useCall, useList } from 'frappe-ui'
 import { GPInvitation } from '@/types/doctypes'
+import { users } from '@/data/users'
 
 type Role = 'Gameplan Admin' | 'Gameplan Member'
 
@@ -116,8 +142,50 @@ const pendingInvitations = useList<GPInvitation>({
   filters: { status: 'Pending' },
 })
 
+/**
+ * One call can end three ways per email, so the dialog reports all three.
+ * `granted` already had an account here and now hold the role; `invited` were mailed
+ * an invitation link; `skipped` needed nothing or could take nothing (already in
+ * Gameplan, already invited, or a disabled account).
+ */
+interface InviteResult {
+  granted: string[]
+  invited: string[]
+  skipped: string[]
+}
+
+const result = ref<InviteResult | null>(null)
+
+function plural(count: number, one: string, many: string) {
+  return `${count} ${count === 1 ? one : many}`
+}
+
+const resultGroups = computed(() => {
+  if (!result.value) return []
+  const { granted, invited, skipped } = result.value
+  const groups: { icon: string; label: string; emails: string[] }[] = []
+  if (granted.length) {
+    groups.push({
+      icon: 'lucide-check',
+      label: `${plural(granted.length, 'person', 'people')} given access`,
+      emails: granted,
+    })
+  }
+  if (invited.length) {
+    groups.push({
+      icon: 'lucide-mail',
+      label: `${plural(invited.length, 'invitation', 'invitations')} sent`,
+      emails: invited,
+    })
+  }
+  if (skipped.length) {
+    groups.push({ icon: 'lucide-minus', label: `${skipped.length} skipped`, emails: skipped })
+  }
+  return groups
+})
+
 const inviteByEmail = useCall<
-  undefined,
+  InviteResult,
   {
     emails: string
     role: string
@@ -127,10 +195,17 @@ const inviteByEmail = useCall<
   url: '/api/v2/method/gameplan.api.invite_by_email',
   method: 'POST',
   immediate: false,
-  onSuccess: () => {
+  onSuccess: (data) => {
+    result.value = data
     role.value = 'Gameplan Member'
     emails.value = ''
     pendingInvitations.reload()
+    // Someone granted access holds a role now, so they belong in the members list
+    // behind this dialog. Reloading is safe here: the app gates on the `usersReady`
+    // latch, not on `users.isFinished`, which goes false during any refetch.
+    if (data.granted.length) {
+      users.reload()
+    }
   },
 })
 </script>
