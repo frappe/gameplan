@@ -73,60 +73,16 @@
 
   <CommunityGuestsList class="mt-10" :community="community" :can-manage="canManage" />
 
-  <Dialog v-if="canManage" title="Add members" v-model:open="showAddDialog">
-    <div class="space-y-4">
-      <ul v-if="membersToAdd.length" class="flex flex-wrap gap-2">
-        <li
-          class="flex items-center gap-2 rounded-4 bg-surface-gray-2 px-2 py-1.5"
-          v-for="user in membersToAdd"
-          :key="user.value"
-        >
-          <UserAvatar :user="user.value" size="sm" />
-          <span class="text-base text-ink-gray-8">{{ user.label }}</span>
-          <Button
-            variant="ghost"
-            size="xs"
-            icon="lucide-x"
-            @click="membersToAdd = membersToAdd.filter((member) => member.value !== user.value)"
-          />
-        </li>
-      </ul>
-
-      <Combobox
-        :options="addableMembers"
-        v-model="selectedUser"
-        placeholder="Jane Doe"
-        open-on-click
-      >
-        <template #item-prefix="{ item }">
-          <UserAvatar :user="item.value" size="xs" />
-        </template>
-      </Combobox>
-      <ErrorMessage :message="teams.runDocMethod.error" />
-    </div>
-    <template #actions>
-      <Button
-        class="w-full"
-        variant="solid"
-        :disabled="!membersToAdd.length"
-        :loading="teams.runDocMethod.isLoading(community.name, 'add_members')"
-        @click="addMembers"
-      >
-        Add
-      </Button>
-    </template>
-  </Dialog>
+  <AddCommunityMembersDialog v-if="canManage" v-model="showAddDialog" :community="community" />
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { Button, Combobox, Dialog, ErrorMessage, toast, useDoctype } from 'frappe-ui'
+import { computed } from 'vue'
+import { Button } from 'frappe-ui'
 import { List, ListHeader, ListHeaderCell } from 'frappe-ui/list'
 import type { Community } from '@/data/communities'
-import { communities } from '@/data/communities'
-import { activeUsers, useUser } from '@/data/users'
-import UserAvatar from '@/components/UserAvatar.vue'
-import type { GPTeam } from '@/types/doctypes'
+import { useUser } from '@/data/users'
+import AddCommunityMembersDialog from './AddCommunityMembersDialog.vue'
 import ConfigureEmptyState from './ConfigureEmptyState.vue'
 import CommunityGuestsList from './CommunityGuestsList.vue'
 import CommunityMembersListControls from './CommunityMembersListControls.vue'
@@ -148,10 +104,6 @@ const props = withDefaults(
 // header while this component still renders the list and owns the add dialog.
 const search = defineModel<string>('search', { default: '' })
 const showAddDialog = defineModel<boolean>('showAddDialog', { default: false })
-
-const teams = useDoctype<GPTeam>('GP Team')
-const selectedUser = ref<string | null>(null)
-const membersToAdd = ref<{ value: string; label: string }[]>([])
 
 const communityMembers = computed(() => {
   const seen = new Set<string>()
@@ -177,47 +129,4 @@ const filteredMembers = computed(() => {
     )
   })
 })
-
-const addableMembers = computed(() => {
-  const existingMembers = new Set(props.community.members.map((member) => member.user))
-  const queuedMembers = new Set(membersToAdd.value.map((member) => member.value))
-
-  return activeUsers.value
-    .filter((user) => user.isNotGuest)
-    .filter((user) => !existingMembers.has(user.name) && !queuedMembers.has(user.name))
-    .sort((a, b) => a.full_name.localeCompare(b.full_name))
-    .map((user) => ({ value: user.name, label: user.full_name }))
-})
-
-watch(selectedUser, (value) => {
-  if (!value) return
-
-  const user = addableMembers.value.find((member) => member.value === value)
-  if (user) {
-    membersToAdd.value.push(user)
-  }
-  selectedUser.value = null
-})
-
-watch(showAddDialog, (value) => {
-  if (!value) {
-    selectedUser.value = null
-    membersToAdd.value = []
-  }
-})
-
-async function addMembers() {
-  if (!props.canManage || !membersToAdd.value.length) return
-
-  await teams.runDocMethod.submit({
-    name: props.community.name,
-    method: 'add_members',
-    params: {
-      users: membersToAdd.value.map((member) => member.value),
-    },
-  })
-  await communities.reload()
-  toast.success('Members added')
-  showAddDialog.value = false
-}
 </script>
