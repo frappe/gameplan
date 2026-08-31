@@ -142,7 +142,10 @@ describe('New discussion drafts', () => {
     // Hold every draft save open long enough to type into the composer while the publish
     // is waiting on one. A save only covers the snapshot it was built from, so the draft
     // is dirty again the moment it returns — with nothing actually failing.
-    cy.intercept('POST', '**/api/method/frappe.client.set_value', (req) => {
+    // Autosave pushes through the GP Draft doctype, so the delay has to sit on
+    // PUT /api/v2/document/GP Draft/<name>. Matched by regex: the doctype segment is
+    // percent-encoded ("GP%20Draft"), which a minimatch glob can't target cleanly.
+    cy.intercept({ method: 'PUT', url: /\/api\/v2\/document\/GP%20Draft/ }, (req) => {
       req.continue((res) => res.setDelay(1500))
     }).as('draftSave')
 
