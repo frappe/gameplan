@@ -16,6 +16,7 @@ import { ref, computed, watch, toValue, nextTick, onScopeDispose, type MaybeRefO
 import { call, debounce, toast, dayjsLocal } from 'frappe-ui'
 import { session } from './session'
 import { isEditorContentEmpty } from '@/utils'
+import { captureError } from '@/utils/errorReporting'
 import {
   getDraftRecord,
   putDraftRecord,
@@ -68,8 +69,10 @@ export function useDraftSync(options: UseDraftSyncOptions) {
   const saving = ref(false)
   const savedAt = ref<number | null>(null)
   const restored = ref(false)
-  // Tracks whether the last server push failed, so we toast once per streak (not per keystroke).
-  const pushFailed = ref(false)
+  // The error from the most recent failed push, cleared by the next success. Doubles as the
+  // "are we in a failure streak" flag (so we toast once, not per keystroke) and as the reason
+  // a caller like publish() can report when the draft is still unsynced.
+  const lastError = ref<unknown>(null)
   const serverName = ref<string | null>(toValue(options.draftName ?? null))
 
   // Last local edit vs last successful push, on THIS device. Drives reconciliation
@@ -183,18 +186,18 @@ export function useDraftSync(options: UseDraftSyncOptions) {
       syncedAt.value = Math.max(syncedAt.value ?? 0, pushedAt)
       savedAt.value = Date.now()
       await persistLocal()
-      pushFailed.value = false
+      lastError.value = null
     } catch (error) {
       // Keep the local copy; the next edit (or unmount flush) retries. Standalone
       // new-discussion drafts that never land here are adopted later by
       // recoverOrphanedDrafts(), so a missed push no longer strands a draft locally.
-      console.error('Draft sync failed', error)
+      captureError(error, { action: 'draft-push', draft: serverName.value })
       // Tell the user once per failure streak so a silently-failing save can't quietly
       // lose server-side persistence. Reset on the next success above.
-      if (!pushFailed.value) {
-        pushFailed.value = true
+      if (!lastError.value) {
         toast.error('Could not save your draft to the server — keeping a local copy and retrying.')
       }
+      lastError.value = error
     } finally {
       saving.value = false
     }
@@ -240,7 +243,8 @@ export function useDraftSync(options: UseDraftSyncOptions) {
         })
       }
     } catch (error) {
-      console.error('Draft lookup failed', error)
+      // The composer stays usable on a failed lookup, so this is invisible without a report.
+      captureError(error, { action: 'draft-load', draft: serverName.value })
     }
     return null
   }
@@ -407,6 +411,8 @@ export function useDraftSync(options: UseDraftSyncOptions) {
     savedAt,
     /** There are local edits not yet pushed to the server. */
     dirty,
+    /** Why the last push failed, or null if the last one succeeded. */
+    lastError,
     /** A pre-existing draft was found and restored on load. */
     restored,
     serverName,
@@ -563,7 +569,7 @@ async function recoverOrphanedDraft(record: DraftRecord): Promise<boolean> {
     broadcastDraftChange(newKey)
     return true
   } catch (error) {
-    console.error('Failed to recover orphaned draft', error)
+    captureError(error, { action: 'draft-recovery', draft: record.serverName })
     return false
   }
 }
