@@ -36,7 +36,10 @@ describe('Community composer and drafts', () => {
     // is created on space-select; the title/content land on a following autosave).
     const draftContent = 'Published from the scoped composer.'
     let draftContentSaved = false
-    cy.intercept('POST', '**/api/method/frappe.client.*', (req) => {
+    // Autosave writes the GP Draft row: POST to create it, PUT for every later push. Match
+    // both with one method-less regex — the doctype segment is percent-encoded ("GP%20Draft"),
+    // which a minimatch glob can't target cleanly.
+    cy.intercept(/\/api\/v2\/document\/GP%20Draft/, (req) => {
       if (JSON.stringify(req.body ?? {}).includes(draftContent)) draftContentSaved = true
     })
 
