@@ -2,12 +2,15 @@
 # See license.txt
 
 
+import json
+
 import frappe
 from frappe import _
 from frappe.query_builder.functions import Count
-from frappe.utils import split_emails, validate_email_address
+from frappe.utils import cint, split_emails, validate_email_address
 
 import gameplan
+from gameplan.gameplan.doctype.gp_invitation.gp_invitation import grant_access
 from gameplan.realtime import notify_notification_count_changed, unread_notification_count
 from gameplan.roles import GAMEPLAN_ROLES
 from gameplan.utils import validate_type
@@ -126,19 +129,30 @@ def invite_by_email(emails: str, role: str, projects: list = None):
 	return _invite_by_email(emails, role, projects)
 
 
-def _invite_by_email(emails: str, role: str, projects: list = None):
+def _invite_by_email(emails: str, role: str, projects: list = None) -> dict:
 	"""Core invite logic, callable from trusted server code (e.g. onboarding).
 
 	The public invite_by_email wrapper adds the admin gate + role allowlist; this
 	helper assumes the caller has already authorized the invite and validated role.
+
+	Two outcomes, split on whether the person already has an account here:
+
+	No account: send the invitation email. Its link is what mints the User.
+
+	An enabled account with no Gameplan role: grant the role now. The email link would
+	create nothing and set no password, and an OAuth account (which is how people reach
+	this state) would be sent to /update-password for no reason.
+
+	Returns the three buckets so the caller can tell the admin what happened.
 	"""
+	result = {"granted": [], "invited": [], "skipped": []}
 	if not emails:
-		return
+		return result
 	email_string = validate_email_address(emails, throw=False)
 	email_list = split_emails(email_string)
 	if not email_list:
-		return
-	existing_members = frappe.db.get_all("User", filters={"email": ["in", email_list]}, pluck="email")
+		return result
+	already_in_gameplan = emails_holding_a_gameplan_role(email_list)
 	existing_invites = frappe.db.get_all(
 		"GP Invitation",
 		filters={
@@ -149,17 +163,71 @@ def _invite_by_email(emails: str, role: str, projects: list = None):
 	)
 
 	if role == "Gameplan Guest":
-		to_invite = list(set(email_list) - set(existing_invites))
+		to_invite = set(email_list) - set(existing_invites)
 	else:
-		to_invite = list(set(email_list) - set(existing_members) - set(existing_invites))
+		to_invite = set(email_list) - set(already_in_gameplan) - set(existing_invites)
 
+	accounts = existing_accounts(to_invite)
+	grantable = {email for email, enabled in accounts.items() if enabled}
+	# A disabled account is neither granted nor invited. The role would change nothing
+	# while the account cannot sign in, and mailing it an invite link is worse: accept()
+	# would hand the role to an account someone deliberately switched off.
+	to_invite -= set(accounts) - grantable
+
+	result["skipped"] = sorted(set(email_list) - to_invite)
 	if projects:
 		projects = frappe.as_json(projects, indent=None)
 
-	for email in to_invite:
-		frappe.get_doc(doctype="GP Invitation", email=email, role=role, projects=projects).insert(
-			ignore_permissions=True
-		)
+	for email in sorted(to_invite):
+		if email in grantable:
+			grant_access(email, role, projects)
+			result["granted"].append(email)
+		else:
+			frappe.get_doc(doctype="GP Invitation", email=email, role=role, projects=projects).insert(
+				ignore_permissions=True
+			)
+			result["invited"].append(email)
+
+	return result
+
+
+def existing_accounts(email_list) -> dict:
+	"""Map each email that already has a User on this site to whether it is enabled.
+
+	An enabled account can sign in today, so its owner needs a role, not an invitation.
+	A disabled one needs neither.
+	"""
+	email_list = list(email_list)
+	if not email_list:
+		return {}
+	rows = frappe.qb.get_query(
+		"User",
+		filters={"email": ["in", email_list]},
+		fields=["email", "enabled"],
+	).run(as_dict=True)
+	return {row.email: bool(row.enabled) for row in rows}
+
+
+def emails_holding_a_gameplan_role(email_list: list) -> list:
+	"""The subset of `email_list` whose User already holds a Gameplan role.
+
+	A member invite skips these, because the invitation would grant a role they have.
+	It must not skip every existing User: signing in through OAuth mints a Website User
+	with no role at all, so an account can exist on the site while its owner has no way
+	into Gameplan. Those people need the invite; `accept()` adds the role to the account
+	they already have.
+	"""
+	User = frappe.qb.DocType("User")
+	HasRole = frappe.qb.DocType("Has Role")
+	return (
+		frappe.qb.from_(User)
+		.join(HasRole)
+		.on((HasRole.parent == User.name) & (HasRole.parenttype == "User"))
+		.select(User.email)
+		.where(User.email.isin(email_list))
+		.where(HasRole.role.isin(GAMEPLAN_ROLES))
+		.run(pluck=True)
+	)
 
 
 @frappe.whitelist()
@@ -285,3 +353,62 @@ def can_access_gameplan():
 		return True
 
 	return False
+
+
+CLIENT_ERROR_QUOTA = 20
+CLIENT_ERROR_QUOTA_WINDOW = 60 * 60
+CLIENT_ERROR_FIELD_LIMIT = 4000
+
+
+@frappe.whitelist(methods=["POST"])
+@validate_type
+def log_client_error(message: str, context: dict = None):
+	"""Record a browser-side error in the Error Log.
+
+	The UI catches most request failures and shows a message instead of raising, so a
+	report like "it did not post the first time" leaves no trace on the server. The
+	frontend sends those caught errors here together with the stack and the action that
+	failed, which is what makes them diagnosable after the fact.
+
+	The payload is attacker-controlled: it is truncated, stored as plain text, and each
+	user gets an hourly quota so a looping client cannot fill the Error Log.
+	"""
+	if _client_error_quota_spent():
+		return
+
+	action = _error_action(context)
+	title = f"Gameplan client error: {action}" if action else "Gameplan client error"
+
+	body = [_truncate(message)]
+	if context:
+		body.append("Context:\n" + _truncate(json.dumps(context, indent=2, default=str)))
+	frappe.log_error(title=title, message="\n\n".join(body))
+
+
+def _error_action(context: dict | None) -> str:
+	"""The action label for the log title. Kept to one short line: frappe.log_error treats a
+	multi-line title as a traceback and swaps its arguments."""
+	action = context.get("action") if isinstance(context, dict) else None
+	if not isinstance(action, str):
+		return ""
+	return " ".join(action.split())[:100]
+
+
+def _client_error_quota_spent() -> bool:
+	"""Whether this user has already used up their hourly client-error budget.
+
+	Read-then-write rather than an atomic counter: two reports racing can slip one past
+	the cap, which is fine for a throttle whose only job is to bound the row count.
+	"""
+	key = f"gameplan:client-error-count:{frappe.session.user}"
+	cache = frappe.cache()
+	count = cint(cache.get_value(key))
+	if count >= CLIENT_ERROR_QUOTA:
+		return True
+	cache.set_value(key, count + 1, expires_in_sec=CLIENT_ERROR_QUOTA_WINDOW)
+	return False
+
+
+def _truncate(value: str, limit: int = CLIENT_ERROR_FIELD_LIMIT) -> str:
+	value = str(value or "")
+	return value if len(value) <= limit else value[:limit] + "… (truncated)"

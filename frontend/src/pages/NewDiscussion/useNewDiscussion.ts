@@ -3,15 +3,18 @@ import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
 import { call, useDoctype, dialog } from 'frappe-ui'
 import { useOwnedRouteWrites } from '@/composables/useOwnedRouteWrites'
 import { useDraftSync, type DraftPayload } from '@/data/useDraftSync'
+import { drafts } from '@/data/drafts'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { canPostInSpace, getSpace } from '@/data/spaces'
 import { useSessionUser, useUser } from '@/data/users'
 import { tags } from '@/data/tags'
 import { extractServerMessage, isEditorContentEmpty } from '@/utils'
+import { captureError } from '@/utils/errorReporting'
 import type { GPDiscussion } from '@/types/doctypes'
 
 const PUBLISH_DRAFT = 'gameplan.gameplan.doctype.gp_draft.gp_draft.publish_draft'
 const LOADING_STATUS_DELAY_MS = 200
+const FLUSH_ATTEMPTS = 3
 
 /** Title or non-empty body — the threshold for persisting a draft at all. */
 function hasMeaningfulContent(payload: Partial<DraftPayload>): boolean {
@@ -193,6 +196,21 @@ export function useNewDiscussion() {
     immediateSave()
   }
 
+  // publish_draft builds the discussion from the SERVER row, so a draft that is still dirty
+  // after a flush would be published minus whatever failed to push — most often as an empty
+  // body. A push only covers the snapshot it was built from, so an edit that lands while it
+  // is in flight (a keystroke, an image upload finishing) leaves the draft dirty even though
+  // nothing failed: flush again for those instead of telling the author to check a
+  // connection that is fine. A push that actually threw stops us on the first attempt.
+  async function flushUntilPushed(): Promise<boolean> {
+    for (let attempt = 0; attempt < FLUSH_ATTEMPTS; attempt++) {
+      await draft.flush()
+      if (!draft.serverName.value || !draft.dirty.value) return true
+      if (draft.lastError.value) return false
+    }
+    return false
+  }
+
   // Publish: flush the latest content, then turn the draft into a discussion. The draft
   // row is deleted server-side by publish, so we only forget the local copy afterwards.
   async function publish() {
@@ -202,12 +220,11 @@ export function useNewDiscussion() {
 
     publishing.value = true
     try {
-      await draft.flush()
-
-      // publish_draft builds the discussion from the SERVER row, so a draft that is still
-      // dirty after a flush would be published minus whatever failed to push — most often
-      // as an empty body. Stop instead of shipping a post the author didn't write.
-      if (draft.serverName.value && draft.dirty.value) {
+      if (!(await flushUntilPushed())) {
+        captureError(draft.lastError.value ?? new Error('Draft still unsynced after flush'), {
+          action: 'publish-discussion-unsynced-draft',
+          draft: draft.serverName.value,
+        })
         publishError.value =
           'Could not save your draft to the server. Check your connection and try again.'
         publishing.value = false
@@ -215,6 +232,7 @@ export function useNewDiscussion() {
       }
 
       let discussionId: string | undefined
+      const draftRowName = draft.serverName.value
       if (draft.serverName.value) {
         isPublishingSuccessfully.value = true
         discussionId = await call(PUBLISH_DRAFT, { name: draft.serverName.value })
@@ -229,18 +247,32 @@ export function useNewDiscussion() {
         discussionId = doc?.name
       }
 
-      await draft.forget()
-
-      if (discussionId) {
-        const spaceId = draftData.value.project
-        const targetCommunityId = communityId.value || (spaceId ? getSpace(spaceId)?.team : null)
-        await router.replace({
-          name: 'Discussion',
-          params: { communityId: targetCommunityId, spaceId, postId: discussionId },
+      // Nothing to navigate to. Say so and keep the draft: leaving `publishing` on would
+      // spin the button forever, and forgetting the draft would drop the only copy left.
+      if (!discussionId) {
+        captureError(new Error('Publishing returned no discussion'), {
+          action: 'publish-discussion-no-id',
+          draft: draft.serverName.value,
         })
-        tags.reload()
+        publishError.value = 'Could not publish this post.'
+        publishing.value = false
+        return
       }
+
+      await draft.forget()
+      // publish_draft deletes the row server-side, so the doctype APIs never saw it go —
+      // drop it from the drafts list here.
+      if (draftRowName) drafts.removeRow(draftRowName)
+
+      const spaceId = draftData.value.project
+      const targetCommunityId = communityId.value || (spaceId ? getSpace(spaceId)?.team : null)
+      await router.replace({
+        name: 'Discussion',
+        params: { communityId: targetCommunityId, spaceId, postId: discussionId },
+      })
+      tags.reload()
     } catch (error: any) {
+      captureError(error, { action: 'publish-discussion', draft: draft.serverName.value })
       publishError.value = extractServerMessage(error) || 'Could not publish this post.'
       publishing.value = false
     } finally {
@@ -300,7 +332,7 @@ export function useNewDiscussion() {
         try {
           await draft.flush()
         } catch (error) {
-          console.error('Failed to save draft before leaving:', error)
+          captureError(error, { action: 'draft-flush-on-leave', draft: draft.serverName.value })
         }
       }
       return true

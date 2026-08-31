@@ -13,9 +13,11 @@
  *    so the local key is per-instance until the server assigns a unique name.
  */
 import { ref, computed, watch, toValue, nextTick, onScopeDispose, type MaybeRefOrGetter } from 'vue'
-import { call, debounce, toast, dayjsLocal } from 'frappe-ui'
+import { call, debounce, toast, dayjsLocal, useDoctype } from 'frappe-ui'
 import { session } from './session'
+import { createDraft, drafts } from './drafts'
 import { isEditorContentEmpty } from '@/utils'
+import { captureError } from '@/utils/errorReporting'
 import {
   getDraftRecord,
   putDraftRecord,
@@ -62,14 +64,20 @@ let instanceCounter = 0
 export function useDraftSync(options: UseDraftSyncOptions) {
   const { identity, debounceMs = 500, canSave = hasContent, initialPayload, onCreate } = options
 
+  // Per instance, not module-level: these hold the in-flight request, and two composers
+  // writing different drafts at once would share one URL and one response.
+  const draftDoc = useDoctype('GP Draft')
+
   const data = ref<DraftPayload>(initialPayload ? initialPayload() : { content: '' })
   const ready = ref(false)
   const loading = ref(false)
   const saving = ref(false)
   const savedAt = ref<number | null>(null)
   const restored = ref(false)
-  // Tracks whether the last server push failed, so we toast once per streak (not per keystroke).
-  const pushFailed = ref(false)
+  // The error from the most recent failed push, cleared by the next success. Doubles as the
+  // "are we in a failure streak" flag (so we toast once, not per keystroke) and as the reason
+  // a caller like publish() can report when the draft is still unsynced.
+  const lastError = ref<unknown>(null)
   const serverName = ref<string | null>(toValue(options.draftName ?? null))
 
   // Last local edit vs last successful push, on THIS device. Drives reconciliation
@@ -168,33 +176,30 @@ export function useDraftSync(options: UseDraftSyncOptions) {
     saving.value = true
     try {
       if (serverName.value) {
-        await call('frappe.client.set_value', {
-          doctype: 'GP Draft',
-          name: serverName.value,
-          fieldname: fields,
-        })
+        // setValue writes through the doctype, so the drafts list picks up the new
+        // title/content on its own — no refetch.
+        const updated = await draftDoc.setValue.submit({ name: serverName.value, ...fields })
+        if (!updated) throw new Error('Could not save the draft')
       } else {
-        const doc = await call('frappe.client.insert', {
-          doc: { doctype: 'GP Draft', ...identityFields(), ...fields },
-        })
+        const doc = await createDraft({ ...identityFields(), ...fields })
         serverName.value = doc.name
         onCreate?.(doc.name)
       }
       syncedAt.value = Math.max(syncedAt.value ?? 0, pushedAt)
       savedAt.value = Date.now()
       await persistLocal()
-      pushFailed.value = false
+      lastError.value = null
     } catch (error) {
       // Keep the local copy; the next edit (or unmount flush) retries. Standalone
       // new-discussion drafts that never land here are adopted later by
       // recoverOrphanedDrafts(), so a missed push no longer strands a draft locally.
-      console.error('Draft sync failed', error)
+      captureError(error, { action: 'draft-push', draft: serverName.value })
       // Tell the user once per failure streak so a silently-failing save can't quietly
       // lose server-side persistence. Reset on the next success above.
-      if (!pushFailed.value) {
-        pushFailed.value = true
+      if (!lastError.value) {
         toast.error('Could not save your draft to the server — keeping a local copy and retrying.')
       }
+      lastError.value = error
     } finally {
       saving.value = false
     }
@@ -240,7 +245,8 @@ export function useDraftSync(options: UseDraftSyncOptions) {
         })
       }
     } catch (error) {
-      console.error('Draft lookup failed', error)
+      // The composer stays usable on a failed lookup, so this is invisible without a report.
+      captureError(error, { action: 'draft-load', draft: serverName.value })
     }
     return null
   }
@@ -355,7 +361,10 @@ export function useDraftSync(options: UseDraftSyncOptions) {
     await forget()
     if (name) {
       try {
-        await call('frappe.client.delete', { doctype: 'GP Draft', name })
+        // Deleting through the doctype drops the row from every GP Draft list, so the
+        // drafts page and the rail count follow without a refetch.
+        const deleted = await draftDoc.delete.submit({ name })
+        if (!deleted) throw new Error('Could not delete the draft')
       } catch (error) {
         console.error('Failed to delete draft', error)
       }
@@ -380,13 +389,17 @@ export function useDraftSync(options: UseDraftSyncOptions) {
           reference_doctype: id.referenceDoctype,
           reference_name: id.referenceName,
         })
+        // commit_draft deletes the row server-side, so drop it from the list here — the
+        // doctype APIs never saw the write.
+        drafts.removeRow(name)
       } catch (error) {
         console.error('Failed to commit draft', error)
       }
     } else if (name) {
       // No target to migrate into (shouldn't happen for singletons) — just delete.
       try {
-        await call('frappe.client.delete', { doctype: 'GP Draft', name })
+        const deleted = await draftDoc.delete.submit({ name })
+        if (!deleted) throw new Error('Could not delete the draft')
       } catch (error) {
         console.error('Failed to delete draft', error)
       }
@@ -407,6 +420,8 @@ export function useDraftSync(options: UseDraftSyncOptions) {
     savedAt,
     /** There are local edits not yet pushed to the server. */
     dirty,
+    /** Why the last push failed, or null if the last one succeeded. */
+    lastError,
     /** A pre-existing draft was found and restored on load. */
     restored,
     serverName,
@@ -524,9 +539,7 @@ async function recoverOrphanedDraft(record: DraftRecord): Promise<boolean> {
         fields.reference_name = id.referenceName
       }
 
-      doc = await call('frappe.client.insert', {
-        doc: { doctype: 'GP Draft', type: id.type, mode: id.mode, ...fields },
-      })
+      doc = await createDraft({ type: id.type, mode: id.mode, ...fields })
     } else {
       // A server row already exists for this singleton (created on another tab/device). Only push
       // our local orphan over it when the content differs AND our last local edit is newer than the
@@ -538,11 +551,7 @@ async function recoverOrphanedDraft(record: DraftRecord): Promise<boolean> {
       if (localContent !== serverContent) {
         const localIsNewer = record.updatedAt > dayjsLocal(doc.modified).valueOf()
         if (localIsNewer) {
-          await call('frappe.client.set_value', {
-            doctype: 'GP Draft',
-            name: doc.name,
-            fieldname: { content: localContent },
-          })
+          await useDoctype('GP Draft').setValue.submit({ name: doc.name, content: localContent })
         } else {
           payload = { ...payload, content: serverContent }
         }
@@ -563,7 +572,7 @@ async function recoverOrphanedDraft(record: DraftRecord): Promise<boolean> {
     broadcastDraftChange(newKey)
     return true
   } catch (error) {
-    console.error('Failed to recover orphaned draft', error)
+    captureError(error, { action: 'draft-recovery', draft: record.serverName })
     return false
   }
 }

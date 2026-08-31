@@ -52,9 +52,22 @@
           @keydown.meta.enter.capture.stop="updatePost"
           @keydown.esc="cancelEdit"
         >
+          <!--
+            While pinned, this row masks the content scrolling under it, so it has to
+            be at least as wide as anything that content can paint. A selected image
+            draws a ring 4px outside its own box, and that box is already the full
+            width of the column. A row that stopped at the column edge left the ring's
+            two vertical edges visible above it, running up to the page header. The
+            negative margins bleed the row out to the container's padding edge, and the
+            padding puts its contents back where they were.
+          -->
           <div
-            class="flex w-full items-center bg-surface-base pb-2 pt-2"
-            :class="editingPost ? 'sm:pt-0' : 'sticky -top-px z-[1] sm:top-0 sm:pt-14'"
+            class="flex items-center bg-surface-base pb-2 pt-2"
+            :class="
+              editingPost
+                ? 'w-full sm:pt-0'
+                : 'sticky -top-px z-[1] -mx-3 px-3 sm:-mx-5 sm:px-5 sm:top-0 sm:pt-14'
+            "
           >
             <UserProfileLink class="mr-3" :user="discussion.doc.owner">
               <UserAvatarWithHover class="sm:hidden" size="xl" :user="discussion.doc.owner" />
