@@ -110,7 +110,7 @@ def find_my_draft(
 	return frappe.get_doc("GP Draft", name).as_dict()
 
 
-@frappe.whitelist(methods=["POST"])
+@frappe.whitelist(methods=["GET"])
 def get_my_drafts():
 	"""Return the current user's new-content drafts, enriched for the Drafts list.
 
@@ -141,15 +141,16 @@ def get_my_drafts():
 		ignore_permissions=False,
 	).run(as_dict=True)
 
-	# A rare create race can leave multiple drafts for one reply. This endpoint is POST-only so the
-	# stale siblings are committed as deleted instead of reappearing after the newest draft is used.
+	# A rare create race can leave multiple drafts for one reply. Show only the newest (rows are
+	# ordered by modified desc); the stale siblings are deleted by find_my_draft the next time that
+	# reply composer opens. This endpoint stays a pure read so the drafts list can be a useList,
+	# which a GET rolls back anyway.
 	seen = set()
 	deduped = []
 	for r in rows:
 		if r.type == "Comment" and r.reference_name:
 			key = (r.reference_doctype, r.reference_name)
 			if key in seen:
-				frappe.delete_doc("GP Draft", r.name, ignore_permissions=False, delete_permanently=True)
 				continue
 			seen.add(key)
 		deduped.append(r)

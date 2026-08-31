@@ -3,6 +3,7 @@ import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
 import { call, useDoctype, dialog } from 'frappe-ui'
 import { useOwnedRouteWrites } from '@/composables/useOwnedRouteWrites'
 import { useDraftSync, type DraftPayload } from '@/data/useDraftSync'
+import { drafts } from '@/data/drafts'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { canPostInSpace, getSpace } from '@/data/spaces'
 import { useSessionUser, useUser } from '@/data/users'
@@ -215,6 +216,7 @@ export function useNewDiscussion() {
       }
 
       let discussionId: string | undefined
+      const draftRowName = draft.serverName.value
       if (draft.serverName.value) {
         isPublishingSuccessfully.value = true
         discussionId = await call(PUBLISH_DRAFT, { name: draft.serverName.value })
@@ -230,6 +232,9 @@ export function useNewDiscussion() {
       }
 
       await draft.forget()
+      // publish_draft deletes the row server-side, so the doctype APIs never saw it go —
+      // drop it from the drafts list here.
+      if (draftRowName) drafts.removeRow(draftRowName)
 
       if (discussionId) {
         const spaceId = draftData.value.project
