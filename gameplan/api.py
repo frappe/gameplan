@@ -2,10 +2,12 @@
 # See license.txt
 
 
+import json
+
 import frappe
 from frappe import _
 from frappe.query_builder.functions import Count
-from frappe.utils import split_emails, validate_email_address
+from frappe.utils import cint, split_emails, validate_email_address
 
 import gameplan
 from gameplan.gameplan.doctype.gp_invitation.gp_invitation import grant_access
@@ -351,3 +353,62 @@ def can_access_gameplan():
 		return True
 
 	return False
+
+
+CLIENT_ERROR_QUOTA = 20
+CLIENT_ERROR_QUOTA_WINDOW = 60 * 60
+CLIENT_ERROR_FIELD_LIMIT = 4000
+
+
+@frappe.whitelist(methods=["POST"])
+@validate_type
+def log_client_error(message: str, context: dict = None):
+	"""Record a browser-side error in the Error Log.
+
+	The UI catches most request failures and shows a message instead of raising, so a
+	report like "it did not post the first time" leaves no trace on the server. The
+	frontend sends those caught errors here together with the stack and the action that
+	failed, which is what makes them diagnosable after the fact.
+
+	The payload is attacker-controlled: it is truncated, stored as plain text, and each
+	user gets an hourly quota so a looping client cannot fill the Error Log.
+	"""
+	if _client_error_quota_spent():
+		return
+
+	action = _error_action(context)
+	title = f"Gameplan client error: {action}" if action else "Gameplan client error"
+
+	body = [_truncate(message)]
+	if context:
+		body.append("Context:\n" + _truncate(json.dumps(context, indent=2, default=str)))
+	frappe.log_error(title=title, message="\n\n".join(body))
+
+
+def _error_action(context: dict | None) -> str:
+	"""The action label for the log title. Kept to one short line: frappe.log_error treats a
+	multi-line title as a traceback and swaps its arguments."""
+	action = context.get("action") if isinstance(context, dict) else None
+	if not isinstance(action, str):
+		return ""
+	return " ".join(action.split())[:100]
+
+
+def _client_error_quota_spent() -> bool:
+	"""Whether this user has already used up their hourly client-error budget.
+
+	Read-then-write rather than an atomic counter: two reports racing can slip one past
+	the cap, which is fine for a throttle whose only job is to bound the row count.
+	"""
+	key = f"gameplan:client-error-count:{frappe.session.user}"
+	cache = frappe.cache()
+	count = cint(cache.get_value(key))
+	if count >= CLIENT_ERROR_QUOTA:
+		return True
+	cache.set_value(key, count + 1, expires_in_sec=CLIENT_ERROR_QUOTA_WINDOW)
+	return False
+
+
+def _truncate(value: str, limit: int = CLIENT_ERROR_FIELD_LIMIT) -> str:
+	value = str(value or "")
+	return value if len(value) <= limit else value[:limit] + "… (truncated)"

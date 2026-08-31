@@ -32,6 +32,8 @@ declare module 'vue' {
 declare global {
   interface Window {
     site_name: string
+    /** Set from the boot data in `gameplan/www/g.py`; absent when the site has no DSN. */
+    gameplan_frontend_sentry_dsn?: string
   }
 }
 

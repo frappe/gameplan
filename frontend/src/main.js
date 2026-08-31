@@ -19,6 +19,7 @@ import { getPlatform } from './utils'
 import { useUser, users } from './data/users'
 import { isSessionUser, session } from './data/session'
 import { initSocket } from './socket'
+import { installErrorReporting } from './utils/errorReporting'
 import resetDataMixin from './utils/resetDataMixin'
 
 let globalComponents = {
@@ -32,6 +33,8 @@ let globalComponents = {
 }
 let app = createApp(App)
 app.use(router)
+// Installed before anything else runs, so an error thrown during setup is reported too.
+installErrorReporting(app, router)
 app.mixin(resetDataMixin)
 for (let key in globalComponents) {
   app.component(key, globalComponents[key])
@@ -75,21 +78,6 @@ function setupApp() {
   socket = initSocket()
   app.config.globalProperties.$socket = socket
   app.mount('#app')
-}
-
-// Sentry error logging. Loaded lazily (dynamic import) so the ~250 KB SDK stays
-// out of the entry chunk — it's the #1 resource on the initial critical path and
-// is only ever needed in production when a DSN is configured. The import fires
-// during setup so browser-tracing still attaches early enough to capture vitals.
-if (import.meta.env.PROD && window.gameplan_frontend_sentry_dsn) {
-  import('@sentry/vue').then((Sentry) => {
-    Sentry.init({
-      app,
-      dsn: window.gameplan_frontend_sentry_dsn,
-      integrations: [Sentry.browserTracingIntegration({ router })],
-      tracesSampleRate: 1.0,
-    })
-  })
 }
 
 if (import.meta.env.DEV) {

@@ -137,6 +137,44 @@ describe('New discussion drafts', () => {
     })
   })
 
+  it('publishes an edit that lands while the last draft save is in flight', () => {
+    createStoredDraft()
+    // Hold every draft save open long enough to type into the composer while the publish
+    // is waiting on one. A save only covers the snapshot it was built from, so the draft
+    // is dirty again the moment it returns — with nothing actually failing.
+    cy.intercept('POST', '**/api/method/frappe.client.set_value', (req) => {
+      req.continue((res) => res.setDelay(1500))
+    }).as('draftSave')
+
+    cy.get('[contenteditable=true]').click().type(' First edit.')
+    cy.button('Publish').click()
+    cy.get('[contenteditable=true]').type(' Late edit.')
+
+    cy.url({ timeout: 20000 }).should(
+      'include',
+      `/community/${community}/space/${space}/discussion/`,
+    )
+    cy.contains('Late edit.').should('exist')
+  })
+
+  it('reports a failed publish to the server', () => {
+    createStoredDraft()
+    cy.intercept(
+      'POST',
+      '**/api/method/gameplan.gameplan.doctype.gp_draft.gp_draft.publish_draft',
+      { statusCode: 500, body: { exception: 'PublishError: no' } },
+    ).as('failedPublish')
+    cy.intercept('POST', '**/api/method/gameplan.api.log_client_error').as('errorReport')
+
+    cy.button('Publish').click()
+
+    cy.wait('@failedPublish')
+    cy.wait('@errorReport').its('request.body.context.action').should('eq', 'publish-discussion')
+    // Still on the composer, with the draft intact and the button clickable again.
+    cy.url().should('include', 'new-discussion')
+    cy.button('Publish').should('be.enabled')
+  })
+
   it('shows the publish button on the mobile composer', () => {
     cy.viewport('iphone-6')
     cy.visit(`/g/community/${community}/new-discussion`)
