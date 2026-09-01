@@ -273,4 +273,7 @@ del {
   all: unset;
   background-color: theme('colors.red.100');
 }
+.ProseMirror {
+  overflow-x: auto;
+}
 </style>

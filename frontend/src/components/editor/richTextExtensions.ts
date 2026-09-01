@@ -15,6 +15,7 @@ export function richTextExtensions(opts: { suggestions?: boolean } = {}) {
   return [
     RichTextKit.configure({
       heading: { levels: [...gameplanHeadingLevels] },
+      table: { cellMinWidth: 25 },
       // The kit's stock slash registry is replaced by the same registry plus the
       // gameplan-only "Collapsible section" command.
       slashCommands: false,
