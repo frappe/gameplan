@@ -212,7 +212,7 @@ describe('Poll lifecycle', () => {
     cy.visit(`/g/community/${community}/space/${space}/discussion/${discussion}`)
     cy.contains('Archived poll').should('be.visible')
     cy.contains('button', 'Stop Poll').should('not.exist')
-    pollAnswer('Yes').should('be.disabled')
+    pollChoice('Yes').should('be.disabled')
 
     cy.iconButton('Poll Options').click()
     cy.get('[role="menuitem"]:visible').contains('Show results').should('be.visible')
@@ -240,8 +240,14 @@ function labelledCheckbox(label: string) {
     .then(($label) => cy.get(`input[type="checkbox"][id="${$label.attr('for')}"]`))
 }
 
+/** An answer on a multiple-answer poll, where each option is an independent checkbox. */
 function pollAnswer(label: string) {
   return cy.get(`input[type="checkbox"][aria-label="${label}"]`)
+}
+
+/** An answer on a single-answer poll, where the options are one radiogroup. */
+function pollChoice(label: string) {
+  return cy.get(`[role="radio"][aria-label="${label}"]`)
 }
 
 /** The option's whole row: the checkbox, its share of the vote, and the bar behind them. */
