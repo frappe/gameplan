@@ -116,6 +116,54 @@ describe('Poll lifecycle', () => {
     pollAnswer('Yes').should('be.disabled')
   })
 
+  // One answer per voter is a radiogroup, not a row of ticks. The bug this pins was a
+  // checkbox on a poll that only ever accepts one answer: it offered a clear box next to
+  // an empty one, a state the vote cannot hold, and it read as "pick as many as you
+  // like" when a second pick in fact replaces the first.
+  it('votes in a single-answer poll through radios, where a second pick replaces the first', () => {
+    cy.request({
+      method: 'POST',
+      url: '/api/v2/document/GP%20Poll',
+      body: {
+        title: 'Ship on Friday?',
+        discussion,
+        options: [{ title: 'Yes' }, { title: 'No' }],
+      },
+    })
+
+    cy.intercept('POST', '/api/v2/document/GP%20Poll/*/method/submit_vote').as('submitVote')
+    cy.intercept('POST', '/api/v2/document/GP%20Poll/*/method/retract_vote').as('retractVote')
+    cy.visit(`/g/community/${community}/space/${space}/discussion/${discussion}`)
+    cy.contains('Ship on Friday?').should('be.visible')
+
+    // The options are one group, and not one of them is a checkbox.
+    cy.get('[role="radiogroup"]').should('have.length', 1)
+    cy.get('[data-poll-option] input[type="checkbox"]').should('not.exist')
+
+    pollChoice('Yes').click()
+    cy.wait('@submitVote').its('request.body.option').should('equal', 'Yes')
+    pollChoice('Yes').should('have.attr', 'aria-checked', 'true')
+    cy.contains('1 vote').should('exist')
+    assertShare('Yes', '100%')
+
+    // Picking the other option replaces the answer, so the poll still holds one vote and
+    // nothing was retracted to get there.
+    pollChoice('No').click()
+    cy.wait('@submitVote').its('request.body.option').should('equal', 'No')
+    cy.contains('1 vote').should('exist')
+    pollChoice('Yes').should('have.attr', 'aria-checked', 'false')
+    pollChoice('No').should('have.attr', 'aria-checked', 'true')
+    assertShare('Yes', '0%')
+    assertShare('No', '100%')
+
+    // A radio cannot clear itself, so leaving the poll unanswered goes through the menu.
+    cy.selectDropdownOption('Poll Options', 'Retract vote')
+    cy.dialog('button:contains("Retract vote")').click()
+    cy.wait('@retractVote')
+    pollChoice('No').should('have.attr', 'aria-checked', 'false')
+    cy.contains('0 votes').should('exist')
+  })
+
   // A poll is a post like any other, so it carries reactions too. Reacting to it used
   // to blow up: GP Poll rendered the Reactions widget without mixing in HasReactions,
   // so the `react` doc-method the widget posts to did not exist.
