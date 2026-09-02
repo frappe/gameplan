@@ -61,6 +61,11 @@
         />
         <Poll
           v-else-if="item.doctype == 'GP Poll'"
+          :class="{
+            'pt-14 sm:pt-0': needsMobileCommentGap(timelineItems, i, {
+              includeFirstComment: true,
+            }),
+          }"
           :ref="($poll) => setItemRef($poll, item)"
           :highlight="
             highlightedItem?.doctype == item.doctype && highlightedItem?.name == item.name
