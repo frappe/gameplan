@@ -66,6 +66,16 @@ export function useNewDiscussion() {
   )
   const showDraftLoadingStatus = ref(false)
 
+  // Writable view of the draft's space, falling back to the route while the draft resolves.
+  // The picker holds its place in the layout throughout that wait, so it has to show the
+  // space the URL already names rather than flipping from "Select Space" to it on arrival.
+  const selectedSpace = computed({
+    get: () => draftData.value?.project ?? routeQueryString(route.query.spaceId),
+    set: (value: string | null) => {
+      if (draftData.value) draftData.value.project = value
+    },
+  })
+
   // Keep fast IndexedDB/server restores visually quiet, but expose a real status when a
   // request is slow enough that the temporarily disabled composer needs explanation.
   watch(
@@ -117,12 +127,12 @@ export function useNewDiscussion() {
         router.replace({
           name: 'NewDiscussion',
           params: { communityId: communityId.value },
-          query: draftRouteQuery(name, draftData.value.project),
+          query: draftRouteQuery(name, draftData.value?.project),
         })
       } else {
         router.replace({
           name: 'LegacyNewDiscussion',
-          query: draftRouteQuery(name, draftData.value.project),
+          query: draftRouteQuery(name, draftData.value?.project),
         })
       }
     })
@@ -131,14 +141,14 @@ export function useNewDiscussion() {
   // Keep the URL in step with the draft's space. Only ever called through runWhenOwned,
   // which is what makes it safe for these to rewrite the route unconditionally.
   function syncRouteToDraft() {
-    if (!normalizeDraftRoute()) syncSelectedSpaceToRoute(draftData.value.project)
+    if (!normalizeDraftRoute()) syncSelectedSpaceToRoute(draftData.value?.project)
   }
 
   // A draft opened on the legacy route that already belongs to a space is moved onto the
   // canonical scoped route. Drafts with no resolvable community stay on the legacy route.
   function normalizeDraftRoute() {
     if (isScoped.value) return false
-    const project = draftData.value.project
+    const project = draftData.value?.project
     if (!project) return false
     const targetCommunityId = getSpace(project)?.team
     if (!targetCommunityId) return false
@@ -165,6 +175,9 @@ export function useNewDiscussion() {
   // Validation
   const validateDraft = (checkProject = true): boolean => {
     if (!hasInteracted.value) return true // Don't validate until user has interacted
+    // Nothing has been typed yet if the draft is still resolving, so there is nothing to
+    // complain about.
+    if (!draftData.value) return true
 
     errorMessage.value = null
     if (!draftData.value.title) {
@@ -181,6 +194,7 @@ export function useNewDiscussion() {
   // Event handlers
   const handleTitleInput = (e: Event) => {
     const target = e.target as HTMLTextAreaElement
+    if (!draftData.value) return
     draftData.value.title = target.value
     // Height autosizing is handled by useTextareaAutosize in DiscussionBody.vue.
     hasInteracted.value = true
@@ -240,9 +254,9 @@ export function useNewDiscussion() {
         // No server row (e.g. the flush failed) — publish directly so nothing is lost.
         isPublishingSuccessfully.value = true
         const doc = await discussions.insert.submit({
-          title: draftData.value.title,
-          content: draftData.value.content,
-          project: draftData.value.project || undefined,
+          title: draftData.value?.title,
+          content: draftData.value?.content,
+          project: draftData.value?.project || undefined,
         })
         discussionId = doc?.name
       }
@@ -264,7 +278,7 @@ export function useNewDiscussion() {
       // drop it from the drafts list here.
       if (draftRowName) drafts.removeRow(draftRowName)
 
-      const spaceId = draftData.value.project
+      const spaceId = draftData.value?.project
       const targetCommunityId = communityId.value || (spaceId ? getSpace(spaceId)?.team : null)
       await router.replace({
         name: 'Discussion',
@@ -281,7 +295,7 @@ export function useNewDiscussion() {
   }
 
   async function deleteDraft() {
-    if (!hasMeaningfulContent(draftData.value)) {
+    if (!draftData.value || !hasMeaningfulContent(draftData.value)) {
       isDeletingDraft.value = true
       await draft.clear()
       leaveDraft()
@@ -306,21 +320,15 @@ export function useNewDiscussion() {
 
   function initialize() {
     onMounted(() => {
-      // Move legacy-route drafts onto the canonical scoped route once their space is known.
+      // Once when the draft opens, and again whenever its space changes: both move a
+      // legacy-route draft onto the canonical scoped route once its space is known.
       watch(
-        () => draft.ready.value,
-        (ready) => {
-          if (!ready) return
+        () => [draftData.value, draftData.value?.project],
+        () => {
+          if (!draftData.value) return
           runWhenOwned(syncRouteToDraft)
         },
         { immediate: true },
-      )
-      watch(
-        () => draftData.value.project,
-        () => {
-          if (!draft.ready.value) return
-          runWhenOwned(syncRouteToDraft)
-        },
       )
     })
 
@@ -342,6 +350,7 @@ export function useNewDiscussion() {
   return {
     // Data
     draftData,
+    selectedSpace,
     isPersisted,
     publishError,
     errorMessage,

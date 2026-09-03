@@ -40,7 +40,7 @@
       :items="[
         { label: 'Drafts', route: { name: 'Drafts' } },
         {
-          label: isPersisted ? draftData.title : 'New Discussion',
+          label: isPersisted ? draftData?.title : 'New Discussion',
           route: discussionRoute,
         },
       ]"
@@ -110,7 +110,7 @@ const mobileTitle = computed(() => (isPersisted.value ? 'Draft' : 'New Discussio
 // Drafts is the last resort, for a draft that has not picked a space yet.
 const backRoute = computed<RouteLocationRaw>(() => {
   const communityId = routeParam(route.params.communityId)
-  const spaceId = routeParam(route.query.spaceId) || draftData.value.project
+  const spaceId = routeParam(route.query.spaceId) || draftData.value?.project
 
   if (communityId && spaceId) {
     return { name: 'SpaceDiscussions', params: { communityId, spaceId } }

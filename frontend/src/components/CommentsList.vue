@@ -88,7 +88,7 @@
           <CommentEditor
             ref="newCommentEditor"
             max-height="50vh"
-            :value="draftData.content"
+            :value="draftData?.content"
             @change="onNewCommentChange"
             :submitButtonProps="{
               variant: 'solid',
@@ -316,7 +316,7 @@ const timelineItems = computed(() => {
 })
 
 const commentEmpty = computed(() => {
-  return !draftData.value.content || draftData.value.content === '<p></p>'
+  return !draftData.value?.content || draftData.value.content === '<p></p>'
 })
 
 const editorObject = computed(() => {
@@ -390,7 +390,7 @@ async function submitComment() {
   const comment = await comments.insert.submit({
     reference_doctype: props.doctype,
     reference_name: props.name,
-    content: draftData.value.content,
+    content: draftData.value?.content,
   })
   if (comments.insert.error || !comment?.name) return
 
@@ -399,6 +399,9 @@ async function submitComment() {
 }
 
 function onNewCommentChange(content: string) {
+  // The editor emits on mount, before the draft has resolved. There is no buffer to write
+  // into yet, and the composer is not editable, so the change is not the user's.
+  if (!draftData.value) return
   draftData.value.content = content
 }
 
@@ -419,9 +422,9 @@ watch(showCommentBox, (val) => {
 
 // Reopen the composer if a saved draft is restored for this task.
 watch(
-  () => draft.ready.value,
-  (ready) => {
-    if (ready && draft.restored.value) showCommentBox.value = true
+  draftData,
+  (payload) => {
+    if (payload && draft.restored.value) showCommentBox.value = true
   },
   { immediate: true },
 )
