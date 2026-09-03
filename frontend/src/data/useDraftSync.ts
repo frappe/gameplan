@@ -119,6 +119,16 @@ export function useDraftSync(options: UseDraftSyncOptions) {
     })
   }
 
+  /** Two payloads hold the same edit. Compared field by field so an absent key and an
+   *  empty one are the same thing, the way the composer treats them. */
+  function samePayload(a: DraftPayload, b: DraftPayload): boolean {
+    return (
+      (a.content ?? '') === (b.content ?? '') &&
+      (a.title ?? '') === (b.title ?? '') &&
+      (a.project ?? null) === (b.project ?? null)
+    )
+  }
+
   function payloadFromDoc(doc: Record<string, any>): DraftPayload {
     const payload: DraftPayload = { content: doc.content ?? '' }
     if ('title' in data.value) payload.title = doc.title ?? ''
@@ -254,6 +264,13 @@ export function useDraftSync(options: UseDraftSyncOptions) {
   async function load() {
     if (ready.value || loading.value) return
     loading.value = true
+    // What the composer held before the two awaits below. A composer that is writable
+    // while its draft loads can be edited inside that window, and the change watcher
+    // drops those edits (it bails until `ready`). Applying the loaded payload on top of
+    // them would then discard them with nothing on screen to say so — including an image
+    // whose upload has already succeeded, which simply never appears.
+    const beforeLoad = { ...data.value }
+    let editedWhileLoading = false
     try {
       // The IndexedDB store is origin-wide, so on a shared browser profile a record under this
       // deterministic key may belong to a previously logged-in user. Only restore a record we
@@ -269,8 +286,22 @@ export function useDraftSync(options: UseDraftSyncOptions) {
       // our edits to their server row — that write is forbidden and would retry-toast forever.
       // Forking (serverName = null) lets the reader's edits insert their own draft instead.
       const serverIsForeign = Boolean(server?.owner && server.owner !== session.user)
+      // `canSave` as well as a plain difference: mounting an editor rewrites an empty
+      // buffer into the editor's own empty document ("" -> "<p></p>"), which is a change
+      // by string equality and nothing at all to the person looking at it. Treating that
+      // as an edit would suppress every restore.
+      editedWhileLoading = !samePayload(beforeLoad, data.value) && canSave(data.value)
 
-      if (local && local.updatedAt > (local.syncedAt ?? 0)) {
+      if (editedWhileLoading) {
+        // What the user just wrote wins over anything we loaded: it is newer, and it is
+        // the thing on screen. Take only the row identity from the lookup, so the next
+        // push updates that row instead of inserting a second draft, and leave the buffer
+        // dirty so the edits the change watcher skipped still reach the server.
+        serverName.value =
+          local?.serverName ?? (serverIsForeign ? null : (server?.name ?? serverName.value))
+        if (local) previousKey = local.key
+        updatedAt.value = Date.now()
+      } else if (local && local.updatedAt > (local.syncedAt ?? 0)) {
         // Un-pushed local edits take precedence over the server copy.
         applyPayload(local.payload)
         serverName.value = local.serverName ?? server?.name ?? serverName.value
@@ -298,6 +329,12 @@ export function useDraftSync(options: UseDraftSyncOptions) {
     } finally {
       ready.value = true
       loading.value = false
+    }
+    // Persist the edits made during the load now that the watcher is live again; it
+    // ignored them while `ready` was false and will not fire again on its own.
+    if (editedWhileLoading) {
+      void persistLocal()
+      debouncedPush()
     }
   }
 
