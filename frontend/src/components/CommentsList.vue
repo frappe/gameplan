@@ -69,9 +69,14 @@
         <div
           v-show="showCommentBox"
           class="w-full rounded-6 border bg-surface-base p-4 focus-within:border-outline-gray-3"
+          :aria-busy="isDraftLoading"
+          :inert="isDraftLoading"
           @keydown.ctrl.enter.capture.stop="submitComment"
           @keydown.meta.enter.capture.stop="submitComment"
         >
+          <div v-if="isDraftLoading" role="status" class="mb-2 text-sm text-ink-gray-5">
+            Loading draft…
+          </div>
           <div class="mb-4 flex items-center sm:hidden">
             <UserAvatar :user="$user().name" size="sm" />
             <span class="ml-2 text-base-medium text-ink-gray-8">
@@ -94,7 +99,7 @@
             :discardButtonProps="{
               onClick: discardComment,
             }"
-            :editable="showCommentBox"
+            :editable="showCommentBox && !isDraftLoading"
             placeholder="Add a comment"
           />
           <ErrorMessage :message="comments.insert.error" />
@@ -152,6 +157,7 @@ const draft = useDraftSync({
   initialPayload: () => ({ content: '' }),
 })
 const draftData = draft.data
+const isDraftLoading = draft.isLoading
 
 const newMessagesFrom = ref(props.newCommentsFrom)
 const highlightedItem = ref(null)
