@@ -9,8 +9,8 @@
         <span class="font-medium text-ink-gray-8">
           {{ group.title }}
         </span>
-        <span class="ml-2 text-sm text-ink-gray-5">{{ group.tasks.length }}</span>
-        <span class="ml-auto hidden text-sm text-ink-gray-5 group-hover:inline">
+        <span class="ms-2 text-sm text-ink-gray-5">{{ group.tasks.length }}</span>
+        <span class="ms-auto hidden text-sm text-ink-gray-5 group-hover:inline">
           {{ isOpen[group.title] ? 'Collapse' : 'Expand' }}
         </span>
       </button>
@@ -60,13 +60,13 @@
                   </Dropdown>
                 </Tooltip>
                 <div
-                  class="ml-2.5 overflow-hidden text-ellipsis whitespace-nowrap text-base-medium leading-4 text-ink-gray-8"
+                  class="ms-2.5 overflow-hidden text-ellipsis whitespace-nowrap text-base-medium leading-4 text-ink-gray-8"
                 >
                   {{ d.title }}
                 </div>
               </div>
 
-              <div class="ml-6.5 mt-1.5 flex items-center">
+              <div class="ms-6.5 mt-1.5 flex items-center">
                 <div class="text-base text-ink-gray-5">#{{ d.name }}</div>
                 <div
                   v-if="$route.name != 'ProjectOverview' && d.project"
@@ -88,7 +88,7 @@
                   <div class="px-2 leading-none text-ink-gray-5">&middot;</div>
                   <div class="flex items-center">
                     <span class="lucide-calendar h-3 w-3 text-ink-gray-5" />
-                    <span class="ml-2 whitespace-nowrap text-base text-ink-gray-5">
+                    <span class="ms-2 whitespace-nowrap text-base text-ink-gray-5">
                       {{ dayjsLocal(d.due_date).format('D MMM') }}</span
                     >
                   </div>
@@ -104,7 +104,7 @@
                         'bg-surface-gray-8': d.priority === 'Low',
                       }"
                     ></div>
-                    <span class="ml-2 text-base text-ink-gray-5">
+                    <span class="ms-2 text-base text-ink-gray-5">
                       {{ d.priority }}
                     </span>
                   </div>

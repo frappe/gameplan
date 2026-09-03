@@ -4,7 +4,7 @@
        swallows every space typed into an inline editor inside the card. -->
   <article
     ref="cardElement"
-    class="group relative block w-full min-w-0 overflow-hidden rounded-7 text-left outline-none transition focus:outline-none focus-visible:outline-none"
+    class="group relative block w-full min-w-0 overflow-hidden rounded-7 text-start outline-none transition focus:outline-none focus-visible:outline-none"
     :class="[flow ? '' : 'h-full', cardChromeClass, cardShellClass, dragClass]"
     :style="rootStyle"
     :data-profile-card-id="card.id"

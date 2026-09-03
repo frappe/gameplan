@@ -1,6 +1,6 @@
 <template>
   <div class="flex w-full min-w-0 items-center rounded-4 px-2 py-2 text-base" v-if="space">
-    <SpaceIcon :icon="space.icon" class="mr-3 size-4 shrink-0 text-ink-gray-6" />
+    <SpaceIcon :icon="space.icon" class="me-3 size-4 shrink-0 text-ink-gray-6" />
     <span
       v-if="community && !item.hideCommunity"
       class="inline-flex min-w-0 shrink font-medium text-ink-gray-5"
@@ -15,7 +15,7 @@
     <span class="min-w-0 flex-1 truncate font-medium text-ink-gray-7">
       {{ item.title }}&nbsp;
     </span>
-    <span class="lucide-lock ml-0.5 size-3 shrink-0 text-ink-gray-6" v-if="space.is_private" />
+    <span class="lucide-lock ms-0.5 size-3 shrink-0 text-ink-gray-6" v-if="space.is_private" />
   </div>
 </template>
 <script setup lang="ts">

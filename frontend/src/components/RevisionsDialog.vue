@@ -6,7 +6,7 @@
           <button
             v-for="(revision, index) in orderedRevisions"
             :key="`${revision.creation}-${index}`"
-            class="w-full rounded-5 px-3 py-2 text-left last:border-b-0 transition-colors focus:outline-none focus-visible:ring focus-visible:ring-outline-gray-2"
+            class="w-full rounded-5 px-3 py-2 text-start last:border-b-0 transition-colors focus:outline-none focus-visible:ring focus-visible:ring-outline-gray-2"
             role="option"
             :aria-selected="index === currentRevisionIndex"
             :aria-label="`Revision from ${dayjsLocal(revision.creation).format('LLL')}`"
@@ -27,7 +27,7 @@
       </div>
       <div class="min-w-0">
         <div class="mb-2 flex items-center text-base" v-if="currentRevision && currentAuthor">
-          <UserProfileLink class="mr-3" :user="currentAuthor.name">
+          <UserProfileLink class="me-3" :user="currentAuthor.name">
             <UserAvatar :user="currentAuthor.name" />
           </UserProfileLink>
           <div class="space-y-0.5">
@@ -84,7 +84,7 @@
 
       <div ref="previewRef" class="flex-1 overflow-y-auto px-4 pb-6">
         <div class="mb-3 flex items-center text-sm" v-if="currentRevision && currentAuthor">
-          <UserProfileLink class="mr-3" :user="currentAuthor.name">
+          <UserProfileLink class="me-3" :user="currentAuthor.name">
             <UserAvatar :user="currentAuthor.name" />
           </UserProfileLink>
           <div class="space-y-0.5">

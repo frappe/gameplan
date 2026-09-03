@@ -26,7 +26,7 @@
           :whileHover="{ scale: 1.03 }"
           :whilePress="{ scale: 1.1 }"
         >
-          <img v-if="isImageEmoji(emoji)" :src="emoji" alt="" class="mr-1 size-4 object-contain" />
+          <img v-if="isImageEmoji(emoji)" :src="emoji" alt="" class="me-1 size-4 object-contain" />
           <template v-else>{{ emoji }}&nbsp;</template>
           {{ reactions.count }}
         </Motion>
@@ -74,7 +74,7 @@
             :exit="{ opacity: 0, y: 0 }"
             :transition="{ type: 'spring', stiffness: 320, damping: 26 }"
           >
-            <div class="mr-2 flex w-14 items-center justify-center gap-1 text-center">
+            <div class="me-2 flex w-14 items-center justify-center gap-1 text-center">
               <img v-if="isImageEmoji(emoji)" :src="emoji" alt="" class="size-6 object-contain" />
               <span v-else class="text-4xl font-[emoji]"> {{ emoji }}</span>
               <span class="text-p-xl text-ink-gray-4"> ({{ reactions.count }}) </span>

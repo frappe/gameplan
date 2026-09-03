@@ -49,7 +49,7 @@
                 <div>{{ space?.title }}</div>
               </div>
             </div>
-            <div v-if="!readOnly" class="shrink-0 ml-1 invisible group-hover:visible">
+            <div v-if="!readOnly" class="shrink-0 ms-1 invisible group-hover:visible">
               <Dropdown
                 :button="{
                   icon: 'lucide-more-horizontal',

@@ -51,7 +51,7 @@
           ]"
           @click="toggleReaction(emoji)"
         >
-          <img v-if="isImageEmoji(emoji)" :src="emoji" alt="" class="mr-1 size-4 object-contain" />
+          <img v-if="isImageEmoji(emoji)" :src="emoji" alt="" class="me-1 size-4 object-contain" />
           <template v-else>{{ emoji }}&nbsp;</template>
           {{ reactions.count }}
         </button>

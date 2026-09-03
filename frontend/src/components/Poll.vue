@@ -12,7 +12,7 @@
     <div
       class="sticky -top-px z-[1] -mx-2 flex items-center bg-surface-base px-2 pb-2 pt-2 text-base text-ink-gray-8 sm:top-0 sm:pt-14"
     >
-      <UserProfileLink class="mr-3" :user="owner.name">
+      <UserProfileLink class="me-3" :user="owner.name">
         <UserAvatarWithHover :user="owner.name" size="lg" />
       </UserProfileLink>
       <div class="md:flex md:items-center">
@@ -28,7 +28,7 @@
           </Tooltip>
         </div>
       </div>
-      <div class="ml-auto flex items-center space-x-2">
+      <div class="ms-auto flex items-center space-x-2">
         <Button
           v-if="!isStopped && !readOnlyMode && canDeletePoll"
           variant="ghost"
@@ -158,7 +158,7 @@
             <div class="text-base text-ink-gray-5">
               {{ option.votes }} {{ option.votes === 1 ? 'vote' : 'votes' }}
             </div>
-            <div class="ml-1 text-base text-ink-gray-5">({{ option.percentage }}%)</div>
+            <div class="ms-1 text-base text-ink-gray-5">({{ option.percentage }}%)</div>
           </div>
           <div class="space-y-2">
             <div class="flex" v-for="voter in option.voters" :key="voter.name">

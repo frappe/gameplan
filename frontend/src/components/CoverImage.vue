@@ -21,7 +21,7 @@
           <div class="rounded-5 py-1 text-xl text-ink-base">Drag image up or down</div>
           <div class="pointer-events-auto" data-cover-control @pointerdown.stop>
             <Button class="mt-2" @click="savePosition">Save position</Button>
-            <Button class="ml-2 mt-2" @click="cancelReposition">Cancel</Button>
+            <Button class="ms-2 mt-2" @click="cancelReposition">Cancel</Button>
           </div>
         </div>
       </div>

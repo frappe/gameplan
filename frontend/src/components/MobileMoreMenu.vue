@@ -25,7 +25,7 @@
 
     <div class="mt-8 space-y-6">
       <section v-for="group in itemGroups" :key="group.label">
-        <div class="mb-2 pl-[18px] text-lg-medium text-ink-gray-5">
+        <div class="mb-2 ps-[18px] text-lg-medium text-ink-gray-5">
           {{ group.label }}
         </div>
         <nav class="overflow-hidden rounded-7 bg-surface-base">
@@ -33,7 +33,7 @@
             v-for="(item, index) in group.items"
             :key="item.label"
             type="button"
-            class="block w-full text-left transition active:bg-surface-gray-2"
+            class="block w-full text-start transition active:bg-surface-gray-2"
             @click="onItemClick(item)"
           >
             <!--
@@ -46,7 +46,7 @@
               <span class="flex w-14 shrink-0 items-center justify-center py-3">
                 <span :class="[item.icon, 'size-5 text-ink-gray-8']" aria-hidden="true" />
               </span>
-              <span class="relative flex min-w-0 flex-1 items-center gap-3 py-3 pr-4">
+              <span class="relative flex min-w-0 flex-1 items-center gap-3 py-3 pe-4">
                 <span
                   v-if="index > 0"
                   class="pointer-events-none absolute left-0 right-4 top-0 border-t"

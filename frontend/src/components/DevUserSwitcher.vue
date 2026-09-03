@@ -5,7 +5,7 @@
     <PopoverTrigger as-child>
       <button
         type="button"
-        class="fixed bottom-20 left-3 z-[200] flex items-center gap-2 rounded-full border border-outline-gray-2 bg-surface-elevation-2 py-1 pl-1 pr-2.5 shadow-lg transition-opacity hover:opacity-100 sm:bottom-3 sm:left-16"
+        class="fixed bottom-20 left-3 z-[200] flex items-center gap-2 rounded-full border border-outline-gray-2 bg-surface-elevation-2 py-1 ps-1 pe-2.5 shadow-lg transition-opacity hover:opacity-100 sm:bottom-3 sm:left-16"
         :class="isOpen ? 'opacity-100' : 'opacity-60'"
         title="Dev only — switch user"
       >
@@ -44,7 +44,7 @@
               v-for="user in filteredUsers"
               :key="user.name"
               type="button"
-              class="flex w-full items-center gap-2.5 rounded-4 px-2 py-1.5 text-left hover:bg-surface-gray-2 disabled:opacity-60"
+              class="flex w-full items-center gap-2.5 rounded-4 px-2 py-1.5 text-start hover:bg-surface-gray-2 disabled:opacity-60"
               :disabled="Boolean(switchingTo)"
               @click="switchTo(user.name)"
             >

@@ -1,10 +1,10 @@
 <template>
   <Breadcrumbs class="space-breadcrumbs" :items="breadcrumbItems">
     <template #prefix="{ item }">
-      <component :is="item.prefix" v-if="item.prefix" class="mr-1.5 size-5 text-ink-gray-6" />
+      <component :is="item.prefix" v-if="item.prefix" class="me-1.5 size-5 text-ink-gray-6" />
     </template>
     <template #suffix="{ item }">
-      <span v-if="item.suffix" :class="[item.suffix, 'ml-1.5 size-3.5 text-ink-gray-6']" />
+      <span v-if="item.suffix" :class="[item.suffix, 'ms-1.5 size-3.5 text-ink-gray-6']" />
     </template>
   </Breadcrumbs>
 </template>

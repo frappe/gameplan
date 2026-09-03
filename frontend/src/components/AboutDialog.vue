@@ -13,7 +13,7 @@
             </div>
 
             <Tooltip :text="`${appVersion.commit_message} - ${appVersion.commit_date}`" side="top">
-              <span class="lucide-info size-3.5 text-ink-gray-8 ml-1" />
+              <span class="lucide-info size-3.5 text-ink-gray-8 ms-1" />
             </Tooltip>
           </div>
         </div>
@@ -27,8 +27,8 @@
           target="_blank"
           :href="link.url"
         >
-          <GithubLogo v-if="link.icon === 'github'" class="size-4 mr-2 text-ink-gray-7" />
-          <span v-else-if="link.icon" :class="[link.icon, 'size-4 mr-2 text-ink-gray-7']" />
+          <GithubLogo v-if="link.icon === 'github'" class="size-4 me-2 text-ink-gray-7" />
+          <span v-else-if="link.icon" :class="[link.icon, 'size-4 me-2 text-ink-gray-7']" />
           <span class="text-base text-ink-gray-8">
             {{ link.label }}
           </span>

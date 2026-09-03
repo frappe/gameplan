@@ -22,13 +22,13 @@
             <div class="flex items-center min-w-0">
               <div class="text-ink-gray-5">
                 <Tooltip v-if="discussion.closed_at" text="Closed">
-                  <span class="lucide-lock size-4 p-[1px] mr-1" />
+                  <span class="lucide-lock size-4 p-[1px] me-1" />
                 </Tooltip>
                 <Tooltip v-else-if="discussion.last_post_type == 'GP Comment'" text="Comment">
-                  <span class="lucide-reply size-4 mr-1" />
+                  <span class="lucide-reply size-4 me-1" />
                 </Tooltip>
                 <Tooltip v-else-if="discussion.last_post_type == 'GP Poll'" text="Poll">
-                  <span class="lucide-align-left size-4 p-[1px] mr-1" />
+                  <span class="lucide-align-left size-4 p-[1px] me-1" />
                 </Tooltip>
               </div>
               <div>
@@ -39,7 +39,7 @@
                   &nbsp;in {{ discussion.project_title }}
                   <span
                     v-if="isSpacePrivate(discussion.project)"
-                    class="lucide-lock h-3 w-3 text-ink-gray-6 ml-0.5"
+                    class="lucide-lock h-3 w-3 text-ink-gray-6 ms-0.5"
                   /> </span
                 >:&nbsp;
               </div>
@@ -54,7 +54,7 @@
     <ListCell class="justify-end">
       <div>
         <Tooltip :text="dayjsLocal(discussion.last_post_at).format('D MMM YYYY [at] h:mm A')">
-          <div class="shrink-0 whitespace-nowrap text-sm text-ink-gray-5 text-right">
+          <div class="shrink-0 whitespace-nowrap text-sm text-ink-gray-5 text-end">
             {{ relativeTimestamp(discussion.last_post_at || discussion.creation) }}
           </div>
         </Tooltip>

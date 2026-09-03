@@ -55,12 +55,12 @@
         :class="!showCommentBox ? 'cursor-pointer' : ''"
         @click="openCommentBoxFromRow"
       >
-        <div class="mr-3 hidden h-8 items-center sm:flex">
+        <div class="me-3 hidden h-8 items-center sm:flex">
           <UserAvatar :user="$user().name" size="md" />
         </div>
         <div class="relative w-full" v-show="!showCommentBox">
           <button
-            class="flex w-full items-center rounded-5 border px-2 py-2 text-left text-base text-ink-gray-5 hover:border-outline-gray-3"
+            class="flex w-full items-center rounded-5 border px-2 py-2 text-start text-base text-ink-gray-5 hover:border-outline-gray-3"
             @click.stop="openCommentBox"
           >
             Add a comment
@@ -74,7 +74,7 @@
         >
           <div class="mb-4 flex items-center sm:hidden">
             <UserAvatar :user="$user().name" size="sm" />
-            <span class="ml-2 text-base-medium text-ink-gray-8">
+            <span class="ms-2 text-base-medium text-ink-gray-8">
               {{ $user().full_name }}
             </span>
           </div>

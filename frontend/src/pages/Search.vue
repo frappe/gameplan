@@ -78,7 +78,7 @@
                     </div>
                     <template #suffix>
                       <span
-                        class="lucide-chevron-down ml-2 h-4 w-4 transition-transform"
+                        class="lucide-chevron-down ms-2 h-4 w-4 transition-transform"
                         :class="{ 'rotate-180': open }"
                       />
                     </template>
@@ -194,7 +194,7 @@
                 </p>
                 <p v-if="searchResponse.summary.corrected_query" class="text-ink-gray-6">
                   <span class="text-ink-gray-5">Searched for:</span>
-                  <span class="ml-1 font-medium text-primary">
+                  <span class="ms-1 font-medium text-primary">
                     {{ searchResponse.summary.corrected_query }}
                   </span>
                 </p>
@@ -252,7 +252,7 @@
                     <span class="px-1 leading-none text-sm text-ink-gray-5">
                       &middot; {{ item.doctype.replace('GP ', '') }}
                     </span>
-                    <div class="ml-auto text-sm text-ink-gray-5">
+                    <div class="ms-auto text-sm text-ink-gray-5">
                       {{ dayjs.unix(item.modified).format('lll') }}
                     </div>
                   </div>

@@ -6,14 +6,14 @@
       </Dialog.Title>
       <div class="relative">
         <div class="relative">
-          <div class="absolute inset-y-0 left-0 flex items-center pl-4.5">
+          <div class="absolute inset-y-0 left-0 flex items-center ps-4.5">
             <span class="lucide-search h-4 w-4 text-ink-gray-6" />
           </div>
           <input
             ref="inputRef"
             type="text"
             placeholder="Search"
-            class="w-full border-none bg-transparent py-3 pl-11.5 pr-4.5 text-base text-ink-gray-7 placeholder-ink-gray-4 focus:ring-0"
+            class="w-full border-none bg-transparent py-3 ps-11.5 pe-4.5 text-base text-ink-gray-7 placeholder-ink-gray-4 focus:ring-0"
             @input="onInput"
             @keydown="onKeyDown"
             v-model="query"
@@ -85,22 +85,22 @@
             <KeyboardShortcut bg>
               <span class="lucide-arrow-up size-4" />
             </KeyboardShortcut>
-            <span class="ml-1">to navigate</span>
+            <span class="ms-1">to navigate</span>
           </div>
           <div class="flex items-center gap-1">
             <KeyboardShortcut bg>
               <span class="lucide-corner-down-left size-4" />
             </KeyboardShortcut>
-            <span class="ml-1">to select</span>
+            <span class="ms-1">to select</span>
           </div>
           <div class="flex items-center gap-1">
             <KeyboardShortcut bg>esc</KeyboardShortcut>
-            <span class="ml-1">to close</span>
+            <span class="ms-1">to close</span>
           </div>
         </div>
         <div class="flex items-center gap-1">
           <KeyboardShortcut bg ctrl>K</KeyboardShortcut>
-          <span class="ml-1">to open</span>
+          <span class="ms-1">to open</span>
         </div>
       </div>
     </div>

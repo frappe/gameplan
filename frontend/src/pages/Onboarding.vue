@@ -65,14 +65,14 @@
           <span class="lucide-chevron-down size-4 shrink-0 text-ink-gray-5" />
         </div>
         <div class="px-2 pt-0.5">
-          <div class="flex h-7 items-center pl-2 text-base text-ink-gray-5">Spaces</div>
+          <div class="flex h-7 items-center ps-2 text-base text-ink-gray-5">Spaces</div>
           <div class="mt-0.5">
             <div
-              class="flex h-7 items-center rounded-4 bg-surface-elevation-3 pl-2 text-ink-gray-8 shadow-sm"
+              class="flex h-7 items-center rounded-4 bg-surface-elevation-3 ps-2 text-ink-gray-8 shadow-sm"
             >
               <SpaceIcon v-if="space.icon" :icon="space.icon" class="size-4 shrink-0" />
               <span v-else class="lucide-hash size-4 shrink-0 text-ink-gray-5" />
-              <span class="ml-2 flex-1 truncate text-sm">{{ previewSpaceTitle }}</span>
+              <span class="ms-2 flex-1 truncate text-sm">{{ previewSpaceTitle }}</span>
             </div>
           </div>
         </div>

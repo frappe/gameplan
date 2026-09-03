@@ -14,12 +14,12 @@
         <button
           v-for="item in store.popover.items"
           :key="item.quotingCommentId + item.creation"
-          class="flex w-full items-center gap-2 rounded-4 px-2 py-1.5 text-left hover:bg-surface-gray-2 focus:outline-none focus-visible:ring focus-visible:ring-outline-gray-3"
+          class="flex w-full items-center gap-2 rounded-4 px-2 py-1.5 text-start hover:bg-surface-gray-2 focus:outline-none focus-visible:ring focus-visible:ring-outline-gray-3"
           @click="select(item)"
         >
           <UserAvatar size="sm" :user="item.author" />
           <span class="text-base text-ink-gray-8">{{ fullName(item.author) }}</span>
-          <span class="ml-auto pl-3 text-sm text-ink-gray-5">
+          <span class="ms-auto ps-3 text-sm text-ink-gray-5">
             {{ dayjsLocal(item.creation).fromNow() }}
           </span>
         </button>

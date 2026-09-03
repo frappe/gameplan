@@ -99,7 +99,7 @@
                  which can read slightly out of order here — an honest timestamp out of order
                  beats a wrong one in order. -->
             <time
-              class="block shrink-0 whitespace-nowrap text-right text-sm text-ink-gray-5"
+              class="block shrink-0 whitespace-nowrap text-end text-sm text-ink-gray-5"
               :datetime="notification.creation"
             >
               <span class="sm:hidden">{{ shortTimestamp(notification.creation) }}</span>
@@ -108,7 +108,7 @@
               </span>
             </time>
             <div
-              class="mt-1.5 hidden whitespace-nowrap text-right text-sm text-ink-gray-5 sm:block"
+              class="mt-1.5 hidden whitespace-nowrap text-end text-sm text-ink-gray-5 sm:block"
               v-if="notificationLocation(notification)"
             >
               {{ notificationLocation(notification) }}

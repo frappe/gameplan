@@ -59,7 +59,7 @@
                     row hover/focus while the "…" menu fades in. The group is
                     SidebarItem's root (`group/sidebar-item`).
                   -->
-                <div class="relative mr-1 flex h-7 w-7 shrink-0 items-center justify-end">
+                <div class="relative me-1 flex h-7 w-7 shrink-0 items-center justify-end">
                   <span
                     v-if="getSpaceUnreadCount(space.name) > 0"
                     class="absolute right-1 text-xs text-ink-gray-5 transition-opacity group-hover/sidebar-item:opacity-0 group-focus-within/sidebar-item:opacity-0"
@@ -73,7 +73,7 @@
                         size="xs"
                         icon="lucide-more-horizontal text-ink-gray-5"
                         :label="`${space.title} options`"
-                        class="absolute right-0 -mr-0.5 opacity-0 group-hover/sidebar-item:opacity-100 group-focus-within/sidebar-item:opacity-100"
+                        class="absolute right-0 -me-0.5 opacity-0 group-hover/sidebar-item:opacity-100 group-focus-within/sidebar-item:opacity-100"
                         :class="open ? 'opacity-100' : ''"
                       />
                     </template>
