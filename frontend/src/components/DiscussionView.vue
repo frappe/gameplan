@@ -144,7 +144,7 @@
                   type="text"
                   class="w-full bg-transparent border-0 text-ink-gray-8 px-0 py-0.5 text-4xl-semibold focus:ring-0"
                   ref="title"
-                  v-model="postDraftData.title"
+                  v-model="postTitle"
                   placeholder="Title"
                   :disabled="isPostDraftLoading"
                 />
@@ -160,7 +160,9 @@
             </p>
             <DiscussionViewEditor
               ref="postEditor"
-              :content="editingPost ? postDraftData.content : discussion.doc.content"
+              :content="
+                editingPost && postDraftData ? postDraftData.content : discussion.doc.content
+              "
               :editable="editingPost && !isPostDraftLoading"
               :saving="discussion.setValue.loading"
               :can-save="canSavePost"
@@ -459,8 +461,20 @@ const postDraft = useDraftSync({
 const postDraftData = postDraft.data
 const isPostDraftLoading = postDraft.isLoading
 
+// Writable view of the draft's title. The input keeps its place in the layout while the
+// draft resolves, so it has to read as empty and swallow writes until then.
+const postTitle = computed({
+  get: () => postDraftData.value?.title ?? '',
+  set: (value: string) => {
+    if (postDraftData.value) postDraftData.value.title = value
+  },
+})
+
 function onPostEditorChange(value: string) {
-  if (editingPost.value) postDraftData.value.content = value
+  // Ignored unless this editor is in edit mode with a resolved draft behind it — while it
+  // displays the saved post, or while the draft is still loading, it owns no buffer.
+  if (!editingPost.value || !postDraftData.value) return
+  postDraftData.value.content = value
 }
 
 // The scroll container is owned by the shell (Desktop/MobileShell) and registers
@@ -623,8 +637,8 @@ function moveToSpace() {
 // as a blank page for everyone, with no way back except the revision history.
 const canSavePost = computed(
   () =>
-    Boolean(postDraftData.value.title?.trim()) &&
-    !isEditorContentEmpty(postDraftData.value.content),
+    Boolean(postDraftData.value?.title?.trim()) &&
+    !isEditorContentEmpty(postDraftData.value?.content),
 )
 
 // Read content from the editor's own serializer rather than discussion.doc.content:
@@ -652,7 +666,7 @@ function startEditingPost() {
 function isPostDirty() {
   if (!editSnapshot.value) return false
   return (
-    (postDraftData.value.title ?? '') !== editSnapshot.value.title ||
+    (postDraftData.value?.title ?? '') !== editSnapshot.value.title ||
     currentPostContent() !== editSnapshot.value.content
   )
 }
@@ -684,8 +698,8 @@ function updatePost() {
   if (!editingPost.value || !canSavePost.value) return
   discussion.setValue
     .submit({
-      title: postDraftData.value.title,
-      content: postDraftData.value.content,
+      title: postDraftData.value?.title,
+      content: postDraftData.value?.content,
     })
     .then(async () => {
       // Content is saved onto the post; migrate the draft's attachments and delete it.

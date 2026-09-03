@@ -81,7 +81,7 @@
           v-if="comment.deleted_at == null"
           :quote-source-id="`comment:${comment.name}`"
           :author="comment.owner"
-          :value="isEditing ? draftData.content : comment.content"
+          :value="isEditing && draftData ? draftData.content : comment.content"
           @change="onEditorChange"
           :editable="isEditing && !isDraftLoading"
           :submitButtonProps="{
@@ -163,7 +163,10 @@ const draftData = draft.data
 const isDraftLoading = draft.isLoading
 
 const onEditorChange = (value: string) => {
-  if (isEditing.value) draftData.value.content = value
+  // Ignored unless this editor is in edit mode with a resolved draft behind it — while it
+  // displays the saved comment, or while the draft is still loading, it owns no buffer.
+  if (!isEditing.value || !draftData.value) return
+  draftData.value.content = value
 }
 
 const startEditing = () => {
@@ -177,7 +180,7 @@ const discardEdit = async () => {
 }
 
 const updateComment = () => {
-  const content = draftData.value.content
+  const content = draftData.value?.content
   if (!content?.trim()) return
 
   isUpdating.value = true
