@@ -35,7 +35,7 @@ export function commentExtensions(
   return [
     CommentKit.configure({
       heading: { levels: [...gameplanHeadingLevels] },
-      table: {},
+      table: { cellMinWidth: 25 },
       ...suggestionConfig(true),
     }),
     // TaskItem requires TaskList; Iframe ships the `openIframeDialog` command and
