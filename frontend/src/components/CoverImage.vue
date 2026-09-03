@@ -6,6 +6,7 @@
         :class="{ 'animate-pulse': loading }"
         :style="{ objectPosition }"
         :src="validatedImageUrl"
+        alt="Cover image"
         @load="loading = false"
       />
       <div
