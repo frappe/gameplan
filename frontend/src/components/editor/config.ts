@@ -1,7 +1,24 @@
 import type { Component } from 'vue'
 import type { AnyExtension } from '@tiptap/core'
 import { useFileUpload } from 'frappe-ui'
-import type { MediaUploadRequestOptions, UploadedFile } from 'frappe-ui/editor'
+import { Mention, type MediaUploadRequestOptions, type UploadedFile } from 'frappe-ui/editor'
+
+export const ALLOWED_MENTION_PREFIXES = [' ', '(', '\\[', '{', '<', '（', '【', '《', '"', "'"]
+
+const origAddExtensions = Mention.config.addExtensions
+Mention.config.addExtensions = function () {
+  const extensions = origAddExtensions ? origAddExtensions.call(this) : []
+  return extensions.map((ext: any) => {
+    if (ext.name === 'mentionSuggestion') {
+      return ext.configure({
+        suggestion: {
+          allowedPrefixes: ALLOWED_MENTION_PREFIXES,
+        },
+      })
+    }
+    return ext
+  })
+}
 import RichQuoteNodeExtension from '@/components/RichQuoteExtension/rich-quote-node-extension'
 import QuoteBacklinkDecoration from '@/components/RichQuoteExtension/quote-backlink-decoration'
 import type { RichQuoteController } from '@/components/RichQuoteExtension/useRichQuotes'
