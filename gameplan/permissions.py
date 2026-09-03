@@ -451,13 +451,13 @@ def can_delete_content(user, doc):
 def team_query_conditions(user=None, **kwargs):
 	user = user or frappe.session.user
 	Team = frappe.qb.DocType("GP Team")
-	return criterion_sql(team_access_criterion(Team, user))
+	return team_access_criterion(Team, user)
 
 
 def project_query_conditions(user=None, **kwargs):
 	user = user or frappe.session.user
 	Project = frappe.qb.DocType("GP Project")
-	return criterion_sql(project_access_criterion(Project, user))
+	return project_access_criterion(Project, user)
 
 
 def discussion_query_conditions(user=None, **kwargs):
@@ -476,7 +476,7 @@ def page_query_conditions(user=None, **kwargs):
 	criterion = (Page.project.isnull() & (Page.owner == user)) | accessible_project_criterion(
 		Page.project, user
 	)
-	return criterion_sql(criterion)
+	return criterion
 
 
 def comment_query_conditions(user=None, **kwargs):
@@ -498,7 +498,7 @@ def comment_query_conditions(user=None, **kwargs):
 	criterion = (
 		(Comment.reference_doctype == "GP Discussion") & Comment.reference_name.isin(discussion_query)
 	) | ((Comment.reference_doctype == "GP Task") & Comment.reference_name.isin(task_query))
-	return criterion_sql(criterion)
+	return criterion
 
 
 def poll_query_conditions(user=None, **kwargs):
@@ -527,7 +527,7 @@ def draft_query_conditions(user=None, **kwargs):
 	# the controller get_list for non-virtual doctypes and so was returning every user's drafts.
 	user = user or frappe.session.user
 	Draft = frappe.qb.DocType("GP Draft")
-	return criterion_sql(Draft.owner == user)
+	return Draft.owner == user
 
 
 def bookmark_query_conditions(user=None, **kwargs):
@@ -557,7 +557,7 @@ def content_project_query_conditions(doctype, user=None):
 	if is_global_admin(user):
 		return None
 	DocType = frappe.qb.DocType(doctype)
-	return criterion_sql(accessible_project_criterion(DocType.project, user))
+	return accessible_project_criterion(DocType.project, user)
 
 
 def team_access_criterion(Team, user=None):
@@ -643,10 +643,6 @@ def is_member_parent(parenttype, parent_field, user):
 		.where(Member.user == user)
 	)
 	return parent_field.isin(member_query)
-
-
-def criterion_sql(criterion):
-	return criterion.get_sql(quote_char="`", with_namespace=True) if criterion is not None else None
 
 
 def is_global_admin(user):
