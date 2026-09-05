@@ -36,6 +36,21 @@ export type { DraftIdentity, DraftPayload } from './draftStore'
 const FIND_DRAFT = 'gameplan.gameplan.doctype.gp_draft.gp_draft.find_my_draft'
 const COMMIT_DRAFT = 'gameplan.gameplan.doctype.gp_draft.gp_draft.commit_draft'
 
+/**
+ * How long a composer waits for its stored copies before it opens blank.
+ *
+ * A lookup that REJECTS is caught and falls back. A lookup that never settles is not:
+ * `fetch` has no timeout of its own, and an IndexedDB request blocked by another tab's
+ * version change fires neither handler. `data` would stay null forever, and a composer
+ * gated on it would sit inert with no way to write or post a comment at all.
+ */
+const RESOLVE_TIMEOUT_MS = 8000
+
+/** Resolves to null after `ms`. Raced against a lookup to bound how long it can hang. */
+function timeout(ms: number): Promise<null> {
+  return new Promise((resolve) => setTimeout(() => resolve(null), ms))
+}
+
 export interface UseDraftSyncOptions {
   /** What this draft is for. May be reactive. */
   identity: MaybeRefOrGetter<DraftIdentity>
@@ -362,47 +377,82 @@ export function useDraftSync(options: UseDraftSyncOptions) {
     return null
   }
 
+  /** Read both stored copies and reconcile them into a starting point. Never rejects. */
+  async function lookupDraft(): Promise<ResolvedDraft> {
+    try {
+      const [local, server] = await Promise.all([getDraftRecord(key.value), fetchServerDraft()])
+      return reconcileDraft({
+        local: local ?? null,
+        server,
+        seed: seed(),
+        sessionUser: session.user,
+        serverName: serverName.value,
+      })
+    } catch (error) {
+      // A composer that cannot reach its draft still has to open, empty and editable.
+      captureError(error, { action: 'draft-load', draft: serverName.value })
+      return blankStart()
+    }
+  }
+
+  /** Where a composer starts when nothing was found, or nothing could be looked up. */
+  function blankStart(): ResolvedDraft {
+    return reconcileDraft({
+      local: null,
+      server: null,
+      seed: seed(),
+      sessionUser: session.user,
+      serverName: serverName.value,
+    })
+  }
+
+  /** Install a resolved draft as the composer's buffer. `quietly` suppresses the change
+   *  watcher, for a buffer the user did not type. */
+  async function adopt(resolved: ResolvedDraft, { quietly = false } = {}) {
+    serverName.value = resolved.serverName
+    updatedAt.value = resolved.updatedAt
+    syncedAt.value = resolved.syncedAt
+    restored.value = resolved.restored
+    previousKey = resolved.localKey
+    if (quietly) applyPayload(resolved.payload)
+    else data.value = resolved.payload
+    if (resolved.needsLocalWrite) await persistLocal()
+  }
+
   /**
    * Look up the stored copies, reconcile them, and hand the composer its buffer.
    *
    * The buffer is created FROM the result rather than written INTO beforehand, so there is
    * no window in which the lookup and the person typing both own `data`. Runs once; the
    * in-flight promise is shared so a second caller waits rather than starting a second
-   * lookup.
+   * lookup — and it is bounded, so a lookup that hangs cannot strand the composer.
    */
   let opening: Promise<void> | null = null
   function open(): Promise<void> {
     if (data.value) return Promise.resolve()
     if (opening) return opening
     opening = (async () => {
-      let resolved: ResolvedDraft
-      try {
-        const [local, server] = await Promise.all([getDraftRecord(key.value), fetchServerDraft()])
-        resolved = reconcileDraft({
-          local: local ?? null,
-          server,
-          seed: seed(),
-          sessionUser: session.user,
-          serverName: serverName.value,
-        })
-      } catch (error) {
-        // A composer that cannot reach its draft still has to open, empty and editable.
-        captureError(error, { action: 'draft-load', draft: serverName.value })
-        resolved = reconcileDraft({
-          local: null,
-          server: null,
-          seed: seed(),
-          sessionUser: session.user,
-          serverName: serverName.value,
-        })
+      const pending = lookupDraft()
+      const resolved = await Promise.race([pending, timeout(RESOLVE_TIMEOUT_MS)])
+      if (resolved) {
+        await adopt(resolved)
+        return
       }
-      serverName.value = resolved.serverName
-      updatedAt.value = resolved.updatedAt
-      syncedAt.value = resolved.syncedAt
-      restored.value = resolved.restored
-      previousKey = resolved.localKey
-      data.value = resolved.payload
-      if (resolved.needsLocalWrite) await persistLocal()
+      // Past the deadline with the lookup still outstanding. Open blank and editable rather
+      // than leave the composer inert, and take the result later if it lands on a buffer
+      // nobody has typed into. Identity plus a content snapshot, because the editor writes
+      // through `data.value.content` in place: the object alone would not show the edit.
+      captureError(new Error('Draft lookup timed out'), {
+        action: 'draft-load',
+        draft: serverName.value,
+      })
+      const blank = blankStart()
+      const untouched = JSON.stringify(blank.payload)
+      await adopt(blank)
+      void pending.then((late) => {
+        if (data.value !== blank.payload || JSON.stringify(data.value) !== untouched) return
+        return adopt(late, { quietly: true })
+      })
     })()
     return opening
   }
