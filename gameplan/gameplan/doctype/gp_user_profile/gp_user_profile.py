@@ -45,6 +45,7 @@ class GPUserProfile(HasAttachments, Document):
 
 	def validate(self):
 		self.quick_reaction_emojis = normalize_quick_reaction_emojis(self.quick_reaction_emojis)
+		self.drop_foreign_card_images()
 
 	def autoname(self):
 		self.name = self.generate_name()
@@ -85,29 +86,70 @@ class GPUserProfile(HasAttachments, Document):
 		self.save()
 		notify_users_changed()
 
+	def foreign_private_images(self, images):
+		"""Which of `images` name a private file this profile has no claim on.
+
+		Same rule as `HasAttachments._maybe_attach_file`: the file has to have been
+		uploaded by the profile's own user, or by whoever is saving (an admin acting on
+		someone's behalf). Only private files are checked, because a public file is
+		readable by everyone already and naming one exposes nothing. One query for the
+		whole layout, so a profile with many cards still costs a single round trip.
+		"""
+		urls = {image for image in images if image}
+		if not urls:
+			return set()
+
+		rows = frappe.qb.get_query(
+			"File",
+			filters={"file_url": ("in", list(urls)), "is_private": 1},
+			fields=["file_url", "owner"],
+		).run(as_dict=True)
+
+		allowed_owners = {self.user, frappe.session.user}
+		return {row.file_url for row in rows if row.owner not in allowed_owners}
+
 	def check_image_is_ours(self, image):
 		"""Refuse an avatar URL naming a private file this profile has no claim on.
 
 		The URL comes straight from the client and nothing downstream re-checks it, so
 		without this a user can point their avatar at any `/private/files/...` path they
-		can guess or read off another page. Same rule as
-		`HasAttachments._maybe_attach_file`: the file has to have been uploaded by the
-		profile's own user, or by whoever is setting it (an admin uploading on someone's
-		behalf). Only private files are checked, because a public file is readable by
-		everyone already and naming one exposes nothing.
+		can guess or read off another page.
 		"""
-		if not image:
+		if image and self.foreign_private_images([image]):
+			frappe.throw("You can only use an image you uploaded", frappe.PermissionError)
+
+	def check_card_images_are_ours(self):
+		"""Refuse a bento layout naming a private file this profile has no claim on.
+
+		The companion to `drop_foreign_card_images`, for the one path a person actually
+		uses. Saving the layout reports the theft instead of returning a card whose
+		image quietly vanished.
+		"""
+		if self.foreign_private_images(row.image for row in self.get("bento_cards")):
+			frappe.throw("You can only use an image you uploaded", frappe.PermissionError)
+
+	def drop_foreign_card_images(self):
+		"""Clear card images naming a private file this profile has no claim on.
+
+		Dropped rather than refused, so that a row written before this check existed
+		cannot make a profile unsaveable forever.
+
+		The value has to go, not merely stay unattached. `attach_bento_card_images`
+		already declines to attach someone else's file, but frappe's own
+		`attach_files_to_document` now walks child-table Attach fields and claims any
+		orphan File matching the URL, with no owner check (caused by frappe/frappe#42163,
+		tracked in frappe/frappe#42535). It runs on the same `on_update`, after ours,
+		so a value left in the row is attached by the framework anyway, handing that
+		file's read permission to everyone who can read this profile.
+		"""
+		cards = [row for row in self.get("bento_cards") if row.get("image")]
+		if not cards:
 			return
 
-		owners = frappe.qb.get_query(
-			"File",
-			filters={"file_url": image, "is_private": 1},
-			fields=["owner"],
-		).run(pluck="owner")
-
-		allowed_owners = {self.user, frappe.session.user}
-		if any(owner not in allowed_owners for owner in owners):
-			frappe.throw("You can only use an image you uploaded", frappe.PermissionError)
+		foreign = self.foreign_private_images(row.image for row in cards)
+		for row in cards:
+			if row.image in foreign:
+				row.image = None
 
 	@frappe.whitelist(methods=["POST"])
 	def set_cover_image_position(self, position):
@@ -304,6 +346,7 @@ def save_my_bento_cards(cards: list | str):
 	profile = get_session_user_profile()
 	check_profile_bento_save_permission(profile)
 	profile.set("bento_cards", normalize_bento_cards(cards))
+	profile.check_card_images_are_ours()
 	# Set unconditionally, so saving an empty layout ("nothing on my profile") sticks
 	# instead of falling back to the computed default on the next read.
 	profile.layout_customized = 1
