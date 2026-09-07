@@ -15,11 +15,11 @@
       <div
         v-if="!isOnline"
         role="status"
-        class="fixed inset-x-0 top-0 z-[60] flex h-[var(--offline-banner-height)] items-center justify-center gap-1.5 bg-surface-gray-8 px-3 text-p-sm text-ink-white"
+        class="fixed inset-x-0 top-0 z-[60] flex h-[var(--offline-banner-height)] items-center justify-center gap-1.5 bg-surface-gray-3 px-3 text-p-sm text-ink-gray-7"
       >
         <span class="lucide-wifi-off size-3.5 shrink-0" aria-hidden="true" />
-        <span class="font-medium">Network offline.</span>
-        <span class="font-normal opacity-90">Showing saved content.</span>
+        <span class="font-medium text-ink-gray-8">Network offline.</span>
+        <span class="font-normal text-ink-gray-5">Showing saved content.</span>
       </div>
     </Transition>
   </Teleport>
