@@ -14,15 +14,15 @@ const LAST_SEEN_USER_STORAGE_KEY = 'gameplan:last-seen-user'
 export function setupOfflineSupport() {
   // Runs even in dev / non-secure contexts (unlike SW registration below): this is what
   // makes the dev user switcher (DevUserSwitcher.vue) safe to test with, and it's cheap
-  // enough to always run at boot.
-  guardAgainstUserSwitch(getSessionUserFromCookie())
+  // enough to always run at boot. Fire-and-forget here specifically - nothing after this
+  // call in the boot sequence depends on the switch being fully resolved, unlike
+  // session.ts's login handler, which awaits guardAgainstUserSwitch directly because it
+  // hard-navigates right after.
+  guardAgainstUserSwitch(getSessionUserFromCookie()).catch((error) =>
+    console.error('Failed to run user-switch guard', error),
+  )
 
-  if (
-    import.meta.env.DEV ||
-    typeof navigator === 'undefined' ||
-    !window.isSecureContext ||
-    !('serviceWorker' in navigator)
-  ) {
+  if (!serviceWorkerSupportEnabled()) {
     return
   }
 
@@ -47,6 +47,20 @@ export function setupOfflineSupport() {
   }
 
   watchForControllerChange()
+}
+
+// Shared by setupOfflineSupport's own registration gate and clearServiceWorkerCaches'
+// decision whether it's worth waiting for a registration to appear (see getActiveWorker) -
+// in every case this returns false, no worker will ever be registered for this tab, so
+// there's nothing to wait for.
+function serviceWorkerSupportEnabled(): boolean {
+  return (
+    !import.meta.env.DEV &&
+    typeof navigator !== 'undefined' &&
+    typeof window !== 'undefined' &&
+    window.isSecureContext &&
+    'serviceWorker' in navigator
+  )
 }
 
 export function isBrowserOffline() {
@@ -90,8 +104,7 @@ export async function clearOfflineCaches(): Promise<void> {
 async function clearServiceWorkerCaches(): Promise<void> {
   if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return
 
-  const registration = await navigator.serviceWorker.getRegistration(SERVICE_WORKER_SCOPE)
-  const activeWorker = registration?.active
+  const activeWorker = await getActiveWorker()
   if (!activeWorker) return
 
   await new Promise<void>((resolve) => {
@@ -104,6 +117,32 @@ async function clearServiceWorkerCaches(): Promise<void> {
     }
     activeWorker.postMessage({ type: CLEAR_USER_CACHES_MESSAGE }, [channel.port2])
   })
+}
+
+const REGISTRATION_WAIT_TIMEOUT_MS = 3000
+
+/**
+ * Round-4 follow-up finding: `guardAgainstUserSwitch` runs synchronously at the very top
+ * of `setupOfflineSupport`, before that function's own `navigator.serviceWorker.register()`
+ * call. On a switch detected at boot, a plain `getRegistration()` can come back with no
+ * active worker even though a worker registered by an *earlier* browser session for this
+ * origin is still sitting there holding the previous user's SHELL_CACHE - the clear would
+ * silently no-op and report success. Only fall back to waiting when a worker is actually
+ * going to show up (serviceWorkerSupportEnabled) and bound the wait, so a browser/build
+ * that will never register one (dev, insecure context) doesn't hang the clear.
+ */
+async function getActiveWorker(): Promise<ServiceWorker | undefined> {
+  const registration = await navigator.serviceWorker.getRegistration(SERVICE_WORKER_SCOPE)
+  if (registration?.active) return registration.active
+  if (!serviceWorkerSupportEnabled()) return undefined
+
+  const ready = await Promise.race([
+    navigator.serviceWorker.ready,
+    new Promise<undefined>((resolve) =>
+      window.setTimeout(() => resolve(undefined), REGISTRATION_WAIT_TIMEOUT_MS),
+    ),
+  ])
+  return ready?.active
 }
 
 /**
@@ -125,7 +164,7 @@ async function rewarmShellCache(): Promise<void> {
 
 /**
  * Compares `user` against the last user this browser saw (persisted in localStorage so
- * it survives full reloads) and clears every offline cache when they differ. Returns
+ * it survives full reloads) and clears every offline cache when they differ. Resolves to
  * whether a switch was detected.
  *
  * Every cacheKey in the data layer (data/communities.ts, data/users.ts, data/drafts.ts)
@@ -134,21 +173,35 @@ async function rewarmShellCache(): Promise<void> {
  * stale for a user switch that happens *without* a reload. Callers that change the
  * session user in place (e.g. session.ts's login) must force a reload after a detected
  * switch instead of relying on those singletons to pick up the new identity.
+ *
+ * Round-4 finding (PR #516): the clear used to be started and left to run in the
+ * background while this function returned synchronously. session.ts's login handler
+ * hard-navigates the instant it sees `true` back from here, which could tear the page
+ * down mid-clear - and the marker below was written unconditionally, so a switch that
+ * got cut off still looked "handled" on the next boot. This is now async: callers that
+ * are about to navigate away (session.ts) must `await` it, and the marker is only
+ * written once the clear this call kicked off (if any) has itself settled.
  */
-export function guardAgainstUserSwitch(user: string | null): boolean {
+export async function guardAgainstUserSwitch(user: string | null): Promise<boolean> {
   if (typeof localStorage === 'undefined') return false
 
   const lastSeenUser = localStorage.getItem(LAST_SEEN_USER_STORAGE_KEY)
   const switched = Boolean(lastSeenUser && user && lastSeenUser !== user)
   if (switched) {
-    // Unlike a plain logout (clearOfflineCaches alone), a detected switch to a
-    // *different* user also wipes gameplan-drafts - the same-user recovery case that
-    // policy exists for doesn't apply here.
-    Promise.all([clearOfflineCaches(), clearDraftStore()])
-      .then(() => rewarmShellCache())
-      .catch((error) => console.error('Failed to clear offline caches', error))
+    try {
+      // Unlike a plain logout (clearOfflineCaches alone), a detected switch to a
+      // *different* user also wipes gameplan-drafts - the same-user recovery case that
+      // policy exists for doesn't apply here.
+      await Promise.all([clearOfflineCaches(), clearDraftStore()])
+      await rewarmShellCache()
+    } catch (error) {
+      console.error('Failed to clear offline caches', error)
+    }
   }
 
+  // Written only after the clear above (if any) has settled, successfully or not - see
+  // the round-4 note above. A caller that navigates away on `true` only does so once
+  // this has actually finished.
   if (user) {
     localStorage.setItem(LAST_SEEN_USER_STORAGE_KEY, user)
   } else {
