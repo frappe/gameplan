@@ -8,10 +8,24 @@
 */
 html {
   --mobile-header-height: 52px;
+  --offline-banner-height: 28px;
   font-feature-settings:
     'calt' 1,
     'cv01' 1,
     'cv11' 1;
+}
+
+/* OfflineIndicator.vue is `position: fixed; top: 0` at the true viewport top, so
+   without this it would paint over the app's own header/search/nav instead of
+   sitting above them. Both shells expose a stable `data-slot` hook for exactly
+   this (MobileShell.vue, DesktopShell.vue in frappe-ui) - push their content down
+   by the banner's height rather than touching the library. MobileShell is `fixed
+   inset-0`, so this only shrinks its scroll region (its own outer box stays
+   viewport-sized); DesktopShell is normal flow, so this shifts its whole row
+   (rail + sidebar + content) down together. */
+html[data-offline] [data-slot='mobile-shell'],
+html[data-offline] [data-slot='desktop-shell'] {
+  padding-top: var(--offline-banner-height);
 }
 
 /* ProseMirror disables ligatures by default; restore so the font-feature-settings

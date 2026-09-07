@@ -1,29 +1,43 @@
 <template>
-  <!-- Top-center, out of the way of the comment composer (bottom) and the dev
-       user switcher (bottom-left). Teleported to body so it sits above any
-       page-local `overflow-hidden`/`relative` ancestor. -->
+  <!-- Teleported + fixed to the true viewport top so it renders above both
+       MobileShell and DesktopShell (frappe-ui), not inside either one - see the
+       `data-offline` attribute this sets below and the matching `[data-slot=...]`
+       rules in index.css, which push the shells' own content down by exactly this
+       banner's height. That's what keeps it from ever overlapping the header,
+       search, nav, or anything else already on screen, instead of covering it. -->
   <Teleport to="body">
     <Transition
       enter-active-class="transition duration-150 ease-out"
-      enter-from-class="opacity-0 -translate-y-1"
+      enter-from-class="opacity-0 -translate-y-full"
       leave-active-class="transition duration-150 ease-in"
-      leave-to-class="opacity-0 -translate-y-1"
+      leave-to-class="opacity-0 -translate-y-full"
     >
       <div
         v-if="!isOnline"
-        class="pointer-events-none fixed inset-x-0 top-2 z-50 flex justify-center"
+        role="status"
+        class="fixed inset-x-0 top-0 z-[60] flex h-[var(--offline-banner-height)] items-center justify-center gap-1.5 bg-surface-gray-8 px-3 text-p-sm text-ink-white"
       >
-        <div
-          class="pointer-events-auto flex items-center gap-2 rounded-full bg-surface-gray-8 px-3 py-1.5 text-sm text-ink-white shadow-lg"
-        >
-          <span class="h-1.5 w-1.5 shrink-0 rounded-full bg-surface-gray-4"></span>
-          You're offline — showing saved content
-        </div>
+        <span class="lucide-wifi-off size-3.5 shrink-0" aria-hidden="true" />
+        <span class="font-medium">Network offline.</span>
+        <span class="font-normal opacity-90">Showing saved content.</span>
       </div>
     </Transition>
   </Teleport>
 </template>
 
 <script setup lang="ts">
+import { watch } from 'vue'
 import { isOnline } from '@/data/online'
+
+// A DOM attribute, not a Vue-scoped style: the shells this needs to push down
+// (MobileShell.vue, DesktopShell.vue) live in frappe-ui, outside this component's
+// own render tree, so index.css targets them by this attribute + their own
+// `data-slot` hooks instead.
+watch(
+  isOnline,
+  (online) => {
+    document.documentElement.toggleAttribute('data-offline', !online)
+  },
+  { immediate: true },
+)
 </script>
