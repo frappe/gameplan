@@ -22,7 +22,7 @@ export let session = reactive({
   login: useCall<LoginResponse, LoginParams>({
     url: '/api/v2/method/login',
     immediate: false,
-    onSuccess(data) {
+    async onSuccess(data) {
       users.reload()
       sessionUser.value = getSessionUserFromCookie()
       session.login.reset()
@@ -32,7 +32,14 @@ export let session = reactive({
       // them. A plain router.replace would keep those singletons around, so force a full
       // reload once a switch is detected and let the app rebuild everything fresh for
       // the new user (same reasoning as DevUserSwitcher.vue's own hard reload).
-      if (guardAgainstUserSwitch(sessionUser.value)) {
+      //
+      // Awaited (PR #516 review round 4 finding): guardAgainstUserSwitch's cache clear
+      // used to be fire-and-forget, so this redirect could tear the page down before the
+      // previous user's SHELL_CACHE/IndexedDB were actually wiped - the switch marker
+      // would already say "handled" while the old data was still sitting there for the
+      // next offline load to serve. Waiting here means the hard-navigate below only
+      // happens once the clear has actually settled.
+      if (await guardAgainstUserSwitch(sessionUser.value)) {
         window.location.href = data.default_route || '/'
       } else {
         router.replace(data.default_route || '/')
