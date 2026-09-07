@@ -6,6 +6,7 @@ import { useDraftSync, type DraftPayload } from '@/data/useDraftSync'
 import { drafts } from '@/data/drafts'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { canPostInSpace, getSpace } from '@/data/spaces'
+import { isOnline } from '@/data/online'
 import { useSessionUser, useUser } from '@/data/users'
 import { tags } from '@/data/tags'
 import { extractServerMessage, isEditorContentEmpty } from '@/utils'
@@ -216,6 +217,13 @@ export function useNewDiscussion() {
   async function publish() {
     hasInteracted.value = true
     publishError.value = null
+    // The Publish button (DiscussionHeader.vue) is disabled offline, so this only
+    // matters as a backstop - defends the same "Failed to fetch" surfacing this was
+    // written to avoid, in case publish() is ever reached another way.
+    if (!isOnline.value) {
+      publishError.value = "You're offline. Reconnect and try again."
+      return
+    }
     if (!validateDraft(true)) return
 
     publishing.value = true

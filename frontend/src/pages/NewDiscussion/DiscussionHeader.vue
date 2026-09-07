@@ -16,16 +16,13 @@
         >
           <span class="lucide-trash-2 size-4" aria-hidden="true" />
         </button>
-        <Tooltip
-          :text="isDraftLoading ? 'Draft is loading' : 'You cannot publish this draft'"
-          :disabled="isComposerEditable"
-        >
+        <Tooltip :text="publishDisabledReason" :disabled="canPublish">
           <Button
             variant="solid"
             size="md"
             :loading="publishing"
             @click="publish"
-            :disabled="!isComposerEditable"
+            :disabled="!canPublish"
           >
             Publish
           </Button>
@@ -59,15 +56,12 @@
       >
         <span class="lucide-trash-2 size-4" aria-hidden="true" />
       </button>
-      <Tooltip
-        :text="isDraftLoading ? 'Draft is loading' : 'You cannot publish this draft'"
-        :disabled="isComposerEditable"
-      >
+      <Tooltip :text="publishDisabledReason" :disabled="canPublish">
         <Button
           variant="solid"
           :loading="publishing"
           @click="publish"
-          :disabled="!isComposerEditable"
+          :disabled="!canPublish"
         >
           Publish
         </Button>
@@ -89,6 +83,7 @@ import {
 } from 'frappe-ui'
 import { useNewDiscussionContext } from './useNewDiscussion'
 import DiscussionSpaceSelector from './DiscussionSpaceSelector.vue'
+import { isOnline } from '@/data/online'
 
 const {
   isPersisted,
@@ -104,6 +99,17 @@ const {
 
 const route = useRoute()
 const mobileTitle = computed(() => (isPersisted.value ? 'Draft' : 'New Discussion'))
+
+// Publishing needs a network round trip (flush the draft, then publish_draft/insert)
+// - offline it can only fail with a raw "Failed to fetch", so disable the button
+// outright rather than let someone hit that. The draft itself stays editable offline
+// (it's IndexedDB-backed), this only blocks the final publish step.
+const canPublish = computed(() => isComposerEditable.value && isOnline.value)
+const publishDisabledReason = computed(() => {
+  if (isDraftLoading.value) return 'Draft is loading'
+  if (!isOnline.value) return "You're offline"
+  return 'You cannot publish this draft'
+})
 
 // Cold-load fallback only: with any in-app history the back button walks it instead.
 // A composer opened straight from a link belongs to a space, so send the user there.
