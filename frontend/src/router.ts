@@ -269,6 +269,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/pages/NotFound.vue'),
   },
   {
+    path: '/offline-unavailable',
+    name: 'OfflineUnavailable',
+    component: () => import('@/pages/OfflineUnavailable.vue'),
+  },
+  {
     path: '/list',
     name: 'Teams',
     component: () => import('@/pages/Teams.vue'),
@@ -809,9 +814,13 @@ router.beforeEach(async (to, from) => {
   let space = to.params.spaceId ? getSpace(routeParam(to.params.spaceId)) : null
 
   if (to.params.spaceId && !space) {
+    // Greptile P1 (PR #516, round 3): letting navigation continue here used to leave
+    // `space === null` for every downstream page component that assumes a real space -
+    // this deep link may be genuine (just never cached), so send it to an honest
+    // "not available offline" page instead of either a wrongful NotFound or a route that
+    // silently proceeds with no space to render.
     if (isRouteValidationUnavailable()) {
-      communityState.scope(communityId)
-      return
+      return { name: 'OfflineUnavailable' }
     }
     return { name: 'NotFound' }
   }
@@ -826,9 +835,9 @@ router.beforeEach(async (to, from) => {
   // Public communities are visible even when the user has not joined them, so route validity
   // cannot be tied to the active sidebar community list.
   if (!community) {
+    // Same reasoning as the spaceId branch above: don't proceed with `community === null`.
     if (isRouteValidationUnavailable()) {
-      communityState.scope(communityId)
-      return
+      return { name: 'OfflineUnavailable' }
     }
     return { name: 'NotFound' }
   }
