@@ -209,7 +209,7 @@
                 variant: 'solid',
                 onClick: submitComment,
                 loading: comments.insert.loading,
-                disabled: commentEmpty,
+                disabled: commentEmpty || !isOnline,
               }"
               :discardButtonProps="{
                 onClick: discardComment,
@@ -237,6 +237,7 @@
               :submitButtonProps="{
                 onClick: submitPoll,
                 loading: polls.insert.loading,
+                disabled: !isOnline,
               }"
               :discardButtonProps="{
                 onClick: discardPoll,
@@ -288,7 +289,7 @@ import { tags } from '@/data/tags'
 import { isNewCommentOpen } from '@/data/newComment'
 import { useRichQuotes } from '@/components/RichQuoteExtension/useRichQuotes'
 import { useDraftSync } from '@/data/useDraftSync'
-import { onReconnect } from '@/data/online'
+import { isOnline, onReconnect } from '@/data/online'
 import { useSessionUser } from '@/data/users'
 import type { Space } from '@/data/spaces'
 import { useIsMobile } from '@/utils/useIsMobile'
@@ -689,7 +690,10 @@ function resetCommentState() {
 }
 
 async function submitComment() {
-  if (commentEmpty.value || comments.insert.loading) return
+  // The submit button is disabled while offline, but ctrl/cmd+Enter (bound below on
+  // the editor) reaches this directly and isn't gated by that - guard here too, rather
+  // than let it hit the network and surface a raw "Failed to fetch".
+  if (commentEmpty.value || comments.insert.loading || !isOnline.value) return
 
   const comment = await comments.insert.submit({
     reference_doctype: props.doctype,
@@ -770,7 +774,7 @@ function wait(ms: number) {
 }
 
 function submitPoll() {
-  if (props.doctype !== 'GP Discussion') return
+  if (props.doctype !== 'GP Discussion' || !isOnline.value) return
   return polls.insert
     .submit({
       discussion: props.name,
