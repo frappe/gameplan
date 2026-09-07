@@ -219,15 +219,22 @@ describe('Profile customize editor', () => {
     visitCustomize()
 
     expectCardOrder(defaultCardOrder)
+    // The canvas sets its own height from the packed layout, so the page only
+    // outgrows the screen once the packer has run. Read this inside `should` so
+    // it re-runs: the shell sizes itself before the canvas has any cards, and a
+    // height sampled in that gap is the height of a page with no layout at all.
+    cy.get(shellScrollerSelector).should(($scroller) => {
+      let scroller = $scroller[0]
+      expect(
+        scroller.scrollHeight,
+        'the page is taller than the screen, so there is something to scroll to',
+      ).to.be.greaterThan(scroller.clientHeight)
+    })
     settled('cover')
 
     cy.window().then((win) => {
       let scroller = shellScroller(win)
       let bounds = scroller.getBoundingClientRect()
-      expect(
-        scroller.scrollHeight,
-        'the page is taller than the screen, so there is something to scroll to',
-      ).to.be.greaterThan(scroller.clientHeight)
       expect(scroller.scrollTop, 'the page starts at the top').to.equal(0)
 
       let sourceElement = cardIn(win, 'cover')
@@ -826,10 +833,11 @@ function cardIn(win: Window, cardId: string) {
  * through it is what keeps this off the editor panel's ScrollArea, which
  * carries the same reka viewport attribute and scrolls separately.
  */
+const shellScrollerSelector =
+  '[data-slot="desktop-shell-content"] > * > [data-reka-scroll-area-viewport]'
+
 function shellScroller(win: Window) {
-  return win.document.querySelector(
-    '[data-slot="desktop-shell-content"] > * > [data-reka-scroll-area-viewport]',
-  ) as HTMLElement
+  return win.document.querySelector(shellScrollerSelector) as HTMLElement
 }
 
 /**
