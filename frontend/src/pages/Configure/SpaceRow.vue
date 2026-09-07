@@ -23,7 +23,7 @@
           <input
             v-model="title"
             aria-label="Space title"
-            class="h-7 min-w-0 flex-1 rounded border border-transparent bg-transparent py-0 pl-1 pr-2 text-base text-ink-gray-8 outline-none ring-0 transition-colors hover:border-outline-gray-2 focus:border-outline-gray-3 focus:ring-0 disabled:cursor-not-allowed disabled:text-ink-gray-6 disabled:hover:border-transparent"
+            class="h-7 min-w-0 flex-1 rounded-4 border border-transparent bg-transparent py-0 pl-1 pr-2 text-base text-ink-gray-8 outline-none ring-0 transition-colors hover:border-outline-gray-2 focus:border-outline-gray-3 focus:ring-0 disabled:cursor-not-allowed disabled:text-ink-gray-6 disabled:hover:border-transparent"
             :disabled="!canEditSpace"
             @blur="saveTitle"
             @keydown.enter.prevent="saveTitle"
@@ -51,14 +51,14 @@
 
     <ListCell class="justify-end gap-1">
       <Button
-        v-if="space.archived_at"
+        v-if="space.archived_at && canManageSpaceSettings"
         variant="ghost"
         icon="lucide-archive-restore"
         tooltip="Unarchive space"
         :loading="isDocMethodLoading(space.name, 'unarchive')"
         @click="restoreSpace"
       />
-      <SpaceOptions v-else align="end" :spaceId="space.name" />
+      <SpaceOptions v-else-if="!space.archived_at" align="end" :spaceId="space.name" />
     </ListCell>
   </ListRow>
 </template>
@@ -72,7 +72,9 @@ import SpaceIcon from '@/components/SpaceIcon.vue'
 import SpaceOptions from '@/components/SpaceOptions.vue'
 import { isDocMethodLoading, spaces, type Space, unarchiveSpace } from '@/data/spaces'
 import { readOnlyMode } from '@/data/readOnlyMode'
+import { useSessionUser } from '@/data/users'
 import type { GPProject } from '@/types/doctypes'
+import { canManageSpace } from '@/utils/permissions'
 import { visibilityIcon, visibilityLabel } from '@/utils/visibility'
 
 const props = defineProps<{
@@ -85,7 +87,14 @@ const props = defineProps<{
 const project = useDoctype<GPProject>('GP Project')
 const title = ref(props.space.title)
 const savingTitle = ref(false)
-const canEditSpace = computed(() => !readOnlyMode && !props.space.archived_at)
+const sessionUser = useSessionUser()
+// The title field and the icon picker write GP Project, which the backend gates with
+// can_manage_space. Every member can read a public space here, so being on this screen
+// says nothing about being allowed to rename what is on it.
+const canManageSpaceSettings = computed(
+  () => !readOnlyMode && canManageSpace(props.space, sessionUser),
+)
+const canEditSpace = computed(() => canManageSpaceSettings.value && !props.space.archived_at)
 const contentLabel = computed(() => {
   const counts = [
     formatNonZeroCount(props.space.discussions_count ?? 0, 'post'),

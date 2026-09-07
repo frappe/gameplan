@@ -65,4 +65,20 @@ describe('Notifications', () => {
     cy.get('button[aria-label="Notifications, 1 unread"]').should('not.exist')
     cy.get('button[aria-label="Notifications"]').should('exist')
   })
+
+  it('shows a loading skeleton, not the empty state, while the list loads', () => {
+    cy.loginAs('member')
+    // Hold the list response so the in-flight window is observable.
+    cy.intercept('GET', '**/api/v2/document/GP%20Notification*', (req) => {
+      req.continue((res) => res.setDelay(600))
+    }).as('notificationList')
+
+    cy.visit('/g/notifications')
+    cy.get('[role="status"][aria-label="Loading notification"]').should('be.visible')
+    cy.contains("You're caught up").should('not.exist')
+
+    cy.wait('@notificationList')
+    cy.contains("You're caught up").should('be.visible')
+    cy.get('[aria-label="Loading notification"]').should('not.exist')
+  })
 })

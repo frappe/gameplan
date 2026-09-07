@@ -10,10 +10,13 @@ import frappe
 from frappe.utils import add_days, now
 
 from gameplan.api import (
+	CLIENT_ERROR_FIELD_LIMIT,
+	CLIENT_ERROR_QUOTA,
 	can_access_gameplan,
 	get_search_filter_options,
 	get_user_info,
 	invite_by_email,
+	log_client_error,
 	onboarding,
 	search_sqlite,
 )
@@ -399,3 +402,89 @@ class TestSearchEndpoint(IsolatedSearchIndex, APIEndpointTestCase):
 
 	def test_anonymous_caller_is_denied(self):
 		self.assert_anonymous_denied(search_sqlite)
+
+
+class TestLogClientErrorEndpoint(APIEndpointTestCase):
+	"""The sink the frontend reports caught errors to, so a swallowed failure is traceable."""
+
+	LOG_FILTER = {"method": ["like", "Gameplan client error%"]}
+
+	def setUp(self):
+		super().setUp()
+		# Error Log is a MyISAM table, so its rows ignore the transaction the rest of the
+		# suite rolls back. Track what was there before and delete only what a test wrote.
+		self.existing_logs = set(frappe.get_all("Error Log", filters=self.LOG_FILTER, pluck="name"))
+		self.addCleanup(self.delete_logged_errors)
+		self.addCleanup(self.clear_quota)
+		self.clear_quota()
+
+	def clear_quota(self):
+		for user in (self.member.name, self.second_member.name):
+			frappe.cache().delete_value(f"gameplan:client-error-count:{user}")
+
+	def delete_logged_errors(self):
+		for log in self.client_error_logs():
+			frappe.db.delete("Error Log", {"name": log.name})
+
+	def client_error_logs(self):
+		rows = frappe.get_all("Error Log", filters=self.LOG_FILTER, fields=["name", "method", "error"])
+		return [row for row in rows if row.name not in self.existing_logs]
+
+	def test_a_reported_error_lands_in_the_error_log_with_its_action_and_context(self):
+		with self.as_user(self.member):
+			log_client_error(
+				message="TypeError: cannot read name\n  at publish()",
+				context={"action": "publish-discussion", "draft": "draft-1"},
+			)
+
+		logs = self.client_error_logs()
+		self.assertEqual(len(logs), 1)
+		self.assertEqual(logs[0].method, "Gameplan client error: publish-discussion")
+		self.assertIn("cannot read name", logs[0].error)
+		self.assertIn("draft-1", logs[0].error)
+
+	def test_a_report_without_context_still_logs(self):
+		with self.as_user(self.member):
+			log_client_error(message="Boom")
+
+		logs = self.client_error_logs()
+		self.assertEqual(len(logs), 1)
+		self.assertEqual(logs[0].method, "Gameplan client error")
+
+	def test_a_multiline_action_cannot_turn_the_title_into_a_traceback(self):
+		with self.as_user(self.member):
+			log_client_error(message="Boom", context={"action": "publish\nfake traceback"})
+
+		logs = self.client_error_logs()
+		self.assertEqual(logs[0].method, "Gameplan client error: publish fake traceback")
+		self.assertIn("Boom", logs[0].error)
+
+	def test_an_oversized_message_is_truncated(self):
+		with self.as_user(self.member):
+			log_client_error(message="x" * (CLIENT_ERROR_FIELD_LIMIT * 2))
+
+		error = self.client_error_logs()[0].error
+		self.assertIn("(truncated)", error)
+		self.assertLess(len(error), CLIENT_ERROR_FIELD_LIMIT * 2)
+
+	def test_a_looping_client_cannot_fill_the_error_log(self):
+		with self.as_user(self.member):
+			for _index in range(CLIENT_ERROR_QUOTA + 5):
+				log_client_error(message="Boom")
+
+		self.assertEqual(len(self.client_error_logs()), CLIENT_ERROR_QUOTA)
+
+	def test_the_quota_is_per_user(self):
+		with self.as_user(self.member):
+			for _index in range(CLIENT_ERROR_QUOTA):
+				log_client_error(message="Boom")
+		with self.as_user(self.second_member):
+			log_client_error(message="Boom from another user")
+
+		self.assertEqual(len(self.client_error_logs()), CLIENT_ERROR_QUOTA + 1)
+
+	def test_the_endpoint_is_post_only(self):
+		self.assertEqual(declared_http_methods(log_client_error), {"POST"})
+
+	def test_anonymous_caller_is_denied(self):
+		self.assert_anonymous_denied(log_client_error)

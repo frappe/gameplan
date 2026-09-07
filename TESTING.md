@@ -15,7 +15,7 @@ Each layer owns a different kind of check. Put a test in the layer that owns it.
 
 Frontend coverage is collected from the Cypress layer, not from Vitest — see
 § 2 "Coverage". There is still no unit-test runner; `src/utils` and `src/composables`
-together are ~630 of 27k frontend lines, which is why one has not earned its keep.
+together are ~970 of 32k frontend lines, which is why one has not earned its keep.
 
 The rule:
 
@@ -149,14 +149,25 @@ changed (cite the decision in the commit message, as the guest policy above did)
 
 ### How to run
 
-Always run against the local demo site, never a dev site with real data.
+`<site>` in every command below is a site whose data you are willing to lose. You
+have to know that independently. `"allow_tests": true` only means a site permits
+tests; it is not a claim that its data is expendable, and more than one site in a
+bench can carry it. Use it to rule sites out, never to pick one.
+
+The blast radius is the whole site. The Cypress suite calls
+`gameplan.ui_test_helpers.reset`, which deletes every Gameplan record and managed
+user on whichever site answers, not just the records a spec created. The backend
+suite writes fixtures of its own. Neither takes a backup.
+
+If your bench has no expendable site, create one before you run anything here.
+CI uses `gameplan.test`.
 
 ```bash
 # Full backend suite
-bench --site gameplan-demo.test run-tests --app gameplan
+bench --site <site> run-tests --app gameplan
 
 # Just the permission matrix
-bench --site gameplan-demo.test run-tests --module gameplan.tests.permissions.test_permission_matrix
+bench --site <site> run-tests --module gameplan.tests.permissions.test_permission_matrix
 ```
 
 ### Coverage
@@ -168,8 +179,8 @@ and no check fails on coverage. Both emit Cobertura XML, so one script renders b
 ```bash
 # Backend — writes sites/coverage.xml
 # (needs coverage in the bench env: env/bin/pip install coverage)
-bench --site gameplan-demo.test run-tests --app gameplan --coverage
-python .github/scripts/coverage_report.py ~/benches/frappe-bench/sites/coverage.xml \
+bench --site <site> run-tests --app gameplan --coverage
+python .github/scripts/coverage_report.py ../../sites/coverage.xml \
   --profile backend
 
 # Frontend — needs an instrumented build, then the usual Cypress run
@@ -198,7 +209,7 @@ the headline (87.6% unfiltered against 83.7% real, when this was written). Each
 profile's `excluded` tuple is the filter, and the report footer always names what it
 dropped.
 
-The frontend has the mirror-image trap. 33 routes are lazy `() => import(...)`, so a
+The frontend has the mirror-image trap. 32 routes are lazy `() => import(...)`, so a
 page no spec visits never registers in `window.__coverage__` and would drop out of
 the report entirely — flattering the percentage by shrinking the denominator rather
 than counting the file as 0%. `frontend/vite.config.ts` therefore writes a zeroed
@@ -321,7 +332,7 @@ The dev-server part is the one that bites. `frappe._dev_server` is read from the
 
 ```bash
 bench start                                                     # sets DEV_SERVER itself
-DEV_SERVER=1 bench --site gameplan-demo.test serve --port 8002  # standalone server
+DEV_SERVER=1 bench --site <site> serve --port 8002              # standalone server
 ```
 
 CI needs no special handling: GitHub Actions exports `CI`, the workflow runs
@@ -403,14 +414,15 @@ cy.task("requestAsUser", {
 This is the source of truth for Cypress site/port routing:
 
 - **Local:** `frontend/cypress.config.ts` defaults to
-  `http://gameplan-demo.test:8002`. Start it with
-  `DEV_SERVER=1 bench --site gameplan-demo.test serve --port 8002` — without
+  `http://gameplan-demo.test:8002`, which is one developer's site name. On any other
+  bench, override it with `CYPRESS_BASE_URL=http://<site>:8002`. Start the server with
+  `DEV_SERVER=1 bench --site <site> serve --port 8002` — without
   `DEV_SERVER` the seed API's test-mode gate refuses (see "Enabling the seed API"
-  above). All local Cypress runs and seed/reset calls use this disposable demo site.
+  above). All local Cypress runs and seed/reset calls use this disposable test site.
 - **Local realtime authentication:** `:8000` is a second
-  `gameplan-demo.test`-pinned Frappe server used by Socket.IO to authenticate the
+  `<site>`-pinned Frappe server used by Socket.IO to authenticate the
   browser session. Start it with
-  `DEV_SERVER=1 bench --site gameplan-demo.test serve --port 8000`. Socket.IO itself
+  `DEV_SERVER=1 bench --site <site> serve --port 8000`. Socket.IO itself
   listens on `:9000` (`bench socketio`). Do not point Cypress or seed/reset calls at
   `:8000`; it is an authentication target, not the configured local test runner.
 - **CI:** `.github/workflows/ui-test.yml` overrides `CYPRESS_BASE_URL` with
@@ -446,13 +458,15 @@ Three traps matter when checking this manually:
 1. `frappe.realtime.get_user_info` returns `{}` unless the request includes
    `X-Frappe-Socket-Secret`; `{}` means “missing secret,” not “Guest” or “wrong
    site.” Get the secret with
-   `bench --site gameplan-demo.test execute frappe.realtime.get_socketio_secret`.
+   `bench --site <site> execute frappe.realtime.get_socketio_secret`.
 2. Test-suite pressure can expire sessions within minutes. Mint the sid and resolve
    it in the same step; otherwise `session_expired` / `Guest` can be misdiagnosed as
    a site-routing failure.
-3. `bench browse --user X --sid` is unavailable in Frappe v16.28. Log in with
-   `POST /api/method/login` and password `admin`. Curl stores the HttpOnly sid on a
-   `#HttpOnly_` line; extract it from the cookie jar with
+3. `bench browse --site <site> --user X --sid` prints a session id for that user and
+   exits. It needs `developer_mode: 1` in `site_config.json` for any user but
+   Administrator, and `--sid` without `--user` exits with an error. Where that command
+   is not available, log in with `POST /api/method/login` and password `admin`. Curl
+   stores the HttpOnly sid on a `#HttpOnly_` line; extract it from the cookie jar with
    `awk -F'\t' '$6=="sid"{print $7}' jar`.
 
 Known Frappe limitation, deliberately without a PR yet: in `developer_mode`,
@@ -484,7 +498,7 @@ browser watching while a separate server-side session makes the change.
 cd frontend && yarn test
 ```
 
-- Run only against `gameplan-demo.test`, never another local site.
+- Run only against the disposable test site, never a site with real data.
 - The target site needs `enable_ui_tests: 1` and `allow_tests: 1` in its
   `site_config.json`, and its server must have been started with `DEV_SERVER` set —
   see "Enabling the seed API" above.
@@ -505,8 +519,9 @@ cd frontend && yarn test
 
 ## 4. CI
 
-- **Server tests** run the full backend suite twice: on MariaDB (`server-tests.yml`)
-  and on SQLite (`server-tests-sqlite.yml`), both via
+- **Server tests** run the full backend suite three times: on MariaDB
+  (`server-tests.yml`), on SQLite (`server-tests-sqlite.yml`), and on MariaDB against
+  Frappe `version-16` (`server-tests-v16.yml`), all via
   `bench --site gameplan.test run-tests --app gameplan`.
 - **Backend coverage** is collected only in the canonical MariaDB lane
   (`server-tests.yml`), which runs with `--coverage`. SQLite and v16 stay cheaper
@@ -527,10 +542,11 @@ cd frontend && yarn test
 
 The migration is done. Everything described above is the current state, not a plan:
 
-- Backend tests all live under `gameplan/tests/{features,permissions,platform}/`. No
-  `test_*.py` remains beside a doctype, and the old `tests/utils.py` is gone — builders
-  live in `fixtures.py`.
-- All 33 specs sit in the grouped folders under `cypress/e2e/`, seed through
+- Most backend tests live under `gameplan/tests/{features,permissions,platform}/`, and
+  no `test_*.py` remains beside a doctype. New builders live in `fixtures.py`. The old
+  `tests/utils.py` is still there, used only by `tests/test_v16_api_compat.py` and
+  `tests/test_get_request_transactions.py`, which also still sit at the top level.
+- All 39 specs sit in the grouped folders under `cypress/e2e/`, seed through
   `resetData(scenario)`, and log in with `cy.loginAs(persona)`.
 - `gameplan/test_api.py` is deleted. `gameplan/ui_test_helpers.py` is the only seed
   surface, and every entry point is behind the three gates described in

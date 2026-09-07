@@ -32,7 +32,7 @@
              below a checklist that is not being used at the time. -->
           <div
             v-if="card"
-            class="rounded-lg border border-outline-gray-2 bg-surface-base p-4 lg:p-5"
+            class="rounded-6 border border-outline-gray-2 bg-surface-base p-4 lg:p-5"
             data-profile-card-editor
           >
             <div class="flex items-center gap-2">
@@ -95,9 +95,11 @@
               <div class="space-y-1.5">
                 <FormLabel label="Size" size="md" />
                 <TabButtons
-                  :buttons="profileCardSizeButtons"
+                  :options="profileCardSizeOptions"
                   :model-value="card.size"
-                  @update:model-value="(size: ProfileCardSize) => $emit('updateSize', size)"
+                  @update:model-value="
+                    (size: TabValue) => $emit('updateSize', size as ProfileCardSize)
+                  "
                 />
               </div>
 
@@ -108,7 +110,8 @@
                     :options="profileImageRenderingOptions"
                     :model-value="card.imageRendering || 'Cover'"
                     @update:model-value="
-                      (value: ProfileImageRendering) => $emit('updateImageRendering', value)
+                      (value: TabValue) =>
+                        $emit('updateImageRendering', value as ProfileImageRendering)
                     "
                   />
                 </div>
@@ -126,7 +129,7 @@
           <!-- Two sections of one box, not two boxes: picking profile info and
              adding a card are both "what goes on the page", and a gap between
              them would say they were separate decisions. -->
-          <div v-else class="rounded-lg border border-outline-gray-2 bg-surface-base">
+          <div v-else class="rounded-6 border border-outline-gray-2 bg-surface-base">
             <!-- The checklist holds no state of its own: a row is ticked exactly
                when a card bound to that field is in the layout, so removing the
                card in the grid unticks the row. -->
@@ -171,7 +174,7 @@
 import { computed } from 'vue'
 import { useElementSize } from '@vueuse/core'
 import {
-  activeScrollContainer,
+  shellScrollContainer,
   Button,
   Checkbox,
   FormLabel,
@@ -179,6 +182,7 @@ import {
   TabButtons,
   Textarea,
   TextInput,
+  type TabValue,
 } from 'frappe-ui'
 import ProfileImageField from './ProfileImageField.vue'
 import { profileBoundFieldEditors } from './boundFields'
@@ -225,13 +229,13 @@ const emit = defineEmits<{
  * that element is exactly the box the sticky panel can occupy, and `100vh`
  * would overshoot it by the header and leave the last control unreachable.
  */
-const { height: shellHeight } = useElementSize(activeScrollContainer)
+const { height: shellHeight } = useElementSize(shellScrollContainer)
 const panelStyle = computed(() => {
   if (!shellHeight.value) return undefined
   return { height: `${shellHeight.value}px` }
 })
 
-const profileCardSizeButtons = profileCardSizes.map((size) => ({ label: size }))
+const profileCardSizeOptions = profileCardSizes.map((size) => ({ value: size, label: size }))
 
 const isContentCard = computed(() => Boolean(props.card) && props.card?.type !== 'Blank')
 /** The spec of the profile field this card is bound to, if it is bound to one. */

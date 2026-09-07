@@ -50,8 +50,16 @@ describe('Member management', () => {
     // :visible — the Profile tab's Bio textarea stays mounted (hidden) in the
     // Settings dialog after switching tabs (unmount-on-hide=false).
     cy.scope('dialog').find('textarea:visible').type('newteammate@example.com')
-    cy.button('Send invitation').click()
+
+    // Two visible buttons read "Invite" once the dialog is open: the trigger on the
+    // Users tab behind it, and this submit. Scope to the InvitePeople dialog, which
+    // mounts after the Settings dialog, so it is the last one.
+    cy.scope('dialog').last().button('Invite').click()
     cy.wait('@invite').its('response.statusCode').should('eq', 200)
+
+    // The dialog reports the outcome per bucket. newteammate@example.com has no
+    // account on the site, so it takes the email path rather than a direct grant.
+    cy.scope('dialog').contains('1 invitation sent').should('be.visible')
 
     // On success the new invite shows in "Pending Invites". The Member role is
     // labelled "User" in the UI.

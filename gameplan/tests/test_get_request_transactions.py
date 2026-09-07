@@ -68,6 +68,9 @@ READ_ONLY_ENDPOINTS = frozenset(
 		"gameplan.gameplan.doctype.gp_project.gp_project.get_unread_count",
 		"gameplan.gameplan.doctype.gp_unread_record.api.get_unread_count",
 		"gameplan.gameplan.doctype.gp_unread_record.api.get_participating_unread_count",
+		# The Drafts list. Collapses duplicate reply drafts in its response but writes nothing;
+		# find_my_draft is what destroys the stale sibling, on its own POST path.
+		"gameplan.gameplan.doctype.gp_draft.gp_draft.get_my_drafts",
 		# Profile reads.
 		"gameplan.gameplan.doctype.gp_user_profile.gp_user_profile.get_last_post",
 		"gameplan.gameplan.doctype.gp_user_profile.gp_user_profile.get_my_bento_cards",
@@ -360,8 +363,12 @@ class TestGetRequestTransactions(FrappeAPITestCase):
 		)
 		self.assertTrue(frappe.db.get_value("User", email, "reset_password_key"))
 
-	def test_get_my_drafts_post_persists_duplicate_cleanup(self):
-		"""The POST returns the newest reply draft and permanently removes stale duplicates."""
+	def test_get_my_drafts_reads_without_writing(self):
+		"""The Drafts list is a plain read, so it may be a GET.
+
+		It still shows one row per reply, but it collapses duplicates in the response only and
+		leaves both rows on disk. Destroying the stale sibling is find_my_draft's job, on the
+		POST path where the delete survives the end-of-request rollback."""
 		suffix = frappe.generate_hash(length=8)
 		user = create_member(f"get_drafts_{suffix}@example.com", "GET Drafts")
 		self.users.append(user.name)
@@ -384,7 +391,7 @@ class TestGetRequestTransactions(FrappeAPITestCase):
 		frappe.db.commit()
 		self.login_as(user.name)
 
-		response = self.post(self.method("gameplan.gameplan.doctype.gp_draft.gp_draft.get_my_drafts"), {})
+		response = self.get(self.method("gameplan.gameplan.doctype.gp_draft.gp_draft.get_my_drafts"))
 
 		self.assertEqual(response.status_code, 200, response.text)
 		self.assertEqual([draft["name"] for draft in response.json["message"]], [newer.name])
@@ -392,4 +399,4 @@ class TestGetRequestTransactions(FrappeAPITestCase):
 		stored = frappe.get_all(
 			"GP Draft", filters={"owner": user.name, **fields}, order_by="modified desc", pluck="name"
 		)
-		self.assertEqual(stored, [newer.name])
+		self.assertEqual(stored, [newer.name, older.name])

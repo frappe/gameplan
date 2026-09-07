@@ -39,7 +39,7 @@
              found, and then the results. -->
         <div
           v-if="notConfigured"
-          class="rounded border border-outline-gray-2 bg-surface-gray-1 p-4"
+          class="rounded-4 border border-outline-gray-2 bg-surface-gray-1 p-4"
           data-unsplash-not-configured
         >
           <p class="text-base font-medium text-ink-gray-8">Unsplash is not set up</p>
@@ -84,7 +84,7 @@
             <li
               v-for="photo in photos"
               :key="photo.id"
-              class="group relative mb-1 block break-inside-avoid overflow-hidden rounded"
+              class="group relative mb-1 block break-inside-avoid overflow-hidden rounded-4"
             >
               <!-- The tile takes the photo's own proportions up front, so the
                    columns settle once instead of shuffling as each lazy image

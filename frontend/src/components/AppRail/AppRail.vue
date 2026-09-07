@@ -72,6 +72,7 @@
           type="button"
           class="flex size-7 items-center justify-center rounded-full transition focus-visible:ring-0 focus-visible:focus-ring"
           :class="open ? '' : 'hover:opacity-90'"
+          aria-label="Account menu"
         >
           <UserAvatar v-if="sessionUser.name" :user="sessionUser.name" size="md" class="size-7" />
         </button>

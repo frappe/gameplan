@@ -61,6 +61,11 @@
         />
         <Poll
           v-else-if="item.doctype == 'GP Poll'"
+          :class="{
+            'pt-14 sm:pt-0': needsMobileCommentGap(timelineItems, i, {
+              includeFirstComment: true,
+            }),
+          }"
           :ref="($poll) => setItemRef($poll, item)"
           :highlight="
             highlightedItem?.doctype == item.doctype && highlightedItem?.name == item.name
@@ -95,13 +100,13 @@
           <div v-if="!showCommentBox" class="sm:-mx-3">
             <button
               type="button"
-              class="flex w-full items-center gap-3 text-left sm:gap-0 sm:rounded-lg sm:bg-surface-elevation-2 sm:px-2 sm:py-2 sm:text-base sm:text-ink-gray-5 sm:hover:bg-surface-elevation-3 sm:shadow-md"
+              class="flex w-full items-center gap-3 text-left sm:gap-0 sm:rounded-6 sm:bg-surface-elevation-2 sm:px-2 sm:py-2 sm:text-base sm:text-ink-gray-5 sm:hover:bg-surface-elevation-3 sm:shadow-md"
               @click="openCommentBox"
             >
               <UserAvatar class="sm:hidden" :user="$user().name" size="xl" />
               <UserAvatar class="mr-3 hidden sm:inline-block" :user="$user().name" size="sm" />
               <span
-                class="flex h-8 min-w-0 flex-1 items-center rounded-md bg-surface-gray-2 px-3 text-md text-ink-gray-5 sm:hidden"
+                class="flex h-8 min-w-0 flex-1 items-center rounded-5 bg-surface-gray-2 px-3 text-md text-ink-gray-5 sm:hidden"
               >
                 Add a comment
               </span>
@@ -110,7 +115,7 @@
           </div>
           <div
             v-else-if="composerMinimized"
-            class="flex cursor-pointer items-center gap-3 text-left focus:outline-none sm:-mx-3 sm:gap-0 sm:rounded-lg sm:bg-surface-elevation-2 sm:py-1 sm:pl-2 sm:pr-1 sm:text-base sm:text-ink-gray-5 sm:shadow-md sm:hover:bg-surface-elevation-3 sm:focus:bg-surface-elevation-3"
+            class="flex cursor-pointer items-center gap-3 text-left focus:outline-none sm:-mx-3 sm:gap-0 sm:rounded-6 sm:bg-surface-elevation-2 sm:py-1 sm:pl-2 sm:pr-1 sm:text-base sm:text-ink-gray-5 sm:shadow-md sm:hover:bg-surface-elevation-3 sm:focus:bg-surface-elevation-3"
             role="button"
             tabindex="0"
             @click="restoreComposer"
@@ -120,7 +125,7 @@
             <UserAvatar class="sm:hidden" :user="$user().name" size="xl" />
             <UserAvatar class="mr-3 hidden sm:inline-block" :user="$user().name" size="sm" />
             <span
-              class="flex h-8 min-w-0 flex-1 items-center truncate rounded-md bg-surface-gray-2 px-3 text-md text-ink-gray-5 sm:h-auto sm:bg-transparent sm:px-0 sm:text-base sm:text-ink-gray-6"
+              class="flex h-8 min-w-0 flex-1 items-center truncate rounded-5 bg-surface-gray-2 px-3 text-md text-ink-gray-5 sm:h-auto sm:bg-transparent sm:px-0 sm:text-base sm:text-ink-gray-6"
             >
               {{ minimizedLabel }}
             </span>
@@ -140,7 +145,7 @@
             :class="
               isComposerFullscreen
                 ? 'flex h-full flex-col'
-                : 'border-t border-outline-gray-2 sm:rounded-lg sm:border-t-0'
+                : 'border-t border-outline-gray-2 sm:rounded-6 sm:border-t-0'
             "
             :aria-busy="isDraftLoading"
             :inert="isDraftLoading"
@@ -168,7 +173,10 @@
               </span>
               <div class="hidden sm:block">
                 <TabButtons
-                  :buttons="[{ label: 'Comment' }, { label: 'Poll' }]"
+                  :options="[
+                    { value: 'Comment', label: 'Comment' },
+                    { value: 'Poll', label: 'Poll' },
+                  ]"
                   v-model="newCommentType"
                 />
               </div>
@@ -214,12 +222,15 @@
             >
               <template #actions-left>
                 <TabButtons
-                  :buttons="[{ label: 'Comment' }, { label: 'Poll' }]"
+                  :options="[
+                    { value: 'Comment', label: 'Comment' },
+                    { value: 'Poll', label: 'Poll' },
+                  ]"
                   v-model="newCommentType"
                 />
               </template>
             </CommentEditor>
-            <ErrorMessage :message="comments.insert.error" />
+            <ErrorMessage class="mt-2" :message="comments.insert.error" />
             <PollEditor
               v-show="newCommentType == 'Poll'"
               v-model:poll="newPoll"
@@ -233,12 +244,15 @@
             >
               <template #actions-left>
                 <TabButtons
-                  :buttons="[{ label: 'Comment' }, { label: 'Poll' }]"
+                  :options="[
+                    { value: 'Comment', label: 'Comment' },
+                    { value: 'Poll', label: 'Poll' },
+                  ]"
                   v-model="newCommentType"
                 />
               </template>
             </PollEditor>
-            <ErrorMessage :message="polls.insert.error" />
+            <ErrorMessage class="mt-2" :message="polls.insert.error" />
           </div>
         </div>
       </div>
@@ -266,8 +280,7 @@ import Activity from './Activity.vue'
 import PollEditor from './PollEditor.vue'
 import Poll from './Poll.vue'
 import UserAvatar from './UserAvatar.vue'
-import { getScrollContainer } from 'frappe-ui'
-import { dialog } from 'frappe-ui'
+import { dialog, shellScrollContainer } from 'frappe-ui'
 import { subscribeToDoc, useSocket, type NewActivityEvent } from '@/socket'
 import { GPActivity, GPComment, GPPoll } from '@/types/doctypes'
 import type { Editor } from '@tiptap/vue-3'
@@ -278,7 +291,7 @@ import { useDraftSync } from '@/data/useDraftSync'
 import { onReconnect } from '@/data/online'
 import { useSessionUser } from '@/data/users'
 import type { Space } from '@/data/spaces'
-import { useIsMobile } from 'frappe-ui'
+import { useIsMobile } from '@/utils/useIsMobile'
 import { needsMobileCommentGap } from '@/utils/commentTimeline'
 
 interface Props {
@@ -694,7 +707,7 @@ async function scrollToEnd() {
   await wait(50)
   _scrollToEnd()
   await wait(100)
-  const scrollContainer = getScrollContainer()
+  const scrollContainer = shellScrollContainer.value
   if (!scrollContainer) return
   if (scrollContainer.scrollTop < scrollContainer.scrollHeight) {
     _scrollToEnd()
@@ -702,7 +715,7 @@ async function scrollToEnd() {
 }
 
 function _scrollToEnd() {
-  const scrollContainer = getScrollContainer()
+  const scrollContainer = shellScrollContainer.value
   if (!scrollContainer) return
   scrollContainer.scrollTop = scrollContainer.scrollHeight
 }
@@ -734,7 +747,7 @@ async function scrollToElement($el: HTMLElement) {
   await wait(50)
   let top = _scrollToElement($el)
   await wait(100)
-  const scrollContainer = getScrollContainer()
+  const scrollContainer = shellScrollContainer.value
   if (!scrollContainer) return
   if (scrollContainer.scrollTop != top) {
     _scrollToElement($el)
@@ -742,7 +755,7 @@ async function scrollToElement($el: HTMLElement) {
 }
 
 function _scrollToElement($el: HTMLElement) {
-  const scrollContainer = getScrollContainer()
+  const scrollContainer = shellScrollContainer.value
   if (!scrollContainer) return 0
   const headerHeight = 64
   const top = $el.offsetTop - scrollContainer.scrollTop - headerHeight

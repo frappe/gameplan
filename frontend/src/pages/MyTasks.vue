@@ -1,10 +1,10 @@
 <template>
   <div>
     <PageHeaderMobile class="sm:hidden" title="Tasks">
-      <template #left>
+      <template #prefix>
         <PageHeaderBackButton :to="{ name: 'More' }" />
       </template>
-      <template #right>
+      <template #suffix>
         <Button
           variant="ghost"
           size="md"
@@ -22,7 +22,7 @@
     <div class="body-container">
       <div class="flex pt-3 sm:pt-5">
         <TabButtons
-          :buttons="[
+          :options="[
             { label: 'All', value: 'all' },
             { label: 'Assigned to me', value: 'assigned' },
             { label: 'Created by me', value: 'owner' },

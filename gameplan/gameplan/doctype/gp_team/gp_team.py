@@ -10,7 +10,11 @@ from pypika.terms import ExistsCriterion
 
 import gameplan
 from gameplan.mixins.archivable import Archivable
-from gameplan.permissions import apply_team_query_filter, require_can_manage_community
+from gameplan.permissions import (
+	apply_team_query_filter,
+	is_global_admin,
+	require_can_manage_community,
+)
 from gameplan.utils import validate_type
 
 
@@ -19,8 +23,17 @@ class GPTeam(Archivable, Document):
 	on_delete_set_null = ["GP Notification"]
 
 	def as_dict(self, *args, **kwargs) -> dict:
-		members = [m.user for m in self.members]
-		if self.is_private and frappe.session.user not in members:
+		"""Hide a private community from everyone but its members and global admins.
+
+		The admin bypass is not cosmetic. `frappe.api.v2.execute_doc_method` serialises the
+		document with `as_dict` AFTER running the requested method, so a throw here loses the
+		write that already ran: the request ends in a rollback and the admin sees only
+		"Not permitted". That silently broke every whitelisted method on a private community
+		an admin does not belong to — archive, merge_into_team, add_members, remove_member,
+		set_member_admin — even though `can_manage_community` grants all of them.
+		"""
+		user = frappe.session.user
+		if self.is_private and not is_global_admin(user) and user not in [m.user for m in self.members]:
 			frappe.throw("Not permitted", frappe.PermissionError)
 
 		d = super().as_dict(*args, **kwargs)
@@ -212,6 +225,62 @@ class GPTeam(Archivable, Document):
 
 @frappe.whitelist(methods=["POST"])
 @validate_type
+def join_team(team: str):
+	"""Add the session user to one community.
+
+	Membership is what puts a community and its public spaces in the sidebar. This is
+	the single-community counterpart of `update_joined_teams`, which rewrites the whole
+	joined list. Only active, public communities can be joined; a private one is invite
+	only.
+
+	Lives at module level rather than on the doc because a plain member has no write
+	permission on GP Team, and the document method route demands one for POST.
+	"""
+	doc = get_team_for_membership_change(team)
+	if doc.is_private:
+		frappe.throw(_("This community is invite only"), frappe.PermissionError)
+
+	if doc.get_member(frappe.session.user):
+		return
+
+	doc.add_member(frappe.session.user)
+	doc.save(ignore_permissions=True)
+
+
+@frappe.whitelist(methods=["POST"])
+@validate_type
+def leave_team(team: str):
+	"""Remove the session user from one community.
+
+	Drops the membership row only, exactly like `update_joined_teams`, so rejoining a
+	public community restores what the member had. Private space memberships stay, in
+	contrast to `GPTeam.remove_member`, which an admin uses to revoke someone's access.
+	"""
+	doc = get_team_for_membership_change(team)
+	member = doc.get_member(frappe.session.user)
+	if not member:
+		return
+
+	if member.is_admin and doc.count_admins(excluding_user=frappe.session.user) == 0:
+		frappe.throw(_("Make someone else an admin before you leave this community"))
+
+	doc.remove(member)
+	doc.save(ignore_permissions=True)
+
+
+def get_team_for_membership_change(team: str):
+	if gameplan.is_guest():
+		frappe.throw(_("Guests cannot join or leave communities"), frappe.PermissionError)
+
+	doc = frappe.get_doc("GP Team", team)
+	doc.check_permission("read")
+	if doc.archived_at:
+		frappe.throw(_("This community is archived"))
+	return doc
+
+
+@frappe.whitelist(methods=["POST"])
+@validate_type
 def update_joined_teams(teams: list = None, sidebar_badge_style: str | None = None):
 	if gameplan.is_guest():
 		frappe.throw("Guests cannot manage communities")
@@ -255,6 +324,23 @@ def get_valid_sidebar_badge_style(sidebar_badge_style: str):
 	if sidebar_badge_style not in {"Unread count", "Dot"}:
 		frappe.throw("Invalid sidebar badge style")
 	return sidebar_badge_style
+
+
+def get_public_team_names():
+	"""Every community anyone may join, newest last.
+
+	Public and not archived, which is the same pair of conditions
+	`get_accessible_team_names` applies to the public half of its result. This one takes
+	no user, so it can answer for an account that has no session yet.
+	"""
+	Team = frappe.qb.DocType("GP Team")
+	return (
+		frappe.qb.from_(Team)
+		.select(Team.name)
+		.where(Team.is_private == 0)
+		.where(Team.archived_at.isnull())
+		.orderby(Team.creation)
+	).run(pluck=True)
 
 
 def get_accessible_team_names():

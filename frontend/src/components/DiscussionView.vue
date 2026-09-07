@@ -1,7 +1,7 @@
 <template>
   <div class="relative flex h-full flex-col" v-if="postId">
     <PageHeaderMobile class="sm:hidden" :title="mobileHeaderTitle">
-      <template #left>
+      <template #prefix>
         <PageHeaderBackButton :to="backRoute" />
       </template>
     </PageHeaderMobile>
@@ -45,16 +45,29 @@
       <template v-else-if="discussion.doc">
         <div
           :class="{
-            'rounded-lg border mt-14 py-4 px-3 sm:px-5 -mx-3 sm:-mx-5 focus-within:border-outline-gray-3':
+            'rounded-6 border mt-14 py-4 px-3 sm:px-5 -mx-3 sm:-mx-5 focus-within:border-outline-gray-3':
               editingPost,
           }"
           @keydown.ctrl.enter.capture.stop="updatePost"
           @keydown.meta.enter.capture.stop="updatePost"
           @keydown.esc="cancelEdit"
         >
+          <!--
+            While pinned, this row masks the content scrolling under it, so it has to
+            be at least as wide as anything that content can paint. A selected image
+            draws a ring 4px outside its own box, and that box is already the full
+            width of the column. A row that stopped at the column edge left the ring's
+            two vertical edges visible above it, running up to the page header. The
+            negative margins bleed the row out to the container's padding edge, and the
+            padding puts its contents back where they were.
+          -->
           <div
-            class="flex w-full items-center bg-surface-base pb-2 pt-2"
-            :class="editingPost ? 'sm:pt-0' : 'sticky -top-px z-[1] sm:top-0 sm:pt-14'"
+            class="flex items-center bg-surface-base pb-2 pt-2"
+            :class="
+              editingPost
+                ? 'w-full sm:pt-0'
+                : 'sticky -top-px z-[1] -mx-3 px-3 sm:-mx-5 sm:px-5 sm:top-0 sm:pt-14'
+            "
           >
             <UserProfileLink class="mr-3" :user="discussion.doc.owner">
               <UserAvatarWithHover class="sm:hidden" size="xl" :user="discussion.doc.owner" />
@@ -358,7 +371,8 @@ import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { useDiscussion } from '@/data/discussions'
 import { useDraftSync } from '@/data/useDraftSync'
 import { tags } from '@/data/tags'
-import { useScrollContainer, useIsMobile } from 'frappe-ui'
+import { shellScrollContainer, useShellScrolled } from 'frappe-ui'
+import { useIsMobile } from '@/utils/useIsMobile'
 import { provideRichQuotes } from '@/components/RichQuoteExtension/useRichQuotes'
 import QuoteBacklinksPopover from '@/components/RichQuoteExtension/QuoteBacklinksPopover.vue'
 import { refreshUnreadCountForProjects } from '@/data/unreadCount'
@@ -384,7 +398,11 @@ const postEditor = useTemplateRef<{ editor: Editor | null }>('postEditor')
 const mainPostContentEl = ref<HTMLElement | null>(null)
 const postTitleEl = useTemplateRef<HTMLElement>('postTitleEl')
 
-const { isScrolled, scrollToTop, el: scrollContainerEl } = useScrollContainer()
+const isScrolled = useShellScrolled()
+const scrollContainerEl = shellScrollContainer
+function scrollToTop() {
+  shellScrollContainer.value?.scrollTo({ top: 0, behavior: 'smooth' })
+}
 const discussion = useDiscussion(() => props.postId)
 // In-app navigation skips the router's server canonicalization for speed, so a stale link to a
 // discussion deleted or moved out of reach after local data loaded would otherwise render a blank

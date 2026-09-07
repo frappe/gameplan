@@ -15,7 +15,7 @@ import { spaces, getSpace } from './data/spaces'
 import type { Space } from './data/spaces'
 import { communityState } from './data/communityState'
 import { settingsBackgroundPath } from './components/Settings'
-import { getScrollContainer, scrollTo } from 'frappe-ui'
+import { shellScrollContainer } from 'frappe-ui'
 import { isBrowserOffline, isNetworkError } from './offline'
 
 declare const __FRONTEND_ROUTE__: string
@@ -66,6 +66,23 @@ function redirectOldSpacesRoute(to: RouteLocationNormalized): RouteLocationRaw {
   }
 
   return getHomeRoute()
+}
+
+/**
+ * `/:teamId` is the legacy single-segment community URL. It matches anything, so a stale
+ * link such as `/g/teams` (the app lived at `/teams` before it moved to `/g`) used to be
+ * read as a community id and land on the 404 page. Only redirect when the community really
+ * exists; send everything else home.
+ */
+async function redirectLegacyTeamRoute(to: RouteLocationNormalized): Promise<RouteLocationRaw> {
+  await ensureCommunityDataLoaded()
+
+  const communityId = routeParam(to.params.teamId)
+  if (!communityId || !getCommunity(communityId)) {
+    return getHomeRoute()
+  }
+
+  return { name: 'Discussions', params: { communityId } }
 }
 
 const routes: RouteRecordRaw[] = [
@@ -557,35 +574,21 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/:teamId',
     name: 'TeamLayout',
-    redirect: { name: 'Team' },
+    redirect: (to) => ({ name: 'Team', params: { teamId: routeParam(to.params.teamId) } }),
     props: true,
     children: [
       {
         name: 'Team',
         path: '',
-        redirect: (to) => ({
-          name: 'Discussions',
-          params: { communityId: routeParam(to.params.teamId) },
-        }),
+        component: RouteGuard,
         props: true,
-        children: [
-          {
-            name: 'TeamOverview',
-            path: '',
-            redirect: (to) => ({
-              name: 'Discussions',
-              params: { communityId: routeParam(to.params.teamId) },
-            }),
-          },
-          {
-            name: 'TeamDiscussions',
-            path: 'discussions',
-            redirect: (to) => ({
-              name: 'Discussions',
-              params: { communityId: routeParam(to.params.teamId) },
-            }),
-          },
-        ],
+        beforeEnter: redirectLegacyTeamRoute,
+      },
+      {
+        name: 'TeamDiscussions',
+        path: 'discussions',
+        component: RouteGuard,
+        beforeEnter: redirectLegacyTeamRoute,
       },
       {
         name: 'ProjectLayout',
@@ -723,13 +726,13 @@ const router = createRouter({
 const scrollPositions: Record<string, number> = {}
 
 function saveAndRestoreScrollPosition(to: RouteLocationNormalized, from: RouteLocationNormalized) {
-  let scrollContainer = getScrollContainer()
+  let scrollContainer = shellScrollContainer.value
   if (scrollContainer) {
     scrollPositions[from.path] = scrollContainer.scrollTop
   }
   if (scrollPositions[to.path] !== undefined && to.path !== from.path) {
     setTimeout(() => {
-      scrollTo({ top: scrollPositions[to.path] })
+      shellScrollContainer.value?.scrollTo({ top: scrollPositions[to.path] })
     }, 0)
   }
 }

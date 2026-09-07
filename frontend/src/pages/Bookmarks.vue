@@ -1,6 +1,6 @@
 <template>
   <PageHeaderMobile class="sm:hidden" title="Bookmarks">
-    <template #left>
+    <template #prefix>
       <PageHeaderBackButton :to="{ name: 'More' }" />
     </template>
   </PageHeaderMobile>

@@ -3,11 +3,11 @@ import { useFileUpload, type UploadOptions, type UploadedFile } from 'frappe-ui'
 /**
  * Every kind of image Gameplan uploads, and how it should be stored.
  *
- * There is no default. A new upload site has to name its kind, because the two
- * upload primitives disagree about what happens when you say nothing: frappe-ui's
- * `FileUploader` uploads private, `useFileUpload()` uploads public. Leaving that
- * to the call site is how the same avatar ended up private on one screen and
- * public on another.
+ * There is no default. A new upload site has to name its kind, because both
+ * upload primitives store a file privately when you say nothing, and a public
+ * image that silently becomes private only breaks where nobody is logged in.
+ * Leaving that to the call site is how the same avatar ended up private on one
+ * screen and public on another.
  *
  * `private: true` does not mean "only the uploader can see it". A private File is
  * readable by anyone who can read the document it is attached to, so for those
@@ -77,8 +77,10 @@ const MIME_TYPES: Record<string, string> = {
   webp: 'image/webp',
 }
 
-/** Upload options for a kind, in the shape `FileUploader`'s `uploadArgs` expects. */
-export function imageUploadArgs(kind: ImageUploadKind): UploadOptions {
+/** Storage options for a kind, shared by `FileUploader`'s props and `useFileUpload`. */
+export function imageUploadOptions(
+  kind: ImageUploadKind,
+): Required<Pick<UploadOptions, 'private' | 'optimize'>> {
   const spec = IMAGE_UPLOAD_KINDS[kind]
   return { private: spec.private, optimize: spec.optimize }
 }
@@ -120,6 +122,6 @@ export function useImageUpload() {
   return {
     ...upload,
     upload: (file: File, kind: ImageUploadKind): Promise<UploadedFile> =>
-      upload.upload(file, imageUploadArgs(kind)),
+      upload.upload(file, imageUploadOptions(kind)),
   }
 }

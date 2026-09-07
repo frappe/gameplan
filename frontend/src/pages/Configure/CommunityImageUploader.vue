@@ -28,7 +28,7 @@
         </button>
         <ErrorMessage
           v-if="error || saveError"
-          class="absolute left-0 top-8 z-10 w-48 rounded border bg-surface-base p-2 shadow-sm"
+          class="absolute left-0 top-8 z-10 w-48 rounded-4 border bg-surface-base p-2 shadow-sm"
           :message="saveError || error"
         />
       </div>

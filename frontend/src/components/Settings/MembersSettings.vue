@@ -22,7 +22,7 @@
 
       <button
         v-if="pendingInvites.data?.length"
-        class="mt-2 flex w-full items-center justify-between gap-3 rounded bg-surface-gray-2 px-3 py-2 text-left transition-colors hover:bg-surface-gray-3"
+        class="mt-2 flex w-full items-center justify-between gap-3 rounded-4 bg-surface-gray-2 px-3 py-2 text-left transition-colors hover:bg-surface-gray-3"
         @click="showInviteDialog = true"
       >
         <span class="flex items-center gap-2 text-base text-ink-gray-7">

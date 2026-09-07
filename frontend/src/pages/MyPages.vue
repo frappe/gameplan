@@ -1,10 +1,10 @@
 <template>
   <div>
     <PageHeaderMobile class="sm:hidden" title="Pages">
-      <template #left>
+      <template #prefix>
         <PageHeaderBackButton :to="{ name: 'More' }" />
       </template>
-      <template #right>
+      <template #suffix>
         <Select :options="sortOptions" v-model="orderBy" />
       </template>
     </PageHeaderMobile>

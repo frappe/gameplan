@@ -1,5 +1,5 @@
 import { computed, nextTick, onUnmounted, ref, type Ref } from 'vue'
-import { activeScrollContainer } from 'frappe-ui'
+import { shellScrollContainer } from 'frappe-ui'
 import { createProfileBentoLayout, type ProfileBentoLayoutRect } from './profileBentoLayout'
 import type { ProfileBentoCard } from './types'
 
@@ -168,7 +168,7 @@ export function useProfileBentoDrag(options: ProfileBentoDragOptions) {
   function autoScrollTick() {
     autoScrollFrame = requestAnimationFrame(autoScrollTick)
 
-    let container = activeScrollContainer.value
+    let container = shellScrollContainer.value
     let velocity = autoScrollVelocity(container)
     if (!container || !velocity) return
 

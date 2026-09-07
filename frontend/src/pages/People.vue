@@ -3,10 +3,10 @@
     <div class="flex flex-1">
       <div class="w-full">
         <PageHeaderMobile class="sm:hidden" title="People">
-          <template #left>
+          <template #prefix>
             <PageHeaderBackButton :to="{ name: 'More' }" />
           </template>
-          <template #right>
+          <template #suffix>
             <Button
               v-if="isAdmin"
               variant="ghost"

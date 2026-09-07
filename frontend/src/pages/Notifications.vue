@@ -6,7 +6,7 @@
 
   <div class="body-container pt-4 sm:pt-5">
     <div class="mb-3 flex items-center justify-between px-4 sm:px-3 gap-3">
-      <TabButtons :buttons="tabButtons" v-model="activeTab" />
+      <TabButtons :options="tabOptions" v-model="activeTab" />
       <Button
         @click="confirmMarkAllAsRead"
         :loading="markAllAsRead.loading"
@@ -16,7 +16,19 @@
       </Button>
     </div>
 
-    <List v-if="notifications?.length" class="max-sm:list-gap-3 sm:list-gap-4 max-sm:list-row-px-4">
+    <template v-if="isInitialLoading">
+      <ListRowSkeleton
+        v-for="index in skeletonRowCount"
+        :key="index"
+        :show-separator="index < skeletonRowCount"
+        label="Loading notification"
+      />
+    </template>
+
+    <List
+      v-else-if="notifications?.length"
+      class="max-sm:list-gap-3 sm:list-gap-4 max-sm:list-row-px-4"
+    >
       <ListRow
         v-for="notification in notifications"
         :key="notification.name"
@@ -119,9 +131,9 @@
 
     <div
       v-else
-      class="mx-4 rounded border border-dashed border-outline-gray-2 px-6 py-12 text-center sm:mx-3"
+      class="mx-4 rounded-4 border border-dashed border-outline-gray-2 px-6 py-12 text-center sm:mx-3"
     >
-      <div class="mx-auto grid size-10 place-items-center rounded bg-surface-gray-2">
+      <div class="mx-auto grid size-10 place-items-center rounded-4 bg-surface-gray-2">
         <span class="lucide-bell-check size-5 text-ink-gray-5" aria-hidden="true" />
       </div>
       <div class="mt-3 text-base-medium text-ink-gray-8">{{ emptyStateTitle }}</div>
@@ -146,6 +158,7 @@ import {
   usePageMeta,
 } from 'frappe-ui'
 import { List, ListRow, ListCell } from 'frappe-ui/list'
+import ListRowSkeleton from '@/components/ListRowSkeleton.vue'
 import ReactionFaceIcon from '@/components/ReactionFaceIcon.vue'
 import UserAvatarWithHover from '@/components/UserAvatarWithHover.vue'
 import { getCommunity } from '@/data/communities'
@@ -223,11 +236,24 @@ const canMarkAllAsRead = computed(
   () => activeTab.value === 'Unread' && Boolean(unreadNotificationList.data?.length),
 )
 
-const tabButtons: { label: ActiveTab }[] = [{ label: 'Unread' }, { label: 'Read' }]
+const tabOptions: { value: ActiveTab; label: ActiveTab }[] = [
+  { value: 'Unread', label: 'Unread' },
+  { value: 'Read', label: 'Read' },
+]
 
 const notifications = computed(() =>
   activeTab.value === 'Unread' ? unreadNotificationList.data : readNotificationList.data,
 )
+
+// Same guard as DiscussionList: without it the fetch's empty window renders the
+// "You're caught up" box, which contradicts the unread badge that brought the user here.
+// A cached list (`cacheKey`) fills `data` before the request settles, so the skeleton
+// only shows on a genuinely cold load.
+const skeletonRowCount = 3
+const activeList = computed(() =>
+  activeTab.value === 'Unread' ? unreadNotificationList : readNotificationList,
+)
+const isInitialLoading = computed(() => activeList.value.loading && !activeList.value.data?.length)
 
 const emptyStateTitle = computed(() =>
   activeTab.value === 'Unread' ? "You're caught up" : 'No read notifications',

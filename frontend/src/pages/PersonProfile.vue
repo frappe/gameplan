@@ -23,7 +23,11 @@
     <div class="mx-auto w-full max-w-[860px] px-3 py-4 sm:px-5 sm:py-6">
       <div class="mb-4 flex items-center justify-between gap-3">
         <TabButtons
-          :buttons="[{ label: 'Profile' }, { label: 'Posts' }, { label: 'Replies' }]"
+          :options="[
+            { value: 'Profile', label: 'Profile' },
+            { value: 'Posts', label: 'Posts' },
+            { value: 'Replies', label: 'Replies' },
+          ]"
           v-model="activeTab"
         />
         <!-- Hidden below `md`, where the customize page refuses to open anyway. -->

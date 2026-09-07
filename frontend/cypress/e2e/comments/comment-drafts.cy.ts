@@ -28,8 +28,8 @@ describe('Comment drafts', () => {
   const interceptDrafts = () => cy.intercept(/get_my_drafts/).as('getDrafts')
 
   it('shows a comment draft in the list and reopens it with the composer restored', () => {
-    // The draft is created lazily on the first push via frappe.client.insert.
-    cy.intercept('POST', '/api/method/frappe.client.insert').as('draftInsert')
+    // The draft row is created lazily on the first push, through the GP Draft list.
+    cy.intercept('POST', '/api/v2/document/GP%20Draft').as('draftInsert')
 
     cy.visit(`/g/community/${community}/space/${space}/discussion/${discussion}`)
 
@@ -54,7 +54,7 @@ describe('Comment drafts', () => {
   })
 
   it('removes the comment draft from the list once submitted', () => {
-    cy.intercept('POST', '/api/method/frappe.client.insert').as('draftInsert')
+    cy.intercept('POST', '/api/v2/document/GP%20Draft').as('draftInsert')
     cy.intercept('POST', '/api/v2/document/GP%20Comment').as('comment')
 
     cy.visit(`/g/community/${community}/space/${space}/discussion/${discussion}`)

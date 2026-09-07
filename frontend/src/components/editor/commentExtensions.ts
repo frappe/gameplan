@@ -1,6 +1,5 @@
 import {
   CommentKit,
-  SlashCommands,
   TaskList,
   TaskItem,
   Iframe,
@@ -10,6 +9,7 @@ import {
   Highlight,
 } from 'frappe-ui/editor'
 import { gameplanHeadingLevels, suggestionConfig, richQuoteExtensions } from './config'
+import { collapsibleExtensions, slashCommandsWithCollapsible } from './collapsible'
 import { CustomEmojiExtension } from './customEmojiExtension'
 import type { RichQuoteController } from '@/components/RichQuoteExtension/useRichQuotes'
 
@@ -35,7 +35,7 @@ export function commentExtensions(
   return [
     CommentKit.configure({
       heading: { levels: [...gameplanHeadingLevels] },
-      table: {},
+      table: { cellMinWidth: 25 },
       ...suggestionConfig(true),
     }),
     // TaskItem requires TaskList; Iframe ships the `openIframeDialog` command and
@@ -53,7 +53,10 @@ export function commentExtensions(
     Color,
     Highlight,
     CustomEmojiExtension,
-    SlashCommands.configure({}),
+    // Collapsible sections load here too, so a section written in a discussion
+    // body still renders and edits when that body is reopened in CommentEditor.
+    ...collapsibleExtensions(),
+    slashCommandsWithCollapsible(),
     ...richQuoteExtensions(opts.controller, opts.sourceId),
   ]
 }

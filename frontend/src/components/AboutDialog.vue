@@ -12,10 +12,7 @@
               <template v-else>{{ appVersion.tag }}</template>
             </div>
 
-            <Tooltip
-              :text="`${appVersion.commit_message} - ${appVersion.commit_date}`"
-              placement="top"
-            >
+            <Tooltip :text="`${appVersion.commit_message} - ${appVersion.commit_date}`" side="top">
               <span class="lucide-info size-3.5 text-ink-gray-8 ml-1" />
             </Tooltip>
           </div>
@@ -26,7 +23,7 @@
         <a
           v-for="link in links"
           :key="link.label"
-          class="flex py-2 px-2 hover:bg-surface-gray-1 rounded cursor-pointer"
+          class="flex py-2 px-2 hover:bg-surface-gray-1 rounded-4 cursor-pointer"
           target="_blank"
           :href="link.url"
         >

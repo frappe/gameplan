@@ -32,7 +32,7 @@
               v-for="custom in filteredCustomEmojis"
               :key="custom.name"
               type="button"
-              class="flex h-8 w-8 items-center justify-center rounded-md p-1 hover:bg-surface-gray-2 focus:outline-none focus:ring-2 focus:ring-outline-gray-3"
+              class="flex h-8 w-8 items-center justify-center rounded-5 p-1 hover:bg-surface-gray-2 focus:outline-none focus:ring-2 focus:ring-outline-gray-3"
               :title="custom.title"
               @click="selectEmoji(custom.image, close)"
             >
@@ -51,7 +51,7 @@
               v-for="emoji in emojis"
               :key="emoji.description"
               type="button"
-              class="h-8 w-8 rounded-md p-1 text-4xl hover:bg-surface-gray-2 focus:outline-none focus:ring-2 focus:ring-outline-gray-3"
+              class="h-8 w-8 rounded-5 p-1 text-4xl hover:bg-surface-gray-2 focus:outline-none focus:ring-2 focus:ring-outline-gray-3"
               :title="emoji.description"
               @click="selectEmoji(emoji.emoji, close)"
             >

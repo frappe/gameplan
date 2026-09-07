@@ -169,13 +169,13 @@ const listFailure = computed(() => {
 const {
   space: currentSpace,
   isArchived,
-  canEditSpace,
+  canEditSettings,
   canManageAccess,
   canChangeMembership,
   canMoveDiscussions,
 } = useSpacePermissions(() => props.spaceId)
-// Not `canEditSpace`: that one is about editing the space, and it says yes to a guest,
-// who cannot start a discussion anywhere.
+// Not `canEditSettings`: that one is about administering the space, and posting is open
+// to every member of a live space — but not to a guest, who cannot start a discussion.
 const canStartDiscussion = computed(() => canPostInSpace(currentSpace.value))
 const isJoined = computed(() => hasJoined(props.spaceId))
 const showSpaceAccessDialog = ref(false)
@@ -228,9 +228,7 @@ const spaceActions = computed(() => [
     label: 'Archive',
     icon: 'lucide-archive',
     onClick: () => currentSpace.value && archiveSpace(currentSpace.value),
-    // Archiving is destructive — gate it behind manage access, mirroring Unarchive, so a
-    // regular member isn't offered (and can't submit) an action they lack permission for.
-    condition: () => canEditSpace.value && canManageAccess.value,
+    condition: () => canEditSettings.value,
   },
   {
     label: 'Unarchive',

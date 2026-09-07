@@ -2,7 +2,7 @@
   <div class="@container" v-if="tasks.data?.length">
     <div v-for="group in groupedTasks" :key="group.title">
       <button
-        class="group flex w-full items-baseline rounded-sm bg-surface-sidebar px-2.5 py-2 text-base transition hover:bg-surface-gray-2"
+        class="group flex w-full items-baseline rounded-1 bg-surface-sidebar px-2.5 py-2 text-base transition hover:bg-surface-gray-2"
         v-if="group.title && group.tasks.length"
         @click="isOpen[group.title] = !isOpen[group.title]"
       >
@@ -29,7 +29,7 @@
                   }
                 : { name: 'Task', params: { taskId: d.name } }
             "
-            class="flex h-15 w-full items-center rounded p-2.5 transition hover:bg-surface-gray-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-outline-gray-3 group"
+            class="flex h-15 w-full items-center rounded-4 p-2.5 transition hover:bg-surface-gray-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-outline-gray-3 group"
             :class="{
               'pointer-events-none': tasks.delete.loading && tasks.delete.params.name === d.name,
             }"

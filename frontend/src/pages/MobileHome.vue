@@ -1,9 +1,9 @@
 <template>
   <PageHeaderMobile title="Communities">
-    <template #left>
+    <template #prefix>
       <GameplanLogo class="ml-1 size-7 rounded-[7px]" />
     </template>
-    <template #right>
+    <template #suffix>
       <Button
         v-if="manageableCommunities.length"
         variant="ghost"

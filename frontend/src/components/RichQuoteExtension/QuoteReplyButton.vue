@@ -5,7 +5,7 @@
       class="fixed z-20 -translate-x-1/2 -translate-y-full pb-1.5"
       :style="{ left: `${position.x}px`, top: `${position.y}px` }"
     >
-      <div class="rounded-md border bg-surface-elevation-2 p-0.5 shadow-md">
+      <div class="rounded-5 border bg-surface-elevation-2 p-0.5 shadow-md">
         <Button
           variant="ghost"
           icon-left="lucide-text-quote"

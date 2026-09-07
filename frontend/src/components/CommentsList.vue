@@ -60,7 +60,7 @@
         </div>
         <div class="relative w-full" v-show="!showCommentBox">
           <button
-            class="flex w-full items-center rounded-md border px-2 py-2 text-left text-base text-ink-gray-5 hover:border-outline-gray-3"
+            class="flex w-full items-center rounded-5 border px-2 py-2 text-left text-base text-ink-gray-5 hover:border-outline-gray-3"
             @click.stop="openCommentBox"
           >
             Add a comment
@@ -68,7 +68,7 @@
         </div>
         <div
           v-show="showCommentBox"
-          class="w-full rounded-lg border bg-surface-base p-4 focus-within:border-outline-gray-3"
+          class="w-full rounded-6 border bg-surface-base p-4 focus-within:border-outline-gray-3"
           @keydown.ctrl.enter.capture.stop="submitComment"
           @keydown.meta.enter.capture.stop="submitComment"
         >
@@ -111,7 +111,7 @@ import CommentEditor from '@/components/editor/CommentEditor.vue'
 import Comment from './Comment.vue'
 import Activity from './Activity.vue'
 import UserAvatar from './UserAvatar.vue'
-import { getScrollContainer } from 'frappe-ui'
+import { shellScrollContainer } from 'frappe-ui'
 import { needsMobileCommentGap } from '@/utils/commentTimeline'
 import { dialog } from 'frappe-ui'
 import { subscribeToDoc, useSocket, type NewActivityEvent } from '@/socket'
@@ -363,7 +363,7 @@ async function scrollToItem(item) {
 }
 
 function scrollToElement($el: HTMLElement) {
-  const scrollContainer = getScrollContainer()
+  const scrollContainer = shellScrollContainer.value
   if (!scrollContainer) return
   const headerHeight = 64
   const top = $el.offsetTop - scrollContainer.scrollTop - headerHeight
@@ -371,7 +371,7 @@ function scrollToElement($el: HTMLElement) {
 }
 
 function scrollToEnd() {
-  const scrollContainer = getScrollContainer()
+  const scrollContainer = shellScrollContainer.value
   if (!scrollContainer) return
   scrollContainer.scrollTop = scrollContainer.scrollHeight
 }

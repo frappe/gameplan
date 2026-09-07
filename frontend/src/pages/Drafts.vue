@@ -1,12 +1,12 @@
 <template>
   <PageHeaderMobile class="sm:hidden" title="Drafts">
-    <template #left>
+    <template #prefix>
       <Button v-if="isBulkDeleteMode" variant="ghost" size="md" @click="cancelBulkDelete">
         Cancel
       </Button>
       <PageHeaderBackButton v-else :to="{ name: 'More' }" />
     </template>
-    <template #right>
+    <template #suffix>
       <div class="flex items-center gap-2">
         <template v-if="!isBulkDeleteMode">
           <Button
@@ -248,6 +248,10 @@ function deleteDrafts() {
       let deletedCount = response?.success_count || 0
       let failedCount = response?.failure_count || 0
 
+      // bulk_delete is a custom method, so the doctype APIs never saw these deletes —
+      // drop the rows the list is still holding.
+      response?.deleted.forEach((name) => drafts.removeRow(name))
+
       if (deletedCount > 0) {
         toast.success(deletedCount === 1 ? 'Draft deleted' : `${deletedCount} drafts deleted`)
       }
@@ -259,12 +263,10 @@ function deleteDrafts() {
             ? '1 draft could not be deleted'
             : `${failedCount} drafts could not be deleted`,
         )
-        drafts.reload()
         showDeleteConfirm.value = false
         return
       }
 
-      drafts.reload()
       selectedDrafts.value = []
       showDeleteConfirm.value = false
       isBulkDeleteMode.value = false
@@ -276,10 +278,10 @@ function deleteDrafts() {
 }
 
 // Drafts whose server row never got created (a push that never landed) live only in
-// IndexedDB and would otherwise never show here. Adopt them on open, then refresh.
-onMounted(async () => {
-  const recovered = await recoverOrphanedDrafts()
-  if (recovered > 0) drafts.reload()
+// IndexedDB and would otherwise never show here. Adopting one inserts it through the list,
+// which is what puts it on screen.
+onMounted(() => {
+  recoverOrphanedDrafts()
 })
 
 function contentPreview(content?: string | null) {

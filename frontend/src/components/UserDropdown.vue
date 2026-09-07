@@ -8,6 +8,7 @@
 <script setup>
 import { h, computed } from 'vue'
 import { Dropdown } from 'frappe-ui'
+import { settingsShortcutLabel, showSettingsDialog } from '@/components/Settings'
 import { useUser } from '@/data/users'
 import { session } from '@/data/session'
 import { useTheme } from '@/utils/useTheme'
@@ -38,6 +39,14 @@ const dropdownItems = computed(() => [
     icon: 'lucide-files',
     label: 'Pages',
     route: { name: 'MyPages' },
+  },
+  {
+    icon: 'lucide-settings',
+    label: 'Settings',
+    onClick: () => showSettingsDialog(),
+    slots: {
+      suffix: () => h('span', { class: 'text-xs text-ink-gray-4' }, settingsShortcutLabel),
+    },
   },
   {
     icon: 'lucide-moon',

@@ -13,24 +13,19 @@
 import { computed } from 'vue'
 import { Select, TextInput } from 'frappe-ui'
 import { communities } from '@/data/communities'
-import { useSessionUser } from '@/data/users'
-import { getManageableCommunities } from '@/utils/permissions'
 
 type VisibilityFilter = 'All' | 'Public' | 'Private' | 'Archived'
 
 const search = defineModel<string>('search', { default: '' })
 const visibilityFilter = defineModel<VisibilityFilter>('visibilityFilter', { default: 'All' })
 
-const sessionUser = useSessionUser()
-
-const manageableCommunities = computed(() =>
-  getManageableCommunities(communities.data || [], sessionUser),
-)
+// Counts must match CommunitiesList: every community the user can read.
+const visibleCommunities = computed(() => communities.data || [])
 const activeCommunities = computed(() =>
-  manageableCommunities.value.filter((community) => !community.archived_at),
+  visibleCommunities.value.filter((community) => !community.archived_at),
 )
 const archivedCount = computed(
-  () => manageableCommunities.value.length - activeCommunities.value.length,
+  () => visibleCommunities.value.length - activeCommunities.value.length,
 )
 
 const visibilityOptions = computed(() => {

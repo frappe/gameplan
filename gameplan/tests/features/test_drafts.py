@@ -380,10 +380,13 @@ class TestMyDrafts(GameplanTestCase):
 		self.assertIsNone(row["community"])
 		self.assertEqual(row["is_private"], 0)
 
-	def test_collapses_duplicate_reply_drafts_and_deletes_them_permanently(self):
-		"""Same self-healing as find_my_draft, on the list path: the newest reply survives and
-		the stale sibling is destroyed outright rather than archived into Deleted Document,
-		where the abandoned text would stay readable."""
+	def test_the_list_collapses_duplicate_reply_drafts_without_deleting_them(self):
+		"""One row per reply on the list path, but the stale sibling stays on disk.
+
+		get_my_drafts is a GET so the Drafts page can be a useList, and Frappe rolls a GET
+		back — a delete here would look like cleanup and change nothing. The permanent
+		delete lives on find_my_draft, which runs when that reply composer next opens
+		(test_duplicate_singleton_drafts_self_heal_on_read)."""
 		discussion = create_discussion("Duplicate Reply Target", self.space)
 		reference = dict(
 			type="Comment",
@@ -398,7 +401,4 @@ class TestMyDrafts(GameplanTestCase):
 			drafts = get_my_drafts()
 
 		self.assertEqual([row["name"] for row in drafts], [newer.name])
-		self.assertFalse(frappe.db.exists("GP Draft", older.name))
-		self.assertFalse(
-			frappe.db.exists("Deleted Document", {"deleted_doctype": "GP Draft", "deleted_name": older.name})
-		)
+		self.assertTrue(frappe.db.exists("GP Draft", older.name))

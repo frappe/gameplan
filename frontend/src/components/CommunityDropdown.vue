@@ -3,7 +3,7 @@
     <template #default="{ open }">
       <button
         type="button"
-        class="flex w-full min-w-0 items-center justify-between rounded px-2 py-1 text-ink-gray-7 transition"
+        class="flex w-full min-w-0 items-center justify-between rounded-4 px-2 py-1 text-ink-gray-7 transition"
         :class="open ? 'bg-surface-elevation-2 shadow-sm' : 'hover:bg-surface-gray-2'"
         :title="community?.title"
       >

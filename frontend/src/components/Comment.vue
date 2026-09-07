@@ -2,7 +2,7 @@
   <div class="relative" :data-id="comment.name">
     <div
       v-if="highlight"
-      class="absolute inset-0 translate-y- z-[5] rounded border-2 -mx-4 -mb-4 mt-11 pointer-events-none"
+      class="absolute inset-0 translate-y- z-[5] rounded-4 border-2 -mx-4 -mb-4 mt-11 pointer-events-none"
     />
     <!--
       The author row is opaque, so while it is sticky it paints over the top of
@@ -10,10 +10,17 @@
       fine when reading, but it buries the line you are typing while editing
       (worst on a phone, where it eats ~56px of a keyboard-shrunk viewport).
       Same treatment the post editor already gets in DiscussionView.
+
+      The negative margins widen the opaque row out to the container's padding
+      edge. A selected image paints a ring 4px outside its own box, and that box
+      is already the full column width, so a row that stopped at the column edge
+      let the ring show above it. Same fix as DiscussionView.
     -->
     <div
       class="flex items-center bg-surface-base pb-2 pt-2 text-md text-ink-gray-8 sm:pt-14 sm:text-base"
-      :class="{ 'sticky -top-px z-[1] sm:top-0': !isEditing }"
+      :class="{
+        'sticky -top-px z-[1] -mx-3 px-3 sm:-mx-5 sm:px-5 sm:top-0': !isEditing,
+      }"
     >
       <UserProfileLink class="mr-3" :user="author.name">
         <UserAvatarWithHover class="sm:hidden" size="xl" :user="author.name" />
@@ -42,7 +49,7 @@
           <span v-if="isUpdating" class="italic text-ink-gray-5"> &nbsp;&middot; Sending... </span>
           <div v-if="updateError">
             &nbsp;&middot;
-            <span class="text-ink-red-8"> Error</span>
+            <span class="text-ink-red-7"> Error</span>
           </div>
         </div>
       </div>
@@ -64,7 +71,7 @@
       </div>
       <div
         :class="{
-          'w-full rounded-lg border bg-surface-base p-4 focus-within:border-outline-gray-3':
+          'w-full rounded-6 border bg-surface-base p-4 focus-within:border-outline-gray-3':
             isEditing,
         }"
         @keydown.ctrl.enter.capture.stop="updateComment()"

@@ -1,6 +1,6 @@
 <template>
   <div v-if="shouldShowReminder">
-    <div class="border flex rounded-md p-3 border-outline-gray-2 dark:bg-gray-900">
+    <div class="border flex rounded-5 p-3 border-outline-gray-2 dark:bg-gray-900">
       <div class="flex-1">
         <div class="flex items-center">
           <span class="lucide-alert-triangle size-4 shrink-0 mr-2.5 text-ink-gray-8" />

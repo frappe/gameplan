@@ -25,7 +25,7 @@
           <button
             v-if="emoji"
             type="button"
-            class="flex size-8 items-center justify-center rounded-md border border-outline-gray-1 bg-surface-base text-xl font-[emoji] hover:bg-surface-gray-2"
+            class="flex size-8 items-center justify-center rounded-5 border border-outline-gray-1 bg-surface-base text-xl font-[emoji] hover:bg-surface-gray-2"
           >
             <img
               v-if="isImageEmoji(emoji)"
@@ -39,7 +39,7 @@
           <button
             v-else
             type="button"
-            class="flex size-8 items-center justify-center rounded-md border border-dashed border-outline-gray-2 text-ink-gray-4 hover:border-outline-gray-3 hover:bg-surface-gray-1 hover:text-ink-gray-6"
+            class="flex size-8 items-center justify-center rounded-5 border border-dashed border-outline-gray-2 text-ink-gray-4 hover:border-outline-gray-3 hover:bg-surface-gray-1 hover:text-ink-gray-6"
             aria-label="Add emoji"
           >
             <span class="lucide-plus size-4" aria-hidden="true" />

@@ -21,9 +21,15 @@ import frappe
 from frappe.utils import add_days, now, today
 
 from gameplan.api import _invite_by_email, accept_invitation
-from gameplan.gameplan.doctype.gp_invitation.gp_invitation import expire_invitations
+from gameplan.gameplan.doctype.gp_invitation.gp_invitation import GPInvitation, expire_invitations
 from gameplan.tests.base import GameplanTestCase
-from gameplan.tests.fixtures import create_community, create_member, create_space
+from gameplan.tests.fixtures import (
+	create_community,
+	create_guest,
+	create_member,
+	create_space,
+	create_user,
+)
 
 
 class InvitationTestCase(GameplanTestCase):
@@ -89,6 +95,116 @@ class TestInvitationCreation(InvitationTestCase):
 
 		self.assertFalse(frappe.db.exists("GP Invitation", {"email": "already-member@example.com"}))
 
+	def test_an_existing_account_is_granted_access_without_the_email(self):
+		"""Signing in through OAuth mints a Website User with no role, so an account can
+		exist while its owner has no way into Gameplan. The email link would create no
+		user and set no password, so skip it and hand over the role now."""
+		user = create_user("oauth-signup@example.com", "Oauth Signup")
+
+		result = _invite_by_email("oauth-signup@example.com", role="Gameplan Member")
+
+		self.assertIn("Gameplan Member", frappe.get_roles(user.name))
+		self.assertEqual(result["granted"], ["oauth-signup@example.com"])
+		self.assertEqual(result["invited"], [])
+		self.assertEqual(frappe.db.count("User", {"email": "oauth-signup@example.com"}), 1)
+
+	def test_granting_access_leaves_an_accepted_invitation_as_the_audit_trail(self):
+		create_user("oauth-audit@example.com", "Oauth Audit")
+
+		with self.as_user(self.admin):
+			_invite_by_email("oauth-audit@example.com", role="Gameplan Member")
+
+		invitation = frappe.get_doc("GP Invitation", {"email": "oauth-audit@example.com"})
+		self.assertEqual(invitation.status, "Accepted")
+		self.assertTrue(invitation.accepted_at)
+		self.assertEqual(invitation.invited_by, self.admin.name)
+
+	def test_granting_access_never_sends_the_accept_link(self):
+		"""The key is spent before the mail could arrive; sending it would ask for a
+		step that is already done."""
+		create_user("oauth-nomail@example.com", "Oauth No Mail")
+
+		with patch.object(GPInvitation, "invite_via_email") as invite_mail:
+			_invite_by_email("oauth-nomail@example.com", role="Gameplan Member")
+
+		invite_mail.assert_not_called()
+
+	def test_a_guest_granted_access_gets_the_space_immediately(self):
+		"""accept() owns the GP Guest Access rows, so the direct path must not lose
+		them. This is why grant_access reuses accept() instead of setting the role."""
+		create_user("oauth-guest@example.com", "Oauth Guest")
+		community = create_community("Direct Guest Community")
+		space = create_space("Direct Guest Space", community, is_private=1)
+
+		_invite_by_email("oauth-guest@example.com", role="Gameplan Guest", projects=[space.name])
+
+		self.assertIn("Gameplan Guest", frappe.get_roles("oauth-guest@example.com"))
+		self.assertTrue(
+			frappe.db.exists("GP Guest Access", {"user": "oauth-guest@example.com", "project": space.name})
+		)
+
+	def test_a_directly_granted_member_joins_public_communities(self):
+		"""The direct path runs through accept(), so it inherits the join for free."""
+		create_user("oauth-joiner@example.com", "Oauth Joiner")
+		community = create_community("Direct Join Community")
+
+		_invite_by_email("oauth-joiner@example.com", role="Gameplan Member")
+
+		self.assertTrue(
+			frappe.db.exists(
+				"GP Member",
+				{
+					"parenttype": "GP Team",
+					"parent": community.name,
+					"user": "oauth-joiner@example.com",
+				},
+			)
+		)
+
+	def test_an_email_with_no_account_still_gets_the_invitation(self):
+		result = _invite_by_email("brand-new@example.com", role="Gameplan Member")
+
+		invitation = frappe.get_doc("GP Invitation", {"email": "brand-new@example.com"})
+		self.assertEqual(invitation.status, "Pending")
+		self.assertEqual(result["invited"], ["brand-new@example.com"])
+		self.assertEqual(result["granted"], [])
+		self.assertFalse(frappe.db.exists("User", "brand-new@example.com"))
+
+	def test_a_disabled_account_is_skipped_not_invited(self):
+		"""Granting a role changes nothing while the account cannot sign in, and an
+		invite link would hand the role to an account someone switched off."""
+		user = create_user("disabled-user@example.com", "Disabled User")
+		user.enabled = 0
+		user.save(ignore_permissions=True)
+
+		result = _invite_by_email("disabled-user@example.com", role="Gameplan Member")
+
+		self.assertEqual(result["skipped"], ["disabled-user@example.com"])
+		self.assertEqual(result["granted"], [])
+		self.assertEqual(result["invited"], [])
+		self.assertFalse(frappe.db.exists("GP Invitation", {"email": "disabled-user@example.com"}))
+		self.assertNotIn("Gameplan Member", frappe.get_roles(user.name))
+
+	def test_one_call_splits_a_mixed_list_into_its_three_buckets(self):
+		create_user("mixed-account@example.com", "Mixed Account")
+		create_member("mixed-member@example.com")
+
+		result = _invite_by_email(
+			"mixed-account@example.com, mixed-new@example.com, mixed-member@example.com",
+			role="Gameplan Member",
+		)
+
+		self.assertEqual(result["granted"], ["mixed-account@example.com"])
+		self.assertEqual(result["invited"], ["mixed-new@example.com"])
+		self.assertEqual(result["skipped"], ["mixed-member@example.com"])
+
+	def test_invite_skips_a_user_who_already_holds_a_gameplan_role(self):
+		create_guest("already-guest@example.com")
+
+		_invite_by_email("already-guest@example.com", role="Gameplan Member")
+
+		self.assertFalse(frappe.db.exists("GP Invitation", {"email": "already-guest@example.com"}))
+
 	def test_invite_skips_duplicate_pending_invite(self):
 		_invite_by_email("dup@example.com", role="Gameplan Member")
 		_invite_by_email("dup@example.com", role="Gameplan Member")
@@ -143,6 +259,72 @@ class TestInvitationAccept(InvitationTestCase):
 		self.assertTrue(
 			frappe.db.exists("GP Guest Access", {"user": "guest-accept@example.com", "project": space.name})
 		)
+
+	def joined_communities(self, email):
+		return set(
+			frappe.db.get_all(
+				"GP Member",
+				filters={"parenttype": "GP Team", "user": email},
+				pluck="parent",
+			)
+		)
+
+	def test_accept_joins_every_public_community(self):
+		"""A new member should land in a populated app, not an empty shell.
+
+		Membership does not gate a public community, it decides what the sidebar lists.
+		"""
+		first = create_community("Public One")
+		second = create_community("Public Two")
+		invitation = self.make_invitation("joiner@example.com")
+
+		invitation.accept()
+
+		joined = self.joined_communities("joiner@example.com")
+		self.assertIn(first.name, joined)
+		self.assertIn(second.name, joined)
+
+	def test_accept_leaves_private_communities_alone(self):
+		private = create_community("Private One", is_private=1)
+		invitation = self.make_invitation("no-private@example.com")
+
+		invitation.accept()
+
+		self.assertNotIn(private.name, self.joined_communities("no-private@example.com"))
+
+	def test_accept_leaves_archived_communities_alone(self):
+		archived = create_community("Archived One")
+		archived.db_set("archived_at", now())
+		invitation = self.make_invitation("no-archived@example.com")
+
+		invitation.accept()
+
+		self.assertNotIn(archived.name, self.joined_communities("no-archived@example.com"))
+
+	def test_a_guest_joins_nothing(self):
+		"""A guest's reach is the spaces they were granted, and nothing wider."""
+		community = create_community("Guest Blind Community")
+		space = create_space("Guest Blind Space", community, is_private=1)
+		invitation = self.make_invitation(
+			"guest-no-join@example.com", role="Gameplan Guest", projects=[space.name]
+		)
+
+		invitation.accept()
+
+		self.assertEqual(self.joined_communities("guest-no-join@example.com"), set())
+
+	def test_accept_does_not_duplicate_an_existing_membership(self):
+		member = create_member("already-in@example.com")
+		community = create_community("Already Joined", members=[member])
+		invitation = self.make_invitation("already-in@example.com", role="Gameplan Admin")
+
+		invitation.accept()
+
+		rows = frappe.db.count(
+			"GP Member",
+			{"parenttype": "GP Team", "parent": community.name, "user": "already-in@example.com"},
+		)
+		self.assertEqual(rows, 1)
 
 	def test_accept_expired_invitation_is_rejected(self):
 		invitation = self.make_invitation("too-late@example.com")

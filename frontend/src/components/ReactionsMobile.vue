@@ -39,7 +39,7 @@
             as="button"
             v-for="emoji in standardEmojis"
             :key="emoji"
-            class="px-1 py-2 rounded"
+            class="px-1 py-2 rounded-4"
             :class="[
               hasUserReacted(emoji)
                 ? 'bg-surface-amber-2'
