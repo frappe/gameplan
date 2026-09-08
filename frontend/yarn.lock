@@ -1417,7 +1417,7 @@
   resolved "https://registry.yarnpkg.com/@vue/shared/-/shared-3.5.35.tgz#192eb3d720c40715db79313454c4937432a4e86d"
   integrity sha512-zSbjL7gRXwks2ZQLRGCajBtBXEOXW9Ddhn/HvSdrGkE2dqGnumzW8XtusRrxrE9LvqtiqDXQ+A60Hp6mvdYxfA==
 
-"@vueuse/core@^10.1.2", "@vueuse/core@^10.4.1":
+"@vueuse/core@^10.1.2":
   version "10.11.1"
   resolved "https://registry.yarnpkg.com/@vueuse/core/-/core-10.11.1.tgz#15d2c0b6448d2212235b23a7ba29c27173e0c2c6"
   integrity sha512-guoy26JQktXPcz+0n3GukWIy/JDNKti9v6VEMu6kV2sYBsWuGiTU8OWdg+ADfUbHg3/3DlqySDe7JmdHrktiww==
@@ -2476,10 +2476,10 @@ framer-motion@^12.25.0:
     motion-utils "^12.39.0"
     tslib "^2.4.0"
 
-frappe-ui@1.0.0-beta.51:
-  version "1.0.0-beta.51"
-  resolved "https://registry.yarnpkg.com/frappe-ui/-/frappe-ui-1.0.0-beta.51.tgz#27a101e64b833f8483f5cfe37ac4399f422417a2"
-  integrity sha512-DH0/ft6pNiJsGWSZLnfJ/Of14ZxMmqeERKHJywh/BDTZLg2W6JrRp6Q4Ru+N3z/98b5VpJoLjnPBqv+07Inleg==
+frappe-ui@1.0.0-beta.61:
+  version "1.0.0-beta.61"
+  resolved "https://registry.yarnpkg.com/frappe-ui/-/frappe-ui-1.0.0-beta.61.tgz#36199c5afa46dc6a176bac5e76c4aa60e5e1fd0a"
+  integrity sha512-Fb43V5x8uVBMaNcqLXgG4teAJuKm2dWloZx1xzLsH8+WE4ZhrS/VrDUvhQ8Wa1H2iUonvYPZCSES+7QMiQeFRw==
   dependencies:
     "@codemirror/lang-css" "^6.3.0"
     "@codemirror/lang-html" "^6.4.9"
@@ -2492,7 +2492,6 @@ frappe-ui@1.0.0-beta.51:
     "@codemirror/lang-xml" "^6.1.0"
     "@codemirror/lang-yaml" "^6.1.3"
     "@floating-ui/dom" "^1.7.4"
-    "@headlessui/vue" "^1.7.14"
     "@tailwindcss/forms" "^0.5.3"
     "@tailwindcss/line-clamp" "^0.4.4"
     "@tailwindcss/typography" "^0.5.16"
@@ -2532,7 +2531,7 @@ frappe-ui@1.0.0-beta.51:
     "@tiptap/starter-kit" "^3.26.0"
     "@tiptap/suggestion" "^3.26.0"
     "@tiptap/vue-3" "^3.26.0"
-    "@vueuse/core" "^10.4.1"
+    "@vueuse/core" "^14.1.0"
     codemirror "^6.0.1"
     dayjs "^1.11.13"
     dompurify "^3.4.0"
@@ -2542,7 +2541,7 @@ frappe-ui@1.0.0-beta.51:
     highlight.js "^11.11.1"
     idb-keyval "^6.2.0"
     lowlight "^3.3.0"
-    lucide-static "^1.16.0"
+    lucide-static "^1.31.0"
     magic-string "^0.30.21"
     marked "^15.0.12"
     ora "5.4.1"
@@ -3259,10 +3258,10 @@ lru-cache@^5.1.1:
   dependencies:
     yallist "^3.0.2"
 
-lucide-static@^1.16.0:
-  version "1.17.0"
-  resolved "https://registry.yarnpkg.com/lucide-static/-/lucide-static-1.17.0.tgz#2b2367d2ab5ba3e70edb48627efa8e7f586330cd"
-  integrity sha512-VORJmPqi4DZ5lf4/n2qqcIz1nTKGFReS83DJINcK5nXY7z+4P3G6CW/7SXpzlGllEI0vHKFH24eSM+aMFaK5zw==
+lucide-static@^1.31.0:
+  version "1.43.0"
+  resolved "https://registry.yarnpkg.com/lucide-static/-/lucide-static-1.43.0.tgz#efc55edcd4f055121aa0a9e38b683041d66b156d"
+  integrity sha512-w7vdVFqh4vv7RxWHN4sSeylA0s3GHV5vpyGqZI0q22MINKJyhMNWSMd90RyTUYWBRNYqdZVZzrMmijVxU3Cl9A==
 
 magic-string@^0.30.17, magic-string@^0.30.21:
   version "0.30.21"
