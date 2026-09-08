@@ -1,0 +1,36 @@
+{
+  "name": "Gameplan",
+  "user": "ubuntu",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+  "install": "bash .cursor/install.sh",
+  "start": "bash .cursor/start.sh",
+  "terminals": [
+    {
+      "name": "bench",
+      "command": "cd ~/frappe-bench && bench start",
+      "description": "Frappe backend, Socket.IO, workers, and asset builder"
+    },
+    {
+      "name": "vite",
+      "command": "cd ~/frappe-bench/apps/gameplan/frontend && yarn dev",
+      "description": "Vite dev server for the Gameplan SPA at /g"
+    }
+  ],
+  "ports": [
+    {
+      "name": "Frappe Backend",
+      "port": 8000
+    },
+    {
+      "name": "Vite Dev Server",
+      "port": 8080
+    },
+    {
+      "name": "Socket.IO",
+      "port": 9000
+    }
+  ]
+}
