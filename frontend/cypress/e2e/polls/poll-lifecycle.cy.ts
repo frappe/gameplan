@@ -307,12 +307,15 @@ function pollAnswerRow(label: string) {
  * Assert an option's share exactly. A substring match would not do: `contains('0%')`
  * also matches "100%", so the assertion that a retracted option drops to 0% could not
  * fail for the bug it exists to catch.
+ *
+ * The check goes in `should` so it re-runs. A vote lands in the aria state before the
+ * shares are redrawn, so a share read once, straight after the radio has flipped, is
+ * still the share the option had under the previous answer.
  */
 function assertShare(label: string, share: string) {
   pollAnswerRow(label)
     .contains('span', /^\s*\d+%\s*$/)
-    .invoke('text')
-    .then((text) => expect(text.trim()).to.equal(share))
+    .should(($share) => expect($share.text().trim()).to.equal(share))
 }
 
 function deliverSocketEvent(event: string, payload: unknown) {

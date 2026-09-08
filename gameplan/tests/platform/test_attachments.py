@@ -545,6 +545,48 @@ class TestBentoCardImageAttachments(FrappeTestCase):
 
 		self.assertIsNone(self._attached_to(file.name).attached_to_doctype)
 
+	def test_a_foreign_card_image_is_dropped_from_the_saved_row(self):
+		"""Leaving the URL in the row is not enough, even unattached.
+
+		frappe's own `attach_files_to_document` walks child-table Attach fields and
+		claims any orphan File matching the URL, with no owner check (caused by
+		frappe/frappe#42163, tracked in frappe/frappe#42535). It runs on the same
+		`on_update`, after ours, so the value itself has to go or the framework
+		attaches it regardless.
+		"""
+		file = self._make_private_file("dropped", owner=self.member_b)
+
+		self._set_card_image(file.file_url)
+
+		self.assertIsNone(frappe.db.get_value("GP Profile Bento Card", {"parent": self.profile}, "image"))
+		self.assertIsNone(self._attached_to(file.name).attached_to_doctype)
+
+	def test_the_profile_owner_keeps_their_own_card_image(self):
+		"""The drop is targeted: it must not touch a file the profile may use."""
+		file = self._make_private_file("kept", owner=self.member_a)
+
+		self._set_card_image(file.file_url)
+
+		self.assertEqual(
+			frappe.db.get_value("GP Profile Bento Card", {"parent": self.profile}, "image"),
+			file.file_url,
+		)
+
+	def test_saving_the_layout_reports_a_foreign_image_instead_of_dropping_it(self):
+		"""The path a person actually uses answers with an error, so a stolen URL does
+		not come back as a card whose image silently vanished."""
+		from gameplan.gameplan.doctype.gp_user_profile.gp_user_profile import save_my_bento_cards
+
+		file = self._make_private_file("reported", owner=self.member_b)
+		cards = [{"id": "image-card", "type": "Card", "size": "2x1", "image": file.file_url}]
+
+		frappe.set_user(self.member_a)
+		try:
+			with self.assertRaises(frappe.PermissionError):
+				save_my_bento_cards(cards)
+		finally:
+			frappe.set_user("Administrator")
+
 
 def _ensure_member(email):
 	if not frappe.db.exists("User", email):

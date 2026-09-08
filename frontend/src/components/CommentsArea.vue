@@ -203,7 +203,7 @@
               ref="newCommentEditor"
               v-if="newCommentType == 'Comment'"
               :key="commentEditorKey"
-              :value="draftData.content"
+              :value="draftData?.content"
               @change="onNewCommentChange"
               :submitButtonProps="{
                 variant: 'solid',
@@ -518,7 +518,7 @@ const timelineItems = computed(() => {
 })
 
 const commentEmpty = computed(() => {
-  return !draftData.value.content || draftData.value.content === '<p></p>'
+  return !draftData.value?.content || draftData.value.content === '<p></p>'
 })
 
 const editorObject = computed<Editor | null>(() => {
@@ -531,7 +531,7 @@ const minimizedLabel = computed(() => {
 })
 
 const draftContentPreview = computed(() => {
-  const text = firstTextBlock(draftData.value.content ?? '')
+  const text = firstTextBlock(draftData.value?.content ?? '')
   return text ? `${text}...` : ''
 })
 
@@ -672,7 +672,7 @@ async function submitComment() {
   const comment = await comments.insert.submit({
     reference_doctype: props.doctype,
     reference_name: props.name,
-    content: draftData.value.content,
+    content: draftData.value?.content,
   })
   if (comments.insert.error || !comment?.name) return
 
@@ -773,6 +773,9 @@ function setItemRef($component: any, item: any) {
 }
 
 function onNewCommentChange(content: string) {
+  // The editor emits on mount, before the draft has resolved. There is no buffer to write
+  // into yet, and the composer is not editable, so the change is not the user's.
+  if (!draftData.value) return
   draftData.value.content = content
 }
 
@@ -839,9 +842,9 @@ watch(
 
 // Reopen the composer if a saved draft is restored for this discussion.
 watch(
-  () => draft.ready.value,
-  (ready) => {
-    if (ready && draft.restored.value) showCommentBox.value = true
+  draftData,
+  (payload) => {
+    if (payload && draft.restored.value) showCommentBox.value = true
   },
   { immediate: true },
 )
@@ -849,9 +852,9 @@ watch(
 // Opened from the Drafts list (?draft=comment): surface the restored reply by expanding
 // and focusing the composer, then drop the flag so later edits don't re-trigger it.
 watch(
-  () => draft.ready.value,
-  (ready) => {
-    if (!ready || route.query.draft !== 'comment') return
+  draftData,
+  (payload) => {
+    if (!payload || route.query.draft !== 'comment') return
     showCommentBox.value = true
     composerMinimized.value = false
     nextTick(() => {

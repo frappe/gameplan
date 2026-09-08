@@ -2,7 +2,7 @@
   <Combobox
     trigger="button"
     :options="spaceOptions"
-    v-model="draftData.project"
+    v-model="selectedSpace"
     placeholder="Select Space"
     :disabled="!isComposerEditable"
     @change="handleSpaceChange"
@@ -18,7 +18,8 @@ import { Combobox } from 'frappe-ui'
 import SpaceIcon from '@/components/SpaceIcon.vue'
 import { useNewDiscussionContext } from './useNewDiscussion'
 
-const { draftData, spaceOptions, isComposerEditable, handleSpaceChange } = useNewDiscussionContext()
+const { selectedSpace, spaceOptions, isComposerEditable, handleSpaceChange } =
+  useNewDiscussionContext()
 
 function optionIcon(item: unknown) {
   if (!item || typeof item !== 'object' || !('icon' in item)) return null
