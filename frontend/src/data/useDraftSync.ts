@@ -345,10 +345,21 @@ export function useDraftSync(options: UseDraftSyncOptions) {
 
   const debouncedPush = debounce(pushToServer, debounceMs)
 
+  /**
+   * Latches on the first edit the person makes, and never clears.
+   *
+   * Comparing the buffer against the content it started with cannot stand in for this:
+   * typing and then deleting it again leaves a buffer identical to the blank one, which
+   * is indistinguishable from never having typed at all. Only the late-adopt path below
+   * reads it, and only to decline.
+   */
+  const touched = ref(false)
+
   watch(
     () => [data.value?.title, data.value?.content, data.value?.project],
     () => {
       if (!data.value || applying.value || !isEnabled()) return
+      touched.value = true
       updatedAt.value = Date.now()
       if (!canSave(data.value)) return
       void persistLocal()
@@ -440,17 +451,18 @@ export function useDraftSync(options: UseDraftSyncOptions) {
       }
       // Past the deadline with the lookup still outstanding. Open blank and editable rather
       // than leave the composer inert, and take the result later if it lands on a buffer
-      // nobody has typed into. Identity plus a content snapshot, because the editor writes
-      // through `data.value.content` in place: the object alone would not show the edit.
+      // nobody has touched. The blank goes in quietly so opening the composer does not
+      // itself count as an edit; from here `touched` belongs to the person typing.
       captureError(new Error('Draft lookup timed out'), {
         action: 'draft-load',
         draft: serverName.value,
       })
       const blank = blankStart()
-      const untouched = JSON.stringify(blank.payload)
-      await adopt(blank)
+      await adopt(blank, { quietly: true })
       void pending.then((late) => {
-        if (data.value !== blank.payload || JSON.stringify(data.value) !== untouched) return
+        // Identity as well as `touched`, because a buffer swapped out wholesale — by a
+        // sibling tab, or by a finished draft — is not this one to overwrite either.
+        if (touched.value || data.value !== blank.payload) return
         return adopt(late, { quietly: true })
       })
     })()
