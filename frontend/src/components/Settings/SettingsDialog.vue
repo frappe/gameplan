@@ -1,6 +1,6 @@
 <template>
   <SettingsDialog
-    v-model="show"
+    v-model:open="show"
     v-model:tab="activeTabValue"
     size="5xl"
     :shortcut="false"
