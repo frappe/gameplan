@@ -129,9 +129,20 @@ export async function clearOfflineCaches(): Promise<boolean> {
  * unsupported, timed out, or an explicit `{ ok: false }`. Cache Storage is available
  * from the page itself, not just inside the worker, so this fallback doesn't need the
  * worker's cooperation at all.
+ *
+ * Follow-up review finding: `requestWorkerClear` can *reject*, not just resolve false -
+ * `postMessage` throws synchronously (auto-rejecting the wrapping Promise) if the worker
+ * became redundant between the registration lookup and the send, and the lookup itself
+ * can reject too. Left uncaught, that used to skip the direct fallback below entirely
+ * and propagate out of `clearOfflineCaches` - breaking session.ts's logout redirect
+ * (no try/catch there) rather than just failing to clear a cache.
  */
 async function clearServiceWorkerCaches(): Promise<boolean> {
-  if (await requestWorkerClear()) return true
+  const confirmed = await requestWorkerClear().catch((error) => {
+    console.error('Failed to reach the service worker to clear caches', error)
+    return false
+  })
+  if (confirmed) return true
   return clearCachesDirectly()
 }
 
