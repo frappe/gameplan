@@ -10,6 +10,16 @@ const CLEAR_USER_CACHES_MESSAGE = 'CLEAR_USER_CACHES'
 const WARM_SHELL_CACHE_MESSAGE = 'WARM_SHELL_CACHE'
 const SKIP_WAITING_MESSAGE = 'SKIP_WAITING'
 const LAST_SEEN_USER_STORAGE_KEY = 'gameplan:last-seen-user'
+// Must match gameplan-sw.js's own CACHE_PREFIX - not shared via import, since that file
+// runs in a separate worker global scope with its own script (same reason the message
+// type strings above are duplicated instead of imported). Matched by prefix rather than
+// the exact SHELL_CACHE/RUNTIME_CACHE names (which also embed CACHE_VERSION) so the
+// Cache Storage fallback below doesn't need updating every time that version bumps.
+const CACHE_PREFIX = 'gameplan-readonly-offline'
+// ASSET_CACHE (gameplan-sw.js) is content-addressed /assets build output, identical for
+// every user - the one bucket clearUserCaches() there deliberately leaves alone. The
+// fallback below must leave it alone too.
+const ASSET_CACHE_SUFFIX = ':assets'
 
 export function setupOfflineSupport() {
   // Runs even in dev / non-secure contexts (unlike SW registration below): this is what
@@ -93,30 +103,74 @@ export function isNetworkError(error: unknown) {
  * `record.user` so leaving another account's draft rows on disk isn't a leak. Drafts are
  * only wiped when a genuine user switch is detected - see guardAgainstUserSwitch below,
  * which calls clearDraftStore itself alongside this function.
+ *
+ * Resolves to whether every store actually confirmed it was cleared - see
+ * guardAgainstUserSwitch, which only records the switch as handled when this is true.
  */
-export async function clearOfflineCaches(): Promise<void> {
-  await Promise.all([
+export async function clearOfflineCaches(): Promise<boolean> {
+  const [cachesCleared, idbCleared] = await Promise.all([
     clearServiceWorkerCaches(),
-    clearIdbKeyval().catch((error) => console.error('Failed to clear IndexedDB cache', error)),
+    clearIdbKeyval()
+      .then(() => true)
+      .catch((error) => {
+        console.error('Failed to clear IndexedDB cache', error)
+        return false
+      }),
   ])
+  return cachesCleared && idbCleared
 }
 
-async function clearServiceWorkerCaches(): Promise<void> {
-  if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return
+/**
+ * Review finding (PR #571): this used to resolve on ANY message from the worker,
+ * discarding the `{ ok: true | false }` payload gameplan-sw.js's CLEAR_USER_CACHES
+ * handler actually sends - a reported failure (or the 2s timeout below) was silently
+ * treated the same as success. Now resolves to the worker's real answer, and falls back
+ * to deleting the same caches directly when it doesn't confirm one - not registered yet,
+ * unsupported, timed out, or an explicit `{ ok: false }`. Cache Storage is available
+ * from the page itself, not just inside the worker, so this fallback doesn't need the
+ * worker's cooperation at all.
+ */
+async function clearServiceWorkerCaches(): Promise<boolean> {
+  if (await requestWorkerClear()) return true
+  return clearCachesDirectly()
+}
 
-  const activeWorker = await getActiveWorker()
-  if (!activeWorker) return
+function requestWorkerClear(): Promise<boolean> {
+  if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) {
+    return Promise.resolve(false)
+  }
 
-  await new Promise<void>((resolve) => {
-    const channel = new MessageChannel()
-    // Don't let logout hang forever if a stuck/buggy worker never responds.
-    const timeoutId = window.setTimeout(resolve, 2000)
-    channel.port1.onmessage = () => {
-      window.clearTimeout(timeoutId)
-      resolve()
-    }
-    activeWorker.postMessage({ type: CLEAR_USER_CACHES_MESSAGE }, [channel.port2])
+  return getActiveWorker().then((activeWorker) => {
+    if (!activeWorker) return false
+
+    return new Promise<boolean>((resolve) => {
+      const channel = new MessageChannel()
+      // Don't let logout hang forever if a stuck/buggy worker never responds - the
+      // Cache Storage fallback in clearServiceWorkerCaches covers this either way.
+      const timeoutId = window.setTimeout(() => resolve(false), 2000)
+      channel.port1.onmessage = (event) => {
+        window.clearTimeout(timeoutId)
+        resolve(event.data?.ok === true)
+      }
+      activeWorker.postMessage({ type: CLEAR_USER_CACHES_MESSAGE }, [channel.port2])
+    })
   })
+}
+
+async function clearCachesDirectly(): Promise<boolean> {
+  if (typeof caches === 'undefined') return true // Nothing this context could have cached.
+
+  try {
+    const names = await caches.keys()
+    const userCacheNames = names.filter(
+      (name) => name.startsWith(`${CACHE_PREFIX}:`) && !name.endsWith(ASSET_CACHE_SUFFIX),
+    )
+    const results = await Promise.all(userCacheNames.map((name) => caches.delete(name)))
+    return results.every(Boolean)
+  } catch (error) {
+    console.error('Failed to clear caches directly', error)
+    return false
+  }
 }
 
 const REGISTRATION_WAIT_TIMEOUT_MS = 3000
@@ -179,8 +233,15 @@ async function rewarmShellCache(): Promise<void> {
  * hard-navigates the instant it sees `true` back from here, which could tear the page
  * down mid-clear - and the marker below was written unconditionally, so a switch that
  * got cut off still looked "handled" on the next boot. This is now async: callers that
- * are about to navigate away (session.ts) must `await` it, and the marker is only
- * written once the clear this call kicked off (if any) has itself settled.
+ * are about to navigate away (session.ts) must `await` it.
+ *
+ * Review finding (PR #571): the marker used to be written once the clear settled
+ * "successfully or not," which papered over `clearServiceWorkerCaches` silently
+ * discarding the worker's own failure signal - the marker was written even when the
+ * clear had genuinely failed, so a later boot never retried it. The marker is now
+ * written only once `clearOfflineCaches` confirms every store actually cleared; on
+ * failure this returns without touching it, so the same mismatch is seen (and the
+ * clear retried) the next time this runs.
  */
 export async function guardAgainstUserSwitch(user: string | null): Promise<boolean> {
   if (typeof localStorage === 'undefined') return false
@@ -188,20 +249,24 @@ export async function guardAgainstUserSwitch(user: string | null): Promise<boole
   const lastSeenUser = localStorage.getItem(LAST_SEEN_USER_STORAGE_KEY)
   const switched = Boolean(lastSeenUser && user && lastSeenUser !== user)
   if (switched) {
+    let cleared = false
     try {
       // Unlike a plain logout (clearOfflineCaches alone), a detected switch to a
       // *different* user also wipes gameplan-drafts - the same-user recovery case that
       // policy exists for doesn't apply here.
-      await Promise.all([clearOfflineCaches(), clearDraftStore()])
-      await rewarmShellCache()
+      const [offlineCachesCleared] = await Promise.all([clearOfflineCaches(), clearDraftStore()])
+      cleared = offlineCachesCleared
     } catch (error) {
       console.error('Failed to clear offline caches', error)
     }
+
+    if (!cleared) {
+      return switched
+    }
+
+    await rewarmShellCache()
   }
 
-  // Written only after the clear above (if any) has settled, successfully or not - see
-  // the round-4 note above. A caller that navigates away on `true` only does so once
-  // this has actually finished.
   if (user) {
     localStorage.setItem(LAST_SEEN_USER_STORAGE_KEY, user)
   } else {
