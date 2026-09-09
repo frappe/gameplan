@@ -1,7 +1,7 @@
 <template>
   <!-- The logo is the app menu's trigger. It carries no tooltip and its own
        open/hover treatment (surface-base fill / opacity dim), so it stays a
-       bespoke button rather than a RailItem. -->
+       bespoke button rather than a SidebarRailItem. -->
   <Dropdown :options="dropdownItems" side="bottom" align="start">
     <template #default="{ open }">
       <button
