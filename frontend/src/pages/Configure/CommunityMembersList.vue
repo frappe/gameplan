@@ -23,8 +23,10 @@
 
   <List
     v-if="filteredMembers.length"
-    :columns="['1.25rem', 'minmax(12rem,1fr)', 'minmax(12rem,1fr)', '8rem', '1.5rem']"
-    class="max-md:list-cols-[1.25rem_minmax(0,1fr)]"
+    :columns="{
+      base: ['1.25rem', 'minmax(0,1fr)'],
+      md: ['1.25rem', 'minmax(12rem,1fr)', 'minmax(12rem,1fr)', '8rem', '1.5rem'],
+    }"
   >
     <!-- Sticky at the settings scroll-viewport top — it rests exactly where it
          pins, so it never visibly moves. -->
