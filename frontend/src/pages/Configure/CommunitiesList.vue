@@ -29,8 +29,11 @@
 
   <List
     v-else-if="filteredCommunities.length"
-    :columns="['minmax(12rem,6fr)', 'minmax(6rem,1.2fr)', 'minmax(6rem,1.2fr)', '5.75rem']"
-    class="list-gap-12 max-md:list-cols-[minmax(0,1fr)]"
+    :columns="{
+      base: ['minmax(0,1fr)'],
+      md: ['minmax(12rem,6fr)', 'minmax(6rem,1.2fr)', 'minmax(6rem,1.2fr)', '5.75rem'],
+    }"
+    class="list-gap-12"
   >
     <!-- Sticky at the settings scroll-viewport top — it rests exactly where it
          pins, so it never visibly moves. px-1.5 aligns the labels with the

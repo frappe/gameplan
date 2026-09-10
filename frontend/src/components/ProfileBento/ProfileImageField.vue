@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-1.5">
-    <FormLabel :label="label" size="md" />
+    <FormLabel :label="label" />
     <div class="flex flex-wrap items-center gap-2">
       <ImageUploader :kind="kind" @success="(file) => emit('upload', file.file_url)">
         <template #default="{ progress, error, uploading, openFileSelector }">

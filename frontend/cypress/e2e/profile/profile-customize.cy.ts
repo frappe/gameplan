@@ -758,16 +758,15 @@ function dragCardOnto(
     firePointer(win, win, 'pointermove', begin.x, begin.y)
     cy.get('[data-profile-drag-ghost="true"]').should('exist')
     cy.then(() => {
-      // Read once the card is up, not before. Picking it up takes a frame, and a
-      // rect measured on the other side of one is the only rect the drop can
-      // trust. The dragged card keeps its slot while it floats, so nothing here
-      // has moved on account of the pickup itself.
-      let target = cardIn(win, targetId).getBoundingClientRect()
+      // Read once the card is up, not before: picking it up takes a frame. The
+      // dragged card keeps its slot while it floats, so nothing here has moved
+      // on account of the pickup itself.
+      let target = declaredViewportRect(win, targetId)
       // `middle` stops just short of it, so a reading that splits the target in
       // two is decided rather than sitting on the boundary.
       let landing = {
         middle: { x: target.left + target.width / 2 - 4, y: target.top + target.height / 2 - 4 },
-        seam: { x: target.right + 6, y: target.top + target.height / 2 },
+        seam: { x: target.left + target.width + 6, y: target.top + target.height / 2 },
         'top-left': { x: target.left + target.width / 4, y: target.top + target.height / 8 },
       }[land]
       // The pointer, worked back from where the dragged card has to end up.
@@ -884,7 +883,40 @@ function declaredRect(element: HTMLElement) {
   let [left = 0, top = 0] = (element.style.transform.match(/-?[\d.]+px/g) || []).map((value) =>
     Number.parseFloat(value),
   )
-  return { left, top, width: Number.parseFloat(element.style.width) }
+  return {
+    left,
+    top,
+    width: Number.parseFloat(element.style.width),
+    height: Number.parseFloat(element.style.height),
+  }
+}
+
+/**
+ * A card's packed slot, in viewport coordinates.
+ *
+ * The grid decides a drop by counting the packer's slots, not by hit testing
+ * the DOM (`insertionIndex` in `useProfileBentoDrag.ts`). So a drop point aimed
+ * with `getBoundingClientRect` is measured in the wrong space: for the 200ms a
+ * tile spends sliding, its real rect is wherever it has got to and the packer's
+ * is where it is going. Aiming at the real one puts the pointer somewhere the
+ * grid never agreed was that card. The seam between two cards is a few pixels
+ * wide, so it misses first.
+ *
+ * The grid is the wrapper's offset parent, so its rect is what turns a slot
+ * back into viewport coordinates. That is the same sum `insertionIndex` undoes.
+ */
+function declaredViewportRect(win: Window, cardId: string) {
+  let wrapper = win.document.querySelector(
+    `[data-profile-card-wrapper="true"][data-profile-card-id="${cardId}"]`,
+  ) as HTMLElement
+  let grid = wrapper.parentElement.getBoundingClientRect()
+  let declared = declaredRect(wrapper)
+  return {
+    left: grid.left + declared.left,
+    top: grid.top + declared.top,
+    width: declared.width,
+    height: declared.height,
+  }
 }
 
 /** A pointer event built in the app's own realm, so its handlers accept it. */

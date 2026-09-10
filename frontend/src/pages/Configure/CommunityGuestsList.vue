@@ -8,8 +8,10 @@
     </div>
 
     <List
-      :columns="['1.25rem', 'minmax(12rem,1fr)', 'minmax(12rem,1fr)', '8rem', '3rem']"
-      class="max-md:list-cols-[1.25rem_minmax(0,1fr)_2rem]"
+      :columns="{
+        base: ['1.25rem', 'minmax(0,1fr)', '2rem'],
+        md: ['1.25rem', 'minmax(12rem,1fr)', 'minmax(12rem,1fr)', '8rem', '3rem'],
+      }"
     >
       <ListHeader class="max-md:hidden">
         <ListHeaderCell class="col-span-2">Guest</ListHeaderCell>

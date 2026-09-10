@@ -1,6 +1,6 @@
 <template>
-  <Rail :class="showBorder ? 'border-r' : ''">
-    <!-- Cancel Rail's own top padding and stand exactly one PageHeader tall (min-h-12),
+  <SidebarRail :class="showBorder ? 'border-r' : ''">
+    <!-- Cancel SidebarRail's own top padding and stand exactly one PageHeader tall (min-h-12),
          so the divider below the logo continues the header's bottom border across the
          rail instead of sitting a couple of pixels under it. -->
     <div class="-mt-2.5 flex h-12 shrink-0 items-center justify-center">
@@ -10,7 +10,7 @@
     <!-- App-wide destinations sit directly under the logo, so their position never
          shifts with how many communities you belong to. -->
     <div class="flex w-full shrink-0 flex-col items-center gap-0.5 border-t pt-3">
-      <RailItem
+      <SidebarRailItem
         v-for="item in shortcuts"
         :key="item.label"
         :label="item.label"
@@ -46,7 +46,7 @@
           class="h-full w-[50px] overflow-y-auto overflow-x-hidden pb-3 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           <div class="flex w-[50px] flex-col items-center gap-3">
-            <RailItem
+            <SidebarRailItem
               v-for="community in activeCommunities"
               :key="community.name"
               :label="community.title"
@@ -56,7 +56,7 @@
               @click="goToCommunity(community)"
             >
               <CommunityImage :community="community" class="size-7 transition" />
-            </RailItem>
+            </SidebarRailItem>
           </div>
         </div>
       </div>
@@ -78,7 +78,7 @@
         </button>
       </template>
     </UserDropdown>
-  </Rail>
+  </SidebarRail>
 
   <CustomizeSidebarDialog v-model="showCustomizeSidebarDialog" />
 </template>
@@ -87,7 +87,7 @@
 import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useEventListener, useResizeObserver } from '@vueuse/core'
-import { Rail, RailItem } from 'frappe-ui'
+import { SidebarRail, SidebarRailItem } from 'frappe-ui'
 import type { RouteLocationRaw } from 'vue-router'
 import { communityState } from '@/data/communityState'
 import { activeCommunities } from '@/data/communities'
