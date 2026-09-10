@@ -72,6 +72,7 @@ def get_user_info(user=None):
 			"is_image_background_removed",
 			"bio",
 			"community_order",
+			"pinned_spaces",
 			"quick_reaction_emojis",
 			"sidebar_badge_style",
 			"email_digest_frequency",
@@ -96,6 +97,7 @@ def get_user_info(user=None):
 			user.bio = user_profile.bio
 			if frappe.session.user == user.name:
 				user.community_order = user_profile.community_order
+				user.pinned_spaces = user_profile.pinned_spaces
 				user.quick_reaction_emojis = user_profile.quick_reaction_emojis
 				user.sidebar_badge_style = user_profile.sidebar_badge_style
 				user.email_digest_frequency = user_profile.email_digest_frequency

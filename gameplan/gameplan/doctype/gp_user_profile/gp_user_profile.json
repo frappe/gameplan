@@ -10,6 +10,7 @@
   "enabled",
   "full_name",
   "community_order",
+  "pinned_spaces",
   "quick_reaction_emojis",
   "sidebar_badge_style",
   "email_digest_frequency",
@@ -128,6 +129,11 @@
    "label": "Community Order"
   },
   {
+   "fieldname": "pinned_spaces",
+   "fieldtype": "JSON",
+   "label": "Pinned Spaces"
+  },
+  {
    "fieldname": "quick_reaction_emojis",
    "fieldtype": "JSON",
    "label": "Quick Reaction Emojis"
@@ -162,7 +168,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-08-02 10:00:00.000000",
+ "modified": "2026-09-10 10:00:00.000000",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "GP User Profile",

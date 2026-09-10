@@ -15,6 +15,11 @@
             <SpaceIcon :icon="space?.icon" class="size-5 text-ink-gray-6" />
           </template>
         </PageHeaderMobileTitle>
+        <span
+          v-if="isSpacePinned(spaceId)"
+          class="size-3.5 shrink-0 text-ink-gray-5 lucide-pin"
+          aria-hidden="true"
+        />
         <span class="size-4 shrink-0 text-ink-gray-5 lucide-chevron-down" aria-hidden="true" />
       </button>
       <template #prefix>
@@ -78,6 +83,7 @@ import CommunityMenu from '@/components/CommunityMenu.vue'
 import EmptyStateBox from '@/components/EmptyStateBox.vue'
 import SpaceBreadcrumbs from '@/components/SpaceBreadcrumbs.vue'
 import SpaceIcon from '@/components/SpaceIcon.vue'
+import { isSpacePinned } from '@/data/pinnedSpaces'
 import { useCommunity } from '@/data/communities'
 import { useOwnedRouteWrites } from '@/composables/useOwnedRouteWrites'
 

@@ -91,6 +91,7 @@ import SpaceTabs from '@/components/SpaceTabs.vue'
 import DropdownMoreOptions from '@/components/DropdownMoreOptions.vue'
 import SpaceAccessDialog from '@/components/SpaceAccessDialog.vue'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
+import { isSpacePinned, toggleSpacePinned } from '@/data/pinnedSpaces'
 import { useCommunity } from '@/data/communities'
 import { useSessionUser } from '@/data/users'
 import { canManageCommunity } from '@/utils/permissions'
@@ -150,6 +151,11 @@ const community = useCommunity(() => currentSpace.value?.team)
 const canManageCurrentCommunity = computed(() => canManageCommunity(community.value, sessionUser))
 
 const spaceActions = computed(() => [
+  {
+    label: isSpacePinned(props.spaceId) ? 'Unpin space' : 'Pin space',
+    icon: isSpacePinned(props.spaceId) ? 'lucide-pin-off' : 'lucide-pin',
+    onClick: () => toggleSpacePinned(props.spaceId),
+  },
   {
     label: 'Settings',
     icon: 'lucide-settings',

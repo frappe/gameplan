@@ -1,6 +1,7 @@
 import { computed, reactive } from 'vue'
 import { useCall } from 'frappe-ui'
 import { communityState } from './communityState'
+import { isSpacePinned } from './pinnedSpaces'
 import { joinedSpaces, spaces } from './spaces'
 import {
   currentHideInactiveSpaces,
@@ -32,7 +33,9 @@ const communitySpaceList = computed(() => {
   let visibleSpaces = availableCommunitySpaceList.value
 
   if (currentHideInactiveSpaces.value && !spaceActivity.loading) {
-    visibleSpaces = visibleSpaces.filter(hasRecentActivity)
+    visibleSpaces = visibleSpaces.filter(
+      (space) => isSpacePinned(space.name) || hasRecentActivity(space),
+    )
   }
 
   return sortSpaces(visibleSpaces, currentSpaceSidebarSort.value)
@@ -66,7 +69,9 @@ const hasHiddenInactiveSpaces = computed(() => {
   return (
     currentHideInactiveSpaces.value &&
     !spaceActivity.loading &&
-    availableCommunitySpaceList.value.some(isInactiveSpace)
+    availableCommunitySpaceList.value.some(
+      (space) => !isSpacePinned(space.name) && isInactiveSpace(space),
+    )
   )
 })
 
@@ -93,6 +98,11 @@ export const communitySpaces = reactive({
 
 function sortSpaces(spaceList: Space[], sort: SpaceSidebarSort) {
   return [...spaceList].sort((left, right) => {
+    let pinDelta = Number(isSpacePinned(right.name)) - Number(isSpacePinned(left.name))
+    if (pinDelta !== 0) {
+      return pinDelta
+    }
+
     if (sort === 'Recent activity') {
       let leftActivity = getActivityTime(left.name)
       let rightActivity = getActivityTime(right.name)
