@@ -23,4 +23,12 @@ describe('Settings entry points', () => {
     cy.location('pathname').should('equal', '/g/settings/profile')
     cy.contains('[role="dialog"]', 'User settings').should('be.visible')
   })
+
+  it('shows the installed apps in the app switcher', () => {
+    cy.document().its('documentElement').invoke('setAttribute', 'data-theme', 'dark')
+    cy.iconButton('Gameplan menu').click()
+    cy.contains('[role="menuitem"]', 'Apps').click()
+
+    cy.contains('[role="menu"] a[href="/app"]', 'Desk').should('be.visible')
+  })
 })
