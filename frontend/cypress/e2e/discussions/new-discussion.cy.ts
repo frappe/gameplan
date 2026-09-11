@@ -196,19 +196,19 @@ describe('New discussion drafts', () => {
       .click()
       .type(`${paragraphs}Last line`)
 
-    cy.get('[data-slot="desktop-shell"] [data-slot="scroll-area-viewport"]').then(($viewports) => {
-      const shell = $viewports
-        .toArray()
-        .sort((a, b) => b.scrollHeight - b.clientHeight - (a.scrollHeight - a.clientHeight))[0]
-      cy.get('[aria-label="Discussion content"] p')
-        .last()
-        .then(($lastLine) => {
-          const clearance =
-            shell.getBoundingClientRect().bottom - $lastLine[0].getBoundingClientRect().bottom
+    cy.get('[data-slot="desktop-shell-content"] > * > [data-reka-scroll-area-viewport]').then(
+      ($shell) => {
+        const shell = $shell[0]
+        cy.get('[aria-label="Discussion content"] p')
+          .last()
+          .then(($lastLine) => {
+            const clearance =
+              shell.getBoundingClientRect().bottom - $lastLine[0].getBoundingClientRect().bottom
 
-          expect(shell.scrollTop, 'shell scrolled while typing').to.be.greaterThan(0)
-          expect(clearance, 'space below caret').to.be.at.least(140)
-        })
-    })
+            expect(shell.scrollTop, 'shell scrolled while typing').to.be.greaterThan(0)
+            expect(clearance, 'space below caret').to.be.at.least(140)
+          })
+      },
+    )
   })
 })

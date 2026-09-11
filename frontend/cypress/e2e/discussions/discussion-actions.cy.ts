@@ -114,13 +114,9 @@ describe('Discussion actions', () => {
 
     cy.button('Add a comment').click()
     cy.get('[aria-label="Resize comment box"]').should('be.visible')
-    cy.get('[data-slot="desktop-shell"] [data-slot="scroll-area-viewport"]').then(($viewports) => {
-      const shell = $viewports
-        .toArray()
-        .sort((a, b) => b.scrollHeight - b.clientHeight - (a.scrollHeight - a.clientHeight))[0]
-      expect(shell.scrollHeight - shell.clientHeight, 'scrollable shell range').to.be.greaterThan(0)
-      cy.wrap(shell).scrollTo('bottom')
-    })
+    cy.get('[data-slot="desktop-shell-content"] > * > [data-reka-scroll-area-viewport]').scrollTo(
+      'bottom',
+    )
 
     cy.get('button[aria-label="Scroll to top"]')
       .should('be.visible')
