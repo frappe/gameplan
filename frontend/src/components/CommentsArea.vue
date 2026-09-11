@@ -94,6 +94,8 @@
     >
       <div class="pointer-events-auto" :class="{ 'h-full': isComposerFullscreen }">
         <div
+          ref="composerSurface"
+          data-comment-composer-surface
           class="discussion-container bg-surface-base sm:bg-transparent"
           :class="isComposerFullscreen ? 'h-full py-0' : 'py-3'"
         >
@@ -346,6 +348,10 @@ const props = withDefaults(defineProps<Props>(), {
   hideNewComment: false,
 })
 
+const emit = defineEmits<{
+  'composer-resize': []
+}>()
+
 const router = useRouter()
 const route = useRoute()
 const socket = useSocket()
@@ -389,6 +395,7 @@ const highlightedItem = ref<{ doctype: string; name: string } | null>(null)
 const addCommentHeight = ref(0)
 const newCommentEditor = useTemplateRef('newCommentEditor')
 const addComment = useTemplateRef('addComment')
+const composerSurface = useTemplateRef('composerSurface')
 let mutationObserver: MutationObserver | undefined
 let resizeObserver: ResizeObserver | undefined
 const commentEditorKey = ref(0)
@@ -568,6 +575,12 @@ const activeComposerEditorMinHeightStyle = computed(() =>
 
 defineExpose({
   editorObject,
+  get composerHeight() {
+    return addCommentHeight.value
+  },
+  get composerElement() {
+    return composerSurface.value
+  },
   openCommentBox,
   scrollToCommentById,
   getCommentContentElement,
@@ -889,7 +902,6 @@ onMounted(() => {
       activities.reload()
     }
   })
-  setupComposerMeasurement()
 })
 
 onUnmounted(() => {
@@ -903,10 +915,24 @@ onUnmounted(() => {
   isNewCommentOpen.value = false
 })
 
-function setupComposerMeasurement() {
-  const $el = addComment.value
-  if (!$el) return
+watch(
+  addComment,
+  ($el) => {
+    mutationObserver?.disconnect()
+    resizeObserver?.disconnect()
 
+    if (!$el) {
+      addCommentHeight.value = 0
+      emit('composer-resize')
+      return
+    }
+
+    setupComposerMeasurement($el)
+  },
+  { immediate: true, flush: 'post' },
+)
+
+function setupComposerMeasurement($el: HTMLElement) {
   updateComposerHeight()
 
   mutationObserver = new MutationObserver(updateComposerHeight)
@@ -918,6 +944,7 @@ function setupComposerMeasurement() {
 
 function updateComposerHeight() {
   addCommentHeight.value = addComment.value?.clientHeight ?? 0
+  emit('composer-resize')
 }
 
 function updateGlobalCommentState() {
