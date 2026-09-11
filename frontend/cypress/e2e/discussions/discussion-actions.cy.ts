@@ -112,6 +112,7 @@ describe('Discussion actions', () => {
 
     cy.button('Add a comment').click()
     cy.get('[aria-label="Resize comment box"]').should('be.visible')
+    cy.get('.comments-timeline').invoke('css', 'min-height', '1200px')
     cy.get('[data-slot="desktop-shell-content"] > * > [data-reka-scroll-area-viewport]').scrollTo(
       'bottom',
     )
