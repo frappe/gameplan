@@ -26,6 +26,34 @@ describe('Discussion actions', () => {
     cy.visit(`/g/community/${community}/space/${space}/discussion/${discussion}/${discussionSlug}`)
   }
 
+  function topmostElement(elements: JQuery<HTMLElement>) {
+    return elements.toArray().find((element) => {
+      const rect = element.getBoundingClientRect()
+      const topmost = element.ownerDocument.elementFromPoint(
+        rect.left + rect.width / 2,
+        rect.top + rect.height / 2,
+      )
+      return topmost === element || element.contains(topmost)
+    })
+  }
+
+  function assertScrollControlAbove(composerControl: string, label: string) {
+    cy.get(composerControl)
+      .parents('.fixed')
+      .then(($composers) => {
+        const composer = topmostElement($composers)
+        expect(composer, 'topmost comment composer').to.exist
+
+        cy.get('button[aria-label="Scroll to top"]').then(($buttons) => {
+          const button = topmostElement($buttons)
+          expect(button, 'topmost scroll control').to.exist
+          expect(button!.getBoundingClientRect().bottom, label).to.be.at.most(
+            composer!.getBoundingClientRect().top,
+          )
+        })
+      })
+  }
+
   it('publishes a new discussion into a space', () => {
     // Publishing flushes the draft and calls the whitelisted `publish_draft` method,
     // which returns the new discussion name as the response `message`.
@@ -78,6 +106,48 @@ describe('Discussion actions', () => {
       .then((comment: { name: string }) => {
         cy.get(`div[data-id="${comment.name}"]`).should('exist')
       })
+  })
+
+  it('keeps the icon-only scroll control above the comment composer', () => {
+    cy.viewport(900, 600)
+    visitSeededDiscussion()
+
+    cy.button('Add a comment').click()
+    cy.get('[aria-label="Resize comment box"]').should('be.visible')
+    cy.get('[data-slot="desktop-shell"] [data-slot="scroll-area-viewport"]').then(($viewports) => {
+      const shell = $viewports
+        .toArray()
+        .sort((a, b) => b.scrollHeight - b.clientHeight - (a.scrollHeight - a.clientHeight))[0]
+      expect(shell.scrollHeight - shell.clientHeight, 'scrollable shell range').to.be.greaterThan(0)
+      cy.wrap(shell).scrollTo('bottom')
+    })
+
+    cy.get('button[aria-label="Scroll to top"]')
+      .should('be.visible')
+      .and(($button) => {
+        $button.each((_, element) => {
+          expect(element.textContent?.trim(), 'icon-only button text').to.equal('')
+        })
+      })
+
+    assertScrollControlAbove('[aria-label="Resize comment box"]', 'scroll control bottom')
+
+    // Editable, internally scrolling editors should not cover the content with
+    // top/bottom fade overlays while the user is writing.
+    cy.get('[aria-label="Resize comment box"]')
+      .parents('.fixed')
+      .find('[class*="before:bg-gradient-to-b"], [class*="after:bg-gradient-to-t"]')
+      .should('not.exist')
+
+    cy.get('button[aria-label="Minimize comment box"]').then(($buttons) => {
+      const button = topmostElement($buttons)
+      expect(button, 'topmost minimize button').to.exist
+      cy.wrap(button).click()
+    })
+    assertScrollControlAbove(
+      'button[aria-label="Expand comment box"]',
+      'scroll control bottom after minimizing',
+    )
   })
 
   it('renames a discussion and records the rename in the activity feed', () => {

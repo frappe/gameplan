@@ -185,4 +185,30 @@ describe('New discussion drafts', () => {
     cy.contains('New Discussion').should('exist')
     cy.button('Publish').should('be.visible')
   })
+
+  it('keeps breathing room below the caret while typing a long discussion', () => {
+    cy.viewport(1000, 600)
+    cy.visit(`/g/community/${community}/new-discussion`)
+
+    const paragraphs = Array.from({ length: 40 }, (_, index) => `Line ${index + 1}{enter}`).join('')
+    cy.get('[aria-label="Discussion content"]')
+      .should('have.attr', 'contenteditable', 'true')
+      .click()
+      .type(`${paragraphs}Last line`)
+
+    cy.get('[data-slot="desktop-shell"] [data-slot="scroll-area-viewport"]').then(($viewports) => {
+      const shell = $viewports
+        .toArray()
+        .sort((a, b) => b.scrollHeight - b.clientHeight - (a.scrollHeight - a.clientHeight))[0]
+      cy.get('[aria-label="Discussion content"] p')
+        .last()
+        .then(($lastLine) => {
+          const clearance =
+            shell.getBoundingClientRect().bottom - $lastLine[0].getBoundingClientRect().bottom
+
+          expect(shell.scrollTop, 'shell scrolled while typing').to.be.greaterThan(0)
+          expect(clearance, 'space below caret').to.be.at.least(140)
+        })
+    })
+  })
 })

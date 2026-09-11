@@ -568,6 +568,9 @@ const activeComposerEditorMinHeightStyle = computed(() =>
 
 defineExpose({
   editorObject,
+  get composerHeight() {
+    return addCommentHeight.value
+  },
   openCommentBox,
   scrollToCommentById,
   getCommentContentElement,
@@ -889,7 +892,6 @@ onMounted(() => {
       activities.reload()
     }
   })
-  setupComposerMeasurement()
 })
 
 onUnmounted(() => {
@@ -903,10 +905,23 @@ onUnmounted(() => {
   isNewCommentOpen.value = false
 })
 
-function setupComposerMeasurement() {
-  const $el = addComment.value
-  if (!$el) return
+watch(
+  addComment,
+  ($el) => {
+    mutationObserver?.disconnect()
+    resizeObserver?.disconnect()
 
+    if (!$el) {
+      addCommentHeight.value = 0
+      return
+    }
+
+    setupComposerMeasurement($el)
+  },
+  { immediate: true, flush: 'post' },
+)
+
+function setupComposerMeasurement($el: HTMLElement) {
   updateComposerHeight()
 
   mutationObserver = new MutationObserver(updateComposerHeight)

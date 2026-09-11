@@ -304,14 +304,17 @@
     </div>
     <div
       v-if="!isMobileViewport && !editingPost"
-      class="fixed bottom-3 h-9 grid place-content-center right-3 z-[2] print:hidden"
+      class="fixed right-3 z-[2] grid h-9 place-content-center print:hidden"
+      :style="{ bottom: `${scrollToTopBottomOffset}px` }"
     >
-      <Button variant="ghost" v-show="isScrolled" @click="scrollToTop">
-        <template #prefix>
-          <span class="lucide-arrow-up h-5 w-5 text-ink-gray-6" />
-        </template>
-        Scroll to top
-      </Button>
+      <Button
+        v-show="isScrolled"
+        variant="ghost"
+        icon="lucide-arrow-up"
+        label="Scroll to top"
+        tooltip="Scroll to top"
+        @click="scrollToTop"
+      />
     </div>
   </div>
 </template>
@@ -390,6 +393,7 @@ const postTitleEl = useTemplateRef<HTMLElement>('postTitleEl')
 
 const isScrolled = useShellScrolled()
 const scrollContainerEl = shellScrollContainer
+const scrollToTopBottomOffset = computed(() => (commentsArea.value?.composerHeight ?? 0) + 12)
 function scrollToTop() {
   shellScrollContainer.value?.scrollTo({ top: 0, behavior: 'smooth' })
 }
