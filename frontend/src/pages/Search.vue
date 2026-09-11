@@ -13,7 +13,8 @@
             <TextInput
               ref="searchInput"
               class="flex-1"
-              placeholder="Search or press / to focus"
+              placeholder="Search"
+              aria-label="Search"
               v-focus
               :model-value="query"
               @update:model-value="updateQuery"
@@ -542,7 +543,7 @@ function handleKeyPress(event: KeyboardEvent) {
 }
 
 function focusSearchInput() {
-  searchInput.value?.el?.focus()
+  searchInput.value?.focus()
 }
 
 function isSearchCharacter(event: KeyboardEvent) {
