@@ -42,7 +42,7 @@ describe('Discussion actions', () => {
       const composer = topmostElement($composers)
       expect(composer, 'topmost comment composer').to.exist
 
-      cy.get('button[aria-label="Scroll to top"]').then(($buttons) => {
+      cy.get('button[aria-label="Scroll to top"]').should(($buttons) => {
         const button = topmostElement($buttons)
         expect(button, 'topmost scroll control').to.exist
         expect(button!.getBoundingClientRect().bottom, label).to.be.at.most(
