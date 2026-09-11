@@ -37,21 +37,19 @@ describe('Discussion actions', () => {
     })
   }
 
-  function assertScrollControlAbove(composerControl: string, label: string) {
-    cy.get(composerControl)
-      .parents('.fixed')
-      .then(($composers) => {
-        const composer = topmostElement($composers)
-        expect(composer, 'topmost comment composer').to.exist
+  function assertScrollControlAbove(label: string) {
+    cy.get('[data-comment-composer-surface]').then(($composers) => {
+      const composer = topmostElement($composers)
+      expect(composer, 'topmost comment composer').to.exist
 
-        cy.get('button[aria-label="Scroll to top"]').then(($buttons) => {
-          const button = topmostElement($buttons)
-          expect(button, 'topmost scroll control').to.exist
-          expect(button!.getBoundingClientRect().bottom, label).to.be.at.most(
-            composer!.getBoundingClientRect().top,
-          )
-        })
+      cy.get('button[aria-label="Scroll to top"]').then(($buttons) => {
+        const button = topmostElement($buttons)
+        expect(button, 'topmost scroll control').to.exist
+        expect(button!.getBoundingClientRect().bottom, label).to.be.at.most(
+          composer!.getBoundingClientRect().top,
+        )
       })
+    })
   }
 
   it('publishes a new discussion into a space', () => {
@@ -108,7 +106,7 @@ describe('Discussion actions', () => {
       })
   })
 
-  it('keeps the icon-only scroll control above the comment composer', () => {
+  it('raises the icon-only scroll control only when it overlaps the comment composer', () => {
     cy.viewport(900, 600)
     visitSeededDiscussion()
 
@@ -126,7 +124,7 @@ describe('Discussion actions', () => {
         })
       })
 
-    assertScrollControlAbove('[aria-label="Resize comment box"]', 'scroll control bottom')
+    assertScrollControlAbove('scroll control bottom')
 
     // Editable, internally scrolling editors should not cover the content with
     // top/bottom fade overlays while the user is writing.
@@ -140,10 +138,24 @@ describe('Discussion actions', () => {
       expect(button, 'topmost minimize button').to.exist
       cy.wrap(button).click()
     })
-    assertScrollControlAbove(
-      'button[aria-label="Expand comment box"]',
-      'scroll control bottom after minimizing',
-    )
+    assertScrollControlAbove('scroll control bottom after minimizing')
+
+    cy.viewport(1440, 600)
+    cy.get('[data-comment-composer-surface]').then(($composers) => {
+      const composer = topmostElement($composers)
+      expect(composer, 'topmost comment composer at wide viewport').to.exist
+
+      cy.get('button[aria-label="Scroll to top"]').should(($buttons) => {
+        const button = topmostElement($buttons)
+        expect(button, 'topmost scroll control at wide viewport').to.exist
+        expect(button!.getBoundingClientRect().left, 'wide control left edge').to.be.at.least(
+          composer!.getBoundingClientRect().right,
+        )
+        const container = button!.closest('.fixed')
+        expect(container, 'scroll control container').to.exist
+        expect(getComputedStyle(container!).bottom, 'wide control bottom offset').to.equal('12px')
+      })
+    })
   })
 
   it('renames a discussion and records the rename in the activity feed', () => {

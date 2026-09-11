@@ -192,6 +192,7 @@
           :hide-new-comment="editingPost"
           :activity-version="discussion.doc.modified"
           ref="commentsArea"
+          @composer-resize="scheduleScrollToTopPlacement"
         />
         <QuoteBacklinksPopover :store="richQuotes" @select="scrollToQuotingComment" />
         <Dialog
@@ -304,6 +305,7 @@
     </div>
     <div
       v-if="!isMobileViewport && !editingPost"
+      ref="scrollToTopControl"
       class="fixed right-3 z-[2] grid h-9 place-content-center print:hidden"
       :style="{ bottom: `${scrollToTopBottomOffset}px` }"
     >
@@ -346,7 +348,7 @@ import {
   Switch,
   dialog,
 } from 'frappe-ui'
-import { until } from '@vueuse/core'
+import { until, useEventListener } from '@vueuse/core'
 import type { Editor } from '@tiptap/vue-3'
 import Reactions from './Reactions.vue'
 import UserAvatarWithHover from './UserAvatarWithHover.vue'
@@ -387,13 +389,45 @@ const route = useRoute()
 const runWhenOwned = useOwnedRouteWrites(() => route.name === 'Discussion')
 const isMobileViewport = useIsMobile()
 const commentsArea = useTemplateRef('commentsArea')
+const scrollToTopControl = useTemplateRef<HTMLElement>('scrollToTopControl')
 const postEditor = useTemplateRef<{ editor: Editor | null }>('postEditor')
 const mainPostContentEl = ref<HTMLElement | null>(null)
 const postTitleEl = useTemplateRef<HTMLElement>('postTitleEl')
 
 const isScrolled = useShellScrolled()
 const scrollContainerEl = shellScrollContainer
-const scrollToTopBottomOffset = computed(() => (commentsArea.value?.composerHeight ?? 0) + 12)
+const scrollToTopOverlapsComposer = ref(false)
+const scrollToTopBottomOffset = computed(() =>
+  scrollToTopOverlapsComposer.value ? (commentsArea.value?.composerHeight ?? 0) + 12 : 12,
+)
+
+function scheduleScrollToTopPlacement() {
+  nextTick(updateScrollToTopPlacement)
+}
+
+function updateScrollToTopPlacement() {
+  const control = scrollToTopControl.value
+  const composer = commentsArea.value?.composerElement
+  if (!control || !composer || !isScrolled.value) {
+    scrollToTopOverlapsComposer.value = false
+    return
+  }
+
+  const controlRect = control.getBoundingClientRect()
+  const composerRect = composer.getBoundingClientRect()
+  // Test the control where it would sit without the composer. Measuring the
+  // already-raised rect would make the result oscillate between the two positions.
+  const restingBottom = window.innerHeight - 12
+  const restingTop = restingBottom - controlRect.height
+  const overlapsHorizontally =
+    controlRect.left < composerRect.right && controlRect.right > composerRect.left
+  const overlapsVertically = restingTop < composerRect.bottom && restingBottom > composerRect.top
+  scrollToTopOverlapsComposer.value = overlapsHorizontally && overlapsVertically
+}
+
+watch(isScrolled, scheduleScrollToTopPlacement)
+useEventListener(window, 'resize', scheduleScrollToTopPlacement)
+
 function scrollToTop() {
   shellScrollContainer.value?.scrollTo({ top: 0, behavior: 'smooth' })
 }
