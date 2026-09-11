@@ -3,7 +3,7 @@ import { useLocalStorage } from '@vueuse/core'
 import { debounce, useDoctype } from 'frappe-ui'
 import type { GPUserProfile } from '@/types/doctypes'
 
-const pinned = useLocalStorage<string[]>('gameplan:pinnedSpaces', [])
+const pinned = useLocalStorage<string[]>(`gameplan:pinnedSpaces:${sessionUserFromCookie()}`, [])
 const profileName = ref('')
 const userProfiles = useDoctype<GPUserProfile>('GP User Profile')
 
@@ -52,4 +52,9 @@ function normalizePinnedSpaces(value: unknown): string[] {
     seen.add(id)
     return true
   })
+}
+
+function sessionUserFromCookie() {
+  let cookies = new URLSearchParams(document.cookie.split('; ').join('&'))
+  return cookies.get('user_id') || 'Guest'
 }
