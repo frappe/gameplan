@@ -402,9 +402,10 @@ const scrollToTopBottomOffset = ref(12)
 let scrollToTopPlacementFrame = 0
 
 function scheduleScrollToTopPlacement() {
-  cancelAnimationFrame(scrollToTopPlacementFrame)
+  if (scrollToTopPlacementFrame) return
   scrollToTopPlacementFrame = requestAnimationFrame(() => {
     scrollToTopPlacementFrame = requestAnimationFrame(() => {
+      scrollToTopPlacementFrame = 0
       // Composer layout can clamp scrollTop without dispatching a scroll event.
       // Read it after the layout has painted, then let the control mount before measuring.
       showScrollToTop.value = (scrollContainerEl.value?.scrollTop ?? 0) > scrollToTopThreshold

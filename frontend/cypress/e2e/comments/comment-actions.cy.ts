@@ -28,6 +28,14 @@ describe('Comment actions', () => {
       times: 1,
     }).as('comment')
     cy.button('Add a comment').click()
+    cy.get('.comments-timeline').invoke('css', 'min-height', '1200px')
+    cy.get('[data-slot="desktop-shell-content"] > * > [data-reka-scroll-area-viewport]')
+      .scrollTo('bottom')
+      .should(($viewport) => {
+        expect($viewport[0].scrollTop).to.be.greaterThan(200)
+      })
+    cy.get('button[aria-label="Scroll to top"]').should('be.visible')
+    cy.get('.comments-timeline').invoke('css', 'min-height', '')
     cy.iconButton('Minimize comment box').should('be.visible').click()
     cy.get('button[aria-label="Scroll to top"]').should('not.exist')
     cy.iconButton('Expand comment box').should('be.visible').click()
