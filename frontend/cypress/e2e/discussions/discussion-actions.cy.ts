@@ -45,9 +45,11 @@ describe('Discussion actions', () => {
       cy.get('button[aria-label="Scroll to top"]').should(($buttons) => {
         const button = topmostElement($buttons)
         expect(button, 'topmost scroll control').to.exist
-        expect(button!.getBoundingClientRect().bottom, label).to.be.at.most(
-          composer!.getBoundingClientRect().top,
-        )
+        const container = button!.closest('.fixed')
+        expect(container, 'scroll control container').to.exist
+        const gap =
+          composer!.getBoundingClientRect().top - container!.getBoundingClientRect().bottom
+        expect(gap, label).to.be.closeTo(4, 1)
       })
     })
   }

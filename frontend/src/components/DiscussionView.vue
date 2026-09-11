@@ -395,10 +395,12 @@ const mainPostContentEl = ref<HTMLElement | null>(null)
 const postTitleEl = useTemplateRef<HTMLElement>('postTitleEl')
 
 const scrollToTopThreshold = 200
+const scrollToTopRestingOffset = 12
+const scrollToTopComposerGap = 4
 const isScrolled = useShellScrolled({ threshold: scrollToTopThreshold })
 const scrollContainerEl = shellScrollContainer
 const showScrollToTop = ref(false)
-const scrollToTopBottomOffset = ref(12)
+const scrollToTopBottomOffset = ref(scrollToTopRestingOffset)
 let scrollToTopPlacementFrame = 0
 
 function scheduleScrollToTopPlacement() {
@@ -418,7 +420,7 @@ function updateScrollToTopPlacement() {
   const control = scrollToTopControl.value
   const composer = commentsArea.value?.composerElement
   if (!control || !composer || !showScrollToTop.value) {
-    scrollToTopBottomOffset.value = 12
+    scrollToTopBottomOffset.value = scrollToTopRestingOffset
     return
   }
 
@@ -426,13 +428,15 @@ function updateScrollToTopPlacement() {
   const composerRect = composer.getBoundingClientRect()
   // Test the control where it would sit without the composer. Measuring the
   // already-raised rect would make the result oscillate between the two positions.
-  const restingBottom = window.innerHeight - 12
+  const restingBottom = window.innerHeight - scrollToTopRestingOffset
   const restingTop = restingBottom - controlRect.height
   const overlapsHorizontally =
     controlRect.left < composerRect.right && controlRect.right > composerRect.left
   const overlapsVertically = restingTop < composerRect.bottom && restingBottom > composerRect.top
   scrollToTopBottomOffset.value =
-    overlapsHorizontally && overlapsVertically ? window.innerHeight - composerRect.top + 12 : 12
+    overlapsHorizontally && overlapsVertically
+      ? window.innerHeight - composerRect.top + scrollToTopComposerGap
+      : scrollToTopRestingOffset
 }
 
 watch(isScrolled, scheduleScrollToTopPlacement)
