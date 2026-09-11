@@ -17,6 +17,7 @@ describe('Comment actions', () => {
   })
 
   it('posts a comment, reacts to it, edits it with a mention, and deletes it', () => {
+    cy.viewport(1000, 660)
     cy.intercept('GET', `/api/v2/document/GP%20Discussion/${discussion}`).as('getDiscussion')
     cy.visit(`/g/community/${community}/space/${space}/discussion/${discussion}`)
     cy.wait('@getDiscussion')
@@ -28,6 +29,7 @@ describe('Comment actions', () => {
     }).as('comment')
     cy.button('Add a comment').click()
     cy.iconButton('Minimize comment box').should('be.visible').click()
+    cy.get('button[aria-label="Scroll to top"]').should('not.exist')
     cy.iconButton('Expand comment box').should('be.visible').click()
     // Click the editor to settle focus before typing — relying on the auto-focus
     // via cy.focused() races the just-mounted ProseMirror view and drops the

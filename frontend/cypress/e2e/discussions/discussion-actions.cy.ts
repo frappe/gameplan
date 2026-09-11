@@ -107,7 +107,7 @@ describe('Discussion actions', () => {
   })
 
   it('raises the icon-only scroll control only when it overlaps the comment composer', () => {
-    cy.viewport(900, 600)
+    cy.viewport(1000, 660)
     visitSeededDiscussion()
 
     cy.button('Add a comment').click()

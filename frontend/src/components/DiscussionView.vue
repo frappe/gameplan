@@ -310,7 +310,7 @@
       :style="{ bottom: `${scrollToTopBottomOffset}px` }"
     >
       <Button
-        v-show="isScrolled"
+        v-if="showScrollToTop"
         variant="ghost"
         icon="lucide-arrow-up"
         label="Scroll to top"
@@ -394,22 +394,30 @@ const postEditor = useTemplateRef<{ editor: Editor | null }>('postEditor')
 const mainPostContentEl = ref<HTMLElement | null>(null)
 const postTitleEl = useTemplateRef<HTMLElement>('postTitleEl')
 
-const isScrolled = useShellScrolled()
+const scrollToTopThreshold = 200
+const isScrolled = useShellScrolled({ threshold: scrollToTopThreshold })
 const scrollContainerEl = shellScrollContainer
-const scrollToTopOverlapsComposer = ref(false)
-const scrollToTopBottomOffset = computed(() =>
-  scrollToTopOverlapsComposer.value ? (commentsArea.value?.composerHeight ?? 0) + 12 : 12,
-)
+const showScrollToTop = ref(false)
+const scrollToTopBottomOffset = ref(12)
+let scrollToTopPlacementFrame = 0
 
 function scheduleScrollToTopPlacement() {
-  nextTick(updateScrollToTopPlacement)
+  cancelAnimationFrame(scrollToTopPlacementFrame)
+  scrollToTopPlacementFrame = requestAnimationFrame(() => {
+    scrollToTopPlacementFrame = requestAnimationFrame(() => {
+      // Composer layout can clamp scrollTop without dispatching a scroll event.
+      // Read it after the layout has painted, then let the control mount before measuring.
+      showScrollToTop.value = (scrollContainerEl.value?.scrollTop ?? 0) > scrollToTopThreshold
+      nextTick(updateScrollToTopPlacement)
+    })
+  })
 }
 
 function updateScrollToTopPlacement() {
   const control = scrollToTopControl.value
   const composer = commentsArea.value?.composerElement
-  if (!control || !composer || !isScrolled.value) {
-    scrollToTopOverlapsComposer.value = false
+  if (!control || !composer || !showScrollToTop.value) {
+    scrollToTopBottomOffset.value = 12
     return
   }
 
@@ -422,7 +430,8 @@ function updateScrollToTopPlacement() {
   const overlapsHorizontally =
     controlRect.left < composerRect.right && controlRect.right > composerRect.left
   const overlapsVertically = restingTop < composerRect.bottom && restingBottom > composerRect.top
-  scrollToTopOverlapsComposer.value = overlapsHorizontally && overlapsVertically
+  scrollToTopBottomOffset.value =
+    overlapsHorizontally && overlapsVertically ? window.innerHeight - composerRect.top + 12 : 12
 }
 
 watch(isScrolled, scheduleScrollToTopPlacement)
@@ -533,6 +542,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  cancelAnimationFrame(scrollToTopPlacementFrame)
   scrollContainerEl.value?.removeEventListener('scroll', updateMobileHeaderTitle)
 })
 
