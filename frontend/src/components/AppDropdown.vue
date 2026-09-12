@@ -19,7 +19,7 @@
 </template>
 
 <script setup lang="ts">
-import { h, markRaw, ref } from 'vue'
+import { h, ref } from 'vue'
 import { Dropdown } from 'frappe-ui'
 import { clear as clearIndexDb } from 'idb-keyval'
 import { settingsShortcutLabel, showSettingsDialog } from '@/components/Settings'
@@ -36,7 +36,9 @@ const dropdownItems = [
     label: 'Apps',
     submenu: [
       {
-        component: markRaw(AppSelector),
+        slots: {
+          item: () => h(AppSelector),
+        },
       },
     ],
   },
