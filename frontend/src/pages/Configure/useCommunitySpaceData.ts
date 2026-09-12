@@ -1,6 +1,7 @@
 import { computed, toValue, type MaybeRefOrGetter } from 'vue'
 import { useList } from 'frappe-ui'
 import { spaces } from '@/data/spaces'
+import { session } from '@/data/session'
 import type { GPGuestAccess, GPPage } from '@/types/doctypes'
 
 type PageRecord = Pick<GPPage, 'project'>
@@ -18,7 +19,10 @@ export function useCommunitySpaceData(communityId: MaybeRefOrGetter<string>) {
     fields: ['project'],
     initialData: [],
     limit: 99999,
-    cacheKey: 'space-page-counts',
+    // Scoped to the session user: page visibility follows space membership, so a second
+    // account on the same browser must not see cached counts for spaces it can't access
+    // (review finding from PR #516).
+    cacheKey: ['space-page-counts', session.user],
   })
 
   const guestAccess = useList<GuestAccessRecord>({
@@ -26,7 +30,7 @@ export function useCommunitySpaceData(communityId: MaybeRefOrGetter<string>) {
     fields: ['project'],
     initialData: [],
     limit: 99999,
-    cacheKey: 'space-guest-counts',
+    cacheKey: ['space-guest-counts', session.user],
   })
 
   const communitySpaces = computed(() =>

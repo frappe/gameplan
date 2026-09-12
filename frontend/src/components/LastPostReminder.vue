@@ -24,9 +24,13 @@ import { useCall } from 'frappe-ui'
 import { dayjs } from 'frappe-ui'
 import { computed } from 'vue'
 import { useLocalStorage } from '@vueuse/core'
+import { session } from '@/data/session'
 let lastPostAt = useCall<string>({
   url: `/api/v2/method/GP User Profile/get_last_post`,
-  cacheKey: 'last_post_at',
+  // Scoped to the session user so a second account on the same browser can't read the
+  // first account's cached "last post" date while offline (review finding from PR #516).
+  cacheKey: ['last_post_at', session.user],
+  staleOnError: true,
 })
 
 const daysSinceLastPost = computed(() => {

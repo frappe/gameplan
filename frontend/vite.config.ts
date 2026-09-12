@@ -60,6 +60,7 @@ export default defineConfig({
     }),
     vue(),
     vueJsx(),
+    offlineAssetManifest(),
     visualizer({ emitFile: true }) as PluginOption,
     // `extension` must list .vue explicitly: the plugin's default covers .js/.ts
     // only, which would silently report on the ~600 lines of utils and composables
@@ -144,3 +145,30 @@ export default defineConfig({
     include: ['feather-icons'],
   },
 })
+
+function offlineAssetManifest(): PluginOption {
+  return {
+    name: 'gameplan-offline-asset-manifest',
+    apply: 'build',
+    generateBundle(_, bundle) {
+      const urls = Object.values(bundle)
+        .map((entry) => entry.fileName)
+        .filter(isOfflineAsset)
+        .sort()
+        .map((fileName) => `/assets/gameplan/frontend/${fileName}`)
+
+      this.emitFile({
+        type: 'asset',
+        fileName: 'gameplan-offline-assets.json',
+        source: JSON.stringify(urls),
+      })
+    },
+  }
+}
+
+function isOfflineAsset(fileName: string) {
+  if (!fileName.startsWith('assets/')) return false
+  if (fileName.endsWith('.map')) return false
+
+  return ['.css', '.js', '.woff', '.woff2'].some((extension) => fileName.endsWith(extension))
+}

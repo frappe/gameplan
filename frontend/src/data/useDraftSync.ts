@@ -14,6 +14,7 @@
  */
 import { ref, computed, watch, toValue, nextTick, onScopeDispose, type MaybeRefOrGetter } from 'vue'
 import { call, debounce, toast, dayjsLocal, useDoctype } from 'frappe-ui'
+import { isNetworkError } from '@/offline'
 import { session } from './session'
 import { createDraft, drafts } from './drafts'
 import { isEditorContentEmpty } from '@/utils'
@@ -382,6 +383,7 @@ export function useDraftSync(options: UseDraftSyncOptions) {
         })
       }
     } catch (error) {
+      if (isNetworkError(error)) return null
       // The composer stays usable on a failed lookup, so this is invisible without a report.
       captureError(error, { action: 'draft-load', draft: serverName.value })
     }

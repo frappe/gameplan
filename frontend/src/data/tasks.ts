@@ -16,6 +16,7 @@ export function useTask(taskId: MaybeRefOrGetter<string>) {
     tasksCache[name] = useDoc<Task, TaskMethods>({
       doctype: 'GP Task',
       name: taskId,
+      staleOnError: true,
       methods: {
         trackVisit: 'track_visit',
       },

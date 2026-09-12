@@ -7,7 +7,7 @@
  * can stay coherent. The reactive orchestration (debounced server sync, lazy row
  * creation, reconciliation) lives in `useDraftSync`.
  */
-import { get, set, del, entries, createStore } from 'idb-keyval'
+import { get, set, del, entries, clear, createStore } from 'idb-keyval'
 
 export type DraftType = 'Discussion' | 'Comment'
 export type DraftMode = 'New' | 'Edit'
@@ -63,6 +63,17 @@ export function deleteDraftRecord(key: string): Promise<void> {
 
 export function listDraftRecords(): Promise<DraftRecord[]> {
   return entries<string, DraftRecord>(store).then((all) => all.map(([, record]) => record))
+}
+
+/**
+ * Wipe every locally stored draft, regardless of owner. `record.user` already keeps
+ * another account's drafts from being read back into an editor on a shared browser
+ * (see useDraftSync's `load()`), so this is only called when a *different* user is
+ * detected on this device (offline.ts's guardAgainstUserSwitch) - not on a plain
+ * logout, where the same person may log back in and expect their draft still there.
+ */
+export function clearDraftStore(): Promise<void> {
+  return clear(store)
 }
 
 /** Deterministic key for singleton drafts — the same target always resolves to one

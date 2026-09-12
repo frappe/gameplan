@@ -211,7 +211,7 @@
                 variant: 'solid',
                 onClick: submitComment,
                 loading: comments.insert.loading,
-                disabled: commentEmpty,
+                disabled: commentEmpty || !isOnline,
               }"
               :discardButtonProps="{
                 onClick: discardComment,
@@ -239,6 +239,7 @@
               :submitButtonProps="{
                 onClick: submitPoll,
                 loading: polls.insert.loading,
+                disabled: !isOnline,
               }"
               :discardButtonProps="{
                 onClick: discardPoll,
@@ -290,6 +291,7 @@ import { tags } from '@/data/tags'
 import { isNewCommentOpen } from '@/data/newComment'
 import { useRichQuotes } from '@/components/RichQuoteExtension/useRichQuotes'
 import { useDraftSync } from '@/data/useDraftSync'
+import { isOnline, onReconnect } from '@/data/online'
 import { useSessionUser } from '@/data/users'
 import type { Space } from '@/data/spaces'
 import { useIsMobile } from '@/utils/useIsMobile'
@@ -408,7 +410,11 @@ const composerStorageKey = computed(() => {
 
 const comments = useList<GPComment>({
   doctype: 'GP Comment',
-  cacheKey: ['Comments', props.doctype, props.name],
+  // Scoped to the session user: a discussion's comments can live in a private space,
+  // so a second account on the same browser must not see them cached offline before
+  // its own permission-checked fetch resolves (review finding from PR #516).
+  cacheKey: ['Comments', props.doctype, props.name, sessionUser.name],
+  staleOnError: true,
   fields: [
     'name',
     'content',
@@ -444,6 +450,8 @@ const comments = useList<GPComment>({
 
 const activities = useList<GPActivity>({
   doctype: 'GP Activity',
+  cacheKey: ['Activities', props.doctype, props.name, sessionUser.name],
+  staleOnError: true,
   fields: ['name', 'user', 'action', 'data', 'creation'],
   filters: {
     reference_doctype: props.doctype,
@@ -475,6 +483,8 @@ watch(
 
 const polls = useList<GPPoll>({
   doctype: 'GP Poll',
+  cacheKey: ['Polls', props.name, sessionUser.name],
+  staleOnError: true,
   fields: [
     'name',
     'title',
@@ -508,6 +518,19 @@ watchEffect(() => {
     richQuotes.commentsData.value = comments.data ?? null
   }
 })
+
+// US5 (seamless recovery): while offline, comments/activity/polls posted by
+// other users never arrive — the socket that normally pushes them is down too.
+// Reload this discussion's timeline once the browser comes back online.
+// Unregistered on unmount: this callback closes over lists owned by this
+// component instance, and there's no reason to keep refetching an open
+// discussion the user has already navigated away from.
+const unregisterReconnect = onReconnect(() => {
+  comments.reload()
+  activities.reload()
+  polls.reload()
+})
+onUnmounted(unregisterReconnect)
 
 // Computed
 const timelineItems = computed(() => {
@@ -680,7 +703,10 @@ function resetCommentState() {
 }
 
 async function submitComment() {
-  if (commentEmpty.value || comments.insert.loading) return
+  // The submit button is disabled while offline, but ctrl/cmd+Enter (bound below on
+  // the editor) reaches this directly and isn't gated by that - guard here too, rather
+  // than let it hit the network and surface a raw "Failed to fetch".
+  if (commentEmpty.value || comments.insert.loading || !isOnline.value) return
 
   const comment = await comments.insert.submit({
     reference_doctype: props.doctype,
@@ -761,7 +787,7 @@ function wait(ms: number) {
 }
 
 function submitPoll() {
-  if (props.doctype !== 'GP Discussion') return
+  if (props.doctype !== 'GP Discussion' || !isOnline.value) return
   return polls.insert
     .submit({
       discussion: props.name,
