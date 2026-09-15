@@ -128,17 +128,26 @@ def read_app_version():
 def run_git_command(command):
 	"""Output of `command`, or an empty string when git cannot answer.
 
-	A failure here is expected, not exceptional: a deployed checkout is often shallow
-	and carries no tags, so `git describe` exits non-zero on every call. Logging it
-	wrote an Error Log row per git call per page load and buried real tracebacks under
-	thousands of "Git Command Error" rows. The About dialog showing a blank field is
-	the only signal this needs.
+	Two kinds of failure, told apart on purpose:
+
+	A non-zero exit or an unreachable git binary is expected, not exceptional. A
+	deployed checkout is often shallow and carries no tags, so `git describe` fails on
+	every call. Logging those wrote an Error Log row per git call per page load and
+	buried real tracebacks under thousands of "Git Command Error" rows. A blank field
+	in the About dialog is the only signal they need.
+
+	Anything else keeps its traceback, so a genuinely broken version read stays
+	diagnosable. It is still swallowed rather than raised: this runs inside `get_boot`,
+	and version info that cannot be read must not take `/g` down with it.
 	"""
 	try:
 		with open(os.devnull, "wb") as null_stream:
 			result = subprocess.check_output(command, shell=True, stdin=null_stream, stderr=null_stream)
 		return safe_decode(result).strip()
+	except (subprocess.CalledProcessError, OSError):
+		return ""
 	except Exception:
+		frappe.log_error(title="Git Command Error")
 		return ""
 
 
