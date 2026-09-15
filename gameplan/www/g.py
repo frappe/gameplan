@@ -86,7 +86,27 @@ def get_default_route():
 	return "/home"
 
 
+APP_VERSION_CACHE_KEY = "gameplan_app_version"
+# Long enough that a burst of page loads costs one read, short enough that a commit made
+# while working shows up in the About dialog without clearing the cache by hand.
+APP_VERSION_CACHE_TTL = 60
+
+
 def get_app_version():
+	"""Branch, commit and tag of the running checkout, for the About dialog.
+
+	Cached, because `get_boot` runs on every `/g` render and reading this costs six
+	git processes. A deploy restarts the workers, so the value cannot outlive the
+	checkout it describes by more than the TTL.
+	"""
+	version = frappe.cache.get_value(APP_VERSION_CACHE_KEY)
+	if version is None:
+		version = read_app_version()
+		frappe.cache.set_value(APP_VERSION_CACHE_KEY, version, expires_in_sec=APP_VERSION_CACHE_TTL)
+	return version
+
+
+def read_app_version():
 	app = "gameplan"
 	branch = run_git_command(f"cd ../apps/{app} && git rev-parse --abbrev-ref HEAD")
 	commit = run_git_command(f"git -C ../apps/{app} rev-parse --short=7 HEAD")
@@ -106,14 +126,19 @@ def get_app_version():
 
 
 def run_git_command(command):
+	"""Output of `command`, or an empty string when git cannot answer.
+
+	A failure here is expected, not exceptional: a deployed checkout is often shallow
+	and carries no tags, so `git describe` exits non-zero on every call. Logging it
+	wrote an Error Log row per git call per page load and buried real tracebacks under
+	thousands of "Git Command Error" rows. The About dialog showing a blank field is
+	the only signal this needs.
+	"""
 	try:
 		with open(os.devnull, "wb") as null_stream:
 			result = subprocess.check_output(command, shell=True, stdin=null_stream, stderr=null_stream)
 		return safe_decode(result).strip()
 	except Exception:
-		frappe.log_error(
-			title="Git Command Error",
-		)
 		return ""
 
 
