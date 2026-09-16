@@ -32,7 +32,7 @@ still carries the old names. Do not rename the doctypes.
 ## Traps
 
 - **The vendored `./frappe-ui/` is not the version that runs.** The submodule is on
-  beta.28; `frontend/package.json` pins beta.51. `yarn dev:frappe-ui` symlinks the
+  beta.28; `frontend/package.json` pins beta.61. `yarn dev:frappe-ui` symlinks the
   stale checkout. Read `frontend/node_modules/frappe-ui/` for current library
   source; use `./frappe-ui/` only when doing library work.
 - **Cypress wipes the entire site**, not the records a spec created — `resetData`

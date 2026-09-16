@@ -8,12 +8,13 @@
 
   <List
     v-if="filteredSpaces.length"
-    :columns="
-      hasGuests
+    :columns="{
+      base: ['minmax(0,1fr)', 'auto'],
+      md: hasGuests
         ? ['minmax(8rem,1fr)', '15.25rem', '5rem', '1.5rem']
-        : ['minmax(8rem,1fr)', '15.25rem', '1.5rem']
-    "
-    class="list-gap-12 max-md:list-gap-1 max-md:list-cols-[minmax(0,1fr)_auto]"
+        : ['minmax(8rem,1fr)', '15.25rem', '1.5rem'],
+    }"
+    class="list-gap-12 max-md:list-gap-1"
   >
     <!-- Sticky at the settings scroll-viewport top — it rests exactly where it
          pins, so it never visibly moves. -->

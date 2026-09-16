@@ -6,8 +6,8 @@
   <DiscussionEditor
     v-else
     editor-class="max-w-[unset] min-h-[calc(100vh-200px)] pb-40 prose-v3 overflow-auto px-2 -mx-2"
-    :content="draftData.content"
-    @change="(content: string) => (draftData.content = content)"
+    :content="draftData?.content"
+    @change="onEditorChange"
     :editable="isComposerEditable"
     placeholder="Type '/' for commands or select text to format"
   >
@@ -72,6 +72,13 @@ const {
   hasSpaceToPostIn,
   initialize,
 } = provideNewDiscussion()
+
+// The editor emits on mount, before the draft has resolved. Dropping those changes is the
+// point: there is no buffer to write them into yet, and the composer is not editable.
+function onEditorChange(content: string) {
+  if (!draftData.value) return
+  draftData.value.content = content
+}
 
 initialize()
 </script>

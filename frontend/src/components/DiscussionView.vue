@@ -144,7 +144,7 @@
                   type="text"
                   class="w-full bg-transparent border-0 text-ink-gray-8 px-0 py-0.5 text-4xl-semibold focus:ring-0"
                   ref="title"
-                  v-model="postDraftData.title"
+                  v-model="postTitle"
                   placeholder="Title"
                   :disabled="isPostDraftLoading"
                 />
@@ -160,7 +160,9 @@
             </p>
             <DiscussionViewEditor
               ref="postEditor"
-              :content="editingPost ? postDraftData.content : discussion.doc.content"
+              :content="
+                editingPost && postDraftData ? postDraftData.content : discussion.doc.content
+              "
               :editable="editingPost && !isPostDraftLoading"
               :saving="discussion.setValue.loading"
               :can-save="canSavePost"
@@ -190,6 +192,7 @@
           :hide-new-comment="editingPost"
           :activity-version="discussion.doc.modified"
           ref="commentsArea"
+          @composer-resize="scheduleScrollToTopPlacement"
         />
         <QuoteBacklinksPopover :store="richQuotes" @select="scrollToQuotingComment" />
         <Dialog
@@ -312,14 +315,18 @@
     </div>
     <div
       v-if="!isMobileViewport && !editingPost"
-      class="fixed bottom-3 h-9 grid place-content-center right-3 z-[2] print:hidden"
+      ref="scrollToTopControl"
+      class="fixed right-3 z-[2] grid h-9 place-content-center print:hidden"
+      :style="{ bottom: `${scrollToTopBottomOffset}px` }"
     >
-      <Button variant="ghost" v-show="isScrolled" @click="scrollToTop">
-        <template #prefix>
-          <span class="lucide-arrow-up h-5 w-5 text-ink-gray-6" />
-        </template>
-        Scroll to top
-      </Button>
+      <Button
+        v-if="showScrollToTop"
+        variant="ghost"
+        icon="lucide-arrow-up"
+        label="Scroll to top"
+        tooltip="Scroll to top"
+        @click="scrollToTop"
+      />
     </div>
   </div>
 </template>
@@ -351,7 +358,7 @@ import {
   Switch,
   dialog,
 } from 'frappe-ui'
-import { until } from '@vueuse/core'
+import { until, useEventListener } from '@vueuse/core'
 import type { Editor } from '@tiptap/vue-3'
 import Reactions from './Reactions.vue'
 import UserAvatarWithHover from './UserAvatarWithHover.vue'
@@ -394,12 +401,59 @@ const route = useRoute()
 const runWhenOwned = useOwnedRouteWrites(() => route.name === 'Discussion')
 const isMobileViewport = useIsMobile()
 const commentsArea = useTemplateRef('commentsArea')
+const scrollToTopControl = useTemplateRef<HTMLElement>('scrollToTopControl')
 const postEditor = useTemplateRef<{ editor: Editor | null }>('postEditor')
 const mainPostContentEl = ref<HTMLElement | null>(null)
 const postTitleEl = useTemplateRef<HTMLElement>('postTitleEl')
 
-const isScrolled = useShellScrolled()
+const scrollToTopThreshold = 200
+const scrollToTopRestingOffset = 12
+const scrollToTopComposerGap = 4
+const isScrolled = useShellScrolled({ threshold: scrollToTopThreshold })
 const scrollContainerEl = shellScrollContainer
+const showScrollToTop = ref(false)
+const scrollToTopBottomOffset = ref(scrollToTopRestingOffset)
+let scrollToTopPlacementFrame = 0
+
+function scheduleScrollToTopPlacement() {
+  if (scrollToTopPlacementFrame) return
+  scrollToTopPlacementFrame = requestAnimationFrame(() => {
+    scrollToTopPlacementFrame = requestAnimationFrame(() => {
+      scrollToTopPlacementFrame = 0
+      // Composer layout can clamp scrollTop without dispatching a scroll event.
+      // Read it after the layout has painted, then let the control mount before measuring.
+      showScrollToTop.value = (scrollContainerEl.value?.scrollTop ?? 0) > scrollToTopThreshold
+      nextTick(updateScrollToTopPlacement)
+    })
+  })
+}
+
+function updateScrollToTopPlacement() {
+  const control = scrollToTopControl.value
+  const composer = commentsArea.value?.composerElement
+  if (!control || !composer || !showScrollToTop.value) {
+    scrollToTopBottomOffset.value = scrollToTopRestingOffset
+    return
+  }
+
+  const controlRect = control.getBoundingClientRect()
+  const composerRect = composer.getBoundingClientRect()
+  // Test the control where it would sit without the composer. Measuring the
+  // already-raised rect would make the result oscillate between the two positions.
+  const restingBottom = window.innerHeight - scrollToTopRestingOffset
+  const restingTop = restingBottom - controlRect.height
+  const overlapsHorizontally =
+    controlRect.left < composerRect.right && controlRect.right > composerRect.left
+  const overlapsVertically = restingTop < composerRect.bottom && restingBottom > composerRect.top
+  scrollToTopBottomOffset.value =
+    overlapsHorizontally && overlapsVertically
+      ? window.innerHeight - composerRect.top + scrollToTopComposerGap
+      : scrollToTopRestingOffset
+}
+
+watch(isScrolled, scheduleScrollToTopPlacement)
+useEventListener(window, 'resize', scheduleScrollToTopPlacement)
+
 function scrollToTop() {
   shellScrollContainer.value?.scrollTo({ top: 0, behavior: 'smooth' })
 }
@@ -474,8 +528,20 @@ const postDraft = useDraftSync({
 const postDraftData = postDraft.data
 const isPostDraftLoading = postDraft.isLoading
 
+// Writable view of the draft's title. The input keeps its place in the layout while the
+// draft resolves, so it has to read as empty and swallow writes until then.
+const postTitle = computed({
+  get: () => postDraftData.value?.title ?? '',
+  set: (value: string) => {
+    if (postDraftData.value) postDraftData.value.title = value
+  },
+})
+
 function onPostEditorChange(value: string) {
-  if (editingPost.value) postDraftData.value.content = value
+  // Ignored unless this editor is in edit mode with a resolved draft behind it — while it
+  // displays the saved post, or while the draft is still loading, it owns no buffer.
+  if (!editingPost.value || !postDraftData.value) return
+  postDraftData.value.content = value
 }
 
 // The scroll container is owned by the shell (Desktop/MobileShell) and registers
@@ -496,6 +562,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  cancelAnimationFrame(scrollToTopPlacementFrame)
   scrollContainerEl.value?.removeEventListener('scroll', updateMobileHeaderTitle)
 })
 
@@ -638,8 +705,8 @@ function moveToSpace() {
 // as a blank page for everyone, with no way back except the revision history.
 const canSavePost = computed(
   () =>
-    Boolean(postDraftData.value.title?.trim()) &&
-    !isEditorContentEmpty(postDraftData.value.content),
+    Boolean(postDraftData.value?.title?.trim()) &&
+    !isEditorContentEmpty(postDraftData.value?.content),
 )
 
 // Read content from the editor's own serializer rather than discussion.doc.content:
@@ -667,7 +734,7 @@ function startEditingPost() {
 function isPostDirty() {
   if (!editSnapshot.value) return false
   return (
-    (postDraftData.value.title ?? '') !== editSnapshot.value.title ||
+    (postDraftData.value?.title ?? '') !== editSnapshot.value.title ||
     currentPostContent() !== editSnapshot.value.content
   )
 }
@@ -699,8 +766,8 @@ function updatePost() {
   if (!editingPost.value || !canSavePost.value) return
   discussion.setValue
     .submit({
-      title: postDraftData.value.title,
-      content: postDraftData.value.content,
+      title: postDraftData.value?.title,
+      content: postDraftData.value?.content,
     })
     .then(async () => {
       // Content is saved onto the post; migrate the draft's attachments and delete it.

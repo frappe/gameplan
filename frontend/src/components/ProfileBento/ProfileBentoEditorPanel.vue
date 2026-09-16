@@ -93,7 +93,7 @@
               />
 
               <div class="space-y-1.5">
-                <FormLabel label="Size" size="md" />
+                <FormLabel label="Size" />
                 <TabButtons
                   :options="profileCardSizeOptions"
                   :model-value="card.size"
@@ -105,7 +105,7 @@
 
               <template v-if="hasImage">
                 <div class="space-y-1.5">
-                  <FormLabel label="Rendering" size="md" />
+                  <FormLabel label="Rendering" />
                   <TabButtons
                     :options="profileImageRenderingOptions"
                     :model-value="card.imageRendering || 'Cover'"

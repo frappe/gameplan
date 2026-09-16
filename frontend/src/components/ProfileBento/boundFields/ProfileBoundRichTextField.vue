@@ -2,7 +2,7 @@
   <!-- Rich text does not fit an aside this narrow, so the panel offers the way
        into a dialog rather than a cramped editor. -->
   <div class="space-y-1.5">
-    <FormLabel :label="spec.title" size="md" />
+    <FormLabel :label="spec.title" />
     <Button icon-left="lucide-edit-2" @click="showDialog = true">Edit {{ actionName }}</Button>
 
     <ProfileAboutDialog

@@ -55,6 +55,7 @@ const editor = computed(() => ft.value?.editor ?? null)
 const hasScrollOverflow = ref(false)
 const canScrollUp = ref(false)
 const canScrollDown = ref(false)
+const showScrollFades = computed(() => Boolean(props.maxHeight && !props.editable))
 
 const scrollStyle = computed<CSSProperties>(() => ({
   maxHeight: props.maxHeight,
@@ -63,7 +64,7 @@ const scrollStyle = computed<CSSProperties>(() => ({
 }))
 
 watch(
-  () => [props.content, props.maxHeight, props.minHeight],
+  () => [props.content, props.editable, props.maxHeight, props.minHeight],
   () => nextTick(updateScrollFades),
   { immediate: true },
 )
@@ -112,9 +113,9 @@ function updateScrollFades() {
           class="relative"
           :class="{
             'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:z-10 before:h-8 before:bg-gradient-to-b before:from-surface-base before:to-transparent before:opacity-0 before:transition-opacity before:duration-150':
-              maxHeight,
+              showScrollFades,
             'after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:z-10 after:h-8 after:bg-gradient-to-t after:from-surface-base after:to-transparent after:opacity-0 after:transition-opacity after:duration-150':
-              maxHeight,
+              showScrollFades,
             'before:opacity-100': canScrollUp,
             'after:opacity-100': canScrollDown,
           }"

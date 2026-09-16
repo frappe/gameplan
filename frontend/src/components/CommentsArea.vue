@@ -94,6 +94,8 @@
     >
       <div class="pointer-events-auto" :class="{ 'h-full': isComposerFullscreen }">
         <div
+          ref="composerSurface"
+          data-comment-composer-surface
           class="discussion-container bg-surface-base sm:bg-transparent"
           :class="isComposerFullscreen ? 'h-full py-0' : 'py-3'"
         >
@@ -203,7 +205,7 @@
               ref="newCommentEditor"
               v-if="newCommentType == 'Comment'"
               :key="commentEditorKey"
-              :value="draftData.content"
+              :value="draftData?.content"
               @change="onNewCommentChange"
               :submitButtonProps="{
                 variant: 'solid',
@@ -348,6 +350,10 @@ const props = withDefaults(defineProps<Props>(), {
   hideNewComment: false,
 })
 
+const emit = defineEmits<{
+  'composer-resize': []
+}>()
+
 const router = useRouter()
 const route = useRoute()
 const socket = useSocket()
@@ -391,6 +397,7 @@ const highlightedItem = ref<{ doctype: string; name: string } | null>(null)
 const addCommentHeight = ref(0)
 const newCommentEditor = useTemplateRef('newCommentEditor')
 const addComment = useTemplateRef('addComment')
+const composerSurface = useTemplateRef('composerSurface')
 let mutationObserver: MutationObserver | undefined
 let resizeObserver: ResizeObserver | undefined
 const commentEditorKey = ref(0)
@@ -541,7 +548,7 @@ const timelineItems = computed(() => {
 })
 
 const commentEmpty = computed(() => {
-  return !draftData.value.content || draftData.value.content === '<p></p>'
+  return !draftData.value?.content || draftData.value.content === '<p></p>'
 })
 
 const editorObject = computed<Editor | null>(() => {
@@ -554,7 +561,7 @@ const minimizedLabel = computed(() => {
 })
 
 const draftContentPreview = computed(() => {
-  const text = firstTextBlock(draftData.value.content ?? '')
+  const text = firstTextBlock(draftData.value?.content ?? '')
   return text ? `${text}...` : ''
 })
 
@@ -591,6 +598,12 @@ const activeComposerEditorMinHeightStyle = computed(() =>
 
 defineExpose({
   editorObject,
+  get composerHeight() {
+    return addCommentHeight.value
+  },
+  get composerElement() {
+    return composerSurface.value
+  },
   openCommentBox,
   scrollToCommentById,
   getCommentContentElement,
@@ -698,7 +711,7 @@ async function submitComment() {
   const comment = await comments.insert.submit({
     reference_doctype: props.doctype,
     reference_name: props.name,
-    content: draftData.value.content,
+    content: draftData.value?.content,
   })
   if (comments.insert.error || !comment?.name) return
 
@@ -799,6 +812,9 @@ function setItemRef($component: any, item: any) {
 }
 
 function onNewCommentChange(content: string) {
+  // The editor emits on mount, before the draft has resolved. There is no buffer to write
+  // into yet, and the composer is not editable, so the change is not the user's.
+  if (!draftData.value) return
   draftData.value.content = content
 }
 
@@ -865,9 +881,9 @@ watch(
 
 // Reopen the composer if a saved draft is restored for this discussion.
 watch(
-  () => draft.ready.value,
-  (ready) => {
-    if (ready && draft.restored.value) showCommentBox.value = true
+  draftData,
+  (payload) => {
+    if (payload && draft.restored.value) showCommentBox.value = true
   },
   { immediate: true },
 )
@@ -875,9 +891,9 @@ watch(
 // Opened from the Drafts list (?draft=comment): surface the restored reply by expanding
 // and focusing the composer, then drop the flag so later edits don't re-trigger it.
 watch(
-  () => draft.ready.value,
-  (ready) => {
-    if (!ready || route.query.draft !== 'comment') return
+  draftData,
+  (payload) => {
+    if (!payload || route.query.draft !== 'comment') return
     showCommentBox.value = true
     composerMinimized.value = false
     nextTick(() => {
@@ -912,7 +928,6 @@ onMounted(() => {
       activities.reload()
     }
   })
-  setupComposerMeasurement()
 })
 
 onUnmounted(() => {
@@ -926,10 +941,24 @@ onUnmounted(() => {
   isNewCommentOpen.value = false
 })
 
-function setupComposerMeasurement() {
-  const $el = addComment.value
-  if (!$el) return
+watch(
+  addComment,
+  ($el) => {
+    mutationObserver?.disconnect()
+    resizeObserver?.disconnect()
 
+    if (!$el) {
+      addCommentHeight.value = 0
+      emit('composer-resize')
+      return
+    }
+
+    setupComposerMeasurement($el)
+  },
+  { immediate: true, flush: 'post' },
+)
+
+function setupComposerMeasurement($el: HTMLElement) {
   updateComposerHeight()
 
   mutationObserver = new MutationObserver(updateComposerHeight)
@@ -941,6 +970,7 @@ function setupComposerMeasurement() {
 
 function updateComposerHeight() {
   addCommentHeight.value = addComment.value?.clientHeight ?? 0
+  emit('composer-resize')
 }
 
 function updateGlobalCommentState() {
