@@ -33,9 +33,10 @@ export function createServerProfileBentoSource(): ProfileBentoCardSource {
       return getLoadResultFromResponse(response)
     },
     async save(cards) {
-      await call<ProfileBentoResponse>(saveBentoCardsMethod, {
+      let response = await call<ProfileBentoResponse>(saveBentoCardsMethod, {
         cards,
       })
+      invalidateProfileBentoCall(response.profile)
     },
     reset: resetProfileBentoCards,
   }
@@ -48,6 +49,7 @@ export function createServerProfileBentoSource(): ProfileBentoCardSource {
  */
 export async function resetProfileBentoCards() {
   let response = await call<ProfileBentoResponse>(resetBentoCardsMethod)
+  invalidateProfileBentoCall(response.profile)
   return getLoadResultFromResponse(response)
 }
 
@@ -86,6 +88,28 @@ function getProfileBentoCall(profile: string) {
     bentoCalls[profile] = createProfileBentoCall(profile)
   }
   return bentoCalls[profile]
+}
+
+/**
+ * Refreshes the shared per-profile cache above after save/reset changes what it holds -
+ * called with the profile name the mutation's own response identifies (both
+ * save_my_bento_cards and reset_my_bento_cards return it via
+ * GP User Profile.get_profile_bento_response), not looked up separately.
+ *
+ * Cypress bug (frontend/tests/... profile-settings.cy.ts): without this, saving a new
+ * bento card and then opening the profile page it belongs to could show the pre-save
+ * layout - the background prefetcher (data/offlinePrefetch.ts) warms every enabled
+ * member's own cache entry too (no exclusion for the session user), so a save made after
+ * that warm-up left a stale, already-`isFinished` entry that useProfileBento's own watch
+ * has no reason to refetch on the next visit.
+ *
+ * Reloads an existing entry in place - so an already-mounted `PersonProfile.vue` viewing
+ * this same profile (e.g. behind the settings dialog overlay) picks up the change
+ * reactively too, not just a later fresh visit - rather than deleting it; if no entry
+ * exists yet there's nothing to refresh, and the next visit fetches fresh regardless.
+ */
+function invalidateProfileBentoCall(profile: string) {
+  bentoCalls[profile]?.reload()
 }
 
 /**
