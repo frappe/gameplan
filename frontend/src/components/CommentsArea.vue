@@ -275,7 +275,7 @@ import {
   useTemplateRef,
 } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { useEventListener } from '@vueuse/core'
+import { useDebounceFn, useEventListener } from '@vueuse/core'
 import { useList, TabButtons, ErrorMessage, Button, Tooltip } from 'frappe-ui'
 import CommentEditor from '@/components/editor/CommentEditor.vue'
 import Comment from './Comment.vue'
@@ -474,10 +474,18 @@ const activities = useList<GPActivity>({
 // The parent bumps `activityVersion` with the doc's `modified` on every such action,
 // so reload the timeline when it changes (skipping the initial undefined -> value
 // transition on first load, when the list has already fetched on mount).
+//
+// Both this watch and the `new_activity` socket handler (see onMounted) can fire
+// for the same underlying action. Calling `activities.reload()` from both re-enters
+// the list's in-flight fetch, which aborts it — and with `staleOnError` that abort
+// can leave the timeline stuck showing the cached (stale) snapshot instead of ever
+// settling on the fresh one. Debouncing to a single reload avoids the double-fetch.
+const reloadActivities = useDebounceFn(() => activities.reload(), 100)
+
 watch(
   () => props.activityVersion,
   (next, prev) => {
-    if (prev !== undefined && next !== prev) activities.reload()
+    if (prev !== undefined && next !== prev) reloadActivities()
   },
 )
 
@@ -925,7 +933,7 @@ onMounted(() => {
     // integer hand this component a number, so a strict compare never matches and the
     // timeline silently stops updating. Compare as strings.
     if (data.reference_doctype === props.doctype && data.reference_name === String(props.name)) {
-      activities.reload()
+      reloadActivities()
     }
   })
 })
