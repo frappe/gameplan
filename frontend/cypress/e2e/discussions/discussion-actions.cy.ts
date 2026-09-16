@@ -162,16 +162,7 @@ describe('Discussion actions', () => {
   })
 
   it('renames a discussion and records the rename in the activity feed', () => {
-    // DiscussionView.vue bumps CommentsArea.vue's `activityVersion` prop off
-    // discussion.doc.modified, which reloads the activity feed as a *separate*
-    // request from the title save itself. Polling the DOM against cy.contains'
-    // fixed retry window races that reload under load; wait for the actual
-    // network round trip instead - deterministic either way, and a timeout here
-    // reads as "the reload never happened" instead of a misleading "text not
-    // found" if this is ever genuinely broken rather than just slow.
-    cy.intercept('GET', '**/api/v2/document/GP%20Activity*').as('activityFeed')
     visitSeededDiscussion()
-    cy.wait('@activityFeed')
 
     cy.selectDropdownOption('Discussion Options', 'Edit')
     cy.get('input[placeholder="Title"]')
@@ -181,7 +172,6 @@ describe('Discussion actions', () => {
     cy.button('Save').click()
 
     cy.contains('h1', 'Edited Discussion Title').should('be.visible')
-    cy.wait('@activityFeed')
     cy.contains('changed the title from').should('exist')
   })
 
