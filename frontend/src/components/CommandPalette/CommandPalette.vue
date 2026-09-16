@@ -25,53 +25,62 @@
             :aria-activedescendant="activeItemId"
           />
         </div>
-        <ScrollArea
-          :id="commandPaletteListId"
-          class="max-h-96 border-t border-outline-gray-1 dark:border-outline-gray-2"
-          role="listbox"
-          aria-label="Command palette results"
-          @click="inputRef?.focus()"
-        >
-          <div
-            class="mb-2 mt-4.5 first:mt-3"
-            v-for="group in groupedSearchResults"
-            :key="getCommandPaletteGroupKey(group)"
-            role="group"
-            :aria-labelledby="getCommandPaletteGroupId(group)"
+        <!--
+          ScrollArea's viewport is height:100%, which an auto-height flex/block
+          ancestor can't resolve — the item is sized to its content instead of
+          the max-height cap, so nothing actually scrolls. A grid row of
+          minmax(0, 1fr) gives the ancestor a real clamped height once content
+          exceeds max-h-96, which min-h-0 on the ScrollArea then fills.
+        -->
+        <div class="grid max-h-96 grid-rows-[minmax(0,1fr)]">
+          <ScrollArea
+            :id="commandPaletteListId"
+            class="min-h-0 border-t border-outline-gray-1 dark:border-outline-gray-2"
+            role="listbox"
+            aria-label="Command palette results"
+            @click="inputRef?.focus()"
           >
             <div
-              :id="getCommandPaletteGroupId(group)"
-              class="mb-2.5 px-4.5 text-base text-ink-gray-5"
-              v-if="!group.hideTitle"
-            >
-              {{ group.title }}
-            </div>
-            <div
-              v-for="item in group.items"
-              :key="getCommandPaletteItemKey(item)"
-              class="px-2.5"
-              :class="{ 'pointer-events-none opacity-50': item.disabled }"
+              class="mb-2 mt-4.5 first:mt-3"
+              v-for="group in groupedSearchResults"
+              :key="getCommandPaletteGroupKey(group)"
+              role="group"
+              :aria-labelledby="getCommandPaletteGroupId(group)"
             >
               <div
-                :id="getCommandPaletteItemElementId(item)"
-                @click="onSelection(item)"
-                @mousemove="onItemMouseMove(item, $event)"
-                class="rounded-4"
-                :class="[item.isActive ? 'bg-surface-gray-3' : '']"
-                role="option"
-                :aria-selected="item.isActive ? 'true' : 'false'"
-                :ref="
-                  (el) => {
-                    if (item.isActive) activeItemRef = el as HTMLDivElement
-                  }
-                "
+                :id="getCommandPaletteGroupId(group)"
+                class="mb-2.5 px-4.5 text-base text-ink-gray-5"
+                v-if="!group.hideTitle"
               >
-                <component v-if="group.component" :is="group.component" :item="item" />
-                <Item v-else :item="item" />
+                {{ group.title }}
+              </div>
+              <div
+                v-for="item in group.items"
+                :key="getCommandPaletteItemKey(item)"
+                class="px-2.5"
+                :class="{ 'pointer-events-none opacity-50': item.disabled }"
+              >
+                <div
+                  :id="getCommandPaletteItemElementId(item)"
+                  @click="onSelection(item)"
+                  @mousemove="onItemMouseMove(item, $event)"
+                  class="rounded-4"
+                  :class="[item.isActive ? 'bg-surface-gray-3' : '']"
+                  role="option"
+                  :aria-selected="item.isActive ? 'true' : 'false'"
+                  :ref="
+                    (el) => {
+                      if (item.isActive) activeItemRef = el as HTMLDivElement
+                    }
+                  "
+                >
+                  <component v-if="group.component" :is="group.component" :item="item" />
+                  <Item v-else :item="item" />
+                </div>
               </div>
             </div>
-          </div>
-        </ScrollArea>
+          </ScrollArea>
+        </div>
       </div>
       <div
         class="mt-2 flex items-center justify-between border-t border-outline-gray-1 px-2.5 py-2 text-xs text-ink-gray-6 dark:border-outline-gray-2"
