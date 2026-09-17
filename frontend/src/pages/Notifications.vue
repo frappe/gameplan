@@ -164,7 +164,7 @@ import {
   dialog,
   usePageMeta,
 } from 'frappe-ui'
-import { useCall, useList } from '@/data/staleWhileRevalidate'
+import { useCall, useList } from '@/data/offlineRevalidation'
 import { List, ListRow, ListCell } from 'frappe-ui/list'
 import ListRowSkeleton from '@/components/ListRowSkeleton.vue'
 import OfflineContentFallback from '@/components/OfflineContentFallback.vue'

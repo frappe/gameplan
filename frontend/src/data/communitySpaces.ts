@@ -1,4 +1,4 @@
-import { useCall } from '@/data/staleWhileRevalidate'
+import { useCall } from '@/data/offlineRevalidation'
 import { computed, reactive } from 'vue'
 import { communityState } from './communityState'
 import { joinedSpaces, spaces } from './spaces'

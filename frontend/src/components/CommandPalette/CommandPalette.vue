@@ -112,7 +112,7 @@ import { h, ref, computed, onBeforeUnmount, watch, nextTick, markRaw, useTemplat
 import { useEventListener, useMediaQuery } from '@vueuse/core'
 import { useRouter } from 'vue-router'
 import { Dialog, dayjs, debounce, useNewDoc } from 'frappe-ui'
-import { useCall } from '@/data/staleWhileRevalidate'
+import { useCall } from '@/data/offlineRevalidation'
 import { activeUsers, isGameplanAdmin, useSessionUser, useUser } from '@/data/users'
 import ItemProject from './ItemProject.vue'
 import Item from './Item.vue'

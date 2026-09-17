@@ -109,7 +109,7 @@ import {
   dayjsLocal,
   dialog,
 } from 'frappe-ui'
-import { useDoc } from '@/data/staleWhileRevalidate'
+import { useDoc } from '@/data/offlineRevalidation'
 import PageEditor from '@/components/editor/PageEditor.vue'
 import { useSpace } from '@/data/spaces'
 import { GPPage } from '@/types/doctypes'

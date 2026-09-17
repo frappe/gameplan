@@ -125,7 +125,7 @@ const RevisionsDialog = defineAsyncComponent(() => import('./RevisionsDialog.vue
 import UserAvatarWithHover from './UserAvatarWithHover.vue'
 import { GPComment } from '@/types/doctypes'
 import { dialog } from 'frappe-ui'
-import { useList } from '@/data/staleWhileRevalidate'
+import { useList } from '@/data/offlineRevalidation'
 import { tags } from '@/data/tags'
 import { useDraftSync } from '@/data/useDraftSync'
 import { isOnline } from '@/data/online'

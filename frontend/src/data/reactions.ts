@@ -1,4 +1,4 @@
-import { useCall } from '@/data/staleWhileRevalidate'
+import { useCall } from '@/data/offlineRevalidation'
 import { computed, onScopeDispose, reactive, unref, toValue } from 'vue'
 import type { MaybeRefOrGetter } from 'vue'
 import { isOnline, onReconnect } from './online'

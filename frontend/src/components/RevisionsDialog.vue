@@ -114,7 +114,7 @@
 import { computed, ref, watch } from 'vue'
 import { useMediaQuery, usePointerSwipe } from '@vueuse/core'
 import { BottomSheet, dayjsLocal } from 'frappe-ui'
-import { useCall } from '@/data/staleWhileRevalidate'
+import { useCall } from '@/data/offlineRevalidation'
 import HtmlDiff from 'htmldiff-js'
 import { Motion } from 'motion-v'
 import UserProfileLink from './UserProfileLink.vue'

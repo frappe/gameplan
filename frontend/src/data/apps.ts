@@ -1,4 +1,4 @@
-import { useCall } from '@/data/staleWhileRevalidate'
+import { useCall } from '@/data/offlineRevalidation'
 
 interface AppInfo {
   name: string

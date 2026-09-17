@@ -1,5 +1,5 @@
 import { computed, MaybeRef, reactive, ref } from 'vue'
-import { useCall } from '@/data/staleWhileRevalidate'
+import { useCall } from '@/data/offlineRevalidation'
 import { users } from './users'
 import router from '@/router'
 import { clearOfflineCaches, guardAgainstUserSwitch } from '@/offline'

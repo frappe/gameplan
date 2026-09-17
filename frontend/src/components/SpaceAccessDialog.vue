@@ -130,7 +130,7 @@
 <script setup lang="ts">
 import { ref, computed, reactive, watch } from 'vue'
 import { Badge, Combobox, toast, Tooltip, TextInput, useDoctype } from 'frappe-ui'
-import { useList } from '@/data/staleWhileRevalidate'
+import { useList } from '@/data/offlineRevalidation'
 import EmptyStateBox from '@/components/EmptyStateBox.vue'
 import { getCommunity } from '@/data/communities'
 import { useSpace } from '@/data/spaces'

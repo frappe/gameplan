@@ -1,4 +1,4 @@
-import { useCall } from '@/data/staleWhileRevalidate'
+import { useCall } from '@/data/offlineRevalidation'
 import { computed, reactive, readonly, ref, watch } from 'vue'
 import router from '@/router'
 import { setCommunityOrder } from './communityOrder'

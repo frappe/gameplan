@@ -111,7 +111,7 @@
 defineEmits<{ (e: 'close-dialog'): void }>()
 import { computed, ref, watch } from 'vue'
 import { Button, Dialog, SettingsBody, SettingsHeader, Select, dialog, dayjsLocal } from 'frappe-ui'
-import { useCall, useList } from '@/data/staleWhileRevalidate'
+import { useCall, useList } from '@/data/offlineRevalidation'
 import {
   List,
   ListCell,

@@ -1,4 +1,4 @@
-import { revalidateOnReconnect, useDoc } from '@/data/staleWhileRevalidate'
+import { revalidateOnReconnect, useDoc } from '@/data/offlineRevalidation'
 import { MaybeRefOrGetter, toValue } from 'vue'
 import { GPTask } from '@/types/doctypes'
 

@@ -1,5 +1,5 @@
 import { MaybeRefOrGetter, ref, toValue, watch } from 'vue'
-import { revalidateOnReconnect, useDoc, useList } from '@/data/staleWhileRevalidate'
+import { revalidateOnReconnect, useDoc, useList } from '@/data/offlineRevalidation'
 import { UseListOptions } from 'frappe-ui'
 import { useDocumentVisibility } from '@vueuse/core'
 import { GPDiscussion } from '@/types/doctypes'

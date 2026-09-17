@@ -1,5 +1,5 @@
 import { GPTag } from '@/types/doctypes'
-import { useList } from '@/data/staleWhileRevalidate'
+import { useList } from '@/data/offlineRevalidation'
 
 export const tags = useList<GPTag>({
   doctype: 'GP Tag',

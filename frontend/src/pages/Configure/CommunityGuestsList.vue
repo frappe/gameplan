@@ -62,7 +62,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Button, dialog, ErrorMessage, useDoctype } from 'frappe-ui'
-import { useList } from '@/data/staleWhileRevalidate'
+import { useList } from '@/data/offlineRevalidation'
 import { List, ListCell, ListHeader, ListHeaderCell, ListRow } from 'frappe-ui/list'
 import UserAvatar from '@/components/UserAvatar.vue'
 import type { Community } from '@/data/communities'

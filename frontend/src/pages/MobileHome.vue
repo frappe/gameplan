@@ -65,7 +65,7 @@
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { PageHeaderMobile, Button, Switch, toast, usePageMeta } from 'frappe-ui'
-import { useCall } from '@/data/staleWhileRevalidate'
+import { useCall } from '@/data/offlineRevalidation'
 import CommunityImage from '@/components/CommunityImage.vue'
 import GameplanLogo from '@/components/GameplanLogo.vue'
 import MobileListRow from '@/components/MobileListRow.vue'

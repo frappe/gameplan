@@ -8,8 +8,9 @@ import { isOnline, onReconnect } from './online'
 import { isNetworkError } from '@/offline'
 
 /**
- * Stale-while-revalidate for offline use: resources show their cached copy right away, API
- * requests are not sent while offline, and whatever is on screen revalidates on reconnect.
+ * Makes frappe-ui's stale-while-revalidate offline-aware. frappe-ui already shows the cached
+ * copy while a request runs; this skips the request while offline and revalidates what is on
+ * screen once the connection returns.
  *
  * Import `useList`, `useDoc` and `useCall` from here instead of from frappe-ui.
  */

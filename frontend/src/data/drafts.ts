@@ -1,4 +1,4 @@
-import { useList } from '@/data/staleWhileRevalidate'
+import { useList } from '@/data/offlineRevalidation'
 import { computed } from 'vue'
 import { session } from './session'
 

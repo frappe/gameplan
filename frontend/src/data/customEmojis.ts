@@ -1,4 +1,4 @@
-import { useList } from '@/data/staleWhileRevalidate'
+import { useList } from '@/data/offlineRevalidation'
 import type { GPCustomEmoji } from '@/types/doctypes'
 
 export type CustomEmoji = Pick<GPCustomEmoji, 'name' | 'title' | 'image' | 'keywords' | 'owner'>
