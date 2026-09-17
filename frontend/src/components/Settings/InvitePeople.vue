@@ -116,7 +116,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { Select, Tooltip } from 'frappe-ui'
-import { useCall, useList } from 'frappe-ui'
+import { useCall, useList } from '@/data/staleWhileRevalidate'
 import { GPInvitation } from '@/types/doctypes'
 import { users } from '@/data/users'
 import { isOnline } from '@/data/online'

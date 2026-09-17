@@ -151,7 +151,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Button, Dialog, ScrollArea, Select, toast, useCall } from 'frappe-ui'
+import { Button, Dialog, ScrollArea, Select, toast } from 'frappe-ui'
+import { useCall } from '@/data/staleWhileRevalidate'
 import { communityState } from '@/data/communityState'
 import { activeCommunities, availableCommunities, communities } from '@/data/communities'
 import type { Community } from '@/data/communities'

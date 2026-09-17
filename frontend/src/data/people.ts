@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import { useList } from 'frappe-ui'
+import { useList } from '@/data/staleWhileRevalidate'
 import type { OrderBy } from 'frappe-ui'
 import type { GPUserProfile } from '@/types/doctypes'
 import { session } from './session'

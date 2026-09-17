@@ -59,7 +59,8 @@
 <script setup lang="ts">
 import { computed, inject } from 'vue'
 import { routerViewLocationKey, useRoute, useRouter } from 'vue-router'
-import { PageHeader, Breadcrumbs, Button, TabButtons, useDoc, usePageMeta } from 'frappe-ui'
+import { PageHeader, Breadcrumbs, Button, TabButtons, usePageMeta } from 'frappe-ui'
+import { useDoc } from '@/data/staleWhileRevalidate'
 import NotFound from '@/pages/NotFound.vue'
 import OfflineContentFallback from '@/components/OfflineContentFallback.vue'
 import { isBrowserOffline, isNetworkError } from '@/offline'

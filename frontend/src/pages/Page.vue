@@ -107,9 +107,9 @@ import {
   usePageMeta,
   debounce,
   dayjsLocal,
-  useDoc,
   dialog,
 } from 'frappe-ui'
+import { useDoc } from '@/data/staleWhileRevalidate'
 import PageEditor from '@/components/editor/PageEditor.vue'
 import { useSpace } from '@/data/spaces'
 import { GPPage } from '@/types/doctypes'
@@ -169,11 +169,15 @@ const content = useSyncedField({
   target: contentField,
 })
 
+let focusedTitle = false
 page.onSuccess(() => {
   updateUrlSlug()
   // Only when nobody is working yet: on a slow response the body has been
   // interactive since the cached copy rendered, and pulling focus to the title
-  // would yank someone out of the editor mid-sentence.
+  // would yank someone out of the editor mid-sentence. Only on the first load, not
+  // when the page refreshes on reconnect.
+  if (focusedTitle) return
+  focusedTitle = true
   if (!document.activeElement || document.activeElement === document.body) {
     titleInput.value?.focus()
   }

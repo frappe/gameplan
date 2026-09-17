@@ -1,5 +1,5 @@
+import { useCall } from '@/data/staleWhileRevalidate'
 import { computed, reactive } from 'vue'
-import { useCall } from 'frappe-ui'
 import { communityState } from './communityState'
 import { joinedSpaces, spaces } from './spaces'
 import {

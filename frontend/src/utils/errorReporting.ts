@@ -15,6 +15,8 @@
 import { call } from 'frappe-ui'
 import type { App } from 'vue'
 import type { Router } from 'vue-router'
+import { isOnline, whenOnline } from '@/data/online'
+import { isNetworkError } from '@/offline'
 
 const LOG_CLIENT_ERROR = 'gameplan.api.log_client_error'
 
@@ -95,15 +97,17 @@ function sendToServer(error: unknown, context: ErrorContext): void {
   // failure, and twenty copies of it say nothing the first one did not.
   if (reportedFingerprints.has(fingerprint)) return
   if (reportCount >= MAX_REPORTS_PER_PAGE_LOAD) return
+  // A failed request while offline is the connection, not a bug.
+  if (!isOnline.value && isNetworkError(error)) return
   reportedFingerprints.add(fingerprint)
   reportCount += 1
 
-  call(LOG_CLIENT_ERROR, {
-    message,
-    context: { ...context, url: window.location.href, user_agent: navigator.userAgent },
-  }).catch(() => {
-    // The sink is unreachable (offline, or the request that failed is failing again).
-    // Dropping the report is the only safe move: retrying it would loop.
+  const report = { ...context, url: window.location.href, user_agent: navigator.userAgent }
+  whenOnline(() => {
+    call(LOG_CLIENT_ERROR, { message, context: report }).catch(() => {
+      // The sink is unreachable (the request that failed is failing again).
+      // Dropping the report is the only safe move: retrying it would loop.
+    })
   })
 }
 

@@ -1,9 +1,8 @@
 import { MaybeRefOrGetter, ref, toValue, watch } from 'vue'
-import { useDoc, useList } from 'frappe-ui'
+import { revalidateOnReconnect, useDoc, useList } from '@/data/staleWhileRevalidate'
 import { UseListOptions } from 'frappe-ui'
 import { useDocumentVisibility } from '@vueuse/core'
 import { GPDiscussion } from '@/types/doctypes'
-import { onReconnect } from '@/data/online'
 import { session } from './session'
 
 // Reload the feed when the tab is re-activated after sitting in the background
@@ -23,11 +22,6 @@ const reloadSignal = ref(0)
 export function reloadDiscussionLists() {
   reloadSignal.value++
 }
-
-// US5 (seamless recovery): a discussion created or updated by someone else
-// while we were offline is invisible until something refetches. Mounted feeds
-// pick this signal up via the reloadSignal watcher below.
-onReconnect(reloadDiscussionLists)
 
 export interface Discussion extends GPDiscussion {
   project_title: string
@@ -121,6 +115,9 @@ export function useDiscussion(discussionId: MaybeRefOrGetter<string>) {
         moveToProject: 'move_to_project',
       },
     })
+  } else {
+    // Reused by a later mount, which revalidates it on reconnect too.
+    revalidateOnReconnect(discussionsCache[name])
   }
   return discussionsCache[name] as ReturnType<typeof useDoc<Discussion, DiscussionMethods>>
 }

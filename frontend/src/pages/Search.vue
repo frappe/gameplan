@@ -290,7 +290,8 @@ import {
   debounce,
   usePageMeta,
 } from 'frappe-ui'
-import { useCall, useNewDoc } from 'frappe-ui'
+import { useNewDoc } from 'frappe-ui'
+import { useCall } from '@/data/staleWhileRevalidate'
 import { List, ListCell, ListRow } from 'frappe-ui/list'
 import { GPSearchFeedback } from '@/types/doctypes'
 import { useSessionUser } from '@/data/users'

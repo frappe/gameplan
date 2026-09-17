@@ -88,7 +88,8 @@
  */
 import { computed, ref } from 'vue'
 import { PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from 'reka-ui'
-import { LoadingIndicator, TextInput, useCall } from 'frappe-ui'
+import { LoadingIndicator, TextInput } from 'frappe-ui'
+import { useCall } from '@/data/staleWhileRevalidate'
 import UserAvatar from '@/components/UserAvatar.vue'
 import { activeUsers, useSessionUser, type UserInfo } from '@/data/users'
 import { isOnline } from '@/data/online'

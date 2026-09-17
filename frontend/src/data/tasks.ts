@@ -1,5 +1,5 @@
+import { revalidateOnReconnect, useDoc } from '@/data/staleWhileRevalidate'
 import { MaybeRefOrGetter, toValue } from 'vue'
-import { useDoc } from 'frappe-ui'
 import { GPTask } from '@/types/doctypes'
 
 let tasksCache: Record<string, ReturnType<typeof useDoc>> = {}
@@ -27,6 +27,9 @@ export function useTask(taskId: MaybeRefOrGetter<string>) {
         }
       },
     })
+  } else {
+    // Reused by a later mount, which revalidates it on reconnect too.
+    revalidateOnReconnect(tasksCache[name])
   }
   return tasksCache[name] as ReturnType<typeof useDoc<Task, TaskMethods>>
 }

@@ -162,10 +162,9 @@ import {
   Breadcrumbs,
   dayjsLocal,
   dialog,
-  useCall,
-  useList,
   usePageMeta,
 } from 'frappe-ui'
+import { useCall, useList } from '@/data/staleWhileRevalidate'
 import { List, ListRow, ListCell } from 'frappe-ui/list'
 import ListRowSkeleton from '@/components/ListRowSkeleton.vue'
 import OfflineContentFallback from '@/components/OfflineContentFallback.vue'

@@ -159,15 +159,8 @@
  */
 import { computed, ref, useTemplateRef, watch } from 'vue'
 import { refDebounced } from '@vueuse/core'
-import {
-  Button,
-  Dialog,
-  ErrorMessage,
-  LoadingIndicator,
-  ScrollArea,
-  TextInput,
-  useCall,
-} from 'frappe-ui'
+import { Button, Dialog, ErrorMessage, LoadingIndicator, ScrollArea, TextInput } from 'frappe-ui'
+import { useCall } from '@/data/staleWhileRevalidate'
 import { unsplashTopics, type UnsplashPhoto, type UnsplashSearchResult } from './types'
 
 const props = withDefaults(

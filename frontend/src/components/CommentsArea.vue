@@ -276,7 +276,7 @@ import {
 } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useDebounceFn, useEventListener } from '@vueuse/core'
-import { useList, TabButtons, ErrorMessage, Button, Tooltip } from 'frappe-ui'
+import { TabButtons, ErrorMessage, Button, Tooltip } from 'frappe-ui'
 import CommentEditor from '@/components/editor/CommentEditor.vue'
 import Comment from './Comment.vue'
 import Activity from './Activity.vue'
@@ -284,6 +284,7 @@ import PollEditor from './PollEditor.vue'
 import Poll from './Poll.vue'
 import UserAvatar from './UserAvatar.vue'
 import { dialog, shellScrollContainer } from 'frappe-ui'
+import { useList } from '@/data/staleWhileRevalidate'
 import { subscribeToDoc, useSocket, type NewActivityEvent } from '@/socket'
 import { GPActivity, GPComment, GPPoll } from '@/types/doctypes'
 import type { Editor } from '@tiptap/vue-3'
@@ -291,7 +292,7 @@ import { tags } from '@/data/tags'
 import { isNewCommentOpen } from '@/data/newComment'
 import { useRichQuotes } from '@/components/RichQuoteExtension/useRichQuotes'
 import { useDraftSync } from '@/data/useDraftSync'
-import { isOnline, onReconnect } from '@/data/online'
+import { isOnline } from '@/data/online'
 import { useSessionUser } from '@/data/users'
 import type { Space } from '@/data/spaces'
 import { useIsMobile } from '@/utils/useIsMobile'
@@ -526,19 +527,6 @@ watchEffect(() => {
     richQuotes.commentsData.value = comments.data ?? null
   }
 })
-
-// US5 (seamless recovery): while offline, comments/activity/polls posted by
-// other users never arrive — the socket that normally pushes them is down too.
-// Reload this discussion's timeline once the browser comes back online.
-// Unregistered on unmount: this callback closes over lists owned by this
-// component instance, and there's no reason to keep refetching an open
-// discussion the user has already navigated away from.
-const unregisterReconnect = onReconnect(() => {
-  comments.reload()
-  activities.reload()
-  polls.reload()
-})
-onUnmounted(unregisterReconnect)
 
 // Computed
 const timelineItems = computed(() => {

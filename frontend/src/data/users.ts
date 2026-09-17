@@ -1,5 +1,5 @@
+import { useCall } from '@/data/staleWhileRevalidate'
 import { computed, reactive, readonly, ref, watch } from 'vue'
-import { useCall } from 'frappe-ui'
 import router from '@/router'
 import { setCommunityOrder } from './communityOrder'
 import { loadQuickReactionSlots } from './reactionPreferences'

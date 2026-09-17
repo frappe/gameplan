@@ -1,7 +1,8 @@
-import { useCall } from 'frappe-ui'
+import { useCall } from '@/data/staleWhileRevalidate'
 import { useDebounceFn } from '@vueuse/core'
 import { onSocketEvent } from '@/socket'
 import { session } from './session'
+import { onReconnect } from './online'
 
 export let unreadNotifications = useCall({
   // Scoped to the session user so a second account on the same browser can't read the
@@ -11,6 +12,9 @@ export let unreadNotifications = useCall({
   url: '/api/v2/method/gameplan.api.unread_notifications',
   initialData: 0,
 })
+
+// Shared store: refresh the badge on reconnect even if its last load succeeded.
+onReconnect(() => unreadNotifications.loading || unreadNotifications.reload())
 
 const listeners = new Set<() => void>()
 

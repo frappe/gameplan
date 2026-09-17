@@ -125,8 +125,8 @@ import {
   Textarea,
   TextInput,
   toast,
-  useDoc,
 } from 'frappe-ui'
+import { useDoc } from '@/data/staleWhileRevalidate'
 import type { DropdownOptions } from 'frappe-ui'
 import ProfileImageEditor from '@/components/ProfileImageEditor.vue'
 import UserAvatar from '@/components/UserAvatar.vue'

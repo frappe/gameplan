@@ -111,7 +111,7 @@
 <script setup lang="ts">
 import { ref, computed, nextTick, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { ErrorMessage, useList } from 'frappe-ui'
+import { ErrorMessage } from 'frappe-ui'
 import CommentEditor from '@/components/editor/CommentEditor.vue'
 import Comment from './Comment.vue'
 import Activity from './Activity.vue'
@@ -119,11 +119,12 @@ import UserAvatar from './UserAvatar.vue'
 import { shellScrollContainer } from 'frappe-ui'
 import { needsMobileCommentGap } from '@/utils/commentTimeline'
 import { dialog } from 'frappe-ui'
+import { useList } from '@/data/staleWhileRevalidate'
 import { subscribeToDoc, useSocket, type NewActivityEvent } from '@/socket'
 import { GPActivity, GPComment } from '@/types/doctypes'
 import type { Space } from '@/data/spaces'
 import { useDraftSync } from '@/data/useDraftSync'
-import { isOnline, onReconnect } from '@/data/online'
+import { isOnline } from '@/data/online'
 import { session } from '@/data/session'
 
 interface Props {
@@ -241,14 +242,6 @@ const activities = useList<Activity>({
     }))
   },
 })
-
-// US5 (seamless recovery): mirrors the same reconnect reload in CommentsArea.vue
-// (discussion comments) for this task's comment/activity timeline.
-const unregisterReconnect = onReconnect(() => {
-  comments.reload()
-  activities.reload()
-})
-onUnmounted(unregisterReconnect)
 
 // Computed
 type GroupedActivity = {

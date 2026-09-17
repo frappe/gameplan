@@ -190,7 +190,7 @@
 </template>
 
 <script setup lang="ts">
-import { h, computed } from 'vue'
+import { h, computed, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import TaskDescriptionEditor from '@/components/editor/TaskDescriptionEditor.vue'
 import CommentsList from '@/components/CommentsList.vue'
@@ -241,11 +241,14 @@ function deleteTask() {
   })
 }
 
-task.onSuccess((doc) => {
-  if (['Task', 'SpaceTask'].includes(route.name as string) && route.params.taskId === doc.name) {
-    task.trackVisit.submit()
-  }
-})
+// The task resource is cached across mounts, so the callback must not outlive this one.
+onUnmounted(
+  task.onSuccess((doc) => {
+    if (['Task', 'SpaceTask'].includes(route.name as string) && route.params.taskId === doc.name) {
+      task.trackVisit.submit()
+    }
+  }),
+)
 
 const assignableUsers = computed<{ label: string; value: string }[]>(() => {
   return [

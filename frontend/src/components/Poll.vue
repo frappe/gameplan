@@ -188,9 +188,9 @@ import {
   Tooltip,
   dayjsLocal,
   dialog,
-  useDoc,
 } from 'frappe-ui'
 import type { RadioValue } from 'frappe-ui'
+import { useDoc } from '@/data/staleWhileRevalidate'
 import UserAvatar from './UserAvatar.vue'
 import UserAvatarWithHover from './UserAvatarWithHover.vue'
 import UserProfileLink from './UserProfileLink.vue'

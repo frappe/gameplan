@@ -1,5 +1,6 @@
 import { computed, MaybeRefOrGetter, toValue } from 'vue'
-import { dialog, useDoctype, useList } from 'frappe-ui'
+import { dialog, useDoctype } from 'frappe-ui'
+import { useList } from '@/data/staleWhileRevalidate'
 import { GPTeam, GPMember } from '@/types/doctypes'
 import { communityOrder } from './communityOrder'
 import { useSessionUser } from './users'

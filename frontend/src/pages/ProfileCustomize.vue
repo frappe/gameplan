@@ -135,16 +135,8 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute } from 'vue-router'
 import { useEventListener, useMediaQuery } from '@vueuse/core'
-import {
-  PageHeader,
-  Breadcrumbs,
-  Button,
-  dialog,
-  toast,
-  Tooltip,
-  useDoc,
-  usePageMeta,
-} from 'frappe-ui'
+import { PageHeader, Breadcrumbs, Button, dialog, toast, Tooltip, usePageMeta } from 'frappe-ui'
+import { useDoc } from '@/data/staleWhileRevalidate'
 import ProfileBentoEditorPanel from '@/components/ProfileBento/ProfileBentoEditorPanel.vue'
 import ProfileBentoGrid from '@/components/ProfileBento/ProfileBentoGrid.vue'
 import { createServerProfileBentoSource } from '@/components/ProfileBento/profileBentoSource'

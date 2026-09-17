@@ -1,4 +1,4 @@
-import { useCall } from 'frappe-ui'
+import { useCall } from '@/data/staleWhileRevalidate'
 
 interface AppInfo {
   name: string

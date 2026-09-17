@@ -74,7 +74,8 @@
 </template>
 
 <script setup lang="ts">
-import { Dropdown, useList, UseListOptions, dialog } from 'frappe-ui'
+import { Dropdown, UseListOptions, dialog } from 'frappe-ui'
+import { useList } from '@/data/staleWhileRevalidate'
 import EmptyStateBox from '@/components/EmptyStateBox.vue'
 import OfflineContentFallback from '@/components/OfflineContentFallback.vue'
 import { useLoadFailure } from '@/data/loadFailure'

@@ -3,7 +3,7 @@ import { GPProject } from '@/types/doctypes'
 import { reactive } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
 import { onSocketEvent } from '@/socket'
-import { onReconnect } from '@/data/online'
+import { isOnline, onReconnect } from '@/data/online'
 
 interface ProjectUnreadCount {
   [spaceId: string]: number
@@ -54,6 +54,8 @@ function queued<T>(api: object, submit: () => Promise<T>): Promise<T> {
 }
 
 function loadProjectUnreadCounts(projects?: string[]) {
+  // Refreshed on reconnect instead (see onReconnect below).
+  if (!isOnline.value) return Promise.resolve(unreadCounts)
   return queued(unreadCountApi, () =>
     unreadCountApi.runMethod
       .submit({
@@ -101,6 +103,7 @@ export function getProjectUnreadCount(spaceId: string) {
  * end up displaying whichever count answered last.
  */
 export function fetchParticipatingUnreadCount(team: string) {
+  if (!isOnline.value) return Promise.resolve(participatingUnreadCounts[team] ?? 0)
   return queued(participatingCountApi, () =>
     participatingCountApi.runMethod
       .submit({ method: 'get_participating_unread_count', params: { team } })

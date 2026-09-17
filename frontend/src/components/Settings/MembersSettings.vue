@@ -110,17 +110,8 @@
 // fallthrough (this component renders a fragment); it simply isn't emitted here.
 defineEmits<{ (e: 'close-dialog'): void }>()
 import { computed, ref, watch } from 'vue'
-import {
-  Button,
-  Dialog,
-  SettingsBody,
-  SettingsHeader,
-  Select,
-  dialog,
-  dayjsLocal,
-  useCall,
-  useList,
-} from 'frappe-ui'
+import { Button, Dialog, SettingsBody, SettingsHeader, Select, dialog, dayjsLocal } from 'frappe-ui'
+import { useCall, useList } from '@/data/staleWhileRevalidate'
 import {
   List,
   ListCell,

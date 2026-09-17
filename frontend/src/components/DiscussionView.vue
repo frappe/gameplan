@@ -13,7 +13,8 @@
       />
     </PageHeader>
     <div class="discussion-container">
-      <div v-if="discussion.loading">
+      <!-- Only when nothing is cached: a refresh keeps the current copy on screen. -->
+      <div v-if="discussion.loading && !discussion.doc">
         <div
           class="sticky -top-px z-[1] flex w-full items-center bg-surface-base pb-2 pt-2 sm:top-0 sm:pt-14"
         >
@@ -374,7 +375,7 @@ import EmptyStateBox from './EmptyStateBox.vue'
 import OfflineContentFallback from './OfflineContentFallback.vue'
 import { copyToClipboard, isEditorContentEmpty } from '@/utils'
 import { isBrowserOffline, isNetworkError } from '@/offline'
-import { isOnline } from '@/data/online'
+import { isOnline, whenOnline } from '@/data/online'
 import { getSpace, useSpace } from '@/data/spaces'
 import { useCommunity } from '@/data/communities'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
@@ -632,9 +633,11 @@ async function scrollToUnread() {
   }
 
   if (route.name === 'Discussion' && route.params.postId === doc?.name) {
-    discussion.trackVisit.submit().then(() => {
-      refreshUnreadCountForProjects([doc.project])
-    })
+    whenOnline(() =>
+      discussion.trackVisit.submit().then(() => {
+        refreshUnreadCountForProjects([doc.project])
+      }),
+    )
   }
 }
 

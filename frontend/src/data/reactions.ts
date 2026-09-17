@@ -1,6 +1,6 @@
+import { useCall } from '@/data/staleWhileRevalidate'
 import { computed, onScopeDispose, reactive, unref, toValue } from 'vue'
 import type { MaybeRefOrGetter } from 'vue'
-import { useCall } from 'frappe-ui'
 import { isOnline, onReconnect } from './online'
 import { currentQuickReactionEmojis } from './reactionPreferences'
 import { session } from './session'

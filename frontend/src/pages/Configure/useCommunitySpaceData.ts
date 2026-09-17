@@ -1,5 +1,5 @@
 import { computed, toValue, type MaybeRefOrGetter } from 'vue'
-import { useList } from 'frappe-ui'
+import { useList } from '@/data/staleWhileRevalidate'
 import { spaces } from '@/data/spaces'
 import { session } from '@/data/session'
 import type { GPGuestAccess, GPPage } from '@/types/doctypes'

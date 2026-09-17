@@ -1,5 +1,5 @@
 import { useDebounceFn, useOnline } from '@vueuse/core'
-import { watch } from 'vue'
+import { getCurrentScope, onScopeDispose, watch } from 'vue'
 
 // Single shared `navigator.onLine` + online/offline event listener for the whole
 // app (US3's indicator and US5's reconnect refetch both read this).
@@ -23,6 +23,19 @@ const callbacks = new Set<ReconnectCallback>()
 export function onReconnect(callback: ReconnectCallback): () => void {
   callbacks.add(callback)
   return () => callbacks.delete(callback)
+}
+
+/**
+ * Sends `request` now, or once when the connection returns instead of attempting it offline.
+ * A pending request is dropped if the calling component unmounts first.
+ */
+export function whenOnline(request: () => void) {
+  if (isOnline.value) return request()
+  const unregister = onReconnect(() => {
+    unregister()
+    request()
+  })
+  if (getCurrentScope()) onScopeDispose(unregister)
 }
 
 const notifyReconnect = useDebounceFn(() => {
