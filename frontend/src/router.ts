@@ -742,7 +742,29 @@ function saveAndRestoreScrollPosition(to: RouteLocationNormalized, from: RouteLo
   }
 }
 
+// Browsers cache a failed dynamic import for the life of the page and never re-fetch it, so a
+// route or component chunk that failed to download while offline keeps failing after the network
+// returns. Only a real page load clears that, so once online, navigate for real instead.
+// `vite:preloadError` fires for every lazy chunk (routes and defineAsyncComponent alike).
+let chunkLoadFailed = false
+window.addEventListener('vite:preloadError', () => {
+  chunkLoadFailed = true
+})
+
+function loadPage(to: RouteLocationNormalized) {
+  window.location.assign(router.resolve(to.fullPath).href)
+}
+
+router.onError((_error, to) => {
+  if (chunkLoadFailed && !isBrowserOffline()) loadPage(to)
+})
+
 router.beforeEach(async (to, from) => {
+  if (chunkLoadFailed && !isBrowserOffline()) {
+    loadPage(to)
+    return false
+  }
+
   saveAndRestoreScrollPosition(to, from)
 
   if (to.name === 'Login' && session.isLoggedIn) {
