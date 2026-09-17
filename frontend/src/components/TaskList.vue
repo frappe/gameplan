@@ -131,7 +131,7 @@
   </EmptyStateBox>
 </template>
 <script setup lang="ts">
-import { h, ref, computed } from 'vue'
+import { h, ref, computed, toValue } from 'vue'
 import { Dropdown, LoadingIndicator, Tooltip, dayjsLocal, dialog } from 'frappe-ui'
 import EmptyStateBox from './EmptyStateBox.vue'
 import TaskStatusIcon from './NewTaskDialog/TaskStatusIcon.vue'
@@ -182,7 +182,9 @@ const tasks = useList<GPTask>({
   // Scoped to the session user: a space's tasks can be private, so a second account on
   // the same browser must not see them cached offline before its own permission-checked
   // fetch resolves (review finding from PR #516).
-  cacheKey: ['Tasks', props.listOptions, session.user],
+  // Filters are usually a getter, which JSON-stringifies to `{}` and would give every task
+  // list the same cache entry. Key on the resolved filters; callers remount per filter set.
+  cacheKey: ['Tasks', toValue(props.listOptions.filters) ?? {}, session.user],
   staleOnError: true,
 })
 

@@ -50,6 +50,7 @@
       v-show="!listFailure"
       :filters="() => ({ project: spaceId })"
       :cacheKey="`SpaceDiscussions-${spaceId}`"
+      :key="spaceId"
       :selectable="isBulkMoveMode"
       v-model:selectedDiscussions="selectedDiscussions"
     />

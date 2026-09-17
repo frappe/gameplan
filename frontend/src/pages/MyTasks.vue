@@ -32,6 +32,7 @@
       </div>
       <div class="pb-6 mt-3 sm:mt-4">
         <TaskList
+          :key="currentTab"
           :listOptions="{ filters, pageLength: 999999 }"
           :groupByStatus="true"
           ref="taskList"

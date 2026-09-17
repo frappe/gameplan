@@ -5,6 +5,7 @@
       v-show="!listFailure"
       :filters="() => ({ owner: profile.doc?.user })"
       :cacheKey="`PersonPosts-${personId}`"
+      :key="personId"
       :showPinned="false"
     />
     <!-- The fetch failed and there's no cached page to fall back to (staleOnError already
