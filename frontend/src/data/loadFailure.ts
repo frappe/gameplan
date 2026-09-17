@@ -1,5 +1,6 @@
 import { computed, toValue, type MaybeRefOrGetter } from 'vue'
-import { isBrowserOffline, isNetworkError } from '@/offline'
+import { isNetworkError } from '@/offline'
+import { isOnline } from './online'
 
 interface LoadableResource {
   loading: boolean
@@ -23,7 +24,7 @@ export function useLoadFailure(
     if (!r || r.loading || !r.error || r.isFinished === false) return null
     if (('doc' in r ? r.doc : r.data) != null) return null
 
-    return isBrowserOffline() || isNetworkError(r.error)
+    return !isOnline.value || isNetworkError(r.error)
       ? {
           title: `Can't load ${what} while offline`,
           message: "It hasn't been saved for offline use yet. Reconnect and retry to load it.",

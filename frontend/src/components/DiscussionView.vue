@@ -374,7 +374,7 @@ import SpaceBreadcrumbs from './SpaceBreadcrumbs.vue'
 import EmptyStateBox from './EmptyStateBox.vue'
 import OfflineContentFallback from './OfflineContentFallback.vue'
 import { copyToClipboard, isEditorContentEmpty } from '@/utils'
-import { isBrowserOffline, isNetworkError } from '@/offline'
+import { isNetworkError } from '@/offline'
 import { isOnline, whenOnline } from '@/data/online'
 import { getSpace, useSpace } from '@/data/spaces'
 import { useCommunity } from '@/data/communities'
@@ -480,7 +480,7 @@ function isMissingOrForbidden(error: unknown): boolean {
 }
 // A network failure (offline, or the request never reached the server) deserves its own
 // copy and a Retry — telling someone offline to "refresh" is misleading busywork.
-const isOfflineFailure = computed(() => isBrowserOffline() || isNetworkError(discussion.error))
+const isOfflineFailure = computed(() => !isOnline.value || isNetworkError(discussion.error))
 const showTitleInMobileHeader = ref(false)
 const mobileHeaderTitle = computed(() =>
   showTitleInMobileHeader.value ? discussion.doc?.title || 'Discussion' : 'Discussion',

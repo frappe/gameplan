@@ -63,7 +63,7 @@ import { PageHeader, Breadcrumbs, Button, TabButtons, usePageMeta } from 'frappe
 import { useDoc } from '@/data/offlineRevalidation'
 import NotFound from '@/pages/NotFound.vue'
 import OfflineContentFallback from '@/components/OfflineContentFallback.vue'
-import { isBrowserOffline, isNetworkError } from '@/offline'
+import { isNetworkError } from '@/offline'
 import { showSettingsDialog } from '@/components/Settings'
 import {
   resetProfileBentoCards,
@@ -118,7 +118,7 @@ const isOwnProfile = computed(() => profile.value?.user === sessionUser.name)
 // an HTTP-level error response.
 const profileLoadFailure = computed(() => {
   if (profile.value || !profileResource.error) return null
-  if (!isBrowserOffline() && !isNetworkError(profileResource.error)) return null
+  if (isOnline.value && !isNetworkError(profileResource.error)) return null
   return {
     title: "Can't load this profile while offline",
     message: "This profile isn't available offline.",
@@ -154,7 +154,7 @@ const bento = useProfileBento(() => profile.value?.name)
 // content" (US6). A non-network failure (permission error, 500) gets generic copy instead.
 const bentoFailure = computed(() => {
   if (!bento.failed.value) return null
-  const offline = isBrowserOffline() || isNetworkError(bento.error.value)
+  const offline = !isOnline.value || isNetworkError(bento.error.value)
   return offline
     ? {
         title: "Can't load this while offline",
