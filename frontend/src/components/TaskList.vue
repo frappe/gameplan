@@ -122,6 +122,12 @@
       </div>
     </div>
   </div>
+  <OfflineContentFallback
+    v-else-if="loadFailure"
+    class="mx-auto mt-6 max-w-2xl px-6"
+    v-bind="loadFailure"
+    @retry="tasks.reload()"
+  />
   <EmptyStateBox v-else>
     <template v-if="tasks.error">
       <ErrorMessage :message="tasks.error" />
@@ -136,6 +142,7 @@
 import { h, ref, computed, toValue } from 'vue'
 import { Dropdown, LoadingIndicator, Tooltip, dayjsLocal, dialog } from 'frappe-ui'
 import EmptyStateBox from './EmptyStateBox.vue'
+import OfflineContentFallback from './OfflineContentFallback.vue'
 import TaskStatusIcon from './NewTaskDialog/TaskStatusIcon.vue'
 import { useList } from 'frappe-ui'
 import { GPTask } from '@/types/doctypes'
@@ -146,6 +153,7 @@ import { useSessionUser } from '@/data/users'
 import { session } from '@/data/session'
 import { canDeleteContent } from '@/utils/permissions'
 import { isOnline } from '@/data/online'
+import { useLoadFailure } from '@/data/loadFailure'
 
 interface Props {
   groupByStatus?: boolean
@@ -190,6 +198,7 @@ const tasks = useList<GPTask>({
   cacheKey: ['Tasks', toValue(props.listOptions.filters) ?? {}, session.user],
   staleOnError: true,
 })
+const loadFailure = useLoadFailure(tasks, 'tasks')
 
 const tasksByStatus = computed(() => {
   const grouped: Record<TaskStatus, GPTask[]> = {

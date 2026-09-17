@@ -205,20 +205,16 @@
             </EmptyStateBox>
 
             <div class="p-3" v-if="people.hasNextPage">
-              <Button @click="people.next" :loading="people.loading"> Load more </Button>
+              <Button @click="people.next" :loading="people.loading" :disabled="!isOnline">
+                Load more
+              </Button>
             </div>
           </div>
 
-          <!-- The fetch failed and there's no cached page to fall back to (staleOnError
-               already covers the case where cached data exists - people.data stays
-               non-null then, so listFailure is false and the list above keeps showing
-               it). Without this a failed fetch renders as "0 members" - indistinguishable
-               from an org with no one in it (US6). -->
           <OfflineContentFallback
             v-if="listFailure"
             class="mx-auto mt-6 max-w-2xl px-6"
-            :title="listFailure.title"
-            :message="listFailure.message"
+            v-bind="listFailure"
             @retry="people.reload()"
           />
         </div>
@@ -247,7 +243,8 @@ import OfflineContentFallback from '@/components/OfflineContentFallback.vue'
 import EmptyStateBox from '@/components/EmptyStateBox.vue'
 import UserAvatarWithHover from '@/components/UserAvatarWithHover.vue'
 import ReactionFaceIcon from '@/components/ReactionFaceIcon.vue'
-import { isBrowserOffline, isNetworkError } from '@/offline'
+import { useLoadFailure } from '@/data/loadFailure'
+import { isOnline } from '@/data/online'
 
 defineOptions({
   name: 'People',
@@ -321,21 +318,7 @@ const peopleList = computed(() => {
   return list
 })
 
-const listFailure = computed(() => {
-  const failed = people.isFinished && !people.loading && people.error && people.data == null
-  if (!failed) return null
-
-  const offline = isBrowserOffline() || isNetworkError(people.error)
-  return offline
-    ? {
-        title: "Can't load this while offline",
-        message: 'The People list has not been saved for offline use yet.',
-      }
-    : {
-        title: 'Could not load people',
-        message: 'Something went wrong while loading this list. Retry to try again.',
-      }
-})
+const listFailure = useLoadFailure(people, 'people')
 
 const isEmpty = computed(
   () => !people.loading && !listFailure.value && peopleList.value.length === 0,

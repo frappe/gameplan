@@ -26,6 +26,8 @@
 
 <script setup lang="ts">
 import { watch } from 'vue'
+import { useEventListener } from '@vueuse/core'
+import { toast } from 'frappe-ui'
 import { isOnline } from '@/data/online'
 
 // A DOM attribute, not a Vue-scoped style: the shells this needs to push down
@@ -38,5 +40,21 @@ watch(
     document.documentElement.toggleAttribute('data-offline', !online)
   },
   { immediate: true },
+)
+
+// Controls are disabled while offline, and a disabled button gives no feedback on its own.
+// Pointer events (unlike clicks) still reach disabled elements, so one listener covers
+// every button, menu item and reaction in the app.
+const DISABLED_CONTROL = ':disabled, [aria-disabled="true"], [data-disabled]'
+
+useEventListener(
+  document,
+  'pointerup',
+  (event) => {
+    if (isOnline.value || !(event.target instanceof Element)) return
+    if (!event.target.closest(DISABLED_CONTROL)) return
+    toast.warning("You're offline. Reconnect to do this.", { id: 'offline-action' })
+  },
+  { capture: true },
 )
 </script>

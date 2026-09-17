@@ -167,9 +167,11 @@
             <template v-if="search.error">
               <ErrorMessage
                 :message="
-                  search.error.type == 'GameplanSearchIndexMissingError'
-                    ? 'Search index does not exist. Please build the index first.'
-                    : search.error
+                  isNetworkError(search.error)
+                    ? 'Search is not available offline. Reconnect to search.'
+                    : search.error.type == 'GameplanSearchIndexMissingError'
+                      ? 'Search index does not exist. Please build the index first.'
+                      : search.error
                 "
               />
             </template>
@@ -299,6 +301,7 @@ import { activeCommunities } from '@/data/communities'
 import { activeUsers } from '@/data/users'
 import { vFocus } from '@/directives'
 import { isOnline } from '@/data/online'
+import { isNetworkError } from '@/offline'
 
 // Type Definitions
 interface SearchSummary {

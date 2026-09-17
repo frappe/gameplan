@@ -86,6 +86,12 @@
           />
         </div>
       </div>
+      <OfflineContentFallback
+        v-else-if="loadFailure"
+        class="mx-auto mt-14 max-w-2xl px-6"
+        v-bind="loadFailure"
+        @retry="page.reload()"
+      />
     </div>
   </div>
 </template>
@@ -109,8 +115,10 @@ import { useSpace } from '@/data/spaces'
 import { GPPage } from '@/types/doctypes'
 import SpaceBreadcrumbs from '@/components/SpaceBreadcrumbs.vue'
 import DropdownMoreOptions from '@/components/DropdownMoreOptions.vue'
+import OfflineContentFallback from '@/components/OfflineContentFallback.vue'
 import { readOnlyMode } from '@/data/readOnlyMode'
 import { isOnline } from '@/data/online'
+import { useLoadFailure } from '@/data/loadFailure'
 import { relativeTimestamp } from '@/utils'
 import { useSessionUser } from '@/data/users'
 import { canDeleteContent, canEditContent } from '@/utils/permissions'
@@ -143,6 +151,7 @@ const page = useDoc<GPPage>({
   name: () => props.pageId,
   staleOnError: true,
 })
+const loadFailure = useLoadFailure(page, 'this page')
 
 // Read from the document, not from the fetch response. The body renders as soon
 // as `page.doc` arrives, which can be the cached copy the doc store publishes

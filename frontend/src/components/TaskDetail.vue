@@ -181,6 +181,12 @@
       </div>
     </div>
   </div>
+  <OfflineContentFallback
+    v-else-if="loadFailure"
+    class="mx-auto mt-14 max-w-2xl px-6"
+    v-bind="loadFailure"
+    @retry="task.reload()"
+  />
 </template>
 
 <script setup lang="ts">
@@ -191,6 +197,7 @@ import CommentsList from '@/components/CommentsList.vue'
 import TaskStatusIcon from '@/components/NewTaskDialog/TaskStatusIcon.vue'
 import TaskPriorityIcon from '@/components/icons/TaskPriorityIcon.vue'
 import DropdownMoreOptions from './DropdownMoreOptions.vue'
+import OfflineContentFallback from './OfflineContentFallback.vue'
 import { LoadingText, DatePicker, Button, Combobox, Select, dialog } from 'frappe-ui'
 import { vFocus } from '@/directives'
 import { activeUsers } from '@/data/users'
@@ -203,6 +210,7 @@ import { canDeleteContent, canEditContent } from '@/utils/permissions'
 import { spaces } from '@/data/spaces'
 import { useCommandPaletteCommands } from './CommandPalette/registry'
 import { isOnline } from '@/data/online'
+import { useLoadFailure } from '@/data/loadFailure'
 
 const props = defineProps<{
   taskId: string
@@ -213,6 +221,7 @@ const router = useRouter()
 const route = useRoute()
 
 const task = useTask(() => props.taskId)
+const loadFailure = useLoadFailure(task, 'this task')
 const space = computed(() => getSpace(task.doc?.project))
 const canEditTask = computed(
   () => !props.readOnlyMode && canEditContent(task.doc, space.value, useSessionUser()),

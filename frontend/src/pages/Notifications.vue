@@ -131,6 +131,13 @@
       </ListRow>
     </List>
 
+    <OfflineContentFallback
+      v-else-if="loadFailure"
+      class="mx-auto mt-6 max-w-2xl px-6"
+      v-bind="loadFailure"
+      @retry="activeList.reload()"
+    />
+
     <div
       v-else
       class="mx-4 rounded-4 border border-dashed border-outline-gray-2 px-6 py-12 text-center sm:mx-3"
@@ -161,11 +168,13 @@ import {
 } from 'frappe-ui'
 import { List, ListRow, ListCell } from 'frappe-ui/list'
 import ListRowSkeleton from '@/components/ListRowSkeleton.vue'
+import OfflineContentFallback from '@/components/OfflineContentFallback.vue'
 import ReactionFaceIcon from '@/components/ReactionFaceIcon.vue'
 import UserAvatarWithHover from '@/components/UserAvatarWithHover.vue'
 import { getCommunity } from '@/data/communities'
 import { onRemoteNotificationChange, unreadNotifications } from '@/data/notifications'
 import { getSpace } from '@/data/spaces'
+import { useLoadFailure } from '@/data/loadFailure'
 import { isOnline } from '@/data/online'
 import { useSessionUser } from '@/data/users'
 import type { GPNotification } from '@/types/doctypes'
@@ -257,6 +266,7 @@ const activeList = computed(() =>
   activeTab.value === 'Unread' ? unreadNotificationList : readNotificationList,
 )
 const isInitialLoading = computed(() => activeList.value.loading && !activeList.value.data?.length)
+const loadFailure = useLoadFailure(activeList, 'notifications')
 
 const emptyStateTitle = computed(() =>
   activeTab.value === 'Unread' ? "You're caught up" : 'No read notifications',

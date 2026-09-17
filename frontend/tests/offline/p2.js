@@ -61,8 +61,7 @@ async function run() {
       const info = await appRootInfo(page)
       const postLinks = await page.locator('a[href*="/discussion/"]').count()
       const isNotFound = /page not found/i.test(text)
-      const fallbackShown =
-        /can.?t load this while offline|haven.?t been saved for offline use/i.test(text)
+      const fallbackShown = /can.?t load [^\n]*while offline|been saved for offline use/i.test(text)
 
       checkPosts.textSnippet = text.slice(0, 400)
       checkPosts.info = info

@@ -78,7 +78,10 @@ export function isBrowserOffline() {
 }
 
 export function isNetworkError(error: unknown) {
-  return error instanceof TypeError && error.message === 'Failed to fetch'
+  // Chrome, Safari and Firefox each word a failed fetch differently.
+  return (
+    error instanceof TypeError && /Failed to fetch|Load failed|NetworkError/.test(error.message)
+  )
 }
 
 /**

@@ -1,5 +1,11 @@
 <template>
-  <div v-if="pages.data?.length === 0">
+  <OfflineContentFallback
+    v-if="loadFailure"
+    class="mx-auto mt-6 max-w-2xl px-6"
+    v-bind="loadFailure"
+    @retry="pages.reload()"
+  />
+  <div v-else-if="pages.data?.length === 0">
     <div class="col-span-full">
       <EmptyStateBox class="body-container">
         <span class="lucide-coffee h-7 w-7 text-ink-gray-4" />
@@ -70,6 +76,8 @@
 <script setup lang="ts">
 import { Dropdown, useList, UseListOptions, dialog } from 'frappe-ui'
 import EmptyStateBox from '@/components/EmptyStateBox.vue'
+import OfflineContentFallback from '@/components/OfflineContentFallback.vue'
+import { useLoadFailure } from '@/data/loadFailure'
 import SpaceIcon from '@/components/SpaceIcon.vue'
 import { GPPage } from '@/types/doctypes'
 import { useSpace } from '@/data/spaces'
@@ -102,6 +110,7 @@ const pages = useList<Page>({
   cacheKey: ['Pages', props.listOptions, session.user],
   staleOnError: true,
 })
+const loadFailure = useLoadFailure(pages, 'pages')
 
 function getSpace(page: Page) {
   return useSpace(() => page.project).value
