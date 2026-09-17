@@ -1,7 +1,6 @@
 // Online regression smoke test (round 3 addition) — fresh context, always online. Confirms
-// the People page and a member profile load normally with the new caching/prefetch code in
-// place, no new console errors beyond the known :9000 socket.io refusal (see env.md), and
-// the background prefetcher's '[offline-prefetch] done' log appears with plausible counts.
+// the People page and a member profile load normally with the new caching code in place,
+// with no new console errors beyond the known :9000 socket.io refusal (see env.md).
 // Complements smoke-online.js (feed/space/discussion + comment post/delete), which this
 // does not repeat.
 const {
@@ -9,7 +8,6 @@ const {
   URLS,
   PEOPLE,
   newLoggedInContext,
-  waitForPrefetchDone,
   avatarInfo,
   shot,
   innerTextSafe,
@@ -18,8 +16,7 @@ const {
 
 async function run() {
   const browser = await chromium.launch({ headless: true })
-  const { context, page, consoleErrors, pageErrors, prefetchLog } =
-    await newLoggedInContext(browser)
+  const { context, page, consoleErrors, pageErrors } = await newLoggedInContext(browser)
   const result = { story: 'SMOKE-ONLINE-PEOPLE', checks: [] }
 
   // `msg.text()` for a "Failed to load resource" console error doesn't include the URL, so
@@ -72,22 +69,6 @@ async function run() {
     checkProfile.screenshot = await shot(page, 'smoke-profile-online')
     result.checks.push(checkProfile)
 
-    // Background prefetch completes with plausible counts
-    let checkPrefetch = { name: 'background prefetch "done" log with plausible counts' }
-    const prefetch = await waitForPrefetchDone(prefetchLog, { timeoutMs: 45000 })
-    checkPrefetch.prefetch = prefetch
-    checkPrefetch.pass = Boolean(
-      prefetch.sawDone &&
-      prefetch.counts &&
-      prefetch.counts.members > 0 &&
-      prefetch.counts.profiles > 0 &&
-      prefetch.counts.bento > 0,
-    )
-    checkPrefetch.symptom = checkPrefetch.pass
-      ? `plausible counts: ${JSON.stringify(prefetch.counts)}`
-      : `no plausible "done" log seen: ${JSON.stringify(prefetch)}`
-    result.checks.push(checkPrefetch)
-
     // No new console errors beyond the known socket.io :9000 refusal. Every "Failed to load
     // resource" console error should be accounted for by an equal number of :9000 socket.io
     // requestfailed events (see the listener above) — anything left over is unexpected.
@@ -119,7 +100,6 @@ async function run() {
   } finally {
     result.consoleErrors = consoleErrors
     result.pageErrors = pageErrors
-    result.prefetchLog = prefetchLog
     await browser.close()
   }
 

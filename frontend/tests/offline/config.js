@@ -38,15 +38,12 @@ const URLS = {
 }
 
 // Real, enabled `GP User Profile` members on the seeded site, used across the
-// People/profile (P1-P3) stories. Kept distinct per role so no story's "never visited"
+// People/profile (P2-P3) stories. Kept distinct per role so no story's "never visited"
 // member is accidentally warmed by another story's "visited" step within the same run.
 const PEOPLE = {
-  // P1: never opened in that story's context; relies entirely on the background
-  // prefetcher (data/offlinePrefetch.ts) to be offline-ready.
-  neverVisitedForPrefetch: process.env.GAMEPLAN_OFFLINE_PERSON_PREFETCH || 'priya-sharma',
   // P2: visited fully online (profile + Posts tab) before going offline.
   visitedFully: process.env.GAMEPLAN_OFFLINE_PERSON_VISITED || 'maya-iyer',
-  // P3: opened only after immediately forcing offline, before prefetch can run.
+  // P3: never opened online; opened only after going offline.
   neverVisitedNoPrefetch: process.env.GAMEPLAN_OFFLINE_PERSON_NO_PREFETCH || 'hana-suzuki',
 }
 

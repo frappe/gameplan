@@ -8,7 +8,7 @@ scripts, not `@playwright/test` — each story is a `run()` function that return
 Originally built as a throwaway harness at `/tmp/offline-mvp/pw`; migrated here so it
 survives reboots and can gate regressions in CI/local dev.
 
-## What's covered (13 stories)
+## What's covered (12 stories)
 
 | Story | Covers                                                                                                       |
 | ----- | ------------------------------------------------------------------------------------------------------------ |
@@ -18,9 +18,8 @@ survives reboots and can gate regressions in CI/local dev.
 | US4   | A comment typed while offline fails gracefully and isn't lost                                                |
 | US5   | Fresh data appears automatically on reconnect, no manual reload                                              |
 | US6   | Never-cached content shows an honest "can't load this offline" fallback                                      |
-| P1    | Background prefetch (`data/offlinePrefetch.ts`) makes an unvisited member's profile offline-ready            |
 | P2    | A profile visited fully online (incl. Posts tab) is available offline                                        |
-| P3    | A profile opened right as the browser goes offline (before prefetch runs) degrades honestly                  |
+| P3    | A never-cached People page/profile opened offline degrades honestly                                          |
 | US7a  | Plain logout clears shell/runtime caches and IndexedDB, but preserves the current user's draft               |
 | US7b  | A second user logging in on the same browser (no explicit logout) never sees the first user's cached data    |
 | US7c  | A session that goes stale without a logout (timeout, old tab) still lets the next login detect the switch    |
@@ -46,7 +45,7 @@ survives reboots and can gate regressions in CI/local dev.
      convention: add an `execute()` function there and run it with
      `bench --site <your-site> execute gameplan.debug.execute`) to create the user,
      set its password, and add it to the team.
-   - A few enabled `GP User Profile` members for the People/profile stories (P1-P3) —
+   - A few enabled `GP User Profile` members for the People/profile stories (P2-P3) —
      any real members on the site work; override their IDs via env vars if needed (see
      below).
    - A private `GP Project` in the same team, with the first user as its only member and
@@ -62,7 +61,7 @@ yarn install
 yarn test:offline
 ```
 
-Runs all 13 stories against `GAMEPLAN_OFFLINE_BASE_URL` (default
+Runs all 12 stories against `GAMEPLAN_OFFLINE_BASE_URL` (default
 `http://gameplan.localhost:8003`), writes a summary to `tests/offline/results/summary.json`
 and per-story JSON/screenshots under `tests/offline/results/` (gitignored). Exits non-zero
 if any story fails.
@@ -85,7 +84,7 @@ All seeded-content coupling lives in `config.js`, overridable via env vars:
 | `GAMEPLAN_OFFLINE_SPACE_ID`                                                                                                        | `3`                                                  | `GP Project` name for the visited/cached space                |
 | `GAMEPLAN_OFFLINE_DISCUSSION_ID`                                                                                                   | `55`                                                 | `GP Discussion` name for the visited/cached discussion        |
 | `GAMEPLAN_OFFLINE_UNCACHED_SPACE_ID` / `GAMEPLAN_OFFLINE_UNCACHED_DISCUSSION_SPACE_ID` / `GAMEPLAN_OFFLINE_UNCACHED_DISCUSSION_ID` | `4` / `5` / `54`                                     | Content never visited by any story before going offline (US6) |
-| `GAMEPLAN_OFFLINE_PERSON_PREFETCH` / `GAMEPLAN_OFFLINE_PERSON_VISITED` / `GAMEPLAN_OFFLINE_PERSON_NO_PREFETCH`                     | `priya-sharma` / `maya-iyer` / `hana-suzuki`         | `GP User Profile` IDs for P1/P2/P3                            |
+| `GAMEPLAN_OFFLINE_PERSON_VISITED` / `GAMEPLAN_OFFLINE_PERSON_NO_PREFETCH`                                                          | `maya-iyer` / `hana-suzuki`                          | `GP User Profile` IDs for P2/P3                               |
 | `GAMEPLAN_OFFLINE_RESULTS_DIR`                                                                                                     | `tests/offline/results`                              | Where JSON results + screenshots are written                  |
 
 `us8.js` additionally rebuilds the app in place (bumps `gameplan-sw.js`'s

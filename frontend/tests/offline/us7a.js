@@ -12,7 +12,6 @@ const {
   PEOPLE,
   EMAIL,
   newLoggedInContext,
-  waitForPrefetchDone,
   logoutViaUI,
   idbKeyvalKeys,
   draftStoreKeys,
@@ -34,14 +33,12 @@ async function openComposer(page) {
 
 async function run() {
   const browser = await chromium.launch({ headless: true })
-  const { context, page, consoleErrors, pageErrors, prefetchLog } =
-    await newLoggedInContext(browser)
+  const { context, page, consoleErrors, pageErrors } = await newLoggedInContext(browser)
   const result = { story: 'US7a', checks: [] }
 
   try {
-    // Warm caches: People, a profile, and a discussion, plus give the background
-    // prefetcher (data/offlinePrefetch.ts) and the SW's warmLoadedAssets a chance to run,
-    // same as P1/P2's warmup pattern.
+    // Warm caches: People, a profile, and a discussion, plus give the SW's
+    // warmLoadedAssets a chance to run.
     await page.goto(URLS.feed, { waitUntil: 'load', timeout: 15000 })
     // `/g` client-side redirects to the community's discussions route once the app has
     // hydrated (post-327d7ae3, that redirect waits on cache hydration, so it isn't
@@ -61,8 +58,6 @@ async function run() {
     } catch (e) {
       // best-effort
     }
-    const prefetch = await waitForPrefetchDone(prefetchLog, { timeoutMs: 45000 })
-    result.prefetch = prefetch
     await page.waitForTimeout(2000) // warmLoadedAssets() follow-up timer
 
     // Create a draft (comment composer, not submitted) so we can assert it survives a

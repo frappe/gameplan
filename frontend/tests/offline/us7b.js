@@ -14,7 +14,6 @@ const {
   PWD2,
   newLoggedInContext,
   loginAsInSameContext,
-  waitForPrefetchDone,
   idbKeyvalKeys,
   draftStoreKeys,
   lastSeenUserFromStorage,
@@ -28,8 +27,7 @@ const MEMBER = PEOPLE.visitedFully // 'maya-iyer'
 
 async function run() {
   const browser = await chromium.launch({ headless: true })
-  const { context, page, consoleErrors, pageErrors, prefetchLog } =
-    await newLoggedInContext(browser)
+  const { context, page, consoleErrors, pageErrors } = await newLoggedInContext(browser)
   const result = { story: 'US7b', checks: [] }
 
   try {
@@ -49,7 +47,6 @@ async function run() {
     } catch (e) {
       // best-effort
     }
-    await waitForPrefetchDone(prefetchLog, { timeoutMs: 20000 }) // best-effort, not required to pass
 
     const userAKeyvalKeys = await idbKeyvalKeys(page)
     const userALastSeen = await lastSeenUserFromStorage(page)
@@ -118,7 +115,7 @@ async function run() {
         : `SHELL_CACHE absent after switch clear (caches now: ${JSON.stringify(postSwitchCaches)}) - a reload while offline from here fails with net::ERR_FAILED instead of the app's offline UI; see results-round4.md`,
     })
 
-    // --- Now go offline immediately, before B's own prefetch/browsing could plausibly
+    // --- Now go offline immediately, before B's own browsing could plausibly
     // have cached anything of A's, and check B truly can't see A's content. ---
     await context.setOffline(true)
 

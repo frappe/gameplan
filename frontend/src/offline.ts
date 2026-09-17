@@ -339,7 +339,14 @@ function notifyUpdateAvailable(worker: ServiceWorker) {
  *  would loop. */
 function watchForControllerChange() {
   let reloaded = false
+  // The first install also fires `controllerchange` when the worker claims this page
+  // (`clients.claim()`), and reloading then just loads the whole app a second time.
+  let hadController = Boolean(navigator.serviceWorker.controller)
   navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadController) {
+      hadController = true
+      return
+    }
     if (reloaded) return
     reloaded = true
     window.location.reload()

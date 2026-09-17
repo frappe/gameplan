@@ -3,7 +3,7 @@
 // cycle still works and lands on /login, and a completely fresh session sees NO update
 // toast on first visit (no stale 'waiting' worker, no spurious controllerchange reload).
 // Complements smoke-online.js (feed/space/discussion + comment) and
-// smoke-online-people.js (People/profile + prefetch), which this does not repeat.
+// smoke-online-people.js (People/profile), which this does not repeat.
 const { chromium, URLS, newLoggedInContext, logoutViaUI, shot, writeResult } = require('./helpers')
 
 async function run() {

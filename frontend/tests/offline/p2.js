@@ -1,7 +1,6 @@
 // P2 — A profile visited fully online (header + bento + Posts) should work fully offline
-// on reload: header, bento cards, and posts all rendering from cache — no reliance on the
-// background prefetcher (which never warms posts) because this session visited everything
-// itself.
+// on reload: header, bento cards, and posts all rendering from cache, because this session
+// visited everything itself.
 const {
   chromium,
   URLS,

@@ -32,15 +32,13 @@ async function newLoggedInContextAs(browser, usr, pwd, contextOptions = {}) {
   const page = await context.newPage()
   const consoleErrors = []
   const pageErrors = []
-  const prefetchLog = []
   page.on('console', (msg) => {
     if (msg.type() === 'error') consoleErrors.push(msg.text())
-    if (msg.text().includes('[offline-prefetch]')) prefetchLog.push(msg.text())
   })
   page.on('pageerror', (err) => {
     pageErrors.push(String(err))
   })
-  return { context, page, consoleErrors, pageErrors, prefetchLog }
+  return { context, page, consoleErrors, pageErrors }
 }
 
 async function newLoggedInContext(browser) {
@@ -160,45 +158,6 @@ async function lastSeenUserFromStorage(page) {
       return null
     }
   })
-}
-
-/**
- * Waits for data/offlinePrefetch.ts's `[offline-prefetch] done members=... profiles=...
- * bento=... avatars=...` console.debug line, by polling the `prefetchLog` array
- * `newLoggedInContext` populates. The prefetcher is idle-delayed (up to
- * IDLE_TIMEOUT_MS=10s) then fans out over every member with a small worker pool, so this
- * needs a generous timeout — callers should navigate to a lightweight page (the feed) and
- * just let it sit rather than doing other work while waiting.
- */
-async function waitForPrefetchDone(prefetchLog, { timeoutMs = 45000, pollMs = 500 } = {}) {
-  const start = Date.now()
-  while (Date.now() - start < timeoutMs) {
-    const doneLine = prefetchLog.find((l) => l.includes('[offline-prefetch] done'))
-    if (doneLine) {
-      const m = doneLine.match(/members=(\d+)\s+profiles=(\d+)\s+bento=(\d+)\s+avatars=(\d+)/)
-      return {
-        sawDone: true,
-        sawStartFirst: prefetchLog[0]?.includes('[offline-prefetch] start') ?? false,
-        doneLine,
-        counts: m
-          ? {
-              members: Number(m[1]),
-              profiles: Number(m[2]),
-              bento: Number(m[3]),
-              avatars: Number(m[4]),
-            }
-          : null,
-      }
-    }
-    await new Promise((r) => setTimeout(r, pollMs))
-  }
-  return {
-    sawDone: false,
-    sawStartFirst: prefetchLog[0]?.includes('[offline-prefetch] start') ?? false,
-    doneLine: null,
-    counts: null,
-    log: [...prefetchLog],
-  }
 }
 
 async function avatarInfo(page, scope = 'img') {
@@ -341,7 +300,6 @@ module.exports = {
   lastSeenUserFromStorage,
   newApiRequestContext,
   warmup,
-  waitForPrefetchDone,
   avatarInfo,
   shot,
   innerTextSafe,

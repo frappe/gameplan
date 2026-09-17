@@ -17,7 +17,6 @@ const {
   PWD2,
   newLoggedInContext,
   loginAsInSameContext,
-  waitForPrefetchDone,
   idbKeyvalKeys,
   lastSeenUserFromStorage,
   innerTextSafe,
@@ -37,8 +36,7 @@ const PRIVATE_MARKER = 'us7c-secret-marker-do-not-leak'
 
 async function run() {
   const browser = await chromium.launch({ headless: true })
-  const { context, page, consoleErrors, pageErrors, prefetchLog } =
-    await newLoggedInContext(browser)
+  const { context, page, consoleErrors, pageErrors } = await newLoggedInContext(browser)
   const result = { story: 'US7c', checks: [] }
 
   try {
@@ -56,7 +54,6 @@ async function run() {
     } catch (e) {
       // best-effort
     }
-    await waitForPrefetchDone(prefetchLog, { timeoutMs: 20000 })
 
     const userAKeyvalKeys = await idbKeyvalKeys(page)
     const userALastSeen = await lastSeenUserFromStorage(page)

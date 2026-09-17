@@ -62,10 +62,8 @@ function getLoadResultFromResponse(response: ProfileBentoResponse): ProfileBento
 
 // One `get_bento_cards` fetch per profile, keyed by profile name + session user (an
 // offline cache scoped any other way could leak one account's cached cards to a second
-// account sharing the browser - review finding from PR #516). Shared by `useProfileBento`
-// (the live page) and `prefetchProfileBento` (the background cache warmer) so both read
-// and write the same IndexedDB entry instead of racing two independent requests for the
-// same profile.
+// account sharing the browser - review finding from PR #516). Revisiting a profile reuses
+// its call instead of racing a fresh request.
 const bentoCalls: Record<string, ReturnType<typeof createProfileBentoCall>> = {}
 
 function createProfileBentoCall(profile: string) {
@@ -96,12 +94,8 @@ function getProfileBentoCall(profile: string) {
  * save_my_bento_cards and reset_my_bento_cards return it via
  * GP User Profile.get_profile_bento_response), not looked up separately.
  *
- * Cypress bug (frontend/tests/... profile-settings.cy.ts): without this, saving a new
- * bento card and then opening the profile page it belongs to could show the pre-save
- * layout - the background prefetcher (data/offlinePrefetch.ts) warms every enabled
- * member's own cache entry too (no exclusion for the session user), so a save made after
- * that warm-up left a stale, already-`isFinished` entry that useProfileBento's own watch
- * has no reason to refetch on the next visit.
+ * Without this, saving a card and then opening that profile could show the pre-save layout:
+ * a call created by an earlier visit is already `isFinished`, so nothing refetches it.
  *
  * Reloads an existing entry in place - so an already-mounted `PersonProfile.vue` viewing
  * this same profile (e.g. behind the settings dialog overlay) picks up the change
@@ -158,13 +152,4 @@ export function useProfileBento(profile: MaybeRefOrGetter<string | undefined>) {
   }
 
   return { cards, isDefault, loaded, failed, error, reload }
-}
-
-/**
- * Warms a profile's bento-card cache ahead of a visit, for the background prefetcher.
- * Same cache key path as `useProfileBento`, so a later visit to this profile reads
- * whatever this fetched.
- */
-export function prefetchProfileBento(personId: string) {
-  return getProfileBentoCall(personId).reload()
 }

@@ -1,16 +1,8 @@
-// P3 — Honest failure without cache: a session that goes offline before the background
-// prefetcher (data/offlinePrefetch.ts) or any manual browsing populated the People/profile
-// caches must show an honest "can't load this offline" fallback with retry — never a
-// silent "0 members" empty list, an infinite skeleton, or a misleading NotFound.
-//
-// Race note: we go offline as fast as possible after the very first (minimal) online page
-// load, before the prefetcher's idle-delayed pass can finish. If the prefetcher still wins
-// the race in a given run (slow/fast CI hardware makes the exact timing non-deterministic),
-// we fall back to explicitly deleting the specific IndexedDB cache entries the prefetcher
-// would have written (People list, this profile's doc, this profile's bento) — the
-// documented escape hatch in the task brief — so the "no cache" condition this story is
-// actually about is guaranteed either way, and which path was taken is recorded in the
-// result for transparency.
+// P3 — Honest failure without cache: a session that goes offline before any browsing
+// populated the People/profile caches must show an honest "can't load this offline"
+// fallback with retry — never a silent "0 members" empty list, an infinite skeleton, or a
+// misleading NotFound. The People/profile cache entries are cleared explicitly before going
+// offline so the "no cache" condition holds regardless of timing.
 const {
   chromium,
   URLS,
@@ -64,26 +56,14 @@ async function clearPeopleAndProfileCache(page, personId, sessionUser) {
 
 async function run() {
   const browser = await chromium.launch({ headless: true })
-  const { context, page, consoleErrors, pageErrors, prefetchLog } =
-    await newLoggedInContext(browser)
+  const { context, page, consoleErrors, pageErrors } = await newLoggedInContext(browser)
   const result = { story: 'P3', checks: [] }
 
   try {
-    // Minimal online exposure: enough for the SW to register and become active (it only
-    // starts registering on the window `load` event - see offline.ts's setupOfflineSupport
-    // - and a subsequent offline navigation needs it active to serve the shell at all,
-    // which is a US1 concern, not what this story is testing) but deliberately not waiting
-    // for anything past that, so we go offline as close as possible to page load, ahead of
-    // the prefetcher's idle-delayed kickoff.
+    // Minimal online exposure: enough for the SW to register and become active, so the
+    // offline navigations below are served the app shell (a US1 concern, not this story's).
     await page.goto(URLS.feed, { waitUntil: 'load', timeout: 15000 })
-    // `/g` itself client-side redirects to the community's discussions route once the
-    // app has hydrated enough to know where to send you (post-327d7ae3, cache-hydration
-    // gated, so not always instant). This story doesn't actually depend on racing ahead
-    // of that specific redirect — only ahead of the background prefetcher's much slower
-    // idle-delayed pass, and it force-clears the People/profile/bento cache entries
-    // below regardless of how any race went (see the comment above) — so it's safe to
-    // let the redirect land first, rather than risk it firing mid-`page.evaluate()`
-    // below and destroying the execution context out from under this test.
+    // Let /g's client-side redirect land first, so it can't fire mid-`page.evaluate()`.
     await page.waitForURL(/\/g\/community\//, { timeout: 10000 }).catch(() => {})
     try {
       await page.evaluate(() => navigator.serviceWorker.ready.then(() => true))
@@ -93,27 +73,12 @@ async function run() {
     }
     await context.setOffline(true)
 
-    const sawDoneBeforeOffline = prefetchLog.some((l) => l.includes('[offline-prefetch] done'))
-    result.racedSuccessfully = !sawDoneBeforeOffline
-    result.prefetchLogAtOfflineTime = [...prefetchLog]
-
-    // Always clear, not just when the prefetcher's "done" log won the race: `data/people.ts`
-    // exports its `people` list as a module-level `useList({ immediate: true })` singleton,
-    // so the People list starts fetching the moment the app boots on ANY page (imported
-    // transitively by main.js -> offlinePrefetch.ts -> people.ts) - well before the
-    // prefetcher's own idle-delayed pass, and far faster than this script can react after
-    // the page `load` event. Racing `setOffline` against that fetch is not reliably
-    // winnable, so - per the task brief's documented escape hatch - this story always forces
-    // the "nothing cached yet" condition it's actually about, rather than depending on
-    // timing luck for a signal (`people.ts`'s own immediate fetch) this story never races on.
     result.cacheClear = await clearPeopleAndProfileCache(page, MEMBER, EMAIL)
 
     result.checks.push({
       name: 'no People/profile/bento cache present before navigating offline',
       pass: Boolean(result.cacheClear && result.cacheClear.deleted?.length),
-      symptom: sawDoneBeforeOffline
-        ? `prefetch "done" log had already fired; cleared its cache entries: ${JSON.stringify(result.cacheClear)}`
-        : `raced offline ahead of prefetch "done"; cleared cache entries anyway (people.ts's own immediate fetch races independently): ${JSON.stringify(result.cacheClear)}`,
+      symptom: `cleared cache entries: ${JSON.stringify(result.cacheClear)}`,
     })
 
     // People page: must show an offline fallback with retry, not "0 members".

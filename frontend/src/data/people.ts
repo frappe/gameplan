@@ -22,14 +22,7 @@ export interface Person extends Pick<
  */
 export const peopleOrderBy = ref<OrderBy>('modified desc')
 
-/**
- * The People list: server-sorted, filtered to enabled accounts, cached for offline use.
- * A module-level singleton (like `data/spaces.ts`'s `spaces`) rather than a per-call
- * composable, so the People page and a future background prefetcher share one fetch and
- * one cache entry instead of racing two independent requests. To warm this cache ahead of
- * a visit, a prefetcher can `import { people } from '@/data/people'` and call
- * `people.reload()`.
- */
+/** The People list: server-sorted, filtered to enabled accounts, cached for offline use. */
 export const people = useList<Person>({
   // GP User Profile's default list view; the aggregate post/reply/reaction counts are
   // computed server-side per row, so this can't be the generic `/api/v2/document/...`
