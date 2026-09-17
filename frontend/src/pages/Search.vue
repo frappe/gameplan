@@ -209,7 +209,8 @@
               <Tooltip text="Yes, results were helpful">
                 <button
                   @click="submitFeedback(true)"
-                  class="p-1 hover:bg-surface-gray-2 rounded-full transition-colors"
+                  :disabled="!isOnline"
+                  class="p-1 hover:bg-surface-gray-2 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <span class="lucide-thumbs-up size-4 text-ink-gray-7" />
                 </button>
@@ -217,7 +218,8 @@
               <Tooltip text="No, results were not helpful">
                 <button
                   @click="submitFeedback(false)"
-                  class="p-1 hover:bg-surface-gray-2 rounded-full transition-colors"
+                  :disabled="!isOnline"
+                  class="p-1 hover:bg-surface-gray-2 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <span class="lucide-thumbs-down size-4 text-ink-gray-7" />
                 </button>
@@ -296,6 +298,7 @@ import { getSpace } from '@/data/spaces'
 import { activeCommunities } from '@/data/communities'
 import { activeUsers } from '@/data/users'
 import { vFocus } from '@/directives'
+import { isOnline } from '@/data/online'
 
 // Type Definitions
 interface SearchSummary {

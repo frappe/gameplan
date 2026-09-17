@@ -94,7 +94,7 @@
               variant: 'solid',
               onClick: submitComment,
               loading: comments.insert.loading,
-              disabled: commentEmpty,
+              disabled: commentEmpty || !isOnline,
             }"
             :discardButtonProps="{
               onClick: discardComment,
@@ -123,7 +123,7 @@ import { subscribeToDoc, useSocket, type NewActivityEvent } from '@/socket'
 import { GPActivity, GPComment } from '@/types/doctypes'
 import type { Space } from '@/data/spaces'
 import { useDraftSync } from '@/data/useDraftSync'
-import { onReconnect } from '@/data/online'
+import { isOnline, onReconnect } from '@/data/online'
 import { session } from '@/data/session'
 
 interface Props {
@@ -401,7 +401,7 @@ async function discardComment() {
 }
 
 async function submitComment() {
-  if (commentEmpty.value || comments.insert.loading) return
+  if (commentEmpty.value || comments.insert.loading || !isOnline.value) return
 
   const comment = await comments.insert.submit({
     reference_doctype: props.doctype,

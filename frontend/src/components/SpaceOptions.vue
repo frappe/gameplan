@@ -27,6 +27,7 @@ import SpaceAccessDialog from './SpaceAccessDialog.vue'
 import { useSpacePermissions, archiveSpace } from '@/data/spaces'
 import { GPProject } from '@/types/doctypes'
 import { useCommandPaletteCommands } from './CommandPalette/registry'
+import { isOnline } from '@/data/online'
 
 defineOptions({
   inheritAttrs: false,
@@ -56,24 +57,28 @@ const options = computed(() => [
   {
     label: 'Change Community',
     icon: 'lucide-log-out',
+    disabled: !isOnline.value,
     onClick: () => (showSpaceCategoryDialog.value = true),
     condition: () => canEditSettings.value,
   },
   {
     label: 'Merge',
     icon: 'lucide-merge',
+    disabled: !isOnline.value,
     onClick: () => (showSpaceMergeDialog.value = true),
     condition: () => canEditSettings.value,
   },
   {
     label: 'Archive',
     icon: 'lucide-archive',
+    disabled: !isOnline.value,
     onClick: () => space.value && archiveSpace(space.value),
     condition: () => canEditSettings.value,
   },
   {
     label: 'Delete',
     icon: 'lucide-trash-2',
+    disabled: !isOnline.value,
     onClick: () => {
       let message = `This will permanently delete the space and all its content. This action cannot be undone.`
       if (space.value?.discussions_count && space.value?.tasks_count) {
@@ -105,6 +110,7 @@ useCommandPaletteCommands(
       aliases: spaceActionAliases(option.label),
       onClick: option.onClick,
       condition: option.condition,
+      disabled: option.disabled,
       defaultScore: option.label === 'Delete' ? 1 : 2,
     })),
   ),

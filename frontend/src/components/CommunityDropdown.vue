@@ -40,7 +40,13 @@
         >
           Cancel
         </Button>
-        <Button variant="solid" theme="red" :loading="markingAllAsRead" @click="markAllAsRead">
+        <Button
+          variant="solid"
+          theme="red"
+          :loading="markingAllAsRead"
+          :disabled="!isOnline"
+          @click="markAllAsRead"
+        >
           Mark all as read
         </Button>
       </div>
@@ -71,6 +77,7 @@ import { copyToClipboard } from '@/utils'
 import { canManageCommunity } from '@/utils/permissions'
 import { showCommunitiesSettings } from '@/components/Settings'
 import { useCommandPaletteCommands } from '@/components/CommandPalette/registry'
+import { isOnline } from '@/data/online'
 import MergeCommunityDialog from '@/pages/Configure/MergeCommunityDialog.vue'
 
 const emit = defineEmits<{
@@ -115,6 +122,7 @@ const actionOptions = computed<DropdownOptions>(() => [
       {
         label: 'New space',
         icon: 'lucide-plus',
+        disabled: !isOnline.value,
         onClick: () => emit('new-space'),
         condition: () => canCreateSpace.value,
       },
@@ -155,6 +163,7 @@ const actionOptions = computed<DropdownOptions>(() => [
       {
         label: 'Mark all as read...',
         icon: 'lucide-check',
+        disabled: !isOnline.value,
         onClick: openMarkAllAsReadDialog,
       },
     ],
@@ -166,12 +175,14 @@ const actionOptions = computed<DropdownOptions>(() => [
       {
         label: 'Merge into...',
         icon: 'lucide-merge',
+        disabled: !isOnline.value,
         onClick: () => (showMergeDialog.value = true),
         condition: () => canManageCurrentCommunity.value,
       },
       {
         label: 'Archive community',
         icon: 'lucide-archive',
+        disabled: !isOnline.value,
         onClick: confirmArchiveCommunity,
         condition: () => canManageCurrentCommunity.value,
       },
@@ -198,6 +209,7 @@ useCommandPaletteCommands(
         aliases: communityActionAliases(action.label),
         onClick: action.onClick,
         condition: action.condition,
+        disabled: action.disabled,
         defaultScore: 2,
       })),
   ),

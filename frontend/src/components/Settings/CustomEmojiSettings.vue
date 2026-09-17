@@ -13,7 +13,9 @@
             <span class="lucide-search h-4 w-4 text-ink-gray-4" />
           </template>
         </TextInput>
-        <Button icon-left="lucide-upload" @click="openUploadDialog">Upload</Button>
+        <Button icon-left="lucide-upload" :disabled="!isOnline" @click="openUploadDialog">
+          Upload
+        </Button>
       </div>
     </div>
 
@@ -66,6 +68,7 @@
             icon="lucide-trash-2"
             :label="`Delete ${emoji.title}`"
             :loading="deletingName === emoji.name"
+            :disabled="!isOnline"
             @click="deleteEmoji(emoji)"
           />
         </div>
@@ -89,7 +92,7 @@
         </div>
         <ImageUploader kind="customEmoji" @success="(file) => (form.image = file.file_url)">
           <template #default="{ uploading, progress, openFileSelector }">
-            <Button :loading="uploading" @click="openFileSelector">
+            <Button :loading="uploading" :disabled="!isOnline" @click="openFileSelector">
               {{ uploading ? `${progress}%` : form.image ? 'Replace image' : 'Choose image' }}
             </Button>
           </template>
@@ -110,7 +113,7 @@
         variant="solid"
         class="w-full"
         :loading="saving"
-        :disabled="!canSave"
+        :disabled="!canSave || !isOnline"
         @click="saveEmoji"
       >
         Upload
@@ -138,6 +141,7 @@ import {
 import { customEmojis, type CustomEmoji } from '@/data/customEmojis'
 import ImageUploader from '@/components/ImageUploader.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
+import { isOnline } from '@/data/online'
 
 const search = ref('')
 const showUploadDialog = ref(false)

@@ -20,6 +20,7 @@
         class="w-full"
         variant="solid"
         :loading="teams.runDocMethod.isLoading(community.name, 'merge_into_team')"
+        :disabled="!isOnline"
         @click="submit"
       >
         {{ selectedCommunity ? `Merge into ${selectedCommunityLabel}` : 'Merge' }}
@@ -36,6 +37,7 @@ import { spaces } from '@/data/spaces'
 import { useSessionUser } from '@/data/users'
 import type { GPTeam } from '@/types/doctypes'
 import { getManageableCommunities } from '@/utils/permissions'
+import { isOnline } from '@/data/online'
 
 const props = defineProps<{
   community: Community

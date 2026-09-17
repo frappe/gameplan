@@ -24,7 +24,7 @@
         <Button @click="show = false">Cancel</Button>
         <Button
           variant="solid"
-          :disabled="!canSubmit"
+          :disabled="!canSubmit || !isOnline"
           :loading="communities.insert.loading"
           @click="submit"
         >
@@ -40,6 +40,7 @@ import { computed, ref, watch } from 'vue'
 import { Button, Dialog, ErrorMessage, FormControl, TextInput } from 'frappe-ui'
 import { communities } from '@/data/communities'
 import type { GPTeam } from '@/types/doctypes'
+import { isOnline } from '@/data/online'
 
 const show = defineModel<boolean>()
 const emit = defineEmits<{
@@ -58,7 +59,7 @@ watch(show, (value) => {
 
 async function submit() {
   const nextTitle = title.value.trim()
-  if (!nextTitle || communities.insert.loading) return
+  if (!nextTitle || communities.insert.loading || !isOnline.value) return
 
   const community = (await communities.insert.submit({
     title: nextTitle,

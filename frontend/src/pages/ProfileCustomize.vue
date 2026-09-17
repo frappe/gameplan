@@ -26,6 +26,7 @@
           icon-left="lucide-rotate-ccw"
           data-profile-restore-default-layout
           :loading="isResetting"
+          :disabled="!isOnline"
           @click="restoreDefaultLayout"
         >
           Restore default
@@ -39,7 +40,7 @@
           icon-left="lucide-save"
           data-profile-save
           :loading="isSaving"
-          :disabled="!isDirty"
+          :disabled="!isDirty || !isOnline"
           @click="saveProfileChanges"
         >
           Save
@@ -153,6 +154,7 @@ import { useProfileBentoCustomization } from '@/components/ProfileBento/useProfi
 import { useProfileFieldDraft } from '@/components/ProfileBento/useProfileFieldDraft'
 import { useProfileFieldEditing } from '@/components/ProfileBento/useProfileFieldEditing'
 import { useSessionUser } from '@/data/users'
+import { isOnline } from '@/data/online'
 import { extractServerMessage } from '@/utils'
 import { isPermissionError } from '@/utils/errorMessage'
 import type { ProfileFieldValues } from '@/components/ProfileBento/types'
@@ -395,6 +397,7 @@ onBeforeRouteLeave(() => {
  * editing a bio is no reason to walk through it.
  */
 async function saveProfileChanges() {
+  if (!isOnline.value) return
   // A failed field write has already said so; the staged values stay put.
   if (!(await fieldDraft.save())) return
 

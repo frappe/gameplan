@@ -63,7 +63,7 @@
             class="w-full border-0 p-0 pt-4 text-5xl-semibold focus:outline-none focus:ring-0 bg-surface-base text-ink-gray-8"
             type="text"
             v-model="title"
-            :readonly="!canEditPage"
+            :readonly="!canWritePage"
             @input="autosave"
             @keydown.enter="textEditor?.editor?.commands.focus()"
             ref="titleInput"
@@ -74,7 +74,7 @@
           <PageEditor
             editor-class="rounded-b-6 max-w-[unset] prose-v3 pb-[50vh] md:px-[70px]"
             :content="content"
-            :editable="canEditPage"
+            :editable="canWritePage"
             @change="
               (value) => {
                 content = value
@@ -110,6 +110,7 @@ import { GPPage } from '@/types/doctypes'
 import SpaceBreadcrumbs from '@/components/SpaceBreadcrumbs.vue'
 import DropdownMoreOptions from '@/components/DropdownMoreOptions.vue'
 import { readOnlyMode } from '@/data/readOnlyMode'
+import { isOnline } from '@/data/online'
 import { relativeTimestamp } from '@/utils'
 import { useSessionUser } from '@/data/users'
 import { canDeleteContent, canEditContent } from '@/utils/permissions'
@@ -180,6 +181,7 @@ const canEditPage = computed(
     !space.value?.archived_at &&
     canEditContent(page.doc, space.value, useSessionUser()),
 )
+const canWritePage = computed(() => canEditPage.value && isOnline.value)
 
 const pageTitle = computed(() => {
   return page.doc?.title || props.pageId
@@ -209,17 +211,19 @@ const pageActions = computed(() => [
     onClick: () => save(),
     loading: isAutosaving.value,
     icon: 'lucide-save',
+    disabled: !isOnline.value,
   },
   {
     label: 'Delete',
     icon: 'lucide-trash-2',
     onClick: deletePage,
     condition: () => canEditPage.value && canDeleteContent(page.doc, space.value, useSessionUser()),
+    disabled: !isOnline.value,
   },
 ])
 
 const save = () => {
-  if (!canEditPage.value) return
+  if (!canWritePage.value) return
 
   isAutosaving.value = true
   const startTime = Date.now()
@@ -268,6 +272,7 @@ useCommandPaletteCommands(
         icon: 'lucide-save',
         aliases: ['save document', 'save changes'],
         onClick: save,
+        disabled: !isOnline.value,
         defaultScore: isDirty.value ? 3 : 1,
       },
       {
@@ -277,6 +282,7 @@ useCommandPaletteCommands(
         icon: 'lucide-trash-2',
         aliases: ['remove page', 'delete document'],
         onClick: deletePage,
+        disabled: !isOnline.value,
         condition: () =>
           canEditPage.value && canDeleteContent(page.doc, space.value, useSessionUser()),
         defaultScore: 1,

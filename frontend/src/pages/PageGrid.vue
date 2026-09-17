@@ -76,6 +76,7 @@ import { useSpace } from '@/data/spaces'
 import { useSessionUser } from '@/data/users'
 import { session } from '@/data/session'
 import { canDeleteContent } from '@/utils/permissions'
+import { isOnline } from '@/data/online'
 
 const props = defineProps<{
   listOptions: {
@@ -111,6 +112,7 @@ const getDropdownOptions = (page: Page) => [
     label: 'Delete',
     icon: 'lucide-trash',
     condition: () => canDeleteContent(page, getSpace(page), useSessionUser()),
+    disabled: !isOnline.value,
     onClick: () => {
       dialog.danger({
         title: 'Delete Page',

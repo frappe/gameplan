@@ -8,7 +8,7 @@
           :class="getButtonBorderClass(file)"
           :aria-label="`Upload image for ${community.title}`"
           :aria-busy="uploading || saving"
-          :disabled="uploading || saving"
+          :disabled="uploading || saving || !isOnline"
           @click="openFileSelector"
         >
           <CommunityImage :community="previewCommunity(file)" class="size-full" />
@@ -43,6 +43,7 @@ import ImageUploader from '@/components/ImageUploader.vue'
 import CommunityImage from '@/components/CommunityImage.vue'
 import { communities, type Community } from '@/data/communities'
 import type { GPTeam } from '@/types/doctypes'
+import { isOnline } from '@/data/online'
 
 interface UploadedFile {
   file_url: string

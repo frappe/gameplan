@@ -177,7 +177,7 @@
                 <Button
                   variant="solid"
                   :loading="onboarding.loading"
-                  :disabled="!community || !space.title"
+                  :disabled="!community || !space.title || !isOnline"
                   @click="submit"
                 >
                   Continue
@@ -203,6 +203,7 @@ import { joinedSpaces, spaces } from '@/data/spaces'
 import { communities } from '@/data/communities'
 import { communityState } from '@/data/communityState'
 import { useSessionUser } from '@/data/users'
+import { isOnline } from '@/data/online'
 
 const community = ref('')
 const space = reactive({

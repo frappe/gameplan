@@ -9,6 +9,7 @@
         variant="ghost"
         size="md"
         :loading="updateJoinedTeams.loading"
+        :disabled="!isOnline"
         @click="toggleEditMode"
       >
         {{ editMode ? 'Done' : 'Edit' }}
@@ -70,6 +71,7 @@ import MobileListRow from '@/components/MobileListRow.vue'
 import { activeCommunities, availableCommunities, communities } from '@/data/communities'
 import { communityState } from '@/data/communityState'
 import { getSpaceUnreadCount, spaces } from '@/data/spaces'
+import { isOnline } from '@/data/online'
 
 const router = useRouter()
 const editMode = ref(false)

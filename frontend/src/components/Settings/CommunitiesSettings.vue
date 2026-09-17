@@ -27,7 +27,12 @@
           v-model:visibility-filter="spaceFilter"
         >
           <template #action>
-            <Button v-if="canCreateSpace" icon-left="lucide-plus" @click="openNewSpaceDialog">
+            <Button
+              v-if="canCreateSpace"
+              icon-left="lucide-plus"
+              :disabled="!isOnline"
+              @click="openNewSpaceDialog"
+            >
               New space
             </Button>
           </template>
@@ -42,7 +47,7 @@
             <Button
               v-if="canManageSelectedCommunity"
               icon-left="lucide-plus"
-              :disabled="Boolean(selectedCommunity.archived_at)"
+              :disabled="Boolean(selectedCommunity.archived_at) || !isOnline"
               @click="showAddMembers = true"
             >
               Add members
@@ -78,6 +83,7 @@
             <Button
               v-if="showNewCommunityButton"
               icon-left="lucide-plus"
+              :disabled="!isOnline"
               @click="newCommunityDialog = true"
             >
               New community
@@ -152,6 +158,7 @@ import { openCustomizeSidebarDialog } from '@/components/AppRail/customizeSideba
 import { communities } from '@/data/communities'
 import { useSessionUser } from '@/data/users'
 import { canManageCommunity, isGlobalAdmin } from '@/utils/permissions'
+import { isOnline } from '@/data/online'
 import CommunitiesList from '@/pages/Configure/CommunitiesList.vue'
 import CommunitiesListFilters from '@/pages/Configure/CommunitiesListFilters.vue'
 import ConfigureEmptyState from '@/pages/Configure/ConfigureEmptyState.vue'

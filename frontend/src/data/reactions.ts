@@ -1,6 +1,7 @@
-import { computed, reactive, unref, toValue } from 'vue'
+import { computed, onScopeDispose, reactive, unref, toValue } from 'vue'
 import type { MaybeRefOrGetter } from 'vue'
 import { useCall } from 'frappe-ui'
+import { isOnline, onReconnect } from './online'
 import { currentQuickReactionEmojis } from './reactionPreferences'
 import { session } from './session'
 import { useUser } from './users'
@@ -43,6 +44,7 @@ export function useReactions(options: UseReactionsOptions) {
   const doctype = computed(() => toValue(options.doctype))
   const name = computed(() => toValue(options.name))
   const readOnlyMode = computed(() => toValue(options.readOnlyMode ?? false))
+  const disabled = computed(() => readOnlyMode.value || !isOnline.value)
 
   const clearPending = () => {
     for (let key of Object.keys(pendingReactions)) {
@@ -88,7 +90,9 @@ export function useReactions(options: UseReactionsOptions) {
 
     submitTimeout = window.setTimeout(() => {
       const operations = buildPendingOperations()
-      if (!operations.length) {
+      // Dropped offline inside the batch window: the pending ops stay queued and are sent
+      // on reconnect (see onReconnect below).
+      if (!operations.length || !isOnline.value) {
         return
       }
       react.submit({ operations })
@@ -101,6 +105,12 @@ export function useReactions(options: UseReactionsOptions) {
       submitTimeout = null
     }
   }
+
+  onScopeDispose(
+    onReconnect(() => {
+      if (buildPendingOperations().length) submitBatch()
+    }),
+  )
 
   const setPendingReaction = (emoji: string, initial: boolean, desired: boolean) => {
     if (initial === desired) {
@@ -133,7 +143,7 @@ export function useReactions(options: UseReactionsOptions) {
     options.onUpdate(reactionsList.value.filter((item) => item !== reaction))
 
   const toggleReaction = (emoji: string) => {
-    if (readOnlyMode.value) return
+    if (disabled.value) return
     const existingReaction = getUserReaction(emoji)
     const pending = pendingReactions[emoji]
     const currentState = pending ? pending.desired : !!existingReaction
@@ -195,5 +205,6 @@ export function useReactions(options: UseReactionsOptions) {
     standardEmojis: currentQuickReactionEmojis,
     batchRequestErrors,
     isLoading: react.loading,
+    disabled,
   }
 }

@@ -14,6 +14,7 @@
         class="w-full"
         variant="solid"
         :loading="spaces.runDocMethod.isLoading(spaceId, 'move_to_team')"
+        :disabled="!isOnline"
         @click="submit"
       >
         {{ selectedTeam ? `Move to ${selectedTeamLabel}` : 'Move to Uncategorized' }}
@@ -29,6 +30,7 @@ import { activeCommunities } from '@/data/communities'
 import { spaces as spacesList, useSpace } from '@/data/spaces'
 import { useDoctype } from 'frappe-ui'
 import { GPProject } from '@/types/doctypes'
+import { isOnline } from '@/data/online'
 
 const props = defineProps<{
   spaceId: string

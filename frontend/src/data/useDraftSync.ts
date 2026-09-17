@@ -15,6 +15,7 @@
 import { ref, computed, watch, toValue, nextTick, onScopeDispose, type MaybeRefOrGetter } from 'vue'
 import { call, debounce, toast, dayjsLocal, useDoctype } from 'frappe-ui'
 import { isNetworkError } from '@/offline'
+import { isOnline, onReconnect } from './online'
 import { session } from './session'
 import { createDraft, drafts } from './drafts'
 import { isEditorContentEmpty } from '@/utils'
@@ -294,6 +295,9 @@ export function useDraftSync(options: UseDraftSyncOptions) {
   async function persistToServer() {
     const payload = data.value
     if (!payload || !isEnabled() || !dirty.value || !canSave(payload)) return
+    // The edit is already in IndexedDB. Pushing now would only fail and toast; the
+    // reconnect handler below sends it once the network is back.
+    if (!isOnline.value) return
     // Snapshot what we are about to send, and the edit clock it belongs to, BEFORE the
     // request goes out. Marking the draft synced as of the response time would mark every
     // keystroke typed while the request was in flight as already pushed — those edits go
@@ -576,7 +580,12 @@ export function useDraftSync(options: UseDraftSyncOptions) {
     }
   }
 
+  const unregisterReconnect = onReconnect(() => {
+    if (dirty.value && data.value && canSave(data.value)) void pushToServer()
+  })
+
   onScopeDispose(() => {
+    unregisterReconnect()
     unsubscribe()
     // Best-effort: push un-synced edits as we leave so nothing is lost on navigation.
     if (dirty.value && data.value && canSave(data.value)) void pushToServer()

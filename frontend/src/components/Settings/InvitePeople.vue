@@ -37,6 +37,7 @@
             })
           "
           :loading="inviteByEmail.loading"
+          :disabled="!isOnline"
         >
           Invite
         </Button>
@@ -89,10 +90,12 @@
                 <Button
                   v-if="!pendingToDelete || pendingToDelete != invitation.name"
                   icon="lucide-x"
+                  :disabled="!isOnline"
                   @click="pendingToDelete = invitation.name"
                 />
                 <Button
                   v-else
+                  :disabled="!isOnline"
                   @click="() => pendingInvitations.delete.submit({ name: invitation.name })"
                   :loading="
                     pendingInvitations.delete.loading &&
@@ -116,6 +119,7 @@ import { Select, Tooltip } from 'frappe-ui'
 import { useCall, useList } from 'frappe-ui'
 import { GPInvitation } from '@/types/doctypes'
 import { users } from '@/data/users'
+import { isOnline } from '@/data/online'
 
 type Role = 'Gameplan Admin' | 'Gameplan Member'
 

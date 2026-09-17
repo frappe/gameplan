@@ -20,6 +20,7 @@ import { communities } from '@/data/communities'
 import type { Community } from '@/data/communities'
 import type { GPTeam } from '@/types/doctypes'
 import MergeCommunityDialog from './MergeCommunityDialog.vue'
+import { isOnline } from '@/data/online'
 
 const props = defineProps<{
   community: Community
@@ -47,18 +48,21 @@ const options = computed(() => [
   {
     label: 'Merge into...',
     icon: 'lucide-merge',
+    disabled: !isOnline.value,
     onClick: () => (showMergeDialog.value = true),
     condition: () => !props.community.archived_at,
   },
   {
     label: 'Unarchive',
     icon: 'lucide-archive-restore',
+    disabled: !isOnline.value,
     onClick: () => updateArchiveState('unarchive'),
     condition: () => Boolean(props.community.archived_at),
   },
   {
     label: 'Archive',
     icon: 'lucide-archive',
+    disabled: !isOnline.value,
     onClick: archiveCommunity,
     condition: () => !props.community.archived_at,
   },

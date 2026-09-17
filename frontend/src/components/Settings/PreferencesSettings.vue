@@ -46,7 +46,7 @@
             <Select
               :options="badgeStyleOptions"
               v-model="selectedBadgeStyle"
-              :disabled="savingBadgeStyle"
+              :disabled="savingBadgeStyle || !isOnline"
             />
           </SettingsRow>
 
@@ -84,6 +84,7 @@
             <Button
               variant="subtle"
               icon-left="lucide-rotate-ccw"
+              :disabled="!isOnline"
               @click="resetQuickReactionEmojis"
             >
               Reset
@@ -91,7 +92,7 @@
           </SettingsRow>
         </div>
 
-        <QuickReactionsEditor class="mt-2" />
+        <QuickReactionsEditor class="mt-2" :disabled="!isOnline" />
       </section>
     </div>
   </SettingsBody>
@@ -130,6 +131,7 @@ import { useSessionUser } from '@/data/users'
 import { useTheme, type Theme } from '@/utils/useTheme'
 import { useCursorStyle, type CursorStyle } from '@/utils/useCursorStyle'
 import type { GPUserProfile } from '@/types/doctypes'
+import { isOnline } from '@/data/online'
 import QuickReactionsEditor from './QuickReactionsEditor.vue'
 
 const sessionUser = useSessionUser()

@@ -5,6 +5,7 @@
     :toolTipText="toolTipText"
     :standardEmojis="standardEmojis"
     :isLoading="isLoading"
+    :disabled="disabled"
   />
   <div class="mt-2 space-y-2" v-if="batchRequestErrors.length">
     <ErrorMessage v-for="error in batchRequestErrors" :message="error" />
@@ -35,6 +36,7 @@ const {
   standardEmojis,
   batchRequestErrors,
   isLoading,
+  disabled,
 } = useReactions({
   reactions: () => props.reactions,
   doctype: () => props.doctype,

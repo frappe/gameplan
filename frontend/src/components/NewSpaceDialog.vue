@@ -50,7 +50,9 @@
     <template #actions>
       <div class="flex items-center space-x-2 justify-end">
         <Button>Cancel</Button>
-        <Button variant="solid" @click="submit" :loading="newSpace.loading">Submit</Button>
+        <Button variant="solid" @click="submit" :loading="newSpace.loading" :disabled="!isOnline">
+          Submit
+        </Button>
       </div>
     </template>
   </Dialog>
@@ -73,6 +75,7 @@ import { computed, h, ref, watch } from 'vue'
 import { activeCommunities, communities } from '@/data/communities'
 import { isGameplanAdmin } from '@/data/users'
 import { until } from '@vueuse/core'
+import { isOnline } from '@/data/online'
 
 const props = defineProps<{
   // When set, the dialog always creates in this community and hides the community picker.
@@ -113,6 +116,7 @@ const communityOptions = computed((): ComboboxOption[] => {
     type: 'custom' as const,
     key: 'create_new',
     label: 'Create new',
+    disabled: !isOnline.value,
     slots: {
       prefix: () => h('span', { class: 'lucide-plus' }),
       label: ({ query }) => `Create New: ${query}`,
@@ -145,6 +149,7 @@ function selectCommunity(communityId: string) {
 }
 
 function submit() {
+  if (!isOnline.value) return
   const community = props.lockedCommunityId || selectedCommunity.value
   if (community) {
     newSpace.doc.team = community

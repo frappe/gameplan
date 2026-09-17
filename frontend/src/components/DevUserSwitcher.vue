@@ -45,7 +45,7 @@
               :key="user.name"
               type="button"
               class="flex w-full items-center gap-2.5 rounded-4 px-2 py-1.5 text-left hover:bg-surface-gray-2 disabled:opacity-60"
-              :disabled="Boolean(switchingTo)"
+              :disabled="Boolean(switchingTo) || !isOnline"
               @click="switchTo(user.name)"
             >
               <UserAvatar :user="user.name" size="md" />
@@ -91,6 +91,7 @@ import { PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from 'reka
 import { LoadingIndicator, TextInput, useCall } from 'frappe-ui'
 import UserAvatar from '@/components/UserAvatar.vue'
 import { activeUsers, useSessionUser, type UserInfo } from '@/data/users'
+import { isOnline } from '@/data/online'
 
 defineOptions({ name: 'DevUserSwitcher' })
 

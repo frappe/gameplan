@@ -8,7 +8,9 @@
       <Button variant="ghost" @click="resetCrop">Reset</Button>
       <div class="flex items-center gap-2">
         <Button @click="cancelCrop">Cancel</Button>
-        <Button variant="solid" :loading="saving" @click="saveCroppedImage">Save</Button>
+        <Button variant="solid" :loading="saving" :disabled="!isOnline" @click="saveCroppedImage">
+          Save
+        </Button>
       </div>
     </div>
   </div>
@@ -20,6 +22,7 @@ import { Button, ErrorMessage } from 'frappe-ui'
 import { useImageUpload } from '@/utils/imageUpload'
 import AvatarCropper from './AvatarCropper.vue'
 import { useSessionUser } from '@/data/users'
+import { isOnline } from '@/data/online'
 
 interface ProfileDoc {
   image?: string | null
@@ -68,7 +71,7 @@ function cancelCrop() {
 }
 
 async function saveCroppedImage() {
-  if (saving.value) return
+  if (saving.value || !isOnline.value) return
 
   let blob = await cropper.value?.getCroppedBlob()
   if (!blob) {

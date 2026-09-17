@@ -56,6 +56,7 @@
         icon="lucide-archive-restore"
         tooltip="Unarchive space"
         :loading="isDocMethodLoading(space.name, 'unarchive')"
+        :disabled="!isOnline"
         @click="restoreSpace"
       />
       <SpaceOptions v-else-if="!space.archived_at" align="end" :spaceId="space.name" />
@@ -75,6 +76,7 @@ import { readOnlyMode } from '@/data/readOnlyMode'
 import { useSessionUser } from '@/data/users'
 import type { GPProject } from '@/types/doctypes'
 import { canManageSpace } from '@/utils/permissions'
+import { isOnline } from '@/data/online'
 import { visibilityIcon, visibilityLabel } from '@/utils/visibility'
 
 const props = defineProps<{
@@ -94,7 +96,9 @@ const sessionUser = useSessionUser()
 const canManageSpaceSettings = computed(
   () => !readOnlyMode && canManageSpace(props.space, sessionUser),
 )
-const canEditSpace = computed(() => canManageSpaceSettings.value && !props.space.archived_at)
+const canEditSpace = computed(
+  () => canManageSpaceSettings.value && !props.space.archived_at && isOnline.value,
+)
 const contentLabel = computed(() => {
   const counts = [
     formatNonZeroCount(props.space.discussions_count ?? 0, 'post'),

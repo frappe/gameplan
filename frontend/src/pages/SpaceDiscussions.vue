@@ -84,7 +84,7 @@
           class="w-full"
           variant="solid"
           :loading="bulkMoveDiscussions.loading"
-          :disabled="!selectedSpace"
+          :disabled="!selectedSpace || !isOnline"
           @click="moveDiscussions"
         >
           {{ selectedSpace ? `Move to ${selectedSpaceTitle}` : 'Move' }}
@@ -124,6 +124,7 @@ import {
 } from '@/data/spaces'
 import { copyToClipboard } from '@/utils'
 import { readOnlyMode } from '@/data/readOnlyMode'
+import { isOnline } from '@/data/online'
 
 interface BulkUpdateResponse {
   moved: string[]
@@ -202,11 +203,13 @@ const spaceActions = computed(() => [
   {
     label: 'Mark all as read',
     icon: 'lucide-check',
+    disabled: !isOnline.value,
     onClick: () => currentSpace.value && markAllAsRead([props.spaceId], currentSpace.value.title),
   },
   {
     label: isJoined.value ? 'Leave space' : 'Join space',
     icon: isJoined.value ? 'lucide-log-out' : 'lucide-log-in',
+    disabled: !isOnline.value,
     onClick: () => {
       if (!currentSpace.value) return
       return isJoined.value ? confirmLeaveSpace(currentSpace.value) : joinSpace(currentSpace.value)
@@ -228,12 +231,14 @@ const spaceActions = computed(() => [
   {
     label: 'Archive',
     icon: 'lucide-archive',
+    disabled: !isOnline.value,
     onClick: () => currentSpace.value && archiveSpace(currentSpace.value),
     condition: () => canEditSettings.value,
   },
   {
     label: 'Unarchive',
     icon: 'lucide-archive-restore',
+    disabled: !isOnline.value,
     onClick: () => currentSpace.value && unarchiveSpace(currentSpace.value),
     condition: () => !readOnlyMode && isArchived.value && canManageAccess.value,
   },
@@ -265,6 +270,7 @@ function resetMoveDialog() {
 }
 
 function moveDiscussions() {
+  if (!isOnline.value) return
   if (selectedDiscussions.value.length === 0) {
     toast.error('Select discussions to move')
     return

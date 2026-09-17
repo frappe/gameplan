@@ -42,6 +42,7 @@
                 />
                 <Tooltip text="Change status" v-else>
                   <Dropdown
+                    :disabled="!isOnline"
                     :options="
                       statusOptions({
                         onClick: (status) =>
@@ -53,7 +54,8 @@
                     "
                   >
                     <button
-                      class="flex rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-outline-gray-3"
+                      class="flex rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-outline-gray-3 disabled:cursor-not-allowed disabled:opacity-50"
+                      :disabled="!isOnline"
                     >
                       <TaskStatusIcon :status="d.status" />
                     </button>
@@ -143,6 +145,7 @@ import DropdownMoreOptions from './DropdownMoreOptions.vue'
 import { useSessionUser } from '@/data/users'
 import { session } from '@/data/session'
 import { canDeleteContent } from '@/utils/permissions'
+import { isOnline } from '@/data/online'
 
 interface Props {
   groupByStatus?: boolean
@@ -233,6 +236,7 @@ function dropdownOptions(task: GPTask) {
     {
       label: 'Delete',
       condition: () => canDeleteContent(task, getSpace(task.project), useSessionUser()),
+      disabled: !isOnline.value,
       onClick: () => {
         dialog.danger({
           title: 'Delete Task',

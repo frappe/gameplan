@@ -135,8 +135,9 @@
           <template #default="{ progress, uploading, error, openFileSelector }">
             <button
               type="button"
-              class="flex h-full w-full flex-col items-center justify-center gap-2 p-3 text-center text-ink-gray-5 transition hover:bg-surface-gray-2 sm:p-4"
+              class="flex h-full w-full flex-col items-center justify-center gap-2 p-3 text-center text-ink-gray-5 transition hover:bg-surface-gray-2 disabled:cursor-not-allowed disabled:opacity-50 sm:p-4"
               :class="{ 'border border-outline-red-2 bg-surface-red-1': error }"
+              :disabled="!isOnline"
               @click.stop="openFileSelector"
               @pointerdown.stop
             >
@@ -243,6 +244,7 @@ import {
 } from './profileBentoLayout'
 import { Button, Spinner } from 'frappe-ui'
 import ImageUploader from '@/components/ImageUploader.vue'
+import { isOnline } from '@/data/online'
 import { useProfileImageReposition } from './useProfileImageReposition'
 
 const props = defineProps<{

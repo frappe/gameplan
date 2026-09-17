@@ -15,10 +15,11 @@
               accept="image/png,image/jpeg"
               @change="selectAvatarFile"
             />
-            <Dropdown v-if="hasAvatar" :options="avatarOptions" align="start">
+            <Dropdown v-if="hasAvatar" :options="avatarOptions" align="start" :disabled="!isOnline">
               <button
                 type="button"
-                class="rounded-full flex focus:outline-none focus:ring-2 focus:ring-outline-gray-3"
+                class="rounded-full flex focus:outline-none focus:ring-2 focus:ring-outline-gray-3 disabled:cursor-not-allowed disabled:opacity-50"
+                :disabled="!isOnline"
                 aria-label="Profile picture options"
               >
                 <UserAvatar :user="sessionUser.name" size="3xl" class="!h-16 !w-16 rounded-full" />
@@ -27,8 +28,9 @@
             <button
               v-else
               type="button"
-              class="rounded-full focus:outline-none focus:ring-2 focus:ring-outline-gray-3"
+              class="rounded-full focus:outline-none focus:ring-2 focus:ring-outline-gray-3 disabled:cursor-not-allowed disabled:opacity-50"
               aria-label="Upload profile picture"
+              :disabled="!isOnline"
               @click="openAvatarFileSelector"
             >
               <UserAvatar :user="sessionUser.name" size="3xl" class="!h-16 !w-16 rounded-full" />
@@ -46,7 +48,7 @@
               label="First name"
               class="w-full"
               v-model="firstName"
-              :disabled="savingName"
+              :disabled="savingName || !isOnline"
               @blur="saveName"
             />
           </div>
@@ -55,7 +57,7 @@
               label="Last name"
               class="w-full"
               v-model="lastName"
-              :disabled="savingName"
+              :disabled="savingName || !isOnline"
               @blur="saveName"
             />
           </div>
@@ -67,7 +69,7 @@
             class="w-full"
             maxlength="280"
             v-model="bio"
-            :disabled="savingBio"
+            :disabled="savingBio || !isOnline"
             @blur="saveBio"
           />
         </div>
@@ -130,6 +132,7 @@ import ProfileImageEditor from '@/components/ProfileImageEditor.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import { useSessionUser } from '@/data/users'
 import { useSyncedField } from '@/utils/useSyncedField'
+import { isOnline } from '@/data/online'
 import type { GPUserProfile } from '@/types/doctypes'
 
 interface ProfileMethods {
@@ -248,7 +251,7 @@ watch(
 )
 
 async function saveName() {
-  if (!user.value || savingName.value) return
+  if (!user.value || savingName.value || !isOnline.value) return
 
   let nextFirstName = firstName.value.trim()
   let nextLastName = lastName.value.trim()
@@ -275,7 +278,7 @@ async function saveName() {
 }
 
 async function saveBio() {
-  if (!profile.value || savingBio.value) return
+  if (!profile.value || savingBio.value || !isOnline.value) return
 
   if (bio.value === (profile.value.bio || '')) return
 

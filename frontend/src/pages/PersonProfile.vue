@@ -71,6 +71,7 @@ import {
 import { confirmRestoreDefaultLayout } from '@/components/ProfileBento/restoreDefaultLayout'
 import { useProfileFieldEditing } from '@/components/ProfileBento/useProfileFieldEditing'
 import { useSessionUser, useUser } from '@/data/users'
+import { isOnline } from '@/data/online'
 import type { GPUserProfile } from '@/types/doctypes'
 
 defineOptions({
@@ -167,7 +168,8 @@ const bentoFailure = computed(() => {
 const fieldEditor = useProfileFieldEditing({
   profile: profileResource,
   userId: () => (isOwnProfile.value && profile.value?.user) || '',
-  enabled: () => isOwnProfile.value,
+  // Inline edits write immediately, so they go read-only while offline.
+  enabled: () => isOwnProfile.value && isOnline.value,
   onSaved: refreshProfile,
 })
 

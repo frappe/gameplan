@@ -121,6 +121,7 @@ import { getSpace, spaces, useSpace } from '@/data/spaces'
 import { communityState } from '@/data/communityState'
 import { activeCommunities } from '@/data/communities'
 import { readOnlyMode } from '@/data/readOnlyMode'
+import { isOnline } from '@/data/online'
 import { hideCommandPalette, show, toggleCommandPalette } from './commandPalette'
 import KeyboardShortcut from '../KeyboardShortcut.vue'
 
@@ -414,6 +415,7 @@ const shortcuts = computed((): CommandPaletteGroup[] => [
         aliases: ['new page', 'doc', 'document', 'note'],
         icon: 'lucide-file-plus',
         condition: () => canCreateFromPalette.value,
+        disabled: !isOnline.value,
         onClick() {
           let spaceId = router.currentRoute.value.params?.spaceId ?? null
 

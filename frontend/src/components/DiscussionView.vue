@@ -165,7 +165,7 @@
               "
               :editable="editingPost && !isPostDraftLoading"
               :saving="discussion.setValue.loading"
-              :can-save="canSavePost"
+              :can-save="canSavePost && isOnline"
               :quote-source-id="`discussion:${discussion.doc.name}`"
               :author="discussion.doc.owner"
               @change="onPostEditorChange"
@@ -218,6 +218,7 @@
               class="w-full"
               variant="solid"
               :loading="discussion.moveToProject.loading"
+              :disabled="!isOnline"
               @click="moveToSpace"
             >
               {{
@@ -260,6 +261,7 @@
                 class="ml-auto"
                 variant="solid"
                 :loading="discussion.pinDiscussion.loading"
+                :disabled="!isOnline"
                 @click="
                   () => {
                     discussion.pinDiscussion
@@ -372,6 +374,7 @@ import EmptyStateBox from './EmptyStateBox.vue'
 import OfflineContentFallback from './OfflineContentFallback.vue'
 import { copyToClipboard, isEditorContentEmpty } from '@/utils'
 import { isBrowserOffline, isNetworkError } from '@/offline'
+import { isOnline } from '@/data/online'
 import { getSpace, useSpace } from '@/data/spaces'
 import { useCommunity } from '@/data/communities'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
@@ -664,7 +667,7 @@ function routeParam(value: string | string[] | undefined) {
 
 function moveToSpace() {
   const targetSpace = discussionMoveDialog.project
-  if (targetSpace) {
+  if (targetSpace && isOnline.value) {
     discussion.moveToProject
       .submit({
         project: targetSpace,
@@ -763,7 +766,7 @@ function cancelEdit() {
 }
 
 function updatePost() {
-  if (!editingPost.value || !canSavePost.value) return
+  if (!editingPost.value || !canSavePost.value || !isOnline.value) return
   discussion.setValue
     .submit({
       title: postDraftData.value?.title,
@@ -856,6 +859,7 @@ const actions = computed(() => [
   },
   {
     label: 'Revisions',
+    disabled: !isOnline.value,
     icon: 'lucide-rotate-ccw',
     onClick: () => (showRevisionsDialog.value = true),
   },
@@ -866,6 +870,7 @@ const actions = computed(() => [
   },
   {
     label: 'Mark as unread',
+    disabled: !isOnline.value,
     icon: 'lucide-mail',
     onClick: () => {
       discussion.markAsUnread.submit().then(() => {
@@ -877,12 +882,14 @@ const actions = computed(() => [
   },
   {
     label: 'Bookmark',
+    disabled: !isOnline.value,
     icon: 'lucide-bookmark',
     onClick: () => discussion.addBookmark.submit(),
     condition: () => !discussion.doc?.is_bookmarked,
   },
   {
     label: 'Pin discussion...',
+    disabled: !isOnline.value,
     icon: 'lucide-arrow-up-left',
     condition: () => canEditDiscussion.value && !discussion.doc?.pinned_at,
     onClick: () => {
@@ -891,6 +898,7 @@ const actions = computed(() => [
   },
   {
     label: 'Unpin discussion...',
+    disabled: !isOnline.value,
     icon: 'lucide-arrow-down-left',
     condition: () => canEditDiscussion.value && !!discussion.doc?.pinned_at,
     onClick: () => {
@@ -911,6 +919,7 @@ const actions = computed(() => [
   },
   {
     label: 'Close discussion...',
+    disabled: !isOnline.value,
     icon: 'lucide-lock',
     condition: () => canEditDiscussion.value && !discussion.doc?.closed_at,
     onClick: () => {
@@ -926,6 +935,7 @@ const actions = computed(() => [
   },
   {
     label: 'Re-open discussion...',
+    disabled: !isOnline.value,
     icon: 'lucide-unlock',
     condition: () => canEditDiscussion.value && !!discussion.doc?.closed_at,
     onClick: () => {
@@ -940,12 +950,14 @@ const actions = computed(() => [
   },
   {
     label: 'Remove Bookmark',
+    disabled: !isOnline.value,
     icon: 'lucide-bookmark',
     onClick: () => discussion.removeBookmark.submit(),
     condition: () => discussion.doc?.is_bookmarked,
   },
   {
     label: 'Move to...',
+    disabled: !isOnline.value,
     icon: 'lucide-log-out',
     condition: () => canEditDiscussion.value,
     onClick: () => {
@@ -954,6 +966,7 @@ const actions = computed(() => [
   },
   {
     label: 'Delete',
+    disabled: !isOnline.value,
     icon: 'lucide-trash',
     condition: () => canDeleteContent(discussion.doc, space.value, useSessionUser()),
     onClick: () => {
@@ -989,6 +1002,7 @@ useCommandPaletteCommands(
         aliases: discussionCommandAliases(title),
         onClick: action.onClick,
         condition: action.condition,
+        disabled: action.disabled,
         defaultScore: title === 'Copy link' ? 3 : 2,
       }
     })

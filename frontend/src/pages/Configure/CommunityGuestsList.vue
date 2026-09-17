@@ -49,6 +49,7 @@
             size="xs"
             icon="lucide-x"
             :label="guest.pending ? 'Delete invite' : 'Remove guest'"
+            :disabled="!isOnline"
             @click="removeGuest(guest)"
           />
         </ListCell>
@@ -67,6 +68,7 @@ import type { Community } from '@/data/communities'
 import { getSpace, spaces } from '@/data/spaces'
 import { useUser } from '@/data/users'
 import type { GPGuestAccess, GPInvitation, GPTeam } from '@/types/doctypes'
+import { isOnline } from '@/data/online'
 
 const props = defineProps<{
   community: Community

@@ -33,7 +33,8 @@
             v-for="(item, index) in group.items"
             :key="item.label"
             type="button"
-            class="block w-full text-left transition active:bg-surface-gray-2"
+            class="block w-full text-left transition active:bg-surface-gray-2 disabled:opacity-50"
+            :disabled="item.disabled"
             @click="onItemClick(item)"
           >
             <!--
@@ -73,6 +74,7 @@ import { computed } from 'vue'
 import { useRouter, type RouteLocationRaw } from 'vue-router'
 import { useSessionUser } from '@/data/users'
 import { session } from '@/data/session'
+import { isOnline } from '@/data/online'
 import { useTheme, type Theme } from '@/utils/useTheme'
 
 interface MoreItem {
@@ -81,6 +83,7 @@ interface MoreItem {
   route?: RouteLocationRaw
   onClick?: () => void
   value?: string
+  disabled?: boolean
 }
 
 interface MoreItemGroup {
@@ -136,7 +139,12 @@ const itemGroups = computed<MoreItemGroup[]>(() => {
           onClick: cycleTheme,
           value: THEME_META[currentTheme.value].label,
         },
-        { label: 'Log out', icon: 'lucide-log-out', onClick: () => session.logout.submit() },
+        {
+          label: 'Log out',
+          icon: 'lucide-log-out',
+          disabled: !isOnline.value,
+          onClick: () => session.logout.submit(),
+        },
       ],
     },
   ]

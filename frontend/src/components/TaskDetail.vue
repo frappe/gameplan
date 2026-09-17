@@ -11,9 +11,9 @@
             type="text"
             placeholder="Title"
             class="-ml-0.5 w-full rounded-1 border-none p-0.5 text-4xl-semibold bg-surface-base text-ink-gray-8 focus:outline-none focus:ring-2 focus:ring-outline-gray-3"
-            :readonly="!canEditTask"
+            :readonly="!canWriteTask"
             @blur="
-              canEditTask
+              canWriteTask
                 ? task.setValue.submit({
                     title: ($event.target as HTMLInputElement).value,
                   })
@@ -30,6 +30,7 @@
                 label: 'Delete',
                 onClick: deleteTask,
                 condition: () => canEditTask && canDeleteContent(task.doc, space, useSessionUser()),
+                disabled: !isOnline,
               },
             ]"
           />
@@ -39,9 +40,9 @@
           editor-class="prose-v3 max-w-none focus-within:ring-2 focus-within:ring-outline-gray-3 rounded-1 p-0.5 -ml-0.5 min-h-[4rem]"
           placeholder="Description"
           :content="task.doc.description"
-          :editable="canEditTask"
+          :editable="canWriteTask"
           @blur="
-            canEditTask && !$refs.description.editor.isEmpty
+            canWriteTask && !$refs.description.editor.isEmpty
               ? task.setValue.submit({
                   description: $refs.description.editor.getHTML(),
                 })
@@ -53,7 +54,7 @@
             placeholder="Assign a user"
             :options="assignableUsers"
             :modelValue="task.doc.assigned_to"
-            :disabled="!canEditTask"
+            :disabled="!canWriteTask"
             @update:modelValue="changeAssignee"
           />
           <DatePicker
@@ -61,23 +62,23 @@
             variant="subtle"
             placeholder="Due date"
             format="D MMM, YYYY"
-            :disabled="!canEditTask"
+            :disabled="!canWriteTask"
             @update:modelValue="
               task.setValue.submit({
                 due_date: $event,
               })
             "
           />
-          <Dropdown :options="statusOptions" :disabled="!canEditTask">
-            <Button :disabled="!canEditTask">
+          <Dropdown :options="statusOptions" :disabled="!canWriteTask">
+            <Button :disabled="!canWriteTask">
               <template #prefix>
                 <TaskStatusIcon :status="task.doc.status" />
               </template>
               {{ task.doc.status || 'Set status' }}
             </Button>
           </Dropdown>
-          <Dropdown :options="priorityOptions" :disabled="!canEditTask">
-            <Button :disabled="!canEditTask">
+          <Dropdown :options="priorityOptions" :disabled="!canWriteTask">
+            <Button :disabled="!canWriteTask">
               <template v-if="task.doc.priority" #prefix>
                 <TaskPriorityIcon :priority="task.doc.priority" />
               </template>
@@ -88,7 +89,7 @@
             placeholder="Select space"
             :options="spaceOptions"
             :modelValue="task.doc.project"
-            :disabled="!canEditTask"
+            :disabled="!canWriteTask"
             @update:modelValue="changeSpace"
           />
         </div>
@@ -110,7 +111,7 @@
             placeholder="Assign a user"
             :options="assignableUsers"
             :modelValue="task.doc.assigned_to"
-            :disabled="!canEditTask"
+            :disabled="!canWriteTask"
             @update:modelValue="changeAssignee"
             align="end"
           >
@@ -127,7 +128,7 @@
             placeholder="Due date"
             format="D MMM, YYYY"
             align="end"
-            :disabled="!canEditTask"
+            :disabled="!canWriteTask"
             @update:modelValue="
               task.setValue.submit({
                 due_date: $event,
@@ -143,7 +144,7 @@
             align="end"
             :options="spaceOptions"
             :modelValue="task.doc.project"
-            :disabled="!canEditTask"
+            :disabled="!canWriteTask"
             @update:modelValue="changeSpace"
           />
         </div>
@@ -155,7 +156,7 @@
             v-model="task.doc.status"
             :options="statusOptions"
             placeholder="Set status"
-            :disabled="!canEditTask"
+            :disabled="!canWriteTask"
             @update:modelValue="task.setValue.submit({ status: $event })"
           >
             <template #item-prefix="{ item }">
@@ -169,7 +170,7 @@
             v-model="task.doc.priority"
             :options="priorityOptions"
             placeholder="Set priority"
-            :disabled="!canEditTask"
+            :disabled="!canWriteTask"
             @update:modelValue="task.setValue.submit({ priority: $event })"
           >
             <template #item-prefix="{ item }">
@@ -201,6 +202,7 @@ import { useSessionUser } from '@/data/users'
 import { canDeleteContent, canEditContent } from '@/utils/permissions'
 import { spaces } from '@/data/spaces'
 import { useCommandPaletteCommands } from './CommandPalette/registry'
+import { isOnline } from '@/data/online'
 
 const props = defineProps<{
   taskId: string
@@ -215,9 +217,10 @@ const space = computed(() => getSpace(task.doc?.project))
 const canEditTask = computed(
   () => !props.readOnlyMode && canEditContent(task.doc, space.value, useSessionUser()),
 )
+const canWriteTask = computed(() => canEditTask.value && isOnline.value)
 
 function deleteTask() {
-  if (!canEditTask.value) return
+  if (!canWriteTask.value) return
 
   dialog.danger({
     title: 'Delete task',
@@ -255,7 +258,7 @@ const statusOptions = computed(() =>
       icon: () => h(TaskStatusIcon, { status }),
       label: status,
       value: status,
-      onClick: () => canEditTask.value && task.setValue.submit({ status }),
+      onClick: () => canWriteTask.value && task.setValue.submit({ status }),
     }),
   ),
 )
@@ -265,7 +268,7 @@ const priorityOptions = computed(() =>
     icon: () => h(TaskPriorityIcon, { priority }),
     label: priority,
     value: priority,
-    onClick: () => canEditTask.value && task.setValue.submit({ priority }),
+    onClick: () => canWriteTask.value && task.setValue.submit({ priority }),
   })),
 )
 
@@ -280,6 +283,7 @@ useCommandPaletteCommands(
         title: `Set status to ${status.label}`,
         name: `task-status-${status.value}`,
         group: 'Task',
+        disabled: !isOnline.value,
         icon: status.icon,
         aliases: ['status', status.label],
         onClick: status.onClick,
@@ -289,6 +293,7 @@ useCommandPaletteCommands(
         title: `Set priority to ${priority.label}`,
         name: `task-priority-${priority.value}`,
         group: 'Task',
+        disabled: !isOnline.value,
         icon: priority.icon,
         aliases: ['priority', priority.label],
         onClick: priority.onClick,
@@ -298,6 +303,7 @@ useCommandPaletteCommands(
         title: user.value === '<no_assignee>' ? 'Clear assignee' : `Assign to ${user.label}`,
         name: `task-assignee-${user.value}`,
         group: 'Task',
+        disabled: !isOnline.value,
         icon: 'lucide-user-round',
         aliases: ['assignee', 'assign', user.label],
         onClick: () => changeAssignee(user.value),
@@ -309,6 +315,7 @@ useCommandPaletteCommands(
           title: `Move task to ${space.title}`,
           name: `task-space-${space.name}`,
           group: 'Task',
+          disabled: !isOnline.value,
           icon: 'lucide-log-out',
           aliases: ['move task', 'change space', space.title, space.team_title],
           onClick: () => changeSpace(space.name),
@@ -318,6 +325,7 @@ useCommandPaletteCommands(
         title: 'Delete task',
         name: 'task-delete',
         group: 'Task',
+        disabled: !isOnline.value,
         icon: 'lucide-trash-2',
         aliases: ['remove task'],
         onClick: deleteTask,
@@ -334,12 +342,12 @@ useCommandPaletteCommands(
 // time someone types to filter the list. Clearing is a deliberate choice made through the
 // "<no_assignee>" option instead.
 function changeAssignee(option: string | null) {
-  if (!canEditTask.value || option == null) return
+  if (!canWriteTask.value || option == null) return
   task.setValue.submit({ assigned_to: option === '<no_assignee>' ? '' : option })
 }
 
 function changeSpace(option: string | null) {
-  if (!canEditTask.value || !task.doc || option == null) return
+  if (!canWriteTask.value || !task.doc || option == null) return
   task.doc.project = option
   task.setValue.submit({ project: option }).then(updateRoute)
 }

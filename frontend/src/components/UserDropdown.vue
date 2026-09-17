@@ -11,6 +11,7 @@ import { Dropdown } from 'frappe-ui'
 import { settingsShortcutLabel, showSettingsDialog } from '@/components/Settings'
 import { useUser } from '@/data/users'
 import { session } from '@/data/session'
+import { isOnline } from '@/data/online'
 import { useTheme } from '@/utils/useTheme'
 
 const user = useUser()
@@ -89,6 +90,7 @@ const dropdownItems = computed(() => [
   {
     icon: 'lucide-log-out',
     label: 'Log out',
+    disabled: !isOnline.value,
     onClick: () => session.logout.submit(),
   },
 ])

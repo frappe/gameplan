@@ -137,7 +137,7 @@
       <div class="flex shrink-0 justify-end border-t border-outline-gray-1 px-4 py-3">
         <Button
           variant="solid"
-          :disabled="!hasUnsavedChanges"
+          :disabled="!hasUnsavedChanges || !isOnline"
           :loading="isSaving"
           @click="saveChanges"
         >
@@ -169,6 +169,7 @@ import {
   type PointerSortableItem,
 } from '@/composables/usePointerSortableSections'
 import CommunityImage from '../CommunityImage.vue'
+import { isOnline } from '@/data/online'
 
 type SidebarSection = 'shown' | 'hidden'
 

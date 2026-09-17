@@ -31,7 +31,7 @@
           variant="subtle"
           theme="red"
           size="md"
-          :disabled="selectedDrafts.length === 0"
+          :disabled="selectedDrafts.length === 0 || !isOnline"
           @click="showDeleteConfirm = true"
         >
           Delete{{ selectedDrafts.length ? ` ${selectedDrafts.length}` : '' }}
@@ -66,6 +66,7 @@
           v-if="selectedDrafts.length > 0"
           theme="red"
           icon-left="lucide-trash-2"
+          :disabled="!isOnline"
           @click="showDeleteConfirm = true"
         >
           Delete {{ selectedDrafts.length }} draft{{ selectedDrafts.length > 1 ? 's' : '' }}
@@ -148,6 +149,7 @@
         label: 'Delete',
         variant: 'solid',
         theme: 'red',
+        disabled: !isOnline,
         onClick: deleteDrafts,
       },
     ]"
@@ -173,6 +175,7 @@ import { List, ListRow, ListCell } from 'frappe-ui/list'
 import UserAvatarWithHover from '@/components/UserAvatarWithHover.vue'
 import NewDiscussionSpaceDialog from '@/components/NewDiscussionSpaceDialog.vue'
 import { readOnlyMode } from '@/data/readOnlyMode'
+import { isOnline } from '@/data/online'
 import { relativeTimestamp } from '@/utils'
 import { onMounted, ref } from 'vue'
 import type { RouteLocationRaw } from 'vue-router'

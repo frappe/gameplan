@@ -87,6 +87,7 @@
           :submitButtonProps="{
             onClick: () => updateComment(),
             loading: isUpdating,
+            disabled: !isOnline,
           }"
           :discardButtonProps="{
             onClick: () => discardEdit(),
@@ -127,6 +128,7 @@ import { GPComment } from '@/types/doctypes'
 import { dialog } from 'frappe-ui'
 import { tags } from '@/data/tags'
 import { useDraftSync } from '@/data/useDraftSync'
+import { isOnline } from '@/data/online'
 import { useUser, useSessionUser } from '@/data/users'
 import type { Space } from '@/data/spaces'
 import { canDeleteContent, canEditContent } from '@/utils/permissions'
@@ -181,7 +183,7 @@ const discardEdit = async () => {
 
 const updateComment = () => {
   const content = draftData.value?.content
-  if (!content?.trim()) return
+  if (!content?.trim() || !isOnline.value) return
 
   isUpdating.value = true
   updateError.value = null
@@ -223,6 +225,7 @@ const dropdownOptions = computed(() => [
   {
     label: 'Revisions',
     icon: 'lucide-rotate-ccw',
+    disabled: !isOnline.value,
     onClick: () => (showRevisionsDialog.value = true),
     condition: () => Boolean(props.comment.edited_at),
   },
@@ -234,6 +237,7 @@ const dropdownOptions = computed(() => [
   {
     label: 'Delete',
     icon: 'lucide-trash',
+    disabled: !isOnline.value,
     onClick: () => {
       dialog.danger({
         title: 'Delete comment',

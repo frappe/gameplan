@@ -51,6 +51,7 @@
             v-if="hasSavedLayout"
             icon-left="lucide-rotate-ccw"
             data-profile-restore-default-layout
+            :disabled="!isOnline"
             @click="$emit('restoreDefaultLayout')"
           >
             Restore default layout
@@ -84,6 +85,7 @@ import ProfileBentoGrid from '@/components/ProfileBento/ProfileBentoGrid.vue'
 import type { ProfileBentoCard, ProfileFieldEditor } from '@/components/ProfileBento/types'
 import { showSettingsDialog } from '@/components/Settings'
 import type { GPUserProfile } from '@/types/doctypes'
+import { isOnline } from '@/data/online'
 
 defineOptions({
   name: 'PersonProfileProfile',

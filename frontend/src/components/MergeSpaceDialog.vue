@@ -28,7 +28,7 @@
       <Button
         class="w-full"
         variant="solid"
-        :disabled="!hasMergeTargets"
+        :disabled="!hasMergeTargets || !isOnline"
         :loading="spaces.runDocMethod.isLoading(spaceId, 'merge_with_project')"
         @click="submit"
       >
@@ -46,6 +46,7 @@ import { GPProject } from '@/types/doctypes'
 import { spaces as spaceList, useSpace } from '@/data/spaces'
 import { useSessionUser } from '@/data/users'
 import { canManageSpace, isGuest } from '@/utils/permissions'
+import { isOnline } from '@/data/online'
 
 const props = defineProps<{
   spaceId: string

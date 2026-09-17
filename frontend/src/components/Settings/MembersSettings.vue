@@ -80,6 +80,7 @@
               placeholder="Role"
               :options="roleOptions"
               :model-value="user.role"
+              :disabled="!isOnline"
               @update:model-value="(role) => onRoleChange(user, role)"
             />
           </ListCell>
@@ -91,6 +92,7 @@
               variant="ghost"
               icon="lucide-trash-2"
               :label="`Disable ${user.full_name}`"
+              :disabled="!isOnline"
               @click="disableUser(user)"
             />
           </ListCell>
@@ -129,6 +131,7 @@ import {
   ListRows,
 } from 'frappe-ui/list'
 import InvitePeople from './InvitePeople.vue'
+import { isOnline } from '@/data/online'
 import { users, activeUsers, updateUserInfo, type UserInfo } from '@/data/users'
 import { GPInvitation } from '@/types/doctypes'
 

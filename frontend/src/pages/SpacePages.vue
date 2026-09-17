@@ -1,7 +1,13 @@
 <template>
   <div class="mt-5 body-container">
     <SpaceHeaderActions>
-      <Button v-if="canEditSpace" variant="solid" icon-left="lucide-plus" @click="createNewPage">
+      <Button
+        v-if="canEditSpace"
+        variant="solid"
+        icon-left="lucide-plus"
+        :disabled="!isOnline"
+        @click="createNewPage"
+      >
         <span class="whitespace-nowrap"> Add new </span>
       </Button>
     </SpaceHeaderActions>
@@ -60,6 +66,7 @@ import { useSpace } from '@/data/spaces'
 import { readOnlyMode } from '@/data/readOnlyMode'
 import { useSessionUser } from '@/data/users'
 import { isGuest } from '@/utils/permissions'
+import { isOnline } from '@/data/online'
 
 const props = defineProps<{
   spaceId: string

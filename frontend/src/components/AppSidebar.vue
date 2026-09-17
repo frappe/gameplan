@@ -32,6 +32,7 @@
                 size="sm"
                 icon="lucide-plus text-ink-gray-5"
                 label="New space"
+                :disabled="!isOnline"
                 @click="openNewSpaceDialog"
               />
             </div>
@@ -92,6 +93,7 @@
                 size="sm"
                 icon-left="lucide-plus"
                 class="mt-2"
+                :disabled="!isOnline"
                 @click="openNewSpaceDialog"
               >
                 Create a space
@@ -120,6 +122,7 @@ import { getSpaceUnreadCount, markAllAsRead, type Space } from '@/data/spaces'
 import { useSessionUser } from '@/data/users'
 import CommunityDropdown from './CommunityDropdown.vue'
 import NewSpaceDialog from './NewSpaceDialog.vue'
+import { isOnline } from '@/data/online'
 import SpaceIcon from './SpaceIcon.vue'
 import LucideLock from '~icons/lucide/lock'
 
@@ -151,6 +154,7 @@ function spaceOptions(space: Space) {
     {
       label: 'Mark all as read',
       icon: 'lucide-check',
+      disabled: !isOnline.value,
       onClick: () => markAllAsRead([space.name], space.title),
     },
   ]

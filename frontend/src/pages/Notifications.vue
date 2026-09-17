@@ -10,6 +10,7 @@
       <Button
         @click="confirmMarkAllAsRead"
         :loading="markAllAsRead.loading"
+        :disabled="!isOnline"
         v-if="canMarkAllAsRead"
       >
         Mark all as read
@@ -122,6 +123,7 @@
             <Button
               variant="subtle"
               icon="lucide-check"
+              :disabled="!isOnline"
               @click.stop.prevent="markAsRead(notification.name)"
             />
           </Tooltip>
@@ -164,6 +166,7 @@ import UserAvatarWithHover from '@/components/UserAvatarWithHover.vue'
 import { getCommunity } from '@/data/communities'
 import { onRemoteNotificationChange, unreadNotifications } from '@/data/notifications'
 import { getSpace } from '@/data/spaces'
+import { isOnline } from '@/data/online'
 import { useSessionUser } from '@/data/users'
 import type { GPNotification } from '@/types/doctypes'
 
@@ -266,7 +269,8 @@ const emptyStateDescription = computed(() =>
 )
 
 function openNotification(notification: NotificationRow) {
-  if (!notification.read && notificationRoute(notification)) {
+  // Still navigate offline to whatever is cached; the read flag waits until the next visit.
+  if (!notification.read && isOnline.value && notificationRoute(notification)) {
     markAsRead(notification.name)
   }
 }

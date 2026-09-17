@@ -39,14 +39,14 @@
             as="button"
             v-for="emoji in standardEmojis"
             :key="emoji"
-            class="px-1 py-2 rounded-4"
+            class="px-1 py-2 rounded-4 disabled:opacity-50"
             :class="[
               hasUserReacted(emoji)
                 ? 'bg-surface-amber-2'
                 : 'bg-surface-sidebar hover:bg-surface-gray-2',
             ]"
             @click="toggleReaction(emoji)"
-            :disabled="isLoading"
+            :disabled="isLoading || disabled"
             :whileTap="{ scale: 0.9 }"
             :whileHover="{ scale: 1.05 }"
             :whilePress="{ scale: 1.05 }"
@@ -100,6 +100,7 @@ const props = defineProps<{
   toolTipText: (reactions: { count: number; userReacted: boolean }) => string
   standardEmojis: string[]
   isLoading: boolean
+  disabled?: boolean
 }>()
 
 let show = ref(false)
