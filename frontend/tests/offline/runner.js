@@ -7,7 +7,21 @@ const fs = require('fs')
 const path = require('path')
 const { RESULTS_DIR } = require('./config')
 
-const stories = ['us1', 'us2', 'us3', 'us4', 'us5', 'us6', 'p1', 'p2', 'p3', 'us7a', 'us7b', 'us8']
+const stories = [
+  'us1',
+  'us2',
+  'us3',
+  'us4',
+  'us5',
+  'us6',
+  'p1',
+  'p2',
+  'p3',
+  'us7a',
+  'us7b',
+  'us7c',
+  'us8',
+]
 
 async function main() {
   const summary = []

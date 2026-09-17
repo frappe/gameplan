@@ -278,10 +278,13 @@ export async function guardAgainstUserSwitch(user: string | null): Promise<boole
     await rewarmShellCache()
   }
 
+  // Round-5 finding (PR #516): a logged-out boot (stale tab, bookmark, expired session -
+  // a plain logout redirects to /login and never reaches this function) used to erase the
+  // marker here instead of leaving it alone. The next real sign-in then found no marker,
+  // read as "no switch", and skipped clearing the previous user's caches entirely. Only
+  // write the marker for a real user; never clear it for Guest.
   if (user) {
     localStorage.setItem(LAST_SEEN_USER_STORAGE_KEY, user)
-  } else {
-    localStorage.removeItem(LAST_SEEN_USER_STORAGE_KEY)
   }
 
   return switched

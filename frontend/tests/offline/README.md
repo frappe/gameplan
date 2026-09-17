@@ -8,7 +8,7 @@ scripts, not `@playwright/test` — each story is a `run()` function that return
 Originally built as a throwaway harness at `/tmp/offline-mvp/pw`; migrated here so it
 survives reboots and can gate regressions in CI/local dev.
 
-## What's covered (12 stories)
+## What's covered (13 stories)
 
 | Story | Covers                                                                                                       |
 | ----- | ------------------------------------------------------------------------------------------------------------ |
@@ -23,6 +23,7 @@ survives reboots and can gate regressions in CI/local dev.
 | P3    | A profile opened right as the browser goes offline (before prefetch runs) degrades honestly                  |
 | US7a  | Plain logout clears shell/runtime caches and IndexedDB, but preserves the current user's draft               |
 | US7b  | A second user logging in on the same browser (no explicit logout) never sees the first user's cached data    |
+| US7c  | A session that goes stale without a logout (timeout, old tab) still lets the next login detect the switch    |
 | US8   | A new service worker build shows an update toast; clicking Refresh reloads exactly once onto the new version |
 
 ## Prerequisites
@@ -48,6 +49,10 @@ survives reboots and can gate regressions in CI/local dev.
    - A few enabled `GP User Profile` members for the People/profile stories (P1-P3) —
      any real members on the site work; override their IDs via env vars if needed (see
      below).
+   - A private `GP Project` in the same team, with the first user as its only member and
+     one `GP Discussion` in it — used by US7c to check the second user genuinely has no
+     access to it. Hardcoded to space `1426` / discussion `722` in `us7c.js`; reseed at
+     those names or edit the story's constants to match your site.
 
 ## Running
 
@@ -57,7 +62,7 @@ yarn install
 yarn test:offline
 ```
 
-Runs all 12 stories against `GAMEPLAN_OFFLINE_BASE_URL` (default
+Runs all 13 stories against `GAMEPLAN_OFFLINE_BASE_URL` (default
 `http://gameplan.localhost:8003`), writes a summary to `tests/offline/results/summary.json`
 and per-story JSON/screenshots under `tests/offline/results/` (gitignored). Exits non-zero
 if any story fails.
