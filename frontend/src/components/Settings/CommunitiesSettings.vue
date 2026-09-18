@@ -136,6 +136,10 @@
   </SettingsHeader>
 
   <NewCommunityDialog v-model="newCommunityDialog" @created="openCommunitySpaces" />
+  <!-- Desktop has AppRail's instance. Phones have no rail, and the dialog has to mount
+       inside this settings dialog: frappe-ui Dialogs stack in mount order, so one mounted
+       by the layout would open underneath. -->
+  <CustomizeSidebarDialog v-if="isPhone" v-model="showCustomizeSidebarDialog" />
   <NewSpaceDialog v-model="newSpaceDialog" :locked-community-id="selectedCommunityId || ''" />
 
   <SettingsBody>
@@ -196,7 +200,11 @@ import { useRoute, useRouter } from 'vue-router'
 import { Button, SettingsBody, SettingsHeader, Select } from 'frappe-ui'
 import NewSpaceDialog from '@/components/NewSpaceDialog.vue'
 import { useMediaQuery } from '@vueuse/core'
-import { openCustomizeSidebarDialog } from '@/components/AppRail/customizeSidebar'
+import CustomizeSidebarDialog from '@/components/AppRail/CustomizeSidebarDialog.vue'
+import {
+  openCustomizeSidebarDialog,
+  showCustomizeSidebarDialog,
+} from '@/components/AppRail/customizeSidebar'
 import { mobileBarTaken } from './index'
 import { communities } from '@/data/communities'
 import { useSessionUser } from '@/data/users'
