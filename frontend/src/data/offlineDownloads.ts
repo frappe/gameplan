@@ -1,9 +1,10 @@
 import { computed, reactive, watch } from 'vue'
 import { useLocalStorage } from '@vueuse/core'
 import { call, dialog, toast } from 'frappe-ui'
-import { delMany, get, keys, set, setMany } from 'idb-keyval'
+import { delMany, get, getMany, keys, set, setMany } from 'idb-keyval'
 import { isOnline, onReconnect } from './online'
 import { session } from './session'
+import { customEmojis } from './customEmojis'
 import {
   ACTIVITY_FIELDS,
   COMMENT_FIELDS,
@@ -39,6 +40,8 @@ const META_KEY = 'gameplan:offline-downloads'
 const LOCK_NAME = 'gameplan-offline-downloads'
 // Matches the server's page size (gameplan/offline_downloads.py).
 const PAGE_SIZE = 20
+// Images one sync may add. Already saved ones are skipped, so later syncs add only new ones.
+const MAX_IMAGES = 300
 // Background syncs only fetch what changed, but still cost an index query each; this keeps
 // them to a few a day per device.
 const SYNC_INTERVAL = 6 * 60 * 60 * 1000
@@ -187,6 +190,7 @@ async function runSync(days: OfflineWindow): Promise<boolean> {
     }
     await writeMeta(base)
 
+    const images = new Set<string>()
     const fetchPage = async (params: Record<string, unknown>) => {
       const bundle = await call<Bundle>(BUNDLE, {
         window_days: days,
@@ -195,6 +199,7 @@ async function runSync(days: OfflineWindow): Promise<boolean> {
       })
       await storeBundle(bundle)
       for (const discussion of bundle.discussions) stored.add(String(discussion.name))
+      for (const url of bundleImages(bundle)) images.add(url)
       await writeMeta({ ...base, names: [...stored] })
       return bundle
     }
@@ -222,6 +227,9 @@ async function runSync(days: OfflineWindow): Promise<boolean> {
       await fetchPage({ names: missing.slice(i, i + PAGE_SIZE) })
       downloads.done = Math.min(i + PAGE_SIZE, missing.length)
     }
+
+    const emojis = (customEmojis.data ?? []).map((emoji) => emoji.image).filter(Boolean)
+    saveImages([...emojis, ...images].slice(0, MAX_IMAGES) as string[])
 
     await writeMeta({
       ...base,
@@ -265,14 +273,41 @@ async function cachedDiscussions() {
 async function forgetDiscussions(names: string[]) {
   if (!names.length) return
   const user = session.user!
-  await delMany(
-    names.flatMap((name) => [
-      docKey('GP Discussion', name),
-      listKey(commentsCacheKey('GP Discussion', name, user)),
-      listKey(activitiesCacheKey('GP Discussion', name, user)),
-      listKey(pollsCacheKey(name, user)),
-    ]),
-  )
+  const docKeys = names.map((name) => docKey('GP Discussion', name))
+  const commentKeys = names.map((name) => listKey(commentsCacheKey('GP Discussion', name, user)))
+  // Their images go too, so a discussion the user lost access to leaves nothing behind.
+  const stored = await getMany([...docKeys, ...commentKeys]).catch(() => [])
+  forgetImages(stored.flatMap((value) => (value ? htmlImages(value) : [])))
+  await delMany([
+    ...docKeys,
+    ...commentKeys,
+    ...names.map((name) => listKey(activitiesCacheKey('GP Discussion', name, user))),
+    ...names.map((name) => listKey(pollsCacheKey(name, user))),
+  ])
+}
+
+function bundleImages(bundle: Bundle) {
+  return [
+    ...bundle.discussions.flatMap((discussion) => htmlImages(discussion.content)),
+    ...Object.values(bundle.comments)
+      .flat()
+      .flatMap((comment) => htmlImages(comment.content)),
+  ]
+}
+
+/** Uploaded images an HTML string (or a stored JSON copy of rows holding HTML) shows. */
+function htmlImages(html: unknown) {
+  if (typeof html !== 'string') return []
+  return [...html.matchAll(/<img[^>]+src=\\?["']([^"'\\]+)/g)].map(([, src]) => src)
+}
+
+// The service worker keeps the images (gameplan-sw.js); without one there's nowhere to put them.
+function saveImages(urls: string[]) {
+  if (urls.length) navigator.serviceWorker?.controller?.postMessage({ type: 'CACHE_IMAGES', urls })
+}
+
+function forgetImages(urls: string[]) {
+  if (urls.length) navigator.serviceWorker?.controller?.postMessage({ type: 'FORGET_IMAGES', urls })
 }
 
 /** Deletes everything downloaded; a discussion opened again online is cached as usual. */

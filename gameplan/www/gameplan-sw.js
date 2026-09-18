@@ -66,6 +66,16 @@ self.addEventListener("message", (event) => {
     return;
   }
 
+  if (type === "CACHE_IMAGES" && Array.isArray(event.data.urls)) {
+    event.waitUntil(cacheImages(event.data.urls));
+    return;
+  }
+
+  if (type === "FORGET_IMAGES" && Array.isArray(event.data.urls)) {
+    event.waitUntil(forgetImages(event.data.urls));
+    return;
+  }
+
   if (type === "SKIP_WAITING") {
     self.skipWaiting();
     return;
@@ -213,6 +223,46 @@ async function cacheUrls(urls) {
       }
     }),
   );
+}
+
+// Offline downloads (offlineDownloads.ts): images inside downloaded discussions and custom
+// emojis. Kept in the runtime cache with images seen while browsing, so logout clears them.
+const IMAGE_FETCHES_AT_ONCE = 4;
+
+async function cacheImages(urls) {
+  const cache = await caches.open(RUNTIME_CACHE);
+  const queue = urls.filter(isUploadedFileUrl);
+  // A few at a time, so a first download doesn't send every image request at once.
+  const next = async () => {
+    while (queue.length) {
+      const request = new Request(queue.shift(), { credentials: "include" });
+      try {
+        if (await cache.match(request)) continue;
+        const response = await fetch(request);
+        if (isCacheableResponse(response)) await cache.put(request, response);
+      } catch {
+        // The next sync, or viewing the image online, tries again.
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: IMAGE_FETCHES_AT_ONCE }, next));
+}
+
+async function forgetImages(urls) {
+  const cache = await caches.open(RUNTIME_CACHE);
+  await Promise.all(urls.filter(isUploadedFileUrl).map((url) => cache.delete(url)));
+}
+
+function isUploadedFileUrl(url) {
+  try {
+    const { origin, pathname } = new URL(url, self.location.origin);
+    return (
+      origin === self.location.origin &&
+      (pathname.startsWith("/files/") || pathname.startsWith("/private/files/"))
+    );
+  } catch {
+    return false;
+  }
 }
 
 async function cacheOfflineAssetManifest(response) {
