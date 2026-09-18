@@ -273,12 +273,33 @@ async function cacheOfflineAssetManifest(response) {
     if (!isCacheableResponse(manifestResponse)) return;
 
     const urls = await manifestResponse.clone().json();
-    if (Array.isArray(urls)) {
+    if (Array.isArray(urls) && urls.length) {
       await cacheUrls(urls);
+      await deleteOldBuildAssets(urls);
     }
   } catch {
     // Older builds do not have the manifest; route assets will still be cached as they load.
   }
+}
+
+// Build files are content-hashed, so every deploy adds a new set (~5 MB) under the same
+// ASSET_CACHE. Keep only the current build's; the server no longer has the old ones anyway.
+const BUILD_ASSETS_PATH = "/assets/gameplan/frontend/assets/";
+
+async function deleteOldBuildAssets(currentUrls) {
+  const current = new Set(
+    currentUrls.map((url) => new URL(url, self.location.origin).pathname),
+  );
+  const cache = await caches.open(ASSET_CACHE);
+  const requests = await cache.keys();
+  await Promise.all(
+    requests
+      .filter((request) => {
+        const { pathname } = new URL(request.url);
+        return pathname.startsWith(BUILD_ASSETS_PATH) && !current.has(pathname);
+      })
+      .map((request) => cache.delete(request)),
+  );
 }
 
 function isSameOriginAssetUrl(url) {
