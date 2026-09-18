@@ -4,7 +4,8 @@
 // fallback, the download costs about one request per 20 discussions, a reload soon after
 // doesn't download again, a visited copy of a discussion that's since gone is removed, and
 // Sync now fetches a discussion missing from the device even though it hasn't changed (a
-// space joined after the first download).
+// space joined after the first download). Removing a discussion keeps saved images another
+// discussion on the device still shows.
 const {
   chromium,
   BASE,
@@ -22,6 +23,8 @@ const MARKER = `us9-${Date.now()}`
 const OFFLINE_API = /gameplan\.offline_downloads\.get_offline_(index|bundle)/
 // Stands in for a discussion the user opened that has since been deleted.
 const GONE_KEY = 'doc:GP Discussion/999999999'
+const SHARED_IMAGE = `/files/${MARKER}-shared.png`
+const OWN_IMAGE = `/files/${MARKER}-own.png`
 
 function deleteIdbKey(page, key) {
   return page.evaluate(
@@ -40,20 +43,36 @@ function deleteIdbKey(page, key) {
   )
 }
 
-function putIdbKey(page, key) {
+function putIdbKey(page, key, value = { name: '999999999' }) {
   return page.evaluate(
-    (k) =>
+    ([k, v]) =>
       new Promise((resolve, reject) => {
         const req = indexedDB.open('keyval-store')
         req.onsuccess = () => {
           const tx = req.result.transaction('keyval', 'readwrite')
-          tx.objectStore('keyval').put(JSON.stringify({ name: '999999999' }), k)
+          tx.objectStore('keyval').put(JSON.stringify(v), k)
           tx.oncomplete = () => resolve()
           tx.onerror = () => reject(tx.error)
         }
         req.onerror = () => reject(req.error)
       }),
-    key,
+    [key, value],
+  )
+}
+
+async function runtimeCache(page, action, urls) {
+  return page.evaluate(
+    async ([action, urls]) => {
+      const name = (await caches.keys()).find((key) => key.endsWith(':runtime'))
+      const cache = await caches.open(name || 'gameplan-readonly-offline:v7:runtime')
+      if (action === 'put') {
+        await Promise.all(urls.map((url) => cache.put(url, new Response('image'))))
+        return []
+      }
+      const found = await Promise.all(urls.map((url) => cache.match(url)))
+      return urls.filter((_, i) => found[i])
+    },
+    [action, urls],
   )
 }
 
@@ -62,7 +81,7 @@ async function createDiscussion(api) {
     data: {
       title: `${MARKER} downloaded thread`,
       project: JOINED_SPACE_ID,
-      content: '<p>Body</p>',
+      content: `<p>Body</p><img src="${SHARED_IMAGE}">`,
     },
   })
   if (!discussion.ok()) throw new Error(`create discussion: ${await discussion.text()}`)
@@ -150,6 +169,34 @@ async function run() {
       name: 'Sync now fetches a discussion missing from the device though it has not changed',
       pass: (await idbKeyvalKeys(page)).includes(createdKey),
       symptom: `${createdKey} after Sync now: ${(await idbKeyvalKeys(page)).includes(createdKey) ? 'present' : 'missing'}`,
+    })
+
+    await putIdbKey(page, GONE_KEY, {
+      name: '999999999',
+      content: `<img src="${SHARED_IMAGE}"><img src="${OWN_IMAGE}">`,
+    })
+    await runtimeCache(page, 'put', [SHARED_IMAGE, OWN_IMAGE])
+    await page.getByRole('button', { name: 'Sync now' }).click()
+    await page
+      .waitForFunction(
+        (k) =>
+          new Promise((resolve) => {
+            const req = indexedDB.open('keyval-store')
+            req.onsuccess = () => {
+              const get = req.result.transaction('keyval').objectStore('keyval').getKey(k)
+              get.onsuccess = () => resolve(get.result === undefined)
+            }
+          }),
+        GONE_KEY,
+        { timeout: 30000 },
+      )
+      .catch(() => {})
+    await page.waitForTimeout(1500)
+    const savedImages = await runtimeCache(page, 'match', [SHARED_IMAGE, OWN_IMAGE])
+    result.checks.push({
+      name: 'removing a discussion keeps images another saved discussion shows',
+      pass: savedImages.includes(SHARED_IMAGE) && !savedImages.includes(OWN_IMAGE),
+      symptom: `still saved: ${savedImages.join(', ') || 'none'}`,
     })
 
     await page.goto(URLS.feed, { waitUntil: 'load', timeout: 15000 })

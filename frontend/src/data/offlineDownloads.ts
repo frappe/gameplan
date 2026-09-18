@@ -1,7 +1,7 @@
 import { computed, reactive, watch } from 'vue'
 import { useLocalStorage } from '@vueuse/core'
 import { call, dialog, toast } from 'frappe-ui'
-import { delMany, get, getMany, keys, set, setMany } from 'idb-keyval'
+import { delMany, get, getMany, keys, set, setMany, values } from 'idb-keyval'
 import { isOnline, onReconnect } from './online'
 import { session } from './session'
 import { customEmojis } from './customEmojis'
@@ -276,15 +276,29 @@ async function forgetDiscussions(names: string[]) {
   const user = session.user!
   const docKeys = names.map((name) => docKey('GP Discussion', name))
   const commentKeys = names.map((name) => listKey(commentsCacheKey('GP Discussion', name, user)))
-  // Their images go too, so a discussion the user lost access to leaves nothing behind.
   const stored = await getMany([...docKeys, ...commentKeys]).catch(() => [])
-  forgetImages(stored.flatMap((value) => (value ? htmlImages(value) : [])))
   await delMany([
     ...docKeys,
     ...commentKeys,
     ...names.map((name) => listKey(activitiesCacheKey('GP Discussion', name, user))),
     ...names.map((name) => listKey(pollsCacheKey(name, user))),
   ])
+
+  // Their images go too, so a discussion the user lost access to leaves nothing behind,
+  // except those something still on the device shows: the worker keeps one copy per URL.
+  const images = new Set(stored.flatMap((value) => (value ? htmlImages(value) : [])))
+  if (!images.size) return
+  const inUse = await imagesInUse().catch(() => null)
+  if (!inUse) return
+  forgetImages([...images].filter((url) => !inUse.has(url)))
+}
+
+async function imagesInUse() {
+  const inUse = new Set<string>((customEmojis.data ?? []).map((emoji) => emoji.image))
+  for (const value of await values()) {
+    for (const url of htmlImages(value)) inUse.add(url)
+  }
+  return inUse
 }
 
 function bundleImages(bundle: Bundle) {
