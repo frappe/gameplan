@@ -1,5 +1,5 @@
 <template>
-  <ListRow class="h-10">
+  <ListRow class="max-md:py-2.5 md:h-10">
     <!-- The link spans only the info cells (display: contents keeps them grid
          children); the options cell stays outside so its menu isn't a nested
          interactive element inside an anchor. -->
@@ -28,7 +28,7 @@
       </ListCell>
     </RouterLink>
 
-    <ListCell class="justify-end max-md:hidden">
+    <ListCell class="justify-end">
       <MemberOptions
         v-if="canManage"
         :community="community"

@@ -19,7 +19,7 @@
         <ListHeaderCell>Spaces</ListHeaderCell>
         <ListHeaderCell />
       </ListHeader>
-      <ListRow v-for="guest in communityGuests" :key="guest.key" class="h-10">
+      <ListRow v-for="guest in communityGuests" :key="guest.key" class="max-md:py-2.5 md:h-10">
         <ListCell>
           <UserAvatar :user="guest.user" size="sm" class="shrink-0" />
         </ListCell>

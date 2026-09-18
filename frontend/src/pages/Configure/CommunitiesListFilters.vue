@@ -1,6 +1,6 @@
 <template>
-  <div class="flex items-center gap-2">
-    <TextInput v-model="search" placeholder="Search communities">
+  <div class="flex min-w-0 items-center gap-2 max-md:w-full">
+    <TextInput class="max-md:flex-1" v-model="search" placeholder="Search communities">
       <template #prefix>
         <span class="lucide-search h-4 w-4 text-ink-gray-4" />
       </template>

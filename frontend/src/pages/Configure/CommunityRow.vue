@@ -1,5 +1,5 @@
 <template>
-  <ListRow class="h-10">
+  <ListRow class="max-md:py-2.5 md:h-10">
     <ListCell class="gap-2">
       <CommunityImageUploader v-if="canManage" :community="community" class="shrink-0" />
       <CommunityImage
@@ -54,8 +54,13 @@
         @click="emit('view-members', community.name)"
       />
     </ListCell>
-    <ListCell class="justify-end gap-1 max-md:hidden">
-      <MembershipButton v-if="showMembershipButton" :community="community" size="sm" />
+    <ListCell class="justify-end gap-1">
+      <MembershipButton
+        v-if="showMembershipButton"
+        :community="community"
+        size="sm"
+        class="max-md:hidden"
+      />
       <CommunityOptions
         v-if="canManage"
         :community="community"

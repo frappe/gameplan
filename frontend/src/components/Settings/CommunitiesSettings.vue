@@ -58,7 +58,7 @@
         <!-- md:pb-3 keeps the gap to the column header, which lives at the top
              of the scroll viewport (a sticky ListHeader in CommunitiesList)
              instead of being duplicated here. -->
-        <div class="mt-4 flex items-center justify-between gap-3 md:pb-3">
+        <div class="mt-4 flex flex-wrap items-center justify-between gap-3 md:pb-3">
           <CommunitiesListFilters
             v-model:search="search"
             v-model:visibility-filter="visibilityFilter"

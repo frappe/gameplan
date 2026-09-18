@@ -1,8 +1,8 @@
 <template>
   <div>
-    <div class="flex items-center justify-between gap-3">
-      <div class="flex items-center gap-2">
-        <TextInput v-model="search" placeholder="Search spaces">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div class="flex min-w-0 items-center gap-2 max-md:w-full">
+        <TextInput class="max-md:flex-1" v-model="search" placeholder="Search spaces">
           <template #prefix>
             <span class="lucide-search h-4 w-4 text-ink-gray-4" />
           </template>

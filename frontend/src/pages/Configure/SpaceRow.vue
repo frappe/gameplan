@@ -1,5 +1,5 @@
 <template>
-  <ListRow class="h-10">
+  <ListRow class="max-md:py-2.5 md:h-10">
     <ListCell>
       <IconPicker :modelValue="space.icon || ''" @update:modelValue="updateIcon">
         <template #default="{ togglePopover }">
