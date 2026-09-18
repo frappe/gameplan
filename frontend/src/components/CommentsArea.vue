@@ -293,6 +293,14 @@ import { isNewCommentOpen } from '@/data/newComment'
 import { useRichQuotes } from '@/components/RichQuoteExtension/useRichQuotes'
 import { useDraftSync } from '@/data/useDraftSync'
 import { isOnline } from '@/data/online'
+import {
+  ACTIVITY_FIELDS,
+  COMMENT_FIELDS,
+  POLL_FIELDS,
+  activitiesCacheKey,
+  commentsCacheKey,
+  pollsCacheKey,
+} from '@/data/discussionTimeline'
 import { useSessionUser } from '@/data/users'
 import type { Space } from '@/data/spaces'
 import { useIsMobile } from '@/utils/useIsMobile'
@@ -411,21 +419,9 @@ const composerStorageKey = computed(() => {
 
 const comments = useList<GPComment>({
   doctype: 'GP Comment',
-  // Scoped to the session user: a discussion's comments can live in a private space,
-  // so a second account on the same browser must not see them cached offline before
-  // its own permission-checked fetch resolves (review finding from PR #516).
-  cacheKey: ['Comments', props.doctype, props.name, sessionUser.name],
+  cacheKey: commentsCacheKey(props.doctype, props.name, sessionUser.name),
   staleOnError: true,
-  fields: [
-    'name',
-    'content',
-    'owner',
-    'creation',
-    'modified',
-    'edited_at',
-    'deleted_at',
-    { reactions: ['name', 'user', 'emoji'] },
-  ],
+  fields: COMMENT_FIELDS,
   transform(data) {
     return data.map((d) => ({ ...d, doctype: 'GP Comment' }))
   },
@@ -451,9 +447,9 @@ const comments = useList<GPComment>({
 
 const activities = useList<GPActivity>({
   doctype: 'GP Activity',
-  cacheKey: ['Activities', props.doctype, props.name, sessionUser.name],
+  cacheKey: activitiesCacheKey(props.doctype, props.name, sessionUser.name),
   staleOnError: true,
-  fields: ['name', 'user', 'action', 'data', 'creation'],
+  fields: ACTIVITY_FIELDS,
   filters: {
     reference_doctype: props.doctype,
     reference_name: props.name,
@@ -492,20 +488,9 @@ watch(
 
 const polls = useList<GPPoll>({
   doctype: 'GP Poll',
-  cacheKey: ['Polls', props.name, sessionUser.name],
+  cacheKey: pollsCacheKey(props.name, sessionUser.name),
   staleOnError: true,
-  fields: [
-    'name',
-    'title',
-    'anonymous',
-    'multiple_answers',
-    'creation',
-    'owner',
-    'stopped_at',
-    { options: ['name', 'title', 'idx', 'percentage'] },
-    { votes: ['user', 'option'] },
-    { reactions: ['name', 'user', 'emoji'] },
-  ],
+  fields: POLL_FIELDS,
   filters: {
     discussion: props.name,
   },

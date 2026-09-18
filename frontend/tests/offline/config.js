@@ -25,6 +25,8 @@ const UNCACHED_SPACE_ID = process.env.GAMEPLAN_OFFLINE_UNCACHED_SPACE_ID || '4'
 const UNCACHED_DISCUSSION_SPACE_ID =
   process.env.GAMEPLAN_OFFLINE_UNCACHED_DISCUSSION_SPACE_ID || '5'
 const UNCACHED_DISCUSSION_ID = process.env.GAMEPLAN_OFFLINE_UNCACHED_DISCUSSION_ID || '54'
+// A space the primary account has joined (US9 downloads only cover joined spaces).
+const JOINED_SPACE_ID = process.env.GAMEPLAN_OFFLINE_JOINED_SPACE_ID || '1426'
 
 const URLS = {
   feed: `${BASE}/g`,
@@ -55,6 +57,8 @@ const SHOTS_DIR = path.join(RESULTS_DIR, 'screenshots')
 
 module.exports = {
   BASE,
+  COMMUNITY,
+  JOINED_SPACE_ID,
   EMAIL,
   PWD,
   EMAIL2,

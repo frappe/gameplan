@@ -34,6 +34,8 @@ declare global {
     site_name: string
     /** Set from the boot data in `gameplan/www/g.py`; absent when the site has no DSN. */
     gameplan_frontend_sentry_dsn?: string
+    /** What the admin allows for offline downloads (GP Settings), from the boot data. */
+    offline_downloads?: { enabled: boolean; max_window_days: number }
   }
 }
 

@@ -1,6 +1,6 @@
 // Runs the full offline suite: US1-US6 (baseline offline UX) + P2-P3 (People/profile
 // offline caching) + US7a/US7b/US7c (shared-computer cache scoping) +
-// US8 (service worker update flow). Each story launches its own fresh browser/context
+// US8 (service worker update flow) + US9 (download for offline). Each story launches its own fresh browser/context
 // for isolation. Run with: node tests/offline/runner.js (or `yarn test:offline` from
 // frontend/).
 const fs = require('fs')
@@ -20,6 +20,7 @@ const stories = [
   'us7b',
   'us7c',
   'us8',
+  'us9',
 ]
 
 async function main() {

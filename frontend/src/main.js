@@ -22,6 +22,7 @@ import { initSocket } from './socket'
 import { installErrorReporting } from './utils/errorReporting'
 import resetDataMixin from './utils/resetDataMixin'
 import { setupOfflineSupport } from './offline'
+import { setupOfflineDownloads } from './data/offlineDownloads'
 
 let globalComponents = {
   Button,
@@ -80,6 +81,7 @@ function setupApp() {
   app.config.globalProperties.$socket = socket
   app.mount('#app')
   setupOfflineSupport()
+  if (session.isLoggedIn) setupOfflineDownloads()
 }
 
 if (import.meta.env.DEV) {

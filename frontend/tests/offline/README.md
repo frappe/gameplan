@@ -8,22 +8,23 @@ scripts, not `@playwright/test` — each story is a `run()` function that return
 Originally built as a throwaway harness at `/tmp/offline-mvp/pw`; migrated here so it
 survives reboots and can gate regressions in CI/local dev.
 
-## What's covered (12 stories)
+## What's covered (13 stories)
 
-| Story | Covers                                                                                                       |
-| ----- | ------------------------------------------------------------------------------------------------------------ |
-| US1   | App shell loads offline (reload + deep link) instead of a browser error page                                 |
-| US2   | Previously-viewed feed / space / discussion render from cache while offline                                  |
-| US3   | Offline indicator appears when connectivity drops, clears on reconnect                                       |
-| US4   | A comment typed while offline fails gracefully and isn't lost                                                |
-| US5   | Fresh data appears automatically on reconnect, no manual reload                                              |
-| US6   | Never-cached content shows an honest "can't load this offline" fallback                                      |
-| P2    | A profile visited fully online (incl. Posts tab) is available offline                                        |
-| P3    | A never-cached People page/profile opened offline degrades honestly                                          |
-| US7a  | Plain logout clears shell/runtime caches and IndexedDB, but preserves the current user's draft               |
-| US7b  | A second user logging in on the same browser (no explicit logout) never sees the first user's cached data    |
-| US7c  | A session that goes stale without a logout (timeout, old tab) still lets the next login detect the switch    |
-| US8   | A new service worker build shows an update toast; clicking Refresh reloads exactly once onto the new version |
+| Story | Covers                                                                                                           |
+| ----- | ---------------------------------------------------------------------------------------------------------------- |
+| US1   | App shell loads offline (reload + deep link) instead of a browser error page                                     |
+| US2   | Previously-viewed feed / space / discussion render from cache while offline                                      |
+| US3   | Offline indicator appears when connectivity drops, clears on reconnect                                           |
+| US4   | A comment typed while offline fails gracefully and isn't lost                                                    |
+| US5   | Fresh data appears automatically on reconnect, no manual reload                                                  |
+| US6   | Never-cached content shows an honest "can't load this offline" fallback                                          |
+| P2    | A profile visited fully online (incl. Posts tab) is available offline                                            |
+| P3    | A never-cached People page/profile opened offline degrades honestly                                              |
+| US7a  | Plain logout clears shell/runtime caches and IndexedDB, but preserves the current user's draft                   |
+| US7b  | A second user logging in on the same browser (no explicit logout) never sees the first user's cached data        |
+| US7c  | A session that goes stale without a logout (timeout, old tab) still lets the next login detect the switch        |
+| US8   | A new service worker build shows an update toast; clicking Refresh reloads exactly once onto the new version     |
+| US9   | "Download for offline" makes a never-opened discussion readable offline, in about one request per 20 discussions |
 
 ## Prerequisites
 
@@ -52,6 +53,9 @@ survives reboots and can gate regressions in CI/local dev.
      one `GP Discussion` in it — used by US7c to check the second user genuinely has no
      access to it. Hardcoded to space `1426` / discussion `722` in `us7c.js`; reseed at
      those names or edit the story's constants to match your site.
+   - US9 downloads from that same private space (`GAMEPLAN_OFFLINE_JOINED_SPACE_ID`), since
+     downloads only cover spaces the account has joined. It creates and deletes its own
+     discussion.
 
 ## Running
 
@@ -61,14 +65,14 @@ yarn install
 yarn test:offline
 ```
 
-Runs all 12 stories against `GAMEPLAN_OFFLINE_BASE_URL` (default
+Runs all 13 stories against `GAMEPLAN_OFFLINE_BASE_URL` (default
 `http://gameplan.localhost:8003`), writes a summary to `tests/offline/results/summary.json`
 and per-story JSON/screenshots under `tests/offline/results/` (gitignored). Exits non-zero
 if any story fails.
 
 Run a single story directly: `node tests/offline/us3.js`.
 
-Online regression smokes (confirm normal online usage isn't broken — not part of the 12
+Online regression smokes (confirm normal online usage isn't broken — not part of the 13
 offline stories): `yarn test:offline:smoke`.
 
 ## Configuration
