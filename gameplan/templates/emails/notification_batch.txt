@@ -1,0 +1,23 @@
+New notifications
+
+{% if mentions -%}
+Mentions
+{% for item in mentions -%}
+- {{ item.title }}: {{ item.description }}{% if item.metadata %} ({{ item.metadata }}){% endif %}{% if item.url %}
+  {{ item.url }}{% endif %}
+{% endfor %}
+{% endif -%}
+{% if others -%}
+{% if mentions %}Also{% else %}Activity{% endif %}
+{% for item in others -%}
+- {{ item.title }}: {{ item.description }}{% if item.metadata %} ({{ item.metadata }}){% endif %}{% if item.url %}
+  {{ item.url }}{% endif %}
+{% endfor %}
+{% endif %}
+
+Open notifications: {{ open_gameplan_url }}
+{% if preferences_url -%}
+Manage preferences: {{ preferences_url }}
+{% endif %}
+
+You are receiving this because your Gameplan notifications are set to email.

@@ -3,7 +3,7 @@
 
 """Per-user state is private to its user.
 
-Four doctypes hold state that belongs to exactly one person:
+Six doctypes hold state that belongs to exactly one person:
 
 - **GP Notification** — the bell feed. `to_user` owns the row; `owner` is whoever
   *triggered* it (the mentioner), so ownership and readership differ here.
@@ -11,6 +11,8 @@ Four doctypes hold state that belongs to exactly one person:
 - **GP Discussion Visit** — per-user last-visit for a discussion.
 - **GP Pinned Project** — the Spaces one user has pinned to their own sidebar, and
   the order they sit in.
+- **GP Discussion Subscription** / **GP Space Subscription** — one user's bell choice
+  on a discussion, and their new-discussion toggle on a space.
 
 All four grant Gameplan Member and Gameplan Guest read, write and (for pins) delete
 with `if_owner` unset, so role permissions alone let any signed-in user reach any other
@@ -386,10 +388,53 @@ class TestPinnedProjectPrivacy(PerUserStateTestCase):
 		self.assertFalse(frappe.db.exists("GP Pinned Project", other_pin.name))
 
 
+class TestSubscriptionPrivacy(PerUserStateTestCase):
+	"""The two subscription doctypes are the user's own bell choices: one row per
+	(user, discussion) or (user, space), created and deleted straight from the SPA."""
+
+	def subscribe_as(self, user):
+		with self.as_user(user):
+			discussion = frappe.get_doc(
+				doctype="GP Discussion Subscription", discussion=self.discussion.name, state="Watch"
+			).insert()
+			space = frappe.get_doc(doctype="GP Space Subscription", project=self.space.name).insert()
+		return discussion, space
+
+	def test_inserting_stamps_the_session_user(self):
+		discussion, space = self.subscribe_as(self.member)
+		self.assertEqual(discussion.user, self.member.name)
+		self.assertEqual(space.user, self.member.name)
+
+	def test_owner_can_read_list_and_delete_own_rows(self):
+		for doc in self.subscribe_as(self.member):
+			self.assert_allowed(doc, "read", self.member)
+			with self.as_user(self.member):
+				self.assertIn(doc.name, list_as_client(doc.doctype))
+				frappe.delete_doc(doc.doctype, doc.name)
+			self.assertFalse(frappe.db.exists(doc.doctype, doc.name))
+
+	def test_other_member_cannot_read_list_or_delete_them(self):
+		for doc in self.subscribe_as(self.member):
+			self.assert_not_allowed(doc, "read", self.second_member)
+			with self.as_user(self.second_member):
+				self.assertNotIn(doc.name, list_as_client(doc.doctype))
+				with self.assertRaises(frappe.PermissionError):
+					frappe.delete_doc(doc.doctype, doc.name)
+			self.assertTrue(frappe.db.exists(doc.doctype, doc.name))
+
+
 class TestPerUserStateHooksAreRegistered(PerUserStateTestCase):
 	"""The doctypes' role rows are open by design; the hooks are what closes them."""
 
-	DOCTYPES = ["GP Notification", "GP Project Visit", "GP Discussion Visit", "GP Pinned Project"]
+	DOCTYPES = [
+		"GP Notification",
+		"GP Project Visit",
+		"GP Discussion Visit",
+		"GP Pinned Project",
+		"GP Discussion Subscription",
+		"GP Space Subscription",
+		"GP Away Period",
+	]
 
 	def test_every_per_user_doctype_has_a_query_conditions_hook(self):
 		hooks = frappe.get_hooks("permission_query_conditions")

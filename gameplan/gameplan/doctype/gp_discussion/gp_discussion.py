@@ -13,13 +13,27 @@ from gameplan.mixins.attachments import HasAttachments
 from gameplan.mixins.mentions import HasMentions
 from gameplan.mixins.reactions import HasReactions
 from gameplan.mixins.tags import HasTags
+from gameplan.notifications.preferences import profile_prefs
+from gameplan.notifications.resolver import (
+	STATES,
+	effective_discussion_state,
+	notify_discussion_moved,
+	notify_new_discussion,
+	subscription_state,
+)
 from gameplan.permissions import content_has_permission, discussion_query_conditions
 from gameplan.utils import get_document_revisions, remove_empty_trailing_paragraphs, url_safe_slug
 
 
 class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTags, Document):
 	# Class Configuration
-	on_delete_cascade = ["GP Comment", "GP Discussion Visit", "GP Activity", "GP Poll"]
+	on_delete_cascade = [
+		"GP Comment",
+		"GP Discussion Visit",
+		"GP Discussion Subscription",
+		"GP Activity",
+		"GP Poll",
+	]
 	on_delete_set_null = ["GP Notification"]
 	activities = [
 		"Discussion Closed",
@@ -64,6 +78,10 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		)
 		d.last_unread_poll = polls[0] if polls else None
 		d.is_bookmarked = self.is_bookmarked_by_current_user()
+		# The bell renders from these on first paint rather than after a second request.
+		explicit = subscription_state(frappe.session.user, self.name)
+		d.notification_state = explicit or effective_discussion_state(frappe.session.user, self.name)
+		d.notification_state_is_explicit = bool(explicit)
 		d.views = frappe.db.count("GP Discussion Visit", {"discussion": self.name})
 		return d
 
@@ -75,6 +93,21 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 	def after_insert(self):
 		self.update_discussions_count()
 		GPUnreadRecord.create_unread_records_for_discussion(self)
+		self.watch_if_author_wants_to()
+		notify_new_discussion(self)
+
+	def watch_if_author_wants_to(self):
+		"""Honour "Watch discussions I start": an explicit Watch row for the author, written
+		at creation. From here on it is an ordinary choice — turning the checkbox off later
+		leaves it alone, and the bell's Default entry hands it back."""
+		if not profile_prefs(self.owner).watch_own_discussions:
+			return
+		frappe.get_doc(
+			doctype="GP Discussion Subscription",
+			user=self.owner,
+			discussion=self.name,
+			state="Watch",
+		).insert(ignore_permissions=True)
 
 	def on_trash(self):
 		self.remove_all_bookmarks()
@@ -188,6 +221,35 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		self.pin_scope = None
 		self.log_activity("Discussion Unpinned")
 		self.save()
+
+	@frappe.whitelist(methods=["POST"])
+	def set_notification_state(self, state):
+		"""Set the caller's bell on this discussion: Mute, Mentions only, Watch — or Default.
+
+		Default deletes the caller's row so the discussion follows their global level
+		again; the other three write or update it. Returns what the bell should show.
+		"""
+		if state not in (*STATES, "Default"):
+			frappe.throw(f"Invalid notification state: {state}")
+
+		user = frappe.session.user
+		existing = frappe.db.get_value(
+			"GP Discussion Subscription", {"user": user, "discussion": self.name}, "name"
+		)
+		if state == "Default":
+			if existing:
+				frappe.delete_doc("GP Discussion Subscription", existing, ignore_permissions=True)
+		elif existing:
+			frappe.db.set_value("GP Discussion Subscription", existing, "state", state)
+		else:
+			frappe.get_doc(
+				doctype="GP Discussion Subscription", user=user, discussion=self.name, state=state
+			).insert(ignore_permissions=True)
+
+		return {
+			"notification_state": effective_discussion_state(user, self.name),
+			"notification_state_is_explicit": state != "Default",
+		}
 
 	@frappe.whitelist(methods=["POST"])
 	def add_bookmark(self):
@@ -311,6 +373,7 @@ def move_discussion(discussion, project):
 	discussion.update_discussions_count()
 	frappe.get_doc("GP Project", old_project).update_discussions_count()
 	discussion.log_activity("Discussion Moved", data={"old_project": old_project, "new_project": project})
+	notify_discussion_moved(discussion, old_project, frappe.session.user)
 	return discussion
 
 

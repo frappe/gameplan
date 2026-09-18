@@ -24,6 +24,7 @@ makes the row's link fields both its routing and its identity
 """
 
 import frappe
+from frappe.utils import add_to_date
 
 from gameplan.api import mark_all_notifications_as_read, unread_notifications
 from gameplan.mixins.reactions import HasReactions
@@ -325,6 +326,23 @@ class TestReactionNotificationUnreadState(ReactionTestCase):
 		# is the only thing that can raise the badge.
 		self.assertEqual(len(self.reaction_notifications(self.member, self.discussion)), 1)
 		self.assertEqual(self.bell_count(self.member), 1)
+
+	def test_a_later_reaction_moves_the_row_s_event_time_forward(self):
+		"""The inbox orders and dates rows by `last_event_at`. A reused row keeps its
+		`creation`, so without this the re-lit notification would sit — and be dated — at
+		the moment of the first reaction, buried under everything raised since."""
+		self.react(self.discussion, self.second_member, [add(THUMBS_UP)])
+		[name] = self.reaction_notifications(self.member, self.discussion)
+		first = frappe.db.get_value("GP Notification", name, "last_event_at")
+		self.assertIsNotNone(first)
+
+		# Push the stored time back so a same-second second reaction reads as "later".
+		frappe.db.set_value("GP Notification", name, "last_event_at", add_to_date(first, minutes=-5))
+		earlier = frappe.db.get_value("GP Notification", name, "last_event_at")
+
+		self.react(self.discussion, self.admin, [add(HEART)])
+
+		self.assertGreater(frappe.db.get_value("GP Notification", name, "last_event_at"), earlier)
 
 
 class TestWhichReactionChangesNotify(ReactionTestCase):

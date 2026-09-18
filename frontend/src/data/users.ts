@@ -2,6 +2,11 @@ import { computed, reactive, readonly, ref, watch } from 'vue'
 import { useCall } from 'frappe-ui'
 import router from '@/router'
 import { setCommunityOrder } from './communityOrder'
+import {
+  loadNotificationPreferences,
+  type NotificationChannel,
+  type NotificationLevel,
+} from './notificationPreferences'
 import { loadQuickReactionSlots } from './reactionPreferences'
 import { setSidebarBadgeStyle, type SidebarBadgeStyle } from './sidebarPreferences'
 import { session } from './session'
@@ -38,6 +43,16 @@ export interface UserInfo {
   email_digest_frequency?: EmailDigestFrequency
   email_digest_day_of_week?: EmailDigestDayOfWeek
   email_digest_last_sent_on?: string
+  notification_level?: NotificationLevel
+  watch_own_discussions?: 0 | 1
+  notify_reactions?: 0 | 1
+  notify_poll_votes?: 0 | 1
+  notification_channel?: NotificationChannel
+  receive_notifications?: 0 | 1
+  active_hours_enabled?: 0 | 1
+  active_hours_start?: string
+  active_hours_end?: string
+  active_hours_days?: string
   bio: string
   role: 'Gameplan Admin' | 'Gameplan Member' | 'Gameplan Guest'
   isGuest?: boolean
@@ -69,6 +84,7 @@ function mergeUserInfo(user: UserInfo) {
     setCommunityOrder(user.community_order)
     loadQuickReactionSlots(user.quick_reaction_emojis, user.user_profile)
     setSidebarBadgeStyle(user.sidebar_badge_style)
+    loadNotificationPreferences(user, user.user_profile)
   }
 }
 

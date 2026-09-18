@@ -129,7 +129,8 @@
 
 		{% if open_gameplan_url %}
 		<div class="gp-email-digest__cta-wrap">
-			<a class="gp-email-digest__cta" href="{{ open_gameplan_url | e }}">Open Gameplan</a>
+			<!-- `btn`: Frappe's email wrapper restyles every other link dark and underlined. -->
+			<a class="gp-email-digest__cta btn" href="{{ open_gameplan_url | e }}">Open Gameplan</a>
 		</div>
 		{% endif %}
 

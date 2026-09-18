@@ -45,11 +45,30 @@
       <div class="w-full truncate text-sm text-ink-gray-5">{{ contentLabel }}</div>
     </ListCell>
 
+    <!-- The user's own new-discussion toggle for this space — every member gets it, unlike
+         the rename controls. On phones the column is gone, so the switch sits by the dots. -->
+    <ListCell class="max-md:hidden">
+      <Tooltip v-if="!space.archived_at" text="Notify me about new discussions">
+        <Switch
+          :model-value="isSpaceNotifying(space.name)"
+          @update:model-value="toggleSpaceNotifications(space.name)"
+        />
+      </Tooltip>
+    </ListCell>
+
     <ListCell v-if="showGuests" class="max-md:hidden">
       <div class="w-full truncate text-sm text-ink-gray-5">{{ guestsLabel }}</div>
     </ListCell>
 
     <ListCell class="justify-end gap-1">
+      <span v-if="!space.archived_at" class="md:hidden">
+        <Tooltip text="Notify me about new discussions">
+          <Switch
+            :model-value="isSpaceNotifying(space.name)"
+            @update:model-value="toggleSpaceNotifications(space.name)"
+          />
+        </Tooltip>
+      </span>
       <Button
         v-if="space.archived_at && canManageSpaceSettings"
         variant="ghost"
@@ -65,11 +84,12 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { Button, useDoctype } from 'frappe-ui'
+import { Button, Switch, Tooltip, useDoctype } from 'frappe-ui'
 import { ListCell, ListRow } from 'frappe-ui/list'
 import IconPicker from '@/components/IconPicker.vue'
 import SpaceIcon from '@/components/SpaceIcon.vue'
 import SpaceOptions from '@/components/SpaceOptions.vue'
+import { isSpaceNotifying, toggleSpaceNotifications } from '@/data/spaceNotifications'
 import { isDocMethodLoading, spaces, type Space, unarchiveSpace } from '@/data/spaces'
 import { readOnlyMode } from '@/data/readOnlyMode'
 import { useSessionUser } from '@/data/users'

@@ -34,6 +34,27 @@ html {
   }
 }
 
+/*
+  frappe-ui's date pickers scroll their year and month columns in plain overflow
+  divs, which on a desktop browser draw the full-width native scrollbar inside a
+  208px popover. Thin, muted bars until the picker ships them itself
+  (frappe/frappe-ui: thin scrollbars on CalendarPanel's year/month lists); drop this then.
+*/
+[role='listbox'][aria-label='Select year'],
+[role='listbox'][aria-label='Select month'] {
+  scrollbar-width: thin;
+  scrollbar-color: var(--outline-gray-2) transparent;
+}
+
+/*
+  Active hours (Settings → Notifications): native time inputs give hour / minute / am-pm
+  as steppable segments, which is the control wanted there; the browser's clock popup
+  behind the little icon is not, so the icon goes.
+*/
+.active-hours-time input::-webkit-calendar-picker-indicator {
+  display: none;
+}
+
 /* Flash on the source passage when navigating from a rich quote back to it.
    Duration matches the 2.5s class-removal timeout in useRichQuotes. */
 .highlighted-quote-target {
@@ -147,6 +168,6 @@ body {
   }
 }
 
-.ProseMirror table col[style*="min-width"] {
+.ProseMirror table col[style*='min-width'] {
   width: 120px;
 }

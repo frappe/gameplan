@@ -1,0 +1,59 @@
+{% macro item_row(item, first) %}
+<table class="gp-email-digest__item" role="presentation" cellpadding="0" cellspacing="0">
+	<tr>
+		<td class="gp-email-digest__avatar-cell">
+			<span class="gp-email-digest__avatar-content">
+			{% if item.avatar.url %}
+			<img alt="{{ item.avatar.label | e }}" class="gp-email-digest__avatar-image" height="36" src="{{ item.avatar.url | e }}" width="36">
+			{% else %}
+			<span class="gp-email-digest__avatar-fallback">{{ item.avatar.initials | e }}</span>
+			{% endif %}
+			</span>
+		</td>
+		<td class="gp-email-digest__content-cell{% if not first %} gp-email-digest__content-cell--divided{% endif %}">
+			{% if item.url %}<a class="gp-email-digest__content-link" href="{{ item.url | e }}">{% else %}<div class="gp-email-digest__content">{% endif %}
+				<div class="gp-email-digest__item-title">{{ item.title | e }}</div>
+				<div class="gp-email-digest__description">{{ item.description | e }}</div>
+				{% if item.metadata %}<div class="gp-email-digest__metadata">{{ item.metadata | e }}</div>{% endif %}
+			{% if item.url %}</a>{% else %}</div>{% endif %}
+		</td>
+	</tr>
+</table>
+{% endmacro %}
+<div class="gp-email-digest">
+	<div class="gp-email-digest__brand">
+		{% if logo_url %}<img alt="" class="gp-email-digest__brand-logo" height="24" src="{{ logo_url | e }}" width="24">{% endif %}
+		<span class="gp-email-digest__brand-name">Gameplan</span>
+	</div>
+	<div class="gp-email-digest__card">
+		<h2 class="gp-email-digest__title">New notifications</h2>
+		<div class="gp-email-digest__site-url">{{ site_url | e }}</div>
+
+		{% if mentions %}
+		<div class="gp-email-digest__section">
+			<h3 class="gp-email-digest__section-title gp-email-digest__section-title--muted">Mentions</h3>
+			{% for item in mentions %}{{ item_row(item, loop.first) }}{% endfor %}
+		</div>
+		{% endif %}
+
+		{% if others %}
+		<div class="gp-email-digest__section">
+			<h3 class="gp-email-digest__section-title gp-email-digest__section-title--muted">{% if mentions %}Also{% else %}Activity{% endif %}</h3>
+			{% for item in others %}{{ item_row(item, loop.first) }}{% endfor %}
+		</div>
+		{% endif %}
+
+		{% if open_gameplan_url %}
+		<div class="gp-email-digest__cta-wrap">
+			<!-- `btn`: Frappe's email wrapper restyles every other link dark and underlined. -->
+			<a class="gp-email-digest__cta btn" href="{{ open_gameplan_url | e }}">Open notifications</a>
+		</div>
+		{% endif %}
+
+		<div class="gp-email-digest__footer">
+			<div>You are receiving this because your Gameplan notifications are set to email.</div>
+			<div>Sent from {{ site_url | e }}</div>
+			{% if preferences_url %}<a class="gp-email-digest__footer-link" href="{{ preferences_url | e }}">Manage preferences</a>{% endif %}
+		</div>
+	</div>
+</div>

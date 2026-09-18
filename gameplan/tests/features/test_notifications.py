@@ -206,7 +206,8 @@ class TestMentionNotifications(NotificationTestCase):
 				content=mention_html(self.guest, "Guest"),
 			)
 
-		rows = self.notifications_for(self.guest)
+		# The grant itself also puts an "Added" row in the guest's bell; this test is about the mention.
+		rows = self.notifications_for(self.guest, type="Mention")
 		self.assertEqual(len(rows), 1)
 		self.assertEqual(str(rows[0].discussion), str(discussion.name))
 

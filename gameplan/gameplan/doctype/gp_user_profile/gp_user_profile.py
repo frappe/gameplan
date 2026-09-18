@@ -5,6 +5,7 @@ import re
 from urllib.parse import urlparse
 
 import frappe
+from frappe import _
 from frappe.model.document import Document
 from frappe.model.naming import append_number_if_name_exists
 from frappe.query_builder.functions import Count
@@ -13,6 +14,7 @@ from frappe.website.utils import cleanup_page_name
 from gameplan.api import get_user_info, require_admin
 from gameplan.extends.client import check_permissions
 from gameplan.mixins.attachments import HasAttachments
+from gameplan.notifications import away
 from gameplan.realtime import notify_users_changed
 
 PROFILE_BENTO_CARD_TYPES = {"Card", "Blank"}
@@ -46,6 +48,19 @@ class GPUserProfile(HasAttachments, Document):
 	def validate(self):
 		self.quick_reaction_emojis = normalize_quick_reaction_emojis(self.quick_reaction_emojis)
 		self.drop_foreign_card_images()
+		self.validate_active_hours()
+
+	def validate_active_hours(self):
+		"""Active hours only make sense as a real window: some days, two times, not equal."""
+		if not frappe.utils.cint(self.active_hours_enabled):
+			return
+		days = frappe.parse_json(self.active_hours_days or "[]")
+		if not [day for day in days if day in away.DAYS]:
+			frappe.throw(_("Pick at least one day for active hours"))
+		if not self.active_hours_start or not self.active_hours_end:
+			frappe.throw(_("Set both a start and an end time for active hours"))
+		if frappe.utils.get_time(self.active_hours_start) == frappe.utils.get_time(self.active_hours_end):
+			frappe.throw(_("Active hours must start and end at different times"))
 
 	def autoname(self):
 		self.name = self.generate_name()
@@ -53,6 +68,25 @@ class GPUserProfile(HasAttachments, Document):
 	def on_update(self):
 		self.attach_files_in_content()
 		self.attach_bento_card_images()
+		self.sync_away_periods()
+
+	def sync_away_periods(self):
+		"""The toggle opens or closes a Toggle stretch as it flips; a schedule edit ends the
+		scheduled stretch computed from the old hours. Insert-time values are not events."""
+		if not self.get_doc_before_save():
+			return
+		if self.has_value_changed("receive_notifications"):
+			away.set_receive_notifications(self.user, self.receive_notifications)
+		if any(
+			self.has_value_changed(field)
+			for field in (
+				"active_hours_enabled",
+				"active_hours_start",
+				"active_hours_end",
+				"active_hours_days",
+			)
+		):
+			away.close_open_scheduled_period(self.user)
 
 	def attach_bento_card_images(self, allow_session_owner=True):
 		"""Attach the images on this profile's bento cards to the profile.
