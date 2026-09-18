@@ -1,7 +1,7 @@
 # Copyright (c) 2026, Frappe Technologies Pvt Ltd and Contributors
 # See license.txt
 
-"""Bulk endpoints behind "Download for offline" (Settings > Offline).
+"""Bulk endpoints behind "Download for offline" (Settings > Preferences).
 
 One index call tells the device which discussions to keep, then the bundle is fetched a page
 at a time. Each page carries a page of discussions with their comments, activity and polls,
@@ -16,9 +16,10 @@ from frappe.model.base_document import get_controller
 from frappe.utils import add_days, cint, get_datetime, now_datetime
 
 from gameplan.gameplan.doctype.gp_project.gp_project import get_joined_spaces
-from gameplan.gameplan.doctype.gp_settings.gp_settings import get_offline_downloads_settings
 
 PAGE_SIZE = 20
+# The longest window the app offers (3 months).
+MAX_WINDOW_DAYS = 90
 # A 90-day download of a busy site is a few dozen pages. This only stops a runaway client.
 REQUESTS_PER_HOUR = 200
 # Visited discussions checked for lost access in one request.
@@ -79,14 +80,11 @@ def get_offline_bundle(window_days, fields, since=None, start=0, names=None):
 
 
 def _allowed_window(window_days):
-	settings = get_offline_downloads_settings()
-	if not settings.enabled:
-		frappe.throw(_("Offline downloads are turned off for this site."), frappe.PermissionError)
 	_check_rate_limit()
 	window = cint(window_days)
 	if window <= 0:
 		frappe.throw(_("Choose how many days to download."), frappe.ValidationError)
-	return min(window, settings.max_window_days)
+	return min(window, MAX_WINDOW_DAYS)
 
 
 def _check_rate_limit():

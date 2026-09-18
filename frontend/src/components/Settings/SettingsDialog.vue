@@ -61,7 +61,6 @@ import NotificationsSettings from './NotificationsSettings.vue'
 import ProfileSettings from './ProfileSettings.vue'
 import CustomEmojiSettings from './CustomEmojiSettings.vue'
 import PreferencesSettings from './PreferencesSettings.vue'
-import OfflineSettings from './OfflineSettings.vue'
 
 interface SettingsTab extends Tab {
   // Tabs that drive global role management / invites; these only make sense for
@@ -103,13 +102,6 @@ const allTabs: SettingsTab[] = [
     group: 'User settings',
     icon: 'lucide-bell',
     component: markRaw(NotificationsSettings),
-  },
-  {
-    label: 'Offline',
-    slug: 'offline',
-    group: 'User settings',
-    icon: 'lucide-cloud-download',
-    component: markRaw(OfflineSettings),
   },
   {
     label: 'Communities',

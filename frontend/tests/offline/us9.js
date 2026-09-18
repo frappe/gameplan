@@ -1,4 +1,4 @@
-// US9 — Download for offline: picking "Past week" in Settings > Offline downloads the
+// US9 — Download for offline: picking "Past week" in Settings > Preferences downloads the
 // discussions from joined spaces with recent activity, so one never opened before reads
 // offline with its comments. Content outside the window still shows the honest offline
 // fallback, the download costs about one request per 20 discussions, a reload soon after
@@ -119,10 +119,14 @@ async function run() {
     created = await createDiscussion(api)
     const discussionPath = `/g/community/${COMMUNITY}/space/${JOINED_SPACE_ID}/discussion/${created}`
 
-    await page.goto(`${BASE}/g/settings/offline`, { waitUntil: 'load', timeout: 20000 })
+    await page.goto(`${BASE}/g/settings/preferences`, { waitUntil: 'load', timeout: 20000 })
     await page.getByText('Download for offline').waitFor({ timeout: 15000 })
     await putIdbKey(page, GONE_KEY)
-    await page.getByRole('combobox').first().click()
+    await page
+      .getByText('Download for offline')
+      .locator('xpath=ancestor::*[.//*[@role="combobox"]][1]')
+      .getByRole('combobox')
+      .click()
     await page.getByRole('option', { name: 'Past week' }).click()
     await page
       .getByText('Discussions are ready to read offline')

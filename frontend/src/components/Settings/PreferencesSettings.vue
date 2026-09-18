@@ -94,6 +94,11 @@
 
         <QuickReactionsEditor class="mt-2" :disabled="!isOnline" />
       </section>
+
+      <section>
+        <h2 class="text-lg-semibold text-ink-gray-8">Offline</h2>
+        <OfflineSettingsPanel class="mt-2" />
+      </section>
     </div>
   </SettingsBody>
 
@@ -133,6 +138,7 @@ import { useCursorStyle, type CursorStyle } from '@/utils/useCursorStyle'
 import type { GPUserProfile } from '@/types/doctypes'
 import { isOnline } from '@/data/online'
 import QuickReactionsEditor from './QuickReactionsEditor.vue'
+import OfflineSettingsPanel from './OfflineSettingsPanel.vue'
 
 const sessionUser = useSessionUser()
 const { currentTheme, setTheme } = useTheme()

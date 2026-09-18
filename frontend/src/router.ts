@@ -432,7 +432,7 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/pages/MoreMenu.vue'),
   },
   {
-    // Mobile's way into Settings > Offline (desktop uses the settings dialog).
+    // Mobile's way into the offline settings (desktop has them in Settings > Preferences).
     path: '/offline',
     name: 'OfflineSettings',
     component: () => import('@/pages/OfflineSettingsPage.vue'),

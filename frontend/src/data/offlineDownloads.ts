@@ -1,4 +1,4 @@
-import { computed, reactive, watch } from 'vue'
+import { reactive, watch } from 'vue'
 import { useLocalStorage } from '@vueuse/core'
 import { call, dialog, toast } from 'frappe-ui'
 import { delMany, get, getMany, keys, set, setMany, values } from 'idb-keyval'
@@ -16,7 +16,7 @@ import {
 } from './discussionTimeline'
 
 /**
- * "Download for offline" (Settings > Offline): keeps the discussions from joined spaces with
+ * "Download for offline" (Settings > Preferences): keeps the discussions from joined spaces with
  * activity in the chosen window on this device, with their comments, activity and polls.
  *
  * Downloads are filed into the same IndexedDB entries frappe-ui's resources read (`doc:` for
@@ -71,24 +71,10 @@ interface Bundle {
 
 type Row = Record<string, unknown> & { name: string | number }
 
-/** What the admin allows, from the boot data; updated in place when an admin changes it. */
-export const policy = reactive({
-  enabled: window.offline_downloads?.enabled ?? false,
-  maxWindow: (window.offline_downloads?.max_window_days ?? 0) as number,
-})
-
-const chosenWindow = useLocalStorage<OfflineWindow>(`gameplan:offline-window:${session.user}`, 0)
-
-/** The window actually downloaded: the user's choice, capped by the admin. */
-export const offlineWindow = computed<OfflineWindow>({
-  get: () => {
-    if (!policy.enabled) return 0
-    return Math.min(chosenWindow.value, policy.maxWindow) as OfflineWindow
-  },
-  set: (value) => {
-    chosenWindow.value = value
-  },
-})
+export const offlineWindow = useLocalStorage<OfflineWindow>(
+  `gameplan:offline-window:${session.user}`,
+  0,
+)
 
 export const downloads = reactive({
   syncing: false,
@@ -388,9 +374,7 @@ function idle() {
 /** Starts background syncing: once shortly after load, then on reconnect and when the tab returns. */
 export function setupOfflineDownloads() {
   const background = () => syncOfflineDownloads().catch(() => {})
-  readMeta().then((current) => {
-    if (!policy.enabled && current) removeOfflineDownloads()
-  })
+  readMeta()
   setTimeout(background, 5000 + Math.random() * MAX_START_DELAY)
   onReconnect(background)
   document.addEventListener('visibilitychange', background)
@@ -411,9 +395,8 @@ const introduction = useLocalStorage<'new' | 'seen-offline' | 'done'>(
  * where a dialog would land on top of whatever the person was in the middle of.
  */
 function setupIntroduction() {
-  const pending = () => policy.enabled && !offlineWindow.value
   watch(isOnline, (online) => {
-    if (online || !pending() || introduction.value !== 'new') return
+    if (online || offlineWindow.value || introduction.value !== 'new') return
     introduction.value = 'seen-offline'
     toast.info("You're offline. Only discussions you've opened are available.", {
       action: { label: 'Set up offline reading', onClick: openOfflineSettings },
@@ -423,17 +406,16 @@ function setupIntroduction() {
 }
 
 function offerDownload() {
-  if (!policy.enabled || offlineWindow.value || !isOnline.value) return
+  if (offlineWindow.value || !isOnline.value) return
   introduction.value = 'done'
-  const days = Math.min(30, policy.maxWindow) as OfflineWindow
-  const period = WINDOW_OPTIONS.find((option) => option.value === days)!.label.toLowerCase()
+  const settings = isMobileViewport() ? 'More > Offline' : 'Settings > Preferences'
   dialog.confirm({
     title: 'Read Gameplan offline',
-    message: `Keep discussions from the ${period} in your spaces on this device, so they open even without a connection. You can change this in Settings.`,
+    message: `Keep discussions from the past month in your spaces on this device, so they open even without a connection. You can change this in ${settings}.`,
     confirmLabel: 'Download',
     cancelLabel: 'Not now',
     onConfirm: () => {
-      downloadForOffline(days)
+      downloadForOffline(30)
     },
   })
 }
@@ -443,6 +425,8 @@ function openOfflineSettings() {
   if (isMobileViewport()) {
     import('@/router').then(({ default: router }) => router.push({ name: 'OfflineSettings' }))
   } else {
-    import('@/components/Settings').then(({ showSettingsDialog }) => showSettingsDialog('Offline'))
+    import('@/components/Settings').then(({ showSettingsDialog }) =>
+      showSettingsDialog('Preferences'),
+    )
   }
 }

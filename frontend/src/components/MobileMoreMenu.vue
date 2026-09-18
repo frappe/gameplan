@@ -76,7 +76,7 @@ import { useSessionUser } from '@/data/users'
 import { session } from '@/data/session'
 import { isOnline } from '@/data/online'
 import { useTheme, type Theme } from '@/utils/useTheme'
-import { WINDOW_OPTIONS, offlineWindow, policy } from '@/data/offlineDownloads'
+import { WINDOW_OPTIONS, offlineWindow } from '@/data/offlineDownloads'
 
 interface MoreItem {
   label: string
@@ -115,10 +115,8 @@ const avatarStyle = computed(() => ({
   backgroundColor: sessionUser.image_background_color || undefined,
 }))
 const userBio = computed(() => sessionUser.bio?.trim())
-const offlineLabel = computed(() =>
-  policy.enabled
-    ? WINDOW_OPTIONS.find((option) => option.value === offlineWindow.value)?.label
-    : 'Off',
+const offlineLabel = computed(
+  () => WINDOW_OPTIONS.find((option) => option.value === offlineWindow.value)?.label,
 )
 
 const itemGroups = computed<MoreItemGroup[]>(() => {

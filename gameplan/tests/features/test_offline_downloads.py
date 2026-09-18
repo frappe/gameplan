@@ -1,7 +1,7 @@
 # Copyright (c) 2026, Frappe Technologies Pvt Ltd and Contributors
 # See license.txt
 
-"""Offline downloads: the index and bundle endpoints behind Settings > Offline.
+"""Offline downloads: the index and bundle endpoints behind Settings > Preferences.
 
 A device asks for the discussions in its joined spaces with activity inside a window, then
 fetches them a page at a time with their comments, activity and polls. The admin decides
@@ -54,15 +54,6 @@ class OfflineDownloadsTestCase(GameplanTestCase):
 		self.old = create_discussion("Old thread", self.joined, owner=self.member)
 		set_last_post_at(self.old, add_days(now_datetime(), -45))
 		self.elsewhere = create_discussion("Other space thread", self.not_joined, owner=self.second_member)
-		# The cached settings doc outlives the rollback, so drop it or the site keeps these values.
-		self.addCleanup(frappe.clear_document_cache, "GP Settings", "GP Settings")
-		self.set_settings(enable=1, max_window=90)
-
-	def set_settings(self, enable, max_window):
-		settings = frappe.get_single("GP Settings")
-		settings.enable_offline_downloads = enable
-		settings.max_offline_window_days = str(max_window)
-		settings.save(ignore_permissions=True)
 
 	def index(self, window):
 		with self.as_user(self.member):
@@ -85,14 +76,9 @@ class TestOfflineIndex(OfflineDownloadsTestCase):
 		self.assertNotIn(str(self.old.name), names)
 		self.assertIn(str(self.old.name), self.index(90))
 
-	def test_window_is_capped_at_the_admin_maximum(self):
-		self.set_settings(enable=1, max_window=30)
-		self.assertNotIn(str(self.old.name), self.index(90))
-
-	def test_turned_off_by_the_admin(self):
-		self.set_settings(enable=0, max_window=90)
-		with self.as_user(self.member), self.assertRaises(frappe.PermissionError):
-			get_offline_index(30)
+	def test_window_is_capped_at_three_months(self):
+		set_last_post_at(self.old, add_days(now_datetime(), -120))
+		self.assertNotIn(str(self.old.name), self.index(365))
 
 	def test_a_discussion_moved_out_of_a_joined_space_drops_out(self):
 		frappe.db.set_value("GP Discussion", self.recent.name, "project", self.not_joined.name)
