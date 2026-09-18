@@ -35,8 +35,8 @@
   </SettingsHeader>
 
   <SettingsBody>
-    <!-- Phones: name and email, the role picker, the action; "user since" folds into the
-         email line and the column header goes, the same way CommunityMembersList does it. -->
+    <!-- Phones: name and email, the role picker, the action; the "user since" column and
+         the column header go, the same way CommunityMembersList does it. -->
     <List
       :columns="{
         base: ['minmax(0,1fr)', 'auto', '2rem'],
@@ -80,9 +80,6 @@
               </div>
               <div class="mt-1 truncate text-base text-ink-gray-6">
                 {{ user.email }}
-                <span v-if="user.creation" class="md:hidden">
-                  · since {{ getMemberSince(user) }}</span
-                >
               </div>
             </div>
           </ListCell>
