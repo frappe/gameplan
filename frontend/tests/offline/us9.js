@@ -2,7 +2,9 @@
 // discussions from joined spaces with recent activity, so one never opened before reads
 // offline with its comments. Content outside the window still shows the honest offline
 // fallback, the download costs about one request per 20 discussions, a reload soon after
-// doesn't download again, and a visited copy of a discussion that's since gone is removed.
+// doesn't download again, a visited copy of a discussion that's since gone is removed, and
+// Sync now fetches a discussion missing from the device even though it hasn't changed (a
+// space joined after the first download).
 const {
   chromium,
   BASE,
@@ -20,6 +22,23 @@ const MARKER = `us9-${Date.now()}`
 const OFFLINE_API = /gameplan\.offline_downloads\.get_offline_(index|bundle)/
 // Stands in for a discussion the user opened that has since been deleted.
 const GONE_KEY = 'doc:GP Discussion/999999999'
+
+function deleteIdbKey(page, key) {
+  return page.evaluate(
+    (k) =>
+      new Promise((resolve, reject) => {
+        const req = indexedDB.open('keyval-store')
+        req.onsuccess = () => {
+          const tx = req.result.transaction('keyval', 'readwrite')
+          tx.objectStore('keyval').delete(k)
+          tx.oncomplete = () => resolve()
+          tx.onerror = () => reject(tx.error)
+        }
+        req.onerror = () => reject(req.error)
+      }),
+    key,
+  )
+}
 
 function putIdbKey(page, key) {
   return page.evaluate(
@@ -114,6 +133,23 @@ async function run() {
       name: 'the download costs one index call plus one call per 20 discussions',
       pass: offlineRequests.length === expectedRequests,
       symptom: `${offlineRequests.length} offline-download requests, expected ${expectedRequests}`,
+    })
+
+    const createdKey = `doc:GP Discussion/${created}`
+    await deleteIdbKey(page, createdKey)
+    await page
+      .getByText('Discussions are ready to read offline')
+      .waitFor({ state: 'detached', timeout: 15000 })
+      .catch(() => {})
+    await page.getByRole('button', { name: 'Sync now' }).click()
+    await page
+      .getByText('Discussions are ready to read offline')
+      .waitFor({ timeout: 30000 })
+      .catch(() => {})
+    result.checks.push({
+      name: 'Sync now fetches a discussion missing from the device though it has not changed',
+      pass: (await idbKeyvalKeys(page)).includes(createdKey),
+      symptom: `${createdKey} after Sync now: ${(await idbKeyvalKeys(page)).includes(createdKey) ? 'present' : 'missing'}`,
     })
 
     await page.goto(URLS.feed, { waitUntil: 'load', timeout: 15000 })

@@ -47,19 +47,24 @@ def get_offline_index(window_days, cached=None):
 
 
 @frappe.whitelist(methods=["POST"])
-def get_offline_bundle(window_days, fields, since=None, start=0):
+def get_offline_bundle(window_days, fields, since=None, start=0, names=None):
 	"""One page of discussions in the window, each with its comments, activity and polls.
 
 	`fields` maps comments/activities/polls to the field lists the app's own lists request,
 	so the rows come back in exactly the shape those lists cache. With `since`, only
-	discussions that changed after it are included.
+	discussions that changed after it are included. With `names`, just those (a page's worth),
+	for a device fetching what it doesn't hold yet.
 	"""
 	window = _allowed_window(window_days)
 	fields = frappe.parse_json(fields)
 	start = cint(start)
 
 	rows = _discussions_in_window(window)
-	if since:
+	if names:
+		wanted = {str(name) for name in frappe.parse_json(names)[:PAGE_SIZE]}
+		rows = [row for row in rows if row.name in wanted]
+		start = 0
+	elif since:
 		rows = _changed_since(rows, get_datetime(since))
 	page = rows[start : start + PAGE_SIZE]
 	names = [row.name for row in page]

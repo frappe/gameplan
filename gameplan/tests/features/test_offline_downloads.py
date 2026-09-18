@@ -169,6 +169,14 @@ class TestOfflineBundle(OfflineDownloadsTestCase):
 		self.assertEqual(len(names), offline_downloads.PAGE_SIZE + 1)
 		self.assertEqual(len(set(names)), len(names))
 
+	def test_names_fetches_just_those_within_the_window(self):
+		other = create_discussion("Another thread", self.joined, owner=self.member)
+		wanted = [str(other.name), str(self.old.name), str(self.elsewhere.name)]
+		bundle = self.bundle(30, names=json.dumps(wanted))
+		# The old thread is outside 30 days and the other space isn't joined.
+		self.assertEqual([str(d["name"]) for d in bundle["discussions"]], [str(other.name)])
+		self.assertFalse(bundle["has_next_page"])
+
 	def test_since_returns_only_changed_discussions(self):
 		since = add_to_date(now_datetime(), minutes=-5)
 		set_modified("GP Discussion", self.recent.name, add_to_date(since, minutes=-10))

@@ -37,6 +37,8 @@ const INDEX = 'gameplan.offline_downloads.get_offline_index'
 const BUNDLE = 'gameplan.offline_downloads.get_offline_bundle'
 const META_KEY = 'gameplan:offline-downloads'
 const LOCK_NAME = 'gameplan-offline-downloads'
+// Matches the server's page size (gameplan/offline_downloads.py).
+const PAGE_SIZE = 20
 // Background syncs only fetch what changed, but still cost an index query each; this keeps
 // them to a few a day per device.
 const SYNC_INTERVAL = 6 * 60 * 60 * 1000
@@ -48,10 +50,11 @@ interface Meta {
   window: number
   /** Server time the last complete sync started; the next one asks for changes since. */
   since: string | null
+  /** Discussions downloaded to this device. */
   names: string[]
   lastSyncedAt: number | null
-  /** Where an interrupted sync stopped, so the next one carries on from there. */
-  cursor: { start: number; since: string | null; syncedAt: string } | null
+  /** The last sync stopped before finishing, so the next one runs whenever it can. */
+  incomplete: boolean
 }
 
 interface Bundle {
@@ -137,8 +140,7 @@ async function sync(manual: boolean): Promise<boolean> {
   if (!isOnline.value) return false
   if (!manual) {
     if (document.visibilityState !== 'visible' || saveData()) return false
-    // An interrupted sync resumes whenever it can, however recent the last complete one.
-    const fresh = current?.window === days && !current.cursor && current.lastSyncedAt
+    const fresh = current?.window === days && !current.incomplete && current.lastSyncedAt
     if (fresh && Date.now() - fresh < SYNC_INTERVAL) return true
   }
 
@@ -149,7 +151,10 @@ async function sync(manual: boolean): Promise<boolean> {
   )
 }
 
-/** Returns whether the sync finished; losing the connection pauses it at the saved cursor. */
+/**
+ * Returns whether the sync finished. Losing the connection stops it; the next run fetches
+ * whatever is still missing.
+ */
 async function runSync(days: OfflineWindow): Promise<boolean> {
   downloads.syncing = true
   downloads.error = null
@@ -157,7 +162,8 @@ async function runSync(days: OfflineWindow): Promise<boolean> {
   downloads.total = 0
   try {
     const previous = meta ?? (await readMeta())
-    const visited = (await cachedDiscussions()).filter((name) => !previous?.names.includes(name))
+    const onDevice = new Set(await cachedDiscussions())
+    const visited = [...onDevice].filter((name) => !previous?.names.includes(name))
     const index = await call<{ discussions: string[]; revoked: string[]; synced_at: string }>(
       INDEX,
       { window_days: days, cached: visited },
@@ -166,43 +172,64 @@ async function runSync(days: OfflineWindow): Promise<boolean> {
     const dropped = (previous?.names ?? []).filter((name) => !names.includes(name))
     await forgetDiscussions([...dropped, ...index.revoked])
 
+    // Only what is really on the device counts as downloaded. A new window starts over.
     const sameWindow = previous?.window === days
-    const since = sameWindow ? previous.since : null
-    const resume = sameWindow && previous.cursor?.since === since ? previous.cursor : null
-    let start = resume?.start ?? 0
-    const syncedAt = resume?.syncedAt ?? index.synced_at
-    downloads.total = since ? 0 : names.length
-    downloads.done = since ? 0 : start
-
+    const stored = new Set(
+      sameWindow ? previous.names.filter((name) => names.includes(name) && onDevice.has(name)) : [],
+    )
     const base: Meta = {
       user: session.user!,
       window: days,
-      since,
-      names,
+      since: sameWindow ? previous.since : null,
+      names: [...stored],
       lastSyncedAt: sameWindow ? previous.lastSyncedAt : null,
-      cursor: { start, since, syncedAt },
+      incomplete: true,
     }
     await writeMeta(base)
 
-    let hasNext = true
-    while (hasNext) {
-      // Picks up on the next reconnect or app load, from the saved cursor.
-      if (!isOnline.value) return false
+    const fetchPage = async (params: Record<string, unknown>) => {
       const bundle = await call<Bundle>(BUNDLE, {
         window_days: days,
-        since,
-        start,
         fields: { comments: COMMENT_FIELDS, activities: ACTIVITY_FIELDS, polls: POLL_FIELDS },
+        ...params,
       })
       await storeBundle(bundle)
-      start += bundle.discussions.length
-      downloads.done += bundle.discussions.length
-      hasNext = bundle.has_next_page
-      await writeMeta({ ...base, cursor: { start, since, syncedAt } })
-      if (hasNext) await idle()
+      for (const discussion of bundle.discussions) stored.add(String(discussion.name))
+      await writeMeta({ ...base, names: [...stored] })
+      return bundle
     }
 
-    await writeMeta({ ...base, since: syncedAt, lastSyncedAt: Date.now(), cursor: null })
+    // Changes to what the device already holds.
+    if (base.since && stored.size) {
+      let start = 0
+      let hasNext = true
+      while (hasNext) {
+        if (!isOnline.value) return false
+        const bundle = await fetchPage({ since: base.since, start })
+        start += bundle.discussions.length
+        hasNext = bundle.has_next_page
+        if (hasNext) await idle()
+      }
+    }
+
+    // Everything not on the device yet: a first download, a space joined since the last sync,
+    // or what an interrupted sync didn't reach.
+    const missing = names.filter((name) => !stored.has(name))
+    downloads.total = missing.length
+    for (let i = 0; i < missing.length; i += PAGE_SIZE) {
+      if (!isOnline.value) return false
+      if (i) await idle()
+      await fetchPage({ names: missing.slice(i, i + PAGE_SIZE) })
+      downloads.done = Math.min(i + PAGE_SIZE, missing.length)
+    }
+
+    await writeMeta({
+      ...base,
+      names: [...stored],
+      since: index.synced_at,
+      lastSyncedAt: Date.now(),
+      incomplete: false,
+    })
     return true
   } catch (error) {
     downloads.error = error instanceof Error ? error.message : String(error)
