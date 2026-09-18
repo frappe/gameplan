@@ -238,6 +238,7 @@ function watchForUpdates(registration: ServiceWorkerRegistration) {
 
 function notifyUpdateAvailable(worker: ServiceWorker) {
   toast('A new version of Gameplan is available', {
+    id: 'app-update',
     duration: Infinity,
     action: {
       label: 'Refresh',

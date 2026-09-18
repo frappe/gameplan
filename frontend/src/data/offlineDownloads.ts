@@ -333,6 +333,7 @@ export function downloadForOffline(days: OfflineWindow) {
     if (!done) throw new Error('Offline download did not finish')
   })
   return toast.promise(finished, {
+    id: 'offline-download',
     loading: 'Downloading discussions for offline reading…',
     success: 'Discussions are ready to read offline',
     error: 'Could not finish the offline download. It will retry later.',
