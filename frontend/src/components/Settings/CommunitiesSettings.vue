@@ -1,9 +1,23 @@
 <template>
   <SettingsHeader>
     <div class="w-full max-w-[800px]">
-      <!-- Selected community: back button, title, and the Spaces/Members switcher. -->
+      <!-- Selected community: back button, title, and the Spaces/Members switcher. On
+           phones this row moves into the dialog's own header bar (the Teleport below), so
+           there is one header, not two. -->
       <template v-if="selectedCommunityId">
-        <div class="flex items-center gap-2">
+        <Teleport v-if="isPhone" defer to="#settings-mobile-bar">
+          <Button
+            variant="ghost"
+            icon="lucide-arrow-left"
+            label="Back to communities"
+            @click="showCommunities"
+          />
+          <h2 class="min-w-0 flex-1 truncate text-lg-medium text-ink-gray-8">
+            {{ selectedCommunity?.title || 'Community' }}
+          </h2>
+          <Select variant="ghost" v-if="selectedCommunity" :options="viewButtons" v-model="view" />
+        </Teleport>
+        <div class="flex items-center gap-2 max-sm:hidden">
           <Button
             variant="subtle"
             size="xs"
@@ -177,12 +191,13 @@
 // Declared so the parent's @close-dialog isn't treated as a failed attribute
 // fallthrough (this component renders a fragment); it simply isn't emitted here.
 defineEmits<{ (e: 'close-dialog'): void }>()
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Button, SettingsBody, SettingsHeader, Select } from 'frappe-ui'
 import NewSpaceDialog from '@/components/NewSpaceDialog.vue'
 import { useMediaQuery } from '@vueuse/core'
 import { openCustomizeSidebarDialog } from '@/components/AppRail/customizeSidebar'
+import { mobileBarTaken } from './index'
 import { communities } from '@/data/communities'
 import { useSessionUser } from '@/data/users'
 import { canManageCommunity, isGlobalAdmin } from '@/utils/permissions'
@@ -233,8 +248,15 @@ function customizeSidebar() {
   openCustomizeSidebarDialog()
 }
 
-// Same breakpoint the templates use for their sm: variants; decides icon-only buttons.
+// Same breakpoint the templates use for their sm: variants; decides icon-only buttons
+// and whether the community header rides in the dialog's phone bar.
 const isPhone = useMediaQuery('(max-width: 639px)')
+watch(
+  () => Boolean(isPhone.value && selectedCommunityId.value),
+  (taken) => (mobileBarTaken.value = taken),
+  { immediate: true },
+)
+onBeforeUnmount(() => (mobileBarTaken.value = false))
 
 const viewButtons = [
   { label: 'Spaces', value: 'spaces' },

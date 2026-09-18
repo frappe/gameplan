@@ -27,8 +27,12 @@
     <div
       class="flex h-[var(--mobile-header-height)] shrink-0 items-center gap-1 border-b border-outline-gray-1 px-2 sm:hidden"
     >
-      <Button variant="ghost" icon="lucide-arrow-left" label="Back" @click="show = false" />
-      <span class="text-lg-medium text-ink-gray-8">{{ activeTab?.label }}</span>
+      <template v-if="!mobileBarTaken">
+        <Button variant="ghost" icon="lucide-arrow-left" label="Back" @click="show = false" />
+        <span class="text-lg-medium text-ink-gray-8">{{ activeTab?.label }}</span>
+      </template>
+      <!-- A panel that needs the bar for itself teleports into this. -->
+      <div id="settings-mobile-bar" class="flex min-w-0 flex-1 items-center gap-1" />
     </div>
     <SettingsContent>
       <!-- One reka-ui tabpanel per tab. unmount-on-hide=false keeps a visited
@@ -60,7 +64,14 @@ import {
   SettingsContent,
   SettingsPanel,
 } from 'frappe-ui'
-import { show, activeTab, registerTabs, settingsBackgroundPath, type Tab } from './index'
+import {
+  show,
+  activeTab,
+  mobileBarTaken,
+  registerTabs,
+  settingsBackgroundPath,
+  type Tab,
+} from './index'
 import { getHomeRoute } from '@/router'
 import UserAvatar from '@/components/UserAvatar.vue'
 import { isGameplanAdmin, useSessionUser } from '@/data/users'

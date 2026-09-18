@@ -22,6 +22,13 @@ export const activeTab = ref<Tab | null>(null)
 // behind the overlay while the URL is a /settings/* route. Set by the router guard.
 export const settingsBackgroundPath = ref<string | null>(null)
 
+/**
+ * True while a panel has put its own controls into the phone header bar (its Teleport
+ * target is `#settings-mobile-bar`); the bar then leaves out its default back arrow and
+ * tab name. Communities sets it while a single community is open.
+ */
+export const mobileBarTaken = ref(false)
+
 // Lets callers deep-link into the Communities tab, optionally with a specific
 // community + view (e.g. a discussion's "Manage spaces" action). The community
 // selection lives in the URL, so this is a plain navigation.
