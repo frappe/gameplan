@@ -24,7 +24,7 @@
   <List
     v-if="filteredMembers.length"
     :columns="{
-      base: ['1.25rem', 'minmax(0,1fr)'],
+      base: ['1.5rem', 'minmax(0,1fr)', '1.5rem'],
       md: ['1.25rem', 'minmax(12rem,1fr)', 'minmax(12rem,1fr)', '8rem', '1.5rem'],
     }"
   >

@@ -34,6 +34,38 @@ html {
   }
 }
 
+/*
+  frappe-ui's SettingsHeader / SettingsBody inset their content by 4.4rem on every
+  screen; on a phone that is 140px of a 360px width gone to margins. Page-like insets
+  below the dialog's own breakpoint, until the library carries them itself
+  (frappe/frappe-ui: phone padding for SettingsHeader/SettingsBody); drop this then.
+*/
+@media (max-width: 639px) {
+  [role='tabpanel'] .px-\[4\.4rem\] {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  [role='tabpanel'] > .pt-10 {
+    padding-top: 1.25rem;
+  }
+
+  /*
+    Dialog wraps its content in px-4/py-4 plus my-8, while SettingsDialog's phone mode
+    sizes itself w-screen / h-[100dvh] inside that box and the box clips overflow: the
+    right 2rem and the bottom of every panel are cut off. Zero the wrapper for the
+    settings dialog only (the one whose content holds the tab list), until
+    SettingsDialog neutralises it itself (frappe/frappe-ui: full-bleed SettingsDialog on
+    phones); drop this then.
+  */
+  .dialog-scroll-container:has(.dialog-content [role='tablist']) > div {
+    padding: 0;
+  }
+  .dialog-content:has([role='tablist']) {
+    margin: 0;
+    border-radius: 0;
+  }
+}
+
 /* Flash on the source passage when navigating from a rich quote back to it.
    Duration matches the 2.5s class-removal timeout in useRichQuotes. */
 .highlighted-quote-target {
@@ -147,6 +179,6 @@ body {
   }
 }
 
-.ProseMirror table col[style*="min-width"] {
+.ProseMirror table col[style*='min-width'] {
   width: 120px;
 }

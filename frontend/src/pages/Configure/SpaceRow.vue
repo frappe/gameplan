@@ -1,5 +1,7 @@
 <template>
-  <ListRow class="h-10">
+  <!-- Phones draw a second line of details under the name, so the row grows to fit;
+       desktop keeps its one-line 40px. -->
+  <ListRow class="max-md:h-auto max-md:py-2 md:h-10">
     <ListCell>
       <IconPicker :modelValue="space.icon || ''" @update:modelValue="updateIcon">
         <template #default="{ togglePopover }">
@@ -30,13 +32,12 @@
           />
           <span v-if="space.is_private" class="lucide-lock size-3.5 shrink-0 text-ink-gray-5" />
         </div>
-        <div class="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-sm text-ink-gray-5 md:hidden">
-          <span class="inline-flex items-center gap-1">
-            <span :class="[visibilityIcon(space.is_private), 'size-3.5']" />
-            {{ visibilityLabel(space.is_private) }}
-          </span>
-          <span>{{ contentLabel }}</span>
-          <span v-if="guestsLabel">{{ guestsLabel }}</span>
+        <div class="mt-0.5 truncate text-sm text-ink-gray-5 md:hidden">
+          {{
+            [visibilityLabel(space.is_private), contentLabel, guestsLabel]
+              .filter(Boolean)
+              .join(' · ')
+          }}
         </div>
       </div>
     </ListCell>
@@ -75,7 +76,7 @@ import { readOnlyMode } from '@/data/readOnlyMode'
 import { useSessionUser } from '@/data/users'
 import type { GPProject } from '@/types/doctypes'
 import { canManageSpace } from '@/utils/permissions'
-import { visibilityIcon, visibilityLabel } from '@/utils/visibility'
+import { visibilityLabel } from '@/utils/visibility'
 
 const props = defineProps<{
   space: Space

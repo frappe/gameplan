@@ -71,7 +71,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRouter, type RouteLocationRaw } from 'vue-router'
-import { useSessionUser } from '@/data/users'
+import { isGameplanAdmin, useSessionUser } from '@/data/users'
 import { session } from '@/data/session'
 import { useTheme, type Theme } from '@/utils/useTheme'
 
@@ -130,6 +130,41 @@ const itemGroups = computed<MoreItemGroup[]>(() => {
       label: 'Settings',
       items: [
         { label: 'Profile', icon: 'lucide-user', onClick: openProfile },
+        // The settings tabs themselves, one level deep: each opens its panel full-screen.
+        // Same slugs and gating as the desktop dialog's sidebar (Settings/SettingsDialog.vue).
+        {
+          label: 'Preferences',
+          icon: 'lucide-sliders-horizontal',
+          route: { name: 'SettingsTab', params: { tab: 'preferences' } },
+        },
+        {
+          label: 'Notifications',
+          icon: 'lucide-bell',
+          route: { name: 'SettingsTab', params: { tab: 'notifications' } },
+        },
+        ...(sessionUser.isGuest
+          ? []
+          : [
+              {
+                label: 'Communities',
+                icon: 'lucide-building-2',
+                route: { name: 'SettingsTab', params: { tab: 'communities' } },
+              },
+            ]),
+        ...(isGameplanAdmin()
+          ? [
+              {
+                label: 'Emojis',
+                icon: 'lucide-smile-plus',
+                route: { name: 'SettingsTab', params: { tab: 'emojis' } },
+              },
+              {
+                label: 'Users',
+                icon: 'lucide-users',
+                route: { name: 'SettingsTab', params: { tab: 'users' } },
+              },
+            ]
+          : []),
         {
           label: 'Theme',
           icon: THEME_META[currentTheme.value].icon,

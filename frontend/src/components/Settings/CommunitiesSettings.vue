@@ -27,9 +27,22 @@
           v-model:visibility-filter="spaceFilter"
         >
           <template #action>
-            <Button v-if="canCreateSpace" icon-left="lucide-plus" @click="openNewSpaceDialog">
+            <!-- Icon alone on phones, where the search needs the width. -->
+            <Button
+              v-if="canCreateSpace"
+              icon-left="lucide-plus"
+              class="max-sm:hidden"
+              @click="openNewSpaceDialog"
+            >
               New space
             </Button>
+            <Button
+              v-if="canCreateSpace"
+              icon="lucide-plus"
+              label="New space"
+              class="sm:hidden"
+              @click="openNewSpaceDialog"
+            />
           </template>
         </CommunitySpacesListControls>
 
@@ -42,28 +55,39 @@
             <Button
               v-if="canManageSelectedCommunity"
               icon-left="lucide-plus"
+              class="max-sm:hidden"
               :disabled="Boolean(selectedCommunity.archived_at)"
               @click="showAddMembers = true"
             >
               Add members
             </Button>
+            <Button
+              v-if="canManageSelectedCommunity"
+              icon="lucide-plus"
+              label="Add members"
+              class="sm:hidden"
+              :disabled="Boolean(selectedCommunity.archived_at)"
+              @click="showAddMembers = true"
+            />
           </template>
         </CommunityMembersListControls>
       </template>
 
       <!-- Communities list -->
       <template v-else>
-        <h2 class="text-lg-semibold text-ink-gray-8">Communities</h2>
+        <h2 class="text-lg-semibold text-ink-gray-8 max-sm:hidden">Communities</h2>
 
         <!-- md:pb-3 keeps the gap to the column header, which lives at the top
              of the scroll viewport (a sticky ListHeader in CommunitiesList)
              instead of being duplicated here. -->
-        <div class="mt-4 flex items-center justify-between gap-3 md:pb-3">
+        <!-- Phones: the search and filter take the first line, the buttons the second. -->
+        <div class="mt-4 flex flex-wrap items-center justify-between gap-3 md:pb-3">
           <CommunitiesListFilters
+            class="w-full sm:w-auto"
             v-model:search="search"
             v-model:visibility-filter="visibilityFilter"
           />
-          <div class="flex shrink-0 items-center gap-2">
+          <div class="flex shrink-0 items-center gap-2 max-sm:ml-auto">
             <!-- Which communities sit in the sidebar, and in what order, is the
                  other half of joining one; the same dialog the app menu opens. -->
             <!-- Beside "New community" the header has no room to spare, so a

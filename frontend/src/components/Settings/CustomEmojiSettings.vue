@@ -1,7 +1,7 @@
 <template>
   <SettingsHeader>
     <div class="flex flex-col gap-4">
-      <h2 class="text-lg-semibold text-ink-gray-8">Custom Emojis</h2>
+      <h2 class="text-lg-semibold text-ink-gray-8 max-sm:hidden">Custom Emojis</h2>
       <div class="flex items-center justify-between gap-3">
         <TextInput
           class="w-72"

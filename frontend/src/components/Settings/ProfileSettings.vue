@@ -1,5 +1,6 @@
 <template>
-  <SettingsHeader>
+  <!-- On phones the dialog's own bar names the tab (Settings/SettingsDialog.vue). -->
+  <SettingsHeader class="max-sm:hidden">
     <h2 class="text-lg-semibold text-ink-gray-8">Profile</h2>
   </SettingsHeader>
 

@@ -1,5 +1,7 @@
 <template>
-  <ListRow class="h-10">
+  <!-- Phones draw a second line of details under the name, so the row grows to fit;
+       desktop keeps its one-line 40px. -->
+  <ListRow class="max-md:h-auto max-md:py-2 md:h-10">
     <!-- The link spans only the info cells (display: contents keeps them grid
          children); the options cell stays outside so its menu isn't a nested
          interactive element inside an anchor. -->
@@ -13,9 +15,8 @@
           <div class="truncate text-base-medium text-ink-gray-7">
             {{ user.full_name }}
           </div>
-          <div class="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-base text-ink-gray-5 md:hidden">
-            <span>{{ user.email }}</span>
-            <span>{{ roleLabel }}</span>
+          <div class="mt-0.5 truncate text-sm text-ink-gray-5 md:hidden">
+            {{ [roleLabel, user.email].filter(Boolean).join(' · ') }}
           </div>
         </div>
       </ListCell>
@@ -28,7 +29,7 @@
       </ListCell>
     </RouterLink>
 
-    <ListCell class="justify-end max-md:hidden">
+    <ListCell class="justify-end">
       <MemberOptions
         v-if="canManage"
         :community="community"

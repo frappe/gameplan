@@ -4,10 +4,10 @@
          top of the scroll viewport (sticky) instead of inside this fixed region. -->
     <div class="pb-3">
       <div class="flex flex-col gap-4">
-        <h2 class="text-lg-semibold text-ink-gray-8">Users</h2>
+        <h2 class="text-lg-semibold text-ink-gray-8 max-sm:hidden">Users</h2>
         <div class="flex items-center justify-between gap-3">
           <TextInput
-            class="w-72"
+            class="min-w-0 flex-1 md:w-72 md:flex-none"
             placeholder="Search by name or email"
             @input="search = $event.target.value"
             :debounce="300"
@@ -35,10 +35,18 @@
   </SettingsHeader>
 
   <SettingsBody>
-    <List :columns="['minmax(0,1fr)', '12.5rem', '7.5rem', '2rem']" :row-height="60">
+    <!-- Phones: name and email, the role picker, the action; "user since" folds into the
+         email line and the column header goes, the same way CommunityMembersList does it. -->
+    <List
+      :columns="{
+        base: ['minmax(0,1fr)', 'auto', '2rem'],
+        md: ['minmax(0,1fr)', '12.5rem', '7.5rem', '2rem'],
+      }"
+      :row-height="60"
+    >
       <!-- Sticky at the viewport top — it rests exactly where it pins, so it
            never visibly moves; the bg covers rows scrolling beneath it. -->
-      <ListHeader class="sticky top-0 z-10 bg-surface-elevation-1">
+      <ListHeader class="sticky top-0 z-10 bg-surface-elevation-1 max-md:hidden">
         <ListHeaderCellSort :direction="directionFor('name')" @click="toggleSort('name')">
           User
           <template #suffix="{ direction }">
@@ -72,6 +80,9 @@
               </div>
               <div class="mt-1 truncate text-base text-ink-gray-6">
                 {{ user.email }}
+                <span v-if="user.creation" class="md:hidden">
+                  · since {{ getMemberSince(user) }}</span
+                >
               </div>
             </div>
           </ListCell>
@@ -83,7 +94,7 @@
               @update:model-value="(role) => onRoleChange(user, role)"
             />
           </ListCell>
-          <ListCell class="text-base text-ink-gray-6">
+          <ListCell class="text-base text-ink-gray-6 max-md:hidden">
             <span v-if="user.creation">{{ getMemberSince(user) }}</span>
           </ListCell>
           <ListCell class="justify-end">

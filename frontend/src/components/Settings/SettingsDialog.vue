@@ -6,7 +6,9 @@
     :shortcut="false"
     :unmount-on-hide="false"
   >
-    <SettingsSidebar>
+    <!-- Phones reach a tab from the More menu, so the sidebar would be a second copy of
+         the same list; the bar below (back arrow + tab name) stands in for it. -->
+    <SettingsSidebar class="max-sm:hidden">
       <SettingsNavGroup v-for="group in tabGroups" :key="group.label" :label="group.label">
         <SettingsNavItem v-for="tab in group.tabs" :key="tab.label" :value="tab.slug">
           <template #prefix>
@@ -22,6 +24,12 @@
         </SettingsNavItem>
       </SettingsNavGroup>
     </SettingsSidebar>
+    <div
+      class="flex h-[var(--mobile-header-height)] shrink-0 items-center gap-1 border-b border-outline-gray-1 px-2 sm:hidden"
+    >
+      <Button variant="ghost" icon="lucide-arrow-left" label="Back" @click="show = false" />
+      <span class="text-lg-medium text-ink-gray-8">{{ activeTab?.label }}</span>
+    </div>
     <SettingsContent>
       <!-- One reka-ui tabpanel per tab. unmount-on-hide=false keeps a visited
            panel mounted (just hidden) so switching back is instant and inactive
@@ -44,6 +52,7 @@ import { computed, markRaw, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useEventListener } from '@vueuse/core'
 import {
+  Button,
   SettingsDialog,
   SettingsSidebar,
   SettingsNavGroup,

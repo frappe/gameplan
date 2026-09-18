@@ -1,6 +1,8 @@
 <template>
-  <ListRow class="h-10">
-    <ListCell class="gap-2">
+  <!-- Phones draw a second line of details under the name, so the row grows to fit;
+       desktop keeps its one-line 40px. -->
+  <ListRow class="max-md:h-auto max-md:py-2 md:h-10">
+    <ListCell class="gap-2 max-md:gap-3">
       <CommunityImageUploader v-if="canManage" :community="community" class="shrink-0" />
       <CommunityImage
         v-else
@@ -12,26 +14,26 @@
         <div class="truncate text-base-medium text-ink-gray-7">
           {{ community.title }}
         </div>
-        <div class="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-base text-ink-gray-5 md:hidden">
-          <Button
-            size="xs"
-            variant="ghost"
-            :label="spacesLabel"
-            icon-right="lucide-arrow-up-right text-ink-gray-5"
+        <!-- Phones fold the Spaces / Members columns into one line under the name; the
+             two counts are still the way into those views, as plain text links. -->
+        <div class="mt-0.5 truncate text-sm text-ink-gray-5 md:hidden">
+          <button
+            type="button"
+            class="hover:text-ink-gray-7"
             @click="emit('view-spaces', community.name)"
-          />
-          <Button
-            size="xs"
-            variant="ghost"
-            :label="membersLabel"
-            icon-right="lucide-arrow-up-right text-ink-gray-5"
+          >
+            {{ spacesLabel }}
+          </button>
+          <span aria-hidden="true"> · </span>
+          <button
+            type="button"
+            class="hover:text-ink-gray-7"
             @click="emit('view-members', community.name)"
-          />
-          <span class="inline-flex items-center gap-1">
-            <span :class="[visibilityIcon(community.is_private), 'size-3.5']" />
-            {{ visibilityLabel(community.is_private) }}
-          </span>
-          <MembershipButton v-if="showMembershipButton" :community="community" size="xs" />
+          >
+            {{ membersLabel }}
+          </button>
+          <span aria-hidden="true"> · </span>
+          <span>{{ visibilityLabel(community.is_private) }}</span>
         </div>
       </div>
     </ListCell>
@@ -54,7 +56,7 @@
         @click="emit('view-members', community.name)"
       />
     </ListCell>
-    <ListCell class="justify-end gap-1 max-md:hidden">
+    <ListCell class="justify-end gap-1">
       <MembershipButton v-if="showMembershipButton" :community="community" size="sm" />
       <CommunityOptions
         v-if="canManage"
@@ -75,7 +77,7 @@ import CommunityImage from '@/components/CommunityImage.vue'
 import { isCommunityJoined, type Community } from '@/data/communities'
 import { useSessionUser } from '@/data/users'
 import { canManageCommunity } from '@/utils/permissions'
-import { visibilityIcon, visibilityLabel } from '@/utils/visibility'
+import { visibilityLabel } from '@/utils/visibility'
 import CommunityImageUploader from './CommunityImageUploader.vue'
 import CommunityOptions from './CommunityOptions.vue'
 import MembershipButton from './MembershipButton.vue'
