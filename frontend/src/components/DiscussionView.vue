@@ -4,6 +4,25 @@
       <template #prefix>
         <PageHeaderBackButton :to="backRoute" />
       </template>
+      <template #suffix>
+        <template v-if="showHeaderActions">
+          <DiscussionNotificationBell
+            :state="discussion.doc!.notification_state!"
+            :is-explicit="discussion.doc!.notification_state_is_explicit"
+            :loading="discussion.setNotificationState.loading"
+            @select="setNotificationState"
+          />
+          <Dropdown
+            align="end"
+            :button="{
+              icon: 'lucide-more-horizontal',
+              variant: 'ghost',
+              label: 'Discussion Options',
+            }"
+            :options="headerActions"
+          />
+        </template>
+      </template>
     </PageHeaderMobile>
     <PageHeader class="hidden sm:flex">
       <SpaceBreadcrumbs
@@ -11,6 +30,26 @@
         :spaceId="currentSpaceId"
         :items="[{ label: discussion.doc?.title || postId, onClick: scrollToTop }]"
       />
+      <!-- The post's own row carries the bell and the menu while it is on screen; once it
+           scrolls away (its sticky hold ends with the post) they reappear here, so neither
+           ever needs a scroll back to the top. -->
+      <div v-if="showHeaderActions" class="flex items-center gap-2">
+        <DiscussionNotificationBell
+          :state="discussion.doc!.notification_state!"
+          :is-explicit="discussion.doc!.notification_state_is_explicit"
+          :loading="discussion.setNotificationState.loading"
+          @select="setNotificationState"
+        />
+        <Dropdown
+          align="end"
+          :button="{
+            icon: 'lucide-more-horizontal',
+            variant: 'ghost',
+            label: 'Discussion Options',
+          }"
+          :options="headerActions"
+        />
+      </div>
     </PageHeader>
     <div class="discussion-container">
       <div v-if="discussion.loading">
@@ -62,6 +101,7 @@
             padding puts its contents back where they were.
           -->
           <div
+            ref="postActionsRow"
             class="flex items-center bg-surface-base pb-2 pt-2"
             :class="
               editingPost
@@ -95,6 +135,13 @@
               </Tooltip>
             </div>
             <div class="ml-auto flex space-x-2 print:hidden">
+              <DiscussionNotificationBell
+                v-if="!readOnlyMode && discussion.doc.notification_state"
+                :state="discussion.doc.notification_state"
+                :is-explicit="discussion.doc.notification_state_is_explicit"
+                :loading="discussion.setNotificationState.loading"
+                @select="setNotificationState"
+              />
               <Dropdown
                 v-if="!readOnlyMode"
                 class="ml-auto"
@@ -348,9 +395,10 @@ import {
   Switch,
   dialog,
 } from 'frappe-ui'
-import { until, useEventListener } from '@vueuse/core'
+import { until, useEventListener, useIntersectionObserver } from '@vueuse/core'
 import type { Editor } from '@tiptap/vue-3'
 import Reactions from './Reactions.vue'
+import DiscussionNotificationBell from './DiscussionNotificationBell.vue'
 import UserAvatarWithHover from './UserAvatarWithHover.vue'
 import CommentsArea from '@/components/CommentsArea.vue'
 import DiscussionViewEditor from './editor/DiscussionViewEditor.vue'
@@ -364,7 +412,9 @@ import { getSpace, useSpace } from '@/data/spaces'
 import { useCommunity } from '@/data/communities'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { useDiscussion } from '@/data/discussions'
+import type { DiscussionNotificationChoice } from '@/data/notificationPreferences'
 import { useDraftSync } from '@/data/useDraftSync'
+import { readOnlyMode } from '@/data/readOnlyMode'
 import { tags } from '@/data/tags'
 import { shellScrollContainer, useShellScrolled } from 'frappe-ui'
 import { useIsMobile } from '@/utils/useIsMobile'
@@ -832,6 +882,22 @@ const canEditDiscussion = computed(() =>
   canEditContent(discussion.doc, space.value, useSessionUser()),
 )
 
+// The page header takes over the bell and the menu once the post's own action row has
+// scrolled out of view (its sticky hold lasts only as long as the post). Editing the post
+// is done from the post, so the header menu drops Edit and Revisions.
+const postActionsRow = useTemplateRef<HTMLElement>('postActionsRow')
+const postActionsVisible = ref(true)
+useIntersectionObserver(postActionsRow, ([entry]) => {
+  postActionsVisible.value = entry?.isIntersecting ?? true
+})
+const showHeaderActions = computed(
+  () => !postActionsVisible.value && !readOnlyMode && Boolean(discussion.doc?.notification_state),
+)
+const HEADER_MENU_EXCLUDES = new Set(['Edit', 'Revisions'])
+const headerActions = computed(() =>
+  actions.value.filter((action) => !HEADER_MENU_EXCLUDES.has(action.label)),
+)
+
 const actions = computed(() => [
   {
     label: 'Edit',
@@ -959,6 +1025,17 @@ const actions = computed(() => [
     },
   },
 ])
+
+async function setNotificationState(choice: DiscussionNotificationChoice) {
+  await discussion.setNotificationState.submit({ state: choice })
+  // The doc method returns what the bell should now show; `doc` is the shared store
+  // object, so every view of this discussion follows.
+  const result = discussion.setNotificationState.data
+  if (discussion.doc && result) {
+    discussion.doc.notification_state = result.notification_state
+    discussion.doc.notification_state_is_explicit = result.notification_state_is_explicit
+  }
+}
 
 useCommandPaletteCommands(
   computed(() => {

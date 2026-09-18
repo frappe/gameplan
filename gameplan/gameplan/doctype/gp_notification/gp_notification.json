@@ -16,7 +16,12 @@
   "task",
   "project",
   "team",
-  "read"
+  "read",
+  "last_event_at",
+  "event_count",
+  "away_period",
+  "push_sent_at",
+  "email_sent_at"
  ],
  "fields": [
   {
@@ -38,7 +43,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Type",
-   "options": "Mention\nReaction\nRich Quote",
+   "options": "Mention\nReaction\nRich Quote\nComment\nNew Discussion\nAdded\nMoved\nPoll Vote",
    "reqd": 1
   },
   {
@@ -89,11 +94,46 @@
    "fieldtype": "Link",
    "label": "Team",
    "options": "GP Team"
+  },
+  {
+   "description": "When the latest event behind this row happened. A merged row (\"3 new comments\") keeps its creation but moves this forward; the inbox orders by it.",
+   "fieldname": "last_event_at",
+   "fieldtype": "Datetime",
+   "label": "Last Event At",
+   "read_only": 1
+  },
+  {
+   "default": "1",
+   "description": "How many events this row stands for. 1 for a single notification; higher when repeat events from the same source merged into it.",
+   "fieldname": "event_count",
+   "fieldtype": "Int",
+   "label": "Event Count",
+   "read_only": 1
+  },
+  {
+   "description": "The away stretch this arrived in, if any; the card summarises rows by it.",
+   "fieldname": "away_period",
+   "fieldtype": "Link",
+   "label": "Away Period",
+   "options": "GP Away Period",
+   "read_only": 1
+  },
+  {
+   "fieldname": "push_sent_at",
+   "fieldtype": "Datetime",
+   "label": "Push Sent At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "email_sent_at",
+   "fieldtype": "Datetime",
+   "label": "Email Sent At",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-07-31 10:15:00.000000",
+ "modified": "2026-09-17 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "GP Notification",

@@ -3,9 +3,10 @@
 
 """Row-level access control for the doctypes that hold per-user state.
 
-GP Notification, GP Project Visit, GP Discussion Visit and GP Pinned Project each
-store one row per user, and each grants Gameplan Member and Gameplan Guest read and
-write with `if_owner` unset (GP Pinned Project also grants `delete`). Role permissions
+GP Notification, GP Project Visit, GP Discussion Visit, GP Pinned Project,
+GP Discussion Subscription, GP Space Subscription and GP Away Period each store one row per user, and each
+grants Gameplan Member and Gameplan Guest read and write with `if_owner` unset (GP Pinned
+Project and the two subscription doctypes also grant `delete`). Role permissions
 alone therefore let any signed-in user read, enumerate, overwrite and — for pins —
 delete anyone else's bell feed, visit history, read-state and sidebar through the
 generic `/api/v2/document/<doctype>` API.
@@ -108,3 +109,43 @@ def pinned_project_has_permission(doc, ptype="read", user=None, **kwargs):
 		# makes creating a pin for someone else impossible in the first place.
 		return True
 	return _belongs_to_user(doc, PIN_USER_FIELD, user)
+
+
+SUBSCRIPTION_USER_FIELD = "user"
+
+
+def discussion_subscription_query_conditions(user=None, **kwargs):
+	return _own_rows_only("GP Discussion Subscription", SUBSCRIPTION_USER_FIELD, user)
+
+
+def discussion_subscription_has_permission(doc, ptype="read", user=None, **kwargs):
+	"""A subscription is one user's own bell setting on a discussion.
+
+	Same shape as the pin hook: `create` is answered before `before_insert` stamps `user`,
+	so it stays open and the stamping is what stops a row being created for someone else.
+	"""
+	if ptype == "create":
+		return True
+	return _belongs_to_user(doc, SUBSCRIPTION_USER_FIELD, user)
+
+
+def space_subscription_query_conditions(user=None, **kwargs):
+	return _own_rows_only("GP Space Subscription", SUBSCRIPTION_USER_FIELD, user)
+
+
+def space_subscription_has_permission(doc, ptype="read", user=None, **kwargs):
+	"""A space subscription is one user's own toggle on a space; same shape as above."""
+	if ptype == "create":
+		return True
+	return _belongs_to_user(doc, SUBSCRIPTION_USER_FIELD, user)
+
+
+def away_period_query_conditions(user=None, **kwargs):
+	return _own_rows_only("GP Away Period", SUBSCRIPTION_USER_FIELD, user)
+
+
+def away_period_has_permission(doc, ptype="read", user=None, **kwargs):
+	"""An away period is one user's own quiet stretch; same shape as above."""
+	if ptype == "create":
+		return True
+	return _belongs_to_user(doc, SUBSCRIPTION_USER_FIELD, user)

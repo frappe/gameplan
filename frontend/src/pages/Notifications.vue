@@ -1,20 +1,58 @@
 <template>
-  <PageHeaderMobile class="sm:hidden" title="Notifications" />
+  <PageHeaderMobile class="sm:hidden" title="Notifications">
+    <template #suffix>
+      <Button
+        v-if="canMarkAllAsRead"
+        variant="ghost"
+        icon="lucide-check-check"
+        label="Mark all as read"
+        :loading="markAllAsRead.loading"
+        @click="confirmMarkAllAsRead"
+      />
+    </template>
+  </PageHeaderMobile>
   <PageHeader class="hidden sm:flex">
     <Breadcrumbs :items="[{ label: 'Notifications', route: { name: 'Notifications' } }]" />
-  </PageHeader>
-
-  <div class="body-container pt-4 sm:pt-5">
-    <div class="mb-3 flex items-center justify-between px-4 sm:px-3 gap-3">
-      <TabButtons :options="tabOptions" v-model="activeTab" />
+    <!-- The page's one action lives in the header, like "Add new" on Discussions. -->
+    <div class="flex items-center gap-2">
       <Button
-        @click="confirmMarkAllAsRead"
-        :loading="markAllAsRead.loading"
         v-if="canMarkAllAsRead"
+        :loading="markAllAsRead.loading"
+        @click="confirmMarkAllAsRead"
       >
         Mark all as read
       </Button>
     </div>
+  </PageHeader>
+
+  <div class="body-container" :style="{ '--toolbar-height': `${toolbarHeight}px` }">
+    <!-- Sticky toolbar, bled out by the body-container padding so its background covers
+         the gutters as rows scroll under it (the Search page does the same). Desktop:
+         tabs left, filters right on one line. Phone: the filters take their own
+         full-width line under the tabs and scroll sideways if they overflow. -->
+    <div
+      ref="toolbarEl"
+      class="sticky top-0 z-30 -mx-3 flex flex-wrap items-center gap-3 bg-surface-base px-7 pb-3 pt-4 sm:-mx-5 sm:flex-nowrap sm:px-8 sm:pt-5"
+    >
+      <TabButtons class="shrink-0" :options="tabOptions" v-model="activeTab" />
+      <!-- Filters earn their place once there is something to filter. -->
+      <div
+        v-if="showFilters"
+        class="-mx-4 w-[calc(100%+2rem)] overflow-x-auto px-4 py-0.5 sm:mx-0 sm:ml-auto sm:w-auto sm:min-w-0 sm:px-0"
+      >
+        <NotificationFilters class="w-max" />
+      </div>
+    </div>
+
+    <!-- The recap of an away stretch sits above the unread list, and only there: read
+         rows have nothing to recap. -->
+    <AwayCard
+      v-if="activeTab === 'Unread' && awaySummary.data"
+      class="mb-4"
+      :summary="awaySummary.data"
+      @changed="reloadAfterAwayCard"
+      @read="markAsRead"
+    />
 
     <template v-if="isInitialLoading">
       <ListRowSkeleton
@@ -29,149 +67,98 @@
       v-else-if="notifications?.length"
       class="max-sm:list-gap-3 sm:list-gap-4 max-sm:list-row-px-4"
     >
-      <ListRow
-        v-for="notification in notifications"
-        :key="notification.name"
-        :to="notificationRoute(notification) ?? undefined"
-        class="group h-[68px] sm:h-15"
-        :class="!notification.read && 'w-[calc(100%-2.5rem)]'"
-        @click="openNotification(notification)"
+      <!-- One group per local calendar day, newest first, header pinned while its rows
+           scroll under it. Days with nothing in them do not appear. -->
+      <ListGroup
+        v-for="group in dayGroups"
+        :key="group.day"
+        :label="group.label"
+        sticky
+        class="[&>[data-slot=list-group-header]]:!top-[var(--toolbar-height)] [&>[data-slot=list-group-header]]:z-20 max-sm:[&>[data-slot=list-group-header]]:px-4 sm:[&>[data-slot=list-group-header]]:px-3"
       >
-        <ListCell>
-          <UserAvatarWithHover
-            size="2xl"
-            :user="notification.from_user"
-            v-if="showAvatar(notification)"
-          />
-          <div
-            class="grid size-10 place-items-center rounded-[8px] bg-surface-gray-2 group-hover:bg-surface-base"
-            v-else
-          >
-            <ReactionFaceIcon
-              class="size-5 text-ink-gray-6"
-              v-if="notification.type === 'Reaction'"
-            />
-            <span
-              :class="[notificationIcon(notification), 'size-5 text-ink-gray-6']"
-              aria-hidden="true"
-              v-else
-            />
-          </div>
-        </ListCell>
-        <ListCell>
-          <div class="min-w-0 flex-1">
-            <div class="flex min-w-0 items-center">
-              <div
-                class="overflow-hidden text-ellipsis whitespace-nowrap leading-none text-ink-gray-8"
-              >
-                <span
-                  class="overflow-hidden text-ellipsis whitespace-nowrap"
-                  :class="
-                    notification.read
-                      ? 'text-lg sm:text-base'
-                      : 'text-lg-medium sm:text-base-medium'
-                  "
-                >
-                  {{ notification.message }}
-                </span>
-              </div>
-            </div>
-
-            <div class="mt-1.5 flex min-w-0 items-center justify-between">
-              <div
-                class="inline-flex items-center overflow-hidden text-ellipsis whitespace-nowrap text-md text-ink-gray-5 sm:text-base"
-              >
-                <div class="flex min-w-0 items-center" v-if="notificationTargetTitle(notification)">
-                  <div class="truncate">
-                    {{ notificationTargetTitle(notification) }}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </ListCell>
-        <ListCell class="justify-end">
-          <div>
-            <!-- `creation`, not `modified`: marking a notification read is a PUT that bumps
-                 `modified`, so a Monday mention opened on Thursday would claim to be "a few
-                 seconds ago" for the rest of its life. The list is still ordered by
-                 `modified` so a re-lit notification resurfaces (see useNotificationList),
-                 which can read slightly out of order here — an honest timestamp out of order
-                 beats a wrong one in order. -->
-            <time
-              class="block shrink-0 whitespace-nowrap text-right text-sm text-ink-gray-5"
-              :datetime="notification.creation"
-            >
-              <span class="sm:hidden">{{ shortTimestamp(notification.creation) }}</span>
-              <span class="hidden sm:inline">
-                {{ dayjsLocal(notification.creation).fromNow() }}
-              </span>
-            </time>
-            <div
-              class="mt-1.5 hidden whitespace-nowrap text-right text-sm text-ink-gray-5 sm:block"
-              v-if="notificationLocation(notification)"
-            >
-              {{ notificationLocation(notification) }}
-            </div>
-          </div>
-        </ListCell>
-        <!-- Sits in the 2.5rem gutter the unread row's reduced width leaves free.
-             stop+prevent keep the click from bubbling into row navigation. -->
-        <div class="absolute -right-10 top-1/2 z-10 -translate-y-1/2" v-if="!notification.read">
-          <Tooltip text="Mark as read">
-            <Button
-              variant="subtle"
-              icon="lucide-check"
-              @click.stop.prevent="markAsRead(notification.name)"
-            />
-          </Tooltip>
-        </div>
-      </ListRow>
+        <NotificationListRow
+          v-for="notification in group.rows"
+          :key="notification.name"
+          :notification="notification"
+          :title="notificationTargetTitle(notification)"
+          @read="markAsRead"
+        />
+      </ListGroup>
     </List>
 
-    <div
-      v-else
-      class="mx-4 rounded-4 border border-dashed border-outline-gray-2 px-6 py-12 text-center sm:mx-3"
-    >
-      <div class="mx-auto grid size-10 place-items-center rounded-4 bg-surface-gray-2">
-        <span class="lucide-bell-check size-5 text-ink-gray-5" aria-hidden="true" />
+    <!-- No empty state while the away card is the whole inbox: the card is the content. -->
+    <div v-else-if="!(activeTab === 'Unread' && awaySummary.data)">
+      <!-- A single picked day with nothing in it still shows its label, so the empty
+           state reads as "nothing on this day" rather than "nothing at all". -->
+      <div
+        v-if="singleDayLabel"
+        class="flex h-8 items-center px-4 text-sm-medium text-ink-gray-5 sm:px-3"
+      >
+        {{ singleDayLabel }}
       </div>
-      <div class="mt-3 text-base-medium text-ink-gray-8">{{ emptyStateTitle }}</div>
-      <div class="mt-1 text-base text-ink-gray-5">{{ emptyStateDescription }}</div>
+      <div
+        class="mx-4 rounded-4 border border-dashed border-outline-gray-2 px-6 py-12 text-center sm:mx-3"
+      >
+        <div class="mx-auto grid size-10 place-items-center rounded-4 bg-surface-gray-2">
+          <span class="lucide-bell-check size-5 text-ink-gray-5" aria-hidden="true" />
+        </div>
+        <div class="mt-3 text-base-medium text-ink-gray-8">{{ emptyStateTitle }}</div>
+        <div class="mt-1 text-base text-ink-gray-5">{{ emptyStateDescription }}</div>
+      </div>
     </div>
   </div>
 </template>
 <script setup lang="ts">
-import { computed, onScopeDispose, ref } from 'vue'
-import { watchDebounced } from '@vueuse/core'
-import type { RouteLocationRaw } from 'vue-router'
+import { computed, onScopeDispose, ref, watch } from 'vue'
+import { useElementSize, watchDebounced } from '@vueuse/core'
 import {
+  Button,
   PageHeader,
   PageHeaderMobile,
   TabButtons,
-  Tooltip,
   Breadcrumbs,
+  dayjs,
   dayjsLocal,
   dialog,
   useCall,
   useList,
   usePageMeta,
 } from 'frappe-ui'
-import { List, ListRow, ListCell } from 'frappe-ui/list'
+import { List, ListGroup } from 'frappe-ui/list'
+import AwayCard from '@/components/AwayCard.vue'
 import ListRowSkeleton from '@/components/ListRowSkeleton.vue'
-import ReactionFaceIcon from '@/components/ReactionFaceIcon.vue'
-import UserAvatarWithHover from '@/components/UserAvatarWithHover.vue'
-import { getCommunity } from '@/data/communities'
-import { onRemoteNotificationChange, unreadNotifications } from '@/data/notifications'
-import { getSpace } from '@/data/spaces'
+import NotificationFilters from '@/components/NotificationFilters.vue'
+import NotificationListRow from '@/components/NotificationListRow.vue'
+import { awaySummary } from '@/data/away'
+import {
+  clearNotificationFilters,
+  hasActiveNotificationFilters,
+  notificationDateBounds,
+  notificationFilters,
+  notificationListFilters,
+} from '@/data/notificationFilters'
+import {
+  type NotificationRow,
+  onRemoteNotificationChange,
+  rememberNotificationRows,
+  unreadNotifications,
+} from '@/data/notifications'
 import { useSessionUser } from '@/data/users'
-import type { GPNotification } from '@/types/doctypes'
 
 type ActiveTab = 'Unread' | 'Read'
 
-type NotificationRow = GPNotification
+// `last_event_at` is optional in the generated type but every row carries it: new rows
+// are stamped on insert and older ones were backfilled from `creation` (see
+// gp_notification/patches/backfill_last_event_at.py).
 
 const activeTab = ref<ActiveTab>('Unread')
+
+// The day headers pin just under the sticky toolbar, whose height depends on whether the
+// filters wrapped onto their own line — so it is measured, not assumed.
+const toolbarEl = ref<HTMLElement | null>(null)
+// Border box: the day labels pin to the toolbar's bottom edge, padding included. The
+// default content box leaves them 28px under it, hidden behind its background.
+const { height: toolbarHeight } = useElementSize(toolbarEl, undefined, { box: 'border-box' })
 const sessionUser = useSessionUser()
 
 const notificationFields = [
@@ -180,9 +167,9 @@ const notificationFields = [
   'message',
   'read',
   'type',
-  'creation',
-  // Not displayed — it is what the list is ordered by.
-  'modified',
+  // Ordering and display both read this: the latest event behind the row.
+  'last_event_at',
+  'event_count',
   'comment',
   'discussion',
   'poll',
@@ -190,6 +177,32 @@ const notificationFields = [
   'project',
   'team',
 ]
+
+// True from a filter change until the next page of rows lands; the loading guard below
+// reads it. Declared before the lists so their onSuccess can clear it.
+const filtersChangedSinceLoad = ref(false)
+watch(notificationFilters, () => (filtersChangedSinceLoad.value = true), { deep: true })
+
+/**
+ * The filters show only when the tab being looked at has five or more notifications,
+ * counted regardless of the filters themselves: under that there is nothing worth
+ * narrowing. The unread count is the badge's; the read count is asked for here. A filter
+ * left in local storage is cleared when the row goes, or it would narrow the list
+ * invisibly.
+ */
+const FILTERS_FROM = 5
+const readNotificationCount = useCall<number>({
+  url: '/api/v2/method/frappe.client.get_count',
+  params: { doctype: 'GP Notification', filters: { to_user: sessionUser.name, read: 1 } },
+  cacheKey: ['Read Notification Count', sessionUser.name],
+})
+const showFilters = computed(() => {
+  const count = activeTab.value === 'Unread' ? unreadNotifications.data : readNotificationCount.data
+  return (count ?? FILTERS_FROM) >= FILTERS_FROM
+})
+watch(showFilters, (shown) => {
+  if (!shown && hasActiveNotificationFilters.value) clearNotificationFilters()
+})
 
 const unreadNotificationList = useNotificationList(0, 'Unread Notifications')
 const readNotificationList = useNotificationList(1, 'Read Notifications')
@@ -204,8 +217,19 @@ onScopeDispose(
   onRemoteNotificationChange(() => {
     unreadNotificationList.reload()
     readNotificationList.reload()
+    // A stretch that ended while the page was open shows its card on this same reload.
+    awaySummary.reload()
+    readNotificationCount.reload()
   }),
 )
+
+function reloadAfterAwayCard() {
+  awaySummary.reload()
+  unreadNotifications.reload()
+  unreadNotificationList.reload()
+  readNotificationList.reload()
+  readNotificationCount.reload()
+}
 
 const loadedNotifications = computed<NotificationRow[]>(() => [
   ...(unreadNotificationList.data ?? []),
@@ -229,6 +253,9 @@ const markAllAsRead = useCall({
     unreadNotifications.reload()
     unreadNotificationList.reload()
     readNotificationList.reload()
+    readNotificationCount.reload()
+    // Its rows are read now, so the summary comes back empty and the card goes.
+    awaySummary.reload()
   },
 })
 
@@ -241,35 +268,82 @@ const tabOptions: { value: ActiveTab; label: ActiveTab }[] = [
   { value: 'Read', label: 'Read' },
 ]
 
-const notifications = computed(() =>
-  activeTab.value === 'Unread' ? unreadNotificationList.data : readNotificationList.data,
-)
+// Rows the away card is showing stay out of the unread list beneath it — one place per
+// row. They join the list when the card is dismissed (the summary turns null).
+const rowsInAwayCard = computed(() => {
+  const summary = awaySummary.data
+  if (!summary) return new Set<string>()
+  return new Set(
+    [...summary.mentions.items, ...summary.comments, ...summary.other].map((item) =>
+      String(item.name),
+    ),
+  )
+})
+const notifications = computed(() => {
+  if (activeTab.value !== 'Unread') return readNotificationList.data
+  const rows = unreadNotificationList.data
+  if (!rows || rowsInAwayCard.value.size === 0) return rows
+  return rows.filter((row) => !rowsInAwayCard.value.has(String(row.name)))
+})
+
+// The list arrives newest-first by `last_event_at`; bucket it by the user's local calendar
+// day, keeping that order. A day key like "2026-09-16" keeps the groups stable across
+// reloads; the label is what the header shows.
+const dayGroups = computed(() => {
+  const groups: { day: string; label: string; rows: NotificationRow[] }[] = []
+  for (const row of notifications.value ?? []) {
+    const at = dayjsLocal(row.last_event_at)
+    const day = at.format('YYYY-MM-DD')
+    const last = groups[groups.length - 1]
+    if (last && last.day === day) {
+      last.rows.push(row)
+    } else {
+      groups.push({ day, label: dayLabel(at), rows: [row] })
+    }
+  }
+  return groups
+})
+
+function dayLabel(at: ReturnType<typeof dayjsLocal>) {
+  const today = dayjsLocal()
+  if (at.isSame(today, 'day')) return `Today, ${at.format('D MMMM')}`
+  if (at.isSame(today.subtract(1, 'day'), 'day')) return `Yesterday, ${at.format('D MMMM')}`
+  return at.format(at.year() === today.year() ? 'D MMMM, dddd' : 'D MMMM YYYY, dddd')
+}
+
+// When exactly one day is picked and it is empty, its label still heads the empty state.
+const singleDayLabel = computed(() => {
+  const bounds = notificationDateBounds.value
+  if (!bounds || bounds[0] !== bounds[1]) return null
+  return dayLabel(dayjs(bounds[0]))
+})
 
 // Same guard as DiscussionList: without it the fetch's empty window renders the
 // "You're caught up" box, which contradicts the unread badge that brought the user here.
 // A cached list (`cacheKey`) fills `data` before the request settles, so the skeleton
-// only shows on a genuinely cold load.
+// only shows on a genuinely cold load — and while a filter change is in flight, because
+// the cache would otherwise show the previous filter's rows under the new filter's label.
 const skeletonRowCount = 3
 const activeList = computed(() =>
   activeTab.value === 'Unread' ? unreadNotificationList : readNotificationList,
 )
-const isInitialLoading = computed(() => activeList.value.loading && !activeList.value.data?.length)
-
-const emptyStateTitle = computed(() =>
-  activeTab.value === 'Unread' ? "You're caught up" : 'No read notifications',
+const isInitialLoading = computed(
+  () =>
+    activeList.value.loading && (!activeList.value.data?.length || filtersChangedSinceLoad.value),
 )
 
-const emptyStateDescription = computed(() =>
-  activeTab.value === 'Unread'
+// With a filter on, an empty list means "nothing matches", not "nothing at all".
+const emptyStateTitle = computed(() => {
+  if (hasActiveNotificationFilters.value) return 'Nothing here'
+  return activeTab.value === 'Unread' ? "You're caught up" : 'No read notifications'
+})
+
+const emptyStateDescription = computed(() => {
+  if (hasActiveNotificationFilters.value) return 'No notifications match these filters.'
+  return activeTab.value === 'Unread'
     ? 'New notifications will show up here.'
-    : 'Notifications you have handled will collect here.',
-)
-
-function openNotification(notification: NotificationRow) {
-  if (!notification.read && notificationRoute(notification)) {
-    markAsRead(notification.name)
-  }
-}
+    : 'Notifications you have handled will collect here.'
+})
 
 function markAsRead(name: string) {
   // No `unreadNotificationList.reload()` here: `setValue` already re-runs its own list on
@@ -280,42 +354,10 @@ function markAsRead(name: string) {
     // the badge holds the same count the echo reports and the echo is dropped.
     unreadNotifications.reload()
     readNotificationList.reload()
+    readNotificationCount.reload()
+    // The row may also be in the away card; it leaves the card the same way.
+    if (awaySummary.data) awaySummary.reload()
   })
-}
-
-function notificationRoute(notification: NotificationRow): RouteLocationRaw | null {
-  if (notification.discussion) {
-    return {
-      name: 'Discussion',
-      params: {
-        communityId: notification.team,
-        spaceId: notification.project,
-        postId: notification.discussion,
-      },
-      query: notification.poll
-        ? { poll: notification.poll }
-        : notification.comment
-          ? { comment: notification.comment }
-          : undefined,
-    }
-  }
-  if (notification.task) {
-    return {
-      name: 'SpaceTask',
-      params: {
-        communityId: notification.team,
-        spaceId: notification.project,
-        taskId: notification.task,
-      },
-      query: notification.comment ? { comment: notification.comment } : undefined,
-    }
-  }
-  return null
-}
-
-function notificationIcon(notification: NotificationRow) {
-  if (notification.type === 'Rich Quote') return 'lucide-text-quote'
-  return 'lucide-at-sign'
 }
 
 function notificationTargetTitle(notification: NotificationRow) {
@@ -323,12 +365,6 @@ function notificationTargetTitle(notification: NotificationRow) {
   if (notification.discussion) return discussionTitles.value.get(String(notification.discussion))
   if (notification.task) return taskTitles.value.get(String(notification.task))
   return null
-}
-
-function notificationLocation(notification: NotificationRow) {
-  const community = notification.team ? getCommunity(notification.team)?.title : null
-  const space = notification.project ? getSpace(notification.project)?.title : null
-  return [community, space].filter(Boolean).join(' / ')
 }
 
 function linkedIds(notifications: NotificationRow[], field: 'discussion' | 'poll' | 'task') {
@@ -377,25 +413,6 @@ function useLinkedTitles(doctype: 'GP Discussion' | 'GP Poll' | 'GP Task', ids: 
   return computed(() => new Map((list.data ?? []).map((doc) => [String(doc.name), doc.title])))
 }
 
-function shortTimestamp(timestamp: string) {
-  let time = dayjsLocal(timestamp)
-  let minutes = dayjsLocal().diff(time, 'minute')
-  if (minutes < 1) return 'now'
-  if (minutes < 60) return `${minutes}m`
-
-  let hours = dayjsLocal().diff(time, 'hour')
-  if (hours < 24) return `${hours}h`
-
-  let days = dayjsLocal().diff(time, 'day')
-  if (days < 7) return `${days}d`
-  if (days < 365) return time.format('D MMM')
-  return time.format('D MMM YY')
-}
-
-function showAvatar(notification: NotificationRow) {
-  return Boolean(notification.from_user && notification.type !== 'Reaction')
-}
-
 function confirmMarkAllAsRead() {
   dialog.danger({
     title: 'Mark all as read',
@@ -409,22 +426,30 @@ function confirmMarkAllAsRead() {
 function useNotificationList(read: 0 | 1, cacheKey: string) {
   return useList<NotificationRow>({
     doctype: 'GP Notification',
-    filters: () => ({ to_user: sessionUser.name, read }),
+    // A getter, so the list refetches as the page filters change (see notificationFilters.ts).
+    filters: () => ({ to_user: sessionUser.name, read, ...notificationListFilters() }),
     fields: notificationFields,
-    // `modified desc`, not `creation desc`: a reaction notification is a single row that
-    // gets re-lit in place, so ordering by `creation` left a freshly raised notification
-    // buried at its original position — unreachable once newer ones pushed it off the page.
-    // The row still *displays* `creation`, because `modified` also moves when the row is
-    // marked read and would date every read notification to the moment it was opened.
-    orderBy: 'modified desc',
+    // `last_event_at` is the one timestamp that is right for both ordering and display. A
+    // reaction or comment notification is a single row re-lit in place, so `creation` would
+    // bury a freshly raised one at its original position; `modified` also moves when the row
+    // is marked read and would date every read notification to the moment it was opened.
+    orderBy: 'last_event_at desc',
     // The page has no pagination control, so the window has to be wide enough to hold a
     // realistic backlog. `useList.reload()` refetches at the current offset and appends,
     // which makes a "load more" button unsafe on a list that mark-as-read reloads.
     limit: 100,
     cacheKey,
+    // Lets the socket handler recognise the echo of this tab's own writes (see
+    // data/notifications.ts): a `notification_changed` event naming a row we already hold
+    // at this `event_count` and `read` is not news.
+    onSuccess(rows) {
+      rememberNotificationRows(rows)
+      filtersChangedSinceLoad.value = false
+    },
   })
 }
 
 unreadNotifications.reload()
+awaySummary.reload()
 usePageMeta(() => ({ title: 'Notifications' }))
 </script>

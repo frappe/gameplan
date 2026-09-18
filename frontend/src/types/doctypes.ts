@@ -92,6 +92,26 @@ export interface GPUserProfile extends DocType {
     | 'Sunday'
   /** Email Digest Last Sent On: Date */
   email_digest_last_sent_on?: string
+  /** Notification Level: Select - What reaches this user from discussions they have not set a bell on. A bell set on a specific discussion always wins over this. */
+  notification_level?: 'Mentions only' | 'Mute'
+  /** Watch Discussions I Start: Check - Set every discussion this user creates to Watch at creation. */
+  watch_own_discussions?: 0 | 1
+  /** Notify About Reactions on My Content: Check */
+  notify_reactions?: 0 | 1
+  /** Notify About Votes on My Polls: Check */
+  notify_poll_votes?: 0 | 1
+  /** Notification Channel: Select */
+  notification_channel?: 'In-app' | 'Push' | 'Email'
+  /** Receive Notifications: Check */
+  receive_notifications?: 0 | 1
+  /** Active Hours Enabled: Check */
+  active_hours_enabled?: 0 | 1
+  /** Active Hours Start: Time */
+  active_hours_start?: string
+  /** Active Hours End: Time */
+  active_hours_end?: string
+  /** Active Hours Days: JSON */
+  active_hours_days?: string
 }
 
 // Last updated: 2024-02-06 12:18:02.871772
@@ -118,14 +138,22 @@ export interface GPMember extends ChildDocType {
   is_admin?: 0 | 1
 }
 
-// Last updated: 2026-07-31 10:15:00.000000
+// Last updated: 2026-09-17 12:00:00.000000
 export interface GPNotification extends DocType {
   /** From User: Link (User) */
   from_user?: string
   /** To User: Link (User) */
   to_user: string
   /** Type: Select */
-  type: 'Mention' | 'Reaction' | 'Rich Quote'
+  type:
+    | 'Mention'
+    | 'Reaction'
+    | 'Rich Quote'
+    | 'Comment'
+    | 'New Discussion'
+    | 'Added'
+    | 'Moved'
+    | 'Poll Vote'
   /** Message: Text Editor */
   message?: string
   /** Read: Check */
@@ -142,6 +170,14 @@ export interface GPNotification extends DocType {
   project?: string
   /** Team: Link (GP Team) */
   team?: string
+  /** Last Event At: Datetime - When the latest event behind this row happened. A merged row ("3 new comments") keeps its creation but moves this forward; the inbox orders by it. */
+  last_event_at?: string
+  /** Event Count: Int - How many events this row stands for. 1 for a single notification; higher when repeat events from the same source merged into it. */
+  event_count: number
+  /** Push Sent At: Datetime */
+  push_sent_at?: string
+  /** Email Sent At: Datetime */
+  email_sent_at?: string
 }
 
 // Last updated: 2025-10-20 20:19:55.468697
@@ -396,6 +432,30 @@ export interface GPPinnedProject extends DocType {
   user: string
   /** Order: Int */
   order?: number
+}
+
+// Last updated: 2026-09-18 10:00:00.000000
+export interface GPAwayPeriod extends DocType {
+  /** User: Link (User) */
+  user: string
+  /** Kind: Select */
+  kind: 'Toggle' | 'Active hours'
+  /** Starts At: Datetime */
+  starts_at: string
+  /** Ends At: Datetime */
+  ends_at?: string
+  /** Card Dismissed: Check */
+  card_dismissed?: 0 | 1
+}
+
+// Last updated: 2026-09-17 18:00:00.000000
+export interface GPSpaceSubscription extends DocType {
+  /** User: Link (User) */
+  user: string
+  /** Space: Link (GP Project) */
+  project: string
+  /** Community: Link (GP Team) */
+  team?: string
 }
 
 // Last updated: 2026-06-30 00:00:00.000000

@@ -10,9 +10,13 @@
     v-if="filteredSpaces.length"
     :columns="{
       base: ['minmax(0,1fr)', 'auto'],
+      // The panel is ~40rem wide, so the Space column gets what is left after three
+      // narrow ones: counts (10rem), the switch (8rem, so it clears the dots), the dots.
+      // Fixed, not `auto`: each row is its own grid, so `auto` would size per row and
+      // cells would drift from their header.
       md: hasGuests
-        ? ['minmax(8rem,1fr)', '15.25rem', '5rem', '1.5rem']
-        : ['minmax(8rem,1fr)', '15.25rem', '1.5rem'],
+        ? ['minmax(12rem,1fr)', '10rem', '8rem', '4rem', '1.5rem']
+        : ['minmax(12rem,1fr)', '10rem', '8rem', '1.5rem'],
     }"
     class="list-gap-12 max-md:list-gap-1"
   >
@@ -21,6 +25,7 @@
     <ListHeader class="sticky top-0 z-10 bg-surface-elevation-1 max-md:hidden">
       <ListHeaderCell>Space</ListHeaderCell>
       <ListHeaderCell>Content</ListHeaderCell>
+      <ListHeaderCell>Notifications</ListHeaderCell>
       <ListHeaderCell v-if="hasGuests">Guests</ListHeaderCell>
       <ListHeaderCell />
     </ListHeader>

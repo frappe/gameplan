@@ -15,6 +15,17 @@
   "email_digest_frequency",
   "email_digest_day_of_week",
   "email_digest_last_sent_on",
+  "notifications_section",
+  "notification_channel",
+  "notification_level",
+  "watch_own_discussions",
+  "notify_reactions",
+  "notify_poll_votes",
+  "receive_notifications",
+  "active_hours_enabled",
+  "active_hours_start",
+  "active_hours_end",
+  "active_hours_days",
   "bio",
   "readme",
   "bento_section",
@@ -158,11 +169,82 @@
    "fieldtype": "Date",
    "label": "Email Digest Last Sent On",
    "read_only": 1
+  },
+  {
+   "fieldname": "notifications_section",
+   "fieldtype": "Section Break",
+   "label": "Notifications"
+  },
+  {
+   "default": "In-app",
+   "description": "Where notifications reach this user besides the inbox. Email sends one batch an hour; Push needs the relay (later).",
+   "fieldname": "notification_channel",
+   "fieldtype": "Select",
+   "label": "Notification Channel",
+   "options": "In-app\nPush\nEmail"
+  },
+  {
+   "default": "Mentions only",
+   "description": "What reaches this user from discussions they have not set a bell on. A bell set on a specific discussion always wins over this.",
+   "fieldname": "notification_level",
+   "fieldtype": "Select",
+   "label": "Notification Level",
+   "options": "Mentions only\nMute"
+  },
+  {
+   "default": "0",
+   "description": "Set every discussion this user creates to Watch at creation.",
+   "fieldname": "watch_own_discussions",
+   "fieldtype": "Check",
+   "label": "Watch Discussions I Start"
+  },
+  {
+   "default": "1",
+   "fieldname": "notify_reactions",
+   "fieldtype": "Check",
+   "label": "Notify About Reactions on My Content"
+  },
+  {
+   "default": "1",
+   "fieldname": "notify_poll_votes",
+   "fieldtype": "Check",
+   "label": "Notify About Votes on My Polls"
+  },
+  {
+   "default": "1",
+   "description": "Off holds push and email; the inbox and unread counts keep working.",
+   "fieldname": "receive_notifications",
+   "fieldtype": "Check",
+   "label": "Receive Notifications"
+  },
+  {
+   "default": "0",
+   "description": "Only send push and email inside the hours below, on the selected days.",
+   "fieldname": "active_hours_enabled",
+   "fieldtype": "Check",
+   "label": "Active Hours Enabled"
+  },
+  {
+   "fieldname": "active_hours_start",
+   "fieldtype": "Time",
+   "label": "Active Hours Start"
+  },
+  {
+   "fieldname": "active_hours_end",
+   "fieldtype": "Time",
+   "label": "Active Hours End"
+  },
+  {
+   "default": "[\"Mon\", \"Tue\", \"Wed\", \"Thu\", \"Fri\", \"Sat\", \"Sun\"]",
+   "description": "JSON list of Mon…Sun.",
+   "fieldname": "active_hours_days",
+   "fieldtype": "JSON",
+   "label": "Active Hours Days"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-08-02 10:00:00.000000",
+ "modified": "2026-09-17 12:10:00.000000",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "GP User Profile",

@@ -45,3 +45,8 @@ gameplan.gameplan.doctype.gp_user_profile.patches.set_email_digest_off_by_defaul
 gameplan.gameplan.doctype.gp_comment.patches.add_owner_reference_index
 gameplan.gameplan.doctype.gp_user_profile.patches.bind_starter_bento_cards
 gameplan.patches.attach_profile_bento_card_images
+gameplan.gameplan.doctype.gp_notification.patches.backfill_last_event_at
+gameplan.gameplan.doctype.gp_notification.patches.backfill_project_and_team
+gameplan.gameplan.doctype.gp_user_profile.patches.set_notification_defaults
+gameplan.gameplan.doctype.gp_user_profile.patches.set_away_defaults
+gameplan.gameplan.doctype.gp_user_profile.patches.set_notification_channel_default
