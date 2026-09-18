@@ -80,32 +80,41 @@
         <!-- md:pb-3 keeps the gap to the column header, which lives at the top
              of the scroll viewport (a sticky ListHeader in CommunitiesList)
              instead of being duplicated here. -->
-        <!-- Phones: the search and filter take the first line, the buttons the second. -->
-        <div class="mt-4 flex flex-wrap items-center justify-between gap-3 md:pb-3">
+        <!-- One line on every width: on phones the search box gives up its width and the
+             two actions are icons. -->
+        <div class="mt-4 flex items-center justify-between gap-3 md:pb-3">
           <CommunitiesListFilters
-            class="w-full sm:w-auto"
+            class="min-w-0 flex-1 sm:flex-none"
             v-model:search="search"
             v-model:visibility-filter="visibilityFilter"
           />
-          <div class="flex shrink-0 items-center gap-2 max-sm:ml-auto">
+          <div class="flex shrink-0 items-center gap-2">
             <!-- Which communities sit in the sidebar, and in what order, is the
                  other half of joining one; the same dialog the app menu opens. -->
             <!-- Beside "New community" the header has no room to spare, so a
                  manager gets the icon alone and the label in a tooltip. -->
             <Button
-              :icon="showNewCommunityButton ? 'lucide-settings-2' : undefined"
-              :icon-left="showNewCommunityButton ? undefined : 'lucide-settings-2'"
-              :tooltip="showNewCommunityButton ? 'Customize sidebar' : undefined"
+              :icon="showNewCommunityButton || isPhone ? 'lucide-settings-2' : undefined"
+              :icon-left="showNewCommunityButton || isPhone ? undefined : 'lucide-settings-2'"
+              :tooltip="showNewCommunityButton || isPhone ? 'Customize sidebar' : undefined"
               label="Customize sidebar"
               @click="customizeSidebar"
             />
             <Button
               v-if="showNewCommunityButton"
               icon-left="lucide-plus"
+              class="max-sm:hidden"
               @click="newCommunityDialog = true"
             >
               New community
             </Button>
+            <Button
+              v-if="showNewCommunityButton"
+              icon="lucide-plus"
+              label="New community"
+              class="sm:hidden"
+              @click="newCommunityDialog = true"
+            />
           </div>
         </div>
       </template>
@@ -172,6 +181,7 @@ import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Button, SettingsBody, SettingsHeader, Select } from 'frappe-ui'
 import NewSpaceDialog from '@/components/NewSpaceDialog.vue'
+import { useMediaQuery } from '@vueuse/core'
 import { openCustomizeSidebarDialog } from '@/components/AppRail/customizeSidebar'
 import { communities } from '@/data/communities'
 import { useSessionUser } from '@/data/users'
@@ -222,6 +232,9 @@ const newCommunityDialog = ref(false)
 function customizeSidebar() {
   openCustomizeSidebarDialog()
 }
+
+// Same breakpoint the templates use for their sm: variants; decides icon-only buttons.
+const isPhone = useMediaQuery('(max-width: 639px)')
 
 const viewButtons = [
   { label: 'Spaces', value: 'spaces' },

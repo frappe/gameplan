@@ -9,7 +9,7 @@
         <span class="lucide-search h-4 w-4 text-ink-gray-4" />
       </template>
     </TextInput>
-    <Select :options="visibilityOptions" v-model="visibilityFilter" />
+    <Select class="shrink-0" :options="visibilityOptions" v-model="visibilityFilter" />
   </div>
 </template>
 

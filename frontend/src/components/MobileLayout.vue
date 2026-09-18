@@ -42,6 +42,10 @@
       </MobileNav>
     </template>
   </MobileShell>
+
+  <!-- Mounted once per layout (AppRail does it on desktop): Settings → Communities opens it
+       here too, and without a mount on phones the button did nothing. -->
+  <CustomizeSidebarDialog v-model="showCustomizeSidebarDialog" />
 </template>
 
 <script setup lang="ts">
@@ -55,6 +59,8 @@ import { MobileShell, MobileNav, MobileNavItem } from 'frappe-ui'
 import { isNewCommentOpen } from '@/data/newComment'
 import { useSessionUser } from '@/data/users'
 import ReadOnlyBanner from './ReadOnlyBanner.vue'
+import CustomizeSidebarDialog from './AppRail/CustomizeSidebarDialog.vue'
+import { showCustomizeSidebarDialog } from './AppRail/customizeSidebar'
 import UserAvatar from './UserAvatar.vue'
 import { readOnlyMode } from '@/data/readOnlyMode'
 
