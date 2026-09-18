@@ -77,14 +77,14 @@
       </template>
     </div>
 
+    <!-- In an installed PWA the collapsed button clears the home indicator, as the
+         bottom nav does on other pages. -->
     <div
       v-if="!readOnlyMode && !disableNewComment && !hideNewComment"
       class="pointer-events-none fixed bottom-0 left-0 right-0 z-[2] w-full print:hidden sm:left-[274px] sm:right-1 sm:w-auto"
       :class="[
         isComposerFullscreen ? 'top-[var(--mobile-header-height)] z-20' : 'mt-2',
-        !showCommentBox || composerMinimized
-          ? 'border-t border-outline-gray-2 bg-surface-base sm:border-t-0 sm:bg-transparent'
-          : '',
+        isComposerCollapsed ? 'standalone:bottom-4 standalone:sm:bottom-0' : '',
       ]"
       ref="addComment"
     >
@@ -92,39 +92,33 @@
         <div
           ref="composerSurface"
           data-comment-composer-surface
-          class="discussion-container bg-surface-base sm:bg-transparent"
-          :class="isComposerFullscreen ? 'h-full py-0' : 'py-3'"
+          class="discussion-container"
+          :class="[
+            isComposerFullscreen ? 'h-full py-0' : 'py-3',
+            isComposerCollapsed ? '' : 'bg-surface-base sm:bg-transparent',
+          ]"
         >
           <div v-if="!showCommentBox" class="sm:-mx-3">
             <button
               type="button"
-              class="flex w-full items-center gap-3 text-left sm:gap-0 sm:rounded-6 sm:bg-surface-elevation-2 sm:px-2 sm:py-2 sm:text-base sm:text-ink-gray-5 sm:hover:bg-surface-elevation-3 sm:shadow-md"
+              class="flex w-full items-center rounded-6 bg-surface-elevation-2 px-2 py-2 text-left text-base text-ink-gray-5 shadow-md hover:bg-surface-elevation-3"
               @click="openCommentBox"
             >
-              <UserAvatar class="sm:hidden" :user="$user().name" size="xl" />
-              <UserAvatar class="mr-3 hidden sm:inline-block" :user="$user().name" size="sm" />
-              <span
-                class="flex h-8 min-w-0 flex-1 items-center rounded-5 bg-surface-gray-2 px-3 text-md text-ink-gray-5 sm:hidden"
-              >
-                Add a comment
-              </span>
-              <span class="hidden sm:inline">Add a comment</span>
+              <UserAvatar class="mr-3" :user="$user().name" size="sm" />
+              Add a comment
             </button>
           </div>
           <div
             v-else-if="composerMinimized"
-            class="flex cursor-pointer items-center gap-3 text-left focus:outline-none sm:-mx-3 sm:gap-0 sm:rounded-6 sm:bg-surface-elevation-2 sm:py-1 sm:pl-2 sm:pr-1 sm:text-base sm:text-ink-gray-5 sm:shadow-md sm:hover:bg-surface-elevation-3 sm:focus:bg-surface-elevation-3"
+            class="flex cursor-pointer items-center rounded-6 bg-surface-elevation-2 py-1 pl-2 pr-1 text-left text-base text-ink-gray-5 shadow-md hover:bg-surface-elevation-3 focus:bg-surface-elevation-3 focus:outline-none sm:-mx-3"
             role="button"
             tabindex="0"
             @click="restoreComposer"
             @keydown.enter.prevent="restoreComposer"
             @keydown.space.prevent="restoreComposer"
           >
-            <UserAvatar class="sm:hidden" :user="$user().name" size="xl" />
-            <UserAvatar class="mr-3 hidden sm:inline-block" :user="$user().name" size="sm" />
-            <span
-              class="flex h-8 min-w-0 flex-1 items-center truncate rounded-5 bg-surface-gray-2 px-3 text-md text-ink-gray-5 sm:h-auto sm:bg-transparent sm:px-0 sm:text-base sm:text-ink-gray-6"
-            >
+            <UserAvatar class="mr-3" :user="$user().name" size="sm" />
+            <span class="min-w-0 flex-1 truncate text-ink-gray-6">
               {{ minimizedLabel }}
             </span>
             <Tooltip text="Expand">
@@ -546,6 +540,7 @@ const composerEditorMinHeightStyle = computed(
 )
 const mobileComposerEditorHeightStyle = 'calc(100dvh - var(--mobile-header-height) - 10.5rem)'
 const mobileComposerEditorShortHeightStyle = '12rem'
+const isComposerCollapsed = computed(() => !showCommentBox.value || composerMinimized.value)
 const isComposerFullscreen = computed(
   () =>
     isMobileViewport.value &&
