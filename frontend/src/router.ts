@@ -322,7 +322,7 @@ const routes: RouteRecordRaw[] = [
     path: '/community/:communityId/space/:spaceId/discussion/:postId/:slug?',
     component: () => import('@/pages/SpaceDiscussion.vue'),
     props: true,
-    meta: { communityScope: true },
+    meta: { communityScope: true, hideMobileNav: true },
   },
   {
     name: 'NewDiscussion',

@@ -20,6 +20,7 @@ describe('Mobile discussion creation', () => {
     ).as('publishDiscussion')
 
     cy.visit(`/g/community/${community}/space/${space}/discussions`)
+    cy.get('[data-slot="mobile-nav"]').should('be.visible')
     cy.get('[aria-label="New discussion"]').should('be.visible').click()
 
     cy.get('textarea[placeholder="Title"]')
@@ -45,6 +46,8 @@ describe('Mobile discussion creation', () => {
         )
       })
     cy.contains('h1', 'Mobile discussion').should('be.visible')
+    // The discussion view drops the bottom nav so the comment box can float.
+    cy.get('[data-slot="mobile-nav"]').should('not.exist')
 
     cy.intercept('POST', '/api/v2/document/GP%20Comment').as('postComment')
     cy.button('Add a comment').click()

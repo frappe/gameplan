@@ -79,13 +79,9 @@
 
     <div
       v-if="!readOnlyMode && !disableNewComment && !hideNewComment"
-      class="pointer-events-none fixed left-0 right-0 z-[2] w-full print:hidden sm:left-[274px] sm:right-1 sm:w-auto"
+      class="pointer-events-none fixed bottom-0 left-0 right-0 z-[2] w-full print:hidden sm:left-[274px] sm:right-1 sm:w-auto"
       :class="[
-        isComposerFullscreen
-          ? 'bottom-0 top-[var(--mobile-header-height)] z-20'
-          : showCommentBox && !composerMinimized
-            ? 'bottom-0 mt-2'
-            : 'bottom-14 mt-2 sm:bottom-0 standalone:bottom-[4.5rem] standalone:sm:bottom-0',
+        isComposerFullscreen ? 'top-[var(--mobile-header-height)] z-20' : 'mt-2',
         !showCommentBox || composerMinimized
           ? 'border-t border-outline-gray-2 bg-surface-base sm:border-t-0 sm:bg-transparent'
           : '',
@@ -287,7 +283,6 @@ import { subscribeToDoc, useSocket, type NewActivityEvent } from '@/socket'
 import { GPActivity, GPComment, GPPoll } from '@/types/doctypes'
 import type { Editor } from '@tiptap/vue-3'
 import { tags } from '@/data/tags'
-import { isNewCommentOpen } from '@/data/newComment'
 import { useRichQuotes } from '@/components/RichQuoteExtension/useRichQuotes'
 import { useDraftSync } from '@/data/useDraftSync'
 import { useSessionUser } from '@/data/users'
@@ -676,7 +671,6 @@ function resetCommentState() {
     ],
   }
   highlightedItem.value = null
-  isNewCommentOpen.value = false
 }
 
 async function submitComment() {
@@ -811,7 +805,6 @@ async function discardComment() {
 }
 
 watch(showCommentBox, (val) => {
-  updateGlobalCommentState()
   if (val && !composerMinimized.value) {
     nextTick(() => {
       editorObject.value?.commands.focus()
@@ -821,7 +814,6 @@ watch(showCommentBox, (val) => {
 })
 
 watch(composerMinimized, (minimized) => {
-  updateGlobalCommentState()
   if (!minimized && showCommentBox.value) {
     nextTick(() => {
       editorObject.value?.commands.focus()
@@ -912,7 +904,6 @@ onUnmounted(() => {
   mutationObserver?.disconnect()
   resizeObserver?.disconnect()
   stopComposerResize()
-  isNewCommentOpen.value = false
 })
 
 watch(
@@ -947,10 +938,6 @@ function updateComposerHeight() {
   emit('composer-resize')
 }
 
-function updateGlobalCommentState() {
-  isNewCommentOpen.value = showCommentBox.value && !composerMinimized.value
-}
-
 function loadComposerState() {
   composerStateLoaded.value = false
   const state = readComposerState()
@@ -963,7 +950,6 @@ function loadComposerState() {
   newCommentType.value = state.type ?? 'Comment'
   newPoll.value = normalizePoll(state.poll)
   composerStateLoaded.value = true
-  updateGlobalCommentState()
 }
 
 function saveComposerState() {

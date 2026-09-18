@@ -4,7 +4,7 @@
     <slot />
 
     <template #nav>
-      <MobileNav v-if="!isNewCommentOpen">
+      <MobileNav v-if="!route.meta.hideMobileNav">
         <MobileNavItem
           label="Home"
           icon="lucide-home"
@@ -52,7 +52,6 @@ defineOptions({
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { MobileShell, MobileNav, MobileNavItem } from 'frappe-ui'
-import { isNewCommentOpen } from '@/data/newComment'
 import { useSessionUser } from '@/data/users'
 import ReadOnlyBanner from './ReadOnlyBanner.vue'
 import UserAvatar from './UserAvatar.vue'
