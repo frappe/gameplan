@@ -322,9 +322,16 @@ async function cacheFirst(request) {
   }
 }
 
+// Uploaded images rarely change, so a saved copy is refreshed at most once a day, and never
+// while offline, where the request can only fail.
+const IMAGE_REFRESH_AFTER = 24 * 60 * 60 * 1000;
+
 async function staleWhileRevalidate(request) {
   const cache = await caches.open(RUNTIME_CACHE);
   const cached = await cache.match(request);
+  if (!self.navigator.onLine) return cached || Response.error();
+  if (cached && isRecent(cached)) return cached;
+
   const fetched = fetch(request)
     .then((response) => {
       if (isCacheableResponse(response)) {
@@ -335,6 +342,11 @@ async function staleWhileRevalidate(request) {
     .catch(() => null);
 
   return cached || (await fetched) || Response.error();
+}
+
+function isRecent(response) {
+  const fetchedAt = Date.parse(response.headers.get("date"));
+  return Date.now() - fetchedAt < IMAGE_REFRESH_AFTER;
 }
 
 function isCacheableResponse(response) {
