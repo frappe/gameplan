@@ -34,7 +34,7 @@
               {{ guest.fullName }}
             </div>
             <div class="mt-0.5 truncate text-sm text-ink-gray-5 md:hidden">
-              {{ [guest.spacesLabel, guest.email].filter(Boolean).join(' · ') }}
+              {{ [guest.email, guest.spacesLabel].filter(Boolean).join(' · ') }}
             </div>
           </div>
         </ListCell>

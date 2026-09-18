@@ -16,7 +16,7 @@
             {{ user.full_name }}
           </div>
           <div class="mt-0.5 truncate text-sm text-ink-gray-5 md:hidden">
-            {{ [roleLabel, user.email].filter(Boolean).join(' · ') }}
+            {{ [user.email, roleLabel].filter(Boolean).join(' · ') }}
           </div>
         </div>
       </ListCell>
