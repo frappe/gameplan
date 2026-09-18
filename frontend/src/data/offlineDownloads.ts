@@ -1,7 +1,7 @@
 import { computed, reactive, watch } from 'vue'
 import { useLocalStorage } from '@vueuse/core'
 import { call, dialog, toast } from 'frappe-ui'
-import { delMany, get, set, setMany } from 'idb-keyval'
+import { delMany, get, keys, set, setMany } from 'idb-keyval'
 import { isOnline, onReconnect } from './online'
 import { session } from './session'
 import {
@@ -157,12 +157,14 @@ async function runSync(days: OfflineWindow): Promise<boolean> {
   downloads.total = 0
   try {
     const previous = meta ?? (await readMeta())
-    const index = await call<{ discussions: string[]; synced_at: string }>(INDEX, {
-      window_days: days,
-    })
+    const visited = (await cachedDiscussions()).filter((name) => !previous?.names.includes(name))
+    const index = await call<{ discussions: string[]; revoked: string[]; synced_at: string }>(
+      INDEX,
+      { window_days: days, cached: visited },
+    )
     const names = index.discussions
     const dropped = (previous?.names ?? []).filter((name) => !names.includes(name))
-    await forgetDiscussions(dropped)
+    await forgetDiscussions([...dropped, ...index.revoked])
 
     const sameWindow = previous?.window === days
     const since = sameWindow ? previous.since : null
@@ -223,6 +225,14 @@ async function storeBundle(bundle: Bundle) {
     )
   }
   await setMany(entries)
+}
+
+/** Discussions saved on this device, whether downloaded or from the user's own visits. */
+async function cachedDiscussions() {
+  const prefix = docKey('GP Discussion', '')
+  return (await keys())
+    .filter((key): key is string => typeof key === 'string' && key.startsWith(prefix))
+    .map((key) => key.slice(prefix.length))
 }
 
 async function forgetDiscussions(names: string[]) {

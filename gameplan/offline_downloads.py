@@ -21,6 +21,8 @@ from gameplan.gameplan.doctype.gp_settings.gp_settings import get_offline_downlo
 PAGE_SIZE = 20
 # A 90-day download of a busy site is a few dozen pages. This only stops a runaway client.
 REQUESTS_PER_HOUR = 200
+# Visited discussions checked for lost access in one request.
+MAX_CACHED = 2000
 CHILD_LISTS = {
 	"comments": ("GP Comment", "reference"),
 	"activities": ("GP Activity", "reference"),
@@ -29,12 +31,17 @@ CHILD_LISTS = {
 
 
 @frappe.whitelist(methods=["POST"])
-def get_offline_index(window_days):
-	"""Discussions the device should hold for this window, newest activity first."""
+def get_offline_index(window_days, cached=None):
+	"""Discussions the device should hold for this window, newest activity first.
+
+	`cached` names other discussions the device holds from the user's own visits; the ones they
+	can no longer read (deleted, or access taken away) come back as `revoked` to be removed.
+	"""
 	window = _allowed_window(window_days)
 	synced_at = now_datetime()
 	return {
 		"discussions": [row.name for row in _discussions_in_window(window)],
+		"revoked": _revoked(frappe.parse_json(cached) or []),
 		"synced_at": str(synced_at),
 	}
 
@@ -110,6 +117,14 @@ def _discussions_in_window(window):
 	for row in rows:
 		row.name = str(row.name)
 	return rows
+
+
+def _revoked(names):
+	names = [str(name) for name in names[:MAX_CACHED]]
+	if not names:
+		return []
+	readable = {str(row.name) for row in _query("GP Discussion", ["name"], {"name": ["in", names]})}
+	return [name for name in names if name not in readable]
 
 
 def _changed_since(rows, since):

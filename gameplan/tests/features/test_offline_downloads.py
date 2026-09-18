@@ -112,6 +112,23 @@ class TestOfflineIndex(OfflineDownloadsTestCase):
 		private.save(ignore_permissions=True)
 		self.assertNotIn(str(secret.name), self.index(90))
 
+	def test_reports_visited_discussions_the_user_can_no_longer_read(self):
+		private = create_space("Secret", self.community, is_private=1, members=[self.member])
+		secret = create_discussion("Secret thread", private, owner=self.member)
+		gone = create_discussion("Gone thread", self.joined, owner=self.member)
+		cached = [str(self.elsewhere.name), str(secret.name), str(gone.name)]
+		with self.as_user(self.member):
+			self.assertEqual(get_offline_index(30, json.dumps(cached))["revoked"], [])
+
+		private.reload()
+		private.members = []
+		private.save(ignore_permissions=True)
+		frappe.delete_doc("GP Discussion", gone.name, ignore_permissions=True)
+		with self.as_user(self.member):
+			revoked = get_offline_index(30, json.dumps(cached))["revoked"]
+		# The public space's discussion stays: reading it never needed membership.
+		self.assertEqual(sorted(revoked), sorted([str(secret.name), str(gone.name)]))
+
 	def test_rejects_an_empty_window(self):
 		with self.as_user(self.member), self.assertRaises(frappe.ValidationError):
 			get_offline_index(0)

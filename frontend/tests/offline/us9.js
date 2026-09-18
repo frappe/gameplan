@@ -1,8 +1,8 @@
 // US9 — Download for offline: picking "Past week" in Settings > Offline downloads the
 // discussions from joined spaces with recent activity, so one never opened before reads
 // offline with its comments. Content outside the window still shows the honest offline
-// fallback, the download costs about one request per 20 discussions, and a reload soon after
-// doesn't download again.
+// fallback, the download costs about one request per 20 discussions, a reload soon after
+// doesn't download again, and a visited copy of a discussion that's since gone is removed.
 const {
   chromium,
   BASE,
@@ -18,6 +18,25 @@ const { COMMUNITY, JOINED_SPACE_ID } = require('./config')
 
 const MARKER = `us9-${Date.now()}`
 const OFFLINE_API = /gameplan\.offline_downloads\.get_offline_(index|bundle)/
+// Stands in for a discussion the user opened that has since been deleted.
+const GONE_KEY = 'doc:GP Discussion/999999999'
+
+function putIdbKey(page, key) {
+  return page.evaluate(
+    (k) =>
+      new Promise((resolve, reject) => {
+        const req = indexedDB.open('keyval-store')
+        req.onsuccess = () => {
+          const tx = req.result.transaction('keyval', 'readwrite')
+          tx.objectStore('keyval').put(JSON.stringify({ name: '999999999' }), k)
+          tx.oncomplete = () => resolve()
+          tx.onerror = () => reject(tx.error)
+        }
+        req.onerror = () => reject(req.error)
+      }),
+    key,
+  )
+}
 
 async function createDiscussion(api) {
   const discussion = await api.post('/api/v2/document/GP Discussion', {
@@ -64,6 +83,7 @@ async function run() {
 
     await page.goto(`${BASE}/g/settings/offline`, { waitUntil: 'load', timeout: 20000 })
     await page.getByText('Download for offline').waitFor({ timeout: 15000 })
+    await putIdbKey(page, GONE_KEY)
     await page.getByRole('combobox').first().click()
     await page.getByRole('option', { name: 'Past week' }).click()
     await page
@@ -84,6 +104,11 @@ async function run() {
         keys.includes(`doc:GP Discussion/${created}`) &&
         keys.some((key) => key.includes('"Comments"') && key.includes(`"${created}"`)),
       symptom: `downloaded keys for ${created}: ${keys.filter((k) => String(k).includes(created)).length}`,
+    })
+    result.checks.push({
+      name: 'a visited copy of a discussion that no longer exists is removed',
+      pass: !keys.includes(GONE_KEY),
+      symptom: keys.includes(GONE_KEY) ? `${GONE_KEY} still stored` : 'removed on sync',
     })
     result.checks.push({
       name: 'the download costs one index call plus one call per 20 discussions',
