@@ -1,7 +1,7 @@
 <template>
   <!-- Phones draw a second line of details under the name, so the row grows to fit;
        desktop keeps its one-line 40px. -->
-  <ListRow class="max-md:h-auto max-md:py-2 md:h-10">
+  <ListRow class="max-md:h-auto max-md:py-3 md:h-10">
     <ListCell>
       <IconPicker :modelValue="space.icon || ''" @update:modelValue="updateIcon">
         <template #default="{ togglePopover }">

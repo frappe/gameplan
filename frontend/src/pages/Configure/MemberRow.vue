@@ -1,7 +1,7 @@
 <template>
   <!-- Phones draw a second line of details under the name, so the row grows to fit;
        desktop keeps its one-line 40px. -->
-  <ListRow class="max-md:h-auto max-md:py-2 md:h-10">
+  <ListRow class="max-md:h-auto max-md:py-3 md:h-10">
     <!-- The link spans only the info cells (display: contents keeps them grid
          children); the options cell stays outside so its menu isn't a nested
          interactive element inside an anchor. -->

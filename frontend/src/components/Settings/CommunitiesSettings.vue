@@ -31,11 +31,11 @@
           <Select variant="ghost" v-if="selectedCommunity" :options="viewButtons" v-model="view" />
         </div>
 
-        <!-- md:pb-3 on both controls keeps the gap to their sticky ListHeader,
+        <!-- pb-3 on both controls keeps the gap to their sticky ListHeader,
              which lives at the top of the scroll viewport in each list. -->
         <CommunitySpacesListControls
           v-if="selectedCommunity && view === 'spaces'"
-          class="mt-4 md:pb-3"
+          class="mt-4 pb-3"
           :community-id="selectedCommunityId"
           v-model:search="spaceSearch"
           v-model:visibility-filter="spaceFilter"
@@ -62,7 +62,7 @@
 
         <CommunityMembersListControls
           v-if="selectedCommunity && view === 'members'"
-          class="mt-4 md:pb-3"
+          class="mt-4 pb-3"
           v-model:search="memberSearch"
         >
           <template #action>
@@ -91,12 +91,12 @@
       <template v-else>
         <h2 class="text-lg-semibold text-ink-gray-8 max-sm:hidden">Communities</h2>
 
-        <!-- md:pb-3 keeps the gap to the column header, which lives at the top
+        <!-- pb-3 keeps the gap to the column header, which lives at the top
              of the scroll viewport (a sticky ListHeader in CommunitiesList)
              instead of being duplicated here. -->
         <!-- One line on every width: on phones the search box gives up its width and the
              two actions are icons. -->
-        <div class="mt-4 flex items-center justify-between gap-3 md:pb-3">
+        <div class="mt-4 flex items-center justify-between gap-3 pb-3">
           <CommunitiesListFilters
             class="min-w-0 flex-1 sm:flex-none"
             v-model:search="search"

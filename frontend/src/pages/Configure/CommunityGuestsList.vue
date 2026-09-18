@@ -22,7 +22,7 @@
       <ListRow
         v-for="guest in communityGuests"
         :key="guest.key"
-        class="max-md:h-auto max-md:py-2 md:h-10"
+        class="max-md:h-auto max-md:py-3 md:h-10"
       >
         <ListCell>
           <UserAvatar :user="guest.user" size="sm" class="shrink-0" />
