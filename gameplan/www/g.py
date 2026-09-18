@@ -10,6 +10,7 @@ from frappe.core.api.file import get_max_file_size
 from frappe.utils import get_system_timezone
 from frappe.utils.telemetry import capture
 
+from gameplan.gameplan.doctype.gp_settings.gp_settings import get_offline_downloads_settings
 from gameplan.roles import has_app_access
 
 no_cache = 1
@@ -46,6 +47,7 @@ def get_boot():
 			"max_file_size": get_max_file_size(),
 			"app_version": get_app_version(),
 			"system_timezone": get_system_timezone(),
+			"offline_downloads": get_offline_downloads_settings(),
 		}
 	)
 

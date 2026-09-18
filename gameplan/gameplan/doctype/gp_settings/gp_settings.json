@@ -1,0 +1,67 @@
+{
+ "actions": [],
+ "creation": "2026-09-18 10:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "offline_downloads_section",
+  "enable_offline_downloads",
+  "max_offline_window_days"
+ ],
+ "fields": [
+  {
+   "fieldname": "offline_downloads_section",
+   "fieldtype": "Section Break",
+   "label": "Offline downloads"
+  },
+  {
+   "default": "1",
+   "description": "Let people download recent discussions from their joined spaces to read offline.",
+   "fieldname": "enable_offline_downloads",
+   "fieldtype": "Check",
+   "label": "Allow offline downloads"
+  },
+  {
+   "default": "90",
+   "description": "The longest period people can choose to download.",
+   "fieldname": "max_offline_window_days",
+   "fieldtype": "Select",
+   "label": "Maximum download window (days)",
+   "options": "7\n30\n90"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-09-18 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Gameplan",
+ "name": "GP Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "Gameplan Admin",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}
