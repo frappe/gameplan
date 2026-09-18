@@ -18,12 +18,13 @@ const FULL_NAME2 = process.env.GAMEPLAN_OFFLINE_FULL_NAME2 || 'Offline Tester Tw
 
 // Seeded content coordinates (GP Team/GP Project/GP Discussion names) — see README.md.
 const COMMUNITY = process.env.GAMEPLAN_OFFLINE_COMMUNITY || 'common-room'
-const SPACE_ID = process.env.GAMEPLAN_OFFLINE_SPACE_ID || '3'
+// The space discussion DISCUSSION_ID belongs to (Art on the seeded site).
+const SPACE_ID = process.env.GAMEPLAN_OFFLINE_SPACE_ID || '5'
 const DISCUSSION_ID = process.env.GAMEPLAN_OFFLINE_DISCUSSION_ID || '55'
 // Never visited by any story before going offline -> used for US6 "uncached content".
 const UNCACHED_SPACE_ID = process.env.GAMEPLAN_OFFLINE_UNCACHED_SPACE_ID || '4'
 const UNCACHED_DISCUSSION_SPACE_ID =
-  process.env.GAMEPLAN_OFFLINE_UNCACHED_DISCUSSION_SPACE_ID || '5'
+  process.env.GAMEPLAN_OFFLINE_UNCACHED_DISCUSSION_SPACE_ID || '7'
 const UNCACHED_DISCUSSION_ID = process.env.GAMEPLAN_OFFLINE_UNCACHED_DISCUSSION_ID || '54'
 // A space the primary account has joined (US9 downloads only cover joined spaces).
 const JOINED_SPACE_ID = process.env.GAMEPLAN_OFFLINE_JOINED_SPACE_ID || '1426'
@@ -58,6 +59,7 @@ const SHOTS_DIR = path.join(RESULTS_DIR, 'screenshots')
 module.exports = {
   BASE,
   COMMUNITY,
+  DISCUSSION_ID,
   JOINED_SPACE_ID,
   EMAIL,
   PWD,

@@ -11,6 +11,7 @@ const {
   appRootInfo,
   writeResult,
 } = require('./helpers')
+const { DISCUSSION_ID } = require('./config')
 
 const EXPECTED = {
   discussionTitle: 'Capsule art, near-final, need eyes before it goes on the page',
@@ -144,7 +145,7 @@ async function run() {
       try {
         await page.goto(URLS.spaceDiscussions, { waitUntil: 'load', timeout: 8000 })
         await page.waitForTimeout(1500)
-        const link = page.locator(`a[href*="/discussion/55"]`).first()
+        const link = page.locator(`a[href*="/discussion/${DISCUSSION_ID}/"]`).first()
         const linkVisible = await link.isVisible().catch(() => false)
         clickCheck.linkVisible = linkVisible
         if (linkVisible) {

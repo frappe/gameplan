@@ -15,7 +15,7 @@ survives reboots and can gate regressions in CI/local dev.
 | US1   | App shell loads offline (reload + deep link) instead of a browser error page                                     |
 | US2   | Previously-viewed feed / space / discussion render from cache while offline                                      |
 | US3   | Offline indicator appears when connectivity drops, clears on reconnect                                           |
-| US4   | A comment typed while offline fails gracefully and isn't lost                                                    |
+| US4   | While offline, Submit is disabled and says why; the typed comment is kept and posts on reconnect                 |
 | US5   | Fresh data appears automatically on reconnect, no manual reload                                                  |
 | US6   | Never-cached content shows an honest "can't load this offline" fallback                                          |
 | P2    | A profile visited fully online (incl. Posts tab) is available offline                                            |
@@ -85,9 +85,9 @@ All seeded-content coupling lives in `config.js`, overridable via env vars:
 | `GAMEPLAN_OFFLINE_USER` / `GAMEPLAN_OFFLINE_PASSWORD`                                                                              | `offline-tester@example.com` / `offline-test-1234`   | Primary test account                                          |
 | `GAMEPLAN_OFFLINE_USER2` / `GAMEPLAN_OFFLINE_PASSWORD2`                                                                            | `offline-tester-2@example.com` / `offline-test-1234` | Second account (US7b)                                         |
 | `GAMEPLAN_OFFLINE_COMMUNITY`                                                                                                       | `common-room`                                        | `GP Team` name both accounts belong to                        |
-| `GAMEPLAN_OFFLINE_SPACE_ID`                                                                                                        | `3`                                                  | `GP Project` name for the visited/cached space                |
+| `GAMEPLAN_OFFLINE_SPACE_ID`                                                                                                        | `5`                                                  | `GP Project` holding the visited discussion                   |
 | `GAMEPLAN_OFFLINE_DISCUSSION_ID`                                                                                                   | `55`                                                 | `GP Discussion` name for the visited/cached discussion        |
-| `GAMEPLAN_OFFLINE_UNCACHED_SPACE_ID` / `GAMEPLAN_OFFLINE_UNCACHED_DISCUSSION_SPACE_ID` / `GAMEPLAN_OFFLINE_UNCACHED_DISCUSSION_ID` | `4` / `5` / `54`                                     | Content never visited by any story before going offline (US6) |
+| `GAMEPLAN_OFFLINE_UNCACHED_SPACE_ID` / `GAMEPLAN_OFFLINE_UNCACHED_DISCUSSION_SPACE_ID` / `GAMEPLAN_OFFLINE_UNCACHED_DISCUSSION_ID` | `4` / `7` / `54`                                     | Content never visited by any story before going offline (US6) |
 | `GAMEPLAN_OFFLINE_PERSON_VISITED` / `GAMEPLAN_OFFLINE_PERSON_NO_PREFETCH`                                                          | `maya-iyer` / `hana-suzuki`                          | `GP User Profile` IDs for P2/P3                               |
 | `GAMEPLAN_OFFLINE_RESULTS_DIR`                                                                                                     | `tests/offline/results`                              | Where JSON results + screenshots are written                  |
 

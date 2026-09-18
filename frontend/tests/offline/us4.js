@@ -1,5 +1,6 @@
-// US4 — Don't lose my words: offline comment submit should fail gracefully (error
-// surfaced, text preserved in the editor), then succeed once back online.
+// US4 — Don't lose my words: while offline, Submit is disabled and tapping it says why
+// (instead of failing the request), the typed text stays in the editor, and it submits
+// once back online.
 const {
   chromium,
   URLS,
@@ -41,21 +42,6 @@ async function bodyTextSnapshot(page) {
   }
 }
 
-function findNewErrorText(before, after) {
-  const re = /(fail|error|offline|network|could not|try again|unable|no internet|not connected)/i
-  const beforeLines = new Set(
-    before
-      .split('\n')
-      .map((l) => l.trim())
-      .filter(Boolean),
-  )
-  const afterLines = after
-    .split('\n')
-    .map((l) => l.trim())
-    .filter(Boolean)
-  return afterLines.filter((l) => re.test(l) && !beforeLines.has(l))
-}
-
 async function run() {
   const browser = await chromium.launch({ headless: true })
   const { context, page, consoleErrors, pageErrors } = await newLoggedInContext(browser)
@@ -71,34 +57,34 @@ async function run() {
     await context.setOffline(true)
 
     const editor = await getEditor(page)
-    let check1 = { name: 'offline submit fails gracefully, text preserved' }
+    let check1 = { name: 'offline: Submit is disabled, tapping it says why, text is kept' }
     try {
       await editor.click({ timeout: 8000 })
       await page.keyboard.type(DISTINCTIVE_TEXT, { delay: 10 })
       await page.waitForTimeout(300)
 
-      const beforeSubmitText = await bodyTextSnapshot(page)
       const submitBtn = await getVisibleSubmitButton(page)
-      await submitBtn.click({ timeout: 8000 }).catch((e) => {
+      const disabled = await submitBtn.isDisabled()
+      // force: a disabled button takes no clicks, but the tap still reaches the page.
+      await submitBtn.click({ force: true, timeout: 8000 }).catch((e) => {
         check1.clickError = String(e)
       })
-      await page.waitForTimeout(2000)
-      const afterSubmitText = await bodyTextSnapshot(page)
-
-      const newErrorLines = findNewErrorText(beforeSubmitText, afterSubmitText)
+      await page.waitForTimeout(1000)
+      const toldOffline = (await bodyTextSnapshot(page)).includes("You're offline")
       const editorTextAfter = await editor.innerText().catch(() => '')
       const textPreserved = editorTextAfter.includes(DISTINCTIVE_TEXT)
 
-      check1.newErrorLines = newErrorLines
-      check1.textPreserved = textPreserved
+      Object.assign(check1, { disabled, toldOffline, textPreserved })
       check1.editorTextAfter = editorTextAfter.slice(0, 300)
       check1.screenshot = await shot(page, 'us4-offline-submit-attempt')
-      check1.pass = newErrorLines.length > 0 && textPreserved
+      check1.pass = disabled && toldOffline && textPreserved
       check1.symptom = check1.pass
-        ? `error shown (${newErrorLines[0]}) and text preserved`
+        ? 'Submit disabled, offline toast shown, text kept'
         : !textPreserved
-          ? 'typed text was lost from the editor after failed submit (silent data loss)'
-          : 'no visible error/toast surfaced after offline submit attempt'
+          ? 'typed text was lost from the editor'
+          : !disabled
+            ? 'Submit stayed enabled while offline'
+            : 'no "You\'re offline" toast after tapping the disabled Submit'
     } catch (e) {
       check1.pass = false
       check1.symptom = `threw: ${e.message}`

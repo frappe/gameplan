@@ -1,52 +1,18 @@
 // US3 — Know I'm offline: an indicator should appear when offline and clear on
-// reconnect. We search broadly (role=status/alert, common banner/toast/pill classes,
-// and any element whose text matches /offline/i) since we don't know the exact
-// implementation up front.
-const {
-  chromium,
-  URLS,
-  EMAIL,
-  newLoggedInContext,
-  warmup,
-  shot,
-  writeResult,
-} = require('./helpers')
+// reconnect. Looks for the banner OfflineIndicator.vue renders (a role=status element
+// reading "Offline") rather than any text matching /offline/i, which also matched the test
+// account's own name ("Offline Tester") and so always looked offline.
+const { chromium, newLoggedInContext, warmup, shot, writeResult } = require('./helpers')
 
-// The seeded test account's own username ("offline-tester") literally contains
-// "offline" and renders on the page regardless of connectivity (header/sidebar/hover
-// cards showing the signed-in user's name) — exclude an exact match on it so it can't
-// masquerade as the real connectivity indicator below.
-const USERNAME = EMAIL.split('@')[0]
-
-async function findOfflineIndicator(page, excludeExact) {
-  return page.evaluate((exclude) => {
-    const re = /offline|you.?re offline|showing saved|no connection|reconnect/i
-    const candidates = []
-    const all = document.querySelectorAll('body *')
-    for (const el of all) {
-      // Only leaf-ish elements with direct text, to avoid matching giant containers.
-      const text = el.textContent?.trim() || ''
-      if (!text || text.length > 200) continue
-      if (re.test(text)) {
-        const ownText = Array.from(el.childNodes)
-          .filter((n) => n.nodeType === Node.TEXT_NODE)
-          .map((n) => n.textContent)
-          .join('')
-          .trim()
-        if (ownText && re.test(ownText) && ownText.toLowerCase() !== exclude.toLowerCase()) {
-          const rect = el.getBoundingClientRect()
-          candidates.push({
-            tag: el.tagName,
-            class: el.className?.toString?.() || '',
-            text: ownText.slice(0, 200),
-            visible: rect.width > 0 && rect.height > 0,
-            role: el.getAttribute('role'),
-          })
-        }
-      }
-    }
-    return candidates
-  }, excludeExact)
+function findOfflineBanner(page) {
+  return page.evaluate(() =>
+    [...document.querySelectorAll('[role="status"]')]
+      .filter((el) => /^offline$/i.test(el.textContent.trim()))
+      .map((el) => {
+        const rect = el.getBoundingClientRect()
+        return { text: el.textContent.trim(), visible: rect.width > 0 && rect.height > 0 }
+      }),
+  )
 }
 
 async function run() {
@@ -58,7 +24,7 @@ async function run() {
     result.warmup = await warmup(page)
 
     // Baseline (online): no offline indicator should be present.
-    const onlineCandidates = await findOfflineIndicator(page, USERNAME)
+    const onlineCandidates = await findOfflineBanner(page)
     result.onlineBaseline = { candidates: onlineCandidates }
 
     await context.setOffline(true)
@@ -70,7 +36,7 @@ async function run() {
     await page.evaluate(() => window.dispatchEvent(new Event('offline')))
     await page.waitForTimeout(1000)
 
-    const offlineCandidates = await findOfflineIndicator(page, USERNAME)
+    const offlineCandidates = await findOfflineBanner(page)
     const offlineShot = await shot(page, 'us3-offline-indicator-search')
     const visibleOfflineCandidates = offlineCandidates.filter((c) => c.visible)
 
@@ -81,15 +47,15 @@ async function run() {
       pass: visibleOfflineCandidates.length > 0,
     }
     check1.symptom = check1.pass
-      ? `found ${visibleOfflineCandidates.length} visible offline-related element(s)`
-      : 'no offline indicator UI exists anywhere in the DOM (searched all elements for /offline|reconnect|no connection/i text)'
+      ? 'offline banner shown'
+      : 'no visible offline banner (role=status reading "Offline")'
     result.checks.push(check1)
 
     // Go back online and check the indicator clears (only meaningful if one appeared).
     await context.setOffline(false)
     await page.evaluate(() => window.dispatchEvent(new Event('online')))
     await page.waitForTimeout(3000)
-    const afterOnlineCandidates = await findOfflineIndicator(page, USERNAME)
+    const afterOnlineCandidates = await findOfflineBanner(page)
     const stillVisible = afterOnlineCandidates.filter((c) => c.visible)
     const afterOnlineShot = await shot(page, 'us3-after-reconnect')
 
