@@ -13,7 +13,7 @@
       </EmptyStateBox>
     </div>
   </div>
-  <div v-else>
+  <div v-else v-bind="$attrs">
     <div class="relative" v-for="d in pages.data" :key="d.name">
       <router-link
         :to="
@@ -49,7 +49,7 @@
               <div
                 class="mt-1.5 text-sm flex gap-1 text-ink-gray-6"
                 v-if="d.project"
-                :set="space = getSpace(d)"
+                :set="(space = getSpace(d))"
               >
                 <SpaceIcon :icon="space?.icon" class="size-4 text-ink-gray-6" />
                 <div>{{ space?.title }}</div>
@@ -86,6 +86,9 @@ import { useSessionUser } from '@/data/users'
 import { session } from '@/data/session'
 import { canDeleteContent } from '@/utils/permissions'
 import { isOnline } from '@/data/online'
+
+// The grid classes callers pass are for the pages, not the empty or failed state.
+defineOptions({ inheritAttrs: false })
 
 const props = defineProps<{
   listOptions: {
