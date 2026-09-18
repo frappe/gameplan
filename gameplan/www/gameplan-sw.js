@@ -2,11 +2,7 @@ const CACHE_PREFIX = "gameplan-readonly-offline";
 const CACHE_VERSION = "v7";
 const SHELL_CACHE = `${CACHE_PREFIX}:${CACHE_VERSION}:shell`;
 const ASSET_CACHE = `${CACHE_PREFIX}:${CACHE_VERSION}:assets`;
-// Avatars and other runtime images are user-visible content fetched by URL, with no
-// user scoping (unlike the app's IndexedDB caches - see offline.ts's clearOfflineCaches).
-// Keeping them in a separate bucket from ASSET_CACHE (hashed, content-addressed /assets
-// build output, which is identical for every user) lets CLEAR_USER_CACHES below wipe the
-// former on logout/user-switch without also evicting the latter.
+// Images are per user and cleared on logout; build files (ASSET_CACHE) are shared and kept.
 const RUNTIME_CACHE = `${CACHE_PREFIX}:${CACHE_VERSION}:runtime`;
 const APP_SHELL_URL = "/g";
 const OFFLINE_ASSET_MANIFEST_URL =
@@ -22,11 +18,7 @@ const CACHEABLE_DESTINATIONS = new Set(["font", "image", "script", "style"]);
 
 self.addEventListener("install", (event) => {
   event.waitUntil(warmShellCache());
-  // No self.skipWaiting() here: when this install is replacing an already-active
-  // worker (a deploy landing under an open tab), the new worker should sit in
-  // `waiting` until the page confirms via SKIP_WAITING (offline.ts's update toast).
-  // Skipping unconditionally would swap the controller under a running tab with no
-  // warning. A first-ever install (no prior controller) activates regardless of this.
+  // No skipWaiting(): a new version waits until the page's update toast confirms it.
 });
 
 self.addEventListener("activate", (event) => {
@@ -92,25 +84,13 @@ self.addEventListener("message", (event) => {
   }
 
   if (type === "WARM_SHELL_CACHE") {
-    // Round-4 finding: guardAgainstUserSwitch (offline.ts) clears SHELL_CACHE after a
-    // detected user switch, and nothing repopulates it until the *next* successful
-    // online navigation to /g. If the browser goes offline before that happens, even a
-    // reload of the page already open fails with net::ERR_FAILED instead of the offline
-    // UI. offline.ts posts this message right after that clear resolves, at a moment
-    // it's known to be online (a user just logged in) - warmShellCache() is already
-    // best-effort per-URL, so this is harmless if connectivity drops mid-fetch.
-    // Deliberately a separate message from CLEAR_USER_CACHES (not folded into
-    // clearUserCaches itself): a plain logout also clears via CLEAR_USER_CACHES, and an
-    // empty shell cache is the intended post-logout state there.
+    // Sent after a user-switch clear, so the app still opens offline before the next
+    // navigation. Separate from CLEAR_USER_CACHES: after logout the shell stays empty.
     event.waitUntil(warmShellCache());
   }
 });
 
-// Shared-computer safety (see clearOfflineCaches in offline.ts, called on logout and on
-// detecting a different session user at boot): wipe everything that can hold the
-// previous user's content. The app shell HTML and runtime images/files are the only
-// user-visible things this worker caches - ASSET_CACHE (hashed /assets build output) is
-// content-addressed and identical for every user, so it's left alone.
+// Logout and user switch (offline.ts): drop everything holding the user's content.
 async function clearUserCaches() {
   await Promise.all([caches.delete(SHELL_CACHE), caches.delete(RUNTIME_CACHE)]);
 }

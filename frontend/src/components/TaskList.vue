@@ -190,9 +190,7 @@ const tasks = useList<GPTask>({
   filters: props.listOptions.filters,
   orderBy: props.listOptions.orderBy,
   limit: props.listOptions.pageLength,
-  // Scoped to the session user: a space's tasks can be private, so a second account on
-  // the same browser must not see them cached offline before its own permission-checked
-  // fetch resolves (review finding from PR #516).
+  // Per user, so another account on this browser can't read it offline.
   // Filters are usually a getter, which JSON-stringifies to `{}` and would give every task
   // list the same cache entry. Key on the resolved filters; callers remount per filter set.
   cacheKey: ['Tasks', toValue(props.listOptions.filters) ?? {}, session.user],

@@ -471,12 +471,8 @@ const activities = useList<GPActivity>({
 // The parent bumps `activityVersion` with the doc's `modified` on every such action,
 // so reload the timeline when it changes (skipping the initial undefined -> value
 // transition on first load, when the list has already fetched on mount).
-//
-// Both this watch and the `new_activity` socket handler (see onMounted) can fire
-// for the same underlying action. Calling `activities.reload()` from both re-enters
-// the list's in-flight fetch, which aborts it — and with `staleOnError` that abort
-// can leave the timeline stuck showing the cached (stale) snapshot instead of ever
-// settling on the fresh one. Debouncing to a single reload avoids the double-fetch.
+// This and the `new_activity` socket event can fire for the same action; one debounced
+// reload keeps the second from aborting the first and leaving the cached timeline up.
 const reloadActivities = useDebounceFn(() => activities.reload(), 100)
 
 watch(

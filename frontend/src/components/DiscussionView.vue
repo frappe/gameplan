@@ -300,8 +300,7 @@
       <OfflineContentFallback
         v-else-if="discussion.isFinished && isOfflineFailure"
         class="mx-auto mt-14 max-w-2xl px-6"
-        title="This discussion isn't available offline"
-        message="It hasn't been saved for offline use yet. Reconnect and retry to load it."
+        v-bind="loadFailureCopy('this discussion', true)"
         @retry="discussion.reload()"
       />
       <!-- Fetch finished, but there is no doc and no recognised not-found/forbidden error.
@@ -373,8 +372,8 @@ const RevisionsDialog = defineAsyncComponent(() => import('./RevisionsDialog.vue
 import SpaceBreadcrumbs from './SpaceBreadcrumbs.vue'
 import EmptyStateBox from './EmptyStateBox.vue'
 import OfflineContentFallback from './OfflineContentFallback.vue'
+import { isOfflineError, loadFailureCopy } from '@/data/loadFailure'
 import { copyToClipboard, isEditorContentEmpty } from '@/utils'
-import { isNetworkError } from '@/offline'
 import { isOnline, whenOnline } from '@/data/online'
 import { getSpace, useSpace } from '@/data/spaces'
 import { useCommunity } from '@/data/communities'
@@ -480,7 +479,7 @@ function isMissingOrForbidden(error: unknown): boolean {
 }
 // A network failure (offline, or the request never reached the server) deserves its own
 // copy and a Retry — telling someone offline to "refresh" is misleading busywork.
-const isOfflineFailure = computed(() => !isOnline.value || isNetworkError(discussion.error))
+const isOfflineFailure = computed(() => isOfflineError(discussion.error))
 const showTitleInMobileHeader = ref(false)
 const mobileHeaderTitle = computed(() =>
   showTitleInMobileHeader.value ? discussion.doc?.title || 'Discussion' : 'Discussion',

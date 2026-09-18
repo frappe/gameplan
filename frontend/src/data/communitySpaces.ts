@@ -14,8 +14,7 @@ const INACTIVE_SPACE_MONTHS = 2
 
 const spaceActivity = useCall<Record<string, string | null>>({
   url: '/api/v2/method/GP Project/get_activity',
-  // get_activity is filtered to the caller's accessible spaces server-side, so scope the
-  // client cache to the session user too (review finding from PR #516).
+  // Per user, like the server's filtering to accessible spaces.
   cacheKey: ['spaceActivity', session.user],
   staleOnError: true,
   initialData: {},

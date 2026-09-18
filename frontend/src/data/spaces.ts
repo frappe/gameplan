@@ -44,8 +44,7 @@ export let spaces = useList<Space>({
   initialData: [],
   orderBy: 'title asc',
   limit: 99999,
-  // Scoped to the session user so a second account on the same browser can't read the
-  // first account's cached space list while offline (review finding from PR #516).
+  // Per user, so another account on this browser can't read it offline.
   cacheKey: ['spaces', session.user],
   staleOnError: true,
   transform(data) {

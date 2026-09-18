@@ -65,13 +65,7 @@ export function listDraftRecords(): Promise<DraftRecord[]> {
   return entries<string, DraftRecord>(store).then((all) => all.map(([, record]) => record))
 }
 
-/**
- * Wipe every locally stored draft, regardless of owner. `record.user` already keeps
- * another account's drafts from being read back into an editor on a shared browser
- * (see useDraftSync's `load()`), so this is only called when a *different* user is
- * detected on this device (offline.ts's guardAgainstUserSwitch) - not on a plain
- * logout, where the same person may log back in and expect their draft still there.
- */
+/** Wipes every local draft. Only on a user switch: after logout the same person may return. */
 export function clearDraftStore(): Promise<void> {
   return clear(store)
 }

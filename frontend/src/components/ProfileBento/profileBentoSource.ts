@@ -61,19 +61,14 @@ function getLoadResultFromResponse(response: ProfileBentoResponse): ProfileBento
   }
 }
 
-// One `get_bento_cards` fetch per profile, keyed by profile name + session user (an
-// offline cache scoped any other way could leak one account's cached cards to a second
-// account sharing the browser - review finding from PR #516). Revisiting a profile reuses
-// its call instead of racing a fresh request.
+// One `get_bento_cards` fetch per profile, keyed by profile and session user so another
+// account on this browser can't read the cards offline. Revisiting a profile reuses its call
+// instead of racing a fresh request.
 const bentoCalls: Record<string, ReturnType<typeof createProfileBentoCall>> = {}
 
 function createProfileBentoCall(profile: string) {
   return useCall<ProfileBentoResponse>({
-    // `useCall` takes `url` verbatim - unlike `call()` (used by createServerProfileBentoSource
-    // below), it does not prefix a dotted method path with /api/method/ itself. A bare method
-    // name here would resolve relative to whatever page the app is currently on and hit the
-    // SPA's own catch-all route (200, HTML) instead of the API - see the same trap called out
-    // in Notifications.vue's markAllAsRead.
+    // A full path: unlike call(), useCall doesn't prefix /api/method/ to a method name.
     url: `/api/v2/method/${getProfileBentoCardsMethod}`,
     params: { profile },
     cacheKey: ['ProfileBento', profile, session.user],
@@ -90,31 +85,15 @@ function getProfileBentoCall(profile: string) {
 }
 
 /**
- * Refreshes the shared per-profile cache above after save/reset changes what it holds -
- * called with the profile name the mutation's own response identifies (both
- * save_my_bento_cards and reset_my_bento_cards return it via
- * GP User Profile.get_profile_bento_response), not looked up separately.
- *
- * Without this, saving a card and then opening that profile could show the pre-save layout:
- * a call created by an earlier visit is already `isFinished`, so nothing refetches it.
- *
- * Reloads an existing entry in place - so an already-mounted `PersonProfile.vue` viewing
- * this same profile (e.g. behind the settings dialog overlay) picks up the change
- * reactively too, not just a later fresh visit - rather than deleting it; if no entry
- * exists yet there's nothing to refresh, and the next visit fetches fresh regardless.
+ * Reloads a profile's cached cards after save/reset, in place, so a profile page already
+ * showing them (e.g. behind the settings dialog) updates too. Without it, a call from an
+ * earlier visit is already finished and would keep showing the pre-save layout.
  */
 function invalidateProfileBentoCall(profile: string) {
   bentoCalls[profile]?.reload()
 }
 
-/**
- * Reactive bento-card read for one profile (`PersonProfile.vue`'s Profile tab). Cards come
- * straight off the shared per-profile call above instead of being copied into local refs,
- * so revisiting a profile already viewed this session reuses its resource rather than
- * re-racing a fresh request against whatever that earlier visit's request was doing - the
- * out-of-order-response guard the old `loadProfileBentoCards` needed is gone because each
- * profile now owns an isolated resource instead of sharing one mutable ref.
- */
+/** A profile's bento cards, read from its shared call above, so a revisit reuses it. */
 export function useProfileBento(profile: MaybeRefOrGetter<string | undefined>) {
   const bentoCall = computed(() => {
     let name = toValue(profile)

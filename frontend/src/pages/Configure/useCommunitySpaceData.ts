@@ -19,9 +19,7 @@ export function useCommunitySpaceData(communityId: MaybeRefOrGetter<string>) {
     fields: ['project'],
     initialData: [],
     limit: 99999,
-    // Scoped to the session user: page visibility follows space membership, so a second
-    // account on the same browser must not see cached counts for spaces it can't access
-    // (review finding from PR #516).
+    // Per user, so another account on this browser can't read it offline.
     cacheKey: ['space-page-counts', session.user],
   })
 

@@ -5,8 +5,7 @@ import { session } from './session'
 import { onReconnect } from './online'
 
 export let unreadNotifications = useCall({
-  // Scoped to the session user so a second account on the same browser can't read the
-  // first account's cached unread count while offline (review finding from PR #516).
+  // Per user, so another account on this browser can't read it offline.
   cacheKey: ['Unread Notifications Count', session.user],
   staleOnError: true,
   url: '/api/v2/method/gameplan.api.unread_notifications',

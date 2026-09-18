@@ -14,12 +14,7 @@ export interface Person extends Pick<
   reactions_received: number
 }
 
-/**
- * `full_name` and `modified` are real columns on `GP User Profile`, so the backend can
- * sort by them directly. The other Select options in People.vue (posts/replies/reactions)
- * have no backing column — they're derived counts computed per-row in `get_list` — so
- * People.vue re-sorts for those client-side after fetching at `peopleOrderBy`'s value.
- */
+/** Server sort order. Post, reply and reaction counts aren't columns, so People.vue sorts those. */
 export const peopleOrderBy = ref<OrderBy>('modified desc')
 
 /** The People list: server-sorted, filtered to enabled accounts, cached for offline use. */
@@ -33,8 +28,7 @@ export const people = useList<Person>({
   filters: { enabled: 1 },
   orderBy: peopleOrderBy,
   limit: 999,
-  // Scoped to the session user so a second account on the same browser can't read the
-  // first account's cached People list while offline (review finding from PR #516).
+  // Per user, so another account on this browser can't read it offline.
   cacheKey: ['People', session.user],
   staleOnError: true,
   immediate: true,

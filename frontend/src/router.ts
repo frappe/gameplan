@@ -842,12 +842,9 @@ router.beforeEach(async (to, from) => {
   let space = to.params.spaceId ? getSpace(routeParam(to.params.spaceId)) : null
 
   if (to.params.spaceId && !space) {
-    // Greptile P1 (PR #516, round 3): letting navigation continue here used to leave
-    // `space === null` for every downstream page component that assumes a real space -
-    // this deep link may be genuine (just never cached), so send it to an honest
-    // "not available offline" page instead of either a wrongful NotFound or a route that
-    // silently proceeds with no space to render.
-    if (isRouteValidationUnavailable()) {
+    // Offline, an uncached space may still be real: say it isn't available offline
+    // rather than that it doesn't exist.
+    if (isNetworkUnreliable()) {
       return { name: 'OfflineUnavailable' }
     }
     return { name: 'NotFound' }
@@ -863,8 +860,7 @@ router.beforeEach(async (to, from) => {
   // Public communities are visible even when the user has not joined them, so route validity
   // cannot be tied to the active sidebar community list.
   if (!community) {
-    // Same reasoning as the spaceId branch above: don't proceed with `community === null`.
-    if (isRouteValidationUnavailable()) {
+    if (isNetworkUnreliable()) {
       return { name: 'OfflineUnavailable' }
     }
     return { name: 'NotFound' }
@@ -881,12 +877,8 @@ export default router
 
 async function ensureCommunityDataLoaded() {
   await Promise.all([waitForResource(communities), waitForResource(spaces)])
-  // Right after a reload, navigator.onLine can briefly lag the browser's actual
-  // network state, so isBrowserOffline() alone can miss a reload that's genuinely
-  // offline. A resource that already finished with a network error is unambiguous
-  // proof the fresh fetch can't be trusted, so treat either signal the same way:
-  // give the IndexedDB cache a bounded chance to hydrate before the home route is
-  // decided from (possibly still-empty) `communities`/`spaces` data.
+  // Offline, give the cached lists a moment to load before the home route is picked from
+  // them. A network error counts as offline too: navigator.onLine can lag after a reload.
   if (isNetworkUnreliable()) {
     await Promise.all([waitForOfflineCachedData(communities), waitForOfflineCachedData(spaces)])
   }
@@ -927,10 +919,6 @@ function waitForOfflineCachedData(resource: ResourceLike) {
 function hasHydratedData(resource: ResourceLike) {
   const data = resource.data
   return Array.isArray(data) ? data.length > 0 : data != null
-}
-
-function isRouteValidationUnavailable() {
-  return isNetworkUnreliable()
 }
 
 function isNetworkUnreliable() {
@@ -1007,14 +995,12 @@ async function getCanonicalContentRoute(
   // space/slug rewrites to canonical.
   const isInAppNavigation = from.matched.length > 0
   if (isInAppNavigation && hasCanonicalLocalParams(to, descriptor)) return
-  if (isRouteValidationUnavailable() && hasCanonicalLocalParams(to, descriptor)) return
-  if (isRouteValidationUnavailable()) return
+  // The server can't confirm the URL; let the page show its cached copy or its own fallback.
+  if (isNetworkUnreliable()) return
 
   const doc = await getProjectContentDoc(descriptor.doctype, documentName)
-  if (doc === undefined) {
-    if (hasCanonicalLocalParams(to, descriptor)) return
-    return
-  }
+  // undefined: the server couldn't be reached (fetchProjectContentDoc).
+  if (doc === undefined) return
   if (!doc?.project) return { name: 'NotFound' }
 
   const space = await findSpace(String(doc.project))

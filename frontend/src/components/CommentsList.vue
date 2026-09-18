@@ -180,9 +180,7 @@ const comments = useList<
   >
 >({
   doctype: 'GP Comment',
-  // Scoped to the session user: a discussion's comments can live in a private space,
-  // so a second account on the same browser must not see them cached offline before
-  // its own permission-checked fetch resolves (review finding from PR #516).
+  // Per user, so another account on this browser can't read it offline.
   cacheKey: ['Comments', props.doctype, props.name, session.user],
   staleOnError: true,
   fields: [

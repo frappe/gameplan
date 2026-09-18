@@ -14,12 +14,7 @@ const RECONNECT_DEBOUNCE_MS = 1500
 type ReconnectCallback = () => void
 const callbacks = new Set<ReconnectCallback>()
 
-/**
- * Register a callback to run when the browser transitions from offline to
- * online (debounced — see RECONNECT_DEBOUNCE_MS). Returns an unregister
- * function; call it from `onUnmounted` for callbacks owned by a component so a
- * torn-down view doesn't keep refetching after it's gone.
- */
+/** Runs `callback` when the connection returns (debounced). Returns an unregister function. */
 export function onReconnect(callback: ReconnectCallback): () => void {
   callbacks.add(callback)
   return () => callbacks.delete(callback)

@@ -33,8 +33,7 @@ export let communities = useList<Community>({
   ],
   orderBy: 'title asc',
   initialData: [],
-  // Scoped to the session user so a second account on the same browser can't read the
-  // first account's cached community list while offline (review finding from PR #516).
+  // Per user, so another account on this browser can't read it offline.
   cacheKey: ['Communities', 'with-image', session.user],
   staleOnError: true,
   limit: 999,

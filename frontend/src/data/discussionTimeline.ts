@@ -30,9 +30,7 @@ export const POLL_FIELDS = [
   { reactions: ['name', 'user', 'emoji'] },
 ]
 
-// Scoped to the session user: a discussion can live in a private space, so a second account
-// on the same browser must not see these cached offline before its own permission-checked
-// fetch resolves (review finding from PR #516).
+// Per user, so another account on this browser can't read them offline.
 export function commentsCacheKey(doctype: string, name: string, user: string) {
   return ['Comments', doctype, name, user]
 }

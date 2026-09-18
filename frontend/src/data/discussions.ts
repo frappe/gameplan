@@ -43,9 +43,7 @@ export function useDiscussions(options: UseDiscussionOptions) {
   const discussions = useList<Discussion>({
     url: '/api/v2/method/gameplan.gameplan.doctype.gp_discussion.api.get_discussions',
     doctype: 'GP Discussion',
-    // Scoped to the session user, once here, so every caller (feed, space discussion
-    // list, bookmarks, pinned) picks up per-user offline cache scoping automatically —
-    // review finding from PR #516.
+    // Per user for every feed, so another account on this browser can't read them offline.
     cacheKey: options.cacheKey ? ['Discussions', options.cacheKey, session.user] : undefined,
     staleOnError: true,
     filters: options.filters,

@@ -8,11 +8,7 @@
 </template>
 
 <script setup lang="ts">
-// Presentational-only: callers decide *when* to show this (loading/empty/error
-// state belongs to the resource, not this component) and *what* to say (offline
-// vs. generic copy, via isOnline and isNetworkError()).
-// Kept generic so any failed useList/useDoc fetch can reuse it instead of each
-// page hand-rolling its own dead-end card.
+// Presentational only: callers decide when to show it and what it says (see useLoadFailure).
 import EmptyStateBox from './EmptyStateBox.vue'
 
 defineProps<{

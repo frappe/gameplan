@@ -63,7 +63,6 @@ import { PageHeader, Breadcrumbs, Button, TabButtons, usePageMeta } from 'frappe
 import { useDoc } from '@/data/offlineRevalidation'
 import NotFound from '@/pages/NotFound.vue'
 import OfflineContentFallback from '@/components/OfflineContentFallback.vue'
-import { isNetworkError } from '@/offline'
 import { showSettingsDialog } from '@/components/Settings'
 import {
   resetProfileBentoCards,
@@ -73,6 +72,7 @@ import { confirmRestoreDefaultLayout } from '@/components/ProfileBento/restoreDe
 import { useProfileFieldEditing } from '@/components/ProfileBento/useProfileFieldEditing'
 import { useSessionUser, useUser } from '@/data/users'
 import { isOnline } from '@/data/online'
+import { isOfflineError, loadFailureCopy } from '@/data/loadFailure'
 import type { GPUserProfile } from '@/types/doctypes'
 
 defineOptions({
@@ -112,18 +112,12 @@ const profileChildResource = computed(() => ({
 }))
 const isOwnProfile = computed(() => profile.value?.user === sessionUser.name)
 
-// Offline/network failure with nothing cached reads as a dead end otherwise indistinguishable
-// from a real 404 (US6). A genuine 404 or permission error surfaces through `profileNotFound`
-// below instead - `isNetworkError` only matches the TypeError a broken connection throws, not
-// an HTTP-level error response.
-const profileLoadFailure = computed(() => {
-  if (profile.value || !profileResource.error) return null
-  if (isOnline.value && !isNetworkError(profileResource.error)) return null
-  return {
-    title: "Can't load this profile while offline",
-    message: "This profile isn't available offline.",
-  }
-})
+// A 404 or permission error is profileNotFound's; this is only for being offline.
+const profileLoadFailure = computed(() =>
+  !profile.value && profileResource.error && isOfflineError(profileResource.error)
+    ? loadFailureCopy('this profile', true)
+    : null,
+)
 // A profile that never loaded used to render an empty page; show the not-found
 // state instead. `isFinished` keeps the first paint on the loading branch.
 const profileNotFound = computed(() => {
@@ -149,22 +143,11 @@ const displayName = computed(() => {
 
 const bento = useProfileBento(() => profile.value?.name)
 
-// Offline/network failure with nothing cached for this profile's bento cards - shown by
-// PersonProfileProfile.vue instead of treating an empty response as "profile has no
-// content" (US6). A non-network failure (permission error, 500) gets generic copy instead.
-const bentoFailure = computed(() => {
-  if (!bento.failed.value) return null
-  const offline = !isOnline.value || isNetworkError(bento.error.value)
-  return offline
-    ? {
-        title: "Can't load this while offline",
-        message: "This profile's cards haven't been saved for offline use yet.",
-      }
-    : {
-        title: 'Could not load this profile',
-        message: 'Something went wrong while loading this page. Retry to try again.',
-      }
-})
+const bentoFailure = computed(() =>
+  bento.failed.value
+    ? loadFailureCopy("this profile's cards", isOfflineError(bento.error.value))
+    : null,
+)
 
 const fieldEditor = useProfileFieldEditing({
   profile: profileResource,

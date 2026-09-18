@@ -259,15 +259,7 @@ def get_list(
 	parent=None,
 	debug=False,
 ):
-	# `fields`/`filters` are typed `dict | list` shapes on the query builder, and
-	# `start`/`limit` are ints, but a GET caller (frappe-ui's `useList`, which this
-	# endpoint is built for) can only send everything JSON-encoded/stringified in the
-	# query string. `fields`/`filters` left type-hinted `dict | None` had Frappe's own
-	# request-typing coercion reject the string before this function body ever ran, so
-	# they're parsed by hand instead - the same way the builtin `/api/v2/document/<doctype>`
-	# list route and `gp_discussion.api.get_discussions` do it for the same reason.
-	# `start`/`limit` get the same treatment via `cint` - the query builder requires an
-	# actual int and rejects `"3"` outright.
+	# useList sends these as GET query strings, so parse them here (like get_discussions).
 	doctype = "GP User Profile"
 	check_permissions(doctype, parent)
 	query = frappe.qb.get_query(

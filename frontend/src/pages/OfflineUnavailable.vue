@@ -2,21 +2,17 @@
   <div class="body-container py-8">
     <OfflineContentFallback
       class="mx-auto max-w-2xl px-6"
-      title="This space isn't available offline"
-      message="It hasn't been saved for offline use yet. Reconnect and retry to load it."
+      v-bind="loadFailureCopy('this space', true)"
       @retry="retry"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-// Router destination for a community/space route the app can't validate while offline
-// (router.ts's isRouteValidationUnavailable branches) - see the comment at those call
-// sites. Unlike the generic NotFound.vue, this is reachable while genuinely offline, so
-// it says so honestly instead of implying the space doesn't exist, and offers a Retry
-// rather than a dead end - the space may well be real and just never cached.
+// Where the router sends a space or community it can't check offline: it may well exist.
 import { usePageMeta } from 'frappe-ui'
 import OfflineContentFallback from '@/components/OfflineContentFallback.vue'
+import { loadFailureCopy } from '@/data/loadFailure'
 
 usePageMeta(() => ({
   title: "Can't load this offline",
