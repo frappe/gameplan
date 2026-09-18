@@ -182,8 +182,18 @@ async function networkFirstNavigation(request) {
 
 async function cacheShellAssets(response) {
   const urls = getShellAssetUrls(await response.text());
+  const [assets, shell] = await Promise.all([
+    caches.open(ASSET_CACHE),
+    caches.open(SHELL_CACHE),
+  ]);
+  // The page's own build files are renamed by every build, so all of them being cached means
+  // this build was seen before and its manifest already fetched. Fetching it again on every
+  // page load was a request develop never made.
+  const cached = await Promise.all(urls.map((url) => assets.match(url)));
+  const newBuild =
+    cached.some((hit) => !hit) || !(await shell.match(OFFLINE_ASSET_MANIFEST_URL));
   await cacheUrls(urls);
-  await cacheOfflineAssetManifest();
+  if (newBuild) await cacheOfflineAssetManifest();
 }
 
 function getShellAssetUrls(html) {
@@ -276,6 +286,8 @@ async function cacheOfflineAssetManifest(response) {
     if (Array.isArray(urls) && urls.length) {
       await cacheUrls(urls);
       await deleteOldBuildAssets(urls);
+      const shell = await caches.open(SHELL_CACHE);
+      await shell.put(OFFLINE_ASSET_MANIFEST_URL, manifestResponse);
     }
   } catch {
     // Older builds do not have the manifest; route assets will still be cached as they load.
