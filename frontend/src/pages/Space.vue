@@ -124,5 +124,6 @@ function routeParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value
 }
 
-whenOnline(() => trackSpaceVisit(props.spaceId))
+// A missed visit only leaves the space's read state as it was; the next visit records it.
+whenOnline(() => trackSpaceVisit(props.spaceId).catch(() => {}))
 </script>
