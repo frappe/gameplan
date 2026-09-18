@@ -90,6 +90,8 @@ import SpaceHeaderActions from '@/components/SpaceHeaderActions.vue'
 import SpaceTabs from '@/components/SpaceTabs.vue'
 import DropdownMoreOptions from '@/components/DropdownMoreOptions.vue'
 import SpaceAccessDialog from '@/components/SpaceAccessDialog.vue'
+import PushPin from '@/components/icons/PushPin.vue'
+import PushPinSlash from '@/components/icons/PushPinSlash.vue'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { isSpacePinned, toggleSpacePinned } from '@/data/pinnedSpaces'
 import { useCommunity } from '@/data/communities'
@@ -153,7 +155,7 @@ const canManageCurrentCommunity = computed(() => canManageCommunity(community.va
 const spaceActions = computed(() => [
   {
     label: isSpacePinned(props.spaceId) ? 'Unpin space' : 'Pin space',
-    icon: isSpacePinned(props.spaceId) ? 'lucide-pin-off' : 'lucide-pin',
+    icon: isSpacePinned(props.spaceId) ? PushPinSlash : PushPin,
     onClick: () => toggleSpacePinned(props.spaceId),
   },
   {

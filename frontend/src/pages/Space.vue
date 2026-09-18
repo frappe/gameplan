@@ -15,9 +15,9 @@
             <SpaceIcon :icon="space?.icon" class="size-5 text-ink-gray-6" />
           </template>
         </PageHeaderMobileTitle>
-        <span
+        <PushPin
           v-if="isSpacePinned(spaceId)"
-          class="size-3.5 shrink-0 text-ink-gray-5 lucide-pin"
+          class="size-3.5 shrink-0 text-ink-gray-5"
           aria-hidden="true"
         />
         <span class="size-4 shrink-0 text-ink-gray-5 lucide-chevron-down" aria-hidden="true" />
@@ -78,6 +78,7 @@ import {
   Button,
 } from 'frappe-ui'
 import SpaceHeaderActionsTarget from '@/components/SpaceHeaderActionsTarget.vue'
+import PushPin from '@/components/icons/PushPin.vue'
 import { useSpace, canPostInSpace, spaces as spaceList, trackSpaceVisit } from '@/data/spaces'
 import CommunityMenu from '@/components/CommunityMenu.vue'
 import EmptyStateBox from '@/components/EmptyStateBox.vue'

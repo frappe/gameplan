@@ -51,9 +51,10 @@
               <span class="flex-1 inline-flex items-center gap-1 truncate text-sm">
                 <LucideLock v-if="space.is_private" class="size-3 shrink-0 text-ink-gray-5" />
                 <span class="truncate">{{ space.title }}</span>
-                <LucidePin
+                <PushPin
                   v-if="isSpacePinned(space.name)"
                   class="size-3 shrink-0 text-ink-gray-5"
+                  aria-hidden="true"
                 />
               </span>
 
@@ -127,7 +128,8 @@ import CommunityDropdown from './CommunityDropdown.vue'
 import NewSpaceDialog from './NewSpaceDialog.vue'
 import SpaceIcon from './SpaceIcon.vue'
 import LucideLock from '~icons/lucide/lock'
-import LucidePin from '~icons/lucide/pin'
+import PushPin from './icons/PushPin.vue'
+import PushPinSlash from './icons/PushPinSlash.vue'
 
 const route = useRoute()
 const sessionUser = computed(() => useSessionUser())
@@ -157,7 +159,7 @@ function spaceOptions(space: Space) {
   return [
     {
       label: pinned ? 'Unpin space' : 'Pin space',
-      icon: pinned ? 'lucide-pin-off' : 'lucide-pin',
+      icon: pinned ? PushPinSlash : PushPin,
       onClick: () => toggleSpacePinned(space.name),
     },
     {
