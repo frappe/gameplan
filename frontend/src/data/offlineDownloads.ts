@@ -5,6 +5,7 @@ import { delMany, get, getMany, keys, set, setMany } from 'idb-keyval'
 import { isOnline, onReconnect } from './online'
 import { session } from './session'
 import { customEmojis } from './customEmojis'
+import { isMobileViewport } from '@/utils/useIsMobile'
 import {
   ACTIVITY_FIELDS,
   COMMENT_FIELDS,
@@ -424,6 +425,10 @@ function offerDownload() {
 }
 
 function openOfflineSettings() {
-  // Imported on demand: the settings module reaches the router, which reaches this module.
-  import('@/components/Settings').then(({ showSettingsDialog }) => showSettingsDialog('Offline'))
+  // Imported on demand: the settings module and the router both reach this module.
+  if (isMobileViewport()) {
+    import('@/router').then(({ default: router }) => router.push({ name: 'OfflineSettings' }))
+  } else {
+    import('@/components/Settings').then(({ showSettingsDialog }) => showSettingsDialog('Offline'))
+  }
 }

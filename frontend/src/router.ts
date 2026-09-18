@@ -431,6 +431,12 @@ const routes: RouteRecordRaw[] = [
     name: 'More',
     component: () => import('@/pages/MoreMenu.vue'),
   },
+  {
+    // Mobile's way into Settings > Offline (desktop uses the settings dialog).
+    path: '/offline',
+    name: 'OfflineSettings',
+    component: () => import('@/pages/OfflineSettingsPage.vue'),
+  },
   // Keep old shared space links working while moving canonical URLs under `/community/:communityId/...`.
   {
     path: '/space/:spaceId',
