@@ -77,14 +77,16 @@
       </template>
     </div>
 
-    <!-- In an installed PWA the collapsed button clears the home indicator, as the
-         bottom nav does on other pages. -->
+    <!-- In an installed PWA the collapsed button clears the home indicator: the 1rem
+         the bottom nav uses on other pages, or the safe-area inset where that is larger. -->
     <div
       v-if="!readOnlyMode && !disableNewComment && !hideNewComment"
       class="pointer-events-none fixed bottom-0 left-0 right-0 z-[2] w-full print:hidden sm:left-[274px] sm:right-1 sm:w-auto"
       :class="[
         isComposerFullscreen ? 'top-[var(--mobile-header-height)] z-20' : 'mt-2',
-        isComposerCollapsed ? 'standalone:bottom-4 standalone:sm:bottom-0' : '',
+        isComposerCollapsed
+          ? 'standalone:bottom-[max(1rem,env(safe-area-inset-bottom))] standalone:sm:bottom-0'
+          : '',
       ]"
       ref="addComment"
     >
