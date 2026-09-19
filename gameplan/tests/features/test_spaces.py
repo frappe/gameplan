@@ -212,6 +212,54 @@ class TestSpaceCommunityMove(GameplanTestCase):
 		self.assertEqual(self._teams(rows), dict.fromkeys(rows, self.origin.name))
 
 
+class TestSpaceCommunityMoveAccess(GameplanTestCase):
+	"""Who may move a Space, and where to.
+
+	Every member of a private Space may manage it, so the Space write check alone lets
+	them move it anywhere. The move also needs access to the destination Community.
+	"""
+
+	def setUp(self):
+		super().setUp()
+		self.origin = create_community("Access Origin Community", members=[self.member])
+		self.space = create_space("Access Moving Space", self.origin, is_private=1, members=[self.member])
+
+	def _move(self, team):
+		with self.as_user(self.member):
+			frappe.get_doc("GP Project", self.space.name).move_to_team(team)
+
+	def _team(self):
+		return frappe.db.get_value("GP Project", self.space.name, "team")
+
+	def test_member_cannot_move_a_space_into_a_private_community_they_are_not_in(self):
+		hidden = create_community("Hidden Destination Community", is_private=1, members=[self.second_member])
+
+		with self.assertRaises(frappe.PermissionError):
+			self._move(hidden.name)
+
+		self.assertEqual(self._team(), self.origin.name)
+
+	def test_member_can_move_a_space_into_a_private_community_they_are_in(self):
+		joined = create_community("Joined Destination Community", is_private=1, members=[self.member])
+
+		self._move(joined.name)
+
+		self.assertEqual(self._team(), joined.name)
+
+	def test_member_can_move_a_space_into_a_public_community(self):
+		public = create_community("Public Destination Community", members=[self.second_member])
+
+		self._move(public.name)
+
+		self.assertEqual(self._team(), public.name)
+
+	def test_moving_a_space_needs_a_destination_community(self):
+		with self.assertRaises(frappe.ValidationError):
+			self._move(None)
+
+		self.assertEqual(self._team(), self.origin.name)
+
+
 class TestBulkSpaceMembership(GameplanTestCase):
 	"""`join_spaces` / `leave_spaces` back the sidebar's multi-select membership editor."""
 
