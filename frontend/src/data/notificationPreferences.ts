@@ -245,29 +245,20 @@ export const discussionStateDescription: Record<DiscussionNotificationState, str
 }
 
 /**
- * The bell's menu: Default (back to the global level) first, then the three states.
- * `selected` marks exactly one. Built here so the header bell and the `...` submenu in
- * DiscussionView stay one list.
+ * The bell's menu: the three states, with the one the discussion resolves to marked —
+ * an untouched discussion shows the global level as selected, so there is no separate
+ * "Default" entry to explain. Built here so the header bell and the post's bell stay one
+ * list.
  */
 export function discussionNotificationOptions(
   state: DiscussionNotificationState,
-  isExplicit: boolean,
   onSelect: (choice: DiscussionNotificationChoice) => void,
 ) {
-  return [
-    {
-      label: 'Default',
-      description: `Follows your setting (${level.value})`,
-      icon: 'lucide-rotate-ccw',
-      selected: !isExplicit,
-      onClick: () => onSelect('Default'),
-    },
-    ...discussionNotificationStates.map((candidate) => ({
-      label: candidate,
-      description: discussionStateDescription[candidate],
-      icon: discussionStateIcon[candidate],
-      selected: isExplicit && state === candidate,
-      onClick: () => onSelect(candidate),
-    })),
-  ]
+  return discussionNotificationStates.map((candidate) => ({
+    label: candidate,
+    description: discussionStateDescription[candidate],
+    icon: discussionStateIcon[candidate],
+    selected: state === candidate,
+    onClick: () => onSelect(candidate),
+  }))
 }

@@ -8,7 +8,6 @@
         <template v-if="showHeaderActions">
           <DiscussionNotificationBell
             :state="discussion.doc!.notification_state!"
-            :is-explicit="discussion.doc!.notification_state_is_explicit"
             :loading="discussion.setNotificationState.loading"
             @select="setNotificationState"
           />
@@ -36,7 +35,6 @@
       <div v-if="showHeaderActions" class="flex items-center gap-2">
         <DiscussionNotificationBell
           :state="discussion.doc!.notification_state!"
-          :is-explicit="discussion.doc!.notification_state_is_explicit"
           :loading="discussion.setNotificationState.loading"
           @select="setNotificationState"
         />
@@ -138,7 +136,6 @@
               <DiscussionNotificationBell
                 v-if="!readOnlyMode && discussion.doc.notification_state"
                 :state="discussion.doc.notification_state"
-                :is-explicit="discussion.doc.notification_state_is_explicit"
                 :loading="discussion.setNotificationState.loading"
                 @select="setNotificationState"
               />
