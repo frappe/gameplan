@@ -19,7 +19,8 @@ from gameplan.utils import get_document_revisions, remove_empty_trailing_paragra
 
 class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTags, Document):
 	# Class Configuration
-	on_delete_cascade = ["GP Comment", "GP Discussion Visit", "GP Activity", "GP Poll"]
+	# GP Activity is removed in on_trash, not here. See remove_all_activities.
+	on_delete_cascade = ["GP Comment", "GP Discussion Visit", "GP Poll"]
 	on_delete_set_null = ["GP Notification"]
 	activities = [
 		"Discussion Closed",
@@ -78,6 +79,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 
 	def on_trash(self):
 		self.remove_all_bookmarks()
+		self.remove_all_activities()
 		self.update_discussions_count()
 		GPUnreadRecord.delete_unread_records_for_discussion(self.name)
 
@@ -215,6 +217,23 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		"""
 		for name in frappe.get_all("GP Bookmark", filters={"discussion": self.name}, pluck="name"):
 			frappe.delete_doc("GP Bookmark", name, ignore_permissions=True)
+
+	def remove_all_activities(self):
+		"""Drop the discussion's activity log: closed, pinned, moved, renamed.
+
+		Runs privileged, for the same reason as remove_all_bookmarks: it is a consequence of
+		an already-authorised discussion delete. The generic cascade would check the role
+		permission on GP Activity, and the Gameplan Guest role has no delete there. A guest
+		could then not delete a discussion they started once anyone had closed or pinned it.
+		Granting that role delete on GP Activity is not an option: the doctype has no
+		row-level permission hook, so a guest could delete any activity row on the site.
+		"""
+		for name in frappe.get_all(
+			"GP Activity",
+			filters={"reference_doctype": self.doctype, "reference_name": self.name},
+			pluck="name",
+		):
+			frappe.delete_doc("GP Activity", name, ignore_permissions=True)
 
 	def is_bookmarked_by_current_user(self):
 		"""Deliberately not named `is_bookmarked` — `as_dict` publishes an `is_bookmarked` key.
