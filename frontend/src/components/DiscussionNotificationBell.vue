@@ -28,14 +28,12 @@ import {
 const props = defineProps<{
   /** What the discussion resolves to for this user right now. */
   state: DiscussionNotificationState
-  /** True when the user chose it on this discussion; false when it follows their global level. */
-  isExplicit: boolean
   loading?: boolean
 }>()
 
 const emit = defineEmits<{ (e: 'select', choice: DiscussionNotificationChoice): void }>()
 
 const options = computed(() =>
-  discussionNotificationOptions(props.state, props.isExplicit, (choice) => emit('select', choice)),
+  discussionNotificationOptions(props.state, (choice) => emit('select', choice)),
 )
 </script>
