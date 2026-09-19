@@ -9,7 +9,11 @@ from gameplan.gameplan.doctype.gp_notification.gp_notification import GPNotifica
 from gameplan.mixins.activity import HasActivity
 from gameplan.mixins.archivable import check_if_space_is_archived
 from gameplan.mixins.mentions import HasMentions
-from gameplan.permissions import content_has_permission, task_query_conditions
+from gameplan.permissions import (
+	accessible_project_criterion,
+	content_has_permission,
+	task_query_conditions,
+)
 
 
 class GPTask(HasMentions, HasActivity, Document):
@@ -95,13 +99,28 @@ def get_list(
 		limit=limit + 1,
 		group_by=group_by,
 	)
+	Task = frappe.qb.DocType(doctype)
+	query = apply_task_access_filter(query, Task)
 	if assigned_or_owner:
-		Task = frappe.qb.DocType(doctype)
 		query = query.where((Task.assigned_to == assigned_or_owner) | (Task.owner == assigned_or_owner))
 
 	data = query.run(as_dict=True, debug=debug)
 	frappe.response["has_next_page"] = len(data) > limit
 	return data[:limit]
+
+
+def apply_task_access_filter(query, Task, user=None):
+	"""Restrict a GP Task query to the tasks `user` may see, as can_view_content does.
+
+	A task in a Space follows the Space. A task with no Space is personal, so only its
+	owner sees it.
+	"""
+	user = user or frappe.session.user
+	criterion = accessible_project_criterion(Task.project, user)
+	if criterion is None:
+		return query
+	space_less = Task.project.isnull() | (Task.project == "")
+	return query.where(criterion | (space_less & (Task.owner == user)))
 
 
 def get_permission_query_conditions(user):
