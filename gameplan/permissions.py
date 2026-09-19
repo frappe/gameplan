@@ -1,6 +1,6 @@
 import frappe
 from frappe import _
-from frappe.utils import cint
+from frappe.utils import cint, cstr, get_datetime
 
 import gameplan
 
@@ -67,6 +67,9 @@ def content_has_permission(doc, ptype="read", user=None, **kwargs):
 def can_manage_community(user, team):
 	if is_global_admin(user):
 		return True
+	if gameplan.is_guest(user):
+		# Guests participate; they never manage. See can_manage_space.
+		return False
 	team_name = get_doc_name(team)
 	return is_community_admin(user, team_name)
 
@@ -107,6 +110,13 @@ def can_view_space(user, project):
 def can_manage_space(user, project):
 	if is_global_admin(user):
 		return True
+	if gameplan.is_guest(user):
+		# Guests participate in the spaces they are granted: they comment, react, vote and
+		# post. They never manage a space: no rename, no settings, no move to another
+		# community, no archive, no merge, no member changes. The private-space rule below
+		# is not enough on its own, because a guest can hold a GP Member row on a granted
+		# space (GPProject.join adds one).
+		return False
 	project = get_project_info(project)
 	if not project:
 		return False
@@ -234,6 +244,20 @@ OWNER_ONLY_FIELDS = {
 	"GP Poll": {"stopped_at", "votes", "options", "total_votes"},
 }
 
+# Per-doctype fields that say where content lives, or how a space presents it to everyone.
+# A guest may edit what they wrote, but not these fields, not even on their own content.
+# Changing them moves a post to another space (or a comment or poll to another thread),
+# or pins a post above everyone else's. Those are structural actions, and guests do not
+# take structural actions (see can_manage_space). This covers every route that saves the
+# document: the move methods, a plain save and frappe.client.set_value.
+GUEST_LOCKED_FIELDS = {
+	"GP Discussion": {"project", "team", "pinned_at", "pinned_by", "pin_scope"},
+	"GP Page": {"project", "team"},
+	"GP Task": {"project", "team"},
+	"GP Comment": {"reference_doctype", "reference_name"},
+	"GP Poll": {"discussion"},
+}
+
 # Standard row-level fields ignored when diffing a child table for changes.
 _ROW_META_FIELDS = {
 	"name",
@@ -290,10 +314,14 @@ def can_write_content(user, doc):
 	a guest passes and can reach react(); on the DIRTY in-memory doc at save time it
 	diffs against the DB row and rejects any edit to protected fields.
 
-	Above all of that sits _owner_only_write_allowed: a few fields (a poll's ballot and
-	lifecycle) are the author's even for an editor, so they are ruled out first.
+	Above all of that sit two field locks that apply even to an editor.
+	_owner_only_write_allowed keeps a poll's ballot and lifecycle to its author.
+	_guest_locked_fields_unchanged stops a guest from moving or pinning content, their
+	own included.
 	"""
 	if not _owner_only_write_allowed(user, doc):
+		return False
+	if not _guest_locked_fields_unchanged(user, doc):
 		return False
 	if can_edit_content(user, doc):
 		return True
@@ -314,6 +342,18 @@ def _owner_only_write_allowed(user, doc):
 	if not fields:
 		return True
 	if can_delete_content(user, doc):
+		return True
+	return not _fields_changed(doc, fields)
+
+
+def _guest_locked_fields_unchanged(user, doc):
+	"""Whether a guest's pending changes to `doc` keep clear of its GUEST_LOCKED_FIELDS.
+
+	Checked ahead of the editor rule, because a guest is an editor of their own content,
+	and that must not let them move it or pin it.
+	"""
+	fields = GUEST_LOCKED_FIELDS.get(getattr(doc, "doctype", None))
+	if not fields or not gameplan.is_guest(user):
 		return True
 	return not _fields_changed(doc, fields)
 
@@ -365,9 +405,26 @@ def _any_field_changed(doc, before, fieldnames):
 		if df.fieldtype in ("Table", "Table MultiSelect"):
 			if _child_table_changed(doc.get(fieldname), before.get(fieldname)):
 				return True
-		elif doc.get(fieldname) != before.get(fieldname):
+		elif _comparable(df, doc.get(fieldname)) != _comparable(df, before.get(fieldname)):
 			return True
 	return False
+
+
+def _comparable(df, value):
+	"""`value` in a form that compares equal to the same value read back from the DB.
+
+	An in-memory document keeps whatever type the caller set. A link to an autoincrement
+	doctype is an int until it is saved and read back as a str, and a datetime is a str
+	until it is read back as a datetime. Without this, a document the caller just inserted
+	reports a link or datetime field as changed on its next save.
+	"""
+	if value in (None, ""):
+		return None
+	if df.fieldtype in ("Link", "Dynamic Link"):
+		return cstr(value)
+	if df.fieldtype in ("Date", "Datetime"):
+		return get_datetime(value)
+	return value
 
 
 def _child_table_changed(current_rows, previous_rows):
