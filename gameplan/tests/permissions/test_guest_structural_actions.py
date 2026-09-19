@@ -4,7 +4,7 @@
 """A guest participates in a space. A guest never moves or manages anything.
 
 Rule (Faris, 2026-09-19): in the spaces they are granted, guests comment, reply, react,
-vote, and edit the content they wrote. They do not archive, move or manage anything.
+vote, start discussions, and edit the content they wrote. They do not archive, move or manage anything.
 That means no moving a space to another community, no moving a discussion, page, task,
 comment or poll to another space or thread, no archive or unarchive, no space settings,
 no member changes and no pinning.
@@ -273,6 +273,46 @@ class TestGuestStillParticipates(GuestInJoinedSpacesTestCase):
 					content="<p>Guest reply</p>",
 				).insert()
 				self.assertEqual(comment.owner, self.guest.name)
+
+	def test_guest_can_start_a_discussion_in_a_granted_space(self):
+		with self.as_user(self.guest):
+			discussion = frappe.get_doc(
+				doctype="GP Discussion",
+				title="Guest question",
+				content="<p>Started by the guest</p>",
+				project=self.space.name,
+			).insert()
+
+		self.assertEqual(discussion.owner, self.guest.name)
+		self.assertEqual(str(discussion.project), str(self.space.name))
+
+	def test_guest_can_publish_a_discussion_draft_in_a_granted_space(self):
+		"""The new-discussion page posts through GPDraft.publish."""
+		with self.as_user(self.guest):
+			draft = frappe.get_doc(
+				doctype="GP Draft",
+				type="Discussion",
+				title="Guest draft",
+				content="<p>Drafted by the guest</p>",
+				project=self.space.name,
+			).insert()
+			self.run_doc_method(draft, "publish")
+
+		name = frappe.db.get_value("GP Discussion", {"title": "Guest draft"}, "name")
+		self.assertEqual(frappe.db.get_value("GP Discussion", name, "owner"), self.guest.name)
+
+	def test_guest_cannot_start_a_discussion_outside_granted_spaces(self):
+		ungranted = create_space("Guest Rule Ungranted", self.community, is_private=1, members=[self.member])
+		with self.as_user(self.guest), self.assertRaises(frappe.PermissionError):
+			frappe.get_doc(
+				doctype="GP Discussion", title="Blocked", content="<p>No</p>", project=ungranted.name
+			).insert()
+
+	def test_guest_still_cannot_create_a_page_or_task(self):
+		for doctype in ("GP Page", "GP Task"):
+			with self.subTest(doctype=doctype):
+				with self.as_user(self.guest), self.assertRaises(frappe.PermissionError):
+					frappe.get_doc(doctype=doctype, title="Blocked", project=self.space.name).insert()
 
 	def test_guest_can_react_to_a_discussion_and_a_comment(self):
 		comment = create_comment(self.member_discussion, owner=self.member)

@@ -207,12 +207,15 @@ def _guest_users(project):
 	return {row[0] for row in rows}
 
 
+GUEST_CREATABLE_DOCTYPES = {"GP Discussion", "GP Comment", "GP Poll"}
+
+
 def can_create_content(user, doc):
 	if gameplan.is_guest(user):
-		# Guests participate in the discussions they can reach: a comment, and a poll on
-		# a discussion, are both participation. Everything else (discussions, tasks,
-		# pages) stays closed to them.
-		return doc.doctype in {"GP Comment", "GP Poll"} and can_view_content(user, doc)
+		# Guests participate in the spaces they can reach: starting a discussion,
+		# replying with a comment, and adding a poll to a discussion are all
+		# participation. Tasks and pages stay closed to them.
+		return doc.doctype in GUEST_CREATABLE_DOCTYPES and can_view_content(user, doc)
 	if not get_content_project(doc):
 		return is_global_admin(user) or not get_doc_value(doc, "owner") or get_doc_value(doc, "owner") == user
 	return can_view_content(user, doc)
