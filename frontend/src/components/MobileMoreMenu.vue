@@ -66,7 +66,7 @@
       </section>
     </div>
 
-    <BottomSheet v-if="DevUserList" v-model:open="devUserSheetOpen" title="Switch user">
+    <BottomSheet v-if="showDevUserSwitcher" v-model:open="devUserSheetOpen" title="Switch user">
       <!-- Capped so the list scrolls on its own. The filter and the error panel
            then stay in view instead of scrolling away. -->
       <component :is="DevUserList" class="max-h-[70dvh] pb-6" @close="devUserSheetOpen = false" />
@@ -80,6 +80,7 @@ import { useRouter, type RouteLocationRaw } from 'vue-router'
 import { BottomSheet } from 'frappe-ui'
 import { useSessionUser } from '@/data/users'
 import { session } from '@/data/session'
+import { useIsMobile } from '@/utils/useIsMobile'
 import { useTheme, type Theme } from '@/utils/useTheme'
 
 interface MoreItem {
@@ -104,6 +105,10 @@ const DevUserList = import.meta.env.DEV
   ? defineAsyncComponent(() => import('@/components/DevUserList.vue'))
   : null
 const devUserSheetOpen = ref(false)
+// This page still renders on a desktop viewport, where the account menu
+// (UserDropdown.vue) holds the switcher. One entry point per layout.
+const isMobileViewport = useIsMobile()
+const showDevUserSwitcher = computed(() => Boolean(DevUserList) && isMobileViewport.value)
 
 const THEME_META: Record<Theme, { label: string; icon: string }> = {
   light: { label: 'Light', icon: 'lucide-sun' },
@@ -152,7 +157,7 @@ const itemGroups = computed<MoreItemGroup[]>(() => {
         { label: 'Log out', icon: 'lucide-log-out', onClick: () => session.logout.submit() },
       ],
     },
-    ...(DevUserList
+    ...(showDevUserSwitcher.value
       ? [
           {
             label: 'Developer',
