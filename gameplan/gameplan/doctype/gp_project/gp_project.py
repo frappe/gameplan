@@ -69,7 +69,7 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 		self.db_set("tasks_count", total_tasks)
 
 	@frappe.whitelist(methods=["POST"])
-	def move_to_team(self, team=None):
+	def move_to_team(self, team: str | None = None):
 		# An empty team moves the Space to Uncategorized. "" and None mean the same.
 		team = team or None
 		if (self.team or None) == team:

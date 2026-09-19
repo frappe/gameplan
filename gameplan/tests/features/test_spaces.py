@@ -258,6 +258,14 @@ class TestSpaceCommunityMoveAccess(GameplanTestCase):
 
 		self.assertIsNone(self._team())
 
+	def test_a_non_string_team_is_refused(self):
+		# frappe.db.get_value treats a dict as filters, so an untyped team would match
+		# any community the filters describe.
+		with self.assertRaises(frappe.FrappeTypeError):
+			self._move({"is_private": 0})
+
+		self.assertEqual(self._team(), self.origin.name)
+
 
 class TestBulkSpaceMembership(GameplanTestCase):
 	"""`join_spaces` / `leave_spaces` back the sidebar's multi-select membership editor."""
