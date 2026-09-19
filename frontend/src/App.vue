@@ -12,7 +12,11 @@
     <!-- usersReady, not users.isFinished: a mid-session reload of the user list would
          flip isFinished back to false and unmount the open settings dialog. -->
     <SettingsDialog v-if="$session.isLoggedIn && usersReady" />
-    <component :is="DevUserSwitcher" v-if="DevUserSwitcher && $session.isLoggedIn && usersReady" />
+    <!-- On mobile the switcher is a row on the You page (MobileMoreMenu.vue). -->
+    <component
+      :is="DevUserSwitcher"
+      v-if="DevUserSwitcher && !isMobileViewport && $session.isLoggedIn && usersReady"
+    />
   </FrappeUIProvider>
 </template>
 
