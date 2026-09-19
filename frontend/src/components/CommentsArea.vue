@@ -538,7 +538,10 @@ const composerEditorMaxHeightStyle = computed(() => `${composerEditorMaxHeight.v
 const composerEditorMinHeightStyle = computed(
   () => `${composerEditorMinHeight.value ?? MIN_COMPOSER_EDITOR_HEIGHT}px`,
 )
-const mobileComposerEditorHeightStyle = 'calc(100dvh - var(--mobile-header-height) - 10.5rem)'
+// 9.75rem is everything in the full page composer that is not the editor: 9rem of
+// card padding, author row and actions, plus the 0.75rem the expanded composer keeps
+// under its actions row (`py-3`), so Discard and Submit do not move between the two.
+const mobileComposerEditorHeightStyle = 'calc(100dvh - var(--mobile-header-height) - 9.75rem)'
 const mobileComposerEditorShortHeightStyle = '12rem'
 const isComposerCollapsed = computed(() => !showCommentBox.value || composerMinimized.value)
 const isComposerFullscreen = computed(
