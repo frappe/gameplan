@@ -4,7 +4,7 @@
     <slot />
 
     <template #nav>
-      <MobileNav v-if="!isNewCommentOpen">
+      <MobileNav v-if="!hideMobileNav">
         <MobileNavItem
           label="Home"
           icon="lucide-home"
@@ -50,16 +50,24 @@ defineOptions({
 })
 
 import { computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { MobileShell, MobileNav, MobileNavItem } from 'frappe-ui'
-import { isNewCommentOpen } from '@/data/newComment'
 import { useSessionUser } from '@/data/users'
 import ReadOnlyBanner from './ReadOnlyBanner.vue'
 import UserAvatar from './UserAvatar.vue'
 import { readOnlyMode } from '@/data/readOnlyMode'
 
 const route = useRoute()
+const router = useRouter()
 const sessionUser = useSessionUser()
+
+// The app mounts before the first navigation settles, so on a reload `route` is still
+// the empty start location and its meta says nothing. Read the meta off the URL being
+// loaded until then, or the nav shows for a moment on a page that hides it.
+const hideMobileNav = computed(() => {
+  const current = route.matched.length ? route : router.resolve(router.options.history.location)
+  return Boolean(current.meta.hideMobileNav)
+})
 
 const onCommunityRoute = computed(() => route.matched.some((record) => record.meta?.communityScope))
 

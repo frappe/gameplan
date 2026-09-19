@@ -77,17 +77,15 @@
       </template>
     </div>
 
+    <!-- In an installed PWA the collapsed button clears the home indicator: the 1rem
+         the bottom nav uses on other pages, or the safe-area inset where that is larger. -->
     <div
       v-if="!readOnlyMode && !disableNewComment && !hideNewComment"
-      class="pointer-events-none fixed left-0 right-0 z-[2] w-full print:hidden sm:left-[274px] sm:right-1 sm:w-auto"
+      class="pointer-events-none fixed bottom-0 left-0 right-0 z-[2] w-full print:hidden sm:left-[274px] sm:right-1 sm:w-auto"
       :class="[
-        isComposerFullscreen
-          ? 'bottom-0 top-[var(--mobile-header-height)] z-20'
-          : showCommentBox && !composerMinimized
-            ? 'bottom-0 mt-2'
-            : 'bottom-14 mt-2 sm:bottom-0 standalone:bottom-[4.5rem] standalone:sm:bottom-0',
-        !showCommentBox || composerMinimized
-          ? 'border-t border-outline-gray-2 bg-surface-base sm:border-t-0 sm:bg-transparent'
+        isComposerFullscreen ? 'top-[var(--mobile-header-height)] z-20' : 'mt-2',
+        isComposerCollapsed
+          ? 'standalone:bottom-[max(1rem,env(safe-area-inset-bottom))] standalone:sm:bottom-0'
           : '',
       ]"
       ref="addComment"
@@ -96,39 +94,33 @@
         <div
           ref="composerSurface"
           data-comment-composer-surface
-          class="discussion-container bg-surface-base sm:bg-transparent"
-          :class="isComposerFullscreen ? 'h-full py-0' : 'py-3'"
+          class="discussion-container"
+          :class="[
+            isComposerFullscreen ? 'h-full py-0' : 'py-3',
+            isComposerCollapsed ? '' : 'bg-surface-base sm:bg-transparent',
+          ]"
         >
           <div v-if="!showCommentBox" class="sm:-mx-3">
             <button
               type="button"
-              class="flex w-full items-center gap-3 text-left sm:gap-0 sm:rounded-6 sm:bg-surface-elevation-2 sm:px-2 sm:py-2 sm:text-base sm:text-ink-gray-5 sm:hover:bg-surface-elevation-3 sm:shadow-md"
+              class="flex w-full items-center rounded-6 bg-surface-elevation-2 px-2 py-2 text-left text-base text-ink-gray-5 shadow-md hover:bg-surface-elevation-3"
               @click="openCommentBox"
             >
-              <UserAvatar class="sm:hidden" :user="$user().name" size="xl" />
-              <UserAvatar class="mr-3 hidden sm:inline-block" :user="$user().name" size="sm" />
-              <span
-                class="flex h-8 min-w-0 flex-1 items-center rounded-5 bg-surface-gray-2 px-3 text-md text-ink-gray-5 sm:hidden"
-              >
-                Add a comment
-              </span>
-              <span class="hidden sm:inline">Add a comment</span>
+              <UserAvatar class="mr-3" :user="$user().name" size="sm" />
+              Add a comment
             </button>
           </div>
           <div
             v-else-if="composerMinimized"
-            class="flex cursor-pointer items-center gap-3 text-left focus:outline-none sm:-mx-3 sm:gap-0 sm:rounded-6 sm:bg-surface-elevation-2 sm:py-1 sm:pl-2 sm:pr-1 sm:text-base sm:text-ink-gray-5 sm:shadow-md sm:hover:bg-surface-elevation-3 sm:focus:bg-surface-elevation-3"
+            class="flex cursor-pointer items-center rounded-6 bg-surface-elevation-2 py-1 pl-2 pr-1 text-left text-base text-ink-gray-5 shadow-md hover:bg-surface-elevation-3 focus:bg-surface-elevation-3 focus:outline-none sm:-mx-3"
             role="button"
             tabindex="0"
             @click="restoreComposer"
             @keydown.enter.prevent="restoreComposer"
             @keydown.space.prevent="restoreComposer"
           >
-            <UserAvatar class="sm:hidden" :user="$user().name" size="xl" />
-            <UserAvatar class="mr-3 hidden sm:inline-block" :user="$user().name" size="sm" />
-            <span
-              class="flex h-8 min-w-0 flex-1 items-center truncate rounded-5 bg-surface-gray-2 px-3 text-md text-ink-gray-5 sm:h-auto sm:bg-transparent sm:px-0 sm:text-base sm:text-ink-gray-6"
-            >
+            <UserAvatar class="mr-3" :user="$user().name" size="sm" />
+            <span class="min-w-0 flex-1 truncate text-ink-gray-6">
               {{ minimizedLabel }}
             </span>
             <Tooltip text="Expand">
@@ -287,7 +279,6 @@ import { subscribeToDoc, useSocket, type NewActivityEvent } from '@/socket'
 import { GPActivity, GPComment, GPPoll } from '@/types/doctypes'
 import type { Editor } from '@tiptap/vue-3'
 import { tags } from '@/data/tags'
-import { isNewCommentOpen } from '@/data/newComment'
 import { useRichQuotes } from '@/components/RichQuoteExtension/useRichQuotes'
 import { useDraftSync } from '@/data/useDraftSync'
 import { useSessionUser } from '@/data/users'
@@ -549,8 +540,12 @@ const composerEditorMaxHeightStyle = computed(() => `${composerEditorMaxHeight.v
 const composerEditorMinHeightStyle = computed(
   () => `${composerEditorMinHeight.value ?? MIN_COMPOSER_EDITOR_HEIGHT}px`,
 )
-const mobileComposerEditorHeightStyle = 'calc(100dvh - var(--mobile-header-height) - 10.5rem)'
+// 9.75rem is everything in the full page composer that is not the editor: 9rem of
+// card padding, author row and actions, plus the 0.75rem the expanded composer keeps
+// under its actions row (`py-3`), so Discard and Submit do not move between the two.
+const mobileComposerEditorHeightStyle = 'calc(100dvh - var(--mobile-header-height) - 9.75rem)'
 const mobileComposerEditorShortHeightStyle = '12rem'
+const isComposerCollapsed = computed(() => !showCommentBox.value || composerMinimized.value)
 const isComposerFullscreen = computed(
   () =>
     isMobileViewport.value &&
@@ -676,7 +671,6 @@ function resetCommentState() {
     ],
   }
   highlightedItem.value = null
-  isNewCommentOpen.value = false
 }
 
 async function submitComment() {
@@ -811,7 +805,6 @@ async function discardComment() {
 }
 
 watch(showCommentBox, (val) => {
-  updateGlobalCommentState()
   if (val && !composerMinimized.value) {
     nextTick(() => {
       editorObject.value?.commands.focus()
@@ -821,7 +814,6 @@ watch(showCommentBox, (val) => {
 })
 
 watch(composerMinimized, (minimized) => {
-  updateGlobalCommentState()
   if (!minimized && showCommentBox.value) {
     nextTick(() => {
       editorObject.value?.commands.focus()
@@ -912,7 +904,6 @@ onUnmounted(() => {
   mutationObserver?.disconnect()
   resizeObserver?.disconnect()
   stopComposerResize()
-  isNewCommentOpen.value = false
 })
 
 watch(
@@ -947,10 +938,6 @@ function updateComposerHeight() {
   emit('composer-resize')
 }
 
-function updateGlobalCommentState() {
-  isNewCommentOpen.value = showCommentBox.value && !composerMinimized.value
-}
-
 function loadComposerState() {
   composerStateLoaded.value = false
   const state = readComposerState()
@@ -963,7 +950,6 @@ function loadComposerState() {
   newCommentType.value = state.type ?? 'Comment'
   newPoll.value = normalizePoll(state.poll)
   composerStateLoaded.value = true
-  updateGlobalCommentState()
 }
 
 function saveComposerState() {

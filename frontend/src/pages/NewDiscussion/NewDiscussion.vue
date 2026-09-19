@@ -35,7 +35,7 @@
         v-if="author.name === sessionUser.name"
         :inert="isDraftLoading"
         :aria-disabled="isDraftLoading"
-        class="fixed inset-x-0 bottom-14 z-20 border-t bg-surface-base px-2 pt-1 pb-2 shadow-[0_-1px_3px_rgba(15,23,42,0.06)] sm:hidden standalone:bottom-[4.5rem]"
+        class="fixed inset-x-0 bottom-0 z-20 border-t bg-surface-base px-2 pt-1 pb-2 shadow-[0_-1px_3px_rgba(15,23,42,0.06)] sm:hidden standalone:pb-[max(1.5rem,env(safe-area-inset-bottom))]"
         :class="{ 'opacity-50': isDraftLoading }"
       >
         <div
