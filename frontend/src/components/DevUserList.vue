@@ -42,8 +42,8 @@
 
 <script setup lang="ts">
 /**
- * The "become somebody else" list, for dev builds only. The desktop popover
- * (`DevUserSwitcher.vue`) and the mobile You page sheet both render it.
+ * The "become somebody else" list, for dev builds only. The account menu
+ * dialog (`UserDropdown.vue`) and the mobile You page sheet both render it.
  *
  * The switch is password-less, through an endpoint gated on running as a dev
  * server with an explicit site config key — see `gameplan/dev_user_switcher.py`,

@@ -66,9 +66,9 @@
       </section>
     </div>
 
-    <BottomSheet v-if="showDevUserSwitcher" v-model:open="devUserSheetOpen" title="Switch user">
-      <!-- Capped so the list scrolls on its own, as in the popover. The filter
-           and the error panel then stay in view instead of scrolling away. -->
+    <BottomSheet v-if="DevUserList" v-model:open="devUserSheetOpen" title="Switch user">
+      <!-- Capped so the list scrolls on its own. The filter and the error panel
+           then stay in view instead of scrolling away. -->
       <component :is="DevUserList" class="max-h-[70dvh] pb-6" @close="devUserSheetOpen = false" />
     </BottomSheet>
   </div>
@@ -80,7 +80,6 @@ import { useRouter, type RouteLocationRaw } from 'vue-router'
 import { BottomSheet } from 'frappe-ui'
 import { useSessionUser } from '@/data/users'
 import { session } from '@/data/session'
-import { useIsMobile } from '@/utils/useIsMobile'
 import { useTheme, type Theme } from '@/utils/useTheme'
 
 interface MoreItem {
@@ -99,16 +98,12 @@ interface MoreItemGroup {
 const router = useRouter()
 const sessionUser = useSessionUser()
 const { cycleTheme, currentTheme } = useTheme()
-// Same compile-time guard as the floating switcher in App.vue: a production
+// Same compile-time guard as the account menu (UserDropdown.vue): a production
 // build folds this to null and never bundles the list.
 const DevUserList = import.meta.env.DEV
   ? defineAsyncComponent(() => import('@/components/DevUserList.vue'))
   : null
 const devUserSheetOpen = ref(false)
-// This page still renders on a desktop viewport, where App.vue already shows
-// the floating switcher. One switcher at a time.
-const isMobileViewport = useIsMobile()
-const showDevUserSwitcher = computed(() => Boolean(DevUserList) && isMobileViewport.value)
 
 const THEME_META: Record<Theme, { label: string; icon: string }> = {
   light: { label: 'Light', icon: 'lucide-sun' },
@@ -157,7 +152,7 @@ const itemGroups = computed<MoreItemGroup[]>(() => {
         { label: 'Log out', icon: 'lucide-log-out', onClick: () => session.logout.submit() },
       ],
     },
-    ...(showDevUserSwitcher.value
+    ...(DevUserList
       ? [
           {
             label: 'Developer',
