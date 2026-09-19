@@ -359,6 +359,63 @@ class TestGuestStillParticipates(GuestInJoinedSpacesTestCase):
 		self.assertFalse(frappe.db.exists("GP Comment", comment.name))
 		self.assertFalse(frappe.db.exists("GP Poll", poll.name))
 
+	def test_guest_can_close_and_reopen_own_discussion(self):
+		with self.as_user(self.guest):
+			self.run_doc_method(
+				frappe.get_doc("GP Discussion", self.guest_discussion.name), "close_discussion"
+			)
+			self.assertIsNotNone(self.stored(self.guest_discussion).closed_at)
+			self.run_doc_method(
+				frappe.get_doc("GP Discussion", self.guest_discussion.name), "reopen_discussion"
+			)
+
+		self.assertIsNone(self.stored(self.guest_discussion).closed_at)
+
+	def test_guest_cannot_close_a_members_discussion(self):
+		with self.as_user(self.guest), self.assertRaises(frappe.PermissionError):
+			self.run_doc_method(
+				frappe.get_doc("GP Discussion", self.member_discussion.name), "close_discussion"
+			)
+
+		self.assertIsNone(self.stored(self.member_discussion).closed_at)
+
+	def test_guest_can_delete_own_discussion_with_its_replies(self):
+		"""The delete cascades to other users' comments, polls, visits and activity."""
+		comment = create_comment(self.guest_discussion, owner=self.member)
+		poll = create_poll("Member poll", self.guest_discussion, owner=self.member)
+		with self.as_user(self.member):
+			frappe.get_doc("GP Discussion", self.guest_discussion.name).track_visit()
+		with self.as_user(self.guest):
+			# Closing logs a GP Activity row, which the delete has to take with it.
+			frappe.get_doc("GP Discussion", self.guest_discussion.name).close_discussion()
+			frappe.delete_doc("GP Discussion", self.guest_discussion.name)
+
+		self.assertFalse(frappe.db.exists("GP Discussion", self.guest_discussion.name))
+		self.assertFalse(frappe.db.exists("GP Comment", comment.name))
+		self.assertFalse(frappe.db.exists("GP Poll", poll.name))
+		self.assertFalse(
+			frappe.db.exists(
+				"GP Activity",
+				{"reference_doctype": "GP Discussion", "reference_name": self.guest_discussion.name},
+			)
+		)
+
+	def test_guest_cannot_delete_a_members_discussion(self):
+		self.assert_not_allowed(self.member_discussion, "delete", self.guest)
+		with self.as_user(self.guest), self.assertRaises(frappe.PermissionError):
+			frappe.delete_doc("GP Discussion", self.member_discussion.name)
+
+		self.assertTrue(frappe.db.exists("GP Discussion", self.member_discussion.name))
+
+	def test_guest_still_cannot_delete_own_page_or_task(self):
+		page = create_page("Guest page", self.space, owner=self.guest)
+		task = create_task("Guest task", self.space, owner=self.guest)
+		for doc in (page, task):
+			with self.subTest(doctype=doc.doctype):
+				with self.as_user(self.guest), self.assertRaises(frappe.PermissionError):
+					frappe.delete_doc(doc.doctype, doc.name)
+				self.assertTrue(frappe.db.exists(doc.doctype, doc.name))
+
 	def test_guest_can_bookmark_and_mark_read_or_unread(self):
 		with self.as_user(self.guest):
 			discussion = frappe.get_doc("GP Discussion", self.member_discussion.name)
