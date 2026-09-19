@@ -27,6 +27,8 @@ describe('Mobile discussion creation', () => {
       .should('be.visible')
       .type('Mobile discussion')
       .should('have.value', 'Mobile discussion')
+    // The composer drops the bottom nav so its toolbar sits on the bottom edge.
+    cy.get('[data-slot="mobile-nav"]').should('not.exist')
     cy.get('div[contenteditable=true]')
       .should('be.visible')
       .click()

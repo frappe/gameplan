@@ -230,6 +230,7 @@ const routes: RouteRecordRaw[] = [
     path: '/page/:pageId/:slug?',
     component: () => import('@/pages/Page.vue'),
     props: true,
+    meta: { hideMobileNav: true },
   },
   {
     path: '/people',
@@ -299,7 +300,7 @@ const routes: RouteRecordRaw[] = [
         path: 'pages/:pageId/:slug?',
         component: () => import('@/pages/Page.vue'),
         props: true,
-        meta: { hideHeader: true, communityScope: true },
+        meta: { hideHeader: true, communityScope: true, hideMobileNav: true },
       },
       {
         name: 'SpaceTasks',
@@ -328,12 +329,13 @@ const routes: RouteRecordRaw[] = [
     name: 'NewDiscussion',
     path: '/community/:communityId/new-discussion',
     component: () => import('@/pages/NewDiscussion/NewDiscussion.vue'),
-    meta: { communityScope: true },
+    meta: { communityScope: true, hideMobileNav: true },
   },
   {
     name: 'LegacyNewDiscussion',
     path: '/new-discussion',
     component: () => import('@/pages/NewDiscussion/NewDiscussion.vue'),
+    meta: { hideMobileNav: true },
   },
   {
     name: 'NewSpace',
