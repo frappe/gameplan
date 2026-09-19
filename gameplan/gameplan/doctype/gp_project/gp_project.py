@@ -70,14 +70,14 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 
 	@frappe.whitelist(methods=["POST"])
 	def move_to_team(self, team=None):
-		if not team:
-			frappe.throw(_("Select a community to move this space to"))
-		if self.team == team:
+		# An empty team moves the Space to Uncategorized. "" and None mean the same.
+		team = team or None
+		if (self.team or None) == team:
 			return
 		# The save below checks write on the Space only, and every member of a private
 		# Space may manage it. Without this, a member could move the Space into a
 		# private Community they are not in.
-		if not can_view_community(frappe.session.user, team):
+		if team and not can_view_community(frappe.session.user, team):
 			frappe.throw(_("You do not have access to this community"), frappe.PermissionError)
 		self.team = team
 		self.save()

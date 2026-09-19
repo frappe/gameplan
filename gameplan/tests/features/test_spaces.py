@@ -253,11 +253,10 @@ class TestSpaceCommunityMoveAccess(GameplanTestCase):
 
 		self.assertEqual(self._team(), public.name)
 
-	def test_moving_a_space_needs_a_destination_community(self):
-		with self.assertRaises(frappe.ValidationError):
-			self._move(None)
+	def test_member_can_move_a_space_to_uncategorized(self):
+		self._move(None)
 
-		self.assertEqual(self._team(), self.origin.name)
+		self.assertIsNone(self._team())
 
 
 class TestBulkSpaceMembership(GameplanTestCase):
