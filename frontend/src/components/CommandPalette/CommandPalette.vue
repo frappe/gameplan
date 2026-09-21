@@ -25,10 +25,10 @@
             :aria-activedescendant="activeItemId"
           />
         </div>
-        <div
+        <ScrollArea
           :id="commandPaletteListId"
-          ref="scrollContainerRef"
-          class="max-h-96 overflow-auto border-t border-outline-gray-1 dark:border-outline-gray-2"
+          viewport-class="max-h-96"
+          class="border-t border-outline-gray-1 dark:border-outline-gray-2"
           role="listbox"
           aria-label="Command palette results"
           @click="inputRef?.focus()"
@@ -72,7 +72,7 @@
               </div>
             </div>
           </div>
-        </div>
+        </ScrollArea>
       </div>
       <div
         class="mt-2 flex items-center justify-between border-t border-outline-gray-1 px-2.5 py-2 text-xs text-ink-gray-6 dark:border-outline-gray-2"
@@ -111,7 +111,7 @@
 import { h, ref, computed, onBeforeUnmount, watch, nextTick, markRaw, useTemplateRef } from 'vue'
 import { useEventListener, useMediaQuery } from '@vueuse/core'
 import { useRouter } from 'vue-router'
-import { Dialog, dayjs, debounce, useNewDoc } from 'frappe-ui'
+import { Dialog, ScrollArea, dayjs, debounce, useNewDoc } from 'frappe-ui'
 import { useCall } from '@/data/offlineRevalidation'
 import { activeUsers, isGameplanAdmin, useSessionUser, useUser } from '@/data/users'
 import ItemProject from './ItemProject.vue'
@@ -140,7 +140,6 @@ import { useCommandPaletteSearch } from './useCommandPaletteSearch'
 
 const query = ref('')
 const inputRef = useTemplateRef<HTMLInputElement>('inputRef')
-const scrollContainerRef = useTemplateRef<HTMLDivElement>('scrollContainerRef')
 const activeItemRef = ref<HTMLDivElement | null>(null)
 const commandPaletteListId = 'command-palette-listbox'
 
