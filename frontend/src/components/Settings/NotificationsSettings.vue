@@ -4,67 +4,97 @@
   </SettingsHeader>
 
   <SettingsBody>
-    <div class="space-y-11 pt-6">
+    <div class="space-y-7 pt-6">
       <section>
-        <h3 class="mb-2 text-base-medium text-ink-gray-8">How and when to reach me</h3>
         <div class="divide-y divide-outline-gray-1">
-          <SettingsRow
-            title="Receive notifications"
-            :description="
-              receiveNotifications
-                ? `Push and email reach you between these times on these days, in ${timezoneLabel}`
-                : 'Push and email are held; a card recaps what you missed when you switch back on'
-            "
-          >
-            <Switch
-              :model-value="receiveNotifications"
-              @update:model-value="setReceiveNotifications"
-            />
-          </SettingsRow>
+          <!-- SettingsRow's shape, written out because its description is plain text and
+               this one carries the Change link: "Thursdays, all day · Asia/Gaza · Change". -->
+          <div class="flex items-center gap-8 py-3.5" :class="editingSchedule && '!pb-1'">
+            <div class="min-w-0 flex-1">
+              <div class="text-base-medium text-ink-gray-8">Receive notifications</div>
+              <div class="mt-1 text-base leading-5 text-ink-gray-6">
+                <template v-if="receiveNotifications">
+                  {{ scheduleSummary }} · {{ timezoneLabel }} ·
+                  <button
+                    type="button"
+                    class="text-ink-gray-8 hover:underline"
+                    @click="editingSchedule = !editingSchedule"
+                  >
+                    {{ editingSchedule ? 'Done' : 'Change' }}
+                  </button>
+                </template>
+                <template v-else>
+                  Push and email are held; a card recaps what you missed when you switch back on
+                </template>
+              </div>
+            </div>
+            <div class="flex shrink-0 items-start justify-end">
+              <Switch
+                :model-value="receiveNotifications"
+                @update:model-value="setReceiveNotifications"
+              />
+            </div>
+          </div>
 
           <!-- The hours unfold under the switch: all day, every day until narrowed, so
                there is nothing to turn on. Native time inputs: hour, minute and am/pm are
                each a segment you click and step; the browser's clock popup is hidden
                (index.css) so there is no endless list to scroll. -->
-          <!-- Part of the row above, so no divider between them (the section's divide-y
-               would draw one). -->
-          <div v-if="receiveNotifications" class="space-y-3 pb-4 !border-t-0">
-            <div class="flex flex-wrap items-center gap-2 text-base text-ink-gray-7">
-              <span>From</span>
-              <TextInput
-                type="time"
-                class="active-hours-time w-[6.5rem]"
-                :model-value="activeHoursStart"
-                @update:model-value="(value: string) => setActiveHours({ start: value })"
-              />
-              <span>to</span>
-              <TextInput
-                type="time"
-                class="active-hours-time w-[6.5rem]"
-                :model-value="activeHoursEnd"
-                @update:model-value="(value: string) => setActiveHours({ end: value })"
-              />
-              <span v-if="isOvernight" class="text-sm text-ink-gray-5">(next day)</span>
-            </div>
+          <!-- Two rows in the page's own shape — label left, control right — but read as
+               part of the switch's row: no dividers, tighter, with the sub-labels in the muted
+               body weight rather than a row title's. -->
+          <template v-if="receiveNotifications && editingSchedule">
+            <SettingsRow
+              title="Hours"
+              class="!border-t-0 !py-2 [&>div:first-child>*]:!text-base [&>div:first-child>*]:!font-normal [&>div:first-child>*]:!text-ink-gray-7"
+            >
+              <div class="flex flex-wrap items-center justify-end gap-2 text-base text-ink-gray-7">
+                <TextInput
+                  type="time"
+                  class="active-hours-time w-[6.5rem]"
+                  :model-value="activeHoursStart"
+                  @update:model-value="(value: string) => setActiveHours({ start: value })"
+                />
+                <span>to</span>
+                <TextInput
+                  type="time"
+                  class="active-hours-time w-[6.5rem]"
+                  :model-value="activeHoursEnd"
+                  @update:model-value="(value: string) => setActiveHours({ end: value })"
+                />
+                <span v-if="isOvernight" class="text-sm text-ink-gray-5">(next day)</span>
+              </div>
+            </SettingsRow>
+
             <!-- The last selected day cannot be unpicked: a schedule with no days is not a
                  schedule (the server refuses it too), and there is no other day to pick. -->
-            <div class="flex flex-wrap gap-1.5" role="group" aria-label="Active days">
-              <!-- Every day is a box: an unpicked one is outlined, a picked one filled with
-                   the soft grey, so the row reads as seven toggles, none of them shouting. -->
-              <Button
-                v-for="day in allWeekdays"
-                :key="day"
-                size="sm"
-                :variant="activeHoursDays.includes(day) ? 'subtle' : 'outline'"
-                :aria-pressed="activeHoursDays.includes(day)"
-                :disabled="activeHoursDays.length === 1 && activeHoursDays.includes(day)"
-                :label="day"
-                @click="toggleDay(day)"
-              />
-            </div>
-          </div>
+            <SettingsRow
+              title="Days"
+              class="!border-t-0 !pb-4 !pt-2 [&>div:first-child>*]:!text-base [&>div:first-child>*]:!font-normal [&>div:first-child>*]:!text-ink-gray-7"
+            >
+              <div class="flex flex-wrap justify-end gap-1.5" role="group" aria-label="Active days">
+                <!-- Seven toggles: a picked day is the solid button, an unpicked one the soft
+                     grey, so the picked set reads at a glance without any borders. The last
+                     picked day is not disabled — a disabled solid button greys out and reads
+                     as unpicked — it simply ignores the click (toggleDay keeps one day). -->
+                <Button
+                  v-for="day in allWeekdays"
+                  :key="day"
+                  size="sm"
+                  :variant="activeHoursDays.includes(day) ? 'solid' : 'subtle'"
+                  :aria-pressed="activeHoursDays.includes(day)"
+                  :label="day"
+                  @click="toggleDay(day)"
+                />
+              </div>
+            </SettingsRow>
+          </template>
 
-          <SettingsRow title="Reach me by" :description="channelDescription">
+          <SettingsRow
+            v-if="receiveNotifications"
+            title="Reach me by"
+            :description="channelDescription"
+          >
             <Select
               :options="channelOptions"
               :model-value="notificationChannel"
@@ -104,21 +134,14 @@
           >
             <Button label="Manage" @click="showCommunitiesSettings(communityState.id, 'spaces')" />
           </SettingsRow>
-        </div>
-      </section>
 
-      <section>
-        <h3 class="mb-2 text-base-medium text-ink-gray-8">Activity on my content</h3>
-        <div class="divide-y divide-outline-gray-1">
-          <SettingsRow
-            title="Reactions"
-            description="When someone reacts to your discussions, comments or polls"
-          >
-            <Switch :model-value="notifyReactions" @update:model-value="setNotifyReactions" />
-          </SettingsRow>
-
-          <SettingsRow title="Poll votes" description="When someone votes on a poll you created">
-            <Switch :model-value="notifyPollVotes" @update:model-value="setNotifyPollVotes" />
+          <!-- One pick over the two stored switches (notify_reactions, notify_poll_votes). -->
+          <SettingsRow title="Activity on my content">
+            <Select
+              :options="activityOptions"
+              :model-value="activityChoice"
+              @update:model-value="setActivityChoice"
+            />
           </SettingsRow>
         </div>
       </section>
@@ -126,7 +149,7 @@
       <section>
         <h3 class="mb-2 text-base-medium text-ink-gray-8">Summary email</h3>
         <div class="divide-y divide-outline-gray-1">
-          <SettingsRow title="Enable email digests" description="Send a summary of missed activity">
+          <SettingsRow title="Enable email digests" :description="emailDigestDescription">
             <Switch v-model="emailDigestEnabled" />
           </SettingsRow>
 
@@ -144,10 +167,6 @@
             description="Choose the weekday for your digest"
           >
             <Select :options="emailDigestDayOptions" v-model="selectedDigestDayOfWeek" />
-          </SettingsRow>
-
-          <SettingsRow title="Last sent" description="The most recent digest email sent to you">
-            <div class="text-base text-ink-gray-6">{{ emailDigestLastSentOn }}</div>
           </SettingsRow>
         </div>
       </section>
@@ -177,6 +196,8 @@ import { showCommunitiesSettings } from '@/components/Settings'
 import { communityState } from '@/data/communityState'
 import { useSessionUser, type EmailDigestDayOfWeek, type EmailDigestFrequency } from '@/data/users'
 import {
+  allDayEnd,
+  allDayStart,
   allWeekdays,
   currentActiveHoursDays as activeHoursDays,
   currentActiveHoursEnd as activeHoursEnd,
@@ -190,8 +211,7 @@ import {
   setActiveHours,
   setNotificationChannel,
   setNotificationLevel,
-  setNotifyPollVotes,
-  setNotifyReactions,
+  setActivityNotifications,
   setReceiveNotifications,
   setWatchOwnDiscussions,
   type NotificationChannel,
@@ -220,17 +240,74 @@ const channelOptions: Array<{ value: NotificationChannel; label: string }> = [
   { value: 'In-app', label: 'In-app only' },
   { value: 'Email', label: 'Email' },
 ]
+type ActivityChoice = 'both' | 'reactions' | 'polls' | 'none'
+const activityOptions: Array<{ label: string; value: ActivityChoice }> = [
+  { label: 'Reactions and polls', value: 'both' },
+  { label: 'Only reactions', value: 'reactions' },
+  { label: 'Only poll votes', value: 'polls' },
+  { label: 'None', value: 'none' },
+]
+const activityChoice = computed<ActivityChoice>(() => {
+  if (notifyReactions.value && notifyPollVotes.value) return 'both'
+  if (notifyReactions.value) return 'reactions'
+  if (notifyPollVotes.value) return 'polls'
+  return 'none'
+})
+function setActivityChoice(value: ActivityChoice) {
+  setActivityNotifications(
+    value === 'both' || value === 'reactions',
+    value === 'both' || value === 'polls',
+  )
+}
+
 const channelDescription = computed(() =>
   notificationChannel.value === 'Email'
-    ? 'One email an hour with everything new since the last one, on top of the inbox'
-    : 'The inbox and the bell only; nothing leaves Gameplan',
+    ? 'One email an hour with everything new since the last one'
+    : 'The inbox and the bell only',
 )
 
-// The schedule is kept in the user's own zone on the server (User.time_zone, else the
-// site's); this names the one the browser is in, which is what the user set it by.
-const timezoneLabel =
-  getConfig('localTimezone') || Intl.DateTimeFormat().resolvedOptions().timeZone || 'local time'
+// The schedule runs in the timezone from Preferences (User.time_zone), falling back to the
+// site's when none is set — the same rule the server applies.
+const timezoneLabel = computed(
+  () => sessionUser.time_zone || getConfig('systemTimezone') || 'the site timezone',
+)
 // 23:59 is "end of day", not a wrap into tomorrow (the server reads it the same way).
+const editingSchedule = ref(false)
+
+// "Thursdays, all day" / "Weekdays, 9:00 AM – 6:00 PM" / "Every day, all day".
+const dayNames: Record<Weekday, string> = {
+  Mon: 'Mondays',
+  Tue: 'Tuesdays',
+  Wed: 'Wednesdays',
+  Thu: 'Thursdays',
+  Fri: 'Fridays',
+  Sat: 'Saturdays',
+  Sun: 'Sundays',
+}
+const scheduleSummary = computed(() => {
+  const allDay = activeHoursStart.value === allDayStart && activeHoursEnd.value === allDayEnd
+  const hours = allDay
+    ? 'all day'
+    : `${clockLabel(activeHoursStart.value)} – ${clockLabel(activeHoursEnd.value)}`
+  const picked = new Set(activeHoursDays.value)
+  const same = (list: Weekday[]) => list.length === picked.size && list.every((d) => picked.has(d))
+  const chosen = allWeekdays.filter((d) => picked.has(d))
+  const days = same(allWeekdays)
+    ? 'Every day'
+    : same(['Mon', 'Tue', 'Wed', 'Thu', 'Fri'])
+      ? 'Weekdays'
+      : same(['Sat', 'Sun'])
+        ? 'Weekends'
+        : chosen.length === 1
+          ? dayNames[chosen[0]]
+          : chosen.join(', ')
+  return `${days}, ${hours}`
+})
+
+function clockLabel(time: string) {
+  return dayjsLocal(`2000-01-01T${time}`).format('h:mm A')
+}
+
 const isOvernight = computed(
   () => activeHoursEnd.value < activeHoursStart.value && activeHoursEnd.value !== '23:59',
 )
@@ -239,7 +316,13 @@ function toggleDay(day: Weekday) {
   const days = activeHoursDays.value.includes(day)
     ? activeHoursDays.value.filter((d) => d !== day)
     : allWeekdays.filter((d) => d === day || activeHoursDays.value.includes(d))
-  if (days.length) setActiveHours({ days })
+  if (!days.length) {
+    toast.error('Keep at least one day, or turn Receive notifications off instead', {
+      id: 'active-days-minimum',
+    })
+    return
+  }
+  setActiveHours({ days })
 }
 
 const userProfiles = useDoctype<GPUserProfile>('GP User Profile')
@@ -295,9 +378,12 @@ const selectedDigestDayOfWeek = computed({
   get: () => emailDigestDayOfWeek.value,
   set: saveDigestDayOfWeek,
 })
-const emailDigestLastSentOn = computed(() => {
-  if (!sessionUser.email_digest_last_sent_on) return 'Not sent yet'
-  return dayjsLocal(sessionUser.email_digest_last_sent_on).format('D MMM YYYY')
+// The last send date rides on the switch's own description rather than a row of its own.
+const emailDigestDescription = computed(() => {
+  const lastSent = sessionUser.email_digest_last_sent_on
+    ? `Last sent ${dayjsLocal(sessionUser.email_digest_last_sent_on).format('D MMM YYYY')}`
+    : 'Not sent yet'
+  return `Send a summary of missed activity. ${lastSent}`
 })
 
 watch(

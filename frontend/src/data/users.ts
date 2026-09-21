@@ -31,6 +31,8 @@ export interface UserInfo {
   user_image: string
   full_name: string
   user_type: string
+  /** Frappe's own User.time_zone; the schedule in Settings → Notifications runs in it. */
+  time_zone?: string | null
   creation: string
   user_profile: string
   image_background_color: string

@@ -97,18 +97,19 @@ export function setWatchOwnDiscussions(value: boolean) {
   )
 }
 
-export function setNotifyReactions(value: boolean) {
-  const previous = notifyReactions.value
-  if (value === previous) return
-  notifyReactions.value = value
-  void persist({ notify_reactions: value ? 1 : 0 }, () => (notifyReactions.value = previous))
-}
-
-export function setNotifyPollVotes(value: boolean) {
-  const previous = notifyPollVotes.value
-  if (value === previous) return
-  notifyPollVotes.value = value
-  void persist({ notify_poll_votes: value ? 1 : 0 }, () => (notifyPollVotes.value = previous))
+/** Both switches in one write, so a pick that flips both cannot race itself. */
+export function setActivityNotifications(reactions: boolean, pollVotes: boolean) {
+  const previous = { reactions: notifyReactions.value, pollVotes: notifyPollVotes.value }
+  if (reactions === previous.reactions && pollVotes === previous.pollVotes) return
+  notifyReactions.value = reactions
+  notifyPollVotes.value = pollVotes
+  void persist(
+    { notify_reactions: reactions ? 1 : 0, notify_poll_votes: pollVotes ? 1 : 0 },
+    () => {
+      notifyReactions.value = previous.reactions
+      notifyPollVotes.value = previous.pollVotes
+    },
+  )
 }
 
 export function setNotificationChannel(value: unknown) {
