@@ -193,7 +193,11 @@ watch(notificationFilters, () => (filtersChangedSinceLoad.value = true), { deep:
 const FILTERS_FROM = 5
 const readNotificationCount = useCall<number>({
   url: '/api/v2/method/frappe.client.get_count',
-  params: { doctype: 'GP Notification', filters: { to_user: sessionUser.name, read: 1 } },
+  // Query-string params are flattened, so the filters go over as JSON.
+  params: {
+    doctype: 'GP Notification',
+    filters: JSON.stringify({ to_user: sessionUser.name, read: 1 }),
+  },
   cacheKey: ['Read Notification Count', sessionUser.name],
 })
 const showFilters = computed(() => {
