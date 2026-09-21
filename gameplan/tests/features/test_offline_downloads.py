@@ -3,9 +3,9 @@
 
 """Offline downloads: the index and bundle endpoints behind Settings > Preferences.
 
-A device asks for the discussions in its joined spaces with activity inside a window, then
-fetches them a page at a time with their comments, activity and polls. The admin decides
-whether downloads are allowed at all and how far back they may reach.
+A device asks for the discussions in the communities the user has joined with activity
+inside a window, then fetches them a page at a time with their comments, activity, polls and
+the rows the feeds render.
 """
 
 import json
@@ -54,6 +54,15 @@ class OfflineDownloadsTestCase(GameplanTestCase):
 		self.old = create_discussion("Old thread", self.joined, owner=self.member)
 		set_last_post_at(self.old, add_days(now_datetime(), -45))
 		self.elsewhere = create_discussion("Other space thread", self.not_joined, owner=self.second_member)
+		# A community this user never joined, and a Space they cannot open inside their own.
+		self.other_community = create_community("Rivals", members=[self.second_member])
+		self.other_space = create_space("Strategy", self.other_community, members=[self.second_member])
+		self.outside = create_discussion("Rival thread", self.other_space, owner=self.second_member)
+		self.secret = create_discussion(
+			"Private thread",
+			create_space("Secret", self.community, is_private=1, members=[self.second_member]),
+			owner=self.second_member,
+		)
 
 	def index(self, window):
 		with self.as_user(self.member):
@@ -63,12 +72,25 @@ class OfflineDownloadsTestCase(GameplanTestCase):
 		with self.as_user(self.member):
 			return get_offline_bundle(window, FIELDS, **kwargs)
 
+	def settle_before(self, when):
+		"""Backdate every discussion in the window, so only what a test touches is a change."""
+		for name in self.index(90):
+			set_modified("GP Discussion", name, when)
+			frappe.db.set_value("GP Discussion", name, "last_post_at", when, update_modified=False)
+
 
 class TestOfflineIndex(OfflineDownloadsTestCase):
-	def test_lists_joined_spaces_only(self):
+	def test_lists_every_space_of_a_joined_community(self):
+		"""Space membership is not the scope: joining the community is."""
 		names = self.index(90)
 		self.assertIn(str(self.recent.name), names)
-		self.assertNotIn(str(self.elsewhere.name), names)
+		self.assertIn(str(self.elsewhere.name), names)
+
+	def test_leaves_out_communities_the_user_has_not_joined(self):
+		self.assertNotIn(str(self.outside.name), self.index(90))
+
+	def test_leaves_out_a_private_space_the_user_is_not_in(self):
+		self.assertNotIn(str(self.secret.name), self.index(90))
 
 	def test_window_excludes_older_activity(self):
 		names = self.index(30)
@@ -80,8 +102,8 @@ class TestOfflineIndex(OfflineDownloadsTestCase):
 		set_last_post_at(self.old, add_days(now_datetime(), -120))
 		self.assertNotIn(str(self.old.name), self.index(365))
 
-	def test_a_discussion_moved_out_of_a_joined_space_drops_out(self):
-		frappe.db.set_value("GP Discussion", self.recent.name, "project", self.not_joined.name)
+	def test_a_discussion_moved_out_of_the_community_drops_out(self):
+		frappe.db.set_value("GP Discussion", self.recent.name, "project", self.other_space.name)
 		self.assertNotIn(str(self.recent.name), self.index(90))
 
 	def test_a_deleted_discussion_drops_out(self):
@@ -123,8 +145,8 @@ class TestOfflineIndex(OfflineDownloadsTestCase):
 class TestOfflineBundle(OfflineDownloadsTestCase):
 	def test_carries_the_document_as_the_app_reads_it(self):
 		bundle = self.bundle(30)
-		self.assertEqual([str(d["name"]) for d in bundle["discussions"]], [str(self.recent.name)])
-		doc = bundle["discussions"][0]
+		self.assertIn(str(self.recent.name), [str(d["name"]) for d in bundle["discussions"]])
+		doc = next(d for d in bundle["discussions"] if str(d["name"]) == str(self.recent.name))
 		# Fields added by GP Discussion.as_dict, which /api/v2/document returns too.
 		for key in ("last_unread_comment", "is_bookmarked", "views"):
 			self.assertIn(key, doc)
@@ -141,32 +163,45 @@ class TestOfflineBundle(OfflineDownloadsTestCase):
 		self.assertNotIn("_offline_parent", bundle["comments"][key][0])
 		self.assertEqual([row["name"] for row in bundle["polls"][key]], [poll.name])
 		self.assertEqual(len(bundle["polls"][key][0]["options"]), 2)
-		self.assertNotIn(str(self.elsewhere.name), bundle["comments"])
+		self.assertNotIn(str(self.outside.name), bundle["comments"])
+
+	def test_carries_the_rows_the_feeds_render(self):
+		"""A Space the device never opened still needs its list, not just the documents."""
+		bundle = self.bundle(30)
+		row = next(r for r in bundle["rows"] if str(r["name"]) == str(self.recent.name))
+		self.assertEqual(str(row["project"]), str(self.joined.name))
+		self.assertEqual(row["project_title"], "Engineering")
+		for key in ("last_post_at", "unread", "title"):
+			self.assertIn(key, row)
+		self.assertEqual(
+			{str(r["name"]) for r in bundle["rows"]},
+			{str(d["name"]) for d in bundle["discussions"]},
+		)
 
 	def test_pages_through_the_window(self):
 		for i in range(offline_downloads.PAGE_SIZE):
 			create_discussion(f"Thread {i}", self.joined)
+		in_window = len(self.index(30))
 
 		first = self.bundle(30)
 		second = self.bundle(30, start=offline_downloads.PAGE_SIZE)
 		self.assertTrue(first["has_next_page"])
 		self.assertFalse(second["has_next_page"])
 		names = [d["name"] for d in first["discussions"] + second["discussions"]]
-		self.assertEqual(len(names), offline_downloads.PAGE_SIZE + 1)
+		self.assertEqual(len(names), in_window)
 		self.assertEqual(len(set(names)), len(names))
 
 	def test_names_fetches_just_those_within_the_window(self):
 		other = create_discussion("Another thread", self.joined, owner=self.member)
-		wanted = [str(other.name), str(self.old.name), str(self.elsewhere.name)]
+		wanted = [str(other.name), str(self.old.name), str(self.outside.name)]
 		bundle = self.bundle(30, names=json.dumps(wanted))
-		# The old thread is outside 30 days and the other space isn't joined.
+		# The old thread is outside 30 days, and the rival community is out of scope.
 		self.assertEqual([str(d["name"]) for d in bundle["discussions"]], [str(other.name)])
 		self.assertFalse(bundle["has_next_page"])
 
 	def test_since_returns_only_changed_discussions(self):
 		since = add_to_date(now_datetime(), minutes=-5)
-		set_modified("GP Discussion", self.recent.name, add_to_date(since, minutes=-10))
-		set_last_post_at(self.recent, add_to_date(since, minutes=-10))
+		self.settle_before(add_to_date(since, minutes=-10))
 		self.assertEqual(self.bundle(30, since=str(since))["discussions"], [])
 
 		create_comment(self.recent, content="New reply")
@@ -177,8 +212,7 @@ class TestOfflineBundle(OfflineDownloadsTestCase):
 		comment = create_comment(self.recent, content="Hello")
 		since = add_to_date(now_datetime(), minutes=-5)
 		earlier = add_to_date(since, minutes=-10)
-		set_modified("GP Discussion", self.recent.name, earlier)
-		set_last_post_at(self.recent, earlier)
+		self.settle_before(earlier)
 		set_modified("GP Comment", comment.name, earlier)
 		self.assertEqual(self.bundle(30, since=str(since))["discussions"], [])
 

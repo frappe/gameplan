@@ -5,8 +5,13 @@
 
 One index call tells the device which discussions to keep, then the bundle is fetched a page
 at a time. Each page carries a page of discussions with their comments, activity and polls,
-read through the same permission-checked queries the app itself uses, so the device can file
-them straight into the caches the pages already read from.
+plus the rows the discussion lists render, read through the same permission-checked queries
+the app itself uses, so the device can file them straight into the caches the pages already
+read from.
+
+The scope is a community the user has joined: every Space in it they can open, whether or
+not they are a member of that Space, because a Space joined later is one they could already
+read.
 """
 
 import frappe
@@ -15,7 +20,8 @@ from frappe.api.v2 import read_doc
 from frappe.model.base_document import get_controller
 from frappe.utils import add_days, cint, get_datetime, now_datetime
 
-from gameplan.gameplan.doctype.gp_project.gp_project import get_joined_spaces
+from gameplan.gameplan.doctype.gp_discussion.api import get_discussions
+from gameplan.permissions import apply_project_query_filter
 
 PAGE_SIZE = 20
 # The longest window the app offers (3 months).
@@ -52,9 +58,10 @@ def get_offline_bundle(window_days, fields, since=None, start=0, names=None):
 	"""One page of discussions in the window, each with its comments, activity and polls.
 
 	`fields` maps comments/activities/polls to the field lists the app's own lists request,
-	so the rows come back in exactly the shape those lists cache. With `since`, only
-	discussions that changed after it are included. With `names`, just those (a page's worth),
-	for a device fetching what it doesn't hold yet.
+	so the rows come back in exactly the shape those lists cache. `rows` carries the same
+	discussions in the shape the feeds render, so a Space the user has never opened still
+	lists them offline. With `since`, only discussions that changed after it are included.
+	With `names`, just those (a page's worth), for a device fetching what it doesn't hold yet.
 	"""
 	window = _allowed_window(window_days)
 	fields = frappe.parse_json(fields)
@@ -72,6 +79,7 @@ def get_offline_bundle(window_days, fields, since=None, start=0, names=None):
 
 	bundle = {
 		"discussions": [read_doc("GP Discussion", name) for name in names],
+		"rows": _feed_rows(names),
 		"has_next_page": len(rows) > start + PAGE_SIZE,
 	}
 	for key, (doctype, link) in CHILD_LISTS.items():
@@ -104,14 +112,14 @@ def rate_limit_key(user):
 
 
 def _discussions_in_window(window):
-	joined = get_joined_spaces()
-	if not joined:
+	spaces = _downloadable_spaces()
+	if not spaces:
 		return []
 	rows = _query(
 		"GP Discussion",
 		fields=["name", "modified", "last_post_at"],
 		filters={
-			"project": ["in", joined],
+			"project": ["in", spaces],
 			"last_post_at": [">=", add_days(now_datetime(), -window)],
 		},
 		# Pages are cut from this order, so it must not shift between requests.
@@ -120,6 +128,36 @@ def _discussions_in_window(window):
 	for row in rows:
 		row.name = str(row.name)
 	return rows
+
+
+def _feed_rows(names):
+	"""The page's discussions as the feeds list them, from the feeds' own endpoint."""
+	if not names:
+		return []
+	return get_discussions(filters={"name": ["in", names]}, limit=len(names))
+
+
+def _downloadable_spaces():
+	"""Spaces inside the user's communities that they can open.
+
+	Joining a community is what puts its content on the device; Space membership is not
+	required. Access still is, so a private Space they are not in never reaches the query.
+	"""
+	communities = frappe.get_all(
+		"GP Member",
+		filters={"parenttype": "GP Team", "user": frappe.session.user},
+		pluck="parent",
+	)
+	if not communities:
+		return []
+	Project = frappe.qb.DocType("GP Project")
+	query = (
+		frappe.qb.from_(Project)
+		.select(Project.name)
+		.where(Project.team.isin(communities))
+		.where(Project.archived_at.isnull())
+	)
+	return [str(name) for name in apply_project_query_filter(query).run(pluck=True)]
 
 
 def _revoked(names):
