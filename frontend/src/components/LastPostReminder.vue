@@ -20,8 +20,8 @@
   </div>
 </template>
 <script setup lang="ts">
-import { useCall } from 'frappe-ui'
 import { dayjs } from 'frappe-ui'
+import { useCall } from '@/data/offlineRevalidation'
 import { computed } from 'vue'
 import { useLocalStorage } from '@vueuse/core'
 import { session } from '@/data/session'
