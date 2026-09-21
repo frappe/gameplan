@@ -28,6 +28,13 @@
 
       <div class="discussion-container isolate pt-4">
         <DiscussionSpaceSelector size="md" class="mb-2 w-full sm:hidden" />
+        <!-- The phone header has no room for the schedule; it sits with the space here. -->
+        <Badge v-if="scheduledAt" class="mb-2 sm:hidden" :title="`Scheduled for ${scheduledAtLabel}`">
+          <template #prefix>
+            <span class="lucide-calendar-clock size-3.5" aria-hidden="true" />
+          </template>
+          {{ scheduledAtLabel }}
+        </Badge>
         <DiscussionBody :editor="editor" :editor-class="editorClass" />
       </div>
 
@@ -53,7 +60,7 @@
 </template>
 
 <script setup lang="ts">
-import { PageHeaderBase } from 'frappe-ui'
+import { Badge, PageHeaderBase } from 'frappe-ui'
 import { EditorFixedMenu } from 'frappe-ui/editor'
 import { gameplanToolbar, mobileDiscussionToolbar } from '@/components/editor/toolbars'
 import DiscussionEditor from '@/components/editor/DiscussionEditor.vue'
@@ -70,6 +77,8 @@ const {
   isDraftLoading,
   isComposerEditable,
   hasSpaceToPostIn,
+  scheduledAt,
+  scheduledAtLabel,
   initialize,
 } = provideNewDiscussion()
 

@@ -1,14 +1,7 @@
 <template>
   <!-- Publish as before, plus a chevron that opens the schedule options. On a scheduled
-       draft the chevron offers Reschedule / Cancel schedule and the time sits beside it. -->
+       draft the chevron offers Reschedule / Cancel schedule; the header shows the time. -->
   <div class="flex items-center gap-2">
-    <span
-      v-if="scheduledAt"
-      class="hidden whitespace-nowrap text-sm text-ink-gray-5 sm:inline"
-      :title="`Scheduled for ${scheduledAtLabel}`"
-    >
-      Scheduled · {{ scheduledAtLabel }}
-    </span>
     <div class="flex items-center gap-px">
       <Tooltip
         :text="isDraftLoading ? 'Draft is loading' : 'You cannot publish this draft'"
@@ -62,7 +55,6 @@ const {
   publish,
   publishing,
   scheduledAt,
-  scheduledAtLabel,
   scheduling,
   scheduleDraft,
   unscheduleDraft,
