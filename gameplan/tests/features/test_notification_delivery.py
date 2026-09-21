@@ -1,7 +1,8 @@
 # Copyright (c) 2026, Frappe Technologies Pvt Ltd and Contributors
 # See license.txt
 
-"""The email channel: one hourly mail per user who asked for it, each row sent once.
+"""The email channel: one hourly mail per user who asked for it, each row sent once, and
+a closing mail as the user's active hours end.
 
 Everything is a `GP Notification` row first; delivery only decides which rows also go
 out by mail. Rows already read, written during an away stretch, older than the horizon
@@ -9,10 +10,11 @@ or pointing at something the user can no longer open are stamped instead of sent
 the next run does not see them again.
 """
 
+from datetime import datetime
 from unittest.mock import patch
 
 import frappe
-from frappe.utils import add_to_date, now_datetime
+from frappe.utils import add_to_date, get_datetime, now_datetime
 from frappe.utils.jinja import get_email_from_template
 
 from gameplan.notifications import delivery
@@ -53,8 +55,12 @@ class DeliveryTestCase(GameplanTestCase):
 		)
 
 	def run_hourly(self):
+		"""The tick at the top of the current hour."""
+		return self.run_tick(now_datetime().replace(minute=0, second=0, microsecond=0))
+
+	def run_tick(self, now):
 		with patch("frappe.sendmail") as sendmail:
-			delivery.send_hourly_batches()
+			delivery.send_batches(now)
 		return sendmail
 
 
@@ -171,9 +177,60 @@ class TestHourlyBatch(DeliveryTestCase):
 
 		with patch("frappe.sendmail") as sendmail:
 			send_digest_for_profile(profile, date(2026, 9, 18))
-			delivery.send_hourly_batches()
+			delivery.send_batches(now_datetime().replace(minute=0, second=0, microsecond=0))
 
 		self.assertEqual(
 			[call.kwargs["template"] for call in sendmail.call_args_list],
 			["email_digest", "notification_batch"],
 		)
+
+
+class TestSendTimes(DeliveryTestCase):
+	"""`should_send` reads the clock in the user's zone; the test user has none, so system
+	time is that zone and the times below are literal. 2026-09-16 is a Wednesday."""
+
+	def setUp(self):
+		super().setUp()
+		# The row is written while the schedule is still all-day, so it carries no away
+		# stamp; the 9-to-6 schedule then governs when it is mailed.
+		self.mention_second_member()
+		self.set_prefs(
+			self.second_member,
+			active_hours_enabled=1,
+			active_hours_start="09:00:00",
+			active_hours_end="18:00:00",
+			active_hours_days=frappe.as_json(["Mon", "Tue", "Wed", "Thu", "Fri"]),
+		)
+
+	def at(self, text):
+		return get_datetime(datetime.strptime(text, "%Y-%m-%d %H:%M"))
+
+	def test_the_top_of_an_hour_inside_the_window_sends(self):
+		self.run_tick(self.at("2026-09-16 10:00")).assert_called_once()
+
+	def test_a_tick_between_hours_sends_nothing(self):
+		self.run_tick(self.at("2026-09-16 10:05")).assert_not_called()
+		self.run_tick(self.at("2026-09-16 10:30")).assert_not_called()
+
+	def test_the_window_closing_sends_the_last_mail(self):
+		self.run_tick(self.at("2026-09-16 18:00")).assert_called_once()
+
+	def test_after_the_closing_tick_nothing_more_goes_out_that_day(self):
+		self.run_tick(self.at("2026-09-16 18:05")).assert_not_called()
+		self.run_tick(self.at("2026-09-16 18:30")).assert_not_called()
+		self.run_tick(self.at("2026-09-16 22:00")).assert_not_called()
+
+	def test_a_day_off_sends_nothing_even_on_the_hour(self):
+		self.run_tick(self.at("2026-09-19 10:00")).assert_not_called()
+
+	def test_the_toggle_off_holds_everything(self):
+		self.set_prefs(self.second_member, receive_notifications=0)
+		self.run_tick(self.at("2026-09-16 10:00")).assert_not_called()
+		self.run_tick(self.at("2026-09-16 18:00")).assert_not_called()
+
+	def test_the_closing_mail_follows_the_users_timezone(self):
+		# 18:00 in Gaza is 20:30 in the site's Asia/Calcutta: the closing tick moves with it,
+		# and the site's 18:30 (16:00 in Gaza, mid-window, off the hour) is nothing special.
+		frappe.db.set_value("User", self.second_member.name, "time_zone", "Asia/Gaza")
+		self.run_tick(self.at("2026-09-16 18:30")).assert_not_called()
+		self.run_tick(self.at("2026-09-16 20:30")).assert_called_once()
