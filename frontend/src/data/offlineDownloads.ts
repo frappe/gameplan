@@ -49,6 +49,9 @@ const MAX_IMAGES = 300
 const SYNC_INTERVAL = 6 * 60 * 60 * 1000
 // Spreads the first sync after load so a team opening the app together doesn't sync together.
 const MAX_START_DELAY = 30 * 1000
+// Visited discussions one index call can check for lost access (MAX_CACHED in
+// offline_downloads.py). A device holding more walks them a slice at a time.
+const VISIT_CHECK_LIMIT = 2000
 // What a feed asks for in one page (useDiscussions' default limit), so a restored list holds
 // as much as a fetched one.
 const FEED_LIMIT = 50
@@ -60,6 +63,8 @@ interface Meta {
   since: string | null
   /** Discussions downloaded to this device, each with where the index said it sat. */
   places: Record<string, string>
+  /** How far the last sync got through checking visited discussions for lost access. */
+  checkedUpTo?: string
   lastSyncedAt: number | null
   /** The last sync stopped before finishing, so the next one runs whenever it can. */
   incomplete: boolean
@@ -120,6 +125,7 @@ export const downloads = reactive({
 })
 
 let meta: Meta | null = null
+let removal: Promise<void> | null = null
 
 async function readMeta(): Promise<Meta | null> {
   const stored = (await get(META_KEY).catch(() => null)) as Meta | undefined
@@ -189,11 +195,14 @@ async function runSync(days: OfflineWindow): Promise<boolean> {
     const previous = meta ?? (await readMeta())
     const onDevice = new Set(await cachedDiscussions())
     const downloaded = previous?.places ?? {}
-    const visited = [...onDevice].filter((name) => !(name in downloaded))
+    const visits = visitsToCheck(
+      [...onDevice].filter((name) => !(name in downloaded)),
+      previous?.checkedUpTo,
+    )
     const sameWindow = previous?.window === days
     const index = await call<Index>(INDEX, {
       window_days: days,
-      cached: visited,
+      cached: visits.names,
       since: sameWindow ? previous.since : null,
     })
     const names = new Set(index.discussions)
@@ -210,6 +219,7 @@ async function runSync(days: OfflineWindow): Promise<boolean> {
       window: days,
       since: sameWindow ? previous.since : null,
       places,
+      checkedUpTo: visits.checkedUpTo,
       lastSyncedAt: sameWindow ? previous.lastSyncedAt : null,
       incomplete: true,
     }
@@ -267,6 +277,23 @@ async function runSync(days: OfflineWindow): Promise<boolean> {
   } finally {
     downloads.syncing = false
   }
+}
+
+/**
+ * The visited discussions this sync asks about, and the name the next one resumes after.
+ *
+ * One request can only check so many, so a device holding more than that walks them in name
+ * order across syncs: asking about the same first names every time would leave everything
+ * past them never checked, and a discussion the user lost access to still readable offline.
+ */
+function visitsToCheck(names: string[], after = '') {
+  if (names.length <= VISIT_CHECK_LIMIT) return { names, checkedUpTo: '' }
+  const sorted = [...names].sort()
+  // Resume after the last name checked, starting over once past the end.
+  const found = sorted.findIndex((name) => name > after)
+  const start = found === -1 ? 0 : found
+  const slice = sorted.slice(start, start + VISIT_CHECK_LIMIT)
+  return { names: slice, checkedUpTo: slice[slice.length - 1] }
 }
 
 async function storeBundle(bundle: Bundle) {
@@ -489,8 +516,19 @@ function forgetImages(urls: string[]) {
   if (urls.length) navigator.serviceWorker?.controller?.postMessage({ type: 'FORGET_IMAGES', urls })
 }
 
-/** Deletes everything downloaded; a discussion opened again online is cached as usual. */
-export async function removeOfflineDownloads() {
+/**
+ * Deletes everything downloaded; a discussion opened again online is cached as usual.
+ *
+ * The settings button and the window watcher below both ask for this on the same click, and
+ * another tab turning downloads off adds a third. One run does the work, scanning the device
+ * for images still in use once rather than once per caller; the rest wait on it.
+ */
+export function removeOfflineDownloads(): Promise<void> {
+  removal ??= removeEverything().finally(() => (removal = null))
+  return removal
+}
+
+async function removeEverything() {
   const current = meta ?? (await readMeta())
   if (!current) return
   await forgetDiscussions(Object.keys(current.places))

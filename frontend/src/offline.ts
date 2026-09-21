@@ -15,12 +15,23 @@ const CACHE_PREFIX = 'gameplan-readonly-offline'
 // Build files are the same for every user, so clearing a user's caches leaves them.
 const ASSET_CACHE_SUFFIX = ':assets'
 
-export function setupOfflineSupport() {
-  // Runs without a service worker too (dev, plain HTTP), so the dev user switcher is safe.
-  guardAgainstUserSwitch(getSessionUserFromCookie()).catch((error) =>
-    console.error('Failed to run user-switch guard', error),
-  )
+/**
+ * The user-switch guard for boot, where the session was changed outside the app's own login
+ * (a switched cookie, `bench browse --sid`, the dev user switcher). Runs without a service
+ * worker too, and never rejects, so a failure can't keep the app from mounting.
+ *
+ * Awaited before the app mounts: the doc cache is keyed by doctype and name alone, and a read
+ * queued by a mounting component resolves before a clear queued after it, which would hand the
+ * new user the previous one's copy.
+ */
+export function clearCachesOnUserSwitch(): Promise<boolean> {
+  return guardAgainstUserSwitch(getSessionUserFromCookie()).catch((error) => {
+    console.error('Failed to run user-switch guard', error)
+    return false
+  })
+}
 
+export function setupOfflineSupport() {
   if (!serviceWorkerSupportEnabled()) {
     return
   }

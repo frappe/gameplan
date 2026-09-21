@@ -81,8 +81,8 @@ def get_offline_bundle(window_days, fields, names):
 	"""
 	window = _allowed_window(window_days)
 	fields = frappe.parse_json(fields)
-	wanted = {str(name) for name in frappe.parse_json(names)[:PAGE_SIZE]}
-	names = [row.name for row in _discussions_in_window(window) if row.name in wanted]
+	wanted = [str(name) for name in frappe.parse_json(names)[:PAGE_SIZE]]
+	names = [row.name for row in _discussions_in_window(window, names=wanted)] if wanted else []
 
 	bundle = {
 		"discussions": [read_doc("GP Discussion", name) for name in names],
@@ -117,20 +117,29 @@ def rate_limit_key(user):
 	return frappe.cache.make_key(f"gameplan:offline-downloads:{user}")
 
 
-def _discussions_in_window(window):
+def _discussions_in_window(window, names=None):
+	"""The window's discussions, newest activity first, or only `names` from inside it.
+
+	The index lists the whole window. A bundle only has to hold its page to the same window
+	and the same reach, which is that check over the page's own names instead of listing and
+	sorting the window again for every one of them.
+	"""
 	spaces = _downloadable_spaces()
 	if not spaces:
 		return []
+	filters = {
+		"project": ["in", spaces],
+		"last_post_at": [">=", add_days(now_datetime(), -window)],
+	}
+	if names is not None:
+		filters["name"] = ["in", names]
 	rows = _query(
 		"GP Discussion",
 		fields=["name", "project", "team", "modified", "last_post_at"],
-		filters={
-			"project": ["in", spaces],
-			"last_post_at": [">=", add_days(now_datetime(), -window)],
-		},
+		filters=filters,
 		# Pages are cut from this order, so it must not shift between requests.
 		order_by="last_post_at desc, name desc",
-		limit=MAX_DISCUSSIONS,
+		limit=len(names) if names is not None else MAX_DISCUSSIONS,
 	)
 	for row in rows:
 		row.name = str(row.name)

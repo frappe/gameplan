@@ -22,15 +22,24 @@ export function onReconnect(callback: ReconnectCallback): () => void {
 
 /**
  * Sends `request` now, or once when the connection returns instead of attempting it offline.
- * A pending request is dropped if the calling component unmounts first.
+ * Returns an unregister function for a pending request.
+ *
+ * A pending request is dropped when the calling component unmounts, but only where there is
+ * a scope to tie it to: called after an `await`, as it is from DiscussionView's visit
+ * tracking, there is none, and the request is sent on reconnect whether or not the caller is
+ * still on screen. Unregister it yourself where that matters.
  */
 export function whenOnline(request: () => void) {
-  if (isOnline.value) return request()
+  if (isOnline.value) {
+    request()
+    return () => {}
+  }
   const unregister = onReconnect(() => {
     unregister()
     request()
   })
   if (getCurrentScope()) onScopeDispose(unregister)
+  return unregister
 }
 
 const notifyReconnect = useDebounceFn(() => {

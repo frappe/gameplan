@@ -221,6 +221,12 @@ class TestOfflineBundle(OfflineDownloadsTestCase):
 		bundle = self.bundle(30, names=in_window)
 		self.assertEqual(len(bundle["discussions"]), offline_downloads.PAGE_SIZE)
 
+	def test_a_page_is_held_to_the_window_not_to_the_device_cap(self):
+		"""The cap is how much a device keeps, not a boundary the bundle enforces."""
+		with patch.object(offline_downloads, "MAX_DISCUSSIONS", 1):
+			bundle = self.bundle(90, names=[str(self.old.name)])
+		self.assertEqual([str(d["name"]) for d in bundle["discussions"]], [str(self.old.name)])
+
 	def test_names_fetches_just_those_within_the_window(self):
 		other = create_discussion("Another thread", self.joined, owner=self.member)
 		wanted = [str(other.name), str(self.old.name), str(self.outside.name)]

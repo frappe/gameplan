@@ -21,7 +21,7 @@ import { isSessionUser, session } from './data/session'
 import { initSocket } from './socket'
 import { installErrorReporting } from './utils/errorReporting'
 import resetDataMixin from './utils/resetDataMixin'
-import { setupOfflineSupport } from './offline'
+import { clearCachesOnUserSwitch, setupOfflineSupport } from './offline'
 import { setupOfflineDownloads } from './data/offlineDownloads'
 
 let globalComponents = {
@@ -79,6 +79,11 @@ function setupApp() {
   setConfig('maxFileSize', window.max_file_size ? Number(window.max_file_size) : null)
   socket = initSocket()
   app.config.globalProperties.$socket = socket
+  // A switched user's caches go before the first component can read them.
+  clearCachesOnUserSwitch().then(mountApp)
+}
+
+function mountApp() {
   app.mount('#app')
   setupOfflineSupport()
   if (session.isLoggedIn) setupOfflineDownloads()
