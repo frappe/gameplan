@@ -49,3 +49,29 @@ export async function toggleSpaceNotifications(project: string | number) {
     toast.error('Could not update space notifications', { id: toggleToastId })
   }
 }
+
+/**
+ * Turn the toggle on or off for a whole set of spaces at once — the "Notify all" button
+ * over a community's space list. Spaces already in the wanted state are left alone.
+ */
+export async function setSpaceNotifications(projects: (string | number)[], on: boolean) {
+  const changing = projects.filter((project) => isSpaceNotifying(project) !== on)
+  try {
+    await Promise.all(
+      changing.map((project) => {
+        const row = subscriptionByProject.value.get(String(project))
+        return on
+          ? spaceSubscriptions.insert.submit({ project: String(project) })
+          : row && spaceSubscriptions.delete.submit({ name: row.name })
+      }),
+    )
+    toast.success(
+      on
+        ? 'You will be notified about new discussions in these spaces'
+        : 'You will no longer be notified about new discussions in these spaces',
+      { id: toggleToastId },
+    )
+  } catch {
+    toast.error('Could not update space notifications', { id: toggleToastId })
+  }
+}

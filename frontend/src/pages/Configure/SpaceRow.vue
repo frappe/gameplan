@@ -46,14 +46,16 @@
     </ListCell>
 
     <!-- The user's own new-discussion toggle for this space — every member gets it, unlike
-         the rename controls. On phones the column is gone, so the switch sits by the dots. -->
+         the rename controls. The bell shows the state; a click flips it. On phones the
+         column is gone, so the bell sits by the dots. -->
     <ListCell class="max-md:hidden">
-      <Tooltip v-if="!space.archived_at" text="Notify me about new discussions">
-        <Switch
-          :model-value="isSpaceNotifying(space.name)"
-          @update:model-value="toggleSpaceNotifications(space.name)"
-        />
-      </Tooltip>
+      <Button
+        v-if="!space.archived_at"
+        variant="ghost"
+        :icon="isSpaceNotifying(space.name) ? 'lucide-bell' : 'lucide-bell-off'"
+        :tooltip="isSpaceNotifying(space.name) ? 'Notifications on' : 'Notifications off'"
+        @click="toggleSpaceNotifications(space.name)"
+      />
     </ListCell>
 
     <ListCell v-if="showGuests" class="max-md:hidden">
@@ -61,14 +63,14 @@
     </ListCell>
 
     <ListCell class="justify-end gap-1">
-      <span v-if="!space.archived_at" class="md:hidden">
-        <Tooltip text="Notify me about new discussions">
-          <Switch
-            :model-value="isSpaceNotifying(space.name)"
-            @update:model-value="toggleSpaceNotifications(space.name)"
-          />
-        </Tooltip>
-      </span>
+      <Button
+        v-if="!space.archived_at"
+        class="md:hidden"
+        variant="ghost"
+        :icon="isSpaceNotifying(space.name) ? 'lucide-bell' : 'lucide-bell-off'"
+        :tooltip="isSpaceNotifying(space.name) ? 'Notifications on' : 'Notifications off'"
+        @click="toggleSpaceNotifications(space.name)"
+      />
       <Button
         v-if="space.archived_at && canManageSpaceSettings"
         variant="ghost"
@@ -84,7 +86,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { Button, Switch, Tooltip, useDoctype } from 'frappe-ui'
+import { Button, useDoctype } from 'frappe-ui'
 import { ListCell, ListRow } from 'frappe-ui/list'
 import IconPicker from '@/components/IconPicker.vue'
 import SpaceIcon from '@/components/SpaceIcon.vue'

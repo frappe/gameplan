@@ -27,9 +27,23 @@
           v-model:visibility-filter="spaceFilter"
         >
           <template #action>
-            <Button v-if="canCreateSpace" icon-left="lucide-plus" @click="openNewSpaceDialog">
-              New space
-            </Button>
+            <div class="flex shrink-0 items-center gap-2">
+              <!-- One flip for every live space in the community; the row bells follow. -->
+              <Button
+                v-if="liveSpaces.length"
+                :icon-left="allSpacesNotifying ? 'lucide-bell-off' : 'lucide-bell'"
+                :label="allSpacesNotifying ? 'Disable all' : 'Notify all'"
+                @click="
+                  setSpaceNotifications(
+                    liveSpaces.map((space) => space.name),
+                    !allSpacesNotifying,
+                  )
+                "
+              />
+              <Button v-if="canCreateSpace" icon-left="lucide-plus" @click="openNewSpaceDialog">
+                New space
+              </Button>
+            </div>
           </template>
         </CommunitySpacesListControls>
 
@@ -159,6 +173,8 @@ import CommunityMembersList from '@/pages/Configure/CommunityMembersList.vue'
 import CommunityMembersListControls from '@/pages/Configure/CommunityMembersListControls.vue'
 import CommunitySpacesList from '@/pages/Configure/CommunitySpacesList.vue'
 import CommunitySpacesListControls from '@/pages/Configure/CommunitySpacesListControls.vue'
+import { useCommunitySpaceData } from '@/pages/Configure/useCommunitySpaceData'
+import { isSpaceNotifying, setSpaceNotifications } from '@/data/spaceNotifications'
 import NewCommunityDialog from '@/pages/Configure/NewCommunityDialog.vue'
 
 type CommunityView = 'spaces' | 'members'
@@ -221,6 +237,12 @@ const canCreateSpace = computed(() =>
     !selectedCommunity.value.archived_at,
   ),
 )
+const { communitySpaces } = useCommunitySpaceData(selectedCommunityId)
+const liveSpaces = computed(() => communitySpaces.value.filter((space) => !space.archived_at))
+const allSpacesNotifying = computed(() =>
+  liveSpaces.value.every((space) => isSpaceNotifying(space.name)),
+)
+
 function openCommunitySpaces(communityId: string) {
   router.push({ name: 'SettingsCommunity', params: { communityId, view: 'spaces' } })
 }
