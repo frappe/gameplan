@@ -164,14 +164,12 @@
         <!-- Search Summary -->
         <div class="mt-2 text-sm flex items-center justify-between min-h-6">
           <div>
-            <template v-if="search.error">
+            <template v-if="search.error && !offlineFailure">
               <ErrorMessage
                 :message="
-                  isNetworkError(search.error)
-                    ? 'Search is not available offline. Reconnect to search.'
-                    : search.error.type == 'GameplanSearchIndexMissingError'
-                      ? 'Search index does not exist. Please build the index first.'
-                      : search.error
+                  search.error.type == 'GameplanSearchIndexMissingError'
+                    ? 'Search index does not exist. Please build the index first.'
+                    : search.error
                 "
               />
             </template>
@@ -231,7 +229,14 @@
           <div v-else-if="feedbackGiven" class="text-ink-gray-6">Thanks for your feedback!</div>
         </div>
 
-        <div class="mt-5 -mx-2.5 pb-20">
+        <OfflineContentFallback
+          v-if="offlineFailure"
+          class="mt-6"
+          v-bind="offlineFailure"
+          @retry="submit()"
+        />
+
+        <div v-else class="mt-5 -mx-2.5 pb-20">
           <List :columns="['auto', 'minmax(0,1fr)']" class="list-row-px-2.5" divider="inset">
             <ListRow
               v-for="item in visibleSearchResults"
@@ -302,7 +307,8 @@ import { activeCommunities } from '@/data/communities'
 import { activeUsers } from '@/data/users'
 import { vFocus } from '@/directives'
 import { isOnline } from '@/data/online'
-import { isNetworkError } from '@/offline'
+import { isOfflineError } from '@/data/loadFailure'
+import OfflineContentFallback from '@/components/OfflineContentFallback.vue'
 
 // Type Definitions
 interface SearchSummary {
@@ -396,6 +402,16 @@ const search = useCall<SearchResponse, SearchParams>({
     }
   },
 })
+
+// Searching needs the server, so offline it gets the same fallback as the other pages.
+const offlineFailure = computed(() =>
+  search.error && isOfflineError(search.error)
+    ? {
+        title: 'Search needs a connection',
+        message: "You're offline. Reconnect and retry to search.",
+      }
+    : null,
+)
 
 const filterOptions = useCall<FilterOptions>({
   url: '/api/v2/method/gameplan.api.get_search_filter_options',
