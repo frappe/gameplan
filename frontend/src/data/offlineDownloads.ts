@@ -472,7 +472,7 @@ function setupIntroduction() {
     if (online || offlineWindow.value || introduction.value !== 'new') return
     introduction.value = 'seen-offline'
     toast.info("You're offline. Only discussions you've opened are available.", {
-      action: { label: 'Set up offline reading', onClick: openOfflineSettings },
+      action: { label: 'Set up', onClick: openOfflineSettings },
     })
   })
   if (introduction.value === 'seen-offline') setTimeout(offerDownload, 3000)
@@ -489,17 +489,32 @@ function offerDownload() {
     cancelLabel: 'Not now',
     onConfirm: () => {
       downloadForOffline(30)
+      openOfflineSettings()
     },
   })
 }
+
+/** Anchor for the Offline section of Settings > Preferences, which opens scrolled to it. */
+export const OFFLINE_SECTION_ID = 'offline-settings'
 
 function openOfflineSettings() {
   // Imported on demand: the settings module and the router both reach this module.
   if (isMobileViewport()) {
     import('@/router').then(({ default: router }) => router.push({ name: 'OfflineSettings' }))
   } else {
-    import('@/components/Settings').then(({ showSettingsDialog }) =>
-      showSettingsDialog('Preferences'),
-    )
+    import('@/components/Settings').then(({ showSettingsDialog }) => {
+      showSettingsDialog('Preferences')
+      // Offline is the last section of a scrolling tab, so opening it is not enough.
+      scrollToOfflineSection()
+    })
   }
+}
+
+function scrollToOfflineSection(attemptsLeft = 20) {
+  const section = document.getElementById(OFFLINE_SECTION_ID)
+  if (section) {
+    section.scrollIntoView({ block: 'start', behavior: 'smooth' })
+    return
+  }
+  if (attemptsLeft) requestAnimationFrame(() => scrollToOfflineSection(attemptsLeft - 1))
 }

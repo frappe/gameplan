@@ -27,7 +27,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { Button, Progress, Select, SettingsRow, dayjsLocal, dialog } from 'frappe-ui'
 import { isOnline } from '@/data/online'
 import {
@@ -50,10 +50,16 @@ const selectedWindow = computed({
 })
 
 const usedStorage = ref<string | null>(null)
-onMounted(async () => {
+
+async function readStorageUsage() {
   const estimate = await navigator.storage?.estimate?.().catch(() => null)
-  if (estimate?.usage) usedStorage.value = `${(estimate.usage / 1024 / 1024).toFixed(1)} MB`
-})
+  usedStorage.value = estimate?.usage ? `${(estimate.usage / 1024 / 1024).toFixed(1)} MB` : null
+}
+
+onMounted(readStorageUsage)
+// Downloading or removing changes what the browser holds, so the figure is read again
+// rather than left at whatever it was when the panel opened.
+watch([() => downloads.count, () => downloads.syncing], () => readStorageUsage())
 
 const status = computed(() => {
   if (downloads.syncing) {
@@ -65,7 +71,9 @@ const status = computed(() => {
     downloads.count === 1 ? '1 discussion downloaded' : `${downloads.count} discussions downloaded`,
   ]
   if (downloads.lastSyncedAt) parts.push(`synced ${dayjsLocal(downloads.lastSyncedAt).fromNow()}`)
-  if (usedStorage.value) parts.push(`${usedStorage.value} used by Gameplan`)
+  // The browser reports what the whole app holds — its own files included — so this never
+  // reads as zero, even with nothing downloaded.
+  if (usedStorage.value) parts.push(`${usedStorage.value} on this device`)
   if (downloads.error) parts.push('last sync failed')
   return parts.join(' · ')
 })

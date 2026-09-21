@@ -95,7 +95,7 @@
         <QuickReactionsEditor class="mt-2" :disabled="!isOnline" />
       </section>
 
-      <section>
+      <section :id="OFFLINE_SECTION_ID">
         <h2 class="text-lg-semibold text-ink-gray-8">Offline</h2>
         <OfflineSettingsPanel class="mt-2" />
       </section>
@@ -139,6 +139,7 @@ import type { GPUserProfile } from '@/types/doctypes'
 import { isOnline } from '@/data/online'
 import QuickReactionsEditor from './QuickReactionsEditor.vue'
 import OfflineSettingsPanel from './OfflineSettingsPanel.vue'
+import { OFFLINE_SECTION_ID } from '@/data/offlineDownloads'
 
 const sessionUser = useSessionUser()
 const { currentTheme, setTheme } = useTheme()
