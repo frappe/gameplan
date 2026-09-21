@@ -4,8 +4,9 @@
 // fallback, the download costs about one request per 20 discussions, a reload soon after
 // doesn't download again, a visited copy of a discussion that's since gone is removed, and
 // Sync now fetches a discussion missing from the device even though it hasn't changed (a
-// space joined after the first download). Removing a discussion keeps saved images another
-// discussion on the device still shows.
+// space joined after the first download), a Space never opened lists what was downloaded for
+// it, and removing a discussion keeps saved images another discussion on the device still
+// shows.
 const {
   chromium,
   BASE,
@@ -216,6 +217,16 @@ async function run() {
       pass: text.includes(`${MARKER} downloaded thread`) && text.includes(`${MARKER} reply`),
       symptom: text.slice(0, 300),
       screenshot: await shot(page, 'us9-downloaded-discussion-offline'),
+    })
+
+    await spaNavigate(page, `/g/community/${COMMUNITY}/space/${JOINED_SPACE_ID}/discussions`)
+    await page.waitForTimeout(2500)
+    const spaceList = await innerTextSafe(page)
+    result.checks.push({
+      name: 'a Space list never opened shows its downloaded discussions offline',
+      pass: spaceList.includes(`${MARKER} downloaded thread`),
+      symptom: spaceList.slice(0, 300),
+      screenshot: await shot(page, 'us9-unvisited-space-offline'),
     })
 
     await spaNavigate(page, new URL(URLS.uncachedDiscussion).pathname)

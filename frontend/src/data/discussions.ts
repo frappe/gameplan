@@ -31,6 +31,14 @@ export interface Discussion extends GPDiscussion {
   last_poll_title?: string
 }
 
+/**
+ * Where each feed caches its rows. Shared with offline downloads, which fills the same
+ * entries so a Space the device has never opened still lists its discussions offline.
+ */
+export const spaceFeedKey = (spaceId: string | number) => `SpaceDiscussions-${spaceId}`
+export const communityFeedKey = (communityId: string, feedType = 'recent') =>
+  `Discussions-${communityId}-${feedType}`
+
 export type UseDiscussionOptions = Pick<
   UseListOptions<Discussion>,
   'cacheKey' | 'filters' | 'limit' | 'orderBy' | 'immediate'

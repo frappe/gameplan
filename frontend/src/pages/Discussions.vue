@@ -57,7 +57,7 @@
         class="-mx-3"
         :filters="filters"
         :orderBy="() => orderBy"
-        :cacheKey="`Discussions-${communityId}-${feedType}`"
+        :cacheKey="communityFeedKey(communityId, feedType)"
         :key="JSON.stringify(filters)"
       />
     </KeepAlive>
@@ -82,6 +82,7 @@ import { useRouter } from 'vue-router'
 import CommunityMenu from '@/components/CommunityMenu.vue'
 import DiscussionList from '@/components/DiscussionList.vue'
 import LastPostReminder from '@/components/LastPostReminder.vue'
+import { communityFeedKey } from '@/data/discussions'
 import { communityState } from '@/data/communityState'
 import { useCommunity } from '@/data/communities'
 import { getSpaceUnreadCount, spaces } from '@/data/spaces'

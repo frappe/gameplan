@@ -26,7 +26,8 @@ const UNCACHED_SPACE_ID = process.env.GAMEPLAN_OFFLINE_UNCACHED_SPACE_ID || '4'
 const UNCACHED_DISCUSSION_SPACE_ID =
   process.env.GAMEPLAN_OFFLINE_UNCACHED_DISCUSSION_SPACE_ID || '7'
 const UNCACHED_DISCUSSION_ID = process.env.GAMEPLAN_OFFLINE_UNCACHED_DISCUSSION_ID || '54'
-// A space the primary account has joined (US9 downloads only cover joined spaces).
+// A space the primary account has joined, where US9 posts its own discussion. Its list is
+// never opened in the story, so what shows offline has to come from the download.
 const JOINED_SPACE_ID = process.env.GAMEPLAN_OFFLINE_JOINED_SPACE_ID || '1426'
 
 const URLS = {

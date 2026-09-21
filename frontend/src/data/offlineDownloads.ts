@@ -6,6 +6,7 @@ import { isOnline, onReconnect } from './online'
 import { session } from './session'
 import { customEmojis } from './customEmojis'
 import { isMobileViewport } from '@/utils/useIsMobile'
+import { communityFeedKey, spaceFeedKey } from './discussions'
 import {
   ACTIVITY_FIELDS,
   COMMENT_FIELDS,
@@ -48,6 +49,9 @@ const MAX_IMAGES = 300
 const SYNC_INTERVAL = 6 * 60 * 60 * 1000
 // Spreads the first sync after load so a team opening the app together doesn't sync together.
 const MAX_START_DELAY = 30 * 1000
+// What a feed asks for in one page (useDiscussions' default limit), so a restored list holds
+// as much as a fetched one.
+const FEED_LIMIT = 50
 
 interface Meta {
   user: string
@@ -63,6 +67,8 @@ interface Meta {
 
 interface Bundle {
   discussions: Array<Record<string, unknown> & { name: string | number }>
+  /** The same discussions in the shape the feeds list them. */
+  rows: FeedRow[]
   comments: Record<string, Row[]>
   activities: Record<string, Row[]>
   polls: Record<string, Row[]>
@@ -70,6 +76,8 @@ interface Bundle {
 }
 
 type Row = Record<string, unknown> & { name: string | number }
+
+type FeedRow = Row & { project?: string | number; team?: string; last_post_at?: string }
 
 export const offlineWindow = useLocalStorage<OfflineWindow>(
   `gameplan:offline-window:${session.user}`,
@@ -178,6 +186,7 @@ async function runSync(days: OfflineWindow): Promise<boolean> {
     await writeMeta(base)
 
     const images = new Set<string>()
+    const feedRows = new Map<string, FeedRow>()
     const fetchPage = async (params: Record<string, unknown>) => {
       const bundle = await call<Bundle>(BUNDLE, {
         window_days: days,
@@ -185,6 +194,7 @@ async function runSync(days: OfflineWindow): Promise<boolean> {
         ...params,
       })
       await storeBundle(bundle)
+      for (const row of bundle.rows ?? []) feedRows.set(String(row.name), row)
       for (const discussion of bundle.discussions) stored.add(String(discussion.name))
       for (const url of bundleImages(bundle)) images.add(url)
       await writeMeta({ ...base, names: [...stored] })
@@ -214,6 +224,8 @@ async function runSync(days: OfflineWindow): Promise<boolean> {
       await fetchPage({ names: missing.slice(i, i + PAGE_SIZE) })
       downloads.done = Math.min(i + PAGE_SIZE, missing.length)
     }
+
+    await storeFeeds(feedRows, new Set([...dropped, ...index.revoked]))
 
     const emojis = (customEmojis.data ?? []).map((emoji) => emoji.image).filter(Boolean)
     saveImages([...emojis, ...images].slice(0, MAX_IMAGES) as string[])
@@ -247,6 +259,59 @@ async function storeBundle(bundle: Bundle) {
     )
   }
   await setMany(entries)
+}
+
+/**
+ * Files the downloaded discussions into the lists the Space and community feeds read, so a
+ * Space the device has never opened still lists them offline.
+ *
+ * Rows already cached are merged rather than replaced: a changes-only sync brings back only
+ * what changed, and a feed opened online holds discussions from outside the window. Rows for
+ * discussions this sync removed go, so a feed never offers what the device no longer has.
+ */
+async function storeFeeds(rows: Map<string, FeedRow>, removed: Set<string>) {
+  const user = session.user!
+  const fresh = new Map<string, FeedRow[]>()
+  const collect = (key: string, row: FeedRow) => {
+    const list = fresh.get(key)
+    if (list) list.push(row)
+    else fresh.set(key, [row])
+  }
+  for (const row of rows.values()) {
+    if (row.project != null) collect(listKey(feedCacheKey(spaceFeedKey(row.project), user)), row)
+    if (row.team) collect(listKey(feedCacheKey(communityFeedKey(row.team), user)), row)
+  }
+
+  const cachedFeeds = (await keys()).filter(
+    (key): key is string => typeof key === 'string' && key.startsWith(FEED_KEY_PREFIX),
+  )
+  const targets = [...new Set([...fresh.keys(), ...cachedFeeds])]
+  if (!targets.length) return
+
+  const stored = await getMany(targets).catch(() => [])
+  const entries: [string, string][] = []
+  targets.forEach((key, index) => {
+    const merged = new Map<string, FeedRow>()
+    for (const row of parseRows(stored[index])) {
+      if (!removed.has(String(row.name))) merged.set(String(row.name), row)
+    }
+    for (const row of fresh.get(key) ?? []) merged.set(String(row.name), row)
+    const next = [...merged.values()]
+      .sort((a, b) => String(b.last_post_at ?? '').localeCompare(String(a.last_post_at ?? '')))
+      .slice(0, FEED_LIMIT)
+    entries.push([key, JSON.stringify(next.map((row) => ({ ...row, name: String(row.name) })))])
+  })
+  await setMany(entries)
+}
+
+function parseRows(value: unknown): FeedRow[] {
+  if (typeof value !== 'string') return []
+  try {
+    const rows = JSON.parse(value)
+    return Array.isArray(rows) ? rows : []
+  } catch {
+    return []
+  }
 }
 
 /** Discussions saved on this device, whether downloaded or from the user's own visits. */
@@ -344,6 +409,13 @@ export function downloadForOffline(days: OfflineWindow) {
 function listKey(cacheKey: unknown[]) {
   return JSON.stringify(['useList', ...cacheKey])
 }
+
+// Per user, like every feed's own key (data/discussions.ts).
+function feedCacheKey(key: string, user: string) {
+  return ['Discussions', key, user]
+}
+
+const FEED_KEY_PREFIX = '["useList","Discussions"'
 
 function docKey(doctype: string, name: string) {
   return `doc:${doctype}/${name}`
