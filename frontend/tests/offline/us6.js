@@ -1,8 +1,10 @@
 // US6 — Honest dead ends: offline navigation to content never visited before should
 // show a friendly "can't load this while offline" state with retry — not a blank
-// screen, crash, or infinite spinner.
+// screen, crash, or infinite spinner. Searching offline, which can never be served from
+// the device, shows the same state rather than a red error line.
 const {
   chromium,
+  BASE,
   URLS,
   newLoggedInContext,
   warmup,
@@ -85,6 +87,38 @@ async function run() {
       }
       result.checks.push(check)
     }
+
+    const searchCheck = { name: 'search offline', url: `${BASE}/g/search` }
+    try {
+      await page.goto(searchCheck.url, { waitUntil: 'load', timeout: 10000 })
+      await page
+        .getByPlaceholder(/Search/)
+        .first()
+        .click()
+      await page.keyboard.type('lobby')
+      await page.keyboard.press('Enter')
+      await page.waitForTimeout(2500)
+
+      const text = await innerTextSafe(page)
+      const retry = await page.getByRole('button', { name: 'Retry' }).count()
+      // ErrorMessage, the red line this replaced, is the only role=alert on the page.
+      const redError = await page.locator('[role="alert"]').count()
+
+      searchCheck.textSnippet = text.slice(0, 400)
+      searchCheck.screenshot = await shot(page, 'us6-search-offline')
+      searchCheck.pass = /needs a connection/i.test(text) && retry > 0 && redError === 0
+      searchCheck.symptom = searchCheck.pass
+        ? 'same offline fallback with Retry, no red error line'
+        : redError > 0
+          ? 'red ErrorMessage still shown'
+          : retry === 0
+            ? 'no Retry action'
+            : 'no "needs a connection" message'
+    } catch (e) {
+      searchCheck.pass = false
+      searchCheck.symptom = `threw: ${e.message}`
+    }
+    result.checks.push(searchCheck)
 
     result.pass = result.checks.every((c) => c.pass)
   } catch (e) {
