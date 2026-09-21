@@ -38,49 +38,47 @@ CHILD_LISTS = {
 
 
 @frappe.whitelist(methods=["POST"])
-def get_offline_index(window_days, cached=None):
+def get_offline_index(window_days, cached=None, since=None):
 	"""Discussions the device should hold for this window, newest activity first.
+
+	`since` is when the device last finished a sync: what has changed after it comes back as
+	`changed`, so a device that is already up to date asks for no bundles at all.
 
 	`cached` names other discussions the device holds from the user's own visits; the ones they
 	can no longer read (deleted, or access taken away) come back as `revoked` to be removed.
 	"""
 	window = _allowed_window(window_days)
 	synced_at = now_datetime()
+	rows = _discussions_in_window(window)
 	return {
-		"discussions": [row.name for row in _discussions_in_window(window)],
+		"discussions": [row.name for row in rows],
+		"changed": [row.name for row in _changed_since(rows, get_datetime(since))] if since else [],
 		"revoked": _revoked(frappe.parse_json(cached) or []),
 		"synced_at": str(synced_at),
 	}
 
 
 @frappe.whitelist(methods=["POST"])
-def get_offline_bundle(window_days, fields, since=None, start=0, names=None):
-	"""One page of discussions in the window, each with its comments, activity and polls.
+def get_offline_bundle(window_days, fields, names):
+	"""A page of the window's discussions, each with its comments, activity and polls.
+
+	`names` is what the device asked for, a page's worth at a time, taken from the index:
+	what it does not hold yet and what the index reported as changed. Names outside the
+	window, or outside the user's reach, simply do not come back.
 
 	`fields` maps comments/activities/polls to the field lists the app's own lists request,
 	so the rows come back in exactly the shape those lists cache. `rows` carries the same
 	discussions in the shape the feeds render, so a Space the user has never opened still
-	lists them offline. With `since`, only discussions that changed after it are included.
-	With `names`, just those (a page's worth), for a device fetching what it doesn't hold yet.
+	lists them offline.
 	"""
 	window = _allowed_window(window_days)
 	fields = frappe.parse_json(fields)
-	start = cint(start)
-
-	rows = _discussions_in_window(window)
-	if names:
-		wanted = {str(name) for name in frappe.parse_json(names)[:PAGE_SIZE]}
-		rows = [row for row in rows if row.name in wanted]
-		start = 0
-	elif since:
-		rows = _changed_since(rows, get_datetime(since))
-	page = rows[start : start + PAGE_SIZE]
-	names = [row.name for row in page]
+	wanted = {str(name) for name in frappe.parse_json(names)[:PAGE_SIZE]}
+	names = [row.name for row in _discussions_in_window(window) if row.name in wanted]
 
 	bundle = {
 		"discussions": [read_doc("GP Discussion", name) for name in names],
 		"rows": _feed_rows(names),
-		"has_next_page": len(rows) > start + PAGE_SIZE,
 	}
 	for key, (doctype, link) in CHILD_LISTS.items():
 		bundle[key] = _rows_by_discussion(doctype, link, fields.get(key), names)

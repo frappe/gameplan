@@ -65,6 +65,14 @@ interface Meta {
   incomplete: boolean
 }
 
+interface Index {
+  discussions: string[]
+  /** Changed since the device's last complete sync, so only these are fetched again. */
+  changed: string[]
+  revoked: string[]
+  synced_at: string
+}
+
 interface Bundle {
   discussions: Array<Record<string, unknown> & { name: string | number }>
   /** The same discussions in the shape the feeds list them. */
@@ -72,7 +80,6 @@ interface Bundle {
   comments: Record<string, Row[]>
   activities: Record<string, Row[]>
   polls: Record<string, Row[]>
-  has_next_page: boolean
 }
 
 type Row = Record<string, unknown> & { name: string | number }
@@ -162,18 +169,19 @@ async function runSync(days: OfflineWindow): Promise<boolean> {
     const previous = meta ?? (await readMeta())
     const onDevice = new Set(await cachedDiscussions())
     const visited = [...onDevice].filter((name) => !previous?.names.includes(name))
-    const index = await call<{ discussions: string[]; revoked: string[]; synced_at: string }>(
-      INDEX,
-      { window_days: days, cached: visited },
-    )
-    const names = index.discussions
-    const dropped = (previous?.names ?? []).filter((name) => !names.includes(name))
+    const sameWindow = previous?.window === days
+    const index = await call<Index>(INDEX, {
+      window_days: days,
+      cached: visited,
+      since: sameWindow ? previous.since : null,
+    })
+    const names = new Set(index.discussions)
+    const dropped = (previous?.names ?? []).filter((name) => !names.has(name))
     await forgetDiscussions([...dropped, ...index.revoked])
 
     // Only what is really on the device counts as downloaded. A new window starts over.
-    const sameWindow = previous?.window === days
     const stored = new Set(
-      sameWindow ? previous.names.filter((name) => names.includes(name) && onDevice.has(name)) : [],
+      sameWindow ? previous.names.filter((name) => names.has(name) && onDevice.has(name)) : [],
     )
     const base: Meta = {
       user: session.user!,
@@ -187,42 +195,29 @@ async function runSync(days: OfflineWindow): Promise<boolean> {
 
     const images = new Set<string>()
     const feedRows = new Map<string, FeedRow>()
-    const fetchPage = async (params: Record<string, unknown>) => {
+    const fetchPage = async (names: string[]) => {
       const bundle = await call<Bundle>(BUNDLE, {
         window_days: days,
         fields: { comments: COMMENT_FIELDS, activities: ACTIVITY_FIELDS, polls: POLL_FIELDS },
-        ...params,
+        names,
       })
       await storeBundle(bundle)
       for (const row of bundle.rows ?? []) feedRows.set(String(row.name), row)
       for (const discussion of bundle.discussions) stored.add(String(discussion.name))
       for (const url of bundleImages(bundle)) images.add(url)
       await writeMeta({ ...base, names: [...stored] })
-      return bundle
     }
 
-    // Changes to what the device already holds.
-    if (base.since && stored.size) {
-      let start = 0
-      let hasNext = true
-      while (hasNext) {
-        if (!isOnline.value) return false
-        const bundle = await fetchPage({ since: base.since, start })
-        start += bundle.discussions.length
-        hasNext = bundle.has_next_page
-        if (hasNext) await idle()
-      }
-    }
-
-    // Everything not on the device yet: a first download, a space joined since the last sync,
-    // or what an interrupted sync didn't reach.
-    const missing = names.filter((name) => !stored.has(name))
-    downloads.total = missing.length
-    for (let i = 0; i < missing.length; i += PAGE_SIZE) {
+    // What the index says changed, plus whatever the device doesn't hold yet: a first
+    // download, a Space that joined the window since, or what an interrupted sync missed.
+    const changed = new Set(index.changed)
+    const wanted = index.discussions.filter((name) => changed.has(name) || !stored.has(name))
+    downloads.total = wanted.length
+    for (let i = 0; i < wanted.length; i += PAGE_SIZE) {
       if (!isOnline.value) return false
       if (i) await idle()
-      await fetchPage({ names: missing.slice(i, i + PAGE_SIZE) })
-      downloads.done = Math.min(i + PAGE_SIZE, missing.length)
+      await fetchPage(wanted.slice(i, i + PAGE_SIZE))
+      downloads.done = Math.min(i + PAGE_SIZE, wanted.length)
     }
 
     await storeFeeds(feedRows, new Set([...dropped, ...index.revoked]))

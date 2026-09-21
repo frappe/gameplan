@@ -64,13 +64,19 @@ class OfflineDownloadsTestCase(GameplanTestCase):
 			owner=self.second_member,
 		)
 
-	def index(self, window):
+	def index(self, window, **kwargs):
 		with self.as_user(self.member):
-			return get_offline_index(window)["discussions"]
+			return get_offline_index(window, **kwargs)["discussions"]
 
-	def bundle(self, window, **kwargs):
+	def changed(self, window, since):
 		with self.as_user(self.member):
-			return get_offline_bundle(window, FIELDS, **kwargs)
+			return get_offline_index(window, since=str(since))["changed"]
+
+	def bundle(self, window, names=None):
+		"""What a device asks for: everything in the window unless a test names its own."""
+		with self.as_user(self.member):
+			names = json.dumps(names if names is not None else self.index(window))
+			return get_offline_bundle(window, FIELDS, names)
 
 	def settle_before(self, when):
 		"""Backdate every discussion in the window, so only what a test touches is a change."""
@@ -178,35 +184,29 @@ class TestOfflineBundle(OfflineDownloadsTestCase):
 			{str(d["name"]) for d in bundle["discussions"]},
 		)
 
-	def test_pages_through_the_window(self):
+	def test_a_page_is_capped_so_one_request_cannot_ask_for_everything(self):
 		for i in range(offline_downloads.PAGE_SIZE):
 			create_discussion(f"Thread {i}", self.joined)
-		in_window = len(self.index(30))
+		in_window = self.index(30)
+		self.assertGreater(len(in_window), offline_downloads.PAGE_SIZE)
 
-		first = self.bundle(30)
-		second = self.bundle(30, start=offline_downloads.PAGE_SIZE)
-		self.assertTrue(first["has_next_page"])
-		self.assertFalse(second["has_next_page"])
-		names = [d["name"] for d in first["discussions"] + second["discussions"]]
-		self.assertEqual(len(names), in_window)
-		self.assertEqual(len(set(names)), len(names))
+		bundle = self.bundle(30, names=in_window)
+		self.assertEqual(len(bundle["discussions"]), offline_downloads.PAGE_SIZE)
 
 	def test_names_fetches_just_those_within_the_window(self):
 		other = create_discussion("Another thread", self.joined, owner=self.member)
 		wanted = [str(other.name), str(self.old.name), str(self.outside.name)]
-		bundle = self.bundle(30, names=json.dumps(wanted))
+		bundle = self.bundle(30, names=wanted)
 		# The old thread is outside 30 days, and the rival community is out of scope.
 		self.assertEqual([str(d["name"]) for d in bundle["discussions"]], [str(other.name)])
-		self.assertFalse(bundle["has_next_page"])
 
-	def test_since_returns_only_changed_discussions(self):
+	def test_the_index_reports_only_what_changed(self):
 		since = add_to_date(now_datetime(), minutes=-5)
 		self.settle_before(add_to_date(since, minutes=-10))
-		self.assertEqual(self.bundle(30, since=str(since))["discussions"], [])
+		self.assertEqual(self.changed(30, since), [])
 
 		create_comment(self.recent, content="New reply")
-		changed = self.bundle(30, since=str(since))["discussions"]
-		self.assertEqual([str(d["name"]) for d in changed], [str(self.recent.name)])
+		self.assertEqual(self.changed(30, since), [str(self.recent.name)])
 
 	def test_a_reaction_on_an_old_comment_counts_as_a_change(self):
 		comment = create_comment(self.recent, content="Hello")
@@ -214,11 +214,61 @@ class TestOfflineBundle(OfflineDownloadsTestCase):
 		earlier = add_to_date(since, minutes=-10)
 		self.settle_before(earlier)
 		set_modified("GP Comment", comment.name, earlier)
-		self.assertEqual(self.bundle(30, since=str(since))["discussions"], [])
+		self.assertEqual(self.changed(30, since), [])
 
 		set_modified("GP Comment", comment.name, now_datetime())
-		changed = self.bundle(30, since=str(since))["discussions"]
-		self.assertEqual([str(d["name"]) for d in changed], [str(self.recent.name)])
+		self.assertEqual(self.changed(30, since), [str(self.recent.name)])
+
+	def test_every_kind_of_activity_counts_as_a_change(self):
+		"""A sync must not miss a change; each of these is one a reader would see."""
+		comment = create_comment(self.recent, content="Hello", owner=self.member)
+		poll = create_poll("Lunch?", self.recent)
+		unchanged = create_discussion("Quiet thread", self.joined, owner=self.member)
+
+		def changed_after(action):
+			since = add_to_date(now_datetime(), seconds=-1)
+			self.settle_before(add_to_date(since, minutes=-10))
+			set_modified("GP Comment", comment.name, add_to_date(since, minutes=-10))
+			set_modified("GP Poll", poll.name, add_to_date(since, minutes=-10))
+			action()
+			names = self.changed(30, since)
+			self.assertNotIn(str(unchanged.name), names, "an untouched discussion was fetched again")
+			return names
+
+		with self.as_user(self.member):
+			cases = {
+				"an edited discussion": lambda: frappe.get_doc("GP Discussion", self.recent.name).save(
+					ignore_permissions=True
+				),
+				"a new comment": lambda: create_comment(self.recent, content="Another"),
+				"an edited comment": lambda: frappe.get_doc("GP Comment", comment.name).save(
+					ignore_permissions=True
+				),
+				"a reaction on the discussion": lambda: frappe.get_doc(
+					"GP Discussion", self.recent.name
+				).react(operations=[{"emoji": "👍", "operation": "add"}]),
+				"a reaction on a comment": lambda: frappe.get_doc("GP Comment", comment.name).react(
+					operations=[{"emoji": "🎉", "operation": "add"}]
+				),
+				"a poll vote": lambda: frappe.get_doc("GP Poll", poll.name).submit_vote("Yes"),
+			}
+			for label, action in cases.items():
+				with self.subTest(label):
+					self.assertIn(str(self.recent.name), changed_after(action), label)
+
+		# Deleting a comment leaves no row to compare, so the discussion's own save carries it.
+		deleted = create_comment(self.recent, content="Temporary", owner=self.member)
+		with self.subTest("a deleted comment"):
+			self.assertIn(
+				str(self.recent.name),
+				changed_after(lambda: frappe.delete_doc("GP Comment", deleted.name, ignore_permissions=True)),
+			)
+
+	def test_a_device_that_is_up_to_date_has_nothing_to_fetch(self):
+		"""Nothing changed means no bundle request at all, not an empty one."""
+		since = add_to_date(now_datetime(), seconds=-1)
+		self.settle_before(add_to_date(since, minutes=-10))
+		self.assertEqual(self.changed(30, since), [])
 
 	def test_is_post_only(self):
 		from gameplan.tests.fixtures import declared_http_methods

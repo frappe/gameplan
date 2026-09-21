@@ -159,6 +159,21 @@ async function run() {
       symptom: `${offlineRequests.length} offline-download requests, expected ${expectedRequests}`,
     })
 
+    offlineRequests.length = 0
+    await page.getByRole('button', { name: 'Sync now' }).click()
+    await page
+      .getByText('Discussions are ready to read offline')
+      .waitFor({ timeout: 30000 })
+      .catch(() => {})
+    await page.waitForTimeout(1500)
+    result.checks.push({
+      name: 'Sync now with nothing changed costs the index call alone',
+      pass: offlineRequests.length === 1,
+      symptom: `${offlineRequests.length} requests: ${offlineRequests
+        .map((url) => url.split('.').pop())
+        .join(', ')}`,
+    })
+
     const createdKey = `doc:GP Discussion/${created}`
     await deleteIdbKey(page, createdKey)
     await page
