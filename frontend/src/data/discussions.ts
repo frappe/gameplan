@@ -44,11 +44,13 @@ export const communityFeedKey = (communityId: string, feedType: FeedType = 'rece
   `Discussions-${communityId}-${feedType}`
 
 /** What a feed key covers, for offline downloads deciding which rows belong in it. */
-export function feedScope(key: string): { space?: string; community?: string } | null {
+export function feedScope(
+  key: string,
+): { space?: string; community?: string; feedType?: FeedType } | null {
   const space = /^SpaceDiscussions-(.+)$/.exec(key)
   if (space) return { space: space[1] }
-  const community = new RegExp(`^Discussions-(.+)-(?:${FEED_TYPES.join('|')})$`).exec(key)
-  return community ? { community: community[1] } : null
+  const community = new RegExp(`^Discussions-(.+)-(${FEED_TYPES.join('|')})$`).exec(key)
+  return community ? { community: community[1], feedType: community[2] as FeedType } : null
 }
 
 export type UseDiscussionOptions = Pick<

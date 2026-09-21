@@ -58,8 +58,8 @@ interface Meta {
   window: number
   /** Server time the last complete sync started; the next one asks for changes since. */
   since: string | null
-  /** Discussions downloaded to this device. */
-  names: string[]
+  /** Discussions downloaded to this device, each with where the index said it sat. */
+  places: Record<string, string>
   lastSyncedAt: number | null
   /** The last sync stopped before finishing, so the next one runs whenever it can. */
   incomplete: boolean
@@ -67,6 +67,8 @@ interface Meta {
 
 interface Index {
   discussions: string[]
+  /** Where each of them sits now, so one that moved Space or community is fetched again. */
+  places: Record<string, string>
   /** Changed since the device's last complete sync, so only these are fetched again. */
   changed: string[]
   revoked: string[]
@@ -98,6 +100,9 @@ interface Feed {
   space?: string
   community?: string
   pinned: boolean
+  /** Unread and Participating: which of a community's discussions they hold is the server's
+   * answer, not something a download can work out, so a sync only takes rows out of them. */
+  filtered?: boolean
 }
 
 export const offlineWindow = useLocalStorage<OfflineWindow>(
@@ -118,15 +123,16 @@ let meta: Meta | null = null
 
 async function readMeta(): Promise<Meta | null> {
   const stored = (await get(META_KEY).catch(() => null)) as Meta | undefined
-  meta = stored?.user === session.user ? stored : null
-  downloads.count = meta?.names.length ?? 0
+  // A record from before places were kept starts over rather than syncing against nothing.
+  meta = stored?.user === session.user && stored.places ? stored : null
+  downloads.count = meta ? Object.keys(meta.places).length : 0
   downloads.lastSyncedAt = meta?.lastSyncedAt ?? null
   return meta
 }
 
 async function writeMeta(next: Meta) {
   meta = next
-  downloads.count = next.names.length
+  downloads.count = Object.keys(next.places).length
   downloads.lastSyncedAt = next.lastSyncedAt
   await set(META_KEY, next)
 }
@@ -182,7 +188,8 @@ async function runSync(days: OfflineWindow): Promise<boolean> {
   try {
     const previous = meta ?? (await readMeta())
     const onDevice = new Set(await cachedDiscussions())
-    const visited = [...onDevice].filter((name) => !previous?.names.includes(name))
+    const downloaded = previous?.places ?? {}
+    const visited = [...onDevice].filter((name) => !(name in downloaded))
     const sameWindow = previous?.window === days
     const index = await call<Index>(INDEX, {
       window_days: days,
@@ -190,18 +197,19 @@ async function runSync(days: OfflineWindow): Promise<boolean> {
       since: sameWindow ? previous.since : null,
     })
     const names = new Set(index.discussions)
-    const dropped = (previous?.names ?? []).filter((name) => !names.has(name))
+    const dropped = Object.keys(downloaded).filter((name) => !names.has(name))
     await forgetDiscussions([...dropped, ...index.revoked])
 
     // Only what is really on the device counts as downloaded. A new window starts over.
-    const stored = new Set(
-      sameWindow ? previous.names.filter((name) => names.has(name) && onDevice.has(name)) : [],
-    )
+    const places: Record<string, string> = {}
+    for (const name of sameWindow ? Object.keys(downloaded) : []) {
+      if (names.has(name) && onDevice.has(name)) places[name] = downloaded[name]
+    }
     const base: Meta = {
       user: session.user!,
       window: days,
       since: sameWindow ? previous.since : null,
-      names: [...stored],
+      places,
       lastSyncedAt: sameWindow ? previous.lastSyncedAt : null,
       incomplete: true,
     }
@@ -217,15 +225,21 @@ async function runSync(days: OfflineWindow): Promise<boolean> {
       })
       await storeBundle(bundle)
       for (const row of bundle.rows ?? []) feedRows.set(String(row.name), row)
-      for (const discussion of bundle.discussions) stored.add(String(discussion.name))
+      for (const discussion of bundle.discussions) {
+        const name = String(discussion.name)
+        places[name] = index.places[name]
+      }
       for (const url of bundleImages(bundle)) images.add(url)
-      await writeMeta({ ...base, names: [...stored] })
+      await writeMeta({ ...base, places: { ...places } })
     }
 
-    // What the index says changed, plus whatever the device doesn't hold yet: a first
-    // download, a Space that joined the window since, or what an interrupted sync missed.
+    // What the index says changed, plus everything filed somewhere other than where the
+    // index now places it: not held at all (a first download, a Space that joined the window
+    // since, what an interrupted sync missed), or moved to another Space or community.
     const changed = new Set(index.changed)
-    const wanted = index.discussions.filter((name) => changed.has(name) || !stored.has(name))
+    const wanted = index.discussions.filter(
+      (name) => changed.has(name) || places[name] !== index.places[name],
+    )
     downloads.total = wanted.length
     for (let i = 0; i < wanted.length; i += PAGE_SIZE) {
       if (!isOnline.value) return false
@@ -241,7 +255,7 @@ async function runSync(days: OfflineWindow): Promise<boolean> {
 
     await writeMeta({
       ...base,
-      names: [...stored],
+      places: { ...places },
       since: index.synced_at,
       lastSyncedAt: Date.now(),
       incomplete: false,
@@ -303,7 +317,9 @@ async function storeFeeds(rows: Map<string, FeedRow>, removed: Set<string>) {
   const stored = await getMany(targets.map((feed) => feed.key)).catch(() => [])
   const entries: [string, string][] = []
   targets.forEach((feed, index) => {
-    const candidates = feed.space ? bySpace.get(feed.space) : byCommunity.get(feed.community!)
+    const candidates = feed.filtered
+      ? []
+      : ((feed.space ? bySpace.get(feed.space) : byCommunity.get(feed.community!)) ?? [])
     const merged = new Map<string, FeedRow>()
     for (const row of parseRows(stored[index])) {
       const name = String(row.name)
@@ -313,7 +329,7 @@ async function storeFeeds(rows: Map<string, FeedRow>, removed: Set<string>) {
       if (removed.has(name) || (fresh && !belongsTo(fresh, feed))) continue
       merged.set(name, fresh ?? row)
     }
-    for (const row of candidates ?? []) {
+    for (const row of candidates) {
       if (belongsTo(row, feed)) merged.set(String(row.name), row)
     }
 
@@ -378,7 +394,15 @@ async function cachedFeeds(user: string): Promise<Feed[]> {
     const pinned = Array.isArray(inner) && inner[0] === 'pinned'
     const name = pinned ? inner[1] : inner
     const scope = typeof name === 'string' ? feedScope(name) : null
-    if (scope) feeds.push({ key, ...scope, pinned })
+    if (!scope) continue
+    const { space, community, feedType } = scope
+    feeds.push({
+      key,
+      space,
+      community,
+      pinned,
+      filtered: Boolean(feedType && feedType !== 'recent'),
+    })
   }
   return feeds
 }
@@ -469,7 +493,7 @@ function forgetImages(urls: string[]) {
 export async function removeOfflineDownloads() {
   const current = meta ?? (await readMeta())
   if (!current) return
-  await forgetDiscussions(current.names)
+  await forgetDiscussions(Object.keys(current.places))
   await delMany([META_KEY])
   meta = null
   downloads.count = 0

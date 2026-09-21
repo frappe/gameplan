@@ -98,6 +98,34 @@ async function createDiscussion(api) {
   return name
 }
 
+/**
+ * Files a downloaded discussion somewhere it no longer sits, which is what a Space moved to
+ * another community leaves behind: the discussion itself never changes, so only the index's
+ * account of where it is can tell the device to fetch it again.
+ */
+function misplaceDownload(page, name) {
+  return page.evaluate(
+    (n) =>
+      new Promise((resolve, reject) => {
+        const req = indexedDB.open('keyval-store')
+        req.onsuccess = () => {
+          const tx = req.result.transaction('keyval', 'readwrite')
+          const store = tx.objectStore('keyval')
+          const get = store.get('gameplan:offline-downloads')
+          get.onsuccess = () => {
+            const meta = get.result
+            meta.places[n] = 'moved/elsewhere'
+            store.put(meta, 'gameplan:offline-downloads')
+          }
+          tx.oncomplete = () => resolve()
+          tx.onerror = () => reject(tx.error)
+        }
+        req.onerror = () => reject(req.error)
+      }),
+    name,
+  )
+}
+
 /** The rows a feed would render offline, read straight from the cache it reads. */
 function cachedFeed(page, cacheKey) {
   return page.evaluate(
@@ -192,6 +220,30 @@ async function run() {
         .join(', ')}`,
     })
 
+    await misplaceDownload(page, created)
+    // The device reads where it filed its downloads once, on load.
+    await page.reload({ waitUntil: 'load', timeout: 20000 })
+    await page.getByText('Download for offline').waitFor({ timeout: 15000 })
+    offlineRequests.length = 0
+    await page.getByRole('button', { name: 'Sync now' }).click()
+    await page
+      .getByText('Discussions are ready to read offline')
+      .waitFor({ timeout: 30000 })
+      .catch(() => {})
+    await page.waitForTimeout(1500)
+    result.checks.push({
+      name: 'a discussion the index places somewhere else is fetched again',
+      pass: offlineRequests.length === 2,
+      symptom: `${offlineRequests.length} requests: ${offlineRequests
+        .map((url) => url.split('.').pop())
+        .join(', ')}`,
+    })
+
+    const communityFeed = (feedType) =>
+      JSON.stringify(['useList', 'Discussions', `Discussions-${COMMUNITY}-${feedType}`, EMAIL])
+    // An Unread feed this device has cached, empty because everything here has been read.
+    await putIdbKey(page, communityFeed('unread'), [])
+
     const createdKey = `doc:GP Discussion/${created}`
     await deleteIdbKey(page, createdKey)
     await page
@@ -207,6 +259,18 @@ async function run() {
       name: 'Sync now fetches a discussion missing from the device though it has not changed',
       pass: (await idbKeyvalKeys(page)).includes(createdKey),
       symptom: `${createdKey} after Sync now: ${(await idbKeyvalKeys(page)).includes(createdKey) ? 'present' : 'missing'}`,
+    })
+
+    const [unread, allDiscussions] = await Promise.all([
+      cachedFeed(page, communityFeed('unread')),
+      cachedFeed(page, communityFeed('recent')),
+    ])
+    result.checks.push({
+      name: 'a sync fills All Discussions but leaves the Unread feed to the server',
+      pass: !unread.includes(created) && allDiscussions.includes(created),
+      symptom: `Unread: ${unread.includes(created) ? 'listed' : 'not listed'}, All Discussions: ${
+        allDiscussions.includes(created) ? 'listed' : 'missing'
+      }`,
     })
 
     await putIdbKey(page, GONE_KEY, {

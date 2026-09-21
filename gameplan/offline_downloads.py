@@ -48,6 +48,9 @@ def get_offline_index(window_days, cached=None, since=None):
 	`since` is when the device last finished a sync: what has changed after it comes back as
 	`changed`, so a device that is already up to date asks for no bundles at all.
 
+	`places` says where each of them sits now, for the moves no timestamp reports (see
+	`_place`); a device compares it against where it filed them and fetches what disagrees.
+
 	`cached` names other discussions the device holds from the user's own visits; the ones they
 	can no longer read (deleted, or access taken away) come back as `revoked` to be removed.
 	"""
@@ -56,6 +59,7 @@ def get_offline_index(window_days, cached=None, since=None):
 	rows = _discussions_in_window(window)
 	return {
 		"discussions": [row.name for row in rows],
+		"places": {row.name: _place(row) for row in rows},
 		"changed": [row.name for row in _changed_since(rows, get_datetime(since))] if since else [],
 		"revoked": _revoked(frappe.parse_json(cached) or []),
 		"synced_at": str(synced_at),
@@ -119,7 +123,7 @@ def _discussions_in_window(window):
 		return []
 	rows = _query(
 		"GP Discussion",
-		fields=["name", "modified", "last_post_at"],
+		fields=["name", "project", "team", "modified", "last_post_at"],
 		filters={
 			"project": ["in", spaces],
 			"last_post_at": [">=", add_days(now_datetime(), -window)],
@@ -131,6 +135,17 @@ def _discussions_in_window(window):
 	for row in rows:
 		row.name = str(row.name)
 	return rows
+
+
+def _place(row):
+	"""The Space and community a discussion sits in, as one comparable value.
+
+	Moving a Space to another community rewrites its discussions' denormalised `team` in a
+	single statement, and a merge rewrites their `project` through frappe's rename: neither
+	touches `modified`, so `_changed_since` cannot see them. A device that kept the discussion
+	under its old Space or community would go on listing it there for as long as it holds it.
+	"""
+	return f"{row.project}/{row.team or ''}"
 
 
 def _feed_rows(names):

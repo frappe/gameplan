@@ -72,6 +72,10 @@ class OfflineDownloadsTestCase(GameplanTestCase):
 		with self.as_user(self.member):
 			return get_offline_index(window, since=str(since))["changed"]
 
+	def places(self, window):
+		with self.as_user(self.member):
+			return get_offline_index(window)["places"]
+
 	def bundle(self, window, names=None):
 		"""What a device asks for: everything in the window unless a test names its own."""
 		with self.as_user(self.member):
@@ -119,6 +123,22 @@ class TestOfflineIndex(OfflineDownloadsTestCase):
 	def test_a_discussion_moved_out_of_the_community_drops_out(self):
 		frappe.db.set_value("GP Discussion", self.recent.name, "project", self.other_space.name)
 		self.assertNotIn(str(self.recent.name), self.index(90))
+
+	def test_a_space_moved_to_another_community_is_reported_as_moved(self):
+		"""The move rewrites `team` in one statement, so no timestamp reports it.
+
+		Without `places` the device would go on listing the discussion under the community
+		the Space left.
+		"""
+		since = add_to_date(now_datetime(), minutes=-5)
+		self.settle_before(add_to_date(since, minutes=-10))
+		elsewhere = create_community("Acme Labs", members=[self.member])
+		before = self.places(90)[str(self.recent.name)]
+
+		frappe.get_doc("GP Project", str(self.joined.name)).move_to_team(elsewhere.name)
+
+		self.assertEqual(self.changed(90, since), [])
+		self.assertNotEqual(self.places(90)[str(self.recent.name)], before)
 
 	def test_a_deleted_discussion_drops_out(self):
 		frappe.delete_doc("GP Discussion", self.recent.name, ignore_permissions=True)
