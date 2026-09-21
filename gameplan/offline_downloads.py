@@ -30,6 +30,10 @@ MAX_WINDOW_DAYS = 90
 REQUESTS_PER_HOUR = 200
 # Visited discussions checked for lost access in one request.
 MAX_CACHED = 2000
+# The newest discussions a device keeps. A 90-day window on a busy site is otherwise
+# unbounded: every sync would list them all, ask the database for their changes in one
+# IN clause, and fill the device with a backlog nobody scrolls to.
+MAX_DISCUSSIONS = 500
 CHILD_LISTS = {
 	"comments": ("GP Comment", "reference"),
 	"activities": ("GP Activity", "reference"),
@@ -122,6 +126,7 @@ def _discussions_in_window(window):
 		},
 		# Pages are cut from this order, so it must not shift between requests.
 		order_by="last_post_at desc, name desc",
+		limit=MAX_DISCUSSIONS,
 	)
 	for row in rows:
 		row.name = str(row.name)
@@ -209,13 +214,14 @@ def _rows_by_discussion(doctype, link, fields, names):
 	return grouped
 
 
-def _query(doctype, fields, filters, order_by="creation asc"):
-	"""The permission-checked list query `/api/v2/document/<doctype>` runs, without paging."""
+def _query(doctype, fields, filters, order_by="creation asc", limit=None):
+	"""The permission-checked list query `/api/v2/document/<doctype>` runs."""
 	query = frappe.qb.get_query(
 		table=doctype,
 		fields=fields,
 		filters=filters,
 		order_by=order_by,
+		limit=limit,
 		ignore_permissions=False,
 	)
 	controller = get_controller(doctype)

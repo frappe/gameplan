@@ -31,13 +31,25 @@ export interface Discussion extends GPDiscussion {
   last_poll_title?: string
 }
 
+export type FeedType = 'recent' | 'unread' | 'participating'
+
+const FEED_TYPES: FeedType[] = ['recent', 'unread', 'participating']
+
 /**
  * Where each feed caches its rows. Shared with offline downloads, which fills the same
  * entries so a Space the device has never opened still lists its discussions offline.
  */
 export const spaceFeedKey = (spaceId: string | number) => `SpaceDiscussions-${spaceId}`
-export const communityFeedKey = (communityId: string, feedType = 'recent') =>
+export const communityFeedKey = (communityId: string, feedType: FeedType = 'recent') =>
   `Discussions-${communityId}-${feedType}`
+
+/** What a feed key covers, for offline downloads deciding which rows belong in it. */
+export function feedScope(key: string): { space?: string; community?: string } | null {
+  const space = /^SpaceDiscussions-(.+)$/.exec(key)
+  if (space) return { space: space[1] }
+  const community = new RegExp(`^Discussions-(.+)-(?:${FEED_TYPES.join('|')})$`).exec(key)
+  return community ? { community: community[1] } : null
+}
 
 export type UseDiscussionOptions = Pick<
   UseListOptions<Discussion>,

@@ -5,8 +5,8 @@
 // doesn't download again, a visited copy of a discussion that's since gone is removed, and
 // Sync now fetches a discussion missing from the device even though it hasn't changed (a
 // space joined after the first download), a Space never opened lists what was downloaded for
-// it, and removing a discussion keeps saved images another discussion on the device still
-// shows.
+// it, a discussion that moves Space leaves the feed it came from, and removing a discussion
+// keeps saved images another discussion on the device still shows.
 const {
   chromium,
   BASE,
@@ -18,7 +18,7 @@ const {
   shot,
   writeResult,
 } = require('./helpers')
-const { COMMUNITY, JOINED_SPACE_ID } = require('./config')
+const { COMMUNITY, EMAIL, JOINED_SPACE_ID, SPACE_ID } = require('./config')
 
 const MARKER = `us9-${Date.now()}`
 const OFFLINE_API = /gameplan\.offline_downloads\.get_offline_(index|bundle)/
@@ -96,6 +96,24 @@ async function createDiscussion(api) {
   })
   if (!comment.ok()) throw new Error(`create comment: ${await comment.text()}`)
   return name
+}
+
+/** The rows a feed would render offline, read straight from the cache it reads. */
+function cachedFeed(page, cacheKey) {
+  return page.evaluate(
+    (key) =>
+      new Promise((resolve, reject) => {
+        const req = indexedDB.open('keyval-store')
+        req.onsuccess = () => {
+          const get = req.result.transaction('keyval').objectStore('keyval').get(key)
+          get.onsuccess = () =>
+            resolve(JSON.parse(get.result || '[]').map((row) => String(row.name)))
+          get.onerror = () => reject(get.error)
+        }
+        req.onerror = () => reject(req.error)
+      }),
+    cacheKey,
+  )
 }
 
 function spaNavigate(page, path) {
@@ -262,6 +280,37 @@ async function run() {
       name: 'a reload soon after a complete sync does not download again',
       pass: offlineRequests.length === 0,
       symptom: `${offlineRequests.length} offline-download requests after reload`,
+    })
+
+    const user = EMAIL
+    await spaNavigate(page, '/g/settings/preferences')
+    await page.getByText('Download for offline').waitFor({ timeout: 15000 })
+    const feedKey = (space) =>
+      JSON.stringify(['useList', 'Discussions', `SpaceDiscussions-${space}`, user])
+    const moveResp = await api.post(
+      `/api/v2/document/GP Discussion/${created}/method/move_to_project`,
+      { data: { project: SPACE_ID } },
+    )
+    if (!moveResp.ok())
+      throw new Error(
+        `move discussion ${created} -> ${SPACE_ID}: ${moveResp.status()} ${await moveResp.text()}`,
+      )
+    await page.getByRole('button', { name: 'Sync now' }).click()
+    await page
+      .getByText('Discussions are ready to read offline')
+      .waitFor({ timeout: 30000 })
+      .catch(() => {})
+    await page.waitForTimeout(1500)
+    const [leftBehind, movedTo] = await Promise.all([
+      cachedFeed(page, feedKey(JOINED_SPACE_ID)),
+      cachedFeed(page, feedKey(SPACE_ID)),
+    ])
+    result.checks.push({
+      name: 'a discussion moved to another Space leaves the feed it came from',
+      pass: !leftBehind.includes(created) && movedTo.includes(created),
+      symptom: `old Space: ${leftBehind.includes(created) ? 'still listed' : 'gone'}, new Space: ${
+        movedTo.includes(created) ? 'listed' : 'missing'
+      }`,
     })
 
     result.pass = result.checks.every((check) => check.pass)

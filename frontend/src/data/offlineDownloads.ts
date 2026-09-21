@@ -6,7 +6,7 @@ import { isOnline, onReconnect } from './online'
 import { session } from './session'
 import { customEmojis } from './customEmojis'
 import { isMobileViewport } from '@/utils/useIsMobile'
-import { communityFeedKey, spaceFeedKey } from './discussions'
+import { communityFeedKey, feedScope, spaceFeedKey } from './discussions'
 import {
   ACTIVITY_FIELDS,
   COMMENT_FIELDS,
@@ -84,7 +84,21 @@ interface Bundle {
 
 type Row = Record<string, unknown> & { name: string | number }
 
-type FeedRow = Row & { project?: string | number; team?: string; last_post_at?: string }
+type FeedRow = Row & {
+  project?: string | number
+  team?: string
+  last_post_at?: string
+  pinned_at?: string | null
+  pin_scope?: string
+}
+
+/** A cached feed this sync maintains: which rows belong in it, and how they are ordered. */
+interface Feed {
+  key: string
+  space?: string
+  community?: string
+  pinned: boolean
+}
 
 export const offlineWindow = useLocalStorage<OfflineWindow>(
   `gameplan:offline-window:${session.user}`,
@@ -265,38 +279,118 @@ async function storeBundle(bundle: Bundle) {
  * discussions this sync removed go, so a feed never offers what the device no longer has.
  */
 async function storeFeeds(rows: Map<string, FeedRow>, removed: Set<string>) {
+  if (!rows.size && !removed.size) return
   const user = session.user!
-  const fresh = new Map<string, FeedRow[]>()
-  const collect = (key: string, row: FeedRow) => {
-    const list = fresh.get(key)
+  const bySpace = new Map<string, FeedRow[]>()
+  const byCommunity = new Map<string, FeedRow[]>()
+  const group = (index: Map<string, FeedRow[]>, id: string, row: FeedRow) => {
+    const list = index.get(id)
     if (list) list.push(row)
-    else fresh.set(key, [row])
+    else index.set(id, [row])
   }
   for (const row of rows.values()) {
-    if (row.project != null) collect(listKey(feedCacheKey(spaceFeedKey(row.project), user)), row)
-    if (row.team) collect(listKey(feedCacheKey(communityFeedKey(row.team), user)), row)
+    if (row.project != null) group(bySpace, String(row.project), row)
+    if (row.team) group(byCommunity, row.team, row)
   }
 
-  const cachedFeeds = (await keys()).filter(
-    (key): key is string => typeof key === 'string' && key.startsWith(FEED_KEY_PREFIX),
-  )
-  const targets = [...new Set([...fresh.keys(), ...cachedFeeds])]
-  if (!targets.length) return
+  const feeds = new Map<string, Feed>()
+  for (const feed of [...downloadedFeeds(rows.values(), user), ...(await cachedFeeds(user))]) {
+    feeds.set(feed.key, feed)
+  }
+  if (!feeds.size) return
 
-  const stored = await getMany(targets).catch(() => [])
+  const targets = [...feeds.values()]
+  const stored = await getMany(targets.map((feed) => feed.key)).catch(() => [])
   const entries: [string, string][] = []
-  targets.forEach((key, index) => {
+  targets.forEach((feed, index) => {
+    const candidates = feed.space ? bySpace.get(feed.space) : byCommunity.get(feed.community!)
     const merged = new Map<string, FeedRow>()
     for (const row of parseRows(stored[index])) {
-      if (!removed.has(String(row.name))) merged.set(String(row.name), row)
+      const name = String(row.name)
+      const fresh = rows.get(name)
+      // A discussion that moved Space comes back filed under the new one, so the feed it
+      // left has to let it go rather than list it in both.
+      if (removed.has(name) || (fresh && !belongsTo(fresh, feed))) continue
+      merged.set(name, fresh ?? row)
     }
-    for (const row of fresh.get(key) ?? []) merged.set(String(row.name), row)
+    for (const row of candidates ?? []) {
+      if (belongsTo(row, feed)) merged.set(String(row.name), row)
+    }
+
+    // Keep whatever the feed already held: a list someone paged through online holds more
+    // than one page, and dropping the rest would lose them offline.
+    const limit = feed.pinned ? Infinity : Math.max(FEED_LIMIT, parseRows(stored[index]).length)
+    const order = feed.pinned ? 'pinned_at' : 'last_post_at'
     const next = [...merged.values()]
-      .sort((a, b) => String(b.last_post_at ?? '').localeCompare(String(a.last_post_at ?? '')))
-      .slice(0, FEED_LIMIT)
-    entries.push([key, JSON.stringify(next.map((row) => ({ ...row, name: String(row.name) })))])
+      .sort((a, b) => String(b[order] ?? '').localeCompare(String(a[order] ?? '')))
+      .slice(0, limit)
+      .map((row) => ({ ...row, name: String(row.name) }))
+
+    const value = JSON.stringify(next)
+    // Feeds this sync never touched are left alone; a busy site has a lot of them.
+    if (value !== stored[index]) entries.push([feed.key, value])
   })
-  await setMany(entries)
+  if (entries.length) await setMany(entries)
+}
+
+/** The feeds a downloaded row belongs to, whether or not the device has opened them. */
+function downloadedFeeds(rows: Iterable<FeedRow>, user: string): Feed[] {
+  const feeds = new Map<string, Feed>()
+  const add = (key: string, feed: Omit<Feed, 'key'>) => feeds.set(key, { ...feed, key })
+  for (const row of rows) {
+    const space = row.project == null ? null : String(row.project)
+    if (space) {
+      add(listKey(feedCacheKey(spaceFeedKey(space), user)), { space, pinned: false })
+      if (row.pinned_at) {
+        add(listKey(feedCacheKey(['pinned', spaceFeedKey(space)], user)), { space, pinned: true })
+      }
+    }
+    if (row.team) {
+      add(listKey(feedCacheKey(communityFeedKey(row.team), user)), {
+        community: row.team,
+        pinned: false,
+      })
+      if (row.pinned_at) {
+        add(listKey(feedCacheKey(['pinned', communityFeedKey(row.team)], user)), {
+          community: row.team,
+          pinned: true,
+        })
+      }
+    }
+  }
+  return [...feeds.values()]
+}
+
+/** Feeds this user has already cached, so rows that moved or went away leave them too. */
+async function cachedFeeds(user: string): Promise<Feed[]> {
+  const feeds: Feed[] = []
+  for (const key of await keys()) {
+    if (typeof key !== 'string' || !key.startsWith(FEED_KEY_PREFIX)) continue
+    let parts: unknown[]
+    try {
+      parts = JSON.parse(key)
+    } catch {
+      continue
+    }
+    // Another account's feeds on this browser are not ours to rewrite.
+    if (parts[parts.length - 1] !== user) continue
+    const inner = parts[2]
+    const pinned = Array.isArray(inner) && inner[0] === 'pinned'
+    const name = pinned ? inner[1] : inner
+    const scope = typeof name === 'string' ? feedScope(name) : null
+    if (scope) feeds.push({ key, ...scope, pinned })
+  }
+  return feeds
+}
+
+function belongsTo(row: FeedRow, feed: Feed) {
+  const inScope = feed.space ? String(row.project) === feed.space : row.team === feed.community
+  if (!inScope || !feed.pinned) return inScope
+  // A community pin shows in its Space too; a Space pin only there (DiscussionList.vue).
+  if (!row.pinned_at) return false
+  return feed.space
+    ? row.pin_scope === 'Space' || row.pin_scope === 'Category'
+    : row.pin_scope === 'Category'
 }
 
 function parseRows(value: unknown): FeedRow[] {
@@ -406,7 +500,7 @@ function listKey(cacheKey: unknown[]) {
 }
 
 // Per user, like every feed's own key (data/discussions.ts).
-function feedCacheKey(key: string, user: string) {
+function feedCacheKey(key: string | string[], user: string) {
   return ['Discussions', key, user]
 }
 

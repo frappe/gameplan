@@ -82,13 +82,11 @@ import { useRouter } from 'vue-router'
 import CommunityMenu from '@/components/CommunityMenu.vue'
 import DiscussionList from '@/components/DiscussionList.vue'
 import LastPostReminder from '@/components/LastPostReminder.vue'
-import { communityFeedKey } from '@/data/discussions'
+import { communityFeedKey, type FeedType } from '@/data/discussions'
 import { communityState } from '@/data/communityState'
 import { useCommunity } from '@/data/communities'
 import { getSpaceUnreadCount, spaces } from '@/data/spaces'
 import { fetchParticipatingUnreadCount, getParticipatingUnreadCount } from '@/data/unreadCount'
-
-type FeedType = 'recent' | 'unread' | 'participating'
 
 interface Props {
   communityId: string

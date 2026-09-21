@@ -61,6 +61,7 @@ module.exports = {
   BASE,
   COMMUNITY,
   DISCUSSION_ID,
+  SPACE_ID,
   JOINED_SPACE_ID,
   EMAIL,
   PWD,

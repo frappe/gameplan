@@ -104,6 +104,14 @@ class TestOfflineIndex(OfflineDownloadsTestCase):
 		self.assertNotIn(str(self.old.name), names)
 		self.assertIn(str(self.old.name), self.index(90))
 
+	def test_a_device_is_capped_at_the_newest_discussions(self):
+		"""A busy community must not hand a device an unbounded list."""
+		with patch.object(offline_downloads, "MAX_DISCUSSIONS", 2):
+			names = self.index(90)
+		self.assertEqual(len(names), 2)
+		# Newest activity first, so the cap keeps what a reader would open next.
+		self.assertNotIn(str(self.old.name), names)
+
 	def test_window_is_capped_at_three_months(self):
 		set_last_post_at(self.old, add_days(now_datetime(), -120))
 		self.assertNotIn(str(self.old.name), self.index(365))
