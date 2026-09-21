@@ -387,7 +387,7 @@ import { provideRichQuotes } from '@/components/RichQuoteExtension/useRichQuotes
 import QuoteBacklinksPopover from '@/components/RichQuoteExtension/QuoteBacklinksPopover.vue'
 import { refreshUnreadCountForProjects } from '@/data/unreadCount'
 import { useSessionUser } from '@/data/users'
-import { canDeleteContent, canEditContent } from '@/utils/permissions'
+import { canDeleteContent, canEditContent, canMoveOrPinContent } from '@/utils/permissions'
 import { useCommandPaletteCommands } from './CommandPalette/registry'
 import { useOwnedRouteWrites } from '@/composables/useOwnedRouteWrites'
 
@@ -845,11 +845,16 @@ const spaceOptions = useGroupedSpaceOptions({
   filterFn: (space) => !space.archived_at && space.name !== discussion.doc?.project,
 })
 
-// Edit and the lifecycle actions (pin/close/move) all change the post itself, so
-// they follow the same business rule as editing — hidden from guests on posts they
-// don't own. Mirrors backend can_edit_content (see utils/permissions.ts).
+// Edit and close/re-open change the post itself, so they follow the same business
+// rule as editing: hidden from guests on posts they don't own. Mirrors backend
+// can_edit_content (see utils/permissions.ts).
 const canEditDiscussion = computed(() =>
   canEditContent(discussion.doc, space.value, useSessionUser()),
+)
+// Pin and move are narrower than edit: a guest may edit their own post but may not
+// move it to another space or pin it.
+const canMoveOrPinDiscussion = computed(() =>
+  canMoveOrPinContent(discussion.doc, space.value, useSessionUser()),
 )
 
 const actions = computed(() => [
@@ -893,7 +898,7 @@ const actions = computed(() => [
     label: 'Pin discussion...',
     disabled: !isOnline.value,
     icon: 'lucide-arrow-up-left',
-    condition: () => canEditDiscussion.value && !discussion.doc?.pinned_at,
+    condition: () => canMoveOrPinDiscussion.value && !discussion.doc?.pinned_at,
     onClick: () => {
       pinDialog.show = true
     },
@@ -902,7 +907,7 @@ const actions = computed(() => [
     label: 'Unpin discussion...',
     disabled: !isOnline.value,
     icon: 'lucide-arrow-down-left',
-    condition: () => canEditDiscussion.value && !!discussion.doc?.pinned_at,
+    condition: () => canMoveOrPinDiscussion.value && !!discussion.doc?.pinned_at,
     onClick: () => {
       const pinScope = discussion.doc?.pin_scope
       const scopeText =
@@ -961,7 +966,7 @@ const actions = computed(() => [
     label: 'Move to...',
     disabled: !isOnline.value,
     icon: 'lucide-log-out',
-    condition: () => canEditDiscussion.value,
+    condition: () => canMoveOrPinDiscussion.value,
     onClick: () => {
       discussionMoveDialog.show = true
     },
