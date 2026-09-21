@@ -109,6 +109,14 @@
                   </span>
                 </div>
                 <div class="flex mt-1.5 items-center min-w-0">
+                  <span
+                    v-if="draft.scheduled_at"
+                    class="mr-1.5 inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-base text-ink-gray-7"
+                  >
+                    <span class="lucide-calendar-clock size-3.5" aria-hidden="true" />
+                    {{ dayjsLocal(draft.scheduled_at).format('ddd D MMM, h:mm A') }}
+                    <span class="text-ink-gray-4">·</span>
+                  </span>
                   <div
                     class="overflow-hidden text-ellipsis whitespace-nowrap text-base inline-flex items-center text-ink-gray-5"
                   >

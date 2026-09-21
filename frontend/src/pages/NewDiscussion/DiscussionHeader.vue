@@ -16,20 +16,7 @@
         >
           <span class="lucide-trash-2 size-4" aria-hidden="true" />
         </button>
-        <Tooltip
-          :text="isDraftLoading ? 'Draft is loading' : 'You cannot publish this draft'"
-          :disabled="isComposerEditable"
-        >
-          <Button
-            variant="solid"
-            size="md"
-            :loading="publishing"
-            @click="publish"
-            :disabled="!isComposerEditable"
-          >
-            Publish
-          </Button>
-        </Tooltip>
+        <PublishControls size="md" />
       </div>
     </template>
   </PageHeaderMobile>
@@ -59,19 +46,7 @@
       >
         <span class="lucide-trash-2 size-4" aria-hidden="true" />
       </button>
-      <Tooltip
-        :text="isDraftLoading ? 'Draft is loading' : 'You cannot publish this draft'"
-        :disabled="isComposerEditable"
-      >
-        <Button
-          variant="solid"
-          :loading="publishing"
-          @click="publish"
-          :disabled="!isComposerEditable"
-        >
-          Publish
-        </Button>
-      </Tooltip>
+      <PublishControls />
     </div>
   </PageHeader>
 </template>
@@ -79,28 +54,13 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute, type RouteLocationRaw } from 'vue-router'
-import {
-  PageHeaderBackButton,
-  PageHeaderMobile,
-  PageHeader,
-  Breadcrumbs,
-  Button,
-  Tooltip,
-} from 'frappe-ui'
+import { PageHeaderBackButton, PageHeaderMobile, PageHeader, Breadcrumbs } from 'frappe-ui'
 import { useNewDiscussionContext } from './useNewDiscussion'
 import DiscussionSpaceSelector from './DiscussionSpaceSelector.vue'
+import PublishControls from './PublishControls.vue'
 
-const {
-  isPersisted,
-  draftData,
-  sessionUser,
-  author,
-  isDraftLoading,
-  isComposerEditable,
-  deleteDraft,
-  publish,
-  publishing,
-} = useNewDiscussionContext()
+const { isPersisted, draftData, sessionUser, author, isDraftLoading, deleteDraft } =
+  useNewDiscussionContext()
 
 const route = useRoute()
 const mobileTitle = computed(() => (isPersisted.value ? 'Draft' : 'New Discussion'))
