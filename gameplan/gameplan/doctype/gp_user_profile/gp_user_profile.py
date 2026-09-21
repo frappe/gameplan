@@ -57,7 +57,8 @@ class GPUserProfile(HasAttachments, Document):
 		days = frappe.parse_json(self.active_hours_days or "[]")
 		if not [day for day in days if day in away.DAYS]:
 			frappe.throw(_("Pick at least one day for active hours"))
-		if not self.active_hours_start or not self.active_hours_end:
+		# Not a truthiness check: a loaded midnight is timedelta(0), which is falsy.
+		if self.active_hours_start in (None, "") or self.active_hours_end in (None, ""):
 			frappe.throw(_("Set both a start and an end time for active hours"))
 		if frappe.utils.get_time(self.active_hours_start) == frappe.utils.get_time(self.active_hours_end):
 			frappe.throw(_("Active hours must start and end at different times"))

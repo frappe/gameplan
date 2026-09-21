@@ -2,7 +2,8 @@
 # For license information, please see license.txt
 
 """The email channel: one mail an hour, per user who asked for email, with everything
-that arrived since the last one.
+that arrived since the last one — and a closing mail as the user's active hours end, so
+nothing that arrived inside the window is left for the next day.
 
 Every notification is a `GP Notification` row first; this only decides which rows also
 go out by mail. A row is sent once (`email_sent_at`), and a row that no longer needs
@@ -10,6 +11,8 @@ sending — read in the app already, written while the user was away (the card c
 those), older than the horizon, or pointing at something the user can no longer open —
 is stamped without a mail so the next run does not pick it up again.
 """
+
+from datetime import timedelta
 
 import frappe
 from frappe.utils import add_to_date, get_url, now_datetime
@@ -21,21 +24,44 @@ from gameplan.email_digest import (
 	get_signed_digest_url,
 	get_user_avatar_map,
 )
+from gameplan.notifications.away import is_away, profile_prefs, scheduled_off_window, user_timezone
 from gameplan.permissions import can_view_space
 
 HORIZON_HOURS = 24
 MENTION_TYPES = ("Mention", "Rich Quote")
+# How often the scheduler calls send_batches (hooks.py); the closing mail lands in the
+# first tick after the window ends, so this is also how late it can be.
+TICK_MINUTES = 5
 
 
-def send_hourly_batches():
-	"""Scheduler entry: a batch for every user whose channel is Email."""
+def send_batches(now=None):
+	"""Scheduler entry, every TICK_MINUTES: a batch for every Email user whose clock says
+	it is time (`should_send`)."""
+	now = now or now_datetime()
 	users = frappe.get_all(
 		"GP User Profile", filters={"notification_channel": "Email", "enabled": 1}, pluck="user"
 	)
 	for user in users:
 		if not frappe.db.get_value("User", user, "enabled"):
 			continue
-		send_batch(user)
+		if should_send(user, now):
+			send_batch(user)
+
+
+def should_send(user: str, now) -> bool:
+	"""The top of the hour while inside active hours, or the first tick after they end —
+	the closing mail. Evaluated in the user's own timezone, like the away stamp. A user
+	without a schedule is always inside; a user with the toggle off gets nothing."""
+	prefs = profile_prefs(user)
+	tz = user_timezone(user)
+	kind = is_away(prefs, now, tz)
+	if kind is None:
+		return now.minute < TICK_MINUTES
+	if kind == "Active hours":
+		# The off stretch we are in began when the window closed.
+		window_end, _ = scheduled_off_window(prefs, now, tz)
+		return now - window_end < timedelta(minutes=TICK_MINUTES)
+	return False
 
 
 def send_batch(user: str) -> list:

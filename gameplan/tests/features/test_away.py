@@ -255,6 +255,22 @@ class TestActiveHoursValidation(AwayTestCase):
 	def test_a_disabled_schedule_is_not_validated(self):
 		self.set_prefs(self.member, active_hours_enabled=0, active_hours_days="[]")
 
+	def test_a_midnight_start_counts_as_set(self):
+		# Loaded back from the DB, 00:00 is timedelta(0); a later save of another field
+		# must not be refused for it.
+		self.set_prefs(
+			self.member,
+			active_hours_enabled=1,
+			active_hours_start="00:00:00",
+			active_hours_end="23:59:00",
+			active_hours_days=frappe.as_json(["Mon"]),
+		)
+		self.set_prefs(self.member, receive_notifications=0)
+		self.assertEqual(
+			frappe.db.get_value("GP User Profile", {"user": _name(self.member)}, "receive_notifications"),
+			0,
+		)
+
 
 class TestAwayCard(AwayTestCase):
 	def setUp(self):
