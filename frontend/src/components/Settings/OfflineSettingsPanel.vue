@@ -2,7 +2,7 @@
   <div class="divide-y divide-outline-gray-1">
     <SettingsRow
       title="Download for offline"
-      description="Keep discussions from spaces you've joined on this device, with their comments and polls"
+      description="Keep discussions from Spaces you've joined on this device, with their comments and polls"
     >
       <Select :options="windowOptions" v-model="selectedWindow" />
     </SettingsRow>

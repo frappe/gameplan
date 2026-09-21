@@ -412,7 +412,7 @@ function offerDownload() {
   const settings = isMobileViewport() ? 'More > Offline' : 'Settings > Preferences'
   dialog.confirm({
     title: 'Read Gameplan offline',
-    message: `Keep discussions from the past month in your spaces on this device, so they open even without a connection. You can change this in ${settings}.`,
+    message: `Keep discussions from the past month in your Spaces on this device, so they open even without a connection. You can change this in ${settings}.`,
     confirmLabel: 'Download',
     cancelLabel: 'Not now',
     onConfirm: () => {
