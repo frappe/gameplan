@@ -34,7 +34,7 @@ def get_user_info(user=None):
 	users = frappe.qb.get_query(
 		"User",
 		filters=filters,
-		fields=["name", "email", "enabled", "user_image", "full_name", "user_type", "creation"],
+		fields=["name", "email", "enabled", "user_image", "full_name", "user_type", "creation", "time_zone"],
 		order_by="full_name asc",
 		distinct=True,
 	).run(as_dict=1)
