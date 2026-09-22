@@ -157,6 +157,9 @@ async function writeMeta(next: Meta) {
  */
 export async function syncOfflineDownloads({ manual = false } = {}): Promise<boolean> {
   if (!session.isLoggedIn) return false
+  if (removal) {
+    await removal.catch(() => {})
+  }
   // A manual run (a new window picked) waits for the current one, then brings it up to date.
   if (inflight) {
     await inflight.catch(() => {})
@@ -167,6 +170,8 @@ export async function syncOfflineDownloads({ manual = false } = {}): Promise<boo
 }
 
 let inflight: Promise<boolean> | null = null
+let activeSync: Promise<boolean> | null = null
+let activeSyncController: AbortController | null = null
 
 async function sync(manual: boolean): Promise<boolean> {
   const days = offlineWindow.value
@@ -183,10 +188,19 @@ async function sync(manual: boolean): Promise<boolean> {
     if (fresh && Date.now() - fresh < SYNC_INTERVAL) return true
   }
 
+  const run = () => {
+    activeSyncController = new AbortController()
+    activeSync = runSync(days, activeSyncController.signal).finally(() => {
+      activeSync = null
+      activeSyncController = null
+    })
+    return activeSync
+  }
+
   // One tab at a time; another tab already syncing covers this one.
-  if (!navigator.locks) return runSync(days)
+  if (!navigator.locks) return run()
   return navigator.locks.request(LOCK_NAME, { ifAvailable: true }, (lock) =>
-    lock ? runSync(days) : false,
+    lock ? run() : false,
   )
 }
 
@@ -194,7 +208,7 @@ async function sync(manual: boolean): Promise<boolean> {
  * Returns whether the sync finished. Losing the connection stops it; the next run fetches
  * whatever is still missing.
  */
-async function runSync(days: OfflineWindow): Promise<boolean> {
+async function runSync(days: OfflineWindow, signal?: AbortSignal): Promise<boolean> {
   downloads.syncing = true
   downloads.error = null
   downloads.done = 0
@@ -208,7 +222,8 @@ async function runSync(days: OfflineWindow): Promise<boolean> {
       previous?.checkedUpTo,
     )
     const initialUser = session.user
-    const isCancelled = () => offlineWindow.value !== days || session.user !== initialUser
+    const isCancelled = () =>
+      signal?.aborted || offlineWindow.value !== days || session.user !== initialUser
     const sameWindow = previous?.window === days
     const index = await call<Index>(INDEX, {
       window_days: days,
@@ -253,7 +268,10 @@ async function runSync(days: OfflineWindow): Promise<boolean> {
         places[name] = index.places[name]
       }
       for (const url of bundleImages(bundle)) images.add(url)
-      if (isCancelled()) return
+      if (isCancelled()) {
+        await forgetDiscussions(bundle.discussions.map((d) => String(d.name)))
+        return
+      }
       await writeMeta({ ...base, places: { ...places } })
     }
 
@@ -267,7 +285,7 @@ async function runSync(days: OfflineWindow): Promise<boolean> {
     downloads.total = wanted.length
     for (let i = 0; i < wanted.length; i += PAGE_SIZE) {
       if (!isOnline.value || isCancelled()) return false
-      if (i) await idle()
+      if (i) await idle(signal)
       if (isCancelled()) return false
       await fetchPage(wanted.slice(i, i + PAGE_SIZE))
       if (isCancelled()) return false
@@ -597,6 +615,10 @@ export function removeOfflineDownloads(): Promise<void> {
 }
 
 async function removeEverything() {
+  if (activeSync) {
+    activeSyncController?.abort()
+    await activeSync.catch(() => {})
+  }
   const current = meta ?? (await readMeta())
   if (!current) return
   await forgetDiscussions(Object.keys(current.places))
@@ -656,12 +678,35 @@ function listEntry(cacheKey: unknown[], rows: Row[] = []): [string, string] {
   ]
 }
 
-function idle() {
-  return new Promise<void>((resolve) =>
-    'requestIdleCallback' in window
-      ? requestIdleCallback(() => resolve(), { timeout: 2000 })
-      : setTimeout(resolve, 200),
-  )
+function idle(signal?: AbortSignal) {
+  if (signal?.aborted) return Promise.resolve()
+  return new Promise<void>((resolve) => {
+    let handle: number | ReturnType<typeof setTimeout>
+    const onAbort = () => {
+      if ('cancelIdleCallback' in window) {
+        cancelIdleCallback(handle as number)
+      } else {
+        clearTimeout(handle)
+      }
+      signal?.removeEventListener('abort', onAbort)
+      resolve()
+    }
+    signal?.addEventListener('abort', onAbort, { once: true })
+    if ('requestIdleCallback' in window) {
+      handle = requestIdleCallback(
+        () => {
+          signal?.removeEventListener('abort', onAbort)
+          resolve()
+        },
+        { timeout: 2000 },
+      )
+    } else {
+      handle = setTimeout(() => {
+        signal?.removeEventListener('abort', onAbort)
+        resolve()
+      }, 200)
+    }
+  })
 }
 
 /** Starts background syncing: once shortly after load, then on reconnect and when the tab returns. */
