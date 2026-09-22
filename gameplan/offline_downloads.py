@@ -41,10 +41,9 @@ CHILD_LISTS = {
 	"activities": ("GP Activity", "reference"),
 	"polls": ("GP Poll", "discussion"),
 }
-# The columns a bundle will project, per list and per child table of it: exactly what the
-# app's own timeline lists ask for (frontend/src/data/discussionTimeline.ts). The device
-# sends its field list so rows land in the shape its cache reads back, but the choice is
-# held to this: a whitelisted argument is not a free hand on the projection.
+# The columns a bundle will project, per list and per child table of it: what the app's own
+# timeline lists ask for (frontend/src/data/discussionTimeline.ts). The device sends its
+# field list so rows land in the shape its cache reads back, but only these come back.
 ALLOWED_FIELDS = {
 	"comments": {"name", "content", "owner", "creation", "modified", "edited_at", "deleted_at", "reactions"},
 	"activities": {"name", "user", "action", "data", "creation"},
@@ -158,11 +157,10 @@ def _names(value: list | str | None, limit: int) -> list[str]:
 
 
 def _allowed_fields(key: str, fields) -> list:
-	"""The columns of one child list that this endpoint will project, in the order asked for.
+	"""The columns of one child list this endpoint will project, in the order asked for.
 
-	A name outside the contract is dropped: the device has no use for it, and the endpoint is
-	not a way to project arbitrary columns of a doctype. A value of the wrong shape is a
-	malformed request rather than a choice, and says so.
+	A name outside the contract is dropped; a value of the wrong shape is a malformed
+	request and says so.
 	"""
 	if fields is None:
 		return []  # A list the device did not ask for, which is not the same as a malformed one.
@@ -246,10 +244,9 @@ def _discussions_in_window(window: int, names: list[str] | None = None) -> list:
 def _place(row) -> str:
 	"""The Space and community a discussion sits in, as one comparable value.
 
-	Moving a Space to another community rewrites its discussions' denormalised `team` in a
-	single statement, and a merge rewrites their `project` through frappe's rename: neither
-	touches `modified`, so `_changed_since` cannot see them. A device that kept the discussion
-	under its old Space or community would go on listing it there for as long as it holds it.
+	Moving a Space rewrites its discussions' `team` in one statement, and a merge rewrites
+	their `project` through frappe's rename. Neither touches `modified`, so a device would
+	keep listing them where they used to be.
 	"""
 	return f"{row.project}/{row.team or ''}"
 
@@ -267,9 +264,8 @@ def _downloadable_spaces():
 	Joining a community is what puts its content on the device; Space membership is not
 	required. Access still is, so a private Space they are not in never reaches the query.
 
-	A subquery rather than a list of ids: on a site with thousands of Spaces the ids become
-	an IN clause wide enough that MariaDB gives up on the `last_post_at` index and sorts the
-	whole window instead of stopping at the first page (measured: 1,009 ms against 5 ms).
+	A subquery, not a list of ids: with thousands of Spaces that IN clause costs MariaDB the
+	`last_post_at` index, and it sorts the window instead of stopping at 500 (1,009 ms vs 5).
 	"""
 	Project = frappe.qb.DocType("GP Project")
 	Member = frappe.qb.DocType("GP Member")
