@@ -44,17 +44,9 @@
             <!-- Icon alone on phones, where the search needs the width. -->
             <Button
               v-if="canCreateSpace"
-              icon-left="lucide-plus"
-              class="max-sm:hidden"
-              @click="openNewSpaceDialog"
-            >
-              New space
-            </Button>
-            <Button
-              v-if="canCreateSpace"
-              icon="lucide-plus"
+              :icon="isPhone ? 'lucide-plus' : undefined"
+              :icon-left="isPhone ? undefined : 'lucide-plus'"
               label="New space"
-              class="sm:hidden"
               @click="openNewSpaceDialog"
             />
           </template>
@@ -68,18 +60,9 @@
           <template #action>
             <Button
               v-if="canManageSelectedCommunity"
-              icon-left="lucide-plus"
-              class="max-sm:hidden"
-              :disabled="Boolean(selectedCommunity.archived_at)"
-              @click="showAddMembers = true"
-            >
-              Add members
-            </Button>
-            <Button
-              v-if="canManageSelectedCommunity"
-              icon="lucide-plus"
+              :icon="isPhone ? 'lucide-plus' : undefined"
+              :icon-left="isPhone ? undefined : 'lucide-plus'"
               label="Add members"
-              class="sm:hidden"
               :disabled="Boolean(selectedCommunity.archived_at)"
               @click="showAddMembers = true"
             />
@@ -116,17 +99,9 @@
             />
             <Button
               v-if="showNewCommunityButton"
-              icon-left="lucide-plus"
-              class="max-sm:hidden"
-              @click="newCommunityDialog = true"
-            >
-              New community
-            </Button>
-            <Button
-              v-if="showNewCommunityButton"
-              icon="lucide-plus"
+              :icon="isPhone ? 'lucide-plus' : undefined"
+              :icon-left="isPhone ? undefined : 'lucide-plus'"
               label="New community"
-              class="sm:hidden"
               @click="newCommunityDialog = true"
             />
           </div>
@@ -199,7 +174,6 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Button, SettingsBody, SettingsHeader, Select } from 'frappe-ui'
 import NewSpaceDialog from '@/components/NewSpaceDialog.vue'
-import { useMediaQuery } from '@vueuse/core'
 import CustomizeSidebarDialog from '@/components/AppRail/CustomizeSidebarDialog.vue'
 import {
   openCustomizeSidebarDialog,
@@ -209,6 +183,7 @@ import { mobileBarTaken } from './index'
 import { communities } from '@/data/communities'
 import { useSessionUser } from '@/data/users'
 import { canManageCommunity, isGlobalAdmin } from '@/utils/permissions'
+import { useIsMobile } from '@/utils/useIsMobile'
 import CommunitiesList from '@/pages/Configure/CommunitiesList.vue'
 import CommunitiesListFilters from '@/pages/Configure/CommunitiesListFilters.vue'
 import ConfigureEmptyState from '@/pages/Configure/ConfigureEmptyState.vue'
@@ -256,9 +231,8 @@ function customizeSidebar() {
   openCustomizeSidebarDialog()
 }
 
-// Same breakpoint the templates use for their sm: variants; decides icon-only buttons
-// and whether the community header rides in the dialog's phone bar.
-const isPhone = useMediaQuery('(max-width: 639px)')
+// Decides icon-only buttons and whether the community header rides in the dialog's phone bar.
+const isPhone = useIsMobile()
 watch(
   () => Boolean(isPhone.value && selectedCommunityId.value),
   (taken) => (mobileBarTaken.value = taken),

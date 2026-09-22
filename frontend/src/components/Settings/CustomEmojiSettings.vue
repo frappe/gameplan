@@ -13,10 +13,13 @@
             <span class="lucide-search h-4 w-4 text-ink-gray-4" />
           </template>
         </TextInput>
-        <Button icon-left="lucide-upload" class="max-sm:hidden" @click="openUploadDialog">
-          Upload
-        </Button>
-        <Button icon="lucide-upload" label="Upload" class="sm:hidden" @click="openUploadDialog" />
+        <!-- Icon alone on phones, where the search needs the width. -->
+        <Button
+          :icon="isPhone ? 'lucide-upload' : undefined"
+          :icon-left="isPhone ? undefined : 'lucide-upload'"
+          label="Upload"
+          @click="openUploadDialog"
+        />
       </div>
     </div>
 
@@ -150,7 +153,9 @@ import {
 import { customEmojis, type CustomEmoji } from '@/data/customEmojis'
 import ImageUploader from '@/components/ImageUploader.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
+import { useIsMobile } from '@/utils/useIsMobile'
 
+const isPhone = useIsMobile()
 const search = ref('')
 const showUploadDialog = ref(false)
 const saving = ref(false)
