@@ -269,7 +269,10 @@ async function runSync(days: OfflineWindow, signal?: AbortSignal): Promise<boole
       }
       for (const url of bundleImages(bundle)) images.add(url)
       if (isCancelled()) {
-        await forgetDiscussions(bundle.discussions.map((d) => String(d.name)))
+        const newlyFetched = bundle.discussions
+          .map((d) => String(d.name))
+          .filter((name) => !onDevice.has(name))
+        if (newlyFetched.length) await forgetDiscussions(newlyFetched)
         return
       }
       await writeMeta({ ...base, places: { ...places } })
