@@ -138,20 +138,37 @@ def _names(value, limit):
 def _allowed_fields(key, fields):
 	"""The columns of one child list that this endpoint will project, in the order asked for.
 
-	A field outside the contract is dropped rather than passed to the query: the device has
-	no use for it, and the endpoint is not a way to project arbitrary columns of a doctype.
+	A name outside the contract is dropped: the device has no use for it, and the endpoint is
+	not a way to project arbitrary columns of a doctype. A value of the wrong shape is a
+	malformed request rather than a choice, and says so.
 	"""
+	if fields is None:
+		return []  # A list the device did not ask for, which is not the same as a malformed one.
 	allowed = ALLOWED_FIELDS[key]
 	kept = []
-	for field in fields or []:
+	for field in _field_list(fields):
 		if isinstance(field, str):
 			if field in allowed:
 				kept.append(field)
 		elif isinstance(field, dict):
 			for child, columns in field.items():
-				if child in allowed and child in ALLOWED_CHILD_FIELDS:
-					kept.append({child: [c for c in columns if c in ALLOWED_CHILD_FIELDS[child]]})
+				if child not in allowed or child not in ALLOWED_CHILD_FIELDS:
+					continue
+				columns = [
+					column
+					for column in _field_list(columns)
+					if isinstance(column, str) and column in ALLOWED_CHILD_FIELDS[child]
+				]
+				if columns:
+					kept.append({child: columns})
 	return kept
+
+
+def _field_list(value):
+	"""A field list as the client sent it. Anything but a list is not one."""
+	if not isinstance(value, list):
+		frappe.throw(_("Expected a list of field names."), frappe.ValidationError)
+	return value
 
 
 def _allowed_window(window_days):

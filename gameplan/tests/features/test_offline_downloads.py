@@ -250,6 +250,27 @@ class TestOfflineBundle(OfflineDownloadsTestCase):
 		comment = bundle["comments"][str(self.recent.name)][0]
 		self.assertEqual(sorted(comment.keys()), ["content", "name", "reactions"])
 
+	def test_rejects_a_field_list_of_the_wrong_shape(self):
+		"""Every level of `fields` arrives as whatever was posted, nested ones included."""
+		names = json.dumps([str(self.recent.name)])
+		for fields in (
+			'{"comments": 5}',
+			'{"comments": "name"}',
+			'{"comments": [{"reactions": null}]}',
+			'{"comments": [{"reactions": {"user": 1}}]}',
+		):
+			with self.subTest(fields=fields), self.as_user(self.member):
+				with self.assertRaises(frappe.ValidationError):
+					get_offline_bundle(30, fields, names)
+
+	def test_drops_a_nested_field_that_is_not_a_column(self):
+		create_comment(self.recent, content="Hello", owner=self.member)
+		fields = json.dumps({"comments": ["name", {"reactions": [{"deeper": ["name"]}, "user"]}]})
+		with self.as_user(self.member):
+			bundle = get_offline_bundle(30, fields, json.dumps([str(self.recent.name)]))
+		comment = bundle["comments"][str(self.recent.name)][0]
+		self.assertEqual(sorted(comment.keys()), ["name", "reactions"])
+
 	def test_rejects_a_field_list_that_is_not_a_mapping(self):
 		with self.as_user(self.member):
 			with self.assertRaises(frappe.ValidationError):
