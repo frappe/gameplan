@@ -17,19 +17,22 @@ const CACHE_PREFIX = 'gameplan-readonly-offline'
 const ASSET_CACHE_SUFFIX = ':assets'
 
 /**
- * The user-switch guard for boot, where the session was changed outside the app's own login
- * (a switched cookie, `bench browse --sid`, the dev user switcher). Runs without a service
- * worker too, and never rejects, so a failure can't keep the app from mounting.
+ * Whether it is safe to show the app: either nobody switched, or the previous user's data is
+ * gone. The session can change outside the app's own login (a switched cookie, `bench browse
+ * --sid`, the dev user switcher), and the doc cache is keyed by doctype and name alone, so a
+ * read queued by a mounting component would otherwise hand the new user the old one's copy.
  *
- * Awaited before the app mounts: the doc cache is keyed by doctype and name alone, and a read
- * queued by a mounting component resolves before a clear queued after it, which would hand the
- * new user the previous one's copy.
+ * Never rejects: a thrown guard counts as not cleared, which the caller must not treat as
+ * safe.
  */
-export function clearCachesOnUserSwitch(): Promise<boolean> {
-  return guardAgainstUserSwitch(getSessionUserFromCookie()).catch((error) => {
-    console.error('Failed to run user-switch guard', error)
-    return false
-  })
+export async function clearCachesOnUserSwitch(): Promise<boolean> {
+  const { switched, cleared } = await guardAgainstUserSwitch(getSessionUserFromCookie()).catch(
+    (error) => {
+      console.error('Failed to run user-switch guard', error)
+      return { switched: true, cleared: false }
+    },
+  )
+  return !switched || cleared
 }
 
 export function setupOfflineSupport() {
@@ -93,10 +96,35 @@ export async function clearOfflineCaches(): Promise<boolean> {
       .then(() => true)
       .catch((error) => {
         console.error('Failed to clear IndexedDB cache', error)
-        return false
+        return deleteIdbStore()
       }),
   ])
   return cachesCleared && idbCleared
+}
+
+// idb-keyval's default database. Emptying it is the ordinary way; dropping it is what is
+// left when that fails, and a drop another tab holds open is a failure like any other.
+const IDB_NAME = 'keyval-store'
+const IDB_DELETE_TIMEOUT_MS = 2000
+
+function deleteIdbStore(): Promise<boolean> {
+  if (typeof indexedDB === 'undefined') return Promise.resolve(false)
+  return new Promise<boolean>((resolve) => {
+    const timeoutId = window.setTimeout(() => resolve(false), IDB_DELETE_TIMEOUT_MS)
+    const done = (ok: boolean) => {
+      window.clearTimeout(timeoutId)
+      resolve(ok)
+    }
+    try {
+      const request = indexedDB.deleteDatabase(IDB_NAME)
+      request.onsuccess = () => done(true)
+      request.onerror = () => done(false)
+      request.onblocked = () => done(false)
+    } catch (error) {
+      console.error('Failed to delete the IndexedDB store', error)
+      done(false)
+    }
+  })
 }
 
 /**
@@ -166,7 +194,7 @@ async function getActiveWorker(): Promise<ServiceWorker | undefined> {
       window.setTimeout(() => resolve(undefined), REGISTRATION_WAIT_TIMEOUT_MS),
     ),
   ])
-  return ready?.active
+  return ready?.active ?? undefined
 }
 
 /**
@@ -180,43 +208,57 @@ async function rewarmShellCache(): Promise<void> {
   registration?.active?.postMessage({ type: WARM_SHELL_CACHE_MESSAGE })
 }
 
+interface UserSwitch {
+  /** The signed-in user differs from the last this browser saw. */
+  switched: boolean
+  /** Nothing of the previous user is left here. False only when a switch could not be cleared. */
+  cleared: boolean
+}
+
 /**
  * Clears every offline cache when `user` differs from the last user this browser saw, and
- * resolves to whether they differed. Callers about to navigate must await it. The last-seen
+ * reports both whether they differed and whether the clearing worked. Callers about to navigate must await it. The last-seen
  * marker only moves once the clear succeeds, so a failed clear is retried next time.
  *
  * Cache keys are fixed when modules load, so a caller that switches users without a reload
  * (session.ts's login) must reload after a detected switch.
  */
-export async function guardAgainstUserSwitch(user: string | null): Promise<boolean> {
-  if (typeof localStorage === 'undefined') return false
+export async function guardAgainstUserSwitch(user: string | null): Promise<UserSwitch> {
+  try {
+    if (typeof localStorage === 'undefined') return { switched: false, cleared: true }
 
-  const lastSeenUser = localStorage.getItem(LAST_SEEN_USER_STORAGE_KEY)
-  const switched = Boolean(lastSeenUser && user && lastSeenUser !== user)
-  if (switched) {
-    let cleared = false
-    try {
-      // A different user, so drafts go too.
-      const [offlineCachesCleared] = await Promise.all([clearOfflineCaches(), clearDraftStore()])
-      cleared = offlineCachesCleared
-    } catch (error) {
-      console.error('Failed to clear offline caches', error)
+    const lastSeenUser = localStorage.getItem(LAST_SEEN_USER_STORAGE_KEY)
+    const switched = Boolean(lastSeenUser && user && lastSeenUser !== user)
+    if (switched) {
+      let cleared = false
+      try {
+        // A different user, so drafts go too.
+        const [offlineCachesCleared] = await Promise.all([clearOfflineCaches(), clearDraftStore()])
+        cleared = offlineCachesCleared
+      } catch (error) {
+        console.error('Failed to clear offline caches', error)
+      }
+
+      // The marker stays put, so the next boot tries again rather than treating this browser
+      // as settled with the previous user's data still on it.
+      if (!cleared) {
+        return { switched, cleared }
+      }
+
+      await rewarmShellCache()
     }
 
-    if (!cleared) {
-      return switched
+    // A signed-out boot (expired session, old tab) leaves the marker, or the next sign-in
+    // would look like no switch and skip the clear.
+    if (user) {
+      localStorage.setItem(LAST_SEEN_USER_STORAGE_KEY, user)
     }
 
-    await rewarmShellCache()
+    return { switched, cleared: true }
+  } catch (error) {
+    console.error('Failed to run user-switch guard', error)
+    return { switched: true, cleared: false }
   }
-
-  // A signed-out boot (expired session, old tab) leaves the marker, or the next sign-in
-  // would look like no switch and skip the clear.
-  if (user) {
-    localStorage.setItem(LAST_SEEN_USER_STORAGE_KEY, user)
-  }
-
-  return switched
 }
 
 // Not imported from data/session.ts, which imports this module.

@@ -29,7 +29,7 @@ export let session = reactive({
       session.login.reset()
       // User-scoped cache keys are fixed when the modules load, so a different user needs a
       // full reload. Awaited so the reload can't cut the previous user's cache clear short.
-      if (await guardAgainstUserSwitch(sessionUser.value)) {
+      if ((await guardAgainstUserSwitch(sessionUser.value)).switched) {
         window.location.href = data.default_route || '/'
       } else {
         router.replace(data.default_route || '/')
