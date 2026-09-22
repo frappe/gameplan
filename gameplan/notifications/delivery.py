@@ -15,7 +15,7 @@ is stamped without a mail so the next run does not pick it up again.
 from datetime import timedelta
 
 import frappe
-from frappe.utils import add_to_date, get_url, now_datetime
+from frappe.utils import add_to_date, format_datetime, get_datetime, get_url, now_datetime
 
 from gameplan.email_digest import (
 	GAMEPLAN_LOGO_PATH,
@@ -24,7 +24,14 @@ from gameplan.email_digest import (
 	get_signed_digest_url,
 	get_user_avatar_map,
 )
-from gameplan.notifications.away import is_away, profile_prefs, scheduled_off_window, user_timezone
+from gameplan.notifications.away import (
+	is_away,
+	mark_recap_sent,
+	pending_recap_periods,
+	profile_prefs,
+	scheduled_off_window,
+	user_timezone,
+)
 from gameplan.permissions import can_view_space
 
 HORIZON_HOURS = 24
@@ -65,7 +72,11 @@ def should_send(user: str, now) -> bool:
 
 
 def send_batch(user: str) -> list:
-	"""Send `user` their pending rows in one mail. Returns the rows that were sent."""
+	"""Send `user` their pending rows in one mail. Returns the rows that were sent.
+
+	A stretch the user was away for is caught up first, in its own mail, so what they
+	missed is not mixed into the ordinary hourly one."""
+	send_away_recap(user)
 	rows = deliverable_rows(user)
 	if rows:
 		send_batch_email(user, rows)
@@ -73,8 +84,29 @@ def send_batch(user: str) -> list:
 	return rows
 
 
-def pending_rows(user: str) -> list:
-	"""Unsent, unread rows that did not arrive during an away stretch."""
+def send_away_recap(user: str) -> list:
+	"""One catch-up mail for everything that arrived while `user` had notifications off or
+	was outside their active hours. Sent once per stretch (`recap_sent_at`), and the
+	stretch is stamped either way so an empty one is not looked at again."""
+	periods = pending_recap_periods(user)
+	if not periods:
+		return []
+	rows = deliverable_rows(user, away=[p.name for p in periods], horizon=False)
+	if rows:
+		frappe.sendmail(
+			recipients=[user],
+			subject=recap_subject(rows),
+			template="notification_batch",
+			args=recap_context(user, rows, periods),
+		)
+		_stamp(rows)
+	mark_recap_sent([p.name for p in periods])
+	return rows
+
+
+def pending_rows(user: str, away: list | None = None) -> list:
+	"""Unsent, unread rows — the ones that arrived during `away` stretches, or, without
+	`away`, the ones that did not arrive during any."""
 	return frappe.qb.get_query(
 		"GP Notification",
 		fields=[
@@ -102,22 +134,22 @@ def pending_rows(user: str) -> list:
 			"to_user": user,
 			"read": 0,
 			"email_sent_at": ["is", "not set"],
-			"away_period": ["is", "not set"],
+			"away_period": ["in", away] if away else ["is", "not set"],
 		},
 		order_by="last_event_at desc",
 		ignore_permissions=True,
 	).run(as_dict=True)
 
 
-def deliverable_rows(user: str) -> list:
+def deliverable_rows(user: str, away: list | None = None, horizon: bool = True) -> list:
 	"""`pending_rows` minus the ones not worth a mail, which are stamped on the way out:
 	too old to be news, or pointing at nothing the user can open (target deleted, access
-	lost)."""
-	horizon = add_to_date(now_datetime(), hours=-HORIZON_HOURS)
+	lost). A catch-up has no horizon — being days old is the whole point of it."""
+	cutoff = add_to_date(now_datetime(), hours=-HORIZON_HOURS)
 	keep, drop = [], []
 	viewable = {}
-	for row in pending_rows(user):
-		if row.last_event_at and row.last_event_at < horizon:
+	for row in pending_rows(user, away):
+		if horizon and row.last_event_at and row.last_event_at < cutoff:
 			drop.append(row)
 			continue
 		if not (row.discussion or row.task or row.poll or row.project or row.team):
@@ -148,6 +180,21 @@ def send_batch_email(user: str, rows: list):
 def batch_subject(rows: list) -> str:
 	count = len(rows)
 	return f"{count} new notification{'' if count == 1 else 's'} in Gameplan"
+
+
+def recap_subject(rows: list) -> str:
+	count = len(rows)
+	return f"While you were away: {count} notification{'' if count == 1 else 's'} in Gameplan"
+
+
+def recap_context(user: str, rows: list, periods: list) -> dict:
+	"""The batch mail with its own heading and the stretch it covers."""
+	starts_at = min(get_datetime(p.starts_at) for p in periods)
+	ends_at = max(get_datetime(p.ends_at) for p in periods)
+	window = (
+		f"{format_datetime(starts_at, 'EEE d MMM, h:mm a')} – {format_datetime(ends_at, 'EEE d MMM, h:mm a')}"
+	)
+	return {**batch_context(user, rows), "title": "While you were away", "window": window}
 
 
 def batch_context(user: str, rows: list) -> dict:

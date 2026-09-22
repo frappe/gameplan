@@ -16,7 +16,6 @@ from zoneinfo import ZoneInfo
 import frappe
 from frappe.utils import add_to_date, now_datetime
 
-from gameplan.api import away_summary, dismiss_away_card, mark_away_card_read
 from gameplan.notifications import away
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.features.test_notifications import mention_html
@@ -54,7 +53,7 @@ class AwayTestCase(GameplanTestCase):
 		return frappe.get_all(
 			"GP Away Period",
 			filters={"user": _name(user), **filters},
-			fields=["name", "kind", "starts_at", "ends_at", "card_dismissed"],
+			fields=["name", "kind", "starts_at", "ends_at"],
 			order_by="creation asc",
 		)
 
@@ -270,119 +269,3 @@ class TestActiveHoursValidation(AwayTestCase):
 			frappe.db.get_value("GP User Profile", {"user": _name(self.member)}, "receive_notifications"),
 			0,
 		)
-
-
-class TestAwayCard(AwayTestCase):
-	def setUp(self):
-		super().setUp()
-		self.set_prefs(self.second_member, receive_notifications=0)
-		self.period = self.periods_for(self.second_member)[0].name
-		# The card is for a real absence: back-date the stretch past the minimum.
-		self.backdate(days=away.CARD_MIN_DAYS + 1)
-
-	def backdate(self, days):
-		frappe.db.set_value(
-			"GP Away Period", self.period, "starts_at", add_to_date(now_datetime(), days=-days)
-		)
-
-	def summary(self):
-		with self.as_user(self.second_member):
-			return away_summary()
-
-	def test_no_card_while_the_stretch_is_still_open(self):
-		self.mention_second_member()
-
-		self.assertIsNone(self.summary())
-
-	def test_no_card_for_a_short_stretch(self):
-		"""An evening off is not an absence: the rows simply sit in the inbox."""
-		self.backdate(days=1)
-		self.mention_second_member()
-		self.set_prefs(self.second_member, receive_notifications=1)
-
-		self.assertIsNone(self.summary())
-
-	def test_no_card_for_a_quiet_stretch(self):
-		self.set_prefs(self.second_member, receive_notifications=1)
-
-		self.assertIsNone(self.summary())
-
-	def test_the_card_lists_mentions_and_groups_comments(self):
-		self.mention_second_member()
-		frappe.get_doc(
-			doctype="GP Discussion Subscription",
-			user=self.second_member.name,
-			discussion=self.discussion.name,
-			state="Watch",
-		).insert(ignore_permissions=True)
-		with self.as_user(self.member):
-			create_comment(self.discussion, content="<p>One</p>")
-			create_comment(self.discussion, content="<p>Two</p>")
-		self.set_prefs(self.second_member, receive_notifications=1)
-
-		card = self.summary()
-
-		self.assertEqual(card["period"], self.period)
-		self.assertEqual(card["kind"], "Toggle")
-		self.assertEqual(card["mentions"]["total"], 1)
-		mention = card["mentions"]["items"][0]
-		self.assertEqual(mention["from_user"], self.member.name)
-		self.assertEqual(mention["title"], "Roadmap")
-		self.assertIn("@Second Member", mention["snippet"])
-		(group,) = card["comments"]
-		self.assertEqual(str(group["discussion"]), str(self.discussion.name))
-		self.assertEqual((group["title"], group["event_count"]), ("Roadmap", 2))
-		self.assertEqual((str(group["project"]), group["team"]), (str(self.space.name), self.community.name))
-		self.assertEqual(card["other"], [])
-		self.assertEqual(card["unread"], 2)
-
-	def test_every_mention_is_listed(self):
-		for _ in range(12):
-			self.mention_second_member()
-		self.set_prefs(self.second_member, receive_notifications=1)
-
-		card = self.summary()
-
-		self.assertEqual(card["mentions"]["total"], 12)
-		self.assertEqual(len(card["mentions"]["items"]), 12)
-
-	def test_mark_read_clears_the_rows_and_the_card(self):
-		self.mention_second_member()
-		self.set_prefs(self.second_member, receive_notifications=1)
-
-		with self.as_user(self.second_member):
-			mark_away_card_read(self.period)
-
-		self.assertEqual([r.read for r in self.rows_for(self.second_member)], [1])
-		self.assertIsNone(self.summary())
-
-	def test_dismiss_hides_the_card_but_leaves_the_rows_unread(self):
-		self.mention_second_member()
-		self.set_prefs(self.second_member, receive_notifications=1)
-
-		with self.as_user(self.second_member):
-			dismiss_away_card(self.period)
-
-		self.assertEqual([r.read for r in self.rows_for(self.second_member)], [0])
-		self.assertIsNone(self.summary())
-
-	def test_reading_the_rows_elsewhere_also_retires_the_card(self):
-		self.mention_second_member()
-		self.set_prefs(self.second_member, receive_notifications=1)
-
-		with self.as_user(self.second_member):
-			frappe.get_doc("GP Discussion", self.discussion.name).track_visit()
-
-		self.assertIsNone(self.summary())
-
-	def test_only_the_owner_can_act_on_a_period(self):
-		self.mention_second_member()
-		self.set_prefs(self.second_member, receive_notifications=1)
-
-		with self.as_user(self.member):
-			with self.assertRaises(frappe.PermissionError):
-				mark_away_card_read(self.period)
-			with self.assertRaises(frappe.PermissionError):
-				dismiss_away_card(self.period)
-			visible = frappe.qb.get_query("GP Away Period", fields=["name"], ignore_permissions=False)
-			self.assertNotIn(self.period, visible.run(pluck="name"))

@@ -26,8 +26,8 @@
 		<span class="gp-email-digest__brand-name">Gameplan</span>
 	</div>
 	<div class="gp-email-digest__card">
-		<h2 class="gp-email-digest__title">New notifications</h2>
-		<div class="gp-email-digest__site-url">{{ site_url | e }}</div>
+		<h2 class="gp-email-digest__title">{{ title or "New notifications" }}</h2>
+		<div class="gp-email-digest__site-url">{{ window | e if window else site_url | e }}</div>
 
 		{% if mentions %}
 		<div class="gp-email-digest__section">

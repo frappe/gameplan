@@ -44,16 +44,6 @@
       </div>
     </div>
 
-    <!-- The recap of an away stretch sits above the unread list, and only there: read
-         rows have nothing to recap. -->
-    <AwayCard
-      v-if="activeTab === 'Unread' && awaySummary.data"
-      class="mb-4"
-      :summary="awaySummary.data"
-      @changed="reloadAfterAwayCard"
-      @read="markAsRead"
-    />
-
     <template v-if="isInitialLoading">
       <ListRowSkeleton
         v-for="index in skeletonRowCount"
@@ -86,8 +76,7 @@
       </ListGroup>
     </List>
 
-    <!-- No empty state while the away card is the whole inbox: the card is the content. -->
-    <div v-else-if="!(activeTab === 'Unread' && awaySummary.data)">
+    <div v-else>
       <!-- A single picked day with nothing in it still shows its label, so the empty
            state reads as "nothing on this day" rather than "nothing at all". -->
       <div
@@ -125,11 +114,9 @@ import {
   usePageMeta,
 } from 'frappe-ui'
 import { List, ListGroup } from 'frappe-ui/list'
-import AwayCard from '@/components/AwayCard.vue'
 import ListRowSkeleton from '@/components/ListRowSkeleton.vue'
 import NotificationFilters from '@/components/NotificationFilters.vue'
 import NotificationListRow from '@/components/NotificationListRow.vue'
-import { awaySummary } from '@/data/away'
 import {
   clearNotificationFilters,
   hasActiveNotificationFilters,
@@ -221,19 +208,9 @@ onScopeDispose(
   onRemoteNotificationChange(() => {
     unreadNotificationList.reload()
     readNotificationList.reload()
-    // A stretch that ended while the page was open shows its card on this same reload.
-    awaySummary.reload()
     readNotificationCount.reload()
   }),
 )
-
-function reloadAfterAwayCard() {
-  awaySummary.reload()
-  unreadNotifications.reload()
-  unreadNotificationList.reload()
-  readNotificationList.reload()
-  readNotificationCount.reload()
-}
 
 const loadedNotifications = computed<NotificationRow[]>(() => [
   ...(unreadNotificationList.data ?? []),
@@ -258,8 +235,6 @@ const markAllAsRead = useCall({
     unreadNotificationList.reload()
     readNotificationList.reload()
     readNotificationCount.reload()
-    // Its rows are read now, so the summary comes back empty and the card goes.
-    awaySummary.reload()
   },
 })
 
@@ -272,23 +247,9 @@ const tabOptions: { value: ActiveTab; label: ActiveTab }[] = [
   { value: 'Read', label: 'Read' },
 ]
 
-// Rows the away card is showing stay out of the unread list beneath it — one place per
-// row. They join the list when the card is dismissed (the summary turns null).
-const rowsInAwayCard = computed(() => {
-  const summary = awaySummary.data
-  if (!summary) return new Set<string>()
-  return new Set(
-    [...summary.mentions.items, ...summary.comments, ...summary.other].map((item) =>
-      String(item.name),
-    ),
-  )
-})
-const notifications = computed(() => {
-  if (activeTab.value !== 'Unread') return readNotificationList.data
-  const rows = unreadNotificationList.data
-  if (!rows || rowsInAwayCard.value.size === 0) return rows
-  return rows.filter((row) => !rowsInAwayCard.value.has(String(row.name)))
-})
+const notifications = computed(() =>
+  activeTab.value === 'Unread' ? unreadNotificationList.data : readNotificationList.data,
+)
 
 // The list arrives newest-first by `last_event_at`; bucket it by the user's local calendar
 // day, keeping that order. A day key like "2026-09-16" keeps the groups stable across
@@ -359,8 +320,6 @@ function markAsRead(name: string) {
     unreadNotifications.reload()
     readNotificationList.reload()
     readNotificationCount.reload()
-    // The row may also be in the away card; it leaves the card the same way.
-    if (awaySummary.data) awaySummary.reload()
   })
 }
 
@@ -454,6 +413,5 @@ function useNotificationList(read: 0 | 1, cacheKey: string) {
 }
 
 unreadNotifications.reload()
-awaySummary.reload()
 usePageMeta(() => ({ title: 'Notifications' }))
 </script>

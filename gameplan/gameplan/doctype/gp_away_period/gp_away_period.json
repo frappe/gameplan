@@ -10,7 +10,7 @@
   "kind",
   "starts_at",
   "ends_at",
-  "card_dismissed"
+  "recap_sent_at"
  ],
  "fields": [
   {
@@ -45,10 +45,10 @@
    "label": "Ends At"
   },
   {
-   "default": "0",
-   "fieldname": "card_dismissed",
-   "fieldtype": "Check",
-   "label": "Card Dismissed"
+   "description": "When the catch-up email for this stretch went out. Set once, so it is never sent twice.",
+   "fieldname": "recap_sent_at",
+   "fieldtype": "Datetime",
+   "label": "Recap Sent At"
   }
  ],
  "index_web_pages_for_search": 1,
