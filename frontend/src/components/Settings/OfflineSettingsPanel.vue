@@ -7,12 +7,13 @@
       <Select :options="windowOptions" v-model="selectedWindow" />
     </SettingsRow>
 
-    <div>
+    <!-- Nothing to say about the device until a window is picked: "Recently viewed only"
+         downloads nothing and keeps nothing. -->
+    <div v-if="offlineWindow">
       <SettingsRow title="On this device" :description="status" />
       <Progress v-if="downloads.syncing" class="pb-3.5" :value="progress" size="sm" />
-      <div v-if="offlineWindow || downloads.count" class="flex flex-wrap gap-2 pb-3.5">
+      <div class="flex flex-wrap gap-2 pb-3.5">
         <Button
-          v-if="offlineWindow"
           :disabled="!isOnline || downloads.syncing"
           @click="downloadForOffline(offlineWindow)"
         >
