@@ -8,11 +8,13 @@ import frappe
 DEFAULT_LEVEL = "Mentions only"
 LEVELS = ("Mentions only", "Mute")
 
+DEFAULT_PARTICIPATION = "Watch"
+PARTICIPATION_LEVELS = ("Watch", "Mentions only")
+PARTICIPATION_STATE = {"Watch": "Watch", "Mentions only": "Mentions only"}
+
 PREF_FIELDS = (
 	"notification_level",
-	"watch_own_discussions",
-	"notify_reactions",
-	"notify_poll_votes",
+	"participation_level",
 	"receive_notifications",
 	"active_hours_enabled",
 	"active_hours_start",
@@ -22,9 +24,7 @@ PREF_FIELDS = (
 
 _DEFAULTS = frappe._dict(
 	notification_level=DEFAULT_LEVEL,
-	watch_own_discussions=0,
-	notify_reactions=1,
-	notify_poll_votes=1,
+	participation_level=DEFAULT_PARTICIPATION,
 	receive_notifications=1,
 	active_hours_enabled=0,
 	active_hours_start=None,
@@ -64,3 +64,14 @@ def bulk_levels(users: list[str]) -> dict[str, str]:
 		if row.notification_level in LEVELS:
 			levels[row.user] = row.notification_level
 	return levels
+
+
+def participation_level(user: str) -> str:
+	level = profile_prefs(user).participation_level
+	return level if level in PARTICIPATION_LEVELS else DEFAULT_PARTICIPATION
+
+
+def wants_content_feedback(user: str) -> bool:
+	"""Reactions and poll votes on the user's own content notify them under Watch; under
+	Mentions only nothing but a mention does."""
+	return participation_level(user) == "Watch"

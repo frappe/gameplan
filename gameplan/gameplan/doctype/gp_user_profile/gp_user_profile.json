@@ -18,9 +18,7 @@
   "notifications_section",
   "notification_channel",
   "notification_level",
-  "watch_own_discussions",
-  "notify_reactions",
-  "notify_poll_votes",
+  "participation_level",
   "receive_notifications",
   "active_hours_enabled",
   "active_hours_start",
@@ -192,23 +190,12 @@
    "options": "Mentions only\nMute"
   },
   {
-   "default": "0",
-   "description": "Set every discussion this user creates to Watch at creation.",
-   "fieldname": "watch_own_discussions",
-   "fieldtype": "Check",
-   "label": "Watch Discussions I Start"
-  },
-  {
-   "default": "1",
-   "fieldname": "notify_reactions",
-   "fieldtype": "Check",
-   "label": "Notify About Reactions on My Content"
-  },
-  {
-   "default": "1",
-   "fieldname": "notify_poll_votes",
-   "fieldtype": "Check",
-   "label": "Notify About Votes on My Polls"
+   "default": "Watch",
+   "description": "Written as the bell on every discussion this user starts or comments in, unless they set one themselves first. Watch also lets reactions and poll votes on their content notify them.",
+   "fieldname": "participation_level",
+   "fieldtype": "Select",
+   "label": "Participation Level",
+   "options": "Watch\nMentions only"
   },
   {
    "default": "1",

@@ -374,7 +374,7 @@ class TestPollVote(SpaceNotificationTestCase):
 		self.assertIsNone(rows[0].from_user)
 
 	def test_the_toggle_turns_it_off(self):
-		self.set_prefs(self.member, notify_poll_votes=0)
+		self.set_prefs(self.member, participation_level="Mentions only")
 
 		self.vote(self.second_member)
 

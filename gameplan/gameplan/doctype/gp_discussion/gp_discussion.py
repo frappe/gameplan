@@ -13,12 +13,12 @@ from gameplan.mixins.attachments import HasAttachments
 from gameplan.mixins.mentions import HasMentions
 from gameplan.mixins.reactions import HasReactions
 from gameplan.mixins.tags import HasTags
-from gameplan.notifications.preferences import profile_prefs
 from gameplan.notifications.resolver import (
 	STATES,
 	effective_discussion_state,
 	notify_discussion_moved,
 	notify_new_discussion,
+	subscribe_on_participation,
 	subscription_state,
 )
 from gameplan.permissions import content_has_permission, discussion_query_conditions
@@ -93,21 +93,8 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 	def after_insert(self):
 		self.update_discussions_count()
 		GPUnreadRecord.create_unread_records_for_discussion(self)
-		self.watch_if_author_wants_to()
+		subscribe_on_participation(self.owner, self.name)
 		notify_new_discussion(self)
-
-	def watch_if_author_wants_to(self):
-		"""Honour "Watch discussions I start": an explicit Watch row for the author, written
-		at creation. From here on it is an ordinary choice — turning the checkbox off later
-		leaves it alone, and the bell's Default entry hands it back."""
-		if not profile_prefs(self.owner).watch_own_discussions:
-			return
-		frappe.get_doc(
-			doctype="GP Discussion Subscription",
-			user=self.owner,
-			discussion=self.name,
-			state="Watch",
-		).insert(ignore_permissions=True)
 
 	def on_trash(self):
 		self.remove_all_bookmarks()

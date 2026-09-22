@@ -47,6 +47,14 @@ class PreferenceTestCase(GameplanTestCase):
 		frappe.db.set_value("GP User Profile", profile, fields)
 
 	def subscribe(self, user, discussion, state):
+		existing = frappe.db.get_value(
+			"GP Discussion Subscription", {"user": _name(user), "discussion": _name(discussion)}, "name"
+		)
+		if existing:
+			row = frappe.get_doc("GP Discussion Subscription", existing)
+			row.state = state
+			row.save(ignore_permissions=True)
+			return row
 		return frappe.get_doc(
 			doctype="GP Discussion Subscription",
 			user=_name(user),
@@ -106,8 +114,11 @@ class TestGlobalLevel(PreferenceTestCase):
 		self.assertEqual([r.type for r in self.notifications_for(self.second_member)], ["Rich Quote"])
 
 	def test_mentions_only_does_not_notify_a_plain_comment(self):
-		"""Nobody watches by default: a reply lands in unread counts, not the bell."""
-		self.comment_as(self.second_member)
+		"""A discussion the user never touched: a reply lands in unread counts, not the bell."""
+		with self.as_user(self.second_member):
+			untouched = create_discussion("Theirs", self.space)
+
+		self.comment_as(self.admin, discussion=untouched)
 
 		self.assertEqual(self.notifications_for(self.member), [])
 
@@ -343,7 +354,7 @@ class TestSetNotificationState(PreferenceTestCase):
 		self.assertEqual(d.notification_state, "Watch")
 		self.assertTrue(d.notification_state_is_explicit)
 
-		with self.as_user(self.member):
+		with self.as_user(self.admin):
 			d = frappe.get_doc("GP Discussion", self.discussion.name).as_dict()
 		self.assertEqual(d.notification_state, "Mentions only")
 		self.assertFalse(d.notification_state_is_explicit)
@@ -374,23 +385,17 @@ class TestSetNotificationState(PreferenceTestCase):
 		self.assertEqual(self.subscription_rows(self.second_member, self.discussion), [])
 
 
-class TestWatchDiscussionsIStart(PreferenceTestCase):
-	def test_on_writes_a_watch_row_at_creation(self):
-		self.set_prefs(self.member, watch_own_discussions=1)
+class TestParticipationLevel(PreferenceTestCase):
+	"""Starting a discussion or commenting in it writes the participation level as that
+	discussion's bell; from then on it is an ordinary bell."""
 
+	def test_starting_a_discussion_writes_watch_by_default(self):
 		with self.as_user(self.member):
 			discussion = create_discussion("Mine", self.space)
 
 		self.assertEqual(self.subscription_rows(self.member, discussion)[0].state, "Watch")
 
-	def test_off_writes_nothing(self):
-		with self.as_user(self.member):
-			discussion = create_discussion("Mine", self.space)
-
-		self.assertEqual(self.subscription_rows(self.member, discussion), [])
-
 	def test_the_author_then_hears_every_reply(self):
-		self.set_prefs(self.member, watch_own_discussions=1)
 		with self.as_user(self.member):
 			discussion = create_discussion("Mine", self.space)
 
@@ -398,11 +403,50 @@ class TestWatchDiscussionsIStart(PreferenceTestCase):
 
 		self.assertEqual([r.type for r in self.notifications_for(self.member)], ["Comment"])
 
-	def test_turning_the_checkbox_off_later_leaves_earlier_rows_alone(self):
-		self.set_prefs(self.member, watch_own_discussions=1)
+	def test_commenting_writes_the_level_too(self):
+		self.comment_as(self.second_member)
+
+		self.assertEqual(self.subscription_rows(self.second_member, self.discussion)[0].state, "Watch")
+
+	def test_mentions_only_writes_that_bell_instead(self):
+		self.set_prefs(self.member, participation_level="Mentions only")
+
 		with self.as_user(self.member):
 			discussion = create_discussion("Mine", self.space)
-		self.set_prefs(self.member, watch_own_discussions=0)
+
+		self.assertEqual(self.subscription_rows(self.member, discussion)[0].state, "Mentions only")
+
+	def test_mentions_only_still_lets_a_mention_through(self):
+		self.set_prefs(self.member, participation_level="Mentions only")
+		with self.as_user(self.member):
+			discussion = create_discussion("Mine", self.space)
+
+		self.comment_as(
+			self.second_member, discussion=discussion, content=mention_html(self.member, "Member")
+		)
+
+		self.assertEqual([r.type for r in self.notifications_for(self.member)], ["Mention"])
+
+	def test_a_bell_already_set_is_left_alone(self):
+		self.subscribe(self.second_member, self.discussion, "Mute")
+
+		self.comment_as(self.second_member)
+
+		self.assertEqual(self.subscription_rows(self.second_member, self.discussion)[0].state, "Mute")
+
+	def test_mentions_only_does_not_hear_a_plain_reply(self):
+		self.set_prefs(self.member, participation_level="Mentions only")
+		with self.as_user(self.member):
+			discussion = create_discussion("Mine", self.space)
+
+		self.comment_as(self.second_member, discussion=discussion)
+
+		self.assertEqual(self.notifications_for(self.member), [])
+
+	def test_changing_the_level_later_leaves_earlier_bells_alone(self):
+		with self.as_user(self.member):
+			discussion = create_discussion("Mine", self.space)
+		self.set_prefs(self.member, participation_level="Mentions only")
 
 		self.assertEqual(self.subscription_rows(self.member, discussion)[0].state, "Watch")
 
@@ -418,18 +462,18 @@ class TestOwnContentToggles(PreferenceTestCase):
 
 		self.assertEqual([r.type for r in self.notifications_for(self.member)], ["Reaction"])
 
-	def test_the_reactions_toggle_off_writes_no_row(self):
-		self.set_prefs(self.member, notify_reactions=0)
+	def test_mentions_only_level_writes_no_reaction_row(self):
+		self.set_prefs(self.member, participation_level="Mentions only")
 
 		self.react_as(self.second_member, self.discussion)
 
 		self.assertEqual(self.notifications_for(self.member), [])
 
-	def test_the_reactions_toggle_off_stops_re_lighting_an_old_row_too(self):
+	def test_mentions_only_stops_re_lighting_an_old_row_too(self):
 		self.react_as(self.second_member, self.discussion)
 		[row] = self.notifications_for(self.member)
 		frappe.db.set_value("GP Notification", row.name, "read", 1)
-		self.set_prefs(self.member, notify_reactions=0)
+		self.set_prefs(self.member, participation_level="Mentions only")
 
 		self.react_as(self.admin, self.discussion)
 

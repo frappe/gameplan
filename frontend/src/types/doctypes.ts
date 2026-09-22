@@ -94,12 +94,8 @@ export interface GPUserProfile extends DocType {
   email_digest_last_sent_on?: string
   /** Notification Level: Select - What reaches this user from discussions they have not set a bell on. A bell set on a specific discussion always wins over this. */
   notification_level?: 'Mentions only' | 'Mute'
-  /** Watch Discussions I Start: Check - Set every discussion this user creates to Watch at creation. */
-  watch_own_discussions?: 0 | 1
-  /** Notify About Reactions on My Content: Check */
-  notify_reactions?: 0 | 1
-  /** Notify About Votes on My Polls: Check */
-  notify_poll_votes?: 0 | 1
+  /** Participation Level: Select - Written as the bell on every discussion this user starts or comments in, unless they set one themselves first. Watch also lets reactions and poll votes on their content notify them. */
+  participation_level?: 'Watch' | 'Mentions only'
   /** Notification Channel: Select */
   notification_channel?: 'In-app' | 'Push' | 'Email'
   /** Receive Notifications: Check */

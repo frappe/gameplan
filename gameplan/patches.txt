@@ -50,3 +50,4 @@ gameplan.gameplan.doctype.gp_notification.patches.backfill_project_and_team
 gameplan.gameplan.doctype.gp_user_profile.patches.set_notification_defaults
 gameplan.gameplan.doctype.gp_user_profile.patches.set_away_defaults
 gameplan.gameplan.doctype.gp_user_profile.patches.set_notification_channel_default
+gameplan.gameplan.doctype.gp_user_profile.patches.set_participation_level_default

@@ -23,10 +23,12 @@ export const allDayEnd = '23:59'
  * `get_user_info` (see `loadNotificationPreferences`), edited through the setters below,
  * each of which pushes the one field it changed and rolls back on failure.
  */
+export const participationLevels = ['Watch', 'Mentions only'] as const
+export type ParticipationLevel = (typeof participationLevels)[number]
+export const defaultParticipationLevel: ParticipationLevel = 'Watch'
+
 const level = ref<NotificationLevel>(defaultNotificationLevel)
-const watchOwnDiscussions = ref(false)
-const notifyReactions = ref(true)
-const notifyPollVotes = ref(true)
+const participation = ref<ParticipationLevel>(defaultParticipationLevel)
 const receiveNotifications = ref(true)
 const channel = ref<NotificationChannel>('In-app')
 const activeHoursStart = ref(allDayStart)
@@ -39,9 +41,7 @@ const userProfiles = useDoctype<GPUserProfile>('GP User Profile')
 const saveToastId = 'notification-preference-save'
 
 export const currentNotificationLevel = computed(() => level.value)
-export const currentWatchOwnDiscussions = computed(() => watchOwnDiscussions.value)
-export const currentNotifyReactions = computed(() => notifyReactions.value)
-export const currentNotifyPollVotes = computed(() => notifyPollVotes.value)
+export const currentParticipationLevel = computed(() => participation.value)
 export const currentReceiveNotifications = computed(() => receiveNotifications.value)
 export const currentNotificationChannel = computed(() => channel.value)
 export const currentActiveHoursStart = computed(() => activeHoursStart.value)
@@ -53,9 +53,7 @@ export const isSavingNotificationPreference = computed(() => saving.value)
 export function loadNotificationPreferences(
   user: {
     notification_level?: unknown
-    watch_own_discussions?: unknown
-    notify_reactions?: unknown
-    notify_poll_votes?: unknown
+    participation_level?: unknown
     notification_channel?: unknown
     receive_notifications?: unknown
     active_hours_enabled?: unknown
@@ -67,9 +65,7 @@ export function loadNotificationPreferences(
 ) {
   profileName.value = currentProfileName
   level.value = normalizeLevel(user.notification_level)
-  watchOwnDiscussions.value = toBoolean(user.watch_own_discussions, false)
-  notifyReactions.value = toBoolean(user.notify_reactions, true)
-  notifyPollVotes.value = toBoolean(user.notify_poll_votes, true)
+  participation.value = normalizeParticipation(user.participation_level)
   receiveNotifications.value = toBoolean(user.receive_notifications, true)
   channel.value = normalizeChannel(user.notification_channel)
   // A disabled schedule reads as all day, whatever times are left in its fields.
@@ -87,29 +83,12 @@ export function setNotificationLevel(value: unknown) {
   void persist({ notification_level: next }, () => (level.value = previous))
 }
 
-export function setWatchOwnDiscussions(value: boolean) {
-  const previous = watchOwnDiscussions.value
-  if (value === previous) return
-  watchOwnDiscussions.value = value
-  void persist(
-    { watch_own_discussions: value ? 1 : 0 },
-    () => (watchOwnDiscussions.value = previous),
-  )
-}
-
-/** Both switches in one write, so a pick that flips both cannot race itself. */
-export function setActivityNotifications(reactions: boolean, pollVotes: boolean) {
-  const previous = { reactions: notifyReactions.value, pollVotes: notifyPollVotes.value }
-  if (reactions === previous.reactions && pollVotes === previous.pollVotes) return
-  notifyReactions.value = reactions
-  notifyPollVotes.value = pollVotes
-  void persist(
-    { notify_reactions: reactions ? 1 : 0, notify_poll_votes: pollVotes ? 1 : 0 },
-    () => {
-      notifyReactions.value = previous.reactions
-      notifyPollVotes.value = previous.pollVotes
-    },
-  )
+export function setParticipationLevel(value: unknown) {
+  const next = normalizeParticipation(value)
+  const previous = participation.value
+  if (next === previous) return
+  participation.value = next
+  void persist({ participation_level: next }, () => (participation.value = previous))
 }
 
 export function setNotificationChannel(value: unknown) {
@@ -184,6 +163,12 @@ async function persist(patch: Partial<GPUserProfile>, rollback: () => void) {
   } finally {
     saving.value = false
   }
+}
+
+function normalizeParticipation(value: unknown): ParticipationLevel {
+  return participationLevels.includes(value as ParticipationLevel)
+    ? (value as ParticipationLevel)
+    : defaultParticipationLevel
 }
 
 function normalizeLevel(value: unknown): NotificationLevel {

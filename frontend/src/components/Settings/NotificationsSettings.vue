@@ -14,21 +14,19 @@
               <div class="text-base-medium text-ink-gray-8">Receive notifications</div>
               <div class="mt-1 text-base leading-5 text-ink-gray-6">
                 <template v-if="receiveNotifications">
-                  {{ scheduleSummary }} · {{ timezoneLabel }} ·
-                  <button
-                    type="button"
-                    class="text-ink-gray-8 hover:underline"
-                    @click="editingSchedule = !editingSchedule"
-                  >
-                    {{ editingSchedule ? 'Done' : 'Change' }}
-                  </button>
+                  {{ scheduleSummary }} · {{ timezoneLabel }}
                 </template>
                 <template v-else>
                   Push and email are held; a card recaps what you missed when you switch back on
                 </template>
               </div>
             </div>
-            <div class="flex shrink-0 items-start justify-end">
+            <div class="flex shrink-0 items-center gap-4">
+              <Button
+                v-if="receiveNotifications"
+                :label="editingSchedule ? 'Done' : 'Change'"
+                @click="editingSchedule = !editingSchedule"
+              />
               <Switch
                 :model-value="receiveNotifications"
                 @update:model-value="setReceiveNotifications"
@@ -92,8 +90,8 @@
 
           <SettingsRow
             v-if="receiveNotifications"
-            title="Reach me by"
-            :description="channelDescription"
+            title="Notify me by"
+            description="Choose where you get your notifications"
           >
             <Select
               :options="channelOptions"
@@ -101,32 +99,18 @@
               @update:model-value="setNotificationChannel"
             />
           </SettingsRow>
-        </div>
-      </section>
-
-      <section>
-        <h3 class="mb-2 text-base-medium text-ink-gray-8">Notify me about</h3>
-        <div class="divide-y divide-outline-gray-1">
-          <SettingsRow title="From discussions" :description="notificationLevelDescription">
-            <Select
-              :options="notificationLevelOptions"
-              :model-value="notificationLevel"
-              @update:model-value="setNotificationLevel"
-            />
-          </SettingsRow>
 
           <SettingsRow
-            title="Watch discussions I start"
-            description="Get notified about every comment on discussions you open"
+            title="Notifications for discussions you're part of"
+            description="Choose notifications for discussions you started or joined"
           >
-            <Switch
-              :model-value="watchOwnDiscussions"
-              @update:model-value="setWatchOwnDiscussions"
+            <Select
+              :options="participationOptions"
+              :model-value="participationLevel"
+              @update:model-value="setParticipationLevel"
             />
           </SettingsRow>
 
-          <!-- The toggles live on the community's Spaces panel (one column per space);
-               this row is the signpost for anyone who has not met them in a space menu. -->
           <SettingsRow
             v-if="communityState.id"
             title="Space notifications"
@@ -135,20 +119,6 @@
             <Button label="Manage" @click="showCommunitiesSettings(communityState.id, 'spaces')" />
           </SettingsRow>
 
-          <!-- One pick over the two stored switches (notify_reactions, notify_poll_votes). -->
-          <SettingsRow title="Activity on my content">
-            <Select
-              :options="activityOptions"
-              :model-value="activityChoice"
-              @update:model-value="setActivityChoice"
-            />
-          </SettingsRow>
-        </div>
-      </section>
-
-      <section>
-        <h3 class="mb-2 text-base-medium text-ink-gray-8">Summary email</h3>
-        <div class="divide-y divide-outline-gray-1">
           <SettingsRow title="Enable email digests" :description="emailDigestDescription">
             <Switch v-model="emailDigestEnabled" />
           </SettingsRow>
@@ -203,68 +173,29 @@ import {
   currentActiveHoursEnd as activeHoursEnd,
   currentActiveHoursStart as activeHoursStart,
   currentNotificationChannel as notificationChannel,
-  currentNotificationLevel as notificationLevel,
-  currentNotifyPollVotes as notifyPollVotes,
-  currentNotifyReactions as notifyReactions,
+  currentParticipationLevel as participationLevel,
   currentReceiveNotifications as receiveNotifications,
-  currentWatchOwnDiscussions as watchOwnDiscussions,
   setActiveHours,
   setNotificationChannel,
-  setNotificationLevel,
-  setActivityNotifications,
+  setParticipationLevel,
   setReceiveNotifications,
-  setWatchOwnDiscussions,
   type NotificationChannel,
-  type NotificationLevel,
+  type ParticipationLevel,
   type Weekday,
 } from '@/data/notificationPreferences'
 import type { GPUserProfile } from '@/types/doctypes'
 
 const sessionUser = useSessionUser()
 
-const notificationLevelOptions: Array<{ value: NotificationLevel; label: NotificationLevel }> = [
-  { value: 'Mentions only', label: 'Mentions only' },
-  { value: 'Mute', label: 'Mute' },
-]
-
-// The description does the explaining, so the control can stay a plain Select. It says
-// what the current choice means; the Mute wording answers the "but I was mentioned"
-// report before it is filed.
-const notificationLevelDescription = computed(() =>
-  notificationLevel.value === 'Mute'
-    ? "Nothing reaches you from discussions you haven't set a bell on — not even mentions."
-    : 'Mentions reach you from every discussion.',
-)
 // Push joins this list once the relay exists (Phase 5); until then it is not offered.
 const channelOptions: Array<{ value: NotificationChannel; label: string }> = [
   { value: 'In-app', label: 'In-app only' },
   { value: 'Email', label: 'Email' },
 ]
-type ActivityChoice = 'both' | 'reactions' | 'polls' | 'none'
-const activityOptions: Array<{ label: string; value: ActivityChoice }> = [
-  { label: 'Reactions and polls', value: 'both' },
-  { label: 'Only reactions', value: 'reactions' },
-  { label: 'Only poll votes', value: 'polls' },
-  { label: 'None', value: 'none' },
+const participationOptions: Array<{ value: ParticipationLevel; label: string }> = [
+  { value: 'Watch', label: 'Watch' },
+  { value: 'Mentions only', label: 'Mentions only' },
 ]
-const activityChoice = computed<ActivityChoice>(() => {
-  if (notifyReactions.value && notifyPollVotes.value) return 'both'
-  if (notifyReactions.value) return 'reactions'
-  if (notifyPollVotes.value) return 'polls'
-  return 'none'
-})
-function setActivityChoice(value: ActivityChoice) {
-  setActivityNotifications(
-    value === 'both' || value === 'reactions',
-    value === 'both' || value === 'polls',
-  )
-}
-
-const channelDescription = computed(() =>
-  notificationChannel.value === 'Email'
-    ? 'One email an hour with everything new since the last one'
-    : 'The inbox and the bell only',
-)
 
 // The schedule runs in the timezone from Preferences (User.time_zone), falling back to the
 // site's when none is set — the same rule the server applies.

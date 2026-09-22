@@ -6,7 +6,7 @@ import frappe
 from frappe import _
 
 from gameplan.notifications.away import get_active_away_period
-from gameplan.notifications.preferences import profile_prefs
+from gameplan.notifications.preferences import wants_content_feedback
 
 
 class HasReactions:
@@ -81,7 +81,7 @@ class HasReactions:
 		# Reactions are feedback on the owner's own content, so they follow the owner's
 		# reactions toggle and nothing else — not the discussion's bell, not the global
 		# level. Off means no row is written at all, not a row written and hidden.
-		if not profile_prefs(self.owner).notify_reactions:
+		if not wants_content_feedback(self.owner):
 			return
 
 		# Several changes can land in one save (the frontend debounces a quick tap-tap
