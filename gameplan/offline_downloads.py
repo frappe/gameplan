@@ -14,6 +14,8 @@ not they are a member of that Space, because a Space joined later is one they co
 read.
 """
 
+from datetime import datetime
+
 import frappe
 from frappe import _
 from frappe.api.v2 import read_doc
@@ -67,7 +69,7 @@ ALLOWED_CHILD_FIELDS = {
 
 
 @frappe.whitelist(methods=["POST"])
-def get_offline_index(window_days, cached=None, since=None):
+def get_offline_index(window_days: int, cached: list | str | None = None, since: str | None = None) -> dict:
 	"""Discussions the device should hold for this window, newest activity first.
 
 	`since` is when the device last finished a sync: what has changed after it comes back as
@@ -79,21 +81,23 @@ def get_offline_index(window_days, cached=None, since=None):
 	`cached` names other discussions the device holds from the user's own visits; the ones they
 	can no longer read (deleted, or access taken away) come back as `revoked` to be removed.
 	"""
+	_check_rate_limit()
 	window = _allowed_window(window_days)
 	synced_at = now_datetime()
+	since = _since(since)
 	visited = _names(cached, MAX_CACHED)
 	rows = _discussions_in_window(window)
 	return {
 		"discussions": [row.name for row in rows],
 		"places": {row.name: _place(row) for row in rows},
-		"changed": [row.name for row in _changed_since(rows, get_datetime(since))] if since else [],
+		"changed": [row.name for row in _changed_since(rows, since)] if since else [],
 		"revoked": _revoked(visited),
 		"synced_at": str(synced_at),
 	}
 
 
 @frappe.whitelist(methods=["POST"])
-def get_offline_bundle(window_days, fields, names):
+def get_offline_bundle(window_days: int, fields: dict | str, names: list | str) -> dict:
 	"""A page of the window's discussions, each with its comments, activity and polls.
 
 	`names` is what the device asked for, a page's worth at a time, taken from the index:
@@ -105,6 +109,7 @@ def get_offline_bundle(window_days, fields, names):
 	ALLOWED_FIELDS come back, whatever is asked for. `rows` carries the same discussions in
 	the shape the feeds render, so a Space the user has never opened still lists them offline.
 	"""
+	_check_rate_limit()
 	window = _allowed_window(window_days)
 	fields = frappe.parse_json(fields)
 	if not isinstance(fields, dict):
@@ -121,7 +126,24 @@ def get_offline_bundle(window_days, fields, names):
 	return bundle
 
 
-def _names(value, limit):
+def _since(value: str | None) -> datetime | None:
+	"""When the device last finished a sync, or None on its first.
+
+	`get_datetime` answers junk with a different exception for each kind of it, and with
+	None for a few, so a timestamp that cannot be read is turned into one message here.
+	"""
+	if not value:
+		return None
+	try:
+		since = get_datetime(value)
+	except Exception:
+		since = None
+	if since is None:
+		frappe.throw(_("Expected the time of the last sync."), frappe.ValidationError)
+	return since
+
+
+def _names(value: list | str | None, limit: int) -> list[str]:
 	"""Discussion names as the client sent them: a list, at most `limit` long, stringified.
 
 	A whitelisted argument arrives as whatever was posted, so the shape is checked here
@@ -135,7 +157,7 @@ def _names(value, limit):
 	return [str(name) for name in names[:limit] if isinstance(name, str | int)]
 
 
-def _allowed_fields(key, fields):
+def _allowed_fields(key: str, fields) -> list:
 	"""The columns of one child list that this endpoint will project, in the order asked for.
 
 	A name outside the contract is dropped: the device has no use for it, and the endpoint is
@@ -164,23 +186,23 @@ def _allowed_fields(key, fields):
 	return kept
 
 
-def _field_list(value):
+def _field_list(value) -> list:
 	"""A field list as the client sent it. Anything but a list is not one."""
 	if not isinstance(value, list):
 		frappe.throw(_("Expected a list of field names."), frappe.ValidationError)
 	return value
 
 
-def _allowed_window(window_days):
-	_check_rate_limit()
+def _allowed_window(window_days: int) -> int:
 	window = cint(window_days)
 	if window <= 0:
 		frappe.throw(_("Choose how many days to download."), frappe.ValidationError)
 	return min(window, MAX_WINDOW_DAYS)
 
 
-def _check_rate_limit():
-	# Per user rather than frappe's per-IP limiter: a whole office shares one address.
+def _check_rate_limit() -> None:
+	# Per user, which frappe.rate_limiter.rate_limit cannot do: it keys on the IP — a whole
+	# office shares one — or on a request parameter, which the caller chooses.
 	key = rate_limit_key(frappe.session.user)
 	# Started with SET NX, so two requests arriving together cannot both reset the hour.
 	frappe.cache.set(key, 0, ex=60 * 60, nx=True)
@@ -191,11 +213,11 @@ def _check_rate_limit():
 		)
 
 
-def rate_limit_key(user):
+def rate_limit_key(user: str) -> bytes:
 	return frappe.cache.make_key(f"gameplan:offline-downloads:{user}")
 
 
-def _discussions_in_window(window, names=None):
+def _discussions_in_window(window: int, names: list[str] | None = None) -> list:
 	"""The window's discussions, newest activity first, or only `names` from inside it.
 
 	The index lists the whole window. A bundle only has to hold its page to the same window
@@ -221,7 +243,7 @@ def _discussions_in_window(window, names=None):
 	return rows
 
 
-def _place(row):
+def _place(row) -> str:
 	"""The Space and community a discussion sits in, as one comparable value.
 
 	Moving a Space to another community rewrites its discussions' denormalised `team` in a
@@ -232,7 +254,7 @@ def _place(row):
 	return f"{row.project}/{row.team or ''}"
 
 
-def _feed_rows(names):
+def _feed_rows(names: list[str]) -> list:
 	"""The page's discussions as the feeds list them, from the feeds' own endpoint."""
 	if not names:
 		return []
@@ -266,14 +288,14 @@ def _downloadable_spaces():
 	return apply_project_query_filter(query)
 
 
-def _revoked(names):
+def _revoked(names: list[str]) -> list[str]:
 	if not names:
 		return []
 	readable = {str(row.name) for row in _query("GP Discussion", ["name"], {"name": ["in", names]})}
 	return [name for name in names if name not in readable]
 
 
-def _changed_since(rows, since):
+def _changed_since(rows: list, since: datetime) -> list:
 	"""Discussions edited, replied to or reacted in after `since`.
 
 	A reaction or poll vote saves the comment or poll it belongs to, not the discussion.
@@ -290,14 +312,16 @@ def _changed_since(rows, since):
 	]
 
 
-def _changed_children(doctype, link_field, names, since):
+def _changed_children(doctype: str, link_field: str, names: list[str], since: datetime) -> list[str]:
+	# Permissions are already settled: `names` came from the window query, and all this
+	# returns is which of those names a child row points at.
 	filters = {link_field: ["in", names], "modified": [">", since]}
 	if doctype == "GP Comment":
 		filters["reference_doctype"] = "GP Discussion"
 	return frappe.get_all(doctype, filters=filters, pluck=link_field, distinct=True)
 
 
-def _rows_by_discussion(doctype, link, fields, names):
+def _rows_by_discussion(doctype: str, link: str, fields: list, names: list[str]) -> dict[str, list]:
 	grouped = {name: [] for name in names}
 	if not names or not fields:
 		return grouped
@@ -316,7 +340,14 @@ def _rows_by_discussion(doctype, link, fields, names):
 	return grouped
 
 
-def _query(doctype, fields, filters, order_by="creation asc", limit=None, criterion=None):
+def _query(
+	doctype: str,
+	fields: list,
+	filters: dict,
+	order_by: str = "creation asc",
+	limit: int | None = None,
+	criterion=None,
+) -> list:
 	"""The permission-checked list query `/api/v2/document/<doctype>` runs.
 
 	`criterion` narrows it further, for a scope the filters cannot express.

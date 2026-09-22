@@ -2,6 +2,7 @@ import { clear as clearIdbKeyval } from 'idb-keyval'
 import { toast } from 'frappe-ui'
 import { clearDraftStore } from '@/data/draftStore'
 import { onReconnect } from '@/data/online'
+import { getSessionUserFromCookie } from '@/utils/sessionCookie'
 
 const SERVICE_WORKER_URL = '/gameplan-sw.js'
 const SERVICE_WORKER_SCOPE = '/g'
@@ -67,10 +68,6 @@ function serviceWorkerSupportEnabled(): boolean {
     window.isSecureContext &&
     'serviceWorker' in navigator
   )
-}
-
-export function isBrowserOffline() {
-  return typeof navigator !== 'undefined' && navigator.onLine === false
 }
 
 export function isNetworkError(error: unknown) {
@@ -223,11 +220,6 @@ export async function guardAgainstUserSwitch(user: string | null): Promise<boole
 }
 
 // Not imported from data/session.ts, which imports this module.
-function getSessionUserFromCookie(): string | null {
-  const cookies = new URLSearchParams(document.cookie.split('; ').join('&'))
-  const user = cookies.get('user_id')
-  return user && user !== 'Guest' ? user : null
-}
 
 /** Offers a refresh once a new worker is installed and waiting, including one already waiting. */
 function watchForUpdates(registration: ServiceWorkerRegistration) {

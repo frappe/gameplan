@@ -3,6 +3,7 @@ import { useCall } from '@/data/offlineRevalidation'
 import { users } from './users'
 import router from '@/router'
 import { clearOfflineCaches, guardAgainstUserSwitch } from '@/offline'
+import { getSessionUserFromCookie } from '@/utils/sessionCookie'
 
 interface LoginResponse {
   user: string
@@ -53,13 +54,4 @@ export let session = reactive({
 
 export function isSessionUser(user: string) {
   return session.user === user
-}
-
-function getSessionUserFromCookie() {
-  let cookies = new URLSearchParams(document.cookie.split('; ').join('&'))
-  let _sessionUser = cookies.get('user_id')
-  if (_sessionUser === 'Guest') {
-    _sessionUser = null
-  }
-  return _sessionUser
 }

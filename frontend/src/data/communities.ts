@@ -5,6 +5,7 @@ import { GPTeam, GPMember } from '@/types/doctypes'
 import { communityOrder } from './communityOrder'
 import { useSessionUser } from './users'
 import { session } from './session'
+import { getSessionUserFromCookie } from '@/utils/sessionCookie'
 
 export interface CommunityMember extends Pick<GPMember, 'user' | 'is_admin'> {
   user: string
@@ -136,10 +137,4 @@ function sortCommunitiesByUserOrder(communities: Community[]) {
 
     return left.title.localeCompare(right.title)
   })
-}
-
-function getSessionUserFromCookie() {
-  let cookies = new URLSearchParams(document.cookie.split('; ').join('&'))
-  let user = cookies.get('user_id')
-  return user === 'Guest' ? null : user
 }

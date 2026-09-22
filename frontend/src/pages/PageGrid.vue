@@ -49,7 +49,7 @@
               <div
                 class="mt-1.5 text-sm flex gap-1 text-ink-gray-6"
                 v-if="d.project"
-                :set="(space = getSpace(d))"
+                :set="space = getSpace(d)"
               >
                 <SpaceIcon :icon="space?.icon" class="size-4 text-ink-gray-6" />
                 <div>{{ space?.title }}</div>
@@ -74,6 +74,7 @@
 </template>
 
 <script setup lang="ts">
+import { toValue } from 'vue'
 import { Dropdown, UseListOptions, dialog } from 'frappe-ui'
 import { useList } from '@/data/offlineRevalidation'
 import EmptyStateBox from '@/components/EmptyStateBox.vue'
@@ -108,8 +109,10 @@ const pages = useList<Page>({
   fields: ['name', 'creation', 'title', 'content', 'slug', 'project', 'team', 'modified', 'owner'],
   filters: props.listOptions.filters,
   orderBy: props.listOptions.orderBy,
-  // Per user, so another account on this browser can't read it offline.
-  cacheKey: ['Pages', props.listOptions, session.user],
+  // Per user, so another account on this browser can't read it offline. Keyed on the
+  // resolved filters, like TaskList: a getter would stringify to `{}` and give every grid
+  // the same entry.
+  cacheKey: ['Pages', toValue(props.listOptions.filters) ?? {}, session.user],
   staleOnError: true,
 })
 const loadFailure = useLoadFailure(pages, 'pages')

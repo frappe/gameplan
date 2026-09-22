@@ -250,16 +250,17 @@ def on_user_update(doc, method=None):
 
 @frappe.whitelist()
 def get_list(
-	fields=None,
-	filters=None,
-	order_by=None,
-	start=0,
-	limit=20,
-	group_by=None,
-	parent=None,
-	debug=False,
+	fields: list | str | None = None,
+	filters: dict | list | str | None = None,
+	order_by: str | None = None,
+	start: int = 0,
+	limit: int = 20,
+	group_by: str | None = None,
+	parent: str | None = None,
+	debug: bool = False,
 ):
-	# useList sends these as GET query strings, so parse them here (like get_discussions).
+	# Hinted so frappe checks the types at the boundary, and wide enough for how they
+	# arrive: useList sends fields and filters as GET query strings (like get_discussions).
 	doctype = "GP User Profile"
 	check_permissions(doctype, parent)
 	query = frappe.qb.get_query(

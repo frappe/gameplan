@@ -1,9 +1,14 @@
-import { useDebounceFn, useOnline } from '@vueuse/core'
+import { useDebounceFn, useNetwork } from '@vueuse/core'
 import { getCurrentScope, onScopeDispose, watch } from 'vue'
 
-// Single shared `navigator.onLine` + online/offline event listener for the whole
-// app (US3's indicator and US5's reconnect refetch both read this).
-export const isOnline = useOnline()
+// Single shared reading of the browser's network state for the whole app (US3's indicator
+// and US5's reconnect refetch both read `isOnline`).
+const network = useNetwork()
+
+export const isOnline = network.isOnline
+
+/** Data Saver: the person has asked their browser not to fetch what it was not asked for. */
+export const saveData = network.saveData
 
 // Flaky connectivity (a train tunnel, a flapping wifi radio) can fire several
 // offline→online transitions within a second or two. Debouncing the notification

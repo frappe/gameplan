@@ -2,7 +2,7 @@ import { reactive, watch } from 'vue'
 import { useLocalStorage } from '@vueuse/core'
 import { call, dialog, toast } from 'frappe-ui'
 import { delMany, get, getMany, keys, set, setMany, values } from 'idb-keyval'
-import { isOnline, onReconnect } from './online'
+import { isOnline, onReconnect, saveData } from './online'
 import { session } from './session'
 import { customEmojis } from './customEmojis'
 import { isMobileViewport } from '@/utils/useIsMobile'
@@ -173,7 +173,7 @@ async function sync(manual: boolean): Promise<boolean> {
   }
   if (!isOnline.value) return false
   if (!manual) {
-    if (document.visibilityState !== 'visible' || saveData()) return false
+    if (document.visibilityState !== 'visible' || saveData.value) return false
     const fresh = current?.window === days && !current.incomplete && current.lastSyncedAt
     if (fresh && Date.now() - fresh < SYNC_INTERVAL) return true
   }
@@ -582,12 +582,6 @@ function listEntry(cacheKey: unknown[], rows: Row[] = []): [string, string] {
     listKey(cacheKey),
     JSON.stringify(rows.map((row) => ({ ...row, name: String(row.name) }))),
   ]
-}
-
-function saveData() {
-  return Boolean(
-    (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData,
-  )
 }
 
 function idle() {

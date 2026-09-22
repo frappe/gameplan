@@ -185,6 +185,16 @@ class TestOfflineIndex(OfflineDownloadsTestCase):
 					with self.assertRaises(frappe.ValidationError):
 						get_offline_index(30, cached=cached)
 
+	def test_rejects_a_last_sync_time_it_cannot_read(self):
+		"""Refused whichever layer catches it: the endpoint's annotation, or the parse."""
+		with self.as_user(self.member):
+			for since in ("nonsense", "2026-13-45"):
+				with self.subTest(since=since), self.assertRaises(frappe.ValidationError):
+					get_offline_index(30, since=since)
+			for since in (5, {"a": 1}):
+				with self.subTest(since=since), self.assertRaises(frappe.exceptions.FrappeTypeError):
+					get_offline_index(30, since=since)
+
 	def test_rejects_an_empty_window(self):
 		with self.as_user(self.member), self.assertRaises(frappe.ValidationError):
 			get_offline_index(0)

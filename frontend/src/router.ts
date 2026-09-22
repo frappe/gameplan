@@ -16,7 +16,8 @@ import type { Space } from './data/spaces'
 import { communityState } from './data/communityState'
 import { settingsBackgroundPath } from './components/Settings'
 import { shellScrollContainer } from 'frappe-ui'
-import { isBrowserOffline, isNetworkError } from './offline'
+import { isNetworkError } from './offline'
+import { isOnline } from './data/online'
 
 declare const __FRONTEND_ROUTE__: string
 
@@ -764,11 +765,11 @@ function loadPage(to: RouteLocationNormalized) {
 }
 
 router.onError((_error, to) => {
-  if (chunkLoadFailed && !isBrowserOffline()) loadPage(to)
+  if (chunkLoadFailed && isOnline.value) loadPage(to)
 })
 
 router.beforeEach(async (to, from) => {
-  if (chunkLoadFailed && !isBrowserOffline()) {
+  if (chunkLoadFailed && isOnline.value) {
     loadPage(to)
     return false
   }
@@ -924,7 +925,7 @@ function hasHydratedData(resource: ResourceLike) {
 }
 
 function isNetworkUnreliable() {
-  return isBrowserOffline() || hasNetworkError(communities) || hasNetworkError(spaces)
+  return !isOnline.value || hasNetworkError(communities) || hasNetworkError(spaces)
 }
 
 function hasNetworkError(resource: ResourceLike) {
