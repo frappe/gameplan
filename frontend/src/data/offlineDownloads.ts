@@ -619,17 +619,15 @@ const introduction = useLocalStorage<'new' | 'seen-offline' | 'done'>(
 )
 
 /**
- * Introduces downloads once per device: a toast the first time the connection drops (nothing
- * can be downloaded then), and an offer to download on the next app load. Not on reconnect,
- * where a dialog would land on top of whatever the person was in the middle of.
+ * Introduces downloads once per account on a device. Losing the connection is only noted:
+ * the banner already says what is happening, and nothing can be downloaded then anyway. The
+ * offer comes on the next app load, not on reconnect, where a dialog would land on top of
+ * whatever the person was in the middle of.
  */
 function setupIntroduction() {
   watch(isOnline, (online) => {
     if (online || offlineWindow.value || introduction.value !== 'new') return
     introduction.value = 'seen-offline'
-    toast.info("You're offline. Only discussions you've opened are available.", {
-      action: { label: 'Set up', onClick: openOfflineSettings },
-    })
   })
   if (introduction.value === 'seen-offline') setTimeout(offerDownload, 3000)
 }
