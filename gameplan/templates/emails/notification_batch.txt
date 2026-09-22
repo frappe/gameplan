@@ -1,4 +1,5 @@
-New notifications
+{{ title or "New notifications" }}{% if window %}
+{{ window }}{% endif %}
 
 {% if mentions -%}
 Mentions

@@ -11,7 +11,7 @@ the next run does not see them again.
 """
 
 from datetime import datetime
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import frappe
 from frappe.utils import add_to_date, get_datetime, now_datetime
@@ -61,7 +61,17 @@ class DeliveryTestCase(GameplanTestCase):
 	def run_tick(self, now):
 		with patch("frappe.sendmail") as sendmail:
 			delivery.send_batches(now)
-		return sendmail
+		return self.mails_to(sendmail, self.second_member)
+
+	def mails_to(self, sendmail, user):
+		"""Only the mails addressed to `user`. The batch walks every profile on the site,
+		and this one runs against a site with real ones, so another user's mail must not
+		count as this test's."""
+		scoped = MagicMock()
+		for call in sendmail.call_args_list:
+			if call.kwargs.get("recipients") == [_name(user)]:
+				scoped(*call.args, **call.kwargs)
+		return scoped
 
 
 class TestHourlyBatch(DeliveryTestCase):
@@ -117,7 +127,7 @@ class TestHourlyBatch(DeliveryTestCase):
 		self.run_hourly().assert_not_called()
 		self.assertTrue(self.rows_for(self.second_member)[0].email_sent_at)
 
-	def test_rows_from_an_away_stretch_are_left_for_the_card(self):
+	def test_rows_from_an_open_away_stretch_wait_for_the_catch_up(self):
 		self.set_prefs(self.second_member, receive_notifications=0)
 		self.mention_second_member()
 
@@ -180,7 +190,7 @@ class TestHourlyBatch(DeliveryTestCase):
 			delivery.send_batches(now_datetime().replace(minute=0, second=0, microsecond=0))
 
 		self.assertEqual(
-			[call.kwargs["template"] for call in sendmail.call_args_list],
+			[call.kwargs["template"] for call in self.mails_to(sendmail, self.second_member).call_args_list],
 			["email_digest", "notification_batch"],
 		)
 
@@ -234,3 +244,80 @@ class TestSendTimes(DeliveryTestCase):
 		frappe.db.set_value("User", self.second_member.name, "time_zone", "Asia/Gaza")
 		self.run_tick(self.at("2026-09-16 18:30")).assert_not_called()
 		self.run_tick(self.at("2026-09-16 20:30")).assert_called_once()
+
+
+class TestAwayRecap(DeliveryTestCase):
+	"""What arrived while the user was away goes out in its own mail once the stretch ends."""
+
+	def away_and_back(self):
+		"""Switch notifications off, take a mention, switch back on: one ended stretch."""
+		self.set_prefs(self.second_member, receive_notifications=0)
+		self.mention_second_member()
+		self.set_prefs(self.second_member, receive_notifications=1)
+
+	def periods(self):
+		return frappe.get_all(
+			"GP Away Period",
+			filters={"user": self.second_member.name},
+			fields=["name", "ends_at", "recap_sent_at"],
+		)
+
+	def test_the_catch_up_names_the_stretch_and_stamps_the_rows(self):
+		self.away_and_back()
+
+		sendmail = self.run_hourly()
+
+		sendmail.assert_called_once()
+		email = sendmail.call_args.kwargs
+		self.assertEqual(email["recipients"], [self.second_member.name])
+		self.assertEqual(email["subject"], "While you were away: 1 notification in Gameplan")
+		self.assertEqual(email["args"]["title"], "While you were away")
+		self.assertTrue(email["args"]["window"])
+		self.assertEqual(len(email["args"]["mentions"]), 1)
+		self.assertTrue(self.rows_for(self.second_member)[0].email_sent_at)
+
+	def test_it_is_sent_once(self):
+		self.away_and_back()
+		self.run_hourly()
+
+		self.run_hourly().assert_not_called()
+		self.assertTrue(all(p.recap_sent_at for p in self.periods()))
+
+	def test_a_stretch_still_open_is_not_caught_up_yet(self):
+		self.set_prefs(self.second_member, receive_notifications=0)
+		self.mention_second_member()
+
+		delivery.send_away_recap(self.second_member.name)
+
+		self.assertIsNone(self.rows_for(self.second_member)[0].email_sent_at)
+		self.assertFalse(any(p.recap_sent_at for p in self.periods()))
+
+	def test_an_empty_stretch_is_stamped_without_a_mail(self):
+		self.set_prefs(self.second_member, receive_notifications=0)
+		self.set_prefs(self.second_member, receive_notifications=1)
+
+		self.run_hourly().assert_not_called()
+		self.assertTrue(all(p.recap_sent_at for p in self.periods()))
+
+	def test_a_row_read_in_the_app_is_not_caught_up(self):
+		self.away_and_back()
+		row = self.rows_for(self.second_member)[0]
+		frappe.db.set_value("GP Notification", row.name, "read", 1)
+
+		self.run_hourly().assert_not_called()
+
+	def test_the_catch_up_has_no_horizon(self):
+		"""Days old is the point of a catch-up, so the ordinary 24-hour cutoff is not applied."""
+		self.away_and_back()
+		row = self.rows_for(self.second_member)[0]
+		frappe.db.set_value(
+			"GP Notification", row.name, "last_event_at", add_to_date(now_datetime(), hours=-72)
+		)
+
+		self.run_hourly().assert_called_once()
+
+	def test_an_in_app_user_gets_no_catch_up(self):
+		self.set_prefs(self.second_member, notification_channel="In-app")
+		self.away_and_back()
+
+		self.run_hourly().assert_not_called()

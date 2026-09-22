@@ -302,37 +302,6 @@ def mark_all_notifications_as_read():
 	notify_notification_changed(frappe.session.user)
 
 
-@frappe.whitelist()
-def away_summary():
-	"""The "while you were away" card for the session user, or None when there is nothing
-	to show."""
-	from gameplan.notifications.away import away_summary as summary
-
-	return summary(frappe.session.user)
-
-
-@frappe.whitelist(methods=["POST"])
-@validate_type
-def mark_away_card_read(period: str):
-	from gameplan.notifications.away import mark_card_read
-
-	mark_card_read(_own_away_period(period), frappe.session.user)
-
-
-@frappe.whitelist(methods=["POST"])
-@validate_type
-def dismiss_away_card(period: str):
-	from gameplan.notifications.away import dismiss_card
-
-	dismiss_card(_own_away_period(period))
-
-
-def _own_away_period(period: str) -> str:
-	if frappe.db.get_value("GP Away Period", period, "user") != frappe.session.user:
-		frappe.throw(_("Not permitted"), frappe.PermissionError)
-	return period
-
-
 @frappe.whitelist(methods=["POST"])
 def onboarding(community, space, icon, emails, is_private=0):
 	emails = frappe.parse_json(emails)
@@ -341,7 +310,7 @@ def onboarding(community, space, icon, emails, is_private=0):
 	# "General" space inside it.
 	team = frappe.get_doc(doctype="GP Team", title=community).insert()
 
-	# Join the creator â€” a freshly inserted GP Team does not add its creator as a
+	# Join the creator — a freshly inserted GP Team does not add its creator as a
 	# member, and the scoped-route guard only sees joined communities.
 	team.add_member(frappe.session.user)
 	team.save()
@@ -458,4 +427,4 @@ def _client_error_quota_spent() -> bool:
 
 def _truncate(value: str, limit: int = CLIENT_ERROR_FIELD_LIMIT) -> str:
 	value = str(value or "")
-	return value if len(value) <= limit else value[:limit] + "â€¦ (truncated)"
+	return value if len(value) <= limit else value[:limit] + "… (truncated)"
