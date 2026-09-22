@@ -4,7 +4,12 @@
       title="Download for offline"
       description="Keep discussions from Spaces you've joined on this device, with their comments and polls"
     >
-      <Select :options="windowOptions" v-model="selectedWindow" />
+      <!-- Offline there is nothing to download; Remove downloads below still works. -->
+      <Select
+        :options="windowOptions"
+        v-model="selectedWindow"
+        :disabled="!isOnline || downloads.syncing"
+      />
     </SettingsRow>
 
     <!-- Nothing to say about the device until a window is picked: "Recently viewed only"

@@ -6,6 +6,7 @@ import { isOnline, onReconnect, saveData } from './online'
 import { session } from './session'
 import { customEmojis } from './customEmojis'
 import { isMobileViewport } from '@/utils/useIsMobile'
+import { OFFLINE_ACTION_MESSAGE } from './loadFailure'
 import { communityFeedKey, feedScope, spaceFeedKey } from './discussions'
 import {
   ACTIVITY_FIELDS,
@@ -543,7 +544,14 @@ async function removeEverything() {
 
 /** Picks a window and downloads it now, with a toast for the foreground download. */
 export function downloadForOffline(days: OfflineWindow) {
+  // The controls that start one are disabled offline, but a dialog already open when the
+  // connection drops is not, and the window must not move to one nothing was fetched for.
+  if (days && !isOnline.value) {
+    toast.warning(OFFLINE_ACTION_MESSAGE, { id: 'offline-action' })
+    return
+  }
   offlineWindow.value = days
+  // Removing what is on the device needs no connection.
   if (!days) return removeOfflineDownloads()
   // Without this the browser may evict the downloads under storage pressure (Safari does
   // after a week of not opening the site).

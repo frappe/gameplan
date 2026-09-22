@@ -15,6 +15,9 @@ export function isOfflineError(error: unknown) {
   return !isOnline.value || isNetworkError(error)
 }
 
+/** What a control that is disabled offline says when someone taps it anyway. */
+export const OFFLINE_ACTION_MESSAGE = "You're offline. Reconnect to do this."
+
 /** The copy every "couldn't load" state uses, so pages word it the same way. */
 export function loadFailureCopy(what: string, offline: boolean) {
   return offline

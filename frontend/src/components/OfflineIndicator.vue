@@ -29,6 +29,7 @@ import { watch } from 'vue'
 import { useEventListener } from '@vueuse/core'
 import { toast } from 'frappe-ui'
 import { isOnline } from '@/data/online'
+import { OFFLINE_ACTION_MESSAGE } from '@/data/loadFailure'
 
 // A DOM attribute, not a Vue-scoped style: the shells this needs to push down
 // (MobileShell.vue, DesktopShell.vue) live in frappe-ui, outside this component's
@@ -53,7 +54,7 @@ useEventListener(
   (event) => {
     if (isOnline.value || !(event.target instanceof Element)) return
     if (!event.target.closest(DISABLED_CONTROL)) return
-    toast.warning("You're offline. Reconnect to do this.", { id: 'offline-action' })
+    toast.warning(OFFLINE_ACTION_MESSAGE, { id: 'offline-action' })
   },
   { capture: true },
 )
