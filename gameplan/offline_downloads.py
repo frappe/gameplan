@@ -39,6 +39,31 @@ CHILD_LISTS = {
 	"activities": ("GP Activity", "reference"),
 	"polls": ("GP Poll", "discussion"),
 }
+# The columns a bundle will project, per list and per child table of it: exactly what the
+# app's own timeline lists ask for (frontend/src/data/discussionTimeline.ts). The device
+# sends its field list so rows land in the shape its cache reads back, but the choice is
+# held to this: a whitelisted argument is not a free hand on the projection.
+ALLOWED_FIELDS = {
+	"comments": {"name", "content", "owner", "creation", "modified", "edited_at", "deleted_at", "reactions"},
+	"activities": {"name", "user", "action", "data", "creation"},
+	"polls": {
+		"name",
+		"title",
+		"anonymous",
+		"multiple_answers",
+		"creation",
+		"owner",
+		"stopped_at",
+		"options",
+		"votes",
+		"reactions",
+	},
+}
+ALLOWED_CHILD_FIELDS = {
+	"reactions": {"name", "user", "emoji"},
+	"options": {"name", "title", "idx", "percentage"},
+	"votes": {"user", "option"},
+}
 
 
 @frappe.whitelist(methods=["POST"])
@@ -76,9 +101,9 @@ def get_offline_bundle(window_days, fields, names):
 	window, or outside the user's reach, simply do not come back.
 
 	`fields` maps comments/activities/polls to the field lists the app's own lists request,
-	so the rows come back in exactly the shape those lists cache. `rows` carries the same
-	discussions in the shape the feeds render, so a Space the user has never opened still
-	lists them offline.
+	so the rows come back in exactly the shape those lists cache. Only the columns in
+	ALLOWED_FIELDS come back, whatever is asked for. `rows` carries the same discussions in
+	the shape the feeds render, so a Space the user has never opened still lists them offline.
 	"""
 	window = _allowed_window(window_days)
 	fields = frappe.parse_json(fields)
@@ -92,7 +117,7 @@ def get_offline_bundle(window_days, fields, names):
 		"rows": _feed_rows(names),
 	}
 	for key, (doctype, link) in CHILD_LISTS.items():
-		bundle[key] = _rows_by_discussion(doctype, link, fields.get(key), names)
+		bundle[key] = _rows_by_discussion(doctype, link, _allowed_fields(key, fields.get(key)), names)
 	return bundle
 
 
@@ -108,6 +133,25 @@ def _names(value, limit):
 	if not isinstance(names, list):
 		frappe.throw(_("Expected a list of discussion names."), frappe.ValidationError)
 	return [str(name) for name in names[:limit] if isinstance(name, str | int)]
+
+
+def _allowed_fields(key, fields):
+	"""The columns of one child list that this endpoint will project, in the order asked for.
+
+	A field outside the contract is dropped rather than passed to the query: the device has
+	no use for it, and the endpoint is not a way to project arbitrary columns of a doctype.
+	"""
+	allowed = ALLOWED_FIELDS[key]
+	kept = []
+	for field in fields or []:
+		if isinstance(field, str):
+			if field in allowed:
+				kept.append(field)
+		elif isinstance(field, dict):
+			for child, columns in field.items():
+				if child in allowed and child in ALLOWED_CHILD_FIELDS:
+					kept.append({child: [c for c in columns if c in ALLOWED_CHILD_FIELDS[child]]})
+	return kept
 
 
 def _allowed_window(window_days):

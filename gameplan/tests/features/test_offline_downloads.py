@@ -235,6 +235,21 @@ class TestOfflineBundle(OfflineDownloadsTestCase):
 		bundle = self.bundle(30, names=in_window)
 		self.assertEqual(len(bundle["discussions"]), offline_downloads.PAGE_SIZE)
 
+	def test_projects_only_the_fields_the_offline_cache_uses(self):
+		"""The device picks the shape it caches; it does not pick the columns."""
+		create_comment(self.recent, content="Hello", owner=self.member)
+		fields = json.dumps(
+			{
+				"comments": ["name", "content", "password", {"reactions": ["user", "modified_by"]}],
+				"activities": ["name", "user"],
+				"polls": ["name"],
+			}
+		)
+		with self.as_user(self.member):
+			bundle = get_offline_bundle(30, fields, json.dumps([str(self.recent.name)]))
+		comment = bundle["comments"][str(self.recent.name)][0]
+		self.assertEqual(sorted(comment.keys()), ["content", "name", "reactions"])
+
 	def test_rejects_a_field_list_that_is_not_a_mapping(self):
 		with self.as_user(self.member):
 			with self.assertRaises(frappe.ValidationError):
