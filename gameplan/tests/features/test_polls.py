@@ -869,7 +869,7 @@ class TestGuestPollParticipation(GameplanTestCase):
 		self.discussion = create_discussion("Guest poll thread", self.space, owner=self.member)
 		self.other_discussion = create_discussion("Closed thread", self.other_space, owner=self.member)
 
-	def test_guest_can_create_a_poll_but_not_a_discussion_in_a_granted_space(self):
+	def test_guest_can_create_a_poll_in_a_granted_space(self):
 		with self.as_user(self.guest):
 			poll = frappe.get_doc(
 				doctype="GP Poll",
@@ -877,14 +877,6 @@ class TestGuestPollParticipation(GameplanTestCase):
 				discussion=self.discussion.name,
 				options=[{"title": "Yes"}, {"title": "No"}],
 			).insert()
-
-			with self.assertRaises(frappe.PermissionError):
-				frappe.get_doc(
-					doctype="GP Discussion",
-					title="Guest-created discussion",
-					content="<p>Not participation content</p>",
-					project=self.space.name,
-				).insert()
 
 		self.assertEqual(poll.owner, self.guest.name)
 

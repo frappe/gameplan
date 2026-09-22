@@ -15,6 +15,7 @@ from gameplan.permissions import (
 	apply_accessible_project_filter,
 	apply_project_query_filter,
 	can_manage_space,
+	can_view_community,
 	can_view_space,
 	require_can_invite_guest,
 	require_can_manage_space_members,
@@ -68,9 +69,16 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 		self.db_set("tasks_count", total_tasks)
 
 	@frappe.whitelist(methods=["POST"])
-	def move_to_team(self, team=None):
-		if self.team == team:
+	def move_to_team(self, team: str | None = None):
+		# An empty team moves the Space to Uncategorized. "" and None mean the same.
+		team = team or None
+		if (self.team or None) == team:
 			return
+		# The save below checks write on the Space only, and every member of a private
+		# Space may manage it. Without this, a member could move the Space into a
+		# private Community they are not in.
+		if team and not can_view_community(frappe.session.user, team):
+			frappe.throw(_("You do not have access to this community"), frappe.PermissionError)
 		self.team = team
 		self.save()
 		self.update_project_team_references()

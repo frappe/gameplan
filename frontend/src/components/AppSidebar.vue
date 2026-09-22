@@ -50,7 +50,12 @@
 
               <span class="flex-1 inline-flex items-center gap-1 truncate text-sm">
                 <LucideLock v-if="space.is_private" class="size-3 shrink-0 text-ink-gray-5" />
-                {{ space.title }}
+                <span class="truncate">{{ space.title }}</span>
+                <PushPin
+                  v-if="isSpacePinned(space.name)"
+                  class="size-3 shrink-0 text-ink-gray-5"
+                  aria-hidden="true"
+                />
               </span>
 
               <template #suffix>
@@ -116,12 +121,15 @@ import { Button, Dropdown, Sidebar, SidebarItem, SidebarLabel, ScrollArea } from
 import { communityState } from '@/data/communityState'
 import { communitySpaces } from '@/data/communitySpaces'
 import { hasCustomSpaceSidebarOptions, spaceSortMenuOptions } from '@/data/sidebarPreferences'
+import { isSpacePinned, toggleSpacePinned } from '@/data/pinnedSpaces'
 import { getSpaceUnreadCount, markAllAsRead, type Space } from '@/data/spaces'
 import { useSessionUser } from '@/data/users'
 import CommunityDropdown from './CommunityDropdown.vue'
 import NewSpaceDialog from './NewSpaceDialog.vue'
 import SpaceIcon from './SpaceIcon.vue'
 import LucideLock from '~icons/lucide/lock'
+import PushPin from './icons/PushPin.vue'
+import PushPinSlash from './icons/PushPinSlash.vue'
 
 const route = useRoute()
 const sessionUser = computed(() => useSessionUser())
@@ -147,7 +155,13 @@ function openNewSpaceDialog() {
 }
 
 function spaceOptions(space: Space) {
+  let pinned = isSpacePinned(space.name)
   return [
+    {
+      label: pinned ? 'Unpin space' : 'Pin space',
+      icon: pinned ? PushPinSlash : PushPin,
+      onClick: () => toggleSpacePinned(space.name),
+    },
     {
       label: 'Mark all as read',
       icon: 'lucide-check',
