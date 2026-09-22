@@ -1,7 +1,7 @@
 import { reactive, watch } from 'vue'
 import { useLocalStorage } from '@vueuse/core'
 import { call, dialog, toast } from 'frappe-ui'
-import { delMany, get, getMany, keys, set, setMany, values } from 'idb-keyval'
+import { delMany, entries, get, getMany, keys, set, setMany, values } from 'idb-keyval'
 import { isOnline, onReconnect, saveData } from './online'
 import { session } from './session'
 import { customEmojis } from './customEmojis'
@@ -518,6 +518,48 @@ function saveImages(urls: string[]) {
 
 function forgetImages(urls: string[]) {
   if (urls.length) navigator.serviceWorker?.controller?.postMessage({ type: 'FORGET_IMAGES', urls })
+}
+
+/**
+ * What the downloads take on this device: the entries they filled here, and the images the
+ * service worker kept for them. Not the whole origin — the app's own files are not the
+ * person's downloads, and a figure counting those told nobody anything.
+ */
+export async function downloadedBytes(): Promise<number> {
+  const current = meta ?? (await readMeta())
+  if (!current) return 0
+  const user = session.user!
+  const owned = new Set<string>()
+  for (const name of Object.keys(current.places)) {
+    owned.add(docKey('GP Discussion', name))
+    owned.add(listKey(commentsCacheKey('GP Discussion', name, user)))
+    owned.add(listKey(activitiesCacheKey('GP Discussion', name, user)))
+    owned.add(listKey(pollsCacheKey(name, user)))
+  }
+  const encoder = new TextEncoder()
+  let bytes = 0
+  for (const [key, value] of await entries()) {
+    if (typeof key === 'string' && owned.has(key) && typeof value === 'string') {
+      bytes += encoder.encode(value).length
+    }
+  }
+  return bytes + (await savedImageBytes())
+}
+
+/** The worker holds the images, so it is the only one that can weigh them. */
+function savedImageBytes(): Promise<number> {
+  const worker = navigator.serviceWorker?.controller
+  if (!worker) return Promise.resolve(0)
+  return new Promise((resolve) => {
+    const channel = new MessageChannel()
+    // A worker that does not answer must not leave the figure waiting.
+    const timeoutId = window.setTimeout(() => resolve(0), 2000)
+    channel.port1.onmessage = (event) => {
+      window.clearTimeout(timeoutId)
+      resolve(Number(event.data?.bytes) || 0)
+    }
+    worker.postMessage({ type: 'MEASURE_IMAGES' }, [channel.port2])
+  })
 }
 
 /**

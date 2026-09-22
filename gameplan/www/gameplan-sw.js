@@ -68,6 +68,16 @@ self.addEventListener("message", (event) => {
     return;
   }
 
+  if (type === "MEASURE_IMAGES") {
+    const port = event.ports[0];
+    event.waitUntil(
+      measureImages()
+        .then((bytes) => port?.postMessage({ bytes }))
+        .catch(() => port?.postMessage({ bytes: 0 })),
+    );
+    return;
+  }
+
   if (type === "SKIP_WAITING") {
     self.skipWaiting();
     return;
@@ -171,7 +181,8 @@ async function cacheShellAssets(response) {
   // page load was a request develop never made.
   const cached = await Promise.all(urls.map((url) => assets.match(url)));
   const newBuild =
-    cached.some((hit) => !hit) || !(await shell.match(OFFLINE_ASSET_MANIFEST_URL));
+    cached.some((hit) => !hit) ||
+    !(await shell.match(OFFLINE_ASSET_MANIFEST_URL));
   await cacheUrls(urls);
   if (newBuild) await cacheOfflineAssetManifest();
 }
@@ -238,9 +249,25 @@ async function cacheImages(urls) {
   await Promise.all(Array.from({ length: IMAGE_FETCHES_AT_ONCE }, next));
 }
 
+// What the saved images weigh, from their headers: reading every body back to measure them
+// would cost more than the figure is worth.
+async function measureImages() {
+  const cache = await caches.open(RUNTIME_CACHE);
+  const requests = await cache.keys();
+  let bytes = 0;
+  for (const request of requests) {
+    const response = await cache.match(request);
+    const length = response && response.headers.get("content-length");
+    if (length) bytes += Number(length) || 0;
+  }
+  return bytes;
+}
+
 async function forgetImages(urls) {
   const cache = await caches.open(RUNTIME_CACHE);
-  await Promise.all(urls.filter(isUploadedFileUrl).map((url) => cache.delete(url)));
+  await Promise.all(
+    urls.filter(isUploadedFileUrl).map((url) => cache.delete(url)),
+  );
 }
 
 function isUploadedFileUrl(url) {

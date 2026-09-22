@@ -35,6 +35,7 @@ import {
   MAX_DISCUSSIONS,
   WINDOW_OPTIONS,
   downloadForOffline,
+  downloadedBytes,
   downloads,
   offlineWindow,
   removeOfflineDownloads,
@@ -76,17 +77,22 @@ function confirmSync() {
   })
 }
 
-const usedStorage = ref<string | null>(null)
+const size = ref<string | null>(null)
 
-async function readStorageUsage() {
-  const estimate = await navigator.storage?.estimate?.().catch(() => null)
-  usedStorage.value = estimate?.usage ? `${(estimate.usage / 1024 / 1024).toFixed(1)} MB` : null
+async function readSize() {
+  const bytes = await downloadedBytes().catch(() => 0)
+  if (!bytes) {
+    size.value = null
+    return
+  }
+  const mb = bytes / 1024 / 1024
+  size.value = mb < 1 ? `${Math.round(bytes / 1024)} KB` : `${mb.toFixed(1)} MB`
 }
 
-onMounted(readStorageUsage)
-// Downloading or removing changes what the browser holds, so the figure is read again
-// rather than left at whatever it was when the panel opened.
-watch([() => downloads.count, () => downloads.syncing], () => readStorageUsage())
+onMounted(readSize)
+// Downloading or removing changes what is held, so the figure is read again rather than
+// left at whatever it was when the panel opened.
+watch([() => downloads.count, () => downloads.syncing], () => readSize())
 
 const status = computed(() => {
   if (downloads.syncing) {
@@ -96,11 +102,9 @@ const status = computed(() => {
   }
   const parts = [downloaded()]
   if (downloads.lastSyncedAt) parts.push(`synced ${dayjsLocal(downloads.lastSyncedAt).fromNow()}`)
-  // What the browser holds for the whole origin: the app's own files (~5 MB of build
-  // output) as much as the downloads, and space it has not reclaimed yet. So it never reads
-  // as zero, and a smaller window doesn't shrink it — hence "used by Gameplan" rather than
-  // anything that sounds like the cost of the downloads.
-  if (usedStorage.value) parts.push(`${usedStorage.value} used by Gameplan`)
+  // The downloads themselves: the discussions with their comments, activity and polls, and
+  // the images saved with them. Not the app's own files, which are not the person's to keep.
+  if (size.value) parts.push(`taking ${size.value}`)
   if (downloads.error) parts.push('last sync failed')
   return parts.join(' · ')
 })
