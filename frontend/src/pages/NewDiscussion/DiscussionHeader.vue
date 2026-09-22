@@ -3,9 +3,6 @@
     <template #prefix>
       <PageHeaderBackButton :to="backRoute" />
     </template>
-    <!-- The header centres the title inside the width the widest control leaves it. The
-         split Publish button is wide, so the controls shrink a size and the title steps
-         down from the header's default text-xl so "New Discussion" fits on a phone. -->
     <span class="text-lg-semibold">{{ mobileTitle }}</span>
     <template #suffix>
       <div class="flex items-center gap-1">
@@ -37,8 +34,6 @@
           },
         ]"
       />
-      <!-- Status sits with the name, away from the actions, so the right-hand controls
-           keep a fixed width whether or not the draft is scheduled. -->
       <Badge v-if="scheduledAt" :title="`Scheduled for ${scheduledAtLabel}`">
         <template #prefix>
           <span class="lucide-calendar-clock size-3.5" aria-hidden="true" />
