@@ -72,9 +72,11 @@ const status = computed(() => {
     downloads.count === 1 ? '1 discussion downloaded' : `${downloads.count} discussions downloaded`,
   ]
   if (downloads.lastSyncedAt) parts.push(`synced ${dayjsLocal(downloads.lastSyncedAt).fromNow()}`)
-  // The browser reports what the whole app holds — its own files included — so this never
-  // reads as zero, even with nothing downloaded.
-  if (usedStorage.value) parts.push(`${usedStorage.value} on this device`)
+  // What the browser holds for the whole origin: the app's own files (~5 MB of build
+  // output) as much as the downloads, and space it has not reclaimed yet. So it never reads
+  // as zero, and a smaller window doesn't shrink it — hence "used by Gameplan" rather than
+  // anything that sounds like the cost of the downloads.
+  if (usedStorage.value) parts.push(`${usedStorage.value} used by Gameplan`)
   if (downloads.error) parts.push('last sync failed')
   return parts.join(' · ')
 })
