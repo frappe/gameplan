@@ -365,7 +365,7 @@ export function useNewDiscussion() {
     try {
       await call(UNSCHEDULE_DRAFT, { name: draft.serverName.value })
       scheduledAt.value = null
-      toast.success('Schedule removed; the draft stays in Drafts')
+      toast.success('Schedule removed. Your draft is still in Drafts.')
       drafts.reload()
     } catch (error: any) {
       captureError(error, { action: 'unschedule-discussion', draft: draft.serverName.value })
