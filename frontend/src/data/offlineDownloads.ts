@@ -207,12 +207,15 @@ async function runSync(days: OfflineWindow): Promise<boolean> {
       [...onDevice].filter((name) => !(name in downloaded)),
       previous?.checkedUpTo,
     )
+    const initialUser = session.user
+    const isCancelled = () => offlineWindow.value !== days || session.user !== initialUser
     const sameWindow = previous?.window === days
     const index = await call<Index>(INDEX, {
       window_days: days,
       cached: visits.names,
       since: sameWindow ? previous.since : null,
     })
+    if (isCancelled()) return false
     const names = new Set(index.discussions)
     const dropped = Object.keys(downloaded).filter((name) => !names.has(name))
     await forgetDiscussions([...dropped, ...index.revoked])
@@ -231,6 +234,7 @@ async function runSync(days: OfflineWindow): Promise<boolean> {
       lastSyncedAt: sameWindow ? previous.lastSyncedAt : null,
       incomplete: true,
     }
+    if (isCancelled()) return false
     await writeMeta(base)
 
     const images = new Set<string>()
@@ -241,6 +245,7 @@ async function runSync(days: OfflineWindow): Promise<boolean> {
         fields: { comments: COMMENT_FIELDS, activities: ACTIVITY_FIELDS, polls: POLL_FIELDS },
         names,
       })
+      if (isCancelled()) return
       await storeBundle(bundle)
       for (const row of bundle.rows ?? []) feedRows.set(String(row.name), row)
       for (const discussion of bundle.discussions) {
@@ -248,6 +253,7 @@ async function runSync(days: OfflineWindow): Promise<boolean> {
         places[name] = index.places[name]
       }
       for (const url of bundleImages(bundle)) images.add(url)
+      if (isCancelled()) return
       await writeMeta({ ...base, places: { ...places } })
     }
 
@@ -260,17 +266,24 @@ async function runSync(days: OfflineWindow): Promise<boolean> {
     )
     downloads.total = wanted.length
     for (let i = 0; i < wanted.length; i += PAGE_SIZE) {
-      if (!isOnline.value) return false
+      if (!isOnline.value || isCancelled()) return false
       if (i) await idle()
+      if (isCancelled()) return false
       await fetchPage(wanted.slice(i, i + PAGE_SIZE))
+      if (isCancelled()) return false
       downloads.done = Math.min(i + PAGE_SIZE, wanted.length)
     }
 
+    if (isCancelled()) return false
+
     await storeFeeds(feedRows, new Set([...dropped, ...index.revoked]))
+
+    if (isCancelled()) return false
 
     const emojis = (customEmojis.data ?? []).map((emoji) => emoji.image).filter(Boolean)
     saveImages([...emojis, ...images].slice(0, MAX_IMAGES) as string[])
 
+    if (isCancelled()) return false
     await writeMeta({
       ...base,
       places: { ...places },
@@ -584,6 +597,9 @@ export function removeOfflineDownloads(): Promise<void> {
 }
 
 async function removeEverything() {
+  if (inflight) {
+    await inflight.catch(() => {})
+  }
   const current = meta ?? (await readMeta())
   if (!current) return
   await forgetDiscussions(Object.keys(current.places))

@@ -177,6 +177,27 @@ class TestOfflineIndex(OfflineDownloadsTestCase):
 		# The public space's discussion stays: reading it never needed membership.
 		self.assertEqual(sorted(revoked), sorted([str(secret.name), str(gone.name)]))
 
+	def test_reports_visited_discussions_revoked_when_space_archived_or_community_left(self):
+		cached = [str(self.elsewhere.name), str(self.recent.name)]
+		with self.as_user(self.member):
+			self.assertEqual(get_offline_index(30, json.dumps(cached))["revoked"], [])
+
+		# Archiving a space revokes discussions in it from offline storage
+		self.joined.reload()
+		self.joined.archived_at = now_datetime()
+		self.joined.save(ignore_permissions=True)
+		with self.as_user(self.member):
+			revoked = get_offline_index(30, json.dumps(cached))["revoked"]
+		self.assertEqual(revoked, [str(self.recent.name)])
+
+		# Leaving a community revokes all discussions in that community
+		self.community.reload()
+		self.community.members = [m for m in self.community.members if m.user != self.member.name]
+		self.community.save(ignore_permissions=True)
+		with self.as_user(self.member):
+			revoked = get_offline_index(30, json.dumps(cached))["revoked"]
+		self.assertEqual(sorted(revoked), sorted([str(self.elsewhere.name), str(self.recent.name)]))
+
 	def test_rejects_input_that_is_not_a_list_of_names(self):
 		"""A whitelisted argument arrives as whatever was posted."""
 		with self.as_user(self.member):

@@ -287,7 +287,15 @@ def _downloadable_spaces():
 def _revoked(names: list[str]) -> list[str]:
 	if not names:
 		return []
-	readable = {str(row.name) for row in _query("GP Discussion", ["name"], {"name": ["in", names]})}
+	readable = {
+		str(row.name)
+		for row in _query(
+			"GP Discussion",
+			fields=["name"],
+			filters={"name": ["in", names]},
+			criterion=frappe.qb.DocType("GP Discussion").project.isin(_downloadable_spaces()),
+		)
+	}
 	return [name for name in names if name not in readable]
 
 
