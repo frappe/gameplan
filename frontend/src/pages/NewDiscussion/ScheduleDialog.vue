@@ -5,13 +5,24 @@
         The post goes out at this time, in your timezone ({{ timezone }}). Until then it stays in
         Drafts and you can keep editing it.
       </p>
-      <DateTimePicker
-        v-model="value"
-        :min="minimum"
-        :clearable="false"
-        placeholder="Pick a date and time"
-        format="ddd D MMM YYYY, h:mm A"
-      />
+      <!-- Two pickers rather than DateTimePicker: its time list is fixed at 15-minute
+           steps, and a scheduled post wants whole hours. -->
+      <div class="grid grid-cols-[1fr_auto] gap-2">
+        <DatePicker
+          v-model="date"
+          :min="today"
+          :clearable="false"
+          placeholder="Pick a date"
+          format="ddd D MMM YYYY"
+        />
+        <TimePicker
+          v-model="time"
+          :interval="60"
+          :typeable="false"
+          placeholder="Time"
+          format="h:mm A"
+        />
+      </div>
       <ErrorMessage :message="error" />
     </div>
     <template #actions>
@@ -25,7 +36,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { Button, DateTimePicker, Dialog, ErrorMessage, dayjsLocal } from 'frappe-ui'
+import { Button, DatePicker, Dialog, ErrorMessage, TimePicker, dayjsLocal } from 'frappe-ui'
 import { useNewDiscussionContext } from './useNewDiscussion'
 
 const props = defineProps<{ initial?: string | null }>()
@@ -35,18 +46,22 @@ const emit = defineEmits<{ (e: 'schedule', localDateTime: string): void }>()
 const { scheduling, publishError } = useNewDiscussionContext()
 
 const LOCAL = 'YYYY-MM-DD HH:mm:ss'
-const value = ref('')
+const date = ref('')
+const time = ref('')
+const value = computed(() => (date.value && time.value ? `${date.value} ${time.value}` : ''))
 const error = ref('')
 const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
-const minimum = computed(() => dayjsLocal().format(LOCAL))
+const today = computed(() => dayjsLocal().format('YYYY-MM-DD'))
 
 // Rescheduling starts from the time on the draft; a fresh schedule from the next full hour.
 watch(open, (isOpen) => {
   if (!isOpen) return
   error.value = ''
-  value.value = props.initial
-    ? dayjsLocal(props.initial).format(LOCAL)
-    : dayjsLocal().add(1, 'hour').startOf('hour').format(LOCAL)
+  const start = props.initial
+    ? dayjsLocal(props.initial)
+    : dayjsLocal().add(1, 'hour').startOf('hour')
+  date.value = start.format('YYYY-MM-DD')
+  time.value = start.format('HH:mm:ss')
 })
 
 function confirm() {
