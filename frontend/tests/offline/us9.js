@@ -126,6 +126,16 @@ function misplaceDownload(page, name) {
   )
 }
 
+/** Both the window choice and Sync now ask before they touch the device. */
+function confirm(page, label) {
+  return page.getByRole('button', { name: label, exact: true }).last().click()
+}
+
+async function syncNow(page) {
+  await page.getByRole('button', { name: 'Sync now' }).click()
+  await confirm(page, 'Sync')
+}
+
 /** The rows a feed would render offline, read straight from the cache it reads. */
 function cachedFeed(page, cacheKey) {
   return page.evaluate(
@@ -175,6 +185,7 @@ async function run() {
       .getByRole('combobox')
       .click()
     await page.getByRole('option', { name: 'Past week' }).click()
+    await confirm(page, 'Download')
     await page
       .getByText('Discussions are ready to read offline')
       .waitFor({ timeout: 30000 })
@@ -206,7 +217,7 @@ async function run() {
     })
 
     offlineRequests.length = 0
-    await page.getByRole('button', { name: 'Sync now' }).click()
+    await syncNow(page)
     await page
       .getByText('Discussions are ready to read offline')
       .waitFor({ timeout: 30000 })
@@ -225,7 +236,7 @@ async function run() {
     await page.reload({ waitUntil: 'load', timeout: 20000 })
     await page.getByText('Download for offline').waitFor({ timeout: 15000 })
     offlineRequests.length = 0
-    await page.getByRole('button', { name: 'Sync now' }).click()
+    await syncNow(page)
     await page
       .getByText('Discussions are ready to read offline')
       .waitFor({ timeout: 30000 })
@@ -250,7 +261,7 @@ async function run() {
       .getByText('Discussions are ready to read offline')
       .waitFor({ state: 'detached', timeout: 15000 })
       .catch(() => {})
-    await page.getByRole('button', { name: 'Sync now' }).click()
+    await syncNow(page)
     await page
       .getByText('Discussions are ready to read offline')
       .waitFor({ timeout: 30000 })
@@ -278,7 +289,7 @@ async function run() {
       content: `<img src="${SHARED_IMAGE}"><img src="${OWN_IMAGE}">`,
     })
     await runtimeCache(page, 'put', [SHARED_IMAGE, OWN_IMAGE])
-    await page.getByRole('button', { name: 'Sync now' }).click()
+    await syncNow(page)
     await page
       .waitForFunction(
         (k) =>
@@ -359,7 +370,7 @@ async function run() {
       throw new Error(
         `move discussion ${created} -> ${SPACE_ID}: ${moveResp.status()} ${await moveResp.text()}`,
       )
-    await page.getByRole('button', { name: 'Sync now' }).click()
+    await syncNow(page)
     await page
       .getByText('Discussions are ready to read offline')
       .waitFor({ timeout: 30000 })

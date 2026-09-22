@@ -42,6 +42,9 @@ const META_KEY = 'gameplan:offline-downloads'
 const LOCK_NAME = 'gameplan-offline-downloads'
 // Matches the server's page size (gameplan/offline_downloads.py).
 const PAGE_SIZE = 20
+// Matches the server's per-device cap (MAX_DISCUSSIONS there): on a busy site the window
+// holds far more than this, and the device keeps the newest slice of it.
+export const MAX_DISCUSSIONS = 500
 // Images one sync may add. Already saved ones are skipped, so later syncs add only new ones.
 const MAX_IMAGES = 300
 // Background syncs only fetch what changed, but still cost an index query each; this keeps

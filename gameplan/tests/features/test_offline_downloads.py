@@ -140,6 +140,12 @@ class TestOfflineIndex(OfflineDownloadsTestCase):
 		self.assertEqual(self.changed(90, since), [])
 		self.assertNotEqual(self.places(90)[str(self.recent.name)], before)
 
+	def test_an_archived_space_drops_out(self):
+		"""Archiving a Space takes what is in it off the device."""
+		self.assertIn(str(self.recent.name), self.index(90))
+		frappe.db.set_value("GP Project", self.joined.name, "archived_at", now_datetime())
+		self.assertNotIn(str(self.recent.name), self.index(90))
+
 	def test_a_deleted_discussion_drops_out(self):
 		frappe.delete_doc("GP Discussion", self.recent.name, ignore_permissions=True)
 		self.assertNotIn(str(self.recent.name), self.index(90))
@@ -170,6 +176,14 @@ class TestOfflineIndex(OfflineDownloadsTestCase):
 			revoked = get_offline_index(30, json.dumps(cached))["revoked"]
 		# The public space's discussion stays: reading it never needed membership.
 		self.assertEqual(sorted(revoked), sorted([str(secret.name), str(gone.name)]))
+
+	def test_rejects_input_that_is_not_a_list_of_names(self):
+		"""A whitelisted argument arrives as whatever was posted."""
+		with self.as_user(self.member):
+			for cached in ('{"name": 1}', "5", '"just-a-string"'):
+				with self.subTest(cached=cached):
+					with self.assertRaises(frappe.ValidationError):
+						get_offline_index(30, cached=cached)
 
 	def test_rejects_an_empty_window(self):
 		with self.as_user(self.member), self.assertRaises(frappe.ValidationError):
@@ -220,6 +234,11 @@ class TestOfflineBundle(OfflineDownloadsTestCase):
 
 		bundle = self.bundle(30, names=in_window)
 		self.assertEqual(len(bundle["discussions"]), offline_downloads.PAGE_SIZE)
+
+	def test_rejects_a_field_list_that_is_not_a_mapping(self):
+		with self.as_user(self.member):
+			with self.assertRaises(frappe.ValidationError):
+				get_offline_bundle(30, "[]", json.dumps([str(self.recent.name)]))
 
 	def test_a_page_is_held_to_the_window_not_to_the_device_cap(self):
 		"""The cap is how much a device keeps, not a boundary the bundle enforces."""
