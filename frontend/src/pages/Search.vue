@@ -280,7 +280,7 @@
   </div>
 </template>
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed, useTemplateRef } from 'vue'
+import { computed, onMounted, onScopeDispose, onUnmounted, ref, useTemplateRef } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import {
   PageHeader,
@@ -306,7 +306,7 @@ import { getSpace } from '@/data/spaces'
 import { activeCommunities } from '@/data/communities'
 import { activeUsers } from '@/data/users'
 import { vFocus } from '@/directives'
-import { isOnline } from '@/data/online'
+import { isOnline, onReconnect } from '@/data/online'
 import { isOfflineError } from '@/data/loadFailure'
 import OfflineContentFallback from '@/components/OfflineContentFallback.vue'
 
@@ -635,6 +635,15 @@ const submit = debounce(function (text?: string) {
 
   search.submit(params)
 }, 300)
+
+// A search is something you asked for, so it is not revalidated with the lists
+// (offlineRevalidation.ts). One that failed for want of a connection is worth running
+// again by itself: the page is showing a dead end the connection has just cleared.
+onScopeDispose(
+  onReconnect(() => {
+    if (offlineFailure.value && query.value) submit(query.value)
+  }),
+)
 
 function clearSearch() {
   query.value = ''
