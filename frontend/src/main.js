@@ -90,6 +90,7 @@ function setupApp() {
  * discussions are still in this browser's storage, and every list would be free to read them.
  */
 function showCleanupFailure() {
+  if (!document.getElementById('app')) return
   createApp(CleanupFailure).mount('#app')
 }
 

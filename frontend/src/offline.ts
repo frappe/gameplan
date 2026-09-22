@@ -92,8 +92,13 @@ export function isNetworkError(error: unknown) {
 export async function clearOfflineCaches(): Promise<boolean> {
   const [cachesCleared, idbCleared] = await Promise.all([
     clearServiceWorkerCaches(),
-    clearIdbKeyval()
-      .then(() => true)
+    Promise.race([
+      clearIdbKeyval().then(() => true),
+      new Promise<boolean>((resolve) =>
+        window.setTimeout(() => resolve(false), IDB_DELETE_TIMEOUT_MS),
+      ),
+    ])
+      .then((cleared) => (cleared ? true : deleteIdbStore()))
       .catch((error) => {
         console.error('Failed to clear IndexedDB cache', error)
         return deleteIdbStore()
@@ -110,8 +115,11 @@ const IDB_DELETE_TIMEOUT_MS = 2000
 function deleteIdbStore(): Promise<boolean> {
   if (typeof indexedDB === 'undefined') return Promise.resolve(false)
   return new Promise<boolean>((resolve) => {
-    const timeoutId = window.setTimeout(() => resolve(false), IDB_DELETE_TIMEOUT_MS)
+    let settled = false
+    const timeoutId = window.setTimeout(() => done(false), IDB_DELETE_TIMEOUT_MS)
     const done = (ok: boolean) => {
+      if (settled) return
+      settled = true
       window.clearTimeout(timeoutId)
       resolve(ok)
     }
@@ -233,8 +241,19 @@ export async function guardAgainstUserSwitch(user: string | null): Promise<UserS
       let cleared = false
       try {
         // A different user, so drafts go too.
-        const [offlineCachesCleared] = await Promise.all([clearOfflineCaches(), clearDraftStore()])
-        cleared = offlineCachesCleared
+        const [offlineCachesCleared, draftsCleared] = await Promise.all([
+          clearOfflineCaches(),
+          Promise.race([
+            clearDraftStore().then(() => true),
+            new Promise<boolean>((resolve) =>
+              window.setTimeout(() => resolve(false), IDB_DELETE_TIMEOUT_MS),
+            ),
+          ]).catch((error) => {
+            console.error('Failed to clear draft store', error)
+            return false
+          }),
+        ])
+        cleared = offlineCachesCleared && draftsCleared
       } catch (error) {
         console.error('Failed to clear offline caches', error)
       }
