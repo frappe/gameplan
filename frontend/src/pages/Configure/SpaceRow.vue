@@ -45,27 +45,15 @@
       <div class="w-full truncate text-sm text-ink-gray-5">{{ contentLabel }}</div>
     </ListCell>
 
-    <!-- The user's own new-discussion toggle for this space — every member gets it, unlike
-         the rename controls. The bell shows the state; a click flips it. On phones the
-         column is gone, so the bell sits by the dots. -->
-    <ListCell class="max-md:hidden">
-      <Button
-        v-if="!space.archived_at"
-        variant="ghost"
-        :icon="isSpaceNotifying(space.name) ? 'lucide-bell' : 'lucide-bell-off'"
-        :tooltip="isSpaceNotifying(space.name) ? 'Notifications on' : 'Notifications off'"
-        @click="toggleSpaceNotifications(space.name)"
-      />
-    </ListCell>
-
     <ListCell v-if="showGuests" class="max-md:hidden">
       <div class="w-full truncate text-sm text-ink-gray-5">{{ guestsLabel }}</div>
     </ListCell>
 
     <ListCell class="justify-end gap-1">
+      <!-- The user's own new-discussion toggle for this space — every member gets it,
+           unlike the rename controls. The bell shows the state; a click flips it. -->
       <Button
         v-if="!space.archived_at"
-        class="md:hidden"
         variant="ghost"
         :icon="isSpaceNotifying(space.name) ? 'lucide-bell' : 'lucide-bell-off'"
         :tooltip="isSpaceNotifying(space.name) ? 'Notifications on' : 'Notifications off'"
