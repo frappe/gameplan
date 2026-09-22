@@ -459,7 +459,6 @@ class TestScheduledDrafts(GameplanTestCase):
 		self.assertIsNone(frappe.db.get_value("GP Draft", self.draft.name, "scheduled_at"))
 
 	def test_an_unscheduled_draft_is_never_touched(self):
-		# The publisher's filter must not read a missing time as "long overdue".
 		publish_due_drafts()
 		self.assertTrue(frappe.db.exists("GP Draft", self.draft.name))
 		self.assertFalse(frappe.db.exists("GP Discussion", {"title": "Later"}))
@@ -484,7 +483,6 @@ class TestScheduledDrafts(GameplanTestCase):
 		self.assertEqual(frappe.session.user, "Administrator")
 
 	def test_a_draft_that_cannot_be_published_keeps_its_content_and_loses_its_time(self):
-		# The author has lost the space: the insert fails, the draft stays, the time goes.
 		frappe.db.set_value(
 			"GP Draft", self.draft.name, "scheduled_at", add_to_date(now_datetime(), minutes=-1)
 		)

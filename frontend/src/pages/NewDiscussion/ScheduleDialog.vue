@@ -5,8 +5,6 @@
         The post goes out at this time, in your timezone ({{ timezone }}). Until then it stays in
         Drafts and you can keep editing it.
       </p>
-      <!-- Two pickers rather than DateTimePicker: its time list is fixed at 15-minute
-           steps, and a scheduled post wants whole hours. -->
       <div class="grid grid-cols-[1fr_auto] gap-2">
         <DatePicker
           v-model="date"
@@ -53,7 +51,6 @@ const error = ref('')
 const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
 const today = computed(() => dayjsLocal().format('YYYY-MM-DD'))
 
-// Rescheduling starts from the time on the draft; a fresh schedule from the next full hour.
 watch(open, (isOpen) => {
   if (!isOpen) return
   error.value = ''
@@ -77,7 +74,6 @@ function confirm() {
   emit('schedule', value.value)
 }
 
-// A server-side refusal (title missing, past time) surfaces here rather than on the page.
 watch(publishError, (message) => {
   if (open.value && message) error.value = message
 })

@@ -160,6 +160,6 @@ body {
   }
 }
 
-.ProseMirror table col[style*='min-width'] {
+.ProseMirror table col[style*="min-width"] {
   width: 120px;
 }

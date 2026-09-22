@@ -18,7 +18,6 @@ export interface DraftRow {
   is_private: boolean | number
   /** For comment drafts, the parent discussion to open; null for discussion drafts. */
   discussion: string | null
-  /** Set on a discussion draft that is scheduled to publish itself (site time). */
   scheduled_at?: string | null
 }
 

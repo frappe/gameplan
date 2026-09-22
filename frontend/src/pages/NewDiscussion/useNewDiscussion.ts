@@ -17,7 +17,6 @@ const SCHEDULE_DRAFT = 'gameplan.gameplan.doctype.gp_draft.gp_draft.schedule_dra
 const UNSCHEDULE_DRAFT = 'gameplan.gameplan.doctype.gp_draft.gp_draft.unschedule_draft'
 const SERVER_DATETIME = 'YYYY-MM-DD HH:mm:ss'
 
-/** A local wall-clock time as the site-timezone string the server stores (dayjsLocal in reverse). */
 function toSiteTime(localDateTime: string) {
   const systemTimezone = getConfig('systemTimezone')
   if (!systemTimezone) return dayjs(localDateTime).format(SERVER_DATETIME)
@@ -69,8 +68,6 @@ export function useNewDiscussion() {
   const draftData = draft.data
   const isPersisted = computed(() => Boolean(draft.serverName.value))
 
-  // A scheduled post is this same draft with a time on it. The time is not part of the
-  // synced payload (the auto-save must not touch it), so it is read once the row is known.
   const scheduledAt = ref<string | null>(null)
   const scheduling = ref(false)
   watch(
@@ -80,7 +77,6 @@ export function useNewDiscussion() {
         scheduledAt.value = null
         return
       }
-      // The Drafts list usually already knows; the server answer then confirms it.
       scheduledAt.value = drafts.data?.find((row) => row.name === name)?.scheduled_at || null
       try {
         const row = await call('frappe.client.get_value', {
@@ -335,7 +331,6 @@ export function useNewDiscussion() {
     }
   }
 
-  /** Keep the draft, give it a time: the server publishes it then, as this user. */
   async function scheduleDraft(localDateTime: string) {
     hasInteracted.value = true
     publishError.value = null
@@ -353,7 +348,6 @@ export function useNewDiscussion() {
       scheduledAt.value = serverTime
       toast.success(`Scheduled for ${scheduledAtLabel.value}`)
       drafts.reload()
-      // The post now belongs to the Drafts list until its time comes.
       await router.replace({ name: 'Drafts' })
       return true
     } catch (error: any) {

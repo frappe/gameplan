@@ -293,8 +293,6 @@ def publish_due_drafts():
 	come, each as its own author, so the discussion is theirs and their permissions decide.
 	A draft that cannot be published — space archived, access gone — keeps its content, loses
 	its time and shows up in the author's Drafts again, with the reason in the Error Log."""
-	# "is set" is not decoration: Frappe renders a bare `<=` on a nullable Datetime as
-	# IFNULL(scheduled_at, '0001-01-01') <= now, which makes every unscheduled draft due.
 	due = frappe.get_all(
 		"GP Draft",
 		filters=[
@@ -305,8 +303,6 @@ def publish_due_drafts():
 		fields=["name", "owner"],
 		order_by="scheduled_at asc",
 	)
-	# The scheduler commits once the job returns; a savepoint per draft keeps one failure
-	# from undoing the others.
 	for row in due:
 		frappe.set_user(row.owner)
 		frappe.db.savepoint("scheduled_draft")

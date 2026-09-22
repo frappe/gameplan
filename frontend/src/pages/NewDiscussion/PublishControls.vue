@@ -1,6 +1,4 @@
 <template>
-  <!-- Publish as before, plus a chevron that opens the schedule options. On a scheduled
-       draft the chevron offers Reschedule / Cancel schedule; the header shows the time. -->
   <div class="flex items-center gap-2">
     <div class="flex items-center gap-px">
       <Tooltip
@@ -18,8 +16,6 @@
           Publish
         </Button>
       </Tooltip>
-      <!-- The menu is portaled next to its trigger so the item rows can fill the panel
-           edge to edge: a one-item menu with the stock inset row read as a box in a box. -->
       <div
         ref="menuHost"
         class="[&_[data-slot=group]]:!p-0 [&_[data-slot=item]]:!rounded-6 [&_[data-slot=item-list-row]]:!px-3 [&_[data-slot=item-list-row]]:!py-2"

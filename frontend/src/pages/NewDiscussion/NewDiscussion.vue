@@ -28,8 +28,11 @@
 
       <div class="discussion-container isolate pt-4">
         <DiscussionSpaceSelector size="md" class="mb-2 w-full sm:hidden" />
-        <!-- The phone header has no room for the schedule; it sits with the space here. -->
-        <Badge v-if="scheduledAt" class="mb-2 sm:hidden" :title="`Scheduled for ${scheduledAtLabel}`">
+        <Badge
+          v-if="scheduledAt"
+          class="mb-2 sm:hidden"
+          :title="`Scheduled for ${scheduledAtLabel}`"
+        >
           <template #prefix>
             <span class="lucide-calendar-clock size-3.5" aria-hidden="true" />
           </template>
