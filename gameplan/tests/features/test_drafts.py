@@ -500,6 +500,29 @@ class TestScheduledDrafts(GameplanTestCase):
 		self.assertFalse(frappe.db.exists("GP Discussion", {"title": "Later"}))
 		self.assertEqual(frappe.session.user, "Administrator")
 
+	def _publish_with_stale_due_row(self):
+		stale = [frappe._dict(name=self.draft.name, owner=self.member.name)]
+		with patch("gameplan.gameplan.doctype.gp_draft.gp_draft.frappe.get_all", return_value=stale):
+			publish_due_drafts()
+
+	def test_a_draft_unscheduled_after_the_due_query_is_not_published(self):
+		self._publish_with_stale_due_row()
+		self.assertTrue(frappe.db.exists("GP Draft", self.draft.name))
+		self.assertFalse(frappe.db.exists("GP Discussion", {"title": "Later"}))
+
+	def test_a_draft_rescheduled_after_the_due_query_is_not_published(self):
+		later = add_to_date(now_datetime(), hours=1)
+		frappe.db.set_value("GP Draft", self.draft.name, "scheduled_at", later)
+		self._publish_with_stale_due_row()
+		self.assertTrue(frappe.db.exists("GP Draft", self.draft.name))
+		self.assertFalse(frappe.db.exists("GP Discussion", {"title": "Later"}))
+		self.assertEqual(
+			get_datetime(frappe.db.get_value("GP Draft", self.draft.name, "scheduled_at")).replace(
+				microsecond=0
+			),
+			later.replace(microsecond=0),
+		)
+
 	def test_my_drafts_carries_the_time(self):
 		later = add_to_date(now_datetime(), hours=1)
 		with self.as_user(self.member):

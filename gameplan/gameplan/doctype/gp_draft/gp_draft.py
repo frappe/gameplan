@@ -307,6 +307,9 @@ def publish_due_drafts():
 		frappe.set_user(row.owner)
 		frappe.db.savepoint("scheduled_draft")
 		try:
+			scheduled_at = frappe.db.get_value("GP Draft", row.name, "scheduled_at", for_update=True)
+			if not scheduled_at or get_datetime(scheduled_at) > now_datetime():
+				continue
 			frappe.get_doc("GP Draft", row.name).publish()
 		except Exception:
 			frappe.db.rollback(save_point="scheduled_draft")
