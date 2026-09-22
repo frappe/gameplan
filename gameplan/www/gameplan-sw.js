@@ -68,16 +68,6 @@ self.addEventListener("message", (event) => {
     return;
   }
 
-  if (type === "MEASURE_IMAGES") {
-    const port = event.ports[0];
-    event.waitUntil(
-      measureImages()
-        .then((bytes) => port?.postMessage({ bytes }))
-        .catch(() => port?.postMessage({ bytes: 0 })),
-    );
-    return;
-  }
-
   if (type === "SKIP_WAITING") {
     self.skipWaiting();
     return;
@@ -247,20 +237,10 @@ async function cacheImages(urls) {
     }
   };
   await Promise.all(Array.from({ length: IMAGE_FETCHES_AT_ONCE }, next));
-}
-
-// What the saved images weigh, from their headers: reading every body back to measure them
-// would cost more than the figure is worth.
-async function measureImages() {
-  const cache = await caches.open(RUNTIME_CACHE);
-  const requests = await cache.keys();
-  let bytes = 0;
-  for (const request of requests) {
-    const response = await cache.match(request);
-    const length = response && response.headers.get("content-length");
-    if (length) bytes += Number(length) || 0;
+  // The settings show what the downloads weigh, and these are part of it.
+  for (const client of await self.clients.matchAll()) {
+    client.postMessage({ type: "IMAGES_SAVED" });
   }
-  return bytes;
 }
 
 async function forgetImages(urls) {

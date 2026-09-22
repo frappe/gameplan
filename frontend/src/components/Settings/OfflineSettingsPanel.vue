@@ -92,7 +92,9 @@ async function readSize() {
 onMounted(readSize)
 // Downloading or removing changes what is held, so the figure is read again rather than
 // left at whatever it was when the panel opened.
-watch([() => downloads.count, () => downloads.syncing], () => readSize())
+watch([() => downloads.count, () => downloads.syncing, () => downloads.imagesSavedAt], () =>
+  readSize(),
+)
 
 const status = computed(() => {
   if (downloads.syncing) {

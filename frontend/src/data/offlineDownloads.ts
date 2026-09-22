@@ -56,6 +56,8 @@ const MAX_START_DELAY = 30 * 1000
 // Visited discussions one index call can check for lost access (MAX_CACHED in
 // offline_downloads.py). A device holding more walks them a slice at a time.
 const VISIT_CHECK_LIMIT = 2000
+// Where gameplan-sw.js keeps the saved images.
+const IMAGE_CACHE_SUFFIX = ':runtime'
 // What a feed asks for in one page (useDiscussions' default limit), so a restored list holds
 // as much as a fetched one.
 const FEED_LIMIT = 50
@@ -125,6 +127,8 @@ export const downloads = reactive({
   total: 0,
   count: 0,
   lastSyncedAt: null as number | null,
+  /** When the worker last finished saving images, so what they weigh can be read again. */
+  imagesSavedAt: null as number | null,
   error: null as string | null,
 })
 
@@ -537,29 +541,34 @@ export async function downloadedBytes(): Promise<number> {
     owned.add(listKey(pollsCacheKey(name, user)))
   }
   const encoder = new TextEncoder()
+  const images = new Set<string>()
   let bytes = 0
   for (const [key, value] of await entries()) {
     if (typeof key === 'string' && owned.has(key) && typeof value === 'string') {
       bytes += encoder.encode(value).length
+      for (const url of htmlImages(value)) images.add(url)
     }
   }
-  return bytes + (await savedImageBytes())
+  return bytes + (await savedImageBytes([...images]))
 }
 
-/** The worker holds the images, so it is the only one that can weigh them. */
-function savedImageBytes(): Promise<number> {
-  const worker = navigator.serviceWorker?.controller
-  if (!worker) return Promise.resolve(0)
-  return new Promise((resolve) => {
-    const channel = new MessageChannel()
-    // A worker that does not answer must not leave the figure waiting.
-    const timeoutId = window.setTimeout(() => resolve(0), 2000)
-    channel.port1.onmessage = (event) => {
-      window.clearTimeout(timeoutId)
-      resolve(Number(event.data?.bytes) || 0)
-    }
-    worker.postMessage({ type: 'MEASURE_IMAGES' }, [channel.port2])
-  })
+/**
+ * What the saved copies of `urls` weigh, from their headers: reading the bodies back would
+ * cost more than the figure is worth. Only these, because the same cache holds what was seen
+ * while browsing, and that is nobody's download.
+ */
+async function savedImageBytes(urls: string[]): Promise<number> {
+  if (!urls.length || typeof caches === 'undefined') return 0
+  const name = (await caches.keys()).find((key) => key.endsWith(IMAGE_CACHE_SUFFIX))
+  if (!name) return 0
+  const cache = await caches.open(name)
+  let bytes = 0
+  for (const url of urls) {
+    const response = await cache.match(url).catch(() => null)
+    const length = response?.headers.get('content-length')
+    if (length) bytes += Number(length) || 0
+  }
+  return bytes
 }
 
 /**
@@ -645,6 +654,9 @@ function idle() {
 /** Starts background syncing: once shortly after load, then on reconnect and when the tab returns. */
 export function setupOfflineDownloads() {
   const background = () => syncOfflineDownloads().catch(() => {})
+  navigator.serviceWorker?.addEventListener('message', (event) => {
+    if (event.data?.type === 'IMAGES_SAVED') downloads.imagesSavedAt = Date.now()
+  })
   readMeta()
   setTimeout(background, 5000 + Math.random() * MAX_START_DELAY)
   onReconnect(background)
