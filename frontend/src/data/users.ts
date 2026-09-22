@@ -87,7 +87,8 @@ export let users = useCall<UserInfo[]>({
   },
   onError(error) {
     if (error && error.type === 'AuthenticationError') {
-      window.location.href = '/login'
+      let { pathname, search, hash } = window.location
+      window.location.href = '/login?redirect-to=' + encodeURIComponent(pathname + search + hash)
     }
   },
   immediate: false,
