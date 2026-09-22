@@ -21,7 +21,13 @@ import frappe
 from frappe.utils import get_fullname
 
 from gameplan.notifications import records
-from gameplan.notifications.preferences import bulk_levels, profile_prefs
+from gameplan.notifications.preferences import (
+	PARTICIPATION_STATE,
+	bulk_levels,
+	participation_level,
+	profile_prefs,
+	wants_content_feedback,
+)
 from gameplan.permissions import can_view_space, users_who_can_view_content
 
 STATES = ("Mute", "Mentions only", "Watch")
@@ -78,6 +84,19 @@ def bulk_discussion_states(users: list[str], discussion: str) -> dict[str, str]:
 
 def is_muted(user: str, discussion: str) -> bool:
 	return effective_discussion_state(user, discussion) == "Mute"
+
+
+def subscribe_on_participation(user: str, discussion: str) -> str | None:
+	"""Starting a discussion or commenting in it makes it one the user participates in:
+	their participation level becomes its bell, unless they already set one. Returns the
+	state written, or None when a row was already there."""
+	if subscription_state(user, discussion):
+		return None
+	state = PARTICIPATION_STATE[participation_level(user)]
+	frappe.get_doc(
+		doctype="GP Discussion Subscription", user=user, discussion=discussion, state=state
+	).insert(ignore_permissions=True)
+	return state
 
 
 def discussion_watchers(discussion: str) -> list[str]:
@@ -255,7 +274,7 @@ def notify_poll_vote(poll_doc, voter: str):
 	and links no sender. Retracting a vote is not an event.
 	"""
 	owner = poll_doc.owner
-	if voter == owner or not profile_prefs(owner).notify_poll_votes:
+	if voter == owner or not wants_content_feedback(owner):
 		return
 	if poll_doc.anonymous:
 		message = "1 person voted on your poll"

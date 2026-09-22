@@ -46,9 +46,7 @@ export interface UserInfo {
   email_digest_day_of_week?: EmailDigestDayOfWeek
   email_digest_last_sent_on?: string
   notification_level?: NotificationLevel
-  watch_own_discussions?: 0 | 1
-  notify_reactions?: 0 | 1
-  notify_poll_votes?: 0 | 1
+  participation_level?: 'Watch' | 'Mentions only'
   notification_channel?: NotificationChannel
   receive_notifications?: 0 | 1
   active_hours_enabled?: 0 | 1

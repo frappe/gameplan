@@ -78,9 +78,7 @@ def get_user_info(user=None):
 			"email_digest_day_of_week",
 			"email_digest_last_sent_on",
 			"notification_level",
-			"watch_own_discussions",
-			"notify_reactions",
-			"notify_poll_votes",
+			"participation_level",
 			"notification_channel",
 			"receive_notifications",
 			"active_hours_enabled",
@@ -112,9 +110,7 @@ def get_user_info(user=None):
 				user.email_digest_day_of_week = user_profile.email_digest_day_of_week
 				user.email_digest_last_sent_on = user_profile.email_digest_last_sent_on
 				user.notification_level = user_profile.notification_level
-				user.watch_own_discussions = user_profile.watch_own_discussions
-				user.notify_reactions = user_profile.notify_reactions
-				user.notify_poll_votes = user_profile.notify_poll_votes
+				user.participation_level = user_profile.participation_level
 				user.notification_channel = user_profile.notification_channel
 				user.receive_notifications = user_profile.receive_notifications
 				user.active_hours_enabled = user_profile.active_hours_enabled
@@ -345,7 +341,7 @@ def onboarding(community, space, icon, emails, is_private=0):
 	# "General" space inside it.
 	team = frappe.get_doc(doctype="GP Team", title=community).insert()
 
-	# Join the creator — a freshly inserted GP Team does not add its creator as a
+	# Join the creator â€” a freshly inserted GP Team does not add its creator as a
 	# member, and the scoped-route guard only sees joined communities.
 	team.add_member(frappe.session.user)
 	team.save()
@@ -462,4 +458,4 @@ def _client_error_quota_spent() -> bool:
 
 def _truncate(value: str, limit: int = CLIENT_ERROR_FIELD_LIMIT) -> str:
 	value = str(value or "")
-	return value if len(value) <= limit else value[:limit] + "… (truncated)"
+	return value if len(value) <= limit else value[:limit] + "â€¦ (truncated)"
