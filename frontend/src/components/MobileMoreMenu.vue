@@ -147,7 +147,6 @@ const itemGroups = computed<MoreItemGroup[]>(() => {
     {
       label: 'Settings',
       items: [
-        { label: 'Profile', icon: 'lucide-user', onClick: openProfile },
         // The settings tabs themselves, one level deep: each opens its panel full-screen.
         // Same slugs and gating as the desktop dialog's sidebar (Settings/SettingsDialog.vue).
         {
