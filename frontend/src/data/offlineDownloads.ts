@@ -597,9 +597,6 @@ export function removeOfflineDownloads(): Promise<void> {
 }
 
 async function removeEverything() {
-  if (inflight) {
-    await inflight.catch(() => {})
-  }
   const current = meta ?? (await readMeta())
   if (!current) return
   await forgetDiscussions(Object.keys(current.places))
