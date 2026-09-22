@@ -742,7 +742,9 @@ router.beforeEach(async (to, from) => {
   }
 
   if (to.name !== 'Login' && !session.isLoggedIn) {
-    window.location.href = '/login'
+    // `href` carries the router base (/g), so login returns the guest to this page.
+    window.location.href =
+      '/login?redirect-to=' + encodeURIComponent(router.resolve(to.fullPath).href)
     return { name: 'Login' }
   }
 
