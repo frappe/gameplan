@@ -1,5 +1,7 @@
 <template>
-  <SettingsHeader>
+  <!-- No `title` prop: the header carries controls, so the panel keeps its own
+       heading and hides it on phones, where the page header names the tab. -->
+  <PanelHeader>
     <div class="flex flex-col gap-4">
       <h2 class="text-lg-semibold text-ink-gray-8 max-sm:hidden">Custom Emojis</h2>
       <div class="flex items-center justify-between gap-3">
@@ -34,9 +36,9 @@
       <div>By</div>
       <div />
     </div>
-  </SettingsHeader>
+  </PanelHeader>
 
-  <SettingsBody>
+  <PanelBody>
     <div
       v-if="customEmojis.loading && !customEmojis.data?.length"
       class="py-8 text-center text-p-sm text-ink-gray-5"
@@ -86,7 +88,7 @@
         </div>
       </div>
     </div>
-  </SettingsBody>
+  </PanelBody>
 
   <Dialog title="Upload emoji" v-model:open="showUploadDialog">
     <div class="space-y-4">
@@ -139,17 +141,9 @@
 // fallthrough (this component renders a fragment); it simply isn't emitted here.
 defineEmits<{ (e: 'close-dialog'): void }>()
 import { computed, ref } from 'vue'
-import {
-  Button,
-  Dialog,
-  ErrorMessage,
-  FormControl,
-  SettingsBody,
-  SettingsHeader,
-  TextInput,
-  Tooltip,
-  toast,
-} from 'frappe-ui'
+import { Button, Dialog, ErrorMessage, FormControl, TextInput, Tooltip, toast } from 'frappe-ui'
+import PanelHeader from './PanelHeader.vue'
+import PanelBody from './PanelBody.vue'
 import { customEmojis, type CustomEmoji } from '@/data/customEmojis'
 import ImageUploader from '@/components/ImageUploader.vue'
 import UserAvatar from '@/components/UserAvatar.vue'

@@ -1,22 +1,35 @@
 <template>
-  <SettingsHeader>
+  <!-- No `title` prop: the header carries controls, so the panel keeps its own
+       heading and hides it on phones, where the page header names the tab. -->
+  <PanelHeader>
     <div class="w-full max-w-[800px]">
-      <!-- Selected community: back button, title, and the Spaces/Members switcher. On
-           phones this row moves into the dialog's own header bar (the Teleport below), so
-           there is one header, not two. -->
+      <!-- Selected community: back button, title, and the Spaces/Members switcher.
+           On a phone this is the page's own header (see below), so there is one
+           header, not two. -->
       <template v-if="selectedCommunityId">
-        <Teleport v-if="isPhone" defer to="#settings-mobile-bar">
-          <Button
-            variant="ghost"
-            icon="lucide-arrow-left"
-            label="Back to communities"
-            @click="showCommunities"
-          />
-          <h2 class="min-w-0 flex-1 truncate text-lg-medium text-ink-gray-8">
-            {{ selectedCommunity?.title || 'Community' }}
-          </h2>
-          <Select variant="ghost" v-if="selectedCommunity" :options="viewButtons" v-model="view" />
-        </Teleport>
+        <!-- The page header a phone would otherwise get from pages/SettingsPage.vue:
+             back goes to the communities list rather than the More menu, and the
+             community's own title and view switcher ride along. -->
+        <PageHeaderMobile v-if="isPhone">
+          <template #prefix>
+            <Button
+              variant="ghost"
+              size="md"
+              icon="lucide-chevron-left"
+              label="Back to communities"
+              @click="showCommunities"
+            />
+          </template>
+          <template #default>{{ selectedCommunity?.title || 'Community' }}</template>
+          <template #suffix>
+            <Select
+              variant="ghost"
+              v-if="selectedCommunity"
+              :options="viewButtons"
+              v-model="view"
+            />
+          </template>
+        </PageHeaderMobile>
         <div class="flex items-center gap-2 max-sm:hidden">
           <Button
             variant="subtle"
@@ -108,7 +121,7 @@
         </div>
       </template>
     </div>
-  </SettingsHeader>
+  </PanelHeader>
 
   <NewCommunityDialog v-model="newCommunityDialog" @created="openCommunitySpaces" />
   <!-- Desktop has AppRail's instance. Phones have no rail, and the dialog has to mount
@@ -117,7 +130,7 @@
   <CustomizeSidebarDialog v-if="isPhone" v-model="showCustomizeSidebarDialog" />
   <NewSpaceDialog v-model="newSpaceDialog" :locked-community-id="selectedCommunityId || ''" />
 
-  <SettingsBody>
+  <PanelBody>
     <div class="w-full max-w-[800px] pt-0">
       <template v-if="selectedCommunityId">
         <ConfigureEmptyState
@@ -163,7 +176,7 @@
         @community-merged="openCommunitySpaces"
       />
     </div>
-  </SettingsBody>
+  </PanelBody>
 </template>
 
 <script setup lang="ts">
@@ -172,14 +185,16 @@
 defineEmits<{ (e: 'close-dialog'): void }>()
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Button, SettingsBody, SettingsHeader, Select } from 'frappe-ui'
+import { Button, PageHeaderMobile, Select } from 'frappe-ui'
 import NewSpaceDialog from '@/components/NewSpaceDialog.vue'
 import CustomizeSidebarDialog from '@/components/AppRail/CustomizeSidebarDialog.vue'
 import {
   openCustomizeSidebarDialog,
   showCustomizeSidebarDialog,
 } from '@/components/AppRail/customizeSidebar'
-import { mobileBarTaken } from './index'
+import { panelOwnsPageHeader } from './index'
+import PanelHeader from './PanelHeader.vue'
+import PanelBody from './PanelBody.vue'
 import { communities } from '@/data/communities'
 import { useSessionUser } from '@/data/users'
 import { canManageCommunity, isGlobalAdmin } from '@/utils/permissions'
@@ -231,14 +246,15 @@ function customizeSidebar() {
   openCustomizeSidebarDialog()
 }
 
-// Decides icon-only buttons and whether the community header rides in the dialog's phone bar.
+// Decides icon-only buttons and, with a community open, that this panel draws the
+// phone page header itself (back to the list, the community title, the switcher).
 const isPhone = useIsMobile()
 watch(
   () => Boolean(isPhone.value && selectedCommunityId.value),
-  (taken) => (mobileBarTaken.value = taken),
+  (owns) => (panelOwnsPageHeader.value = owns),
   { immediate: true },
 )
-onBeforeUnmount(() => (mobileBarTaken.value = false))
+onBeforeUnmount(() => (panelOwnsPageHeader.value = false))
 
 const viewButtons = [
   { label: 'Spaces', value: 'spaces' },

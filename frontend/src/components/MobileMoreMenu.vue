@@ -149,6 +149,13 @@ const itemGroups = computed<MoreItemGroup[]>(() => {
       items: [
         // The settings tabs themselves, one level deep: each opens its panel full-screen.
         // Same slugs and gating as the desktop dialog's sidebar (Settings/SettingsDialog.vue).
+        // "Profile" here is the settings tab (name, avatar, about); "View profile" above
+        // the list opens the public profile.
+        {
+          label: 'Profile',
+          icon: 'lucide-user',
+          route: { name: 'SettingsTab', params: { tab: 'profile' } },
+        },
         {
           label: 'Preferences',
           icon: 'lucide-sliders-horizontal',

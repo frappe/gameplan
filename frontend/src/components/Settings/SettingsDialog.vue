@@ -6,9 +6,7 @@
     :shortcut="false"
     :unmount-on-hide="false"
   >
-    <!-- Phones reach a tab from the More menu, so the sidebar would be a second copy of
-         the same list; the bar below (back arrow + tab name) stands in for it. -->
-    <SettingsSidebar class="max-sm:hidden">
+    <SettingsSidebar>
       <SettingsNavGroup v-for="group in tabGroups" :key="group.label" :label="group.label">
         <SettingsNavItem v-for="tab in group.tabs" :key="tab.label" :value="tab.slug">
           <template #prefix>
@@ -24,16 +22,6 @@
         </SettingsNavItem>
       </SettingsNavGroup>
     </SettingsSidebar>
-    <div
-      class="flex h-[var(--mobile-header-height)] shrink-0 items-center gap-1 border-b border-outline-gray-1 px-2 sm:hidden"
-    >
-      <template v-if="!mobileBarTaken">
-        <Button variant="ghost" icon="lucide-arrow-left" label="Back" @click="show = false" />
-        <span class="text-lg-medium text-ink-gray-8">{{ activeTab?.label }}</span>
-      </template>
-      <!-- A panel that needs the bar for itself teleports into this. -->
-      <div id="settings-mobile-bar" class="flex min-w-0 flex-1 items-center gap-1" />
-    </div>
     <SettingsContent>
       <!-- One reka-ui tabpanel per tab. unmount-on-hide=false keeps a visited
            panel mounted (just hidden) so switching back is instant and inactive
@@ -52,11 +40,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, markRaw, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useEventListener } from '@vueuse/core'
 import {
-  Button,
   SettingsDialog,
   SettingsSidebar,
   SettingsNavGroup,
@@ -64,31 +51,11 @@ import {
   SettingsContent,
   SettingsPanel,
 } from 'frappe-ui'
-import {
-  show,
-  activeTab,
-  mobileBarTaken,
-  registerTabs,
-  settingsBackgroundPath,
-  type Tab,
-} from './index'
+import { show, activeTab, registerTabs, settingsBackgroundPath } from './index'
 import { getHomeRoute } from '@/router'
 import UserAvatar from '@/components/UserAvatar.vue'
-import { isGameplanAdmin, useSessionUser } from '@/data/users'
-import MembersSettings from './MembersSettings.vue'
-import CommunitiesSettings from './CommunitiesSettings.vue'
-import NotificationsSettings from './NotificationsSettings.vue'
-import ProfileSettings from './ProfileSettings.vue'
-import CustomEmojiSettings from './CustomEmojiSettings.vue'
-import PreferencesSettings from './PreferencesSettings.vue'
-
-interface SettingsTab extends Tab {
-  // Tabs that drive global role management / invites; these only make sense for
-  // global admins, whose actions the server (require_admin) actually accepts.
-  adminOnly?: boolean
-  condition?: () => boolean
-  prefix?: 'session-avatar'
-}
+import { useSessionUser } from '@/data/users'
+import { useSettingsTabs, type SettingsTab } from './tabs'
 
 const route = useRoute()
 const router = useRouter()
@@ -100,64 +67,8 @@ interface TabGroup {
 
 const sessionUser = useSessionUser()
 
-const allTabs: SettingsTab[] = [
-  {
-    label: 'Profile',
-    slug: 'profile',
-    group: 'User settings',
-    icon: 'lucide-user',
-    prefix: 'session-avatar',
-    component: markRaw(ProfileSettings),
-  },
-  {
-    label: 'Preferences',
-    slug: 'preferences',
-    group: 'User settings',
-    icon: 'lucide-sliders-horizontal',
-    component: markRaw(PreferencesSettings),
-  },
-  {
-    label: 'Notifications',
-    slug: 'notifications',
-    group: 'User settings',
-    icon: 'lucide-bell',
-    component: markRaw(NotificationsSettings),
-  },
-  {
-    label: 'Communities',
-    slug: 'communities',
-    group: 'App settings',
-    icon: 'lucide-building-2',
-    component: markRaw(CommunitiesSettings),
-    // Every member browses communities here to join or leave one; the management
-    // actions inside the tab stay gated per community.
-    condition: () => !sessionUser.isGuest,
-  },
-  {
-    label: 'Emojis',
-    slug: 'emojis',
-    group: 'App settings',
-    icon: 'lucide-smile-plus',
-    component: markRaw(CustomEmojiSettings),
-    adminOnly: true,
-  },
-  {
-    label: 'Users',
-    slug: 'users',
-    group: 'Administration',
-    icon: 'lucide-users',
-    component: markRaw(MembersSettings),
-    adminOnly: true,
-  },
-]
+const tabs = useSettingsTabs()
 
-// Admin status loads asynchronously (the users resource is immediate: false), so
-// keep this reactive and re-register once the session user's role resolves.
-const tabs = computed(() =>
-  allTabs.filter(
-    (tab) => (!tab.adminOnly || isGameplanAdmin()) && (!tab.condition || tab.condition()),
-  ),
-)
 const tabGroups = computed<TabGroup[]>(() => {
   let groups: TabGroup[] = []
 

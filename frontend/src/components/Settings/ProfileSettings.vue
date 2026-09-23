@@ -1,10 +1,7 @@
 <template>
-  <!-- On phones the dialog's own bar names the tab (Settings/SettingsDialog.vue). -->
-  <SettingsHeader class="max-sm:hidden">
-    <h2 class="text-lg-semibold text-ink-gray-8">Profile</h2>
-  </SettingsHeader>
+  <PanelHeader title="Profile" />
 
-  <SettingsBody>
+  <PanelBody>
     <div v-if="profile && user" class="space-y-11 pt-6">
       <section class="space-y-6">
         <div class="flex items-center gap-4">
@@ -97,7 +94,7 @@
         </div>
       </section>
     </div>
-  </SettingsBody>
+  </PanelBody>
 
   <Dialog v-model:open="showAvatarEditor" title="Edit avatar" @after-leave="clearAvatarFile">
     <ProfileImageEditor
@@ -118,14 +115,14 @@ import {
   Button,
   Dialog,
   Dropdown,
-  SettingsBody,
-  SettingsHeader,
   SettingsRow,
   Textarea,
   TextInput,
   toast,
   useDoc,
 } from 'frappe-ui'
+import PanelHeader from './PanelHeader.vue'
+import PanelBody from './PanelBody.vue'
 import type { DropdownOptions } from 'frappe-ui'
 import ProfileImageEditor from '@/components/ProfileImageEditor.vue'
 import UserAvatar from '@/components/UserAvatar.vue'

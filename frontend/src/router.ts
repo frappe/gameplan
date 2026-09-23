@@ -393,10 +393,12 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/pages/Notifications.vue'),
   },
   {
-    // Settings is an overlay: the URL changes to /settings/:tab but the dialog
-    // renders above whatever page it was opened from (see settingsBackgroundPath
-    // + the beforeEach short-circuit below). RouteGuard renders nothing because
-    // App.vue swaps the router-view to the background page while we're here.
+    // On desktop settings is an overlay: the URL changes to /settings/:tab but the
+    // dialog renders above whatever page it was opened from (see
+    // settingsBackgroundPath + the beforeEach short-circuit below), and SettingsPage
+    // never mounts because App.vue swaps the router-view to the background page.
+    // On phones there is no dialog — these routes render SettingsPage as an ordinary
+    // full-screen page.
     path: '/settings',
     meta: { settingsOverlay: true },
     redirect: { name: 'SettingsTab', params: { tab: 'profile' } },
@@ -407,13 +409,13 @@ const routes: RouteRecordRaw[] = [
         // communities list. `:view` defaults to spaces when omitted.
         path: 'communities/:communityId/:view(spaces|members)?',
         name: 'SettingsCommunity',
-        component: RouteGuard,
+        component: () => import('@/pages/SettingsPage.vue'),
         meta: { settingsOverlay: true },
       },
       {
         path: ':tab',
         name: 'SettingsTab',
-        component: RouteGuard,
+        component: () => import('@/pages/SettingsPage.vue'),
         meta: { settingsOverlay: true },
       },
     ],

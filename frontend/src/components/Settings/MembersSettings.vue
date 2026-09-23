@@ -1,5 +1,7 @@
 <template>
-  <SettingsHeader>
+  <!-- No `title` prop: the header carries controls, so the panel keeps its own
+       heading and hides it on phones, where the page header names the tab. -->
+  <PanelHeader>
     <!-- pb-3 keeps the 0.75rem gap to the column header, which now lives at the
          top of the scroll viewport (sticky) instead of inside this fixed region. -->
     <div class="pb-3">
@@ -32,9 +34,9 @@
         <span class="text-base text-ink-gray-6">View</span>
       </button>
     </div>
-  </SettingsHeader>
+  </PanelHeader>
 
-  <SettingsBody>
+  <PanelBody>
     <!-- Phones: name and email, the role picker, the action; the "user since" column and
          the column header go, the same way CommunityMembersList does it. -->
     <List
@@ -105,7 +107,7 @@
         </ListRow>
       </ListRows>
     </List>
-  </SettingsBody>
+  </PanelBody>
 
   <Dialog v-model:open="showInviteDialog">
     <InvitePeople />
@@ -116,17 +118,9 @@
 // fallthrough (this component renders a fragment); it simply isn't emitted here.
 defineEmits<{ (e: 'close-dialog'): void }>()
 import { computed, ref, watch } from 'vue'
-import {
-  Button,
-  Dialog,
-  SettingsBody,
-  SettingsHeader,
-  Select,
-  dialog,
-  dayjsLocal,
-  useCall,
-  useList,
-} from 'frappe-ui'
+import { Button, Dialog, Select, dialog, dayjsLocal, useCall, useList } from 'frappe-ui'
+import PanelHeader from './PanelHeader.vue'
+import PanelBody from './PanelBody.vue'
 import {
   List,
   ListCell,
