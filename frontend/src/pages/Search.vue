@@ -13,7 +13,7 @@
             <TextInput
               ref="searchInput"
               class="flex-1"
-              placeholder="Search"
+              placeholder="Start typing to Search"
               aria-label="Search"
               v-focus
               :model-value="query"
