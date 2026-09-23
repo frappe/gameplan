@@ -10,8 +10,10 @@
     </div>
     <NewTaskDialog />
     <!-- usersReady, not users.isFinished: a mid-session reload of the user list would
-         flip isFinished back to false and unmount the open settings dialog. -->
-    <SettingsDialog v-if="$session.isLoggedIn && usersReady" />
+         flip isFinished back to false and unmount the open settings dialog.
+         Phones have no dialog: a /settings/* URL is an ordinary page there
+         (pages/SettingsPage.vue). -->
+    <SettingsDialog v-if="$session.isLoggedIn && usersReady && !isMobileViewport" />
     <OfflineIndicator />
   </FrappeUIProvider>
 </template>
@@ -48,7 +50,10 @@ const Layout = computed(() => {
 
 users.fetch()
 
-const isSettingsOverlay = (r) => r.matched.some((record) => record.meta?.settingsOverlay)
+// Only desktop layers settings over a background page. On a phone the settings
+// route renders its own page, so it is treated like any other route here.
+const isSettingsOverlay = (r) =>
+  !isMobileViewport.value && r.matched.some((record) => record.meta?.settingsOverlay)
 
 // A resolved-but-never-navigated route still holds its lazy `() => import()`
 // components unresolved, which <router-view :route> renders as "[object Promise]"
@@ -67,7 +72,7 @@ const isRouteLoaded = (target) =>
 // Component that was made into a reactive object" warning).
 const displayedRoute = shallowRef(route)
 watch(
-  [() => route.fullPath, settingsBackgroundPath],
+  [() => route.fullPath, settingsBackgroundPath, isMobileViewport],
   () => {
     if (!isSettingsOverlay(route)) {
       displayedRoute.value = route

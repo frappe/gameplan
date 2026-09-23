@@ -1,9 +1,7 @@
 <template>
-  <SettingsHeader>
-    <h2 class="text-lg-semibold text-ink-gray-8">Profile</h2>
-  </SettingsHeader>
+  <PanelHeader title="Profile" />
 
-  <SettingsBody>
+  <PanelBody>
     <div v-if="profile && user" class="space-y-11 pt-6">
       <section class="space-y-6">
         <div class="flex items-center gap-4">
@@ -98,7 +96,7 @@
         </div>
       </section>
     </div>
-  </SettingsBody>
+  </PanelBody>
 
   <Dialog v-model:open="showAvatarEditor" title="Edit avatar" @after-leave="clearAvatarFile">
     <ProfileImageEditor
@@ -115,18 +113,10 @@
 import { computed, ref, useTemplateRef, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useMediaQuery } from '@vueuse/core'
-import {
-  Button,
-  Dialog,
-  Dropdown,
-  SettingsBody,
-  SettingsHeader,
-  SettingsRow,
-  Textarea,
-  TextInput,
-  toast,
-} from 'frappe-ui'
+import { Button, Dialog, Dropdown, SettingsRow, Textarea, TextInput, toast } from 'frappe-ui'
 import { useDoc } from '@/data/offlineRevalidation'
+import PanelHeader from './PanelHeader.vue'
+import PanelBody from './PanelBody.vue'
 import type { DropdownOptions } from 'frappe-ui'
 import ProfileImageEditor from '@/components/ProfileImageEditor.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
