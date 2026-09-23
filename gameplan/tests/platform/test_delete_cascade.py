@@ -60,7 +60,8 @@ class TestCascadeChildrenLeaveNoResidue(GameplanTestCase):
 		cascade.
 		"""
 		comment = create_comment(self.discussion, owner=self.second_member)
-		reordered = ["GP Discussion Visit", "GP Comment", "GP Activity", "GP Poll"]
+		swapped = ["GP Discussion Visit", "GP Comment"]
+		reordered = swapped + [d for d in GPDiscussion.on_delete_cascade if d not in swapped]
 
 		with patch.object(GPDiscussion, "on_delete_cascade", reordered), self.as_user(self.member):
 			frappe.delete_doc("GP Discussion", self.discussion.name)
