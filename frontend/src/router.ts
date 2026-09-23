@@ -6,7 +6,6 @@ import {
   type RouteRecordRaw,
 } from 'vue-router'
 import { until } from '@vueuse/core'
-import { watch } from 'vue'
 import { call } from 'frappe-ui'
 import { session } from './data/session'
 import { users, usersReady } from './data/users'
@@ -896,26 +895,8 @@ async function waitForResource(resource: ResourceLike) {
 }
 
 function waitForOfflineCachedData(resource: ResourceLike) {
-  if (hasHydratedData(resource)) {
-    return Promise.resolve()
-  }
-
-  return new Promise<void>((resolve) => {
-    const timeout = window.setTimeout(done, OFFLINE_CACHE_HYDRATION_TIMEOUT)
-    const stop = watch(
-      () => resource.data,
-      () => {
-        if (hasHydratedData(resource)) {
-          done()
-        }
-      },
-    )
-
-    function done() {
-      window.clearTimeout(timeout)
-      stop()
-      resolve()
-    }
+  return until(() => hasHydratedData(resource)).toBe(true, {
+    timeout: OFFLINE_CACHE_HYDRATION_TIMEOUT,
   })
 }
 

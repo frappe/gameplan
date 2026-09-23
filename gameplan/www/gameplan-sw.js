@@ -181,39 +181,28 @@ function getShellAssetUrls(html) {
   const urls = new Set();
   const assetPattern = /\b(?:src|href)=["']([^"']+)["']/g;
 
-  for (const match of html.matchAll(assetPattern)) {
-    const url = new URL(match[1], self.location.origin);
-    if (
-      url.origin === self.location.origin &&
-      url.pathname.startsWith("/assets/")
-    ) {
-      urls.add(url.href);
-    }
+  for (const [, href] of html.matchAll(assetPattern)) {
+    if (isAssetUrl(href)) urls.add(new URL(href, self.location.origin).href);
   }
 
   return [...urls];
 }
 
+/** Saves `url` into `cache` unless it is already there; a failure waits for the next try. */
+async function save(cache, url) {
+  const request = new Request(url, { credentials: "include" });
+  try {
+    if (await cache.match(request)) return;
+    const response = await fetch(request);
+    if (isCacheableResponse(response)) await cache.put(request, response);
+  } catch {
+    // Offline, or the server refused it: the next visit or sync tries again.
+  }
+}
+
 async function cacheUrls(urls) {
   const cache = await caches.open(ASSET_CACHE);
-  const sameOriginAssetUrls = urls.filter(isSameOriginAssetUrl);
-
-  await Promise.all(
-    sameOriginAssetUrls.map(async (url) => {
-      try {
-        const request = new Request(url, { credentials: "include" });
-        const cached = await cache.match(request);
-        if (cached) return;
-
-        const response = await fetch(request);
-        if (isCacheableResponse(response)) {
-          await cache.put(request, response);
-        }
-      } catch {
-        // The next online visit to the route will retry this asset.
-      }
-    }),
-  );
+  await Promise.all(urls.filter(isAssetUrl).map((url) => save(cache, url)));
 }
 
 // Offline downloads (offlineDownloads.ts): images inside downloaded discussions and custom
@@ -223,18 +212,9 @@ const IMAGE_FETCHES_AT_ONCE = 4;
 async function cacheImages(urls) {
   const cache = await caches.open(RUNTIME_CACHE);
   const queue = urls.filter(isUploadedFileUrl);
-  // A few at a time, so a first download doesn't send every image request at once.
+  // A few at a time, so a first download doesn't request every image at once.
   const next = async () => {
-    while (queue.length) {
-      const request = new Request(queue.shift(), { credentials: "include" });
-      try {
-        if (await cache.match(request)) continue;
-        const response = await fetch(request);
-        if (isCacheableResponse(response)) await cache.put(request, response);
-      } catch {
-        // The next sync, or viewing the image online, tries again.
-      }
-    }
+    while (queue.length) await save(cache, queue.shift());
   };
   await Promise.all(Array.from({ length: IMAGE_FETCHES_AT_ONCE }, next));
   // The settings show what the downloads weigh, and these are part of it.
@@ -250,17 +230,21 @@ async function forgetImages(urls) {
   );
 }
 
-function isUploadedFileUrl(url) {
+/** Whether `url` is on this origin, under one of `prefixes`. */
+function onOrigin(url, ...prefixes) {
   try {
     const { origin, pathname } = new URL(url, self.location.origin);
     return (
       origin === self.location.origin &&
-      (pathname.startsWith("/files/") || pathname.startsWith("/private/files/"))
+      prefixes.some((prefix) => pathname.startsWith(prefix))
     );
   } catch {
     return false;
   }
 }
+
+const isAssetUrl = (url) => onOrigin(url, "/assets/");
+const isUploadedFileUrl = (url) => onOrigin(url, "/files/", "/private/files/");
 
 async function cacheOfflineAssetManifest(response) {
   try {
@@ -299,18 +283,6 @@ async function deleteOldBuildAssets(currentUrls) {
       })
       .map((request) => cache.delete(request)),
   );
-}
-
-function isSameOriginAssetUrl(url) {
-  try {
-    const assetUrl = new URL(url, self.location.origin);
-    return (
-      assetUrl.origin === self.location.origin &&
-      assetUrl.pathname.startsWith("/assets/")
-    );
-  } catch {
-    return false;
-  }
 }
 
 async function cacheFirst(request) {

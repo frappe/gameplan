@@ -1,10 +1,6 @@
 <template>
-  <!-- Teleported + fixed to the true viewport top so it renders above both
-       MobileShell and DesktopShell (frappe-ui), not inside either one - see the
-       `data-offline` attribute this sets below and the matching `[data-slot=...]`
-       rules in index.css, which push the shells' own content down by exactly this
-       banner's height. That's what keeps it from ever overlapping the header,
-       search, nav, or anything else already on screen, instead of covering it. -->
+  <!-- Above both frappe-ui shells rather than inside one; index.css pushes their
+       content down by the banner's height so it never covers the header. -->
   <Teleport to="body">
     <Transition
       enter-active-class="transition duration-150 ease-out"
@@ -31,10 +27,7 @@ import { toast } from 'frappe-ui'
 import { isOnline } from '@/data/online'
 import { OFFLINE_ACTION_MESSAGE } from '@/data/loadFailure'
 
-// A DOM attribute, not a Vue-scoped style: the shells this needs to push down
-// (MobileShell.vue, DesktopShell.vue) live in frappe-ui, outside this component's
-// own render tree, so index.css targets them by this attribute + their own
-// `data-slot` hooks instead.
+// An attribute on <html>, since the shells it pushes down live in frappe-ui.
 watch(
   isOnline,
   (online) => {

@@ -76,6 +76,11 @@ class OfflineDownloadsTestCase(GameplanTestCase):
 		with self.as_user(self.member):
 			return get_offline_index(window)["places"]
 
+	def visited(self, cached):
+		"""The index's answer for these visited discussions, as the member."""
+		with self.as_user(self.member):
+			return get_offline_index(30, json.dumps(cached))
+
 	def bundle(self, window, names=None):
 		"""What a device asks for: everything in the window unless a test names its own."""
 		with self.as_user(self.member):
@@ -165,15 +170,13 @@ class TestOfflineIndex(OfflineDownloadsTestCase):
 		secret = create_discussion("Secret thread", private, owner=self.member)
 		gone = create_discussion("Gone thread", self.joined, owner=self.member)
 		cached = [str(self.elsewhere.name), str(secret.name), str(gone.name)]
-		with self.as_user(self.member):
-			self.assertEqual(get_offline_index(30, json.dumps(cached))["revoked"], [])
+		self.assertEqual(self.visited(cached)["revoked"], [])
 
 		private.reload()
 		private.members = []
 		private.save(ignore_permissions=True)
 		frappe.delete_doc("GP Discussion", gone.name, ignore_permissions=True)
-		with self.as_user(self.member):
-			revoked = get_offline_index(30, json.dumps(cached))["revoked"]
+		revoked = self.visited(cached)["revoked"]
 		# The public space's discussion stays: reading it never needed membership.
 		self.assertEqual(sorted(revoked), sorted([str(secret.name), str(gone.name)]))
 
@@ -183,8 +186,7 @@ class TestOfflineIndex(OfflineDownloadsTestCase):
 		self.joined.reload()
 		self.joined.archived_at = now_datetime()
 		self.joined.save(ignore_permissions=True)
-		with self.as_user(self.member):
-			index = get_offline_index(30, json.dumps(cached))
+		index = self.visited(cached)
 		self.assertEqual(index["revoked"], [])
 		self.assertNotIn(str(self.recent.name), index["discussions"])
 
@@ -196,8 +198,7 @@ class TestOfflineIndex(OfflineDownloadsTestCase):
 		there — every sync, for as long as they kept reading it.
 		"""
 		cached = [str(self.outside.name)]
-		with self.as_user(self.member):
-			index = get_offline_index(30, json.dumps(cached))
+		index = self.visited(cached)
 		self.assertEqual(index["revoked"], [])
 		self.assertNotIn(str(self.outside.name), index["discussions"])
 
@@ -206,8 +207,7 @@ class TestOfflineIndex(OfflineDownloadsTestCase):
 		space = create_space("War Room", locked, members=[self.member])
 		discussion = create_discussion("Locked thread", space, owner=self.member)
 		cached = [str(self.recent.name), str(discussion.name)]
-		with self.as_user(self.member):
-			self.assertEqual(get_offline_index(30, json.dumps(cached))["revoked"], [])
+		self.assertEqual(self.visited(cached)["revoked"], [])
 
 		locked.reload()
 		locked.members = [m for m in locked.members if m.user != self.member.name]
@@ -215,8 +215,7 @@ class TestOfflineIndex(OfflineDownloadsTestCase):
 		space.reload()
 		space.members = [m for m in space.members if m.user != self.member.name]
 		space.save(ignore_permissions=True)
-		with self.as_user(self.member):
-			revoked = get_offline_index(30, json.dumps(cached))["revoked"]
+		revoked = self.visited(cached)["revoked"]
 		self.assertEqual(revoked, [str(discussion.name)])
 
 	def test_rejects_input_that_is_not_a_list_of_names(self):

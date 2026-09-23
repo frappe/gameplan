@@ -15,14 +15,8 @@ html {
     'cv11' 1;
 }
 
-/* OfflineIndicator.vue is `position: fixed; top: 0` at the true viewport top, so
-   without this it would paint over the app's own header/search/nav instead of
-   sitting above them. Both shells expose a stable `data-slot` hook for exactly
-   this (MobileShell.vue, DesktopShell.vue in frappe-ui) - push their content down
-   by the banner's height rather than touching the library. MobileShell is `fixed
-   inset-0`, so this only shrinks its scroll region (its own outer box stays
-   viewport-sized); DesktopShell is normal flow, so this shifts its whole row
-   (rail + sidebar + content) down together. */
+/* Makes room for OfflineIndicator.vue's fixed banner instead of letting it cover the
+   header, through the shells' own data-slot hooks rather than by patching frappe-ui. */
 html[data-offline] [data-slot='mobile-shell'],
 html[data-offline] [data-slot='desktop-shell'] {
   padding-top: var(--offline-banner-height);
@@ -161,6 +155,6 @@ body {
   }
 }
 
-.ProseMirror table col[style*="min-width"] {
+.ProseMirror table col[style*='min-width'] {
   width: 120px;
 }

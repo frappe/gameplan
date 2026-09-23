@@ -81,23 +81,18 @@ export function isNetworkError(error: unknown) {
 }
 
 /**
- * Wipes everything this browser holds offline, so the next person to sign in on it can't
- * read the previous user's data. Call on logout. Resolves to whether every store cleared.
- *
- * Clears the service worker's page and image caches, and the default idb-keyval store that
- * every frappe-ui resource cache uses. Drafts are kept (useDraftSync only reads the current
- * user's), so the same user can still recover one after signing back in; a user switch
- * clears them too (guardAgainstUserSwitch).
+ * Wipes what this browser holds offline, so the next person to sign in can't read it.
+ * Resolves to whether every store cleared. Drafts are kept for the same user signing back
+ * in; a user switch clears them too (guardAgainstUserSwitch).
  */
 export async function clearOfflineCaches(): Promise<boolean> {
   const [cachesCleared, idbCleared] = await Promise.all([
     clearServiceWorkerCaches(),
-    Promise.race([
+    within(
       clearIdbKeyval().then(() => true),
-      new Promise<boolean>((resolve) =>
-        window.setTimeout(() => resolve(false), IDB_DELETE_TIMEOUT_MS),
-      ),
-    ])
+      IDB_DELETE_TIMEOUT_MS,
+      false,
+    )
       .then((cleared) => (cleared ? true : deleteIdbStore()))
       .catch((error) => {
         console.error('Failed to clear IndexedDB cache', error)
@@ -107,10 +102,17 @@ export async function clearOfflineCaches(): Promise<boolean> {
   return cachesCleared && idbCleared
 }
 
-// idb-keyval's default database. Emptying it is the ordinary way; dropping it is what is
-// left when that fails, and a drop another tab holds open is a failure like any other.
+// idb-keyval's default database, dropped when emptying it fails.
 const IDB_NAME = 'keyval-store'
 const IDB_DELETE_TIMEOUT_MS = 2000
+
+/** `promise`, or `fallback` if it has not settled within `ms`. */
+function within<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((resolve) => window.setTimeout(() => resolve(fallback), ms)),
+  ])
+}
 
 function deleteIdbStore(): Promise<boolean> {
   if (typeof indexedDB === 'undefined') return Promise.resolve(false)
@@ -196,12 +198,11 @@ async function getActiveWorker(): Promise<ServiceWorker | undefined> {
   if (registration?.active) return registration.active
   if (!serviceWorkerSupportEnabled()) return undefined
 
-  const ready = await Promise.race([
+  const ready = await within<ServiceWorkerRegistration | undefined>(
     navigator.serviceWorker.ready,
-    new Promise<undefined>((resolve) =>
-      window.setTimeout(() => resolve(undefined), REGISTRATION_WAIT_TIMEOUT_MS),
-    ),
-  ])
+    REGISTRATION_WAIT_TIMEOUT_MS,
+    undefined,
+  )
   return ready?.active ?? undefined
 }
 
@@ -224,12 +225,9 @@ interface UserSwitch {
 }
 
 /**
- * Clears every offline cache when `user` differs from the last user this browser saw, and
- * reports both whether they differed and whether the clearing worked. Callers about to navigate must await it. The last-seen
- * marker only moves once the clear succeeds, so a failed clear is retried next time.
- *
- * Cache keys are fixed when modules load, so a caller that switches users without a reload
- * (session.ts's login) must reload after a detected switch.
+ * Clears every offline cache when `user` differs from the last user this browser saw. The
+ * marker only moves once the clear succeeds, so a failed one is retried on the next boot.
+ * Cache keys are fixed at module load, so a caller switching users must reload afterwards.
  */
 export async function guardAgainstUserSwitch(user: string | null): Promise<UserSwitch> {
   try {
@@ -243,12 +241,11 @@ export async function guardAgainstUserSwitch(user: string | null): Promise<UserS
         // A different user, so drafts go too.
         const [offlineCachesCleared, draftsCleared] = await Promise.all([
           clearOfflineCaches(),
-          Promise.race([
+          within(
             clearDraftStore().then(() => true),
-            new Promise<boolean>((resolve) =>
-              window.setTimeout(() => resolve(false), IDB_DELETE_TIMEOUT_MS),
-            ),
-          ]).catch((error) => {
+            IDB_DELETE_TIMEOUT_MS,
+            false,
+          ).catch((error) => {
             console.error('Failed to clear draft store', error)
             return false
           }),
@@ -258,20 +255,13 @@ export async function guardAgainstUserSwitch(user: string | null): Promise<UserS
         console.error('Failed to clear offline caches', error)
       }
 
-      // The marker stays put, so the next boot tries again rather than treating this browser
-      // as settled with the previous user's data still on it.
-      if (!cleared) {
-        return { switched, cleared }
-      }
+      if (!cleared) return { switched, cleared }
 
       await rewarmShellCache()
     }
 
-    // A signed-out boot (expired session, old tab) leaves the marker, or the next sign-in
-    // would look like no switch and skip the clear.
-    if (user) {
-      localStorage.setItem(LAST_SEEN_USER_STORAGE_KEY, user)
-    }
+    // A signed-out boot leaves the marker, or the next sign-in would skip the clear.
+    if (user) localStorage.setItem(LAST_SEEN_USER_STORAGE_KEY, user)
 
     return { switched, cleared: true }
   } catch (error) {

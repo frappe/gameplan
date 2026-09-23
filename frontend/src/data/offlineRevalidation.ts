@@ -8,18 +8,14 @@ import { isOnline, onReconnect } from './online'
 import { isNetworkError } from '@/offline'
 
 /**
- * Makes frappe-ui's stale-while-revalidate offline-aware. frappe-ui already shows the cached
- * copy while a request runs; this skips the request while offline and revalidates what is on
- * screen once the connection returns.
- *
- * Import `useList`, `useDoc` and `useCall` from here instead of from frappe-ui.
+ * frappe-ui's resources, made offline-aware: no request while offline, and what is on screen
+ * revalidates on reconnect. Import `useList`, `useDoc` and `useCall` from here.
  */
 
 /**
- * Rejects API requests while offline the way a failed fetch would, without sending them.
- * Resources still fall back to their cached copy (`staleOnError`) or the offline empty state.
- * frappe-ui has no hook before its fetch, so this wraps the global one. Installed on import,
- * because shared stores start fetching as soon as their modules load.
+ * Rejects API requests while offline as a failed fetch would, so resources fall back to their
+ * cached copy. frappe-ui has no hook before its fetch, so this wraps the global one, on import
+ * because shared stores fetch as soon as their modules load.
  */
 function holdRequestsWhileOffline() {
   const fetch = window.fetch.bind(window)
@@ -61,19 +57,17 @@ export function revalidateOnReconnect<T extends Revalidatable>(resource: T): T {
   return resource
 }
 
-// Resources with `immediate: false` are actions or on-demand calls: replaying one on reconnect
-// could repeat a write, so only resources that load themselves revalidate.
-export const useList = ((options) => {
-  const list = frappeUseList(options)
-  return options.immediate === false ? list : revalidateOnReconnect(list)
-}) as typeof frappeUseList
+/**
+ * `use`, revalidating on reconnect. Not for `immediate: false` resources: those are actions or
+ * on-demand calls, and replaying one could repeat a write.
+ */
+function offlineAware<F extends (options: any) => any>(use: F): F {
+  return ((options) => {
+    const resource = use(options)
+    return options.immediate === false ? resource : revalidateOnReconnect(resource)
+  }) as F
+}
 
-export const useDoc = ((options) => {
-  const doc = frappeUseDoc(options)
-  return options.immediate === false ? doc : revalidateOnReconnect(doc)
-}) as typeof frappeUseDoc
-
-export const useCall = ((options) => {
-  const call = frappeUseCall(options)
-  return options.immediate === false ? call : revalidateOnReconnect(call)
-}) as typeof frappeUseCall
+export const useList = offlineAware(frappeUseList)
+export const useDoc = offlineAware(frappeUseDoc)
+export const useCall = offlineAware(frappeUseCall)
