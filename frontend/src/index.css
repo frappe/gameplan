@@ -100,6 +100,23 @@ body {
     margin: 0;
   }
 
+  :root[data-theme='dark'] {
+    --ink-base: oklch(100% 0 0);
+    --ink-gray-1: oklch(94.6% 0 0);
+    --ink-gray-2: oklch(91.3% 0 0);
+    --ink-gray-3: oklch(83% 0 0);
+    --ink-gray-4: oklch(68.3% 0 0);
+    --ink-gray-5: oklch(58.6% 0 0);
+    --ink-gray-6: oklch(43.9% 0 0);
+    --ink-gray-7: oklch(34.1% 0 0);
+    --ink-gray-8: oklch(20.5% 0 0);
+    --ink-gray-9: oklch(16.8% 0 0);
+    --outline-gray-1: oklch(94.6% 0 0);
+    --outline-gray-2: oklch(91.3% 0 0);
+    --outline-gray-3: oklch(83% 0 0);
+    --outline-gray-4: oklch(68.3% 0 0);
+  }
+
   html,
   body,
   #app {
@@ -115,15 +132,6 @@ body {
   [data-slot='desktop-shell-content'] header {
     padding-left: 0 !important;
     padding-right: 0 !important;
-  }
-
-  .space-breadcrumbs a,
-  .space-breadcrumbs button {
-    padding-left: 0 !important;
-  }
-
-  .space-breadcrumbs [class*='lucide-'] {
-    display: none !important;
   }
 
   [data-slot='desktop-shell'] > :not([data-slot='desktop-shell-content']) {

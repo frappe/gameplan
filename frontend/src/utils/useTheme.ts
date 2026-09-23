@@ -39,14 +39,6 @@ const handleSystemThemeChange = () => {
   }
 }
 
-const handleBeforePrint = () => {
-  applyTheme('light')
-}
-
-const handleAfterPrint = () => {
-  applyTheme(currentTheme.value)
-}
-
 const initializeTheme = (): void => {
   if (isInitialized) return
 
@@ -57,8 +49,6 @@ const initializeTheme = (): void => {
 
   const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
   mediaQuery.addEventListener('change', handleSystemThemeChange)
-  window.addEventListener('beforeprint', handleBeforePrint)
-  window.addEventListener('afterprint', handleAfterPrint)
   isInitialized = true
 }
 

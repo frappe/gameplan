@@ -7,10 +7,13 @@
     </PageHeaderMobile>
     <PageHeader class="hidden sm:flex">
       <SpaceBreadcrumbs
-        class="flex"
+        class="flex print:hidden"
         :spaceId="currentSpaceId"
         :items="[{ label: discussion.doc?.title || postId, onClick: scrollToTop }]"
       />
+      <span class="hidden text-lg-medium text-ink-gray-8 print:inline">
+        {{ [communityTitle, space?.title].filter(Boolean).join(' / ') }}
+      </span>
     </PageHeader>
     <div class="discussion-container">
       <div v-if="discussion.loading">
