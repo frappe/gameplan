@@ -18,6 +18,7 @@
 import { computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { PageHeaderMobile, PageHeaderBackButton } from 'frappe-ui'
+import { usersReady } from '@/data/users'
 import { panelOwnsPageHeader } from '@/components/Settings'
 import { useSettingsTabs } from '@/components/Settings/tabs'
 
@@ -35,12 +36,18 @@ const routeSlug = computed(() => {
 const tab = computed(() => tabs.value.find((tab) => tab.slug === routeSlug.value) ?? null)
 
 // Bare /settings, an unknown slug, or a tab this user can't open: fall back to the
-// first available tab once the list is known. Re-runs when admin-only tabs resolve
-// async, so a deep link to an admin tab works as soon as permissions load.
+// first available tab.
+//
+// Gated on usersReady, which is what makes a deep link to an admin tab survive a cold
+// load. The admin-only tabs are missing from the list until the users resource settles,
+// and the non-admin ones are there from the start, so "no match yet" is indistinguishable
+// from "not allowed" until the role is known — replacing the URL then would lose the
+// requested tab before it could ever match. The desktop dialog gets this for free:
+// App.vue only mounts it once usersReady is true.
 watch(
-  [tab, tabs],
+  [tab, tabs, usersReady],
   () => {
-    if (tab.value || !tabs.value.length) return
+    if (!usersReady.value || tab.value || !tabs.value.length) return
     router.replace({ name: 'SettingsTab', params: { tab: tabs.value[0].slug } })
   },
   { immediate: true },
