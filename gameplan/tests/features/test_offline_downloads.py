@@ -177,26 +177,47 @@ class TestOfflineIndex(OfflineDownloadsTestCase):
 		# The public space's discussion stays: reading it never needed membership.
 		self.assertEqual(sorted(revoked), sorted([str(secret.name), str(gone.name)]))
 
-	def test_reports_visited_discussions_revoked_when_space_archived_or_community_left(self):
+	def test_keeps_visited_discussions_a_space_archive_did_not_take_away(self):
+		"""Archiving stops a Space being downloaded; it does not stop the user reading it."""
 		cached = [str(self.elsewhere.name), str(self.recent.name)]
-		with self.as_user(self.member):
-			self.assertEqual(get_offline_index(30, json.dumps(cached))["revoked"], [])
-
-		# Archiving a space revokes discussions in it from offline storage
 		self.joined.reload()
 		self.joined.archived_at = now_datetime()
 		self.joined.save(ignore_permissions=True)
 		with self.as_user(self.member):
-			revoked = get_offline_index(30, json.dumps(cached))["revoked"]
-		self.assertEqual(revoked, [str(self.recent.name)])
+			index = get_offline_index(30, json.dumps(cached))
+		self.assertEqual(index["revoked"], [])
+		self.assertNotIn(str(self.recent.name), index["discussions"])
 
-		# Leaving a community revokes all discussions in that community
-		self.community.reload()
-		self.community.members = [m for m in self.community.members if m.user != self.member.name]
-		self.community.save(ignore_permissions=True)
+	def test_keeps_visited_discussions_from_a_public_community_never_joined(self):
+		"""Downloads are scoped to joined communities; reading is not, and revoked follows reading.
+
+		Held to the download scope, a discussion the user read in a public community they
+		never joined came back revoked, and the device deleted the copy their own visit put
+		there — every sync, for as long as they kept reading it.
+		"""
+		cached = [str(self.outside.name)]
+		with self.as_user(self.member):
+			index = get_offline_index(30, json.dumps(cached))
+		self.assertEqual(index["revoked"], [])
+		self.assertNotIn(str(self.outside.name), index["discussions"])
+
+	def test_reports_visited_discussions_revoked_when_a_private_community_is_left(self):
+		locked = create_community("Locked", is_private=1, members=[self.member])
+		space = create_space("War Room", locked, members=[self.member])
+		discussion = create_discussion("Locked thread", space, owner=self.member)
+		cached = [str(self.recent.name), str(discussion.name)]
+		with self.as_user(self.member):
+			self.assertEqual(get_offline_index(30, json.dumps(cached))["revoked"], [])
+
+		locked.reload()
+		locked.members = [m for m in locked.members if m.user != self.member.name]
+		locked.save(ignore_permissions=True)
+		space.reload()
+		space.members = [m for m in space.members if m.user != self.member.name]
+		space.save(ignore_permissions=True)
 		with self.as_user(self.member):
 			revoked = get_offline_index(30, json.dumps(cached))["revoked"]
-		self.assertEqual(sorted(revoked), sorted([str(self.elsewhere.name), str(self.recent.name)]))
+		self.assertEqual(revoked, [str(discussion.name)])
 
 	def test_rejects_input_that_is_not_a_list_of_names(self):
 		"""A whitelisted argument arrives as whatever was posted."""
@@ -205,6 +226,13 @@ class TestOfflineIndex(OfflineDownloadsTestCase):
 				with self.subTest(cached=cached):
 					with self.assertRaises(frappe.ValidationError):
 						get_offline_index(30, cached=cached)
+
+	def test_rejects_cached_names_that_are_not_json(self):
+		"""Text the server cannot parse is the client's mistake, not a server error."""
+		with self.as_user(self.member):
+			for cached in ("{", "[1,", "nope{"):
+				with self.subTest(cached=cached), self.assertRaises(frappe.ValidationError):
+					get_offline_index(30, cached=cached)
 
 	def test_rejects_a_last_sync_time_it_cannot_read(self):
 		"""Refused whichever layer catches it: the endpoint's annotation, or the parse."""
@@ -301,6 +329,15 @@ class TestOfflineBundle(OfflineDownloadsTestCase):
 			bundle = get_offline_bundle(30, fields, json.dumps([str(self.recent.name)]))
 		comment = bundle["comments"][str(self.recent.name)][0]
 		self.assertEqual(sorted(comment.keys()), ["name", "reactions"])
+
+	def test_rejects_a_request_that_is_not_json(self):
+		names = json.dumps([str(self.recent.name)])
+		with self.as_user(self.member):
+			for fields in ("{", '{"comments": ['):
+				with self.subTest(fields=fields), self.assertRaises(frappe.ValidationError):
+					get_offline_bundle(30, fields, names)
+			with self.assertRaises(frappe.ValidationError):
+				get_offline_bundle(30, FIELDS, "[")
 
 	def test_rejects_a_field_list_that_is_not_a_mapping(self):
 		with self.as_user(self.member):

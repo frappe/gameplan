@@ -110,7 +110,7 @@ def get_offline_bundle(window_days: int, fields: dict | str, names: list | str) 
 	"""
 	_check_rate_limit()
 	window = _allowed_window(window_days)
-	fields = frappe.parse_json(fields)
+	fields = _parse_json(fields, _("Expected a field list per child table."))
 	if not isinstance(fields, dict):
 		frappe.throw(_("Expected a field list per child table."), frappe.ValidationError)
 	wanted = _names(names, PAGE_SIZE)
@@ -148,12 +148,27 @@ def _names(value: list | str | None, limit: int) -> list[str]:
 	A whitelisted argument arrives as whatever was posted, so the shape is checked here
 	rather than left to fail somewhere further in as a traceback.
 	"""
-	names = frappe.parse_json(value) if isinstance(value, str) else value
+	names = _parse_json(value, _("Expected a list of discussion names."))
 	if names is None:
 		return []
 	if not isinstance(names, list):
 		frappe.throw(_("Expected a list of discussion names."), frappe.ValidationError)
 	return [str(name) for name in names[:limit] if isinstance(name, str | int)]
+
+
+def _parse_json(value, message: str):
+	"""A posted argument, parsed where it arrived as JSON text.
+
+	`frappe.parse_json` hands text that isn't JSON back to the caller as a JSONDecodeError,
+	which reaches the client as a server error and the site as a logged one. A request the
+	server could not read is the client's mistake, and says so.
+	"""
+	if not isinstance(value, str):
+		return value
+	try:
+		return frappe.parse_json(value)
+	except ValueError:
+		frappe.throw(message, frappe.ValidationError)
 
 
 def _allowed_fields(key: str, fields) -> list:
@@ -285,16 +300,16 @@ def _downloadable_spaces():
 
 
 def _revoked(names: list[str]) -> list[str]:
+	"""The visited discussions the user can no longer read, so the device drops them.
+
+	Held to what they may read, not to what a download would fetch: a public community they
+	never joined is outside `_downloadable_spaces` but its discussions are theirs to read, and
+	calling those revoked would delete the copies their own visits put on the device.
+	"""
 	if not names:
 		return []
 	readable = {
-		str(row.name)
-		for row in _query(
-			"GP Discussion",
-			fields=["name"],
-			filters={"name": ["in", names]},
-			criterion=frappe.qb.DocType("GP Discussion").project.isin(_downloadable_spaces()),
-		)
+		str(row.name) for row in _query("GP Discussion", fields=["name"], filters={"name": ["in", names]})
 	}
 	return [name for name in names if name not in readable]
 

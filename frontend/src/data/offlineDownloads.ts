@@ -7,6 +7,7 @@ import { session } from './session'
 import { customEmojis } from './customEmojis'
 import { isMobileViewport } from '@/utils/useIsMobile'
 import { OFFLINE_ACTION_MESSAGE } from './loadFailure'
+import { isNetworkError } from '@/offline'
 import { communityFeedKey, feedScope, spaceFeedKey } from './discussions'
 import {
   ACTIVITY_FIELDS,
@@ -51,6 +52,13 @@ const MAX_IMAGES = 300
 // Background syncs only fetch what changed, but still cost an index query each; this keeps
 // them to a few a day per device.
 const SYNC_INTERVAL = 6 * 60 * 60 * 1000
+// After a failure, how long before an automatic run tries again. Doubles per consecutive
+// failure up to SYNC_INTERVAL: without it a sync that keeps failing is retried on every tab
+// focus, and each attempt costs the server an index query.
+const RETRY_DELAY = 5 * 60 * 1000
+// The server's own window (REQUESTS_PER_HOUR in offline_downloads.py). Retrying inside it
+// can only be refused again.
+const RATE_LIMIT_DELAY = 60 * 60 * 1000
 // Spreads the first sync after load so a team opening the app together doesn't sync together.
 const MAX_START_DELAY = 30 * 1000
 // Visited discussions one index call can check for lost access (MAX_CACHED in
@@ -74,6 +82,10 @@ interface Meta {
   lastSyncedAt: number | null
   /** The last sync stopped before finishing, so the next one runs whenever it can. */
   incomplete: boolean
+  /** Consecutive failures, which is how long the next automatic run waits. */
+  failures?: number
+  /** No automatic run before this; a manual one is the person asking and goes ahead. */
+  retryAfter?: number
 }
 
 interface Index {
@@ -184,6 +196,7 @@ async function sync(manual: boolean): Promise<boolean> {
   if (!isOnline.value) return false
   if (!manual) {
     if (document.visibilityState !== 'visible' || saveData.value) return false
+    if (current?.retryAfter && Date.now() < current.retryAfter) return false
     const fresh = current?.window === days && !current.incomplete && current.lastSyncedAt
     if (fresh && Date.now() - fresh < SYNC_INTERVAL) return true
   }
@@ -199,9 +212,7 @@ async function sync(manual: boolean): Promise<boolean> {
 
   // One tab at a time; another tab already syncing covers this one.
   if (!navigator.locks) return run()
-  return navigator.locks.request(LOCK_NAME, { ifAvailable: true }, (lock) =>
-    lock ? run() : false,
-  )
+  return navigator.locks.request(LOCK_NAME, { ifAvailable: true }, (lock) => (lock ? run() : false))
 }
 
 /**
@@ -213,8 +224,9 @@ async function runSync(days: OfflineWindow, signal?: AbortSignal): Promise<boole
   downloads.error = null
   downloads.done = 0
   downloads.total = 0
+  // Read before the try, so a failure can back off from the state this run started with.
+  const previous = meta ?? (await readMeta())
   try {
-    const previous = meta ?? (await readMeta())
     const onDevice = new Set(await cachedDiscussions())
     const downloaded = previous?.places ?? {}
     const visits = visitsToCheck(
@@ -315,10 +327,45 @@ async function runSync(days: OfflineWindow, signal?: AbortSignal): Promise<boole
     return true
   } catch (error) {
     downloads.error = error instanceof Error ? error.message : String(error)
+    await standDown(days, previous, error).catch(() => {})
     throw error
   } finally {
     downloads.syncing = false
   }
+}
+
+/**
+ * Holds automatic runs off after a failure, for longer each time one fails in a row.
+ *
+ * Without it a sync that keeps failing runs again on every tab focus, because an unfinished
+ * one is exempt from the interval — an index query each time, for as long as the tab is open.
+ * Losing the connection is not counted: it is what `isOnline` already gates, and the person
+ * reconnecting should get their downloads then, not five minutes later.
+ */
+async function standDown(days: OfflineWindow, previous: Meta | null, error: unknown) {
+  if (isNetworkError(error) || offlineWindow.value !== days) return
+  const failures = (previous?.failures ?? 0) + 1
+  const delay = isRateLimited(error)
+    ? RATE_LIMIT_DELAY
+    : Math.min(RETRY_DELAY * 2 ** (failures - 1), SYNC_INTERVAL)
+  const current = meta ?? previous
+  await writeMeta({
+    user: session.user!,
+    window: days,
+    since: current?.since ?? null,
+    places: current?.places ?? {},
+    checkedUpTo: current?.checkedUpTo,
+    lastSyncedAt: current?.lastSyncedAt ?? null,
+    incomplete: true,
+    failures,
+    retryAfter: Date.now() + delay,
+  })
+}
+
+/** The server refused the request as too frequent (REQUESTS_PER_HOUR in offline_downloads.py). */
+function isRateLimited(error: unknown) {
+  const { exc_type, status } = (error ?? {}) as { exc_type?: string; status?: number }
+  return exc_type === 'RateLimitExceededError' || status === 429
 }
 
 /**
