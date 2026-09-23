@@ -96,6 +96,10 @@ body {
   unwind that layout so a discussion prints as a clean, paginated document.
 */
 @media print {
+  @page {
+    margin: 0;
+  }
+
   html,
   body,
   #app {
@@ -103,12 +107,46 @@ body {
     overflow: visible !important;
   }
 
+  [data-slot='desktop-shell-content'] {
+    border-left: 0 !important;
+    padding: 12mm !important;
+  }
+
+  [data-slot='desktop-shell-content'] header {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  .space-breadcrumbs a,
+  .space-breadcrumbs button {
+    padding-left: 0 !important;
+  }
+
+  .space-breadcrumbs [class*='lucide-'] {
+    display: none !important;
+  }
+
+  [data-slot='desktop-shell'] > :not([data-slot='desktop-shell-content']) {
+    display: none !important;
+  }
+
+  [data-slot='scroll-area-scrollbar'] {
+    display: none !important;
+  }
+
   /* Let the scroll viewport expand to its full content height */
-  #scrollContainer,
+  [data-slot='desktop-shell'],
+  [data-slot='desktop-shell-content'],
+  [data-slot='scroll-area'],
   [data-reka-scroll-area-viewport] {
+    display: block !important;
     height: auto !important;
     max-height: none !important;
     overflow: visible !important;
+  }
+
+  [data-reka-scroll-area-viewport] > * {
+    min-width: 0 !important;
   }
 
   /* Drop sticky positioning so author/title rows flow inline instead of
@@ -125,6 +163,8 @@ body {
 
   .discussion-container {
     max-width: none !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
   }
 
   /* The timeline reserves space at the bottom for the fixed comment box (set
@@ -135,9 +175,13 @@ body {
   }
 
   /* Keep an author block and its message from splitting across pages */
-  .discussion-container > div > div,
   [data-id] {
     break-inside: avoid;
+  }
+
+  .discussion-container .sticky,
+  .discussion-container h1 {
+    break-after: avoid;
   }
 
   /* Avoid orphaned link underlines / colors that don't read well on paper */
