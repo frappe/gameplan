@@ -1,9 +1,7 @@
 <template>
-  <SettingsHeader>
-    <h2 class="text-lg-semibold text-ink-gray-8">Notifications</h2>
-  </SettingsHeader>
+  <PanelHeader title="Notifications" />
 
-  <SettingsBody>
+  <PanelBody>
     <div class="space-y-11 pt-6">
       <section>
         <div class="divide-y divide-outline-gray-1">
@@ -33,7 +31,7 @@
         </div>
       </section>
     </div>
-  </SettingsBody>
+  </PanelBody>
 </template>
 
 <script setup lang="ts">
@@ -41,16 +39,9 @@
 // fallthrough (this component renders a fragment); it simply isn't emitted here.
 defineEmits<{ (e: 'close-dialog'): void }>()
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
-import {
-  dayjsLocal,
-  Select,
-  SettingsBody,
-  SettingsHeader,
-  SettingsRow,
-  Switch,
-  toast,
-  useDoctype,
-} from 'frappe-ui'
+import { dayjsLocal, Select, SettingsRow, Switch, toast, useDoctype } from 'frappe-ui'
+import PanelHeader from './PanelHeader.vue'
+import PanelBody from './PanelBody.vue'
 import { useSessionUser, type EmailDigestDayOfWeek, type EmailDigestFrequency } from '@/data/users'
 import type { GPUserProfile } from '@/types/doctypes'
 

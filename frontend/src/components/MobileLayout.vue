@@ -75,7 +75,8 @@ const onCommunityRoute = computed(() => route.matched.some((record) => record.me
 // still navigates home (MobileNavItem decides scroll-vs-navigate off the current route).
 const isHomeRoute = computed(() => route.name === 'Home' || onCommunityRoute.value)
 
-// "You" spans the whole More section (profile, pages, tasks, bookmarks, drafts).
+// "You" spans the whole More section (profile, pages, tasks, bookmarks, drafts,
+// and the settings pages the More menu links to).
 const isMoreRoute = computed(() => {
   const name = route.name?.toString() || ''
   return [
@@ -91,6 +92,8 @@ const isMoreRoute = computed(() => {
     'MyTasks',
     'Task',
     'Drafts',
+    'SettingsTab',
+    'SettingsCommunity',
   ].includes(name)
 })
 </script>
