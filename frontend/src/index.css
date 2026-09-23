@@ -96,6 +96,27 @@ body {
   unwind that layout so a discussion prints as a clean, paginated document.
 */
 @media print {
+  @page {
+    margin: 0;
+  }
+
+  :root[data-theme='dark'] {
+    --ink-base: oklch(100% 0 0);
+    --ink-gray-1: oklch(94.6% 0 0);
+    --ink-gray-2: oklch(91.3% 0 0);
+    --ink-gray-3: oklch(83% 0 0);
+    --ink-gray-4: oklch(68.3% 0 0);
+    --ink-gray-5: oklch(58.6% 0 0);
+    --ink-gray-6: oklch(43.9% 0 0);
+    --ink-gray-7: oklch(34.1% 0 0);
+    --ink-gray-8: oklch(20.5% 0 0);
+    --ink-gray-9: oklch(16.8% 0 0);
+    --outline-gray-1: oklch(94.6% 0 0);
+    --outline-gray-2: oklch(91.3% 0 0);
+    --outline-gray-3: oklch(83% 0 0);
+    --outline-gray-4: oklch(68.3% 0 0);
+  }
+
   html,
   body,
   #app {
@@ -103,12 +124,37 @@ body {
     overflow: visible !important;
   }
 
+  [data-slot='desktop-shell-content'] {
+    border-left: 0 !important;
+    padding: 12mm !important;
+  }
+
+  [data-slot='desktop-shell-content'] header {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  [data-slot='desktop-shell'] > :not([data-slot='desktop-shell-content']) {
+    display: none !important;
+  }
+
+  [data-slot='scroll-area-scrollbar'] {
+    display: none !important;
+  }
+
   /* Let the scroll viewport expand to its full content height */
-  #scrollContainer,
+  [data-slot='desktop-shell'],
+  [data-slot='desktop-shell-content'],
+  [data-slot='scroll-area'],
   [data-reka-scroll-area-viewport] {
+    display: block !important;
     height: auto !important;
     max-height: none !important;
     overflow: visible !important;
+  }
+
+  [data-reka-scroll-area-viewport] > * {
+    min-width: 0 !important;
   }
 
   /* Drop sticky positioning so author/title rows flow inline instead of
@@ -125,6 +171,8 @@ body {
 
   .discussion-container {
     max-width: none !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
   }
 
   /* The timeline reserves space at the bottom for the fixed comment box (set
@@ -135,9 +183,18 @@ body {
   }
 
   /* Keep an author block and its message from splitting across pages */
-  .discussion-container > div > div,
-  [data-id] {
+  .comments-timeline > * {
     break-inside: avoid;
+    padding-bottom: 6mm;
+  }
+
+  .comments-timeline .sticky {
+    padding-top: 9mm !important;
+  }
+
+  .discussion-container .sticky,
+  .discussion-container h1 {
+    break-after: avoid;
   }
 
   /* Avoid orphaned link underlines / colors that don't read well on paper */
