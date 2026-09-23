@@ -12,12 +12,11 @@
              community's own title and view switcher ride along. -->
         <PageHeaderMobile v-if="isPhone">
           <template #prefix>
-            <Button
-              variant="ghost"
-              size="md"
-              icon="lucide-chevron-left"
+            <!-- Walks history like every other page's back button, and falls back to
+                 the communities list when there is none (a cold deep link). -->
+            <PageHeaderBackButton
               label="Back to communities"
-              @click="showCommunities"
+              :to="{ name: 'SettingsTab', params: { tab: 'communities' } }"
             />
           </template>
           <template #default>{{ selectedCommunity?.title || 'Community' }}</template>
@@ -185,7 +184,7 @@
 defineEmits<{ (e: 'close-dialog'): void }>()
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Button, PageHeaderMobile, Select } from 'frappe-ui'
+import { Button, PageHeaderBackButton, PageHeaderMobile, Select } from 'frappe-ui'
 import NewSpaceDialog from '@/components/NewSpaceDialog.vue'
 import CustomizeSidebarDialog from '@/components/AppRail/CustomizeSidebarDialog.vue'
 import {
@@ -225,7 +224,11 @@ const view = computed<CommunityView>({
   get: () => (route.params.view === 'members' ? 'members' : 'spaces'),
   set: (nextView) => {
     if (!selectedCommunityId.value) return
-    router.push({
+    // replace, not push: the URL carries the view so it can be linked to, but
+    // switching Spaces/Members inside one community is not navigation. Pushing it
+    // stacked a history entry per toggle, so going back walked through the toggles
+    // instead of leaving the community.
+    router.replace({
       name: 'SettingsCommunity',
       params: { communityId: selectedCommunityId.value, view: nextView },
     })
