@@ -3,10 +3,8 @@ import { toast, useDoctype } from 'frappe-ui'
 import type { GPUserProfile } from '@/types/doctypes'
 
 export type NotificationLevel = 'Mentions only' | 'Mute'
-/** Where notifications reach the user besides the inbox. Push waits on the relay (Phase 5). */
 export type NotificationChannel = 'In-app' | 'Push' | 'Email'
 
-/** The three states a discussion's bell can hold; `Default` hands it back to the global level. */
 export type DiscussionNotificationState = 'Mute' | 'Mentions only' | 'Watch'
 export type DiscussionNotificationChoice = DiscussionNotificationState | 'Default'
 
@@ -14,15 +12,9 @@ export const defaultNotificationLevel: NotificationLevel = 'Mentions only'
 
 export type Weekday = 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun'
 export const allWeekdays: Weekday[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-/** All day, every day: the schedule that is no schedule. */
 export const allDayStart = '00:00'
 export const allDayEnd = '23:59'
 
-/**
- * Per-user notification preferences, persisted on GP User Profile. Seeded from
- * `get_user_info` (see `loadNotificationPreferences`), edited through the setters below,
- * each of which pushes the one field it changed and rolls back on failure.
- */
 export const participationLevels = ['Watch', 'Mentions only'] as const
 export type ParticipationLevel = (typeof participationLevels)[number]
 export const defaultParticipationLevel: ParticipationLevel = 'Watch'
@@ -49,7 +41,6 @@ export const currentActiveHoursEnd = computed(() => activeHoursEnd.value)
 export const currentActiveHoursDays = computed(() => activeHoursDays.value)
 export const isSavingNotificationPreference = computed(() => saving.value)
 
-/** Seed from boot data without echoing back to the server. */
 export function loadNotificationPreferences(
   user: {
     notification_level?: unknown
@@ -68,7 +59,6 @@ export function loadNotificationPreferences(
   participation.value = normalizeParticipation(user.participation_level)
   receiveNotifications.value = toBoolean(user.receive_notifications, true)
   channel.value = normalizeChannel(user.notification_channel)
-  // A disabled schedule reads as all day, whatever times are left in its fields.
   const scheduled = toBoolean(user.active_hours_enabled, false)
   activeHoursStart.value = (scheduled && toTime(user.active_hours_start)) || allDayStart
   activeHoursEnd.value = (scheduled && toTime(user.active_hours_end)) || allDayEnd
@@ -109,12 +99,6 @@ export function setReceiveNotifications(value: boolean) {
   )
 }
 
-/**
- * The schedule is one setting in three fields, so a change to any of them is sent with all
- * of them: the server validates the window as a whole (some days, two different times) and
- * a partial patch could trip that on a field the user did not touch. There is no separate
- * switch — "all day, every day" *is* off, and anything narrower is on.
- */
 export function setActiveHours(patch: { start?: string; end?: string; days?: Weekday[] }) {
   const previous = {
     start: activeHoursStart.value,
@@ -147,10 +131,6 @@ export function setActiveHours(patch: { start?: string; end?: string; days?: Wee
   )
 }
 
-/**
- * One field per request, applied optimistically. A stable toast id keeps a quick series
- * of switch flips to a single message that replaces itself.
- */
 async function persist(patch: Partial<GPUserProfile>, rollback: () => void) {
   if (!profileName.value) return
   saving.value = true
@@ -184,10 +164,6 @@ function toBoolean(value: unknown, fallback: boolean) {
   return Boolean(Number(value))
 }
 
-/**
- * A Frappe Time as the "HH:mm" the TimePicker speaks; '' when unset. The API renders a
- * Time as "9:00:00" (unpadded hour), the database as "09:00:00", so it is parsed, not sliced.
- */
 function toTime(value: unknown) {
   if (typeof value !== 'string') return ''
   const match = value.match(/^(\d{1,2}):(\d{2})/)
@@ -204,20 +180,16 @@ function normalizeDays(value: unknown): Weekday[] {
     }
   }
   if (!Array.isArray(list)) return [...allWeekdays]
-  // Kept in week order whatever order they were saved in. An empty list means every day:
-  // the schedule cannot be switched on without one, so there is nothing to preserve.
   const days = allWeekdays.filter((day) => list.includes(day))
   return days.length ? days : [...allWeekdays]
 }
 
-/** The three discussion states from quietest to loudest — the order menus list them in. */
 export const discussionNotificationStates: DiscussionNotificationState[] = [
   'Mute',
   'Mentions only',
   'Watch',
 ]
 
-/** One glyph per state, shared by the discussion bell and the `...` submenu. */
 export const discussionStateIcon: Record<DiscussionNotificationState, string> = {
   Mute: 'lucide-bell-off',
   'Mentions only': 'lucide-bell',
@@ -230,12 +202,6 @@ export const discussionStateDescription: Record<DiscussionNotificationState, str
   Watch: 'Every new comment, plus mentions',
 }
 
-/**
- * The bell's menu: the three states, with the one the discussion resolves to marked —
- * an untouched discussion shows the global level as selected, so there is no separate
- * "Default" entry to explain. Built here so the header bell and the post's bell stay one
- * list.
- */
 export function discussionNotificationOptions(
   state: DiscussionNotificationState,
   onSelect: (choice: DiscussionNotificationChoice) => void,

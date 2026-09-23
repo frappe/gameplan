@@ -1,15 +1,6 @@
 # Copyright (c) 2026, Frappe Technologies Pvt Ltd and Contributors
 # See license.txt
 
-"""What a space subscription, a move, a poll vote and being added put in the bell.
-
-A `GP Space Subscription` row is the one thing that makes a *new* discussion news: its
-subscribers hear when one starts in the space, or moves in or out of it, and nobody else
-does. A comment never reaches them through it — that is the discussion bell's business
-(`test_notification_preferences.py`). Being added to a space or community and someone
-voting on your poll are the two remaining events, and losing a space forgets every
-choice the user made about it.
-"""
 
 import frappe
 
@@ -445,7 +436,6 @@ class TestAccessLoss(SpaceNotificationTestCase):
 			frappe.get_doc("GP Team", self.community.name).remove_member(self.second_member.name)
 
 		self.assert_forgotten()
-		# The public space stays readable, so the choice about it stays too.
 		self.assertEqual(len(self.subscriptions_for(self.second_member, self.space)), 1)
 
 	def test_being_removed_from_a_private_community_forgets_every_space(self):

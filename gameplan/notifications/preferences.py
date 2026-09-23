@@ -1,7 +1,6 @@
 # Copyright (c) 2026, Frappe Technologies Pvt Ltd and contributors
 # For license information, please see license.txt
 
-"""Per-user notification preferences, read from GP User Profile."""
 
 import frappe
 
@@ -34,12 +33,6 @@ _DEFAULTS = frappe._dict(
 
 
 def profile_prefs(user: str) -> frappe._dict:
-	"""The notification fields of `user`'s profile, with defaults for a missing profile.
-
-	Read fresh each time on purpose: it is one indexed lookup, and a cache on
-	`frappe.local` would outlive a profile change inside the same request — or, in the
-	test runner, the whole run.
-	"""
 	row = frappe.db.get_value("GP User Profile", {"user": user}, list(PREF_FIELDS), as_dict=True)
 	prefs = frappe._dict(_DEFAULTS)
 	if row:
@@ -50,7 +43,6 @@ def profile_prefs(user: str) -> frappe._dict:
 
 
 def bulk_levels(users: list[str]) -> dict[str, str]:
-	"""`user -> notification_level` for many users in one query. Missing profiles default."""
 	users = list(dict.fromkeys(users))
 	levels = dict.fromkeys(users, DEFAULT_LEVEL)
 	if not users:
@@ -72,6 +64,4 @@ def participation_level(user: str) -> str:
 
 
 def wants_content_feedback(user: str) -> bool:
-	"""Reactions and poll votes on the user's own content notify them under Watch; under
-	Mentions only nothing but a mention does."""
 	return participation_level(user) == "Watch"

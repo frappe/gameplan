@@ -1,6 +1,4 @@
 <template>
-  <!-- Three triggers that read as one row: each shows what is picked, none scrolls
-       sideways. On a phone the parent lets them wrap. -->
   <div class="flex items-center gap-2">
     <MultiSelect
       :options="communityOptions"
@@ -8,7 +6,6 @@
       @update:model-value="setCommunities"
       placeholder="All communities"
     >
-      <!-- The anchor toggles the popover itself; the trigger only has to look right. -->
       <template #trigger="{ open, selectedOptions }">
         <FilterTrigger
           :label="triggerLabel(selectedOptions, 'All communities', 'communities')"
@@ -33,13 +30,7 @@
       </template>
     </MultiSelect>
 
-    <!-- The stock picker does the whole job: one click opens the calendar, two clicks on
-         the same day pick that day, two different days pick a range, and it closes and
-         applies as soon as the range is complete. Its own "Today" button covers the
-         one-click case. Only the trigger is ours, so a single day reads as one date. -->
     <DateRangePicker :model-value="dateRange" @update:model-value="setDateRange" align="end">
-      <!-- Unlike MultiSelect, the picker's trigger slot is a plain anchor: a custom trigger
-           opens the calendar by calling the `toggle` it is handed. -->
       <template #trigger="{ open, toggle }">
         <FilterTrigger
           :label="dateLabel"
@@ -51,7 +42,6 @@
       </template>
     </DateRangePicker>
 
-    <!-- Boxed like the filters but muted, so it reads as an action on them, not one of them. -->
     <Button
       v-if="hasActiveNotificationFilters"
       variant="outline"

@@ -1,7 +1,4 @@
 <template>
-  <!-- `:button` rather than a slotted trigger: the trigger is rendered `as-child`, and a
-       wrapper such as Tooltip (inheritAttrs: false) swallows the click binding. Button
-       carries its own tooltip. -->
   <Dropdown
     :options="options"
     align="end"
@@ -26,7 +23,6 @@ import {
 } from '@/data/notificationPreferences'
 
 const props = defineProps<{
-  /** What the discussion resolves to for this user right now. */
   state: DiscussionNotificationState
   loading?: boolean
 }>()

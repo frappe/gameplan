@@ -1,21 +1,6 @@
 # Copyright (c) 2026, Frappe Technologies Pvt Ltd and contributors
 # For license information, please see license.txt
 
-"""Who should be told about an event.
-
-Two inputs decide it. The user's global level (`GP User Profile.notification_level`,
-Mentions only or Mute) is the default for every discussion they have not touched. A
-`GP Discussion Subscription` row is a deliberate choice on one discussion — Mute, Mentions
-only or Watch — and it wins over the global level whenever it exists. Nothing else (being
-mentioned, commenting, reading, joining a space) ever changes a user's state.
-
-A `GP Space Subscription` row is the third input, and a narrow one: it says the user wants
-to hear about discussions *starting* in (or moving into or out of) that space. It never
-changes what they hear about inside a discussion.
-
-Reactions and poll votes are about the user's own content and follow only their own
-toggles (see HasReactions.notify_reactions and notify_poll_vote below).
-"""
 
 import frappe
 from frappe.utils import get_fullname
@@ -34,7 +19,6 @@ STATES = ("Mute", "Mentions only", "Watch")
 
 
 def discussion_of(doc) -> str | None:
-	"""The discussion a piece of content lives in, or None (tasks, task comments, pages)."""
 	if doc.doctype == "GP Discussion":
 		return doc.name
 	if doc.doctype == "GP Comment" and doc.reference_doctype == "GP Discussion":
@@ -45,18 +29,12 @@ def discussion_of(doc) -> str | None:
 
 
 def subscription_state(user: str, discussion: str) -> str | None:
-	"""The explicit state `user` chose on `discussion`, or None when they never chose."""
 	return frappe.db.get_value(
 		"GP Discussion Subscription", {"user": user, "discussion": discussion}, "state"
 	)
 
 
 def effective_discussion_state(user: str, discussion: str, level: str | None = None) -> str:
-	"""Mute, Mentions only or Watch — the explicit choice if there is one, else the global level.
-
-	The global level is never Watch, so Watch only ever comes from a row: watching is always
-	a deliberate act, which keeps "every comment" off the table as a default.
-	"""
 	state = subscription_state(user, discussion)
 	if state in STATES:
 		return state
@@ -65,7 +43,6 @@ def effective_discussion_state(user: str, discussion: str, level: str | None = N
 
 
 def bulk_discussion_states(users: list[str], discussion: str) -> dict[str, str]:
-	"""`effective_discussion_state` for many users with two queries instead of two each."""
 	users = list(dict.fromkeys(users))
 	if not users:
 		return {}
@@ -87,9 +64,6 @@ def is_muted(user: str, discussion: str) -> bool:
 
 
 def subscribe_on_participation(user: str, discussion: str) -> str | None:
-	"""Starting a discussion or commenting in it makes it one the user participates in:
-	their participation level becomes its bell, unless they already set one. Returns the
-	state written, or None when a row was already there."""
 	if subscription_state(user, discussion):
 		return None
 	state = PARTICIPATION_STATE[participation_level(user)]
@@ -100,7 +74,6 @@ def subscribe_on_participation(user: str, discussion: str) -> str | None:
 
 
 def discussion_watchers(discussion: str) -> list[str]:
-	"""Users with an explicit Watch on `discussion`. Only rows can say Watch (see above)."""
 	return frappe.db.get_all(
 		"GP Discussion Subscription",
 		filters={"discussion": discussion, "state": "Watch"},
@@ -109,14 +82,6 @@ def discussion_watchers(discussion: str) -> list[str]:
 
 
 def notify_comment(comment_doc, already_notified: set[str] | None = None) -> list[str]:
-	"""Tell everyone watching the discussion that `comment_doc` was posted in it.
-
-	Skips the author, anyone the mention pass already reached for this same comment (one
-	comment, one notification), and anyone who cannot open the discussion. Repeat comments
-	fold into one unread row per watcher: "3 new comments in <title>".
-
-	Returns the users notified.
-	"""
 	discussion = discussion_of(comment_doc)
 	if not discussion:
 		return []
@@ -147,7 +112,6 @@ def notify_comment(comment_doc, already_notified: set[str] | None = None) -> lis
 
 
 def space_subscribers(projects: list) -> list[str]:
-	"""Users with the space toggle on for any of `projects`, each once."""
 	projects = [str(project) for project in projects if project]
 	if not projects:
 		return []
@@ -156,12 +120,6 @@ def space_subscribers(projects: list) -> list[str]:
 
 
 def notify_new_discussion(discussion_doc) -> list[str]:
-	"""Tell the space's subscribers that `discussion_doc` was started in it.
-
-	Runs once, at creation — a discussion moving into the space is a Moved event, not a
-	new one. Skips the author and anyone who cannot open the space. Never merges: each
-	discussion is its own row, since each one is a different thing to go and read.
-	"""
 	author = discussion_doc.owner
 	candidates = [user for user in space_subscribers([discussion_doc.project]) if user != author]
 	recipients = users_who_can_view_content(candidates, discussion_doc)
@@ -185,12 +143,6 @@ def notify_new_discussion(discussion_doc) -> list[str]:
 
 
 def notify_added(user: str, *, project=None, team=None, actor: str | None = None):
-	"""Tell `user` that `actor` put them in a space or a community.
-
-	Joining on one's own is not news, so `actor == user` writes nothing. A grant that has
-	no acting person behind it (a guest accepting an invitation, where the session is still
-	Guest) is worded without one.
-	"""
 	if not user or actor == user:
 		return
 	if project:
@@ -215,12 +167,6 @@ def notify_added(user: str, *, project=None, team=None, actor: str | None = None
 
 
 def notify_discussion_moved(discussion_doc, old_project, actor: str) -> list[str]:
-	"""Tell the subscribers of the old and the new space that `discussion_doc` moved.
-
-	The discussion's own mute wins — a Mute there means "nothing about this thread" — and
-	so does access: someone subscribed to the old space who cannot open the new one is
-	not told where it went.
-	"""
 	candidates = [user for user in space_subscribers([old_project, discussion_doc.project]) if user != actor]
 	states = bulk_discussion_states(candidates, discussion_doc.name)
 	candidates = [user for user in candidates if states.get(user) != "Mute"]
@@ -245,7 +191,6 @@ def notify_discussion_moved(discussion_doc, old_project, actor: str) -> list[str
 
 
 def notify_space_moved(project_doc, actor: str) -> list[str]:
-	"""Tell the space's subscribers that it now sits in another community."""
 	candidates = [user for user in space_subscribers([project_doc.name]) if user != actor]
 	recipients = [user for user in candidates if can_view_space(user, project_doc)]
 	if not recipients:
@@ -267,12 +212,6 @@ def notify_space_moved(project_doc, actor: str) -> list[str]:
 
 
 def notify_poll_vote(poll_doc, voter: str):
-	"""Tell the poll's author that `voter` voted, if they want to hear about votes.
-
-	Votes fold into one unread row per poll ("3 people voted on your poll"); the row is
-	linked to the discussion so opening it clears the row. An anonymous poll names nobody
-	and links no sender. Retracting a vote is not an event.
-	"""
 	owner = poll_doc.owner
 	if voter == owner or not wants_content_feedback(owner):
 		return

@@ -48,7 +48,6 @@ class DeliveryTestCase(GameplanTestCase):
 		)
 
 	def run_hourly(self):
-		"""The tick at the top of the current hour."""
 		return self.run_tick(now_datetime().replace(minute=0, second=0, microsecond=0))
 
 	def run_tick(self, now):
@@ -57,9 +56,6 @@ class DeliveryTestCase(GameplanTestCase):
 		return self.mails_to(sendmail, self.second_member)
 
 	def mails_to(self, sendmail, user):
-		"""Only the mails addressed to `user`. The batch walks every profile on the site,
-		and this one runs against a site with real ones, so another user's mail must not
-		count as this test's."""
 		scoped = MagicMock()
 		for call in sendmail.call_args_list:
 			if call.kwargs.get("recipients") == [_name(user)]:
@@ -212,13 +208,8 @@ class TestHourlyBatch(DeliveryTestCase):
 
 
 class TestSendTimes(DeliveryTestCase):
-	"""`should_send` reads the clock in the user's zone; the test user has none, so system
-	time is that zone and the times below are literal. 2026-09-16 is a Wednesday."""
-
 	def setUp(self):
 		super().setUp()
-		# The row is written while the schedule is still all-day, so it carries no away
-		# stamp; the 9-to-6 schedule then governs when it is mailed.
 		self.mention_second_member()
 		self.set_prefs(
 			self.second_member,
@@ -255,18 +246,13 @@ class TestSendTimes(DeliveryTestCase):
 		self.run_tick(self.at("2026-09-16 18:00")).assert_not_called()
 
 	def test_the_closing_mail_follows_the_users_timezone(self):
-		# 18:00 in Gaza is 20:30 in the site's Asia/Calcutta: the closing tick moves with it,
-		# and the site's 18:30 (16:00 in Gaza, mid-window, off the hour) is nothing special.
 		frappe.db.set_value("User", self.second_member.name, "time_zone", "Asia/Gaza")
 		self.run_tick(self.at("2026-09-16 18:30")).assert_not_called()
 		self.run_tick(self.at("2026-09-16 20:30")).assert_called_once()
 
 
 class TestAwayRecap(DeliveryTestCase):
-	"""What arrived while the user was away goes out in its own mail once the stretch ends."""
-
 	def away_and_back(self):
-		"""Switch notifications off, take a mention, switch back on: one ended stretch."""
 		self.set_prefs(self.second_member, receive_notifications=0)
 		self.mention_second_member()
 		self.set_prefs(self.second_member, receive_notifications=1)
@@ -323,7 +309,6 @@ class TestAwayRecap(DeliveryTestCase):
 		self.run_hourly().assert_not_called()
 
 	def test_the_catch_up_has_no_horizon(self):
-		"""Days old is the point of a catch-up, so the ordinary 24-hour cutoff is not applied."""
 		self.away_and_back()
 		row = self.rows_for(self.second_member)[0]
 		frappe.db.set_value(

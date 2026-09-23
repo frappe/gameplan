@@ -1,11 +1,4 @@
 <template>
-  <!-- One notification, wherever it is listed: the inbox and the away card render this
-       same row so their anatomy can never drift. Sender avatar or type glyph, message,
-       target title, then the time with the location beneath, and a mark-as-read button in
-       the gutter the unread row's reduced width leaves free. -->
-  <!-- An unread row leaves a gutter for its tick. On phones the gutter is 3rem so the
-       tick ends 1rem inside the list edge — the same inset the avatar has on the left
-       (list-row-px-4); on desktop 2rem does the same against the 0.75rem row inset. -->
   <ListRow
     :to="route ?? undefined"
     class="group h-[68px] sm:h-15"
@@ -54,9 +47,6 @@
     </ListCell>
     <ListCell class="justify-end">
       <div>
-        <!-- `last_event_at`, never `creation` (stale once a row is re-lit) or `modified`
-             (bumped by mark-as-read). The day is the group header, so the row only needs
-             the clock time. -->
         <time
           class="block shrink-0 whitespace-nowrap text-right text-sm text-ink-gray-5"
           :datetime="notification.last_event_at"
@@ -71,8 +61,6 @@
         </div>
       </div>
     </ListCell>
-    <!-- Sits in the 2rem gutter the unread row's reduced width leaves free.
-         stop+prevent keep the click from bubbling into row navigation. -->
     <div class="absolute -right-8 top-1/2 z-10 -translate-y-1/2" v-if="!notification.read">
       <Tooltip text="Mark as read">
         <Button
@@ -100,7 +88,6 @@ import {
 
 const props = defineProps<{
   notification: NotificationRow
-  /** What the row points at (discussion, poll or task title), when known. */
   title?: string | null
 }>()
 const emit = defineEmits<{ (e: 'read', name: string): void }>()

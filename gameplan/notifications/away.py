@@ -1,19 +1,6 @@
 # Copyright (c) 2026, Frappe Technologies Pvt Ltd and contributors
 # For license information, please see license.txt
 
-"""When a user is not to be reached, and which stretch a notification fell in.
-
-Two things make a user away: Receive notifications switched off (a "Toggle" stretch,
-open until they switch it back on), or the clock being outside their active hours on a
-selected day (an "Active hours" stretch, bounded by the schedule). Away-or-not is read
-from the profile every time; `GP Away Period` rows are written only so a notification
-can say which stretch it fell in and the catch-up mail (notifications/delivery.py) has
-something to cover. Nothing here decides whether a row is *written* — an away user still
-gets every row, with its real time; only email holds back.
-
-Datetimes are stored the Frappe way: naive, in the site's system timezone. The schedule
-is evaluated in the user's own timezone (`User.time_zone`, else the system's).
-"""
 
 from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo
@@ -32,7 +19,6 @@ def user_timezone(user: str) -> ZoneInfo:
 
 
 def is_away(prefs, now: datetime | None = None, tz: ZoneInfo | None = None) -> str | None:
-	""" "Toggle", "Active hours" or None — the toggle wins, being the deliberate one."""
 	if not cint(prefs.receive_notifications):
 		return "Toggle"
 	if cint(prefs.active_hours_enabled) and scheduled_off_window(prefs, now, tz):
@@ -73,7 +59,6 @@ def scheduled_off_window(prefs, now: datetime | None = None, tz: ZoneInfo | None
 
 
 def get_active_away_period(user: str, now: datetime | None = None) -> str | None:
-	"""The `GP Away Period` row covering `now` for `user`, created on demand, or None."""
 	prefs = profile_prefs(user)
 	now = now or now_datetime()
 	tz = user_timezone(user)
@@ -89,7 +74,6 @@ def get_active_away_period(user: str, now: datetime | None = None) -> str | None
 
 
 def set_receive_notifications(user: str, enabled) -> None:
-	"""Off opens a Toggle stretch (unless one is open); on closes it at now."""
 	if cint(enabled):
 		for name in _open_toggle_periods(user):
 			frappe.db.set_value("GP Away Period", name, "ends_at", now_datetime())
@@ -98,8 +82,6 @@ def set_receive_notifications(user: str, enabled) -> None:
 
 
 def close_open_scheduled_period(user: str) -> None:
-	"""A schedule edit ends the current scheduled stretch: whatever the new hours say, the
-	stretch that was computed from the old ones no longer describes anything."""
 	now = now_datetime()
 	rows = frappe.get_all(
 		"GP Away Period",
@@ -111,7 +93,6 @@ def close_open_scheduled_period(user: str) -> None:
 
 
 def pending_recap_periods(user: str) -> list:
-	"""Ended stretches whose catch-up email has not gone out yet, oldest first."""
 	return frappe.get_all(
 		"GP Away Period",
 		filters=[
@@ -132,9 +113,6 @@ def mark_recap_sent(periods: list[str]) -> None:
 	(
 		frappe.qb.update(Period).set(Period.recap_sent_at, now_datetime()).where(Period.name.isin(periods))
 	).run()
-
-
-# --- helpers ---
 
 
 def _selected_days(prefs) -> set[str]:

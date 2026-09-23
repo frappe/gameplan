@@ -1,8 +1,5 @@
 import { resetData } from '../../support/seed'
 
-// The notifications page groups rows by day and filters them by community, space and
-// date. Two mentions in two communities are enough to prove each control narrows the
-// list to the rows it names and that the day label heads the group.
 describe('Notification filters', () => {
   let alpha: string
   let beta: string
@@ -17,7 +14,6 @@ describe('Notification filters', () => {
       ;[alpha, beta] = (ids.communities as string[]).map(String)
       ;[alphaSpace, betaSpace] = (ids.spaces as string[]).map(String)
     })
-    // member2 opens a discussion in each community that mentions member.
     cy.then(() => {
       for (const [space, title] of [
         [alphaSpace, 'Alpha thread'],
@@ -56,7 +52,6 @@ describe('Notification filters', () => {
     cy.get('body').type('{esc}')
     cy.button('2 communities').should('be.visible')
 
-    // Clear puts everything back.
     cy.button('Clear').click()
     cy.wait('@notificationList')
     cy.contains('Beta thread').should('be.visible')
@@ -73,7 +68,6 @@ describe('Notification filters', () => {
   })
 
   it('keeps today’s rows under the Today filter and shows the day on an empty day', () => {
-    // The calendar opens straight from the trigger; its own Today button picks today.
     cy.button('All dates').click()
     cy.button('Today').click()
     cy.wait('@notificationList')
@@ -81,7 +75,6 @@ describe('Notification filters', () => {
     cy.contains('Alpha thread').should('be.visible')
     cy.contains('Beta thread').should('be.visible')
 
-    // A single empty day still shows its label above the empty state.
     cy.window().then((win) => {
       win.localStorage.setItem(
         'gameplan:notificationFilters',
