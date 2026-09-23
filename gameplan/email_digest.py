@@ -364,17 +364,17 @@ def format_notification_group(notifications, avatar_map, user: str):
 		if row.from_user or row.from_user_full_name
 	]
 	actor_summary = summarized_names(actor_labels) or "Someone"
-	item["description"] = f"{actor_summary} sent {len(notifications)} updates. Latest: {item['description']}"
+	item["title"] = f"{actor_summary} sent {len(notifications)} updates. Latest: {item['title']}"
 	return item
 
 
 def format_notification_item(notification, avatar_map, user: str):
-	title = notification.discussion_title or notification.task_title or notification.type
-	description = html_to_text_preview(notification.message, 160) or notification.type
+	target = notification.discussion_title or notification.task_title or notification.type
+	message = html_to_text_preview(notification.message, 160) or notification.type
 	metadata = location_text(notification.team_title, notification.project_title)
 	return {
-		"title": title or "Untitled",
-		"description": description or "",
+		"title": message or "Untitled",
+		"description": "" if target and target in message else (target or ""),
 		"metadata": metadata,
 		"url": get_signed_digest_url(user, notification_path(notification)),
 		"avatar": avatar_context(notification.from_user, notification.from_user_full_name, avatar_map),

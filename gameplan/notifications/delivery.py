@@ -26,6 +26,7 @@ from gameplan.email_digest import (
 )
 from gameplan.notifications.away import (
 	is_away,
+	local_time,
 	mark_recap_sent,
 	pending_recap_periods,
 	profile_prefs,
@@ -188,17 +189,20 @@ def recap_subject(rows: list) -> str:
 
 
 def recap_context(user: str, rows: list, periods: list) -> dict:
-	"""The batch mail with its own heading and the stretch it covers."""
-	starts_at = min(get_datetime(p.starts_at) for p in periods)
-	ends_at = max(get_datetime(p.ends_at) for p in periods)
+	tz = user_timezone(user)
+	starts_at = reader_time(min(get_datetime(p.starts_at) for p in periods), tz)
+	ends_at = reader_time(max(get_datetime(p.ends_at) for p in periods), tz)
 	window = (
 		f"{format_datetime(starts_at, 'EEE d MMM, h:mm a')} – {format_datetime(ends_at, 'EEE d MMM, h:mm a')}"
 	)
 	return {**batch_context(user, rows), "title": "While you were away", "window": window}
 
 
+def reader_time(system_naive, tz):
+	return local_time(system_naive, tz).replace(tzinfo=None)
+
+
 def batch_context(user: str, rows: list) -> dict:
-	"""Mentions first, then everything else — the same item shape the digest renders."""
 	avatar_map = get_user_avatar_map(row.from_user for row in rows)
 	mentions = [row for row in rows if row.type in MENTION_TYPES]
 	others = [row for row in rows if row.type not in MENTION_TYPES]

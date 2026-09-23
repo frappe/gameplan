@@ -164,7 +164,8 @@ class TestEmailDigest(GameplanTestCase):
 		self.assertEqual(email["subject"], "Your Weekly Gameplan digest")
 		self.assertEqual(email["template"], "email_digest")
 		self.assertEqual(len(email["args"]["notifications"]), 1)
-		self.assertEqual(email["args"]["notifications"][0]["description"].count("sent 2 updates"), 1)
+		self.assertEqual(email["args"]["notifications"][0]["title"].count("sent 2 updates"), 1)
+		self.assertEqual(email["args"]["notifications"][0]["description"], "Digest Discussion")
 		self.assertEqual(email["args"]["discussion_groups"][0]["title"], "Digest Team")
 
 		message, text_content = get_email_from_template(email["template"], email["args"])
