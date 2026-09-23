@@ -1,21 +1,6 @@
 # Copyright (c) 2026, Frappe Technologies Pvt Ltd and Contributors
 # See license.txt
 
-"""Who a notification reaches once the user has a say.
-
-Two things decide it. The global level on `GP User Profile` (`notification_level`:
-Mentions only or Mute) is the default for every discussion the user has not touched. A
-`GP Discussion Subscription` row is a deliberate choice on one discussion — Mute,
-Mentions only or Watch — and it wins over the global level whenever it exists. Nothing
-the user *does* (commenting, reading, being mentioned) ever writes a row for them; only
-the bell, or the "Watch discussions I start" checkbox at creation, does.
-
-Reactions and poll votes are about the user's own content and follow only their own
-toggles; the discussion's state never enters into it.
-
-`features/test_notifications.py` owns what a mention or reaction *says* and how rows are
-cleared; this file owns whether the row is written at all.
-"""
 
 import frappe
 
@@ -114,7 +99,6 @@ class TestGlobalLevel(PreferenceTestCase):
 		self.assertEqual([r.type for r in self.notifications_for(self.second_member)], ["Rich Quote"])
 
 	def test_mentions_only_does_not_notify_a_plain_comment(self):
-		"""A discussion the user never touched: a reply lands in unread counts, not the bell."""
 		with self.as_user(self.second_member):
 			untouched = create_discussion("Theirs", self.space)
 
@@ -144,11 +128,9 @@ class TestGlobalLevel(PreferenceTestCase):
 			create_comment(self.discussion, content=mention_html("_everyone_", "Everyone"))
 
 		self.assertEqual(self.notifications_for(self.second_member), [])
-		# Someone who is not muted still hears the @everyone.
 		self.assertEqual([r.type for r in self.notifications_for(self.admin)], ["Mention"])
 
 	def test_global_mute_does_not_touch_task_mentions(self):
-		"""Tasks have no discussion to mute; a mention there behaves as it always has."""
 		from gameplan.tests.fixtures import create_task
 
 		self.set_prefs(self.second_member, notification_level="Mute")
@@ -174,7 +156,6 @@ class TestDiscussionState(PreferenceTestCase):
 		self.assertIn("commented on Welcome thread", rows[0].message)
 
 	def test_watch_beats_a_global_mute(self):
-		"""Explicit beats default: the one thing a global Mute never overrides."""
 		self.set_prefs(self.second_member, notification_level="Mute")
 		self.subscribe(self.second_member, self.discussion, "Watch")
 
@@ -248,8 +229,6 @@ class TestDiscussionState(PreferenceTestCase):
 
 class TestWatchAndMentionTogether(PreferenceTestCase):
 	def test_a_mentioned_watcher_gets_the_mention_and_nothing_else(self):
-		"""One comment, one notification: the mention pass runs first and the watcher
-		fan-out leaves out everyone it reached."""
 		self.subscribe(self.second_member, self.discussion, "Watch")
 
 		self.mention_second_member()
@@ -386,9 +365,6 @@ class TestSetNotificationState(PreferenceTestCase):
 
 
 class TestParticipationLevel(PreferenceTestCase):
-	"""Starting a discussion or commenting in it writes the participation level as that
-	discussion's bell; from then on it is an ordinary bell."""
-
 	def test_starting_a_discussion_writes_watch_by_default(self):
 		with self.as_user(self.member):
 			discussion = create_discussion("Mine", self.space)
@@ -453,8 +429,6 @@ class TestParticipationLevel(PreferenceTestCase):
 
 class TestOwnContentToggles(PreferenceTestCase):
 	def test_reactions_follow_the_toggle_not_the_discussion_state(self):
-		"""A reaction is feedback on the owner's own content: a muted discussion does not
-		stop it, and neither does a global Mute."""
 		self.subscribe(self.member, self.discussion, "Mute")
 		self.set_prefs(self.member, notification_level="Mute")
 

@@ -1,16 +1,6 @@
 # Copyright (c) 2026, Frappe Technologies Pvt Ltd and contributors
 # For license information, please see license.txt
 
-"""The email channel: one mail an hour, per user who asked for email, with everything
-that arrived since the last one — and a closing mail as the user's active hours end, so
-nothing that arrived inside the window is left for the next day.
-
-Every notification is a `GP Notification` row first; this only decides which rows also
-go out by mail. A row is sent once (`email_sent_at`), and a row that no longer needs
-sending — read in the app already, written while the user was away (the card covers
-those), older than the horizon, or pointing at something the user can no longer open —
-is stamped without a mail so the next run does not pick it up again.
-"""
 
 from datetime import timedelta
 
@@ -37,14 +27,10 @@ from gameplan.permissions import can_view_space
 
 HORIZON_HOURS = 24
 MENTION_TYPES = ("Mention", "Rich Quote")
-# How often the scheduler calls send_batches (hooks.py); the closing mail lands in the
-# first tick after the window ends, so this is also how late it can be.
 TICK_MINUTES = 5
 
 
 def send_batches(now=None):
-	"""Scheduler entry, every TICK_MINUTES: a batch for every Email user whose clock says
-	it is time (`should_send`)."""
 	now = now or now_datetime()
 	users = frappe.get_all(
 		"GP User Profile", filters={"notification_channel": "Email", "enabled": 1}, pluck="user"
@@ -57,26 +43,18 @@ def send_batches(now=None):
 
 
 def should_send(user: str, now) -> bool:
-	"""The top of the hour while inside active hours, or the first tick after they end —
-	the closing mail. Evaluated in the user's own timezone, like the away stamp. A user
-	without a schedule is always inside; a user with the toggle off gets nothing."""
 	prefs = profile_prefs(user)
 	tz = user_timezone(user)
 	kind = is_away(prefs, now, tz)
 	if kind is None:
 		return now.minute < TICK_MINUTES
 	if kind == "Active hours":
-		# The off stretch we are in began when the window closed.
 		window_end, _ = scheduled_off_window(prefs, now, tz)
 		return now - window_end < timedelta(minutes=TICK_MINUTES)
 	return False
 
 
 def send_batch(user: str) -> list:
-	"""Send `user` their pending rows in one mail. Returns the rows that were sent.
-
-	A stretch the user was away for is caught up first, in its own mail, so what they
-	missed is not mixed into the ordinary hourly one."""
 	send_away_recap(user)
 	rows = deliverable_rows(user)
 	if rows:
@@ -86,9 +64,6 @@ def send_batch(user: str) -> list:
 
 
 def send_away_recap(user: str) -> list:
-	"""One catch-up mail for everything that arrived while `user` had notifications off or
-	was outside their active hours. Sent once per stretch (`recap_sent_at`), and the
-	stretch is stamped either way so an empty one is not looked at again."""
 	periods = pending_recap_periods(user)
 	if not periods:
 		return []
@@ -106,8 +81,6 @@ def send_away_recap(user: str) -> list:
 
 
 def pending_rows(user: str, away: list | None = None) -> list:
-	"""Unsent, unread rows — the ones that arrived during `away` stretches, or, without
-	`away`, the ones that did not arrive during any."""
 	return frappe.qb.get_query(
 		"GP Notification",
 		fields=[
@@ -143,9 +116,6 @@ def pending_rows(user: str, away: list | None = None) -> list:
 
 
 def deliverable_rows(user: str, away: list | None = None, horizon: bool = True) -> list:
-	"""`pending_rows` minus the ones not worth a mail, which are stamped on the way out:
-	too old to be news, or pointing at nothing the user can open (target deleted, access
-	lost). A catch-up has no horizon — being days old is the whole point of it."""
 	cutoff = add_to_date(now_datetime(), hours=-HORIZON_HOURS)
 	keep, drop = [], []
 	viewable = {}
@@ -164,7 +134,6 @@ def deliverable_rows(user: str, away: list | None = None, horizon: bool = True) 
 				continue
 		keep.append(row)
 	_stamp(drop)
-	# Read rows are not pending any more either; stamp them so the query stays small.
 	_stamp_read(user)
 	return keep
 

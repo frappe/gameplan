@@ -2,8 +2,6 @@ import frappe
 
 
 def execute():
-	# Same reason as set_notification_defaults: rows that predate the fields get the
-	# starting values written out, so "never touched" reads the same for everyone.
 	profile = frappe.qb.DocType("GP User Profile")
 	(
 		frappe.qb.update(profile)
