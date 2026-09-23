@@ -183,8 +183,13 @@ body {
   }
 
   /* Keep an author block and its message from splitting across pages */
-  [data-id] {
+  .comments-timeline > * {
     break-inside: avoid;
+    padding-bottom: 6mm;
+  }
+
+  .comments-timeline .sticky {
+    padding-top: 9mm !important;
   }
 
   .discussion-container .sticky,
