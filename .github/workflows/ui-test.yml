@@ -108,7 +108,11 @@ jobs:
         with:
           working-directory: frontend
         env:
-          CYPRESS_BASE_URL: http://gameplan.test:8000
+          # localhost, not gameplan.test: a service worker only registers on a secure
+          # origin, and the offline specs need one. install.sh makes gameplan.test the
+          # default site, so this still reaches it.
+          CYPRESS_BASE_URL: http://localhost:8000
+          GAMEPLAN_SITE: gameplan.test
           # No SKIP_REALTIME_E2E: `bench start` runs the Procfile's socketio process, so the
           # realtime service is listening on 9000 and the spec's preflight can reach it. The
           # skip predated that being checked and made the suite's realtime coverage dead.
