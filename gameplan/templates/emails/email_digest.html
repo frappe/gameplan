@@ -45,7 +45,7 @@
 							<div class="gp-email-digest__item-title">
 								{{ item.title | e }}
 							</div>
-							<div class="gp-email-digest__description">{{ item.description | e }}</div>
+							{% if item.description %}<div class="gp-email-digest__description">{{ item.description | e }}</div>{% endif %}
 							{% if item.metadata %}
 							<div class="gp-email-digest__metadata">{{ item.metadata | e }}</div>
 							{% endif %}

@@ -41,32 +41,18 @@ def is_away(prefs, now: datetime | None = None, tz: ZoneInfo | None = None) -> s
 
 
 def scheduled_off_window(prefs, now: datetime | None = None, tz: ZoneInfo | None = None):
-	"""The off stretch `now` falls in, as system-time `(start, end)`, or None while inside
-	active hours on a selected day.
-
-	An active stretch runs from `active_hours_start` to `active_hours_end` on each selected
-	day; when the end is not after the start it finishes the next day, and the stretch
-	belongs to the day it started on. The off stretch is what lies between two active
-	ones, so it can span days the user does not work at all.
-	"""
 	days = _selected_days(prefs)
 	start, end = prefs.get("active_hours_start"), prefs.get("active_hours_end")
-	# `is None`, not truthiness: a Time read from the database is a timedelta, and
-	# midnight is timedelta(0).
 	if not days or start is None or end is None or start == "" or end == "":
 		return None
 
 	tz = tz or ZoneInfo(get_system_timezone())
-	now_local = _local(now or now_datetime(), tz)
+	now_local = local_time(now or now_datetime(), tz)
 	start, end = get_time(start), get_time(end)
-	# The settings page offers minutes, so "until the end of the day" is entered as 23:59;
-	# read literally it would leave a one-minute hole before midnight every day.
 	if end >= END_OF_DAY:
 		end = time(0, 0)
 	overnight = end <= start
 
-	# Every active stretch starting within a week either side is enough to bracket now,
-	# even for someone who works one day a week.
 	stretches = []
 	for offset in range(-8, 9):
 		day = now_local.date() + timedelta(days=offset)
@@ -158,7 +144,7 @@ def _selected_days(prefs) -> set[str]:
 	return {day for day in (days or []) if day in DAYS}
 
 
-def _local(system_naive: datetime, tz: ZoneInfo) -> datetime:
+def local_time(system_naive: datetime, tz: ZoneInfo) -> datetime:
 	return get_datetime(system_naive).replace(tzinfo=ZoneInfo(get_system_timezone())).astimezone(tz)
 
 

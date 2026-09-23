@@ -192,8 +192,7 @@ class TestActiveHours(AwayTestCase):
 
 	def test_the_first_row_in_a_quiet_window_creates_the_stretch_and_the_second_reuses_it(self):
 		frappe.db.set_value("User", self.second_member.name, "time_zone", "Asia/Kolkata")
-		now_local = away._local(now_datetime(), self.IST)
-		# Hours that put "now" outside them: a one-hour window that ended two hours ago.
+		now_local = away.local_time(now_datetime(), self.IST)
 		start = (now_local.replace(minute=0, second=0, microsecond=0) - timedelta(hours=3)).time()
 		end = (now_local.replace(minute=0, second=0, microsecond=0) - timedelta(hours=2)).time()
 		self.set_prefs(

@@ -13,7 +13,7 @@
 		<td class="gp-email-digest__content-cell{% if not first %} gp-email-digest__content-cell--divided{% endif %}">
 			{% if item.url %}<a class="gp-email-digest__content-link" href="{{ item.url | e }}">{% else %}<div class="gp-email-digest__content">{% endif %}
 				<div class="gp-email-digest__item-title">{{ item.title | e }}</div>
-				<div class="gp-email-digest__description">{{ item.description | e }}</div>
+				{% if item.description %}<div class="gp-email-digest__description">{{ item.description | e }}</div>{% endif %}
 				{% if item.metadata %}<div class="gp-email-digest__metadata">{{ item.metadata | e }}</div>{% endif %}
 			{% if item.url %}</a>{% else %}</div>{% endif %}
 		</td>

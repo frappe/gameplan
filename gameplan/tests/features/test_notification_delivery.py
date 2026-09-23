@@ -1,20 +1,13 @@
 # Copyright (c) 2026, Frappe Technologies Pvt Ltd and Contributors
 # See license.txt
 
-"""The email channel: one hourly mail per user who asked for it, each row sent once, and
-a closing mail as the user's active hours end.
-
-Everything is a `GP Notification` row first; delivery only decides which rows also go
-out by mail. Rows already read, written during an away stretch, older than the horizon
-or pointing at something the user can no longer open are stamped instead of sent, so
-the next run does not see them again.
-"""
 
 from datetime import datetime
 from unittest.mock import MagicMock, patch
+from zoneinfo import ZoneInfo
 
 import frappe
-from frappe.utils import add_to_date, get_datetime, now_datetime
+from frappe.utils import add_to_date, format_datetime, get_datetime, get_system_timezone, now_datetime
 from frappe.utils.jinja import get_email_from_template
 
 from gameplan.notifications import delivery
@@ -94,13 +87,36 @@ class TestHourlyBatch(DeliveryTestCase):
 		self.assertEqual(email["recipients"], [self.second_member.name])
 		self.assertEqual(email["subject"], "2 new notifications in Gameplan")
 		self.assertEqual(email["template"], "notification_batch")
-		self.assertEqual([item["title"] for item in email["args"]["mentions"]], ["Roadmap"])
+		mention = email["args"]["mentions"][0]
+		self.assertIn("mentioned you", mention["title"])
+		self.assertEqual(mention["description"], "Roadmap")
 		self.assertEqual(len(email["args"]["others"]), 1)
-		self.assertIn("2 new comments", email["args"]["others"][0]["description"])
+		self.assertIn("2 new comments", email["args"]["others"][0]["title"])
 
 		message, text = get_email_from_template(email["template"], email["args"])
 		self.assertIn("Mentions", message)
 		self.assertIn("Roadmap", text)
+
+	def test_an_item_never_prints_its_discussion_title_twice(self):
+		self.mention_second_member()
+		frappe.get_doc(
+			doctype="GP Discussion Subscription",
+			user=self.second_member.name,
+			discussion=self.discussion.name,
+			state="Watch",
+		).insert(ignore_permissions=True)
+		with self.as_user(self.member):
+			create_comment(self.discussion, content="<p>One</p>")
+
+		email = self.run_hourly().call_args.kwargs
+
+		comment = email["args"]["others"][0]
+		self.assertIn("Roadmap", comment["title"])
+		self.assertEqual(comment["description"], "")
+
+		mention = email["args"]["mentions"][0]
+		self.assertNotIn("Roadmap", mention["title"])
+		self.assertEqual(mention["description"], "Roadmap")
 
 	def test_every_sent_row_is_stamped_and_the_next_run_sends_nothing(self):
 		self.mention_second_member()
@@ -321,3 +337,29 @@ class TestAwayRecap(DeliveryTestCase):
 		self.away_and_back()
 
 		self.run_hourly().assert_not_called()
+
+	def test_the_window_is_written_in_the_readers_timezone(self):
+		period = frappe.get_doc(
+			doctype="GP Away Period",
+			user=self.second_member.name,
+			kind="Toggle",
+			starts_at="2026-09-20 22:00:00",
+			ends_at="2026-09-21 08:00:00",
+		).insert(ignore_permissions=True)
+		periods = frappe.get_all(
+			"GP Away Period", filters={"name": period.name}, fields=["name", "starts_at", "ends_at"]
+		)
+
+		frappe.db.set_value("User", self.second_member.name, "time_zone", "Asia/Kolkata")
+		kolkata = delivery.recap_context(self.second_member.name, [], periods)["window"]
+		frappe.db.set_value("User", self.second_member.name, "time_zone", "Asia/Gaza")
+		gaza = delivery.recap_context(self.second_member.name, [], periods)["window"]
+
+		self.assertNotEqual(kolkata, gaza)
+		for zone, window in (("Asia/Kolkata", kolkata), ("Asia/Gaza", gaza)):
+			local = (
+				get_datetime("2026-09-20 22:00:00")
+				.replace(tzinfo=ZoneInfo(get_system_timezone()))
+				.astimezone(ZoneInfo(zone))
+			)
+			self.assertIn(format_datetime(local.replace(tzinfo=None), "h:mm a"), window)
