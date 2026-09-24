@@ -752,12 +752,21 @@ function cancelEdit() {
 
 function updatePost() {
   if (!editingPost.value || !canSavePost.value) return
+  // Show the new title at once instead of the old one until the server answers.
+  // A failed save resolves null, so put the old title back, unless something newer replaced it.
+  const title = postDraftData.value?.title
+  const previousTitle = discussion.doc?.title
+  if (discussion.doc && title) discussion.doc.title = title
   discussion.setValue
     .submit({
-      title: postDraftData.value?.title,
+      title,
       content: postDraftData.value?.content,
     })
-    .then(async () => {
+    .then(async (response) => {
+      const doc = discussion.doc
+      if (!response && doc && doc.title === title && previousTitle !== undefined) {
+        doc.title = previousTitle
+      }
       // Content is saved onto the post; migrate the draft's attachments and delete it.
       await postDraft.commit()
       tags.reload()
