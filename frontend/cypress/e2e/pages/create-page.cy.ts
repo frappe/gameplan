@@ -37,5 +37,9 @@ describe('Pages in a space', () => {
       `${Cypress.config().baseUrl}/g/community/${community}/space/${space}/pages`,
     )
     cy.contains('a', 'Untitled').should('exist')
+
+    // Opening it again from the list must render the page, not leave the list on screen.
+    cy.contains('a', 'Untitled').click()
+    cy.get('[contenteditable=true]').should('be.visible').should('contain.text', pageContent)
   })
 })
