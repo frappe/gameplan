@@ -1,4 +1,4 @@
-import { computed, ref } from 'vue'
+import { computed, ref, type Ref } from 'vue'
 import { toast, useDoctype } from 'frappe-ui'
 import type { GPUserProfile } from '@/types/doctypes'
 
@@ -7,8 +7,6 @@ export type NotificationChannel = 'In-app' | 'Push' | 'Email'
 
 export type DiscussionNotificationState = 'Mute' | 'Mentions only' | 'Watch'
 export type DiscussionNotificationChoice = DiscussionNotificationState | 'Default'
-
-export const defaultNotificationLevel: NotificationLevel = 'Mentions only'
 
 export type Weekday = 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun'
 export const allWeekdays: Weekday[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -19,7 +17,6 @@ export const participationLevels = ['Watch', 'Mentions only'] as const
 export type ParticipationLevel = (typeof participationLevels)[number]
 export const defaultParticipationLevel: ParticipationLevel = 'Watch'
 
-const level = ref<NotificationLevel>(defaultNotificationLevel)
 const participation = ref<ParticipationLevel>(defaultParticipationLevel)
 const receiveNotifications = ref(true)
 const channel = ref<NotificationChannel>('In-app')
@@ -27,23 +24,19 @@ const activeHoursStart = ref(allDayStart)
 const activeHoursEnd = ref(allDayEnd)
 const activeHoursDays = ref<Weekday[]>([...allWeekdays])
 const profileName = ref('')
-const saving = ref(false)
 
 const userProfiles = useDoctype<GPUserProfile>('GP User Profile')
 const saveToastId = 'notification-preference-save'
 
-export const currentNotificationLevel = computed(() => level.value)
 export const currentParticipationLevel = computed(() => participation.value)
 export const currentReceiveNotifications = computed(() => receiveNotifications.value)
 export const currentNotificationChannel = computed(() => channel.value)
 export const currentActiveHoursStart = computed(() => activeHoursStart.value)
 export const currentActiveHoursEnd = computed(() => activeHoursEnd.value)
 export const currentActiveHoursDays = computed(() => activeHoursDays.value)
-export const isSavingNotificationPreference = computed(() => saving.value)
 
 export function loadNotificationPreferences(
   user: {
-    notification_level?: unknown
     participation_level?: unknown
     notification_channel?: unknown
     receive_notifications?: unknown
@@ -55,7 +48,6 @@ export function loadNotificationPreferences(
   currentProfileName = '',
 ) {
   profileName.value = currentProfileName
-  level.value = normalizeLevel(user.notification_level)
   participation.value = normalizeParticipation(user.participation_level)
   receiveNotifications.value = toBoolean(user.receive_notifications, true)
   channel.value = normalizeChannel(user.notification_channel)
@@ -65,39 +57,28 @@ export function loadNotificationPreferences(
   activeHoursDays.value = scheduled ? normalizeDays(user.active_hours_days) : [...allWeekdays]
 }
 
-export function setNotificationLevel(value: unknown) {
-  const next = normalizeLevel(value)
-  const previous = level.value
+function setPref<T>(
+  target: Ref<T>,
+  value: unknown,
+  normalize: (value: unknown) => T,
+  field: keyof GPUserProfile,
+  toStored: (value: T) => unknown = (v) => v,
+) {
+  const next = normalize(value)
+  const previous = target.value
   if (next === previous) return
-  level.value = next
-  void persist({ notification_level: next }, () => (level.value = previous))
+  target.value = next
+  void persist({ [field]: toStored(next) } as Partial<GPUserProfile>, () => (target.value = previous))
 }
 
-export function setParticipationLevel(value: unknown) {
-  const next = normalizeParticipation(value)
-  const previous = participation.value
-  if (next === previous) return
-  participation.value = next
-  void persist({ participation_level: next }, () => (participation.value = previous))
-}
+export const setParticipationLevel = (value: unknown) =>
+  setPref(participation, value, normalizeParticipation, 'participation_level')
 
-export function setNotificationChannel(value: unknown) {
-  const next = normalizeChannel(value)
-  const previous = channel.value
-  if (next === previous) return
-  channel.value = next
-  void persist({ notification_channel: next }, () => (channel.value = previous))
-}
+export const setNotificationChannel = (value: unknown) =>
+  setPref(channel, value, normalizeChannel, 'notification_channel')
 
-export function setReceiveNotifications(value: boolean) {
-  const previous = receiveNotifications.value
-  if (value === previous) return
-  receiveNotifications.value = value
-  void persist(
-    { receive_notifications: value ? 1 : 0 },
-    () => (receiveNotifications.value = previous),
-  )
-}
+export const setReceiveNotifications = (value: boolean) =>
+  setPref(receiveNotifications, value, Boolean, 'receive_notifications', (on) => (on ? 1 : 0))
 
 export function setActiveHours(patch: { start?: string; end?: string; days?: Weekday[] }) {
   const previous = {
@@ -133,15 +114,12 @@ export function setActiveHours(patch: { start?: string; end?: string; days?: Wee
 
 async function persist(patch: Partial<GPUserProfile>, rollback: () => void) {
   if (!profileName.value) return
-  saving.value = true
   try {
     await userProfiles.setValue.submit({ name: profileName.value, ...patch })
     toast.success('Notification preference saved', { id: saveToastId })
   } catch {
     rollback()
     toast.error('Could not save notification preference', { id: saveToastId })
-  } finally {
-    saving.value = false
   }
 }
 
@@ -149,10 +127,6 @@ function normalizeParticipation(value: unknown): ParticipationLevel {
   return participationLevels.includes(value as ParticipationLevel)
     ? (value as ParticipationLevel)
     : defaultParticipationLevel
-}
-
-function normalizeLevel(value: unknown): NotificationLevel {
-  return value === 'Mute' ? 'Mute' : defaultNotificationLevel
 }
 
 function normalizeChannel(value: unknown): NotificationChannel {

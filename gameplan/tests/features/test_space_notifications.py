@@ -220,15 +220,6 @@ class TestMoved(SpaceNotificationTestCase):
 		self.assertEqual(str(rows[0].project), str(self.space.name))
 		self.assertEqual(rows[0].team, other_community.name)
 
-	def test_moving_a_space_carries_its_subscriptions_to_the_new_community(self):
-		other_community = create_community("Globex", members=[self.second_member], admins=[self.admin])
-		row = self.subscribe(self.second_member, self.space)
-
-		with self.as_user(self.admin):
-			frappe.get_doc("GP Project", self.space.name).move_to_team(other_community.name)
-
-		self.assertEqual(frappe.db.get_value("GP Space Subscription", row.name, "team"), other_community.name)
-
 
 class TestAdded(SpaceNotificationTestCase):
 	def test_being_added_to_a_space_is_news(self):

@@ -7,7 +7,6 @@ from frappe.utils import get_fullname
 
 from gameplan.notifications import records
 from gameplan.notifications.preferences import (
-	PARTICIPATION_STATE,
 	bulk_levels,
 	participation_level,
 	profile_prefs,
@@ -66,7 +65,7 @@ def is_muted(user: str, discussion: str) -> bool:
 def subscribe_on_participation(user: str, discussion: str) -> str | None:
 	if subscription_state(user, discussion):
 		return None
-	state = PARTICIPATION_STATE[participation_level(user)]
+	state = participation_level(user)
 	frappe.get_doc(
 		doctype="GP Discussion Subscription", user=user, discussion=discussion, state=state
 	).insert(ignore_permissions=True)
@@ -79,6 +78,12 @@ def discussion_watchers(discussion: str) -> list[str]:
 		filters={"discussion": discussion, "state": "Watch"},
 		pluck="user",
 	)
+
+
+def _fan_out(recipients: list[str], **values) -> list[str]:
+	for user in recipients:
+		records.write_or_merge(to_user=user, **values)
+	return recipients
 
 
 def notify_comment(comment_doc, already_notified: set[str] | None = None) -> list[str]:
@@ -98,17 +103,15 @@ def notify_comment(comment_doc, already_notified: set[str] | None = None) -> lis
 
 	title = frappe.db.get_value("GP Discussion", discussion, "title")
 	author = get_fullname(comment_doc.owner)
-	for user in recipients:
-		records.write_or_merge(
-			to_user=user,
-			type="Comment",
-			merge=True,
-			from_user=comment_doc.owner,
-			discussion=discussion,
-			message=f"{author} commented on {title}",
-			merged_message=f"{{count}} new comments in {title}",
-		)
-	return recipients
+	return _fan_out(
+		recipients,
+		type="Comment",
+		merge=True,
+		from_user=comment_doc.owner,
+		discussion=discussion,
+		message=f"{author} commented on {title}",
+		merged_message=f"{{count}} new comments in {title}",
+	)
 
 
 def space_subscribers(projects: list) -> list[str]:
@@ -128,18 +131,16 @@ def notify_new_discussion(discussion_doc) -> list[str]:
 
 	space = frappe.db.get_value("GP Project", discussion_doc.project, "title")
 	author_name = get_fullname(author)
-	for user in recipients:
-		records.write_or_merge(
-			to_user=user,
-			type="New Discussion",
-			merge=False,
-			from_user=author,
-			discussion=discussion_doc.name,
-			project=discussion_doc.project,
-			team=discussion_doc.team,
-			message=f"{author_name} started a discussion in {space}",
-		)
-	return recipients
+	return _fan_out(
+		recipients,
+		type="New Discussion",
+		merge=False,
+		from_user=author,
+		discussion=discussion_doc.name,
+		project=discussion_doc.project,
+		team=discussion_doc.team,
+		message=f"{author_name} started a discussion in {space}",
+	)
 
 
 def notify_added(user: str, *, project=None, team=None, actor: str | None = None):
@@ -176,18 +177,16 @@ def notify_discussion_moved(discussion_doc, old_project, actor: str) -> list[str
 
 	space = frappe.db.get_value("GP Project", discussion_doc.project, "title")
 	mover = get_fullname(actor)
-	for user in recipients:
-		records.write_or_merge(
-			to_user=user,
-			type="Moved",
-			merge=False,
-			from_user=actor,
-			discussion=discussion_doc.name,
-			project=discussion_doc.project,
-			team=discussion_doc.team,
-			message=f"{mover} moved {discussion_doc.title} to {space}",
-		)
-	return recipients
+	return _fan_out(
+		recipients,
+		type="Moved",
+		merge=False,
+		from_user=actor,
+		discussion=discussion_doc.name,
+		project=discussion_doc.project,
+		team=discussion_doc.team,
+		message=f"{mover} moved {discussion_doc.title} to {space}",
+	)
 
 
 def notify_space_moved(project_doc, actor: str) -> list[str]:
@@ -198,17 +197,15 @@ def notify_space_moved(project_doc, actor: str) -> list[str]:
 
 	community = frappe.db.get_value("GP Team", project_doc.team, "title")
 	mover = get_fullname(actor)
-	for user in recipients:
-		records.write_or_merge(
-			to_user=user,
-			type="Moved",
-			merge=False,
-			from_user=actor,
-			project=str(project_doc.name),
-			team=project_doc.team,
-			message=f"{mover} moved {project_doc.title} to {community}",
-		)
-	return recipients
+	return _fan_out(
+		recipients,
+		type="Moved",
+		merge=False,
+		from_user=actor,
+		project=str(project_doc.name),
+		team=project_doc.team,
+		message=f"{mover} moved {project_doc.title} to {community}",
+	)
 
 
 def notify_poll_vote(poll_doc, voter: str):

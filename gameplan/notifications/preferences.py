@@ -9,7 +9,6 @@ LEVELS = ("Mentions only", "Mute")
 
 DEFAULT_PARTICIPATION = "Watch"
 PARTICIPATION_LEVELS = ("Watch", "Mentions only")
-PARTICIPATION_STATE = {"Watch": "Watch", "Mentions only": "Mentions only"}
 
 PREF_FIELDS = (
 	"notification_level",

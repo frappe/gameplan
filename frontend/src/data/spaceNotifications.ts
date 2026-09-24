@@ -21,24 +21,7 @@ export function isSpaceNotifying(project: string | number) {
 
 const toggleToastId = 'space-notifications-toggle'
 
-export async function toggleSpaceNotifications(project: string | number) {
-  const row = subscriptionByProject.value.get(String(project))
-  try {
-    if (row) {
-      await spaceSubscriptions.delete.submit({ name: row.name })
-      toast.success('You will no longer be notified about new discussions here', {
-        id: toggleToastId,
-      })
-    } else {
-      await spaceSubscriptions.insert.submit({ project: String(project) })
-      toast.success('You will be notified about new discussions here', { id: toggleToastId })
-    }
-  } catch {
-    toast.error('Could not update space notifications', { id: toggleToastId })
-  }
-}
-
-export async function setSpaceNotifications(projects: (string | number)[], on: boolean) {
+async function apply(projects: (string | number)[], on: boolean, message: string) {
   const changing = projects.filter((project) => isSpaceNotifying(project) !== on)
   try {
     await Promise.all(
@@ -49,13 +32,29 @@ export async function setSpaceNotifications(projects: (string | number)[], on: b
           : row && spaceSubscriptions.delete.submit({ name: row.name })
       }),
     )
-    toast.success(
-      on
-        ? 'You will be notified about new discussions in these spaces'
-        : 'You will no longer be notified about new discussions in these spaces',
-      { id: toggleToastId },
-    )
+    toast.success(message, { id: toggleToastId })
   } catch {
     toast.error('Could not update space notifications', { id: toggleToastId })
   }
+}
+
+export function toggleSpaceNotifications(project: string | number) {
+  const on = !isSpaceNotifying(project)
+  return apply(
+    [project],
+    on,
+    on
+      ? 'You will be notified about new discussions here'
+      : 'You will no longer be notified about new discussions here',
+  )
+}
+
+export function setSpaceNotifications(projects: (string | number)[], on: boolean) {
+  return apply(
+    projects,
+    on,
+    on
+      ? 'You will be notified about new discussions in these spaces'
+      : 'You will no longer be notified about new discussions in these spaces',
+  )
 }
