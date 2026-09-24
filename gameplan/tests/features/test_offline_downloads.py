@@ -8,7 +8,6 @@ inside a window, then fetches them a page at a time with their comments, activit
 the rows the feeds render.
 """
 
-import json
 from unittest.mock import patch
 
 import frappe
@@ -25,13 +24,11 @@ from gameplan.tests.fixtures import (
 	create_space,
 )
 
-FIELDS = json.dumps(
-	{
-		"comments": ["name", "content", "owner", "creation", {"reactions": ["name", "user", "emoji"]}],
-		"activities": ["name", "user", "action", "data", "creation"],
-		"polls": ["name", "title", "creation", {"options": ["name", "title", "idx"]}],
-	}
-)
+FIELDS = {
+	"comments": ["name", "content", "owner", "creation", {"reactions": ["name", "user", "emoji"]}],
+	"activities": ["name", "user", "action", "data", "creation"],
+	"polls": ["name", "title", "creation", {"options": ["name", "title", "idx"]}],
+}
 
 
 def set_last_post_at(discussion, when):
@@ -79,12 +76,12 @@ class OfflineDownloadsTestCase(GameplanTestCase):
 	def visited(self, cached):
 		"""The index's answer for these visited discussions, as the member."""
 		with self.as_user(self.member):
-			return get_offline_index(30, json.dumps(cached))
+			return get_offline_index(30, cached)
 
 	def bundle(self, window, names=None):
 		"""What a device asks for: everything in the window unless a test names its own."""
 		with self.as_user(self.member):
-			names = json.dumps(names if names is not None else self.index(window))
+			names = names if names is not None else self.index(window)
 			return get_offline_bundle(window, FIELDS, names)
 
 	def settle_before(self, when):
@@ -218,30 +215,25 @@ class TestOfflineIndex(OfflineDownloadsTestCase):
 		revoked = self.visited(cached)["revoked"]
 		self.assertEqual(revoked, [str(discussion.name)])
 
-	def test_rejects_input_that_is_not_a_list_of_names(self):
-		"""A whitelisted argument arrives as whatever was posted."""
+	def test_rejects_arguments_of_the_wrong_type(self):
+		"""Frappe checks every argument against its annotation, and answers 417 on a mismatch."""
 		with self.as_user(self.member):
-			for cached in ('{"name": 1}', "5", '"just-a-string"'):
-				with self.subTest(cached=cached):
-					with self.assertRaises(frappe.ValidationError):
-						get_offline_index(30, cached=cached)
+			for kwargs in (
+				{"cached": {"name": 1}},
+				{"cached": "5"},
+				{"cached": "[1,"},
+				{"since": "nonsense"},
+				{"since": "2026-13-45"},
+				{"since": {"a": 1}},
+			):
+				with self.subTest(**kwargs), self.assertRaises(frappe.exceptions.FrappeTypeError):
+					get_offline_index(30, **kwargs)
 
-	def test_rejects_cached_names_that_are_not_json(self):
-		"""Text the server cannot parse is the client's mistake, not a server error."""
+	def test_reads_the_last_sync_time_with_or_without_a_zone(self):
 		with self.as_user(self.member):
-			for cached in ("{", "[1,", "nope{"):
-				with self.subTest(cached=cached), self.assertRaises(frappe.ValidationError):
-					get_offline_index(30, cached=cached)
-
-	def test_rejects_a_last_sync_time_it_cannot_read(self):
-		"""Refused whichever layer catches it: the endpoint's annotation, or the parse."""
-		with self.as_user(self.member):
-			for since in ("nonsense", "2026-13-45"):
-				with self.subTest(since=since), self.assertRaises(frappe.ValidationError):
-					get_offline_index(30, since=since)
-			for since in (5, {"a": 1}):
-				with self.subTest(since=since), self.assertRaises(frappe.exceptions.FrappeTypeError):
-					get_offline_index(30, since=since)
+			for since in (str(now_datetime()), "2026-01-01T00:00:00Z", 5):
+				with self.subTest(since=since):
+					self.assertIsInstance(get_offline_index(30, since=since)["changed"], list)
 
 	def test_rejects_an_empty_window(self):
 		with self.as_user(self.member), self.assertRaises(frappe.ValidationError):
@@ -296,52 +288,33 @@ class TestOfflineBundle(OfflineDownloadsTestCase):
 	def test_projects_only_the_fields_the_offline_cache_uses(self):
 		"""The device picks the shape it caches; it does not pick the columns."""
 		create_comment(self.recent, content="Hello", owner=self.member)
-		fields = json.dumps(
-			{
-				"comments": ["name", "content", "password", {"reactions": ["user", "modified_by"]}],
-				"activities": ["name", "user"],
-				"polls": ["name"],
-			}
-		)
+		fields = {
+			"comments": ["name", "content", "password", {"reactions": ["user", "modified_by"]}],
+			"activities": ["name", "user"],
+			"polls": ["name"],
+		}
 		with self.as_user(self.member):
-			bundle = get_offline_bundle(30, fields, json.dumps([str(self.recent.name)]))
+			bundle = get_offline_bundle(30, fields, [str(self.recent.name)])
 		comment = bundle["comments"][str(self.recent.name)][0]
 		self.assertEqual(sorted(comment.keys()), ["content", "name", "reactions"])
 
 	def test_rejects_a_field_list_of_the_wrong_shape(self):
-		"""Every level of `fields` arrives as whatever was posted, nested ones included."""
-		names = json.dumps([str(self.recent.name)])
+		"""Every level of `fields` is typed, nested child tables included."""
+		names = [str(self.recent.name)]
 		for fields in (
-			'{"comments": 5}',
-			'{"comments": "name"}',
-			'{"comments": [{"reactions": null}]}',
-			'{"comments": [{"reactions": {"user": 1}}]}',
+			[],
+			"{",
+			{"comments": 5},
+			{"comments": "name"},
+			{"comments": [{"reactions": None}]},
+			{"comments": [{"reactions": {"user": 1}}]},
+			{"comments": ["name", {"reactions": [{"deeper": ["name"]}]}]},
 		):
 			with self.subTest(fields=fields), self.as_user(self.member):
-				with self.assertRaises(frappe.ValidationError):
+				with self.assertRaises(frappe.exceptions.FrappeTypeError):
 					get_offline_bundle(30, fields, names)
-
-	def test_drops_a_nested_field_that_is_not_a_column(self):
-		create_comment(self.recent, content="Hello", owner=self.member)
-		fields = json.dumps({"comments": ["name", {"reactions": [{"deeper": ["name"]}, "user"]}]})
-		with self.as_user(self.member):
-			bundle = get_offline_bundle(30, fields, json.dumps([str(self.recent.name)]))
-		comment = bundle["comments"][str(self.recent.name)][0]
-		self.assertEqual(sorted(comment.keys()), ["name", "reactions"])
-
-	def test_rejects_a_request_that_is_not_json(self):
-		names = json.dumps([str(self.recent.name)])
-		with self.as_user(self.member):
-			for fields in ("{", '{"comments": ['):
-				with self.subTest(fields=fields), self.assertRaises(frappe.ValidationError):
-					get_offline_bundle(30, fields, names)
-			with self.assertRaises(frappe.ValidationError):
-				get_offline_bundle(30, FIELDS, "[")
-
-	def test_rejects_a_field_list_that_is_not_a_mapping(self):
-		with self.as_user(self.member):
-			with self.assertRaises(frappe.ValidationError):
-				get_offline_bundle(30, "[]", json.dumps([str(self.recent.name)]))
+		with self.as_user(self.member), self.assertRaises(frappe.exceptions.FrappeTypeError):
+			get_offline_bundle(30, FIELDS, "[")
 
 	def test_a_page_is_held_to_the_window_not_to_the_device_cap(self):
 		"""The cap is how much a device keeps, not a boundary the bundle enforces."""

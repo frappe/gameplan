@@ -13,8 +13,7 @@ from datetime import datetime
 import frappe
 from frappe import _
 from frappe.api.v2 import read_doc
-from frappe.model.base_document import get_controller
-from frappe.utils import add_days, cint, get_datetime, now_datetime
+from frappe.utils import add_days, now_datetime
 
 from gameplan.gameplan.doctype.gp_discussion.api import get_discussions
 from gameplan.permissions import apply_project_query_filter, is_member_parent
@@ -48,6 +47,8 @@ ALLOWED_FIELDS = {
 		"reactions",
 	},
 }
+# A child list's fields as the device asks for them: names, or a child table with its own.
+FieldList = list[str | dict[str, list[str]]]
 ALLOWED_CHILD_FIELDS = {
 	"reactions": {"name", "user", "emoji"},
 	"options": {"name", "title", "idx", "percentage"},
@@ -56,17 +57,21 @@ ALLOWED_CHILD_FIELDS = {
 
 
 @frappe.whitelist(methods=["POST"])
-def get_offline_index(window_days: int, cached: list | str | None = None, since: str | None = None) -> dict:
+def get_offline_index(
+	window_days: int, cached: list[str | int] | None = None, since: datetime | None = None
+) -> dict:
 	"""Discussions the device should hold, newest activity first.
 
 	`changed` lists what changed after `since`, `places` where each one sits now, and
-	`revoked` which of the `cached` visited discussions the user can no longer read.
+	`revoked` which of the `cached` visited discussions the user can no longer read. The
+	arguments are type-checked by frappe from these annotations before the body runs.
 	"""
 	_check_rate_limit()
 	window = _allowed_window(window_days)
 	synced_at = now_datetime()
-	since = _since(since)
-	visited = _names(cached, MAX_CACHED)
+	# The app sends back the server's own naive timestamp; one with a zone is read the same way.
+	since = since and since.replace(tzinfo=None)
+	visited = [str(name) for name in (cached or [])[:MAX_CACHED]]
 	rows = _discussions_in_window(window)
 	return {
 		"discussions": [row.name for row in rows],
@@ -78,17 +83,14 @@ def get_offline_index(window_days: int, cached: list | str | None = None, since:
 
 
 @frappe.whitelist(methods=["POST"])
-def get_offline_bundle(window_days: int, fields: dict | str, names: list | str) -> dict:
+def get_offline_bundle(window_days: int, fields: dict[str, FieldList], names: list[str | int]) -> dict:
 	"""A page of discussions with their comments, activity and polls, plus the rows the feeds
 	render. `names` outside the window or the user's reach are skipped, and `fields` is held
 	to ALLOWED_FIELDS.
 	"""
 	_check_rate_limit()
 	window = _allowed_window(window_days)
-	fields = _parse_json(fields, _("Expected a field list per child table."))
-	if not isinstance(fields, dict):
-		frappe.throw(_("Expected a field list per child table."), frappe.ValidationError)
-	wanted = _names(names, PAGE_SIZE)
+	wanted = [str(name) for name in names[:PAGE_SIZE]]
 	names = [row.name for row in _discussions_in_window(window, names=wanted)]
 
 	bundle = {
@@ -100,74 +102,25 @@ def get_offline_bundle(window_days: int, fields: dict | str, names: list | str) 
 	return bundle
 
 
-def _since(value: str | None) -> datetime | None:
-	"""When the device last finished a sync, or None on its first. `get_datetime` fails on
-	junk in several different ways, so they are turned into one message here."""
-	if not value:
-		return None
-	try:
-		since = get_datetime(value)
-	except Exception:
-		since = None
-	if since is None:
-		frappe.throw(_("Expected the time of the last sync."), frappe.ValidationError)
-	return since
-
-
-def _names(value: list | str | None, limit: int) -> list[str]:
-	"""Discussion names as posted: a list, at most `limit` long, stringified."""
-	names = _parse_json(value, _("Expected a list of discussion names."))
-	if names is None:
-		return []
-	if not isinstance(names, list):
-		frappe.throw(_("Expected a list of discussion names."), frappe.ValidationError)
-	return [str(name) for name in names[:limit] if isinstance(name, str | int)]
-
-
-def _parse_json(value, message: str):
-	"""A posted argument, parsed if it arrived as JSON text. Unparseable text is a validation
-	error rather than the JSONDecodeError `frappe.parse_json` would raise as a server error."""
-	if not isinstance(value, str):
-		return value
-	try:
-		return frappe.parse_json(value)
-	except ValueError:
-		frappe.throw(message, frappe.ValidationError)
-
-
-def _allowed_fields(key: str, fields) -> list:
+def _allowed_fields(key: str, fields: FieldList | None) -> list:
 	"""The requested columns of one child list that ALLOWED_FIELDS permits, in order."""
-	if fields is None:
-		return []
 	allowed = ALLOWED_FIELDS[key]
 	kept = []
-	for field in _field_list(fields):
+	for field in fields or []:
 		if isinstance(field, str):
 			if field in allowed:
 				kept.append(field)
-		elif isinstance(field, dict):
-			for child, columns in field.items():
-				if child not in allowed or child not in ALLOWED_CHILD_FIELDS:
-					continue
-				columns = [
-					column
-					for column in _field_list(columns)
-					if isinstance(column, str) and column in ALLOWED_CHILD_FIELDS[child]
-				]
-				if columns:
-					kept.append({child: columns})
+			continue
+		for child, columns in field.items():
+			columns = (
+				[c for c in columns if c in ALLOWED_CHILD_FIELDS.get(child, ())] if child in allowed else []
+			)
+			if columns:
+				kept.append({child: columns})
 	return kept
 
 
-def _field_list(value) -> list:
-	"""A field list as posted; anything but a list is malformed."""
-	if not isinstance(value, list):
-		frappe.throw(_("Expected a list of field names."), frappe.ValidationError)
-	return value
-
-
-def _allowed_window(window_days: int) -> int:
-	window = cint(window_days)
+def _allowed_window(window: int) -> int:
 	if window <= 0:
 		frappe.throw(_("Choose how many days to download."), frappe.ValidationError)
 	return min(window, MAX_WINDOW_DAYS)
@@ -196,14 +149,13 @@ def _discussions_in_window(window: int, names: list[str] | None = None) -> list:
 	filters = {"last_post_at": [">=", add_days(now_datetime(), -window)]}
 	if names is not None:
 		filters["name"] = ["in", names]
-	rows = _query(
+	rows = frappe.get_list(
 		"GP Discussion",
 		fields=["name", "project", "team", "modified", "last_post_at"],
-		filters=filters,
+		filters=[filters, frappe.qb.DocType("GP Discussion").project.isin(_downloadable_spaces())],
 		# Pages are cut from this order, so it must not shift between requests.
 		order_by="last_post_at desc, name desc",
 		limit=len(names) if names is not None else MAX_DISCUSSIONS,
-		criterion=frappe.qb.DocType("GP Discussion").project.isin(_downloadable_spaces()),
 	)
 	for row in rows:
 		row.name = str(row.name)
@@ -245,7 +197,7 @@ def _revoked(names: list[str]) -> list[str]:
 	if not names:
 		return []
 	readable = {
-		str(row.name) for row in _query("GP Discussion", fields=["name"], filters={"name": ["in", names]})
+		str(name) for name in frappe.get_list("GP Discussion", filters={"name": ["in", names]}, pluck="name")
 	}
 	return [name for name in names if name not in readable]
 
@@ -290,34 +242,11 @@ def _rows_by_discussion(doctype: str, fields: list, names: list[str]) -> dict[st
 		return grouped
 	parent, filters = _child_filters(doctype, names)
 	# Read under an alias to group by, whether or not the requested fields include it.
-	for row in _query(doctype, fields=[*fields, f"{parent} as _offline_parent"], filters=filters):
+	rows = frappe.get_list(
+		doctype, fields=[*fields, f"{parent} as _offline_parent"], filters=filters, order_by="creation asc"
+	)
+	for row in rows:
 		discussion = str(row.pop("_offline_parent"))
 		if discussion in grouped:
 			grouped[discussion].append(row)
 	return grouped
-
-
-def _query(
-	doctype: str,
-	fields: list,
-	filters: dict,
-	order_by: str = "creation asc",
-	limit: int | None = None,
-	criterion=None,
-) -> list:
-	"""The permission-checked list query `/api/v2/document/<doctype>` runs, optionally
-	narrowed by `criterion`."""
-	query = frappe.qb.get_query(
-		table=doctype,
-		fields=fields,
-		filters=filters,
-		order_by=order_by,
-		limit=limit,
-		ignore_permissions=False,
-	)
-	if criterion is not None:
-		query = query.where(criterion)
-	controller = get_controller(doctype)
-	if hasattr(controller, "get_list"):
-		query = controller.get_list(query) or query
-	return query.run(as_dict=True)
