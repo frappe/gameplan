@@ -3,7 +3,7 @@ import { useList } from '@/data/offlineRevalidation'
 import type { OrderBy } from 'frappe-ui'
 import type { GPUserProfile } from '@/types/doctypes'
 
-export interface Person extends Pick<
+interface Person extends Pick<
   GPUserProfile,
   'name' | 'user' | 'bio' | 'modified' | 'cover_image' | 'cover_image_position'
 > {

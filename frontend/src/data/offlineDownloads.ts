@@ -141,7 +141,7 @@ async function writeMeta(next: Meta) {
 }
 
 /** Brings the device in line with the chosen window. `manual` runs skip the throttles. */
-export async function syncOfflineDownloads({ manual = false } = {}): Promise<boolean> {
+async function syncOfflineDownloads({ manual = false } = {}): Promise<boolean> {
   if (!session.isLoggedIn) return false
   await removal?.catch(() => {})
   // A manual run waits for the current one, then brings it up to date.
