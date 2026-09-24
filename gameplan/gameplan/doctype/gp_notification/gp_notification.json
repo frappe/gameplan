@@ -20,7 +20,6 @@
   "last_event_at",
   "event_count",
   "away_period",
-  "push_sent_at",
   "email_sent_at"
  ],
  "fields": [
@@ -116,12 +115,6 @@
    "fieldtype": "Link",
    "label": "Away Period",
    "options": "GP Away Period",
-   "read_only": 1
-  },
-  {
-   "fieldname": "push_sent_at",
-   "fieldtype": "Datetime",
-   "label": "Push Sent At",
    "read_only": 1
   },
   {

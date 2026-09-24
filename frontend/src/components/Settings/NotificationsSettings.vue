@@ -17,7 +17,7 @@
                   {{ scheduleSummary }} · {{ timezoneLabel }}
                 </template>
                 <template v-else>
-                  Push and email are held; a card recaps what you missed when you switch back on
+                  Email is held; you get a catch-up email when you switch back on
                 </template>
               </div>
             </div>
