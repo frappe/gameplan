@@ -6,7 +6,6 @@ import { getProjectUnreadCount, markSpacesAsRead } from './unreadCount'
 import { useSessionUser } from './users'
 import { canManageSpace, isGuest } from '@/utils/permissions'
 import { readOnlyMode } from './readOnlyMode'
-import { session } from './session'
 
 interface Member extends Pick<GPMember, 'user'> {}
 
@@ -44,9 +43,7 @@ export let spaces = useList<Space>({
   initialData: [],
   orderBy: 'title asc',
   limit: 99999,
-  // Per user, so another account on this browser can't read it offline.
-  cacheKey: ['spaces', session.user],
-  staleOnError: true,
+  cacheKey: 'spaces',
   transform(data) {
     for (let space of data) {
       space.name = space.name.toString()
@@ -125,8 +122,7 @@ export function getSpace(name: string) {
 
 export const joinedSpaces = useCall<string[]>({
   url: '/api/v2/method/GP Project/get_joined_spaces',
-  cacheKey: ['joinedSpaces', session.user],
-  staleOnError: true,
+  cacheKey: 'joinedSpaces',
   initialData: [],
 })
 

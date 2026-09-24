@@ -1,7 +1,6 @@
 import { computed, toValue, type MaybeRefOrGetter } from 'vue'
 import { useList } from '@/data/offlineRevalidation'
 import { spaces } from '@/data/spaces'
-import { session } from '@/data/session'
 import type { GPGuestAccess, GPPage } from '@/types/doctypes'
 
 type PageRecord = Pick<GPPage, 'project'>
@@ -19,8 +18,7 @@ export function useCommunitySpaceData(communityId: MaybeRefOrGetter<string>) {
     fields: ['project'],
     initialData: [],
     limit: 99999,
-    // Per user, so another account on this browser can't read it offline.
-    cacheKey: ['space-page-counts', session.user],
+    cacheKey: 'space-page-counts',
   })
 
   const guestAccess = useList<GuestAccessRecord>({
@@ -28,7 +26,7 @@ export function useCommunitySpaceData(communityId: MaybeRefOrGetter<string>) {
     fields: ['project'],
     initialData: [],
     limit: 99999,
-    cacheKey: ['space-guest-counts', session.user],
+    cacheKey: 'space-guest-counts',
   })
 
   const communitySpaces = computed(() =>

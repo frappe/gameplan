@@ -3,7 +3,6 @@ import { revalidateOnReconnect, useDoc, useList } from '@/data/offlineRevalidati
 import { UseListOptions } from 'frappe-ui'
 import { useDocumentVisibility } from '@vueuse/core'
 import { GPDiscussion } from '@/types/doctypes'
-import { session } from './session'
 
 // Reload the feed when the tab is re-activated after sitting in the background
 // for at least this long, so new posts show up without a manual refresh.
@@ -65,9 +64,7 @@ export function useDiscussions(options: UseDiscussionOptions) {
   const discussions = useList<Discussion>({
     url: '/api/v2/method/gameplan.gameplan.doctype.gp_discussion.api.get_discussions',
     doctype: 'GP Discussion',
-    // Per user for every feed, so another account on this browser can't read them offline.
-    cacheKey: options.cacheKey ? ['Discussions', options.cacheKey, session.user] : undefined,
-    staleOnError: true,
+    cacheKey: options.cacheKey ? ['Discussions', options.cacheKey] : undefined,
     filters: options.filters,
     limit: options.limit || 50,
     orderBy: options.orderBy,
@@ -122,7 +119,6 @@ export function useDiscussion(discussionId: MaybeRefOrGetter<string>) {
     discussionsCache[name] = useDoc<Discussion, DiscussionMethods>({
       doctype: 'GP Discussion',
       name: discussionId,
-      staleOnError: true,
       methods: {
         trackVisit: 'track_visit',
         markAsUnread: 'mark_as_unread',

@@ -149,7 +149,6 @@ const contentField = useTemplateRef<HTMLElement>('contentField')
 const page = useDoc<GPPage>({
   doctype: 'GP Page',
   name: () => props.pageId,
-  staleOnError: true,
 })
 const loadFailure = useLoadFailure(page, 'this page')
 

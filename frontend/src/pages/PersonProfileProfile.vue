@@ -8,7 +8,7 @@
       <Skeleton class="aspect-[2/1] rounded-7 sm:col-span-2" />
     </div>
     <!-- Fetch failed and nothing is cached for this profile - distinct from a genuinely
-         empty profile (US6). Checked before the empty state so a failed fetch can't be
+         empty profile. Checked before the empty state so a failed fetch can't be
          mistaken for "this person hasn't filled in their profile yet". -->
     <OfflineContentFallback
       v-else-if="bentoFailure"
@@ -104,7 +104,7 @@ const props = withDefaults(
     bentoCardsLoaded?: boolean
     /** False once this profile has a saved layout rather than the computed default. */
     bentoIsDefault?: boolean
-    /** Set when the bento fetch failed and nothing was cached to fall back to (US6). */
+    /** Set when the bento fetch failed and nothing was cached to fall back to. */
     bentoFailure?: { title: string; message: string } | null
     isOwnProfile?: boolean
     /** Set only when the viewer owns this profile; enables the card edit buttons. */

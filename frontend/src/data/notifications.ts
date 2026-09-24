@@ -1,13 +1,10 @@
 import { useCall } from '@/data/offlineRevalidation'
 import { useDebounceFn } from '@vueuse/core'
 import { onSocketEvent } from '@/socket'
-import { session } from './session'
 import { onReconnect } from './online'
 
 export let unreadNotifications = useCall({
-  // Per user, so another account on this browser can't read it offline.
-  cacheKey: ['Unread Notifications Count', session.user],
-  staleOnError: true,
+  cacheKey: 'Unread Notifications Count',
   url: '/api/v2/method/gameplan.api.unread_notifications',
   initialData: 0,
 })

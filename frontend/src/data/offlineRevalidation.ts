@@ -6,10 +6,12 @@ import {
 } from 'frappe-ui'
 import { isOnline, onReconnect } from './online'
 import { isNetworkError } from '@/offline'
+import { getSessionUserFromCookie } from '@/utils/sessionCookie'
 
 /**
- * frappe-ui's resources, made offline-aware: no request while offline, and what is on screen
- * revalidates on reconnect. Import `useList`, `useDoc` and `useCall` from here.
+ * frappe-ui's resources, made offline-aware: no request while offline, the cached copy kept
+ * when the network fails, cached per user, and what is on screen revalidated on reconnect.
+ * Import `useList`, `useDoc` and `useCall` from here.
  */
 
 /**
@@ -58,12 +60,22 @@ export function revalidateOnReconnect<T extends Revalidatable>(resource: T): T {
 }
 
 /**
- * `use`, revalidating on reconnect. Not for `immediate: false` resources: those are actions or
- * on-demand calls, and replaying one could repeat a write.
+ * `use` with the offline defaults every cached resource here wants:
+ * - `staleOnError`, which frappe-ui applies to network failures only, never to an error the
+ *   server answers with, so a lost permission still clears the cached copy;
+ * - the cache key scoped to the signed-in user, so another account on this browser can't read
+ *   it offline;
+ * - revalidation on reconnect, except for `immediate: false` resources: those are actions or
+ *   on-demand calls, and replaying one could repeat a write.
  */
 function offlineAware<F extends (options: any) => any>(use: F): F {
   return ((options) => {
-    const resource = use(options)
+    const { cacheKey } = options
+    const resource = use({
+      staleOnError: true,
+      ...options,
+      cacheKey: cacheKey && [cacheKey].flat().concat(getSessionUserFromCookie()),
+    })
     return options.immediate === false ? resource : revalidateOnReconnect(resource)
   }) as F
 }

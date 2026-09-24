@@ -2,7 +2,6 @@ import { ref } from 'vue'
 import { useList } from '@/data/offlineRevalidation'
 import type { OrderBy } from 'frappe-ui'
 import type { GPUserProfile } from '@/types/doctypes'
-import { session } from './session'
 
 export interface Person extends Pick<
   GPUserProfile,
@@ -28,8 +27,6 @@ export const people = useList<Person>({
   filters: { enabled: 1 },
   orderBy: peopleOrderBy,
   limit: 999,
-  // Per user, so another account on this browser can't read it offline.
-  cacheKey: ['People', session.user],
-  staleOnError: true,
+  cacheKey: 'People',
   immediate: true,
 })

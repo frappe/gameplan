@@ -30,15 +30,15 @@ export const POLL_FIELDS = [
   { reactions: ['name', 'user', 'emoji'] },
 ]
 
-// Per user, so another account on this browser can't read them offline.
-export function commentsCacheKey(doctype: string, name: string, user: string) {
-  return ['Comments', doctype, name, user]
+// The offline-aware useList appends the signed-in user to each (offlineRevalidation.ts).
+export function commentsCacheKey(doctype: string, name: string) {
+  return ['Comments', doctype, name]
 }
 
-export function activitiesCacheKey(doctype: string, name: string, user: string) {
-  return ['Activities', doctype, name, user]
+export function activitiesCacheKey(doctype: string, name: string) {
+  return ['Activities', doctype, name]
 }
 
-export function pollsCacheKey(discussion: string, user: string) {
-  return ['Polls', discussion, user]
+export function pollsCacheKey(discussion: string) {
+  return ['Polls', discussion]
 }

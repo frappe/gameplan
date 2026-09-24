@@ -10,7 +10,6 @@ interface AppInfo {
 export const installedApps = useCall<AppInfo[]>({
   url: '/api/v2/method/frappe.apps.get_apps',
   cacheKey: 'apps',
-  staleOnError: true,
   immediate: true,
   transform(data) {
     let _apps = [

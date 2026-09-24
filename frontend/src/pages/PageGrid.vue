@@ -84,7 +84,6 @@ import SpaceIcon from '@/components/SpaceIcon.vue'
 import { GPPage } from '@/types/doctypes'
 import { useSpace } from '@/data/spaces'
 import { useSessionUser } from '@/data/users'
-import { session } from '@/data/session'
 import { canDeleteContent } from '@/utils/permissions'
 import { isOnline } from '@/data/online'
 
@@ -109,11 +108,8 @@ const pages = useList<Page>({
   fields: ['name', 'creation', 'title', 'content', 'slug', 'project', 'team', 'modified', 'owner'],
   filters: props.listOptions.filters,
   orderBy: props.listOptions.orderBy,
-  // Per user, so another account on this browser can't read it offline. Keyed on the
-  // resolved filters, like TaskList: a getter would stringify to `{}` and give every grid
-  // the same entry.
-  cacheKey: ['Pages', toValue(props.listOptions.filters) ?? {}, session.user],
-  staleOnError: true,
+  // Keyed on the resolved filters, like TaskList: a getter would stringify to `{}`.
+  cacheKey: ['Pages', toValue(props.listOptions.filters) ?? {}],
 })
 const loadFailure = useLoadFailure(pages, 'pages')
 

@@ -850,10 +850,7 @@ router.beforeEach(async (to, from) => {
   if (to.params.spaceId && !space) {
     // Offline, an uncached space may still be real: say it isn't available offline
     // rather than that it doesn't exist.
-    if (isNetworkUnreliable()) {
-      return { name: 'OfflineUnavailable' }
-    }
-    return { name: 'NotFound' }
+    return { name: notFound() }
   }
 
   if (space?.team && space.team !== communityId) {
@@ -866,10 +863,7 @@ router.beforeEach(async (to, from) => {
   // Public communities are visible even when the user has not joined them, so route validity
   // cannot be tied to the active sidebar community list.
   if (!community) {
-    if (isNetworkUnreliable()) {
-      return { name: 'OfflineUnavailable' }
-    }
-    return { name: 'NotFound' }
+    return { name: notFound() }
   }
 
   if (community.archived_at) {
@@ -907,6 +901,10 @@ function waitForOfflineCachedData(resource: ResourceLike) {
 function hasHydratedData(resource: ResourceLike) {
   const data = resource.data
   return Array.isArray(data) ? data.length > 0 : data != null
+}
+
+function notFound() {
+  return isNetworkUnreliable() ? 'OfflineUnavailable' : 'NotFound'
 }
 
 function isNetworkUnreliable() {

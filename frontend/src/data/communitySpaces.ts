@@ -9,15 +9,12 @@ import {
   type SpaceSidebarSort,
 } from './sidebarPreferences'
 import type { Space } from './spaces'
-import { session } from './session'
 
 const INACTIVE_SPACE_MONTHS = 2
 
 const spaceActivity = useCall<Record<string, string | null>>({
   url: '/api/v2/method/GP Project/get_activity',
-  // Per user, like the server's filtering to accessible spaces.
-  cacheKey: ['spaceActivity', session.user],
-  staleOnError: true,
+  cacheKey: 'spaceActivity',
   initialData: {},
   immediate: true,
 })

@@ -150,7 +150,6 @@ import { UseListOptions } from 'frappe-ui'
 import { useList } from '@/data/offlineRevalidation'
 import DropdownMoreOptions from './DropdownMoreOptions.vue'
 import { useSessionUser } from '@/data/users'
-import { session } from '@/data/session'
 import { canDeleteContent } from '@/utils/permissions'
 import { isOnline } from '@/data/online'
 import { useLoadFailure } from '@/data/loadFailure'
@@ -190,11 +189,9 @@ const tasks = useList<GPTask>({
   filters: props.listOptions.filters,
   orderBy: props.listOptions.orderBy,
   limit: props.listOptions.pageLength,
-  // Per user, so another account on this browser can't read it offline.
   // Filters are usually a getter, which JSON-stringifies to `{}` and would give every task
   // list the same cache entry. Key on the resolved filters; callers remount per filter set.
-  cacheKey: ['Tasks', toValue(props.listOptions.filters) ?? {}, session.user],
-  staleOnError: true,
+  cacheKey: ['Tasks', toValue(props.listOptions.filters) ?? {}],
 })
 const loadFailure = useLoadFailure(tasks, 'tasks')
 

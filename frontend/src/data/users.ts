@@ -82,7 +82,6 @@ export let users = useCall<UserInfo[]>({
   url: '/api/v2/method/gameplan.api.get_user_info',
   // Per user, so another account on this browser can't read it offline.
   cacheKey: ['Users', getSessionUserFromCookie()],
-  staleOnError: true,
   initialData: [],
   transform(data) {
     for (let user of data) {

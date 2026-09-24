@@ -3,7 +3,6 @@ import { useCall } from '@/data/offlineRevalidation'
 import { computed, MaybeRefOrGetter, toValue, watch } from 'vue'
 import type { ProfileBentoCard } from './types'
 import type { ProfileBentoCardSource } from './useProfileBentoCustomization'
-import { session } from '@/data/session'
 
 interface ProfileBentoResponse {
   profile: string
@@ -61,9 +60,8 @@ function getLoadResultFromResponse(response: ProfileBentoResponse): ProfileBento
   }
 }
 
-// One `get_bento_cards` fetch per profile, keyed by profile and session user so another
-// account on this browser can't read the cards offline. Revisiting a profile reuses its call
-// instead of racing a fresh request.
+// One `get_bento_cards` fetch per profile. Revisiting a profile reuses its call instead of
+// racing a fresh request.
 const bentoCalls: Record<string, ReturnType<typeof createProfileBentoCall>> = {}
 
 function createProfileBentoCall(profile: string) {
@@ -71,8 +69,7 @@ function createProfileBentoCall(profile: string) {
     // A full path: unlike call(), useCall doesn't prefix /api/method/ to a method name.
     url: `/api/v2/method/${getProfileBentoCardsMethod}`,
     params: { profile },
-    cacheKey: ['ProfileBento', profile, session.user],
-    staleOnError: true,
+    cacheKey: ['ProfileBento', profile],
     immediate: false,
   })
 }

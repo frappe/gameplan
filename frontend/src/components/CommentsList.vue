@@ -125,7 +125,6 @@ import { GPActivity, GPComment } from '@/types/doctypes'
 import type { Space } from '@/data/spaces'
 import { useDraftSync } from '@/data/useDraftSync'
 import { isOnline } from '@/data/online'
-import { session } from '@/data/session'
 
 interface Props {
   doctype: string
@@ -180,9 +179,7 @@ const comments = useList<
   >
 >({
   doctype: 'GP Comment',
-  // Per user, so another account on this browser can't read it offline.
-  cacheKey: ['Comments', props.doctype, props.name, session.user],
-  staleOnError: true,
+  cacheKey: ['Comments', props.doctype, props.name],
   fields: [
     'name',
     'content',
@@ -237,8 +234,7 @@ interface Activity extends Pick<GPActivity, 'name' | 'user' | 'action' | 'creati
 
 const activities = useList<Activity>({
   doctype: 'GP Activity',
-  cacheKey: ['Activities', props.doctype, props.name, session.user],
-  staleOnError: true,
+  cacheKey: ['Activities', props.doctype, props.name],
   fields: ['name', 'user', 'action', 'data', 'creation'],
   filters: {
     reference_doctype: props.doctype,

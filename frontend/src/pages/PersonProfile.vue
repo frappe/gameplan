@@ -46,7 +46,7 @@
   </div>
 
   <!-- Offline with no cached copy of this profile is not the same as a real 404: say so,
-       and offer a retry instead of the dead-end "doesn't exist" page (US6). -->
+       and offer a retry instead of the dead-end "doesn't exist" page. -->
   <OfflineContentFallback
     v-else-if="profileLoadFailure"
     class="mx-auto mt-16 max-w-md px-6"
@@ -102,7 +102,6 @@ const profileResource = useDoc<GPUserProfile, ProfileMethods>({
     setImage: 'set_image',
     setCoverImagePosition: 'set_cover_image_position',
   },
-  staleOnError: true,
 })
 
 const profile = computed(() => profileResource.doc)

@@ -4,7 +4,6 @@ import { useList } from '@/data/offlineRevalidation'
 import { GPTeam, GPMember } from '@/types/doctypes'
 import { communityOrder } from './communityOrder'
 import { useSessionUser } from './users'
-import { session } from './session'
 import { getSessionUserFromCookie } from '@/utils/sessionCookie'
 
 export interface CommunityMember extends Pick<GPMember, 'user' | 'is_admin'> {
@@ -34,9 +33,7 @@ export let communities = useList<Community>({
   ],
   orderBy: 'title asc',
   initialData: [],
-  // Per user, so another account on this browser can't read it offline.
-  cacheKey: ['Communities', 'with-image', session.user],
-  staleOnError: true,
+  cacheKey: ['Communities', 'with-image'],
   limit: 999,
   transform(data) {
     for (let community of data) {

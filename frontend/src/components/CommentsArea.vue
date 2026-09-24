@@ -410,8 +410,7 @@ const composerStorageKey = computed(() => {
 
 const comments = useList<GPComment>({
   doctype: 'GP Comment',
-  cacheKey: commentsCacheKey(props.doctype, props.name, sessionUser.name),
-  staleOnError: true,
+  cacheKey: commentsCacheKey(props.doctype, props.name),
   fields: COMMENT_FIELDS,
   transform(data) {
     return data.map((d) => ({ ...d, doctype: 'GP Comment' }))
@@ -454,8 +453,7 @@ function positionTimeline() {
 
 const activities = useList<GPActivity>({
   doctype: 'GP Activity',
-  cacheKey: activitiesCacheKey(props.doctype, props.name, sessionUser.name),
-  staleOnError: true,
+  cacheKey: activitiesCacheKey(props.doctype, props.name),
   fields: ACTIVITY_FIELDS,
   filters: {
     reference_doctype: props.doctype,
@@ -491,8 +489,7 @@ watch(
 
 const polls = useList<GPPoll>({
   doctype: 'GP Poll',
-  cacheKey: pollsCacheKey(props.name, sessionUser.name),
-  staleOnError: true,
+  cacheKey: pollsCacheKey(props.name),
   fields: POLL_FIELDS,
   filters: {
     discussion: props.name,

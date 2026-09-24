@@ -342,12 +342,12 @@ function visitsToCheck(names: string[], after = '') {
 }
 
 /** The four entries a discussion occupies: its document and its three timeline lists. */
-function discussionKeys(name: string, user = session.user!) {
+function discussionKeys(name: string) {
   return {
     doc: docKey('GP Discussion', name),
-    comments: listKey(commentsCacheKey('GP Discussion', name, user)),
-    activities: listKey(activitiesCacheKey('GP Discussion', name, user)),
-    polls: listKey(pollsCacheKey(name, user)),
+    comments: listKey(commentsCacheKey('GP Discussion', name)),
+    activities: listKey(activitiesCacheKey('GP Discussion', name)),
+    polls: listKey(pollsCacheKey(name)),
   }
 }
 
@@ -386,7 +386,7 @@ async function storeFeeds(rows: Map<string, FeedRow>, removed: Set<string>) {
   }
 
   const feeds = new Map<string, Feed>()
-  for (const feed of [...downloadedFeeds(rows.values(), user), ...(await cachedFeeds(user))]) {
+  for (const feed of [...downloadedFeeds(rows.values()), ...(await cachedFeeds(user))]) {
     feeds.set(feed.key, feed)
   }
   if (!feeds.size) return
@@ -425,7 +425,7 @@ async function storeFeeds(rows: Map<string, FeedRow>, removed: Set<string>) {
 }
 
 /** The feeds a downloaded row belongs to, opened on this device or not. */
-function downloadedFeeds(rows: Iterable<FeedRow>, user: string): Feed[] {
+function downloadedFeeds(rows: Iterable<FeedRow>): Feed[] {
   const feeds = new Map<string, Feed>()
   for (const row of rows) {
     const scopes = [
@@ -436,7 +436,7 @@ function downloadedFeeds(rows: Iterable<FeedRow>, user: string): Feed[] {
       if (!scope) continue
       const { name, ...where } = scope
       for (const pinned of row.pinned_at ? [false, true] : [false]) {
-        const key = listKey(feedCacheKey(pinned ? ['pinned', name] : name, user))
+        const key = listKey(['Discussions', pinned ? ['pinned', name] : name])
         feeds.set(key, { ...where, key, pinned })
       }
     }
@@ -577,7 +577,7 @@ async function savedImageBytes(urls: string[]): Promise<number> {
 }
 
 /** Deletes everything downloaded. Concurrent callers share one run. */
-export function removeOfflineDownloads(): Promise<void> {
+function removeOfflineDownloads(): Promise<void> {
   removal ??= removeEverything().finally(() => (removal = null))
   return removal
 }
@@ -618,13 +618,10 @@ export function downloadForOffline(days: OfflineWindow) {
   })
 }
 
-// The key formats frappe-ui's useList and docStore use for IndexedDB.
+// The key formats frappe-ui's useList and docStore use for IndexedDB, with the user the
+// offline-aware useList appends (offlineRevalidation.ts).
 function listKey(cacheKey: unknown[]) {
-  return JSON.stringify(['useList', ...cacheKey])
-}
-
-function feedCacheKey(key: string | string[], user: string) {
-  return ['Discussions', key, user]
+  return JSON.stringify(['useList', ...cacheKey, session.user])
 }
 
 const FEED_KEY_PREFIX = '["useList","Discussions"'

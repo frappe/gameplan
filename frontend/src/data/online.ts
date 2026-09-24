@@ -1,5 +1,5 @@
-import { useDebounceFn, useNetwork } from '@vueuse/core'
-import { getCurrentScope, onScopeDispose, watch } from 'vue'
+import { useNetwork, watchDebounced } from '@vueuse/core'
+import { getCurrentScope, onScopeDispose } from 'vue'
 
 // One reading of the network state for the whole app.
 const network = useNetwork()
@@ -39,18 +39,18 @@ export function whenOnline(request: () => void) {
   return unregister
 }
 
-const notifyReconnect = useDebounceFn(() => {
-  // It may have dropped again during the debounce.
-  if (!isOnline.value) return
-  for (const callback of callbacks) {
-    try {
-      callback()
-    } catch (error) {
-      console.error('onReconnect callback failed', error)
+// Only once the connection has settled: a flap back offline inside the wait cancels it.
+watchDebounced(
+  isOnline,
+  (online) => {
+    if (!online) return
+    for (const callback of callbacks) {
+      try {
+        callback()
+      } catch (error) {
+        console.error('onReconnect callback failed', error)
+      }
     }
-  }
-}, RECONNECT_DEBOUNCE_MS)
-
-watch(isOnline, (online) => {
-  if (online) notifyReconnect()
-})
+  },
+  { debounce: RECONNECT_DEBOUNCE_MS },
+)

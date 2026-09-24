@@ -28,7 +28,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed } from 'vue'
+import { computedAsync } from '@vueuse/core'
 import { Button, Progress, Select, SettingsRow, dayjsLocal, dialog } from 'frappe-ui'
 import { isOnline } from '@/data/online'
 import {
@@ -38,7 +39,6 @@ import {
   downloadedBytes,
   downloads,
   offlineWindow,
-  removeOfflineDownloads,
   type OfflineWindow,
 } from '@/data/offlineDownloads'
 
@@ -77,24 +77,15 @@ function confirmSync() {
   })
 }
 
-const size = ref<string | null>(null)
-
-async function readSize() {
+// Read again whenever a sync, a removal or the worker's image saves change what is held.
+const size = computedAsync(async () => {
+  void [downloads.count, downloads.syncing, downloads.imagesSavedAt]
   const bytes = await downloadedBytes().catch(() => 0)
-  if (!bytes) {
-    size.value = null
-    return
-  }
-  const mb = bytes / 1024 / 1024
-  size.value = mb < 1 ? `${Math.round(bytes / 1024)} KB` : `${mb.toFixed(1)} MB`
-}
-
-onMounted(readSize)
-// Downloading or removing changes what is held, so the figure is read again rather than
-// left at whatever it was when the panel opened.
-watch([() => downloads.count, () => downloads.syncing, () => downloads.imagesSavedAt], () =>
-  readSize(),
-)
+  if (!bytes) return null
+  return bytes < 1024 * 1024
+    ? `${Math.round(bytes / 1024)} KB`
+    : `${(bytes / 1024 / 1024).toFixed(1)} MB`
+}, null)
 
 const status = computed(() => {
   if (downloads.syncing) {
@@ -129,10 +120,7 @@ function removeDownloads() {
       'Downloaded discussions will no longer open without a connection until you open them again online.',
     confirmLabel: 'Remove',
     cancelLabel: 'Cancel',
-    onConfirm: async () => {
-      offlineWindow.value = 0
-      await removeOfflineDownloads()
-    },
+    onConfirm: () => downloadForOffline(0),
   })
 }
 </script>

@@ -13,7 +13,6 @@ export const customEmojis = useList<CustomEmoji>({
   orderBy: 'creation desc',
   initialData: [],
   cacheKey: 'CustomEmojis',
-  staleOnError: true,
   limit: 999,
   immediate: true,
 })

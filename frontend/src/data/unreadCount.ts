@@ -187,7 +187,6 @@ function refreshAllUnreadCounts() {
 // a request per cached community.
 onSocketEvent('gameplan:unread_counts_changed', useDebounceFn(refreshAllUnreadCounts, 500))
 
-// US5 (seamless recovery): while offline the socket is disconnected too, so any
-// unread-count-changing activity from other users never reached us. Reload once
-// reconnected rather than waiting on the next unrelated socket signal.
+// The socket is disconnected while offline too, so other users' changes never reached us.
+// Reload once reconnected rather than waiting for the next unrelated socket signal.
 onReconnect(refreshAllUnreadCounts)
