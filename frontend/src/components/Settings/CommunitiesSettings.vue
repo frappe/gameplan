@@ -54,13 +54,28 @@
         >
           <template #action>
             <!-- Icon alone on phones, where the search needs the width. -->
-            <Button
-              v-if="canCreateSpace"
-              :icon="isPhone ? 'lucide-plus' : undefined"
-              :icon-left="isPhone ? undefined : 'lucide-plus'"
-              label="New space"
-              @click="openNewSpaceDialog"
-            />
+            <div class="flex shrink-0 items-center gap-2">
+              <!-- One flip for every live space in the community; the row bells follow. -->
+              <Button
+                v-if="liveSpaces.length"
+                :icon="isPhone ? notifyAllIcon : undefined"
+                :icon-left="isPhone ? undefined : notifyAllIcon"
+                :label="allSpacesNotifying ? 'Disable all' : 'Notify all'"
+                @click="
+                  setSpaceNotifications(
+                    liveSpaces.map((space) => space.name),
+                    !allSpacesNotifying,
+                  )
+                "
+              />
+              <Button
+                v-if="canCreateSpace"
+                :icon="isPhone ? 'lucide-plus' : undefined"
+                :icon-left="isPhone ? undefined : 'lucide-plus'"
+                label="New space"
+                @click="openNewSpaceDialog"
+              />
+            </div>
           </template>
         </CommunitySpacesListControls>
 
@@ -205,6 +220,8 @@ import CommunityMembersList from '@/pages/Configure/CommunityMembersList.vue'
 import CommunityMembersListControls from '@/pages/Configure/CommunityMembersListControls.vue'
 import CommunitySpacesList from '@/pages/Configure/CommunitySpacesList.vue'
 import CommunitySpacesListControls from '@/pages/Configure/CommunitySpacesListControls.vue'
+import { useCommunitySpaceData } from '@/pages/Configure/useCommunitySpaceData'
+import { isSpaceNotifying, setSpaceNotifications } from '@/data/spaceNotifications'
 import NewCommunityDialog from '@/pages/Configure/NewCommunityDialog.vue'
 
 type CommunityView = 'spaces' | 'members'
@@ -281,6 +298,13 @@ const canCreateSpace = computed(() =>
     !selectedCommunity.value.archived_at,
   ),
 )
+const { communitySpaces } = useCommunitySpaceData(selectedCommunityId)
+const liveSpaces = computed(() => communitySpaces.value.filter((space) => !space.archived_at))
+const allSpacesNotifying = computed(() =>
+  liveSpaces.value.every((space) => isSpaceNotifying(space.name)),
+)
+const notifyAllIcon = computed(() => (allSpacesNotifying.value ? 'lucide-bell-off' : 'lucide-bell'))
+
 function openCommunitySpaces(communityId: string) {
   router.push({ name: 'SettingsCommunity', params: { communityId, view: 'spaces' } })
 }

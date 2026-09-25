@@ -2,6 +2,11 @@ import { computed, reactive, readonly, ref, watch } from 'vue'
 import { useCall } from 'frappe-ui'
 import router from '@/router'
 import { setCommunityOrder } from './communityOrder'
+import {
+  loadNotificationPreferences,
+  type NotificationChannel,
+  type NotificationLevel,
+} from './notificationPreferences'
 import { loadPinnedSpaces } from './pinnedSpaces'
 import { loadQuickReactionSlots } from './reactionPreferences'
 import { setSidebarBadgeStyle, type SidebarBadgeStyle } from './sidebarPreferences'
@@ -27,6 +32,8 @@ export interface UserInfo {
   user_image: string
   full_name: string
   user_type: string
+  /** Frappe's own User.time_zone; the schedule in Settings → Notifications runs in it. */
+  time_zone?: string | null
   creation: string
   user_profile: string
   image_background_color: string
@@ -40,6 +47,14 @@ export interface UserInfo {
   email_digest_frequency?: EmailDigestFrequency
   email_digest_day_of_week?: EmailDigestDayOfWeek
   email_digest_last_sent_on?: string
+  notification_level?: NotificationLevel
+  participation_level?: 'Watch' | 'Mentions only'
+  notification_channel?: NotificationChannel
+  receive_notifications?: 0 | 1
+  active_hours_enabled?: 0 | 1
+  active_hours_start?: string
+  active_hours_end?: string
+  active_hours_days?: string
   bio: string
   role: 'Gameplan Admin' | 'Gameplan Member' | 'Gameplan Guest'
   isGuest?: boolean
@@ -72,6 +87,7 @@ function mergeUserInfo(user: UserInfo) {
     loadPinnedSpaces(user.pinned_spaces, user.user_profile)
     loadQuickReactionSlots(user.quick_reaction_emojis, user.user_profile)
     setSidebarBadgeStyle(user.sidebar_badge_style)
+    loadNotificationPreferences(user, user.user_profile)
   }
 }
 

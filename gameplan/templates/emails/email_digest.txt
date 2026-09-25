@@ -3,7 +3,7 @@ Your {{ frequency | lower }} digest
 {% if notifications -%}
 Unread notifications
 {% for item in notifications -%}
-- {{ item.title }}: {{ item.description }}{% if item.metadata %} ({{ item.metadata }}){% endif %}{% if item.url %}
+- {{ item.title }}{% if item.description %}: {{ item.description }}{% endif %}{% if item.metadata %} ({{ item.metadata }}){% endif %}{% if item.url %}
   {{ item.url }}{% endif %}
 {% endfor %}
 {% endif -%}

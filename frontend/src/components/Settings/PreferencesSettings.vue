@@ -33,6 +33,26 @@
           >
             <Select :options="cursorStyleOptions" v-model="selectedCursorStyle" />
           </SettingsRow>
+
+          <!-- Frappe's own User.time_zone, listed by its own endpoint and saved on the
+               user's own record; active hours in Notifications are evaluated in it. -->
+          <SettingsRow title="Timezone" description="Active hours and email times follow it">
+            <!-- The list is portaled next to its trigger so it can be held to the trigger's
+                 width (long zone names truncate) instead of growing past the control. -->
+            <div
+              ref="timezoneHost"
+              class="[&_[data-slot=content]]:!w-[--reka-combobox-trigger-width]"
+            >
+              <Combobox
+                class="w-56"
+                :options="timezoneOptions"
+                :model-value="sessionUser.time_zone || ''"
+                placeholder="System timezone"
+                :portal-to="timezoneHost ?? undefined"
+                @update:model-value="saveTimezone"
+              />
+            </div>
+          </SettingsRow>
         </div>
       </section>
 
@@ -102,7 +122,16 @@
 // fallthrough (this component renders a fragment); it simply isn't emitted here.
 defineEmits<{ (e: 'close-dialog'): void }>()
 import { computed, ref } from 'vue'
-import { Button, SettingsRow, Select, Switch, toast, useDoctype } from 'frappe-ui'
+import {
+  Button,
+  Combobox,
+  SettingsRow,
+  Select,
+  Switch,
+  toast,
+  useCall,
+  useDoctype,
+} from 'frappe-ui'
 import PanelHeader from './PanelHeader.vue'
 import PanelBody from './PanelBody.vue'
 import CustomizeSidebarDialog from '@/components/AppRail/CustomizeSidebarDialog.vue'
@@ -129,6 +158,29 @@ const { currentCursorStyle, setCursorStyle } = useCursorStyle()
 const userProfiles = useDoctype<GPUserProfile>('GP User Profile')
 
 const showCustomizeSidebar = ref(false)
+
+const timezoneHost = ref<HTMLElement | null>(null)
+const timezones = useCall<{ timezones: string[] }>({
+  url: '/api/v2/method/frappe.core.doctype.user.user.get_timezones',
+  cacheKey: 'timezones',
+})
+const timezoneOptions = computed(() =>
+  (timezones.data?.timezones ?? []).map((zone) => ({ label: zone, value: zone })),
+)
+const users = useDoctype<{ name: string; time_zone?: string }>('User')
+async function saveTimezone(value: unknown) {
+  const zone = typeof value === 'string' ? value : ''
+  if (zone === (sessionUser.time_zone || '')) return
+  const previous = sessionUser.time_zone
+  sessionUser.time_zone = zone
+  try {
+    await users.setValue.submit({ name: sessionUser.name, time_zone: zone })
+    toast.success('Timezone saved')
+  } catch {
+    sessionUser.time_zone = previous
+    toast.error('Could not save timezone')
+  }
+}
 const savingBadgeStyle = ref(false)
 
 const themeOptions: Array<{ label: string; value: Theme }> = [

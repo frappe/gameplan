@@ -19,7 +19,7 @@ import frappe
 
 from gameplan.gameplan.doctype.gp_notification.gp_notification import GPNotification
 from gameplan.realtime import (
-	NOTIFICATION_COUNT_CHANGED,
+	NOTIFICATION_CHANGED,
 	UNREAD_COUNTS_CHANGED,
 	USERS_CHANGED,
 	notify_unread_counts_changed,
@@ -53,7 +53,7 @@ class TestRealtimeEvents(GameplanTestCase):
 				message="Hello",
 			).insert(ignore_permissions=True)
 
-		[call] = events_named(publish_realtime, NOTIFICATION_COUNT_CHANGED)
+		[call] = events_named(publish_realtime, NOTIFICATION_CHANGED)
 		self.assertEqual(call.kwargs.get("user"), self.second_member.name)
 
 	def test_re_lighting_a_cleared_notification_tells_its_recipient_again(self):
@@ -69,7 +69,7 @@ class TestRealtimeEvents(GameplanTestCase):
 			notification.flags.ignore_permissions = True
 			notification.save()
 
-		[call] = events_named(publish_realtime, NOTIFICATION_COUNT_CHANGED)
+		[call] = events_named(publish_realtime, NOTIFICATION_CHANGED)
 		self.assertEqual(call.kwargs.get("user"), self.second_member.name)
 
 	def test_marking_one_notification_read_tells_that_user(self):
@@ -82,7 +82,7 @@ class TestRealtimeEvents(GameplanTestCase):
 			notification.flags.ignore_permissions = True
 			notification.save()
 
-		[call] = events_named(publish_realtime, NOTIFICATION_COUNT_CHANGED)
+		[call] = events_named(publish_realtime, NOTIFICATION_CHANGED)
 		self.assertEqual(call.kwargs.get("user"), self.second_member.name)
 
 	def test_an_edit_that_leaves_the_count_alone_announces_nothing(self):
@@ -94,7 +94,58 @@ class TestRealtimeEvents(GameplanTestCase):
 			notification.flags.ignore_permissions = True
 			notification.save()
 
-		self.assertEqual(events_named(publish_realtime, NOTIFICATION_COUNT_CHANGED), [])
+		self.assertEqual(events_named(publish_realtime, NOTIFICATION_CHANGED), [])
+
+	def test_a_merge_into_an_unread_row_announces_itself(self):
+		"""A repeat event folded into an already-unread row leaves `read` and the unread
+		total alone, yet an open inbox has to move from "1 new comment" to "2"."""
+		notification = self.notification_for(self.second_member, read=0)
+
+		with patch("frappe.realtime.publish_realtime") as publish_realtime:
+			notification.event_count = 2
+			notification.flags.ignore_permissions = True
+			notification.save()
+
+		[call] = events_named(publish_realtime, NOTIFICATION_CHANGED)
+		self.assertEqual(call.kwargs.get("user"), self.second_member.name)
+
+	def test_the_notification_event_carries_the_changed_row(self):
+		"""The row is how a tab tells its own echo from news: one it already holds at this
+		`event_count` and `read` says nothing new; a merge or a read flip elsewhere does."""
+		notification = self.notification_for(self.second_member, read=0)
+
+		with patch("frappe.realtime.publish_realtime") as publish_realtime:
+			notification.event_count = 3
+			notification.flags.ignore_permissions = True
+			notification.save()
+
+		[call] = events_named(publish_realtime, NOTIFICATION_CHANGED)
+		self.assertEqual(
+			call.kwargs["message"]["notification"],
+			{
+				"name": notification.name,
+				"event_count": 3,
+				"read": 0,
+				"last_event_at": str(notification.last_event_at),
+			},
+		)
+
+	def test_a_bulk_clear_carries_no_row(self):
+		self.notification_for(self.member, read=0)
+
+		with patch("frappe.realtime.publish_realtime") as publish_realtime:
+			GPNotification.clear_notifications(user=self.member.name)
+
+		[call] = events_named(publish_realtime, NOTIFICATION_CHANGED)
+		self.assertIsNone(call.kwargs["message"]["notification"])
+
+	def test_a_new_row_is_stamped_with_its_event_time(self):
+		"""Nothing orders or displays `creation` any more, so every row needs `last_event_at`
+		from the moment it exists, whichever writer inserted it."""
+		notification = self.notification_for(self.second_member, read=0)
+
+		self.assertIsNotNone(notification.last_event_at)
+		self.assertEqual(notification.event_count, 1)
 
 	def test_the_notification_event_reports_that_user_s_own_unread_count(self):
 		"""The browser tells its own echo apart from a real change by the count reported.
@@ -113,9 +164,9 @@ class TestRealtimeEvents(GameplanTestCase):
 		with patch("frappe.realtime.publish_realtime") as publish_realtime:
 			self.notification_for(self.second_member, read=0)
 
-		[call] = events_named(publish_realtime, NOTIFICATION_COUNT_CHANGED)
+		[call] = events_named(publish_realtime, NOTIFICATION_CHANGED)
 		self.assertEqual(call.kwargs.get("user"), self.second_member.name)
-		self.assertEqual(call.kwargs.get("message"), {"count": 2})
+		self.assertEqual(call.kwargs["message"]["count"], 2)
 
 	def test_clearing_notifications_reports_the_count_left_behind(self):
 		self.notification_for(self.member, read=0)
@@ -124,14 +175,14 @@ class TestRealtimeEvents(GameplanTestCase):
 		with patch("frappe.realtime.publish_realtime") as publish_realtime:
 			GPNotification.clear_notifications(user=self.member.name)
 
-		[call] = events_named(publish_realtime, NOTIFICATION_COUNT_CHANGED)
-		self.assertEqual(call.kwargs.get("message"), {"count": 0})
+		[call] = events_named(publish_realtime, NOTIFICATION_CHANGED)
+		self.assertEqual(call.kwargs["message"], {"count": 0, "notification": None})
 
 	def test_clearing_notifications_tells_that_user(self):
 		with patch("frappe.realtime.publish_realtime") as publish_realtime:
 			GPNotification.clear_notifications(user=self.member.name)
 
-		[call] = events_named(publish_realtime, NOTIFICATION_COUNT_CHANGED)
+		[call] = events_named(publish_realtime, NOTIFICATION_CHANGED)
 		self.assertEqual(call.kwargs.get("user"), self.member.name)
 
 	def test_the_user_list_change_reaches_website_users_not_just_desk_users(self):

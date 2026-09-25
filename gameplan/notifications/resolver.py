@@ -1,0 +1,230 @@
+# Copyright (c) 2026, Frappe Technologies Pvt Ltd and contributors
+# For license information, please see license.txt
+
+
+import frappe
+from frappe.utils import get_fullname
+
+from gameplan.notifications import records
+from gameplan.notifications.preferences import (
+	bulk_levels,
+	participation_level,
+	profile_prefs,
+	wants_content_feedback,
+)
+from gameplan.permissions import can_view_space, users_who_can_view_content
+
+STATES = ("Mute", "Mentions only", "Watch")
+
+
+def discussion_of(doc) -> str | None:
+	if doc.doctype == "GP Discussion":
+		return doc.name
+	if doc.doctype == "GP Comment" and doc.reference_doctype == "GP Discussion":
+		return doc.reference_name
+	if doc.doctype == "GP Poll":
+		return doc.discussion
+	return None
+
+
+def subscription_state(user: str, discussion: str) -> str | None:
+	return frappe.db.get_value(
+		"GP Discussion Subscription", {"user": user, "discussion": discussion}, "state"
+	)
+
+
+def effective_discussion_state(user: str, discussion: str, level: str | None = None) -> str:
+	state = subscription_state(user, discussion)
+	if state in STATES:
+		return state
+	level = level or profile_prefs(user).notification_level
+	return "Mute" if level == "Mute" else "Mentions only"
+
+
+def bulk_discussion_states(users: list[str], discussion: str) -> dict[str, str]:
+	users = list(dict.fromkeys(users))
+	if not users:
+		return {}
+	levels = bulk_levels(users)
+	states = {user: ("Mute" if levels[user] == "Mute" else "Mentions only") for user in users}
+	rows = frappe.db.get_all(
+		"GP Discussion Subscription",
+		filters={"discussion": discussion, "user": ["in", users]},
+		fields=["user", "state"],
+	)
+	for row in rows:
+		if row.state in STATES:
+			states[row.user] = row.state
+	return states
+
+
+def is_muted(user: str, discussion: str) -> bool:
+	return effective_discussion_state(user, discussion) == "Mute"
+
+
+def subscribe_on_participation(user: str, discussion: str) -> str | None:
+	if subscription_state(user, discussion):
+		return None
+	state = participation_level(user)
+	frappe.get_doc(
+		doctype="GP Discussion Subscription", user=user, discussion=discussion, state=state
+	).insert(ignore_permissions=True)
+	return state
+
+
+def discussion_watchers(discussion: str) -> list[str]:
+	return frappe.db.get_all(
+		"GP Discussion Subscription",
+		filters={"discussion": discussion, "state": "Watch"},
+		pluck="user",
+	)
+
+
+def _fan_out(recipients: list[str], **values) -> list[str]:
+	for user in recipients:
+		records.write_or_merge(to_user=user, **values)
+	return recipients
+
+
+def notify_comment(comment_doc, already_notified: set[str] | None = None) -> list[str]:
+	discussion = discussion_of(comment_doc)
+	if not discussion:
+		return []
+
+	already_notified = already_notified or set()
+	candidates = [
+		user
+		for user in discussion_watchers(discussion)
+		if user != comment_doc.owner and user not in already_notified
+	]
+	recipients = users_who_can_view_content(candidates, comment_doc)
+	if not recipients:
+		return []
+
+	title = frappe.db.get_value("GP Discussion", discussion, "title")
+	author = get_fullname(comment_doc.owner)
+	return _fan_out(
+		recipients,
+		type="Comment",
+		merge=True,
+		from_user=comment_doc.owner,
+		discussion=discussion,
+		message=f"{author} commented on {title}",
+		merged_message=f"{{count}} new comments in {title}",
+	)
+
+
+def space_subscribers(projects: list) -> list[str]:
+	projects = [str(project) for project in projects if project]
+	if not projects:
+		return []
+	users = frappe.db.get_all("GP Space Subscription", filters={"project": ["in", projects]}, pluck="user")
+	return list(dict.fromkeys(users))
+
+
+def notify_new_discussion(discussion_doc) -> list[str]:
+	author = discussion_doc.owner
+	candidates = [user for user in space_subscribers([discussion_doc.project]) if user != author]
+	recipients = users_who_can_view_content(candidates, discussion_doc)
+	if not recipients:
+		return []
+
+	space = frappe.db.get_value("GP Project", discussion_doc.project, "title")
+	author_name = get_fullname(author)
+	return _fan_out(
+		recipients,
+		type="New Discussion",
+		merge=False,
+		from_user=author,
+		discussion=discussion_doc.name,
+		project=discussion_doc.project,
+		team=discussion_doc.team,
+		message=f"{author_name} started a discussion in {space}",
+	)
+
+
+def notify_added(user: str, *, project=None, team=None, actor: str | None = None):
+	if not user or actor == user:
+		return
+	if project:
+		target = frappe.db.get_value("GP Project", project, "title")
+	else:
+		target = frappe.db.get_value("GP Team", team, "title")
+	if actor and actor != "Guest":
+		message = f"{get_fullname(actor)} added you to {target}"
+		from_user = actor
+	else:
+		message = f"You were added to {target}"
+		from_user = None
+	records.write_or_merge(
+		to_user=user,
+		type="Added",
+		merge=False,
+		from_user=from_user,
+		project=str(project) if project else None,
+		team=team,
+		message=message,
+	)
+
+
+def notify_discussion_moved(discussion_doc, old_project, actor: str) -> list[str]:
+	candidates = [user for user in space_subscribers([old_project, discussion_doc.project]) if user != actor]
+	states = bulk_discussion_states(candidates, discussion_doc.name)
+	candidates = [user for user in candidates if states.get(user) != "Mute"]
+	recipients = users_who_can_view_content(candidates, discussion_doc)
+	if not recipients:
+		return []
+
+	space = frappe.db.get_value("GP Project", discussion_doc.project, "title")
+	mover = get_fullname(actor)
+	return _fan_out(
+		recipients,
+		type="Moved",
+		merge=False,
+		from_user=actor,
+		discussion=discussion_doc.name,
+		project=discussion_doc.project,
+		team=discussion_doc.team,
+		message=f"{mover} moved {discussion_doc.title} to {space}",
+	)
+
+
+def notify_space_moved(project_doc, actor: str) -> list[str]:
+	candidates = [user for user in space_subscribers([project_doc.name]) if user != actor]
+	recipients = [user for user in candidates if can_view_space(user, project_doc)]
+	if not recipients:
+		return []
+
+	community = frappe.db.get_value("GP Team", project_doc.team, "title")
+	mover = get_fullname(actor)
+	return _fan_out(
+		recipients,
+		type="Moved",
+		merge=False,
+		from_user=actor,
+		project=str(project_doc.name),
+		team=project_doc.team,
+		message=f"{mover} moved {project_doc.title} to {community}",
+	)
+
+
+def notify_poll_vote(poll_doc, voter: str):
+	owner = poll_doc.owner
+	if voter == owner or not wants_content_feedback(owner):
+		return
+	if poll_doc.anonymous:
+		message = "1 person voted on your poll"
+		from_user = None
+	else:
+		message = f"{get_fullname(voter)} voted on your poll"
+		from_user = voter
+	records.write_or_merge(
+		to_user=owner,
+		type="Poll Vote",
+		merge=True,
+		from_user=from_user,
+		discussion=poll_doc.discussion,
+		poll=poll_doc.name,
+		message=message,
+		merged_message="{count} people voted on your poll",
+	)

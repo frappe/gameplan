@@ -51,6 +51,15 @@
     </ListCell>
 
     <ListCell class="justify-end gap-1">
+      <!-- The user's own new-discussion toggle for this space — every member gets it,
+           unlike the rename controls. The bell shows the state; a click flips it. -->
+      <Button
+        v-if="!space.archived_at"
+        variant="ghost"
+        :icon="isSpaceNotifying(space.name) ? 'lucide-bell' : 'lucide-bell-off'"
+        :tooltip="isSpaceNotifying(space.name) ? 'Notifications on' : 'Notifications off'"
+        @click="toggleSpaceNotifications(space.name)"
+      />
       <Button
         v-if="space.archived_at && canManageSpaceSettings"
         variant="ghost"
@@ -71,6 +80,7 @@ import { ListCell, ListRow } from 'frappe-ui/list'
 import IconPicker from '@/components/IconPicker.vue'
 import SpaceIcon from '@/components/SpaceIcon.vue'
 import SpaceOptions from '@/components/SpaceOptions.vue'
+import { isSpaceNotifying, toggleSpaceNotifications } from '@/data/spaceNotifications'
 import { isDocMethodLoading, spaces, type Space, unarchiveSpace } from '@/data/spaces'
 import { readOnlyMode } from '@/data/readOnlyMode'
 import { useSessionUser } from '@/data/users'

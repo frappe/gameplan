@@ -2,10 +2,122 @@
   <PanelHeader title="Notifications" />
 
   <PanelBody>
-    <div class="space-y-11 pt-6">
+    <div class="space-y-7 pt-6">
       <section>
         <div class="divide-y divide-outline-gray-1">
-          <SettingsRow title="Enable email digests" description="Send a summary of missed activity">
+          <!-- SettingsRow's shape, written out because its description is plain text and
+               this one carries the Change link: "Thursdays, all day · Asia/Gaza · Change". -->
+          <div class="flex items-center gap-8 py-3.5" :class="editingSchedule && '!pb-1'">
+            <div class="min-w-0 flex-1">
+              <div class="text-base-medium text-ink-gray-8">Receive notifications</div>
+              <div class="mt-1 text-base leading-5 text-ink-gray-6">
+                <template v-if="receiveNotifications">
+                  {{ scheduleSummary }} · {{ timezoneLabel }}
+                </template>
+                <template v-else>
+                  Email is held; you get a catch-up email when you switch back on
+                </template>
+              </div>
+            </div>
+            <div class="flex shrink-0 items-center gap-4">
+              <Button
+                v-if="receiveNotifications"
+                :label="editingSchedule ? 'Done' : 'Change'"
+                @click="editingSchedule = !editingSchedule"
+              />
+              <Switch
+                :model-value="receiveNotifications"
+                @update:model-value="setReceiveNotifications"
+              />
+            </div>
+          </div>
+
+          <!-- The hours unfold under the switch: all day, every day until narrowed, so
+               there is nothing to turn on. Native time inputs: hour, minute and am/pm are
+               each a segment you click and step; the browser's clock popup is hidden
+               (index.css) so there is no endless list to scroll. -->
+          <!-- Two rows in the page's own shape — label left, control right — but read as
+               part of the switch's row: no dividers, tighter, with the sub-labels in the muted
+               body weight rather than a row title's. -->
+          <template v-if="receiveNotifications && editingSchedule">
+            <SettingsRow
+              title="Hours"
+              class="!border-t-0 !py-2 [&>div:first-child>*]:!text-base [&>div:first-child>*]:!font-normal [&>div:first-child>*]:!text-ink-gray-7"
+            >
+              <div class="flex flex-wrap items-center justify-end gap-2 text-base text-ink-gray-7">
+                <TextInput
+                  type="time"
+                  class="active-hours-time w-[6.5rem]"
+                  :model-value="activeHoursStart"
+                  @update:model-value="(value: string) => setActiveHours({ start: value })"
+                />
+                <span>to</span>
+                <TextInput
+                  type="time"
+                  class="active-hours-time w-[6.5rem]"
+                  :model-value="activeHoursEnd"
+                  @update:model-value="(value: string) => setActiveHours({ end: value })"
+                />
+                <span v-if="isOvernight" class="text-sm text-ink-gray-5">(next day)</span>
+              </div>
+            </SettingsRow>
+
+            <!-- The last selected day cannot be unpicked: a schedule with no days is not a
+                 schedule (the server refuses it too), and there is no other day to pick. -->
+            <SettingsRow
+              title="Days"
+              class="!border-t-0 !pb-4 !pt-2 [&>div:first-child>*]:!text-base [&>div:first-child>*]:!font-normal [&>div:first-child>*]:!text-ink-gray-7"
+            >
+              <div class="flex flex-wrap justify-end gap-1.5" role="group" aria-label="Active days">
+                <!-- Seven toggles: a picked day is the solid button, an unpicked one the soft
+                     grey, so the picked set reads at a glance without any borders. The last
+                     picked day is not disabled — a disabled solid button greys out and reads
+                     as unpicked — it simply ignores the click (toggleDay keeps one day). -->
+                <Button
+                  v-for="day in allWeekdays"
+                  :key="day"
+                  size="sm"
+                  :variant="activeHoursDays.includes(day) ? 'solid' : 'subtle'"
+                  :aria-pressed="activeHoursDays.includes(day)"
+                  :label="day"
+                  @click="toggleDay(day)"
+                />
+              </div>
+            </SettingsRow>
+          </template>
+
+          <SettingsRow
+            v-if="receiveNotifications"
+            title="Notify me by"
+            description="Choose where you get your notifications"
+          >
+            <Select
+              :options="channelOptions"
+              :model-value="notificationChannel"
+              @update:model-value="setNotificationChannel"
+            />
+          </SettingsRow>
+
+          <SettingsRow
+            title="Notifications for discussions you're part of"
+            description="Choose notifications for discussions you started or joined"
+          >
+            <Select
+              :options="participationOptions"
+              :model-value="participationLevel"
+              @update:model-value="setParticipationLevel"
+            />
+          </SettingsRow>
+
+          <SettingsRow
+            v-if="communityState.id"
+            title="Space notifications"
+            description="Pick the spaces whose new discussions should reach you"
+          >
+            <Button label="Manage" @click="showCommunitiesSettings(communityState.id, 'spaces')" />
+          </SettingsRow>
+
+          <SettingsRow title="Enable email digests" :description="emailDigestDescription">
             <Switch v-model="emailDigestEnabled" />
           </SettingsRow>
 
@@ -24,10 +136,6 @@
           >
             <Select :options="emailDigestDayOptions" v-model="selectedDigestDayOfWeek" />
           </SettingsRow>
-
-          <SettingsRow title="Last sent" description="The most recent digest email sent to you">
-            <div class="text-base text-ink-gray-6">{{ emailDigestLastSentOn }}</div>
-          </SettingsRow>
         </div>
       </section>
     </div>
@@ -39,13 +147,113 @@
 // fallthrough (this component renders a fragment); it simply isn't emitted here.
 defineEmits<{ (e: 'close-dialog'): void }>()
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
-import { dayjsLocal, Select, SettingsRow, Switch, toast, useDoctype } from 'frappe-ui'
+import {
+  Button,
+  dayjsLocal,
+  getConfig,
+  Select,
+  SettingsRow,
+  Switch,
+  TextInput,
+  toast,
+  useDoctype,
+} from 'frappe-ui'
 import PanelHeader from './PanelHeader.vue'
 import PanelBody from './PanelBody.vue'
+import { showCommunitiesSettings } from '@/components/Settings'
+import { communityState } from '@/data/communityState'
 import { useSessionUser, type EmailDigestDayOfWeek, type EmailDigestFrequency } from '@/data/users'
+import {
+  allDayEnd,
+  allDayStart,
+  allWeekdays,
+  currentActiveHoursDays as activeHoursDays,
+  currentActiveHoursEnd as activeHoursEnd,
+  currentActiveHoursStart as activeHoursStart,
+  currentNotificationChannel as notificationChannel,
+  currentParticipationLevel as participationLevel,
+  currentReceiveNotifications as receiveNotifications,
+  setActiveHours,
+  setNotificationChannel,
+  setParticipationLevel,
+  setReceiveNotifications,
+  type NotificationChannel,
+  type ParticipationLevel,
+  type Weekday,
+} from '@/data/notificationPreferences'
 import type { GPUserProfile } from '@/types/doctypes'
 
 const sessionUser = useSessionUser()
+
+// Push joins this list once the relay exists (Phase 5); until then it is not offered.
+const channelOptions: Array<{ value: NotificationChannel; label: string }> = [
+  { value: 'In-app', label: 'In-app only' },
+  { value: 'Email', label: 'Email' },
+]
+const participationOptions: Array<{ value: ParticipationLevel; label: string }> = [
+  { value: 'Watch', label: 'Watch' },
+  { value: 'Mentions only', label: 'Mentions only' },
+]
+
+// The schedule runs in the timezone from Preferences (User.time_zone), falling back to the
+// site's when none is set — the same rule the server applies.
+const timezoneLabel = computed(
+  () => sessionUser.time_zone || getConfig('systemTimezone') || 'the site timezone',
+)
+// 23:59 is "end of day", not a wrap into tomorrow (the server reads it the same way).
+const editingSchedule = ref(false)
+
+// "Thursdays, all day" / "Weekdays, 9:00 AM – 6:00 PM" / "Every day, all day".
+const dayNames: Record<Weekday, string> = {
+  Mon: 'Mondays',
+  Tue: 'Tuesdays',
+  Wed: 'Wednesdays',
+  Thu: 'Thursdays',
+  Fri: 'Fridays',
+  Sat: 'Saturdays',
+  Sun: 'Sundays',
+}
+const scheduleSummary = computed(() => {
+  const allDay = activeHoursStart.value === allDayStart && activeHoursEnd.value === allDayEnd
+  const hours = allDay
+    ? 'all day'
+    : `${clockLabel(activeHoursStart.value)} – ${clockLabel(activeHoursEnd.value)}`
+  const picked = new Set(activeHoursDays.value)
+  const same = (list: Weekday[]) => list.length === picked.size && list.every((d) => picked.has(d))
+  const chosen = allWeekdays.filter((d) => picked.has(d))
+  const days = same(allWeekdays)
+    ? 'Every day'
+    : same(['Mon', 'Tue', 'Wed', 'Thu', 'Fri'])
+      ? 'Weekdays'
+      : same(['Sat', 'Sun'])
+        ? 'Weekends'
+        : chosen.length === 1
+          ? dayNames[chosen[0]]
+          : chosen.join(', ')
+  return `${days}, ${hours}`
+})
+
+function clockLabel(time: string) {
+  return dayjsLocal(`2000-01-01T${time}`).format('h:mm A')
+}
+
+const isOvernight = computed(
+  () => activeHoursEnd.value < activeHoursStart.value && activeHoursEnd.value !== '23:59',
+)
+
+function toggleDay(day: Weekday) {
+  const days = activeHoursDays.value.includes(day)
+    ? activeHoursDays.value.filter((d) => d !== day)
+    : allWeekdays.filter((d) => d === day || activeHoursDays.value.includes(d))
+  if (!days.length) {
+    toast.error('Keep at least one day, or turn Receive notifications off instead', {
+      id: 'active-days-minimum',
+    })
+    return
+  }
+  setActiveHours({ days })
+}
+
 const userProfiles = useDoctype<GPUserProfile>('GP User Profile')
 const DEFAULT_ENABLED_FREQUENCY: EmailDigestFrequency = 'Weekly'
 const DIGEST_PREFERENCE_SAVE_DEBOUNCE_MS = 700
@@ -99,9 +307,12 @@ const selectedDigestDayOfWeek = computed({
   get: () => emailDigestDayOfWeek.value,
   set: saveDigestDayOfWeek,
 })
-const emailDigestLastSentOn = computed(() => {
-  if (!sessionUser.email_digest_last_sent_on) return 'Not sent yet'
-  return dayjsLocal(sessionUser.email_digest_last_sent_on).format('D MMM YYYY')
+// The last send date rides on the switch's own description rather than a row of its own.
+const emailDigestDescription = computed(() => {
+  const lastSent = sessionUser.email_digest_last_sent_on
+    ? `Last sent ${dayjsLocal(sessionUser.email_digest_last_sent_on).format('D MMM YYYY')}`
+    : 'Not sent yet'
+  return `Send a summary of missed activity. ${lastSent}`
 })
 
 watch(

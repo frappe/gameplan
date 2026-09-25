@@ -9,6 +9,15 @@ export type NewActivityEvent = {
   reference_name: string
 }
 
+/** The changed row inside `gameplan:notification_changed`. Mirrors
+ * `notify_notification_changed` in gameplan/realtime.py — keep field names in sync. */
+export type NotificationChange = {
+  name: string
+  event_count: number
+  read: 0 | 1
+  last_event_at: string | null
+}
+
 /**
  * Every realtime event Gameplan's own backend publishes, and what each one carries.
  *
@@ -22,8 +31,14 @@ export type NewActivityEvent = {
  */
 export type GameplanSocketEvents = {
   'gameplan:unread_counts_changed': void
-  /** `count` is the recipient's unread notification count after the change. */
-  'gameplan:notification_count_changed': { count: number }
+  /**
+   * `count` is the recipient's unread notification count after the change. `notification`
+   * is the row that was written, merged or read — or `null` for a bulk clear.
+   */
+  'gameplan:notification_changed': {
+    count: number
+    notification: NotificationChange | null
+  }
   'gameplan:users_changed': void
 }
 
@@ -33,7 +48,7 @@ type SocketEventName = keyof GameplanSocketEvents
 // isn't in the type, and every key in the type must appear here or nothing dispatches it.
 const GAMEPLAN_SOCKET_EVENTS = [
   'gameplan:unread_counts_changed',
-  'gameplan:notification_count_changed',
+  'gameplan:notification_changed',
   'gameplan:users_changed',
 ] as const satisfies readonly SocketEventName[]
 
