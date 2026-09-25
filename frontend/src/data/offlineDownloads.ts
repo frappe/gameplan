@@ -6,6 +6,7 @@ import { cachedDocNames, cachedListKeys, docKey, listKey } from './offline/cache
 import { OFFLINE_ACTION_MESSAGE, isNetworkError } from './offline/requests'
 import { isOnline, onReconnect, saveData } from './online'
 import { session } from './session'
+import { getSessionUserFromCookie } from '@/utils/sessionCookie'
 import { customEmojis } from './customEmojis'
 import { communityFeedKey, feedScope, spaceFeedKey } from './discussions'
 import {
@@ -188,8 +189,10 @@ function isDue(meta: Meta | null, days: OfflineWindow) {
 /** Whether the download finished; an interrupted one is resumed by the next run. */
 async function download(days: OfflineWindow, previous: Meta | null, signal: AbortSignal) {
   const user = session.user!
+  // The cache keys follow the cookie, which another tab's sign-in can change mid-sync.
+  const switchedAccount = () => getSessionUserFromCookie() !== user
   const cancelled = () =>
-    signal.aborted || offlineWindow.value !== days || session.user !== user || !isOnline.value
+    signal.aborted || offlineWindow.value !== days || switchedAccount() || !isOnline.value
   downloads.syncing = true
   downloads.error = null
   downloads.done = 0
@@ -245,7 +248,9 @@ async function download(days: OfflineWindow, previous: Meta | null, signal: Abor
         fields: { comments: COMMENT_FIELDS, activities: ACTIVITY_FIELDS, polls: POLL_FIELDS },
         names: wanted.slice(i, i + PAGE_SIZE),
       })
-      // Recorded before checking for a cancel, so a removal waiting on this run finds it.
+      // Never file one account's response under another's keys.
+      if (switchedAccount()) return false
+      // Recorded before the other checks, so a removal waiting on this run finds it.
       await storeBundle(bundle)
       for (const discussion of bundle.discussions) {
         const name = String(discussion.name)
@@ -258,6 +263,7 @@ async function download(days: OfflineWindow, previous: Meta | null, signal: Abor
       downloads.done = Math.min(i + PAGE_SIZE, wanted.length)
     }
 
+    if (cancelled()) return false
     await storeFeeds(feedRows, new Set(index.revoked))
     const emojis = (customEmojis.data ?? []).map((emoji) => emoji.image).filter(Boolean)
     saveImages([...emojis, ...images].slice(0, MAX_IMAGES) as string[])
