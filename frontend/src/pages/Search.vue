@@ -40,7 +40,7 @@
           </div>
 
           <!-- Filter Panel -->
-          <div class="overflow-x-auto -mx-3 px-3 pt-2">
+          <ScrollArea orientation="horizontal" class="-mx-3" viewport-class="px-3 pt-2">
             <div class="flex gap-2 items-center">
               <!-- Authors Filter -->
               <MultiSelect
@@ -155,7 +155,7 @@
                 </template>
               </MultiSelect>
             </div>
-          </div>
+          </ScrollArea>
           <!-- Soft fade so results dissolve into the toolbar as they scroll under. -->
           <div
             class="pointer-events-none absolute inset-x-0 top-full h-6 bg-gradient-to-b from-surface-base/90 to-transparent"
@@ -288,6 +288,7 @@ import {
   Breadcrumbs,
   Button,
   MultiSelect,
+  ScrollArea,
   TextInput,
   Tooltip,
   dayjs,
@@ -303,7 +304,7 @@ import UserAvatarWithHover from '@/components/UserAvatarWithHover.vue'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { getSpace } from '@/data/spaces'
 import { activeCommunities } from '@/data/communities'
-import { activeUsers } from '@/data/users'
+import { users } from '@/data/users'
 import { vFocus } from '@/directives'
 import { onReconnect } from '@/data/online'
 import { isOfflineError } from '@/data/loadFailure'
@@ -494,12 +495,16 @@ const authorsFilterOptions = computed(() => {
     })
   }
 
-  return activeUsers.value.map((user) => ({
-    value: user.name,
-    label: user.full_name,
-    image: user.user_image,
-    count: authorCounts.get(user.name) || 0,
-  }))
+  // Disabled users stay in the list while they have indexed posts, so older posts
+  // by people who have left can still be found by author.
+  return (users.data || [])
+    .filter((user) => user.enabled || authorCounts.get(user.name))
+    .map((user) => ({
+      value: user.name,
+      label: user.full_name,
+      image: user.user_image,
+      count: authorCounts.get(user.name) || 0,
+    }))
 })
 
 const doctypesFilterOptions = computed(() => {
