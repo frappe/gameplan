@@ -1,8 +1,9 @@
-import { MaybeRefOrGetter, ref, toValue, watch } from 'vue'
+import { ref, watch } from 'vue'
 import { useDoc, useList } from 'frappe-ui'
 import { UseListOptions } from 'frappe-ui'
 import { useDocumentVisibility } from '@vueuse/core'
 import { GPDiscussion } from '@/types/doctypes'
+import { createSharedDoc } from './sharedDoc'
 
 // Reload the feed when the tab is re-activated after sitting in the background
 // for at least this long, so new posts show up without a manual refresh.
@@ -70,45 +71,40 @@ export function useDiscussions(options: UseDiscussionOptions) {
   return discussions
 }
 
-let discussionsCache: Record<string, ReturnType<typeof useDoc>> = {}
-
-export function useDiscussion(discussionId: MaybeRefOrGetter<string>) {
-  interface Discussion extends GPDiscussion {
-    last_unread_comment: string
-    last_unread_poll: string
-    is_bookmarked: boolean
-    views: number
-  }
-
-  interface DiscussionMethods {
-    trackVisit: () => void
-    markAsUnread: () => void
-    closeDiscussion: () => void
-    reopenDiscussion: () => void
-    pinDiscussion: (data: { pin_scope: 'Category' | 'Space' }) => void
-    unpinDiscussion: () => void
-    addBookmark: () => void
-    removeBookmark: () => void
-    moveToProject: (data: { project: string }) => void
-  }
-
-  let name = toValue(discussionId)
-  if (!discussionsCache[name]) {
-    discussionsCache[name] = useDoc<Discussion, DiscussionMethods>({
-      doctype: 'GP Discussion',
-      name: discussionId,
-      methods: {
-        trackVisit: 'track_visit',
-        markAsUnread: 'mark_as_unread',
-        closeDiscussion: 'close_discussion',
-        reopenDiscussion: 'reopen_discussion',
-        pinDiscussion: 'pin_discussion',
-        unpinDiscussion: 'unpin_discussion',
-        addBookmark: 'add_bookmark',
-        removeBookmark: 'remove_bookmark',
-        moveToProject: 'move_to_project',
-      },
-    })
-  }
-  return discussionsCache[name] as ReturnType<typeof useDoc<Discussion, DiscussionMethods>>
+interface DiscussionDoc extends GPDiscussion {
+  last_unread_comment: string
+  last_unread_poll: string
+  is_bookmarked: boolean
+  views: number
 }
+
+interface DiscussionMethods {
+  trackVisit: () => void
+  markAsUnread: () => void
+  closeDiscussion: () => void
+  reopenDiscussion: () => void
+  pinDiscussion: (data: { pin_scope: 'Category' | 'Space' }) => void
+  unpinDiscussion: () => void
+  addBookmark: () => void
+  removeBookmark: () => void
+  moveToProject: (data: { project: string }) => void
+}
+
+/** The discussion behind `discussionId`, followed as that id changes. */
+export const useDiscussion = createSharedDoc((name: string) =>
+  useDoc<DiscussionDoc, DiscussionMethods>({
+    doctype: 'GP Discussion',
+    name,
+    methods: {
+      trackVisit: 'track_visit',
+      markAsUnread: 'mark_as_unread',
+      closeDiscussion: 'close_discussion',
+      reopenDiscussion: 'reopen_discussion',
+      pinDiscussion: 'pin_discussion',
+      unpinDiscussion: 'unpin_discussion',
+      addBookmark: 'add_bookmark',
+      removeBookmark: 'remove_bookmark',
+      moveToProject: 'move_to_project',
+    },
+  }),
+)
