@@ -1,4 +1,4 @@
-import { useCall } from '@/data/offlineRevalidation'
+import { useCall } from '@/data/offline/resources'
 
 interface AppInfo {
   name: string

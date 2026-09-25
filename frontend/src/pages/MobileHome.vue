@@ -9,7 +9,6 @@
         variant="ghost"
         size="md"
         :loading="updateJoinedTeams.loading"
-        :disabled="!isOnline"
         @click="toggleEditMode"
       >
         {{ editMode ? 'Done' : 'Edit' }}
@@ -65,14 +64,13 @@
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { PageHeaderMobile, Button, Switch, toast, usePageMeta } from 'frappe-ui'
-import { useCall } from '@/data/offlineRevalidation'
+import { useCall } from '@/data/offline/resources'
 import CommunityImage from '@/components/CommunityImage.vue'
 import GameplanLogo from '@/components/GameplanLogo.vue'
 import MobileListRow from '@/components/MobileListRow.vue'
 import { activeCommunities, availableCommunities, communities } from '@/data/communities'
 import { communityState } from '@/data/communityState'
 import { getSpaceUnreadCount, spaces } from '@/data/spaces'
-import { isOnline } from '@/data/online'
 
 const router = useRouter()
 const editMode = ref(false)

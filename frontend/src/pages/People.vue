@@ -4,7 +4,7 @@
       <div class="w-full">
         <PageHeaderMobile class="sm:hidden" title="People">
           <template #prefix>
-            <PageHeaderBackButton :to="{ name: 'More' }" />
+            <PageHeaderBackButton :fallback-route="{ name: 'More' }" />
           </template>
           <template #suffix>
             <Button
@@ -23,7 +23,7 @@
         </PageHeader>
         <div class="mx-auto w-full body-container pt-6">
           <div class="flex items-center justify-between">
-            <h2 class="text-3xl-semibold text-ink-gray-7">{{ peopleList.length }} members</h2>
+            <h2 class="text-2xl-semibold text-ink-gray-7">{{ peopleList.length }} members</h2>
             <div class="flex items-center gap-2">
               <TextInput
                 class="hidden sm:block"
@@ -94,7 +94,7 @@
               <ListRow
                 v-for="user in peopleList"
                 :key="user.name"
-                :to="{
+                :route="{
                   name: 'PersonProfileProfile',
                   params: {
                     personId: user.name,
@@ -164,7 +164,7 @@
               <ListRow
                 v-for="user in peopleList"
                 :key="user.name"
-                :to="{
+                :route="{
                   name: 'PersonProfileProfile',
                   params: {
                     personId: user.name,
@@ -205,9 +205,7 @@
             </EmptyStateBox>
 
             <div class="p-3" v-if="people.hasNextPage">
-              <Button @click="people.next" :loading="people.loading" :disabled="!isOnline">
-                Load more
-              </Button>
+              <Button @click="people.next" :loading="people.loading"> Load more </Button>
             </div>
           </div>
 
@@ -244,7 +242,6 @@ import EmptyStateBox from '@/components/EmptyStateBox.vue'
 import UserAvatarWithHover from '@/components/UserAvatarWithHover.vue'
 import ReactionFaceIcon from '@/components/ReactionFaceIcon.vue'
 import { useLoadFailure } from '@/data/loadFailure'
-import { isOnline } from '@/data/online'
 
 defineOptions({
   name: 'People',

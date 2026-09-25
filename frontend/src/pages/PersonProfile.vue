@@ -60,7 +60,7 @@
 import { computed, inject } from 'vue'
 import { routerViewLocationKey, useRoute, useRouter } from 'vue-router'
 import { PageHeader, Breadcrumbs, Button, TabButtons, usePageMeta } from 'frappe-ui'
-import { useDoc } from '@/data/offlineRevalidation'
+import { useDoc } from '@/data/offline/resources'
 import NotFound from '@/pages/NotFound.vue'
 import OfflineContentFallback from '@/components/OfflineContentFallback.vue'
 import { showSettingsDialog } from '@/components/Settings'
@@ -114,7 +114,7 @@ const isOwnProfile = computed(() => profile.value?.user === sessionUser.name)
 // A 404 or permission error is profileNotFound's; this is only for being offline.
 const profileLoadFailure = computed(() =>
   !profile.value && profileResource.error && isOfflineError(profileResource.error)
-    ? loadFailureCopy('this profile', true)
+    ? loadFailureCopy('this profile')
     : null,
 )
 // A profile that never loaded used to render an empty page; show the not-found
@@ -143,8 +143,8 @@ const displayName = computed(() => {
 const bento = useProfileBento(() => profile.value?.name)
 
 const bentoFailure = computed(() =>
-  bento.failed.value
-    ? loadFailureCopy("this profile's cards", isOfflineError(bento.error.value))
+  bento.failed.value && isOfflineError(bento.error.value)
+    ? loadFailureCopy("this profile's cards")
     : null,
 )
 

@@ -7,7 +7,6 @@
     :loading="isJoining"
     :label="isJoined ? `Leave ${community.title}` : `Join ${community.title}`"
     class="min-w-16 shrink-0"
-    :disabled="!isOnline"
     @click="toggleMembership"
   >
     {{ isJoined ? 'Leave' : 'Join' }}
@@ -19,7 +18,6 @@ import { computed, ref } from 'vue'
 import { Button, toast } from 'frappe-ui'
 import { confirmLeaveCommunity, isCommunityJoined, joinCommunity } from '@/data/communities'
 import type { Community } from '@/data/communities'
-import { isOnline } from '@/data/online'
 
 const props = withDefaults(
   defineProps<{

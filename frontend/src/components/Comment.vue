@@ -125,7 +125,7 @@ const RevisionsDialog = defineAsyncComponent(() => import('./RevisionsDialog.vue
 import UserAvatarWithHover from './UserAvatarWithHover.vue'
 import { GPComment } from '@/types/doctypes'
 import { dialog } from 'frappe-ui'
-import { useList } from '@/data/offlineRevalidation'
+import { useList } from '@/data/offline/resources'
 import { tags } from '@/data/tags'
 import { useDraftSync } from '@/data/useDraftSync'
 import { isOnline } from '@/data/online'
@@ -225,7 +225,6 @@ const dropdownOptions = computed(() => [
   {
     label: 'Revisions',
     icon: 'lucide-rotate-ccw',
-    disabled: !isOnline.value,
     onClick: () => (showRevisionsDialog.value = true),
     condition: () => Boolean(props.comment.edited_at),
   },
@@ -237,7 +236,6 @@ const dropdownOptions = computed(() => [
   {
     label: 'Delete',
     icon: 'lucide-trash',
-    disabled: !isOnline.value,
     onClick: () => {
       dialog.danger({
         title: 'Delete comment',

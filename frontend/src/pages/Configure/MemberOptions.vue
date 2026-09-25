@@ -15,7 +15,6 @@ import { communities } from '@/data/communities'
 import type { Community, CommunityMember } from '@/data/communities'
 import { useUser } from '@/data/users'
 import type { GPTeam } from '@/types/doctypes'
-import { isOnline } from '@/data/online'
 
 const props = defineProps<{
   community: Community
@@ -41,14 +40,12 @@ const options = computed(() => [
   {
     label: props.member.is_admin ? 'Remove community admin' : 'Make community admin',
     icon: props.member.is_admin ? 'lucide-shield-minus' : 'lucide-shield-check',
-    disabled: !isOnline.value,
     onClick: () => setCommunityAdmin(!props.member.is_admin),
     condition: () => canUpdateAdminStatus.value,
   },
   {
     label: 'Remove from community',
     icon: 'lucide-user-round-minus',
-    disabled: !isOnline.value,
     onClick: removeMember,
     condition: () => canRemoveMember.value,
   },

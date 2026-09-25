@@ -72,7 +72,7 @@
           class="w-full"
           variant="solid"
           :loading="bulkMoveDiscussions.loading"
-          :disabled="!selectedSpace || !isOnline"
+          :disabled="!selectedSpace"
           @click="moveDiscussions"
         >
           {{ selectedSpace ? `Move to ${selectedSpaceTitle}` : 'Move' }}
@@ -86,7 +86,7 @@
 import { computed, ref, useTemplateRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Combobox, Dialog, ErrorMessage, toast } from 'frappe-ui'
-import { useCall } from '@/data/offlineRevalidation'
+import { useCall } from '@/data/offline/resources'
 import DiscussionList from '@/components/DiscussionList.vue'
 import SpaceHeaderActions from '@/components/SpaceHeaderActions.vue'
 import SpaceTabs from '@/components/SpaceTabs.vue'
@@ -115,7 +115,6 @@ import {
 import { spaceFeedKey } from '@/data/discussions'
 import { copyToClipboard } from '@/utils'
 import { readOnlyMode } from '@/data/readOnlyMode'
-import { isOnline } from '@/data/online'
 
 interface BulkUpdateResponse {
   moved: string[]
@@ -176,13 +175,11 @@ const spaceActions = computed(() => [
   {
     label: 'Mark all as read',
     icon: 'lucide-check',
-    disabled: !isOnline.value,
     onClick: () => currentSpace.value && markAllAsRead([props.spaceId], currentSpace.value.title),
   },
   {
     label: isJoined.value ? 'Leave space' : 'Join space',
     icon: isJoined.value ? 'lucide-log-out' : 'lucide-log-in',
-    disabled: !isOnline.value,
     onClick: () => {
       if (!currentSpace.value) return
       return isJoined.value ? confirmLeaveSpace(currentSpace.value) : joinSpace(currentSpace.value)
@@ -204,14 +201,12 @@ const spaceActions = computed(() => [
   {
     label: 'Archive',
     icon: 'lucide-archive',
-    disabled: !isOnline.value,
     onClick: () => currentSpace.value && archiveSpace(currentSpace.value),
     condition: () => canEditSettings.value,
   },
   {
     label: 'Unarchive',
     icon: 'lucide-archive-restore',
-    disabled: !isOnline.value,
     onClick: () => currentSpace.value && unarchiveSpace(currentSpace.value),
     condition: () => !readOnlyMode && isArchived.value && canManageAccess.value,
   },
@@ -243,7 +238,6 @@ function resetMoveDialog() {
 }
 
 function moveDiscussions() {
-  if (!isOnline.value) return
   if (selectedDiscussions.value.length === 0) {
     toast.error('Select discussions to move')
     return

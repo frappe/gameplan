@@ -1,6 +1,6 @@
 import { computed, type ComputedRef } from 'vue'
 import { toast } from 'frappe-ui'
-import { useDoc } from '@/data/offlineRevalidation'
+import { useDoc } from '@/data/offline/resources'
 import { useSessionUser } from '@/data/users'
 import type { GPUserProfile } from '@/types/doctypes'
 import type { ProfileFieldEditor, ProfileFieldUpdate } from './types'

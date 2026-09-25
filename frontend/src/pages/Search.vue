@@ -210,8 +210,7 @@
               <Tooltip text="Yes, results were helpful">
                 <button
                   @click="submitFeedback(true)"
-                  :disabled="!isOnline"
-                  class="p-1 hover:bg-surface-gray-2 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                  class="p-1 hover:bg-surface-gray-2 rounded-full transition-colors"
                 >
                   <span class="lucide-thumbs-up size-4 text-ink-gray-7" />
                 </button>
@@ -219,8 +218,7 @@
               <Tooltip text="No, results were not helpful">
                 <button
                   @click="submitFeedback(false)"
-                  :disabled="!isOnline"
-                  class="p-1 hover:bg-surface-gray-2 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                  class="p-1 hover:bg-surface-gray-2 rounded-full transition-colors"
                 >
                   <span class="lucide-thumbs-down size-4 text-ink-gray-7" />
                 </button>
@@ -242,7 +240,7 @@
             <ListRow
               v-for="item in visibleSearchResults"
               :key="item.id"
-              :to="getItemRoute(item)"
+              :route="getItemRoute(item)"
               class="py-3 touch-pan-y overflow-hidden"
             >
               <ListCell class="self-start">
@@ -297,7 +295,7 @@ import {
   usePageMeta,
 } from 'frappe-ui'
 import { useNewDoc } from 'frappe-ui'
-import { useCall } from '@/data/offlineRevalidation'
+import { useCall } from '@/data/offline/resources'
 import { List, ListCell, ListRow } from 'frappe-ui/list'
 import { GPSearchFeedback } from '@/types/doctypes'
 import { useSessionUser } from '@/data/users'
@@ -307,7 +305,7 @@ import { getSpace } from '@/data/spaces'
 import { activeCommunities } from '@/data/communities'
 import { activeUsers } from '@/data/users'
 import { vFocus } from '@/directives'
-import { isOnline, onReconnect } from '@/data/online'
+import { onReconnect } from '@/data/online'
 import { isOfflineError } from '@/data/loadFailure'
 import OfflineContentFallback from '@/components/OfflineContentFallback.vue'
 
@@ -634,11 +632,11 @@ const submit = debounce(function (text?: string) {
     params.filters = JSON.stringify(activeFilters.value)
   }
 
-  search.submit(params)
+  search.submit(params).catch(() => {})
 }, 300)
 
 // A search is something you asked for, so it is not revalidated with the lists
-// (offlineRevalidation.ts). One that failed for want of a connection is worth running
+// (data/offline/resources.ts). One that failed for want of a connection is worth running
 // again by itself: the page is showing a dead end the connection has just cleared.
 onScopeDispose(
   onReconnect(() => {
@@ -819,9 +817,12 @@ function submitFeedback(isHelpful: boolean) {
     query: query.value,
   })
 
-  feedback.submit().then(() => {
-    feedbackGiven.value = true
-  })
+  feedback
+    .submit()
+    .then(() => {
+      feedbackGiven.value = true
+    })
+    .catch(() => {})
 }
 </script>
 <style>

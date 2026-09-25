@@ -2,7 +2,10 @@
   <div>
     <PageHeaderMobile class="sm:hidden" :title="pageTitle">
       <template #prefix>
-        <PageHeaderBackButton :to="backRoute" :label="isSpacePage ? 'Pages' : 'My Pages'" />
+        <PageHeaderBackButton
+          :fallback-route="backRoute"
+          :label="isSpacePage ? 'Pages' : 'My Pages'"
+        />
       </template>
       <template v-if="page.doc && canEditPage" #suffix>
         <DropdownMoreOptions align="end" :options="pageActions" />
@@ -60,7 +63,7 @@
         </span>
         <div class="mb-3 md:px-[70px]" ref="titleField">
           <input
-            class="w-full border-0 p-0 pt-4 text-5xl-semibold focus:outline-none focus:ring-0 bg-surface-base text-ink-gray-8"
+            class="w-full border-0 p-0 pt-4 text-4xl-semibold focus:outline-none focus:ring-0 bg-surface-base text-ink-gray-8"
             type="text"
             v-model="title"
             :readonly="!canWritePage"
@@ -109,7 +112,7 @@ import {
   dayjsLocal,
   dialog,
 } from 'frappe-ui'
-import { useDoc } from '@/data/offlineRevalidation'
+import { useDoc } from '@/data/offline/resources'
 import PageEditor from '@/components/editor/PageEditor.vue'
 import { useSpace } from '@/data/spaces'
 import { GPPage } from '@/types/doctypes'
@@ -223,14 +226,12 @@ const pageActions = computed(() => [
     onClick: () => save(),
     loading: isAutosaving.value,
     icon: 'lucide-save',
-    disabled: !isOnline.value,
   },
   {
     label: 'Delete',
     icon: 'lucide-trash-2',
     onClick: deletePage,
     condition: () => canEditPage.value && canDeleteContent(page.doc, space.value, useSessionUser()),
-    disabled: !isOnline.value,
   },
 ])
 
@@ -253,6 +254,7 @@ const save = () => {
         isAutosaving.value = false
       }, remainingTime)
     })
+    .catch(() => {})
 }
 
 const autosave = debounce(save, 1000)
@@ -284,7 +286,6 @@ useCommandPaletteCommands(
         icon: 'lucide-save',
         aliases: ['save document', 'save changes'],
         onClick: save,
-        disabled: !isOnline.value,
         defaultScore: isDirty.value ? 3 : 1,
       },
       {
@@ -294,7 +295,6 @@ useCommandPaletteCommands(
         icon: 'lucide-trash-2',
         aliases: ['remove page', 'delete document'],
         onClick: deletePage,
-        disabled: !isOnline.value,
         condition: () =>
           canEditPage.value && canDeleteContent(page.doc, space.value, useSessionUser()),
         defaultScore: 1,

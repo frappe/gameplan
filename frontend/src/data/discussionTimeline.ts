@@ -30,7 +30,6 @@ export const POLL_FIELDS = [
   { reactions: ['name', 'user', 'emoji'] },
 ]
 
-// The offline-aware useList appends the signed-in user to each (offlineRevalidation.ts).
 export function commentsCacheKey(doctype: string, name: string) {
   return ['Comments', doctype, name]
 }

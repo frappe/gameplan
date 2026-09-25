@@ -1,4 +1,4 @@
-import { useList } from '@/data/offlineRevalidation'
+import { useList } from '@/data/offline/resources'
 import { computed } from 'vue'
 import { session } from './session'
 
@@ -61,8 +61,7 @@ let insertQueue: Promise<unknown> = Promise.resolve()
 export function createDraft(fields: Record<string, unknown>): Promise<DraftDoc> {
   const next = insertQueue.then(async () => {
     const doc = (await drafts.insert.submit(fields as Partial<DraftRow>)) as DraftDoc | null
-    // useCall resolves with null instead of rejecting; callers rely on a throw to keep their
-    // local copy and retry.
+    // Callers rely on a throw to keep their local copy and retry.
     if (!doc?.name) throw new Error('Could not create the draft')
     return doc
   })

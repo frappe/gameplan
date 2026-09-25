@@ -83,7 +83,7 @@
         <ScrollArea class="block min-h-0 flex-1" viewport-class="isolate bg-surface-base">
           <div class="body-container pt-14 pb-14">
             <div class="max-w-xl mx-auto">
-              <div class="text-4xl-semibold text-ink-gray-8">Welcome to Gameplan</div>
+              <div class="text-3xl-semibold text-ink-gray-8">Welcome to Gameplan</div>
 
               <div class="mt-2 pt-8 border-t">
                 <h2 class="text-base-medium text-ink-gray-8 mb-2">Name your community</h2>
@@ -177,7 +177,7 @@
                 <Button
                   variant="solid"
                   :loading="onboarding.loading"
-                  :disabled="!community || !space.title || !isOnline"
+                  :disabled="!community || !space.title"
                   @click="submit"
                 >
                   Continue
@@ -194,7 +194,7 @@
 import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ScrollArea } from 'frappe-ui'
-import { useCall } from '@/data/offlineRevalidation'
+import { useCall } from '@/data/offline/resources'
 import GameplanLogo from '@/components/GameplanLogo.vue'
 import IconPicker from '@/components/IconPicker.vue'
 import SpaceIcon from '@/components/SpaceIcon.vue'
@@ -204,7 +204,6 @@ import { joinedSpaces, spaces } from '@/data/spaces'
 import { communities } from '@/data/communities'
 import { communityState } from '@/data/communityState'
 import { useSessionUser } from '@/data/users'
-import { isOnline } from '@/data/online'
 
 const community = ref('')
 const space = reactive({

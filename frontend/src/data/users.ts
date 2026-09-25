@@ -1,5 +1,4 @@
-import { useCall } from '@/data/offlineRevalidation'
-import { getSessionUserFromCookie } from '@/utils/sessionCookie'
+import { useCall } from '@/data/offline/resources'
 import { computed, reactive, readonly, ref, watch } from 'vue'
 import router from '@/router'
 import { setCommunityOrder } from './communityOrder'
@@ -76,12 +75,9 @@ function mergeUserInfo(user: UserInfo) {
   }
 }
 
-// From the cookie: session.ts imports this module before `session` exists.
-
 export let users = useCall<UserInfo[]>({
   url: '/api/v2/method/gameplan.api.get_user_info',
-  // Per user, so another account on this browser can't read it offline.
-  cacheKey: ['Users', getSessionUserFromCookie()],
+  cacheKey: 'Users',
   initialData: [],
   transform(data) {
     for (let user of data) {
@@ -191,7 +187,11 @@ function getPlaceholderUser(email: string, full_name: string) {
 }
 
 export let activeUsers = computed(() => {
-  return (users.data || []).filter((user) => user.enabled)
+  // Read through the store, which is reactive: `users.data` is a shallow ref, so a role
+  // change merged into a row would not show.
+  return (users.data || [])
+    .map((user) => usersByName[user.name] ?? user)
+    .filter((user) => user.enabled)
 })
 
 /**

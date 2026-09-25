@@ -2,7 +2,7 @@
   <div class="flex min-h-0 flex-col">
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-2">
-        <h2 class="text-3xl-semibold leading-none text-ink-gray-9">Invite People</h2>
+        <h2 class="text-2xl-semibold leading-none text-ink-gray-9">Invite People</h2>
       </div>
     </div>
     <div class="mt-4 space-y-4">
@@ -29,15 +29,8 @@
         <ErrorMessage :message="inviteByEmail.error" />
         <Button
           variant="solid"
-          @click="
-            inviteByEmail.submit({
-              emails,
-              role,
-              projects: null,
-            })
-          "
+          @click="inviteByEmail.submit({ emails, role, projects: null }).catch(() => {})"
           :loading="inviteByEmail.loading"
-          :disabled="!isOnline"
         >
           Invite
         </Button>
@@ -90,12 +83,10 @@
                 <Button
                   v-if="!pendingToDelete || pendingToDelete != invitation.name"
                   icon="lucide-x"
-                  :disabled="!isOnline"
                   @click="pendingToDelete = invitation.name"
                 />
                 <Button
                   v-else
-                  :disabled="!isOnline"
                   @click="() => pendingInvitations.delete.submit({ name: invitation.name })"
                   :loading="
                     pendingInvitations.delete.loading &&
@@ -116,10 +107,9 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { Select, Tooltip } from 'frappe-ui'
-import { useCall, useList } from '@/data/offlineRevalidation'
+import { useCall, useList } from '@/data/offline/resources'
 import { GPInvitation } from '@/types/doctypes'
 import { users } from '@/data/users'
-import { isOnline } from '@/data/online'
 
 type Role = 'Gameplan Admin' | 'Gameplan Member'
 

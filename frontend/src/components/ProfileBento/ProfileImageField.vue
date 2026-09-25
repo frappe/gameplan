@@ -10,7 +10,6 @@
             <Button
               icon-left="lucide-upload"
               :loading="uploading || busy"
-              :disabled="!isOnline"
               @click="openFileSelector"
             >
               {{ uploading ? `${progress}%` : uploadLabel }}
@@ -43,7 +42,6 @@ import { computed } from 'vue'
 import { Button, ErrorMessage, FormLabel } from 'frappe-ui'
 import ImageUploader from '@/components/ImageUploader.vue'
 import type { ImageUploadKind } from '@/utils/imageUpload'
-import { isOnline } from '@/data/online'
 
 const props = withDefaults(
   defineProps<{

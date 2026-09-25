@@ -6,7 +6,7 @@
       <section>
         <div class="divide-y divide-outline-gray-1">
           <SettingsRow title="Enable email digests" description="Send a summary of missed activity">
-            <Switch v-model="emailDigestEnabled" :disabled="!isOnline" />
+            <Switch v-model="emailDigestEnabled" />
           </SettingsRow>
 
           <SettingsRow
@@ -14,11 +14,7 @@
             title="Digest frequency"
             description="Choose how often you receive your digest"
           >
-            <Select
-              :options="emailDigestFrequencyOptions"
-              v-model="selectedDigestFrequency"
-              :disabled="!isOnline"
-            />
+            <Select :options="emailDigestFrequencyOptions" v-model="selectedDigestFrequency" />
           </SettingsRow>
 
           <SettingsRow
@@ -26,11 +22,7 @@
             title="Send on"
             description="Choose the weekday for your digest"
           >
-            <Select
-              :options="emailDigestDayOptions"
-              v-model="selectedDigestDayOfWeek"
-              :disabled="!isOnline"
-            />
+            <Select :options="emailDigestDayOptions" v-model="selectedDigestDayOfWeek" />
           </SettingsRow>
 
           <SettingsRow title="Last sent" description="The most recent digest email sent to you">
@@ -52,7 +44,6 @@ import PanelHeader from './PanelHeader.vue'
 import PanelBody from './PanelBody.vue'
 import { useSessionUser, type EmailDigestDayOfWeek, type EmailDigestFrequency } from '@/data/users'
 import type { GPUserProfile } from '@/types/doctypes'
-import { isOnline } from '@/data/online'
 
 const sessionUser = useSessionUser()
 const userProfiles = useDoctype<GPUserProfile>('GP User Profile')

@@ -1,13 +1,12 @@
 import { reactive, watch } from 'vue'
 import { useLocalStorage } from '@vueuse/core'
-import { call, dialog, toast } from 'frappe-ui'
-import { delMany, get, getMany, keys, set, setMany, values } from 'idb-keyval'
+import { call, toast } from 'frappe-ui'
+import { delMany, get, getMany, set, setMany, values } from 'idb-keyval'
+import { cachedDocNames, cachedListKeys, docKey, listKey } from './offline/cache'
+import { OFFLINE_ACTION_MESSAGE, isNetworkError } from './offline/requests'
 import { isOnline, onReconnect, saveData } from './online'
 import { session } from './session'
 import { customEmojis } from './customEmojis'
-import { isMobileViewport } from '@/utils/useIsMobile'
-import { OFFLINE_ACTION_MESSAGE } from './loadFailure'
-import { isNetworkError } from '@/offline'
 import { communityFeedKey, feedScope, spaceFeedKey } from './discussions'
 import {
   ACTIVITY_FIELDS,
@@ -20,8 +19,8 @@ import {
 
 /**
  * "Download for offline": keeps the chosen window of discussions on the device, filed into the
- * same IndexedDB entries frappe-ui's resources read, so a downloaded discussion opens like a
- * visited one. frappe-ui has no public API to seed its cache, hence the key formats below.
+ * same entries frappe-ui's resources read (offline/cache.ts), so a downloaded discussion opens
+ * like a visited one.
  */
 
 export type OfflineWindow = 0 | 7 | 30 | 90
@@ -46,12 +45,10 @@ const MAX_IMAGES = 300
 const SYNC_INTERVAL = 6 * 60 * 60 * 1000
 // A failed sync backs off from here, doubling up to SYNC_INTERVAL.
 const RETRY_DELAY = 5 * 60 * 1000
-// The server's rate-limit window; retrying inside it is only refused again.
-const RATE_LIMIT_DELAY = 60 * 60 * 1000
 // Spreads the first sync so a team opening the app together doesn't sync together.
 const MAX_START_DELAY = 30 * 1000
-// gameplan-sw.js's image cache.
-const IMAGE_CACHE_SUFFIX = ':runtime'
+// gameplan-sw.js's cache for the images of downloaded discussions.
+const IMAGE_CACHE_SUFFIX = ':downloads'
 // useDiscussions' page size, so a restored feed holds as much as a fetched one.
 const FEED_LIMIT = 50
 
@@ -122,141 +119,115 @@ export const downloads = reactive({
   error: null as string | null,
 })
 
-let meta: Meta | null = null
-let removal: Promise<void> | null = null
+// This tab's running sync, so a removal can stop it.
+let running: AbortController | null = null
 
+/** Read inside the lock every time: another tab may have moved it on. */
 async function readMeta(): Promise<Meta | null> {
   const stored = (await get(META_KEY).catch(() => null)) as Meta | undefined
-  meta = stored?.user === session.user && stored.places ? stored : null
-  downloads.count = meta ? Object.keys(meta.places).length : 0
-  downloads.lastSyncedAt = meta?.lastSyncedAt ?? null
+  const meta = stored?.user === session.user && stored.places ? stored : null
+  showMeta(meta)
   return meta
 }
 
-async function writeMeta(next: Meta) {
-  meta = next
-  downloads.count = Object.keys(next.places).length
-  downloads.lastSyncedAt = next.lastSyncedAt
-  await set(META_KEY, next)
+async function writeMeta(meta: Meta) {
+  showMeta(meta)
+  await set(META_KEY, meta)
 }
 
-/** Brings the device in line with the chosen window. `manual` runs skip the throttles. */
-async function syncOfflineDownloads({ manual = false } = {}): Promise<boolean> {
-  if (!session.isLoggedIn) return false
-  await removal?.catch(() => {})
-  // A manual run waits for the current one, then brings it up to date.
-  if (inflight) {
-    await inflight.catch(() => {})
-    if (!manual) return false
-  }
-  inflight = sync(manual).finally(() => (inflight = null))
-  return inflight
+function showMeta(meta: Meta | null) {
+  downloads.count = meta ? Object.keys(meta.places).length : 0
+  downloads.lastSyncedAt = meta?.lastSyncedAt ?? null
 }
 
-let inflight: Promise<boolean> | null = null
-let activeSync: Promise<boolean> | null = null
-let activeSyncController: AbortController | null = null
+/**
+ * Runs `task` holding the lock every tab shares, so one sync or removal runs at a time. With
+ * `ifAvailable` it gives up rather than wait for another tab.
+ */
+function exclusive<T>(ifAvailable: boolean, task: () => Promise<T>): Promise<T | false> {
+  if (!navigator.locks) return task()
+  return navigator.locks.request(LOCK_NAME, { ifAvailable }, async (lock) =>
+    lock ? task() : false,
+  ) as Promise<T | false>
+}
+
+/**
+ * Brings the device in line with the chosen window. A manual run waits for another tab's
+ * run and then checks again; an automatic one leaves it to that tab and to the interval.
+ */
+function syncOfflineDownloads({ manual = false } = {}): Promise<boolean> {
+  if (!session.isLoggedIn) return Promise.resolve(false)
+  return exclusive(!manual, () => sync(manual))
+}
 
 async function sync(manual: boolean): Promise<boolean> {
   const days = offlineWindow.value
-  const current = meta ?? (await readMeta())
-
+  const meta = await readMeta()
   if (!days) {
-    if (current) await removeOfflineDownloads()
+    if (meta) await forgetDownloads(meta)
     return true
   }
   if (!isOnline.value) return false
-  if (!manual) {
-    if (document.visibilityState !== 'visible' || saveData.value) return false
-    if (current?.retryAfter && Date.now() < current.retryAfter) return false
-    const fresh = current?.window === days && !current.incomplete && current.lastSyncedAt
-    if (fresh && Date.now() - fresh < SYNC_INTERVAL) return true
-  }
+  if (!manual && !isDue(meta, days)) return true
 
-  const run = () => {
-    activeSyncController = new AbortController()
-    activeSync = runSync(days, activeSyncController.signal).finally(() => {
-      activeSync = null
-      activeSyncController = null
-    })
-    return activeSync
+  running = new AbortController()
+  try {
+    return await download(days, meta, running.signal)
+  } finally {
+    running = null
   }
-
-  // One tab at a time; another tab already syncing covers this one.
-  if (!navigator.locks) return run()
-  return navigator.locks.request(LOCK_NAME, { ifAvailable: true }, (lock) => (lock ? run() : false))
 }
 
-/** Whether the sync finished; an interrupted one is resumed by the next run. */
-async function runSync(days: OfflineWindow, signal?: AbortSignal): Promise<boolean> {
+function isDue(meta: Meta | null, days: OfflineWindow) {
+  if (document.visibilityState !== 'visible' || saveData.value) return false
+  if (meta?.retryAfter && Date.now() < meta.retryAfter) return false
+  const fresh = meta?.window === days && !meta.incomplete && meta.lastSyncedAt
+  return !fresh || Date.now() - fresh >= SYNC_INTERVAL
+}
+
+/** Whether the download finished; an interrupted one is resumed by the next run. */
+async function download(days: OfflineWindow, previous: Meta | null, signal: AbortSignal) {
+  const user = session.user!
+  const cancelled = () =>
+    signal.aborted || offlineWindow.value !== days || session.user !== user || !isOnline.value
   downloads.syncing = true
   downloads.error = null
   downloads.done = 0
   downloads.total = 0
-  const previous = meta ?? (await readMeta())
   try {
-    const onDevice = new Set(await cachedDiscussions())
-    const downloaded = previous?.places ?? {}
+    const onDevice = new Set(await cachedDocNames('GP Discussion'))
+    // Only what is really on the device counts as downloaded. A new window keeps it.
+    const places: Record<string, string> = {}
+    for (const [name, place] of Object.entries(previous?.places ?? {})) {
+      if (onDevice.has(name)) places[name] = place
+    }
     const visits = visitsToCheck(
-      [...onDevice].filter((name) => !(name in downloaded)),
+      [...onDevice].filter((name) => !(name in places)),
       previous?.checkedUpTo,
     )
-    const initialUser = session.user
-    const isCancelled = () =>
-      signal?.aborted || offlineWindow.value !== days || session.user !== initialUser
-    const sameWindow = previous?.window === days
     const index = await call<Index>(INDEX, {
       window_days: days,
       cached: visits.names,
-      since: sameWindow ? previous.since : null,
+      since: previous?.since ?? null,
     })
-    if (isCancelled()) return false
-    const names = new Set(index.discussions)
-    const dropped = Object.keys(downloaded).filter((name) => !names.has(name))
-    await forgetDiscussions([...dropped, ...index.revoked])
+    if (cancelled()) return false
 
-    // Only what is really on the device counts as downloaded. A new window starts over.
-    const places: Record<string, string> = {}
-    for (const name of sameWindow ? Object.keys(downloaded) : []) {
-      if (names.has(name) && onDevice.has(name)) places[name] = downloaded[name]
+    await forgetDiscussions(index.revoked)
+    // Out of the window now: no longer kept up to date, but left like any visited discussion.
+    const inIndex = new Set(index.discussions)
+    for (const name of Object.keys(places)) {
+      if (!inIndex.has(name)) delete places[name]
     }
     const base: Meta = {
-      user: session.user!,
+      user,
       window: days,
-      since: sameWindow ? previous.since : null,
+      since: previous?.since ?? null,
       places,
       checkedUpTo: visits.checkedUpTo,
-      lastSyncedAt: sameWindow ? previous.lastSyncedAt : null,
+      lastSyncedAt: previous?.lastSyncedAt ?? null,
       incomplete: true,
     }
-    if (isCancelled()) return false
     await writeMeta(base)
-
-    const images = new Set<string>()
-    const feedRows = new Map<string, FeedRow>()
-    const fetchPage = async (names: string[]) => {
-      const bundle = await call<Bundle>(BUNDLE, {
-        window_days: days,
-        fields: { comments: COMMENT_FIELDS, activities: ACTIVITY_FIELDS, polls: POLL_FIELDS },
-        names,
-      })
-      if (isCancelled()) return
-      await storeBundle(bundle)
-      for (const row of bundle.rows ?? []) feedRows.set(String(row.name), row)
-      for (const discussion of bundle.discussions) {
-        const name = String(discussion.name)
-        places[name] = index.places[name]
-      }
-      for (const url of bundleImages(bundle)) images.add(url)
-      if (isCancelled()) {
-        const newlyFetched = bundle.discussions
-          .map((d) => String(d.name))
-          .filter((name) => !onDevice.has(name))
-        if (newlyFetched.length) await forgetDiscussions(newlyFetched)
-        return
-      }
-      await writeMeta({ ...base, places: { ...places } })
-    }
 
     // Changed, missing from the device, or moved to another Space or community.
     const changed = new Set(index.changed)
@@ -264,26 +235,34 @@ async function runSync(days: OfflineWindow, signal?: AbortSignal): Promise<boole
       (name) => changed.has(name) || places[name] !== index.places[name],
     )
     downloads.total = wanted.length
+    const images = new Set<string>()
+    const feedRows = new Map<string, FeedRow>()
     for (let i = 0; i < wanted.length; i += PAGE_SIZE) {
-      if (!isOnline.value || isCancelled()) return false
       if (i) await idle(signal)
-      if (isCancelled()) return false
-      await fetchPage(wanted.slice(i, i + PAGE_SIZE))
-      if (isCancelled()) return false
+      if (cancelled()) return false
+      const bundle = await call<Bundle>(BUNDLE, {
+        window_days: days,
+        fields: { comments: COMMENT_FIELDS, activities: ACTIVITY_FIELDS, polls: POLL_FIELDS },
+        names: wanted.slice(i, i + PAGE_SIZE),
+      })
+      // Recorded before checking for a cancel, so a removal waiting on this run finds it.
+      await storeBundle(bundle)
+      for (const discussion of bundle.discussions) {
+        const name = String(discussion.name)
+        places[name] = index.places[name]
+      }
+      await writeMeta(base)
+      if (cancelled()) return false
+      for (const row of bundle.rows ?? []) feedRows.set(String(row.name), row)
+      for (const url of bundleImages(bundle)) images.add(url)
       downloads.done = Math.min(i + PAGE_SIZE, wanted.length)
     }
 
-    if (isCancelled()) return false
-
-    await storeFeeds(feedRows, new Set([...dropped, ...index.revoked]))
-
-    if (isCancelled()) return false
-
+    await storeFeeds(feedRows, new Set(index.revoked))
     const emojis = (customEmojis.data ?? []).map((emoji) => emoji.image).filter(Boolean)
     saveImages([...emojis, ...images].slice(0, MAX_IMAGES) as string[])
     await writeMeta({
       ...base,
-      places: { ...places },
       since: index.synced_at,
       lastSyncedAt: Date.now(),
       incomplete: false,
@@ -291,7 +270,7 @@ async function runSync(days: OfflineWindow, signal?: AbortSignal): Promise<boole
     return true
   } catch (error) {
     downloads.error = error instanceof Error ? error.message : String(error)
-    await standDown(days, previous, error).catch(() => {})
+    if (!cancelled()) await standDown(days, error).catch(() => {})
     throw error
   } finally {
     downloads.syncing = false
@@ -303,29 +282,19 @@ async function runSync(days: OfflineWindow, signal?: AbortSignal): Promise<boole
  * interval and would query the index on every tab focus. A lost connection is not counted,
  * so reconnecting still syncs at once.
  */
-async function standDown(days: OfflineWindow, previous: Meta | null, error: unknown) {
-  if (isNetworkError(error) || offlineWindow.value !== days) return
-  const failures = (previous?.failures ?? 0) + 1
-  const delay = isRateLimited(error)
-    ? RATE_LIMIT_DELAY
-    : Math.min(RETRY_DELAY * 2 ** (failures - 1), SYNC_INTERVAL)
-  await writeMeta({
+async function standDown(days: OfflineWindow, error: unknown) {
+  if (isNetworkError(error)) return
+  const meta = (await readMeta()) ?? {
+    user: session.user!,
+    window: days,
     since: null,
     places: {},
     lastSyncedAt: null,
-    ...(meta ?? previous),
-    user: session.user!,
-    window: days,
     incomplete: true,
-    failures,
-    retryAfter: Date.now() + delay,
-  })
-}
-
-/** REQUESTS_PER_HOUR in offline_downloads.py was exceeded. */
-function isRateLimited(error: unknown) {
-  const { exc_type, status } = (error ?? {}) as { exc_type?: string; status?: number }
-  return exc_type === 'RateLimitExceededError' || status === 429
+  }
+  const failures = (meta.failures ?? 0) + 1
+  const delay = Math.min(RETRY_DELAY * 2 ** (failures - 1), SYNC_INTERVAL)
+  await writeMeta({ ...meta, incomplete: true, failures, retryAfter: Date.now() + delay })
 }
 
 /**
@@ -372,7 +341,6 @@ async function storeBundle(bundle: Bundle) {
  */
 async function storeFeeds(rows: Map<string, FeedRow>, removed: Set<string>) {
   if (!rows.size && !removed.size) return
-  const user = session.user!
   const bySpace = new Map<string, FeedRow[]>()
   const byCommunity = new Map<string, FeedRow[]>()
   const group = (index: Map<string, FeedRow[]>, id: string, row: FeedRow) => {
@@ -386,7 +354,7 @@ async function storeFeeds(rows: Map<string, FeedRow>, removed: Set<string>) {
   }
 
   const feeds = new Map<string, Feed>()
-  for (const feed of [...downloadedFeeds(rows.values()), ...(await cachedFeeds(user))]) {
+  for (const feed of [...downloadedFeeds(rows.values()), ...(await cachedFeeds())]) {
     feeds.set(feed.key, feed)
   }
   if (!feeds.size) return
@@ -445,25 +413,17 @@ function downloadedFeeds(rows: Iterable<FeedRow>): Feed[] {
 }
 
 /** Feeds this user has cached, so rows that moved or went away leave them too. */
-async function cachedFeeds(user: string): Promise<Feed[]> {
+async function cachedFeeds(): Promise<Feed[]> {
   const feeds: Feed[] = []
-  for (const key of await keys()) {
-    if (typeof key !== 'string' || !key.startsWith(FEED_KEY_PREFIX)) continue
-    let parts: unknown[]
-    try {
-      parts = JSON.parse(key)
-    } catch {
-      continue
-    }
-    if (parts[parts.length - 1] !== user) continue
-    const inner = parts[2]
+  for (const cacheKey of await cachedListKeys('Discussions')) {
+    const inner = cacheKey[1]
     const pinned = Array.isArray(inner) && inner[0] === 'pinned'
     const name = pinned ? inner[1] : inner
     const scope = typeof name === 'string' ? feedScope(name) : null
     if (!scope) continue
     const { space, community, feedType } = scope
     feeds.push({
-      key,
+      key: listKey(cacheKey),
       space,
       community,
       pinned,
@@ -491,14 +451,6 @@ function parseRows(value: unknown): FeedRow[] {
   } catch {
     return []
   }
-}
-
-/** Discussions saved on this device, whether downloaded or from the user's own visits. */
-async function cachedDiscussions() {
-  const prefix = docKey('GP Discussion', '')
-  return (await keys())
-    .filter((key): key is string => typeof key === 'string' && key.startsWith(prefix))
-    .map((key) => key.slice(prefix.length))
 }
 
 async function forgetDiscussions(names: string[]) {
@@ -549,9 +501,9 @@ function forgetImages(urls: string[]) {
 
 /** What the downloads weigh: their own entries and the images saved for them. */
 export async function downloadedBytes(): Promise<number> {
-  const current = meta ?? (await readMeta())
-  if (!current) return 0
-  const owned = Object.keys(current.places).flatMap((name) => Object.values(discussionKeys(name)))
+  const meta = await readMeta()
+  if (!meta) return 0
+  const owned = Object.keys(meta.places).flatMap((name) => Object.values(discussionKeys(name)))
   const encoder = new TextEncoder()
   const images = new Set<string>()
   let bytes = 0
@@ -576,24 +528,19 @@ async function savedImageBytes(urls: string[]): Promise<number> {
   )
 }
 
-/** Deletes everything downloaded. Concurrent callers share one run. */
-function removeOfflineDownloads(): Promise<void> {
-  removal ??= removeEverything().finally(() => (removal = null))
-  return removal
+/** Deletes everything downloaded, once this tab's sync has stopped. */
+function removeOfflineDownloads() {
+  running?.abort()
+  return exclusive(false, async () => {
+    const meta = await readMeta()
+    if (meta) await forgetDownloads(meta)
+  })
 }
 
-async function removeEverything() {
-  if (activeSync) {
-    activeSyncController?.abort()
-    await activeSync.catch(() => {})
-  }
-  const current = meta ?? (await readMeta())
-  if (!current) return
-  await forgetDiscussions(Object.keys(current.places))
+async function forgetDownloads(meta: Meta) {
+  await forgetDiscussions(Object.keys(meta.places))
   await delMany([META_KEY])
-  meta = null
-  downloads.count = 0
-  downloads.lastSyncedAt = null
+  showMeta(null)
 }
 
 /** Picks a window and downloads it now. */
@@ -618,28 +565,16 @@ export function downloadForOffline(days: OfflineWindow) {
   })
 }
 
-// The key formats frappe-ui's useList and docStore use for IndexedDB, with the user the
-// offline-aware useList appends (offlineRevalidation.ts).
-function listKey(cacheKey: unknown[]) {
-  return JSON.stringify(['useList', ...cacheKey, session.user])
-}
-
-const FEED_KEY_PREFIX = '["useList","Discussions"'
-
-function docKey(doctype: string, name: string) {
-  return `doc:${doctype}/${name}`
-}
-
-/** Raw rows with string names, as useList stores them; each list transforms on read. */
+/** Rows as the server sends them, with string names. Each list runs its transform on them. */
 function rowsJson(rows: Row[] = []) {
   return JSON.stringify(rows.map((row) => ({ ...row, name: String(row.name) })))
 }
 
 /** Yields to the page between bundle pages, or at once when the sync is cancelled. */
-function idle(signal?: AbortSignal) {
+function idle(signal: AbortSignal) {
   return new Promise<void>((resolve) => {
-    if (signal?.aborted) return resolve()
-    signal?.addEventListener('abort', () => resolve(), { once: true })
+    if (signal.aborted) return resolve()
+    signal.addEventListener('abort', () => resolve(), { once: true })
     if ('requestIdleCallback' in window) requestIdleCallback(() => resolve(), { timeout: 2000 })
     else setTimeout(resolve, 200)
   })
@@ -655,65 +590,8 @@ export function setupOfflineDownloads() {
   setTimeout(background, 5000 + Math.random() * MAX_START_DELAY)
   onReconnect(background)
   document.addEventListener('visibilitychange', background)
+  // Another tab, or the settings, chose not to download any more.
   watch(offlineWindow, (days, previous) => {
     if (!days && previous) removeOfflineDownloads()
   })
-  setupIntroduction()
-}
-
-const introduction = useLocalStorage<'new' | 'seen-offline' | 'done'>(
-  `gameplan:offline-intro:${session.user}`,
-  'new',
-)
-
-/**
- * Offers downloads once per account on a device: armed by going offline, shown on the next
- * load rather than on reconnect, where it would land on whatever the person was doing.
- */
-function setupIntroduction() {
-  watch(isOnline, (online) => {
-    if (online || offlineWindow.value || introduction.value !== 'new') return
-    introduction.value = 'seen-offline'
-  })
-  if (introduction.value === 'seen-offline') setTimeout(offerDownload, 3000)
-}
-
-function offerDownload() {
-  if (offlineWindow.value || !isOnline.value) return
-  introduction.value = 'done'
-  const settings = isMobileViewport() ? 'More > Offline' : 'Settings > Preferences'
-  dialog.confirm({
-    title: 'Read Gameplan offline',
-    message: `Keep discussions from the past month in your Spaces on this device, so they open even without a connection. You can change this in ${settings}.`,
-    confirmLabel: 'Download',
-    cancelLabel: 'Not now',
-    onConfirm: () => {
-      downloadForOffline(30)
-      openOfflineSettings()
-    },
-  })
-}
-
-/** Anchor for the Offline section of Settings > Preferences. */
-export const OFFLINE_SECTION_ID = 'offline-settings'
-
-function openOfflineSettings() {
-  // Imported on demand: both modules import this one.
-  if (isMobileViewport()) {
-    import('@/router').then(({ default: router }) => router.push({ name: 'OfflineSettings' }))
-  } else {
-    import('@/components/Settings').then(({ showSettingsDialog }) => {
-      showSettingsDialog('Preferences')
-      scrollToOfflineSection()
-    })
-  }
-}
-
-function scrollToOfflineSection(attemptsLeft = 20) {
-  const section = document.getElementById(OFFLINE_SECTION_ID)
-  if (section) {
-    section.scrollIntoView({ block: 'start', behavior: 'smooth' })
-    return
-  }
-  if (attemptsLeft) requestAnimationFrame(() => scrollToOfflineSection(attemptsLeft - 1))
 }

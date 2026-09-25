@@ -4,7 +4,7 @@
       <Button v-if="isBulkDeleteMode" variant="ghost" size="md" @click="cancelBulkDelete">
         Cancel
       </Button>
-      <PageHeaderBackButton v-else :to="{ name: 'More' }" />
+      <PageHeaderBackButton v-else :fallback-route="{ name: 'More' }" />
     </template>
     <template #suffix>
       <div class="flex items-center gap-2">
@@ -31,7 +31,7 @@
           variant="subtle"
           theme="red"
           size="md"
-          :disabled="selectedDrafts.length === 0 || !isOnline"
+          :disabled="selectedDrafts.length === 0"
           @click="showDeleteConfirm = true"
         >
           Delete{{ selectedDrafts.length ? ` ${selectedDrafts.length}` : '' }}
@@ -66,7 +66,6 @@
           v-if="selectedDrafts.length > 0"
           theme="red"
           icon-left="lucide-trash-2"
-          :disabled="!isOnline"
           @click="showDeleteConfirm = true"
         >
           Delete {{ selectedDrafts.length }} draft{{ selectedDrafts.length > 1 ? 's' : '' }}
@@ -90,7 +89,7 @@
           <ListRow
             v-for="draft in drafts.data"
             :key="draft.name"
-            :to="draftRoute(draft)"
+            :route="draftRoute(draft)"
             :value="draft.name"
             class="h-15"
           >
@@ -149,7 +148,6 @@
         label: 'Delete',
         variant: 'solid',
         theme: 'red',
-        disabled: !isOnline,
         onClick: deleteDrafts,
       },
     ]"
@@ -170,12 +168,11 @@ import {
   Dialog,
   toast,
 } from 'frappe-ui'
-import { useCall } from '@/data/offlineRevalidation'
+import { useCall } from '@/data/offline/resources'
 import { List, ListRow, ListCell } from 'frappe-ui/list'
 import UserAvatarWithHover from '@/components/UserAvatarWithHover.vue'
 import NewDiscussionSpaceDialog from '@/components/NewDiscussionSpaceDialog.vue'
 import { readOnlyMode } from '@/data/readOnlyMode'
-import { isOnline } from '@/data/online'
 import { relativeTimestamp } from '@/utils'
 import { onMounted, ref } from 'vue'
 import type { RouteLocationRaw } from 'vue-router'

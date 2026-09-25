@@ -16,7 +16,7 @@
                  the communities list when there is none (a cold deep link). -->
             <PageHeaderBackButton
               label="Back to communities"
-              :to="{ name: 'SettingsTab', params: { tab: 'communities' } }"
+              :fallback-route="{ name: 'SettingsTab', params: { tab: 'communities' } }"
             />
           </template>
           <template #default>{{ selectedCommunity?.title || 'Community' }}</template>
@@ -37,7 +37,7 @@
             label="Back to communities"
             @click="showCommunities"
           />
-          <h2 class="min-w-0 truncate text-lg-semibold text-ink-gray-8">
+          <h2 class="min-w-0 truncate text-md-semibold text-ink-gray-8">
             {{ selectedCommunity?.title || 'Community' }}
           </h2>
           <Select variant="ghost" v-if="selectedCommunity" :options="viewButtons" v-model="view" />
@@ -59,7 +59,6 @@
               :icon="isPhone ? 'lucide-plus' : undefined"
               :icon-left="isPhone ? undefined : 'lucide-plus'"
               label="New space"
-              :disabled="!isOnline"
               @click="openNewSpaceDialog"
             />
           </template>
@@ -76,7 +75,7 @@
               :icon="isPhone ? 'lucide-plus' : undefined"
               :icon-left="isPhone ? undefined : 'lucide-plus'"
               label="Add members"
-              :disabled="Boolean(selectedCommunity.archived_at) || !isOnline"
+              :disabled="Boolean(selectedCommunity.archived_at)"
               @click="showAddMembers = true"
             />
           </template>
@@ -85,7 +84,7 @@
 
       <!-- Communities list -->
       <template v-else>
-        <h2 class="text-lg-semibold text-ink-gray-8 max-sm:hidden">Communities</h2>
+        <h2 class="text-md-semibold text-ink-gray-8 max-sm:hidden">Communities</h2>
 
         <!-- pb-3 keeps the gap to the column header, which lives at the top
              of the scroll viewport (a sticky ListHeader in CommunitiesList)
@@ -115,7 +114,6 @@
               :icon="isPhone ? 'lucide-plus' : undefined"
               :icon-left="isPhone ? undefined : 'lucide-plus'"
               label="New community"
-              :disabled="!isOnline"
               @click="newCommunityDialog = true"
             />
           </div>
@@ -199,7 +197,6 @@ import PanelBody from './PanelBody.vue'
 import { communities } from '@/data/communities'
 import { useSessionUser } from '@/data/users'
 import { canManageCommunity, isGlobalAdmin } from '@/utils/permissions'
-import { isOnline } from '@/data/online'
 import { useIsMobile } from '@/utils/useIsMobile'
 import CommunitiesList from '@/pages/Configure/CommunitiesList.vue'
 import CommunitiesListFilters from '@/pages/Configure/CommunitiesListFilters.vue'

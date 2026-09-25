@@ -2,7 +2,7 @@
   <div class="divide-y divide-outline-gray-1">
     <SettingsRow
       title="Download for offline"
-      description="Keep discussions from Spaces you've joined on this device, with their comments and polls"
+      description="Keep discussions from the communities you've joined on this device, with their comments and polls"
     >
       <!-- Offline there is nothing to download; Remove downloads below still works. -->
       <Select
@@ -18,7 +18,7 @@
       <SettingsRow title="On this device" :description="status" />
       <Progress v-if="downloads.syncing" class="pb-3.5" :value="progress" size="sm" />
       <div class="flex flex-wrap gap-2 pb-3.5">
-        <Button :disabled="!isOnline || downloads.syncing" @click="confirmSync">Sync now</Button>
+        <Button :disabled="downloads.syncing" @click="confirmSync">Sync now</Button>
         <Button v-if="downloads.count" :disabled="downloads.syncing" @click="removeDownloads">
           Remove downloads
         </Button>
@@ -30,8 +30,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { computedAsync } from '@vueuse/core'
-import { Button, Progress, Select, SettingsRow, dayjsLocal, dialog } from 'frappe-ui'
 import { isOnline } from '@/data/online'
+import { Button, Progress, Select, SettingsRow, dayjsLocal, dialog } from 'frappe-ui'
 import {
   MAX_DISCUSSIONS,
   WINDOW_OPTIONS,
@@ -58,8 +58,8 @@ function confirmWindow(days: OfflineWindow) {
   if (!days) return removeDownloads()
   const window = WINDOW_OPTIONS.find((option) => option.value === days)?.label.toLowerCase()
   dialog.confirm({
-    title: 'Download offline?',
-    message: `Discussions from the ${window} in Spaces you've joined will be kept on this device, with their comments and polls, and kept up to date in the background.`,
+    title: 'Download for offline?',
+    message: `Discussions from the ${window} in the communities you've joined will be kept on this device, with their comments and polls, and kept up to date in the background.`,
     confirmLabel: 'Download',
     cancelLabel: 'Cancel',
     onConfirm: () => downloadForOffline(days),

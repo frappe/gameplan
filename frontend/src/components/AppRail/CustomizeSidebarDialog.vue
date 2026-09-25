@@ -5,7 +5,7 @@
         class="flex shrink-0 items-center justify-between border-b border-outline-gray-1 px-4 py-3"
       >
         <Dialog.Title as-child>
-          <h2 class="text-lg font-medium text-ink-gray-9">Customize sidebar</h2>
+          <h2 class="text-md font-medium text-ink-gray-9">Customize sidebar</h2>
         </Dialog.Title>
         <Dialog.Close as-child>
           <Button variant="ghost" label="Close" icon="lucide-x" />
@@ -137,7 +137,7 @@
       <div class="flex shrink-0 justify-end border-t border-outline-gray-1 px-4 py-3">
         <Button
           variant="solid"
-          :disabled="!hasUnsavedChanges || !isOnline"
+          :disabled="!hasUnsavedChanges"
           :loading="isSaving"
           @click="saveChanges"
         >
@@ -152,7 +152,7 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Button, Dialog, ScrollArea, Select, toast } from 'frappe-ui'
-import { useCall } from '@/data/offlineRevalidation'
+import { useCall } from '@/data/offline/resources'
 import { communityState } from '@/data/communityState'
 import { activeCommunities, availableCommunities, communities } from '@/data/communities'
 import type { Community } from '@/data/communities'
@@ -170,7 +170,6 @@ import {
   type PointerSortableItem,
 } from '@/composables/usePointerSortableSections'
 import CommunityImage from '../CommunityImage.vue'
-import { isOnline } from '@/data/online'
 
 type SidebarSection = 'shown' | 'hidden'
 

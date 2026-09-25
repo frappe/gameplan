@@ -43,7 +43,7 @@
     </div>
 
     <template #actions>
-      <Button class="w-full relative" variant="solid" :disabled="!isOnline" @click="onCreateClick">
+      <Button class="w-full relative" variant="solid" @click="onCreateClick">
         Create
         <div class="absolute right-0 top-0 h-7 pr-2 flex items-center justify-center">
           <KeyboardShortcut ctrl> Enter </KeyboardShortcut>
@@ -61,7 +61,6 @@ import { GPTask } from '@/types/doctypes'
 import { showDialog, newTask, _onSuccess } from './state'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import KeyboardShortcut from '../KeyboardShortcut.vue'
-import { isOnline } from '@/data/online'
 
 let spaceOptions = useGroupedSpaceOptions({ filterFn: (space) => !space.archived_at })
 
@@ -93,7 +92,7 @@ function onCreateClick(e: KeyboardEvent) {
     return
   }
 
-  if (!newTask.value || !isOnline.value) return
+  if (!newTask.value) return
   if (!newTask.value.doc.title) {
     newTask.value.error = new Error('Task title is required')
     return

@@ -42,7 +42,6 @@
                 />
                 <Tooltip text="Change status" v-else>
                   <Dropdown
-                    :disabled="!isOnline"
                     :options="
                       statusOptions({
                         onClick: (status) =>
@@ -54,8 +53,7 @@
                     "
                   >
                     <button
-                      class="flex rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-outline-gray-3 disabled:cursor-not-allowed disabled:opacity-50"
-                      :disabled="!isOnline"
+                      class="flex rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-outline-gray-3"
                     >
                       <TaskStatusIcon :status="d.status" />
                     </button>
@@ -147,11 +145,10 @@ import TaskStatusIcon from './NewTaskDialog/TaskStatusIcon.vue'
 import { GPTask } from '@/types/doctypes'
 import { getSpace } from '@/data/spaces'
 import { UseListOptions } from 'frappe-ui'
-import { useList } from '@/data/offlineRevalidation'
+import { useList } from '@/data/offline/resources'
 import DropdownMoreOptions from './DropdownMoreOptions.vue'
 import { useSessionUser } from '@/data/users'
 import { canDeleteContent } from '@/utils/permissions'
-import { isOnline } from '@/data/online'
 import { useLoadFailure } from '@/data/loadFailure'
 
 interface Props {
@@ -240,7 +237,6 @@ function dropdownOptions(task: GPTask) {
     {
       label: 'Delete',
       condition: () => canDeleteContent(task, getSpace(task.project), useSessionUser()),
-      disabled: !isOnline.value,
       onClick: () => {
         dialog.danger({
           title: 'Delete Task',

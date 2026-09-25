@@ -48,7 +48,6 @@
         <Button
           icon-left="lucide-refresh-cw"
           @click="discussions.next"
-          :disabled="!isOnline"
           :loading="discussions.loading"
         >
           {{ discussions.loading ? 'Loading...' : 'Load more' }}
@@ -68,7 +67,6 @@ import ListRowSkeleton from './ListRowSkeleton.vue'
 import EmptyStateBox from './EmptyStateBox.vue'
 import OfflineContentFallback from './OfflineContentFallback.vue'
 import { useLoadFailure } from '@/data/loadFailure'
-import { isOnline } from '@/data/online'
 import Pin from './icons/Pin.vue'
 
 interface Props {

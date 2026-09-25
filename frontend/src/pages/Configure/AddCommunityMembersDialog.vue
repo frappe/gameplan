@@ -8,7 +8,7 @@
         class="flex shrink-0 items-center justify-between border-b border-outline-gray-1 px-4 py-3"
       >
         <Dialog.Title as-child>
-          <h2 class="text-lg font-medium text-ink-gray-9">Add members</h2>
+          <h2 class="text-md font-medium text-ink-gray-9">Add members</h2>
         </Dialog.Title>
         <Dialog.Close as-child>
           <Button variant="ghost" label="Close" icon="lucide-x" />
@@ -128,7 +128,7 @@
         <Button
           variant="solid"
           class="w-full shrink-0 sm:w-auto sm:min-w-32"
-          :disabled="!selected.length || !isOnline"
+          :disabled="!selected.length"
           :loading="isAdding"
           @click="submit"
         >
@@ -158,7 +158,6 @@ import EmptyStateBox from '@/components/EmptyStateBox.vue'
 import { communities, type Community } from '@/data/communities'
 import { activeUsers, usersReady, useUser } from '@/data/users'
 import type { GPTeam } from '@/types/doctypes'
-import { isOnline } from '@/data/online'
 
 const props = defineProps<{
   community: Community
@@ -239,7 +238,7 @@ function successMessage(users: string[]) {
 
 async function submit() {
   const users = [...selected.value]
-  if (!users.length || !isOnline.value) return
+  if (!users.length) return
 
   submitError.value = undefined
   try {

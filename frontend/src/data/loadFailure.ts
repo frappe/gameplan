@@ -1,5 +1,5 @@
 import { computed, toValue, type MaybeRefOrGetter } from 'vue'
-import { isNetworkError } from '@/offline'
+import { isNetworkError } from '@/data/offline/requests'
 import { isOnline } from './online'
 
 interface LoadableResource {
@@ -15,26 +15,18 @@ export function isOfflineError(error: unknown) {
   return !isOnline.value || isNetworkError(error)
 }
 
-/** What a control that is disabled offline says when someone taps it anyway. */
-export const OFFLINE_ACTION_MESSAGE = "You're offline. Reconnect to do this."
-
-/** The copy every "couldn't load" state uses, so pages word it the same way. */
-export function loadFailureCopy(what: string, offline: boolean) {
-  return offline
-    ? {
-        title: `Can't load ${what} while offline`,
-        message: "It hasn't been saved for offline use yet. Reconnect and retry to load it.",
-      }
-    : {
-        title: `Could not load ${what}`,
-        message: 'Something went wrong while loading this. Retry to try again.',
-      }
+/** The copy every offline "can't load" state uses, so pages word it the same way. */
+export function loadFailureCopy(what: string) {
+  return {
+    title: `Can't load ${what} while offline`,
+    message: "It hasn't been saved for offline use yet. Reconnect and retry to load it.",
+  }
 }
 
 /**
- * A fetch that failed with nothing cached to show in its place. Without this the page
- * renders as empty (or blank), which reads as "there's nothing here" rather than
- * "this couldn't be loaded".
+ * A fetch that failed offline with nothing cached to show in its place. Without this the
+ * page renders as empty, which reads as "there's nothing here". A server error keeps the
+ * page's own handling.
  */
 export function useLoadFailure(
   resource: MaybeRefOrGetter<LoadableResource | null | undefined>,
@@ -43,7 +35,7 @@ export function useLoadFailure(
   return computed(() => {
     const r = toValue(resource)
     if (!r || r.loading || !r.error || r.isFinished === false) return null
-    if (('doc' in r ? r.doc : r.data) != null) return null
-    return loadFailureCopy(what, isOfflineError(r.error))
+    if (('doc' in r ? r.doc : r.data) != null || !isOfflineError(r.error)) return null
+    return loadFailureCopy(what)
   })
 }

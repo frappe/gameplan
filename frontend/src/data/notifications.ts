@@ -1,4 +1,4 @@
-import { useCall } from '@/data/offlineRevalidation'
+import { useCall } from '@/data/offline/resources'
 import { useDebounceFn } from '@vueuse/core'
 import { onSocketEvent } from '@/socket'
 import { onReconnect } from './online'

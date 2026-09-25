@@ -1,4 +1,4 @@
-import { useCall } from '@/data/offlineRevalidation'
+import { useCall } from '@/data/offline/resources'
 import { computed, reactive } from 'vue'
 import { communityState } from './communityState'
 import { isSpacePinned } from './pinnedSpaces'

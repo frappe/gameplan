@@ -3,7 +3,7 @@
     <div class="flex flex-col items-center text-center">
       <div
         v-if="sessionUser.name"
-        class="flex size-[120px] items-center justify-center overflow-hidden rounded-full bg-surface-gray-3 text-5xl-semibold text-ink-gray-7 shadow-sm"
+        class="flex size-[120px] items-center justify-center overflow-hidden rounded-full bg-surface-gray-3 text-4xl-semibold text-ink-gray-7 shadow-sm"
         :style="avatarStyle"
       >
         <img
@@ -14,10 +14,10 @@
         />
         <span v-else>{{ userInitials }}</span>
       </div>
-      <div class="mt-5 max-w-full truncate text-5xl-semibold text-ink-gray-9">
+      <div class="mt-5 max-w-full truncate text-4xl-semibold text-ink-gray-9">
         {{ sessionUser.full_name }}
       </div>
-      <p v-if="userBio" class="max-w-sm text-p-lg text-ink-gray-6">
+      <p v-if="userBio" class="max-w-sm text-p-md text-ink-gray-6">
         {{ userBio }}
       </p>
       <Button variant="ghost" size="lg" class="mt-2" @click="openProfile"> View profile </Button>
@@ -25,7 +25,7 @@
 
     <div class="mt-8 space-y-6">
       <section v-for="group in itemGroups" :key="group.label">
-        <div class="mb-2 pl-[18px] text-lg-medium text-ink-gray-5">
+        <div class="mb-2 pl-[18px] text-md-medium text-ink-gray-5">
           {{ group.label }}
         </div>
         <nav class="overflow-hidden rounded-7 bg-surface-base">
@@ -33,8 +33,7 @@
             v-for="(item, index) in group.items"
             :key="item.label"
             type="button"
-            class="block w-full text-left transition active:bg-surface-gray-2 disabled:opacity-50"
-            :disabled="item.disabled"
+            class="block w-full text-left transition active:bg-surface-gray-2"
             @click="onItemClick(item)"
           >
             <!--
@@ -53,7 +52,7 @@
                   class="pointer-events-none absolute left-0 right-4 top-0 border-t"
                   aria-hidden="true"
                 />
-                <span class="min-w-0 flex-1 truncate text-lg text-ink-gray-9">
+                <span class="min-w-0 flex-1 truncate text-md text-ink-gray-9">
                   {{ item.label }}
                 </span>
                 <span v-if="item.value" class="shrink-0 text-md text-ink-gray-5">
@@ -81,7 +80,6 @@ import { useRouter, type RouteLocationRaw } from 'vue-router'
 import { BottomSheet } from 'frappe-ui'
 import { isGameplanAdmin, useSessionUser } from '@/data/users'
 import { session } from '@/data/session'
-import { isOnline } from '@/data/online'
 import { useIsMobile } from '@/utils/useIsMobile'
 import { useTheme, type Theme } from '@/utils/useTheme'
 import { WINDOW_OPTIONS, offlineWindow } from '@/data/offlineDownloads'
@@ -92,7 +90,6 @@ interface MoreItem {
   route?: RouteLocationRaw
   onClick?: () => void
   value?: string
-  disabled?: boolean
 }
 
 interface MoreItemGroup {
@@ -202,17 +199,20 @@ const itemGroups = computed<MoreItemGroup[]>(() => {
           onClick: cycleTheme,
           value: THEME_META[currentTheme.value].label,
         },
-        {
-          label: 'Offline',
-          icon: 'lucide-cloud-download',
-          route: { name: 'OfflineSettings' },
-          value: offlineLabel.value,
-        },
+        ...(sessionUser.isGuest
+          ? []
+          : [
+              {
+                label: 'Offline',
+                icon: 'lucide-cloud-download',
+                route: { name: 'OfflineSettings' },
+                value: offlineLabel.value,
+              },
+            ]),
         {
           label: 'Log out',
           icon: 'lucide-log-out',
-          disabled: !isOnline.value,
-          onClick: () => session.logout.submit(),
+          onClick: () => session.logout.submit().catch(() => {}),
         },
       ],
     },

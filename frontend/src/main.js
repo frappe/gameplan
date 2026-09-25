@@ -23,6 +23,7 @@ import { installErrorReporting } from './utils/errorReporting'
 import resetDataMixin from './utils/resetDataMixin'
 import { clearCachesOnUserSwitch, setupOfflineSupport } from './offline'
 import { setupOfflineDownloads } from './data/offlineDownloads'
+import { setupOfflineIntroduction } from './data/offlineIntroduction'
 import CleanupFailure from './components/CleanupFailure.vue'
 
 let globalComponents = {
@@ -97,7 +98,10 @@ function showCleanupFailure() {
 function mountApp() {
   app.mount('#app')
   setupOfflineSupport()
-  if (session.isLoggedIn) setupOfflineDownloads()
+  if (session.isLoggedIn) {
+    setupOfflineDownloads()
+    setupOfflineIntroduction()
+  }
 }
 
 if (import.meta.env.DEV) {

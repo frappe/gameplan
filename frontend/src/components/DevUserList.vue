@@ -10,7 +10,7 @@
         :key="user.name"
         type="button"
         class="flex w-full items-center gap-2.5 rounded-4 px-2 py-1.5 text-left hover:bg-surface-gray-2 disabled:opacity-60"
-        :disabled="Boolean(switchingTo) || !isOnline"
+        :disabled="Boolean(switchingTo)"
         @click="switchTo(user.name)"
       >
         <UserAvatar :user="user.name" size="md" />
@@ -51,10 +51,9 @@
  */
 import { computed, ref } from 'vue'
 import { LoadingIndicator, TextInput } from 'frappe-ui'
-import { useCall } from '@/data/offlineRevalidation'
+import { useCall } from '@/data/offline/resources'
 import UserAvatar from '@/components/UserAvatar.vue'
 import { activeUsers, useSessionUser, type UserInfo } from '@/data/users'
-import { isOnline } from '@/data/online'
 
 defineOptions({ name: 'DevUserList' })
 

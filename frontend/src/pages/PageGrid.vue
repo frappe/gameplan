@@ -49,7 +49,7 @@
               <div
                 class="mt-1.5 text-sm flex gap-1 text-ink-gray-6"
                 v-if="d.project"
-                :set="space = getSpace(d)"
+                :set="(space = getSpace(d))"
               >
                 <SpaceIcon :icon="space?.icon" class="size-4 text-ink-gray-6" />
                 <div>{{ space?.title }}</div>
@@ -76,7 +76,7 @@
 <script setup lang="ts">
 import { toValue } from 'vue'
 import { Dropdown, UseListOptions, dialog } from 'frappe-ui'
-import { useList } from '@/data/offlineRevalidation'
+import { useList } from '@/data/offline/resources'
 import EmptyStateBox from '@/components/EmptyStateBox.vue'
 import OfflineContentFallback from '@/components/OfflineContentFallback.vue'
 import { useLoadFailure } from '@/data/loadFailure'
@@ -85,7 +85,6 @@ import { GPPage } from '@/types/doctypes'
 import { useSpace } from '@/data/spaces'
 import { useSessionUser } from '@/data/users'
 import { canDeleteContent } from '@/utils/permissions'
-import { isOnline } from '@/data/online'
 
 // The grid classes callers pass are for the pages, not the empty or failed state.
 defineOptions({ inheritAttrs: false })
@@ -98,10 +97,11 @@ const props = defineProps<{
   readOnly?: boolean
 }>()
 
-interface Page extends Pick<
-  GPPage,
-  'name' | 'creation' | 'title' | 'content' | 'slug' | 'project' | 'team' | 'modified' | 'owner'
-> {}
+interface Page
+  extends Pick<
+    GPPage,
+    'name' | 'creation' | 'title' | 'content' | 'slug' | 'project' | 'team' | 'modified' | 'owner'
+  > {}
 
 const pages = useList<Page>({
   doctype: 'GP Page',
@@ -122,7 +122,6 @@ const getDropdownOptions = (page: Page) => [
     label: 'Delete',
     icon: 'lucide-trash',
     condition: () => canDeleteContent(page, getSpace(page), useSessionUser()),
-    disabled: !isOnline.value,
     onClick: () => {
       dialog.danger({
         title: 'Delete Page',

@@ -10,12 +10,7 @@
     <!-- Only the cover: an avatar is a picture of a person, and a stock photo is
          never the right one. -->
     <template v-if="isCover" #actions>
-      <Button
-        icon-left="lucide-image"
-        data-profile-unsplash-open
-        :disabled="!isOnline"
-        @click="showPicker = true"
-      >
+      <Button icon-left="lucide-image" data-profile-unsplash-open @click="showPicker = true">
         Unsplash
       </Button>
     </template>
@@ -35,7 +30,6 @@ import { Button } from 'frappe-ui'
 import ProfileImageField from '../ProfileImageField.vue'
 import { UnsplashPicker, type UnsplashPhoto } from '@/components/UnsplashPicker'
 import type { ProfileBoundFieldSpec, ProfileFieldDraft } from '../types'
-import { isOnline } from '@/data/online'
 
 const props = defineProps<{
   spec: ProfileBoundFieldSpec

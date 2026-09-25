@@ -1,5 +1,5 @@
 import { call } from 'frappe-ui'
-import { useCall } from '@/data/offlineRevalidation'
+import { useCall } from '@/data/offline/resources'
 import { computed, MaybeRefOrGetter, toValue, watch } from 'vue'
 import type { ProfileBentoCard } from './types'
 import type { ProfileBentoCardSource } from './useProfileBentoCustomization'

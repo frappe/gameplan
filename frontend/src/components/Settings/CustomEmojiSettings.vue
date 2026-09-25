@@ -3,7 +3,7 @@
        heading and hides it on phones, where the page header names the tab. -->
   <PanelHeader>
     <div class="flex flex-col gap-4">
-      <h2 class="text-lg-semibold text-ink-gray-8 max-sm:hidden">Custom Emojis</h2>
+      <h2 class="text-md-semibold text-ink-gray-8 max-sm:hidden">Custom Emojis</h2>
       <div class="flex items-center justify-between gap-3">
         <TextInput
           class="min-w-0 flex-1 sm:w-72 sm:flex-none"
@@ -20,7 +20,6 @@
           :icon="isPhone ? 'lucide-upload' : undefined"
           :icon-left="isPhone ? undefined : 'lucide-upload'"
           label="Upload"
-          :disabled="!isOnline"
           @click="openUploadDialog"
         />
       </div>
@@ -84,7 +83,6 @@
             icon="lucide-trash-2"
             :label="`Delete ${emoji.title}`"
             :loading="deletingName === emoji.name"
-            :disabled="!isOnline"
             @click="deleteEmoji(emoji)"
           />
         </div>
@@ -108,7 +106,7 @@
         </div>
         <ImageUploader kind="customEmoji" @success="(file) => (form.image = file.file_url)">
           <template #default="{ uploading, progress, openFileSelector }">
-            <Button :loading="uploading" :disabled="!isOnline" @click="openFileSelector">
+            <Button :loading="uploading" @click="openFileSelector">
               {{ uploading ? `${progress}%` : form.image ? 'Replace image' : 'Choose image' }}
             </Button>
           </template>
@@ -129,7 +127,7 @@
         variant="solid"
         class="w-full"
         :loading="saving"
-        :disabled="!canSave || !isOnline"
+        :disabled="!canSave"
         @click="saveEmoji"
       >
         Upload
@@ -149,7 +147,6 @@ import PanelBody from './PanelBody.vue'
 import { customEmojis, type CustomEmoji } from '@/data/customEmojis'
 import ImageUploader from '@/components/ImageUploader.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
-import { isOnline } from '@/data/online'
 import { useIsMobile } from '@/utils/useIsMobile'
 
 const isPhone = useIsMobile()

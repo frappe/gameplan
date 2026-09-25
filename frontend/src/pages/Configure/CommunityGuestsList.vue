@@ -1,7 +1,7 @@
 <template>
   <div v-if="communityGuests.length">
     <div class="mb-4">
-      <h2 class="text-lg-medium text-ink-gray-9">Guests</h2>
+      <h2 class="text-md-medium text-ink-gray-9">Guests</h2>
       <p class="mt-1 text-base text-ink-gray-5">
         Guests are invited to specific spaces and do not become community members.
       </p>
@@ -52,7 +52,6 @@
             size="xs"
             icon="lucide-x"
             :label="guest.pending ? 'Delete invite' : 'Remove guest'"
-            :disabled="!isOnline"
             @click="removeGuest(guest)"
           />
         </ListCell>
@@ -65,14 +64,13 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Button, dialog, ErrorMessage, useDoctype } from 'frappe-ui'
-import { useList } from '@/data/offlineRevalidation'
+import { useList } from '@/data/offline/resources'
 import { List, ListCell, ListHeader, ListHeaderCell, ListRow } from 'frappe-ui/list'
 import UserAvatar from '@/components/UserAvatar.vue'
 import type { Community } from '@/data/communities'
 import { getSpace, spaces } from '@/data/spaces'
 import { useUser } from '@/data/users'
 import type { GPGuestAccess, GPInvitation, GPTeam } from '@/types/doctypes'
-import { isOnline } from '@/data/online'
 
 const props = defineProps<{
   community: Community

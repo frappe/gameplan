@@ -33,7 +33,6 @@
           v-if="!isStopped && !readOnlyMode && canDeletePoll"
           variant="ghost"
           icon-left="lucide-minus-circle"
-          :disabled="!isOnline"
           @click="stopPoll"
         >
           Stop Poll
@@ -149,7 +148,7 @@
       />
     </div>
     <Dialog title="Poll results" v-model:open="showDialog">
-      <h2 class="text-xl-medium text-ink-gray-8">{{ _poll.title }}</h2>
+      <h2 class="text-lg-medium text-ink-gray-8">{{ _poll.title }}</h2>
       <div v-if="!pollResults" class="text-base text-ink-gray-6 mt-2">No votes yet</div>
       <div class="mt-6 space-y-6">
         <div v-for="option in pollResults" :key="option.title">
@@ -190,7 +189,7 @@ import {
   dialog,
 } from 'frappe-ui'
 import type { RadioValue } from 'frappe-ui'
-import { useDoc } from '@/data/offlineRevalidation'
+import { useDoc } from '@/data/offline/resources'
 import UserAvatar from './UserAvatar.vue'
 import UserAvatarWithHover from './UserAvatarWithHover.vue'
 import UserProfileLink from './UserProfileLink.vue'
@@ -201,7 +200,6 @@ import { canDeleteContent } from '@/utils/permissions'
 import type { GPPoll, GPPollOption } from '@/types/doctypes'
 import type { Space } from '@/data/spaces'
 import { subscribeToDoc, useSocket } from '@/socket'
-import { isOnline } from '@/data/online'
 
 interface Props {
   poll: GPPoll
@@ -262,9 +260,7 @@ const showResults = computed(() => participated.value || isStopped.value)
 // Deliberately not disabled while a vote is in flight: the tick updates optimistically,
 // so greying every option for the round trip just makes a click flicker. Overlapping
 // clicks are handled by queueing them instead (see queueVote).
-const isOptionDisabled = computed(
-  () => isStopped.value || props.readOnlyMode || voteIsFinal.value || !isOnline.value,
-)
+const isOptionDisabled = computed(() => isStopped.value || props.readOnlyMode || voteIsFinal.value)
 const isSingleChoice = computed(() => !_poll.value.multiple_answers)
 // The radiogroup reads the same map the checkboxes do, so an optimistic pick and the
 // snap-back after a rejected vote behave identically for both controls.
@@ -329,7 +325,6 @@ const dropdownOptions = computed(() => [
   {
     label: 'Retract vote',
     icon: 'lucide-corner-up-left',
-    disabled: !isOnline.value,
     condition: () =>
       !props.readOnlyMode &&
       !_poll.value.anonymous &&
@@ -353,7 +348,6 @@ const dropdownOptions = computed(() => [
   {
     label: 'Delete',
     icon: 'lucide-trash',
-    disabled: !isOnline.value,
     condition: () => !props.readOnlyMode && canDeletePoll.value,
     onClick: () => {
       dialog.danger({
@@ -403,7 +397,6 @@ function selectOption(title: string) {
  * confirmed once and never changed.
  */
 async function toggleOption(option: GPPollOption, checked: boolean) {
-  if (isOptionDisabled.value) return
   // Drive the tick from our own state rather than the checkbox's: a cancelled dialog or a
   // rejected request has to snap it back, and syncSelectedAnswers is the one thing that
   // knows what the server actually recorded.

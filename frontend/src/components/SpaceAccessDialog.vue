@@ -42,7 +42,6 @@
               class="ml-auto w-13 shrink-0"
               @click="addMember"
               :loading="spaces.runDocMethod.isLoading(space.name, 'add_member')"
-              :disabled="!isOnline"
             >
               Add
             </Button>
@@ -88,7 +87,6 @@
               class="ml-auto w-13 shrink-0"
               @click="invite"
               :loading="spaces.runDocMethod.isLoading(space.name, 'invite_guest')"
-              :disabled="!isOnline"
             >
               Invite
             </Button>
@@ -110,7 +108,6 @@
                   <Button
                     :label="user.pending ? 'Delete invite' : 'Remove guest'"
                     icon="lucide-x"
-                    :disabled="!isOnline"
                     @click="remove(user)"
                   />
                 </Tooltip>
@@ -130,13 +127,12 @@
 <script setup lang="ts">
 import { ref, computed, reactive, watch } from 'vue'
 import { Badge, Combobox, toast, Tooltip, TextInput, useDoctype } from 'frappe-ui'
-import { useList } from '@/data/offlineRevalidation'
+import { useList } from '@/data/offline/resources'
 import EmptyStateBox from '@/components/EmptyStateBox.vue'
 import { getCommunity } from '@/data/communities'
 import { useSpace } from '@/data/spaces'
 import { useSessionUser, useUser, users } from '@/data/users'
 import { canInviteGuests, canManageSpace } from '@/utils/permissions'
-import { isOnline } from '@/data/online'
 import { GPGuestAccess, GPInvitation, GPProject } from '@/types/doctypes'
 
 const props = defineProps<{ spaceId: string }>()
@@ -227,7 +223,7 @@ function addMember() {
 }
 
 function invite() {
-  if (space.value && isOnline.value) {
+  if (space.value) {
     spaces.runDocMethod
       .submit({
         name: space.value.name,

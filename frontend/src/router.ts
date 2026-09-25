@@ -15,7 +15,7 @@ import type { Space } from './data/spaces'
 import { communityState } from './data/communityState'
 import { settingsBackgroundPath } from './components/Settings'
 import { shellScrollContainer } from 'frappe-ui'
-import { isNetworkError } from './offline'
+import { isNetworkError } from './data/offline/requests'
 import { isOnline } from './data/online'
 
 declare const __FRONTEND_ROUTE__: string
@@ -24,6 +24,7 @@ type ResourceLike = {
   isFinished?: boolean
   data?: unknown
   error?: unknown
+  cacheLoaded?: Promise<unknown>
 }
 
 type RouteParamValue = string | string[]
@@ -41,7 +42,6 @@ type ProjectContentDoc = {
 
 const discussionFeeds = ['recent', 'unread', 'participating']
 const projectContentDocRequests = new Map<string, Promise<ProjectContentDoc | null | undefined>>()
-const OFFLINE_CACHE_HYDRATION_TIMEOUT = 3000
 
 // Redirect-style guards still need a component record so Vue Router matches them consistently.
 const RouteGuard = { render: () => null }
@@ -761,19 +761,28 @@ window.addEventListener('vite:preloadError', () => {
   chunkLoadFailed = true
 })
 
+// Once per link: a chunk the server keeps refusing would otherwise reload the page forever.
+const RELOADED_KEY = 'gameplan:reloaded-for-chunk'
+
+/** Loads `to` for real; false when that was already tried for this link. */
 function loadPage(to: RouteLocationNormalized) {
-  window.location.assign(router.resolve(to.fullPath).href)
+  const href = router.resolve(to.fullPath).href
+  if (sessionStorage.getItem(RELOADED_KEY) === href) return false
+  sessionStorage.setItem(RELOADED_KEY, href)
+  window.location.assign(href)
+  return true
 }
 
 router.onError((_error, to) => {
   if (chunkLoadFailed && isOnline.value) loadPage(to)
 })
 
+router.afterEach((_to, _from, failure) => {
+  if (!failure) sessionStorage.removeItem(RELOADED_KEY)
+})
+
 router.beforeEach(async (to, from) => {
-  if (chunkLoadFailed && isOnline.value) {
-    loadPage(to)
-    return false
-  }
+  if (chunkLoadFailed && isOnline.value && loadPage(to)) return false
 
   saveAndRestoreScrollPosition(to, from)
 
@@ -848,9 +857,7 @@ router.beforeEach(async (to, from) => {
   let space = to.params.spaceId ? getSpace(routeParam(to.params.spaceId)) : null
 
   if (to.params.spaceId && !space) {
-    // Offline, an uncached space may still be real: say it isn't available offline
-    // rather than that it doesn't exist.
-    return { name: notFound() }
+    return notFound(to, 'space')
   }
 
   if (space?.team && space.team !== communityId) {
@@ -863,7 +870,7 @@ router.beforeEach(async (to, from) => {
   // Public communities are visible even when the user has not joined them, so route validity
   // cannot be tied to the active sidebar community list.
   if (!community) {
-    return { name: notFound() }
+    return notFound(to, 'community')
   }
 
   if (community.archived_at) {
@@ -877,10 +884,10 @@ export default router
 
 async function ensureCommunityDataLoaded() {
   await Promise.all([waitForResource(communities), waitForResource(spaces)])
-  // Offline, give the cached lists a moment to load before the home route is picked from
-  // them. A network error counts as offline too: navigator.onLine can lag after a reload.
+  // Offline, the home route is picked from the cached lists, so wait for any that are cached.
+  // A network error counts as offline too: navigator.onLine can lag after a reload.
   if (isNetworkUnreliable()) {
-    await Promise.all([waitForOfflineCachedData(communities), waitForOfflineCachedData(spaces)])
+    await Promise.all([waitForCachedData(communities), waitForCachedData(spaces)])
   }
 }
 
@@ -892,19 +899,21 @@ async function waitForResource(resource: ResourceLike) {
   await until(() => resource?.isFinished).toBe(true)
 }
 
-function waitForOfflineCachedData(resource: ResourceLike) {
-  return until(() => hasHydratedData(resource)).toBe(true, {
-    timeout: OFFLINE_CACHE_HYDRATION_TIMEOUT,
-  })
+async function waitForCachedData(resource: ResourceLike) {
+  if (!hasContent(await resource.cacheLoaded)) return
+  // Bounded: an answer that did get through may replace the cached rows with none.
+  await until(() => hasContent(resource.data)).toBe(true, { timeout: 3000 })
 }
 
-function hasHydratedData(resource: ResourceLike) {
-  const data = resource.data
+function hasContent(data: unknown) {
   return Array.isArray(data) ? data.length > 0 : data != null
 }
 
-function notFound() {
-  return isNetworkUnreliable() ? 'OfflineUnavailable' : 'NotFound'
+// Offline, an uncached space or community may still be real: say it isn't available
+// offline rather than that it doesn't exist, and keep the link so Retry can open it.
+function notFound(to: RouteLocationNormalized, what: 'space' | 'community'): RouteLocationRaw {
+  if (!isNetworkUnreliable()) return { name: 'NotFound' }
+  return { name: 'OfflineUnavailable', query: { redirect: to.fullPath, what } }
 }
 
 function isNetworkUnreliable() {

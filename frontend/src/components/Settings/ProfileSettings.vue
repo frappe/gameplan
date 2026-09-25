@@ -13,11 +13,10 @@
               accept="image/png,image/jpeg"
               @change="selectAvatarFile"
             />
-            <Dropdown v-if="hasAvatar" :options="avatarOptions" align="start" :disabled="!isOnline">
+            <Dropdown v-if="hasAvatar" :options="avatarOptions" align="start">
               <button
                 type="button"
-                class="rounded-full flex focus:outline-none focus:ring-2 focus:ring-outline-gray-3 disabled:cursor-not-allowed disabled:opacity-50"
-                :disabled="!isOnline"
+                class="rounded-full flex focus:outline-none focus:ring-2 focus:ring-outline-gray-3"
                 aria-label="Profile picture options"
               >
                 <UserAvatar :user="sessionUser.name" size="3xl" class="!h-16 !w-16 rounded-full" />
@@ -26,9 +25,8 @@
             <button
               v-else
               type="button"
-              class="rounded-full focus:outline-none focus:ring-2 focus:ring-outline-gray-3 disabled:cursor-not-allowed disabled:opacity-50"
+              class="rounded-full focus:outline-none focus:ring-2 focus:ring-outline-gray-3"
               aria-label="Upload profile picture"
-              :disabled="!isOnline"
               @click="openAvatarFileSelector"
             >
               <UserAvatar :user="sessionUser.name" size="3xl" class="!h-16 !w-16 rounded-full" />
@@ -46,7 +44,7 @@
               label="First name"
               class="w-full"
               v-model="firstName"
-              :disabled="savingName || !isOnline"
+              :disabled="savingName"
               @blur="saveName"
             />
           </div>
@@ -55,7 +53,7 @@
               label="Last name"
               class="w-full"
               v-model="lastName"
-              :disabled="savingName || !isOnline"
+              :disabled="savingName"
               @blur="saveName"
             />
           </div>
@@ -67,14 +65,14 @@
             class="w-full"
             maxlength="280"
             v-model="bio"
-            :disabled="savingBio || !isOnline"
+            :disabled="savingBio"
             @blur="saveBio"
           />
         </div>
       </section>
 
       <section>
-        <h2 class="text-lg-semibold text-ink-gray-8">Account</h2>
+        <h2 class="text-md-semibold text-ink-gray-8">Account</h2>
 
         <div class="mt-2 divide-y divide-outline-gray-1">
           <SettingsRow title="Public profile" :description="publicProfileDescription">
@@ -91,7 +89,7 @@
           </SettingsRow>
 
           <SettingsRow title="Password" description="Manage password and account access">
-            <Button link="/update-password">Update Password</Button>
+            <Button href="/update-password">Update Password</Button>
           </SettingsRow>
         </div>
       </section>
@@ -114,7 +112,7 @@ import { computed, ref, useTemplateRef, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useMediaQuery } from '@vueuse/core'
 import { Button, Dialog, Dropdown, SettingsRow, Textarea, TextInput, toast } from 'frappe-ui'
-import { useDoc } from '@/data/offlineRevalidation'
+import { useDoc } from '@/data/offline/resources'
 import PanelHeader from './PanelHeader.vue'
 import PanelBody from './PanelBody.vue'
 import type { DropdownOptions } from 'frappe-ui'
@@ -122,7 +120,6 @@ import ProfileImageEditor from '@/components/ProfileImageEditor.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import { useSessionUser } from '@/data/users'
 import { useSyncedField } from '@/utils/useSyncedField'
-import { isOnline } from '@/data/online'
 import type { GPUserProfile } from '@/types/doctypes'
 
 interface ProfileMethods {
@@ -241,7 +238,7 @@ watch(
 )
 
 async function saveName() {
-  if (!user.value || savingName.value || !isOnline.value) return
+  if (!user.value || savingName.value) return
 
   let nextFirstName = firstName.value.trim()
   let nextLastName = lastName.value.trim()
@@ -268,7 +265,7 @@ async function saveName() {
 }
 
 async function saveBio() {
-  if (!profile.value || savingBio.value || !isOnline.value) return
+  if (!profile.value || savingBio.value) return
 
   if (bio.value === (profile.value.bio || '')) return
 

@@ -16,7 +16,7 @@ import { call } from 'frappe-ui'
 import type { App } from 'vue'
 import type { Router } from 'vue-router'
 import { whenOnline } from '@/data/online'
-import { isNetworkError } from '@/offline'
+import { isNetworkError } from '@/data/offline/requests'
 
 const LOG_CLIENT_ERROR = 'gameplan.api.log_client_error'
 

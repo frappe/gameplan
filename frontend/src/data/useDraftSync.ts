@@ -14,7 +14,7 @@
  */
 import { ref, computed, watch, toValue, nextTick, onScopeDispose, type MaybeRefOrGetter } from 'vue'
 import { call, debounce, toast, dayjsLocal, useDoctype } from 'frappe-ui'
-import { isNetworkError } from '@/offline'
+import { isNetworkError } from '@/data/offline/requests'
 import { isOnline, onReconnect } from './online'
 import { session } from './session'
 import { createDraft, drafts } from './drafts'
