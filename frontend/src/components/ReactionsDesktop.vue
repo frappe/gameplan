@@ -1,18 +1,13 @@
 <template>
   <div class="flex select-none flex-wrap items-stretch gap-1.5">
-    <HoverCard
-      v-model:open="isPickerOpen"
-      side="bottom"
-      align="start"
-      @pointer-down-outside="onPointerDownOutside"
-    >
-      <template #trigger>
+    <HoverCard v-model:open="isPickerOpen" side="bottom" align="start">
+      <template #trigger="{ setOpen }">
         <button
           aria-label="Add a reaction"
           :disabled="isLoading"
           class="flex h-full items-center justify-center rounded-full bg-surface-gray-2 px-2 py-1 text-ink-gray-6 transition hover:bg-surface-gray-3 print:hidden"
           :class="{ 'bg-surface-gray-3': isPickerOpen }"
-          @click="isPickerOpen = true"
+          @click="setOpen(true)"
         >
           <span class="lucide-smile-plus" aria-label="React with emoji" />
         </button>
@@ -82,12 +77,5 @@ const isPickerOpen = ref(false)
 function selectEmoji(emoji: string) {
   props.toggleReaction(emoji)
   isPickerOpen.value = false
-}
-
-// Clicking the trigger counts as a pointer-down "outside" the card, which would
-// otherwise dismiss it (then hover/click reopens it — a visible flash). Keep the
-// card open instead; it still closes on mouse leave or after a selection.
-function onPointerDownOutside(event: Event) {
-  event.preventDefault()
 }
 </script>
