@@ -1,6 +1,6 @@
 import { ref, computed, onMounted, provide, inject, watch, type InjectionKey } from 'vue'
 import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
-import { call, useDoctype, dialog } from 'frappe-ui'
+import { call, useDoctype, dialog, dayjs, dayjsLocal, getConfig, toast } from 'frappe-ui'
 import { useOwnedRouteWrites } from '@/composables/useOwnedRouteWrites'
 import { useDraftSync, type DraftPayload } from '@/data/useDraftSync'
 import { drafts } from '@/data/drafts'
@@ -13,6 +13,16 @@ import { captureError } from '@/utils/errorReporting'
 import type { GPDiscussion } from '@/types/doctypes'
 
 const PUBLISH_DRAFT = 'gameplan.gameplan.doctype.gp_draft.gp_draft.publish_draft'
+const SCHEDULE_DRAFT = 'gameplan.gameplan.doctype.gp_draft.gp_draft.schedule_draft'
+const UNSCHEDULE_DRAFT = 'gameplan.gameplan.doctype.gp_draft.gp_draft.unschedule_draft'
+const SERVER_DATETIME = 'YYYY-MM-DD HH:mm:ss'
+
+function toSiteTime(localDateTime: string) {
+  const systemTimezone = getConfig('systemTimezone')
+  if (!systemTimezone) return dayjs(localDateTime).format(SERVER_DATETIME)
+  const localTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+  return dayjs.tz(localDateTime, localTimezone).tz(systemTimezone).format(SERVER_DATETIME)
+}
 const LOADING_STATUS_DELAY_MS = 200
 const FLUSH_ATTEMPTS = 3
 
@@ -57,6 +67,33 @@ export function useNewDiscussion() {
 
   const draftData = draft.data
   const isPersisted = computed(() => Boolean(draft.serverName.value))
+
+  const scheduledAt = ref<string | null>(null)
+  const scheduling = ref(false)
+  watch(
+    () => draft.serverName.value,
+    async (name) => {
+      if (!name) {
+        scheduledAt.value = null
+        return
+      }
+      scheduledAt.value = drafts.data?.find((row) => row.name === name)?.scheduled_at || null
+      try {
+        const row = await call('frappe.client.get_value', {
+          doctype: 'GP Draft',
+          filters: { name },
+          fieldname: 'scheduled_at',
+        })
+        if (draft.serverName.value === name) scheduledAt.value = row?.scheduled_at || null
+      } catch (error) {
+        captureError(error, { action: 'read-draft-schedule', draft: name })
+      }
+    },
+    { immediate: true },
+  )
+  const scheduledAtLabel = computed(() =>
+    scheduledAt.value ? dayjsLocal(scheduledAt.value).format('ddd D MMM, h:mm A') : '',
+  )
 
   // Drafts are owner-scoped on the server, so the author is always the current user.
   const author = computed(() => useUser(sessionUser.name))
@@ -294,6 +331,50 @@ export function useNewDiscussion() {
     }
   }
 
+  async function scheduleDraft(localDateTime: string) {
+    hasInteracted.value = true
+    publishError.value = null
+    if (!validateDraft(true)) return false
+    scheduling.value = true
+    try {
+      if (!(await flushUntilPushed()) || !draft.serverName.value) {
+        publishError.value =
+          'Could not save your draft to the server. Check your connection and try again.'
+        return false
+      }
+      const name = draft.serverName.value
+      const serverTime = toSiteTime(localDateTime)
+      await call(SCHEDULE_DRAFT, { name, scheduled_at: serverTime })
+      scheduledAt.value = serverTime
+      toast.success(`Scheduled for ${scheduledAtLabel.value}`)
+      drafts.reload()
+      await router.replace({ name: 'Drafts' })
+      return true
+    } catch (error: any) {
+      captureError(error, { action: 'schedule-discussion', draft: draft.serverName.value })
+      publishError.value = extractServerMessage(error) || 'Could not schedule this post.'
+      return false
+    } finally {
+      scheduling.value = false
+    }
+  }
+
+  async function unscheduleDraft() {
+    if (!draft.serverName.value) return
+    scheduling.value = true
+    try {
+      await call(UNSCHEDULE_DRAFT, { name: draft.serverName.value })
+      scheduledAt.value = null
+      toast.success('Schedule removed. Your draft is still in Drafts.')
+      drafts.reload()
+    } catch (error: any) {
+      captureError(error, { action: 'unschedule-discussion', draft: draft.serverName.value })
+      publishError.value = extractServerMessage(error) || 'Could not remove the schedule.'
+    } finally {
+      scheduling.value = false
+    }
+  }
+
   async function deleteDraft() {
     if (!draftData.value || !hasMeaningfulContent(draftData.value)) {
       isDeletingDraft.value = true
@@ -366,9 +447,14 @@ export function useNewDiscussion() {
     publishing,
     isPublishingSuccessfully,
     isDeletingDraft,
+    scheduledAt,
+    scheduledAtLabel,
+    scheduling,
 
     // Actions
     publish,
+    scheduleDraft,
+    unscheduleDraft,
     deleteDraft,
     handleTitleInput,
     handleTitleBlur,
