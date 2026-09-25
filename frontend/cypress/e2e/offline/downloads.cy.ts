@@ -70,6 +70,24 @@ describe('Download for offline', () => {
     })
   })
 
+  it('never files an answer given for another account', () => {
+    // As if the cookie changed to another account while the request was in flight.
+    cy.intercept('POST', BUNDLE, (req) =>
+      req.continue((res) => {
+        res.body.message.user = personas.secondMember.email
+      }),
+    ).as('bundle')
+    openOfflineSettings()
+    chooseWindow('Past week')
+    cy.wait('@bundle')
+    cy.contains('Could not finish the offline download').should('be.visible')
+
+    cy.idbKeys().should((keys) => {
+      const documents = keys.filter((key) => key.includes(`doc:v2:GP Discussion/${discussion}`))
+      expect(documents, 'the discussion filed under any account').to.be.empty
+    })
+  })
+
   it('costs one index call when the device is already up to date', () => {
     openOfflineSettings()
     chooseWindow('Past week')

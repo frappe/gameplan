@@ -39,7 +39,8 @@ def get_offline_index(
 	"""Discussions the device should hold, newest activity first.
 
 	`changed` lists what changed after `since`, `places` where each one sits now, and
-	`revoked` which of the `cached` visited discussions the user can no longer read.
+	`revoked` which of the `cached` visited discussions the user can no longer read. `user`
+	names whose answer this is, so a device never files it under another account.
 	"""
 	# A minute early, so a change committed while this request reads is caught next time.
 	synced_at = add_to_date(now_datetime(), minutes=-1)
@@ -47,6 +48,7 @@ def get_offline_index(
 	since = since and since.replace(tzinfo=None)
 	rows = _discussions_in_window(window_days)
 	return {
+		"user": frappe.session.user,
 		"discussions": [row.name for row in rows],
 		"places": {row.name: _place(row) for row in rows},
 		"changed": [row.name for row in _changed_since(rows, since)] if since else [],
@@ -58,12 +60,14 @@ def get_offline_index(
 @frappe.whitelist(methods=["POST"])
 def get_offline_bundle(window_days: Window, fields: dict[str, FieldList], names: list[str | int]) -> dict:
 	"""A page of discussions with their comments, activity and polls, plus the rows the feeds
-	render. `names` outside the window or the user's reach are skipped.
+	render. `names` outside the window or the user's reach are skipped. `user` is as for the
+	index.
 	"""
 	wanted = [str(name) for name in names[:PAGE_SIZE]]
 	names = [row.name for row in _discussions_in_window(window_days, names=wanted)]
 
 	bundle = {
+		"user": frappe.session.user,
 		"discussions": [read_doc("GP Discussion", name) for name in names],
 		"rows": _feed_rows(names),
 	}

@@ -72,8 +72,11 @@ class OfflineDownloadsTestCase(GameplanTestCase):
 		with self.as_user(self.member):
 			return get_offline_index(window, **kwargs)
 
-	def discussions(self, window):
-		return set(self.index(window)["discussions"])
+	def discussions(self, window, among=None):
+		"""The window's discussions, among `among` (default: those setUp made), so data the
+		site already holds does not count."""
+		among = names(among or [self.recent, self.old, self.elsewhere, self.outside, self.secret])
+		return set(self.index(window)["discussions"]) & among
 
 	def changed(self, since):
 		return self.index(30, since=str(since))["changed"]
@@ -89,7 +92,7 @@ class OfflineDownloadsTestCase(GameplanTestCase):
 
 	def settle_before(self, when):
 		"""Backdate every discussion in the window, so only what a test touches is a change."""
-		for name in self.discussions(90):
+		for name in self.index(90)["discussions"]:
 			set_modified("GP Discussion", name, when)
 			frappe.db.set_value("GP Discussion", name, "last_post_at", when, update_modified=False)
 
@@ -105,7 +108,8 @@ class TestOfflineIndex(OfflineDownloadsTestCase):
 		secret = create_discussion("Secret thread", private, owner=self.member)
 		moved = create_discussion("Moved thread", self.joined, owner=self.member)
 		deleted = create_discussion("Deleted thread", self.not_joined, owner=self.member)
-		self.assertLessEqual(names([secret, moved, deleted]), self.discussions(90))
+		ours = [self.recent, self.old, self.elsewhere, secret, moved, deleted]
+		self.assertEqual(self.discussions(90, ours), names(ours))
 
 		private.reload()
 		private.members = [m for m in private.members if m.user != self.member.name]
@@ -114,11 +118,12 @@ class TestOfflineIndex(OfflineDownloadsTestCase):
 		frappe.delete_doc("GP Discussion", deleted.name, ignore_permissions=True)
 		frappe.db.set_value("GP Project", self.joined.name, "archived_at", now_datetime())
 
-		self.assertEqual(self.discussions(90), names([self.elsewhere]))
+		self.assertEqual(self.discussions(90, ours), names([self.elsewhere]))
 
 	def test_a_device_is_capped_at_the_newest_discussions(self):
+		newest_first = self.index(90)["discussions"]
 		with patch.object(offline_downloads, "MAX_DISCUSSIONS", 2):
-			self.assertEqual(self.discussions(90), names([self.recent, self.elsewhere]))
+			self.assertEqual(self.index(90)["discussions"], newest_first[:2])
 
 	def test_a_space_moved_to_another_community_is_reported_by_place(self):
 		"""The move rewrites `team` in one statement, so no timestamp reports it."""
@@ -240,6 +245,11 @@ class TestOfflineBundle(OfflineDownloadsTestCase):
 		# The cap is how much a device keeps, not a boundary the bundle enforces.
 		with patch.object(offline_downloads, "MAX_DISCUSSIONS", 1):
 			self.assertEqual(len(self.bundle(90, [str(self.old.name)])["discussions"]), 1)
+
+	def test_names_the_user_it_answered_for(self):
+		"""A device checks this before filing an answer, whatever its cookie says by then."""
+		self.assertEqual(self.index(30)["user"], self.member.name)
+		self.assertEqual(self.bundle(30)["user"], self.member.name)
 
 	def test_is_post_only(self):
 		for endpoint in (get_offline_index, get_offline_bundle):

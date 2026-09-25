@@ -45,21 +45,36 @@ function serviceWorkerSupportEnabled() {
   return !import.meta.env.DEV && window.isSecureContext && 'serviceWorker' in navigator
 }
 
+/** Held by a download while it writes to the cache, and by a clear, so the two never overlap. */
+export const DOWNLOADS_LOCK = 'gameplan-offline-downloads'
+
+const beforeClear = new Set<() => void>()
+
+/** Runs `stop` when the caches are about to be cleared, so a download in this tab ends first. */
+export function onBeforeClear(stop: () => void) {
+  beforeClear.add(stop)
+}
+
 /**
  * Wipes what this browser holds offline, so the next person to sign in can't read it.
  * Resolves to whether everything cleared. Drafts are kept for the same user signing back
  * in; a user switch clears them too (guardAgainstUserSwitch).
  */
 export async function clearOfflineCaches(): Promise<boolean> {
-  const results = await Promise.all([
-    clearUserCaches(),
-    // No IndexedDB means nothing was stored in it.
-    clearIdbKeyval().then(
-      () => true,
-      () => typeof indexedDB === 'undefined',
-    ),
-  ])
-  return results.every(Boolean)
+  for (const stop of beforeClear) stop()
+  // Waits for any tab's download to finish writing, so nothing lands after the clear.
+  const clear = async () => {
+    const results = await Promise.all([
+      clearUserCaches(),
+      // No IndexedDB means nothing was stored in it.
+      clearIdbKeyval().then(
+        () => true,
+        () => typeof indexedDB === 'undefined',
+      ),
+    ])
+    return results.every(Boolean)
+  }
+  return navigator.locks ? navigator.locks.request(DOWNLOADS_LOCK, clear) : clear()
 }
 
 async function clearUserCaches() {

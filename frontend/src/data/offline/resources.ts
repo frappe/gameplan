@@ -11,7 +11,7 @@ import {
 } from 'frappe-ui'
 import { onReconnect } from '../online'
 import { isNetworkError } from './requests'
-import { callKey, listKey } from './cache'
+import { cacheFor } from './cache'
 
 interface Revalidatable {
   reload: () => unknown
@@ -59,6 +59,6 @@ function offlineAware<F extends (options: any) => any>(
   }) as F
 }
 
-export const useList = offlineAware(frappeUseList, listKey)
+export const useList = offlineAware(frappeUseList, (key) => cacheFor().listKey(key))
 export const useDoc = offlineAware(frappeUseDoc)
-export const useCall = offlineAware(frappeUseCall, callKey)
+export const useCall = offlineAware(frappeUseCall, (key) => cacheFor().callKey(key))

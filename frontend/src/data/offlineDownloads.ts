@@ -2,11 +2,11 @@ import { reactive, watch } from 'vue'
 import { useLocalStorage } from '@vueuse/core'
 import { call, toast } from 'frappe-ui'
 import { delMany, get, getMany, set, setMany, values } from 'idb-keyval'
-import { cachedDocNames, cachedListKeys, docKey, listKey } from './offline/cache'
+import { cacheFor, type Cache } from './offline/cache'
 import { OFFLINE_ACTION_MESSAGE, isNetworkError } from './offline/requests'
+import { DOWNLOADS_LOCK, onBeforeClear } from '@/offline'
 import { isOnline, onReconnect, saveData } from './online'
 import { session } from './session'
-import { getSessionUserFromCookie } from '@/utils/sessionCookie'
 import { customEmojis } from './customEmojis'
 import { communityFeedKey, feedScope, spaceFeedKey } from './discussions'
 import {
@@ -22,6 +22,10 @@ import {
  * "Download for offline": keeps the chosen window of discussions on the device, filed into the
  * same entries frappe-ui's resources read (offline/cache.ts), so a downloaded discussion opens
  * like a visited one.
+ *
+ * Nothing here reads or writes the cache as whoever is signed in now. A run binds its cache to
+ * the account it belongs to (`cacheFor(owner)`), and keeps an answer only when the server says
+ * it answered for that account, so a sign-in in another tab can never mix two accounts' data.
  */
 
 export type OfflineWindow = 0 | 7 | 30 | 90
@@ -36,7 +40,6 @@ export const WINDOW_OPTIONS: { label: string; value: OfflineWindow }[] = [
 const INDEX = 'gameplan.offline_downloads.get_offline_index'
 const BUNDLE = 'gameplan.offline_downloads.get_offline_bundle'
 const META_KEY = 'gameplan:offline-downloads'
-const LOCK_NAME = 'gameplan-offline-downloads'
 // PAGE_SIZE, MAX_DISCUSSIONS and VISIT_CHECK_LIMIT mirror gameplan/offline_downloads.py.
 const PAGE_SIZE = 20
 export const MAX_DISCUSSIONS = 500
@@ -70,6 +73,8 @@ interface Meta {
 }
 
 interface Index {
+  /** The account the server answered for. */
+  user: string
   discussions: string[]
   places: Record<string, string>
   changed: string[]
@@ -78,6 +83,7 @@ interface Index {
 }
 
 interface Bundle {
+  user: string
   discussions: Array<Record<string, unknown> & { name: string | number }>
   /** The same discussions as the feeds list them. */
   rows: FeedRow[]
@@ -120,8 +126,9 @@ export const downloads = reactive({
   error: null as string | null,
 })
 
-// This tab's running sync, so a removal can stop it.
+// This tab's running sync, so a removal or a logout can stop it.
 let running: AbortController | null = null
+onBeforeClear(() => running?.abort())
 
 /** Read inside the lock every time: another tab may have moved it on. */
 async function readMeta(): Promise<Meta | null> {
@@ -147,7 +154,7 @@ function showMeta(meta: Meta | null) {
  */
 function exclusive<T>(ifAvailable: boolean, task: () => Promise<T>): Promise<T | false> {
   if (!navigator.locks) return task()
-  return navigator.locks.request(LOCK_NAME, { ifAvailable }, async (lock) =>
+  return navigator.locks.request(DOWNLOADS_LOCK, { ifAvailable }, async (lock) =>
     lock ? task() : false,
   ) as Promise<T | false>
 }
@@ -188,17 +195,15 @@ function isDue(meta: Meta | null, days: OfflineWindow) {
 
 /** Whether the download finished; an interrupted one is resumed by the next run. */
 async function download(days: OfflineWindow, previous: Meta | null, signal: AbortSignal) {
-  const user = session.user!
-  // The cache keys follow the cookie, which another tab's sign-in can change mid-sync.
-  const switchedAccount = () => getSessionUserFromCookie() !== user
-  const cancelled = () =>
-    signal.aborted || offlineWindow.value !== days || switchedAccount() || !isOnline.value
+  const owner = session.user!
+  const cache = cacheFor(owner)
+  const cancelled = () => signal.aborted || offlineWindow.value !== days || !isOnline.value
   downloads.syncing = true
   downloads.error = null
   downloads.done = 0
   downloads.total = 0
   try {
-    const onDevice = new Set(await cachedDocNames('GP Discussion'))
+    const onDevice = new Set(await cache.docNames('GP Discussion'))
     // Only what is really on the device counts as downloaded. A new window keeps it.
     const places: Record<string, string> = {}
     for (const [name, place] of Object.entries(previous?.places ?? {})) {
@@ -208,21 +213,21 @@ async function download(days: OfflineWindow, previous: Meta | null, signal: Abor
       [...onDevice].filter((name) => !(name in places)),
       previous?.checkedUpTo,
     )
-    const index = await call<Index>(INDEX, {
+    const index = await askAs<Index>(owner, INDEX, {
       window_days: days,
       cached: visits.names,
       since: previous?.since ?? null,
     })
-    if (cancelled()) return false
+    if (!index || cancelled()) return false
 
-    await forgetDiscussions(index.revoked)
+    await forgetDiscussions(cache, index.revoked)
     // Out of the window now: no longer kept up to date, but left like any visited discussion.
     const inIndex = new Set(index.discussions)
     for (const name of Object.keys(places)) {
       if (!inIndex.has(name)) delete places[name]
     }
     const base: Meta = {
-      user,
+      user: owner,
       window: days,
       since: previous?.since ?? null,
       places,
@@ -243,15 +248,14 @@ async function download(days: OfflineWindow, previous: Meta | null, signal: Abor
     for (let i = 0; i < wanted.length; i += PAGE_SIZE) {
       if (i) await idle(signal)
       if (cancelled()) return false
-      const bundle = await call<Bundle>(BUNDLE, {
+      const bundle = await askAs<Bundle>(owner, BUNDLE, {
         window_days: days,
         fields: { comments: COMMENT_FIELDS, activities: ACTIVITY_FIELDS, polls: POLL_FIELDS },
         names: wanted.slice(i, i + PAGE_SIZE),
       })
-      // Never file one account's response under another's keys.
-      if (switchedAccount()) return false
-      // Recorded before the other checks, so a removal waiting on this run finds it.
-      await storeBundle(bundle)
+      if (!bundle) return false
+      // Recorded before checking for a cancel, so a removal waiting on this run finds it.
+      await storeBundle(cache, bundle)
       for (const discussion of bundle.discussions) {
         const name = String(discussion.name)
         places[name] = index.places[name]
@@ -263,8 +267,7 @@ async function download(days: OfflineWindow, previous: Meta | null, signal: Abor
       downloads.done = Math.min(i + PAGE_SIZE, wanted.length)
     }
 
-    if (cancelled()) return false
-    await storeFeeds(feedRows, new Set(index.revoked))
+    await storeFeeds(cache, feedRows, new Set(index.revoked))
     const emojis = (customEmojis.data ?? []).map((emoji) => emoji.image).filter(Boolean)
     saveImages([...emojis, ...images].slice(0, MAX_IMAGES) as string[])
     await writeMeta({
@@ -316,21 +319,27 @@ function visitsToCheck(names: string[], after = '') {
   return { names: slice, checkedUpTo: slice[slice.length - 1] }
 }
 
+/** `method`'s answer, or null when the server answered for an account other than `owner`. */
+async function askAs<T extends { user: string }>(owner: string, method: string, args: object) {
+  const answer = await call<T>(method, args)
+  return answer.user === owner ? answer : null
+}
+
 /** The four entries a discussion occupies: its document and its three timeline lists. */
-function discussionKeys(name: string) {
+function discussionKeys(cache: Cache, name: string) {
   return {
-    doc: docKey('GP Discussion', name),
-    comments: listKey(commentsCacheKey('GP Discussion', name)),
-    activities: listKey(activitiesCacheKey('GP Discussion', name)),
-    polls: listKey(pollsCacheKey(name)),
+    doc: cache.docKey('GP Discussion', name),
+    comments: cache.listKey(commentsCacheKey('GP Discussion', name)),
+    activities: cache.listKey(activitiesCacheKey('GP Discussion', name)),
+    polls: cache.listKey(pollsCacheKey(name)),
   }
 }
 
-async function storeBundle(bundle: Bundle) {
+async function storeBundle(cache: Cache, bundle: Bundle) {
   const entries: [string, string][] = []
   for (const discussion of bundle.discussions) {
     const name = String(discussion.name)
-    const key = discussionKeys(name)
+    const key = discussionKeys(cache, name)
     entries.push(
       [key.doc, JSON.stringify({ ...discussion, name })],
       [key.comments, rowsJson(bundle.comments[name])],
@@ -345,7 +354,7 @@ async function storeBundle(bundle: Bundle) {
  * Files downloaded rows into the Space and community feeds, merging with what they already
  * hold (a changes-only sync brings back only what changed) and dropping removed discussions.
  */
-async function storeFeeds(rows: Map<string, FeedRow>, removed: Set<string>) {
+async function storeFeeds(cache: Cache, rows: Map<string, FeedRow>, removed: Set<string>) {
   if (!rows.size && !removed.size) return
   const bySpace = new Map<string, FeedRow[]>()
   const byCommunity = new Map<string, FeedRow[]>()
@@ -360,7 +369,7 @@ async function storeFeeds(rows: Map<string, FeedRow>, removed: Set<string>) {
   }
 
   const feeds = new Map<string, Feed>()
-  for (const feed of [...downloadedFeeds(rows.values()), ...(await cachedFeeds())]) {
+  for (const feed of [...downloadedFeeds(cache, rows.values()), ...(await cachedFeeds(cache))]) {
     feeds.set(feed.key, feed)
   }
   if (!feeds.size) return
@@ -399,7 +408,7 @@ async function storeFeeds(rows: Map<string, FeedRow>, removed: Set<string>) {
 }
 
 /** The feeds a downloaded row belongs to, opened on this device or not. */
-function downloadedFeeds(rows: Iterable<FeedRow>): Feed[] {
+function downloadedFeeds(cache: Cache, rows: Iterable<FeedRow>): Feed[] {
   const feeds = new Map<string, Feed>()
   for (const row of rows) {
     const scopes = [
@@ -410,7 +419,7 @@ function downloadedFeeds(rows: Iterable<FeedRow>): Feed[] {
       if (!scope) continue
       const { name, ...where } = scope
       for (const pinned of row.pinned_at ? [false, true] : [false]) {
-        const key = listKey(['Discussions', pinned ? ['pinned', name] : name])
+        const key = cache.listKey(['Discussions', pinned ? ['pinned', name] : name])
         feeds.set(key, { ...where, key, pinned })
       }
     }
@@ -419,9 +428,9 @@ function downloadedFeeds(rows: Iterable<FeedRow>): Feed[] {
 }
 
 /** Feeds this user has cached, so rows that moved or went away leave them too. */
-async function cachedFeeds(): Promise<Feed[]> {
+async function cachedFeeds(cache: Cache): Promise<Feed[]> {
   const feeds: Feed[] = []
-  for (const cacheKey of await cachedListKeys('Discussions')) {
+  for (const cacheKey of await cache.listKeys('Discussions')) {
     const inner = cacheKey[1]
     const pinned = Array.isArray(inner) && inner[0] === 'pinned'
     const name = pinned ? inner[1] : inner
@@ -429,7 +438,7 @@ async function cachedFeeds(): Promise<Feed[]> {
     if (!scope) continue
     const { space, community, feedType } = scope
     feeds.push({
-      key: listKey(cacheKey),
+      key: cache.listKey(cacheKey),
       space,
       community,
       pinned,
@@ -459,9 +468,9 @@ function parseRows(value: unknown): FeedRow[] {
   }
 }
 
-async function forgetDiscussions(names: string[]) {
+async function forgetDiscussions(cache: Cache, names: string[]) {
   if (!names.length) return
-  const keys = names.map((name) => discussionKeys(name))
+  const keys = names.map((name) => discussionKeys(cache, name))
   // Only the document and comments can hold images.
   const stored = await getMany(keys.flatMap((key) => [key.doc, key.comments])).catch(() => [])
   await delMany(keys.flatMap(Object.values))
@@ -509,7 +518,10 @@ function forgetImages(urls: string[]) {
 export async function downloadedBytes(): Promise<number> {
   const meta = await readMeta()
   if (!meta) return 0
-  const owned = Object.keys(meta.places).flatMap((name) => Object.values(discussionKeys(name)))
+  const cache = cacheFor(meta.user)
+  const owned = Object.keys(meta.places).flatMap((name) =>
+    Object.values(discussionKeys(cache, name)),
+  )
   const encoder = new TextEncoder()
   const images = new Set<string>()
   let bytes = 0
@@ -544,7 +556,7 @@ function removeOfflineDownloads() {
 }
 
 async function forgetDownloads(meta: Meta) {
-  await forgetDiscussions(Object.keys(meta.places))
+  await forgetDiscussions(cacheFor(meta.user), Object.keys(meta.places))
   await delMany([META_KEY])
   showMeta(null)
 }
