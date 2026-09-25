@@ -65,14 +65,22 @@
         </nav>
       </section>
     </div>
+
+    <BottomSheet v-if="showDevUserSwitcher" v-model:open="devUserSheetOpen" title="Switch user">
+      <!-- Capped so the list scrolls on its own. The filter and the error panel
+           then stay in view instead of scrolling away. -->
+      <component :is="DevUserList" class="max-h-[70dvh] pb-6" @close="devUserSheetOpen = false" />
+    </BottomSheet>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, defineAsyncComponent, ref } from 'vue'
 import { useRouter, type RouteLocationRaw } from 'vue-router'
-import { useSessionUser } from '@/data/users'
+import { BottomSheet } from 'frappe-ui'
+import { isGameplanAdmin, useSessionUser } from '@/data/users'
 import { session } from '@/data/session'
+import { useIsMobile } from '@/utils/useIsMobile'
 import { useTheme, type Theme } from '@/utils/useTheme'
 
 interface MoreItem {
@@ -91,6 +99,16 @@ interface MoreItemGroup {
 const router = useRouter()
 const sessionUser = useSessionUser()
 const { cycleTheme, currentTheme } = useTheme()
+// Same compile-time guard as the account menu (UserDropdown.vue): a production
+// build folds this to null and never bundles the list.
+const DevUserList = import.meta.env.DEV
+  ? defineAsyncComponent(() => import('@/components/DevUserList.vue'))
+  : null
+const devUserSheetOpen = ref(false)
+// This page still renders on a desktop viewport, where the account menu
+// (UserDropdown.vue) holds the switcher. One entry point per layout.
+const isMobileViewport = useIsMobile()
+const showDevUserSwitcher = computed(() => Boolean(DevUserList) && isMobileViewport.value)
 
 const THEME_META: Record<Theme, { label: string; icon: string }> = {
   light: { label: 'Light', icon: 'lucide-sun' },
@@ -129,7 +147,48 @@ const itemGroups = computed<MoreItemGroup[]>(() => {
     {
       label: 'Settings',
       items: [
-        { label: 'Profile', icon: 'lucide-user', onClick: openProfile },
+        // The settings tabs themselves, one level deep: each opens its panel full-screen.
+        // Same slugs and gating as the desktop dialog's sidebar (Settings/SettingsDialog.vue).
+        // "Profile" here is the settings tab (name, avatar, about); "View profile" above
+        // the list opens the public profile.
+        {
+          label: 'Profile',
+          icon: 'lucide-user',
+          route: { name: 'SettingsTab', params: { tab: 'profile' } },
+        },
+        {
+          label: 'Preferences',
+          icon: 'lucide-sliders-horizontal',
+          route: { name: 'SettingsTab', params: { tab: 'preferences' } },
+        },
+        {
+          label: 'Notifications',
+          icon: 'lucide-bell',
+          route: { name: 'SettingsTab', params: { tab: 'notifications' } },
+        },
+        ...(sessionUser.isGuest
+          ? []
+          : [
+              {
+                label: 'Communities',
+                icon: 'lucide-building-2',
+                route: { name: 'SettingsTab', params: { tab: 'communities' } },
+              },
+            ]),
+        ...(isGameplanAdmin()
+          ? [
+              {
+                label: 'Emojis',
+                icon: 'lucide-smile-plus',
+                route: { name: 'SettingsTab', params: { tab: 'emojis' } },
+              },
+              {
+                label: 'Users',
+                icon: 'lucide-users',
+                route: { name: 'SettingsTab', params: { tab: 'users' } },
+              },
+            ]
+          : []),
         {
           label: 'Theme',
           icon: THEME_META[currentTheme.value].icon,
@@ -139,6 +198,21 @@ const itemGroups = computed<MoreItemGroup[]>(() => {
         { label: 'Log out', icon: 'lucide-log-out', onClick: () => session.logout.submit() },
       ],
     },
+    ...(showDevUserSwitcher.value
+      ? [
+          {
+            label: 'Developer',
+            items: [
+              {
+                label: 'Switch user',
+                icon: 'lucide-arrow-left-right',
+                onClick: () => (devUserSheetOpen.value = true),
+                value: sessionUser.full_name,
+              },
+            ],
+          },
+        ]
+      : []),
   ]
 })
 

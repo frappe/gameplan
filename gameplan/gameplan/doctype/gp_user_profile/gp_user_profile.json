@@ -10,6 +10,7 @@
   "enabled",
   "full_name",
   "community_order",
+  "pinned_spaces",
   "quick_reaction_emojis",
   "sidebar_badge_style",
   "email_digest_frequency",
@@ -135,6 +136,11 @@
    "fieldname": "community_order",
    "fieldtype": "JSON",
    "label": "Community Order"
+  },
+  {
+   "fieldname": "pinned_spaces",
+   "fieldtype": "JSON",
+   "label": "Pinned Spaces"
   },
   {
    "fieldname": "quick_reaction_emojis",

@@ -102,20 +102,17 @@ export function useSpacePermissions(spaceId: MaybeRefOrGetter<string | undefined
 }
 
 /**
- * Can new content (a discussion, page or task) be created in this space? The backend refuses
- * posts in an archived space, and read-only mode blocks every write, so both are filtered out
- * before a space is ever offered as a target.
+ * Can a new discussion be started in this space? The backend refuses posts in an archived
+ * space, and read-only mode blocks every write, so both are filtered out before a space is
+ * ever offered as a target.
  *
- * Guests are out everywhere: backend `can_create_content` lets a guest create only a
- * `GP Comment` or a `GP Poll`, so a discussion, page or task is refused in every space,
- * including the ones they were granted. Being in the spaces list is not enough on its own —
- * that list is scoped to what a user may *read*, and a guest can read plenty they cannot post
- * in. For everyone else membership is not part of the test, because read access and post
- * access are the same thing.
+ * Membership is not part of the test, for guests or anyone else, because read access and
+ * post access are the same thing. Backend `can_create_content` lets a guest start a
+ * discussion in any space they can view, and a guest's spaces list holds only the spaces
+ * they were granted. Pages and tasks stay closed to guests; they are gated separately.
  */
 export function canPostInSpace(space: Space | null | undefined) {
-  if (!space || readOnlyMode || space.archived_at) return false
-  return !isGuest(useSessionUser())
+  return Boolean(space && !readOnlyMode && !space.archived_at)
 }
 
 export function getSpace(name: string) {

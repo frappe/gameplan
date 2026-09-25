@@ -45,7 +45,7 @@ export interface GPTask extends DocType {
   comments_count?: number
 }
 
-// Last updated: 2026-08-02 10:00:00.000000
+// Last updated: 2026-09-10 10:00:00.000000
 export interface GPUserProfile extends DocType {
   /** User: Link (User) */
   user: string
@@ -75,6 +75,8 @@ export interface GPUserProfile extends DocType {
   enabled: 0 | 1
   /** Community Order: JSON */
   community_order?: any
+  /** Pinned Spaces: JSON */
+  pinned_spaces?: any
   /** Quick Reaction Emojis: JSON */
   quick_reaction_emojis?: any
   /** Sidebar Badge Style: Select */

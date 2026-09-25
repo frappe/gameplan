@@ -230,6 +230,7 @@ const routes: RouteRecordRaw[] = [
     path: '/page/:pageId/:slug?',
     component: () => import('@/pages/Page.vue'),
     props: true,
+    meta: { hideMobileNav: true },
   },
   {
     path: '/people',
@@ -299,7 +300,7 @@ const routes: RouteRecordRaw[] = [
         path: 'pages/:pageId/:slug?',
         component: () => import('@/pages/Page.vue'),
         props: true,
-        meta: { hideHeader: true, communityScope: true },
+        meta: { hideHeader: true, communityScope: true, hideMobileNav: true },
       },
       {
         name: 'SpaceTasks',
@@ -322,18 +323,19 @@ const routes: RouteRecordRaw[] = [
     path: '/community/:communityId/space/:spaceId/discussion/:postId/:slug?',
     component: () => import('@/pages/SpaceDiscussion.vue'),
     props: true,
-    meta: { communityScope: true },
+    meta: { communityScope: true, hideMobileNav: true },
   },
   {
     name: 'NewDiscussion',
     path: '/community/:communityId/new-discussion',
     component: () => import('@/pages/NewDiscussion/NewDiscussion.vue'),
-    meta: { communityScope: true },
+    meta: { communityScope: true, hideMobileNav: true },
   },
   {
     name: 'LegacyNewDiscussion',
     path: '/new-discussion',
     component: () => import('@/pages/NewDiscussion/NewDiscussion.vue'),
+    meta: { hideMobileNav: true },
   },
   {
     name: 'NewSpace',
@@ -391,10 +393,12 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/pages/Notifications.vue'),
   },
   {
-    // Settings is an overlay: the URL changes to /settings/:tab but the dialog
-    // renders above whatever page it was opened from (see settingsBackgroundPath
-    // + the beforeEach short-circuit below). RouteGuard renders nothing because
-    // App.vue swaps the router-view to the background page while we're here.
+    // On desktop settings is an overlay: the URL changes to /settings/:tab but the
+    // dialog renders above whatever page it was opened from (see
+    // settingsBackgroundPath + the beforeEach short-circuit below), and SettingsPage
+    // never mounts because App.vue swaps the router-view to the background page.
+    // On phones there is no dialog — these routes render SettingsPage as an ordinary
+    // full-screen page.
     path: '/settings',
     meta: { settingsOverlay: true },
     redirect: { name: 'SettingsTab', params: { tab: 'profile' } },
@@ -405,13 +409,13 @@ const routes: RouteRecordRaw[] = [
         // communities list. `:view` defaults to spaces when omitted.
         path: 'communities/:communityId/:view(spaces|members)?',
         name: 'SettingsCommunity',
-        component: RouteGuard,
+        component: () => import('@/pages/SettingsPage.vue'),
         meta: { settingsOverlay: true },
       },
       {
         path: ':tab',
         name: 'SettingsTab',
-        component: RouteGuard,
+        component: () => import('@/pages/SettingsPage.vue'),
         meta: { settingsOverlay: true },
       },
     ],
@@ -740,7 +744,9 @@ router.beforeEach(async (to, from) => {
   }
 
   if (to.name !== 'Login' && !session.isLoggedIn) {
-    window.location.href = '/login'
+    // `href` carries the router base (/g), so login returns the guest to this page.
+    window.location.href =
+      '/login?redirect-to=' + encodeURIComponent(router.resolve(to.fullPath).href)
     return { name: 'Login' }
   }
 

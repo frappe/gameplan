@@ -1,9 +1,35 @@
 <template>
-  <SettingsHeader>
+  <!-- No `title` prop: the header carries controls, so the panel keeps its own
+       heading and hides it on phones, where the page header names the tab. -->
+  <PanelHeader>
     <div class="w-full max-w-[800px]">
-      <!-- Selected community: back button, title, and the Spaces/Members switcher. -->
+      <!-- Selected community: back button, title, and the Spaces/Members switcher.
+           On a phone this is the page's own header (see below), so there is one
+           header, not two. -->
       <template v-if="selectedCommunityId">
-        <div class="flex items-center gap-2">
+        <!-- The page header a phone would otherwise get from pages/SettingsPage.vue:
+             back goes to the communities list rather than the More menu, and the
+             community's own title and view switcher ride along. -->
+        <PageHeaderMobile v-if="isPhone">
+          <template #prefix>
+            <!-- Walks history like every other page's back button, and falls back to
+                 the communities list when there is none (a cold deep link). -->
+            <PageHeaderBackButton
+              label="Back to communities"
+              :to="{ name: 'SettingsTab', params: { tab: 'communities' } }"
+            />
+          </template>
+          <template #default>{{ selectedCommunity?.title || 'Community' }}</template>
+          <template #suffix>
+            <Select
+              variant="ghost"
+              v-if="selectedCommunity"
+              :options="viewButtons"
+              v-model="view"
+            />
+          </template>
+        </PageHeaderMobile>
+        <div class="flex items-center gap-2 max-sm:hidden">
           <Button
             variant="subtle"
             size="xs"
@@ -17,21 +43,23 @@
           <Select variant="ghost" v-if="selectedCommunity" :options="viewButtons" v-model="view" />
         </div>
 
-        <!-- md:pb-3 on both controls keeps the gap to their sticky ListHeader,
+        <!-- pb-3 on both controls keeps the gap to their sticky ListHeader,
              which lives at the top of the scroll viewport in each list. -->
         <CommunitySpacesListControls
           v-if="selectedCommunity && view === 'spaces'"
-          class="mt-4 md:pb-3"
+          class="mt-4 pb-3"
           :community-id="selectedCommunityId"
           v-model:search="spaceSearch"
           v-model:visibility-filter="spaceFilter"
         >
           <template #action>
+            <!-- Icon alone on phones, where the search needs the width. -->
             <div class="flex shrink-0 items-center gap-2">
               <!-- One flip for every live space in the community; the row bells follow. -->
               <Button
                 v-if="liveSpaces.length"
-                :icon-left="allSpacesNotifying ? 'lucide-bell-off' : 'lucide-bell'"
+                :icon="isPhone ? notifyAllIcon : undefined"
+                :icon-left="isPhone ? undefined : notifyAllIcon"
                 :label="allSpacesNotifying ? 'Disable all' : 'Notify all'"
                 @click="
                   setSpaceNotifications(
@@ -40,40 +68,47 @@
                   )
                 "
               />
-              <Button v-if="canCreateSpace" icon-left="lucide-plus" @click="openNewSpaceDialog">
-                New space
-              </Button>
+              <Button
+                v-if="canCreateSpace"
+                :icon="isPhone ? 'lucide-plus' : undefined"
+                :icon-left="isPhone ? undefined : 'lucide-plus'"
+                label="New space"
+                @click="openNewSpaceDialog"
+              />
             </div>
           </template>
         </CommunitySpacesListControls>
 
         <CommunityMembersListControls
           v-if="selectedCommunity && view === 'members'"
-          class="mt-4 md:pb-3"
+          class="mt-4 pb-3"
           v-model:search="memberSearch"
         >
           <template #action>
             <Button
               v-if="canManageSelectedCommunity"
-              icon-left="lucide-plus"
+              :icon="isPhone ? 'lucide-plus' : undefined"
+              :icon-left="isPhone ? undefined : 'lucide-plus'"
+              label="Add members"
               :disabled="Boolean(selectedCommunity.archived_at)"
               @click="showAddMembers = true"
-            >
-              Add members
-            </Button>
+            />
           </template>
         </CommunityMembersListControls>
       </template>
 
       <!-- Communities list -->
       <template v-else>
-        <h2 class="text-lg-semibold text-ink-gray-8">Communities</h2>
+        <h2 class="text-lg-semibold text-ink-gray-8 max-sm:hidden">Communities</h2>
 
-        <!-- md:pb-3 keeps the gap to the column header, which lives at the top
+        <!-- pb-3 keeps the gap to the column header, which lives at the top
              of the scroll viewport (a sticky ListHeader in CommunitiesList)
              instead of being duplicated here. -->
-        <div class="mt-4 flex items-center justify-between gap-3 md:pb-3">
+        <!-- One line on every width: on phones the search box gives up its width and the
+             two actions are icons. -->
+        <div class="mt-4 flex items-center justify-between gap-3 pb-3">
           <CommunitiesListFilters
+            class="min-w-0 flex-1 sm:flex-none"
             v-model:search="search"
             v-model:visibility-filter="visibilityFilter"
           />
@@ -83,29 +118,33 @@
             <!-- Beside "New community" the header has no room to spare, so a
                  manager gets the icon alone and the label in a tooltip. -->
             <Button
-              :icon="showNewCommunityButton ? 'lucide-settings-2' : undefined"
-              :icon-left="showNewCommunityButton ? undefined : 'lucide-settings-2'"
-              :tooltip="showNewCommunityButton ? 'Customize sidebar' : undefined"
+              :icon="showNewCommunityButton || isPhone ? 'lucide-settings-2' : undefined"
+              :icon-left="showNewCommunityButton || isPhone ? undefined : 'lucide-settings-2'"
+              :tooltip="showNewCommunityButton || isPhone ? 'Customize sidebar' : undefined"
               label="Customize sidebar"
               @click="customizeSidebar"
             />
             <Button
               v-if="showNewCommunityButton"
-              icon-left="lucide-plus"
+              :icon="isPhone ? 'lucide-plus' : undefined"
+              :icon-left="isPhone ? undefined : 'lucide-plus'"
+              label="New community"
               @click="newCommunityDialog = true"
-            >
-              New community
-            </Button>
+            />
           </div>
         </div>
       </template>
     </div>
-  </SettingsHeader>
+  </PanelHeader>
 
   <NewCommunityDialog v-model="newCommunityDialog" @created="openCommunitySpaces" />
+  <!-- Desktop has AppRail's instance. Phones have no rail, and the dialog has to mount
+       inside this settings dialog: frappe-ui Dialogs stack in mount order, so one mounted
+       by the layout would open underneath. -->
+  <CustomizeSidebarDialog v-if="isPhone" v-model="showCustomizeSidebarDialog" />
   <NewSpaceDialog v-model="newSpaceDialog" :locked-community-id="selectedCommunityId || ''" />
 
-  <SettingsBody>
+  <PanelBody>
     <div class="w-full max-w-[800px] pt-0">
       <template v-if="selectedCommunityId">
         <ConfigureEmptyState
@@ -151,21 +190,29 @@
         @community-merged="openCommunitySpaces"
       />
     </div>
-  </SettingsBody>
+  </PanelBody>
 </template>
 
 <script setup lang="ts">
 // Declared so the parent's @close-dialog isn't treated as a failed attribute
 // fallthrough (this component renders a fragment); it simply isn't emitted here.
 defineEmits<{ (e: 'close-dialog'): void }>()
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Button, SettingsBody, SettingsHeader, Select } from 'frappe-ui'
+import { Button, PageHeaderBackButton, PageHeaderMobile, Select } from 'frappe-ui'
 import NewSpaceDialog from '@/components/NewSpaceDialog.vue'
-import { openCustomizeSidebarDialog } from '@/components/AppRail/customizeSidebar'
+import CustomizeSidebarDialog from '@/components/AppRail/CustomizeSidebarDialog.vue'
+import {
+  openCustomizeSidebarDialog,
+  showCustomizeSidebarDialog,
+} from '@/components/AppRail/customizeSidebar'
+import { panelOwnsPageHeader } from './index'
+import PanelHeader from './PanelHeader.vue'
+import PanelBody from './PanelBody.vue'
 import { communities } from '@/data/communities'
 import { useSessionUser } from '@/data/users'
 import { canManageCommunity, isGlobalAdmin } from '@/utils/permissions'
+import { useIsMobile } from '@/utils/useIsMobile'
 import CommunitiesList from '@/pages/Configure/CommunitiesList.vue'
 import CommunitiesListFilters from '@/pages/Configure/CommunitiesListFilters.vue'
 import ConfigureEmptyState from '@/pages/Configure/ConfigureEmptyState.vue'
@@ -194,7 +241,11 @@ const view = computed<CommunityView>({
   get: () => (route.params.view === 'members' ? 'members' : 'spaces'),
   set: (nextView) => {
     if (!selectedCommunityId.value) return
-    router.push({
+    // replace, not push: the URL carries the view so it can be linked to, but
+    // switching Spaces/Members inside one community is not navigation. Pushing it
+    // stacked a history entry per toggle, so going back walked through the toggles
+    // instead of leaving the community.
+    router.replace({
       name: 'SettingsCommunity',
       params: { communityId: selectedCommunityId.value, view: nextView },
     })
@@ -214,6 +265,16 @@ const newCommunityDialog = ref(false)
 function customizeSidebar() {
   openCustomizeSidebarDialog()
 }
+
+// Decides icon-only buttons and, with a community open, that this panel draws the
+// phone page header itself (back to the list, the community title, the switcher).
+const isPhone = useIsMobile()
+watch(
+  () => Boolean(isPhone.value && selectedCommunityId.value),
+  (owns) => (panelOwnsPageHeader.value = owns),
+  { immediate: true },
+)
+onBeforeUnmount(() => (panelOwnsPageHeader.value = false))
 
 const viewButtons = [
   { label: 'Spaces', value: 'spaces' },
@@ -242,6 +303,7 @@ const liveSpaces = computed(() => communitySpaces.value.filter((space) => !space
 const allSpacesNotifying = computed(() =>
   liveSpaces.value.every((space) => isSpaceNotifying(space.name)),
 )
+const notifyAllIcon = computed(() => (allSpacesNotifying.value ? 'lucide-bell-off' : 'lucide-bell'))
 
 function openCommunitySpaces(communityId: string) {
   router.push({ name: 'SettingsCommunity', params: { communityId, view: 'spaces' } })

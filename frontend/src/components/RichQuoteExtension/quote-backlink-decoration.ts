@@ -64,10 +64,11 @@ export const QuoteBacklinkDecoration = Extension.create<QuoteBacklinkDecorationO
         // anchor at the passage start and float into the right lane (absolutely
         // positioned, so it never enters the text flow); side:-1 keeps it out of
         // the way of edits at the boundary
+        const anchor = outsideTable(doc, range.from)
         decorations.push(
-          Decoration.widget(range.from, () => createBadge(items, ext.options.onBacklinkClick), {
+          Decoration.widget(anchor, () => createBadge(items, ext.options.onBacklinkClick), {
             side: -1,
-            key: `quote-backlink:${range.from}:${items.length}:${quotedText.length}`,
+            key: `quote-backlink:${anchor}:${items.length}:${quotedText.length}`,
             destroy: unmountBadge,
           }),
         )
@@ -96,6 +97,18 @@ export const QuoteBacklinkDecoration = Extension.create<QuoteBacklinkDecorationO
     ]
   },
 })
+
+// Table cells are position: relative (frappe-ui editor styles), so a badge
+// inside a cell would resolve `left-full` against the cell: it covers the next
+// cell, or scrolls the table in the last column. Move the anchor to just before
+// the table, so the badge resolves against the content column.
+function outsideTable(doc: PMNode, pos: number): number {
+  const $pos = doc.resolve(pos)
+  for (let depth = 1; depth <= $pos.depth; depth++) {
+    if ($pos.node(depth).type.spec.tableRole === 'table') return $pos.before(depth)
+  }
+  return pos
+}
 
 // The widget DOM hosts a mounted frappe-ui Button; remember its app so the
 // widget's `destroy` hook can unmount it.
