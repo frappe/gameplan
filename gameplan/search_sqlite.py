@@ -1,9 +1,11 @@
 # Copyright (c) 2022, Frappe Technologies Pvt. Ltd. and Contributors
 # MIT License. See license.txt
+import os
 import re
 import time
 
 import frappe
+from frappe import _
 from frappe.search.sqlite_search import (
 	MIN_RECENCY_BOOST,
 	RECENCY_DECAY_RATE,
@@ -294,6 +296,10 @@ class GameplanSearch(SQLiteSearch):
 		"""
 		Enhanced search method that handles tag filtering using LIKE operations.
 		"""
+		if self.is_search_enabled() and not self.index_exists():
+			enqueue_index_build()
+			raise GameplanSearchIndexMissingError(_("Search is being set up. Try again in a few minutes."))
+
 		filters = filters.copy() if filters else {}
 		self._requested_projects = filters.get("project")
 		try:
@@ -419,7 +425,36 @@ class GameplanSearch(SQLiteSearch):
 
 
 class GameplanSearchIndexMissingError(SQLiteSearchIndexMissingError):
-	pass
+	# The index is still being built, which is expected on a new site. Answer with 503
+	# and keep it out of the Error Log, which would otherwise get an entry per search.
+	http_status_code = 503
+	skip_error_log = True
+
+
+def enqueue_index_build():
+	"""Start building a missing index in the background.
+
+	Uses the job id Frappe's own after_migrate build uses, so `deduplicate` also skips a
+	build Frappe has already queued. A temp database means a build is running, or stopped
+	and waiting for the scheduler to resume it. Queuing another one would run two builds
+	into the same file.
+	"""
+	search = GameplanSearch()
+	if os.path.exists(search._get_db_path(is_temp=True)):
+		return
+
+	search_class_path = f"{GameplanSearch.__module__}.{GameplanSearch.__name__}"
+	frappe.enqueue(
+		"frappe.search.sqlite_search.build_index",
+		queue="long",
+		job_id=search_class_path,
+		deduplicate=True,
+		search_class_path=search_class_path,
+		# The job skips the build unless forced. Frappe's own enqueue passes it too.
+		force=True,
+		# Frappe's own build job allows 2h10m, for large sites and queue delays.
+		timeout=2 * 60 * 60 + 10 * 60,
+	)
 
 
 def rebuild_index():

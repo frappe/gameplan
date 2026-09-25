@@ -169,7 +169,7 @@
               <ErrorMessage
                 :message="
                   search.error.type == 'GameplanSearchIndexMissingError'
-                    ? 'Search index does not exist. Please build the index first.'
+                    ? 'Search is being set up. Try again in a few minutes.'
                     : search.error
                 "
               />

@@ -3,9 +3,12 @@ from unittest.mock import patch
 
 import frappe
 from frappe.tests.utils import FrappeTestCase
+from redis.exceptions import ConnectionError as RedisConnectionError
 
 from gameplan.api import search_sqlite
-from gameplan.search_sqlite import GameplanSearch
+from gameplan.command_palette import search_sqlite as command_palette_search
+from gameplan.install import enqueue_search_index_build
+from gameplan.search_sqlite import GameplanSearch, GameplanSearchIndexMissingError
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
 	create_comment,
@@ -545,3 +548,74 @@ class TestSearchIndexLifecycle(IsolatedSearchIndex, GameplanTestCase):
 		)
 
 		self.assertEqual([result["id"] for result in results], [f"GP Comment:{comment.name}"])
+
+
+class TestSearchIndexMissing(IsolatedSearchIndex, GameplanTestCase):
+	"""Search on a site whose index has not been built yet (#578)."""
+
+	INDEX_NAME = "test_gameplan_search_missing.db"
+	BUILD_JOB_ID = "gameplan.search_sqlite.GameplanSearch"
+
+	def setUp(self):
+		super().setUp()
+		self.isolate_search_index()
+		self.search = GameplanSearch()
+		self.search.drop_index()
+		patcher = patch("gameplan.search_sqlite.frappe.enqueue")
+		self.enqueue = patcher.start()
+		self.addCleanup(patcher.stop)
+
+	def test_search_reports_a_missing_index_and_starts_a_build(self):
+		with self.as_user(self.member), self.assertRaises(GameplanSearchIndexMissingError):
+			search_sqlite("anything")
+
+		self.enqueue.assert_called_once()
+		self.assertEqual(self.enqueue.call_args.kwargs["job_id"], self.BUILD_JOB_ID)
+		self.assertTrue(self.enqueue.call_args.kwargs["deduplicate"])
+
+		# Run the queued job the way a worker would: it must leave a working index.
+		self.run_queued_build()
+		with self.as_user(self.member):
+			self.assertEqual(search_sqlite("anything")["results"], [])
+
+	def run_queued_build(self):
+		method, *_ = self.enqueue.call_args.args
+		job_kwargs = {
+			key: value
+			for key, value in self.enqueue.call_args.kwargs.items()
+			if key not in {"queue", "job_id", "deduplicate", "timeout"}
+		}
+		frappe.get_attr(method)(**job_kwargs)
+		self.assertTrue(GameplanSearch().index_exists())
+
+	def test_missing_index_is_a_503_without_an_error_log(self):
+		self.assertEqual(GameplanSearchIndexMissingError.http_status_code, 503)
+		self.assertTrue(GameplanSearchIndexMissingError.skip_error_log)
+
+	def test_command_palette_returns_no_results_while_the_index_builds(self):
+		with self.as_user(self.member):
+			self.assertEqual(command_palette_search("anything"), [])
+
+		self.enqueue.assert_called_once()
+
+	def test_a_build_in_progress_is_not_queued_again(self):
+		# isolate_search_index removes this file afterwards, with the rest of the index files.
+		open(self.search._get_db_path(is_temp=True), "w").close()
+
+		with self.as_user(self.member), self.assertRaises(GameplanSearchIndexMissingError):
+			search_sqlite("anything")
+
+		self.enqueue.assert_not_called()
+
+	def test_install_queues_the_first_build(self):
+		enqueue_search_index_build()
+
+		self.enqueue.assert_called_once()
+		self.assertEqual(self.enqueue.call_args.kwargs["job_id"], self.BUILD_JOB_ID)
+
+	def test_install_survives_a_missing_queue(self):
+		self.enqueue.side_effect = RedisConnectionError
+
+		enqueue_search_index_build()
+
+		self.enqueue.assert_called_once()
