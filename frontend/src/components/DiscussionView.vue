@@ -414,7 +414,6 @@ import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { useDiscussion } from '@/data/discussions'
 import type { DiscussionNotificationChoice } from '@/data/notificationPreferences'
 import { useDraftSync } from '@/data/useDraftSync'
-import { readOnlyMode } from '@/data/readOnlyMode'
 import { tags } from '@/data/tags'
 import { shellScrollContainer, useShellScrolled } from 'frappe-ui'
 import { useIsMobile } from '@/utils/useIsMobile'
@@ -905,7 +904,8 @@ useIntersectionObserver(postActionsRow, ([entry]) => {
   postActionsVisible.value = entry?.isIntersecting ?? true
 })
 const showHeaderActions = computed(
-  () => !postActionsVisible.value && !readOnlyMode && Boolean(discussion.doc?.notification_state),
+  () =>
+    !postActionsVisible.value && !props.readOnlyMode && Boolean(discussion.doc?.notification_state),
 )
 const HEADER_MENU_EXCLUDES = new Set(['Edit', 'Revisions'])
 const headerActions = computed(() =>
