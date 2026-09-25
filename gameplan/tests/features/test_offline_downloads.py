@@ -251,6 +251,28 @@ class TestOfflineBundle(OfflineDownloadsTestCase):
 		self.assertEqual(self.index(30)["user"], self.member.name)
 		self.assertEqual(self.bundle(30)["user"], self.member.name)
 
+	def test_a_runaway_client_is_stopped_per_address(self):
+		"""frappe's limiter only runs inside a request, so this test stands one up."""
+		method = "gameplan.offline_downloads.get_offline_index"
+
+		def request_from(ip):
+			frappe.local.request = frappe._dict(method="POST")
+			frappe.local.request_ip = ip
+			frappe.form_dict.cmd = method
+			frappe.cache.delete_value(f"rl:{method}:{ip}:3600")
+			self.addCleanup(frappe.cache.delete_value, f"rl:{method}:{ip}:3600")
+
+		self.addCleanup(setattr, frappe.local, "request", None)
+		with patch.object(offline_downloads, "REQUESTS_PER_HOUR", 2):
+			request_from("10.0.0.1")
+			self.index(30)
+			self.index(30)
+			with self.assertRaises(frappe.RateLimitExceededError):
+				self.index(30)
+			# Another address has its own count.
+			request_from("10.0.0.2")
+			self.index(30)
+
 	def test_is_post_only(self):
 		for endpoint in (get_offline_index, get_offline_bundle):
 			self.assertEqual(declared_http_methods(endpoint), {"POST"})

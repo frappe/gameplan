@@ -13,6 +13,7 @@ from typing import Literal
 
 import frappe
 from frappe.api.v2 import read_doc
+from frappe.rate_limiter import rate_limit
 from frappe.utils import add_days, add_to_date, now_datetime
 
 from gameplan.gameplan.doctype.gp_discussion.api import get_discussions
@@ -23,6 +24,11 @@ PAGE_SIZE = 20
 MAX_CACHED = 2000
 # The newest discussions a device keeps, so a busy site cannot hand it an unbounded backlog.
 MAX_DISCUSSIONS = 500
+# Per endpoint and IP address: frappe has no per-user limiter. A first 3-month download is at
+# most 26 requests, so an office of about 40 behind one address can all download in the same
+# hour, and a client stuck in a loop is still stopped. The counter is keyed on `cmd`, which the
+# app's `/api/method/` calls set; `/api/v2/method/` calls would share one counter.
+REQUESTS_PER_HOUR = 1000
 CHILD_LISTS = {"comments": "GP Comment", "activities": "GP Activity", "polls": "GP Poll"}
 # The field that points each child row at its discussion.
 PARENT_FIELD = {"GP Comment": "reference_name", "GP Activity": "reference_name", "GP Poll": "discussion"}
@@ -33,6 +39,7 @@ FieldList = list[str | dict[str, list[str]]]
 
 
 @frappe.whitelist(methods=["POST"])
+@rate_limit(limit=lambda: REQUESTS_PER_HOUR, seconds=60 * 60)
 def get_offline_index(
 	window_days: Window, cached: list[str | int] | None = None, since: datetime | None = None
 ) -> dict:
@@ -58,6 +65,7 @@ def get_offline_index(
 
 
 @frappe.whitelist(methods=["POST"])
+@rate_limit(limit=lambda: REQUESTS_PER_HOUR, seconds=60 * 60)
 def get_offline_bundle(window_days: Window, fields: dict[str, FieldList], names: list[str | int]) -> dict:
 	"""A page of discussions with their comments, activity and polls, plus the rows the feeds
 	render. `names` outside the window or the user's reach are skipped. `user` is as for the
