@@ -40,7 +40,7 @@
           </div>
 
           <!-- Filter Panel -->
-          <div class="overflow-x-auto -mx-3 px-3 pt-2">
+          <ScrollArea orientation="horizontal" class="-mx-3" viewport-class="px-3 pt-2">
             <div class="flex gap-2 items-center">
               <!-- Authors Filter -->
               <MultiSelect
@@ -155,7 +155,7 @@
                 </template>
               </MultiSelect>
             </div>
-          </div>
+          </ScrollArea>
           <!-- Soft fade so results dissolve into the toolbar as they scroll under. -->
           <div
             class="pointer-events-none absolute inset-x-0 top-full h-6 bg-gradient-to-b from-surface-base/90 to-transparent"
@@ -281,6 +281,7 @@ import {
   Breadcrumbs,
   Button,
   MultiSelect,
+  ScrollArea,
   TextInput,
   Tooltip,
   dayjs,

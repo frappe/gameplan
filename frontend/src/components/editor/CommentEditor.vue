@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, useTemplateRef } from 'vue'
-import { Button, TooltipProvider } from 'frappe-ui'
+import { Button, ScrollArea, TooltipProvider } from 'frappe-ui'
 import {
   Blockquote,
   Bold,
@@ -194,92 +194,94 @@ function canInsertCodeBlock(editor: Editor) {
       <!-- The slot yields null until the editor mounts, and every control here
       needs one. Same guard as the #top slot above. -->
       <div v-if="e" class="mt-2 flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
-        <div class="flex min-w-0 items-center gap-1 overflow-x-auto">
-          <template v-if="toolbarExpanded">
-            <EditorFixedMenu
-              :editor="e"
-              :items="expandedToolbarItems"
-              button-size="sm"
-              class="overflow-x-auto"
-            />
-          </template>
-          <template v-else>
-            <TooltipProvider>
-              <Button
-                size="sm"
-                variant="ghost"
-                icon="lucide-plus"
-                label="Insert"
-                tooltip="Insert"
-                @click="openSlashCommands(e)"
+        <ScrollArea orientation="horizontal" class="min-w-0">
+          <div class="flex items-center gap-1">
+            <template v-if="toolbarExpanded">
+              <EditorFixedMenu
+                :editor="e"
+                :items="expandedToolbarItems"
+                button-size="sm"
+                class="overflow-x-auto"
               />
-              <Button
-                size="sm"
-                variant="ghost"
-                icon="lucide-case-sensitive"
-                label="Text tools"
-                tooltip="Text tools"
-                @click="emit('update:toolbarExpanded', true)"
-              />
-              <Button
-                size="sm"
-                variant="ghost"
-                icon="lucide-at-sign"
-                label="Mention"
-                tooltip="Mention"
-                @click="openMentions(e)"
-              />
-              <EmojiPicker @select="insertEmoji(e, $event)">
-                <template #trigger>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    icon="lucide-smile"
-                    label="Emoji"
-                    tooltip="Emoji"
-                  />
-                </template>
-              </EmojiPicker>
-              <span class="mx-1 h-5 border-l border-outline-gray-2" aria-hidden="true" />
-              <Button
-                size="sm"
-                variant="ghost"
-                icon="lucide-image"
-                label="Image"
-                tooltip="Image"
-                :disabled="!canInsertImage(e)"
-                @click="insertImage(e)"
-              />
-              <Button
-                size="sm"
-                variant="ghost"
-                icon="lucide-video"
-                label="Video"
-                tooltip="Video"
-                :disabled="!canInsertVideo(e)"
-                @click="insertVideo(e)"
-              />
-              <Button
-                size="sm"
-                variant="ghost"
-                icon="lucide-paperclip"
-                label="Attach"
-                tooltip="Attach file"
-                :disabled="!canInsertAttachment(e)"
-                @click="insertAttachment(e)"
-              />
-              <Button
-                size="sm"
-                variant="ghost"
-                icon="lucide-code"
-                label="Code block"
-                tooltip="Code block"
-                :disabled="!canInsertCodeBlock(e)"
-                @click="insertCodeBlock(e)"
-              />
-            </TooltipProvider>
-          </template>
-        </div>
+            </template>
+            <template v-else>
+              <TooltipProvider>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  icon="lucide-plus"
+                  label="Insert"
+                  tooltip="Insert"
+                  @click="openSlashCommands(e)"
+                />
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  icon="lucide-case-sensitive"
+                  label="Text tools"
+                  tooltip="Text tools"
+                  @click="emit('update:toolbarExpanded', true)"
+                />
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  icon="lucide-at-sign"
+                  label="Mention"
+                  tooltip="Mention"
+                  @click="openMentions(e)"
+                />
+                <EmojiPicker @select="insertEmoji(e, $event)">
+                  <template #trigger>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      icon="lucide-smile"
+                      label="Emoji"
+                      tooltip="Emoji"
+                    />
+                  </template>
+                </EmojiPicker>
+                <span class="mx-1 h-5 border-l border-outline-gray-2" aria-hidden="true" />
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  icon="lucide-image"
+                  label="Image"
+                  tooltip="Image"
+                  :disabled="!canInsertImage(e)"
+                  @click="insertImage(e)"
+                />
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  icon="lucide-video"
+                  label="Video"
+                  tooltip="Video"
+                  :disabled="!canInsertVideo(e)"
+                  @click="insertVideo(e)"
+                />
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  icon="lucide-paperclip"
+                  label="Attach"
+                  tooltip="Attach file"
+                  :disabled="!canInsertAttachment(e)"
+                  @click="insertAttachment(e)"
+                />
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  icon="lucide-code"
+                  label="Code block"
+                  tooltip="Code block"
+                  :disabled="!canInsertCodeBlock(e)"
+                  @click="insertCodeBlock(e)"
+                />
+              </TooltipProvider>
+            </template>
+          </div>
+        </ScrollArea>
         <div class="flex items-center justify-between gap-2 sm:justify-end">
           <div class="sm:hidden">
             <slot name="actions-left" />

@@ -16,14 +16,15 @@
       <PageHeaderBase
         class="hidden h-10 items-center border-b bg-surface-base px-3 sm:flex sm:px-5"
       >
-        <div
-          class="w-full overflow-x-auto transition-opacity"
+        <ScrollArea
+          orientation="horizontal"
+          class="w-full transition-opacity"
           :class="{ 'opacity-50': isDraftLoading }"
           :inert="isDraftLoading"
           :aria-disabled="isDraftLoading"
         >
           <EditorFixedMenu :editor="editor" :items="gameplanToolbar" />
-        </div>
+        </ScrollArea>
       </PageHeaderBase>
 
       <div class="discussion-container isolate pt-4">
@@ -38,22 +39,23 @@
         class="fixed inset-x-0 bottom-0 z-20 border-t bg-surface-base px-2 pt-1 pb-2 shadow-[0_-1px_3px_rgba(15,23,42,0.06)] sm:hidden standalone:pb-[max(1.5rem,env(safe-area-inset-bottom))]"
         :class="{ 'opacity-50': isDraftLoading }"
       >
-        <div
-          class="relative overflow-x-auto before:pointer-events-none before:absolute before:inset-y-0 before:left-0 before:z-10 before:w-5 before:bg-gradient-to-r before:from-surface-base before:to-transparent after:pointer-events-none after:absolute after:inset-y-0 after:right-0 after:z-10 after:w-5 after:bg-gradient-to-l after:from-surface-base after:to-transparent"
+        <ScrollArea
+          orientation="horizontal"
+          class="before:pointer-events-none before:absolute before:inset-y-0 before:left-0 before:z-10 before:w-5 before:bg-gradient-to-r before:from-surface-base before:to-transparent after:pointer-events-none after:absolute after:inset-y-0 after:right-0 after:z-10 after:w-5 after:bg-gradient-to-l after:from-surface-base after:to-transparent"
         >
           <EditorFixedMenu
             :editor="editor"
             :items="mobileDiscussionToolbar"
             class="mobile-editor-toolbar min-w-max justify-center"
           />
-        </div>
+        </ScrollArea>
       </div>
     </template>
   </DiscussionEditor>
 </template>
 
 <script setup lang="ts">
-import { PageHeaderBase } from 'frappe-ui'
+import { PageHeaderBase, ScrollArea } from 'frappe-ui'
 import { EditorFixedMenu } from 'frappe-ui/editor'
 import { gameplanToolbar, mobileDiscussionToolbar } from '@/components/editor/toolbars'
 import DiscussionEditor from '@/components/editor/DiscussionEditor.vue'

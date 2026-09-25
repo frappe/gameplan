@@ -1,8 +1,9 @@
 <template>
   <Dialog v-if="!isMobile" :title="title" size="5xl" v-model:open="showDialog">
     <div v-if="orderedRevisions.length" class="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
-      <div class="">
-        <div class="max-h-[60vh] space-y-1 -m-1 p-1 overflow-y-auto" role="listbox">
+      <!-- The negative margin gives the focus rings room inside the clipped scroll area. -->
+      <ScrollArea class="-m-1" viewport-class="max-h-[60vh] p-1">
+        <div class="space-y-1" role="listbox">
           <button
             v-for="(revision, index) in orderedRevisions"
             :key="`${revision.creation}-${index}`"
@@ -24,8 +25,10 @@
             <div class="mt-0.5 text-sm text-ink-gray-5">{{ revision.owner }}</div>
           </button>
         </div>
-      </div>
-      <div class="min-w-0">
+      </ScrollArea>
+      <!-- Capped like the list. Uncapped, a long revision grows the dialog past the window,
+      and the dialog's container then scrolls with the browser's scrollbar. -->
+      <ScrollArea class="min-w-0" viewport-class="max-h-[60vh]">
         <div class="mb-2 flex items-center text-base" v-if="currentRevision && currentAuthor">
           <UserProfileLink class="mr-3" :user="currentAuthor.name">
             <UserAvatar :user="currentAuthor.name" />
@@ -51,7 +54,7 @@
           v-html="htmlDiff"
           class="ProseMirror max-w-none overflow-x-auto prose prose-v3 rounded-5 prose-table:table-fixed prose-th:relative prose-th:border prose-th:border-outline-gray-2 prose-th:bg-surface-gray-2 prose-th:p-2 prose-td:relative prose-td:border prose-td:border-outline-gray-2 prose-td:p-2"
         />
-      </div>
+      </ScrollArea>
     </div>
   </Dialog>
 
@@ -113,7 +116,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useMediaQuery, usePointerSwipe } from '@vueuse/core'
-import { BottomSheet, dayjsLocal, useCall } from 'frappe-ui'
+import { BottomSheet, ScrollArea, dayjsLocal, useCall } from 'frappe-ui'
 import HtmlDiff from 'htmldiff-js'
 import { Motion } from 'motion-v'
 import UserProfileLink from './UserProfileLink.vue'
