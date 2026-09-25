@@ -1,6 +1,8 @@
 # Copyright (c) 2022, Frappe Technologies Pvt. Ltd. and Contributors
 # MIT License. See license.txt
+import os
 import re
+import sqlite3
 import time
 
 import frappe
@@ -15,6 +17,7 @@ from frappe.search.sqlite_search import (
 	SQLiteSearch,
 	SQLiteSearchIndexMissingError,
 )
+from frappe.search.sqlite_search import build_index as frappe_build_index
 from frappe.utils import cstr
 from frappe.utils.background_jobs import is_job_enqueued
 from redis.exceptions import ConnectionError as RedisConnectionError
@@ -462,14 +465,29 @@ def enqueue_index_build():
 
 
 def build_missing_index():
-	"""Background job: build the index from scratch, unless it exists by now.
+	"""Background job: build the index, unless it exists by now.
 
-	A fresh build deletes any temp database a stopped build left behind and starts over,
-	so one run produces the index whatever state the files are in.
+	A build that stopped part way, because it failed or ran past the job timeout, leaves
+	its temp database behind. Resume it first, so a site whose build outlasts one job
+	still finishes across several. A resume that has nothing to continue returns without
+	creating the index. Then build from scratch: a fresh build deletes the temp database.
+
+	Frappe's `build_index` skips the build unless forced. On develop it also holds a lock
+	per search class, so it cannot run next to the scheduler's own build (frappe#42968,
+	backported to version-16 in frappe#42970).
 	"""
-	search = GameplanSearch()
-	if not search.index_exists():
-		search.build_index()
+	if GameplanSearch().index_exists():
+		return
+
+	if os.path.exists(GameplanSearch()._get_db_path(is_temp=True)):
+		try:
+			frappe_build_index(GameplanSearch, force=True, is_continuation=True)
+		except (SQLiteSearchIndexMissingError, sqlite3.Error):
+			# SQLite cannot read the temp database, so there is nothing to resume.
+			pass
+
+	if not GameplanSearch().index_exists():
+		frappe_build_index(GameplanSearch, force=True)
 
 
 def rebuild_index():

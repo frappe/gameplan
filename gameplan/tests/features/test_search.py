@@ -1,5 +1,6 @@
 import json
 import os
+from contextlib import contextmanager
 from unittest.mock import patch
 
 import frappe
@@ -566,6 +567,8 @@ class TestSearchIndexMissing(IsolatedSearchIndex, GameplanTestCase):
 
 	INDEX_NAME = "test_gameplan_search_missing.db"
 	BUILD_JOB_ID = "gameplan.search_sqlite.GameplanSearch"
+	RESUME = "resume"
+	FRESH = "fresh"
 
 	def setUp(self):
 		super().setUp()
@@ -585,7 +588,10 @@ class TestSearchIndexMissing(IsolatedSearchIndex, GameplanTestCase):
 		self.assertTrue(GameplanSearchIndexMissingError.skip_error_log)
 
 	def test_a_new_site_gets_a_fresh_build(self):
-		self.assert_one_job_recovers()
+		with self.record_builds() as builds:
+			self.assert_one_job_recovers()
+
+		self.assertEqual(builds, [self.FRESH])
 		self.assertTrue(self.enqueue.call_args.kwargs["deduplicate"])
 
 	def test_command_palette_returns_no_results_while_the_index_builds(self):
@@ -605,24 +611,44 @@ class TestSearchIndexMissing(IsolatedSearchIndex, GameplanTestCase):
 
 				self.enqueue.assert_not_called()
 
-	def test_a_build_that_stopped_part_way_is_rebuilt(self):
+	def test_a_build_that_stopped_part_way_is_resumed(self):
 		self.leave_a_stopped_build()
 
-		self.assert_one_job_recovers()
+		with self.record_builds() as builds:
+			self.assert_one_job_recovers()
+
+		self.assertEqual(builds, [self.RESUME])
+
+	def test_a_build_that_outlasts_the_job_timeout_is_resumed_again(self):
+		# The job timeout cuts the resume off part way, as it does on a very large site.
+		self.leave_a_stopped_build()
+		with self.stop_build_at("GP Comment"), self.assertRaises(RuntimeError):
+			build_missing_index()
+
+		with self.record_builds() as builds:
+			self.assert_one_job_recovers()
+
+		# Resumed again, not restarted, so each run keeps the work of the one before.
+		self.assertEqual(builds, [self.RESUME])
 
 	def test_the_job_leaves_an_index_built_meanwhile_alone(self):
 		GameplanSearch().build_index()
+		# A stray temp database must not start a resume over a working index.
+		open(self.temp_db_path(), "w").close()
 
-		with patch.object(GameplanSearch, "build_index") as build_index:
+		with self.record_builds() as builds:
 			build_missing_index()
 
-		build_index.assert_not_called()
+		self.assertEqual(builds, [])
 
 	def test_a_build_that_failed_during_setup_is_rebuilt(self):
 		# The temp database exists but has no progress rows, so a resume has nothing to do.
 		open(self.temp_db_path(), "w").close()
 
-		self.assert_one_job_recovers()
+		with self.record_builds() as builds:
+			self.assert_one_job_recovers()
+
+		self.assertEqual(builds, [self.RESUME, self.FRESH])
 
 	def test_a_temp_database_left_by_a_resume_that_did_nothing_is_rebuilt(self):
 		# Frappe's resume returns early when the temp database has no progress rows,
@@ -701,12 +727,35 @@ class TestSearchIndexMissing(IsolatedSearchIndex, GameplanTestCase):
 		isolate_search_index removes the temp database afterwards, with the rest of the
 		index files.
 		"""
-		failure = patch.object(GameplanSearch, "get_documents_paginated", side_effect=RuntimeError)
-		with failure, self.assertRaises(RuntimeError):
+		with self.stop_build_at("GP Page"), self.assertRaises(RuntimeError):
 			GameplanSearch().build_index()
 
 		self.assertTrue(os.path.exists(self.temp_db_path()))
 		self.assertFalse(self.search.index_exists())
+
+	def stop_build_at(self, doctype):
+		"""Make a build fail when it reaches `doctype`."""
+		read_documents = GameplanSearch.get_documents_paginated
+
+		def fetch(search, fetched_doctype, *args, **kwargs):
+			if fetched_doctype == doctype:
+				raise RuntimeError(f"build stopped at {doctype}")
+			return read_documents(search, fetched_doctype, *args, **kwargs)
+
+		return patch.object(GameplanSearch, "get_documents_paginated", autospec=True, side_effect=fetch)
+
+	@contextmanager
+	def record_builds(self):
+		"""Record each build the job asks Frappe for: RESUME or FRESH, in order."""
+		builds = []
+		build = frappe_sqlite_search.build_index
+
+		def record(SearchClass, force=False, is_continuation=False):
+			builds.append(self.RESUME if is_continuation else self.FRESH)
+			return build(SearchClass, force=force, is_continuation=is_continuation)
+
+		with patch("gameplan.search_sqlite.frappe_build_index", side_effect=record):
+			yield builds
 
 	def temp_db_path(self):
 		return self.search._get_db_path(is_temp=True)
