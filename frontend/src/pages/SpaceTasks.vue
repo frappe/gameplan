@@ -14,7 +14,7 @@
       <SpaceTabs :spaceId="spaceId" />
     </div>
     <div>
-      <TaskList :listOptions="{ filters }" :groupByStatus="true" ref="taskList" />
+      <TaskList :key="spaceId" :listOptions="{ filters }" :groupByStatus="true" ref="taskList" />
     </div>
   </div>
 </template>

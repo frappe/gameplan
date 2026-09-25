@@ -1,5 +1,11 @@
 <template>
-  <div v-if="pages.data?.length === 0">
+  <OfflineContentFallback
+    v-if="loadFailure"
+    class="mx-auto mt-6 max-w-2xl px-6"
+    v-bind="loadFailure"
+    @retry="pages.reload()"
+  />
+  <div v-else-if="pages.data?.length === 0">
     <div class="col-span-full">
       <EmptyStateBox class="body-container">
         <span class="lucide-coffee h-7 w-7 text-ink-gray-4" />
@@ -7,7 +13,7 @@
       </EmptyStateBox>
     </div>
   </div>
-  <div v-else>
+  <div v-else v-bind="$attrs">
     <div class="relative" v-for="d in pages.data" :key="d.name">
       <router-link
         :to="
@@ -68,13 +74,20 @@
 </template>
 
 <script setup lang="ts">
-import { Dropdown, useList, UseListOptions, dialog } from 'frappe-ui'
+import { toValue } from 'vue'
+import { Dropdown, UseListOptions, dialog } from 'frappe-ui'
+import { useList } from '@/data/offline/resources'
 import EmptyStateBox from '@/components/EmptyStateBox.vue'
+import OfflineContentFallback from '@/components/OfflineContentFallback.vue'
+import { useLoadFailure } from '@/data/loadFailure'
 import SpaceIcon from '@/components/SpaceIcon.vue'
 import { GPPage } from '@/types/doctypes'
 import { useSpace } from '@/data/spaces'
 import { useSessionUser } from '@/data/users'
 import { canDeleteContent } from '@/utils/permissions'
+
+// The grid classes callers pass are for the pages, not the empty or failed state.
+defineOptions({ inheritAttrs: false })
 
 const props = defineProps<{
   listOptions: {
@@ -95,8 +108,10 @@ const pages = useList<Page>({
   fields: ['name', 'creation', 'title', 'content', 'slug', 'project', 'team', 'modified', 'owner'],
   filters: props.listOptions.filters,
   orderBy: props.listOptions.orderBy,
-  cacheKey: ['Pages', props.listOptions],
+  // Keyed on the resolved filters, like TaskList: a getter would stringify to `{}`.
+  cacheKey: ['Pages', toValue(props.listOptions.filters) ?? {}],
 })
+const loadFailure = useLoadFailure(pages, 'pages')
 
 function getSpace(page: Page) {
   return useSpace(() => page.project).value

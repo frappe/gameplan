@@ -120,6 +120,12 @@
       </div>
     </div>
   </div>
+  <OfflineContentFallback
+    v-else-if="loadFailure"
+    class="mx-auto mt-6 max-w-2xl px-6"
+    v-bind="loadFailure"
+    @retry="tasks.reload()"
+  />
   <EmptyStateBox v-else>
     <template v-if="tasks.error">
       <ErrorMessage :message="tasks.error" />
@@ -131,17 +137,19 @@
   </EmptyStateBox>
 </template>
 <script setup lang="ts">
-import { h, ref, computed } from 'vue'
+import { h, ref, computed, toValue } from 'vue'
 import { Dropdown, LoadingIndicator, Tooltip, dayjsLocal, dialog } from 'frappe-ui'
 import EmptyStateBox from './EmptyStateBox.vue'
+import OfflineContentFallback from './OfflineContentFallback.vue'
 import TaskStatusIcon from './NewTaskDialog/TaskStatusIcon.vue'
-import { useList } from 'frappe-ui'
 import { GPTask } from '@/types/doctypes'
 import { getSpace } from '@/data/spaces'
 import { UseListOptions } from 'frappe-ui'
+import { useList } from '@/data/offline/resources'
 import DropdownMoreOptions from './DropdownMoreOptions.vue'
 import { useSessionUser } from '@/data/users'
 import { canDeleteContent } from '@/utils/permissions'
+import { useLoadFailure } from '@/data/loadFailure'
 
 interface Props {
   groupByStatus?: boolean
@@ -178,8 +186,11 @@ const tasks = useList<GPTask>({
   filters: props.listOptions.filters,
   orderBy: props.listOptions.orderBy,
   limit: props.listOptions.pageLength,
-  cacheKey: ['Tasks', props.listOptions],
+  // Filters are usually a getter, which JSON-stringifies to `{}` and would give every task
+  // list the same cache entry. Key on the resolved filters; callers remount per filter set.
+  cacheKey: ['Tasks', toValue(props.listOptions.filters) ?? {}],
 })
+const loadFailure = useLoadFailure(tasks, 'tasks')
 
 const tasksByStatus = computed(() => {
   const grouped: Record<TaskStatus, GPTask[]> = {

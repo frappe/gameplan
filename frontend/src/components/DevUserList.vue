@@ -50,7 +50,8 @@
  * which also explains why frappe's own `impersonate` is the wrong tool.
  */
 import { computed, ref } from 'vue'
-import { LoadingIndicator, TextInput, useCall } from 'frappe-ui'
+import { LoadingIndicator, TextInput } from 'frappe-ui'
+import { useCall } from '@/data/offline/resources'
 import UserAvatar from '@/components/UserAvatar.vue'
 import { activeUsers, useSessionUser, type UserInfo } from '@/data/users'
 

@@ -1,5 +1,5 @@
+import { useList } from '@/data/offline/resources'
 import { computed } from 'vue'
-import { useList } from 'frappe-ui'
 import { session } from './session'
 
 /** A row from `get_my_drafts` — a new-discussion draft or a new-comment draft on a
@@ -42,7 +42,7 @@ export const drafts = useList<DraftRow>({
   limit: 999,
   // get_my_drafts is owner-scoped on the server; scope the client cache to the session user
   // too, so a same-tab account switch can't briefly show the previous user's draft rows.
-  cacheKey: ['drafts', session.user],
+  cacheKey: 'drafts',
   immediate: true,
 })
 
@@ -61,8 +61,7 @@ let insertQueue: Promise<unknown> = Promise.resolve()
 export function createDraft(fields: Record<string, unknown>): Promise<DraftDoc> {
   const next = insertQueue.then(async () => {
     const doc = (await drafts.insert.submit(fields as Partial<DraftRow>)) as DraftDoc | null
-    // useCall resolves with null instead of rejecting; callers rely on a throw to keep their
-    // local copy and retry.
+    // Callers rely on a throw to keep their local copy and retry.
     if (!doc?.name) throw new Error('Could not create the draft')
     return doc
   })

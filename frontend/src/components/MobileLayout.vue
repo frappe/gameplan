@@ -8,22 +8,22 @@
         <MobileNavItem
           label="Home"
           icon="lucide-home"
-          :to="{ name: 'Home' }"
+          :route="{ name: 'Home' }"
           :active="isHomeRoute"
         />
         <MobileNavItem
           label="Notifications"
           icon="lucide-bell"
-          :to="{ name: 'Notifications' }"
+          :route="{ name: 'Notifications' }"
           :active="route.name === 'Notifications'"
         />
         <MobileNavItem
           label="Search"
           icon="lucide-search"
-          :to="{ name: 'Search' }"
+          :route="{ name: 'Search' }"
           :active="route.name === 'Search'"
         />
-        <MobileNavItem label="You" :to="{ name: 'More' }" :active="isMoreRoute">
+        <MobileNavItem label="You" :route="{ name: 'More' }" :active="isMoreRoute">
           <template #default="{ active }">
             <UserAvatar
               v-if="sessionUser.name"

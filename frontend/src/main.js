@@ -21,6 +21,10 @@ import { isSessionUser, session } from './data/session'
 import { initSocket } from './socket'
 import { installErrorReporting } from './utils/errorReporting'
 import resetDataMixin from './utils/resetDataMixin'
+import { clearCachesOnUserSwitch, setupOfflineSupport } from './offline'
+import { setupOfflineDownloads } from './data/offlineDownloads'
+import { setupOfflineIntroduction } from './data/offlineIntroduction'
+import CleanupFailure from './components/CleanupFailure.vue'
 
 let globalComponents = {
   Button,
@@ -77,7 +81,27 @@ function setupApp() {
   setConfig('maxFileSize', window.max_file_size ? Number(window.max_file_size) : null)
   socket = initSocket()
   app.config.globalProperties.$socket = socket
+  // A switched user's data goes before the first component can read it. If it could not be
+  // cleared, this browser still holds the previous account's content, so nothing is shown.
+  clearCachesOnUserSwitch().then((safe) => (safe ? mountApp() : showCleanupFailure()))
+}
+
+/**
+ * Isolated recovery UI using Frappe UI, because the main app must not mount: another account's
+ * discussions are still in this browser's storage, and every list would be free to read them.
+ */
+function showCleanupFailure() {
+  if (!document.getElementById('app')) return
+  createApp(CleanupFailure).mount('#app')
+}
+
+function mountApp() {
   app.mount('#app')
+  setupOfflineSupport()
+  if (session.isLoggedIn) {
+    setupOfflineDownloads()
+    setupOfflineIntroduction()
+  }
 }
 
 if (import.meta.env.DEV) {

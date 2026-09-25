@@ -200,7 +200,7 @@ function canInsertCodeBlock(editor: Editor) {
               <EditorFixedMenu
                 :editor="e"
                 :items="expandedToolbarItems"
-                button-size="sm"
+                size="sm"
                 class="overflow-x-auto"
               />
             </template>

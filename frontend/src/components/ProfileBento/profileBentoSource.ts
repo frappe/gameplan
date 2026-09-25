@@ -1,4 +1,6 @@
 import { call } from 'frappe-ui'
+import { useCall } from '@/data/offline/resources'
+import { computed, MaybeRefOrGetter, toValue, watch } from 'vue'
 import type { ProfileBentoCard } from './types'
 import type { ProfileBentoCardSource } from './useProfileBentoCustomization'
 
@@ -31,9 +33,10 @@ export function createServerProfileBentoSource(): ProfileBentoCardSource {
       return getLoadResultFromResponse(response)
     },
     async save(cards) {
-      await call<ProfileBentoResponse>(saveBentoCardsMethod, {
+      let response = await call<ProfileBentoResponse>(saveBentoCardsMethod, {
         cards,
       })
+      invalidateProfileBentoCall(response.profile)
     },
     reset: resetProfileBentoCards,
   }
@@ -46,11 +49,7 @@ export function createServerProfileBentoSource(): ProfileBentoCardSource {
  */
 export async function resetProfileBentoCards() {
   let response = await call<ProfileBentoResponse>(resetBentoCardsMethod)
-  return getLoadResultFromResponse(response)
-}
-
-export async function getProfileBentoCards(profile: string) {
-  let response = await call<ProfileBentoResponse>(getProfileBentoCardsMethod, { profile })
+  invalidateProfileBentoCall(response.profile)
   return getLoadResultFromResponse(response)
 }
 
@@ -59,4 +58,75 @@ function getLoadResultFromResponse(response: ProfileBentoResponse): ProfileBento
     cards: response.cards || [],
     isDefault: response.is_default,
   }
+}
+
+// One `get_bento_cards` fetch per profile. Revisiting a profile reuses its call instead of
+// racing a fresh request.
+const bentoCalls: Record<string, ReturnType<typeof createProfileBentoCall>> = {}
+
+function createProfileBentoCall(profile: string) {
+  return useCall<ProfileBentoResponse>({
+    // A full path: unlike call(), useCall doesn't prefix /api/method/ to a method name.
+    url: `/api/v2/method/${getProfileBentoCardsMethod}`,
+    params: { profile },
+    cacheKey: ['ProfileBento', profile],
+    immediate: false,
+  })
+}
+
+function getProfileBentoCall(profile: string) {
+  if (!bentoCalls[profile]) {
+    bentoCalls[profile] = createProfileBentoCall(profile)
+  }
+  return bentoCalls[profile]
+}
+
+/**
+ * Reloads a profile's cached cards after save/reset, in place, so a profile page already
+ * showing them (e.g. behind the settings dialog) updates too. Without it, a call from an
+ * earlier visit is already finished and would keep showing the pre-save layout.
+ */
+function invalidateProfileBentoCall(profile: string) {
+  bentoCalls[profile]?.reload()
+}
+
+/** A profile's bento cards, read from its shared call above, so a revisit reuses it. */
+export function useProfileBento(profile: MaybeRefOrGetter<string | undefined>) {
+  const bentoCall = computed(() => {
+    let name = toValue(profile)
+    return name ? getProfileBentoCall(name) : null
+  })
+
+  const cards = computed<ProfileBentoCard[]>(() => bentoCall.value?.data?.cards || [])
+  const isDefault = computed(() => bentoCall.value?.data?.is_default ?? true)
+  // Resolves on failure too (not just success) - the forever-skeleton bug this replaces
+  // came from the old plain `call()` throwing uncaught and never flipping its "loaded" ref.
+  // `data != null` lets a cache hit show immediately without waiting for the network leg
+  // that staleOnError may still be racing in the background.
+  const loaded = computed(() => {
+    let current = bentoCall.value
+    if (!current) return false
+    return current.data != null || Boolean(current.isFinished)
+  })
+  const failed = computed(() => {
+    let current = bentoCall.value
+    return Boolean(current && current.error && current.data == null)
+  })
+  const error = computed(() => bentoCall.value?.error ?? null)
+
+  watch(
+    () => toValue(profile),
+    (name) => {
+      if (!name) return
+      let current = getProfileBentoCall(name)
+      if (!current.isFinished && !current.loading) current.reload()
+    },
+    { immediate: true },
+  )
+
+  function reload() {
+    return bentoCall.value?.reload()
+  }
+
+  return { cards, isDefault, loaded, failed, error, reload }
 }

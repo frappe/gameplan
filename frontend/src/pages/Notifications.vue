@@ -10,6 +10,7 @@
       <Button
         @click="confirmMarkAllAsRead"
         :loading="markAllAsRead.loading"
+        :disabled="!isOnline"
         v-if="canMarkAllAsRead"
       >
         Mark all as read
@@ -32,7 +33,7 @@
       <ListRow
         v-for="notification in notifications"
         :key="notification.name"
-        :to="notificationRoute(notification) ?? undefined"
+        :route="notificationRoute(notification) ?? undefined"
         class="group h-[68px] sm:h-15"
         :class="!notification.read && 'w-[calc(100%-2.5rem)]'"
         @click="openNotification(notification)"
@@ -68,8 +69,8 @@
                   class="overflow-hidden text-ellipsis whitespace-nowrap"
                   :class="
                     notification.read
-                      ? 'text-lg sm:text-base'
-                      : 'text-lg-medium sm:text-base-medium'
+                      ? 'text-md sm:text-base'
+                      : 'text-md-medium sm:text-base-medium'
                   "
                 >
                   {{ notification.message }}
@@ -122,12 +123,20 @@
             <Button
               variant="subtle"
               icon="lucide-check"
+              :disabled="!isOnline"
               @click.stop.prevent="markAsRead(notification.name)"
             />
           </Tooltip>
         </div>
       </ListRow>
     </List>
+
+    <OfflineContentFallback
+      v-else-if="loadFailure"
+      class="mx-auto mt-6 max-w-2xl px-6"
+      v-bind="loadFailure"
+      @retry="activeList.reload()"
+    />
 
     <div
       v-else
@@ -153,17 +162,19 @@ import {
   Breadcrumbs,
   dayjsLocal,
   dialog,
-  useCall,
-  useList,
   usePageMeta,
 } from 'frappe-ui'
+import { useCall, useList } from '@/data/offline/resources'
 import { List, ListRow, ListCell } from 'frappe-ui/list'
 import ListRowSkeleton from '@/components/ListRowSkeleton.vue'
+import OfflineContentFallback from '@/components/OfflineContentFallback.vue'
 import ReactionFaceIcon from '@/components/ReactionFaceIcon.vue'
 import UserAvatarWithHover from '@/components/UserAvatarWithHover.vue'
 import { getCommunity } from '@/data/communities'
 import { onRemoteNotificationChange, unreadNotifications } from '@/data/notifications'
 import { getSpace } from '@/data/spaces'
+import { useLoadFailure } from '@/data/loadFailure'
+import { isOnline } from '@/data/online'
 import { useSessionUser } from '@/data/users'
 import type { GPNotification } from '@/types/doctypes'
 
@@ -254,6 +265,7 @@ const activeList = computed(() =>
   activeTab.value === 'Unread' ? unreadNotificationList : readNotificationList,
 )
 const isInitialLoading = computed(() => activeList.value.loading && !activeList.value.data?.length)
+const loadFailure = useLoadFailure(activeList, 'notifications')
 
 const emptyStateTitle = computed(() =>
   activeTab.value === 'Unread' ? "You're caught up" : 'No read notifications',
@@ -266,7 +278,8 @@ const emptyStateDescription = computed(() =>
 )
 
 function openNotification(notification: NotificationRow) {
-  if (!notification.read && notificationRoute(notification)) {
+  // Still navigate offline to whatever is cached; the read flag waits until the next visit.
+  if (!notification.read && isOnline.value && notificationRoute(notification)) {
     markAsRead(notification.name)
   }
 }

@@ -111,7 +111,8 @@
 import { h, ref, computed, onBeforeUnmount, watch, nextTick, markRaw, useTemplateRef } from 'vue'
 import { useEventListener, useMediaQuery } from '@vueuse/core'
 import { useRouter } from 'vue-router'
-import { Dialog, ScrollArea, dayjs, debounce, useCall, useNewDoc } from 'frappe-ui'
+import { Dialog, ScrollArea, dayjs, debounce, useNewDoc } from 'frappe-ui'
+import { useCall } from '@/data/offline/resources'
 import { activeUsers, isGameplanAdmin, useSessionUser, useUser } from '@/data/users'
 import ItemProject from './ItemProject.vue'
 import Item from './Item.vue'
@@ -425,19 +426,22 @@ const shortcuts = computed((): CommandPaletteGroup[] => [
             newPage.doc.project = spaceId as string
           }
 
-          newPage.submit().then((doc) => {
-            router.push({
-              name: doc.project ? 'SpacePage' : 'Page',
-              params: doc.project
-                ? {
-                    communityId: getSpace(doc.project)?.team,
-                    pageId: doc.name,
-                    slug: doc.slug,
-                    spaceId: doc.project,
-                  }
-                : { pageId: doc.name, slug: doc.slug },
+          newPage
+            .submit()
+            .then((doc) => {
+              router.push({
+                name: doc.project ? 'SpacePage' : 'Page',
+                params: doc.project
+                  ? {
+                      communityId: getSpace(doc.project)?.team,
+                      pageId: doc.name,
+                      slug: doc.slug,
+                      spaceId: doc.project,
+                    }
+                  : { pageId: doc.name, slug: doc.slug },
+              })
             })
-          })
+            .catch(() => {})
         },
       },
     ].filter((item) => (item.condition ? item.condition() : true)),
@@ -602,9 +606,10 @@ async function submitTitleSearch() {
     return
   }
 
-  const response = await (titleSearch.submit({ query: submittedQuery }) as Promise<
-    SearchResult[] | null
-  >)
+  // A newer query supersedes this request, which then rejects; the check below drops it.
+  const response = await (
+    titleSearch.submit({ query: submittedQuery }) as Promise<SearchResult[] | null>
+  ).catch(() => null)
   if (submittedQuery !== normalizedQuery.value) return
 
   serverSearchQuery.value = submittedQuery

@@ -1,5 +1,5 @@
+import { useCall } from '@/data/offline/resources'
 import { computed, reactive, readonly, ref, watch } from 'vue'
-import { useCall } from 'frappe-ui'
 import router from '@/router'
 import { setCommunityOrder } from './communityOrder'
 import { loadPinnedSpaces } from './pinnedSpaces'
@@ -187,7 +187,11 @@ function getPlaceholderUser(email: string, full_name: string) {
 }
 
 export let activeUsers = computed(() => {
-  return (users.data || []).filter((user) => user.enabled)
+  // Read through the store, which is reactive: `users.data` is a shallow ref, so a role
+  // change merged into a row would not show.
+  return (users.data || [])
+    .map((user) => usersByName[user.name] ?? user)
+    .filter((user) => user.enabled)
 })
 
 /**

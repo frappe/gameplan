@@ -15,17 +15,23 @@ export function isSpacePinned(spaceId: string) {
   return pinnedLookup.value.has(spaceId)
 }
 
+// What the server holds, so a failed save puts the sidebar back rather than lose it on reload.
+let saved: string[] = []
+
 const persist = debounce((value: string[]) => {
   if (!profileName.value) return
   userProfiles.setValue
     .submit({ name: profileName.value, pinned_spaces: JSON.stringify(value) })
-    .catch(() => {})
+    .then(
+      () => (saved = value),
+      () => (pinned.value = saved),
+    )
 }, 500)
 
 export function loadPinnedSpaces(value: unknown, currentProfileName = '') {
   profileName.value = currentProfileName
   if (!currentProfileName) return
-  pinned.value = normalizePinnedSpaces(parseStoredPins(value))
+  pinned.value = saved = normalizePinnedSpaces(parseStoredPins(value))
 }
 
 export function toggleSpacePinned(spaceId: string) {

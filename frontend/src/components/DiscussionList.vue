@@ -24,6 +24,13 @@
       />
     </template>
 
+    <OfflineContentFallback
+      v-if="loadFailure"
+      class="mx-auto mt-6 max-w-2xl px-6"
+      v-bind="loadFailure"
+      @retry="discussions.reload()"
+    />
+
     <List :selectable="selectable" v-model:selection="selectedDiscussions" :class="listClass">
       <DiscussionRow
         v-for="discussion of discussions.data"
@@ -58,6 +65,8 @@ import { UseDiscussionOptions, useDiscussions } from '@/data/discussions'
 import DiscussionRow from './DiscussionRow.vue'
 import ListRowSkeleton from './ListRowSkeleton.vue'
 import EmptyStateBox from './EmptyStateBox.vue'
+import OfflineContentFallback from './OfflineContentFallback.vue'
+import { useLoadFailure } from '@/data/loadFailure'
 import Pin from './icons/Pin.vue'
 
 interface Props {
@@ -117,7 +126,10 @@ const pinnedDiscussions = useDiscussions({
 const filters = computed(() => toValue(props.filters))
 const skeletonRowCount = 3
 const isInitialLoading = computed(() => discussions.loading && !discussions.data?.length)
-const showLoadMoreButton = computed(() => discussions.hasNextPage && !isInitialLoading.value)
+const loadFailure = useLoadFailure(discussions, 'discussions')
+const showLoadMoreButton = computed(
+  () => discussions.hasNextPage && !isInitialLoading.value && !loadFailure.value,
+)
 
 defineExpose({ discussions, pinnedDiscussions })
 </script>

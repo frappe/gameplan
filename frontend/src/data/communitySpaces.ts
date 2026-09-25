@@ -1,5 +1,5 @@
+import { useCall } from '@/data/offline/resources'
 import { computed, reactive } from 'vue'
-import { useCall } from 'frappe-ui'
 import { communityState } from './communityState'
 import { isSpacePinned } from './pinnedSpaces'
 import { joinedSpaces, spaces } from './spaces'

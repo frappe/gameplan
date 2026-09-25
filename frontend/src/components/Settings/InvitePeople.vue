@@ -2,7 +2,7 @@
   <div class="flex min-h-0 flex-col">
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-2">
-        <h2 class="text-3xl-semibold leading-none text-ink-gray-9">Invite People</h2>
+        <h2 class="text-2xl-semibold leading-none text-ink-gray-9">Invite People</h2>
       </div>
     </div>
     <div class="mt-4 space-y-4">
@@ -29,13 +29,7 @@
         <ErrorMessage :message="inviteByEmail.error" />
         <Button
           variant="solid"
-          @click="
-            inviteByEmail.submit({
-              emails,
-              role,
-              projects: null,
-            })
-          "
+          @click="inviteByEmail.submit({ emails, role, projects: null }).catch(() => {})"
           :loading="inviteByEmail.loading"
         >
           Invite
@@ -113,7 +107,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { Select, Tooltip } from 'frappe-ui'
-import { useCall, useList } from 'frappe-ui'
+import { useCall, useList } from '@/data/offline/resources'
 import { GPInvitation } from '@/types/doctypes'
 import { users } from '@/data/users'
 

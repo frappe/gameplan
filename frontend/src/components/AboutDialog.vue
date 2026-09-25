@@ -4,7 +4,7 @@
       <div class="flex justify-center">
         <div class="flex flex-col items-center">
           <GameplanLogo class="mb-3 size-12" />
-          <h3 class="text-3xl-semibold text-ink-gray-9">Gameplan</h3>
+          <h3 class="text-2xl-semibold text-ink-gray-9">Gameplan</h3>
           <div class="flex items-center mt-1">
             <div class="text-base text-ink-gray-6">
               {{ appVersion.branch != 'main' ? appVersion.branch : '' }}

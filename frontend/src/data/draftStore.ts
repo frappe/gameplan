@@ -7,7 +7,7 @@
  * can stay coherent. The reactive orchestration (debounced server sync, lazy row
  * creation, reconciliation) lives in `useDraftSync`.
  */
-import { get, set, del, entries, createStore } from 'idb-keyval'
+import { get, set, del, entries, clear, createStore } from 'idb-keyval'
 
 export type DraftType = 'Discussion' | 'Comment'
 export type DraftMode = 'New' | 'Edit'
@@ -63,6 +63,11 @@ export function deleteDraftRecord(key: string): Promise<void> {
 
 export function listDraftRecords(): Promise<DraftRecord[]> {
   return entries<string, DraftRecord>(store).then((all) => all.map(([, record]) => record))
+}
+
+/** Wipes every local draft. Only on a user switch: after logout the same person may return. */
+export function clearDraftStore(): Promise<void> {
+  return clear(store)
 }
 
 /** Deterministic key for singleton drafts — the same target always resolves to one

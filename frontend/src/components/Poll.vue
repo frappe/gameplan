@@ -148,7 +148,7 @@
       />
     </div>
     <Dialog title="Poll results" v-model:open="showDialog">
-      <h2 class="text-xl-medium text-ink-gray-8">{{ _poll.title }}</h2>
+      <h2 class="text-lg-medium text-ink-gray-8">{{ _poll.title }}</h2>
       <div v-if="!pollResults" class="text-base text-ink-gray-6 mt-2">No votes yet</div>
       <div class="mt-6 space-y-6">
         <div v-for="option in pollResults" :key="option.title">
@@ -187,9 +187,9 @@ import {
   Tooltip,
   dayjsLocal,
   dialog,
-  useDoc,
 } from 'frappe-ui'
 import type { RadioValue } from 'frappe-ui'
+import { useDoc } from '@/data/offline/resources'
 import UserAvatar from './UserAvatar.vue'
 import UserAvatarWithHover from './UserAvatarWithHover.vue'
 import UserProfileLink from './UserProfileLink.vue'

@@ -149,10 +149,13 @@ function submit() {
   if (community) {
     newSpace.doc.team = community
   }
-  newSpace.submit().then(() => {
-    // TODO: useNewDoc should automatically reload related resources
-    spaces.reload()
-    show.value = false
-  })
+  newSpace
+    .submit()
+    .then(() => {
+      // TODO: useNewDoc should automatically reload related resources
+      spaces.reload()
+      show.value = false
+    })
+    .catch(() => {})
 }
 </script>

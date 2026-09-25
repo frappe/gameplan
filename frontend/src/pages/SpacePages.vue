@@ -41,6 +41,7 @@
       </Dropdown>
     </div>
     <PageGrid
+      :key="spaceId"
       class="grid grid-cols-2 gap-x-5 gap-y-8 md:grid-cols-3 lg:grid-cols-4"
       :listOptions="{ filters: { project: spaceId }, orderBy: () => orderBy }"
       :readOnly="!canEditSpace"
@@ -78,12 +79,15 @@ const newPage = useNewDoc<GPPage>('GP Page', {
 })
 
 function createNewPage() {
-  newPage.submit().then((doc) => {
-    router.push({
-      name: 'SpacePage',
-      params: { communityId: space.value?.team, spaceId: props.spaceId, pageId: doc.name },
+  newPage
+    .submit()
+    .then((doc) => {
+      router.push({
+        name: 'SpacePage',
+        params: { communityId: space.value?.team, spaceId: props.spaceId, pageId: doc.name },
+      })
     })
-  })
+    .catch(() => {})
 }
 </script>
 <style scoped>

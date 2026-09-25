@@ -2,7 +2,10 @@
   <div>
     <PageHeaderMobile class="sm:hidden" :title="pageTitle">
       <template #prefix>
-        <PageHeaderBackButton :to="backRoute" :label="isSpacePage ? 'Pages' : 'My Pages'" />
+        <PageHeaderBackButton
+          :fallback-route="backRoute"
+          :label="isSpacePage ? 'Pages' : 'My Pages'"
+        />
       </template>
       <template v-if="page.doc && canEditPage" #suffix>
         <DropdownMoreOptions align="end" :options="pageActions" />
@@ -60,10 +63,10 @@
         </span>
         <div class="mb-3 md:px-[70px]" ref="titleField">
           <input
-            class="w-full border-0 p-0 pt-4 text-5xl-semibold focus:outline-none focus:ring-0 bg-surface-base text-ink-gray-8"
+            class="w-full border-0 p-0 pt-4 text-4xl-semibold focus:outline-none focus:ring-0 bg-surface-base text-ink-gray-8"
             type="text"
             v-model="title"
-            :readonly="!canEditPage"
+            :readonly="!canWritePage"
             @input="autosave"
             @keydown.enter="textEditor?.editor?.commands.focus()"
             ref="titleInput"
@@ -74,7 +77,7 @@
           <PageEditor
             editor-class="rounded-b-6 max-w-[unset] prose-v3 pb-[50vh] md:px-[70px]"
             :content="content"
-            :editable="canEditPage"
+            :editable="canWritePage"
             @change="
               (value) => {
                 content = value
@@ -86,6 +89,12 @@
           />
         </div>
       </div>
+      <OfflineContentFallback
+        v-else-if="loadFailure"
+        class="mx-auto mt-14 max-w-2xl px-6"
+        v-bind="loadFailure"
+        @retry="page.reload()"
+      />
     </div>
   </div>
 </template>
@@ -101,15 +110,18 @@ import {
   usePageMeta,
   debounce,
   dayjsLocal,
-  useDoc,
   dialog,
 } from 'frappe-ui'
+import { useDoc } from '@/data/offline/resources'
 import PageEditor from '@/components/editor/PageEditor.vue'
 import { useSpace } from '@/data/spaces'
 import { GPPage } from '@/types/doctypes'
 import SpaceBreadcrumbs from '@/components/SpaceBreadcrumbs.vue'
 import DropdownMoreOptions from '@/components/DropdownMoreOptions.vue'
+import OfflineContentFallback from '@/components/OfflineContentFallback.vue'
 import { readOnlyMode } from '@/data/readOnlyMode'
+import { isOnline } from '@/data/online'
+import { useLoadFailure } from '@/data/loadFailure'
 import { relativeTimestamp } from '@/utils'
 import { useSessionUser } from '@/data/users'
 import { canDeleteContent, canEditContent } from '@/utils/permissions'
@@ -141,6 +153,7 @@ const page = useDoc<GPPage>({
   doctype: 'GP Page',
   name: () => props.pageId,
 })
+const loadFailure = useLoadFailure(page, 'this page')
 
 // Read from the document, not from the fetch response. The body renders as soon
 // as `page.doc` arrives, which can be the cached copy the doc store publishes
@@ -158,11 +171,15 @@ const content = useSyncedField({
   target: contentField,
 })
 
+let focusedTitle = false
 page.onSuccess(() => {
   updateUrlSlug()
   // Only when nobody is working yet: on a slow response the body has been
   // interactive since the cached copy rendered, and pulling focus to the title
-  // would yank someone out of the editor mid-sentence.
+  // would yank someone out of the editor mid-sentence. Only on the first load, not
+  // when the page refreshes on reconnect.
+  if (focusedTitle) return
+  focusedTitle = true
   if (!document.activeElement || document.activeElement === document.body) {
     titleInput.value?.focus()
   }
@@ -179,6 +196,7 @@ const canEditPage = computed(
     !space.value?.archived_at &&
     canEditContent(page.doc, space.value, useSessionUser()),
 )
+const canWritePage = computed(() => canEditPage.value && isOnline.value)
 
 const pageTitle = computed(() => {
   return page.doc?.title || props.pageId
@@ -218,7 +236,7 @@ const pageActions = computed(() => [
 ])
 
 const save = () => {
-  if (!canEditPage.value) return
+  if (!canWritePage.value) return
 
   isAutosaving.value = true
   const startTime = Date.now()
@@ -236,6 +254,7 @@ const save = () => {
         isAutosaving.value = false
       }, remainingTime)
     })
+    .catch(() => {})
 }
 
 const autosave = debounce(save, 1000)

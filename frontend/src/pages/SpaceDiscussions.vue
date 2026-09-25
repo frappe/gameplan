@@ -48,7 +48,8 @@
       class="-mx-3"
       ref="discussionListRef"
       :filters="() => ({ project: spaceId })"
-      :cacheKey="`SpaceDiscussions-${spaceId}`"
+      :cacheKey="spaceFeedKey(spaceId)"
+      :key="spaceId"
       :selectable="isBulkMoveMode"
       v-model:selectedDiscussions="selectedDiscussions"
     />
@@ -84,7 +85,8 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Combobox, Dialog, ErrorMessage, useCall, toast } from 'frappe-ui'
+import { Combobox, Dialog, ErrorMessage, toast } from 'frappe-ui'
+import { useCall } from '@/data/offline/resources'
 import DiscussionList from '@/components/DiscussionList.vue'
 import SpaceHeaderActions from '@/components/SpaceHeaderActions.vue'
 import SpaceTabs from '@/components/SpaceTabs.vue'
@@ -110,6 +112,7 @@ import {
   archiveSpace,
   unarchiveSpace,
 } from '@/data/spaces'
+import { spaceFeedKey } from '@/data/discussions'
 import { copyToClipboard } from '@/utils'
 import { readOnlyMode } from '@/data/readOnlyMode'
 

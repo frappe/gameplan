@@ -22,6 +22,14 @@ interface RealtimePreflightResult {
 
 const REALTIME_AUTH_PORT = Number(process.env.GAMEPLAN_REALTIME_AUTH_PORT || 8000)
 const SOCKET_PORT = Number(process.env.GAMEPLAN_SOCKET_PORT || 9000)
+// The site the server must answer as. Defaults to the baseUrl's hostname; set it when the
+// hostname is not the site's name — CI serves gameplan.test on localhost, because a service
+// worker only registers on a secure origin and `gameplan.test` over http is not one.
+const EXPECTED_SITE = process.env.GAMEPLAN_SITE
+
+function siteFor(url: URL) {
+  return EXPECTED_SITE || url.hostname
+}
 
 function originAtPort(baseUrl: string, port: number) {
   const url = new URL(baseUrl)
@@ -120,11 +128,11 @@ async function assertDemoSite(
   }
 }
 
-/** Origins already proven to answer as the site their hostname names. */
+/** Origins already proven to answer as the expected site. */
 let verifiedOrigin: string | null = null
 
 /**
- * Prove the configured `baseUrl` reaches the site its hostname names, before any spec
+ * Prove the configured `baseUrl` reaches the expected site, before any spec
  * seeds anything.
  *
  * `gameplan.ui_test_helpers.reset` deletes every Gameplan row and every framework `User`
@@ -141,7 +149,7 @@ async function assertConfiguredSite(baseUrl: string | null) {
   if (verifiedOrigin === configuredUrl.origin) return null
 
   const webPort = Number(configuredUrl.port || (configuredUrl.protocol === 'https:' ? 443 : 80))
-  await assertDemoSite(configuredUrl.origin, webPort, 'Cypress web server', configuredUrl.hostname)
+  await assertDemoSite(configuredUrl.origin, webPort, 'Cypress web server', siteFor(configuredUrl))
   verifiedOrigin = configuredUrl.origin
   // Cypress tasks may not resolve to `undefined`.
   return null
@@ -234,26 +242,21 @@ async function realtimePreflight(
   }
 
   const configuredUrl = new URL(baseUrl)
-  const expectedSite = configuredUrl.hostname
+  const site = siteFor(configuredUrl)
   const webPort = Number(configuredUrl.port || (configuredUrl.protocol === 'https:' ? 443 : 80))
   const webServer = configuredUrl.origin
   const authServer = originAtPort(baseUrl, REALTIME_AUTH_PORT)
-  await assertDemoSite(webServer, webPort, 'Cypress web server', expectedSite)
-  await assertDemoSite(
-    authServer,
-    REALTIME_AUTH_PORT,
-    'Realtime authentication target',
-    expectedSite,
-  )
+  await assertDemoSite(webServer, webPort, 'Cypress web server', site)
+  await assertDemoSite(authServer, REALTIME_AUTH_PORT, 'Realtime authentication target', site)
   await assertSocketServer(baseUrl)
 
   if (user) {
-    await assertUserResolves(webServer, webPort, 'Cypress web server', expectedSite, user, password)
+    await assertUserResolves(webServer, webPort, 'Cypress web server', site, user, password)
     await assertUserResolves(
       authServer,
       REALTIME_AUTH_PORT,
       'Realtime authentication target',
-      expectedSite,
+      site,
       user,
       password,
     )

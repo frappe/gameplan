@@ -126,7 +126,8 @@
 </template>
 <script setup lang="ts">
 import { ref, computed, reactive, watch } from 'vue'
-import { Badge, Combobox, toast, Tooltip, TextInput, useDoctype, useList } from 'frappe-ui'
+import { Badge, Combobox, toast, Tooltip, TextInput, useDoctype } from 'frappe-ui'
+import { useList } from '@/data/offline/resources'
 import EmptyStateBox from '@/components/EmptyStateBox.vue'
 import { getCommunity } from '@/data/communities'
 import { useSpace } from '@/data/spaces'

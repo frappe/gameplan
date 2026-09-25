@@ -8,7 +8,7 @@
         class="flex shrink-0 items-center justify-between border-b border-outline-gray-1 px-4 py-3"
       >
         <Dialog.Title as-child>
-          <h2 class="text-lg font-medium text-ink-gray-9">Add members</h2>
+          <h2 class="text-md font-medium text-ink-gray-9">Add members</h2>
         </Dialog.Title>
         <Dialog.Close as-child>
           <Button variant="ghost" label="Close" icon="lucide-x" />

@@ -4,7 +4,7 @@
       <Button v-if="isBulkDeleteMode" variant="ghost" size="md" @click="cancelBulkDelete">
         Cancel
       </Button>
-      <PageHeaderBackButton v-else :to="{ name: 'More' }" />
+      <PageHeaderBackButton v-else :fallback-route="{ name: 'More' }" />
     </template>
     <template #suffix>
       <div class="flex items-center gap-2">
@@ -89,7 +89,7 @@
           <ListRow
             v-for="draft in drafts.data"
             :key="draft.name"
-            :to="draftRoute(draft)"
+            :route="draftRoute(draft)"
             :value="draft.name"
             class="h-15"
           >
@@ -166,9 +166,9 @@ import {
   Breadcrumbs,
   Button,
   Dialog,
-  useCall,
   toast,
 } from 'frappe-ui'
+import { useCall } from '@/data/offline/resources'
 import { List, ListRow, ListCell } from 'frappe-ui/list'
 import UserAvatarWithHover from '@/components/UserAvatarWithHover.vue'
 import NewDiscussionSpaceDialog from '@/components/NewDiscussionSpaceDialog.vue'

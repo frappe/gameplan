@@ -72,7 +72,7 @@
       </section>
 
       <section>
-        <h2 class="text-lg-semibold text-ink-gray-8">Account</h2>
+        <h2 class="text-md-semibold text-ink-gray-8">Account</h2>
 
         <div class="mt-2 divide-y divide-outline-gray-1">
           <SettingsRow title="Public profile" :description="publicProfileDescription">
@@ -89,7 +89,7 @@
           </SettingsRow>
 
           <SettingsRow title="Password" description="Manage password and account access">
-            <Button link="/update-password">Update Password</Button>
+            <Button href="/update-password">Update Password</Button>
           </SettingsRow>
         </div>
       </section>
@@ -111,16 +111,8 @@
 import { computed, ref, useTemplateRef, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useMediaQuery } from '@vueuse/core'
-import {
-  Button,
-  Dialog,
-  Dropdown,
-  SettingsRow,
-  Textarea,
-  TextInput,
-  toast,
-  useDoc,
-} from 'frappe-ui'
+import { Button, Dialog, Dropdown, SettingsRow, Textarea, TextInput, toast } from 'frappe-ui'
+import { useDoc } from '@/data/offline/resources'
 import PanelHeader from './PanelHeader.vue'
 import PanelBody from './PanelBody.vue'
 import type { DropdownOptions } from 'frappe-ui'

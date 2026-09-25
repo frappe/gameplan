@@ -5,7 +5,7 @@
        controls — search, filters, actions — are drawn. -->
   <SettingsHeader v-if="!isPhone">
     <div v-if="title" class="flex flex-col gap-4">
-      <h2 class="text-lg-semibold text-ink-gray-8">{{ title }}</h2>
+      <h2 class="text-md-semibold text-ink-gray-8">{{ title }}</h2>
       <slot />
     </div>
     <slot v-else />

@@ -1,5 +1,5 @@
 import { MaybeRefOrGetter, ref, toValue, watch } from 'vue'
-import { useDoc, useList } from 'frappe-ui'
+import { revalidateOnReconnect, useDoc, useList } from '@/data/offline/resources'
 import { UseListOptions } from 'frappe-ui'
 import { useDocumentVisibility } from '@vueuse/core'
 import { GPDiscussion } from '@/types/doctypes'
@@ -28,6 +28,28 @@ export interface Discussion extends GPDiscussion {
   unread: number
   last_comment_content?: string
   last_poll_title?: string
+}
+
+export type FeedType = 'recent' | 'unread' | 'participating'
+
+const FEED_TYPES: FeedType[] = ['recent', 'unread', 'participating']
+
+/**
+ * Where each feed caches its rows. Shared with offline downloads, which fills the same
+ * entries so a Space the device has never opened still lists its discussions offline.
+ */
+export const spaceFeedKey = (spaceId: string | number) => `SpaceDiscussions-${spaceId}`
+export const communityFeedKey = (communityId: string, feedType: FeedType = 'recent') =>
+  `Discussions-${communityId}-${feedType}`
+
+/** What a feed key covers, for offline downloads deciding which rows belong in it. */
+export function feedScope(
+  key: string,
+): { space?: string; community?: string; feedType?: FeedType } | null {
+  const space = /^SpaceDiscussions-(.+)$/.exec(key)
+  if (space) return { space: space[1] }
+  const community = new RegExp(`^Discussions-(.+)-(${FEED_TYPES.join('|')})$`).exec(key)
+  return community ? { community: community[1], feedType: community[2] as FeedType } : null
 }
 
 export type UseDiscussionOptions = Pick<
@@ -109,6 +131,9 @@ export function useDiscussion(discussionId: MaybeRefOrGetter<string>) {
         moveToProject: 'move_to_project',
       },
     })
+  } else {
+    // Reused by a later mount, which revalidates it on reconnect too.
+    revalidateOnReconnect(discussionsCache[name])
   }
   return discussionsCache[name] as ReturnType<typeof useDoc<Discussion, DiscussionMethods>>
 }

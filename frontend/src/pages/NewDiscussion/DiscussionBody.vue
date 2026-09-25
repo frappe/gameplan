@@ -13,7 +13,7 @@
     <ErrorMessage :message="errorMessage || publishError" />
     <textarea
       ref="titleTextarea"
-      class="mt-1 w-full bg-transparent resize-none border-0 px-0 py-0.5 text-4xl-semibold text-ink-gray-8 placeholder-ink-gray-3 focus:ring-0"
+      class="mt-1 w-full bg-transparent resize-none border-0 px-0 py-0.5 text-3xl-semibold text-ink-gray-8 placeholder-ink-gray-3 focus:ring-0"
       :value="draftData?.title"
       placeholder="Title"
       rows="1"

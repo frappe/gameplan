@@ -37,7 +37,7 @@
       </section>
 
       <section>
-        <h2 class="text-lg-semibold text-ink-gray-8">Sidebar</h2>
+        <h2 class="text-md-semibold text-ink-gray-8">Sidebar</h2>
 
         <div class="mt-2 divide-y divide-outline-gray-1">
           <SettingsRow title="Unread badge" description="Show unread activity as a dot or a count">
@@ -72,7 +72,7 @@
       </section>
 
       <section>
-        <h2 class="text-lg-semibold text-ink-gray-8">Reactions</h2>
+        <h2 class="text-md-semibold text-ink-gray-8">Reactions</h2>
 
         <div class="mt-2 divide-y divide-outline-gray-1">
           <SettingsRow
@@ -90,6 +90,11 @@
         </div>
 
         <QuickReactionsEditor class="mt-2" />
+      </section>
+
+      <section v-if="!sessionUser.isGuest" :id="OFFLINE_SECTION_ID">
+        <h2 class="text-md-semibold text-ink-gray-8">Offline</h2>
+        <OfflineSettingsPanel class="mt-2" />
       </section>
     </div>
   </PanelBody>
@@ -122,6 +127,8 @@ import { useTheme, type Theme } from '@/utils/useTheme'
 import { useCursorStyle, type CursorStyle } from '@/utils/useCursorStyle'
 import type { GPUserProfile } from '@/types/doctypes'
 import QuickReactionsEditor from './QuickReactionsEditor.vue'
+import OfflineSettingsPanel from './OfflineSettingsPanel.vue'
+import { OFFLINE_SECTION_ID } from '@/data/offlineIntroduction'
 
 const sessionUser = useSessionUser()
 const { currentTheme, setTheme } = useTheme()

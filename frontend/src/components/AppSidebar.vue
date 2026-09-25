@@ -41,7 +41,7 @@
             <SidebarItem
               v-for="space in spacesList"
               :key="space.name"
-              :to="{ name: 'Space', params: { communityId: space.team, spaceId: space.name } }"
+              :route="{ name: 'Space', params: { communityId: space.team, spaceId: space.name } }"
               :active="isActiveSpace(space.name)"
             >
               <template #prefix>
@@ -49,7 +49,11 @@
               </template>
 
               <span class="flex-1 inline-flex items-center gap-1 truncate text-sm">
-                <LucideLock v-if="space.is_private" class="size-3 shrink-0 text-ink-gray-5" />
+                <span
+                  v-if="space.is_private"
+                  class="lucide-lock size-3 shrink-0 text-ink-gray-5"
+                  aria-hidden="true"
+                />
                 <span class="truncate">{{ space.title }}</span>
                 <PushPin
                   v-if="isSpacePinned(space.name)"
@@ -127,7 +131,6 @@ import { useSessionUser } from '@/data/users'
 import CommunityDropdown from './CommunityDropdown.vue'
 import NewSpaceDialog from './NewSpaceDialog.vue'
 import SpaceIcon from './SpaceIcon.vue'
-import LucideLock from '~icons/lucide/lock'
 import PushPin from './icons/PushPin.vue'
 import PushPinSlash from './icons/PushPinSlash.vue'
 
