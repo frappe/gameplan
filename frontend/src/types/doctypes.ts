@@ -170,8 +170,6 @@ export interface GPNotification extends DocType {
   last_event_at?: string
   /** Event Count: Int - How many events this row stands for. 1 for a single notification; higher when repeat events from the same source merged into it. */
   event_count: number
-  /** Push Sent At: Datetime */
-  push_sent_at?: string
   /** Email Sent At: Datetime */
   email_sent_at?: string
 }
@@ -450,8 +448,6 @@ export interface GPSpaceSubscription extends DocType {
   user: string
   /** Space: Link (GP Project) */
   project: string
-  /** Community: Link (GP Team) */
-  team?: string
 }
 
 // Last updated: 2026-06-30 00:00:00.000000

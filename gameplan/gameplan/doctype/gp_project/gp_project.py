@@ -32,7 +32,6 @@ PROJECT_TEAM_DOCTYPES = [
 	"GP Page",
 	"GP Pinned Project",
 	"GP Project Visit",
-	"GP Space Subscription",
 	"GP Task",
 ]
 
