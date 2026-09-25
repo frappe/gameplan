@@ -15,9 +15,15 @@ describe('Notification filters', () => {
       ;[alphaSpace, betaSpace] = (ids.spaces as string[]).map(String)
     })
     cy.then(() => {
+      // The filter row earns its place only from five rows up (FILTERS_FROM in
+      // Notifications.vue), so the two threads the assertions name are padded out to it.
+      // The padding sits in Alpha's space, where nothing asserts on row counts.
       for (const [space, title] of [
         [alphaSpace, 'Alpha thread'],
         [betaSpace, 'Beta thread'],
+        [alphaSpace, 'Padding one'],
+        [alphaSpace, 'Padding two'],
+        [alphaSpace, 'Padding three'],
       ]) {
         cy.task('requestAsUser', {
           user: 'member2@example.com',
