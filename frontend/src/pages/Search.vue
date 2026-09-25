@@ -295,7 +295,7 @@ import UserAvatarWithHover from '@/components/UserAvatarWithHover.vue'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { getSpace } from '@/data/spaces'
 import { activeCommunities } from '@/data/communities'
-import { activeUsers } from '@/data/users'
+import { users } from '@/data/users'
 import { vFocus } from '@/directives'
 
 // Type Definitions
@@ -473,12 +473,16 @@ const authorsFilterOptions = computed(() => {
     })
   }
 
-  return activeUsers.value.map((user) => ({
-    value: user.name,
-    label: user.full_name,
-    image: user.user_image,
-    count: authorCounts.get(user.name) || 0,
-  }))
+  // Disabled users stay in the list while they have indexed posts, so older posts
+  // by people who have left can still be found by author.
+  return (users.data || [])
+    .filter((user) => user.enabled || authorCounts.get(user.name))
+    .map((user) => ({
+      value: user.name,
+      label: user.full_name,
+      image: user.user_image,
+      count: authorCounts.get(user.name) || 0,
+    }))
 })
 
 const doctypesFilterOptions = computed(() => {
