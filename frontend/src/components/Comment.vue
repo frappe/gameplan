@@ -179,29 +179,26 @@ const discardEdit = async () => {
   await draft.clear()
 }
 
-const updateComment = () => {
+const updateComment = async () => {
   const content = draftData.value?.content
   if (!content?.trim()) return
 
   isUpdating.value = true
   updateError.value = null
 
-  props.comments.setValue
-    .submit({
+  try {
+    await props.comments.setValue.submit({
       name: props.comment.name,
       content,
     })
-    .then(async () => {
-      await draft.commit()
-      isEditing.value = false
-      tags.reload()
-    })
-    .catch((error) => {
-      updateError.value = error
-    })
-    .finally(() => {
-      isUpdating.value = false
-    })
+    await draft.commit()
+    isEditing.value = false
+    tags.reload()
+  } catch (error) {
+    updateError.value = error
+  } finally {
+    isUpdating.value = false
+  }
 }
 
 const copyLink = (comment: GPComment) => {
