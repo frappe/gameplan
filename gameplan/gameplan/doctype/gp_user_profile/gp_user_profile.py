@@ -8,7 +8,6 @@ import frappe
 from frappe.model.document import Document
 from frappe.model.naming import append_number_if_name_exists
 from frappe.query_builder.functions import Count
-from frappe.utils import cint
 from frappe.website.utils import cleanup_page_name
 
 from gameplan.api import get_user_info, require_admin
@@ -268,8 +267,8 @@ def get_list(
 		fields=frappe.parse_json(fields) if fields else None,
 		filters=frappe.parse_json(filters) if filters else None,
 		order_by=order_by,
-		offset=cint(start),
-		limit=cint(limit),
+		offset=start,
+		limit=limit,
 		group_by=group_by,
 	)
 	data = query.run(as_dict=True, debug=debug)

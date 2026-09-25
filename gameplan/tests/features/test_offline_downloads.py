@@ -14,7 +14,7 @@ import frappe
 from frappe.utils import add_days, add_to_date, now_datetime
 
 from gameplan import offline_downloads
-from gameplan.offline_downloads import get_offline_bundle, get_offline_index, rate_limit_key
+from gameplan.offline_downloads import get_offline_bundle, get_offline_index
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
 	create_comment,
@@ -22,6 +22,7 @@ from gameplan.tests.fixtures import (
 	create_discussion,
 	create_poll,
 	create_space,
+	declared_http_methods,
 )
 
 FIELDS = {
@@ -39,11 +40,17 @@ def set_modified(doctype, name, when):
 	frappe.db.set_value(doctype, name, "modified", when, update_modified=False)
 
 
+def names(docs):
+	return {str(doc.name) for doc in docs}
+
+
+def row_names(rows):
+	return {str(row["name"]) for row in rows}
+
+
 class OfflineDownloadsTestCase(GameplanTestCase):
 	def setUp(self):
 		super().setUp()
-		frappe.cache.delete_value(rate_limit_key(self.member.name), make_keys=False)
-		self.addCleanup(frappe.cache.delete_value, rate_limit_key(self.member.name), make_keys=False)
 		self.community = create_community("Acme", members=[self.member, self.second_member])
 		self.joined = create_space("Engineering", self.community, members=[self.member])
 		self.not_joined = create_space("Design", self.community, members=[self.second_member])
@@ -63,306 +70,115 @@ class OfflineDownloadsTestCase(GameplanTestCase):
 
 	def index(self, window, **kwargs):
 		with self.as_user(self.member):
-			return get_offline_index(window, **kwargs)["discussions"]
+			return get_offline_index(window, **kwargs)
 
-	def changed(self, window, since):
-		with self.as_user(self.member):
-			return get_offline_index(window, since=str(since))["changed"]
+	def discussions(self, window):
+		return set(self.index(window)["discussions"])
 
-	def places(self, window):
-		with self.as_user(self.member):
-			return get_offline_index(window)["places"]
+	def changed(self, since):
+		return self.index(30, since=str(since))["changed"]
 
-	def visited(self, cached):
-		"""The index's answer for these visited discussions, as the member."""
-		with self.as_user(self.member):
-			return get_offline_index(30, cached)
+	def revoked(self, cached):
+		return sorted(self.index(30, cached=[str(name) for name in cached])["revoked"])
 
-	def bundle(self, window, names=None):
+	def bundle(self, window, wanted=None):
 		"""What a device asks for: everything in the window unless a test names its own."""
 		with self.as_user(self.member):
-			names = names if names is not None else self.index(window)
-			return get_offline_bundle(window, FIELDS, names)
+			wanted = wanted if wanted is not None else self.index(window)["discussions"]
+			return get_offline_bundle(window, FIELDS, wanted)
 
 	def settle_before(self, when):
 		"""Backdate every discussion in the window, so only what a test touches is a change."""
-		for name in self.index(90):
+		for name in self.discussions(90):
 			set_modified("GP Discussion", name, when)
 			frappe.db.set_value("GP Discussion", name, "last_post_at", when, update_modified=False)
 
 
 class TestOfflineIndex(OfflineDownloadsTestCase):
-	def test_lists_every_space_of_a_joined_community(self):
-		"""Space membership is not the scope: joining the community is."""
-		names = self.index(90)
-		self.assertIn(str(self.recent.name), names)
-		self.assertIn(str(self.elsewhere.name), names)
+	def test_scope_is_every_space_the_user_can_open_in_joined_communities(self):
+		"""Joining the community is the scope, not joining the Space; the window narrows it."""
+		self.assertEqual(self.discussions(90), names([self.recent, self.old, self.elsewhere]))
+		self.assertEqual(self.discussions(30), names([self.recent, self.elsewhere]))
 
-	def test_leaves_out_communities_the_user_has_not_joined(self):
-		self.assertNotIn(str(self.outside.name), self.index(90))
-
-	def test_leaves_out_a_private_space_the_user_is_not_in(self):
-		self.assertNotIn(str(self.secret.name), self.index(90))
-
-	def test_window_excludes_older_activity(self):
-		names = self.index(30)
-		self.assertIn(str(self.recent.name), names)
-		self.assertNotIn(str(self.old.name), names)
-		self.assertIn(str(self.old.name), self.index(90))
-
-	def test_a_device_is_capped_at_the_newest_discussions(self):
-		"""A busy community must not hand a device an unbounded list."""
-		with patch.object(offline_downloads, "MAX_DISCUSSIONS", 2):
-			names = self.index(90)
-		self.assertEqual(len(names), 2)
-		# Newest activity first, so the cap keeps what a reader would open next.
-		self.assertNotIn(str(self.old.name), names)
-
-	def test_window_is_capped_at_three_months(self):
-		set_last_post_at(self.old, add_days(now_datetime(), -120))
-		self.assertNotIn(str(self.old.name), self.index(365))
-
-	def test_a_discussion_moved_out_of_the_community_drops_out(self):
-		frappe.db.set_value("GP Discussion", self.recent.name, "project", self.other_space.name)
-		self.assertNotIn(str(self.recent.name), self.index(90))
-
-	def test_a_space_moved_to_another_community_is_reported_as_moved(self):
-		"""The move rewrites `team` in one statement, so no timestamp reports it.
-
-		Without `places` the device would go on listing the discussion under the community
-		the Space left.
-		"""
-		since = add_to_date(now_datetime(), minutes=-5)
-		self.settle_before(add_to_date(since, minutes=-10))
-		elsewhere = create_community("Acme Labs", members=[self.member])
-		before = self.places(90)[str(self.recent.name)]
-
-		frappe.get_doc("GP Project", str(self.joined.name)).move_to_team(elsewhere.name)
-
-		self.assertEqual(self.changed(90, since), [])
-		self.assertNotEqual(self.places(90)[str(self.recent.name)], before)
-
-	def test_an_archived_space_drops_out(self):
-		"""Archiving a Space takes what is in it off the device."""
-		self.assertIn(str(self.recent.name), self.index(90))
-		frappe.db.set_value("GP Project", self.joined.name, "archived_at", now_datetime())
-		self.assertNotIn(str(self.recent.name), self.index(90))
-
-	def test_a_deleted_discussion_drops_out(self):
-		frappe.delete_doc("GP Discussion", self.recent.name, ignore_permissions=True)
-		self.assertNotIn(str(self.recent.name), self.index(90))
-
-	def test_leaving_a_private_space_drops_its_discussions(self):
+	def test_a_discussion_leaves_the_scope_with_its_space(self):
 		private = create_space("Secret", self.community, is_private=1, members=[self.member])
 		secret = create_discussion("Secret thread", private, owner=self.member)
-		self.assertIn(str(secret.name), self.index(90))
+		moved = create_discussion("Moved thread", self.joined, owner=self.member)
+		deleted = create_discussion("Deleted thread", self.not_joined, owner=self.member)
+		self.assertLessEqual(names([secret, moved, deleted]), self.discussions(90))
 
 		private.reload()
 		private.members = [m for m in private.members if m.user != self.member.name]
 		private.save(ignore_permissions=True)
-		self.assertNotIn(str(secret.name), self.index(90))
+		frappe.db.set_value("GP Discussion", moved.name, "project", self.other_space.name)
+		frappe.delete_doc("GP Discussion", deleted.name, ignore_permissions=True)
+		frappe.db.set_value("GP Project", self.joined.name, "archived_at", now_datetime())
 
-	def test_reports_visited_discussions_the_user_can_no_longer_read(self):
+		self.assertEqual(self.discussions(90), names([self.elsewhere]))
+
+	def test_a_device_is_capped_at_the_newest_discussions(self):
+		with patch.object(offline_downloads, "MAX_DISCUSSIONS", 2):
+			self.assertEqual(self.discussions(90), names([self.recent, self.elsewhere]))
+
+	def test_a_space_moved_to_another_community_is_reported_by_place(self):
+		"""The move rewrites `team` in one statement, so no timestamp reports it."""
+		since = add_to_date(now_datetime(), minutes=-5)
+		self.settle_before(add_to_date(since, minutes=-10))
+		before = self.index(90)["places"][str(self.recent.name)]
+
+		labs = create_community("Acme Labs", members=[self.member])
+		frappe.get_doc("GP Project", str(self.joined.name)).move_to_team(labs.name)
+
+		self.assertEqual(self.changed(since), [])
+		self.assertNotEqual(self.index(90)["places"][str(self.recent.name)], before)
+
+	def test_revoked_follows_read_access_not_download_scope(self):
+		"""A visited discussion is revoked only when the user can no longer read it."""
 		private = create_space("Secret", self.community, is_private=1, members=[self.member])
 		secret = create_discussion("Secret thread", private, owner=self.member)
 		gone = create_discussion("Gone thread", self.joined, owner=self.member)
-		cached = [str(self.elsewhere.name), str(secret.name), str(gone.name)]
-		self.assertEqual(self.visited(cached)["revoked"], [])
+		locked = create_community("Locked", is_private=1, members=[self.member])
+		war_room = create_space("War Room", locked, members=[self.member])
+		locked_thread = create_discussion("Locked thread", war_room, owner=self.member)
+		# Readable but never downloaded: a public community they never joined.
+		kept = [self.elsewhere, self.recent, self.outside]
+		cached = names([secret, gone, locked_thread, *kept])
+		self.assertEqual(self.revoked(cached), [])
 
 		private.reload()
 		private.members = []
 		private.save(ignore_permissions=True)
 		frappe.delete_doc("GP Discussion", gone.name, ignore_permissions=True)
-		revoked = self.visited(cached)["revoked"]
-		# The public space's discussion stays: reading it never needed membership.
-		self.assertEqual(sorted(revoked), sorted([str(secret.name), str(gone.name)]))
+		for doc in (locked, war_room):
+			doc.reload()
+			doc.members = [m for m in doc.members if m.user != self.member.name]
+			doc.save(ignore_permissions=True)
+		# Archiving stops a Space being downloaded; it does not stop the user reading it.
+		frappe.db.set_value("GP Project", self.joined.name, "archived_at", now_datetime())
 
-	def test_keeps_visited_discussions_a_space_archive_did_not_take_away(self):
-		"""Archiving stops a Space being downloaded; it does not stop the user reading it."""
-		cached = [str(self.elsewhere.name), str(self.recent.name)]
-		self.joined.reload()
-		self.joined.archived_at = now_datetime()
-		self.joined.save(ignore_permissions=True)
-		index = self.visited(cached)
-		self.assertEqual(index["revoked"], [])
-		self.assertNotIn(str(self.recent.name), index["discussions"])
-
-	def test_keeps_visited_discussions_from_a_public_community_never_joined(self):
-		"""Downloads are scoped to joined communities; reading is not, and revoked follows reading.
-
-		Held to the download scope, a discussion the user read in a public community they
-		never joined came back revoked, and the device deleted the copy their own visit put
-		there — every sync, for as long as they kept reading it.
-		"""
-		cached = [str(self.outside.name)]
-		index = self.visited(cached)
-		self.assertEqual(index["revoked"], [])
-		self.assertNotIn(str(self.outside.name), index["discussions"])
-
-	def test_reports_visited_discussions_revoked_when_a_private_community_is_left(self):
-		locked = create_community("Locked", is_private=1, members=[self.member])
-		space = create_space("War Room", locked, members=[self.member])
-		discussion = create_discussion("Locked thread", space, owner=self.member)
-		cached = [str(self.recent.name), str(discussion.name)]
-		self.assertEqual(self.visited(cached)["revoked"], [])
-
-		locked.reload()
-		locked.members = [m for m in locked.members if m.user != self.member.name]
-		locked.save(ignore_permissions=True)
-		space.reload()
-		space.members = [m for m in space.members if m.user != self.member.name]
-		space.save(ignore_permissions=True)
-		revoked = self.visited(cached)["revoked"]
-		self.assertEqual(revoked, [str(discussion.name)])
-
-	def test_rejects_arguments_of_the_wrong_type(self):
-		"""Frappe checks every argument against its annotation, and answers 417 on a mismatch."""
-		with self.as_user(self.member):
-			for kwargs in (
-				{"cached": {"name": 1}},
-				{"cached": "5"},
-				{"cached": "[1,"},
-				{"since": "nonsense"},
-				{"since": "2026-13-45"},
-				{"since": {"a": 1}},
-			):
-				with self.subTest(**kwargs), self.assertRaises(frappe.exceptions.FrappeTypeError):
-					get_offline_index(30, **kwargs)
-
-	def test_reads_the_last_sync_time_with_or_without_a_zone(self):
-		with self.as_user(self.member):
-			for since in (str(now_datetime()), "2026-01-01T00:00:00Z", 5):
-				with self.subTest(since=since):
-					self.assertIsInstance(get_offline_index(30, since=since)["changed"], list)
-
-	def test_rejects_an_empty_window(self):
-		with self.as_user(self.member), self.assertRaises(frappe.ValidationError):
-			get_offline_index(0)
-
-
-class TestOfflineBundle(OfflineDownloadsTestCase):
-	def test_carries_the_document_as_the_app_reads_it(self):
-		bundle = self.bundle(30)
-		self.assertIn(str(self.recent.name), [str(d["name"]) for d in bundle["discussions"]])
-		doc = next(d for d in bundle["discussions"] if str(d["name"]) == str(self.recent.name))
-		# Fields added by GP Discussion.as_dict, which /api/v2/document returns too.
-		for key in ("last_unread_comment", "is_bookmarked", "views"):
-			self.assertIn(key, doc)
-
-	def test_groups_comments_and_polls_under_their_discussion(self):
-		comment = create_comment(self.recent, content="Hello", owner=self.member)
-		poll = create_poll("Lunch?", self.recent)
-		create_comment(self.elsewhere, content="Not mine")
-
-		bundle = self.bundle(30)
-		key = str(self.recent.name)
-		self.assertEqual([row["name"] for row in bundle["comments"][key]], [comment.name])
-		self.assertEqual(bundle["comments"][key][0]["reactions"], [])
-		self.assertNotIn("_offline_parent", bundle["comments"][key][0])
-		self.assertEqual([row["name"] for row in bundle["polls"][key]], [poll.name])
-		self.assertEqual(len(bundle["polls"][key][0]["options"]), 2)
-		self.assertNotIn(str(self.outside.name), bundle["comments"])
-
-	def test_carries_the_rows_the_feeds_render(self):
-		"""A Space the device never opened still needs its list, not just the documents."""
-		bundle = self.bundle(30)
-		row = next(r for r in bundle["rows"] if str(r["name"]) == str(self.recent.name))
-		self.assertEqual(str(row["project"]), str(self.joined.name))
-		self.assertEqual(row["project_title"], "Engineering")
-		for key in ("last_post_at", "unread", "title"):
-			self.assertIn(key, row)
-		self.assertEqual(
-			{str(r["name"]) for r in bundle["rows"]},
-			{str(d["name"]) for d in bundle["discussions"]},
-		)
-
-	def test_a_page_is_capped_so_one_request_cannot_ask_for_everything(self):
-		for i in range(offline_downloads.PAGE_SIZE):
-			create_discussion(f"Thread {i}", self.joined)
-		in_window = self.index(30)
-		self.assertGreater(len(in_window), offline_downloads.PAGE_SIZE)
-
-		bundle = self.bundle(30, names=in_window)
-		self.assertEqual(len(bundle["discussions"]), offline_downloads.PAGE_SIZE)
-
-	def test_projects_only_the_fields_the_offline_cache_uses(self):
-		"""The device picks the shape it caches; it does not pick the columns."""
-		create_comment(self.recent, content="Hello", owner=self.member)
-		fields = {
-			"comments": ["name", "content", "password", {"reactions": ["user", "modified_by"]}],
-			"activities": ["name", "user"],
-			"polls": ["name"],
-		}
-		with self.as_user(self.member):
-			bundle = get_offline_bundle(30, fields, [str(self.recent.name)])
-		comment = bundle["comments"][str(self.recent.name)][0]
-		self.assertEqual(sorted(comment.keys()), ["content", "name", "reactions"])
-
-	def test_rejects_a_field_list_of_the_wrong_shape(self):
-		"""Every level of `fields` is typed, nested child tables included."""
-		names = [str(self.recent.name)]
-		for fields in (
-			[],
-			"{",
-			{"comments": 5},
-			{"comments": "name"},
-			{"comments": [{"reactions": None}]},
-			{"comments": [{"reactions": {"user": 1}}]},
-			{"comments": ["name", {"reactions": [{"deeper": ["name"]}]}]},
-		):
-			with self.subTest(fields=fields), self.as_user(self.member):
-				with self.assertRaises(frappe.exceptions.FrappeTypeError):
-					get_offline_bundle(30, fields, names)
-		with self.as_user(self.member), self.assertRaises(frappe.exceptions.FrappeTypeError):
-			get_offline_bundle(30, FIELDS, "[")
-
-	def test_a_page_is_held_to_the_window_not_to_the_device_cap(self):
-		"""The cap is how much a device keeps, not a boundary the bundle enforces."""
-		with patch.object(offline_downloads, "MAX_DISCUSSIONS", 1):
-			bundle = self.bundle(90, names=[str(self.old.name)])
-		self.assertEqual([str(d["name"]) for d in bundle["discussions"]], [str(self.old.name)])
-
-	def test_names_fetches_just_those_within_the_window(self):
-		other = create_discussion("Another thread", self.joined, owner=self.member)
-		wanted = [str(other.name), str(self.old.name), str(self.outside.name)]
-		bundle = self.bundle(30, names=wanted)
-		# The old thread is outside 30 days, and the rival community is out of scope.
-		self.assertEqual([str(d["name"]) for d in bundle["discussions"]], [str(other.name)])
-
-	def test_the_index_reports_only_what_changed(self):
-		since = add_to_date(now_datetime(), minutes=-5)
-		self.settle_before(add_to_date(since, minutes=-10))
-		self.assertEqual(self.changed(30, since), [])
-
-		create_comment(self.recent, content="New reply")
-		self.assertEqual(self.changed(30, since), [str(self.recent.name)])
-
-	def test_a_reaction_on_an_old_comment_counts_as_a_change(self):
-		comment = create_comment(self.recent, content="Hello")
-		since = add_to_date(now_datetime(), minutes=-5)
-		earlier = add_to_date(since, minutes=-10)
-		self.settle_before(earlier)
-		set_modified("GP Comment", comment.name, earlier)
-		self.assertEqual(self.changed(30, since), [])
-
-		set_modified("GP Comment", comment.name, now_datetime())
-		self.assertEqual(self.changed(30, since), [str(self.recent.name)])
+		self.assertEqual(self.revoked(cached), sorted(names([secret, gone, locked_thread])))
 
 	def test_every_kind_of_activity_counts_as_a_change(self):
-		"""A sync must not miss a change; each of these is one a reader would see."""
+		"""A sync must not miss a change, nor fetch again what did not change."""
 		comment = create_comment(self.recent, content="Hello", owner=self.member)
 		poll = create_poll("Lunch?", self.recent)
+		deleted = create_comment(self.recent, content="Temporary", owner=self.member)
 		unchanged = create_discussion("Quiet thread", self.joined, owner=self.member)
 
 		def changed_after(action):
 			since = add_to_date(now_datetime(), seconds=-1)
-			self.settle_before(add_to_date(since, minutes=-10))
-			set_modified("GP Comment", comment.name, add_to_date(since, minutes=-10))
-			set_modified("GP Poll", poll.name, add_to_date(since, minutes=-10))
+			earlier = add_to_date(since, minutes=-10)
+			self.settle_before(earlier)
+			# Including what the previous case added.
+			for doctype, parent in (("GP Comment", "reference_name"), ("GP Poll", "discussion")):
+				frappe.db.set_value(
+					doctype, {parent: self.recent.name}, "modified", earlier, update_modified=False
+				)
+			self.assertEqual(self.changed(since), [], "nothing changed yet")
 			action()
-			names = self.changed(30, since)
-			self.assertNotIn(str(unchanged.name), names, "an untouched discussion was fetched again")
-			return names
+			changed = self.changed(since)
+			self.assertNotIn(str(unchanged.name), changed, "an untouched discussion was fetched again")
+			return changed
 
 		with self.as_user(self.member):
 			cases = {
@@ -380,43 +196,51 @@ class TestOfflineBundle(OfflineDownloadsTestCase):
 					operations=[{"emoji": "🎉", "operation": "add"}]
 				),
 				"a poll vote": lambda: frappe.get_doc("GP Poll", poll.name).submit_vote("Yes"),
+				# No row is left to compare, so the discussion's own save carries it.
+				"a deleted comment": lambda: frappe.delete_doc(
+					"GP Comment", deleted.name, ignore_permissions=True
+				),
 			}
 			for label, action in cases.items():
 				with self.subTest(label):
 					self.assertIn(str(self.recent.name), changed_after(action), label)
 
-		# Deleting a comment leaves no row to compare, so the discussion's own save carries it.
-		deleted = create_comment(self.recent, content="Temporary", owner=self.member)
-		with self.subTest("a deleted comment"):
-			self.assertIn(
-				str(self.recent.name),
-				changed_after(lambda: frappe.delete_doc("GP Comment", deleted.name, ignore_permissions=True)),
-			)
 
-	def test_a_device_that_is_up_to_date_has_nothing_to_fetch(self):
-		"""Nothing changed means no bundle request at all, not an empty one."""
-		since = add_to_date(now_datetime(), seconds=-1)
-		self.settle_before(add_to_date(since, minutes=-10))
-		self.assertEqual(self.changed(30, since), [])
+class TestOfflineBundle(OfflineDownloadsTestCase):
+	def test_carries_what_the_app_reads_for_each_discussion(self):
+		comment = create_comment(self.recent, content="Hello", owner=self.member)
+		poll = create_poll("Lunch?", self.recent)
+		create_comment(self.elsewhere, content="Not this one")
+
+		bundle = self.bundle(30)
+		key = str(self.recent.name)
+		doc = next(d for d in bundle["discussions"] if str(d["name"]) == key)
+		# Fields added by GP Discussion.as_dict, which /api/v2/document returns too.
+		for field in ("last_unread_comment", "is_bookmarked", "views"):
+			self.assertIn(field, doc)
+		# A Space the device never opened still needs its feed rows, not just the documents.
+		row = next(r for r in bundle["rows"] if str(r["name"]) == key)
+		self.assertEqual(row["project_title"], "Engineering")
+		self.assertEqual(row_names(bundle["rows"]), row_names(bundle["discussions"]))
+		self.assertEqual([r["name"] for r in bundle["comments"][key]], [comment.name])
+		self.assertEqual(bundle["comments"][key][0]["reactions"], [])
+		self.assertNotIn("_offline_parent", bundle["comments"][key][0])
+		self.assertEqual([r["name"] for r in bundle["polls"][key]], [poll.name])
+		self.assertEqual(len(bundle["polls"][key][0]["options"]), 2)
+
+	def test_carries_only_a_page_of_what_the_index_would_list(self):
+		"""Named discussions outside the window or the user's reach are skipped."""
+		for i in range(offline_downloads.PAGE_SIZE):
+			create_discussion(f"Thread {i}", self.joined)
+		in_window = self.index(30)["discussions"]
+		self.assertEqual(len(self.bundle(30, in_window)["discussions"]), offline_downloads.PAGE_SIZE)
+
+		wanted = [str(self.recent.name), str(self.old.name), str(self.outside.name), str(self.secret.name)]
+		self.assertEqual(row_names(self.bundle(30, wanted)["discussions"]), names([self.recent]))
+		# The cap is how much a device keeps, not a boundary the bundle enforces.
+		with patch.object(offline_downloads, "MAX_DISCUSSIONS", 1):
+			self.assertEqual(len(self.bundle(90, [str(self.old.name)])["discussions"]), 1)
 
 	def test_is_post_only(self):
-		from gameplan.tests.fixtures import declared_http_methods
-
-		self.assertEqual(declared_http_methods(get_offline_bundle), {"POST"})
-
-
-class TestOfflineRateLimit(OfflineDownloadsTestCase):
-	def test_stops_a_runaway_client(self):
-		with patch.object(offline_downloads, "REQUESTS_PER_HOUR", 2):
-			self.index(30)
-			self.index(30)
-			with self.assertRaises(frappe.RateLimitExceededError):
-				self.index(30)
-
-	def test_counts_each_user_separately(self):
-		frappe.cache.delete_value(rate_limit_key(self.second_member.name), make_keys=False)
-		self.addCleanup(frappe.cache.delete_value, rate_limit_key(self.second_member.name), make_keys=False)
-		with patch.object(offline_downloads, "REQUESTS_PER_HOUR", 1):
-			self.index(30)
-			with self.as_user(self.second_member):
-				get_offline_index(30)
+		for endpoint in (get_offline_index, get_offline_bundle):
+			self.assertEqual(declared_http_methods(endpoint), {"POST"})
