@@ -422,6 +422,27 @@ class TestSubscriptionPrivacy(PerUserStateTestCase):
 					frappe.delete_doc(doc.doctype, doc.name)
 			self.assertTrue(frappe.db.exists(doc.doctype, doc.name))
 
+	def test_other_member_cannot_create_a_row_that_belongs_to_someone_else(self):
+		"""`before_insert` on these three fills only an *empty* user, so one the client
+		supplied survives it. Refusing it is the create hook's job, not the stamping's.
+
+		Not an emptiness assertion: creating the discussion already subscribed its author
+		through `subscribe_on_participation`, so the rows are compared before and after.
+		"""
+		for values in (
+			{
+				"doctype": "GP Discussion Subscription",
+				"discussion": self.discussion.name,
+				"state": "Mute",
+			},
+			{"doctype": "GP Space Subscription", "project": self.space.name},
+			{"doctype": "GP Away Period", "kind": "Toggle", "starts_at": "2026-01-01 00:00:00"},
+		):
+			before = list_as_client(values["doctype"], user=self.member.name)
+			with self.as_user(self.second_member), self.assertRaises(frappe.PermissionError):
+				frappe.get_doc(user=self.member.name, **values).insert()
+			self.assertEqual(list_as_client(values["doctype"], user=self.member.name), before)
+
 
 class TestPerUserStateHooksAreRegistered(PerUserStateTestCase):
 	"""The doctypes' role rows are open by design; the hooks are what closes them."""

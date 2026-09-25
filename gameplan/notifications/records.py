@@ -46,10 +46,10 @@ def write_or_merge(
 		doc.message = (merged_message or message).replace("{count}", str(doc.event_count))
 		doc.from_user = None
 		doc.read = 0
+		doc.email_sent_at = None
 		doc.project = project
 		doc.team = team
-		if not doc.away_period:
-			doc.away_period = get_active_away_period(to_user)
+		doc.away_period = get_active_away_period(to_user)
 		doc.flags.ignore_permissions = True
 		doc.save()
 		return doc

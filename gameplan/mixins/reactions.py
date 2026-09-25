@@ -125,13 +125,16 @@ class HasReactions:
 				doc.task = self.reference_name if self.reference_doctype == "GP Task" else None
 		doc.message = message
 		doc.read = 0
+		# A re-lit row may already have been emailed. Clearing the stamp puts it back in
+		# delivery.pending_rows, which filters on it, so the new reaction is not swallowed.
+		doc.email_sent_at = None
 		# The row is reused, so its creation stays put; this is what the inbox orders by
 		# and shows, and a re-lit row has to surface as the news it is.
 		doc.last_event_at = frappe.utils.now()
 		# Written here rather than through records.write_or_merge (the re-lit row is its own
-		# merge rule), so the away stretch is stamped here too, on the same terms.
-		if not doc.away_period:
-			doc.away_period = get_active_away_period(self.owner)
+		# merge rule), so the away stretch is stamped here too, on the same terms: the
+		# stretch the *latest* reaction fell in, not the first, or none once they are back.
+		doc.away_period = get_active_away_period(self.owner)
 		doc.flags.ignore_permissions = True
 		doc.save()
 
