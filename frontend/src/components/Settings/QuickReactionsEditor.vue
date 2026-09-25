@@ -30,7 +30,7 @@
           <button
             v-if="emoji"
             type="button"
-            class="flex size-8 items-center justify-center rounded-5 border border-outline-gray-1 bg-surface-base text-xl font-[emoji] hover:bg-surface-gray-2"
+            class="flex size-8 items-center justify-center rounded-5 border border-outline-gray-1 bg-surface-base text-lg font-[emoji] hover:bg-surface-gray-2"
           >
             <img
               v-if="isImageEmoji(emoji)"

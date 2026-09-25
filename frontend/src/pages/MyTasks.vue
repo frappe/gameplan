@@ -2,7 +2,7 @@
   <div>
     <PageHeaderMobile class="sm:hidden" title="Tasks">
       <template #prefix>
-        <PageHeaderBackButton :to="{ name: 'More' }" />
+        <PageHeaderBackButton :fallback-route="{ name: 'More' }" />
       </template>
       <template #suffix>
         <Button

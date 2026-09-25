@@ -23,7 +23,7 @@
         <span class="size-4 shrink-0 text-ink-gray-5 lucide-chevron-down" aria-hidden="true" />
       </button>
       <template #prefix>
-        <PageHeaderBackButton :to="{ name: 'Discussions', params: { communityId } }" />
+        <PageHeaderBackButton :fallback-route="{ name: 'Discussions', params: { communityId } }" />
       </template>
       <template #suffix>
         <Button

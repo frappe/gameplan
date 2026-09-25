@@ -39,14 +39,14 @@
             as="button"
             v-for="emoji in standardEmojis"
             :key="emoji"
-            class="px-1 py-2 rounded-4 disabled:opacity-50"
+            class="px-1 py-2 rounded-4"
             :class="[
               hasUserReacted(emoji)
                 ? 'bg-surface-amber-2'
                 : 'bg-surface-sidebar hover:bg-surface-gray-2',
             ]"
             @click="toggleReaction(emoji)"
-            :disabled="isLoading || disabled"
+            :disabled="isLoading"
             :whileTap="{ scale: 0.9 }"
             :whileHover="{ scale: 1.05 }"
             :whilePress="{ scale: 1.05 }"
@@ -57,7 +57,7 @@
               alt=""
               class="mx-auto size-6 object-contain"
             />
-            <span v-else class="font-[emoji] text-4xl">
+            <span v-else class="font-[emoji] text-3xl">
               {{ emoji }}
             </span>
           </Motion>
@@ -76,10 +76,10 @@
           >
             <div class="mr-2 flex w-14 items-center justify-center gap-1 text-center">
               <img v-if="isImageEmoji(emoji)" :src="emoji" alt="" class="size-6 object-contain" />
-              <span v-else class="text-4xl font-[emoji]"> {{ emoji }}</span>
-              <span class="text-p-xl text-ink-gray-4"> ({{ reactions.count }}) </span>
+              <span v-else class="text-3xl font-[emoji]"> {{ emoji }}</span>
+              <span class="text-p-lg text-ink-gray-4"> ({{ reactions.count }}) </span>
             </div>
-            <span class="text-p-xl flex-1 text-ink-gray-6">
+            <span class="text-p-lg flex-1 text-ink-gray-6">
               {{ toolTipText(reactions) }}
             </span>
           </Motion>
@@ -100,7 +100,6 @@ const props = defineProps<{
   toolTipText: (reactions: { count: number; userReacted: boolean }) => string
   standardEmojis: string[]
   isLoading: boolean
-  disabled?: boolean
 }>()
 
 let show = ref(false)

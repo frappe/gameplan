@@ -23,7 +23,6 @@ import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { isTextSelection, type Editor } from '@tiptap/core'
 import { DOMSerializer } from '@tiptap/pm/model'
 import { Button } from 'frappe-ui'
-import LucideTextQuote from '~icons/lucide/text-quote'
 import { buildDocTextIndex, extractQuotedText, occurrenceAt } from './quoteTextSearch'
 import { useRichQuotes } from './useRichQuotes'
 

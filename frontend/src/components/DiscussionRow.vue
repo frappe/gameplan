@@ -1,5 +1,5 @@
 <template>
-  <ListRow :to="linkTo" :value="discussion.name" class="h-[68px] sm:h-15">
+  <ListRow :route="linkTo" :value="discussion.name" class="h-[68px] sm:h-15">
     <ListCell>
       <UserAvatarWithHover :user="discussion.owner" size="2xl" />
     </ListCell>
@@ -9,7 +9,7 @@
           <span
             class="overflow-hidden text-ellipsis whitespace-nowrap"
             :class="[
-              discussion.unread ? 'text-lg-semibold sm:text-base-semibold' : 'text-lg sm:text-base',
+              discussion.unread ? 'text-md-semibold sm:text-base-semibold' : 'text-md sm:text-base',
             ]"
           >
             {{ discussion.title }}

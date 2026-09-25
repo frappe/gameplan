@@ -1,7 +1,7 @@
 <template>
   <PageHeaderMobile title="Offline">
     <template #prefix>
-      <PageHeaderBackButton :to="{ name: 'More' }" />
+      <PageHeaderBackButton :fallback-route="{ name: 'More' }" />
     </template>
   </PageHeaderMobile>
   <div class="px-4 pb-28 pt-4">
