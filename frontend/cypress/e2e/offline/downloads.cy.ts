@@ -4,6 +4,8 @@
 // The request counts matter as much as the content — the whole feature is only acceptable
 // if an up-to-date device costs the server one query.
 import { resetData } from '../../support/seed'
+import { personas } from '../../support/personas'
+import { cacheNamespace } from '../../support/offline'
 
 const INDEX = '**/api/**/gameplan.offline_downloads.get_offline_index'
 const BUNDLE = '**/api/**/gameplan.offline_downloads.get_offline_bundle'
@@ -54,10 +56,15 @@ describe('Download for offline', () => {
 
     // Filed under the keys frappe-ui's own resources read, so a downloaded discussion
     // opens exactly like a visited one rather than through a second path.
+    const namespace = cacheNamespace(personas.member.email)
     cy.idbKeys().should((keys) => {
-      expect(keys, 'the discussion document').to.include(`doc:GP Discussion/${discussion}`)
+      expect(keys, 'the discussion document').to.include(
+        `${namespace}doc:v2:GP Discussion/${discussion}`,
+      )
       const timelines = keys.filter(
-        (key) => key.startsWith('["useList","Comments"') && key.includes(String(discussion)),
+        (key) =>
+          key.startsWith(`${namespace}["useList:v2","Comments"`) &&
+          key.includes(String(discussion)),
       )
       expect(timelines, 'its comment timeline').to.not.be.empty
     })
@@ -73,7 +80,13 @@ describe('Download for offline', () => {
       const bundlesForFirstDownload = (first as unknown as unknown[]).length
       expect(bundlesForFirstDownload, 'a first download fetches at least one page').to.be.gte(1)
 
-      // Nothing has changed since, so the second sync should ask the index and stop.
+      // Nothing has changed since, so the second sync should ask the index and stop. The
+      // server reports a minute of overlap to be safe, which here is everything just seeded.
+      cy.intercept('POST', '**/gameplan.offline_downloads.get_offline_index', (req) =>
+        req.continue((res) => {
+          res.body.message.changed = []
+        }),
+      ).as('index')
       control('Sync now').click()
       cy.button('Sync').click()
       cy.wait('@index')
@@ -114,7 +127,9 @@ describe('Download for offline', () => {
     cy.button('Remove').click()
 
     cy.idbKeys().should((keys) => {
-      expect(keys, 'the downloaded document').to.not.include(`doc:GP Discussion/${discussion}`)
+      expect(keys, 'the downloaded document').to.not.include(
+        `${cacheNamespace(personas.member.email)}doc:v2:GP Discussion/${discussion}`,
+      )
       expect(keys, 'the record of what was downloaded').to.not.include('gameplan:offline-downloads')
     })
   })

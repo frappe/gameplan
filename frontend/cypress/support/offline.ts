@@ -3,7 +3,7 @@
  *
  * The app decides it is offline from `navigator.onLine` and the `online`/`offline` events
  * (vueuse's `useNetwork`, read once in `data/online.ts`), and its request gate rejects
- * `/api/` while that says offline (`data/offlineRevalidation.ts`). These commands drive the
+ * `/api/` while that says offline (`data/offline/requests.ts`). These commands drive the
  * browser itself through CDP so both of those see the real thing, rather than stubbing the
  * flag and hoping the rest follows.
  */
@@ -17,6 +17,11 @@ export const RESOURCE_STORE = { db: 'keyval-store', store: 'keyval' } as const
 export const DRAFT_STORE = { db: 'gameplan-drafts', store: 'records' } as const
 
 export const LAST_SEEN_USER_KEY = 'gameplan:last-seen-user'
+
+/** The prefix frappe-ui puts on every cache key it writes for a signed-in user. */
+export function cacheNamespace(email: string) {
+  return `ns:${encodeURIComponent(email)}:`
+}
 /** gameplan-sw.js names its buckets `gameplan-readonly-offline:<version>:<kind>`. */
 export const CACHE_PREFIX = 'gameplan-readonly-offline'
 
@@ -68,6 +73,10 @@ function setOffline(offline: boolean) {
 
 Cypress.Commands.add('goOffline', () => setOffline(true))
 Cypress.Commands.add('goOnline', () => setOffline(false))
+
+// A test that ends or fails offline must not leave the next one, or the report, offline.
+beforeEach(() => cy.goOnline())
+afterEach(() => cy.goOnline())
 
 Cypress.Commands.add('idbKeys', (store: IdbStore = RESOURCE_STORE) =>
   cy.window({ log: false }).then(

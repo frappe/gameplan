@@ -3,7 +3,13 @@
 // cookie, `bench browse --sid`, a session that went stale in an old tab.
 import { resetData } from '../../support/seed'
 import { personas } from '../../support/personas'
-import { CACHE_PREFIX, DRAFT_STORE, RESOURCE_STORE, secureOrigin } from '../../support/offline'
+import {
+  CACHE_PREFIX,
+  DRAFT_STORE,
+  RESOURCE_STORE,
+  cacheNamespace,
+  secureOrigin,
+} from '../../support/offline'
 
 describe('A shared browser', () => {
   let community: string
@@ -60,7 +66,7 @@ describe('A shared browser', () => {
     cy.lastSeenUser().should('eq', personas.member.email)
 
     cy.idbKeys().then((before) => {
-      const theirs = before.filter((key) => key.includes(personas.member.email))
+      const theirs = before.filter((key) => key.startsWith(cacheNamespace(personas.member.email)))
       expect(theirs, "keys tagged with the first account's name").to.not.be.empty
 
       // No logout: just a different session, the way a swapped cookie arrives.
@@ -70,7 +76,9 @@ describe('A shared browser', () => {
 
       cy.lastSeenUser().should('eq', personas.secondMember.email)
       cy.idbKeys().should((after) => {
-        const survivors = after.filter((key) => key.includes(personas.member.email))
+        const survivors = after.filter((key) =>
+          key.startsWith(cacheNamespace(personas.member.email)),
+        )
         expect(survivors, "the first account's cached keys").to.be.empty
       })
     })
@@ -93,7 +101,7 @@ describe('A shared browser', () => {
 
     cy.lastSeenUser().should('eq', personas.secondMember.email)
     cy.idbKeys().should((after) => {
-      const survivors = after.filter((key) => key.includes(personas.member.email))
+      const survivors = after.filter((key) => key.startsWith(cacheNamespace(personas.member.email)))
       expect(survivors, "the first account's cached keys").to.be.empty
     })
   })

@@ -22,7 +22,8 @@ describe('People offline', () => {
     cy.contains(personas.secondMember.displayName).click()
     cy.url().should('include', '/people/')
     cy.button('Profile').should('be.visible')
-    cy.contains(/can't load|couldn't load/i).should('not.exist')
+    cy.contains(personas.secondMember.displayName).should('be.visible')
+    cy.contains(/can't load .* while offline/i).should('not.exist')
 
     cy.goOnline()
   })
@@ -34,7 +35,7 @@ describe('People offline', () => {
 
     cy.goOffline()
     cy.contains(personas.outsider.displayName).click()
-    cy.contains(/can't load|couldn't load/i, { timeout: 20000 }).should('be.visible')
+    cy.contains(/can't load .* while offline/i, { timeout: 20000 }).should('be.visible')
     cy.button('Retry').should('be.visible')
 
     cy.goOnline()

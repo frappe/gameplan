@@ -47,7 +47,7 @@ describe('Reading offline', () => {
     cy.goOffline()
     // A space that has never been opened has nothing cached to render.
     cy.visit(`/g/community/${community}/space/${space}/pages`, { failOnStatusCode: false })
-    cy.contains(/can't load|couldn't load/i).should('be.visible')
+    cy.contains(/can't load .* while offline/i).should('be.visible')
     cy.button('Retry').should('be.visible')
 
     cy.goOnline()

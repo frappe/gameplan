@@ -50,8 +50,25 @@ describe('Coming back online', () => {
   })
 
   it('keeps the reader where they were rather than jumping to the newest reply', () => {
+    // Enough of a thread to scroll, or the position is 0 before and after and proves nothing.
+    const paragraph = `<p>${'A long reply that takes up room in the timeline. '.repeat(12)}</p>`
+    for (let i = 0; i < 12; i++) {
+      cy.task('requestAsUser', {
+        user: personas.secondMember.email,
+        password: personas.secondMember.password,
+        path: '/api/v2/document/GP Comment',
+        body: {
+          reference_doctype: 'GP Discussion',
+          reference_name: discussion,
+          content: paragraph,
+        },
+      })
+    }
     cy.visit(`/g/community/${community}/space/${space}/discussion/${discussion}/${slug}`)
     cy.contains('h1', 'Welcome thread').should('be.visible')
+    cy.get('[data-slot="scroll-area-viewport"]')
+      .last()
+      .should(($el) => expect($el[0].scrollHeight).to.be.greaterThan($el[0].clientHeight * 2))
 
     // The timeline positions itself once per discussion. A reconnect reload used to
     // re-run that and throw the reader to the bottom of the thread.
@@ -60,19 +77,26 @@ describe('Coming back online', () => {
       .then(($el) => {
         const el = $el[0]
         el.scrollTo({ top: Math.floor(el.scrollHeight / 3) })
-        const before = el.scrollTop
+        expect(el.scrollTop, 'the thread scrolls').to.be.greaterThan(0)
 
+        // Measured once offline: the banner resizes the viewport, and the browser keeps the
+        // reader's place through that on its own. The reconnect is what is under test.
         cy.goOffline()
         cy.contains('[role="status"]', 'Offline').should('be.visible')
-        cy.goOnline()
-        cy.get('[role="status"]').should('not.exist')
+        cy.wait(500)
+        cy.then(() => {
+          const before = el.scrollTop
+          cy.goOnline()
+          cy.get('[role="status"]').should('not.exist')
 
-        // Give the revalidation time to land before reading the position back.
-        cy.wait(3000)
-        cy.wrap(null).should(() => {
-          expect(Math.abs(el.scrollTop - before), 'scroll position after reconnect').to.be.lessThan(
-            40,
-          )
+          // Give the revalidation time to land before reading the position back.
+          cy.wait(3000)
+          cy.wrap(null).should(() => {
+            expect(
+              Math.abs(el.scrollTop - before),
+              'scroll position after reconnect',
+            ).to.be.lessThan(40)
+          })
         })
       })
   })

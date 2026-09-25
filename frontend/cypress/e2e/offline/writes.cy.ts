@@ -1,5 +1,5 @@
-// Writing offline: the controls that need the server are disabled rather than broken, what
-// was typed is kept, and it posts once the connection is back.
+// Writing offline: the composer waits for the connection and keeps what was typed, and a
+// reaction is shown at once and sent once the connection is back.
 import { resetData } from '../../support/seed'
 
 describe('Writing while offline', () => {
@@ -42,13 +42,16 @@ describe('Writing while offline', () => {
     cy.contains('written while the connection was gone').should('be.visible')
   })
 
-  it('refuses a reaction offline and takes it once back', () => {
+  it('keeps a reaction made offline and sends it once back', () => {
+    cy.intercept('POST', '**/api/v2/document/GP%20Discussion/*/method/react').as('react')
     cy.goOffline()
-    // Reactions are refused outright offline rather than queued, so nothing is posted
-    // later that the person cannot see they sent.
-    cy.get('button[aria-label="Add a reaction"]').first().should('be.disabled')
+    cy.get('button[aria-label="Add a reaction"]').first().click()
+    cy.get('button:contains("👍"):visible').click()
+    // Shown at once, and nothing sent while offline.
+    cy.contains('button', /👍\s*1/).should('be.visible')
+    cy.get('@react.all').should('have.length', 0)
 
     cy.goOnline()
-    cy.get('button[aria-label="Add a reaction"]').first().should('not.be.disabled')
+    cy.wait('@react').its('response.statusCode').should('eq', 200)
   })
 })
