@@ -1,12 +1,11 @@
 import json
 import os
-from contextlib import contextmanager
 from unittest.mock import patch
 
 import frappe
+from frappe.search import sqlite_search as frappe_sqlite_search
 from frappe.tests.utils import FrappeTestCase
 from redis.exceptions import ConnectionError as RedisConnectionError
-from rq.job import JobStatus
 
 from gameplan.api import search_sqlite
 from gameplan.command_palette import search_sqlite as command_palette_search
@@ -554,46 +553,37 @@ class TestSearchIndexLifecycle(IsolatedSearchIndex, GameplanTestCase):
 
 
 class TestSearchIndexMissing(IsolatedSearchIndex, GameplanTestCase):
-	"""Search on a site whose index has not been built yet (#578)."""
+	"""Search on a site whose index has not been built yet (#578).
+
+	The recovery tests share one invariant: from any state of the index files, with no
+	build running, the single job that search queues must leave a working index. A rule
+	that queues a job which does nothing would loop forever when the scheduler is off.
+	"""
 
 	INDEX_NAME = "test_gameplan_search_missing.db"
-	BUILD_JOB_ID = "gameplan.search_sqlite.GameplanSearch"
+	FRESH_JOB_ID = "gameplan.search_sqlite.GameplanSearch"
+	RESUME_JOB_ID = "gameplan.search_sqlite.GameplanSearch_continuation"
 
 	def setUp(self):
 		super().setUp()
 		self.isolate_search_index()
 		self.search = GameplanSearch()
 		self.search.drop_index()
-		patcher = patch("gameplan.search_sqlite.frappe.enqueue")
-		self.enqueue = patcher.start()
+		self.enqueue = self.start_patch("gameplan.search_sqlite.frappe.enqueue")
+		self.build_running = self.start_patch("gameplan.search_sqlite.is_job_enqueued", return_value=False)
+
+	def start_patch(self, target, **kwargs):
+		patcher = patch(target, **kwargs)
 		self.addCleanup(patcher.stop)
-
-	def test_search_reports_a_missing_index_and_starts_a_build(self):
-		with self.as_user(self.member), self.assertRaises(GameplanSearchIndexMissingError):
-			search_sqlite("anything")
-
-		self.enqueue.assert_called_once()
-		self.assertEqual(self.enqueue.call_args.kwargs["job_id"], self.BUILD_JOB_ID)
-		self.assertTrue(self.enqueue.call_args.kwargs["deduplicate"])
-
-		# Run the queued job the way a worker would: it must leave a working index.
-		self.run_queued_build()
-
-	def run_queued_build(self):
-		method, *_ = self.enqueue.call_args.args
-		job_kwargs = {
-			key: value
-			for key, value in self.enqueue.call_args.kwargs.items()
-			if key not in {"queue", "job_id", "deduplicate", "timeout"}
-		}
-		frappe.get_attr(method)(**job_kwargs)
-		self.assertTrue(GameplanSearch().index_exists())
-		with self.as_user(self.member):
-			self.assertEqual(search_sqlite("anything")["results"], [])
+		return patcher.start()
 
 	def test_missing_index_is_a_503_without_an_error_log(self):
 		self.assertEqual(GameplanSearchIndexMissingError.http_status_code, 503)
 		self.assertTrue(GameplanSearchIndexMissingError.skip_error_log)
+
+	def test_a_new_site_gets_a_fresh_build(self):
+		self.assert_one_job_recovers(self.FRESH_JOB_ID)
+		self.assertTrue(self.enqueue.call_args.kwargs["deduplicate"])
 
 	def test_command_palette_returns_no_results_while_the_index_builds(self):
 		with self.as_user(self.member):
@@ -603,31 +593,92 @@ class TestSearchIndexMissing(IsolatedSearchIndex, GameplanTestCase):
 
 	def test_a_running_build_is_not_queued_again(self):
 		self.leave_a_stopped_build()
+		self.build_running.return_value = True
 
-		with self.job_state(enqueued=True):
-			self.search_while_index_is_missing()
+		self.search_while_index_is_missing()
 
 		self.enqueue.assert_not_called()
 
-	def test_a_stopped_build_is_resumed(self):
-		# A failed or timed-out build leaves its temp database and no running job behind.
+	def test_a_build_that_stopped_part_way_is_resumed(self):
 		self.leave_a_stopped_build()
 
-		with self.job_state(enqueued=False, status=None):
-			self.search_while_index_is_missing()
+		self.assert_one_job_recovers(self.RESUME_JOB_ID)
 
-		self.assert_queued(f"{self.BUILD_JOB_ID}_continuation", is_continuation=True)
-		self.run_queued_build()
+	def test_a_build_that_failed_during_setup_is_rebuilt(self):
+		# The temp database exists but has no progress rows, so a resume has nothing to do.
+		open(self.temp_db_path(), "w").close()
 
-	def test_a_temp_database_that_cannot_be_resumed_is_rebuilt(self):
-		# No progress rows, so a resume finds nothing to do and never renames the file.
-		open(self.search._get_db_path(is_temp=True), "w").close()
+		self.assert_one_job_recovers(self.FRESH_JOB_ID)
 
-		with self.job_state(enqueued=False, status=JobStatus.FINISHED):
-			self.search_while_index_is_missing()
+	def test_a_resume_that_did_nothing_is_not_repeated(self):
+		# The review case: a resume ran, created nothing, and its job record has expired.
+		open(self.temp_db_path(), "w").close()
+		frappe_sqlite_search.build_index(
+			search_class_path=self.FRESH_JOB_ID, force=True, is_continuation=True
+		)
+		self.assertFalse(self.search.index_exists())
 
-		self.assert_queued(self.BUILD_JOB_ID, is_continuation=False)
-		self.run_queued_build()
+		self.assert_one_job_recovers(self.FRESH_JOB_ID)
+
+	def test_a_finished_build_that_was_never_renamed_is_rebuilt(self):
+		# Every progress row is complete, so a resume returns before the rename.
+		with patch("frappe.search.sqlite_search.os.rename", side_effect=OSError), self.assertRaises(OSError):
+			GameplanSearch().build_index()
+		self.assertTrue(os.path.exists(self.temp_db_path()))
+
+		self.assert_one_job_recovers(self.FRESH_JOB_ID)
+
+	def test_an_unreadable_temp_database_is_rebuilt(self):
+		with open(self.temp_db_path(), "wb") as file:
+			file.write(b"not a sqlite database")
+
+		self.assert_one_job_recovers(self.FRESH_JOB_ID)
+
+	def test_search_still_reports_a_missing_index_when_the_queue_is_down(self):
+		self.enqueue.side_effect = RedisConnectionError
+
+		self.search_while_index_is_missing()
+		with self.as_user(self.member):
+			self.assertEqual(command_palette_search("anything"), [])
+
+	def test_job_lookups_failing_on_a_down_queue_still_report_a_missing_index(self):
+		self.build_running.side_effect = RedisConnectionError
+
+		self.search_while_index_is_missing()
+
+		self.enqueue.assert_not_called()
+
+	def test_install_queues_the_first_build(self):
+		enqueue_search_index_build()
+
+		self.enqueue.assert_called_once()
+		self.assertEqual(self.enqueue.call_args.kwargs["job_id"], self.FRESH_JOB_ID)
+
+	def test_install_survives_a_missing_queue(self):
+		self.enqueue.side_effect = RedisConnectionError
+
+		enqueue_search_index_build()
+
+		self.enqueue.assert_called_once()
+
+	def assert_one_job_recovers(self, job_id):
+		"""Search queues exactly `job_id`, and running it the way a worker would fixes search."""
+		self.search_while_index_is_missing()
+
+		self.enqueue.assert_called_once()
+		self.assertEqual(self.enqueue.call_args.kwargs["job_id"], job_id)
+
+		method, *_ = self.enqueue.call_args.args
+		job_kwargs = {
+			key: value
+			for key, value in self.enqueue.call_args.kwargs.items()
+			if key not in {"queue", "job_id", "deduplicate", "timeout"}
+		}
+		frappe.get_attr(method)(**job_kwargs)
+
+		self.assertTrue(GameplanSearch().index_exists())
+		with self.as_user(self.member):
+			self.assertEqual(search_sqlite("anything")["results"], [])
 
 	def leave_a_stopped_build(self):
 		"""Stop a real fresh build part way, the way a failed or killed job does.
@@ -639,50 +690,12 @@ class TestSearchIndexMissing(IsolatedSearchIndex, GameplanTestCase):
 		with failure, self.assertRaises(RuntimeError):
 			GameplanSearch().build_index()
 
-		self.assertTrue(os.path.exists(self.search._get_db_path(is_temp=True)))
+		self.assertTrue(os.path.exists(self.temp_db_path()))
 		self.assertFalse(self.search.index_exists())
 
-	@contextmanager
-	def job_state(self, enqueued, status=None):
-		with (
-			patch("gameplan.search_sqlite.is_job_enqueued", return_value=enqueued),
-			patch("gameplan.search_sqlite.get_job_status", return_value=status),
-		):
-			yield
+	def temp_db_path(self):
+		return self.search._get_db_path(is_temp=True)
 
 	def search_while_index_is_missing(self):
 		with self.as_user(self.member), self.assertRaises(GameplanSearchIndexMissingError):
 			search_sqlite("anything")
-
-	def assert_queued(self, job_id, is_continuation):
-		self.enqueue.assert_called_once()
-		self.assertEqual(self.enqueue.call_args.kwargs["job_id"], job_id)
-		self.assertEqual(self.enqueue.call_args.kwargs["is_continuation"], is_continuation)
-
-	def test_install_queues_the_first_build(self):
-		enqueue_search_index_build()
-
-		self.enqueue.assert_called_once()
-		self.assertEqual(self.enqueue.call_args.kwargs["job_id"], self.BUILD_JOB_ID)
-
-	def test_install_survives_a_missing_queue(self):
-		self.enqueue.side_effect = RedisConnectionError
-
-		enqueue_search_index_build()
-
-		self.enqueue.assert_called_once()
-
-	def test_search_still_reports_a_missing_index_when_the_queue_is_down(self):
-		self.enqueue.side_effect = RedisConnectionError
-
-		self.search_while_index_is_missing()
-		with self.as_user(self.member):
-			self.assertEqual(command_palette_search("anything"), [])
-
-	def test_job_lookups_failing_on_a_down_queue_still_report_a_missing_index(self):
-		self.leave_a_stopped_build()
-
-		with patch("gameplan.search_sqlite.is_job_enqueued", side_effect=RedisConnectionError):
-			self.search_while_index_is_missing()
-
-		self.enqueue.assert_not_called()
