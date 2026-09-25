@@ -1,6 +1,5 @@
 # Copyright (c) 2022, Frappe Technologies Pvt. Ltd. and Contributors
 # MIT License. See license.txt
-import os
 import re
 import time
 
@@ -433,85 +432,44 @@ class GameplanSearchIndexMissingError(SQLiteSearchIndexMissingError):
 	skip_error_log = True
 
 
-def enqueue_index_build():
-	"""Start building a missing index in the background, if the job queue is reachable.
+SEARCH_CLASS_PATH = f"{GameplanSearch.__module__}.{GameplanSearch.__name__}"
 
-	Without Redis nothing can build the index now, and the scheduler builds it once the
-	queue is back. Callers still have to answer, so a queue outage must not turn their
-	missing-index response into a server error.
+
+def enqueue_index_build():
+	"""Queue `build_missing_index` unless a build of this index is queued or running.
+
+	Frappe's after_migrate hook queues its own builds under these job ids. Our job takes
+	the first one, so `deduplicate` also skips a fresh build Frappe has queued. Starting
+	a fresh build while one of them runs would delete the temp database it writes to.
+
+	Without Redis nothing can build the index now. Callers still have to answer, so a
+	queue outage must not turn their missing-index response into a server error.
 	"""
 	try:
-		_start_or_resume_build()
+		if is_job_enqueued(SEARCH_CLASS_PATH) or is_job_enqueued(f"{SEARCH_CLASS_PATH}_continuation"):
+			return
+
+		frappe.enqueue(
+			"gameplan.search_sqlite.build_missing_index",
+			queue="long",
+			job_id=SEARCH_CLASS_PATH,
+			deduplicate=True,
+			# Frappe's own build job allows 2h10m, for large sites and queue delays.
+			timeout=2 * 60 * 60 + 10 * 60,
+		)
 	except RedisConnectionError:
 		pass
 
 
-def _start_or_resume_build():
-	"""Queue the one build job that will produce the index.
+def build_missing_index():
+	"""Background job: build the index from scratch, unless it exists by now.
 
-	Decides only from the index files on disk and whether a build is running now. Job
-	history is not used: RQ drops a finished job's record after a few minutes, so any
-	rule that reads it changes its answer while the files stay the same.
-
-	A build that stopped part way, because it failed or timed out, leaves its temp
-	database behind. Frappe resumes such a build only from its 3-hourly scheduler job,
-	so this resumes it too. But a resume does work only while the temp database still
-	has unfinished progress rows. Otherwise it returns at once without creating the
-	index. That is the case for a build that failed during setup, one that finished but
-	was never renamed into place, or a file SQLite cannot read. For those, queue a fresh
-	build instead, which deletes the temp database and starts over.
-
-	Uses the job ids of Frappe's own builds, so `deduplicate` also skips a build Frappe
-	has already queued.
-	"""
-	search_class_path = f"{GameplanSearch.__module__}.{GameplanSearch.__name__}"
-	continuation_job_id = f"{search_class_path}_continuation"
-
-	# A running build owns the temp database. Reading its progress now would race it.
-	if is_job_enqueued(search_class_path) or is_job_enqueued(continuation_job_id):
-		return
-
-	if _has_unfinished_progress():
-		_enqueue_build(search_class_path, job_id=continuation_job_id, is_continuation=True)
-	else:
-		_enqueue_build(search_class_path, job_id=search_class_path, is_continuation=False)
-
-
-def _has_unfinished_progress():
-	"""Whether a resume of the temp database would do work.
-
-	Mirrors the check Frappe's resume makes before it returns early (`_is_indexing_complete`),
-	but counts an unreadable file or progress table as nothing to resume. Frappe's check
-	treats a missing table as work to do, and the resume then creates empty tables and
-	returns early.
+	A fresh build deletes any temp database a stopped build left behind and starts over,
+	so one run produces the index whatever state the files are in.
 	"""
 	search = GameplanSearch()
-	temp_db_path = search._get_db_path(is_temp=True)
-	if not os.path.exists(temp_db_path):
-		return False
-
-	search.db_path = temp_db_path
-	try:
-		unfinished = search._get_incomplete_count("is_complete = 0 OR vocabulary_built = 0")
-	except SQLiteSearchIndexMissingError:
-		# Frappe raises this when SQLite cannot open the file at all.
-		return False
-	return unfinished > 0
-
-
-def _enqueue_build(search_class_path, job_id, is_continuation):
-	frappe.enqueue(
-		"frappe.search.sqlite_search.build_index",
-		queue="long",
-		job_id=job_id,
-		deduplicate=True,
-		search_class_path=search_class_path,
-		# The job skips the build unless forced. Frappe's own enqueue passes it too.
-		force=True,
-		is_continuation=is_continuation,
-		# Frappe's own build job allows 2h10m, for large sites and queue delays.
-		timeout=2 * 60 * 60 + 10 * 60,
-	)
+	if not search.index_exists():
+		search.build_index()
 
 
 def rebuild_index():
