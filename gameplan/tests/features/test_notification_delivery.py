@@ -93,6 +93,30 @@ class TestHourlyBatch(DeliveryTestCase):
 		self.assertIn("Mentions", message)
 		self.assertIn("Roadmap", text)
 
+	def test_an_event_merging_into_an_already_emailed_row_is_still_delivered(self):
+		"""Comments merge into one unread row rather than multiplying. `pending_rows`
+		skips anything carrying `email_sent_at`, so a merge that leaves the stamp in place
+		means every later comment on that discussion is silently never sent.
+		"""
+		frappe.get_doc(
+			doctype="GP Discussion Subscription",
+			user=self.second_member.name,
+			discussion=self.discussion.name,
+			state="Watch",
+		).insert(ignore_permissions=True)
+		with self.as_user(self.member):
+			create_comment(self.discussion, content="<p>One</p>")
+		self.run_hourly().assert_called_once()
+		self.assertTrue(self.rows_for(self.second_member)[0].email_sent_at)
+
+		with self.as_user(self.member):
+			create_comment(self.discussion, content="<p>Two</p>")
+
+		sendmail = self.run_hourly()
+
+		sendmail.assert_called_once()
+		self.assertIn("2 new comments", sendmail.call_args.kwargs["args"]["others"][0]["title"])
+
 	def test_an_item_never_prints_its_discussion_title_twice(self):
 		self.mention_second_member()
 		frappe.get_doc(
@@ -293,6 +317,36 @@ class TestAwayRecap(DeliveryTestCase):
 
 		self.assertIsNone(self.rows_for(self.second_member)[0].email_sent_at)
 		self.assertFalse(any(p.recap_sent_at for p in self.periods()))
+
+	def test_a_merge_during_a_later_stretch_reaches_that_stretchs_catch_up(self):
+		"""The row is reused across stretches, so its away period has to move to the one
+		the new event fell in. Keeping the first leaves the later recap querying a period
+		the row no longer belongs to, and the activity is never reported at all.
+		"""
+		frappe.get_doc(
+			doctype="GP Discussion Subscription",
+			user=self.second_member.name,
+			discussion=self.discussion.name,
+			state="Watch",
+		).insert(ignore_permissions=True)
+
+		self.set_prefs(self.second_member, receive_notifications=0)
+		with self.as_user(self.member):
+			create_comment(self.discussion, content="<p>One</p>")
+		self.set_prefs(self.second_member, receive_notifications=1)
+		self.run_hourly().assert_called_once()
+
+		self.set_prefs(self.second_member, receive_notifications=0)
+		with self.as_user(self.member):
+			create_comment(self.discussion, content="<p>Two</p>")
+		self.set_prefs(self.second_member, receive_notifications=1)
+
+		sendmail = self.run_hourly()
+
+		sendmail.assert_called_once()
+		self.assertEqual(
+			sendmail.call_args.kwargs["subject"], "While you were away: 1 notification in Gameplan"
+		)
 
 	def test_an_empty_stretch_is_stamped_without_a_mail(self):
 		self.set_prefs(self.second_member, receive_notifications=0)
