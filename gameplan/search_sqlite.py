@@ -17,6 +17,9 @@ from frappe.search.sqlite_search import (
 	SQLiteSearchIndexMissingError,
 )
 from frappe.utils import cstr
+from frappe.utils.background_jobs import get_job_status, is_job_enqueued
+from redis.exceptions import ConnectionError as RedisConnectionError
+from rq.job import JobStatus
 
 from gameplan.permissions import project_access_criterion
 
@@ -432,26 +435,59 @@ class GameplanSearchIndexMissingError(SQLiteSearchIndexMissingError):
 
 
 def enqueue_index_build():
-	"""Start building a missing index in the background.
+	"""Start building a missing index in the background, if the job queue is reachable.
 
-	Uses the job id Frappe's own after_migrate build uses, so `deduplicate` also skips a
-	build Frappe has already queued. A temp database means a build is running, or stopped
-	and waiting for the scheduler to resume it. Queuing another one would run two builds
-	into the same file.
+	Without Redis nothing can build the index now, and the scheduler builds it once the
+	queue is back. Callers still have to answer, so a queue outage must not turn their
+	missing-index response into a server error.
 	"""
-	search = GameplanSearch()
-	if os.path.exists(search._get_db_path(is_temp=True)):
+	try:
+		_start_or_resume_build()
+	except RedisConnectionError:
+		pass
+
+
+def _start_or_resume_build():
+	"""Queue a fresh build, or resume one that stopped.
+
+	Uses the job ids Frappe's own builds use, so `deduplicate` also skips a build Frappe
+	has already queued.
+
+	A temp database is a fresh build that is still running, or one that stopped part way:
+	a failed or timed-out build leaves the file behind. Frappe resumes a stopped build only
+	from its 3-hourly scheduler job, so with the scheduler off the index would never
+	appear. Resume it here instead, unless a build job is still queued or running.
+	"""
+	search_class_path = f"{GameplanSearch.__module__}.{GameplanSearch.__name__}"
+	continuation_job_id = f"{search_class_path}_continuation"
+
+	if not os.path.exists(GameplanSearch()._get_db_path(is_temp=True)):
+		_enqueue_build(search_class_path, job_id=search_class_path, is_continuation=False)
 		return
 
-	search_class_path = f"{GameplanSearch.__module__}.{GameplanSearch.__name__}"
+	if is_job_enqueued(search_class_path) or is_job_enqueued(continuation_job_id):
+		return
+
+	if get_job_status(continuation_job_id) in (JobStatus.FINISHED, JobStatus.FAILED):
+		# Resuming ran and the index is still missing. That happens when the temp database
+		# has no progress rows, for example after a build that failed during setup: the
+		# resume then finds nothing to do. A fresh build deletes the file and starts over.
+		_enqueue_build(search_class_path, job_id=search_class_path, is_continuation=False)
+		return
+
+	_enqueue_build(search_class_path, job_id=continuation_job_id, is_continuation=True)
+
+
+def _enqueue_build(search_class_path, job_id, is_continuation):
 	frappe.enqueue(
 		"frappe.search.sqlite_search.build_index",
 		queue="long",
-		job_id=search_class_path,
+		job_id=job_id,
 		deduplicate=True,
 		search_class_path=search_class_path,
 		# The job skips the build unless forced. Frappe's own enqueue passes it too.
 		force=True,
+		is_continuation=is_continuation,
 		# Frappe's own build job allows 2h10m, for large sites and queue delays.
 		timeout=2 * 60 * 60 + 10 * 60,
 	)

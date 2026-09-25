@@ -25,16 +25,10 @@ def check_frappe_version():
 
 def enqueue_search_index_build():
 	# Frappe builds the index only after a migrate, or every 3 hours from the scheduler.
-	# Until then search fails on a new site, so start the build now. Without a queue the
-	# scheduler still builds it later, so a Redis outage must not fail the install.
-	from redis.exceptions import ConnectionError as RedisConnectionError
-
+	# Until then search fails on a new site, so start the build now.
 	from gameplan.search_sqlite import enqueue_index_build
 
-	try:
-		enqueue_index_build()
-	except RedisConnectionError:
-		pass
+	enqueue_index_build()
 
 
 def download_rembg_model():
