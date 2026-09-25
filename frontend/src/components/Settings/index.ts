@@ -22,6 +22,14 @@ export const activeTab = ref<Tab | null>(null)
 // behind the overlay while the URL is a /settings/* route. Set by the router guard.
 export const settingsBackgroundPath = ref<string | null>(null)
 
+/**
+ * True while the open panel draws its own mobile page header, so the settings page
+ * (pages/SettingsPage.vue) leaves out the default one and there is a single header.
+ * Communities sets it while one community is open, where the header carries the back
+ * button to the list, the community's title and the Spaces/Members switcher.
+ */
+export const panelOwnsPageHeader = ref(false)
+
 // Lets callers deep-link into the Communities tab, optionally with a specific
 // community + view (e.g. a discussion's "Manage spaces" action). The community
 // selection lives in the URL, so this is a plain navigation.

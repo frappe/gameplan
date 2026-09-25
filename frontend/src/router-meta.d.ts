@@ -5,5 +5,6 @@ declare module 'vue-router' {
     communityScope?: boolean
     fullWidth?: boolean
     hideHeader?: boolean
+    hideMobileNav?: boolean
   }
 }

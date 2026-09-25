@@ -75,5 +75,5 @@ Site names and ports vary per bench. Resolve them, do not assume.
 - Debug: add `def execute():` to `gameplan/debug.py`, run
   `bench --site <site> execute gameplan.debug.execute`.
 - Sign in as another user: `bench browse --site <site> --user <u> --sid` (needs
-  `developer_mode`). In the app, `DevUserSwitcher.vue` shows in dev builds with
-  `enable_dev_user_switcher: 1`.
+  `developer_mode`). In the app, dev builds add "Switch user" to the account menu
+  and the mobile You page (`DevUserList.vue`); needs `enable_dev_user_switcher: 1`.

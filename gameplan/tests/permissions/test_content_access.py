@@ -153,12 +153,12 @@ class TestUnsavedContent(GameplanTestCase):
 				with self.subTest(doctype=doctype, action=action, granted=True):
 					self.assertTrue(has_permission(doc, action, self.guest.name))
 
-	def test_a_granted_guest_may_only_create_comments(self):
-		"""Reaching a space is not permission to post in it.
+	def test_a_granted_guest_may_only_create_discussions_and_comments(self):
+		"""Reaching a space is not permission to create everything in it.
 
 		`write` is deliberately permissive for a granted guest (it is what lets them
 		react and reply), so the doctype-level restriction lives in the `create` check:
-		a guest contributes comments and polls, never discussions, pages or tasks.
+		a guest starts discussions and adds comments and polls, never pages or tasks.
 		"""
 		grant_guest_access(self.guest, self.space)
 
@@ -166,7 +166,7 @@ class TestUnsavedContent(GameplanTestCase):
 			with self.subTest(doctype=doctype):
 				self.assertEqual(
 					bool(has_permission(doc, "create", self.guest.name)),
-					doctype == "GP Comment",
+					doctype in {"GP Discussion", "GP Comment"},
 				)
 
 	def test_a_member_can_create_every_kind_of_content_in_a_visible_space(self):

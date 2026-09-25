@@ -25,14 +25,17 @@
     </PageHeaderMobile>
     <PageHeader class="hidden sm:flex">
       <SpaceBreadcrumbs
-        class="flex"
+        class="flex print:hidden"
         :spaceId="currentSpaceId"
         :items="[{ label: discussion.doc?.title || postId, onClick: scrollToTop }]"
       />
+      <span class="hidden text-lg-medium text-ink-gray-8 print:inline">
+        {{ [communityTitle, space?.title].filter(Boolean).join(' / ') }}
+      </span>
       <!-- The post's own row carries the bell and the menu while it is on screen; once it
            scrolls away (its sticky hold ends with the post) they reappear here, so neither
            ever needs a scroll back to the top. -->
-      <div v-if="showHeaderActions" class="flex items-center gap-2">
+      <div v-if="showHeaderActions" class="flex items-center gap-2 print:hidden">
         <DiscussionNotificationBell
           :state="discussion.doc!.notification_state!"
           :loading="discussion.setNotificationState.loading"
@@ -419,7 +422,7 @@ import { provideRichQuotes } from '@/components/RichQuoteExtension/useRichQuotes
 import QuoteBacklinksPopover from '@/components/RichQuoteExtension/QuoteBacklinksPopover.vue'
 import { refreshUnreadCountForProjects } from '@/data/unreadCount'
 import { useSessionUser } from '@/data/users'
-import { canDeleteContent, canEditContent } from '@/utils/permissions'
+import { canDeleteContent, canEditContent, canMoveOrPinContent } from '@/utils/permissions'
 import { useCommandPaletteCommands } from './CommandPalette/registry'
 import { useOwnedRouteWrites } from '@/composables/useOwnedRouteWrites'
 
@@ -796,12 +799,21 @@ function cancelEdit() {
 
 function updatePost() {
   if (!editingPost.value || !canSavePost.value) return
+  // Show the new title at once instead of the old one until the server answers.
+  // A failed save resolves null, so put the old title back, unless something newer replaced it.
+  const title = postDraftData.value?.title
+  const previousTitle = discussion.doc?.title
+  if (discussion.doc && title) discussion.doc.title = title
   discussion.setValue
     .submit({
-      title: postDraftData.value?.title,
+      title,
       content: postDraftData.value?.content,
     })
-    .then(async () => {
+    .then(async (response) => {
+      const doc = discussion.doc
+      if (!response && doc && doc.title === title && previousTitle !== undefined) {
+        doc.title = previousTitle
+      }
       // Content is saved onto the post; migrate the draft's attachments and delete it.
       await postDraft.commit()
       tags.reload()
@@ -872,11 +884,16 @@ const spaceOptions = useGroupedSpaceOptions({
   filterFn: (space) => !space.archived_at && space.name !== discussion.doc?.project,
 })
 
-// Edit and the lifecycle actions (pin/close/move) all change the post itself, so
-// they follow the same business rule as editing — hidden from guests on posts they
-// don't own. Mirrors backend can_edit_content (see utils/permissions.ts).
+// Edit and close/re-open change the post itself, so they follow the same business
+// rule as editing: hidden from guests on posts they don't own. Mirrors backend
+// can_edit_content (see utils/permissions.ts).
 const canEditDiscussion = computed(() =>
   canEditContent(discussion.doc, space.value, useSessionUser()),
+)
+// Pin and move are narrower than edit: a guest may edit their own post but may not
+// move it to another space or pin it.
+const canMoveOrPinDiscussion = computed(() =>
+  canMoveOrPinContent(discussion.doc, space.value, useSessionUser()),
 )
 
 // The page header takes over the bell and the menu once the post's own action row has
@@ -932,7 +949,7 @@ const actions = computed(() => [
   {
     label: 'Pin discussion...',
     icon: 'lucide-arrow-up-left',
-    condition: () => canEditDiscussion.value && !discussion.doc?.pinned_at,
+    condition: () => canMoveOrPinDiscussion.value && !discussion.doc?.pinned_at,
     onClick: () => {
       pinDialog.show = true
     },
@@ -940,7 +957,7 @@ const actions = computed(() => [
   {
     label: 'Unpin discussion...',
     icon: 'lucide-arrow-down-left',
-    condition: () => canEditDiscussion.value && !!discussion.doc?.pinned_at,
+    condition: () => canMoveOrPinDiscussion.value && !!discussion.doc?.pinned_at,
     onClick: () => {
       const pinScope = discussion.doc?.pin_scope
       const scopeText =
@@ -995,7 +1012,7 @@ const actions = computed(() => [
   {
     label: 'Move to...',
     icon: 'lucide-log-out',
-    condition: () => canEditDiscussion.value,
+    condition: () => canMoveOrPinDiscussion.value,
     onClick: () => {
       discussionMoveDialog.show = true
     },

@@ -1,9 +1,7 @@
 <template>
-  <SettingsHeader>
-    <h2 class="text-lg-semibold text-ink-gray-8">Preferences</h2>
-  </SettingsHeader>
+  <PanelHeader title="Preferences" />
 
-  <SettingsBody>
+  <PanelBody>
     <div class="space-y-11 pt-6">
       <section>
         <div class="divide-y divide-outline-gray-1">
@@ -114,7 +112,7 @@
         <QuickReactionsEditor class="mt-2" />
       </section>
     </div>
-  </SettingsBody>
+  </PanelBody>
 
   <CustomizeSidebarDialog v-model="showCustomizeSidebar" />
 </template>
@@ -127,8 +125,6 @@ import { computed, ref } from 'vue'
 import {
   Button,
   Combobox,
-  SettingsBody,
-  SettingsHeader,
   SettingsRow,
   Select,
   Switch,
@@ -136,6 +132,8 @@ import {
   useCall,
   useDoctype,
 } from 'frappe-ui'
+import PanelHeader from './PanelHeader.vue'
+import PanelBody from './PanelBody.vue'
 import CustomizeSidebarDialog from '@/components/AppRail/CustomizeSidebarDialog.vue'
 import { resetQuickReactionEmojis } from '@/data/reactionPreferences'
 import {

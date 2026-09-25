@@ -16,7 +16,7 @@ describe('Search page', () => {
     cy.visit('/g/search')
     cy.wait('@filterOptions').its('response.statusCode').should('eq', 200)
 
-    cy.get('input[placeholder="Search or press / to focus"]').type('roadmap{enter}')
+    cy.get('input[aria-label="Search"]').type('roadmap{enter}')
     cy.wait('@search').its('response.statusCode').should('eq', 200)
     cy.contains('6 matches').should('be.visible')
 

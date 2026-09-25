@@ -17,11 +17,11 @@ import { isGuest } from '@/utils/permissions'
 
 const sessionUser = useSessionUser()
 
-// A guest can never start a discussion, in any space, so telling them to join one is
-// advice they cannot act on. Say what is actually true for them instead.
+// A guest cannot join a space on their own, so telling them to join one is advice they
+// cannot act on. They get into a space only when a member invites them.
 const hint = computed(() =>
   isGuest(sessionUser)
-    ? 'Guests can reply to discussions, but not start them.'
+    ? 'Ask a member to invite you to a space.'
     : 'Join a space, or ask an admin to add you to one.',
 )
 </script>

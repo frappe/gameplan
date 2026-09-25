@@ -9,7 +9,9 @@ type PermissionUser = {
 
 export function canManageCommunity(community: Community | null | undefined, user: PermissionUser) {
   if (!community || !user.name) return false
-  return isGlobalAdmin(user) || isCommunityAdmin(community, user.name)
+  if (isGlobalAdmin(user)) return true
+  if (isGuest(user)) return false
+  return isCommunityAdmin(community, user.name)
 }
 
 export function getManageableCommunities(communities: Community[], user: PermissionUser) {
@@ -31,13 +33,17 @@ export function isGuest(user: PermissionUser) {
 
 /**
  * Mirror of backend `can_manage_space`: global admins can manage any space,
- * private-space members can manage their own space, and public spaces are
- * managed by community admins. Derived from already-fetched space/community
- * membership, so it adds no network round-trip.
+ * guests never manage one, private-space members can manage their own space,
+ * and public spaces are managed by community admins. Derived from
+ * already-fetched space/community membership, so it adds no network round-trip.
+ *
+ * The guest check comes before the membership check because a guest can hold a
+ * member row on a private space they were granted.
  */
 export function canManageSpace(space: Space | null | undefined, user: PermissionUser) {
   if (!space || !user.name) return false
   if (isGlobalAdmin(user)) return true
+  if (isGuest(user)) return false
   if (space.is_private) {
     return Boolean(space.members?.some((member) => member.user === user.name))
   }
@@ -98,4 +104,18 @@ export function canEditContent(
   if (isGuest(user)) return content.owner === user.name
   if (space) return true
   return content.owner === user.name
+}
+
+/**
+ * Mirror of backend `GUEST_LOCKED_FIELDS` (gameplan/permissions.py): moving a post
+ * to another space and pinning it are structural actions. Editors may take them,
+ * except guests, who may not take them even on their own posts.
+ */
+export function canMoveOrPinContent(
+  content: ContentDoc,
+  space: Space | null | undefined,
+  user: PermissionUser,
+) {
+  if (isGuest(user)) return false
+  return canEditContent(content, space, user)
 }

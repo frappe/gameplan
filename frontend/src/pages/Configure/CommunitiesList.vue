@@ -30,10 +30,10 @@
   <List
     v-else-if="filteredCommunities.length"
     :columns="{
-      base: ['minmax(0,1fr)'],
+      base: ['minmax(0,1fr)', 'auto'],
       md: ['minmax(12rem,6fr)', 'minmax(6rem,1.2fr)', 'minmax(6rem,1.2fr)', '5.75rem'],
     }"
-    class="list-gap-12"
+    class="list-gap-12 max-md:list-gap-2"
   >
     <!-- Sticky at the settings scroll-viewport top — it rests exactly where it
          pins, so it never visibly moves. px-1.5 aligns the labels with the

@@ -7,6 +7,7 @@ import {
   type NotificationChannel,
   type NotificationLevel,
 } from './notificationPreferences'
+import { loadPinnedSpaces } from './pinnedSpaces'
 import { loadQuickReactionSlots } from './reactionPreferences'
 import { setSidebarBadgeStyle, type SidebarBadgeStyle } from './sidebarPreferences'
 import { session } from './session'
@@ -40,6 +41,7 @@ export interface UserInfo {
   discussions_count_3m: number
   comments_count_3m: number
   community_order?: unknown
+  pinned_spaces?: unknown
   quick_reaction_emojis?: unknown
   sidebar_badge_style?: SidebarBadgeStyle
   email_digest_frequency?: EmailDigestFrequency
@@ -82,6 +84,7 @@ function mergeUserInfo(user: UserInfo) {
   }
   if (user.name === session.user) {
     setCommunityOrder(user.community_order)
+    loadPinnedSpaces(user.pinned_spaces, user.user_profile)
     loadQuickReactionSlots(user.quick_reaction_emojis, user.user_profile)
     setSidebarBadgeStyle(user.sidebar_badge_style)
     loadNotificationPreferences(user, user.user_profile)
@@ -100,7 +103,8 @@ export let users = useCall<UserInfo[]>({
   },
   onError(error) {
     if (error && error.type === 'AuthenticationError') {
-      window.location.href = '/login'
+      let { pathname, search, hash } = window.location
+      window.location.href = '/login?redirect-to=' + encodeURIComponent(pathname + search + hash)
     }
   },
   immediate: false,

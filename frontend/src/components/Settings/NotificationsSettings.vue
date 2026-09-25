@@ -1,9 +1,7 @@
 <template>
-  <SettingsHeader>
-    <h2 class="text-lg-semibold text-ink-gray-8">Notifications</h2>
-  </SettingsHeader>
+  <PanelHeader title="Notifications" />
 
-  <SettingsBody>
+  <PanelBody>
     <div class="space-y-7 pt-6">
       <section>
         <div class="divide-y divide-outline-gray-1">
@@ -141,7 +139,7 @@
         </div>
       </section>
     </div>
-  </SettingsBody>
+  </PanelBody>
 </template>
 
 <script setup lang="ts">
@@ -154,14 +152,14 @@ import {
   dayjsLocal,
   getConfig,
   Select,
-  SettingsBody,
-  SettingsHeader,
   SettingsRow,
   Switch,
   TextInput,
   toast,
   useDoctype,
 } from 'frappe-ui'
+import PanelHeader from './PanelHeader.vue'
+import PanelBody from './PanelBody.vue'
 import { showCommunitiesSettings } from '@/components/Settings'
 import { communityState } from '@/data/communityState'
 import { useSessionUser, type EmailDigestDayOfWeek, type EmailDigestFrequency } from '@/data/users'

@@ -40,7 +40,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, markRaw, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useEventListener } from '@vueuse/core'
 import {
@@ -51,24 +51,11 @@ import {
   SettingsContent,
   SettingsPanel,
 } from 'frappe-ui'
-import { show, activeTab, registerTabs, settingsBackgroundPath, type Tab } from './index'
+import { show, activeTab, registerTabs, settingsBackgroundPath } from './index'
 import { getHomeRoute } from '@/router'
 import UserAvatar from '@/components/UserAvatar.vue'
-import { isGameplanAdmin, useSessionUser } from '@/data/users'
-import MembersSettings from './MembersSettings.vue'
-import CommunitiesSettings from './CommunitiesSettings.vue'
-import NotificationsSettings from './NotificationsSettings.vue'
-import ProfileSettings from './ProfileSettings.vue'
-import CustomEmojiSettings from './CustomEmojiSettings.vue'
-import PreferencesSettings from './PreferencesSettings.vue'
-
-interface SettingsTab extends Tab {
-  // Tabs that drive global role management / invites; these only make sense for
-  // global admins, whose actions the server (require_admin) actually accepts.
-  adminOnly?: boolean
-  condition?: () => boolean
-  prefix?: 'session-avatar'
-}
+import { useSessionUser } from '@/data/users'
+import { useSettingsTabs, type SettingsTab } from './tabs'
 
 const route = useRoute()
 const router = useRouter()
@@ -80,64 +67,8 @@ interface TabGroup {
 
 const sessionUser = useSessionUser()
 
-const allTabs: SettingsTab[] = [
-  {
-    label: 'Profile',
-    slug: 'profile',
-    group: 'User settings',
-    icon: 'lucide-user',
-    prefix: 'session-avatar',
-    component: markRaw(ProfileSettings),
-  },
-  {
-    label: 'Preferences',
-    slug: 'preferences',
-    group: 'User settings',
-    icon: 'lucide-sliders-horizontal',
-    component: markRaw(PreferencesSettings),
-  },
-  {
-    label: 'Notifications',
-    slug: 'notifications',
-    group: 'User settings',
-    icon: 'lucide-bell',
-    component: markRaw(NotificationsSettings),
-  },
-  {
-    label: 'Communities',
-    slug: 'communities',
-    group: 'App settings',
-    icon: 'lucide-building-2',
-    component: markRaw(CommunitiesSettings),
-    // Every member browses communities here to join or leave one; the management
-    // actions inside the tab stay gated per community.
-    condition: () => !sessionUser.isGuest,
-  },
-  {
-    label: 'Emojis',
-    slug: 'emojis',
-    group: 'App settings',
-    icon: 'lucide-smile-plus',
-    component: markRaw(CustomEmojiSettings),
-    adminOnly: true,
-  },
-  {
-    label: 'Users',
-    slug: 'users',
-    group: 'Administration',
-    icon: 'lucide-users',
-    component: markRaw(MembersSettings),
-    adminOnly: true,
-  },
-]
+const tabs = useSettingsTabs()
 
-// Admin status loads asynchronously (the users resource is immediate: false), so
-// keep this reactive and re-register once the session user's role resolves.
-const tabs = computed(() =>
-  allTabs.filter(
-    (tab) => (!tab.adminOnly || isGameplanAdmin()) && (!tab.condition || tab.condition()),
-  ),
-)
 const tabGroups = computed<TabGroup[]>(() => {
   let groups: TabGroup[] = []
 

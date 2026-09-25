@@ -1,9 +1,5 @@
 /** Icon + label helpers for the Public/Private visibility of communities and spaces. */
 
-export function visibilityIcon(isPrivate?: boolean | 0 | 1) {
-  return isPrivate ? 'lucide-lock' : 'lucide-globe-2'
-}
-
 export function visibilityLabel(isPrivate?: boolean | 0 | 1) {
   return isPrivate ? 'Private' : 'Public'
 }

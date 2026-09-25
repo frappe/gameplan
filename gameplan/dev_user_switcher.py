@@ -1,7 +1,7 @@
 # Copyright (c) 2026, Frappe Technologies Pvt Ltd and Contributors
 # See license.txt
 
-"""Password-less "become another user", for the floating dev switcher only.
+"""Password-less "become another user", for the dev user switcher only.
 
 Frappe already ships `frappe.core.doctype.user.user.impersonate`, and it is the
 wrong tool here: it opens with a `User` "impersonate" permission check, so the
