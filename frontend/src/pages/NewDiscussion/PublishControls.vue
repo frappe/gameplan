@@ -54,20 +54,29 @@ const {
   scheduling,
   scheduleDraft,
   unscheduleDraft,
+  sessionUser,
+  author,
+  deleteDraft,
 } = useNewDiscussionContext()
 
 const menuHost = ref<HTMLElement | null>(null)
 const showSchedule = ref(false)
 const openSchedule = () => (showSchedule.value = true)
 
-const options = computed(() =>
-  scheduledAt.value
+const options = computed(() => {
+  const items = scheduledAt.value
     ? [
         { label: 'Reschedule', icon: 'lucide-calendar-clock', onClick: openSchedule },
         { label: 'Cancel schedule', icon: 'lucide-calendar-x', onClick: unscheduleDraft },
       ]
-    : [{ label: 'Schedule for later', icon: 'lucide-calendar-clock', onClick: openSchedule }],
-)
+    : [{ label: 'Schedule for later', icon: 'lucide-calendar-clock', onClick: openSchedule }]
+
+  if (author.value.name === sessionUser.name) {
+    items.push({ label: 'Delete draft', icon: 'lucide-trash-2', onClick: deleteDraft })
+  }
+
+  return items
+})
 
 async function onSchedule(localDateTime: string) {
   if (await scheduleDraft(localDateTime)) showSchedule.value = false
