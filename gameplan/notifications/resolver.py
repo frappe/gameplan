@@ -125,9 +125,10 @@ def space_subscribers(projects: list) -> list[str]:
 	return list(dict.fromkeys(users))
 
 
-def notify_new_discussion(discussion_doc) -> list[str]:
+def notify_new_discussion(discussion_doc, already_notified: set[str] | None = None) -> list[str]:
 	author = discussion_doc.owner
-	candidates = [user for user in space_subscribers([discussion_doc.project]) if user != author]
+	skip = {author} | (already_notified or set())
+	candidates = [user for user in space_subscribers([discussion_doc.project]) if user not in skip]
 	recipients = users_who_can_view_content(candidates, discussion_doc)
 	if not recipients:
 		return []
@@ -221,6 +222,7 @@ def notify_poll_vote(poll_doc, voter: str):
 	else:
 		message = f"{get_fullname(voter)} voted on your poll"
 		from_user = voter
+	voters = len({vote.user for vote in poll_doc.votes})
 	records.write_or_merge(
 		to_user=owner,
 		type="Poll Vote",
@@ -229,5 +231,5 @@ def notify_poll_vote(poll_doc, voter: str):
 		discussion=poll_doc.discussion,
 		poll=poll_doc.name,
 		message=message,
-		merged_message="{count} people voted on your poll",
+		merged_message=f"{voters} people voted on your poll" if voters > 1 else message,
 	)

@@ -134,6 +134,23 @@ class TestHourlyBatch(DeliveryTestCase):
 		self.assertEqual(spaces, {str(private.name)})
 		self.run_hourly().assert_not_called()
 
+	def test_a_new_discussion_that_names_you_is_one_notification_not_two(self):
+		"""Being named is the more particular news. A subscriber who is also mentioned used
+		to get the mention and a "started a discussion" row for the same post."""
+		frappe.get_doc(
+			doctype="GP Space Subscription",
+			user=self.second_member.name,
+			project=self.space.name,
+		).insert(ignore_permissions=True)
+
+		with self.as_user(self.member):
+			create_discussion(
+				"Named", self.space, content=mention_html(self.second_member, "Second Member")
+			)
+
+		types = [row.type for row in self.rows_for(self.second_member)]
+		self.assertEqual(types, ["Mention"])
+
 	def test_an_item_never_prints_its_discussion_title_twice(self):
 		self.mention_second_member()
 		frappe.get_doc(

@@ -90,7 +90,6 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		self.update_discussions_count()
 		GPUnreadRecord.create_unread_records_for_discussion(self)
 		subscribe_on_participation(self.owner, self.name)
-		notify_new_discussion(self)
 
 	def on_trash(self):
 		self.remove_all_bookmarks()
@@ -104,7 +103,13 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		self.de_duplicate_reactions()
 
 	def on_update(self):
-		self.notify_mentions()
+		reached = self.notify_mentions()
+		# Subscribers hear about a discussion once, when it is posted, and anyone the mention
+		# pass just reached is left out: being named in a discussion is the more particular
+		# news, and it used to arrive alongside a second "started a discussion" row. Raised
+		# here rather than in after_insert because mentions have to run first to be skipped.
+		if self.flags.in_insert:
+			notify_new_discussion(self, reached)
 		self.notify_reactions()
 		self.log_title_update()
 		self.update_participants_count()
