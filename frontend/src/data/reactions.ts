@@ -1,7 +1,6 @@
-import { useCall } from '@/data/offline/resources'
-import { computed, onScopeDispose, reactive, unref, toValue } from 'vue'
+import { computed, reactive, unref, toValue } from 'vue'
 import type { MaybeRefOrGetter } from 'vue'
-import { isOnline, onReconnect } from './online'
+import { useCall } from 'frappe-ui'
 import { currentQuickReactionEmojis } from './reactionPreferences'
 import { session } from './session'
 import { useUser } from './users'
@@ -89,8 +88,7 @@ export function useReactions(options: UseReactionsOptions) {
 
     submitTimeout = window.setTimeout(() => {
       const operations = buildPendingOperations()
-      // Offline, the pending ops stay queued and are sent on reconnect (see onReconnect below).
-      if (!operations.length || !isOnline.value) {
+      if (!operations.length) {
         return
       }
       react.submit({ operations }).catch(() => {})
@@ -103,12 +101,6 @@ export function useReactions(options: UseReactionsOptions) {
       submitTimeout = null
     }
   }
-
-  onScopeDispose(
-    onReconnect(() => {
-      if (buildPendingOperations().length) submitBatch()
-    }),
-  )
 
   const setPendingReaction = (emoji: string, initial: boolean, desired: boolean) => {
     if (initial === desired) {

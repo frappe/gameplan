@@ -1,5 +1,5 @@
-// Writing offline: the composer waits for the connection and keeps what was typed, and a
-// reaction is shown at once and sent once the connection is back.
+// Writing offline: the composer waits for the connection and keeps what was typed, and
+// reacting waits for it too.
 import { resetData } from '../../support/seed'
 
 describe('Writing while offline', () => {
@@ -42,16 +42,12 @@ describe('Writing while offline', () => {
     cy.contains('written while the connection was gone').should('be.visible')
   })
 
-  it('keeps a reaction made offline and sends it once back', () => {
-    cy.intercept('POST', '**/api/v2/document/GP%20Discussion/*/method/react').as('react')
+  it('disables reacting until the connection is back', () => {
+    const addReaction = () => cy.get('button[aria-label="Add a reaction"]').first()
+    addReaction().should('be.enabled')
     cy.goOffline()
-    cy.get('button[aria-label="Add a reaction"]').first().click()
-    cy.get('button:contains("👍"):visible').click()
-    // Shown at once, and nothing sent while offline.
-    cy.contains('button', /👍\s*1/).should('be.visible')
-    cy.get('@react.all').should('have.length', 0)
-
+    addReaction().should('be.disabled')
     cy.goOnline()
-    cy.wait('@react').its('response.statusCode').should('eq', 200)
+    addReaction().should('be.enabled')
   })
 })
