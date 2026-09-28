@@ -10,7 +10,7 @@
       <LoadingIndicator class="size-3" aria-hidden="true" />
       <span>Loading draft…</span>
     </div>
-    <p v-else-if="author.name !== sessionUser.name" class="mb-3 text-sm text-ink-gray-5">
+    <p v-else-if="author && author.name !== sessionUser.name" class="mb-3 text-sm text-ink-gray-5">
       {{ author.full_name }}'s draft. Only they can edit or publish it.
     </p>
     <ErrorMessage :message="errorMessage || publishError" />
