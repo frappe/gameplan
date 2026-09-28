@@ -118,7 +118,6 @@ import ListRowSkeleton from '@/components/ListRowSkeleton.vue'
 import NotificationFilters from '@/components/NotificationFilters.vue'
 import NotificationListRow from '@/components/NotificationListRow.vue'
 import {
-  clearNotificationFilters,
   hasActiveNotificationFilters,
   notificationDateBounds,
   notificationFilters,
@@ -188,11 +187,13 @@ const readNotificationCount = useCall<number>({
   cacheKey: ['Read Notification Count', sessionUser.name],
 })
 const showFilters = computed(() => {
+  // A filter that is set keeps its own controls on screen however few rows are left: they
+  // are what narrowed the list, so hiding them would narrow it invisibly. Clearing the
+  // filter instead threw away a choice the reader made, and a glance at the quieter tab was
+  // enough to trigger it, since both tabs share the one filter.
+  if (hasActiveNotificationFilters.value) return true
   const count = activeTab.value === 'Unread' ? unreadNotifications.data : readNotificationCount.data
   return (count ?? FILTERS_FROM) >= FILTERS_FROM
-})
-watch(showFilters, (shown) => {
-  if (!shown && hasActiveNotificationFilters.value) clearNotificationFilters()
 })
 
 const unreadNotificationList = useNotificationList(0, 'Unread Notifications')

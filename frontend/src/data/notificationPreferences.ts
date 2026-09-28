@@ -68,7 +68,10 @@ function setPref<T>(
   const previous = target.value
   if (next === previous) return
   target.value = next
-  void persist({ [field]: toStored(next) } as Partial<GPUserProfile>, () => (target.value = previous))
+  void persist(
+    { [field]: toStored(next) } as Partial<GPUserProfile>,
+    () => (target.value = previous),
+  )
 }
 
 export const setParticipationLevel = (value: unknown) =>
@@ -80,8 +83,17 @@ export const setNotificationChannel = (value: unknown) =>
 export const setReceiveNotifications = (value: boolean) =>
   setPref(receiveNotifications, value, Boolean, 'receive_notifications', (on) => (on ? 1 : 0))
 
+// A time input reports every keystroke, so 09:30 arrives as four separate changes. The
+// fields move at once, but the write waits for the typing to stop — otherwise each
+// keystroke saved a half-typed hour and announced it with its own toast. `pending` holds
+// the state from before the first keystroke of a burst, so a failure rolls back to where
+// the reader started rather than to the middle of their own typing.
+const ACTIVE_HOURS_QUIET_MS = 600
+let activeHoursTimer: ReturnType<typeof setTimeout> | undefined
+let pending: { start: string; end: string; days: Weekday[] } | null = null
+
 export function setActiveHours(patch: { start?: string; end?: string; days?: Weekday[] }) {
-  const previous = {
+  const previous = pending ?? {
     start: activeHoursStart.value,
     end: activeHoursEnd.value,
     days: activeHoursDays.value,
@@ -92,24 +104,29 @@ export function setActiveHours(patch: { start?: string; end?: string; days?: Wee
     days: patch.days ?? previous.days,
   }
   if (next.start === next.end) return
+  pending = previous
   activeHoursStart.value = next.start
   activeHoursEnd.value = next.end
   activeHoursDays.value = next.days
   const allDay =
     next.start === allDayStart && next.end === allDayEnd && next.days.length === allWeekdays.length
-  void persist(
-    {
-      active_hours_enabled: allDay ? 0 : 1,
-      active_hours_start: `${next.start}:00`,
-      active_hours_end: `${next.end}:00`,
-      active_hours_days: JSON.stringify(next.days),
-    },
-    () => {
-      activeHoursStart.value = previous.start
-      activeHoursEnd.value = previous.end
-      activeHoursDays.value = previous.days
-    },
-  )
+  clearTimeout(activeHoursTimer)
+  activeHoursTimer = setTimeout(() => {
+    pending = null
+    void persist(
+      {
+        active_hours_enabled: allDay ? 0 : 1,
+        active_hours_start: `${next.start}:00`,
+        active_hours_end: `${next.end}:00`,
+        active_hours_days: JSON.stringify(next.days),
+      },
+      () => {
+        activeHoursStart.value = previous.start
+        activeHoursEnd.value = previous.end
+        activeHoursDays.value = previous.days
+      },
+    )
+  }, ACTIVE_HOURS_QUIET_MS)
 }
 
 async function persist(patch: Partial<GPUserProfile>, rollback: () => void) {
