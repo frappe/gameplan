@@ -17,7 +17,8 @@
           <span class="lucide-trash-2 size-4" aria-hidden="true" />
         </button>
         <Tooltip
-          :text="isDraftLoading ? 'Draft is loading' : 'You cannot publish this draft'"
+          v-if="sessionUser.name == author.name"
+          text="Draft is loading"
           :disabled="isComposerEditable"
         >
           <Button
@@ -60,7 +61,8 @@
         <span class="lucide-trash-2 size-4" aria-hidden="true" />
       </button>
       <Tooltip
-        :text="isDraftLoading ? 'Draft is loading' : 'You cannot publish this draft'"
+        v-if="sessionUser.name == author.name"
+        text="Draft is loading"
         :disabled="isComposerEditable"
       >
         <Button

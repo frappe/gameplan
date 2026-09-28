@@ -88,6 +88,8 @@ export interface ResolvedDraft {
   payload: DraftPayload
   /** The `GP Draft` row these edits belong to, or null when no row exists yet. */
   serverName: string | null
+  /** Who the draft belongs to. Anyone but the session user makes it read-only. */
+  owner: string | null
   /** The IndexedDB key the winning record came from, so a re-key can delete its predecessor. */
   localKey: string | null
   updatedAt: number
@@ -111,9 +113,8 @@ export interface ResolvedDraft {
  *    reached the server still comes back through `server`.
  *  - Un-pushed local edits beat the server copy: they are newer by definition.
  *  - A draft is readable by anyone holding its name (a shared `?draft=` URL), but only its
- *    owner can write it. A foreign server draft is restored for reading with no
- *    `serverName`, so the reader's edits fork into a row of their own instead of retrying
- *    a forbidden write forever.
+ *    owner can write it. A foreign server draft wins over everything else and opens
+ *    read-only: the reader never gets a buffer of their own to save.
  */
 export function reconcileDraft(input: {
   local: DraftRecord | null
@@ -126,9 +127,23 @@ export function reconcileDraft(input: {
   const { server, seed, sessionUser } = input
   const local = input.local?.user === sessionUser ? input.local : null
   const base = {
+    owner: sessionUser,
     localKey: null,
     restored: false,
     needsLocalWrite: false,
+  }
+
+  if (server?.owner && server.owner !== sessionUser) {
+    const payload = payloadFromDoc(server, seed)
+    return {
+      ...base,
+      payload,
+      serverName: server.name,
+      owner: server.owner,
+      updatedAt: 0,
+      syncedAt: null,
+      restored: hasContent(payload),
+    }
   }
 
   if (local && local.updatedAt > (local.syncedAt ?? 0)) {
@@ -146,11 +161,10 @@ export function reconcileDraft(input: {
   if (server) {
     const payload = payloadFromDoc(server, seed)
     const now = Date.now()
-    const isForeign = Boolean(server.owner && server.owner !== sessionUser)
     return {
       ...base,
       payload,
-      serverName: isForeign ? null : server.name,
+      serverName: server.name,
       updatedAt: now,
       syncedAt: now,
       restored: hasContent(payload),
@@ -223,6 +237,10 @@ export function useDraftSync(options: UseDraftSyncOptions) {
   // write so a same-browser account switch can't relabel this composer's draft as the new
   // user (the global session.user can change while this instance is still alive).
   const draftOwner = session.user
+  // Who the open draft belongs to. Only someone else's shared draft differs from
+  // `draftOwner`, and that draft is read-only: nothing here may save it.
+  const owner = ref<string | null>(draftOwner)
+  const readOnly = computed(() => owner.value !== draftOwner)
   const isSingleton = computed(() => {
     const id = toValue(identity)
     return id.mode === 'Edit' || Boolean(id.referenceName)
@@ -292,7 +310,7 @@ export function useDraftSync(options: UseDraftSyncOptions) {
 
   async function persistToServer() {
     const payload = data.value
-    if (!payload || !isEnabled() || !dirty.value || !canSave(payload)) return
+    if (!payload || readOnly.value || !isEnabled() || !dirty.value || !canSave(payload)) return
     // Snapshot what we are about to send, and the edit clock it belongs to, BEFORE the
     // request goes out. Marking the draft synced as of the response time would mark every
     // keystroke typed while the request was in flight as already pushed — those edits go
@@ -358,7 +376,9 @@ export function useDraftSync(options: UseDraftSyncOptions) {
   watch(
     () => [data.value?.title, data.value?.content, data.value?.project],
     () => {
-      if (!data.value || applying.value || !isEnabled()) return
+      // A read-only draft still changes under the editor, which normalizes some content
+      // (images, code blocks) on first render. That is not an edit to save.
+      if (!data.value || applying.value || readOnly.value || !isEnabled()) return
       touched.value = true
       updatedAt.value = Date.now()
       if (!canSave(data.value)) return
@@ -421,6 +441,7 @@ export function useDraftSync(options: UseDraftSyncOptions) {
    *  watcher, for a buffer the user did not type. */
   async function adopt(resolved: ResolvedDraft, { quietly = false } = {}) {
     serverName.value = resolved.serverName
+    owner.value = resolved.owner
     updatedAt.value = resolved.updatedAt
     syncedAt.value = resolved.syncedAt
     restored.value = resolved.restored
@@ -591,6 +612,8 @@ export function useDraftSync(options: UseDraftSyncOptions) {
     /** A pre-existing draft was found and restored on load. */
     restored,
     serverName,
+    /** Who the draft belongs to. Someone else's draft is read-only and never saved. */
+    owner,
     flush,
     clear,
     commit,
