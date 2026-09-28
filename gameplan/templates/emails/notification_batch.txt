@@ -1,6 +1,12 @@
 {{ title or "New notifications" }}{% if window %}
 {{ window }}{% endif %}
 
+{% if summary -%}
+Summary
+{% for line in summary -%}
+- {{ line }}
+{% endfor %}
+{% endif -%}
 {% if mentions -%}
 Mentions
 {% for item in mentions -%}

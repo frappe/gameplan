@@ -35,6 +35,7 @@ from gameplan.tests.fixtures import (
 	create_discussion,
 	create_poll,
 	create_space,
+	create_task,
 	declared_http_methods,
 )
 
@@ -434,6 +435,30 @@ class TestReactionNotificationRouting(ReactionTestCase):
 	key that is not specific enough makes a reaction on a thread and a reaction on a reply
 	inside it land on one row, and the second one silently overwrites the first.
 	"""
+
+	def test_a_reaction_on_a_task_comment_carries_the_space_it_lives_in(self):
+		"""`project` is fetched from the discussion, and a task comment has none. The inbox
+		builds the row's link out of the Space and the Community, so without them it points
+		nowhere — and the email batch has no Space to judge access by either."""
+		task = create_task("Ship it", self.space, owner=self.member)
+		with self.as_user(self.member):
+			comment = frappe.get_doc(
+				doctype="GP Comment",
+				reference_doctype="GP Task",
+				reference_name=task.name,
+				content="On it",
+			).insert()
+
+		self.react(comment, self.second_member, [add(THUMBS_UP)])
+
+		row = frappe.get_all(
+			"GP Notification",
+			filters={"to_user": self.member.name, "type": "Reaction", "task": task.name},
+			fields=["project", "team"],
+		)
+		self.assertTrue(row, "no reaction notification was written for the task comment")
+		self.assertEqual(str(row[0].project), str(self.space.name))
+		self.assertEqual(row[0].team, self.community.name)
 
 	def notifications(self, user):
 		rows = frappe.get_all(

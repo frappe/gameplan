@@ -123,6 +123,11 @@ class HasReactions:
 			if self.doctype == "GP Comment":
 				doc.discussion = self.reference_name if self.reference_doctype == "GP Discussion" else None
 				doc.task = self.reference_name if self.reference_doctype == "GP Task" else None
+				# A task comment has no discussion for `project` to be fetched from, and the
+				# inbox builds the row's link out of the Space and the Community: without them
+				# it points nowhere. The email batch has no Space to judge it by either.
+				if doc.task:
+					doc.project = frappe.db.get_value("GP Task", doc.task, "project")
 		doc.message = message
 		doc.read = 0
 		# A re-lit row may already have been emailed. Clearing the stamp puts it back in

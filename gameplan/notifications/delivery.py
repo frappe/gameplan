@@ -5,7 +5,7 @@
 from datetime import timedelta
 
 import frappe
-from frappe.utils import add_to_date, format_datetime, get_datetime, get_url, now_datetime
+from frappe.utils import format_datetime, get_datetime, get_url, now_datetime
 
 from gameplan.email_digest import (
 	GAMEPLAN_LOGO_PATH,
@@ -25,9 +25,28 @@ from gameplan.notifications.away import (
 )
 from gameplan.permissions import can_view_space
 
-HORIZON_HOURS = 24
 MENTION_TYPES = ("Mention", "Rich Quote")
 TICK_MINUTES = 5
+
+# Past this many rows the mail stops listing and starts counting. A backlog builds whenever
+# nobody was owed mail for a while — the reader was on In-app, or their account was off, or
+# the sender itself stopped — and listing it in full is the thing worth avoiding, not the
+# age of any one row. Dropping old rows instead used to destroy mail whenever the sender had
+# simply missed its window.
+SUMMARY_FROM = 20
+
+# Plural first: a summary line only ever names a count, and one is the uncommon case.
+TYPE_LABELS = {
+	"Mention": ("mentions", "mention"),
+	"Rich Quote": ("quotes", "quote"),
+	"Comment": ("comments", "comment"),
+	"New Discussion": ("new discussions", "new discussion"),
+	"Reaction": ("reactions", "reaction"),
+	"Poll Vote": ("poll votes", "poll vote"),
+	"Added": ("spaces you were added to", "space you were added to"),
+	"Moved": ("things moved", "thing moved"),
+}
+SPACE_SCOPED = ("New Discussion", "Added", "Moved")
 
 
 def send_batches(now=None):
@@ -59,7 +78,7 @@ def send_batch(user: str) -> list:
 	rows = deliverable_rows(user)
 	if rows:
 		send_batch_email(user, rows)
-		_stamp(rows)
+		_stamp_sent(rows)
 	return rows
 
 
@@ -67,7 +86,7 @@ def send_away_recap(user: str) -> list:
 	periods = pending_recap_periods(user)
 	if not periods:
 		return []
-	rows = deliverable_rows(user, away=[p.name for p in periods], horizon=False)
+	rows = deliverable_rows(user, away=[p.name for p in periods])
 	if rows:
 		frappe.sendmail(
 			recipients=[user],
@@ -75,7 +94,7 @@ def send_away_recap(user: str) -> list:
 			template="notification_batch",
 			args=recap_context(user, rows, periods),
 		)
-		_stamp(rows)
+		_stamp_sent(rows)
 	mark_recap_sent([p.name for p in periods])
 	return rows
 
@@ -108,6 +127,7 @@ def pending_rows(user: str, away: list | None = None) -> list:
 			"to_user": user,
 			"read": 0,
 			"email_sent_at": ["is", "not set"],
+			"email_skipped_at": ["is", "not set"],
 			"away_period": ["in", away] if away else ["is", "not set"],
 		},
 		order_by="last_event_at desc",
@@ -115,25 +135,21 @@ def pending_rows(user: str, away: list | None = None) -> list:
 	).run(as_dict=True)
 
 
-def deliverable_rows(user: str, away: list | None = None, horizon: bool = True) -> list:
-	cutoff = add_to_date(now_datetime(), hours=-HORIZON_HOURS)
-	keep, drop = [], []
+def deliverable_rows(user: str, away: list | None = None) -> list:
+	keep, skip = [], []
 	viewable = {}
 	for row in pending_rows(user, away):
-		if horizon and row.last_event_at and row.last_event_at < cutoff:
-			drop.append(row)
-			continue
 		if not (row.discussion or row.task or row.poll or row.project or row.team):
-			drop.append(row)
+			skip.append(row)
 			continue
 		if row.project:
 			if row.project not in viewable:
 				viewable[row.project] = can_view_space(user, row.project)
 			if not viewable[row.project]:
-				drop.append(row)
+				skip.append(row)
 				continue
 		keep.append(row)
-	_stamp(drop)
+	_stamp_skipped(skip)
 	_stamp_read(user)
 	return keep
 
@@ -171,37 +187,84 @@ def reader_time(system_naive, tz):
 	return local_time(system_naive, tz).replace(tzinfo=None)
 
 
+def summarise(rows: list) -> list[str]:
+	"""Count a backlog by kind instead of listing it: "2 mentions in 1 discussion"."""
+	lines = []
+	for type_name, (plural, singular) in TYPE_LABELS.items():
+		group = [row for row in rows if row.type == type_name]
+		if not group:
+			continue
+		# A merged row stands for several events, and the reader is owed the true number.
+		count = sum(row.event_count or 1 for row in group)
+		line = f"{count} {singular if count == 1 else plural}"
+		scope = _scope(type_name, group)
+		lines.append(f"{line} {scope}" if scope else line)
+	return lines
+
+
+def _scope(type_name: str, group: list) -> str:
+	if type_name in SPACE_SCOPED:
+		spaces = {row.project for row in group if row.project}
+		return f"across {len(spaces)} spaces" if len(spaces) > 1 else ""
+	discussions = {row.discussion for row in group if row.discussion}
+	if not discussions:
+		return ""
+	return f"in {len(discussions)} discussions" if len(discussions) > 1 else "in 1 discussion"
+
+
 def batch_context(user: str, rows: list) -> dict:
-	avatar_map = get_user_avatar_map(row.from_user for row in rows)
-	mentions = [row for row in rows if row.type in MENTION_TYPES]
-	others = [row for row in rows if row.type not in MENTION_TYPES]
-	return {
+	base = {
 		"logo_url": get_url(GAMEPLAN_LOGO_PATH),
 		"site_url": get_url(),
 		"open_gameplan_url": get_signed_digest_url(user, "/g/notifications"),
 		"preferences_url": get_digest_preferences_url(user),
+	}
+	if len(rows) >= SUMMARY_FROM:
+		return {**base, "summary": summarise(rows), "mentions": [], "others": []}
+
+	avatar_map = get_user_avatar_map(row.from_user for row in rows)
+	mentions = [row for row in rows if row.type in MENTION_TYPES]
+	others = [row for row in rows if row.type not in MENTION_TYPES]
+	return {
+		**base,
+		"summary": [],
 		"mentions": [format_notification_item(row, avatar_map, user) for row in mentions],
 		"others": [format_notification_item(row, avatar_map, user) for row in others],
 	}
 
 
-def _stamp(rows: list):
+def _stamp_sent(rows: list):
+	_stamp(rows, "email_sent_at")
+
+
+def _stamp_skipped(rows: list):
+	"""Deliberately not emailed, and never will be: the reader lost the Space, or the row
+	points at nothing left to open. Kept apart from email_sent_at so the record does not
+	claim a mail that was never sent."""
+	_stamp(rows, "email_skipped_at")
+
+
+def _stamp(rows: list, field: str):
 	if not rows:
 		return
 	Notification = frappe.qb.DocType("GP Notification")
 	(
 		frappe.qb.update(Notification)
-		.set(Notification.email_sent_at, now_datetime())
+		.set(Notification[field], now_datetime())
 		.where(Notification.name.isin([row.name for row in rows]))
 	).run()
 
 
 def _stamp_read(user: str):
+	"""Read in the app before the mail went out, so there is nothing left to send."""
 	Notification = frappe.qb.DocType("GP Notification")
 	(
 		frappe.qb.update(Notification)
-		.set(Notification.email_sent_at, now_datetime())
+		.set(Notification.email_skipped_at, now_datetime())
 		.where(
-			(Notification.to_user == user) & (Notification.read == 1) & Notification.email_sent_at.isnull()
+			(Notification.to_user == user)
+			& (Notification.read == 1)
+			& Notification.email_sent_at.isnull()
+			& Notification.email_skipped_at.isnull()
 		)
 	).run()

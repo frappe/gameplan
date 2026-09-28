@@ -20,7 +20,8 @@
   "last_event_at",
   "event_count",
   "away_period",
-  "email_sent_at"
+  "email_sent_at",
+  "email_skipped_at"
  ],
  "fields": [
   {
@@ -121,6 +122,13 @@
    "fieldname": "email_sent_at",
    "fieldtype": "Datetime",
    "label": "Email Sent At",
+   "read_only": 1
+  },
+  {
+   "description": "Set when the row was deliberately not emailed — the reader lost the Space, or it points at nothing left to open. Distinct from Email Sent At, which means a mail really went out.",
+   "fieldname": "email_skipped_at",
+   "fieldtype": "Datetime",
+   "label": "Email Skipped At",
    "read_only": 1
   }
  ],

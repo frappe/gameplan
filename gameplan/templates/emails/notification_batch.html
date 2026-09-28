@@ -29,6 +29,15 @@
 		<h2 class="gp-email-digest__title">{{ title or "New notifications" }}</h2>
 		<div class="gp-email-digest__site-url">{{ window | e if window else site_url | e }}</div>
 
+		{% if summary %}
+		<div class="gp-email-digest__section">
+			<h3 class="gp-email-digest__section-title gp-email-digest__section-title--muted">Summary</h3>
+			{% for line in summary %}
+			<div class="gp-email-digest__item-title">{{ line | e }}</div>
+			{% endfor %}
+		</div>
+		{% endif %}
+
 		{% if mentions %}
 		<div class="gp-email-digest__section">
 			<h3 class="gp-email-digest__section-title gp-email-digest__section-title--muted">Mentions</h3>
