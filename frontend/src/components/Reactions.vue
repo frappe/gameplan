@@ -5,7 +5,6 @@
     :toolTipText="toolTipText"
     :standardEmojis="standardEmojis"
     :isLoading="isLoading"
-    :disabled="!isOnline"
   />
   <div class="mt-2 space-y-2" v-if="batchRequestErrors.length">
     <ErrorMessage v-for="error in batchRequestErrors" :message="error" />
@@ -13,7 +12,6 @@
 </template>
 <script setup>
 import { defineAsyncComponent, computed } from 'vue'
-import { isOnline } from '@/data/online'
 import { useReactions } from '@/data/reactions'
 import { useIsMobile } from '@/utils/useIsMobile'
 

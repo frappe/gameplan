@@ -15,7 +15,8 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { dialog, Dropdown, useDoctype } from 'frappe-ui'
+import { Dropdown, useDoctype } from 'frappe-ui'
+import { dialog } from '@/data/offline/dialog'
 import { communities } from '@/data/communities'
 import type { Community } from '@/data/communities'
 import type { GPTeam } from '@/types/doctypes'

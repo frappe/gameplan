@@ -75,7 +75,8 @@
 
 <script setup lang="ts">
 import { toValue } from 'vue'
-import { Dropdown, UseListOptions, dialog } from 'frappe-ui'
+import { Dropdown, UseListOptions } from 'frappe-ui'
+import { dialog } from '@/data/offline/dialog'
 import { useList } from '@/data/offline/resources'
 import EmptyStateBox from '@/components/EmptyStateBox.vue'
 import OfflineContentFallback from '@/components/OfflineContentFallback.vue'

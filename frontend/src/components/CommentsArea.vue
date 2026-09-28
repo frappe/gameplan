@@ -203,7 +203,7 @@
                 variant: 'solid',
                 onClick: submitComment,
                 loading: comments.insert.loading,
-                disabled: commentEmpty || !isOnline,
+                disabled: commentEmpty,
               }"
               :discardButtonProps="{
                 onClick: discardComment,
@@ -231,7 +231,6 @@
               :submitButtonProps="{
                 onClick: submitPoll,
                 loading: polls.insert.loading,
-                disabled: !isOnline,
               }"
               :discardButtonProps="{
                 onClick: discardPoll,
@@ -275,7 +274,8 @@ import Activity from './Activity.vue'
 import PollEditor from './PollEditor.vue'
 import Poll from './Poll.vue'
 import UserAvatar from './UserAvatar.vue'
-import { dialog, shellScrollContainer } from 'frappe-ui'
+import { shellScrollContainer } from 'frappe-ui'
+import { dialog } from '@/data/offline/dialog'
 import { useList } from '@/data/offline/resources'
 import { subscribeToDoc, useSocket, type NewActivityEvent } from '@/socket'
 import { GPActivity, GPComment, GPPoll } from '@/types/doctypes'
@@ -283,7 +283,7 @@ import type { Editor } from '@tiptap/vue-3'
 import { tags } from '@/data/tags'
 import { useRichQuotes } from '@/components/RichQuoteExtension/useRichQuotes'
 import { useDraftSync } from '@/data/useDraftSync'
-import { isOnline } from '@/data/online'
+import { refuseOffline } from '@/data/offline/requests'
 import {
   ACTIVITY_FIELDS,
   COMMENT_FIELDS,
@@ -687,10 +687,7 @@ function resetCommentState() {
 }
 
 async function submitComment() {
-  // The submit button is disabled while offline, but ctrl/cmd+Enter (bound below on
-  // the editor) reaches this directly and isn't gated by that - guard here too, rather
-  // than let it hit the network and surface a raw "Failed to fetch".
-  if (commentEmpty.value || comments.insert.loading || !isOnline.value) return
+  if (commentEmpty.value || comments.insert.loading || refuseOffline()) return
 
   const comment = await comments.insert.submit({
     reference_doctype: props.doctype,
@@ -771,7 +768,7 @@ function wait(ms: number) {
 }
 
 function submitPoll() {
-  if (props.doctype !== 'GP Discussion' || !isOnline.value) return
+  if (props.doctype !== 'GP Discussion' || refuseOffline()) return
   return polls.insert
     .submit({
       discussion: props.name,
@@ -806,6 +803,7 @@ async function discardComment() {
   if (!editorObject.value?.isEmpty) {
     dialog.danger({
       title: 'Discard comment',
+      worksOffline: true,
       message: 'Are you sure you want to discard your comment?',
       confirmLabel: 'Discard comment',
       cancelLabel: 'Keep comment',

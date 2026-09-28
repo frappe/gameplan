@@ -4,9 +4,9 @@
       <Motion
         as="button"
         aria-label="Add a reaction"
-        :disabled="isLoading || disabled"
+        :disabled="isLoading"
         @click="show = true"
-        class="flex h-full items-center justify-center rounded-full bg-surface-gray-2 px-2 py-1 text-ink-gray-6 transition hover:bg-surface-gray-3 disabled:opacity-50"
+        class="flex h-full items-center justify-center rounded-full bg-surface-gray-2 px-2 py-1 text-ink-gray-6 transition hover:bg-surface-gray-3"
         :whileTap="{ scale: 0.95 }"
         :whileHover="{ scale: 1.03 }"
       >
@@ -46,7 +46,7 @@
                 : 'bg-surface-sidebar hover:bg-surface-gray-2',
             ]"
             @click="toggleReaction(emoji)"
-            :disabled="isLoading || disabled"
+            :disabled="isLoading"
             :whileTap="{ scale: 0.9 }"
             :whileHover="{ scale: 1.05 }"
             :whilePress="{ scale: 1.05 }"
@@ -100,7 +100,6 @@ const props = defineProps<{
   toolTipText: (reactions: { count: number; userReacted: boolean }) => string
   standardEmojis: string[]
   isLoading: boolean
-  disabled?: boolean
 }>()
 
 let show = ref(false)

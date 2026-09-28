@@ -19,7 +19,8 @@
 </template>
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { useDoctype, dialog } from 'frappe-ui'
+import { useDoctype } from 'frappe-ui'
+import { dialog } from '@/data/offline/dialog'
 import DropdownMoreOptions from './DropdownMoreOptions.vue'
 import MergeSpaceDialog from './MergeSpaceDialog.vue'
 import ChangeSpaceCategoryDialog from './ChangeSpaceCategoryDialog.vue'

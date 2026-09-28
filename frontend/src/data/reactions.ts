@@ -1,6 +1,7 @@
 import { computed, reactive, unref, toValue } from 'vue'
 import type { MaybeRefOrGetter } from 'vue'
 import { useCall } from 'frappe-ui'
+import { refuseOffline } from './offline/requests'
 import { currentQuickReactionEmojis } from './reactionPreferences'
 import { session } from './session'
 import { useUser } from './users'
@@ -133,7 +134,7 @@ export function useReactions(options: UseReactionsOptions) {
     options.onUpdate(reactionsList.value.filter((item) => item !== reaction))
 
   const toggleReaction = (emoji: string) => {
-    if (readOnlyMode.value) return
+    if (readOnlyMode.value || refuseOffline()) return
     const existingReaction = getUserReaction(emoji)
     const pending = pendingReactions[emoji]
     const currentState = pending ? pending.desired : !!existingReaction

@@ -161,9 +161,9 @@ import {
   Tooltip,
   Breadcrumbs,
   dayjsLocal,
-  dialog,
   usePageMeta,
 } from 'frappe-ui'
+import { dialog } from '@/data/offline/dialog'
 import { useCall, useList } from '@/data/offline/resources'
 import { List, ListRow, ListCell } from 'frappe-ui/list'
 import ListRowSkeleton from '@/components/ListRowSkeleton.vue'

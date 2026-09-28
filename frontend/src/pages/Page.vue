@@ -110,8 +110,8 @@ import {
   usePageMeta,
   debounce,
   dayjsLocal,
-  dialog,
 } from 'frappe-ui'
+import { dialog } from '@/data/offline/dialog'
 import { useDoc } from '@/data/offline/resources'
 import PageEditor from '@/components/editor/PageEditor.vue'
 import { useSpace } from '@/data/spaces'

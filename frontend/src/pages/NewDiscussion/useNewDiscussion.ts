@@ -1,12 +1,13 @@
 import { ref, computed, onMounted, provide, inject, watch, type InjectionKey } from 'vue'
 import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
-import { call, useDoctype, dialog } from 'frappe-ui'
+import { call, useDoctype } from 'frappe-ui'
+import { dialog } from '@/data/offline/dialog'
 import { useOwnedRouteWrites } from '@/composables/useOwnedRouteWrites'
 import { useDraftSync, type DraftPayload } from '@/data/useDraftSync'
 import { drafts } from '@/data/drafts'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { canPostInSpace, getSpace } from '@/data/spaces'
-import { isOnline } from '@/data/online'
+import { refuseOffline } from '@/data/offline/requests'
 import { useSessionUser, useUser } from '@/data/users'
 import { tags } from '@/data/tags'
 import { extractServerMessage, isEditorContentEmpty } from '@/utils'
@@ -231,13 +232,8 @@ export function useNewDiscussion() {
   async function publish() {
     hasInteracted.value = true
     publishError.value = null
-    // The Publish button (DiscussionHeader.vue) is disabled offline, so this only
-    // matters as a backstop - defends the same "Failed to fetch" surfacing this was
-    // written to avoid, in case publish() is ever reached another way.
-    if (!isOnline.value) {
-      publishError.value = "You're offline. Reconnect and try again."
-      return
-    }
+    // Offline the draft stays; publishing waits for the connection.
+    if (refuseOffline()) return
     if (!validateDraft(true)) return
 
     publishing.value = true

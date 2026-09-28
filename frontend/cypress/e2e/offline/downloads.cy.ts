@@ -152,12 +152,19 @@ describe('Download for offline', () => {
     })
   })
 
-  it('leaves the window alone while offline, where nothing could be fetched', () => {
+  it('says a download needs the connection before asking to confirm it', () => {
     openOfflineSettings()
+    chooseWindow('Past week')
+    cy.contains(/discussions? downloaded/, { timeout: 60000 }).should('be.visible')
 
     cy.goOffline()
-    windowSelect().should('be.disabled')
+    control('Sync now').click()
+    cy.contains("You're offline. Reconnect to do this.").should('be.visible')
+    cy.contains('Sync now?').should('not.exist')
 
-    cy.goOnline()
+    windowSelect().click()
+    cy.contains('[role="option"]', 'Past month').click()
+    cy.contains('Download for offline?').should('not.exist')
+    windowSelect().should('contain.text', 'Past week')
   })
 })

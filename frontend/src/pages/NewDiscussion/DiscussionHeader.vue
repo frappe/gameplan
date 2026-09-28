@@ -83,7 +83,6 @@ import {
 } from 'frappe-ui'
 import { useNewDiscussionContext } from './useNewDiscussion'
 import DiscussionSpaceSelector from './DiscussionSpaceSelector.vue'
-import { isOnline } from '@/data/online'
 
 const {
   isPersisted,
@@ -100,14 +99,9 @@ const {
 const route = useRoute()
 const mobileTitle = computed(() => (isPersisted.value ? 'Draft' : 'New Discussion'))
 
-// Publishing needs a network round trip (flush the draft, then publish_draft/insert)
-// - offline it can only fail with a raw "Failed to fetch", so disable the button
-// outright rather than let someone hit that. The draft itself stays editable offline
-// (it's IndexedDB-backed), this only blocks the final publish step.
-const canPublish = computed(() => isComposerEditable.value && isOnline.value)
+const canPublish = computed(() => isComposerEditable.value)
 const publishDisabledReason = computed(() => {
   if (isDraftLoading.value) return 'Draft is loading'
-  if (!isOnline.value) return "You're offline"
   return 'You cannot publish this draft'
 })
 

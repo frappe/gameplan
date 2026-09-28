@@ -3,7 +3,7 @@ import { useLocalStorage } from '@vueuse/core'
 import { call, toast } from 'frappe-ui'
 import { delMany, get, getMany, set, setMany, values } from 'idb-keyval'
 import { cacheFor, type Cache } from './offline/cache'
-import { OFFLINE_ACTION_MESSAGE, isNetworkError } from './offline/requests'
+import { isNetworkError, refuseOffline } from './offline/requests'
 import { DOWNLOADS_LOCK, onBeforeClear } from '@/offline'
 import { isOnline, onReconnect, saveData } from './online'
 import { session } from './session'
@@ -564,10 +564,7 @@ async function forgetDownloads(meta: Meta) {
 /** Picks a window and downloads it now. */
 export function downloadForOffline(days: OfflineWindow) {
   // A dialog opened before the connection dropped can still confirm.
-  if (days && !isOnline.value) {
-    toast.warning(OFFLINE_ACTION_MESSAGE, { id: 'offline-action' })
-    return
-  }
+  if (days && refuseOffline()) return
   offlineWindow.value = days
   if (!days) return removeOfflineDownloads()
   // Otherwise the browser may evict the downloads (Safari does after a week unused).

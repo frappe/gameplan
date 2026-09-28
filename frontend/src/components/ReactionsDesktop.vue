@@ -4,8 +4,8 @@
       <template #trigger="{ setOpen }">
         <button
           aria-label="Add a reaction"
-          :disabled="isLoading || disabled"
-          class="flex h-full items-center justify-center rounded-full bg-surface-gray-2 px-2 py-1 text-ink-gray-6 transition hover:bg-surface-gray-3 disabled:cursor-not-allowed disabled:opacity-50 print:hidden"
+          :disabled="isLoading"
+          class="flex h-full items-center justify-center rounded-full bg-surface-gray-2 px-2 py-1 text-ink-gray-6 transition hover:bg-surface-gray-3 print:hidden"
           :class="{ 'bg-surface-gray-3': isPickerOpen }"
           @click="setOpen(true)"
         >
@@ -20,7 +20,7 @@
             variant="ghost"
             size="xs"
             class="font-[emoji]"
-            :disabled="isLoading || disabled"
+            :disabled="isLoading"
             @click="selectEmoji(emoji)"
           >
             <template #icon>
@@ -38,13 +38,12 @@
     <TooltipProvider>
       <Tooltip v-for="(reactions, emoji) in reactionsCount" :key="emoji">
         <button
-          class="flex items-center justify-center rounded-full px-2 py-1 text-sm transition disabled:cursor-not-allowed disabled:opacity-50"
+          class="flex items-center justify-center rounded-full px-2 py-1 text-sm transition"
           :class="[
             reactions.userReacted
               ? 'bg-surface-amber-2 text-amber-700 hover:bg-amber-200'
               : 'bg-surface-gray-2 text-ink-gray-6 hover:bg-surface-gray-3',
           ]"
-          :disabled="disabled"
           @click="toggleReaction(emoji)"
         >
           <img v-if="isImageEmoji(emoji)" :src="emoji" alt="" class="mr-1 size-4 object-contain" />
@@ -71,7 +70,6 @@ const props = defineProps<{
   toolTipText: (reactions: { count: number; userReacted: boolean }) => string
   standardEmojis: string[]
   isLoading: boolean
-  disabled?: boolean
 }>()
 
 const isPickerOpen = ref(false)

@@ -138,7 +138,8 @@
 </template>
 <script setup lang="ts">
 import { h, ref, computed, toValue } from 'vue'
-import { Dropdown, LoadingIndicator, Tooltip, dayjsLocal, dialog } from 'frappe-ui'
+import { Dropdown, LoadingIndicator, Tooltip, dayjsLocal } from 'frappe-ui'
+import { dialog } from '@/data/offline/dialog'
 import EmptyStateBox from './EmptyStateBox.vue'
 import OfflineContentFallback from './OfflineContentFallback.vue'
 import TaskStatusIcon from './NewTaskDialog/TaskStatusIcon.vue'

@@ -4,12 +4,7 @@
       title="Download for offline"
       description="Keep discussions from the communities you've joined on this device, with their comments and polls"
     >
-      <!-- Offline there is nothing to download; Remove downloads below still works. -->
-      <Select
-        :options="windowOptions"
-        v-model="selectedWindow"
-        :disabled="!isOnline || downloads.syncing"
-      />
+      <Select :options="windowOptions" v-model="selectedWindow" :disabled="downloads.syncing" />
     </SettingsRow>
 
     <!-- Nothing to say about the device until a window is picked: "Recently viewed only"
@@ -30,8 +25,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { computedAsync } from '@vueuse/core'
-import { isOnline } from '@/data/online'
-import { Button, Progress, Select, SettingsRow, dayjsLocal, dialog } from 'frappe-ui'
+import { Button, Progress, Select, SettingsRow, dayjsLocal } from 'frappe-ui'
+import { dialog } from '@/data/offline/dialog'
 import {
   MAX_DISCUSSIONS,
   WINDOW_OPTIONS,
@@ -116,6 +111,7 @@ const progress = computed(() =>
 function removeDownloads() {
   dialog.confirm({
     title: 'Remove offline downloads?',
+    worksOffline: true,
     message:
       'Downloaded discussions will no longer open without a connection until you open them again online.',
     confirmLabel: 'Remove',

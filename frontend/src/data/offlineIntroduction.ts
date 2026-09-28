@@ -1,6 +1,6 @@
 import { watch } from 'vue'
 import { useLocalStorage } from '@vueuse/core'
-import { dialog } from 'frappe-ui'
+import { dialog } from '@/data/offline/dialog'
 import { isMobileViewport } from '@/utils/useIsMobile'
 import { downloadForOffline, offlineWindow } from './offlineDownloads'
 import { isOnline } from './online'

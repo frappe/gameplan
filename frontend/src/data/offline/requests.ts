@@ -16,6 +16,13 @@ export class OfflineError extends TypeError {
   }
 }
 
+/** Says the action can't be done offline. Returns whether it was refused. */
+export function refuseOffline() {
+  if (isOnline.value) return false
+  toast.warning(OFFLINE_ACTION_MESSAGE, { id: 'offline-action' })
+  return true
+}
+
 /** A request that never reached the server: refused offline, or a failed fetch. */
 export function isNetworkError(error: unknown) {
   // Chrome, Safari and Firefox each word a failed fetch differently.
@@ -51,7 +58,7 @@ const fetch = window.fetch.bind(window)
 
 window.fetch = (input, init) => {
   if (isOnline.value || !isApiRequest(input)) return fetch(input, init)
-  if (isAskedFor(input, init)) toast.warning(OFFLINE_ACTION_MESSAGE, { id: 'offline-action' })
+  if (isAskedFor(input, init)) refuseOffline()
   return Promise.reject(new OfflineError())
 }
 

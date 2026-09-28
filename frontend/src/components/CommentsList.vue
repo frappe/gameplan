@@ -94,7 +94,7 @@
               variant: 'solid',
               onClick: submitComment,
               loading: comments.insert.loading,
-              disabled: commentEmpty || !isOnline,
+              disabled: commentEmpty,
             }"
             :discardButtonProps="{
               onClick: discardComment,
@@ -118,13 +118,13 @@ import Activity from './Activity.vue'
 import UserAvatar from './UserAvatar.vue'
 import { shellScrollContainer } from 'frappe-ui'
 import { needsMobileCommentGap } from '@/utils/commentTimeline'
-import { dialog } from 'frappe-ui'
+import { dialog } from '@/data/offline/dialog'
 import { useList } from '@/data/offline/resources'
 import { subscribeToDoc, useSocket, type NewActivityEvent } from '@/socket'
 import { GPActivity, GPComment } from '@/types/doctypes'
 import type { Space } from '@/data/spaces'
 import { useDraftSync } from '@/data/useDraftSync'
-import { isOnline } from '@/data/online'
+import { refuseOffline } from '@/data/offline/requests'
 
 interface Props {
   doctype: string
@@ -388,6 +388,7 @@ async function discardComment() {
   if (!editorObject.value?.isEmpty) {
     dialog.danger({
       title: 'Discard comment',
+      worksOffline: true,
       message: 'Are you sure you want to discard your comment?',
       confirmLabel: 'Discard comment',
       onConfirm: async () => {
@@ -402,7 +403,7 @@ async function discardComment() {
 }
 
 async function submitComment() {
-  if (commentEmpty.value || comments.insert.loading || !isOnline.value) return
+  if (commentEmpty.value || comments.insert.loading || refuseOffline()) return
 
   const comment = await comments.insert.submit({
     reference_doctype: props.doctype,

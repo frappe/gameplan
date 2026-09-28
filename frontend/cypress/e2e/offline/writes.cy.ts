@@ -1,5 +1,5 @@
-// Writing offline: the composer waits for the connection and keeps what was typed, and
-// reacting waits for it too.
+// Writing offline: sending a comment or a reaction says it needs the connection, and what
+// was typed stays until it's back.
 import { resetData } from '../../support/seed'
 
 describe('Writing while offline', () => {
@@ -27,27 +27,32 @@ describe('Writing while offline', () => {
 
   it('keeps a reply typed offline and posts it on reconnect', () => {
     cy.intercept('POST', '**/api/v2/document/GP%20Comment').as('postComment')
+    cy.intercept('GET', '**/api/v2/document/GP%20Comment?*').as('comments')
 
     cy.button('Add a comment').click()
     composer().click().type('written while the connection was gone')
 
     cy.goOffline()
-    // Still on screen, and the way to send it is shut rather than silently failing.
+    cy.button('Submit').click()
+    cy.contains("You're offline. Reconnect to do this.").should('be.visible')
+    cy.get('@postComment.all').should('have.length', 0)
     composer().should('contain.text', 'written while the connection was gone')
-    cy.button('Submit').should('be.disabled')
 
     cy.goOnline()
-    cy.button('Submit').should('not.be.disabled').click()
+    // Reconnecting reloads the comments, which redraws the composer; click after that.
+    cy.wait('@comments')
+    cy.button('Submit').click()
     cy.wait('@postComment').its('response.statusCode').should('eq', 200)
     cy.contains('written while the connection was gone').should('be.visible')
   })
 
-  it('disables reacting until the connection is back', () => {
-    const addReaction = () => cy.get('button[aria-label="Add a reaction"]').first()
-    addReaction().should('be.enabled')
+  it('says a reaction needs the connection', () => {
+    cy.intercept('POST', '**/api/v2/document/GP%20Discussion/*/method/react').as('react')
     cy.goOffline()
-    addReaction().should('be.disabled')
-    cy.goOnline()
-    addReaction().should('be.enabled')
+    cy.get('button[aria-label="Add a reaction"]').first().click()
+    cy.get('button:contains("👍"):visible').click()
+    cy.contains("You're offline. Reconnect to do this.").should('be.visible')
+    cy.contains('button', /👍\s*1/).should('not.exist')
+    cy.get('@react.all').should('have.length', 0)
   })
 })

@@ -58,7 +58,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Button, DatePicker, dayjsLocal, Dialog, dialog, Dropdown, useDoctype } from 'frappe-ui'
+import { Button, DatePicker, dayjsLocal, Dialog, Dropdown, useDoctype } from 'frappe-ui'
+import { dialog } from '@/data/offline/dialog'
 import type { DropdownOptions } from 'frappe-ui'
 import { activeCommunities, communities } from '@/data/communities'
 import { communityState } from '@/data/communityState'

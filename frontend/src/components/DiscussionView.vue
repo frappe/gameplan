@@ -169,7 +169,7 @@
               "
               :editable="editingPost && !isPostDraftLoading"
               :saving="discussion.setValue.loading"
-              :can-save="canSavePost && isOnline"
+              :can-save="canSavePost"
               :quote-source-id="`discussion:${discussion.doc.name}`"
               :author="discussion.doc.owner"
               @change="onPostEditorChange"
@@ -358,8 +358,8 @@ import {
   usePageMeta,
   dayjsLocal,
   Switch,
-  dialog,
 } from 'frappe-ui'
+import { dialog } from '@/data/offline/dialog'
 import { until, useEventListener } from '@vueuse/core'
 import type { Editor } from '@tiptap/vue-3'
 import Reactions from './Reactions.vue'
@@ -374,7 +374,8 @@ import EmptyStateBox from './EmptyStateBox.vue'
 import OfflineContentFallback from './OfflineContentFallback.vue'
 import { isOfflineError, loadFailureCopy } from '@/data/loadFailure'
 import { copyToClipboard, isEditorContentEmpty } from '@/utils'
-import { isOnline, whenOnline } from '@/data/online'
+import { whenOnline } from '@/data/online'
+import { refuseOffline } from '@/data/offline/requests'
 import { getSpace, useSpace } from '@/data/spaces'
 import { useCommunity } from '@/data/communities'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
@@ -756,6 +757,7 @@ function cancelEdit() {
   if (isPostDirty()) {
     dialog.danger({
       title: 'Discard changes',
+      worksOffline: true,
       message: 'You have unsaved changes. Are you sure you want to discard them?',
       confirmLabel: 'Discard changes',
       cancelLabel: 'Keep editing',
@@ -767,7 +769,7 @@ function cancelEdit() {
 }
 
 function updatePost() {
-  if (!editingPost.value || !canSavePost.value || !isOnline.value) return
+  if (!editingPost.value || !canSavePost.value || refuseOffline()) return
   // Show the new title at once instead of the old one until the server answers.
   const title = postDraftData.value?.title
   const previousTitle = discussion.doc?.title

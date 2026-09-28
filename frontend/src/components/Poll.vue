@@ -186,8 +186,8 @@ import {
   RadioGroup,
   Tooltip,
   dayjsLocal,
-  dialog,
 } from 'frappe-ui'
+import { dialog } from '@/data/offline/dialog'
 import type { RadioValue } from 'frappe-ui'
 import { useDoc } from '@/data/offline/resources'
 import UserAvatar from './UserAvatar.vue'

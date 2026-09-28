@@ -1,4 +1,5 @@
-import { dialog, toast } from 'frappe-ui'
+import { toast } from 'frappe-ui'
+import { dialog } from '@/data/offline/dialog'
 import { extractServerMessage } from '@/utils'
 import { isPermissionError } from '@/utils/errorMessage'
 

@@ -1,5 +1,6 @@
 import { computed, MaybeRefOrGetter, toValue } from 'vue'
-import { useDoctype, dialog } from 'frappe-ui'
+import { useDoctype } from 'frappe-ui'
+import { dialog } from '@/data/offline/dialog'
 import { useCall, useList } from '@/data/offline/resources'
 import { GPProject, GPMember } from '@/types/doctypes'
 import { getProjectUnreadCount, markSpacesAsRead } from './unreadCount'

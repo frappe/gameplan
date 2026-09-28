@@ -87,7 +87,6 @@
           :submitButtonProps="{
             onClick: () => updateComment(),
             loading: isUpdating,
-            disabled: !isOnline,
           }"
           :discardButtonProps="{
             onClick: () => discardEdit(),
@@ -124,11 +123,11 @@ import Reactions from './Reactions.vue'
 const RevisionsDialog = defineAsyncComponent(() => import('./RevisionsDialog.vue'))
 import UserAvatarWithHover from './UserAvatarWithHover.vue'
 import { GPComment } from '@/types/doctypes'
-import { dialog } from 'frappe-ui'
+import { dialog } from '@/data/offline/dialog'
 import { useList } from '@/data/offline/resources'
 import { tags } from '@/data/tags'
 import { useDraftSync } from '@/data/useDraftSync'
-import { isOnline } from '@/data/online'
+import { refuseOffline } from '@/data/offline/requests'
 import { useUser, useSessionUser } from '@/data/users'
 import type { Space } from '@/data/spaces'
 import { canDeleteContent, canEditContent } from '@/utils/permissions'
@@ -183,7 +182,7 @@ const discardEdit = async () => {
 
 const updateComment = () => {
   const content = draftData.value?.content
-  if (!content?.trim() || !isOnline.value) return
+  if (!content?.trim() || refuseOffline()) return
 
   isUpdating.value = true
   updateError.value = null
