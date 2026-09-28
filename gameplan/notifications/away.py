@@ -66,11 +66,15 @@ def get_active_away_period(user: str, now: datetime | None = None) -> str | None
 	if not kind:
 		return None
 	if kind == "Toggle":
-		return _open_toggle_period(user) or _insert_period(user, "Toggle", now, None)
+		return _open_toggle_period(user) or _claim_period(user, "Toggle", now, None)
 
 	starts_at, ends_at = scheduled_off_window(prefs, now, tz)
-	existing = frappe.db.get_value("GP Away Period", {"user": user, "starts_at": starts_at}, "name")
-	return existing or _insert_period(user, "Active hours", starts_at, ends_at)
+	existing = frappe.db.get_value(
+		"GP Away Period", {"user": user, "starts_at": starts_at}, ["name", "recap_sent_at"], as_dict=True
+	)
+	if existing:
+		return None if existing.recap_sent_at else existing.name
+	return _claim_period(user, "Active hours", starts_at, ends_at)
 
 
 def set_receive_notifications(user: str, enabled) -> None:
@@ -104,6 +108,10 @@ def pending_recap_periods(user: str) -> list:
 		fields=["name", "starts_at", "ends_at"],
 		order_by="ends_at asc",
 	)
+
+
+def retire_pending_recaps(user: str) -> None:
+	mark_recap_sent([period.name for period in pending_recap_periods(user)])
 
 
 def mark_recap_sent(periods: list[str]) -> None:
@@ -141,6 +149,16 @@ def _open_toggle_periods(user: str) -> list[str]:
 def _open_toggle_period(user: str) -> str | None:
 	rows = _open_toggle_periods(user)
 	return rows[0] if rows else None
+
+
+def _claim_period(user: str, kind: str, starts_at: datetime, ends_at: datetime | None) -> str:
+	savepoint = "gameplan_away_period"
+	try:
+		frappe.db.savepoint(savepoint)
+		return _insert_period(user, kind, starts_at, ends_at)
+	except frappe.DuplicateEntryError:
+		frappe.db.rollback(save_point=savepoint)
+		return frappe.db.get_value("GP Away Period", {"user": user, "starts_at": starts_at}, "name")
 
 
 def _insert_period(user: str, kind: str, starts_at: datetime, ends_at: datetime | None) -> str:

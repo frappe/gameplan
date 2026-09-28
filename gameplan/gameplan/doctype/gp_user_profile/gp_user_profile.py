@@ -78,6 +78,11 @@ class GPUserProfile(HasAttachments, Document):
 			return
 		if self.has_value_changed("receive_notifications"):
 			away.set_receive_notifications(self.user, self.receive_notifications)
+		if self.has_value_changed("notification_channel") and self.notification_channel == "Email":
+			# Away stretches accrue whatever the channel is, but only Email delivers a catch-up.
+			# Without this, turning Email on mails every stretch since the account was made as one
+			# message. Nothing was owed on the old channel, so they are retired unsent.
+			away.retire_pending_recaps(self.user)
 		if any(
 			self.has_value_changed(field)
 			for field in (

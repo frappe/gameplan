@@ -2,7 +2,7 @@
 # See license.txt
 
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 from zoneinfo import ZoneInfo
 
@@ -116,6 +116,23 @@ class TestHourlyBatch(DeliveryTestCase):
 
 		sendmail.assert_called_once()
 		self.assertIn("2 new comments", sendmail.call_args.kwargs["args"]["others"][0]["title"])
+
+	def test_moving_a_discussion_takes_its_notifications_with_it(self):
+		"""The batch decides who may be told by the Space named on the row. Left at the old
+		one, a discussion moved somewhere private is still offered to everyone who could see
+		where it used to be."""
+		self.mention_second_member()
+		private = create_space("Secret", self.community, is_private=1, members=[self.member])
+
+		with self.as_user(self.member):
+			frappe.get_doc("GP Discussion", self.discussion.name).move_to_project(private.name)
+
+		spaces = {
+			str(frappe.db.get_value("GP Notification", row.name, "project"))
+			for row in self.rows_for(self.second_member)
+		}
+		self.assertEqual(spaces, {str(private.name)})
+		self.run_hourly().assert_not_called()
 
 	def test_an_item_never_prints_its_discussion_title_twice(self):
 		self.mention_second_member()
@@ -270,9 +287,15 @@ class TestSendTimes(DeliveryTestCase):
 		self.run_tick(self.at("2026-09-16 18:00")).assert_not_called()
 
 	def test_the_closing_mail_follows_the_users_timezone(self):
-		frappe.db.set_value("User", self.second_member.name, "time_zone", "Asia/Gaza")
-		self.run_tick(self.at("2026-09-16 18:30")).assert_not_called()
-		self.run_tick(self.at("2026-09-16 20:30")).assert_called_once()
+		"""The closing tick is derived, not written down: hard-coding it would only hold on a
+		site whose own timezone sits a particular distance from the reader's."""
+		reader_tz = "Asia/Gaza"
+		frappe.db.set_value("User", self.second_member.name, "time_zone", reader_tz)
+		closing = datetime(2026, 9, 16, 18, 0, tzinfo=ZoneInfo(reader_tz))
+		in_system_time = closing.astimezone(ZoneInfo(get_system_timezone())).replace(tzinfo=None)
+
+		self.run_tick(get_datetime(in_system_time - timedelta(hours=1))).assert_not_called()
+		self.run_tick(get_datetime(in_system_time)).assert_called_once()
 
 
 class TestAwayRecap(DeliveryTestCase):
@@ -347,6 +370,18 @@ class TestAwayRecap(DeliveryTestCase):
 		self.assertEqual(
 			sendmail.call_args.kwargs["subject"], "While you were away: 1 notification in Gameplan"
 		)
+
+	def test_turning_email_on_does_not_mail_the_stretches_that_predate_it(self):
+		"""Away stretches accrue on every channel, but only Email owes a catch-up. Switching to
+		it used to hand over every stretch since the account was made as one message."""
+		self.set_prefs(self.second_member, notification_channel="In-app")
+		self.away_and_back()
+		self.assertFalse(any(p.recap_sent_at for p in self.periods()))
+
+		self.set_prefs(self.second_member, notification_channel="Email")
+
+		self.assertTrue(all(p.recap_sent_at for p in self.periods()))
+		self.run_hourly().assert_not_called()
 
 	def test_an_empty_stretch_is_stamped_without_a_mail(self):
 		self.set_prefs(self.second_member, receive_notifications=0)

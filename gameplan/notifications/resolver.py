@@ -81,6 +81,9 @@ def discussion_watchers(discussion: str) -> list[str]:
 
 
 def _fan_out(recipients: list[str], **values) -> list[str]:
+	values["project"], values["team"] = records.space_for(
+		values.get("discussion"), values.get("project"), values.get("team")
+	)
 	for user in recipients:
 		records.write_or_merge(to_user=user, **values)
 	return recipients

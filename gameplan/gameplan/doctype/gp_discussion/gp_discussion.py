@@ -13,6 +13,7 @@ from gameplan.mixins.attachments import HasAttachments
 from gameplan.mixins.mentions import HasMentions
 from gameplan.mixins.reactions import HasReactions
 from gameplan.mixins.tags import HasTags
+from gameplan.notifications import records
 from gameplan.notifications.resolver import (
 	STATES,
 	effective_discussion_state,
@@ -373,6 +374,10 @@ def move_discussion(discussion, project):
 	discussion.update_discussions_count()
 	frappe.get_doc("GP Project", old_project).update_discussions_count()
 	discussion.log_activity("Discussion Moved", data={"old_project": old_project, "new_project": project})
+	# Notifications already raised for this discussion still name the space it came from, and
+	# the email batch decides who may read a row by that field. Left behind, it both offers
+	# the title to people who cannot open the new Space and hides it from people who can.
+	records.repoint_discussion(discussion.name, discussion.project, discussion.team)
 	notify_discussion_moved(discussion, old_project, frappe.session.user)
 	return discussion
 

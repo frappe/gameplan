@@ -32,10 +32,7 @@ def write_or_merge(
 		poll=poll,
 		task=task,
 	)
-	if discussion and not project:
-		project = frappe.db.get_value("GP Discussion", discussion, "project")
-	if project and not team:
-		team = frappe.db.get_value("GP Project", project, "team")
+	project, team = space_for(discussion, project, team)
 
 	now = frappe.utils.now()
 	existing = _unread_row_for(values) if merge else None
@@ -65,6 +62,24 @@ def write_or_merge(
 	doc.away_period = get_active_away_period(to_user)
 	doc.insert(ignore_permissions=True)
 	return doc
+
+
+def space_for(discussion: str | None, project=None, team=None) -> tuple:
+	if discussion and not project:
+		project = frappe.db.get_value("GP Discussion", discussion, "project")
+	if project and not team:
+		team = frappe.db.get_value("GP Project", project, "team")
+	return project, team
+
+
+def repoint_discussion(discussion: str, project, team) -> None:
+	Notification = frappe.qb.DocType("GP Notification")
+	(
+		frappe.qb.update(Notification)
+		.set(Notification.project, project)
+		.set(Notification.team, team)
+		.where(Notification.discussion == str(discussion))
+	).run()
 
 
 def _unread_row_for(values: frappe._dict) -> str | None:
