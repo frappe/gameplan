@@ -6,7 +6,7 @@
     <template #suffix>
       <div class="flex items-center gap-1">
         <button
-          v-if="sessionUser.name == author.name"
+          v-if="sessionUser.name == author?.name"
           type="button"
           class="inline-flex size-8 shrink-0 items-center justify-center rounded-4 text-ink-gray-7 transition hover:bg-surface-gray-2 active:bg-surface-gray-3 disabled:cursor-not-allowed disabled:opacity-50"
           aria-label="Delete draft"
@@ -17,7 +17,8 @@
           <span class="lucide-trash-2 size-4" aria-hidden="true" />
         </button>
         <Tooltip
-          :text="isDraftLoading ? 'Draft is loading' : 'You cannot publish this draft'"
+          v-if="sessionUser.name == author?.name"
+          text="Draft is loading"
           :disabled="isComposerEditable"
         >
           <Button
@@ -49,7 +50,7 @@
       <DiscussionSpaceSelector />
 
       <button
-        v-if="sessionUser.name == author.name"
+        v-if="sessionUser.name == author?.name"
         type="button"
         class="inline-flex size-8 shrink-0 items-center justify-center rounded-4 text-ink-gray-7 transition hover:bg-surface-gray-2 active:bg-surface-gray-3 disabled:cursor-not-allowed disabled:opacity-50"
         aria-label="Delete draft"
@@ -60,7 +61,8 @@
         <span class="lucide-trash-2 size-4" aria-hidden="true" />
       </button>
       <Tooltip
-        :text="isDraftLoading ? 'Draft is loading' : 'You cannot publish this draft'"
+        v-if="sessionUser.name == author?.name"
+        text="Draft is loading"
         :disabled="isComposerEditable"
       >
         <Button

@@ -58,11 +58,13 @@ export function useNewDiscussion() {
   const draftData = draft.data
   const isPersisted = computed(() => Boolean(draft.serverName.value))
 
-  // Drafts are owner-scoped on the server, so the author is always the current user.
-  const author = computed(() => useUser(sessionUser.name))
+  // A shared `?draft=` link can open someone else's draft. It stays theirs: the composer
+  // shows it read-only, with no Publish or Delete. Null while the owner is unknown, which
+  // is equally read-only, so neither control flashes before the draft resolves.
+  const author = computed(() => (draft.owner.value ? useUser(draft.owner.value) : null))
   const isDraftLoading = draft.isLoading
   const isComposerEditable = computed(
-    () => author.value.name === sessionUser.name && !isDraftLoading.value,
+    () => author.value?.name === sessionUser.name && !isDraftLoading.value,
   )
   const showDraftLoadingStatus = ref(false)
 
