@@ -25,14 +25,33 @@ export function isNetworkError(error: unknown) {
   )
 }
 
+// The HTTP method can't tell a person's action from a page loading: `call()` reads over POST,
+// and opening a page sends writes of its own (track_visit). So a write counts as asked for
+// only if it starts soon after a click or key press, on the page where it happened. Long
+// enough for the one-second batching of reactions.
+const ACTION_WINDOW_MS = 1500
+let gesture = { at: -Infinity, url: '' }
+
+function recordGesture(event: Event) {
+  if (event instanceof KeyboardEvent && !['Enter', ' '].includes(event.key)) return
+  gesture = { at: performance.now(), url: location.href }
+}
+window.addEventListener('click', recordGesture, { capture: true })
+window.addEventListener('keydown', recordGesture, { capture: true })
+
+function isAskedFor(input: RequestInfo | URL, init?: RequestInit) {
+  return (
+    isWrite(input, init) &&
+    performance.now() - gesture.at < ACTION_WINDOW_MS &&
+    location.href === gesture.url
+  )
+}
+
 const fetch = window.fetch.bind(window)
 
 window.fetch = (input, init) => {
   if (isOnline.value || !isApiRequest(input)) return fetch(input, init)
-  // Said once, and only for a write the person just asked for, not for background reads.
-  if (isWrite(input, init) && (navigator.userActivation?.isActive ?? true)) {
-    toast.warning(OFFLINE_ACTION_MESSAGE, { id: 'offline-action' })
-  }
+  if (isAskedFor(input, init)) toast.warning(OFFLINE_ACTION_MESSAGE, { id: 'offline-action' })
   return Promise.reject(new OfflineError())
 }
 
