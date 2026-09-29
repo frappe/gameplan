@@ -172,4 +172,54 @@ describe('Drafts, one name each', () => {
         cy.get('@first').should('not.eq', second)
       })
   })
+
+  it('keeps a reply typed offline when another device has one for the same discussion', () => {
+    cy.intercept('POST', CREATE).as('create')
+    cy.then(() => cy.visit(`/g/community/${community}/space/${space}/discussions`))
+    cy.contains('a', 'Welcome thread').click()
+    cy.contains('h1', 'Welcome thread').should('be.visible')
+
+    cy.goOffline()
+    cy.button('Add a comment').click()
+    composer().click().type('typed offline')
+    cy.go('back')
+    cy.contains('a', 'Welcome thread').should('be.visible')
+
+    // Meanwhile another device saves a reply draft of its own. cy.request is not the
+    // browser's, so it gets through.
+    cy.window()
+      .its('csrf_token')
+      .then((token) =>
+        cy.request({
+          method: 'POST',
+          url: '/api/v2/document/GP Draft',
+          headers: { 'X-Frappe-CSRF-Token': String(token) },
+          body: {
+            type: 'Comment',
+            mode: 'New',
+            reference_doctype: 'GP Discussion',
+            reference_name: discussion,
+            content: '<p>from the other device</p>',
+          },
+        }),
+      )
+      .its('body.data.name')
+      .as('other')
+
+    cy.goOnline()
+    cy.contains('a', 'Welcome thread').click()
+    cy.get('body').then(($body) => {
+      if (!$body.find('.ProseMirror').length) cy.button('Add a comment').click()
+    })
+    composer().should('contain.text', 'typed offline')
+    composer().click().type(' and more')
+
+    // Saved as a draft of its own, not as an update to the other device's row.
+    cy.wait('@create').then(({ request }) => {
+      expect(request.body.content).to.include('typed offline')
+      cy.get('@other').should('not.eq', request.body.name)
+    })
+    cy.contains('This draft was deleted').should('not.exist')
+    composer().should('contain.text', 'typed offline and more')
+  })
 })

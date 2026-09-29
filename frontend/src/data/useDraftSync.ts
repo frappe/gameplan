@@ -106,8 +106,9 @@ export interface ResolvedDraft {
   /** The draft's name: the local record's, the server row's, or a new draft's. */
   name: string
   payload: DraftPayload
-  /** The `GP Draft` row these edits belong to, or null when no row exists yet. */
-  serverName: string | null
+  /** Whether a `GP Draft` row by this name exists. A draft only ever has its own name, so
+   *  there is no second name here to disagree with it. */
+  saved: boolean
   /** Who the draft belongs to, or null while unknown. Unknown, or anyone but the session
    *  user, makes it read-only. */
   owner: string | null
@@ -144,7 +145,7 @@ export function reconcileDraft(input: {
   /** Null while the session is still resolving; every stored copy is then foreign. */
   sessionUser: string | null
   /** The name the draft was opened by, or null for a new composition. */
-  serverName: string | null
+  opened: string | null
   /** The name a new composition gets when neither copy is taken. */
   name: string
 }): ResolvedDraft {
@@ -162,7 +163,7 @@ export function reconcileDraft(input: {
       ...base,
       name: server.name,
       payload,
-      serverName: server.name,
+      saved: true,
       owner: server.owner,
       updatedAt: 0,
       syncedAt: null,
@@ -175,7 +176,8 @@ export function reconcileDraft(input: {
       ...base,
       name: local.key,
       payload: local.payload,
-      serverName: local.serverName ?? server?.name ?? null,
+      // Only its own row: another device's draft for the same target is not this one's.
+      saved: Boolean(local.serverName) || server?.name === local.key,
       updatedAt: local.updatedAt,
       syncedAt: local.syncedAt,
       restored: hasContent(local.payload),
@@ -189,7 +191,7 @@ export function reconcileDraft(input: {
       ...base,
       name: server.name,
       payload,
-      serverName: server.name,
+      saved: true,
       updatedAt: now,
       syncedAt: now,
       restored: hasContent(payload),
@@ -202,7 +204,7 @@ export function reconcileDraft(input: {
       ...base,
       name: local.key,
       payload: local.payload,
-      serverName: local.serverName ?? null,
+      saved: Boolean(local.serverName),
       updatedAt: local.updatedAt,
       syncedAt: local.syncedAt,
       restored: hasContent(local.payload),
@@ -211,10 +213,10 @@ export function reconcileDraft(input: {
 
   return {
     ...base,
-    name: input.serverName ?? input.name,
+    name: input.opened ?? input.name,
     payload: seed,
-    serverName: null,
-    owner: input.serverName ? null : sessionUser,
+    saved: false,
+    owner: input.opened ? null : sessionUser,
     updatedAt: 0,
     syncedAt: null,
   }
@@ -256,8 +258,9 @@ export function useDraftSync(options: UseDraftSyncOptions) {
   const requestedName = toValue(options.draftName ?? null)
   // The draft's name for its whole life; a singleton's is settled when it is looked up.
   const name = ref(requestedName ?? newDraftName())
-  // Equal to `name` once the server row exists.
-  const serverName = ref<string | null>(null)
+  // Whether the server row exists. It is always named `name`, so `serverName` is derived.
+  const saved = ref(false)
+  const serverName = computed(() => (saved.value ? name.value : null))
 
   // Last local edit vs last successful push, on THIS device. Drives reconciliation
   // without comparing clocks across machines.
@@ -334,13 +337,18 @@ export function useDraftSync(options: UseDraftSyncOptions) {
     const draft = { key: draftName, identity: toValue(identity), payload }
     saving.value = true
     try {
-      await withDraftLock(draftName, () => saveToServer(draftDoc, draft, Boolean(serverName.value)))
-      // Reset onto a new draft meanwhile: this result belongs to the old one.
-      if (name.value !== draftName) return
-      serverName.value = draftName
-      syncedAt.value = Math.max(syncedAt.value ?? 0, pushedAt)
-      await persistLocal()
-      lastError.value = null
+      // The local record says it is saved before the lock is let go: a delete waiting on the
+      // lock reads it to know there is a server row to delete.
+      const current = await withDraftLock(draftName, async () => {
+        await saveToServer(draftDoc, draft, saved.value)
+        // Reset onto a new draft meanwhile: this result belongs to the old one.
+        if (name.value !== draftName) return false
+        saved.value = true
+        syncedAt.value = Math.max(syncedAt.value ?? 0, pushedAt)
+        await persistLocal()
+        return true
+      })
+      if (current) lastError.value = null
     } catch (error) {
       if (isDeletedError(error)) {
         // Deleted elsewhere, and the server keeps it that way: drop this copy too.
@@ -457,16 +465,18 @@ export function useDraftSync(options: UseDraftSyncOptions) {
       const server = await fetchServerDraft(local)
       let opened = requestedName
       let doc = server.doc
-      if (server.known && local?.serverName && doc?.name !== local.key) {
-        if (!doc || local.updatedAt <= (local.syncedAt ?? 0)) {
+      if (server.known && local && doc?.name !== local.key) {
+        const unsavedEdits = local.updatedAt > (local.syncedAt ?? 0)
+        if (doc && unsavedEdits) {
+          // Unsaved edits here beat another tab's or device's row for the same target. They
+          // are saved as a draft of their own, and find_my_draft keeps the newest.
+          doc = null
+        } else if (doc || local.serverName) {
           // Its row is gone (published, deleted, or replaced by a newer reply): so is it.
           await deleteDraftRecord(local.key)
           broadcastDraftChange(local.key)
           if (!doc && local.key === opened) opened = null
           local = null
-        } else {
-          // Unsaved edits here beat another tab's or device's row for the same target.
-          doc = null
         }
       }
       return reconcileDraft({
@@ -474,7 +484,7 @@ export function useDraftSync(options: UseDraftSyncOptions) {
         server: doc,
         seed: seed(),
         sessionUser: session.user,
-        serverName: opened,
+        opened,
         name: opened ?? newDraftName(),
       })
     } catch (error) {
@@ -491,7 +501,7 @@ export function useDraftSync(options: UseDraftSyncOptions) {
       server: null,
       seed: seed(),
       sessionUser: session.user,
-      serverName: requestedName,
+      opened: requestedName,
       name: name.value,
     })
   }
@@ -503,7 +513,7 @@ export function useDraftSync(options: UseDraftSyncOptions) {
     // has yet to be handed out.
     if (resolved.name !== requestedName) announced = false
     name.value = resolved.name
-    serverName.value = resolved.serverName
+    saved.value = resolved.saved
     owner.value = resolved.owner
     updatedAt.value = resolved.updatedAt
     syncedAt.value = resolved.syncedAt
@@ -573,7 +583,7 @@ export function useDraftSync(options: UseDraftSyncOptions) {
     // deterministic key, and we must not pull their content into this editor.
     if (record && record.user === session.user) {
       applyPayload(record.payload)
-      serverName.value = record.serverName ?? serverName.value
+      saved.value = saved.value || Boolean(record.serverName)
       updatedAt.value = record.updatedAt
       syncedAt.value = record.syncedAt
     }
@@ -584,7 +594,7 @@ export function useDraftSync(options: UseDraftSyncOptions) {
     // Whatever is typed next is a new draft.
     name.value = newDraftName()
     announced = false
-    serverName.value = null
+    saved.value = false
     owner.value = draftOwner
     updatedAt.value = 0
     syncedAt.value = null
@@ -619,8 +629,10 @@ export function useDraftSync(options: UseDraftSyncOptions) {
   async function clear(): Promise<boolean> {
     debouncedPush.cancel?.()
     if (activePush) await activePush
-    if (serverName.value && refuseOffline()) return false
-    await deleteDraft(name.value, Boolean(serverName.value))
+    // Another tab may have saved it since this one last heard.
+    const onServer = saved.value || Boolean((await getDraftRecord(name.value))?.serverName)
+    if (onServer && refuseOffline()) return false
+    await deleteDraft(name.value, onServer)
     reset()
     return true
   }
@@ -631,12 +643,12 @@ export function useDraftSync(options: UseDraftSyncOptions) {
     debouncedPush.cancel?.()
     if (activePush) await activePush
     const draftName = name.value
-    const saved = Boolean(serverName.value)
+    const onServer = saved.value || Boolean((await getDraftRecord(draftName))?.serverName)
     const id = toValue(identity)
     reset()
     await deleteDraftRecord(draftName)
     broadcastDraftChange(draftName)
-    if (saved && id.referenceDoctype && id.referenceName) {
+    if (onServer && id.referenceDoctype && id.referenceName) {
       try {
         await call(COMMIT_DRAFT, {
           name: draftName,
@@ -649,7 +661,7 @@ export function useDraftSync(options: UseDraftSyncOptions) {
       } catch (error) {
         console.error('Failed to commit draft', error)
       }
-    } else if (saved) {
+    } else if (onServer) {
       // No target to migrate into (shouldn't happen for singletons) — just delete.
       await deleteServerDraft(draftName).catch((error) =>
         console.error('Failed to delete draft', error),
@@ -789,9 +801,9 @@ export async function recoverOrphanedDrafts(): Promise<number> {
   // One tab at a time: two tabs saving the same drafts would only repeat requests.
   return runExclusive('gp-draft-recovery', async () => {
     const records = await listDraftRecords()
-    // Independent drafts, so concurrently: one slow save must not hold up the rest.
-    const results = await Promise.all(records.map((record) => saveOrphanedDraft(record)))
-    return results.filter(Boolean).length
+    // Independent drafts, so concurrently: one slow or failing save must not hold up the rest.
+    const results = await Promise.allSettled(records.map((record) => saveOrphanedDraft(record)))
+    return results.filter((result) => result.status === 'fulfilled' && result.value).length
   })
 }
 
@@ -814,7 +826,7 @@ async function saveOrphanedDraft(record: DraftRecord): Promise<boolean> {
   // The IndexedDB store is origin-wide, so on a shared browser profile it can hold drafts
   // authored by a previously logged-in user. Never save those as the current user — that
   // would surface another account's private content under this one.
-  if (record.user !== session.user) return false
+  if (record.user !== session.user || !id) return false
   if (id.mode !== 'New' || !hasUnsavedEdits(record) || !hasContent(record.payload)) return false
 
   // A reply whose parent discussion was deleted or moved out of reach can't be routed to:

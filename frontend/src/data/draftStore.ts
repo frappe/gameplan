@@ -7,7 +7,7 @@
  * The reactive orchestration (debounced server sync, lazy row creation, reconciliation)
  * lives in `useDraftSync`.
  */
-import { get, set, del, entries, clear, createStore } from 'idb-keyval'
+import { get, del, entries, clear, createStore } from 'idb-keyval'
 
 export type DraftType = 'Discussion' | 'Comment'
 export type DraftMode = 'New' | 'Edit'
@@ -68,9 +68,26 @@ export async function getDraftRecord(key: string): Promise<DraftRecord | undefin
   return get<DraftRecord>(key, store)
 }
 
+/**
+ * Writes a record. One whose server row exists stays saved until it is deleted: a writer
+ * that has not heard of the save yet (another tab, the recovery sweep) must not undo it, or
+ * a later delete would skip the row. Read and write are one transaction for that reason.
+ */
 export async function putDraftRecord(record: DraftRecord): Promise<void> {
   await ready()
-  return set(record.key, record, store)
+  return store('readwrite', (records) => {
+    return new Promise((resolve, reject) => {
+      const read = records.get(record.key)
+      read.onerror = () => reject(read.error)
+      read.onsuccess = () => {
+        const stored = read.result as DraftRecord | undefined
+        const serverName = record.serverName ?? stored?.serverName ?? null
+        records.put({ ...record, serverName }, record.key)
+        records.transaction.oncomplete = () => resolve()
+        records.transaction.onerror = () => reject(records.transaction.error)
+      }
+    })
+  })
 }
 
 export async function deleteDraftRecord(key: string): Promise<void> {
@@ -118,9 +135,10 @@ function convertOldRecords(): Promise<void> {
           records.transaction.onerror = () => reject(records.transaction.error)
           return
         }
-        const old = entry.value as Partial<DraftRecord>
+        const old = entry.value as Partial<DraftRecord> & { deleted?: boolean }
         if (String(entry.key).includes('::')) {
-          if (old.identity) {
+          // Queued deletions carry no identity, and tombstones are drafts already deleted.
+          if (old.identity && !old.deleted) {
             const key = old.serverName || newDraftName()
             records.put({ ...old, key, serverName: old.serverName ?? null }, key)
           }
