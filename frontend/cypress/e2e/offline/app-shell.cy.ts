@@ -32,6 +32,12 @@ describe('App shell offline', () => {
       expect(win.navigator.serviceWorker.controller, 'a worker controls the page').to.exist
     })
 
+  // The browser fetches the worker script in the background, across logins. A response
+  // carrying a session cookie could put the previous user back, so it must carry none.
+  it('sends the worker script without a session cookie', () => {
+    cy.request('/gameplan-sw.js').its('headers').should('not.have.property', 'set-cookie')
+  })
+
   it('serves the app from cache when reloaded offline', () => {
     cy.visit('/g')
     cy.get('[data-slot="desktop-shell"]').should('exist')
