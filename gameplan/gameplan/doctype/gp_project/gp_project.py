@@ -11,6 +11,8 @@ from gameplan.api import _invite_by_email
 from gameplan.gameplan.doctype.gp_unread_record.gp_unread_record import GPUnreadRecord
 from gameplan.mixins.archivable import Archivable
 from gameplan.mixins.manage_members import ManageMembersMixin
+from gameplan.notifications.cleanup import reset_space_for_user
+from gameplan.notifications.resolver import notify_added, notify_space_moved
 from gameplan.permissions import (
 	apply_accessible_project_filter,
 	apply_project_query_filter,
@@ -43,6 +45,7 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 		"GP Followed Project",
 		"GP Page",
 		"GP Pinned Project",
+		"GP Space Subscription",
 	]
 	on_delete_set_null = ["GP Notification"]
 
@@ -82,6 +85,7 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 		self.team = team
 		self.save()
 		self.update_project_team_references()
+		notify_space_moved(self, frappe.session.user)
 
 	def update_project_team_references(self):
 		for doctype in PROJECT_TEAM_DOCTYPES:
@@ -171,7 +175,8 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 	@frappe.whitelist(methods=["POST"])
 	def add_member(self, user):
 		require_can_manage_space_members(self)
-		self.add_member_row(user)
+		if self.add_member_row(user):
+			notify_added(user, project=self.name, team=self.team, actor=frappe.session.user)
 
 	@frappe.whitelist(methods=["POST"])
 	def remove_member(self, user):
@@ -180,6 +185,7 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 			if member.user == user:
 				self.remove(member)
 				self.save(ignore_permissions=True)
+				reset_space_for_user(self.name, user)
 				break
 
 	@frappe.whitelist(methods=["POST"])
@@ -191,10 +197,13 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 		if not can_view_space(frappe.session.user, self):
 			frappe.throw("Not permitted", frappe.PermissionError)
 
-	def add_member_row(self, user):
-		if user not in [d.user for d in self.members]:
-			self.append("members", {"user": user})
-			self.save(ignore_permissions=True)
+	def add_member_row(self, user) -> bool:
+		"""Append `user` and save; True when they were not a member before."""
+		if user in [d.user for d in self.members]:
+			return False
+		self.append("members", {"user": user})
+		self.save(ignore_permissions=True)
+		return True
 
 	@frappe.whitelist(methods=["POST"])
 	def leave(self):
@@ -204,6 +213,7 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 			if member.user == user:
 				self.remove(member)
 				self.save(ignore_permissions=True)
+				reset_space_for_user(self.name, user)
 				break
 
 	@frappe.whitelist(methods=["POST"])

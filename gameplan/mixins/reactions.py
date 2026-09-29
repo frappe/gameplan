@@ -5,6 +5,10 @@
 import frappe
 from frappe import _
 
+from gameplan.notifications import records
+from gameplan.notifications.away import get_active_away_period
+from gameplan.notifications.preferences import wants_content_feedback
+
 
 class HasReactions:
 	@frappe.whitelist(methods=["POST"])
@@ -60,62 +64,51 @@ class HasReactions:
 		return {(reaction.user, reaction.emoji) for reaction in (self.get("reactions") or [])}
 
 	def notify_reactions(self):
+		if not self._reactions_added_by_others():
+			return
+		if not wants_content_feedback(self.owner):
+			return
+
 		from gameplan.permissions import can_view_content
 
-		# Only a reaction that was ADDED is news. Sizes are the wrong test in both
-		# directions: a withdrawal changes the count too (and would re-raise a bell the
-		# owner already cleared, about a reaction that no longer exists), while swapping
-		# one emoji for another in a single save leaves the count equal even though the
-		# new emoji is a reaction the owner has never been told about.
-		previous = self.get_doc_before_save()
-		previous_keys = previous.reaction_keys() if previous else set()
-		# Your own reaction never notifies you and is never counted: the row would
-		# otherwise read "1 person reacted to your post" about yourself.
-		added = {key for key in self.reaction_keys() - previous_keys if key[0] != self.owner}
-		if not added:
-			return
-
-		# Several changes can land in one save (the frontend debounces a quick tap-tap
-		# into one batch). The message describes the post as it now stands, not the
-		# delta, so it stays true however many rows moved.
-		people = list({r.user for r in self.get("reactions") if r.user != self.owner})
 		if not can_view_content(self.owner, self):
 			return
+		self._relight_reaction_row(self._reaction_message())
 
-		match len(people):
-			case 1:
-				message = "1 person reacted to your post"
-			case _:
-				message = f"{len(people)} people reacted to your post"
-		values = frappe._dict(
-			to_user=self.owner,
-			type="Reaction",
-		)
-		if self.doctype == "GP Discussion":
-			values.discussion = self.name
-		elif self.doctype == "GP Comment":
-			values.comment = self.name
-		elif self.doctype == "GP Poll":
-			values.poll = self.name
-			values.discussion = self.discussion
+	def _reactions_added_by_others(self) -> set:
+		"""Reactions this save introduced, the owner's own excluded. A withdrawal or a
+		swapped emoji leaves the count unchanged, so counts cannot answer this."""
+		previous = self.get_doc_before_save()
+		seen = previous.reaction_keys() if previous else set()
+		return {key for key in self.reaction_keys() - seen if key[0] != self.owner}
 
-		lookup = values.copy()
-		if self.doctype == "GP Discussion":
-			# Poll and comment notifications also carry their discussion for routing.
-			# Excluding both keeps a later discussion reaction from overwriting either row.
-			lookup.poll = ["is", "not set"]
-			lookup.comment = ["is", "not set"]
+	def _reaction_message(self) -> str:
+		"""How the post stands now, not what this save changed: several reactions can land
+		in one save, and the row is rewritten each time."""
+		people = {reaction.user for reaction in self.get("reactions") if reaction.user != self.owner}
+		if len(people) == 1:
+			return "1 person reacted to your post"
+		return f"{len(people)} people reacted to your post"
+
+	def _relight_reaction_row(self, message: str) -> None:
+		"""One row per piece of content, reused every time: a reaction that arrives after
+		the row was read, emailed or skipped has to surface as the news it is."""
+		owned = frappe._dict(to_user=self.owner, type="Reaction")
+		lookup = frappe._dict(owned, **records.content_key(self))
 
 		if frappe.db.exists("GP Notification", lookup):
 			doc = frappe.get_doc("GP Notification", lookup)
 		else:
 			doc = frappe.get_doc(doctype="GP Notification")
-			doc.update(values)
-			if self.doctype == "GP Comment":
-				doc.discussion = self.reference_name if self.reference_doctype == "GP Discussion" else None
-				doc.task = self.reference_name if self.reference_doctype == "GP Task" else None
+			doc.update(owned)
+			doc.update(records.target_fields(self))
+
 		doc.message = message
 		doc.read = 0
+		doc.email_sent_at = None
+		doc.email_skipped_at = None
+		doc.last_event_at = frappe.utils.now()
+		doc.away_period = get_active_away_period(self.owner)
 		doc.flags.ignore_permissions = True
 		doc.save()
 

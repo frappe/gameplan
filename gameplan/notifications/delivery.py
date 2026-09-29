@@ -1,0 +1,255 @@
+# Copyright (c) 2026, Frappe Technologies Pvt Ltd and contributors
+# For license information, please see license.txt
+
+
+from datetime import timedelta
+
+import frappe
+from frappe.utils import format_datetime, get_datetime, get_url, now_datetime
+
+from gameplan.email_digest import (
+	GAMEPLAN_LOGO_PATH,
+	format_notification_item,
+	get_digest_preferences_url,
+	get_signed_digest_url,
+	get_user_avatar_map,
+)
+from gameplan.notifications.away import (
+	is_away,
+	local_time,
+	mark_recap_sent,
+	pending_recap_periods,
+	profile_prefs,
+	scheduled_off_window,
+	user_timezone,
+)
+from gameplan.permissions import can_view_space
+
+MENTION_TYPES = ("Mention", "Rich Quote")
+TICK_MINUTES = 5
+
+SUMMARY_FROM = 20
+
+# label, plural label, and the column a summary line counts distinct values of.
+TYPE_LABELS = {
+	"Mention": ("mention", "mentions", "discussion"),
+	"Rich Quote": ("quote", "quotes", "discussion"),
+	"Comment": ("comment", "comments", "discussion"),
+	"New Discussion": ("new discussion", "new discussions", "project"),
+	"Reaction": ("reaction", "reactions", "discussion"),
+	"Poll Vote": ("poll vote", "poll votes", "discussion"),
+	"Added": ("space you were added to", "spaces you were added to", "project"),
+	"Moved": ("thing moved", "things moved", "project"),
+}
+SCOPE_WORDS = {
+	"discussion": ("in {n} discussion", "in {n} discussions"),
+	"project": ("", "across {n} spaces"),
+}
+
+
+def send_batches(now=None):
+	now = now or now_datetime()
+	users = frappe.get_all(
+		"GP User Profile", filters={"notification_channel": "Email", "enabled": 1}, pluck="user"
+	)
+	for user in users:
+		if not frappe.db.get_value("User", user, "enabled"):
+			continue
+		if should_send(user, now):
+			send_batch(user)
+
+
+def should_send(user: str, now) -> bool:
+	prefs = profile_prefs(user)
+	tz = user_timezone(user)
+	kind = is_away(prefs, now, tz)
+	if kind is None:
+		return now.minute < TICK_MINUTES
+	if kind == "Active hours":
+		window_end, _ = scheduled_off_window(prefs, now, tz)
+		return now - window_end < timedelta(minutes=TICK_MINUTES)
+	return False
+
+
+def send_batch(user: str) -> list:
+	send_away_recap(user)
+	rows = deliverable_rows(user)
+	if rows:
+		send_batch_email(user, rows)
+		_stamp(rows, "email_sent_at")
+	return rows
+
+
+def send_away_recap(user: str) -> list:
+	periods = pending_recap_periods(user)
+	if not periods:
+		return []
+	rows = deliverable_rows(user, away=[p.name for p in periods])
+	if rows:
+		frappe.sendmail(
+			recipients=[user],
+			subject=recap_subject(rows),
+			template="notification_batch",
+			args=recap_context(user, rows, periods),
+		)
+		_stamp(rows, "email_sent_at")
+	mark_recap_sent([p.name for p in periods])
+	return rows
+
+
+def pending_rows(user: str, away: list | None = None) -> list:
+	return frappe.qb.get_query(
+		"GP Notification",
+		fields=[
+			"name",
+			"type",
+			"message",
+			"creation",
+			"last_event_at",
+			"event_count",
+			"from_user",
+			"from_user.full_name as from_user_full_name",
+			"discussion",
+			"discussion.title as discussion_title",
+			"discussion.slug as discussion_slug",
+			"comment",
+			"poll",
+			"task",
+			"task.title as task_title",
+			"project",
+			"project.title as project_title",
+			"team",
+			"team.title as team_title",
+		],
+		filters={
+			"to_user": user,
+			"read": 0,
+			"email_sent_at": ["is", "not set"],
+			"email_skipped_at": ["is", "not set"],
+			"away_period": ["in", away] if away else ["is", "not set"],
+		},
+		order_by="last_event_at desc",
+		ignore_permissions=True,
+	).run(as_dict=True)
+
+
+def deliverable_rows(user: str, away: list | None = None) -> list:
+	"""The rows worth mailing. The ones that are not are stamped as skipped on the way,
+	along with anything already read, so a later run does not look at them again."""
+	_stamp_read(user)
+	viewable: dict = {}
+	keep, skip = [], []
+	for row in pending_rows(user, away):
+		target = keep if _worth_mailing(user, row, viewable) else skip
+		target.append(row)
+	_stamp(skip, "email_skipped_at")
+	return keep
+
+
+def _worth_mailing(user: str, row, viewable: dict) -> bool:
+	"""A row still points at something the reader can open. `viewable` caches the Space
+	check for the run it belongs to; it must not outlive one reader."""
+	if not (row.discussion or row.task or row.poll or row.project or row.team):
+		return False
+	if not row.project:
+		return True
+	if row.project not in viewable:
+		viewable[row.project] = can_view_space(user, row.project)
+	return viewable[row.project]
+
+
+def send_batch_email(user: str, rows: list):
+	frappe.sendmail(
+		recipients=[user],
+		subject=batch_subject(rows),
+		template="notification_batch",
+		args=batch_context(user, rows),
+	)
+
+
+def batch_subject(rows: list) -> str:
+	return f"{plural(len(rows), 'new notification')} in Gameplan"
+
+
+def recap_subject(rows: list) -> str:
+	return f"While you were away: {plural(len(rows), 'notification')} in Gameplan"
+
+
+def plural(count: int, noun: str) -> str:
+	return f"{count} {noun}" if count == 1 else f"{count} {noun}s"
+
+
+def recap_context(user: str, rows: list, periods: list) -> dict:
+	tz = user_timezone(user)
+	starts_at = reader_time(min(get_datetime(p.starts_at) for p in periods), tz)
+	ends_at = reader_time(max(get_datetime(p.ends_at) for p in periods), tz)
+	window = (
+		f"{format_datetime(starts_at, 'EEE d MMM, h:mm a')} – {format_datetime(ends_at, 'EEE d MMM, h:mm a')}"
+	)
+	return {**batch_context(user, rows), "title": "While you were away", "window": window}
+
+
+def reader_time(system_naive, tz):
+	return local_time(system_naive, tz).replace(tzinfo=None)
+
+
+def summarise(rows: list) -> list[str]:
+	"""A backlog counted by kind rather than listed: "2 mentions in 1 discussion"."""
+	lines = []
+	for type_name, (singular, plurals, scope_field) in TYPE_LABELS.items():
+		group = [row for row in rows if row.type == type_name]
+		if not group:
+			continue
+		count = len(group)
+		line = f"{count} {singular if count == 1 else plurals}"
+		spread = {row[scope_field] for row in group if row[scope_field]}
+		one, many = SCOPE_WORDS[scope_field]
+		scope = (one if len(spread) == 1 else many).format(n=len(spread))
+		lines.append(f"{line} {scope}".strip() if spread and scope else line)
+	return lines
+
+
+def batch_context(user: str, rows: list) -> dict:
+	base = {
+		"logo_url": get_url(GAMEPLAN_LOGO_PATH),
+		"site_url": get_url(),
+		"open_gameplan_url": get_signed_digest_url(user, "/g/notifications"),
+		"preferences_url": get_digest_preferences_url(user),
+	}
+	if len(rows) >= SUMMARY_FROM:
+		return {**base, "summary": summarise(rows), "mentions": [], "others": []}
+
+	avatar_map = get_user_avatar_map(row.from_user for row in rows)
+	mentions = [row for row in rows if row.type in MENTION_TYPES]
+	others = [row for row in rows if row.type not in MENTION_TYPES]
+	return {
+		**base,
+		"summary": [],
+		"mentions": [format_notification_item(row, avatar_map, user) for row in mentions],
+		"others": [format_notification_item(row, avatar_map, user) for row in others],
+	}
+
+
+def _stamp(rows: list, field: str):
+	if not rows:
+		return
+	Notification = frappe.qb.DocType("GP Notification")
+	(
+		frappe.qb.update(Notification)
+		.set(Notification[field], now_datetime())
+		.where(Notification.name.isin([row.name for row in rows]))
+	).run()
+
+
+def _stamp_read(user: str):
+	Notification = frappe.qb.DocType("GP Notification")
+	(
+		frappe.qb.update(Notification)
+		.set(Notification.email_skipped_at, now_datetime())
+		.where(
+			(Notification.to_user == user)
+			& (Notification.read == 1)
+			& Notification.email_sent_at.isnull()
+			& Notification.email_skipped_at.isnull()
+		)
+	).run()
