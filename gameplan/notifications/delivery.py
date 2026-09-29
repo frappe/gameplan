@@ -28,25 +28,23 @@ from gameplan.permissions import can_view_space
 MENTION_TYPES = ("Mention", "Rich Quote")
 TICK_MINUTES = 5
 
-# Past this many rows the mail stops listing and starts counting. A backlog builds whenever
-# nobody was owed mail for a while — the reader was on In-app, or their account was off, or
-# the sender itself stopped — and listing it in full is the thing worth avoiding, not the
-# age of any one row. Dropping old rows instead used to destroy mail whenever the sender had
-# simply missed its window.
 SUMMARY_FROM = 20
 
-# Plural first: a summary line only ever names a count, and one is the uncommon case.
+# label, plural label, and the column a summary line counts distinct values of.
 TYPE_LABELS = {
-	"Mention": ("mentions", "mention"),
-	"Rich Quote": ("quotes", "quote"),
-	"Comment": ("comments", "comment"),
-	"New Discussion": ("new discussions", "new discussion"),
-	"Reaction": ("reactions", "reaction"),
-	"Poll Vote": ("poll votes", "poll vote"),
-	"Added": ("spaces you were added to", "space you were added to"),
-	"Moved": ("things moved", "thing moved"),
+	"Mention": ("mention", "mentions", "discussion"),
+	"Rich Quote": ("quote", "quotes", "discussion"),
+	"Comment": ("comment", "comments", "discussion"),
+	"New Discussion": ("new discussion", "new discussions", "project"),
+	"Reaction": ("reaction", "reactions", "discussion"),
+	"Poll Vote": ("poll vote", "poll votes", "discussion"),
+	"Added": ("space you were added to", "spaces you were added to", "project"),
+	"Moved": ("thing moved", "things moved", "project"),
 }
-SPACE_SCOPED = ("New Discussion", "Added", "Moved")
+SCOPE_WORDS = {
+	"discussion": ("in {n} discussion", "in {n} discussions"),
+	"project": ("", "across {n} spaces"),
+}
 
 
 def send_batches(now=None):
@@ -78,7 +76,7 @@ def send_batch(user: str) -> list:
 	rows = deliverable_rows(user)
 	if rows:
 		send_batch_email(user, rows)
-		_stamp_sent(rows)
+		_stamp(rows, "email_sent_at")
 	return rows
 
 
@@ -94,7 +92,7 @@ def send_away_recap(user: str) -> list:
 			template="notification_batch",
 			args=recap_context(user, rows, periods),
 		)
-		_stamp_sent(rows)
+		_stamp(rows, "email_sent_at")
 	mark_recap_sent([p.name for p in periods])
 	return rows
 
@@ -136,22 +134,28 @@ def pending_rows(user: str, away: list | None = None) -> list:
 
 
 def deliverable_rows(user: str, away: list | None = None) -> list:
-	keep, skip = [], []
-	viewable = {}
-	for row in pending_rows(user, away):
-		if not (row.discussion or row.task or row.poll or row.project or row.team):
-			skip.append(row)
-			continue
-		if row.project:
-			if row.project not in viewable:
-				viewable[row.project] = can_view_space(user, row.project)
-			if not viewable[row.project]:
-				skip.append(row)
-				continue
-		keep.append(row)
-	_stamp_skipped(skip)
+	"""The rows worth mailing. The ones that are not are stamped as skipped on the way,
+	along with anything already read, so a later run does not look at them again."""
 	_stamp_read(user)
+	viewable: dict = {}
+	keep, skip = [], []
+	for row in pending_rows(user, away):
+		target = keep if _worth_mailing(user, row, viewable) else skip
+		target.append(row)
+	_stamp(skip, "email_skipped_at")
 	return keep
+
+
+def _worth_mailing(user: str, row, viewable: dict) -> bool:
+	"""A row still points at something the reader can open. `viewable` caches the Space
+	check for the run it belongs to; it must not outlive one reader."""
+	if not (row.discussion or row.task or row.poll or row.project or row.team):
+		return False
+	if not row.project:
+		return True
+	if row.project not in viewable:
+		viewable[row.project] = can_view_space(user, row.project)
+	return viewable[row.project]
 
 
 def send_batch_email(user: str, rows: list):
@@ -164,13 +168,15 @@ def send_batch_email(user: str, rows: list):
 
 
 def batch_subject(rows: list) -> str:
-	count = len(rows)
-	return f"{count} new notification{'' if count == 1 else 's'} in Gameplan"
+	return f"{plural(len(rows), 'new notification')} in Gameplan"
 
 
 def recap_subject(rows: list) -> str:
-	count = len(rows)
-	return f"While you were away: {count} notification{'' if count == 1 else 's'} in Gameplan"
+	return f"While you were away: {plural(len(rows), 'notification')} in Gameplan"
+
+
+def plural(count: int, noun: str) -> str:
+	return f"{count} {noun}" if count == 1 else f"{count} {noun}s"
 
 
 def recap_context(user: str, rows: list, periods: list) -> dict:
@@ -188,28 +194,19 @@ def reader_time(system_naive, tz):
 
 
 def summarise(rows: list) -> list[str]:
-	"""Count a backlog by kind instead of listing it: "2 mentions in 1 discussion"."""
+	"""A backlog counted by kind rather than listed: "2 mentions in 1 discussion"."""
 	lines = []
-	for type_name, (plural, singular) in TYPE_LABELS.items():
+	for type_name, (singular, plurals, scope_field) in TYPE_LABELS.items():
 		group = [row for row in rows if row.type == type_name]
 		if not group:
 			continue
-		# A merged row stands for several events, and the reader is owed the true number.
-		count = sum(row.event_count or 1 for row in group)
-		line = f"{count} {singular if count == 1 else plural}"
-		scope = _scope(type_name, group)
-		lines.append(f"{line} {scope}" if scope else line)
+		count = len(group)
+		line = f"{count} {singular if count == 1 else plurals}"
+		spread = {row[scope_field] for row in group if row[scope_field]}
+		one, many = SCOPE_WORDS[scope_field]
+		scope = (one if len(spread) == 1 else many).format(n=len(spread))
+		lines.append(f"{line} {scope}".strip() if spread and scope else line)
 	return lines
-
-
-def _scope(type_name: str, group: list) -> str:
-	if type_name in SPACE_SCOPED:
-		spaces = {row.project for row in group if row.project}
-		return f"across {len(spaces)} spaces" if len(spaces) > 1 else ""
-	discussions = {row.discussion for row in group if row.discussion}
-	if not discussions:
-		return ""
-	return f"in {len(discussions)} discussions" if len(discussions) > 1 else "in 1 discussion"
 
 
 def batch_context(user: str, rows: list) -> dict:
@@ -233,17 +230,6 @@ def batch_context(user: str, rows: list) -> dict:
 	}
 
 
-def _stamp_sent(rows: list):
-	_stamp(rows, "email_sent_at")
-
-
-def _stamp_skipped(rows: list):
-	"""Deliberately not emailed, and never will be: the reader lost the Space, or the row
-	points at nothing left to open. Kept apart from email_sent_at so the record does not
-	claim a mail that was never sent."""
-	_stamp(rows, "email_skipped_at")
-
-
 def _stamp(rows: list, field: str):
 	if not rows:
 		return
@@ -256,7 +242,6 @@ def _stamp(rows: list, field: str):
 
 
 def _stamp_read(user: str):
-	"""Read in the app before the mail went out, so there is nothing left to send."""
 	Notification = frappe.qb.DocType("GP Notification")
 	(
 		frappe.qb.update(Notification)

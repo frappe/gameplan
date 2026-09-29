@@ -176,7 +176,6 @@ const spaceActions = computed(() => [
     onClick: () => currentSpace.value && markAllAsRead([props.spaceId], currentSpace.value.title),
   },
   {
-    // Same GP Space Subscription row the Settings > Spaces switch reads, so both follow it.
     label: isSpaceNotifying(props.spaceId) ? 'Disable notifications' : 'Enable notifications',
     icon: isSpaceNotifying(props.spaceId) ? 'lucide-bell-off' : 'lucide-bell',
     onClick: () => toggleSpaceNotifications(props.spaceId),

@@ -13,12 +13,6 @@ from gameplan.utils import extract_mentions, extract_rich_quote_authors
 
 class HasMentions:
 	def notify_mentions(self):
-		"""Notify the people this post mentions, quotes, or addresses with @everyone.
-
-		Returns the set of users a notification was written for, so the comment fan-out
-		that runs next can leave them out: someone watching a discussion who is also
-		mentioned in a comment gets that one mention, not a second "new comment" row.
-		"""
 		mentions_field = getattr(self, "mentions_field", None)
 		if not mentions_field:
 			return set()
@@ -112,9 +106,6 @@ class HasMentions:
 		return True
 
 	def _notify_user(self, user_email, is_everyone=False, notification_type="Mention"):
-		"""Create a notification for a specific user, if they may be notified at all.
-
-		Returns True when a notification was (or already) exists for them."""
 		if not self._can_notify(user_email):
 			return False
 		self._create_notification(user_email, is_everyone, notification_type)
@@ -126,22 +117,9 @@ class HasMentions:
 			from_user=self.owner,
 			to_user=user_email,
 			type=notification_type,
+			**records.target_fields(self),
 		)
 
-		if self.doctype == "GP Discussion":
-			values.discussion = self.name
-		elif self.doctype == "GP Task":
-			values.task = self.name
-			values.project = self.project
-		elif self.doctype == "GP Comment":
-			values.comment = self.name
-			if self.reference_doctype == "GP Discussion":
-				values.discussion = self.reference_name
-			elif self.reference_doctype == "GP Task":
-				values.task = self.reference_name
-				values.project = frappe.db.get_value("GP Task", self.reference_name, "project")
-
-		# Skip if notification already exists
 		if frappe.db.exists("GP Notification", values):
 			return
 

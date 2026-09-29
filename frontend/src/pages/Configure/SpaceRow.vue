@@ -51,8 +51,6 @@
     </ListCell>
 
     <ListCell class="justify-end gap-1">
-      <!-- The user's own new-discussion toggle for this space — every member gets it,
-           unlike the rename controls. The bell shows the state; a click flips it. -->
       <Button
         v-if="!space.archived_at"
         variant="ghost"

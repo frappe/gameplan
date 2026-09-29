@@ -83,25 +83,21 @@ export const setNotificationChannel = (value: unknown) =>
 export const setReceiveNotifications = (value: boolean) =>
   setPref(receiveNotifications, value, Boolean, 'receive_notifications', (on) => (on ? 1 : 0))
 
-// A time input reports every keystroke, so 09:30 arrives as four separate changes. The
-// fields move at once, but the write waits for the typing to stop — otherwise each
-// keystroke saved a half-typed hour and announced it with its own toast. `pending` holds
-// the state from before the first keystroke of a burst, so a failure rolls back to where
-// the reader started rather than to the middle of their own typing.
 const ACTIVE_HOURS_QUIET_MS = 600
 let activeHoursTimer: ReturnType<typeof setTimeout> | undefined
 let pending: { start: string; end: string; days: Weekday[] } | null = null
 
 export function setActiveHours(patch: { start?: string; end?: string; days?: Weekday[] }) {
-  const previous = pending ?? {
+  const current = {
     start: activeHoursStart.value,
     end: activeHoursEnd.value,
     days: activeHoursDays.value,
   }
+  const previous = pending ?? current
   const next = {
-    start: patch.start || previous.start,
-    end: patch.end || previous.end,
-    days: patch.days ?? previous.days,
+    start: patch.start || current.start,
+    end: patch.end || current.end,
+    days: patch.days ?? current.days,
   }
   if (next.start === next.end) return
   pending = previous

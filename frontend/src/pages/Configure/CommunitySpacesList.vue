@@ -10,10 +10,6 @@
     v-if="filteredSpaces.length"
     :columns="{
       base: ['minmax(0,1fr)', 'auto'],
-      // The panel is ~40rem wide, so the Space column gets what is left after the
-      // narrow ones: counts (10rem), guests (4rem) and the bell beside the dots (4rem).
-      // Fixed, not `auto`: each row is its own grid, so `auto` would size per row and
-      // cells would drift from their header.
       md: hasGuests
         ? ['minmax(12rem,1fr)', '10rem', '4rem', '4rem']
         : ['minmax(12rem,1fr)', '10rem', '4rem'],

@@ -21,10 +21,6 @@ const listeners = new Set<() => void>()
  */
 const lastSeen = new Map<string, { event_count: number; read: 0 | 1 }>()
 
-/**
- * Record the rows a list just loaded, so a later `notification_changed` event naming one
- * of them can be recognised as already-known. Call it from every list `onSuccess`.
- */
 export function rememberNotificationRows(
   rows: Array<{ name: string; event_count?: number; read?: 0 | 1 | boolean }> | null | undefined,
 ) {
@@ -63,11 +59,6 @@ export function onRemoteNotificationChange(handler: () => void) {
   }
 }
 
-/**
- * True when the event's row tells this tab something it does not already show. A bulk
- * clear carries no row; for it the unread total is the whole story, so it is never news on
- * its own — a clear that moved nothing is an echo.
- */
 function rowIsNews(notification: NotificationChange | null) {
   if (!notification) return false
   const seen = lastSeen.get(notification.name)
@@ -95,7 +86,6 @@ onSocketEvent(
   }, 500),
 )
 
-/** The columns a notification row needs to be shown, routed and marked read. */
 export type NotificationRow = Pick<
   GPNotification,
   | 'name'
@@ -112,7 +102,6 @@ export type NotificationRow = Pick<
   | 'event_count'
 > & { last_event_at: string }
 
-/** Where a row opens: its discussion, task, space or community. */
 export function notificationRoute(
   notification: Omit<NotificationRow, 'read' | 'last_event_at' | 'message' | 'event_count'>,
 ): RouteLocationRaw | null {
@@ -142,7 +131,6 @@ export function notificationRoute(
       query: notification.comment ? { comment: notification.comment } : undefined,
     }
   }
-  // Added to a space, or a space moved: the space itself. Added to a community: its feed.
   if (notification.project && notification.team) {
     return {
       name: 'Space',
@@ -155,10 +143,8 @@ export function notificationRoute(
   return null
 }
 
-/** The glyph that stands in when a row has no sender avatar to show. */
 export function notificationIcon(notification: { type?: string }) {
   if (notification.type === 'Rich Quote') return 'lucide-text-quote'
-  // A merged "N new comments" row has no single sender, so no avatar — this stands in.
   if (notification.type === 'Comment') return 'lucide-message-circle'
   if (notification.type === 'New Discussion') return 'lucide-message-square-plus'
   if (notification.type === 'Added') return 'lucide-user-plus'
@@ -167,7 +153,6 @@ export function notificationIcon(notification: { type?: string }) {
   return 'lucide-at-sign'
 }
 
-/** "Community / Space" for a row, from the lists the app already holds. */
 export function notificationLocation(notification: {
   team?: string | null
   project?: string | number | null

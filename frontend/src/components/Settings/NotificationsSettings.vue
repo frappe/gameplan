@@ -5,8 +5,6 @@
     <div class="space-y-7 pt-6">
       <section>
         <div class="divide-y divide-outline-gray-1">
-          <!-- SettingsRow's shape, written out because its description is plain text and
-               this one carries the Change link: "Thursdays, all day · Asia/Gaza · Change". -->
           <div class="flex items-center gap-8 py-3.5" :class="editingSchedule && '!pb-1'">
             <div class="min-w-0 flex-1">
               <div class="text-base-medium text-ink-gray-8">Receive notifications</div>
@@ -32,13 +30,6 @@
             </div>
           </div>
 
-          <!-- The hours unfold under the switch: all day, every day until narrowed, so
-               there is nothing to turn on. Native time inputs: hour, minute and am/pm are
-               each a segment you click and step; the browser's clock popup is hidden
-               (index.css) so there is no endless list to scroll. -->
-          <!-- Two rows in the page's own shape — label left, control right — but read as
-               part of the switch's row: no dividers, tighter, with the sub-labels in the muted
-               body weight rather than a row title's. -->
           <template v-if="receiveNotifications && editingSchedule">
             <SettingsRow
               title="Hours"
@@ -62,17 +53,11 @@
               </div>
             </SettingsRow>
 
-            <!-- The last selected day cannot be unpicked: a schedule with no days is not a
-                 schedule (the server refuses it too), and there is no other day to pick. -->
             <SettingsRow
               title="Days"
               class="!border-t-0 !pb-4 !pt-2 [&>div:first-child>*]:!text-base [&>div:first-child>*]:!font-normal [&>div:first-child>*]:!text-ink-gray-7"
             >
               <div class="flex flex-wrap justify-end gap-1.5" role="group" aria-label="Active days">
-                <!-- Seven toggles: a picked day is the solid button, an unpicked one the soft
-                     grey, so the picked set reads at a glance without any borders. The last
-                     picked day is not disabled — a disabled solid button greys out and reads
-                     as unpicked — it simply ignores the click (toggleDay keeps one day). -->
                 <Button
                   v-for="day in allWeekdays"
                   :key="day"
@@ -185,7 +170,6 @@ import type { GPUserProfile } from '@/types/doctypes'
 
 const sessionUser = useSessionUser()
 
-// Push joins this list once the relay exists (Phase 5); until then it is not offered.
 const channelOptions: Array<{ value: NotificationChannel; label: string }> = [
   { value: 'In-app', label: 'In-app only' },
   { value: 'Email', label: 'Email' },
@@ -195,15 +179,11 @@ const participationOptions: Array<{ value: ParticipationLevel; label: string }> 
   { value: 'Mentions only', label: 'Mentions only' },
 ]
 
-// The schedule runs in the timezone from Preferences (User.time_zone), falling back to the
-// site's when none is set — the same rule the server applies.
 const timezoneLabel = computed(
   () => sessionUser.time_zone || getConfig('systemTimezone') || 'the site timezone',
 )
-// 23:59 is "end of day", not a wrap into tomorrow (the server reads it the same way).
 const editingSchedule = ref(false)
 
-// "Thursdays, all day" / "Weekdays, 9:00 AM – 6:00 PM" / "Every day, all day".
 const dayNames: Record<Weekday, string> = {
   Mon: 'Mondays',
   Tue: 'Tuesdays',
@@ -307,7 +287,6 @@ const selectedDigestDayOfWeek = computed({
   get: () => emailDigestDayOfWeek.value,
   set: saveDigestDayOfWeek,
 })
-// The last send date rides on the switch's own description rather than a row of its own.
 const emailDigestDescription = computed(() => {
   const lastSent = sessionUser.email_digest_last_sent_on
     ? `Last sent ${dayjsLocal(sessionUser.email_digest_last_sent_on).format('D MMM YYYY')}`

@@ -78,8 +78,6 @@ const communityOptions = computed(() =>
   })),
 )
 
-// Spaces from every picked community, grouped under their community's name; every
-// community when none is picked.
 const groupedSpaces = useGroupedSpaces()
 const spaceOptions = computed(() => {
   const picked = new Set(filters.value.communities)
@@ -98,7 +96,6 @@ const spaceOptions = computed(() => {
 function setCommunities(values: Array<string | number>) {
   const communities = values.map(String)
   setNotificationCommunities(communities)
-  // A space filter is scoped to the picked communities, so drop spaces that just left scope.
   if (communities.length) {
     const inScope = new Set(
       groupedSpaces.value
@@ -120,8 +117,6 @@ function triggerLabel(selected: Array<{ label: string }>, none: string, plural: 
   return `${selected.length} ${plural}`
 }
 
-// The picker speaks `[from, to]` (or `[]`); the store keeps a single day as a range whose
-// ends match, so the two map onto each other directly.
 const dateRange = computed<string[]>(() => {
   const bounds = notificationDateBounds.value
   return bounds ? [bounds[0], bounds[1]] : []
@@ -135,7 +130,6 @@ function setDateRange(range: string[]) {
 const dateLabel = computed(() => {
   const bounds = notificationDateBounds.value
   if (!bounds) return 'All dates'
-  // Plain `dayjs`: these are calendar dates, not server timestamps to shift into local time.
   const [from, to] = bounds.map((day) => dayjs(day))
   const thisYear = dayjs().year()
   const withYear = (day: typeof from) =>

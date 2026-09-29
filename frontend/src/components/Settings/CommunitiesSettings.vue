@@ -55,7 +55,6 @@
           <template #action>
             <!-- Icon alone on phones, where the search needs the width. -->
             <div class="flex shrink-0 items-center gap-2">
-              <!-- One flip for every live space in the community; the row bells follow. -->
               <Button
                 v-if="liveSpaces.length"
                 :icon="isPhone ? notifyAllIcon : undefined"

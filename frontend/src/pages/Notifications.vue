@@ -13,7 +13,6 @@
   </PageHeaderMobile>
   <PageHeader class="hidden sm:flex">
     <Breadcrumbs :items="[{ label: 'Notifications', route: { name: 'Notifications' } }]" />
-    <!-- The page's one action lives in the header, like "Add new" on Discussions. -->
     <div class="flex items-center gap-2">
       <Button
         v-if="canMarkAllAsRead"
@@ -26,16 +25,11 @@
   </PageHeader>
 
   <div class="body-container" :style="{ '--toolbar-height': `${toolbarHeight}px` }">
-    <!-- Sticky toolbar, bled out by the body-container padding so its background covers
-         the gutters as rows scroll under it (the Search page does the same). Desktop:
-         tabs left, filters right on one line. Phone: the filters take their own
-         full-width line under the tabs and scroll sideways if they overflow. -->
     <div
       ref="toolbarEl"
       class="sticky top-0 z-30 -mx-3 flex flex-wrap items-center gap-3 bg-surface-base px-7 pb-3 pt-4 sm:-mx-5 sm:flex-nowrap sm:px-8 sm:pt-5"
     >
       <TabButtons class="shrink-0" :options="tabOptions" v-model="activeTab" />
-      <!-- Filters earn their place once there is something to filter. -->
       <div
         v-if="showFilters"
         class="-mx-4 w-[calc(100%+2rem)] overflow-x-auto px-4 py-0.5 sm:mx-0 sm:ml-auto sm:w-auto sm:min-w-0 sm:px-0"
@@ -57,8 +51,6 @@
       v-else-if="notifications?.length"
       class="max-sm:list-gap-3 sm:list-gap-4 max-sm:list-row-px-4"
     >
-      <!-- One group per local calendar day, newest first, header pinned while its rows
-           scroll under it. Days with nothing in them do not appear. -->
       <ListGroup
         v-for="group in dayGroups"
         :key="group.day"
@@ -77,8 +69,6 @@
     </List>
 
     <div v-else>
-      <!-- A single picked day with nothing in it still shows its label, so the empty
-           state reads as "nothing on this day" rather than "nothing at all". -->
       <div
         v-if="singleDayLabel"
         class="flex h-8 items-center px-4 text-sm-medium text-ink-gray-5 sm:px-3"
@@ -133,17 +123,9 @@ import { useSessionUser } from '@/data/users'
 
 type ActiveTab = 'Unread' | 'Read'
 
-// `last_event_at` is optional in the generated type but every row carries it: new rows
-// are stamped on insert and older ones were backfilled from `creation` (see
-// gp_notification/patches/backfill_last_event_at.py).
-
 const activeTab = ref<ActiveTab>('Unread')
 
-// The day headers pin just under the sticky toolbar, whose height depends on whether the
-// filters wrapped onto their own line — so it is measured, not assumed.
 const toolbarEl = ref<HTMLElement | null>(null)
-// Border box: the day labels pin to the toolbar's bottom edge, padding included. The
-// default content box leaves them 28px under it, hidden behind its background.
 const { height: toolbarHeight } = useElementSize(toolbarEl, undefined, { box: 'border-box' })
 const sessionUser = useSessionUser()
 
@@ -153,7 +135,6 @@ const notificationFields = [
   'message',
   'read',
   'type',
-  // Ordering and display both read this: the latest event behind the row.
   'last_event_at',
   'event_count',
   'comment',
@@ -164,22 +145,12 @@ const notificationFields = [
   'team',
 ]
 
-// True from a filter change until the next page of rows lands; the loading guard below
-// reads it. Declared before the lists so their onSuccess can clear it.
 const filtersChangedSinceLoad = ref(false)
 watch(notificationFilters, () => (filtersChangedSinceLoad.value = true), { deep: true })
 
-/**
- * The filters show only when the tab being looked at has five or more notifications,
- * counted regardless of the filters themselves: under that there is nothing worth
- * narrowing. The unread count is the badge's; the read count is asked for here. A filter
- * left in local storage is cleared when the row goes, or it would narrow the list
- * invisibly.
- */
 const FILTERS_FROM = 5
 const readNotificationCount = useCall<number>({
   url: '/api/v2/method/frappe.client.get_count',
-  // Query-string params are flattened, so the filters go over as JSON.
   params: {
     doctype: 'GP Notification',
     filters: JSON.stringify({ to_user: sessionUser.name, read: 1 }),
@@ -187,10 +158,6 @@ const readNotificationCount = useCall<number>({
   cacheKey: ['Read Notification Count', sessionUser.name],
 })
 const showFilters = computed(() => {
-  // A filter that is set keeps its own controls on screen however few rows are left: they
-  // are what narrowed the list, so hiding them would narrow it invisibly. Clearing the
-  // filter instead threw away a choice the reader made, and a glance at the quieter tab was
-  // enough to trigger it, since both tabs share the one filter.
   if (hasActiveNotificationFilters.value) return true
   const count = activeTab.value === 'Unread' ? unreadNotifications.data : readNotificationCount.data
   return (count ?? FILTERS_FROM) >= FILTERS_FROM
@@ -252,9 +219,6 @@ const notifications = computed(() =>
   activeTab.value === 'Unread' ? unreadNotificationList.data : readNotificationList.data,
 )
 
-// The list arrives newest-first by `last_event_at`; bucket it by the user's local calendar
-// day, keeping that order. A day key like "2026-09-16" keeps the groups stable across
-// reloads; the label is what the header shows.
 const dayGroups = computed(() => {
   const groups: { day: string; label: string; rows: NotificationRow[] }[] = []
   for (const row of notifications.value ?? []) {
@@ -277,7 +241,6 @@ function dayLabel(at: ReturnType<typeof dayjsLocal>) {
   return at.format(at.year() === today.year() ? 'D MMMM, dddd' : 'D MMMM YYYY, dddd')
 }
 
-// When exactly one day is picked and it is empty, its label still heads the empty state.
 const singleDayLabel = computed(() => {
   const bounds = notificationDateBounds.value
   if (!bounds || bounds[0] !== bounds[1]) return null
@@ -287,8 +250,6 @@ const singleDayLabel = computed(() => {
 // Same guard as DiscussionList: without it the fetch's empty window renders the
 // "You're caught up" box, which contradicts the unread badge that brought the user here.
 // A cached list (`cacheKey`) fills `data` before the request settles, so the skeleton
-// only shows on a genuinely cold load — and while a filter change is in flight, because
-// the cache would otherwise show the previous filter's rows under the new filter's label.
 const skeletonRowCount = 3
 const activeList = computed(() =>
   activeTab.value === 'Unread' ? unreadNotificationList : readNotificationList,
@@ -298,7 +259,6 @@ const isInitialLoading = computed(
     activeList.value.loading && (!activeList.value.data?.length || filtersChangedSinceLoad.value),
 )
 
-// With a filter on, an empty list means "nothing matches", not "nothing at all".
 const emptyStateTitle = computed(() => {
   if (hasActiveNotificationFilters.value) return 'Nothing here'
   return activeTab.value === 'Unread' ? "You're caught up" : 'No read notifications'
@@ -390,22 +350,14 @@ function confirmMarkAllAsRead() {
 function useNotificationList(read: 0 | 1, cacheKey: string) {
   return useList<NotificationRow>({
     doctype: 'GP Notification',
-    // A getter, so the list refetches as the page filters change (see notificationFilters.ts).
     filters: () => ({ to_user: sessionUser.name, read, ...notificationListFilters() }),
     fields: notificationFields,
-    // `last_event_at` is the one timestamp that is right for both ordering and display. A
-    // reaction or comment notification is a single row re-lit in place, so `creation` would
-    // bury a freshly raised one at its original position; `modified` also moves when the row
-    // is marked read and would date every read notification to the moment it was opened.
     orderBy: 'last_event_at desc',
     // The page has no pagination control, so the window has to be wide enough to hold a
     // realistic backlog. `useList.reload()` refetches at the current offset and appends,
     // which makes a "load more" button unsafe on a list that mark-as-read reloads.
     limit: 100,
     cacheKey,
-    // Lets the socket handler recognise the echo of this tab's own writes (see
-    // data/notifications.ts): a `notification_changed` event naming a row we already hold
-    // at this `event_count` and `read` is not news.
     onSuccess(rows) {
       rememberNotificationRows(rows)
       filtersChangedSinceLoad.value = false

@@ -94,13 +94,10 @@ const emit = defineEmits<{ (e: 'read', name: string): void }>()
 
 const route = computed(() => notificationRoute(props.notification))
 const location = computed(() => notificationLocation(props.notification))
-// A sender's face, unless it is a reaction (the emoji glyph) or a merged row that no
-// longer belongs to one sender.
 const showAvatar = computed(() =>
   Boolean(props.notification.from_user && props.notification.type !== 'Reaction'),
 )
 
-// Opening an unread row reads it; the row's own link does the navigation.
 function open() {
   if (!props.notification.read && route.value) emit('read', props.notification.name)
 }

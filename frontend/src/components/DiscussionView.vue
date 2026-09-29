@@ -32,9 +32,6 @@
       <span class="hidden text-lg-medium text-ink-gray-8 print:inline">
         {{ [communityTitle, space?.title].filter(Boolean).join(' / ') }}
       </span>
-      <!-- The post's own row carries the bell and the menu while it is on screen; once it
-           scrolls away (its sticky hold ends with the post) they reappear here, so neither
-           ever needs a scroll back to the top. -->
       <div v-if="showHeaderActions" class="flex items-center gap-2 print:hidden">
         <DiscussionNotificationBell
           :state="discussion.doc!.notification_state!"
@@ -895,9 +892,6 @@ const canMoveOrPinDiscussion = computed(() =>
   canMoveOrPinContent(discussion.doc, space.value, useSessionUser()),
 )
 
-// The page header takes over the bell and the menu once the post's own action row has
-// scrolled out of view (its sticky hold lasts only as long as the post). Editing the post
-// is done from the post, so the header menu drops Edit and Revisions.
 const postActionsRow = useTemplateRef<HTMLElement>('postActionsRow')
 const postActionsVisible = ref(true)
 useIntersectionObserver(postActionsRow, ([entry]) => {
@@ -1042,8 +1036,6 @@ const actions = computed(() => [
 
 async function setNotificationState(choice: DiscussionNotificationChoice) {
   await discussion.setNotificationState.submit({ state: choice })
-  // The doc method returns what the bell should now show; `doc` is the shared store
-  // object, so every view of this discussion follows.
   const result = discussion.setNotificationState.data
   if (discussion.doc && result) {
     discussion.doc.notification_state = result.notification_state

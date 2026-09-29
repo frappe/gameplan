@@ -199,6 +199,47 @@ class TestHourlyBatch(DeliveryTestCase):
 		message, text = get_email_from_template(email["template"], email["args"])
 		self.assertIn("Summary", text)
 
+	def test_the_summary_total_matches_the_subject(self):
+		"""The subject counts notifications, so the summary lines have to count the same
+		things: a merged row is one notification however many events it stands for."""
+		self.set_prefs(self.second_member, notification_channel="In-app")
+		frappe.get_doc(
+			doctype="GP Space Subscription",
+			user=self.second_member.name,
+			project=self.space.name,
+		).insert(ignore_permissions=True)
+		with self.as_user(self.member):
+			for index in range(delivery.SUMMARY_FROM + 1):
+				discussion = create_discussion(f"Thread {index}", self.space)
+			create_comment(discussion, content="a reply that merges nothing yet")
+		self.set_prefs(self.second_member, notification_channel="Email")
+
+		email = self.run_hourly().call_args.kwargs
+
+		counted = sum(int(line.split(" ", 1)[0]) for line in email["args"]["summary"])
+		self.assertIn(f"{counted} new notification", email["subject"])
+
+	def test_a_skipped_row_is_deliverable_again_once_it_is_re_lit(self):
+		"""email_skipped_at records a row that was deliberately not mailed. A later event
+		re-lights the row, and the delivery query filters on that stamp, so leaving it set
+		would keep the row out of every future mail."""
+		self.mention_second_member()
+		row = self.rows_for(self.second_member)[0]
+		frappe.db.set_value("GP Notification", row.name, "read", 1)
+		self.run_hourly().assert_not_called()
+		self.assertTrue(self.rows_for(self.second_member)[0].email_skipped_at)
+
+		frappe.get_doc(
+			doctype="GP Discussion Subscription",
+			user=self.second_member.name,
+			discussion=self.discussion.name,
+			state="Watch",
+		).insert(ignore_permissions=True)
+		with self.as_user(self.member):
+			create_comment(self.discussion, content="<p>something new</p>")
+
+		self.run_hourly().assert_called_once()
+
 	def test_a_small_batch_is_still_listed_in_full(self):
 		self.mention_second_member()
 

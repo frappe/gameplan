@@ -9,8 +9,6 @@ export type NewActivityEvent = {
   reference_name: string
 }
 
-/** The changed row inside `gameplan:notification_changed`. Mirrors
- * `notify_notification_changed` in gameplan/realtime.py — keep field names in sync. */
 export type NotificationChange = {
   name: string
   event_count: number
@@ -31,10 +29,6 @@ export type NotificationChange = {
  */
 export type GameplanSocketEvents = {
   'gameplan:unread_counts_changed': void
-  /**
-   * `count` is the recipient's unread notification count after the change. `notification`
-   * is the row that was written, merged or read — or `null` for a bulk clear.
-   */
   'gameplan:notification_changed': {
     count: number
     notification: NotificationChange | null
