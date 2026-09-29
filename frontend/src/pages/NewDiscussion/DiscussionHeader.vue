@@ -6,7 +6,7 @@
     <template #suffix>
       <div class="flex items-center gap-1">
         <button
-          v-if="sessionUser.name == author.name"
+          v-if="sessionUser.name == author?.name"
           type="button"
           class="inline-flex size-8 shrink-0 items-center justify-center rounded-4 text-ink-gray-7 transition hover:bg-surface-gray-2 active:bg-surface-gray-3 disabled:cursor-not-allowed disabled:opacity-50"
           aria-label="Delete draft"
@@ -16,13 +16,17 @@
         >
           <span class="lucide-trash-2 size-4" aria-hidden="true" />
         </button>
-        <Tooltip :text="publishDisabledReason" :disabled="canPublish">
+        <Tooltip
+          v-if="sessionUser.name == author?.name"
+          text="Draft is loading"
+          :disabled="isComposerEditable"
+        >
           <Button
             variant="solid"
             size="md"
             :loading="publishing"
             @click="publish"
-            :disabled="!canPublish"
+            :disabled="!isComposerEditable"
           >
             Publish
           </Button>
@@ -46,7 +50,7 @@
       <DiscussionSpaceSelector />
 
       <button
-        v-if="sessionUser.name == author.name"
+        v-if="sessionUser.name == author?.name"
         type="button"
         class="inline-flex size-8 shrink-0 items-center justify-center rounded-4 text-ink-gray-7 transition hover:bg-surface-gray-2 active:bg-surface-gray-3 disabled:cursor-not-allowed disabled:opacity-50"
         aria-label="Delete draft"
@@ -56,12 +60,16 @@
       >
         <span class="lucide-trash-2 size-4" aria-hidden="true" />
       </button>
-      <Tooltip :text="publishDisabledReason" :disabled="canPublish">
+      <Tooltip
+        v-if="sessionUser.name == author?.name"
+        text="Draft is loading"
+        :disabled="isComposerEditable"
+      >
         <Button
           variant="solid"
           :loading="publishing"
           @click="publish"
-          :disabled="!canPublish"
+          :disabled="!isComposerEditable"
         >
           Publish
         </Button>
@@ -98,12 +106,6 @@ const {
 
 const route = useRoute()
 const mobileTitle = computed(() => (isPersisted.value ? 'Draft' : 'New Discussion'))
-
-const canPublish = computed(() => isComposerEditable.value)
-const publishDisabledReason = computed(() => {
-  if (isDraftLoading.value) return 'Draft is loading'
-  return 'You cannot publish this draft'
-})
 
 // Cold-load fallback only: with any in-app history the back button walks it instead.
 // A composer opened straight from a link belongs to a space, so send the user there.
