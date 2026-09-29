@@ -7,7 +7,7 @@ import json
 import frappe
 from frappe import _
 from frappe.query_builder.functions import Count
-from frappe.utils import cint, split_emails, validate_email_address
+from frappe.utils import cint, cstr, split_emails, validate_email_address
 
 import gameplan
 from gameplan.gameplan.doctype.gp_invitation.gp_invitation import grant_access
@@ -314,7 +314,7 @@ def onboarding(community, space, icon, emails, is_private=0):
 
 
 @frappe.whitelist()
-def search_sqlite(query, filters=None):
+def search_sqlite(query=None, filters=None, sort_by=None):
 	from gameplan.search_sqlite import GameplanSearch
 
 	search = GameplanSearch()
@@ -325,7 +325,7 @@ def search_sqlite(query, filters=None):
 
 		filters = json.loads(filters)
 
-	result = search.search(query, filters=filters)
+	result = search.search(cstr(query), filters=filters, sort_by=sort_by)
 	return result
 
 
