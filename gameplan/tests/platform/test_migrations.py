@@ -7,6 +7,7 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from gameplan.gameplan.doctype.gp_discussion.api import get_discussions
+from gameplan.gameplan.doctype.gp_notification.patches import backfill_project_and_team
 from gameplan.gameplan.doctype.gp_project.patches.assign_default_team_to_uncategorized_spaces import (
 	execute as assign_default_team,
 )
@@ -227,6 +228,66 @@ class TestBackfillCommunityOrderMigration(FrappeTestCase):
 		backfill_community_order()
 
 		self.assertEqual(_get_community_order(member.name), existing_order)
+
+
+class TestBackfillNotificationSpaceMigration(FrappeTestCase):
+	def tearDown(self):
+		frappe.set_user("Administrator")
+		frappe.db.rollback()
+
+	def _notification(self, discussion, **overrides):
+		row = frappe.get_doc(
+			doctype="GP Notification",
+			to_user="Administrator",
+			type="Mention",
+			message="backfill test",
+			discussion=discussion,
+			**overrides,
+		).insert(ignore_permissions=True)
+		Notification = frappe.qb.DocType("GP Notification")
+		(
+			frappe.qb.update(Notification)
+			.set(Notification.project, None)
+			.set(Notification.team, None)
+			.where(Notification.name == row.name)
+		).run()
+		return row.name
+
+	def test_it_fills_the_space_and_community_across_several_batches(self):
+		community = create_community("Backfill Space Community")
+		space = create_space("Backfill Space", community)
+		discussion = _create_discussion(space.name)
+		names = [self._notification(discussion.name) for _ in range(3)]
+
+		original = backfill_project_and_team.BATCH_SIZE
+		backfill_project_and_team.BATCH_SIZE = 1
+		try:
+			backfill_project_and_team.execute()
+		finally:
+			backfill_project_and_team.BATCH_SIZE = original
+
+		for name in names:
+			row = frappe.db.get_value("GP Notification", name, ["project", "team"], as_dict=True)
+			self.assertEqual(str(row.project), str(space.name))
+			self.assertEqual(row.team, community.name)
+
+	def test_a_row_whose_discussion_is_gone_does_not_stall_the_walk(self):
+		"""The cursor steps past every row it reads. A row it cannot fill would otherwise be
+		fetched again forever, because the column it filters on stays empty."""
+		community = create_community("Backfill Orphan Community")
+		space = create_space("Backfill Orphan Space", community)
+		discussion = _create_discussion(space.name)
+		orphan = self._notification(discussion.name)
+		Notification = frappe.qb.DocType("GP Notification")
+		(
+			frappe.qb.update(Notification)
+			.set(Notification.discussion, "99999999")
+			.where(Notification.name == orphan)
+		).run()
+
+		backfill_project_and_team.execute()
+
+		self.assertIsNone(frappe.db.get_value("GP Notification", orphan, "project"))
 
 
 def _uncategorized_exists():
