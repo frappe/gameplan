@@ -1,6 +1,10 @@
+import { dayjs, getConfig } from 'frappe-ui'
 import { useList } from '@/data/offline/resources'
 import { computed } from 'vue'
+import { isEditorContentEmpty } from '@/utils'
+import { listDraftRecords, type DraftRecord } from './draftStore'
 import { session } from './session'
+import { getSpace } from './spaces'
 
 /** A row from `get_my_drafts` — a new-discussion draft or a new-comment draft on a
  *  discussion, already resolved to everything needed to render and route it. */
@@ -72,4 +76,49 @@ export function createDraft(fields: Record<string, unknown>): Promise<DraftDoc> 
 /** The bare `GP Draft` row an insert returns — not the enriched {@link DraftRow} the list holds. */
 interface DraftDoc {
   name: string
+}
+
+/**
+ * New-discussion drafts saved only on this device: started offline, so not on the server and
+ * not in `drafts` yet. Each keeps its own name, which opens it and later names its server row.
+ */
+export async function listLocalDrafts(): Promise<DraftRow[]> {
+  const records = await listDraftRecords()
+  return records.filter(isLocalOnly).map(toDraftRow)
+}
+
+function isLocalOnly({ identity, payload, serverName, user }: DraftRecord) {
+  const hasContent = !isEditorContentEmpty(payload.content) || Boolean(payload.title?.trim())
+  return (
+    user === session.user &&
+    identity.type === 'Discussion' &&
+    identity.mode === 'New' &&
+    !identity.referenceName &&
+    !serverName &&
+    hasContent
+  )
+}
+
+function toDraftRow(record: DraftRecord): DraftRow {
+  const space = record.payload.project ? getSpace(record.payload.project) : null
+  // Server rows carry the site's time, which is what the page formats from.
+  const systemTimezone = getConfig('systemTimezone')
+  const updated = systemTimezone
+    ? dayjs(record.updatedAt).tz(systemTimezone)
+    : dayjs(record.updatedAt)
+  const modified = updated.format('YYYY-MM-DD HH:mm:ss')
+  return {
+    name: record.key,
+    kind: 'discussion',
+    owner: record.user!,
+    title: record.payload.title ?? null,
+    content: record.payload.content,
+    modified,
+    creation: modified,
+    space: space?.name ?? null,
+    space_title: space?.title ?? null,
+    community: space?.team ?? null,
+    is_private: space?.is_private ?? false,
+    discussion: null,
+  }
 }

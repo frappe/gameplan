@@ -175,9 +175,10 @@ const startEditing = () => {
 }
 
 const discardEdit = async () => {
+  // Offline, an edit saved to the server is kept, and the toast says why.
+  if (!(await draft.clear())) return
   isEditing.value = false
   updateError.value = null
-  await draft.clear()
 }
 
 const updateComment = () => {

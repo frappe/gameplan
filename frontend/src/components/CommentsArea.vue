@@ -808,12 +808,10 @@ async function discardComment() {
       confirmLabel: 'Discard comment',
       cancelLabel: 'Keep comment',
       onConfirm: async () => {
-        await draft.clear()
-        resetCommentState()
+        if (await draft.clear()) resetCommentState()
       },
     })
-  } else {
-    await draft.clear()
+  } else if (await draft.clear()) {
     resetCommentState()
   }
 }

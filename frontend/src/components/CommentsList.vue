@@ -392,12 +392,10 @@ async function discardComment() {
       message: 'Are you sure you want to discard your comment?',
       confirmLabel: 'Discard comment',
       onConfirm: async () => {
-        await draft.clear()
-        resetCommentState()
+        if (await draft.clear()) resetCommentState()
       },
     })
-  } else {
-    await draft.clear()
+  } else if (await draft.clear()) {
     resetCommentState()
   }
 }

@@ -1,6 +1,6 @@
 import { ref, computed, onMounted, provide, inject, watch, type InjectionKey } from 'vue'
 import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
-import { call, useDoctype } from 'frappe-ui'
+import { call, toast, useDoctype } from 'frappe-ui'
 import { dialog } from '@/data/offline/dialog'
 import { useOwnedRouteWrites } from '@/composables/useOwnedRouteWrites'
 import { useDraftSync, type DraftPayload } from '@/data/useDraftSync'
@@ -125,8 +125,8 @@ export function useNewDiscussion() {
   function syncDraftToRoute(name: string) {
     runWhenOwned(() => {
       // A deferred sync could land after the composer moved on to a different draft; never
-      // point the URL at a row this composer no longer holds.
-      if (draft.serverName.value !== name) return
+      // point the URL at a draft this composer no longer holds.
+      if (draft.name.value !== name) return
       if (communityId.value) {
         router.replace({
           name: 'NewDiscussion',
@@ -302,9 +302,7 @@ export function useNewDiscussion() {
 
   async function deleteDraft() {
     if (!draftData.value || !hasMeaningfulContent(draftData.value)) {
-      isDeletingDraft.value = true
-      await draft.clear()
-      leaveDraft()
+      await clearAndLeave().catch(() => toast.error('Could not delete the draft'))
       return
     }
 
@@ -312,12 +310,21 @@ export function useNewDiscussion() {
       title: 'Delete this draft?',
       message: 'This will permanently delete the draft and cannot be undone.',
       confirmLabel: 'Delete draft',
-      onConfirm: async () => {
-        isDeletingDraft.value = true
-        await draft.clear()
-        leaveDraft()
-      },
+      // A refusal shows in the dialog, and the draft is kept.
+      onConfirm: clearAndLeave,
     })
+  }
+
+  async function clearAndLeave() {
+    isDeletingDraft.value = true
+    let cleared = false
+    try {
+      // Offline, a draft on the server is kept, and the toast says why.
+      cleared = await draft.clear()
+    } finally {
+      if (!cleared) isDeletingDraft.value = false
+    }
+    if (cleared) leaveDraft()
   }
 
   function leaveDraft() {
