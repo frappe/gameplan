@@ -7,7 +7,7 @@
  * The reactive orchestration (debounced server sync, lazy row creation, reconciliation)
  * lives in `useDraftSync`.
  */
-import { get, update, del, entries, clear, createStore } from 'idb-keyval'
+import { get, update, del, entries, clear, createStore, promisifyRequest } from 'idb-keyval'
 import { isEditorContentEmpty } from '@/utils'
 
 export type DraftType = 'Discussion' | 'Comment'
@@ -130,29 +130,20 @@ export function withDraftLock<T>(name: string, task: () => Promise<T>): Promise<
  * transaction, so a crash leaves all or nothing.
  */
 function convertOldRecords(): Promise<void> {
-  return store('readwrite', (records) => {
-    return new Promise((resolve, reject) => {
-      const cursor = records.openCursor()
-      cursor.onerror = () => reject(cursor.error)
-      cursor.onsuccess = () => {
-        const entry = cursor.result
-        if (!entry) {
-          records.transaction.oncomplete = () => resolve()
-          records.transaction.onerror = () => reject(records.transaction.error)
-          return
-        }
-        const old = entry.value as Partial<DraftRecord> & { deleted?: boolean }
-        if (String(entry.key).includes('::')) {
-          // Queued deletions carry no identity, and tombstones are drafts already deleted.
-          if (old.identity && !old.deleted) {
-            const key = old.serverName || newDraftName()
-            records.put({ ...old, key, serverName: old.serverName ?? null }, key)
-          }
-          entry.delete()
-        }
-        entry.continue()
+  return store('readwrite', async (records) => {
+    const keys = await promisifyRequest(records.getAllKeys())
+    const values = await promisifyRequest(records.getAll())
+    keys.forEach((oldKey, i) => {
+      if (!String(oldKey).includes('::')) return
+      const old = values[i] as Partial<DraftRecord> & { deleted?: boolean }
+      // Queued deletions carry no identity, and tombstones are drafts already deleted.
+      if (old.identity && !old.deleted) {
+        const key = old.serverName || newDraftName()
+        records.put({ ...old, key, serverName: old.serverName ?? null }, key)
       }
+      records.delete(oldKey)
     })
+    return promisifyRequest(records.transaction)
   })
 }
 

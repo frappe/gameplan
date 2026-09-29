@@ -6,15 +6,9 @@
  * IndexedDB immediately and pushed to the server on a debounce. The server row is created
  * lazily on the first saveable change, so we never persist empty drafts.
  *
- * Every draft has one name from its first keystroke (see draftStore): its local key, its
- * `?draft=` URL and its GP Draft row. Saving creates the row under that name, or updates it
- * if it exists, so a retry never makes a second row. The server refuses a deleted name, so
- * nothing can bring a deleted draft back; whoever holds a copy drops it when told.
- *
- * Two kinds of drafts (see {@link DraftIdentity}):
- *  - Singleton (comment-in-progress, in-flight edit): one draft per (user, type, mode,
- *    target), found by its target. Two tabs editing the same thing share it.
- *  - Standalone (new discussion): each composition is its own draft.
+ * A draft has one name from its first keystroke: its local key, its `?draft=` and its GP
+ * Draft row. A retried save never makes a second row, and the server refuses a deleted name.
+ * A singleton (a reply or an edit) is found by its target; a new discussion is its own draft.
  */
 import {
   ref,
@@ -104,8 +98,7 @@ export interface ResolvedDraft {
   /** The draft's name: the local record's, the server row's, or a new draft's. */
   name: string
   payload: DraftPayload
-  /** Whether a `GP Draft` row by this name exists. A draft only ever has its own name, so
-   *  there is no second name here to disagree with it. */
+  /** Whether its `GP Draft` row exists. The row always has the draft's own name. */
   saved: boolean
   /** Who the draft belongs to, or null while unknown. Unknown, or anyone but the session
    *  user, makes it read-only. */
@@ -256,7 +249,7 @@ export function useDraftSync(options: UseDraftSyncOptions) {
   const requestedName = toValue(options.draftName ?? null)
   // The draft's name for its whole life; a singleton's is settled when it is looked up.
   const name = ref(requestedName ?? newDraftName())
-  // Whether the server row exists. It is always named `name`, so `serverName` is derived.
+  // Whether the server row, always named `name`, exists.
   const saved = ref(false)
   const serverName = computed(() => (saved.value ? name.value : null))
 
@@ -335,8 +328,7 @@ export function useDraftSync(options: UseDraftSyncOptions) {
     const draft = { key: draftName, identity: toValue(identity), payload }
     saving.value = true
     try {
-      // The local record says it is saved before the lock is let go: a delete waiting on the
-      // lock reads it to know there is a server row to delete.
+      // Recorded before the lock is let go, so a delete waiting on it deletes the row too.
       const current = await withDraftLock(draftName, async () => {
         await saveToServer(draftDoc, draft, saved.value)
         // Reset onto a new draft meanwhile: this result belongs to the old one.
@@ -464,8 +456,7 @@ export function useDraftSync(options: UseDraftSyncOptions) {
       let opened = requestedName
       let doc = server.doc
       if (server.known && local && doc?.name !== local.key) {
-        const unsavedEdits = local.updatedAt > (local.syncedAt ?? 0)
-        if (doc && unsavedEdits) {
+        if (doc && hasUnsavedEdits(local)) {
           // Unsaved edits here beat another tab's or device's row for the same target. They
           // are saved as a draft of their own, and find_my_draft keeps the newest.
           doc = null
@@ -774,14 +765,14 @@ export function deleteDraft(name: string, onServer = false): Promise<void> {
   })
 }
 
-/** Deletes a draft's server row; one already gone counts as deleted. */
+/** Deletes a draft's server row, and its row in every GP Draft list; one already gone
+ *  counts as deleted. */
 async function deleteServerDraft(name: string) {
-  try {
-    await call('frappe.client.delete', { doctype: 'GP Draft', name })
-  } catch (error) {
-    if (!isDeletedError(error)) throw error
-  }
-  drafts.removeRow(name)
+  await useDoctype('GP Draft')
+    .delete.submit({ name })
+    .catch((error) => {
+      if (!isDeletedError(error)) throw error
+    })
 }
 
 /** The draft is gone on the server, or was deleted and cannot be saved again. */
