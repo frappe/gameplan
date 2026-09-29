@@ -17,14 +17,12 @@ class GPDraft(Document):
 		self._client_name = self.name
 
 	def autoname(self):
-		"""Keep the name the client gave the draft, so one name identifies it everywhere: its
-		local copy, its URL and this row. Saving it again is then an update, never a second
-		row. A deleted name is refused, so no stale copy can bring a deleted draft back.
-		Without a client name, the default hash applies."""
+		"""Keep the client's name, so a draft has one name everywhere, and refuse a deleted one
+		so no stale copy can bring it back. Without a client name, the default hash applies."""
 		name = getattr(self, "_client_name", None)
 		if not name:
 			return
-		if not isinstance(name, str) or not CLIENT_NAME.fullmatch(name):
+		if not CLIENT_NAME.fullmatch(str(name)):
 			frappe.throw(_("Invalid draft name"), frappe.ValidationError)
 		if frappe.db.exists("Deleted Document", {"deleted_doctype": self.doctype, "deleted_name": name}):
 			frappe.throw(_("This draft was deleted"), frappe.DoesNotExistError)
@@ -321,10 +319,5 @@ def remove_query_params_from_images(content):
 
 
 def on_doctype_update():
-	add_indexes()
-
-
-def add_indexes():
-	# autoname looks a name up in Deleted Document, which Frappe does not index. It keeps a row
-	# for every deletion on the site, so without this every new draft scans all of them.
+	# autoname looks names up in Deleted Document, which Frappe does not index.
 	frappe.db.add_index("Deleted Document", ["deleted_doctype", "deleted_name"])

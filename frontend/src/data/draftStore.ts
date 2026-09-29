@@ -152,15 +152,10 @@ export function clearDraftStore(): Promise<void> {
   return clear(store)
 }
 
-/** Whether a record is a draft for this target (a reply or edit), matched by identity. */
-export function isDraftFor(record: DraftRecord, identity: DraftIdentity): boolean {
-  const id = record.identity
-  return (
-    id.type === identity.type &&
-    id.mode === identity.mode &&
-    (id.referenceDoctype ?? null) === (identity.referenceDoctype ?? null) &&
-    (id.referenceName ?? null) === (identity.referenceName ?? null)
-  )
+/** The target a singleton draft is for, as a string: equal for every draft of one target. */
+export function singletonKey(identity: DraftIdentity): string {
+  const { type, mode, referenceDoctype, referenceName } = identity
+  return [type, mode, referenceDoctype ?? '', referenceName ?? ''].join('::')
 }
 
 type DraftChangeListener = (key: string) => void

@@ -274,9 +274,7 @@ async function deleteDrafts() {
   // One a save reached meanwhile is deleted on the server as well, as its only writer.
   const results = await Promise.allSettled(local.map((name) => deleteDraft(name)))
   const localFailed = local.filter((_, i) => results[i].status === 'rejected')
-  localDrafts.value = localDrafts.value.filter(
-    (draft) => !local.includes(draft.name) || localFailed.includes(draft.name),
-  )
+  loadLocalDrafts()
   if (!saved.length) return reportDelete(local.length - localFailed.length, localFailed)
 
   deleteDraftsCall

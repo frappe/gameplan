@@ -36,7 +36,7 @@ import {
   newDraftName,
   withDraftLock,
   withLock,
-  isDraftFor,
+  singletonKey,
   broadcastDraftChange,
   onDraftChange,
   type DraftIdentity,
@@ -403,9 +403,9 @@ export function useDraftSync(options: UseDraftSyncOptions) {
   /** This draft's local record: by name, or for a singleton the newest one for its target. */
   async function findLocalDraft(): Promise<DraftRecord | null> {
     if (!isSingleton.value) return (await getDraftRecord(name.value)) ?? null
-    const id = toValue(identity)
+    const target = singletonKey(toValue(identity))
     const mine = (await listDraftRecords()).filter(
-      (record) => record.user === session.user && isDraftFor(record, id),
+      (record) => record.user === session.user && singletonKey(record.identity) === target,
     )
     return mine.sort((a, b) => b.updatedAt - a.updatedAt)[0] ?? null
   }

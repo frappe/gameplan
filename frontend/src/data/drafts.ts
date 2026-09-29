@@ -99,11 +99,9 @@ function isUnsavedDiscussion({ identity, payload, serverName, user }: DraftRecor
 function toDraftRow(record: DraftRecord): DraftRow {
   const space = record.payload.project ? getSpace(record.payload.project) : null
   // Server rows carry the site's time, which is what the page formats from.
-  const systemTimezone = getConfig('systemTimezone')
-  const updated = systemTimezone
-    ? dayjs(record.updatedAt).tz(systemTimezone)
-    : dayjs(record.updatedAt)
-  const modified = updated.format('YYYY-MM-DD HH:mm:ss')
+  const modified = dayjs(record.updatedAt)
+    .tz(getConfig('systemTimezone') || undefined)
+    .format('YYYY-MM-DD HH:mm:ss')
   return {
     name: record.key,
     kind: 'discussion',
