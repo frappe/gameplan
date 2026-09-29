@@ -31,15 +31,17 @@ import { isNetworkError, refuseOffline } from '@/data/offline/requests'
 import { isOnline, onReconnect } from './online'
 import { session } from './session'
 import { createDraft, drafts } from './drafts'
-import { isEditorContentEmpty } from '@/utils'
 import { captureError } from '@/utils/errorReporting'
+import { errorType } from '@/utils/errorMessage'
 import {
   getDraftRecord,
+  hasContent,
   putDraftRecord,
   deleteDraftRecord,
   listDraftRecords,
   newDraftName,
   withDraftLock,
+  withLock,
   isDraftFor,
   broadcastDraftChange,
   onDraftChange,
@@ -88,10 +90,6 @@ export interface UseDraftSyncOptions {
   onCreate?: (name: string) => void
 }
 
-function hasContent(payload: DraftPayload): boolean {
-  return !isEditorContentEmpty(payload.content) || (payload.title ?? '').trim().length > 0
-}
-
 /** The `GP Draft` fields this module reads off a fetched row. */
 interface ServerDraftDoc {
   name: string
@@ -126,8 +124,8 @@ export interface ResolvedDraft {
  * Pure, so the precedence rules are readable and checkable on their own. The rules:
  *
  *  - A local record that belongs to someone else does not exist. The IndexedDB store is
- *    origin-wide, so on a shared browser profile a record under this deterministic key may
- *    have been written by a previously logged-in user. Restoring it would surface their
+ *    origin-wide, so on a shared browser profile a draft for this target may have been
+ *    written by a previously logged-in user. Restoring it would surface their
  *    draft and sync our edits onto their server row. Records written before the `user`
  *    field existed are indistinguishable from another account's, so they go too. One that
  *    reached the server still comes back through `server`.
@@ -548,7 +546,7 @@ export function useDraftSync(options: UseDraftSyncOptions) {
       // itself count as an edit; from here `touched` belongs to the person typing.
       captureError(new Error('Draft lookup timed out'), {
         action: 'draft-load',
-        draft: serverName.value,
+        draft: name.value,
       })
       const blank = blankStart()
       await adopt(blank, { quietly: true })
@@ -579,9 +577,9 @@ export function useDraftSync(options: UseDraftSyncOptions) {
     // Deleted, published or posted in another tab: this draft is gone.
     if (!record) return reset()
     if (dirty.value) return
-    // Same owner guard as reconcileDraft: on a shared browser another account's tab can write
-    // deterministic key, and we must not pull their content into this editor.
-    if (record && record.user === session.user) {
+    // Same owner guard as reconcileDraft: on a shared browser the record may be another
+    // account's, and we must not pull their content into this editor.
+    if (record.user === session.user) {
       applyPayload(record.payload)
       saved.value = saved.value || Boolean(record.serverName)
       updatedAt.value = record.updatedAt
@@ -621,6 +619,11 @@ export function useDraftSync(options: UseDraftSyncOptions) {
     return serverName.value
   }
 
+  /** Whether the server row exists, as far as this tab or any other has heard. */
+  async function isOnServer(draftName: string) {
+    return saved.value || Boolean((await getDraftRecord(draftName))?.serverName)
+  }
+
   /**
    * Discard the draft entirely: its server row, if any, and the local copy. A draft on the
    * server can only be deleted with the connection; offline this says so and resolves false,
@@ -629,8 +632,7 @@ export function useDraftSync(options: UseDraftSyncOptions) {
   async function clear(): Promise<boolean> {
     debouncedPush.cancel?.()
     if (activePush) await activePush
-    // Another tab may have saved it since this one last heard.
-    const onServer = saved.value || Boolean((await getDraftRecord(name.value))?.serverName)
+    const onServer = await isOnServer(name.value)
     if (onServer && refuseOffline()) return false
     await deleteDraft(name.value, onServer)
     reset()
@@ -643,7 +645,7 @@ export function useDraftSync(options: UseDraftSyncOptions) {
     debouncedPush.cancel?.()
     if (activePush) await activePush
     const draftName = name.value
-    const onServer = saved.value || Boolean((await getDraftRecord(draftName))?.serverName)
+    const onServer = await isOnServer(draftName)
     const id = toValue(identity)
     reset()
     await deleteDraftRecord(draftName)
@@ -690,6 +692,7 @@ export function useDraftSync(options: UseDraftSyncOptions) {
     lastError,
     /** A pre-existing draft was found and restored on load. */
     restored,
+    /** The draft's name once its server row exists, else null. */
     serverName,
     /** The draft's name: its local key, its `?draft=` and, once saved, its GP Draft name. */
     name,
@@ -781,12 +784,6 @@ async function deleteServerDraft(name: string) {
   drafts.removeRow(name)
 }
 
-/** The server exception a failed request carries, from either frappe-ui request path. */
-function errorType(error: unknown): string | undefined {
-  const e = error as { type?: string; exc_type?: string } | null
-  return e?.exc_type ?? e?.type
-}
-
 /** The draft is gone on the server, or was deleted and cannot be saved again. */
 function isDeletedError(error: unknown) {
   return errorType(error) === 'DoesNotExistError'
@@ -799,21 +796,12 @@ function isDeletedError(error: unknown) {
  */
 export async function recoverOrphanedDrafts(): Promise<number> {
   // One tab at a time: two tabs saving the same drafts would only repeat requests.
-  return runExclusive('gp-draft-recovery', async () => {
+  return withLock('gp-draft-recovery', async () => {
     const records = await listDraftRecords()
     // Independent drafts, so concurrently: one slow or failing save must not hold up the rest.
     const results = await Promise.allSettled(records.map((record) => saveOrphanedDraft(record)))
     return results.filter((result) => result.status === 'fulfilled' && result.value).length
   })
-}
-
-/** Run `fn` while holding a same-origin exclusive lock, so only one tab runs it at a time.
- *  Falls back to running directly where the Web Locks API is unavailable. */
-async function runExclusive<T>(name: string, fn: () => Promise<T>): Promise<T> {
-  if (typeof navigator !== 'undefined' && navigator.locks) {
-    return navigator.locks.request(name, fn) as Promise<T>
-  }
-  return fn()
 }
 
 function hasUnsavedEdits(record: DraftRecord) {
@@ -879,7 +867,7 @@ async function parentDocResolves(
 ): Promise<boolean> {
   if (!doctype || !name) return false
   try {
-    const res = await call('frappe.client.get_value', {
+    const res = await call<{ name?: string } | null>('frappe.client.get_value', {
       doctype,
       filters: { name },
       fieldname: 'name',

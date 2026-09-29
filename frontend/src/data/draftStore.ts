@@ -7,7 +7,8 @@
  * The reactive orchestration (debounced server sync, lazy row creation, reconciliation)
  * lives in `useDraftSync`.
  */
-import { get, del, entries, clear, createStore } from 'idb-keyval'
+import { get, update, del, entries, clear, createStore } from 'idb-keyval'
+import { isEditorContentEmpty } from '@/utils'
 
 export type DraftType = 'Discussion' | 'Comment'
 export type DraftMode = 'New' | 'Edit'
@@ -47,6 +48,11 @@ export interface DraftRecord {
   syncedAt: number | null
 }
 
+/** Title or non-empty body: the threshold for saving a draft at all. */
+export function hasContent(payload: DraftPayload): boolean {
+  return !isEditorContentEmpty(payload.content) || (payload.title ?? '').trim().length > 0
+}
+
 /** A new draft name: 20 random lowercase letters and digits, the form GP Draft accepts. */
 export function newDraftName(): string {
   const alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789'
@@ -71,23 +77,15 @@ export async function getDraftRecord(key: string): Promise<DraftRecord | undefin
 /**
  * Writes a record. One whose server row exists stays saved until it is deleted: a writer
  * that has not heard of the save yet (another tab, the recovery sweep) must not undo it, or
- * a later delete would skip the row. Read and write are one transaction for that reason.
+ * a later delete would skip the row. `update` reads and writes in one transaction.
  */
 export async function putDraftRecord(record: DraftRecord): Promise<void> {
   await ready()
-  return store('readwrite', (records) => {
-    return new Promise((resolve, reject) => {
-      const read = records.get(record.key)
-      read.onerror = () => reject(read.error)
-      read.onsuccess = () => {
-        const stored = read.result as DraftRecord | undefined
-        const serverName = record.serverName ?? stored?.serverName ?? null
-        records.put({ ...record, serverName }, record.key)
-        records.transaction.oncomplete = () => resolve()
-        records.transaction.onerror = () => reject(records.transaction.error)
-      }
-    })
-  })
+  return update<DraftRecord>(
+    record.key,
+    (stored) => ({ ...record, serverName: record.serverName ?? stored?.serverName ?? null }),
+    store,
+  )
 }
 
 export async function deleteDraftRecord(key: string): Promise<void> {
@@ -101,13 +99,13 @@ export async function listDraftRecords(): Promise<DraftRecord[]> {
 }
 
 /**
- * Runs `task` as the only writer of draft `name` in this browser, across tabs, so saving and
- * deleting it never interleave and the server sees its writes in order.
+ * Runs `task` while holding the lock `name`: across tabs with Web Locks, or where those are
+ * missing, queued behind the other tasks of this tab.
  */
 const queues = new Map<string, Promise<unknown>>()
-export function withDraftLock<T>(name: string, task: () => Promise<T>): Promise<T> {
+export function withLock<T>(name: string, task: () => Promise<T>): Promise<T> {
   if (typeof navigator !== 'undefined' && navigator.locks) {
-    return navigator.locks.request(`gp-draft:${name}`, task) as Promise<T>
+    return navigator.locks.request(name, task) as Promise<T>
   }
   const run = (queues.get(name) ?? Promise.resolve()).then(task, task)
   queues.set(
@@ -115,6 +113,14 @@ export function withDraftLock<T>(name: string, task: () => Promise<T>): Promise<
     run.catch(() => {}),
   )
   return run
+}
+
+/**
+ * Runs `task` as the only writer of draft `name` in this browser, so saving and deleting it
+ * never interleave and the server sees its writes in order.
+ */
+export function withDraftLock<T>(name: string, task: () => Promise<T>): Promise<T> {
+  return withLock(`gp-draft:${name}`, task)
 }
 
 /**

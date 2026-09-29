@@ -1,8 +1,7 @@
 import { dayjs, getConfig } from 'frappe-ui'
 import { useList } from '@/data/offline/resources'
 import { computed } from 'vue'
-import { isEditorContentEmpty } from '@/utils'
-import { listDraftRecords, type DraftRecord } from './draftStore'
+import { hasContent, listDraftRecords, type DraftRecord } from './draftStore'
 import { session } from './session'
 import { getSpace } from './spaces'
 
@@ -56,9 +55,8 @@ export const draftCount = computed(() => drafts.data?.length ?? 0)
  * Create a `GP Draft` through the list that owns it, so the new row appears here (and in the
  * rail count) as soon as the server has it.
  *
- * Serialized because `drafts.insert` is a single shared request: two composers creating their
- * first draft at the same moment would otherwise read each other's response and bind to the
- * wrong draft name.
+ * Serialized because `drafts.insert` is a single shared request: two creates at the same
+ * moment would share its state, and one could read the other's response or error.
  */
 let insertQueue: Promise<unknown> = Promise.resolve()
 
@@ -84,18 +82,17 @@ interface DraftDoc {
  */
 export async function listLocalDrafts(): Promise<DraftRow[]> {
   const records = await listDraftRecords()
-  return records.filter(isLocalOnly).map(toDraftRow)
+  return records.filter(isUnsavedDiscussion).map(toDraftRow)
 }
 
-function isLocalOnly({ identity, payload, serverName, user }: DraftRecord) {
-  const hasContent = !isEditorContentEmpty(payload.content) || Boolean(payload.title?.trim())
+function isUnsavedDiscussion({ identity, payload, serverName, user }: DraftRecord) {
   return (
     user === session.user &&
     identity.type === 'Discussion' &&
     identity.mode === 'New' &&
     !identity.referenceName &&
     !serverName &&
-    hasContent
+    hasContent(payload)
   )
 }
 

@@ -181,6 +181,7 @@ import { drafts, listLocalDrafts, type DraftRow } from '@/data/drafts'
 import { broadcastDraftChange, deleteDraftRecord, onDraftChange } from '@/data/draftStore'
 import { whenOnline } from '@/data/online'
 import { refuseOffline } from '@/data/offline/requests'
+import { captureError } from '@/utils/errorReporting'
 
 interface DeleteDraftsResponse {
   deleted: string[]
@@ -210,7 +211,7 @@ const isLocalOnly = (name: string) =>
 function loadLocalDrafts() {
   listLocalDrafts()
     .then((rows) => (localDrafts.value = rows))
-    .catch(() => {})
+    .catch((error) => captureError(error, { action: 'list-local-drafts' }))
 }
 onScopeDispose(onDraftChange(loadLocalDrafts))
 
@@ -281,7 +282,7 @@ async function deleteDrafts() {
   deleteDraftsCall
     .submit({ names: saved })
     .then(() => {
-      let response = deleteDraftsCall.data
+      const response = deleteDraftsCall.data
       // bulk_delete is a custom method, so the doctype APIs never saw these deletes —
       // drop the rows the list is still holding, and their copies on this device.
       response?.deleted.forEach((name) => {

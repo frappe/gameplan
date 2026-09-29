@@ -4,6 +4,7 @@
 import re
 
 import frappe
+from frappe import _
 from frappe.model.document import Document
 
 # The name a client gives a draft when it starts one: 20 lowercase letters and digits.
@@ -24,9 +25,9 @@ class GPDraft(Document):
 		if not name:
 			return
 		if not isinstance(name, str) or not CLIENT_NAME.fullmatch(name):
-			frappe.throw(frappe._("Invalid draft name"), frappe.ValidationError)
+			frappe.throw(_("Invalid draft name"), frappe.ValidationError)
 		if frappe.db.exists("Deleted Document", {"deleted_doctype": self.doctype, "deleted_name": name}):
-			frappe.throw(frappe._("This draft was deleted"), frappe.DoesNotExistError)
+			frappe.throw(_("This draft was deleted"), frappe.DoesNotExistError)
 		self.name = name
 
 	def before_save(self):
@@ -317,3 +318,13 @@ def remove_query_params_from_images(content):
 	# presence of fid=<name> in the image url prevents the image from being displayed
 	pattern = r'(src="[^"]+)\?[^"]*(")'
 	return re.sub(pattern, r"\1\2", content)
+
+
+def on_doctype_update():
+	add_indexes()
+
+
+def add_indexes():
+	# autoname looks a name up in Deleted Document, which Frappe does not index. It keeps a row
+	# for every deletion on the site, so without this every new draft scans all of them.
+	frappe.db.add_index("Deleted Document", ["deleted_doctype", "deleted_name"])

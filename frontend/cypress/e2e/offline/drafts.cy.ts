@@ -27,12 +27,17 @@ describe('Drafts, one name each', () => {
   const draftInUrl = () =>
     cy.location('search').then((search) => new URLSearchParams(search).get('draft') ?? '')
 
-  /** From the Drafts page: starts a discussion, types into it, yields its name, and goes back. */
-  const startDiscussion = (text: string) => {
+  /** From the Drafts page: opens the composer for a new discussion in the first space. */
+  const openComposer = () => {
     cy.button('New discussion').click()
     cy.get('input[placeholder="Select a space"]').click()
     cy.get('[role="option"]').first().click()
     cy.button('Continue').click()
+  }
+
+  /** From the Drafts page: starts a discussion, types into it, yields its name, and goes back. */
+  const startDiscussion = (text: string) => {
+    openComposer()
     title().type(text)
     composer().click().type(`${text} body`)
     cy.location('search').should('match', /draft=[a-z0-9]{20}/)
@@ -49,10 +54,7 @@ describe('Drafts, one name each', () => {
 
   /** Opens the composer once online: offline, its code could not load. */
   const loadComposer = () => {
-    cy.button('New discussion').click()
-    cy.get('input[placeholder="Select a space"]').click()
-    cy.get('[role="option"]').first().click()
-    cy.button('Continue').click()
+    openComposer()
     composer().should('be.visible')
     cy.go('back')
     cy.contains('No drafts').should('be.visible')

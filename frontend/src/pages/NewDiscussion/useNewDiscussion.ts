@@ -3,25 +3,21 @@ import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
 import { call, toast, useDoctype } from 'frappe-ui'
 import { dialog } from '@/data/offline/dialog'
 import { useOwnedRouteWrites } from '@/composables/useOwnedRouteWrites'
-import { useDraftSync, type DraftPayload } from '@/data/useDraftSync'
+import { useDraftSync } from '@/data/useDraftSync'
+import { hasContent } from '@/data/draftStore'
 import { drafts } from '@/data/drafts'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { canPostInSpace, getSpace } from '@/data/spaces'
 import { refuseOffline } from '@/data/offline/requests'
 import { useSessionUser, useUser } from '@/data/users'
 import { tags } from '@/data/tags'
-import { extractServerMessage, isEditorContentEmpty } from '@/utils'
+import { extractServerMessage } from '@/utils'
 import { captureError } from '@/utils/errorReporting'
 import type { GPDiscussion } from '@/types/doctypes'
 
 const PUBLISH_DRAFT = 'gameplan.gameplan.doctype.gp_draft.gp_draft.publish_draft'
 const LOADING_STATUS_DELAY_MS = 200
 const FLUSH_ATTEMPTS = 3
-
-/** Title or non-empty body — the threshold for persisting a draft at all. */
-function hasMeaningfulContent(payload: Partial<DraftPayload>): boolean {
-  return (payload.title ?? '').trim().length > 0 || !isEditorContentEmpty(payload.content)
-}
 
 export function useNewDiscussion() {
   const route = useRoute()
@@ -48,7 +44,7 @@ export function useNewDiscussion() {
   const draft = useDraftSync({
     identity: { type: 'Discussion', mode: 'New' },
     draftName,
-    canSave: hasMeaningfulContent,
+    canSave: hasContent,
     initialPayload: () => ({
       title: '',
       content: '',
@@ -301,7 +297,7 @@ export function useNewDiscussion() {
   }
 
   async function deleteDraft() {
-    if (!draftData.value || !hasMeaningfulContent(draftData.value)) {
+    if (!draftData.value || !hasContent(draftData.value)) {
       await clearAndLeave().catch(() => toast.error('Could not delete the draft'))
       return
     }
