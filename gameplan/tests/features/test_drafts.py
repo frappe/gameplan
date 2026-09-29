@@ -438,6 +438,12 @@ class TestClientNamedDrafts(GameplanTestCase):
 		self.assertFalse(frappe.db.exists("GP Draft", self.NAME))
 
 	def test_a_client_name_must_have_the_right_form(self):
-		for name in ("short", "UPPERCASE0123456789A", "abcdefghij0123456789x", "abcdefghij012345678/"):
+		for name in (
+			"short",
+			"UPPERCASE0123456789A",
+			"abcdefghij0123456789x",
+			"abcdefghij012345678/",
+			12345678901234567890,
+		):
 			with self.subTest(name=name), self.assertRaises(frappe.ValidationError):
 				self.new_draft(name)

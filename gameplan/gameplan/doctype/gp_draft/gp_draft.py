@@ -22,7 +22,7 @@ class GPDraft(Document):
 		name = getattr(self, "_client_name", None)
 		if not name:
 			return
-		if not CLIENT_NAME.fullmatch(str(name)):
+		if not isinstance(name, str) or not CLIENT_NAME.fullmatch(name):
 			frappe.throw(_("Invalid draft name"), frappe.ValidationError)
 		if frappe.db.exists("Deleted Document", {"deleted_doctype": self.doctype, "deleted_name": name}):
 			frappe.throw(_("This draft was deleted"), frappe.DoesNotExistError)
