@@ -69,6 +69,7 @@ class GPTeam(HasVisibility, Archivable, Document):
 		self.record_visibility_change()
 
 	def on_update(self):
+		self.refresh_anonymous_readable_flags()
 		self.reconcile_access_after_visibility_change()
 
 	def after_insert(self):

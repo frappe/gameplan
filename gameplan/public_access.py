@@ -63,6 +63,63 @@ def public_access_enabled() -> bool:
 	return bool(cint(frappe.conf.get(PUBLIC_ACCESS_CONFIG_KEY)))
 
 
+def anonymous_readable_criterion(Project):
+	"""SQL for "someone who is not signed in may read this space", public access switch aside.
+
+	True when the space and its community are both on the Anonymous tier and neither is
+	archived. A space outside every community never qualifies: publishing a community is
+	the second of the two decisions a public space needs. The switch is not part of it,
+	because the switch is read on every request instead of being stored.
+	"""
+	Team = frappe.qb.DocType("GP Team")
+	public_teams = (
+		frappe.qb.from_(Team)
+		.select(Team.name)
+		.where(Team.visibility == VISIBILITY_ANONYMOUS)
+		.where(Team.archived_at.isnull())
+	)
+	return (
+		(Project.visibility == VISIBILITY_ANONYMOUS)
+		& Project.archived_at.isnull()
+		& Project.team.isin(public_teams)
+	)
+
+
+def refresh_anonymous_readable(spaces):
+	"""Recompute `GP Project.is_anonymous_readable` for `spaces`.
+
+	Clears the flag first and then sets it where it holds, so a failure between the two
+	statements leaves the spaces unreadable to the public rather than readable.
+	"""
+	spaces = [str(space) for space in spaces]
+	if not spaces:
+		return
+	Project = frappe.qb.DocType("GP Project")
+	frappe.qb.update(Project).set(Project.is_anonymous_readable, 0).where(Project.name.isin(spaces)).run()
+	(
+		frappe.qb.update(Project)
+		.set(Project.is_anonymous_readable, 1)
+		.where(Project.name.isin(spaces))
+		.where(anonymous_readable_criterion(Project))
+	).run()
+
+
+def find_anonymous_readable_drift() -> list[str]:
+	"""Every space whose stored `is_anonymous_readable` disagrees with the rule.
+
+	Empty when every lifecycle path that can change the answer has kept the flag current.
+	"""
+	Project = frappe.qb.DocType("GP Project")
+	should_be = set(
+		frappe.qb.from_(Project)
+		.select(Project.name)
+		.where(anonymous_readable_criterion(Project))
+		.run(pluck=True)
+	)
+	rows = frappe.qb.from_(Project).select(Project.name, Project.is_anonymous_readable).run()
+	return sorted(str(name) for name, stored in rows if bool(cint(stored)) != (name in should_be))
+
+
 def find_visibility_backfill_mismatches() -> list[str]:
 	"""Every community and space whose `visibility` does not match its old `is_private`.
 

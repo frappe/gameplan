@@ -10,10 +10,17 @@ from gameplan.public_access import (
 	VISIBILITY_ANONYMOUS,
 	VISIBILITY_GENERAL,
 	VISIBILITY_TIERS,
+	refresh_anonymous_readable,
 	visibility_tier,
 )
 from gameplan.realtime import notify_unread_counts_changed
 from gameplan.roles import GAMEPLAN_ROLES
+
+# The fields `is_anonymous_readable` depends on, per doctype.
+ANONYMOUS_READABLE_INPUTS = {
+	"GP Team": ("visibility", "archived_at"),
+	"GP Project": ("visibility", "archived_at", "team"),
+}
 
 # Per-user rows that point at a space and outlive losing access to it. Pins in
 # GP User Profile.pinned_spaces are left alone: the sidebar only ever shows a pin for a
@@ -76,6 +83,20 @@ class HasVisibility:
 			self.visibility_set_by = frappe.session.user
 			self.visibility_set_at = frappe.utils.now()
 
+	def refresh_anonymous_readable_flags(self):
+		"""Keep `GP Project.is_anonymous_readable` current for every space this record affects.
+
+		Called from on_update, so every route that changes the answer recomputes it: a tier
+		change, archive and unarchive (which save), and moving a space to another community.
+		A community change recomputes all of its spaces, because theirs depends on it.
+		"""
+		inputs = ANONYMOUS_READABLE_INPUTS[self.doctype]
+		if self.get_doc_before_save() and not any(self.has_value_changed(field) for field in inputs):
+			return
+		refresh_anonymous_readable(self.get_affected_space_names())
+		if self.doctype == "GP Project":
+			self.is_anonymous_readable = frappe.db.get_value("GP Project", self.name, "is_anonymous_readable")
+
 	def reconcile_access_after_visibility_change(self):
 		"""Drop the per-user state of everyone who can no longer read an affected space.
 
@@ -120,10 +141,13 @@ class HasVisibility:
 		users = gameplan_users()
 		spaces = self.get_affected_space_names()
 		readers_before = {space: set(users_who_can_view_space(users, space)) for space in spaces}
+		public_before = anonymous_readable_spaces(spaces)
 		frappe.db.savepoint("visibility_impact")
 		try:
 			frappe.db.set_value(self.doctype, self.name, "visibility", visibility, update_modified=False)
+			refresh_anonymous_readable(spaces)
 			readers_after = {space: set(users_who_can_view_space(users, space)) for space in spaces}
+			public_after = anonymous_readable_spaces(spaces)
 		finally:
 			frappe.db.rollback(save_point="visibility_impact")
 
@@ -144,6 +168,9 @@ class HasVisibility:
 			"users_losing_access": len(losing),
 			"discussions_revealed": count_discussions(spaces_gaining),
 			"spaces_losing_readers": len(spaces_losing),
+			# Readable without signing in once the public access switch is on.
+			"discussions_made_public": count_discussions(public_after - public_before),
+			"discussions_no_longer_public": count_discussions(public_before - public_after),
 			"leaving_anonymous": self.visibility == VISIBILITY_ANONYMOUS
 			and visibility != VISIBILITY_ANONYMOUS,
 		}
@@ -181,6 +208,18 @@ def gameplan_users():
 		.where(User.enabled == 1)
 		.where(HasRole.role.isin(GAMEPLAN_ROLES))
 		.run(pluck=True)
+	)
+
+
+def anonymous_readable_spaces(spaces):
+	if not spaces:
+		return set()
+	return set(
+		frappe.get_all(
+			"GP Project",
+			filters={"name": ["in", [str(space) for space in spaces]], "is_anonymous_readable": 1},
+			pluck="name",
+		)
 	)
 
 

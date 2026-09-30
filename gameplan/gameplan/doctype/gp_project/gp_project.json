@@ -14,6 +14,7 @@
   "visibility",
   "visibility_set_by",
   "visibility_set_at",
+  "is_anonymous_readable",
   "section_break_5",
   "description",
   "readme",
@@ -123,6 +124,15 @@
    "fieldtype": "Datetime",
    "label": "Visibility Set At",
    "read_only": 1
+  },
+  {
+   "default": "0",
+   "description": "Computed: set when this space and its community are both on the Anonymous tier and neither is archived. Never edited directly.",
+   "fieldname": "is_anonymous_readable",
+   "fieldtype": "Check",
+   "label": "Is Anonymous Readable",
+   "read_only": 1,
+   "search_index": 1
   }
  ],
  "index_web_pages_for_search": 1,
@@ -136,7 +146,7 @@
    "link_fieldname": "project"
   }
  ],
- "modified": "2026-09-30 07:43:33.348548",
+ "modified": "2026-09-30 08:56:04.659728",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "GP Project",
