@@ -17,8 +17,14 @@
 import { computed } from 'vue'
 import { Select, TextInput } from 'frappe-ui'
 import { communities } from '@/data/communities'
+import {
+  isMemberAccess,
+  VISIBILITY_GENERAL,
+  VISIBILITY_MEMBER_ACCESS,
+  type Visibility,
+} from '@/utils/visibility'
 
-type VisibilityFilter = 'All' | 'Public' | 'Private' | 'Archived'
+type VisibilityFilter = 'All' | Visibility | 'Archived'
 
 const search = defineModel<string>('search', { default: '' })
 const visibilityFilter = defineModel<VisibilityFilter>('visibilityFilter', { default: 'All' })
@@ -36,12 +42,16 @@ const visibilityOptions = computed(() => {
   const options = [
     { label: `All (${activeCommunities.value.length})`, value: 'All' },
     {
-      label: `Public (${activeCommunities.value.filter((c) => !c.is_private).length})`,
-      value: 'Public',
+      label: `${VISIBILITY_GENERAL} (${
+        activeCommunities.value.filter((c) => !isMemberAccess(c.visibility)).length
+      })`,
+      value: VISIBILITY_GENERAL,
     },
     {
-      label: `Private (${activeCommunities.value.filter((c) => c.is_private).length})`,
-      value: 'Private',
+      label: `${VISIBILITY_MEMBER_ACCESS} (${
+        activeCommunities.value.filter((c) => isMemberAccess(c.visibility)).length
+      })`,
+      value: VISIBILITY_MEMBER_ACCESS,
     },
   ]
   // Only offer the archived scope when there's something archived to show.

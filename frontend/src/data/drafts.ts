@@ -15,7 +15,7 @@ export interface DraftRow {
   space: string | null
   space_title: string | null
   community: string | null
-  is_private: boolean | number
+  visibility: string | null
   /** For comment drafts, the parent discussion to open; null for discussion drafts. */
   discussion: string | null
 }

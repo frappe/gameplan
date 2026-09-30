@@ -44,7 +44,7 @@
             {{ getSpaceUnreadCount(space.name) }}
           </span>
           <span
-            v-if="space.is_private"
+            v-if="isMemberAccess(space.visibility)"
             class="size-4 text-ink-gray-4 lucide-lock"
             aria-hidden="true"
           />
@@ -68,6 +68,7 @@ import MobileListRow from '@/components/MobileListRow.vue'
 import SpaceIcon from '@/components/SpaceIcon.vue'
 import { getSpaceUnreadCount, spaces } from '@/data/spaces'
 import { fetchParticipatingUnreadCount, getParticipatingUnreadCount } from '@/data/unreadCount'
+import { isMemberAccess } from '@/utils/visibility'
 
 type FeedType = 'recent' | 'unread' | 'participating'
 

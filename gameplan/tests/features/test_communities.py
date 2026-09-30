@@ -14,6 +14,7 @@ from gameplan.gameplan.doctype.gp_member.patches.backfill_team_admins import (
 )
 from gameplan.gameplan.doctype.gp_team.gp_team import join_team, leave_team, update_joined_teams
 from gameplan.gameplan.doctype.gp_user_profile.gp_user_profile import get_session_user_profile
+from gameplan.public_access import VISIBILITY_GENERAL, VISIBILITY_MEMBER_ACCESS
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
 	_name,
@@ -33,11 +34,11 @@ class TestCommunities(FrappeTestCase):
 	def test_after_insert_creates_general_space(self):
 		team = frappe.get_doc(doctype="GP Team", title="General Space Team").insert(ignore_permissions=True)
 
-		spaces = frappe.db.get_all("GP Project", filters={"team": team.name}, fields=["title", "is_private"])
+		spaces = frappe.db.get_all("GP Project", filters={"team": team.name}, fields=["title", "visibility"])
 		self.assertEqual(len(spaces), 1)
 		self.assertEqual(spaces[0].title, "General")
 		# General must be public so all community members can see it by default.
-		self.assertEqual(spaces[0].is_private, 0)
+		self.assertEqual(spaces[0].visibility, VISIBILITY_GENERAL)
 
 	def test_after_insert_skips_general_when_space_already_exists(self):
 		team = frappe.get_doc(doctype="GP Team", title="Existing Space Team").insert(ignore_permissions=True)
@@ -178,11 +179,17 @@ class TestCommunityMembership(GameplanTestCase):
 			"Cascade Removed Community", members=[self.second_member], admins=[self.member]
 		)
 		private_space = create_space(
-			"Cascade Removed Space", community, is_private=1, members=[self.second_member]
+			"Cascade Removed Space",
+			community,
+			visibility=VISIBILITY_MEMBER_ACCESS,
+			members=[self.second_member],
 		)
 		other_community = create_community("Cascade Other Community", members=[self.member])
 		other_private_space = create_space(
-			"Cascade Other Space", other_community, is_private=1, members=[self.second_member]
+			"Cascade Other Space",
+			other_community,
+			visibility=VISIBILITY_MEMBER_ACCESS,
+			members=[self.second_member],
 		)
 
 		with self.as_user(self.member):
@@ -243,9 +250,9 @@ class TestCommunityMembership(GameplanTestCase):
 
 	def test_community_admin_revokes_guest_access_only_in_own_community(self):
 		community = create_community("Managed Guest Community", admins=[self.member])
-		space = create_space("Managed Guest Space", community, is_private=1)
+		space = create_space("Managed Guest Space", community, visibility=VISIBILITY_MEMBER_ACCESS)
 		other_community = create_community("Other Guest Community", members=[self.member])
-		other_space = create_space("Other Guest Space", other_community, is_private=1)
+		other_space = create_space("Other Guest Space", other_community, visibility=VISIBILITY_MEMBER_ACCESS)
 		grant_guest_access(self.guest, space)
 		grant_guest_access(self.guest, other_space)
 
@@ -261,9 +268,11 @@ class TestCommunityMembership(GameplanTestCase):
 
 	def test_community_admin_removes_only_own_spaces_from_a_guest_invitation(self):
 		community = create_community("Managed Guest Invitation Community", admins=[self.member])
-		space = create_space("Managed Guest Invitation Space", community, is_private=1)
+		space = create_space("Managed Guest Invitation Space", community, visibility=VISIBILITY_MEMBER_ACCESS)
 		other_community = create_community("Other Guest Invitation Community", members=[self.member])
-		other_space = create_space("Other Guest Invitation Space", other_community, is_private=1)
+		other_space = create_space(
+			"Other Guest Invitation Space", other_community, visibility=VISIBILITY_MEMBER_ACCESS
+		)
 		with patch("frappe.sendmail"):
 			invitation = frappe.get_doc(
 				doctype="GP Invitation",
@@ -280,7 +289,7 @@ class TestCommunityMembership(GameplanTestCase):
 
 	def test_member_cannot_revoke_guest_access(self):
 		community = create_community("Unmanaged Guest Community", members=[self.member])
-		space = create_space("Unmanaged Guest Space", community, is_private=1)
+		space = create_space("Unmanaged Guest Space", community, visibility=VISIBILITY_MEMBER_ACCESS)
 		grant_guest_access(self.guest, space)
 
 		with self.as_user(self.member), self.assertRaises(frappe.PermissionError):
@@ -360,7 +369,7 @@ class TestCommunityJoinLeave(GameplanTestCase):
 		self.assertEqual(len([row for row in community.members if row.user == self.member.name]), 1)
 
 	def test_member_cannot_join_a_private_community(self):
-		community = create_community("Invite Only Community", is_private=1)
+		community = create_community("Invite Only Community", visibility=VISIBILITY_MEMBER_ACCESS)
 
 		with self.as_user(self.member), self.assertRaises(frappe.PermissionError):
 			join_team(community.name)
@@ -392,7 +401,9 @@ class TestCommunityJoinLeave(GameplanTestCase):
 		# Unlike an admin's remove_member, leaving is the sidebar's own toggle: it drops
 		# the community row only, so rejoining restores what the member had.
 		community = create_community("Self Leave Community", members=[self.member])
-		private_space = create_space("Self Leave Space", community, is_private=1, members=[self.member])
+		private_space = create_space(
+			"Self Leave Space", community, visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
 
 		with self.as_user(self.member):
 			leave_team(community.name)
@@ -437,25 +448,33 @@ class TestPrivateCommunitySerialisation(GameplanTestCase):
 	"""
 
 	def test_global_admin_can_serialise_a_private_community_they_do_not_belong_to(self):
-		community = create_community("Admin Serialised Community", is_private=1, admins=[self.member])
+		community = create_community(
+			"Admin Serialised Community", visibility=VISIBILITY_MEMBER_ACCESS, admins=[self.member]
+		)
 
 		with self.as_user(self.admin):
 			self.assertEqual(community.as_dict().title, "Admin Serialised Community")
 
 	def test_member_of_a_private_community_can_serialise_it(self):
-		community = create_community("Member Serialised Community", is_private=1, members=[self.member])
+		community = create_community(
+			"Member Serialised Community", visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
 
 		with self.as_user(self.member):
 			self.assertEqual(community.as_dict().title, "Member Serialised Community")
 
 	def test_outsider_cannot_serialise_a_private_community(self):
-		community = create_community("Hidden Community", is_private=1, admins=[self.member])
+		community = create_community(
+			"Hidden Community", visibility=VISIBILITY_MEMBER_ACCESS, admins=[self.member]
+		)
 
 		with self.as_user(self.outsider), self.assertRaises(frappe.PermissionError):
 			community.as_dict()
 
 	def test_global_admin_archives_a_private_community_and_the_response_serialises(self):
-		community = create_community("Admin Archived Community", is_private=1, admins=[self.member])
+		community = create_community(
+			"Admin Archived Community", visibility=VISIBILITY_MEMBER_ACCESS, admins=[self.member]
+		)
 
 		# The two steps execute_doc_method runs, in order. The archive used to be rolled
 		# back because the serialisation that follows it threw.

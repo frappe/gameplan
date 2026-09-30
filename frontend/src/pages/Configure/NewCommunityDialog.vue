@@ -12,9 +12,9 @@
         @keydown.enter.prevent="submit"
       />
       <FormControl
-        v-model="isPrivate"
+        v-model="isMemberAccessCommunity"
         type="checkbox"
-        label="Keep it private &mdash; Only visible to members"
+        label="Member Access &mdash; Only people on the member list"
       />
       <ErrorMessage :message="communities.insert.error" />
     </div>
@@ -40,20 +40,21 @@ import { computed, ref, watch } from 'vue'
 import { Button, Dialog, ErrorMessage, FormControl, TextInput } from 'frappe-ui'
 import { communities } from '@/data/communities'
 import type { GPTeam } from '@/types/doctypes'
+import { VISIBILITY_GENERAL, VISIBILITY_MEMBER_ACCESS } from '@/utils/visibility'
 
 const show = defineModel<boolean>()
 const emit = defineEmits<{
   (event: 'created', communityId: string): void
 }>()
 const title = ref('')
-const isPrivate = ref(false)
+const isMemberAccessCommunity = ref(false)
 
 const canSubmit = computed(() => Boolean(title.value.trim()) && !communities.insert.loading)
 
 watch(show, (value) => {
   if (!value) return
   title.value = ''
-  isPrivate.value = false
+  isMemberAccessCommunity.value = false
 })
 
 async function submit() {
@@ -62,7 +63,7 @@ async function submit() {
 
   const community = (await communities.insert.submit({
     title: nextTitle,
-    is_private: isPrivate.value ? 1 : 0,
+    visibility: isMemberAccessCommunity.value ? VISIBILITY_MEMBER_ACCESS : VISIBILITY_GENERAL,
   })) as unknown as GPTeam | undefined
 
   await communities.reload()

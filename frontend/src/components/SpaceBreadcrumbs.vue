@@ -15,6 +15,7 @@ import { Breadcrumbs } from 'frappe-ui'
 import { useSpace } from '@/data/spaces'
 import type { RouteLocationRaw } from 'vue-router'
 import SpaceIcon from './SpaceIcon.vue'
+import { isMemberAccess } from '@/utils/visibility'
 
 const props = defineProps<{
   spaceId: string
@@ -36,7 +37,7 @@ const breadcrumbItems = computed(() => {
     {
       label: space.value?.title,
       prefix: h(SpaceIcon, { icon: space.value?.icon }),
-      suffix: space.value?.is_private ? 'lucide-lock' : null,
+      suffix: space.value && isMemberAccess(space.value.visibility) ? 'lucide-lock' : null,
       route: space.value
         ? { name: 'Space', params: { communityId: space.value.team, spaceId: space.value.name } }
         : undefined,

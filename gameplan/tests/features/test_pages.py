@@ -5,6 +5,7 @@
 
 import frappe
 
+from gameplan.public_access import VISIBILITY_MEMBER_ACCESS
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
 	create_community,
@@ -24,7 +25,7 @@ class PageTestCase(GameplanTestCase):
 		self.space = create_space(
 			"Page Space",
 			self.community,
-			is_private=1,
+			visibility=VISIBILITY_MEMBER_ACCESS,
 			members=[self.member, self.second_member],
 		)
 		grant_guest_access(self.guest, self.space)

@@ -5,6 +5,8 @@
 
 import frappe
 
+from gameplan.public_access import VISIBILITY_GENERAL
+
 
 def create_user(email, first_name, role):
 	if frappe.db.exists("User", email):
@@ -37,8 +39,8 @@ def create_team(title="Test Team"):
 	return frappe.get_doc(doctype="GP Team", title=title).insert(ignore_permissions=True)
 
 
-def create_project(title, team, is_private=0):
-	return frappe.get_doc(doctype="GP Project", title=title, team=team, is_private=is_private).insert(
+def create_project(title, team, visibility=VISIBILITY_GENERAL):
+	return frappe.get_doc(doctype="GP Project", title=title, team=team, visibility=visibility).insert(
 		ignore_permissions=True
 	)
 

@@ -37,8 +37,8 @@
         <div>
           <FormControl
             type="checkbox"
-            label="Keep it private &mdash; Only visible to users"
-            v-model="newSpace.doc.is_private"
+            label="Member Access &mdash; Only people on the member list"
+            v-model="isMemberAccessSpace"
           />
         </div>
       </div>
@@ -73,6 +73,7 @@ import { computed, h, ref, watch } from 'vue'
 import { activeCommunities, communities } from '@/data/communities'
 import { isGameplanAdmin } from '@/data/users'
 import { until } from '@vueuse/core'
+import { VISIBILITY_GENERAL, VISIBILITY_MEMBER_ACCESS } from '@/utils/visibility'
 
 const props = defineProps<{
   // When set, the dialog always creates in this community and hides the community picker.
@@ -84,7 +85,14 @@ const newSpace = useNewDoc<GPProject>('GP Project', {
   title: '',
   icon: '',
   team: '',
-  is_private: 0,
+  visibility: VISIBILITY_GENERAL,
+})
+// Creation offers two tiers: General, the default, or Member Access.
+const isMemberAccessSpace = computed({
+  get: () => newSpace.doc.visibility === VISIBILITY_MEMBER_ACCESS,
+  set: (value: boolean) => {
+    newSpace.doc.visibility = value ? VISIBILITY_MEMBER_ACCESS : VISIBILITY_GENERAL
+  },
 })
 const selectedCommunity = ref<string | null>(null)
 

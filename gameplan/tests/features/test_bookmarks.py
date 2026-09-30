@@ -13,6 +13,7 @@ own read permission on the discussion is what gates *what* can be bookmarked.
 import frappe
 
 from gameplan.gameplan.doctype.gp_discussion.api import get_discussions
+from gameplan.public_access import VISIBILITY_MEMBER_ACCESS
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import create_community, create_discussion, create_space
 
@@ -214,7 +215,9 @@ class TestBookmarksFeed(BookmarkTestCase):
 		self.assertEqual(self.bookmarks_feed(self.member), [])
 
 	def test_feed_hides_a_bookmarked_discussion_in_a_space_the_user_lost_access_to(self):
-		private_space = create_space("Secret Plans", self.community, is_private=1, members=[self.member])
+		private_space = create_space(
+			"Secret Plans", self.community, visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
 		private_discussion = create_discussion("Secret thread", private_space, owner=self.member)
 		self.add_bookmark(private_discussion, self.member)
 		self.assertEqual(self.bookmarks_feed(self.member), [str(private_discussion.name)])

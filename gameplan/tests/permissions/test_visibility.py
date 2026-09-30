@@ -27,6 +27,7 @@ from gameplan.permissions import (
 	task_query_conditions,
 	team_query_conditions,
 )
+from gameplan.public_access import VISIBILITY_MEMBER_ACCESS
 from gameplan.search_sqlite import GameplanSearch
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import create_community, create_discussion, create_member, create_space
@@ -57,7 +58,9 @@ class TestCommunityVisibility(GameplanTestCase):
 
 	def test_private_community_is_visible_only_to_members_and_global_admins(self):
 		public = create_community("Visible Public Community")
-		private = create_community("Hidden Private Community", is_private=1, members=[self.member])
+		private = create_community(
+			"Hidden Private Community", visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
 
 		self.assert_allowed(public, "read", self.second_member)
 		self.assert_allowed(private, "read", self.member)
@@ -66,7 +69,9 @@ class TestCommunityVisibility(GameplanTestCase):
 
 	def test_private_community_is_filtered_from_lists_for_non_members(self):
 		public = create_community("Listed Public Community")
-		private = create_community("Unlisted Private Community", is_private=1, members=[self.member])
+		private = create_community(
+			"Unlisted Private Community", visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
 
 		with self.as_user(self.second_member):
 			communities = frappe.get_list("GP Team", fields=["name"], pluck="name")
@@ -78,7 +83,9 @@ class TestCommunityVisibility(GameplanTestCase):
 class TestSpaceVisibility(GameplanTestCase):
 	def test_private_space_is_visible_only_to_space_members_and_global_admins(self):
 		community = create_community("Private Space Community", members=[self.member, self.second_member])
-		private_space = create_space("Hidden Private Space", community, is_private=1, members=[self.member])
+		private_space = create_space(
+			"Hidden Private Space", community, visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
 
 		self.assert_allowed(private_space, "read", self.member)
 		self.assert_allowed(private_space, "read", self.admin)
@@ -87,7 +94,9 @@ class TestSpaceVisibility(GameplanTestCase):
 	def test_private_spaces_are_filtered_from_lists_for_non_members(self):
 		community = create_community("List Space Community", members=[self.member, self.second_member])
 		public_space = create_space("Listed Public Space", community)
-		private_space = create_space("Unlisted Private Space", community, is_private=1, members=[self.member])
+		private_space = create_space(
+			"Unlisted Private Space", community, visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
 
 		with self.as_user(self.second_member):
 			spaces = frappe.get_list("GP Project", fields=["name"], pluck="name")
@@ -96,7 +105,9 @@ class TestSpaceVisibility(GameplanTestCase):
 		self.assertNotIn(private_space.name, spaces)
 
 	def test_public_space_in_private_community_is_visible_only_to_community_members(self):
-		community = create_community("Private Parent Community", is_private=1, members=[self.member])
+		community = create_community(
+			"Private Parent Community", visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
 		space = create_space("Public Child Space", community)
 
 		self.assert_allowed(space, "read", self.member)
@@ -108,7 +119,9 @@ class TestSpaceVisibility(GameplanTestCase):
 		self.assertNotIn(space.name, spaces)
 
 	def test_client_list_filters_public_space_in_private_community_for_non_members(self):
-		community = create_community("Private Parent Client Community", is_private=1, members=[self.member])
+		community = create_community(
+			"Private Parent Client Community", visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
 		space = create_space("Public Client Child Space", community)
 
 		with self.as_user(self.second_member):
@@ -123,7 +136,7 @@ class TestSpaceVisibility(GameplanTestCase):
 		with self.as_user(self.second_member):
 			spaces = get_client_list(
 				doctype="GP Project",
-				fields=["name", "is_private", "team.title as team_title"],
+				fields=["name", "visibility", "team.title as team_title"],
 				limit=50,
 			)
 
@@ -132,7 +145,9 @@ class TestSpaceVisibility(GameplanTestCase):
 
 class TestPermissionAwareQueries(GameplanTestCase):
 	def test_discussion_feed_filters_public_space_in_private_community(self):
-		community = create_community("Private Feed Community", is_private=1, members=[self.member])
+		community = create_community(
+			"Private Feed Community", visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
 		space = create_space("Public Feed Space", community)
 		hidden = create_discussion("Hidden Feed Discussion", space, owner=self.member)
 
@@ -142,7 +157,9 @@ class TestPermissionAwareQueries(GameplanTestCase):
 		self.assertNotIn(hidden.name, [row.name for row in discussions])
 
 	def test_search_accessible_projects_filters_public_space_in_private_community(self):
-		community = create_community("Private Search Community", is_private=1, members=[self.member])
+		community = create_community(
+			"Private Search Community", visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
 		space = create_space("Public Search Space", community)
 
 		with self.as_user(self.second_member):
@@ -169,7 +186,10 @@ class TestContainerManagement(GameplanTestCase):
 		)
 		self.public_space = create_space("Container Public Space", self.community)
 		self.private_space = create_space(
-			"Container Private Space", self.community, is_private=1, members=[self.member]
+			"Container Private Space",
+			self.community,
+			visibility=VISIBILITY_MEMBER_ACCESS,
+			members=[self.member],
 		)
 
 	def assert_managed_by(self, doc, *, managers, others):
@@ -240,7 +260,7 @@ class TestPermissionQueriesUseTheGivenUser(GameplanTestCase):
 			"Visible Query Discussion", self.open_space, owner=self.second_member
 		)
 		self.closed_community = create_community(
-			"Closed Query Community", is_private=1, members=[self.member]
+			"Closed Query Community", visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
 		)
 		self.closed_space = create_space("Closed Query Space", self.closed_community)
 		self.hidden_discussion = create_discussion(

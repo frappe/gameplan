@@ -11,6 +11,8 @@ import frappe
 import frappe.search.sqlite_search
 from frappe.model.document import Document
 
+from gameplan.public_access import VISIBILITY_GENERAL
+
 
 def _name(doc_or_name):
 	"""Unwrap a Document to its name; pass any bare identifier straight through.
@@ -50,8 +52,8 @@ def create_guest(email="guest@example.com", first_name="Guest"):
 	return create_user(email, first_name, "Gameplan Guest")
 
 
-def create_community(title="Test Community", *, is_private=0, members=(), admins=()):
-	doc = frappe.get_doc(doctype="GP Team", title=title, is_private=is_private)
+def create_community(title="Test Community", *, visibility=VISIBILITY_GENERAL, members=(), admins=()):
+	doc = frappe.get_doc(doctype="GP Team", title=title, visibility=visibility)
 	for user in members:
 		doc.append("members", {"user": _name(user)})
 	for user in admins:
@@ -59,8 +61,8 @@ def create_community(title="Test Community", *, is_private=0, members=(), admins
 	return doc.insert(ignore_permissions=True)
 
 
-def create_space(title, community, *, is_private=0, members=()):
-	doc = frappe.get_doc(doctype="GP Project", title=title, team=_name(community), is_private=is_private)
+def create_space(title, community, *, visibility=VISIBILITY_GENERAL, members=()):
+	doc = frappe.get_doc(doctype="GP Project", title=title, team=_name(community), visibility=visibility)
 	for user in members:
 		doc.append("members", {"user": _name(user)})
 	return doc.insert(ignore_permissions=True)

@@ -18,6 +18,8 @@ import frappe
 from frappe.tests.utils import whitelist_for_tests
 from frappe.utils import cint
 
+from gameplan.public_access import VISIBILITY_GENERAL, VISIBILITY_MEMBER_ACCESS
+
 # Roles this seed API may mint an invitation for. `gameplan.api.accept_invitation` is
 # `allow_guest`, GET-reachable, and hands the invitation's role straight to
 # `user.append_roles`, so an unrestricted `role` here would be a privilege-escalation
@@ -166,8 +168,8 @@ def _general_space(community):
 	return frappe.db.get_value("GP Project", {"team": community.name, "title": "General"}, "name")
 
 
-def _create_space(title, community, *, is_private=0, members=()):
-	space = frappe.get_doc(doctype="GP Project", title=title, team=community.name, is_private=is_private)
+def _create_space(title, community, *, visibility=VISIBILITY_GENERAL, members=()):
+	space = frappe.get_doc(doctype="GP Project", title=title, team=community.name, visibility=visibility)
 	for email in members:
 		space.append("members", {"user": email})
 	space.insert(ignore_permissions=True)
@@ -211,7 +213,9 @@ def _space_with_discussion():
 def _private_space_with_guest():
 	community = _create_community("Acme")
 	general = _general_space(community)
-	private_space = _create_space("Secret Plans", community, is_private=1, members=[MEMBER])
+	private_space = _create_space(
+		"Secret Plans", community, visibility=VISIBILITY_MEMBER_ACCESS, members=[MEMBER]
+	)
 	frappe.get_doc(doctype="GP Guest Access", user=GUEST, project=private_space.name).insert(
 		ignore_permissions=True
 	)

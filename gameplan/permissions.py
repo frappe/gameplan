@@ -1,8 +1,9 @@
 import frappe
 from frappe import _
-from frappe.utils import cint, cstr, get_datetime
+from frappe.utils import cstr, get_datetime
 
 import gameplan
+from gameplan.public_access import SIGNED_IN_TIERS, is_member_access
 
 READ_PERMISSIONS = {"read", "select", "print", "email", "export", "share", "report"}
 
@@ -84,12 +85,17 @@ def can_view_community(user, team):
 		# shell around that space. Access is exactly the communities of their granted
 		# spaces, nothing else.
 		return guest_can_view_community(user, team_name)
-	is_private = (
-		team.is_private
+	if not team_name:
+		# A space outside every community (Uncategorized) has no community gate. A missing
+		# community is open, as it always was; only a community row without a tier reads as
+		# Member Access.
+		return True
+	visibility = (
+		team.visibility
 		if hasattr(team, "doctype")
-		else frappe.db.get_value("GP Team", team_name, "is_private")
+		else frappe.db.get_value("GP Team", team_name, "visibility")
 	)
-	if not cint(is_private):
+	if not is_member_access(visibility):
 		return True
 	return is_community_member(user, team_name)
 
@@ -102,7 +108,7 @@ def can_view_space(user, project):
 		return False
 	if gameplan.is_guest(user):
 		return has_guest_access(user, project.name)
-	if cint(project.is_private):
+	if is_member_access(project.visibility):
 		return is_space_member(user, project.name)
 	return can_view_community(user, project.team)
 
@@ -120,7 +126,7 @@ def can_manage_space(user, project):
 	project = get_project_info(project)
 	if not project:
 		return False
-	if cint(project.is_private):
+	if is_member_access(project.visibility):
 		return is_space_member(user, project.name)
 	return is_community_admin(user, project.team)
 
@@ -171,8 +177,10 @@ def users_who_can_view_content(users, doc):
 	space_members = _member_users("GP Project", project_info.name)
 	community_members = _member_users("GP Team", project_info.team) if project_info.team else set()
 	guests = _guest_users(project_info.name)
-	community_is_private = (
-		cint(frappe.db.get_value("GP Team", project_info.team, "is_private")) if project_info.team else 0
+	community_is_member_access = (
+		is_member_access(frappe.db.get_value("GP Team", project_info.team, "visibility"))
+		if project_info.team
+		else False
 	)
 
 	def allowed(user):
@@ -180,9 +188,9 @@ def users_who_can_view_content(users, doc):
 			return True
 		if gameplan.is_guest(user):
 			return user in guests
-		if cint(project_info.is_private):
+		if is_member_access(project_info.visibility):
 			return user in space_members
-		return not community_is_private or user in community_members
+		return not community_is_member_access or user in community_members
 
 	return [user for user in users if allowed(user)]
 
@@ -629,7 +637,7 @@ def team_access_criterion(Team, user=None):
 		# guest access to (via GP Guest Access). Without this the guest's GP Team list
 		# is empty and the SPA 404s every community/space/discussion route.
 		return Team.name.isin(guest_accessible_team_query(user))
-	return (Team.is_private == 0) | is_member_parent("GP Team", Team.name, user)
+	return Team.visibility.isin(SIGNED_IN_TIERS) | is_member_parent("GP Team", Team.name, user)
 
 
 def project_access_criterion(Project, user=None):
@@ -641,9 +649,9 @@ def project_access_criterion(Project, user=None):
 		return Project.name.isin(
 			frappe.qb.from_(GuestAccess).select(GuestAccess.project).where(GuestAccess.user == user)
 		)
-	return ((Project.is_private == 0) & Project.team.isin(accessible_team_query(user))) | is_member_parent(
-		"GP Project", Project.name, user
-	)
+	return (
+		Project.visibility.isin(SIGNED_IN_TIERS) & Project.team.isin(accessible_team_query(user))
+	) | is_member_parent("GP Project", Project.name, user)
 
 
 def accessible_project_criterion(project_field, user=None):
@@ -783,11 +791,11 @@ def get_project_info(project):
 		return frappe._dict(
 			name=project.name,
 			team=project.team,
-			is_private=project.is_private,
+			visibility=project.visibility,
 		)
 	if not project:
 		return None
-	return frappe.db.get_value("GP Project", project, ["name", "team", "is_private"], as_dict=True)
+	return frappe.db.get_value("GP Project", project, ["name", "team", "visibility"], as_dict=True)
 
 
 def get_doc_name(doc_or_name):

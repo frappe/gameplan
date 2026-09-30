@@ -18,6 +18,7 @@ This table is the source of truth for who may read/write/delete content. To exte
   - Add actors or spaces by adding rows/blocks to EXPECTATIONS below.
 """
 
+from gameplan.public_access import VISIBILITY_MEMBER_ACCESS
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
 	create_comment,
@@ -77,7 +78,7 @@ class TestPermissionMatrix(GameplanTestCase):
 		)
 		self.public_space = create_space("Matrix Public Space", self.community)
 		self.private_space = create_space(
-			"Matrix Private Space", self.community, is_private=1, members=[self.member]
+			"Matrix Private Space", self.community, visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
 		)
 		grant_guest_access(self.guest, self.private_space)
 

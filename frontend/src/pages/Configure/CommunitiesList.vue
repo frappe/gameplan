@@ -83,8 +83,9 @@ import { isGlobalAdmin } from '@/utils/permissions'
 import ConfigureEmptyState from './ConfigureEmptyState.vue'
 import CommunityRow from './CommunityRow.vue'
 import CommunitiesListFilters from './CommunitiesListFilters.vue'
+import { visibilityTier, type Visibility } from '@/utils/visibility'
 
-type VisibilityFilter = 'All' | 'Public' | 'Private' | 'Archived'
+type VisibilityFilter = 'All' | Visibility | 'Archived'
 
 // Filters are models so a parent (e.g. the Settings dialog) can hoist the
 // controls into a fixed header while this component still renders the list.
@@ -132,13 +133,12 @@ watch(hasArchivedCommunities, (value) => {
   }
 })
 
-// 'All'/'Public'/'Private' only cover active communities; 'Archived' is its own scope.
+// 'All' and the tiers only cover active communities; 'Archived' is its own scope.
 function matchesScope(community: Community, filter: VisibilityFilter) {
   if (filter === 'Archived') return Boolean(community.archived_at)
   if (community.archived_at) return false
-  if (filter === 'Public') return !community.is_private
-  if (filter === 'Private') return Boolean(community.is_private)
-  return true
+  if (filter === 'All') return true
+  return visibilityTier(community.visibility) === filter
 }
 
 function getActiveCommunitySpacesCount(communityId: string) {

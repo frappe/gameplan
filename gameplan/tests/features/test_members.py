@@ -15,6 +15,7 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from gameplan.api import get_user_info, invite_by_email
+from gameplan.public_access import VISIBILITY_MEMBER_ACCESS
 from gameplan.tests.fixtures import (
 	create_community,
 	create_guest,
@@ -105,7 +106,7 @@ class TestMemberManagement(FrappeTestCase):
 		"""
 		member = create_member("sec_space_member@example.com")
 		team = create_community("Sec Team")
-		project = create_space("Sec Space", team.name, is_private=1)
+		project = create_space("Sec Space", team.name, visibility=VISIBILITY_MEMBER_ACCESS)
 		project.append("members", {"user": member.name})
 		project.save(ignore_permissions=True)
 

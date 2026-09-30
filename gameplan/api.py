@@ -11,6 +11,7 @@ from frappe.utils import cint, split_emails, validate_email_address
 
 import gameplan
 from gameplan.gameplan.doctype.gp_invitation.gp_invitation import grant_access
+from gameplan.public_access import VISIBILITY_GENERAL, VISIBILITY_MEMBER_ACCESS
 from gameplan.realtime import notify_notification_count_changed, unread_notification_count
 from gameplan.roles import GAMEPLAN_ROLES
 from gameplan.utils import validate_type
@@ -289,8 +290,12 @@ def mark_all_notifications_as_read():
 
 
 @frappe.whitelist(methods=["POST"])
-def onboarding(community, space, icon, emails, is_private=0):
+def onboarding(community, space, icon, emails, visibility=VISIBILITY_GENERAL):
 	emails = frappe.parse_json(emails)
+	# Signup may keep its first space to members, but never publish it: the Anonymous tier
+	# is a Gameplan Admin's decision, and the person signing up is not one yet.
+	if visibility not in (VISIBILITY_GENERAL, VISIBILITY_MEMBER_ACCESS):
+		frappe.throw(_("Invalid visibility: {0}").format(visibility), frappe.ValidationError)
 
 	# Create the community. The GP Team after_insert hook auto-creates a public
 	# "General" space inside it.
@@ -303,7 +308,7 @@ def onboarding(community, space, icon, emails, is_private=0):
 
 	# Create the user-named first space in addition to "General".
 	project = frappe.get_doc(
-		doctype="GP Project", title=space, icon=icon, team=team.name, is_private=is_private
+		doctype="GP Project", title=space, icon=icon, team=team.name, visibility=visibility
 	).insert()
 
 	# Trusted internal path: the signup creator invites their first teammates as

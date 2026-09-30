@@ -19,6 +19,7 @@ from frappe.client import set_value
 
 from gameplan.gameplan.doctype.gp_discussion.gp_discussion import move_discussions
 from gameplan.gameplan.doctype.gp_project.gp_project import mark_all_as_read, track_visits
+from gameplan.public_access import VISIBILITY_GENERAL, VISIBILITY_MEMBER_ACCESS
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
 	create_comment,
@@ -42,9 +43,14 @@ class GuestInJoinedSpacesTestCase(GameplanTestCase):
 		super().setUp()
 		self.community = create_community("Guest Rule Community", members=[self.member])
 		self.other_community = create_community("Guest Rule Other Community", members=[self.member])
-		self.space = create_space("Guest Rule Space", self.community, is_private=1, members=[self.member])
+		self.space = create_space(
+			"Guest Rule Space", self.community, visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
 		self.second_space = create_space(
-			"Guest Rule Second Space", self.community, is_private=1, members=[self.member]
+			"Guest Rule Second Space",
+			self.community,
+			visibility=VISIBILITY_MEMBER_ACCESS,
+			members=[self.member],
 		)
 		for space in (self.space, self.second_space):
 			grant_guest_access(self.guest, space)
@@ -101,7 +107,11 @@ class TestGuestCannotManageSpaces(GuestInJoinedSpacesTestCase):
 		self.assertIsNotNone(self.stored(self.space).archived_at)
 
 	def test_guest_cannot_edit_space_settings(self):
-		for fieldname, value in (("title", "Renamed by guest"), ("icon", "lucide-star"), ("is_private", 0)):
+		for fieldname, value in (
+			("title", "Renamed by guest"),
+			("icon", "lucide-star"),
+			("visibility", VISIBILITY_GENERAL),
+		):
 			with self.subTest(fieldname=fieldname):
 				with self.as_user(self.guest), self.assertRaises(frappe.PermissionError):
 					space = frappe.get_doc("GP Project", self.space.name)
@@ -113,7 +123,7 @@ class TestGuestCannotManageSpaces(GuestInJoinedSpacesTestCase):
 
 		stored = self.stored(self.space)
 		self.assertEqual(stored.title, "Guest Rule Space")
-		self.assertEqual(stored.is_private, 1)
+		self.assertEqual(stored.visibility, VISIBILITY_MEMBER_ACCESS)
 
 	def test_guest_cannot_add_or_remove_space_members(self):
 		with self.as_user(self.guest), self.assertRaises(frappe.PermissionError):
@@ -302,7 +312,9 @@ class TestGuestStillParticipates(GuestInJoinedSpacesTestCase):
 		self.assertEqual(frappe.db.get_value("GP Discussion", name, "owner"), self.guest.name)
 
 	def test_guest_cannot_start_a_discussion_outside_granted_spaces(self):
-		ungranted = create_space("Guest Rule Ungranted", self.community, is_private=1, members=[self.member])
+		ungranted = create_space(
+			"Guest Rule Ungranted", self.community, visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
 		with self.as_user(self.guest), self.assertRaises(frappe.PermissionError):
 			frappe.get_doc(
 				doctype="GP Discussion", title="Blocked", content="<p>No</p>", project=ungranted.name

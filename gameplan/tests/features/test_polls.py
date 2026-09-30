@@ -24,6 +24,7 @@ import frappe.utils.data
 from frappe.utils import add_days, get_datetime, now_datetime
 
 from gameplan.gameplan.doctype.gp_poll.gp_poll import GPPoll
+from gameplan.public_access import VISIBILITY_MEMBER_ACCESS
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
 	create_community,
@@ -800,7 +801,9 @@ class TestWhoMayVote(PollTestCase):
 	def setUp(self):
 		super().setUp()
 		# A poll nobody outside the space can reach: only `member` is in this space.
-		self.private_space = create_space("Locked Space", self.community, is_private=1, members=[self.member])
+		self.private_space = create_space(
+			"Locked Space", self.community, visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
 		self.private_discussion = create_discussion("Locked thread", self.private_space, owner=self.member)
 
 	def private_poll(self):
@@ -861,9 +864,11 @@ class TestGuestPollParticipation(GameplanTestCase):
 	def setUp(self):
 		super().setUp()
 		self.community = create_community("Guest Poll Community", members=[self.member])
-		self.space = create_space("Granted Space", self.community, is_private=1, members=[self.member])
+		self.space = create_space(
+			"Granted Space", self.community, visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
 		self.other_space = create_space(
-			"Ungranted Space", self.community, is_private=1, members=[self.member]
+			"Ungranted Space", self.community, visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
 		)
 		grant_guest_access(self.guest, self.space)
 		self.discussion = create_discussion("Guest poll thread", self.space, owner=self.member)

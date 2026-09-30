@@ -10,15 +10,22 @@ from pypika.terms import ExistsCriterion
 
 import gameplan
 from gameplan.mixins.archivable import Archivable
+from gameplan.mixins.visibility import HasVisibility
 from gameplan.permissions import (
 	apply_team_query_filter,
 	is_global_admin,
 	require_can_manage_community,
 )
+from gameplan.public_access import (
+	SIGNED_IN_TIERS,
+	VISIBILITY_GENERAL,
+	VISIBILITY_MEMBER_ACCESS,
+	is_member_access,
+)
 from gameplan.utils import validate_type
 
 
-class GPTeam(Archivable, Document):
+class GPTeam(HasVisibility, Archivable, Document):
 	on_delete_cascade = ["GP Project"]
 	on_delete_set_null = ["GP Notification"]
 
@@ -33,7 +40,11 @@ class GPTeam(Archivable, Document):
 		set_member_admin — even though `can_manage_community` grants all of them.
 		"""
 		user = frappe.session.user
-		if self.is_private and not is_global_admin(user) and user not in [m.user for m in self.members]:
+		if (
+			is_member_access(self.visibility)
+			and not is_global_admin(user)
+			and user not in [m.user for m in self.members]
+		):
 			frappe.throw("Not permitted", frappe.PermissionError)
 
 		d = super().as_dict(*args, **kwargs)
@@ -44,11 +55,15 @@ class GPTeam(Archivable, Document):
 		return apply_team_query_filter(query)
 
 	def before_insert(self):
+		self.set_default_visibility()
 		if not self.name:
 			slug = frappe.scrub(self.title).replace("_", "-")
 			self.name = append_number_if_name_exists("GP Team", slug)
 		if frappe.session.user != "Guest":
 			self.add_member(frappe.session.user, is_admin=1)
+
+	def before_save(self):
+		self.record_visibility_change()
 
 	def after_insert(self):
 		self.create_general_space()
@@ -65,9 +80,9 @@ class GPTeam(Archivable, Document):
 		if frappe.db.exists("GP Project", {"team": self.name}):
 			return
 
-		frappe.get_doc(doctype="GP Project", title="General", team=self.name, is_private=0).insert(
-			ignore_permissions=True
-		)
+		frappe.get_doc(
+			doctype="GP Project", title="General", team=self.name, visibility=VISIBILITY_GENERAL
+		).insert(ignore_permissions=True)
 
 	def add_member(self, email, is_admin=0):
 		member = self.get_member(email)
@@ -174,7 +189,7 @@ class GPTeam(Archivable, Document):
 		)
 
 	def remove_private_space_memberships(self, user):
-		for project_name in self.get_project_names(is_private=1):
+		for project_name in self.get_project_names(visibility=VISIBILITY_MEMBER_ACCESS):
 			project = frappe.get_doc("GP Project", project_name)
 			member = next((member for member in project.members if member.user == user), None)
 			if member:
@@ -192,10 +207,10 @@ class GPTeam(Archivable, Document):
 			fields=["name"],
 		).run(pluck=True)
 
-	def get_project_names(self, is_private=None):
+	def get_project_names(self, visibility=None):
 		filters = {"team": self.name}
-		if is_private is not None:
-			filters["is_private"] = is_private
+		if visibility is not None:
+			filters["visibility"] = visibility
 
 		return frappe.qb.get_query("GP Project", filters=filters, fields=["name"]).run(pluck=True)
 
@@ -230,14 +245,14 @@ def join_team(team: str):
 
 	Membership is what puts a community and its public spaces in the sidebar. This is
 	the single-community counterpart of `update_joined_teams`, which rewrites the whole
-	joined list. Only active, public communities can be joined; a private one is invite
-	only.
+	joined list. Only active communities open to every signed-in user can be joined; a
+	Member Access one is invite only.
 
 	Lives at module level rather than on the doc because a plain member has no write
 	permission on GP Team, and the document method route demands one for POST.
 	"""
 	doc = get_team_for_membership_change(team)
-	if doc.is_private:
+	if is_member_access(doc.visibility):
 		frappe.throw(_("This community is invite only"), frappe.PermissionError)
 
 	if doc.get_member(frappe.session.user):
@@ -329,15 +344,15 @@ def get_valid_sidebar_badge_style(sidebar_badge_style: str):
 def get_public_team_names():
 	"""Every community anyone may join, newest last.
 
-	Public and not archived, which is the same pair of conditions
-	`get_accessible_team_names` applies to the public half of its result. This one takes
+	Open to every signed-in user and not archived, which is the same pair of conditions
+	`get_accessible_team_names` applies to the open half of its result. This one takes
 	no user, so it can answer for an account that has no session yet.
 	"""
 	Team = frappe.qb.DocType("GP Team")
 	return (
 		frappe.qb.from_(Team)
 		.select(Team.name)
-		.where(Team.is_private == 0)
+		.where(Team.visibility.isin(SIGNED_IN_TIERS))
 		.where(Team.archived_at.isnull())
 		.orderby(Team.creation)
 	).run(pluck=True)
@@ -357,7 +372,7 @@ def get_accessible_team_names():
 		frappe.qb.from_(Team)
 		.select(Team.name)
 		.where(Team.archived_at.isnull())
-		.where((Team.is_private == 0) | ((Team.is_private == 1) & ExistsCriterion(member_exists)))
+		.where(Team.visibility.isin(SIGNED_IN_TIERS) | ExistsCriterion(member_exists))
 	)
 
 	return [team.name for team in query.run(as_dict=True)]

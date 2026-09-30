@@ -5,6 +5,7 @@ import { getProjectUnreadCount, markSpacesAsRead } from './unreadCount'
 import { useSessionUser } from './users'
 import { canManageSpace, isGuest } from '@/utils/permissions'
 import { readOnlyMode } from './readOnlyMode'
+import { isMemberAccess } from '@/utils/visibility'
 
 interface Member extends Pick<GPMember, 'user'> {}
 
@@ -15,7 +16,7 @@ export interface Space extends Pick<
   | 'icon'
   | 'team'
   | 'archived_at'
-  | 'is_private'
+  | 'visibility'
   | 'modified'
   | 'tasks_count'
   | 'discussions_count'
@@ -32,7 +33,7 @@ export let spaces = useList<Space>({
     'icon',
     'team',
     'archived_at',
-    'is_private',
+    'visibility',
     'modified',
     'tasks_count',
     'discussions_count',
@@ -176,8 +177,8 @@ export function leaveSpace(space: Space) {
 export function confirmLeaveSpace(space: Space) {
   dialog.confirm({
     title: `Leave "${space.title}"?`,
-    message: space.is_private
-      ? "This space is private. You won't be able to rejoin unless a member adds you back."
+    message: isMemberAccess(space.visibility)
+      ? "Only its members can see this space. You won't be able to rejoin unless a member adds you back."
       : 'You can rejoin at any time.',
     confirmLabel: 'Leave',
     onConfirm: () => leaveSpace(space),

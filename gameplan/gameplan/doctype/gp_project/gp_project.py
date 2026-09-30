@@ -11,6 +11,7 @@ from gameplan.api import _invite_by_email
 from gameplan.gameplan.doctype.gp_unread_record.gp_unread_record import GPUnreadRecord
 from gameplan.mixins.archivable import Archivable
 from gameplan.mixins.manage_members import ManageMembersMixin
+from gameplan.mixins.visibility import HasVisibility
 from gameplan.permissions import (
 	apply_accessible_project_filter,
 	apply_project_query_filter,
@@ -35,7 +36,7 @@ PROJECT_TEAM_DOCTYPES = [
 ]
 
 
-class GPProject(ManageMembersMixin, Archivable, Document):
+class GPProject(HasVisibility, ManageMembersMixin, Archivable, Document):
 	on_delete_cascade = [
 		"GP Task",
 		"GP Discussion",
@@ -55,7 +56,11 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 			self.icon = DEFAULT_SPACE_ICON
 
 	def before_insert(self):
+		self.set_default_visibility()
 		self.append("members", {"user": frappe.session.user})
+
+	def before_save(self):
+		self.record_visibility_change()
 
 	def on_trash(self):
 		GPUnreadRecord.delete_unread_records_for_project(self.name)

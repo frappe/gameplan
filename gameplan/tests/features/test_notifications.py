@@ -20,10 +20,10 @@ digest mirrors the same split: `get_unread_notifications` vs `get_unread_discuss
 """
 
 import frappe
-from frappe.utils import cint
 
 from gameplan.api import mark_all_notifications_as_read, unread_notifications
 from gameplan.gameplan.doctype.gp_notification.gp_notification import GPNotification
+from gameplan.public_access import VISIBILITY_GENERAL, VISIBILITY_MEMBER_ACCESS
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
 	_name,
@@ -155,7 +155,10 @@ class TestMentionNotifications(NotificationTestCase):
 		them a dead link.
 		"""
 		private_space = create_space(
-			"Secret Plans", self.community, is_private=1, members=[self.member, self.second_member]
+			"Secret Plans",
+			self.community,
+			visibility=VISIBILITY_MEMBER_ACCESS,
+			members=[self.member, self.second_member],
 		)
 		with self.as_user(self.member):
 			create_discussion(
@@ -168,17 +171,19 @@ class TestMentionNotifications(NotificationTestCase):
 	def test_everyone_mention_in_a_private_community_reaches_only_that_community(self):
 		"""A private COMMUNITY confines @everyone even when the space itself is public.
 
-		`is_private` on the space is only half the rule: a public space inside a private
+		The space's own tier is only half the rule: a General space inside a Member Access
 		community is still invisible to non-members (can_view_space falls through to
 		can_view_community), so the batched audience resolver has to apply the community
 		check too. Everything else here exercises a private space, which short-circuits
 		before that branch is ever reached.
 		"""
 		private_community = create_community(
-			"Black Ops", is_private=1, members=[self.member, self.second_member]
+			"Black Ops", visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member, self.second_member]
 		)
 		space = create_space("Recon", private_community)
-		self.assertEqual(cint(space.is_private), 0, "the space must stay public — the community is the gate")
+		self.assertEqual(
+			space.visibility, VISIBILITY_GENERAL, "the space must stay General — the community is the gate"
+		)
 
 		with self.as_user(self.member):
 			create_discussion("Everyone thread", space, content=mention_html("_everyone_", "Everyone"))
@@ -190,14 +195,18 @@ class TestMentionNotifications(NotificationTestCase):
 
 	def test_mentioning_a_user_who_cannot_see_the_space_creates_no_notification(self):
 		"""The mention autocomplete offers every active user, not just space members."""
-		private_space = create_space("Secret Plans", self.community, is_private=1, members=[self.member])
+		private_space = create_space(
+			"Secret Plans", self.community, visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
 		with self.as_user(self.member):
 			create_discussion("Secret thread", private_space, content=mention_html(self.outsider, "Outsider"))
 
 		self.assertEqual(self.notifications_for(self.outsider), [])
 
 	def test_mentioning_a_granted_guest_notifies_them(self):
-		private_space = create_space("Guest Plans", self.community, is_private=1, members=[self.member])
+		private_space = create_space(
+			"Guest Plans", self.community, visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
 		grant_guest_access(self.guest, private_space)
 		with self.as_user(self.member):
 			discussion = create_discussion(
@@ -284,8 +293,8 @@ class TestEveryoneMentionQueryCount(NotificationTestCase):
 	"""
 
 	# The six reads users_who_can_view_content needs, whatever the member list holds:
-	# the active-user roster, GP Project (name/team/is_private), the GP Project and
-	# GP Team membership rows, GP Guest Access, and GP Team.is_private.
+	# the active-user roster, GP Project (name/team/visibility), the GP Project and
+	# GP Team membership rows, GP Guest Access, and GP Team.visibility.
 	AUDIENCE_QUERY_BUDGET = 6
 
 	def test_everyone_audience_query_count_does_not_grow_with_the_member_list(self):
@@ -418,7 +427,10 @@ class TestReactionNotifications(NotificationTestCase):
 
 	def test_poll_reaction_does_not_notify_an_author_who_cannot_see_the_space(self):
 		private_space = create_space(
-			"Secret Plans", self.community, is_private=1, members=[self.member, self.second_member]
+			"Secret Plans",
+			self.community,
+			visibility=VISIBILITY_MEMBER_ACCESS,
+			members=[self.member, self.second_member],
 		)
 		discussion = create_discussion("Secret thread", private_space, owner=self.member)
 		poll = create_poll("Secret poll", discussion, owner=self.outsider)

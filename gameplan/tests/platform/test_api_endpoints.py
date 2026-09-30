@@ -20,6 +20,7 @@ from gameplan.api import (
 	onboarding,
 	search_sqlite,
 )
+from gameplan.public_access import VISIBILITY_ANONYMOUS, VISIBILITY_GENERAL, VISIBILITY_MEMBER_ACCESS
 from gameplan.search_sqlite import GameplanSearch
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
@@ -64,7 +65,7 @@ class TestOnboardingEndpoint(APIEndpointTestCase):
 				space="API Onboarding Space",
 				icon="lucide-users",
 				emails="[]",
-				is_private=1,
+				visibility=VISIBILITY_MEMBER_ACCESS,
 			)
 
 		self.assertEqual(set(result), {"team", "space"})
@@ -76,10 +77,10 @@ class TestOnboardingEndpoint(APIEndpointTestCase):
 		self.assertEqual(space.title, "API Onboarding Space")
 		self.assertEqual(space.team, community.name)
 		self.assertEqual(space.icon, "lucide-users")
-		self.assertEqual(space.is_private, 1)
+		self.assertEqual(space.visibility, VISIBILITY_MEMBER_ACCESS)
 
 	def test_the_first_space_is_public_unless_the_signup_asks_for_privacy(self):
-		"""Signup omits is_private, and the default decides whether a brand-new
+		"""Signup omits visibility, and the default decides whether a brand-new
 		community's first space is visible to the teammates invited alongside it."""
 		with self.as_user(self.member):
 			result = onboarding(
@@ -89,7 +90,20 @@ class TestOnboardingEndpoint(APIEndpointTestCase):
 				emails="[]",
 			)
 
-		self.assertEqual(frappe.db.get_value("GP Project", result["space"], "is_private"), 0)
+		self.assertEqual(frappe.db.get_value("GP Project", result["space"], "visibility"), VISIBILITY_GENERAL)
+
+	def test_signup_cannot_publish_its_first_space(self):
+		# Only a Gameplan Admin publishes. Someone signing up is not one yet.
+		with self.as_user(self.member), self.assertRaises(frappe.ValidationError):
+			onboarding(
+				community="API Anonymous Onboarding Community",
+				space="API Anonymous Onboarding Space",
+				icon="lucide-users",
+				emails="[]",
+				visibility=VISIBILITY_ANONYMOUS,
+			)
+
+		self.assertFalse(frappe.db.exists("GP Team", {"title": "API Anonymous Onboarding Community"}))
 
 	def test_anonymous_caller_is_denied(self):
 		self.assert_anonymous_denied(onboarding)
@@ -137,16 +151,22 @@ class TestSearchFilterOptionsEndpoint(IsolatedSearchIndex, APIEndpointTestCase):
 		)
 		hidden_user = create_user("api-filter-hidden@example.com", "Hidden Filter Author", "Gameplan Member")
 		visible_community = create_community(
-			"API Visible Filter Community", is_private=1, members=[visible_user]
+			"API Visible Filter Community", visibility=VISIBILITY_MEMBER_ACCESS, members=[visible_user]
 		)
 		hidden_community = create_community(
-			"API Hidden Filter Community", is_private=1, members=[hidden_user]
+			"API Hidden Filter Community", visibility=VISIBILITY_MEMBER_ACCESS, members=[hidden_user]
 		)
 		visible_space = create_space(
-			"API Visible Filter Space", visible_community, is_private=1, members=[visible_user]
+			"API Visible Filter Space",
+			visible_community,
+			visibility=VISIBILITY_MEMBER_ACCESS,
+			members=[visible_user],
 		)
 		hidden_space = create_space(
-			"API Hidden Filter Space", hidden_community, is_private=1, members=[hidden_user]
+			"API Hidden Filter Space",
+			hidden_community,
+			visibility=VISIBILITY_MEMBER_ACCESS,
+			members=[hidden_user],
 		)
 		visible_tag = "api-visible-filter-tag"
 		hidden_tag = "api-hidden-filter-tag"

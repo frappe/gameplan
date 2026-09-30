@@ -11,7 +11,7 @@
           <div class="flex w-full items-center">
             <CommunityImage :community="team" class="mr-2 size-6 shrink-0 bg-surface-gray-1" />
             <span class="text-xl-medium">{{ team.title }}</span>
-            <span v-if="team.is_private" class="lucide-lock ml-2 h-3 w-3" />
+            <span v-if="isMemberAccess(team.visibility)" class="lucide-lock ml-2 h-3 w-3" />
             <span class="lucide-chevron-right ml-auto h-5 w-5 text-ink-gray-5" />
           </div>
         </template>
@@ -23,4 +23,5 @@
 import { Breadcrumbs } from 'frappe-ui'
 import { activeCommunities } from '@/data/communities'
 import CommunityImage from '@/components/CommunityImage.vue'
+import { isMemberAccess } from '@/utils/visibility'
 </script>

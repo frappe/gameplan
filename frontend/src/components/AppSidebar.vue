@@ -49,7 +49,10 @@
               </template>
 
               <span class="flex-1 inline-flex items-center gap-1 truncate text-sm">
-                <LucideLock v-if="space.is_private" class="size-3 shrink-0 text-ink-gray-5" />
+                <LucideLock
+                  v-if="isMemberAccess(space.visibility)"
+                  class="size-3 shrink-0 text-ink-gray-5"
+                />
                 <span class="truncate">{{ space.title }}</span>
                 <PushPin
                   v-if="isSpacePinned(space.name)"
@@ -130,6 +133,7 @@ import SpaceIcon from './SpaceIcon.vue'
 import LucideLock from '~icons/lucide/lock'
 import PushPin from './icons/PushPin.vue'
 import PushPinSlash from './icons/PushPinSlash.vue'
+import { isMemberAccess } from '@/utils/visibility'
 
 const route = useRoute()
 const sessionUser = computed(() => useSessionUser())

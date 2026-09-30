@@ -18,8 +18,14 @@
 import { computed } from 'vue'
 import { Select, TextInput } from 'frappe-ui'
 import { useCommunitySpaceData } from './useCommunitySpaceData'
+import {
+  isMemberAccess,
+  VISIBILITY_GENERAL,
+  VISIBILITY_MEMBER_ACCESS,
+  type Visibility,
+} from '@/utils/visibility'
 
-type VisibilityFilter = 'All' | 'Public' | 'Private' | 'Archived'
+type VisibilityFilter = 'All' | Visibility | 'Archived'
 
 const props = defineProps<{ communityId: string }>()
 const search = defineModel<string>('search', { default: '' })
@@ -34,12 +40,16 @@ const visibilityOptions = computed(() => {
   const options = [
     { label: `All (${activeSpaces.value.length})`, value: 'All' },
     {
-      label: `Public (${activeSpaces.value.filter((s) => !s.is_private).length})`,
-      value: 'Public',
+      label: `${VISIBILITY_GENERAL} (${
+        activeSpaces.value.filter((s) => !isMemberAccess(s.visibility)).length
+      })`,
+      value: VISIBILITY_GENERAL,
     },
     {
-      label: `Private (${activeSpaces.value.filter((s) => s.is_private).length})`,
-      value: 'Private',
+      label: `${VISIBILITY_MEMBER_ACCESS} (${
+        activeSpaces.value.filter((s) => isMemberAccess(s.visibility)).length
+      })`,
+      value: VISIBILITY_MEMBER_ACCESS,
     },
   ]
   if (archivedCount.value) {

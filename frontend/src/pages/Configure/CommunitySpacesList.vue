@@ -73,8 +73,9 @@ import SpaceRow from './SpaceRow.vue'
 import CommunitySpacesListControls from './CommunitySpacesListControls.vue'
 import { useCommunitySpaceData } from './useCommunitySpaceData'
 import { computed } from 'vue'
+import { visibilityTier, type Visibility } from '@/utils/visibility'
 
-type VisibilityFilter = 'All' | 'Public' | 'Private' | 'Archived'
+type VisibilityFilter = 'All' | Visibility | 'Archived'
 
 const props = withDefaults(
   defineProps<{
@@ -109,13 +110,12 @@ const filteredSpaces = computed(() => {
   )
 })
 
-// 'All'/'Public'/'Private' only cover active spaces; 'Archived' is its own scope.
+// 'All' and the tiers only cover active spaces; 'Archived' is its own scope.
 function matchesScope(space: Space, filter: VisibilityFilter) {
   if (filter === 'Archived') return Boolean(space.archived_at)
   if (space.archived_at) return false
-  if (filter === 'Public') return !space.is_private
-  if (filter === 'Private') return Boolean(space.is_private)
-  return true
+  if (filter === 'All') return true
+  return visibilityTier(space.visibility) === filter
 }
 
 function clearFilters() {

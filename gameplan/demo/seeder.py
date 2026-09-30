@@ -24,6 +24,8 @@ from datetime import datetime, timedelta
 import frappe
 from frappe.utils import add_days, getdate, now_datetime
 
+from gameplan.public_access import VISIBILITY_GENERAL
+
 MAYA_EMAIL = "maya@moonhollow.studio"
 DEMO_EMAIL_DOMAIN = "@moonhollow.studio"
 DEMO_FILE_FOLDER = "Home/Gameplan Demo"
@@ -304,7 +306,7 @@ class Seeder:
 				"name": event["slug"],
 				"title": event["title"],
 				"icon": event.get("icon"),
-				"is_private": 1 if event.get("is_private") else 0,
+				"visibility": event.get("visibility", VISIBILITY_GENERAL),
 				"image": self._file_url(event["logo"]) if event.get("logo") else None,
 				"members": members,
 			}
@@ -324,7 +326,7 @@ class Seeder:
 				"team": team,
 				"icon": event.get("icon"),
 				"description": event.get("description"),
-				"is_private": 1 if event.get("is_private") else 0,
+				"visibility": event.get("visibility", VISIBILITY_GENERAL),
 			}
 		).insert(ignore_permissions=True)
 		self.refs[event["id"]] = ("GP Project", space.name)

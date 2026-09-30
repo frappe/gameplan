@@ -17,7 +17,7 @@
           </div>
         </section>
 
-        <section v-if="space.is_private" class="space-y-3">
+        <section v-if="isMemberAccess(space.visibility)" class="space-y-3">
           <div>
             <h3 class="text-base-medium text-ink-gray-7">Users</h3>
             <p class="mt-1 text-p-sm text-ink-gray-5">
@@ -133,6 +133,7 @@ import { useSpace } from '@/data/spaces'
 import { useSessionUser, useUser, users } from '@/data/users'
 import { canInviteGuests, canManageSpace } from '@/utils/permissions'
 import { GPGuestAccess, GPInvitation, GPProject } from '@/types/doctypes'
+import { isMemberAccess, visibilityIcon, visibilityLabel } from '@/utils/visibility'
 
 const props = defineProps<{ spaceId: string }>()
 const show = defineModel<boolean>()
@@ -181,10 +182,10 @@ let guestsAndInvites = computed(() => {
   return [...(guests.data || []), ...(pending.data || [])]
 })
 
-const accessLabel = computed(() => (space.value?.is_private ? 'Private' : 'Public'))
-const accessIcon = computed(() => (space.value?.is_private ? 'lucide-lock' : 'lucide-globe-2'))
+const accessLabel = computed(() => visibilityLabel(space.value?.visibility))
+const accessIcon = computed(() => visibilityIcon(space.value?.visibility))
 const accessDescription = computed(() => {
-  if (space.value?.is_private) {
+  if (isMemberAccess(space.value?.visibility)) {
     return 'Only selected community users and invited guests can view this space.'
   }
   return 'Every community user can view this space. Guests need an explicit invite.'
