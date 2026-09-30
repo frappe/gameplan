@@ -19,6 +19,10 @@ def get_list(
 	debug=False,
 ):
 	check_permissions(doctype, parent)
+	# `frappe.qb.get_query` ignores permissions unless told otherwise, and then every row of
+	# the doctype comes back: every private discussion, and every user's drafts and
+	# bookmarks. Asking for them applies each doctype's permission_query_conditions, as
+	# frappe.get_list and the /api/v2/document list route do.
 	query = frappe.qb.get_query(
 		table=doctype,
 		fields=fields,
@@ -27,6 +31,8 @@ def get_list(
 		offset=start,
 		limit=limit,
 		group_by=group_by,
+		ignore_permissions=False,
+		parent_doctype=parent,
 	)
 	query = apply_custom_filters(doctype, query)
 	return query.run(as_dict=True, debug=debug)
