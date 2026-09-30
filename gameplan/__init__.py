@@ -15,6 +15,16 @@ def is_guest(user=None):
 	return "Gameplan Guest" in roles
 
 
+def is_anonymous(user=None):
+	"""Return True if nobody is signed in.
+
+	Not the same question as is_guest(). A Gameplan Guest is a signed-in outside
+	collaborator who holds the Gameplan Guest role. Someone who is not signed in holds no
+	Gameplan role at all, so is_guest() returns False for them.
+	"""
+	return (user or frappe.session.user) == "Guest"
+
+
 def is_admin(user=None):
 	"""Return True if the user may manage members (roles, invites, removal).
 
