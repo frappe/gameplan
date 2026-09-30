@@ -626,6 +626,26 @@ class TestSearchIndexLifecycle(IsolatedSearchIndex, GameplanTestCase):
 
 		self.assertNotIn(f"GP Discussion:{hidden.name}", self.discussion_ids(results))
 
+	def test_crafted_filter_name_cannot_bypass_space_access(self):
+		inaccessible_space = create_space(
+			"Injection Inaccessible Search Space",
+			self.community,
+			is_private=1,
+			members=[self.member],
+		)
+		hidden = self.create_discussion(
+			"Injectionneedle private result",
+			"injectionneedle must stay inside its private space",
+			space=inaccessible_space,
+		)
+		drain_search_index_queue()
+		crafted = {"doctype IN ('GP Discussion') OR 1=1 OR doctype": ["GP Discussion"]}
+
+		for query in ("", "injectionneedle"):
+			results = self.search_as(self.second_member, query, filters=crafted)
+
+			self.assertNotIn(f"GP Discussion:{hidden.name}", self.discussion_ids(results))
+
 	def test_search_without_a_query_or_filters_returns_nothing(self):
 		self.create_discussion("Unasked-for thread", "Nothing has been searched for yet")
 		drain_search_index_queue()

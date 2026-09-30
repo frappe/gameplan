@@ -30,6 +30,7 @@ SORT_COLUMNS = {
 	"comments_count": "comments_count",
 }
 DEFAULT_SORT_BY = "last_post_at desc"
+FILTERABLE_FIELDS = frozenset({"owner", "project", "team", "doctype", "tags"})
 
 
 class GameplanSearch(SQLiteSearch):
@@ -349,7 +350,7 @@ class GameplanSearch(SQLiteSearch):
 		"""
 		Enhanced search method that handles tag filtering using LIKE operations.
 		"""
-		filters = filters.copy() if filters else {}
+		filters = {field: values for field, values in (filters or {}).items() if field in FILTERABLE_FIELDS}
 		self._requested_projects = filters.get("project")
 		try:
 			# Convert tag filters to LIKE filters for the parent search
