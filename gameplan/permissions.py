@@ -598,6 +598,72 @@ def poll_query_conditions(user=None, **kwargs):
 	return criterion_sql(criterion)
 
 
+# The doctypes whose documents log GP Activity (see gameplan/mixins/activity.py).
+ACTIVITY_REFERENCE_DOCTYPES = ("GP Discussion", "GP Task")
+
+
+def activity_query_conditions(user=None, **kwargs):
+	"""Scope GP Activity lists to rows about things the user can see.
+
+	An activity row says what happened to a discussion or task, down to its old title or
+	the space it moved from, so listing one follows the thing it is about, the way
+	comment_query_conditions does. Space-less content (a personal task) is its owner's.
+	"""
+	user = user or frappe.session.user
+	if is_global_admin(user):
+		return None
+
+	Activity = frappe.qb.DocType("GP Activity")
+	criterion = None
+	for doctype in ACTIVITY_REFERENCE_DOCTYPES:
+		Reference = frappe.qb.DocType(doctype)
+		visible = (
+			frappe.qb.from_(Reference)
+			.select(Reference.name)
+			.where(
+				accessible_project_criterion(Reference.project, user)
+				| (Reference.project.isnull() & (Reference.owner == user))
+			)
+		)
+		about_visible = (Activity.reference_doctype == doctype) & Activity.reference_name.isin(visible)
+		criterion = about_visible if criterion is None else criterion | about_visible
+	return criterion_sql(criterion)
+
+
+def activity_has_permission(doc, ptype="read", user=None, **kwargs):
+	"""Read an activity row if you can read what it is about. Never write one directly.
+
+	The server logs activity through HasActivity.log_activity, which inserts with
+	ignore_permissions, so no client ever needs to create or edit a row: an activity row is
+	a record of what happened. A row goes away only with the discussion or task it belongs
+	to, through the delete cascade.
+	"""
+	user = user or frappe.session.user
+	if not hasattr(doc, "doctype"):
+		return True
+	if is_global_admin(user):
+		return True
+	if ptype in READ_PERMISSIONS:
+		return can_view_activity_reference(user, doc)
+	if ptype in {"create", "write"}:
+		return False
+	if ptype == "delete":
+		return is_delete_cascade(doc)
+	# Defer on a permission type Gameplan does not model; see content_has_permission.
+	return True
+
+
+def can_view_activity_reference(user, activity):
+	if activity.reference_doctype not in ACTIVITY_REFERENCE_DOCTYPES:
+		return False
+	try:
+		reference = frappe.get_doc(activity.reference_doctype, activity.reference_name)
+	except frappe.DoesNotExistError:
+		frappe.clear_last_message()
+		return False
+	return can_view_content(user, reference)
+
+
 def draft_query_conditions(user=None, **kwargs):
 	# Drafts are private to their owner in list/report queries. Share-by-link still works:
 	# that reads a single draft by name through the doctype's open `read` permission, which

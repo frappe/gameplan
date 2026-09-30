@@ -25,6 +25,7 @@ from gameplan.tests.fixtures import (
 
 # Doctypes for which setUp creates rows the second member must not see.
 FIXTURE_HIDDEN_DOCTYPES = {
+	"GP Activity",
 	"GP Bookmark",
 	"GP Comment",
 	"GP Discussion",

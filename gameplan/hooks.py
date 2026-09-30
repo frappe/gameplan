@@ -126,6 +126,7 @@ permission_query_conditions = {
 	"GP Comment": "gameplan.gameplan.doctype.gp_comment.gp_comment.get_permission_query_conditions",
 	"GP Poll": "gameplan.gameplan.doctype.gp_poll.gp_poll.get_permission_query_conditions",
 	"GP Page": "gameplan.gameplan.doctype.gp_page.gp_page.get_permission_query_conditions",
+	"GP Activity": "gameplan.permissions.activity_query_conditions",
 	"GP Draft": "gameplan.permissions.draft_query_conditions",
 	"GP Bookmark": "gameplan.permissions.bookmark_query_conditions",
 	# Per-user state — see gameplan/per_user_state.py for why if_owner cannot express this.
@@ -144,6 +145,7 @@ has_permission = {
 	"GP Poll": "gameplan.gameplan.doctype.gp_poll.gp_poll.has_permission",
 	"GP Page": "gameplan.gameplan.doctype.gp_page.gp_page.has_permission",
 	"GP User Profile": "gameplan.gameplan.doctype.gp_user_profile.gp_user_profile.has_permission",
+	"GP Activity": "gameplan.permissions.activity_has_permission",
 	"GP Bookmark": "gameplan.permissions.bookmark_has_permission",
 	"GP Notification": "gameplan.per_user_state.notification_has_permission",
 	"GP Project Visit": "gameplan.per_user_state.project_visit_has_permission",
