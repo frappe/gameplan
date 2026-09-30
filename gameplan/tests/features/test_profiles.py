@@ -724,6 +724,16 @@ class TestGetListQueryParams(GameplanTestCase):
 		self.assertEqual(len(result), 1)
 		self.assertEqual(result[0]["user"], self.bob.name)
 
+	def test_reads_nothing_of_another_users_account_through_a_link(self):
+		frappe.db.set_value("User", self.bob.name, "last_ip", "203.0.113.7", update_modified=False)
+
+		rows = get_list(
+			fields=json.dumps(["name", "user.last_ip"]), filters=json.dumps({"user": self.bob.name})
+		)
+		self.assertIsNone(rows[0].get("last_ip"))
+		# Nor one character at a time, through a filter.
+		self.assertEqual(get_list(fields=["name"], filters={"user.last_ip": ["like", "203.%"]}), [])
+
 	def test_defaults_still_work_when_every_argument_is_omitted(self):
 		# Just needs to not raise - the default `limit=20` means a specific row (e.g.
 		# self.alice's) isn't guaranteed to be in this page on a site with more than 20

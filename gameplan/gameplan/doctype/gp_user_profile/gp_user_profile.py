@@ -270,8 +270,13 @@ def get_list(
 		offset=start,
 		limit=limit,
 		group_by=group_by,
+		# Fields and filters come from the client and may follow links (`user.last_ip`):
+		# checked, so they reach no more of another doctype than the user may read.
+		ignore_permissions=False,
 	)
 	data = query.run(as_dict=True, debug=debug)
+	if not data:
+		return data
 	users = [d.user for d in data]
 
 	Discussion = frappe.qb.DocType("GP Discussion")
