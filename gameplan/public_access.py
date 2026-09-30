@@ -63,6 +63,11 @@ def public_access_enabled() -> bool:
 	return bool(cint(frappe.conf.get(PUBLIC_ACCESS_CONFIG_KEY)))
 
 
+def public_team_criterion(Team):
+	"""SQL for "someone who is not signed in may read this community", switch aside."""
+	return (Team.visibility == VISIBILITY_ANONYMOUS) & Team.archived_at.isnull()
+
+
 def anonymous_readable_criterion(Project):
 	"""SQL for "someone who is not signed in may read this space", public access switch aside.
 
@@ -72,12 +77,7 @@ def anonymous_readable_criterion(Project):
 	because the switch is read on every request instead of being stored.
 	"""
 	Team = frappe.qb.DocType("GP Team")
-	public_teams = (
-		frappe.qb.from_(Team)
-		.select(Team.name)
-		.where(Team.visibility == VISIBILITY_ANONYMOUS)
-		.where(Team.archived_at.isnull())
-	)
+	public_teams = frappe.qb.from_(Team).select(Team.name).where(public_team_criterion(Team))
 	return (
 		(Project.visibility == VISIBILITY_ANONYMOUS)
 		& Project.archived_at.isnull()
