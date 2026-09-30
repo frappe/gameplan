@@ -62,8 +62,14 @@ class GPTeam(HasVisibility, Archivable, Document):
 		if frappe.session.user != "Guest":
 			self.add_member(frappe.session.user, is_admin=1)
 
+	def validate(self):
+		self.check_visibility_change_allowed()
+
 	def before_save(self):
 		self.record_visibility_change()
+
+	def on_update(self):
+		self.reconcile_access_after_visibility_change()
 
 	def after_insert(self):
 		self.create_general_space()

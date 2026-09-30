@@ -5,7 +5,20 @@ import frappe
 from frappe import _
 from frappe.utils import cint
 
-from gameplan.public_access import VISIBILITY_GENERAL
+from gameplan.permissions import is_global_admin, users_who_can_view_space
+from gameplan.public_access import (
+	VISIBILITY_ANONYMOUS,
+	VISIBILITY_GENERAL,
+	VISIBILITY_TIERS,
+	visibility_tier,
+)
+from gameplan.realtime import notify_unread_counts_changed
+from gameplan.roles import GAMEPLAN_ROLES
+
+# Per-user rows that point at a space and outlive losing access to it. Pins in
+# GP User Profile.pinned_spaces are left alone: the sidebar only ever shows a pin for a
+# space the user can list, so a stale one never renders, and it returns with the access.
+SPACE_STATE_DOCTYPES = ("GP Unread Record", "GP Pinned Project", "GP Followed Project")
 
 
 class HasVisibility:
@@ -33,6 +46,26 @@ class HasVisibility:
 		if not self.visibility:
 			self.visibility = VISIBILITY_GENERAL
 
+	def check_visibility_change_allowed(self):
+		"""Only a Gameplan Admin changes a tier, or creates something on the Anonymous tier.
+
+		Checked on the field rather than in one method, because a method is only one of the
+		routes: a plain save, the Desk form and the generic REST routes all reach it too.
+		Write permission is not enough on its own. Every member of a Member Access space may
+		manage it, and a community admin manages every General space in the community.
+		"""
+		if is_global_admin(frappe.session.user):
+			return
+		if self.is_new():
+			if visibility_tier(self.visibility) == VISIBILITY_ANONYMOUS:
+				frappe.throw(
+					_("Only Gameplan Admins can make something readable without signing in"),
+					frappe.PermissionError,
+				)
+			return
+		if self.has_value_changed("visibility"):
+			frappe.throw(_("Only Gameplan Admins can change visibility"), frappe.PermissionError)
+
 	def record_visibility_change(self):
 		"""Stamp who changed the tier, and when.
 
@@ -42,3 +75,116 @@ class HasVisibility:
 		if self.has_value_changed("visibility"):
 			self.visibility_set_by = frappe.session.user
 			self.visibility_set_at = frappe.utils.now()
+
+	def reconcile_access_after_visibility_change(self):
+		"""Drop the per-user state of everyone who can no longer read an affected space.
+
+		Decided from what is stored, not from which way the tier moved: for every user who
+		holds unread records, a pin or a follow on a space, ask whether they can still read
+		it. Loosening therefore drops nothing, and the answer is right for any transition.
+		"""
+		before = self.get_doc_before_save()
+		if not before or before.visibility == self.visibility:
+			return
+
+		lost_access = set()
+		for space in self.get_affected_space_names():
+			holders = users_with_space_state(space)
+			lost = holders - set(users_who_can_view_space(holders, space))
+			if lost:
+				delete_space_state(space, lost)
+				lost_access |= lost
+
+		if lost_access:
+			notify_unread_counts_changed(list(lost_access))
+
+	def get_affected_space_names(self):
+		"""The spaces whose readers depend on this record's tier."""
+		if self.doctype == "GP Project":
+			return [self.name]
+		return frappe.get_all("GP Project", filters={"team": self.name}, pluck="name")
+
+	@frappe.whitelist()
+	def get_visibility_change_impact(self, visibility: str):
+		"""What moving this record to `visibility` would do, for the confirmation dialog.
+
+		Nothing is changed. The new tier is written inside a savepoint, the readers of every
+		affected space are measured with the same rule the permission checks use, and the
+		savepoint is rolled back. So the counts cannot drift from what the change really does.
+		"""
+		if not is_global_admin(frappe.session.user):
+			frappe.throw(_("Only Gameplan Admins can change visibility"), frappe.PermissionError)
+		if visibility not in VISIBILITY_TIERS:
+			frappe.throw(_("Unknown visibility: {0}").format(visibility))
+
+		users = gameplan_users()
+		spaces = self.get_affected_space_names()
+		readers_before = {space: set(users_who_can_view_space(users, space)) for space in spaces}
+		frappe.db.savepoint("visibility_impact")
+		try:
+			frappe.db.set_value(self.doctype, self.name, "visibility", visibility, update_modified=False)
+			readers_after = {space: set(users_who_can_view_space(users, space)) for space in spaces}
+		finally:
+			frappe.db.rollback(save_point="visibility_impact")
+
+		gaining, losing = set(), set()
+		spaces_gaining, spaces_losing = [], []
+		for space in spaces:
+			gained = readers_after[space] - readers_before[space]
+			lost = readers_before[space] - readers_after[space]
+			gaining |= gained
+			losing |= lost
+			if gained:
+				spaces_gaining.append(space)
+			if lost:
+				spaces_losing.append(space)
+
+		return {
+			"users_gaining_access": len(gaining),
+			"users_losing_access": len(losing),
+			"discussions_revealed": count_discussions(spaces_gaining),
+			"spaces_losing_readers": len(spaces_losing),
+			"leaving_anonymous": self.visibility == VISIBILITY_ANONYMOUS
+			and visibility != VISIBILITY_ANONYMOUS,
+		}
+
+
+def users_with_space_state(space):
+	"""Every user holding a SPACE_STATE_DOCTYPES row on `space`."""
+	users = set()
+	for doctype in SPACE_STATE_DOCTYPES:
+		users.update(frappe.get_all(doctype, filters={"project": str(space)}, pluck="user", distinct=True))
+	return users
+
+
+def delete_space_state(space, users):
+	for doctype in SPACE_STATE_DOCTYPES:
+		table = frappe.qb.DocType(doctype)
+		(
+			frappe.qb.from_(table)
+			.where(table.project == str(space))
+			.where(table.user.isin(list(users)))
+			.delete()
+		).run()
+
+
+def gameplan_users():
+	"""Every enabled user holding a Gameplan role."""
+	User = frappe.qb.DocType("User")
+	HasRole = frappe.qb.DocType("Has Role")
+	return (
+		frappe.qb.from_(User)
+		.join(HasRole)
+		.on((HasRole.parent == User.name) & (HasRole.parenttype == "User"))
+		.select(User.name)
+		.distinct()
+		.where(User.enabled == 1)
+		.where(HasRole.role.isin(GAMEPLAN_ROLES))
+		.run(pluck=True)
+	)
+
+
+def count_discussions(spaces):
+	if not spaces:
+		return 0
+	return frappe.db.count("GP Discussion", {"project": ["in", [str(space) for space in spaces]]})

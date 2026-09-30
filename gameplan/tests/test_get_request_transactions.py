@@ -71,6 +71,8 @@ READ_ONLY_ENDPOINTS = frozenset(
 		# The Drafts list. Collapses duplicate reply drafts in its response but writes nothing;
 		# find_my_draft is what destroys the stale sibling, on its own POST path.
 		"gameplan.gameplan.doctype.gp_draft.gp_draft.get_my_drafts",
+		# The counts a visibility confirmation shows. Measures inside a savepoint it rolls back.
+		"gameplan.mixins.visibility.HasVisibility.get_visibility_change_impact",
 		# Profile reads.
 		"gameplan.gameplan.doctype.gp_user_profile.gp_user_profile.get_last_post",
 		"gameplan.gameplan.doctype.gp_user_profile.gp_user_profile.get_my_bento_cards",

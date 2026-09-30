@@ -59,8 +59,14 @@ class GPProject(HasVisibility, ManageMembersMixin, Archivable, Document):
 		self.set_default_visibility()
 		self.append("members", {"user": frappe.session.user})
 
+	def validate(self):
+		self.check_visibility_change_allowed()
+
 	def before_save(self):
 		self.record_visibility_change()
+
+	def on_update(self):
+		self.reconcile_access_after_visibility_change()
 
 	def on_trash(self):
 		GPUnreadRecord.delete_unread_records_for_project(self.name)

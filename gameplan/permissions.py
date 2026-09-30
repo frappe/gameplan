@@ -170,6 +170,17 @@ def users_who_can_view_content(users, doc):
 		owner = get_doc_value(doc, "owner")
 		return [user for user in users if is_global_admin(user) or user == owner]
 
+	return users_who_can_view_space(users, project)
+
+
+def users_who_can_view_space(users, project):
+	"""The subset of `users` that can_view_space would return True for, order preserved.
+
+	The batched form of can_view_space, for the same reason users_who_can_view_content
+	exists: a fixed handful of queries however many users are asked about. Keep it in step
+	with can_view_space and can_view_community.
+	"""
+	users = list(dict.fromkeys(users))
 	project_info = get_project_info(project)
 	if not project_info:
 		return []
