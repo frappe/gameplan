@@ -39,8 +39,8 @@ app.use(router)
 // Installed before anything else runs, so an error thrown during setup is reported too.
 installErrorReporting(app, router)
 app.mixin(resetDataMixin)
-for (let key in globalComponents) {
-  app.component(key, globalComponents[key])
+for (let [key, component] of Object.entries(globalComponents)) {
+  app.component(key, component)
 }
 
 app.config.globalProperties.$log = console.log.bind(console)
@@ -51,15 +51,13 @@ app.config.globalProperties.$readOnlyMode = window.read_only_mode
 app.config.globalProperties.$platform = getPlatform()
 app.config.globalProperties.$isSessionUser = isSessionUser
 
-let socket
+let socket: ReturnType<typeof initSocket>
 if (import.meta.env.DEV) {
-  useCall({
+  useCall<Record<string, unknown>>({
     url: '/api/v2/method/gameplan.www.g.get_context_for_dev',
     method: 'POST',
     onSuccess(values) {
-      for (let key in values) {
-        window[key] = values[key]
-      }
+      Object.assign(window, values)
       setupApp()
     },
   })
@@ -101,9 +99,11 @@ function mountApp() {
 }
 
 if (import.meta.env.DEV) {
-  window.$user = useUser
-  window.$users = users
-  window.$session = session
-  window.$frappeRequest = frappeRequest
-  window.$router = router
+  Object.assign(window, {
+    $user: useUser,
+    $users: users,
+    $session: session,
+    $frappeRequest: frappeRequest,
+    $router: router,
+  })
 }
