@@ -1,5 +1,6 @@
 import { clear as clearIdbKeyval } from 'idb-keyval'
 import { toast } from 'frappe-ui'
+import { useLocalStorage } from '@vueuse/core'
 import { clearDraftStore } from '@/data/draftStore'
 import { onReconnect } from '@/data/online'
 import { getSessionUserFromCookie } from '@/utils/sessionCookie'
@@ -94,7 +95,7 @@ interface UserSwitch {
  *  after a clear succeeds, so a failed one retries on the next boot. A caller switching users
  *  must reload: what is in memory is still the previous user's. */
 export async function guardAgainstUserSwitch(user: string | null): Promise<UserSwitch> {
-  const lastSeenUser = lastSeen.get()
+  const lastSeenUser = lastSeen.value
   const switched = Boolean(lastSeenUser && user && lastSeenUser !== user)
   if (switched) {
     // A different user, so drafts go too.
@@ -111,27 +112,14 @@ export async function guardAgainstUserSwitch(user: string | null): Promise<UserS
     navigator.serviceWorker?.controller?.postMessage({ type: 'WARM_SHELL_CACHE' })
   }
   // A signed-out boot leaves the marker, or the next sign-in would skip the clear.
-  if (user) lastSeen.set(user)
+  if (user) lastSeen.value = user
   return { switched, cleared: true }
 }
 
 // With storage blocked there is no marker, so no switch to detect.
-const lastSeen = {
-  get() {
-    try {
-      return localStorage.getItem(LAST_SEEN_USER_STORAGE_KEY)
-    } catch {
-      return null
-    }
-  },
-  set(user: string) {
-    try {
-      localStorage.setItem(LAST_SEEN_USER_STORAGE_KEY, user)
-    } catch {
-      // Nothing to remember it in.
-    }
-  },
-}
+const lastSeen = useLocalStorage<string | null>(LAST_SEEN_USER_STORAGE_KEY, null, {
+  onError: () => {},
+})
 
 /** Offers a refresh once a new worker is installed and waiting, including one already waiting. */
 function watchForUpdates(registration: ServiceWorkerRegistration) {
