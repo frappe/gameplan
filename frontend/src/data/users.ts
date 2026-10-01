@@ -1,5 +1,5 @@
-import { useCall } from '@/data/offline/resources'
 import { computed, reactive, readonly, ref, watch } from 'vue'
+import { useCall } from 'frappe-ui'
 import router from '@/router'
 import { setCommunityOrder } from './communityOrder'
 import { loadPinnedSpaces } from './pinnedSpaces'

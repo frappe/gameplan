@@ -116,8 +116,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useMediaQuery, usePointerSwipe } from '@vueuse/core'
-import { BottomSheet, ScrollArea, dayjsLocal } from 'frappe-ui'
-import { useCall } from '@/data/offline/resources'
+import { BottomSheet, ScrollArea, dayjsLocal, useCall } from 'frappe-ui'
 import HtmlDiff from 'htmldiff-js'
 import { Motion } from 'motion-v'
 import UserProfileLink from './UserProfileLink.vue'

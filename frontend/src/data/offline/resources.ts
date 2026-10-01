@@ -1,6 +1,7 @@
 /**
- * frappe-ui's resources with the offline defaults. Import `useList`, `useDoc` and `useCall`
- * from here rather than from frappe-ui.
+ * frappe-ui, with `useList`, `useDoc` and `useCall` given the offline defaults and `dialog`
+ * refused offline (dialog.ts). The app imports this as `frappe-ui` (see `offlineResources` in
+ * vite.config.ts), so no caller names it.
  */
 import { getCurrentScope, onScopeDispose } from 'vue'
 import { get } from 'idb-keyval'
@@ -12,6 +13,9 @@ import {
 import { onReconnect } from '../online'
 import { isNetworkError } from './requests'
 import { cacheFor } from './cache'
+
+export * from 'frappe-ui'
+export { dialog } from './dialog'
 
 interface Revalidatable {
   reload: () => unknown

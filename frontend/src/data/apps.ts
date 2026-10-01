@@ -1,4 +1,4 @@
-import { useCall } from '@/data/offline/resources'
+import { useCall } from 'frappe-ui'
 
 interface AppInfo {
   name: string

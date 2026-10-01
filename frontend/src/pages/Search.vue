@@ -294,9 +294,9 @@ import {
   dayjs,
   debounce,
   usePageMeta,
+  useCall,
 } from 'frappe-ui'
 import { useNewDoc } from 'frappe-ui'
-import { useCall } from '@/data/offline/resources'
 import { List, ListCell, ListRow } from 'frappe-ui/list'
 import { GPSearchFeedback } from '@/types/doctypes'
 import { useSessionUser } from '@/data/users'

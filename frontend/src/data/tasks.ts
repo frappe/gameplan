@@ -1,4 +1,5 @@
-import { revalidateOnReconnect, useDoc } from '@/data/offline/resources'
+import { useDoc } from 'frappe-ui'
+import { revalidateOnReconnect } from '@/data/offline/resources'
 import { MaybeRefOrGetter, toValue } from 'vue'
 import { GPTask } from '@/types/doctypes'
 

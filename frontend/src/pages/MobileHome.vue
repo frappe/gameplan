@@ -63,8 +63,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { PageHeaderMobile, Button, Switch, toast, usePageMeta } from 'frappe-ui'
-import { useCall } from '@/data/offline/resources'
+import { PageHeaderMobile, Button, Switch, toast, useCall, usePageMeta } from 'frappe-ui'
 import CommunityImage from '@/components/CommunityImage.vue'
 import GameplanLogo from '@/components/GameplanLogo.vue'
 import MobileListRow from '@/components/MobileListRow.vue'

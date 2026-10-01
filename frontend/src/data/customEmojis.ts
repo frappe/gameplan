@@ -1,4 +1,4 @@
-import { useList } from '@/data/offline/resources'
+import { useList } from 'frappe-ui'
 import type { GPCustomEmoji } from '@/types/doctypes'
 
 export type CustomEmoji = Pick<GPCustomEmoji, 'name' | 'title' | 'image' | 'keywords' | 'owner'>

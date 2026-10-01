@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import { useList } from '@/data/offline/resources'
+import { useList } from 'frappe-ui'
 import type { OrderBy } from 'frappe-ui'
 import type { GPUserProfile } from '@/types/doctypes'
 

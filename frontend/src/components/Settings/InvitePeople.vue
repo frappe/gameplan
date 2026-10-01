@@ -106,8 +106,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { Select, Tooltip } from 'frappe-ui'
-import { useCall, useList } from '@/data/offline/resources'
+import { Select, Tooltip, useCall, useList } from 'frappe-ui'
 import { GPInvitation } from '@/types/doctypes'
 import { users } from '@/data/users'
 

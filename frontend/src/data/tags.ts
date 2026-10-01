@@ -1,5 +1,5 @@
 import { GPTag } from '@/types/doctypes'
-import { useList } from '@/data/offline/resources'
+import { useList } from 'frappe-ui'
 
 export const tags = useList<GPTag>({
   doctype: 'GP Tag',

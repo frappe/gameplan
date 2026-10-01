@@ -63,9 +63,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Button, ErrorMessage, useDoctype } from 'frappe-ui'
-import { dialog } from '@/data/offline/dialog'
-import { useList } from '@/data/offline/resources'
+import { Button, dialog, ErrorMessage, useDoctype, useList } from 'frappe-ui'
 import { List, ListCell, ListHeader, ListHeaderCell, ListRow } from 'frappe-ui/list'
 import UserAvatar from '@/components/UserAvatar.vue'
 import type { Community } from '@/data/communities'

@@ -1,7 +1,6 @@
 import { ref, computed, onMounted, provide, inject, watch, type InjectionKey } from 'vue'
 import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
-import { call, toast, useDoctype } from 'frappe-ui'
-import { dialog } from '@/data/offline/dialog'
+import { call, toast, useDoctype, dialog } from 'frappe-ui'
 import { useOwnedRouteWrites } from '@/composables/useOwnedRouteWrites'
 import { useDraftSync } from '@/data/useDraftSync'
 import { hasContent } from '@/data/draftStore'

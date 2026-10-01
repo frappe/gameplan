@@ -114,7 +114,7 @@
 
 <script setup lang="ts">
 import { ref, computed, defineAsyncComponent } from 'vue'
-import { Dropdown, Tooltip, dayjsLocal } from 'frappe-ui'
+import { Dropdown, Tooltip, dayjsLocal, useList, dialog } from 'frappe-ui'
 import { copyToClipboard } from '@/utils'
 import UserProfileLink from './UserProfileLink.vue'
 import CommentEditor from './editor/CommentEditor.vue'
@@ -123,8 +123,6 @@ import Reactions from './Reactions.vue'
 const RevisionsDialog = defineAsyncComponent(() => import('./RevisionsDialog.vue'))
 import UserAvatarWithHover from './UserAvatarWithHover.vue'
 import { GPComment } from '@/types/doctypes'
-import { dialog } from '@/data/offline/dialog'
-import { useList } from '@/data/offline/resources'
 import { tags } from '@/data/tags'
 import { useDraftSync } from '@/data/useDraftSync'
 import { refuseOffline } from '@/data/offline/requests'

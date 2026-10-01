@@ -1,5 +1,4 @@
-import { dayjs, getConfig } from 'frappe-ui'
-import { useList } from '@/data/offline/resources'
+import { dayjs, getConfig, useList } from 'frappe-ui'
 import { computed } from 'vue'
 import { hasContent, listDraftRecords, type DraftRecord } from './draftStore'
 import { session } from './session'

@@ -58,8 +58,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Button, DatePicker, dayjsLocal, Dialog, Dropdown, useDoctype } from 'frappe-ui'
-import { dialog } from '@/data/offline/dialog'
+import { Button, DatePicker, dayjsLocal, Dialog, dialog, Dropdown, useDoctype } from 'frappe-ui'
 import type { DropdownOptions } from 'frappe-ui'
 import { activeCommunities, communities } from '@/data/communities'
 import { communityState } from '@/data/communityState'
@@ -183,7 +182,7 @@ const actionOptions = computed<DropdownOptions>(() => [
 // Flatten the groups: the palette has no notion of a section, and its own grouping
 // puts every one of these under "Community" anyway.
 const paletteActions = computed(() =>
-  actionOptions.value.flatMap((group) => ('options' in group ? group.options ?? [] : [group])),
+  actionOptions.value.flatMap((group) => ('options' in group ? (group.options ?? []) : [group])),
 )
 
 useCommandPaletteCommands(

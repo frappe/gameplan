@@ -85,8 +85,7 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Combobox, Dialog, ErrorMessage, toast } from 'frappe-ui'
-import { useCall } from '@/data/offline/resources'
+import { Combobox, Dialog, ErrorMessage, useCall, toast } from 'frappe-ui'
 import DiscussionList from '@/components/DiscussionList.vue'
 import SpaceHeaderActions from '@/components/SpaceHeaderActions.vue'
 import SpaceTabs from '@/components/SpaceTabs.vue'

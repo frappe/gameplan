@@ -111,8 +111,16 @@
 import { computed, ref, useTemplateRef, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useMediaQuery } from '@vueuse/core'
-import { Button, Dialog, Dropdown, SettingsRow, Textarea, TextInput, toast } from 'frappe-ui'
-import { useDoc } from '@/data/offline/resources'
+import {
+  Button,
+  Dialog,
+  Dropdown,
+  SettingsRow,
+  Textarea,
+  TextInput,
+  toast,
+  useDoc,
+} from 'frappe-ui'
 import PanelHeader from './PanelHeader.vue'
 import PanelBody from './PanelBody.vue'
 import type { DropdownOptions } from 'frappe-ui'

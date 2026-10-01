@@ -10,8 +10,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Dropdown, useDoctype } from 'frappe-ui'
-import { dialog } from '@/data/offline/dialog'
+import { dialog, Dropdown, useDoctype } from 'frappe-ui'
 import { communities } from '@/data/communities'
 import type { Community, CommunityMember } from '@/data/communities'
 import { useUser } from '@/data/users'

@@ -138,15 +138,13 @@
 </template>
 <script setup lang="ts">
 import { h, ref, computed, toValue } from 'vue'
-import { Dropdown, LoadingIndicator, Tooltip, dayjsLocal } from 'frappe-ui'
-import { dialog } from '@/data/offline/dialog'
+import { Dropdown, LoadingIndicator, Tooltip, dayjsLocal, useList, dialog } from 'frappe-ui'
 import EmptyStateBox from './EmptyStateBox.vue'
 import OfflineContentFallback from './OfflineContentFallback.vue'
 import TaskStatusIcon from './NewTaskDialog/TaskStatusIcon.vue'
 import { GPTask } from '@/types/doctypes'
 import { getSpace } from '@/data/spaces'
 import { UseListOptions } from 'frappe-ui'
-import { useList } from '@/data/offline/resources'
 import DropdownMoreOptions from './DropdownMoreOptions.vue'
 import { useSessionUser } from '@/data/users'
 import { canDeleteContent } from '@/utils/permissions'

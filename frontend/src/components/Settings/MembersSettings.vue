@@ -118,9 +118,7 @@
 // fallthrough (this component renders a fragment); it simply isn't emitted here.
 defineEmits<{ (e: 'close-dialog'): void }>()
 import { computed, ref, watch } from 'vue'
-import { Button, Dialog, Select, dayjsLocal } from 'frappe-ui'
-import { dialog } from '@/data/offline/dialog'
-import { useCall, useList } from '@/data/offline/resources'
+import { Button, Dialog, Select, dialog, dayjsLocal, useCall, useList } from 'frappe-ui'
 import PanelHeader from './PanelHeader.vue'
 import PanelBody from './PanelBody.vue'
 import {

@@ -59,8 +59,7 @@
 <script setup lang="ts">
 import { computed, inject } from 'vue'
 import { routerViewLocationKey, useRoute, useRouter } from 'vue-router'
-import { PageHeader, Breadcrumbs, Button, TabButtons, usePageMeta } from 'frappe-ui'
-import { useDoc } from '@/data/offline/resources'
+import { PageHeader, Breadcrumbs, Button, TabButtons, useDoc, usePageMeta } from 'frappe-ui'
 import NotFound from '@/pages/NotFound.vue'
 import OfflineContentFallback from '@/components/OfflineContentFallback.vue'
 import { showSettingsDialog } from '@/components/Settings'
