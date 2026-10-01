@@ -25,6 +25,8 @@ The parts that need care:
 """
 
 import re
+from html import unescape
+from urllib.parse import quote
 
 import frappe
 
@@ -146,8 +148,13 @@ COMPUTED_FIELDS = {
 # Keys that hold rows of another doctype, which are cleaned as that doctype.
 NESTED_ROWS = {"GP Discussion": {"ongoing_polls": "GP Poll"}}
 
-# Fields holding post bodies, whose HTML can carry user ids in attributes.
+# Fields holding post bodies, whose HTML can carry user ids and file URLs in attributes.
 RICH_TEXT_FIELDS = frozenset({"content", "readme", "description"})
+
+# Per doctype: public fields holding a single file URL.
+FILE_FIELDS = {"GP Team": {"image", "cover_image"}}
+
+PRIVATE_FILES_PREFIX = "/private/files/"
 
 # An HTML attribute: ` name="value"` or ` name='value'`.
 ATTRIBUTE = re.compile(r"""(\s[\w:.-]+\s*=\s*)(["'])([^"']*)\2""")
@@ -204,10 +211,13 @@ def public_rows(doctype, rows):
 	for row in rows:
 		collect_user_ids(doctype, row, user_ids)
 	handles = handles_for(user_ids)
-	return [public_row(doctype, row, handles) for row in rows]
+	files = public_file_urls(doctype, rows)
+	return [public_row(doctype, row, handles, files.get(str(row.get("name")), {})) for row in rows]
 
 
-def public_row(doctype, row, handles):
+def public_row(doctype, row, handles, files=None):
+	"""One row, cleaned. `files` maps each private file URL in it to its public route."""
+	files = files or {}
 	cleaned = frappe._dict()
 	for key, value in row.items():
 		if key in AUTHOR_FIELDS[doctype]:
@@ -218,7 +228,9 @@ def public_row(doctype, row, handles):
 			nested = NESTED_ROWS[doctype][key]
 			cleaned[key] = [public_row(nested, nested_row, handles) for nested_row in value or []]
 		elif key in RICH_TEXT_FIELDS and key in PUBLIC_FIELDS[doctype]:
-			cleaned[key] = replace_user_ids_in_html(value, handles)
+			cleaned[key] = replace_user_ids_in_html(value, handles, files)
+		elif key in FILE_FIELDS.get(doctype, ()):
+			cleaned[key] = files.get(value, value)
 		elif key in STANDARD_PUBLIC_FIELDS or key in PUBLIC_FIELDS[doctype]:
 			cleaned[key] = value
 		elif key in COMPUTED_FIELDS.get(doctype, ()):
@@ -254,18 +266,23 @@ def user_ids_in_html(html):
 	return {value for _, _, value in ATTRIBUTE.findall(html) if looks_like_user_id(value)}
 
 
-def replace_user_ids_in_html(html, handles):
+def replace_user_ids_in_html(html, handles, files=None):
 	"""Swap every attribute value in `html` that is a user id for that user's handle.
 
 	A value that looks like an email address but belongs to nobody with a profile is
 	emptied, not kept: it is still somebody's address. Addresses in the text itself are
-	what the author chose to write, and are left alone.
+	what the author chose to write, and are left alone. A private file URL in `files` is
+	pointed at the public file route; any other stays as it is, and frappe refuses it to
+	anyone not signed in.
 	"""
 	if not html or not isinstance(html, str) or "=" not in html:
 		return html
+	files = files or {}
 
 	def replace(match):
 		prefix, quote_char, value = match.groups()
+		if value in files:
+			return f"{prefix}{quote_char}{files[value]}{quote_char}"
 		if not looks_like_user_id(value):
 			return match.group(0)
 		return f"{prefix}{quote_char}{handles.get(value) or ''}{quote_char}"
@@ -461,3 +478,67 @@ def public_authors(users) -> set:
 		.run(pluck=True)
 	)
 	return found
+
+
+def public_file_url(file_name) -> str:
+	"""Where someone who is not signed in loads a private File (see gameplan.api.public_file)."""
+	return f"/api/method/gameplan.api.public_file?fid={quote(str(file_name))}"
+
+
+def public_file_urls(doctype, rows) -> dict:
+	"""For each row, map every private file URL in it to the public file route.
+
+	Only for a File attached to that very row: the route serves a File because the reader
+	may read what it is attached to, so pointing a post at a File attached elsewhere would
+	only produce a broken image. A URL that names its File (`?fid=`) is matched by name,
+	any other by URL. Keyed by the row's name, then by the URL exactly as it appears.
+	"""
+	from gameplan.utils import file_reference_from_url
+
+	references = {}
+	for row in rows:
+		if row.get("name") is None:
+			continue
+		for value in file_values(doctype, row):
+			if PRIVATE_FILES_PREFIX not in value:
+				continue
+			reference = file_reference_from_url(unescape(value))
+			if reference and reference.file_url.startswith(PRIVATE_FILES_PREFIX):
+				references.setdefault(str(row.get("name")), {})[value] = reference
+	if not references:
+		return {}
+
+	attached = frappe.get_all(
+		"File",
+		filters={
+			"is_private": 1,
+			"attached_to_doctype": doctype,
+			"attached_to_name": ["in", list(references)],
+		},
+		fields=["name", "file_url", "attached_to_name"],
+		limit=0,
+	)
+	by_name = {file.name: file for file in attached}
+	by_url = {(str(file.attached_to_name), file.file_url): file.name for file in attached}
+
+	urls = {}
+	for row_name, values in references.items():
+		for value, reference in values.items():
+			named = by_name.get(reference.file_name)
+			if named and str(named.attached_to_name) == row_name and named.file_url == reference.file_url:
+				file_name = named.name
+			else:
+				file_name = by_url.get((row_name, reference.file_url))
+			if file_name:
+				urls.setdefault(row_name, {})[value] = public_file_url(file_name)
+	return urls
+
+
+def file_values(doctype, row):
+	for key, value in row.items():
+		if not isinstance(value, str):
+			continue
+		if key in RICH_TEXT_FIELDS and key in PUBLIC_FIELDS[doctype]:
+			yield from (attribute for _, _, attribute in ATTRIBUTE.findall(value))
+		elif key in FILE_FIELDS.get(doctype, ()):
+			yield value

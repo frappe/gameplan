@@ -209,8 +209,9 @@ LEGACY_PRIVACY_REFERENCES = {
 	"gameplan/patches/backfill_visibility_from_is_private.py": 5,
 	"gameplan/public_access.py": 9,
 	"gameplan/mixins/visibility.py": 6,
-	# What anonymous visitors may read: the column is classified as private, never sent.
-	"gameplan/public_payload.py": 2,
+	# What anonymous visitors may read: the column is classified as private, never sent;
+	# and File.is_private, for the public file route.
+	"gameplan/public_payload.py": 3,
 	# The column stays defined, so a rollback needs no data restore.
 	"gameplan/gameplan/doctype/gp_project/gp_project.json": 2,
 	"gameplan/gameplan/doctype/gp_team/gp_team.json": 2,
@@ -221,8 +222,10 @@ LEGACY_PRIVACY_REFERENCES = {
 	"gameplan/demo/seeder.py": 1,
 	"gameplan/gameplan/doctype/gp_user_profile/gp_user_profile.py": 1,
 	"gameplan/migrate_from_discourse/__init__.py": 1,
+	"gameplan/api.py": 1,
 	"gameplan/mixins/attachments.py": 2,
 	"gameplan/tests/platform/test_attachments.py": 2,
+	"gameplan/tests/permissions/test_public_file.py": 4,
 	"gameplan/tests/platform/test_profile_image_ownership.py": 4,
 }
 SOURCE_SUFFIXES = {".py", ".ts", ".vue", ".js", ".json", ".jsonl"}

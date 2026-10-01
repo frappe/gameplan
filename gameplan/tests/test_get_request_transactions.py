@@ -74,6 +74,8 @@ READ_ONLY_ENDPOINTS = frozenset(
 		# Public access: profiles of authors of public content, and the socket permission check.
 		"gameplan.api.get_public_user_info",
 		"gameplan.public_access.realtime_has_permission",
+		# Streams one file the caller may read.
+		"gameplan.api.public_file",
 		# The counts a visibility confirmation shows. Measures inside a savepoint it rolls back.
 		"gameplan.mixins.visibility.HasVisibility.get_visibility_change_impact",
 		# Profile reads.

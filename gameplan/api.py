@@ -139,6 +139,46 @@ def get_public_user_info(handles=None):
 	return public_profiles(handles)
 
 
+@frappe.whitelist(allow_guest=True, methods=["GET"])
+def public_file(fid=None):
+	"""Serve a private file attached to something the caller can read, by File name.
+
+	frappe refuses every /private/files/ request with nobody signed in, so an image in a
+	public post would not load for the people it is public to. This serves exactly one
+	File, named by its `name` (never by a path the caller supplies), when it is attached
+	to a Gameplan document the caller may read. That read check is the same one the
+	document itself passes, so a space leaving the Anonymous tier closes its images in
+	the same moment it closes its posts. Public post bodies point here instead of at
+	/private/files/ (see gameplan.public_payload).
+	"""
+	from frappe.utils.response import send_private_file
+
+	from gameplan.public_access import public_access_enabled
+	from gameplan.public_payload import public_doctypes
+
+	file = fid and frappe.db.get_value(
+		"File",
+		{"name": fid, "is_private": 1},
+		["file_url", "file_name", "attached_to_doctype", "attached_to_name"],
+		as_dict=True,
+	)
+	if (
+		not public_access_enabled()
+		or not file
+		or not (file.file_url or "").startswith("/private/files/")
+		or ".." in file.file_url
+		or file.attached_to_doctype not in public_doctypes()
+		or not file.attached_to_name
+		or not frappe.has_permission(file.attached_to_doctype, "read", doc=file.attached_to_name)
+	):
+		frappe.throw(_("You don't have permission to access this file"), frappe.PermissionError)
+
+	response = send_private_file(file.file_url.split("/private", 1)[1], filename=file.file_name)
+	# Never in a shared cache: the next reader may not be allowed to see it.
+	response.headers["Cache-Control"] = "private, max-age=300"
+	return response
+
+
 @frappe.whitelist(methods=["POST"])
 @validate_type
 def invite_by_email(emails: str, role: str, projects: list = None):
