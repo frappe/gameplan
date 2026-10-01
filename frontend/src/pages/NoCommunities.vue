@@ -1,7 +1,7 @@
 <template>
   <div class="body-container py-8">
     <EmptyStateBox class="mx-auto max-w-2xl px-6">
-      <LucideFolderX class="mb-3 size-7 text-ink-gray-4" />
+      <span class="lucide-folder-x mb-3 size-7 text-ink-gray-4" aria-hidden="true" />
       <div class="text-base text-ink-gray-7">
         {{ hasCommunityToJoin ? 'You have not joined a community' : 'No communities available' }}
       </div>

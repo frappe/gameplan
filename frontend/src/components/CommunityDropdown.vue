@@ -7,7 +7,7 @@
         :class="open ? 'bg-surface-elevation-2 shadow-sm' : 'hover:bg-surface-gray-2'"
         :title="community?.title"
       >
-        <span class="truncate text-lg-medium">{{ community?.title || 'Community' }}</span>
+        <span class="truncate text-md-medium">{{ community?.title || 'Community' }}</span>
         <div class="grid size-7 place-content-center">
           <span class="lucide-chevron-down size-4 shrink-0 text-ink-gray-5" />
         </div>
@@ -182,7 +182,7 @@ const actionOptions = computed<DropdownOptions>(() => [
 // Flatten the groups: the palette has no notion of a section, and its own grouping
 // puts every one of these under "Community" anyway.
 const paletteActions = computed(() =>
-  actionOptions.value.flatMap((group) => ('options' in group ? group.options ?? [] : [group])),
+  actionOptions.value.flatMap((group) => ('options' in group ? (group.options ?? []) : [group])),
 )
 
 useCommandPaletteCommands(

@@ -55,7 +55,7 @@
       class="mx-auto w-full max-w-[1180px] px-4 py-12 sm:px-6"
       data-profile-customize-too-narrow
     >
-      <h2 class="text-lg font-semibold text-ink-gray-9">Customizing needs a wider screen</h2>
+      <h2 class="text-md font-semibold text-ink-gray-9">Customizing needs a wider screen</h2>
       <p class="mt-2 max-w-md text-base leading-6 text-ink-gray-6">
         There is no room here for the canvas and the editor side by side. Open this page on a wider
         screen to change your profile layout.
@@ -134,16 +134,8 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute } from 'vue-router'
 import { useEventListener, useMediaQuery } from '@vueuse/core'
-import {
-  PageHeader,
-  Breadcrumbs,
-  Button,
-  dialog,
-  toast,
-  Tooltip,
-  useDoc,
-  usePageMeta,
-} from 'frappe-ui'
+import { PageHeader, Breadcrumbs, Button, toast, Tooltip, usePageMeta, useDoc } from 'frappe-ui'
+import { dialog } from '@/data/offline/dialog'
 import ProfileBentoEditorPanel from '@/components/ProfileBento/ProfileBentoEditorPanel.vue'
 import ProfileBentoGrid from '@/components/ProfileBento/ProfileBentoGrid.vue'
 import { createServerProfileBentoSource } from '@/components/ProfileBento/profileBentoSource'
@@ -375,6 +367,7 @@ onBeforeRouteLeave(() => {
     // `confirm`, not `danger`: this screen stays on gray, with no red anywhere.
     dialog.confirm({
       title: 'Discard changes',
+      worksOffline: true,
       message: 'Your profile has unsaved changes. Leaving now discards them.',
       confirmLabel: 'Discard changes',
       cancelLabel: 'Keep editing',

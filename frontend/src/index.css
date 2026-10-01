@@ -8,10 +8,18 @@
 */
 html {
   --mobile-header-height: 52px;
+  --offline-banner-height: 28px;
   font-feature-settings:
     'calt' 1,
     'cv01' 1,
     'cv11' 1;
+}
+
+/* Makes room for OfflineIndicator.vue's fixed banner instead of letting it cover the
+   header, through the shells' own data-slot hooks rather than by patching frappe-ui. */
+html[data-offline] [data-slot='mobile-shell'],
+html[data-offline] [data-slot='desktop-shell'] {
+  padding-top: var(--offline-banner-height);
 }
 
 /* ProseMirror disables ligatures by default; restore so the font-feature-settings

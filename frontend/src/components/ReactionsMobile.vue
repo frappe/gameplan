@@ -57,7 +57,7 @@
               alt=""
               class="mx-auto size-6 object-contain"
             />
-            <span v-else class="font-[emoji] text-4xl">
+            <span v-else class="font-[emoji] text-3xl">
               {{ emoji }}
             </span>
           </Motion>
@@ -76,10 +76,10 @@
           >
             <div class="mr-2 flex w-14 items-center justify-center gap-1 text-center">
               <img v-if="isImageEmoji(emoji)" :src="emoji" alt="" class="size-6 object-contain" />
-              <span v-else class="text-4xl font-[emoji]"> {{ emoji }}</span>
-              <span class="text-p-xl text-ink-gray-4"> ({{ reactions.count }}) </span>
+              <span v-else class="text-3xl font-[emoji]"> {{ emoji }}</span>
+              <span class="text-p-lg text-ink-gray-4"> ({{ reactions.count }}) </span>
             </div>
-            <span class="text-p-xl flex-1 text-ink-gray-6">
+            <span class="text-p-lg flex-1 text-ink-gray-6">
               {{ toolTipText(reactions) }}
             </span>
           </Motion>

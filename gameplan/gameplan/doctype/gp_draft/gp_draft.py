@@ -4,10 +4,30 @@
 import re
 
 import frappe
+from frappe import _
 from frappe.model.document import Document
+
+# The name a client gives a draft when it starts one: 20 lowercase letters and digits.
+CLIENT_NAME = re.compile(r"[a-z0-9]{20}")
 
 
 class GPDraft(Document):
+	def before_naming(self):
+		# Frappe clears `name` after this hook and before `autoname`.
+		self._client_name = self.name
+
+	def autoname(self):
+		"""Keep the client's name, so a draft has one name everywhere, and refuse a deleted one
+		so no stale copy can bring it back. Without a client name, the default hash applies."""
+		name = getattr(self, "_client_name", None)
+		if not name:
+			return
+		if not isinstance(name, str) or not CLIENT_NAME.fullmatch(name):
+			frappe.throw(_("Invalid draft name"), frappe.ValidationError)
+		if frappe.db.exists("Deleted Document", {"deleted_doctype": self.doctype, "deleted_name": name}):
+			frappe.throw(_("This draft was deleted"), frappe.DoesNotExistError)
+		self.name = name
+
 	def before_save(self):
 		from gameplan.utils.sanitizer import sanitize_content
 
@@ -296,3 +316,8 @@ def remove_query_params_from_images(content):
 	# presence of fid=<name> in the image url prevents the image from being displayed
 	pattern = r'(src="[^"]+)\?[^"]*(")'
 	return re.sub(pattern, r"\1\2", content)
+
+
+def on_doctype_update():
+	# autoname looks names up in Deleted Document, which Frappe does not index.
+	frappe.db.add_index("Deleted Document", ["deleted_doctype", "deleted_name"])

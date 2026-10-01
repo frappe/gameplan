@@ -3,7 +3,7 @@
     <div class="flex flex-col items-center text-center">
       <div
         v-if="sessionUser.name"
-        class="flex size-[120px] items-center justify-center overflow-hidden rounded-full bg-surface-gray-3 text-5xl-semibold text-ink-gray-7 shadow-sm"
+        class="flex size-[120px] items-center justify-center overflow-hidden rounded-full bg-surface-gray-3 text-4xl-semibold text-ink-gray-7 shadow-sm"
         :style="avatarStyle"
       >
         <img
@@ -14,10 +14,10 @@
         />
         <span v-else>{{ userInitials }}</span>
       </div>
-      <div class="mt-5 max-w-full truncate text-5xl-semibold text-ink-gray-9">
+      <div class="mt-5 max-w-full truncate text-4xl-semibold text-ink-gray-9">
         {{ sessionUser.full_name }}
       </div>
-      <p v-if="userBio" class="max-w-sm text-p-lg text-ink-gray-6">
+      <p v-if="userBio" class="max-w-sm text-p-md text-ink-gray-6">
         {{ userBio }}
       </p>
       <Button variant="ghost" size="lg" class="mt-2" @click="openProfile"> View profile </Button>
@@ -25,7 +25,7 @@
 
     <div class="mt-8 space-y-6">
       <section v-for="group in itemGroups" :key="group.label">
-        <div class="mb-2 pl-[18px] text-lg-medium text-ink-gray-5">
+        <div class="mb-2 pl-[18px] text-md-medium text-ink-gray-5">
           {{ group.label }}
         </div>
         <nav class="overflow-hidden rounded-7 bg-surface-base">
@@ -52,7 +52,7 @@
                   class="pointer-events-none absolute left-0 right-4 top-0 border-t"
                   aria-hidden="true"
                 />
-                <span class="min-w-0 flex-1 truncate text-lg text-ink-gray-9">
+                <span class="min-w-0 flex-1 truncate text-md text-ink-gray-9">
                   {{ item.label }}
                 </span>
                 <span v-if="item.value" class="shrink-0 text-md text-ink-gray-5">
@@ -82,6 +82,7 @@ import { isGameplanAdmin, useSessionUser } from '@/data/users'
 import { session } from '@/data/session'
 import { useIsMobile } from '@/utils/useIsMobile'
 import { useTheme, type Theme } from '@/utils/useTheme'
+import { WINDOW_OPTIONS, offlineWindow } from '@/data/offlineDownloads'
 
 interface MoreItem {
   label: string
@@ -129,6 +130,9 @@ const avatarStyle = computed(() => ({
   backgroundColor: sessionUser.image_background_color || undefined,
 }))
 const userBio = computed(() => sessionUser.bio?.trim())
+const offlineLabel = computed(
+  () => WINDOW_OPTIONS.find((option) => option.value === offlineWindow.value)?.label,
+)
 
 const itemGroups = computed<MoreItemGroup[]>(() => {
   const workspaceItems: MoreItem[] = [
@@ -195,7 +199,21 @@ const itemGroups = computed<MoreItemGroup[]>(() => {
           onClick: cycleTheme,
           value: THEME_META[currentTheme.value].label,
         },
-        { label: 'Log out', icon: 'lucide-log-out', onClick: () => session.logout.submit() },
+        ...(sessionUser.isGuest
+          ? []
+          : [
+              {
+                label: 'Offline',
+                icon: 'lucide-cloud-download',
+                route: { name: 'OfflineSettings' },
+                value: offlineLabel.value,
+              },
+            ]),
+        {
+          label: 'Log out',
+          icon: 'lucide-log-out',
+          onClick: () => session.logout.submit().catch(() => {}),
+        },
       ],
     },
     ...(showDevUserSwitcher.value

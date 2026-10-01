@@ -5,7 +5,7 @@
     <div class="flex size-10 items-center justify-center rounded-4 bg-surface-gray-2">
       <span :class="[icon, 'size-5 text-ink-gray-5']" />
     </div>
-    <h3 class="mt-4 text-lg-medium text-ink-gray-8">{{ title }}</h3>
+    <h3 class="mt-4 text-md-medium text-ink-gray-8">{{ title }}</h3>
     <p v-if="description" class="mt-1 max-w-sm text-p-base text-ink-gray-5">
       {{ description }}
     </p>

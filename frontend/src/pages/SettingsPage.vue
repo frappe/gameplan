@@ -12,7 +12,7 @@
          the two never both render (Communities does this with a community open). -->
     <PageHeaderMobile v-if="!panelOwnsPageHeader" :title="tab?.label ?? 'Settings'">
       <template #prefix>
-        <PageHeaderBackButton :to="{ name: 'More' }" />
+        <PageHeaderBackButton :fallback-route="{ name: 'More' }" />
       </template>
     </PageHeaderMobile>
 

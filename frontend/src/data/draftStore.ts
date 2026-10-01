@@ -2,12 +2,13 @@
  * IndexedDB-backed persistence for in-progress drafts.
  *
  * This layer is intentionally framework-agnostic: it knows nothing about Vue or
- * Frappe. It stores one {@link DraftRecord} per logical draft, keyed by a stable
- * string, and notifies other tabs of the same origin when a record changes so they
- * can stay coherent. The reactive orchestration (debounced server sync, lazy row
- * creation, reconciliation) lives in `useDraftSync`.
+ * Frappe. It stores one {@link DraftRecord} per draft, keyed by the draft's name, and
+ * notifies other tabs of the same origin when a record changes so they can stay coherent.
+ * The reactive orchestration (debounced server sync, lazy row creation, reconciliation)
+ * lives in `useDraftSync`.
  */
-import { get, set, del, entries, createStore } from 'idb-keyval'
+import { get, update, del, entries, clear, createStore, promisifyRequest } from 'idb-keyval'
+import { isEditorContentEmpty } from '@/utils'
 
 export type DraftType = 'Discussion' | 'Comment'
 export type DraftMode = 'New' | 'Edit'
@@ -29,12 +30,11 @@ export interface DraftPayload {
 }
 
 export interface DraftRecord {
-  /** Stable local key. Singletons derive it from identity; standalone drafts use
-   *  their server name once created, a per-instance token before that. */
+  /** The draft's name for life: its key here, its `?draft=` and its GP Draft name. */
   key: string
   identity: DraftIdentity
   payload: DraftPayload
-  /** GP Draft.name once the row exists on the server, else null. */
+  /** Equal to `key` once the server row exists, else null. */
   serverName: string | null
   /** The session user who authored this draft. The IndexedDB store is origin-wide, so this
    *  guards a shared browser profile: recovery only adopts the current user's own orphans,
@@ -47,26 +47,100 @@ export interface DraftRecord {
   syncedAt: number | null
 }
 
+/** Title or non-empty body: the threshold for saving a draft at all. */
+export function hasContent(payload: DraftPayload): boolean {
+  return !isEditorContentEmpty(payload.content) || (payload.title ?? '').trim().length > 0
+}
+
+/** A new draft name: 20 random lowercase letters and digits, the form GP Draft accepts. */
+export function newDraftName(): string {
+  const alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789'
+  const bytes = crypto.getRandomValues(new Uint8Array(20))
+  return Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join('')
+}
+
 const store = createStore('gameplan-drafts', 'records')
 
-export function getDraftRecord(key: string): Promise<DraftRecord | undefined> {
+let converted: Promise<void> | null = null
+/** Every read and write waits until records from older versions are converted, once. */
+function ready() {
+  converted ??= convertOldRecords()
+  return converted
+}
+
+export async function getDraftRecord(key: string): Promise<DraftRecord | undefined> {
+  await ready()
   return get<DraftRecord>(key, store)
 }
 
-export function putDraftRecord(record: DraftRecord): Promise<void> {
-  return set(record.key, record, store)
+/** A saved record stays saved until deleted, so a writer that missed the save cannot undo it
+ *  and make a later delete skip the row. */
+export async function putDraftRecord(record: DraftRecord): Promise<void> {
+  await ready()
+  return update<DraftRecord>(
+    record.key,
+    (stored) => ({ ...record, serverName: record.serverName ?? stored?.serverName ?? null }),
+    store,
+  )
 }
 
-export function deleteDraftRecord(key: string): Promise<void> {
+export async function deleteDraftRecord(key: string): Promise<void> {
+  await ready()
   return del(key, store)
 }
 
-export function listDraftRecords(): Promise<DraftRecord[]> {
+export async function listDraftRecords(): Promise<DraftRecord[]> {
+  await ready()
   return entries<string, DraftRecord>(store).then((all) => all.map(([, record]) => record))
 }
 
-/** Deterministic key for singleton drafts — the same target always resolves to one
- *  record, so two tabs editing the same post share it instead of forking. */
+/** Runs `task` holding lock `name`: across tabs with Web Locks, else queued in this tab. */
+const queues = new Map<string, Promise<unknown>>()
+export function withLock<T>(name: string, task: () => Promise<T>): Promise<T> {
+  if (typeof navigator !== 'undefined' && navigator.locks) {
+    return navigator.locks.request(name, task) as Promise<T>
+  }
+  const run = (queues.get(name) ?? Promise.resolve()).then(task, task)
+  queues.set(
+    name,
+    run.catch(() => {}),
+  )
+  return run
+}
+
+/** Saves and deletes of one draft never interleave, so the server sees them in order. */
+export function withDraftLock<T>(name: string, task: () => Promise<T>): Promise<T> {
+  return withLock(`gp-draft:${name}`, task)
+}
+
+/**
+ * Older versions keyed drafts `Comment::New::GP Discussion::42` or `Discussion::New::…`. Each
+ * moves to its server name, or a new name if it has no row, in one transaction.
+ */
+function convertOldRecords(): Promise<void> {
+  return store('readwrite', async (records) => {
+    const keys = await promisifyRequest(records.getAllKeys())
+    const values = await promisifyRequest(records.getAll())
+    keys.forEach((oldKey, i) => {
+      if (!String(oldKey).includes('::')) return
+      const old = values[i] as Partial<DraftRecord> & { deleted?: boolean }
+      // Queued deletions carry no identity, and tombstones are drafts already deleted.
+      if (old.identity && !old.deleted) {
+        const key = old.serverName || newDraftName()
+        records.put({ ...old, key, serverName: old.serverName ?? null }, key)
+      }
+      records.delete(oldKey)
+    })
+    return promisifyRequest(records.transaction)
+  })
+}
+
+/** Wipes every local draft. Only on a user switch: after logout the same person may return. */
+export function clearDraftStore(): Promise<void> {
+  return clear(store)
+}
+
+/** The target a singleton draft is for, as a string: equal for every draft of one target. */
 export function singletonKey(identity: DraftIdentity): string {
   const { type, mode, referenceDoctype, referenceName } = identity
   return [type, mode, referenceDoctype ?? '', referenceName ?? ''].join('::')

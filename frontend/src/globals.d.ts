@@ -32,6 +32,9 @@ declare module 'vue' {
 declare global {
   interface Window {
     site_name: string
+    read_only_mode?: boolean
+    system_timezone?: string
+    max_file_size?: number | string
     /** Set from the boot data in `gameplan/www/g.py`; absent when the site has no DSN. */
     gameplan_frontend_sentry_dsn?: string
   }

@@ -161,7 +161,7 @@
               <UserAvatar class="sm:hidden" :user="$user().name" size="lg" />
               <UserAvatar class="hidden sm:inline-block" :user="$user().name" size="md" />
               <span
-                class="min-w-0 flex-1 truncate text-lg-medium text-ink-gray-8 sm:text-base-medium"
+                class="min-w-0 flex-1 truncate text-md-medium text-ink-gray-8 sm:text-base-medium"
               >
                 {{ $user().full_name }}
               </span>
@@ -266,7 +266,7 @@ import {
   useTemplateRef,
 } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { useEventListener } from '@vueuse/core'
+import { useDebounceFn, useEventListener } from '@vueuse/core'
 import { useList, TabButtons, ErrorMessage, Button, Tooltip } from 'frappe-ui'
 import CommentEditor from '@/components/editor/CommentEditor.vue'
 import Comment from './Comment.vue'
@@ -274,13 +274,23 @@ import Activity from './Activity.vue'
 import PollEditor from './PollEditor.vue'
 import Poll from './Poll.vue'
 import UserAvatar from './UserAvatar.vue'
-import { dialog, shellScrollContainer } from 'frappe-ui'
+import { shellScrollContainer } from 'frappe-ui'
+import { dialog } from '@/data/offline/dialog'
 import { subscribeToDoc, useSocket, type NewActivityEvent } from '@/socket'
 import { GPActivity, GPComment, GPPoll } from '@/types/doctypes'
 import type { Editor } from '@tiptap/vue-3'
 import { tags } from '@/data/tags'
 import { useRichQuotes } from '@/components/RichQuoteExtension/useRichQuotes'
 import { useDraftSync } from '@/data/useDraftSync'
+import { refuseOffline } from '@/data/offline/requests'
+import {
+  ACTIVITY_FIELDS,
+  COMMENT_FIELDS,
+  POLL_FIELDS,
+  activitiesCacheKey,
+  commentsCacheKey,
+  pollsCacheKey,
+} from '@/data/discussionTimeline'
 import { useSessionUser } from '@/data/users'
 import type { Space } from '@/data/spaces'
 import { useIsMobile } from '@/utils/useIsMobile'
@@ -399,17 +409,8 @@ const composerStorageKey = computed(() => {
 
 const comments = useList<GPComment>({
   doctype: 'GP Comment',
-  cacheKey: ['Comments', props.doctype, props.name],
-  fields: [
-    'name',
-    'content',
-    'owner',
-    'creation',
-    'modified',
-    'edited_at',
-    'deleted_at',
-    { reactions: ['name', 'user', 'emoji'] },
-  ],
+  cacheKey: commentsCacheKey(props.doctype, props.name),
+  fields: COMMENT_FIELDS,
   transform(data) {
     return data.map((d) => ({ ...d, doctype: 'GP Comment' }))
   },
@@ -420,22 +421,39 @@ const comments = useList<GPComment>({
   orderBy: 'creation asc',
   limit: 99999,
   onSuccess() {
-    if (route.query.comment) {
-      if (route.query.comment === 'first_post') {
-        router.replace({ query: {} })
-        return
-      }
-      const comment = comments.data?.find((c) => c.name === route.query.comment)
-      scrollToItem(comment)
-    } else if (!route.query.fromSearch && comments.data?.length > 0) {
-      scrollToEnd()
-    }
+    // Once per discussion, not once per load: the list reloads on reconnect and on a socket
+    // refresh too, and pulling someone to the newest comment again loses their place in the
+    // thread they were reading.
+    if (positionedFor === String(props.name)) return
+    if (positionTimeline()) positionedFor = String(props.name)
   },
 })
 
+/** The discussion the timeline has already been positioned for. */
+let positionedFor: string | null = null
+
+/** Moves the timeline to where this discussion should open. Whether it did. */
+function positionTimeline() {
+  if (route.query.comment) {
+    if (route.query.comment === 'first_post') {
+      router.replace({ query: {} })
+      return true
+    }
+    const comment = comments.data?.find((c) => c.name === route.query.comment)
+    // Not in the timeline yet, so a later load still gets to look for it.
+    if (!comment) return false
+    scrollToItem(comment)
+    return true
+  }
+  if (route.query.fromSearch || !comments.data?.length) return false
+  scrollToEnd()
+  return true
+}
+
 const activities = useList<GPActivity>({
   doctype: 'GP Activity',
-  fields: ['name', 'user', 'action', 'data', 'creation'],
+  cacheKey: activitiesCacheKey(props.doctype, props.name),
+  fields: ACTIVITY_FIELDS,
   filters: {
     reference_doctype: props.doctype,
     reference_name: props.name,
@@ -457,27 +475,21 @@ const activities = useList<GPActivity>({
 // The parent bumps `activityVersion` with the doc's `modified` on every such action,
 // so reload the timeline when it changes (skipping the initial undefined -> value
 // transition on first load, when the list has already fetched on mount).
+// This and the `new_activity` socket event can fire for the same action; one debounced
+// reload keeps the second from aborting the first and leaving the cached timeline up.
+const reloadActivities = useDebounceFn(() => activities.reload(), 100)
+
 watch(
   () => props.activityVersion,
   (next, prev) => {
-    if (prev !== undefined && next !== prev) activities.reload()
+    if (prev !== undefined && next !== prev) reloadActivities()
   },
 )
 
 const polls = useList<GPPoll>({
   doctype: 'GP Poll',
-  fields: [
-    'name',
-    'title',
-    'anonymous',
-    'multiple_answers',
-    'creation',
-    'owner',
-    'stopped_at',
-    { options: ['name', 'title', 'idx', 'percentage'] },
-    { votes: ['user', 'option'] },
-    { reactions: ['name', 'user', 'emoji'] },
-  ],
+  cacheKey: pollsCacheKey(props.name),
+  fields: POLL_FIELDS,
   filters: {
     discussion: props.name,
   },
@@ -674,7 +686,7 @@ function resetCommentState() {
 }
 
 async function submitComment() {
-  if (commentEmpty.value || comments.insert.loading) return
+  if (commentEmpty.value || comments.insert.loading || refuseOffline()) return
 
   const comment = await comments.insert.submit({
     reference_doctype: props.doctype,
@@ -755,7 +767,7 @@ function wait(ms: number) {
 }
 
 function submitPoll() {
-  if (props.doctype !== 'GP Discussion') return
+  if (props.doctype !== 'GP Discussion' || refuseOffline()) return
   return polls.insert
     .submit({
       discussion: props.name,
@@ -790,16 +802,15 @@ async function discardComment() {
   if (!editorObject.value?.isEmpty) {
     dialog.danger({
       title: 'Discard comment',
+      worksOffline: true,
       message: 'Are you sure you want to discard your comment?',
       confirmLabel: 'Discard comment',
       cancelLabel: 'Keep comment',
       onConfirm: async () => {
-        await draft.clear()
-        resetCommentState()
+        if (await draft.clear()) resetCommentState()
       },
     })
-  } else {
-    await draft.clear()
+  } else if (await draft.clear()) {
     resetCommentState()
   }
 }
@@ -891,7 +902,7 @@ onMounted(() => {
     // integer hand this component a number, so a strict compare never matches and the
     // timeline silently stops updating. Compare as strings.
     if (data.reference_doctype === props.doctype && data.reference_name === String(props.name)) {
-      activities.reload()
+      reloadActivities()
     }
   })
 })

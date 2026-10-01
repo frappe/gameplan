@@ -1,25 +1,22 @@
 import { ref, computed, onMounted, provide, inject, watch, type InjectionKey } from 'vue'
 import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
-import { call, useDoctype, dialog } from 'frappe-ui'
+import { call, toast, useDoctype, dialog } from 'frappe-ui'
 import { useOwnedRouteWrites } from '@/composables/useOwnedRouteWrites'
-import { useDraftSync, type DraftPayload } from '@/data/useDraftSync'
+import { useDraftSync } from '@/data/useDraftSync'
+import { hasContent } from '@/data/draftStore'
 import { drafts } from '@/data/drafts'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { canPostInSpace, getSpace } from '@/data/spaces'
+import { refuseOffline } from '@/data/offline/requests'
 import { useSessionUser, useUser } from '@/data/users'
 import { tags } from '@/data/tags'
-import { extractServerMessage, isEditorContentEmpty } from '@/utils'
+import { extractServerMessage } from '@/utils'
 import { captureError } from '@/utils/errorReporting'
 import type { GPDiscussion } from '@/types/doctypes'
 
 const PUBLISH_DRAFT = 'gameplan.gameplan.doctype.gp_draft.gp_draft.publish_draft'
 const LOADING_STATUS_DELAY_MS = 200
 const FLUSH_ATTEMPTS = 3
-
-/** Title or non-empty body — the threshold for persisting a draft at all. */
-function hasMeaningfulContent(payload: Partial<DraftPayload>): boolean {
-  return (payload.title ?? '').trim().length > 0 || !isEditorContentEmpty(payload.content)
-}
 
 export function useNewDiscussion() {
   const route = useRoute()
@@ -46,7 +43,7 @@ export function useNewDiscussion() {
   const draft = useDraftSync({
     identity: { type: 'Discussion', mode: 'New' },
     draftName,
-    canSave: hasMeaningfulContent,
+    canSave: hasContent,
     initialPayload: () => ({
       title: '',
       content: '',
@@ -123,8 +120,8 @@ export function useNewDiscussion() {
   function syncDraftToRoute(name: string) {
     runWhenOwned(() => {
       // A deferred sync could land after the composer moved on to a different draft; never
-      // point the URL at a row this composer no longer holds.
-      if (draft.serverName.value !== name) return
+      // point the URL at a draft this composer no longer holds.
+      if (draft.name.value !== name) return
       if (communityId.value) {
         router.replace({
           name: 'NewDiscussion',
@@ -232,6 +229,8 @@ export function useNewDiscussion() {
   async function publish() {
     hasInteracted.value = true
     publishError.value = null
+    // Offline the draft stays; publishing waits for the connection.
+    if (refuseOffline()) return
     if (!validateDraft(true)) return
 
     publishing.value = true
@@ -297,10 +296,8 @@ export function useNewDiscussion() {
   }
 
   async function deleteDraft() {
-    if (!draftData.value || !hasMeaningfulContent(draftData.value)) {
-      isDeletingDraft.value = true
-      await draft.clear()
-      leaveDraft()
+    if (!draftData.value || !hasContent(draftData.value)) {
+      await clearAndLeave().catch(() => toast.error('Could not delete the draft'))
       return
     }
 
@@ -308,12 +305,21 @@ export function useNewDiscussion() {
       title: 'Delete this draft?',
       message: 'This will permanently delete the draft and cannot be undone.',
       confirmLabel: 'Delete draft',
-      onConfirm: async () => {
-        isDeletingDraft.value = true
-        await draft.clear()
-        leaveDraft()
-      },
+      // A refusal shows in the dialog, and the draft is kept.
+      onConfirm: clearAndLeave,
     })
+  }
+
+  async function clearAndLeave() {
+    isDeletingDraft.value = true
+    let cleared = false
+    try {
+      // Offline, a draft on the server is kept, and the toast says why.
+      cleared = await draft.clear()
+    } finally {
+      if (!cleared) isDeletingDraft.value = false
+    }
+    if (cleared) leaveDraft()
   }
 
   function leaveDraft() {

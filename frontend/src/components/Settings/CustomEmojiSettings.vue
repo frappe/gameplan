@@ -3,7 +3,7 @@
        heading and hides it on phones, where the page header names the tab. -->
   <PanelHeader>
     <div class="flex flex-col gap-4">
-      <h2 class="text-lg-semibold text-ink-gray-8 max-sm:hidden">Custom Emojis</h2>
+      <h2 class="text-md-semibold text-ink-gray-8 max-sm:hidden">Custom Emojis</h2>
       <div class="flex items-center justify-between gap-3">
         <TextInput
           class="min-w-0 flex-1 sm:w-72 sm:flex-none"

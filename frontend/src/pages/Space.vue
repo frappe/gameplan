@@ -23,7 +23,7 @@
         <span class="size-4 shrink-0 text-ink-gray-5 lucide-chevron-down" aria-hidden="true" />
       </button>
       <template #prefix>
-        <PageHeaderBackButton :to="{ name: 'Discussions', params: { communityId } }" />
+        <PageHeaderBackButton :fallback-route="{ name: 'Discussions', params: { communityId } }" />
       </template>
       <template #suffix>
         <Button
@@ -67,7 +67,7 @@
   </router-view>
 </template>
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   BottomSheet,
@@ -87,6 +87,7 @@ import SpaceIcon from '@/components/SpaceIcon.vue'
 import { isSpacePinned } from '@/data/pinnedSpaces'
 import { useCommunity } from '@/data/communities'
 import { useOwnedRouteWrites } from '@/composables/useOwnedRouteWrites'
+import { whenOnline } from '@/data/online'
 
 const props = defineProps<{
   communityId: string
@@ -130,7 +131,6 @@ function routeParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value
 }
 
-onMounted(() => {
-  trackSpaceVisit(props.spaceId)
-})
+// A missed visit only leaves the space's read state as it was; the next visit records it.
+whenOnline(() => trackSpaceVisit(props.spaceId).catch(() => {}))
 </script>
