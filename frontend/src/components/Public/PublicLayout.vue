@@ -21,6 +21,10 @@
         :spaceId="spaceId"
         :postId="postId"
       />
+      <footer class="mx-auto w-full max-w-3xl px-4 pb-8 text-p-sm text-ink-gray-5 sm:px-6">
+        This page is public. Videos and documents embedded in posts (from YouTube, Vimeo, Figma,
+        Google Docs and similar) load from those sites, so they can see that you visited.
+      </footer>
     </main>
   </div>
 </template>

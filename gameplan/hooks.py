@@ -182,8 +182,12 @@ doc_events = {
 on_login = "gameplan.www.g.on_login"
 
 # Public access: frappe's generic REST routes and doctype-wide realtime rooms would hand
-# anonymous visitors data that gameplan.public_payload never cleans. See public_access.py.
-before_request = ["gameplan.public_access.refuse_generic_routes_for_anonymous"]
+# anonymous visitors data that gameplan.public_payload never cleans, and the public read
+# paths need a per-IP rate limit. See public_access.py.
+before_request = [
+	"gameplan.public_access.refuse_generic_routes_for_anonymous",
+	"gameplan.public_access.limit_anonymous_request_rate",
+]
 override_whitelisted_methods = {
 	"frappe.realtime.has_permission": "gameplan.public_access.realtime_has_permission",
 }
