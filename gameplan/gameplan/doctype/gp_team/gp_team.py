@@ -22,6 +22,7 @@ from gameplan.public_access import (
 	VISIBILITY_MEMBER_ACCESS,
 	is_member_access,
 )
+from gameplan.public_payload import for_viewer
 from gameplan.utils import validate_type
 
 
@@ -47,8 +48,7 @@ class GPTeam(HasVisibility, Archivable, Document):
 		):
 			frappe.throw("Not permitted", frappe.PermissionError)
 
-		d = super().as_dict(*args, **kwargs)
-		return d
+		return for_viewer(self.doctype, super().as_dict(*args, **kwargs))
 
 	@staticmethod
 	def get_list_query(query):

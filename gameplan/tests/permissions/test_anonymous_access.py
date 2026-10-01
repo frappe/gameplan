@@ -53,6 +53,8 @@ GUEST_REACHABLE_ENDPOINTS = {
 	"gameplan.www.g.get_context_for_dev": "throws unless developer_mode",
 	"gameplan.extends.client.get_list": "the SPA's list endpoint; rows scoped by permission_query_conditions",
 	"gameplan.gameplan.doctype.gp_discussion.api.get_discussions": "the feed; filtered to readable spaces",
+	"gameplan.api.get_public_user_info": "name and avatar of authors of public content only",
+	"gameplan.public_access.realtime_has_permission": "frappe's socket permission check, minus doctype rooms",
 }
 
 # Every right a DocPerm row can carry.

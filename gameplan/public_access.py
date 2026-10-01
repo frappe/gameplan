@@ -158,3 +158,70 @@ def verify_visibility_backfill():
 	if mismatches:
 		frappe.throw(f"{len(mismatches)} visibility backfill mismatch(es)")
 	print("Visibility backfill verified: every community and space matches its old is_private value.")
+
+
+def refuse_generic_routes_for_anonymous():
+	"""`before_request`: keep anonymous visitors off frappe's generic routes for Gameplan data.
+
+	The Guest role can read a few Gameplan doctypes, and frappe's REST routes answer anyone
+	the role layer lets in: `/api/resource/<doctype>` and `/api/v2/document/<doctype>` list
+	any columns, `owner` and `modified_by` included, and `?expand_links=1` follows links
+	into User. None of that passes through `gameplan.public_payload`. So a request with
+	nobody signed in that routes to a doctype the Guest role can read may only reach the
+	endpoints in ANONYMOUS_REST_ENDPOINTS, whose output goes through
+	`as_dict`. Lists go through Gameplan's own endpoints instead.
+	"""
+	import gameplan
+
+	request = getattr(frappe.local, "request", None)
+	if not gameplan.is_anonymous() or not request or not request.path.startswith("/api/"):
+		return
+
+	from frappe.api import API_URL_MAP
+	from werkzeug.exceptions import HTTPException
+
+	try:
+		endpoint, arguments = API_URL_MAP.bind_to_environ(request.environ).match()
+	except HTTPException:
+		return  # not a route; frappe answers it with a 404 or 405
+	doctype = arguments.get("doctype")
+	if doctype in anonymous_readable_doctypes() and endpoint not in anonymous_rest_endpoints():
+		frappe.throw("Not permitted", frappe.PermissionError)
+
+
+def anonymous_rest_endpoints():
+	"""The frappe REST endpoints an anonymous visitor may use for a Guest-readable doctype.
+
+	Reading one document (serialised through the controller's `as_dict`) and calling a
+	document method (whitelisted with `allow_guest`, or refused by frappe).
+	"""
+	import frappe.api.v2
+
+	return (frappe.api.v2.read_doc, frappe.api.v2.execute_doc_method, frappe.api.v2.handle_rpc_call)
+
+
+def anonymous_readable_doctypes():
+	"""The doctypes the Guest role can read. Each one's payload is cleaned for anonymous visitors."""
+	from gameplan.public_payload import public_doctypes
+
+	return public_doctypes()
+
+
+@frappe.whitelist(allow_guest=True)
+def realtime_has_permission(doctype: str, name: str = "", ptype: str = "read"):
+	"""`frappe.realtime.has_permission`, minus doctype-wide rooms for anonymous visitors.
+
+	Both socket servers ask this before letting a socket into a room. Without a `name` the
+	room is the whole doctype, and frappe sends it a `list_update` on every save of every
+	document of that doctype: its name, and the email of whoever saved it. The role layer
+	alone answers yes for the Guest role, so an anonymous socket would hear about every
+	comment posted anywhere, private spaces included. A single document's room is still
+	allowed: it hears only that document's `doc_update`, and only if the visitor can read it.
+	"""
+	from frappe.realtime import has_permission
+
+	import gameplan
+
+	if gameplan.is_anonymous() and not name and doctype in anonymous_readable_doctypes():
+		frappe.throw("Not permitted", frappe.PermissionError)
+	return has_permission(doctype, name, ptype)

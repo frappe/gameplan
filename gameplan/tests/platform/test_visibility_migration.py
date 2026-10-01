@@ -209,6 +209,8 @@ LEGACY_PRIVACY_REFERENCES = {
 	"gameplan/patches/backfill_visibility_from_is_private.py": 5,
 	"gameplan/public_access.py": 9,
 	"gameplan/mixins/visibility.py": 6,
+	# What anonymous visitors may read: the column is classified as private, never sent.
+	"gameplan/public_payload.py": 2,
 	# The column stays defined, so a rollback needs no data restore.
 	"gameplan/gameplan/doctype/gp_project/gp_project.json": 2,
 	"gameplan/gameplan/doctype/gp_team/gp_team.json": 2,

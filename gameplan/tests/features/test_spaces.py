@@ -4,6 +4,7 @@
 """Space (GP Project) behaviour: archiving, activity, moving between communities,
 list and search scoping, and who may join, leave, manage members or invite guests."""
 
+import inspect
 from unittest.mock import patch
 
 import frappe
@@ -1200,10 +1201,14 @@ class TestSpaceMutationHTTPMethods(GameplanTestCase):
 		outbound HTTP fetch reachable from a doctype controller for no reason."""
 		self.assertFalse(hasattr(gp_project_module, "get_meta_tags"))
 
-	def test_space_does_not_override_document_serialisation(self):
-		"""`as_dict` was overridden only to call super() and return the result. A no-op
-		override shadows the framework method and is a place for behaviour to rot in."""
-		self.assertNotIn("as_dict", vars(GPProject))
+	def test_space_overrides_document_serialisation_only_to_clean_public_payloads(self):
+		"""`as_dict` was once overridden only to call super() and return the result, a no-op
+		that shadowed the framework method. It now exists for one reason: to pass the result
+		through `gameplan.public_payload.for_viewer`, which leaves it untouched for anyone
+		signed in. Nothing else belongs there."""
+		source = inspect.getsource(GPProject.as_dict)
+		self.assertIn("for_viewer(self.doctype, super().as_dict(", source)
+		self.assertEqual(len([line for line in source.splitlines() if line.strip()]), 2)
 
 	def test_space_membership_mutations_are_post_only(self):
 		for method in (

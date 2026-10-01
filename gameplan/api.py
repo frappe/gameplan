@@ -123,6 +123,22 @@ def get_user_info(user=None):
 	return users
 
 
+@frappe.whitelist(allow_guest=True)
+def get_public_user_info(handles=None):
+	"""Name and avatar for authors of public content, by profile handle.
+
+	What a person who is not signed in gets in place of get_user_info, which stays closed
+	to them: no email, no role, no bio, and only for people whose handle a public page
+	already shows. See gameplan.public_payload.public_profiles.
+	"""
+	from gameplan.public_payload import public_profiles
+
+	handles = frappe.parse_json(handles) if isinstance(handles, str) else handles
+	if not isinstance(handles, list):
+		frappe.throw(_("handles must be a list"))
+	return public_profiles(handles)
+
+
 @frappe.whitelist(methods=["POST"])
 @validate_type
 def invite_by_email(emails: str, role: str, projects: list = None):

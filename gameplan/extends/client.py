@@ -5,6 +5,15 @@
 import frappe
 from frappe.model.base_document import get_controller
 
+import gameplan
+from gameplan.public_payload import (
+	check_public_filters,
+	check_public_order_by,
+	public_list_fields,
+	public_rows,
+	refuse,
+)
+
 
 @frappe.whitelist(allow_guest=True)
 def get_list(
@@ -19,6 +28,16 @@ def get_list(
 	debug=False,
 ):
 	check_permissions(doctype, parent)
+	anonymous = gameplan.is_anonymous()
+	if anonymous:
+		# Nobody is signed in: only public columns, filtered and sorted on public columns,
+		# and the rows cleaned before they leave (see gameplan.public_payload).
+		if parent or group_by:
+			refuse("Not allowed without signing in")
+		fields = public_list_fields(doctype, fields)
+		check_public_filters(doctype, filters)
+		check_public_order_by(doctype, order_by)
+		debug = False
 	# `frappe.qb.get_query` ignores permissions unless told otherwise, and then every row of
 	# the doctype comes back: every private discussion, and every user's drafts and
 	# bookmarks. Asking for them applies each doctype's permission_query_conditions, as
@@ -35,7 +54,8 @@ def get_list(
 		parent_doctype=parent,
 	)
 	query = apply_custom_filters(doctype, query)
-	return query.run(as_dict=True, debug=debug)
+	rows = query.run(as_dict=True, debug=debug)
+	return public_rows(doctype, rows) if anonymous else rows
 
 
 def check_permissions(doctype, parent):

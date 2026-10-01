@@ -21,6 +21,7 @@ from gameplan.permissions import (
 	require_can_invite_guest,
 	require_can_manage_space_members,
 )
+from gameplan.public_payload import for_viewer
 
 DEFAULT_SPACE_ICON = "lucide-hash"
 PROJECT_TEAM_DOCTYPES = [
@@ -46,6 +47,9 @@ class GPProject(HasVisibility, ManageMembersMixin, Archivable, Document):
 		"GP Pinned Project",
 	]
 	on_delete_set_null = ["GP Notification"]
+
+	def as_dict(self, *args, **kwargs):
+		return for_viewer(self.doctype, super().as_dict(*args, **kwargs))
 
 	@staticmethod
 	def get_list_query(query):

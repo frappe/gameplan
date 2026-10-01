@@ -14,6 +14,7 @@ from gameplan.mixins.mentions import HasMentions
 from gameplan.mixins.reactions import HasReactions
 from gameplan.mixins.tags import HasTags
 from gameplan.permissions import content_has_permission, discussion_query_conditions
+from gameplan.public_payload import for_viewer
 from gameplan.utils import get_document_revisions, remove_empty_trailing_paragraphs, url_safe_slug
 
 
@@ -66,7 +67,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		d.last_unread_poll = polls[0] if polls else None
 		d.is_bookmarked = self.is_bookmarked_by_current_user()
 		d.views = frappe.db.count("GP Discussion Visit", {"discussion": self.name})
-		return d
+		return for_viewer(self.doctype, d)
 
 	def before_insert(self):
 		check_if_space_is_archived(self, action="create", content_type="discussions")
