@@ -6,6 +6,7 @@ import { useSessionUser } from './users'
 import { canManageSpace, isGuest } from '@/utils/permissions'
 import { readOnlyMode } from './readOnlyMode'
 import { isMemberAccess } from '@/utils/visibility'
+import { isAnonymousVisitor, publicListUrl } from '@/utils/publicAccess'
 
 interface Member extends Pick<GPMember, 'user'> {}
 
@@ -25,21 +26,38 @@ export interface Space extends Pick<
   members: Member[]
 }
 
+// Someone who is not signed in may only ask for public columns (gameplan/public_payload.py):
+// no task count, no joined community title. Member lists come back empty for them.
+const PUBLIC_SPACE_FIELDS = [
+  'name',
+  'title',
+  'icon',
+  'team',
+  'archived_at',
+  'visibility',
+  'modified',
+  'discussions_count',
+  { members: ['user'] },
+]
+
 export let spaces = useList<Space>({
   doctype: 'GP Project',
-  fields: [
-    'name',
-    'title',
-    'icon',
-    'team',
-    'archived_at',
-    'visibility',
-    'modified',
-    'tasks_count',
-    'discussions_count',
-    'team.title as team_title',
-    { members: ['user'] },
-  ],
+  url: publicListUrl('GP Project'),
+  fields: isAnonymousVisitor()
+    ? PUBLIC_SPACE_FIELDS
+    : [
+        'name',
+        'title',
+        'icon',
+        'team',
+        'archived_at',
+        'visibility',
+        'modified',
+        'tasks_count',
+        'discussions_count',
+        'team.title as team_title',
+        { members: ['user'] },
+      ],
   initialData: [],
   orderBy: 'title asc',
   limit: 99999,
@@ -124,6 +142,8 @@ export const joinedSpaces = useCall<string[]>({
   url: '/api/v2/method/GP Project/get_joined_spaces',
   cacheKey: 'joinedSpaces',
   initialData: [],
+  // Nobody signed in has joined anything.
+  immediate: !isAnonymousVisitor(),
 })
 
 export function hasJoined(spaceId: MaybeRefOrGetter<string>) {

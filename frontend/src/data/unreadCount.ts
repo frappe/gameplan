@@ -3,6 +3,7 @@ import { GPProject } from '@/types/doctypes'
 import { reactive } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
 import { onSocketEvent } from '@/socket'
+import { isAnonymousVisitor } from '@/utils/publicAccess'
 
 interface ProjectUnreadCount {
   [spaceId: string]: number
@@ -82,7 +83,8 @@ function loadProjectUnreadCounts(projects?: string[]) {
 }
 
 // load unread count for all projects once
-loadProjectUnreadCounts()
+// Unread counts belong to a signed-in user.
+if (!isAnonymousVisitor()) loadProjectUnreadCounts()
 
 export function getProjectUnreadCount(spaceId: string) {
   return unreadCounts[spaceId] ?? 0

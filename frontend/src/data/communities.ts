@@ -4,6 +4,7 @@ import { GPTeam, GPMember } from '@/types/doctypes'
 import { communityOrder } from './communityOrder'
 import { useSessionUser } from './users'
 import { isMemberAccess } from '@/utils/visibility'
+import { publicListUrl } from '@/utils/publicAccess'
 
 export interface CommunityMember extends Pick<GPMember, 'user' | 'is_admin'> {
   user: string
@@ -19,6 +20,7 @@ export interface Community extends Pick<
 
 export let communities = useList<Community>({
   doctype: 'GP Team',
+  url: publicListUrl('GP Team'),
   fields: [
     'name',
     'title',

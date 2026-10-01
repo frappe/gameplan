@@ -56,6 +56,10 @@ GUEST_REACHABLE_ENDPOINTS = {
 	"gameplan.api.get_public_user_info": "name and avatar of authors of public content only",
 	"gameplan.public_access.realtime_has_permission": "frappe's socket permission check, minus doctype rooms",
 	"gameplan.api.public_file": "one private File, if attached to something the caller may read",
+	"gameplan.public_lists.communities": "the public view's lists; extends.client.get_list, cleaned",
+	"gameplan.public_lists.spaces": "the public view's lists; extends.client.get_list, cleaned",
+	"gameplan.public_lists.comments": "the public view's lists; extends.client.get_list, cleaned",
+	"gameplan.public_lists.polls": "the public view's lists; extends.client.get_list, cleaned",
 }
 
 # Every right a DocPerm row can carry.

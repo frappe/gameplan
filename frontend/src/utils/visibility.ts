@@ -51,3 +51,24 @@ export function visibilityFilterIcon(value: unknown) {
     ? visibilityIcon(value)
     : undefined
 }
+
+/** What each tier means, as the UI explains it. */
+export const VISIBILITY_DESCRIPTIONS: Record<Visibility, string> = {
+  [VISIBILITY_ANONYMOUS]: 'Anyone with the link, no account needed',
+  [VISIBILITY_GENERAL]: 'Any signed-in Gameplan user',
+  [VISIBILITY_MEMBER_ACCESS]: 'Only people on the explicit member list',
+}
+
+/**
+ * The tiers a creation form offers. Only a Gameplan Admin may create something on the
+ * Anonymous tier; the server refuses it from anyone else.
+ */
+export function creatableVisibilityOptions(isAdmin: boolean) {
+  const tiers: Visibility[] = isAdmin
+    ? [VISIBILITY_GENERAL, VISIBILITY_MEMBER_ACCESS, VISIBILITY_ANONYMOUS]
+    : [VISIBILITY_GENERAL, VISIBILITY_MEMBER_ACCESS]
+  return tiers.map((tier) => ({
+    label: `${tier} — ${VISIBILITY_DESCRIPTIONS[tier]}`,
+    value: tier,
+  }))
+}

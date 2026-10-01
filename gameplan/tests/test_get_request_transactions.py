@@ -76,6 +76,11 @@ READ_ONLY_ENDPOINTS = frozenset(
 		"gameplan.public_access.realtime_has_permission",
 		# Streams one file the caller may read.
 		"gameplan.api.public_file",
+		# The public view's lists: permission-checked, cleaned reads.
+		"gameplan.public_lists.communities",
+		"gameplan.public_lists.spaces",
+		"gameplan.public_lists.comments",
+		"gameplan.public_lists.polls",
 		# The counts a visibility confirmation shows. Measures inside a savepoint it rolls back.
 		"gameplan.mixins.visibility.HasVisibility.get_visibility_change_impact",
 		# Profile reads.

@@ -7,9 +7,10 @@ import subprocess
 import frappe
 from frappe import _, safe_decode
 from frappe.core.api.file import get_max_file_size
-from frappe.utils import get_system_timezone
+from frappe.utils import cint, get_system_timezone
 from frappe.utils.telemetry import capture
 
+from gameplan.public_access import public_access_enabled
 from gameplan.roles import has_app_access
 
 no_cache = 1
@@ -46,6 +47,11 @@ def get_boot():
 			"max_file_size": get_max_file_size(),
 			"app_version": get_app_version(),
 			"system_timezone": get_system_timezone(),
+			# Whether someone who is not signed in may read Anonymous-tier spaces here, and
+			# whether they may create an account. The SPA uses both only to decide what to
+			# show; the server enforces each on its own.
+			"public_access_enabled": public_access_enabled(),
+			"signup_enabled": not cint(frappe.get_website_settings("disable_signup")),
 		}
 	)
 

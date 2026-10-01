@@ -2,6 +2,7 @@
   <FrappeUIProvider>
     <div class="relative isolate h-full overflow-hidden">
       <router-view v-if="['Onboarding', 'Login'].includes($route.name)" />
+      <PublicLayout v-else-if="!$session.isLoggedIn && isPublicVisitor()" />
       <Layout v-else-if="$session.isLoggedIn">
         <!-- While on a /settings/* URL, keep rendering the page the dialog was
              opened over (displayedRoute) so it stays visible behind the overlay. -->
@@ -21,7 +22,7 @@
 import { computed, defineAsyncComponent, nextTick, shallowRef, watch } from 'vue'
 import { loadRouteLocation, useRoute, useRouter } from 'vue-router'
 import { FrappeUIProvider } from 'frappe-ui'
-import { users, usersReady } from '@/data/users'
+import { settleUsersWithoutFetching, users, usersReady } from '@/data/users'
 import { session } from '@/data/session'
 import { useIsMobile } from '@/utils/useIsMobile'
 import { useTheme } from '@/utils/useTheme'
@@ -30,6 +31,8 @@ import NewTaskDialog from './components/NewTaskDialog/NewTaskDialog.vue'
 import SettingsDialog from './components/Settings/SettingsDialog.vue'
 import { settingsBackgroundPath } from './components/Settings'
 import { getHomeRoute } from '@/router'
+import { isPublicVisitor } from '@/utils/publicAccess'
+const PublicLayout = defineAsyncComponent(() => import('./components/Public/PublicLayout.vue'))
 
 const isMobileViewport = useIsMobile()
 const route = useRoute()
@@ -46,7 +49,13 @@ const Layout = computed(() => {
   }
 })
 
-users.fetch()
+// Someone reading a public space without signing in has no user list to load: the server
+// refuses it, and the authors on the page are looked up by handle instead.
+if (session.isLoggedIn) {
+  users.fetch()
+} else {
+  settleUsersWithoutFetching()
+}
 
 // Only desktop layers settings over a background page. On a phone the settings
 // route renders its own page, so it is treated like any other route here.

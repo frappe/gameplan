@@ -7,6 +7,7 @@ import { loadQuickReactionSlots } from './reactionPreferences'
 import { setSidebarBadgeStyle, type SidebarBadgeStyle } from './sidebarPreferences'
 import { session } from './session'
 import { onSocketEvent } from '@/socket'
+import { isAnonymousVisitor } from '@/utils/publicAccess'
 
 export type EmailDigestFrequency = 'Off' | 'Weekly' | 'Fortnightly' | 'Monthly'
 export type EmailDigestDayOfWeek =
@@ -114,6 +115,15 @@ const firstFetchSettled = ref(false)
  */
 export const usersReady = readonly(firstFetchSettled)
 
+/**
+ * Start the app without the user list, for someone who is not signed in. `get_user_info`
+ * is closed to them; the authors on a public page are looked up one by one instead (see
+ * `requestPublicProfile`).
+ */
+export function settleUsersWithoutFetching() {
+  firstFetchSettled.value = true
+}
+
 // Latched from `isFinished` rather than from the onSuccess/onError hooks so it cannot
 // drift from what "the request has settled" means: onSuccess is skipped for a response
 // with no body, which would strand the flag at false. Never stopped, by design — this
@@ -166,8 +176,56 @@ export function useUser(...args: [] | [email: string | null | undefined]): UserI
   if (!email) return unknownUser
   if (!usersByName[email]) {
     usersByName[email] = getPlaceholderUser(email, email.split('@')[0])
+    if (isAnonymousVisitor()) requestPublicProfile(email)
   }
   return usersByName[email]
+}
+
+// For someone who is not signed in, a user id is a profile handle (the server never sends
+// them an email address). Each handle seen is looked up once, batched per tick, and the
+// name and avatar merged into its placeholder. A handle the server will not describe (its
+// owner wrote nothing public) keeps the placeholder.
+const requestedHandles = new Set<string>()
+const pendingHandles = new Set<string>()
+let publicProfileTimer: number | null = null
+
+function requestPublicProfile(handle: string) {
+  if (requestedHandles.has(handle)) return
+  requestedHandles.add(handle)
+  pendingHandles.add(handle)
+  publicProfileTimer ??= window.setTimeout(fetchPublicProfiles, 0)
+}
+
+interface PublicProfile {
+  handle: string
+  full_name: string
+  image: string | null
+  image_background_color: string | null
+  is_image_background_removed: number
+}
+
+async function fetchPublicProfiles() {
+  publicProfileTimer = null
+  const handles = [...pendingHandles]
+  pendingHandles.clear()
+  const params = new URLSearchParams({ handles: JSON.stringify(handles) })
+  try {
+    const response = await fetch(`/api/v2/method/gameplan.api.get_public_user_info?${params}`)
+    if (!response.ok) return
+    const profiles: PublicProfile[] = (await response.json()).data || []
+    for (const profile of profiles) {
+      Object.assign(usersByName[profile.handle] ?? useUser(profile.handle), {
+        full_name: profile.full_name,
+        user_image: profile.image || '',
+        image_background_color: profile.image_background_color || '',
+        is_image_background_removed: profile.is_image_background_removed || 0,
+        user_profile: profile.handle,
+        isPlaceholder: false,
+      })
+    }
+  } catch (error) {
+    console.error('Could not load public profiles', error)
+  }
 }
 
 function getPlaceholderUser(email: string, full_name: string) {

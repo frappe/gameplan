@@ -10,6 +10,7 @@ generic REST routes and doctype-wide realtime rooms, which would otherwise hand 
 nothing has cleaned.
 """
 
+import json
 from unittest.mock import patch
 
 import frappe
@@ -17,6 +18,7 @@ import frappe.api.v2
 from werkzeug.test import EnvironBuilder
 from werkzeug.wrappers import Request
 
+from gameplan import public_lists
 from gameplan.api import get_public_user_info
 from gameplan.extends.client import get_list as get_client_list
 from gameplan.gameplan.doctype.gp_discussion.api import get_discussions
@@ -337,6 +339,42 @@ class TestPublicLists(PublicContentTestCase):
 		self.assertEqual(comment.owner, self.second_member.name)
 		self.assertEqual({r.user for r in comment.reactions}, {self.member.name, self.second_member.name})
 		self.assertIn(self.member.name, {row.owner for row in feed})
+
+
+class TestPublicListEndpoints(PublicContentTestCase):
+	"""The lists the public view reads, called the way frappe-ui calls them: JSON strings."""
+
+	def call(self, endpoint, **kwargs):
+		with switched_on(), self.as_user(ANONYMOUS):
+			return getattr(public_lists, endpoint)(**kwargs)
+
+	def test_each_lists_its_doctype_cleaned(self):
+		for endpoint, doctype, filters in (
+			("communities", "GP Team", {"name": self.community.name}),
+			("spaces", "GP Project", {"name": self.space.name}),
+			("comments", "GP Comment", {"reference_name": self.discussion.name}),
+			("polls", "GP Poll", {"discussion": self.discussion.name}),
+		):
+			with self.subTest(endpoint=endpoint):
+				rows = self.call(
+					endpoint,
+					fields=json.dumps(["*", *({table: ["name"]} for table in TABLE_FIELDS[doctype])]),
+					filters=json.dumps(filters),
+				)
+				self.assertEqual(len(rows), 1)
+				self.assert_carries_no_user_ids(rows, endpoint)
+
+	def test_they_refuse_what_get_list_refuses(self):
+		with self.assertRaises(frappe.PermissionError):
+			self.call("comments", fields=json.dumps(["modified_by"]))
+		with self.assertRaises(frappe.PermissionError):
+			by_owner = json.dumps({"owner": self.member.name})
+			self.call("comments", fields=json.dumps(["name"]), filters=by_owner)
+
+	def test_a_page_has_a_ceiling(self):
+		with patch("gameplan.public_lists.get_list") as get_list:
+			self.call("comments", limit="1000000")
+		self.assertEqual(get_list.call_args.kwargs["limit"], public_lists.MAX_ROWS)
 
 
 class TestPublicProfiles(PublicContentTestCase):

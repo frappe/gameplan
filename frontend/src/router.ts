@@ -14,6 +14,7 @@ import { spaces, getSpace } from './data/spaces'
 import type { Space } from './data/spaces'
 import { communityState } from './data/communityState'
 import { settingsBackgroundPath } from './components/Settings'
+import { isAnonymousVisitor, loginUrl, publicAccessEnabled } from './utils/publicAccess'
 import { shellScrollContainer } from 'frappe-ui'
 
 declare const __FRONTEND_ROUTE__: string
@@ -279,14 +280,14 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/pages/Space.vue'),
     redirect: { name: 'SpaceDiscussions' },
     props: true,
-    meta: { communityScope: true },
+    meta: { communityScope: true, public: true },
     children: [
       {
         name: 'SpaceDiscussions',
         path: 'discussions',
         component: () => import('@/pages/SpaceDiscussions.vue'),
         props: true,
-        meta: { communityScope: true },
+        meta: { communityScope: true, public: true },
       },
       {
         name: 'SpacePages',
@@ -323,7 +324,7 @@ const routes: RouteRecordRaw[] = [
     path: '/community/:communityId/space/:spaceId/discussion/:postId/:slug?',
     component: () => import('@/pages/SpaceDiscussion.vue'),
     props: true,
-    meta: { communityScope: true, hideMobileNav: true },
+    meta: { communityScope: true, hideMobileNav: true, public: true },
   },
   {
     name: 'NewDiscussion',
@@ -429,6 +430,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/space/:spaceId',
     component: RouteGuard,
+    meta: { public: true },
     async beforeEnter(to) {
       const space = await findSpace(routeParam(to.params.spaceId))
 
@@ -448,6 +450,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/space/:spaceId/discussions',
     component: RouteGuard,
+    meta: { public: true },
     async beforeEnter(to) {
       const space = await findSpace(routeParam(to.params.spaceId))
 
@@ -550,6 +553,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/space/:spaceId/discussion/:postId/:slug?',
     component: RouteGuard,
+    meta: { public: true },
     async beforeEnter(to) {
       const space = await findSpace(routeParam(to.params.spaceId))
 
@@ -743,13 +747,46 @@ router.beforeEach(async (to, from) => {
     return { name: 'Home' }
   }
 
-  if (to.name !== 'Login' && !session.isLoggedIn) {
-    // `href` carries the router base (/g), so login returns the guest to this page.
-    window.location.href =
-      '/login?redirect-to=' + encodeURIComponent(router.resolve(to.fullPath).href)
-    return { name: 'Login' }
+  if (to.name !== 'Login' && !session.isLoggedIn && !isPublicRoute(to)) {
+    return sendToLogin(to)
   }
 
+  if (!session.isLoggedIn && to.name !== 'Login') {
+    // Reading a public space without signing in. Whatever this visitor cannot see, they
+    // are asked to log in for, the way Discourse does it: the page may well exist for
+    // someone signed in, and "not found" would be the wrong answer.
+    const result = await resolveRoute(to, from)
+    return result && typeof result === 'object' && 'name' in result && result.name === 'NotFound'
+      ? sendToLogin(to)
+      : result
+  }
+
+  return resolveRoute(to, from)
+})
+
+/**
+ * A route someone who is not signed in may open: every record it matches says so with
+ * `meta.public`, and the site has public access switched on. An allowlist on purpose; a
+ * route nobody marked stays behind the login.
+ */
+function isPublicRoute(to: RouteLocationNormalized) {
+  return (
+    publicAccessEnabled() &&
+    to.matched.length > 0 &&
+    to.matched.every((record) => record.meta?.public === true)
+  )
+}
+
+function sendToLogin(to: RouteLocationNormalized) {
+  // `href` carries the router base (/g), so login returns the visitor to this page.
+  window.location.href = loginUrl(router.resolve(to.fullPath).href)
+  return { name: 'Login' }
+}
+
+async function resolveRoute(
+  to: RouteLocationNormalized,
+  from: RouteLocationNormalized,
+): Promise<RouteLocationRaw | undefined> {
   // Wait only for the first load. Gating on `users.isFinished` would also block every
   // navigation behind a background reload of the user list (see `usersReady`).
   if (!usersReady.value) {
@@ -831,7 +868,7 @@ router.beforeEach(async (to, from) => {
   }
 
   communityState.scope(communityId)
-})
+}
 
 export default router
 
@@ -1001,6 +1038,14 @@ async function getProjectContentDoc(doctype: ContentRouteDescriptor['doctype'], 
 
 async function fetchProjectContentDoc(doctype: ContentRouteDescriptor['doctype'], name: string) {
   try {
+    if (isAnonymousVisitor()) {
+      // frappe.client.get needs a signed-in user. The document route is open to
+      // anonymous visitors for what they may read, cleaned on the way out.
+      const response = await fetch(
+        `/api/v2/document/${encodeURIComponent(doctype)}/${encodeURIComponent(name)}`,
+      )
+      return response.ok ? ((await response.json()).data as ProjectContentDoc) : null
+    }
     return await call<ProjectContentDoc>('frappe.client.get', { doctype, name })
   } catch {
     return null
