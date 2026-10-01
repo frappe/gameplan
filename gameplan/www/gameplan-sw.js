@@ -148,10 +148,8 @@ async function refreshShell(response) {
   await cacheBuild();
 }
 
-/**
- * Saves every file of the current build (the manifest vite.config.ts writes), so a route
- * never opened online still loads offline, and drops the files of older builds.
- */
+/** Saves the current build (vite.config.ts writes its manifest), so a route never opened still
+ *  loads offline, and drops older builds. */
 async function cacheBuild() {
   try {
     const response = await fetch(OFFLINE_ASSET_MANIFEST_URL, { cache: "no-cache" });
@@ -187,8 +185,7 @@ async function saveAll(cache, urls) {
   await Promise.all(Array.from({ length: FETCHES_AT_ONCE }, next));
 }
 
-// Offline downloads (offlineDownloads.ts): images inside downloaded discussions and custom
-// emojis.
+// Images of downloaded discussions, and custom emojis (offlineDownloads.ts).
 async function cacheImages(urls) {
   const cache = await caches.open(DOWNLOAD_CACHE);
   await saveAll(cache, urls.filter(isUploadedFileUrl));

@@ -24,11 +24,8 @@ interface Revalidatable {
   error: unknown
 }
 
-/**
- * Reloads `resource` once the connection returns. A resource used by a component revalidates
- * while that component is mounted. One created outside a component (a shared store) only
- * revalidates if its own request failed offline.
- */
+/** Reloads `resource` on reconnect while the component using it is mounted. A shared store,
+ *  made outside a component, reloads only if its own request failed offline. */
 export function revalidateOnReconnect<T extends Revalidatable>(resource: T): T {
   const mounted = Boolean(getCurrentScope())
   const unregister = onReconnect(() => {

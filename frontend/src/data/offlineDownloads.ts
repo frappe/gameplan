@@ -126,7 +126,6 @@ export const downloads = reactive({
   error: null as string | null,
 })
 
-// This tab's running sync, so a removal or a logout can stop it.
 let running: AbortController | null = null
 onBeforeClear(() => running?.abort())
 
@@ -148,10 +147,7 @@ function showMeta(meta: Meta | null) {
   downloads.lastSyncedAt = meta?.lastSyncedAt ?? null
 }
 
-/**
- * Runs `task` holding the lock every tab shares, so one sync or removal runs at a time. With
- * `ifAvailable` it gives up rather than wait for another tab.
- */
+/** One sync or removal at a time across tabs; with `ifAvailable`, gives up rather than wait. */
 function exclusive<T>(ifAvailable: boolean, task: () => Promise<T>): Promise<T | false> {
   if (!navigator.locks) return task()
   return navigator.locks.request(DOWNLOADS_LOCK, { ifAvailable }, async (lock) =>
@@ -159,10 +155,7 @@ function exclusive<T>(ifAvailable: boolean, task: () => Promise<T>): Promise<T |
   ) as Promise<T | false>
 }
 
-/**
- * Brings the device in line with the chosen window. A manual run waits for another tab's
- * run and then checks again; an automatic one leaves it to that tab and to the interval.
- */
+/** A manual run waits for another tab's run; an automatic one leaves it to that tab. */
 function syncOfflineDownloads({ manual = false } = {}): Promise<boolean> {
   if (!session.isLoggedIn) return Promise.resolve(false)
   return exclusive(!manual, () => sync(manual))
@@ -269,7 +262,7 @@ async function download(days: OfflineWindow, previous: Meta | null, signal: Abor
 
     await storeFeeds(cache, feedRows, new Set(index.revoked))
     const emojis = (customEmojis.data ?? []).map((emoji) => emoji.image).filter(Boolean)
-    saveImages([...emojis, ...images].slice(0, MAX_IMAGES) as string[])
+    tellWorker('CACHE_IMAGES', [...emojis, ...images].slice(0, MAX_IMAGES) as string[])
     await writeMeta({
       ...base,
       since: index.synced_at,
@@ -319,13 +312,12 @@ function visitsToCheck(names: string[], after = '') {
   return { names: slice, checkedUpTo: slice[slice.length - 1] }
 }
 
-/** `method`'s answer, or null when the server answered for an account other than `owner`. */
+/** Null when the server answered for an account other than `owner`. */
 async function askAs<T extends { user: string }>(owner: string, method: string, args: object) {
   const answer = await call<T>(method, args)
   return answer.user === owner ? answer : null
 }
 
-/** The four entries a discussion occupies: its document and its three timeline lists. */
 function discussionKeys(cache: Cache, name: string) {
   return {
     doc: cache.docKey('GP Discussion', name),
@@ -480,7 +472,10 @@ async function forgetDiscussions(cache: Cache, names: string[]) {
   if (!images.size) return
   const inUse = await imagesInUse().catch(() => null)
   if (!inUse) return
-  forgetImages([...images].filter((url) => !inUse.has(url)))
+  tellWorker(
+    'FORGET_IMAGES',
+    [...images].filter((url) => !inUse.has(url)),
+  )
 }
 
 async function imagesInUse() {
@@ -506,12 +501,8 @@ function htmlImages(html: unknown) {
   return [...html.matchAll(/<img[^>]+src=\\?["']([^"'\\]+)/g)].map(([, src]) => src)
 }
 
-function saveImages(urls: string[]) {
-  if (urls.length) navigator.serviceWorker?.controller?.postMessage({ type: 'CACHE_IMAGES', urls })
-}
-
-function forgetImages(urls: string[]) {
-  if (urls.length) navigator.serviceWorker?.controller?.postMessage({ type: 'FORGET_IMAGES', urls })
+function tellWorker(type: 'CACHE_IMAGES' | 'FORGET_IMAGES', urls: string[]) {
+  if (urls.length) navigator.serviceWorker?.controller?.postMessage({ type, urls })
 }
 
 /** What the downloads weigh: their own entries and the images saved for them. */
@@ -546,7 +537,6 @@ async function savedImageBytes(urls: string[]): Promise<number> {
   )
 }
 
-/** Deletes everything downloaded, once this tab's sync has stopped. */
 function removeOfflineDownloads() {
   running?.abort()
   return exclusive(false, async () => {
@@ -561,7 +551,6 @@ async function forgetDownloads(meta: Meta) {
   showMeta(null)
 }
 
-/** Picks a window and downloads it now. */
 export function downloadForOffline(days: OfflineWindow) {
   // A dialog opened before the connection dropped can still confirm.
   if (days && refuseOffline()) return

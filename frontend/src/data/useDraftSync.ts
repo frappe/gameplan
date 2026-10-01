@@ -67,8 +67,7 @@ function timeout(ms: number): Promise<null> {
 export interface UseDraftSyncOptions {
   /** What this draft is for. May be reactive. */
   identity: MaybeRefOrGetter<DraftIdentity>
-  /** For standalone drafts, the draft's name bound to the URL (`?draft=`). Read on load to
-   *  resume a draft; for a new one, `onCreate` hands the name out to put there. */
+  /** For standalone drafts, the `?draft=` name to resume; a new one is announced by `onCreate`. */
   draftName?: MaybeRefOrGetter<string | null>
   /** When false, the composable is dormant: no load, no persistence. Flipping it true (e.g.
    *  when an inline editor opens) triggers the initial load + restore. Defaults to true. */
@@ -79,8 +78,7 @@ export interface UseDraftSyncOptions {
   canSave?: (payload: DraftPayload) => boolean
   /** Seed `data` when no stored draft is found (e.g. the live document for an edit). */
   initialPayload?: () => DraftPayload
-  /** Called once when a new draft is first saved here, with its name — lets standalone
-   *  callers put it in the URL, so a reload (even offline) resumes it. */
+  /** Called once with a new draft's name when it is first saved, to put in the URL. */
   onCreate?: (name: string) => void
 }
 
@@ -245,7 +243,7 @@ export function useDraftSync(options: UseDraftSyncOptions) {
   // "are we in a failure streak" flag (so we toast once, not per keystroke) and as the reason
   // a caller like publish() can report when the draft is still unsynced.
   const lastError = ref<unknown>(null)
-  // The name the draft was opened by (`?draft=`), or null for a new composition.
+  // `?draft=`, or null for a new composition.
   const requestedName = toValue(options.draftName ?? null)
   // The draft's name for its whole life; a singleton's is settled when it is looked up.
   const name = ref(requestedName ?? newDraftName())
@@ -400,7 +398,7 @@ export function useDraftSync(options: UseDraftSyncOptions) {
     },
   )
 
-  /** This draft's local record: by name, or for a singleton the newest one for its target. */
+  /** By name, or for a singleton the newest record for its target. */
   async function findLocalDraft(): Promise<DraftRecord | null> {
     if (!isSingleton.value) return (await getDraftRecord(name.value)) ?? null
     const target = singletonKey(toValue(identity))
@@ -615,11 +613,7 @@ export function useDraftSync(options: UseDraftSyncOptions) {
     return saved.value || Boolean((await getDraftRecord(draftName))?.serverName)
   }
 
-  /**
-   * Discard the draft entirely: its server row, if any, and the local copy. A draft on the
-   * server can only be deleted with the connection; offline this says so and resolves false,
-   * keeping the draft. Rejects if the server refused.
-   */
+  /** Deletes the draft everywhere. Offline, a saved one is kept and this resolves false. */
   async function clear(): Promise<boolean> {
     debouncedPush.cancel?.()
     if (activePush) await activePush
@@ -683,9 +677,8 @@ export function useDraftSync(options: UseDraftSyncOptions) {
     lastError,
     /** A pre-existing draft was found and restored on load. */
     restored,
-    /** The draft's name once its server row exists, else null. */
+    /** `name` once its server row exists, else null. */
     serverName,
-    /** The draft's name: its local key, its `?draft=` and, once saved, its GP Draft name. */
     name,
     /** Who the draft belongs to, or null while unknown. Unless it is the session user, the
      *  draft is read-only and never saved. */
@@ -699,7 +692,6 @@ export function useDraftSync(options: UseDraftSyncOptions) {
 
 export type DraftSync = ReturnType<typeof useDraftSync>
 
-/** The fields a draft's server row takes from what it is for. */
 function identityFields(id: DraftIdentity) {
   const fields: Record<string, unknown> = { type: id.type, mode: id.mode }
   if (id.referenceName) {
@@ -709,7 +701,6 @@ function identityFields(id: DraftIdentity) {
   return fields
 }
 
-/** The fields a draft's server row takes from what was typed. */
 function payloadFields(payload: DraftPayload) {
   const fields: Record<string, unknown> = { content: payload.content ?? '' }
   if (payload.title !== undefined) fields.title = payload.title ?? ''
@@ -720,10 +711,8 @@ function payloadFields(payload: DraftPayload) {
 type DraftDoctype = ReturnType<typeof useDoctype>
 
 /**
- * Saves a draft under its own name: creates the row, or updates it once it exists. Saving
- * twice cannot make a second row (the create fails as a duplicate and becomes an update),
- * so a retry after a lost response or a crash is always safe. Rejects with
- * `DoesNotExistError` if the draft was deleted.
+ * Creates the row under the draft's name, or updates it: a duplicate create becomes an update,
+ * so a retry is always safe. Rejects with `DoesNotExistError` if the draft was deleted.
  */
 async function saveToServer(
   doctype: DraftDoctype,
@@ -751,11 +740,8 @@ async function saveToServer(
   if (!updated) throw new Error('Could not save the draft')
 }
 
-/**
- * Deletes a draft: its server row when `onServer` or its record says it has one, then its
- * record. Runs as the draft's only writer, so it never interleaves with a save of it.
- * Rejects if the server row could not be deleted, keeping the draft.
- */
+/** Deletes the server row (if any) and the record, as the draft's only writer. Rejects, keeping
+ *  the draft, if the server refused. */
 export function deleteDraft(name: string, onServer = false): Promise<void> {
   return withDraftLock(name, async () => {
     const record = await getDraftRecord(name)
@@ -780,11 +766,8 @@ function isDeletedError(error: unknown) {
   return errorType(error) === 'DoesNotExistError'
 }
 
-/**
- * Saves every draft of this user that has edits the server has not seen: typed offline, or
- * left when a push failed or the composer closed first. Each goes under its own name, so
- * this never guesses which row a draft belongs to. Returns how many were saved.
- */
+/** Saves this user's drafts with edits the server has not seen, each under its own name.
+ *  Returns how many were saved. */
 export async function recoverOrphanedDrafts(): Promise<number> {
   // One tab at a time: two tabs saving the same drafts would only repeat requests.
   return withLock('gp-draft-recovery', async () => {
@@ -799,7 +782,6 @@ function hasUnsavedEdits(record: DraftRecord) {
   return record.updatedAt > (record.syncedAt ?? 0)
 }
 
-/** Save one stranded draft. Returns whether it was saved. */
 async function saveOrphanedDraft(record: DraftRecord): Promise<boolean> {
   const id = record.identity
   // The IndexedDB store is origin-wide, so on a shared browser profile it can hold drafts

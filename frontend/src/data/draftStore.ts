@@ -30,8 +30,7 @@ export interface DraftPayload {
 }
 
 export interface DraftRecord {
-  /** The draft's name, given when it is started: its key here, the `?draft=` in its URL and
-   *  its GP Draft name on the server. It never changes, and no two drafts share it. */
+  /** The draft's name for life: its key here, its `?draft=` and its GP Draft name. */
   key: string
   identity: DraftIdentity
   payload: DraftPayload
@@ -74,11 +73,8 @@ export async function getDraftRecord(key: string): Promise<DraftRecord | undefin
   return get<DraftRecord>(key, store)
 }
 
-/**
- * Writes a record. One whose server row exists stays saved until it is deleted: a writer
- * that has not heard of the save yet (another tab, the recovery sweep) must not undo it, or
- * a later delete would skip the row. `update` reads and writes in one transaction.
- */
+/** A saved record stays saved until deleted, so a writer that missed the save cannot undo it
+ *  and make a later delete skip the row. */
 export async function putDraftRecord(record: DraftRecord): Promise<void> {
   await ready()
   return update<DraftRecord>(
@@ -98,10 +94,7 @@ export async function listDraftRecords(): Promise<DraftRecord[]> {
   return entries<string, DraftRecord>(store).then((all) => all.map(([, record]) => record))
 }
 
-/**
- * Runs `task` while holding the lock `name`: across tabs with Web Locks, or where those are
- * missing, queued behind the other tasks of this tab.
- */
+/** Runs `task` holding lock `name`: across tabs with Web Locks, else queued in this tab. */
 const queues = new Map<string, Promise<unknown>>()
 export function withLock<T>(name: string, task: () => Promise<T>): Promise<T> {
   if (typeof navigator !== 'undefined' && navigator.locks) {
@@ -115,19 +108,14 @@ export function withLock<T>(name: string, task: () => Promise<T>): Promise<T> {
   return run
 }
 
-/**
- * Runs `task` as the only writer of draft `name` in this browser, so saving and deleting it
- * never interleave and the server sees its writes in order.
- */
+/** Saves and deletes of one draft never interleave, so the server sees them in order. */
 export function withDraftLock<T>(name: string, task: () => Promise<T>): Promise<T> {
   return withLock(`gp-draft:${name}`, task)
 }
 
 /**
- * Older versions keyed a reply or edit draft by its target (`Comment::New::GP Discussion::42`)
- * and a new discussion by its server name or a per-tab id (`Discussion::New::…`). Each such
- * record moves to its draft's name: the server name if it has a row, else a new name. One
- * transaction, so a crash leaves all or nothing.
+ * Older versions keyed drafts `Comment::New::GP Discussion::42` or `Discussion::New::…`. Each
+ * moves to its server name, or a new name if it has no row, in one transaction.
  */
 function convertOldRecords(): Promise<void> {
   return store('readwrite', async (records) => {

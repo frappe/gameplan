@@ -12,12 +12,8 @@ const CACHE_PREFIX = 'gameplan-readonly-offline'
 // Build files are the same for every user, so clearing a user's caches leaves them.
 const ASSET_CACHE_SUFFIX = ':assets'
 
-/**
- * Whether it is safe to show the app: either nobody switched, or the previous user's data is
- * gone. The session can change outside the app's own login (a switched cookie, `bench browse
- * --sid`, the dev user switcher), and frappe-ui's v1 resources and the worker's image cache
- * are not kept per user.
- */
+/** Whether the app may show: nobody switched, or the previous user's data is gone. The session
+ *  can change outside the app's login (another tab, `bench browse --sid`, the dev switcher). */
 export async function clearCachesOnUserSwitch(): Promise<boolean> {
   const { switched, cleared } = await guardAgainstUserSwitch(getSessionUserFromCookie())
   return !switched || cleared
@@ -55,11 +51,8 @@ export function onBeforeClear(stop: () => void) {
   beforeClear.add(stop)
 }
 
-/**
- * Wipes what this browser holds offline, so the next person to sign in can't read it.
- * Resolves to whether everything cleared. Drafts are kept for the same user signing back
- * in; a user switch clears them too (guardAgainstUserSwitch).
- */
+/** Wipes what this browser holds offline; resolves to whether everything cleared. Drafts stay
+ *  for the same user signing back in; a user switch clears them too. */
 export async function clearOfflineCaches(): Promise<boolean> {
   for (const stop of beforeClear) stop()
   // Waits for any tab's download to finish writing, so nothing lands after the clear.
@@ -97,12 +90,9 @@ interface UserSwitch {
   cleared: boolean
 }
 
-/**
- * Clears every offline cache when `user` differs from the last user this browser saw. The
- * marker only moves once the clear succeeds, so a failed one is retried on the next boot.
- * Resources already in memory belong to the previous user, so a caller switching users must
- * reload afterwards.
- */
+/** Clears every offline cache when `user` is not the last user seen. The marker moves only
+ *  after a clear succeeds, so a failed one retries on the next boot. A caller switching users
+ *  must reload: what is in memory is still the previous user's. */
 export async function guardAgainstUserSwitch(user: string | null): Promise<UserSwitch> {
   const lastSeenUser = lastSeen.get()
   const switched = Boolean(lastSeenUser && user && lastSeenUser !== user)

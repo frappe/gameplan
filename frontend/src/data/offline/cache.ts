@@ -8,10 +8,8 @@ import { getSessionUserFromCookie } from '@/utils/sessionCookie'
 
 const VERSION = 'v2'
 
-/**
- * The keys frappe-ui files `user`'s cache under; by default the signed-in user's. A sync binds
- * them to the account it started as, so a sign-in in another tab cannot redirect its writes.
- */
+/** `user`'s cache keys (the signed-in user's by default). A sync binds them to its account, so a
+ *  sign-in in another tab cannot redirect its writes. */
 export function cacheFor(user = getSessionUserFromCookie()) {
   const namespace = user ? `ns:${encodeURIComponent(user)}:` : ''
   const listKey = (cacheKey: unknown[]) =>
