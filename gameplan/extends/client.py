@@ -6,7 +6,7 @@ import frappe
 from frappe.model.base_document import get_controller
 
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def get_list(
 	doctype=None,
 	fields=None,

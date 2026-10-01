@@ -6,14 +6,15 @@
 Not Gameplan Guests. A Gameplan Guest is a signed-in outside collaborator, and
 `gameplan.is_guest()` returns False for a request with nobody signed in. The permission
 predicates in gameplan/permissions.py test is_guest() and then fall through to the member
-rules, so they treat an anonymous visitor like a signed-in member: a space that is not
-private reads as visible.
+rules, so before the Anonymous tier existed they would have treated an anonymous visitor
+like a signed-in member: a space that is not private would read as visible.
 
-That costs nothing today only because of the role layer. No Gameplan doctype grants the
-`Guest` role anything, and a has_permission hook can only take access away, never grant it.
-TestRoleLayer pins that. TestDefaultsStayInvisible pins the outcome it protects: content
-created with today's defaults stays out of reach of anonymous visitors on every read path.
-Both must keep passing when public read access is added.
+The role layer grants the `Guest` role read access to exactly the doctypes a public thread
+needs, and nothing else. TestRoleLayer pins that list and what it may grant.
+TestDefaultsStayInvisible pins the outcome that matters most: content created with today's
+defaults stays out of reach of anonymous visitors on every read path, whether or not public
+access is switched on. TestGuestReachableEndpoints pins every endpoint a request with nobody
+signed in can reach.
 """
 
 from unittest.mock import patch
@@ -33,14 +34,26 @@ from gameplan.tests.fixtures import (
 	create_poll,
 	create_space,
 )
+from gameplan.tests.test_get_request_transactions import discover_whitelisted_endpoints
 
 ANONYMOUS = "Guest"
 
 # Doctypes that may grant the `Guest` role read access, and the only rights they may grant.
-# Empty until public read access opens. Anything added here must also be scoped for
-# anonymous visitors in both `permission_query_conditions` and `has_permission` in hooks.py.
-ANONYMOUS_READABLE_DOCTYPES = frozenset()
+# The minimum a public thread needs. Anything here must also be scoped for anonymous
+# visitors in both `permission_query_conditions` and `has_permission` in hooks.py: a
+# has_permission hook alone gates opening one row, not listing all of them.
+ANONYMOUS_READABLE_DOCTYPES = frozenset({"GP Team", "GP Project", "GP Discussion", "GP Comment", "GP Poll"})
 ANONYMOUS_RIGHTS = frozenset({"read", "select"})
+
+# Every whitelisted endpoint a request with nobody signed in can reach, and why.
+GUEST_REACHABLE_ENDPOINTS = {
+	"gameplan.api.get_user_info": "throws AuthenticationError for an anonymous caller first",
+	"gameplan.api.accept_invitation": "invitation email link, opened by a plain browser navigation",
+	"gameplan.email_digest.open_digest_preferences": "digest email link; signs the user in",
+	"gameplan.www.g.get_context_for_dev": "throws unless developer_mode",
+	"gameplan.extends.client.get_list": "the SPA's list endpoint; rows scoped by permission_query_conditions",
+	"gameplan.gameplan.doctype.gp_discussion.api.get_discussions": "the feed; filtered to readable spaces",
+}
 
 # Every right a DocPerm row can carry.
 DOCPERM_RIGHTS = (
@@ -122,6 +135,28 @@ class TestRoleLayer(GameplanTestCase):
 					granted, ANONYMOUS_RIGHTS, f"{doctype} grants the Guest role {sorted(granted)}"
 				)
 
+	def test_every_anonymously_readable_doctype_is_scoped_for_lists_and_documents(self):
+		query_conditions = frappe.get_hooks("permission_query_conditions", {})
+		has_permission = frappe.get_hooks("has_permission", {})
+		for doctype in ANONYMOUS_READABLE_DOCTYPES:
+			with self.subTest(doctype=doctype):
+				self.assertIn(doctype, query_conditions)
+				self.assertIn(doctype, has_permission)
+				self.assertTrue(
+					any(perm.role == ANONYMOUS and perm.read for perm in frappe.get_meta(doctype).permissions)
+				)
+
+
+class TestGuestReachableEndpoints(GameplanTestCase):
+	def test_only_the_listed_endpoints_answer_a_request_with_nobody_signed_in(self):
+		reachable = {
+			path
+			for path, endpoint in discover_whitelisted_endpoints().items()
+			if endpoint in frappe.guest_methods
+		}
+
+		self.assertEqual(reachable, set(GUEST_REACHABLE_ENDPOINTS))
+
 
 class TestDefaultsStayInvisible(GameplanTestCase):
 	"""Content created with today's defaults is unreachable for anonymous visitors.
@@ -141,29 +176,29 @@ class TestDefaultsStayInvisible(GameplanTestCase):
 		self.content = (self.community, self.space, self.discussion, self.comment, self.poll)
 
 	def test_no_single_document_can_be_read(self):
-		for doc in self.content:
-			self.assert_not_allowed(doc, "read", ANONYMOUS)
+		for switch_on in (0, 1):
+			with patch.dict(frappe.conf, {PUBLIC_ACCESS_CONFIG_KEY: switch_on}):
+				for doc in self.content:
+					with self.subTest(switch=switch_on, doctype=doc.doctype):
+						self.assert_not_allowed(doc, "read", ANONYMOUS)
 
-	def test_no_list_can_be_read(self):
+	def test_no_list_shows_them(self):
+		for switch_on in (0, 1):
+			with patch.dict(frappe.conf, {PUBLIC_ACCESS_CONFIG_KEY: switch_on}), self.as_user(ANONYMOUS):
+				for doc in self.content:
+					with self.subTest(switch=switch_on, doctype=doc.doctype):
+						self.assertNotIn(
+							doc.name, frappe.get_list(doc.doctype, pluck="name", limit_page_length=0)
+						)
+						listed = get_client_list(doctype=doc.doctype, fields=["name"], limit=0)
+						self.assertNotIn(str(doc.name), {str(row.name) for row in listed})
+				with self.subTest(switch=switch_on, endpoint="get_discussions"):
+					self.assertNotIn(self.discussion.name, [row.name for row in get_discussions(limit=50)])
+
+	def test_search_still_requires_a_signed_in_user(self):
+		# Search reads its own index and never asks the role layer, and its index holds
+		# tasks and pages too, so the whitelist decorator is what refuses an anonymous request.
 		with self.as_user(ANONYMOUS):
-			for doc in self.content:
-				with self.assertRaises(frappe.PermissionError, msg=doc.doctype):
-					frappe.get_list(doc.doctype, pluck="name")
-
-	def test_gameplan_list_endpoints_refuse(self):
-		with self.as_user(ANONYMOUS):
-			with self.assertRaises(frappe.PermissionError):
-				get_discussions(limit=20)
-
-			for doc in self.content:
-				with self.assertRaises(frappe.PermissionError, msg=doc.doctype):
-					get_client_list(doctype=doc.doctype, fields=["name"])
-
-	def test_read_endpoints_require_a_signed_in_user(self):
-		# Search reads its own index and never asks the role layer, so for search the
-		# whitelist decorator is the only thing refusing an anonymous request.
-		endpoints = (get_discussions, get_client_list, api.search_sqlite, command_palette.search_sqlite)
-		with self.as_user(ANONYMOUS):
-			for endpoint in endpoints:
+			for endpoint in (api.search_sqlite, command_palette.search_sqlite):
 				with self.assertRaises(frappe.PermissionError, msg=endpoint.__qualname__):
 					frappe.is_whitelisted(endpoint)

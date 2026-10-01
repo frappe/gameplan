@@ -79,7 +79,7 @@ def parse_filters(filters) -> dict:
 	return filters
 
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def get_discussions(filters=None, order_by=None, start=None, limit=None):
 	if not frappe.has_permission("GP Discussion", "read"):
 		frappe.throw("Insufficient Permission for GP Discussion", frappe.PermissionError)

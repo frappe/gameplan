@@ -125,6 +125,20 @@ class HasVisibility:
 			return [self.name]
 		return frappe.get_all("GP Project", filters={"team": self.name}, pluck="name")
 
+	@frappe.whitelist(methods=["POST"])
+	def set_visibility(self, visibility: str):
+		"""Move this community or space to another tier. Gameplan Admins only.
+
+		The route the app uses. check_visibility_change_allowed enforces the same rule on
+		every other route, and the save stamps the change and cleans up after it.
+		"""
+		if not is_global_admin(frappe.session.user):
+			frappe.throw(_("Only Gameplan Admins can change visibility"), frappe.PermissionError)
+		if visibility not in VISIBILITY_TIERS:
+			frappe.throw(_("Unknown visibility: {0}").format(visibility))
+		self.visibility = visibility
+		self.save()
+
 	@frappe.whitelist()
 	def get_visibility_change_impact(self, visibility: str):
 		"""What moving this record to `visibility` would do, for the confirmation dialog.

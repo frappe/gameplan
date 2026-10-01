@@ -271,3 +271,40 @@ def space_state(user, space):
 		for doctype in SPACE_STATE_DOCTYPES
 		if frappe.db.exists(doctype, {"user": user, "project": str(space.name)})
 	}
+
+
+class TestSetVisibility(GameplanTestCase):
+	"""set_visibility is the route the app uses to change a tier."""
+
+	def setUp(self):
+		super().setUp()
+		self.community = create_community("Set Visibility Community", admins=[self.second_member])
+		self.space = create_space("Set Visibility Space", self.community, members=[self.member])
+
+	def test_a_gameplan_admin_moves_a_space_and_a_community(self):
+		with self.as_user(self.admin):
+			frappe.get_doc("GP Team", self.community.name).set_visibility(VISIBILITY_ANONYMOUS)
+			frappe.get_doc("GP Project", self.space.name).set_visibility(VISIBILITY_ANONYMOUS)
+
+		self.assertEqual(stored_visibility(self.community), VISIBILITY_ANONYMOUS)
+		self.assertEqual(stored_visibility(self.space), VISIBILITY_ANONYMOUS)
+		self.assertTrue(frappe.db.get_value("GP Project", self.space.name, "is_anonymous_readable"))
+		self.assertEqual(
+			frappe.db.get_value("GP Project", self.space.name, "visibility_set_by"), self.admin.name
+		)
+
+	def test_nobody_else_may(self):
+		for user, doc in (
+			(self.member, self.space),
+			(self.second_member, self.space),
+			(self.second_member, self.community),
+			(self.guest, self.space),
+		):
+			with self.subTest(user=user.name, doctype=doc.doctype):
+				with self.as_user(user), self.assertRaises(frappe.PermissionError):
+					frappe.get_doc(doc.doctype, doc.name).set_visibility(VISIBILITY_MEMBER_ACCESS)
+				self.assertEqual(stored_visibility(doc), VISIBILITY_GENERAL)
+
+	def test_an_unknown_tier_is_refused(self):
+		with self.as_user(self.admin), self.assertRaises(frappe.ValidationError):
+			frappe.get_doc("GP Project", self.space.name).set_visibility("Public")

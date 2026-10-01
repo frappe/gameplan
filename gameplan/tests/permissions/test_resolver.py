@@ -10,8 +10,8 @@ each other: the single-document check, the SQL list filter, and the batched form
 notification audiences. Those drifting apart is how "can open it but not list it", or the
 other way round, happens.
 
-Until public read access opens, the role layer still refuses anonymous visitors whatever
-these rules say.
+The role layer grants the Guest role read access to the doctypes a public thread needs, so
+for those these rules are what decides.
 """
 
 from unittest.mock import patch
@@ -227,17 +227,23 @@ class TestSpaceAccess(ResolverTestCase):
 			self.assertFalse(can_view_space(self.guest.name, public.name))
 			self.assertEqual(listed_spaces(ANONYMOUS), set())
 
-	def test_a_public_space_is_still_refused_by_the_role_layer(self):
-		# The rules say yes; the role layer still says no until the Guest role is granted
-		# read. That grant is the step that opens public read access.
+	def test_the_role_layer_agrees_with_the_rules(self):
+		# The Guest role reads communities, spaces, discussions, comments and polls, so a
+		# public discussion is readable all the way through, and a General one is not.
 		public = next(
 			s for s in self.spaces if s.title == f"Resolver {VISIBILITY_ANONYMOUS}/{VISIBILITY_ANONYMOUS}"
 		)
-		discussion = create_discussion("Resolver Public Discussion", public, owner=self.member)
+		general = next(
+			s for s in self.spaces if s.title == f"Resolver {VISIBILITY_ANONYMOUS}/{VISIBILITY_GENERAL}"
+		)
+		public_discussion = create_discussion("Resolver Public Discussion", public, owner=self.member)
+		general_discussion = create_discussion("Resolver General Discussion", general, owner=self.member)
 		with switch(True):
-			self.assertTrue(can_view_content(ANONYMOUS, discussion))
-			self.assert_not_allowed(discussion, "read", ANONYMOUS)
-			self.assert_not_allowed(public, "read", ANONYMOUS)
+			self.assert_allowed(public_discussion, "read", ANONYMOUS)
+			self.assert_allowed(public, "read", ANONYMOUS)
+			self.assert_not_allowed(general_discussion, "read", ANONYMOUS)
+		with switch(False):
+			self.assert_not_allowed(public_discussion, "read", ANONYMOUS)
 
 
 class TestCommunityAccess(ResolverTestCase):
