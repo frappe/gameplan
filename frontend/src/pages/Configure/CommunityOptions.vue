@@ -6,6 +6,15 @@
     :options="options"
   />
 
+  <VisibilityDialog
+    v-model="showVisibilityDialog"
+    doctype="GP Team"
+    :name="community.name"
+    :title="community.title"
+    :visibility="community.visibility"
+    @changed="communities.reload()"
+  />
+
   <MergeCommunityDialog
     v-model="showMergeDialog"
     :community="community"
@@ -20,6 +29,7 @@ import { communities } from '@/data/communities'
 import type { Community } from '@/data/communities'
 import type { GPTeam } from '@/types/doctypes'
 import MergeCommunityDialog from './MergeCommunityDialog.vue'
+import VisibilityDialog from '@/components/VisibilityDialog.vue'
 
 const props = defineProps<{
   community: Community
@@ -32,6 +42,7 @@ const emit = defineEmits<{
 
 const teams = useDoctype<GPTeam>('GP Team')
 const showMergeDialog = ref(false)
+const showVisibilityDialog = ref(false)
 
 const options = computed(() => [
   {
@@ -43,6 +54,12 @@ const options = computed(() => [
     label: 'View members',
     icon: 'lucide-users-2',
     onClick: () => emit('view-members', props.community.name),
+  },
+  {
+    label: 'Change visibility',
+    icon: 'lucide-eye',
+    onClick: () => (showVisibilityDialog.value = true),
+    condition: () => !props.community.archived_at,
   },
   {
     label: 'Merge into...',
