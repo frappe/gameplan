@@ -352,6 +352,7 @@ class GameplanSearch(SQLiteSearch):
 		"""
 		filters = {field: values for field, values in (filters or {}).items() if field in FILTERABLE_FIELDS}
 		self._requested_projects = filters.get("project")
+		self._sort = self._parse_sort_by(sort_by)
 		try:
 			# Convert tag filters to LIKE filters for the parent search
 			if "tags" in filters:
@@ -360,19 +361,18 @@ class GameplanSearch(SQLiteSearch):
 					# Convert to LIKE filter format for space-separated tag matching
 					filters["tags"] = ["LIKE", tag_filters]
 
-			sort_column, sort_direction = self._parse_sort_by(sort_by)
-			if not sort_column and not query:
-				if not self._has_filters(filters):
-					return self._empty_search_result(title_only, filters)
-				sort_column, sort_direction = self._parse_sort_by(DEFAULT_SORT_BY)
+			if query:
+				# Call parent search with the converted filters
+				return super().search(query, title_only, filters)
 
-			if sort_column:
-				return self._sorted_search(query, title_only, filters, sort_column, sort_direction)
-
-			# Call parent search with the converted filters
-			return super().search(query, title_only, filters)
+			if not self._has_filters(filters):
+				return self._empty_search_result(title_only, filters)
+			if not self._sort[0]:
+				self._sort = self._parse_sort_by(DEFAULT_SORT_BY)
+			return self._search_without_query(title_only, filters)
 		finally:
 			del self._requested_projects
+			del self._sort
 
 	def _has_filters(self, filters):
 		return any((filters or {}).values())
@@ -389,27 +389,44 @@ class GameplanSearch(SQLiteSearch):
 
 		return column, direction
 
-	def _sorted_search(self, query, title_only, filters, sort_column, sort_direction):
+	def _search_without_query(self, title_only, filters):
 		if not self.is_search_enabled():
 			return self._empty_search_result(title_only, filters)
 
 		self.raise_if_not_indexed()
 		start_time = time.time()
-
 		all_filters = {**filters, **self.get_search_filters()}
-		filter_conditions, filter_params = self._build_filter_conditions(all_filters)
 
-		fts_query = None
-		corrections = None
-		expanded_query = query
-		if query:
-			expanded_query, corrections = self._expand_query_with_corrections(query)
-			fts_query = self._prepare_fts_query(expanded_query)
+		try:
+			raw_results = self._execute_search_query(None, title_only, all_filters)
+		except sqlite3.Error as e:
+			frappe.log_error(f"Search query failed: {e}")
+			raw_results = []
 
-		select_clause, select_params = self._build_sorted_select(title_only, bool(fts_query))
+		results = self._process_search_results(raw_results, "")
+		return {
+			"results": results,
+			"summary": {
+				"duration": round(time.time() - start_time, 3),
+				"total_matches": len(raw_results),
+				"returned_matches": len(raw_results),
+				"corrected_words": None,
+				"corrected_query": None,
+				"title_only": title_only,
+				"filtered_matches": len(results),
+				"applied_filters": filters,
+			},
+		}
+
+	def _execute_search_query(self, fts_query, title_only, filters):
+		sort_column, sort_direction = getattr(self, "_sort", (None, None))
+		if not sort_column:
+			return super()._execute_search_query(fts_query, title_only, filters)
+
+		select_clause, params = self._build_sorted_select(title_only, bool(fts_query))
+		filter_conditions, filter_params = self._build_filter_conditions(filters)
 
 		conditions = []
-		params = [*select_params]
 		if fts_query:
 			conditions.append("search_fts MATCH ?")
 			params.append(fts_query)
@@ -428,32 +445,16 @@ class GameplanSearch(SQLiteSearch):
 			ORDER BY CAST({sort_column} AS REAL) {sort_direction.upper()}
 			LIMIT ?
 		"""
+		return self.sql(sql, tuple(params), read_only=True)
 
-		try:
-			raw_results = self.sql(sql, tuple(params), read_only=True)
-		except sqlite3.Error as e:
-			frappe.log_error(f"Sorted search query failed: {e}")
-			raw_results = []
-
-		results = self._process_search_results(raw_results, expanded_query or "")
-		results.sort(key=lambda result: flt(result.get(sort_column)), reverse=sort_direction == "desc")
-		for rank, result in enumerate(results, 1):
-			result["modified_rank"] = rank
-
-		duration = time.time() - start_time
-		return {
-			"results": results,
-			"summary": {
-				"duration": round(duration, 3),
-				"total_matches": len(raw_results),
-				"returned_matches": len(raw_results),
-				"corrected_words": corrections,
-				"corrected_query": expanded_query if corrections else None,
-				"title_only": title_only,
-				"filtered_matches": len(results),
-				"applied_filters": filters,
-			},
-		}
+	def _process_search_results(self, raw_results, query):
+		results = super()._process_search_results(raw_results, query)
+		sort_column, sort_direction = getattr(self, "_sort", (None, None))
+		if sort_column:
+			results.sort(key=lambda result: flt(result.get(sort_column)), reverse=sort_direction == "desc")
+			for rank, result in enumerate(results, 1):
+				result["modified_rank"] = rank
+		return results
 
 	def _build_sorted_select(self, title_only, has_match):
 		select_fields = ["doc_id"]
