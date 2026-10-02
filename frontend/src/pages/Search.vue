@@ -105,7 +105,7 @@
                     </div>
                     <template #suffix>
                       <span
-                        class="lucide-chevron-down ml-2 h-4 w-4 transition-transform"
+                        class="lucide-chevron-down ml-2 size-4 shrink-0 text-ink-gray-4 transition-transform duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]"
                         :class="{ 'rotate-180': open }"
                       />
                     </template>
@@ -251,8 +251,8 @@
                 class="shrink-0 !w-fit"
                 variant="outline"
                 side="bottom"
-                placeholder="Sort by"
-                :options="sortOptions"
+                placeholder="Relevance"
+                :options="sortBy === undefined ? discussionOrderOptions : sortOptions"
                 :model-value="sortBy"
                 @update:model-value="updateSort"
               />
@@ -260,9 +260,9 @@
               <Button
                 v-if="hasActiveFilters() || sortBy"
                 class="ml-auto shrink-0"
-                @click="resetFilters"
+                @click="clearFilters"
               >
-                Reset filters
+                Clear filters
               </Button>
             </div>
           </ScrollArea>
@@ -486,7 +486,7 @@ const feedbackGiven = ref(false)
 const activeFilters = ref<SearchFilters>({})
 const sortBy = ref<string>()
 
-const sortOptions = [{ label: 'Relevance (default)', value: '' }, ...discussionOrderOptions]
+const sortOptions = [{ label: 'Relevance', value: '' }, ...discussionOrderOptions]
 
 const OPTION_LIMIT = 100
 
@@ -815,7 +815,7 @@ function hasActiveFilters(): boolean {
   )
 }
 
-function resetFilters() {
+function clearFilters() {
   activeFilters.value = {}
   sortBy.value = undefined
   if (query.value) {
