@@ -5,7 +5,7 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from gameplan.api import search_sqlite
-from gameplan.search_sqlite import GameplanSearch
+from gameplan.search_sqlite import GameplanSearch, GameplanSearchIndexMissingError
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
 	create_comment,
@@ -319,12 +319,16 @@ class TestSearchIndexLifecycle(IsolatedSearchIndex, GameplanTestCase):
 		else:
 			self.assertIn(doc_id, queued_ids)
 
-	def search_as(self, user, query, filters=None):
+	def search_as(self, user, query, filters=None, sort_by=None):
 		with self.as_user(user):
 			return search_sqlite(
 				query,
 				filters=json.dumps(filters) if filters is not None else None,
+				sort_by=sort_by,
 			)["results"]
+
+	def discussion_ids(self, results):
+		return [result["id"] for result in results if result["doctype"] == "GP Discussion"]
 
 	def test_index_lifecycle_uses_an_isolated_database(self):
 		self.assert_uses_isolated_index(self.search)
@@ -545,3 +549,122 @@ class TestSearchIndexLifecycle(IsolatedSearchIndex, GameplanTestCase):
 		)
 
 		self.assertEqual([result["id"] for result in results], [f"GP Comment:{comment.name}"])
+
+	def test_most_discussed_sort_orders_matches_by_reply_count(self):
+		quiet = self.create_discussion("Quiet sort thread", "sortneedle drew no replies")
+		busy = self.create_discussion("Busy sort thread", "sortneedle drew the most replies")
+		middling = self.create_discussion("Middling sort thread", "sortneedle drew one reply")
+		for _ in range(3):
+			create_comment(busy, content="A reply", owner=self.member)
+		create_comment(middling, content="A reply", owner=self.member)
+		drain_search_index_queue()
+
+		results = self.search_as(self.member, "sortneedle", sort_by="comments_count desc")
+
+		self.assertEqual(
+			self.discussion_ids(results),
+			[
+				f"GP Discussion:{busy.name}",
+				f"GP Discussion:{middling.name}",
+				f"GP Discussion:{quiet.name}",
+			],
+		)
+
+	def test_filters_alone_return_results_without_a_query(self):
+		discussion = self.create_discussion(
+			"Browsable thread",
+			"This thread is reachable from the filter row alone",
+		)
+		drain_search_index_queue()
+
+		results = self.search_as(self.member, "", filters={"project": [self.space.name]})
+
+		self.assertIn(f"GP Discussion:{discussion.name}", self.discussion_ids(results))
+
+	def test_filters_alone_lead_with_the_freshest_activity(self):
+		revived = self.create_discussion("Revived thread", "An old thread that gets a late reply")
+		newer = self.create_discussion("Newer thread", "Posted after the older thread")
+		create_comment(revived, content="A late reply", owner=self.member)
+		drain_search_index_queue()
+
+		ids = self.discussion_ids(self.search_as(self.member, "", filters={"project": [self.space.name]}))
+
+		self.assertLess(ids.index(f"GP Discussion:{revived.name}"), ids.index(f"GP Discussion:{newer.name}"))
+
+	def test_filters_alone_sort_by_when_the_thread_was_posted(self):
+		revived = self.create_discussion("Revived creation thread", "Posted first, replied to last")
+		newer = self.create_discussion("Newer creation thread", "Posted second")
+		create_comment(revived, content="A late reply", owner=self.member)
+		drain_search_index_queue()
+
+		ids = self.discussion_ids(
+			self.search_as(
+				self.member,
+				"",
+				filters={"project": [self.space.name]},
+				sort_by="creation desc",
+			)
+		)
+
+		self.assertLess(ids.index(f"GP Discussion:{newer.name}"), ids.index(f"GP Discussion:{revived.name}"))
+
+	def test_filters_alone_exclude_an_inaccessible_space(self):
+		inaccessible_space = create_space(
+			"Browse Inaccessible Search Space",
+			self.community,
+			is_private=1,
+			members=[self.member],
+		)
+		hidden = self.create_discussion(
+			"Private browsable result",
+			"This thread must not appear in an unfiltered browse",
+			space=inaccessible_space,
+		)
+		drain_search_index_queue()
+
+		results = self.search_as(self.second_member, "", filters={"doctype": ["GP Discussion"]})
+
+		self.assertNotIn(f"GP Discussion:{hidden.name}", self.discussion_ids(results))
+
+	def test_crafted_filter_name_cannot_bypass_space_access(self):
+		inaccessible_space = create_space(
+			"Injection Inaccessible Search Space",
+			self.community,
+			is_private=1,
+			members=[self.member],
+		)
+		hidden = self.create_discussion(
+			"Injectionneedle private result",
+			"injectionneedle must stay inside its private space",
+			space=inaccessible_space,
+		)
+		drain_search_index_queue()
+		crafted = {"doctype IN ('GP Discussion') OR 1=1 OR doctype": ["GP Discussion"]}
+
+		for query in ("", "injectionneedle"):
+			results = self.search_as(self.second_member, query, filters=crafted)
+
+			self.assertNotIn(f"GP Discussion:{hidden.name}", self.discussion_ids(results))
+
+	def test_search_without_a_query_or_filters_returns_nothing(self):
+		self.create_discussion("Unasked-for thread", "Nothing has been searched for yet")
+		drain_search_index_queue()
+
+		self.assertEqual(self.search_as(self.member, ""), [])
+
+	def test_unrecognised_sort_falls_back_to_relevance(self):
+		discussion = self.create_discussion(
+			"Fallback sort thread",
+			"fallbackneedle stays findable when the sort is not one we offer",
+		)
+		drain_search_index_queue()
+
+		results = self.search_as(self.member, "fallbackneedle", sort_by="owner; drop table")
+
+		self.assertEqual([result["id"] for result in results], [f"GP Discussion:{discussion.name}"])
+
+	def test_missing_index_raises_the_gameplan_error_the_ui_handles(self):
+		self.search.drop_index()
+
+		with self.assertRaises(GameplanSearchIndexMissingError):
+			self.search_as(self.member, "anything")

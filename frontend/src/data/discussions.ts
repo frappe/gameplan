@@ -1,6 +1,6 @@
 import { MaybeRefOrGetter, ref, toValue, watch } from 'vue'
 import { useDoc, useList } from 'frappe-ui'
-import { UseListOptions } from 'frappe-ui'
+import { OrderBy, UseListOptions } from 'frappe-ui'
 import { useDocumentVisibility } from '@vueuse/core'
 import { GPDiscussion } from '@/types/doctypes'
 
@@ -34,6 +34,25 @@ export type UseDiscussionOptions = Pick<
   UseListOptions<Discussion>,
   'cacheKey' | 'filters' | 'limit' | 'orderBy' | 'immediate'
 >
+
+export const discussionOrderOptions = [
+  {
+    label: 'Newest first',
+    value: 'last_post_at desc' as OrderBy,
+  },
+  {
+    label: 'Oldest first',
+    value: 'last_post_at asc' as OrderBy,
+  },
+  {
+    label: 'Creation date',
+    value: 'creation desc' as OrderBy,
+  },
+  {
+    label: 'Most discussed',
+    value: 'comments_count desc' as OrderBy,
+  },
+]
 
 export function useDiscussions(options: UseDiscussionOptions) {
   // Track when the list was last fetched so we only reload a stale feed.
