@@ -110,7 +110,7 @@ describe('Private space membership', () => {
     cy.scope('dialog').should('contain.text', 'Leave "Secret Plans"?')
     cy.scope('dialog').should(
       'contain.text',
-      "This space is private. You won't be able to rejoin unless a member adds you back.",
+      "Only its members can see this space. You won't be able to rejoin unless a member adds you back.",
     )
     cy.scope('dialog').button('Cancel').click()
     cy.get('[role="dialog"]').should('not.exist')

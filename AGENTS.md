@@ -70,7 +70,9 @@ Site names and ports vary per bench. Resolve them, do not assume.
 - E2E: `cd frontend && yarn test`. Needs a dev server (`bench start`, or
   `DEV_SERVER=1 bench serve`) plus `allow_tests`, `enable_ui_tests: 1` and
   `developer_mode: 1` in `site_config.json`. `enable_ui_tests` is read through
-  `cint`, so `"true"` counts as off.
+  `cint`, so `"true"` counts as off. The specs in `cypress/e2e/public/` also need
+  `gameplan_public_access_enabled: 1`; set it before starting the server, which caches
+  site config for up to a minute.
 - Lint: `pre-commit run --all-files` (ruff: tabs, double quotes, line 110).
 - Debug: add `def execute():` to `gameplan/debug.py`, run
   `bench --site <site> execute gameplan.debug.execute`.
