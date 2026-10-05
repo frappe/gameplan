@@ -350,6 +350,7 @@ import {
   dayjsLocal,
   Switch,
   dialog,
+  toast,
 } from 'frappe-ui'
 import { until, useEventListener } from '@vueuse/core'
 import type { Editor } from '@tiptap/vue-3'
@@ -362,7 +363,7 @@ import UserProfileLink from './UserProfileLink.vue'
 const RevisionsDialog = defineAsyncComponent(() => import('./RevisionsDialog.vue'))
 import SpaceBreadcrumbs from './SpaceBreadcrumbs.vue'
 import EmptyStateBox from './EmptyStateBox.vue'
-import { copyToClipboard, isEditorContentEmpty } from '@/utils'
+import { copyToClipboard, extractServerMessage, isEditorContentEmpty } from '@/utils'
 import { getSpace, useSpace } from '@/data/spaces'
 import { useCommunity } from '@/data/communities'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
@@ -766,6 +767,12 @@ function updatePost() {
       const doc = discussion.doc
       if (!response && doc && doc.title === title && previousTitle !== undefined) {
         doc.title = previousTitle
+      }
+      if (!response) {
+        // Keep the draft, so the edit is not lost, and say why it was refused (for example a
+        // new account's 24-hour edit window).
+        toast.error(extractServerMessage(discussion.setValue.error) || 'Could not save the post')
+        return
       }
       // Content is saved onto the post; migrate the draft's attachments and delete it.
       await postDraft.commit()

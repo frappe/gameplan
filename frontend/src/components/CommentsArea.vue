@@ -224,7 +224,7 @@
                 />
               </template>
             </CommentEditor>
-            <ErrorMessage class="mt-2" :message="comments.insert.error" />
+            <ErrorMessage class="mt-2" :message="extractServerMessage(comments.insert.error)" />
             <PollEditor
               v-show="newCommentType == 'Poll'"
               v-model:poll="newPoll"
@@ -246,7 +246,7 @@
                 />
               </template>
             </PollEditor>
-            <ErrorMessage class="mt-2" :message="polls.insert.error" />
+            <ErrorMessage class="mt-2" :message="extractServerMessage(polls.insert.error)" />
           </div>
         </div>
       </div>
@@ -283,6 +283,7 @@ import { useRichQuotes } from '@/components/RichQuoteExtension/useRichQuotes'
 import { useDraftSync } from '@/data/useDraftSync'
 import { useSessionUser } from '@/data/users'
 import type { Space } from '@/data/spaces'
+import { extractServerMessage } from '@/utils'
 import { useIsMobile } from '@/utils/useIsMobile'
 import { needsMobileCommentGap } from '@/utils/commentTimeline'
 
