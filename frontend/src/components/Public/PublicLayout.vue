@@ -5,7 +5,7 @@
     >
       <div class="flex min-w-0 items-center gap-2">
         <GameplanLogo class="size-6 shrink-0" />
-        <span class="truncate text-base-medium text-ink-gray-8">{{ siteTitle }}</span>
+        <span class="truncate text-base-medium text-ink-gray-8">{{ title }}</span>
       </div>
       <PublicLoginButtons />
     </header>
@@ -21,10 +21,6 @@
         :spaceId="spaceId"
         :postId="postId"
       />
-      <footer class="mx-auto w-full max-w-3xl px-4 pb-8 text-p-sm text-ink-gray-5 sm:px-6">
-        This page is public. Videos and documents embedded in posts (from YouTube, Vimeo, Figma,
-        Google Docs and similar) load from those sites, so they can see that you visited.
-      </footer>
     </main>
   </div>
 </template>
@@ -32,6 +28,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
+import { getCommunity } from '@/data/communities'
+import { getSpace } from '@/data/spaces'
 import GameplanLogo from '@/components/GameplanLogo.vue'
 import PublicDiscussion from './PublicDiscussion.vue'
 import PublicLoginButtons from './PublicLoginButtons.vue'
@@ -42,11 +40,15 @@ import PublicSpace from './PublicSpace.vue'
 // reach only routes marked `public`, and the server only hands them Anonymous-tier
 // content, so nothing here decides what they may read.
 const route = useRoute()
-const siteTitle = window.site_name || 'Gameplan'
 
 function param(value: unknown): string | null {
   return typeof value === 'string' && value ? value : null
 }
 const spaceId = computed(() => param(route.params.spaceId))
 const postId = computed(() => param(route.params.postId))
+// The community being read, not the site's internal name (often a hostname).
+const title = computed(() => {
+  const team = spaceId.value ? getSpace(spaceId.value)?.team : null
+  return (team && getCommunity(team)?.title) || 'Gameplan'
+})
 </script>

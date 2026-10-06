@@ -51,7 +51,7 @@
       <Button label="Load more" :loading="discussions.loading" @click="discussions.next()" />
     </div>
 
-    <PublicJoinPrompt class="mt-8" />
+    <PublicJoinPrompt v-if="discussions.isFinished" class="mt-8" />
   </div>
 </template>
 
