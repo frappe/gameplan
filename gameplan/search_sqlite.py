@@ -1,24 +1,36 @@
 # Copyright (c) 2022, Frappe Technologies Pvt. Ltd. and Contributors
 # MIT License. See license.txt
 import re
+import sqlite3
 import time
 
 import frappe
 from frappe.search.sqlite_search import (
+	MAX_SEARCH_RESULTS,
 	MIN_RECENCY_BOOST,
 	RECENCY_DECAY_RATE,
 	RECENT_HOURS_BOOST,
 	RECENT_MONTH_BOOST,
 	RECENT_QUARTER_BOOST,
 	RECENT_WEEK_BOOST,
+	SNIPPET_LENGTH,
 	SQLiteSearch,
 	SQLiteSearchIndexMissingError,
 )
-from frappe.utils import cstr
+from frappe.utils import cint, cstr, flt, get_datetime
 
+from gameplan.gameplan.doctype.gp_discussion.api import SORT_DIRECTIONS
 from gameplan.permissions import project_access_criterion
 
 INDEX_BUILD_FLAG = "discussions_index_in_progress"
+
+SORT_COLUMNS = {
+	"last_post_at": "modified",
+	"creation": "creation",
+	"comments_count": "comments_count",
+}
+DEFAULT_SORT_BY = "last_post_at desc"
+FILTERABLE_FIELDS = frozenset({"owner", "project", "team", "doctype", "tags"})
 
 
 class GameplanSearch(SQLiteSearch):
@@ -35,22 +47,59 @@ class GameplanSearch(SQLiteSearch):
 	INDEX_NAME = "gameplan_search.db"
 
 	INDEX_SCHEMA = {
-		"metadata_fields": ["team", "project", "tags", "owner", "reference_doctype", "reference_name"],
+		"metadata_fields": [
+			"team",
+			"project",
+			"tags",
+			"owner",
+			"reference_doctype",
+			"reference_name",
+			"creation",
+			"comments_count",
+		],
 		"tokenizer": "unicode61 remove_diacritics 2 tokenchars '-_'",
 	}
 
 	INDEXABLE_DOCTYPES = {
 		"GP Discussion": {
-			"fields": ["name", "title", "content", {"modified": "last_post_at"}, "project", "team", "owner"],
+			"fields": [
+				"name",
+				"title",
+				"content",
+				{"modified": "last_post_at"},
+				"creation",
+				"comments_count",
+				"project",
+				"team",
+				"owner",
+			],
 		},
 		"GP Task": {
-			"fields": ["name", "title", {"content": "description"}, "modified", "project", "team", "owner"],
+			"fields": [
+				"name",
+				"title",
+				{"content": "description"},
+				"modified",
+				"creation",
+				"comments_count",
+				"project",
+				"team",
+				"owner",
+			],
 		},
 		"GP Page": {
-			"fields": ["name", "title", "content", "modified", "project", "team", "owner"],
+			"fields": ["name", "title", "content", "modified", "creation", "project", "team", "owner"],
 		},
 		"GP Comment": {
-			"fields": ["name", "content", "modified", "reference_doctype", "reference_name", "owner"],
+			"fields": [
+				"name",
+				"content",
+				"modified",
+				"creation",
+				"reference_doctype",
+				"reference_name",
+				"owner",
+			],
 			"filters": {"deleted_at": ("is", "not set")},
 		},
 	}
@@ -59,6 +108,10 @@ class GameplanSearch(SQLiteSearch):
 		"""Check if search functionality is disabled via site config."""
 		disabled = frappe.conf.get("disable_gameplan_search", False)
 		return not disabled
+
+	def raise_if_not_indexed(self):
+		if not self.index_exists():
+			raise GameplanSearchIndexMissingError
 
 	def prepare_document(self, doc):
 		"""Prepare a document for indexing with Gameplan-specific handling."""
@@ -77,6 +130,9 @@ class GameplanSearch(SQLiteSearch):
 			# Use cached tags lookup instead of individual queries
 			tags = self._get_tags_for_document(doc.doctype, doc.name)
 			document["tags"] = " ".join(tags) if tags else None
+
+		document["creation"] = get_datetime(doc.creation).timestamp()
+		document["comments_count"] = cint(getattr(doc, "comments_count", 0))
 
 		return document
 
@@ -290,12 +346,13 @@ class GameplanSearch(SQLiteSearch):
 			return True
 		return len(query_word) > 2 and title_word == f"{query_word}s"
 
-	def search(self, query, title_only=False, filters=None):
+	def search(self, query, title_only=False, filters=None, sort_by=None):
 		"""
 		Enhanced search method that handles tag filtering using LIKE operations.
 		"""
-		filters = filters.copy() if filters else {}
+		filters = {field: values for field, values in (filters or {}).items() if field in FILTERABLE_FIELDS}
 		self._requested_projects = filters.get("project")
+		self._sort = self._parse_sort_by(sort_by)
 		try:
 			# Convert tag filters to LIKE filters for the parent search
 			if "tags" in filters:
@@ -304,10 +361,142 @@ class GameplanSearch(SQLiteSearch):
 					# Convert to LIKE filter format for space-separated tag matching
 					filters["tags"] = ["LIKE", tag_filters]
 
-			# Call parent search with the converted filters
-			return super().search(query, title_only, filters)
+			if query:
+				# Call parent search with the converted filters
+				return super().search(query, title_only, filters)
+
+			if not self._has_filters(filters):
+				return self._empty_search_result(title_only, filters)
+			if not self._sort[0]:
+				self._sort = self._parse_sort_by(DEFAULT_SORT_BY)
+			return self._search_without_query(title_only, filters)
 		finally:
 			del self._requested_projects
+			del self._sort
+
+	def _has_filters(self, filters):
+		return any((filters or {}).values())
+
+	def _parse_sort_by(self, sort_by):
+		tokens = cstr(sort_by).split()
+		if len(tokens) != 2:
+			return None, None
+
+		column = SORT_COLUMNS.get(tokens[0])
+		direction = tokens[1].lower()
+		if not column or direction not in SORT_DIRECTIONS:
+			return None, None
+
+		return column, direction
+
+	def _search_without_query(self, title_only, filters):
+		if not self.is_search_enabled():
+			return self._empty_search_result(title_only, filters)
+
+		self.raise_if_not_indexed()
+		start_time = time.time()
+		all_filters = {**filters, **self.get_search_filters()}
+
+		try:
+			raw_results = self._execute_search_query(None, title_only, all_filters)
+		except sqlite3.Error as e:
+			frappe.log_error(f"Search query failed: {e}")
+			raw_results = []
+
+		results = self._process_search_results(raw_results, "")
+		return {
+			"results": results,
+			"summary": {
+				"duration": round(time.time() - start_time, 3),
+				"total_matches": len(raw_results),
+				"returned_matches": len(raw_results),
+				"corrected_words": None,
+				"corrected_query": None,
+				"title_only": title_only,
+				"filtered_matches": len(results),
+				"applied_filters": filters,
+			},
+		}
+
+	def _execute_search_query(self, fts_query, title_only, filters):
+		sort_column, sort_direction = getattr(self, "_sort", (None, None))
+		if not sort_column:
+			return super()._execute_search_query(fts_query, title_only, filters)
+
+		select_clause, params = self._build_sorted_select(title_only, bool(fts_query))
+		filter_conditions, filter_params = self._build_filter_conditions(filters)
+
+		conditions = []
+		if fts_query:
+			conditions.append("search_fts MATCH ?")
+			params.append(fts_query)
+			if title_only:
+				conditions.append("title MATCH ?")
+				params.append(fts_query)
+		conditions.extend(filter_conditions)
+		params.extend(filter_params)
+		params.append(MAX_SEARCH_RESULTS)
+
+		where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+		sql = f"""
+			SELECT {select_clause}
+			FROM search_fts
+			{where_clause}
+			ORDER BY CAST({sort_column} AS REAL) {sort_direction.upper()}
+			LIMIT ?
+		"""
+		return self.sql(sql, tuple(params), read_only=True)
+
+	def _process_search_results(self, raw_results, query):
+		results = super()._process_search_results(raw_results, query)
+		sort_column, sort_direction = getattr(self, "_sort", (None, None))
+		if sort_column:
+			results.sort(key=lambda result: flt(result.get(sort_column)), reverse=sort_direction == "desc")
+			for rank, result in enumerate(results, 1):
+				result["modified_rank"] = rank
+		return results
+
+	def _build_sorted_select(self, title_only, has_match):
+		select_fields = ["doc_id"]
+		params = []
+
+		if has_match:
+			title_index = self._get_text_field_column_index("title")
+			select_fields.append(f"highlight(search_fts, {title_index}, '<mark>', '</mark>') as title")
+		else:
+			select_fields.append("title")
+
+		if has_match and not title_only:
+			content_index = self._get_text_field_column_index("content")
+			select_fields.append(
+				f"snippet(search_fts, {content_index}, '<mark>', '</mark>', '...', ?) as content"
+			)
+			params.append(SNIPPET_LENGTH)
+		else:
+			select_fields.append("content")
+
+		select_fields.extend(field for field in self.schema["metadata_fields"] if field != "doc_id")
+		select_fields.append("bm25(search_fts) as bm25_score" if has_match else "NULL as bm25_score")
+		select_fields.append("title as original_title")
+
+		return ", ".join(select_fields), params
+
+	def _build_filter_conditions(self, filters):
+		conditions = []
+		params = []
+
+		for field, values in filters.items():
+			if len(values) == 2 and values[0] == "LIKE":
+				conditions.append("(" + " OR ".join([f"{field} LIKE ?"] * len(values[1])) + ")")
+				params.extend(f"%{value}%" for value in values[1])
+			elif not values:
+				conditions.append("1=0")
+			else:
+				placeholders = ",".join(["?"] * len(values))
+				conditions.append(f"{field} IN ({placeholders})")
+				params.extend(values)
+
+		return conditions, params
 
 	def get_filter_options(self):
 		"""

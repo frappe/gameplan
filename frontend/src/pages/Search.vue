@@ -44,11 +44,37 @@
             <div class="flex gap-2 items-center">
               <!-- Authors Filter -->
               <MultiSelect
-                :options="authorsFilterOptions"
+                :options="authorOptions"
+                v-model:query="filterQueries.owner"
+                :filterable="false"
+                @update:open="filterQueries.owner = ''"
                 :model-value="activeFilters.owner || []"
                 @update:model-value="(values) => updateFilter('owner', values)"
                 placeholder="Author"
               >
+                <template #footer="{ clear }">
+                  <div
+                    class="flex items-center justify-between gap-2 border-t border-outline-gray-1 px-2 py-1.5"
+                  >
+                    <Button
+                      v-if="activeFilters.owner?.length"
+                      variant="ghost"
+                      size="sm"
+                      @click="clear"
+                    >
+                      Clear All
+                    </Button>
+                    <Button
+                      v-if="(activeFilters.owner?.length ?? 0) < authorsFilterOptions.length"
+                      variant="ghost"
+                      size="sm"
+                      class="ml-auto"
+                      @click="updateFilter('owner', allOptionValues(authorsFilterOptions))"
+                    >
+                      Select All
+                    </Button>
+                  </div>
+                </template>
                 <template #trigger="{ open, selectedOptions, toggleOpen }">
                   <Button variant="outline" @click="toggleOpen">
                     <div
@@ -71,7 +97,7 @@
                           {{
                             selectedOptions.length === 1
                               ? selectedOptions[0].label
-                              : `${selectedOptions.length} users`
+                              : `${activeFilters.owner?.length} users`
                           }}
                         </span>
                       </template>
@@ -79,7 +105,7 @@
                     </div>
                     <template #suffix>
                       <span
-                        class="lucide-chevron-down ml-2 h-4 w-4 transition-transform"
+                        class="lucide-chevron-down ml-2 size-4 shrink-0 text-ink-gray-4 transition-transform duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]"
                         :class="{ 'rotate-180': open }"
                       />
                     </template>
@@ -98,11 +124,44 @@
               <!-- Projects Filter -->
               <MultiSelect
                 variant="outline"
-                :options="spacesFilterOptions"
+                :options="spaceOptions"
+                v-model:query="filterQueries.project"
+                :filterable="false"
+                @update:open="filterQueries.project = ''"
                 :model-value="activeFilters.project || []"
                 @update:model-value="(values) => updateFilter('project', values)"
                 placeholder="Space"
               >
+                <template #summary="{ summary }">
+                  {{
+                    (activeFilters.project?.length ?? 0) > 1
+                      ? `${activeFilters.project?.length} selected`
+                      : summary
+                  }}
+                </template>
+                <template #footer="{ clear }">
+                  <div
+                    class="flex items-center justify-between gap-2 border-t border-outline-gray-1 px-2 py-1.5"
+                  >
+                    <Button
+                      v-if="activeFilters.project?.length"
+                      variant="ghost"
+                      size="sm"
+                      @click="clear"
+                    >
+                      Clear All
+                    </Button>
+                    <Button
+                      v-if="(activeFilters.project?.length ?? 0) < allSpaceValues.length"
+                      variant="ghost"
+                      size="sm"
+                      class="ml-auto"
+                      @click="updateFilter('project', allSpaceValues)"
+                    >
+                      Select All
+                    </Button>
+                  </div>
+                </template>
                 <template #item-suffix="{ item }">
                   <span v-if="(item.count ?? 0) > 0" class="text-xs text-ink-gray-5">{{
                     item.count
@@ -143,89 +202,143 @@
               <!-- Tags Filter -->
               <MultiSelect
                 variant="outline"
-                :options="tagsFilterOptions"
+                :options="tagOptions"
+                v-model:query="filterQueries.tags"
+                :filterable="false"
+                @update:open="filterQueries.tags = ''"
                 :model-value="activeFilters.tags || []"
                 @update:model-value="(values) => updateFilter('tags', values)"
                 placeholder="Tags"
               >
+                <template #summary="{ summary }">
+                  {{
+                    (activeFilters.tags?.length ?? 0) > 1
+                      ? `${activeFilters.tags?.length} selected`
+                      : summary
+                  }}
+                </template>
+                <template #footer="{ clear }">
+                  <div
+                    class="flex items-center justify-between gap-2 border-t border-outline-gray-1 px-2 py-1.5"
+                  >
+                    <Button
+                      v-if="activeFilters.tags?.length"
+                      variant="ghost"
+                      size="sm"
+                      @click="clear"
+                    >
+                      Clear All
+                    </Button>
+                    <Button
+                      v-if="(activeFilters.tags?.length ?? 0) < tagsFilterOptions.length"
+                      variant="ghost"
+                      size="sm"
+                      class="ml-auto"
+                      @click="updateFilter('tags', allOptionValues(tagsFilterOptions))"
+                    >
+                      Select All
+                    </Button>
+                  </div>
+                </template>
                 <template #item-suffix="{ item }">
                   <span v-if="(item.count ?? 0) > 0" class="text-xs text-ink-gray-5">{{
                     item.count
                   }}</span>
                 </template>
               </MultiSelect>
+
+              <Select
+                class="shrink-0 !w-fit"
+                variant="outline"
+                side="bottom"
+                placeholder="Relevance"
+                :options="sortBy === undefined ? discussionOrderOptions : sortOptions"
+                :model-value="sortBy"
+                @update:model-value="updateSort"
+              />
+
+              <Button
+                v-if="hasActiveFilters() || sortBy"
+                class="ml-auto shrink-0"
+                @click="clearFilters"
+              >
+                Clear filters
+              </Button>
             </div>
           </ScrollArea>
+
+          <!-- Search Summary -->
+          <div class="mt-2 text-sm flex items-center justify-between min-h-6">
+            <div>
+              <template v-if="search.error">
+                <ErrorMessage
+                  :message="
+                    search.error.type == 'GameplanSearchIndexMissingError'
+                      ? 'Search is being updated. Results will be back in a few minutes.'
+                      : search.error
+                  "
+                />
+              </template>
+              <template v-else-if="newSearch && query.length > 3">
+                <p class="text-ink-gray-6">Press enter to search</p>
+              </template>
+              <template v-else-if="search.loading">
+                <p class="text-ink-gray-6">Searching...</p>
+              </template>
+              <template v-else-if="searchResponse?.summary">
+                <div class="space-y-1">
+                  <p class="text-ink-gray-6">
+                    {{ visibleSearchResults.length }}
+                    {{ visibleSearchResults.length === 1 ? 'match' : 'matches' }} ({{
+                      searchResponse.summary.duration
+                    }}s)
+                    <span v-if="hasActiveFilters()">
+                      •
+                      {{ Object.keys(searchResponse.summary.applied_filters || {}).length }}
+                      filter(s) applied
+                    </span>
+                  </p>
+                  <p v-if="searchResponse.summary.corrected_query" class="text-ink-gray-6">
+                    <span class="text-ink-gray-5">Searched for:</span>
+                    <span class="ml-1 font-medium text-primary">
+                      {{ searchResponse.summary.corrected_query }}
+                    </span>
+                  </p>
+                </div>
+              </template>
+            </div>
+
+            <!-- Inline Feedback Section -->
+            <div
+              v-if="visibleSearchResults.length && !feedbackGiven"
+              class="flex items-center gap-2"
+            >
+              <span class="text-ink-gray-6">Helpful?</span>
+              <div class="flex items-center gap-1">
+                <Tooltip text="Yes, results were helpful">
+                  <button
+                    @click="submitFeedback(true)"
+                    class="p-1 hover:bg-surface-gray-2 rounded-full transition-colors"
+                  >
+                    <span class="lucide-thumbs-up size-4 text-ink-gray-7" />
+                  </button>
+                </Tooltip>
+                <Tooltip text="No, results were not helpful">
+                  <button
+                    @click="submitFeedback(false)"
+                    class="p-1 hover:bg-surface-gray-2 rounded-full transition-colors"
+                  >
+                    <span class="lucide-thumbs-down size-4 text-ink-gray-7" />
+                  </button>
+                </Tooltip>
+              </div>
+            </div>
+            <div v-else-if="feedbackGiven" class="text-ink-gray-6">Thanks for your feedback!</div>
+          </div>
           <!-- Soft fade so results dissolve into the toolbar as they scroll under. -->
           <div
             class="pointer-events-none absolute inset-x-0 top-full h-6 bg-gradient-to-b from-surface-base/90 to-transparent"
           />
-        </div>
-
-        <!-- Search Summary -->
-        <div class="mt-2 text-sm flex items-center justify-between min-h-6">
-          <div>
-            <template v-if="search.error">
-              <ErrorMessage
-                :message="
-                  search.error.type == 'GameplanSearchIndexMissingError'
-                    ? 'Search index does not exist. Please build the index first.'
-                    : search.error
-                "
-              />
-            </template>
-            <template v-else-if="newSearch && query.length > 3">
-              <p class="text-ink-gray-6">Press enter to search</p>
-            </template>
-            <template v-else-if="search.loading">
-              <p class="text-ink-gray-6">Searching...</p>
-            </template>
-            <template v-else-if="searchResponse?.summary">
-              <div class="space-y-1">
-                <p class="text-ink-gray-6">
-                  {{ visibleSearchResults.length }}
-                  {{ visibleSearchResults.length === 1 ? 'match' : 'matches' }} ({{
-                    searchResponse.summary.duration
-                  }}s)
-                  <span v-if="hasActiveFilters()">
-                    •
-                    {{ Object.keys(searchResponse.summary.applied_filters || {}).length }} filter(s)
-                    applied
-                  </span>
-                </p>
-                <p v-if="searchResponse.summary.corrected_query" class="text-ink-gray-6">
-                  <span class="text-ink-gray-5">Searched for:</span>
-                  <span class="ml-1 font-medium text-primary">
-                    {{ searchResponse.summary.corrected_query }}
-                  </span>
-                </p>
-              </div>
-            </template>
-          </div>
-
-          <!-- Inline Feedback Section -->
-          <div v-if="visibleSearchResults.length && !feedbackGiven" class="flex items-center gap-2">
-            <span class="text-ink-gray-6">Helpful?</span>
-            <div class="flex items-center gap-1">
-              <Tooltip text="Yes, results were helpful">
-                <button
-                  @click="submitFeedback(true)"
-                  class="p-1 hover:bg-surface-gray-2 rounded-full transition-colors"
-                >
-                  <span class="lucide-thumbs-up size-4 text-ink-gray-7" />
-                </button>
-              </Tooltip>
-              <Tooltip text="No, results were not helpful">
-                <button
-                  @click="submitFeedback(false)"
-                  class="p-1 hover:bg-surface-gray-2 rounded-full transition-colors"
-                >
-                  <span class="lucide-thumbs-down size-4 text-ink-gray-7" />
-                </button>
-              </Tooltip>
-            </div>
-          </div>
-          <div v-else-if="feedbackGiven" class="text-ink-gray-6">Thanks for your feedback!</div>
         </div>
 
         <div class="mt-5 -mx-2.5 pb-20">
@@ -259,8 +372,8 @@
                   </div>
                   <div
                     v-if="item.content"
-                    class="mt-1 text-p-base text-ink-gray-6"
-                    v-html="item.content"
+                    class="mt-1 text-p-base text-ink-gray-6 line-clamp-2"
+                    v-html="trimBeforeMatch(item.content)"
                   ></div>
                 </div>
               </ListCell>
@@ -282,6 +395,7 @@ import {
   Button,
   MultiSelect,
   ScrollArea,
+  Select,
   TextInput,
   Tooltip,
   dayjs,
@@ -293,6 +407,7 @@ import { List, ListCell, ListRow } from 'frappe-ui/list'
 import { GPSearchFeedback } from '@/types/doctypes'
 import { useSessionUser } from '@/data/users'
 import UserAvatarWithHover from '@/components/UserAvatarWithHover.vue'
+import { discussionOrderOptions } from '@/data/discussions'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { getSpace } from '@/data/spaces'
 import { activeCommunities } from '@/data/communities'
@@ -334,6 +449,7 @@ interface SearchResponse {
 interface SearchParams {
   query: string
   filters?: string
+  sort_by?: string
 }
 
 interface SearchFilters {
@@ -368,6 +484,59 @@ const searchResponse = ref<SearchResponse | null>(null)
 const newSearch = ref(true)
 const feedbackGiven = ref(false)
 const activeFilters = ref<SearchFilters>({})
+const sortBy = ref<string>()
+
+const sortOptions = [{ label: 'Relevance', value: '' }, ...discussionOrderOptions]
+
+const OPTION_LIMIT = 100
+
+const filterQueries = ref({ owner: '', project: '', tags: '' })
+
+function limitOptions<T extends { label: string; value: string | number }>(
+  options: T[],
+  type: keyof typeof filterQueries.value,
+  limit = OPTION_LIMIT,
+): T[] {
+  const query = filterQueries.value[type].toLowerCase()
+  const selected = new Set(((activeFilters.value[type] || []) as (string | number)[]).map(String))
+  const isSelected = (option: T) => selected.has(String(option.value))
+  const matches = options.filter(
+    (option) =>
+      option.label.toLowerCase().includes(query) ||
+      String(option.value).toLowerCase().includes(query),
+  )
+  if (selected.size > OPTION_LIMIT) {
+    return matches.slice(0, limit)
+  }
+  const pinned = options.filter(isSelected)
+  const rest = matches.filter((option) => !isSelected(option))
+  return [...pinned, ...rest.slice(0, Math.max(limit - pinned.length, 0))]
+}
+
+function allOptionValues(options: any[]): string[] {
+  return options
+    .flatMap((option) => ('group' in option ? option.options : [option]))
+    .map((option) => option.value)
+}
+
+function limitSpaceOptions(spaces: any[]) {
+  if (!spaces.length || !('group' in spaces[0])) {
+    return limitOptions(spaces, 'project')
+  }
+  let remaining = OPTION_LIMIT
+  return spaces
+    .map((group) => {
+      const options = limitOptions(group.options, 'project', remaining)
+      remaining = Math.max(remaining - options.length, 0)
+      return { ...group, options }
+    })
+    .filter((group) => group.options.length)
+}
+
+const authorOptions = computed(() => limitOptions(authorsFilterOptions.value, 'owner'))
+const spaceOptions = computed(() => limitSpaceOptions(spacesFilterOptions.value))
+const tagOptions = computed(() => limitOptions(tagsFilterOptions.value, 'tags'))
+const allSpaceValues = computed(() => allOptionValues(spacesFilterOptions.value))
 
 // Template Refs
 const searchInput = useTemplateRef<typeof TextInput>('searchInput')
@@ -386,7 +555,7 @@ const search = useCall<SearchResponse, SearchParams>({
   immediate: false,
   onSuccess(response) {
     searchResponse.value = response
-    if (query.value) {
+    if (query.value || hasActiveFilters()) {
       saveSearchState(query.value, response)
     }
   },
@@ -484,6 +653,7 @@ const authorsFilterOptions = computed(() => {
       image: user.user_image,
       count: authorCounts.get(user.name) || 0,
     }))
+    .sort((a, b) => b.count - a.count)
 })
 
 const doctypesFilterOptions = computed(() => {
@@ -568,10 +738,10 @@ function isInputFocused() {
 
 // Lifecycle Hooks
 onMounted(() => {
-  const searchQuery = route.query.q as string
-  if (searchQuery) {
+  const searchQuery = route.query.q
+  if (typeof searchQuery === 'string') {
     query.value = searchQuery
-    if (!loadSearchState(searchQuery)) {
+    if (!loadSearchState(searchQuery) && searchQuery) {
       submit()
     }
   } else {
@@ -607,7 +777,9 @@ const submit = debounce(function (text?: string) {
   }
 
   const searchQuery = text || query.value
-  router.replace({ query: searchQuery ? { q: searchQuery } : {} })
+  router.replace({
+    query: searchQuery || hasActiveFilters() ? { q: searchQuery } : {},
+  })
 
   const params: SearchParams = { query: searchQuery }
 
@@ -616,16 +788,24 @@ const submit = debounce(function (text?: string) {
     params.filters = JSON.stringify(activeFilters.value)
   }
 
+  if (sortBy.value) {
+    params.sort_by = sortBy.value
+  }
+
   search.submit(params)
 }, 300)
 
 function clearSearch() {
   query.value = ''
-  searchResponse.value = null
   newSearch.value = true
   feedbackGiven.value = false
   clearStoredSearches()
   router.replace({ query: {} })
+  if (hasActiveFilters()) {
+    submit()
+  } else {
+    searchResponse.value = null
+  }
 }
 
 // Filter Management
@@ -633,6 +813,22 @@ function hasActiveFilters(): boolean {
   return Object.values(activeFilters.value).some((filter) =>
     Array.isArray(filter) ? filter.length > 0 : Boolean(filter),
   )
+}
+
+function clearFilters() {
+  activeFilters.value = {}
+  sortBy.value = undefined
+  if (query.value) {
+    submit()
+  } else {
+    searchResponse.value = null
+    router.replace({ query: {} })
+  }
+}
+
+function updateSort(value: string) {
+  sortBy.value = value
+  submit()
 }
 
 function updateFilter(type: keyof SearchFilters, values: string[]) {
@@ -685,6 +881,7 @@ function loadSearchState(searchQuery: string) {
       if (state.filters) {
         activeFilters.value = state.filters
       }
+      sortBy.value = state.sortBy
       newSearch.value = false
       return true
     }
@@ -698,6 +895,7 @@ function saveSearchState(searchQuery: string, results: SearchResponse) {
   const state = {
     results,
     filters: activeFilters.value,
+    sortBy: sortBy.value,
     timestamp: Date.now(),
   }
   localStorage.setItem(getStorageKey(searchQuery), JSON.stringify(state))
@@ -772,6 +970,14 @@ function getItemRoute(item: SearchResultItem) {
     default:
       return {}
   }
+}
+
+function trimBeforeMatch(content: string) {
+  const matchIndex = content.indexOf('<mark>')
+  if (matchIndex === -1) return content
+  const wordsBefore = content.slice(0, matchIndex).split(' ')
+  if (wordsBefore.length <= 8) return content
+  return '...' + wordsBefore.slice(-8).join(' ') + content.slice(matchIndex)
 }
 
 function isSearchResultVisible(item: SearchResultItem) {

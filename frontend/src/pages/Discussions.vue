@@ -83,6 +83,7 @@ import CommunityMenu from '@/components/CommunityMenu.vue'
 import DiscussionList from '@/components/DiscussionList.vue'
 import LastPostReminder from '@/components/LastPostReminder.vue'
 import { communityState } from '@/data/communityState'
+import { discussionOrderOptions } from '@/data/discussions'
 import { useCommunity } from '@/data/communities'
 import { getSpaceUnreadCount, spaces } from '@/data/spaces'
 import { fetchParticipatingUnreadCount, getParticipatingUnreadCount } from '@/data/unreadCount'
@@ -164,18 +165,7 @@ const orderOptions = [
     value: '' as const,
     disabled: true,
   },
-  {
-    label: 'Newest first',
-    value: 'last_post_at desc' as OrderBy,
-  },
-  {
-    label: 'Oldest first',
-    value: 'last_post_at asc' as OrderBy,
-  },
-  {
-    label: 'Creation date',
-    value: 'creation desc' as OrderBy,
-  },
+  ...discussionOrderOptions,
 ]
 
 function feedRoute(feedType: FeedType) {
