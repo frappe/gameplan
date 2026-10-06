@@ -3,7 +3,7 @@
     v-model:open="show"
     v-model:tab="activeTabValue"
     size="5xl"
-    :shortcut="false"
+    :keyboard-shortcut="false"
     :unmount-on-hide="false"
   >
     <SettingsSidebar>

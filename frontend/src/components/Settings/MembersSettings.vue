@@ -6,7 +6,7 @@
          top of the scroll viewport (sticky) instead of inside this fixed region. -->
     <div class="pb-3">
       <div class="flex flex-col gap-4">
-        <h2 class="text-lg-semibold text-ink-gray-8 max-sm:hidden">Users</h2>
+        <h2 class="text-md-semibold text-ink-gray-8 max-sm:hidden">Users</h2>
         <div class="flex items-center justify-between gap-3">
           <TextInput
             class="min-w-0 flex-1 md:w-72 md:flex-none"
@@ -51,19 +51,19 @@
       <ListHeader class="sticky top-0 z-10 bg-surface-elevation-1 max-md:hidden">
         <ListHeaderCellSort :direction="directionFor('name')" @click="toggleSort('name')">
           User
-          <template #suffix="{ direction }">
+          <template #sort-indicator="{ direction }">
             <span class="size-3.5 text-ink-gray-5" :class="sortIcon(direction)" />
           </template>
         </ListHeaderCellSort>
         <ListHeaderCellSort :direction="directionFor('role')" @click="toggleSort('role')">
           Role
-          <template #suffix="{ direction }">
+          <template #sort-indicator="{ direction }">
             <span class="size-3.5 text-ink-gray-5" :class="sortIcon(direction)" />
           </template>
         </ListHeaderCellSort>
         <ListHeaderCellSort :direction="directionFor('creation')" @click="toggleSort('creation')">
           User since
-          <template #suffix="{ direction }">
+          <template #sort-indicator="{ direction }">
             <span class="size-3.5 text-ink-gray-5" :class="sortIcon(direction)" />
           </template>
         </ListHeaderCellSort>
@@ -256,7 +256,7 @@ function changeUserRole(user: UserRow, role: string) {
     confirmLabel: 'Change Role',
     onConfirm: () => {
       targetProfile.value = user.user_profile
-      changeUserRoleCall.submit({ role })
+      changeUserRoleCall.submit({ role }).catch(() => {})
     },
   })
 }
@@ -276,7 +276,7 @@ function disableUser(user: UserRow) {
     confirmLabel: 'Disable',
     onConfirm: () => {
       targetProfile.value = user.user_profile
-      disableUserCall.submit()
+      disableUserCall.submit().catch(() => {})
     },
   })
 }

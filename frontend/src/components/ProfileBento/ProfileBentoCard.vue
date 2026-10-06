@@ -365,7 +365,7 @@ const dragClass = computed(() => {
 })
 
 const textClass = computed(() => {
-  return 'text-base font-medium leading-snug text-ink-gray-9 sm:text-xl'
+  return 'text-base font-medium leading-snug text-ink-gray-9 sm:text-lg'
 })
 
 const cardTypeLabel = computed(() => {

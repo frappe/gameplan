@@ -81,7 +81,9 @@ jobs:
         id: cypress
         working-directory: /home/runner/frappe-bench/apps/gameplan/frontend
         env:
-          CYPRESS_BASE_URL: http://gameplan.test:8000
+          # As in ui-test.yml: a service worker only registers on localhost over http.
+          CYPRESS_BASE_URL: http://localhost:8000
+          GAMEPLAN_SITE: gameplan.test
         run: |
           results_root="${RUNNER_TEMP}/nightly-cypress"
           logs_root="${RUNNER_TEMP}/nightly-cypress-logs"

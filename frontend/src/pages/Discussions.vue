@@ -1,7 +1,7 @@
 <template>
   <PageHeaderMobile v-if="communityState.doc" class="sm:hidden" :title="feedTitle">
     <template #prefix>
-      <PageHeaderBackButton :to="{ name: 'Home' }" />
+      <PageHeaderBackButton :fallback-route="{ name: 'Home' }" />
     </template>
     <button
       type="button"
@@ -23,7 +23,7 @@
   </BottomSheet>
   <PageHeader class="hidden sm:flex">
     <div class="flex min-w-0 items-center gap-1">
-      <span class="min-w-0 truncate px-0.5 py-1 text-lg-medium text-ink-gray-9">Discussions</span>
+      <span class="min-w-0 truncate px-0.5 py-1 text-md-medium text-ink-gray-9">Discussions</span>
     </div>
     <div class="flex items-center gap-2">
       <Button
@@ -57,7 +57,7 @@
         class="-mx-3"
         :filters="filters"
         :orderBy="() => orderBy"
-        :cacheKey="`Discussions-${communityId}-${feedType}`"
+        :cacheKey="communityFeedKey(communityId, feedType)"
         :key="JSON.stringify(filters)"
       />
     </KeepAlive>
@@ -82,12 +82,11 @@ import { useRouter } from 'vue-router'
 import CommunityMenu from '@/components/CommunityMenu.vue'
 import DiscussionList from '@/components/DiscussionList.vue'
 import LastPostReminder from '@/components/LastPostReminder.vue'
+import { communityFeedKey, type FeedType } from '@/data/discussions'
 import { communityState } from '@/data/communityState'
 import { useCommunity } from '@/data/communities'
 import { getSpaceUnreadCount, spaces } from '@/data/spaces'
 import { fetchParticipatingUnreadCount, getParticipatingUnreadCount } from '@/data/unreadCount'
-
-type FeedType = 'recent' | 'unread' | 'participating'
 
 interface Props {
   communityId: string

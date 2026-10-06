@@ -1,11 +1,14 @@
 # Copyright (c) 2022, Frappe Technologies Pvt Ltd and Contributors
 # See license.txt
 
+import json
+
 import frappe
 
 from gameplan.api import get_user_info
 from gameplan.gameplan.doctype.gp_user_profile.gp_user_profile import (
 	get_bento_cards,
+	get_list,
 	get_my_bento_cards,
 	has_permission,
 	reset_my_bento_cards,
@@ -689,6 +692,56 @@ class TestProfiles(GameplanTestCase):
 		response = save_my_bento_cards(frappe.as_json([make_bento_card()]))
 
 		self.assertEqual([card["id"] for card in response["cards"]], ["intro"])
+
+
+class TestGetListQueryParams(GameplanTestCase):
+	"""`get_list` is built for frappe-ui's `useList` (PR #516's offline caching), which
+	always fetches over GET - so `fields`/`filters` arrive JSON-stringified and
+	`start`/`limit` arrive as strings, never as the `dict`/`int` shapes the query
+	builder wants. See the comment on `get_list` itself for why they're parsed by hand."""
+
+	def setUp(self):
+		super().setUp()
+		self.alice = create_member("test_alice_getlist@example.com", "Alice Getlist")
+		self.bob = create_member("test_bob_getlist@example.com", "Bob Getlist")
+		frappe.set_user(self.alice.name)
+
+	def test_accepts_json_stringified_fields_and_filters_with_string_pagination(self):
+		result = get_list(
+			fields=json.dumps(["name", "user"]),
+			filters=json.dumps({"user": self.alice.name}),
+			start="0",
+			limit="5",
+		)
+
+		self.assertEqual(len(result), 1)
+		self.assertEqual(result[0]["user"], self.alice.name)
+
+	def test_still_accepts_native_dict_filters_and_int_pagination(self):
+		"""The direct (non-HTTP) call path other Gameplan code may still use."""
+		result = get_list(fields=["name", "user"], filters={"user": self.bob.name}, start=0, limit=5)
+
+		self.assertEqual(len(result), 1)
+		self.assertEqual(result[0]["user"], self.bob.name)
+
+	def test_reads_nothing_of_another_users_account_through_a_link(self):
+		frappe.db.set_value("User", self.bob.name, "last_ip", "203.0.113.7", update_modified=False)
+
+		rows = get_list(
+			fields=json.dumps(["name", "user.last_ip"]), filters=json.dumps({"user": self.bob.name})
+		)
+		self.assertIsNone(rows[0].get("last_ip"))
+		# Nor one character at a time, through a filter.
+		self.assertEqual(get_list(fields=["name"], filters={"user.last_ip": ["like", "203.%"]}), [])
+
+	def test_defaults_still_work_when_every_argument_is_omitted(self):
+		# Just needs to not raise - the default `limit=20` means a specific row (e.g.
+		# self.alice's) isn't guaranteed to be in this page on a site with more than 20
+		# profiles, so this only checks the call succeeds and shapes a list.
+		result = get_list()
+
+		self.assertIsInstance(result, list)
+		self.assertLessEqual(len(result), 20)
 
 
 class TestCustomEmojis(GameplanTestCase):

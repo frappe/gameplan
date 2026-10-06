@@ -1,6 +1,8 @@
+import { dayjs, getConfig, useList } from 'frappe-ui'
 import { computed } from 'vue'
-import { useList } from 'frappe-ui'
+import { hasContent, listDraftRecords, type DraftRecord } from './draftStore'
 import { session } from './session'
+import { getSpace } from './spaces'
 
 /** A row from `get_my_drafts` — a new-discussion draft or a new-comment draft on a
  *  discussion, already resolved to everything needed to render and route it. */
@@ -42,7 +44,7 @@ export const drafts = useList<DraftRow>({
   limit: 999,
   // get_my_drafts is owner-scoped on the server; scope the client cache to the session user
   // too, so a same-tab account switch can't briefly show the previous user's draft rows.
-  cacheKey: ['drafts', session.user],
+  cacheKey: 'drafts',
   immediate: true,
 })
 
@@ -52,17 +54,15 @@ export const draftCount = computed(() => drafts.data?.length ?? 0)
  * Create a `GP Draft` through the list that owns it, so the new row appears here (and in the
  * rail count) as soon as the server has it.
  *
- * Serialized because `drafts.insert` is a single shared request: two composers creating their
- * first draft at the same moment would otherwise read each other's response and bind to the
- * wrong draft name.
+ * Serialized because `drafts.insert` is a single shared request: two creates at the same
+ * moment would share its state, and one could read the other's response or error.
  */
 let insertQueue: Promise<unknown> = Promise.resolve()
 
 export function createDraft(fields: Record<string, unknown>): Promise<DraftDoc> {
   const next = insertQueue.then(async () => {
     const doc = (await drafts.insert.submit(fields as Partial<DraftRow>)) as DraftDoc | null
-    // useCall resolves with null instead of rejecting; callers rely on a throw to keep their
-    // local copy and retry.
+    // Callers rely on a throw to keep their local copy and retry.
     if (!doc?.name) throw new Error('Could not create the draft')
     return doc
   })
@@ -73,4 +73,46 @@ export function createDraft(fields: Record<string, unknown>): Promise<DraftDoc> 
 /** The bare `GP Draft` row an insert returns — not the enriched {@link DraftRow} the list holds. */
 interface DraftDoc {
   name: string
+}
+
+/**
+ * New-discussion drafts saved only on this device: started offline, so not on the server and
+ * not in `drafts` yet. Each keeps its own name, which opens it and later names its server row.
+ */
+export async function listLocalDrafts(): Promise<DraftRow[]> {
+  const records = await listDraftRecords()
+  return records.filter(isUnsavedDiscussion).map(toDraftRow)
+}
+
+function isUnsavedDiscussion({ identity, payload, serverName, user }: DraftRecord) {
+  return (
+    user === session.user &&
+    identity.type === 'Discussion' &&
+    identity.mode === 'New' &&
+    !identity.referenceName &&
+    !serverName &&
+    hasContent(payload)
+  )
+}
+
+function toDraftRow(record: DraftRecord): DraftRow {
+  const space = record.payload.project ? getSpace(record.payload.project) : null
+  // Server rows carry the site's time, which is what the page formats from.
+  const modified = dayjs(record.updatedAt)
+    .tz(getConfig('systemTimezone') || undefined)
+    .format('YYYY-MM-DD HH:mm:ss')
+  return {
+    name: record.key,
+    kind: 'discussion',
+    owner: record.user!,
+    title: record.payload.title ?? null,
+    content: record.payload.content,
+    modified,
+    creation: modified,
+    space: space?.name ?? null,
+    space_title: space?.title ?? null,
+    community: space?.team ?? null,
+    is_private: space?.is_private ?? false,
+    discussion: null,
+  }
 }

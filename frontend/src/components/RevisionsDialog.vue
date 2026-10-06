@@ -177,7 +177,7 @@ watch(
   (value) => {
     if (value) {
       currentRevisionIndex.value = 0
-      revisions.submit({ fieldname: props.fieldname })
+      revisions.submit({ fieldname: props.fieldname }).catch(() => {})
     }
   },
   { immediate: true },

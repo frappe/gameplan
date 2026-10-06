@@ -1,5 +1,10 @@
 <template>
-  <div ref="grid" class="grid w-fit grid-cols-10 gap-1">
+  <div
+    ref="grid"
+    class="grid w-fit grid-cols-10 gap-1"
+    :class="{ 'opacity-50': disabled }"
+    :inert="disabled"
+  >
     <div
       v-for="(emoji, index) in quickReactionSlots"
       :key="index"
@@ -25,7 +30,7 @@
           <button
             v-if="emoji"
             type="button"
-            class="flex size-8 items-center justify-center rounded-5 border border-outline-gray-1 bg-surface-base text-xl font-[emoji] hover:bg-surface-gray-2"
+            class="flex size-8 items-center justify-center rounded-5 border border-outline-gray-1 bg-surface-base text-lg font-[emoji] hover:bg-surface-gray-2"
           >
             <img
               v-if="isImageEmoji(emoji)"
@@ -59,6 +64,8 @@ import {
   setQuickReactionEmojiAt,
 } from '@/data/reactionPreferences'
 import { isImageEmoji } from '@/utils/emoji'
+
+defineProps<{ disabled?: boolean }>()
 
 // --- Pointer drag reorder (grid-aware) -------------------------------------
 // Mirrors the customize-sidebar interaction, but in 2D: cells are measured once
