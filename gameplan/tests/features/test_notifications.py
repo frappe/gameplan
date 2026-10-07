@@ -19,6 +19,8 @@ co-members' unread records instead (see
 digest mirrors the same split: `get_unread_notifications` vs `get_unread_discussions`.
 """
 
+from unittest.mock import patch
+
 import frappe
 
 from gameplan.api import mark_all_notifications_as_read, unread_notifications
@@ -306,8 +308,9 @@ class TestEveryoneMentionQueryCount(NotificationTestCase):
 		# each) and for any cold doctype meta. Neither is Gameplan's fan-out, and
 		# counting them would measure frappe's cache, not this resolver.
 		doc._everyone_audience()
-		with self.assertQueryCount(self.AUDIENCE_QUERY_BUDGET):
+		with patch.object(frappe.db, "sql", wraps=frappe.db.sql) as queries:
 			small_audience = doc._everyone_audience()
+		self.assertEqual(queries.call_count, self.AUDIENCE_QUERY_BUDGET)
 
 		extra_members = [
 			create_member(f"everyone_scale_{index}@example.com", f"Scale {index}") for index in range(20)
@@ -318,8 +321,9 @@ class TestEveryoneMentionQueryCount(NotificationTestCase):
 		community.save(ignore_permissions=True)
 
 		doc._everyone_audience()
-		with self.assertQueryCount(self.AUDIENCE_QUERY_BUDGET):
+		with patch.object(frappe.db, "sql", wraps=frappe.db.sql) as queries:
 			large_audience = doc._everyone_audience()
+		self.assertEqual(queries.call_count, self.AUDIENCE_QUERY_BUDGET)
 
 		# The resolver really did answer for 20 more people at the same query cost —
 		# otherwise a budget this size could be met by simply returning nothing.

@@ -3,11 +3,13 @@
 
 """Canonical executable spec of Gameplan's permission model.
 
-Permissive philosophy (see AGENTS.md and test_permissions_backend.py):
+Permissive philosophy (see AGENTS.md):
   - Members create and edit anything they can see (edits are shown in revisions).
   - Delete is the only gated action: owner, global admin, or — within the spaces they
     can see — community admin.
-  - Private spaces are visible only to their members and to guests granted access;
+  - General requires a signed-in member. Anonymous allows public reading when both
+    community and space allow it; signed-in guests can participate without a grant.
+  - Member Access spaces are visible only to their members and to guests granted access;
     content inherits its space's visibility. Visibility is checked first, so this bounds
     the previous rule: a community admin who is not a member of a private space in their
     own community cannot read its content, and therefore cannot moderate or delete it
@@ -18,7 +20,11 @@ This table is the source of truth for who may read/write/delete content. To exte
   - Add actors or spaces by adding rows/blocks to EXPECTATIONS below.
 """
 
-from gameplan.public_access import VISIBILITY_MEMBER_ACCESS
+from unittest.mock import patch
+
+import frappe
+
+from gameplan.public_access import VISIBILITY_ANONYMOUS, VISIBILITY_GENERAL, VISIBILITY_MEMBER_ACCESS
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
 	create_comment,
@@ -37,7 +43,7 @@ ACTIONS = ("read", "write", "delete")
 
 # space kind -> actor -> (read, write, delete)
 EXPECTATIONS = {
-	"public_space": {
+	"general_space": {
 		"admin": (True, True, True),
 		"member": (True, True, True),  # owner of the content
 		"second_member": (True, True, False),  # community member, not owner
@@ -45,7 +51,7 @@ EXPECTATIONS = {
 		"outsider": (True, True, False),  # Gameplan Member, not in community
 		"guest": (False, False, False),  # guest access only to the private space
 	},
-	"private_space": {
+	"member_access_space": {
 		"admin": (True, True, True),
 		"member": (True, True, True),  # space member + owner
 		"second_member": (False, False, False),  # community member but not space member
@@ -64,6 +70,14 @@ EXPECTATIONS = {
 		# delete only content they own.
 		"guest": (True, True, False),
 	},
+	"anonymous_space": {
+		"admin": (True, True, True),
+		"member": (True, True, True),
+		"second_member": (True, True, False),
+		"community_admin": (True, True, True),
+		"outsider": (True, True, False),
+		"guest": (True, True, False),  # signed-in guest, without an explicit grant
+	},
 }
 
 
@@ -76,14 +90,32 @@ class TestPermissionMatrix(GameplanTestCase):
 			members=[self.member, self.second_member],
 			admins=[self.community_admin],
 		)
-		self.public_space = create_space("Matrix Public Space", self.community)
+		self.general_space = create_space(
+			"Matrix General Space", self.community, visibility=VISIBILITY_GENERAL
+		)
 		self.private_space = create_space(
 			"Matrix Private Space", self.community, visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
 		)
 		grant_guest_access(self.guest, self.private_space)
+		self.anonymous_community = create_community(
+			"Matrix Anonymous Community",
+			visibility=VISIBILITY_ANONYMOUS,
+			members=[self.member, self.second_member],
+			admins=[self.community_admin],
+		)
+		self.anonymous_space = create_space(
+			"Matrix Anonymous Space", self.anonymous_community, visibility=VISIBILITY_ANONYMOUS
+		)
+		public_switch = patch.dict(frappe.conf, gameplan_public_access_enabled=1, gameplan_demo_enabled=0)
+		public_switch.start()
+		self.addCleanup(public_switch.stop)
 
 		self.content = {}
-		for kind, space in (("public_space", self.public_space), ("private_space", self.private_space)):
+		for kind, space in (
+			("general_space", self.general_space),
+			("member_access_space", self.private_space),
+			("anonymous_space", self.anonymous_space),
+		):
 			discussion = create_discussion(f"{kind} discussion", space, owner=self.member)
 			self.content[kind] = {
 				"GP Discussion": discussion,

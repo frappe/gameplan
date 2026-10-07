@@ -20,6 +20,7 @@ from gameplan.api import (
 	onboarding,
 	search_sqlite,
 )
+from gameplan.permissions import can_view_space
 from gameplan.public_access import VISIBILITY_ANONYMOUS, VISIBILITY_GENERAL, VISIBILITY_MEMBER_ACCESS
 from gameplan.search_sqlite import GameplanSearch
 from gameplan.tests.base import GameplanTestCase
@@ -33,7 +34,7 @@ from gameplan.tests.fixtures import (
 	declared_http_methods,
 )
 from gameplan.tests.search_isolation import IsolatedSearchIndex
-from gameplan.ui_test_helpers import create_invitation, rebuild_search_index, reset
+from gameplan.ui_test_helpers import PERSONAS, _reset_personas, create_invitation, rebuild_search_index, reset
 
 EMPTY_FILTER_OPTIONS = {
 	"authors": {},
@@ -55,6 +56,25 @@ class TestUITestHelperHTTPMethods(GameplanTestCase):
 	def test_ui_test_mutations_are_post_only(self):
 		for endpoint in (reset, rebuild_search_index, create_invitation):
 			self.assertEqual(declared_http_methods(endpoint), {"POST"})
+
+
+class TestUITestPersonas(GameplanTestCase):
+	def test_reset_removes_roles_retained_from_an_earlier_scenario(self):
+		guest = frappe.get_doc("User", self.guest.name)
+		guest.append_roles("Gameplan Admin", "Gameplan Member")
+		guest.save(ignore_permissions=True)
+		member = frappe.get_doc("User", self.member.name)
+		member.append_roles("Gameplan Guest")
+		member.save(ignore_permissions=True)
+
+		# Test role restoration without deleting unrelated users in the test suite.
+		with patch("gameplan.ui_test_helpers.frappe.delete_doc"):
+			_reset_personas()
+
+		for email, _, role in PERSONAS:
+			with self.subTest(user=email):
+				user = frappe.get_doc("User", email)
+				self.assertEqual([row.role for row in user.roles], [role])
 
 
 class TestOnboardingEndpoint(APIEndpointTestCase):
@@ -79,7 +99,7 @@ class TestOnboardingEndpoint(APIEndpointTestCase):
 		self.assertEqual(space.icon, "lucide-users")
 		self.assertEqual(space.visibility, VISIBILITY_MEMBER_ACCESS)
 
-	def test_the_first_space_is_public_unless_the_signup_asks_for_privacy(self):
+	def test_the_first_space_defaults_to_general_not_anonymous(self):
 		"""Signup omits visibility, and the default decides whether a brand-new
 		community's first space is visible to the teammates invited alongside it."""
 		with self.as_user(self.member):
@@ -91,6 +111,8 @@ class TestOnboardingEndpoint(APIEndpointTestCase):
 			)
 
 		self.assertEqual(frappe.db.get_value("GP Project", result["space"], "visibility"), VISIBILITY_GENERAL)
+		with patch.dict(frappe.conf, gameplan_public_access_enabled=1, gameplan_demo_enabled=0):
+			self.assertFalse(can_view_space("Guest", result["space"]))
 
 	def test_signup_cannot_publish_its_first_space(self):
 		# Only a Gameplan Admin publishes. Someone signing up is not one yet.

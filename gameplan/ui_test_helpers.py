@@ -123,9 +123,10 @@ def _reset_personas():
 		user.new_password = "admin"
 		# Personas use a shared trivial password; the site's password policy would reject it.
 		user.flags.ignore_password_policy = True
+		# A previous spec may change roles. Each persona must regain only its test role.
+		user.set("roles", [])
+		user.append_roles(role)
 		user.save(ignore_permissions=True)
-		if role not in frappe.get_roles(email):
-			user.add_roles(role)
 
 
 # -- scenario builders -------------------------------------------------------
@@ -155,9 +156,9 @@ def _as_user(user):
 		frappe.session.data = original_data
 
 
-def _create_community(title):
+def _create_community(title, *, visibility=VISIBILITY_GENERAL):
 	"""Community that always includes member + member2 so their sidebars resolve."""
-	community = frappe.get_doc(doctype="GP Team", title=title)
+	community = frappe.get_doc(doctype="GP Team", title=title, visibility=visibility)
 	for email in (MEMBER, SECOND_MEMBER):
 		community.append("members", {"user": email})
 	community.insert(ignore_permissions=True)

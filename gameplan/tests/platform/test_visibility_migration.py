@@ -209,6 +209,9 @@ LEGACY_PRIVACY_REFERENCES = {
 	"gameplan/patches/backfill_visibility_from_is_private.py": 5,
 	"gameplan/public_access.py": 9,
 	"gameplan/mixins/visibility.py": 6,
+	# Reject legacy fixture permissions before clearing a site, and test that rejection.
+	"gameplan/demo/seeder.py": 3,
+	"gameplan/tests/platform/test_demo_fixture.py": 2,
 	# What anonymous visitors may read: the column is classified as private, never sent;
 	# and File.is_private, for the public file route.
 	"gameplan/public_payload.py": 3,
@@ -219,7 +222,6 @@ LEGACY_PRIVACY_REFERENCES = {
 	# A historical patch, frozen against the schema it was written for.
 	"gameplan/gameplan/doctype/gp_project/patches/migrate_members_from_team.py": 1,
 	# Frappe's File.is_private, an unrelated field on another doctype.
-	"gameplan/demo/seeder.py": 1,
 	"gameplan/gameplan/doctype/gp_user_profile/gp_user_profile.py": 1,
 	"gameplan/migrate_from_discourse/__init__.py": 1,
 	"gameplan/api.py": 1,

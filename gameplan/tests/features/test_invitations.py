@@ -22,7 +22,7 @@ from frappe.utils import add_days, now, today
 
 from gameplan.api import _invite_by_email, accept_invitation
 from gameplan.gameplan.doctype.gp_invitation.gp_invitation import GPInvitation, expire_invitations
-from gameplan.public_access import VISIBILITY_MEMBER_ACCESS
+from gameplan.public_access import VISIBILITY_ANONYMOUS, VISIBILITY_GENERAL, VISIBILITY_MEMBER_ACCESS
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
 	create_community,
@@ -144,23 +144,23 @@ class TestInvitationCreation(InvitationTestCase):
 			frappe.db.exists("GP Guest Access", {"user": "oauth-guest@example.com", "project": space.name})
 		)
 
-	def test_a_directly_granted_member_joins_public_communities(self):
+	def test_a_directly_granted_member_joins_general_and_anonymous_communities(self):
 		"""The direct path runs through accept(), so it inherits the join for free."""
 		create_user("oauth-joiner@example.com", "Oauth Joiner")
-		community = create_community("Direct Join Community")
+		communities = [
+			create_community(f"Direct Join {tier} Community", visibility=tier)
+			for tier in (VISIBILITY_GENERAL, VISIBILITY_ANONYMOUS)
+		]
 
 		_invite_by_email("oauth-joiner@example.com", role="Gameplan Member")
 
-		self.assertTrue(
-			frappe.db.exists(
-				"GP Member",
-				{
-					"parenttype": "GP Team",
-					"parent": community.name,
-					"user": "oauth-joiner@example.com",
-				},
+		for community in communities:
+			self.assertTrue(
+				frappe.db.exists(
+					"GP Member",
+					{"parenttype": "GP Team", "parent": community.name, "user": "oauth-joiner@example.com"},
+				)
 			)
-		)
 
 	def test_an_email_with_no_account_still_gets_the_invitation(self):
 		result = _invite_by_email("brand-new@example.com", role="Gameplan Member")
@@ -270,13 +270,13 @@ class TestInvitationAccept(InvitationTestCase):
 			)
 		)
 
-	def test_accept_joins_every_public_community(self):
+	def test_accept_joins_general_and_anonymous_communities(self):
 		"""A new member should land in a populated app, not an empty shell.
 
-		Membership does not gate a public community, it decides what the sidebar lists.
+		Membership does not gate either open tier. It decides what the sidebar lists.
 		"""
-		first = create_community("Public One")
-		second = create_community("Public Two")
+		first = create_community("General One", visibility=VISIBILITY_GENERAL)
+		second = create_community("Anonymous One", visibility=VISIBILITY_ANONYMOUS)
 		invitation = self.make_invitation("joiner@example.com")
 
 		invitation.accept()
