@@ -1,6 +1,6 @@
 <template>
   <div class="flex items-center gap-2">
-    <div class="flex items-center gap-px">
+    <div class="flex items-center">
       <Tooltip
         :text="isDraftLoading ? 'Draft is loading' : 'You cannot publish this draft'"
         :disabled="isComposerEditable"
@@ -18,7 +18,7 @@
       </Tooltip>
       <div
         ref="menuHost"
-        class="[&_[data-slot=group]]:!p-0 [&_[data-slot=item]]:!rounded-6 [&_[data-slot=item-list-row]]:!px-3 [&_[data-slot=item-list-row]]:!py-2"
+        class="flex [&_[data-slot=group]]:!p-0 [&_[data-slot=item]]:!rounded-6 [&_[data-slot=item-list-row]]:!px-3 [&_[data-slot=item-list-row]]:!py-2"
       >
         <Dropdown :options="options" align="end" :portal-to="menuHost ?? undefined">
           <Button
