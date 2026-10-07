@@ -29,6 +29,7 @@ from html import unescape
 from urllib.parse import quote
 
 import frappe
+from pypika import Criterion
 
 import gameplan
 
@@ -451,15 +452,15 @@ def public_authors(users) -> set:
 	)
 
 	found = set()
-	for column in (Discussion.owner, Discussion.last_post_by, Discussion.closed_by, Discussion.pinned_by):
-		found.update(
-			frappe.qb.from_(Discussion)
-			.select(column)
-			.distinct()
-			.where(Discussion.project.isin(public_spaces))
-			.where(column.isin(users))
-			.run(pluck=True)
-		)
+	columns = (Discussion.owner, Discussion.last_post_by, Discussion.closed_by, Discussion.pinned_by)
+	rows = (
+		frappe.qb.from_(Discussion)
+		.select(*columns)
+		.distinct()
+		.where(Discussion.project.isin(public_spaces))
+		.where(Criterion.any(column.isin(users) for column in columns))
+	).run()
+	found.update(user for row in rows for user in row if user in users)
 	found.update(
 		frappe.qb.from_(Comment)
 		.select(Comment.owner)

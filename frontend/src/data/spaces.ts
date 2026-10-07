@@ -26,38 +26,22 @@ export interface Space extends Pick<
   members: Member[]
 }
 
-// Someone who is not signed in may only ask for public columns (gameplan/public_payload.py):
-// no task count, no joined community title. Member lists come back empty for them.
-const PUBLIC_SPACE_FIELDS = [
-  'name',
-  'title',
-  'icon',
-  'team',
-  'archived_at',
-  'visibility',
-  'modified',
-  'discussions_count',
-  { members: ['user'] },
-]
-
 export let spaces = useList<Space>({
   doctype: 'GP Project',
   url: publicListUrl('GP Project'),
-  fields: isAnonymousVisitor()
-    ? PUBLIC_SPACE_FIELDS
-    : [
-        'name',
-        'title',
-        'icon',
-        'team',
-        'archived_at',
-        'visibility',
-        'modified',
-        'tasks_count',
-        'discussions_count',
-        'team.title as team_title',
-        { members: ['user'] },
-      ],
+  fields: [
+    'name',
+    'title',
+    'icon',
+    'team',
+    'archived_at',
+    'visibility',
+    'modified',
+    'discussions_count',
+    // Anonymous lists cannot read task counts or joined community titles.
+    ...(!isAnonymousVisitor() ? ['tasks_count', 'team.title as team_title'] : []),
+    { members: ['user'] },
+  ],
   initialData: [],
   orderBy: 'title asc',
   limit: 99999,

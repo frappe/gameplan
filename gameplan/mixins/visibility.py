@@ -206,28 +206,16 @@ def users_with_space_state(space):
 
 def delete_space_state(space, users):
 	for doctype in SPACE_STATE_DOCTYPES:
-		table = frappe.qb.DocType(doctype)
-		(
-			frappe.qb.from_(table)
-			.where(table.project == str(space))
-			.where(table.user.isin(list(users)))
-			.delete()
-		).run()
+		frappe.db.delete(doctype, {"project": str(space), "user": ["in", list(users)]})
 
 
 def gameplan_users():
 	"""Every enabled user holding a Gameplan role."""
-	User = frappe.qb.DocType("User")
-	HasRole = frappe.qb.DocType("Has Role")
-	return (
-		frappe.qb.from_(User)
-		.join(HasRole)
-		.on((HasRole.parent == User.name) & (HasRole.parenttype == "User"))
-		.select(User.name)
-		.distinct()
-		.where(User.enabled == 1)
-		.where(HasRole.role.isin(GAMEPLAN_ROLES))
-		.run(pluck=True)
+	return frappe.get_all(
+		"User",
+		filters={"enabled": 1, "roles.role": ["in", GAMEPLAN_ROLES]},
+		pluck="name",
+		distinct=True,
 	)
 
 

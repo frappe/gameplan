@@ -28,122 +28,111 @@ const loadDevUserList = import.meta.env.DEV ? () => import('@/components/DevUser
 const DevUserList = shallowRef(null)
 const devUserDialogOpen = ref(false)
 
-const themeSubmenu = [
+const dropdownItems = computed(() => [
   {
-    label: 'Light Mode',
-    icon: 'lucide-sun',
-    slots: {
-      suffix: () => themeCheckmark('light'),
+    icon: 'lucide-user',
+    label: 'My Profile',
+    condition: () => !isAnonymousVisitor(),
+    route: {
+      name: 'PersonProfileProfile',
+      params: { personId: user.user_profile },
     },
-    onClick: () => setTheme('light'),
   },
   {
-    label: 'Dark Mode',
+    icon: 'lucide-bookmark',
+    label: 'Bookmarks',
+    condition: () => !isAnonymousVisitor(),
+    route: { name: 'Bookmarks' },
+  },
+  {
+    icon: 'lucide-list-todo',
+    label: 'Tasks',
+    condition: () => !isAnonymousVisitor(),
+    route: { name: 'MyTasks' },
+  },
+  {
+    icon: 'lucide-files',
+    label: 'Pages',
+    condition: () => !isAnonymousVisitor(),
+    route: { name: 'MyPages' },
+  },
+  {
+    icon: 'lucide-settings',
+    label: 'Settings',
+    condition: () => !isAnonymousVisitor(),
+    onClick: () => showSettingsDialog(),
+    slots: {
+      suffix: () => h('span', { class: 'text-xs text-ink-gray-4' }, settingsShortcutLabel),
+    },
+  },
+  {
     icon: 'lucide-moon',
-    slots: {
-      suffix: () => themeCheckmark('dark'),
-    },
-    onClick: () => setTheme('dark'),
+    label: 'Toggle theme',
+    submenu: [
+      {
+        label: 'Light Mode',
+        icon: 'lucide-sun',
+        slots: {
+          suffix: () => themeCheckmark('light'),
+        },
+        onClick: () => setTheme('light'),
+      },
+      {
+        label: 'Dark Mode',
+        icon: 'lucide-moon',
+        slots: {
+          suffix: () => themeCheckmark('dark'),
+        },
+        onClick: () => setTheme('dark'),
+      },
+      {
+        label: 'System Default',
+        icon: 'lucide-monitor',
+        slots: {
+          suffix: () => themeCheckmark('system'),
+        },
+        onClick: () => setTheme('system'),
+      },
+    ],
   },
   {
-    label: 'System Default',
-    icon: 'lucide-monitor',
-    slots: {
-      suffix: () => themeCheckmark('system'),
+    icon: () => h('span', { class: 'lucide-credit-card' }),
+    label: 'Subscription',
+    condition: () =>
+      !isAnonymousVisitor() && user.isNotGuest && window.frappecloud_host && window.site_name,
+    onClick: () => {
+      window.open(`${window.frappecloud_host}/dashboard/subscription/${window.site_name}`, '_blank')
     },
-    onClick: () => setTheme('system'),
   },
-]
-
-const dropdownItems = computed(() => {
-  if (isAnonymousVisitor()) {
-    const items = [
-      {
-        icon: 'lucide-moon',
-        label: 'Toggle theme',
-        submenu: themeSubmenu,
-      },
-    ]
-
-    if (signupEnabled()) {
-      items.push({
-        icon: 'lucide-user-plus',
-        label: 'Sign up',
-        onClick: () => {
-          window.location.href = signupUrl()
-        },
-      })
-    }
-
-    items.push({
-      icon: 'lucide-log-in',
-      label: 'Log in',
-      onClick: () => {
-        window.location.href = loginUrl()
-      },
-    })
-
-    return items
-  }
-
-  return [
-    {
-      icon: 'lucide-user',
-      label: 'My Profile',
-      route: {
-        name: 'PersonProfileProfile',
-        params: { personId: user.user_profile },
-      },
+  {
+    icon: 'lucide-arrow-left-right',
+    label: 'Switch user',
+    condition: () => !isAnonymousVisitor() && Boolean(loadDevUserList),
+    onClick: openDevUserDialog,
+  },
+  {
+    icon: 'lucide-log-out',
+    label: 'Log out',
+    condition: () => !isAnonymousVisitor(),
+    onClick: () => session.logout.submit(),
+  },
+  {
+    icon: 'lucide-user-plus',
+    label: 'Sign up',
+    condition: () => isAnonymousVisitor() && signupEnabled(),
+    onClick: () => {
+      window.location.href = signupUrl()
     },
-    {
-      icon: 'lucide-bookmark',
-      label: 'Bookmarks',
-      route: { name: 'Bookmarks' },
+  },
+  {
+    icon: 'lucide-log-in',
+    label: 'Log in',
+    condition: isAnonymousVisitor,
+    onClick: () => {
+      window.location.href = loginUrl()
     },
-    {
-      icon: 'lucide-list-todo',
-      label: 'Tasks',
-      route: { name: 'MyTasks' },
-    },
-    {
-      icon: 'lucide-files',
-      label: 'Pages',
-      route: { name: 'MyPages' },
-    },
-    {
-      icon: 'lucide-settings',
-      label: 'Settings',
-      onClick: () => showSettingsDialog(),
-      slots: {
-        suffix: () => h('span', { class: 'text-xs text-ink-gray-4' }, settingsShortcutLabel),
-      },
-    },
-    {
-      icon: 'lucide-moon',
-      label: 'Toggle theme',
-      submenu: themeSubmenu,
-    },
-    {
-      icon: () => h('span', { class: 'lucide-credit-card' }),
-      label: 'Subscription',
-      condition: () => user.isNotGuest && window.frappecloud_host && window.site_name,
-      onClick: () => {
-        window.open(`${window.frappecloud_host}/dashboard/subscription/${window.site_name}`, '_blank')
-      },
-    },
-    {
-      icon: 'lucide-arrow-left-right',
-      label: 'Switch user',
-      condition: () => Boolean(loadDevUserList),
-      onClick: openDevUserDialog,
-    },
-    {
-      icon: 'lucide-log-out',
-      label: 'Log out',
-      onClick: () => session.logout.submit(),
-    },
-  ]
-})
+  },
+])
 
 // Load the list before the dialog opens, not as an async component inside it.
 // That renders a frame late: the empty dialog grows, and the filter misses the

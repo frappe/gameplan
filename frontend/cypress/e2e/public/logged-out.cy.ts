@@ -119,6 +119,9 @@ describe('Public spaces, logged out', () => {
     cy.contains('Toggle theme').click()
     cy.contains('Dark Mode').click()
     cy.get('html').should('have.attr', 'data-theme', 'dark')
+
+    cy.get('button[aria-label="Gameplan menu"]').click()
+    cy.get('[role="menuitem"]:visible').should('have.length', 1).and('contain.text', 'About')
   })
 
   it('keeps public spaces visible when the browser remembers hiding inactive spaces', () => {

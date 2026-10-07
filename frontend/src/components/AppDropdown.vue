@@ -19,7 +19,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, h, ref } from 'vue'
+import { h, ref } from 'vue'
 import { Dropdown } from 'frappe-ui'
 import { clear as clearIndexDb } from 'idb-keyval'
 import { settingsShortcutLabel, showSettingsDialog } from '@/components/Settings'
@@ -31,58 +31,48 @@ import { isAnonymousVisitor } from '@/utils/publicAccess'
 
 const showAboutDialog = ref(false)
 
-const dropdownItems = computed(() => {
-  if (isAnonymousVisitor()) {
-    return [
+const dropdownItems = [
+  {
+    icon: 'lucide-layout-grid',
+    label: 'Apps',
+    condition: () => !isAnonymousVisitor(),
+    submenu: [
       {
-        icon: 'lucide-info',
-        label: 'About',
-        onClick: () => {
-          showAboutDialog.value = true
+        slots: {
+          item: () => h(AppSelector),
         },
       },
-    ]
-  }
-
-  return [
-    {
-      icon: 'lucide-layout-grid',
-      label: 'Apps',
-      submenu: [
-        {
-          slots: {
-            item: () => h(AppSelector),
-          },
-        },
-      ],
+    ],
+  },
+  {
+    icon: 'lucide-settings',
+    label: 'Settings',
+    condition: () => !isAnonymousVisitor(),
+    onClick: () => showSettingsDialog(),
+    slots: {
+      suffix: () => h('span', { class: 'text-xs text-ink-gray-4' }, settingsShortcutLabel),
     },
-    {
-      icon: 'lucide-settings',
-      label: 'Settings',
-      onClick: () => showSettingsDialog(),
-      slots: {
-        suffix: () => h('span', { class: 'text-xs text-ink-gray-4' }, settingsShortcutLabel),
-      },
+  },
+  {
+    icon: 'lucide-settings-2',
+    label: 'Customize sidebar',
+    condition: () => !isAnonymousVisitor(),
+    onClick: openCustomizeSidebarDialog,
+  },
+  {
+    icon: 'lucide-list-restart',
+    label: 'Clear cache',
+    condition: () => !isAnonymousVisitor(),
+    onClick: clearCache,
+  },
+  {
+    icon: 'lucide-info',
+    label: 'About',
+    onClick: () => {
+      showAboutDialog.value = true
     },
-    {
-      icon: 'lucide-settings-2',
-      label: 'Customize sidebar',
-      onClick: openCustomizeSidebarDialog,
-    },
-    {
-      icon: 'lucide-list-restart',
-      label: 'Clear cache',
-      onClick: clearCache,
-    },
-    {
-      icon: 'lucide-info',
-      label: 'About',
-      onClick: () => {
-        showAboutDialog.value = true
-      },
-    },
-  ]
-})
+  },
+]
 
 function clearCache() {
   localStorage.clear()

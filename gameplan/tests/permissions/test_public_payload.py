@@ -37,6 +37,7 @@ from gameplan.public_payload import (
 	STANDARD_PUBLIC_FIELDS,
 	TABLE_FIELDS,
 	handles_for,
+	public_authors,
 	replace_user_ids_in_html,
 )
 from gameplan.tests.base import GameplanTestCase
@@ -417,6 +418,17 @@ class TestPublicProfiles(PublicContentTestCase):
 		outsider_handle = handles_for([self.outsider.name])[self.outsider.name]
 		admin_handle = handles_for([self.admin.name])[self.admin.name]
 		self.assertEqual(self.profiles([outsider_handle, admin_handle]), [])
+
+	def test_discussion_actors_are_resolved_with_three_batched_queries(self):
+		actors = (self.member.name, self.second_member.name, self.outsider.name, self.admin.name)
+		frappe.db.set_value(
+			"GP Discussion",
+			self.discussion.name,
+			dict(zip(("owner", "last_post_by", "closed_by", "pinned_by"), actors, strict=True)),
+		)
+		with patch.object(frappe.db, "sql", wraps=frappe.db.sql) as sql:
+			self.assertEqual(public_authors(actors), set(actors))
+		self.assertEqual(sql.call_count, 3)
 
 	def test_nothing_while_switched_off(self):
 		self.assertEqual(self.profiles([self.member_handle], on=False), [])

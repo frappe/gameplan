@@ -1,5 +1,5 @@
 import { computed, reactive, readonly, ref, watch } from 'vue'
-import { useCall } from 'frappe-ui'
+import { call, useCall } from 'frappe-ui'
 import router from '@/router'
 import { setCommunityOrder } from './communityOrder'
 import { loadPinnedSpaces } from './pinnedSpaces'
@@ -208,11 +208,8 @@ async function fetchPublicProfiles() {
   publicProfileTimer = null
   const handles = [...pendingHandles]
   pendingHandles.clear()
-  const params = new URLSearchParams({ handles: JSON.stringify(handles) })
   try {
-    const response = await fetch(`/api/v2/method/gameplan.api.get_public_user_info?${params}`)
-    if (!response.ok) return
-    const profiles: PublicProfile[] = (await response.json()).data || []
+    const profiles = await call<PublicProfile[]>('gameplan.api.get_public_user_info', { handles })
     for (const profile of profiles) {
       Object.assign(usersByName[profile.handle] ?? useUser(profile.handle), {
         full_name: profile.full_name,

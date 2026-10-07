@@ -41,62 +41,34 @@
     </HoverCard>
     <!-- One provider for the whole row: after the first tooltip opens, moving
          along the pills shows the next reactor list with no re-delay. -->
-    <template v-if="showTooltips">
-      <TooltipProvider>
-        <template v-for="(reactions, emoji) in reactionsCount" :key="emoji">
-          <Tooltip v-if="toolTipText(reactions)">
-            <button
-              class="flex items-center justify-center rounded-full px-2 py-1 text-sm transition"
-              :class="[
-                reactions.userReacted
-                  ? 'bg-surface-amber-2 text-amber-700 hover:bg-amber-200'
-                  : 'bg-surface-gray-2 text-ink-gray-6 hover:bg-surface-gray-3',
-              ]"
-              @click="toggleReaction(emoji)"
-            >
-              <img v-if="isImageEmoji(emoji)" :src="emoji" alt="" class="mr-1 size-4 object-contain" />
-              <template v-else>{{ emoji }}&nbsp;</template>
-              {{ reactions.count }}
-            </button>
-            <template #content>
-              <div class="max-w-[30ch] text-center text-p-xs">
-                {{ toolTipText(reactions) }}
-              </div>
-            </template>
-          </Tooltip>
-          <button
-            v-else
-            class="flex items-center justify-center rounded-full px-2 py-1 text-sm transition"
-            :class="[
-              reactions.userReacted
-                ? 'bg-surface-amber-2 text-amber-700 hover:bg-amber-200'
-                : 'bg-surface-gray-2 text-ink-gray-6 hover:bg-surface-gray-3',
-            ]"
-            @click="toggleReaction(emoji)"
-          >
-            <img v-if="isImageEmoji(emoji)" :src="emoji" alt="" class="mr-1 size-4 object-contain" />
-            <template v-else>{{ emoji }}&nbsp;</template>
-            {{ reactions.count }}
-          </button>
-        </template>
-      </TooltipProvider>
-    </template>
-    <template v-else>
-      <button
+    <TooltipProvider>
+      <Tooltip
         v-for="(reactions, emoji) in reactionsCount"
         :key="emoji"
-        class="flex cursor-default items-center justify-center rounded-full px-2 py-1 text-sm transition"
-        :class="[
-          reactions.userReacted
-            ? 'bg-surface-amber-2 text-amber-700'
-            : 'bg-surface-gray-2 text-ink-gray-6',
-        ]"
+        :disabled="!showTooltips || !toolTipText(reactions)"
       >
-        <img v-if="isImageEmoji(emoji)" :src="emoji" alt="" class="mr-1 size-4 object-contain" />
-        <template v-else>{{ emoji }}&nbsp;</template>
-        {{ reactions.count }}
-      </button>
-    </template>
+        <button
+          class="flex items-center justify-center rounded-full px-2 py-1 text-sm transition"
+          :class="{
+            'bg-surface-amber-2 text-amber-700': reactions.userReacted,
+            'bg-surface-gray-2 text-ink-gray-6': !reactions.userReacted,
+            'hover:bg-amber-200': showTooltips && reactions.userReacted,
+            'hover:bg-surface-gray-3': showTooltips && !reactions.userReacted,
+            'cursor-default': !showTooltips,
+          }"
+          @click="showTooltips && toggleReaction(emoji)"
+        >
+          <img v-if="isImageEmoji(emoji)" :src="emoji" alt="" class="mr-1 size-4 object-contain" />
+          <template v-else>{{ emoji }}&nbsp;</template>
+          {{ reactions.count }}
+        </button>
+        <template v-if="showTooltips" #content>
+          <div class="max-w-[30ch] text-center text-p-xs">
+            {{ toolTipText(reactions) }}
+          </div>
+        </template>
+      </Tooltip>
+    </TooltipProvider>
   </div>
 </template>
 <script setup lang="ts">
