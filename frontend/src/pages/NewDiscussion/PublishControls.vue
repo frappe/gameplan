@@ -17,14 +17,23 @@
         ref="menuHost"
         class="flex [&_[data-slot=group]]:!p-0 [&_[data-slot=item]]:!rounded-6 [&_[data-slot=item-list-row]]:!px-3 [&_[data-slot=item-list-row]]:!py-2"
       >
-        <Dropdown :options="options" align="end" :portal-to="menuHost ?? undefined">
+        <Dropdown
+          :options="options"
+          align="end"
+          :portal-to="menuHost ?? undefined"
+          :disabled="menuDisabled"
+        >
           <Button
             variant="solid"
             :size="size"
             class="rounded-l-none"
+            :class="{
+              '!bg-surface-gray-2 !text-ink-gray-4 hover:!bg-surface-gray-3':
+                blockedReason && !menuDisabled,
+            }"
             icon="lucide-chevron-down"
             label="More publish options"
-            :disabled="Boolean(blockedReason) || publishing || scheduling"
+            :disabled="menuDisabled"
           />
         </Dropdown>
       </div>
@@ -64,6 +73,10 @@ const blockedReason = computed(() => {
   return ''
 })
 
+const menuDisabled = computed(
+  () => isDraftLoading.value || !isComposerEditable.value || publishing.value || scheduling.value,
+)
+
 const menuHost = ref<HTMLElement | null>(null)
 const showSchedule = ref(false)
 const openSchedule = () => (showSchedule.value = true)
@@ -71,10 +84,22 @@ const openSchedule = () => (showSchedule.value = true)
 const options = computed(() => {
   const items = scheduledAt.value
     ? [
-        { label: 'Reschedule', icon: 'lucide-calendar-clock', onClick: openSchedule },
+        {
+          label: 'Reschedule',
+          icon: 'lucide-calendar-clock',
+          onClick: openSchedule,
+          disabled: !canPublish.value,
+        },
         { label: 'Cancel schedule', icon: 'lucide-calendar-x', onClick: unscheduleDraft },
       ]
-    : [{ label: 'Schedule for later', icon: 'lucide-calendar-clock', onClick: openSchedule }]
+    : [
+        {
+          label: 'Schedule for later',
+          icon: 'lucide-calendar-clock',
+          onClick: openSchedule,
+          disabled: !canPublish.value,
+        },
+      ]
 
   if (author.value?.name === sessionUser.name) {
     items.push({ label: 'Delete draft', icon: 'lucide-trash-2', onClick: deleteDraft })
