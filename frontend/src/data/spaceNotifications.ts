@@ -45,24 +45,23 @@ async function apply(projects: (string | number)[], on: boolean, message: string
     inFlight.add(project)
     requested.set(project, on)
   })
-  try {
-    await Promise.all(
-      changing.map((project) => {
-        const row = subscriptionByProject.value.get(project)
-        return on
-          ? spaceSubscriptions.insert.submit({ project })
-          : row && spaceSubscriptions.delete.submit({ name: row.name })
-      }),
-    )
-    toast.success(message, { id: toggleToastId })
-  } catch {
-    await spaceSubscriptions.reload()
-    changing.forEach((project) => requested.delete(project))
+  const results = await Promise.allSettled(
+    changing.map((project) => {
+      const row = subscriptionByProject.value.get(project)
+      return on
+        ? spaceSubscriptions.insert.submit({ project })
+        : row && spaceSubscriptions.delete.submit({ name: row.name })
+    }),
+  )
+  if (results.some((result) => result.status === 'rejected')) {
     toast.error('Could not update space notifications', { id: toggleToastId })
-  } finally {
-    changing.forEach((project) => inFlight.delete(project))
-    settle()
+    await spaceSubscriptions.reload().catch(() => {})
+    changing.forEach((project) => requested.delete(project))
+  } else {
+    toast.success(message, { id: toggleToastId })
   }
+  changing.forEach((project) => inFlight.delete(project))
+  settle()
 }
 
 export function toggleSpaceNotifications(project: string | number) {
