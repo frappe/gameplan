@@ -39,7 +39,6 @@ export function useNewDiscussion() {
 
   // The canonical composer route carries the community; the legacy route does not.
   const communityId = computed(() => optionalParam(route.params.communityId))
-  const isScoped = computed(() => Boolean(communityId.value))
 
   const errorMessage = ref<string | null>(null)
   const publishError = ref<string | null>(null)
@@ -129,15 +128,10 @@ export function useNewDiscussion() {
     { immediate: true },
   )
 
-  // In scoped mode the picker only offers spaces from the route's community; the
-  // legacy route keeps the full grouped list. `canPostInSpace` is the same predicate the
-  // space dialog filters on, so the composer cannot offer a space the dialog would not:
-  // it also rules out read-only mode and guests, who may comment but never start a
-  // discussion anywhere.
-  const spaceOptions = useGroupedSpaceOptions({
-    filterFn: (space) =>
-      canPostInSpace(space) && (!isScoped.value || space.team === communityId.value),
-  })
+  // `canPostInSpace` is the same predicate the space dialog filters on, so the composer
+  // cannot offer a space the dialog would not: it also rules out read-only mode and guests,
+  // who may comment but never start a discussion anywhere.
+  const spaceOptions = useGroupedSpaceOptions({ filterFn: canPostInSpace })
 
   // Typing the composer URL is the one way into it without going through the dialog, so
   // this is where a user with nothing to pick lands. An empty picker says nothing; the
@@ -181,14 +175,14 @@ export function useNewDiscussion() {
     if (!normalizeDraftRoute()) syncSelectedSpaceToRoute(draftData.value?.project)
   }
 
-  // A draft opened on the legacy route that already belongs to a space is moved onto the
-  // canonical scoped route. Drafts with no resolvable community stay on the legacy route.
+  // A draft whose space belongs to another community than the route's — opened on the
+  // legacy route, or moved to a space elsewhere — is moved onto that community's route.
+  // Drafts with no resolvable community stay where they are.
   function normalizeDraftRoute() {
-    if (isScoped.value) return false
     const project = draftData.value?.project
     if (!project) return false
     const targetCommunityId = getSpace(project)?.team
-    if (!targetCommunityId) return false
+    if (!targetCommunityId || targetCommunityId === communityId.value) return false
     router.replace({
       name: 'NewDiscussion',
       params: { communityId: targetCommunityId },
