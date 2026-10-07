@@ -114,6 +114,10 @@ export function useNewDiscussion() {
     },
   })
 
+  const canPublish = computed(() =>
+    Boolean(draftData.value?.project && draftData.value?.title?.trim()),
+  )
+
   // Keep fast IndexedDB/server restores visually quiet, but expose a real status when a
   // request is slow enough that the temporarily disabled composer needs explanation.
   watch(
@@ -428,6 +432,7 @@ export function useNewDiscussion() {
     // Data
     draftData,
     selectedSpace,
+    canPublish,
     isPersisted,
     publishError,
     errorMessage,

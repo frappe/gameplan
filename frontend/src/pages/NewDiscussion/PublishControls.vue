@@ -1,16 +1,13 @@
 <template>
   <div class="flex items-center gap-2">
     <div class="flex items-center">
-      <Tooltip
-        :text="isDraftLoading ? 'Draft is loading' : 'You cannot publish this draft'"
-        :disabled="isComposerEditable"
-      >
+      <Tooltip :text="blockedReason">
         <Button
           variant="solid"
           :size="size"
           class="rounded-r-none"
           :loading="publishing"
-          :disabled="!isComposerEditable || scheduling"
+          :disabled="Boolean(blockedReason) || scheduling"
           @click="publish"
         >
           Publish
@@ -27,7 +24,7 @@
             class="rounded-l-none"
             icon="lucide-chevron-down"
             label="More publish options"
-            :disabled="!isComposerEditable || publishing || scheduling"
+            :disabled="Boolean(blockedReason) || publishing || scheduling"
           />
         </Dropdown>
       </div>
@@ -57,7 +54,15 @@ const {
   sessionUser,
   author,
   deleteDraft,
+  canPublish,
 } = useNewDiscussionContext()
+
+const blockedReason = computed(() => {
+  if (isDraftLoading.value) return 'Draft is loading'
+  if (!isComposerEditable.value) return 'You cannot publish this draft'
+  if (!canPublish.value) return 'Add a title and pick a space to publish'
+  return ''
+})
 
 const menuHost = ref<HTMLElement | null>(null)
 const showSchedule = ref(false)
