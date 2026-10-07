@@ -148,41 +148,42 @@ const badgeStyle = computed<'count' | 'dot'>(() =>
 )
 
 const shortcuts = computed<RailShortcut[]>(() => {
-  if (isAnonymousVisitor()) return []
-  return [
-  {
+  const search: RailShortcut = {
     label: 'Search',
     icon: 'lucide-search',
     isActive: isRoute('Search'),
     route: { name: 'Search' },
-  },
-  {
-    label: 'People',
-    icon: 'lucide-users-2',
-    isActive: isRoute(
-      'People',
-      'PersonProfile',
-      'PersonProfileProfile',
-      'PersonProfilePosts',
-      'PersonProfileReplies',
-    ),
-    route: { name: 'People' },
-    description: countLabel(memberCount.value, 'member'),
-  },
-  {
-    label: 'Notifications',
-    icon: 'lucide-bell',
-    isActive: isRoute('Notifications'),
-    route: { name: 'Notifications' },
-    unreadCount: unreadNotifications.data || 0,
-  },
-  {
-    label: 'Drafts',
-    icon: 'lucide-pencil-line',
-    isActive: isRoute('Drafts'),
-    route: { name: 'Drafts' },
-    description: countLabel(draftCount.value, 'draft'),
-  },
+  }
+  if (isAnonymousVisitor()) return [search]
+  return [
+    search,
+    {
+      label: 'People',
+      icon: 'lucide-users-2',
+      isActive: isRoute(
+        'People',
+        'PersonProfile',
+        'PersonProfileProfile',
+        'PersonProfilePosts',
+        'PersonProfileReplies',
+      ),
+      route: { name: 'People' },
+      description: countLabel(memberCount.value, 'member'),
+    },
+    {
+      label: 'Notifications',
+      icon: 'lucide-bell',
+      isActive: isRoute('Notifications'),
+      route: { name: 'Notifications' },
+      unreadCount: unreadNotifications.data || 0,
+    },
+    {
+      label: 'Drafts',
+      icon: 'lucide-pencil-line',
+      isActive: isRoute('Drafts'),
+      route: { name: 'Drafts' },
+      description: countLabel(draftCount.value, 'draft'),
+    },
   ]
 })
 

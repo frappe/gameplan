@@ -374,28 +374,25 @@ def onboarding(community, space, icon, emails, visibility=VISIBILITY_GENERAL):
 	return {"team": team.name, "space": project.name}
 
 
-@frappe.whitelist()
-def search_sqlite(query, filters=None):
+@frappe.whitelist(allow_guest=True, methods=["GET", "POST"])
+@validate_type
+def search_sqlite(query: str, filters: dict | str | None = None):
+	from gameplan.public_search import PublicGameplanSearch, validate_search_filters
 	from gameplan.search_sqlite import GameplanSearch
 
-	search = GameplanSearch()
-
-	# Parse filters if provided as JSON string
-	if filters and isinstance(filters, str):
-		import json
-
-		filters = json.loads(filters)
-
-	result = search.search(query, filters=filters)
-	return result
+	anonymous = gameplan.is_anonymous()
+	search = PublicGameplanSearch() if anonymous else GameplanSearch()
+	filters = validate_search_filters(filters, anonymous=anonymous)
+	return search.search(query, filters=filters)
 
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True, methods=["GET", "POST"])
 def get_search_filter_options():
 	"""Get available filter options for advanced search"""
+	from gameplan.public_search import PublicGameplanSearch
 	from gameplan.search_sqlite import GameplanSearch
 
-	search = GameplanSearch()
+	search = PublicGameplanSearch() if gameplan.is_anonymous() else GameplanSearch()
 	return search.get_filter_options()
 
 

@@ -66,6 +66,32 @@ Test direct URLs as well as the sidebar. Restore each change before the next cas
 11. Remove Chloe's Community admin flag. Verify that management actions disappear for its General and Anonymous Spaces. Restore the flag.
 12. Invite a new Gameplan Guest. Verify that accepting an invitation does not grant sibling Spaces or management rights.
 
+## Anonymous search
+
+Open `/g/search?q=combat` in an incognito window on the seeded manual site.
+The Search page uses the existing Gameplan layout. Desktop visitors can use the rail.
+Mobile visitors can use the Search button beside Log in.
+
+1. Search for `combat`. Open the public discussion result.
+2. Search for a phrase from a public reply. Open its discussion at that reply.
+3. Select a public Space or Community filter. Verify that the results narrow to that selection.
+4. Open the Type filter. Verify that it lists only Discussion and Comment.
+5. Verify that Author, Tags, Tasks, Pages, and search feedback controls are absent.
+6. Check result authors. Names and profile handles are allowed, but account emails must not appear in response metadata.
+7. Change a matching Space to General as Maya. Reload Search in incognito. Verify that its results disappear immediately.
+8. Restore Anonymous. Change its Community to General. Verify that the Space's results disappear again.
+9. Restore the Community. Move a matching discussion to Engineering. Verify that its discussion and reply results disappear.
+10. Restore the discussion. Archive its Space. Verify that its search results disappear, then restore the Space.
+11. Sign in as Priya. Verify that Search still includes content from authorized non-public Spaces.
+12. Sign in as Felix. Verify that non-public results require his explicit Space grants.
+
+Anonymous search uses the existing SQLite FTS index. It returns at most 50 results.
+Queries allow at most 200 characters and 12 words. Each filter allows at most 20 values.
+Each IP address can make 30 search requests per minute. Signed-in users keep their existing search behavior.
+Result checks use batched live queries, not one query per result. Public filters do not scan the index for counts.
+Anonymous search has no spelling suggestions because the shared vocabulary includes private content.
+Public search results are not stored in the browser for later reuse.
+
 ## Automated checks
 
 Run the seed permission tests on a disposable site, not the manual test site:
@@ -73,6 +99,7 @@ Run the seed permission tests on a disposable site, not the manual test site:
 ```sh
 bench --site gp-suite.test run-tests --app gameplan --module gameplan.tests.platform.test_demo_permissions
 bench --site gp-suite.test run-tests --app gameplan --module gameplan.tests.platform.test_demo_fixture
+bench --site gp-suite.test run-tests --app gameplan --module gameplan.tests.permissions.test_public_search
 ```
 
 The tests check the nine active tier combinations, role boundaries, archives, grant and membership revocation, moves, and public-access switches.

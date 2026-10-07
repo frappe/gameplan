@@ -222,7 +222,9 @@ class TestSearchFilterOptionsEndpoint(IsolatedSearchIndex, APIEndpointTestCase):
 		self.assertNotIn(hidden_tag, result["tags"])
 
 	def test_anonymous_caller_is_denied(self):
-		self.assert_anonymous_denied(get_search_filter_options)
+		with self.as_user("Guest"), patch.dict(frappe.conf, gameplan_public_access_enabled=0):
+			with self.assertRaises(frappe.PermissionError):
+				get_search_filter_options()
 
 
 class TestCanAccessGameplan(APIEndpointTestCase):
@@ -443,7 +445,9 @@ class TestSearchEndpoint(IsolatedSearchIndex, APIEndpointTestCase):
 		)
 
 	def test_anonymous_caller_is_denied(self):
-		self.assert_anonymous_denied(search_sqlite)
+		with self.as_user("Guest"), patch.dict(frappe.conf, gameplan_public_access_enabled=0):
+			with self.assertRaises(frappe.PermissionError):
+				search_sqlite("apisearchneedle")
 
 
 class TestLogClientErrorEndpoint(APIEndpointTestCase):

@@ -189,6 +189,8 @@ def refuse_generic_routes_for_anonymous():
 # from disk. A thread page makes about four of these calls; the limits leave room for a
 # person reading quickly, not for a scraper. Signed-in users are never limited here.
 ANONYMOUS_RATE_LIMITS = {
+	"gameplan.api.search_sqlite": 30,
+	"gameplan.api.get_search_filter_options": 30,
 	"gameplan.gameplan.doctype.gp_discussion.api.get_discussions": 60,
 	"gameplan.extends.client.get_list": 120,
 	"gameplan.public_lists.communities": 60,

@@ -47,6 +47,8 @@ ANONYMOUS_RIGHTS = frozenset({"read", "select"})
 
 # Every whitelisted endpoint a request with nobody signed in can reach, and why.
 GUEST_REACHABLE_ENDPOINTS = {
+	"gameplan.api.search_sqlite": "public discussions and comments only, with live guards and safe metadata",
+	"gameplan.api.get_search_filter_options": "public space/community facets only, without authors or counts",
 	"gameplan.api.get_user_info": "throws AuthenticationError for an anonymous caller first",
 	"gameplan.api.accept_invitation": "invitation email link, opened by a plain browser navigation",
 	"gameplan.email_digest.open_digest_preferences": "digest email link; signs the user in",
@@ -202,10 +204,9 @@ class TestDefaultsStayInvisible(GameplanTestCase):
 				with self.subTest(switch=switch_on, endpoint="get_discussions"):
 					self.assertNotIn(self.discussion.name, [row.name for row in get_discussions(limit=50)])
 
-	def test_search_still_requires_a_signed_in_user(self):
-		# Search reads its own index and never asks the role layer, and its index holds
-		# tasks and pages too, so the whitelist decorator is what refuses an anonymous request.
-		with self.as_user(ANONYMOUS):
-			for endpoint in (api.search_sqlite, command_palette.search_sqlite):
-				with self.assertRaises(frappe.PermissionError, msg=endpoint.__qualname__):
-					frappe.is_whitelisted(endpoint)
+	def test_public_search_does_not_open_the_member_command_palette(self):
+		with self.as_user(ANONYMOUS), patch.dict(frappe.conf, {PUBLIC_ACCESS_CONFIG_KEY: 1}):
+			frappe.is_whitelisted(api.search_sqlite)
+			self.assertEqual(api.search_sqlite("Default Discussion")["results"], [])
+			with self.assertRaises(frappe.PermissionError):
+				frappe.is_whitelisted(command_palette.search_sqlite)

@@ -245,6 +245,7 @@ const routes: RouteRecordRaw[] = [
     path: '/search',
     name: 'Search',
     component: () => import('@/pages/Search.vue'),
+    meta: { public: true },
   },
   {
     path: '/onboarding',

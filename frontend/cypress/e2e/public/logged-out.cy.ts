@@ -21,7 +21,7 @@ describe('Public spaces, logged out', () => {
   })
 
   function threadPath() {
-    return `/g/community/${ids.community}/space/${ids.space}/discussion/${ids.discussion}`
+    return `/g/community/${ids.community}/space/${ids.space}/discussion/${ids.discussion}/${ids.discussion_slug}`
   }
 
   function expectLoginRedirect(path: string) {
@@ -89,8 +89,8 @@ describe('Public spaces, logged out', () => {
     // Rail contains the public community listing item
     cy.get('button[aria-label="Open Source"]').should('be.visible')
 
-    // Rail hides member-only shortcuts
-    cy.contains('Search').should('not.exist')
+    // Search is public; member-only shortcuts stay hidden.
+    cy.get('button[aria-label="Search"]').should('be.visible')
     cy.contains('Notifications').should('not.exist')
     cy.contains('Drafts').should('not.exist')
 
