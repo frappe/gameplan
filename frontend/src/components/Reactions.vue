@@ -4,11 +4,7 @@
     :toggleReaction="toggleReaction"
     :toolTipText="toolTipText"
     :standardEmojis="standardEmojis"
-    :isLoading="isLoading"
   />
-  <div class="mt-2 space-y-2" v-if="batchRequestErrors.length">
-    <ErrorMessage v-for="error in batchRequestErrors" :message="error" />
-  </div>
 </template>
 <script setup>
 import { defineAsyncComponent, computed } from 'vue'
@@ -28,14 +24,7 @@ const ReactionsUI = computed(() => {
 const props = defineProps(['reactions', 'doctype', 'name', 'readOnlyMode'])
 const emit = defineEmits(['update:reactions'])
 
-const {
-  reactionsCount,
-  toggleReaction,
-  toolTipText,
-  standardEmojis,
-  batchRequestErrors,
-  isLoading,
-} = useReactions({
+const { reactionsCount, toggleReaction, toolTipText, standardEmojis } = useReactions({
   reactions: () => props.reactions,
   doctype: () => props.doctype,
   name: () => props.name,
