@@ -81,12 +81,31 @@ describe('Comment actions', () => {
         cy.contains('button', /💖\s*1/).should('not.exist')
 
         // edit the comment, mentioning the community's other member
+        // Delay commit_draft to verify that comment options (including Delete) remain
+        // unavailable while finalizing the draft, preventing concurrent deletion lock races.
+        cy.intercept({
+          method: 'POST',
+          url: /api\/v2\/document\/GP%20Draft|api\/v2\/document\/GP Draft/,
+        }).as('createDraft')
+        cy.intercept(/commit_draft/, (request) => {
+          request.continue((response) => response.setDelay(2000))
+        }).as('commitDraft')
         cy.selectDropdownOption('Comment Options', 'Edit')
+        cy.get('button[aria-label="Comment Options"]').should('not.exist')
         cy.get('[contenteditable=true]')
           .clear()
           .type('This is an edited comment')
           .type('{enter}@Second{enter}', { delay: 100 }) // mention Second Member
+
+        // Wait for draft auto-save to persist to server so a server-side GP Draft exists
+        cy.wait('@createDraft')
+
         cy.button('Submit').click()
+
+        // Regression check: options must remain unavailable while commit_draft is in flight
+        cy.get('button[aria-label="Comment Options"]').should('not.exist')
+        cy.wait('@commitDraft')
+        cy.get('button[aria-label="Comment Options"]').should('be.visible')
         cy.get(commentSelector).contains('This is an edited comment').should('exist')
         cy.get(commentSelector).contains('Edited').should('exist')
         cy.get(`${commentSelector} [data-type="mention"][data-id="member2@example.com"]`).should(
