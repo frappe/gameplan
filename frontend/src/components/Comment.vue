@@ -228,7 +228,7 @@ const dropdownOptions = computed(() => [
     label: 'Revisions',
     icon: 'lucide-rotate-ccw',
     onClick: () => (showRevisionsDialog.value = true),
-    condition: () => Boolean(props.comment.edited_at),
+    condition: () => !props.readOnlyMode && !isAnonymousVisitor() && Boolean(props.comment.edited_at),
   },
   {
     label: 'Copy link',

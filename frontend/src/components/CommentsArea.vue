@@ -77,6 +77,10 @@
       </template>
     </div>
 
+    <div v-if="readOnlyMode && isAnonymousVisitor()" class="mb-20">
+      <PublicJoinPrompt :title="disableNewComment ? 'Follow this community' : 'Join the conversation'" />
+    </div>
+
     <!-- In an installed PWA the collapsed button clears the home indicator: the 1rem
          the bottom nav uses on other pages, or the safe-area inset where that is larger. -->
     <div
@@ -286,6 +290,8 @@ import type { Space } from '@/data/spaces'
 import { extractServerMessage } from '@/utils'
 import { useIsMobile } from '@/utils/useIsMobile'
 import { needsMobileCommentGap } from '@/utils/commentTimeline'
+import { isAnonymousVisitor, publicListUrl } from '@/utils/publicAccess'
+import PublicJoinPrompt from '@/components/Public/PublicJoinPrompt.vue'
 
 interface Props {
   doctype: string
@@ -369,6 +375,7 @@ const draft = useDraftSync({
     referenceDoctype: props.doctype,
     referenceName: props.name,
   }),
+  enabled: () => !props.readOnlyMode && !isAnonymousVisitor(),
   initialPayload: () => ({ content: '' }),
 })
 const draftData = draft.data
@@ -400,6 +407,7 @@ const composerStorageKey = computed(() => {
 
 const comments = useList<GPComment>({
   doctype: 'GP Comment',
+  url: publicListUrl('GP Comment'),
   cacheKey: ['Comments', props.doctype, props.name],
   fields: [
     'name',
@@ -436,6 +444,7 @@ const comments = useList<GPComment>({
 
 const activities = useList<GPActivity>({
   doctype: 'GP Activity',
+  immediate: !isAnonymousVisitor(),
   fields: ['name', 'user', 'action', 'data', 'creation'],
   filters: {
     reference_doctype: props.doctype,
@@ -461,12 +470,13 @@ const activities = useList<GPActivity>({
 watch(
   () => props.activityVersion,
   (next, prev) => {
-    if (prev !== undefined && next !== prev) activities.reload()
+    if (prev !== undefined && next !== prev && !isAnonymousVisitor()) activities.reload()
   },
 )
 
 const polls = useList<GPPoll>({
   doctype: 'GP Poll',
+  url: publicListUrl('GP Poll'),
   fields: [
     'name',
     'title',
@@ -888,6 +898,7 @@ onMounted(() => {
   })
   unsubscribeFromDoc = subscribeToDoc(props.doctype, String(props.name))
   socket.on('new_activity', (data: NewActivityEvent) => {
+    if (isAnonymousVisitor()) return
     // The payload stringifies the id (activity.py) but doctypes that autoname to an
     // integer hand this component a number, so a strict compare never matches and the
     // timeline silently stops updating. Compare as strings.

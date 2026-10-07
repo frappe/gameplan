@@ -2,8 +2,7 @@
   <FrappeUIProvider>
     <div class="relative isolate h-full overflow-hidden">
       <router-view v-if="['Onboarding', 'Login'].includes($route.name)" />
-      <PublicLayout v-else-if="!$session.isLoggedIn && isPublicVisitor()" />
-      <Layout v-else-if="$session.isLoggedIn">
+      <Layout v-else-if="$session.isLoggedIn || isPublicVisitor()">
         <!-- While on a /settings/* URL, keep rendering the page the dialog was
              opened over (displayedRoute) so it stays visible behind the overlay. -->
         <router-view :route="displayedRoute" />
@@ -32,7 +31,6 @@ import SettingsDialog from './components/Settings/SettingsDialog.vue'
 import { settingsBackgroundPath } from './components/Settings'
 import { getHomeRoute } from '@/router'
 import { isPublicVisitor } from '@/utils/publicAccess'
-const PublicLayout = defineAsyncComponent(() => import('./components/Public/PublicLayout.vue'))
 
 const isMobileViewport = useIsMobile()
 const route = useRoute()

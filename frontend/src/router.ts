@@ -133,7 +133,10 @@ const routes: RouteRecordRaw[] = [
     path: '/community/:communityId/discussions',
     component: () => import('@/pages/Discussions.vue'),
     props: true,
-    meta: { communityScope: true },
+    // Signed-out visitors get a read-only community forum here. The resolver still
+    // requires the community to be in the public list, and its feed is restricted to
+    // Anonymous spaces by the server.
+    meta: { communityScope: true, public: true },
   },
   {
     name: 'DiscussionsTab',

@@ -9,7 +9,10 @@
 
     <!-- App-wide destinations sit directly under the logo, so their position never
          shifts with how many communities you belong to. -->
-    <div class="flex w-full shrink-0 flex-col items-center gap-0.5 border-t pt-3">
+    <div
+      v-if="shortcuts.length"
+      class="flex w-full shrink-0 flex-col items-center gap-0.5 border-t pt-3"
+    >
       <SidebarRailItem
         v-for="item in shortcuts"
         :key="item.label"
@@ -74,13 +77,24 @@
           :class="open ? '' : 'hover:opacity-90'"
           aria-label="Account menu"
         >
-          <UserAvatar v-if="sessionUser.name" :user="sessionUser.name" size="md" class="size-7" />
+          <UserAvatar
+            v-if="sessionUser.name && !isAnonymousVisitor()"
+            :user="sessionUser.name"
+            size="md"
+            class="size-7"
+          />
+          <div
+            v-else
+            class="flex size-7 items-center justify-center rounded-full bg-surface-gray-2 text-ink-gray-6 transition hover:bg-surface-gray-3 hover:text-ink-gray-8"
+          >
+            <span class="lucide-user size-4" />
+          </div>
         </button>
       </template>
     </UserDropdown>
   </SidebarRail>
 
-  <CustomizeSidebarDialog v-model="showCustomizeSidebarDialog" />
+  <CustomizeSidebarDialog v-if="!isAnonymousVisitor()" v-model="showCustomizeSidebarDialog" />
 </template>
 
 <script setup lang="ts">
@@ -103,6 +117,7 @@ import CustomizeSidebarDialog from './CustomizeSidebarDialog.vue'
 import { showCustomizeSidebarDialog } from './customizeSidebar'
 import UserAvatar from '../UserAvatar.vue'
 import UserDropdown from '../UserDropdown.vue'
+import { isAnonymousVisitor } from '@/utils/publicAccess'
 
 interface RailShortcut {
   label: string
@@ -132,7 +147,9 @@ const badgeStyle = computed<'count' | 'dot'>(() =>
   currentSidebarBadgeStyle.value === 'Dot' ? 'dot' : 'count',
 )
 
-const shortcuts = computed<RailShortcut[]>(() => [
+const shortcuts = computed<RailShortcut[]>(() => {
+  if (isAnonymousVisitor()) return []
+  return [
   {
     label: 'Search',
     icon: 'lucide-search',
@@ -166,7 +183,8 @@ const shortcuts = computed<RailShortcut[]>(() => [
     route: { name: 'Drafts' },
     description: countLabel(draftCount.value, 'draft'),
   },
-])
+  ]
+})
 
 /** "3 drafts", "1 draft", or nothing at all when there is no count worth showing. */
 function countLabel(count: number, noun: string) {
@@ -190,6 +208,7 @@ function isActiveCommunity(communityName: string) {
 // Sum unread counts per community once per spaces/unread change, instead of
 // re-scanning every space for each community on every render.
 const unreadByCommunity = computed(() => {
+  if (isAnonymousVisitor()) return {}
   const totals: Record<string, number> = {}
   for (const space of spaces.data || []) {
     if (space.archived_at || !space.team) continue

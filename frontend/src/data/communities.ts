@@ -4,7 +4,7 @@ import { GPTeam, GPMember } from '@/types/doctypes'
 import { communityOrder } from './communityOrder'
 import { useSessionUser } from './users'
 import { isMemberAccess } from '@/utils/visibility'
-import { publicListUrl } from '@/utils/publicAccess'
+import { isAnonymousVisitor, publicListUrl } from '@/utils/publicAccess'
 
 export interface CommunityMember extends Pick<GPMember, 'user' | 'is_admin'> {
   user: string
@@ -114,6 +114,7 @@ export function confirmLeaveCommunity(community: Community) {
 }
 
 export function isCommunityJoined(community: Community) {
+  if (isAnonymousVisitor()) return true
   let user = getSessionUserFromCookie()
   if (!user) return false
   // Guests never become community members; the backend only returns communities that

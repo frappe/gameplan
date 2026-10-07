@@ -13,6 +13,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useSessionUser, useUser } from '@/data/users'
+import { isAnonymousVisitor } from '@/utils/publicAccess'
 
 const props = defineProps<{
   user: string | null | undefined
@@ -23,6 +24,6 @@ const userProfileName = computed(() => {
 })
 
 const canVisitProfile = computed(() => {
-  return userProfileName.value && useSessionUser().isNotGuest
+  return Boolean(userProfileName.value && !isAnonymousVisitor() && useSessionUser().isNotGuest)
 })
 </script>

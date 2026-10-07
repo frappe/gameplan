@@ -16,7 +16,6 @@
                 {{ accessLabel }}
               </Badge>
               <Button
-                v-if="canChangeVisibility"
                 label="Change visibility"
                 @click="showVisibilityDialog = true"
               >

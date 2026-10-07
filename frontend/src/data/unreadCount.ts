@@ -54,6 +54,7 @@ function queued<T>(api: object, submit: () => Promise<T>): Promise<T> {
 }
 
 function loadProjectUnreadCounts(projects?: string[]) {
+  if (isAnonymousVisitor()) return Promise.resolve({})
   return queued(unreadCountApi, () =>
     unreadCountApi.runMethod
       .submit({
@@ -99,6 +100,7 @@ export function getProjectUnreadCount(spaceId: string) {
  * end up displaying whichever count answered last.
  */
 export function fetchParticipatingUnreadCount(team: string) {
+  if (isAnonymousVisitor()) return Promise.resolve(0)
   return queued(participatingCountApi, () =>
     participatingCountApi.runMethod
       .submit({ method: 'get_participating_unread_count', params: { team } })
@@ -119,6 +121,7 @@ export function getParticipatingUnreadCount(team: string) {
  *   before that day. Omit to mark every unread discussion read.
  */
 export function markCommunityAsRead(team: string, before?: string) {
+  if (isAnonymousVisitor()) return Promise.resolve()
   return markReadApi.runMethod
     .submit({ method: 'mark_all_as_read_for_team', params: { team, before } })
     .then(() => {
@@ -135,6 +138,7 @@ export function markCommunityAsRead(team: string, before?: string) {
 const Project = useDoctype<GPProject>('GP Project')
 
 export function markSpaceAsRead(spaceId: string) {
+  if (isAnonymousVisitor()) return Promise.resolve()
   return Project.runMethod
     .submit({
       method: 'mark_all_as_read',
@@ -146,6 +150,7 @@ export function markSpaceAsRead(spaceId: string) {
 }
 
 export function markSpacesAsRead(spaceIds: string[]) {
+  if (isAnonymousVisitor()) return Promise.resolve()
   return Project.runMethod
     .submit({
       method: 'mark_all_as_read',
@@ -170,6 +175,7 @@ export function refreshUnreadCountForProjects(projects: string[]) {
 onSocketEvent(
   'gameplan:unread_counts_changed',
   useDebounceFn(() => {
+    if (isAnonymousVisitor()) return
     // Nothing awaits these; swallow failures so a dropped request doesn't surface as an
     // unhandled rejection. The next signal (or a page load) refetches anyway.
     Promise.allSettled([

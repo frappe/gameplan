@@ -379,6 +379,7 @@ import { useSessionUser } from '@/data/users'
 import { canDeleteContent, canEditContent, canMoveOrPinContent } from '@/utils/permissions'
 import { useCommandPaletteCommands } from './CommandPalette/registry'
 import { useOwnedRouteWrites } from '@/composables/useOwnedRouteWrites'
+import { isAnonymousVisitor } from '@/utils/publicAccess'
 
 const props = defineProps<{
   postId: string
@@ -617,7 +618,7 @@ async function scrollToUnread() {
     }
   }
 
-  if (route.name === 'Discussion' && route.params.postId === doc?.name) {
+  if (!props.readOnlyMode && !isAnonymousVisitor() && route.name === 'Discussion' && route.params.postId === doc?.name) {
     discussion.trackVisit.submit().then(() => {
       refreshUnreadCountForProjects([doc.project])
     })

@@ -9,6 +9,7 @@ import {
   type SpaceSidebarSort,
 } from './sidebarPreferences'
 import type { Space } from './spaces'
+import { isAnonymousVisitor } from '@/utils/publicAccess'
 
 const INACTIVE_SPACE_MONTHS = 2
 
@@ -16,7 +17,7 @@ const spaceActivity = useCall<Record<string, string | null>>({
   url: '/api/v2/method/GP Project/get_activity',
   cacheKey: 'spaceActivity',
   initialData: {},
-  immediate: true,
+  immediate: !isAnonymousVisitor(),
 })
 
 const availableCommunitySpaceList = computed(() => {

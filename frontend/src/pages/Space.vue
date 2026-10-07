@@ -6,6 +6,7 @@
       :title="space?.title || 'Space'"
     >
       <button
+        v-if="!publicVisitor"
         type="button"
         class="inline-flex max-w-full items-center gap-1 transition active:opacity-60"
         @click="menuOpen = true"
@@ -22,12 +23,17 @@
         />
         <span class="size-4 shrink-0 text-ink-gray-5 lucide-chevron-down" aria-hidden="true" />
       </button>
+      <PageHeaderMobileTitle v-else :title="space?.title || 'Space'">
+        <template #prefix>
+          <SpaceIcon :icon="space?.icon" class="size-5 text-ink-gray-6" />
+        </template>
+      </PageHeaderMobileTitle>
       <template #prefix>
         <PageHeaderBackButton :to="{ name: 'Discussions', params: { communityId } }" />
       </template>
       <template #suffix>
         <Button
-          v-if="route.name === 'SpaceDiscussions' && canStartDiscussion"
+          v-if="!publicVisitor && route.name === 'SpaceDiscussions' && canStartDiscussion"
           variant="ghost"
           size="md"
           icon="lucide-plus"
@@ -40,7 +46,7 @@
         />
       </template>
     </PageHeaderMobile>
-    <BottomSheet v-model:open="menuOpen" :title="community?.title || 'Community'">
+    <BottomSheet v-if="!publicVisitor" v-model:open="menuOpen" :title="community?.title || 'Community'">
       <CommunityMenu
         class="pb-6"
         :communityId="communityId"
@@ -87,6 +93,7 @@ import SpaceIcon from '@/components/SpaceIcon.vue'
 import { isSpacePinned } from '@/data/pinnedSpaces'
 import { useCommunity } from '@/data/communities'
 import { useOwnedRouteWrites } from '@/composables/useOwnedRouteWrites'
+import { isPublicVisitor } from '@/utils/publicAccess'
 
 const props = defineProps<{
   communityId: string
@@ -103,6 +110,7 @@ const space = useSpace(() => props.spaceId)
 // The mobile twin of the "Add new" button in SpaceDiscussions, so it asks the same
 // question: who may start a discussion here, not who may edit the space.
 const canStartDiscussion = computed(() => canPostInSpace(space.value))
+const publicVisitor = computed(() => isPublicVisitor())
 
 // This page also renders behind the settings overlay, where the URL belongs to /settings/*
 // and healing it from here would navigate the app off the settings route, closing the dialog.
@@ -131,6 +139,6 @@ function routeParam(value: string | string[] | undefined) {
 }
 
 onMounted(() => {
-  trackSpaceVisit(props.spaceId)
+  if (!publicVisitor.value) trackSpaceVisit(props.spaceId)
 })
 </script>

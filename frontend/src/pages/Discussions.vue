@@ -13,7 +13,7 @@
     </button>
   </PageHeaderMobile>
 
-  <BottomSheet v-model:open="menuOpen" :title="community?.title || 'Community'">
+  <BottomSheet v-if="!publicVisitor" v-model:open="menuOpen" :title="community?.title || 'Community'">
     <CommunityMenu
       class="pb-6"
       :communityId="communityId"
@@ -27,6 +27,7 @@
     </div>
     <div class="flex items-center gap-2">
       <Button
+        v-if="!publicVisitor"
         variant="solid"
         icon-left="lucide-plus"
         :route="{ name: 'NewDiscussion', params: { communityId } }"
@@ -36,10 +37,10 @@
     </div>
   </PageHeader>
   <div class="body-container pt-5 pb-40">
-    <LastPostReminder class="mb-3" />
+    <LastPostReminder v-if="!publicVisitor" class="mb-3" />
 
     <div class="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <TabButtons :options="feedTabs" v-model="currentFeed" size="sm">
+      <TabButtons v-if="!publicVisitor" :options="feedTabs" v-model="currentFeed" size="sm">
         <template #suffix="{ button }">
           <span
             v-if="feedUnreadCount(String(button.value)) > 0"
@@ -49,7 +50,7 @@
           </span>
         </template>
       </TabButtons>
-      <Select class="shrink-0 !w-fit" :options="orderOptions" v-model="orderBy" />
+      <Select v-if="!publicVisitor" class="shrink-0 !w-fit" :options="orderOptions" v-model="orderBy" />
     </div>
 
     <KeepAlive>
@@ -86,6 +87,7 @@ import { communityState } from '@/data/communityState'
 import { useCommunity } from '@/data/communities'
 import { getSpaceUnreadCount, spaces } from '@/data/spaces'
 import { fetchParticipatingUnreadCount, getParticipatingUnreadCount } from '@/data/unreadCount'
+import { isPublicVisitor } from '@/utils/publicAccess'
 
 type FeedType = 'recent' | 'unread' | 'participating'
 
@@ -101,6 +103,7 @@ const props = withDefaults(defineProps<Props>(), {
 const orderBy = ref<OrderBy>('last_post_at desc')
 const menuOpen = ref(false)
 const router = useRouter()
+const publicVisitor = computed(() => isPublicVisitor())
 
 const filters = computed(() => ({
   team: props.communityId,
@@ -153,7 +156,7 @@ const currentFeed = computed({
 watch(
   () => props.communityId,
   (communityId) => {
-    if (communityId) fetchParticipatingUnreadCount(communityId)
+    if (communityId && !publicVisitor.value) fetchParticipatingUnreadCount(communityId)
   },
   { immediate: true },
 )

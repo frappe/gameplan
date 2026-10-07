@@ -56,6 +56,7 @@ import { useSessionUser } from '@/data/users'
 import ReadOnlyBanner from './ReadOnlyBanner.vue'
 import UserAvatar from './UserAvatar.vue'
 import { readOnlyMode } from '@/data/readOnlyMode'
+import { isPublicVisitor } from '@/utils/publicAccess'
 
 const route = useRoute()
 const router = useRouter()
@@ -66,7 +67,7 @@ const sessionUser = useSessionUser()
 // loaded until then, or the nav shows for a moment on a page that hides it.
 const hideMobileNav = computed(() => {
   const current = route.matched.length ? route : router.resolve(router.options.history.location)
-  return Boolean(current.meta.hideMobileNav)
+  return isPublicVisitor() || Boolean(current.meta.hideMobileNav)
 })
 
 const onCommunityRoute = computed(() => route.matched.some((record) => record.meta?.communityScope))

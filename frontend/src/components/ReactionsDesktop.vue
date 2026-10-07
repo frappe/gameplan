@@ -1,6 +1,7 @@
 <template>
   <div class="flex select-none flex-wrap items-stretch gap-1.5">
     <HoverCard
+      v-if="!readOnlyMode && !isAnonymous"
       v-model:open="isPickerOpen"
       side="bottom"
       align="start"
@@ -40,34 +41,69 @@
     </HoverCard>
     <!-- One provider for the whole row: after the first tooltip opens, moving
          along the pills shows the next reactor list with no re-delay. -->
-    <TooltipProvider>
-      <Tooltip v-for="(reactions, emoji) in reactionsCount" :key="emoji">
-        <button
-          class="flex items-center justify-center rounded-full px-2 py-1 text-sm transition"
-          :class="[
-            reactions.userReacted
-              ? 'bg-surface-amber-2 text-amber-700 hover:bg-amber-200'
-              : 'bg-surface-gray-2 text-ink-gray-6 hover:bg-surface-gray-3',
-          ]"
-          @click="toggleReaction(emoji)"
-        >
-          <img v-if="isImageEmoji(emoji)" :src="emoji" alt="" class="mr-1 size-4 object-contain" />
-          <template v-else>{{ emoji }}&nbsp;</template>
-          {{ reactions.count }}
-        </button>
-        <template #content>
-          <div class="max-w-[30ch] text-center text-p-xs">
-            {{ toolTipText(reactions) }}
-          </div>
+    <template v-if="showTooltips">
+      <TooltipProvider>
+        <template v-for="(reactions, emoji) in reactionsCount" :key="emoji">
+          <Tooltip v-if="toolTipText(reactions)">
+            <button
+              class="flex items-center justify-center rounded-full px-2 py-1 text-sm transition"
+              :class="[
+                reactions.userReacted
+                  ? 'bg-surface-amber-2 text-amber-700 hover:bg-amber-200'
+                  : 'bg-surface-gray-2 text-ink-gray-6 hover:bg-surface-gray-3',
+              ]"
+              @click="toggleReaction(emoji)"
+            >
+              <img v-if="isImageEmoji(emoji)" :src="emoji" alt="" class="mr-1 size-4 object-contain" />
+              <template v-else>{{ emoji }}&nbsp;</template>
+              {{ reactions.count }}
+            </button>
+            <template #content>
+              <div class="max-w-[30ch] text-center text-p-xs">
+                {{ toolTipText(reactions) }}
+              </div>
+            </template>
+          </Tooltip>
+          <button
+            v-else
+            class="flex items-center justify-center rounded-full px-2 py-1 text-sm transition"
+            :class="[
+              reactions.userReacted
+                ? 'bg-surface-amber-2 text-amber-700 hover:bg-amber-200'
+                : 'bg-surface-gray-2 text-ink-gray-6 hover:bg-surface-gray-3',
+            ]"
+            @click="toggleReaction(emoji)"
+          >
+            <img v-if="isImageEmoji(emoji)" :src="emoji" alt="" class="mr-1 size-4 object-contain" />
+            <template v-else>{{ emoji }}&nbsp;</template>
+            {{ reactions.count }}
+          </button>
         </template>
-      </Tooltip>
-    </TooltipProvider>
+      </TooltipProvider>
+    </template>
+    <template v-else>
+      <button
+        v-for="(reactions, emoji) in reactionsCount"
+        :key="emoji"
+        class="flex cursor-default items-center justify-center rounded-full px-2 py-1 text-sm transition"
+        :class="[
+          reactions.userReacted
+            ? 'bg-surface-amber-2 text-amber-700'
+            : 'bg-surface-gray-2 text-ink-gray-6',
+        ]"
+      >
+        <img v-if="isImageEmoji(emoji)" :src="emoji" alt="" class="mr-1 size-4 object-contain" />
+        <template v-else>{{ emoji }}&nbsp;</template>
+        {{ reactions.count }}
+      </button>
+    </template>
   </div>
 </template>
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { Button, HoverCard, Tooltip, TooltipProvider } from 'frappe-ui'
 import { isImageEmoji } from '@/utils/emoji'
+import { isAnonymousVisitor } from '@/utils/publicAccess'
 
 const props = defineProps<{
   reactionsCount: Record<string, { count: number; userReacted: boolean }>
@@ -75,8 +111,11 @@ const props = defineProps<{
   toolTipText: (reactions: { count: number; userReacted: boolean }) => string
   standardEmojis: string[]
   isLoading: boolean
+  readOnlyMode?: boolean
 }>()
 
+const isAnonymous = computed(() => isAnonymousVisitor())
+const showTooltips = computed(() => !props.readOnlyMode && !isAnonymous.value)
 const isPickerOpen = ref(false)
 
 function selectEmoji(emoji: string) {
