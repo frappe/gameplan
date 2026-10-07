@@ -15,7 +15,7 @@
         {{ [communityTitle, space?.title].filter(Boolean).join(' / ') }}
       </span>
     </PageHeader>
-    <div class="discussion-container">
+    <div class="discussion-container" ref="discussionContainer">
       <div v-if="discussion.loading">
         <div
           class="sticky -top-px z-[1] flex w-full items-center bg-surface-base pb-2 pt-2 sm:top-0 sm:pt-14"
@@ -279,6 +279,11 @@
             </div>
           </template>
         </Dialog>
+        <DiscussionLinkPreview :container="discussionContainer" />
+        <DiscussionBacklinksDialog
+          v-model:open="showBacklinksDialog"
+          :discussion="discussion.doc.name"
+        />
         <RevisionsDialog
           v-model="showRevisionsDialog"
           doctype="GP Discussion"
@@ -373,6 +378,8 @@ import { shellScrollContainer, useShellScrolled } from 'frappe-ui'
 import { useIsMobile } from '@/utils/useIsMobile'
 import { provideRichQuotes } from '@/components/RichQuoteExtension/useRichQuotes'
 import QuoteBacklinksPopover from '@/components/RichQuoteExtension/QuoteBacklinksPopover.vue'
+import DiscussionBacklinksDialog from '@/components/DiscussionBacklinksDialog.vue'
+import DiscussionLinkPreview from '@/components/DiscussionLinkPreview.vue'
 import { refreshUnreadCountForProjects } from '@/data/unreadCount'
 import { useSessionUser } from '@/data/users'
 import { canDeleteContent, canEditContent, canMoveOrPinContent } from '@/utils/permissions'
@@ -496,6 +503,8 @@ const pinDialog = reactive<{
   pinToCategory: false,
 })
 const showRevisionsDialog = ref(false)
+const showBacklinksDialog = ref(false)
+const discussionContainer = ref<HTMLElement | null>(null)
 
 // While the post is being edited, its title/body live in an auto-saved draft instead of
 // being mutated on discussion.doc directly. The draft survives reloads and navigation, and
@@ -860,6 +869,11 @@ const actions = computed(() => [
     label: 'Revisions',
     icon: 'lucide-rotate-ccw',
     onClick: () => (showRevisionsDialog.value = true),
+  },
+  {
+    label: 'References',
+    icon: 'lucide-corner-down-right',
+    onClick: () => (showBacklinksDialog.value = true),
   },
   {
     label: 'Copy link',
