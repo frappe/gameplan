@@ -977,7 +977,7 @@ async function getCanonicalContentRoute(
     params,
     query: to.query,
     hash: to.hash,
-    replace: true,
+    ...(isInAppNavigation ? {} : { replace: true }),
   }
 }
 
