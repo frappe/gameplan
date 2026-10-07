@@ -8,9 +8,13 @@
 
 /** Whether nobody is signed in. Read from the cookie so data modules can ask at import time. */
 export function isAnonymousVisitor(): boolean {
+  return !getSessionUserFromCookie()
+}
+
+export function getSessionUserFromCookie(): string | null {
   const cookies = new URLSearchParams(document.cookie.split('; ').join('&'))
   const user = cookies.get('user_id')
-  return !user || user === 'Guest'
+  return user === 'Guest' ? null : user
 }
 
 /** Whether this site lets people who are not signed in read Anonymous-tier spaces. */

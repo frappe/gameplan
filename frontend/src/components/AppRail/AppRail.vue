@@ -10,11 +10,11 @@
     <!-- App-wide destinations sit directly under the logo, so their position never
          shifts with how many communities you belong to. -->
     <div
-      v-if="shortcuts.length"
+      v-if="visibleShortcuts.length"
       class="flex w-full shrink-0 flex-col items-center gap-0.5 border-t pt-3"
     >
       <SidebarRailItem
-        v-for="item in shortcuts"
+        v-for="item in visibleShortcuts"
         :key="item.label"
         :label="item.label"
         :description="item.description"
@@ -147,45 +147,45 @@ const badgeStyle = computed<'count' | 'dot'>(() =>
   currentSidebarBadgeStyle.value === 'Dot' ? 'dot' : 'count',
 )
 
-const shortcuts = computed<RailShortcut[]>(() => {
-  const search: RailShortcut = {
+const shortcuts = computed<RailShortcut[]>(() => [
+  {
     label: 'Search',
     icon: 'lucide-search',
     isActive: isRoute('Search'),
     route: { name: 'Search' },
-  }
-  if (isAnonymousVisitor()) return [search]
-  return [
-    search,
-    {
-      label: 'People',
-      icon: 'lucide-users-2',
-      isActive: isRoute(
-        'People',
-        'PersonProfile',
-        'PersonProfileProfile',
-        'PersonProfilePosts',
-        'PersonProfileReplies',
-      ),
-      route: { name: 'People' },
-      description: countLabel(memberCount.value, 'member'),
-    },
-    {
-      label: 'Notifications',
-      icon: 'lucide-bell',
-      isActive: isRoute('Notifications'),
-      route: { name: 'Notifications' },
-      unreadCount: unreadNotifications.data || 0,
-    },
-    {
-      label: 'Drafts',
-      icon: 'lucide-pencil-line',
-      isActive: isRoute('Drafts'),
-      route: { name: 'Drafts' },
-      description: countLabel(draftCount.value, 'draft'),
-    },
-  ]
-})
+  },
+  {
+    label: 'People',
+    icon: 'lucide-users-2',
+    isActive: isRoute(
+      'People',
+      'PersonProfile',
+      'PersonProfileProfile',
+      'PersonProfilePosts',
+      'PersonProfileReplies',
+    ),
+    route: { name: 'People' },
+    description: countLabel(memberCount.value, 'member'),
+  },
+  {
+    label: 'Notifications',
+    icon: 'lucide-bell',
+    isActive: isRoute('Notifications'),
+    route: { name: 'Notifications' },
+    unreadCount: unreadNotifications.data || 0,
+  },
+  {
+    label: 'Drafts',
+    icon: 'lucide-pencil-line',
+    isActive: isRoute('Drafts'),
+    route: { name: 'Drafts' },
+    description: countLabel(draftCount.value, 'draft'),
+  },
+])
+
+const visibleShortcuts = computed(() =>
+  shortcuts.value.filter((item) => !isAnonymousVisitor() || item.label === 'Search'),
+)
 
 /** "3 drafts", "1 draft", or nothing at all when there is no count worth showing. */
 function countLabel(count: number, noun: string) {

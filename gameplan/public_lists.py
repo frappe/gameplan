@@ -27,8 +27,8 @@ def public_list(doctype, fields, filters, order_by, start, limit):
 	limit = max(1, min(limit, MAX_ROWS))
 	rows = get_list(
 		doctype=doctype,
-		fields=frappe.parse_json(fields) if isinstance(fields, str) else fields,
-		filters=frappe.parse_json(filters) if isinstance(filters, str) else filters,
+		fields=frappe.parse_json(fields),
+		filters=frappe.parse_json(filters),
 		order_by=order_by,
 		start=max(cint(start), 0),
 		limit=limit,

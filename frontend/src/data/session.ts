@@ -2,6 +2,7 @@ import { computed, MaybeRef, reactive, ref } from 'vue'
 import { useCall } from 'frappe-ui'
 import { users } from './users'
 import router from '@/router'
+import { getSessionUserFromCookie } from '@/utils/publicAccess'
 
 interface LoginResponse {
   user: string
@@ -43,13 +44,4 @@ export let session = reactive({
 
 export function isSessionUser(user: string) {
   return session.user === user
-}
-
-function getSessionUserFromCookie() {
-  let cookies = new URLSearchParams(document.cookie.split('; ').join('&'))
-  let _sessionUser = cookies.get('user_id')
-  if (_sessionUser === 'Guest') {
-    _sessionUser = null
-  }
-  return _sessionUser
 }

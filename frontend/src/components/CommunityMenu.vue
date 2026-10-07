@@ -1,7 +1,7 @@
 <template>
   <nav>
     <MobileListRow
-      v-for="(feed, index) in feeds"
+      v-for="(feed, index) in visibleFeeds"
       :key="feed.feedType"
       :border="index > 0"
       :active="!activeSpaceId && activeFeedType === feed.feedType"
@@ -95,34 +95,35 @@ interface FeedRow {
   route: RouteLocationRaw
 }
 
-const feeds = computed<FeedRow[]>(
-  () =>
-    [
-      {
-        label: 'All discussions',
-        icon: 'lucide-message-square-text',
-        feedType: 'recent',
-        route: { name: 'Discussions', params: { communityId: props.communityId } },
-      },
-      {
-        label: 'Unread',
-        icon: 'lucide-mail-open',
-        feedType: 'unread',
-        route: {
-          name: 'DiscussionsTab',
-          params: { communityId: props.communityId, feedType: 'unread' },
-        },
-      },
-      {
-        label: 'Participating',
-        icon: 'lucide-at-sign',
-        feedType: 'participating',
-        route: {
-          name: 'DiscussionsTab',
-          params: { communityId: props.communityId, feedType: 'participating' },
-        },
-      },
-    ].filter((feed) => !isAnonymousVisitor() || feed.feedType === 'recent') as FeedRow[],
+const feeds = computed<FeedRow[]>(() => [
+  {
+    label: 'All discussions',
+    icon: 'lucide-message-square-text',
+    feedType: 'recent',
+    route: { name: 'Discussions', params: { communityId: props.communityId } },
+  },
+  {
+    label: 'Unread',
+    icon: 'lucide-mail-open',
+    feedType: 'unread',
+    route: {
+      name: 'DiscussionsTab',
+      params: { communityId: props.communityId, feedType: 'unread' },
+    },
+  },
+  {
+    label: 'Participating',
+    icon: 'lucide-at-sign',
+    feedType: 'participating',
+    route: {
+      name: 'DiscussionsTab',
+      params: { communityId: props.communityId, feedType: 'participating' },
+    },
+  },
+])
+
+const visibleFeeds = computed(() =>
+  feeds.value.filter((feed) => !isAnonymousVisitor() || feed.feedType === 'recent'),
 )
 
 const communitySpaceList = computed(() => {

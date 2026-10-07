@@ -192,9 +192,7 @@ def public_fieldnames(doctype) -> list[str]:
 
 def for_viewer(doctype, row):
 	"""`row` as the session user may see it: unchanged when signed in, cleaned when not."""
-	if not gameplan.is_anonymous():
-		return row
-	return public_rows(doctype, [row])[0]
+	return rows_for_viewer(doctype, [row])[0]
 
 
 def rows_for_viewer(doctype, rows):
@@ -321,7 +319,7 @@ def public_list_fields(doctype, fields) -> list:
 	"""
 	if doctype not in PUBLIC_FIELDS:
 		refuse(f"{doctype} is not readable without signing in")
-	fields = frappe.parse_json(fields) if isinstance(fields, str) else fields
+	fields = frappe.parse_json(fields)
 	if not fields:
 		return ["name"]
 	if not isinstance(fields, list):
@@ -351,7 +349,7 @@ def is_public_table_request(doctype, field) -> bool:
 
 def check_public_filters(doctype, filters):
 	"""Refuse filters an anonymous visitor may not use: anything but public, non-author fields."""
-	filters = frappe.parse_json(filters) if isinstance(filters, str) else filters
+	filters = frappe.parse_json(filters)
 	if not filters:
 		return
 	for fieldname in filter_fieldnames(doctype, filters):
@@ -461,23 +459,20 @@ def public_authors(users) -> set:
 		.where(Criterion.any(column.isin(users) for column in columns))
 	).run()
 	found.update(user for row in rows for user in row if user in users)
-	found.update(
-		frappe.qb.from_(Comment)
-		.select(Comment.owner)
-		.distinct()
-		.where(Comment.reference_doctype == "GP Discussion")
-		.where(Comment.reference_name.isin(public_discussions))
-		.where(Comment.owner.isin(users))
-		.run(pluck=True)
-	)
-	found.update(
-		frappe.qb.from_(Poll)
-		.select(Poll.owner)
-		.distinct()
-		.where(Poll.discussion.isin(public_discussions))
-		.where(Poll.owner.isin(users))
-		.run(pluck=True)
-	)
+	for table, parent in (
+		(
+			Comment,
+			(Comment.reference_doctype == "GP Discussion") & Comment.reference_name.isin(public_discussions),
+		),
+		(Poll, Poll.discussion.isin(public_discussions)),
+	):
+		found.update(
+			frappe.qb.from_(table)
+			.select(table.owner)
+			.distinct()
+			.where(parent & table.owner.isin(users))
+			.run(pluck=True)
+		)
 	return found
 
 
