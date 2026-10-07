@@ -1,4 +1,4 @@
-import { computed } from 'vue'
+import { computed, reactive, watch } from 'vue'
 import { toast, useList } from 'frappe-ui'
 import { session } from './session'
 import type { GPSpaceSubscription } from '@/types/doctypes'
@@ -15,20 +15,36 @@ const subscriptionByProject = computed(
   () => new Map((spaceSubscriptions.data ?? []).map((row) => [String(row.project), row])),
 )
 
+const requested = reactive(new Map<string, boolean>())
+
 export function isSpaceNotifying(project: string | number) {
-  return subscriptionByProject.value.has(String(project))
+  const key = String(project)
+  return requested.has(key) ? requested.get(key)! : subscriptionByProject.value.has(key)
 }
 
 const toggleToastId = 'space-notifications-toggle'
 
 const inFlight = new Set<string>()
 
+function settle() {
+  for (const [project, on] of requested) {
+    if (!inFlight.has(project) && subscriptionByProject.value.has(project) === on) {
+      requested.delete(project)
+    }
+  }
+}
+
+watch(subscriptionByProject, settle)
+
 async function apply(projects: (string | number)[], on: boolean, message: string) {
   const changing = projects
     .map(String)
     .filter((project) => !inFlight.has(project) && isSpaceNotifying(project) !== on)
   if (!changing.length) return
-  changing.forEach((project) => inFlight.add(project))
+  changing.forEach((project) => {
+    inFlight.add(project)
+    requested.set(project, on)
+  })
   try {
     await Promise.all(
       changing.map((project) => {
@@ -41,9 +57,11 @@ async function apply(projects: (string | number)[], on: boolean, message: string
     toast.success(message, { id: toggleToastId })
   } catch {
     await spaceSubscriptions.reload()
+    changing.forEach((project) => requested.delete(project))
     toast.error('Could not update space notifications', { id: toggleToastId })
   } finally {
     changing.forEach((project) => inFlight.delete(project))
+    settle()
   }
 }
 
