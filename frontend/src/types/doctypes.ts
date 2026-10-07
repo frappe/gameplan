@@ -440,8 +440,8 @@ export interface GPAwayPeriod extends DocType {
   starts_at: string
   /** Ends At: Datetime */
   ends_at?: string
-  /** Card Dismissed: Check */
-  card_dismissed?: 0 | 1
+  /** Recap Sent At: Datetime */
+  recap_sent_at?: string
 }
 
 // Last updated: 2026-09-17 18:00:00.000000

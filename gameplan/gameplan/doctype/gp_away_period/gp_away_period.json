@@ -45,7 +45,7 @@
    "label": "Ends At"
   },
   {
-   "description": "When the catch-up email for this stretch went out. Set once, so it is never sent twice.",
+   "description": "When the notifications held during this stretch were emailed. Set once, so they are never sent twice.",
    "fieldname": "recap_sent_at",
    "fieldtype": "Datetime",
    "label": "Recap Sent At"
@@ -53,7 +53,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-18 10:00:00.000000",
+ "modified": "2026-10-07 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "GP Away Period",

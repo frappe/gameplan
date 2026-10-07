@@ -12,9 +12,7 @@
                 <template v-if="receiveNotifications">
                   {{ scheduleSummary }} · {{ timezoneLabel }}
                 </template>
-                <template v-else>
-                  Email is held; you get a catch-up email when you switch back on
-                </template>
+                <template v-else> Email is held until you switch back on </template>
               </div>
             </div>
             <div class="flex shrink-0 items-center gap-4">

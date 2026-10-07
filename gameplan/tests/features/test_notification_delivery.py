@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 from zoneinfo import ZoneInfo
 
 import frappe
-from frappe.utils import add_to_date, format_datetime, get_datetime, get_system_timezone, now_datetime
+from frappe.utils import add_to_date, get_datetime, get_system_timezone, now_datetime
 from frappe.utils.jinja import get_email_from_template
 
 from gameplan.notifications import delivery
@@ -266,7 +266,7 @@ class TestHourlyBatch(DeliveryTestCase):
 		self.run_hourly().assert_not_called()
 		self.assertTrue(self.rows_for(self.second_member)[0].email_skipped_at)
 
-	def test_rows_from_an_open_away_stretch_wait_for_the_catch_up(self):
+	def test_rows_from_an_open_away_stretch_wait_until_it_ends(self):
 		self.set_prefs(self.second_member, receive_notifications=0)
 		self.mention_second_member()
 
@@ -389,7 +389,7 @@ class TestSendTimes(DeliveryTestCase):
 		self.run_tick(get_datetime(in_system_time)).assert_called_once()
 
 
-class TestAwayRecap(DeliveryTestCase):
+class TestHeldWhileAway(DeliveryTestCase):
 	def away_and_back(self):
 		self.set_prefs(self.second_member, receive_notifications=0)
 		self.mention_second_member()
@@ -402,7 +402,7 @@ class TestAwayRecap(DeliveryTestCase):
 			fields=["name", "ends_at", "recap_sent_at"],
 		)
 
-	def test_the_catch_up_names_the_stretch_and_stamps_the_rows(self):
+	def test_held_rows_go_out_in_the_normal_mail(self):
 		self.away_and_back()
 
 		sendmail = self.run_hourly()
@@ -410,11 +410,24 @@ class TestAwayRecap(DeliveryTestCase):
 		sendmail.assert_called_once()
 		email = sendmail.call_args.kwargs
 		self.assertEqual(email["recipients"], [self.second_member.name])
-		self.assertEqual(email["subject"], "While you were away: 1 notification in Gameplan")
-		self.assertEqual(email["args"]["title"], "While you were away")
-		self.assertTrue(email["args"]["window"])
+		self.assertEqual(email["subject"], "1 new notification in Gameplan")
+		self.assertNotIn("title", email["args"])
+		self.assertNotIn("window", email["args"])
 		self.assertEqual(len(email["args"]["mentions"]), 1)
 		self.assertTrue(self.rows_for(self.second_member)[0].email_sent_at)
+
+	def test_held_and_new_rows_share_one_mail(self):
+		self.away_and_back()
+		self.mention_second_member()
+
+		sendmail = self.run_hourly()
+
+		sendmail.assert_called_once()
+		email = sendmail.call_args.kwargs
+		self.assertEqual(email["subject"], "2 new notifications in Gameplan")
+		self.assertEqual(len(email["args"]["mentions"]), 2)
+		self.assertTrue(all(row.email_sent_at for row in self.rows_for(self.second_member)))
+		self.assertTrue(all(p.recap_sent_at for p in self.periods()))
 
 	def test_it_is_sent_once(self):
 		self.away_and_back()
@@ -423,18 +436,19 @@ class TestAwayRecap(DeliveryTestCase):
 		self.run_hourly().assert_not_called()
 		self.assertTrue(all(p.recap_sent_at for p in self.periods()))
 
-	def test_a_stretch_still_open_is_not_caught_up_yet(self):
+	def test_a_stretch_still_open_holds_its_rows(self):
 		self.set_prefs(self.second_member, receive_notifications=0)
 		self.mention_second_member()
 
-		delivery.send_away_recap(self.second_member.name)
+		with patch("frappe.sendmail"):
+			delivery.send_batch(self.second_member.name)
 
 		self.assertIsNone(self.rows_for(self.second_member)[0].email_sent_at)
 		self.assertFalse(any(p.recap_sent_at for p in self.periods()))
 
-	def test_a_merge_during_a_later_stretch_reaches_that_stretchs_catch_up(self):
+	def test_a_merge_during_a_later_stretch_is_sent_when_that_stretch_ends(self):
 		"""The row is reused across stretches, so its away period has to move to the one
-		the new event fell in. Keeping the first leaves the later recap querying a period
+		the new event fell in. Keeping the first leaves the later send querying a period
 		the row no longer belongs to, and the activity is never reported at all.
 		"""
 		frappe.get_doc(
@@ -458,13 +472,11 @@ class TestAwayRecap(DeliveryTestCase):
 		sendmail = self.run_hourly()
 
 		sendmail.assert_called_once()
-		self.assertEqual(
-			sendmail.call_args.kwargs["subject"], "While you were away: 1 notification in Gameplan"
-		)
+		self.assertEqual(sendmail.call_args.kwargs["subject"], "1 new notification in Gameplan")
 
 	def test_turning_email_on_does_not_mail_the_stretches_that_predate_it(self):
-		"""Away stretches accrue on every channel, but only Email owes a catch-up. Switching to
-		it used to hand over every stretch since the account was made as one message."""
+		"""Away stretches accrue on every channel, but only Email sends what they held. Switching
+		to it used to hand over every stretch since the account was made as one message."""
 		self.set_prefs(self.second_member, notification_channel="In-app")
 		self.away_and_back()
 		self.assertFalse(any(p.recap_sent_at for p in self.periods()))
@@ -481,14 +493,14 @@ class TestAwayRecap(DeliveryTestCase):
 		self.run_hourly().assert_not_called()
 		self.assertTrue(all(p.recap_sent_at for p in self.periods()))
 
-	def test_a_row_read_in_the_app_is_not_caught_up(self):
+	def test_a_held_row_read_in_the_app_is_not_mailed(self):
 		self.away_and_back()
 		row = self.rows_for(self.second_member)[0]
 		frappe.db.set_value("GP Notification", row.name, "read", 1)
 
 		self.run_hourly().assert_not_called()
 
-	def test_the_catch_up_has_no_horizon(self):
+	def test_held_rows_have_no_horizon(self):
 		self.away_and_back()
 		row = self.rows_for(self.second_member)[0]
 		frappe.db.set_value(
@@ -497,34 +509,8 @@ class TestAwayRecap(DeliveryTestCase):
 
 		self.run_hourly().assert_called_once()
 
-	def test_an_in_app_user_gets_no_catch_up(self):
+	def test_an_in_app_user_gets_no_mail_for_held_rows(self):
 		self.set_prefs(self.second_member, notification_channel="In-app")
 		self.away_and_back()
 
 		self.run_hourly().assert_not_called()
-
-	def test_the_window_is_written_in_the_readers_timezone(self):
-		period = frappe.get_doc(
-			doctype="GP Away Period",
-			user=self.second_member.name,
-			kind="Toggle",
-			starts_at="2026-09-20 22:00:00",
-			ends_at="2026-09-21 08:00:00",
-		).insert(ignore_permissions=True)
-		periods = frappe.get_all(
-			"GP Away Period", filters={"name": period.name}, fields=["name", "starts_at", "ends_at"]
-		)
-
-		frappe.db.set_value("User", self.second_member.name, "time_zone", "Asia/Kolkata")
-		kolkata = delivery.recap_context(self.second_member.name, [], periods)["window"]
-		frappe.db.set_value("User", self.second_member.name, "time_zone", "Asia/Gaza")
-		gaza = delivery.recap_context(self.second_member.name, [], periods)["window"]
-
-		self.assertNotEqual(kolkata, gaza)
-		for zone, window in (("Asia/Kolkata", kolkata), ("Asia/Gaza", gaza)):
-			local = (
-				get_datetime("2026-09-20 22:00:00")
-				.replace(tzinfo=ZoneInfo(get_system_timezone()))
-				.astimezone(ZoneInfo(zone))
-			)
-			self.assertIn(format_datetime(local.replace(tzinfo=None), "h:mm a"), window)

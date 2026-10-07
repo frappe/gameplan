@@ -5,7 +5,7 @@
 from datetime import timedelta
 
 import frappe
-from frappe.utils import format_datetime, get_datetime, get_url, now_datetime
+from frappe.utils import get_url, now_datetime
 
 from gameplan.email_digest import (
 	GAMEPLAN_LOGO_PATH,
@@ -16,7 +16,6 @@ from gameplan.email_digest import (
 )
 from gameplan.notifications.away import (
 	is_away,
-	local_time,
 	mark_recap_sent,
 	pending_recap_periods,
 	profile_prefs,
@@ -72,28 +71,16 @@ def should_send(user: str, now) -> bool:
 
 
 def send_batch(user: str) -> list:
-	send_away_recap(user)
+	held = [period.name for period in pending_recap_periods(user)]
 	rows = deliverable_rows(user)
+	if held:
+		rows = sorted(
+			rows + deliverable_rows(user, away=held), key=lambda row: row.last_event_at, reverse=True
+		)
 	if rows:
 		send_batch_email(user, rows)
 		_stamp(rows, "email_sent_at")
-	return rows
-
-
-def send_away_recap(user: str) -> list:
-	periods = pending_recap_periods(user)
-	if not periods:
-		return []
-	rows = deliverable_rows(user, away=[p.name for p in periods])
-	if rows:
-		frappe.sendmail(
-			recipients=[user],
-			subject=recap_subject(rows),
-			template="notification_batch",
-			args=recap_context(user, rows, periods),
-		)
-		_stamp(rows, "email_sent_at")
-	mark_recap_sent([p.name for p in periods])
+	mark_recap_sent(held)
 	return rows
 
 
@@ -171,26 +158,8 @@ def batch_subject(rows: list) -> str:
 	return f"{plural(len(rows), 'new notification')} in Gameplan"
 
 
-def recap_subject(rows: list) -> str:
-	return f"While you were away: {plural(len(rows), 'notification')} in Gameplan"
-
-
 def plural(count: int, noun: str) -> str:
 	return f"{count} {noun}" if count == 1 else f"{count} {noun}s"
-
-
-def recap_context(user: str, rows: list, periods: list) -> dict:
-	tz = user_timezone(user)
-	starts_at = reader_time(min(get_datetime(p.starts_at) for p in periods), tz)
-	ends_at = reader_time(max(get_datetime(p.ends_at) for p in periods), tz)
-	window = (
-		f"{format_datetime(starts_at, 'EEE d MMM, h:mm a')} – {format_datetime(ends_at, 'EEE d MMM, h:mm a')}"
-	)
-	return {**batch_context(user, rows), "title": "While you were away", "window": window}
-
-
-def reader_time(system_naive, tz):
-	return local_time(system_naive, tz).replace(tzinfo=None)
 
 
 def summarise(rows: list) -> list[str]:
