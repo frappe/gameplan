@@ -9,14 +9,13 @@
     <template #suffix>
       <div class="flex items-center gap-2">
         <template v-if="!isBulkDeleteMode">
-          <Button
+          <DropdownMoreOptions
             v-show="drafts.data?.length"
-            variant="ghost"
-            size="md"
-            @click="isBulkDeleteMode = true"
-          >
-            Select
-          </Button>
+            label="Draft actions"
+            button-size="md"
+            align="end"
+            :options="draftActions"
+          />
           <Button
             v-if="!readOnlyMode"
             variant="subtle"
@@ -43,14 +42,12 @@
     <Breadcrumbs class="h-7" :items="[{ label: 'Drafts', route: { name: 'Drafts' } }]" />
     <div class="flex items-center gap-2">
       <template v-if="!isBulkDeleteMode">
-        <Button
+        <DropdownMoreOptions
           v-show="drafts.data?.length"
-          variant="ghost"
-          icon-left="lucide-square-check"
-          @click="isBulkDeleteMode = true"
-        >
-          Select
-        </Button>
+          label="Draft actions"
+          align="end"
+          :options="draftActions"
+        />
         <Button
           v-if="!readOnlyMode"
           variant="subtle"
@@ -171,6 +168,7 @@ import {
 } from 'frappe-ui'
 import { List, ListRow, ListCell } from 'frappe-ui/list'
 import UserAvatarWithHover from '@/components/UserAvatarWithHover.vue'
+import DropdownMoreOptions from '@/components/DropdownMoreOptions.vue'
 import NewDiscussionSpaceDialog from '@/components/NewDiscussionSpaceDialog.vue'
 import { readOnlyMode } from '@/data/readOnlyMode'
 import { relativeTimestamp } from '@/utils'
@@ -191,6 +189,14 @@ const isBulkDeleteMode = ref(false)
 const selectedDrafts = ref<string[]>([])
 const showDeleteConfirm = ref(false)
 const showNewDiscussionDialog = ref(false)
+
+const draftActions = [
+  {
+    label: 'Select drafts',
+    icon: 'lucide-square-check',
+    onClick: () => (isBulkDeleteMode.value = true),
+  },
+]
 
 // Comment drafts always open their parent discussion with the reply composer focused
 // (?draft=comment) — never the new-discussion composer, which would resurface a saved reply
