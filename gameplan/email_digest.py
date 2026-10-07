@@ -33,6 +33,7 @@ DIGEST_DISCUSSIONS_PER_COMMUNITY = 3
 EMAIL_DIGEST_LINK_EXPIRES_DAYS = 45
 DIGEST_PREFERENCES_REDIRECT = "/g/notifications?settings=notifications"
 GAMEPLAN_LOGO_PATH = "/assets/gameplan/gameplan_logo_256.png"
+REACTION_ICON_PATH = "/assets/gameplan/images/email-digest-reaction.png"
 
 
 def send_due_email_digests():
@@ -205,7 +206,6 @@ def get_unread_discussions(user: str):
 			Discussion.slug,
 			Discussion.project,
 			Discussion.last_post_at,
-			Discussion.last_post_by,
 			Discussion.comments_count,
 			Project.title.as_("project_title"),
 			Project.team,
@@ -377,8 +377,16 @@ def format_notification_item(notification, avatar_map, user: str):
 		"description": description or "",
 		"metadata": metadata,
 		"url": get_signed_digest_url(user, notification_path(notification)),
-		"avatar": avatar_context(notification.from_user, notification.from_user_full_name, avatar_map),
+		"avatar": notification_avatar(notification, avatar_map),
 	}
+
+
+def notification_avatar(notification, avatar_map):
+	# Reactions are often grouped with no single sender, so show a reaction tile, as the
+	# app's notification list does, instead of initials.
+	if notification.type == "Reaction":
+		return {"label": "Reaction", "initials": "", "url": get_url(REACTION_ICON_PATH), "is_icon": True}
+	return avatar_context(notification.from_user, notification.from_user_full_name, avatar_map)
 
 
 def format_discussion_groups(discussions, avatar_map, user: str):
@@ -407,14 +415,13 @@ def format_discussion_groups(discussions, avatar_map, user: str):
 
 def format_discussion_item(discussion, avatar_map, user: str):
 	metadata = activity_text(discussion.project_title, discussion.comments_count, discussion.reactions_count)
-	last_post_by = discussion.last_post_by or discussion.owner
 	return {
 		"title": discussion.title or "Untitled",
 		"description": "",
 		"metadata": metadata,
 		"unread_label": f"{discussion.unread_count} unread",
 		"url": get_signed_digest_url(user, discussion_path(discussion)),
-		"avatar": avatar_context(last_post_by, None, avatar_map),
+		"avatar": avatar_context(discussion.owner, None, avatar_map),
 	}
 
 
@@ -542,11 +549,7 @@ def get_safe_digest_redirect(redirect: str):
 
 def get_digest_item_users(digest):
 	users = {notification.from_user for notification in digest["notifications"] if notification.from_user}
-	users.update(
-		(discussion.last_post_by or discussion.owner)
-		for discussion in digest["discussions"]
-		if discussion.last_post_by or discussion.owner
-	)
+	users.update(discussion.owner for discussion in digest["discussions"] if discussion.owner)
 	return users
 
 

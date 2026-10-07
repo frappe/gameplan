@@ -152,6 +152,11 @@ body {
 	object-fit: cover;
 }
 
+/* The reaction tile PNG carries its own rounded corners */
+.gp-email-digest__avatar-image--icon {
+	border-radius: 0;
+}
+
 .gp-email-digest__avatar-content {
 	display: block;
 	padding: 10px 12px 10px 0;
@@ -242,6 +247,26 @@ body {
 	display: block;
 	margin-top: 8px;
 	text-decoration: underline;
+}
+
+/* Frappe's email CSS ships `.email-body a:not(.btn)` with !important colour, weight and
+   underline. Premailer keeps !important rules in a <style> block, where they beat the inline
+   styles above, so restate the digest's link styles with higher specificity. */
+.email-body .gp-email-digest a.gp-email-digest__content-link {
+	color: #111827 !important;
+	font-weight: 400 !important;
+	text-decoration: none !important;
+}
+
+.email-body .gp-email-digest a.gp-email-digest__cta {
+	color: #ffffff !important;
+	font-weight: 400 !important;
+	text-decoration: none !important;
+}
+
+.email-body .gp-email-digest a.gp-email-digest__footer-link {
+	color: #374151 !important;
+	font-weight: 400 !important;
 }
 
 @media only screen and (max-width: 600px) {
