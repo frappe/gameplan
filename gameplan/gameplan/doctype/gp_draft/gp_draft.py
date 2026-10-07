@@ -35,7 +35,7 @@ class GPDraft(Document):
 		if self.type != "Discussion":
 			frappe.throw(_("Only discussion drafts can be scheduled"))
 		if not self.title or not self.project:
-			frappe.throw(_("Add a title and pick a space before scheduling"))
+			frappe.throw(_("Add a title and pick a Space before scheduling"))
 		scheduled_at = get_datetime(scheduled_at)
 		if scheduled_at <= now_datetime():
 			frappe.throw(_("Pick a time in the future"))

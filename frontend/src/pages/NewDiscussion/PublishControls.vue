@@ -69,7 +69,7 @@ const {
 const blockedReason = computed(() => {
   if (isDraftLoading.value) return 'Draft is loading'
   if (!isComposerEditable.value) return 'You cannot publish this draft'
-  if (!canPublish.value) return 'Add a title and pick a space to publish'
+  if (!canPublish.value) return 'Add a title and pick a Space to publish'
   return ''
 })
 
