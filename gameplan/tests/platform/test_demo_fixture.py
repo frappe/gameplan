@@ -75,6 +75,15 @@ class TestDemoFixtureValidation(FrappeTestCase):
 		problems = self._validate([{"type": "space", "visibility": "Public"}])
 		self.assertTrue(any("invalid visibility tier" in problem for problem in problems))
 
+	def test_community_admins_must_have_membership_before_clearing(self):
+		problems = self._validate(
+			[
+				{"type": "user", "slug": "chloe"},
+				{"type": "community", "admins": ["chloe"], "members": []},
+			]
+		)
+		self.assertTrue(any("must also be a member" in problem for problem in problems))
+
 	def test_an_unparseable_relative_time_is_reported(self):
 		problems = self._validate([{"t": "yesterday", "type": "user"}])
 

@@ -51,6 +51,7 @@ _ID_REFERENCE_KINDS: dict[str, dict[str, set[str]]] = {
 	"pin": {"on": {"space"}},
 	"visit": {"on": {"discussion"}},
 	"draft": {"space": {"space"}},
+	"archive": {"on": {"community", "space"}},
 }
 
 # Event fields holding a single user slug (declared by an earlier `user` event).
@@ -77,6 +78,7 @@ class Seeder:
 		self.maya_last_visit: datetime | None = None
 		self.counts: dict[str, int] = {}
 		self._deferred_closes: dict[str, str] = {}  # discussion name -> closer email
+		self._deferred_archives: list[tuple[str, str, str]] = []
 
 	# ---- public entry point -------------------------------------------------
 
@@ -175,6 +177,9 @@ class Seeder:
 		for slug in cls._user_slug_references(event):
 			if slug not in user_slugs:
 				problems.append(f"line {number}: references unknown user slug {slug!r}")
+		for slug in event.get("admins", []):
+			if slug not in event.get("members", []):
+				problems.append(f"line {number}: community admin {slug!r} must also be a member")
 
 		file_names = {event.get(field) for field in _FILE_NAME_FIELDS if event.get(field)}
 		for kind, key in cls._placeholders(event):
@@ -246,6 +251,7 @@ class Seeder:
 
 		self._apply_deferred_closes()
 		self._finalize_maya_read_state()
+		self._apply_deferred_archives()
 
 	# ---- dispatch -----------------------------------------------------------
 
@@ -307,7 +313,7 @@ class Seeder:
 
 	def _event_community(self, event, actor, ts):
 		members = [
-			{"user": self.users[s], "status": "Accepted", "is_admin": int(s in event.get("admins", []))}
+			{"user": self.users[s], "is_admin": int(s in event.get("admins", []))}
 			for s in event.get("members", [])
 		]
 		team = frappe.get_doc(
@@ -497,6 +503,20 @@ class Seeder:
 		poll = frappe.get_doc(*self._ref(event["on"]))
 		poll.submit_vote(event["option"])
 		self._touch("GP Poll", poll.name, ts)
+
+	def _event_archive(self, event, actor, ts):
+		# Replay the existing content first. Archiving earlier would block later saves.
+		doctype, name = self._ref(event["on"])
+		self._deferred_archives.append((doctype, name, actor))
+
+	def _apply_deferred_archives(self):
+		previous = frappe.session.user
+		try:
+			for doctype, name, actor in self._deferred_archives:
+				frappe.set_user(actor)
+				frappe.get_doc(doctype, name).archive()
+		finally:
+			frappe.set_user(previous)
 
 	def _event_bookmark(self, event, actor, ts):
 		doc = frappe.get_doc(
