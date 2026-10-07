@@ -7,6 +7,7 @@ from frappe.model.document import Document
 from gameplan.gameplan.doctype.gp_unread_record.gp_unread_record import GPUnreadRecord
 from gameplan.mixins.archivable import check_if_space_is_archived
 from gameplan.mixins.attachments import HasAttachments
+from gameplan.mixins.backlinks import HasBacklinks
 from gameplan.mixins.mentions import HasMentions
 from gameplan.mixins.reactions import HasReactions
 from gameplan.mixins.tags import HasTags
@@ -14,7 +15,7 @@ from gameplan.permissions import comment_query_conditions, content_has_permissio
 from gameplan.utils import get_document_revisions, remove_empty_trailing_paragraphs
 
 
-class GPComment(HasAttachments, HasMentions, HasReactions, HasTags, Document):
+class GPComment(HasAttachments, HasBacklinks, HasMentions, HasReactions, HasTags, Document):
 	on_delete_cascade = ["GP Draft"]
 	on_delete_set_null = ["GP Notification", "GP Discussion"]
 	mentions_field = "content"
@@ -55,6 +56,7 @@ class GPComment(HasAttachments, HasMentions, HasReactions, HasTags, Document):
 	def before_save(self):
 		self.set_edited_at()
 		self.update_tags()
+		self.update_backlinks()
 
 	def update_discussion_meta(self):
 		if self.reference_doctype != "GP Discussion":

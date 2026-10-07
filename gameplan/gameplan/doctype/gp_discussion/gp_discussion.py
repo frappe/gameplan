@@ -10,6 +10,7 @@ from gameplan.gameplan.doctype.gp_unread_record.gp_unread_record import GPUnread
 from gameplan.mixins.activity import HasActivity
 from gameplan.mixins.archivable import check_if_space_is_archived
 from gameplan.mixins.attachments import HasAttachments
+from gameplan.mixins.backlinks import HasBacklinks
 from gameplan.mixins.mentions import HasMentions
 from gameplan.mixins.reactions import HasReactions
 from gameplan.mixins.tags import HasTags
@@ -17,7 +18,7 @@ from gameplan.permissions import content_has_permission, discussion_query_condit
 from gameplan.utils import get_document_revisions, remove_empty_trailing_paragraphs, url_safe_slug
 
 
-class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTags, Document):
+class GPDiscussion(HasActivity, HasAttachments, HasBacklinks, HasMentions, HasReactions, HasTags, Document):
 	# Class Configuration
 	# GP Activity is removed in on_trash, not here. See remove_all_activities.
 	on_delete_cascade = ["GP Comment", "GP Discussion Visit", "GP Poll"]
@@ -81,6 +82,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		self.remove_all_bookmarks()
 		self.remove_all_activities()
 		self.update_discussions_count()
+		frappe.db.delete("GP Backlink", {"discussion": self.name})
 		GPUnreadRecord.delete_unread_records_for_discussion(self.name)
 
 	def validate(self):
@@ -106,6 +108,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		self.update_slug()
 		self.update_tags()
 		self.sanitize_content()
+		self.update_backlinks()
 
 	def sanitize_content(self):
 		from gameplan.utils.sanitizer import sanitize_content
@@ -148,6 +151,46 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 	@frappe.whitelist()
 	def get_revisions(self, fieldname="content"):
 		return get_document_revisions(self.doctype, self.name, fieldname)
+
+	@frappe.whitelist()
+	def get_backlinks(self):
+		sources = frappe.get_all(
+			"GP Backlink", filters={"discussion": self.name}, fields=["parent", "parenttype"]
+		)
+		comments = [s.parent for s in sources if s.parenttype == "GP Comment"]
+		posts = [s.parent for s in sources if s.parenttype == "GP Discussion"]
+
+		backlinks = []
+		if comments:
+			backlinks += frappe.get_list(
+				"GP Comment",
+				filters={"name": ["in", comments]},
+				fields=["name as comment", "reference_name as discussion", "owner", "creation"],
+			)
+		if posts:
+			backlinks += frappe.get_list(
+				"GP Discussion",
+				filters={"name": ["in", posts]},
+				fields=["name as discussion", "owner", "creation"],
+			)
+		if not backlinks:
+			return []
+
+		discussions = {
+			str(d.name): d
+			for d in frappe.get_list(
+				"GP Discussion",
+				filters={"name": ["in", list({b.discussion for b in backlinks})]},
+				fields=["name", "title", "project"],
+			)
+		}
+		for backlink in backlinks:
+			discussion = discussions.get(str(backlink.discussion))
+			backlink.discussion = str(backlink.discussion)
+			backlink.title = discussion and discussion.title
+			backlink.project = discussion and discussion.project
+
+		return sorted((b for b in backlinks if b.title), key=lambda b: b.creation, reverse=True)
 
 	@frappe.whitelist(methods=["POST"])
 	def move_to_project(self, project):
