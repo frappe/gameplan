@@ -8,7 +8,12 @@ import {
   Color,
   Highlight,
 } from 'frappe-ui/editor'
-import { gameplanHeadingLevels, suggestionConfig, richQuoteExtensions } from './config'
+import {
+  gameplanHeadingLevels,
+  suggestionConfig,
+  richQuoteExtensions,
+  discussionLinkExtension,
+} from './config'
 import { collapsibleExtensions, slashCommandsWithCollapsible } from './collapsible'
 import { CustomEmojiExtension } from './customEmojiExtension'
 import type { RichQuoteController } from '@/components/RichQuoteExtension/useRichQuotes'
@@ -53,6 +58,7 @@ export function commentExtensions(
     Color,
     Highlight,
     CustomEmojiExtension,
+    discussionLinkExtension(),
     // Collapsible sections load here too, so a section written in a discussion
     // body still renders and edits when that body is reopened in CommentEditor.
     ...collapsibleExtensions(),

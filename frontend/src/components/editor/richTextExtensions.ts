@@ -1,5 +1,10 @@
 import { RichTextKit } from 'frappe-ui/editor'
-import { gameplanHeadingLevels, suggestionConfig, richQuoteExtensions } from './config'
+import {
+  gameplanHeadingLevels,
+  suggestionConfig,
+  richQuoteExtensions,
+  discussionLinkExtension,
+} from './config'
 import { collapsibleExtensions, slashCommandsWithCollapsible } from './collapsible'
 
 /**
@@ -24,5 +29,6 @@ export function richTextExtensions(opts: { suggestions?: boolean } = {}) {
     slashCommandsWithCollapsible(),
     ...collapsibleExtensions(),
     ...richQuoteExtensions(),
+    ...(opts.suggestions ?? true ? [discussionLinkExtension()] : []),
   ]
 }
