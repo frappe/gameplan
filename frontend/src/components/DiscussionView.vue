@@ -4,6 +4,24 @@
       <template #prefix>
         <PageHeaderBackButton :to="backRoute" />
       </template>
+      <template #suffix>
+        <template v-if="showHeaderActions">
+          <DiscussionNotificationBell
+            :state="discussion.doc!.notification_state!"
+            :loading="discussion.setNotificationState.loading"
+            @select="setNotificationState"
+          />
+          <Dropdown
+            align="end"
+            :button="{
+              icon: 'lucide-more-horizontal',
+              variant: 'ghost',
+              label: 'Discussion Options',
+            }"
+            :options="headerActions"
+          />
+        </template>
+      </template>
     </PageHeaderMobile>
     <PageHeader class="hidden sm:flex">
       <SpaceBreadcrumbs
@@ -14,6 +32,22 @@
       <span class="hidden text-lg-medium text-ink-gray-8 print:inline">
         {{ [communityTitle, space?.title].filter(Boolean).join(' / ') }}
       </span>
+      <div v-if="showHeaderActions" class="flex items-center gap-2 print:hidden">
+        <DiscussionNotificationBell
+          :state="discussion.doc!.notification_state!"
+          :loading="discussion.setNotificationState.loading"
+          @select="setNotificationState"
+        />
+        <Dropdown
+          align="end"
+          :button="{
+            icon: 'lucide-more-horizontal',
+            variant: 'ghost',
+            label: 'Discussion Options',
+          }"
+          :options="headerActions"
+        />
+      </div>
     </PageHeader>
     <div class="discussion-container">
       <div v-if="discussion.loading">
@@ -65,6 +99,7 @@
             padding puts its contents back where they were.
           -->
           <div
+            ref="postActionsRow"
             class="flex items-center bg-surface-base pb-2 pt-2"
             :class="
               editingPost
@@ -98,6 +133,12 @@
               </Tooltip>
             </div>
             <div class="ml-auto flex space-x-2 print:hidden">
+              <DiscussionNotificationBell
+                v-if="!readOnlyMode && discussion.doc.notification_state"
+                :state="discussion.doc.notification_state"
+                :loading="discussion.setNotificationState.loading"
+                @select="setNotificationState"
+              />
               <Dropdown
                 v-if="!readOnlyMode"
                 class="ml-auto"
@@ -351,9 +392,10 @@ import {
   Switch,
   dialog,
 } from 'frappe-ui'
-import { until, useEventListener } from '@vueuse/core'
+import { until, useEventListener, useIntersectionObserver } from '@vueuse/core'
 import type { Editor } from '@tiptap/vue-3'
 import Reactions from './Reactions.vue'
+import DiscussionNotificationBell from './DiscussionNotificationBell.vue'
 import UserAvatarWithHover from './UserAvatarWithHover.vue'
 import CommentsArea from '@/components/CommentsArea.vue'
 import DiscussionViewEditor from './editor/DiscussionViewEditor.vue'
@@ -367,6 +409,7 @@ import { getSpace, useSpace } from '@/data/spaces'
 import { useCommunity } from '@/data/communities'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { useDiscussion } from '@/data/discussions'
+import type { DiscussionNotificationChoice } from '@/data/notificationPreferences'
 import { useDraftSync } from '@/data/useDraftSync'
 import { tags } from '@/data/tags'
 import { shellScrollContainer, useShellScrolled } from 'frappe-ui'
@@ -849,6 +892,20 @@ const canMoveOrPinDiscussion = computed(() =>
   canMoveOrPinContent(discussion.doc, space.value, useSessionUser()),
 )
 
+const postActionsRow = useTemplateRef<HTMLElement>('postActionsRow')
+const postActionsVisible = ref(true)
+useIntersectionObserver(postActionsRow, ([entry]) => {
+  postActionsVisible.value = entry?.isIntersecting ?? true
+})
+const showHeaderActions = computed(
+  () =>
+    !postActionsVisible.value && !props.readOnlyMode && Boolean(discussion.doc?.notification_state),
+)
+const HEADER_MENU_EXCLUDES = new Set(['Edit', 'Revisions'])
+const headerActions = computed(() =>
+  actions.value.filter((action) => !HEADER_MENU_EXCLUDES.has(action.label)),
+)
+
 const actions = computed(() => [
   {
     label: 'Edit',
@@ -976,6 +1033,15 @@ const actions = computed(() => [
     },
   },
 ])
+
+async function setNotificationState(choice: DiscussionNotificationChoice) {
+  await discussion.setNotificationState.submit({ state: choice })
+  const result = discussion.setNotificationState.data
+  if (discussion.doc && result) {
+    discussion.doc.notification_state = result.notification_state
+    discussion.doc.notification_state_is_explicit = result.notification_state_is_explicit
+  }
+}
 
 useCommandPaletteCommands(
   computed(() => {

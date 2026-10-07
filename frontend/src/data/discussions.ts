@@ -3,6 +3,10 @@ import { useDoc, useList } from 'frappe-ui'
 import { UseListOptions } from 'frappe-ui'
 import { useDocumentVisibility } from '@vueuse/core'
 import { GPDiscussion } from '@/types/doctypes'
+import type {
+  DiscussionNotificationChoice,
+  DiscussionNotificationState,
+} from '@/data/notificationPreferences'
 
 // Reload the feed when the tab is re-activated after sitting in the background
 // for at least this long, so new posts show up without a manual refresh.
@@ -78,6 +82,8 @@ export function useDiscussion(discussionId: MaybeRefOrGetter<string>) {
     last_unread_poll: string
     is_bookmarked: boolean
     views: number
+    notification_state: DiscussionNotificationState
+    notification_state_is_explicit: boolean
   }
 
   interface DiscussionMethods {
@@ -90,6 +96,10 @@ export function useDiscussion(discussionId: MaybeRefOrGetter<string>) {
     addBookmark: () => void
     removeBookmark: () => void
     moveToProject: (data: { project: string }) => void
+    setNotificationState: (data: { state: DiscussionNotificationChoice }) => {
+      notification_state: DiscussionNotificationState
+      notification_state_is_explicit: boolean
+    }
   }
 
   let name = toValue(discussionId)
@@ -107,6 +117,7 @@ export function useDiscussion(discussionId: MaybeRefOrGetter<string>) {
         addBookmark: 'add_bookmark',
         removeBookmark: 'remove_bookmark',
         moveToProject: 'move_to_project',
+        setNotificationState: 'set_notification_state',
       },
     })
   }
