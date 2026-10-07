@@ -3,12 +3,12 @@
     <template v-if="space">
       <div class="mt-2 space-y-6">
         <section>
-          <div class="flex items-center justify-between gap-3">
-            <div>
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div class="min-w-0">
               <h3 class="text-base-medium text-ink-gray-7">Access</h3>
               <p class="mt-1 text-p-sm text-ink-gray-5">{{ accessDescription }}</p>
             </div>
-            <div class="flex shrink-0 items-center gap-2">
+            <div class="flex shrink-0 items-center gap-2 self-end sm:self-auto">
               <Badge>
                 <template #prefix>
                   <span :class="[accessIcon, 'size-3']" />

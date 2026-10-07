@@ -47,10 +47,9 @@
             <span class="text-ink-gray-5"> &nbsp;&middot; Edited </span>
           </Tooltip>
           <span v-if="isUpdating" class="italic text-ink-gray-5"> &nbsp;&middot; Sending... </span>
-          <div v-if="updateError">
-            &nbsp;&middot;
-            <span class="text-ink-red-7"> Not saved</span>
-          </div>
+          <span v-if="updateError" class="inline-flex items-center whitespace-nowrap text-ink-red-7">
+            &nbsp;&middot;&nbsp;Not saved
+          </span>
         </div>
       </div>
       <Dropdown

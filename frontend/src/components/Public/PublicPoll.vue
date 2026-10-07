@@ -1,7 +1,7 @@
 <template>
   <div class="rounded-lg border border-outline-gray-2 px-4 py-3">
-    <div class="flex items-center justify-between gap-2">
-      <div class="text-base-semibold text-ink-gray-8">{{ poll.title }}</div>
+    <div class="flex items-start justify-between gap-2">
+      <div class="min-w-0 text-base-semibold text-ink-gray-8">{{ poll.title }}</div>
       <span class="shrink-0 text-sm text-ink-gray-5">
         {{ poll.stopped_at ? 'Closed' : 'Open' }} ·
         {{ poll.total_votes === 1 ? '1 vote' : `${poll.total_votes || 0} votes` }}
@@ -21,7 +21,7 @@
         </div>
       </div>
     </div>
-    <div class="mt-3 flex items-center justify-between gap-2">
+    <div class="mt-3 flex flex-wrap items-center justify-between gap-2">
       <PublicReactions :reactions="poll.reactions" />
       <Button v-if="!poll.stopped_at" size="sm" label="Log in to vote" @click="goToLogin" />
     </div>
