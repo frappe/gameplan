@@ -13,7 +13,7 @@ from gameplan.mixins.archivable import Archivable
 from gameplan.mixins.visibility import HasVisibility
 from gameplan.permissions import (
 	apply_team_query_filter,
-	is_global_admin,
+	can_view_community,
 	require_can_manage_community,
 )
 from gameplan.public_access import (
@@ -31,7 +31,7 @@ class GPTeam(HasVisibility, Archivable, Document):
 	on_delete_set_null = ["GP Notification"]
 
 	def as_dict(self, *args, **kwargs) -> dict:
-		"""Hide a private community from everyone but its members and global admins.
+		"""Hide a private community from users who cannot view it.
 
 		The admin bypass is not cosmetic. `frappe.api.v2.execute_doc_method` serialises the
 		document with `as_dict` AFTER running the requested method, so a throw here loses the
@@ -41,11 +41,7 @@ class GPTeam(HasVisibility, Archivable, Document):
 		set_member_admin — even though `can_manage_community` grants all of them.
 		"""
 		user = frappe.session.user
-		if (
-			is_member_access(self.visibility)
-			and not is_global_admin(user)
-			and user not in [m.user for m in self.members]
-		):
+		if is_member_access(self.visibility) and not can_view_community(user, self):
 			frappe.throw("Not permitted", frappe.PermissionError)
 
 		return for_viewer(self.doctype, super().as_dict(*args, **kwargs))

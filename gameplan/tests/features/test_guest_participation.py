@@ -205,6 +205,21 @@ class TestGuestParticipation(GameplanTestCase):
 			frappe.has_permission("GP Team", "read", doc=self.community.name, user=self.guest.name)
 		)
 
+	def test_guest_can_serialize_private_community_holding_a_granted_space(self):
+		"""A guest who can pass the read gate must also survive API serialization."""
+		private_community = create_community(
+			"Private Granted Community", visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
+		private_space = create_space(
+			"Private Granted Space", private_community, visibility=VISIBILITY_MEMBER_ACCESS
+		)
+		grant_guest_access(self.guest, private_space)
+
+		with self.as_user(self.guest):
+			payload = frappe.get_doc("GP Team", private_community.name).as_dict()
+
+		self.assertEqual(payload.name, private_community.name)
+
 	def test_guest_cannot_read_unrelated_community(self):
 		other_community = create_community("Unrelated Community", members=[self.member])
 		self.assertFalse(

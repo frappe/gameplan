@@ -15,7 +15,13 @@
                 </template>
                 {{ accessLabel }}
               </Badge>
-              <Button label="Change visibility" @click="showVisibilityDialog = true">Change</Button>
+              <Button
+                v-if="canChangeVisibility"
+                label="Change visibility"
+                @click="showVisibilityDialog = true"
+              >
+                Change
+              </Button>
             </div>
           </div>
           <VisibilityDialog
@@ -142,7 +148,7 @@ import EmptyStateBox from '@/components/EmptyStateBox.vue'
 import VisibilityDialog from '@/components/VisibilityDialog.vue'
 import { getCommunity } from '@/data/communities'
 import { spaces as spaceList, useSpace } from '@/data/spaces'
-import { useSessionUser, useUser, users } from '@/data/users'
+import { isGameplanAdmin, useSessionUser, useUser, users } from '@/data/users'
 import { canInviteGuests, canManageSpace } from '@/utils/permissions'
 import { GPGuestAccess, GPInvitation, GPProject } from '@/types/doctypes'
 import {
@@ -160,6 +166,7 @@ const spaces = useDoctype<GPProject>('GP Project')
 const sessionUser = useSessionUser()
 const canManageMembers = computed(() => canManageSpace(space.value, sessionUser))
 const canInvite = computed(() => canInviteGuests(space.value, sessionUser))
+const canChangeVisibility = computed(() => isGameplanAdmin(sessionUser))
 const showVisibilityDialog = ref(false)
 
 type GuestAccess = GPGuestAccess & { pending: false }

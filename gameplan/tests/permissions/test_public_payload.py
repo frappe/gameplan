@@ -376,6 +376,11 @@ class TestPublicListEndpoints(PublicContentTestCase):
 			self.call("comments", limit="1000000")
 		self.assertEqual(get_list.call_args.kwargs["limit"], public_lists.MAX_ROWS)
 
+	def test_a_negative_page_size_is_bounded(self):
+		with patch("gameplan.public_lists.get_list") as get_list:
+			self.call("comments", limit="-1")
+		self.assertEqual(get_list.call_args.kwargs["limit"], 1)
+
 
 class TestPublicProfiles(PublicContentTestCase):
 	def profiles(self, handles, user=ANONYMOUS, on=True):

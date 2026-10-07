@@ -26,6 +26,7 @@
 import { computed, ref } from 'vue'
 import { dialog, Dropdown, useDoctype } from 'frappe-ui'
 import { communities } from '@/data/communities'
+import { isGameplanAdmin } from '@/data/users'
 import type { Community } from '@/data/communities'
 import type { GPTeam } from '@/types/doctypes'
 import MergeCommunityDialog from './MergeCommunityDialog.vue'
@@ -59,7 +60,7 @@ const options = computed(() => [
     label: 'Change visibility',
     icon: 'lucide-eye',
     onClick: () => (showVisibilityDialog.value = true),
-    condition: () => !props.community.archived_at,
+    condition: () => !props.community.archived_at && isGameplanAdmin(),
   },
   {
     label: 'Merge into...',
