@@ -58,6 +58,8 @@ describe('Public spaces, logged out', () => {
     // User hover cards revealing member activity must not appear for anonymous visitors
     cy.contains('@Second Member').trigger('mouseenter')
     cy.contains('in the last 3 months').should('not.exist')
+    cy.contains('@Second Member').click()
+    cy.location('pathname').should('eq', threadPath())
 
     // Author names are plain text, not links to profile pages
     cy.contains('Second Member').closest('a').should('not.exist')
@@ -117,6 +119,32 @@ describe('Public spaces, logged out', () => {
     cy.contains('Toggle theme').click()
     cy.contains('Dark Mode').click()
     cy.get('html').should('have.attr', 'data-theme', 'dark')
+  })
+
+  it('keeps public spaces visible when the browser remembers hiding inactive spaces', () => {
+    cy.visit(`/g/community/${ids.community}/discussions`, {
+      onBeforeLoad(win) {
+        win.localStorage.setItem('gameplan:hideInactiveSpaces', 'true')
+      },
+    })
+    cy.get('.gameplan-desktop-shell').contains('Announcements').should('be.visible')
+  })
+
+  it('lets a mobile visitor browse public spaces without member-only feeds', () => {
+    cy.viewport(390, 844)
+    cy.visit(`/g/community/${ids.community}/discussions`)
+    cy.get('header:visible').contains('button', 'Log in').should('be.visible')
+    cy.get('header:visible button').contains('Discussions').click()
+    cy.get('[role="dialog"]').within(() => {
+      cy.contains('Announcements').should('be.visible')
+      cy.contains('Unread').should('not.exist')
+      cy.contains('Participating').should('not.exist')
+      cy.contains('Core Team').should('not.exist')
+      cy.contains('Announcements').click()
+    })
+    cy.location('pathname').should('include', `/space/${ids.space}`)
+    cy.get('header:visible button').contains('Announcements').click()
+    cy.get('[role="dialog"]').contains('All discussions').should('be.visible')
   })
 
   it('lists the public space and opens a thread from it', () => {

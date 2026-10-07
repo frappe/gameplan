@@ -77,8 +77,24 @@
       </template>
     </div>
 
+    <div v-if="isAnonymousVisitor()" class="mb-6 flex flex-wrap justify-center gap-2">
+      <Button
+        v-if="comments.hasNextPage"
+        label="Load more comments"
+        :loading="comments.loading"
+        @click="comments.next()"
+      />
+      <Button
+        v-if="polls.hasNextPage"
+        label="Load more polls"
+        :loading="polls.loading"
+        @click="polls.next()"
+      />
+    </div>
     <div v-if="readOnlyMode && isAnonymousVisitor()" class="mb-20">
-      <PublicJoinPrompt :title="disableNewComment ? 'Follow this community' : 'Join the conversation'" />
+      <PublicJoinPrompt
+        :title="disableNewComment ? 'Follow this community' : 'Join the conversation'"
+      />
     </div>
 
     <!-- In an installed PWA the collapsed button clears the home indicator: the 1rem
@@ -427,7 +443,7 @@ const comments = useList<GPComment>({
     reference_name: props.name,
   },
   orderBy: 'creation asc',
-  limit: 99999,
+  limit: isAnonymousVisitor() ? 1000 : 99999,
   onSuccess() {
     if (route.query.comment) {
       if (route.query.comment === 'first_post') {
@@ -493,7 +509,7 @@ const polls = useList<GPPoll>({
     discussion: props.name,
   },
   orderBy: 'creation asc',
-  limit: 99999,
+  limit: isAnonymousVisitor() ? 1000 : 99999,
   transform(data) {
     return data.map((d) => ({ ...d, doctype: 'GP Poll' }))
   },

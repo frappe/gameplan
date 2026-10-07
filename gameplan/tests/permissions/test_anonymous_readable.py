@@ -8,7 +8,10 @@ It holds only when the space and its community are both on the Anonymous tier an
 is archived. Nothing sets it by hand; every save that can change the answer recomputes it.
 """
 
+from unittest.mock import patch
+
 import frappe
+from frappe.api.v2 import update_doc
 
 from gameplan.public_access import (
 	VISIBILITY_ANONYMOUS,
@@ -42,6 +45,20 @@ class AnonymousReadableTestCase(GameplanTestCase):
 
 
 class TestTheRule(AnonymousReadableTestCase):
+	def test_a_member_cannot_publish_a_private_space_by_writing_the_computed_flag(self):
+		space = create_space(
+			"Submitted Public Flag",
+			create_community("Submitted Flag Community"),
+			visibility=VISIBILITY_MEMBER_ACCESS,
+			members=[self.member],
+		)
+		with (
+			self.as_user(self.member),
+			patch.object(frappe.local, "form_dict", frappe._dict(is_anonymous_readable=1), create=True),
+		):
+			update_doc("GP Project", str(space.name))
+		self.assertFalse(readable(space))
+
 	def test_only_an_anonymous_space_in_an_anonymous_community_qualifies(self):
 		for community_tier in TIERS:
 			community = create_community(f"Rule {community_tier} Community", visibility=community_tier)

@@ -234,6 +234,15 @@ class TestPublicDocuments(PublicContentTestCase):
 
 
 class TestPublicLists(PublicContentTestCase):
+	def test_direct_public_lists_clamp_page_size_and_offset(self):
+		for requested, expected in ((-1, 1), (1000000, public_lists.MAX_ROWS)):
+			with switched_on(), self.as_user(ANONYMOUS):
+				with patch("frappe.qb.get_query", wraps=frappe.qb.get_query) as query:
+					get_client_list(doctype="GP Comment", fields=["name"], start=-1, limit=requested)
+				calls = [call for call in query.call_args_list if call.kwargs.get("table") == "GP Comment"]
+			self.assertEqual(calls[0].kwargs["limit"], expected)
+			self.assertEqual(calls[0].kwargs["offset"], 0)
+
 	def client_list(self, doctype, **kwargs):
 		with switched_on(), self.as_user(ANONYMOUS):
 			return get_client_list(doctype=doctype, limit=100, **kwargs)
@@ -380,6 +389,13 @@ class TestPublicListEndpoints(PublicContentTestCase):
 		with patch("gameplan.public_lists.get_list") as get_list:
 			self.call("comments", limit="-1")
 		self.assertEqual(get_list.call_args.kwargs["limit"], 1)
+
+	def test_pagination_reports_when_another_request_is_needed(self):
+		with patch("gameplan.public_lists.get_list", return_value=[frappe._dict(name="comment")]):
+			self.call("comments", limit=1)
+			self.assertTrue(frappe.response["has_next_page"])
+			self.call("comments", limit=2)
+			self.assertFalse(frappe.response["has_next_page"])
 
 
 class TestPublicProfiles(PublicContentTestCase):

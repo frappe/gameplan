@@ -33,7 +33,7 @@ const availableCommunitySpaceList = computed(() => {
 const communitySpaceList = computed(() => {
   let visibleSpaces = availableCommunitySpaceList.value
 
-  if (currentHideInactiveSpaces.value && !spaceActivity.loading) {
+  if (!isAnonymousVisitor() && currentHideInactiveSpaces.value && !spaceActivity.loading) {
     visibleSpaces = visibleSpaces.filter(
       (space) => isSpacePinned(space.name) || hasRecentActivity(space),
     )
@@ -68,6 +68,7 @@ const communitySpaceOptions = computed(() => {
 
 const hasHiddenInactiveSpaces = computed(() => {
   return (
+    !isAnonymousVisitor() &&
     currentHideInactiveSpaces.value &&
     !spaceActivity.loading &&
     availableCommunitySpaceList.value.some(

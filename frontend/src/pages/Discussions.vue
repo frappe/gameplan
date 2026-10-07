@@ -1,6 +1,6 @@
 <template>
   <PageHeaderMobile v-if="communityState.doc" class="sm:hidden" :title="feedTitle">
-    <template #prefix>
+    <template v-if="!publicVisitor" #prefix>
       <PageHeaderBackButton :to="{ name: 'Home' }" />
     </template>
     <button
@@ -11,9 +11,12 @@
       <PageHeaderMobileTitle :title="feedTitle" />
       <span class="size-4 shrink-0 text-ink-gray-5 lucide-chevron-down" aria-hidden="true" />
     </button>
+    <template v-if="publicVisitor" #suffix>
+      <PublicLoginButtons />
+    </template>
   </PageHeaderMobile>
 
-  <BottomSheet v-if="!publicVisitor" v-model:open="menuOpen" :title="community?.title || 'Community'">
+  <BottomSheet v-model:open="menuOpen" :title="community?.title || 'Community'">
     <CommunityMenu
       class="pb-6"
       :communityId="communityId"
@@ -50,7 +53,12 @@
           </span>
         </template>
       </TabButtons>
-      <Select v-if="!publicVisitor" class="shrink-0 !w-fit" :options="orderOptions" v-model="orderBy" />
+      <Select
+        v-if="!publicVisitor"
+        class="shrink-0 !w-fit"
+        :options="orderOptions"
+        v-model="orderBy"
+      />
     </div>
 
     <KeepAlive>
@@ -83,6 +91,7 @@ import { useRouter } from 'vue-router'
 import CommunityMenu from '@/components/CommunityMenu.vue'
 import DiscussionList from '@/components/DiscussionList.vue'
 import LastPostReminder from '@/components/LastPostReminder.vue'
+import PublicLoginButtons from '@/components/Public/PublicLoginButtons.vue'
 import { communityState } from '@/data/communityState'
 import { useCommunity } from '@/data/communities'
 import { getSpaceUnreadCount, spaces } from '@/data/spaces'

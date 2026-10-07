@@ -67,6 +67,14 @@ class TestDemoFixtureValidation(FrappeTestCase):
 		self.assertEqual(len(problems), 1)
 		self.assertIn("'follow'", problems[0])
 
+	def test_legacy_permissions_are_rejected_before_clearing(self):
+		problems = self._validate([{"type": "community", "is_private": 1}])
+		self.assertTrue(any("use visibility instead of is_private" in problem for problem in problems))
+
+	def test_unknown_visibility_is_rejected_before_clearing(self):
+		problems = self._validate([{"type": "space", "visibility": "Public"}])
+		self.assertTrue(any("invalid visibility tier" in problem for problem in problems))
+
 	def test_an_unparseable_relative_time_is_reported(self):
 		problems = self._validate([{"t": "yesterday", "type": "user"}])
 

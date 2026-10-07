@@ -6,7 +6,6 @@
       :title="space?.title || 'Space'"
     >
       <button
-        v-if="!publicVisitor"
         type="button"
         class="inline-flex max-w-full items-center gap-1 transition active:opacity-60"
         @click="menuOpen = true"
@@ -23,15 +22,11 @@
         />
         <span class="size-4 shrink-0 text-ink-gray-5 lucide-chevron-down" aria-hidden="true" />
       </button>
-      <PageHeaderMobileTitle v-else :title="space?.title || 'Space'">
-        <template #prefix>
-          <SpaceIcon :icon="space?.icon" class="size-5 text-ink-gray-6" />
-        </template>
-      </PageHeaderMobileTitle>
       <template #prefix>
         <PageHeaderBackButton :to="{ name: 'Discussions', params: { communityId } }" />
       </template>
       <template #suffix>
+        <PublicLoginButtons v-if="publicVisitor" />
         <Button
           v-if="!publicVisitor && route.name === 'SpaceDiscussions' && canStartDiscussion"
           variant="ghost"
@@ -46,7 +41,7 @@
         />
       </template>
     </PageHeaderMobile>
-    <BottomSheet v-if="!publicVisitor" v-model:open="menuOpen" :title="community?.title || 'Community'">
+    <BottomSheet v-model:open="menuOpen" :title="community?.title || 'Community'">
       <CommunityMenu
         class="pb-6"
         :communityId="communityId"
@@ -90,6 +85,7 @@ import CommunityMenu from '@/components/CommunityMenu.vue'
 import EmptyStateBox from '@/components/EmptyStateBox.vue'
 import SpaceBreadcrumbs from '@/components/SpaceBreadcrumbs.vue'
 import SpaceIcon from '@/components/SpaceIcon.vue'
+import PublicLoginButtons from '@/components/Public/PublicLoginButtons.vue'
 import { isSpacePinned } from '@/data/pinnedSpaces'
 import { useCommunity } from '@/data/communities'
 import { useOwnedRouteWrites } from '@/composables/useOwnedRouteWrites'

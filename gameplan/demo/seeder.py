@@ -24,7 +24,7 @@ from datetime import datetime, timedelta
 import frappe
 from frappe.utils import add_days, getdate, now_datetime
 
-from gameplan.public_access import VISIBILITY_GENERAL
+from gameplan.public_access import VISIBILITY_GENERAL, VISIBILITY_TIERS
 
 MAYA_EMAIL = "maya@moonhollow.studio"
 DEMO_EMAIL_DOMAIN = "@moonhollow.studio"
@@ -131,6 +131,11 @@ class Seeder:
 
 			if not event_type:
 				continue
+			if event_type in {"community", "space"}:
+				if "is_private" in event:
+					problems.append(f"line {number}: use visibility instead of is_private")
+				if event.get("visibility", VISIBILITY_GENERAL) not in VISIBILITY_TIERS:
+					problems.append(f"line {number}: invalid visibility tier")
 
 			problems.extend(
 				cls._reference_problems(number, event, event_type, ids, user_slugs, emoji_slugs, files_dir)
@@ -210,6 +215,8 @@ class Seeder:
 		"""Every user slug the event names, from whichever field carries it."""
 		slugs = [event.get(field) for field in _USER_SLUG_FIELDS]
 		slugs += event.get("members") or []
+		slugs += event.get("admins") or []
+		slugs += event.get("guests") or []
 		changes = event.get("changes")
 		if isinstance(changes, dict):
 			slugs.append(changes.get("assigned_to"))
@@ -299,7 +306,10 @@ class Seeder:
 		self._backdate("User", email, ts)
 
 	def _event_community(self, event, actor, ts):
-		members = [{"user": self.users[s], "status": "Accepted"} for s in event.get("members", [])]
+		members = [
+			{"user": self.users[s], "status": "Accepted", "is_admin": int(s in event.get("admins", []))}
+			for s in event.get("members", [])
+		]
 		team = frappe.get_doc(
 			{
 				"doctype": "GP Team",
@@ -328,7 +338,14 @@ class Seeder:
 				"description": event.get("description"),
 				"visibility": event.get("visibility", VISIBILITY_GENERAL),
 			}
-		).insert(ignore_permissions=True)
+		)
+		for slug in event.get("members", []):
+			space.append("members", {"user": self.users[slug]})
+		space.insert(ignore_permissions=True)
+		for slug in event.get("guests", []):
+			frappe.get_doc(
+				doctype="GP Guest Access", user=self.users[slug], project=space.name, team=team
+			).insert(ignore_permissions=True)
 		self.refs[event["id"]] = ("GP Project", space.name)
 		self._backdate("GP Project", space.name, ts)
 

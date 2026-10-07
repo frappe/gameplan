@@ -24,14 +24,17 @@ MAX_ROWS = 1000
 
 def public_list(doctype, fields, filters, order_by, start, limit):
 	limit = cint(limit) or 20
-	return get_list(
+	limit = max(1, min(limit, MAX_ROWS))
+	rows = get_list(
 		doctype=doctype,
 		fields=frappe.parse_json(fields) if isinstance(fields, str) else fields,
 		filters=frappe.parse_json(filters) if isinstance(filters, str) else filters,
 		order_by=order_by,
 		start=max(cint(start), 0),
-		limit=max(1, min(limit, MAX_ROWS)),
+		limit=limit,
 	)
+	frappe.response["has_next_page"] = len(rows) == limit
+	return rows
 
 
 @frappe.whitelist(allow_guest=True, methods=["GET"])

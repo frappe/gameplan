@@ -91,7 +91,13 @@ class HasVisibility:
 		A community change recomputes all of its spaces, because theirs depends on it.
 		"""
 		inputs = ANONYMOUS_READABLE_INPUTS[self.doctype]
-		if self.get_doc_before_save() and not any(self.has_value_changed(field) for field in inputs):
+		# A read-only field is still writable through the generic document APIs.
+		# Recompute the space flag on every save instead of trusting a submitted value.
+		if (
+			self.doctype == "GP Team"
+			and self.get_doc_before_save()
+			and not any(self.has_value_changed(field) for field in inputs)
+		):
 			return
 		refresh_anonymous_readable(self.get_affected_space_names())
 		if self.doctype == "GP Project":

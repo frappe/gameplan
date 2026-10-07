@@ -95,6 +95,8 @@ def get_discussions(filters=None, order_by=None, start=None, limit=None):
 			refuse("Not allowed without signing in")
 		check_public_filters("GP Discussion", filters)
 	limit = cint(limit)
+	if gameplan.is_anonymous():
+		limit = max(1, min(limit or 20, 1000))
 	start = parse_offset(start)
 	order_field, order_direction = parse_order_by(order_by or DEFAULT_ORDER_BY)
 
