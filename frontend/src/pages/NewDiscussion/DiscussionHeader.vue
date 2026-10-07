@@ -4,7 +4,7 @@
       <PageHeaderBackButton :to="backRoute" />
     </template>
     <template #suffix>
-      <PublishControls size="sm" />
+      <PublishControls v-if="sessionUser.name == author?.name" size="sm" />
     </template>
   </PageHeaderMobile>
 
@@ -29,7 +29,7 @@
     </div>
     <div class="flex shrink-0 items-center space-x-2">
       <DiscussionSpaceSelector />
-      <PublishControls />
+      <PublishControls v-if="sessionUser.name == author?.name" />
     </div>
   </PageHeader>
 </template>
@@ -42,7 +42,8 @@ import { useNewDiscussionContext } from './useNewDiscussion'
 import DiscussionSpaceSelector from './DiscussionSpaceSelector.vue'
 import PublishControls from './PublishControls.vue'
 
-const { isPersisted, draftData, scheduledAt, scheduledAtLabel } = useNewDiscussionContext()
+const { isPersisted, draftData, scheduledAt, scheduledAtLabel, sessionUser, author } =
+  useNewDiscussionContext()
 
 const route = useRoute()
 const mobileTitle = computed(() => (isPersisted.value ? 'Draft' : 'New Discussion'))

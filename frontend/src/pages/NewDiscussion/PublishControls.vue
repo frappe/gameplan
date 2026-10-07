@@ -71,7 +71,7 @@ const options = computed(() => {
       ]
     : [{ label: 'Schedule for later', icon: 'lucide-calendar-clock', onClick: openSchedule }]
 
-  if (author.value.name === sessionUser.name) {
+  if (author.value?.name === sessionUser.name) {
     items.push({ label: 'Delete draft', icon: 'lucide-trash-2', onClick: deleteDraft })
   }
 

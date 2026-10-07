@@ -12,7 +12,16 @@
  *  - Standalone (new discussion): each composition is its own row. Two tabs must NOT collide,
  *    so the local key is per-instance until the server assigns a unique name.
  */
-import { ref, computed, watch, toValue, nextTick, onScopeDispose, type MaybeRefOrGetter } from 'vue'
+import {
+  ref,
+  computed,
+  watch,
+  toRaw,
+  toValue,
+  nextTick,
+  onScopeDispose,
+  type MaybeRefOrGetter,
+} from 'vue'
 import { call, debounce, toast, dayjsLocal, useDoctype } from 'frappe-ui'
 import { session } from './session'
 import { createDraft, drafts } from './drafts'
@@ -88,6 +97,9 @@ export interface ResolvedDraft {
   payload: DraftPayload
   /** The `GP Draft` row these edits belong to, or null when no row exists yet. */
   serverName: string | null
+  /** Who the draft belongs to, or null while unknown. Unknown, or anyone but the session
+   *  user, makes it read-only. */
+  owner: string | null
   /** The IndexedDB key the winning record came from, so a re-key can delete its predecessor. */
   localKey: string | null
   updatedAt: number
@@ -111,9 +123,10 @@ export interface ResolvedDraft {
  *    reached the server still comes back through `server`.
  *  - Un-pushed local edits beat the server copy: they are newer by definition.
  *  - A draft is readable by anyone holding its name (a shared `?draft=` URL), but only its
- *    owner can write it. A foreign server draft is restored for reading with no
- *    `serverName`, so the reader's edits fork into a row of their own instead of retrying
- *    a forbidden write forever.
+ *    owner can write it. A foreign server draft wins over everything else and opens
+ *    read-only: the reader never gets a buffer of their own to save.
+ *  - A named draft that neither copy vouches for has an unknown owner, so it stays
+ *    read-only. Assuming the reader owns it would let them type into someone else's row.
  */
 export function reconcileDraft(input: {
   local: DraftRecord | null
@@ -126,9 +139,23 @@ export function reconcileDraft(input: {
   const { server, seed, sessionUser } = input
   const local = input.local?.user === sessionUser ? input.local : null
   const base = {
+    owner: sessionUser,
     localKey: null,
     restored: false,
     needsLocalWrite: false,
+  }
+
+  if (server?.owner && server.owner !== sessionUser) {
+    const payload = payloadFromDoc(server, seed)
+    return {
+      ...base,
+      payload,
+      serverName: server.name,
+      owner: server.owner,
+      updatedAt: 0,
+      syncedAt: null,
+      restored: hasContent(payload),
+    }
   }
 
   if (local && local.updatedAt > (local.syncedAt ?? 0)) {
@@ -146,11 +173,10 @@ export function reconcileDraft(input: {
   if (server) {
     const payload = payloadFromDoc(server, seed)
     const now = Date.now()
-    const isForeign = Boolean(server.owner && server.owner !== sessionUser)
     return {
       ...base,
       payload,
-      serverName: isForeign ? null : server.name,
+      serverName: server.name,
       updatedAt: now,
       syncedAt: now,
       restored: hasContent(payload),
@@ -170,7 +196,14 @@ export function reconcileDraft(input: {
     }
   }
 
-  return { ...base, payload: seed, serverName: input.serverName, updatedAt: 0, syncedAt: null }
+  return {
+    ...base,
+    payload: seed,
+    serverName: input.serverName,
+    owner: input.serverName ? null : sessionUser,
+    updatedAt: 0,
+    syncedAt: null,
+  }
 }
 
 /** Read a server row into a payload shaped like the composer's own: a composer with no
@@ -223,6 +256,11 @@ export function useDraftSync(options: UseDraftSyncOptions) {
   // write so a same-browser account switch can't relabel this composer's draft as the new
   // user (the global session.user can change while this instance is still alive).
   const draftOwner = session.user
+  // Who the open draft belongs to, or null while unknown. A new composition is ours from
+  // the start; a draft opened by name is not known to be ours until the lookup says so.
+  // Until then, and for anyone else's shared draft, it is read-only: nothing may save it.
+  const owner = ref<string | null>(serverName.value ? null : draftOwner)
+  const readOnly = computed(() => owner.value === null || owner.value !== draftOwner)
   const isSingleton = computed(() => {
     const id = toValue(identity)
     return id.mode === 'Edit' || Boolean(id.referenceName)
@@ -292,7 +330,7 @@ export function useDraftSync(options: UseDraftSyncOptions) {
 
   async function persistToServer() {
     const payload = data.value
-    if (!payload || !isEnabled() || !dirty.value || !canSave(payload)) return
+    if (!payload || readOnly.value || !isEnabled() || !dirty.value || !canSave(payload)) return
     // Snapshot what we are about to send, and the edit clock it belongs to, BEFORE the
     // request goes out. Marking the draft synced as of the response time would mark every
     // keystroke typed while the request was in flight as already pushed — those edits go
@@ -358,7 +396,9 @@ export function useDraftSync(options: UseDraftSyncOptions) {
   watch(
     () => [data.value?.title, data.value?.content, data.value?.project],
     () => {
-      if (!data.value || applying.value || !isEnabled()) return
+      // A read-only draft still changes under the editor, which normalizes some content
+      // (images, code blocks) on first render. That is not an edit to save.
+      if (!data.value || applying.value || readOnly.value || !isEnabled()) return
       touched.value = true
       updatedAt.value = Date.now()
       if (!canSave(data.value)) return
@@ -370,7 +410,13 @@ export function useDraftSync(options: UseDraftSyncOptions) {
   async function fetchServerDraft(): Promise<ServerDraftDoc | null> {
     try {
       if (serverName.value) {
-        return await call('frappe.client.get', { doctype: 'GP Draft', name: serverName.value })
+        try {
+          return await call('frappe.client.get', { doctype: 'GP Draft', name: serverName.value })
+        } catch (error) {
+          // Without the row its owner is unknown, so the draft stays read-only. Say why.
+          toast.error('Could not load this draft. Reload the page to try again.')
+          throw error
+        }
       }
       if (isSingleton.value) {
         const id = toValue(identity)
@@ -421,6 +467,7 @@ export function useDraftSync(options: UseDraftSyncOptions) {
    *  watcher, for a buffer the user did not type. */
   async function adopt(resolved: ResolvedDraft, { quietly = false } = {}) {
     serverName.value = resolved.serverName
+    owner.value = resolved.owner
     updatedAt.value = resolved.updatedAt
     syncedAt.value = resolved.syncedAt
     restored.value = resolved.restored
@@ -462,7 +509,8 @@ export function useDraftSync(options: UseDraftSyncOptions) {
       void pending.then((late) => {
         // Identity as well as `touched`, because a buffer swapped out wholesale — by a
         // sibling tab, or by a finished draft — is not this one to overwrite either.
-        if (touched.value || data.value !== blank.payload) return
+        // `toRaw`, because the ref hands back a reactive proxy, never the object it was given.
+        if (touched.value || toRaw(data.value) !== blank.payload) return
         return adopt(late, { quietly: true })
       })
     })()
@@ -495,6 +543,7 @@ export function useDraftSync(options: UseDraftSyncOptions) {
   function reset() {
     debouncedPush.cancel?.()
     serverName.value = null
+    owner.value = draftOwner
     updatedAt.value = 0
     syncedAt.value = null
     restored.value = false
@@ -591,6 +640,9 @@ export function useDraftSync(options: UseDraftSyncOptions) {
     /** A pre-existing draft was found and restored on load. */
     restored,
     serverName,
+    /** Who the draft belongs to, or null while unknown. Unless it is the session user, the
+     *  draft is read-only and never saved. */
+    owner,
     flush,
     clear,
     commit,
