@@ -107,6 +107,12 @@
                   >
                     {{ draft.title }}
                   </span>
+                  <Tooltip
+                    v-if="draft.scheduled_at"
+                    :text="`Scheduled for ${dayjsLocal(draft.scheduled_at).format('ddd D MMM, h:mm A')}`"
+                  >
+                    <span class="lucide-calendar-clock size-4 shrink-0 text-ink-gray-5" />
+                  </Tooltip>
                 </div>
                 <div class="flex mt-1.5 items-center min-w-0">
                   <div

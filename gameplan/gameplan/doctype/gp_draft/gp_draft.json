@@ -12,7 +12,8 @@
   "reference_doctype",
   "reference_name",
   "project",
-  "team"
+  "team",
+  "scheduled_at"
  ],
  "fields": [
   {
@@ -63,6 +64,13 @@
    "fieldtype": "Link",
    "label": "Team",
    "options": "GP Team"
+  },
+  {
+   "description": "Set when the author scheduled this discussion draft; the scheduler publishes it at this time (site timezone).",
+   "fieldname": "scheduled_at",
+   "fieldtype": "Datetime",
+   "label": "Scheduled At",
+   "search_index": 1
   }
  ],
  "index_web_pages_for_search": 1,

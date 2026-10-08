@@ -1,6 +1,6 @@
 import { ref, computed, onMounted, provide, inject, watch, type InjectionKey } from 'vue'
 import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
-import { call, useDoctype, dialog } from 'frappe-ui'
+import { call, useDoctype, dialog, dayjs, dayjsLocal, getConfig, toast } from 'frappe-ui'
 import { useOwnedRouteWrites } from '@/composables/useOwnedRouteWrites'
 import { useDraftSync, type DraftPayload } from '@/data/useDraftSync'
 import { drafts } from '@/data/drafts'
@@ -13,6 +13,16 @@ import { captureError } from '@/utils/errorReporting'
 import type { GPDiscussion } from '@/types/doctypes'
 
 const PUBLISH_DRAFT = 'gameplan.gameplan.doctype.gp_draft.gp_draft.publish_draft'
+const SCHEDULE_DRAFT = 'gameplan.gameplan.doctype.gp_draft.gp_draft.schedule_draft'
+const UNSCHEDULE_DRAFT = 'gameplan.gameplan.doctype.gp_draft.gp_draft.unschedule_draft'
+const SERVER_DATETIME = 'YYYY-MM-DD HH:mm:ss'
+
+function toSiteTime(localDateTime: string) {
+  const systemTimezone = getConfig('systemTimezone')
+  if (!systemTimezone) return dayjs(localDateTime).format(SERVER_DATETIME)
+  const localTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+  return dayjs.tz(localDateTime, localTimezone).tz(systemTimezone).format(SERVER_DATETIME)
+}
 const LOADING_STATUS_DELAY_MS = 200
 const FLUSH_ATTEMPTS = 3
 
@@ -29,7 +39,6 @@ export function useNewDiscussion() {
 
   // The canonical composer route carries the community; the legacy route does not.
   const communityId = computed(() => optionalParam(route.params.communityId))
-  const isScoped = computed(() => Boolean(communityId.value))
 
   const errorMessage = ref<string | null>(null)
   const publishError = ref<string | null>(null)
@@ -58,6 +67,33 @@ export function useNewDiscussion() {
   const draftData = draft.data
   const isPersisted = computed(() => Boolean(draft.serverName.value))
 
+  const scheduledAt = ref<string | null>(null)
+  const scheduling = ref(false)
+  watch(
+    () => draft.serverName.value,
+    async (name) => {
+      if (!name) {
+        scheduledAt.value = null
+        return
+      }
+      scheduledAt.value = drafts.data?.find((row) => row.name === name)?.scheduled_at || null
+      try {
+        const row = await call('frappe.client.get_value', {
+          doctype: 'GP Draft',
+          filters: { name },
+          fieldname: 'scheduled_at',
+        })
+        if (draft.serverName.value === name) scheduledAt.value = row?.scheduled_at || null
+      } catch (error) {
+        captureError(error, { action: 'read-draft-schedule', draft: name })
+      }
+    },
+    { immediate: true },
+  )
+  const scheduledAtLabel = computed(() =>
+    scheduledAt.value ? dayjsLocal(scheduledAt.value).format('ddd D MMM, h:mm A') : '',
+  )
+
   // A shared `?draft=` link can open someone else's draft. It stays theirs: the composer
   // shows it read-only, with no Publish or Delete. Null while the owner is unknown, which
   // is equally read-only, so neither control flashes before the draft resolves.
@@ -78,6 +114,10 @@ export function useNewDiscussion() {
     },
   })
 
+  const canPublish = computed(() =>
+    Boolean(draftData.value?.project && draftData.value?.title?.trim()),
+  )
+
   // Keep fast IndexedDB/server restores visually quiet, but expose a real status when a
   // request is slow enough that the temporarily disabled composer needs explanation.
   watch(
@@ -94,15 +134,10 @@ export function useNewDiscussion() {
     { immediate: true },
   )
 
-  // In scoped mode the picker only offers spaces from the route's community; the
-  // legacy route keeps the full grouped list. `canPostInSpace` is the same predicate the
-  // space dialog filters on, so the composer cannot offer a space the dialog would not:
-  // it also rules out read-only mode and guests, who may comment but never start a
-  // discussion anywhere.
-  const spaceOptions = useGroupedSpaceOptions({
-    filterFn: (space) =>
-      canPostInSpace(space) && (!isScoped.value || space.team === communityId.value),
-  })
+  // `canPostInSpace` is the same predicate the space dialog filters on, so the composer
+  // cannot offer a space the dialog would not: it also rules out read-only mode and guests,
+  // who may comment but never start a discussion anywhere.
+  const spaceOptions = useGroupedSpaceOptions({ filterFn: canPostInSpace })
 
   // Typing the composer URL is the one way into it without going through the dialog, so
   // this is where a user with nothing to pick lands. An empty picker says nothing; the
@@ -146,14 +181,14 @@ export function useNewDiscussion() {
     if (!normalizeDraftRoute()) syncSelectedSpaceToRoute(draftData.value?.project)
   }
 
-  // A draft opened on the legacy route that already belongs to a space is moved onto the
-  // canonical scoped route. Drafts with no resolvable community stay on the legacy route.
+  // A draft whose space belongs to another community than the route's — opened on the
+  // legacy route, or moved to a space elsewhere — is moved onto that community's route.
+  // Drafts with no resolvable community stay where they are.
   function normalizeDraftRoute() {
-    if (isScoped.value) return false
     const project = draftData.value?.project
     if (!project) return false
     const targetCommunityId = getSpace(project)?.team
-    if (!targetCommunityId) return false
+    if (!targetCommunityId || targetCommunityId === communityId.value) return false
     router.replace({
       name: 'NewDiscussion',
       params: { communityId: targetCommunityId },
@@ -296,6 +331,50 @@ export function useNewDiscussion() {
     }
   }
 
+  async function scheduleDraft(localDateTime: string) {
+    hasInteracted.value = true
+    publishError.value = null
+    if (!validateDraft(true)) return false
+    scheduling.value = true
+    try {
+      if (!(await flushUntilPushed()) || !draft.serverName.value) {
+        publishError.value =
+          'Could not save your draft to the server. Check your connection and try again.'
+        return false
+      }
+      const name = draft.serverName.value
+      const serverTime = toSiteTime(localDateTime)
+      await call(SCHEDULE_DRAFT, { name, scheduled_at: serverTime })
+      scheduledAt.value = serverTime
+      toast.success(`Scheduled for ${scheduledAtLabel.value}`)
+      drafts.reload()
+      await router.replace({ name: 'Drafts' })
+      return true
+    } catch (error: any) {
+      captureError(error, { action: 'schedule-discussion', draft: draft.serverName.value })
+      publishError.value = extractServerMessage(error) || 'Could not schedule this post.'
+      return false
+    } finally {
+      scheduling.value = false
+    }
+  }
+
+  async function unscheduleDraft() {
+    if (!draft.serverName.value) return
+    scheduling.value = true
+    try {
+      await call(UNSCHEDULE_DRAFT, { name: draft.serverName.value })
+      scheduledAt.value = null
+      toast.success('Schedule removed. Your draft is still in Drafts.')
+      drafts.reload()
+    } catch (error: any) {
+      captureError(error, { action: 'unschedule-discussion', draft: draft.serverName.value })
+      publishError.value = extractServerMessage(error) || 'Could not remove the schedule.'
+    } finally {
+      scheduling.value = false
+    }
+  }
+
   async function deleteDraft() {
     if (!draftData.value || !hasMeaningfulContent(draftData.value)) {
       isDeletingDraft.value = true
@@ -353,6 +432,7 @@ export function useNewDiscussion() {
     // Data
     draftData,
     selectedSpace,
+    canPublish,
     isPersisted,
     publishError,
     errorMessage,
@@ -368,9 +448,14 @@ export function useNewDiscussion() {
     publishing,
     isPublishingSuccessfully,
     isDeletingDraft,
+    scheduledAt,
+    scheduledAtLabel,
+    scheduling,
 
     // Actions
     publish,
+    scheduleDraft,
+    unscheduleDraft,
     deleteDraft,
     handleTitleInput,
     handleTitleBlur,
