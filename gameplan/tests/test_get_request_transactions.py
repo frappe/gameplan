@@ -62,6 +62,7 @@ READ_ONLY_ENDPOINTS = frozenset(
 		# Revision history.
 		"gameplan.gameplan.doctype.gp_comment.gp_comment.GPComment.get_revisions",
 		"gameplan.gameplan.doctype.gp_discussion.gp_discussion.GPDiscussion.get_revisions",
+		"gameplan.gameplan.doctype.gp_discussion.gp_discussion.GPDiscussion.get_backlinks",
 		# Space membership, activity and unread counters.
 		"gameplan.gameplan.doctype.gp_project.gp_project.get_joined_spaces",
 		"gameplan.gameplan.doctype.gp_project.gp_project.get_activity",

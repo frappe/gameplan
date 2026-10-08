@@ -12,7 +12,8 @@
   "edited_at",
   "deleted_at",
   "reactions",
-  "tags"
+  "tags",
+  "backlinks"
  ],
  "fields": [
   {
@@ -56,12 +57,18 @@
    "fieldtype": "Table",
    "label": "Tags",
    "options": "GP Tag Link"
+  },
+  {
+   "fieldname": "backlinks",
+   "fieldtype": "Table",
+   "label": "Backlinks",
+   "options": "GP Backlink"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-08-31 23:29:54.697656",
+ "modified": "2026-10-03 12:00:00.000000",
  "modified_by": "faris@erpnext.com",
  "module": "Gameplan",
  "name": "GP Comment",

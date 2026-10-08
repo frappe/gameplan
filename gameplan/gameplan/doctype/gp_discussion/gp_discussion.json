@@ -14,6 +14,7 @@
   "content",
   "reactions",
   "tags",
+  "backlinks",
   "last_post_at",
   "last_post_type",
   "last_post",
@@ -139,6 +140,12 @@
    "options": "GP Tag Link"
   },
   {
+   "fieldname": "backlinks",
+   "fieldtype": "Table",
+   "label": "Backlinks",
+   "options": "GP Backlink"
+  },
+  {
    "default": "Category",
    "fieldname": "pin_scope",
    "fieldtype": "Select",
@@ -149,7 +156,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-19 12:00:00.000000",
+ "modified": "2026-10-03 12:00:00.000000",
  "modified_by": "faris@erpnext.com",
  "module": "Gameplan",
  "name": "GP Discussion",
