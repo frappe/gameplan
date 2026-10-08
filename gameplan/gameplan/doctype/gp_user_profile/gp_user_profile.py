@@ -8,11 +8,13 @@ import frappe
 from frappe.model.document import Document
 from frappe.model.naming import append_number_if_name_exists
 from frappe.query_builder.functions import Count
+from frappe.utils import cint
 from frappe.website.utils import cleanup_page_name
 
 from gameplan.api import get_user_info, require_admin
 from gameplan.extends.client import check_permissions
 from gameplan.mixins.attachments import HasAttachments
+from gameplan.new_user_limits import POST_COUNTER_FIELDS
 from gameplan.realtime import notify_users_changed
 
 PROFILE_BENTO_CARD_TYPES = {"Card", "Blank"}
@@ -44,6 +46,12 @@ class GPUserProfile(HasAttachments, Document):
 	attachments_field = "readme"
 
 	def validate(self):
+		before = self.get_doc_before_save()
+		for field in set(POST_COUNTER_FIELDS.values()):
+			if cint(self.get(field)) != (cint(before.get(field)) if before else 0):
+				frappe.throw(
+					"Posting counters cannot be changed through profile edits", frappe.PermissionError
+				)
 		self.quick_reaction_emojis = normalize_quick_reaction_emojis(self.quick_reaction_emojis)
 		self.drop_foreign_card_images()
 

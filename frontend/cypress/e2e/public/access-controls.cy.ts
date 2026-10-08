@@ -55,6 +55,13 @@ describe('Public access regression checks', () => {
     cy.contains('button', 'Change visibility').should('not.be.disabled')
   })
 
+  it('warns that publishing a community exposes its existing Anonymous spaces', () => {
+    openVisibility()
+    cy.contains('[role="radio"]', 'Anonymous').click()
+    cy.contains('1 discussion becomes readable by anyone on the web').should('be.visible')
+    cy.contains('No space inside becomes public from this').should('not.exist')
+  })
+
   it('shows matching counts and separate Anonymous filters for communities and spaces', () => {
     cy.visit('/g/settings/communities')
     cy.contains('button[role="combobox"]', 'All (1)').click()

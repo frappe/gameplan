@@ -78,6 +78,63 @@ class NewUserLimitsTestCase(GameplanTestCase):
 
 
 class TestFirstDay(NewUserLimitsTestCase):
+	def test_posting_counters_cannot_be_reset_by_deleting_the_profile(self):
+		self.post()
+		profile = frappe.db.get_value("GP User Profile", {"user": self.guest.name}, "name")
+		with self.as_user(self.guest.name), self.assertRaises(frappe.PermissionError):
+			frappe.delete_doc("GP User Profile", profile)
+		self.assertEqual(frappe.db.get_value("GP User Profile", profile, "first_day_discussions"), 1)
+
+	def test_posting_counters_cannot_be_reset_through_profile_edits(self):
+		self.post()
+		profile = frappe.get_doc("GP User Profile", {"user": self.guest.name})
+		with self.as_user(self.guest.name), self.assertRaises(frappe.PermissionError):
+			profile.first_day_discussions = 0
+			profile.save()
+		self.assertEqual(frappe.db.get_value("GP User Profile", profile.name, "first_day_discussions"), 1)
+
+	def test_migration_backfills_existing_posts_and_never_lowers_a_counter(self):
+		from gameplan.gameplan.doctype.gp_user_profile.patches.backfill_first_day_post_counts import execute
+
+		post = self.post()
+		self.post()
+		self.reply()
+		self.poll()
+		profile = frappe.db.get_value("GP User Profile", {"user": self.guest.name}, "name")
+		frappe.db.set_value("GP User Profile", profile, {"first_day_discussions": 0, "first_day_replies": 0})
+		execute()
+		with self.as_user(self.guest.name):
+			frappe.delete_doc(post.doctype, post.name)
+		execute()
+		counts = frappe.db.get_value(
+			"GP User Profile", profile, ["first_day_discussions", "first_day_replies"]
+		)
+		self.assertEqual(tuple(counts), (2, 2))
+
+	def test_deleting_discussions_does_not_reset_the_cap(self):
+		for _ in range(MAX_DISCUSSIONS_IN_FIRST_DAY):
+			post = self.post()
+			with self.as_user(self.guest.name):
+				frappe.delete_doc(post.doctype, post.name)
+		with self.assertRaises(NewUserLimitError):
+			self.post()
+
+	def test_deleting_replies_and_polls_does_not_reset_the_shared_cap(self):
+		for index in range(MAX_REPLIES_IN_FIRST_DAY):
+			post = self.reply() if index % 2 else self.poll()
+			with self.as_user(self.guest.name):
+				frappe.delete_doc(post.doctype, post.name)
+		with self.assertRaises(NewUserLimitError):
+			self.reply()
+		with self.assertRaises(NewUserLimitError):
+			self.poll()
+
+	def test_a_refused_post_does_not_use_the_posting_allowance(self):
+		with self.assertRaises(NewUserLimitError):
+			self.post(IMAGE * 2)
+		for _ in range(MAX_DISCUSSIONS_IN_FIRST_DAY):
+			self.post()
+
 	def test_three_discussions_on_the_first_day(self):
 		for _ in range(MAX_DISCUSSIONS_IN_FIRST_DAY):
 			self.post()
@@ -136,6 +193,17 @@ class TestPerPost(NewUserLimitsTestCase):
 
 
 class TestEditWindow(NewUserLimitsTestCase):
+	def test_old_poll_option_text_cannot_be_changed_but_votes_can(self):
+		poll = self.age(self.poll(), hours=25)
+		with self.as_user(self.guest.name), self.assertRaises(NewUserLimitError):
+			poll.options[0].title = "Changed answer"
+			poll.save()
+		with self.as_user(self.guest.name):
+			poll = frappe.get_doc("GP Poll", poll.name)
+			poll.submit_vote("Yes")
+			poll.submit_vote("No")
+			poll.retract_vote()
+
 	def age(self, doc, hours):
 		created = now_datetime() - timedelta(hours=hours)
 		frappe.db.set_value(doc.doctype, doc.name, "creation", created, update_modified=False)

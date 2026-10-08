@@ -170,9 +170,18 @@ doc_events = {
 		"on_trash": "gameplan.mixins.on_delete.on_trash",
 	},
 	# Discourse-style limits on Gameplan Guests posting in a space only because it is public.
-	"GP Discussion": {"validate": "gameplan.new_user_limits.check_new_user_limits"},
-	"GP Comment": {"validate": "gameplan.new_user_limits.check_new_user_limits"},
-	"GP Poll": {"validate": "gameplan.new_user_limits.check_new_user_limits"},
+	"GP Discussion": {
+		"validate": "gameplan.new_user_limits.check_new_user_limits",
+		"after_insert": "gameplan.new_user_limits.record_first_day_post",
+	},
+	"GP Comment": {
+		"validate": "gameplan.new_user_limits.check_new_user_limits",
+		"after_insert": "gameplan.new_user_limits.record_first_day_post",
+	},
+	"GP Poll": {
+		"validate": "gameplan.new_user_limits.check_new_user_limits",
+		"after_insert": "gameplan.new_user_limits.record_first_day_post",
+	},
 	"User": {
 		"after_insert": "gameplan.gameplan.doctype.gp_user_profile.gp_user_profile.create_user_profile",
 		"on_trash": [

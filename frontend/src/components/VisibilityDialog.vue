@@ -188,7 +188,7 @@ const impactLines = computed(() => {
   }
   if (isCommunity.value && selected.value === VISIBILITY_ANONYMOUS) {
     lines.push(
-      'No space inside becomes public from this. Each space needs its own Anonymous setting.',
+      'Spaces already set to Anonymous become public too. General and Member Access spaces stay restricted.',
     )
   }
   if (!lines.length) lines.push('Nobody gains or loses access.')

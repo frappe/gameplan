@@ -172,6 +172,56 @@ class TestPublicSearch(IsolatedSearchIndex, GameplanTestCase):
 			self.result_ids(self.anonymous_search()), {f"GP Discussion:{self.public_discussion.name}"}
 		)
 
+	def test_removed_private_text_is_not_searchable_after_publication(self):
+		space = self.spaces[(VISIBILITY_GENERAL, VISIBILITY_ANONYMOUS)]
+		discussion = self.discussions[(VISIBILITY_GENERAL, VISIBILITY_ANONYMOUS)]
+		comment = create_comment(discussion, content="removedsecret reply", owner=self.member)
+		frappe.db.set_value(
+			"GP Discussion",
+			discussion.name,
+			{"title": "removedsecret title", "content": "removedsecret body"},
+		)
+		discussion.reload()
+		self.search._index_documents([self.search.prepare_document(doc) for doc in (discussion, comment)])
+		# Leave the index unchanged, as when edits are waiting in the indexing queue.
+		for doc in (discussion, comment):
+			frappe.db.set_value(doc.doctype, doc.name, "content", "replacementneedle public text")
+		frappe.db.set_value("GP Discussion", discussion.name, "title", "replacementneedle title")
+		frappe.get_doc("GP Team", space.team).set_visibility(VISIBILITY_ANONYMOUS)
+		self.assertEqual(self.anonymous_search("removedsecret")["results"], [])
+		for doc in (discussion, comment):
+			doc.reload()
+		self.search._index_documents([self.search.prepare_document(doc) for doc in (discussion, comment)])
+		response = self.anonymous_search("replacementneedle")
+		self.assertEqual(
+			self.result_ids(response), {f"{doc.doctype}:{doc.name}" for doc in (discussion, comment)}
+		)
+		self.assertNotIn("removedsecret", json.dumps(response))
+
+	def test_reactions_do_not_make_unchanged_text_disappear_from_search(self):
+		frappe.db.set_value("GP Comment", self.comment.name, "modified", frappe.utils.now())
+		self.assertIn(f"GP Comment:{self.comment.name}", self.result_ids(self.anonymous_search()))
+
+	def test_indexes_without_fingerprints_are_not_read_until_rebuilt(self):
+		self.search.drop_index()
+		legacy_schema = {
+			**self.search.schema,
+			"metadata_fields": [
+				field for field in self.search.schema["metadata_fields"] if field != "content_hash"
+			],
+		}
+		with patch.object(self.search, "schema", legacy_schema):
+			self.search._ensure_fts_table()
+		self.assertFalse(self.search.index_exists())
+		self.assertEqual(self.anonymous_search()["results"], [])
+		self.search.drop_index()
+		self.search._ensure_fts_table()
+		self.search._index_documents([self.search.prepare_document(self.public_discussion)])
+		self.assertTrue(self.search.index_exists())
+		self.assertEqual(
+			self.result_ids(self.anonymous_search()), {f"GP Discussion:{self.public_discussion.name}"}
+		)
+
 	def test_disabled_public_access_and_demo_mode_fail_closed(self):
 		for settings in ({"gameplan_public_access_enabled": 0}, {"gameplan_demo_enabled": 1}):
 			with patch.dict(frappe.conf, settings):

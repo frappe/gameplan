@@ -10,6 +10,7 @@ from gameplan.public_access import (
 	VISIBILITY_ANONYMOUS,
 	VISIBILITY_GENERAL,
 	VISIBILITY_TIERS,
+	public_team_criterion,
 	refresh_anonymous_readable,
 	visibility_tier,
 )
@@ -72,6 +73,24 @@ class HasVisibility:
 			return
 		if self.has_value_changed("visibility"):
 			frappe.throw(_("Only Gameplan Admins can change visibility"), frappe.PermissionError)
+		if (
+			self.doctype == "GP Project"
+			and self.has_value_changed("team")
+			and self.visibility == VISIBILITY_ANONYMOUS
+			and not self.archived_at
+		):
+			before = self.get_doc_before_save()
+			Team = frappe.qb.DocType("GP Team")
+			public_teams = (
+				frappe.qb.from_(Team)
+				.select(Team.name)
+				.where(Team.name.isin([team for team in (before.team, self.team) if team]))
+				.where(public_team_criterion(Team))
+			).run(pluck=True)
+			if self.team in public_teams and (before.archived_at or before.team not in public_teams):
+				frappe.throw(
+					_("Only Gameplan Admins can publish a space by moving it"), frappe.PermissionError
+				)
 
 	def record_visibility_change(self):
 		"""Stamp who changed the tier, and when.

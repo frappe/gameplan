@@ -91,6 +91,32 @@ class TestWhoMayChangeATier(GameplanTestCase):
 
 		self.assertEqual(stored_visibility(self.private_space), VISIBILITY_MEMBER_ACCESS)
 
+	def test_moving_an_anonymous_space_cannot_bypass_publication_approval(self):
+		target = create_community(
+			"Public Move Target", visibility=VISIBILITY_ANONYMOUS, admins=[self.second_member]
+		)
+		space = create_space("Unpublished Anonymous Space", self.community, visibility=VISIBILITY_ANONYMOUS)
+		with self.as_user(self.second_member), self.assertRaises(frappe.PermissionError):
+			frappe.get_doc("GP Project", space.name).move_to_team(target.name)
+		with self.as_user(self.second_member), self.assertRaises(frappe.PermissionError):
+			set_value("GP Project", space.name, "team", target.name)
+		self.assertEqual(frappe.db.get_value("GP Project", space.name, "team"), self.community.name)
+		with self.as_user(self.admin):
+			frappe.get_doc("GP Project", space.name).move_to_team(target.name)
+		self.assertTrue(frappe.db.get_value("GP Project", space.name, "is_anonymous_readable"))
+
+	def test_a_community_admin_can_move_between_already_public_communities(self):
+		source = create_community(
+			"Public Move Source", visibility=VISIBILITY_ANONYMOUS, admins=[self.second_member]
+		)
+		target = create_community(
+			"Other Public Community", visibility=VISIBILITY_ANONYMOUS, admins=[self.second_member]
+		)
+		space = create_space("Already Public Space", source, visibility=VISIBILITY_ANONYMOUS)
+		with self.as_user(self.second_member):
+			frappe.get_doc("GP Project", space.name).move_to_team(target.name)
+		self.assertEqual(frappe.db.get_value("GP Project", space.name, "team"), target.name)
+
 	def test_a_gameplan_admin_can_make_every_transition_on_both_doctypes(self):
 		for doctype in ("GP Team", "GP Project"):
 			for before, after in TRANSITIONS:
