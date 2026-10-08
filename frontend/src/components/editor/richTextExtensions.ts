@@ -29,6 +29,6 @@ export function richTextExtensions(opts: { suggestions?: boolean } = {}) {
     slashCommandsWithCollapsible(),
     ...collapsibleExtensions(),
     ...richQuoteExtensions(),
-    ...(opts.suggestions ?? true ? [discussionLinkExtension()] : []),
+    ...((opts.suggestions ?? true) ? [discussionLinkExtension()] : []),
   ]
 }

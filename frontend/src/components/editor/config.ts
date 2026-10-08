@@ -59,7 +59,9 @@ export function discussionLinkExtension() {
             marks: [
               {
                 type: 'link',
-                attrs: { href: `${__FRONTEND_ROUTE__}/space/${item.project}/discussion/${item.name}` },
+                attrs: {
+                  href: `${__FRONTEND_ROUTE__}/space/${item.project}/discussion/${item.name}`,
+                },
               },
             ],
           },

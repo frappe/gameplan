@@ -1,7 +1,11 @@
 <template>
   <Dialog title="References" v-model:open="open">
-    <div v-if="backlinks.loading && !backlinks.data" class="text-base text-ink-gray-5">Loading…</div>
-    <div v-else-if="!backlinks.data?.length" class="text-base text-ink-gray-5">No references yet</div>
+    <div v-if="backlinks.loading && !backlinks.data" class="text-base text-ink-gray-5">
+      Loading…
+    </div>
+    <div v-else-if="!backlinks.data?.length" class="text-base text-ink-gray-5">
+      No references yet
+    </div>
     <div v-else class="-mx-2">
       <router-link
         v-for="item in backlinks.data"

@@ -86,8 +86,9 @@ function loadPreview(name: string) {
             ? {
                 ...doc,
                 snippet:
-                  new DOMParser().parseFromString(doc.content || '', 'text/html').body.textContent?.trim() ||
-                  '',
+                  new DOMParser()
+                    .parseFromString(doc.content || '', 'text/html')
+                    .body.textContent?.trim() || '',
               }
             : null,
         )
