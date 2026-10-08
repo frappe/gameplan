@@ -1,11 +1,6 @@
 import { resetData, type SeedIds } from '../../support/seed'
 
-// Reading a public space without signing in, and the controls that decide what is public.
-//
-// Needs `gameplan_public_access_enabled: 1` in the site config. CI sets it in
-// .github/helper/install.sh when the UI workflows pass GAMEPLAN_PUBLIC_ACCESS. Without it
-// nothing is public and every logged-out visit sends you to log in, so the first test
-// checks the switch before anything else fails in a confusing way.
+// Requires gameplan_public_access_enabled: 1 on the disposable test site.
 
 const PERSONA_EMAILS = /[\w.+-]+@example\.com/
 
@@ -41,27 +36,22 @@ describe('Public spaces, logged out', () => {
     cy.contains('h1', 'Welcome to Open Source').should('be.visible')
     cy.contains('Ask @Second Member anything.').should('be.visible')
     cy.contains('Glad to be here.').should('be.visible')
-    // Authors are shown by name, looked up by profile handle.
     cy.contains('Member').should('be.visible')
     cy.contains('Second Member').should('be.visible')
-    // Reactions are totals; the poll shows results, never voters.
     cy.contains('button', '🎉').should('contain.text', '1')
     cy.contains('Ship it this week?').should('be.visible')
     cy.contains('100%').should('be.visible')
     cy.button('Log in to vote').should('be.visible')
     cy.contains('Join the conversation').scrollIntoView().should('be.visible')
 
-    // Hovering reaction in anonymous mode must not show any tooltip popover
     cy.contains('button', '🎉').trigger('mouseenter')
     cy.get('[role="tooltip"]').should('not.exist')
 
-    // User hover cards revealing member activity must not appear for anonymous visitors
     cy.contains('@Second Member').trigger('mouseenter')
     cy.contains('in the last 3 months').should('not.exist')
     cy.contains('@Second Member').click()
     cy.location('pathname').should('eq', threadPath())
 
-    // Author names are plain text, not links to profile pages
     cy.contains('Second Member').closest('a').should('not.exist')
 
     // Nothing that reached the browser names anyone by email.
@@ -73,7 +63,6 @@ describe('Public spaces, logged out', () => {
     }
     cy.document().its('documentElement.outerHTML').should('not.match', PERSONA_EMAILS)
 
-    // There is nothing a visitor can do here except log in.
     cy.get('[contenteditable="true"]').should('not.exist')
     cy.button('Log in').first().click()
     cy.location('pathname').should('eq', '/login')
@@ -83,39 +72,30 @@ describe('Public spaces, logged out', () => {
   it('shows rail and sidebar with public community and spaces, theme toggle, and hides forbidden actions', () => {
     cy.visit(threadPath())
 
-    // AppRail is present
     cy.get('button[aria-label="Account menu"]').should('be.visible')
 
-    // Rail contains the public community listing item
     cy.get('button[aria-label="Open Source"]').should('be.visible')
 
-    // Search is public; member-only shortcuts stay hidden.
     cy.get('button[aria-label="Search"]').should('be.visible')
     cy.contains('Notifications').should('not.exist')
     cy.contains('Drafts').should('not.exist')
 
-    // AppSidebar is present with community title and public space
     cy.get('.gameplan-desktop-shell').within(() => {
       cy.contains('Open Source').should('be.visible')
       cy.contains('Spaces').should('be.visible')
       cy.contains('Announcements').should('be.visible')
-      // Private spaces are hidden
       cy.contains('Core Team').should('not.exist')
-      // Member-only space controls are hidden
       cy.get('button[aria-label="New space"]').should('not.exist')
       cy.get('button[aria-label="Sort spaces"]').should('not.exist')
     })
 
-    // Account menu has dark mode toggle and login
     cy.get('button[aria-label="Account menu"]').click()
     cy.contains('Toggle theme').should('be.visible')
     cy.contains('Log in').should('be.visible')
-    // Member-only items are hidden
     cy.contains('My Profile').should('not.exist')
     cy.contains('Bookmarks').should('not.exist')
     cy.contains('Settings').should('not.exist')
 
-    // Theme toggle works for anonymous visitor
     cy.contains('Toggle theme').click()
     cy.contains('Dark Mode').click()
     cy.get('html').should('have.attr', 'data-theme', 'dark')

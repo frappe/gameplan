@@ -7,11 +7,13 @@ Product language: Community = GP Team, Space = GP Project (see AGENTS.md).
 Builders accept either a doc or a name wherever a linked record is expected.
 """
 
+from unittest.mock import patch
+
 import frappe
 import frappe.search.sqlite_search
 from frappe.model.document import Document
 
-from gameplan.public_access import VISIBILITY_GENERAL
+from gameplan.public_access import PUBLIC_ACCESS_CONFIG_KEY, VISIBILITY_GENERAL, VISIBILITY_TIERS
 
 
 def _name(doc_or_name):
@@ -66,6 +68,27 @@ def create_space(title, community, *, visibility=VISIBILITY_GENERAL, members=())
 	for user in members:
 		doc.append("members", {"user": _name(user)})
 	return doc.insert(ignore_permissions=True)
+
+
+def create_visibility_matrix(title, *, community_members=(), space_members=()):
+	"""Create all nine community/space tier pairs without assuming their permissions."""
+	spaces = {}
+	for community_tier in VISIBILITY_TIERS:
+		community = create_community(
+			f"{title} {community_tier} Community", visibility=community_tier, members=community_members
+		)
+		for space_tier in VISIBILITY_TIERS:
+			spaces[(community_tier, space_tier)] = create_space(
+				f"{title} {community_tier}/{space_tier}",
+				community,
+				visibility=space_tier,
+				members=space_members,
+			)
+	return spaces
+
+
+def public_access(on=True):
+	return patch.dict(frappe.conf, {PUBLIC_ACCESS_CONFIG_KEY: int(bool(on))})
 
 
 def create_discussion(title, space, *, content="Test content", owner=None):

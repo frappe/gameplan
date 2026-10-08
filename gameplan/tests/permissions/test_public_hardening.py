@@ -12,7 +12,6 @@ from werkzeug.wrappers import Request
 
 from gameplan.public_access import (
 	ANONYMOUS_RATE_LIMITS,
-	PUBLIC_ACCESS_CONFIG_KEY,
 	VISIBILITY_ANONYMOUS,
 	VISIBILITY_MEMBER_ACCESS,
 	audit_public_access,
@@ -22,6 +21,7 @@ from gameplan.public_access import (
 )
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import create_community, create_discussion, create_space
+from gameplan.tests.fixtures import public_access as switched
 from gameplan.tests.permissions.test_anonymous_access import GUEST_REACHABLE_ENDPOINTS
 
 ANONYMOUS = "Guest"
@@ -36,10 +36,6 @@ NOT_RATE_LIMITED = {
 	),
 }
 _ips = (f"203.0.113.{n}" for n in itertools.count(1))
-
-
-def switched(on=True):
-	return patch.dict(frappe.conf, {PUBLIC_ACCESS_CONFIG_KEY: 1 if on else 0})
 
 
 class TestRateLimits(GameplanTestCase):

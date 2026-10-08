@@ -1,13 +1,7 @@
 # Copyright (c) 2026, Frappe Technologies Pvt Ltd and Contributors
 # See license.txt
 
-"""Who may read and change GP Activity rows.
-
-An activity row belongs to a discussion or a task, and says what happened to it: closed,
-pinned, retitled (with both titles) or moved (with both space ids). Reading one follows the
-thing it is about, the way comments do. Nobody but a Gameplan Admin writes one directly: the
-server logs them.
-"""
+"""Activity reads follow the parent document. Only Gameplan Admins write activity directly."""
 
 import frappe
 

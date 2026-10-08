@@ -1,14 +1,7 @@
 # Copyright (c) 2026, Frappe Technologies Pvt Ltd and Contributors
 # See license.txt
 
-"""What is inside a public row when nobody is signed in.
-
-The permission tests decide which rows an anonymous visitor reads. These pin what those
-rows carry: no email address anywhere, no member list, reactions and votes as totals only,
-and authors as profile handles. They also pin the doors around the cleaning: frappe's
-generic REST routes and doctype-wide realtime rooms, which would otherwise hand out rows
-nothing has cleaned.
-"""
+"""Public payloads hide identities and member lists, including through REST and realtime."""
 
 import json
 from unittest.mock import patch
@@ -23,7 +16,6 @@ from gameplan.api import get_public_user_info
 from gameplan.extends.client import get_list as get_client_list
 from gameplan.gameplan.doctype.gp_discussion.api import get_discussions
 from gameplan.public_access import (
-	PUBLIC_ACCESS_CONFIG_KEY,
 	VISIBILITY_ANONYMOUS,
 	VISIBILITY_MEMBER_ACCESS,
 	realtime_has_permission,
@@ -48,16 +40,13 @@ from gameplan.tests.fixtures import (
 	create_poll,
 	create_space,
 )
+from gameplan.tests.fixtures import public_access as switched_on
 from gameplan.tests.permissions.test_anonymous_access import ANONYMOUS_READABLE_DOCTYPES
 
 ANONYMOUS = "Guest"
 LAYOUT_FIELDTYPES = {"Section Break", "Column Break", "Tab Break"}
 # Columns frappe adds to every table that are not in the doctype's field list.
 STANDARD_COLUMNS = {"name", "owner", "creation", "modified", "modified_by", "docstatus", "idx"}
-
-
-def switched_on():
-	return patch.dict(frappe.conf, {PUBLIC_ACCESS_CONFIG_KEY: 1})
 
 
 def strings_in(value):
@@ -401,7 +390,7 @@ class TestPublicListEndpoints(PublicContentTestCase):
 
 class TestPublicProfiles(PublicContentTestCase):
 	def profiles(self, handles, user=ANONYMOUS, on=True):
-		with patch.dict(frappe.conf, {PUBLIC_ACCESS_CONFIG_KEY: 1 if on else 0}), self.as_user(user):
+		with switched_on(on), self.as_user(user):
 			return get_public_user_info(handles)
 
 	def test_authors_of_public_content_have_a_name_and_an_avatar(self):

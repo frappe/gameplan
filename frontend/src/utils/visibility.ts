@@ -16,7 +16,7 @@ export type Visibility =
   | typeof VISIBILITY_GENERAL
   | typeof VISIBILITY_MEMBER_ACCESS
 
-export const VISIBILITY_TIERS: readonly string[] = [
+export const VISIBILITY_TIERS: readonly Visibility[] = [
   VISIBILITY_ANONYMOUS,
   VISIBILITY_GENERAL,
   VISIBILITY_MEMBER_ACCESS,
@@ -24,7 +24,7 @@ export const VISIBILITY_TIERS: readonly string[] = [
 
 /** `value` as a tier. Anything empty or unknown reads as Member Access, the strictest. */
 export function visibilityTier(value?: string | null): Visibility {
-  return value && VISIBILITY_TIERS.includes(value)
+  return value && VISIBILITY_TIERS.includes(value as Visibility)
     ? (value as Visibility)
     : VISIBILITY_MEMBER_ACCESS
 }
@@ -43,13 +43,6 @@ export function visibilityIcon(value?: string | null) {
   if (tier === VISIBILITY_ANONYMOUS) return 'lucide-earth'
   if (tier === VISIBILITY_GENERAL) return 'lucide-users'
   return 'lucide-lock'
-}
-
-/** Icon for a visibility filter tab: a tier, or 'All' (no icon). */
-export function visibilityFilterIcon(value: unknown) {
-  return typeof value === 'string' && VISIBILITY_TIERS.includes(value)
-    ? visibilityIcon(value)
-    : undefined
 }
 
 /** What each tier means, as the UI explains it. */

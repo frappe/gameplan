@@ -1,11 +1,7 @@
 # Copyright (c) 2026, Frappe Technologies Pvt Ltd and Contributors
 # See license.txt
 
-"""The move from `is_private` to the three-tier `visibility` field.
-
-A deployed site must come through it with exactly the access it had: `is_private = 1`
-becomes Member Access, `is_private = 0` becomes General, and nothing becomes Anonymous.
-"""
+"""Backfill preserves access: private becomes Member Access, public becomes General, never Anonymous."""
 
 from pathlib import Path
 
@@ -166,10 +162,7 @@ class TestVisibilityAuditStamp(GameplanTestCase):
 
 
 class TestMissingTierFailsClosed(GameplanTestCase):
-	"""A row without a tier reads as Member Access, never as General.
-
-	Between the schema sync and the backfill patch, every row is in this state.
-	"""
+	"""Rows fail closed during the gap between schema sync and backfill."""
 
 	def test_a_space_with_no_tier_is_members_only(self):
 		community = create_community("No Tier Space Host", members=[self.member, self.second_member])
@@ -214,7 +207,7 @@ LEGACY_PRIVACY_REFERENCES = {
 	"gameplan/tests/platform/test_demo_fixture.py": 2,
 	# What anonymous visitors may read: the column is classified as private, never sent;
 	# and File.is_private, for the public file route.
-	"gameplan/public_payload.py": 3,
+	"gameplan/public_payload.py": 2,
 	# The column stays defined, so a rollback needs no data restore.
 	"gameplan/gameplan/doctype/gp_project/gp_project.json": 2,
 	"gameplan/gameplan/doctype/gp_team/gp_team.json": 2,

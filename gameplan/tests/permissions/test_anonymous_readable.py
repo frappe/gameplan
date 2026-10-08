@@ -1,12 +1,7 @@
 # Copyright (c) 2026, Frappe Technologies Pvt Ltd and Contributors
 # See license.txt
 
-"""`GP Project.is_anonymous_readable`: the stored answer to "may someone who is not signed in
-read this space?", public access switch aside.
-
-It holds only when the space and its community are both on the Anonymous tier and neither
-is archived. Nothing sets it by hand; every save that can change the answer recomputes it.
-"""
+"""Saves recompute public readability from both tiers and archive states, excluding the site switch."""
 
 from unittest.mock import patch
 

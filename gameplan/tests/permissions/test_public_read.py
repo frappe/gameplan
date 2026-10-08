@@ -1,23 +1,14 @@
 # Copyright (c) 2026, Frappe Technologies Pvt Ltd and Contributors
 # See license.txt
 
-"""Reading a public space without signing in, end to end through the role layer.
-
-The Guest role has read access to communities, spaces, discussions, comments and polls, so
-these go through every layer a real request does: the role check, the has_permission
-hooks, the list conditions and the endpoints. With public access switched on, an anonymous
-visitor reads a space that is on the Anonymous tier inside a community on the Anonymous
-tier, and nothing else. Switched off, nothing at all.
-"""
-
-from unittest.mock import patch
+"""Anonymous reads must agree across role checks, document hooks, lists, and feeds."""
 
 import frappe
 import frappe.api.v2
 
 from gameplan.extends.client import get_list as get_client_list
 from gameplan.gameplan.doctype.gp_discussion.api import get_discussions
-from gameplan.public_access import PUBLIC_ACCESS_CONFIG_KEY, VISIBILITY_ANONYMOUS, VISIBILITY_MEMBER_ACCESS
+from gameplan.public_access import VISIBILITY_ANONYMOUS, VISIBILITY_MEMBER_ACCESS
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
 	create_comment,
@@ -26,12 +17,9 @@ from gameplan.tests.fixtures import (
 	create_poll,
 	create_space,
 )
+from gameplan.tests.fixtures import public_access as switched
 
 ANONYMOUS = "Guest"
-
-
-def switched(on):
-	return patch.dict(frappe.conf, {PUBLIC_ACCESS_CONFIG_KEY: 1 if on else 0})
 
 
 class TestPublicRead(GameplanTestCase):

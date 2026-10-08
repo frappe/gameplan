@@ -1,13 +1,7 @@
 # Copyright (c) 2026, Frappe Technologies Pvt Ltd and Contributors
 # See license.txt
 
-"""Images and files in public posts, for people who are not signed in.
-
-frappe refuses /private/files/ to anyone not signed in, so `gameplan.api.public_file`
-serves a private File by name when it is attached to a document the caller may read, and
-public post bodies point at it. These pin both halves, and that the route follows the
-tier: a space leaving Anonymous takes its files with it.
-"""
+"""Public file URLs follow their parent document's current visibility."""
 
 from unittest.mock import patch
 
@@ -16,17 +10,14 @@ from werkzeug.test import EnvironBuilder
 from werkzeug.wrappers import Request
 
 from gameplan.api import public_file
-from gameplan.public_access import PUBLIC_ACCESS_CONFIG_KEY, VISIBILITY_ANONYMOUS, VISIBILITY_MEMBER_ACCESS
+from gameplan.public_access import VISIBILITY_ANONYMOUS, VISIBILITY_MEMBER_ACCESS
 from gameplan.public_payload import public_file_url
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import create_comment, create_community, create_discussion, create_space
+from gameplan.tests.fixtures import public_access as switched
 
 ANONYMOUS = "Guest"
 PIXEL = b"GIF89a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\xff\xff\xff!\xf9\x04\x01\x00\x00\x00\x00,"
-
-
-def switched(on=True):
-	return patch.dict(frappe.conf, {PUBLIC_ACCESS_CONFIG_KEY: 1 if on else 0})
 
 
 def create_file(name, *, attached_to=None, is_private=1):

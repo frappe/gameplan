@@ -20,6 +20,8 @@ from urllib.parse import quote
 import frappe
 from frappe.utils import cint
 
+from gameplan.public_payload import public_doctypes
+
 VISIBILITY_ANONYMOUS = "Anonymous"
 VISIBILITY_GENERAL = "General"
 VISIBILITY_MEMBER_ACCESS = "Member Access"
@@ -171,15 +173,18 @@ def refuse_generic_routes_for_anonymous():
 	any columns, `owner` and `modified_by` included, and `?expand_links=1` follows links
 	into User. None of that passes through `gameplan.public_payload`. So a request with
 	nobody signed in that routes to a doctype the Guest role can read may only reach the
-	endpoints in `anonymous_rest_endpoints`, whose output goes through `as_dict`. Lists go
-	through Gameplan's own endpoints instead.
+	single-document and method endpoints below, whose output goes through `as_dict`.
+	Lists go through Gameplan's own endpoints instead.
 	"""
+	import frappe.api.v2
+
 	route = anonymous_api_route()
 	if not route:
 		return
 	endpoint, arguments = route
 	doctype = arguments.get("doctype")
-	if doctype in anonymous_readable_doctypes() and endpoint not in anonymous_rest_endpoints():
+	allowed = (frappe.api.v2.read_doc, frappe.api.v2.execute_doc_method, frappe.api.v2.handle_rpc_call)
+	if doctype in public_doctypes() and endpoint not in allowed:
 		frappe.throw("Not permitted", frappe.PermissionError)
 
 
@@ -255,24 +260,6 @@ def anonymous_api_route():
 		return None  # not a route; frappe answers it with a 404 or 405
 
 
-def anonymous_rest_endpoints():
-	"""The frappe REST endpoints an anonymous visitor may use for a Guest-readable doctype.
-
-	Reading one document (serialised through the controller's `as_dict`) and calling a
-	document method (whitelisted with `allow_guest`, or refused by frappe).
-	"""
-	import frappe.api.v2
-
-	return (frappe.api.v2.read_doc, frappe.api.v2.execute_doc_method, frappe.api.v2.handle_rpc_call)
-
-
-def anonymous_readable_doctypes():
-	"""The doctypes the Guest role can read. Each one's payload is cleaned for anonymous visitors."""
-	from gameplan.public_payload import public_doctypes
-
-	return public_doctypes()
-
-
 @frappe.whitelist(allow_guest=True)
 def realtime_has_permission(doctype: str, name: str = "", ptype: str = "read"):
 	"""Keep anonymous visitors out of Gameplan realtime rooms.
@@ -285,7 +272,7 @@ def realtime_has_permission(doctype: str, name: str = "", ptype: str = "read"):
 
 	import gameplan
 
-	if gameplan.is_anonymous() and doctype in anonymous_readable_doctypes():
+	if gameplan.is_anonymous() and doctype in public_doctypes():
 		frappe.throw("Not permitted", frappe.PermissionError)
 	return has_permission(doctype, name, ptype)
 

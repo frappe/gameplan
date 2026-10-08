@@ -1,13 +1,7 @@
 # Copyright (c) 2026, Frappe Technologies Pvt Ltd and Contributors
 # See license.txt
 
-"""Changing a community's or a space's visibility tier after creation.
-
-Only a Gameplan Admin may change a tier, through any route: a document method, a plain save
-(which is what the Desk form does) or the generic REST routes. A change that takes access
-away also takes away the per-user state that points at the space: unread records, legacy
-pins and follows.
-"""
+"""Tier changes require a Gameplan Admin and reconcile unread records, pins, and follows."""
 
 import frappe
 from frappe.client import set_value
@@ -57,8 +51,7 @@ class TestWhoMayChangeATier(GameplanTestCase):
 		self.assertEqual(stored_visibility(doc), doc.visibility)
 
 	def test_a_member_of_a_private_space_cannot_open_it_up(self):
-		# Membership of a Member Access space grants write on it (can_manage_space), so the
-		# tier needs a guard of its own. Otherwise one member exposes the whole history.
+		# Space membership grants write, but must not grant permission to publish its history.
 		self.assert_change_refused(self.member, self.private_space, VISIBILITY_GENERAL)
 		self.assert_change_refused(self.member, self.private_space, VISIBILITY_ANONYMOUS)
 
@@ -202,8 +195,6 @@ class TestVisibilityChangeImpact(GameplanTestCase):
 	def test_tightening_a_space_counts_the_users_who_lose_it(self):
 		impact = self.impact(self.space, VISIBILITY_MEMBER_ACCESS)
 
-		# Everyone but the one space member, the admin (who sees everything) and the guest
-		# (who never had a grant here).
 		self.assertEqual(impact["users_losing_access"], 2)  # second_member, outsider
 		self.assertEqual(impact["users_gaining_access"], 0)
 		self.assertEqual(impact["spaces_losing_readers"], 1)
@@ -223,8 +214,7 @@ class TestVisibilityChangeImpact(GameplanTestCase):
 
 		impact = self.impact(self.community, VISIBILITY_MEMBER_ACCESS)
 
-		# The outsider loses Impact Space and the community's auto-created General space.
-		# The Member Access space had no readers to lose.
+		# The outsider loses both general spaces, not the Member Access space.
 		self.assertEqual(impact["users_losing_access"], 1)
 		self.assertEqual(impact["spaces_losing_readers"], 2)
 

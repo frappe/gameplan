@@ -1,12 +1,7 @@
 # Copyright (c) 2026, Frappe Technologies Pvt Ltd and Contributors
 # See license.txt
 
-"""The SPA's list endpoint hides every row the permission rules hide.
-
-`gameplan.extends.client.get_list` builds its query with `frappe.qb.get_query`, which does
-not apply `permission_query_conditions` on its own. `frappe.get_list` does. Whatever the
-second hides from a user, the first must hide too, for every doctype with row-level rules.
-"""
+"""The SPA's query-builder lists must apply the same row permissions as frappe.get_list."""
 
 import frappe
 

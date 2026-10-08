@@ -1,20 +1,7 @@
 # Copyright (c) 2026, Frappe Technologies Pvt Ltd and Contributors
 # See license.txt
 
-"""The permission rules with the Anonymous tier in them.
-
-`expected_space_access` below is the access matrix of the public communities spec, written
-out on its own. The rules must match it for every kind of user and every tier combination,
-and three independent implementations of "can this user read this space" must agree with
-each other: the single-document check, the SQL list filter, and the batched form used for
-notification audiences. Those drifting apart is how "can open it but not list it", or the
-other way round, happens.
-
-The role layer grants the Guest role read access to the doctypes a public thread needs, so
-for those these rules are what decides.
-"""
-
-from unittest.mock import patch
+"""Compare document, list, and audience permissions against an independent tier matrix."""
 
 import frappe
 
@@ -46,7 +33,6 @@ from gameplan.permissions import (
 	users_who_can_view_space,
 )
 from gameplan.public_access import (
-	PUBLIC_ACCESS_CONFIG_KEY,
 	VISIBILITY_ANONYMOUS,
 	VISIBILITY_GENERAL,
 	VISIBILITY_MEMBER_ACCESS,
@@ -58,15 +44,12 @@ from gameplan.tests.fixtures import (
 	create_discussion,
 	create_guest,
 	create_space,
+	create_visibility_matrix,
 	grant_guest_access,
 )
+from gameplan.tests.fixtures import public_access as switch
 
 ANONYMOUS = "Guest"
-TIERS = (VISIBILITY_ANONYMOUS, VISIBILITY_GENERAL, VISIBILITY_MEMBER_ACCESS)
-
-
-def switch(on):
-	return patch.dict(frappe.conf, {PUBLIC_ACCESS_CONFIG_KEY: 1 if on else 0})
 
 
 def listed_spaces(user):
@@ -102,22 +85,14 @@ class ResolverTestCase(GameplanTestCase):
 			"admin": self.admin.name,
 		}
 		# member is on every member list; outsider is on none.
-		self.communities = {}
-		self.spaces = []
-		for community_tier in TIERS:
-			community = create_community(
-				f"Resolver {community_tier} Community", visibility=community_tier, members=[self.member]
-			)
-			self.communities[community.name] = community
-			for space_tier in TIERS:
-				space = create_space(
-					f"Resolver {community_tier}/{space_tier}",
-					community,
-					visibility=space_tier,
-					members=[self.member],
-				)
-				grant_guest_access(self.granted_guest, space)
-				self.spaces.append(space)
+		self.spaces = list(
+			create_visibility_matrix(
+				"Resolver", community_members=[self.member], space_members=[self.member]
+			).values()
+		)
+		self.communities = {space.team: frappe.get_doc("GP Team", space.team) for space in self.spaces}
+		for space in self.spaces:
+			grant_guest_access(self.granted_guest, space)
 
 		archived_community = create_community(
 			"Resolver Archived Community", visibility=VISIBILITY_ANONYMOUS, members=[self.member]

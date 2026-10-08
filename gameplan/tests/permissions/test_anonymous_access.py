@@ -1,20 +1,9 @@
 # Copyright (c) 2026, Frappe Technologies Pvt Ltd and Contributors
 # See license.txt
 
-"""Anonymous visitors: requests from someone who is not signed in at all.
+"""Logged-out visitors are not signed-in Gameplan Guests.
 
-Not Gameplan Guests. A Gameplan Guest is a signed-in outside collaborator, and
-`gameplan.is_guest()` returns False for a request with nobody signed in. The permission
-predicates in gameplan/permissions.py test is_guest() and then fall through to the member
-rules, so before the Anonymous tier existed they would have treated an anonymous visitor
-like a signed-in member: a space that is not private would read as visible.
-
-The role layer grants the `Guest` role read access to exactly the doctypes a public thread
-needs, and nothing else. TestRoleLayer pins that list and what it may grant.
-TestDefaultsStayInvisible pins the outcome that matters most: content created with today's
-defaults stays out of reach of anonymous visitors on every read path, whether or not public
-access is switched on. TestGuestReachableEndpoints pins every endpoint a request with nobody
-signed in can reach.
+Pin their role rights, reachable endpoints, and inability to read default content.
 """
 
 from unittest.mock import patch
@@ -38,10 +27,7 @@ from gameplan.tests.test_get_request_transactions import discover_whitelisted_en
 
 ANONYMOUS = "Guest"
 
-# Doctypes that may grant the `Guest` role read access, and the only rights they may grant.
-# The minimum a public thread needs. Anything here must also be scoped for anonymous
-# visitors in both `permission_query_conditions` and `has_permission` in hooks.py: a
-# has_permission hook alone gates opening one row, not listing all of them.
+# Both document and list permissions must scope these Guest-readable doctypes.
 ANONYMOUS_READABLE_DOCTYPES = frozenset({"GP Team", "GP Project", "GP Discussion", "GP Comment", "GP Poll"})
 ANONYMOUS_RIGHTS = frozenset({"read", "select"})
 
@@ -168,12 +154,7 @@ class TestGuestReachableEndpoints(GameplanTestCase):
 
 
 class TestDefaultsStayInvisible(GameplanTestCase):
-	"""Content created with today's defaults is unreachable for anonymous visitors.
-
-	The community and space are neither private nor anything else: exactly what
-	GPTeam.create_general_space and onboarding produce, and so what most content on a
-	deployed site lives in.
-	"""
+	"""Onboarding defaults must never expose existing content to anonymous visitors."""
 
 	def setUp(self):
 		super().setUp()

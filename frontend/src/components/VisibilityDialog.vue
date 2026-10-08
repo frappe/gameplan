@@ -65,8 +65,8 @@ import { Button, Dialog, ErrorMessage, toast, useDoctype } from 'frappe-ui'
 import { isGameplanAdmin } from '@/data/users'
 import {
   VISIBILITY_ANONYMOUS,
-  VISIBILITY_GENERAL,
-  VISIBILITY_MEMBER_ACCESS,
+  VISIBILITY_DESCRIPTIONS,
+  VISIBILITY_TIERS,
   type Visibility,
   visibilityIcon,
   visibilityTier,
@@ -92,22 +92,17 @@ const emit = defineEmits<{ (event: 'changed', visibility: Visibility): void }>()
 const show = defineModel<boolean>()
 
 const isCommunity = computed(() => props.doctype === 'GP Team')
-const tiers = computed(() => [
-  {
-    value: VISIBILITY_ANONYMOUS,
-    description: isCommunity.value
-      ? 'Anyone with the link can read the community. Each space inside chooses for itself.'
-      : 'Anyone with the link, no account needed, if its community is Anonymous too.',
-  },
-  {
-    value: VISIBILITY_GENERAL,
-    description: 'Any signed-in Gameplan user.',
-  },
-  {
-    value: VISIBILITY_MEMBER_ACCESS,
-    description: 'Only people on the member list.',
-  },
-])
+const tiers = computed(() =>
+  VISIBILITY_TIERS.map((value) => ({
+    value,
+    description:
+      value === VISIBILITY_ANONYMOUS
+        ? isCommunity.value
+          ? 'Anyone with the link can read the community. Each space inside chooses for itself.'
+          : 'Anyone with the link, no account needed, if its community is Anonymous too.'
+        : VISIBILITY_DESCRIPTIONS[value] + '.',
+  })),
+)
 
 const documents = useDoctype(props.doctype)
 const canChange = computed(() => isGameplanAdmin())

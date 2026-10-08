@@ -133,30 +133,15 @@ class HasVisibility:
 
 	@frappe.whitelist(methods=["POST"])
 	def set_visibility(self, visibility: str):
-		"""Move this community or space to another tier. Gameplan Admins only.
-
-		The route the app uses. check_visibility_change_allowed enforces the same rule on
-		every other route, and the save stamps the change and cleans up after it.
-		"""
-		if not is_global_admin(frappe.session.user):
-			frappe.throw(_("Only Gameplan Admins can change visibility"), frappe.PermissionError)
-		if visibility not in VISIBILITY_TIERS:
-			frappe.throw(_("Unknown visibility: {0}").format(visibility))
+		"""Change the tier through the same audited save used by Desk and REST."""
+		validate_visibility_action(visibility)
 		self.visibility = visibility
 		self.save()
 
 	@frappe.whitelist()
 	def get_visibility_change_impact(self, visibility: str):
-		"""What moving this record to `visibility` would do, for the confirmation dialog.
-
-		Nothing is changed. The new tier is written inside a savepoint, the readers of every
-		affected space are measured with the same rule the permission checks use, and the
-		savepoint is rolled back. So the counts cannot drift from what the change really does.
-		"""
-		if not is_global_admin(frappe.session.user):
-			frappe.throw(_("Only Gameplan Admins can change visibility"), frappe.PermissionError)
-		if visibility not in VISIBILITY_TIERS:
-			frappe.throw(_("Unknown visibility: {0}").format(visibility))
+		"""Preview the actual reader rules inside a savepoint, then roll back the change."""
+		validate_visibility_action(visibility)
 
 		users = gameplan_users()
 		spaces = self.get_affected_space_names()
@@ -194,6 +179,13 @@ class HasVisibility:
 			"leaving_anonymous": self.visibility == VISIBILITY_ANONYMOUS
 			and visibility != VISIBILITY_ANONYMOUS,
 		}
+
+
+def validate_visibility_action(visibility):
+	if not is_global_admin(frappe.session.user):
+		frappe.throw(_("Only Gameplan Admins can change visibility"), frappe.PermissionError)
+	if visibility not in VISIBILITY_TIERS:
+		frappe.throw(_("Unknown visibility: {0}").format(visibility))
 
 
 def users_with_space_state(space):

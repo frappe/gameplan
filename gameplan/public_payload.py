@@ -108,20 +108,17 @@ PUBLIC_CHILD_FIELDS = {
 
 # Per doctype: fields deliberately left out, with the reason. Listed so that the
 # classification test can tell a decided field from a forgotten one.
+VISIBILITY_PRIVATE_FIELDS = {
+	"modified_by": "who last touched it, not who wrote it",
+	"archived_by": "an admin action, not authorship",
+	"is_private": "superseded by visibility; kept only for rollback",
+	"visibility_set_by": "an admin action, not authorship",
+	"visibility_set_at": "an admin action, not authorship",
+}
 PRIVATE_FIELDS = {
-	"GP Team": {
-		"modified_by": "who last touched it, not who wrote it",
-		"archived_by": "an admin action, not authorship",
-		"is_private": "superseded by visibility; kept only for rollback",
-		"visibility_set_by": "an admin action, not authorship",
-		"visibility_set_at": "an admin action, not authorship",
-	},
+	"GP Team": {**VISIBILITY_PRIVATE_FIELDS},
 	"GP Project": {
-		"modified_by": "who last touched it, not who wrote it",
-		"archived_by": "an admin action, not authorship",
-		"is_private": "superseded by visibility; kept only for rollback",
-		"visibility_set_by": "an admin action, not authorship",
-		"visibility_set_at": "an admin action, not authorship",
+		**VISIBILITY_PRIVATE_FIELDS,
 		"tasks_count": "tasks are never public",
 	},
 	"GP Discussion": {"modified_by": "who last touched it, not who wrote it"},

@@ -14,18 +14,16 @@ from gameplan.public_access import (
 	VISIBILITY_ANONYMOUS,
 	VISIBILITY_GENERAL,
 	VISIBILITY_MEMBER_ACCESS,
-	VISIBILITY_TIERS,
 )
 from gameplan.public_search import MAX_PUBLIC_RESULTS, PublicGameplanSearch, highlight_text
 from gameplan.search_sqlite import GameplanSearch
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
 	create_comment,
-	create_community,
 	create_discussion,
 	create_page,
-	create_space,
 	create_task,
+	create_visibility_matrix,
 )
 from gameplan.tests.search_isolation import IsolatedSearchIndex
 
@@ -39,21 +37,13 @@ class TestPublicSearch(IsolatedSearchIndex, GameplanTestCase):
 		settings = patch.dict(frappe.conf, gameplan_public_access_enabled=1, gameplan_demo_enabled=0)
 		settings.start()
 		self.addCleanup(settings.stop)
-		self.spaces = {}
-		self.discussions = {}
-		for community_tier in VISIBILITY_TIERS:
-			community = create_community(
-				f"Search {community_tier}", visibility=community_tier, members=[self.member]
+		self.spaces = create_visibility_matrix("Search", community_members=[self.member])
+		self.discussions = {
+			key: create_discussion(
+				"forumneedle discussion", space, content="forumneedle body", owner=self.member
 			)
-			for space_tier in VISIBILITY_TIERS:
-				space = create_space(
-					f"Search {community_tier} {space_tier}", community, visibility=space_tier
-				)
-				key = (community_tier, space_tier)
-				self.spaces[key] = space
-				self.discussions[key] = create_discussion(
-					"forumneedle discussion", space, content="forumneedle body", owner=self.member
-				)
+			for key, space in self.spaces.items()
+		}
 		self.public_space = self.spaces[(VISIBILITY_ANONYMOUS, VISIBILITY_ANONYMOUS)]
 		self.public_discussion = self.discussions[(VISIBILITY_ANONYMOUS, VISIBILITY_ANONYMOUS)]
 		self.comment = create_comment(self.public_discussion, content="forumneedle reply", owner=self.member)
