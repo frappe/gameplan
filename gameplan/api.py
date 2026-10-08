@@ -133,7 +133,7 @@ def get_public_user_info(handles=None):
 	"""
 	from gameplan.public_payload import public_profiles
 
-	handles = frappe.parse_json(handles) if isinstance(handles, str) else handles
+	handles = frappe.parse_json(handles)
 	if not isinstance(handles, list):
 		frappe.throw(_("handles must be a list"))
 	return public_profiles(handles)
@@ -346,7 +346,17 @@ def mark_all_notifications_as_read():
 
 
 @frappe.whitelist(methods=["POST"])
-def onboarding(community, space, icon, emails, visibility=VISIBILITY_GENERAL):
+def onboarding(community, space, icon, emails, is_private=None, *, visibility=None):
+	# Keep old clients' private request private, including the fifth positional argument.
+	if is_private is not None:
+		if is_private not in (0, 1, "0", "1"):
+			frappe.throw(_("is_private must be 0 or 1"))
+		legacy_visibility = VISIBILITY_MEMBER_ACCESS if cint(is_private) else VISIBILITY_GENERAL
+		if visibility is not None and visibility != legacy_visibility:
+			frappe.throw(_("is_private and visibility disagree"))
+		visibility = legacy_visibility
+	if visibility is None:
+		visibility = VISIBILITY_GENERAL
 	emails = frappe.parse_json(emails)
 	# Signup may keep its first space to members, but never publish it: the Anonymous tier
 	# is a Gameplan Admin's decision, and the person signing up is not one yet.

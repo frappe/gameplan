@@ -12,7 +12,7 @@
           type="button"
           role="radio"
           :aria-checked="selected === tier.value"
-          :disabled="!canChange"
+          :disabled="!canChange || saving"
           class="flex w-full items-start gap-3 rounded border px-3 py-2.5 text-left disabled:cursor-not-allowed"
           :class="
             selected === tier.value
@@ -48,7 +48,7 @@
         <Button @click="show = false">Cancel</Button>
         <Button
           variant="solid"
-          :disabled="!canChange || !changing || impactLoading"
+          :disabled="!canChange || !changing || impactLoading || previewedTier !== selected"
           :loading="saving"
           @click="save"
         >
@@ -115,34 +115,46 @@ const current = computed(() => visibilityTier(props.visibility))
 const selected = ref<Visibility>(current.value)
 const changing = computed(() => selected.value !== current.value)
 const impact = ref<Impact | null>(null)
+const previewedTier = ref<Visibility | null>(null)
+let previewVersion = 0
 const impactLoading = ref(false)
 const saving = ref(false)
 const error = ref('')
 
-watch(show, (open) => {
-  if (!open) return
+watch([show, () => props.name], () => {
+  previewVersion++
   selected.value = current.value
   impact.value = null
+  previewedTier.value = null
+  impactLoading.value = false
   error.value = ''
 })
 
 async function choose(tier: Visibility) {
-  if (!canChange.value) return
+  if (!canChange.value || saving.value) return
+  const version = ++previewVersion
   selected.value = tier
   impact.value = null
+  previewedTier.value = null
+  impactLoading.value = false
   error.value = ''
   if (!changing.value) return
   impactLoading.value = true
   try {
-    impact.value = (await documents.runDocMethod.submit({
+    const result = (await documents.runDocMethod.submit({
       name: props.name,
       method: 'get_visibility_change_impact',
       params: { visibility: tier },
     })) as unknown as Impact
+    if (version !== previewVersion || !show.value) return
+    if (!result) throw new Error('Could not work out what this changes')
+    impact.value = result
+    previewedTier.value = tier
   } catch (e) {
+    if (version !== previewVersion) return
     error.value = (e as Error).message || 'Could not work out what this changes'
   } finally {
-    impactLoading.value = false
+    if (version === previewVersion) impactLoading.value = false
   }
 }
 
@@ -189,16 +201,25 @@ const impactLines = computed(() => {
 })
 
 async function save() {
+  if (
+    !canChange.value ||
+    !changing.value ||
+    saving.value ||
+    impactLoading.value ||
+    previewedTier.value !== selected.value
+  )
+    return
+  const tier = selected.value
   saving.value = true
   error.value = ''
   try {
     await documents.runDocMethod.submit({
       name: props.name,
       method: 'set_visibility',
-      params: { visibility: selected.value },
+      params: { visibility: tier },
     })
-    emit('changed', selected.value)
-    toast.success(`${props.title} is now ${selected.value}`)
+    emit('changed', tier)
+    toast.success(`${props.title} is now ${tier}`)
     show.value = false
   } catch (e) {
     error.value = (e as Error).message || 'Could not change visibility'

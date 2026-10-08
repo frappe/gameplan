@@ -17,12 +17,7 @@
 import { computed } from 'vue'
 import { Select, TextInput } from 'frappe-ui'
 import { communities } from '@/data/communities'
-import {
-  isMemberAccess,
-  VISIBILITY_GENERAL,
-  VISIBILITY_MEMBER_ACCESS,
-  type Visibility,
-} from '@/utils/visibility'
+import { VISIBILITY_TIERS, visibilityTier, type Visibility } from '@/utils/visibility'
 
 type VisibilityFilter = 'All' | Visibility | 'Archived'
 
@@ -41,18 +36,10 @@ const archivedCount = computed(
 const visibilityOptions = computed(() => {
   const options = [
     { label: `All (${activeCommunities.value.length})`, value: 'All' },
-    {
-      label: `${VISIBILITY_GENERAL} (${
-        activeCommunities.value.filter((c) => !isMemberAccess(c.visibility)).length
-      })`,
-      value: VISIBILITY_GENERAL,
-    },
-    {
-      label: `${VISIBILITY_MEMBER_ACCESS} (${
-        activeCommunities.value.filter((c) => isMemberAccess(c.visibility)).length
-      })`,
-      value: VISIBILITY_MEMBER_ACCESS,
-    },
+    ...VISIBILITY_TIERS.map((tier) => ({
+      label: `${tier} (${activeCommunities.value.filter((c) => visibilityTier(c.visibility) === tier).length})`,
+      value: tier,
+    })),
   ]
   // Only offer the archived scope when there's something archived to show.
   if (archivedCount.value) {

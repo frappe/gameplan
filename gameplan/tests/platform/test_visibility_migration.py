@@ -224,7 +224,9 @@ LEGACY_PRIVACY_REFERENCES = {
 	# Frappe's File.is_private, an unrelated field on another doctype.
 	"gameplan/gameplan/doctype/gp_user_profile/gp_user_profile.py": 1,
 	"gameplan/migrate_from_discourse/__init__.py": 1,
-	"gameplan/api.py": 1,
+	# Legacy onboarding arguments map to visibility, never to the retired column.
+	"gameplan/api.py": 7,
+	"gameplan/tests/platform/test_api_endpoints.py": 4,
 	"gameplan/mixins/attachments.py": 2,
 	"gameplan/tests/platform/test_attachments.py": 2,
 	"gameplan/tests/permissions/test_public_file.py": 4,

@@ -486,18 +486,19 @@ class TestDoorsAroundTheCleaning(PublicContentTestCase):
 			"gameplan.public_access.realtime_has_permission",
 		)
 
-	def test_anonymous_sockets_cannot_join_a_whole_doctype(self):
+	def test_anonymous_sockets_cannot_join_doctype_or_document_presence_rooms(self):
 		with switched_on(), self.as_user(ANONYMOUS):
 			for doctype in PUBLIC_FIELDS:
 				with self.subTest(doctype=doctype), self.assertRaises(frappe.PermissionError):
 					realtime_has_permission(doctype, "")
-			self.assertTrue(realtime_has_permission("GP Discussion", str(self.discussion.name)))
-			with self.assertRaises(frappe.PermissionError):
-				realtime_has_permission("GP Discussion", str(self.hidden_discussion.name))
+			for name in (self.discussion.name, self.hidden_discussion.name):
+				with self.subTest(name=name), self.assertRaises(frappe.PermissionError):
+					realtime_has_permission("GP Discussion", str(name))
 
 	def test_signed_in_sockets_still_join_a_doctype(self):
 		with switched_on(), self.as_user(self.member.name):
 			self.assertTrue(realtime_has_permission("GP Comment", ""))
+			self.assertTrue(realtime_has_permission("GP Discussion", str(self.discussion.name)))
 
 
 class TestReplaceUserIdsInHtml(GameplanTestCase):

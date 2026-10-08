@@ -912,7 +912,7 @@ onMounted(() => {
     scrollToComment: scrollToCommentById,
     highlightComment,
   })
-  unsubscribeFromDoc = subscribeToDoc(props.doctype, String(props.name))
+  if (!isAnonymousVisitor()) unsubscribeFromDoc = subscribeToDoc(props.doctype, String(props.name))
   socket.on('new_activity', (data: NewActivityEvent) => {
     if (isAnonymousVisitor()) return
     // The payload stringifies the id (activity.py) but doctypes that autoname to an

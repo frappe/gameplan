@@ -16,7 +16,7 @@ export type Visibility =
   | typeof VISIBILITY_GENERAL
   | typeof VISIBILITY_MEMBER_ACCESS
 
-const VISIBILITY_TIERS: readonly string[] = [
+export const VISIBILITY_TIERS: readonly string[] = [
   VISIBILITY_ANONYMOUS,
   VISIBILITY_GENERAL,
   VISIBILITY_MEMBER_ACCESS,

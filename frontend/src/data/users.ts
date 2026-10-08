@@ -176,8 +176,8 @@ export function useUser(...args: [] | [email: string | null | undefined]): UserI
   if (!email) return unknownUser
   if (!usersByName[email]) {
     usersByName[email] = getPlaceholderUser(email, email.split('@')[0])
-    if (isAnonymousVisitor()) requestPublicProfile(email)
   }
+  if (usersByName[email].isPlaceholder && isAnonymousVisitor()) requestPublicProfile(email)
   return usersByName[email]
 }
 
@@ -206,22 +206,36 @@ interface PublicProfile {
 
 async function fetchPublicProfiles() {
   publicProfileTimer = null
-  const handles = [...pendingHandles]
-  pendingHandles.clear()
-  try {
-    const profiles = await call<PublicProfile[]>('gameplan.api.get_public_user_info', { handles })
-    for (const profile of profiles) {
-      Object.assign(usersByName[profile.handle] ?? useUser(profile.handle), {
-        full_name: profile.full_name,
-        user_image: profile.image || '',
-        image_background_color: profile.image_background_color || '',
-        is_image_background_removed: profile.is_image_background_removed || 0,
-        user_profile: profile.handle,
-        isPlaceholder: false,
-      })
+  // Match the server's 100-profile cap without dropping the rest of a long thread.
+  const handles = [...pendingHandles].slice(0, 100)
+  handles.forEach((handle) => pendingHandles.delete(handle))
+  await fetchPublicProfileBatch(handles)
+  if (pendingHandles.size) publicProfileTimer ??= window.setTimeout(fetchPublicProfiles, 0)
+}
+
+async function fetchPublicProfileBatch(handles: string[]) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const profiles = await call<PublicProfile[]>('gameplan.api.get_public_user_info', { handles })
+      for (const profile of profiles) {
+        Object.assign(usersByName[profile.handle] ?? useUser(profile.handle), {
+          full_name: profile.full_name,
+          user_image: profile.image || '',
+          image_background_color: profile.image_background_color || '',
+          is_image_background_removed: profile.is_image_background_removed || 0,
+          user_profile: profile.handle,
+          isPlaceholder: false,
+        })
+      }
+      return
+    } catch (error) {
+      if (attempt === 2) {
+        handles.forEach((handle) => requestedHandles.delete(handle))
+        console.error('Could not load public profiles', error)
+      } else {
+        await new Promise((resolve) => window.setTimeout(resolve, 1000 * (attempt + 1)))
+      }
     }
-  } catch (error) {
-    console.error('Could not load public profiles', error)
   }
 }
 

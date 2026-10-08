@@ -275,20 +275,17 @@ def anonymous_readable_doctypes():
 
 @frappe.whitelist(allow_guest=True)
 def realtime_has_permission(doctype: str, name: str = "", ptype: str = "read"):
-	"""`frappe.realtime.has_permission`, minus doctype-wide rooms for anonymous visitors.
+	"""Keep anonymous visitors out of Gameplan realtime rooms.
 
-	Both socket servers ask this before letting a socket into a room. Without a `name` the
-	room is the whole doctype, and frappe sends it a `list_update` on every save of every
-	document of that doctype: its name, and the email of whoever saved it. The role layer
-	alone answers yes for the Guest role, so an anonymous socket would hear about every
-	comment posted anywhere, private spaces included. A single document's room is still
-	allowed: it hears only that document's `doc_update`, and only if the visitor can read it.
+	The same permission check admits both document updates and document presence. Presence
+	(`doc_open`) broadcasts viewer emails; doctype rooms broadcast editor emails. Public
+	read access therefore does not grant realtime access. Signed-in sockets are unchanged.
 	"""
 	from frappe.realtime import has_permission
 
 	import gameplan
 
-	if gameplan.is_anonymous() and not name and doctype in anonymous_readable_doctypes():
+	if gameplan.is_anonymous() and doctype in anonymous_readable_doctypes():
 		frappe.throw("Not permitted", frappe.PermissionError)
 	return has_permission(doctype, name, ptype)
 

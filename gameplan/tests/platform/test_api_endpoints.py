@@ -78,6 +78,49 @@ class TestUITestPersonas(GameplanTestCase):
 
 
 class TestOnboardingEndpoint(APIEndpointTestCase):
+	def test_legacy_onboarding_privacy_is_preserved_through_rpc_argument_matching(self):
+		for legacy, expected in (
+			(1, VISIBILITY_MEMBER_ACCESS),
+			("1", VISIBILITY_MEMBER_ACCESS),
+			(True, VISIBILITY_MEMBER_ACCESS),
+			(0, VISIBILITY_GENERAL),
+			(False, VISIBILITY_GENERAL),
+		):
+			with self.subTest(is_private=legacy), self.as_user(self.member):
+				result = frappe.call(
+					onboarding,
+					community=f"Legacy Onboarding {legacy!r}",
+					space="Legacy First Space",
+					icon="lucide-users",
+					emails="[]",
+					is_private=legacy,
+				)
+				self.assertEqual(frappe.db.get_value("GP Project", result["space"], "visibility"), expected)
+
+	def test_legacy_positional_private_request_stays_private(self):
+		with self.as_user(self.member):
+			result = onboarding("Legacy Positional Community", "Private Space", "lucide-lock", "[]", 1)
+		self.assertEqual(
+			frappe.db.get_value("GP Project", result["space"], "visibility"), VISIBILITY_MEMBER_ACCESS
+		)
+
+	def test_conflicting_or_invalid_legacy_privacy_is_rejected_before_creation(self):
+		for arguments in ({"is_private": 1, "visibility": VISIBILITY_GENERAL}, {"is_private": "invalid"}):
+			with (
+				self.subTest(arguments=arguments),
+				self.as_user(self.member),
+				self.assertRaises(frappe.ValidationError),
+			):
+				frappe.call(
+					onboarding,
+					community="Rejected Legacy Community",
+					space="Space",
+					icon="lucide-lock",
+					emails="[]",
+					**arguments,
+				)
+		self.assertFalse(frappe.db.exists("GP Team", {"title": "Rejected Legacy Community"}))
+
 	def test_returns_the_created_community_and_space_route_identifiers(self):
 		with self.as_user(self.member):
 			result = onboarding(

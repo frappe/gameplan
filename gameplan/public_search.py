@@ -108,42 +108,28 @@ class PublicGameplanSearch(GameplanSearch):
 		"""Two bounded queries reject deleted records and stale parent/space metadata."""
 		Project = frappe.qb.DocType("GP Project")
 		Discussion = frappe.qb.DocType("GP Discussion")
-		Comment = frappe.qb.DocType("GP Comment")
 		public_space = (Project.is_anonymous_readable == 1) & anonymous_readable_criterion(Project)
 		rows = {}
-		discussions = [r["name"] for r in results if r["doctype"] == "GP Discussion"]
-		if discussions:
-			live = (
-				frappe.qb.from_(Discussion)
-				.join(Project)
-				.on(Discussion.project == Project.name)
-				.select(Discussion.name, Discussion.owner, Project.name.as_("project"), Project.team)
-				.where(Discussion.name.isin(discussions) & public_space)
-			).run(as_dict=True)
-			rows.update({f"GP Discussion:{row.name}": row for row in live})
-		comments = [r["name"] for r in results if r["doctype"] == "GP Comment"]
-		if comments:
-			live = (
-				frappe.qb.from_(Comment)
-				.join(Discussion)
-				.on(Comment.reference_name == Discussion.name)
-				.join(Project)
-				.on(Discussion.project == Project.name)
-				.select(
-					Comment.name,
-					Comment.owner,
-					Comment.reference_name,
-					Project.name.as_("project"),
-					Project.team,
+		for doctype in PUBLIC_SEARCH_DOCTYPES:
+			names = [result["name"] for result in results if result["doctype"] == doctype]
+			if not names:
+				continue
+			Content = frappe.qb.DocType(doctype)
+			query = frappe.qb.from_(Content)
+			if doctype == "GP Comment":
+				query = (
+					query.join(Discussion)
+					.on(Content.reference_name == Discussion.name)
+					.select(Content.reference_name)
+					.where((Content.reference_doctype == "GP Discussion") & Content.deleted_at.isnull())
 				)
-				.where(Comment.name.isin(comments))
-				.where(
-					(Comment.reference_doctype == "GP Discussion")
-					& Comment.deleted_at.isnull()
-					& public_space
-				)
+			live = (
+				query.join(Project)
+				.on(Discussion.project == Project.name)
+				.select(Content.name, Content.owner, Project.name.as_("project"), Project.team)
+				.where(Content.name.isin(names) & public_space)
 			).run(as_dict=True)
-			rows.update({f"GP Comment:{row.name}": row for row in live})
+			rows.update({f"{doctype}:{row.name}": row for row in live})
 		return rows
 
 

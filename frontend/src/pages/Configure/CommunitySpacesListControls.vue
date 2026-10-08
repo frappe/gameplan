@@ -18,12 +18,7 @@
 import { computed } from 'vue'
 import { Select, TextInput } from 'frappe-ui'
 import { useCommunitySpaceData } from './useCommunitySpaceData'
-import {
-  isMemberAccess,
-  VISIBILITY_GENERAL,
-  VISIBILITY_MEMBER_ACCESS,
-  type Visibility,
-} from '@/utils/visibility'
+import { VISIBILITY_TIERS, visibilityTier, type Visibility } from '@/utils/visibility'
 
 type VisibilityFilter = 'All' | Visibility | 'Archived'
 
@@ -39,18 +34,10 @@ const archivedCount = computed(() => communitySpaces.value.length - activeSpaces
 const visibilityOptions = computed(() => {
   const options = [
     { label: `All (${activeSpaces.value.length})`, value: 'All' },
-    {
-      label: `${VISIBILITY_GENERAL} (${
-        activeSpaces.value.filter((s) => !isMemberAccess(s.visibility)).length
-      })`,
-      value: VISIBILITY_GENERAL,
-    },
-    {
-      label: `${VISIBILITY_MEMBER_ACCESS} (${
-        activeSpaces.value.filter((s) => isMemberAccess(s.visibility)).length
-      })`,
-      value: VISIBILITY_MEMBER_ACCESS,
-    },
+    ...VISIBILITY_TIERS.map((tier) => ({
+      label: `${tier} (${activeSpaces.value.filter((s) => visibilityTier(s.visibility) === tier).length})`,
+      value: tier,
+    })),
   ]
   if (archivedCount.value) {
     options.push({ label: `Archived (${archivedCount.value})`, value: 'Archived' })
