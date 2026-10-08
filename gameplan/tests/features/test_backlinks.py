@@ -80,6 +80,12 @@ class BacklinkTestCase(GameplanTestCase):
 		self.assertEqual([b.discussion for b in self.backlinks()], [str(hidden.name)])
 		self.assertEqual(self.backlinks(self.second_member), [])
 
+	def test_more_than_twenty_sources_are_all_listed(self):
+		for i in range(21):
+			source = create_discussion(f"Source {i}", self.space)
+			create_comment(source, content=link_to(self.target))
+		self.assertEqual(len(self.backlinks()), 21)
+
 	def test_backfill_restores_backlinks(self):
 		create_comment(self.source, content=link_to(self.target))
 		frappe.db.delete("GP Backlink")
