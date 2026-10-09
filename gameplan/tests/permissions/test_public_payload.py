@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 import frappe
 import frappe.api.v2
+from frappe.database.query import Engine
 from werkzeug.test import EnvironBuilder
 from werkzeug.wrappers import Request
 
@@ -227,9 +228,10 @@ class TestPublicLists(PublicContentTestCase):
 	def test_direct_public_lists_clamp_page_size_and_offset(self):
 		for requested, expected in ((-1, 1), (1000000, public_lists.MAX_ROWS)):
 			with switched_on(), self.as_user(ANONYMOUS):
-				with patch("frappe.qb.get_query", wraps=frappe.qb.get_query) as query:
+				with patch.object(Engine, "get_query", autospec=True, side_effect=Engine.get_query) as query:
 					get_client_list(doctype="GP Comment", fields=["name"], start=-1, limit=requested)
 				calls = [call for call in query.call_args_list if call.kwargs.get("table") == "GP Comment"]
+			self.assertTrue(calls)
 			self.assertEqual(calls[0].kwargs["limit"], expected)
 			self.assertEqual(calls[0].kwargs["offset"], 0)
 

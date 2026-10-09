@@ -37,7 +37,7 @@ describe('Public forum search', () => {
     cy.visit(`/g/community/${ids.community}/discussions`)
     cy.get('header:visible [aria-label="Search"]').click()
     cy.location('pathname').should('eq', '/g/search')
-    cy.get('header:visible').contains('button', 'Log in').should('be.visible')
+    cy.get('header:visible').button('Log in').should('be.visible')
     cy.get('input[aria-label="Search"]').type('Glad{enter}')
     cy.contains('a', 'Glad to be here.').should('be.visible').click()
     cy.location('pathname').should('include', `/discussion/${ids.discussion}`)
