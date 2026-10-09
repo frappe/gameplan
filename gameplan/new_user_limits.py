@@ -1,22 +1,10 @@
 # Copyright (c) 2026, Frappe Technologies Pvt. Ltd. and Contributors
 # MIT License. See license.txt
 
-"""Limits on what a stranger may post in a public space, after Discourse's trust level 0.
+"""Discourse-style posting safeguards for public-only Gameplan Guests.
 
-Anyone can create a Gameplan Guest account when signup is open, and a Gameplan Guest may
-post in any space readable without signing in. Discourse lets such brand-new users take
-part too, within limits that make spam and abuse slow and visible. These are its
-defaults for trust level 0:
-
-- 3 topics and 10 replies in the account's first day,
-- 1 image, 2 links and 2 mentions per post, and no attachments,
-
-plus a 24-hour window to edit one's own posts.
-
-They apply to a Gameplan Guest acting in a space they reach only through public access:
-not to members, and not to a guest in a space they were invited to. They are checked
-against the person saving, on every route that saves (the app, the REST API, Desk),
-through `validate`. The app only shows the error.
+Apply first-day quotas, per-post limits and a 24-hour own-post edit window.
+Members and explicitly granted Guests are exempt. Validation hooks cover every save route.
 """
 
 from datetime import timedelta
@@ -178,16 +166,12 @@ def count_post_contents(html) -> frappe._dict:
 
 
 def post_changed(doc) -> bool:
-	before = doc.get_doc_before_save()
-	if not before:
+	if any(doc.has_value_changed(field) for field in POST_FIELDS[doc.doctype] if field != "options"):
 		return True
-	for field in POST_FIELDS[doc.doctype]:
-		current, previous = doc.get(field), before.get(field)
-		if field == "options":
-			current, previous = [row.title for row in current], [row.title for row in previous]
-		if current != previous:
-			return True
-	return False
+	before = doc.get_doc_before_save()
+	return doc.doctype == "GP Poll" and (
+		not before or [row.title for row in doc.options] != [row.title for row in before.options]
+	)
 
 
 def get_owner(doc):

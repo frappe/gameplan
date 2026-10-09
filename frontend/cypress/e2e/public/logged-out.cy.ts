@@ -116,7 +116,7 @@ describe('Public spaces, logged out', () => {
   it('lets a mobile visitor browse public spaces without member-only feeds', () => {
     cy.viewport(390, 844)
     cy.visit(`/g/community/${ids.community}/discussions`)
-    cy.get('header:visible').contains('button', 'Log in').should('be.visible')
+    cy.get('header:visible').contains('a', 'Log in').should('have.attr', 'target', '_self')
     cy.get('header:visible button').contains('Discussions').click()
     cy.get('[role="dialog"]').within(() => {
       cy.contains('Announcements').should('be.visible')
@@ -173,7 +173,7 @@ describe('Changing a tier', () => {
 
   // The access dialog underneath has radios of its own.
   function tiers() {
-    return cy.get('[role="radiogroup"][aria-label^="Visibility of"] [role="radio"]')
+    return cy.scope('dialog').find('[role="radiogroup"] [role="radio"]')
   }
 
   function openVisibilityDialog(space: string) {
@@ -204,13 +204,11 @@ describe('Changing a tier', () => {
     cy.contains('a', 'Members-only thread').should('be.visible')
   })
 
-  it('shows a community admin the control, but disabled', () => {
+  it('hides visibility changes from a community admin who can manage access', () => {
     cy.loginAs('member')
-    openVisibilityDialog(ids.space as string)
-    cy.scope('dialog').should('contain.text', 'Only Gameplan Admins can change visibility.')
-    tiers()
-      .should('have.length', 3)
-      .each(($radio) => cy.wrap($radio).should('be.disabled'))
-    cy.contains('[role="dialog"] button:visible', 'Change visibility').should('be.disabled')
+    cy.visit(`/g/community/${ids.community}/space/${ids.space}/discussions`)
+    cy.selectDropdownOption('Space actions', 'Manage access')
+    cy.scope('dialog').should('contain.text', 'Space access')
+    cy.scope('dialog').find('button[aria-label="Change visibility"]').should('not.exist')
   })
 })

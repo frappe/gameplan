@@ -1,17 +1,10 @@
 # Copyright (c) 2026, Frappe Technologies Pvt. Ltd. and Contributors
 # MIT License. See license.txt
 
-"""Public read access: letting people who are not signed in read chosen spaces.
+"""Public read eligibility, request guards and visibility tiers.
 
-A community or a space has one of three visibility tiers:
-
-- Anonymous: anyone with the link can read it, signed in or not.
-- General: anyone signed in to Gameplan can read it.
-- Member Access: only the people on its member list can read it.
-
-Refer to a tier through the constants below, never a bare string. "Anonymous" as a tier
-means "readable by people who are not signed in". It does not mean that the content or its
-author is anonymous, and `GP Poll.anonymous` (a poll with hidden voters) is unrelated.
+Anonymous means logged-out reading, not hidden authors or the unrelated GP Poll.anonymous.
+General follows signed-in Member rules. Member Access requires explicit membership.
 """
 
 import time
@@ -37,11 +30,7 @@ VISIBILITY_DOCTYPES = ("GP Team", "GP Project")
 
 
 def visibility_tier(value) -> str:
-	"""`value` as a tier. Anything empty or unknown reads as Member Access, the strictest.
-
-	Fail closed: a row whose tier was never set, or was set to something this code does not
-	know, is shown to fewer people rather than more.
-	"""
+	"""Fail closed: empty or unknown tiers require Member Access."""
 	return value if value in VISIBILITY_TIERS else VISIBILITY_MEMBER_ACCESS
 
 
@@ -51,15 +40,9 @@ def is_member_access(value) -> bool:
 
 
 def public_access_enabled() -> bool:
-	"""Whether this site lets people who are not signed in read the Anonymous tier.
+	"""Check the opt-in site switch on every anonymous read.
 
-	Off unless site config turns it on. Every anonymous read path checks it, so setting
-	`gameplan_public_access_enabled` to 0 in site_config.json closes public access on that
-	site without a deploy.
-
-	Always off while demo mode is on. On a demo site, opening /g with `?demo` in the URL
-	signs the visitor in as a real demo user (see `login_as_demo_user_if_enabled` in
-	www/g.py), so a public reader would silently become a member partway through a visit.
+	Demo mode stays closed: its automatic demo login would silently turn visitors into members.
 	"""
 	from gameplan.demo.demo import demo_data_enabled
 

@@ -30,24 +30,12 @@ SPACE_STATE_DOCTYPES = ("GP Unread Record", "GP Pinned Project", "GP Followed Pr
 
 
 class HasVisibility:
-	"""Visibility bookkeeping shared by GP Team and GP Project.
-
-	Both carry `visibility`, `visibility_set_by` and `visibility_set_at`, and a legacy
-	`is_private` column that nothing reads or writes any more. The controllers call these
-	methods from their own lifecycle hooks.
-	"""
+	"""Shared visibility validation, audit stamps and access-state updates."""
 
 	def set_default_visibility(self):
-		"""Give a new record today's default tier, and refuse the retired `is_private` flag.
+		"""Default imports to General. Frappe already uses the Select's first option normally.
 
-		Normally the tier is already set by now. A Select field without a default takes its
-		first option (frappe/model/create_new.py), which is why General is listed first:
-		reorder the options and new records silently change tier. A data import skips
-		those defaults, so this fills the tier in for that path.
-
-		A caller that still sends `is_private = 1` asked for a private record. Ignoring the
-		flag would create a General one instead, readable by every signed-in user, so the
-		insert fails. `is_private = 0` asks for what the default gives anyway.
+		Reject legacy private inserts: ignoring is_private=1 would expose them to Members.
 		"""
 		if cint(self.get("is_private")):
 			frappe.throw(_("is_private is no longer accepted. Set visibility instead."))

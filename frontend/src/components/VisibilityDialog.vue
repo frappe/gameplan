@@ -5,32 +5,22 @@
         Only Gameplan Admins can change visibility.
       </p>
 
-      <div class="space-y-2" role="radiogroup" :aria-label="`Visibility of ${title}`">
-        <button
+      <RadioGroup
+        :model-value="selected"
+        :disabled="!canChange || saving"
+        label="Who can read"
+        padded
+        @update:model-value="choose($event as Visibility)"
+      >
+        <Radio
           v-for="tier in tiers"
           :key="tier.value"
-          type="button"
-          role="radio"
-          :aria-checked="selected === tier.value"
-          :disabled="!canChange || saving"
-          class="flex w-full items-start gap-3 rounded border px-3 py-2.5 text-left disabled:cursor-not-allowed"
-          :class="
-            selected === tier.value
-              ? 'border-outline-gray-4 bg-surface-gray-2'
-              : 'border-outline-gray-2 hover:bg-surface-gray-1'
-          "
-          @click="choose(tier.value)"
-        >
-          <span :class="[visibilityIcon(tier.value), 'mt-0.5 size-4 shrink-0 text-ink-gray-6']" />
-          <span class="min-w-0">
-            <span class="block text-base-medium text-ink-gray-8">
-              {{ tier.value }}
-              <span v-if="tier.value === current" class="text-sm text-ink-gray-5"> (current)</span>
-            </span>
-            <span class="block text-p-sm text-ink-gray-5">{{ tier.description }}</span>
-          </span>
-        </button>
-      </div>
+          :value="tier.value"
+          :label="tier.value + (tier.value === current ? ' (current)' : '')"
+          :description="tier.description"
+          @click="error && selected === tier.value && choose(tier.value)"
+        />
+      </RadioGroup>
 
       <div v-if="changing" class="space-y-1.5 rounded border border-outline-gray-2 px-3 py-2.5">
         <div class="text-base-medium text-ink-gray-8">What this changes</div>
@@ -61,14 +51,13 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { Button, Dialog, ErrorMessage, toast, useDoctype } from 'frappe-ui'
+import { Button, Dialog, ErrorMessage, Radio, RadioGroup, toast, useDoctype } from 'frappe-ui'
 import { isGameplanAdmin } from '@/data/users'
 import {
   VISIBILITY_ANONYMOUS,
   VISIBILITY_DESCRIPTIONS,
   VISIBILITY_TIERS,
   type Visibility,
-  visibilityIcon,
   visibilityTier,
 } from '@/utils/visibility'
 
@@ -156,31 +145,18 @@ async function choose(tier: Visibility) {
 const impactLines = computed(() => {
   const i = impact.value
   if (!i) return []
-  const lines: string[] = []
-  if (i.users_gaining_access) {
-    lines.push(`${people(i.users_gaining_access)} will be able to read it.`)
-  }
-  if (i.discussions_revealed) {
-    lines.push(
-      `${discussions(i.discussions_revealed)} ${verb(i.discussions_revealed, 'becomes', 'become')} readable to them, including everything already posted.`,
-    )
-  }
-  if (i.discussions_made_public) {
-    lines.push(
-      `${discussions(i.discussions_made_public)} ${verb(i.discussions_made_public, 'becomes', 'become')} readable by anyone on the web, without signing in.`,
-    )
-  }
-  if (i.users_losing_access) {
-    const where = isCommunity.value ? ` across ${spaces(i.spaces_losing_readers)}` : ''
-    lines.push(
-      `${people(i.users_losing_access)} will lose access${where}, along with their follows and unread markers there.`,
-    )
-  }
-  if (i.discussions_no_longer_public) {
-    lines.push(
-      `${discussions(i.discussions_no_longer_public)} ${verb(i.discussions_no_longer_public, 'stops', 'stop')} being readable without signing in.`,
-    )
-  }
+  const lines = [
+    i.users_gaining_access &&
+      `${countLabel(i.users_gaining_access, 'person', 'people')} will be able to read it.`,
+    i.discussions_revealed &&
+      `${countLabel(i.discussions_revealed, 'discussion')} ${verb(i.discussions_revealed, 'becomes', 'become')} readable to them, including everything already posted.`,
+    i.discussions_made_public &&
+      `${countLabel(i.discussions_made_public, 'discussion')} ${verb(i.discussions_made_public, 'becomes', 'become')} readable by anyone on the web, without signing in.`,
+    i.users_losing_access &&
+      `${countLabel(i.users_losing_access, 'person', 'people')} will lose access${isCommunity.value ? ` across ${countLabel(i.spaces_losing_readers, 'space')}` : ''}, along with their follows and unread markers there.`,
+    i.discussions_no_longer_public &&
+      `${countLabel(i.discussions_no_longer_public, 'discussion')} ${verb(i.discussions_no_longer_public, 'stops', 'stop')} being readable without signing in.`,
+  ].filter((line): line is string => typeof line === 'string')
   if (i.leaving_anonymous) {
     lines.push(
       'Anything that was public may already have been read, cached or indexed elsewhere. Moving it back does not undo that.',
@@ -226,13 +202,7 @@ async function save() {
 function verb(n: number, one: string, many: string) {
   return n === 1 ? one : many
 }
-function people(n: number) {
-  return n === 1 ? '1 person' : `${n} people`
-}
-function discussions(n: number) {
-  return n === 1 ? '1 discussion' : `${n} discussions`
-}
-function spaces(n: number) {
-  return n === 1 ? '1 space' : `${n} spaces`
+function countLabel(n: number, one: string, many = `${one}s`) {
+  return `${n} ${n === 1 ? one : many}`
 }
 </script>

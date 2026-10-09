@@ -3,8 +3,11 @@
 
 """Anonymous reads must agree across role checks, document hooks, lists, and feeds."""
 
+from unittest.mock import patch
+
 import frappe
 import frappe.api.v2
+from frappe.database.query import Engine
 
 from gameplan.extends.client import get_list as get_client_list
 from gameplan.gameplan.doctype.gp_discussion.api import get_discussions
@@ -83,6 +86,15 @@ class TestPublicRead(GameplanTestCase):
 			feed = {str(row.name) for row in get_discussions(limit=100)}
 		self.assertIn(str(self.public_discussion.name), feed)
 		self.assertFalse(feed & {str(d.name) for d in self.hidden if d.doctype == "GP Discussion"})
+
+	def test_public_lists_apply_framework_permission_conditions(self):
+		condition = frappe.qb.DocType("GP Project").name == "missing-space"
+		with (
+			switched(),
+			self.as_user(ANONYMOUS),
+			patch.object(Engine, "get_permission_query_conditions", return_value=[condition]),
+		):
+			self.assertEqual(get_client_list(doctype="GP Project", fields=["name"]), [])
 
 	def test_switched_off_nothing_is_readable(self):
 		with switched(False):

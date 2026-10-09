@@ -1,27 +1,12 @@
 # Copyright (c) 2026, Frappe Technologies Pvt. Ltd. and Contributors
 # MIT License. See license.txt
 
-"""What a person who is not signed in gets back when they read a public space.
+"""Allowlisted payloads for public readers. Signed-in payloads stay unchanged.
 
-Permissions decide *which* rows an anonymous visitor may read. This module decides *what
-is in them*. Signed-in users never pass through here: every function below returns its
-input untouched unless nobody is signed in.
-
-It works from an allowlist. Every field of every doctype the Guest role can read is
-classified below as public, an author, a child table, or private, and a field nobody has
-classified is dropped. `TestPublicPayloadClassification` fails when a doctype gains a field
-that is in none of the lists, so a new field is hidden from the public until someone
-decides otherwise.
-
-The parts that need care:
-
-- People are identified by their profile handle (the `GP User Profile` name, as in
-  `/g/people/<handle>`), never by email. That covers the author fields here, and any HTML
-  attribute in a post body whose value is exactly a user id: @mention `data-id`s,
-  rich-quote `data-author`s, and whatever stores a user id in an attribute next.
-- Child tables have no permission rows of their own, so this is the only thing standing
-  between an anonymous visitor and the people in them. Member lists and poll votes are
-  dropped; reactions keep their emoji and lose who reacted, which leaves the totals.
+Permissions select rows. This module selects fields and drops unclassified fields.
+The classification test requires an explicit decision when a DocType gains a field.
+Author metadata and user IDs in HTML attributes become profile handles, never emails.
+Child tables have no row permissions: hide memberships and votes, but keep reaction totals.
 """
 
 import re

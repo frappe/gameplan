@@ -67,15 +67,12 @@
 <script setup lang="ts">
 import { Button } from 'frappe-ui'
 import { List, ListHeader, ListHeaderCell } from 'frappe-ui/list'
-import type { Space } from '@/data/spaces'
 import ConfigureEmptyState from './ConfigureEmptyState.vue'
 import SpaceRow from './SpaceRow.vue'
 import CommunitySpacesListControls from './CommunitySpacesListControls.vue'
 import { useCommunitySpaceData } from './useCommunitySpaceData'
 import { computed } from 'vue'
-import { visibilityTier, type Visibility } from '@/utils/visibility'
-
-type VisibilityFilter = 'All' | Visibility | 'Archived'
+import { matchesVisibility, type VisibilityFilter } from '@/utils/visibility'
 
 const props = withDefaults(
   defineProps<{
@@ -105,18 +102,10 @@ const filteredSpaces = computed(() => {
   const term = search.value.trim().toLowerCase()
   return communitySpaces.value.filter(
     (space) =>
-      matchesScope(space, visibilityFilter.value) &&
+      matchesVisibility(space, visibilityFilter.value) &&
       (!term || space.title.toLowerCase().includes(term)),
   )
 })
-
-// 'All' and the tiers only cover active spaces; 'Archived' is its own scope.
-function matchesScope(space: Space, filter: VisibilityFilter) {
-  if (filter === 'Archived') return Boolean(space.archived_at)
-  if (space.archived_at) return false
-  if (filter === 'All') return true
-  return visibilityTier(space.visibility) === filter
-}
 
 function clearFilters() {
   visibilityFilter.value = 'All'

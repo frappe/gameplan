@@ -76,16 +76,14 @@
 import { computed, watch } from 'vue'
 import { Button } from 'frappe-ui'
 import { List, ListHeader, ListHeaderCell } from 'frappe-ui/list'
-import { communities, type Community } from '@/data/communities'
+import { communities } from '@/data/communities'
 import { spaces } from '@/data/spaces'
 import { useSessionUser } from '@/data/users'
 import { isGlobalAdmin } from '@/utils/permissions'
 import ConfigureEmptyState from './ConfigureEmptyState.vue'
 import CommunityRow from './CommunityRow.vue'
 import CommunitiesListFilters from './CommunitiesListFilters.vue'
-import { visibilityTier, type Visibility } from '@/utils/visibility'
-
-type VisibilityFilter = 'All' | Visibility | 'Archived'
+import { matchesVisibility, type VisibilityFilter } from '@/utils/visibility'
 
 // Filters are models so a parent (e.g. the Settings dialog) can hoist the
 // controls into a fixed header while this component still renders the list.
@@ -112,7 +110,7 @@ const filteredCommunities = computed(() => {
   const term = search.value.trim().toLowerCase()
   return visibleCommunities.value.filter(
     (community) =>
-      matchesScope(community, visibilityFilter.value) &&
+      matchesVisibility(community, visibilityFilter.value) &&
       (!term || community.title.toLowerCase().includes(term)),
   )
 })
@@ -132,14 +130,6 @@ watch(hasArchivedCommunities, (value) => {
     visibilityFilter.value = 'All'
   }
 })
-
-// 'All' and the tiers only cover active communities; 'Archived' is its own scope.
-function matchesScope(community: Community, filter: VisibilityFilter) {
-  if (filter === 'Archived') return Boolean(community.archived_at)
-  if (community.archived_at) return false
-  if (filter === 'All') return true
-  return visibilityTier(community.visibility) === filter
-}
 
 function getActiveCommunitySpacesCount(communityId: string) {
   return (spaces.data || []).filter((space) => {

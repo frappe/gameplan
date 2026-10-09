@@ -43,7 +43,7 @@ describe('Public access regression checks', () => {
       statusCode: 500,
       body: { exception: 'Could not preview visibility' },
     }).as('failedImpact')
-    cy.contains('[role="radio"]', 'Anonymous').click()
+    cy.contains('[role="radio"]', 'Anonymous').focus().type(' ')
     cy.wait('@failedImpact')
     cy.contains('button', 'Change visibility').should('be.disabled')
     cy.intercept('POST', '**/method/get_visibility_change_impact', {

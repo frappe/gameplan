@@ -16,6 +16,9 @@ export type Visibility =
   | typeof VISIBILITY_GENERAL
   | typeof VISIBILITY_MEMBER_ACCESS
 
+export type VisibilityFilter = 'All' | Visibility | 'Archived'
+type VisibleRecord = { visibility?: string | null; archived_at?: string | null }
+
 export const VISIBILITY_TIERS: readonly Visibility[] = [
   VISIBILITY_ANONYMOUS,
   VISIBILITY_GENERAL,
@@ -64,4 +67,22 @@ export function creatableVisibilityOptions(isAdmin: boolean) {
     label: `${tier} — ${VISIBILITY_DESCRIPTIONS[tier]}`,
     value: tier,
   }))
+}
+
+export function matchesVisibility(record: VisibleRecord, filter: VisibilityFilter) {
+  if (filter === 'Archived') return Boolean(record.archived_at)
+  return !record.archived_at && (filter === 'All' || visibilityTier(record.visibility) === filter)
+}
+
+export function visibilityFilterOptions(records: VisibleRecord[]) {
+  const active = records.filter((record) => !record.archived_at)
+  const archived = records.length - active.length
+  return [
+    { label: `All (${active.length})`, value: 'All' },
+    ...VISIBILITY_TIERS.map((tier) => ({
+      label: `${tier} (${active.filter((record) => visibilityTier(record.visibility) === tier).length})`,
+      value: tier,
+    })),
+    ...(archived ? [{ label: `Archived (${archived})`, value: 'Archived' }] : []),
+  ]
 }

@@ -47,7 +47,10 @@
             <span class="text-ink-gray-5"> &nbsp;&middot; Edited </span>
           </Tooltip>
           <span v-if="isUpdating" class="italic text-ink-gray-5"> &nbsp;&middot; Sending... </span>
-          <span v-if="updateError" class="inline-flex items-center whitespace-nowrap text-ink-red-7">
+          <span
+            v-if="updateError"
+            class="inline-flex items-center whitespace-nowrap text-ink-red-7"
+          >
             &nbsp;&middot;&nbsp;Not saved
           </span>
         </div>
@@ -130,6 +133,7 @@ import { useDraftSync } from '@/data/useDraftSync'
 import { useUser, useSessionUser } from '@/data/users'
 import type { Space } from '@/data/spaces'
 import { canDeleteContent, canEditContent } from '@/utils/permissions'
+import { isAnonymousVisitor } from '@/utils/publicAccess'
 
 interface Props {
   comment: GPComment
@@ -228,7 +232,8 @@ const dropdownOptions = computed(() => [
     label: 'Revisions',
     icon: 'lucide-rotate-ccw',
     onClick: () => (showRevisionsDialog.value = true),
-    condition: () => !props.readOnlyMode && !isAnonymousVisitor() && Boolean(props.comment.edited_at),
+    condition: () =>
+      !props.readOnlyMode && !isAnonymousVisitor() && Boolean(props.comment.edited_at),
   },
   {
     label: 'Copy link',

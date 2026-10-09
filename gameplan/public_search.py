@@ -3,7 +3,6 @@
 
 """Public forum search over the existing FTS index, with live permission checks."""
 
-import json
 from html import escape
 
 import frappe
@@ -154,7 +153,7 @@ def validate_search_filters(filters, *, anonymous=False):
 		if anonymous and len(filters) > 8000:
 			frappe.throw("Search filters are too long.")
 		try:
-			filters = json.loads(filters)
+			filters = frappe.parse_json(filters)
 		except ValueError:
 			frappe.throw("Search filters must be a JSON object.")
 	if not isinstance(filters, dict):

@@ -3,7 +3,7 @@
 
 
 import frappe
-from frappe.database.query import RawCriterion
+from frappe.database.query import Engine
 from frappe.model.base_document import get_controller
 from frappe.utils import cint
 
@@ -46,7 +46,8 @@ def get_list(
 	# The query must always receive the doctype's row scope. For signed-in callers Frappe
 	# applies it; the anonymous public path applies the same hooks below because Frappe's
 	# generic Guest-role gate runs before it can reach them.
-	query = frappe.qb.get_query(
+	engine = Engine()
+	query = engine.get_query(
 		table=doctype,
 		fields=fields,
 		filters=filters,
@@ -61,7 +62,8 @@ def get_list(
 		parent_doctype=parent,
 	)
 	if anonymous:
-		query = apply_anonymous_permission_filters(doctype, query)
+		for condition in engine.get_permission_query_conditions(doctype):
+			query = query.where(condition)
 	query = apply_custom_filters(doctype, query)
 	rows = query.run(as_dict=True, debug=debug)
 	return public_rows(doctype, rows) if anonymous else rows
@@ -88,13 +90,4 @@ def apply_custom_filters(doctype, query):
 		if return_value is not None:
 			query = return_value
 
-	return query
-
-
-def apply_anonymous_permission_filters(doctype, query):
-	"""Apply the row scopes the query builder skips for an anonymous public list."""
-	for method in frappe.get_hooks("permission_query_conditions", {}).get(doctype, []):
-		condition = frappe.call(frappe.get_attr(method), frappe.session.user, doctype=doctype)
-		if condition:
-			query = query.where(RawCriterion(f"({condition})") if isinstance(condition, str) else condition)
 	return query

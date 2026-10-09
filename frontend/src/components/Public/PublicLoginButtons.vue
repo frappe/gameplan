@@ -8,13 +8,14 @@
       label="Search"
       :route="{ name: 'Search' }"
     />
-    <Button :size="size" variant="subtle" label="Log in" @click="go(loginUrl())" />
+    <Button :size="size" variant="subtle" label="Log in" :link="loginUrl()" target="_self" />
     <Button
       v-if="signupEnabled()"
       :size="size"
       variant="solid"
       label="Sign up"
-      @click="go(signupUrl())"
+      :link="signupUrl()"
+      target="_self"
     />
   </div>
 </template>
@@ -26,9 +27,4 @@ import { loginUrl, signupEnabled, signupUrl } from '@/utils/publicAccess'
 
 withDefaults(defineProps<{ size?: 'sm' | 'md' }>(), { size: 'sm' })
 const route = useRoute()
-
-// Frappe's own login and signup pages, which return the visitor to this page.
-function go(url: string) {
-  window.location.href = url
-}
 </script>
