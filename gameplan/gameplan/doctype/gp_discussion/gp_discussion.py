@@ -2,6 +2,7 @@
 # For license information, please see license.txt
 
 import frappe
+from frappe import _
 from frappe.model.document import Document
 from frappe.utils import cstr
 
@@ -13,9 +14,18 @@ from gameplan.mixins.attachments import HasAttachments
 from gameplan.mixins.mentions import HasMentions
 from gameplan.mixins.reactions import HasReactions, get_reactions_on
 from gameplan.mixins.tags import HasTags
-from gameplan.permissions import content_has_permission, discussion_query_conditions
+from gameplan.permissions import (
+	can_highlight_comment,
+	content_has_permission,
+	discussion_query_conditions,
+)
 from gameplan.search_sqlite import enqueue_comment_reindex_on_move
-from gameplan.utils import get_document_revisions, remove_empty_trailing_paragraphs, url_safe_slug
+from gameplan.utils import (
+	get_document_revisions,
+	html_to_text_preview,
+	remove_empty_trailing_paragraphs,
+	url_safe_slug,
+)
 from gameplan.utils.document import with_stored_document
 
 
@@ -31,6 +41,8 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		"Discussion Pinned",
 		"Discussion Unpinned",
 		"Discussion Moved",
+		"Comment Highlighted",
+		"Comment Unhighlighted",
 	]
 	mentions_field = "content"
 	tags_field = "content"
@@ -68,6 +80,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		d.last_unread_poll = polls[0] if polls else None
 		d.is_bookmarked = self.is_bookmarked_by_current_user()
 		d.views = frappe.db.count("GP Discussion Visit", {"discussion": self.name})
+		d.highlighted_comments = self.get_highlighted_comments()
 		return d
 
 	def before_insert(self):
@@ -214,6 +227,34 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
+	def highlight_comment(self, comment):
+		self.check_can_highlight_comment()
+		if self.get_comment_highlighted_at(comment):
+			return
+		frappe.db.set_value(
+			"GP Comment",
+			comment,
+			{"highlighted_by": frappe.session.user, "highlighted_at": frappe.utils.now()},
+			update_modified=False,
+		)
+		self.log_activity("Comment Highlighted", data={"comment": cstr(comment)})
+
+	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
+	def unhighlight_comment(self, comment):
+		self.check_can_highlight_comment()
+		if not self.get_comment_highlighted_at(comment):
+			return
+		frappe.db.set_value(
+			"GP Comment",
+			comment,
+			{"highlighted_by": None, "highlighted_at": None},
+			update_modified=False,
+		)
+		self.log_activity("Comment Unhighlighted", data={"comment": cstr(comment)})
+
+	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def add_bookmark(self):
 		if self.is_bookmarked_by_current_user():
 			return
@@ -266,6 +307,51 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 
 	def opening_post_bookmark_filters(self):
 		return {"discussion": self.name, "user": frappe.session.user, "comment": ("is", "not set")}
+
+	def check_can_highlight_comment(self):
+		if not can_highlight_comment(frappe.session.user, self):
+			frappe.throw(
+				_("Only the author of this discussion can highlight a comment"), frappe.PermissionError
+			)
+
+	def get_comment_highlighted_at(self, comment):
+		values = frappe.db.get_value(
+			"GP Comment",
+			{
+				"name": comment,
+				"reference_doctype": self.doctype,
+				"reference_name": self.name,
+				"deleted_at": ("is", "not set"),
+			},
+			["name", "highlighted_at"],
+			as_dict=True,
+		)
+		if not values:
+			frappe.throw(_("This comment does not belong to this discussion"))
+		return values.highlighted_at
+
+	def get_highlighted_comments(self):
+		comments = frappe.get_all(
+			"GP Comment",
+			filters={
+				"reference_doctype": self.doctype,
+				"reference_name": self.name,
+				"deleted_at": ("is", "not set"),
+				"highlighted_at": ("is", "set"),
+			},
+			fields=["name", "owner", "content", "highlighted_by", "highlighted_at"],
+			order_by="creation asc",
+		)
+		return [
+			{
+				"name": cstr(comment.name),
+				"owner": comment.owner,
+				"content": html_to_text_preview(comment.content, 300),
+				"highlighted_by": comment.highlighted_by,
+				"highlighted_at": comment.highlighted_at,
+			}
+			for comment in comments
+		]
 
 	def update_slug(self):
 		self.slug = url_safe_slug(self.title)

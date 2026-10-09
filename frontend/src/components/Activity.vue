@@ -15,6 +15,14 @@
         class="lucide-corner-up-right h-4 w-4"
         v-else-if="activity.action === 'Discussion Moved'"
       />
+      <span
+        class="lucide-badge-check h-4 w-4"
+        v-else-if="activity.action === 'Comment Highlighted'"
+      />
+      <span
+        class="lucide-badge-x h-4 w-4"
+        v-else-if="activity.action === 'Comment Unhighlighted'"
+      />
       <span class="lucide-edit-3 h-4 w-4" v-else-if="activity.action === 'Task Value Changed'" />
     </div>
     <p>
@@ -25,6 +33,22 @@
       <span v-if="activity.action == 'Discussion Reopened'"> reopened this discussion</span>
       <span v-if="activity.action == 'Discussion Pinned'"> pinned this discussion</span>
       <span v-if="activity.action == 'Discussion Unpinned'"> unpinned this discussion</span>
+      <template
+        v-if="
+          activity.action == 'Comment Highlighted' || activity.action == 'Comment Unhighlighted'
+        "
+      >
+        {{ activity.action == 'Comment Highlighted' ? ' highlighted ' : ' removed the highlight from ' }}
+        <button
+          v-if="commentOwnerUser"
+          type="button"
+          class="text-ink-gray-8 hover:text-ink-gray-5"
+          @click="emit('open-comment', String(activity.data.comment))"
+        >
+          {{ commentOwnerUser.full_name }}'s comment
+        </button>
+        <template v-else>a comment</template>
+      </template>
       <span v-if="activity.action == 'Discussion Title Changed'">
         changed the title from
         <span class="text-ink-gray-8">{{ activity.data.old_title }}</span> to
@@ -138,14 +162,23 @@ interface Activity {
     field_label?: string
     old_value?: string
     new_value?: string
+    comment?: string
   }
 }
 
 const props = defineProps<{
   activity: Activity
+  commentOwner?: string | null
+}>()
+
+const emit = defineEmits<{
+  'open-comment': [comment: string]
 }>()
 
 const user = computed(() => useUser(props.activity.user))
+const commentOwnerUser = computed(() =>
+  props.commentOwner ? useUser(props.commentOwner) : null,
+)
 // Clearing an assignee logs the same activity with an empty new_value, so there is no
 // user to name — the template renders "unassigned this" instead.
 const assignedUser = computed(() =>

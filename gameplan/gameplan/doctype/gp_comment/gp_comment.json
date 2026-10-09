@@ -11,6 +11,8 @@
   "reference_name",
   "edited_at",
   "deleted_at",
+  "highlighted_by",
+  "highlighted_at",
   "tags"
  ],
  "fields": [
@@ -45,6 +47,17 @@
    "label": "Deleted At"
   },
   {
+   "fieldname": "highlighted_by",
+   "fieldtype": "Link",
+   "label": "Highlighted By",
+   "options": "User"
+  },
+  {
+   "fieldname": "highlighted_at",
+   "fieldtype": "Datetime",
+   "label": "Highlighted At"
+  },
+  {
    "fieldname": "tags",
    "fieldtype": "Table",
    "label": "Tags",
@@ -54,7 +67,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-16 20:00:00.000000",
+ "modified": "2026-10-21 12:00:00.000000",
  "modified_by": "faris@erpnext.com",
  "module": "Gameplan",
  "name": "GP Comment",

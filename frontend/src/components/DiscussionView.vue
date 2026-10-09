@@ -176,6 +176,48 @@
               @discard="cancelEdit"
             />
           </div>
+          <div v-if="highlightedComments.length && !editingPost" class="mt-6 space-y-4">
+            <div
+              v-for="highlighted in visibleHighlightedComments"
+              :key="highlighted.name"
+              :data-highlight-card="highlighted.name"
+              class="cursor-pointer rounded-r-6 border-l-2 border-outline-gray-3 bg-surface-gray-2/40 px-4 py-4 sm:px-5 sm:py-5"
+              @click="commentsArea?.scrollToCommentById(highlighted.name)"
+            >
+              <div class="flex items-center gap-3">
+                <span class="flex items-center gap-1.5 text-base-semibold text-ink-gray-9">
+                  <span class="lucide-badge-check h-4 w-4" />
+                  Highlighted
+                </span>
+                <span class="ml-auto truncate text-sm text-ink-gray-5">
+                  by {{ $user(highlighted.highlighted_by).full_name }} &middot;
+                  {{ dayjsLocal(highlighted.highlighted_at).fromNow() }}
+                </span>
+              </div>
+              <div class="mt-4 flex items-center gap-2">
+                <UserAvatarWithHover size="sm" :user="highlighted.owner" />
+                <span class="text-sm-medium text-ink-gray-7">
+                  {{ $user(highlighted.owner).full_name }}
+                </span>
+              </div>
+              <div class="prose-v3 mt-3 max-w-none text-ink-gray-7">
+                <p class="!my-0 line-clamp-3">{{ highlighted.content }}</p>
+              </div>
+              <div class="mt-3 text-sm-medium text-ink-gray-5">Read more</div>
+            </div>
+            <button
+              v-if="highlightedComments.length > HIGHLIGHTS_SHOWN"
+              type="button"
+              class="text-sm-medium text-ink-gray-5 hover:text-ink-gray-8"
+              @click="showAllHighlights = !showAllHighlights"
+            >
+              {{
+                showAllHighlights
+                  ? 'Show less'
+                  : `+${highlightedComments.length - HIGHLIGHTS_SHOWN} more`
+              }}
+            </button>
+          </div>
           <div class="mt-3" v-show="!editingPost">
             <Reactions
               doctype="GP Discussion"
@@ -193,6 +235,10 @@
           :disable-new-comment="Boolean(discussion.doc.closed_at)"
           :hide-new-comment="editingPost"
           :activity-version="discussion.doc.modified"
+          :can-highlight-comments="canHighlightComments"
+          @highlight-comment="highlightComment"
+          @unhighlight-comment="unhighlightComment"
+          @show-highlight="showHighlightCard"
           ref="commentsArea"
           @composer-resize="scheduleScrollToTopPlacement"
         />
@@ -377,7 +423,12 @@ import { provideRichQuotes } from '@/components/RichQuoteExtension/useRichQuotes
 import QuoteBacklinksPopover from '@/components/RichQuoteExtension/QuoteBacklinksPopover.vue'
 import { refreshUnreadCountForProjects } from '@/data/unreadCount'
 import { useSessionUser } from '@/data/users'
-import { canDeleteContent, canEditContent, canMoveOrPinContent } from '@/utils/permissions'
+import {
+  canDeleteContent,
+  canEditContent,
+  canHighlightComment,
+  canMoveOrPinContent,
+} from '@/utils/permissions'
 import { captureError } from '@/utils/errorReporting'
 import { useCommandPaletteCommands } from './CommandPalette/registry'
 import { useOwnedRouteWrites } from '@/composables/useOwnedRouteWrites'
@@ -858,6 +909,37 @@ const canEditDiscussion = computed(() =>
 const canMoveOrPinDiscussion = computed(() =>
   canMoveOrPinContent(discussion.doc, space.value, useSessionUser()),
 )
+const canHighlightComments = computed(() => canHighlightComment(discussion.doc, useSessionUser()))
+const HIGHLIGHTS_SHOWN = 3
+const showAllHighlights = ref(false)
+const highlightedComments = computed(() => discussion.doc?.highlighted_comments ?? [])
+const visibleHighlightedComments = computed(() =>
+  showAllHighlights.value
+    ? highlightedComments.value
+    : highlightedComments.value.slice(0, HIGHLIGHTS_SHOWN),
+)
+
+function highlightComment(comment: string) {
+  discussion.highlightComment.submit({ comment }).then(refreshHighlights)
+}
+
+function unhighlightComment(comment: string) {
+  discussion.unhighlightComment.submit({ comment }).then(refreshHighlights)
+}
+
+function refreshHighlights() {
+  discussion.reload()
+  commentsArea.value?.reloadTimeline()
+}
+
+async function showHighlightCard(comment: string) {
+  const index = highlightedComments.value.findIndex((h) => String(h.name) === String(comment))
+  if (index >= HIGHLIGHTS_SHOWN) showAllHighlights.value = true
+  await nextTick()
+  document
+    .querySelector(`[data-highlight-card="${comment}"]`)
+    ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+}
 
 const actions = computed(() => [
   {

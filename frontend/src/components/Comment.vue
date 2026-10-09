@@ -46,6 +46,21 @@
           >
             <span class="text-ink-gray-5"> &nbsp;&middot; Edited </span>
           </Tooltip>
+          <button
+            v-if="isHighlighted"
+            type="button"
+            class="ml-2 inline-flex align-middle"
+            @click="emit('show-highlight')"
+          >
+            <Badge theme="gray" variant="subtle" size="md" label="Highlighted">
+              <template #prefix>
+                <span class="lucide-badge-check h-3.5 w-3.5" />
+              </template>
+              <template #suffix>
+                <span class="lucide-chevron-up h-3.5 w-3.5" />
+              </template>
+            </Badge>
+          </button>
           <span v-if="isUpdating" class="italic text-ink-gray-5"> &nbsp;&middot; Sending... </span>
           <div v-if="updateError">
             &nbsp;&middot;
@@ -138,9 +153,16 @@ interface Props {
   bookmarks?: ReturnType<typeof useList<GPBookmark>>
   // Space the comment's thread belongs to, for community-admin delete moderation.
   space?: Space | null
+  canHighlight?: boolean
 }
 
 const props = defineProps<Props>()
+const emit = defineEmits<{
+  highlight: []
+  unhighlight: []
+  'show-highlight': []
+}>()
+const isHighlighted = computed(() => Boolean(props.comment.highlighted_at))
 const showRevisionsDialog = ref(false)
 const isEditing = ref(false)
 const isUpdating = ref(false)
@@ -271,6 +293,22 @@ const dropdownOptions = computed(() => [
     icon: 'lucide-bookmark',
     onClick: () => runBookmark('remove_bookmark'),
     condition: () => isBookmarked.value,
+  },
+  {
+    label: 'Highlight comment',
+    icon: 'lucide-badge-check',
+    onClick: () => emit('highlight'),
+    condition: () =>
+      props.canHighlight &&
+      !isHighlighted.value &&
+      !props.comment.deleted_at &&
+      !props.readOnlyMode,
+  },
+  {
+    label: 'Remove highlight',
+    icon: 'lucide-badge-x',
+    onClick: () => emit('unhighlight'),
+    condition: () => props.canHighlight && isHighlighted.value && !props.readOnlyMode,
   },
   {
     label: 'Delete',

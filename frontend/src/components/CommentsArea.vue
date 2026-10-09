@@ -46,6 +46,10 @@
           :readOnlyMode="readOnlyMode"
           :comments="comments"
           :bookmarks="bookmarks"
+          :can-highlight="canHighlightComments"
+          @highlight="emit('highlight-comment', String(item.name))"
+          @unhighlight="emit('unhighlight-comment', String(item.name))"
+          @show-highlight="emit('show-highlight', String(item.name))"
         />
         <Activity
           :class="[
@@ -56,6 +60,8 @@
           ]"
           v-else-if="item.doctype == 'GP Activity'"
           :activity="item"
+          :comment-owner="activityCommentOwner(item)"
+          @open-comment="scrollToCommentById"
         />
         <Poll
           v-else-if="item.doctype == 'GP Poll'"
@@ -258,6 +264,7 @@ interface Props {
   // document (pass its `modified`). Lets the timeline refresh for the acting user
   // without waiting on the `new_activity` socket echo — see the watch below.
   activityVersion?: string | number
+  canHighlightComments?: boolean
 }
 
 interface ComposerUiState {
@@ -286,6 +293,9 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'composer-resize': []
+  'highlight-comment': [comment: string]
+  'unhighlight-comment': [comment: string]
+  'show-highlight': [comment: string]
 }>()
 
 const router = useRouter()
@@ -335,7 +345,17 @@ const composerStorageKey = computed(() => {
 const comments = useList<GPComment>({
   doctype: 'GP Comment',
   cacheKey: ['Comments', props.doctype, props.name],
-  fields: ['name', 'content', 'owner', 'creation', 'modified', 'edited_at', 'deleted_at'],
+  fields: [
+    'name',
+    'content',
+    'owner',
+    'creation',
+    'modified',
+    'edited_at',
+    'deleted_at',
+    'highlighted_by',
+    'highlighted_at',
+  ],
   transform(data) {
     return data.map((d) => ({ ...d, doctype: 'GP Comment' }))
   },
@@ -524,7 +544,19 @@ defineExpose({
   scrollToCommentById,
   getCommentContentElement,
   highlightComment,
+  reloadTimeline,
 })
+
+function reloadTimeline() {
+  comments.reload()
+  activities.reload()
+}
+
+function activityCommentOwner(activity: { data?: { comment?: string } | null }) {
+  const id = activity.data?.comment
+  if (!id) return null
+  return comments.data?.find((c) => String(c.name) === String(id))?.owner ?? null
+}
 
 function openCommentBox() {
   showCommentBox.value = true
@@ -640,7 +672,9 @@ function _scrollToEnd() {
 }
 
 function scrollToCommentById(id: string) {
-  const item = timelineItems.value.find((item) => item.name === id)
+  const item = timelineItems.value.find(
+    (item) => item.doctype === 'GP Comment' && String(item.name) === String(id),
+  )
   if (item) {
     scrollToItem(item)
   }

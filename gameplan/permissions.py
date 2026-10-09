@@ -242,6 +242,10 @@ OWNER_ONLY_FIELDS = {
 	"GP Poll": {"stopped_at", "votes", "options", "total_votes"},
 }
 
+HIGHLIGHT_FIELDS = {
+	"GP Comment": {"highlighted_by", "highlighted_at"},
+}
+
 # Per-doctype fields that say where content lives, or how a space presents it to everyone.
 # A guest may edit what they wrote, but not these fields, not even on their own content.
 # Changing them moves a post to another space (or a comment or poll to another thread),
@@ -314,12 +318,15 @@ def can_write_content(user, doc):
 	so a guest passes and can reach react(); on the DIRTY in-memory doc at save time it
 	diffs against the DB row and rejects any edit.
 
-	Above all of that sit two field locks that apply even to an editor.
+	Above all of that sit three field locks that apply even to an editor.
 	_owner_only_write_allowed keeps a poll's ballot and lifecycle to its author.
+	_highlight_fields_unchanged keeps a comment's highlight to GPDiscussion.highlight_comment.
 	_guest_locked_fields_unchanged stops a guest from moving or pinning content, their
 	own included.
 	"""
 	if not _owner_only_write_allowed(user, doc):
+		return False
+	if not _highlight_fields_unchanged(doc):
 		return False
 	if not _guest_locked_fields_unchanged(user, doc):
 		return False
@@ -344,6 +351,17 @@ def _owner_only_write_allowed(user, doc):
 	if can_delete_content(user, doc):
 		return True
 	return not _fields_changed(doc, fields)
+
+
+def _highlight_fields_unchanged(doc):
+	fields = HIGHLIGHT_FIELDS.get(getattr(doc, "doctype", None))
+	if not fields:
+		return True
+	return not _fields_changed(doc, fields)
+
+
+def can_highlight_comment(user, doc):
+	return get_doc_value(doc, "owner") == user
 
 
 def _guest_locked_fields_unchanged(user, doc):
