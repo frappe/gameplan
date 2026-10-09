@@ -491,6 +491,21 @@ class TestDoorsAroundTheCleaning(PublicContentTestCase):
 			self.assertTrue(realtime_has_permission("GP Comment", ""))
 			self.assertTrue(realtime_has_permission("GP Discussion", str(self.discussion.name)))
 
+	def test_realtime_works_with_the_v16_helper_signature(self):
+		with (
+			self.as_user(self.member),
+			patch("frappe.realtime.has_permission", autospec=lambda doctype, name: True),
+		):
+			self.assertTrue(realtime_has_permission("GP Discussion", str(self.discussion.name)))
+
+	def test_realtime_checks_document_access_and_the_requested_permission(self):
+		with switched_on(), self.as_user(self.guest):
+			self.assertTrue(realtime_has_permission("GP Discussion", str(self.discussion.name)))
+			with self.assertRaises(frappe.PermissionError):
+				realtime_has_permission("GP Discussion", str(self.hidden_discussion.name))
+			with self.assertRaises(frappe.PermissionError):
+				realtime_has_permission("GP Discussion", str(self.discussion.name), ptype="delete")
+
 
 class TestReplaceUserIdsInHtml(GameplanTestCase):
 	def test_only_attribute_values_that_are_user_ids_change(self):

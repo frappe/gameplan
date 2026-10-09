@@ -251,13 +251,12 @@ def realtime_has_permission(doctype: str, name: str = "", ptype: str = "read"):
 	(`doc_open`) broadcasts viewer emails; doctype rooms broadcast editor emails. Public
 	read access therefore does not grant realtime access. Signed-in sockets are unchanged.
 	"""
-	from frappe.realtime import has_permission
-
 	import gameplan
 
 	if gameplan.is_anonymous() and doctype in public_doctypes():
 		frappe.throw("Not permitted", frappe.PermissionError)
-	return has_permission(doctype, name, ptype)
+	frappe.has_permission(doctype, doc=name, ptype=ptype, throw=True)
+	return True
 
 
 def gameplan_robots_rules() -> str:

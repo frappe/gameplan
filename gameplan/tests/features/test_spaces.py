@@ -853,7 +853,8 @@ class TestSpaceMerge(GameplanTestCase):
 		self.discussion = create_discussion("Merged Discussion", self.source)
 
 	def test_merging_moves_content_to_the_target_and_removes_the_source(self):
-		self.source.merge_with_project(self.target.name)
+		with patch.object(GPProject, "rename", side_effect=AssertionError("Use the server-only rename path")):
+			self.source.merge_with_project(self.target.name)
 
 		self.assertFalse(frappe.db.exists("GP Project", self.source_name))
 		self.assertEqual(

@@ -201,7 +201,7 @@ LEGACY_PRIVACY_REFERENCES = {
 	# The migration itself: the backfill, its verification, and the legacy-key guard.
 	"gameplan/patches/backfill_visibility_from_is_private.py": 5,
 	"gameplan/public_access.py": 9,
-	"gameplan/mixins/visibility.py": 6,
+	"gameplan/mixins/visibility.py": 3,
 	# Reject legacy fixture permissions before clearing a site, and test that rejection.
 	"gameplan/demo/seeder.py": 3,
 	"gameplan/tests/platform/test_demo_fixture.py": 2,

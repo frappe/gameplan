@@ -129,7 +129,9 @@ class GPProject(HasVisibility, ManageMembersMixin, Archivable, Document):
 		# `force` is deliberately not passed with it: rename_doc reads force only inside
 		# the `if validate:` block it hands to validate_rename, so with validate off the
 		# argument reaches nothing.
-		return self.rename(target, merge=True, validate_rename=False)
+		# Frappe #44068 ignores this flag on the whitelisted rename entry point.
+		# Use its server-only path after checking both Spaces above.
+		return self._rename(target, merge=True, validate_rename=False)
 
 	def require_can_manage_merge(self, target):
 		"""A merge empties this Space into `target`, so it needs manage rights on both.
