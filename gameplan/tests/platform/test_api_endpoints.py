@@ -20,6 +20,8 @@ from gameplan.api import (
 	onboarding,
 	search_sqlite,
 )
+from gameplan.permissions import can_view_space
+from gameplan.public_access import VISIBILITY_ANONYMOUS, VISIBILITY_GENERAL, VISIBILITY_MEMBER_ACCESS
 from gameplan.search_sqlite import GameplanSearch
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
@@ -32,7 +34,7 @@ from gameplan.tests.fixtures import (
 	declared_http_methods,
 )
 from gameplan.tests.search_isolation import IsolatedSearchIndex
-from gameplan.ui_test_helpers import create_invitation, rebuild_search_index, reset
+from gameplan.ui_test_helpers import PERSONAS, _reset_personas, create_invitation, rebuild_search_index, reset
 
 EMPTY_FILTER_OPTIONS = {
 	"authors": {},
@@ -56,7 +58,69 @@ class TestUITestHelperHTTPMethods(GameplanTestCase):
 			self.assertEqual(declared_http_methods(endpoint), {"POST"})
 
 
+class TestUITestPersonas(GameplanTestCase):
+	def test_reset_removes_roles_retained_from_an_earlier_scenario(self):
+		guest = frappe.get_doc("User", self.guest.name)
+		guest.append_roles("Gameplan Admin", "Gameplan Member")
+		guest.save(ignore_permissions=True)
+		member = frappe.get_doc("User", self.member.name)
+		member.append_roles("Gameplan Guest")
+		member.save(ignore_permissions=True)
+
+		# Test role restoration without deleting unrelated users in the test suite.
+		with patch("gameplan.ui_test_helpers.frappe.delete_doc"):
+			_reset_personas()
+
+		for email, _, role in PERSONAS:
+			with self.subTest(user=email):
+				user = frappe.get_doc("User", email)
+				self.assertEqual([row.role for row in user.roles], [role])
+
+
 class TestOnboardingEndpoint(APIEndpointTestCase):
+	def test_legacy_onboarding_privacy_is_preserved_through_rpc_argument_matching(self):
+		for legacy, expected in (
+			(1, VISIBILITY_MEMBER_ACCESS),
+			("1", VISIBILITY_MEMBER_ACCESS),
+			(True, VISIBILITY_MEMBER_ACCESS),
+			(0, VISIBILITY_GENERAL),
+			(False, VISIBILITY_GENERAL),
+		):
+			with self.subTest(is_private=legacy), self.as_user(self.member):
+				result = frappe.call(
+					onboarding,
+					community=f"Legacy Onboarding {legacy!r}",
+					space="Legacy First Space",
+					icon="lucide-users",
+					emails="[]",
+					is_private=legacy,
+				)
+				self.assertEqual(frappe.db.get_value("GP Project", result["space"], "visibility"), expected)
+
+	def test_legacy_positional_private_request_stays_private(self):
+		with self.as_user(self.member):
+			result = onboarding("Legacy Positional Community", "Private Space", "lucide-lock", "[]", 1)
+		self.assertEqual(
+			frappe.db.get_value("GP Project", result["space"], "visibility"), VISIBILITY_MEMBER_ACCESS
+		)
+
+	def test_conflicting_or_invalid_legacy_privacy_is_rejected_before_creation(self):
+		for arguments in ({"is_private": 1, "visibility": VISIBILITY_GENERAL}, {"is_private": "invalid"}):
+			with (
+				self.subTest(arguments=arguments),
+				self.as_user(self.member),
+				self.assertRaises(frappe.ValidationError),
+			):
+				frappe.call(
+					onboarding,
+					community="Rejected Legacy Community",
+					space="Space",
+					icon="lucide-lock",
+					emails="[]",
+					**arguments,
+				)
+		self.assertFalse(frappe.db.exists("GP Team", {"title": "Rejected Legacy Community"}))
+
 	def test_returns_the_created_community_and_space_route_identifiers(self):
 		with self.as_user(self.member):
 			result = onboarding(
@@ -64,7 +128,7 @@ class TestOnboardingEndpoint(APIEndpointTestCase):
 				space="API Onboarding Space",
 				icon="lucide-users",
 				emails="[]",
-				is_private=1,
+				visibility=VISIBILITY_MEMBER_ACCESS,
 			)
 
 		self.assertEqual(set(result), {"team", "space"})
@@ -76,10 +140,10 @@ class TestOnboardingEndpoint(APIEndpointTestCase):
 		self.assertEqual(space.title, "API Onboarding Space")
 		self.assertEqual(space.team, community.name)
 		self.assertEqual(space.icon, "lucide-users")
-		self.assertEqual(space.is_private, 1)
+		self.assertEqual(space.visibility, VISIBILITY_MEMBER_ACCESS)
 
-	def test_the_first_space_is_public_unless_the_signup_asks_for_privacy(self):
-		"""Signup omits is_private, and the default decides whether a brand-new
+	def test_the_first_space_defaults_to_general_not_anonymous(self):
+		"""Signup omits visibility, and the default decides whether a brand-new
 		community's first space is visible to the teammates invited alongside it."""
 		with self.as_user(self.member):
 			result = onboarding(
@@ -89,7 +153,22 @@ class TestOnboardingEndpoint(APIEndpointTestCase):
 				emails="[]",
 			)
 
-		self.assertEqual(frappe.db.get_value("GP Project", result["space"], "is_private"), 0)
+		self.assertEqual(frappe.db.get_value("GP Project", result["space"], "visibility"), VISIBILITY_GENERAL)
+		with patch.dict(frappe.conf, gameplan_public_access_enabled=1, gameplan_demo_enabled=0):
+			self.assertFalse(can_view_space("Guest", result["space"]))
+
+	def test_signup_cannot_publish_its_first_space(self):
+		# Only a Gameplan Admin publishes. Someone signing up is not one yet.
+		with self.as_user(self.member), self.assertRaises(frappe.ValidationError):
+			onboarding(
+				community="API Anonymous Onboarding Community",
+				space="API Anonymous Onboarding Space",
+				icon="lucide-users",
+				emails="[]",
+				visibility=VISIBILITY_ANONYMOUS,
+			)
+
+		self.assertFalse(frappe.db.exists("GP Team", {"title": "API Anonymous Onboarding Community"}))
 
 	def test_anonymous_caller_is_denied(self):
 		self.assert_anonymous_denied(onboarding)
@@ -137,16 +216,22 @@ class TestSearchFilterOptionsEndpoint(IsolatedSearchIndex, APIEndpointTestCase):
 		)
 		hidden_user = create_user("api-filter-hidden@example.com", "Hidden Filter Author", "Gameplan Member")
 		visible_community = create_community(
-			"API Visible Filter Community", is_private=1, members=[visible_user]
+			"API Visible Filter Community", visibility=VISIBILITY_MEMBER_ACCESS, members=[visible_user]
 		)
 		hidden_community = create_community(
-			"API Hidden Filter Community", is_private=1, members=[hidden_user]
+			"API Hidden Filter Community", visibility=VISIBILITY_MEMBER_ACCESS, members=[hidden_user]
 		)
 		visible_space = create_space(
-			"API Visible Filter Space", visible_community, is_private=1, members=[visible_user]
+			"API Visible Filter Space",
+			visible_community,
+			visibility=VISIBILITY_MEMBER_ACCESS,
+			members=[visible_user],
 		)
 		hidden_space = create_space(
-			"API Hidden Filter Space", hidden_community, is_private=1, members=[hidden_user]
+			"API Hidden Filter Space",
+			hidden_community,
+			visibility=VISIBILITY_MEMBER_ACCESS,
+			members=[hidden_user],
 		)
 		visible_tag = "api-visible-filter-tag"
 		hidden_tag = "api-hidden-filter-tag"
@@ -180,7 +265,9 @@ class TestSearchFilterOptionsEndpoint(IsolatedSearchIndex, APIEndpointTestCase):
 		self.assertNotIn(hidden_tag, result["tags"])
 
 	def test_anonymous_caller_is_denied(self):
-		self.assert_anonymous_denied(get_search_filter_options)
+		with self.as_user("Guest"), patch.dict(frappe.conf, gameplan_public_access_enabled=0):
+			with self.assertRaises(frappe.PermissionError):
+				get_search_filter_options()
 
 
 class TestCanAccessGameplan(APIEndpointTestCase):
@@ -401,7 +488,9 @@ class TestSearchEndpoint(IsolatedSearchIndex, APIEndpointTestCase):
 		)
 
 	def test_anonymous_caller_is_denied(self):
-		self.assert_anonymous_denied(search_sqlite)
+		with self.as_user("Guest"), patch.dict(frappe.conf, gameplan_public_access_enabled=0):
+			with self.assertRaises(frappe.PermissionError):
+				search_sqlite("apisearchneedle")
 
 
 class TestLogClientErrorEndpoint(APIEndpointTestCase):

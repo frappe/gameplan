@@ -77,6 +77,26 @@
       </template>
     </div>
 
+    <div v-if="isAnonymousVisitor()" class="mb-6 flex flex-wrap justify-center gap-2">
+      <Button
+        v-if="comments.hasNextPage"
+        label="Load more comments"
+        :loading="comments.loading"
+        @click="comments.next()"
+      />
+      <Button
+        v-if="polls.hasNextPage"
+        label="Load more polls"
+        :loading="polls.loading"
+        @click="polls.next()"
+      />
+    </div>
+    <div v-if="readOnlyMode && isAnonymousVisitor()" class="mb-20">
+      <PublicJoinPrompt
+        :title="disableNewComment ? 'Follow this community' : 'Join the conversation'"
+      />
+    </div>
+
     <!-- In an installed PWA the collapsed button clears the home indicator: the 1rem
          the bottom nav uses on other pages, or the safe-area inset where that is larger. -->
     <div
@@ -224,7 +244,7 @@
                 />
               </template>
             </CommentEditor>
-            <ErrorMessage class="mt-2" :message="comments.insert.error" />
+            <ErrorMessage class="mt-2" :message="extractServerMessage(comments.insert.error)" />
             <PollEditor
               v-show="newCommentType == 'Poll'"
               v-model:poll="newPoll"
@@ -246,7 +266,7 @@
                 />
               </template>
             </PollEditor>
-            <ErrorMessage class="mt-2" :message="polls.insert.error" />
+            <ErrorMessage class="mt-2" :message="extractServerMessage(polls.insert.error)" />
           </div>
         </div>
       </div>
@@ -283,8 +303,11 @@ import { useRichQuotes } from '@/components/RichQuoteExtension/useRichQuotes'
 import { useDraftSync } from '@/data/useDraftSync'
 import { useSessionUser } from '@/data/users'
 import type { Space } from '@/data/spaces'
+import { extractServerMessage } from '@/utils'
 import { useIsMobile } from '@/utils/useIsMobile'
 import { needsMobileCommentGap } from '@/utils/commentTimeline'
+import { isAnonymousVisitor, publicListUrl } from '@/utils/publicAccess'
+import PublicJoinPrompt from '@/components/Public/PublicJoinPrompt.vue'
 
 interface Props {
   doctype: string
@@ -368,6 +391,7 @@ const draft = useDraftSync({
     referenceDoctype: props.doctype,
     referenceName: props.name,
   }),
+  enabled: () => !props.readOnlyMode && !isAnonymousVisitor(),
   initialPayload: () => ({ content: '' }),
 })
 const draftData = draft.data
@@ -399,6 +423,7 @@ const composerStorageKey = computed(() => {
 
 const comments = useList<GPComment>({
   doctype: 'GP Comment',
+  url: publicListUrl('GP Comment'),
   cacheKey: ['Comments', props.doctype, props.name],
   fields: [
     'name',
@@ -418,7 +443,7 @@ const comments = useList<GPComment>({
     reference_name: props.name,
   },
   orderBy: 'creation asc',
-  limit: 99999,
+  limit: isAnonymousVisitor() ? 1000 : 99999,
   onSuccess() {
     if (route.query.comment) {
       if (route.query.comment === 'first_post') {
@@ -435,6 +460,7 @@ const comments = useList<GPComment>({
 
 const activities = useList<GPActivity>({
   doctype: 'GP Activity',
+  immediate: !isAnonymousVisitor(),
   fields: ['name', 'user', 'action', 'data', 'creation'],
   filters: {
     reference_doctype: props.doctype,
@@ -460,12 +486,13 @@ const activities = useList<GPActivity>({
 watch(
   () => props.activityVersion,
   (next, prev) => {
-    if (prev !== undefined && next !== prev) activities.reload()
+    if (prev !== undefined && next !== prev && !isAnonymousVisitor()) activities.reload()
   },
 )
 
 const polls = useList<GPPoll>({
   doctype: 'GP Poll',
+  url: publicListUrl('GP Poll'),
   fields: [
     'name',
     'title',
@@ -482,7 +509,7 @@ const polls = useList<GPPoll>({
     discussion: props.name,
   },
   orderBy: 'creation asc',
-  limit: 99999,
+  limit: isAnonymousVisitor() ? 1000 : 99999,
   transform(data) {
     return data.map((d) => ({ ...d, doctype: 'GP Poll' }))
   },
@@ -885,8 +912,9 @@ onMounted(() => {
     scrollToComment: scrollToCommentById,
     highlightComment,
   })
-  unsubscribeFromDoc = subscribeToDoc(props.doctype, String(props.name))
+  if (!isAnonymousVisitor()) unsubscribeFromDoc = subscribeToDoc(props.doctype, String(props.name))
   socket.on('new_activity', (data: NewActivityEvent) => {
+    if (isAnonymousVisitor()) return
     // The payload stringifies the id (activity.py) but doctypes that autoname to an
     // integer hand this component a number, so a strict compare never matches and the
     // timeline silently stops updating. Compare as strings.

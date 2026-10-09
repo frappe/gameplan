@@ -11,6 +11,7 @@ from gameplan.mixins.mentions import HasMentions
 from gameplan.mixins.reactions import HasReactions
 from gameplan.mixins.tags import HasTags
 from gameplan.permissions import comment_query_conditions, content_has_permission
+from gameplan.public_payload import for_viewer
 from gameplan.utils import get_document_revisions, remove_empty_trailing_paragraphs
 
 
@@ -20,6 +21,9 @@ class GPComment(HasAttachments, HasMentions, HasReactions, HasTags, Document):
 	mentions_field = "content"
 	tags_field = "content"
 	attachments_field = "content"
+
+	def as_dict(self, *args, **kwargs):
+		return for_viewer(self.doctype, super().as_dict(*args, **kwargs))
 
 	def before_insert(self):
 		if self.reference_doctype not in ["GP Discussion"]:

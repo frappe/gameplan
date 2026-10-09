@@ -22,6 +22,7 @@ import { NodeViewProps, NodeViewWrapper } from '@tiptap/vue-3'
 import UserHoverCard from './UserHoverCard.vue'
 import { useRouter } from 'vue-router'
 import { useUser } from '@/data/users'
+import { isAnonymousVisitor } from '@/utils/publicAccess'
 
 interface Props extends NodeViewProps {}
 
@@ -31,6 +32,7 @@ const router = useRouter()
 const handleClick = (event: MouseEvent) => {
   event.preventDefault()
   event.stopPropagation()
+  if (isAnonymousVisitor()) return
 
   let user = useUser(props.node.attrs.id)
 

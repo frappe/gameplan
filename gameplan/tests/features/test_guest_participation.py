@@ -24,6 +24,7 @@ allows a non-editor's save only when nothing beyond interaction-safe fields
 
 import frappe
 
+from gameplan.public_access import VISIBILITY_GENERAL, VISIBILITY_MEMBER_ACCESS
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
 	create_comment,
@@ -42,12 +43,14 @@ class TestGuestParticipation(GameplanTestCase):
 		self.community = create_community("Guest Community", members=[self.member])
 
 		# The space the guest is granted access to.
-		self.space = create_space("Granted Space", self.community, is_private=1, members=[self.member])
+		self.space = create_space(
+			"Granted Space", self.community, visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
 		grant_guest_access(self.guest, self.space)
 
 		# A second space the guest has NO access to.
 		self.other_space = create_space(
-			"Ungranted Space", self.community, is_private=1, members=[self.member]
+			"Ungranted Space", self.community, visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
 		)
 
 		# Member-owned content the guest can see in the granted space.
@@ -178,7 +181,7 @@ class TestGuestParticipation(GameplanTestCase):
 	def test_guest_team_list_contains_only_granted_communities(self):
 		# A second, public community the guest has NO granted space in.
 		other_community = create_community("Unrelated Community", members=[self.member])
-		create_space("Public Space", other_community, is_private=0, members=[self.member])
+		create_space("Public Space", other_community, visibility=VISIBILITY_GENERAL, members=[self.member])
 
 		with self.as_user(self.guest):
 			team_names = set(frappe.get_list("GP Team", pluck="name"))
@@ -202,6 +205,21 @@ class TestGuestParticipation(GameplanTestCase):
 			frappe.has_permission("GP Team", "read", doc=self.community.name, user=self.guest.name)
 		)
 
+	def test_guest_can_serialize_private_community_holding_a_granted_space(self):
+		"""A guest who can pass the read gate must also survive API serialization."""
+		private_community = create_community(
+			"Private Granted Community", visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
+		private_space = create_space(
+			"Private Granted Space", private_community, visibility=VISIBILITY_MEMBER_ACCESS
+		)
+		grant_guest_access(self.guest, private_space)
+
+		with self.as_user(self.guest):
+			payload = frappe.get_doc("GP Team", private_community.name).as_dict()
+
+		self.assertEqual(payload.name, private_community.name)
+
 	def test_guest_cannot_read_unrelated_community(self):
 		other_community = create_community("Unrelated Community", members=[self.member])
 		self.assertFalse(
@@ -221,7 +239,9 @@ class TestGuestParticipation(GameplanTestCase):
 	def test_outsider_cannot_read_granted_community(self):
 		"""The community is public here, so an outsider member CAN read it; but a guest
 		with no grant cannot (covered above). Pin the outsider-vs-private case instead."""
-		private_community = create_community("Private Community", is_private=1, members=[self.member])
+		private_community = create_community(
+			"Private Community", visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
 		self.assertFalse(
 			frappe.has_permission("GP Team", "read", doc=private_community.name, user=self.outsider.name)
 		)

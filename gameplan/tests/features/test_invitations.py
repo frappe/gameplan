@@ -22,6 +22,7 @@ from frappe.utils import add_days, now, today
 
 from gameplan.api import _invite_by_email, accept_invitation
 from gameplan.gameplan.doctype.gp_invitation.gp_invitation import GPInvitation, expire_invitations
+from gameplan.public_access import VISIBILITY_ANONYMOUS, VISIBILITY_GENERAL, VISIBILITY_MEMBER_ACCESS
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
 	create_community,
@@ -68,7 +69,7 @@ class TestInvitationCreation(InvitationTestCase):
 
 	def test_guest_invitation_keeps_its_space(self):
 		community = create_community("Guest Invite Community")
-		space = create_space("Guest Invite Space", community, is_private=1)
+		space = create_space("Guest Invite Space", community, visibility=VISIBILITY_MEMBER_ACCESS)
 
 		invitation = self.make_invitation(
 			"scoped-guest@example.com", role="Gameplan Guest", projects=[space.name]
@@ -134,7 +135,7 @@ class TestInvitationCreation(InvitationTestCase):
 		them. This is why grant_access reuses accept() instead of setting the role."""
 		create_user("oauth-guest@example.com", "Oauth Guest")
 		community = create_community("Direct Guest Community")
-		space = create_space("Direct Guest Space", community, is_private=1)
+		space = create_space("Direct Guest Space", community, visibility=VISIBILITY_MEMBER_ACCESS)
 
 		_invite_by_email("oauth-guest@example.com", role="Gameplan Guest", projects=[space.name])
 
@@ -143,23 +144,23 @@ class TestInvitationCreation(InvitationTestCase):
 			frappe.db.exists("GP Guest Access", {"user": "oauth-guest@example.com", "project": space.name})
 		)
 
-	def test_a_directly_granted_member_joins_public_communities(self):
+	def test_a_directly_granted_member_joins_general_and_anonymous_communities(self):
 		"""The direct path runs through accept(), so it inherits the join for free."""
 		create_user("oauth-joiner@example.com", "Oauth Joiner")
-		community = create_community("Direct Join Community")
+		communities = [
+			create_community(f"Direct Join {tier} Community", visibility=tier)
+			for tier in (VISIBILITY_GENERAL, VISIBILITY_ANONYMOUS)
+		]
 
 		_invite_by_email("oauth-joiner@example.com", role="Gameplan Member")
 
-		self.assertTrue(
-			frappe.db.exists(
-				"GP Member",
-				{
-					"parenttype": "GP Team",
-					"parent": community.name,
-					"user": "oauth-joiner@example.com",
-				},
+		for community in communities:
+			self.assertTrue(
+				frappe.db.exists(
+					"GP Member",
+					{"parenttype": "GP Team", "parent": community.name, "user": "oauth-joiner@example.com"},
+				)
 			)
-		)
 
 	def test_an_email_with_no_account_still_gets_the_invitation(self):
 		result = _invite_by_email("brand-new@example.com", role="Gameplan Member")
@@ -217,7 +218,7 @@ class TestInvitationCreation(InvitationTestCase):
 		unlike member invites, an existing User must not block a guest invite."""
 		create_member("existing-then-guest@example.com")
 		community = create_community("Second Guest Community")
-		space = create_space("Second Guest Space", community, is_private=1)
+		space = create_space("Second Guest Space", community, visibility=VISIBILITY_MEMBER_ACCESS)
 
 		_invite_by_email("existing-then-guest@example.com", role="Gameplan Guest", projects=[space.name])
 
@@ -249,7 +250,7 @@ class TestInvitationAccept(InvitationTestCase):
 
 	def test_accept_as_guest_grants_space_access(self):
 		community = create_community("Access Community")
-		space = create_space("Access Space", community, is_private=1)
+		space = create_space("Access Space", community, visibility=VISIBILITY_MEMBER_ACCESS)
 		invitation = self.make_invitation(
 			"guest-accept@example.com", role="Gameplan Guest", projects=[space.name]
 		)
@@ -269,13 +270,13 @@ class TestInvitationAccept(InvitationTestCase):
 			)
 		)
 
-	def test_accept_joins_every_public_community(self):
+	def test_accept_joins_general_and_anonymous_communities(self):
 		"""A new member should land in a populated app, not an empty shell.
 
-		Membership does not gate a public community, it decides what the sidebar lists.
+		Membership does not gate either open tier. It decides what the sidebar lists.
 		"""
-		first = create_community("Public One")
-		second = create_community("Public Two")
+		first = create_community("General One", visibility=VISIBILITY_GENERAL)
+		second = create_community("Anonymous One", visibility=VISIBILITY_ANONYMOUS)
 		invitation = self.make_invitation("joiner@example.com")
 
 		invitation.accept()
@@ -285,7 +286,7 @@ class TestInvitationAccept(InvitationTestCase):
 		self.assertIn(second.name, joined)
 
 	def test_accept_leaves_private_communities_alone(self):
-		private = create_community("Private One", is_private=1)
+		private = create_community("Private One", visibility=VISIBILITY_MEMBER_ACCESS)
 		invitation = self.make_invitation("no-private@example.com")
 
 		invitation.accept()
@@ -304,7 +305,7 @@ class TestInvitationAccept(InvitationTestCase):
 	def test_a_guest_joins_nothing(self):
 		"""A guest's reach is the spaces they were granted, and nothing wider."""
 		community = create_community("Guest Blind Community")
-		space = create_space("Guest Blind Space", community, is_private=1)
+		space = create_space("Guest Blind Space", community, visibility=VISIBILITY_MEMBER_ACCESS)
 		invitation = self.make_invitation(
 			"guest-no-join@example.com", role="Gameplan Guest", projects=[space.name]
 		)

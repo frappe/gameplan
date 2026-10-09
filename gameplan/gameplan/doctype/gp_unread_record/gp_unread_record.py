@@ -7,6 +7,7 @@ import frappe
 from frappe.model.document import Document, bulk_insert
 
 import gameplan
+from gameplan.public_access import is_member_access
 from gameplan.realtime import notify_unread_counts_changed
 
 
@@ -405,11 +406,11 @@ class GPUnreadRecord(Document):
 	@staticmethod
 	def _get_project_members(project_name):
 		"""Get all users who have access to the project"""
-		project = frappe.db.get_value("GP Project", project_name, ["name", "is_private"], as_dict=True)
+		project = frappe.db.get_value("GP Project", project_name, ["name", "visibility"], as_dict=True)
 
 		all_users = set()
 
-		if project.is_private:
+		if is_member_access(project.visibility):
 			members = frappe.qb.get_query(
 				"GP Member",
 				fields=["user"],

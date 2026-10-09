@@ -3,21 +3,38 @@
     <template v-if="space">
       <div class="mt-2 space-y-6">
         <section>
-          <div class="flex items-center justify-between gap-3">
-            <div>
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div class="min-w-0">
               <h3 class="text-base-medium text-ink-gray-7">Access</h3>
               <p class="mt-1 text-p-sm text-ink-gray-5">{{ accessDescription }}</p>
             </div>
-            <Badge>
-              <template #prefix>
-                <span :class="[accessIcon, 'size-3']" />
-              </template>
-              {{ accessLabel }}
-            </Badge>
+            <div class="flex shrink-0 items-center gap-2 self-end sm:self-auto">
+              <Badge>
+                <template #prefix>
+                  <span :class="[accessIcon, 'size-3']" />
+                </template>
+                {{ accessLabel }}
+              </Badge>
+              <Button
+                v-if="canChangeVisibility"
+                label="Change visibility"
+                @click="showVisibilityDialog = true"
+              >
+                Change
+              </Button>
+            </div>
           </div>
+          <VisibilityDialog
+            v-model="showVisibilityDialog"
+            doctype="GP Project"
+            :name="space.name"
+            :title="space.title"
+            :visibility="space.visibility"
+            @changed="spaceList.reload()"
+          />
         </section>
 
-        <section v-if="space.is_private" class="space-y-3">
+        <section v-if="isMemberAccess(space.visibility)" class="space-y-3">
           <div>
             <h3 class="text-base-medium text-ink-gray-7">Users</h3>
             <p class="mt-1 text-p-sm text-ink-gray-5">
@@ -128,11 +145,19 @@
 import { ref, computed, reactive, watch } from 'vue'
 import { Badge, Combobox, toast, Tooltip, TextInput, useDoctype, useList } from 'frappe-ui'
 import EmptyStateBox from '@/components/EmptyStateBox.vue'
+import VisibilityDialog from '@/components/VisibilityDialog.vue'
 import { getCommunity } from '@/data/communities'
-import { useSpace } from '@/data/spaces'
-import { useSessionUser, useUser, users } from '@/data/users'
+import { spaces as spaceList, useSpace } from '@/data/spaces'
+import { isGameplanAdmin, useSessionUser, useUser, users } from '@/data/users'
 import { canInviteGuests, canManageSpace } from '@/utils/permissions'
 import { GPGuestAccess, GPInvitation, GPProject } from '@/types/doctypes'
+import {
+  isMemberAccess,
+  VISIBILITY_ANONYMOUS,
+  visibilityIcon,
+  visibilityLabel,
+  visibilityTier,
+} from '@/utils/visibility'
 
 const props = defineProps<{ spaceId: string }>()
 const show = defineModel<boolean>()
@@ -141,6 +166,8 @@ const spaces = useDoctype<GPProject>('GP Project')
 const sessionUser = useSessionUser()
 const canManageMembers = computed(() => canManageSpace(space.value, sessionUser))
 const canInvite = computed(() => canInviteGuests(space.value, sessionUser))
+const canChangeVisibility = computed(() => isGameplanAdmin(sessionUser))
+const showVisibilityDialog = ref(false)
 
 type GuestAccess = GPGuestAccess & { pending: false }
 let guests = useList<GuestAccess>({
@@ -181,10 +208,13 @@ let guestsAndInvites = computed(() => {
   return [...(guests.data || []), ...(pending.data || [])]
 })
 
-const accessLabel = computed(() => (space.value?.is_private ? 'Private' : 'Public'))
-const accessIcon = computed(() => (space.value?.is_private ? 'lucide-lock' : 'lucide-globe-2'))
+const accessLabel = computed(() => visibilityLabel(space.value?.visibility))
+const accessIcon = computed(() => visibilityIcon(space.value?.visibility))
 const accessDescription = computed(() => {
-  if (space.value?.is_private) {
+  if (visibilityTier(space.value?.visibility) === VISIBILITY_ANONYMOUS) {
+    return 'Anyone with the link can read this space without signing in, if its community is Anonymous too.'
+  }
+  if (isMemberAccess(space.value?.visibility)) {
     return 'Only selected community users and invited guests can view this space.'
   }
   return 'Every community user can view this space. Guests need an explicit invite.'

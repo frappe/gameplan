@@ -24,6 +24,8 @@ from datetime import datetime, timedelta
 import frappe
 from frappe.utils import add_days, getdate, now_datetime
 
+from gameplan.public_access import VISIBILITY_GENERAL, VISIBILITY_TIERS
+
 MAYA_EMAIL = "maya@moonhollow.studio"
 DEMO_EMAIL_DOMAIN = "@moonhollow.studio"
 DEMO_FILE_FOLDER = "Home/Gameplan Demo"
@@ -49,6 +51,7 @@ _ID_REFERENCE_KINDS: dict[str, dict[str, set[str]]] = {
 	"pin": {"on": {"space"}},
 	"visit": {"on": {"discussion"}},
 	"draft": {"space": {"space"}},
+	"archive": {"on": {"community", "space"}},
 }
 
 # Event fields holding a single user slug (declared by an earlier `user` event).
@@ -75,6 +78,7 @@ class Seeder:
 		self.maya_last_visit: datetime | None = None
 		self.counts: dict[str, int] = {}
 		self._deferred_closes: dict[str, str] = {}  # discussion name -> closer email
+		self._deferred_archives: list[tuple[str, str, str]] = []
 
 	# ---- public entry point -------------------------------------------------
 
@@ -129,6 +133,11 @@ class Seeder:
 
 			if not event_type:
 				continue
+			if event_type in {"community", "space"}:
+				if "is_private" in event:
+					problems.append(f"line {number}: use visibility instead of is_private")
+				if event.get("visibility", VISIBILITY_GENERAL) not in VISIBILITY_TIERS:
+					problems.append(f"line {number}: invalid visibility tier")
 
 			problems.extend(
 				cls._reference_problems(number, event, event_type, ids, user_slugs, emoji_slugs, files_dir)
@@ -168,6 +177,9 @@ class Seeder:
 		for slug in cls._user_slug_references(event):
 			if slug not in user_slugs:
 				problems.append(f"line {number}: references unknown user slug {slug!r}")
+		for slug in event.get("admins", []):
+			if slug not in event.get("members", []):
+				problems.append(f"line {number}: community admin {slug!r} must also be a member")
 
 		file_names = {event.get(field) for field in _FILE_NAME_FIELDS if event.get(field)}
 		for kind, key in cls._placeholders(event):
@@ -208,6 +220,8 @@ class Seeder:
 		"""Every user slug the event names, from whichever field carries it."""
 		slugs = [event.get(field) for field in _USER_SLUG_FIELDS]
 		slugs += event.get("members") or []
+		slugs += event.get("admins") or []
+		slugs += event.get("guests") or []
 		changes = event.get("changes")
 		if isinstance(changes, dict):
 			slugs.append(changes.get("assigned_to"))
@@ -237,6 +251,7 @@ class Seeder:
 
 		self._apply_deferred_closes()
 		self._finalize_maya_read_state()
+		self._apply_deferred_archives()
 
 	# ---- dispatch -----------------------------------------------------------
 
@@ -297,14 +312,17 @@ class Seeder:
 		self._backdate("User", email, ts)
 
 	def _event_community(self, event, actor, ts):
-		members = [{"user": self.users[s], "status": "Accepted"} for s in event.get("members", [])]
+		members = [
+			{"user": self.users[s], "is_admin": int(s in event.get("admins", []))}
+			for s in event.get("members", [])
+		]
 		team = frappe.get_doc(
 			{
 				"doctype": "GP Team",
 				"name": event["slug"],
 				"title": event["title"],
 				"icon": event.get("icon"),
-				"is_private": 1 if event.get("is_private") else 0,
+				"visibility": event.get("visibility", VISIBILITY_GENERAL),
 				"image": self._file_url(event["logo"]) if event.get("logo") else None,
 				"members": members,
 			}
@@ -324,9 +342,16 @@ class Seeder:
 				"team": team,
 				"icon": event.get("icon"),
 				"description": event.get("description"),
-				"is_private": 1 if event.get("is_private") else 0,
+				"visibility": event.get("visibility", VISIBILITY_GENERAL),
 			}
-		).insert(ignore_permissions=True)
+		)
+		for slug in event.get("members", []):
+			space.append("members", {"user": self.users[slug]})
+		space.insert(ignore_permissions=True)
+		for slug in event.get("guests", []):
+			frappe.get_doc(
+				doctype="GP Guest Access", user=self.users[slug], project=space.name, team=team
+			).insert(ignore_permissions=True)
 		self.refs[event["id"]] = ("GP Project", space.name)
 		self._backdate("GP Project", space.name, ts)
 
@@ -478,6 +503,20 @@ class Seeder:
 		poll = frappe.get_doc(*self._ref(event["on"]))
 		poll.submit_vote(event["option"])
 		self._touch("GP Poll", poll.name, ts)
+
+	def _event_archive(self, event, actor, ts):
+		# Replay the existing content first. Archiving earlier would block later saves.
+		doctype, name = self._ref(event["on"])
+		self._deferred_archives.append((doctype, name, actor))
+
+	def _apply_deferred_archives(self):
+		previous = frappe.session.user
+		try:
+			for doctype, name, actor in self._deferred_archives:
+				frappe.set_user(actor)
+				frappe.get_doc(doctype, name).archive()
+		finally:
+			frappe.set_user(previous)
 
 	def _event_bookmark(self, event, actor, ts):
 		doc = frappe.get_doc(

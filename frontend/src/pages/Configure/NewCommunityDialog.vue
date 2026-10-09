@@ -12,9 +12,10 @@
         @keydown.enter.prevent="submit"
       />
       <FormControl
-        v-model="isPrivate"
-        type="checkbox"
-        label="Keep it private &mdash; Only visible to members"
+        v-model="visibility"
+        type="select"
+        label="Visibility"
+        :options="visibilityOptions"
       />
       <ErrorMessage :message="communities.insert.error" />
     </div>
@@ -40,20 +41,23 @@ import { computed, ref, watch } from 'vue'
 import { Button, Dialog, ErrorMessage, FormControl, TextInput } from 'frappe-ui'
 import { communities } from '@/data/communities'
 import type { GPTeam } from '@/types/doctypes'
+import { isGameplanAdmin } from '@/data/users'
+import { creatableVisibilityOptions, VISIBILITY_GENERAL, type Visibility } from '@/utils/visibility'
 
 const show = defineModel<boolean>()
 const emit = defineEmits<{
   (event: 'created', communityId: string): void
 }>()
 const title = ref('')
-const isPrivate = ref(false)
+const visibility = ref<Visibility>(VISIBILITY_GENERAL)
+const visibilityOptions = computed(() => creatableVisibilityOptions(isGameplanAdmin()))
 
 const canSubmit = computed(() => Boolean(title.value.trim()) && !communities.insert.loading)
 
 watch(show, (value) => {
   if (!value) return
   title.value = ''
-  isPrivate.value = false
+  visibility.value = VISIBILITY_GENERAL
 })
 
 async function submit() {
@@ -62,7 +66,7 @@ async function submit() {
 
   const community = (await communities.insert.submit({
     title: nextTitle,
-    is_private: isPrivate.value ? 1 : 0,
+    visibility: visibility.value,
   })) as unknown as GPTeam | undefined
 
   await communities.reload()

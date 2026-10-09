@@ -47,10 +47,12 @@
             <span class="text-ink-gray-5"> &nbsp;&middot; Edited </span>
           </Tooltip>
           <span v-if="isUpdating" class="italic text-ink-gray-5"> &nbsp;&middot; Sending... </span>
-          <div v-if="updateError">
-            &nbsp;&middot;
-            <span class="text-ink-red-7"> Error</span>
-          </div>
+          <span
+            v-if="updateError"
+            class="inline-flex items-center whitespace-nowrap text-ink-red-7"
+          >
+            &nbsp;&middot;&nbsp;Not saved
+          </span>
         </div>
       </div>
       <Dropdown
@@ -93,6 +95,7 @@
           }"
         />
         <span class="text-base italic text-ink-gray-5" v-else> This message is deleted </span>
+        <ErrorMessage v-if="updateError" class="mt-2" :message="updateErrorMessage" />
         <div class="mt-3" v-if="!comment.deleted_at && !isEditing && comment.reactions">
           <Reactions
             doctype="GP Comment"
@@ -114,9 +117,9 @@
 
 <script setup lang="ts">
 import { ref, computed, defineAsyncComponent } from 'vue'
-import { Dropdown, Tooltip, dayjsLocal } from 'frappe-ui'
+import { Dropdown, ErrorMessage, Tooltip, dayjsLocal } from 'frappe-ui'
 import { useList } from 'frappe-ui'
-import { copyToClipboard } from '@/utils'
+import { copyToClipboard, extractServerMessage } from '@/utils'
 import UserProfileLink from './UserProfileLink.vue'
 import CommentEditor from './editor/CommentEditor.vue'
 import Reactions from './Reactions.vue'
@@ -130,6 +133,7 @@ import { useDraftSync } from '@/data/useDraftSync'
 import { useUser, useSessionUser } from '@/data/users'
 import type { Space } from '@/data/spaces'
 import { canDeleteContent, canEditContent } from '@/utils/permissions'
+import { isAnonymousVisitor } from '@/utils/publicAccess'
 
 interface Props {
   comment: GPComment
@@ -145,6 +149,10 @@ const showRevisionsDialog = ref(false)
 const isEditing = ref(false)
 const isUpdating = ref(false)
 const updateError = ref(null)
+// Why the server refused the edit, e.g. a new account's 24-hour edit window.
+const updateErrorMessage = computed(
+  () => extractServerMessage(updateError.value) || 'Could not save',
+)
 const author = computed(() => useUser(props.comment.owner))
 
 // While editing, the comment body is an auto-saved draft: it survives reloads and
@@ -224,7 +232,8 @@ const dropdownOptions = computed(() => [
     label: 'Revisions',
     icon: 'lucide-rotate-ccw',
     onClick: () => (showRevisionsDialog.value = true),
-    condition: () => Boolean(props.comment.edited_at),
+    condition: () =>
+      !props.readOnlyMode && !isAnonymousVisitor() && Boolean(props.comment.edited_at),
   },
   {
     label: 'Copy link',

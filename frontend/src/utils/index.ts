@@ -112,7 +112,19 @@ export function extractServerMessage(error: unknown): string {
     )
     if (messages.length) return stripHtml(messages.join('\n'))
   }
-  return error.message ? stripHtml(error.message) : ''
+  return error.message ? stripHtml(withoutErrorType(error)) : ''
+}
+
+/**
+ * frappe-ui words every /api/v2 error as "<exception type>: <message>". The type is for
+ * code (it is on `error.type`); the person only needs the message.
+ */
+function withoutErrorType(error: Error) {
+  const type = (error as Error & { type?: unknown }).type
+  const prefix = typeof type === 'string' && type ? `${type}: ` : ''
+  return prefix && error.message.startsWith(prefix)
+    ? error.message.slice(prefix.length)
+    : error.message
 }
 
 function stripHtml(value: string) {

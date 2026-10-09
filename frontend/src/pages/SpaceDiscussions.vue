@@ -2,14 +2,14 @@
   <div class="body-container mt-5">
     <SpaceHeaderActions placement="title">
       <DropdownMoreOptions
-        v-if="!isBulkMoveMode"
+        v-if="!publicVisitor && !isBulkMoveMode"
         label="Space actions"
         align="start"
         :options="spaceActions"
       />
     </SpaceHeaderActions>
     <SpaceHeaderActions>
-      <template v-if="canStartDiscussion && !isBulkMoveMode">
+      <template v-if="!publicVisitor && canStartDiscussion && !isBulkMoveMode">
         <Button
           variant="solid"
           icon-left="lucide-plus"
@@ -41,7 +41,7 @@
         </Button>
       </template>
     </SpaceHeaderActions>
-    <div class="mb-4 flex items-center">
+    <div v-if="!publicVisitor" class="mb-4 flex items-center">
       <SpaceTabs :spaceId="spaceId" />
     </div>
     <DiscussionList
@@ -112,6 +112,7 @@ import {
 } from '@/data/spaces'
 import { copyToClipboard } from '@/utils'
 import { readOnlyMode } from '@/data/readOnlyMode'
+import { isPublicVisitor } from '@/utils/publicAccess'
 
 interface BulkUpdateResponse {
   moved: string[]
@@ -132,6 +133,7 @@ const showMoveDialog = ref(false)
 const selectedSpace = ref<string | null>(null)
 const discussionListRef = useTemplateRef('discussionListRef')
 const router = useRouter()
+const publicVisitor = computed(() => isPublicVisitor())
 const {
   space: currentSpace,
   isArchived,

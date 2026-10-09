@@ -33,7 +33,7 @@
             {{ membersLabel }}
           </button>
           <span aria-hidden="true"> · </span>
-          <span>{{ visibilityLabel(community.is_private) }}</span>
+          <span>{{ visibilityLabel(community.visibility) }}</span>
         </div>
       </div>
     </ListCell>
@@ -77,7 +77,7 @@ import CommunityImage from '@/components/CommunityImage.vue'
 import { isCommunityJoined, type Community } from '@/data/communities'
 import { useSessionUser } from '@/data/users'
 import { canManageCommunity } from '@/utils/permissions'
-import { visibilityLabel } from '@/utils/visibility'
+import { isMemberAccess, visibilityLabel } from '@/utils/visibility'
 import CommunityImageUploader from './CommunityImageUploader.vue'
 import CommunityOptions from './CommunityOptions.vue'
 import MembershipButton from './MembershipButton.vue'
@@ -96,11 +96,11 @@ const emit = defineEmits<{
 const sessionUser = useSessionUser()
 
 const canManage = computed(() => canManageCommunity(props.community, sessionUser))
-// An archived community is read-only, and a private one you are not in never reaches
-// this list, so the only Join offered is for a public community.
+// An archived community is read-only, and a Member Access one you are not in never
+// reaches this list, so the only Join offered is for one open to every signed-in user.
 const showMembershipButton = computed(() => {
   if (sessionUser.isGuest || props.community.archived_at) return false
-  return isCommunityJoined(props.community) || !props.community.is_private
+  return isCommunityJoined(props.community) || !isMemberAccess(props.community.visibility)
 })
 
 const spacesLabel = computed(() => formatCount(props.spacesCount, 'space'))

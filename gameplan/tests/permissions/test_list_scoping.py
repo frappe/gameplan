@@ -17,6 +17,7 @@ refuse to hand over a document by name and still list it.
 import frappe
 
 from gameplan.gameplan.doctype.gp_task.gp_task import get_list as get_task_list
+from gameplan.public_access import VISIBILITY_MEMBER_ACCESS
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
 	create_comment,
@@ -108,7 +109,10 @@ class TestCommentListScoping(ListScopingTestCase):
 		)
 		self.visible_space = create_space("Comment Visible Space", self.community)
 		self.hidden_space = create_space(
-			"Comment Hidden Space", self.community, is_private=1, members=[self.second_member]
+			"Comment Hidden Space",
+			self.community,
+			visibility=VISIBILITY_MEMBER_ACCESS,
+			members=[self.second_member],
 		)
 
 	def comment_on_task(self, task, owner):
@@ -154,15 +158,26 @@ class TestMembershipListScoping(ListScopingTestCase):
 	"""
 
 	def test_a_private_community_is_listed_only_for_its_own_members(self):
-		mine = create_community("My Private Community", is_private=1, members=[self.member])
-		theirs = create_community("Their Private Community", is_private=1, members=[self.second_member])
+		mine = create_community(
+			"My Private Community", visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
+		theirs = create_community(
+			"Their Private Community", visibility=VISIBILITY_MEMBER_ACCESS, members=[self.second_member]
+		)
 
 		self.assert_listed_for("GP Team", self.member, visible=mine, hidden=theirs)
 
 	def test_a_private_space_is_listed_only_for_its_own_members(self):
 		community = create_community("Space Membership Community", members=[self.member, self.second_member])
-		mine = create_space("My Private Space", community, is_private=1, members=[self.member])
-		theirs = create_space("Their Private Space", community, is_private=1, members=[self.second_member])
+		mine = create_space(
+			"My Private Space", community, visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
+		theirs = create_space(
+			"Their Private Space",
+			community,
+			visibility=VISIBILITY_MEMBER_ACCESS,
+			members=[self.second_member],
+		)
 
 		self.assert_listed_for("GP Project", self.member, visible=mine, hidden=theirs)
 
@@ -180,7 +195,10 @@ class TestTaskListEndpointScoping(GameplanTestCase):
 		self.community = create_community("Task List Community", members=[self.member, self.second_member])
 		self.public_space = create_space("Task List Public Space", self.community)
 		self.private_space = create_space(
-			"Task List Private Space", self.community, is_private=1, members=[self.second_member]
+			"Task List Private Space",
+			self.community,
+			visibility=VISIBILITY_MEMBER_ACCESS,
+			members=[self.second_member],
 		)
 		self.public_task = create_task("Public Space Task", self.public_space, owner=self.member)
 		self.private_task = create_task("Private Space Task", self.private_space, owner=self.second_member)
@@ -202,7 +220,9 @@ class TestTaskListEndpointScoping(GameplanTestCase):
 		self.assertIn(str(self.private_task.name), self.listed_for(self.second_member))
 
 	def test_a_guest_is_listed_only_the_tasks_of_granted_spaces(self):
-		granted_space = create_space("Task List Granted Space", self.community, is_private=1)
+		granted_space = create_space(
+			"Task List Granted Space", self.community, visibility=VISIBILITY_MEMBER_ACCESS
+		)
 		granted_task = create_task("Granted Space Task", granted_space, owner=self.member)
 		grant_guest_access(self.guest, granted_space)
 

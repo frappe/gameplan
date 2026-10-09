@@ -1,3 +1,4 @@
+import { isAnonymousVisitor } from "@/utils/publicAccess"
 /**
  * useDraftSync — keep an in-progress draft synced across reloads, tabs, and devices.
  *
@@ -273,7 +274,7 @@ export function useDraftSync(options: UseDraftSyncOptions) {
       : `Discussion::New::${instanceId}`
   })
 
-  const isEnabled = () => toValue(options.enabled ?? true)
+  const isEnabled = () => !isAnonymousVisitor() && toValue(options.enabled ?? true)
   const isLoading = computed(() => isEnabled() && data.value === null)
 
   const seed = (): DraftPayload => (initialPayload ? initialPayload() : { content: '' })
@@ -373,6 +374,7 @@ export function useDraftSync(options: UseDraftSyncOptions) {
   // older snapshot, so returning its promise would report edits made since as pushed. The
   // chained run is free when nothing changed — persistToServer() bails on `!dirty`.
   function pushToServer(): Promise<void> {
+    if (isAnonymousVisitor()) return Promise.resolve()
     const next = (activePush ?? Promise.resolve()).then(persistToServer)
     const push = next.finally(() => {
       if (activePush === push) activePush = null
@@ -408,6 +410,7 @@ export function useDraftSync(options: UseDraftSyncOptions) {
   )
 
   async function fetchServerDraft(): Promise<ServerDraftDoc | null> {
+    if (isAnonymousVisitor()) return null
     try {
       if (serverName.value) {
         try {

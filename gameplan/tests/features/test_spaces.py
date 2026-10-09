@@ -4,6 +4,7 @@
 """Space (GP Project) behaviour: archiving, activity, moving between communities,
 list and search scoping, and who may join, leave, manage members or invite guests."""
 
+import inspect
 from unittest.mock import patch
 
 import frappe
@@ -22,6 +23,7 @@ from gameplan.gameplan.doctype.gp_project.gp_project import (
 	mark_all_as_read,
 	track_visits,
 )
+from gameplan.public_access import VISIBILITY_GENERAL, VISIBILITY_MEMBER_ACCESS
 from gameplan.search_sqlite import GameplanSearch
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
@@ -48,7 +50,7 @@ class TestSpaces(FrappeTestCase):
 		team.save(ignore_permissions=True)
 
 		public_project = create_space("Search Public Space", team.name)
-		private_project = create_space("Search Private Space", team.name, is_private=1)
+		private_project = create_space("Search Private Space", team.name, visibility=VISIBILITY_MEMBER_ACCESS)
 
 		frappe.set_user(member.name)
 		accessible_projects = GameplanSearch()._get_accessible_projects()
@@ -68,7 +70,9 @@ class TestSpaces(FrappeTestCase):
 		member = create_member("test_space_activity_member@example.com")
 		team = create_community("Space Activity Team")
 		public_project = create_space("Public Activity Space", team.name)
-		private_project = create_space("Private Activity Space", team.name, is_private=1)
+		private_project = create_space(
+			"Private Activity Space", team.name, visibility=VISIBILITY_MEMBER_ACCESS
+		)
 
 		older_discussion = create_discussion("Older Activity", public_project.name)
 		latest_discussion = create_discussion("Latest Activity", public_project.name)
@@ -222,7 +226,9 @@ class TestSpaceCommunityMoveAccess(GameplanTestCase):
 	def setUp(self):
 		super().setUp()
 		self.origin = create_community("Access Origin Community", members=[self.member])
-		self.space = create_space("Access Moving Space", self.origin, is_private=1, members=[self.member])
+		self.space = create_space(
+			"Access Moving Space", self.origin, visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
 
 	def _move(self, team):
 		with self.as_user(self.member):
@@ -232,7 +238,9 @@ class TestSpaceCommunityMoveAccess(GameplanTestCase):
 		return frappe.db.get_value("GP Project", self.space.name, "team")
 
 	def test_member_cannot_move_a_space_into_a_private_community_they_are_not_in(self):
-		hidden = create_community("Hidden Destination Community", is_private=1, members=[self.second_member])
+		hidden = create_community(
+			"Hidden Destination Community", visibility=VISIBILITY_MEMBER_ACCESS, members=[self.second_member]
+		)
 
 		with self.assertRaises(frappe.PermissionError):
 			self._move(hidden.name)
@@ -240,7 +248,9 @@ class TestSpaceCommunityMoveAccess(GameplanTestCase):
 		self.assertEqual(self._team(), self.origin.name)
 
 	def test_member_can_move_a_space_into_a_private_community_they_are_in(self):
-		joined = create_community("Joined Destination Community", is_private=1, members=[self.member])
+		joined = create_community(
+			"Joined Destination Community", visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
 
 		self._move(joined.name)
 
@@ -262,7 +272,7 @@ class TestSpaceCommunityMoveAccess(GameplanTestCase):
 		# frappe.db.get_value treats a dict as filters, so an untyped team would match
 		# any community the filters describe.
 		with self.assertRaises(frappe.FrappeTypeError):
-			self._move({"is_private": 0})
+			self._move({"visibility": VISIBILITY_GENERAL})
 
 		self.assertEqual(self._team(), self.origin.name)
 
@@ -337,7 +347,12 @@ class TestSpaceListVisibility(GameplanTestCase):
 		"""
 		community = create_community("Listed Community", members=[self.member, self.second_member])
 		public = create_space("Listed Public Space", community)
-		private = create_space("Listed Private Space", community, is_private=1, members=[self.second_member])
+		private = create_space(
+			"Listed Private Space",
+			community,
+			visibility=VISIBILITY_MEMBER_ACCESS,
+			members=[self.second_member],
+		)
 
 		def listed_for(user):
 			with self.as_user(user):
@@ -411,7 +426,9 @@ class TestSpaceMembership(GameplanTestCase):
 		)
 
 	def test_member_cannot_join_public_space_in_inaccessible_private_community(self):
-		community = create_community("Blocked Join Community", is_private=1, members=[self.member])
+		community = create_community(
+			"Blocked Join Community", visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
 		space = create_space("Blocked Join Space", community)
 
 		with self.as_user(self.second_member), self.assertRaises(frappe.PermissionError):
@@ -421,7 +438,9 @@ class TestSpaceMembership(GameplanTestCase):
 		community = create_community(
 			"Private Space Management Community", members=[self.member, self.second_member]
 		)
-		space = create_space("Managed Private Space", community, is_private=1, members=[self.member])
+		space = create_space(
+			"Managed Private Space", community, visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
 
 		with self.as_user(self.member):
 			space.add_member(self.second_member.name)
@@ -433,14 +452,18 @@ class TestSpaceMembership(GameplanTestCase):
 		community = create_community(
 			"Blocked Private Space Community", members=[self.member, self.second_member]
 		)
-		space = create_space("Blocked Private Space", community, is_private=1, members=[self.member])
+		space = create_space(
+			"Blocked Private Space", community, visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
 
 		with self.as_user(self.second_member), self.assertRaises(frappe.PermissionError):
 			space.add_member(self.outsider.name)
 
 	def test_private_space_member_can_invite_guest_to_space(self):
 		community = create_community("Guest Invite Community", members=[self.member])
-		space = create_space("Guest Invite Space", community, is_private=1, members=[self.member])
+		space = create_space(
+			"Guest Invite Space", community, visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
 
 		# GP Invitation.after_insert emails the invitee, so without this the assertion
 		# under test would hinge on the site having an outgoing Email Account (CI mutes
@@ -472,7 +495,12 @@ class TestSpaceMembership(GameplanTestCase):
 		community = create_community(
 			"Blocked Guest Invite Community", members=[self.member, self.second_member]
 		)
-		space = create_space("Blocked Guest Invite Space", community, is_private=1, members=[self.member])
+		space = create_space(
+			"Blocked Guest Invite Space",
+			community,
+			visibility=VISIBILITY_MEMBER_ACCESS,
+			members=[self.member],
+		)
 
 		with self.as_user(self.second_member), self.assertRaises(frappe.PermissionError):
 			space.invite_guest("blocked_perm_guest@example.com")
@@ -555,9 +583,14 @@ class TestSpaceReadState(GameplanTestCase):
 		self.assertIsNone(visit.mark_all_read_at)
 
 	def test_member_cannot_track_a_visit_to_an_inaccessible_space(self):
-		private_community = create_community("Private Visit Community", is_private=1, members=[self.member])
+		private_community = create_community(
+			"Private Visit Community", visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
 		private_space = create_space(
-			"Private Visit Space", private_community, is_private=1, members=[self.member]
+			"Private Visit Space",
+			private_community,
+			visibility=VISIBILITY_MEMBER_ACCESS,
+			members=[self.member],
 		)
 
 		with self.as_user(self.outsider), self.assertRaises(frappe.PermissionError):
@@ -680,10 +713,13 @@ class TestSpaceReadState(GameplanTestCase):
 
 	def test_member_cannot_mark_an_inaccessible_space_read(self):
 		private_community = create_community(
-			"Private Read State Community", is_private=1, members=[self.member]
+			"Private Read State Community", visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
 		)
 		private_space = create_space(
-			"Private Read State Space", private_community, is_private=1, members=[self.member]
+			"Private Read State Space",
+			private_community,
+			visibility=VISIBILITY_MEMBER_ACCESS,
+			members=[self.member],
 		)
 
 		with self.as_user(self.outsider), self.assertRaises(frappe.PermissionError):
@@ -771,7 +807,7 @@ class TestSpaceMemberRemoval(GameplanTestCase):
 		space = create_space(
 			"Removal Space",
 			community,
-			is_private=1,
+			visibility=VISIBILITY_MEMBER_ACCESS,
 			members=[self.member, self.second_member, self.outsider],
 		)
 
@@ -817,7 +853,8 @@ class TestSpaceMerge(GameplanTestCase):
 		self.discussion = create_discussion("Merged Discussion", self.source)
 
 	def test_merging_moves_content_to_the_target_and_removes_the_source(self):
-		self.source.merge_with_project(self.target.name)
+		with patch.object(GPProject, "rename", side_effect=AssertionError("Use the server-only rename path")):
+			self.source.merge_with_project(self.target.name)
 
 		self.assertFalse(frappe.db.exists("GP Project", self.source_name))
 		self.assertEqual(
@@ -860,8 +897,18 @@ class TestSpaceMerge(GameplanTestCase):
 
 	def test_space_manager_can_merge_two_spaces_they_manage(self):
 		private_community = create_community("Merge Manager Community", members=[self.member])
-		source = create_space("Managed Merge Source", private_community, is_private=1, members=[self.member])
-		target = create_space("Managed Merge Target", private_community, is_private=1, members=[self.member])
+		source = create_space(
+			"Managed Merge Source",
+			private_community,
+			visibility=VISIBILITY_MEMBER_ACCESS,
+			members=[self.member],
+		)
+		target = create_space(
+			"Managed Merge Target",
+			private_community,
+			visibility=VISIBILITY_MEMBER_ACCESS,
+			members=[self.member],
+		)
 		source_name = source.name
 		discussion = create_discussion("Managed Merge Discussion", source)
 
@@ -879,8 +926,12 @@ class TestSpaceMerge(GameplanTestCase):
 		the source alone is not enough — without a gate on the target it is a way to
 		push content into a space the user has no rights over."""
 		community = create_community("Merge Target Gate Community", members=[self.member, self.second_member])
-		source = create_space("Gated Merge Source", community, is_private=1, members=[self.member])
-		target = create_space("Gated Merge Target", community, is_private=1, members=[self.second_member])
+		source = create_space(
+			"Gated Merge Source", community, visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
+		target = create_space(
+			"Gated Merge Target", community, visibility=VISIBILITY_MEMBER_ACCESS, members=[self.second_member]
+		)
 		source_name = source.name
 		discussion = create_discussion("Gated Merge Discussion", source)
 
@@ -902,8 +953,15 @@ class TestSpaceMerge(GameplanTestCase):
 		enumerate every GP Project on the site, private ones included.
 		"""
 		community = create_community("Merge Oracle Community", members=[self.member, self.second_member])
-		source = create_space("Oracle Merge Source", community, is_private=1, members=[self.member])
-		forbidden = create_space("Oracle Merge Target", community, is_private=1, members=[self.second_member])
+		source = create_space(
+			"Oracle Merge Source", community, visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
+		forbidden = create_space(
+			"Oracle Merge Target",
+			community,
+			visibility=VISIBILITY_MEMBER_ACCESS,
+			members=[self.second_member],
+		)
 
 		with self.as_user(self.member):
 			with self.assertRaises(frappe.PermissionError):
@@ -920,8 +978,12 @@ class TestSpaceMerge(GameplanTestCase):
 		out before the manage check.
 		"""
 		community = create_community("Guest Merge Community", members=[self.member])
-		source = create_space("Guest Merge Source", community, is_private=1, members=[self.guest])
-		target = create_space("Guest Merge Target", community, is_private=1, members=[self.guest])
+		source = create_space(
+			"Guest Merge Source", community, visibility=VISIBILITY_MEMBER_ACCESS, members=[self.guest]
+		)
+		target = create_space(
+			"Guest Merge Target", community, visibility=VISIBILITY_MEMBER_ACCESS, members=[self.guest]
+		)
 		source_name = source.name
 		discussion = create_discussion("Guest Merge Discussion", source)
 
@@ -936,8 +998,15 @@ class TestSpaceMerge(GameplanTestCase):
 
 	def test_manager_of_only_the_target_cannot_merge_a_space_they_dont_manage(self):
 		community = create_community("Merge Source Gate Community", members=[self.member, self.second_member])
-		source = create_space("Ungated Merge Source", community, is_private=1, members=[self.second_member])
-		target = create_space("Ungated Merge Target", community, is_private=1, members=[self.member])
+		source = create_space(
+			"Ungated Merge Source",
+			community,
+			visibility=VISIBILITY_MEMBER_ACCESS,
+			members=[self.second_member],
+		)
+		target = create_space(
+			"Ungated Merge Target", community, visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
 		source_name = source.name
 
 		with self.as_user(self.member), self.assertRaises(frappe.PermissionError):
@@ -1100,7 +1169,10 @@ class TestSpaceUnreadCounts(GameplanTestCase):
 
 		foreign_community = create_community("Foreign Unread Community", members=[self.outsider])
 		theirs = create_space(
-			"Foreign Unread Space", foreign_community, is_private=1, members=[self.outsider]
+			"Foreign Unread Space",
+			foreign_community,
+			visibility=VISIBILITY_MEMBER_ACCESS,
+			members=[self.outsider],
 		)
 		self._discussion("Foreign Unread Discussion", theirs, "2026-01-03 09:00:00")
 
@@ -1130,10 +1202,14 @@ class TestSpaceMutationHTTPMethods(GameplanTestCase):
 		outbound HTTP fetch reachable from a doctype controller for no reason."""
 		self.assertFalse(hasattr(gp_project_module, "get_meta_tags"))
 
-	def test_space_does_not_override_document_serialisation(self):
-		"""`as_dict` was overridden only to call super() and return the result. A no-op
-		override shadows the framework method and is a place for behaviour to rot in."""
-		self.assertNotIn("as_dict", vars(GPProject))
+	def test_space_overrides_document_serialisation_only_to_clean_public_payloads(self):
+		"""`as_dict` was once overridden only to call super() and return the result, a no-op
+		that shadowed the framework method. It now exists for one reason: to pass the result
+		through `gameplan.public_payload.for_viewer`, which leaves it untouched for anyone
+		signed in. Nothing else belongs there."""
+		source = inspect.getsource(GPProject.as_dict)
+		self.assertIn("for_viewer(self.doctype, super().as_dict(", source)
+		self.assertEqual(len([line for line in source.splitlines() if line.strip()]), 2)
 
 	def test_space_membership_mutations_are_post_only(self):
 		for method in (

@@ -7,6 +7,8 @@
  "engine": "InnoDB",
  "field_order": [
   "user",
+  "first_day_discussions",
+  "first_day_replies",
   "enabled",
   "full_name",
   "community_order",
@@ -31,6 +33,22 @@
   "image_background_color"
  ],
  "fields": [
+  {
+   "default": "0",
+   "fieldname": "first_day_discussions",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "First Day Discussions",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "first_day_replies",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "First Day Replies",
+   "read_only": 1
+  },
   {
    "fieldname": "user",
    "fieldtype": "Link",

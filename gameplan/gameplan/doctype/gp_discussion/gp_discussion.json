@@ -149,7 +149,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-19 12:00:00.000000",
+ "modified": "2026-10-01 06:12:56.974120",
  "modified_by": "faris@erpnext.com",
  "module": "Gameplan",
  "name": "GP Discussion",
@@ -203,6 +203,11 @@
    "role": "Gameplan Guest",
    "share": 1,
    "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Guest",
+   "select": 1
   }
  ],
  "row_format": "Dynamic",

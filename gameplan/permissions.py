@@ -1,8 +1,20 @@
 import frappe
 from frappe import _
 from frappe.utils import cint, cstr, get_datetime
+from pypika.terms import ValueWrapper
 
 import gameplan
+from gameplan.public_access import (
+	SIGNED_IN_TIERS,
+	VISIBILITY_ANONYMOUS,
+	is_member_access,
+	public_access_enabled,
+	public_team_criterion,
+	visibility_tier,
+)
+
+# A criterion no row satisfies.
+NOTHING = ValueWrapper(1) == ValueWrapper(0)
 
 READ_PERMISSIONS = {"read", "select", "print", "email", "export", "share", "report"}
 
@@ -65,6 +77,8 @@ def content_has_permission(doc, ptype="read", user=None, **kwargs):
 
 
 def can_manage_community(user, team):
+	if gameplan.is_anonymous(user):
+		return False
 	if is_global_admin(user):
 		return True
 	if gameplan.is_guest(user):
@@ -78,18 +92,31 @@ def can_view_community(user, team):
 	if is_global_admin(user):
 		return True
 	team_name = get_doc_name(team)
+	if is_publicly_readable_community(team):
+		# Anyone at all, signed in or not. A Gameplan Guest without a grant here reads it
+		# too: they could by signing out.
+		return True
+	if gameplan.is_anonymous(user):
+		# Every other tier needs an account. Without this, an anonymous visitor would fall
+		# through to the member rules below, which read a General community as visible.
+		return False
 	if gameplan.is_guest(user):
 		# Guests never join a community, but they must be able to READ the community
 		# that holds a space they've been granted — otherwise the SPA can't render the
 		# shell around that space. Access is exactly the communities of their granted
 		# spaces, nothing else.
 		return guest_can_view_community(user, team_name)
-	is_private = (
-		team.is_private
+	if not team_name:
+		# A space outside every community (Uncategorized) has no community gate. A missing
+		# community is open, as it always was; only a community row without a tier reads as
+		# Member Access.
+		return True
+	visibility = (
+		team.visibility
 		if hasattr(team, "doctype")
-		else frappe.db.get_value("GP Team", team_name, "is_private")
+		else frappe.db.get_value("GP Team", team_name, "visibility")
 	)
-	if not cint(is_private):
+	if not is_member_access(visibility):
 		return True
 	return is_community_member(user, team_name)
 
@@ -100,14 +127,39 @@ def can_view_space(user, project):
 	project = get_project_info(project)
 	if not project:
 		return False
+	if is_publicly_readable_space(project):
+		return True
+	if gameplan.is_anonymous(user):
+		return False
 	if gameplan.is_guest(user):
 		return has_guest_access(user, project.name)
-	if cint(project.is_private):
+	if is_member_access(project.visibility):
 		return is_space_member(user, project.name)
 	return can_view_community(user, project.team)
 
 
+def is_publicly_readable_space(project):
+	"""Whether someone who is not signed in may read `project` (a get_project_info dict)."""
+	return bool(cint(project.is_anonymous_readable)) and public_access_enabled()
+
+
+def is_publicly_readable_community(team):
+	"""Whether someone who is not signed in may read `team`, a doc or a name."""
+	team_name = get_doc_name(team)
+	if not team_name or not public_access_enabled():
+		return False
+	if hasattr(team, "doctype"):
+		visibility, archived_at = team.visibility, team.archived_at
+	else:
+		visibility, archived_at = frappe.db.get_value(
+			"GP Team", team_name, ["visibility", "archived_at"]
+		) or (None, None)
+	return visibility_tier(visibility) == VISIBILITY_ANONYMOUS and not archived_at
+
+
 def can_manage_space(user, project):
+	if gameplan.is_anonymous(user):
+		return False
 	if is_global_admin(user):
 		return True
 	if gameplan.is_guest(user):
@@ -120,12 +172,14 @@ def can_manage_space(user, project):
 	project = get_project_info(project)
 	if not project:
 		return False
-	if cint(project.is_private):
+	if is_member_access(project.visibility):
 		return is_space_member(user, project.name)
 	return is_community_admin(user, project.team)
 
 
 def can_invite_guest(user, project):
+	if gameplan.is_anonymous(user):
+		return False
 	if gameplan.is_guest(user):
 		return False
 	return can_manage_space(user, project)
@@ -137,6 +191,9 @@ def can_view_content(user, doc):
 		return can_view_space(user, project)
 	if is_global_admin(user):
 		return True
+	if gameplan.is_anonymous(user):
+		# Space-less content is its owner's, and nobody signed out owns anything.
+		return False
 	return get_doc_value(doc, "owner") == user
 
 
@@ -164,6 +221,17 @@ def users_who_can_view_content(users, doc):
 		owner = get_doc_value(doc, "owner")
 		return [user for user in users if is_global_admin(user) or user == owner]
 
+	return users_who_can_view_space(users, project)
+
+
+def users_who_can_view_space(users, project):
+	"""The subset of `users` that can_view_space would return True for, order preserved.
+
+	The batched form of can_view_space, for the same reason users_who_can_view_content
+	exists: a fixed handful of queries however many users are asked about. Keep it in step
+	with can_view_space and can_view_community.
+	"""
+	users = list(dict.fromkeys(users))
 	project_info = get_project_info(project)
 	if not project_info:
 		return []
@@ -171,18 +239,26 @@ def users_who_can_view_content(users, doc):
 	space_members = _member_users("GP Project", project_info.name)
 	community_members = _member_users("GP Team", project_info.team) if project_info.team else set()
 	guests = _guest_users(project_info.name)
-	community_is_private = (
-		cint(frappe.db.get_value("GP Team", project_info.team, "is_private")) if project_info.team else 0
+	community_is_member_access = (
+		is_member_access(frappe.db.get_value("GP Team", project_info.team, "visibility"))
+		if project_info.team
+		else False
 	)
+
+	publicly_readable = is_publicly_readable_space(project_info)
 
 	def allowed(user):
 		if is_global_admin(user):
 			return True
+		if publicly_readable:
+			return True
+		if gameplan.is_anonymous(user):
+			return False
 		if gameplan.is_guest(user):
 			return user in guests
-		if cint(project_info.is_private):
+		if is_member_access(project_info.visibility):
 			return user in space_members
-		return not community_is_private or user in community_members
+		return not community_is_member_access or user in community_members
 
 	return [user for user in users if allowed(user)]
 
@@ -211,6 +287,8 @@ GUEST_CREATABLE_DOCTYPES = {"GP Discussion", "GP Comment", "GP Poll"}
 
 
 def can_create_content(user, doc):
+	if gameplan.is_anonymous(user):
+		return False
 	if gameplan.is_guest(user):
 		# Guests participate in the spaces they can reach: starting a discussion,
 		# replying with a comment, and adding a poll to a discussion are all
@@ -292,6 +370,8 @@ def can_interact_with_content(user, doc):
 	page, and dropping the owner line at the end turns the space-less case into an
 	unconditional True the moment can_view_content's own space-less rule loosens.
 	"""
+	if gameplan.is_anonymous(user):
+		return False
 	if is_global_admin(user):
 		return True
 	if not can_view_content(user, doc):
@@ -322,6 +402,8 @@ def can_write_content(user, doc):
 	_guest_locked_fields_unchanged stops a guest from moving or pinning content, their
 	own included.
 	"""
+	if gameplan.is_anonymous(user):
+		return False
 	if not _owner_only_write_allowed(user, doc):
 		return False
 	if not _guest_locked_fields_unchanged(user, doc):
@@ -448,6 +530,8 @@ def can_edit_content(user, doc):
 	the has_permission write check. Also mirrored in the frontend
 	(utils/permissions.ts::canEditContent) to gate edit affordances.
 	"""
+	if gameplan.is_anonymous(user):
+		return False
 	if is_global_admin(user):
 		return True
 	if not can_view_content(user, doc):
@@ -479,6 +563,8 @@ def is_delete_cascade(doc):
 
 
 def can_delete_content(user, doc):
+	if gameplan.is_anonymous(user):
+		return False
 	if is_delete_cascade(doc):
 		# The parent delete was already authorised, and its children go with it: a
 		# discussion owner removing their own thread takes the comments and polls other
@@ -579,6 +665,72 @@ def poll_query_conditions(user=None, **kwargs):
 	return criterion_sql(criterion)
 
 
+# The doctypes whose documents log GP Activity (see gameplan/mixins/activity.py).
+ACTIVITY_REFERENCE_DOCTYPES = ("GP Discussion", "GP Task")
+
+
+def activity_query_conditions(user=None, **kwargs):
+	"""Scope GP Activity lists to rows about things the user can see.
+
+	An activity row says what happened to a discussion or task, down to its old title or
+	the space it moved from, so listing one follows the thing it is about, the way
+	comment_query_conditions does. Space-less content (a personal task) is its owner's.
+	"""
+	user = user or frappe.session.user
+	if is_global_admin(user):
+		return None
+
+	Activity = frappe.qb.DocType("GP Activity")
+	criterion = None
+	for doctype in ACTIVITY_REFERENCE_DOCTYPES:
+		Reference = frappe.qb.DocType(doctype)
+		visible = (
+			frappe.qb.from_(Reference)
+			.select(Reference.name)
+			.where(
+				accessible_project_criterion(Reference.project, user)
+				| (Reference.project.isnull() & (Reference.owner == user))
+			)
+		)
+		about_visible = (Activity.reference_doctype == doctype) & Activity.reference_name.isin(visible)
+		criterion = about_visible if criterion is None else criterion | about_visible
+	return criterion_sql(criterion)
+
+
+def activity_has_permission(doc, ptype="read", user=None, **kwargs):
+	"""Read an activity row if you can read what it is about. Never write one directly.
+
+	The server logs activity through HasActivity.log_activity, which inserts with
+	ignore_permissions, so no client ever needs to create or edit a row: an activity row is
+	a record of what happened. A row goes away only with the discussion or task it belongs
+	to, through the delete cascade.
+	"""
+	user = user or frappe.session.user
+	if not hasattr(doc, "doctype"):
+		return True
+	if is_global_admin(user):
+		return True
+	if ptype in READ_PERMISSIONS:
+		return can_view_activity_reference(user, doc)
+	if ptype in {"create", "write"}:
+		return False
+	if ptype == "delete":
+		return is_delete_cascade(doc)
+	# Defer on a permission type Gameplan does not model; see content_has_permission.
+	return True
+
+
+def can_view_activity_reference(user, activity):
+	if activity.reference_doctype not in ACTIVITY_REFERENCE_DOCTYPES:
+		return False
+	try:
+		reference = frappe.get_doc(activity.reference_doctype, activity.reference_name)
+	except frappe.DoesNotExistError:
+		frappe.clear_last_message()
+		return False
+	return can_view_content(user, reference)
+
+
 def draft_query_conditions(user=None, **kwargs):
 	# Drafts are private to their owner in list/report queries. Share-by-link still works:
 	# that reads a single draft by name through the doctype's open `read` permission, which
@@ -586,6 +738,8 @@ def draft_query_conditions(user=None, **kwargs):
 	# (the v2 query path); this closes the v1 frappe.client.get_list path, which does not invoke
 	# the controller get_list for non-virtual doctypes and so was returning every user's drafts.
 	user = user or frappe.session.user
+	if gameplan.is_anonymous(user):
+		return criterion_sql(NOTHING)
 	Draft = frappe.qb.DocType("GP Draft")
 	return criterion_sql(Draft.owner == user)
 
@@ -596,6 +750,8 @@ def bookmark_query_conditions(user=None, **kwargs):
 	# nothing in Gameplan reads another user's reading list, and without this every
 	# Gameplan user could list everyone's bookmarks through the generic list API.
 	user = user or frappe.session.user
+	if gameplan.is_anonymous(user):
+		return criterion_sql(NOTHING)
 	Bookmark = frappe.qb.DocType("GP Bookmark")
 	return criterion_sql(Bookmark.user == user)
 
@@ -607,6 +763,8 @@ def bookmark_has_permission(doc, ptype="read", user=None, **kwargs):
 	rewrite or delete someone else's bookmark by name — and create one in their name.
 	"""
 	user = user or frappe.session.user
+	if gameplan.is_anonymous(user):
+		return False
 	if not hasattr(doc, "doctype"):
 		return True
 	return get_doc_value(doc, "user") == user
@@ -624,26 +782,36 @@ def team_access_criterion(Team, user=None):
 	user = user or frappe.session.user
 	if is_global_admin(user):
 		return None
+	public = public_team_criterion(Team) if public_access_enabled() else NOTHING
+	if gameplan.is_anonymous(user):
+		return public
 	if gameplan.is_guest(user):
 		# A guest sees exactly the communities that hold a space they've been granted
-		# guest access to (via GP Guest Access). Without this the guest's GP Team list
-		# is empty and the SPA 404s every community/space/discussion route.
-		return Team.name.isin(guest_accessible_team_query(user))
-	return (Team.is_private == 0) | is_member_parent("GP Team", Team.name, user)
+		# guest access to (via GP Guest Access), and any community open to the public.
+		# Without the first, the guest's GP Team list is empty and the SPA 404s every
+		# community/space/discussion route.
+		return Team.name.isin(guest_accessible_team_query(user)) | public
+	return Team.visibility.isin(SIGNED_IN_TIERS) | is_member_parent("GP Team", Team.name, user)
 
 
 def project_access_criterion(Project, user=None):
 	user = user or frappe.session.user
 	if is_global_admin(user):
 		return None
+	public = (Project.is_anonymous_readable == 1) if public_access_enabled() else NOTHING
+	if gameplan.is_anonymous(user):
+		return public
 	if gameplan.is_guest(user):
 		GuestAccess = frappe.qb.DocType("GP Guest Access")
-		return Project.name.isin(
-			frappe.qb.from_(GuestAccess).select(GuestAccess.project).where(GuestAccess.user == user)
+		return (
+			Project.name.isin(
+				frappe.qb.from_(GuestAccess).select(GuestAccess.project).where(GuestAccess.user == user)
+			)
+			| public
 		)
-	return ((Project.is_private == 0) & Project.team.isin(accessible_team_query(user))) | is_member_parent(
-		"GP Project", Project.name, user
-	)
+	return (
+		Project.visibility.isin(SIGNED_IN_TIERS) & Project.team.isin(accessible_team_query(user))
+	) | is_member_parent("GP Project", Project.name, user)
 
 
 def accessible_project_criterion(project_field, user=None):
@@ -783,11 +951,14 @@ def get_project_info(project):
 		return frappe._dict(
 			name=project.name,
 			team=project.team,
-			is_private=project.is_private,
+			visibility=project.visibility,
+			is_anonymous_readable=project.is_anonymous_readable,
 		)
 	if not project:
 		return None
-	return frappe.db.get_value("GP Project", project, ["name", "team", "is_private"], as_dict=True)
+	return frappe.db.get_value(
+		"GP Project", project, ["name", "team", "visibility", "is_anonymous_readable"], as_dict=True
+	)
 
 
 def get_doc_name(doc_or_name):

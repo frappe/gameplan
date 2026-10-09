@@ -18,6 +18,7 @@ import { settingsShortcutLabel, showSettingsDialog } from '@/components/Settings
 import { useUser } from '@/data/users'
 import { session } from '@/data/session'
 import { useTheme } from '@/utils/useTheme'
+import { isAnonymousVisitor, loginUrl, signupEnabled, signupUrl } from '@/utils/publicAccess'
 
 const user = useUser()
 const { currentTheme, setTheme } = useTheme()
@@ -31,6 +32,7 @@ const dropdownItems = computed(() => [
   {
     icon: 'lucide-user',
     label: 'My Profile',
+    condition: () => !isAnonymousVisitor(),
     route: {
       name: 'PersonProfileProfile',
       params: { personId: user.user_profile },
@@ -39,21 +41,25 @@ const dropdownItems = computed(() => [
   {
     icon: 'lucide-bookmark',
     label: 'Bookmarks',
+    condition: () => !isAnonymousVisitor(),
     route: { name: 'Bookmarks' },
   },
   {
     icon: 'lucide-list-todo',
     label: 'Tasks',
+    condition: () => !isAnonymousVisitor(),
     route: { name: 'MyTasks' },
   },
   {
     icon: 'lucide-files',
     label: 'Pages',
+    condition: () => !isAnonymousVisitor(),
     route: { name: 'MyPages' },
   },
   {
     icon: 'lucide-settings',
     label: 'Settings',
+    condition: () => !isAnonymousVisitor(),
     onClick: () => showSettingsDialog(),
     slots: {
       suffix: () => h('span', { class: 'text-xs text-ink-gray-4' }, settingsShortcutLabel),
@@ -92,7 +98,8 @@ const dropdownItems = computed(() => [
   {
     icon: () => h('span', { class: 'lucide-credit-card' }),
     label: 'Subscription',
-    condition: () => user.isNotGuest && window.frappecloud_host && window.site_name,
+    condition: () =>
+      !isAnonymousVisitor() && user.isNotGuest && window.frappecloud_host && window.site_name,
     onClick: () => {
       window.open(`${window.frappecloud_host}/dashboard/subscription/${window.site_name}`, '_blank')
     },
@@ -100,13 +107,30 @@ const dropdownItems = computed(() => [
   {
     icon: 'lucide-arrow-left-right',
     label: 'Switch user',
-    condition: () => Boolean(loadDevUserList),
+    condition: () => !isAnonymousVisitor() && Boolean(loadDevUserList),
     onClick: openDevUserDialog,
   },
   {
     icon: 'lucide-log-out',
     label: 'Log out',
+    condition: () => !isAnonymousVisitor(),
     onClick: () => session.logout.submit(),
+  },
+  {
+    icon: 'lucide-user-plus',
+    label: 'Sign up',
+    condition: () => isAnonymousVisitor() && signupEnabled(),
+    onClick: () => {
+      window.location.href = signupUrl()
+    },
+  },
+  {
+    icon: 'lucide-log-in',
+    label: 'Log in',
+    condition: isAnonymousVisitor,
+    onClick: () => {
+      window.location.href = loginUrl()
+    },
   },
 ])
 

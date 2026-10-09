@@ -1,6 +1,7 @@
 import type { Community } from '@/data/communities'
 import { getCommunity } from '@/data/communities'
 import type { Space } from '@/data/spaces'
+import { isMemberAccess } from '@/utils/visibility'
 
 type PermissionUser = {
   name?: string | null
@@ -44,7 +45,7 @@ export function canManageSpace(space: Space | null | undefined, user: Permission
   if (!space || !user.name) return false
   if (isGlobalAdmin(user)) return true
   if (isGuest(user)) return false
-  if (space.is_private) {
+  if (isMemberAccess(space.visibility)) {
     return Boolean(space.members?.some((member) => member.user === user.name))
   }
   return isCommunityAdmin(getCommunity(space.team), user.name)

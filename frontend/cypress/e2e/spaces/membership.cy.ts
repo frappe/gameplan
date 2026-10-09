@@ -103,6 +103,11 @@ describe('Private space membership', () => {
     cy.visit(`/g/community/${community}/space/${privateSpace}`)
     cy.contains('a', 'Secret thread').should('be.visible')
 
+    cy.selectDropdownOption('Space actions', 'Manage access')
+    cy.scope('dialog').should('contain.text', 'Space access')
+    cy.scope('dialog').find('button[aria-label="Change visibility"]').should('not.exist')
+    cy.get('body').type('{esc}')
+
     // Cancelling must not leave. On a private space `can_view_space` is exactly
     // membership, so an accidental click would cost the member their access to the
     // space — and with it the Join action that would undo it.
@@ -110,7 +115,7 @@ describe('Private space membership', () => {
     cy.scope('dialog').should('contain.text', 'Leave "Secret Plans"?')
     cy.scope('dialog').should(
       'contain.text',
-      "This space is private. You won't be able to rejoin unless a member adds you back.",
+      "Only its members can see this space. You won't be able to rejoin unless a member adds you back.",
     )
     cy.scope('dialog').button('Cancel').click()
     cy.get('[role="dialog"]').should('not.exist')

@@ -30,11 +30,14 @@
             @blur="saveTitle"
             @keydown.enter.prevent="saveTitle"
           />
-          <span v-if="space.is_private" class="lucide-lock size-3.5 shrink-0 text-ink-gray-5" />
+          <span
+            v-if="isMemberAccess(space.visibility)"
+            class="lucide-lock size-3.5 shrink-0 text-ink-gray-5"
+          />
         </div>
         <div class="mt-0.5 truncate text-sm text-ink-gray-5 md:hidden">
           {{
-            [visibilityLabel(space.is_private), contentLabel, guestsLabel]
+            [visibilityLabel(space.visibility), contentLabel, guestsLabel]
               .filter(Boolean)
               .join(' · ')
           }}
@@ -76,7 +79,7 @@ import { readOnlyMode } from '@/data/readOnlyMode'
 import { useSessionUser } from '@/data/users'
 import type { GPProject } from '@/types/doctypes'
 import { canManageSpace } from '@/utils/permissions'
-import { visibilityLabel } from '@/utils/visibility'
+import { isMemberAccess, visibilityLabel } from '@/utils/visibility'
 
 const props = defineProps<{
   space: Space

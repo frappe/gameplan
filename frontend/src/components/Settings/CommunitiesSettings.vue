@@ -206,6 +206,7 @@ import CommunityMembersListControls from '@/pages/Configure/CommunityMembersList
 import CommunitySpacesList from '@/pages/Configure/CommunitySpacesList.vue'
 import CommunitySpacesListControls from '@/pages/Configure/CommunitySpacesListControls.vue'
 import NewCommunityDialog from '@/pages/Configure/NewCommunityDialog.vue'
+import type { Visibility } from '@/utils/visibility'
 
 type CommunityView = 'spaces' | 'members'
 
@@ -236,9 +237,9 @@ const view = computed<CommunityView>({
 })
 // Filter state; controls live in the fixed header for each view.
 const search = ref('')
-const visibilityFilter = ref<'All' | 'Public' | 'Private' | 'Archived'>('All')
+const visibilityFilter = ref<'All' | Visibility | 'Archived'>('All')
 const spaceSearch = ref('')
-const spaceFilter = ref<'All' | 'Public' | 'Private' | 'Archived'>('All')
+const spaceFilter = ref<'All' | Visibility | 'Archived'>('All')
 const memberSearch = ref('')
 const showAddMembers = ref(false)
 const newSpaceDialog = ref(false)
@@ -277,8 +278,8 @@ const showNewCommunityButton = computed(
 const canCreateSpace = computed(() =>
   Boolean(
     selectedCommunity.value &&
-    canManageSelectedCommunity.value &&
-    !selectedCommunity.value.archived_at,
+      canManageSelectedCommunity.value &&
+      !selectedCommunity.value.archived_at,
   ),
 )
 function openCommunitySpaces(communityId: string) {

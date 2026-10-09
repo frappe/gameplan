@@ -26,8 +26,9 @@
         <PageHeaderBackButton :to="{ name: 'Discussions', params: { communityId } }" />
       </template>
       <template #suffix>
+        <PublicLoginButtons v-if="publicVisitor" />
         <Button
-          v-if="route.name === 'SpaceDiscussions' && canStartDiscussion"
+          v-if="!publicVisitor && route.name === 'SpaceDiscussions' && canStartDiscussion"
           variant="ghost"
           size="md"
           icon="lucide-plus"
@@ -84,9 +85,11 @@ import CommunityMenu from '@/components/CommunityMenu.vue'
 import EmptyStateBox from '@/components/EmptyStateBox.vue'
 import SpaceBreadcrumbs from '@/components/SpaceBreadcrumbs.vue'
 import SpaceIcon from '@/components/SpaceIcon.vue'
+import PublicLoginButtons from '@/components/Public/PublicLoginButtons.vue'
 import { isSpacePinned } from '@/data/pinnedSpaces'
 import { useCommunity } from '@/data/communities'
 import { useOwnedRouteWrites } from '@/composables/useOwnedRouteWrites'
+import { isPublicVisitor } from '@/utils/publicAccess'
 
 const props = defineProps<{
   communityId: string
@@ -103,6 +106,7 @@ const space = useSpace(() => props.spaceId)
 // The mobile twin of the "Add new" button in SpaceDiscussions, so it asks the same
 // question: who may start a discussion here, not who may edit the space.
 const canStartDiscussion = computed(() => canPostInSpace(space.value))
+const publicVisitor = computed(() => isPublicVisitor())
 
 // This page also renders behind the settings overlay, where the URL belongs to /settings/*
 // and healing it from here would navigate the app off the settings route, closing the dialog.
@@ -131,6 +135,6 @@ function routeParam(value: string | string[] | undefined) {
 }
 
 onMounted(() => {
-  trackSpaceVisit(props.spaceId)
+  if (!publicVisitor.value) trackSpaceVisit(props.spaceId)
 })
 </script>

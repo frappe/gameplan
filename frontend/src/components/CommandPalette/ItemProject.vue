@@ -15,7 +15,10 @@
     <span class="min-w-0 flex-1 truncate font-medium text-ink-gray-7">
       {{ item.title }}&nbsp;
     </span>
-    <span class="lucide-lock ml-0.5 size-3 shrink-0 text-ink-gray-6" v-if="space.is_private" />
+    <span
+      class="lucide-lock ml-0.5 size-3 shrink-0 text-ink-gray-6"
+      v-if="isMemberAccess(space.visibility)"
+    />
   </div>
 </template>
 <script setup lang="ts">
@@ -23,6 +26,7 @@ import { useSpace } from '@/data/spaces'
 import { useCommunity } from '@/data/communities'
 import SpaceIcon from '@/components/SpaceIcon.vue'
 import type { CommandPaletteItem } from './registry'
+import { isMemberAccess } from '@/utils/visibility'
 
 const props = defineProps<{
   item: CommandPaletteItem

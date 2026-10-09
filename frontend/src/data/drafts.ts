@@ -15,7 +15,7 @@ export interface DraftRow {
   space: string | null
   space_title: string | null
   community: string | null
-  is_private: boolean | number
+  visibility: string | null
   /** For comment drafts, the parent discussion to open; null for discussion drafts. */
   discussion: string | null
 }
@@ -43,7 +43,8 @@ export const drafts = useList<DraftRow>({
   // get_my_drafts is owner-scoped on the server; scope the client cache to the session user
   // too, so a same-tab account switch can't briefly show the previous user's draft rows.
   cacheKey: ['drafts', session.user],
-  immediate: true,
+  // Nobody signed in has drafts.
+  immediate: session.isLoggedIn,
 })
 
 export const draftCount = computed(() => drafts.data?.length ?? 0)

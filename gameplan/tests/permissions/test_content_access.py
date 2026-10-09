@@ -22,6 +22,7 @@ from gameplan.gameplan.doctype.gp_discussion.gp_discussion import (
 from gameplan.gameplan.doctype.gp_page.gp_page import has_permission as page_has_permission
 from gameplan.gameplan.doctype.gp_task.gp_task import has_permission as task_has_permission
 from gameplan.permissions import users_who_can_view_content
+from gameplan.public_access import VISIBILITY_MEMBER_ACCESS
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
 	create_community,
@@ -35,7 +36,9 @@ from gameplan.tests.fixtures import (
 class TestPersonalContent(GameplanTestCase):
 	def test_private_page_is_owner_only_and_space_page_inherits_space(self):
 		community = create_community("Page Permission Community", members=[self.member, self.second_member])
-		private_space = create_space("Page Private Space", community, is_private=1, members=[self.member])
+		private_space = create_space(
+			"Page Private Space", community, visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
 		private_page = create_page("Private Page", owner=self.member)
 		space_page = create_page("Space Page", private_space, owner=self.member)
 

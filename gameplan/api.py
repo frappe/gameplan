@@ -11,6 +11,7 @@ from frappe.utils import cint, split_emails, validate_email_address
 
 import gameplan
 from gameplan.gameplan.doctype.gp_invitation.gp_invitation import grant_access
+from gameplan.public_access import VISIBILITY_GENERAL, VISIBILITY_MEMBER_ACCESS
 from gameplan.realtime import notify_notification_count_changed, unread_notification_count
 from gameplan.roles import GAMEPLAN_ROLES
 from gameplan.utils import validate_type
@@ -120,6 +121,62 @@ def get_user_info(user=None):
 			user.pop("email", None)
 
 	return users
+
+
+@frappe.whitelist(allow_guest=True)
+def get_public_user_info(handles=None):
+	"""Name and avatar for authors of public content, by profile handle.
+
+	What a person who is not signed in gets in place of get_user_info, which stays closed
+	to them: no email, no role, no bio, and only for people whose handle a public page
+	already shows. See gameplan.public_payload.public_profiles.
+	"""
+	from gameplan.public_payload import public_profiles
+
+	handles = frappe.parse_json(handles)
+	if not isinstance(handles, list):
+		frappe.throw(_("handles must be a list"))
+	return public_profiles(handles)
+
+
+@frappe.whitelist(allow_guest=True, methods=["GET"])
+def public_file(fid=None):
+	"""Serve a private file attached to something the caller can read, by File name.
+
+	frappe refuses every /private/files/ request with nobody signed in, so an image in a
+	public post would not load for the people it is public to. This serves exactly one
+	File, named by its `name` (never by a path the caller supplies), when it is attached
+	to a Gameplan document the caller may read. That read check is the same one the
+	document itself passes, so a space leaving the Anonymous tier closes its images in
+	the same moment it closes its posts. Public post bodies point here instead of at
+	/private/files/ (see gameplan.public_payload).
+	"""
+	from frappe.utils.response import send_private_file
+
+	from gameplan.public_access import public_access_enabled
+	from gameplan.public_payload import public_doctypes
+
+	file = fid and frappe.db.get_value(
+		"File",
+		{"name": fid, "is_private": 1},
+		["file_url", "file_name", "attached_to_doctype", "attached_to_name"],
+		as_dict=True,
+	)
+	if (
+		not public_access_enabled()
+		or not file
+		or not (file.file_url or "").startswith("/private/files/")
+		or ".." in file.file_url
+		or file.attached_to_doctype not in public_doctypes()
+		or not file.attached_to_name
+		or not frappe.has_permission(file.attached_to_doctype, "read", doc=file.attached_to_name)
+	):
+		frappe.throw(_("You don't have permission to access this file"), frappe.PermissionError)
+
+	response = send_private_file(file.file_url.split("/private", 1)[1], filename=file.file_name)
+	# Never in a shared cache: the next reader may not be allowed to see it.
+	response.headers["Cache-Control"] = "private, max-age=300"
+	return response
 
 
 @frappe.whitelist(methods=["POST"])
@@ -289,8 +346,22 @@ def mark_all_notifications_as_read():
 
 
 @frappe.whitelist(methods=["POST"])
-def onboarding(community, space, icon, emails, is_private=0):
+def onboarding(community, space, icon, emails, is_private=None, *, visibility=None):
+	# Keep old clients' private request private, including the fifth positional argument.
+	if is_private is not None:
+		if is_private not in (0, 1, "0", "1"):
+			frappe.throw(_("is_private must be 0 or 1"))
+		legacy_visibility = VISIBILITY_MEMBER_ACCESS if cint(is_private) else VISIBILITY_GENERAL
+		if visibility is not None and visibility != legacy_visibility:
+			frappe.throw(_("is_private and visibility disagree"))
+		visibility = legacy_visibility
+	if visibility is None:
+		visibility = VISIBILITY_GENERAL
 	emails = frappe.parse_json(emails)
+	# Signup may keep its first space to members, but never publish it: the Anonymous tier
+	# is a Gameplan Admin's decision, and the person signing up is not one yet.
+	if visibility not in (VISIBILITY_GENERAL, VISIBILITY_MEMBER_ACCESS):
+		frappe.throw(_("Invalid visibility: {0}").format(visibility), frappe.ValidationError)
 
 	# Create the community. The GP Team after_insert hook auto-creates a public
 	# "General" space inside it.
@@ -303,7 +374,7 @@ def onboarding(community, space, icon, emails, is_private=0):
 
 	# Create the user-named first space in addition to "General".
 	project = frappe.get_doc(
-		doctype="GP Project", title=space, icon=icon, team=team.name, is_private=is_private
+		doctype="GP Project", title=space, icon=icon, team=team.name, visibility=visibility
 	).insert()
 
 	# Trusted internal path: the signup creator invites their first teammates as
@@ -313,28 +384,25 @@ def onboarding(community, space, icon, emails, is_private=0):
 	return {"team": team.name, "space": project.name}
 
 
-@frappe.whitelist()
-def search_sqlite(query, filters=None):
+@frappe.whitelist(allow_guest=True, methods=["GET", "POST"])
+@validate_type
+def search_sqlite(query: str, filters: dict | str | None = None):
+	from gameplan.public_search import PublicGameplanSearch, validate_search_filters
 	from gameplan.search_sqlite import GameplanSearch
 
-	search = GameplanSearch()
-
-	# Parse filters if provided as JSON string
-	if filters and isinstance(filters, str):
-		import json
-
-		filters = json.loads(filters)
-
-	result = search.search(query, filters=filters)
-	return result
+	anonymous = gameplan.is_anonymous()
+	search = PublicGameplanSearch() if anonymous else GameplanSearch()
+	filters = validate_search_filters(filters, anonymous=anonymous)
+	return search.search(query, filters=filters)
 
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True, methods=["GET", "POST"])
 def get_search_filter_options():
 	"""Get available filter options for advanced search"""
+	from gameplan.public_search import PublicGameplanSearch
 	from gameplan.search_sqlite import GameplanSearch
 
-	search = GameplanSearch()
+	search = PublicGameplanSearch() if gameplan.is_anonymous() else GameplanSearch()
 	return search.get_filter_options()
 
 

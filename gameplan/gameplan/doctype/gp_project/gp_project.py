@@ -11,6 +11,7 @@ from gameplan.api import _invite_by_email
 from gameplan.gameplan.doctype.gp_unread_record.gp_unread_record import GPUnreadRecord
 from gameplan.mixins.archivable import Archivable
 from gameplan.mixins.manage_members import ManageMembersMixin
+from gameplan.mixins.visibility import HasVisibility
 from gameplan.permissions import (
 	apply_accessible_project_filter,
 	apply_project_query_filter,
@@ -20,6 +21,7 @@ from gameplan.permissions import (
 	require_can_invite_guest,
 	require_can_manage_space_members,
 )
+from gameplan.public_payload import for_viewer
 
 DEFAULT_SPACE_ICON = "lucide-hash"
 PROJECT_TEAM_DOCTYPES = [
@@ -35,7 +37,7 @@ PROJECT_TEAM_DOCTYPES = [
 ]
 
 
-class GPProject(ManageMembersMixin, Archivable, Document):
+class GPProject(HasVisibility, ManageMembersMixin, Archivable, Document):
 	on_delete_cascade = [
 		"GP Task",
 		"GP Discussion",
@@ -46,6 +48,9 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 	]
 	on_delete_set_null = ["GP Notification"]
 
+	def as_dict(self, *args, **kwargs):
+		return for_viewer(self.doctype, super().as_dict(*args, **kwargs))
+
 	@staticmethod
 	def get_list_query(query):
 		return apply_project_query_filter(query)
@@ -55,7 +60,18 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 			self.icon = DEFAULT_SPACE_ICON
 
 	def before_insert(self):
+		self.set_default_visibility()
 		self.append("members", {"user": frappe.session.user})
+
+	def validate(self):
+		self.check_visibility_change_allowed()
+
+	def before_save(self):
+		self.record_visibility_change()
+
+	def on_update(self):
+		self.refresh_anonymous_readable_flags()
+		self.reconcile_access_after_visibility_change()
 
 	def on_trash(self):
 		GPUnreadRecord.delete_unread_records_for_project(self.name)
@@ -113,7 +129,9 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 		# `force` is deliberately not passed with it: rename_doc reads force only inside
 		# the `if validate:` block it hands to validate_rename, so with validate off the
 		# argument reaches nothing.
-		return self.rename(target, merge=True, validate_rename=False)
+		# Frappe #44068 ignores this flag on the whitelisted rename entry point.
+		# Use its server-only path after checking both Spaces above.
+		return self._rename(target, merge=True, validate_rename=False)
 
 	def require_can_manage_merge(self, target):
 		"""A merge empties this Space into `target`, so it needs manage rights on both.

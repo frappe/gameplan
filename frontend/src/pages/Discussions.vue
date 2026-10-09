@@ -1,6 +1,6 @@
 <template>
   <PageHeaderMobile v-if="communityState.doc" class="sm:hidden" :title="feedTitle">
-    <template #prefix>
+    <template v-if="!publicVisitor" #prefix>
       <PageHeaderBackButton :to="{ name: 'Home' }" />
     </template>
     <button
@@ -11,6 +11,9 @@
       <PageHeaderMobileTitle :title="feedTitle" />
       <span class="size-4 shrink-0 text-ink-gray-5 lucide-chevron-down" aria-hidden="true" />
     </button>
+    <template v-if="publicVisitor" #suffix>
+      <PublicLoginButtons />
+    </template>
   </PageHeaderMobile>
 
   <BottomSheet v-model:open="menuOpen" :title="community?.title || 'Community'">
@@ -27,6 +30,7 @@
     </div>
     <div class="flex items-center gap-2">
       <Button
+        v-if="!publicVisitor"
         variant="solid"
         icon-left="lucide-plus"
         :route="{ name: 'NewDiscussion', params: { communityId } }"
@@ -36,10 +40,10 @@
     </div>
   </PageHeader>
   <div class="body-container pt-5 pb-40">
-    <LastPostReminder class="mb-3" />
+    <LastPostReminder v-if="!publicVisitor" class="mb-3" />
 
     <div class="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <TabButtons :options="feedTabs" v-model="currentFeed" size="sm">
+      <TabButtons v-if="!publicVisitor" :options="feedTabs" v-model="currentFeed" size="sm">
         <template #suffix="{ button }">
           <span
             v-if="feedUnreadCount(String(button.value)) > 0"
@@ -49,7 +53,12 @@
           </span>
         </template>
       </TabButtons>
-      <Select class="shrink-0 !w-fit" :options="orderOptions" v-model="orderBy" />
+      <Select
+        v-if="!publicVisitor"
+        class="shrink-0 !w-fit"
+        :options="orderOptions"
+        v-model="orderBy"
+      />
     </div>
 
     <KeepAlive>
@@ -82,10 +91,12 @@ import { useRouter } from 'vue-router'
 import CommunityMenu from '@/components/CommunityMenu.vue'
 import DiscussionList from '@/components/DiscussionList.vue'
 import LastPostReminder from '@/components/LastPostReminder.vue'
+import PublicLoginButtons from '@/components/Public/PublicLoginButtons.vue'
 import { communityState } from '@/data/communityState'
 import { useCommunity } from '@/data/communities'
 import { getSpaceUnreadCount, spaces } from '@/data/spaces'
 import { fetchParticipatingUnreadCount, getParticipatingUnreadCount } from '@/data/unreadCount'
+import { isPublicVisitor } from '@/utils/publicAccess'
 
 type FeedType = 'recent' | 'unread' | 'participating'
 
@@ -101,6 +112,7 @@ const props = withDefaults(defineProps<Props>(), {
 const orderBy = ref<OrderBy>('last_post_at desc')
 const menuOpen = ref(false)
 const router = useRouter()
+const publicVisitor = computed(() => isPublicVisitor())
 
 const filters = computed(() => ({
   team: props.communityId,
@@ -153,7 +165,7 @@ const currentFeed = computed({
 watch(
   () => props.communityId,
   (communityId) => {
-    if (communityId) fetchParticipatingUnreadCount(communityId)
+    if (communityId && !publicVisitor.value) fetchParticipatingUnreadCount(communityId)
   },
   { immediate: true },
 )

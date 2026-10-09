@@ -2,6 +2,7 @@
   <div>
     <div class="flex select-none gap-1.5 flex-wrap">
       <Motion
+        v-if="!readOnlyMode && !isAnonymous"
         as="button"
         aria-label="Add a reaction"
         :disabled="isLoading"
@@ -21,7 +22,7 @@
               ? 'bg-surface-amber-2 text-amber-700 hover:bg-amber-200'
               : 'bg-surface-gray-2 text-ink-gray-6 hover:bg-surface-gray-3',
           ]"
-          @click="show = true"
+          @click="canOpenModal && (show = true)"
           :whileTap="{ scale: 0.96 }"
           :whileHover="{ scale: 1.03 }"
           :whilePress="{ scale: 1.1 }"
@@ -32,7 +33,7 @@
         </Motion>
       </div>
     </div>
-    <BottomSheet title="Reactions" v-model:open="show">
+    <BottomSheet v-if="canOpenModal" title="Reactions" v-model:open="show">
       <div class="border-b px-4 pb-4">
         <div class="grid grid-cols-5 items-center justify-center gap-2">
           <Motion
@@ -89,22 +90,28 @@
   </div>
 </template>
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { AnimatePresence, Motion } from 'motion-v'
 import ReactionFaceIcon from './ReactionFaceIcon.vue'
 import { BottomSheet } from 'frappe-ui'
 import { isImageEmoji } from '@/utils/emoji'
+import { isAnonymousVisitor } from '@/utils/publicAccess'
+
 const props = defineProps<{
   reactionsCount: Record<string, { count: number; userReacted: boolean }>
   toggleReaction: (emoji: string) => void
   toolTipText: (reactions: { count: number; userReacted: boolean }) => string
   standardEmojis: string[]
   isLoading: boolean
+  readOnlyMode?: boolean
 }>()
+
+const isAnonymous = computed(() => isAnonymousVisitor())
+const canOpenModal = computed(() => !props.readOnlyMode && !isAnonymous.value)
 
 let show = ref(false)
 
-function hasUserReacted(emoji) {
+function hasUserReacted(emoji: string) {
   return props.reactionsCount[emoji]?.userReacted
 }
 </script>

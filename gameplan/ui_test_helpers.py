@@ -18,6 +18,8 @@ import frappe
 from frappe.tests.utils import whitelist_for_tests
 from frappe.utils import cint
 
+from gameplan.public_access import VISIBILITY_ANONYMOUS, VISIBILITY_GENERAL, VISIBILITY_MEMBER_ACCESS
+
 # Roles this seed API may mint an invitation for. `gameplan.api.accept_invitation` is
 # `allow_guest`, GET-reachable, and hands the invitation's role straight to
 # `user.append_roles`, so an unrestricted `role` here would be a privilege-escalation
@@ -121,9 +123,10 @@ def _reset_personas():
 		user.new_password = "admin"
 		# Personas use a shared trivial password; the site's password policy would reject it.
 		user.flags.ignore_password_policy = True
+		# A previous spec may change roles. Each persona must regain only its test role.
+		user.set("roles", [])
+		user.append_roles(role)
 		user.save(ignore_permissions=True)
-		if role not in frappe.get_roles(email):
-			user.add_roles(role)
 
 
 # -- scenario builders -------------------------------------------------------
@@ -153,9 +156,9 @@ def _as_user(user):
 		frappe.session.data = original_data
 
 
-def _create_community(title):
+def _create_community(title, *, visibility=VISIBILITY_GENERAL):
 	"""Community that always includes member + member2 so their sidebars resolve."""
-	community = frappe.get_doc(doctype="GP Team", title=title)
+	community = frappe.get_doc(doctype="GP Team", title=title, visibility=visibility)
 	for email in (MEMBER, SECOND_MEMBER):
 		community.append("members", {"user": email})
 	community.insert(ignore_permissions=True)
@@ -166,8 +169,8 @@ def _general_space(community):
 	return frappe.db.get_value("GP Project", {"team": community.name, "title": "General"}, "name")
 
 
-def _create_space(title, community, *, is_private=0, members=()):
-	space = frappe.get_doc(doctype="GP Project", title=title, team=community.name, is_private=is_private)
+def _create_space(title, community, *, visibility=VISIBILITY_GENERAL, members=()):
+	space = frappe.get_doc(doctype="GP Project", title=title, team=community.name, visibility=visibility)
 	for email in members:
 		space.append("members", {"user": email})
 	space.insert(ignore_permissions=True)
@@ -211,7 +214,9 @@ def _space_with_discussion():
 def _private_space_with_guest():
 	community = _create_community("Acme")
 	general = _general_space(community)
-	private_space = _create_space("Secret Plans", community, is_private=1, members=[MEMBER])
+	private_space = _create_space(
+		"Secret Plans", community, visibility=VISIBILITY_MEMBER_ACCESS, members=[MEMBER]
+	)
 	frappe.get_doc(doctype="GP Guest Access", user=GUEST, project=private_space.name).insert(
 		ignore_permissions=True
 	)
@@ -308,6 +313,69 @@ def _search_page():
 	}
 
 
+def _public_space():
+	"""A community on the Anonymous tier with one public space and two that are not.
+
+	Only "Announcements" is readable without signing in: it and its community are both on
+	the Anonymous tier. The auto-created General space and "Core Team" (Member Access) each
+	hold a discussion that must stay hidden from anyone not signed in. The public thread
+	carries everything the public view has to clean: an @mention, a reply with a reaction,
+	and a poll with a vote. member is the community's admin, so a spec can show that being
+	a community admin is not enough to change a tier.
+
+	Public access itself is a site setting (`gameplan_public_access_enabled`), not seed data.
+	"""
+	community = frappe.get_doc(doctype="GP Team", title="Open Source", visibility=VISIBILITY_ANONYMOUS)
+	community.append("members", {"user": MEMBER, "is_admin": 1})
+	community.append("members", {"user": SECOND_MEMBER})
+	community.insert(ignore_permissions=True)
+	general = _general_space(community)
+	public_space = _create_space("Announcements", community, visibility=VISIBILITY_ANONYMOUS)
+	private_space = _create_space(
+		"Core Team", community, visibility=VISIBILITY_MEMBER_ACCESS, members=[MEMBER]
+	)
+
+	discussion = _create_discussion(
+		"Welcome to Open Source",
+		public_space.name,
+		content=(
+			"<p>Welcome! Ask "
+			f'<span data-type="mention" data-id="{SECOND_MEMBER}" data-label="Second Member">'
+			"@Second Member</span> anything.</p>"
+		),
+	)
+	with _as_user(SECOND_MEMBER):
+		comment = frappe.get_doc(
+			doctype="GP Comment",
+			reference_doctype="GP Discussion",
+			reference_name=discussion.name,
+			content="<p>Glad to be here.</p>",
+		).insert(ignore_permissions=True)
+	comment.append("reactions", {"user": MEMBER, "emoji": "🎉"})
+	comment.save(ignore_permissions=True)
+	with _as_user(MEMBER):
+		poll = frappe.get_doc(
+			doctype="GP Poll",
+			title="Ship it this week?",
+			discussion=discussion.name,
+			options=[{"title": "Yes"}, {"title": "Not yet"}],
+		).insert(ignore_permissions=True)
+	with _as_user(SECOND_MEMBER):
+		frappe.get_doc("GP Poll", poll.name).submit_vote("Yes")
+
+	hidden_discussion = _create_discussion("Members-only thread", general)
+	_create_discussion("Core team thread", private_space.name)
+	return {
+		"community": community.name,
+		"space": public_space.name,
+		"general_space": general,
+		"private_space": private_space.name,
+		"discussion": discussion.name,
+		"discussion_slug": discussion.slug,
+		"hidden_discussion": hidden_discussion.name,
+	}
+
+
 SCENARIOS = {
 	"onboarded": _onboarded,
 	"space_with_discussion": _space_with_discussion,
@@ -315,6 +383,7 @@ SCENARIOS = {
 	"search_page": _search_page,
 	"two_communities": _two_communities,
 	"unread_discussion": _unread_discussion,
+	"public_space": _public_space,
 }
 
 

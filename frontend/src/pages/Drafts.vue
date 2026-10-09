@@ -115,7 +115,7 @@
                     <div v-if="draft.space_title" class="inline-flex items-center">
                       <span>{{ draft.space_title }}</span>
                       <span
-                        v-if="draft.is_private"
+                        v-if="isMemberAccess(draft.visibility)"
                         class="lucide-lock h-3 w-3 text-ink-gray-6 ml-0.5"
                       />
                       <span>:&nbsp;</span>
@@ -178,6 +178,7 @@ import { onMounted, ref } from 'vue'
 import type { RouteLocationRaw } from 'vue-router'
 import { recoverOrphanedDrafts } from '@/data/useDraftSync'
 import { drafts, type DraftRow } from '@/data/drafts'
+import { isMemberAccess } from '@/utils/visibility'
 
 interface DeleteDraftsResponse {
   deleted: string[]
