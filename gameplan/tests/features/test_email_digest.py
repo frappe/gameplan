@@ -269,6 +269,57 @@ class TestEmailDigest(GameplanTestCase):
 		self.assertNotIn("gp-email-digest__avatar-fallback", message)
 		self.assertNotIn("gp-email-digest__group-fallback", discussions_markup)
 
+	def test_discussions_show_the_author_and_reactions_show_a_reaction_tile(self):
+		"""A discussion row is about the discussion, so it carries its author's photo, not the
+		last replier's. A reaction notification often groups several people, so it shows a
+		reaction tile instead of one sender's initials."""
+		author = create_member(f"digest-author-{frappe.generate_hash(length=8)}@example.com", "Digest Author")
+		replier = create_member(f"digest-replier-{frappe.generate_hash(length=8)}@example.com", "Replier")
+		for user, image in ((author, "/files/digest-author.png"), (replier, "/files/digest-replier.png")):
+			frappe.db.set_value("GP User Profile", {"user": user.name}, "image", image)
+		team = create_community("Digest Avatar Team")
+		project = create_space("Digest Avatar Space", team.name)
+		discussion = create_discussion("Digest Avatar Discussion", project.name)
+		frappe.db.set_value(
+			"GP Discussion",
+			discussion.name,
+			{"owner": author.name, "last_post_by": replier.name},
+			update_modified=False,
+		)
+		frappe.get_doc(
+			{
+				"doctype": "GP Unread Record",
+				"user": self.user.name,
+				"discussion": discussion.name,
+				"project": project.name,
+				"is_unread": 1,
+			}
+		).insert(ignore_permissions=True)
+		frappe.get_doc(
+			{
+				"doctype": "GP Notification",
+				"to_user": self.user.name,
+				"type": "Reaction",
+				"message": "Replier reacted to your comment.",
+				"discussion": discussion.name,
+				"project": project.name,
+				"team": team.name,
+				"from_user": replier.name,
+			}
+		).insert(ignore_permissions=True)
+
+		with patch("frappe.sendmail") as sendmail:
+			send_digest_for_profile(self.profile, date(2026, 6, 30))
+
+		email = sendmail.call_args.kwargs
+		message, _text_content = get_email_from_template(email["template"], email["args"])
+		notifications_markup, discussions_markup = message.split("Unread discussions", 1)
+		self.assertIn("gp-email-digest__avatar-image--icon", notifications_markup)
+		self.assertIn("/assets/gameplan/images/email-digest-reaction.png", notifications_markup)
+		self.assertNotIn("gp-email-digest__avatar-fallback", notifications_markup)
+		self.assertIn("/files/digest-author.png", discussions_markup)
+		self.assertNotIn("/files/digest-replier.png", discussions_markup)
+
 	def test_absolute_image_url_keeps_public_paths_and_drops_private_ones(self):
 		self.assertEqual(absolute_image_url("/files/avatar.png"), get_url("/files/avatar.png"))
 		self.assertEqual(absolute_image_url("files/avatar.png"), get_url("/files/avatar.png"))

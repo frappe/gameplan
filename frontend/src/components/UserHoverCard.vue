@@ -6,7 +6,7 @@
     </template>
     <template #default>
       <!-- panel shell (bg, radius, shadow) is provided by HoverCard -->
-      <div class="w-66 p-3">
+      <div class="w-64 p-3">
         <div class="flex items-center gap-2.5">
           <div>
             <div class="text-base-medium text-ink-gray-8">
