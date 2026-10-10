@@ -79,6 +79,14 @@ function evaluate() {
     visible.value = false
     return
   }
+  // The page scrolled the selection out of view. The clamps below would pin the
+  // button to a screen edge, away from the text it quotes, so wait until a scroll
+  // brings the text back
+  if (rect.bottom < 0 || rect.top > window.innerHeight) {
+    visible.value = false
+    hiddenByScroll = true
+    return
+  }
   const margin = 60
   const x = Math.min(Math.max(rect.left + rect.width / 2, margin), window.innerWidth - margin)
   const y = isCoarsePointer.value
@@ -91,6 +99,14 @@ function evaluate() {
 function scheduleEvaluate() {
   clearTimeout(settleTimer)
   settleTimer = setTimeout(evaluate, 400)
+}
+
+// Every comment has its own button, so ignore selection changes that neither
+// start inside this editor nor need this button hidden
+function onSelectionChange() {
+  if (visible.value || editorDom?.contains(window.getSelection()?.anchorNode ?? null)) {
+    scheduleEvaluate()
+  }
 }
 
 function onPointerDown(event: PointerEvent) {
@@ -125,7 +141,7 @@ function attachListeners() {
   // The DOM event, not the editor's selectionUpdate: a read-only editor misses the
   // selection collapsing (a tap elsewhere), so reselecting the same words would
   // look unchanged to it and the button would never come back
-  document.addEventListener('selectionchange', scheduleEvaluate)
+  document.addEventListener('selectionchange', onSelectionChange)
 }
 
 onMounted(() => {
@@ -141,7 +157,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   clearTimeout(settleTimer)
   props.editor.off('mount', attachListeners)
-  document.removeEventListener('selectionchange', scheduleEvaluate)
+  document.removeEventListener('selectionchange', onSelectionChange)
   editorDom?.removeEventListener('pointerdown', onPointerDown)
   editorDom = null
   window.removeEventListener('pointerup', onPointerUp)
