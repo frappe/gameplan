@@ -249,9 +249,11 @@ body {
 	text-decoration: underline;
 }
 
-/* Frappe's email CSS ships `.email-body a:not(.btn)` with !important colour, weight and
-   underline. Premailer keeps !important rules in a <style> block, where they beat the inline
-   styles above, so restate the digest's link styles with higher specificity. */
+/* Frappe's email CSS styles `.email-body a:not(.btn)` with a dark colour, bold weight and an
+   underline. Premailer cannot inline a :not() selector, so it leaves that rule in a <style>
+   block and marks it !important, which beats the plain inline styles above. Restating the
+   digest's link styles with !important makes premailer inline them as !important, and an
+   inline !important wins. */
 .email-body .gp-email-digest a.gp-email-digest__content-link {
 	color: #111827 !important;
 	font-weight: 400 !important;
