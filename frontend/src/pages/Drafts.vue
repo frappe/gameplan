@@ -10,7 +10,7 @@
       <div class="flex items-center gap-2">
         <template v-if="!isBulkDeleteMode">
           <DropdownMoreOptions
-            v-show="drafts.data?.length"
+            v-if="drafts.data?.length"
             label="Draft actions"
             button-size="md"
             align="end"
@@ -43,7 +43,7 @@
     <div class="flex items-center gap-2">
       <template v-if="!isBulkDeleteMode">
         <DropdownMoreOptions
-          v-show="drafts.data?.length"
+          v-if="drafts.data?.length"
           label="Draft actions"
           align="end"
           :options="draftActions"
