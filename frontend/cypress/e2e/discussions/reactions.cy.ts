@@ -113,10 +113,12 @@ describe('Reactions', () => {
     visitDiscussion()
     postReactionPicker().click()
     pickEmoji(POST_EMOJI)
-    cy.dismissEmojiPicker(GRID_ONLY_EMOJI)
     cy.contains('button', postPill).should('exist')
 
     cy.wrap(batches).should('have.length', 1)
+    // Dismissed only now: the picker is a hover card under the resting cursor and can
+    // reopen just after the pick closes it, so an Esc sent straight away can miss.
+    cy.dismissEmojiPicker(GRID_ONLY_EMOJI)
     cy.contains('button', postPill).click()
     // The undo shows at once, and stays when the first save lands saying "reacted".
     cy.contains('button', postPill).should('not.exist')
