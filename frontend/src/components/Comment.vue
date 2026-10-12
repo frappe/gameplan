@@ -54,13 +54,14 @@
         </div>
       </div>
       <Dropdown
-        v-show="!isEditing"
+        v-if="!isEditing && !isUpdating"
         class="ml-auto print:hidden"
         align="end"
         :button="{
           icon: 'lucide-more-horizontal',
           variant: 'ghost',
           label: 'Comment Options',
+          disabled: isUpdating,
         }"
         :options="dropdownOptions"
       />
@@ -180,29 +181,26 @@ const discardEdit = async () => {
   await draft.clear()
 }
 
-const updateComment = () => {
+const updateComment = async () => {
   const content = draftData.value?.content
   if (!content?.trim()) return
 
   isUpdating.value = true
   updateError.value = null
 
-  props.comments.setValue
-    .submit({
+  try {
+    await props.comments.setValue.submit({
       name: props.comment.name,
       content,
     })
-    .then(async () => {
-      await draft.commit()
-      isEditing.value = false
-      tags.reload()
-    })
-    .catch((error) => {
-      updateError.value = error
-    })
-    .finally(() => {
-      isUpdating.value = false
-    })
+    await draft.commit()
+    isEditing.value = false
+    tags.reload()
+  } catch (error) {
+    updateError.value = error
+  } finally {
+    isUpdating.value = false
+  }
 }
 
 const copyLink = (comment: GPComment) => {
@@ -217,6 +215,8 @@ const dropdownOptions = computed(() => [
     icon: 'lucide-edit',
     onClick: () => startEditing(),
     condition: () =>
+      !isEditing.value &&
+      !isUpdating.value &&
       !props.comment.deleted_at &&
       !props.readOnlyMode &&
       canEditContent(props.comment, props.space, useSessionUser()),
@@ -243,6 +243,8 @@ const dropdownOptions = computed(() => [
       })
     },
     condition: () =>
+      !isEditing.value &&
+      !isUpdating.value &&
       canDeleteContent(props.comment, props.space, useSessionUser()) &&
       props.comment.deleted_at == null &&
       !props.readOnlyMode,
