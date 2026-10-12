@@ -4,6 +4,7 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
+from frappe.model.rename_doc import rename_doc
 from frappe.utils import cint
 
 import gameplan
@@ -101,7 +102,7 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 		self.require_can_manage_merge(target)
 		if not frappe.db.exists("GP Project", target):
 			frappe.throw(f'Invalid Project "{project}"')
-		# validate_rename stays off: this doctype autoincrements, and validate_rename runs
+		# Validation stays off: this doctype autoincrements, and validate_rename runs
 		# the new name through validate_name, which for an autoincrement doctype rewinds the
 		# table's sequence to the merge target's id — every subsequent insert would then
 		# collide with an existing row. Turning it off drops FIVE guards, not just that one,
@@ -113,7 +114,11 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 		# `force` is deliberately not passed with it: rename_doc reads force only inside
 		# the `if validate:` block it hands to validate_rename, so with validate off the
 		# argument reaches nothing.
-		return self.rename(target, merge=True, validate_rename=False)
+		#
+		# rename_doc is called directly because Document.rename is whitelisted, and frappe
+		# now ignores its validate_rename argument so a client cannot switch the checks off.
+		self.name = rename_doc(doc=self, new=target, merge=True, validate=False)
+		self.reload()
 
 	def require_can_manage_merge(self, target):
 		"""A merge empties this Space into `target`, so it needs manage rights on both.
