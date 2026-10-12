@@ -9,6 +9,7 @@ import frappe
 import frappe.api.v2
 from frappe.database.query import Engine
 
+from gameplan import public_lists
 from gameplan.extends.client import get_list as get_client_list
 from gameplan.gameplan.doctype.gp_discussion.api import get_discussions
 from gameplan.public_access import VISIBILITY_ANONYMOUS, VISIBILITY_MEMBER_ACCESS
@@ -19,6 +20,9 @@ from gameplan.tests.fixtures import (
 	create_discussion,
 	create_poll,
 	create_space,
+	create_task,
+	grant_guest_access,
+	set_owner,
 )
 from gameplan.tests.fixtures import public_access as switched
 
@@ -45,6 +49,17 @@ class TestPublicRead(GameplanTestCase):
 		self.public_comment = create_comment(self.public_discussion, owner=self.member)
 		self.public_poll = create_poll("Public Read Poll", self.public_discussion, owner=self.member)
 		self.hidden = []
+		self.task = create_task("Private Task In Public Space", self.public_space, owner=self.member)
+		self.task_comment = set_owner(
+			frappe.get_doc(
+				doctype="GP Comment",
+				reference_doctype="GP Task",
+				reference_name=self.task.name,
+				content="Private task reply",
+			).insert(ignore_permissions=True),
+			self.member,
+		)
+		self.hidden += [self.task, self.task_comment]
 		for space in (self.general_space, self.private_space):
 			discussion = create_discussion(f"Hidden In {space.title}", space, owner=self.member)
 			self.hidden += [discussion, create_comment(discussion, owner=self.member)]
@@ -86,6 +101,30 @@ class TestPublicRead(GameplanTestCase):
 			feed = {str(row.name) for row in get_discussions(limit=100)}
 		self.assertIn(str(self.public_discussion.name), feed)
 		self.assertFalse(feed & {str(d.name) for d in self.hidden if d.doctype == "GP Discussion"})
+
+	def test_anonymous_task_replies_are_denied_by_public_lists_and_direct_reads(self):
+		with switched(), self.as_user(ANONYMOUS):
+			listed = {str(row.name) for row in public_lists.comments(fields=["name"], limit=1000)}
+			self.assertIn(str(self.public_comment.name), listed)
+			self.assertNotIn(str(self.task_comment.name), listed)
+			self.assertEqual(public_lists.comments(filters={"reference_doctype": "GP Task"}), [])
+			self.assertEqual(
+				str(frappe.api.v2.read_doc("GP Comment", str(self.public_comment.name)).name),
+				str(self.public_comment.name),
+			)
+			with self.assertRaises(frappe.PermissionError):
+				frappe.api.v2.read_doc("GP Comment", str(self.task_comment.name))
+
+	def test_signed_in_task_replies_remain_readable(self):
+		grant_guest_access(self.guest, self.public_space)
+		with switched():
+			for user in (self.member, self.guest):
+				with self.subTest(user=user.name), self.as_user(user):
+					self.assert_allowed(self.task_comment, "read", user)
+					self.assertIn(
+						str(self.task_comment.name),
+						{str(row.name) for row in public_lists.comments(fields=["name"], limit=1000)},
+					)
 
 	def test_public_lists_apply_framework_permission_conditions(self):
 		condition = frappe.qb.DocType("GP Project").name == "missing-space"

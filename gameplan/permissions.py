@@ -186,6 +186,13 @@ def can_invite_guest(user, project):
 
 
 def can_view_content(user, doc):
+	if (
+		gameplan.is_anonymous(user)
+		and doc.doctype == "GP Comment"
+		and doc.reference_doctype != "GP Discussion"
+	):
+		# Tasks are never public, even when their Space is.
+		return False
 	project = get_content_project(doc)
 	if project:
 		return can_view_space(user, project)
@@ -632,18 +639,18 @@ def comment_query_conditions(user=None, **kwargs):
 
 	Comment = frappe.qb.DocType("GP Comment")
 	Discussion = frappe.qb.DocType("GP Discussion")
-	Task = frappe.qb.DocType("GP Task")
 	discussion_query = (
 		frappe.qb.from_(Discussion)
 		.select(Discussion.name)
 		.where(accessible_project_criterion(Discussion.project, user))
 	)
-	task_query = (
-		frappe.qb.from_(Task).select(Task.name).where(accessible_project_criterion(Task.project, user))
-	)
-	criterion = (
-		(Comment.reference_doctype == "GP Discussion") & Comment.reference_name.isin(discussion_query)
-	) | ((Comment.reference_doctype == "GP Task") & Comment.reference_name.isin(task_query))
+	criterion = (Comment.reference_doctype == "GP Discussion") & Comment.reference_name.isin(discussion_query)
+	if not gameplan.is_anonymous(user):
+		Task = frappe.qb.DocType("GP Task")
+		task_query = (
+			frappe.qb.from_(Task).select(Task.name).where(accessible_project_criterion(Task.project, user))
+		)
+		criterion |= (Comment.reference_doctype == "GP Task") & Comment.reference_name.isin(task_query)
 	return criterion_sql(criterion)
 
 
