@@ -4,9 +4,12 @@
 """Shared base for all Gameplan tests: personas + permission assertions."""
 
 from contextlib import contextmanager
+from unittest.mock import patch
 
 import frappe
 from frappe.tests.utils import FrappeTestCase
+from werkzeug.test import EnvironBuilder
+from werkzeug.wrappers import Request
 
 from gameplan.tests.fixtures import _name, create_admin, create_guest, create_member
 from gameplan.tests.search_isolation import guard_real_index
@@ -61,6 +64,13 @@ class GameplanTestCase(FrappeTestCase):
 			yield
 		finally:
 			frappe.set_user(previous)
+
+	@contextmanager
+	def as_request(self, path, *, user="Guest", method="GET", **attributes):
+		"""Mock an HTTP request and restore its session and local attributes afterwards."""
+		request = Request(EnvironBuilder(path=path, method=method).get_environ())
+		with patch.multiple(frappe.local, request=request, create=True, **attributes), self.as_user(user):
+			yield
 
 	def assert_permission(self, doc, action, user, allowed):
 		"""Assert frappe.has_permission(doc, action, user) equals `allowed`."""

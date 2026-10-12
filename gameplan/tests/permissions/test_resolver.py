@@ -14,6 +14,8 @@ from gameplan.per_user_state import (
 	project_visit_query_conditions,
 )
 from gameplan.permissions import (
+	accessible_project_query,
+	accessible_team_query,
 	bookmark_has_permission,
 	bookmark_query_conditions,
 	can_create_content,
@@ -28,8 +30,6 @@ from gameplan.permissions import (
 	can_view_space,
 	can_write_content,
 	draft_query_conditions,
-	project_access_criterion,
-	team_access_criterion,
 	users_who_can_view_space,
 )
 from gameplan.public_access import (
@@ -53,21 +53,11 @@ ANONYMOUS = "Guest"
 
 
 def listed_spaces(user):
-	Project = frappe.qb.DocType("GP Project")
-	query = frappe.qb.from_(Project).select(Project.name)
-	criterion = project_access_criterion(Project, user)
-	if criterion is not None:
-		query = query.where(criterion)
-	return {str(name) for name in query.run(pluck=True)}
+	return {str(name) for name in accessible_project_query(user).run(pluck=True)}
 
 
 def listed_communities(user):
-	Team = frappe.qb.DocType("GP Team")
-	query = frappe.qb.from_(Team).select(Team.name)
-	criterion = team_access_criterion(Team, user)
-	if criterion is not None:
-		query = query.where(criterion)
-	return set(query.run(pluck=True))
+	return set(accessible_team_query(user).run(pluck=True))
 
 
 class ResolverTestCase(GameplanTestCase):

@@ -1,7 +1,7 @@
 <template>
   <div class="flex select-none flex-wrap items-stretch gap-1.5">
     <HoverCard
-      v-if="!readOnlyMode && !isAnonymous"
+      v-if="!readOnlyMode"
       v-model:open="isPickerOpen"
       side="bottom"
       align="start"
@@ -75,7 +75,6 @@
 import { computed, ref } from 'vue'
 import { Button, HoverCard, Tooltip, TooltipProvider } from 'frappe-ui'
 import { isImageEmoji } from '@/utils/emoji'
-import { isAnonymousVisitor } from '@/utils/publicAccess'
 
 const props = defineProps<{
   reactionsCount: Record<string, { count: number; userReacted: boolean }>
@@ -86,8 +85,7 @@ const props = defineProps<{
   readOnlyMode?: boolean
 }>()
 
-const isAnonymous = computed(() => isAnonymousVisitor())
-const showTooltips = computed(() => !props.readOnlyMode && !isAnonymous.value)
+const showTooltips = computed(() => !props.readOnlyMode)
 const isPickerOpen = ref(false)
 
 function selectEmoji(emoji: string) {

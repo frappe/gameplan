@@ -1,5 +1,5 @@
 <template>
-  <Dialog :title="`Visibility of ${title}`" v-model:open="show">
+  <Dialog :title="`Visibility of ${title}`" v-model:open="show" :actions="actions">
     <div class="mt-2 space-y-4">
       <p v-if="!canChange" class="rounded bg-surface-gray-2 px-3 py-2 text-p-sm text-ink-gray-6">
         Only Gameplan Admins can change visibility.
@@ -32,26 +32,12 @@
 
       <ErrorMessage :message="error" />
     </div>
-
-    <template #actions>
-      <div class="flex justify-end gap-2">
-        <Button @click="show = false">Cancel</Button>
-        <Button
-          variant="solid"
-          :disabled="!canChange || !changing || impactLoading || previewedTier !== selected"
-          :loading="saving"
-          @click="save"
-        >
-          Change visibility
-        </Button>
-      </div>
-    </template>
   </Dialog>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { Button, Dialog, ErrorMessage, Radio, RadioGroup, toast, useDoctype } from 'frappe-ui'
+import { Dialog, ErrorMessage, Radio, RadioGroup, toast, useDoctype } from 'frappe-ui'
 import { isGameplanAdmin } from '@/data/users'
 import {
   VISIBILITY_ANONYMOUS,
@@ -102,8 +88,24 @@ const impact = ref<Impact | null>(null)
 const previewedTier = ref<Visibility | null>(null)
 let previewVersion = 0
 const impactLoading = ref(false)
-const saving = ref(false)
+const saving = computed(() => documents.runDocMethod.isLoading(props.name, 'set_visibility'))
 const error = ref('')
+const canSave = computed(
+  () =>
+    canChange.value &&
+    changing.value &&
+    !impactLoading.value &&
+    previewedTier.value === selected.value,
+)
+const actions = computed(() => [
+  { label: 'Cancel' },
+  {
+    label: 'Change visibility',
+    variant: 'solid' as const,
+    disabled: !canSave.value,
+    onClick: save,
+  },
+])
 
 watch([show, () => props.name], () => {
   previewVersion++
@@ -172,16 +174,8 @@ const impactLines = computed(() => {
 })
 
 async function save() {
-  if (
-    !canChange.value ||
-    !changing.value ||
-    saving.value ||
-    impactLoading.value ||
-    previewedTier.value !== selected.value
-  )
-    return
+  if (!canSave.value || saving.value) return
   const tier = selected.value
-  saving.value = true
   error.value = ''
   try {
     await documents.runDocMethod.submit({
@@ -194,8 +188,6 @@ async function save() {
     show.value = false
   } catch (e) {
     error.value = (e as Error).message || 'Could not change visibility'
-  } finally {
-    saving.value = false
   }
 }
 

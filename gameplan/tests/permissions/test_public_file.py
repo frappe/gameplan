@@ -3,11 +3,7 @@
 
 """Public file URLs follow their parent document's current visibility."""
 
-from unittest.mock import patch
-
 import frappe
-from werkzeug.test import EnvironBuilder
-from werkzeug.wrappers import Request
 
 from gameplan.api import public_file
 from gameplan.public_access import VISIBILITY_ANONYMOUS, VISIBILITY_MEMBER_ACCESS
@@ -56,8 +52,7 @@ class TestPublicFile(GameplanTestCase):
 		self.doctype_only_image = attach_to_doctype_only(create_file("doctype-only.gif"), "GP Discussion")
 
 	def fetch(self, fid, user=ANONYMOUS, on=True):
-		request = Request(EnvironBuilder(path="/api/method/gameplan.api.public_file").get_environ())
-		with patch.object(frappe.local, "request", request, create=True), switched(on), self.as_user(user):
+		with self.as_request("/api/method/gameplan.api.public_file", user=user), switched(on):
 			return public_file(fid)
 
 	def assert_refused(self, fid, **kwargs):

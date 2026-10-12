@@ -2,7 +2,7 @@
   <div>
     <div class="flex select-none gap-1.5 flex-wrap">
       <Motion
-        v-if="!readOnlyMode && !isAnonymous"
+        v-if="!readOnlyMode"
         as="button"
         aria-label="Add a reaction"
         :disabled="isLoading"
@@ -95,7 +95,6 @@ import { AnimatePresence, Motion } from 'motion-v'
 import ReactionFaceIcon from './ReactionFaceIcon.vue'
 import { BottomSheet } from 'frappe-ui'
 import { isImageEmoji } from '@/utils/emoji'
-import { isAnonymousVisitor } from '@/utils/publicAccess'
 
 const props = defineProps<{
   reactionsCount: Record<string, { count: number; userReacted: boolean }>
@@ -106,8 +105,7 @@ const props = defineProps<{
   readOnlyMode?: boolean
 }>()
 
-const isAnonymous = computed(() => isAnonymousVisitor())
-const canOpenModal = computed(() => !props.readOnlyMode && !isAnonymous.value)
+const canOpenModal = computed(() => !props.readOnlyMode)
 
 let show = ref(false)
 

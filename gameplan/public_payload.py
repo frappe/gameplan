@@ -14,6 +14,7 @@ from html import unescape
 from urllib.parse import quote
 
 import frappe
+from frappe.types.filter import Filters
 from pypika import Criterion
 
 import gameplan
@@ -334,29 +335,16 @@ def check_public_filters(doctype, filters):
 	filters = frappe.parse_json(filters)
 	if not filters:
 		return
-	for fieldname in filter_fieldnames(doctype, filters):
+	try:
+		conditions = Filters(filters, doctype=doctype)
+	except (TypeError, ValueError):
+		refuse("Unrecognised filters")
+	for condition in conditions:
+		if condition.doctype != doctype:
+			refuse("Filters on another doctype are not allowed without signing in")
+		fieldname = condition.fieldname
 		if not (isinstance(fieldname, str) and is_filterable_field(doctype, fieldname)):
 			refuse(f"Filtering {doctype} by {fieldname!r} is not allowed without signing in")
-
-
-def filter_fieldnames(doctype, filters) -> list:
-	if isinstance(filters, dict):
-		return list(filters)
-	if not isinstance(filters, list):
-		refuse("Unrecognised filters")
-	names = []
-	for condition in filters:
-		if isinstance(condition, dict):
-			names += list(condition)
-		elif isinstance(condition, list | tuple) and len(condition) == 4:
-			if condition[0] != doctype:
-				refuse("Filters on another doctype are not allowed without signing in")
-			names.append(condition[1])
-		elif isinstance(condition, list | tuple) and len(condition) in (2, 3):
-			names.append(condition[0])
-		else:
-			refuse("Unrecognised filters")
-	return names
 
 
 def check_public_order_by(doctype, order_by):

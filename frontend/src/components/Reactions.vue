@@ -5,7 +5,7 @@
     :toolTipText="toolTipText"
     :standardEmojis="standardEmojis"
     :isLoading="isLoading"
-    :readOnlyMode="readOnlyMode"
+    :readOnlyMode="readOnly"
   />
   <div class="mt-2 space-y-2" v-if="batchRequestErrors.length">
     <ErrorMessage v-for="error in batchRequestErrors" :message="error" />
@@ -15,6 +15,7 @@
 import { defineAsyncComponent, computed } from 'vue'
 import { useReactions } from '@/data/reactions'
 import { useIsMobile } from '@/utils/useIsMobile'
+import { isAnonymousVisitor } from '@/utils/publicAccess'
 
 const isMobileViewport = useIsMobile()
 const ReactionsMobile = defineAsyncComponent(() => import('./ReactionsMobile.vue'))
@@ -27,6 +28,7 @@ const ReactionsUI = computed(() => {
   }
 })
 const props = defineProps(['reactions', 'doctype', 'name', 'readOnlyMode'])
+const readOnly = computed(() => Boolean(props.readOnlyMode) || isAnonymousVisitor())
 const emit = defineEmits(['update:reactions'])
 
 const {
@@ -40,7 +42,7 @@ const {
   reactions: () => props.reactions,
   doctype: () => props.doctype,
   name: () => props.name,
-  readOnlyMode: () => props.readOnlyMode,
+  readOnlyMode: readOnly,
   onUpdate: (reactions) => emit('update:reactions', reactions),
 })
 </script>

@@ -34,9 +34,7 @@ class TestPublicSearch(IsolatedSearchIndex, GameplanTestCase):
 	def setUp(self):
 		super().setUp()
 		self.isolate_search_index()
-		settings = patch.dict(frappe.conf, gameplan_public_access_enabled=1, gameplan_demo_enabled=0)
-		settings.start()
-		self.addCleanup(settings.stop)
+		self.enterContext(patch.dict(frappe.conf, gameplan_public_access_enabled=1, gameplan_demo_enabled=0))
 		self.spaces = create_visibility_matrix("Search", community_members=[self.member])
 		self.discussions = {
 			key: create_discussion(

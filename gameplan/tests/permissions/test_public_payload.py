@@ -9,8 +9,6 @@ from unittest.mock import patch
 import frappe
 import frappe.api.v2
 from frappe.database.query import Engine
-from werkzeug.test import EnvironBuilder
-from werkzeug.wrappers import Request
 
 from gameplan import public_lists
 from gameplan.api import get_public_user_info
@@ -296,6 +294,8 @@ class TestPublicLists(PublicContentTestCase):
 			{"filters": [["owner", "=", self.member.name]]},
 			{"filters": [["GP Comment", "modified_by", "=", self.member.name]]},
 			{"filters": {"reactions.user": self.member.name}},
+			{"filters": [["GP Poll", "title", "=", "Payload Poll"]]},
+			{"filters": [42]},
 			{"order_by": "owner asc"},
 			{"order_by": "creation asc, modified_by desc"},
 			{"group_by": "owner"},
@@ -304,14 +304,18 @@ class TestPublicLists(PublicContentTestCase):
 		for kwargs in refused:
 			with self.subTest(**kwargs), self.assertRaises(frappe.PermissionError):
 				self.client_list("GP Comment", fields=["name"], **kwargs)
-		self.assertTrue(
-			self.client_list(
-				"GP Comment",
-				fields=["name"],
-				filters={"reference_doctype": "GP Discussion", "reference_name": self.discussion.name},
-				order_by="creation asc",
-			)
-		)
+		for filters in (
+			{"reference_name": self.discussion.name},
+			[["reference_name", self.discussion.name]],
+			[["reference_name", "=", self.discussion.name]],
+			[["GP Comment", "reference_name", "=", self.discussion.name]],
+			[{"reference_doctype": "GP Discussion"}, ["reference_name", "=", self.discussion.name]],
+		):
+			with self.subTest(filters=filters):
+				rows = self.client_list(
+					"GP Comment", fields=["name"], filters=filters, order_by="creation asc"
+				)
+				self.assertEqual([row.name for row in rows], [self.comment.name])
 
 	def test_the_feed_carries_no_email(self):
 		with switched_on(), self.as_user(ANONYMOUS):
@@ -432,8 +436,7 @@ class TestPublicProfiles(PublicContentTestCase):
 
 class TestDoorsAroundTheCleaning(PublicContentTestCase):
 	def route(self, path, method="GET", user=ANONYMOUS):
-		request = Request(EnvironBuilder(path=path, method=method).get_environ())
-		with patch.object(frappe.local, "request", request, create=True), switched_on(), self.as_user(user):
+		with self.as_request(path, method=method, user=user), switched_on():
 			refuse_generic_routes_for_anonymous()
 
 	def test_the_guard_is_registered(self):

@@ -7,8 +7,6 @@ import itertools
 from unittest.mock import patch
 
 import frappe
-from werkzeug.test import EnvironBuilder
-from werkzeug.wrappers import Request
 
 from gameplan.public_access import (
 	ANONYMOUS_RATE_LIMITS,
@@ -45,12 +43,7 @@ class TestRateLimits(GameplanTestCase):
 		self.ip = next(_ips)
 
 	def request(self, path, *, user=ANONYMOUS, ip=None, method="GET"):
-		request = Request(EnvironBuilder(path=path, method=method).get_environ())
-		with (
-			patch.object(frappe.local, "request", request, create=True),
-			patch.object(frappe.local, "request_ip", ip or self.ip, create=True),
-			self.as_user(user),
-		):
+		with self.as_request(path, method=method, user=user, request_ip=ip or self.ip):
 			limit_anonymous_request_rate()
 
 	def limited_to(self, limit, key="gameplan.api.public_file"):
