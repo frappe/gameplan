@@ -97,7 +97,8 @@
           <Reactions
             doctype="GP Comment"
             :name="comment.name"
-            v-model:reactions="comment.reactions"
+            :reactions="comment.reactions"
+            @update:reactions="(reactions) => comments.updateRow({ name: comment.name, reactions })"
             :read-only-mode="readOnlyMode"
           />
         </div>

@@ -448,7 +448,7 @@ useEventListener(window, 'resize', scheduleScrollToTopPlacement)
 function scrollToTop() {
   shellScrollContainer.value?.scrollTo({ top: 0, behavior: 'smooth' })
 }
-const discussion = useDiscussion(() => props.postId)
+const discussion = useDiscussion(props.postId)
 // In-app navigation skips the router's server canonicalization for speed, so a stale link to a
 // discussion deleted or moved out of reach after local data loaded would otherwise render a blank
 // detail view. Show a not-found state in place (keeping the URL) rather than redirecting to the
