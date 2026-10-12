@@ -1,4 +1,4 @@
-import { MaybeRefOrGetter, ref, toValue, watch } from 'vue'
+import { ref, watch } from 'vue'
 import { useDoc, useList } from 'frappe-ui'
 import { UseListOptions } from 'frappe-ui'
 import { useDocumentVisibility } from '@vueuse/core'
@@ -72,7 +72,9 @@ export function useDiscussions(options: UseDiscussionOptions) {
 
 let discussionsCache: Record<string, ReturnType<typeof useDoc>> = {}
 
-export function useDiscussion(discussionId: MaybeRefOrGetter<string>) {
+// Cached per discussion, so the id is a plain string: a cached doc bound to a getter follows
+// whatever the getter returns later and ends up showing another discussion under this id.
+export function useDiscussion(name: string) {
   interface Discussion extends GPDiscussion {
     last_unread_comment: string
     last_unread_poll: string
@@ -92,11 +94,10 @@ export function useDiscussion(discussionId: MaybeRefOrGetter<string>) {
     moveToProject: (data: { project: string }) => void
   }
 
-  let name = toValue(discussionId)
   if (!discussionsCache[name]) {
     discussionsCache[name] = useDoc<Discussion, DiscussionMethods>({
       doctype: 'GP Discussion',
-      name: discussionId,
+      name,
       methods: {
         trackVisit: 'track_visit',
         markAsUnread: 'mark_as_unread',

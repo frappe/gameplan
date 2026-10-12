@@ -1,6 +1,6 @@
-import { computed, reactive, unref, toValue } from 'vue'
+import { computed, reactive, shallowRef, unref, toValue, watch } from 'vue'
 import type { MaybeRefOrGetter } from 'vue'
-import { useCall } from 'frappe-ui'
+import { toast, useCall } from 'frappe-ui'
 import { currentQuickReactionEmojis } from './reactionPreferences'
 import { session } from './session'
 import { useUser } from './users'
@@ -17,11 +17,6 @@ interface ReactionCount {
   userReacted: boolean
 }
 
-interface PendingReaction {
-  initial: boolean
-  desired: boolean
-}
-
 type ReactionOperation = {
   emoji: string
   operation: 'add' | 'remove'
@@ -35,20 +30,41 @@ interface UseReactionsOptions {
   onUpdate: (reactions: Reaction[]) => void
 }
 
+const BATCH_DELAY = 1000
+
 export function useReactions(options: UseReactionsOptions) {
-  const pendingReactions = reactive<Record<string, PendingReaction>>({})
   const currentUser = computed(() => unref(session.user) || '')
 
-  const reactionsList = computed(() => toValue(options.reactions))
   const doctype = computed(() => toValue(options.doctype))
   const name = computed(() => toValue(options.name))
   const readOnlyMode = computed(() => toValue(options.readOnlyMode ?? false))
 
-  const clearPending = () => {
-    for (let key of Object.keys(pendingReactions)) {
-      delete pendingReactions[key]
-    }
-  }
+  // What the reactions look like on the server. Follows the caller's data, and also
+  // takes each response directly, so a confirmed tap stays visible even when the
+  // caller's copy is not reactive.
+  const serverReactions = shallowRef<Reaction[]>([])
+  watch(
+    () => toValue(options.reactions),
+    (reactions) => {
+      serverReactions.value = reactions ?? []
+    },
+    { immediate: true },
+  )
+
+  // Taps the server has not confirmed yet, as emoji -> whether the user wants to
+  // have reacted with it. `queued` waits for the next batch; `sending` is the batch
+  // in flight. Only one batch is in flight at a time, because a second submit on
+  // the same call would abort the first.
+  const queued = reactive(new Map<string, boolean>())
+  const sending = reactive(new Map<string, boolean>())
+
+  const hasReacted = (emoji: string) =>
+    serverReactions.value.some(
+      (reaction) => reaction.user === currentUser.value && reaction.emoji === emoji,
+    )
+  // The user's reaction once the batch in flight lands.
+  const settledState = (emoji: string) => sending.get(emoji) ?? hasReacted(emoji)
+  const displayedState = (emoji: string) => queued.get(emoji) ?? settledState(emoji)
 
   const react = useCall<Reaction[], { operations: ReactionOperation[] }>({
     url: computed(() => `/api/v2/document/${doctype.value}/${name.value}/method/react`),
@@ -56,112 +72,82 @@ export function useReactions(options: UseReactionsOptions) {
     immediate: false,
     onSuccess(reactions) {
       if (Array.isArray(reactions)) {
-        options.onUpdate(
-          reactions.map((d) => ({
-            name: d.name,
-            emoji: d.emoji,
-            user: d.user,
-          })),
-        )
+        const confirmed = reactions.map((r) => ({ name: r.name, emoji: r.emoji, user: r.user }))
+        serverReactions.value = confirmed
+        options.onUpdate(confirmed)
       }
-      clearPending()
+      settle()
+    },
+    onError() {
+      // Dropping the batch is the rollback: those emojis fall back to server state.
+      toast.error('Could not save your reaction')
+      settle()
     },
   })
 
-  const buildPendingOperations = () =>
-    Object.entries(pendingReactions).flatMap(([emoji, pending]) => {
-      if (pending.initial === pending.desired) {
-        return []
-      }
-      return [
-        {
-          emoji,
-          operation: pending.desired ? 'add' : 'remove',
-        } as ReactionOperation,
-      ]
-    })
-
   let submitTimeout: number | null = null
 
-  const submitBatch = () => {
-    cancelSubmit()
-
-    submitTimeout = window.setTimeout(() => {
-      const operations = buildPendingOperations()
-      if (!operations.length) {
-        return
-      }
-      react.submit({ operations })
-    }, 1000)
-  }
-
-  const cancelSubmit = () => {
-    if (submitTimeout) {
-      window.clearTimeout(submitTimeout)
-      submitTimeout = null
+  const send = () => {
+    submitTimeout = null
+    // A batch is in flight: settle() sends these once it lands.
+    if (sending.size || !queued.size) return
+    for (const [emoji, wanted] of queued) {
+      sending.set(emoji, wanted)
     }
-  }
-
-  const setPendingReaction = (emoji: string, initial: boolean, desired: boolean) => {
-    if (initial === desired) {
-      delete pendingReactions[emoji]
-      if (!buildPendingOperations().length) {
-        cancelSubmit()
-      }
-      return
-    }
-    pendingReactions[emoji] = { initial, desired }
-  }
-
-  const getUserReaction = (emoji: string) => {
-    return reactionsList.value.find(
-      (reaction) => reaction.user === currentUser.value && reaction.emoji === emoji,
+    queued.clear()
+    const operations = [...sending].map(
+      ([emoji, wanted]): ReactionOperation => ({ emoji, operation: wanted ? 'add' : 'remove' }),
     )
+    react.submit({ operations })
   }
 
-  const addReaction = (emoji: string) => {
-    const reactions = reactionsList.value
-    const reaction = {
-      emoji,
-      user: currentUser.value,
-      name: `new-emoji-${reactions.length}`,
-    }
-    options.onUpdate([...reactions, reaction])
+  const settle = () => {
+    sending.clear()
+    // Taps made while the batch was in flight go out now, unless more taps are
+    // still being collected.
+    if (!submitTimeout) send()
   }
 
-  const removeReaction = (reaction: Reaction) =>
-    options.onUpdate(reactionsList.value.filter((item) => item !== reaction))
+  const scheduleSend = () => {
+    if (submitTimeout) window.clearTimeout(submitTimeout)
+    submitTimeout = queued.size ? window.setTimeout(send, BATCH_DELAY) : null
+  }
 
   const toggleReaction = (emoji: string) => {
     if (readOnlyMode.value) return
-    const existingReaction = getUserReaction(emoji)
-    const pending = pendingReactions[emoji]
-    const currentState = pending ? pending.desired : !!existingReaction
-    const initialState = pending ? pending.initial : !!existingReaction
-    const desiredState = !currentState
-
-    setPendingReaction(emoji, initialState, desiredState)
-
-    if (desiredState) {
-      if (!existingReaction) {
-        addReaction(emoji)
-      }
-    } else if (existingReaction) {
-      removeReaction(existingReaction)
+    const wanted = !displayedState(emoji)
+    // Toggling back before the batch goes out cancels the tap instead of sending it.
+    if (wanted === settledState(emoji)) {
+      queued.delete(emoji)
+    } else {
+      queued.set(emoji, wanted)
     }
-
-    submitBatch()
+    scheduleSend()
   }
 
   const reactionsCount = computed(() => {
+    const me = currentUser.value
+    const pending = new Map([...sending, ...queued])
+    const reactions: Pick<Reaction, 'emoji' | 'user'>[] = serverReactions.value.filter(
+      (reaction) => reaction.user !== me || pending.get(reaction.emoji) !== false,
+    )
+    for (const [emoji, wanted] of pending) {
+      if (
+        wanted &&
+        !reactions.some((reaction) => reaction.user === me && reaction.emoji === emoji)
+      ) {
+        reactions.push({ emoji, user: me })
+      }
+    }
+
     const out: Record<string, ReactionCount> = {}
-    for (let reaction of reactionsList.value) {
+    for (let reaction of reactions) {
       if (!out[reaction.emoji]) {
         out[reaction.emoji] = { count: 0, users: [], userReacted: false }
       }
       out[reaction.emoji].count++
       out[reaction.emoji].users.push(reaction.user)
-      if (reaction.user === currentUser.value) {
+      if (reaction.user === me) {
         out[reaction.emoji].userReacted = true
       }
     }
@@ -174,26 +160,10 @@ export function useReactions(options: UseReactionsOptions) {
       .filter(Boolean)
       .join(', ')
 
-  const batchRequestErrors = computed(() => {
-    const error = react.error
-    // A rapid second reaction makes useFetch abort the still-in-flight first
-    // request (it calls abort() at the start of every execute). That surfaces a
-    // DOMException "signal is aborted without reason". The cancelled operations
-    // aren't lost — they stay in pendingReactions (cleared only on success) and
-    // are resent in the next batch — so an abort isn't a real failure to report.
-    if (!error || error.name === 'AbortError') {
-      return []
-    }
-    const message = error.message || 'Unable to update reactions'
-    return [message]
-  })
-
   return {
     reactionsCount,
     toggleReaction,
     toolTipText,
     standardEmojis: currentQuickReactionEmojis,
-    batchRequestErrors,
-    isLoading: react.loading,
   }
 }

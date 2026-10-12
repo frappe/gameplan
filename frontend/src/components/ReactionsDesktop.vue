@@ -10,7 +10,6 @@
       <template #trigger>
         <button
           aria-label="Add a reaction"
-          :disabled="isLoading"
           class="flex h-full items-center justify-center rounded-full bg-surface-gray-2 px-2 py-1 text-ink-gray-6 transition hover:bg-surface-gray-3 print:hidden"
           :class="{ 'bg-surface-gray-3': isPickerOpen }"
           @click="isPickerOpen = true"
@@ -26,7 +25,6 @@
             variant="ghost"
             size="xs"
             class="font-[emoji]"
-            :disabled="isLoading"
             @click="selectEmoji(emoji)"
           >
             <template #icon>
@@ -81,7 +79,6 @@ const props = defineProps<{
   toggleReaction: (emoji: string) => void
   toolTipText: (reactions: { count: number; userReacted: boolean }) => string
   standardEmojis: string[]
-  isLoading: boolean
   readOnlyMode?: boolean
 }>()
 
