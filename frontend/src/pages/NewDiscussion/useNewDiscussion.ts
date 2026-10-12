@@ -69,9 +69,11 @@ export function useNewDiscussion() {
 
   const scheduledAt = ref<string | null>(null)
   const scheduling = ref(false)
+  let scheduleVersion = 0
   watch(
     () => draft.serverName.value,
     async (name) => {
+      const version = ++scheduleVersion
       if (!name) {
         scheduledAt.value = null
         return
@@ -83,7 +85,7 @@ export function useNewDiscussion() {
           filters: { name },
           fieldname: 'scheduled_at',
         })
-        if (draft.serverName.value === name) scheduledAt.value = row?.scheduled_at || null
+        if (version === scheduleVersion) scheduledAt.value = row?.scheduled_at || null
       } catch (error) {
         captureError(error, { action: 'read-draft-schedule', draft: name })
       }
@@ -345,6 +347,7 @@ export function useNewDiscussion() {
       const name = draft.serverName.value
       const serverTime = toSiteTime(localDateTime)
       await call(SCHEDULE_DRAFT, { name, scheduled_at: serverTime })
+      scheduleVersion++
       scheduledAt.value = serverTime
       toast.success(`Scheduled for ${scheduledAtLabel.value}`)
       drafts.reload()
@@ -364,6 +367,7 @@ export function useNewDiscussion() {
     scheduling.value = true
     try {
       await call(UNSCHEDULE_DRAFT, { name: draft.serverName.value })
+      scheduleVersion++
       scheduledAt.value = null
       toast.success('Schedule removed. Your draft is still in Drafts.')
       drafts.reload()
