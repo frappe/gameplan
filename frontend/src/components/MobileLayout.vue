@@ -1,12 +1,11 @@
 <template>
-  <!-- In an installed iOS 26 app the shell stopped short of the screen bottom, leaving a
-       strip of page background under the tab bar (WebKit bug 301108). These two classes
-       carry the fix from frappe/frappe-ui#1284; remove them once frappe-ui ships it. -->
-  <MobileShell class="standalone:h-[min(100lvh,100%_+_env(safe-area-inset-top))]">
+  <MobileShell>
     <ReadOnlyBanner v-if="readOnlyMode" />
     <slot />
 
     <template #nav>
+      <!-- Clears the home indicator by the safe-area inset. Carries the fix from
+           frappe/frappe-ui#1284; remove the class once frappe-ui ships it. -->
       <MobileNav
         v-if="!hideMobileNav"
         class="standalone:!pb-[max(1rem,env(safe-area-inset-bottom))]"

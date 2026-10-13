@@ -14,6 +14,17 @@ html {
     'cv11' 1;
 }
 
+/* iOS 26 sizes an installed web app's viewport short by the status bar height while
+   the page is shorter than the screen, so the mobile tab bar stopped above a strip of
+   page background (WebKit 301108). A page at least as tall as the screen gets the full
+   viewport; the cap keeps apps with an opaque status bar from scrolling (WebKit 316008).
+   Carries the fix from frappe/frappe-ui#1284; remove once frappe-ui ships it. */
+@media (display-mode: standalone) {
+  html {
+    min-height: min(100lvh, calc(100% + env(safe-area-inset-top)));
+  }
+}
+
 /* ProseMirror disables ligatures by default; restore so the font-feature-settings
    set on html are inherited inside the editor */
 .ProseMirror {
