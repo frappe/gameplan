@@ -14,15 +14,16 @@
         @pointerleave="scheduleClose"
       >
         <div
-          class="rounded-6 bg-surface-elevation-2 p-3 shadow-2xl ring-1 ring-black ring-opacity-5"
-          :style="{ maxWidth: `${maxWidth}px` }"
+          class="w-96 rounded-6 bg-surface-elevation-2 p-4 shadow-2xl ring-1 ring-black ring-opacity-5"
         >
-          <div class="truncate text-base-medium text-ink-gray-8">{{ preview.title }}</div>
-          <div class="mt-0.5 truncate text-p-xs text-ink-gray-6">
-            {{ getSpace(preview.project)?.title }} · {{ fullName(preview.owner) }} ·
-            {{ dayjsLocal(preview.creation).fromNow() }}
+          <div class="truncate text-sm text-ink-gray-5">
+            {{ spacePath(preview.project) }} on
+            {{ dayjsLocal(preview.creation).format('MMM D, YYYY') }}
           </div>
-          <p v-if="preview.snippet" class="mt-2 line-clamp-3 text-p-sm text-ink-gray-6">
+          <div class="mt-3 line-clamp-2 text-base-semibold text-ink-gray-9">
+            {{ preview.title }}
+          </div>
+          <p v-if="preview.snippet" class="mt-3 line-clamp-2 text-p-sm text-ink-gray-6">
             {{ preview.snippet }}
           </p>
         </div>
@@ -37,13 +38,12 @@ import { onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { PopoverAnchor, PopoverArrow, PopoverContent, PopoverPortal, PopoverRoot } from 'reka-ui'
 import { call, dayjsLocal } from 'frappe-ui'
-import { useUser } from '@/data/users'
+import { getCommunity } from '@/data/communities'
 import { getSpace } from '@/data/spaces'
 
 interface Preview {
   title: string
   project: string
-  owner: string
   creation: string
   snippet: string
 }
@@ -58,7 +58,6 @@ const router = useRouter()
 
 const anchorEl = ref<HTMLElement | null>(null)
 const preview = ref<Preview | null>(null)
-const maxWidth = ref(0)
 const cache = new Map<string, Promise<Preview | null>>()
 let openTimer: ReturnType<typeof setTimeout> | undefined
 let closeTimer: ReturnType<typeof setTimeout> | undefined
@@ -79,7 +78,7 @@ function loadPreview(name: string) {
       call('frappe.client.get_value', {
         doctype: 'GP Discussion',
         filters: { name },
-        fieldname: ['title', 'project', 'owner', 'creation', 'content'],
+        fieldname: ['title', 'project', 'creation', 'content'],
       })
         .then((doc: (Omit<Preview, 'snippet'> & { content?: string }) | null) =>
           doc?.title
@@ -98,6 +97,12 @@ function loadPreview(name: string) {
   return cache.get(name)!
 }
 
+function spacePath(project: string) {
+  const space = getSpace(project)
+  const community = space?.team ? getCommunity(space.team) : null
+  return [community?.title, space?.title].filter(Boolean).join(' / ')
+}
+
 function onPointerOver(event: PointerEvent) {
   const hovered = discussionLink(event.target)
   if (!hovered) return
@@ -108,7 +113,6 @@ function onPointerOver(event: PointerEvent) {
     const result = await loadPreview(hovered.name)
     if (!result || !hovered.link.matches(':hover')) return
     cancelClose()
-    maxWidth.value = availableWidth(hovered.link)
     preview.value = result
     anchorEl.value = hovered.link
   }, HOVER_DELAY)
@@ -119,14 +123,6 @@ function onPointerOut(event: PointerEvent) {
   if (!left || left.link.contains(event.relatedTarget as Node | null)) return
   clearTimeout(openTimer)
   if (left.link === anchorEl.value) scheduleClose()
-}
-
-function availableWidth(link: HTMLElement) {
-  const container = props.container
-  if (!container) return 0
-  const contentRight =
-    container.getBoundingClientRect().right - parseFloat(getComputedStyle(container).paddingRight)
-  return Math.max(contentRight - link.getBoundingClientRect().left, 0)
 }
 
 function scheduleClose() {
@@ -156,10 +152,6 @@ async function onClick(event: MouseEvent) {
   await router.replace({ query: { ...route.query, comment: comment || 'first_post' } })
   const url = new URL(clicked.link.href, window.location.origin)
   router.push(url.pathname.slice(router.options.history.base.length) + url.search + url.hash)
-}
-
-function fullName(user: string) {
-  return useUser(user).full_name?.trim() || user
 }
 
 function listen(container: HTMLElement | null | undefined, add: boolean) {
