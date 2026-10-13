@@ -29,6 +29,10 @@ class BacklinkTestCase(GameplanTestCase):
 		with self.as_user(user or self.member):
 			return frappe.get_doc("GP Discussion", self.target.name).get_backlinks()
 
+	def referenced_activities(self):
+		filters = {"reference_name": self.target.name, "action": "Discussion Referenced"}
+		return frappe.get_all("GP Activity", filters=filters, pluck="data")
+
 	def test_comment_link_is_listed_on_target(self):
 		comment = create_comment(self.source, content=link_to(self.target))
 		backlinks = self.backlinks()
@@ -85,6 +89,30 @@ class BacklinkTestCase(GameplanTestCase):
 			source = create_discussion(f"Source {i}", self.space)
 			create_comment(source, content=link_to(self.target))
 		self.assertEqual(len(self.backlinks()), 21)
+
+	def test_new_link_logs_one_activity_on_target(self):
+		comment = create_comment(self.source, content=link_to(self.target))
+		comment.save(ignore_permissions=True)
+		activities = self.referenced_activities()
+		self.assertEqual(len(activities), 1)
+		self.assertEqual(
+			frappe.parse_json(activities[0]),
+			{"discussion": str(self.source.name), "comment": comment.name},
+		)
+
+	def test_link_added_on_edit_logs_activity(self):
+		comment = create_comment(self.source, content="<p>No link yet</p>")
+		self.assertEqual(self.referenced_activities(), [])
+		comment.content = link_to(self.target)
+		comment.save(ignore_permissions=True)
+		self.assertEqual(len(self.referenced_activities()), 1)
+
+	def test_backfill_logs_no_activity(self):
+		create_comment(self.source, content=link_to(self.target))
+		frappe.db.delete("GP Backlink")
+		frappe.db.delete("GP Activity", {"action": "Discussion Referenced"})
+		backfill_backlinks.execute()
+		self.assertEqual(self.referenced_activities(), [])
 
 	def test_backfill_restores_backlinks(self):
 		create_comment(self.source, content=link_to(self.target))

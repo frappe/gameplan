@@ -18,8 +18,19 @@ class HasBacklinks:
 			return
 
 		discussions = self._get_linked_discussions(own_discussion)
-		if sorted(str(row.discussion) for row in self.backlinks) != discussions:
+		current = sorted(str(row.discussion) for row in self.backlinks)
+		if current != discussions:
 			self.set("backlinks", [{"discussion": name} for name in discussions])
+		self.flags.new_backlinks = set(discussions) - set(current)
+
+	def log_backlink_activities(self):
+		data = (
+			{"discussion": str(self.name)}
+			if self.doctype == "GP Discussion"
+			else {"discussion": str(self.reference_name), "comment": self.name}
+		)
+		for name in self.flags.pop("new_backlinks", None) or []:
+			frappe.get_doc("GP Discussion", name).log_activity("Discussion Referenced", data=data)
 
 	def _get_linked_discussions(self, own_discussion):
 		if not self.content:

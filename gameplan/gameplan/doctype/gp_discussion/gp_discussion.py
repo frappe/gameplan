@@ -30,6 +30,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasBacklinks, HasMentions, HasRe
 		"Discussion Pinned",
 		"Discussion Unpinned",
 		"Discussion Moved",
+		"Discussion Referenced",
 	]
 	mentions_field = "content"
 	tags_field = "content"
@@ -92,6 +93,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasBacklinks, HasMentions, HasRe
 
 	def on_update(self):
 		self.notify_mentions()
+		self.log_backlink_activities()
 		self.notify_reactions()
 		self.log_title_update()
 		self.update_participants_count()

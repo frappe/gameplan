@@ -100,6 +100,7 @@ class GPComment(HasAttachments, HasBacklinks, HasMentions, HasReactions, HasTags
 
 	def on_update(self):
 		self.notify_mentions()
+		self.log_backlink_activities()
 		self.notify_reactions()
 		self.attach_files_in_content()
 

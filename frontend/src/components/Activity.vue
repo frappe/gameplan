@@ -16,6 +16,10 @@
         v-else-if="activity.action === 'Discussion Moved'"
       />
       <span class="lucide-edit-3 h-4 w-4" v-else-if="activity.action === 'Task Value Changed'" />
+      <span
+        class="lucide-corner-down-right h-4 w-4"
+        v-else-if="activity.action === 'Discussion Referenced'"
+      />
     </div>
     <p>
       <UserProfileLink class="font-medium text-ink-gray-7 hover:text-ink-gray-5" :user="user.name">
@@ -25,6 +29,20 @@
       <span v-if="activity.action == 'Discussion Reopened'"> reopened this discussion</span>
       <span v-if="activity.action == 'Discussion Pinned'"> pinned this discussion</span>
       <span v-if="activity.action == 'Discussion Unpinned'"> unpinned this discussion</span>
+      <span v-if="activity.action == 'Discussion Referenced'">
+        referenced this discussion in
+        <router-link
+          v-if="source"
+          :to="{
+            path: `/space/${source.project}/discussion/${activity.data.discussion}`,
+            query: { comment: activity.data.comment },
+          }"
+          class="text-ink-gray-8 hover:text-ink-gray-5"
+        >
+          {{ source.title }}
+        </router-link>
+        <template v-else-if="source === null">a private discussion</template>
+      </span>
       <span v-if="activity.action == 'Discussion Title Changed'">
         changed the title from
         <span class="text-ink-gray-8">{{ activity.data.old_title }}</span> to
@@ -118,8 +136,8 @@
   </div>
 </template>
 <script setup lang="ts">
-import { computed } from 'vue'
-import { dayjsLocal, Tooltip } from 'frappe-ui'
+import { computed, ref } from 'vue'
+import { call, dayjsLocal, Tooltip } from 'frappe-ui'
 import UserProfileLink from './UserProfileLink.vue'
 import { getSpace } from '@/data/spaces'
 import { spaceTitle } from '@/utils/formatters'
@@ -138,6 +156,8 @@ interface Activity {
     field_label?: string
     old_value?: string
     new_value?: string
+    discussion?: string
+    comment?: string
   }
 }
 
@@ -151,4 +171,16 @@ const user = computed(() => useUser(props.activity.user))
 const assignedUser = computed(() =>
   props.activity.data?.new_value ? useUser(props.activity.data.new_value) : null,
 )
+
+const source = ref<{ title: string; project: string } | null>()
+
+if (props.activity.action === 'Discussion Referenced') {
+  call('frappe.client.get_value', {
+    doctype: 'GP Discussion',
+    filters: { name: props.activity.data.discussion },
+    fieldname: ['title', 'project'],
+  })
+    .then((doc) => (source.value = doc?.title ? doc : null))
+    .catch(() => (source.value = null))
+}
 </script>
