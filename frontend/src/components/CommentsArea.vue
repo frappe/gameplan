@@ -267,7 +267,7 @@ import {
 } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useEventListener } from '@vueuse/core'
-import { useList, TabButtons, ErrorMessage, Button, Tooltip } from 'frappe-ui'
+import { useCall, useList, TabButtons, ErrorMessage, Button, Tooltip } from 'frappe-ui'
 import CommentEditor from '@/components/editor/CommentEditor.vue'
 import Comment from './Comment.vue'
 import Activity from './Activity.vue'
@@ -457,10 +457,22 @@ const activities = useList<GPActivity>({
 // The parent bumps `activityVersion` with the doc's `modified` on every such action,
 // so reload the timeline when it changes (skipping the initial undefined -> value
 // transition on first load, when the list has already fetched on mount).
+const referenceActivities = useCall<GPActivity[]>({
+  url: computed(
+    () => `/api/v2/document/GP Discussion/${props.name}/method/get_reference_activities`,
+  ),
+  immediate: props.doctype === 'GP Discussion',
+})
+
+function reloadActivities() {
+  activities.reload()
+  if (props.doctype === 'GP Discussion') referenceActivities.reload()
+}
+
 watch(
   () => props.activityVersion,
   (next, prev) => {
-    if (prev !== undefined && next !== prev) activities.reload()
+    if (prev !== undefined && next !== prev) reloadActivities()
   },
 )
 
@@ -508,6 +520,11 @@ const timelineItems = computed(() => {
   }
   if (activities.data?.length) {
     items = items.concat(activities.data)
+  }
+  if (referenceActivities.data?.length) {
+    items = items.concat(
+      referenceActivities.data.map((activity) => ({ ...activity, doctype: 'GP Activity' })),
+    )
   }
   if (polls.data?.length) {
     items = items.concat(polls.data)
@@ -891,7 +908,7 @@ onMounted(() => {
     // integer hand this component a number, so a strict compare never matches and the
     // timeline silently stops updating. Compare as strings.
     if (data.reference_doctype === props.doctype && data.reference_name === String(props.name)) {
-      activities.reload()
+      reloadActivities()
     }
   })
 })

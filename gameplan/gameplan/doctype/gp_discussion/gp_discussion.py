@@ -155,6 +155,37 @@ class GPDiscussion(HasActivity, HasAttachments, HasBacklinks, HasMentions, HasRe
 		return get_document_revisions(self.doctype, self.name, fieldname)
 
 	@frappe.whitelist()
+	def get_reference_activities(self):
+		activities = frappe.get_all(
+			"GP Activity",
+			filters={
+				"reference_doctype": self.doctype,
+				"reference_name": self.name,
+				"action": "Discussion Referenced",
+			},
+			fields=["name", "user", "action", "data", "creation"],
+		)
+		if not activities:
+			return []
+
+		for activity in activities:
+			activity.data = frappe.parse_json(activity.data)
+		names = list({activity.data["discussion"] for activity in activities})
+		sources = {
+			str(d.name): d
+			for d in frappe.get_list(
+				"GP Discussion", filters={"name": ["in", names]}, fields=["name", "title", "project"]
+			)
+		}
+
+		for activity in activities:
+			source = sources.get(activity.data["discussion"])
+			activity.data = (
+				{**activity.data, "title": source.title, "project": source.project} if source else None
+			)
+		return activities
+
+	@frappe.whitelist()
 	def get_backlinks(self):
 		sources = frappe.get_all(
 			"GP Backlink", filters={"discussion": self.name}, fields=["parent", "parenttype"]
