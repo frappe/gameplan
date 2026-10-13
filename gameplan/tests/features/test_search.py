@@ -669,6 +669,12 @@ class TestSearchIndexLifecycle(IsolatedSearchIndex, GameplanTestCase):
 			"Weekly sync notes",
 			"a long update that mentions daybreakneedle once among many other unrelated words",
 		)
+		frappe.db.set_value(
+			"GP Discussion", strong.name, "last_post_at", "2024-05-01 10:00:00", update_modified=False
+		)
+		frappe.db.set_value(
+			"GP Discussion", weak.name, "last_post_at", "2024-05-01 11:00:00", update_modified=False
+		)
 		drain_search_index_queue()
 
 		for sort_by in ("last_post_at desc", "last_post_at asc"):
