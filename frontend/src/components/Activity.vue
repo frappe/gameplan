@@ -32,7 +32,6 @@
       <span v-if="activity.action == 'Discussion Referenced'">
         referenced this discussion in
         <router-link
-          v-if="activity.data"
           :to="{
             path: `/space/${activity.data.project}/discussion/${activity.data.discussion}`,
             query: { comment: activity.data.comment },
@@ -41,7 +40,6 @@
         >
           {{ activity.data.title }}
         </router-link>
-        <template v-else>a private discussion</template>
       </span>
       <span v-if="activity.action == 'Discussion Title Changed'">
         changed the title from

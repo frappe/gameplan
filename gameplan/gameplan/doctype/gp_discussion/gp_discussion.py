@@ -178,12 +178,27 @@ class GPDiscussion(HasActivity, HasAttachments, HasBacklinks, HasMentions, HasRe
 			)
 		}
 
+		comments = [activity.data["comment"] for activity in activities if activity.data.get("comment")]
+		live_comments = set()
+		if comments:
+			live_comments = {
+				str(name)
+				for name in frappe.get_list(
+					"GP Comment",
+					filters={"name": ["in", comments], "deleted_at": ["is", "not set"]},
+					pluck="name",
+				)
+			}
+
+		visible = []
 		for activity in activities:
-			source = sources.get(activity.data["discussion"])
-			activity.data = (
-				{**activity.data, "title": source.title, "project": source.project} if source else None
-			)
-		return activities
+			comment = activity.data.get("comment")
+			if comment and str(comment) not in live_comments:
+				continue
+			if source := sources.get(activity.data["discussion"]):
+				activity.data.update(title=source.title, project=source.project)
+				visible.append(activity)
+		return visible
 
 	@frappe.whitelist()
 	def get_backlinks(self):

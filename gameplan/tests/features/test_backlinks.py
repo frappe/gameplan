@@ -106,8 +106,13 @@ class BacklinkTestCase(GameplanTestCase):
 		with self.as_user(self.member):
 			self.assertEqual(target.get_reference_activities()[0].data["title"], "Salaries")
 		with self.as_user(self.second_member):
-			self.assertIsNone(target.get_reference_activities()[0].data)
+			self.assertEqual(target.get_reference_activities(), [])
 			self.assertEqual(frappe.get_list("GP Activity", filters={"reference_name": self.target.name}), [])
+
+	def test_reference_activity_hidden_once_its_comment_is_deleted(self):
+		comment = create_comment(self.source, content=link_to(self.target))
+		comment.db_set("deleted_at", frappe.utils.now())
+		self.assertEqual(frappe.get_doc("GP Discussion", self.target.name).get_reference_activities(), [])
 
 	def test_link_added_on_edit_logs_activity(self):
 		comment = create_comment(self.source, content="<p>No link yet</p>")
