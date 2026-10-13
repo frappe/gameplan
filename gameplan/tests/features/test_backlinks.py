@@ -109,6 +109,14 @@ class BacklinkTestCase(GameplanTestCase):
 			self.assertEqual(target.get_reference_activities(), [])
 			self.assertEqual(frappe.get_list("GP Activity", filters={"reference_name": self.target.name}), [])
 
+	def test_more_than_twenty_referring_comments_are_all_in_the_timeline(self):
+		for i in range(21):
+			source = create_discussion(f"Referring {i}", self.space)
+			create_comment(source, content=link_to(self.target))
+		with self.as_user(self.member):
+			activities = frappe.get_doc("GP Discussion", self.target.name).get_reference_activities()
+		self.assertEqual(len(activities), 21)
+
 	def test_reference_activity_hidden_once_its_comment_is_deleted(self):
 		comment = create_comment(self.source, content=link_to(self.target))
 		comment.db_set("deleted_at", frappe.utils.now())
