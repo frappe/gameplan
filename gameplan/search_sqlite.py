@@ -30,6 +30,8 @@ SORT_COLUMNS = {
 	"comments_count": "comments_count",
 }
 DEFAULT_SORT_BY = "last_post_at desc"
+DATE_SORT_COLUMNS = frozenset({"modified", "creation"})
+SECONDS_PER_DAY = 86400
 FILTERABLE_FIELDS = frozenset({"owner", "project", "team", "doctype", "tags"})
 
 
@@ -438,11 +440,15 @@ class GameplanSearch(SQLiteSearch):
 		params.append(MAX_SEARCH_RESULTS)
 
 		where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+		order_by = f"CAST({sort_column} AS REAL) {sort_direction.upper()}"
+		if fts_query and sort_column in DATE_SORT_COLUMNS:
+			day = f"CAST(CAST({sort_column} AS REAL) / {SECONDS_PER_DAY} AS INTEGER)"
+			order_by = f"{day} {sort_direction.upper()}, bm25_score, {order_by}"
 		sql = f"""
 			SELECT {select_clause}
 			FROM search_fts
 			{where_clause}
-			ORDER BY CAST({sort_column} AS REAL) {sort_direction.upper()}
+			ORDER BY {order_by}
 			LIMIT ?
 		"""
 		return self.sql(sql, tuple(params), read_only=True)
@@ -451,10 +457,19 @@ class GameplanSearch(SQLiteSearch):
 		results = super()._process_search_results(raw_results, query)
 		sort_column, sort_direction = getattr(self, "_sort", (None, None))
 		if sort_column:
-			results.sort(key=lambda result: flt(result.get(sort_column)), reverse=sort_direction == "desc")
+			descending = sort_direction == "desc"
+			by_day = bool(query) and sort_column in DATE_SORT_COLUMNS
+			results.sort(key=lambda result: self._sort_key(result, sort_column, descending, by_day))
 			for rank, result in enumerate(results, 1):
 				result["modified_rank"] = rank
 		return results
+
+	def _sort_key(self, result, sort_column, descending, by_day):
+		value = flt(result.get(sort_column))
+		sign = -1 if descending else 1
+		if by_day:
+			return (sign * (value // SECONDS_PER_DAY), -flt(result.get("score")), sign * value)
+		return (sign * value,)
 
 	def _build_sorted_select(self, title_only, has_match):
 		select_fields = ["doc_id"]

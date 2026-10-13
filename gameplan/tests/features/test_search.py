@@ -663,6 +663,19 @@ class TestSearchIndexLifecycle(IsolatedSearchIndex, GameplanTestCase):
 
 		self.assertEqual([result["id"] for result in results], [f"GP Discussion:{discussion.name}"])
 
+	def test_date_sorts_put_the_stronger_match_first_within_a_day(self):
+		strong = self.create_discussion("Daybreakneedle planning", "daybreakneedle is the whole topic here")
+		weak = self.create_discussion(
+			"Weekly sync notes",
+			"a long update that mentions daybreakneedle once among many other unrelated words",
+		)
+		drain_search_index_queue()
+
+		for sort_by in ("last_post_at desc", "last_post_at asc"):
+			ids = self.discussion_ids(self.search_as(self.member, "daybreakneedle", sort_by=sort_by))
+
+			self.assertEqual(ids, [f"GP Discussion:{strong.name}", f"GP Discussion:{weak.name}"])
+
 	def test_missing_index_raises_the_gameplan_error_the_ui_handles(self):
 		self.search.drop_index()
 
