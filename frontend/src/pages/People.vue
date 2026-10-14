@@ -199,6 +199,7 @@
               </ListRow>
             </List>
 
+            <ErrorMessage class="mt-2" :message="people.error" />
             <EmptyStateBox v-if="isEmpty" class="mt-2">
               <span class="lucide-users mb-1 size-7 text-ink-gray-4" aria-hidden="true" />
               {{ search ? 'No members match your search' : 'No members yet' }}
@@ -224,6 +225,7 @@ import {
   Button,
   Select,
   TextInput,
+  ErrorMessage,
   usePageMeta,
 } from 'frappe-ui'
 import { List, ListCell, ListHeader, ListHeaderCell, ListRow } from 'frappe-ui/list'
@@ -306,7 +308,7 @@ const peopleList = computed(() => {
   return list
 })
 
-const isEmpty = computed(() => !people.loading && peopleList.value.length === 0)
+const isEmpty = computed(() => !people.loading && !people.error && peopleList.value.length === 0)
 
 usePageMeta(() => ({
   title: 'People',

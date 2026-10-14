@@ -24,7 +24,9 @@ const persist = debounce((value: string[]) => {
     .submit({ name: profileName.value, pinned_spaces: JSON.stringify(value) })
     .then(
       () => (saved = value),
-      () => (pinned.value = saved),
+      () => {
+        if (pinned.value === value) pinned.value = saved
+      },
     )
 }, 500)
 
