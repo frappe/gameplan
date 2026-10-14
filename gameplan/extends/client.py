@@ -5,9 +5,9 @@
 import frappe
 from frappe.database.query import Engine
 from frappe.model.base_document import get_controller
-from frappe.utils import cint
 
 import gameplan
+from gameplan.public_access import public_pagination
 from gameplan.public_payload import (
 	check_public_filters,
 	check_public_order_by,
@@ -18,7 +18,7 @@ from gameplan.public_payload import (
 )
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def get_list(
 	doctype=None,
 	fields=None,
@@ -33,8 +33,7 @@ def get_list(
 	check_permissions(doctype, parent)
 	anonymous = gameplan.is_anonymous()
 	if anonymous:
-		start = max(cint(start), 0)
-		limit = max(1, min(cint(limit) or 20, 1000))
+		start, limit = public_pagination(start, limit)
 		# Nobody is signed in: only public columns, filtered and sorted on public columns,
 		# and the rows cleaned before they leave (see gameplan.public_payload).
 		if parent or group_by:

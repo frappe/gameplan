@@ -11,6 +11,7 @@ from pypika.terms import ExistsCriterion
 import gameplan
 from gameplan.gameplan.doctype.gp_poll.gp_poll import ongoing_polls_clause
 from gameplan.permissions import apply_accessible_project_filter
+from gameplan.public_access import public_pagination
 from gameplan.public_payload import check_public_filters, refuse, rows_for_viewer
 from gameplan.utils import html_to_text_preview
 
@@ -96,7 +97,7 @@ def get_discussions(filters=None, order_by=None, start=None, limit=None):
 		check_public_filters("GP Discussion", filters)
 	limit = cint(limit)
 	if gameplan.is_anonymous():
-		limit = max(1, min(limit or 20, 1000))
+		start, limit = public_pagination(start, limit)
 	start = parse_offset(start)
 	order_field, order_direction = parse_order_by(order_by or DEFAULT_ORDER_BY)
 

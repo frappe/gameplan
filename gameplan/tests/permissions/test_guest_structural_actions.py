@@ -19,7 +19,6 @@ from frappe.client import set_value
 
 from gameplan.gameplan.doctype.gp_discussion.gp_discussion import move_discussions
 from gameplan.gameplan.doctype.gp_project.gp_project import mark_all_as_read, track_visits
-from gameplan.public_access import VISIBILITY_GENERAL, VISIBILITY_MEMBER_ACCESS
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
 	create_comment,
@@ -31,6 +30,10 @@ from gameplan.tests.fixtures import (
 	create_space,
 	create_task,
 	grant_guest_access,
+)
+from gameplan.visibility import (
+	VISIBILITY_GENERAL,
+	VISIBILITY_MEMBER_ACCESS,
 )
 
 REACTION_ADD = [{"emoji": "\U0001f44d", "operation": "add"}]

@@ -25,7 +25,6 @@ import frappe
 
 from gameplan.api import mark_all_notifications_as_read, unread_notifications
 from gameplan.gameplan.doctype.gp_notification.gp_notification import GPNotification
-from gameplan.public_access import VISIBILITY_GENERAL, VISIBILITY_MEMBER_ACCESS
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
 	_name,
@@ -36,6 +35,10 @@ from gameplan.tests.fixtures import (
 	create_poll,
 	create_space,
 	grant_guest_access,
+)
+from gameplan.visibility import (
+	VISIBILITY_GENERAL,
+	VISIBILITY_MEMBER_ACCESS,
 )
 
 

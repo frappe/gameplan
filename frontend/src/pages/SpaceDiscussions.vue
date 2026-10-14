@@ -96,7 +96,7 @@ import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { isSpacePinned, toggleSpacePinned } from '@/data/pinnedSpaces'
 import { useCommunity } from '@/data/communities'
 import { useSessionUser } from '@/data/users'
-import { canManageCommunity } from '@/utils/permissions'
+import { canManageCommunity, canMoveContentToSpace } from '@/utils/permissions'
 import { showCommunitiesSettings } from '@/components/Settings'
 import {
   useSpace,
@@ -139,6 +139,7 @@ const {
   isArchived,
   canEditSettings,
   canManageAccess,
+  canUnarchive,
   canChangeMembership,
   canMoveDiscussions,
 } = useSpacePermissions(() => props.spaceId)
@@ -187,7 +188,7 @@ const spaceActions = computed(() => [
   },
   {
     label: 'Visibility',
-    icon: 'lucide-users',
+    icon: 'lucide-eye',
     onClick: () => (showSpaceAccessDialog.value = true),
     condition: () => canManageAccess.value,
   },
@@ -207,7 +208,7 @@ const spaceActions = computed(() => [
     label: 'Unarchive',
     icon: 'lucide-archive-restore',
     onClick: () => currentSpace.value && unarchiveSpace(currentSpace.value),
-    condition: () => !readOnlyMode && isArchived.value && canManageAccess.value,
+    condition: () => isArchived.value && canUnarchive.value,
   },
 ])
 const selectedSpaceTitle = computed(() => {
@@ -215,7 +216,10 @@ const selectedSpaceTitle = computed(() => {
 })
 
 const spaceOptions = useGroupedSpaceOptions({
-  filterFn: (space) => !space.archived_at && space.name !== props.spaceId,
+  filterFn: (space) =>
+    !space.archived_at &&
+    space.name !== props.spaceId &&
+    canMoveContentToSpace(currentSpace.value, space, sessionUser),
 })
 
 const bulkMoveDiscussions = useCall<

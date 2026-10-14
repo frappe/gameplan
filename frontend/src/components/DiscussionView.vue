@@ -376,7 +376,12 @@ import { provideRichQuotes } from '@/components/RichQuoteExtension/useRichQuotes
 import QuoteBacklinksPopover from '@/components/RichQuoteExtension/QuoteBacklinksPopover.vue'
 import { refreshUnreadCountForProjects } from '@/data/unreadCount'
 import { useSessionUser } from '@/data/users'
-import { canDeleteContent, canEditContent, canMoveOrPinContent } from '@/utils/permissions'
+import {
+  canDeleteContent,
+  canEditContent,
+  canMoveOrPinContent,
+  canMoveContentToSpace,
+} from '@/utils/permissions'
 import { useCommandPaletteCommands } from './CommandPalette/registry'
 import { useOwnedRouteWrites } from '@/composables/useOwnedRouteWrites'
 import { isAnonymousVisitor } from '@/utils/publicAccess'
@@ -618,7 +623,12 @@ async function scrollToUnread() {
     }
   }
 
-  if (!props.readOnlyMode && !isAnonymousVisitor() && route.name === 'Discussion' && route.params.postId === doc?.name) {
+  if (
+    !props.readOnlyMode &&
+    !isAnonymousVisitor() &&
+    route.name === 'Discussion' &&
+    route.params.postId === doc?.name
+  ) {
     discussion.trackVisit.submit().then(() => {
       refreshUnreadCountForProjects([doc.project])
     })
@@ -842,7 +852,10 @@ const currentSpaceId = computed(() => {
 })
 
 const spaceOptions = useGroupedSpaceOptions({
-  filterFn: (space) => !space.archived_at && space.name !== discussion.doc?.project,
+  filterFn: (target) =>
+    !target.archived_at &&
+    target.name !== discussion.doc?.project &&
+    canMoveContentToSpace(space.value, target, useSessionUser()),
 })
 
 // Edit and close/re-open change the post itself, so they follow the same business

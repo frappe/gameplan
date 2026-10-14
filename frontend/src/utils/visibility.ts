@@ -1,6 +1,6 @@
 /**
  * Visibility tiers of communities and spaces, and how the UI shows them. Mirrors
- * gameplan/public_access.py.
+ * gameplan/visibility.py.
  *
  * - Anonymous: anyone with the link, no account needed.
  * - General: any signed-in Gameplan user.
@@ -35,10 +35,6 @@ export function visibilityTier(value?: string | null): Visibility {
 /** Whether only the people on the member list may read something with this tier. */
 export function isMemberAccess(value?: string | null): boolean {
   return visibilityTier(value) === VISIBILITY_MEMBER_ACCESS
-}
-
-export function visibilityLabel(value?: string | null): Visibility {
-  return visibilityTier(value)
 }
 
 export function visibilityIcon(value?: string | null) {

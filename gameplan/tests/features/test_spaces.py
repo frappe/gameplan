@@ -23,7 +23,6 @@ from gameplan.gameplan.doctype.gp_project.gp_project import (
 	mark_all_as_read,
 	track_visits,
 )
-from gameplan.public_access import VISIBILITY_GENERAL, VISIBILITY_MEMBER_ACCESS
 from gameplan.search_sqlite import GameplanSearch
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
@@ -35,6 +34,10 @@ from gameplan.tests.fixtures import (
 	create_task,
 	declared_http_methods,
 	grant_guest_access,
+)
+from gameplan.visibility import (
+	VISIBILITY_GENERAL,
+	VISIBILITY_MEMBER_ACCESS,
 )
 
 

@@ -12,7 +12,6 @@ from gameplan.gameplan.doctype.gp_draft.gp_draft import (
 	get_my_drafts,
 	publish_draft,
 )
-from gameplan.public_access import VISIBILITY_GENERAL, VISIBILITY_MEMBER_ACCESS
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
 	create_comment,
@@ -21,6 +20,10 @@ from gameplan.tests.fixtures import (
 	create_member,
 	create_space,
 	set_owner,
+)
+from gameplan.visibility import (
+	VISIBILITY_GENERAL,
+	VISIBILITY_MEMBER_ACCESS,
 )
 
 

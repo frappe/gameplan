@@ -16,14 +16,16 @@ from gameplan.permissions import (
 	can_view_community,
 	require_can_manage_community,
 )
-from gameplan.public_access import (
+from gameplan.public_payload import for_viewer
+from gameplan.utils import validate_type
+from gameplan.visibility import (
 	SIGNED_IN_TIERS,
 	VISIBILITY_GENERAL,
 	VISIBILITY_MEMBER_ACCESS,
+	is_anonymous_eligible_community,
 	is_member_access,
+	require_admin_to_publish,
 )
-from gameplan.public_payload import for_viewer
-from gameplan.utils import validate_type
 
 
 class GPTeam(HasVisibility, Archivable, Document):
@@ -60,6 +62,21 @@ class GPTeam(HasVisibility, Archivable, Document):
 
 	def validate(self):
 		self.check_visibility_change_allowed()
+		before = self.get_doc_before_save()
+		if before and self.has_value_changed("archived_at"):
+			require_admin_to_publish(
+				is_anonymous_eligible_community(before), is_anonymous_eligible_community(self)
+			)
+
+	def get_affected_space_names(self):
+		return frappe.get_all("GP Project", filters={"team": self.name}, pluck="name")
+
+	def refresh_anonymous_readable_flags(self):
+		if self.get_doc_before_save() and not any(
+			self.has_value_changed(field) for field in ("visibility", "archived_at")
+		):
+			return
+		super().refresh_anonymous_readable_flags()
 
 	def before_save(self):
 		self.record_visibility_change()

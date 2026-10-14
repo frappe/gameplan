@@ -10,17 +10,23 @@ import frappe
 
 from gameplan.public_access import (
 	ANONYMOUS_RATE_LIMITS,
-	VISIBILITY_ANONYMOUS,
-	VISIBILITY_MEMBER_ACCESS,
-	audit_public_access,
-	gameplan_robots_rules,
 	limit_anonymous_request_rate,
+)
+from gameplan.public_access_audit import (
+	audit_public_access,
 	public_access_audit,
 )
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import create_community, create_discussion, create_space
 from gameplan.tests.fixtures import public_access as switched
 from gameplan.tests.permissions.test_anonymous_access import GUEST_REACHABLE_ENDPOINTS
+from gameplan.visibility import (
+	VISIBILITY_ANONYMOUS,
+	VISIBILITY_MEMBER_ACCESS,
+)
+from gameplan.www.robots import (
+	gameplan_robots_rules,
+)
 
 ANONYMOUS = "Guest"
 # Guest-reachable endpoints that are not public reads, so are not rate limited here.
@@ -32,6 +38,7 @@ NOT_RATE_LIMITED = {
 	"gameplan.public_access.realtime_has_permission": (
 		"called by the socket server, from its own address, for every socket at once"
 	),
+	"gameplan.guest_payload.can_view_presence": "socket identity check; returns false to anonymous callers",
 }
 _ips = (f"203.0.113.{n}" for n in itertools.count(1))
 

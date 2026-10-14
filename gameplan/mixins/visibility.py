@@ -6,22 +6,15 @@ from frappe import _
 from frappe.utils import cint
 
 from gameplan.permissions import is_global_admin, users_who_can_view_space
-from gameplan.public_access import (
+from gameplan.realtime import notify_unread_counts_changed
+from gameplan.roles import GAMEPLAN_ROLES
+from gameplan.visibility import (
 	VISIBILITY_ANONYMOUS,
 	VISIBILITY_GENERAL,
 	VISIBILITY_TIERS,
-	public_team_criterion,
 	refresh_anonymous_readable,
 	visibility_tier,
 )
-from gameplan.realtime import notify_unread_counts_changed
-from gameplan.roles import GAMEPLAN_ROLES
-
-# The fields `is_anonymous_readable` depends on, per doctype.
-ANONYMOUS_READABLE_INPUTS = {
-	"GP Team": ("visibility", "archived_at"),
-	"GP Project": ("visibility", "archived_at", "team"),
-}
 
 # Per-user rows that point at a space and outlive losing access to it. Pins in
 # GP User Profile.pinned_spaces are left alone: the sidebar only ever shows a pin for a
@@ -61,24 +54,6 @@ class HasVisibility:
 			return
 		if self.has_value_changed("visibility"):
 			frappe.throw(_("Only Gameplan Admins can change visibility"), frappe.PermissionError)
-		if (
-			self.doctype == "GP Project"
-			and self.has_value_changed("team")
-			and self.visibility == VISIBILITY_ANONYMOUS
-			and not self.archived_at
-		):
-			before = self.get_doc_before_save()
-			Team = frappe.qb.DocType("GP Team")
-			public_teams = (
-				frappe.qb.from_(Team)
-				.select(Team.name)
-				.where(Team.name.isin([team for team in (before.team, self.team) if team]))
-				.where(public_team_criterion(Team))
-			).run(pluck=True)
-			if self.team in public_teams and (before.archived_at or before.team not in public_teams):
-				frappe.throw(
-					_("Only Gameplan Admins can publish a space by moving it"), frappe.PermissionError
-				)
 
 	def record_visibility_change(self):
 		"""Stamp who changed the tier, and when.
@@ -97,18 +72,7 @@ class HasVisibility:
 		change, archive and unarchive (which save), and moving a space to another community.
 		A community change recomputes all of its spaces, because theirs depends on it.
 		"""
-		inputs = ANONYMOUS_READABLE_INPUTS[self.doctype]
-		# A read-only field is still writable through the generic document APIs.
-		# Recompute the space flag on every save instead of trusting a submitted value.
-		if (
-			self.doctype == "GP Team"
-			and self.get_doc_before_save()
-			and not any(self.has_value_changed(field) for field in inputs)
-		):
-			return
 		refresh_anonymous_readable(self.get_affected_space_names())
-		if self.doctype == "GP Project":
-			self.is_anonymous_readable = frappe.db.get_value("GP Project", self.name, "is_anonymous_readable")
 
 	def reconcile_access_after_visibility_change(self):
 		"""Drop the per-user state of everyone who can no longer read an affected space.
@@ -134,9 +98,7 @@ class HasVisibility:
 
 	def get_affected_space_names(self):
 		"""The spaces whose readers depend on this record's tier."""
-		if self.doctype == "GP Project":
-			return [self.name]
-		return frappe.get_all("GP Project", filters={"team": self.name}, pluck="name")
+		raise NotImplementedError
 
 	@frappe.whitelist(methods=["POST"])
 	def set_visibility(self, visibility: str):

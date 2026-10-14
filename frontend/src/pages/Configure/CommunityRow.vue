@@ -33,7 +33,7 @@
             {{ membersLabel }}
           </button>
           <span aria-hidden="true"> · </span>
-          <span>{{ visibilityLabel(community.visibility) }}</span>
+          <span>{{ visibilityTier(community.visibility) }}</span>
         </div>
       </div>
     </ListCell>
@@ -77,7 +77,7 @@ import CommunityImage from '@/components/CommunityImage.vue'
 import { isCommunityJoined, type Community } from '@/data/communities'
 import { useSessionUser } from '@/data/users'
 import { canManageCommunity } from '@/utils/permissions'
-import { isMemberAccess, visibilityLabel } from '@/utils/visibility'
+import { isMemberAccess, visibilityTier } from '@/utils/visibility'
 import CommunityImageUploader from './CommunityImageUploader.vue'
 import CommunityOptions from './CommunityOptions.vue'
 import MembershipButton from './MembershipButton.vue'

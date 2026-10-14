@@ -22,7 +22,6 @@ from gameplan.gameplan.doctype.gp_discussion.gp_discussion import (
 from gameplan.gameplan.doctype.gp_page.gp_page import has_permission as page_has_permission
 from gameplan.gameplan.doctype.gp_task.gp_task import has_permission as task_has_permission
 from gameplan.permissions import users_who_can_view_content
-from gameplan.public_access import VISIBILITY_MEMBER_ACCESS
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
 	create_community,
@@ -30,6 +29,9 @@ from gameplan.tests.fixtures import (
 	create_page,
 	create_space,
 	grant_guest_access,
+)
+from gameplan.visibility import (
+	VISIBILITY_MEMBER_ACCESS,
 )
 
 

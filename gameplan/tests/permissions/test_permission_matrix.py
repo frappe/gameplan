@@ -24,7 +24,6 @@ from unittest.mock import patch
 
 import frappe
 
-from gameplan.public_access import VISIBILITY_ANONYMOUS, VISIBILITY_GENERAL, VISIBILITY_MEMBER_ACCESS
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
 	create_comment,
@@ -36,6 +35,11 @@ from gameplan.tests.fixtures import (
 	create_space,
 	create_task,
 	grant_guest_access,
+)
+from gameplan.visibility import (
+	VISIBILITY_ANONYMOUS,
+	VISIBILITY_GENERAL,
+	VISIBILITY_MEMBER_ACCESS,
 )
 
 # Order matches the (read, write, delete) tuples in EXPECTATIONS.

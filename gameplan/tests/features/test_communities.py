@@ -14,7 +14,6 @@ from gameplan.gameplan.doctype.gp_member.patches.backfill_team_admins import (
 )
 from gameplan.gameplan.doctype.gp_team.gp_team import join_team, leave_team, update_joined_teams
 from gameplan.gameplan.doctype.gp_user_profile.gp_user_profile import get_session_user_profile
-from gameplan.public_access import VISIBILITY_GENERAL, VISIBILITY_MEMBER_ACCESS
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
 	_name,
@@ -23,6 +22,10 @@ from gameplan.tests.fixtures import (
 	create_member,
 	create_space,
 	grant_guest_access,
+)
+from gameplan.visibility import (
+	VISIBILITY_GENERAL,
+	VISIBILITY_MEMBER_ACCESS,
 )
 
 

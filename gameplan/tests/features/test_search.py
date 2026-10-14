@@ -5,7 +5,6 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from gameplan.api import search_sqlite
-from gameplan.public_access import VISIBILITY_MEMBER_ACCESS
 from gameplan.search_sqlite import GameplanSearch
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
@@ -16,6 +15,9 @@ from gameplan.tests.fixtures import (
 	grant_guest_access,
 )
 from gameplan.tests.search_isolation import IsolatedSearchIndex
+from gameplan.visibility import (
+	VISIBILITY_MEMBER_ACCESS,
+)
 
 
 class TestableGameplanSearch(GameplanSearch):

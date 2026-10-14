@@ -17,7 +17,6 @@ refuse to hand over a document by name and still list it.
 import frappe
 
 from gameplan.gameplan.doctype.gp_task.gp_task import get_list as get_task_list
-from gameplan.public_access import VISIBILITY_MEMBER_ACCESS
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
 	create_comment,
@@ -29,6 +28,9 @@ from gameplan.tests.fixtures import (
 	create_task,
 	grant_guest_access,
 	set_owner,
+)
+from gameplan.visibility import (
+	VISIBILITY_MEMBER_ACCESS,
 )
 
 

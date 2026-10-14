@@ -8,14 +8,14 @@ from unittest.mock import patch
 import frappe
 from frappe.api.v2 import update_doc
 
-from gameplan.public_access import (
+from gameplan.tests.base import GameplanTestCase
+from gameplan.tests.fixtures import create_community, create_discussion, create_space
+from gameplan.visibility import (
 	VISIBILITY_ANONYMOUS,
 	VISIBILITY_GENERAL,
 	VISIBILITY_MEMBER_ACCESS,
 	find_anonymous_readable_drift,
 )
-from gameplan.tests.base import GameplanTestCase
-from gameplan.tests.fixtures import create_community, create_discussion, create_space
 
 TIERS = (VISIBILITY_GENERAL, VISIBILITY_MEMBER_ACCESS, VISIBILITY_ANONYMOUS)
 

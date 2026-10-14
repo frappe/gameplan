@@ -1,7 +1,7 @@
 # Copyright (c) 2026, Frappe Technologies Pvt. Ltd. and Contributors
 # MIT License. See license.txt
 
-"""Allowlisted payloads for public readers. Signed-in payloads stay unchanged.
+"""Allowlisted public payloads. Members stay unchanged; Guests use safe account handles.
 
 Permissions select rows. This module selects fields and drops unclassified fields.
 The classification test requires an explicit decision when a DocType gains a field.
@@ -174,14 +174,16 @@ def public_fieldnames(doctype) -> list[str]:
 
 
 def for_viewer(doctype, row):
-	"""`row` as the session user may see it: unchanged when signed in, cleaned when not."""
+	"""Apply the session user's field and identity policy."""
 	return rows_for_viewer(doctype, [row])[0]
 
 
 def rows_for_viewer(doctype, rows):
-	"""`rows` as the session user may see them: unchanged when signed in, cleaned when not."""
+	"""Apply the session user's policy to a batch."""
 	if not gameplan.is_anonymous():
-		return rows
+		from gameplan.guest_payload import for_guest
+
+		return for_guest(rows)
 	return public_rows(doctype, rows)
 
 

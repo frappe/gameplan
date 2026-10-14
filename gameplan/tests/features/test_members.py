@@ -15,13 +15,15 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from gameplan.api import get_user_info, invite_by_email
-from gameplan.public_access import VISIBILITY_MEMBER_ACCESS
 from gameplan.tests.fixtures import (
 	create_community,
 	create_guest,
 	create_member,
 	create_space,
 	create_user,
+)
+from gameplan.visibility import (
+	VISIBILITY_MEMBER_ACCESS,
 )
 
 

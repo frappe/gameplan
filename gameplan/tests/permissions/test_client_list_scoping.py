@@ -6,7 +6,6 @@
 import frappe
 
 from gameplan.extends.client import get_list as get_client_list
-from gameplan.public_access import VISIBILITY_MEMBER_ACCESS
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
 	create_comment,
@@ -16,6 +15,9 @@ from gameplan.tests.fixtures import (
 	create_poll,
 	create_space,
 	create_task,
+)
+from gameplan.visibility import (
+	VISIBILITY_MEMBER_ACCESS,
 )
 
 # Doctypes for which setUp creates rows the second member must not see.

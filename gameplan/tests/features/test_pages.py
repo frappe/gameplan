@@ -5,13 +5,15 @@
 
 import frappe
 
-from gameplan.public_access import VISIBILITY_MEMBER_ACCESS
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
 	create_community,
 	create_page,
 	create_space,
 	grant_guest_access,
+)
+from gameplan.visibility import (
+	VISIBILITY_MEMBER_ACCESS,
 )
 
 

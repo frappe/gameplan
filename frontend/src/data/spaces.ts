@@ -3,7 +3,7 @@ import { useCall, useList, useDoctype, dialog } from 'frappe-ui'
 import { GPProject, GPMember } from '@/types/doctypes'
 import { getProjectUnreadCount, markSpacesAsRead } from './unreadCount'
 import { useSessionUser } from './users'
-import { canManageSpace, isGuest } from '@/utils/permissions'
+import { canManageSpace, canMoveContentToSpace, isGuest } from '@/utils/permissions'
 import { readOnlyMode } from './readOnlyMode'
 import { isMemberAccess } from '@/utils/visibility'
 import { isAnonymousVisitor, publicListUrl } from '@/utils/publicAccess'
@@ -86,6 +86,12 @@ export function useSpacePermissions(spaceId: MaybeRefOrGetter<string | undefined
   const isGuestUser = computed(() => isGuest(sessionUser))
   const canEditSpace = computed(() => !readOnlyMode && !isArchived.value)
   const canManageAccess = computed(() => !readOnlyMode && canManageSpace(space.value, sessionUser))
+  const canUnarchive = computed(
+    () =>
+      canManageAccess.value &&
+      Boolean(space.value) &&
+      canMoveContentToSpace(null, { ...space.value!, archived_at: null }, sessionUser),
+  )
   // Renaming a space, moving it, merging it, archiving or deleting it are all writes
   // on GP Project, which the backend gates with can_manage_space. canEditSpace only
   // says the space is writable at all (not archived, not read-only), so it is never
@@ -99,6 +105,7 @@ export function useSpacePermissions(spaceId: MaybeRefOrGetter<string | undefined
     canEditSpace,
     canEditSettings,
     canManageAccess,
+    canUnarchive,
     canChangeMembership,
     canMoveDiscussions,
   }

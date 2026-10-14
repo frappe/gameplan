@@ -12,7 +12,6 @@ import frappe
 
 from gameplan.extends.client import get_list as get_client_list
 from gameplan.gameplan.doctype.gp_discussion.api import get_discussions
-from gameplan.public_access import VISIBILITY_MEMBER_ACCESS
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
 	create_community,
@@ -20,6 +19,9 @@ from gameplan.tests.fixtures import (
 	create_guest,
 	create_space,
 	grant_guest_access,
+)
+from gameplan.visibility import (
+	VISIBILITY_MEMBER_ACCESS,
 )
 
 

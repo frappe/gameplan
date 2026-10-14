@@ -24,7 +24,6 @@ import frappe.utils.data
 from frappe.utils import add_days, get_datetime, now_datetime
 
 from gameplan.gameplan.doctype.gp_poll.gp_poll import GPPoll
-from gameplan.public_access import VISIBILITY_MEMBER_ACCESS
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
 	create_community,
@@ -33,6 +32,9 @@ from gameplan.tests.fixtures import (
 	create_space,
 	declared_http_methods,
 	grant_guest_access,
+)
+from gameplan.visibility import (
+	VISIBILITY_MEMBER_ACCESS,
 )
 
 # A fixed instant to stop a poll at. Far enough ahead that the real clock never reaches

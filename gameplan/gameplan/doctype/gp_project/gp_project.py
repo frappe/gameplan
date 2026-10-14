@@ -23,6 +23,7 @@ from gameplan.permissions import (
 	require_can_manage_space_members,
 )
 from gameplan.public_payload import for_viewer
+from gameplan.visibility import is_anonymous_eligible_space, require_admin_to_publish
 
 DEFAULT_SPACE_ICON = "lucide-hash"
 PROJECT_TEAM_DOCTYPES = [
@@ -66,12 +67,20 @@ class GPProject(HasVisibility, ManageMembersMixin, Archivable, Document):
 
 	def validate(self):
 		self.check_visibility_change_allowed()
+		before = self.get_doc_before_save()
+		if before and any(self.has_value_changed(field) for field in ("team", "archived_at")):
+			require_admin_to_publish(is_anonymous_eligible_space(before), is_anonymous_eligible_space(self))
+
+	def get_affected_space_names(self):
+		return [self.name]
 
 	def before_save(self):
 		self.record_visibility_change()
 
 	def on_update(self):
 		self.refresh_anonymous_readable_flags()
+		# Ignore client-supplied values of this derived field on every save.
+		self.is_anonymous_readable = frappe.db.get_value("GP Project", self.name, "is_anonymous_readable")
 		self.reconcile_access_after_visibility_change()
 
 	def on_trash(self):
@@ -118,6 +127,7 @@ class GPProject(HasVisibility, ManageMembersMixin, Archivable, Document):
 		self.require_can_manage_merge(target)
 		if not frappe.db.exists("GP Project", target):
 			frappe.throw(f'Invalid Project "{project}"')
+		require_admin_to_publish(is_anonymous_eligible_space(self), is_anonymous_eligible_space(target))
 		# Validation stays off: this doctype autoincrements, and validate_rename runs
 		# the new name through validate_name, which for an autoincrement doctype rewinds the
 		# table's sequence to the merge target's id — every subsequent insert would then

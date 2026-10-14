@@ -14,23 +14,20 @@ what the public view may list at all.
 """
 
 import frappe
-from frappe.utils import cint
 
 from gameplan.extends.client import get_list
-
-# Enough for every comment on a long thread; not a way to dump a table.
-MAX_ROWS = 1000
+from gameplan.public_access import MAX_ROWS as MAX_ROWS
+from gameplan.public_access import public_pagination
 
 
 def public_list(doctype, fields, filters, order_by, start, limit):
-	limit = cint(limit) or 20
-	limit = max(1, min(limit, MAX_ROWS))
+	start, limit = public_pagination(start, limit)
 	rows = get_list(
 		doctype=doctype,
 		fields=frappe.parse_json(fields),
 		filters=frappe.parse_json(filters),
 		order_by=order_by,
-		start=max(cint(start), 0),
+		start=start,
 		limit=limit,
 	)
 	frappe.response["has_next_page"] = len(rows) == limit

@@ -6,17 +6,42 @@
 from pathlib import Path
 
 import frappe
-from frappe.utils import get_datetime
+from frappe.utils import cint, get_datetime
 
 from gameplan.patches.backfill_visibility_from_is_private import execute as backfill_visibility
-from gameplan.public_access import (
+from gameplan.tests.base import GameplanTestCase
+from gameplan.tests.fixtures import create_community, create_space
+from gameplan.visibility import (
 	VISIBILITY_ANONYMOUS,
 	VISIBILITY_GENERAL,
 	VISIBILITY_MEMBER_ACCESS,
-	find_visibility_backfill_mismatches,
+	VISIBILITY_TIERS,
 )
-from gameplan.tests.base import GameplanTestCase
-from gameplan.tests.fixtures import create_community, create_space
+
+
+def find_visibility_backfill_mismatches() -> list[str]:
+	"""Every community and space whose `visibility` does not match its old `is_private`.
+
+	The backfill patch maps `is_private = 1` to Member Access and `is_private = 0` to
+	General. After it runs, every row must have a tier, must round-trip to the value it
+	came from, and must not be Anonymous: publishing is always a person's decision, never
+	a migration's. Only meaningful until a tier is changed after the migration, because
+	`is_private` is no longer written.
+	"""
+	mismatches = []
+	for doctype in ("GP Team", "GP Project"):
+		rows = frappe.qb.get_query(doctype, fields=["name", "visibility", "is_private"]).run(as_dict=True)
+		for row in rows:
+			if row.visibility not in VISIBILITY_TIERS:
+				mismatches.append(f"{doctype} {row.name}: visibility is {row.visibility!r}")
+			elif row.visibility == VISIBILITY_ANONYMOUS:
+				mismatches.append(f"{doctype} {row.name}: backfilled to Anonymous")
+			elif (row.visibility == VISIBILITY_MEMBER_ACCESS) != bool(cint(row.is_private)):
+				mismatches.append(
+					f"{doctype} {row.name}: visibility is {row.visibility}"
+					f" but is_private was {row.is_private}"
+				)
+	return mismatches
 
 
 def set_raw(doc, **values):
@@ -200,7 +225,6 @@ class TestMissingTierFailsClosed(GameplanTestCase):
 LEGACY_PRIVACY_REFERENCES = {
 	# The migration itself: the backfill, its verification, and the legacy-key guard.
 	"gameplan/patches/backfill_visibility_from_is_private.py": 5,
-	"gameplan/public_access.py": 9,
 	"gameplan/mixins/visibility.py": 3,
 	# Reject legacy fixture permissions before clearing a site, and test that rejection.
 	"gameplan/demo/seeder.py": 3,
@@ -218,8 +242,8 @@ LEGACY_PRIVACY_REFERENCES = {
 	"gameplan/gameplan/doctype/gp_user_profile/gp_user_profile.py": 1,
 	"gameplan/migrate_from_discourse/__init__.py": 1,
 	# Legacy onboarding arguments map to visibility, never to the retired column.
-	"gameplan/api.py": 7,
-	"gameplan/tests/platform/test_api_endpoints.py": 4,
+	"gameplan/api.py": 5,
+	"gameplan/tests/platform/test_api_endpoints.py": 5,
 	"gameplan/mixins/attachments.py": 2,
 	"gameplan/tests/platform/test_attachments.py": 2,
 	"gameplan/tests/permissions/test_public_file.py": 4,

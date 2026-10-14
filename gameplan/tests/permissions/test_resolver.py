@@ -32,11 +32,6 @@ from gameplan.permissions import (
 	draft_query_conditions,
 	users_who_can_view_space,
 )
-from gameplan.public_access import (
-	VISIBILITY_ANONYMOUS,
-	VISIBILITY_GENERAL,
-	VISIBILITY_MEMBER_ACCESS,
-)
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
 	create_comment,
@@ -48,6 +43,11 @@ from gameplan.tests.fixtures import (
 	grant_guest_access,
 )
 from gameplan.tests.fixtures import public_access as switch
+from gameplan.visibility import (
+	VISIBILITY_ANONYMOUS,
+	VISIBILITY_GENERAL,
+	VISIBILITY_MEMBER_ACCESS,
+)
 
 ANONYMOUS = "Guest"
 

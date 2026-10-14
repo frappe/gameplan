@@ -5,10 +5,12 @@ from pypika.terms import ValueWrapper
 
 import gameplan
 from gameplan.public_access import (
+	public_access_enabled,
+)
+from gameplan.visibility import (
 	SIGNED_IN_TIERS,
 	VISIBILITY_ANONYMOUS,
 	is_member_access,
-	public_access_enabled,
 	public_team_criterion,
 	visibility_tier,
 )

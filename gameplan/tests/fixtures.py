@@ -13,7 +13,13 @@ import frappe
 import frappe.search.sqlite_search
 from frappe.model.document import Document
 
-from gameplan.public_access import PUBLIC_ACCESS_CONFIG_KEY, VISIBILITY_GENERAL, VISIBILITY_TIERS
+from gameplan.public_access import (
+	PUBLIC_ACCESS_CONFIG_KEY,
+)
+from gameplan.visibility import (
+	VISIBILITY_GENERAL,
+	VISIBILITY_TIERS,
+)
 
 
 def _name(doc_or_name):

@@ -37,7 +37,7 @@
         </div>
         <div class="mt-0.5 truncate text-sm text-ink-gray-5 md:hidden">
           {{
-            [visibilityLabel(space.visibility), contentLabel, guestsLabel]
+            [visibilityTier(space.visibility), contentLabel, guestsLabel]
               .filter(Boolean)
               .join(' · ')
           }}
@@ -55,7 +55,7 @@
 
     <ListCell class="justify-end gap-1">
       <Button
-        v-if="space.archived_at && canManageSpaceSettings"
+        v-if="space.archived_at && canRestoreSpace"
         variant="ghost"
         icon="lucide-archive-restore"
         tooltip="Unarchive space"
@@ -78,8 +78,8 @@ import { isDocMethodLoading, spaces, type Space, unarchiveSpace } from '@/data/s
 import { readOnlyMode } from '@/data/readOnlyMode'
 import { useSessionUser } from '@/data/users'
 import type { GPProject } from '@/types/doctypes'
-import { canManageSpace } from '@/utils/permissions'
-import { isMemberAccess, visibilityLabel } from '@/utils/visibility'
+import { canManageSpace, canMoveContentToSpace } from '@/utils/permissions'
+import { isMemberAccess, visibilityTier } from '@/utils/visibility'
 
 const props = defineProps<{
   space: Space
@@ -99,6 +99,11 @@ const canManageSpaceSettings = computed(
   () => !readOnlyMode && canManageSpace(props.space, sessionUser),
 )
 const canEditSpace = computed(() => canManageSpaceSettings.value && !props.space.archived_at)
+const canRestoreSpace = computed(
+  () =>
+    canManageSpaceSettings.value &&
+    canMoveContentToSpace(null, { ...props.space, archived_at: null }, sessionUser),
+)
 const contentLabel = computed(() => {
   const counts = [
     formatNonZeroCount(props.space.discussions_count ?? 0, 'post'),

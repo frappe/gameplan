@@ -18,7 +18,11 @@ import frappe
 from frappe.tests.utils import whitelist_for_tests
 from frappe.utils import cint
 
-from gameplan.public_access import VISIBILITY_ANONYMOUS, VISIBILITY_GENERAL, VISIBILITY_MEMBER_ACCESS
+from gameplan.visibility import (
+	VISIBILITY_ANONYMOUS,
+	VISIBILITY_GENERAL,
+	VISIBILITY_MEMBER_ACCESS,
+)
 
 # Roles this seed API may mint an invitation for. `gameplan.api.accept_invitation` is
 # `allow_guest`, GET-reachable, and hands the invitation's role straight to

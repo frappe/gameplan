@@ -24,7 +24,6 @@ allows a non-editor's save only when nothing beyond interaction-safe fields
 
 import frappe
 
-from gameplan.public_access import VISIBILITY_GENERAL, VISIBILITY_MEMBER_ACCESS
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
 	create_comment,
@@ -32,6 +31,10 @@ from gameplan.tests.fixtures import (
 	create_discussion,
 	create_space,
 	grant_guest_access,
+)
+from gameplan.visibility import (
+	VISIBILITY_GENERAL,
+	VISIBILITY_MEMBER_ACCESS,
 )
 
 REACTION_ADD = [{"emoji": "\U0001f44d", "operation": "add"}]

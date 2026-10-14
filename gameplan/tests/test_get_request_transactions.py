@@ -74,6 +74,7 @@ READ_ONLY_ENDPOINTS = frozenset(
 		# Public access: profiles of authors of public content, and the socket permission check.
 		"gameplan.api.get_public_user_info",
 		"gameplan.public_access.realtime_has_permission",
+		"gameplan.guest_payload.can_view_presence",
 		# Streams one file the caller may read.
 		"gameplan.api.public_file",
 		# The public view's lists: permission-checked, cleaned reads.

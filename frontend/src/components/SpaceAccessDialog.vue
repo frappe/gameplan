@@ -5,16 +5,15 @@
         <section>
           <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div class="min-w-0">
-              <h3 class="text-base-medium text-ink-gray-7">Access</h3>
-              <p class="mt-1 text-p-sm text-ink-gray-5">{{ accessDescription }}</p>
-            </div>
-            <div class="flex shrink-0 items-center gap-2 self-end sm:self-auto">
               <Badge>
                 <template #prefix>
                   <span :class="[accessIcon, 'size-3']" />
                 </template>
                 {{ accessLabel }}
               </Badge>
+              <p class="mt-1 text-p-sm text-ink-gray-5">{{ accessDescription }}</p>
+            </div>
+            <div class="flex shrink-0 items-center gap-2 self-end sm:self-auto">
               <Button
                 v-if="canChangeVisibility"
                 label="Change visibility"
@@ -155,7 +154,6 @@ import {
   isMemberAccess,
   VISIBILITY_ANONYMOUS,
   visibilityIcon,
-  visibilityLabel,
   visibilityTier,
 } from '@/utils/visibility'
 
@@ -208,7 +206,7 @@ let guestsAndInvites = computed(() => {
   return [...(guests.data || []), ...(pending.data || [])]
 })
 
-const accessLabel = computed(() => visibilityLabel(space.value?.visibility))
+const accessLabel = computed(() => visibilityTier(space.value?.visibility))
 const accessIcon = computed(() => visibilityIcon(space.value?.visibility))
 const accessDescription = computed(() => {
   if (visibilityTier(space.value?.visibility) === VISIBILITY_ANONYMOUS) {

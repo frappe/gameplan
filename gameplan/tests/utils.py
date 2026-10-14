@@ -5,7 +5,9 @@
 
 import frappe
 
-from gameplan.public_access import VISIBILITY_GENERAL
+from gameplan.visibility import (
+	VISIBILITY_GENERAL,
+)
 
 
 def create_user(email, first_name, role):

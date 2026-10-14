@@ -24,7 +24,10 @@ from datetime import datetime, timedelta
 import frappe
 from frappe.utils import add_days, getdate, now_datetime
 
-from gameplan.public_access import VISIBILITY_GENERAL, VISIBILITY_TIERS
+from gameplan.visibility import (
+	VISIBILITY_GENERAL,
+	VISIBILITY_TIERS,
+)
 
 MAYA_EMAIL = "maya@moonhollow.studio"
 DEMO_EMAIL_DOMAIN = "@moonhollow.studio"

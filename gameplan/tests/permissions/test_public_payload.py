@@ -9,14 +9,14 @@ from unittest.mock import patch
 import frappe
 import frappe.api.v2
 from frappe.database.query import Engine
+from werkzeug.wrappers import Response
 
 from gameplan import public_lists
-from gameplan.api import get_public_user_info
+from gameplan.api import get_public_user_info, get_user_info
 from gameplan.extends.client import get_list as get_client_list
 from gameplan.gameplan.doctype.gp_discussion.api import get_discussions
+from gameplan.guest_payload import can_view_presence, hide_guest_identity_data
 from gameplan.public_access import (
-	VISIBILITY_ANONYMOUS,
-	VISIBILITY_MEMBER_ACCESS,
 	realtime_has_permission,
 	refuse_generic_routes_for_anonymous,
 )
@@ -38,9 +38,14 @@ from gameplan.tests.fixtures import (
 	create_discussion,
 	create_poll,
 	create_space,
+	create_user,
 )
 from gameplan.tests.fixtures import public_access as switched_on
 from gameplan.tests.permissions.test_anonymous_access import ANONYMOUS_READABLE_DOCTYPES
+from gameplan.visibility import (
+	VISIBILITY_ANONYMOUS,
+	VISIBILITY_MEMBER_ACCESS,
+)
 
 ANONYMOUS = "Guest"
 LAYOUT_FIELDTYPES = {"Section Break", "Column Break", "Tab Break"}
@@ -215,6 +220,80 @@ class TestPublicDocuments(PublicContentTestCase):
 		self.assertIn(self.member.name, [m.user for m in space.members])
 		self.assertEqual([vote.user for vote in poll.votes], [self.second_member.name])
 		self.assertIn("modified_by", discussion)
+
+	def test_guests_use_handles_in_documents_directory_and_nested_identity_rows(self):
+		with switched_on(), self.as_user(self.guest):
+			payload = frappe.get_doc("GP Discussion", self.discussion.name).as_dict()
+			directory = get_user_info()
+			self.assertEqual(payload.owner, self.member_handle)
+			self.assertEqual(
+				{row.user for row in payload.reactions}, {self.member_handle, self.second_handle}
+			)
+			self.assertIn(f'data-id="{self.second_handle}"', payload.content)
+			self.assertIn("mira@typed.test.", payload.content)
+			self.assertEqual(get_user_info(self.member_handle)[0].name, self.member_handle)
+			self.assertIn(self.guest.name, {row.name for row in directory})
+			self.assertNotIn(self.member.name, frappe.as_json([payload, directory]))
+
+	def test_an_account_without_gameplan_access_cannot_read_the_directory(self):
+		user = create_user("unassigned@example.com", "Unassigned")
+		with self.as_user(user), self.assertRaises(frappe.PermissionError):
+			get_user_info()
+
+	def test_guest_response_hook_cleans_generic_aliases_and_keeps_own_identity(self):
+		with self.as_user(self.guest):
+			response = Response(
+				frappe.as_json(
+					{
+						"data": [{"alias": self.member.name, "user": self.guest.name}],
+						"counts": {self.member.name: 2},
+						"_server_messages": f'["Account {self.member.name} is unavailable"]',
+						"image": f"/files/{self.member.name}.png",
+					}
+				),
+				content_type="application/json",
+			)
+			hide_guest_identity_data(response)
+			self.assertEqual(
+				response.get_json(),
+				{
+					"data": [{"alias": self.member_handle, "user": self.guest.name}],
+					"counts": {self.member_handle: 2},
+					"_server_messages": f'["Account {self.member_handle} is unavailable"]',
+					"image": f"/files/{self.member.name}.png",
+				},
+			)
+			with (
+				patch("gameplan.guest_payload.handles_for", side_effect=RuntimeError("lookup failed")),
+				patch("frappe.log_error"),
+			):
+				response.set_data(frappe.as_json({"owner": self.member.name}))
+				hide_guest_identity_data(response)
+			self.assertEqual(response.status_code, 500)
+			self.assertNotIn(self.member.name, response.get_data(as_text=True))
+
+	def test_guest_mentions_by_handle_notify_the_account_without_exposing_its_email(self):
+		with switched_on(), self.as_user(self.guest):
+			comment = frappe.get_doc(
+				doctype="GP Comment",
+				reference_doctype="GP Discussion",
+				reference_name=self.discussion.name,
+				content=f'<p><span data-type="mention" data-id="{self.member_handle}">@Member</span></p>',
+			).insert()
+		self.assertTrue(
+			frappe.db.exists(
+				"GP Notification", {"comment": comment.name, "to_user": self.member.name, "type": "Mention"}
+			)
+		)
+
+	def test_presence_is_closed_to_guests_but_document_updates_remain_available(self):
+		with switched_on(), self.as_user(self.guest):
+			self.assertFalse(can_view_presence())
+			self.assertTrue(realtime_has_permission("GP Discussion", str(self.discussion.name)))
+			with self.assertRaises(frappe.PermissionError):
+				realtime_has_permission("GP Discussion")
+		with self.as_user(self.member):
+			self.assertTrue(can_view_presence())
 
 	def test_a_deleted_comment_keeps_no_content(self):
 		frappe.db.set_value("GP Comment", self.comment.name, "deleted_at", frappe.utils.now())

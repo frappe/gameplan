@@ -7,8 +7,10 @@ import frappe
 from frappe.model.document import Document, bulk_insert
 
 import gameplan
-from gameplan.public_access import is_member_access
 from gameplan.realtime import notify_unread_counts_changed
+from gameplan.visibility import (
+	is_member_access,
+)
 
 
 class GPUnreadRecord(Document):

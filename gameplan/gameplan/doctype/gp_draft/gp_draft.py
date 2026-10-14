@@ -6,7 +6,9 @@ import re
 import frappe
 from frappe.model.document import Document
 
-from gameplan.public_access import VISIBILITY_GENERAL
+from gameplan.visibility import (
+	VISIBILITY_GENERAL,
+)
 
 
 class GPDraft(Document):

@@ -201,6 +201,7 @@ before_request = [
 	"gameplan.public_access.refuse_generic_routes_for_anonymous",
 	"gameplan.public_access.limit_anonymous_request_rate",
 ]
+after_request = ["gameplan.guest_payload.hide_guest_identity_data"]
 override_whitelisted_methods = {
 	"frappe.realtime.has_permission": "gameplan.public_access.realtime_has_permission",
 }

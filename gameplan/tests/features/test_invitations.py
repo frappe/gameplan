@@ -22,7 +22,6 @@ from frappe.utils import add_days, now, today
 
 from gameplan.api import _invite_by_email, accept_invitation
 from gameplan.gameplan.doctype.gp_invitation.gp_invitation import GPInvitation, expire_invitations
-from gameplan.public_access import VISIBILITY_ANONYMOUS, VISIBILITY_GENERAL, VISIBILITY_MEMBER_ACCESS
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
 	create_community,
@@ -30,6 +29,11 @@ from gameplan.tests.fixtures import (
 	create_member,
 	create_space,
 	create_user,
+)
+from gameplan.visibility import (
+	VISIBILITY_ANONYMOUS,
+	VISIBILITY_GENERAL,
+	VISIBILITY_MEMBER_ACCESS,
 )
 
 

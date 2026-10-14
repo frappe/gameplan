@@ -49,7 +49,7 @@ const showSpaceAccessDialog = ref(false)
 const options = computed(() => [
   {
     label: 'Visibility',
-    icon: 'lucide-users',
+    icon: 'lucide-eye',
     onClick: () => (showSpaceAccessDialog.value = true),
     condition: () => canManageAccess.value,
   },

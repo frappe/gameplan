@@ -3,8 +3,7 @@
 
 import frappe
 
-from gameplan.public_access import (
-	VISIBILITY_DOCTYPES,
+from gameplan.visibility import (
 	VISIBILITY_GENERAL,
 	VISIBILITY_MEMBER_ACCESS,
 )
@@ -21,7 +20,7 @@ def execute():
 	Access and the site is too closed rather than too open. `is_private` itself is left as
 	it is, so a rollback needs no data restore.
 	"""
-	for doctype in VISIBILITY_DOCTYPES:
+	for doctype in ("GP Team", "GP Project"):
 		table = frappe.qb.DocType(doctype)
 		frappe.qb.update(table).set(table.visibility, VISIBILITY_MEMBER_ACCESS).run()
 		frappe.qb.update(table).set(table.visibility, VISIBILITY_GENERAL).where(table.is_private == 0).run()

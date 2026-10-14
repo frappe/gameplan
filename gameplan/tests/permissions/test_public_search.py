@@ -11,9 +11,6 @@ import frappe
 from gameplan.api import get_search_filter_options, search_sqlite
 from gameplan.public_access import (
 	ANONYMOUS_RATE_LIMITS,
-	VISIBILITY_ANONYMOUS,
-	VISIBILITY_GENERAL,
-	VISIBILITY_MEMBER_ACCESS,
 )
 from gameplan.public_search import MAX_PUBLIC_RESULTS, PublicGameplanSearch, highlight_text
 from gameplan.search_sqlite import GameplanSearch
@@ -24,8 +21,14 @@ from gameplan.tests.fixtures import (
 	create_page,
 	create_task,
 	create_visibility_matrix,
+	grant_guest_access,
 )
 from gameplan.tests.search_isolation import IsolatedSearchIndex
+from gameplan.visibility import (
+	VISIBILITY_ANONYMOUS,
+	VISIBILITY_GENERAL,
+	VISIBILITY_MEMBER_ACCESS,
+)
 
 
 class TestPublicSearch(IsolatedSearchIndex, GameplanTestCase):
@@ -47,6 +50,7 @@ class TestPublicSearch(IsolatedSearchIndex, GameplanTestCase):
 		self.comment = create_comment(self.public_discussion, content="forumneedle reply", owner=self.member)
 		self.task = create_task("forumneedle internal task", self.public_space, owner=self.member)
 		self.task.description = "forumneedle internal task body"
+		self.task.save(ignore_permissions=True)
 		self.page = create_page("forumneedle internal page", self.public_space, owner=self.member)
 		self.task_comment = frappe.get_doc(
 			doctype="GP Comment",
@@ -67,6 +71,58 @@ class TestPublicSearch(IsolatedSearchIndex, GameplanTestCase):
 
 	def result_ids(self, response):
 		return {result["id"] for result in response["results"]}
+
+	def test_guest_search_keeps_grants_and_masks_author_filters_and_facets(self):
+		private = self.spaces[(VISIBILITY_MEMBER_ACCESS, VISIBILITY_MEMBER_ACCESS)]
+		grant_guest_access(self.guest, private)
+		handle = frappe.db.get_value("GP User Profile", {"user": self.member.name}, "name")
+		with self.as_user(self.guest):
+			response = search_sqlite("forumneedle", {"owner": [handle]})
+			options = get_search_filter_options()
+			with self.assertRaises(frappe.PermissionError):
+				search_sqlite("forumneedle", {"owner": [self.member.name]})
+		self.assertIn(
+			f"GP Discussion:{self.discussions[(VISIBILITY_MEMBER_ACCESS, VISIBILITY_MEMBER_ACCESS)].name}",
+			self.result_ids(response),
+		)
+		self.assertIn(handle, options["authors"])
+		self.assertNotIn(self.member.name, json.dumps([response, options]))
+		self.assertEqual(response["summary"]["applied_filters"]["owner"], [handle])
+
+	def test_guest_search_rechecks_moved_discussions_and_parent_replies_without_reindexing(self):
+		private = self.spaces[(VISIBILITY_MEMBER_ACCESS, VISIBILITY_MEMBER_ACCESS)]
+		frappe.db.set_value(
+			"GP Discussion", self.public_discussion.name, {"project": private.name, "team": private.team}
+		)
+		with self.as_user(self.guest):
+			self.assertNotIn(
+				f"GP Discussion:{self.public_discussion.name}", self.result_ids(search_sqlite("forumneedle"))
+			)
+			self.assertNotIn(f"GP Comment:{self.comment.name}", self.result_ids(search_sqlite("forumneedle")))
+
+	def test_guest_search_rechecks_deleted_and_edited_rows(self):
+		for doctype, name, values in (
+			("GP Discussion", self.public_discussion.name, {"content": "New text", "title": "New title"}),
+			("GP Comment", self.comment.name, {"deleted_at": frappe.utils.now()}),
+			("GP Comment", self.task_comment.name, {"deleted_at": frappe.utils.now()}),
+			("GP Task", self.task.name, {"description": "New description", "title": "New task"}),
+			("GP Page", self.page.name, {"content": "New page", "title": "New page"}),
+		):
+			frappe.db.set_value(doctype, name, values)
+		with self.as_user(self.guest):
+			self.assertEqual(search_sqlite("forumneedle")["results"], [])
+
+	def test_guest_private_search_still_works_with_public_switch_off(self):
+		grant_guest_access(self.guest, self.public_space)
+		with patch.dict(frappe.conf, gameplan_public_access_enabled=0), self.as_user(self.guest):
+			ids = self.result_ids(search_sqlite("forumneedle"))
+		self.assertEqual(
+			ids,
+			{
+				f"{doc.doctype}:{doc.name}"
+				for doc in (self.public_discussion, self.comment, self.task, self.page, self.task_comment)
+			},
+		)
 
 	def test_only_the_anonymous_anonymous_pair_returns_discussions_and_replies(self):
 		response = self.anonymous_search()

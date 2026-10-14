@@ -21,7 +21,6 @@ from gameplan.api import (
 	search_sqlite,
 )
 from gameplan.permissions import can_view_space
-from gameplan.public_access import VISIBILITY_ANONYMOUS, VISIBILITY_GENERAL, VISIBILITY_MEMBER_ACCESS
 from gameplan.search_sqlite import GameplanSearch
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
@@ -35,6 +34,11 @@ from gameplan.tests.fixtures import (
 )
 from gameplan.tests.search_isolation import IsolatedSearchIndex
 from gameplan.ui_test_helpers import PERSONAS, _reset_personas, create_invitation, rebuild_search_index, reset
+from gameplan.visibility import (
+	VISIBILITY_ANONYMOUS,
+	VISIBILITY_GENERAL,
+	VISIBILITY_MEMBER_ACCESS,
+)
 
 EMPTY_FILTER_OPTIONS = {
 	"authors": {},
@@ -104,8 +108,8 @@ class TestOnboardingEndpoint(APIEndpointTestCase):
 			frappe.db.get_value("GP Project", result["space"], "visibility"), VISIBILITY_MEMBER_ACCESS
 		)
 
-	def test_conflicting_or_invalid_legacy_privacy_is_rejected_before_creation(self):
-		for arguments in ({"is_private": 1, "visibility": VISIBILITY_GENERAL}, {"is_private": "invalid"}):
+	def test_invalid_legacy_privacy_is_rejected_before_creation(self):
+		for arguments in ({"is_private": 2}, {"is_private": "invalid"}):
 			with (
 				self.subTest(arguments=arguments),
 				self.as_user(self.member),
@@ -128,7 +132,7 @@ class TestOnboardingEndpoint(APIEndpointTestCase):
 				space="API Onboarding Space",
 				icon="lucide-users",
 				emails="[]",
-				visibility=VISIBILITY_MEMBER_ACCESS,
+				is_private=1,
 			)
 
 		self.assertEqual(set(result), {"team", "space"})
@@ -159,8 +163,9 @@ class TestOnboardingEndpoint(APIEndpointTestCase):
 
 	def test_signup_cannot_publish_its_first_space(self):
 		# Only a Gameplan Admin publishes. Someone signing up is not one yet.
-		with self.as_user(self.member), self.assertRaises(frappe.ValidationError):
-			onboarding(
+		with self.as_user(self.member):
+			result = frappe.call(
+				onboarding,
 				community="API Anonymous Onboarding Community",
 				space="API Anonymous Onboarding Space",
 				icon="lucide-users",
@@ -168,7 +173,7 @@ class TestOnboardingEndpoint(APIEndpointTestCase):
 				visibility=VISIBILITY_ANONYMOUS,
 			)
 
-		self.assertFalse(frappe.db.exists("GP Team", {"title": "API Anonymous Onboarding Community"}))
+		self.assertEqual(frappe.db.get_value("GP Project", result["space"], "visibility"), VISIBILITY_GENERAL)
 
 	def test_anonymous_caller_is_denied(self):
 		self.assert_anonymous_denied(onboarding)

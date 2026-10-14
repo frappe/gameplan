@@ -12,7 +12,6 @@ from frappe.database.query import Engine
 from gameplan import public_lists
 from gameplan.extends.client import get_list as get_client_list
 from gameplan.gameplan.doctype.gp_discussion.api import get_discussions
-from gameplan.public_access import VISIBILITY_ANONYMOUS, VISIBILITY_MEMBER_ACCESS
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
 	create_comment,
@@ -25,6 +24,10 @@ from gameplan.tests.fixtures import (
 	set_owner,
 )
 from gameplan.tests.fixtures import public_access as switched
+from gameplan.visibility import (
+	VISIBILITY_ANONYMOUS,
+	VISIBILITY_MEMBER_ACCESS,
+)
 
 ANONYMOUS = "Guest"
 

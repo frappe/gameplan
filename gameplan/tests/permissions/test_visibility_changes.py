@@ -3,17 +3,24 @@
 
 """Tier changes require a Gameplan Admin and reconcile unread records, pins, and follows."""
 
+from unittest.mock import patch
+
 import frappe
 from frappe.client import set_value
 
+from gameplan.gameplan.doctype.gp_discussion.gp_discussion import move_discussions
 from gameplan.gameplan.doctype.gp_team.gp_team import join_team
-from gameplan.public_access import VISIBILITY_ANONYMOUS, VISIBILITY_GENERAL, VISIBILITY_MEMBER_ACCESS
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
 	create_community,
 	create_discussion,
 	create_space,
 	grant_guest_access,
+)
+from gameplan.visibility import (
+	VISIBILITY_ANONYMOUS,
+	VISIBILITY_GENERAL,
+	VISIBILITY_MEMBER_ACCESS,
 )
 
 TIERS = (VISIBILITY_GENERAL, VISIBILITY_MEMBER_ACCESS, VISIBILITY_ANONYMOUS)
@@ -25,6 +32,78 @@ SPACE_STATE_DOCTYPES = ("GP Unread Record", "GP Pinned Project", "GP Followed Pr
 
 def stored_visibility(doc):
 	return frappe.db.get_value(doc.doctype, doc.name, "visibility")
+
+
+class TestPublicationTransitions(GameplanTestCase):
+	def setUp(self):
+		super().setUp()
+		self.community = create_community(
+			"Publication Guard", visibility=VISIBILITY_ANONYMOUS, admins=[self.second_member]
+		)
+		self.public = create_space("Public Destination", self.community, visibility=VISIBILITY_ANONYMOUS)
+		self.private = create_space(
+			"Private History",
+			self.community,
+			visibility=VISIBILITY_MEMBER_ACCESS,
+			members=[self.member, self.second_member],
+		)
+		self.discussion = create_discussion("Private Conversation", self.private, owner=self.member)
+
+	def test_unarchive_requires_admin_on_both_methods_and_plain_saves_even_when_switch_is_off(self):
+		for doc in (self.public, self.community):
+			doc.archive()
+			for enabled in (0, 1):
+				for method in ("unarchive", "save"):
+					with self.subTest(doctype=doc.doctype, enabled=enabled, method=method):
+						with (
+							patch.dict(frappe.conf, gameplan_public_access_enabled=enabled),
+							self.as_user(self.second_member),
+						):
+							fresh = frappe.get_doc(doc.doctype, doc.name)
+							with self.assertRaises(frappe.PermissionError):
+								if method == "save":
+									fresh.archived_at = fresh.archived_by = None
+								getattr(fresh, method)()
+						self.assertTrue(frappe.db.get_value(doc.doctype, doc.name, "archived_at"))
+			with self.as_user(self.admin):
+				frappe.get_doc(doc.doctype, doc.name).unarchive()
+			self.assertFalse(frappe.db.get_value(doc.doctype, doc.name, "archived_at"))
+
+	def test_private_discussion_cannot_be_published_by_method_plain_save_or_bulk_move(self):
+		with self.as_user(self.member):
+			with self.assertRaises(frappe.PermissionError):
+				frappe.get_doc("GP Discussion", self.discussion.name).move_to_project(self.public.name)
+			with self.assertRaises(frappe.PermissionError):
+				set_value("GP Discussion", self.discussion.name, "project", self.public.name)
+			response = move_discussions([{"name": self.discussion.name, "project": self.public.name}])
+			self.assertEqual(response["failure_count"], 1)
+		self.assertEqual(
+			frappe.db.get_value("GP Discussion", self.discussion.name, "project"), str(self.private.name)
+		)
+		with self.as_user(self.admin):
+			frappe.get_doc("GP Discussion", self.discussion.name).move_to_project(self.public.name)
+		self.assertEqual(
+			frappe.db.get_value("GP Discussion", self.discussion.name, "project"), str(self.public.name)
+		)
+
+	def test_private_space_merge_cannot_publish_history_without_admin(self):
+		with self.as_user(self.second_member), self.assertRaises(frappe.PermissionError):
+			frappe.get_doc("GP Project", self.private.name).merge_with_project(self.public.name)
+		self.assertTrue(frappe.db.exists("GP Project", self.private.name))
+		with self.as_user(self.admin):
+			frappe.get_doc("GP Project", self.private.name).merge_with_project(self.public.name)
+		self.assertEqual(
+			frappe.db.get_value("GP Discussion", self.discussion.name, "project"), str(self.public.name)
+		)
+
+	def test_public_posting_and_moves_between_already_public_spaces_remain_allowed(self):
+		other = create_space("Already Public", self.community, visibility=VISIBILITY_ANONYMOUS)
+		with self.as_user(self.member):
+			post = frappe.get_doc(
+				doctype="GP Discussion", project=self.public.name, title="Public Post", content="Hello"
+			).insert()
+			post.move_to_project(other.name)
+		self.assertEqual(frappe.db.get_value("GP Discussion", post.name, "project"), str(other.name))
 
 
 class TestWhoMayChangeATier(GameplanTestCase):

@@ -27,10 +27,12 @@ from gameplan.permissions import (
 	task_query_conditions,
 	team_query_conditions,
 )
-from gameplan.public_access import VISIBILITY_MEMBER_ACCESS
 from gameplan.search_sqlite import GameplanSearch
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import create_community, create_discussion, create_member, create_space
+from gameplan.visibility import (
+	VISIBILITY_MEMBER_ACCESS,
+)
 
 # Shared content: a global admin sees everything, so these hand back "no condition".
 ADMIN_EXEMPT_CONDITIONS = (

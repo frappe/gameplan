@@ -11,10 +11,13 @@ from frappe.utils import cint, split_emails, validate_email_address
 
 import gameplan
 from gameplan.gameplan.doctype.gp_invitation.gp_invitation import grant_access
-from gameplan.public_access import VISIBILITY_GENERAL, VISIBILITY_MEMBER_ACCESS
 from gameplan.realtime import notify_notification_count_changed, unread_notification_count
-from gameplan.roles import GAMEPLAN_ROLES
+from gameplan.roles import GAMEPLAN_ROLES, has_app_access
 from gameplan.utils import validate_type
+from gameplan.visibility import (
+	VISIBILITY_GENERAL,
+	VISIBILITY_MEMBER_ACCESS,
+)
 
 
 def require_admin():
@@ -27,9 +30,17 @@ def require_admin():
 def get_user_info(user=None):
 	if frappe.session.user == "Guest":
 		frappe.throw("Authentication failed", exc=frappe.AuthenticationError)
+	if not has_app_access():
+		frappe.throw("Not permitted", frappe.PermissionError)
 
 	filters = {"roles.role": ["like", "Gameplan %"]}
 	if user:
+		if gameplan.is_guest() and user != frappe.session.user:
+			from gameplan.guest_payload import users_for_handles
+
+			user = users_for_handles([user]).get(user)
+			if not user:
+				frappe.throw("Use a profile handle to look up another user.", frappe.PermissionError)
 		filters["name"] = user
 
 	users = frappe.qb.get_query(
@@ -119,6 +130,9 @@ def get_user_info(user=None):
 	if gameplan.is_guest():
 		for user in users:
 			user.pop("email", None)
+		from gameplan.guest_payload import for_guest
+
+		users = for_guest(users)
 
 	return users
 
@@ -346,22 +360,12 @@ def mark_all_notifications_as_read():
 
 
 @frappe.whitelist(methods=["POST"])
-def onboarding(community, space, icon, emails, is_private=None, *, visibility=None):
+def onboarding(community, space, icon, emails, is_private=0):
 	# Keep old clients' private request private, including the fifth positional argument.
-	if is_private is not None:
-		if is_private not in (0, 1, "0", "1"):
-			frappe.throw(_("is_private must be 0 or 1"))
-		legacy_visibility = VISIBILITY_MEMBER_ACCESS if cint(is_private) else VISIBILITY_GENERAL
-		if visibility is not None and visibility != legacy_visibility:
-			frappe.throw(_("is_private and visibility disagree"))
-		visibility = legacy_visibility
-	if visibility is None:
-		visibility = VISIBILITY_GENERAL
+	if is_private not in (0, 1, "0", "1"):
+		frappe.throw(_("is_private must be 0 or 1"))
+	visibility = VISIBILITY_MEMBER_ACCESS if cint(is_private) else VISIBILITY_GENERAL
 	emails = frappe.parse_json(emails)
-	# Signup may keep its first space to members, but never publish it: the Anonymous tier
-	# is a Gameplan Admin's decision, and the person signing up is not one yet.
-	if visibility not in (VISIBILITY_GENERAL, VISIBILITY_MEMBER_ACCESS):
-		frappe.throw(_("Invalid visibility: {0}").format(visibility), frappe.ValidationError)
 
 	# Create the community. The GP Team after_insert hook auto-creates a public
 	# "General" space inside it.
@@ -387,23 +391,22 @@ def onboarding(community, space, icon, emails, is_private=None, *, visibility=No
 @frappe.whitelist(allow_guest=True, methods=["GET", "POST"])
 @validate_type
 def search_sqlite(query: str, filters: dict | str | None = None):
-	from gameplan.public_search import PublicGameplanSearch, validate_search_filters
-	from gameplan.search_sqlite import GameplanSearch
+	from gameplan.public_search import search_for_viewer, validate_search_filters
 
 	anonymous = gameplan.is_anonymous()
-	search = PublicGameplanSearch() if anonymous else GameplanSearch()
-	filters = validate_search_filters(filters, anonymous=anonymous)
+	guest = gameplan.is_guest()
+	search = search_for_viewer()
+	if not (anonymous or guest):
+		filters = validate_search_filters(filters)
 	return search.search(query, filters=filters)
 
 
 @frappe.whitelist(allow_guest=True, methods=["GET", "POST"])
 def get_search_filter_options():
 	"""Get available filter options for advanced search"""
-	from gameplan.public_search import PublicGameplanSearch
-	from gameplan.search_sqlite import GameplanSearch
+	from gameplan.public_search import search_for_viewer
 
-	search = PublicGameplanSearch() if gameplan.is_anonymous() else GameplanSearch()
-	return search.get_filter_options()
+	return search_for_viewer().get_filter_options()
 
 
 def can_access_gameplan():

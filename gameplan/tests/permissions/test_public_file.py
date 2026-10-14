@@ -6,11 +6,14 @@
 import frappe
 
 from gameplan.api import public_file
-from gameplan.public_access import VISIBILITY_ANONYMOUS, VISIBILITY_MEMBER_ACCESS
 from gameplan.public_payload import public_file_url
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import create_comment, create_community, create_discussion, create_space
 from gameplan.tests.fixtures import public_access as switched
+from gameplan.visibility import (
+	VISIBILITY_ANONYMOUS,
+	VISIBILITY_MEMBER_ACCESS,
+)
 
 ANONYMOUS = "Guest"
 PIXEL = b"GIF89a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\xff\xff\xff!\xf9\x04\x01\x00\x00\x00\x00,"

@@ -13,13 +13,13 @@ import frappe
 from gameplan.demo.demo import FIXTURE_DIR
 from gameplan.demo.seeder import Seeder
 from gameplan.permissions import can_manage_community, can_manage_space, can_view_community, can_view_space
-from gameplan.public_access import (
+from gameplan.tests.base import GameplanTestCase
+from gameplan.visibility import (
 	VISIBILITY_ANONYMOUS,
 	VISIBILITY_GENERAL,
 	VISIBILITY_TIERS,
 	find_anonymous_readable_drift,
 )
-from gameplan.tests.base import GameplanTestCase
 
 
 class TestDemoPermissions(GameplanTestCase):

@@ -31,6 +31,7 @@ import type { Community } from '@/data/communities'
 import type { GPTeam } from '@/types/doctypes'
 import MergeCommunityDialog from './MergeCommunityDialog.vue'
 import VisibilityDialog from '@/components/VisibilityDialog.vue'
+import { VISIBILITY_ANONYMOUS } from '@/utils/visibility'
 
 const props = defineProps<{
   community: Community
@@ -72,7 +73,9 @@ const options = computed(() => [
     label: 'Unarchive',
     icon: 'lucide-archive-restore',
     onClick: () => updateArchiveState('unarchive'),
-    condition: () => Boolean(props.community.archived_at),
+    condition: () =>
+      Boolean(props.community.archived_at) &&
+      (isGameplanAdmin() || props.community.visibility !== VISIBILITY_ANONYMOUS),
   },
   {
     label: 'Archive',
