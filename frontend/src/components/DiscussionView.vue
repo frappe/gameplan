@@ -351,6 +351,7 @@ import {
   dayjsLocal,
   Switch,
   dialog,
+  toast,
 } from 'frappe-ui'
 import { until, useEventListener } from '@vueuse/core'
 import type { Editor } from '@tiptap/vue-3'
@@ -775,6 +776,7 @@ function updatePost() {
         // The save failed: put the old title back, unless something newer replaced it.
         const doc = discussion.doc
         if (doc && doc.title === title && previousTitle !== undefined) doc.title = previousTitle
+        toast.error('Could not save the discussion')
       },
     )
   editingPost.value = false

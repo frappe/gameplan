@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue'
 import { useLocalStorage } from '@vueuse/core'
-import { debounce, useDoctype } from 'frappe-ui'
+import { debounce, toast, useDoctype } from 'frappe-ui'
 import type { GPUserProfile } from '@/types/doctypes'
 
 const pinned = useLocalStorage<string[]>(`gameplan:pinnedSpaces:${sessionUserFromCookie()}`, [])
@@ -35,6 +35,7 @@ function save() {
       () => {
         // Keep a newer edit; it is sent next.
         if (sameIds(pinned.value, value)) pinned.value = saved
+        toast.error('Could not save your pinned spaces')
       },
     )
     .finally(() => {

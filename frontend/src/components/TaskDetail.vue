@@ -178,7 +178,16 @@ import CommentsList from '@/components/CommentsList.vue'
 import TaskStatusIcon from '@/components/NewTaskDialog/TaskStatusIcon.vue'
 import TaskPriorityIcon from '@/components/icons/TaskPriorityIcon.vue'
 import DropdownMoreOptions from './DropdownMoreOptions.vue'
-import { LoadingText, DatePicker, Button, Combobox, Select, Dropdown, dialog } from 'frappe-ui'
+import {
+  LoadingText,
+  DatePicker,
+  Button,
+  Combobox,
+  Select,
+  Dropdown,
+  dialog,
+  toast,
+} from 'frappe-ui'
 import UserAvatar from '@/components/UserAvatar.vue'
 import { vFocus } from '@/directives'
 import { activeUsers } from '@/data/users'
@@ -205,9 +214,12 @@ const canEditTask = computed(
   () => !props.readOnlyMode && canEditContent(task.doc, space.value, useSessionUser()),
 )
 
-// A failed save shows as task.setValue.error in the header.
 function setTaskValue(values: Parameters<typeof task.setValue.submit>[0]) {
-  task.setValue.submit(values).catch(() => {})
+  task.setValue.submit(values).catch(showSaveError)
+}
+
+function showSaveError() {
+  toast.error('Could not save the task')
 }
 
 function deleteTask() {
@@ -337,11 +349,12 @@ function changeAssignee(option: string | null) {
 
 function changeSpace(option: string | null) {
   if (!canEditTask.value || !task.doc || option == null) return
+  const previousSpace = task.doc.project
   task.doc.project = option
-  task.setValue
-    .submit({ project: option })
-    .then(updateRoute)
-    .catch(() => {})
+  task.setValue.submit({ project: option }).then(updateRoute, () => {
+    if (task.doc?.project === option) task.doc.project = previousSpace
+    showSaveError()
+  })
 }
 
 function updateRoute() {

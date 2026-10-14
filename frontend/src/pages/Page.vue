@@ -106,6 +106,7 @@ import {
   dayjsLocal,
   useDoc,
   dialog,
+  toast,
 } from 'frappe-ui'
 import PageEditor from '@/components/editor/PageEditor.vue'
 import { useSpace } from '@/data/spaces'
@@ -231,7 +232,8 @@ const save = () => {
       title: title.value,
       content: content.value,
     })
-    .catch(() => {})
+    // Autosave can fail on every pause in typing; the id keeps a single toast on screen.
+    .catch(() => toast.error('Could not save the page', { id: 'page-save' }))
     .finally(() => {
       const elapsedTime = Date.now() - startTime
       const remainingTime = Math.max(0, MIN_AUTOSAVING_DURATION - elapsedTime)
