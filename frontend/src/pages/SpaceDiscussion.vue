@@ -1,6 +1,8 @@
 <template>
   <div class="flex" v-if="space">
+    <!-- Keyed so opening another discussion mounts a fresh view instead of reusing this one -->
     <DiscussionView
+      :key="postId"
       class="w-full"
       :postId="postId"
       :read-only-mode="Boolean(space?.archived_at) || $readOnlyMode"

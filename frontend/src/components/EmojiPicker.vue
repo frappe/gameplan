@@ -9,7 +9,7 @@
     </template>
     <!-- shell (bg, radius, shadow, ring) is provided by Popover's PopoverPanel -->
     <template #default="{ close }">
-      <div class="h-96 w-96 overflow-y-auto pb-2.5">
+      <ScrollArea class="h-96 w-96" viewport-class="pb-2.5">
         <div class="flex gap-2 pb-1 px-2.5 pt-2.5">
           <div class="flex-1">
             <FormControl
@@ -59,14 +59,14 @@
             </button>
           </div>
         </div>
-      </div>
+      </ScrollArea>
     </template>
   </Popover>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { Button, FormControl, Popover } from 'frappe-ui'
+import { Button, FormControl, Popover, ScrollArea } from 'frappe-ui'
 import { gemoji } from 'gemoji'
 import { getRandomNumber } from '@/utils'
 import { customEmojis } from '@/data/customEmojis'

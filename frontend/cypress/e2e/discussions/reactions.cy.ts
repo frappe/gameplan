@@ -94,4 +94,58 @@ describe('Reactions', () => {
     cy.contains('h1', 'Welcome thread').should('be.visible')
     assertBothReactionsShown()
   })
+
+  const visitDiscussion = () => {
+    cy.visit(`/g/community/${community}/space/${space}/discussion/${discussion}/${discussionSlug}`)
+    cy.contains('h1', 'Welcome thread').should('be.visible')
+  }
+  const reactUrl = () => `/api/v2/document/GP%20Discussion/${discussion}/method/react`
+  const postPill = new RegExp(`${POST_EMOJI}\\s*1`)
+
+  it('sends a tap made while a save is in flight as the next batch', () => {
+    const batches: unknown[] = []
+    cy.intercept('POST', reactUrl(), (req) => {
+      batches.push(req.body.operations)
+      // Hold the first save open long enough to tap again while it is in flight.
+      if (batches.length === 1) req.on('response', (res) => res.setDelay(4000))
+    }).as('react')
+
+    visitDiscussion()
+    postReactionPicker().click()
+    pickEmoji(POST_EMOJI)
+    cy.contains('button', postPill).should('exist')
+
+    cy.wrap(batches).should('have.length', 1)
+    // Dismissed only now: the picker is a hover card under the resting cursor and can
+    // reopen just after the pick closes it, so an Esc sent straight away can miss.
+    cy.dismissEmojiPicker(GRID_ONLY_EMOJI)
+    cy.contains('button', postPill).click()
+    // The undo shows at once, and stays when the first save lands saying "reacted".
+    cy.contains('button', postPill).should('not.exist')
+    cy.wait('@react')
+    cy.contains('button', postPill).should('not.exist')
+
+    cy.wait('@react')
+    cy.wrap(batches).should('deep.equal', [
+      [{ emoji: POST_EMOJI, operation: 'add' }],
+      [{ emoji: POST_EMOJI, operation: 'remove' }],
+    ])
+    cy.reload()
+    cy.contains('h1', 'Welcome thread').should('be.visible')
+    cy.contains('button', postPill).should('not.exist')
+  })
+
+  it('takes the reaction back and says so when the save fails', () => {
+    cy.intercept('POST', reactUrl(), { statusCode: 500, body: {} }).as('react')
+
+    visitDiscussion()
+    postReactionPicker().click()
+    pickEmoji(POST_EMOJI)
+    // Checked before anything slower, while the batch is still waiting to go out.
+    cy.contains('button', postPill).should('exist')
+
+    cy.wait('@react')
+    cy.contains('Could not save your reaction').should('be.visible')
+    cy.contains('button', postPill).should('not.exist')
+  })
 })

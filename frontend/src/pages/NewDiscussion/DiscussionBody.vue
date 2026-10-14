@@ -10,7 +10,10 @@
       <LoadingIndicator class="size-3" aria-hidden="true" />
       <span>Loading draft…</span>
     </div>
-    <ErrorMessage :message="errorMessage || publishError" />
+    <p v-else-if="author && author.name !== sessionUser.name" class="mb-3 text-sm text-ink-gray-5">
+      {{ author.full_name }}'s draft. Only they can edit or publish it.
+    </p>
+    <ErrorMessage :message="errorMessage || publishError || scheduleWarning" />
     <textarea
       ref="titleTextarea"
       class="mt-1 w-full bg-transparent resize-none border-0 px-0 py-0.5 text-4xl-semibold text-ink-gray-8 placeholder-ink-gray-3 focus:ring-0"
@@ -30,7 +33,7 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, watch } from 'vue'
+import { computed, nextTick, watch } from 'vue'
 import { useTextareaAutosize } from '@vueuse/core'
 import { ErrorMessage, LoadingIndicator } from 'frappe-ui'
 import { EditorContent } from 'frappe-ui/editor'
@@ -59,9 +62,18 @@ const {
   isDraftLoading,
   isComposerEditable,
   showDraftLoadingStatus,
+  author,
+  sessionUser,
   handleTitleInput,
   handleTitleBlur,
+  scheduledAt,
 } = useNewDiscussionContext()
+
+const scheduleWarning = computed(() =>
+  scheduledAt.value && !draftData.value?.title?.trim()
+    ? 'Add a title to publish on scheduled time'
+    : '',
+)
 
 watch(
   () => draftData.value?.title,

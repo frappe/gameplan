@@ -339,7 +339,6 @@ class GameplanSearch(SQLiteSearch):
                 WHERE project IN ({})
                 GROUP BY owner
                 ORDER BY count DESC
-                LIMIT 20
             """.format(",".join(["?"] * len(accessible_projects)))
 			authors = conn.execute(authors_query, accessible_projects).fetchall()
 

@@ -27,10 +27,11 @@
     <!-- Community list: a self-scrolling region that fades content under whichever
          edge has more to scroll. `flex-1` lets it absorb the leftover height and
          keeps the avatar pinned to the bottom. The 50px columns bleed the list and
-         its gradients edge-to-edge into the rail's gutters. -->
+         its gradients edge-to-edge into the rail's gutters, where the unread pills
+         reach, and the scroller's pt-2 leaves room for the pill above the first item. -->
     <div
       v-if="activeCommunities.length"
-      class="mb-3 mt-3 flex min-h-0 w-full flex-1 flex-col items-center border-t pt-3"
+      class="mb-3 mt-3 flex min-h-0 w-full flex-1 flex-col items-center border-t pt-2"
     >
       <div class="relative min-h-0 w-[50px] flex-1">
         <div
@@ -43,7 +44,7 @@
         />
         <div
           ref="communityScrollEl"
-          class="h-full w-[50px] overflow-y-auto overflow-x-hidden pb-3 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          class="h-full w-[50px] overflow-y-auto overflow-x-hidden pb-3 pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           <div class="flex w-[50px] flex-col items-center gap-3">
             <SidebarRailItem
