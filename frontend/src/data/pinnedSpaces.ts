@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue'
 import { useLocalStorage } from '@vueuse/core'
-import { debounce, toast, useDoctype } from 'frappe-ui'
+import { toast, useDoctype } from 'frappe-ui'
+import { OptimisticSave } from '@/utils/optimisticSave'
 import type { GPUserProfile } from '@/types/doctypes'
 
 const pinned = useLocalStorage<string[]>(`gameplan:pinnedSpaces:${sessionUserFromCookie()}`, [])
@@ -15,46 +16,36 @@ export function isSpacePinned(spaceId: string) {
   return pinnedLookup.value.has(spaceId)
 }
 
-// What the server holds, so a failed save puts the sidebar back rather than lose it on reload.
-let saved: string[] = []
-// One save at a time, so saves cannot land out of order. Edits made meanwhile go out after it.
-let saving = false
-
-const persist = debounce(save, 500)
-
-function save() {
-  if (!profileName.value || saving || sameIds(pinned.value, saved)) return
-  const value = [...pinned.value]
-  saving = true
-  userProfiles.setValue
-    .submit({ name: profileName.value, pinned_spaces: JSON.stringify(value) })
-    .then(
-      () => {
-        saved = value
-      },
-      () => {
-        // Keep a newer edit; it is sent next.
-        if (sameIds(pinned.value, value)) pinned.value = saved
-        toast.error('Could not save your pinned spaces')
-      },
-    )
-    .finally(() => {
-      saving = false
-      save()
-    })
-}
+const pinSave = new OptimisticSave<string[]>({
+  read: () => pinned.value,
+  write: (value) => (pinned.value = value),
+  // Without a profile there is nowhere to save, so the pins stay in this browser.
+  send: (value) =>
+    profileName.value
+      ? userProfiles.setValue.submit({
+          name: profileName.value,
+          pinned_spaces: JSON.stringify(value),
+        })
+      : Promise.resolve(),
+  onError: () => toast.error('Could not save your pinned spaces'),
+})
+// Set by the first toggle. From then on this session's pins are the newest: a server
+// copy loaded later can have been read before one of its saves landed.
+let pinnedHere = false
 
 export function loadPinnedSpaces(value: unknown, currentProfileName = '') {
   profileName.value = currentProfileName
-  if (!currentProfileName) return
-  pinned.value = saved = normalizePinnedSpaces(parseStoredPins(value))
+  if (!currentProfileName || pinnedHere) return
+  pinned.value = normalizePinnedSpaces(parseStoredPins(value))
 }
 
 export function toggleSpacePinned(spaceId: string) {
-  pinned.value = isSpacePinned(spaceId)
-    ? pinned.value.filter((id) => id !== spaceId)
-    : [...pinned.value, spaceId]
-  persist()
+  pinnedHere = true
+  pinSave.change(
+    isSpacePinned(spaceId)
+      ? pinned.value.filter((id) => id !== spaceId)
+      : [...pinned.value, spaceId],
+  )
 }
 
 function parseStoredPins(value: unknown): unknown {
@@ -74,10 +65,6 @@ function normalizePinnedSpaces(value: unknown): string[] {
     seen.add(id)
     return true
   })
-}
-
-function sameIds(a: string[], b: string[]) {
-  return a.length === b.length && a.every((id, i) => id === b[i])
 }
 
 function sessionUserFromCookie() {
