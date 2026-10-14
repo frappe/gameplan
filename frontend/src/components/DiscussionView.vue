@@ -757,7 +757,6 @@ function cancelEdit() {
 function updatePost() {
   if (!editingPost.value || !canSavePost.value) return
   // Show the new title at once instead of the old one until the server answers.
-  // A failed save resolves null, so put the old title back, unless something newer replaced it.
   const title = postDraftData.value?.title
   const previousTitle = discussion.doc?.title
   if (discussion.doc && title) discussion.doc.title = title

@@ -287,8 +287,8 @@ function browseTopic(slug: string) {
 }
 
 function runSearch() {
-  // `useCall` resolves rather than rejects on failure; the error state reads
-  // `search.error` instead of a catch.
+  // submit() rejects on failure. The error shows from `search.error`, so the
+  // rejection is ignored here.
   search.submit({ query: query.value.trim(), topic: activeTopic.value }).catch(() => {})
 }
 
