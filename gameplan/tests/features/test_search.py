@@ -15,9 +15,7 @@ from gameplan.tests.fixtures import (
 	grant_guest_access,
 )
 from gameplan.tests.search_isolation import IsolatedSearchIndex
-from gameplan.visibility import (
-	VISIBILITY_MEMBER_ACCESS,
-)
+from gameplan.visibility import VISIBILITY_MEMBER_ACCESS
 
 
 class TestableGameplanSearch(GameplanSearch):

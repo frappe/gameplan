@@ -15,9 +15,7 @@ import frappe
 from gameplan.gameplan.doctype.gp_discussion.api import get_discussions
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import create_community, create_discussion, create_space
-from gameplan.visibility import (
-	VISIBILITY_MEMBER_ACCESS,
-)
+from gameplan.visibility import VISIBILITY_MEMBER_ACCESS
 
 
 def bookmark_rows(user=None, discussion=None):

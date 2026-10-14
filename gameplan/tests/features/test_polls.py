@@ -33,9 +33,7 @@ from gameplan.tests.fixtures import (
 	declared_http_methods,
 	grant_guest_access,
 )
-from gameplan.visibility import (
-	VISIBILITY_MEMBER_ACCESS,
-)
+from gameplan.visibility import VISIBILITY_MEMBER_ACCESS
 
 # A fixed instant to stop a poll at. Far enough ahead that the real clock never reaches
 # it, so a test that forgets to freeze the clock fails instead of passing by accident.

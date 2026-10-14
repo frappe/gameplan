@@ -4,15 +4,12 @@ from frappe.utils import cint, cstr, get_datetime
 from pypika.terms import ValueWrapper
 
 import gameplan
-from gameplan.public_access import (
-	public_access_enabled,
-)
+from gameplan.public_access import public_access_enabled
 from gameplan.visibility import (
 	SIGNED_IN_TIERS,
-	VISIBILITY_ANONYMOUS,
+	is_anonymous_eligible_community,
 	is_member_access,
 	public_team_criterion,
-	visibility_tier,
 )
 
 # A criterion no row satisfies.
@@ -147,16 +144,7 @@ def is_publicly_readable_space(project):
 
 def is_publicly_readable_community(team):
 	"""Whether someone who is not signed in may read `team`, a doc or a name."""
-	team_name = get_doc_name(team)
-	if not team_name or not public_access_enabled():
-		return False
-	if hasattr(team, "doctype"):
-		visibility, archived_at = team.visibility, team.archived_at
-	else:
-		visibility, archived_at = frappe.db.get_value(
-			"GP Team", team_name, ["visibility", "archived_at"]
-		) or (None, None)
-	return visibility_tier(visibility) == VISIBILITY_ANONYMOUS and not archived_at
+	return bool(get_doc_name(team)) and public_access_enabled() and is_anonymous_eligible_community(team)
 
 
 def can_manage_space(user, project):

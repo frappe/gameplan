@@ -5,26 +5,8 @@
 
 import frappe
 
-from gameplan.visibility import (
-	VISIBILITY_GENERAL,
-)
-
-
-def create_user(email, first_name, role):
-	if frappe.db.exists("User", email):
-		user = frappe.get_doc("User", email)
-	else:
-		user = frappe.get_doc(
-			{
-				"doctype": "User",
-				"email": email,
-				"first_name": first_name,
-				"send_welcome_email": 0,
-			}
-		).insert(ignore_permissions=True)
-	if role and role not in frappe.get_roles(email):
-		user.add_roles(role)
-	return user
+from gameplan.tests.fixtures import create_user as create_user
+from gameplan.visibility import VISIBILITY_GENERAL
 
 
 def create_member(email="test_member@example.com", first_name="Member"):

@@ -29,9 +29,7 @@ from gameplan.tests.fixtures import (
 	grant_guest_access,
 	set_owner,
 )
-from gameplan.visibility import (
-	VISIBILITY_MEMBER_ACCESS,
-)
+from gameplan.visibility import VISIBILITY_MEMBER_ACCESS
 
 
 class ListScopingTestCase(GameplanTestCase):

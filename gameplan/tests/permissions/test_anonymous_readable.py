@@ -9,7 +9,12 @@ import frappe
 from frappe.api.v2 import update_doc
 
 from gameplan.tests.base import GameplanTestCase
-from gameplan.tests.fixtures import create_community, create_discussion, create_space
+from gameplan.tests.fixtures import (
+	create_community,
+	create_discussion,
+	create_space,
+	create_visibility_matrix,
+)
 from gameplan.visibility import (
 	VISIBILITY_ANONYMOUS,
 	VISIBILITY_GENERAL,
@@ -17,29 +22,12 @@ from gameplan.visibility import (
 	find_anonymous_readable_drift,
 )
 
-TIERS = (VISIBILITY_GENERAL, VISIBILITY_MEMBER_ACCESS, VISIBILITY_ANONYMOUS)
-
 
 def readable(space):
 	return bool(frappe.db.get_value("GP Project", space.name, "is_anonymous_readable"))
 
 
-class AnonymousReadableTestCase(GameplanTestCase):
-	def save_as_admin(self, doc, **values):
-		with self.as_user(self.admin):
-			doc = frappe.get_doc(doc.doctype, doc.name)
-			doc.update(values)
-			doc.save()
-		return doc
-
-	def run_as_admin(self, doc, method, *args):
-		with self.as_user(self.admin):
-			doc = frappe.get_doc(doc.doctype, doc.name)
-			getattr(doc, method)(*args)
-		return doc
-
-
-class TestTheRule(AnonymousReadableTestCase):
+class TestTheRule(GameplanTestCase):
 	def test_a_member_cannot_publish_a_private_space_by_writing_the_computed_flag(self):
 		space = create_space(
 			"Submitted Public Flag",
@@ -55,13 +43,9 @@ class TestTheRule(AnonymousReadableTestCase):
 		self.assertFalse(readable(space))
 
 	def test_only_an_anonymous_space_in_an_anonymous_community_qualifies(self):
-		for community_tier in TIERS:
-			community = create_community(f"Rule {community_tier} Community", visibility=community_tier)
-			for space_tier in TIERS:
-				with self.subTest(community=community_tier, space=space_tier):
-					space = create_space(f"Rule {space_tier} Space", community, visibility=space_tier)
-					expected = community_tier == space_tier == VISIBILITY_ANONYMOUS
-					self.assertEqual(readable(space), expected)
+		for (community_tier, space_tier), space in create_visibility_matrix("Rule").items():
+			with self.subTest(community=community_tier, space=space_tier):
+				self.assertEqual(readable(space), community_tier == space_tier == VISIBILITY_ANONYMOUS)
 
 	def test_a_new_space_with_default_settings_does_not_qualify(self):
 		space = create_space("Rule Default Space", create_community("Rule Default Community"))
@@ -85,7 +69,7 @@ class TestTheRule(AnonymousReadableTestCase):
 		self.assertFalse(readable(space))
 
 
-class TestItFollowsEveryChange(AnonymousReadableTestCase):
+class TestItFollowsEveryChange(GameplanTestCase):
 	def setUp(self):
 		super().setUp()
 		self.community = create_community("Follow Community", visibility=VISIBILITY_ANONYMOUS)
@@ -155,7 +139,7 @@ class TestItFollowsEveryChange(AnonymousReadableTestCase):
 			self.assertEqual(find_anonymous_readable_drift(), [], f"after {step.__name__}{arguments}")
 
 
-class TestPublicImpact(AnonymousReadableTestCase):
+class TestPublicImpact(GameplanTestCase):
 	def setUp(self):
 		super().setUp()
 		self.community = create_community("Public Impact Community", visibility=VISIBILITY_ANONYMOUS)
@@ -163,12 +147,8 @@ class TestPublicImpact(AnonymousReadableTestCase):
 		for index in range(2):
 			create_discussion(f"Public Impact Discussion {index}", self.space, owner=self.member)
 
-	def impact(self, doc, visibility):
-		with self.as_user(self.admin):
-			return frappe.get_doc(doc.doctype, doc.name).get_visibility_change_impact(visibility)
-
 	def test_publishing_a_space_counts_the_discussions_made_public(self):
-		impact = self.impact(self.space, VISIBILITY_ANONYMOUS)
+		impact = self.visibility_impact(self.space, VISIBILITY_ANONYMOUS)
 
 		self.assertEqual(impact["discussions_made_public"], 2)
 		self.assertEqual(impact["discussions_no_longer_public"], 0)
@@ -179,12 +159,12 @@ class TestPublicImpact(AnonymousReadableTestCase):
 		space = create_space("Public Impact Closed Space", closed)
 		create_discussion("Public Impact Closed Discussion", space, owner=self.member)
 
-		self.assertEqual(self.impact(space, VISIBILITY_ANONYMOUS)["discussions_made_public"], 0)
+		self.assertEqual(self.visibility_impact(space, VISIBILITY_ANONYMOUS)["discussions_made_public"], 0)
 
 	def test_closing_a_public_community_counts_the_discussions_no_longer_public(self):
 		self.save_as_admin(self.space, visibility=VISIBILITY_ANONYMOUS)
 
-		impact = self.impact(self.community, VISIBILITY_GENERAL)
+		impact = self.visibility_impact(self.community, VISIBILITY_GENERAL)
 
 		self.assertEqual(impact["discussions_no_longer_public"], 2)
 		self.assertTrue(impact["leaving_anonymous"])

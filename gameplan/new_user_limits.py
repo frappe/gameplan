@@ -36,7 +36,6 @@ POST_COUNTER_FIELDS = {
 	"GP Comment": "first_day_replies",
 	"GP Poll": "first_day_replies",
 }
-RICH_TEXT_FIELD = "content"
 EVERYONE_MENTION = "_everyone_"
 
 
@@ -52,10 +51,10 @@ def check_new_user_limits(doc, method=None):
 		return
 	if doc.is_new():
 		check_first_day(posted, doc)
-	elif get_owner(doc) == user and post_changed(doc):
+	elif (doc.owner or frappe.db.get_value(doc.doctype, doc.name, "owner")) == user and post_changed(doc):
 		check_edit_window(doc)
 	if doc.is_new() or post_changed(doc):
-		check_post(doc.get(RICH_TEXT_FIELD) if doc.meta.has_field(RICH_TEXT_FIELD) else None)
+		check_post(doc.get("content") if doc.meta.has_field("content") else None)
 
 
 def is_limited(user, doc) -> bool:
@@ -143,26 +142,17 @@ def count_post_contents(html) -> frappe._dict:
 	"""
 	from gameplan.utils import file_reference_from_url
 
-	counts = frappe._dict(images=0, links=0, attachments=0, mentions=0, everyone=False)
-	if not html:
-		return counts
-	soup = BeautifulSoup(html, "html.parser")
-	for img in soup.find_all("img"):
-		if not img.has_attr("data-emoji"):
-			counts.images += 1
-	for link in soup.find_all("a", href=True):
-		if file_reference_from_url(link["href"]):
-			counts.attachments += 1
-		else:
-			counts.links += 1
-	counts.links += len(soup.find_all("iframe"))
-	counts.attachments += len(soup.find_all(["video", "audio"]))
-	for mention in soup.find_all("span", attrs={"data-type": "mention"}):
-		if mention.get("data-id") == EVERYONE_MENTION:
-			counts.everyone = True
-		else:
-			counts.mentions += 1
-	return counts
+	soup = BeautifulSoup(html or "", "html.parser")
+	links = soup.find_all("a", href=True)
+	mentions = soup.find_all("span", attrs={"data-type": "mention"})
+	attachments = sum(bool(file_reference_from_url(link["href"])) for link in links)
+	return frappe._dict(
+		images=len(soup.select("img:not([data-emoji])")),
+		links=len(links) - attachments + len(soup.find_all("iframe")),
+		attachments=attachments + len(soup.find_all(["video", "audio"])),
+		mentions=sum(mention.get("data-id") != EVERYONE_MENTION for mention in mentions),
+		everyone=any(mention.get("data-id") == EVERYONE_MENTION for mention in mentions),
+	)
 
 
 def post_changed(doc) -> bool:
@@ -172,10 +162,6 @@ def post_changed(doc) -> bool:
 	return doc.doctype == "GP Poll" and (
 		not before or [row.title for row in doc.options] != [row.title for row in before.options]
 	)
-
-
-def get_owner(doc):
-	return doc.owner or frappe.db.get_value(doc.doctype, doc.name, "owner")
 
 
 def refuse(message):

@@ -13,9 +13,7 @@ from gameplan.gameplan.doctype.gp_unread_record.gp_unread_record import GPUnread
 from gameplan.realtime import UNREAD_COUNTS_CHANGED
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import create_community, create_discussion, create_member, create_space
-from gameplan.visibility import (
-	VISIBILITY_MEMBER_ACCESS,
-)
+from gameplan.visibility import VISIBILITY_MEMBER_ACCESS
 
 
 def unread_count_events(publish_realtime):

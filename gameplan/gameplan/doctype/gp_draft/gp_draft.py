@@ -9,9 +9,7 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import get_datetime, now_datetime
 
-from gameplan.visibility import (
-	VISIBILITY_GENERAL,
-)
+from gameplan.visibility import VISIBILITY_GENERAL
 
 
 class GPDraft(Document):

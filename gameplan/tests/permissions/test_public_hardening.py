@@ -24,9 +24,7 @@ from gameplan.visibility import (
 	VISIBILITY_ANONYMOUS,
 	VISIBILITY_MEMBER_ACCESS,
 )
-from gameplan.www.robots import (
-	gameplan_robots_rules,
-)
+from gameplan.www.robots import gameplan_robots_rules
 
 ANONYMOUS = "Guest"
 # Guest-reachable endpoints that are not public reads, so are not rate limited here.

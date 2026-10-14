@@ -73,12 +73,9 @@ def public_team_criterion(Team):
 
 
 def anonymous_readable_criterion(Project):
-	"""SQL for "someone who is not signed in may read this space", public access switch aside.
+	"""Require Anonymous tiers on both Space and Community, with neither archived.
 
-	True when the space and its community are both on the Anonymous tier and neither is
-	archived. A space outside every community never qualifies: publishing a community is
-	the second of the two decisions a public space needs. The switch is not part of it,
-	because the switch is read on every request instead of being stored.
+	Exclude the site switch: stored eligibility must remain valid when it changes.
 	"""
 	Team = frappe.qb.DocType("GP Team")
 	public_teams = frappe.qb.from_(Team).select(Team.name).where(public_team_criterion(Team))
@@ -90,11 +87,7 @@ def anonymous_readable_criterion(Project):
 
 
 def refresh_anonymous_readable(spaces):
-	"""Recompute `GP Project.is_anonymous_readable` for `spaces`.
-
-	Clears the flag first and then sets it where it holds, so a failure between the two
-	statements leaves the spaces unreadable to the public rather than readable.
-	"""
+	"""Clear eligibility first, then set qualifying spaces in the same transaction."""
 	spaces = [str(space) for space in spaces]
 	if not spaces:
 		return
@@ -109,10 +102,7 @@ def refresh_anonymous_readable(spaces):
 
 
 def find_anonymous_readable_drift() -> list[str]:
-	"""Every space whose stored `is_anonymous_readable` disagrees with the rule.
-
-	Empty when every lifecycle path that can change the answer has kept the flag current.
-	"""
+	"""Find stored public-read flags that disagree with the live tier and archive rules."""
 	Project = frappe.qb.DocType("GP Project")
 	should_be = set(
 		frappe.qb.from_(Project)

@@ -26,23 +26,14 @@ class HasVisibility:
 	"""Shared visibility validation, audit stamps and access-state updates."""
 
 	def set_default_visibility(self):
-		"""Default imports to General. Frappe already uses the Select's first option normally.
-
-		Reject legacy private inserts: ignoring is_private=1 would expose them to Members.
-		"""
+		"""Default to General; reject is_private=1 inserts rather than exposing them."""
 		if cint(self.get("is_private")):
 			frappe.throw(_("is_private is no longer accepted. Set visibility instead."))
 		if not self.visibility:
 			self.visibility = VISIBILITY_GENERAL
 
 	def check_visibility_change_allowed(self):
-		"""Only a Gameplan Admin changes a tier, or creates something on the Anonymous tier.
-
-		Checked on the field rather than in one method, because a method is only one of the
-		routes: a plain save, the Desk form and the generic REST routes all reach it too.
-		Write permission is not enough on its own. Every member of a Member Access space may
-		manage it, and a community admin manages every General space in the community.
-		"""
+		"""Require a global admin for tier changes and Anonymous inserts on every save route."""
 		if is_global_admin(frappe.session.user):
 			return
 		if self.is_new():
@@ -56,31 +47,17 @@ class HasVisibility:
 			frappe.throw(_("Only Gameplan Admins can change visibility"), frappe.PermissionError)
 
 	def record_visibility_change(self):
-		"""Stamp who changed the tier, and when.
-
-		Runs on every save rather than inside one method, so a change made from Desk or a
-		console is recorded as well as one made from the app.
-		"""
+		"""Stamp tier changes from all save routes, including Desk and imports."""
 		if self.has_value_changed("visibility"):
 			self.visibility_set_by = frappe.session.user
 			self.visibility_set_at = frappe.utils.now()
 
 	def refresh_anonymous_readable_flags(self):
-		"""Keep `GP Project.is_anonymous_readable` current for every space this record affects.
-
-		Called from on_update, so every route that changes the answer recomputes it: a tier
-		change, archive and unarchive (which save), and moving a space to another community.
-		A community change recomputes all of its spaces, because theirs depends on it.
-		"""
+		"""Refresh affected spaces after tier, archive or community changes."""
 		refresh_anonymous_readable(self.get_affected_space_names())
 
 	def reconcile_access_after_visibility_change(self):
-		"""Drop the per-user state of everyone who can no longer read an affected space.
-
-		Decided from what is stored, not from which way the tier moved: for every user who
-		holds unread records, a pin or a follow on a space, ask whether they can still read
-		it. Loosening therefore drops nothing, and the answer is right for any transition.
-		"""
+		"""Delete unread, pin and follow rows only for users who lost access to affected spaces."""
 		before = self.get_doc_before_save()
 		if not before or before.visibility == self.visibility:
 			return
@@ -125,23 +102,14 @@ class HasVisibility:
 		finally:
 			frappe.db.rollback(save_point="visibility_impact")
 
-		gaining, losing = set(), set()
-		spaces_gaining, spaces_losing = [], []
-		for space in spaces:
-			gained = readers_after[space] - readers_before[space]
-			lost = readers_before[space] - readers_after[space]
-			gaining |= gained
-			losing |= lost
-			if gained:
-				spaces_gaining.append(space)
-			if lost:
-				spaces_losing.append(space)
+		gained = {space: readers_after[space] - readers_before[space] for space in spaces}
+		lost = {space: readers_before[space] - readers_after[space] for space in spaces}
 
 		return {
-			"users_gaining_access": len(gaining),
-			"users_losing_access": len(losing),
-			"discussions_revealed": count_discussions(spaces_gaining),
-			"spaces_losing_readers": len(spaces_losing),
+			"users_gaining_access": len(set().union(*gained.values())),
+			"users_losing_access": len(set().union(*lost.values())),
+			"discussions_revealed": count_discussions([space for space in spaces if gained[space]]),
+			"spaces_losing_readers": sum(bool(lost[space]) for space in spaces),
 			# Readable without signing in once the public access switch is on.
 			"discussions_made_public": count_discussions(public_after - public_before),
 			"discussions_no_longer_public": count_discussions(public_before - public_after),

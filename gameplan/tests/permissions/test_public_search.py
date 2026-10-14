@@ -9,9 +9,7 @@ from unittest.mock import patch
 import frappe
 
 from gameplan.api import get_search_filter_options, search_sqlite
-from gameplan.public_access import (
-	ANONYMOUS_RATE_LIMITS,
-)
+from gameplan.public_access import ANONYMOUS_RATE_LIMITS
 from gameplan.public_search import MAX_PUBLIC_RESULTS, PublicGameplanSearch, highlight_text
 from gameplan.search_sqlite import GameplanSearch
 from gameplan.tests.base import GameplanTestCase

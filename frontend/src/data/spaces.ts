@@ -154,20 +154,14 @@ export async function fetchSpace(name: string): Promise<Space | null> {
 
   const request = (async () => {
     try {
+      let doc: Space | undefined
       if (isAnonymousVisitor()) {
         const response = await fetch(`/api/v2/document/GP%20Project/${encodeURIComponent(name)}`)
         if (!response.ok) return null
-        const payload = await response.json()
-        const doc = payload.data as Space | undefined
-        if (!doc?.name) return null
-        doc.name = doc.name.toString()
-        if (!doc.members) doc.members = []
-        if (spaces.data && !spaces.data.some((s) => s.name.toString() === doc.name.toString())) {
-          spaces.data.push(doc)
-        }
-        return doc
+        doc = (await response.json()).data
+      } else {
+        doc = await call<Space>('frappe.client.get', { doctype: 'GP Project', name })
       }
-      const doc = await call<Space>('frappe.client.get', { doctype: 'GP Project', name })
       if (!doc?.name) return null
       doc.name = doc.name.toString()
       if (!doc.members) doc.members = []

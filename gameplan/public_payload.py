@@ -150,25 +150,17 @@ def public_doctypes():
 
 
 def is_public_field(doctype, fieldname) -> bool:
-	"""Whether an anonymous visitor may read `fieldname` of `doctype`, as it is or as a handle."""
-	return (
-		fieldname in STANDARD_PUBLIC_FIELDS
-		or fieldname in PUBLIC_FIELDS.get(doctype, ())
-		or fieldname in AUTHOR_FIELDS.get(doctype, ())
-	)
+	"""Whether anonymous readers may receive this field, including author handles."""
+	return is_filterable_field(doctype, fieldname) or fieldname in AUTHOR_FIELDS.get(doctype, ())
 
 
 def is_filterable_field(doctype, fieldname) -> bool:
-	"""Whether an anonymous visitor may filter or sort on `fieldname`.
-
-	Not on an author field: filtering on `owner` would answer "did this email address post
-	here?", which turns the filter into a way of checking a guessed address.
-	"""
+	"""Allow public columns, excluding authors to prevent guessed-account probes."""
 	return fieldname in STANDARD_PUBLIC_FIELDS or fieldname in PUBLIC_FIELDS.get(doctype, ())
 
 
 def public_fieldnames(doctype) -> list[str]:
-	"""The columns `*` stands for when an anonymous visitor lists `doctype`."""
+	"""Expand `*` to public columns and author fields; exclude child tables."""
 	standard = sorted(STANDARD_PUBLIC_FIELDS - {"doctype"})
 	return standard + sorted(PUBLIC_FIELDS[doctype]) + sorted(AUTHOR_FIELDS[doctype])
 
@@ -188,7 +180,7 @@ def rows_for_viewer(doctype, rows):
 
 
 def public_rows(doctype, rows):
-	"""`rows` of `doctype` with everything an anonymous visitor may not see removed."""
+	"""Remove non-public fields, resolving profile handles and file URLs in batches."""
 	if doctype not in PUBLIC_FIELDS:
 		frappe.throw(f"{doctype} is not readable without signing in", frappe.PermissionError)
 	user_ids = set()
@@ -200,7 +192,7 @@ def public_rows(doctype, rows):
 
 
 def public_row(doctype, row, handles, files=None):
-	"""One row, cleaned. `files` maps each private file URL in it to its public route."""
+	"""Clean one row; `files` maps its attached private URLs to the public route."""
 	files = files or {}
 	cleaned = frappe._dict()
 	for key, value in row.items():
@@ -251,13 +243,9 @@ def user_ids_in_html(html):
 
 
 def replace_user_ids_in_html(html, handles, files=None):
-	"""Swap every attribute value in `html` that is a user id for that user's handle.
+	"""Replace account IDs and attached file URLs in attributes, preserving authored text.
 
-	A value that looks like an email address but belongs to nobody with a profile is
-	emptied, not kept: it is still somebody's address. Addresses in the text itself are
-	what the author chose to write, and are left alone. A private file URL in `files` is
-	pointed at the public file route; any other stays as it is, and frappe refuses it to
-	anyone not signed in.
+	Unknown account IDs become empty strings. Unmapped file URLs retain Frappe permissions.
 	"""
 	if not html or not isinstance(html, str) or "=" not in html:
 		return html
@@ -275,7 +263,7 @@ def replace_user_ids_in_html(html, handles, files=None):
 
 
 def handles_for(user_ids) -> dict:
-	"""Map each user id to its profile handle. A user without a profile gets no entry."""
+	"""Resolve existing profile handles in one query; omit accounts without profiles."""
 	user_ids = [user for user in user_ids if user]
 	if not user_ids:
 		return {}
@@ -297,11 +285,7 @@ def refuse(message):
 
 
 def public_list_fields(doctype, fields) -> list:
-	"""The columns to select for an anonymous visitor who asked for `fields`.
-
-	`*` stands for every public field. A child table may be asked for with the frappe-ui
-	`{table: [fields]}` form; its rows are cleaned afterwards like any other.
-	"""
+	"""Allow plain public columns and frappe-ui child-table requests; clean rows afterwards."""
 	if doctype not in PUBLIC_FIELDS:
 		refuse(f"{doctype} is not readable without signing in")
 	fields = frappe.parse_json(fields)
@@ -333,7 +317,7 @@ def is_public_table_request(doctype, field) -> bool:
 
 
 def check_public_filters(doctype, filters):
-	"""Refuse filters an anonymous visitor may not use: anything but public, non-author fields."""
+	"""Refuse cross-doctype, private-field and author filters."""
 	filters = frappe.parse_json(filters)
 	if not filters:
 		return
@@ -350,11 +334,7 @@ def check_public_filters(doctype, filters):
 
 
 def check_public_order_by(doctype, order_by):
-	"""Refuse sorting on anything but public, non-author fields.
-
-	Sorting by an author field would leak the order of email addresses one comparison at a
-	time.
-	"""
+	"""Sort only by public, non-author fields; author ordering leaks account identities."""
 	if not order_by:
 		return
 	for term in str(order_by).split(","):
@@ -368,12 +348,9 @@ MAX_PUBLIC_PROFILES = 100
 
 
 def public_profiles(handles) -> list[dict]:
-	"""Name and avatar for each of `handles` whose user wrote something the public can read.
+	"""Return enabled public authors' names and avatars, excluding the member directory.
 
-	Somebody's profile is public once they author a discussion, comment or poll in a space
-	readable without signing in, or close or pin such a discussion: their handle is already
-	on the page. Anyone else's handle answers nothing, so this cannot be used to walk the
-	member directory. Nothing at all while public access is switched off.
+	The site switch must be on; discussion authors, closers and pinners qualify.
 	"""
 	from gameplan.public_access import public_access_enabled
 
@@ -408,7 +385,7 @@ def public_profiles(handles) -> list[dict]:
 
 
 def public_authors(users) -> set:
-	"""Which of `users` appear as an author on something readable without signing in."""
+	"""Find accounts credited on public discussions, comments or polls in three queries."""
 	if not users:
 		return set()
 	Project = frappe.qb.DocType("GP Project")
@@ -449,17 +426,14 @@ def public_authors(users) -> set:
 
 
 def public_file_url(file_name) -> str:
-	"""Where someone who is not signed in loads a private File (see gameplan.api.public_file)."""
+	"""Serve a private File through the document permission check in gameplan.api.public_file."""
 	return f"/api/method/gameplan.api.public_file?fid={quote(str(file_name))}"
 
 
 def public_file_urls(doctype, rows) -> dict:
-	"""For each row, map every private file URL in it to the public file route.
+	"""Map private URLs only to Files attached to the same row.
 
-	Only for a File attached to that very row: the route serves a File because the reader
-	may read what it is attached to, so pointing a post at a File attached elsewhere would
-	only produce a broken image. A URL that names its File (`?fid=`) is matched by name,
-	any other by URL. Keyed by the row's name, then by the URL exactly as it appears.
+	Match `?fid=` by File name and URL; otherwise match by row and URL.
 	"""
 	from gameplan.utils import file_reference_from_url
 

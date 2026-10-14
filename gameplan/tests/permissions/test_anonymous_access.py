@@ -9,6 +9,7 @@ Pin their role rights, reachable endpoints, and inability to read default conten
 from unittest.mock import patch
 
 import frappe
+from frappe.permissions import rights as DOCPERM_RIGHTS
 
 import gameplan
 from gameplan import api, command_palette
@@ -49,24 +50,6 @@ GUEST_REACHABLE_ENDPOINTS = {
 	"gameplan.public_lists.comments": "the public view's lists; extends.client.get_list, cleaned",
 	"gameplan.public_lists.polls": "the public view's lists; extends.client.get_list, cleaned",
 }
-
-# Every right a DocPerm row can carry.
-DOCPERM_RIGHTS = (
-	"select",
-	"read",
-	"write",
-	"create",
-	"delete",
-	"submit",
-	"cancel",
-	"amend",
-	"report",
-	"export",
-	"import",
-	"share",
-	"print",
-	"email",
-)
 
 
 class TestIsAnonymous(GameplanTestCase):

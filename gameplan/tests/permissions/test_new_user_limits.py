@@ -16,9 +16,7 @@ from gameplan.new_user_limits import (
 	NewUserLimitError,
 )
 from gameplan.permissions import GUEST_CREATABLE_DOCTYPES
-from gameplan.public_access import (
-	PUBLIC_ACCESS_CONFIG_KEY,
-)
+from gameplan.public_access import PUBLIC_ACCESS_CONFIG_KEY
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
 	create_comment,
@@ -27,9 +25,7 @@ from gameplan.tests.fixtures import (
 	create_space,
 	grant_guest_access,
 )
-from gameplan.visibility import (
-	VISIBILITY_ANONYMOUS,
-)
+from gameplan.visibility import VISIBILITY_ANONYMOUS
 
 IMAGE = '<img src="/files/a.png">'
 EMOJI = '<img data-emoji="" src="/files/party.png" alt="party">'

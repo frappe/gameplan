@@ -86,17 +86,13 @@ def audit_public_access():
 	else:
 		print("Signup: closed")
 
-	print("\nCommunities")
-	for community in report.communities:
-		archived = "  (archived)" if community.archived_at else ""
-		print(f"  {community.title} [{community.name}]: {visibility_tier(community.visibility)}{archived}")
-		print(f"      set by {set_by(community)}")
-
-	print("\nSpaces")
-	for space in report.spaces:
-		archived = "  (archived)" if space.archived_at else ""
-		print(f"  {space.team} / {space.title} [{space.name}]: {visibility_tier(space.visibility)}{archived}")
-		print(f"      set by {set_by(space)}")
+	for label, rows in (("Communities", report.communities), ("Spaces", report.spaces)):
+		print(f"\n{label}")
+		for row in rows:
+			archived = "  (archived)" if row.archived_at else ""
+			title = f"{row.team} / {row.title}" if label == "Spaces" else row.title
+			print(f"  {title} [{row.name}]: {visibility_tier(row.visibility)}{archived}")
+			print(f"      set by {set_by(row)}")
 
 	public = [space for space in report.spaces if space.is_anonymous_readable]
 	print(f"\nReadable without signing in{'' if report.public_access_enabled else ' once switched on'}:")

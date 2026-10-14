@@ -12,9 +12,7 @@ from gameplan.tests.fixtures import (
 	create_space,
 	grant_guest_access,
 )
-from gameplan.visibility import (
-	VISIBILITY_MEMBER_ACCESS,
-)
+from gameplan.visibility import VISIBILITY_MEMBER_ACCESS
 
 
 class PageTestCase(GameplanTestCase):

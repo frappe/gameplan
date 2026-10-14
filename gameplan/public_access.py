@@ -20,10 +20,7 @@ def public_pagination(start, limit):
 
 
 def public_access_enabled() -> bool:
-	"""Check the opt-in site switch on every anonymous read.
-
-	Demo mode stays closed: its automatic demo login would silently turn visitors into members.
-	"""
+	"""Read the site switch live; demo mode stays closed because it auto-signs visitors in."""
 	from gameplan.demo.demo import demo_data_enabled
 
 	if demo_data_enabled():
@@ -32,15 +29,9 @@ def public_access_enabled() -> bool:
 
 
 def refuse_generic_routes_for_anonymous():
-	"""`before_request`: keep anonymous visitors off frappe's generic routes for Gameplan data.
+	"""Block generic Gameplan routes whose payloads bypass field and identity cleaning.
 
-	The Guest role can read a few Gameplan doctypes, and frappe's REST routes answer anyone
-	the role layer lets in: `/api/resource/<doctype>` and `/api/v2/document/<doctype>` list
-	any columns, `owner` and `modified_by` included, and `?expand_links=1` follows links
-	into User. None of that passes through `gameplan.public_payload`. So a request with
-	nobody signed in that routes to a doctype the Guest role can read may only reach the
-	single-document and method endpoints below, whose output goes through `as_dict`.
-	Lists go through Gameplan's own endpoints instead.
+	Allow v2 single-document reads and methods; lists use the public wrappers.
 	"""
 	import frappe.api.v2
 
@@ -70,11 +61,7 @@ RATE_LIMIT_WINDOW_SECONDS = 60
 
 
 def limit_anonymous_request_rate():
-	"""`before_request`: cap how often one IP address may call the public read paths.
-
-	Counted per address, per endpoint, in fixed one-minute windows in Redis. Anything not in
-	ANONYMOUS_RATE_LIMITS is left to frappe (login, signup and the rest have their own).
-	"""
+	"""Limit public reads per site, IP and endpoint in fixed one-minute Redis windows."""
 	route = anonymous_api_route()
 	if not route:
 		return
@@ -104,7 +91,7 @@ def rate_limit_key(endpoint, arguments):
 
 
 def anonymous_api_route():
-	"""`(endpoint, arguments)` for an API request with nobody signed in, else None."""
+	"""Resolve an anonymous API route; leave unknown routes to Frappe's 404/405 response."""
 	import gameplan
 
 	request = getattr(frappe.local, "request", None)
@@ -122,12 +109,9 @@ def anonymous_api_route():
 
 @frappe.whitelist(allow_guest=True)
 def realtime_has_permission(doctype: str, name: str = "", ptype: str = "read"):
-	"""Keep anonymous visitors out of Gameplan realtime rooms.
+	"""Deny anonymous Gameplan rooms and Guest doctype rooms, which expose viewer/editor IDs.
 
-	The same permission check admits both document updates and document presence. Presence
-	(`doc_open`) broadcasts viewer emails; doctype rooms broadcast editor emails. Public
-	read access therefore does not grant realtime access. Guests may join document-update
-	rooms, but not doctype rooms. The app's socket handler also closes the presence feed.
+	Guests retain permission-checked document updates; the socket handler blocks presence.
 	"""
 	import gameplan
 

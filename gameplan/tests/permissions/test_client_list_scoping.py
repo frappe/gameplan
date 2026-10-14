@@ -16,9 +16,7 @@ from gameplan.tests.fixtures import (
 	create_space,
 	create_task,
 )
-from gameplan.visibility import (
-	VISIBILITY_MEMBER_ACCESS,
-)
+from gameplan.visibility import VISIBILITY_MEMBER_ACCESS
 
 # Doctypes for which setUp creates rows the second member must not see.
 FIXTURE_HIDDEN_DOCTYPES = {

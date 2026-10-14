@@ -10,14 +10,10 @@ from frappe.query_builder.functions import Count
 from frappe.search.sqlite_search import MAX_SEARCH_RESULTS
 
 import gameplan
-from gameplan.public_access import (
-	public_access_enabled,
-)
+from gameplan.public_access import public_access_enabled
 from gameplan.public_payload import handles_for
 from gameplan.search_sqlite import GameplanSearch, content_fingerprint
-from gameplan.visibility import (
-	anonymous_readable_criterion,
-)
+from gameplan.visibility import anonymous_readable_criterion
 
 PUBLIC_SEARCH_DOCTYPES = ("GP Discussion", "GP Comment")
 PUBLIC_SEARCH_FILTERS = frozenset({"project", "team", "doctype"})

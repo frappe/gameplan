@@ -108,39 +108,22 @@ class TestPublicationTransitions(GameplanTestCase):
 			post.move_to_project(other.name)
 		self.assertEqual(frappe.db.get_value("GP Discussion", post.name, "project"), str(other.name))
 
-	def test_private_comment_cannot_be_published_without_admin(self):
+	def test_private_replies_cannot_be_published_without_admin(self):
 		public_discussion = create_discussion("Public Conversation", self.public, owner=self.member)
-		comment = create_comment(self.discussion, content="Private Comment", owner=self.member)
-		with self.as_user(self.member):
-			with self.assertRaises(frappe.PermissionError):
-				fresh = frappe.get_doc("GP Comment", comment.name)
-				fresh.reference_name = public_discussion.name
-				fresh.save()
-		self.assertEqual(
-			frappe.db.get_value("GP Comment", comment.name, "reference_name"), str(self.discussion.name)
-		)
-		with self.as_user(self.admin):
-			fresh = frappe.get_doc("GP Comment", comment.name)
-			fresh.reference_name = public_discussion.name
-			fresh.save()
-		self.assertEqual(
-			frappe.db.get_value("GP Comment", comment.name, "reference_name"), str(public_discussion.name)
-		)
-
-	def test_private_poll_cannot_be_published_without_admin(self):
-		public_discussion = create_discussion("Public Conversation", self.public, owner=self.member)
-		poll = create_poll("Private Poll", self.discussion, owner=self.member)
-		with self.as_user(self.member):
-			with self.assertRaises(frappe.PermissionError):
-				fresh = frappe.get_doc("GP Poll", poll.name)
-				fresh.discussion = public_discussion.name
-				fresh.save()
-		self.assertEqual(frappe.db.get_value("GP Poll", poll.name, "discussion"), str(self.discussion.name))
-		with self.as_user(self.admin):
-			fresh = frappe.get_doc("GP Poll", poll.name)
-			fresh.discussion = public_discussion.name
-			fresh.save()
-		self.assertEqual(frappe.db.get_value("GP Poll", poll.name, "discussion"), str(public_discussion.name))
+		for doc, field in (
+			(create_comment(self.discussion, content="Private Comment", owner=self.member), "reference_name"),
+			(create_poll("Private Poll", self.discussion, owner=self.member), "discussion"),
+		):
+			with self.subTest(doctype=doc.doctype):
+				with self.as_user(self.member), self.assertRaises(frappe.PermissionError):
+					fresh = frappe.get_doc(doc.doctype, doc.name)
+					fresh.set(field, public_discussion.name)
+					fresh.save()
+				self.assertEqual(frappe.db.get_value(doc.doctype, doc.name, field), str(self.discussion.name))
+				self.save_as_admin(doc, **{field: public_discussion.name})
+				self.assertEqual(
+					frappe.db.get_value(doc.doctype, doc.name, field), str(public_discussion.name)
+				)
 
 	def test_public_comment_and_poll_moves_between_already_public_discussions_remain_allowed(self):
 		public_discussion_1 = create_discussion("Public Conversation 1", self.public, owner=self.member)
@@ -296,14 +279,8 @@ class TestAccessStateFollowsATierChange(GameplanTestCase):
 		for user in (self.member, self.second_member):
 			add_space_state(user, self.space)
 
-	def change_tier(self, doc, visibility):
-		with self.as_user(self.admin):
-			doc = frappe.get_doc(doc.doctype, doc.name)
-			doc.visibility = visibility
-			doc.save()
-
 	def test_tightening_a_space_drops_state_for_exactly_the_users_who_lost_access(self):
-		self.change_tier(self.space, VISIBILITY_MEMBER_ACCESS)
+		self.save_as_admin(self.space, visibility=VISIBILITY_MEMBER_ACCESS)
 
 		self.assertEqual(space_state(self.second_member, self.space), set())
 		self.assertEqual(space_state(self.member, self.space), set(SPACE_STATE_DOCTYPES))
@@ -313,7 +290,7 @@ class TestAccessStateFollowsATierChange(GameplanTestCase):
 		self.assertTrue(outsider_community)
 		add_space_state(self.outsider, self.space)
 
-		self.change_tier(self.community, VISIBILITY_MEMBER_ACCESS)
+		self.save_as_admin(self.community, visibility=VISIBILITY_MEMBER_ACCESS)
 
 		self.assertEqual(space_state(self.outsider, self.space), set())
 		self.assertEqual(space_state(self.second_member, self.space), set(SPACE_STATE_DOCTYPES))
@@ -321,11 +298,11 @@ class TestAccessStateFollowsATierChange(GameplanTestCase):
 			join_team(self.community.name)
 
 	def test_loosening_drops_nothing(self):
-		self.change_tier(self.space, VISIBILITY_MEMBER_ACCESS)
+		self.save_as_admin(self.space, visibility=VISIBILITY_MEMBER_ACCESS)
 		add_space_state(self.second_member, self.space)
 		before = {user: space_state(user, self.space) for user in (self.member, self.second_member)}
 
-		self.change_tier(self.space, VISIBILITY_GENERAL)
+		self.save_as_admin(self.space, visibility=VISIBILITY_GENERAL)
 
 		for user, state in before.items():
 			self.assertEqual(space_state(user, self.space), state, user)
@@ -334,8 +311,8 @@ class TestAccessStateFollowsATierChange(GameplanTestCase):
 		grant_guest_access(self.guest, self.space)
 		for before, after in TRANSITIONS:
 			with self.subTest(before=before, after=after):
-				self.change_tier(self.space, before)
-				self.change_tier(self.space, after)
+				self.save_as_admin(self.space, visibility=before)
+				self.save_as_admin(self.space, visibility=after)
 				self.assertTrue(
 					frappe.db.exists("GP Guest Access", {"user": self.guest.name, "project": self.space.name})
 				)
@@ -351,10 +328,6 @@ class TestVisibilityChangeImpact(GameplanTestCase):
 		for index in range(3):
 			create_discussion(f"Impact Discussion {index}", self.space, owner=self.member)
 
-	def impact(self, doc, visibility):
-		with self.as_user(self.admin):
-			return frappe.get_doc(doc.doctype, doc.name).get_visibility_change_impact(visibility)
-
 	def test_only_a_gameplan_admin_may_ask(self):
 		with self.as_user(self.member), self.assertRaises(frappe.PermissionError):
 			frappe.get_doc("GP Project", self.space.name).get_visibility_change_impact(
@@ -363,15 +336,15 @@ class TestVisibilityChangeImpact(GameplanTestCase):
 
 	def test_an_unknown_tier_is_refused(self):
 		with self.assertRaises(frappe.ValidationError):
-			self.impact(self.space, "Public")
+			self.visibility_impact(self.space, "Public")
 
 	def test_it_does_not_change_anything(self):
-		self.impact(self.space, VISIBILITY_MEMBER_ACCESS)
+		self.visibility_impact(self.space, VISIBILITY_MEMBER_ACCESS)
 
 		self.assertEqual(stored_visibility(self.space), VISIBILITY_GENERAL)
 
 	def test_tightening_a_space_counts_the_users_who_lose_it(self):
-		impact = self.impact(self.space, VISIBILITY_MEMBER_ACCESS)
+		impact = self.visibility_impact(self.space, VISIBILITY_MEMBER_ACCESS)
 
 		self.assertEqual(impact["users_losing_access"], 2)  # second_member, outsider
 		self.assertEqual(impact["users_gaining_access"], 0)
@@ -379,9 +352,9 @@ class TestVisibilityChangeImpact(GameplanTestCase):
 		self.assertEqual(impact["discussions_revealed"], 0)
 
 	def test_loosening_a_space_counts_the_discussions_revealed(self):
-		self.change_to_member_access()
+		self.save_as_admin(self.space, visibility=VISIBILITY_MEMBER_ACCESS)
 
-		impact = self.impact(self.space, VISIBILITY_GENERAL)
+		impact = self.visibility_impact(self.space, VISIBILITY_GENERAL)
 
 		self.assertEqual(impact["users_gaining_access"], 2)
 		self.assertEqual(impact["users_losing_access"], 0)
@@ -390,26 +363,19 @@ class TestVisibilityChangeImpact(GameplanTestCase):
 	def test_tightening_a_community_counts_its_general_spaces(self):
 		create_space("Impact Private Space", self.community, visibility=VISIBILITY_MEMBER_ACCESS)
 
-		impact = self.impact(self.community, VISIBILITY_MEMBER_ACCESS)
+		impact = self.visibility_impact(self.community, VISIBILITY_MEMBER_ACCESS)
 
 		# The outsider loses both general spaces, not the Member Access space.
 		self.assertEqual(impact["users_losing_access"], 1)
 		self.assertEqual(impact["spaces_losing_readers"], 2)
 
 	def test_leaving_the_anonymous_tier_is_flagged(self):
-		with self.as_user(self.admin):
-			space = frappe.get_doc("GP Project", self.space.name)
-			space.visibility = VISIBILITY_ANONYMOUS
-			space.save()
+		self.save_as_admin(self.space, visibility=VISIBILITY_ANONYMOUS)
 
-		self.assertTrue(self.impact(self.space, VISIBILITY_GENERAL)["leaving_anonymous"])
-		self.assertFalse(self.impact(self.community, VISIBILITY_MEMBER_ACCESS)["leaving_anonymous"])
-
-	def change_to_member_access(self):
-		with self.as_user(self.admin):
-			space = frappe.get_doc("GP Project", self.space.name)
-			space.visibility = VISIBILITY_MEMBER_ACCESS
-			space.save()
+		self.assertTrue(self.visibility_impact(self.space, VISIBILITY_GENERAL)["leaving_anonymous"])
+		self.assertFalse(
+			self.visibility_impact(self.community, VISIBILITY_MEMBER_ACCESS)["leaving_anonymous"]
+		)
 
 
 def add_space_state(user, space):
