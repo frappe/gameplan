@@ -7,6 +7,7 @@ import { hasContent } from '@/data/draftStore'
 import { drafts } from '@/data/drafts'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { canPostInSpace, getSpace } from '@/data/spaces'
+import { refuseOffline } from '@/data/offline/requests'
 import { useSessionUser, useUser } from '@/data/users'
 import { tags } from '@/data/tags'
 import { extractServerMessage } from '@/utils'
@@ -264,6 +265,8 @@ export function useNewDiscussion() {
   async function publish() {
     hasInteracted.value = true
     publishError.value = null
+    // Offline the draft stays; publishing waits for the connection.
+    if (refuseOffline()) return
     if (!validateDraft(true)) return
 
     publishing.value = true
@@ -329,6 +332,7 @@ export function useNewDiscussion() {
   }
 
   async function scheduleDraft(localDateTime: string) {
+    if (refuseOffline()) return false
     hasInteracted.value = true
     publishError.value = null
     if (!validateDraft(true)) return false
@@ -358,6 +362,7 @@ export function useNewDiscussion() {
   }
 
   async function unscheduleDraft() {
+    if (refuseOffline()) return
     if (!draft.saved.value) return
     scheduling.value = true
     try {

@@ -17,6 +17,7 @@
 import './commands'
 import './personas'
 import './network'
+import './offline'
 // Ships window.__coverage__ to the node side after each spec. Harmless when the
 // app was not built with GAMEPLAN_COVERAGE=1 — there is simply nothing to send.
 import '@cypress/code-coverage/support'

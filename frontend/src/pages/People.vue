@@ -65,7 +65,7 @@
               </template>
             </TextInput>
           </div>
-          <div class="mt-4 pb-16 -mx-3">
+          <div class="mt-4 pb-16 -mx-3" v-show="!listFailure">
             <!-- Desktop: header + numeric columns. The avatar gets its own track so
                  the inset divider starts at the name text (grid line 2). -->
             <List
@@ -209,6 +209,13 @@
               <Button @click="people.next" :loading="people.loading"> Load more </Button>
             </div>
           </div>
+
+          <OfflineContentFallback
+            v-if="listFailure"
+            class="mx-auto mt-6 max-w-2xl px-6"
+            v-bind="listFailure"
+            @retry="people.reload()"
+          />
         </div>
       </div>
     </div>
@@ -232,9 +239,12 @@ import { List, ListCell, ListHeader, ListHeaderCell, ListRow } from 'frappe-ui/l
 import { showSettingsDialog } from '@/components/Settings'
 import { isGameplanAdmin, useSessionUser, useUser } from '@/data/users'
 import { people, peopleSort, peopleSortOption, peopleSortOptions } from '@/data/people'
+import { revalidateOnReconnect } from '@/data/offline/resources'
+import OfflineContentFallback from '@/components/OfflineContentFallback.vue'
 import EmptyStateBox from '@/components/EmptyStateBox.vue'
 import UserAvatarWithHover from '@/components/UserAvatarWithHover.vue'
 import ReactionFaceIcon from '@/components/ReactionFaceIcon.vue'
+import { useLoadFailure } from '@/data/loadFailure'
 
 defineOptions({
   name: 'People',
@@ -245,6 +255,7 @@ const isAdmin = computed(() => isGameplanAdmin())
 
 // Counts change between visits, and a failed load should not stick, so fetch on each visit.
 people.reload()
+revalidateOnReconnect(people)
 
 // Guests are left out. Name and email come from the users store, the copy the rest of the
 // app shows, so search matches it.
@@ -278,6 +289,8 @@ const peopleList = computed(() => {
   const count = peopleSortOption.value.count
   return count ? list.sort((a, b) => b[count] - a[count]) : list
 })
+
+const listFailure = useLoadFailure(people, 'people')
 
 const isEmpty = computed(() => !people.loading && !people.error && peopleList.value.length === 0)
 
