@@ -197,6 +197,7 @@ import { useTask } from '@/data/tasks'
 import { GPTask } from '@/types/doctypes'
 import { useSessionUser } from '@/data/users'
 import { canDeleteContent, canEditContent } from '@/utils/permissions'
+import { OptimisticSave } from '@/utils/optimisticSave'
 import { spaces } from '@/data/spaces'
 import { useCommandPaletteCommands } from './CommandPalette/registry'
 
@@ -347,25 +348,30 @@ function changeAssignee(option: string | null) {
   setTaskValue({ assigned_to: option === '<no_assignee>' ? '' : option })
 }
 
+const spaceSave = new OptimisticSave<string | undefined>({
+  read: () => task.doc?.project,
+  write: (spaceId) => {
+    if (task.doc) task.doc.project = spaceId
+  },
+  send: (spaceId) => task.setValue.submit({ project: spaceId }),
+  onSaved: updateRoute,
+  onError: showSaveError,
+})
+
 function changeSpace(option: string | null) {
   if (!canEditTask.value || !task.doc || option == null) return
-  const previousSpace = task.doc.project
-  task.doc.project = option
-  task.setValue.submit({ project: option }).then(updateRoute, () => {
-    if (task.doc?.project === option) task.doc.project = previousSpace
-    showSaveError()
-  })
+  spaceSave.change(option)
 }
 
-function updateRoute() {
+function updateRoute(spaceId: string | undefined) {
   if (task.doc) {
     router.replace({
-      name: task.doc.project ? 'SpaceTask' : 'Task',
-      params: task.doc.project
+      name: spaceId ? 'SpaceTask' : 'Task',
+      params: spaceId
         ? {
-            communityId: getSpace(task.doc.project)?.team,
+            communityId: getSpace(spaceId)?.team,
             taskId: task.doc.name,
-            spaceId: task.doc.project,
+            spaceId,
           }
         : {
             taskId: task.doc.name,
