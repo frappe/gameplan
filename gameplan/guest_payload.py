@@ -39,6 +39,9 @@ def for_guest(payload):
 			for item in value:
 				collect(item, field)
 		elif isinstance(value, str):
+			if field == "option":
+				# Poll choices are authored text, not account identifiers.
+				return
 			if field in AUTHORED_FIELDS:
 				user_ids.update(user_ids_in_html(value))
 			elif field in ERROR_TEXT_FIELDS:
@@ -58,6 +61,8 @@ def for_guest(payload):
 		if isinstance(value, list | tuple):
 			return [clean(item, field) for item in value]
 		if isinstance(value, str):
+			if field == "option":
+				return value
 			if field in AUTHORED_FIELDS:
 				return replace_user_ids_in_html(value, handles)
 			if looks_like_user_id(value):

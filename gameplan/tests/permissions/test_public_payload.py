@@ -240,6 +240,24 @@ class TestPublicDocuments(PublicContentTestCase):
 		with self.as_user(user), self.assertRaises(frappe.PermissionError):
 			get_user_info()
 
+	def test_guest_poll_choices_keep_answer_text_while_voter_accounts_use_handles(self):
+		for answer in (self.member.name, "nobody@elsewhere.test", "Administrator"):
+			with self.subTest(answer=answer):
+				poll = create_poll("Email Answer Poll", self.discussion, options=(answer, "Other"))
+				with self.as_user(self.member):
+					poll.submit_vote(answer)
+				with switched_on(), self.as_user(self.guest):
+					poll.submit_vote(answer)
+					payload = frappe.api.v2.read_doc("GP Poll", poll.name)
+					response = Response(frappe.as_json(payload), content_type="application/json")
+					hide_guest_identity_data(response)
+					for result in (payload, response.get_json()):
+						self.assertEqual(result["options"][0]["title"], answer)
+						self.assertEqual([vote["option"] for vote in result["votes"]], [answer, answer])
+						self.assertEqual(
+							[vote["user"] for vote in result["votes"]], [self.member_handle, self.guest.name]
+						)
+
 	def test_guest_response_hook_cleans_generic_aliases_and_keeps_own_identity(self):
 		with self.as_user(self.guest):
 			response = Response(
