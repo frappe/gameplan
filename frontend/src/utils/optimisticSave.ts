@@ -33,6 +33,11 @@ export class OptimisticSave<T> {
     return this.pending.value ? this.pending.value.value : saved
   }
 
+  /** True while a save is in flight. A change waiting to be sent always has one ahead of it. */
+  get busy() {
+    return this.saving
+  }
+
   /**
    * Calls `callback` after each successful save, before `shown()` goes back to the
    * saved value. Returns a function that stops it.

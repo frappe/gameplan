@@ -31,18 +31,17 @@ export function isSpacePinned(spaceId: string) {
   return pinnedLookup.value.has(spaceId)
 }
 
-// Set by the first toggle. From then on this session's pins are the newest: a server
-// copy loaded later can have been read before one of its saves landed.
-let pinnedHere = false
-
+// A server copy loaded during a save can have been read before the save landed, so
+// it is ignored; a successful save sets the pins itself. Once idle, the server copy
+// wins, so a change made in another browser is kept. A copy read before a save landed
+// but loaded just after is still applied: it shows the old pins until the next load.
 export function loadPinnedSpaces(value: unknown, currentProfileName = '') {
   profileName.value = currentProfileName
-  if (!currentProfileName || pinnedHere) return
+  if (!currentProfileName || pinSave.busy) return
   pinned.value = normalizePinnedSpaces(parseStoredPins(value))
 }
 
 export function toggleSpacePinned(spaceId: string) {
-  pinnedHere = true
   pinSave.change(
     isSpacePinned(spaceId)
       ? shownPins.value.filter((id) => id !== spaceId)
