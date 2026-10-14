@@ -192,11 +192,10 @@ import { vFocus } from '@/directives'
 import { activeUsers } from '@/data/users'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { getSpace } from '@/data/spaces'
-import { useTask } from '@/data/tasks'
+import { useTask, useTaskSpaceMove } from '@/data/tasks'
 import { GPTask } from '@/types/doctypes'
 import { useSessionUser } from '@/data/users'
 import { canDeleteContent, canEditContent } from '@/utils/permissions'
-import { OptimisticSave } from '@/utils/optimisticSave'
 import { spaces } from '@/data/spaces'
 import { useCommandPaletteCommands } from './CommandPalette/registry'
 
@@ -347,19 +346,13 @@ function changeAssignee(option: string | null) {
   setTaskValue({ assigned_to: option === '<no_assignee>' ? '' : option })
 }
 
-const spaceSave = new OptimisticSave<string | undefined>({
-  read: () => task.doc?.project,
-  write: (spaceId) => {
-    if (task.doc) task.doc.project = spaceId
-  },
-  send: (spaceId) => task.setValue.submit({ project: spaceId }),
-  onSaved: updateRoute,
-  onError: showSaveError,
-})
+const spaceMove = useTaskSpaceMove(() => props.taskId)
+// The move outlives this page. Only a mounted page follows the task to its new space.
+onUnmounted(spaceMove.onSaved(updateRoute))
 
 function changeSpace(option: string | null) {
   if (!canEditTask.value || !task.doc || option == null) return
-  spaceSave.change(option)
+  spaceMove.change(option)
 }
 
 function updateRoute(spaceId: string | undefined) {

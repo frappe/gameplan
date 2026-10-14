@@ -5,7 +5,6 @@ interface OptimisticSaveOptions<T> {
   write: (value: T) => void
   /** Saves a value on the server. */
   send: (value: T) => Promise<unknown>
-  onSaved?: (value: T) => void
   onError: () => void
 }
 
@@ -26,8 +25,17 @@ export class OptimisticSave<T> {
   private confirmed!: T
   private waiting: { value: T } | null = null
   private saving = false
+  private savedCallbacks = new Set<(value: T) => void>()
 
   constructor(private options: OptimisticSaveOptions<T>) {}
+
+  /** Calls `callback` after each successful save. Returns a function that stops it. */
+  onSaved(callback: (value: T) => void) {
+    this.savedCallbacks.add(callback)
+    return () => {
+      this.savedCallbacks.delete(callback)
+    }
+  }
 
   change(value: T) {
     if (!this.saving) this.confirmed = this.options.read()
@@ -57,7 +65,7 @@ export class OptimisticSave<T> {
     this.confirmed = value
     // The saved document can replace what is on screen; show the waiting change again.
     if (this.waiting) this.options.write(this.waiting.value)
-    this.options.onSaved?.(value)
+    this.savedCallbacks.forEach((callback) => callback(value))
   }
 
   private failed() {
