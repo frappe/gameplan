@@ -3,8 +3,7 @@
     <div class="w-full flex-1">
       <div class="relative p-3 sm:p-6">
         <div class="absolute right-0 top-0 p-6" v-show="task.setValue.loading">
-          <LoadingText v-if="!task.setValue.error" text="Saving..." />
-          <ErrorMessage :message="task.setValue.error" />
+          <LoadingText text="Saving..." />
         </div>
         <div class="mb-2 flex items-center justify-between space-x-2">
           <input
