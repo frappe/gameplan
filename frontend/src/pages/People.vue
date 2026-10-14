@@ -267,6 +267,9 @@ watch(
   { immediate: true },
 )
 
+// Counts change between visits, and a failed load should not stick, so fetch on each visit.
+people.reload()
+
 // Guests are excluded from the People page; `full_name`/`email` come from the users
 // store (User.full_name/email), not GP User Profile's own copy - see PersonProfile.vue
 // for why the store wins once it has a real (non-placeholder) record.

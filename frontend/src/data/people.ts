@@ -16,7 +16,8 @@ interface Person extends Pick<
 /** Server sort order. Post, reply and reaction counts aren't columns, so People.vue sorts those. */
 export const peopleOrderBy = ref<OrderBy>('modified desc')
 
-/** The People list: server-sorted, filtered to enabled accounts, shared across visits. */
+/** The People list: server-sorted, filtered to enabled accounts, shared across visits.
+ *  People.vue reloads it on each visit. */
 export const people = useList<Person>({
   // GP User Profile's default list view; the aggregate post/reply/reaction counts are
   // computed server-side per row, so this can't be the generic `/api/v2/document/...`
@@ -28,5 +29,5 @@ export const people = useList<Person>({
   orderBy: peopleOrderBy,
   limit: 999,
   cacheKey: 'People',
-  immediate: true,
+  immediate: false,
 })
