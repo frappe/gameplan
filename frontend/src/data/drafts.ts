@@ -18,6 +18,7 @@ export interface DraftRow {
   visibility: string | null
   /** For comment drafts, the parent discussion to open; null for discussion drafts. */
   discussion: string | null
+  scheduled_at?: string | null
 }
 
 /**

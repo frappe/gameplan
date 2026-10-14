@@ -210,6 +210,7 @@ override_whitelisted_methods = {
 # ---------------
 
 scheduler_events = {
+	"all": ["gameplan.gameplan.doctype.gp_draft.gp_draft.publish_due_drafts"],
 	"hourly": ["gameplan.gameplan.doctype.gp_invitation.gp_invitation.expire_invitations"],
 	"daily": ["gameplan.demo.demo.generate_data_daily", "gameplan.email_digest.send_due_email_digests"],
 }
