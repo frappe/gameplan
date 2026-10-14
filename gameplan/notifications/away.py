@@ -156,7 +156,7 @@ def _claim_period(user: str, kind: str, starts_at: datetime, ends_at: datetime |
 	try:
 		frappe.db.savepoint(savepoint)
 		return _insert_period(user, kind, starts_at, ends_at)
-	except frappe.DuplicateEntryError:
+	except frappe.UniqueValidationError:
 		frappe.db.rollback(save_point=savepoint)
 		return frappe.db.get_value("GP Away Period", {"user": user, "starts_at": starts_at}, "name")
 

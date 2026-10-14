@@ -194,6 +194,14 @@ class TestActiveHours(AwayTestCase):
 		self.assertIsNotNone(periods[0].ends_at)
 		self.assertEqual({r.away_period for r in self.rows_for(self.second_member)}, {periods[0].name})
 
+	def test_a_second_claim_on_the_same_start_reuses_the_stretch(self):
+		starts_at = add_to_date(now_datetime(), hours=-1).replace(microsecond=0)
+		first = away._claim_period(self.second_member.name, "Active hours", starts_at, None)
+		second = away._claim_period(self.second_member.name, "Active hours", starts_at, None)
+
+		self.assertEqual(second, first)
+		self.assertEqual(len(self.periods_for(self.second_member, kind="Active hours")), 1)
+
 	def test_editing_the_hours_closes_the_running_stretch(self):
 		self.set_prefs(self.second_member, receive_notifications=1)
 		frappe.get_doc(
