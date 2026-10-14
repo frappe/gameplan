@@ -326,7 +326,9 @@ export function useDraftSync(options: UseDraftSyncOptions) {
     try {
       // Recorded before the lock is let go, so a delete waiting on it deletes the row too.
       const current = await withDraftLock(draftName, async () => {
-        await saveToServer(draftDoc, draft, saved.value)
+        const record = await getDraftRecord(draftName)
+        if (name.value !== draftName || !record) return false
+        await saveToServer(draftDoc, draft, record.saved)
         // Reset onto a new draft meanwhile: this result belongs to the old one.
         if (name.value !== draftName) return false
         saved.value = true
@@ -337,6 +339,23 @@ export function useDraftSync(options: UseDraftSyncOptions) {
       if (current) lastError.value = null
     } catch (error) {
       if (isDeletedError(error)) {
+        const recovered = await withDraftLock(draftName, async () => {
+          const record = await getDraftRecord(draftName)
+          return record ? recoverReplacedDraft(record) : null
+        }).catch(() => undefined)
+        // A failed lookup cannot confirm deletion. Keep the local copy for another retry.
+        if (recovered === undefined) {
+          lastError.value = error
+          return
+        }
+        if (recovered) {
+          if (name.value === draftName) {
+            name.value = recovered.key
+            saved.value = false
+            void pushToServer()
+          }
+          return
+        }
         // Deleted elsewhere, and the server keeps it that way: drop this copy too.
         await deleteDraftRecord(draftName)
         broadcastDraftChange(draftName)
@@ -453,9 +472,15 @@ export function useDraftSync(options: UseDraftSyncOptions) {
       let doc = server.doc
       if (server.known && local && doc?.name !== local.key) {
         if (doc && hasUnsavedEdits(local)) {
-          // Unsaved edits here beat another tab's or device's row for the same target. They
-          // are saved as a draft of their own, and find_my_draft keeps the newest.
-          doc = null
+          // Duplicate cleanup deleted the old row. Keep its unsynced edits as a new draft.
+          if (local.saved) {
+            const replaced = local.key
+            local = await withDraftLock(replaced, async () => {
+              const current = await getDraftRecord(replaced)
+              return current ? recoverReplacedDraft(current, doc) : null
+            })
+          }
+          if (local) doc = null
         } else if (doc || local.saved) {
           // Its row is gone (published, deleted, or replaced by a newer reply): so is it.
           await deleteDraftRecord(local.key)
@@ -779,6 +804,19 @@ function hasUnsavedEdits(record: DraftRecord) {
   return record.updatedAt > (record.syncedAt ?? 0)
 }
 
+/** Called under the old name's lock. Only a replacement reply/edit preserves unsynced text. */
+async function recoverReplacedDraft(record: DraftRecord, replacement?: ServerDraftDoc | null) {
+  if (!record.saved || !record.identity.referenceName || !hasUnsavedEdits(record)) return null
+  const doc =
+    replacement ?? (await call<ServerDraftDoc | null>(FIND_DRAFT, identityFields(record.identity)))
+  if (!doc || doc.name === record.key) return null
+  const recovered = { ...record, key: newDraftName(), saved: false }
+  await putDraftRecord(recovered)
+  await deleteDraftRecord(record.key)
+  broadcastDraftChange(record.key)
+  return recovered
+}
+
 async function saveOrphanedDraft(record: DraftRecord): Promise<boolean> {
   const id = record.identity
   // The IndexedDB store is origin-wide, so on a shared browser profile it can hold drafts
@@ -809,6 +847,8 @@ async function saveOrphanedDraft(record: DraftRecord): Promise<boolean> {
       await saveToServer(useDoctype('GP Draft'), current, current.saved)
     } catch (error) {
       if (isDeletedError(error)) {
+        const recovered = await recoverReplacedDraft(current)
+        if (recovered) return saveOrphanedDraft(recovered)
         // Deleted elsewhere, and the server keeps it that way: drop this copy too.
         await deleteDraftRecord(current.key)
         broadcastDraftChange(current.key)
