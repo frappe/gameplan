@@ -2,7 +2,7 @@
   <div>
     <PageHeaderMobile class="sm:hidden" :title="taskTitle">
       <template #prefix>
-        <PageHeaderBackButton :to="backRoute" />
+        <PageHeaderBackButton :fallback-route="backRoute" />
       </template>
     </PageHeaderMobile>
     <PageHeader class="hidden sm:flex">

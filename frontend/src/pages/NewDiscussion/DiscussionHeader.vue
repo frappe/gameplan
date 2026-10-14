@@ -1,7 +1,7 @@
 <template>
   <PageHeaderMobile class="sm:hidden" :title="mobileTitle">
     <template #prefix>
-      <PageHeaderBackButton :to="backRoute" />
+      <PageHeaderBackButton :fallback-route="backRoute" />
     </template>
     <template #suffix>
       <PublishControls v-if="sessionUser.name == author?.name" size="sm" />

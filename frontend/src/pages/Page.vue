@@ -60,7 +60,7 @@
         </span>
         <div class="mb-3 md:px-[70px]" ref="titleField">
           <input
-            class="w-full border-0 p-0 pt-4 text-5xl-semibold focus:outline-none focus:ring-0 bg-surface-base text-ink-gray-8"
+            class="w-full border-0 p-0 pt-4 text-4xl-semibold focus:outline-none focus:ring-0 bg-surface-base text-ink-gray-8"
             type="text"
             v-model="title"
             :readonly="!canEditPage"
@@ -228,6 +228,7 @@ const save = () => {
       title: title.value,
       content: content.value,
     })
+    .catch(() => {})
     .finally(() => {
       const elapsedTime = Date.now() - startTime
       const remainingTime = Math.max(0, MIN_AUTOSAVING_DURATION - elapsedTime)
@@ -236,6 +237,7 @@ const save = () => {
         isAutosaving.value = false
       }, remainingTime)
     })
+    .catch(() => {})
 }
 
 const autosave = debounce(save, 1000)

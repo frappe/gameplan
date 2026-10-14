@@ -10,13 +10,11 @@
           <input
             type="text"
             placeholder="Title"
-            class="-ml-0.5 w-full rounded-1 border-none p-0.5 text-4xl-semibold bg-surface-base text-ink-gray-8 focus:outline-none focus:ring-2 focus:ring-outline-gray-3"
+            class="-ml-0.5 w-full rounded-1 border-none p-0.5 text-3xl-semibold bg-surface-base text-ink-gray-8 focus:outline-none focus:ring-2 focus:ring-outline-gray-3"
             :readonly="!canEditTask"
             @blur="
               canEditTask
-                ? task.setValue.submit({
-                    title: ($event.target as HTMLInputElement).value,
-                  })
+                ? setTaskValue({ title: ($event.target as HTMLInputElement).value })
                 : null
             "
             v-model="task.doc.title"
@@ -42,9 +40,7 @@
           :editable="canEditTask"
           @blur="
             canEditTask && !$refs.description.editor.isEmpty
-              ? task.setValue.submit({
-                  description: $refs.description.editor.getHTML(),
-                })
+              ? setTaskValue({ description: $refs.description.editor.getHTML() })
               : null
           "
         />
@@ -62,11 +58,7 @@
             placeholder="Due date"
             format="D MMM, YYYY"
             :disabled="!canEditTask"
-            @update:modelValue="
-              task.setValue.submit({
-                due_date: $event,
-              })
-            "
+            @update:modelValue="setTaskValue({ due_date: $event })"
           />
           <Dropdown :options="statusOptions" :disabled="!canEditTask">
             <Button :disabled="!canEditTask">
@@ -128,11 +120,7 @@
             format="D MMM, YYYY"
             align="end"
             :disabled="!canEditTask"
-            @update:modelValue="
-              task.setValue.submit({
-                due_date: $event,
-              })
-            "
+            @update:modelValue="setTaskValue({ due_date: $event })"
           />
         </div>
         <div>Space</div>
@@ -156,7 +144,7 @@
             :options="statusOptions"
             placeholder="Set status"
             :disabled="!canEditTask"
-            @update:modelValue="task.setValue.submit({ status: $event })"
+            @update:modelValue="setTaskValue({ status: $event })"
           >
             <template #item-prefix="{ item }">
               <TaskStatusIcon :status="item.value" />
@@ -170,7 +158,7 @@
             :options="priorityOptions"
             placeholder="Set priority"
             :disabled="!canEditTask"
-            @update:modelValue="task.setValue.submit({ priority: $event })"
+            @update:modelValue="setTaskValue({ priority: $event })"
           >
             <template #item-prefix="{ item }">
               <TaskPriorityIcon :priority="item.value" />
@@ -183,14 +171,15 @@
 </template>
 
 <script setup lang="ts">
-import { h, computed } from 'vue'
+import { h, computed, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import TaskDescriptionEditor from '@/components/editor/TaskDescriptionEditor.vue'
 import CommentsList from '@/components/CommentsList.vue'
 import TaskStatusIcon from '@/components/NewTaskDialog/TaskStatusIcon.vue'
 import TaskPriorityIcon from '@/components/icons/TaskPriorityIcon.vue'
 import DropdownMoreOptions from './DropdownMoreOptions.vue'
-import { LoadingText, DatePicker, Button, Combobox, Select, dialog } from 'frappe-ui'
+import { LoadingText, DatePicker, Button, Combobox, Select, Dropdown, dialog } from 'frappe-ui'
+import UserAvatar from '@/components/UserAvatar.vue'
 import { vFocus } from '@/directives'
 import { activeUsers } from '@/data/users'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
@@ -216,6 +205,11 @@ const canEditTask = computed(
   () => !props.readOnlyMode && canEditContent(task.doc, space.value, useSessionUser()),
 )
 
+// A failed save shows as task.setValue.error in the header.
+function setTaskValue(values: Parameters<typeof task.setValue.submit>[0]) {
+  task.setValue.submit(values).catch(() => {})
+}
+
 function deleteTask() {
   if (!canEditTask.value) return
 
@@ -229,11 +223,14 @@ function deleteTask() {
   })
 }
 
-task.onSuccess((doc) => {
-  if (['Task', 'SpaceTask'].includes(route.name as string) && route.params.taskId === doc.name) {
-    task.trackVisit.submit()
-  }
-})
+// The task resource is cached across mounts, so the callback must not outlive this one.
+onUnmounted(
+  task.onSuccess((doc) => {
+    if (['Task', 'SpaceTask'].includes(route.name as string) && route.params.taskId === doc.name) {
+      task.trackVisit.submit().catch(() => {})
+    }
+  }),
+)
 
 const assignableUsers = computed<{ label: string; value: string }[]>(() => {
   return [
@@ -255,7 +252,7 @@ const statusOptions = computed(() =>
       icon: () => h(TaskStatusIcon, { status }),
       label: status,
       value: status,
-      onClick: () => canEditTask.value && task.setValue.submit({ status }),
+      onClick: () => canEditTask.value && setTaskValue({ status }),
     }),
   ),
 )
@@ -265,7 +262,7 @@ const priorityOptions = computed(() =>
     icon: () => h(TaskPriorityIcon, { priority }),
     label: priority,
     value: priority,
-    onClick: () => canEditTask.value && task.setValue.submit({ priority }),
+    onClick: () => canEditTask.value && setTaskValue({ priority }),
   })),
 )
 
@@ -335,13 +332,16 @@ useCommandPaletteCommands(
 // "<no_assignee>" option instead.
 function changeAssignee(option: string | null) {
   if (!canEditTask.value || option == null) return
-  task.setValue.submit({ assigned_to: option === '<no_assignee>' ? '' : option })
+  setTaskValue({ assigned_to: option === '<no_assignee>' ? '' : option })
 }
 
 function changeSpace(option: string | null) {
   if (!canEditTask.value || !task.doc || option == null) return
   task.doc.project = option
-  task.setValue.submit({ project: option }).then(updateRoute)
+  task.setValue
+    .submit({ project: option })
+    .then(updateRoute)
+    .catch(() => {})
 }
 
 function updateRoute() {

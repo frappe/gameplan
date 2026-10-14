@@ -98,7 +98,7 @@ export function useReactions(options: UseReactionsOptions) {
     const operations = [...sending].map(
       ([emoji, wanted]): ReactionOperation => ({ emoji, operation: wanted ? 'add' : 'remove' }),
     )
-    react.submit({ operations })
+    react.submit({ operations }).catch(() => {})
   }
 
   const settle = () => {

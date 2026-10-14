@@ -411,9 +411,8 @@ class TestLogClientErrorEndpoint(APIEndpointTestCase):
 
 	def setUp(self):
 		super().setUp()
-		# Error Log is a MyISAM table, so its rows ignore the transaction the rest of the
-		# suite rolls back. Track what was there before and delete only what a test wrote.
-		self.existing_logs = set(frappe.get_all("Error Log", filters=self.LOG_FILTER, pluck="name"))
+		# Error logs can live outside the site's transaction. Delete only what a test wrote.
+		self.existing_logs = {row.name for row in self.read_error_logs()}
 		self.addCleanup(self.delete_logged_errors)
 		self.addCleanup(self.clear_quota)
 		self.clear_quota()
@@ -424,11 +423,21 @@ class TestLogClientErrorEndpoint(APIEndpointTestCase):
 
 	def delete_logged_errors(self):
 		for log in self.client_error_logs():
-			frappe.db.delete("Error Log", {"name": log.name})
+			frappe.delete_doc("Error Log", log.name, ignore_permissions=True)
 
 	def client_error_logs(self):
-		rows = frappe.get_all("Error Log", filters=self.LOG_FILTER, fields=["name", "method", "error"])
+		rows = self.read_error_logs()
 		return [row for row in rows if row.name not in self.existing_logs]
+
+	def read_error_logs(self):
+		# The two-user test creates quota + 1 rows; virtual DocTypes default to a 20-row page.
+		return frappe.get_all(
+			"Error Log",
+			filters=self.LOG_FILTER,
+			fields=["name", "method", "error"],
+			order_by="creation desc",
+			limit_page_length=CLIENT_ERROR_QUOTA + 1,
+		)
 
 	def test_a_reported_error_lands_in_the_error_log_with_its_action_and_context(self):
 		with self.as_user(self.member):
