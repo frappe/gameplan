@@ -246,8 +246,8 @@ const isAdmin = computed(() => isGameplanAdmin())
 // Counts change between visits, and a failed load should not stick, so fetch on each visit.
 people.reload()
 
-// Guests are left out. The name and email come from the users store, the same values
-// each row shows, so search matches what is on screen.
+// Guests are left out. Name and email come from the users store, the copy the rest of the
+// app shows, so search matches it.
 const profiles = computed(() => {
   return (people.data || [])
     .filter((profile) => useUser(profile.user).isNotGuest)
