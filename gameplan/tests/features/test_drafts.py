@@ -98,7 +98,7 @@ class TestDrafts(GameplanTestCase):
 			reference_doctype="GP Discussion",
 			reference_name=str(discussion.name),
 		)
-		older = frappe.get_doc(doctype="GP Draft", content="older", **ref).insert()
+		older = frappe.get_doc(doctype="GP Draft", name="a" * 20, content="older", **ref).insert()
 		newer = frappe.get_doc(doctype="GP Draft", content="newer", **ref).insert()
 
 		result = find_my_draft(**ref)
@@ -108,10 +108,14 @@ class TestDrafts(GameplanTestCase):
 		remaining = frappe.get_all("GP Draft", filters={"owner": alice.name, **ref}, pluck="name")
 		self.assertEqual(remaining, [newer.name])
 		self.assertFalse(frappe.db.exists("GP Draft", older.name))
-		# Permanently, not archived: a discarded autosave still holds the user's typing, and
-		# a Deleted Document copy would keep it readable long after the draft is gone.
-		self.assertFalse(
+		self.assertTrue(
 			frappe.db.exists("Deleted Document", {"deleted_doctype": "GP Draft", "deleted_name": older.name})
+		)
+		# The first device lost its save response, so recovery retries creating the old name.
+		with self.assertRaises(frappe.DoesNotExistError):
+			frappe.get_doc(doctype="GP Draft", name=older.name, content="retried", **ref).insert()
+		self.assertEqual(
+			frappe.get_all("GP Draft", filters={"owner": alice.name, **ref}, pluck="name"), [newer.name]
 		)
 
 	def test_deleting_a_comment_removes_its_edit_draft(self):
@@ -439,7 +443,7 @@ class TestMyDrafts(GameplanTestCase):
 		"""One row per reply on the list path, but the stale sibling stays on disk.
 
 		get_my_drafts is a GET so the Drafts page can be a useList, and Frappe rolls a GET
-		back — a delete here would look like cleanup and change nothing. The permanent
+		back — a delete here would look like cleanup and change nothing. The
 		delete lives on find_my_draft, which runs when that reply composer next opens
 		(test_duplicate_singleton_drafts_self_heal_on_read)."""
 		discussion = create_discussion("Duplicate Reply Target", self.space)
@@ -457,6 +461,51 @@ class TestMyDrafts(GameplanTestCase):
 
 		self.assertEqual([row["name"] for row in drafts], [newer.name])
 		self.assertTrue(frappe.db.exists("GP Draft", older.name))
+
+
+class TestClientNamedDrafts(GameplanTestCase):
+	"""A draft is saved under the name its client gave it, so it has one name everywhere."""
+
+	NAME = "abcdefghij0123456789"
+
+	def setUp(self):
+		super().setUp()
+		frappe.set_user(create_member("draft_client@example.com", "Client").name)
+
+	def new_draft(self, name=None, content="Hello"):
+		doc = frappe.get_doc(doctype="GP Draft", type="Discussion", mode="New", content=content)
+		if name:
+			doc.name = name
+		return doc.insert()
+
+	def test_a_draft_keeps_the_name_its_client_gave_it(self):
+		self.assertEqual(self.new_draft(self.NAME).name, self.NAME)
+
+	def test_a_draft_without_a_client_name_is_named_as_before(self):
+		self.assertTrue(frappe.db.exists("GP Draft", self.new_draft().name))
+
+	def test_saving_the_same_name_twice_never_makes_a_second_row(self):
+		self.new_draft(self.NAME)
+		with self.assertRaises(frappe.DuplicateEntryError):
+			self.new_draft(self.NAME, content="again")
+		self.assertEqual(frappe.db.count("GP Draft", {"name": self.NAME}), 1)
+
+	def test_a_deleted_name_is_never_used_again(self):
+		frappe.delete_doc("GP Draft", self.new_draft(self.NAME).name)
+		with self.assertRaises(frappe.DoesNotExistError):
+			self.new_draft(self.NAME, content="brought back")
+		self.assertFalse(frappe.db.exists("GP Draft", self.NAME))
+
+	def test_a_client_name_must_have_the_right_form(self):
+		for name in (
+			"short",
+			"UPPERCASE0123456789A",
+			"abcdefghij0123456789x",
+			"abcdefghij012345678/",
+			12345678901234567890,
+		):
+			with self.subTest(name=name), self.assertRaises(frappe.ValidationError):
+				self.new_draft(name)
 
 
 class TestScheduledDrafts(GameplanTestCase):
