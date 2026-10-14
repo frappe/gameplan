@@ -60,7 +60,7 @@
                   v-for="day in allWeekdays"
                   :key="day"
                   size="sm"
-                  :variant="activeHoursDays.includes(day) ? 'solid' : 'subtle'"
+                  :variant="activeHoursDays.includes(day) ? 'subtle' : 'ghost'"
                   :aria-pressed="activeHoursDays.includes(day)"
                   :label="day"
                   @click="toggleDay(day)"
@@ -82,8 +82,8 @@
           </SettingsRow>
 
           <SettingsRow
-            title="Notifications for discussions you're part of"
-            description="Choose notifications for discussions you started or joined"
+            title="Replies in your discussions"
+            description="Discussions you started or commented on"
           >
             <Select
               :options="participationOptions"
@@ -99,7 +99,12 @@
           >
             <Button label="Manage" @click="showCommunitiesSettings(communityState.id, 'spaces')" />
           </SettingsRow>
+        </div>
+      </section>
 
+      <section>
+        <h3 class="mb-2 text-base-medium text-ink-gray-8">Email digest</h3>
+        <div class="divide-y divide-outline-gray-1">
           <SettingsRow title="Enable email digests" :description="emailDigestDescription">
             <Switch v-model="emailDigestEnabled" />
           </SettingsRow>
