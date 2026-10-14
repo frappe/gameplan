@@ -31,7 +31,7 @@ describe('Notification filters', () => {
       }
     })
     cy.loginAs('member')
-    cy.intercept('GET', '**/api/v2/document/GP%20Notification*').as('notificationList')
+    cy.intercept('GET', '**/api/v2/method/gameplan.api.get_notifications*').as('notificationList')
     cy.visit('/g/notifications')
     cy.wait('@notificationList')
   })
@@ -43,20 +43,21 @@ describe('Notification filters', () => {
   })
 
   it('narrows to the picked community', () => {
-    cy.button('All communities').click()
-    cy.contains('[role="option"]', 'Alpha').click()
+    cy.button('All spaces').click()
+    cy.contains('[data-slot="group-label"]', 'Alpha').find('input[type="checkbox"]').check()
     cy.get('body').type('{esc}')
     cy.wait('@notificationList')
 
     cy.contains('Alpha thread').should('be.visible')
     cy.contains('Beta thread').should('not.exist')
-    cy.button('Alpha').should('be.visible').click()
-    cy.contains('[role="option"]', 'Beta').click()
+    cy.button('Alpha Space').should('be.visible').click()
+    cy.contains('[data-slot="group-label"]', 'Beta').find('input[type="checkbox"]').check()
     cy.get('body').type('{esc}')
-    cy.button('2 communities').should('be.visible')
+    cy.button('2 spaces').should('be.visible')
 
-    cy.button('Clear').click()
+    cy.get('[aria-label="Clear 2 spaces"]').click()
     cy.wait('@notificationList')
+    cy.button('All spaces').should('be.visible')
     cy.contains('Beta thread').should('be.visible')
   })
 

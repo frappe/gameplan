@@ -17,10 +17,13 @@
       <template #group-label="{ group }">
         <Checkbox
           size="sm"
-          :label="group.group"
           :model-value="isCommunitySelected(group.key)"
           @update:model-value="(checked: boolean) => setCommunitySpaces(group.key, checked)"
-        />
+        >
+          <template #label>
+            <span class="text-base-medium text-ink-gray-8">{{ group.group }}</span>
+          </template>
+        </Checkbox>
       </template>
       <template #item-prefix="{ item }">
         <SpaceIcon :icon="item.icon" class="size-4 text-ink-gray-6" />
@@ -47,7 +50,7 @@ import { computed } from 'vue'
 import { Checkbox, DateRangePicker, MultiSelect, dayjs } from 'frappe-ui'
 import FilterTrigger from '@/components/NotificationFilterTrigger.vue'
 import SpaceIcon from '@/components/SpaceIcon.vue'
-import { useGroupedSpaces } from '@/data/groupedSpaces'
+import { UNCATEGORIZED, useGroupedSpaces } from '@/data/groupedSpaces'
 import {
   notificationDateBounds,
   notificationFilters,
@@ -88,8 +91,17 @@ function setCommunitySpaces(community: string | number | undefined, checked: boo
 }
 
 function setSpaces(values: Array<string | number>) {
-  if (filters.value.communities.length) setNotificationCommunities([])
-  setNotificationSpaces(values.map(String))
+  const spaces = values.map(String)
+  setNotificationSpaces(spaces)
+  setNotificationCommunities(
+    groupedSpaces.value
+      .filter(
+        (group) =>
+          group.name !== UNCATEGORIZED &&
+          group.spaces.every((space) => spaces.includes(String(space.name))),
+      )
+      .map((group) => String(group.name)),
+  )
 }
 
 function triggerLabel(selected: Array<{ label: string }>, none: string, plural: string): string {

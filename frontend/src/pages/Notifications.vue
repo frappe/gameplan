@@ -359,6 +359,7 @@ function confirmMarkAllAsRead() {
 function useNotificationList(read: 0 | 1, cacheKey: string) {
   return useList<NotificationRow>({
     doctype: 'GP Notification',
+    url: '/api/v2/method/gameplan.api.get_notifications',
     filters: () => ({ to_user: sessionUser.name, read, ...notificationListFilters() }),
     fields: notificationFields,
     orderBy: 'last_event_at desc',

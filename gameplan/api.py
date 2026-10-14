@@ -253,6 +253,22 @@ def unread_notifications():
 	return unread_notification_count(frappe.session.user)
 
 
+@frappe.whitelist(methods=["GET"])
+def get_notifications(fields=None, filters=None, order_by=None, start=0, limit=20):
+	filters = frappe.parse_json(filters) or {}
+	or_filters = {field: filters.pop(field) for field in ("team", "project") if field in filters}
+	return frappe.qb.get_query(
+		"GP Notification",
+		fields=frappe.parse_json(fields),
+		filters=filters,
+		or_filters=or_filters,
+		order_by=order_by,
+		offset=cint(start),
+		limit=cint(limit),
+		ignore_permissions=False,
+	).run(as_dict=True)
+
+
 # Invitation emails open in a browser navigation, so this endpoint must remain GET-reachable.
 @frappe.whitelist(allow_guest=True)
 @validate_type
