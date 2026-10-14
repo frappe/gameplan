@@ -36,7 +36,7 @@
                   <span class="lucide-search w-4 text-ink-gray-5" />
                 </template>
               </TextInput>
-              <Select class="!w-fit" :options="orderByOptions" v-model="orderBy">
+              <Select class="!w-fit" :options="peopleSortOptions" v-model="peopleSort">
                 <template #prefix>
                   <span class="lucide-arrow-down-up w-4 text-ink-gray-5" />
                 </template>
@@ -215,7 +215,7 @@
   </div>
 </template>
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import {
   PageHeaderBackButton,
   PageHeaderMobile,
@@ -231,7 +231,7 @@ import {
 import { List, ListCell, ListHeader, ListHeaderCell, ListRow } from 'frappe-ui/list'
 import { showSettingsDialog } from '@/components/Settings'
 import { isGameplanAdmin, useSessionUser, useUser } from '@/data/users'
-import { people, peopleOrderBy } from '@/data/people'
+import { people, peopleSort, peopleSortOption, peopleSortOptions } from '@/data/people'
 import EmptyStateBox from '@/components/EmptyStateBox.vue'
 import UserAvatarWithHover from '@/components/UserAvatarWithHover.vue'
 import ReactionFaceIcon from '@/components/ReactionFaceIcon.vue'
@@ -242,30 +242,6 @@ defineOptions({
 
 const search = ref('')
 const isAdmin = computed(() => isGameplanAdmin())
-
-const orderByOptions = [
-  { label: 'Name', value: 'full_name asc' },
-  { label: 'Last updated', value: 'modified desc' },
-  { label: 'Posts', value: 'posts' },
-  { label: 'Replies', value: 'replies' },
-  { label: 'Reactions received', value: 'reactions_received' },
-] as const
-
-type UiOrderBy = (typeof orderByOptions)[number]['value']
-
-// `posts`/`replies`/`reactions_received` have no backing column - they're derived counts
-// computed server-side per row - so those keep fetching at a steady `modified desc` and
-// the sort below re-orders client-side. Only `full_name asc`/`modified desc` map to real
-// columns and are sent straight through to `data/people.ts`'s shared list.
-const orderBy = ref<UiOrderBy>('modified desc')
-const derivedOrderBy = new Set(['posts', 'replies', 'reactions_received'])
-watch(
-  orderBy,
-  (value) => {
-    peopleOrderBy.value = derivedOrderBy.has(value) ? 'modified desc' : value
-  },
-  { immediate: true },
-)
 
 // Counts change between visits, and a failed load should not stick, so fetch on each visit.
 people.reload()
@@ -301,12 +277,9 @@ const peopleList = computed(() => {
     Boolean,
   ) as typeof profiles.value
 
-  if (orderBy.value === 'posts') {
-    list = [...list].sort((a, b) => b.discussions_count - a.discussions_count)
-  } else if (orderBy.value === 'replies') {
-    list = [...list].sort((a, b) => b.comments_count - a.comments_count)
-  } else if (orderBy.value === 'reactions_received') {
-    list = [...list].sort((a, b) => b.reactions_received - a.reactions_received)
+  const count = peopleSortOption.value.count
+  if (count) {
+    list = [...list].sort((a, b) => b[count] - a[count])
   }
   return list
 })

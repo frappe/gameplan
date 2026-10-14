@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useList } from 'frappe-ui'
 import type { OrderBy } from 'frappe-ui'
 import type { GPUserProfile } from '@/types/doctypes'
@@ -13,8 +13,30 @@ interface Person extends Pick<
   reactions_received: number
 }
 
-/** Server sort order. Post, reply and reaction counts aren't columns, so People.vue sorts those. */
-export const peopleOrderBy = ref<OrderBy>('modified desc')
+type PeopleSortOption =
+  | { label: string; value: OrderBy; count?: never }
+  // Counts aren't columns, so the server can't order by them. People.vue sorts these.
+  | {
+      label: string
+      value: string
+      count: 'discussions_count' | 'comments_count' | 'reactions_received'
+    }
+
+export const peopleSortOptions: PeopleSortOption[] = [
+  { label: 'Name', value: 'full_name asc' },
+  { label: 'Last updated', value: 'modified desc' },
+  { label: 'Posts', value: 'posts', count: 'discussions_count' },
+  { label: 'Replies', value: 'replies', count: 'comments_count' },
+  { label: 'Reactions received', value: 'reactions_received', count: 'reactions_received' },
+]
+
+/** The selected People sort: a `peopleSortOptions` value. */
+export const peopleSort = ref('modified desc')
+
+export const peopleSortOption = computed(
+  () =>
+    peopleSortOptions.find((option) => option.value === peopleSort.value) ?? peopleSortOptions[1],
+)
 
 /** The People list: server-sorted, filtered to enabled accounts, shared across visits.
  *  People.vue reloads it on each visit. */
@@ -26,8 +48,12 @@ export const people = useList<Person>({
   doctype: 'GP User Profile',
   fields: ['name', 'user', 'bio', 'modified', 'cover_image', 'cover_image_position'],
   filters: { enabled: 1 },
-  orderBy: peopleOrderBy,
+  orderBy: () => serverOrder(peopleSortOption.value),
   limit: 999,
   cacheKey: 'People',
   immediate: false,
 })
+
+function serverOrder(option: PeopleSortOption): OrderBy {
+  return option.count ? 'modified desc' : option.value
+}
