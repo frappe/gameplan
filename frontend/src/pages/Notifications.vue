@@ -31,7 +31,8 @@
     >
       <TabButtons class="shrink-0" :options="tabOptions" v-model="activeTab" />
       <div
-        v-if="showFilters"
+        v-if="reserveFilters"
+        :class="!showFilters && 'invisible'"
         class="-mx-4 w-[calc(100%+2rem)] overflow-x-auto px-4 py-0.5 sm:mx-0 sm:ml-auto sm:w-auto sm:min-w-0 sm:px-0"
       >
         <NotificationFilters class="w-max" />
@@ -157,11 +158,19 @@ const readNotificationCount = useCall<number>({
   },
   cacheKey: ['Read Notification Count', sessionUser.name],
 })
-const showFilters = computed(() => {
-  if (hasActiveNotificationFilters.value) return true
-  const count = activeTab.value === 'Unread' ? unreadNotifications.data : readNotificationCount.data
-  return (count ?? FILTERS_FROM) >= FILTERS_FROM
-})
+function hasEnoughForFilters(count: number | null | undefined) {
+  return hasActiveNotificationFilters.value || (count ?? FILTERS_FROM) >= FILTERS_FROM
+}
+const showFilters = computed(() =>
+  hasEnoughForFilters(
+    activeTab.value === 'Unread' ? unreadNotifications.data : readNotificationCount.data,
+  ),
+)
+const reserveFilters = computed(
+  () =>
+    hasEnoughForFilters(unreadNotifications.data) ||
+    hasEnoughForFilters(readNotificationCount.data),
+)
 
 const unreadNotificationList = useNotificationList(0, 'Unread Notifications')
 const readNotificationList = useNotificationList(1, 'Read Notifications')
