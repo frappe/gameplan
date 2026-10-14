@@ -240,7 +240,6 @@ const save = () => {
         isAutosaving.value = false
       }, remainingTime)
     })
-    .catch(() => {})
 }
 
 const autosave = debounce(save, 1000)
