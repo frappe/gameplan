@@ -90,6 +90,23 @@ export async function deleteDraftRecord(key: string): Promise<void> {
   return del(key, store)
 }
 
+/** Move the latest unsynced copy atomically, including edits made during server lookup. */
+export async function moveDraftRecord(
+  key: string,
+  replacementKey: string,
+): Promise<DraftRecord | null> {
+  await ready()
+  return store('readwrite', async (records) => {
+    const current = (await promisifyRequest(records.get(key))) as DraftRecord | undefined
+    if (!current || current.updatedAt <= (current.syncedAt ?? 0)) return null
+    const replacement = { ...current, key: replacementKey, saved: false }
+    records.put(replacement, replacementKey)
+    records.delete(key)
+    await promisifyRequest(records.transaction)
+    return replacement
+  })
+}
+
 export async function listDraftRecords(): Promise<DraftRecord[]> {
   await ready()
   return entries<string, DraftRecord>(store).then((all) => all.map(([, record]) => record))
@@ -130,7 +147,7 @@ export function singletonKey(identity: DraftIdentity): string {
   return [type, mode, referenceDoctype ?? '', referenceName ?? ''].join('::')
 }
 
-type DraftChangeListener = (key: string) => void
+type DraftChangeListener = (key: string, replacementKey?: string) => void
 
 const CHANNEL_NAME = 'gameplan-drafts'
 let channel: BroadcastChannel | null | undefined
@@ -143,8 +160,8 @@ function getChannel(): BroadcastChannel | null {
 }
 
 /** Tell other tabs a record changed (or was deleted) so they can reload it. */
-export function broadcastDraftChange(key: string): void {
-  getChannel()?.postMessage({ key })
+export function broadcastDraftChange(key: string, replacementKey?: string): void {
+  getChannel()?.postMessage({ key, replacementKey })
 }
 
 /** Subscribe to cross-tab draft changes. Returns an unsubscribe function. */
@@ -152,8 +169,8 @@ export function onDraftChange(listener: DraftChangeListener): () => void {
   const ch = getChannel()
   if (!ch) return () => {}
   const handler = (event: MessageEvent) => {
-    const key = (event.data as { key?: string } | null)?.key
-    if (key) listener(key)
+    const change = event.data as { key?: string; replacementKey?: string } | null
+    if (change?.key) listener(change.key, change.replacementKey)
   }
   ch.addEventListener('message', handler)
   return () => ch.removeEventListener('message', handler)

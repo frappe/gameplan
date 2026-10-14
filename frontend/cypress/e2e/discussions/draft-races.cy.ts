@@ -31,6 +31,7 @@ describe('Draft saves across devices and tabs', () => {
   let space: string
   let discussion: string
   let slug: string
+  let releaseLookup: (() => void) | undefined
 
   beforeEach(() => {
     resetData('space_with_discussion').then((ids) => {
@@ -40,6 +41,15 @@ describe('Draft saves across devices and tabs', () => {
       slug = String(ids.discussion_slug)
     })
     cy.loginAs('member')
+  })
+
+  afterEach(() => {
+    releaseLookup?.()
+    releaseLookup = undefined
+    cy.window().then((win) => {
+      delete (win.navigator as unknown as { onLine?: boolean }).onLine
+      win.dispatchEvent(new win.Event('online'))
+    })
   })
 
   for (const resume of ['reload', 'reconnect', 'draft recovery']) {
@@ -111,6 +121,83 @@ describe('Draft saves across devices and tabs', () => {
       cy.contains('This draft was deleted').should('not.exist')
     })
   }
+
+  it('keeps an open editor and edits made while another tab recovers its draft', () => {
+    let lookupPending = false
+    cy.intercept('POST', CREATE).as('create')
+    cy.then(() =>
+      cy.visit(`/g/community/${community}/space/${space}/discussion/${discussion}/${slug}`),
+    )
+    cy.button('Add a comment').click()
+    cy.get('.ProseMirror').last().click().type('My saved reply')
+    cy.wait('@create').its('request.body.name').as('original')
+    // Only this tab is offline; the second document can still recover stored drafts.
+    cy.window().then((win) => {
+      Object.defineProperty(win.navigator, 'onLine', { configurable: true, get: () => false })
+      win.dispatchEvent(new win.Event('offline'))
+    })
+    cy.get('.ProseMirror').last().click().type(' with unsynced edits')
+    cy.get<string>('@original').then((name) =>
+      localRecord((store) => store.get(name))
+        .its('record.payload.content')
+        .should('include', 'unsynced edits'),
+    )
+    cy.window().then((win) => {
+      const headers = {
+        'X-Frappe-CSRF-Token': (win as unknown as { csrf_token: string }).csrf_token,
+      }
+      const identity = {
+        type: 'Comment',
+        mode: 'New',
+        reference_doctype: 'GP Discussion',
+        reference_name: discussion,
+      }
+      cy.request({
+        method: 'POST',
+        url: '/api/v2/document/GP Draft',
+        headers,
+        body: { ...identity, content: '<p>Other device reply</p>' },
+      })
+      cy.request({ method: 'POST', url: FIND, headers, body: identity })
+    })
+    cy.intercept('POST', '**/gameplan.gameplan.doctype.gp_draft.gp_draft.find_my_draft', (req) => {
+      req.continue(
+        () =>
+          new Cypress.Promise<void>((resolve) => {
+            lookupPending = true
+            releaseLookup = resolve
+          }),
+      )
+    })
+    // A second same-origin document has its own composer state and BroadcastChannel.
+    cy.document().then((doc) => {
+      const tab = doc.createElement('iframe')
+      tab.src = '/g/drafts'
+      doc.body.appendChild(tab)
+    })
+    cy.wrap(null).should(() => expect(lookupPending, 'recovery lookup pending').to.eq(true))
+    cy.get('.ProseMirror').last().click().type(' plus newer tab edits')
+    cy.get<string>('@original').then((name) =>
+      localRecord((store) => store.get(name))
+        .its('record.payload.content')
+        .should('include', 'newer tab edits'),
+    )
+    cy.then(() => releaseLookup?.())
+    cy.wait('@create', { timeout: 10000 }).then(({ request }) => {
+      expect(request.body.content).to.include(
+        'My saved reply with unsynced edits plus newer tab edits',
+      )
+      cy.get('@original').should('not.eq', request.body.name)
+    })
+    cy.get('.ProseMirror')
+      .last()
+      .should('contain.text', 'My saved reply with unsynced edits plus newer tab edits')
+    cy.get('.ProseMirror').last().click().type(' and continuing')
+    localRecord((store) => store.getAll()).then(({ record }) => {
+      expect(record.some((draft) => draft.payload.content.includes('and continuing'))).to.eq(true)
+    })
+    cy.contains('This draft was deleted').should('not.exist')
+  })
 
   it('does not upload a local draft deleted while its save waits for a lock', () => {
     let creates = 0

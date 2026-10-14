@@ -32,6 +32,7 @@ import {
   hasContent,
   putDraftRecord,
   deleteDraftRecord,
+  moveDraftRecord,
   listDraftRecords,
   newDraftName,
   withDraftLock,
@@ -339,10 +340,12 @@ export function useDraftSync(options: UseDraftSyncOptions) {
       if (current) lastError.value = null
     } catch (error) {
       if (isDeletedError(error)) {
+        if (name.value !== draftName) return
         const recovered = await withDraftLock(draftName, async () => {
           const record = await getDraftRecord(draftName)
           return record ? recoverReplacedDraft(record) : null
         }).catch(() => undefined)
+        if (name.value !== draftName) return
         // A failed lookup cannot confirm deletion. Keep the local copy for another retry.
         if (recovered === undefined) {
           lastError.value = error
@@ -583,9 +586,25 @@ export function useDraftSync(options: UseDraftSyncOptions) {
 
   // Keep sibling tabs of the same draft coherent — but never clobber un-pushed edits
   // typed in this tab.
-  const unsubscribe = onDraftChange(async (changedKey) => {
+  const unsubscribe = onDraftChange(async (changedKey, replacementKey) => {
     if (changedKey !== name.value || !data.value) return
+    if (replacementKey) {
+      const replacement = await getDraftRecord(replacementKey)
+      if (name.value !== changedKey || replacement?.user !== draftOwner) return
+      name.value = replacementKey
+      saved.value = replacement.saved
+      if (dirty.value) await persistLocal()
+      else {
+        applyPayload(replacement.payload)
+        updatedAt.value = replacement.updatedAt
+        syncedAt.value = replacement.syncedAt
+      }
+      onCreate?.(replacementKey)
+      void pushToServer()
+      return
+    }
     const record = await getDraftRecord(name.value)
+    if (name.value !== changedKey) return
     // Deleted, published or posted in another tab: this draft is gone.
     if (!record) return reset()
     if (dirty.value) return
@@ -810,10 +829,8 @@ async function recoverReplacedDraft(record: DraftRecord, replacement?: ServerDra
   const doc =
     replacement ?? (await call<ServerDraftDoc | null>(FIND_DRAFT, identityFields(record.identity)))
   if (!doc || doc.name === record.key) return null
-  const recovered = { ...record, key: newDraftName(), saved: false }
-  await putDraftRecord(recovered)
-  await deleteDraftRecord(record.key)
-  broadcastDraftChange(record.key)
+  const recovered = await moveDraftRecord(record.key, newDraftName())
+  if (recovered) broadcastDraftChange(record.key, recovered.key)
   return recovered
 }
 
