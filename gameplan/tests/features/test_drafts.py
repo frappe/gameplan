@@ -492,7 +492,7 @@ class TestScheduledDrafts(GameplanTestCase):
 		)
 		self.space.reload()
 		self.space.members = []
-		self.space.is_private = 1
+		self.space.visibility = VISIBILITY_MEMBER_ACCESS
 		self.space.save(ignore_permissions=True)
 		with patch("frappe.log_error") as log_error:
 			publish_due_drafts()

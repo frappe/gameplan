@@ -140,6 +140,10 @@ describe('Public spaces, logged out', () => {
   })
 
   it('opens the public community as a forum without exposing non-public spaces', () => {
+    let directoryRequests = 0
+    cy.intercept('**/gameplan.api.get_user_info*', () => {
+      directoryRequests++
+    })
     cy.visit(`/g/community/${ids.community}/discussions`)
     cy.get('.gameplan-desktop-shell').contains('Open Source').should('be.visible')
     cy.get('.gameplan-desktop-shell header:visible').contains('Discussions').should('be.visible')
@@ -148,8 +152,18 @@ describe('Public spaces, logged out', () => {
     cy.contains('General').should('not.exist')
     cy.contains('Core Team').should('not.exist')
 
+    // Profile changes are broadcast to the website room, including logged-out visitors.
+    cy.document().then((doc) => {
+      const app = (doc.querySelector('#app') as { __vue_app__?: any } | null)?.__vue_app__
+      const socket = app?.config?.globalProperties?.$socket
+      expect(socket, 'app socket').to.exist
+      socket.listeners('gameplan:users_changed').forEach((listener: () => void) => listener())
+    })
+
     cy.contains('a', 'Welcome to Open Source').click()
     cy.location('pathname').should('include', `/discussion/${ids.discussion}`)
+    cy.contains('h1', 'Welcome to Open Source').should('be.visible')
+    cy.then(() => expect(directoryRequests, 'member-directory requests').to.eq(0))
   })
 
   it('sends a visitor to log in for anything that is not public', () => {

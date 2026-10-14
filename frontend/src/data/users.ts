@@ -142,7 +142,7 @@ watch(
 // that would race that first fetch on the same instance. After a failed first fetch this
 // does allow a reload, which is wanted — it is the one path that can recover the list.
 onSocketEvent('gameplan:users_changed', () => {
-  if (usersReady.value) users.reload()
+  if (usersReady.value && !isAnonymousVisitor()) users.reload()
 })
 
 export function updateUserInfo(user: UserInfo) {

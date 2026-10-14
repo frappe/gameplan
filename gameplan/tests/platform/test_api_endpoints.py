@@ -502,9 +502,10 @@ class TestLogClientErrorEndpoint(APIEndpointTestCase):
 
 	def setUp(self):
 		super().setUp()
-		# Error Log is a MyISAM table, so its rows ignore the transaction the rest of the
-		# suite rolls back. Track what was there before and delete only what a test wrote.
-		self.existing_logs = set(frappe.get_all("Error Log", filters=self.LOG_FILTER, pluck="name"))
+		# Error logs survive rollback. Track and delete only this test's rows.
+		self.existing_logs = set(
+			frappe.get_all("Error Log", filters=self.LOG_FILTER, pluck="name", limit=1000)
+		)
 		self.addCleanup(self.delete_logged_errors)
 		self.addCleanup(self.clear_quota)
 		self.clear_quota()
@@ -515,10 +516,12 @@ class TestLogClientErrorEndpoint(APIEndpointTestCase):
 
 	def delete_logged_errors(self):
 		for log in self.client_error_logs():
-			frappe.db.delete("Error Log", {"name": log.name})
+			frappe.get_doc("Error Log", log.name).delete(ignore_permissions=True)
 
 	def client_error_logs(self):
-		rows = frappe.get_all("Error Log", filters=self.LOG_FILTER, fields=["name", "method", "error"])
+		rows = frappe.get_all(
+			"Error Log", filters=self.LOG_FILTER, fields=["name", "method", "error"], limit=1000
+		)
 		return [row for row in rows if row.name not in self.existing_logs]
 
 	def test_a_reported_error_lands_in_the_error_log_with_its_action_and_context(self):
