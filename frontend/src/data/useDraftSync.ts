@@ -288,7 +288,9 @@ export function useDraftSync(options: UseDraftSyncOptions) {
 
   // `onCreate` is told a new draft's name once, when it is first saved here.
   let announced = Boolean(requestedName)
+  let adopting: Promise<void> | null = null
   async function persistLocal() {
+    if (adopting) await adopting
     if (!data.value) return
     const record: DraftRecord = {
       key: name.value,
@@ -587,18 +589,27 @@ export function useDraftSync(options: UseDraftSyncOptions) {
   // Keep sibling tabs of the same draft coherent — but never clobber un-pushed edits
   // typed in this tab.
   const unsubscribe = onDraftChange(async (changedKey, replacementKey) => {
+    if (adopting) await adopting
     if (changedKey !== name.value || !data.value) return
     if (replacementKey) {
-      const replacement = await getDraftRecord(replacementKey)
-      if (name.value !== changedKey || replacement?.user !== draftOwner) return
-      name.value = replacementKey
-      saved.value = replacement.saved
+      // Hold local writes until the replacement has been checked and adopted.
+      adopting = getDraftRecord(replacementKey)
+        .then((replacement) => {
+          if (name.value !== changedKey || replacement?.user !== draftOwner) return
+          name.value = replacementKey
+          saved.value = replacement.saved
+          if (!dirty.value || replacement.updatedAt > updatedAt.value) {
+            applyPayload(replacement.payload)
+            updatedAt.value = replacement.updatedAt
+            syncedAt.value = replacement.syncedAt
+          }
+        })
+        .finally(() => {
+          adopting = null
+        })
+      await adopting
+      if (name.value !== replacementKey) return
       if (dirty.value) await persistLocal()
-      else {
-        applyPayload(replacement.payload)
-        updatedAt.value = replacement.updatedAt
-        syncedAt.value = replacement.syncedAt
-      }
       onCreate?.(replacementKey)
       void pushToServer()
       return
