@@ -32,6 +32,7 @@ describe('Draft saves across devices and tabs', () => {
   let discussion: string
   let slug: string
   let releaseLookup: (() => void) | undefined
+  let releaseReplacement: (() => void) | undefined
 
   beforeEach(() => {
     resetData('space_with_discussion').then((ids) => {
@@ -46,6 +47,8 @@ describe('Draft saves across devices and tabs', () => {
   afterEach(() => {
     releaseLookup?.()
     releaseLookup = undefined
+    releaseReplacement?.()
+    releaseReplacement = undefined
     cy.window().then((win) => {
       delete (win.navigator as unknown as { onLine?: boolean }).onLine
       win.dispatchEvent(new win.Event('online'))
@@ -124,6 +127,7 @@ describe('Draft saves across devices and tabs', () => {
 
   it('keeps an open editor and edits made while another tab recovers its draft', () => {
     let lookupPending = false
+    let replacementPending = false
     cy.intercept('POST', CREATE).as('create')
     cy.then(() =>
       cy.visit(`/g/community/${community}/space/${space}/discussion/${discussion}/${slug}`),
@@ -169,6 +173,26 @@ describe('Draft saves across devices and tabs', () => {
           }),
       )
     })
+    cy.get<string>('@original').then((original) =>
+      cy.window().then((win) => {
+        const get = win.IDBObjectStore.prototype.get
+        win.IDBObjectStore.prototype.get = function (key) {
+          const request = get.call(this, key)
+          if (this.name === 'records' && key !== original && !replacementPending) {
+            request.addEventListener(
+              'success',
+              (event) => {
+                event.stopImmediatePropagation()
+                replacementPending = true
+                releaseReplacement = () => request.onsuccess?.call(request, event)
+              },
+              { once: true },
+            )
+          }
+          return request
+        }
+      }),
+    )
     // A second same-origin document has its own composer state and BroadcastChannel.
     cy.document().then((doc) => {
       const tab = doc.createElement('iframe')
@@ -189,14 +213,72 @@ describe('Draft saves across devices and tabs', () => {
       )
       cy.get('@original').should('not.eq', request.body.name)
     })
+    cy.wrap(null).should(() => expect(replacementPending, 'replacement read pending').to.eq(true))
+    cy.get('.ProseMirror').last().click().type(' while loading the replacement')
+    cy.get<string>('@original').then((name) =>
+      localRecord((store) => store.get(name)).then(({ record }) => expect(record).to.be.undefined),
+    )
+    cy.then(() => releaseReplacement?.())
     cy.get('.ProseMirror')
       .last()
-      .should('contain.text', 'My saved reply with unsynced edits plus newer tab edits')
+      .should(
+        'contain.text',
+        'My saved reply with unsynced edits plus newer tab edits while loading the replacement',
+      )
     cy.get('.ProseMirror').last().click().type(' and continuing')
     localRecord((store) => store.getAll()).then(({ record }) => {
       expect(record.some((draft) => draft.payload.content.includes('and continuing'))).to.eq(true)
     })
     cy.contains('This draft was deleted').should('not.exist')
+  })
+
+  it('adopts newer recovered edits instead of overwriting them with an older open buffer', () => {
+    const replacementKey = 'recoveredreplydraftaa'
+    cy.intercept('POST', CREATE).as('create')
+    cy.then(() =>
+      cy.visit(`/g/community/${community}/space/${space}/discussion/${discussion}/${slug}`),
+    )
+    cy.button('Add a comment').click()
+    cy.get('.ProseMirror').last().click().type('My saved reply')
+    cy.wait('@create').its('request.body.name').as('original')
+    cy.window().then((win) => {
+      Object.defineProperty(win.navigator, 'onLine', { configurable: true, get: () => false })
+      win.dispatchEvent(new win.Event('offline'))
+    })
+    cy.get('.ProseMirror').last().click().type(' with older unsynced edits')
+    cy.get<string>('@original').then((original) => {
+      // Another tab stored newer text, then recovery moved it while this editor stayed open.
+      localRecord((store) => {
+        const request = store.get(original)
+        request.onsuccess = () => {
+          const record = request.result
+          store.put(
+            {
+              ...record,
+              key: replacementKey,
+              saved: false,
+              updatedAt: record.updatedAt + 1,
+              payload: { ...record.payload, content: '<p>Newer edits saved by another tab</p>' },
+            },
+            replacementKey,
+          )
+          store.delete(original)
+        }
+        return request
+      })
+      cy.window().then((win) => {
+        const otherTab = new win.BroadcastChannel('gameplan-drafts')
+        otherTab.postMessage({ key: original, replacementKey })
+        otherTab.close()
+      })
+      cy.get('.ProseMirror').last().should('contain.text', 'Newer edits saved by another tab')
+      localRecord((store) => store.get(replacementKey))
+        .its('record.payload.content')
+        .should('include', 'Newer edits saved by another tab')
+      localRecord((store) => store.get(original)).then(
+        ({ record }) => expect(record).to.be.undefined,
+      )
+    })
   })
 
   it('does not upload a local draft deleted while its save waits for a lock', () => {
