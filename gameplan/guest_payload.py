@@ -20,6 +20,7 @@ from gameplan.public_payload import (
 ACCOUNT_EMAIL = re.compile(EMAIL.pattern.removeprefix("^").removesuffix("$"))
 AUTHORED_FIELDS = RICH_TEXT_FIELDS | {"title", "bio"}
 ERROR_TEXT_FIELDS = {"_server_messages", "_error_message", "message", "error"}
+DEBUG_FIELDS = {"exc", "exception", "traceback"}
 
 
 def for_guest(payload):
@@ -30,6 +31,8 @@ def for_guest(payload):
 	def collect(value, field=None):
 		if isinstance(value, dict):
 			for key, item in value.items():
+				if key in DEBUG_FIELDS:
+					continue
 				collect(key)
 				collect(item, key)
 		elif isinstance(value, list | tuple):
@@ -49,7 +52,9 @@ def for_guest(payload):
 
 	def clean(value, field=None):
 		if isinstance(value, dict):
-			return frappe._dict({clean(key): clean(item, key) for key, item in value.items()})
+			return frappe._dict(
+				{clean(key): clean(item, key) for key, item in value.items() if key not in DEBUG_FIELDS}
+			)
 		if isinstance(value, list | tuple):
 			return [clean(item, field) for item in value]
 		if isinstance(value, str):
@@ -70,10 +75,6 @@ def hide_guest_identity_data(response):
 		return
 	try:
 		payload = response.get_json()
-		# Debug tracebacks can contain account IDs inside arbitrary strings.
-		if isinstance(payload, dict):
-			for key in ("exc", "exception"):
-				payload.pop(key, None)
 		response.set_data(frappe.as_json(for_guest(payload)))
 	except Exception:
 		# Frappe logs hook errors and continues: never leave the uncleaned body in place.

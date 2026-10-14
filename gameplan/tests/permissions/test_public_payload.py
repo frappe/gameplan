@@ -249,6 +249,13 @@ class TestPublicDocuments(PublicContentTestCase):
 						"counts": {self.member.name: 2},
 						"_server_messages": f'["Account {self.member.name} is unavailable"]',
 						"image": f"/files/{self.member.name}.png",
+						"errors": [
+							{
+								"type": "PermissionError",
+								"exception": f"Traceback: {self.member.name}",
+								"message": f"Account {self.member.name} is unavailable",
+							}
+						],
 					}
 				),
 				content_type="application/json",
@@ -261,6 +268,9 @@ class TestPublicDocuments(PublicContentTestCase):
 					"counts": {self.member_handle: 2},
 					"_server_messages": f'["Account {self.member_handle} is unavailable"]',
 					"image": f"/files/{self.member.name}.png",
+					"errors": [
+						{"type": "PermissionError", "message": f"Account {self.member_handle} is unavailable"}
+					],
 				},
 			)
 			with (
