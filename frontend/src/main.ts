@@ -20,7 +20,6 @@ import { useUser, users } from './data/users'
 import { isSessionUser, session } from './data/session'
 import { initSocket } from './socket'
 import { installErrorReporting } from './utils/errorReporting'
-import resetDataMixin from './utils/resetDataMixin'
 
 let globalComponents = {
   Button,
@@ -35,7 +34,6 @@ let app = createApp(App)
 app.use(router)
 // Installed before anything else runs, so an error thrown during setup is reported too.
 installErrorReporting(app, router)
-app.mixin(resetDataMixin)
 for (let [key, component] of Object.entries(globalComponents)) {
   app.component(key, component)
 }
