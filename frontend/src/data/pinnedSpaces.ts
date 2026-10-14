@@ -17,13 +17,21 @@ export function isSpacePinned(spaceId: string) {
 
 // What the server holds, so a failed save puts the sidebar back rather than lose it on reload.
 let saved: string[] = []
+// Saves can overlap and land out of order, so only a newer save replaces `saved`.
+let lastSubmitted = 0
+let lastSaved = 0
 
 const persist = debounce((value: string[]) => {
   if (!profileName.value) return
+  const submitted = ++lastSubmitted
   userProfiles.setValue
     .submit({ name: profileName.value, pinned_spaces: JSON.stringify(value) })
     .then(
-      () => (saved = value),
+      () => {
+        if (submitted < lastSaved) return
+        lastSaved = submitted
+        saved = value
+      },
       () => {
         if (pinned.value === value) pinned.value = saved
       },
