@@ -154,6 +154,7 @@ describe('Drafts, one name each', () => {
     cy.get('[role="dialog"]').contains('button', 'Delete').click()
     cy.contains('Draft deleted').should('be.visible')
     cy.contains('a', 'Only here').should('not.exist')
+    cy.goOnline()
   })
 
   it('saves a new reply after the last one was posted as a draft of its own', () => {
