@@ -360,11 +360,12 @@ def mark_all_notifications_as_read():
 
 
 @frappe.whitelist(methods=["POST"])
-def onboarding(community, space, icon, emails, is_private=0):
-	# Keep old clients' private request private, including the fifth positional argument.
-	if is_private not in (0, 1, "0", "1"):
-		frappe.throw(_("is_private must be 0 or 1"))
-	visibility = VISIBILITY_MEMBER_ACCESS if cint(is_private) else VISIBILITY_GENERAL
+def onboarding(community, space, icon, emails, *, visibility: str = VISIBILITY_GENERAL):
+	# Frappe drops unknown RPC arguments, so reject the old key before creating anything.
+	if "is_private" in frappe.form_dict:
+		frappe.throw(_("is_private is no longer accepted. Set visibility instead."))
+	if visibility not in (VISIBILITY_GENERAL, VISIBILITY_MEMBER_ACCESS):
+		frappe.throw(_("Onboarding visibility must be General or Member Access."))
 	emails = frappe.parse_json(emails)
 
 	# Create the community. The GP Team after_insert hook auto-creates a public
