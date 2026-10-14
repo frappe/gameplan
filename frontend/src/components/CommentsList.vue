@@ -111,18 +111,18 @@
 <script setup lang="ts">
 import { ref, computed, nextTick, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { ErrorMessage, useList } from 'frappe-ui'
+import { ErrorMessage, useList, dialog } from 'frappe-ui'
 import CommentEditor from '@/components/editor/CommentEditor.vue'
 import Comment from './Comment.vue'
 import Activity from './Activity.vue'
 import UserAvatar from './UserAvatar.vue'
 import { shellScrollContainer } from 'frappe-ui'
 import { needsMobileCommentGap } from '@/utils/commentTimeline'
-import { dialog } from 'frappe-ui'
 import { subscribeToDoc, useSocket, type NewActivityEvent } from '@/socket'
 import { GPActivity, GPComment } from '@/types/doctypes'
 import type { Space } from '@/data/spaces'
 import { useDraftSync } from '@/data/useDraftSync'
+import { refuseOffline } from '@/data/offline/requests'
 
 interface Props {
   doctype: string
@@ -183,14 +183,28 @@ const comments = useList<
   orderBy: 'creation asc',
   limit: 99999,
   onSuccess() {
-    if (route.query.comment) {
-      let comment = comments.data?.find((c) => c.name === route.query.comment)
-      scrollToItem(comment)
-    } else if (!route.query.fromSearch && comments.data?.length > 0) {
-      scrollToEnd()
-    }
+    // Once per task, not once per load — see CommentsArea.vue for why a reload must not
+    // move the reader.
+    if (positionedFor === String(props.name)) return
+    if (positionTimeline()) positionedFor = String(props.name)
   },
 })
+
+/** The task the timeline has already been positioned for. */
+let positionedFor: string | null = null
+
+/** Moves the timeline to where this task's comments should open. Whether it did. */
+function positionTimeline() {
+  if (route.query.comment) {
+    const comment = comments.data?.find((c) => c.name === route.query.comment)
+    if (!comment) return false
+    scrollToItem(comment)
+    return true
+  }
+  if (route.query.fromSearch || !comments.data?.length) return false
+  scrollToEnd()
+  return true
+}
 
 interface Activity extends Pick<GPActivity, 'name' | 'user' | 'action' | 'creation'> {
   data: {
@@ -203,6 +217,7 @@ interface Activity extends Pick<GPActivity, 'name' | 'user' | 'action' | 'creati
 
 const activities = useList<Activity>({
   doctype: 'GP Activity',
+  cacheKey: ['Activities', props.doctype, props.name],
   fields: ['name', 'user', 'action', 'data', 'creation'],
   filters: {
     reference_doctype: props.doctype,
@@ -358,6 +373,7 @@ async function discardComment() {
   if (!editorObject.value?.isEmpty) {
     dialog.danger({
       title: 'Discard comment',
+      worksOffline: true,
       message: 'Are you sure you want to discard your comment?',
       confirmLabel: 'Discard comment',
       onConfirm: async () => {
@@ -374,7 +390,7 @@ async function discardComment() {
 }
 
 async function submitComment() {
-  if (commentEmpty.value || comments.insert.loading) return
+  if (commentEmpty.value || comments.insert.loading || refuseOffline()) return
   discardError.value = null
 
   const comment = await comments.insert.submit({

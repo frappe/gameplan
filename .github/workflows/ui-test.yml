@@ -103,6 +103,9 @@ jobs:
           bench --site gameplan.test execute frappe.utils.install.complete_setup_wizard
 
 
+      - name: Offline worker tests
+        run: node --test frontend/tests/offline-worker.test.mjs
+
       - name: UI Tests
         uses: cypress-io/github-action@v6
         with:

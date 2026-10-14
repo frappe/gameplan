@@ -17,7 +17,7 @@ type AppSocket = {
 }
 
 /**
- * The app's socket.io client, as wired up in `src/main.js`
+ * The app's socket.io client, as wired up in `src/main.ts`
  * (`app.config.globalProperties.$socket`).
  */
 function appSocket(): Cypress.Chainable<AppSocket> {

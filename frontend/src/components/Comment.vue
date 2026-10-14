@@ -124,6 +124,7 @@ import { GPBookmark, GPComment } from '@/types/doctypes'
 import { dialog } from 'frappe-ui'
 import { tags } from '@/data/tags'
 import { useDraftSync } from '@/data/useDraftSync'
+import { refuseOffline } from '@/data/offline/requests'
 import { useUser, useSessionUser } from '@/data/users'
 import type { Space } from '@/data/spaces'
 import { canDeleteContent, canEditContent } from '@/utils/permissions'
@@ -175,6 +176,7 @@ const startEditing = () => {
 
 const discardEdit = async () => {
   try {
+    // Offline, an edit saved to the server is kept, and the toast says why.
     if (!(await draft.clear())) return
     isEditing.value = false
     updateError.value = null
@@ -185,7 +187,7 @@ const discardEdit = async () => {
 
 const updateComment = () => {
   const content = draftData.value?.content
-  if (!content?.trim()) return
+  if (!content?.trim() || refuseOffline()) return
 
   // Saving without the poll block deletes the poll and its votes, and a stray
   // Backspace is enough to remove the block, so ask first.
