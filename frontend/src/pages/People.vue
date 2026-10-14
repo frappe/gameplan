@@ -246,9 +246,8 @@ const isAdmin = computed(() => isGameplanAdmin())
 // Counts change between visits, and a failed load should not stick, so fetch on each visit.
 people.reload()
 
-// Guests are excluded from the People page; `full_name`/`email` come from the users
-// store (User.full_name/email), not GP User Profile's own copy - see PersonProfile.vue
-// for why the store wins once it has a real (non-placeholder) record.
+// Guests are left out. The name and email come from the users store, the same values
+// each row shows, so search matches what is on screen.
 const profiles = computed(() => {
   return (people.data || [])
     .filter((profile) => useUser(profile.user).isNotGuest)
@@ -273,15 +272,11 @@ const peopleList = computed(() => {
 
   const sessionUser = useSessionUser()
   const myProfile = profiles.value.find((profile) => profile.user === sessionUser.name)
-  let list = [myProfile, ...profiles.value.filter((profile) => profile !== myProfile)].filter(
-    Boolean,
-  ) as typeof profiles.value
+  const others = profiles.value.filter((profile) => profile !== myProfile)
+  const list = myProfile ? [myProfile, ...others] : others
 
   const count = peopleSortOption.value.count
-  if (count) {
-    list = [...list].sort((a, b) => b[count] - a[count])
-  }
-  return list
+  return count ? list.sort((a, b) => b[count] - a[count]) : list
 })
 
 const isEmpty = computed(() => !people.loading && !people.error && peopleList.value.length === 0)
