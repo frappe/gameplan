@@ -695,10 +695,9 @@ class TestProfiles(GameplanTestCase):
 
 
 class TestGetListQueryParams(GameplanTestCase):
-	"""`get_list` is built for frappe-ui's `useList` (PR #516's offline caching), which
-	always fetches over GET - so `fields`/`filters` arrive JSON-stringified and
-	`start`/`limit` arrive as strings, never as the `dict`/`int` shapes the query
-	builder wants. See the comment on `get_list` itself for why they're parsed by hand."""
+	"""`get_list` serves frappe-ui's `useList`, which sends its arguments as GET query
+	strings: `fields`/`filters` arrive JSON-encoded and `start`/`limit` as strings, not
+	as the `dict`/`int` shapes the query builder wants."""
 
 	def setUp(self):
 		super().setUp()
@@ -718,7 +717,7 @@ class TestGetListQueryParams(GameplanTestCase):
 		self.assertEqual(result[0]["user"], self.alice.name)
 
 	def test_still_accepts_native_dict_filters_and_int_pagination(self):
-		"""The direct (non-HTTP) call path other Gameplan code may still use."""
+		"""A direct Python call passes them unencoded."""
 		result = get_list(fields=["name", "user"], filters={"user": self.bob.name}, start=0, limit=5)
 
 		self.assertEqual(len(result), 1)
