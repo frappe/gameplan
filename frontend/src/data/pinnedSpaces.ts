@@ -17,26 +17,31 @@ export function isSpacePinned(spaceId: string) {
 
 // What the server holds, so a failed save puts the sidebar back rather than lose it on reload.
 let saved: string[] = []
-// Saves can overlap and land out of order, so only a newer save replaces `saved`.
-let lastSubmitted = 0
-let lastSaved = 0
+// One save at a time, so saves cannot land out of order. Edits made meanwhile go out after it.
+let saving = false
 
-const persist = debounce((value: string[]) => {
-  if (!profileName.value) return
-  const submitted = ++lastSubmitted
+const persist = debounce(save, 500)
+
+function save() {
+  if (!profileName.value || saving || sameIds(pinned.value, saved)) return
+  const value = [...pinned.value]
+  saving = true
   userProfiles.setValue
     .submit({ name: profileName.value, pinned_spaces: JSON.stringify(value) })
     .then(
       () => {
-        if (submitted < lastSaved) return
-        lastSaved = submitted
         saved = value
       },
       () => {
-        if (pinned.value === value) pinned.value = saved
+        // Keep a newer edit; it is sent next.
+        if (sameIds(pinned.value, value)) pinned.value = saved
       },
     )
-}, 500)
+    .finally(() => {
+      saving = false
+      save()
+    })
+}
 
 export function loadPinnedSpaces(value: unknown, currentProfileName = '') {
   profileName.value = currentProfileName
@@ -48,7 +53,7 @@ export function toggleSpacePinned(spaceId: string) {
   pinned.value = isSpacePinned(spaceId)
     ? pinned.value.filter((id) => id !== spaceId)
     : [...pinned.value, spaceId]
-  persist(pinned.value)
+  persist()
 }
 
 function parseStoredPins(value: unknown): unknown {
@@ -68,6 +73,10 @@ function normalizePinnedSpaces(value: unknown): string[] {
     seen.add(id)
     return true
   })
+}
+
+function sameIds(a: string[], b: string[]) {
+  return a.length === b.length && a.every((id, i) => id === b[i])
 }
 
 function sessionUserFromCookie() {
