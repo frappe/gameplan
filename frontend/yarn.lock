@@ -2261,9 +2261,10 @@ framer-motion@^12.25.0:
     motion-utils "^12.39.0"
     tslib "^2.4.0"
 
-"frappe-ui@github:frappe/frappe-ui#9be06023510c4ecc4a176b33c5b7aa3c11996c45":
-  version "1.0.0-rc.1"
-  resolved "https://codeload.github.com/frappe/frappe-ui/tar.gz/9be06023510c4ecc4a176b33c5b7aa3c11996c45"
+frappe-ui@1.0.2:
+  version "1.0.2"
+  resolved "https://registry.yarnpkg.com/frappe-ui/-/frappe-ui-1.0.2.tgz#58acd15eb9abfb5cc0f9eb829a95bd12cb40c893"
+  integrity sha512-ntMLpDpeeigtvb1G/W3osJnYVh6HXHJpqrJLz3lC7WKqBfcAnc4R274j606n7m+3gFvnOWCVnK5t9rsSbQHyKA==
   dependencies:
     "@codemirror/autocomplete" "^6.0.0"
     "@codemirror/commands" "^6.0.0"
