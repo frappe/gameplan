@@ -30,12 +30,13 @@ export const peopleSortOptions: PeopleSortOption[] = [
   { label: 'Reactions received', value: 'reactions_received', count: 'reactions_received' },
 ]
 
+const defaultSort = peopleSortOptions[1]
+
 /** The selected People sort: a `peopleSortOptions` value. */
-export const peopleSort = ref('modified desc')
+export const peopleSort = ref(defaultSort.value)
 
 export const peopleSortOption = computed(
-  () =>
-    peopleSortOptions.find((option) => option.value === peopleSort.value) ?? peopleSortOptions[1],
+  () => peopleSortOptions.find((option) => option.value === peopleSort.value) ?? defaultSort,
 )
 
 /** The People list: server-sorted, filtered to enabled accounts, shared across visits.
