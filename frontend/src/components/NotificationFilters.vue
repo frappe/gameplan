@@ -1,21 +1,6 @@
 <template>
   <div class="flex items-center gap-2">
     <MultiSelect
-      :options="communityOptions"
-      :model-value="filters.communities"
-      @update:model-value="setCommunities"
-      placeholder="All communities"
-    >
-      <template #trigger="{ open, selectedOptions }">
-        <FilterTrigger
-          :label="triggerLabel(selectedOptions, 'All communities', 'communities')"
-          :open="open"
-          :active="selectedOptions.length > 0"
-        />
-      </template>
-    </MultiSelect>
-
-    <MultiSelect
       :options="spaceOptions"
       :model-value="filters.spaces"
       @update:model-value="setSpaces"
@@ -25,8 +10,20 @@
         <FilterTrigger
           :label="triggerLabel(selectedOptions, 'All spaces', 'spaces')"
           :open="open"
-          :active="selectedOptions.length > 0"
+          :active="selectedOptions.length > 0 || filters.communities.length > 0"
+          @clear="setSpaces([])"
         />
+      </template>
+      <template #group-label="{ group }">
+        <Checkbox
+          size="sm"
+          :label="group.group"
+          :model-value="isCommunitySelected(group.key)"
+          @update:model-value="(checked: boolean) => setCommunitySpaces(group.key, checked)"
+        />
+      </template>
+      <template #item-prefix="{ item }">
+        <SpaceIcon :icon="item.icon" class="size-4 text-ink-gray-6" />
       </template>
     </MultiSelect>
 
@@ -38,30 +35,20 @@
           :active="filters.date.kind !== 'all'"
           icon="lucide-calendar"
           @click="toggle()"
+          @clear="setNotificationDate({ kind: 'all' })"
         />
       </template>
     </DateRangePicker>
-
-    <Button
-      v-if="hasActiveNotificationFilters"
-      variant="outline"
-      label="Clear"
-      icon-left="lucide-x"
-      class="shrink-0 text-ink-gray-5"
-      @click="clearNotificationFilters()"
-    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Button, DateRangePicker, MultiSelect, dayjs } from 'frappe-ui'
+import { Checkbox, DateRangePicker, MultiSelect, dayjs } from 'frappe-ui'
 import FilterTrigger from '@/components/NotificationFilterTrigger.vue'
-import { activeCommunities } from '@/data/communities'
+import SpaceIcon from '@/components/SpaceIcon.vue'
 import { useGroupedSpaces } from '@/data/groupedSpaces'
 import {
-  clearNotificationFilters,
-  hasActiveNotificationFilters,
   notificationDateBounds,
   notificationFilters,
   setNotificationCommunities,
@@ -71,43 +58,37 @@ import {
 
 const filters = notificationFilters
 
-const communityOptions = computed(() =>
-  activeCommunities.value.map((community) => ({
-    label: community.title,
-    value: String(community.name),
+const groupedSpaces = useGroupedSpaces()
+const spaceOptions = computed(() =>
+  groupedSpaces.value.map((group) => ({
+    key: String(group.name),
+    group: group.title,
+    options: group.spaces.map((space) => ({
+      label: space.title,
+      value: String(space.name),
+      icon: space.icon,
+    })),
   })),
 )
 
-const groupedSpaces = useGroupedSpaces()
-const spaceOptions = computed(() => {
-  const picked = new Set(filters.value.communities)
-  return groupedSpaces.value
-    .filter((group) => picked.size === 0 || picked.has(String(group.name)))
-    .map((group) => ({
-      group: group.title,
-      options: group.spaces.map((space) => ({
-        label: space.title,
-        value: String(space.name),
-        icon: space.icon,
-      })),
-    }))
-})
+function communitySpaceIds(community: string | number | undefined) {
+  const group = groupedSpaces.value.find((group) => String(group.name) === String(community))
+  return group ? group.spaces.map((space) => String(space.name)) : []
+}
 
-function setCommunities(values: Array<string | number>) {
-  const communities = values.map(String)
-  setNotificationCommunities(communities)
-  if (communities.length) {
-    const inScope = new Set(
-      groupedSpaces.value
-        .filter((group) => communities.includes(String(group.name)))
-        .flatMap((group) => group.spaces.map((space) => String(space.name))),
-    )
-    const spaces = filters.value.spaces.filter((space) => inScope.has(space))
-    if (spaces.length !== filters.value.spaces.length) setNotificationSpaces(spaces)
-  }
+function isCommunitySelected(community: string | number | undefined) {
+  const ids = communitySpaceIds(community)
+  return ids.length > 0 && ids.every((id) => filters.value.spaces.includes(id))
+}
+
+function setCommunitySpaces(community: string | number | undefined, checked: boolean) {
+  const ids = communitySpaceIds(community)
+  const others = filters.value.spaces.filter((space) => !ids.includes(space))
+  setSpaces(checked ? [...others, ...ids] : others)
 }
 
 function setSpaces(values: Array<string | number>) {
+  if (filters.value.communities.length) setNotificationCommunities([])
   setNotificationSpaces(values.map(String))
 }
 
