@@ -4,21 +4,12 @@ import { toast, useDoctype } from 'frappe-ui'
 import { OptimisticSave } from '@/utils/optimisticSave'
 import type { GPUserProfile } from '@/types/doctypes'
 
+// The saved pins. A pin the server has not accepted yet is only in `shownPins`.
 const pinned = useLocalStorage<string[]>(`gameplan:pinnedSpaces:${sessionUserFromCookie()}`, [])
 const profileName = ref('')
 const userProfiles = useDoctype<GPUserProfile>('GP User Profile')
 
-const pinnedLookup = computed(() => new Set(pinned.value))
-
-export const pinnedSpaceIds = computed(() => pinned.value)
-
-export function isSpacePinned(spaceId: string) {
-  return pinnedLookup.value.has(spaceId)
-}
-
 const pinSave = new OptimisticSave<string[]>({
-  read: () => pinned.value,
-  write: (value) => (pinned.value = value),
   // Without a profile there is nowhere to save, so the pins stay in this browser.
   send: (value) =>
     profileName.value
@@ -29,6 +20,17 @@ const pinSave = new OptimisticSave<string[]>({
       : Promise.resolve(),
   onError: () => toast.error('Could not save your pinned spaces'),
 })
+pinSave.onSaved((value) => (pinned.value = value))
+
+const shownPins = computed(() => pinSave.shown(pinned.value))
+const pinnedLookup = computed(() => new Set(shownPins.value))
+
+export const pinnedSpaceIds = shownPins
+
+export function isSpacePinned(spaceId: string) {
+  return pinnedLookup.value.has(spaceId)
+}
+
 // Set by the first toggle. From then on this session's pins are the newest: a server
 // copy loaded later can have been read before one of its saves landed.
 let pinnedHere = false
@@ -43,8 +45,8 @@ export function toggleSpacePinned(spaceId: string) {
   pinnedHere = true
   pinSave.change(
     isSpacePinned(spaceId)
-      ? pinned.value.filter((id) => id !== spaceId)
-      : [...pinned.value, spaceId],
+      ? shownPins.value.filter((id) => id !== spaceId)
+      : [...shownPins.value, spaceId],
   )
 }
 

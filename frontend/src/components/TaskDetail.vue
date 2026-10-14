@@ -78,7 +78,7 @@
           <Combobox
             placeholder="Select space"
             :options="spaceOptions"
-            :modelValue="task.doc.project"
+            :modelValue="spaceMove.shown(task.doc.project)"
             :disabled="!canEditTask"
             @update:modelValue="changeSpace"
           />
@@ -129,7 +129,7 @@
             placeholder="Select space"
             align="end"
             :options="spaceOptions"
-            :modelValue="task.doc.project"
+            :modelValue="spaceMove.shown(task.doc.project)"
             :disabled="!canEditTask"
             @update:modelValue="changeSpace"
           />
@@ -312,7 +312,7 @@ useCommandPaletteCommands(
         defaultScore: task.doc?.assigned_to === user.value ? 0 : 1,
       })),
       ...spaces.data
-        .filter((space) => !space.archived_at && space.name !== task.doc?.project)
+        .filter((space) => !space.archived_at && space.name !== spaceMove.shown(task.doc?.project))
         .map((space) => ({
           title: `Move task to ${space.title}`,
           name: `task-space-${space.name}`,

@@ -1,8 +1,6 @@
+import { shallowRef } from 'vue'
+
 interface OptimisticSaveOptions<T> {
-  /** The value on screen. */
-  read: () => T
-  /** Puts a value on screen. */
-  write: (value: T) => void
   /** Saves a value on the server. */
   send: (value: T) => Promise<unknown>
   onError: () => void
@@ -15,21 +13,30 @@ interface OptimisticSaveOptions<T> {
  * One save is in flight at a time, so the server applies changes in the order they
  * were made. Changes made meanwhile wait, and only the latest one is sent next.
  *
- * `confirmed` is the last value the server accepted. A failed save puts it back on
- * screen, unless a newer change is waiting: that change stays and is sent next. So
- * an old failure never undoes a newer change, and a rollback never shows a value the
- * server did not accept.
+ * The caller keeps the saved value and shows `shown(saved)`. Until the server
+ * answers, that is the newest change. When nothing is left to send, it is the saved
+ * value again: after a failure that is the last value the server accepted. So an old
+ * failure never undoes a newer change, and a rollback never shows a value the server
+ * did not accept.
  */
 export class OptimisticSave<T> {
-  // Set by change() before the first save is sent.
-  private confirmed!: T
+  // Wrapped, so that a change to `undefined` is still a change.
+  private pending = shallowRef<{ value: T } | null>(null)
   private waiting: { value: T } | null = null
   private saving = false
   private savedCallbacks = new Set<(value: T) => void>()
 
   constructor(private options: OptimisticSaveOptions<T>) {}
 
-  /** Calls `callback` after each successful save. Returns a function that stops it. */
+  /** The value to show: the newest change the server has not answered, or `saved`. */
+  shown(saved: T): T {
+    return this.pending.value ? this.pending.value.value : saved
+  }
+
+  /**
+   * Calls `callback` after each successful save, before `shown()` goes back to the
+   * saved value. Returns a function that stops it.
+   */
   onSaved(callback: (value: T) => void) {
     this.savedCallbacks.add(callback)
     return () => {
@@ -38,8 +45,7 @@ export class OptimisticSave<T> {
   }
 
   change(value: T) {
-    if (!this.saving) this.confirmed = this.options.read()
-    this.options.write(value)
+    this.pending.value = { value }
     this.waiting = { value }
     this.sendWaiting()
   }
@@ -62,14 +68,12 @@ export class OptimisticSave<T> {
   }
 
   private saved(value: T) {
-    this.confirmed = value
-    // The saved document can replace what is on screen; show the waiting change again.
-    if (this.waiting) this.options.write(this.waiting.value)
     this.savedCallbacks.forEach((callback) => callback(value))
+    if (!this.waiting) this.pending.value = null
   }
 
   private failed() {
-    if (!this.waiting) this.options.write(this.confirmed)
+    if (!this.waiting) this.pending.value = null
     this.options.onError()
   }
 }

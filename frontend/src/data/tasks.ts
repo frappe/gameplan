@@ -51,11 +51,9 @@ function cachedTask(taskId: MaybeRefOrGetter<string>) {
 }
 
 function createSpaceMove(task: TaskResource) {
+  // Shown through `spaceMove.shown(task.doc.project)`. Writing to `task.doc` would not
+  // reach the screen: `transform` makes `doc` a fresh copy, not the stored document.
   return new OptimisticSave<string | undefined>({
-    read: () => task.doc?.project,
-    write: (spaceId) => {
-      if (task.doc) task.doc.project = spaceId
-    },
     send: (spaceId) => task.setValue.submit({ project: spaceId }),
     onError: () => toast.error('Could not save the task'),
   })
