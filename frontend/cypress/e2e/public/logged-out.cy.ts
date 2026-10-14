@@ -139,6 +139,19 @@ describe('Public spaces, logged out', () => {
     cy.contains('Glad to be here.').should('be.visible')
   })
 
+  it('opens a public space link directly even when missing from the initial spaces list', () => {
+    cy.intercept('GET', '**/gameplan.public_lists.spaces*', (req) => {
+      req.reply({
+        has_next_page: true,
+        data: [],
+      })
+    }).as('initialSpaces')
+    cy.visit(`/g/community/${ids.community}/space/${ids.space}/discussions`)
+    cy.wait('@initialSpaces')
+    cy.get('.gameplan-desktop-shell').contains('Announcements').should('be.visible')
+    cy.location('pathname').should('include', `/space/${ids.space}/discussions`)
+  })
+
   it('opens the public community as a forum without exposing non-public spaces', () => {
     let directoryRequests = 0
     cy.intercept('**/gameplan.api.get_user_info*', () => {

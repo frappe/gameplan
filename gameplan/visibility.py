@@ -37,6 +37,18 @@ def is_anonymous_eligible_space(space):
 	)
 
 
+def is_anonymous_eligible_discussion(discussion):
+	if not discussion:
+		return False
+	if hasattr(discussion, "project"):
+		project = discussion.project
+	elif hasattr(discussion, "get"):
+		project = discussion.get("project")
+	else:
+		project = frappe.db.get_value("GP Discussion", discussion, "project")
+	return is_anonymous_eligible_space(project)
+
+
 def require_admin_to_publish(was_public, will_be_public):
 	"""Guard existing history becoming eligible for public reading through any action."""
 	from gameplan.permissions import is_global_admin

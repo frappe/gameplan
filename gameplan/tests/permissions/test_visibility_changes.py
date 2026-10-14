@@ -12,9 +12,12 @@ from gameplan.gameplan.doctype.gp_discussion.gp_discussion import move_discussio
 from gameplan.gameplan.doctype.gp_team.gp_team import join_team
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
+	create_comment,
 	create_community,
 	create_discussion,
+	create_poll,
 	create_space,
+	create_task,
 	grant_guest_access,
 )
 from gameplan.visibility import (
@@ -104,6 +107,76 @@ class TestPublicationTransitions(GameplanTestCase):
 			).insert()
 			post.move_to_project(other.name)
 		self.assertEqual(frappe.db.get_value("GP Discussion", post.name, "project"), str(other.name))
+
+	def test_private_comment_cannot_be_published_without_admin(self):
+		public_discussion = create_discussion("Public Conversation", self.public, owner=self.member)
+		comment = create_comment(self.discussion, content="Private Comment", owner=self.member)
+		with self.as_user(self.member):
+			with self.assertRaises(frappe.PermissionError):
+				fresh = frappe.get_doc("GP Comment", comment.name)
+				fresh.reference_name = public_discussion.name
+				fresh.save()
+		self.assertEqual(
+			frappe.db.get_value("GP Comment", comment.name, "reference_name"), str(self.discussion.name)
+		)
+		with self.as_user(self.admin):
+			fresh = frappe.get_doc("GP Comment", comment.name)
+			fresh.reference_name = public_discussion.name
+			fresh.save()
+		self.assertEqual(
+			frappe.db.get_value("GP Comment", comment.name, "reference_name"), str(public_discussion.name)
+		)
+
+	def test_private_poll_cannot_be_published_without_admin(self):
+		public_discussion = create_discussion("Public Conversation", self.public, owner=self.member)
+		poll = create_poll("Private Poll", self.discussion, owner=self.member)
+		with self.as_user(self.member):
+			with self.assertRaises(frappe.PermissionError):
+				fresh = frappe.get_doc("GP Poll", poll.name)
+				fresh.discussion = public_discussion.name
+				fresh.save()
+		self.assertEqual(frappe.db.get_value("GP Poll", poll.name, "discussion"), str(self.discussion.name))
+		with self.as_user(self.admin):
+			fresh = frappe.get_doc("GP Poll", poll.name)
+			fresh.discussion = public_discussion.name
+			fresh.save()
+		self.assertEqual(frappe.db.get_value("GP Poll", poll.name, "discussion"), str(public_discussion.name))
+
+	def test_public_comment_and_poll_moves_between_already_public_discussions_remain_allowed(self):
+		public_discussion_1 = create_discussion("Public Conversation 1", self.public, owner=self.member)
+		public_discussion_2 = create_discussion("Public Conversation 2", self.public, owner=self.member)
+		comment = create_comment(public_discussion_1, content="Public Comment", owner=self.member)
+		poll = create_poll("Public Poll", public_discussion_1, owner=self.member)
+		with self.as_user(self.member):
+			c = frappe.get_doc("GP Comment", comment.name)
+			c.reference_name = public_discussion_2.name
+			c.save()
+			p = frappe.get_doc("GP Poll", poll.name)
+			p.discussion = public_discussion_2.name
+			p.save()
+		self.assertEqual(
+			frappe.db.get_value("GP Comment", comment.name, "reference_name"), str(public_discussion_2.name)
+		)
+		self.assertEqual(
+			frappe.db.get_value("GP Poll", poll.name, "discussion"), str(public_discussion_2.name)
+		)
+
+	def test_task_comment_cannot_be_published_without_admin(self):
+		task = create_task("Public Space Task", space=self.public.name, owner=self.member)
+		task_comment = frappe.get_doc(
+			doctype="GP Comment",
+			reference_doctype="GP Task",
+			reference_name=task.name,
+			content="Task Comment",
+		).insert()
+		public_discussion = create_discussion("Public Conversation", self.public, owner=self.member)
+		with self.as_user(self.member):
+			with self.assertRaises(frappe.PermissionError):
+				fresh = frappe.get_doc("GP Comment", task_comment.name)
+				fresh.reference_doctype = "GP Discussion"
+				fresh.reference_name = public_discussion.name
+				fresh.save()
+		self.assertEqual(frappe.db.get_value("GP Comment", task_comment.name, "reference_doctype"), "GP Task")
 
 
 class TestWhoMayChangeATier(GameplanTestCase):

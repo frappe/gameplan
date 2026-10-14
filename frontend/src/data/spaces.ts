@@ -1,5 +1,5 @@
-import { computed, MaybeRefOrGetter, toValue } from 'vue'
-import { useCall, useList, useDoctype, dialog } from 'frappe-ui'
+import { computed, MaybeRefOrGetter, toValue, watch } from 'vue'
+import { call, dialog, useCall, useDoctype, useList } from 'frappe-ui'
 import { GPProject, GPMember } from '@/types/doctypes'
 import { getProjectUnreadCount, markSpacesAsRead } from './unreadCount'
 import { useSessionUser } from './users'
@@ -44,7 +44,7 @@ export let spaces = useList<Space>({
   ],
   initialData: [],
   orderBy: 'title asc',
-  limit: 99999,
+  limit: isAnonymousVisitor() ? 1000 : 99999,
   cacheKey: 'spaces',
   transform(data) {
     for (let space of data) {
@@ -54,6 +54,19 @@ export let spaces = useList<Space>({
   },
   immediate: true,
 })
+
+// Anonymous visitors read from gameplan.public_lists.spaces, which clamps pages to 1,000.
+// Load remaining pages sequentially so links, sidebars, and searches cover all public spaces.
+if (isAnonymousVisitor()) {
+  watch(
+    () => [spaces.isFinished, spaces.hasNextPage] as const,
+    ([isFinished, hasNextPage]) => {
+      if (isFinished && hasNextPage && !spaces.loading) {
+        spaces.next()
+      }
+    },
+  )
+}
 
 export function useSpace(name: MaybeRefOrGetter<string | undefined>) {
   return computed(() => {
@@ -127,6 +140,51 @@ export function canPostInSpace(space: Space | null | undefined) {
 
 export function getSpace(name: string) {
   return spaces.data?.find((space) => space.name.toString() === name.toString()) ?? null
+}
+
+const spaceRequests = new Map<string, Promise<Space | null>>()
+
+export async function fetchSpace(name: string): Promise<Space | null> {
+  const existing = getSpace(name)
+  if (existing) return existing
+
+  const key = String(name)
+  const inFlight = spaceRequests.get(key)
+  if (inFlight) return inFlight
+
+  const request = (async () => {
+    try {
+      if (isAnonymousVisitor()) {
+        const response = await fetch(`/api/v2/document/GP%20Project/${encodeURIComponent(name)}`)
+        if (!response.ok) return null
+        const payload = await response.json()
+        const doc = payload.data as Space | undefined
+        if (!doc?.name) return null
+        doc.name = doc.name.toString()
+        if (!doc.members) doc.members = []
+        if (spaces.data && !spaces.data.some((s) => s.name.toString() === doc.name.toString())) {
+          spaces.data.push(doc)
+        }
+        return doc
+      }
+      const doc = await call<Space>('frappe.client.get', { doctype: 'GP Project', name })
+      if (!doc?.name) return null
+      doc.name = doc.name.toString()
+      if (!doc.members) doc.members = []
+      if (spaces.data && !spaces.data.some((s) => s.name.toString() === doc.name.toString())) {
+        spaces.data.push(doc)
+      }
+      return doc
+    } catch {
+      return null
+    }
+  })()
+
+  spaceRequests.set(key, request)
+  request.finally(() => {
+    window.setTimeout(() => spaceRequests.delete(key), 1000)
+  })
+  return request
 }
 
 export const joinedSpaces = useCall<string[]>({

@@ -13,6 +13,7 @@ from gameplan.mixins.tags import HasTags
 from gameplan.permissions import comment_query_conditions, content_has_permission
 from gameplan.public_payload import for_viewer
 from gameplan.utils import get_document_revisions, remove_empty_trailing_paragraphs
+from gameplan.visibility import is_anonymous_eligible_discussion, require_admin_to_publish
 
 
 class GPComment(HasAttachments, HasMentions, HasReactions, HasTags, Document):
@@ -76,6 +77,22 @@ class GPComment(HasAttachments, HasMentions, HasReactions, HasTags, Document):
 		frappe.get_doc("GP Task", self.reference_name).update_comments_count()
 
 	def validate(self):
+		before = self.get_doc_before_save()
+		if before and (
+			self.has_value_changed("reference_name") or self.has_value_changed("reference_doctype")
+		):
+			was_public = (
+				is_anonymous_eligible_discussion(before.reference_name)
+				if before.reference_doctype == "GP Discussion"
+				else False
+			)
+			will_be_public = (
+				is_anonymous_eligible_discussion(self.reference_name)
+				if self.reference_doctype == "GP Discussion"
+				else False
+			)
+			require_admin_to_publish(was_public, will_be_public)
+
 		# Gate the content itself, not every save. `HasReactions.react` saves the whole
 		# comment, so a blanket guard here would refuse reactions on an archived Space's
 		# comments while still allowing them on its discussions, which only guard

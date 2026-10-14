@@ -10,7 +10,7 @@ import { call } from 'frappe-ui'
 import { session } from './data/session'
 import { users, usersReady } from './data/users'
 import { communities, getCommunity } from './data/communities'
-import { spaces, getSpace } from './data/spaces'
+import { spaces, getSpace, fetchSpace } from './data/spaces'
 import type { Space } from './data/spaces'
 import { communityState } from './data/communityState'
 import { settingsBackgroundPath } from './components/Settings'
@@ -848,7 +848,7 @@ async function resolveRoute(
 
   let communityId = routeParam(to.params.communityId)
 
-  let space = to.params.spaceId ? getSpace(routeParam(to.params.spaceId)) : null
+  let space = to.params.spaceId ? await findSpace(routeParam(to.params.spaceId)) : null
 
   if (to.params.spaceId && !space) {
     return { name: 'NotFound' }
@@ -1074,5 +1074,7 @@ function isCurrentContentRoute(
 
 async function findSpace(spaceId: string): Promise<Space | null> {
   await ensureCommunityDataLoaded()
-  return getSpace(spaceId)
+  const local = getSpace(spaceId)
+  if (local) return local
+  return await fetchSpace(spaceId)
 }
