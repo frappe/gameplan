@@ -178,7 +178,7 @@ describe('Changing a tier', () => {
 
   function openVisibilityDialog(space: string) {
     cy.visit(`/g/community/${ids.community}/space/${space}/discussions`)
-    cy.selectDropdownOption('Space actions', 'Manage access')
+    cy.selectDropdownOption('Space actions', 'Visibility')
     cy.scope('dialog').find('button[aria-label="Change visibility"]').click()
   }
 
@@ -207,7 +207,7 @@ describe('Changing a tier', () => {
   it('hides visibility changes from a community admin who can manage access', () => {
     cy.loginAs('member')
     cy.visit(`/g/community/${ids.community}/space/${ids.space}/discussions`)
-    cy.selectDropdownOption('Space actions', 'Manage access')
+    cy.selectDropdownOption('Space actions', 'Visibility')
     cy.scope('dialog').should('contain.text', 'Space access')
     cy.scope('dialog').find('button[aria-label="Change visibility"]').should('not.exist')
   })

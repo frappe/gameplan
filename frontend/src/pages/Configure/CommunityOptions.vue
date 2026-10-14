@@ -57,7 +57,7 @@ const options = computed(() => [
     onClick: () => emit('view-members', props.community.name),
   },
   {
-    label: 'Change visibility',
+    label: 'Visibility',
     icon: 'lucide-eye',
     onClick: () => (showVisibilityDialog.value = true),
     condition: () => !props.community.archived_at && isGameplanAdmin(),

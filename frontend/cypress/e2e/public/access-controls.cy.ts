@@ -14,7 +14,7 @@ describe('Public access regression checks', () => {
     })
     cy.visit('/g/settings/communities')
     cy.iconButton('Open Source Community Options').click()
-    cy.contains('[role="menuitem"]', 'Change visibility').click()
+    cy.contains('[role="menuitem"]', 'Visibility').click()
     cy.contains('[role="dialog"]', 'Visibility of Open Source').should('be.visible')
   }
 

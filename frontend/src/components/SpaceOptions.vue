@@ -48,7 +48,7 @@ const showSpaceAccessDialog = ref(false)
 
 const options = computed(() => [
   {
-    label: 'Manage access',
+    label: 'Visibility',
     icon: 'lucide-users',
     onClick: () => (showSpaceAccessDialog.value = true),
     condition: () => canManageAccess.value,
@@ -112,7 +112,7 @@ useCommandPaletteCommands(
 
 function spaceActionAliases(label: string) {
   const aliases: Record<string, string[]> = {
-    'Manage access': ['space access', 'guests', 'members'],
+    Visibility: ['manage access', 'space access', 'guests', 'members'],
     'Change Community': ['move space', 'change category'],
     Merge: ['merge space'],
     Archive: ['archive space', 'read only'],

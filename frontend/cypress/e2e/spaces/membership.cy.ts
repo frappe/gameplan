@@ -103,7 +103,7 @@ describe('Private space membership', () => {
     cy.visit(`/g/community/${community}/space/${privateSpace}`)
     cy.contains('a', 'Secret thread').should('be.visible')
 
-    cy.selectDropdownOption('Space actions', 'Manage access')
+    cy.selectDropdownOption('Space actions', 'Visibility')
     cy.scope('dialog').should('contain.text', 'Space access')
     cy.scope('dialog').find('button[aria-label="Change visibility"]').should('not.exist')
     cy.get('body').type('{esc}')

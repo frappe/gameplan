@@ -186,7 +186,7 @@ const spaceActions = computed(() => [
     condition: () => canChangeMembership.value,
   },
   {
-    label: 'Manage access',
+    label: 'Visibility',
     icon: 'lucide-users',
     onClick: () => (showSpaceAccessDialog.value = true),
     condition: () => canManageAccess.value,
