@@ -4,7 +4,7 @@
     class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
   >
     <div>
-      <h2 class="text-lg-medium text-ink-gray-9">Members</h2>
+      <h2 class="text-md-medium text-ink-gray-9">Members</h2>
       <p class="mt-1 text-base text-ink-gray-5">
         Members can access public spaces in this community.
       </p>

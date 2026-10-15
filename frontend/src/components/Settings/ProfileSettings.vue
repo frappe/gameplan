@@ -72,7 +72,7 @@
       </section>
 
       <section>
-        <h2 class="text-lg-semibold text-ink-gray-8">Account</h2>
+        <h2 class="text-md-semibold text-ink-gray-8">Account</h2>
 
         <div class="mt-2 divide-y divide-outline-gray-1">
           <SettingsRow title="Public profile" :description="publicProfileDescription">
@@ -89,7 +89,7 @@
           </SettingsRow>
 
           <SettingsRow title="Password" description="Manage password and account access">
-            <Button link="/update-password">Update Password</Button>
+            <Button href="/update-password">Update Password</Button>
           </SettingsRow>
         </div>
       </section>
