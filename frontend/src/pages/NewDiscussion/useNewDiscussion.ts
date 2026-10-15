@@ -386,6 +386,7 @@ export function useNewDiscussion() {
     }
 
     dialog.danger({
+      worksOffline: true,
       title: 'Delete this draft?',
       message: 'This will permanently delete the draft and cannot be undone.',
       confirmLabel: 'Delete draft',

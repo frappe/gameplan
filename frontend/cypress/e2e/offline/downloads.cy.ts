@@ -202,6 +202,41 @@ describe('Download for offline', () => {
   it('removes a revoked download during the first sync after access is lost', () => {
     startFreshDownload()
 
+    const feeds = ['Bookmarks', 'PersonPosts-profile', 'PersonReplies-profile']
+    const retained = [
+      { name: 'keep-last', title: 'Last' },
+      { name: 'keep-first', title: 'First' },
+    ]
+    const key = (feed: string, user = personas.member.email) =>
+      cacheNamespace(user) + JSON.stringify(['useList:v2', 'Discussions', feed])
+    let database: IDBDatabase
+    cy.window().then(
+      (win) =>
+        new Cypress.Promise<void>((resolve, reject) => {
+          const opening = win.indexedDB.open('keyval-store')
+          opening.onerror = () => reject(opening.error)
+          opening.onsuccess = () => {
+            database = opening.result
+            const transaction = database.transaction('keyval', 'readwrite')
+            const store = transaction.objectStore('keyval')
+            const rows = [
+              retained[0],
+              {
+                name: discussion,
+                title: 'Revoked preview',
+                content: 'Private body',
+                last_comment_content: 'Private reply',
+              },
+              retained[1],
+            ]
+            for (const feed of feeds) store.put(JSON.stringify(rows), key(feed))
+            store.put(JSON.stringify(rows), key('Bookmarks', personas.secondMember.email))
+            transaction.oncomplete = () => resolve()
+            transaction.onerror = () => reject(transaction.error)
+          }
+        }),
+    )
+
     cy.intercept('POST', INDEX, (req) => {
       expect(req.body.cached, 'downloaded IDs are checked too').to.include(discussion)
       expect(req.body.cached.length, 'the access-check limit').to.be.at.most(2000)
@@ -222,6 +257,26 @@ describe('Download for offline', () => {
     cy.button('Sync').click()
     cy.wait('@revokedIndex')
     cy.contains('0 discussions downloaded').should('be.visible')
+    cy.then(
+      () =>
+        new Cypress.Promise<string[]>((resolve, reject) => {
+          const transaction = database.transaction('keyval', 'readonly')
+          const store = transaction.objectStore('keyval')
+          const requests = [
+            ...feeds.map((feed) => key(feed)),
+            key('Bookmarks', personas.secondMember.email),
+          ].map((cacheKey) => store.get(cacheKey))
+          transaction.oncomplete = () => {
+            database.close()
+            resolve(requests.map((request) => request.result))
+          }
+          transaction.onerror = () => reject(transaction.error)
+        }),
+    ).then((stored) => {
+      for (const rows of stored.slice(0, feeds.length))
+        expect(JSON.parse(rows)).to.deep.eq(retained)
+      expect(JSON.parse(stored[feeds.length])[1].title).to.eq('Revoked preview')
+    })
 
     cy.idbKeys().should((keys) => {
       expect(keys).to.not.include(

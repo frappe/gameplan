@@ -237,7 +237,7 @@ const pageActions = computed(() => [
 ])
 
 const save = () => {
-  if (!canWritePage.value) return
+  if (!canEditPage.value) return
 
   isAutosaving.value = true
   const startTime = Date.now()
