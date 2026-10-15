@@ -396,14 +396,7 @@ export function useDraftSync(options: UseDraftSyncOptions) {
 
   const debouncedPush = debounce(pushToServer, debounceMs)
 
-  /**
-   * Latches on the first edit the person makes, and never clears.
-   *
-   * Comparing the buffer against the content it started with cannot stand in for this:
-   * typing and then deleting it again leaves a buffer identical to the blank one, which
-   * is indistinguishable from never having typed at all. Only the late-adopt path below
-   * reads it, and only to decline.
-   */
+  // Typing and then clearing is still an edit; remote payloads are not.
   const touched = ref(false)
 
   watch(
@@ -554,7 +547,8 @@ export function useDraftSync(options: UseDraftSyncOptions) {
       const pending = lookupDraft()
       const resolved = await Promise.race([pending, timeout(RESOLVE_TIMEOUT_MS)])
       if (resolved) {
-        await adopt(resolved)
+        await adopt(resolved, { quietly: true })
+        if (dirty.value) debouncedPush()
         return
       }
       // Past the deadline with the lookup still outstanding. Open blank and editable rather
@@ -590,8 +584,15 @@ export function useDraftSync(options: UseDraftSyncOptions) {
   // typed in this tab.
   const unsubscribe = onDraftChange(async (changedKey, replacementKey) => {
     if (adopting) await adopting
-    if (changedKey !== name.value || !data.value) return
-    if (replacementKey) {
+    if (!data.value) return
+    const previousName = name.value
+    const sameDraft = changedKey === previousName
+    if (
+      !sameDraft &&
+      (!isSingleton.value || touched.value || dirty.value || readOnly.value || !isEnabled())
+    )
+      return
+    if (sameDraft && replacementKey) {
       // Hold local writes until the replacement has been checked and adopted.
       adopting = getDraftRecord(replacementKey)
         .then((replacement) => {
@@ -614,18 +615,28 @@ export function useDraftSync(options: UseDraftSyncOptions) {
       void pushToServer()
       return
     }
-    const record = await getDraftRecord(name.value)
-    if (name.value !== changedKey) return
+    const record = await getDraftRecord(changedKey)
+    if (name.value !== previousName) return
     // Deleted, published or posted in another tab: this draft is gone.
-    if (!record) return reset()
-    if (dirty.value) return
+    if (!record) {
+      if (sameDraft) reset()
+      return
+    }
+    if ((dirty.value && touched.value) || record.updatedAt < updatedAt.value) return
+    if (
+      !sameDraft &&
+      (touched.value || singletonKey(record.identity) !== singletonKey(toValue(identity)))
+    )
+      return
     // Same owner guard as reconcileDraft: on a shared browser the record may be another
     // account's, and we must not pull their content into this editor.
-    if (record.user === session.user) {
+    if (record.user === draftOwner && record.user === session.user) {
+      name.value = changedKey
       applyPayload(record.payload)
-      saved.value = saved.value || record.saved
+      saved.value = sameDraft ? saved.value || record.saved : record.saved
       updatedAt.value = record.updatedAt
       syncedAt.value = record.syncedAt
+      touched.value = false
     }
   })
 
@@ -639,6 +650,7 @@ export function useDraftSync(options: UseDraftSyncOptions) {
     updatedAt.value = 0
     syncedAt.value = null
     restored.value = false
+    touched.value = false
     applyPayload(seed())
   }
 
