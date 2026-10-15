@@ -49,7 +49,7 @@ export function resetData(scenario?: Scenario): Cypress.Chainable<SeedIds> {
   // before the destructive call, not merely once per spec file. It is memoized per origin
   // in the Node task, so it costs one request per Cypress run, not one per test.
   cy.task('assertConfiguredSite')
-  cy.login()
+  cy.switchUser('admin')
   return cy
     .request({
       method: 'POST',
