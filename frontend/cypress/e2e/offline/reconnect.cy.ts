@@ -100,4 +100,51 @@ describe('Coming back online', () => {
         })
       })
   })
+
+  it('refreshes People after revisiting the page offline', () => {
+    cy.intercept('GET', '**/api/v2/method/*gp_user_profile.get_list*').as('people')
+    cy.visit('/g/people')
+    cy.wait('@people')
+    cy.contains('Second Member').click()
+    cy.button('Profile').should('be.visible')
+
+    cy.goOffline()
+    cy.get('a[href="/g/people"]:visible').first().click()
+    cy.contains('Second Member').should('be.visible')
+    cy.intercept('GET', '**/api/v2/method/*gp_user_profile.get_list*').as('reconnectedPeople')
+    cy.goOnline()
+    cy.wait('@reconnectedPeople').its('response.statusCode').should('eq', 200)
+  })
+
+  it('refreshes a cached task reopened offline and saves after reconnect', () => {
+    cy.request('POST', '/api/v2/document/GP%20Task', {
+      title: 'Task before reconnect',
+      project: space,
+    }).then(({ body }) => {
+      const taskId = body.data.name
+      cy.visit(`/g/community/${community}/space/${space}/tasks`)
+      cy.contains('a', 'Task before reconnect').click()
+      cy.get('input[placeholder="Title"]').should('have.value', 'Task before reconnect')
+      cy.contains('a', 'Tasks').click()
+      cy.contains('a', 'Task before reconnect').should('be.visible')
+
+      cy.goOffline()
+      cy.contains('a', 'Task before reconnect').click()
+      cy.get('input[placeholder="Title"]').should('have.value', 'Task before reconnect')
+      cy.task('requestAsUser', {
+        user: personas.secondMember.email,
+        password: personas.secondMember.password,
+        method: 'PUT',
+        path: `/api/v2/document/GP%20Task/${taskId}`,
+        body: { title: 'Task changed by another member' },
+      })
+      cy.goOnline()
+      cy.get('input[placeholder="Title"]').should('have.value', 'Task changed by another member')
+      cy.intercept('PUT', '**/api/v2/document/GP%20Task/*').as('saveTask')
+      cy.get('input[placeholder="Title"]').click().type('{selectall}Saved after reconnect').blur()
+      cy.wait('@saveTask').its('response.statusCode').should('eq', 200)
+      cy.reload()
+      cy.get('input[placeholder="Title"]').should('have.value', 'Saved after reconnect')
+    })
+  })
 })
