@@ -55,6 +55,45 @@ describe('Draft saves across devices and tabs', () => {
     })
   })
 
+  it('shares a reply when both tabs open before either starts typing', () => {
+    cy.intercept('POST', CREATE).as('create')
+    cy.then(() =>
+      cy.visit(`/g/community/${community}/space/${space}/discussion/${discussion}/${slug}`),
+    )
+    cy.button('Add a comment').click()
+    cy.get('.ProseMirror').last().should('have.text', '')
+    cy.document().then((doc) => {
+      const tab = doc.createElement('iframe')
+      tab.id = 'reply-tab'
+      tab.src = doc.location.href
+      tab.style.cssText = 'width:1000px;height:600px'
+      doc.body.appendChild(tab)
+    })
+    const otherEditor = () =>
+      cy
+        .get<HTMLIFrameElement>('#reply-tab')
+        .its('0.contentDocument.body')
+        .find('.ProseMirror')
+        .last()
+    otherEditor().should('have.text', '')
+
+    cy.get('.ProseMirror').last().click({ force: true }).type('Shared live reply', { force: true })
+    cy.wait('@create')
+    otherEditor().should('contain.text', 'Shared live reply')
+    otherEditor().click({ force: true }).type(' from the other tab', { force: true })
+    cy.get('.ProseMirror').last().should('contain.text', 'Shared live reply from the other tab')
+    cy.intercept('PUT', '**/api/v2/document/GP%20Draft/*', (req) => {
+      if (req.body.content?.includes('later edit')) req.alias = 'laterEdit'
+    })
+    otherEditor().click({ force: true }).type('{selectall}{backspace}', { force: true })
+    cy.get('.ProseMirror').last().click({ force: true }).type(' later edit', { force: true })
+    cy.wait('@laterEdit')
+    otherEditor().should('have.text', '')
+    cy.request('/api/v2/document/GP%20Draft?fields=["name"]')
+      .its('body.data')
+      .should('have.length', 1)
+  })
+
   for (const resume of ['reload', 'reconnect', 'draft recovery']) {
     it(`preserves displaced reply edits on ${resume}`, () => {
       cy.intercept('POST', CREATE).as('create')
