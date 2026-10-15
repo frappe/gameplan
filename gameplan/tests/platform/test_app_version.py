@@ -29,23 +29,23 @@ class TestAppVersion(FrappeTestCase):
 		self.addCleanup(frappe.cache.delete_value, APP_VERSION_CACHE_KEY)
 
 	def test_a_failing_git_command_returns_empty_and_writes_no_error_log(self):
-		before = frappe.db.count("Error Log")
+		before = len(frappe.get_all("Error Log", pluck="name"))
 		self.assertEqual(run_git_command("git -C /nonexistent-path rev-parse HEAD"), "")
-		self.assertEqual(frappe.db.count("Error Log"), before)
+		self.assertEqual(len(frappe.get_all("Error Log", pluck="name")), before)
 
 	def test_git_being_unreachable_is_quiet_too(self):
-		before = frappe.db.count("Error Log")
+		before = len(frappe.get_all("Error Log", pluck="name"))
 		with patch("subprocess.check_output", side_effect=OSError("no such executable")):
 			self.assertEqual(run_git_command("git rev-parse HEAD"), "")
-		self.assertEqual(frappe.db.count("Error Log"), before)
+		self.assertEqual(len(frappe.get_all("Error Log", pluck="name")), before)
 
 	def test_an_unexpected_failure_keeps_its_traceback(self):
 		"""Only the expected git failures are silent. Anything else still gets logged,
 		and is still swallowed: `get_boot` must not take /g down over version info."""
-		before = frappe.db.count("Error Log")
+		before = len(frappe.get_all("Error Log", pluck="name"))
 		with patch("subprocess.check_output", side_effect=MemoryError("boom")):
 			self.assertEqual(run_git_command("git rev-parse HEAD"), "")
-		self.assertEqual(frappe.db.count("Error Log"), before + 1)
+		self.assertEqual(len(frappe.get_all("Error Log", pluck="name")), before + 1)
 
 	def test_the_version_read_survives_a_checkout_git_cannot_answer_for(self):
 		with patch("gameplan.www.g.run_git_command", return_value=""):
