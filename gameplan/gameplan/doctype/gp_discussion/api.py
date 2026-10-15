@@ -120,9 +120,6 @@ def get_discussions(filters=None, order_by=None, start=None, limit=None):
 	if participator:
 		query = query.where(clause_discussions_commented_by_user(participator))
 
-	if feed_type == "bookmarks":
-		query = query.where(clause_discussions_bookmarked_by_user(frappe.session.user))
-
 	if feed_type == "unread":
 		unread_record_exists = (
 			frappe.qb.from_(UnreadRecord)
@@ -144,7 +141,16 @@ def get_discussions(filters=None, order_by=None, start=None, limit=None):
 			| clause_discussions_commented_by_user(frappe.session.user)
 		)
 
-	query = query.orderby(Discussion[order_field], order=frappe._dict(value=order_direction))
+	if feed_type == "bookmarks":
+		Bookmark = frappe.qb.DocType("GP Bookmark")
+		query = (
+			query.inner_join(Bookmark)
+			.on((Bookmark.discussion == Discussion.name) & (Bookmark.user == frappe.session.user))
+			.select(Bookmark.name.as_("bookmark"), Bookmark.comment.as_("bookmarked_comment"))
+			.orderby(Bookmark.creation, order=frappe._dict(value="desc"))
+		)
+	else:
+		query = query.orderby(Discussion[order_field], order=frappe._dict(value=order_direction))
 
 	discussions = query.run(as_dict=1)
 	has_next_page = len(discussions) > limit
@@ -153,6 +159,8 @@ def get_discussions(filters=None, order_by=None, start=None, limit=None):
 	discussions = include_unread_counts(discussions)
 	discussions = include_ongoing_polls(discussions)
 	discussions = include_last_post_content(discussions)
+	if feed_type == "bookmarks":
+		discussions = include_bookmarked_post(discussions)
 
 	frappe.response["has_next_page"] = has_next_page
 	return discussions
@@ -259,6 +267,35 @@ def include_last_post_content(discussions):
 	return discussions
 
 
+def include_bookmarked_post(discussions):
+	Comment = frappe.qb.DocType("GP Comment")
+	comment_names = [d.bookmarked_comment for d in discussions if d.bookmarked_comment]
+	comments = (
+		frappe.qb.from_(Comment)
+		.select(Comment.name, Comment.reference_name, Comment.owner, Comment.content, Comment.creation)
+		.where(Comment.name.isin(comment_names))
+		.where(Comment.reference_doctype == "GP Discussion")
+		.run(as_dict=1)
+		if comment_names
+		else []
+	)
+	comments_map = {(str(c.reference_name), c.name): c for c in comments}
+
+	result = []
+	for discussion in discussions:
+		post = discussion
+		if discussion.bookmarked_comment:
+			post = comments_map.get((str(discussion.name), cint(discussion.bookmarked_comment)))
+			if not post:
+				continue
+		discussion.bookmarked_post_by = post.owner
+		discussion.bookmarked_post_content = html_to_text_preview(post.content)
+		discussion.bookmarked_post_at = post.creation
+		result.append(discussion)
+
+	return result
+
+
 def clause_discussions_commented_by_user(user):
 	Discussion = frappe.qb.DocType("GP Discussion")
 	Comment = frappe.qb.DocType("GP Comment")
@@ -268,10 +305,3 @@ def clause_discussions_commented_by_user(user):
 		.where((Comment.reference_doctype == "GP Discussion") & (Comment.owner == user))
 	)
 	return Discussion.name.isin(commented_in)
-
-
-def clause_discussions_bookmarked_by_user(user):
-	Discussion = frappe.qb.DocType("GP Discussion")
-	Bookmark = frappe.qb.DocType("GP Bookmark")
-	bookmarked_discussions = Bookmark.select(Bookmark.discussion).where(Bookmark.user == user)
-	return Discussion.name.isin(bookmarked_discussions)

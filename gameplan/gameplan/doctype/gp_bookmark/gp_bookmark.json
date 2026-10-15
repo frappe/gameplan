@@ -6,7 +6,8 @@
  "engine": "InnoDB",
  "field_order": [
   "user",
-  "discussion"
+  "discussion",
+  "comment"
  ],
  "fields": [
   {
@@ -22,11 +23,17 @@
    "fieldtype": "Link",
    "label": "Discussion",
    "options": "GP Discussion"
+  },
+  {
+   "fieldname": "comment",
+   "fieldtype": "Link",
+   "label": "Comment",
+   "options": "GP Comment"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-12-03 16:50:02.939711",
+ "modified": "2026-10-14 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "GP Bookmark",
