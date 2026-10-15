@@ -50,12 +50,12 @@ describe('Notification filters', () => {
 
     cy.contains('Alpha thread').should('be.visible')
     cy.contains('Beta thread').should('not.exist')
-    cy.button('Alpha Space').should('be.visible').click()
+    cy.button('2 spaces').should('be.visible').click()
     cy.contains('[data-slot="group-label"]', 'Beta').find('input[type="checkbox"]').check()
     cy.get('body').type('{esc}')
-    cy.button('2 spaces').should('be.visible')
+    cy.button('4 spaces').should('be.visible')
 
-    cy.get('[aria-label="Clear 2 spaces"]').click()
+    cy.get('[aria-label="Clear 4 spaces"]').click()
     cy.wait('@notificationList')
     cy.button('All spaces').should('be.visible')
     cy.contains('Beta thread').should('be.visible')
