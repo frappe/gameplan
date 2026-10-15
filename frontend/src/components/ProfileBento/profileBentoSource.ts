@@ -36,7 +36,7 @@ export function createServerProfileBentoSource(): ProfileBentoCardSource {
       let response = await call<ProfileBentoResponse>(saveBentoCardsMethod, {
         cards,
       })
-      invalidateProfileBentoCall(response.profile)
+      bentoCalls[response.profile]?.reload()
     },
     reset: resetProfileBentoCards,
   }
@@ -49,7 +49,7 @@ export function createServerProfileBentoSource(): ProfileBentoCardSource {
  */
 export async function resetProfileBentoCards() {
   let response = await call<ProfileBentoResponse>(resetBentoCardsMethod)
-  invalidateProfileBentoCall(response.profile)
+  bentoCalls[response.profile]?.reload()
   return getLoadResultFromResponse(response)
 }
 
@@ -74,27 +74,11 @@ function createProfileBentoCall(profile: string) {
   })
 }
 
-function getProfileBentoCall(profile: string) {
-  if (!bentoCalls[profile]) {
-    bentoCalls[profile] = createProfileBentoCall(profile)
-  }
-  return bentoCalls[profile]
-}
-
-/**
- * Reloads a profile's cached cards after save/reset, in place, so a profile page already
- * showing them (e.g. behind the settings dialog) updates too. Without it, a call from an
- * earlier visit is already finished and would keep showing the pre-save layout.
- */
-function invalidateProfileBentoCall(profile: string) {
-  bentoCalls[profile]?.reload()
-}
-
 /** A profile's bento cards, read from its shared call above, so a revisit reuses it. */
 export function useProfileBento(profile: MaybeRefOrGetter<string | undefined>) {
   const bentoCall = computed(() => {
     let name = toValue(profile)
-    return name ? getProfileBentoCall(name) : null
+    return name ? (bentoCalls[name] ??= createProfileBentoCall(name)) : null
   })
 
   const cards = computed<ProfileBentoCard[]>(() => bentoCall.value?.data?.cards || [])
@@ -116,9 +100,9 @@ export function useProfileBento(profile: MaybeRefOrGetter<string | undefined>) {
 
   watch(
     () => toValue(profile),
-    (name, _previous, onCleanup) => {
-      if (!name) return
-      let current = getProfileBentoCall(name)
+    (_name, _previous, onCleanup) => {
+      const current = bentoCall.value
+      if (!current) return
       onCleanup(
         onReconnect(() => {
           if (!current.loading) current.reload()
@@ -129,9 +113,5 @@ export function useProfileBento(profile: MaybeRefOrGetter<string | undefined>) {
     { immediate: true },
   )
 
-  function reload() {
-    return bentoCall.value?.reload()
-  }
-
-  return { cards, isDefault, loaded, failed, error, reload }
+  return { cards, isDefault, loaded, failed, error, reload: () => bentoCall.value?.reload() }
 }
