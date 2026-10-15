@@ -11,8 +11,8 @@
     :columns="{
       base: ['minmax(0,1fr)', 'auto'],
       md: hasGuests
-        ? ['minmax(8rem,1fr)', '15.25rem', '5rem', '1.5rem']
-        : ['minmax(8rem,1fr)', '15.25rem', '1.5rem'],
+        ? ['minmax(12rem,1fr)', '10rem', '4rem', '4rem']
+        : ['minmax(12rem,1fr)', '10rem', '4rem'],
     }"
     class="list-gap-12 max-md:list-gap-1"
   >

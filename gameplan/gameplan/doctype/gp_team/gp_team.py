@@ -10,6 +10,8 @@ from pypika.terms import ExistsCriterion
 
 import gameplan
 from gameplan.mixins.archivable import Archivable
+from gameplan.notifications.cleanup import reset_space_for_user
+from gameplan.notifications.resolver import notify_added
 from gameplan.permissions import (
 	apply_team_query_filter,
 	is_global_admin,
@@ -83,9 +85,14 @@ class GPTeam(Archivable, Document):
 	@frappe.whitelist(methods=["POST"])
 	def add_members(self, users):
 		require_can_manage_community(self)
+		# Only this path is someone deliberately adding a person; the other callers of
+		# `add_member` (auto-join on signup, a merge, the patches) are not news to them.
+		newcomers = [user for user in users if not self.get_member(user)]
 		for user in users:
 			self.add_member(user)
 		self.save()
+		for user in newcomers:
+			notify_added(user, team=self.name, actor=frappe.session.user)
 
 	@frappe.whitelist(methods=["POST"])
 	def remove_member(self, user):
@@ -98,6 +105,10 @@ class GPTeam(Archivable, Document):
 		self.remove(member)
 		self.remove_private_space_memberships(user)
 		self.save()
+		# A private community takes every space with it; a public one stays readable, so
+		# only the private spaces the user was just removed from are gone.
+		for project_name in self.get_project_names(is_private=None if self.is_private else 1):
+			reset_space_for_user(project_name, user)
 
 	@frappe.whitelist(methods=["POST"])
 	def remove_guest_access(self, user):

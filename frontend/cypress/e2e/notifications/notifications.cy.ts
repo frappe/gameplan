@@ -69,7 +69,7 @@ describe('Notifications', () => {
   it('shows a loading skeleton, not the empty state, while the list loads', () => {
     cy.loginAs('member')
     // Hold the list response so the in-flight window is observable.
-    cy.intercept('GET', '**/api/v2/document/GP%20Notification*', (req) => {
+    cy.intercept('GET', '**/api/v2/method/gameplan.api.get_notifications*', (req) => {
       req.continue((res) => res.setDelay(600))
     }).as('notificationList')
 

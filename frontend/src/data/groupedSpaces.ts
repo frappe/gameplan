@@ -9,7 +9,7 @@ type Options = { filterFn?: FilterFunction }
 // Spaces with no community are collected under a synthetic group that carries this as
 // both its name and title. It is not a real community, so anything reading the owning
 // community off a group has to treat it as "none".
-const UNCATEGORIZED = 'Uncategorized'
+export const UNCATEGORIZED = 'Uncategorized'
 
 export function useGroupedSpaces({ filterFn = (_p: Space) => true }: Options = {}): Ref<
   GroupedSpaceItem[]

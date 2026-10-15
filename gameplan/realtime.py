@@ -28,7 +28,7 @@ from frappe.query_builder.functions import Count
 # `gameplan:` namespaces these against frappe's own realtime events (`list_update`,
 # `doc_update`, ...) and against other apps sharing the site.
 UNREAD_COUNTS_CHANGED = "gameplan:unread_counts_changed"
-NOTIFICATION_COUNT_CHANGED = "gameplan:notification_count_changed"
+NOTIFICATION_CHANGED = "gameplan:notification_changed"
 USERS_CHANGED = "gameplan:users_changed"
 
 
@@ -40,24 +40,35 @@ def notify_unread_counts_changed(users: str | list[str]):
 		realtime.publish_realtime(UNREAD_COUNTS_CHANGED, user=user, after_commit=True)
 
 
-def notify_notification_count_changed(user: str):
-	"""Tell one user that their unread notification count moved, and what it now is.
+def notify_notification_changed(user: str, notification=None):
+	"""Tell one user that a notification of theirs was written, merged or read.
 
-	The number rides along so a tab can recognise the echo of its own change: this event
-	goes to every session of the user who caused it too, and a tab already showing that
-	number has nothing left to do. Anything else is news.
+	The message carries two things. `count` is the user's unread total after the change,
+	so the badge can be refreshed without a round trip. `notification` is the row that
+	changed — `name`, `event_count`, `read`, `last_event_at` — or None for a bulk clear
+	(`clear_notifications`, mark-all-as-read) where no single row is the story.
 
-	Time cannot make that call. Clicking a notification marks it read in the tab and, one
-	navigation later, has the server clear the rest of that thread's notifications
-	(`GPDiscussion.track_visit`), so any window wide enough to cover the echo also swallows
-	the genuine count change arriving right behind it.
+	The row is what lets a tab tell its own echo from real news: this event goes to every
+	session of the user who caused it too. A tab already holding that row with the same
+	`event_count` and `read` has nothing left to do; anything else — a row it has never
+	seen, a merge that bumped the count, a mark-as-read from elsewhere — means reload. The
+	unread total alone could not carry that: a repeat event merging into a row that is
+	already unread leaves the total exactly where it was.
+
+	Time cannot make that call either. Clicking a notification marks it read in the tab
+	and, one navigation later, has the server clear the rest of that thread's
+	notifications (`GPDiscussion.track_visit`), so any window wide enough to cover the
+	echo also swallows the genuine change arriving right behind it.
 	"""
-	realtime.publish_realtime(
-		NOTIFICATION_COUNT_CHANGED,
-		message={"count": unread_notification_count(user)},
-		user=user,
-		after_commit=True,
-	)
+	message = {"count": unread_notification_count(user), "notification": None}
+	if notification is not None:
+		message["notification"] = {
+			"name": notification.name,
+			"event_count": notification.event_count,
+			"read": notification.read,
+			"last_event_at": str(notification.last_event_at) if notification.last_event_at else None,
+		}
+	realtime.publish_realtime(NOTIFICATION_CHANGED, message=message, user=user, after_commit=True)
 
 
 def unread_notification_count(user: str) -> int:

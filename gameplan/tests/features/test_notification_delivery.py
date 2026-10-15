@@ -1,0 +1,516 @@
+# Copyright (c) 2026, Frappe Technologies Pvt Ltd and Contributors
+# See license.txt
+
+
+from datetime import datetime, timedelta
+from unittest.mock import MagicMock, patch
+from zoneinfo import ZoneInfo
+
+import frappe
+from frappe.utils import add_to_date, get_datetime, get_system_timezone, now_datetime
+from frappe.utils.jinja import get_email_from_template
+
+from gameplan.notifications import delivery
+from gameplan.tests.base import GameplanTestCase
+from gameplan.tests.features.test_notifications import mention_html
+from gameplan.tests.fixtures import _name, create_comment, create_community, create_discussion, create_space
+
+
+class DeliveryTestCase(GameplanTestCase):
+	def setUp(self):
+		super().setUp()
+		self.community = create_community(
+			"Acme", members=[self.member, self.second_member], admins=[self.admin]
+		)
+		self.space = create_space("Engineering", self.community)
+		with self.as_user(self.member):
+			self.discussion = create_discussion("Roadmap", self.space)
+		self.set_prefs(self.second_member, notification_channel="Email")
+
+	def set_prefs(self, user, **fields):
+		profile = frappe.db.get_value("GP User Profile", {"user": _name(user)}, "name")
+		doc = frappe.get_doc("GP User Profile", profile)
+		doc.update(fields)
+		doc.save(ignore_permissions=True)
+
+	def mention_second_member(self, discussion=None):
+		with self.as_user(self.member):
+			return create_comment(
+				discussion or self.discussion, content=mention_html(self.second_member, "Second Member")
+			)
+
+	def rows_for(self, user):
+		return frappe.get_all(
+			"GP Notification",
+			filters={"to_user": _name(user), "team": self.community.name},
+			fields=["name", "type", "read", "email_sent_at", "email_skipped_at", "away_period"],
+			order_by="creation asc",
+		)
+
+	def run_hourly(self):
+		return self.run_tick(now_datetime().replace(minute=0, second=0, microsecond=0))
+
+	def run_tick(self, now):
+		with patch("frappe.sendmail") as sendmail:
+			delivery.send_batches(now)
+		return self.mails_to(sendmail, self.second_member)
+
+	def mails_to(self, sendmail, user):
+		scoped = MagicMock()
+		for call in sendmail.call_args_list:
+			if call.kwargs.get("recipients") == [_name(user)]:
+				scoped(*call.args, **call.kwargs)
+		return scoped
+
+
+class TestHourlyBatch(DeliveryTestCase):
+	def test_one_mail_per_user_with_mentions_first(self):
+		self.mention_second_member()
+		frappe.get_doc(
+			doctype="GP Discussion Subscription",
+			user=self.second_member.name,
+			discussion=self.discussion.name,
+			state="Watch",
+		).insert(ignore_permissions=True)
+		with self.as_user(self.member):
+			create_comment(self.discussion, content="<p>One</p>")
+			create_comment(self.discussion, content="<p>Two</p>")
+
+		sendmail = self.run_hourly()
+
+		sendmail.assert_called_once()
+		email = sendmail.call_args.kwargs
+		self.assertEqual(email["recipients"], [self.second_member.name])
+		self.assertEqual(email["subject"], "2 new notifications in Gameplan")
+		self.assertEqual(email["template"], "notification_batch")
+		mention = email["args"]["mentions"][0]
+		self.assertIn("mentioned you", mention["title"])
+		self.assertEqual(mention["description"], "Roadmap")
+		self.assertEqual(len(email["args"]["others"]), 1)
+		self.assertIn("2 new comments", email["args"]["others"][0]["title"])
+
+		message, text = get_email_from_template(email["template"], email["args"])
+		self.assertIn("Mentions", message)
+		self.assertIn("Roadmap", text)
+
+	def test_an_event_merging_into_an_already_emailed_row_is_still_delivered(self):
+		"""Comments merge into one unread row rather than multiplying. `pending_rows`
+		skips anything carrying `email_sent_at`, so a merge that leaves the stamp in place
+		means every later comment on that discussion is silently never sent.
+		"""
+		frappe.get_doc(
+			doctype="GP Discussion Subscription",
+			user=self.second_member.name,
+			discussion=self.discussion.name,
+			state="Watch",
+		).insert(ignore_permissions=True)
+		with self.as_user(self.member):
+			create_comment(self.discussion, content="<p>One</p>")
+		self.run_hourly().assert_called_once()
+		self.assertTrue(self.rows_for(self.second_member)[0].email_sent_at)
+
+		with self.as_user(self.member):
+			create_comment(self.discussion, content="<p>Two</p>")
+
+		sendmail = self.run_hourly()
+
+		sendmail.assert_called_once()
+		self.assertIn("2 new comments", sendmail.call_args.kwargs["args"]["others"][0]["title"])
+
+	def test_moving_a_discussion_takes_its_notifications_with_it(self):
+		"""The batch decides who may be told by the Space named on the row. Left at the old
+		one, a discussion moved somewhere private is still offered to everyone who could see
+		where it used to be."""
+		self.mention_second_member()
+		private = create_space("Secret", self.community, is_private=1, members=[self.member])
+
+		with self.as_user(self.member):
+			frappe.get_doc("GP Discussion", self.discussion.name).move_to_project(private.name)
+
+		spaces = {
+			str(frappe.db.get_value("GP Notification", row.name, "project"))
+			for row in self.rows_for(self.second_member)
+		}
+		self.assertEqual(spaces, {str(private.name)})
+		self.run_hourly().assert_not_called()
+
+	def test_a_new_discussion_that_names_you_is_one_notification_not_two(self):
+		"""Being named is the more particular news. A subscriber who is also mentioned used
+		to get the mention and a "started a discussion" row for the same post."""
+		frappe.get_doc(
+			doctype="GP Space Subscription",
+			user=self.second_member.name,
+			project=self.space.name,
+		).insert(ignore_permissions=True)
+
+		with self.as_user(self.member):
+			create_discussion("Named", self.space, content=mention_html(self.second_member, "Second Member"))
+
+		types = [row.type for row in self.rows_for(self.second_member)]
+		self.assertEqual(types, ["Mention"])
+
+	def test_an_item_never_prints_its_discussion_title_twice(self):
+		self.mention_second_member()
+		frappe.get_doc(
+			doctype="GP Discussion Subscription",
+			user=self.second_member.name,
+			discussion=self.discussion.name,
+			state="Watch",
+		).insert(ignore_permissions=True)
+		with self.as_user(self.member):
+			create_comment(self.discussion, content="<p>One</p>")
+
+		email = self.run_hourly().call_args.kwargs
+
+		comment = email["args"]["others"][0]
+		self.assertIn("Roadmap", comment["title"])
+		self.assertEqual(comment["description"], "")
+
+		mention = email["args"]["mentions"][0]
+		self.assertNotIn("Roadmap", mention["title"])
+		self.assertEqual(mention["description"], "Roadmap")
+
+	def test_every_sent_row_is_stamped_and_the_next_run_sends_nothing(self):
+		self.mention_second_member()
+		self.run_hourly()
+
+		self.assertTrue(all(row.email_sent_at for row in self.rows_for(self.second_member)))
+		self.run_hourly().assert_not_called()
+
+	def test_a_backlog_is_counted_rather_than_listed(self):
+		"""Nobody is owed mail while they are on In-app, so turning Email on can face months
+		of rows at once. They are counted by kind instead of printed one by one."""
+		self.set_prefs(self.second_member, notification_channel="In-app")
+		frappe.get_doc(
+			doctype="GP Space Subscription",
+			user=self.second_member.name,
+			project=self.space.name,
+		).insert(ignore_permissions=True)
+		with self.as_user(self.member):
+			for index in range(delivery.SUMMARY_FROM + 1):
+				create_discussion(f"Thread {index}", self.space)
+		self.set_prefs(self.second_member, notification_channel="Email")
+
+		email = self.run_hourly().call_args.kwargs
+
+		self.assertEqual(email["args"]["mentions"], [])
+		self.assertEqual(email["args"]["others"], [])
+		self.assertTrue(any("new discussions" in line for line in email["args"]["summary"]))
+		message, text = get_email_from_template(email["template"], email["args"])
+		self.assertIn("Summary", text)
+
+	def test_the_summary_total_matches_the_subject(self):
+		"""The subject counts notifications, so the summary lines have to count the same
+		things: a merged row is one notification however many events it stands for."""
+		self.set_prefs(self.second_member, notification_channel="In-app")
+		frappe.get_doc(
+			doctype="GP Space Subscription",
+			user=self.second_member.name,
+			project=self.space.name,
+		).insert(ignore_permissions=True)
+		with self.as_user(self.member):
+			for index in range(delivery.SUMMARY_FROM + 1):
+				discussion = create_discussion(f"Thread {index}", self.space)
+			create_comment(discussion, content="a reply that merges nothing yet")
+		self.set_prefs(self.second_member, notification_channel="Email")
+
+		email = self.run_hourly().call_args.kwargs
+
+		counted = sum(int(line.split(" ", 1)[0]) for line in email["args"]["summary"])
+		self.assertIn(f"{counted} new notification", email["subject"])
+
+	def test_a_skipped_row_is_deliverable_again_once_it_is_re_lit(self):
+		"""email_skipped_at records a row that was deliberately not mailed. A later event
+		re-lights the row, and the delivery query filters on that stamp, so leaving it set
+		would keep the row out of every future mail."""
+		self.mention_second_member()
+		row = self.rows_for(self.second_member)[0]
+		frappe.db.set_value("GP Notification", row.name, "read", 1)
+		self.run_hourly().assert_not_called()
+		self.assertTrue(self.rows_for(self.second_member)[0].email_skipped_at)
+
+		frappe.get_doc(
+			doctype="GP Discussion Subscription",
+			user=self.second_member.name,
+			discussion=self.discussion.name,
+			state="Watch",
+		).insert(ignore_permissions=True)
+		with self.as_user(self.member):
+			create_comment(self.discussion, content="<p>something new</p>")
+
+		self.run_hourly().assert_called_once()
+
+	def test_a_small_batch_is_still_listed_in_full(self):
+		self.mention_second_member()
+
+		email = self.run_hourly().call_args.kwargs
+
+		self.assertEqual(email["args"]["summary"], [])
+		self.assertEqual(len(email["args"]["mentions"]), 1)
+
+	def test_nothing_pending_means_no_mail(self):
+		self.run_hourly().assert_not_called()
+
+	def test_in_app_users_get_no_mail(self):
+		self.set_prefs(self.second_member, notification_channel="In-app")
+		self.mention_second_member()
+
+		self.run_hourly().assert_not_called()
+		self.assertIsNone(self.rows_for(self.second_member)[0].email_sent_at)
+
+	def test_a_row_read_in_the_app_is_not_mailed(self):
+		self.mention_second_member()
+		with self.as_user(self.second_member):
+			frappe.get_doc("GP Discussion", self.discussion.name).track_visit()
+
+		self.run_hourly().assert_not_called()
+		self.assertTrue(self.rows_for(self.second_member)[0].email_skipped_at)
+
+	def test_rows_from_an_open_away_stretch_wait_until_it_ends(self):
+		self.set_prefs(self.second_member, receive_notifications=0)
+		self.mention_second_member()
+
+		self.run_hourly().assert_not_called()
+		row = self.rows_for(self.second_member)[0]
+		self.assertTrue(row.away_period)
+		self.assertIsNone(row.email_sent_at)
+
+	def test_an_old_row_is_still_sent_rather_than_quietly_dropped(self):
+		"""Age used to disqualify a row outright. A row only gets old because nothing sent
+		it — a tick missed before a weekend was enough — so it arrives late instead."""
+		self.mention_second_member()
+		stale = add_to_date(now_datetime(), hours=-72)
+		frappe.db.set_value(
+			"GP Notification", self.rows_for(self.second_member)[0].name, "last_event_at", stale
+		)
+
+		self.run_hourly().assert_called_once()
+		self.assertTrue(self.rows_for(self.second_member)[0].email_sent_at)
+
+	def test_a_row_whose_space_the_user_lost_is_marked_skipped_not_sent(self):
+		private = create_space(
+			"Secret", self.community, is_private=1, members=[self.member, self.second_member]
+		)
+		with self.as_user(self.member):
+			secret = create_discussion("Plans", private)
+		self.mention_second_member(secret)
+		with self.as_user(self.admin):
+			frappe.get_doc("GP Project", private.name).remove_member(self.second_member.name)
+
+		self.run_hourly().assert_not_called()
+		rows = frappe.get_all(
+			"GP Notification",
+			filters={"to_user": self.second_member.name, "discussion": secret.name},
+			fields=["email_sent_at", "email_skipped_at"],
+		)
+		# Suppressed, and recorded as suppressed: losing the Space has to keep the mail from
+		# going out, but the row must not claim one was sent.
+		self.assertTrue(rows[0].email_skipped_at)
+		self.assertIsNone(rows[0].email_sent_at)
+
+	def test_a_row_whose_target_is_gone_is_marked_skipped_not_sent(self):
+		self.mention_second_member()
+		row = self.rows_for(self.second_member)[0]
+		frappe.db.set_value(
+			"GP Notification",
+			row.name,
+			{"discussion": None, "comment": None, "project": None, "team": None},
+		)
+
+		self.run_hourly().assert_not_called()
+		self.assertTrue(frappe.db.get_value("GP Notification", row.name, "email_skipped_at"))
+
+	def test_the_digest_and_the_hourly_mail_are_independent(self):
+		from datetime import date
+
+		from gameplan.email_digest import send_digest_for_profile
+
+		self.set_prefs(self.second_member, email_digest_frequency="Weekly")
+		self.mention_second_member()
+		profile = frappe.get_doc("GP User Profile", {"user": self.second_member.name})
+
+		with patch("frappe.sendmail") as sendmail:
+			send_digest_for_profile(profile, date(2026, 9, 18))
+			delivery.send_batches(now_datetime().replace(minute=0, second=0, microsecond=0))
+
+		self.assertEqual(
+			[call.kwargs["template"] for call in self.mails_to(sendmail, self.second_member).call_args_list],
+			["email_digest", "notification_batch"],
+		)
+
+
+class TestSendTimes(DeliveryTestCase):
+	def setUp(self):
+		super().setUp()
+		self.mention_second_member()
+		self.set_prefs(
+			self.second_member,
+			active_hours_enabled=1,
+			active_hours_start="09:00:00",
+			active_hours_end="18:00:00",
+			active_hours_days=frappe.as_json(["Mon", "Tue", "Wed", "Thu", "Fri"]),
+		)
+
+	def at(self, text):
+		return get_datetime(datetime.strptime(text, "%Y-%m-%d %H:%M"))
+
+	def test_the_top_of_an_hour_inside_the_window_sends(self):
+		self.run_tick(self.at("2026-09-16 10:00")).assert_called_once()
+
+	def test_a_tick_between_hours_sends_nothing(self):
+		self.run_tick(self.at("2026-09-16 10:05")).assert_not_called()
+		self.run_tick(self.at("2026-09-16 10:30")).assert_not_called()
+
+	def test_the_window_closing_sends_the_last_mail(self):
+		self.run_tick(self.at("2026-09-16 18:00")).assert_called_once()
+
+	def test_after_the_closing_tick_nothing_more_goes_out_that_day(self):
+		self.run_tick(self.at("2026-09-16 18:05")).assert_not_called()
+		self.run_tick(self.at("2026-09-16 18:30")).assert_not_called()
+		self.run_tick(self.at("2026-09-16 22:00")).assert_not_called()
+
+	def test_a_day_off_sends_nothing_even_on_the_hour(self):
+		self.run_tick(self.at("2026-09-19 10:00")).assert_not_called()
+
+	def test_the_toggle_off_holds_everything(self):
+		self.set_prefs(self.second_member, receive_notifications=0)
+		self.run_tick(self.at("2026-09-16 10:00")).assert_not_called()
+		self.run_tick(self.at("2026-09-16 18:00")).assert_not_called()
+
+	def test_the_closing_mail_follows_the_users_timezone(self):
+		"""The closing tick is derived, not written down: hard-coding it would only hold on a
+		site whose own timezone sits a particular distance from the reader's."""
+		reader_tz = "Asia/Gaza"
+		frappe.db.set_value("User", self.second_member.name, "time_zone", reader_tz)
+		closing = datetime(2026, 9, 16, 18, 0, tzinfo=ZoneInfo(reader_tz))
+		in_system_time = closing.astimezone(ZoneInfo(get_system_timezone())).replace(tzinfo=None)
+
+		self.run_tick(get_datetime(in_system_time - timedelta(hours=1))).assert_not_called()
+		self.run_tick(get_datetime(in_system_time)).assert_called_once()
+
+
+class TestHeldWhileAway(DeliveryTestCase):
+	def away_and_back(self):
+		self.set_prefs(self.second_member, receive_notifications=0)
+		self.mention_second_member()
+		self.set_prefs(self.second_member, receive_notifications=1)
+
+	def periods(self):
+		return frappe.get_all(
+			"GP Away Period",
+			filters={"user": self.second_member.name},
+			fields=["name", "ends_at", "recap_sent_at"],
+		)
+
+	def test_held_rows_go_out_in_the_normal_mail(self):
+		self.away_and_back()
+
+		sendmail = self.run_hourly()
+
+		sendmail.assert_called_once()
+		email = sendmail.call_args.kwargs
+		self.assertEqual(email["recipients"], [self.second_member.name])
+		self.assertEqual(email["subject"], "1 new notification in Gameplan")
+		self.assertNotIn("title", email["args"])
+		self.assertNotIn("window", email["args"])
+		self.assertEqual(len(email["args"]["mentions"]), 1)
+		self.assertTrue(self.rows_for(self.second_member)[0].email_sent_at)
+
+	def test_held_and_new_rows_share_one_mail(self):
+		self.away_and_back()
+		self.mention_second_member()
+
+		sendmail = self.run_hourly()
+
+		sendmail.assert_called_once()
+		email = sendmail.call_args.kwargs
+		self.assertEqual(email["subject"], "2 new notifications in Gameplan")
+		self.assertEqual(len(email["args"]["mentions"]), 2)
+		self.assertTrue(all(row.email_sent_at for row in self.rows_for(self.second_member)))
+		self.assertTrue(all(p.recap_sent_at for p in self.periods()))
+
+	def test_it_is_sent_once(self):
+		self.away_and_back()
+		self.run_hourly()
+
+		self.run_hourly().assert_not_called()
+		self.assertTrue(all(p.recap_sent_at for p in self.periods()))
+
+	def test_a_stretch_still_open_holds_its_rows(self):
+		self.set_prefs(self.second_member, receive_notifications=0)
+		self.mention_second_member()
+
+		with patch("frappe.sendmail"):
+			delivery.send_batch(self.second_member.name)
+
+		self.assertIsNone(self.rows_for(self.second_member)[0].email_sent_at)
+		self.assertFalse(any(p.recap_sent_at for p in self.periods()))
+
+	def test_a_merge_during_a_later_stretch_is_sent_when_that_stretch_ends(self):
+		"""The row is reused across stretches, so its away period has to move to the one
+		the new event fell in. Keeping the first leaves the later send querying a period
+		the row no longer belongs to, and the activity is never reported at all.
+		"""
+		frappe.get_doc(
+			doctype="GP Discussion Subscription",
+			user=self.second_member.name,
+			discussion=self.discussion.name,
+			state="Watch",
+		).insert(ignore_permissions=True)
+
+		self.set_prefs(self.second_member, receive_notifications=0)
+		with self.as_user(self.member):
+			create_comment(self.discussion, content="<p>One</p>")
+		self.set_prefs(self.second_member, receive_notifications=1)
+		self.run_hourly().assert_called_once()
+
+		self.set_prefs(self.second_member, receive_notifications=0)
+		with self.as_user(self.member):
+			create_comment(self.discussion, content="<p>Two</p>")
+		self.set_prefs(self.second_member, receive_notifications=1)
+
+		sendmail = self.run_hourly()
+
+		sendmail.assert_called_once()
+		self.assertEqual(sendmail.call_args.kwargs["subject"], "1 new notification in Gameplan")
+
+	def test_turning_email_on_does_not_mail_the_stretches_that_predate_it(self):
+		"""Away stretches accrue on every channel, but only Email sends what they held. Switching
+		to it used to hand over every stretch since the account was made as one message."""
+		self.set_prefs(self.second_member, notification_channel="In-app")
+		self.away_and_back()
+		self.assertFalse(any(p.recap_sent_at for p in self.periods()))
+
+		self.set_prefs(self.second_member, notification_channel="Email")
+
+		self.assertTrue(all(p.recap_sent_at for p in self.periods()))
+		self.run_hourly().assert_not_called()
+
+	def test_an_empty_stretch_is_stamped_without_a_mail(self):
+		self.set_prefs(self.second_member, receive_notifications=0)
+		self.set_prefs(self.second_member, receive_notifications=1)
+
+		self.run_hourly().assert_not_called()
+		self.assertTrue(all(p.recap_sent_at for p in self.periods()))
+
+	def test_a_held_row_read_in_the_app_is_not_mailed(self):
+		self.away_and_back()
+		row = self.rows_for(self.second_member)[0]
+		frappe.db.set_value("GP Notification", row.name, "read", 1)
+
+		self.run_hourly().assert_not_called()
+
+	def test_held_rows_have_no_horizon(self):
+		self.away_and_back()
+		row = self.rows_for(self.second_member)[0]
+		frappe.db.set_value(
+			"GP Notification", row.name, "last_event_at", add_to_date(now_datetime(), hours=-72)
+		)
+
+		self.run_hourly().assert_called_once()
+
+	def test_an_in_app_user_gets_no_mail_for_held_rows(self):
+		self.set_prefs(self.second_member, notification_channel="In-app")
+		self.away_and_back()
+
+		self.run_hourly().assert_not_called()

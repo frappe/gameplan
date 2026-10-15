@@ -3,9 +3,10 @@
 
 """Row-level access control for the doctypes that hold per-user state.
 
-GP Notification, GP Project Visit, GP Discussion Visit and GP Pinned Project each
-store one row per user, and each grants Gameplan Member and Gameplan Guest read and
-write with `if_owner` unset (GP Pinned Project also grants `delete`). Role permissions
+GP Notification, GP Project Visit, GP Discussion Visit, GP Pinned Project,
+GP Discussion Subscription, GP Space Subscription and GP Away Period each store one row per user, and each
+grants Gameplan Member and Gameplan Guest read and write with `if_owner` unset (GP Pinned
+Project and the two subscription doctypes also grant `delete`). Role permissions
 alone therefore let any signed-in user read, enumerate, overwrite and — for pins —
 delete anyone else's bell feed, visit history, read-state and sidebar through the
 generic `/api/v2/document/<doctype>` API.
@@ -61,6 +62,25 @@ def _belongs_to_user(doc, fieldname, user):
 	return get_doc_value(doc, fieldname) == user
 
 
+def _may_create_for(doc, fieldname, user):
+	"""Whether this session may create a row that belongs to `fieldname`'s user.
+
+	`create` is answered before `before_insert` runs, so an unset field is the ordinary
+	case and means "mine". A field that *is* set has to name the session user: the
+	subscription and away doctypes stamp with `if not self.user`, which keeps a value the
+	client supplied, so without this check a member could POST a row carrying someone
+	else's user and take over their bell settings or away state.
+
+	Server-side writers insert with `ignore_permissions` (`subscribe_on_participation`
+	passes an explicit user), which skips this hook, so they may still write for others.
+	"""
+	user = user or frappe.session.user
+	if not hasattr(doc, "doctype"):
+		return True
+	supplied = get_doc_value(doc, fieldname)
+	return not supplied or supplied == user
+
+
 def notification_query_conditions(user=None, **kwargs):
 	return _own_rows_only("GP Notification", NOTIFICATION_USER_FIELD, user)
 
@@ -108,3 +128,43 @@ def pinned_project_has_permission(doc, ptype="read", user=None, **kwargs):
 		# makes creating a pin for someone else impossible in the first place.
 		return True
 	return _belongs_to_user(doc, PIN_USER_FIELD, user)
+
+
+SUBSCRIPTION_USER_FIELD = "user"
+
+
+def discussion_subscription_query_conditions(user=None, **kwargs):
+	return _own_rows_only("GP Discussion Subscription", SUBSCRIPTION_USER_FIELD, user)
+
+
+def discussion_subscription_has_permission(doc, ptype="read", user=None, **kwargs):
+	"""A subscription is one user's own bell setting on a discussion.
+
+	Unlike the pin hook, `before_insert` here only fills an *empty* `user`, so `create`
+	cannot simply stay open: it has to reject a user the client supplied for someone else.
+	"""
+	if ptype == "create":
+		return _may_create_for(doc, SUBSCRIPTION_USER_FIELD, user)
+	return _belongs_to_user(doc, SUBSCRIPTION_USER_FIELD, user)
+
+
+def space_subscription_query_conditions(user=None, **kwargs):
+	return _own_rows_only("GP Space Subscription", SUBSCRIPTION_USER_FIELD, user)
+
+
+def space_subscription_has_permission(doc, ptype="read", user=None, **kwargs):
+	"""A space subscription is one user's own toggle on a space; same shape as above."""
+	if ptype == "create":
+		return _may_create_for(doc, SUBSCRIPTION_USER_FIELD, user)
+	return _belongs_to_user(doc, SUBSCRIPTION_USER_FIELD, user)
+
+
+def away_period_query_conditions(user=None, **kwargs):
+	return _own_rows_only("GP Away Period", SUBSCRIPTION_USER_FIELD, user)
+
+
+def away_period_has_permission(doc, ptype="read", user=None, **kwargs):
+	"""An away period is one user's own quiet stretch; same shape as above."""
+	if ptype == "create":
+		return _may_create_for(doc, SUBSCRIPTION_USER_FIELD, user)
+	return _belongs_to_user(doc, SUBSCRIPTION_USER_FIELD, user)
