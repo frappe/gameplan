@@ -100,21 +100,8 @@ async function clearUserCaches(): Promise<boolean> {
 }
 
 /** Bind a batch of image operations to the generation that existed before its requests. */
-export async function getWorkerCacheGeneration(): Promise<string | null> {
-  const worker = navigator.serviceWorker?.controller
-  if (worker) {
-    const answer = await new Promise((resolve) => {
-      const channel = new MessageChannel()
-      const timer = setTimeout(() => resolve(null), 3000)
-      channel.port1.onmessage = (e) => {
-        clearTimeout(timer)
-        resolve(e.data)
-      }
-      worker.postMessage({ type: 'CACHE_GENERATION' }, [channel.port2])
-    })
-    if (typeof answer === 'string') return answer
-  }
-  return readGenerationDirect()
+export function getWorkerCacheGeneration(): Promise<string | null> {
+  return withLock(USER_CACHE_LOCK, readGenerationDirect)
 }
 
 async function readGenerationDirect(): Promise<string | null> {

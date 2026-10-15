@@ -364,11 +364,22 @@ const comments = useList<GPComment>({
   orderBy: 'creation asc',
   limit: 99999,
   onSuccess() {
-    // Once per discussion, not once per load: the list reloads on reconnect and on a socket
-    // refresh too, and pulling someone to the newest comment again loses their place in the
-    // thread they were reading.
+    // Reconnect and socket refreshes must preserve the reader's scroll position.
     if (positionedFor === String(props.name)) return
-    if (positionTimeline()) positionedFor = String(props.name)
+    if (route.query.comment) {
+      if (route.query.comment === 'first_post') {
+        router.replace({ query: {} })
+        positionedFor = String(props.name)
+        return
+      }
+      const comment = comments.data?.find((c) => c.name === route.query.comment)
+      if (!comment) return
+      scrollToItem(comment)
+    } else {
+      if (route.query.fromSearch || !comments.data?.length) return
+      scrollToEnd()
+    }
+    positionedFor = String(props.name)
   },
 })
 
@@ -379,26 +390,7 @@ const bookmarks = useList<GPBookmark>({
   limit: 99999,
 })
 
-/** The discussion the timeline has already been positioned for. */
 let positionedFor: string | null = null
-
-/** Moves the timeline to where this discussion should open. Whether it did. */
-function positionTimeline() {
-  if (route.query.comment) {
-    if (route.query.comment === 'first_post') {
-      router.replace({ query: {} })
-      return true
-    }
-    const comment = comments.data?.find((c) => c.name === route.query.comment)
-    // Not in the timeline yet, so a later load still gets to look for it.
-    if (!comment) return false
-    scrollToItem(comment)
-    return true
-  }
-  if (route.query.fromSearch || !comments.data?.length) return false
-  scrollToEnd()
-  return true
-}
 
 const activities = useList<GPActivity>({
   doctype: 'GP Activity',

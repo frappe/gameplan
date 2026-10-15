@@ -183,28 +183,21 @@ const comments = useList<
   orderBy: 'creation asc',
   limit: 99999,
   onSuccess() {
-    // Once per task, not once per load — see CommentsArea.vue for why a reload must not
-    // move the reader.
+    // Reconnect and socket refreshes must preserve the reader's scroll position.
     if (positionedFor === String(props.name)) return
-    if (positionTimeline()) positionedFor = String(props.name)
+    if (route.query.comment) {
+      const comment = comments.data?.find((c) => c.name === route.query.comment)
+      if (!comment) return
+      scrollToItem(comment)
+    } else {
+      if (route.query.fromSearch || !comments.data?.length) return
+      scrollToEnd()
+    }
+    positionedFor = String(props.name)
   },
 })
 
-/** The task the timeline has already been positioned for. */
 let positionedFor: string | null = null
-
-/** Moves the timeline to where this task's comments should open. Whether it did. */
-function positionTimeline() {
-  if (route.query.comment) {
-    const comment = comments.data?.find((c) => c.name === route.query.comment)
-    if (!comment) return false
-    scrollToItem(comment)
-    return true
-  }
-  if (route.query.fromSearch || !comments.data?.length) return false
-  scrollToEnd()
-  return true
-}
 
 interface Activity extends Pick<GPActivity, 'name' | 'user' | 'action' | 'creation'> {
   data: {
