@@ -351,9 +351,15 @@ async function storeFeeds(cache: Cache, rows: Map<string, FeedRow>, removed: Set
   const stored = await getMany(targets.map((feed) => feed.key)).catch(() => [])
   const entries: [string, string][] = []
   targets.forEach((feed, index) => {
+    const previous = parseRows(stored[index])
+    if (!feed.space && !feed.community) {
+      const next = previous.filter((row) => !removed.has(String(row.name)))
+      if (next.length !== previous.length) entries.push([feed.key, JSON.stringify(next)])
+      return
+    }
     const candidates = feed.filtered ? [] : rows.values()
     const merged = new Map<string, FeedRow>()
-    for (const row of parseRows(stored[index])) {
+    for (const row of previous) {
       const name = String(row.name)
       const fresh = rows.get(name)
       // A discussion that moved leaves the feed it came from.
@@ -365,9 +371,7 @@ async function storeFeeds(cache: Cache, rows: Map<string, FeedRow>, removed: Set
     }
 
     // Never shrink a feed someone paged through online.
-    const limit = feed.pinned
-      ? Infinity
-      : Math.max(discussionFeeds.FEED_LIMIT, parseRows(stored[index]).length)
+    const limit = feed.pinned ? Infinity : Math.max(discussionFeeds.FEED_LIMIT, previous.length)
     const order = feed.pinned ? 'pinned_at' : 'last_post_at'
     const next = [...merged.values()]
       .sort((a, b) => String(b[order] ?? '').localeCompare(String(a[order] ?? '')))
@@ -405,12 +409,13 @@ function downloadedFeeds(cache: Cache, rows: Iterable<FeedRow>): Feed[] {
   return [...feeds.values()]
 }
 
-/** Feeds this user has cached, so rows that moved or went away leave them too. */
+/** Cached discussion lists, including unscoped previews that need revocation cleanup. */
 async function cachedFeeds(cache: Cache): Promise<Feed[]> {
-  return (await cache.listKeys('Discussions')).flatMap((key) => {
-    const scope = discussionFeeds.feedScope(key)
-    return scope ? [{ ...scope, key: cache.listKey(key) }] : []
-  })
+  return (await cache.listKeys('Discussions')).map((key) => ({
+    pinned: false,
+    ...discussionFeeds.feedScope(key),
+    key: cache.listKey(key),
+  }))
 }
 
 function belongsTo(row: FeedRow, feed: Feed) {

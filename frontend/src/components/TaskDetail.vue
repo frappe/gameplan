@@ -12,7 +12,7 @@
             class="-ml-0.5 w-full rounded-1 border-none p-0.5 text-3xl-semibold bg-surface-base text-ink-gray-8 focus:outline-none focus:ring-2 focus:ring-outline-gray-3"
             :readonly="!canWriteTask"
             @blur="
-              canWriteTask
+              canEditTask
                 ? setTaskValue({ title: ($event.target as HTMLInputElement).value })
                 : null
             "
@@ -38,7 +38,7 @@
           :content="task.doc.description"
           :editable="canWriteTask"
           @blur="
-            canWriteTask && !$refs.description.editor.isEmpty
+            canEditTask && !$refs.description.editor.isEmpty
               ? setTaskValue({ description: $refs.description.editor.getHTML() })
               : null
           "
