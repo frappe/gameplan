@@ -48,6 +48,7 @@
           "
           :readOnlyMode="readOnlyMode"
           :comments="comments"
+          :bookmarks="bookmarks"
         />
         <Activity
           :class="[
@@ -431,6 +432,13 @@ const comments = useList<GPComment>({
       scrollToEnd()
     }
   },
+})
+
+const bookmarks = useList<{ name: string; comment: string | null }>({
+  doctype: 'GP Bookmark',
+  fields: ['name', 'comment'],
+  filters: { discussion: props.name },
+  limit: 99999,
 })
 
 const activities = useList<GPActivity>({

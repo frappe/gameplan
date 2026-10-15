@@ -117,7 +117,7 @@ TIER2: dict[str, list[str]] = {
 	"gameplan/gameplan/doctype/gp_discussion/api.py": [
 		"gameplan.tests.features.test_discussions",
 		# The bookmarks feed is the one feed_type test_discussions does not exercise:
-		# clause_discussions_bookmarked_by_user is reached only from the Bookmarks page,
+		# its GP Bookmark join is reached only from the Bookmarks page,
 		# which is specced with the rest of bookmarking.
 		"gameplan.tests.features.test_bookmarks",
 	],

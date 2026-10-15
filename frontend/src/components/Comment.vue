@@ -117,7 +117,7 @@
 <script setup lang="ts">
 import { ref, computed, defineAsyncComponent } from 'vue'
 import { Dropdown, Tooltip, dayjsLocal } from 'frappe-ui'
-import { useList } from 'frappe-ui'
+import { useDoctype, useList } from 'frappe-ui'
 import { copyToClipboard } from '@/utils'
 import UserProfileLink from './UserProfileLink.vue'
 import CommentEditor from './editor/CommentEditor.vue'
@@ -138,6 +138,7 @@ interface Props {
   readOnlyMode?: boolean
   highlight?: boolean
   comments: ReturnType<typeof useList<GPComment>>
+  bookmarks?: ReturnType<typeof useList<{ name: string; comment: string | null }>>
   // Space the comment's thread belongs to, for community-admin delete moderation.
   space?: Space | null
 }
@@ -203,6 +204,21 @@ const updateComment = async () => {
   }
 }
 
+const commentDoctype = useDoctype<GPComment>('GP Comment')
+
+const isBookmarked = computed(() =>
+  Boolean(props.bookmarks?.data?.some((b) => String(b.comment) === String(props.comment.name))),
+)
+
+const toggleBookmark = () => {
+  commentDoctype.runDocMethod
+    .submit({
+      name: props.comment.name,
+      method: isBookmarked.value ? 'remove_bookmark' : 'add_bookmark',
+    })
+    .then(() => props.bookmarks?.reload())
+}
+
 const copyLink = (comment: GPComment) => {
   const location = window.location
   const url = `${location.origin}${location.pathname}?comment=${comment.name}`
@@ -231,6 +247,18 @@ const dropdownOptions = computed(() => [
     label: 'Copy link',
     icon: 'lucide-link',
     onClick: () => copyLink(props.comment),
+  },
+  {
+    label: 'Bookmark',
+    icon: 'lucide-bookmark',
+    onClick: toggleBookmark,
+    condition: () => Boolean(props.bookmarks) && !isBookmarked.value,
+  },
+  {
+    label: 'Remove Bookmark',
+    icon: 'lucide-bookmark',
+    onClick: toggleBookmark,
+    condition: () => isBookmarked.value,
   },
   {
     label: 'Delete',

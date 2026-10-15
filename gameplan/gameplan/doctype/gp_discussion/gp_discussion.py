@@ -199,9 +199,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 
 	@frappe.whitelist(methods=["POST"])
 	def remove_bookmark(self):
-		bookmark = frappe.db.get_value(
-			"GP Bookmark", {"discussion": self.name, "user": frappe.session.user}, "name"
-		)
+		bookmark = frappe.db.get_value("GP Bookmark", self.opening_post_bookmark_filters(), "name")
 		if not bookmark:
 			return
 		frappe.get_doc("GP Bookmark", bookmark).delete()
@@ -243,7 +241,10 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		method of the same name would be shadowed by that bool and the next `as_dict` would
 		raise `TypeError: 'bool' object is not callable`.
 		"""
-		return bool(frappe.db.exists("GP Bookmark", {"discussion": self.name, "user": frappe.session.user}))
+		return bool(frappe.db.exists("GP Bookmark", self.opening_post_bookmark_filters()))
+
+	def opening_post_bookmark_filters(self):
+		return {"discussion": self.name, "user": frappe.session.user, "comment": ("is", "not set")}
 
 	def update_slug(self):
 		self.slug = url_safe_slug(self.title)

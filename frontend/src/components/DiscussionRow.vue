@@ -24,16 +24,16 @@
                 <Tooltip v-if="discussion.closed_at" text="Closed">
                   <span class="lucide-lock size-4 p-[1px] mr-1" />
                 </Tooltip>
-                <Tooltip v-else-if="discussion.last_post_type == 'GP Comment'" text="Comment">
+                <Tooltip v-else-if="postType == 'GP Comment'" text="Comment">
                   <span class="lucide-reply size-4 mr-1" />
                 </Tooltip>
-                <Tooltip v-else-if="discussion.last_post_type == 'GP Poll'" text="Poll">
+                <Tooltip v-else-if="postType == 'GP Poll'" text="Poll">
                   <span class="lucide-align-left size-4 p-[1px] mr-1" />
                 </Tooltip>
               </div>
               <div>
                 <span>
-                  {{ $user(discussion.last_post_by || discussion.owner).full_name.trim() }}
+                  {{ $user(postBy).full_name.trim() }}
                 </span>
                 <span class="inline-flex items-center" v-if="showSpaceName">
                   &nbsp;in {{ discussion.project_title }}
@@ -44,7 +44,7 @@
                 >:&nbsp;
               </div>
               <div class="truncate">
-                {{ discussion.last_comment_content || discussion.last_poll_title }}
+                {{ postContent }}
               </div>
             </div>
           </div>
@@ -53,9 +53,9 @@
     </ListCell>
     <ListCell class="justify-end">
       <div>
-        <Tooltip :text="dayjsLocal(discussion.last_post_at).format('D MMM YYYY [at] h:mm A')">
+        <Tooltip :text="dayjsLocal(postAt).format('D MMM YYYY [at] h:mm A')">
           <div class="shrink-0 whitespace-nowrap text-sm text-ink-gray-5 text-right">
-            {{ relativeTimestamp(discussion.last_post_at || discussion.creation) }}
+            {{ relativeTimestamp(postAt || discussion.creation) }}
           </div>
         </Tooltip>
         <div class="mt-1.5 flex items-center justify-end space-x-3">
@@ -110,8 +110,34 @@ const linkTo = computed(() => {
       postId: props.discussion.name,
       slug: props.discussion.slug,
     },
+    query: props.discussion.bookmark
+      ? { comment: props.discussion.bookmarked_comment || 'first_post' }
+      : undefined,
   }
 })
+
+const isBookmark = computed(() => Boolean(props.discussion.bookmark))
+
+const postType = computed(() => {
+  if (!isBookmark.value) return props.discussion.last_post_type
+  return props.discussion.bookmarked_comment ? 'GP Comment' : null
+})
+
+const postBy = computed(() =>
+  isBookmark.value
+    ? props.discussion.bookmarked_post_by
+    : props.discussion.last_post_by || props.discussion.owner,
+)
+
+const postContent = computed(() =>
+  isBookmark.value
+    ? props.discussion.bookmarked_post_content
+    : props.discussion.last_comment_content || props.discussion.last_poll_title,
+)
+
+const postAt = computed(() =>
+  isBookmark.value ? props.discussion.bookmarked_post_at : props.discussion.last_post_at,
+)
 
 function isSpacePrivate(spaceId: string) {
   return useSpace(spaceId).value?.is_private
