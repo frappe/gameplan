@@ -424,7 +424,7 @@ class TestLogClientErrorEndpoint(APIEndpointTestCase):
 
 	def delete_logged_errors(self):
 		for log in self.client_error_logs():
-			frappe.db.delete("Error Log", {"name": log.name})
+			frappe.delete_doc("Error Log", log.name, ignore_permissions=True)
 
 	def client_error_logs(self):
 		rows = frappe.get_all("Error Log", filters=self.LOG_FILTER, fields=["name", "method", "error"])
