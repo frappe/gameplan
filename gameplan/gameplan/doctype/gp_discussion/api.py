@@ -272,23 +272,28 @@ def include_bookmarked_post(discussions):
 	comment_names = [d.bookmarked_comment for d in discussions if d.bookmarked_comment]
 	comments = (
 		frappe.qb.from_(Comment)
-		.select(Comment.name, Comment.owner, Comment.content, Comment.creation)
+		.select(Comment.name, Comment.reference_name, Comment.owner, Comment.content, Comment.creation)
 		.where(Comment.name.isin(comment_names))
+		.where(Comment.reference_doctype == "GP Discussion")
 		.run(as_dict=1)
 		if comment_names
 		else []
 	)
-	comments_map = {c.name: c for c in comments}
+	comments_map = {(str(c.reference_name), c.name): c for c in comments}
 
+	result = []
 	for discussion in discussions:
 		post = discussion
 		if discussion.bookmarked_comment:
-			post = comments_map[cint(discussion.bookmarked_comment)]
+			post = comments_map.get((str(discussion.name), cint(discussion.bookmarked_comment)))
+			if not post:
+				continue
 		discussion.bookmarked_post_by = post.owner
 		discussion.bookmarked_post_content = html_to_text_preview(post.content)
 		discussion.bookmarked_post_at = post.creation
+		result.append(discussion)
 
-	return discussions
+	return result
 
 
 def clause_discussions_commented_by_user(user):
