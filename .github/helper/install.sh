@@ -56,5 +56,5 @@ bench --site gameplan.test install-app gameplan
 bench --site gameplan.test execute gameplan.search_sqlite.rebuild_index \
   || bench --site gameplan.test execute gameplan.search_sqlite.build_index
 
-# wait till assets are built succesfully
+# Wait for the asset build before starting browser tests.
 wait $build_pid
