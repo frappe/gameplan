@@ -272,6 +272,23 @@ class TestBookmarkPrivacy(BookmarkTestCase):
 			with self.assertRaises(frappe.PermissionError):
 				bookmark.insert()
 
+	def test_a_user_cannot_bookmark_a_comment_under_another_discussion(self):
+		private_space = create_space("Secret", self.community, is_private=1, members=[self.second_member])
+		private_discussion = create_discussion("Secret thread", private_space, owner=self.second_member)
+		private_comment = create_comment(private_discussion, content="<p>Hi</p>", owner=self.second_member)
+
+		with self.as_user(self.member):
+			bookmark = frappe.get_doc(
+				doctype="GP Bookmark",
+				user=self.member.name,
+				discussion=self.discussion.name,
+				comment=private_comment.name,
+			)
+			with self.assertRaises(frappe.ValidationError):
+				bookmark.insert()
+
+		self.assertEqual([row.name for row in bookmark_rows(user=self.member)], [self.member_bookmark])
+
 	def test_a_guest_only_sees_their_own_bookmarks(self):
 		with self.as_user(self.guest):
 			self.assertEqual(frappe.get_list("GP Bookmark", fields=["name"]), [])
@@ -330,6 +347,19 @@ class TestBookmarksFeed(BookmarkTestCase):
 		self.assertEqual(row.bookmarked_post_by, self.second_member.name)
 		self.assertEqual(row.bookmarked_post_content, "Ship it")
 		self.assertEqual(str(row.bookmarked_post_at), str(comment.creation))
+
+	def test_feed_skips_a_bookmarked_comment_from_another_discussion(self):
+		private_space = create_space("Secret", self.community, is_private=1, members=[self.second_member])
+		private_discussion = create_discussion("Secret thread", private_space, owner=self.second_member)
+		private_comment = create_comment(private_discussion, content="<p>Hi</p>", owner=self.second_member)
+		frappe.get_doc(
+			doctype="GP Bookmark",
+			user=self.member.name,
+			discussion=self.discussion.name,
+			comment=private_comment.name,
+		).db_insert()
+
+		self.assertEqual(self.bookmarks_feed_rows(self.member), [])
 
 	def test_feed_shows_the_opening_post_for_an_opening_post_bookmark(self):
 		create_comment(self.discussion, content="<p>A later reply</p>", owner=self.second_member)
