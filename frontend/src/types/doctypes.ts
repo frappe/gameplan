@@ -157,7 +157,6 @@ export interface GPDiscussion extends DocType {
   /** Title: Data */
   title: string
   /** Reactions: Table (GP Reaction) */
-  reactions: GPReaction[]
   /** Team: Link (GP Team) */
   team?: string
   /** Last Post At: Datetime */
@@ -270,12 +269,16 @@ export interface GPProject extends DocType {
   is_private: 0 | 1
 }
 
-// Last updated: 2022-08-11 18:36:55.799372
-export interface GPReaction extends ChildDocType {
+// Last updated: 2026-10-16 20:00:00.000000
+export interface GPReaction extends DocType {
+  /** Reference DocType: Link (DocType) */
+  reference_doctype: string
+  /** Reference Name: Dynamic Link (reference_doctype) */
+  reference_name: string
   /** Emoji: Data */
   emoji: string
   /** User: Data */
-  user?: string
+  user: string
 }
 
 // Last updated: 2025-08-31 23:29:54.697656
@@ -289,7 +292,6 @@ export interface GPComment extends DocType {
   /** Edited At: Datetime */
   edited_at?: string
   /** Reactions: Table (GP Reaction) */
-  reactions: GPReaction[]
   /** Deleted At: Datetime */
   deleted_at?: string
   /** Tags: Table (GP Tag Link) */
@@ -333,7 +335,6 @@ export interface GPPoll extends DocType {
   /** Stopped At: Datetime */
   stopped_at?: string
   /** Reactions: Table (GP Reaction) */
-  reactions: GPReaction[]
 }
 
 // Last updated: 2022-12-07 21:34:41.411618

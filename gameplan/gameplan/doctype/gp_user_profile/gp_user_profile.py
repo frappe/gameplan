@@ -311,9 +311,9 @@ def get_list(
 	discussion_reactions = (
 		frappe.qb.from_(Reaction)
 		.join(Discussion)
-		.on(Discussion.name == Reaction.parent)
+		.on(Discussion.name == Reaction.reference_name)
 		.select(Count(Reaction.name).as_("count"), Discussion.owner)
-		.where((Reaction.parenttype == "GP Discussion") & Discussion.owner.isin(users))
+		.where((Reaction.reference_doctype == "GP Discussion") & Discussion.owner.isin(users))
 		.groupby(Discussion.owner)
 	).run(as_dict=True)
 	for r in discussion_reactions:
@@ -322,10 +322,12 @@ def get_list(
 	comment_reactions = (
 		frappe.qb.from_(Reaction)
 		.join(Comment)
-		.on(Comment.name == Reaction.parent)
+		.on(Comment.name == Reaction.reference_name)
 		.select(Count(Reaction.name).as_("count"), Comment.owner)
 		.where(
-			(Reaction.parenttype == "GP Comment") & Comment.owner.isin(users) & Comment.deleted_at.isnull()
+			(Reaction.reference_doctype == "GP Comment")
+			& Comment.owner.isin(users)
+			& Comment.deleted_at.isnull()
 		)
 		.groupby(Comment.owner)
 	).run(as_dict=True)

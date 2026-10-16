@@ -6,9 +6,9 @@
     :standardEmojis="standardEmojis"
   />
 </template>
-<script setup>
+<script setup lang="ts">
 import { defineAsyncComponent, computed } from 'vue'
-import { useReactions } from '@/data/reactions'
+import { useReactions, type ReactableDoctype } from '@/data/reactions'
 import { useIsMobile } from '@/utils/useIsMobile'
 
 const isMobileViewport = useIsMobile()
@@ -21,14 +21,15 @@ const ReactionsUI = computed(() => {
     return ReactionsDesktop
   }
 })
-const props = defineProps(['reactions', 'doctype', 'name', 'readOnlyMode'])
-const emit = defineEmits(['update:reactions'])
+const props = defineProps<{
+  doctype: ReactableDoctype
+  name: string | number
+  readOnlyMode?: boolean
+}>()
 
 const { reactionsCount, toggleReaction, toolTipText, standardEmojis } = useReactions({
-  reactions: () => props.reactions,
   doctype: () => props.doctype,
   name: () => props.name,
   readOnlyMode: () => props.readOnlyMode,
-  onUpdate: (reactions) => emit('update:reactions', reactions),
 })
 </script>

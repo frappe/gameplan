@@ -1,5 +1,5 @@
-import { computed, reactive, shallowRef, unref, toValue, watch } from 'vue'
-import type { MaybeRefOrGetter } from 'vue'
+import { computed, inject, provide, reactive, shallowRef, unref, toValue, watch } from 'vue'
+import type { InjectionKey, MaybeRefOrGetter } from 'vue'
 import { toast, useCall } from 'frappe-ui'
 import { currentQuickReactionEmojis } from './reactionPreferences'
 import { session } from './session'
@@ -11,7 +11,17 @@ interface Reaction {
   user: string
 }
 
-interface ReactionCount {
+export type ReactableDoctype = 'GP Discussion' | 'GP Comment' | 'GP Poll'
+type ThreadDoctype = 'GP Discussion' | 'GP Task'
+
+interface StoredReaction extends Reaction {
+  reference_doctype: ReactableDoctype
+  reference_name: string
+}
+
+type ReactionsOf = (doctype: ReactableDoctype, name: string | number) => Reaction[]
+
+export interface ReactionCount {
   count: number
   users: string[]
   userReacted: boolean
@@ -23,14 +33,48 @@ type ReactionOperation = {
 }
 
 interface UseReactionsOptions {
-  reactions: MaybeRefOrGetter<Reaction[]>
-  doctype: MaybeRefOrGetter<string>
+  doctype: MaybeRefOrGetter<ReactableDoctype>
   name: MaybeRefOrGetter<string | number>
   readOnlyMode?: MaybeRefOrGetter<boolean>
-  onUpdate: (reactions: Reaction[]) => void
 }
 
 const BATCH_DELAY = 1000
+
+const reactionsOfKey: InjectionKey<ReactionsOf> = Symbol('thread-reactions')
+const NO_REACTIONS: Reaction[] = []
+
+const toReaction = ({ name, emoji, user }: Reaction): Reaction => ({ name, emoji, user })
+
+/**
+ * Load the reactions on a thread's root post and on every comment and poll in it, in
+ * one request, for the reaction bars rendered inside the thread.
+ */
+export function provideThreadReactions(doctype: ThreadDoctype, name: string) {
+  const thread = useCall<StoredReaction[]>({
+    url: `/api/v2/document/${doctype}/${name}/method/thread_reactions`,
+    cacheKey: ['Thread Reactions', doctype, name],
+  })
+
+  const byPost = computed(() => {
+    const out = new Map<string, Reaction[]>()
+    for (const row of thread.data ?? []) {
+      const key = postKey(row.reference_doctype, row.reference_name)
+      const reactions = out.get(key) ?? []
+      reactions.push(toReaction(row))
+      out.set(key, reactions)
+    }
+    return out
+  })
+
+  provide(
+    reactionsOfKey,
+    (doctype, name) => byPost.value.get(postKey(doctype, name)) ?? NO_REACTIONS,
+  )
+}
+
+function postKey(doctype: ReactableDoctype, name: string | number) {
+  return `${doctype}:${name}`
+}
 
 export function useReactions(options: UseReactionsOptions) {
   const currentUser = computed(() => unref(session.user) || '')
@@ -39,14 +83,19 @@ export function useReactions(options: UseReactionsOptions) {
   const name = computed(() => toValue(options.name))
   const readOnlyMode = computed(() => toValue(options.readOnlyMode ?? false))
 
-  // What the reactions look like on the server. Follows the caller's data, and also
-  // takes each response directly, so a confirmed tap stays visible even when the
-  // caller's copy is not reactive.
+  const reactionsOf = inject(reactionsOfKey, null)
+  if (!reactionsOf) {
+    throw new Error('Reactions must render inside a thread that calls provideThreadReactions')
+  }
+
+  // What the reactions look like on the server. Follows the thread's data, and also
+  // takes each response directly, so a confirmed tap stays visible until the thread
+  // loads again.
   const serverReactions = shallowRef<Reaction[]>([])
   watch(
-    () => toValue(options.reactions),
+    () => reactionsOf(doctype.value, name.value),
     (reactions) => {
-      serverReactions.value = reactions ?? []
+      serverReactions.value = reactions
     },
     { immediate: true },
   )
@@ -66,15 +115,13 @@ export function useReactions(options: UseReactionsOptions) {
   const settledState = (emoji: string) => sending.get(emoji) ?? hasReacted(emoji)
   const displayedState = (emoji: string) => queued.get(emoji) ?? settledState(emoji)
 
-  const react = useCall<Reaction[], { operations: ReactionOperation[] }>({
+  const react = useCall<StoredReaction[], { operations: ReactionOperation[] }>({
     url: computed(() => `/api/v2/document/${doctype.value}/${name.value}/method/react`),
     method: 'POST',
     immediate: false,
     onSuccess(reactions) {
       if (Array.isArray(reactions)) {
-        const confirmed = reactions.map((r) => ({ name: r.name, emoji: r.emoji, user: r.user }))
-        serverReactions.value = confirmed
-        options.onUpdate(confirmed)
+        serverReactions.value = reactions.map(toReaction)
       }
       settle()
     },

@@ -11,7 +11,7 @@ from gameplan.mixins.activity import HasActivity
 from gameplan.mixins.archivable import check_if_space_is_archived
 from gameplan.mixins.attachments import HasAttachments
 from gameplan.mixins.mentions import HasMentions
-from gameplan.mixins.reactions import HasReactions
+from gameplan.mixins.reactions import HasReactions, get_thread_reactions
 from gameplan.mixins.tags import HasTags
 from gameplan.permissions import content_has_permission, discussion_query_conditions
 from gameplan.utils import get_document_revisions, remove_empty_trailing_paragraphs, url_safe_slug
@@ -20,7 +20,7 @@ from gameplan.utils import get_document_revisions, remove_empty_trailing_paragra
 class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTags, Document):
 	# Class Configuration
 	# GP Activity is removed in on_trash, not here. See remove_all_activities.
-	on_delete_cascade = ["GP Comment", "GP Discussion Visit", "GP Poll"]
+	on_delete_cascade = ["GP Comment", "GP Discussion Visit", "GP Poll", "GP Reaction"]
 	on_delete_set_null = ["GP Notification"]
 	activities = [
 		"Discussion Closed",
@@ -86,11 +86,9 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 	def validate(self):
 		self.sanitize_content()
 		self.title = self.title.strip()
-		self.de_duplicate_reactions()
 
 	def on_update(self):
 		self.notify_mentions()
-		self.notify_reactions()
 		self.log_title_update()
 		self.update_participants_count()
 		self.attach_files_in_content()
@@ -114,6 +112,11 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		self.content = sanitize_content(self.content)
 
 	# Whitelisted Methods
+	@frappe.whitelist(methods=["GET"])
+	def thread_reactions(self):
+		"""Reactions on everything in this thread, for the thread page."""
+		return get_thread_reactions(self.doctype, self.name)
+
 	@frappe.whitelist(methods=["POST"])
 	def track_visit(self):
 		if frappe.flags.read_only:

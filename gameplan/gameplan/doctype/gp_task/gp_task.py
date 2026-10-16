@@ -9,6 +9,7 @@ from gameplan.gameplan.doctype.gp_notification.gp_notification import GPNotifica
 from gameplan.mixins.activity import HasActivity
 from gameplan.mixins.archivable import check_if_space_is_archived
 from gameplan.mixins.mentions import HasMentions
+from gameplan.mixins.reactions import get_thread_reactions
 from gameplan.permissions import (
 	accessible_project_criterion,
 	content_has_permission,
@@ -70,6 +71,11 @@ class GPTask(HasMentions, HasActivity, Document):
 	@frappe.whitelist(methods=["POST"])
 	def track_visit(self):
 		GPNotification.clear_notifications(task=self.name)
+
+	@frappe.whitelist(methods=["GET"])
+	def thread_reactions(self):
+		"""Reactions on everything in this thread, for the thread page."""
+		return get_thread_reactions(self.doctype, self.name)
 
 
 @frappe.whitelist()

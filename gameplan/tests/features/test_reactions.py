@@ -34,6 +34,7 @@ from gameplan.tests.fixtures import (
 	create_discussion,
 	create_poll,
 	create_space,
+	create_task,
 	declared_http_methods,
 )
 
@@ -68,9 +69,9 @@ class ReactionTestCase(GameplanTestCase):
 			(row.user, row.emoji)
 			for row in frappe.get_all(
 				"GP Reaction",
-				filters={"parenttype": doc.doctype, "parent": doc.name},
+				filters={"reference_doctype": doc.doctype, "reference_name": doc.name},
 				fields=["user", "emoji"],
-				order_by="idx asc",
+				order_by="name asc",
 			)
 		]
 
@@ -171,6 +172,29 @@ class TestReact(ReactionTestCase):
 		self.assertEqual(updated.content, original.content)
 		self.assertEqual(updated.owner, original.owner)
 
+	def test_reactions_from_several_people_at_once_all_land(self):
+		"""Each request loads the post before it reacts. A reaction that lands in between
+		must neither fail the later one nor be lost by it."""
+		with self.as_user(self.second_member):
+			loaded_before = frappe.get_doc("GP Discussion", self.discussion.name)
+
+		self.react(self.discussion, self.admin, [add(HEART)])
+		with self.as_user(self.second_member):
+			loaded_before.react(operations=[add(THUMBS_UP)])
+
+		self.assertEqual(
+			self.stored_reactions(self.discussion),
+			[(self.admin.name, HEART), (self.second_member.name, THUMBS_UP)],
+		)
+
+	def test_reacting_leaves_the_posts_modified_timestamp_alone(self):
+		"""Someone editing the post must not hit a timestamp conflict because of a reaction."""
+		modified = frappe.db.get_value("GP Discussion", self.discussion.name, "modified")
+
+		self.react(self.discussion, self.second_member, [add(THUMBS_UP)])
+
+		self.assertEqual(frappe.db.get_value("GP Discussion", self.discussion.name, "modified"), modified)
+
 	def test_reacting_does_not_mark_a_comment_as_edited(self):
 		self.assertFalse(frappe.db.get_value("GP Comment", self.comment.name, "edited_at"))
 
@@ -217,9 +241,9 @@ class TestReactPayload(ReactionTestCase):
 
 
 class TestPollReactions(ReactionTestCase):
-	"""A poll is a post like any other: it carries a `reactions` table and the UI hangs
-	the same Reactions component off it. The (user, emoji) identity rule and the
-	participation gate must therefore behave exactly as they do on a discussion."""
+	"""A poll is a post like any other: the UI hangs the same Reactions component off it.
+	The (user, emoji) identity rule and the participation gate must therefore behave
+	exactly as they do on a discussion."""
 
 	def test_a_second_member_can_react_to_someone_elses_poll(self):
 		self.react(self.poll, self.second_member, [add(THUMBS_UP)])
@@ -256,16 +280,6 @@ class TestPollReactions(ReactionTestCase):
 		self.react(self.poll, self.second_member, [add(THUMBS_UP)])
 
 		self.react(self.poll, self.second_member, [remove(THUMBS_UP)])
-
-		self.assertEqual(self.stored_reactions(self.poll), [(self.member.name, THUMBS_UP)])
-
-	def test_a_duplicate_row_saved_directly_is_collapsed_on_validate(self):
-		"""Same validate-time de-duplication its siblings apply, so a doubled row can
-		never reach the database however the poll is saved."""
-		poll = frappe.get_doc("GP Poll", self.poll.name)
-		poll.append("reactions", {"user": self.member.name, "emoji": THUMBS_UP})
-		poll.append("reactions", {"user": self.member.name, "emoji": THUMBS_UP})
-		poll.save(ignore_permissions=True)
 
 		self.assertEqual(self.stored_reactions(self.poll), [(self.member.name, THUMBS_UP)])
 
@@ -520,3 +534,77 @@ class TestReactionsSurviveAnEdit(ReactionTestCase):
 			discussion.save()
 
 		self.assertEqual(self.stored_reactions(self.discussion), [(self.second_member.name, THUMBS_UP)])
+
+	def test_saving_a_copy_of_the_post_loaded_before_a_reaction_keeps_the_reaction(self):
+		with self.as_user(self.member):
+			loaded_before = frappe.get_doc("GP Discussion", self.discussion.name)
+
+		self.react(self.discussion, self.second_member, [add(THUMBS_UP)])
+		with self.as_user(self.member):
+			loaded_before.title = "Welcome thread (edited)"
+			loaded_before.save()
+
+		self.assertEqual(self.stored_reactions(self.discussion), [(self.second_member.name, THUMBS_UP)])
+
+
+class TestReactionsGoWithTheirPost(ReactionTestCase):
+	def test_deleting_a_comment_deletes_its_reactions(self):
+		self.react(self.comment, self.second_member, [add(THUMBS_UP)])
+
+		frappe.delete_doc("GP Comment", self.comment.name, ignore_permissions=True)
+
+		self.assertEqual(self.stored_reactions(self.comment), [])
+
+	def test_deleting_a_discussion_deletes_the_reactions_in_its_thread(self):
+		for post in (self.discussion, self.comment, self.poll):
+			self.react(post, self.second_member, [add(THUMBS_UP)])
+
+		frappe.delete_doc("GP Discussion", self.discussion.name, ignore_permissions=True)
+
+		for post in (self.discussion, self.comment, self.poll):
+			self.assertEqual(self.stored_reactions(post), [])
+
+
+class TestThreadReactions(ReactionTestCase):
+	"""A thread page loads the reactions of everything in it with one request."""
+
+	def thread_reactions(self, doc, user):
+		with self.as_user(user):
+			return [
+				(row.reference_doctype, str(row.reference_name), row.user, row.emoji)
+				for row in frappe.get_doc(doc.doctype, doc.name).thread_reactions()
+			]
+
+	def test_a_discussion_thread_has_the_reactions_of_the_post_its_comments_and_polls(self):
+		self.react(self.discussion, self.second_member, [add(THUMBS_UP)])
+		self.react(self.comment, self.second_member, [add(HEART)])
+		self.react(self.poll, self.member, [add(THUMBS_UP)])
+
+		self.assertEqual(
+			self.thread_reactions(self.discussion, self.member),
+			[
+				("GP Discussion", str(self.discussion.name), self.second_member.name, THUMBS_UP),
+				("GP Comment", str(self.comment.name), self.second_member.name, HEART),
+				("GP Poll", str(self.poll.name), self.member.name, THUMBS_UP),
+			],
+		)
+
+	def test_a_thread_leaves_out_reactions_from_other_threads(self):
+		other = create_discussion("Other thread", self.space, owner=self.member)
+		other_comment = create_comment(other, owner=self.member)
+		self.react(other, self.second_member, [add(THUMBS_UP)])
+		self.react(other_comment, self.second_member, [add(THUMBS_UP)])
+
+		self.assertEqual(self.thread_reactions(self.discussion, self.member), [])
+
+	def test_a_task_thread_has_the_reactions_of_its_comments(self):
+		task = create_task("Ship it", self.space, owner=self.member)
+		comment = frappe.get_doc(
+			doctype="GP Comment", reference_doctype="GP Task", reference_name=task.name, content="Done"
+		).insert(ignore_permissions=True)
+		self.react(comment, self.second_member, [add(HEART)])
+
+		self.assertEqual(
+			self.thread_reactions(task, self.member),
+			[("GP Comment", str(comment.name), self.second_member.name, HEART)],
+		)

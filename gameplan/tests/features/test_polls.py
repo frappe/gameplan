@@ -669,7 +669,9 @@ class TestPollFieldProtection(PollTestCase):
 			frappe.get_doc("GP Poll", poll.name).react(operations=[{"emoji": "👍", "operation": "add"}])
 
 		poll.reload()
-		self.assertEqual([(row.user, row.emoji) for row in poll.reactions], [(self.second_member.name, "👍")])
+		self.assertEqual(
+			[(row.user, row.emoji) for row in poll.get_reactions()], [(self.second_member.name, "👍")]
+		)
 
 
 class TestPollInAClosedDiscussion(PollTestCase):
@@ -905,7 +907,7 @@ class TestGuestPollParticipation(GameplanTestCase):
 			frappe.get_doc("GP Poll", poll.name).react(operations=[{"emoji": "👍", "operation": "add"}])
 
 		poll.reload()
-		self.assertEqual([(row.user, row.emoji) for row in poll.reactions], [(self.guest.name, "👍")])
+		self.assertEqual([(row.user, row.emoji) for row in poll.get_reactions()], [(self.guest.name, "👍")])
 
 	def test_guest_cannot_vote_outside_their_granted_spaces(self):
 		poll = create_poll("Lunch?", self.other_discussion, owner=self.member)
