@@ -46,7 +46,7 @@ export function discussionLinkExtension() {
     name: 'discussionLink',
     trigger: '+',
     items: discussionLinkItems,
-    component: DiscussionLinkList as Component,
+    listComponent: DiscussionLinkList as Component,
     allowSpaces: true,
     command: ({ editor, item, range }) => {
       editor
