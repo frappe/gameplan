@@ -5,7 +5,8 @@ name: Release
 #   1. commit the new version to gameplan/__init__.py and tag it vX.Y.Z
 #   2. build the prebuilt assets for that commit (Pilot downloads them)
 #   3. publish a GitHub release with notes listing the merged pull requests
-#   4. advertise the commit in the Frappe marketplace, so Pilot benches offer the update
+#   4. open a release PR in frappe/marketplace and merge it once its checks pass, so
+#      Pilot benches offer the update
 #
 # .github/scripts/next_version.py picks the version and writes it to gameplan/__init__.py.
 # The first release is 0.1.0, and each merge after it raises the patch version (0.1.1,
@@ -134,7 +135,7 @@ jobs:
           # publish-release.yml names the branch publish/<app>-<first 8 characters of the commit>.
           pr=$(gh pr list --head "publish/gameplan-${COMMIT:0:8}" --json number --jq '.[0].number')
           if [ -z "$pr" ]; then
-            echo "No marketplace PR: the commit is already advertised."
+            echo "No marketplace PR: the marketplace already lists this commit."
             exit 0
           fi
           # The marketplace checks start some time after the PR opens, and
