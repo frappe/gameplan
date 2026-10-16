@@ -63,6 +63,11 @@ class BacklinkTestCase(GameplanTestCase):
 		comment.delete(ignore_permissions=True)
 		self.assertEqual(self.backlinks(), [])
 
+	def test_backlink_hidden_once_its_comment_is_deleted(self):
+		comment = create_comment(self.source, content=link_to(self.target))
+		comment.db_set("deleted_at", frappe.utils.now())
+		self.assertEqual(self.backlinks(), [])
+
 	def test_target_can_be_deleted_while_linked(self):
 		create_comment(self.source, content=link_to(self.target))
 		self.target.delete(ignore_permissions=True)

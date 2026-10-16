@@ -170,25 +170,10 @@ class GPDiscussion(HasActivity, HasAttachments, HasBacklinks, HasMentions, HasRe
 
 		for activity in activities:
 			activity.data = frappe.parse_json(activity.data)
-		names = list({activity.data["discussion"] for activity in activities})
-		sources = {
-			str(d.name): d
-			for d in frappe.get_list(
-				"GP Discussion", filters={"name": ["in", names]}, fields=["name", "title", "project"]
-			)
-		}
-
-		comments = [activity.data["comment"] for activity in activities if activity.data.get("comment")]
-		live_comments = set()
-		if comments:
-			live_comments = {
-				str(name)
-				for name in frappe.get_list(
-					"GP Comment",
-					filters={"name": ["in", comments], "deleted_at": ["is", "not set"]},
-					pluck="name",
-				)
-			}
+		sources, live_comments = _get_visible_sources(
+			[activity.data["discussion"] for activity in activities],
+			[activity.data["comment"] for activity in activities if activity.data.get("comment")],
+		)
 
 		visible = []
 		for activity in activities:
@@ -202,43 +187,39 @@ class GPDiscussion(HasActivity, HasAttachments, HasBacklinks, HasMentions, HasRe
 
 	@frappe.whitelist()
 	def get_backlinks(self):
-		sources = frappe.get_all(
+		rows = frappe.get_all(
 			"GP Backlink", filters={"discussion": self.name}, fields=["parent", "parenttype"]
 		)
-		comments = [s.parent for s in sources if s.parenttype == "GP Comment"]
-		posts = [s.parent for s in sources if s.parenttype == "GP Discussion"]
+		posts = [str(row.parent) for row in rows if row.parenttype == "GP Discussion"]
+		sources, live_comments = _get_visible_sources(
+			posts, [row.parent for row in rows if row.parenttype == "GP Comment"]
+		)
 
 		backlinks = []
-		if comments:
-			backlinks += frappe.get_list(
-				"GP Comment",
-				filters={"name": ["in", comments]},
-				fields=["name as comment", "reference_name as discussion", "owner", "creation"],
-			)
-		if posts:
-			backlinks += frappe.get_list(
-				"GP Discussion",
-				filters={"name": ["in", posts]},
-				fields=["name as discussion", "owner", "creation"],
-			)
-		if not backlinks:
-			return []
-
-		discussions = {
-			str(d.name): d
-			for d in frappe.get_list(
-				"GP Discussion",
-				filters={"name": ["in", list({b.discussion for b in backlinks})]},
-				fields=["name", "title", "project"],
-			)
-		}
-		for backlink in backlinks:
-			discussion = discussions.get(str(backlink.discussion))
-			backlink.discussion = str(backlink.discussion)
-			backlink.title = discussion and discussion.title
-			backlink.project = discussion and discussion.project
-
-		return sorted((b for b in backlinks if b.title), key=lambda b: b.creation, reverse=True)
+		for comment in live_comments.values():
+			if source := sources.get(str(comment.reference_name)):
+				backlinks.append(
+					frappe._dict(
+						comment=comment.name,
+						discussion=str(comment.reference_name),
+						owner=comment.owner,
+						creation=comment.creation,
+						title=source.title,
+						project=source.project,
+					)
+				)
+		for name in posts:
+			if source := sources.get(name):
+				backlinks.append(
+					frappe._dict(
+						discussion=name,
+						owner=source.owner,
+						creation=source.creation,
+						title=source.title,
+						project=source.project,
+					)
+				)
+		return sorted(backlinks, key=lambda b: b.creation, reverse=True)
 
 	@frappe.whitelist(methods=["POST"])
 	def move_to_project(self, project):
@@ -403,6 +384,33 @@ class GPDiscussion(HasActivity, HasAttachments, HasBacklinks, HasMentions, HasRe
 				"Discussion Title Changed",
 				data={"old_title": self.get_doc_before_save().title, "new_title": self.title},
 			)
+
+
+def _get_visible_sources(discussions, comments):
+	live_comments = {}
+	if comments:
+		live_comments = {
+			str(comment.name): comment
+			for comment in frappe.get_list(
+				"GP Comment",
+				filters={"name": ["in", comments], "deleted_at": ["is", "not set"]},
+				fields=["name", "reference_name", "owner", "creation"],
+			)
+		}
+
+	names = {str(name) for name in discussions}
+	names |= {str(comment.reference_name) for comment in live_comments.values()}
+	sources = {}
+	if names:
+		sources = {
+			str(discussion.name): discussion
+			for discussion in frappe.get_list(
+				"GP Discussion",
+				filters={"name": ["in", list(names)]},
+				fields=["name", "title", "project", "owner", "creation"],
+			)
+		}
+	return sources, live_comments
 
 
 def on_doctype_update():
