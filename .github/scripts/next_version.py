@@ -1,24 +1,27 @@
 #!/usr/bin/env python3
-"""Print the version the release workflow should release next.
+"""Set `__version__` in gameplan/__init__.py to the version the release workflow
+should release next, and print that version.
 
-	next_version.py <current> <previous> [requested]
+	next_version.py <previous> [requested]
 
-<current> is `__version__` in gameplan/__init__.py, <previous> is the version of the
-newest release tag ("" before the first release), and [requested] is a version given
-to a manual run of the workflow ("" when not given).
+<previous> is the version of the newest release tag ("" before the first release), and
+[requested] is a version given to a manual run of the workflow ("" when not given).
 
 - A requested version is released as given. This is how 1.0.0 is released.
-- A current version above the previous release was set by hand in a pull request,
-  so it is released as it is.
-- A current version below the previous release is refused.
+- A version in code above the previous release was set by hand in a pull request,
+  so it is released as it is. The file is then left unchanged.
+- A version in code below the previous release is refused.
 - The first release is 0.1.0.
 - Otherwise the patch version of the previous release goes up: 0.1.0, 0.1.1, 0.1.2, ...
 """
 
 import re
 import sys
+from pathlib import Path
 
 VERSION = re.compile(r"(\d+)\.(\d+)\.(\d+)")
+VERSION_LINE = re.compile(r'^__version__ = "(.*)"$', re.MULTILINE)
+INIT_FILE = Path(__file__).resolve().parents[2] / "gameplan" / "__init__.py"
 FIRST_RELEASE = (0, 1, 0)
 
 
@@ -53,5 +56,11 @@ def next_version(current: str, previous: str, requested: str) -> str:
 
 
 if __name__ == "__main__":
-	current, previous, requested = (sys.argv[1:] + ["", ""])[:3]
-	print(next_version(current, previous, requested))
+	previous, requested = (sys.argv[1:] + ["", ""])[:2]
+	source = INIT_FILE.read_text()
+	line = VERSION_LINE.search(source)
+	if not line:
+		sys.exit(f"No __version__ line in {INIT_FILE}")
+	version = next_version(line.group(1), previous, requested)
+	INIT_FILE.write_text(source[: line.start(1)] + version + source[line.end(1) :])
+	print(version)
