@@ -139,7 +139,13 @@ jobs:
             echo "No marketplace PR: the commit is already advertised."
             exit 0
           fi
-          # The marketplace checks start a few seconds after the PR opens.
-          sleep 30
+          # The marketplace checks start some time after the PR opens, and
+          # `gh pr checks` fails while the PR has none. Wait up to 5 minutes for them.
+          for attempt in $(seq 20); do
+            count=$(gh pr checks "$pr" --json name --jq length 2>/dev/null || true)
+            [ "${count:-0}" -gt 0 ] && break
+            [ "$attempt" = 20 ] && { echo "The marketplace PR has no checks."; exit 1; }
+            sleep 15
+          done
           gh pr checks "$pr" --watch --fail-fast --interval 30
           gh pr merge "$pr" --squash --delete-branch
