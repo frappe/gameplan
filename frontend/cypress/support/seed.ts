@@ -1,3 +1,5 @@
+import { unloadApp } from './personas'
+
 // Seed helper for the backend reset API (gameplan.ui_test_helpers.reset).
 // Imported per-spec (not globally) so specs opt in to the new seeding flow.
 
@@ -49,14 +51,15 @@ export function resetData(scenario?: Scenario): Cypress.Chainable<SeedIds> {
   // before the destructive call, not merely once per spec file. It is memoized per origin
   // in the Node task, so it costs one request per Cypress run, not one per test.
   cy.task('assertConfiguredSite')
-  cy.switchUser('admin')
+  unloadApp()
+  // Seed outside the browser so late responses cannot replace the request's session.
   return cy
-    .request({
-      method: 'POST',
-      url: '/api/method/gameplan.ui_test_helpers.reset',
+    .task<{ message: SeedIds }>('requestAsUser', {
+      user: 'Administrator',
+      path: '/api/method/gameplan.ui_test_helpers.reset',
       body: { scenario },
     })
-    .then((response) => response.body.message as SeedIds)
+    .then(({ message }) => cy.switchUser('admin').then(() => message))
 }
 
 export interface Invitation {
