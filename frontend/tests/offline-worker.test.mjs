@@ -278,6 +278,12 @@ test('an incomplete build keeps the working shell and its assets', async () => {
   await shell.put('/g', new Response('working shell'))
   const assets = await caches.open(current.evaluate('ASSET_CACHE'))
   await assets.put('/assets/gameplan/frontend/assets/old.js', new Response('working route'))
+  const manifestUrl = current.evaluate('OFFLINE_ASSET_MANIFEST_URL')
+  const previousKey = current.evaluate('PREVIOUS_MANIFEST_KEY')
+  const manifest = JSON.stringify(['/assets/gameplan/frontend/assets/old.js'])
+  const previous = JSON.stringify(['/assets/gameplan/frontend/assets/older.js'])
+  await assets.put(manifestUrl, new Response(manifest))
+  await assets.put(previousKey, new Response(previous))
   current.context.response = new Response('new shell')
   current.context.generation = await current.message({ type: 'CACHE_GENERATION' })
   await current.evaluate('refreshShell(response, generation)')
@@ -287,43 +293,53 @@ test('an incomplete build keeps the working shell and its assets', async () => {
     'working route',
   )
   await assert.rejects(current.evaluate('warmShellCache()'), /Offline build is incomplete/)
+  assert.equal(await (await assets.match(manifestUrl)).text(), manifest)
+  assert.equal(await (await assets.match(previousKey)).text(), previous)
 })
 
-test('previous build files remain while pages are open, but older builds and closed pages get cleared', async () => {
+test('repeated build caching and pagehide cleanup retain the previous distinct build', async () => {
   const caches = storage()
-  const current = worker(caches)
+  let build = 1
+  const assetUrl = (version) => `/assets/gameplan/frontend/assets/build${version}.js`
+  const current = worker(caches, async (request) => {
+    const url = String(request.url || request)
+    const response = new Response(
+      url.includes('gameplan-offline-assets.json')
+        ? JSON.stringify([assetUrl(build)])
+        : `build ${build}`,
+    )
+    Object.defineProperty(response, 'type', { value: 'basic' })
+    return response
+  })
   const assets = await caches.open(current.evaluate('ASSET_CACHE'))
-
-  // Initial build deployed and cached
-  await assets.put('/assets/gameplan/frontend/assets/build1.js', new Response('build 1'))
-  current.context.cache = assets
-  current.context.urls = ['/assets/gameplan/frontend/assets/build1.js']
-  await current.evaluate('deleteOldBuildAssets(cache, urls)')
-
-  // Deploy build 2 with a tab open: build 1 must be kept for the open page
+  assert.equal(await current.evaluate('cacheBuild()'), true)
   current.context.self.clients.matchAll = async () => [{ url: `${origin}/g/feed` }]
-  await assets.put('/assets/gameplan/frontend/assets/build2.js', new Response('build 2'))
-  current.context.urls = ['/assets/gameplan/frontend/assets/build2.js']
-  await current.evaluate('deleteOldBuildAssets(cache, urls)')
-  current.context.req1 = new Request(`${origin}/assets/gameplan/frontend/assets/build1.js`)
-  current.context.req2 = new Request(`${origin}/assets/gameplan/frontend/assets/build2.js`)
-  assert.equal(await (await current.evaluate('cacheFirst(req1)')).text(), 'build 1')
-  assert.equal(await (await current.evaluate('cacheFirst(req2)')).text(), 'build 2')
+  build = 2
+  assert.equal(await current.evaluate('cacheBuild()'), true)
 
-  // Deploy build 3 with page still open: build 1 should now be dropped, build 2 retained
-  await assets.put('/assets/gameplan/frontend/assets/build3.js', new Response('build 3'))
-  current.context.urls = ['/assets/gameplan/frontend/assets/build3.js']
-  await current.evaluate('deleteOldBuildAssets(cache, urls)')
-  assert.equal(await caches.match('/assets/gameplan/frontend/assets/build1.js'), undefined)
-  assert.equal(await (await current.evaluate('cacheFirst(req2)')).text(), 'build 2')
-  current.context.req3 = new Request(`${origin}/assets/gameplan/frontend/assets/build3.js`)
-  assert.equal(await (await current.evaluate('cacheFirst(req3)')).text(), 'build 3')
+  // Repeated navigation and pagehide from another tab must not advance the predecessor.
+  for (let repeat = 0; repeat < 2; repeat++) {
+    assert.equal(await current.evaluate('cacheBuild()'), true)
+    await current.message({ type: 'CLEAN_UNUSED_BUILDS' })
+    assert.equal(await (await assets.match(assetUrl(1)))?.text(), 'build 1')
+    assert.equal(await (await assets.match(assetUrl(2)))?.text(), 'build 2')
+    assert.deepEqual(await (await assets.match(current.evaluate('PREVIOUS_MANIFEST_KEY'))).json(), [
+      assetUrl(1),
+    ])
+  }
 
-  // Pages close: cleanUnusedBuilds clears build 2, retaining only build 3
+  // A distinct deployment drops the oldest build, keeping only current and predecessor.
+  build = 3
+  assert.equal(await current.evaluate('cacheBuild()'), true)
+  await current.evaluate('cleanUnusedBuilds()')
+  assert.equal(await assets.match(assetUrl(1)), undefined)
+  assert.equal(await (await assets.match(assetUrl(2))).text(), 'build 2')
+  assert.equal(await (await assets.match(assetUrl(3))).text(), 'build 3')
+
   current.context.self.clients.matchAll = async () => []
-  await current.evaluate('deleteOldBuildAssets(cache, urls)')
-  assert.equal(await caches.match('/assets/gameplan/frontend/assets/build2.js'), undefined)
-  assert.equal(await (await current.evaluate('cacheFirst(req3)')).text(), 'build 3')
+  await current.message({ type: 'CLEAN_UNUSED_BUILDS' })
+  assert.equal(await assets.match(assetUrl(2)), undefined)
+  assert.equal(await (await assets.match(assetUrl(3))).text(), 'build 3')
 })
 
 test('a successful build saves manifest and assets into cache', async () => {
