@@ -210,8 +210,7 @@
                 class="shrink-0 !w-fit"
                 variant="outline"
                 side="bottom"
-                placeholder="Relevance"
-                :options="sortBy === undefined ? discussionSortChoices : sortOptions"
+                :options="sortOptions"
                 :model-value="sortBy"
                 @update:model-value="updateSort"
               />
@@ -444,7 +443,7 @@ const searchResponse = ref<SearchResponse | null>(null)
 const newSearch = ref(true)
 const feedbackGiven = ref(false)
 const activeFilters = ref<SearchFilters>({})
-const sortBy = ref<string>()
+const sortBy = ref('')
 
 const sortOptions = [{ label: 'Relevance', value: '' }, ...discussionSortChoices]
 
@@ -794,7 +793,7 @@ function hasActiveFilters(): boolean {
 
 function clearFilters() {
   activeFilters.value = {}
-  sortBy.value = undefined
+  sortBy.value = ''
   if (query.value) {
     submit()
   } else {
@@ -858,7 +857,7 @@ function loadSearchState(searchQuery: string) {
       if (state.filters) {
         activeFilters.value = state.filters
       }
-      sortBy.value = state.sortBy
+      sortBy.value = state.sortBy || ''
       newSearch.value = false
       return true
     }
