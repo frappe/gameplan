@@ -58,7 +58,7 @@ const IMAGE_CACHE_SUFFIX = ':guarded:downloads'
 interface Meta {
   user: string
   window: number
-  /** Server time the last complete sync started. */
+  /** Server time the first unfinished or last complete sync started. */
   since: string | null
   /** Downloaded discussions, each with where the index said it sat. */
   places: Record<string, string>
@@ -198,14 +198,15 @@ async function download(days: OfflineWindow, previous: Meta | null, signal: Abor
     await storeFeeds(cache, new Map(), new Set(index.revoked))
     await forgetDiscussions(cache, index.revoked, generation)
     // Out of the window now: no longer kept up to date, but left like any visited discussion.
+    // A legacy partial sync without a timestamp must refile every page before it can resume.
     const inIndex = new Set(index.discussions)
     for (const name of Object.keys(places)) {
-      if (!inIndex.has(name)) delete places[name]
+      if (!previous?.since || !inIndex.has(name)) delete places[name]
     }
     const base: Meta = {
       user: owner,
       window: days,
-      since: previous?.since ?? null,
+      since: previous?.since ?? index.synced_at,
       places,
       checkedUpTo: visits.checkedUpTo,
       lastSyncedAt: previous?.lastSyncedAt ?? null,
@@ -325,8 +326,17 @@ async function storeBundle(cache: Cache, bundle: Bundle) {
   for (const discussion of bundle.discussions) {
     const name = String(discussion.name)
     const key = discussionKeys(cache, name)
+    // Server fetches replace this marker; normally browsed content survives removal.
+    const previous = JSON.parse((await get<string>(key.doc)) ?? 'null')
     entries.push(
-      [key.doc, JSON.stringify({ ...discussion, name })],
+      [
+        key.doc,
+        JSON.stringify({
+          ...discussion,
+          name,
+          _offlineDownload: previous ? previous._offlineDownload : true,
+        }),
+      ],
       [key.comments, rowsJson(bundle.comments[name])],
       [key.activities, rowsJson(bundle.activities[name])],
       [key.polls, rowsJson(bundle.polls[name])],
@@ -339,7 +349,12 @@ async function storeBundle(cache: Cache, bundle: Bundle) {
  * Files downloaded rows into the Space and community feeds, merging with what they already
  * hold (a changes-only sync brings back only what changed) and dropping removed discussions.
  */
-async function storeFeeds(cache: Cache, rows: Map<string, FeedRow>, removed: Set<string>) {
+async function storeFeeds(
+  cache: Cache,
+  rows: Map<string, FeedRow>,
+  removed: Set<string>,
+  downloadOnly = false,
+) {
   if (!rows.size && !removed.size) return
   const feeds = new Map<string, Feed>()
   for (const feed of [...downloadedFeeds(cache, rows.values()), ...(await cachedFeeds(cache))]) {
@@ -352,8 +367,10 @@ async function storeFeeds(cache: Cache, rows: Map<string, FeedRow>, removed: Set
   const entries: [string, string][] = []
   targets.forEach((feed, index) => {
     const previous = parseRows(stored[index])
+    const remove = (row: FeedRow) =>
+      removed.has(String(row.name)) && (!downloadOnly || Boolean(row._offlineDownload))
     if (!feed.space && !feed.community) {
-      const next = previous.filter((row) => !removed.has(String(row.name)))
+      const next = previous.filter((row) => !remove(row))
       if (next.length !== previous.length) entries.push([feed.key, JSON.stringify(next)])
       return
     }
@@ -363,11 +380,13 @@ async function storeFeeds(cache: Cache, rows: Map<string, FeedRow>, removed: Set
       const name = String(row.name)
       const fresh = rows.get(name)
       // A discussion that moved leaves the feed it came from.
-      if (removed.has(name) || (fresh && !belongsTo(fresh, feed))) continue
-      merged.set(name, fresh ?? row)
+      if (remove(row) || (fresh && !belongsTo(fresh, feed))) continue
+      merged.set(name, fresh ? { ...fresh, _offlineDownload: row._offlineDownload } : row)
     }
     for (const row of candidates) {
-      if (belongsTo(row, feed)) merged.set(String(row.name), row)
+      if (belongsTo(row, feed) && !merged.has(String(row.name))) {
+        merged.set(String(row.name), { ...row, _offlineDownload: true })
+      }
     }
 
     // Never shrink a feed someone paged through online.
@@ -521,7 +540,16 @@ function removeOfflineDownloads() {
 
 async function forgetDownloads(meta: Meta) {
   const generation = await getWorkerCacheGeneration()
-  await forgetDiscussions(cacheFor(meta.user), Object.keys(meta.places), generation)
+  const cache = cacheFor(meta.user)
+  const names = Object.keys(meta.places)
+  await storeFeeds(cache, new Map(), new Set(names), true)
+  // Older unmarked copies may have been browsed; Clear storage removes those too.
+  const stored = await getMany(names.map((name) => cache.docKey('GP Discussion', name)))
+  await forgetDiscussions(
+    cache,
+    names.filter((_, index) => JSON.parse(stored[index] ?? 'null')?._offlineDownload),
+    generation,
+  )
   await delMany([META_KEY])
   showMeta(null)
 }
