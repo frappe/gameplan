@@ -1,22 +1,19 @@
 import { computed, inject, provide, reactive, shallowReactive, unref, toValue, watch } from 'vue'
 import type { InjectionKey, MaybeRefOrGetter } from 'vue'
+import type { GPReaction } from '@/types/doctypes'
 import { toast, useCall } from 'frappe-ui'
 import { currentQuickReactionEmojis } from './reactionPreferences'
 import { session } from './session'
 import { useUser } from './users'
 
-interface Reaction {
-  name: string
-  emoji: string
-  user: string
-}
+type Reaction = Pick<GPReaction, 'name' | 'emoji' | 'user'>
 
 export type ReactableDoctype = 'GP Discussion' | 'GP Comment' | 'GP Poll'
 type ThreadDoctype = 'GP Discussion' | 'GP Task'
 
-interface StoredReaction extends Reaction {
+/** A row as thread_reactions and react() return it. */
+interface StoredReaction extends Reaction, Pick<GPReaction, 'reference_name'> {
   reference_doctype: ReactableDoctype
-  reference_name: string
 }
 
 interface ThreadReactions {
