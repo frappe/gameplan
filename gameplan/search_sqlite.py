@@ -442,15 +442,11 @@ class GameplanSearch(SQLiteSearch):
 		params.append(MAX_SEARCH_RESULTS)
 
 		where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
-		order_by = f"CAST({sort_column} AS REAL) {sort_direction.upper()}"
-		if fts_query and sort_column in DATE_SORT_COLUMNS:
-			day = f"CAST(CAST({sort_column} AS REAL) / {SECONDS_PER_DAY} AS INTEGER)"
-			order_by = f"{day} {sort_direction.upper()}, bm25_score, {order_by}"
 		sql = f"""
 			SELECT {select_clause}
 			FROM search_fts
 			{where_clause}
-			ORDER BY {order_by}
+			ORDER BY CAST({sort_column} AS REAL) {sort_direction.upper()}
 			LIMIT ?
 		"""
 		return self.sql(sql, tuple(params), read_only=True)
