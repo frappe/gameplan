@@ -1,10 +1,13 @@
 import json
+import os
+import sqlite3
 from unittest.mock import patch
 
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from gameplan.api import search_sqlite
+from gameplan.patches import drop_search_index_for_sort_columns
 from gameplan.search_sqlite import GameplanSearch, GameplanSearchIndexMissingError
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
@@ -732,3 +735,21 @@ class TestSearchIndexLifecycle(IsolatedSearchIndex, GameplanTestCase):
 
 		with self.assertRaises(GameplanSearchIndexMissingError):
 			self.search_as(self.member, "anything")
+
+
+class TestDropSearchIndexForSortColumnsPatch(IsolatedSearchIndex, GameplanTestCase):
+	INDEX_NAME = "test_gameplan_search_sort_patch.db"
+
+	def setUp(self):
+		super().setUp()
+		self.isolate_search_index()
+
+	def test_patch_removes_an_unfinished_build(self):
+		temp_db_path = GameplanSearch()._get_db_path(is_temp=True)
+		connection = sqlite3.connect(temp_db_path)
+		connection.execute("CREATE VIRTUAL TABLE search_fts USING fts5(title, content)")
+		connection.close()
+
+		drop_search_index_for_sort_columns.execute()
+
+		self.assertFalse(os.path.exists(temp_db_path))
