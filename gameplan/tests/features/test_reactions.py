@@ -240,6 +240,52 @@ class TestReactPayload(ReactionTestCase):
 		self.assertEqual(self.stored_reactions(self.discussion), [])
 
 
+class TestReactionsAuthorizeTheStoredPost(ReactionTestCase):
+	"""The v2 document-method route builds the post from fields the caller sends. A caller
+	who names a post they cannot see, but sends a project they can see, must still be
+	refused: the check reads the stored post, not the one sent."""
+
+	def setUp(self):
+		super().setUp()
+		private_space = create_space("Leadership", self.community, is_private=1, members=[self.member])
+		self.private_discussion = create_discussion("Plans", private_space, owner=self.member)
+		self.react(self.private_discussion, self.member, [add(THUMBS_UP)])
+
+	def forged(self, doc):
+		"""`doc` as a caller could send it: in a space the caller can see, owned by them."""
+		return frappe.get_doc(
+			{
+				"doctype": doc.doctype,
+				"name": doc.name,
+				"project": self.space.name,
+				"title": "Forged",
+				"owner": self.second_member.name,
+				"__islocal": 1,
+			}
+		)
+
+	def test_react_refuses_a_post_the_user_cannot_see(self):
+		with self.as_user(self.second_member):
+			forged = self.forged(self.private_discussion)
+			with self.assertRaises(frappe.PermissionError):
+				forged.react(operations=[add(HEART)])
+			with self.assertRaises(frappe.PermissionError):
+				forged.react(operations=[])
+
+		self.assertEqual(self.stored_reactions(self.private_discussion), [(self.member.name, THUMBS_UP)])
+
+	def test_thread_reactions_refuses_a_thread_the_user_cannot_see(self):
+		with self.as_user(self.second_member):
+			with self.assertRaises(frappe.PermissionError):
+				self.forged(self.private_discussion).thread_reactions()
+
+	def test_task_thread_reactions_refuses_a_task_the_user_cannot_see(self):
+		task = create_task("Hire", self.private_discussion.project, owner=self.member)
+		with self.as_user(self.second_member):
+			with self.assertRaises(frappe.PermissionError):
+				self.forged(task).thread_reactions()
+
+
 class TestPollReactions(ReactionTestCase):
 	"""A poll is a post like any other: the UI hangs the same Reactions component off it.
 	The (user, emoji) identity rule and the participation gate must therefore behave

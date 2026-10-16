@@ -114,8 +114,13 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 	# Whitelisted Methods
 	@frappe.whitelist(methods=["GET"])
 	def thread_reactions(self):
-		"""Reactions on everything in this thread, for the thread page."""
-		return get_thread_reactions(self.doctype, self.name)
+		"""Reactions on everything in this thread, for the thread page.
+
+		Checks read on the stored thread: the v2 document-method route builds this instance
+		from fields the caller sends, so its own fields can be forged."""
+		thread = frappe.get_doc(self.doctype, self.name)
+		thread.check_permission("read")
+		return get_thread_reactions(thread.doctype, thread.name)
 
 	@frappe.whitelist(methods=["POST"])
 	def track_visit(self):
