@@ -501,11 +501,15 @@ class GameplanSearch(SQLiteSearch):
 		params = []
 
 		for field, values in filters.items():
-			if len(values) == 2 and values[0] == "LIKE":
+			if not values:
+				if isinstance(values, list):
+					conditions.append("1=0")
+			elif not isinstance(values, list):
+				conditions.append(f"{field} = ?")
+				params.append(values)
+			elif len(values) == 2 and values[0] == "LIKE":
 				conditions.append("(" + " OR ".join([f"{field} LIKE ?"] * len(values[1])) + ")")
 				params.extend(f"%{value}%" for value in values[1])
-			elif not values:
-				conditions.append("1=0")
 			else:
 				placeholders = ",".join(["?"] * len(values))
 				conditions.append(f"{field} IN ({placeholders})")
