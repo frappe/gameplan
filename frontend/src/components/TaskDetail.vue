@@ -192,6 +192,7 @@ import { vFocus } from '@/directives'
 import { activeUsers } from '@/data/users'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { getSpace } from '@/data/spaces'
+import { provideThreadReactions } from '@/data/reactions'
 import { useTask, useTaskSpaceMove } from '@/data/tasks'
 import { GPTask } from '@/types/doctypes'
 import { useSessionUser } from '@/data/users'
@@ -208,6 +209,7 @@ const router = useRouter()
 const route = useRoute()
 
 const task = useTask(() => props.taskId)
+provideThreadReactions('GP Task', props.taskId)
 const space = computed(() => getSpace(task.doc?.project))
 const canEditTask = computed(
   () => !props.readOnlyMode && canEditContent(task.doc, space.value, useSessionUser()),

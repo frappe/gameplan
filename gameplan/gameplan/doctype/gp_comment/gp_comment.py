@@ -37,6 +37,7 @@ class GPComment(HasAttachments, HasMentions, HasReactions, HasTags, Document):
 			GPUnreadRecord.create_unread_records_for_comment(self)
 
 	def on_trash(self):
+		self.remove_all_reactions()
 		if self.reference_doctype == "GP Discussion":
 			GPUnreadRecord.delete_unread_records_for_comment(self.name)
 
@@ -72,16 +73,13 @@ class GPComment(HasAttachments, HasMentions, HasReactions, HasTags, Document):
 		frappe.get_doc("GP Task", self.reference_name).update_comments_count()
 
 	def validate(self):
-		# Gate the content itself, not every save. `HasReactions.react` saves the whole
-		# comment, so a blanket guard here would refuse reactions on an archived Space's
-		# comments while still allowing them on its discussions, which only guard
-		# `before_insert`. Reactions stay allowed on both; the UI hides them either way.
+		# Gate the content itself, not every save, as discussions do: they only guard
+		# `before_insert`.
 		if self.is_new():
 			check_if_space_is_archived(self, action="add", content_type="comments")
 		elif self.has_value_changed("content"):
 			check_if_space_is_archived(self, action="edit", content_type="comments")
 		self.sanitize_content()
-		self.de_duplicate_reactions()
 
 	def sanitize_content(self):
 		from gameplan.utils.sanitizer import sanitize_content
@@ -98,7 +96,6 @@ class GPComment(HasAttachments, HasMentions, HasReactions, HasTags, Document):
 
 	def on_update(self):
 		self.notify_mentions()
-		self.notify_reactions()
 		self.attach_files_in_content()
 
 	@frappe.whitelist()

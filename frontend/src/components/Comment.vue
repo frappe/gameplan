@@ -94,14 +94,8 @@
           }"
         />
         <span class="text-base italic text-ink-gray-5" v-else> This message is deleted </span>
-        <div class="mt-3" v-if="!comment.deleted_at && !isEditing && comment.reactions">
-          <Reactions
-            doctype="GP Comment"
-            :name="comment.name"
-            :reactions="comment.reactions"
-            @update:reactions="(reactions) => comments.updateRow({ name: comment.name, reactions })"
-            :read-only-mode="readOnlyMode"
-          />
+        <div class="mt-3" v-if="!comment.deleted_at && !isEditing">
+          <Reactions doctype="GP Comment" :name="comment.name" :read-only-mode="readOnlyMode" />
         </div>
       </div>
     </div>

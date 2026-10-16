@@ -166,28 +166,12 @@ const newCommentEditor = ref(null)
 const comments = useList<
   Pick<
     GPComment,
-    | 'name'
-    | 'content'
-    | 'owner'
-    | 'creation'
-    | 'modified'
-    | 'edited_at'
-    | 'deleted_at'
-    | 'reactions'
+    'name' | 'content' | 'owner' | 'creation' | 'modified' | 'edited_at' | 'deleted_at'
   >
 >({
   doctype: 'GP Comment',
   cacheKey: ['Comments', props.doctype, props.name],
-  fields: [
-    'name',
-    'content',
-    'owner',
-    'creation',
-    'modified',
-    'edited_at',
-    'deleted_at',
-    { reactions: ['name', 'user', 'emoji'] },
-  ],
+  fields: ['name', 'content', 'owner', 'creation', 'modified', 'edited_at', 'deleted_at'],
   transform(data) {
     return data.map((d) => ({ ...d, name: d.name.toString(), doctype: 'GP Comment' }))
   },
