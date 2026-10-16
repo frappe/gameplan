@@ -304,10 +304,7 @@ async function deleteDrafts() {
       const failed = [...localFailed, ...(response?.failed.map((f) => f.name) ?? [])]
       reportDelete((response?.success_count || 0) + local.length - localFailed.length, failed)
     })
-    .catch(() => {
-      toast.error('Failed to delete drafts')
-      showDeleteConfirm.value = false
-    })
+    .catch(() => reportDelete(local.length - localFailed.length, [...localFailed, ...saved]))
 }
 
 /** `failed` stay selected, to try again. */
