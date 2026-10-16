@@ -269,6 +269,13 @@ async function cacheBuild() {
     const cache = await caches.open(ASSET_CACHE);
     const saved = await saveAll(cache, urls.filter(isAssetUrl));
     if (saved) {
+      const manifest = await cache.match(OFFLINE_ASSET_MANIFEST_URL);
+      if (
+        manifest &&
+        JSON.stringify(await manifest.clone().json()) !== JSON.stringify(urls)
+      ) {
+        await cache.put(PREVIOUS_MANIFEST_KEY, manifest);
+      }
       await cache.put(
         OFFLINE_ASSET_MANIFEST_URL,
         new Response(JSON.stringify(urls), {
@@ -396,13 +403,6 @@ async function deleteOldBuildAssets(cache, currentUrls) {
         );
       })
       .map((request) => cache.delete(request)),
-  );
-
-  await cache.put(
-    PREVIOUS_MANIFEST_KEY,
-    new Response(JSON.stringify(currentUrls), {
-      headers: { "content-type": "application/json" },
-    }),
   );
 }
 
