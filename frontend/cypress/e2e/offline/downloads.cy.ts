@@ -50,18 +50,29 @@ describe('Download for offline', () => {
   const startFreshDownload = () => {
     openOfflineSettings()
     // Cypress clears localStorage between tests, but IndexedDB download metadata survives.
+    cachedValue('gameplan:offline-downloads', () => null)
+    chooseWindow('Past week')
+    cy.wait('@index')
+    cy.contains('1 discussion downloaded', { timeout: 60000 }).should('be.visible')
+  }
+
+  const cachedValue = (key: string, change?: (value: any) => any) =>
     cy.window().then(
       (win) =>
-        new Promise<void>((resolve, reject) => {
-          const request = win.indexedDB.open('keyval-store')
-          request.onerror = () => reject(request.error)
-          request.onsuccess = () => {
-            const db = request.result
-            const transaction = db.transaction('keyval', 'readwrite')
-            transaction.objectStore('keyval').delete('gameplan:offline-downloads')
+        new Cypress.Promise<any>((resolve, reject) => {
+          const opening = win.indexedDB.open('keyval-store')
+          opening.onerror = () => reject(opening.error)
+          opening.onsuccess = () => {
+            const db = opening.result
+            const transaction = db.transaction('keyval', change ? 'readwrite' : 'readonly')
+            const store = transaction.objectStore('keyval')
+            const request = store.get(key)
+            request.onsuccess = () => {
+              if (change) store.put(change(request.result), key)
+            }
             transaction.oncomplete = () => {
               db.close()
-              resolve()
+              resolve(request.result)
             }
             transaction.onerror = () => {
               db.close()
@@ -70,10 +81,59 @@ describe('Download for offline', () => {
           }
         }),
     )
+
+  it('keeps the first index timestamp when the first download is interrupted', () => {
+    cy.intercept('POST', BUNDLE, { statusCode: 500 }).as('failedBundle')
+    openOfflineSettings()
     chooseWindow('Past week')
-    cy.wait('@index')
-    cy.contains('1 discussion downloaded', { timeout: 60000 }).should('be.visible')
-  }
+    cy.wait('@index').then(({ response }) => {
+      cy.wait('@failedBundle')
+      cy.contains('Could not finish the offline download').should('be.visible')
+      cachedValue('gameplan:offline-downloads').then((meta) => {
+        expect(meta.incomplete).to.eq(true)
+        expect(meta.since).to.eq(response!.body.message.synced_at)
+      })
+    })
+  })
+
+  it('refreshes a legacy partial download that has no timestamp', () => {
+    startFreshDownload()
+    cachedValue('gameplan:offline-downloads', (meta) => ({
+      ...meta,
+      since: null,
+      incomplete: true,
+    }))
+    cy.intercept({ method: 'POST', url: INDEX, times: 1 }, (req) =>
+      req.continue((res) => {
+        expect(req.body.since).to.eq(null)
+        res.body.message.changed = []
+      }),
+    ).as('resumedIndex')
+    cy.intercept('POST', BUNDLE, (req) =>
+      req.continue((res) => {
+        res.body.message.discussions[0].content = '<p>Edited during interruption</p>'
+      }),
+    ).as('resumedBundle')
+    cy.intercept({ method: 'POST', url: BUNDLE, times: 1 }, { statusCode: 500 }).as(
+      'interruptedResume',
+    )
+    control('Sync now').click()
+    cy.button('Sync').click()
+    cy.wait('@resumedIndex')
+    cy.wait('@interruptedResume')
+    cy.contains('Could not finish the offline download').should('be.visible')
+    cachedValue('gameplan:offline-downloads').then((meta) => {
+      expect(meta.places).to.deep.eq({})
+      expect(meta.since).to.be.a('string')
+    })
+    control('Sync now').click()
+    cy.button('Sync').click()
+    cy.wait('@resumedBundle')
+    control('Sync now').should('be.enabled')
+    cachedValue(`${cacheNamespace(personas.member.email)}doc:v2:GP Discussion/${discussion}`).then(
+      (value) => expect(JSON.parse(value).content).to.contain('Edited during interruption'),
+    )
+  })
 
   it('downloads the window and files it where the app already reads', () => {
     openOfflineSettings()
@@ -308,7 +368,7 @@ describe('Download for offline', () => {
     control('Sync now').click()
     cy.button('Sync').click()
     cy.wait('@agedIndex')
-    cy.contains('0 discussions downloaded').should('be.visible')
+    cy.contains('button', 'Remove downloads').should('not.exist')
     cy.idbKeys().should((keys) => {
       expect(keys).to.include(
         `${cacheNamespace(personas.member.email)}doc:v2:GP Discussion/${discussion}`,
@@ -331,6 +391,38 @@ describe('Download for offline', () => {
       )
       expect(keys, 'the record of what was downloaded').to.not.include('gameplan:offline-downloads')
     })
+    cachedValue(
+      cacheNamespace(personas.member.email) +
+        JSON.stringify(['useList:v2', 'Discussions', `SpaceDiscussions-${space}`]),
+    ).then((value) => expect(JSON.parse(value)).to.deep.eq([]))
+    cy.goOffline()
+    cy.visit(`/g/community/${community}/space/${space}/discussions`)
+    cy.contains('No discussions').should('be.visible')
+    cy.contains('a', 'Welcome thread').should('not.exist')
+    cy.goOnline()
+  })
+
+  it('keeps documents and feed rows fetched through normal browsing', () => {
+    cy.visit(`/g/community/${community}/space/${space}/discussions`)
+    cy.contains('a', 'Welcome thread').click()
+    cy.contains('h1', 'Welcome thread').should('be.visible')
+    openOfflineSettings()
+    chooseWindow('Past week')
+    cy.wait('@index')
+    cy.contains(/discussions? downloaded/, { timeout: 60000 }).should('be.visible')
+    control('Remove downloads').click()
+    cy.button('Remove').click()
+    cy.contains('button', 'Remove downloads').should('not.exist')
+    cy.idbKeys().should(
+      'include',
+      `${cacheNamespace(personas.member.email)}doc:v2:GP Discussion/${discussion}`,
+    )
+    cy.goOffline()
+    cy.visit(`/g/community/${community}/space/${space}/discussions`)
+    cy.contains('a', 'Welcome thread').should('be.visible')
+    cy.contains('a', 'Welcome thread').click()
+    cy.contains('h1', 'Welcome thread').should('be.visible')
+    cy.goOnline()
   })
 
   it('says a download needs the connection before asking to confirm it', () => {
