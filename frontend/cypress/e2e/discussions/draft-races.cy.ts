@@ -55,6 +55,71 @@ describe('Draft saves across devices and tabs', () => {
     })
   })
 
+  it('retries only the saved draft after a mixed deletion fails', () => {
+    const local = 'aaaaaaaaaaaaaaaaaaaa'
+    cy.request('POST', '/api/v2/document/GP%20Draft', {
+      type: 'Discussion',
+      mode: 'New',
+      project: space,
+      title: 'Saved selection',
+      content: '<p>Server copy</p>',
+    })
+      .its('body.data.name')
+      .then((saved) => {
+        cy.visit('/g/drafts')
+        cy.contains('a', 'Saved selection').should('be.visible')
+        cy.window().then((win) => win.navigator.locks.request('gp-draft-recovery', () => {}))
+        localRecord((store) =>
+          store.put(
+            {
+              key: local,
+              user: 'member@example.com',
+              identity: { type: 'Discussion', mode: 'New' },
+              payload: { title: 'Local selection', content: '<p>Local copy</p>', project: space },
+              saved: false,
+              updatedAt: Date.now(),
+              syncedAt: null,
+            },
+            local,
+          ),
+        )
+        cy.window().then((win) => {
+          const channel = new win.BroadcastChannel('gameplan-drafts')
+          channel.postMessage({ key: local })
+          channel.close()
+        })
+        cy.contains('a', 'Local selection').should('be.visible')
+        cy.get('button[aria-label="Draft actions"]').filter(':visible').click()
+        cy.contains('[role="menuitem"]', 'Select drafts').click()
+        for (const title of ['Local selection', 'Saved selection'])
+          cy.contains('a', title).find('[data-slot="list-row-checkbox"]').click()
+        cy.intercept(
+          { method: 'POST', url: '**/api/v2/method/GP%20Draft/bulk_delete', times: 1 },
+          (req) => {
+            expect(req.body.names).to.deep.eq([saved])
+            req.reply({ statusCode: 503 })
+          },
+        ).as('failedBulkDelete')
+        cy.button('Delete 2 drafts').click()
+        cy.get('[role="dialog"]').contains('button', 'Delete').click()
+        cy.wait('@failedBulkDelete')
+        cy.contains('Draft deleted').should('exist')
+        cy.contains('1 draft could not be deleted').should('be.visible')
+        cy.contains('a', 'Local selection').should('not.exist')
+        localRecord((store) => store.get(local)).then(
+          ({ record }) => expect(record).to.be.undefined,
+        )
+        cy.intercept('POST', '**/api/v2/method/GP%20Draft/bulk_delete', (req) => {
+          expect(req.body.names).to.deep.eq([saved])
+          req.continue()
+        }).as('retryBulkDelete')
+        cy.button('Delete 1 draft').click()
+        cy.get('[role="dialog"]').contains('button', 'Delete').click()
+        cy.wait('@retryBulkDelete')
+        cy.contains('No drafts').should('be.visible')
+      })
+  })
+
   it('shares a reply when both tabs open before either starts typing', () => {
     cy.intercept('POST', CREATE).as('create')
     cy.then(() =>
