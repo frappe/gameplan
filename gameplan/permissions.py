@@ -266,7 +266,7 @@ def can_interact_with_content(user, doc):
 	True for anyone who can view the content's space (members and granted guests
 	alike) and, for personal/space-less content, its owner. This is the floor for the
 	`write` permission; whether a specific *edit* is allowed on top of it is decided
-	by can_edit_content / _any_field_changed_since_stored.
+	by can_edit_content and, for non-editors, by whether the save changes any field.
 
 	Two of the branches below never fire from its only caller: can_write_content reaches
 	here only once can_edit_content has said False, and an admin or the owner of
@@ -296,7 +296,7 @@ def can_write_content(user, doc):
 	hold write only for interaction: they may call a participation method such as
 	react() or submit_vote(), but they may not save any change to the document.
 
-	This is checked in two contexts (see _any_field_changed_since_stored): on a CLEAN
+	This is checked in two contexts (see _fields_changed): on a CLEAN
 	doc (the v2 doc-method gate and list/UI permission checks) it reports no changes,
 	so a guest passes and can reach react(); on the DIRTY in-memory doc at save time it
 	diffs against the DB row and rejects any edit.
@@ -314,7 +314,7 @@ def can_write_content(user, doc):
 		return True
 	if not can_interact_with_content(user, doc):
 		return False
-	return not _any_field_changed_since_stored(doc)
+	return not _fields_changed(doc, {df.fieldname for df in doc.meta.fields})
 
 
 def _owner_only_write_allowed(user, doc):
@@ -343,11 +343,6 @@ def _guest_locked_fields_unchanged(user, doc):
 	if not fields or not gameplan.is_guest(user):
 		return True
 	return not _fields_changed(doc, fields)
-
-
-def _any_field_changed_since_stored(doc):
-	"""Whether `doc` has pending changes to any of its fields, compared with its stored row."""
-	return _fields_changed(doc, {df.fieldname for df in doc.meta.fields})
 
 
 def _fields_changed(doc, fieldnames):
@@ -419,7 +414,7 @@ def _child_table_changed(current_rows, previous_rows):
 def can_edit_content(user, doc):
 	"""Business rule for who may change a document's own content.
 
-	Enforced at save time by can_write_content and _any_field_changed_since_stored in
+	Enforced at save time by can_write_content and _fields_changed in
 	the has_permission write check. Also mirrored in the frontend
 	(utils/permissions.ts::canEditContent) to gate edit affordances.
 	"""

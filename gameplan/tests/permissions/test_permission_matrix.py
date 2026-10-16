@@ -58,7 +58,7 @@ EXPECTATIONS = {
 		# permission check reports no field change, so it passes. Editing
 		# another's content is blocked separately at save time by
 		# content_has_permission's write branch (see
-		# permissions._any_field_changed_since_stored and
+		# permissions._fields_changed and
 		# features/test_guest_participation.py). delete stays False: a guest may
 		# delete only content they own.
 		"guest": (True, True, False),
