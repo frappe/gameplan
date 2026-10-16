@@ -467,7 +467,7 @@ function limitOptions<T extends { label: string; value: string | number }>(
   if (selected.size > OPTION_LIMIT) {
     return matches.slice(0, limit)
   }
-  const pinned = options.filter(isSelected)
+  const pinned = matches.filter(isSelected)
   const rest = matches.filter((option) => !isSelected(option))
   return [...pinned, ...rest.slice(0, Math.max(limit - pinned.length, 0))]
 }
