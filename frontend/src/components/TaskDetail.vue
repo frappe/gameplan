@@ -3,20 +3,17 @@
     <div class="w-full flex-1">
       <div class="relative p-3 sm:p-6">
         <div class="absolute right-0 top-0 p-6" v-show="task.setValue.loading">
-          <LoadingText v-if="!task.setValue.error" text="Saving..." />
-          <ErrorMessage :message="task.setValue.error" />
+          <LoadingText text="Saving..." />
         </div>
         <div class="mb-2 flex items-center justify-between space-x-2">
           <input
             type="text"
             placeholder="Title"
-            class="-ml-0.5 w-full rounded-1 border-none p-0.5 text-4xl-semibold bg-surface-base text-ink-gray-8 focus:outline-none focus:ring-2 focus:ring-outline-gray-3"
+            class="-ml-0.5 w-full rounded-1 border-none p-0.5 text-3xl-semibold bg-surface-base text-ink-gray-8 focus:outline-none focus:ring-2 focus:ring-outline-gray-3"
             :readonly="!canEditTask"
             @blur="
               canEditTask
-                ? task.setValue.submit({
-                    title: ($event.target as HTMLInputElement).value,
-                  })
+                ? setTaskValue({ title: ($event.target as HTMLInputElement).value })
                 : null
             "
             v-model="task.doc.title"
@@ -42,9 +39,7 @@
           :editable="canEditTask"
           @blur="
             canEditTask && !$refs.description.editor.isEmpty
-              ? task.setValue.submit({
-                  description: $refs.description.editor.getHTML(),
-                })
+              ? setTaskValue({ description: $refs.description.editor.getHTML() })
               : null
           "
         />
@@ -62,11 +57,7 @@
             placeholder="Due date"
             format="D MMM, YYYY"
             :disabled="!canEditTask"
-            @update:modelValue="
-              task.setValue.submit({
-                due_date: $event,
-              })
-            "
+            @update:modelValue="setTaskValue({ due_date: $event })"
           />
           <Dropdown :options="statusOptions" :disabled="!canEditTask">
             <Button :disabled="!canEditTask">
@@ -87,7 +78,7 @@
           <Combobox
             placeholder="Select space"
             :options="spaceOptions"
-            :modelValue="task.doc.project"
+            :modelValue="spaceMove.shown(task.doc.project)"
             :disabled="!canEditTask"
             @update:modelValue="changeSpace"
           />
@@ -128,11 +119,7 @@
             format="D MMM, YYYY"
             align="end"
             :disabled="!canEditTask"
-            @update:modelValue="
-              task.setValue.submit({
-                due_date: $event,
-              })
-            "
+            @update:modelValue="setTaskValue({ due_date: $event })"
           />
         </div>
         <div>Space</div>
@@ -142,7 +129,7 @@
             placeholder="Select space"
             align="end"
             :options="spaceOptions"
-            :modelValue="task.doc.project"
+            :modelValue="spaceMove.shown(task.doc.project)"
             :disabled="!canEditTask"
             @update:modelValue="changeSpace"
           />
@@ -156,7 +143,7 @@
             :options="statusOptions"
             placeholder="Set status"
             :disabled="!canEditTask"
-            @update:modelValue="task.setValue.submit({ status: $event })"
+            @update:modelValue="setTaskValue({ status: $event })"
           >
             <template #item-prefix="{ item }">
               <TaskStatusIcon :status="item.value" />
@@ -170,7 +157,7 @@
             :options="priorityOptions"
             placeholder="Set priority"
             :disabled="!canEditTask"
-            @update:modelValue="task.setValue.submit({ priority: $event })"
+            @update:modelValue="setTaskValue({ priority: $event })"
           >
             <template #item-prefix="{ item }">
               <TaskPriorityIcon :priority="item.value" />
@@ -183,19 +170,29 @@
 </template>
 
 <script setup lang="ts">
-import { h, computed } from 'vue'
+import { h, computed, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import TaskDescriptionEditor from '@/components/editor/TaskDescriptionEditor.vue'
 import CommentsList from '@/components/CommentsList.vue'
 import TaskStatusIcon from '@/components/NewTaskDialog/TaskStatusIcon.vue'
 import TaskPriorityIcon from '@/components/icons/TaskPriorityIcon.vue'
 import DropdownMoreOptions from './DropdownMoreOptions.vue'
-import { LoadingText, DatePicker, Button, Combobox, Select, dialog } from 'frappe-ui'
+import {
+  LoadingText,
+  DatePicker,
+  Button,
+  Combobox,
+  Select,
+  Dropdown,
+  dialog,
+  toast,
+} from 'frappe-ui'
+import UserAvatar from '@/components/UserAvatar.vue'
 import { vFocus } from '@/directives'
 import { activeUsers } from '@/data/users'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { getSpace } from '@/data/spaces'
-import { useTask } from '@/data/tasks'
+import { useTask, useTaskSpaceMove } from '@/data/tasks'
 import { GPTask } from '@/types/doctypes'
 import { useSessionUser } from '@/data/users'
 import { canDeleteContent, canEditContent } from '@/utils/permissions'
@@ -216,6 +213,14 @@ const canEditTask = computed(
   () => !props.readOnlyMode && canEditContent(task.doc, space.value, useSessionUser()),
 )
 
+function setTaskValue(values: Parameters<typeof task.setValue.submit>[0]) {
+  task.setValue.submit(values).catch(showSaveError)
+}
+
+function showSaveError() {
+  toast.error('Could not save the task')
+}
+
 function deleteTask() {
   if (!canEditTask.value) return
 
@@ -229,11 +234,14 @@ function deleteTask() {
   })
 }
 
-task.onSuccess((doc) => {
-  if (['Task', 'SpaceTask'].includes(route.name as string) && route.params.taskId === doc.name) {
-    task.trackVisit.submit()
-  }
-})
+// The task resource is cached across mounts, so the callback must not outlive this one.
+onUnmounted(
+  task.onSuccess((doc) => {
+    if (['Task', 'SpaceTask'].includes(route.name as string) && route.params.taskId === doc.name) {
+      task.trackVisit.submit().catch(() => {})
+    }
+  }),
+)
 
 const assignableUsers = computed<{ label: string; value: string }[]>(() => {
   return [
@@ -255,7 +263,7 @@ const statusOptions = computed(() =>
       icon: () => h(TaskStatusIcon, { status }),
       label: status,
       value: status,
-      onClick: () => canEditTask.value && task.setValue.submit({ status }),
+      onClick: () => canEditTask.value && setTaskValue({ status }),
     }),
   ),
 )
@@ -265,7 +273,7 @@ const priorityOptions = computed(() =>
     icon: () => h(TaskPriorityIcon, { priority }),
     label: priority,
     value: priority,
-    onClick: () => canEditTask.value && task.setValue.submit({ priority }),
+    onClick: () => canEditTask.value && setTaskValue({ priority }),
   })),
 )
 
@@ -304,7 +312,7 @@ useCommandPaletteCommands(
         defaultScore: task.doc?.assigned_to === user.value ? 0 : 1,
       })),
       ...spaces.data
-        .filter((space) => !space.archived_at && space.name !== task.doc?.project)
+        .filter((space) => !space.archived_at && space.name !== spaceMove.shown(task.doc?.project))
         .map((space) => ({
           title: `Move task to ${space.title}`,
           name: `task-space-${space.name}`,
@@ -335,24 +343,27 @@ useCommandPaletteCommands(
 // "<no_assignee>" option instead.
 function changeAssignee(option: string | null) {
   if (!canEditTask.value || option == null) return
-  task.setValue.submit({ assigned_to: option === '<no_assignee>' ? '' : option })
+  setTaskValue({ assigned_to: option === '<no_assignee>' ? '' : option })
 }
+
+const spaceMove = useTaskSpaceMove(() => props.taskId)
+// The move outlives this page. Only a mounted page follows the task to its new space.
+onUnmounted(spaceMove.onSaved(updateRoute))
 
 function changeSpace(option: string | null) {
   if (!canEditTask.value || !task.doc || option == null) return
-  task.doc.project = option
-  task.setValue.submit({ project: option }).then(updateRoute)
+  spaceMove.change(option)
 }
 
-function updateRoute() {
+function updateRoute(spaceId: string | undefined) {
   if (task.doc) {
     router.replace({
-      name: task.doc.project ? 'SpaceTask' : 'Task',
-      params: task.doc.project
+      name: spaceId ? 'SpaceTask' : 'Task',
+      params: spaceId
         ? {
-            communityId: getSpace(task.doc.project)?.team,
+            communityId: getSpace(spaceId)?.team,
             taskId: task.doc.name,
-            spaceId: task.doc.project,
+            spaceId,
           }
         : {
             taskId: task.doc.name,

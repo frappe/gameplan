@@ -12,6 +12,7 @@ like it produced no traceback at all.
 from unittest.mock import patch
 
 import frappe
+from frappe.client import get_count
 from frappe.tests.utils import FrappeTestCase
 
 from gameplan.www.g import (
@@ -29,23 +30,23 @@ class TestAppVersion(FrappeTestCase):
 		self.addCleanup(frappe.cache.delete_value, APP_VERSION_CACHE_KEY)
 
 	def test_a_failing_git_command_returns_empty_and_writes_no_error_log(self):
-		before = frappe.db.count("Error Log")
+		before = get_count("Error Log")
 		self.assertEqual(run_git_command("git -C /nonexistent-path rev-parse HEAD"), "")
-		self.assertEqual(frappe.db.count("Error Log"), before)
+		self.assertEqual(get_count("Error Log"), before)
 
 	def test_git_being_unreachable_is_quiet_too(self):
-		before = frappe.db.count("Error Log")
+		before = get_count("Error Log")
 		with patch("subprocess.check_output", side_effect=OSError("no such executable")):
 			self.assertEqual(run_git_command("git rev-parse HEAD"), "")
-		self.assertEqual(frappe.db.count("Error Log"), before)
+		self.assertEqual(get_count("Error Log"), before)
 
 	def test_an_unexpected_failure_keeps_its_traceback(self):
 		"""Only the expected git failures are silent. Anything else still gets logged,
 		and is still swallowed: `get_boot` must not take /g down over version info."""
-		before = frappe.db.count("Error Log")
+		before = get_count("Error Log")
 		with patch("subprocess.check_output", side_effect=MemoryError("boom")):
 			self.assertEqual(run_git_command("git rev-parse HEAD"), "")
-		self.assertEqual(frappe.db.count("Error Log"), before + 1)
+		self.assertEqual(get_count("Error Log"), before + 1)
 
 	def test_the_version_read_survives_a_checkout_git_cannot_answer_for(self):
 		with patch("gameplan.www.g.run_git_command", return_value=""):

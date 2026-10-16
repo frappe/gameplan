@@ -1,8 +1,8 @@
 import type { Component } from 'vue'
 import type { AnyExtension } from '@tiptap/core'
-import { call, useFileUpload } from 'frappe-ui'
+import { call, useFileUpload, type UploadedFile } from 'frappe-ui'
 import { SuggestionExtension } from 'frappe-ui/editor'
-import type { MediaUploadRequestOptions, UploadedFile } from 'frappe-ui/editor'
+import type { MediaUploadRequestOptions } from 'frappe-ui/editor'
 import DiscussionLinkList, {
   type DiscussionLinkItem,
 } from '@/components/editor/DiscussionLinkList.vue'

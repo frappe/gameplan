@@ -233,7 +233,7 @@
             <ListRow
               v-for="item in visibleSearchResults"
               :key="item.id"
-              :to="getItemRoute(item)"
+              :route="getItemRoute(item)"
               class="py-3 touch-pan-y overflow-hidden"
             >
               <ListCell class="self-start">
@@ -616,7 +616,7 @@ const submit = debounce(function (text?: string) {
     params.filters = JSON.stringify(activeFilters.value)
   }
 
-  search.submit(params)
+  search.submit(params).catch(() => {})
 }, 300)
 
 function clearSearch() {
@@ -792,9 +792,12 @@ function submitFeedback(isHelpful: boolean) {
     query: query.value,
   })
 
-  feedback.submit().then(() => {
-    feedbackGiven.value = true
-  })
+  feedback
+    .submit()
+    .then(() => {
+      feedbackGiven.value = true
+    })
+    .catch(() => {})
 }
 </script>
 <style>

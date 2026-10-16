@@ -32,7 +32,7 @@
       <ListRow
         v-for="notification in notifications"
         :key="notification.name"
-        :to="notificationRoute(notification) ?? undefined"
+        :route="notificationRoute(notification) ?? undefined"
         class="group h-[68px] sm:h-15"
         :class="!notification.read && 'w-[calc(100%-2.5rem)]'"
         @click="openNotification(notification)"
@@ -68,8 +68,8 @@
                   class="overflow-hidden text-ellipsis whitespace-nowrap"
                   :class="
                     notification.read
-                      ? 'text-lg sm:text-base'
-                      : 'text-lg-medium sm:text-base-medium'
+                      ? 'text-md sm:text-base'
+                      : 'text-md-medium sm:text-base-medium'
                   "
                 >
                   {{ notification.message }}

@@ -106,7 +106,7 @@ const dropdownItems = computed(() => [
   {
     icon: 'lucide-log-out',
     label: 'Log out',
-    onClick: () => session.logout.submit(),
+    onClick: () => session.logout.submit().catch(() => {}),
   },
 ])
 

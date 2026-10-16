@@ -161,7 +161,7 @@
               <UserAvatar class="sm:hidden" :user="$user().name" size="lg" />
               <UserAvatar class="hidden sm:inline-block" :user="$user().name" size="md" />
               <span
-                class="min-w-0 flex-1 truncate text-lg-medium text-ink-gray-8 sm:text-base-medium"
+                class="min-w-0 flex-1 truncate text-md-medium text-ink-gray-8 sm:text-base-medium"
               >
                 {{ $user().full_name }}
               </span>

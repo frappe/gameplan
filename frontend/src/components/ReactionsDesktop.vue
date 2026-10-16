@@ -28,7 +28,7 @@
           >
             <template #icon>
               <img v-if="isImageEmoji(emoji)" :src="emoji" alt="" class="size-4 object-contain" />
-              <span v-else class="text-lg">
+              <span v-else class="text-md">
                 {{ emoji }}
               </span>
             </template>
