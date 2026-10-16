@@ -10,6 +10,7 @@ to a manual run of the workflow ("" when not given).
 - A requested version is released as given. This is how 1.0.0 is released.
 - A current version above the previous release was set by hand in a pull request,
   so it is released as it is.
+- A current version below the previous release is refused.
 - The first release is 0.1.0.
 - Otherwise the patch version of the previous release goes up: 0.1.0, 0.1.1, 0.1.2, ...
 """
@@ -39,6 +40,8 @@ def bump(version: tuple[int, int, int]) -> tuple[int, int, int]:
 def next_version(current: str, previous: str, requested: str = "") -> str:
 	in_code = parse(current)
 	released = parse(previous) if previous else None
+	if released and in_code < released:
+		sys.exit(f"__version__ is {current}, which is below the latest release {previous}")
 	if requested:
 		newest = max(in_code, released or in_code)
 		if parse(requested) <= newest:
