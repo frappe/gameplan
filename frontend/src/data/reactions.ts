@@ -1,4 +1,4 @@
-import { computed, inject, provide, reactive, shallowRef, unref, toValue, watch } from 'vue'
+import { computed, inject, provide, reactive, shallowReactive, unref, toValue, watch } from 'vue'
 import type { InjectionKey, MaybeRefOrGetter } from 'vue'
 import { toast, useCall } from 'frappe-ui'
 import { currentQuickReactionEmojis } from './reactionPreferences'
@@ -19,7 +19,11 @@ interface StoredReaction extends Reaction {
   reference_name: string
 }
 
-type ReactionsOf = (doctype: ReactableDoctype, name: string | number) => Reaction[]
+interface ThreadReactions {
+  of: (doctype: ReactableDoctype, name: string | number) => Reaction[]
+  /** Replace a post's reactions with the ones a react() response confirmed. */
+  confirm: (doctype: ReactableDoctype, name: string | number, reactions: Reaction[]) => void
+}
 
 export interface ReactionCount {
   count: number
@@ -40,14 +44,16 @@ interface UseReactionsOptions {
 
 const BATCH_DELAY = 1000
 
-const reactionsOfKey: InjectionKey<ReactionsOf> = Symbol('thread-reactions')
+const threadReactionsKey: InjectionKey<ThreadReactions> = Symbol('thread-reactions')
 const NO_REACTIONS: Reaction[] = []
 
 const toReaction = ({ name, emoji, user }: Reaction): Reaction => ({ name, emoji, user })
 
 /**
  * Load the reactions on a thread's root post and on every comment and poll in it, in
- * one request, for the reaction bars rendered inside the thread.
+ * one request, for the reaction bars rendered inside the thread. The thread holds each
+ * post's reactions as the server last confirmed them, so a bar that mounts again (a
+ * comment leaving edit mode) shows the same state as before.
  */
 export function provideThreadReactions(doctype: ThreadDoctype, name: string) {
   const thread = useCall<StoredReaction[]>({
@@ -55,21 +61,24 @@ export function provideThreadReactions(doctype: ThreadDoctype, name: string) {
     cacheKey: ['Thread Reactions', doctype, name],
   })
 
-  const byPost = computed(() => {
-    const out = new Map<string, Reaction[]>()
-    for (const row of thread.data ?? []) {
-      const key = postKey(row.reference_doctype, row.reference_name)
-      const reactions = out.get(key) ?? []
-      reactions.push(toReaction(row))
-      out.set(key, reactions)
-    }
-    return out
-  })
-
-  provide(
-    reactionsOfKey,
-    (doctype, name) => byPost.value.get(postKey(doctype, name)) ?? NO_REACTIONS,
+  const byPost = shallowReactive(new Map<string, Reaction[]>())
+  // A fresh load of the thread replaces the reactions of every post in it.
+  watch(
+    () => thread.data,
+    (rows) => {
+      byPost.clear()
+      for (const row of rows ?? []) {
+        const key = postKey(row.reference_doctype, row.reference_name)
+        byPost.set(key, [...(byPost.get(key) ?? []), toReaction(row)])
+      }
+    },
+    { immediate: true },
   )
+
+  provide(threadReactionsKey, {
+    of: (doctype, name) => byPost.get(postKey(doctype, name)) ?? NO_REACTIONS,
+    confirm: (doctype, name, reactions) => byPost.set(postKey(doctype, name), reactions),
+  })
 }
 
 function postKey(doctype: ReactableDoctype, name: string | number) {
@@ -83,22 +92,12 @@ export function useReactions(options: UseReactionsOptions) {
   const name = computed(() => toValue(options.name))
   const readOnlyMode = computed(() => toValue(options.readOnlyMode ?? false))
 
-  const reactionsOf = inject(reactionsOfKey, null)
-  if (!reactionsOf) {
+  const thread = inject(threadReactionsKey, null)
+  if (!thread) {
     throw new Error('Reactions must render inside a thread that calls provideThreadReactions')
   }
-
-  // What the reactions look like on the server. Follows the thread's data, and also
-  // takes each response directly, so a confirmed tap stays visible until the thread
-  // loads again.
-  const serverReactions = shallowRef<Reaction[]>([])
-  watch(
-    () => reactionsOf(doctype.value, name.value),
-    (reactions) => {
-      serverReactions.value = reactions
-    },
-    { immediate: true },
-  )
+  // What the reactions look like on the server, as the thread last heard.
+  const serverReactions = computed(() => thread.of(doctype.value, name.value))
 
   // Taps the server has not confirmed yet, as emoji -> whether the user wants to
   // have reacted with it. `queued` waits for the next batch; `sending` is the batch
@@ -121,7 +120,7 @@ export function useReactions(options: UseReactionsOptions) {
     immediate: false,
     onSuccess(reactions) {
       if (Array.isArray(reactions)) {
-        serverReactions.value = reactions.map(toReaction)
+        thread.confirm(doctype.value, name.value, reactions.map(toReaction))
       }
       settle()
     },
