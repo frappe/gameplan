@@ -17,7 +17,7 @@ from frappe.search.sqlite_search import (
 	SQLiteSearch,
 	SQLiteSearchIndexMissingError,
 )
-from frappe.utils import cint, cstr, flt, get_datetime
+from frappe.utils import cint, cstr, escape_html, flt, get_datetime
 
 from gameplan.gameplan.doctype.gp_discussion.api import SORT_DIRECTIONS
 from gameplan.permissions import project_access_criterion
@@ -33,6 +33,8 @@ DEFAULT_SORT_BY = "last_post_at desc"
 DATE_SORT_COLUMNS = frozenset({"modified", "creation"})
 SECONDS_PER_DAY = 86400
 FILTERABLE_FIELDS = frozenset({"owner", "project", "team", "doctype", "tags"})
+MARK_START = "\x02"
+MARK_END = "\x03"
 
 
 class GameplanSearch(SQLiteSearch):
@@ -462,7 +464,13 @@ class GameplanSearch(SQLiteSearch):
 			results.sort(key=lambda result: self._sort_key(result, sort_column, descending, by_day))
 			for rank, result in enumerate(results, 1):
 				result["modified_rank"] = rank
+				for field in ("title", "content"):
+					if result.get(field):
+						result[field] = self._escape_marked(result[field])
 		return results
+
+	def _escape_marked(self, text):
+		return escape_html(cstr(text)).replace(MARK_START, "<mark>").replace(MARK_END, "</mark>")
 
 	def _sort_key(self, result, sort_column, descending, by_day):
 		value = flt(result.get(sort_column))
@@ -477,16 +485,15 @@ class GameplanSearch(SQLiteSearch):
 
 		if has_match:
 			title_index = self._get_text_field_column_index("title")
-			select_fields.append(f"highlight(search_fts, {title_index}, '<mark>', '</mark>') as title")
+			select_fields.append(f"highlight(search_fts, {title_index}, ?, ?) as title")
+			params.extend((MARK_START, MARK_END))
 		else:
 			select_fields.append("title")
 
 		if has_match and not title_only:
 			content_index = self._get_text_field_column_index("content")
-			select_fields.append(
-				f"snippet(search_fts, {content_index}, '<mark>', '</mark>', '...', ?) as content"
-			)
-			params.append(SNIPPET_LENGTH)
+			select_fields.append(f"snippet(search_fts, {content_index}, ?, ?, '...', ?) as content")
+			params.extend((MARK_START, MARK_END, SNIPPET_LENGTH))
 		else:
 			select_fields.append("content")
 

@@ -709,6 +709,24 @@ class TestSearchIndexLifecycle(IsolatedSearchIndex, GameplanTestCase):
 
 			self.assertEqual(ids, [f"GP Discussion:{strong.name}", f"GP Discussion:{weak.name}"])
 
+	def test_sorted_and_filter_only_results_escape_indexed_markup(self):
+		payload = "&lt;img src=x onerror=alert(1)&gt;"
+		discussion = self.create_discussion(f"xssneedle {payload}", f"<p>xssneedle {payload}</p>")
+		drain_search_index_queue()
+		doc_id = f"GP Discussion:{discussion.name}"
+
+		browsed = self.search_as(self.member, "", filters={"project": [self.space.name]})
+		sorted_match = self.search_as(self.member, "xssneedle", sort_by="last_post_at desc")
+
+		for results in (browsed, sorted_match):
+			result = next(result for result in results if result["id"] == doc_id)
+			for field in ("title", "content"):
+				self.assertNotIn("<img", result[field])
+				self.assertIn(payload, result[field])
+		sorted_result = next(result for result in sorted_match if result["id"] == doc_id)
+		self.assertIn("<mark>xssneedle</mark>", sorted_result["title"])
+		self.assertIn("<mark>xssneedle</mark>", sorted_result["content"])
+
 	def test_missing_index_raises_the_gameplan_error_the_ui_handles(self):
 		self.search.drop_index()
 
