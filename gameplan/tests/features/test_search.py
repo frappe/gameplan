@@ -570,6 +570,33 @@ class TestSearchIndexLifecycle(IsolatedSearchIndex, GameplanTestCase):
 			],
 		)
 
+	def test_most_discussed_sort_orders_tasks_by_comment_count(self):
+		quiet, busy = (
+			frappe.get_doc(
+				doctype="GP Task",
+				title=f"{label} task",
+				description="tasksortneedle",
+				project=self.space.name,
+			).insert(ignore_permissions=True)
+			for label in ("Quiet", "Busy")
+		)
+		drain_search_index_queue()
+		for _ in range(2):
+			frappe.get_doc(
+				doctype="GP Comment",
+				reference_doctype="GP Task",
+				reference_name=busy.name,
+				content="A reply",
+			).insert(ignore_permissions=True)
+		drain_search_index_queue()
+
+		results = self.search_as(self.member, "tasksortneedle", sort_by="comments_count desc")
+
+		self.assertEqual(
+			[result["id"] for result in results if result["doctype"] == "GP Task"],
+			[f"GP Task:{busy.name}", f"GP Task:{quiet.name}"],
+		)
+
 	def test_filters_alone_return_results_without_a_query(self):
 		discussion = self.create_discussion(
 			"Browsable thread",
