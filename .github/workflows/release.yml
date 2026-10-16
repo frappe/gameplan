@@ -60,20 +60,22 @@ jobs:
           fi
 
           # Pushes made with GITHUB_TOKEN start no workflows, so this commit does not
-          # start another release. A merge that lands while this runs makes the push
-          # fail; rebase onto it and try again.
+          # start another release. The commit is empty when a pull request already set
+          # the version. A merge that lands while this runs makes the push fail; drop
+          # the release commit, move to the new develop and try again.
           for attempt in 1 2 3; do
             current=$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' gameplan/__init__.py)
             version=$(python3 .github/scripts/next_version.py "$current" "${previous#v}" "$REQUESTED")
             sed -i "s/^__version__ = .*/__version__ = \"$version\"/" gameplan/__init__.py
-            git diff --quiet || git commit -qam "chore(release): v$version"
+            git commit -qa --allow-empty -m "chore(release): v$version"
             git tag -a "v$version" -m "v$version"
             if git push --atomic origin HEAD:develop "v$version"; then
               break
             fi
             git tag -d "v$version"
-            git pull -q --rebase origin develop
             [ "$attempt" = 3 ] && exit 1
+            git fetch -q origin develop
+            git reset -q --hard FETCH_HEAD
           done
 
           {
