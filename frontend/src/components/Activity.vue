@@ -33,12 +33,7 @@
         referenced this discussion in
         <router-link
           :to="{
-            name: 'Discussion',
-            params: {
-              communityId: getSpace(activity.data.project)?.team,
-              spaceId: activity.data.project,
-              postId: activity.data.discussion,
-            },
+            path: `/space/${activity.data.project}/discussion/${activity.data.discussion}`,
             query: { comment: activity.data.comment },
           }"
           class="text-ink-gray-8 hover:text-ink-gray-5"
