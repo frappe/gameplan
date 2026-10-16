@@ -10,8 +10,8 @@ to a manual run of the workflow ("" when not given).
 - A requested version is released as given. This is how 1.0.0 is released.
 - A current version above the previous release was set by hand in a pull request,
   so it is released as it is.
-- Otherwise the previous release is bumped: the minor version before 1.0.0
-  (0.1.0, 0.2.0, ...), the patch version from 1.0.0 on (1.0.1, 1.0.2, ...).
+- The first release is 0.1.0.
+- Otherwise the patch version of the previous release goes up: 0.1.0, 0.1.1, 0.1.2, ...
 """
 
 import re
@@ -28,10 +28,11 @@ def parse(version: str) -> tuple[int, int, int]:
 	return major, minor, patch
 
 
+FIRST_RELEASE = (0, 1, 0)
+
+
 def bump(version: tuple[int, int, int]) -> tuple[int, int, int]:
 	major, minor, patch = version
-	if major == 0:
-		return 0, minor + 1, 0
 	return major, minor, patch + 1
 
 
@@ -44,7 +45,7 @@ def next_version(current: str, previous: str, requested: str = "") -> str:
 			sys.exit(f"Requested {requested}, which is not above {as_text(newest)}")
 		return requested
 	if released is None:
-		return as_text(bump(in_code))
+		return as_text(max(in_code, FIRST_RELEASE))
 	if in_code > released:
 		return as_text(in_code)
 	return as_text(bump(released))

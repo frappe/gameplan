@@ -7,9 +7,10 @@ name: Release
 #   3. publish a GitHub release with notes listing the merged pull requests
 #   4. advertise the commit in the Frappe marketplace, so Pilot benches offer the update
 #
-# .github/scripts/next_version.py picks the version: the minor version goes up before
-# 1.0.0 and the patch version from 1.0.0 on. To release 1.0.0, run this workflow by hand
-# with that version, or set it in gameplan/__init__.py in a pull request.
+# .github/scripts/next_version.py picks the version: the first release is 0.1.0, and each
+# merge after it raises the patch version (0.1.1, 0.1.2, ...). To release another version,
+# such as 1.0.0, run this workflow by hand with it, or set it in gameplan/__init__.py in
+# a pull request.
 
 on:
   push:
