@@ -19,6 +19,7 @@ import re
 import sys
 
 VERSION = re.compile(r"(\d+)\.(\d+)\.(\d+)")
+FIRST_RELEASE = (0, 1, 0)
 
 
 def parse(version: str) -> tuple[int, int, int]:
@@ -29,15 +30,11 @@ def parse(version: str) -> tuple[int, int, int]:
 	return major, minor, patch
 
 
-FIRST_RELEASE = (0, 1, 0)
+def as_text(version: tuple[int, int, int]) -> str:
+	return ".".join(str(part) for part in version)
 
 
-def bump(version: tuple[int, int, int]) -> tuple[int, int, int]:
-	major, minor, patch = version
-	return major, minor, patch + 1
-
-
-def next_version(current: str, previous: str, requested: str = "") -> str:
+def next_version(current: str, previous: str, requested: str) -> str:
 	in_code = parse(current)
 	released = parse(previous) if previous else None
 	if released and in_code < released:
@@ -51,12 +48,10 @@ def next_version(current: str, previous: str, requested: str = "") -> str:
 		return as_text(max(in_code, FIRST_RELEASE))
 	if in_code > released:
 		return as_text(in_code)
-	return as_text(bump(released))
-
-
-def as_text(version: tuple[int, int, int]) -> str:
-	return ".".join(str(part) for part in version)
+	major, minor, patch = released
+	return as_text((major, minor, patch + 1))
 
 
 if __name__ == "__main__":
-	print(next_version(*sys.argv[1:4]))
+	current, previous, requested = (sys.argv[1:] + ["", ""])[:3]
+	print(next_version(current, previous, requested))
