@@ -82,6 +82,15 @@ class HasReactions:
 			for_update=for_update,
 		).run(as_dict=True)
 
+	def remove_all_reactions(self):
+		"""Drop everyone's reactions on this post when the post is deleted.
+
+		Runs privileged and in bulk: it is a consequence of an already-authorised post
+		delete, and only System Manager may delete GP Reaction rows. It runs in on_trash,
+		before frappe's dynamic link check would refuse the delete over these rows.
+		"""
+		frappe.db.delete("GP Reaction", {"reference_doctype": self.doctype, "reference_name": str(self.name)})
+
 	def notify_reactions(self, reactions, added):
 		"""Tell the post owner about the `added` (user, emoji) keys, given all `reactions`."""
 		from gameplan.permissions import can_view_content

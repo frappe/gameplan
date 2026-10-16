@@ -594,18 +594,31 @@ class TestReactionsSurviveAnEdit(ReactionTestCase):
 
 
 class TestReactionsGoWithTheirPost(ReactionTestCase):
+	"""Only System Manager may delete GP Reaction rows, so these delete as the post's owner,
+	an ordinary member, to show someone else's reaction does not block the delete."""
+
 	def test_deleting_a_comment_deletes_its_reactions(self):
 		self.react(self.comment, self.second_member, [add(THUMBS_UP)])
 
-		frappe.delete_doc("GP Comment", self.comment.name, ignore_permissions=True)
+		with self.as_user(self.member):
+			frappe.delete_doc("GP Comment", self.comment.name)
 
 		self.assertEqual(self.stored_reactions(self.comment), [])
+
+	def test_deleting_a_poll_deletes_its_reactions(self):
+		self.react(self.poll, self.second_member, [add(THUMBS_UP)])
+
+		with self.as_user(self.member):
+			frappe.delete_doc("GP Poll", self.poll.name)
+
+		self.assertEqual(self.stored_reactions(self.poll), [])
 
 	def test_deleting_a_discussion_deletes_the_reactions_in_its_thread(self):
 		for post in (self.discussion, self.comment, self.poll):
 			self.react(post, self.second_member, [add(THUMBS_UP)])
 
-		frappe.delete_doc("GP Discussion", self.discussion.name, ignore_permissions=True)
+		with self.as_user(self.member):
+			frappe.delete_doc("GP Discussion", self.discussion.name)
 
 		for post in (self.discussion, self.comment, self.poll):
 			self.assertEqual(self.stored_reactions(post), [])

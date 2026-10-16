@@ -20,7 +20,7 @@ from gameplan.utils import get_document_revisions, remove_empty_trailing_paragra
 class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTags, Document):
 	# Class Configuration
 	# GP Activity is removed in on_trash, not here. See remove_all_activities.
-	on_delete_cascade = ["GP Comment", "GP Discussion Visit", "GP Poll", "GP Reaction"]
+	on_delete_cascade = ["GP Comment", "GP Discussion Visit", "GP Poll"]
 	on_delete_set_null = ["GP Notification"]
 	activities = [
 		"Discussion Closed",
@@ -80,6 +80,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 	def on_trash(self):
 		self.remove_all_bookmarks()
 		self.remove_all_activities()
+		self.remove_all_reactions()
 		self.update_discussions_count()
 		GPUnreadRecord.delete_unread_records_for_discussion(self.name)
 

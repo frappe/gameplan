@@ -58,7 +58,6 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 	own reaction notification.
 	"""
 
-	on_delete_cascade = ["GP Reaction"]
 	on_delete_set_null = ["GP Discussion", "GP Notification"]
 
 	def before_insert(self):
@@ -88,6 +87,9 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 
 	def after_insert(self):
 		self.update_discussion_meta()
+
+	def on_trash(self):
+		self.remove_all_reactions()
 
 	def after_delete(self):
 		if self.flags.from_gameplan_delete_cascade == "GP Discussion":
