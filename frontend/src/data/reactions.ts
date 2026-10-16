@@ -1,4 +1,4 @@
-import { computed, inject, provide, reactive, shallowReactive, unref, toValue, watch } from 'vue'
+import { computed, inject, provide, reactive, shallowReactive, unref, toValue } from 'vue'
 import type { InjectionKey, MaybeRefOrGetter } from 'vue'
 import type { GPReaction } from '@/types/doctypes'
 import { toast, useCall } from 'frappe-ui'
@@ -53,28 +53,32 @@ const toReaction = ({ name, emoji, user }: Reaction): Reaction => ({ name, emoji
  * comment leaving edit mode) shows the same state as before.
  */
 export function provideThreadReactions(doctype: ThreadDoctype, name: string) {
+  // Fetched once per mount: the url is fixed, and DiscussionView and TaskDetail are
+  // keyed by the thread's id, so another thread mounts a new provider.
   const thread = useCall<StoredReaction[]>({
     url: `/api/v2/document/${doctype}/${name}/method/thread_reactions`,
     cacheKey: ['Thread Reactions', doctype, name],
   })
 
-  const byPost = shallowReactive(new Map<string, Reaction[]>())
-  // A fresh load of the thread replaces the reactions of every post in it.
-  watch(
-    () => thread.data,
-    (rows) => {
-      byPost.clear()
-      for (const row of rows ?? []) {
-        const key = postKey(row.reference_doctype, row.reference_name)
-        byPost.set(key, [...(byPost.get(key) ?? []), toReaction(row)])
-      }
-    },
-    { immediate: true },
-  )
+  const snapshot = computed(() => {
+    const byPost = new Map<string, Reaction[]>()
+    for (const row of thread.data ?? []) {
+      const key = postKey(row.reference_doctype, row.reference_name)
+      byPost.set(key, [...(byPost.get(key) ?? []), toReaction(row)])
+    }
+    return byPost
+  })
+  // A react() response is newer than the thread request, which went out at mount, so
+  // a post's confirmed reactions win over the snapshot even when the snapshot (or its
+  // cached copy) arrives later.
+  const confirmed = shallowReactive(new Map<string, Reaction[]>())
 
   provide(threadReactionsKey, {
-    of: (doctype, name) => byPost.get(postKey(doctype, name)) ?? NO_REACTIONS,
-    confirm: (doctype, name, reactions) => byPost.set(postKey(doctype, name), reactions),
+    of: (doctype, name) => {
+      const key = postKey(doctype, name)
+      return confirmed.get(key) ?? snapshot.value.get(key) ?? NO_REACTIONS
+    },
+    confirm: (doctype, name, reactions) => confirmed.set(postKey(doctype, name), reactions),
   })
 }
 
