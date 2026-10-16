@@ -48,7 +48,7 @@ interface Preview {
   snippet: string
 }
 
-const DISCUSSION_PATH = /^\/g\/(?:.+\/)?discussion\/(\d+)(?:\/|$)/
+const DISCUSSION_PATH = /^\/(?:.+\/)?discussion\/(\d+)(?:\/|$)/
 const HOVER_DELAY = 300
 const LEAVE_DELAY = 300
 
@@ -66,9 +66,11 @@ function discussionLink(target: EventTarget | null) {
   const link = (target as HTMLElement | null)?.closest?.('a[href]') as HTMLAnchorElement | null
   if (!link) return null
   const url = new URL(link.href, window.location.origin)
-  if (url.host !== window.location.host) return null
-  const name = url.pathname.match(DISCUSSION_PATH)?.[1]
-  return name ? { link, name } : null
+  const base = router.options.history.base
+  if (url.host !== window.location.host || !url.pathname.startsWith(`${base}/`)) return null
+  const path = url.pathname.slice(base.length)
+  const name = path.match(DISCUSSION_PATH)?.[1]
+  return name ? { link, name, path: path + url.search + url.hash } : null
 }
 
 function loadPreview(name: string) {
@@ -150,8 +152,7 @@ async function onClick(event: MouseEvent) {
 
   const comment = clicked.link.closest('[data-id]')?.getAttribute('data-id')
   await router.replace({ query: { ...route.query, comment: comment || 'first_post' } })
-  const url = new URL(clicked.link.href, window.location.origin)
-  router.push(url.pathname.slice(router.options.history.base.length) + url.search + url.hash)
+  router.push(clicked.path)
 }
 
 function listen(container: HTMLElement | null | undefined, add: boolean) {
