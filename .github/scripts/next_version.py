@@ -2,10 +2,10 @@
 """Set `__version__` in gameplan/__init__.py to the version the release workflow
 should release next, and print that version.
 
-	next_version.py <previous> [requested]
+	next_version.py <previous> <requested>
 
 <previous> is the version of the newest release tag ("" before the first release), and
-[requested] is a version given to a manual run of the workflow ("" when not given).
+<requested> is a version given to a manual run of the workflow ("" when not given).
 
 - A requested version is released as given. This is how 1.0.0 is released.
 - A version in code above the previous release was set by hand in a pull request,
@@ -43,9 +43,8 @@ def next_version(current: str, previous: str, requested: str) -> str:
 	if released and in_code < released:
 		sys.exit(f"__version__ is {current}, which is below the latest release {previous}")
 	if requested:
-		newest = max(in_code, released or in_code)
-		if parse(requested) <= newest:
-			sys.exit(f"Requested {requested}, which is not above {as_text(newest)}")
+		if parse(requested) <= in_code:
+			sys.exit(f"Requested {requested}, which is not above {current}")
 		return requested
 	if released is None:
 		return as_text(max(in_code, FIRST_RELEASE))
@@ -56,7 +55,7 @@ def next_version(current: str, previous: str, requested: str) -> str:
 
 
 if __name__ == "__main__":
-	previous, requested = (sys.argv[1:] + ["", ""])[:2]
+	_, previous, requested = sys.argv
 	source = INIT_FILE.read_text()
 	line = VERSION_LINE.search(source)
 	if not line:
