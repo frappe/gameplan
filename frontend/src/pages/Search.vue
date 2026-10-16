@@ -513,18 +513,26 @@ function limitOptions<T extends { label: string; value: string | number }>(
   return [...pinned, ...rest.slice(0, Math.max(limit - pinned.length, 0))]
 }
 
-function allOptionValues(options: any[]): string[] {
+type GroupedOptions<T> = { group: string; options: T[] }
+
+function allOptionValues<T extends { value: string }>(
+  options: (T | GroupedOptions<T>)[],
+): string[] {
   return options
-    .flatMap((option) => ('group' in option ? option.options : [option]))
+    .flatMap((option) =>
+      'group' in option ? (option as GroupedOptions<T>).options : [option as T],
+    )
     .map((option) => option.value)
 }
 
-function limitSpaceOptions(spaces: any[]) {
+function limitSpaceOptions<T extends { label: string; value: string }>(
+  spaces: (T | GroupedOptions<T>)[],
+) {
   if (!spaces.length || !('group' in spaces[0])) {
-    return limitOptions(spaces, 'project')
+    return limitOptions(spaces as T[], 'project')
   }
   let remaining = OPTION_LIMIT
-  return spaces
+  return (spaces as GroupedOptions<T>[])
     .map((group) => {
       const options = limitOptions(group.options, 'project', remaining)
       remaining = Math.max(remaining - options.length, 0)
