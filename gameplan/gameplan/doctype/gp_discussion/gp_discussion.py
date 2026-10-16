@@ -170,7 +170,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasBacklinks, HasMentions, HasRe
 
 		for activity in activities:
 			activity.data = frappe.parse_json(activity.data)
-		sources, live_comments = _get_visible_sources(
+		sources, visible_comments = _get_visible_sources(
 			[activity.data["discussion"] for activity in activities],
 			[activity.data["comment"] for activity in activities if activity.data.get("comment")],
 		)
@@ -178,7 +178,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasBacklinks, HasMentions, HasRe
 		visible = []
 		for activity in activities:
 			comment = activity.data.get("comment")
-			if comment and str(comment) not in live_comments:
+			if comment and str(comment) not in visible_comments:
 				continue
 			if source := sources.get(activity.data["discussion"]):
 				activity.data.update(title=source.title, project=source.project)
@@ -191,23 +191,23 @@ class GPDiscussion(HasActivity, HasAttachments, HasBacklinks, HasMentions, HasRe
 			"GP Backlink", filters={"discussion": self.name}, fields=["parent", "parenttype"]
 		)
 		posts = [str(row.parent) for row in rows if row.parenttype == "GP Discussion"]
-		sources, live_comments = _get_visible_sources(
+		sources, visible_comments = _get_visible_sources(
 			posts, [row.parent for row in rows if row.parenttype == "GP Comment"]
 		)
 
 		backlinks = []
-		for comment in live_comments.values():
-			if source := sources.get(str(comment.reference_name)):
-				backlinks.append(
-					frappe._dict(
-						comment=comment.name,
-						discussion=str(comment.reference_name),
-						owner=comment.owner,
-						creation=comment.creation,
-						title=source.title,
-						project=source.project,
-					)
+		for comment in visible_comments.values():
+			source = sources[str(comment.reference_name)]
+			backlinks.append(
+				frappe._dict(
+					comment=comment.name,
+					discussion=str(comment.reference_name),
+					owner=comment.owner,
+					creation=comment.creation,
+					title=source.title,
+					project=source.project,
 				)
+			)
 		for name in posts:
 			if source := sources.get(name):
 				backlinks.append(
@@ -410,7 +410,10 @@ def _get_visible_sources(discussions, comments):
 				fields=["name", "title", "project", "owner", "creation"],
 			)
 		}
-	return sources, live_comments
+	visible_comments = {
+		name: comment for name, comment in live_comments.items() if str(comment.reference_name) in sources
+	}
+	return sources, visible_comments
 
 
 def on_doctype_update():
