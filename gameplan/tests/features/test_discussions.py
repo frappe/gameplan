@@ -20,6 +20,7 @@ from gameplan.tests.base import GameplanTestCase
 # borrows the same frozen instant rather than inventing one that could drift.
 from gameplan.tests.features.test_polls import STOP_INSTANT, frozen_clock
 from gameplan.tests.fixtures import (
+	create_comment,
 	create_community,
 	create_discussion,
 	create_poll,
@@ -821,13 +822,32 @@ class TestFeedSorting(DiscussionFeedTestCase):
 
 		self.assertEqual(names, [str(self.older.name), str(self.newer.name)])
 
+	def test_most_discussed_leads_with_the_busiest_thread(self):
+		create_comment(self.older, content="A reply", owner=self.member)
+
+		names = self.feed_names(self.member, order_by="comments_count desc")
+
+		self.assertEqual(names, [str(self.older.name), str(self.newer.name)])
+
+	def test_most_discussed_pages_through_tied_threads_once_each(self):
+		self.post(self.member, "Third")
+		self.post(self.member, "Fourth")
+
+		pages = [
+			self.feed_names(self.member, limit=1, start=start, order_by="comments_count desc")
+			for start in range(4)
+		]
+
+		self.assertEqual(len({name for page in pages for name in page}), 4)
+
 	def test_every_sort_the_app_asks_for_is_accepted(self):
-		"""The three sorts the feed's Select offers, the pinned strip's own sort, and the
+		"""The sorts the feed's Select offers, the pinned strip's own sort, and the
 		upper-case spelling frappe-ui's OrderBy type also allows."""
 		for order_by in (
 			"last_post_at desc",
 			"last_post_at asc",
 			"creation desc",
+			"comments_count desc",
 			"pinned_at desc",
 			"last_post_at DESC",
 		):

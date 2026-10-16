@@ -14,10 +14,10 @@ from gameplan.utils import html_to_text_preview
 
 # `order_by` arrives from the client and both halves of it end up in the SQL — the field
 # as a column and the direction as a bare keyword — so only these get through. The list
-# is exactly what the app sorts feeds by: the three choices in the "Sort by" select
+# is exactly what the app sorts feeds by: the choices in the "Sort by" select
 # (Discussions.vue), the pinned strip's `pinned_at desc` (DiscussionList.vue), and `name`
 # as the stable order a pager needs when two rows share a timestamp.
-SORTABLE_FIELDS = frozenset({"last_post_at", "creation", "pinned_at", "name"})
+SORTABLE_FIELDS = frozenset({"last_post_at", "creation", "comments_count", "pinned_at", "name"})
 SORT_DIRECTIONS = frozenset({"asc", "desc"})
 
 DEFAULT_ORDER_BY = "last_post_at desc"
@@ -145,6 +145,8 @@ def get_discussions(filters=None, order_by=None, start=None, limit=None):
 		)
 
 	query = query.orderby(Discussion[order_field], order=frappe._dict(value=order_direction))
+	if order_field != "name":
+		query = query.orderby(Discussion.name, order=frappe._dict(value=order_direction))
 
 	discussions = query.run(as_dict=1)
 	has_next_page = len(discussions) > limit
