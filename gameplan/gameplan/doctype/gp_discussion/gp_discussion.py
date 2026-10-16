@@ -11,7 +11,7 @@ from gameplan.mixins.activity import HasActivity
 from gameplan.mixins.archivable import check_if_space_is_archived
 from gameplan.mixins.attachments import HasAttachments
 from gameplan.mixins.mentions import HasMentions
-from gameplan.mixins.reactions import HasReactions, get_thread_reactions
+from gameplan.mixins.reactions import HasReactions, get_reactions_on
 from gameplan.mixins.tags import HasTags
 from gameplan.permissions import content_has_permission, discussion_query_conditions
 from gameplan.utils import get_document_revisions, remove_empty_trailing_paragraphs, url_safe_slug
@@ -121,7 +121,13 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		from fields the caller sends, so its own fields can be forged."""
 		thread = frappe.get_doc(self.doctype, self.name)
 		thread.check_permission("read")
-		return get_thread_reactions(thread.doctype, thread.name)
+		comments = frappe.get_all(
+			"GP Comment",
+			filters={"reference_doctype": thread.doctype, "reference_name": thread.name},
+			pluck="name",
+		)
+		polls = frappe.get_all("GP Poll", filters={"discussion": thread.name}, pluck="name")
+		return get_reactions_on({"GP Discussion": [thread.name], "GP Comment": comments, "GP Poll": polls})
 
 	@frappe.whitelist(methods=["POST"])
 	def track_visit(self):

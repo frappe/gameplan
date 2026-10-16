@@ -150,32 +150,24 @@ class HasReactions:
 		doc.save()
 
 
-def get_thread_reactions(doctype, name):
-	"""Reactions on a thread's root post and on every comment and poll inside it.
+def get_reactions_on(posts):
+	"""Reactions on `posts`, given as {post doctype: post names}.
 
-	A thread page loads these in one request, alongside its comments. Whoever can read
-	the root can read everything in the thread, so the caller checks only the root."""
-	posts = {
-		"GP Comment": frappe.get_all(
-			"GP Comment", filters={"reference_doctype": doctype, "reference_name": name}, pluck="name"
-		)
-	}
-	if doctype == "GP Discussion":
-		posts[doctype] = [name]
-		posts["GP Poll"] = frappe.get_all("GP Poll", filters={"discussion": name}, pluck="name")
-
+	A thread page loads the reactions of everything in it in one request, alongside its
+	comments. Whoever can read a thread can read everything in it, so the thread's
+	thread_reactions method checks only the thread and lists its posts."""
 	Reaction = frappe.qb.DocType("GP Reaction")
 	# reference_name is text and post names are numbers: compare as text, so the index applies.
-	in_thread = [
+	on_posts = [
 		(Reaction.reference_doctype == post_doctype) & Reaction.reference_name.isin([str(n) for n in names])
 		for post_doctype, names in posts.items()
 		if names
 	]
-	if not in_thread:
+	if not on_posts:
 		return []
 	return (
 		frappe.qb.from_(Reaction)
 		.select(*(Reaction[field] for field in REACTION_FIELDS))
-		.where(Criterion.any(in_thread))
+		.where(Criterion.any(on_posts))
 		.orderby(Reaction.name)
 	).run(as_dict=True)

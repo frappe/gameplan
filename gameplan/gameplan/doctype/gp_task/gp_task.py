@@ -9,7 +9,7 @@ from gameplan.gameplan.doctype.gp_notification.gp_notification import GPNotifica
 from gameplan.mixins.activity import HasActivity
 from gameplan.mixins.archivable import check_if_space_is_archived
 from gameplan.mixins.mentions import HasMentions
-from gameplan.mixins.reactions import get_thread_reactions
+from gameplan.mixins.reactions import get_reactions_on
 from gameplan.permissions import (
 	accessible_project_criterion,
 	content_has_permission,
@@ -80,7 +80,12 @@ class GPTask(HasMentions, HasActivity, Document):
 		from fields the caller sends, so its own fields can be forged."""
 		thread = frappe.get_doc(self.doctype, self.name)
 		thread.check_permission("read")
-		return get_thread_reactions(thread.doctype, thread.name)
+		comments = frappe.get_all(
+			"GP Comment",
+			filters={"reference_doctype": thread.doctype, "reference_name": thread.name},
+			pluck="name",
+		)
+		return get_reactions_on({"GP Comment": comments})
 
 
 @frappe.whitelist()
