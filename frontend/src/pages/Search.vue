@@ -39,6 +39,25 @@
             </TextInput>
           </div>
 
+          <DefineFilterFooter v-slot="{ type, clear }">
+            <div
+              class="flex items-center justify-between gap-2 border-t border-outline-gray-1 px-2 py-1.5"
+            >
+              <Button v-if="activeFilters[type]?.length" variant="ghost" size="sm" @click="clear">
+                Clear All
+              </Button>
+              <Button
+                v-if="(activeFilters[type]?.length ?? 0) < selectAllValues[type].length"
+                variant="ghost"
+                size="sm"
+                class="ml-auto"
+                @click="updateFilter(type, selectAllValues[type])"
+              >
+                Select All
+              </Button>
+            </div>
+          </DefineFilterFooter>
+
           <!-- Filter Panel -->
           <ScrollArea orientation="horizontal" class="-mx-3" viewport-class="px-3 pt-2">
             <div class="flex gap-2 items-center">
@@ -53,27 +72,7 @@
                 placeholder="Author"
               >
                 <template #footer="{ clear }">
-                  <div
-                    class="flex items-center justify-between gap-2 border-t border-outline-gray-1 px-2 py-1.5"
-                  >
-                    <Button
-                      v-if="activeFilters.owner?.length"
-                      variant="ghost"
-                      size="sm"
-                      @click="clear"
-                    >
-                      Clear All
-                    </Button>
-                    <Button
-                      v-if="(activeFilters.owner?.length ?? 0) < authorsFilterOptions.length"
-                      variant="ghost"
-                      size="sm"
-                      class="ml-auto"
-                      @click="updateFilter('owner', allOptionValues(authorsFilterOptions))"
-                    >
-                      Select All
-                    </Button>
-                  </div>
+                  <ReuseFilterFooter type="owner" :clear="clear" />
                 </template>
                 <template #trigger="{ open, selectedOptions, toggleOpen }">
                   <Button variant="outline" @click="toggleOpen">
@@ -140,27 +139,7 @@
                   }}
                 </template>
                 <template #footer="{ clear }">
-                  <div
-                    class="flex items-center justify-between gap-2 border-t border-outline-gray-1 px-2 py-1.5"
-                  >
-                    <Button
-                      v-if="activeFilters.project?.length"
-                      variant="ghost"
-                      size="sm"
-                      @click="clear"
-                    >
-                      Clear All
-                    </Button>
-                    <Button
-                      v-if="(activeFilters.project?.length ?? 0) < allSpaceValues.length"
-                      variant="ghost"
-                      size="sm"
-                      class="ml-auto"
-                      @click="updateFilter('project', allSpaceValues)"
-                    >
-                      Select All
-                    </Button>
-                  </div>
+                  <ReuseFilterFooter type="project" :clear="clear" />
                 </template>
                 <template #item-suffix="{ item }">
                   <span v-if="(item.count ?? 0) > 0" class="text-xs text-ink-gray-5">{{
@@ -218,27 +197,7 @@
                   }}
                 </template>
                 <template #footer="{ clear }">
-                  <div
-                    class="flex items-center justify-between gap-2 border-t border-outline-gray-1 px-2 py-1.5"
-                  >
-                    <Button
-                      v-if="activeFilters.tags?.length"
-                      variant="ghost"
-                      size="sm"
-                      @click="clear"
-                    >
-                      Clear All
-                    </Button>
-                    <Button
-                      v-if="(activeFilters.tags?.length ?? 0) < tagsFilterOptions.length"
-                      variant="ghost"
-                      size="sm"
-                      class="ml-auto"
-                      @click="updateFilter('tags', allOptionValues(tagsFilterOptions))"
-                    >
-                      Select All
-                    </Button>
-                  </div>
+                  <ReuseFilterFooter type="tags" :clear="clear" />
                 </template>
                 <template #item-suffix="{ item }">
                   <span v-if="(item.count ?? 0) > 0" class="text-xs text-ink-gray-5">{{
@@ -387,6 +346,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, useTemplateRef } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { createReusableTemplate } from '@vueuse/core'
 import {
   PageHeader,
   PageHeaderMobile,
@@ -544,7 +504,16 @@ function limitSpaceOptions<T extends { label: string; value: string }>(
 const authorOptions = computed(() => limitOptions(authorsFilterOptions.value, 'owner'))
 const spaceOptions = computed(() => limitSpaceOptions(spacesFilterOptions.value))
 const tagOptions = computed(() => limitOptions(tagsFilterOptions.value, 'tags'))
-const allSpaceValues = computed(() => allOptionValues(spacesFilterOptions.value))
+const selectAllValues = computed(() => ({
+  owner: allOptionValues(authorsFilterOptions.value),
+  project: allOptionValues(spacesFilterOptions.value),
+  tags: allOptionValues(tagsFilterOptions.value),
+}))
+
+const [DefineFilterFooter, ReuseFilterFooter] = createReusableTemplate<{
+  type: keyof typeof selectAllValues.value
+  clear: () => void
+}>()
 
 // Template Refs
 const searchInput = useTemplateRef<typeof TextInput>('searchInput')
