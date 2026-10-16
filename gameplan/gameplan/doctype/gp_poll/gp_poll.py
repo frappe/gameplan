@@ -53,9 +53,9 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 
 	The UI hangs the same Reactions component off it as it does off a discussion or a
 	comment, so it mixes in HasReactions and notifies its author when another user
-	reacts. The notification carries both the poll and its
-	discussion for routing; HasReactions keeps its lookup distinct from the discussion's
-	own reaction notification.
+	reacts. The notification carries both the poll and its discussion for routing;
+	HasReactions keeps its lookup distinct from the discussion's own reaction
+	notification.
 	"""
 
 	on_delete_set_null = ["GP Discussion", "GP Notification"]
