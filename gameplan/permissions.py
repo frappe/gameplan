@@ -618,8 +618,6 @@ def activity_query_conditions(user=None, **kwargs):
 
 
 def activity_has_permission(doc, ptype="read", user=None, **kwargs):
-	if not hasattr(doc, "doctype"):
-		return True
 	return get_doc_value(doc, "action") != "Discussion Referenced"
 
 
