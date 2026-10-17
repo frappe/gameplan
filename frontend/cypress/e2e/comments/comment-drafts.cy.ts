@@ -73,6 +73,35 @@ describe('Comment drafts', () => {
     cy.contains(replyText).should('not.exist')
   })
 
+  it('shows a failed discard and keeps the comment edit for retry', () => {
+    cy.request('POST', '/api/v2/document/GP%20Comment', {
+      reference_doctype: 'GP Discussion',
+      reference_name: discussion,
+      content: '<p>Original comment</p>',
+    }).then(({ body }) => {
+      const comment = `div[data-id="${body.data.name}"]`
+      cy.intercept('POST', '/api/v2/document/GP%20Draft').as('editDraft')
+      cy.visit(`/g/community/${community}/space/${space}/discussion/${discussion}`)
+      cy.get(comment).should('be.visible')
+      cy.selectDropdownOption('Comment Options', 'Edit')
+      cy.get(`${comment} [contenteditable=true]`).click().type('{moveToEnd} with unsent edits')
+      cy.wait('@editDraft')
+      cy.intercept(
+        { method: 'DELETE', url: '**/api/v2/document/GP%20Draft/*', times: 1 },
+        { statusCode: 503 },
+      ).as('failedDiscard')
+      cy.get(comment).contains('button', 'Discard').click()
+      cy.wait('@failedDiscard')
+      cy.get(comment).contains('Error').should('be.visible')
+      cy.get(`${comment} [contenteditable=true]`).should('contain.text', 'with unsent edits')
+      cy.get(comment).contains('button', 'Discard').click()
+      cy.get(`${comment} [contenteditable=true]`).should('not.exist')
+      cy.get(comment).contains('Original comment').should('be.visible')
+      cy.get(comment).contains('with unsent edits').should('not.exist')
+      cy.get(comment).contains('Error').should('not.exist')
+    })
+  })
+
   it('blocks a new comment until its draft finishes loading', () => {
     cy.intercept(/find_my_draft/, (request) => {
       request.continue((response) => response.setDelay(5000))

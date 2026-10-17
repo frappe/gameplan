@@ -56,8 +56,10 @@ describe('Pinned author row', () => {
       content: `<p>Comment content</p>${WIDE_IMAGE}`,
     }).then(({ body }) => {
       const comment = `div[data-id="${body.data.name}"]`
+      cy.intercept('GET', '/api/v2/document/GP%20Comment?*').as('comments')
       cy.visit(`/g/community/${community}/space/${space}/discussion/${discussion}`)
 
+      cy.wait('@comments')
       cy.get(comment).should('exist')
       assertRowOverhangs('Discussion Options', '.discussion-container')
       assertRowOverhangs('Comment Options', comment)
