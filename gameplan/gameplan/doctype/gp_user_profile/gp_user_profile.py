@@ -59,7 +59,7 @@ class GPUserProfile(HasAttachments, Document):
 		):
 			return
 		user = frappe.session.user
-		if user and user not in ("Administrator", "Guest"):
+		if user and user != "Administrator":
 			roles = frappe.get_roles(user)
 			if "Gameplan Admin" not in roles and "System Manager" not in roles:
 				if self.user and self.user != user:
