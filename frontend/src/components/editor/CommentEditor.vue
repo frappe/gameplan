@@ -294,11 +294,9 @@ function canInsertCodeBlock(editor: Editor) {
             </template>
           </div>
         </ScrollArea>
-        <div class="flex items-center justify-end gap-2">
-          <div class="flex items-center justify-end space-x-2">
-            <Button v-bind="discardButtonProps || {}"> Discard </Button>
-            <Button variant="solid" v-bind="submitButtonProps || {}"> Submit </Button>
-          </div>
+        <div class="flex items-center justify-end space-x-2">
+          <Button v-bind="discardButtonProps || {}"> Discard </Button>
+          <Button variant="solid" v-bind="submitButtonProps || {}"> Submit </Button>
         </div>
       </div>
     </template>
