@@ -23,6 +23,7 @@ from unittest.mock import patch
 
 import frappe
 import frappe.utils.data
+from frappe.client import set_value
 from frappe.utils import add_days, get_datetime, now_datetime
 
 from gameplan.gameplan.doctype.gp_poll.gp_poll import GPPoll
@@ -1047,6 +1048,35 @@ class TestPollInComment(PollTestCase):
 		self.edit(comment, "<p>Before</p>")
 
 		self.assertFalse(frappe.db.exists("GP Poll", poll))
+
+	def test_a_poll_cannot_be_moved_to_another_comment(self):
+		comment = self.comment(poll_block())
+		poll = self.poll_of(comment)
+		other = create_comment(self.discussion, owner=self.member)
+
+		with self.as_user(self.member), self.assertRaises(frappe.ValidationError):
+			set_value("GP Poll", poll, "comment", other.name)
+
+		self.assertEqual(str(frappe.db.get_value("GP Poll", poll, "comment")), str(comment.name))
+
+	def test_a_standalone_poll_cannot_be_moved_into_a_comment(self):
+		poll = self.poll()
+		comment = create_comment(self.discussion, owner=self.member)
+
+		with self.as_user(self.member), self.assertRaises(frappe.ValidationError):
+			set_value("GP Poll", poll.name, "comment", comment.name)
+
+		self.assertFalse(frappe.db.get_value("GP Poll", poll.name, "comment"))
+
+	def test_a_poll_in_a_comment_cannot_be_moved_to_another_discussion(self):
+		comment = self.comment(poll_block())
+		poll = self.poll_of(comment)
+		other = create_discussion("Other thread", self.space, owner=self.member)
+
+		with self.as_user(self.member), self.assertRaises(frappe.ValidationError):
+			set_value("GP Poll", poll, "discussion", other.name)
+
+		self.assertEqual(str(frappe.db.get_value("GP Poll", poll, "discussion")), str(self.discussion.name))
 
 	def test_a_block_pointing_at_another_poll_is_dropped(self):
 		other = self.poll()

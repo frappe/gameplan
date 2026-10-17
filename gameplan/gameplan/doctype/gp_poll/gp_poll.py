@@ -4,7 +4,7 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import DATETIME_FORMAT, flt, get_datetime
+from frappe.utils import DATETIME_FORMAT, cstr, flt, get_datetime
 
 from gameplan.mixins.archivable import check_if_space_is_archived
 from gameplan.mixins.reactions import HasReactions
@@ -97,7 +97,17 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 			frappe.throw(_("A comment can only have one poll"))
 
 	def validate(self):
+		self.check_comment_unchanged()
 		self.total_votes = len(self.votes)
+
+	def check_comment_unchanged(self):
+		before = self.get_doc_before_save()
+		if not before:
+			return
+		if cstr(before.comment) != cstr(self.comment):
+			frappe.throw(_("A poll cannot be moved to another comment"))
+		if self.comment and cstr(before.discussion) != cstr(self.discussion):
+			frappe.throw(_("A poll in a comment cannot be moved to another discussion"))
 
 	def after_insert(self):
 		self.update_discussion_meta()
