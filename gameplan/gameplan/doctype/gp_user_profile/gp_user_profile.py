@@ -50,7 +50,13 @@ class GPUserProfile(HasAttachments, Document):
 
 	def validate_profile_ownership(self):
 		# Prevent modifying another user's profile when permission checks are bypassed
-		if frappe.flags.in_install or frappe.flags.in_migrate or frappe.flags.in_fixtures:
+		if (
+			self.is_new()
+			or self.flags.ignore_profile_ownership
+			or frappe.flags.in_install
+			or frappe.flags.in_migrate
+			or frappe.flags.in_fixtures
+		):
 			return
 		user = frappe.session.user
 		if user and user not in ("Administrator", "Guest"):
@@ -240,7 +246,9 @@ def has_permission(doc, ptype="read", user=None):
 
 def create_user_profile(doc, method=None):
 	if not frappe.db.exists("GP User Profile", {"user": doc.name}):
-		frappe.get_doc(doctype="GP User Profile", user=doc.name).insert(ignore_permissions=True)
+		profile = frappe.get_doc(doctype="GP User Profile", user=doc.name)
+		profile.flags.ignore_profile_ownership = True
+		profile.insert(ignore_permissions=True)
 		# get_session_user_profile can create the profile during a GET request, which is not committed.
 		frappe.db.commit()  # nosemgrep: frappe-manual-commit
 
@@ -257,6 +265,7 @@ def on_user_update(doc, method=None):
 		profile = frappe.get_doc("GP User Profile", {"user": doc.name})
 		profile.enabled = doc.enabled
 		profile.full_name = doc.full_name
+		profile.flags.ignore_profile_ownership = True
 		profile.save(ignore_permissions=True)
 		# A rename changes what *other* sessions render, and their cached user list has
 		# no other reason to refetch.
