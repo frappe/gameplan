@@ -46,6 +46,24 @@ class GPUserProfile(HasAttachments, Document):
 	def validate(self):
 		self.quick_reaction_emojis = normalize_quick_reaction_emojis(self.quick_reaction_emojis)
 		self.drop_foreign_card_images()
+		self.validate_profile_ownership()
+
+	def validate_profile_ownership(self):
+		# Prevent modifying another user's profile when permission checks are bypassed
+		if (
+			self.is_new()
+			or self.flags.ignore_profile_ownership
+			or frappe.flags.in_install
+			or frappe.flags.in_migrate
+			or frappe.flags.in_fixtures
+		):
+			return
+		user = frappe.session.user
+		if user and user != "Administrator":
+			roles = frappe.get_roles(user)
+			if "Gameplan Admin" not in roles and "System Manager" not in roles:
+				if self.user and self.user != user:
+					frappe.throw("Cannot modify another user's profile", frappe.PermissionError)
 
 	def autoname(self):
 		self.name = self.generate_name()
@@ -219,13 +237,18 @@ def has_permission(doc, ptype="read", user=None):
 	if "Gameplan Admin" in frappe.get_roles(user) or "System Manager" in frappe.get_roles(user):
 		return True
 
+	if isinstance(doc, str):
+		doc = frappe.get_lazy_doc("GP User Profile", doc)
+
 	# Otherwise a user may only modify their own profile.
-	return doc.user == user
+	return bool(doc and doc.user == user)
 
 
 def create_user_profile(doc, method=None):
 	if not frappe.db.exists("GP User Profile", {"user": doc.name}):
-		frappe.get_doc(doctype="GP User Profile", user=doc.name).insert(ignore_permissions=True)
+		profile = frappe.get_doc(doctype="GP User Profile", user=doc.name)
+		profile.flags.ignore_profile_ownership = True
+		profile.insert(ignore_permissions=True)
 		# get_session_user_profile can create the profile during a GET request, which is not committed.
 		frappe.db.commit()  # nosemgrep: frappe-manual-commit
 
@@ -242,6 +265,7 @@ def on_user_update(doc, method=None):
 		profile = frappe.get_doc("GP User Profile", {"user": doc.name})
 		profile.enabled = doc.enabled
 		profile.full_name = doc.full_name
+		profile.flags.ignore_profile_ownership = True
 		profile.save(ignore_permissions=True)
 		# A rename changes what *other* sessions render, and their cached user list has
 		# no other reason to refetch.

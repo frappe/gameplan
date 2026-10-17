@@ -378,6 +378,18 @@ class TestAcceptInvitationEndpoint(InvitationTestCase):
 		self.assertEqual(frappe.local.response.get("type"), "redirect")
 		self.assertEqual(frappe.local.response.get("location"), "/g")
 
+	def test_accept_invitation_succeeds_when_signed_in_as_ordinary_member(self):
+		"""Accepting an invitation while logged in as a normal member must provision the
+		new user profile without failing ownership validation."""
+		member = create_member("ordinary-member@example.com")
+		invitation = self.make_invitation("invited-member@example.com", role="Gameplan Member")
+
+		frappe.set_user(member.name)
+		with patch.object(type(invitation), "get_password_link", return_value="/update-password?key=stub"):
+			accept_invitation(key=invitation.key)
+
+		self.assertTrue(frappe.db.exists("GP User Profile", {"user": "invited-member@example.com"}))
+
 
 class TestExpireInvitations(InvitationTestCase):
 	def _age(self, invitation, days):
