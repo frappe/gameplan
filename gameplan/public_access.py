@@ -84,7 +84,7 @@ def rate_limit_key(endpoint, arguments):
 	"""Which ANONYMOUS_RATE_LIMITS entry a routed request counts against."""
 	import frappe.api.v2
 
-	if endpoint is frappe.api.v2.read_doc:
+	if endpoint in (frappe.api.v2.read_doc, frappe.api.v2.execute_doc_method):
 		return "document"
 	method = arguments.get("method") or ""
 	return method.split("/")[0]

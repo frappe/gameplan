@@ -16,7 +16,7 @@
                  the communities list when there is none (a cold deep link). -->
             <PageHeaderBackButton
               label="Back to communities"
-              :to="{ name: 'SettingsTab', params: { tab: 'communities' } }"
+              :fallback-route="{ name: 'SettingsTab', params: { tab: 'communities' } }"
             />
           </template>
           <template #default>{{ selectedCommunity?.title || 'Community' }}</template>
@@ -37,7 +37,7 @@
             label="Back to communities"
             @click="showCommunities"
           />
-          <h2 class="min-w-0 truncate text-lg-semibold text-ink-gray-8">
+          <h2 class="min-w-0 truncate text-md-semibold text-ink-gray-8">
             {{ selectedCommunity?.title || 'Community' }}
           </h2>
           <Select variant="ghost" v-if="selectedCommunity" :options="viewButtons" v-model="view" />
@@ -84,7 +84,7 @@
 
       <!-- Communities list -->
       <template v-else>
-        <h2 class="text-lg-semibold text-ink-gray-8 max-sm:hidden">Communities</h2>
+        <h2 class="text-md-semibold text-ink-gray-8 max-sm:hidden">Communities</h2>
 
         <!-- pb-3 keeps the gap to the column header, which lives at the top
              of the scroll viewport (a sticky ListHeader in CommunitiesList)

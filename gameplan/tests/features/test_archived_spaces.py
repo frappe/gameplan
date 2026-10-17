@@ -148,7 +148,7 @@ class TestArchivedCommentMutations(ArchivedSpaceTestCase):
 		self.assertTrue(
 			any(
 				reaction.user == self.second_member.name and reaction.emoji == "\U0001f44d"
-				for reaction in self.comment.reactions
+				for reaction in self.comment.get_reactions()
 			)
 		)
 

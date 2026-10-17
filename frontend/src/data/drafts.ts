@@ -41,10 +41,8 @@ export const drafts = useList<DraftRow>({
   url: '/api/v2/method/gameplan.gameplan.doctype.gp_draft.gp_draft.get_my_drafts',
   // The method returns every draft the user owns, so paging is the list's own concern only.
   limit: 999,
-  // get_my_drafts is owner-scoped on the server; scope the client cache to the session user
-  // too, so a same-tab account switch can't briefly show the previous user's draft rows.
-  cacheKey: ['drafts', session.user],
-  // Nobody signed in has drafts.
+  // get_my_drafts is owner-scoped. frappe-ui namespaces its cache to the session user.
+  cacheKey: 'drafts',
   immediate: session.isLoggedIn,
 })
 

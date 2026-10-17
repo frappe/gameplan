@@ -1,4 +1,4 @@
-import { isAnonymousVisitor } from "@/utils/publicAccess"
+import { isAnonymousVisitor } from '@/utils/publicAccess'
 /**
  * useDraftSync — keep an in-progress draft synced across reloads, tabs, and devices.
  *
@@ -86,6 +86,7 @@ function hasContent(payload: DraftPayload): boolean {
 
 /** The `GP Draft` fields this module reads off a fetched row. */
 interface ServerDraftDoc {
+  modified?: string
   name: string
   owner?: string
   content?: string
@@ -423,7 +424,7 @@ export function useDraftSync(options: UseDraftSyncOptions) {
       }
       if (isSingleton.value) {
         const id = toValue(identity)
-        return await call(FIND_DRAFT, {
+        return await call<ServerDraftDoc | null>(FIND_DRAFT, {
           type: id.type,
           mode: id.mode,
           reference_doctype: id.referenceDoctype,
@@ -742,8 +743,8 @@ async function recoverOrphanedDraft(record: DraftRecord): Promise<boolean> {
     // recovery may have inserted the row before crashing ahead of the local update. Adopt that
     // existing row instead of inserting a duplicate. Standalone discussions have no such key, so
     // a tiny insert-then-crash window remains (unchanged, pre-existing).
-    let doc = isCommentReply
-      ? await call(FIND_DRAFT, {
+    let doc: ServerDraftDoc | null = isCommentReply
+      ? await call<ServerDraftDoc | null>(FIND_DRAFT, {
           type: id.type,
           mode: id.mode,
           reference_doctype: id.referenceDoctype,
@@ -807,7 +808,7 @@ async function parentDocResolves(
 ): Promise<boolean> {
   if (!doctype || !name) return false
   try {
-    const res = await call('frappe.client.get_value', {
+    const res = await call<{ name?: string } | null>('frappe.client.get_value', {
       doctype,
       filters: { name },
       fieldname: 'name',

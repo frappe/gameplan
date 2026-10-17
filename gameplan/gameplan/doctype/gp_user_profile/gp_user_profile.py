@@ -234,7 +234,8 @@ def has_permission(doc, ptype="read", user=None):
 def create_user_profile(doc, method=None):
 	if not frappe.db.exists("GP User Profile", {"user": doc.name}):
 		frappe.get_doc(doctype="GP User Profile", user=doc.name).insert(ignore_permissions=True)
-		frappe.db.commit()
+		# get_session_user_profile can create the profile during a GET request, which is not committed.
+		frappe.db.commit()  # nosemgrep: frappe-manual-commit
 
 
 def delete_user_profile(doc, method=None):
@@ -257,27 +258,34 @@ def on_user_update(doc, method=None):
 
 @frappe.whitelist()
 def get_list(
-	fields=None,
-	filters: dict | None = None,
-	order_by=None,
-	start=0,
-	limit=20,
-	group_by=None,
-	parent=None,
-	debug=False,
+	fields: list | str | None = None,
+	filters: dict | list | str | None = None,
+	order_by: str | None = None,
+	start: int = 0,
+	limit: int = 20,
+	group_by: str | None = None,
+	parent: str | None = None,
+	debug: bool = False,
 ):
+	# Hinted so frappe checks the types at the boundary, and wide enough for how they
+	# arrive: useList sends fields and filters as GET query strings (like get_discussions).
 	doctype = "GP User Profile"
 	check_permissions(doctype, parent)
 	query = frappe.qb.get_query(
 		table=doctype,
-		fields=fields,
-		filters=filters,
+		fields=frappe.parse_json(fields) if fields else None,
+		filters=frappe.parse_json(filters) if filters else None,
 		order_by=order_by,
 		offset=start,
 		limit=limit,
 		group_by=group_by,
+		# Fields and filters come from the client and may follow links (`user.last_ip`):
+		# checked, so they reach no more of another doctype than the user may read.
+		ignore_permissions=False,
 	)
 	data = query.run(as_dict=True, debug=debug)
+	if not data:
+		return data
 	users = [d.user for d in data]
 
 	Discussion = frappe.qb.DocType("GP Discussion")
@@ -312,9 +320,9 @@ def get_list(
 	discussion_reactions = (
 		frappe.qb.from_(Reaction)
 		.join(Discussion)
-		.on(Discussion.name == Reaction.parent)
+		.on(Discussion.name == Reaction.reference_name)
 		.select(Count(Reaction.name).as_("count"), Discussion.owner)
-		.where((Reaction.parenttype == "GP Discussion") & Discussion.owner.isin(users))
+		.where((Reaction.reference_doctype == "GP Discussion") & Discussion.owner.isin(users))
 		.groupby(Discussion.owner)
 	).run(as_dict=True)
 	for r in discussion_reactions:
@@ -323,10 +331,12 @@ def get_list(
 	comment_reactions = (
 		frappe.qb.from_(Reaction)
 		.join(Comment)
-		.on(Comment.name == Reaction.parent)
+		.on(Comment.name == Reaction.reference_name)
 		.select(Count(Reaction.name).as_("count"), Comment.owner)
 		.where(
-			(Reaction.parenttype == "GP Comment") & Comment.owner.isin(users) & Comment.deleted_at.isnull()
+			(Reaction.reference_doctype == "GP Comment")
+			& Comment.owner.isin(users)
+			& Comment.deleted_at.isnull()
 		)
 		.groupby(Comment.owner)
 	).run(as_dict=True)

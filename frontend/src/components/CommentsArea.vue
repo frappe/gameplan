@@ -181,7 +181,7 @@
               <UserAvatar class="sm:hidden" :user="$user().name" size="lg" />
               <UserAvatar class="hidden sm:inline-block" :user="$user().name" size="md" />
               <span
-                class="min-w-0 flex-1 truncate text-lg-medium text-ink-gray-8 sm:text-base-medium"
+                class="min-w-0 flex-1 truncate text-md-medium text-ink-gray-8 sm:text-base-medium"
               >
                 {{ $user().full_name }}
               </span>
@@ -425,16 +425,7 @@ const comments = useList<GPComment>({
   doctype: 'GP Comment',
   url: publicListUrl('GP Comment'),
   cacheKey: ['Comments', props.doctype, props.name],
-  fields: [
-    'name',
-    'content',
-    'owner',
-    'creation',
-    'modified',
-    'edited_at',
-    'deleted_at',
-    { reactions: ['name', 'user', 'emoji'] },
-  ],
+  fields: ['name', 'content', 'owner', 'creation', 'modified', 'edited_at', 'deleted_at'],
   transform(data) {
     return data.map((d) => ({ ...d, doctype: 'GP Comment' }))
   },
@@ -503,7 +494,6 @@ const polls = useList<GPPoll>({
     'stopped_at',
     { options: ['name', 'title', 'idx', 'percentage'] },
     { votes: ['user', 'option'] },
-    { reactions: ['name', 'user', 'emoji'] },
   ],
   filters: {
     discussion: props.name,

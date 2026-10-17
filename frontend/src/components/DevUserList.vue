@@ -95,9 +95,8 @@ async function switchTo(email: string) {
   error.value = ''
   try {
     await switchUser.submit({ user: email })
-    // Ask the cookie, not the call. `useCall` resolves rather than rejects when
-    // the request fails, so its return value never says whether this worked.
-    // Frappe rewrites `user_id` only once the session really moved.
+    // Ask the cookie, not the call: Frappe rewrites `user_id` only once the
+    // session really moved.
     if (sessionUserFromCookie() === email) {
       // A hard reload, not a route push: the session user is baked into the boot
       // payload, the socket rooms and every cached resource, and none of that is

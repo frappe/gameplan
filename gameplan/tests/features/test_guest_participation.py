@@ -15,11 +15,10 @@ outside the spaces they were granted.
 
 Permission model (see gameplan/permissions.py): the doctype `write` permission
 means "may interact with this document" and is held by anyone who can reach the
-space, guests included — that is what lets react()'s plain save() through. Editing
+space, guests included — that is what lets a guest call react(). Editing
 *someone else's* content is a separate business rule (can_edit_content) enforced on
 the modified document at save time by content_has_permission's write branch, which
-allows a non-editor's save only when nothing beyond interaction-safe fields
-(reactions) changed.
+refuses any change from a non-editor.
 """
 
 import frappe
@@ -122,21 +121,21 @@ class TestGuestParticipation(GameplanTestCase):
 			discussion.reload()
 		self.assertEqual(discussion.title, "Edited by another member")
 
-	# --- (c) react to posts and comments (plain save / doc-method path) -------------
+	# --- (c) react to posts and comments (doc-method path) --------------------------
 
 	def test_guest_can_react_to_discussion(self):
 		with self.as_user(self.guest):
 			discussion = frappe.get_doc("GP Discussion", self.discussion.name)
 			discussion.react(operations=REACTION_ADD)
 			discussion.reload()
-		self.assertTrue(any(r.user == self.guest.name for r in discussion.reactions))
+		self.assertTrue(any(r.user == self.guest.name for r in discussion.get_reactions()))
 
 	def test_guest_can_react_to_comment(self):
 		with self.as_user(self.guest):
 			comment = frappe.get_doc("GP Comment", self.member_comment.name)
 			comment.react(operations=REACTION_ADD)
 			comment.reload()
-		self.assertTrue(any(r.user == self.guest.name for r in comment.reactions))
+		self.assertTrue(any(r.user == self.guest.name for r in comment.get_reactions()))
 
 	def test_guest_holds_write_on_members_content_in_granted_space(self):
 		"""write == "may interact": a guest holds it on a member's post in a granted

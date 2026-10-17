@@ -80,7 +80,7 @@ export function useNewDiscussion() {
       }
       scheduledAt.value = drafts.data?.find((row) => row.name === name)?.scheduled_at || null
       try {
-        const row = await call('frappe.client.get_value', {
+        const row = await call<{ scheduled_at: string | null } | null>('frappe.client.get_value', {
           doctype: 'GP Draft',
           filters: { name },
           fieldname: 'scheduled_at',

@@ -8,13 +8,13 @@
       label="Search"
       :route="{ name: 'Search' }"
     />
-    <Button :size="size" variant="subtle" label="Log in" :link="loginUrl()" target="_self" />
+    <Button :size="size" variant="subtle" label="Log in" :href="loginUrl()" target="_self" />
     <Button
       v-if="signupEnabled()"
       :size="size"
       variant="solid"
       label="Sign up"
-      :link="signupUrl()"
+      :href="signupUrl()"
       target="_self"
     />
   </div>

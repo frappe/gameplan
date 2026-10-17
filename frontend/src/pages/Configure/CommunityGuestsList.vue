@@ -1,7 +1,7 @@
 <template>
   <div v-if="communityGuests.length">
     <div class="mb-4">
-      <h2 class="text-lg-medium text-ink-gray-9">Guests</h2>
+      <h2 class="text-md-medium text-ink-gray-9">Guests</h2>
       <p class="mt-1 text-base text-ink-gray-5">
         Guests are invited to specific spaces and do not become community members.
       </p>

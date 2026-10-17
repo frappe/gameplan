@@ -41,13 +41,19 @@
         </Button>
       </template>
     </SpaceHeaderActions>
-    <div v-if="!publicVisitor" class="mb-4 flex items-center">
+    <div v-if="!publicVisitor" class="mb-4 flex items-center justify-between">
       <SpaceTabs :spaceId="spaceId" />
+      <Select
+        class="shrink-0 !w-fit"
+        :options="discussionSortOptions"
+        v-model="discussionOrderBy"
+      />
     </div>
     <DiscussionList
       class="-mx-3"
       ref="discussionListRef"
       :filters="() => ({ project: spaceId })"
+      :orderBy="() => discussionOrderBy"
       :cacheKey="`SpaceDiscussions-${spaceId}`"
       :selectable="isBulkMoveMode"
       v-model:selectedDiscussions="selectedDiscussions"
@@ -84,7 +90,7 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Combobox, Dialog, ErrorMessage, useCall, toast } from 'frappe-ui'
+import { Combobox, Dialog, ErrorMessage, Select, useCall, toast } from 'frappe-ui'
 import DiscussionList from '@/components/DiscussionList.vue'
 import SpaceHeaderActions from '@/components/SpaceHeaderActions.vue'
 import SpaceTabs from '@/components/SpaceTabs.vue'
@@ -95,6 +101,7 @@ import PushPinSlash from '@/components/icons/PushPinSlash.vue'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { isSpacePinned, toggleSpacePinned } from '@/data/pinnedSpaces'
 import { useCommunity } from '@/data/communities'
+import { discussionOrderBy, discussionSortOptions } from '@/data/discussionSort'
 import { useSessionUser } from '@/data/users'
 import { canManageCommunity, canMoveContentToSpace } from '@/utils/permissions'
 import { showCommunitiesSettings } from '@/components/Settings'

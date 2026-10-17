@@ -34,6 +34,9 @@ ANONYMOUS_RIGHTS = frozenset({"read", "select"})
 
 # Every whitelisted endpoint a request with nobody signed in can reach, and why.
 GUEST_REACHABLE_ENDPOINTS = {
+	"gameplan.gameplan.doctype.gp_discussion.gp_discussion.GPDiscussion.thread_reactions": (
+		"readable thread only; reaction totals without account identities"
+	),
 	"gameplan.api.search_sqlite": "public discussions and comments only, with live guards and safe metadata",
 	"gameplan.api.get_search_filter_options": "public space/community facets only, without authors or counts",
 	"gameplan.api.get_user_info": "throws AuthenticationError for an anonymous caller first",

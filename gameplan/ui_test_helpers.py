@@ -355,8 +355,8 @@ def _public_space():
 			reference_name=discussion.name,
 			content="<p>Glad to be here.</p>",
 		).insert(ignore_permissions=True)
-	comment.append("reactions", {"user": MEMBER, "emoji": "🎉"})
-	comment.save(ignore_permissions=True)
+	with _as_user(MEMBER):
+		comment.react(operations=[{"emoji": "🎉", "operation": "add"}])
 	with _as_user(MEMBER):
 		poll = frappe.get_doc(
 			doctype="GP Poll",

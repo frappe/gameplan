@@ -19,7 +19,7 @@
           class="pointer-events-none absolute left-0 right-4 top-0 border-t"
           aria-hidden="true"
         />
-        <span class="min-w-0 flex-1 truncate text-lg text-ink-gray-9">
+        <span class="min-w-0 flex-1 truncate text-md text-ink-gray-9">
           <slot />
         </span>
         <slot name="trailing" />

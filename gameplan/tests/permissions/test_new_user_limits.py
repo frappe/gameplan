@@ -223,8 +223,8 @@ class TestEditWindow(NewUserLimitsTestCase):
 	def test_reacting_is_not_editing(self):
 		own = self.age(self.reply(), hours=48)
 		with self.as_user(self.guest.name):
-			own.append("reactions", {"user": self.guest.name, "emoji": "👍"})
-			own.save()
+			reactions = own.react(operations=[{"emoji": "👍", "operation": "add"}])
+		self.assertEqual([row.emoji for row in reactions], ["👍"])
 
 	def test_others_editing_an_old_guest_post_are_not_limited(self):
 		comment = self.age(self.reply(), hours=48)

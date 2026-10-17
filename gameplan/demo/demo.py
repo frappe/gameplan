@@ -193,7 +193,10 @@ def _reset_sequences():
 	for doctype in _SEQUENCE_DOCTYPES:
 		sequence = frappe.scrub(doctype) + "_id_seq"
 		try:
-			frappe.db.sql(f"ALTER SEQUENCE `{sequence}` RESTART WITH 1")
+			# The name comes from _SEQUENCE_DOCTYPES, and SQL cannot take an identifier as a parameter.
+			frappe.db.sql(  # nosemgrep: frappe-sql-format-injection
+				f"ALTER SEQUENCE `{sequence}` RESTART WITH 1"
+			)
 		except Exception:
 			# Sequence may not exist on this DB backend; ignore.
 			pass

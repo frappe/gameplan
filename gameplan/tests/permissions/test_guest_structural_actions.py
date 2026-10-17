@@ -337,8 +337,8 @@ class TestGuestStillParticipates(GuestInJoinedSpacesTestCase):
 			)
 			self.run_doc_method(frappe.get_doc("GP Comment", comment.name), "react", operations=REACTION_ADD)
 
-		self.assertIn(self.guest.name, {r.user for r in self.stored(self.member_discussion).reactions})
-		self.assertIn(self.guest.name, {r.user for r in self.stored(comment).reactions})
+		self.assertIn(self.guest.name, {r.user for r in self.stored(self.member_discussion).get_reactions()})
+		self.assertIn(self.guest.name, {r.user for r in self.stored(comment).get_reactions()})
 
 	def test_guest_can_vote_in_a_poll(self):
 		poll = create_poll("Lunch?", self.member_discussion, owner=self.member)

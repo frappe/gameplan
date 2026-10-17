@@ -23,7 +23,10 @@ makes the row's link fields both its routing and its identity
 (`TestReactionNotificationRouting`). The notifications spec covers what the message says.
 """
 
+import threading
+
 import frappe
+from frappe.tests.utils import FrappeTestCase
 
 from gameplan.api import mark_all_notifications_as_read, unread_notifications
 from gameplan.mixins.reactions import HasReactions
@@ -32,10 +35,14 @@ from gameplan.tests.fixtures import (
 	create_comment,
 	create_community,
 	create_discussion,
+	create_member,
 	create_poll,
 	create_space,
+	create_task,
 	declared_http_methods,
 )
+from gameplan.tests.search_isolation import guard_real_index
+from gameplan.visibility import VISIBILITY_MEMBER_ACCESS
 
 THUMBS_UP = "\U0001f44d"
 HEART = "\U0001f496"
@@ -68,9 +75,9 @@ class ReactionTestCase(GameplanTestCase):
 			(row.user, row.emoji)
 			for row in frappe.get_all(
 				"GP Reaction",
-				filters={"parenttype": doc.doctype, "parent": doc.name},
+				filters={"reference_doctype": doc.doctype, "reference_name": doc.name},
 				fields=["user", "emoji"],
-				order_by="idx asc",
+				order_by="name asc",
 			)
 		]
 
@@ -171,12 +178,150 @@ class TestReact(ReactionTestCase):
 		self.assertEqual(updated.content, original.content)
 		self.assertEqual(updated.owner, original.owner)
 
+	def test_reactions_from_several_people_at_once_all_land(self):
+		"""Each request loads the post before it reacts. A reaction that lands in between
+		must neither fail the later one nor be lost by it."""
+		with self.as_user(self.second_member):
+			loaded_before = frappe.get_doc("GP Discussion", self.discussion.name)
+
+		self.react(self.discussion, self.admin, [add(HEART)])
+		with self.as_user(self.second_member):
+			loaded_before.react(operations=[add(THUMBS_UP)])
+
+		self.assertEqual(
+			self.stored_reactions(self.discussion),
+			[(self.admin.name, HEART), (self.second_member.name, THUMBS_UP)],
+		)
+
+	def test_reacting_leaves_the_posts_modified_timestamp_alone(self):
+		"""Someone editing the post must not hit a timestamp conflict because of a reaction."""
+		modified = frappe.db.get_value("GP Discussion", self.discussion.name, "modified")
+
+		self.react(self.discussion, self.second_member, [add(THUMBS_UP)])
+
+		self.assertEqual(frappe.db.get_value("GP Discussion", self.discussion.name, "modified"), modified)
+
 	def test_reacting_does_not_mark_a_comment_as_edited(self):
 		self.assertFalse(frappe.db.get_value("GP Comment", self.comment.name, "edited_at"))
 
 		self.react(self.comment, self.second_member, [add(THUMBS_UP)])
 
 		self.assertFalse(frappe.db.get_value("GP Comment", self.comment.name, "edited_at"))
+
+
+class TestReactionsAtTheSameMoment(FrappeTestCase):
+	"""Many people reacting to one post at the same moment, each from their own connection.
+
+	Every other test here reacts one call after another in a single transaction, so none
+	of them fails if the locks in `react` go away. Here each person reacts from their own
+	database connection, and every connection reads the post before any of them reacts.
+	So each one holds a snapshot that is out of date by the time it writes, as concurrent
+	requests do.
+
+	The other connections can only see committed data, so this test commits its fixtures
+	and deletes them afterwards. SQLite has no row locks to test, so it runs on MariaDB only.
+	"""
+
+	PEOPLE = 6
+
+	def setUp(self):
+		if frappe.db.db_type != "mariadb":
+			self.skipTest("Tests MariaDB row locks")
+		frappe.set_user("Administrator")
+		guard_real_index(self)
+		self.users = []
+		self.community = None
+		self.addCleanup(self.delete_committed_fixtures)
+
+		suffix = frappe.generate_hash(length=8)
+		self.owner = create_member(f"reaction_owner_{suffix}@example.com", "Owner")
+		self.people = [
+			create_member(f"reactor_{i}_{suffix}@example.com", f"Reactor {i}") for i in range(self.PEOPLE)
+		]
+		self.users = [self.owner.name, *(person.name for person in self.people)]
+		self.community = create_community(f"Reactions {suffix}", members=[self.owner, *self.people])
+		space = create_space("Reactions", self.community)
+		self.discussion = create_discussion("Popular post", space, owner=self.owner)
+		frappe.db.commit()
+
+	def delete_committed_fixtures(self):
+		frappe.set_user("Administrator")
+		frappe.db.rollback()
+		if self.users:
+			frappe.db.delete("GP Notification", {"to_user": ["in", self.users]})
+		if self.community and frappe.db.exists("GP Team", self.community.name):
+			frappe.delete_doc("GP Team", self.community.name, ignore_permissions=True, force=True)
+		for user in self.users:
+			if frappe.db.exists("User", user):
+				frappe.delete_doc("User", user, ignore_permissions=True, force=True)
+		frappe.db.commit()
+
+	def react_at_once(self, users):
+		"""Each of `users` reacts 👍 from their own connection, after all of them have read
+		the post. Returns the errors they hit."""
+		errors = []
+		everyone_has_read = threading.Barrier(len(users))
+		site, sites_path = frappe.local.site, frappe.local.sites_path
+
+		def react_from_own_connection(user):
+			frappe.init(site, sites_path=sites_path)
+			try:
+				frappe.connect()
+				frappe.set_user(user)
+				post = frappe.get_doc("GP Discussion", self.discussion.name)
+				everyone_has_read.wait(timeout=30)
+				post.react(operations=[add(THUMBS_UP)])
+				frappe.db.commit()
+			except Exception as error:
+				errors.append(f"{user}: {error!r}")
+				frappe.db.rollback()
+			finally:
+				frappe.destroy()
+
+		threads = [threading.Thread(target=react_from_own_connection, args=(user,)) for user in users]
+		for thread in threads:
+			thread.start()
+		for thread in threads:
+			thread.join(timeout=60)
+		self.assertFalse(any(thread.is_alive() for thread in threads), "a reaction never finished")
+		# Read what the other connections committed, not this connection's snapshot.
+		frappe.db.rollback()
+		return errors
+
+	def stored_reactions(self):
+		return frappe.get_all(
+			"GP Reaction",
+			filters={"reference_doctype": "GP Discussion", "reference_name": str(self.discussion.name)},
+			fields=["user", "emoji"],
+		)
+
+	def test_everyone_reacting_at_once_succeeds_and_the_owner_gets_one_notification(self):
+		# The first reaction creates the owner's notification, so the others all update
+		# one shared row. That is where people used to see TimestampMismatchError.
+		first, *rest = self.people
+		frappe.set_user(first.name)
+		frappe.get_doc("GP Discussion", self.discussion.name).react(operations=[add(THUMBS_UP)])
+		frappe.set_user("Administrator")
+		frappe.db.commit()
+
+		self.assertEqual(self.react_at_once([person.name for person in rest]), [])
+
+		self.assertCountEqual(
+			self.stored_reactions(), [{"user": person.name, "emoji": THUMBS_UP} for person in self.people]
+		)
+		notifications = frappe.get_all(
+			"GP Notification",
+			filters={"to_user": self.owner.name, "type": "Reaction"},
+			pluck="message",
+		)
+		self.assertEqual(notifications, [f"{self.PEOPLE} people reacted to your post"])
+
+	def test_one_person_adding_the_same_emoji_from_two_tabs_at_once_stores_one_row(self):
+		person = self.people[0].name
+
+		self.assertEqual(self.react_at_once([person, person]), [])
+
+		self.assertEqual(self.stored_reactions(), [{"user": person, "emoji": THUMBS_UP}])
 
 
 class TestReactionMutationHTTPMethods(GameplanTestCase):
@@ -216,10 +361,58 @@ class TestReactPayload(ReactionTestCase):
 		self.assertEqual(self.stored_reactions(self.discussion), [])
 
 
+class TestReactionsAuthorizeTheStoredPost(ReactionTestCase):
+	"""The v2 document-method route builds the post from fields the caller sends. A caller
+	who names a post they cannot see, but sends a project they can see, must still be
+	refused: the check reads the stored post, not the one sent."""
+
+	def setUp(self):
+		super().setUp()
+		private_space = create_space(
+			"Leadership", self.community, visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
+		self.private_discussion = create_discussion("Plans", private_space, owner=self.member)
+		self.react(self.private_discussion, self.member, [add(THUMBS_UP)])
+
+	def forged(self, doc):
+		"""`doc` as a caller could send it: in a space the caller can see, owned by them."""
+		return frappe.get_doc(
+			{
+				"doctype": doc.doctype,
+				"name": doc.name,
+				"project": self.space.name,
+				"title": "Forged",
+				"owner": self.second_member.name,
+				"__islocal": 1,
+			}
+		)
+
+	def test_react_refuses_a_post_the_user_cannot_see(self):
+		with self.as_user(self.second_member):
+			forged = self.forged(self.private_discussion)
+			with self.assertRaises(frappe.PermissionError):
+				forged.react(operations=[add(HEART)])
+			with self.assertRaises(frappe.PermissionError):
+				forged.react(operations=[])
+
+		self.assertEqual(self.stored_reactions(self.private_discussion), [(self.member.name, THUMBS_UP)])
+
+	def test_thread_reactions_refuses_a_thread_the_user_cannot_see(self):
+		with self.as_user(self.second_member):
+			with self.assertRaises(frappe.PermissionError):
+				self.forged(self.private_discussion).thread_reactions()
+
+	def test_task_thread_reactions_refuses_a_task_the_user_cannot_see(self):
+		task = create_task("Hire", self.private_discussion.project, owner=self.member)
+		with self.as_user(self.second_member):
+			with self.assertRaises(frappe.PermissionError):
+				self.forged(task).thread_reactions()
+
+
 class TestPollReactions(ReactionTestCase):
-	"""A poll is a post like any other: it carries a `reactions` table and the UI hangs
-	the same Reactions component off it. The (user, emoji) identity rule and the
-	participation gate must therefore behave exactly as they do on a discussion."""
+	"""A poll is a post like any other: the UI hangs the same Reactions component off it.
+	The (user, emoji) identity rule and the participation gate must therefore behave
+	exactly as they do on a discussion."""
 
 	def test_a_second_member_can_react_to_someone_elses_poll(self):
 		self.react(self.poll, self.second_member, [add(THUMBS_UP)])
@@ -256,16 +449,6 @@ class TestPollReactions(ReactionTestCase):
 		self.react(self.poll, self.second_member, [add(THUMBS_UP)])
 
 		self.react(self.poll, self.second_member, [remove(THUMBS_UP)])
-
-		self.assertEqual(self.stored_reactions(self.poll), [(self.member.name, THUMBS_UP)])
-
-	def test_a_duplicate_row_saved_directly_is_collapsed_on_validate(self):
-		"""Same validate-time de-duplication its siblings apply, so a doubled row can
-		never reach the database however the poll is saved."""
-		poll = frappe.get_doc("GP Poll", self.poll.name)
-		poll.append("reactions", {"user": self.member.name, "emoji": THUMBS_UP})
-		poll.append("reactions", {"user": self.member.name, "emoji": THUMBS_UP})
-		poll.save(ignore_permissions=True)
 
 		self.assertEqual(self.stored_reactions(self.poll), [(self.member.name, THUMBS_UP)])
 
@@ -520,3 +703,90 @@ class TestReactionsSurviveAnEdit(ReactionTestCase):
 			discussion.save()
 
 		self.assertEqual(self.stored_reactions(self.discussion), [(self.second_member.name, THUMBS_UP)])
+
+	def test_saving_a_copy_of_the_post_loaded_before_a_reaction_keeps_the_reaction(self):
+		with self.as_user(self.member):
+			loaded_before = frappe.get_doc("GP Discussion", self.discussion.name)
+
+		self.react(self.discussion, self.second_member, [add(THUMBS_UP)])
+		with self.as_user(self.member):
+			loaded_before.title = "Welcome thread (edited)"
+			loaded_before.save()
+
+		self.assertEqual(self.stored_reactions(self.discussion), [(self.second_member.name, THUMBS_UP)])
+
+
+class TestReactionsGoWithTheirPost(ReactionTestCase):
+	"""Only System Manager may delete GP Reaction rows, so these delete as the post's owner,
+	an ordinary member, to show someone else's reaction does not block the delete."""
+
+	def test_deleting_a_comment_deletes_its_reactions(self):
+		self.react(self.comment, self.second_member, [add(THUMBS_UP)])
+
+		with self.as_user(self.member):
+			frappe.delete_doc("GP Comment", self.comment.name)
+
+		self.assertEqual(self.stored_reactions(self.comment), [])
+
+	def test_deleting_a_poll_deletes_its_reactions(self):
+		self.react(self.poll, self.second_member, [add(THUMBS_UP)])
+
+		with self.as_user(self.member):
+			frappe.delete_doc("GP Poll", self.poll.name)
+
+		self.assertEqual(self.stored_reactions(self.poll), [])
+
+	def test_deleting_a_discussion_deletes_the_reactions_in_its_thread(self):
+		for post in (self.discussion, self.comment, self.poll):
+			self.react(post, self.second_member, [add(THUMBS_UP)])
+
+		with self.as_user(self.member):
+			frappe.delete_doc("GP Discussion", self.discussion.name)
+
+		for post in (self.discussion, self.comment, self.poll):
+			self.assertEqual(self.stored_reactions(post), [])
+
+
+class TestThreadReactions(ReactionTestCase):
+	"""A thread page loads the reactions of everything in it with one request."""
+
+	def thread_reactions(self, doc, user):
+		with self.as_user(user):
+			return [
+				(row.reference_doctype, str(row.reference_name), row.user, row.emoji)
+				for row in frappe.get_doc(doc.doctype, doc.name).thread_reactions()
+			]
+
+	def test_a_discussion_thread_has_the_reactions_of_the_post_its_comments_and_polls(self):
+		self.react(self.discussion, self.second_member, [add(THUMBS_UP)])
+		self.react(self.comment, self.second_member, [add(HEART)])
+		self.react(self.poll, self.member, [add(THUMBS_UP)])
+
+		self.assertEqual(
+			self.thread_reactions(self.discussion, self.member),
+			[
+				("GP Discussion", str(self.discussion.name), self.second_member.name, THUMBS_UP),
+				("GP Comment", str(self.comment.name), self.second_member.name, HEART),
+				("GP Poll", str(self.poll.name), self.member.name, THUMBS_UP),
+			],
+		)
+
+	def test_a_thread_leaves_out_reactions_from_other_threads(self):
+		other = create_discussion("Other thread", self.space, owner=self.member)
+		other_comment = create_comment(other, owner=self.member)
+		self.react(other, self.second_member, [add(THUMBS_UP)])
+		self.react(other_comment, self.second_member, [add(THUMBS_UP)])
+
+		self.assertEqual(self.thread_reactions(self.discussion, self.member), [])
+
+	def test_a_task_thread_has_the_reactions_of_its_comments(self):
+		task = create_task("Ship it", self.space, owner=self.member)
+		comment = frappe.get_doc(
+			doctype="GP Comment", reference_doctype="GP Task", reference_name=task.name, content="Done"
+		).insert(ignore_permissions=True)
+		self.react(comment, self.second_member, [add(HEART)])
+
+		self.assertEqual(
+			self.thread_reactions(task, self.member),
+			[("GP Comment", str(comment.name), self.second_member.name, HEART)],
+		)

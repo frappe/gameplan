@@ -7,9 +7,9 @@
     :readOnlyMode="readOnly"
   />
 </template>
-<script setup>
+<script setup lang="ts">
 import { defineAsyncComponent, computed } from 'vue'
-import { useReactions } from '@/data/reactions'
+import { useReactions, type ReactableDoctype } from '@/data/reactions'
 import { useIsMobile } from '@/utils/useIsMobile'
 import { isAnonymousVisitor } from '@/utils/publicAccess'
 
@@ -23,15 +23,16 @@ const ReactionsUI = computed(() => {
     return ReactionsDesktop
   }
 })
-const props = defineProps(['reactions', 'doctype', 'name', 'readOnlyMode'])
+const props = defineProps<{
+  doctype: ReactableDoctype
+  name: string | number
+  readOnlyMode?: boolean
+}>()
 const readOnly = computed(() => Boolean(props.readOnlyMode) || isAnonymousVisitor())
-const emit = defineEmits(['update:reactions'])
 
 const { reactionsCount, toggleReaction, toolTipText, standardEmojis } = useReactions({
-  reactions: () => props.reactions,
   doctype: () => props.doctype,
   name: () => props.name,
   readOnlyMode: readOnly,
-  onUpdate: (reactions) => emit('update:reactions', reactions),
 })
 </script>

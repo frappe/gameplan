@@ -296,22 +296,6 @@ def can_create_content(user, doc):
 	return can_view_content(user, doc)
 
 
-# Per-doctype fields a non-editor is allowed to change while still holding `write`.
-# These are interaction (not content) fields — reacting is participation, not an
-# edit — so changing only these keeps the write permission for guests/space viewers.
-INTERACTION_SAFE_FIELDS = {
-	"GP Discussion": {"reactions"},
-	"GP Comment": {"reactions"},
-	"GP Page": set(),
-	"GP Task": set(),
-	# Votes are deliberately NOT listed: a vote goes through GPPoll.submit_vote, which
-	# gates on participation, re-reads the stored poll (GPPoll.discard_client_state) so
-	# nothing the caller sent survives, and only touches the caller's own row. Leaving
-	# the vote tables protected here is what stops a non-editor rewriting a poll by
-	# plain save.
-	"GP Poll": {"reactions"},
-}
-
 # Per-doctype fields that only the content's owner (or a moderator who could delete it)
 # may change. Everyone who can reach a space may edit the content in it — see
 # can_edit_content — but a poll's ballot and lifecycle are not shared property: stopping
@@ -357,7 +341,7 @@ def can_interact_with_content(user, doc):
 	True for anyone who can view the content's space (members and granted guests
 	alike) and, for personal/space-less content, its owner. This is the floor for the
 	`write` permission; whether a specific *edit* is allowed on top of it is decided
-	by can_edit_content / _protected_fields_changed.
+	by can_edit_content and, for non-editors, by whether the save changes any field.
 
 	Two of the branches below never fire from its only caller: can_write_content reaches
 	here only once can_edit_content has said False, and an admin or the owner of
@@ -386,13 +370,13 @@ def can_write_content(user, doc):
 	Editors (can_edit_content: global admins, space-viewing members, owners, and
 	guests on their OWN content) always hold write. Non-editors who can still reach
 	the content (space viewers — guests included — and owners of personal content)
-	hold write only for interaction: the save must not touch anything beyond the
-	interaction-safe fields (reactions).
+	hold write only for interaction: they may call a participation method such as
+	react() or submit_vote(), but they may not save any change to the document.
 
-	This is checked in two contexts (see _protected_fields_changed): on a CLEAN doc
-	(the v2 doc-method gate and list/UI permission checks) it reports no changes, so
-	a guest passes and can reach react(); on the DIRTY in-memory doc at save time it
-	diffs against the DB row and rejects any edit to protected fields.
+	This is checked in two contexts (see _fields_changed): on a CLEAN
+	doc (the v2 doc-method gate and list/UI permission checks) it reports no changes,
+	so a guest passes and can reach react(); on the DIRTY in-memory doc at save time it
+	diffs against the DB row and rejects any edit.
 
 	Above all of that sit two field locks that apply even to an editor.
 	_owner_only_write_allowed keeps a poll's ballot and lifecycle to its author.
@@ -409,7 +393,7 @@ def can_write_content(user, doc):
 		return True
 	if not can_interact_with_content(user, doc):
 		return False
-	return not _protected_fields_changed(doc)
+	return not _fields_changed(doc, {df.fieldname for df in doc.meta.fields})
 
 
 def _owner_only_write_allowed(user, doc):
@@ -438,20 +422,6 @@ def _guest_locked_fields_unchanged(user, doc):
 	if not fields or not gameplan.is_guest(user):
 		return True
 	return not _fields_changed(doc, fields)
-
-
-def _protected_fields_changed(doc):
-	"""Whether `doc` has pending changes to any field a non-editor may not touch.
-
-	Compares the in-memory document against its stored row, ignoring the doctype's
-	interaction-safe fields.
-	"""
-	before = _stored_version(doc)
-	if before is None:
-		return False
-	safe_fields = INTERACTION_SAFE_FIELDS.get(doc.doctype, set())
-	protected = {df.fieldname for df in doc.meta.fields if df.fieldname not in safe_fields}
-	return _any_field_changed(doc, before, protected)
 
 
 def _fields_changed(doc, fieldnames):
@@ -523,7 +493,7 @@ def _child_table_changed(current_rows, previous_rows):
 def can_edit_content(user, doc):
 	"""Business rule for who may change a document's own content.
 
-	Enforced at save time by can_write_content and _protected_fields_changed in
+	Enforced at save time by can_write_content and _fields_changed in
 	the has_permission write check. Also mirrored in the frontend
 	(utils/permissions.ts::canEditContent) to gate edit affordances.
 	"""

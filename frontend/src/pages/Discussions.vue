@@ -1,7 +1,7 @@
 <template>
   <PageHeaderMobile v-if="communityState.doc" class="sm:hidden" :title="feedTitle">
     <template v-if="!publicVisitor" #prefix>
-      <PageHeaderBackButton :to="{ name: 'Home' }" />
+      <PageHeaderBackButton :fallback-route="{ name: 'Home' }" />
     </template>
     <button
       type="button"
@@ -26,7 +26,7 @@
   </BottomSheet>
   <PageHeader class="hidden sm:flex">
     <div class="flex min-w-0 items-center gap-1">
-      <span class="min-w-0 truncate px-0.5 py-1 text-lg-medium text-ink-gray-9">Discussions</span>
+      <span class="min-w-0 truncate px-0.5 py-1 text-md-medium text-ink-gray-9">Discussions</span>
     </div>
     <div class="flex items-center gap-2">
       <Button
@@ -56,8 +56,8 @@
       <Select
         v-if="!publicVisitor"
         class="shrink-0 !w-fit"
-        :options="orderOptions"
-        v-model="orderBy"
+        :options="discussionSortOptions"
+        v-model="discussionOrderBy"
       />
     </div>
 
@@ -65,7 +65,7 @@
       <DiscussionList
         class="-mx-3"
         :filters="filters"
-        :orderBy="() => orderBy"
+        :orderBy="() => discussionOrderBy"
         :cacheKey="`Discussions-${communityId}-${feedType}`"
         :key="JSON.stringify(filters)"
       />
@@ -86,7 +86,6 @@ import {
   TabButtons,
   usePageMeta,
 } from 'frappe-ui'
-import type { OrderBy } from 'frappe-ui'
 import { useRouter } from 'vue-router'
 import CommunityMenu from '@/components/CommunityMenu.vue'
 import DiscussionList from '@/components/DiscussionList.vue'
@@ -94,6 +93,7 @@ import LastPostReminder from '@/components/LastPostReminder.vue'
 import PublicLoginButtons from '@/components/Public/PublicLoginButtons.vue'
 import { communityState } from '@/data/communityState'
 import { useCommunity } from '@/data/communities'
+import { discussionOrderBy, discussionSortOptions } from '@/data/discussionSort'
 import { getSpaceUnreadCount, spaces } from '@/data/spaces'
 import { fetchParticipatingUnreadCount, getParticipatingUnreadCount } from '@/data/unreadCount'
 import { isPublicVisitor } from '@/utils/publicAccess'
@@ -109,7 +109,6 @@ const props = withDefaults(defineProps<Props>(), {
   feedType: 'recent',
 })
 
-const orderBy = ref<OrderBy>('last_post_at desc')
 const menuOpen = ref(false)
 const router = useRouter()
 const publicVisitor = computed(() => isPublicVisitor())
@@ -169,26 +168,6 @@ watch(
   },
   { immediate: true },
 )
-
-const orderOptions = [
-  {
-    label: 'Sort by',
-    value: '' as const,
-    disabled: true,
-  },
-  {
-    label: 'Newest first',
-    value: 'last_post_at desc' as OrderBy,
-  },
-  {
-    label: 'Oldest first',
-    value: 'last_post_at asc' as OrderBy,
-  },
-  {
-    label: 'Creation date',
-    value: 'creation desc' as OrderBy,
-  },
-]
 
 function feedRoute(feedType: FeedType) {
   if (feedType === 'recent') {

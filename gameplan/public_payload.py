@@ -79,15 +79,14 @@ AUTHOR_FIELDS = {
 TABLE_FIELDS = {
 	"GP Team": {"members": "GP Member"},
 	"GP Project": {"members": "GP Member"},
-	"GP Discussion": {"reactions": "GP Reaction", "tags": "GP Tag Link"},
-	"GP Comment": {"reactions": "GP Reaction", "tags": "GP Tag Link"},
-	"GP Poll": {"options": "GP Poll Option", "votes": "GP Poll Vote", "reactions": "GP Reaction"},
+	"GP Discussion": {"tags": "GP Tag Link"},
+	"GP Comment": {"tags": "GP Tag Link"},
+	"GP Poll": {"options": "GP Poll Option", "votes": "GP Poll Vote"},
 }
 
 # Per child doctype: what each row keeps. A child doctype that is not here comes back as an
 # empty list: who is a member, and who voted for what.
 PUBLIC_CHILD_FIELDS = {
-	"GP Reaction": {"name", "emoji"},
 	"GP Tag Link": {"name", "tag"},
 	"GP Poll Option": {"name", "idx", "title", "percentage", "votes"},
 }

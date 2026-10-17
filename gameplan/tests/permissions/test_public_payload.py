@@ -92,10 +92,9 @@ class PublicContentTestCase(GameplanTestCase):
 		self.comment = create_comment(self.discussion, content=content, owner=self.second_member)
 		self.poll = create_poll("Payload Poll", self.discussion, owner=self.member)
 		for doc in (self.discussion, self.comment, self.poll):
-			doc.reload()
-			doc.append("reactions", {"user": self.member.name, "emoji": "👍"})
-			doc.append("reactions", {"user": self.second_member.name, "emoji": "👍"})
-			doc.save(ignore_permissions=True)
+			for user in (self.member, self.second_member):
+				with self.as_user(user):
+					doc.react(operations=[{"emoji": "👍", "operation": "add"}])
 		with self.as_user(self.second_member.name):
 			frappe.get_doc("GP Poll", self.poll.name).submit_vote(self.poll.options[0].title)
 		self.hidden_discussion = create_discussion(
@@ -198,24 +197,32 @@ class TestPublicDocuments(PublicContentTestCase):
 
 	def test_reactions_and_votes_are_totals_only(self):
 		with switched_on(), self.as_user(ANONYMOUS):
-			discussion = frappe.get_doc("GP Discussion", self.discussion.name).as_dict()
+			reactions = self.discussion.thread_reactions()
+			discussion_reactions = [r for r in reactions if r.reference_doctype == "GP Discussion"]
 			poll = frappe.get_doc("GP Poll", self.poll.name).as_dict()
-		self.assertEqual([reaction.emoji for reaction in discussion.reactions], ["👍", "👍"])
-		for reaction in discussion.reactions:
-			self.assertEqual(set(reaction), {"name", "emoji"})
+		self.assertEqual([reaction.emoji for reaction in discussion_reactions], ["👍", "👍"])
+		for reaction in reactions:
+			self.assertEqual(set(reaction), {"name", "emoji", "reference_doctype", "reference_name"})
 		self.assertEqual(poll.votes, [])
 		self.assertEqual(poll.total_votes, 1)
 		self.assertEqual(sum(option.votes for option in poll.options), 1)
 
+	def test_thread_reactions_require_a_public_thread_and_the_site_switch(self):
+		with self.as_user(ANONYMOUS), self.assertRaises(frappe.PermissionError):
+			self.discussion.thread_reactions()
+		with switched_on(), self.as_user(ANONYMOUS), self.assertRaises(frappe.PermissionError):
+			self.hidden_discussion.thread_reactions()
+
 	def test_signed_in_users_see_documents_as_before(self):
 		with switched_on(), self.as_user(self.member.name):
 			discussion = frappe.get_doc("GP Discussion", self.discussion.name).as_dict()
+			reactions = self.discussion.thread_reactions()
 			space = frappe.get_doc("GP Project", self.space.name).as_dict()
 			poll = frappe.get_doc("GP Poll", self.poll.name).as_dict()
 		self.assertEqual(discussion.owner, self.member.name)
 		self.assertIn(f'data-id="{self.second_member.name}"', discussion.content)
 		self.assertEqual(
-			{reaction.user for reaction in discussion.reactions}, {self.member.name, self.second_member.name}
+			{reaction.user for reaction in reactions}, {self.member.name, self.second_member.name}
 		)
 		self.assertIn(self.member.name, [m.user for m in space.members])
 		self.assertEqual([vote.user for vote in poll.votes], [self.second_member.name])
@@ -224,11 +231,10 @@ class TestPublicDocuments(PublicContentTestCase):
 	def test_guests_use_handles_in_documents_directory_and_nested_identity_rows(self):
 		with switched_on(), self.as_user(self.guest):
 			payload = frappe.get_doc("GP Discussion", self.discussion.name).as_dict()
+			reactions = self.discussion.thread_reactions()
 			directory = get_user_info()
 			self.assertEqual(payload.owner, self.member_handle)
-			self.assertEqual(
-				{row.user for row in payload.reactions}, {self.member_handle, self.second_handle}
-			)
+			self.assertEqual({row.user for row in reactions}, {self.member_handle, self.second_handle})
 			self.assertIn(f'data-id="{self.second_handle}"', payload.content)
 			self.assertIn("mira@typed.test.", payload.content)
 			self.assertEqual(get_user_info(self.member_handle)[0].name, self.member_handle)
@@ -355,7 +361,6 @@ class TestPublicLists(PublicContentTestCase):
 				"modified",
 				"edited_at",
 				"deleted_at",
-				{"reactions": ["name", "user", "emoji"]},
 			],
 			"GP Poll": [
 				"name",
@@ -363,7 +368,6 @@ class TestPublicLists(PublicContentTestCase):
 				"owner",
 				{"options": ["name", "title", "idx", "percentage"]},
 				{"votes": ["user", "option"]},
-				{"reactions": ["name", "user", "emoji"]},
 			],
 		}
 		for doctype in PUBLIC_FIELDS:
@@ -376,7 +380,6 @@ class TestPublicLists(PublicContentTestCase):
 		ours = {"reference_name": self.discussion.name}
 		comment = self.client_list("GP Comment", fields=queries["GP Comment"], filters=ours)[0]
 		self.assertEqual(comment.owner, self.second_handle)
-		self.assertEqual([reaction.emoji for reaction in comment.reactions], ["👍", "👍"])
 		poll = self.client_list(
 			"GP Poll", fields=queries["GP Poll"], filters={"discussion": self.discussion.name}
 		)
@@ -443,13 +446,12 @@ class TestPublicLists(PublicContentTestCase):
 		with switched_on(), self.as_user(self.member.name):
 			comment = get_client_list(
 				doctype="GP Comment",
-				fields=["name", "owner", "modified_by", {"reactions": ["user", "emoji"]}],
+				fields=["name", "owner", "modified_by"],
 				filters={"owner": self.second_member.name},
 				order_by="owner asc",
 			)[0]
 			feed = get_discussions(limit=100)
 		self.assertEqual(comment.owner, self.second_member.name)
-		self.assertEqual({r.user for r in comment.reactions}, {self.member.name, self.second_member.name})
 		self.assertIn(self.member.name, {row.owner for row in feed})
 
 

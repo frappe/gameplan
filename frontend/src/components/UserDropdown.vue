@@ -114,7 +114,7 @@ const dropdownItems = computed(() => [
     icon: 'lucide-log-out',
     label: 'Log out',
     condition: () => !isAnonymousVisitor(),
-    onClick: () => session.logout.submit(),
+    onClick: () => session.logout.submit().catch(() => {}),
   },
   {
     icon: 'lucide-user-plus',

@@ -76,8 +76,12 @@ class TestRateLimits(GameplanTestCase):
 	def test_reading_a_document_counts_too(self):
 		with self.limited_to(1, "document"):
 			self.request("/api/v2/document/GP Discussion/1")
-			with self.assertRaises(frappe.RateLimitExceededError):
-				self.request("/api/v2/document/GP Comment/1")
+			for path in (
+				"/api/v2/document/GP Comment/1",
+				"/api/v2/document/GP Discussion/1/method/thread_reactions",
+			):
+				with self.subTest(path=path), self.assertRaises(frappe.RateLimitExceededError):
+					self.request(path)
 
 	def test_signed_in_users_are_never_limited(self):
 		with self.limited_to(1):
@@ -92,6 +96,8 @@ class TestRateLimits(GameplanTestCase):
 
 	def test_every_public_read_endpoint_is_limited(self):
 		reads = set(GUEST_REACHABLE_ENDPOINTS) - set(NOT_RATE_LIMITED)
+		# Document methods share the document bucket, checked above.
+		reads.remove("gameplan.gameplan.doctype.gp_discussion.gp_discussion.GPDiscussion.thread_reactions")
 		self.assertLessEqual(reads, set(ANONYMOUS_RATE_LIMITS), "add a rate limit for each new public read")
 		self.assertLessEqual(set(ANONYMOUS_RATE_LIMITS) - {"document"}, set(GUEST_REACHABLE_ENDPOINTS))
 

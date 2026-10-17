@@ -28,6 +28,7 @@ describe('Public spaces, logged out', () => {
   it('reads a public thread, with authors by name and no email anywhere', () => {
     cy.intercept('GET', '**/gameplan.public_lists.comments*').as('comments')
     cy.intercept('GET', '**/gameplan.public_lists.polls*').as('polls')
+    cy.intercept('GET', '**/method/thread_reactions*').as('reactions')
     cy.intercept('GET', '**/api/v2/document/GP%20Discussion/*').as('discussion')
 
     cy.visit(threadPath())
@@ -55,7 +56,7 @@ describe('Public spaces, logged out', () => {
     cy.contains('Second Member').closest('a').should('not.exist')
 
     // Nothing that reached the browser names anyone by email.
-    for (const alias of ['@discussion', '@comments', '@polls']) {
+    for (const alias of ['@discussion', '@comments', '@polls', '@reactions']) {
       cy.wait(alias).then(({ response }) => {
         expect(response?.statusCode).to.eq(200)
         expect(JSON.stringify(response?.body)).not.to.match(PERSONA_EMAILS)
@@ -142,7 +143,7 @@ describe('Public spaces, logged out', () => {
   it('opens a public space link directly even when missing from the initial spaces list', () => {
     cy.intercept('GET', '**/gameplan.public_lists.spaces*', (req) => {
       req.reply({
-        has_next_page: true,
+        has_next_page: false,
         data: [],
       })
     }).as('initialSpaces')

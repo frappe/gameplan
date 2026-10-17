@@ -53,11 +53,11 @@ def ongoing_polls_clause(Poll, now=None):
 class GPPoll(HasReactions, Document, GPPollAttributes):
 	"""A poll posted inside a discussion.
 
-	It carries a `reactions` table and the UI hangs the same Reactions component off it
-	as it does off a discussion or a comment, so it mixes in HasReactions and notifies
-	its author when another user reacts. The notification carries both the poll and its
-	discussion for routing; HasReactions keeps its lookup distinct from the discussion's
-	own reaction notification.
+	The UI hangs the same Reactions component off it as it does off a discussion or a
+	comment, so it mixes in HasReactions and notifies its author when another user
+	reacts. The notification carries both the poll and its discussion for routing;
+	HasReactions keeps its lookup distinct from the discussion's own reaction
+	notification.
 	"""
 
 	on_delete_set_null = ["GP Discussion", "GP Notification"]
@@ -95,10 +95,12 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 				is_anonymous_eligible_discussion(self.discussion),
 			)
 		self.total_votes = len(self.votes)
-		self.de_duplicate_reactions()
 
 	def after_insert(self):
 		self.update_discussion_meta()
+
+	def on_trash(self):
+		self.remove_all_reactions()
 
 	def after_delete(self):
 		if self.flags.from_gameplan_delete_cascade == "GP Discussion":
@@ -108,9 +110,6 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 			# polls, so the new row survives and trips the parent's link check.
 			return
 		self.update_discussion_meta()
-
-	def on_update(self):
-		self.notify_reactions()
 
 	def update_discussion_meta(self):
 		if not self.discussion:
@@ -195,8 +194,8 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 		Voting is participation, like reacting: the gate is `check_can_participate`, and
 		the vote methods only ever touch the acting user's own vote row plus the derived
 		tallies. A plain `save()` would instead ask for `write`, which a guest only holds
-		while nothing outside the interaction-safe fields changed — that check exists to
-		stop a non-editor rewriting a poll's title or options, and it must keep doing so.
+		while nothing changed — that check exists to stop a non-editor rewriting a poll's
+		title or options, and it must keep doing so.
 
 		Bypassing that check is only safe because `discard_client_state` has already
 		thrown away everything the caller sent, so this save can carry nothing but the

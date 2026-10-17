@@ -140,12 +140,7 @@
     <!-- The tick moves optimistically, so a rejected vote has to say why it snapped back. -->
     <ErrorMessage class="-mt-2 mb-3" :message="voteError" />
     <div class="mt-3 flex flex-wrap items-center justify-between gap-2">
-      <Reactions
-        doctype="GP Poll"
-        :name="poll.name"
-        v-model:reactions="_poll.reactions"
-        :read-only-mode="readOnlyMode"
-      />
+      <Reactions doctype="GP Poll" :name="poll.name" :read-only-mode="readOnlyMode" />
       <Button
         v-if="!isStopped && isAnonymousVisitor()"
         size="sm"
@@ -154,7 +149,7 @@
       />
     </div>
     <Dialog title="Poll results" v-model:open="showDialog">
-      <h2 class="text-xl-medium text-ink-gray-8">{{ _poll.title }}</h2>
+      <h2 class="text-lg-medium text-ink-gray-8">{{ _poll.title }}</h2>
       <div v-if="!pollResults" class="text-base text-ink-gray-6 mt-2">No votes yet</div>
       <div class="mt-6 space-y-6">
         <div v-for="option in pollResults" :key="option.title">
