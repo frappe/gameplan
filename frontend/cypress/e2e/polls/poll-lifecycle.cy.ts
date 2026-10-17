@@ -23,7 +23,7 @@ describe('Poll lifecycle', () => {
     cy.loginAs('member')
   })
 
-  it('creates a multiple-answer poll, toggles answers, receives a live tally, and stops it', () => {
+  it('creates a multiple-answer poll inside a comment, toggles answers, receives a live tally, and stops it', () => {
     let poll: string
 
     cy.intercept('GET', `/api/v2/document/GP%20Discussion/${discussion}`).as('getDiscussion')
@@ -33,23 +33,30 @@ describe('Poll lifecycle', () => {
     cy.visit(`/g/community/${community}/space/${space}/discussion/${discussion}`)
     cy.wait('@getDiscussion')
 
-    cy.intercept({ method: 'POST', url: '/api/v2/document/GP%20Poll', times: 1 }).as('createPoll')
+    cy.intercept({ method: 'POST', url: '/api/v2/document/GP%20Comment', times: 1 }).as(
+      'createComment',
+    )
     cy.button('Add a comment').click()
-    cy.button('Poll').click()
+    cy.get('[contenteditable=true]').should('be.visible').click().type('Before the poll')
+    cy.iconButton('Poll').click()
 
-    // The question input is only reachable through its <label for>, the way a
-    // screen reader would find it.
     labelledInput('Question').type('Ship on Friday?')
     cy.get('input[placeholder="Option 1"]').type('Yes')
     cy.get('input[placeholder="Option 2"]').type('No')
     labelledCheckbox('Multiple answers').check()
     labelledCheckbox('Anonymous').should('be.disabled')
+    cy.iconButton('Poll').should('be.disabled')
+    cy.get('[contenteditable=true] > p').last().click().type('After the poll')
     cy.button('Submit').click()
-    cy.wait('@createPoll').then(({ response }) => {
-      expect(response?.body.data.title).to.equal('Ship on Friday?')
+    cy.wait('@createComment').then(({ response }) => {
+      expect(response?.body.data.content).to.match(
+        /Before the poll.*data-poll="\d+".*After the poll/s,
+      )
     })
 
     cy.contains('Ship on Friday?').should('be.visible')
+    cy.contains('p', 'Before the poll').should('be.visible')
+    cy.contains('p', 'After the poll').should('be.visible')
     cy.contains('0 answers from 0 people').should('exist')
 
     // Each answer is a real checkbox: it is independently keyboard reachable,
@@ -276,10 +283,6 @@ describe('Poll lifecycle', () => {
   })
 })
 
-function labelledInput(label: string) {
-  return cy.contains('label', label).then(($label) => cy.get(`[id="${$label.attr('for')}"]`))
-}
-
 function labelledCheckbox(label: string) {
   return cy
     .get('label')
@@ -289,6 +292,10 @@ function labelledCheckbox(label: string) {
 }
 
 /** An answer on a multiple-answer poll, where each option is an independent checkbox. */
+function labelledInput(label: string) {
+  return cy.contains('label', label).then(($label) => cy.get(`[id="${$label.attr('for')}"]`))
+}
+
 function pollAnswer(label: string) {
   return cy.get(`input[type="checkbox"][aria-label="${label}"]`)
 }

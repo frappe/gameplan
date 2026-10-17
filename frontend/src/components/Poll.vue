@@ -10,6 +10,7 @@
          app header's height so scrolled-up content is masked rather than showing through
          the strip above it. The previous `pt-15` was not a real utility, so it did nothing. -->
     <div
+      v-if="!embedded"
       class="sticky -top-px z-[1] -mx-2 flex items-center bg-surface-base px-2 pb-2 pt-2 text-base text-ink-gray-8 sm:top-0 sm:pt-14"
     >
       <UserProfileLink class="mr-3" :user="owner.name">
@@ -51,7 +52,28 @@
         />
       </div>
     </div>
-    <div class="text-base-semibold text-ink-gray-8">{{ _poll.title }}</div>
+    <div class="flex items-center gap-2">
+      <div class="flex-1 text-base-semibold text-ink-gray-8">{{ _poll.title }}</div>
+      <div v-if="embedded" class="flex items-center space-x-2">
+        <Button
+          v-if="!isStopped && !readOnlyMode && canDeletePoll"
+          variant="ghost"
+          icon-left="lucide-minus-circle"
+          @click="stopPoll"
+        >
+          Stop Poll
+        </Button>
+        <Dropdown
+          align="end"
+          :button="{
+            icon: 'lucide-more-horizontal',
+            variant: 'ghost',
+            label: 'Poll Options',
+          }"
+          :options="dropdownOptions"
+        />
+      </div>
+    </div>
     <div class="mt-1 text-sm text-ink-gray-5">
       <span v-if="_poll.multiple_answers"> Multiple answers &middot; </span>
       <span v-if="_poll.anonymous"> Anonymous &middot; </span>
@@ -73,7 +95,8 @@
       <div
         v-for="option in _poll.options"
         :key="option.idx"
-        class="relative -mx-2 overflow-hidden rounded-4"
+        class="relative overflow-hidden rounded-4"
+        :class="embedded ? 'bg-surface-gray-1' : '-mx-2'"
         :data-poll-option="option.title"
       >
         <div
@@ -139,7 +162,7 @@
     </component>
     <!-- The tick moves optimistically, so a rejected vote has to say why it snapped back. -->
     <ErrorMessage class="-mt-2 mb-3" :message="voteError" />
-    <div class="mt-3">
+    <div v-if="!embedded" class="mt-3">
       <Reactions doctype="GP Poll" :name="poll.name" :read-only-mode="readOnlyMode" />
     </div>
     <Dialog title="Poll results" v-model:open="showDialog">
@@ -203,6 +226,7 @@ interface Props {
   space?: Space | null
   // Archived space or site-wide read-only: the poll is visible but inert.
   readOnlyMode?: boolean
+  embedded?: boolean
 }
 
 interface PollMethods {
@@ -215,6 +239,7 @@ const props = withDefaults(defineProps<Props>(), {
   highlight: false,
   space: null,
   readOnlyMode: false,
+  embedded: false,
 })
 
 const showDialog = ref(false)
@@ -338,12 +363,13 @@ const dropdownOptions = computed(() => [
   {
     label: 'Copy link',
     icon: 'lucide-link',
+    condition: () => !props.embedded,
     onClick: copyLink,
   },
   {
     label: 'Delete',
     icon: 'lucide-trash',
-    condition: () => !props.readOnlyMode && canDeletePoll.value,
+    condition: () => !props.embedded && !props.readOnlyMode && canDeletePoll.value,
     onClick: () => {
       dialog.danger({
         title: 'Delete poll',
