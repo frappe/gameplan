@@ -62,6 +62,8 @@ READ_ONLY_ENDPOINTS = frozenset(
 		# Revision history.
 		"gameplan.gameplan.doctype.gp_comment.gp_comment.GPComment.get_revisions",
 		"gameplan.gameplan.doctype.gp_discussion.gp_discussion.GPDiscussion.get_revisions",
+		"gameplan.gameplan.doctype.gp_discussion.gp_discussion.GPDiscussion.get_backlinks",
+		"gameplan.gameplan.doctype.gp_discussion.gp_discussion.GPDiscussion.get_reference_activities",
 		# Reactions on a thread's posts.
 		"gameplan.gameplan.doctype.gp_discussion.gp_discussion.GPDiscussion.thread_reactions",
 		"gameplan.gameplan.doctype.gp_task.gp_task.GPTask.thread_reactions",

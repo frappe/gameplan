@@ -582,6 +582,15 @@ def bookmark_has_permission(doc, ptype="read", user=None, **kwargs):
 	return get_doc_value(doc, "user") == user
 
 
+def activity_query_conditions(user=None, **kwargs):
+	Activity = frappe.qb.DocType("GP Activity")
+	return criterion_sql(Activity.action != "Discussion Referenced")
+
+
+def activity_has_permission(doc, ptype="read", user=None, **kwargs):
+	return get_doc_value(doc, "action") != "Discussion Referenced"
+
+
 def content_project_query_conditions(doctype, user=None):
 	user = user or frappe.session.user
 	if is_global_admin(user):
