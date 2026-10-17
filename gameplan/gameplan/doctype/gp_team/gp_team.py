@@ -195,6 +195,18 @@ class GPTeam(HasVisibility, Archivable, Document):
 		member.is_admin = cint(is_admin)
 		self.save()
 
+	@frappe.whitelist(methods=["POST"])
+	def set_member_moderator(self, user, is_moderator):
+		require_can_manage_community(self)
+		member = self.get_member(user)
+		if not member:
+			frappe.throw(_("Member not found"))
+		if gameplan.is_anonymous(user) or gameplan.is_guest(user):
+			frappe.throw(_("Only community members can be moderators"))
+
+		member.is_moderator = int(bool(cint(is_moderator)))
+		self.save()
+
 	def get_member(self, user):
 		return next((member for member in self.members if member.user == user), None)
 

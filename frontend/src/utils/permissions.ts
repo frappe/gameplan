@@ -74,6 +74,21 @@ export function canManageSpace(space: Space | null | undefined, user: Permission
   return isCommunityAdmin(getCommunity(space.team), user.name)
 }
 
+export function canModerateSpace(space: Space | null | undefined, user: PermissionUser) {
+  if (!space || !user.name || user.name === 'Guest' || isGuest(user)) return false
+  if (isGlobalAdmin(user)) return true
+  if (
+    isMemberAccess(space.visibility) &&
+    !space.members?.some((member) => member.user === user.name)
+  )
+    return false
+  return Boolean(
+    getCommunity(space.team)?.members?.some(
+      (member) => member.user === user.name && (member.is_admin || member.is_moderator),
+    ),
+  )
+}
+
 /** Guests can never invite; otherwise invite rights follow space management. */
 export function canInviteGuests(space: Space | null | undefined, user: PermissionUser) {
   if (isGuest(user)) return false
