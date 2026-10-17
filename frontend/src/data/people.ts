@@ -1,6 +1,5 @@
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 import { useList } from 'frappe-ui'
-import type { OrderBy } from 'frappe-ui'
 import type { GPUserProfile } from '@/types/doctypes'
 
 interface Person extends Pick<
@@ -13,34 +12,44 @@ interface Person extends Pick<
   reactions_received: number
 }
 
-type PeopleSortOption =
-  | { label: string; value: OrderBy; count?: never }
-  // Counts aren't columns, so the server can't order by them. People.vue sorts these.
-  | {
-      label: string
-      value: string
-      count: 'discussions_count' | 'comments_count' | 'reactions_received'
-    }
+export type PeopleSortField =
+  | 'full_name'
+  | 'modified'
+  | 'discussions_count'
+  | 'comments_count'
+  | 'reactions_received'
+  | 'reactions_given'
 
-export const peopleSortOptions: PeopleSortOption[] = [
-  { label: 'Name', value: 'full_name asc' },
-  { label: 'Last updated', value: 'modified desc' },
-  { label: 'Posts', value: 'posts', count: 'discussions_count' },
-  { label: 'Replies', value: 'replies', count: 'comments_count' },
-  { label: 'Reactions received', value: 'reactions_received', count: 'reactions_received' },
+type PeopleSortDirection = 'asc' | 'desc'
+
+const sortChoices: { label: string; value: PeopleSortField }[] = [
+  { label: 'Name', value: 'full_name' },
+  { label: 'Last updated', value: 'modified' },
+  { label: 'Posts', value: 'discussions_count' },
+  { label: 'Replies', value: 'comments_count' },
+  { label: 'Reactions received', value: 'reactions_received' },
+  { label: 'Reactions given', value: 'reactions_given' },
 ]
 
-const defaultSort = peopleSortOptions[1]
+export const peopleSortOptions = [
+  { label: 'Sort by', value: '' as const, disabled: true },
+  ...sortChoices,
+]
 
-/** The selected People sort: a `peopleSortOptions` value. */
-export const peopleSort = ref(defaultSort.value)
+export const peopleSortField = ref<PeopleSortField>('modified')
+export const peopleSortDirection = ref<PeopleSortDirection>('desc')
 
-export const peopleSortOption = computed(
-  () => peopleSortOptions.find((option) => option.value === peopleSort.value) ?? defaultSort,
-)
+export function sortPeopleBy(field: PeopleSortField) {
+  if (peopleSortField.value === field) {
+    peopleSortDirection.value = peopleSortDirection.value === 'asc' ? 'desc' : 'asc'
+    return
+  }
+  peopleSortField.value = field
+  peopleSortDirection.value = field === 'full_name' ? 'asc' : 'desc'
+}
 
-/** The People list: server-sorted, filtered to enabled accounts, shared across visits.
- *  People.vue reloads it on each visit. */
+/** The People list: filtered to enabled accounts, shared across visits. People.vue sorts it
+ *  and reloads it on each visit. */
 export const people = useList<Person>({
   // GP User Profile's default list view; the aggregate post/reply/reaction counts are
   // computed server-side per row, so this can't be the generic `/api/v2/document/...`
@@ -49,12 +58,8 @@ export const people = useList<Person>({
   doctype: 'GP User Profile',
   fields: ['name', 'user', 'bio', 'modified', 'cover_image', 'cover_image_position'],
   filters: { enabled: 1 },
-  orderBy: () => serverOrder(peopleSortOption.value),
+  orderBy: 'modified desc',
   limit: 999,
   cacheKey: 'People',
   immediate: false,
 })
-
-function serverOrder(option: PeopleSortOption): OrderBy {
-  return option.count ? 'modified desc' : option.value
-}

@@ -48,6 +48,7 @@ describe('Comment actions', () => {
     cy.wait('@comment')
       .its('response.body.data.content')
       .should('contain', 'This is the first comment')
+    cy.button('Add a comment').should('be.visible')
 
     cy.get('@comment')
       .its('response.body.data')
