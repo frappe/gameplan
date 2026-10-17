@@ -177,5 +177,4 @@ describe('Drafts, one name each', () => {
         cy.get('@first').should('not.eq', second)
       })
   })
-
 })
