@@ -87,8 +87,12 @@ class GPComment(HasAttachments, HasMentions, HasReactions, HasTags, Document):
 		elif self.has_value_changed("content"):
 			check_if_space_is_archived(self, action="edit", content_type="comments")
 		self.sanitize_content()
+
+	def _get_missing_mandatory_fields(self):
+		missing = super()._get_missing_mandatory_fields()
 		if POLL_BLOCK.search(self.content or ""):
-			self.flags.ignore_mandatory = True
+			missing = [field for field in missing if field[0] != "content"]
+		return missing
 
 	def sanitize_content(self):
 		from gameplan.utils.sanitizer import sanitize_content
@@ -118,6 +122,8 @@ class GPComment(HasAttachments, HasMentions, HasReactions, HasTags, Document):
 
 		poll = frappe.db.get_value("GP Poll", {"comment": self.name})
 		if poll and attrs.get("data-poll") != str(poll):
+			if not frappe.has_permission("GP Poll", "delete", poll):
+				frappe.throw(_("Only the poll's owner can remove it"), frappe.PermissionError)
 			frappe.delete_doc("GP Poll", poll)
 			poll = None
 		if not poll and "data-poll-draft" in attrs:

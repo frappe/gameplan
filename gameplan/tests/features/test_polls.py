@@ -972,8 +972,8 @@ class TestPollInComment(PollTestCase):
 				content=content,
 			).insert()
 
-	def edit(self, comment, content):
-		with self.as_user(self.member):
+	def edit(self, comment, content, user=None):
+		with self.as_user(user or self.member):
 			comment = frappe.get_doc("GP Comment", comment.name)
 			comment.content = content
 			comment.save()
@@ -1048,6 +1048,39 @@ class TestPollInComment(PollTestCase):
 		self.edit(comment, "<p>Before</p>")
 
 		self.assertFalse(frappe.db.exists("GP Poll", poll))
+
+	def test_another_member_cannot_remove_the_poll(self):
+		comment = self.comment(f"<p>Before</p>{poll_block()}")
+		poll = self.poll_of(comment)
+
+		with self.assertRaises(frappe.PermissionError) as raised:
+			self.edit(comment, "<p>Before</p>", user=self.second_member)
+
+		self.assertIn("Only the poll's owner can remove it", str(raised.exception))
+		self.assertTrue(frappe.db.exists("GP Poll", poll))
+
+	def test_another_member_can_edit_the_text_around_the_poll(self):
+		comment = self.comment(f"<p>Before</p>{poll_block()}")
+		poll = self.poll_of(comment)
+		content = frappe.db.get_value("GP Comment", comment.name, "content")
+
+		self.edit(comment, content + "<p>Later</p>", user=self.second_member)
+
+		self.assertEqual(self.poll_of(comment), poll)
+		self.assertIn("<p>Later</p>", frappe.db.get_value("GP Comment", comment.name, "content"))
+
+	def test_a_poll_only_comment_still_checks_other_mandatory_fields(self):
+		field = frappe.get_meta("GP Comment").get_field("deleted_at")
+
+		with patch.object(field, "reqd", 1), self.assertRaises(frappe.MandatoryError) as raised:
+			self.comment(poll_block())
+
+		self.assertIn("deleted_at", str(raised.exception))
+		self.assertNotIn("content", str(raised.exception))
+
+	def test_a_comment_without_text_or_poll_is_still_rejected(self):
+		with self.assertRaises(frappe.MandatoryError):
+			self.comment("<p></p>")
 
 	def test_a_poll_cannot_be_moved_to_another_comment(self):
 		comment = self.comment(poll_block())
