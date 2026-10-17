@@ -66,12 +66,9 @@ def migrate_posts():
 				modified=topic.modified,
 				owner=user,
 				modified_by=user,
-				reactions=reactions,
 			)
 			doc.db_insert()
-			for d in doc.get_all_children():
-				d.parent = doc.name
-				d.db_insert()
+			insert_reactions(doc, reactions)
 
 			# images
 			process_images_in_html(doc, "content")
@@ -96,12 +93,9 @@ def migrate_posts():
 					modified=comment.modified,
 					owner=user,
 					modified_by=user,
-					reactions=reactions,
 				)
 				comment_doc.db_insert()
-				for d in comment_doc.get_all_children():
-					d.parent = comment_doc.name
-					d.db_insert()
+				insert_reactions(comment_doc, reactions)
 				process_images_in_html(comment_doc, "content")
 
 			# visits
@@ -180,7 +174,7 @@ def save_image(src, filename=None, doc=None):
 
 		_, extn = splitext(full_path)
 		hash = frappe.generate_hash(length=5)
-		filename = f'{filename or ""}-{hash}{extn}'.replace(" ", "-").replace("%20", "-")
+		filename = f"{filename or ''}-{hash}{extn}".replace(" ", "-").replace("%20", "-")
 		filename = filename.split("?", 1)[0]
 		return frappe.get_doc(
 			doctype="File",
@@ -204,6 +198,13 @@ def get_project(category_id):
 		{"reference_doctype": "GP Project", "discourse_table": "categories", "discourse_id": category_id},
 		"reference_name",
 	)
+
+
+def insert_reactions(doc, reactions):
+	for reaction in reactions:
+		frappe.get_doc(
+			doctype="GP Reaction", reference_doctype=doc.doctype, reference_name=doc.name, **reaction
+		).db_insert()
 
 
 def get_reactions(post_id):

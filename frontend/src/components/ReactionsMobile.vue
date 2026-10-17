@@ -92,10 +92,11 @@ import { AnimatePresence, Motion } from 'motion-v'
 import ReactionFaceIcon from './ReactionFaceIcon.vue'
 import { BottomSheet } from 'frappe-ui'
 import { isImageEmoji } from '@/utils/emoji'
+import type { ReactionCount } from '@/data/reactions'
 const props = defineProps<{
-  reactionsCount: Record<string, { count: number; userReacted: boolean }>
+  reactionsCount: Record<string, ReactionCount>
   toggleReaction: (emoji: string) => void
-  toolTipText: (reactions: { count: number; userReacted: boolean }) => string
+  toolTipText: (reactions: ReactionCount) => string
   standardEmojis: string[]
 }>()
 

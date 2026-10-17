@@ -180,7 +180,6 @@
             <Reactions
               doctype="GP Discussion"
               :name="discussion.doc.name"
-              v-model:reactions="discussion.doc.reactions"
               :read-only-mode="readOnlyMode"
             />
           </div>
@@ -374,6 +373,7 @@ import { getSpace, useSpace } from '@/data/spaces'
 import { useCommunity } from '@/data/communities'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { useDiscussion } from '@/data/discussions'
+import { provideThreadReactions } from '@/data/reactions'
 import { useDraftSync } from '@/data/useDraftSync'
 import { tags } from '@/data/tags'
 import { shellScrollContainer, useShellScrolled } from 'frappe-ui'
@@ -479,6 +479,7 @@ const mobileHeaderTitle = computed(() =>
   showTitleInMobileHeader.value ? discussion.doc?.title || 'Discussion' : 'Discussion',
 )
 
+provideThreadReactions('GP Discussion', props.postId)
 const richQuotes = provideRichQuotes()
 richQuotes.setPostContentEl(() => mainPostContentEl.value)
 

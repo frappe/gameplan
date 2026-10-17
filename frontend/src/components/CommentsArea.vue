@@ -400,16 +400,7 @@ const composerStorageKey = computed(() => {
 const comments = useList<GPComment>({
   doctype: 'GP Comment',
   cacheKey: ['Comments', props.doctype, props.name],
-  fields: [
-    'name',
-    'content',
-    'owner',
-    'creation',
-    'modified',
-    'edited_at',
-    'deleted_at',
-    { reactions: ['name', 'user', 'emoji'] },
-  ],
+  fields: ['name', 'content', 'owner', 'creation', 'modified', 'edited_at', 'deleted_at'],
   transform(data) {
     return data.map((d) => ({ ...d, doctype: 'GP Comment' }))
   },
@@ -488,7 +479,6 @@ const polls = useList<GPPoll>({
     'stopped_at',
     { options: ['name', 'title', 'idx', 'percentage'] },
     { votes: ['user', 'option'] },
-    { reactions: ['name', 'user', 'emoji'] },
   ],
   filters: {
     discussion: props.name,

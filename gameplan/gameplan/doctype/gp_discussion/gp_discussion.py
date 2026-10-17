@@ -12,7 +12,7 @@ from gameplan.mixins.archivable import check_if_space_is_archived
 from gameplan.mixins.attachments import HasAttachments
 from gameplan.mixins.backlinks import HasBacklinks
 from gameplan.mixins.mentions import HasMentions
-from gameplan.mixins.reactions import HasReactions
+from gameplan.mixins.reactions import HasReactions, get_reactions_on
 from gameplan.mixins.tags import HasTags
 from gameplan.permissions import content_has_permission, discussion_query_conditions
 from gameplan.utils import get_document_revisions, remove_empty_trailing_paragraphs, url_safe_slug
@@ -82,6 +82,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasBacklinks, HasMentions, HasRe
 	def on_trash(self):
 		self.remove_all_bookmarks()
 		self.remove_all_activities()
+		self.remove_all_reactions()
 		self.update_discussions_count()
 		frappe.db.delete("GP Backlink", {"discussion": self.name})
 		GPUnreadRecord.delete_unread_records_for_discussion(self.name)
@@ -89,12 +90,10 @@ class GPDiscussion(HasActivity, HasAttachments, HasBacklinks, HasMentions, HasRe
 	def validate(self):
 		self.sanitize_content()
 		self.title = self.title.strip()
-		self.de_duplicate_reactions()
 
 	def on_update(self):
 		self.notify_mentions()
 		self.log_backlink_activities()
-		self.notify_reactions()
 		self.log_title_update()
 		self.update_participants_count()
 		self.attach_files_in_content()
@@ -119,6 +118,22 @@ class GPDiscussion(HasActivity, HasAttachments, HasBacklinks, HasMentions, HasRe
 		self.content = sanitize_content(self.content)
 
 	# Whitelisted Methods
+	@frappe.whitelist(methods=["GET"])
+	def thread_reactions(self):
+		"""Reactions on everything in this thread, for the thread page.
+
+		Checks read on the stored thread: the v2 document-method route builds this instance
+		from fields the caller sends, so its own fields can be forged."""
+		thread = frappe.get_doc(self.doctype, self.name)
+		thread.check_permission("read")
+		comments = frappe.get_all(
+			"GP Comment",
+			filters={"reference_doctype": thread.doctype, "reference_name": thread.name},
+			pluck="name",
+		)
+		polls = frappe.get_all("GP Poll", filters={"discussion": thread.name}, pluck="name")
+		return get_reactions_on({"GP Discussion": [thread.name], "GP Comment": comments, "GP Poll": polls})
+
 	@frappe.whitelist(methods=["POST"])
 	def track_visit(self):
 		if frappe.flags.read_only:

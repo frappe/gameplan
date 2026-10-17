@@ -11,7 +11,6 @@
   "reference_name",
   "edited_at",
   "deleted_at",
-  "reactions",
   "tags",
   "backlinks"
  ],
@@ -42,12 +41,6 @@
    "label": "Edited At"
   },
   {
-   "fieldname": "reactions",
-   "fieldtype": "Table",
-   "label": "Reactions",
-   "options": "GP Reaction"
-  },
-  {
    "fieldname": "deleted_at",
    "fieldtype": "Datetime",
    "label": "Deleted At"
@@ -68,7 +61,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-03 12:00:00.000000",
+ "modified": "2026-10-17 12:00:00.000000",
  "modified_by": "faris@erpnext.com",
  "module": "Gameplan",
  "name": "GP Comment",

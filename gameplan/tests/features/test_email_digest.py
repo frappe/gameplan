@@ -528,10 +528,8 @@ class TestEmailDigest(GameplanTestCase):
 		return discussion
 
 	def add_discussion_reactions(self, discussion, count):
-		discussion = frappe.get_doc("GP Discussion", discussion.name)
 		for index in range(count):
-			discussion.append("reactions", self.reaction_row(index))
-		discussion.save(ignore_permissions=True)
+			self.add_reaction("GP Discussion", discussion.name, index)
 
 	def add_comment_reactions(self, discussion, count):
 		comment = frappe.get_doc(
@@ -543,14 +541,16 @@ class TestEmailDigest(GameplanTestCase):
 			}
 		).insert(ignore_permissions=True)
 		for index in range(count):
-			comment.append("reactions", self.reaction_row(index))
-		comment.save(ignore_permissions=True)
+			self.add_reaction("GP Comment", comment.name, index)
 
-	def reaction_row(self, index):
-		return {
-			"emoji": ":thumbsup:",
-			"user": f"digest-reaction-{index}-{frappe.generate_hash(length=8)}@example.com",
-		}
+	def add_reaction(self, doctype, name, index):
+		frappe.get_doc(
+			doctype="GP Reaction",
+			reference_doctype=doctype,
+			reference_name=name,
+			emoji=":thumbsup:",
+			user=f"digest-reaction-{index}-{frappe.generate_hash(length=8)}@example.com",
+		).insert(ignore_permissions=True)
 
 	def assert_signed_digest_url(self, url, redirect):
 		query = parse_qs(urlparse(url).query)
