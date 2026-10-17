@@ -291,7 +291,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		last_comment = get_last_post(
 			"GP Comment", {"reference_doctype": self.doctype, "reference_name": self.name}
 		)
-		last_poll = get_last_post("GP Poll", {"discussion": self.name})
+		last_poll = get_last_post("GP Poll", {"discussion": self.name, "comment": ("is", "not set")})
 
 		if last_comment and last_poll:
 			latest = last_comment if last_comment.creation > last_poll.creation else last_poll
@@ -314,7 +314,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		comments_count = frappe.db.count(
 			"GP Comment", {"reference_doctype": self.doctype, "reference_name": self.name}
 		)
-		polls_count = frappe.db.count("GP Poll", {"discussion": self.name})
+		polls_count = frappe.db.count("GP Poll", {"discussion": self.name, "comment": ("is", "not set")})
 		self.comments_count = comments_count + polls_count
 
 	def update_discussions_count(self):

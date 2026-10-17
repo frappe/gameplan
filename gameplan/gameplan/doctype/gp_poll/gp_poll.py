@@ -62,6 +62,7 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 
 	def before_insert(self):
 		self.check_if_discussion_is_closed()
+		self.check_comment()
 		if self.anonymous and self.multiple_answers:
 			frappe.throw(_("Anonymous polls cannot allow multiple answers"))
 		self.options = [d for d in self.options if d.title]
@@ -82,6 +83,19 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 		if frappe.db.get_value("GP Discussion", self.discussion, "closed_at"):
 			frappe.throw(_("Cannot add a poll to a closed discussion"))
 
+	def check_comment(self):
+		if not self.comment:
+			return
+		comment = frappe.db.get_value(
+			"GP Comment", self.comment, ["reference_doctype", "reference_name", "owner"], as_dict=True
+		)
+		if comment.reference_doctype != "GP Discussion" or comment.reference_name != str(self.discussion):
+			frappe.throw(_("A poll can only be attached to a comment in the same discussion"))
+		if comment.owner != frappe.session.user:
+			frappe.throw(_("You can only attach a poll to your own comment"), frappe.PermissionError)
+		if frappe.db.exists("GP Poll", {"comment": self.comment}):
+			frappe.throw(_("A comment can only have one poll"))
+
 	def validate(self):
 		self.total_votes = len(self.votes)
 
@@ -101,7 +115,7 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 		self.update_discussion_meta()
 
 	def update_discussion_meta(self):
-		if not self.discussion:
+		if not self.discussion or self.comment:
 			return
 		discussion = frappe.get_doc("GP Discussion", self.discussion)
 		discussion.update_last_post()

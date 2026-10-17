@@ -1,7 +1,12 @@
 # Copyright (c) 2022, Frappe Technologies Pvt Ltd and contributors
 # For license information, please see license.txt
 
+import json
+import re
+
 import frappe
+from bs4 import BeautifulSoup
+from frappe import _
 from frappe.model.document import Document
 
 from gameplan.gameplan.doctype.gp_unread_record.gp_unread_record import GPUnreadRecord
@@ -13,9 +18,11 @@ from gameplan.mixins.tags import HasTags
 from gameplan.permissions import comment_query_conditions, content_has_permission
 from gameplan.utils import get_document_revisions, remove_empty_trailing_paragraphs
 
+POLL_BLOCK = re.compile(r'<div\b[^>]*\bdata-type="poll"[^>]*>\s*</div>')
+
 
 class GPComment(HasAttachments, HasMentions, HasReactions, HasTags, Document):
-	on_delete_cascade = ["GP Draft"]
+	on_delete_cascade = ["GP Draft", "GP Poll"]
 	on_delete_set_null = ["GP Notification", "GP Discussion"]
 	mentions_field = "content"
 	tags_field = "content"
@@ -80,6 +87,8 @@ class GPComment(HasAttachments, HasMentions, HasReactions, HasTags, Document):
 		elif self.has_value_changed("content"):
 			check_if_space_is_archived(self, action="edit", content_type="comments")
 		self.sanitize_content()
+		if POLL_BLOCK.search(self.content or ""):
+			self.flags.ignore_mandatory = True
 
 	def sanitize_content(self):
 		from gameplan.utils.sanitizer import sanitize_content
@@ -97,6 +106,50 @@ class GPComment(HasAttachments, HasMentions, HasReactions, HasTags, Document):
 	def on_update(self):
 		self.notify_mentions()
 		self.attach_files_in_content()
+		self.sync_poll()
+
+	def sync_poll(self):
+		if self.reference_doctype != "GP Discussion" or not self.has_value_changed("content"):
+			return
+		blocks = POLL_BLOCK.findall(self.content or "")
+		if len(blocks) > 1:
+			frappe.throw(_("A comment can only have one poll"))
+		attrs = BeautifulSoup(blocks[0], "html.parser").div.attrs if blocks else {}
+
+		poll = frappe.db.get_value("GP Poll", {"comment": self.name})
+		if poll and attrs.get("data-poll") != str(poll):
+			frappe.delete_doc("GP Poll", poll)
+			poll = None
+		if not poll and "data-poll-draft" in attrs:
+			poll = self.create_poll(attrs["data-poll-draft"])
+
+		block = f'<div data-type="poll" data-poll="{poll}"></div>' if poll else ""
+		content = POLL_BLOCK.sub(block, self.content or "")
+		if content != self.content:
+			self.db_set("content", content, update_modified=False)
+
+	def create_poll(self, draft):
+		try:
+			draft = json.loads(draft)
+		except ValueError:
+			frappe.throw(_("Invalid poll"))
+		return (
+			frappe.get_doc(
+				doctype="GP Poll",
+				discussion=self.reference_name,
+				comment=self.name,
+				title=draft.get("title"),
+				anonymous=draft.get("anonymous"),
+				multiple_answers=draft.get("multiple_answers"),
+				options=[
+					{"title": option.get("title")}
+					for option in draft.get("options") or []
+					if option.get("title")
+				],
+			)
+			.insert()
+			.name
+		)
 
 	@frappe.whitelist()
 	def get_revisions(self, fieldname="content"):
