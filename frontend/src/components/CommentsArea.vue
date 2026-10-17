@@ -365,6 +365,7 @@ const composerStorageKey = computed(() => {
   return ['gameplan', 'comment-composer', sessionUser.name, props.doctype, props.name].join(':')
 })
 
+let commentsLoaded = false
 const comments = useList<GPComment>({
   doctype: 'GP Comment',
   url: publicListUrl('GP Comment'),
@@ -392,6 +393,8 @@ const comments = useList<GPComment>({
   start: publicPageStart(),
   limit: isAnonymousVisitor() ? PUBLIC_PAGE_SIZE : 99999,
   onSuccess() {
+    if (commentsLoaded) return
+    commentsLoaded = true
     if (route.query.comment) {
       if (route.query.comment === 'first_post') {
         router.replace({ query: route.query.page ? { page: route.query.page } : {} })
@@ -691,6 +694,8 @@ async function submitComment() {
   await draft.commit()
   resetCommentState()
   tags.reload()
+  await comments.reload()
+  scrollToEnd()
 }
 
 async function scrollToEnd() {

@@ -163,6 +163,7 @@ const newMessagesFrom = ref(props.newCommentsFrom)
 const highlightedItem = ref(null)
 const newCommentEditor = ref(null)
 
+let commentsLoaded = false
 const comments = useList<
   Pick<
     GPComment,
@@ -202,6 +203,8 @@ const comments = useList<
   orderBy: 'creation asc',
   limit: 99999,
   onSuccess() {
+    if (commentsLoaded) return
+    commentsLoaded = true
     if (route.query.comment) {
       let comment = comments.data?.find((c) => c.name === route.query.comment)
       scrollToItem(comment)
@@ -400,6 +403,9 @@ async function submitComment() {
 
   await draft.commit()
   resetCommentState()
+  await comments.reload()
+  await nextTick()
+  scrollToEnd()
 }
 
 function onNewCommentChange(content: string) {

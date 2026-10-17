@@ -5,6 +5,15 @@ describe('Reply moderation', () => {
     resetData('space_with_discussion').then((ids) => {
       cy.loginAs('member')
       cy.request({
+        method: 'PUT',
+        url: `/api/v2/document/GP%20Discussion/${ids.discussion}`,
+        body: {
+          content: '<p>A long discussion keeps the reader above the moderated reply.</p>'.repeat(
+            70,
+          ),
+        },
+      })
+      cy.request({
         method: 'POST',
         url: '/api/v2/document/GP%20Comment',
         body: {
@@ -14,6 +23,13 @@ describe('Reply moderation', () => {
         },
       }).then(({ body }) => {
         const reply = () => cy.get(`div[data-id="${body.data.name}"]`)
+        const scrollContainer =
+          '[data-slot="desktop-shell-content"] > * > [data-reka-scroll-area-viewport]'
+        const assertReadingPosition = () => {
+          // Automatic scrolling used to run 50–150 ms after the list refreshed.
+          cy.wait(200)
+          cy.get(scrollContainer).should(($el) => expect($el[0].scrollTop).to.be.closeTo(200, 2))
+        }
         const moderate = (method: 'hide' | 'restore') => {
           cy.task('requestAsUser', {
             user: 'Administrator',
@@ -38,13 +54,26 @@ describe('Reply moderation', () => {
           `/g/community/${ids.community}/space/${ids.space}/discussion/${ids.discussion}/${ids.discussion_slug}`,
         )
         reply().should('contain.text', 'Live moderation sentinel')
+        cy.get(scrollContainer).should(($el) => {
+          expect($el[0].scrollTop).to.be.closeTo($el[0].scrollHeight - $el[0].clientHeight, 2)
+        })
+        cy.get(scrollContainer).scrollTo(0, 200)
         moderate('hide')
         reply().should('contain.text', 'This reply was hidden by a moderator.')
         reply().should('not.contain.text', 'Live moderation sentinel')
         reply().contains('button', 'View hidden reply').should('not.exist')
+        assertReadingPosition()
         moderate('restore')
         reply().should('contain.text', 'Live moderation sentinel')
         reply().should('not.contain.text', 'This reply was hidden by a moderator.')
+        assertReadingPosition()
+        cy.contains('button', 'Add a comment').click()
+        cy.get('[contenteditable=true]').click().type('A newly submitted reply')
+        cy.contains('button', 'Submit').click()
+        cy.contains('A newly submitted reply').should('exist')
+        cy.get(scrollContainer).should(($el) => {
+          expect($el[0].scrollTop).to.be.closeTo($el[0].scrollHeight - $el[0].clientHeight, 2)
+        })
       })
     })
   })
