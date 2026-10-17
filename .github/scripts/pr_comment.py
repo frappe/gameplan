@@ -38,7 +38,10 @@ MAX_ATTEMPTS = 4
 
 
 def gh(*args: str, input_text: str | None = None) -> str:
-	result = subprocess.run(["gh", *args], capture_output=True, text=True, check=False, input=input_text)
+	# A literal argument list, run by CI only. Not part of the installed app.
+	result = subprocess.run(  # nosemgrep: frappe-subprocess-exec
+		["gh", *args], capture_output=True, text=True, check=False, input=input_text
+	)
 	if result.returncode != 0:
 		raise RuntimeError(f"gh {' '.join(args)} failed: {result.stderr.strip()}")
 	return result.stdout

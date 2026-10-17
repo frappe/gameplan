@@ -95,7 +95,6 @@ class GPDiscussion(HasActivity, HasAttachments, HasBacklinks, HasMentions, HasRe
 		self.notify_mentions()
 		self.log_backlink_activities()
 		self.log_title_update()
-		self.update_participants_count()
 		self.attach_files_in_content()
 		self.sync_unread_records_on_move()
 

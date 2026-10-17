@@ -181,11 +181,7 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 	@frappe.whitelist(methods=["POST"])
 	def remove_member(self, user):
 		require_can_manage_space_members(self)
-		for member in self.members:
-			if member.user == user:
-				self.remove(member)
-				self.save(ignore_permissions=True)
-				break
+		self.remove_member_row(user)
 
 	@frappe.whitelist(methods=["POST"])
 	def join(self):
@@ -201,15 +197,16 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 			self.append("members", {"user": user})
 			self.save(ignore_permissions=True)
 
+	def remove_member_row(self, user):
+		member = next((d for d in self.members if d.user == user), None)
+		if member:
+			self.remove(member)
+			self.save(ignore_permissions=True)
+
 	@frappe.whitelist(methods=["POST"])
 	def leave(self):
 		self.require_view_access()
-		user = frappe.session.user
-		for member in self.members:
-			if member.user == user:
-				self.remove(member)
-				self.save(ignore_permissions=True)
-				break
+		self.remove_member_row(frappe.session.user)
 
 	@frappe.whitelist(methods=["POST"])
 	def archive(self):

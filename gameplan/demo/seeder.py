@@ -317,6 +317,8 @@ class Seeder:
 
 	def _event_space(self, event, actor, ts):
 		team = self._ref_name(event["community"])
+		# Inserting adds the actor as a member already.
+		members = [{"user": self.users[s]} for s in event.get("members", []) if self.users[s] != actor]
 		space = frappe.get_doc(
 			{
 				"doctype": "GP Project",
@@ -325,6 +327,7 @@ class Seeder:
 				"icon": event.get("icon"),
 				"description": event.get("description"),
 				"is_private": 1 if event.get("is_private") else 0,
+				"members": members,
 			}
 		).insert(ignore_permissions=True)
 		self.refs[event["id"]] = ("GP Project", space.name)

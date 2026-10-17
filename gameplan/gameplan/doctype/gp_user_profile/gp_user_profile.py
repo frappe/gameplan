@@ -226,7 +226,8 @@ def has_permission(doc, ptype="read", user=None):
 def create_user_profile(doc, method=None):
 	if not frappe.db.exists("GP User Profile", {"user": doc.name}):
 		frappe.get_doc(doctype="GP User Profile", user=doc.name).insert(ignore_permissions=True)
-		frappe.db.commit()
+		# get_session_user_profile can create the profile during a GET request, which is not committed.
+		frappe.db.commit()  # nosemgrep: frappe-manual-commit
 
 
 def delete_user_profile(doc, method=None):

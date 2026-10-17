@@ -179,7 +179,9 @@ def password_link(user, password_expired=False):
 	user.reset_password_key = hashed_key
 	user.last_reset_password_key_generated_on = now_datetime()
 	user.save(ignore_permissions=True)
-	frappe.db.commit()
+	# Accepting an invitation is a GET request, which is not committed. The key must be
+	# saved before the user follows the link.
+	frappe.db.commit()  # nosemgrep: frappe-manual-commit
 	url = "/update-password?key=" + key
 	if password_expired:
 		url = "/update-password?key=" + key + "&password_expired=true"
