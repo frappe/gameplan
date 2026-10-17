@@ -91,7 +91,6 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 	def on_update(self):
 		self.notify_mentions()
 		self.log_title_update()
-		self.update_participants_count()
 		self.attach_files_in_content()
 		self.sync_unread_records_on_move()
 

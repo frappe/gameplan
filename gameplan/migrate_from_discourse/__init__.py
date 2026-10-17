@@ -129,7 +129,9 @@ def migrate_posts():
 			log_discourse_map(doc, "topics", topic.id)
 		except Exception:
 			frappe.db.rollback(save_point=savepoint)
-			print(frappe.get_traceback())
+			# Inside a function, not at import. The importer is run by hand, so the
+			# operator reads the traceback in the console.
+			print(frappe.get_traceback())  # nosemgrep: frappe-print-statement-in-init-files
 			break
 		else:
 			frappe.db.release_savepoint(savepoint)

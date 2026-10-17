@@ -31,13 +31,13 @@ class TestAppVersion(FrappeTestCase):
 
 	def test_a_failing_git_command_returns_empty_and_writes_no_error_log(self):
 		before = get_count("Error Log")
-		self.assertEqual(run_git_command("git -C /nonexistent-path rev-parse HEAD"), "")
+		self.assertEqual(run_git_command("rev-parse", "--verify", "no-such-ref"), "")
 		self.assertEqual(get_count("Error Log"), before)
 
 	def test_git_being_unreachable_is_quiet_too(self):
 		before = get_count("Error Log")
 		with patch("subprocess.check_output", side_effect=OSError("no such executable")):
-			self.assertEqual(run_git_command("git rev-parse HEAD"), "")
+			self.assertEqual(run_git_command("rev-parse", "HEAD"), "")
 		self.assertEqual(get_count("Error Log"), before)
 
 	def test_an_unexpected_failure_keeps_its_traceback(self):
@@ -45,7 +45,7 @@ class TestAppVersion(FrappeTestCase):
 		and is still swallowed: `get_boot` must not take /g down over version info."""
 		before = get_count("Error Log")
 		with patch("subprocess.check_output", side_effect=MemoryError("boom")):
-			self.assertEqual(run_git_command("git rev-parse HEAD"), "")
+			self.assertEqual(run_git_command("rev-parse", "HEAD"), "")
 		self.assertEqual(get_count("Error Log"), before + 1)
 
 	def test_the_version_read_survives_a_checkout_git_cannot_answer_for(self):
