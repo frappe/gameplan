@@ -80,8 +80,15 @@
         @keydown.ctrl.enter.capture.stop="updateComment()"
         @keydown.meta.enter.capture.stop="updateComment()"
       >
+        <div v-if="comment.hidden_at" class="text-base text-ink-gray-5">
+          <p>This reply was hidden by a moderator.</p>
+          <Button v-if="canModerate" class="mt-2" variant="ghost" @click="toggleHiddenContent">
+            {{ hiddenContent ? 'Close preview' : 'View hidden reply' }}
+          </Button>
+          <CommentEditor v-if="hiddenContent" :value="hiddenContent" :editable="false" />
+        </div>
         <CommentEditor
-          v-if="comment.deleted_at == null"
+          v-else-if="comment.deleted_at == null"
           :quote-source-id="`comment:${comment.name}`"
           :author="comment.owner"
           :value="isEditing && draftData ? draftData.content : comment.content"
@@ -97,7 +104,10 @@
         />
         <span class="text-base italic text-ink-gray-5" v-else> This message is deleted </span>
         <ErrorMessage v-if="updateError" class="mt-2" :message="updateErrorMessage" />
-        <div class="mt-3" v-if="!comment.deleted_at && !isEditing && comment.reactions">
+        <div
+          class="mt-3"
+          v-if="!comment.deleted_at && !comment.hidden_at && !isEditing && comment.reactions"
+        >
           <Reactions
             doctype="GP Comment"
             :name="comment.name"
@@ -118,8 +128,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, defineAsyncComponent } from 'vue'
-import { Dropdown, ErrorMessage, Tooltip, dayjsLocal } from 'frappe-ui'
+import { ref, computed, defineAsyncComponent, watch } from 'vue'
+import { Button, Dropdown, ErrorMessage, Tooltip, dayjsLocal, useDoctype } from 'frappe-ui'
 import { useList } from 'frappe-ui'
 import { copyToClipboard, extractServerMessage } from '@/utils'
 import UserProfileLink from './UserProfileLink.vue'
@@ -134,7 +144,7 @@ import { tags } from '@/data/tags'
 import { useDraftSync } from '@/data/useDraftSync'
 import { useUser, useSessionUser } from '@/data/users'
 import type { Space } from '@/data/spaces'
-import { canDeleteContent, canEditContent } from '@/utils/permissions'
+import { canDeleteContent, canEditContent, canModerateSpace } from '@/utils/permissions'
 import { isAnonymousVisitor } from '@/utils/publicAccess'
 
 interface Props {
@@ -148,6 +158,54 @@ interface Props {
 
 const props = defineProps<Props>()
 const showRevisionsDialog = ref(false)
+const commentType = useDoctype<GPComment>('GP Comment')
+const hiddenContent = ref('')
+const canModerate = computed(
+  () =>
+    props.comment.reference_doctype === 'GP Discussion' &&
+    canModerateSpace(props.space, useSessionUser()),
+)
+watch(
+  () => props.comment.hidden_at,
+  () => {
+    hiddenContent.value = ''
+  },
+)
+
+async function toggleHiddenContent() {
+  updateError.value = null
+  try {
+    hiddenContent.value = hiddenContent.value
+      ? ''
+      : await commentType.runDocMethod.submit({
+          name: props.comment.name,
+          method: 'get_hidden_content',
+        })
+  } catch (error) {
+    updateError.value = error
+  }
+}
+
+function moderateReply() {
+  const restore = Boolean(props.comment.hidden_at)
+  dialog.prompt({
+    title: restore ? 'Restore reply' : 'Hide reply',
+    message: restore
+      ? 'Make this reply visible again?'
+      : 'The reply will show a placeholder. Existing quotations in other posts stay unchanged.',
+    fields: restore ? [] : [{ name: 'reason', label: 'Reason', type: 'textarea', required: true }],
+    confirmLabel: restore ? 'Restore reply' : 'Hide reply',
+    onConfirm: async ({ values }) => {
+      await commentType.runDocMethod.submit({
+        name: props.comment.name,
+        method: restore ? 'restore' : 'hide',
+        params: restore ? {} : { reason: values.reason },
+      })
+      hiddenContent.value = ''
+      await props.comments.reload()
+    },
+  })
+}
 const isEditing = ref(false)
 const isUpdating = ref(false)
 const updateError = ref(null)
@@ -219,6 +277,12 @@ const copyLink = (comment: GPComment) => {
 
 const dropdownOptions = computed(() => [
   {
+    label: props.comment.hidden_at ? 'Restore reply' : 'Hide reply',
+    icon: props.comment.hidden_at ? 'lucide-eye' : 'lucide-eye-off',
+    onClick: moderateReply,
+    condition: () => canModerate.value && !props.comment.deleted_at && !props.readOnlyMode,
+  },
+  {
     label: 'Edit',
     icon: 'lucide-edit',
     onClick: () => startEditing(),
@@ -226,6 +290,7 @@ const dropdownOptions = computed(() => [
       !isEditing.value &&
       !isUpdating.value &&
       !props.comment.deleted_at &&
+      !props.comment.hidden_at &&
       !props.readOnlyMode &&
       canEditContent(props.comment, props.space, useSessionUser()),
   },
@@ -234,7 +299,10 @@ const dropdownOptions = computed(() => [
     icon: 'lucide-rotate-ccw',
     onClick: () => (showRevisionsDialog.value = true),
     condition: () =>
-      !props.readOnlyMode && !isAnonymousVisitor() && Boolean(props.comment.edited_at),
+      !props.readOnlyMode &&
+      !isAnonymousVisitor() &&
+      !props.comment.hidden_at &&
+      Boolean(props.comment.edited_at),
   },
   {
     label: 'Copy link',
@@ -256,6 +324,7 @@ const dropdownOptions = computed(() => [
       !isUpdating.value &&
       canDeleteContent(props.comment, props.space, useSessionUser()) &&
       props.comment.deleted_at == null &&
+      !props.comment.hidden_at &&
       !props.readOnlyMode,
   },
 ])

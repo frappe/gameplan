@@ -68,10 +68,6 @@ class PublicGameplanSearch(GameplanSearch):
 			response["summary"][key] = len(results)
 		return response
 
-	def _expand_query_with_corrections(self, query):
-		# The shared vocabulary includes private posts. It is not a public suggestion source.
-		return query, None
-
 	def get_filter_options(self):
 		self.require_access()
 		options = {"authors": {}, "projects": {}, "teams": {}, "doctypes": {}, "tags": {}}
@@ -158,7 +154,11 @@ class PublicGameplanSearch(GameplanSearch):
 				query = (
 					query.join(Parent)
 					.on(Content.reference_name == Parent.name)
-					.where((Content.reference_doctype == parent_doctype) & Content.deleted_at.isnull())
+					.where(
+						(Content.reference_doctype == parent_doctype)
+						& Content.deleted_at.isnull()
+						& Content.hidden_at.isnull()
+					)
 				)
 			yield (
 				query.join(Project).on(Parent.project == Project.name).where(self.space_criterion(Project)),

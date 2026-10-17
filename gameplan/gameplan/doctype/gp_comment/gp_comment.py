@@ -10,7 +10,7 @@ from gameplan.mixins.attachments import HasAttachments
 from gameplan.mixins.mentions import HasMentions
 from gameplan.mixins.reactions import HasReactions
 from gameplan.mixins.tags import HasTags
-from gameplan.permissions import comment_query_conditions, content_has_permission
+from gameplan.permissions import can_moderate_space, comment_query_conditions, content_has_permission
 from gameplan.public_payload import for_viewer
 from gameplan.utils import get_document_revisions, remove_empty_trailing_paragraphs
 from gameplan.visibility import is_anonymous_eligible_discussion, require_admin_to_publish
@@ -78,6 +78,10 @@ class GPComment(HasAttachments, HasMentions, HasReactions, HasTags, Document):
 
 	def validate(self):
 		before = self.get_doc_before_save()
+		if self.has_value_changed("hidden_at") and (self.hidden_at or (before and before.hidden_at)):
+			frappe.throw("Use the Hide or Restore action", frappe.PermissionError)
+		if before and before.hidden_at:
+			frappe.throw("Restore this reply before editing it", frappe.PermissionError)
 		if before and (
 			self.has_value_changed("reference_name") or self.has_value_changed("reference_doctype")
 		):
@@ -124,7 +128,83 @@ class GPComment(HasAttachments, HasMentions, HasReactions, HasTags, Document):
 
 	@frappe.whitelist()
 	def get_revisions(self, fieldname="content"):
+		frappe.get_doc(self.doctype, self.name).check_permission("read")
 		return get_document_revisions(self.doctype, self.name, fieldname)
+
+	@frappe.whitelist(methods=["POST"])
+	def hide(self, reason: str):
+		doc = self._moderation_target()
+		if doc.hidden_at:
+			return
+		if doc.deleted_at:
+			frappe.throw("Deleted replies cannot be hidden")
+		if not isinstance(reason, str) or not reason.strip() or len(reason) > 500:
+			frappe.throw("Enter a reason of at most 500 characters")
+		if frappe.db.exists(
+			"File", {"attached_to_doctype": self.doctype, "attached_to_name": self.name, "is_private": 0}
+		):
+			frappe.throw("Make this reply's attached files private before hiding it")
+		frappe.get_doc(
+			doctype="GP Moderation Log",
+			comment=doc.name,
+			action="Hide",
+			reason=reason.strip(),
+			content=doc.content,
+		).insert(ignore_permissions=True)
+		from gameplan.search_sqlite import GameplanSearch
+
+		search = GameplanSearch()
+		if search.is_search_enabled() and search.index_exists():
+			search.remove_doc(self.doctype, self.name)
+		# Keep generic lists and feed previews safe without running publication hooks.
+		doc.db_set(
+			{"hidden_at": frappe.utils.now(), "content": "<p>This reply was hidden by a moderator.</p>"},
+			notify=True,
+		)
+		doc._notify_moderation_change()
+
+	@frappe.whitelist(methods=["POST"])
+	def restore(self):
+		doc = self._moderation_target()
+		if not doc.hidden_at:
+			return
+		log = frappe.get_last_doc("GP Moderation Log", filters={"comment": doc.name, "action": "Hide"})
+		doc.db_set({"hidden_at": None, "content": log.content}, notify=True)
+		doc._notify_moderation_change()
+		frappe.get_doc(doctype="GP Moderation Log", comment=doc.name, action="Restore").insert(
+			ignore_permissions=True
+		)
+		from frappe.search.sqlite_search import update_doc_index
+
+		frappe.db.after_commit.add(lambda: update_doc_index(doc))
+
+	@frappe.whitelist(methods=["POST"])
+	def get_hidden_content(self):
+		doc = self._moderation_target()
+		if doc.hidden_at:
+			return frappe.get_last_doc(
+				"GP Moderation Log", filters={"comment": doc.name, "action": "Hide"}
+			).content
+
+	def _notify_moderation_change(self):
+		frappe.publish_realtime(
+			"new_activity",
+			{"reference_doctype": self.reference_doctype, "reference_name": str(self.reference_name)},
+			doctype=self.reference_doctype,
+			docname=self.reference_name,
+			after_commit=True,
+		)
+
+	def _moderation_target(self):
+		doc = frappe.get_doc(self.doctype, self.name, for_update=True)
+		project = (
+			frappe.db.get_value("GP Discussion", doc.reference_name, "project")
+			if doc.reference_doctype == "GP Discussion"
+			else None
+		)
+		if not project or not can_moderate_space(frappe.session.user, project):
+			frappe.throw("Only community moderators can perform this action", frappe.PermissionError)
+		return doc
 
 
 def get_permission_query_conditions(user):

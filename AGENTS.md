@@ -10,6 +10,15 @@ Backend in `gameplan/`, frontend in `frontend/src/` (`components/`, `pages/`,
 nearest precedent and copy it. This file covers only what the code cannot tell you.
 Where a trap or policy below contradicts the precedent you found, this file wins.
 
+## Moderation planning
+
+- Ebrahim owns moderation end to end, including product decisions, backend, and frontend.
+- Use the installed `grill-me` skill and its `grilling` dependency whenever planning moderation work.
+- Ask focused rounds about the next concrete implementation. Do not require a separate design-contract PR or maintainer approval.
+- Keep migration as a later workstream. Production inventory and importer work do not block moderation development.
+- Record confirmed choices in [moderation decisions](prd/moderation-decisions.md) after each planning round. Read it before planning or implementing moderation.
+- Keep recommendations and implementation choices distinct from decisions Ebrahim has confirmed.
+
 ## Naming: product vs schema
 
 New code, UI copy and commit messages say **Space** and **Community**. The schema

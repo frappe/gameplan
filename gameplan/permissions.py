@@ -167,6 +167,20 @@ def can_manage_space(user, project):
 	return is_community_admin(user, project.team)
 
 
+def can_moderate_space(user, project):
+	if gameplan.is_anonymous(user) or gameplan.is_guest(user):
+		return False
+	project = get_project_info(project)
+	if not project or not can_view_space(user, project.name):
+		return False
+	if is_global_admin(user):
+		return True
+	return bool(
+		project.team
+		and (is_community_admin(user, project.team) or is_community_moderator(user, project.team))
+	)
+
+
 def can_invite_guest(user, project):
 	if gameplan.is_anonymous(user):
 		return False
@@ -184,6 +198,8 @@ def can_view_content(user, doc):
 		# Tasks are never public, even when their Space is.
 		return False
 	project = get_content_project(doc)
+	if doc.doctype == "GP Comment" and get_doc_value(doc, "hidden_at"):
+		return bool(project and can_moderate_space(user, project))
 	if project:
 		return can_view_space(user, project)
 	if is_global_admin(user):
@@ -887,6 +903,15 @@ def is_community_admin(user, team):
 		frappe.db.exists(
 			"GP Member",
 			{"parenttype": "GP Team", "parent": team, "user": user, "is_admin": 1},
+		)
+	)
+
+
+def is_community_moderator(user, team):
+	return bool(
+		frappe.db.exists(
+			"GP Member",
+			{"parenttype": "GP Team", "parent": team, "user": user, "is_moderator": 1},
 		)
 	)
 

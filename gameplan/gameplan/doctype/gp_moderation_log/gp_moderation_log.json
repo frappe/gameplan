@@ -1,0 +1,64 @@
+{
+ "actions": [],
+ "autoname": "hash",
+ "creation": "2026-10-16 15:28:37.306323",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "comment",
+  "action",
+  "reason",
+  "content"
+ ],
+ "fields": [
+  {
+   "fieldname": "comment",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Comment",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "action",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Action",
+   "options": "Hide\nRestore",
+   "reqd": 1
+  },
+  {
+   "fieldname": "reason",
+   "fieldtype": "Small Text",
+   "label": "Reason"
+  },
+  {
+   "fieldname": "content",
+   "fieldtype": "Code",
+   "label": "Original Content",
+   "options": "HTML",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-10-16 15:28:37.306323",
+ "modified_by": "Administrator",
+ "module": "Gameplan",
+ "name": "GP Moderation Log",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1
+  },
+  {
+   "role": "Gameplan Admin",
+   "read": 1
+  }
+ ],
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -173,6 +173,9 @@ const comments = useList<
     | 'modified'
     | 'edited_at'
     | 'deleted_at'
+    | 'hidden_at'
+    | 'reference_doctype'
+    | 'reference_name'
     | 'reactions'
   >
 >({
@@ -186,6 +189,9 @@ const comments = useList<
     'modified',
     'edited_at',
     'deleted_at',
+    'hidden_at',
+    'reference_doctype',
+    'reference_name',
     { reactions: ['name', 'user', 'emoji'] },
   ],
   transform(data) {
