@@ -11,6 +11,7 @@
   "reference_name",
   "edited_at",
   "deleted_at",
+  "hidden_at",
   "tags"
  ],
  "fields": [
@@ -38,6 +39,12 @@
    "fieldname": "edited_at",
    "fieldtype": "Datetime",
    "label": "Edited At"
+  },
+  {
+   "fieldname": "hidden_at",
+   "fieldtype": "Datetime",
+   "label": "Hidden At",
+   "read_only": 1
   },
   {
    "fieldname": "deleted_at",

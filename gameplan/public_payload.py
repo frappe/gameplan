@@ -62,7 +62,7 @@ PUBLIC_FIELDS = {
 		"pinned_at",
 		"pin_scope",
 	},
-	"GP Comment": {"content", "reference_doctype", "reference_name", "edited_at", "deleted_at"},
+	"GP Comment": {"content", "reference_doctype", "reference_name", "edited_at", "deleted_at", "hidden_at"},
 	"GP Poll": {
 		"title",
 		"multiple_answers",

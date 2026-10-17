@@ -6,9 +6,10 @@ import { useSessionUser } from './users'
 import { isMemberAccess } from '@/utils/visibility'
 import { getSessionUserFromCookie, isAnonymousVisitor, publicListUrl } from '@/utils/publicAccess'
 
-export interface CommunityMember extends Pick<GPMember, 'user' | 'is_admin'> {
+export interface CommunityMember extends Pick<GPMember, 'user' | 'is_admin' | 'is_moderator'> {
   user: string
   is_admin?: 0 | 1
+  is_moderator?: 0 | 1
 }
 
 export interface Community extends Pick<
@@ -30,7 +31,7 @@ export let communities = useList<Community>({
     'creation',
     'archived_at',
     'visibility',
-    { members: ['user', 'is_admin'] },
+    { members: ['user', 'is_admin', 'is_moderator'] },
   ],
   orderBy: 'title asc, name asc',
   initialData: [],
