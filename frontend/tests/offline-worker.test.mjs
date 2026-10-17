@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import test from 'node:test'
 import vm from 'node:vm'
+import { setImmediate } from 'node:timers/promises'
 
 const origin = 'https://gameplan.test'
 const workerSource = readFileSync(
@@ -341,6 +342,63 @@ test('repeated build caching and pagehide cleanup retain the previous distinct b
   assert.equal(await assets.match(assetUrl(2)), undefined)
   assert.equal(await (await assets.match(assetUrl(3))).text(), 'build 3')
 })
+
+for (const operation of ['cleanup', 'another build']) {
+  test(`${operation} waits for a partially downloaded build without blocking logout`, async () => {
+    const caches = storage()
+    const firstSaved = deferred()
+    const finish = deferred()
+    let build = 1
+    const assetUrl = (version, chunk) =>
+      `/assets/gameplan/frontend/assets/build${version}-${chunk}.js`
+    const current = worker(caches, async (request) => {
+      const url = String(request.url || request)
+      if (url.includes('gameplan-offline-assets.json')) {
+        const response = new Response(JSON.stringify([assetUrl(build, 1), assetUrl(build, 2)]))
+        Object.defineProperty(response, 'type', { value: 'basic' })
+        return response
+      }
+      if (url.endsWith('build2-2.js')) await finish.promise
+      const response = new Response(url)
+      Object.defineProperty(response, 'type', { value: 'basic' })
+      return response
+    })
+    const assets = await caches.open(current.evaluate('ASSET_CACHE'))
+    const open = caches.open
+    caches.open = async (name) => {
+      const cache = await open(name)
+      const put = cache.put
+      cache.put = async (request, response) => {
+        await put(request, response)
+        if (String(request.url || request).endsWith('build2-1.js')) firstSaved.resolve()
+      }
+      return cache
+    }
+    assert.equal(await current.evaluate('cacheBuild()'), true)
+    current.context.self.clients.matchAll = async () => [{ url: `${origin}/g/feed` }]
+    build = 2
+    const saving = current.evaluate('cacheBuild()')
+    await firstSaved.promise
+    build = 3
+    const competing =
+      operation === 'cleanup'
+        ? current.message({ type: 'CLEAN_UNUSED_BUILDS' })
+        : current.evaluate('cacheBuild()')
+    // Drain runnable cache operations while build 2's second response remains paused.
+    await setImmediate()
+    assert.equal(await current.message({ type: 'CLEAR_USER_CACHES' }), true)
+    finish.resolve()
+    assert.equal(await saving, true)
+    await competing
+    const manifest = await (
+      await assets.match(current.evaluate('OFFLINE_ASSET_MANIFEST_URL'))
+    ).json()
+    const previous = await (await assets.match(current.evaluate('PREVIOUS_MANIFEST_KEY'))).json()
+    for (const url of [...manifest, ...previous]) {
+      assert.ok(await assets.match(url), `Missing committed build asset: ${url}`)
+    }
+  })
+}
 
 test('a successful build saves manifest and assets into cache', async () => {
   const caches = storage()
