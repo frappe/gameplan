@@ -53,9 +53,15 @@ export function pollDraftInContent(html?: string | null): PollDraft | null {
 
 export function parseDraft(value: string | null): PollDraft | null {
   if (!value) return null
+  let draft
   try {
-    return JSON.parse(value)
+    draft = JSON.parse(value)
   } catch {
     return null
   }
+  const valid =
+    typeof draft?.title === 'string' &&
+    Array.isArray(draft.options) &&
+    draft.options.every((option: { title?: unknown } | null) => typeof option?.title === 'string')
+  return valid ? (draft as PollDraft) : null
 }
