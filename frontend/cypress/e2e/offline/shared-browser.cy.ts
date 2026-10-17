@@ -84,6 +84,45 @@ describe('A shared browser', () => {
     })
   })
 
+  it('keeps the selected account after a delayed Guest worker response', () => {
+    cy.loginAs('member')
+    readSomething()
+    cy.window({ timeout: 40000 }).should(
+      (win) =>
+        expect(win.navigator.serviceWorker.controller, 'a worker controls the page').to.exist,
+    )
+
+    let started = false
+    cy.intercept('GET', '/g', (request) => {
+      started = true
+      request.continue((response) => response.setDelay(2000))
+    }).as('oldShell')
+    cy.clearCookies()
+    cy.window().then(async (win) => {
+      for (const name of await win.caches.keys()) {
+        if (name.startsWith(CACHE_PREFIX) && name.endsWith(':shell')) {
+          await win.caches.delete(name)
+        }
+      }
+      win.navigator.serviceWorker.controller!.postMessage({ type: 'WARM_SHELL_CACHE' })
+    })
+    cy.wrap(null).should(() => expect(started, 'Guest shell request started').to.be.true)
+
+    cy.switchUser('secondMember')
+    cy.wait('@oldShell')
+    cy.request('/api/method/frappe.auth.get_logged_user').then((response) => {
+      expect(response.status).to.eq(200)
+      expect(response.body.message).to.eq(personas.secondMember.email)
+    })
+    cy.visit('/g')
+    cy.get('[data-slot="desktop-shell"]', { timeout: 40000 }).should('exist')
+    cy.lastSeenUser().should('eq', personas.secondMember.email)
+    cy.idbKeys().should((keys) => {
+      expect(keys.filter((key) => key.startsWith(cacheNamespace(personas.member.email)))).to.be
+        .empty
+    })
+  })
+
   it('still detects the switch when the first session went stale first', () => {
     cy.loginAs('member')
     readSomething()

@@ -55,6 +55,10 @@ export function unloadApp() {
     win.location.href = 'about:blank'
   })
   cy.window({ log: false }).its('location.href').should('eq', 'about:blank')
+  // Worker fetches survive page unload and can restore the previous session's cookies.
+  cy.then(() =>
+    Cypress.automation('remote:debugger:protocol', { command: 'ServiceWorker.stopAllWorkers' }),
+  )
 }
 
 Cypress.Commands.add('loginAs', (persona: PersonaName) => {
