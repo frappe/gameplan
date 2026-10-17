@@ -57,6 +57,12 @@ const userCaches = {
     });
   },
 };
+// Build downloads and pruning share a lock, independent of user-cache clearing.
+const buildCaches = {
+  lock: `${CACHE_PREFIX}-build-caches`,
+  pending: Promise.resolve(),
+  exclusive: userCaches.exclusive,
+};
 const SHELL_CACHE = `${CACHE_PREFIX}:${CACHE_VERSION}:shell`;
 const ASSET_CACHE = `${CACHE_PREFIX}:${CACHE_VERSION}:assets`;
 // Images are per user and cleared on logout; build files (ASSET_CACHE) are shared and kept.
@@ -258,37 +264,39 @@ async function refreshShell(response, generation) {
 }
 
 /** A shell is usable only once all of its build files are cached. */
-async function cacheBuild() {
-  try {
-    const response = await fetch(OFFLINE_ASSET_MANIFEST_URL, {
-      cache: "no-cache",
-    });
-    if (!isCacheableResponse(response)) return false;
-    const urls = await response.json();
-    if (!Array.isArray(urls) || !urls.length) return false;
-    const cache = await caches.open(ASSET_CACHE);
-    const saved = await saveAll(cache, urls.filter(isAssetUrl));
-    if (saved) {
-      const manifest = await cache.match(OFFLINE_ASSET_MANIFEST_URL);
-      if (
-        manifest &&
-        JSON.stringify(await manifest.clone().json()) !== JSON.stringify(urls)
-      ) {
-        await cache.put(PREVIOUS_MANIFEST_KEY, manifest);
+function cacheBuild() {
+  return buildCaches.exclusive(async () => {
+    try {
+      const response = await fetch(OFFLINE_ASSET_MANIFEST_URL, {
+        cache: "no-cache",
+      });
+      if (!isCacheableResponse(response)) return false;
+      const urls = await response.json();
+      if (!Array.isArray(urls) || !urls.length) return false;
+      const cache = await caches.open(ASSET_CACHE);
+      const saved = await saveAll(cache, urls.filter(isAssetUrl));
+      if (saved) {
+        const manifest = await cache.match(OFFLINE_ASSET_MANIFEST_URL);
+        if (
+          manifest &&
+          JSON.stringify(await manifest.clone().json()) !== JSON.stringify(urls)
+        ) {
+          await cache.put(PREVIOUS_MANIFEST_KEY, manifest);
+        }
+        await cache.put(
+          OFFLINE_ASSET_MANIFEST_URL,
+          new Response(JSON.stringify(urls), {
+            headers: { "content-type": "application/json" },
+          }),
+        );
+        await deleteOldBuildAssets(cache, urls);
+        await deleteOldCaches();
       }
-      await cache.put(
-        OFFLINE_ASSET_MANIFEST_URL,
-        new Response(JSON.stringify(urls), {
-          headers: { "content-type": "application/json" },
-        }),
-      );
-      await deleteOldBuildAssets(cache, urls);
-      await deleteOldCaches();
+      return saved;
+    } catch {
+      return false;
     }
-    return saved;
-  } catch {
-    return false;
-  }
+  });
 }
 
 /** Saves `url` into `cache` unless it is already there; a failure waits for the next try. */
@@ -406,20 +414,22 @@ async function deleteOldBuildAssets(cache, currentUrls) {
   );
 }
 
-async function cleanUnusedBuilds() {
-  await deleteOldCaches();
-  const cache = await caches.open(ASSET_CACHE);
-  const manifest = await cache.match(OFFLINE_ASSET_MANIFEST_URL);
-  if (manifest) {
-    try {
-      const urls = await manifest.json();
-      if (Array.isArray(urls)) {
-        await deleteOldBuildAssets(cache, urls);
+function cleanUnusedBuilds() {
+  return buildCaches.exclusive(async () => {
+    await deleteOldCaches();
+    const cache = await caches.open(ASSET_CACHE);
+    const manifest = await cache.match(OFFLINE_ASSET_MANIFEST_URL);
+    if (manifest) {
+      try {
+        const urls = await manifest.json();
+        if (Array.isArray(urls)) {
+          await deleteOldBuildAssets(cache, urls);
+        }
+      } catch {
+        // Manifest unreadable.
       }
-    } catch {
-      // Manifest unreadable.
     }
-  }
+  });
 }
 
 async function cacheFirst(request) {
