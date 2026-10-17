@@ -10,7 +10,7 @@ from pypika.terms import ExistsCriterion
 
 import gameplan
 from gameplan.gameplan.doctype.gp_poll.gp_poll import ongoing_polls_clause
-from gameplan.permissions import apply_accessible_project_filter
+from gameplan.permissions import apply_accessible_project_filter, can_view_space
 from gameplan.public_access import public_pagination
 from gameplan.public_payload import check_public_filters, refuse, rows_for_viewer
 from gameplan.utils import html_to_text_preview
@@ -254,24 +254,23 @@ def include_last_post_content(discussions):
 	)
 	last_poll_title_map = {p.name: p for p in last_poll_title}
 
+	projects = {d.get("project") for d in discussions if d.get("project")}
+	readable_spaces = {p for p in projects if can_view_space(frappe.session.user, p)}
+
 	for discussion in discussions:
-		if discussion.last_post_type == "GP Comment":
-			comment = last_comments_content_map.get(cint(discussion.last_post))
-			if (
-				comment
-				and comment.reference_doctype == "GP Discussion"
-				and str(comment.reference_name) == str(discussion.name)
-				and frappe.has_permission("GP Comment", "read", doc=comment.name)
-			):
-				discussion.last_comment_content = html_to_text_preview(comment.content)
-		if discussion.last_post_type == "GP Poll":
-			poll = last_poll_title_map.get(cint(discussion.last_post))
-			if (
-				poll
-				and str(poll.discussion) == str(discussion.name)
-				and frappe.has_permission("GP Poll", "read", doc=poll.name)
-			):
-				discussion.last_poll_title = poll.title
+		if discussion.get("project") in readable_spaces:
+			if discussion.last_post_type == "GP Comment":
+				comment = last_comments_content_map.get(cint(discussion.last_post))
+				if (
+					comment
+					and comment.reference_doctype == "GP Discussion"
+					and str(comment.reference_name) == str(discussion.name)
+				):
+					discussion.last_comment_content = html_to_text_preview(comment.content)
+			if discussion.last_post_type == "GP Poll":
+				poll = last_poll_title_map.get(cint(discussion.last_post))
+				if poll and str(poll.discussion) == str(discussion.name):
+					discussion.last_poll_title = poll.title
 
 		if not discussion.last_post:
 			discussion.last_post_by = discussion.owner
