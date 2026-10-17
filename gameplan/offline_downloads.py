@@ -17,6 +17,7 @@ from frappe.rate_limiter import rate_limit
 from frappe.utils import add_days, add_to_date, get_datetime, now_datetime
 
 from gameplan.gameplan.doctype.gp_discussion.api import get_discussions
+from gameplan.mixins.reactions import get_reactions_on
 from gameplan.permissions import is_member_parent
 
 PAGE_SIZE = 20
@@ -58,6 +59,7 @@ def get_offline_index(
 		"user": frappe.session.user,
 		"discussions": [row.name for row in rows],
 		"places": {row.name: _place(row) for row in rows},
+		"reactions": _thread_reactions([row.name for row in rows]),
 		"changed": [row.name for row in _changed_since(rows, since)] if since else [],
 		"revoked": _revoked([str(name) for name in (cached or [])[:MAX_CACHED]]),
 		"synced_at": str(synced_at),
@@ -78,10 +80,28 @@ def get_offline_bundle(window_days: Window, fields: dict[str, FieldList], names:
 		"user": frappe.session.user,
 		"discussions": [read_doc("GP Discussion", name) for name in names],
 		"rows": _feed_rows(names),
+		"reactions": _thread_reactions(names),
 	}
 	for key, doctype in CHILD_LISTS.items():
 		bundle[key] = _rows_by_discussion(doctype, fields.get(key), names)
 	return bundle
+
+
+def _thread_reactions(names: list[str]) -> dict[str, list]:
+	if not names:
+		return {}
+	# These discussions already passed the window's read checks.
+	posts = {"GP Discussion": {name: name for name in names}}
+	for doctype in ("GP Comment", "GP Poll"):
+		parent, filters = _child_filters(doctype, names)
+		posts[doctype] = {
+			str(row.name): str(row[parent])
+			for row in frappe.get_all(doctype, fields=["name", parent], filters=filters)
+		}
+	grouped = {name: [] for name in names}
+	for reaction in get_reactions_on({doctype: list(rows) for doctype, rows in posts.items()}):
+		grouped[posts[reaction.reference_doctype][reaction.reference_name]].append(reaction)
+	return grouped
 
 
 def _discussions_in_window(window: int, names: list[str] | None = None) -> list:
@@ -146,8 +166,8 @@ def _revoked(names: list[str]) -> list[str]:
 
 
 def _changed_since(rows: list, since: datetime) -> list:
-	"""Discussions edited, replied to or reacted in after `since`. A reaction or vote saves
-	the comment or poll, not the discussion, so those are checked too."""
+	"""Discussions edited, replied to or voted in after `since`. Reactions are returned
+	as complete snapshots by the index because withdrawals leave no row to compare."""
 	names = [row.name for row in rows]
 	if not names:
 		return []

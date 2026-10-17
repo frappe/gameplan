@@ -26,7 +26,7 @@ from gameplan.tests.fixtures import (
 )
 
 FIELDS = {
-	"comments": ["name", "content", "owner", "creation", {"reactions": ["name", "user", "emoji"]}],
+	"comments": ["name", "content", "owner", "creation"],
 	"activities": ["name", "user", "action", "data", "creation"],
 	"polls": ["name", "title", "creation", {"options": ["name", "title", "idx"]}],
 }
@@ -198,12 +198,6 @@ class TestOfflineIndex(OfflineDownloadsTestCase):
 				"an edited comment": lambda: frappe.get_doc("GP Comment", comment.name).save(
 					ignore_permissions=True
 				),
-				"a reaction on the discussion": lambda: frappe.get_doc(
-					"GP Discussion", self.recent.name
-				).react(operations=[{"emoji": "👍", "operation": "add"}]),
-				"a reaction on a comment": lambda: frappe.get_doc("GP Comment", comment.name).react(
-					operations=[{"emoji": "🎉", "operation": "add"}]
-				),
 				"a poll vote": lambda: frappe.get_doc("GP Poll", poll.name).submit_vote("Yes"),
 				# No row is left to compare, so the discussion's own save carries it.
 				"a deleted comment": lambda: frappe.delete_doc(
@@ -213,6 +207,29 @@ class TestOfflineIndex(OfflineDownloadsTestCase):
 			for label, action in cases.items():
 				with self.subTest(label):
 					self.assertIn(str(self.recent.name), changed_after(action), label)
+
+	def test_reaction_snapshots_refresh_without_refetching_discussions(self):
+		comment = create_comment(self.recent, content="Hello", owner=self.member)
+		poll = create_poll("Lunch?", self.recent)
+		since = add_to_date(now_datetime(), seconds=-1)
+		earlier = add_to_date(since, minutes=-10)
+		self.settle_before(earlier)
+		for post in (comment, poll):
+			set_modified(post.doctype, post.name, earlier)
+		key = str(self.recent.name)
+		with self.as_user(self.member):
+			for post in (self.recent, comment, poll):
+				with self.subTest(post=post.doctype):
+					added = post.react(operations=[{"emoji": "👍", "operation": "add"}])
+					index = self.index(30, since=str(since))
+					self.assertEqual(index["changed"], [])
+					self.assertEqual(index["reactions"][key], added)
+					self.assertEqual(self.bundle(30, [key])["reactions"][key], added)
+					post.react(operations=[{"emoji": "👍", "operation": "remove"}])
+					index = self.index(30, since=str(since))
+					self.assertEqual(index["changed"], [])
+					self.assertEqual(index["reactions"][key], [])
+					self.assertNotIn(str(self.secret.name), index["reactions"])
 
 
 class TestOfflineBundle(OfflineDownloadsTestCase):
@@ -237,7 +254,7 @@ class TestOfflineBundle(OfflineDownloadsTestCase):
 		self.assertEqual(row["project_title"], "Engineering")
 		self.assertEqual(row_names(bundle["rows"]), row_names(bundle["discussions"]))
 		self.assertEqual([r["name"] for r in bundle["comments"][key]], [comment.name])
-		self.assertEqual(bundle["comments"][key][0]["reactions"], [])
+		self.assertEqual(bundle["reactions"][key], [])
 		self.assertNotIn("_offline_parent", bundle["comments"][key][0])
 		self.assertEqual([r["name"] for r in bundle["polls"][key]], [poll.name])
 		self.assertEqual(len(bundle["polls"][key][0]["options"]), 2)
@@ -250,7 +267,9 @@ class TestOfflineBundle(OfflineDownloadsTestCase):
 		self.assertEqual(len(self.bundle(30, in_window)["discussions"]), offline_downloads.PAGE_SIZE)
 
 		wanted = [str(self.recent.name), str(self.old.name), str(self.outside.name), str(self.secret.name)]
-		self.assertEqual(row_names(self.bundle(30, wanted)["discussions"]), names([self.recent]))
+		bundle = self.bundle(30, wanted)
+		self.assertEqual(row_names(bundle["discussions"]), names([self.recent]))
+		self.assertEqual(set(bundle["reactions"]), names([self.recent]))
 		# The cap is how much a device keeps, not a boundary the bundle enforces.
 		with patch.object(offline_downloads, "MAX_DISCUSSIONS", 1):
 			self.assertEqual(len(self.bundle(90, [str(self.old.name)])["discussions"]), 1)
