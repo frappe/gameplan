@@ -12,6 +12,9 @@ name: Release
 # The first release is 0.1.0, and each merge after it raises the patch version (0.1.1,
 # 0.1.2, ...). To release another version, such as 1.0.0, run this workflow by hand with
 # it, or set it in gameplan/__init__.py in a pull request.
+#
+# If a job after the tag fails, use "Re-run failed jobs". "Re-run all jobs" finds the
+# version already tagged and publishes nothing.
 
 on:
   push:
