@@ -207,6 +207,39 @@ describe('Download for offline', () => {
     })
   })
 
+  it('refreshes and clears reactions through the index without another bundle', () => {
+    startFreshDownload()
+    const reaction = {
+      name: 'reaction',
+      reference_doctype: 'GP Discussion',
+      reference_name: discussion,
+      emoji: '👍',
+      user: personas.member.email,
+    }
+    const key =
+      cacheNamespace(personas.member.email) +
+      JSON.stringify(['useCall:v2', 'Thread Reactions', 'GP Discussion', discussion])
+    cy.get('@bundle.all').then((first) => {
+      const count = (first as unknown as unknown[]).length
+      for (const reactions of [[reaction], []]) {
+        cy.intercept({ method: 'POST', url: INDEX, times: 1 }, (req) =>
+          req.continue((res) => {
+            res.body.message.changed = []
+            res.body.message.reactions[discussion] = reactions
+          }),
+        ).as('reactionIndex')
+        control('Sync now').click()
+        cy.button('Sync').click()
+        cy.wait('@reactionIndex')
+        control('Sync now').should('be.enabled')
+        cachedValue(key).then((value) => expect(JSON.parse(value)).to.deep.eq(reactions))
+        cy.get('@bundle.all').should((all) =>
+          expect((all as unknown as unknown[]).length).to.eq(count),
+        )
+      }
+    })
+  })
+
   it('retries a failed image without fetching an unchanged bundle again', () => {
     const path = '/private/files/offline-image-retry.png'
     let fail = true
@@ -244,6 +277,26 @@ describe('Download for offline', () => {
   })
 
   it('opens a downloaded discussion offline that this browser never visited', () => {
+    cy.request({
+      method: 'POST',
+      url: `/api/v2/document/GP%20Discussion/${discussion}/method/react`,
+      body: { operations: [{ emoji: '👍', operation: 'add' }] },
+    })
+    cy.request({
+      method: 'POST',
+      url: '/api/v2/document/GP%20Comment',
+      body: {
+        reference_doctype: 'GP Discussion',
+        reference_name: discussion,
+        content: '<p>Downloaded reply</p>',
+      },
+    }).then(({ body }) => {
+      cy.request({
+        method: 'POST',
+        url: `/api/v2/document/GP%20Comment/${body.data.name}/method/react`,
+        body: { operations: [{ emoji: '💖', operation: 'add' }] },
+      })
+    })
     openOfflineSettings()
     chooseWindow('Past week')
     cy.wait('@index')
@@ -255,6 +308,11 @@ describe('Download for offline', () => {
     cy.goOffline()
     cy.contains('a', 'Welcome thread').click()
     cy.contains('h1', 'Welcome thread').should('be.visible')
+    cy.contains('button', /👍\s*1/).should('be.visible')
+    cy.contains('Downloaded reply')
+      .closest('[data-id]')
+      .contains('button', /💖\s*1/)
+      .should('be.visible')
 
     cy.goOnline()
   })
@@ -342,6 +400,10 @@ describe('Download for offline', () => {
       expect(keys).to.not.include(
         `${cacheNamespace(personas.member.email)}doc:v2:GP Discussion/${discussion}`,
       )
+      expect(keys).to.not.include(
+        cacheNamespace(personas.member.email) +
+          JSON.stringify(['useCall:v2', 'Thread Reactions', 'GP Discussion', discussion]),
+      )
     })
     cy.goOffline()
     cy.visit(`/g/community/${community}/space/${space}/discussions`)
@@ -388,6 +450,10 @@ describe('Download for offline', () => {
     cy.idbKeys().should((keys) => {
       expect(keys, 'the downloaded document').to.not.include(
         `${cacheNamespace(personas.member.email)}doc:v2:GP Discussion/${discussion}`,
+      )
+      expect(keys, 'the downloaded reactions').to.not.include(
+        cacheNamespace(personas.member.email) +
+          JSON.stringify(['useCall:v2', 'Thread Reactions', 'GP Discussion', discussion]),
       )
       expect(keys, 'the record of what was downloaded').to.not.include('gameplan:offline-downloads')
     })

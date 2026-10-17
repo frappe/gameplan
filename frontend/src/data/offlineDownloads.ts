@@ -75,6 +75,7 @@ interface Index {
   /** The account the server answered for. */
   user: string
   discussions: string[]
+  reactions: Record<string, Row[]>
   places: Record<string, string>
   changed: string[]
   revoked: string[]
@@ -89,6 +90,7 @@ interface Bundle {
   comments: Record<string, Row[]>
   activities: Record<string, Row[]>
   polls: Record<string, Row[]>
+  reactions: Record<string, Row[]>
 }
 
 type Row = Record<string, unknown> & { name: string | number }
@@ -203,6 +205,12 @@ async function download(days: OfflineWindow, previous: Meta | null, signal: Abor
     for (const name of Object.keys(places)) {
       if (!previous?.since || !inIndex.has(name)) delete places[name]
     }
+    await setMany(
+      Object.keys(places).map((name) => [
+        discussionKeys(cache, name).reactions,
+        JSON.stringify(index.reactions[name] ?? []),
+      ]),
+    )
     const base: Meta = {
       user: owner,
       window: days,
@@ -318,6 +326,7 @@ function discussionKeys(cache: Cache, name: string) {
     comments: cache.listKey(commentsCacheKey('GP Discussion', name)),
     activities: cache.listKey(activitiesCacheKey('GP Discussion', name)),
     polls: cache.listKey(pollsCacheKey(name)),
+    reactions: cache.callKey(['Thread Reactions', 'GP Discussion', name]),
   }
 }
 
@@ -340,6 +349,7 @@ async function storeBundle(cache: Cache, bundle: Bundle) {
       [key.comments, rowsJson(bundle.comments[name])],
       [key.activities, rowsJson(bundle.activities[name])],
       [key.polls, rowsJson(bundle.polls[name])],
+      [key.reactions, JSON.stringify(bundle.reactions[name] ?? [])],
     )
   }
   await setMany(entries)
