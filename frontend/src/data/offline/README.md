@@ -1,8 +1,8 @@
 # data/offline
 
-The only Gameplan code that knows how frappe-ui works inside. Everything else imports
-`useList`, `useDoc`, `useCall` and `dialog` from `resources.ts`, and never
-reads or writes frappe-ui's IndexedDB cache directly.
+These adapters isolate frappe-ui's cache contract. Components import `useList`, `useDoc`,
+`useCall` and `dialog` through the `resources.ts` alias. Bulk downloads use `cacheFor(owner)`
+to populate the same account-scoped entries, including thread-reaction call responses.
 
 ## Offline actions
 
@@ -48,7 +48,7 @@ alone does not remove a discussion the user can still read.
 through the app's own resources, so a frappe-ui upgrade that changes the key format fails CI
 rather than breaking downloads quietly.
 
-Gameplan is pinned to the frappe-ui commit that merged frappe-ui#1211 until a release
-includes it.
+Gameplan pins frappe-ui 1.0.2, which includes the account-scoped cache contract from
+frappe-ui#1211.
 
 Connectivity and draft save helpers live in `../online.ts`, introduced with draft synchronization.
