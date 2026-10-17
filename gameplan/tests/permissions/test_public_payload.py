@@ -442,6 +442,31 @@ class TestPublicLists(PublicContentTestCase):
 				with self.subTest(filters=filters), self.assertRaises(frappe.PermissionError):
 					get_discussions(filters=filters, limit=100)
 
+	def test_public_feed_does_not_preview_replies_moved_to_private_discussion(self):
+		public_discussion = create_discussion("Public Preview Thread", self.space, owner=self.member)
+		comment = create_comment(public_discussion, content="<p>Private reply content</p>", owner=self.member)
+		with self.as_user(self.member):
+			c = frappe.get_doc("GP Comment", comment.name)
+			c.reference_name = self.hidden_discussion.name
+			c.save()
+
+		with switched_on(), self.as_user(ANONYMOUS):
+			feed = get_discussions(filters={"name": public_discussion.name}, limit=10)
+		[row] = feed
+		self.assertIsNone(row.last_comment_content)
+
+		public_discussion2 = create_discussion("Public Poll Thread", self.space, owner=self.member)
+		with self.as_user(self.member):
+			poll = create_poll("Secret Poll Question", public_discussion2)
+			p = frappe.get_doc("GP Poll", poll.name)
+			p.discussion = self.hidden_discussion.name
+			p.save()
+
+		with switched_on(), self.as_user(ANONYMOUS):
+			feed2 = get_discussions(filters={"name": public_discussion2.name}, limit=10)
+		[row2] = feed2
+		self.assertIsNone(row2.last_poll_title)
+
 	def test_signed_in_lists_are_unchanged(self):
 		with switched_on(), self.as_user(self.member.name):
 			comment = get_client_list(

@@ -234,33 +234,44 @@ def include_last_post_content(discussions):
 	last_comments_name = [d.last_post for d in discussions if d.last_post_type == "GP Comment"]
 	last_comments_content = (
 		frappe.qb.from_(Comment)
-		.select(Comment.content, Comment.name)
+		.select(Comment.content, Comment.name, Comment.reference_doctype, Comment.reference_name)
 		.where(Comment.name.isin(last_comments_name))
 		.run(as_dict=1)
 		if last_comments_name
 		else []
 	)
-	last_comments_content_map = {c.name: c.content for c in last_comments_content}
+	last_comments_content_map = {c.name: c for c in last_comments_content}
 
 	Poll = frappe.qb.DocType("GP Poll")
 	last_polls_name = [d.last_post for d in discussions if d.last_post_type == "GP Poll"]
 	last_poll_title = (
 		frappe.qb.from_(Poll)
-		.select(Poll.name, Poll.title)
+		.select(Poll.name, Poll.title, Poll.discussion)
 		.where(Poll.name.isin(last_polls_name))
 		.run(as_dict=1)
 		if last_polls_name
 		else []
 	)
-	last_poll_title_map = {p.name: p.title for p in last_poll_title}
+	last_poll_title_map = {p.name: p for p in last_poll_title}
 
 	for discussion in discussions:
 		if discussion.last_post_type == "GP Comment":
-			discussion.last_comment_content = html_to_text_preview(
-				last_comments_content_map.get(cint(discussion.last_post))
-			)
+			comment = last_comments_content_map.get(cint(discussion.last_post))
+			if (
+				comment
+				and comment.reference_doctype == "GP Discussion"
+				and str(comment.reference_name) == str(discussion.name)
+				and frappe.has_permission("GP Comment", "read", doc=comment.name)
+			):
+				discussion.last_comment_content = html_to_text_preview(comment.content)
 		if discussion.last_post_type == "GP Poll":
-			discussion.last_poll_title = last_poll_title_map.get(cint(discussion.last_post))
+			poll = last_poll_title_map.get(cint(discussion.last_post))
+			if (
+				poll
+				and str(poll.discussion) == str(discussion.name)
+				and frappe.has_permission("GP Poll", "read", doc=poll.name)
+			):
+				discussion.last_poll_title = poll.title
 
 		if not discussion.last_post:
 			discussion.last_post_by = discussion.owner

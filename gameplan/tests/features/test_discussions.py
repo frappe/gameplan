@@ -888,3 +888,27 @@ class TestFeedLastPostPreview(DiscussionFeedTestCase):
 		[row] = self.feed(self.member)
 
 		self.assertEqual(row.last_comment_content, "The opening post")
+
+	def test_moved_comment_does_not_preview_in_old_discussion(self):
+		discussion1 = self.post(self.member, "Thread 1", space=self.space)
+		discussion2 = self.post(self.second_member, "Thread 2", space=self.other_space)
+		comment = self.comment(discussion1, self.member, "<p>Moved reply</p>")
+		with self.as_user(self.member):
+			c = frappe.get_doc("GP Comment", comment.name)
+			c.reference_name = discussion2.name
+			c.save()
+
+		[row] = [d for d in self.feed(self.member, filters={"project": self.space.name})]
+		self.assertIsNone(row.last_comment_content)
+
+	def test_moved_poll_does_not_preview_in_old_discussion(self):
+		discussion1 = self.post(self.member, "Thread 1", space=self.space)
+		discussion2 = self.post(self.second_member, "Thread 2", space=self.other_space)
+		with self.as_user(self.member):
+			poll = create_poll("Moved Poll?", discussion1)
+			p = frappe.get_doc("GP Poll", poll.name)
+			p.discussion = discussion2.name
+			p.save()
+
+		[row] = [d for d in self.feed(self.member, filters={"project": self.space.name})]
+		self.assertIsNone(row.last_poll_title)
