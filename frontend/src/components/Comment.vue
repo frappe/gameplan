@@ -94,6 +94,7 @@
           }"
         />
         <span class="text-base italic text-ink-gray-5" v-else> This message is deleted </span>
+        <ErrorMessage v-if="isEditing" class="mt-2" :message="updateError" />
         <div class="mt-3" v-if="!comment.deleted_at && !isEditing">
           <Reactions doctype="GP Comment" :name="comment.name" :read-only-mode="readOnlyMode" />
         </div>
@@ -110,7 +111,7 @@
 
 <script setup lang="ts">
 import { ref, computed, defineAsyncComponent } from 'vue'
-import { Dropdown, Tooltip, dayjsLocal } from 'frappe-ui'
+import { Dropdown, ErrorMessage, Tooltip, dayjsLocal } from 'frappe-ui'
 import { useList } from 'frappe-ui'
 import { copyToClipboard } from '@/utils'
 import UserProfileLink from './UserProfileLink.vue'
