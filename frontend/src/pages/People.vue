@@ -314,9 +314,9 @@ function compareProfiles(a: Profile, b: Profile) {
   const field = peopleSortField.value
   let result = 0
   if (field === 'full_name' || field === 'modified') {
-    result = (a[field] || '').localeCompare(b[field] || '')
+    result = a[field].localeCompare(b[field])
   } else {
-    result = (a[field] || 0) - (b[field] || 0)
+    result = a[field] - b[field]
   }
   return peopleSortDirection.value === 'asc' ? result : -result
 }

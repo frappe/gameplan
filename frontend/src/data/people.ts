@@ -20,16 +20,20 @@ export type PeopleSortField =
   | 'reactions_received'
   | 'reactions_given'
 
-export type PeopleSortDirection = 'asc' | 'desc'
+type PeopleSortDirection = 'asc' | 'desc'
 
-export const peopleSortOptions = [
-  { label: 'Sort by', value: '' as const, disabled: true },
+const sortChoices: { label: string; value: PeopleSortField }[] = [
   { label: 'Name', value: 'full_name' },
   { label: 'Last updated', value: 'modified' },
   { label: 'Posts', value: 'discussions_count' },
   { label: 'Replies', value: 'comments_count' },
   { label: 'Reactions received', value: 'reactions_received' },
   { label: 'Reactions given', value: 'reactions_given' },
+]
+
+export const peopleSortOptions = [
+  { label: 'Sort by', value: '' as const, disabled: true },
+  ...sortChoices,
 ]
 
 export const peopleSortField = ref<PeopleSortField>('modified')
