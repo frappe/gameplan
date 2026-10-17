@@ -1,5 +1,27 @@
 <template>
   <div class="relative">
+    <DefinePollActions>
+      <Button
+        v-if="!isStopped && !readOnlyMode && canDeletePoll"
+        variant="ghost"
+        icon-left="lucide-minus-circle"
+        @click="stopPoll"
+      >
+        Stop Poll
+      </Button>
+      <Tooltip v-else-if="!embedded" text="This is a poll">
+        <span class="lucide-bar-chart-2 h-4 w-4 -rotate-90" />
+      </Tooltip>
+      <Dropdown
+        align="end"
+        :button="{
+          icon: 'lucide-more-horizontal',
+          variant: 'ghost',
+          label: 'Poll Options',
+        }"
+        :options="dropdownOptions"
+      />
+    </DefinePollActions>
     <div
       v-if="highlight"
       class="absolute inset-0 translate-y- z-[5] rounded-4 border-2 -mx-4 -mb-4 mt-11 pointer-events-none"
@@ -30,48 +52,13 @@
         </div>
       </div>
       <div class="ml-auto flex items-center space-x-2">
-        <Button
-          v-if="!isStopped && !readOnlyMode && canDeletePoll"
-          variant="ghost"
-          icon-left="lucide-minus-circle"
-          @click="stopPoll"
-        >
-          Stop Poll
-        </Button>
-        <Tooltip v-else text="This is a poll">
-          <span class="lucide-bar-chart-2 h-4 w-4 -rotate-90" />
-        </Tooltip>
-        <Dropdown
-          align="end"
-          :button="{
-            icon: 'lucide-more-horizontal',
-            variant: 'ghost',
-            label: 'Poll Options',
-          }"
-          :options="dropdownOptions"
-        />
+        <ReusePollActions />
       </div>
     </div>
     <div class="flex items-center gap-2">
       <div class="flex-1 text-base-semibold text-ink-gray-8">{{ _poll.title }}</div>
       <div v-if="embedded" class="flex items-center space-x-2">
-        <Button
-          v-if="!isStopped && !readOnlyMode && canDeletePoll"
-          variant="ghost"
-          icon-left="lucide-minus-circle"
-          @click="stopPoll"
-        >
-          Stop Poll
-        </Button>
-        <Dropdown
-          align="end"
-          :button="{
-            icon: 'lucide-more-horizontal',
-            variant: 'ghost',
-            label: 'Poll Options',
-          }"
-          :options="dropdownOptions"
-        />
+        <ReusePollActions />
       </div>
     </div>
     <div class="mt-1 text-sm text-ink-gray-5">
@@ -195,6 +182,7 @@
 </template>
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import { createReusableTemplate } from '@vueuse/core'
 import {
   Checkbox,
   Dropdown,
@@ -242,6 +230,7 @@ const props = withDefaults(defineProps<Props>(), {
   embedded: false,
 })
 
+const [DefinePollActions, ReusePollActions] = createReusableTemplate()
 const showDialog = ref(false)
 const sessionUser = useSessionUser()
 const socket = useSocket()
