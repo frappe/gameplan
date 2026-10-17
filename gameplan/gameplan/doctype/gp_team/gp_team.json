@@ -12,6 +12,9 @@
   "column_break_zutb",
   "icon",
   "is_private",
+  "visibility",
+  "visibility_set_by",
+  "visibility_set_at",
   "image",
   "section_break_tczw",
   "members",
@@ -71,9 +74,12 @@
   },
   {
    "default": "0",
+   "description": "Replaced by Visibility. Kept only so a rollback needs no data restore; nothing reads or writes it.",
    "fieldname": "is_private",
    "fieldtype": "Check",
-   "label": "Is Private"
+   "hidden": 1,
+   "label": "Is Private (Legacy)",
+   "read_only": 1
   },
   {
    "fieldname": "column_break_zutb",
@@ -99,12 +105,32 @@
    "fieldname": "image",
    "fieldtype": "Attach Image",
    "label": "Image"
+  },
+  {
+   "description": "Anonymous: anyone with the link, no account needed. General: any signed-in Gameplan user. Member Access: only people on the member list.",
+   "fieldname": "visibility",
+   "fieldtype": "Select",
+   "label": "Visibility",
+   "options": "General\nMember Access\nAnonymous"
+  },
+  {
+   "fieldname": "visibility_set_by",
+   "fieldtype": "Link",
+   "label": "Visibility Set By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "visibility_set_at",
+   "fieldtype": "Datetime",
+   "label": "Visibility Set At",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-05-01 22:51:01.454329",
+ "modified": "2026-10-01 06:12:56.974120",
  "modified_by": "faris@erpnext.com",
  "module": "Gameplan",
  "name": "GP Team",
@@ -155,6 +181,11 @@
    "report": 1,
    "role": "Gameplan Guest",
    "share": 1
+  },
+  {
+   "read": 1,
+   "role": "Guest",
+   "select": 1
   }
  ],
  "row_format": "Dynamic",

@@ -15,6 +15,7 @@ from gameplan.tests.fixtures import (
 	grant_guest_access,
 )
 from gameplan.tests.search_isolation import IsolatedSearchIndex
+from gameplan.visibility import VISIBILITY_MEMBER_ACCESS
 
 
 class TestableGameplanSearch(GameplanSearch):
@@ -275,13 +276,13 @@ class TestSearchIndexLifecycle(IsolatedSearchIndex, GameplanTestCase):
 		self.isolate_search_index()
 		self.community = create_community(
 			"Search Index Lifecycle Community",
-			is_private=1,
+			visibility=VISIBILITY_MEMBER_ACCESS,
 			members=[self.member, self.second_member],
 		)
 		self.space = create_space(
 			"Search Index Lifecycle Space",
 			self.community,
-			is_private=1,
+			visibility=VISIBILITY_MEMBER_ACCESS,
 			members=[self.member, self.second_member],
 		)
 		self.search = GameplanSearch()
@@ -394,7 +395,7 @@ class TestSearchIndexLifecycle(IsolatedSearchIndex, GameplanTestCase):
 		inaccessible_space = create_space(
 			"Inaccessible Search Space",
 			self.community,
-			is_private=1,
+			visibility=VISIBILITY_MEMBER_ACCESS,
 			members=[self.member],
 		)
 		self.create_discussion(
@@ -416,7 +417,7 @@ class TestSearchIndexLifecycle(IsolatedSearchIndex, GameplanTestCase):
 		inaccessible_space = create_space(
 			"Mixed Inaccessible Search Space",
 			self.community,
-			is_private=1,
+			visibility=VISIBILITY_MEMBER_ACCESS,
 			members=[self.member],
 		)
 		expected = self.create_discussion(
@@ -443,7 +444,7 @@ class TestSearchIndexLifecycle(IsolatedSearchIndex, GameplanTestCase):
 		inaccessible_space = create_space(
 			"Guest Inaccessible Search Space",
 			self.community,
-			is_private=1,
+			visibility=VISIBILITY_MEMBER_ACCESS,
 			members=[self.member],
 		)
 		expected = self.create_discussion(
@@ -469,7 +470,7 @@ class TestSearchIndexLifecycle(IsolatedSearchIndex, GameplanTestCase):
 		inaccessible_space = create_space(
 			"Empty Intersection Search Space",
 			self.community,
-			is_private=1,
+			visibility=VISIBILITY_MEMBER_ACCESS,
 			members=[self.member],
 		)
 		self.create_discussion(

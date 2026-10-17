@@ -95,6 +95,7 @@ import UserAvatarWithHover from './UserAvatarWithHover.vue'
 import { getSpace, useSpace } from '@/data/spaces'
 import { Discussion } from '@/data/discussions'
 import { relativeTimestamp } from '@/utils'
+import { isMemberAccess } from '@/utils/visibility'
 
 const props = defineProps<{
   discussion: Discussion
@@ -114,6 +115,7 @@ const linkTo = computed(() => {
 })
 
 function isSpacePrivate(spaceId: string) {
-  return useSpace(spaceId).value?.is_private
+  const space = useSpace(spaceId).value
+  return space ? isMemberAccess(space.visibility) : false
 }
 </script>

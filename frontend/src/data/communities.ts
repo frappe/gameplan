@@ -3,6 +3,8 @@ import { dialog, useDoctype, useList } from 'frappe-ui'
 import { GPTeam, GPMember } from '@/types/doctypes'
 import { communityOrder } from './communityOrder'
 import { useSessionUser } from './users'
+import { isMemberAccess } from '@/utils/visibility'
+import { getSessionUserFromCookie, isAnonymousVisitor, publicListUrl } from '@/utils/publicAccess'
 
 export interface CommunityMember extends Pick<GPMember, 'user' | 'is_admin'> {
   user: string
@@ -11,13 +13,14 @@ export interface CommunityMember extends Pick<GPMember, 'user' | 'is_admin'> {
 
 export interface Community extends Pick<
   GPTeam,
-  'name' | 'title' | 'icon' | 'image' | 'modified' | 'creation' | 'archived_at' | 'is_private'
+  'name' | 'title' | 'icon' | 'image' | 'modified' | 'creation' | 'archived_at' | 'visibility'
 > {
   members: CommunityMember[]
 }
 
 export let communities = useList<Community>({
   doctype: 'GP Team',
+  url: publicListUrl('GP Team'),
   fields: [
     'name',
     'title',
@@ -26,7 +29,7 @@ export let communities = useList<Community>({
     'modified',
     'creation',
     'archived_at',
-    'is_private',
+    'visibility',
     { members: ['user', 'is_admin'] },
   ],
   orderBy: 'title asc',
@@ -102,8 +105,8 @@ export function leaveCommunity(community: Community) {
 export function confirmLeaveCommunity(community: Community) {
   dialog.confirm({
     title: `Leave "${community.title}"?`,
-    message: community.is_private
-      ? "This community is private. You won't be able to rejoin unless a member adds you back."
+    message: isMemberAccess(community.visibility)
+      ? "Only its members can see this community. You won't be able to rejoin unless a member adds you back."
       : 'Its spaces leave your sidebar. You can rejoin at any time.',
     confirmLabel: 'Leave',
     onConfirm: () => leaveCommunity(community),
@@ -111,6 +114,7 @@ export function confirmLeaveCommunity(community: Community) {
 }
 
 export function isCommunityJoined(community: Community) {
+  if (isAnonymousVisitor()) return true
   let user = getSessionUserFromCookie()
   if (!user) return false
   // Guests never become community members; the backend only returns communities that
@@ -132,10 +136,4 @@ function sortCommunitiesByUserOrder(communities: Community[]) {
 
     return left.title.localeCompare(right.title)
   })
-}
-
-function getSessionUserFromCookie() {
-  let cookies = new URLSearchParams(document.cookie.split('; ').join('&'))
-  let user = cookies.get('user_id')
-  return user === 'Guest' ? null : user
 }

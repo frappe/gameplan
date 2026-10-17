@@ -33,7 +33,8 @@ query-builder statements, both of which skip these hooks.
 
 import frappe
 
-from gameplan.permissions import criterion_sql, get_doc_value, is_delete_cascade
+import gameplan
+from gameplan.permissions import NOTHING, criterion_sql, get_doc_value, is_delete_cascade
 
 # The column naming the user a row belongs to, per doctype.
 NOTIFICATION_USER_FIELD = "to_user"
@@ -43,12 +44,17 @@ PIN_USER_FIELD = "user"
 
 def _own_rows_only(doctype, fieldname, user):
 	user = user or frappe.session.user
+	if gameplan.is_anonymous(user):
+		# Nobody signed out owns a row, and "Guest" must not match one by name.
+		return criterion_sql(NOTHING)
 	table = frappe.qb.DocType(doctype)
 	return criterion_sql(table[fieldname] == user)
 
 
 def _belongs_to_user(doc, fieldname, user):
 	user = user or frappe.session.user
+	if gameplan.is_anonymous(user):
+		return False
 	# Doctype-level checks arrive without a document (e.g. "may this user open the list
 	# at all?"); those stay open and the query conditions above do the scoping.
 	if not hasattr(doc, "doctype"):
@@ -101,6 +107,8 @@ def pinned_project_has_permission(doc, ptype="read", user=None, **kwargs):
 	`delete` matters most here: unpinning *is* deleting the row (there is no unpin
 	endpoint), which is why the role grant has to stay and this hook has to scope it.
 	"""
+	if gameplan.is_anonymous(user or frappe.session.user):
+		return False
 	if ptype == "create":
 		# `Document.insert` runs the create check *before* `before_insert`, and
 		# `before_insert` is where `user` gets stamped with the session user. Judging the

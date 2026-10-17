@@ -48,7 +48,7 @@
                     <span class="flex items-center gap-1.5 text-base">
                       <span class="truncate">{{ community.title }}</span>
                       <span
-                        v-if="community.is_private"
+                        v-if="isMemberAccess(community.visibility)"
                         class="lucide-lock size-3.5 shrink-0 text-ink-gray-5"
                       />
                     </span>
@@ -101,7 +101,7 @@
                   <span class="flex items-center gap-1.5 text-base">
                     <span class="truncate">{{ community.title }}</span>
                     <span
-                      v-if="community.is_private"
+                      v-if="isMemberAccess(community.visibility)"
                       class="lucide-lock size-3.5 shrink-0 text-ink-gray-5"
                     />
                   </span>
@@ -169,6 +169,7 @@ import {
   type PointerSortableItem,
 } from '@/composables/usePointerSortableSections'
 import CommunityImage from '../CommunityImage.vue'
+import { isMemberAccess } from '@/utils/visibility'
 
 type SidebarSection = 'shown' | 'hidden'
 

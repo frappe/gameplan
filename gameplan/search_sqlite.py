@@ -1,5 +1,6 @@
 # Copyright (c) 2022, Frappe Technologies Pvt. Ltd. and Contributors
 # MIT License. See license.txt
+import hashlib
 import re
 import time
 
@@ -35,7 +36,15 @@ class GameplanSearch(SQLiteSearch):
 	INDEX_NAME = "gameplan_search.db"
 
 	INDEX_SCHEMA = {
-		"metadata_fields": ["team", "project", "tags", "owner", "reference_doctype", "reference_name"],
+		"metadata_fields": [
+			"team",
+			"project",
+			"tags",
+			"owner",
+			"reference_doctype",
+			"reference_name",
+			"content_hash",
+		],
 		"tokenizer": "unicode61 remove_diacritics 2 tokenchars '-_'",
 	}
 
@@ -60,12 +69,21 @@ class GameplanSearch(SQLiteSearch):
 		disabled = frappe.conf.get("disable_gameplan_search", False)
 		return not disabled
 
+	def index_exists(self):
+		# Frappe's after-migrate job rebuilds indexes that lack the content fingerprint.
+		if not super().index_exists():
+			return False
+		return any(
+			row["name"] == "content_hash" for row in self.sql("PRAGMA table_info(search_fts)", read_only=True)
+		)
+
 	def prepare_document(self, doc):
 		"""Prepare a document for indexing with Gameplan-specific handling."""
 		# Get base document from parent class
 		document = super().prepare_document(doc)
 		if not document:
 			return None
+		document["content_hash"] = content_fingerprint(document.get("title"), document.get("content"))
 
 		if doc.doctype == "GP Comment":
 			# For comments, we need to resolve the project from the reference
@@ -416,6 +434,11 @@ class GameplanSearch(SQLiteSearch):
 			"doctypes": doctype_counts,
 			"tags": tag_counts,
 		}
+
+
+def content_fingerprint(title, content):
+	"""Identify the exact normalized text stored with an indexed search result."""
+	return hashlib.sha256(frappe.as_json([title or "", content or ""]).encode()).hexdigest()
 
 
 class GameplanSearchIndexMissingError(SQLiteSearchIndexMissingError):

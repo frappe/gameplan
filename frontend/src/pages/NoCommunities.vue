@@ -29,15 +29,17 @@ import { useCanManageCommunities } from '@/composables/useCanManageCommunities'
 import { showCommunitiesSettings } from '@/components/Settings'
 import { availableCommunities } from '@/data/communities'
 import { useSessionUser } from '@/data/users'
+import { isMemberAccess } from '@/utils/visibility'
 
 const sessionUser = useSessionUser()
 const canManageCommunities = useCanManageCommunities()
 
-// This page is only reached with no community joined, so any public community the
-// user can see is one they can join from the Communities settings tab.
+// This page is only reached with no community joined, so any community open to every
+// signed-in user is one they can join from the Communities settings tab.
 const hasCommunityToJoin = computed(
   () =>
-    !sessionUser.isGuest && availableCommunities.value.some((community) => !community.is_private),
+    !sessionUser.isGuest &&
+    availableCommunities.value.some((community) => !isMemberAccess(community.visibility)),
 )
 
 const description = computed(() => {

@@ -1,5 +1,6 @@
 import { useList } from 'frappe-ui'
 import type { GPCustomEmoji } from '@/types/doctypes'
+import { isAnonymousVisitor } from '@/utils/publicAccess'
 
 export type CustomEmoji = Pick<GPCustomEmoji, 'name' | 'title' | 'image' | 'keywords' | 'owner'>
 
@@ -14,5 +15,6 @@ export const customEmojis = useList<CustomEmoji>({
   initialData: [],
   cacheKey: 'CustomEmojis',
   limit: 999,
-  immediate: true,
+  // Signed-in only: someone who is not signed in sees custom emoji as the images they are.
+  immediate: !isAnonymousVisitor(),
 })

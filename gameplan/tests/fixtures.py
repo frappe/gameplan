@@ -7,9 +7,17 @@ Product language: Community = GP Team, Space = GP Project (see AGENTS.md).
 Builders accept either a doc or a name wherever a linked record is expected.
 """
 
+from unittest.mock import patch
+
 import frappe
 import frappe.search.sqlite_search
 from frappe.model.document import Document
+
+from gameplan.public_access import PUBLIC_ACCESS_CONFIG_KEY
+from gameplan.visibility import (
+	VISIBILITY_GENERAL,
+	VISIBILITY_TIERS,
+)
 
 
 def _name(doc_or_name):
@@ -35,6 +43,9 @@ def create_user(email, first_name, role=None):
 		).insert(ignore_permissions=True)
 	if role and role not in frappe.get_roles(email):
 		user.add_roles(role)
+	# Reused test users can outlive a rolled-back profile. Avoid the production hook's commit.
+	if not frappe.db.exists("GP User Profile", {"user": user.name}):
+		frappe.get_doc(doctype="GP User Profile", user=user.name).insert(ignore_permissions=True)
 	return user
 
 
@@ -50,8 +61,8 @@ def create_guest(email="guest@example.com", first_name="Guest"):
 	return create_user(email, first_name, "Gameplan Guest")
 
 
-def create_community(title="Test Community", *, is_private=0, members=(), admins=()):
-	doc = frappe.get_doc(doctype="GP Team", title=title, is_private=is_private)
+def create_community(title="Test Community", *, visibility=VISIBILITY_GENERAL, members=(), admins=()):
+	doc = frappe.get_doc(doctype="GP Team", title=title, visibility=visibility)
 	for user in members:
 		doc.append("members", {"user": _name(user)})
 	for user in admins:
@@ -59,11 +70,32 @@ def create_community(title="Test Community", *, is_private=0, members=(), admins
 	return doc.insert(ignore_permissions=True)
 
 
-def create_space(title, community, *, is_private=0, members=()):
-	doc = frappe.get_doc(doctype="GP Project", title=title, team=_name(community), is_private=is_private)
+def create_space(title, community, *, visibility=VISIBILITY_GENERAL, members=()):
+	doc = frappe.get_doc(doctype="GP Project", title=title, team=_name(community), visibility=visibility)
 	for user in members:
 		doc.append("members", {"user": _name(user)})
 	return doc.insert(ignore_permissions=True)
+
+
+def create_visibility_matrix(title, *, community_members=(), space_members=()):
+	"""Create all nine community/space tier pairs without assuming their permissions."""
+	spaces = {}
+	for community_tier in VISIBILITY_TIERS:
+		community = create_community(
+			f"{title} {community_tier} Community", visibility=community_tier, members=community_members
+		)
+		for space_tier in VISIBILITY_TIERS:
+			spaces[(community_tier, space_tier)] = create_space(
+				f"{title} {community_tier}/{space_tier}",
+				community,
+				visibility=space_tier,
+				members=space_members,
+			)
+	return spaces
+
+
+def public_access(on=True):
+	return patch.dict(frappe.conf, {PUBLIC_ACCESS_CONFIG_KEY: int(bool(on))})
 
 
 def create_discussion(title, space, *, content="Test content", owner=None):

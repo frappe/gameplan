@@ -14,7 +14,9 @@ from gameplan.mixins.mentions import HasMentions
 from gameplan.mixins.reactions import HasReactions, get_reactions_on
 from gameplan.mixins.tags import HasTags
 from gameplan.permissions import content_has_permission, discussion_query_conditions
+from gameplan.public_payload import for_viewer
 from gameplan.utils import get_document_revisions, remove_empty_trailing_paragraphs, url_safe_slug
+from gameplan.visibility import is_anonymous_eligible_space, require_admin_to_publish
 
 
 class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTags, Document):
@@ -36,7 +38,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 
 	# Lifecycle Methods
 	def as_dict(self, *args, **kwargs):
-		d = super(__class__, self).as_dict(*args, **kwargs)
+		d = super().as_dict(*args, **kwargs)
 		last_visit = frappe.db.get_value(
 			"GP Discussion Visit", {"discussion": self.name, "user": frappe.session.user}, "last_visit"
 		)
@@ -66,7 +68,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		d.last_unread_poll = polls[0] if polls else None
 		d.is_bookmarked = self.is_bookmarked_by_current_user()
 		d.views = frappe.db.count("GP Discussion Visit", {"discussion": self.name})
-		return d
+		return for_viewer(self.doctype, d)
 
 	def before_insert(self):
 		check_if_space_is_archived(self, action="create", content_type="discussions")
@@ -85,6 +87,11 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		GPUnreadRecord.delete_unread_records_for_discussion(self.name)
 
 	def validate(self):
+		before = self.get_doc_before_save()
+		if before and self.has_value_changed("project"):
+			require_admin_to_publish(
+				is_anonymous_eligible_space(before.project), is_anonymous_eligible_space(self.project)
+			)
 		self.sanitize_content()
 		self.title = self.title.strip()
 
@@ -112,7 +119,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		self.content = sanitize_content(self.content)
 
 	# Whitelisted Methods
-	@frappe.whitelist(methods=["GET"])
+	@frappe.whitelist(allow_guest=True, methods=["GET"])
 	def thread_reactions(self):
 		"""Reactions on everything in this thread, for the thread page.
 
@@ -126,7 +133,16 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 			pluck="name",
 		)
 		polls = frappe.get_all("GP Poll", filters={"discussion": thread.name}, pluck="name")
-		return get_reactions_on({"GP Discussion": [thread.name], "GP Comment": comments, "GP Poll": polls})
+		reactions = get_reactions_on(
+			{"GP Discussion": [thread.name], "GP Comment": comments, "GP Poll": polls}
+		)
+		if frappe.session.user == "Guest":
+			return [
+				frappe._dict({key: value for key, value in row.items() if key != "user"}) for row in reactions
+			]
+		from gameplan.guest_payload import for_guest
+
+		return for_guest(reactions)
 
 	@frappe.whitelist(methods=["POST"])
 	def track_visit(self):
