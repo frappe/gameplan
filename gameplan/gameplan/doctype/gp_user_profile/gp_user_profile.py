@@ -46,6 +46,18 @@ class GPUserProfile(HasAttachments, Document):
 	def validate(self):
 		self.quick_reaction_emojis = normalize_quick_reaction_emojis(self.quick_reaction_emojis)
 		self.drop_foreign_card_images()
+		self.validate_profile_ownership()
+
+	def validate_profile_ownership(self):
+		# Prevent modifying another user's profile when permission checks are bypassed
+		if frappe.flags.in_install or frappe.flags.in_migrate or frappe.flags.in_fixtures:
+			return
+		user = frappe.session.user
+		if user and user not in ("Administrator", "Guest"):
+			roles = frappe.get_roles(user)
+			if "Gameplan Admin" not in roles and "System Manager" not in roles:
+				if self.user and self.user != user:
+					frappe.throw("Cannot modify another user's profile", frappe.PermissionError)
 
 	def autoname(self):
 		self.name = self.generate_name()
@@ -219,8 +231,11 @@ def has_permission(doc, ptype="read", user=None):
 	if "Gameplan Admin" in frappe.get_roles(user) or "System Manager" in frappe.get_roles(user):
 		return True
 
+	if isinstance(doc, str):
+		doc = frappe.get_lazy_doc("GP User Profile", doc)
+
 	# Otherwise a user may only modify their own profile.
-	return doc.user == user
+	return bool(doc and doc.user == user)
 
 
 def create_user_profile(doc, method=None):
