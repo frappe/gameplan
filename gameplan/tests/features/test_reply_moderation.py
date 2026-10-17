@@ -2,6 +2,7 @@ from unittest.mock import patch
 
 import frappe
 from frappe.core.doctype.file.file import has_permission as file_has_permission
+from frappe.utils import CallbackManager
 
 from gameplan.api import public_file
 from gameplan.gameplan.doctype.gp_comment.gp_comment import GPComment
@@ -204,13 +205,37 @@ class TestReplyModeration(IsolatedSearchIndex, GameplanTestCase):
 		search = GameplanSearch()
 		search._ensure_fts_table()
 		search._index_documents([search.prepare_document(self.comment)])
-		with patch("frappe.publish_realtime") as publish:
+		callbacks = CallbackManager()
+		with patch.object(frappe.db, "after_commit", callbacks), patch("frappe.publish_realtime") as publish:
 			self.hide()
+			self.assertEqual(len(search.sql("SELECT * FROM search_fts", read_only=True)), 1)
+			callbacks.run()
 		self.assertEqual(len(search.sql("SELECT * FROM search_fts", read_only=True)), 0)
 		calls = [call for call in publish.call_args_list if call.args[0] == "new_activity"]
 		self.assertEqual(len(calls), 1)
 		self.assertNotIn("hiddensentinel", str(calls[0]))
 		self.assertTrue(calls[0].kwargs["after_commit"])
+
+	def test_failed_hide_keeps_the_visible_reply_in_search(self):
+		search = GameplanSearch()
+		search._ensure_fts_table()
+		search._index_documents([search.prepare_document(self.comment)])
+		with patch.object(GPComment, "db_set", side_effect=frappe.ValidationError("Write failed")):
+			with self.assertRaises(frappe.ValidationError):
+				self.hide()
+		self.assertFalse(frappe.db.get_value("GP Comment", self.comment.name, "hidden_at"))
+		self.assertEqual(len(search.sql("SELECT * FROM search_fts", read_only=True)), 1)
+
+	def test_rolled_back_hide_does_not_remove_the_search_entry(self):
+		search = GameplanSearch()
+		search._ensure_fts_table()
+		search._index_documents([search.prepare_document(self.comment)])
+		callbacks = CallbackManager()
+		with patch.object(frappe.db, "after_commit", callbacks):
+			self.hide()
+			frappe.db.rollback()
+			callbacks.run()
+		self.assertEqual(len(search.sql("SELECT * FROM search_fts", read_only=True)), 1)
 
 	def test_shared_spelling_vocabulary_cannot_suggest_hidden_words(self):
 		self.hide()

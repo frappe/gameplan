@@ -877,6 +877,7 @@ onMounted(() => {
     // timeline silently stops updating. Compare as strings.
     if (data.reference_doctype === props.doctype && data.reference_name === String(props.name)) {
       activities.reload()
+      comments.reload()
     }
   })
 })
