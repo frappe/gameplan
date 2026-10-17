@@ -154,13 +154,13 @@ class GPComment(HasAttachments, HasMentions, HasReactions, HasTags, Document):
 		from gameplan.search_sqlite import GameplanSearch
 
 		search = GameplanSearch()
-		if search.is_search_enabled() and search.index_exists():
-			search.remove_doc(self.doctype, self.name)
 		# Keep generic lists and feed previews safe without running publication hooks.
 		doc.db_set(
 			{"hidden_at": frappe.utils.now(), "content": "<p>This reply was hidden by a moderator.</p>"},
 			notify=True,
 		)
+		if search.is_search_enabled() and search.index_exists():
+			frappe.db.after_commit.add(lambda: search.remove_doc(doc.doctype, doc.name))
 		doc._notify_moderation_change()
 
 	@frappe.whitelist(methods=["POST"])

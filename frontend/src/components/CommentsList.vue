@@ -442,6 +442,7 @@ socket.on('new_activity', (data: NewActivityEvent) => {
   // doctype passes a number here, so a strict compare never matches.
   if (data.reference_doctype === props.doctype && data.reference_name === String(props.name)) {
     activities.reload()
+    comments.reload()
   }
 })
 
