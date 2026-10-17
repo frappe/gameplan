@@ -9,8 +9,27 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import get_datetime, now_datetime
 
+# The name a client gives a draft when it starts one: 20 lowercase letters and digits.
+CLIENT_NAME = re.compile(r"[a-z0-9]{20}")
+
 
 class GPDraft(Document):
+	def before_naming(self):
+		# Frappe clears `name` after this hook and before `autoname`.
+		self._client_name = self.name
+
+	def autoname(self):
+		"""Keep the client's name, so a draft has one name everywhere, and refuse a deleted one
+		so no stale copy can bring it back. Without a client name, the default hash applies."""
+		name = getattr(self, "_client_name", None)
+		if not name:
+			return
+		if not isinstance(name, str) or not CLIENT_NAME.fullmatch(name):
+			frappe.throw(_("Invalid draft name"), frappe.ValidationError)
+		if frappe.db.exists("Deleted Document", {"deleted_doctype": self.doctype, "deleted_name": name}):
+			frappe.throw(_("This draft was deleted"), frappe.DoesNotExistError)
+		self.name = name
+
 	def before_save(self):
 		from gameplan.utils.sanitizer import sanitize_content
 
@@ -108,7 +127,8 @@ def _keep_newest_singleton(filters: dict) -> str | None:
 	the surviving name, or None."""
 	names = frappe.get_all("GP Draft", filters=filters, order_by="modified desc", pluck="name")
 	for stale in names[1:]:
-		frappe.delete_doc("GP Draft", stale, ignore_permissions=False, delete_permanently=True)
+		# Keep the deletion record so an offline device cannot recreate this name.
+		frappe.delete_doc("GP Draft", stale, ignore_permissions=False)
 	return names[0] if names else None
 
 
@@ -369,3 +389,8 @@ def remove_query_params_from_images(content):
 	# presence of fid=<name> in the image url prevents the image from being displayed
 	pattern = r'(src="[^"]+)\?[^"]*(")'
 	return re.sub(pattern, r"\1\2", content)
+
+
+def on_doctype_update():
+	# autoname looks names up in Deleted Document, which Frappe does not index.
+	frappe.db.add_index("Deleted Document", ["deleted_doctype", "deleted_name"])
