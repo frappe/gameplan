@@ -49,7 +49,7 @@ class GPUserProfile(HasAttachments, Document):
 		self.validate_profile_ownership()
 
 	def validate_profile_ownership(self):
-		# Prevent modifying another user's profile when permission checks are bypassed
+		# Enforce ownership even when permission checks are skipped.
 		if (
 			self.flags.ignore_profile_ownership
 			or frappe.flags.in_install
