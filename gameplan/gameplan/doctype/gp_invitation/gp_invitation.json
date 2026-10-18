@@ -28,8 +28,8 @@
   {
    "fieldname": "key",
    "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "Key"
+   "label": "Key",
+   "permlevel": 1
   },
   {
    "fieldname": "status",
@@ -107,16 +107,12 @@
    "write": 1
   },
   {
-   "create": 1,
-   "delete": 1,
    "email": 1,
    "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Gameplan Member",
-   "share": 1,
-   "write": 1
+   "role": "Gameplan Member"
   },
   {
    "email": 1,
@@ -124,8 +120,19 @@
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Gameplan Guest",
-   "share": 1
+   "role": "Gameplan Guest"
+  },
+  {
+   "permlevel": 1,
+   "read": 1,
+   "write": 1,
+   "role": "System Manager"
+  },
+  {
+   "permlevel": 1,
+   "read": 1,
+   "write": 1,
+   "role": "Gameplan Admin"
   }
  ],
  "sort_field": "modified",

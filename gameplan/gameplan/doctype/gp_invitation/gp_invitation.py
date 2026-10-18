@@ -8,6 +8,13 @@ from gameplan.gameplan.doctype.gp_team.gp_team import get_public_team_names
 
 
 class GPInvitation(Document):
+	def validate(self):
+		# Trusted scoped invitations and acceptance save with ignore_permissions.
+		if not self.flags.ignore_permissions:
+			from gameplan.api import require_admin
+
+			require_admin()
+
 	def before_insert(self):
 		frappe.utils.validate_email_address(self.email, True)
 		if self.role == "Gameplan Guest" and not (self.teams or self.projects):
@@ -67,7 +74,7 @@ class GPInvitation(Document):
 		self.db_set("email_sent_at", frappe.utils.now())
 
 	def accept(self):
-		if self.status == "Expired":
+		if self.status != "Pending":
 			frappe.throw("Invalid or expired key")
 
 		user = self.create_user_if_not_exists()
