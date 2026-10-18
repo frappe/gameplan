@@ -52,8 +52,30 @@ describe('Reply moderation', () => {
         }
         cy.visit(
           `/g/community/${ids.community}/space/${ids.space}/discussion/${ids.discussion}/${ids.discussion_slug}`,
+          {
+            onBeforeLoad(win) {
+              const scrollTop = Object.getOwnPropertyDescriptor(win.Element.prototype, 'scrollTop')!
+              Object.defineProperty(win.Element.prototype, 'scrollTop', {
+                ...scrollTop,
+                set: cy
+                  .spy(function (this: Element, value: number) {
+                    scrollTop.set!.call(this, value)
+                  })
+                  .as('scrollWrites'),
+              })
+            },
+          },
         )
         reply().should('contain.text', 'Live moderation sentinel')
+        // Observe both initial scroll writes instead of racing the delayed second write.
+        cy.get(scrollContainer).then(($el) => {
+          cy.get('@scrollWrites').should((spy: any) => {
+            const writes = spy
+              .getCalls()
+              .filter((call: any) => call.thisValue === $el[0] && call.args[0] > 200)
+            expect(writes, 'initial scroll writes').to.have.length(2)
+          })
+        })
         cy.get(scrollContainer).should(($el) => {
           expect($el[0].scrollTop).to.be.closeTo($el[0].scrollHeight - $el[0].clientHeight, 2)
         })
