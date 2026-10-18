@@ -394,14 +394,15 @@ const comments = useList<GPComment>({
   limit: isAnonymousVisitor() ? PUBLIC_PAGE_SIZE : 99999,
   onSuccess() {
     if (commentsLoaded) return
+    const linkedComment = comments.data?.find((c) => String(c.name) === route.query.comment)
+    if (route.query.comment && route.query.comment !== 'first_post' && !linkedComment) return
     commentsLoaded = true
     if (route.query.comment) {
       if (route.query.comment === 'first_post') {
         router.replace({ query: route.query.page ? { page: route.query.page } : {} })
         return
       }
-      const comment = comments.data?.find((c) => String(c.name) === route.query.comment)
-      scrollToItem(comment)
+      scrollToItem(linkedComment)
     } else if (!route.query.fromSearch && comments.data?.length > 0) {
       scrollToEnd()
     }
