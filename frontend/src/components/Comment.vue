@@ -204,14 +204,11 @@ const isBookmarked = computed(() =>
   Boolean(props.bookmarks?.data?.some((b) => String(b.comment) === String(props.comment.name))),
 )
 
-const toggleBookmark = () => {
+const runBookmark = (method: 'add_bookmark' | 'remove_bookmark') =>
   commentDoctype.runDocMethod
-    .submit({
-      name: props.comment.name,
-      method: isBookmarked.value ? 'remove_bookmark' : 'add_bookmark',
-    })
+    .submit({ name: props.comment.name, method })
     .then(() => props.bookmarks?.reload())
-}
+    .catch(() => {})
 
 const copyLink = (comment: GPComment) => {
   const location = window.location
@@ -245,13 +242,13 @@ const dropdownOptions = computed(() => [
   {
     label: 'Bookmark',
     icon: 'lucide-bookmark',
-    onClick: toggleBookmark,
+    onClick: () => runBookmark('add_bookmark'),
     condition: () => Boolean(props.bookmarks) && !isBookmarked.value && !props.comment.deleted_at,
   },
   {
     label: 'Remove Bookmark',
     icon: 'lucide-bookmark',
-    onClick: toggleBookmark,
+    onClick: () => runBookmark('remove_bookmark'),
     condition: () => isBookmarked.value,
   },
   {
