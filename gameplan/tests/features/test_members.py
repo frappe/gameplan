@@ -50,6 +50,16 @@ class TestMemberManagement(FrappeTestCase):
 
 		self.assertIn("Gameplan Admin", frappe.get_roles(target.name))
 
+	def test_change_user_role_rejects_a_non_gameplan_role(self):
+		admin = create_user("sec_bad_role_admin@example.com", "Admin", "Gameplan Admin")
+		target = create_member("sec_bad_role_target@example.com")
+
+		frappe.set_user(admin.name)
+		with self.assertRaises(frappe.ValidationError):
+			change_user_role(target.name, role="System Manager")
+
+		self.assertNotIn("System Manager", frappe.get_roles(target.name))
+
 	def test_changing_role_removes_all_previous_gameplan_roles(self):
 		admin = create_user("sec_multi_role_admin@example.com", "Admin", "Gameplan Admin")
 		target = create_member("sec_multi_role_target@example.com")

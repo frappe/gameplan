@@ -135,11 +135,10 @@ def invite_by_email(emails: str, role: str, projects: list = None):
 @validate_type
 def change_user_role(user: str, role: str):
 	require_admin()
+	if role not in GAMEPLAN_ROLES:
+		frappe.throw(_("Invalid role: {0}").format(role), frappe.ValidationError)
 
 	user_doc = frappe.get_doc("User", user)
-	if role not in GAMEPLAN_ROLES:
-		return get_user_info(user)[0]
-
 	for _role in list(user_doc.roles):
 		if _role.role in GAMEPLAN_ROLES:
 			user_doc.remove(_role)
