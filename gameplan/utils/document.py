@@ -3,19 +3,17 @@
 
 from functools import wraps
 
-import frappe
-
 
 def with_stored_document(method):
 	"""Run a controller action with stored fields and read permission."""
 
 	@wraps(method)
 	def wrapped(self, *args, **kwargs):
-		stored = frappe.get_doc(self.doctype, self.name)
-		stored.check_permission("read")
-		# Keep the instance used in the method response, including its child rows.
+		doctype, name = self.doctype, self.name
+		# Rebuild transient state and child rows on the instance used in the response.
 		self.__dict__.clear()
-		self.__dict__.update(stored.__dict__)
+		self.__init__(doctype, name)
+		self.check_permission("read")
 		return method(self, *args, **kwargs)
 
 	return wrapped
