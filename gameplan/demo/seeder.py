@@ -327,9 +327,10 @@ class Seeder:
 				"icon": event.get("icon"),
 				"description": event.get("description"),
 				"is_private": 1 if event.get("is_private") else 0,
-				"members": members,
 			}
 		).insert(ignore_permissions=True)
+		space.extend("members", members)
+		space.save(ignore_permissions=True)
 		self.refs[event["id"]] = ("GP Project", space.name)
 		self._backdate("GP Project", space.name, ts)
 

@@ -65,8 +65,11 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 		if self.anonymous and self.multiple_answers:
 			frappe.throw(_("Anonymous polls cannot allow multiple answers"))
 		self.options = [d for d in self.options if d.title]
+		self.set("votes", [])
 		for option in self.options:
 			option.title = option.title.strip()
+			option.votes = 0
+			option.percentage = 0
 		# dont allow duplicate options
 		options = [d.title for d in self.options]
 		if len(set(options)) != len(options):
