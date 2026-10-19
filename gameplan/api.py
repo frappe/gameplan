@@ -350,9 +350,10 @@ def onboarding(community, space, icon, emails, is_private=0):
 		doctype="GP Project", title=space, icon=icon, team=team.name, is_private=is_private
 	).insert()
 
-	# The signup creator invites their first teammates as Members. The creator may not
-	# be an admin yet, so this skips invite_by_email's admin check; the guard above
-	# limits it to the first run and the role is fixed.
+	# The signup creator invites their first teammates. The creator may not be an admin
+	# yet, so this skips invite_by_email's admin check. The guard above limits it to a new
+	# site, and the role is fixed to Gameplan Member. GP Invitation's own rule that only
+	# admins invite admins still applies to these invitations.
 	_invite_by_email(", ".join(emails), role="Gameplan Member")
 	return {"team": team.name, "space": project.name}
 
