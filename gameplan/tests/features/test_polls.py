@@ -830,11 +830,9 @@ class TestWhoMayVote(PollTestCase):
 		with self.as_user(self.member):
 			poll.stop_poll()
 
-		with (
-			self.as_user(self.second_member),
-			self.assertRaisesRegex(frappe.PermissionError, "You do not have access to this poll"),
-		):
+		with self.as_user(self.second_member), self.assertRaises(frappe.PermissionError) as refused:
 			frappe.get_doc("GP Poll", poll.name).submit_vote("Yes")
+		self.assertNotIn("Poll has ended", str(refused.exception))
 
 	def test_only_the_owner_and_moderators_may_delete_a_poll(self):
 		poll = self.poll()

@@ -9,6 +9,7 @@ import frappe
 from frappe.api.v2 import execute_doc_method
 from frappe.api.v2 import run_doc_method as run_v2_doc_method
 from frappe.handler import run_doc_method
+from frappe.model.base_document import get_controller
 from frappe.utils import add_days, now_datetime
 
 from gameplan.tests.base import GameplanTestCase
@@ -149,7 +150,7 @@ class TestStoredDocumentMethods(GameplanTestCase):
 			name, _ = self.call_method(draft, "publish", route="v2_named")
 			discussion = frappe.get_doc("GP Discussion", name)
 			self.assertEqual(discussion.title, "Saved draft title")
-			self.assertEqual(discussion.project, self.space.name)
+			self.assertEqual(discussion.project, str(self.space.name))
 			self.assertFalse(frappe.db.exists("GP Draft", draft.name))
 
 	def test_thread_actions_preserve_reply_totals(self):
@@ -186,7 +187,7 @@ class TestStoredDocumentMethods(GameplanTestCase):
 		self.assertTrue(doctypes)
 		checked = set()
 		for doctype in doctypes:
-			controller = frappe.get_controller(doctype)
+			controller = get_controller(doctype)
 			for name, method in inspect.getmembers(controller, inspect.isfunction):
 				if not method.__module__.startswith("gameplan.") or method not in frappe.whitelisted:
 					continue
