@@ -1,18 +1,18 @@
 interface DocType {
-  name: string
-  creation: string
-  modified: string
-  owner: string
-  modified_by: string
-}
+    name: string;
+    creation: string;
+    modified: string;
+    owner: string;
+    modified_by: string;
+  }
 
-interface ChildDocType extends DocType {
-  parent?: string
-  parentfield?: string
-  parenttype?: string
-  idx?: number
-}
-
+  interface ChildDocType extends DocType {
+    parent?: string;
+    parentfield?: string;
+    parenttype?: string;
+    idx?: number;
+  }
+  
 // Last updated: 2023-06-15 21:01:42.058336
 export interface GPTask extends DocType {
   /** Title: Data */
@@ -210,14 +210,14 @@ export interface GPTeam extends DocType {
   image?: string
 }
 
-// Last updated: 2023-05-08 16:57:35.133580
+// Last updated: 2026-10-19 12:00:00.000000
 export interface GPGuestAccess extends DocType {
   /** User: Link (User) */
-  user: string
+  user: string;
   /** Project: Link (GP Project) */
-  project: string
+  project: string;
   /** Team: Link (GP Team) */
-  team?: string
+  team?: string;
 }
 
 // Last updated: 2023-05-08 16:58:26.857607
@@ -336,28 +336,28 @@ export interface GPPoll extends DocType {
   comment?: string
 }
 
-// Last updated: 2022-12-07 21:34:41.411618
+// Last updated: 2026-10-19 12:00:00.000000
 export interface GPActivity extends DocType {
   /** Reference DocType: Link (DocType) */
-  reference_doctype?: string
+  reference_doctype?: string;
   /** Reference Name: Dynamic Link (reference_doctype) */
-  reference_name?: string
+  reference_name?: string;
   /** User: Link (User) */
-  user?: string
+  user?: string;
   /** Action: Data */
-  action?: string
+  action?: string;
   /** Data: Code */
-  data?: string
+  data?: string;
 }
 
-// Last updated: 2025-02-17 15:58:11.863114
+// Last updated: 2026-10-19 12:00:00.000000
 export interface GPSearchFeedback extends DocType {
   /** User: Link (User) */
-  user: string
+  user: string;
   /** Helpful: Select */
-  helpful: '' | 'Yes' | 'No'
+  helpful: '' | 'Yes' | 'No';
   /** Query: Data */
-  query?: string
+  query?: string;
 }
 
 // Last updated: 2025-08-31 19:25:15.771791
@@ -382,10 +382,10 @@ export interface GPTagLink extends ChildDocType {
   label?: string
 }
 
-// Last updated: 2025-05-22 12:26:40.729595
+// Last updated: 2026-10-19 12:00:00.000000
 export interface GPTag extends DocType {
   /** Label: Data */
-  label?: string
+  label?: string;
 }
 
 // Last updated: 2023-01-31 15:15:16.167656
