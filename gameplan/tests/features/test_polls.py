@@ -1118,6 +1118,31 @@ class TestPollInComment(PollTestCase):
 
 		self.assertEqual(str(frappe.db.get_value("GP Poll", poll, "discussion")), str(self.discussion.name))
 
+	def test_a_comment_with_a_poll_cannot_be_moved_to_another_discussion(self):
+		comment = self.comment(poll_block())
+		poll = self.poll_of(comment)
+		other = create_discussion("Other thread", self.space, owner=self.member)
+
+		with self.as_user(self.member), self.assertRaises(frappe.ValidationError) as raised:
+			set_value("GP Comment", comment.name, "reference_name", other.name)
+
+		self.assertIn("A comment with a poll cannot be moved", str(raised.exception))
+		self.assertEqual(
+			str(frappe.db.get_value("GP Comment", comment.name, "reference_name")), str(self.discussion.name)
+		)
+		self.assertEqual(str(frappe.db.get_value("GP Poll", poll, "discussion")), str(self.discussion.name))
+
+	def test_a_comment_without_a_poll_can_still_be_moved(self):
+		comment = self.comment("<p>Hello</p>")
+		other = create_discussion("Other thread", self.space, owner=self.member)
+
+		with self.as_user(self.member):
+			set_value("GP Comment", comment.name, "reference_name", other.name)
+
+		self.assertEqual(
+			str(frappe.db.get_value("GP Comment", comment.name, "reference_name")), str(other.name)
+		)
+
 	def test_a_block_pointing_at_another_poll_is_dropped(self):
 		other = self.poll()
 

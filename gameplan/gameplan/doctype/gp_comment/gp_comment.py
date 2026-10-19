@@ -8,6 +8,7 @@ import frappe
 from bs4 import BeautifulSoup
 from frappe import _
 from frappe.model.document import Document
+from frappe.utils import cstr
 
 from gameplan.gameplan.doctype.gp_unread_record.gp_unread_record import GPUnreadRecord
 from gameplan.mixins.archivable import check_if_space_is_archived
@@ -87,6 +88,17 @@ class GPComment(HasAttachments, HasMentions, HasReactions, HasTags, Document):
 		elif self.has_value_changed("content"):
 			check_if_space_is_archived(self, action="edit", content_type="comments")
 		self.sanitize_content()
+		self.keep_poll_with_its_discussion()
+
+	def keep_poll_with_its_discussion(self):
+		before = self.get_doc_before_save()
+		if not before:
+			return
+		fields = ("reference_doctype", "reference_name")
+		if all(cstr(before.get(field)) == cstr(self.get(field)) for field in fields):
+			return
+		if frappe.db.exists("GP Poll", {"comment": self.name}):
+			frappe.throw(_("A comment with a poll cannot be moved to another discussion"))
 
 	def _get_missing_mandatory_fields(self):
 		missing = super()._get_missing_mandatory_fields()
