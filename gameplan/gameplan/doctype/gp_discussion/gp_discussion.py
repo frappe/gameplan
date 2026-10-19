@@ -345,6 +345,13 @@ def move_discussion(discussion, project):
 	discussion.update_discussions_count()
 	frappe.get_doc("GP Project", old_project).update_discussions_count()
 	discussion.log_activity("Discussion Moved", data={"old_project": old_project, "new_project": project})
+	frappe.enqueue(
+		"gameplan.search_sqlite.reindex_comments",
+		reference_doctype=discussion.doctype,
+		reference_name=discussion.name,
+		enqueue_after_commit=True,
+		now=frappe.in_test,
+	)
 	return discussion
 
 

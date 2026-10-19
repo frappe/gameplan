@@ -5,6 +5,7 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from gameplan.api import search_sqlite
+from gameplan.gameplan.doctype.gp_discussion.gp_discussion import move_discussion
 from gameplan.search_sqlite import GameplanSearch
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
@@ -545,3 +546,45 @@ class TestSearchIndexLifecycle(IsolatedSearchIndex, GameplanTestCase):
 		)
 
 		self.assertEqual([result["id"] for result in results], [f"GP Comment:{comment.name}"])
+
+	def test_search_filters_are_limited_to_the_fields_the_search_page_uses(self):
+		discussion = self.create_discussion(
+			"Filter field coverage",
+			"filterfieldneedle is found through the supported filters",
+		)
+		drain_search_index_queue()
+
+		results = self.search_as(
+			self.member,
+			"filterfieldneedle",
+			filters={"project": [str(self.space.name)], "owner": ["Administrator"]},
+		)
+		self.assertEqual([result["id"] for result in results], [f"GP Discussion:{discussion.name}"])
+
+		with self.assertRaises(frappe.ValidationError):
+			self.search_as(self.member, "filterfieldneedle", filters={"reference_name": [discussion.name]})
+
+	def test_moving_a_discussion_moves_its_comments_to_the_new_space_in_the_index(self):
+		other_space = create_space(
+			"Search Move Target Space",
+			self.community,
+			is_private=1,
+			members=[self.member, self.second_member],
+		)
+		discussion = self.create_discussion("Moving thread", "A thread that changes space")
+		comment = create_comment(
+			discussion, content="movedcommentneedle follows its thread", owner=self.member
+		)
+		drain_search_index_queue()
+
+		move_discussion(discussion, other_space.name)
+		drain_search_index_queue()
+
+		def comment_ids_in(space):
+			results = self.search_as(
+				self.member, "movedcommentneedle", filters={"project": [str(space.name)]}
+			)
+			return [result["id"] for result in results]
+
+		self.assertEqual(comment_ids_in(other_space), [f"GP Comment:{comment.name}"])
+		self.assertEqual(comment_ids_in(self.space), [])
