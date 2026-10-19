@@ -114,6 +114,12 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/community/:communityId/moderation',
+    name: 'CommunityModeration',
+    component: () => import('@/pages/CommunityModeration.vue'),
+    props: true,
+  },
+  {
     path: '/community/:communityId',
     redirect: (to) => ({
       name: 'Discussions',

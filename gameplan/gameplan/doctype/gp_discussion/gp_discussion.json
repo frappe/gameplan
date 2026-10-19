@@ -23,7 +23,9 @@
   "pin_scope",
   "pinned_by",
   "comments_count",
-  "participants_count"
+  "participants_count",
+  "hidden_at",
+  "spam_removed_at"
  ],
  "fields": [
   {
@@ -137,6 +139,18 @@
    "fieldtype": "Select",
    "label": "Pin Scope",
    "options": "Category\nSpace"
+  },
+  {
+   "fieldname": "hidden_at",
+   "fieldtype": "Datetime",
+   "label": "Hidden At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "spam_removed_at",
+   "fieldtype": "Datetime",
+   "label": "Spam Removed At",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,

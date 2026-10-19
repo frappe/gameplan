@@ -240,6 +240,9 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 		self.save(ignore_permissions=True)
 
 	def check_can_participate(self):
+		from gameplan.community_bans import require_participation
+
+		require_participation(self)
 		if not can_view_content(frappe.session.user, self):
 			frappe.throw(_("You do not have access to this poll"), frappe.PermissionError)
 

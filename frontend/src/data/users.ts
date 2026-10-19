@@ -22,6 +22,7 @@ export type EmailDigestDayOfWeek =
 let usersByName = reactive<Record<string, UserInfo>>({})
 
 export interface UserInfo {
+  banned_communities?: string[]
   name: string
   email: string
   enabled: number

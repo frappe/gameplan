@@ -150,6 +150,8 @@ export interface GPNotification extends DocType {
 
 // Last updated: 2026-10-16 20:00:00.000000
 export interface GPDiscussion extends DocType {
+  hidden_at?: string
+  spam_removed_at?: string
   /** Project: Link (GP Project) */
   project: string
   /** Content: Text Editor */
@@ -308,6 +310,7 @@ export interface GPComment extends DocType {
   deleted_at?: string
   /** Hidden At: Datetime */
   hidden_at?: string
+  spam_removed_at?: string
   /** Tags: Table (GP Tag Link) */
   tags: GPTagLink[]
 }

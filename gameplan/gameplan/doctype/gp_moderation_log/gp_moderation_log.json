@@ -9,7 +9,11 @@
   "comment",
   "action",
   "reason",
-  "content"
+  "content",
+  "discussion",
+  "title",
+  "community",
+  "user"
  ],
  "fields": [
   {
@@ -17,7 +21,6 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Comment",
-   "reqd": 1,
    "search_index": 1
   },
   {
@@ -25,7 +28,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Action",
-   "options": "Hide\nRestore",
+   "options": "Hide\nRestore\nDelete Spam\nBan\nUnban",
    "reqd": 1
   },
   {
@@ -39,6 +42,30 @@
    "label": "Original Content",
    "options": "HTML",
    "read_only": 1
+  },
+  {
+   "fieldname": "discussion",
+   "fieldtype": "Data",
+   "label": "Discussion",
+   "search_index": 1
+  },
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "label": "Original Title",
+   "search_index": 1
+  },
+  {
+   "fieldname": "community",
+   "fieldtype": "Data",
+   "label": "Community",
+   "search_index": 1
+  },
+  {
+   "fieldname": "user",
+   "fieldtype": "Data",
+   "label": "User",
+   "search_index": 1
   }
  ],
  "index_web_pages_for_search": 0,

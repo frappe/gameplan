@@ -175,6 +175,7 @@ const comments = useList<
     | 'edited_at'
     | 'deleted_at'
     | 'hidden_at'
+    | 'spam_removed_at'
     | 'reference_doctype'
     | 'reference_name'
   >
@@ -190,6 +191,7 @@ const comments = useList<
     'edited_at',
     'deleted_at',
     'hidden_at',
+    'spam_removed_at',
     'reference_doctype',
     'reference_name',
   ],

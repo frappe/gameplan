@@ -325,6 +325,7 @@
 </template>
 
 <script setup lang="ts">
+import { call as moderationCall } from 'frappe-ui'
 import {
   ref,
   computed,
@@ -367,7 +368,7 @@ import { copyToClipboard, extractServerMessage, isEditorContentEmpty } from '@/u
 import { getSpace, useSpace } from '@/data/spaces'
 import { useCommunity } from '@/data/communities'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
-import { useDiscussion } from '@/data/discussions'
+import { reloadDiscussionLists, useDiscussion } from '@/data/discussions'
 import { provideThreadReactions } from '@/data/reactions'
 import { useDraftSync } from '@/data/useDraftSync'
 import { tags } from '@/data/tags'
@@ -379,6 +380,7 @@ import { refreshUnreadCountForProjects } from '@/data/unreadCount'
 import { useSessionUser } from '@/data/users'
 import {
   canDeleteContent,
+  canModerateSpace,
   canEditContent,
   canMoveOrPinContent,
   canMoveContentToSpace,
@@ -873,7 +875,47 @@ const canMoveOrPinDiscussion = computed(() =>
   canMoveOrPinContent(discussion.doc, space.value, useSessionUser()),
 )
 
+function moderateDiscussion(spam = false) {
+  const restore = !spam && Boolean(discussion.doc?.hidden_at || discussion.doc?.spam_removed_at)
+  const label = restore ? 'Restore discussion' : spam ? 'Delete spam' : 'Hide discussion'
+  dialog.prompt({
+    title: label,
+    message: restore
+      ? 'Make this discussion visible again?'
+      : 'This discussion and its replies will be unavailable to ordinary readers. You can restore it from Removed content.',
+    fields: restore ? [] : [{ name: 'reason', label: 'Reason', type: 'textarea', required: true }],
+    confirmLabel: label,
+    onConfirm: async ({ values }) => {
+      await moderationCall(
+        `/api/v2/document/GP Discussion/${props.postId}/method/${
+          restore ? 'restore' : spam ? 'delete_spam' : 'hide'
+        }`,
+        restore ? {} : { reason: values.reason },
+      )
+      reloadDiscussionLists()
+      await discussion.reload()
+      await router.push({ name: 'CommunityModeration', params: { communityId: space.value?.team } })
+    },
+  })
+}
+
 const actions = computed(() => [
+  {
+    label:
+      discussion.doc?.hidden_at || discussion.doc?.spam_removed_at
+        ? 'Restore discussion'
+        : 'Hide discussion',
+    icon: 'lucide-eye-off',
+    onClick: () => moderateDiscussion(),
+    condition: () => canModerateSpace(space.value, useSessionUser()),
+  },
+  {
+    label: 'Delete spam',
+    icon: 'lucide-trash',
+    onClick: () => moderateDiscussion(true),
+    condition: () =>
+      canModerateSpace(space.value, useSessionUser()) && !discussion.doc?.spam_removed_at,
+  },
   {
     label: 'Edit',
     icon: 'lucide-edit',

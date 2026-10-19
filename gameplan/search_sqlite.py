@@ -92,7 +92,9 @@ class GameplanSearch(SQLiteSearch):
 
 	def prepare_document(self, doc):
 		"""Prepare a document for indexing with Gameplan-specific handling."""
-		if doc.doctype == "GP Comment" and doc.get("hidden_at"):
+		from gameplan.mixins.moderation import discussion_is_removed, is_removed, parent_discussion
+
+		if is_removed(doc) or discussion_is_removed(parent_discussion(doc)):
 			return None
 		# Get base document from parent class
 		document = super().prepare_document(doc)
@@ -351,22 +353,11 @@ class GameplanSearch(SQLiteSearch):
 
 			# Call parent search with the converted filters
 			response = super().search(query, title_only, filters)
-			names = [r["name"] for r in response["results"] if r["doctype"] == "GP Comment"]
-			# Public and guest search already check live rows in PublicGameplanSearch.
-			if names and not (gameplan.is_anonymous() or gameplan.is_guest()):
-				hidden = {
-					str(name)
-					for name in frappe.get_all(
-						"GP Comment",
-						filters={"name": ["in", names], "hidden_at": ["is", "set"]},
-						pluck="name",
-					)
-				}
-				response["results"] = [
-					r
-					for r in response["results"]
-					if r["doctype"] != "GP Comment" or str(r["name"]) not in hidden
-				]
+			# Recheck live state: an asynchronous index update may still contain removed text.
+			if not (gameplan.is_anonymous() or gameplan.is_guest()):
+				from gameplan.moderation import filter_removed_search_results
+
+				response["results"] = filter_removed_search_results(response["results"])
 			return response
 		finally:
 			del self._requested_projects
