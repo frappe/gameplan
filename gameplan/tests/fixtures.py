@@ -75,11 +75,12 @@ def create_discussion(title, space, *, content="Test content", owner=None):
 	return doc
 
 
-def create_comment(discussion, *, content="Test comment", owner=None):
+def create_comment(reference, *, content="Test comment", owner=None):
+	"""Comment on `reference`: a GP Discussion or GP Task document, or a discussion name."""
 	doc = frappe.get_doc(
 		doctype="GP Comment",
-		reference_doctype="GP Discussion",
-		reference_name=_name(discussion),
+		reference_doctype=reference.doctype if isinstance(reference, Document) else "GP Discussion",
+		reference_name=_name(reference),
 		content=content,
 	)
 	doc.insert(ignore_permissions=True)
