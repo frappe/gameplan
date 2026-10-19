@@ -30,12 +30,7 @@ class TestClientList(GameplanTestCase):
 
 	def test_content_lists_follow_space_access(self):
 		comment = create_comment(self.discussion, owner=self.member)
-		task_comment = frappe.get_doc(
-			doctype="GP Comment",
-			reference_doctype="GP Task",
-			reference_name=self.task.name,
-			content="Task comment",
-		).insert(ignore_permissions=True)
+		task_comment = create_comment(self.task, owner=self.member)
 		page = create_page("Client List Page", self.space, owner=self.member)
 		poll = create_poll("Client List Poll", self.discussion, owner=self.member)
 		rows = [self.space, self.discussion, self.task, comment, task_comment, page, poll]

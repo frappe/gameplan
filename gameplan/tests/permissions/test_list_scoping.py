@@ -111,15 +111,6 @@ class TestCommentListScoping(ListScopingTestCase):
 			"Comment Hidden Space", self.community, is_private=1, members=[self.second_member]
 		)
 
-	def comment_on_task(self, task, owner):
-		comment = frappe.get_doc(
-			doctype="GP Comment",
-			reference_doctype="GP Task",
-			reference_name=task.name,
-			content="Task comment",
-		).insert(ignore_permissions=True)
-		return set_owner(comment, owner)
-
 	def test_a_discussion_comment_is_listed_only_from_a_space_the_user_can_see(self):
 		visible = create_comment(
 			create_discussion("Visible Comment Thread", self.visible_space, owner=self.member),
@@ -133,12 +124,12 @@ class TestCommentListScoping(ListScopingTestCase):
 		self.assert_listed_for("GP Comment", self.member, visible=visible, hidden=hidden)
 
 	def test_a_task_comment_is_listed_only_from_a_space_the_user_can_see(self):
-		visible = self.comment_on_task(
-			create_task("Visible Comment Task", self.visible_space, owner=self.member), self.member
+		visible = create_comment(
+			create_task("Visible Comment Task", self.visible_space, owner=self.member), owner=self.member
 		)
-		hidden = self.comment_on_task(
+		hidden = create_comment(
 			create_task("Hidden Comment Task", self.hidden_space, owner=self.second_member),
-			self.second_member,
+			owner=self.second_member,
 		)
 
 		self.assert_listed_for("GP Comment", self.member, visible=visible, hidden=hidden)
