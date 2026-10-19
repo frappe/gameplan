@@ -126,6 +126,7 @@ import { useDraftSync } from '@/data/useDraftSync'
 import { useUser, useSessionUser } from '@/data/users'
 import type { Space } from '@/data/spaces'
 import { canDeleteContent, canEditContent } from '@/utils/permissions'
+import { captureError } from '@/utils/errorReporting'
 
 interface Props {
   comment: GPComment
@@ -208,7 +209,9 @@ const runBookmark = (method: 'add_bookmark' | 'remove_bookmark') =>
   commentDoctype.runDocMethod
     .submit({ name: props.comment.name, method })
     .then(() => props.bookmarks?.reload())
-    .catch(() => {})
+    .catch((error) =>
+      captureError(error, { action: method.replace('_', '-'), comment: props.comment.name }),
+    )
 
 const copyLink = (comment: GPComment) => {
   const location = window.location
