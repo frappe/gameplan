@@ -17,9 +17,11 @@ for the deferring `return True`, breaks every desk permission read today). This 
 pins what each one is actually for, so the next person deleting a survivor gets a red
 test instead of a silent permission change.
 
-All four are pinned by tests that go red when the branch changes. The last two are
-reached through a comment someone else wrote on a member's personal task: the task's
-owner can see it and react to it, but not delete it.
+All four are pinned by tests that go red when the branch changes, with one limit: the
+owner check is pinned only in its allow direction. Its deny direction is guarded by
+`can_view_content`, which runs first and already refuses anyone who is not the owner.
+The last two are reached through a comment someone else wrote on a member's personal
+task: the task's owner can see it and react to it, but not delete it.
 
 The same trailing `return True` also ends `team_has_permission` (permissions.py:34) and
 `project_has_permission` (L43) — load-bearing there too, but for a stronger reason, not
