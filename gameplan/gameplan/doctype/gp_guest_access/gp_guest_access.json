@@ -38,7 +38,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-05-08 16:57:35.133580",
+ "modified": "2026-10-19 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "GP Guest Access",
@@ -70,7 +70,6 @@
    "write": 1
   },
   {
-   "create": 1,
    "delete": 1,
    "email": 1,
    "export": 1,
@@ -78,8 +77,7 @@
    "read": 1,
    "report": 1,
    "role": "Gameplan Member",
-   "share": 1,
-   "write": 1
+   "share": 1
   },
   {
    "email": 1,

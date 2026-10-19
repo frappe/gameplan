@@ -510,11 +510,21 @@ def page_query_conditions(user=None, **kwargs):
 
 
 def comment_query_conditions(user=None, **kwargs):
+	return referenced_content_query_conditions("GP Comment", user)
+
+
+def activity_query_conditions(user=None, **kwargs):
+	return referenced_content_query_conditions("GP Activity", user)
+
+
+def referenced_content_query_conditions(doctype, user=None):
+	"""Rows that point at a discussion or task (reference_doctype/reference_name) follow
+	that discussion's or task's space."""
 	user = user or frappe.session.user
 	if is_global_admin(user):
 		return None
 
-	Comment = frappe.qb.DocType("GP Comment")
+	Row = frappe.qb.DocType(doctype)
 	Discussion = frappe.qb.DocType("GP Discussion")
 	Task = frappe.qb.DocType("GP Task")
 	discussion_query = (
@@ -525,10 +535,9 @@ def comment_query_conditions(user=None, **kwargs):
 	task_query = (
 		frappe.qb.from_(Task).select(Task.name).where(accessible_project_criterion(Task.project, user))
 	)
-	criterion = (
-		(Comment.reference_doctype == "GP Discussion") & Comment.reference_name.isin(discussion_query)
-	) | ((Comment.reference_doctype == "GP Task") & Comment.reference_name.isin(task_query))
-	return criterion_sql(criterion)
+	on_discussion = (Row.reference_doctype == "GP Discussion") & Row.reference_name.isin(discussion_query)
+	on_task = (Row.reference_doctype == "GP Task") & Row.reference_name.isin(task_query)
+	return criterion_sql(on_discussion | on_task)
 
 
 def poll_query_conditions(user=None, **kwargs):
@@ -580,6 +589,71 @@ def bookmark_has_permission(doc, ptype="read", user=None, **kwargs):
 	if not hasattr(doc, "doctype"):
 		return True
 	return get_doc_value(doc, "user") == user
+
+
+def activity_has_permission(doc, ptype="read", user=None, **kwargs):
+	"""An activity row is part of a discussion's or task's timeline: whoever can see that
+	discussion or task can see it. Rows are written by the server (HasActivity.log_activity)
+	and removed with their discussion or task, never edited by hand.
+	"""
+	user = user or frappe.session.user
+	if not hasattr(doc, "doctype"):
+		return True
+	if ptype in READ_PERMISSIONS:
+		return can_view_content(user, doc)
+	if ptype == "delete":
+		return is_delete_cascade(doc) or is_global_admin(user)
+	if ptype in {"create", "write"}:
+		return is_global_admin(user)
+	return True
+
+
+def guest_access_query_conditions(user=None, **kwargs):
+	user = user or frappe.session.user
+	if is_global_admin(user):
+		return None
+	GuestAccess = frappe.qb.DocType("GP Guest Access")
+	criterion = GuestAccess.user == user
+	if not gameplan.is_guest(user):
+		Project = frappe.qb.DocType("GP Project")
+		managed_teams = community_admin_team_query(user)
+		managed_projects = (
+			frappe.qb.from_(Project)
+			.select(Project.name)
+			.where(
+				Project.team.isin(managed_teams)
+				| ((Project.is_private == 1) & is_member_parent("GP Project", Project.name, user))
+			)
+		)
+		criterion = (
+			criterion | GuestAccess.project.isin(managed_projects) | GuestAccess.team.isin(managed_teams)
+		)
+	return criterion_sql(criterion)
+
+
+def guest_access_has_permission(doc, ptype="read", user=None, **kwargs):
+	"""A guest's access to a space is visible to the guest and to the people who manage
+	that space or its community. Rows are added by accepting an invitation and removed
+	through GPProject.remove_guest / GPTeam.remove_guest_access.
+	"""
+	user = user or frappe.session.user
+	if not hasattr(doc, "doctype"):
+		return True
+	if ptype in READ_PERMISSIONS:
+		return get_doc_value(doc, "user") == user or can_manage_guest_access(user, doc)
+	if ptype == "delete":
+		return is_delete_cascade(doc) or can_manage_guest_access(user, doc)
+	if ptype in {"create", "write"}:
+		return is_global_admin(user)
+	return True
+
+
+def can_manage_guest_access(user, doc):
+	project = get_project_info(get_doc_value(doc, "project"))
+	if project:
+		return can_manage_space(user, project) or can_manage_community(user, project.team)
+	team = get_doc_value(doc, "team")
+	return bool(team) and can_manage_community(user, team)
 
 
 def content_project_query_conditions(doctype, user=None):
@@ -696,6 +770,17 @@ def is_community_admin(user, team):
 	)
 
 
+def community_admin_team_query(user):
+	Member = frappe.qb.DocType("GP Member")
+	return (
+		frappe.qb.from_(Member)
+		.select(Member.parent)
+		.where(Member.parenttype == "GP Team")
+		.where(Member.user == user)
+		.where(Member.is_admin == 1)
+	)
+
+
 def is_space_member(user, project):
 	return bool(frappe.db.exists("GP Member", {"parenttype": "GP Project", "parent": project, "user": user}))
 
@@ -741,7 +826,7 @@ def get_content_project(doc):
 		# A poll lives in a discussion, and takes that discussion's space.
 		discussion = get_doc_value(doc, "discussion")
 		return frappe.db.get_value("GP Discussion", discussion, "project") if discussion else None
-	if doc.doctype != "GP Comment":
+	if doc.doctype not in {"GP Comment", "GP Activity"}:
 		return None
 	if doc.reference_doctype in {"GP Discussion", "GP Task"}:
 		return frappe.db.get_value(doc.reference_doctype, doc.reference_name, "project")

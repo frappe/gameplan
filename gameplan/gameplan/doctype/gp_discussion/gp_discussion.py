@@ -239,8 +239,6 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		an already-authorised discussion delete. The generic cascade would check the role
 		permission on GP Activity, and the Gameplan Guest role has no delete there. A guest
 		could then not delete a discussion they started once anyone had closed or pinned it.
-		Granting that role delete on GP Activity is not an option: the doctype has no
-		row-level permission hook, so a guest could delete any activity row on the site.
 		"""
 		for name in frappe.get_all(
 			"GP Activity",
