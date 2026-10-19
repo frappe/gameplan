@@ -86,11 +86,11 @@ class TestClientList(GameplanTestCase):
 			),
 			("GP Project Visit", {"user": self.member.name, "project": self.space.name}),
 			("GP Discussion Visit", {"user": self.member.name, "discussion": self.discussion.name}),
-			("GP Followed Project", {"user": self.member.name, "project": self.space.name}),
 		):
 			rows.append(frappe.get_doc(doctype=doctype, **values).insert(ignore_permissions=True))
 		with self.as_user(self.member):
 			rows.append(frappe.get_doc(doctype="GP Pinned Project", project=self.space.name).insert())
+			rows.append(frappe.get_doc(doctype="GP Followed Project", project=self.space.name).insert())
 
 		for doc in rows:
 			for user, visible in ((self.member, True), (self.outsider, False), (self.guest, False)):
