@@ -75,8 +75,7 @@ class GPDraft(Document):
 		target document. Reparents any draft-owned attachments onto the target (so they
 		survive the draft deletion) and clears the ?fid= query params that otherwise hide
 		the migrated images, then deletes the draft."""
-		if self.owner != frappe.session.user:
-			frappe.throw("You are not allowed to modify this draft")
+		self.require_owner("commit")
 		if reference_doctype not in COMMIT_TARGET_DOCTYPES:
 			frappe.throw(_("Drafts cannot be committed to {0}").format(reference_doctype))
 
