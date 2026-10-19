@@ -66,8 +66,8 @@ class GPComment(HasAttachments, HasMentions, HasReactions, HasTags, Document):
 		discussion.update_last_post()
 		discussion.update_post_count()
 		discussion.update_participants_count()
-		discussion.track_visit()
 		discussion.save(ignore_permissions=True)
+		discussion.track_visit()
 
 	def update_task_meta(self):
 		if self.reference_doctype != "GP Task":

@@ -11,7 +11,13 @@ from frappe.handler import run_doc_method
 from frappe.utils import add_days, now_datetime
 
 from gameplan.tests.base import GameplanTestCase
-from gameplan.tests.fixtures import create_comment, create_community, create_discussion, create_space
+from gameplan.tests.fixtures import (
+	create_comment,
+	create_community,
+	create_discussion,
+	create_poll,
+	create_space,
+)
 
 
 class TestStoredDocumentMethods(GameplanTestCase):
@@ -84,6 +90,7 @@ class TestStoredDocumentMethods(GameplanTestCase):
 		discussion = create_discussion("Private stored thread", self.private_space, owner=self.member)
 		comment = create_comment(discussion, owner=self.member)
 		for doc in (discussion, comment):
+			doc.reload()
 			frappe.get_doc(
 				doctype="Version",
 				ref_doctype=doc.doctype,
@@ -143,3 +150,23 @@ class TestStoredDocumentMethods(GameplanTestCase):
 			self.assertEqual(discussion.title, "Saved draft title")
 			self.assertEqual(discussion.project, self.space.name)
 			self.assertFalse(frappe.db.exists("GP Draft", draft.name))
+
+	def test_thread_actions_preserve_reply_totals(self):
+		with self.as_user(self.member):
+			discussion = create_discussion("Stored thread totals", self.space)
+		with self.as_user(self.second_member):
+			comment = create_comment(discussion)
+			poll = create_poll("Stored thread poll", discussion)
+			discussion.reload()
+			self.assertEqual(discussion.comments_count, 2)
+			self.assertEqual(discussion.participants_count, 2)
+			self.assertEqual(discussion.last_post_type, "GP Poll")
+			self.assertEqual(str(discussion.last_post), str(poll.name))
+			poll.delete()
+			discussion.reload()
+			self.assertEqual(discussion.comments_count, 1)
+			self.assertEqual(discussion.last_post_type, "GP Comment")
+			comment.delete()
+			discussion.reload()
+			self.assertEqual(discussion.comments_count, 0)
+			self.assertEqual(discussion.participants_count, 1)
