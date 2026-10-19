@@ -5,7 +5,11 @@ from functools import wraps
 
 
 def with_stored_document(method):
-	"""Run a controller action with stored fields and read permission."""
+	"""Run a controller action with stored fields and read permission.
+
+	Server code that calls a decorated method must save pending field changes first,
+	because the call reloads the document.
+	"""
 
 	@wraps(method)
 	def wrapped(self, *args, **kwargs):

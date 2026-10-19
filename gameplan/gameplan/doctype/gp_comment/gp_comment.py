@@ -67,6 +67,7 @@ class GPComment(HasAttachments, HasMentions, HasReactions, HasTags, Document):
 		discussion.update_post_count()
 		discussion.update_participants_count()
 		discussion.save(ignore_permissions=True)
+		# track_visit reloads the stored discussion, so save the counters first.
 		discussion.track_visit()
 
 	def update_task_meta(self):

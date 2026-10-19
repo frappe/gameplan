@@ -133,6 +133,7 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 		discussion.update_post_count()
 		discussion.update_participants_count()
 		discussion.save(ignore_permissions=True)
+		# track_visit reloads the stored discussion, so save the counters first.
 		discussion.track_visit()
 
 	@frappe.whitelist(methods=["POST"])
