@@ -367,6 +367,14 @@ class TestInvitationAccept(InvitationTestCase):
 
 
 class TestAcceptInvitationEndpoint(InvitationTestCase):
+	def setUp(self):
+		super().setUp()
+		# The endpoint commits, because an email link arrives as a GET request. Stub the
+		# commit so each test's rows roll back with it.
+		commit = patch.object(frappe.db, "commit")
+		commit.start()
+		self.addCleanup(commit.stop)
+
 	def test_missing_key_is_rejected(self):
 		with self.assertRaises(frappe.ValidationError):
 			accept_invitation(key=None)
