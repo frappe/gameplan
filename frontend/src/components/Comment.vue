@@ -127,6 +127,7 @@ import { useDraftSync } from '@/data/useDraftSync'
 import { useUser, useSessionUser } from '@/data/users'
 import type { Space } from '@/data/spaces'
 import { canDeleteContent, canEditContent } from '@/utils/permissions'
+import { postedPollInContent } from '@/components/PollBlock/poll-draft'
 import { captureError } from '@/utils/errorReporting'
 
 interface Props {
@@ -178,10 +179,26 @@ const discardEdit = async () => {
   await draft.clear()
 }
 
-const updateComment = async () => {
+const updateComment = () => {
   const content = draftData.value?.content
   if (!content?.trim()) return
 
+  // Saving without the poll block deletes the poll and its votes, and a stray
+  // Backspace is enough to remove the block, so ask first.
+  const poll = postedPollInContent(props.comment.content)
+  if (poll && postedPollInContent(content) !== poll) {
+    dialog.danger({
+      title: 'Remove poll',
+      message: 'Saving this comment deletes its poll and all its votes. This cannot be undone.',
+      confirmLabel: 'Remove poll',
+      onConfirm: () => saveComment(content),
+    })
+    return
+  }
+  return saveComment(content)
+}
+
+const saveComment = async (content: string) => {
   isUpdating.value = true
   updateError.value = null
 

@@ -51,6 +51,14 @@ export function pollDraftInContent(html?: string | null): PollDraft | null {
   return parseDraft(block?.getAttribute('data-poll-draft') ?? null)
 }
 
+export function postedPollInContent(html?: string | null): string | null {
+  if (!html?.includes('data-poll=')) return null
+  const block = new DOMParser()
+    .parseFromString(html, 'text/html')
+    .querySelector('div[data-type="poll"][data-poll]')
+  return block?.getAttribute('data-poll') ?? null
+}
+
 export function parseDraft(value: string | null): PollDraft | null {
   if (!value) return null
   let draft
