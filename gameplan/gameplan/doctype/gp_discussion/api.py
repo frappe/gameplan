@@ -275,6 +275,7 @@ def include_bookmarked_post(discussions):
 		.select(Comment.name, Comment.reference_name, Comment.owner, Comment.content, Comment.creation)
 		.where(Comment.name.isin(comment_names))
 		.where(Comment.reference_doctype == "GP Discussion")
+		.where(Comment.deleted_at.isnull())
 		.run(as_dict=1)
 		if comment_names
 		else []

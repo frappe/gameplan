@@ -361,6 +361,13 @@ class TestBookmarksFeed(BookmarkTestCase):
 
 		self.assertEqual(self.bookmarks_feed_rows(self.member), [])
 
+	def test_feed_skips_a_bookmarked_comment_that_was_soft_deleted(self):
+		comment = create_comment(self.discussion, content="<p>Ship it</p>", owner=self.second_member)
+		self.add_comment_bookmark(comment, self.member)
+		frappe.db.set_value("GP Comment", comment.name, "deleted_at", now_datetime(), update_modified=False)
+
+		self.assertEqual(self.bookmarks_feed_rows(self.member), [])
+
 	def test_feed_shows_the_opening_post_for_an_opening_post_bookmark(self):
 		create_comment(self.discussion, content="<p>A later reply</p>", owner=self.second_member)
 		self.add_bookmark(self.discussion, self.member)

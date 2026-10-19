@@ -246,7 +246,7 @@ const dropdownOptions = computed(() => [
     label: 'Bookmark',
     icon: 'lucide-bookmark',
     onClick: toggleBookmark,
-    condition: () => Boolean(props.bookmarks) && !isBookmarked.value,
+    condition: () => Boolean(props.bookmarks) && !isBookmarked.value && !props.comment.deleted_at,
   },
   {
     label: 'Remove Bookmark',
