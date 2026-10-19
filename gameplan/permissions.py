@@ -542,13 +542,7 @@ def referenced_content_query_conditions(doctype, user=None):
 		.select(Discussion.name)
 		.where(accessible_project_criterion(Discussion.project, user))
 	)
-	# A task with no space is personal: only its owner sees it (see apply_task_access_filter).
-	space_less_task = (Task.project.isnull() | (Task.project == "")) & (Task.owner == user)
-	task_query = (
-		frappe.qb.from_(Task)
-		.select(Task.name)
-		.where(accessible_project_criterion(Task.project, user) | space_less_task)
-	)
+	task_query = frappe.qb.from_(Task).select(Task.name).where(task_access_criterion(Task, user))
 	on_discussion = (Row.reference_doctype == "GP Discussion") & Row.reference_name.isin(discussion_query)
 	on_task = (Row.reference_doctype == "GP Task") & Row.reference_name.isin(task_query)
 	return criterion_sql(on_discussion | on_task)
@@ -701,6 +695,18 @@ def accessible_project_criterion(project_field, user=None):
 	if is_global_admin(user):
 		return None
 	return project_field.isin(accessible_project_query(user))
+
+
+def task_access_criterion(Task, user=None):
+	"""The tasks `user` may see, as can_view_content decides. A task in a Space follows
+	the Space. A task with no Space is personal, so only its owner sees it. None for a
+	global admin, who sees every task."""
+	user = user or frappe.session.user
+	criterion = accessible_project_criterion(Task.project, user)
+	if criterion is None:
+		return None
+	space_less = Task.project.isnull() | (Task.project == "")
+	return criterion | (space_less & (Task.owner == user))
 
 
 def apply_accessible_project_filter(query, project_field, user=None):
