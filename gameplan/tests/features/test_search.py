@@ -578,6 +578,7 @@ class TestSearchIndexLifecycle(IsolatedSearchIndex, GameplanTestCase):
 		)
 		drain_search_index_queue()
 
+		discussion.reload()
 		move_discussion(discussion, other_space.name)
 		drain_search_index_queue()
 
