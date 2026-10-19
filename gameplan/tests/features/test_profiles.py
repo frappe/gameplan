@@ -139,6 +139,21 @@ class TestProfiles(GameplanTestCase):
 		with self.assertRaises(frappe.PermissionError):
 			alice_profile.save(ignore_permissions=True)
 
+	def test_admin_cannot_edit_others_profile(self):
+		alice_profile = get_profile(self.alice.name)
+		self.assertFalse(has_permission(alice_profile, ptype="write", user=self.admin.name))
+
+		frappe.set_user(self.admin.name)
+		alice_profile.bio = "edited by an admin"
+		with self.assertRaises(frappe.PermissionError):
+			alice_profile.save(ignore_permissions=True)
+
+	def test_admin_can_still_disable_a_user(self):
+		alice_profile = get_profile(self.alice.name)
+		frappe.set_user(self.admin.name)
+		alice_profile.disable_user()
+		self.assertEqual(get_profile(self.alice.name).enabled, 0)
+
 	def test_default_bento_layout_binds_every_populated_profile_field(self):
 		frappe.set_user(self.alice.name)
 		fill_profile(self.alice.name)

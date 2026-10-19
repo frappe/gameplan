@@ -49,7 +49,12 @@ class GPUserProfile(HasAttachments, Document):
 		self.validate_profile_ownership()
 
 	def validate_profile_ownership(self):
-		# Prevent modifying another user's profile when permission checks are bypassed
+		"""Only the profile's own user may change it, admins included.
+
+		Runs even when permission checks are bypassed. Changes the system makes on a
+		user's behalf, such as syncing the name and enabled state from User, set
+		`ignore_profile_ownership`.
+		"""
 		if (
 			self.is_new()
 			or self.flags.ignore_profile_ownership
@@ -59,11 +64,8 @@ class GPUserProfile(HasAttachments, Document):
 		):
 			return
 		user = frappe.session.user
-		if user and user != "Administrator":
-			roles = frappe.get_roles(user)
-			if "Gameplan Admin" not in roles and "System Manager" not in roles:
-				if self.user and self.user != user:
-					frappe.throw("Cannot modify another user's profile", frappe.PermissionError)
+		if user != "Administrator" and self.user != user:
+			frappe.throw("Cannot modify another user's profile", frappe.PermissionError)
 
 	def autoname(self):
 		self.name = self.generate_name()
@@ -231,16 +233,19 @@ def has_permission(doc, ptype="read", user=None):
 	if ptype in ("read", "select", "print", "email", "export", "share"):
 		return True
 
-	# Administrators and Gameplan Admins can manage any profile.
 	if user == "Administrator":
 		return True
-	if "Gameplan Admin" in frappe.get_roles(user) or "System Manager" in frappe.get_roles(user):
+
+	# Admins create and delete profiles along with the User, but never edit one.
+	if ptype in ("create", "delete") and (
+		"Gameplan Admin" in frappe.get_roles(user) or "System Manager" in frappe.get_roles(user)
+	):
 		return True
 
 	if isinstance(doc, str):
 		doc = frappe.get_lazy_doc("GP User Profile", doc)
 
-	# Otherwise a user may only modify their own profile.
+	# A user may only modify their own profile.
 	return bool(doc and doc.user == user)
 
 
