@@ -138,7 +138,6 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
 	def submit_vote(self, option):
-		self.discard_client_state()
 		self.check_can_participate()
 		check_if_space_is_archived(self, action="vote in", content_type="polls")
 		self.check_if_stopped()
@@ -168,7 +167,6 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
 	def retract_vote(self, option=None):
-		self.discard_client_state()
 		self.check_can_participate()
 		check_if_space_is_archived(self, action="retract votes from", content_type="polls")
 		self.check_if_stopped()
@@ -184,26 +182,11 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
 	def stop_poll(self):
-		self.discard_client_state()
 		if not can_delete_content(frappe.session.user, self):
 			frappe.throw(_("Only the owner or an admin can stop the poll"), frappe.PermissionError)
 		check_if_space_is_archived(self, action="stop", content_type="polls")
 		self.stopped_at = frappe.utils.now()
 		self.save()
-
-	def discard_client_state(self):
-		"""Re-read the stored poll, dropping any field values the caller sent.
-
-		The v2 document-method route loads the stored document, but its POST permission
-		is deliberately Gameplan's interaction tier: guests and members who may
-		participate can invoke these methods without being allowed to edit poll fields.
-		The vote save then bypasses write permission so it can persist that interaction.
-		Reloading before the business checks makes the method's invariant explicit:
-		`stopped_at`, `discussion`, `anonymous`, `multiple_answers`, options, and every
-		field written back come from storage, even if another whitelisted document
-		surface or in-process caller hands the method a dirty instance.
-		"""
-		self.reload()
 
 	def save_after_voting(self):
 		"""Persist a vote without requiring write access to the poll itself.
@@ -214,8 +197,8 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 		while nothing changed — that check exists to stop a non-editor rewriting a poll's
 		title or options, and it must keep doing so.
 
-		Bypassing that check is only safe because `discard_client_state` has already
-		thrown away everything the caller sent, so this save can carry nothing but the
+		Skipping that check is correct because `with_stored_document` rebuilds the poll
+		from storage before the vote method runs, so this save carries only the
 		server-computed vote rows and tallies.
 		"""
 		self.save(ignore_permissions=True)

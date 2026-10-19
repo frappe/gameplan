@@ -7,8 +7,8 @@ A poll is content that lives inside a discussion, so it takes that discussion's 
 for access: everyone who can reach the space may vote, and nobody else can even see it.
 Voting itself is participation (like reacting), which is why the vote methods are the
 gate rather than the `write` permission — see GPPoll.save_after_voting. That save skips
-permissions, so the methods first restore all poll state from storage
-(GPPoll.discard_client_state); TestTamperedVotePayload locks that invariant.
+permissions, so the methods first rebuild all poll state from storage
+(`with_stored_document`); TestTamperedVotePayload locks that invariant.
 
 The other half of that rule is that a poll's ballot and lifecycle belong to its author:
 `write` alone must not let another member stop a poll or rewrite its votes, whether they

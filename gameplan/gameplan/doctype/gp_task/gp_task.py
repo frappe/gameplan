@@ -79,15 +79,10 @@ class GPTask(HasMentions, HasActivity, Document):
 	@frappe.whitelist(methods=["GET"])
 	@with_stored_document
 	def thread_reactions(self):
-		"""Reactions on everything in this thread, for the thread page.
-
-		Checks read on the stored thread: the v2 document-method route builds this instance
-		from fields the caller sends, so its own fields can be forged."""
-		thread = frappe.get_doc(self.doctype, self.name)
-		thread.check_permission("read")
+		"""Reactions on everything in this thread, for the thread page."""
 		comments = frappe.get_all(
 			"GP Comment",
-			filters={"reference_doctype": thread.doctype, "reference_name": thread.name},
+			filters={"reference_doctype": self.doctype, "reference_name": self.name},
 			pluck="name",
 		)
 		return get_reactions_on({"GP Comment": comments})
