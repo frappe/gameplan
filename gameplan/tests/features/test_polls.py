@@ -7,8 +7,8 @@ A poll is content that lives inside a discussion, so it takes that discussion's 
 for access: everyone who can reach the space may vote, and nobody else can even see it.
 Voting itself is participation (like reacting), which is why the vote methods are the
 gate rather than the `write` permission — see GPPoll.save_after_voting. That save skips
-permissions, so the methods first restore all poll state from storage
-(GPPoll.discard_client_state); TestTamperedVotePayload locks that invariant.
+permissions, so the methods first rebuild all poll state from storage
+(`with_stored_document`); TestTamperedVotePayload locks that invariant.
 
 The other half of that rule is that a poll's ballot and lifecycle belong to its author:
 `write` alone must not let another member stop a poll or rewrite its votes, whether they
@@ -830,11 +830,9 @@ class TestWhoMayVote(PollTestCase):
 		with self.as_user(self.member):
 			poll.stop_poll()
 
-		with (
-			self.as_user(self.second_member),
-			self.assertRaisesRegex(frappe.PermissionError, "You do not have access to this poll"),
-		):
+		with self.as_user(self.second_member), self.assertRaises(frappe.PermissionError) as refused:
 			frappe.get_doc("GP Poll", poll.name).submit_vote("Yes")
+		self.assertNotIn("Poll has ended", str(refused.exception))
 
 	def test_only_the_owner_and_moderators_may_delete_a_poll(self):
 		poll = self.poll()

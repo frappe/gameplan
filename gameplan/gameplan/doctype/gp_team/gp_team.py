@@ -16,6 +16,7 @@ from gameplan.permissions import (
 	require_can_manage_community,
 )
 from gameplan.utils import validate_type
+from gameplan.utils.document import with_stored_document
 
 
 class GPTeam(Archivable, Document):
@@ -81,6 +82,7 @@ class GPTeam(Archivable, Document):
 		)
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def add_members(self, users):
 		require_can_manage_community(self)
 		for user in users:
@@ -88,6 +90,7 @@ class GPTeam(Archivable, Document):
 		self.save()
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def remove_member(self, user):
 		require_can_manage_community(self)
 		member = self.get_member(user)
@@ -100,12 +103,14 @@ class GPTeam(Archivable, Document):
 		self.save()
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def remove_guest_access(self, user):
 		require_can_manage_community(self)
 		for access_name in self.get_guest_access_names(user):
 			frappe.delete_doc("GP Guest Access", access_name, ignore_permissions=True)
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def remove_guest_invitation(self, invitation):
 		require_can_manage_community(self)
 		invitation = frappe.get_doc("GP Invitation", invitation)
@@ -128,6 +133,7 @@ class GPTeam(Archivable, Document):
 		frappe.delete_doc("GP Invitation", invitation.name, ignore_permissions=True)
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def merge_into_team(self, team: str):
 		if self.archived_at:
 			frappe.throw(_("Cannot merge an archived community"))
@@ -141,6 +147,7 @@ class GPTeam(Archivable, Document):
 		self.archive()
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def set_member_admin(self, user, is_admin):
 		require_can_manage_community(self)
 		member = self.get_member(user)

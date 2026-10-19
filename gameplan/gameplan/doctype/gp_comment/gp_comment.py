@@ -12,6 +12,7 @@ from gameplan.mixins.reactions import HasReactions
 from gameplan.mixins.tags import HasTags
 from gameplan.permissions import comment_query_conditions, content_has_permission
 from gameplan.utils import get_document_revisions, remove_empty_trailing_paragraphs
+from gameplan.utils.document import with_stored_document
 
 
 class GPComment(HasAttachments, HasMentions, HasReactions, HasTags, Document):
@@ -65,8 +66,9 @@ class GPComment(HasAttachments, HasMentions, HasReactions, HasTags, Document):
 		discussion.update_last_post()
 		discussion.update_post_count()
 		discussion.update_participants_count()
-		discussion.track_visit()
 		discussion.save(ignore_permissions=True)
+		# track_visit reloads the stored discussion, so save the counters first.
+		discussion.track_visit()
 
 	def update_task_meta(self):
 		if self.reference_doctype != "GP Task":
@@ -100,10 +102,12 @@ class GPComment(HasAttachments, HasMentions, HasReactions, HasTags, Document):
 		self.attach_files_in_content()
 
 	@frappe.whitelist()
+	@with_stored_document
 	def get_revisions(self, fieldname="content"):
 		return get_document_revisions(self.doctype, self.name, fieldname)
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def add_bookmark(self):
 		if self.reference_doctype != "GP Discussion":
 			return
@@ -114,6 +118,7 @@ class GPComment(HasAttachments, HasMentions, HasReactions, HasTags, Document):
 		).insert()
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def remove_bookmark(self):
 		bookmark = frappe.db.get_value("GP Bookmark", self.bookmark_filters(), "name")
 		if not bookmark:

@@ -21,6 +21,7 @@ from gameplan.permissions import (
 	require_can_invite_guest,
 	require_can_manage_space_members,
 )
+from gameplan.utils.document import with_stored_document
 
 DEFAULT_SPACE_ICON = "lucide-hash"
 PROJECT_TEAM_DOCTYPES = [
@@ -83,6 +84,7 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 		self.db_set("tasks_count", total_tasks)
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def move_to_team(self, team: str | None = None):
 		# An empty team moves the Space to Uncategorized. "" and None mean the same.
 		team = team or None
@@ -96,6 +98,7 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 			update_project_team_reference(doctype, self.name, self.team)
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def merge_with_project(self, project=None):
 		if not project:
 			return
@@ -149,6 +152,7 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 				frappe.throw(_("Only space managers can merge spaces"), frappe.PermissionError)
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def invite_guest(self, email):
 		require_can_invite_guest(self)
 		# Trusted path: a space member invites a guest to this space. The role is
@@ -156,6 +160,7 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 		_invite_by_email(email, role="Gameplan Guest", projects=[self.name])
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def remove_guest_invitation(self, invitation):
 		require_can_invite_guest(self)
 		invitation = frappe.get_doc("GP Invitation", invitation)
@@ -172,6 +177,7 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 			frappe.delete_doc("GP Invitation", invitation.name, ignore_permissions=True)
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def remove_guest(self, email):
 		require_can_invite_guest(self)
 		name = frappe.db.get_value("GP Guest Access", {"project": self.name, "user": email})
@@ -179,6 +185,7 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 			frappe.delete_doc("GP Guest Access", name)
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def track_visit(self):
 		self.require_view_access()
 		if frappe.flags.read_only:
@@ -197,16 +204,19 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 			visit.insert(ignore_permissions=True)
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def add_member(self, user):
 		require_can_manage_space_members(self)
 		self.add_member_row(user)
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def remove_member(self, user):
 		require_can_manage_space_members(self)
 		self.remove_member_row(user)
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def join(self):
 		self.require_view_access()
 		self.add_member_row(frappe.session.user)
@@ -227,11 +237,13 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 			self.save(ignore_permissions=True)
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def leave(self):
 		self.require_view_access()
 		self.remove_member_row(frappe.session.user)
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def archive(self):
 		super().archive()
 		# Everyone's pin, not just the archiver's. Archiving retires the Space for the
@@ -250,6 +262,7 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 			frappe.delete_doc("GP Pinned Project", pin, ignore_permissions=True)
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def mark_all_as_read(self):
 		"""Mark all discussions as read using a project-level timestamp."""
 		self.require_view_access()
