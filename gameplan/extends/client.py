@@ -27,6 +27,7 @@ def get_list(
 		offset=start,
 		limit=limit,
 		group_by=group_by,
+		ignore_permissions=False,
 	)
 	query = apply_custom_filters(doctype, query)
 	return query.run(as_dict=True, debug=debug)

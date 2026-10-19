@@ -248,7 +248,7 @@ def accept_invitation(key: str = None):
 	if not result:
 		frappe.throw("Invalid or expired key")
 
-	invitation = frappe.get_doc("GP Invitation", result[0])
+	invitation = frappe.get_doc("GP Invitation", result[0], for_update=True)
 
 	invitation.accept()
 	invitation.reload()
