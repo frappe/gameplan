@@ -1033,6 +1033,13 @@ class TestPollInComment(PollTestCase):
 		with self.assertRaises(frappe.ValidationError):
 			self.comment(poll_block(options=()))
 
+	def test_a_malformed_poll_draft_is_rejected_as_invalid(self):
+		for draft in ([], {"title": "Lunch?", "options": ["Pizza", "Salad"]}, {"title": "Lunch?"}):
+			block = f'<div data-type="poll" data-poll-draft="{html.escape(json.dumps(draft))}"></div>'
+			with self.subTest(draft=draft), self.assertRaises(frappe.ValidationError) as raised:
+				self.comment(block)
+			self.assertIn("Invalid poll", str(raised.exception))
+
 	def test_editing_the_text_keeps_the_poll(self):
 		comment = self.comment(f"<p>Before</p>{poll_block()}")
 		poll = self.poll_of(comment)

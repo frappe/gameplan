@@ -139,6 +139,9 @@ class GPComment(HasAttachments, HasMentions, HasReactions, HasTags, Document):
 			draft = json.loads(draft)
 		except ValueError:
 			frappe.throw(_("Invalid poll"))
+		options = draft.get("options") if isinstance(draft, dict) else None
+		if not isinstance(options, list) or not all(isinstance(option, dict) for option in options):
+			frappe.throw(_("Invalid poll"))
 		return (
 			frappe.get_doc(
 				doctype="GP Poll",
@@ -147,11 +150,7 @@ class GPComment(HasAttachments, HasMentions, HasReactions, HasTags, Document):
 				title=draft.get("title"),
 				anonymous=draft.get("anonymous"),
 				multiple_answers=draft.get("multiple_answers"),
-				options=[
-					{"title": option.get("title")}
-					for option in draft.get("options") or []
-					if option.get("title")
-				],
+				options=[{"title": option.get("title")} for option in options if option.get("title")],
 			)
 			.insert()
 			.name
