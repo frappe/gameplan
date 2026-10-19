@@ -116,6 +116,7 @@ def get_list(
 		offset=start,
 		limit=limit + 1,
 		group_by=group_by,
+		ignore_permissions=False,
 	)
 	Task = frappe.qb.DocType(doctype)
 	query = apply_task_access_filter(query, Task)

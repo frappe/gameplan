@@ -108,6 +108,7 @@ def get_discussions(filters=None, order_by=None, start=None, limit=None):
 			Discussion,
 			fields=[Discussion.star, Project.title.as_("project_title")],
 			filters=filters,
+			ignore_permissions=False,
 		)
 		.left_join(Project)
 		.on(Discussion.project == Project.name)
