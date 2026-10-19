@@ -3,7 +3,7 @@
 
 import frappe
 from frappe.model.document import Document
-from frappe.utils import sha256_hash
+from frappe.utils import get_datetime, sha256_hash
 
 import gameplan
 from gameplan.gameplan.doctype.gp_team.gp_team import get_public_team_names
@@ -94,6 +94,15 @@ class GPInvitation(Document):
 		self.save(ignore_permissions=True)
 		return created_account
 
+	def created_account_awaits_password(self):
+		"""Whether this invitation created its account, and no password has been set on it yet."""
+		user = frappe.db.get_value("User", self.email, ["creation", "last_password_reset_date"], as_dict=True)
+		return bool(
+			user
+			and get_datetime(user.creation) >= get_datetime(self.creation)
+			and not user.last_password_reset_date
+		)
+
 	def get_password_link(self):
 		return password_link(frappe.get_doc("User", self.email))
 
@@ -165,11 +174,11 @@ def grant_access(email, role, projects=None):
 	return invitation
 
 
-def get_pending_invitation(key):
-	"""The pending invitation an invite link's key belongs to, or None."""
+def get_invitation(key):
+	"""The invitation an invite link's key belongs to, or None."""
 	if not key:
 		return None
-	name = frappe.db.get_value("GP Invitation", {"key": sha256_hash(key), "status": "Pending"})
+	name = frappe.db.get_value("GP Invitation", {"key": sha256_hash(key)})
 	return frappe.get_doc("GP Invitation", name) if name else None
 
 

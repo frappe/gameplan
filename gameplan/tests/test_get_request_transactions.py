@@ -87,7 +87,7 @@ READ_ONLY_ENDPOINTS = frozenset(
 # `..._invitation_acceptance_persists_after_get` tests below prove that the commit
 # really happens.
 DELIBERATE_GET_MUTATIONS = {
-	"gameplan.api.accept_invitation": "invitation email link; commits the accepted invitation",
+	"gameplan.api.accept_invitation": "invitation email link; commits the acceptance and any password link",
 	"gameplan.email_digest.open_digest_preferences": "digest email link; logs the user in, then redirects",
 }
 

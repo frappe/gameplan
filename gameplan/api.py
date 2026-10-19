@@ -10,7 +10,7 @@ from frappe.query_builder.functions import Count
 from frappe.utils import cint, split_emails, validate_email_address
 
 import gameplan
-from gameplan.gameplan.doctype.gp_invitation.gp_invitation import get_pending_invitation, grant_access
+from gameplan.gameplan.doctype.gp_invitation.gp_invitation import get_invitation, grant_access
 from gameplan.realtime import notify_notification_count_changed, unread_notification_count
 from gameplan.roles import GAMEPLAN_ROLES
 from gameplan.utils import validate_type
@@ -274,12 +274,32 @@ def unread_notifications():
 @frappe.whitelist(allow_guest=True)
 @validate_type
 def accept_invitation(key: str = None):
-	invitation = get_pending_invitation(key)
-	if not invitation:
-		frappe.throw("Invalid or expired key")
+	invitation = get_invitation(key)
+	if not invitation or invitation.status not in ("Pending", "Accepted"):
+		frappe.respond_as_web_page(
+			_("This invitation link is no longer valid"),
+			_("Ask the person who invited you to send a new invitation."),
+			http_status_code=404,
+		)
+		return
 
-	# An account that was here before the invitation signs in the way it always has.
-	location = invitation.get_password_link() if invitation.accept() else "/g"
+	if invitation.status == "Pending":
+		# An account that was here before the invitation signs in the way it always has.
+		location = invitation.get_password_link() if invitation.accept() else "/g"
+	elif invitation.created_account_awaits_password():
+		# The invitee opened the link again before setting a password, so give them a new
+		# password link in place of the first one.
+		location = invitation.get_password_link()
+	else:
+		frappe.respond_as_web_page(
+			_("This invitation link is no longer valid"),
+			_("This invitation has already been accepted. Sign in to continue."),
+			http_status_code=410,
+			primary_action="/login",
+			primary_label=_("Sign in"),
+		)
+		return
+
 	frappe.db.commit()  # nosemgrep: frappe-manual-commit
 
 	frappe.local.response["type"] = "redirect"

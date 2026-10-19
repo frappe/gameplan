@@ -374,14 +374,32 @@ class TestAcceptInvitationEndpoint(InvitationTestCase):
 		commit = patch.object(frappe.db, "commit")
 		commit.start()
 		self.addCleanup(commit.stop)
+		# The endpoint writes its redirect or message page to the shared response, which
+		# outlives the test.
+		previous_response = frappe.local.response
+		frappe.local.response = frappe._dict()
+		self.addCleanup(setattr, frappe.local, "response", previous_response)
 
-	def test_missing_key_is_rejected(self):
-		with self.assertRaises(frappe.ValidationError):
-			accept_invitation(key=None)
+	def assert_message_page(self, http_status_code):
+		self.assertEqual(frappe.local.response.get("type"), "page")
+		self.assertEqual(frappe.local.response.get("http_status_code"), http_status_code)
 
-	def test_unknown_key_is_rejected(self):
-		with self.assertRaises(frappe.ValidationError):
-			accept_invitation(key="does-not-exist")
+	def test_missing_key_shows_a_message(self):
+		accept_invitation(key=None)
+		self.assert_message_page(404)
+
+	def test_unknown_key_shows_a_message(self):
+		accept_invitation(key="does-not-exist")
+		self.assert_message_page(404)
+
+	def test_expired_key_shows_a_message(self):
+		invitation = self.make_invitation("expired-link@example.com")
+		invitation.db_set("status", "Expired")
+
+		accept_invitation(key=invitation.flags.invite_key)
+
+		self.assert_message_page(404)
+		self.assertFalse(frappe.db.exists("User", "expired-link@example.com"))
 
 	def test_new_user_is_routed_to_password_setup(self):
 		"""A freshly minted account has no password yet, so the endpoint must send
@@ -416,21 +434,50 @@ class TestAcceptInvitationEndpoint(InvitationTestCase):
 		self.assertEqual(frappe.local.response.get("location"), "/g")
 		self.assertIn("Gameplan Admin", frappe.get_roles("has-password@example.com"))
 
-	def test_a_key_works_once(self):
-		invitation = self.make_invitation("once@example.com")
-		with patch.object(type(invitation), "get_password_link", return_value="/update-password?key=stub"):
-			accept_invitation(key=invitation.flags.invite_key)
+	def test_a_new_invitee_who_opens_the_link_again_gets_a_new_password_link(self):
+		"""The first password link may be lost. Until a password is set, the invite link
+		gives a new one; after that it only shows a message."""
+		invitation = self.make_invitation("opens-twice@example.com")
+		key = invitation.flags.invite_key
+		accept_invitation(key=key)
+		first_link = frappe.local.response.get("location")
 
-		with self.assertRaises(frappe.ValidationError):
+		accept_invitation(key=key)
+
+		self.assertEqual(frappe.local.response.get("type"), "redirect")
+		self.assertTrue(frappe.local.response.get("location").startswith("/update-password?key="))
+		self.assertNotEqual(frappe.local.response.get("location"), first_link)
+		self.assertEqual(frappe.db.get_value("GP Invitation", invitation.name, "status"), "Accepted")
+
+		frappe.db.set_value("User", "opens-twice@example.com", "last_password_reset_date", today())
+		accept_invitation(key=key)
+
+		self.assert_message_page(410)
+
+	def test_an_existing_account_that_opens_the_link_again_gets_a_message(self):
+		create_member("existing-twice@example.com")
+		invitation = self.make_invitation("existing-twice@example.com", role="Gameplan Admin")
+		accept_invitation(key=invitation.flags.invite_key)
+
+		previous = getattr(frappe.local, "login_manager", None)
+		frappe.local.login_manager = MagicMock()
+		try:
 			accept_invitation(key=invitation.flags.invite_key)
+			frappe.local.login_manager.login_as.assert_not_called()
+		finally:
+			frappe.local.login_manager = previous
+
+		self.assert_message_page(410)
+		self.assertFalse(frappe.db.get_value("User", "existing-twice@example.com", "reset_password_key"))
 
 	def test_stored_key_does_not_open_the_invitation(self):
 		"""The link carries the key; the row keeps only its hash."""
 		invitation = self.make_invitation("stored-key@example.com")
 
 		self.assertNotEqual(invitation.key, invitation.flags.invite_key)
-		with self.assertRaises(frappe.ValidationError):
-			accept_invitation(key=invitation.key)
+		accept_invitation(key=invitation.key)
+
+		self.assert_message_page(404)
 		self.assertEqual(frappe.db.get_value("GP Invitation", invitation.name, "status"), "Pending")
 
 	def test_accept_invitation_succeeds_when_signed_in_as_ordinary_member(self):
