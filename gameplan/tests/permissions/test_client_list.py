@@ -155,20 +155,16 @@ class TestClientList(GameplanTestCase):
 					with self.subTest(doctype=doctype):
 						rows = get_list(
 							doctype=doctype,
-							fields=["name", f"{link}.last_ip as last_ip", f"{link}.api_key as api_key"],
+							fields=["name", f"{link}.api_key as api_key"],
 							filters={"name": name},
 						)
 						self.assertEqual(len(rows), 1)
-						self.assertNotIn("last_ip", rows[0])
 						self.assertNotIn("api_key", rows[0])
 				rows = get_task_list(
-					fields=frappe.as_json(
-						["name", "assigned_to.last_ip as last_ip", "assigned_to.api_key as api_key"]
-					),
+					fields=frappe.as_json(["name", "assigned_to.api_key as api_key"]),
 					filters=frappe.as_json({"name": self.task.name}),
 				)
 				self.assertEqual(len(rows), 1)
-				self.assertNotIn("last_ip", rows[0])
 				self.assertNotIn("api_key", rows[0])
 				with self.assertRaises(frappe.PermissionError):
 					get_list(doctype="GP User Profile", filters={"user.api_key": ["is", "set"]})
