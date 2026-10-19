@@ -12,6 +12,7 @@ from gameplan.tests.fixtures import (
 	create_comment,
 	create_community,
 	create_space,
+	create_task,
 	drain_search_index_queue,
 	grant_guest_access,
 )
@@ -583,6 +584,36 @@ class TestSearchIndexLifecycle(IsolatedSearchIndex, GameplanTestCase):
 		def comment_ids_in(space):
 			results = self.search_as(
 				self.member, "movedcommentneedle", filters={"project": [str(space.name)]}
+			)
+			return [result["id"] for result in results]
+
+		self.assertEqual(comment_ids_in(other_space), [f"GP Comment:{comment.name}"])
+		self.assertEqual(comment_ids_in(self.space), [])
+
+	def test_moving_a_task_moves_its_comments_to_the_new_space_in_the_index(self):
+		other_space = create_space(
+			"Search Task Move Target Space",
+			self.community,
+			is_private=1,
+			members=[self.member, self.second_member],
+		)
+		task = create_task("Moving task", self.space)
+		comment = frappe.get_doc(
+			doctype="GP Comment",
+			reference_doctype="GP Task",
+			reference_name=task.name,
+			content="movedtaskcommentneedle follows its task",
+		).insert(ignore_permissions=True)
+		drain_search_index_queue()
+
+		task.reload()
+		task.project = other_space.name
+		task.save(ignore_permissions=True)
+		drain_search_index_queue()
+
+		def comment_ids_in(space):
+			results = self.search_as(
+				self.member, "movedtaskcommentneedle", filters={"project": [str(space.name)]}
 			)
 			return [result["id"] for result in results]
 

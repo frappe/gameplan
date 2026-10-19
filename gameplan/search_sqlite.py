@@ -434,6 +434,22 @@ class GameplanSearchIndexMissingError(SQLiteSearchIndexMissingError):
 	pass
 
 
+def enqueue_comment_reindex_on_move(doc):
+	"""Queue `reindex_comments` for `doc` when this save moved it to another space.
+
+	Call from `on_update`. A new document has no comments yet, so inserts are skipped."""
+	if not doc.get_doc_before_save() or not doc.has_value_changed("project"):
+		return
+
+	frappe.enqueue(
+		"gameplan.search_sqlite.reindex_comments",
+		reference_doctype=doc.doctype,
+		reference_name=doc.name,
+		enqueue_after_commit=True,
+		now=frappe.in_test,
+	)
+
+
 def reindex_comments(reference_doctype, reference_name):
 	"""Re-index every comment on a document. A comment's space and community come from
 	its parent, so they go stale in the index when the parent moves to another space."""

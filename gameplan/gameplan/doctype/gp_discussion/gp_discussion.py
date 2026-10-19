@@ -14,6 +14,7 @@ from gameplan.mixins.mentions import HasMentions
 from gameplan.mixins.reactions import HasReactions, get_reactions_on
 from gameplan.mixins.tags import HasTags
 from gameplan.permissions import content_has_permission, discussion_query_conditions
+from gameplan.search_sqlite import enqueue_comment_reindex_on_move
 from gameplan.utils import get_document_revisions, remove_empty_trailing_paragraphs, url_safe_slug
 
 
@@ -93,6 +94,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		self.log_title_update()
 		self.attach_files_in_content()
 		self.sync_unread_records_on_move()
+		enqueue_comment_reindex_on_move(self)
 
 	def sync_unread_records_on_move(self):
 		# When a discussion moves to another space, realign its unread records so the count
@@ -345,13 +347,6 @@ def move_discussion(discussion, project):
 	discussion.update_discussions_count()
 	frappe.get_doc("GP Project", old_project).update_discussions_count()
 	discussion.log_activity("Discussion Moved", data={"old_project": old_project, "new_project": project})
-	frappe.enqueue(
-		"gameplan.search_sqlite.reindex_comments",
-		reference_doctype=discussion.doctype,
-		reference_name=discussion.name,
-		enqueue_after_commit=True,
-		now=frappe.in_test,
-	)
 	return discussion
 
 
