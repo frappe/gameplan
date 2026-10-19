@@ -3,6 +3,8 @@
 
 import frappe
 
+from gameplan.utils.document import with_stored_document
+
 
 class ManageMembersMixin:
 	def accept_invitation(self, key):
@@ -26,6 +28,7 @@ class ManageMembersMixin:
 				return user
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def remove_member(self, user):
 		for member in self.members:
 			if member.user == user:

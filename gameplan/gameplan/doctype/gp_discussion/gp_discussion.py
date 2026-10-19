@@ -16,6 +16,7 @@ from gameplan.mixins.tags import HasTags
 from gameplan.permissions import content_has_permission, discussion_query_conditions
 from gameplan.search_sqlite import enqueue_comment_reindex_on_move
 from gameplan.utils import get_document_revisions, remove_empty_trailing_paragraphs, url_safe_slug
+from gameplan.utils.document import with_stored_document
 
 
 class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTags, Document):
@@ -37,7 +38,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 
 	# Lifecycle Methods
 	def as_dict(self, *args, **kwargs):
-		d = super(__class__, self).as_dict(*args, **kwargs)
+		d = super().as_dict(*args, **kwargs)
 		last_visit = frappe.db.get_value(
 			"GP Discussion Visit", {"discussion": self.name, "user": frappe.session.user}, "last_visit"
 		)
@@ -115,6 +116,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 
 	# Whitelisted Methods
 	@frappe.whitelist(methods=["GET"])
+	@with_stored_document
 	def thread_reactions(self):
 		"""Reactions on everything in this thread, for the thread page.
 
@@ -131,6 +133,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		return get_reactions_on({"GP Discussion": [thread.name], "GP Comment": comments, "GP Poll": polls})
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def track_visit(self):
 		if frappe.flags.read_only:
 			return
@@ -155,6 +158,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		GPNotification.clear_notifications(discussion=self.name)
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def mark_as_unread(self):
 		if frappe.flags.read_only:
 			return
@@ -162,14 +166,17 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		GPUnreadRecord.mark_discussion_as_unread_for_user(self.name, frappe.session.user)
 
 	@frappe.whitelist()
+	@with_stored_document
 	def get_revisions(self, fieldname="content"):
 		return get_document_revisions(self.doctype, self.name, fieldname)
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def move_to_project(self, project):
 		return move_discussion(self, project)
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def close_discussion(self):
 		if self.closed_at:
 			return
@@ -179,6 +186,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		self.save()
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def reopen_discussion(self):
 		if not self.closed_at:
 			return
@@ -188,6 +196,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		self.save()
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def pin_discussion(self, pin_scope="Category"):
 		if self.pinned_at:
 			return
@@ -198,6 +207,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		self.save()
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def unpin_discussion(self):
 		if not self.pinned_at:
 			return
@@ -208,12 +218,14 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		self.save()
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def add_bookmark(self):
 		if self.is_bookmarked_by_current_user():
 			return
 		frappe.new_doc("GP Bookmark", discussion=self.name, user=frappe.session.user).insert()
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def remove_bookmark(self):
 		bookmark = frappe.db.get_value("GP Bookmark", self.opening_post_bookmark_filters(), "name")
 		if not bookmark:

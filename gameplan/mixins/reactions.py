@@ -6,6 +6,8 @@ import frappe
 from frappe import _
 from frappe.query_builder import Criterion
 
+from gameplan.utils.document import with_stored_document
+
 REACTION_FIELDS = ["name", "reference_doctype", "reference_name", "emoji", "user"]
 
 
@@ -13,6 +15,7 @@ class HasReactions:
 	"""A post people can react to. Reactions are GP Reaction rows that point at the post."""
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def react(self, operations=None):
 		from gameplan.permissions import can_view_content
 

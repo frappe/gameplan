@@ -16,6 +16,7 @@ from gameplan.permissions import (
 	task_query_conditions,
 )
 from gameplan.search_sqlite import enqueue_comment_reindex_on_move
+from gameplan.utils.document import with_stored_document
 
 
 class GPTask(HasMentions, HasActivity, Document):
@@ -71,10 +72,12 @@ class GPTask(HasMentions, HasActivity, Document):
 		frappe.get_doc("GP Project", self.project).update_tasks_count()
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def track_visit(self):
 		GPNotification.clear_notifications(task=self.name)
 
 	@frappe.whitelist(methods=["GET"])
+	@with_stored_document
 	def thread_reactions(self):
 		"""Reactions on everything in this thread, for the thread page.
 

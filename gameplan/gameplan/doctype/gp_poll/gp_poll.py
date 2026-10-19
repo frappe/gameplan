@@ -14,6 +14,7 @@ from gameplan.permissions import (
 	content_has_permission,
 	poll_query_conditions,
 )
+from gameplan.utils.document import with_stored_document
 
 from .gp_poll_attributes import GPPollAttributes
 
@@ -135,6 +136,7 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 		discussion.save(ignore_permissions=True)
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def submit_vote(self, option):
 		self.discard_client_state()
 		self.check_can_participate()
@@ -164,6 +166,7 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 		self.save_after_voting()
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def retract_vote(self, option=None):
 		self.discard_client_state()
 		self.check_can_participate()
@@ -179,6 +182,7 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 		self.save_after_voting()
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def stop_poll(self):
 		self.discard_client_state()
 		if not can_delete_content(frappe.session.user, self):

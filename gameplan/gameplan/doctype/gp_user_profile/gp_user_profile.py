@@ -14,6 +14,7 @@ import gameplan
 from gameplan.extends.client import check_permissions
 from gameplan.mixins.attachments import HasAttachments
 from gameplan.realtime import notify_users_changed
+from gameplan.utils.document import with_stored_document
 
 PROFILE_BENTO_CARD_TYPES = {"Card", "Blank"}
 PROFILE_BENTO_CARD_SOURCES = {"custom", "field"}
@@ -97,6 +98,7 @@ class GPUserProfile(HasAttachments, Document):
 		return append_number_if_name_exists(self.doctype, cleanup_page_name(full_name))
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def set_image(self, image):
 		self.check_image_is_ours(image)
 		self.image = image
@@ -173,6 +175,7 @@ class GPUserProfile(HasAttachments, Document):
 				row.image = None
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def set_cover_image_position(self, position):
 		"""Reposition the cover from the profile page.
 
