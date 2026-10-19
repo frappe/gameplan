@@ -25,6 +25,7 @@ import frappe
 
 from gameplan.api import mark_all_notifications_as_read, unread_notifications
 from gameplan.gameplan.doctype.gp_notification.gp_notification import GPNotification
+from gameplan.realtime import unread_notification_count
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
 	_name,
@@ -499,6 +500,29 @@ class TestUnreadNotificationsCount(NotificationTestCase):
 		self.assertEqual(self.unread_count(self.member), before[self.member.name] + 2)
 		self.assertEqual(self.unread_count(self.second_member), before[self.second_member.name] + 1)
 		self.assertEqual(self.unread_count(self.outsider), before[self.outsider.name])
+
+	def test_removed_discussion_counts_match_the_unread_list_and_recover_on_restore(self):
+		before = self.unread_count(self.member)
+		visible = create_discussion("Visible notification", self.space)
+		removed = create_discussion("Removed notification", self.space)
+		_make_notification(self.member.name, discussion=visible.name, read=0)
+		removed_notification = _make_notification(self.member.name, discussion=removed.name, read=0)
+		_make_notification(self.member.name, read=0)
+		_make_notification(self.member.name, discussion=visible.name, read=1)
+		_make_notification(self.second_member.name, discussion=removed.name, read=0)
+		self.assertEqual(self.unread_count(self.member), before + 3)
+
+		for action in ("hide", "delete_spam"):
+			with self.subTest(action=action):
+				getattr(removed, action)("Notification visibility test")
+				with self.as_user(self.member):
+					listed = frappe.get_list("GP Notification", filters={"read": 0}, pluck="name")
+					self.assertNotIn(removed_notification.name, listed)
+					self.assertEqual(unread_notifications(), len(listed))
+				self.assertEqual(unread_notification_count(self.member.name), before + 2)
+				removed.restore()
+				self.assertEqual(self.unread_count(self.member), before + 3)
+				self.assertEqual(frappe.db.get_value("GP Notification", removed_notification.name, "read"), 0)
 
 	def test_a_new_mention_increments_the_count(self):
 		before = self.unread_count(self.second_member)

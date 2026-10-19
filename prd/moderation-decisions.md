@@ -31,6 +31,8 @@ A recommendation becomes a decision only after Ebrahim accepts it.
 | D19 | Add a moderator-only Removed content view per Community with preview and Restore. | Ordinary feeds/search omit removed discussions; direct access shows a neutral unavailable message. Replies show neutral placeholders. Private-Space restrictions still apply. |
 | D20 | Delete spam requires a reason and affects only the selected reply or discussion. | Preserve descendants/files and closed/pinned state for restoration without new notifications. Do not automatically ban the author or remove other posts. Ordinary Delete remains separate. |
 
+| D21 | Build T26 moderation history in a separate PR after the T27 review fixes. | Reuse the immutable log for discussion/reply action history and Community-scoped user ban/unban history. Include actor, time, reason, pagination, existing moderator/private-Space access rules, frontend, and tests. |
+
 
 D05–D07 were confirmed in the first answer accepting scope and assignment authority.
 D08–D10 were confirmed in the next answer accepting private access, eligibility, and the first PR boundary.

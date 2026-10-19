@@ -3,7 +3,12 @@ import { call, dialog, useCall, useDoctype, useList } from 'frappe-ui'
 import { GPProject, GPMember } from '@/types/doctypes'
 import { getProjectUnreadCount, markSpacesAsRead } from './unreadCount'
 import { useSessionUser } from './users'
-import { canManageSpace, canMoveContentToSpace, isGuest } from '@/utils/permissions'
+import {
+  canManageSpace,
+  canMoveContentToSpace,
+  isCommunityBanned,
+  isGuest,
+} from '@/utils/permissions'
 import { readOnlyMode } from './readOnlyMode'
 import { isMemberAccess } from '@/utils/visibility'
 import { isAnonymousVisitor, publicListUrl } from '@/utils/publicAccess'
@@ -135,7 +140,12 @@ export function useSpacePermissions(spaceId: MaybeRefOrGetter<string | undefined
  * they were granted. Pages and tasks stay closed to guests; they are gated separately.
  */
 export function canPostInSpace(space: Space | null | undefined) {
-  return Boolean(space && !readOnlyMode && !space.archived_at)
+  return Boolean(
+    space &&
+    !readOnlyMode &&
+    !space.archived_at &&
+    !isCommunityBanned(space.team, useSessionUser()),
+  )
 }
 
 export function getSpace(name: string) {
