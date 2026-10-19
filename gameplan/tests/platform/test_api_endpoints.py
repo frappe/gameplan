@@ -9,6 +9,7 @@ from unittest.mock import patch
 import frappe
 from frappe.utils import add_days, now
 
+import gameplan
 from gameplan.api import (
 	CLIENT_ERROR_FIELD_LIMIT,
 	CLIENT_ERROR_QUOTA,
@@ -56,7 +57,20 @@ class TestUITestHelperHTTPMethods(GameplanTestCase):
 			self.assertEqual(declared_http_methods(endpoint), {"POST"})
 
 
+# Saved before any test patches it, so a test can check the real new-site rule.
+REAL_IS_NEW_SITE = gameplan.is_new_site
+
+
 class TestOnboardingEndpoint(APIEndpointTestCase):
+	def setUp(self):
+		super().setUp()
+		# Onboarding runs only on a brand-new site. Treat the test site as new instead of
+		# deleting its spaces and communities: creating a user commits, which would make
+		# that deletion permanent.
+		patcher = patch("gameplan.is_new_site", return_value=True)
+		self.is_new_site = patcher.start()
+		self.addCleanup(patcher.stop)
+
 	def test_returns_the_created_community_and_space_route_identifiers(self):
 		with self.as_user(self.member):
 			result = onboarding(
@@ -90,6 +104,21 @@ class TestOnboardingEndpoint(APIEndpointTestCase):
 			)
 
 		self.assertEqual(frappe.db.get_value("GP Project", result["space"], "is_private"), 0)
+
+	def test_runs_only_on_a_new_site(self):
+		create_community("Existing Community")
+		self.is_new_site.side_effect = REAL_IS_NEW_SITE
+
+		with self.as_user(self.member), self.assertRaises(frappe.PermissionError):
+			onboarding(
+				community="Second Onboarding Community",
+				space="Second Onboarding Space",
+				icon="lucide-users",
+				emails='["late-invitee@example.com"]',
+			)
+
+		self.assertFalse(frappe.db.exists("GP Team", {"title": "Second Onboarding Community"}))
+		self.assertFalse(frappe.db.exists("GP Invitation", {"email": "late-invitee@example.com"}))
 
 	def test_anonymous_caller_is_denied(self):
 		self.assert_anonymous_denied(onboarding)

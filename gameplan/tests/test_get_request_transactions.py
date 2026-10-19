@@ -24,7 +24,7 @@ import frappe
 from frappe.auth import CookieManager, LoginManager
 from frappe.tests.test_api import FrappeAPITestCase
 from frappe.tests.utils import FrappeTestCase
-from frappe.utils import get_test_client, set_request, today
+from frappe.utils import get_test_client, set_request, sha256_hash, today
 
 import gameplan
 from gameplan.tests.fixtures import declared_http_methods
@@ -83,11 +83,11 @@ READ_ONLY_ENDPOINTS = frozenset(
 
 # The only mutations allowed to stay GET-reachable. Both are the target of a link in an
 # outbound email, so the browser arrives with a plain navigation and cannot POST, and
-# both commit explicitly (via session creation) rather than relying on the request's
-# transaction. The two `..._invitation_acceptance_persists_after_get` tests below prove
-# that the commit really happens.
+# both commit explicitly rather than relying on the request's transaction. The two
+# `..._invitation_acceptance_persists_after_get` tests below prove that the commit
+# really happens.
 DELIBERATE_GET_MUTATIONS = {
-	"gameplan.api.accept_invitation": "invitation email link; the login it performs commits",
+	"gameplan.api.accept_invitation": "invitation email link; commits the acceptance and any password link",
 	"gameplan.email_digest.open_digest_preferences": "digest email link; logs the user in, then redirects",
 }
 
@@ -295,9 +295,9 @@ class TestGetRequestTransactions(FrappeAPITestCase):
 		self.assertTrue(frappe.db.get_value("GP Team", team.name, "archived_at"))
 
 	def test_existing_user_invitation_acceptance_persists_after_get(self):
-		"""The email link remains a GET because both successful branches commit explicitly.
+		"""The email link remains a GET because the endpoint commits explicitly.
 
-		An established user follows the login branch, whose session creation commits the accepted
+		An established user is sent to the app, and the endpoint commits the accepted
 		invitation before Frappe's end-of-request GET rollback runs.
 		"""
 		suffix = frappe.generate_hash(length=8)
@@ -310,7 +310,7 @@ class TestGetRequestTransactions(FrappeAPITestCase):
 			doctype="GP Invitation",
 			email=user.name,
 			role="Gameplan Admin",
-			key=key,
+			key=sha256_hash(key),
 			status="Pending",
 			invited_by="Administrator",
 		)
@@ -342,7 +342,7 @@ class TestGetRequestTransactions(FrappeAPITestCase):
 			doctype="GP Invitation",
 			email=email,
 			role="Gameplan Member",
-			key=key,
+			key=sha256_hash(key),
 			status="Pending",
 			invited_by="Administrator",
 		)

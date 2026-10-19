@@ -15,7 +15,8 @@
   "status",
   "email_sent_at",
   "invited_by",
-  "accepted_at"
+  "accepted_at",
+  "created_account"
  ],
  "fields": [
   {
@@ -55,6 +56,13 @@
    "label": "Accepted At"
   },
   {
+   "default": "0",
+   "fieldname": "created_account",
+   "fieldtype": "Check",
+   "label": "Created Account",
+   "read_only": 1
+  },
+  {
    "fieldname": "teams",
    "fieldtype": "Small Text",
    "label": "Teams",
@@ -76,7 +84,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-05-08 16:58:26.857607",
+ "modified": "2026-10-19 13:00:00.000000",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "GP Invitation",
@@ -107,25 +115,8 @@
    "write": 1
   },
   {
-   "create": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
    "read": 1,
-   "report": 1,
-   "role": "Gameplan Member",
-   "share": 1,
-   "write": 1
-  },
-  {
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Gameplan Guest",
-   "share": 1
+   "role": "Gameplan Member"
   }
  ],
  "sort_field": "modified",

@@ -363,4 +363,4 @@ def create_invitation(email, role="Gameplan Member", projects=None):
 	finally:
 		frappe.local.dev_server = previous
 
-	return {"name": invitation.name, "email": invitation.email, "key": invitation.key}
+	return {"name": invitation.name, "email": invitation.email, "key": invitation.flags.invite_key}
