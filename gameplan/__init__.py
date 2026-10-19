@@ -1,6 +1,6 @@
 import frappe
 
-__version__ = "0.1.8"
+__version__ = "0.1.9"
 
 
 def is_guest(user=None):
