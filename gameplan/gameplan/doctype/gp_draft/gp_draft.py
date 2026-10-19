@@ -9,6 +9,10 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import get_datetime, now_datetime
 
+# Edit drafts finish on the post or comment they edit; new-comment drafts finish on the
+# discussion or task they reply to.
+COMMIT_TARGET_DOCTYPES = ("GP Discussion", "GP Task", "GP Comment")
+
 
 class GPDraft(Document):
 	def before_save(self):
@@ -71,10 +75,12 @@ class GPDraft(Document):
 		target document. Reparents any draft-owned attachments onto the target (so they
 		survive the draft deletion) and clears the ?fid= query params that otherwise hide
 		the migrated images, then deletes the draft."""
-		if self.owner != frappe.session.user:
-			frappe.throw("You are not allowed to modify this draft")
+		self.require_owner("commit")
+		if reference_doctype not in COMMIT_TARGET_DOCTYPES:
+			frappe.throw(_("Drafts cannot be committed to {0}").format(reference_doctype))
 
 		target = frappe.get_doc(reference_doctype, reference_name)
+		target.check_permission("write")
 		self.move_attachments_to(target)
 
 		cleaned = remove_query_params_from_images(target.content or "")

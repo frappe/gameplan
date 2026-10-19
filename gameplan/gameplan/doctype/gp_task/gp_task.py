@@ -15,6 +15,7 @@ from gameplan.permissions import (
 	content_has_permission,
 	task_query_conditions,
 )
+from gameplan.search_sqlite import enqueue_comment_reindex_on_move
 
 
 class GPTask(HasMentions, HasActivity, Document):
@@ -36,6 +37,7 @@ class GPTask(HasMentions, HasActivity, Document):
 	def on_update(self):
 		self.notify_mentions()
 		self.log_value_updates()
+		enqueue_comment_reindex_on_move(self)
 
 	def log_value_updates(self):
 		fields = ["title", "description", "status", "priority", "assigned_to", "due_date", "project"]
