@@ -91,6 +91,21 @@ class TestParentManagedRows(GameplanTestCase):
 				self.assertEqual(poll.total_votes, 1)
 				self.assertEqual(poll.options[0].votes, 1)
 
+				edits = {
+					"votes": lambda p: p.append("votes", {"user": self.second_member.name, "option": "No"}),
+					"counts": lambda p: p.options[1].update({"votes": 5, "percentage": 50}),
+				}
+				for name, edit in edits.items():
+					with self.subTest(edit=name):
+						edited = frappe.get_doc("GP Poll", poll.name)
+						edit(edited)
+						with self.assertRaises(frappe.PermissionError):
+							edited.save()
+						stored = frappe.get_doc("GP Poll", poll.name)
+						self.assertEqual([d.user for d in stored.votes], [self.member.name])
+						self.assertEqual([d.votes for d in stored.options], [1, 0])
+						self.assertEqual(stored.total_votes, 1)
+
 
 class TestSpaceCommunityValidation(GameplanTestCase):
 	def test_space_creation_uses_visible_communities_and_creator_membership(self):

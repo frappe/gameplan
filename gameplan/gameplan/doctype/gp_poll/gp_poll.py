@@ -4,7 +4,7 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import DATETIME_FORMAT, flt, get_datetime
+from frappe.utils import DATETIME_FORMAT, cint, flt, get_datetime
 
 from gameplan.mixins.archivable import check_if_space_is_archived
 from gameplan.mixins.reactions import HasReactions
@@ -86,7 +86,28 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 			frappe.throw(_("Cannot add a poll to a closed discussion"))
 
 	def validate(self):
+		self.check_results_unchanged()
 		self.total_votes = len(self.votes)
+
+	def check_results_unchanged(self):
+		"""Refuse a plain save that changes the vote rows or an option's counts.
+
+		Results change only through `submit_vote` and `retract_vote`, which save with
+		`ignore_permissions`. A plain save may still edit the title, add or remove
+		options and stop the poll; a new option starts with no votes.
+		"""
+		if self.is_new() or self.flags.ignore_permissions:
+			return
+		before = self.get_doc_before_save()
+		if before is None:
+			return
+		stored_counts = {d.name: (cint(d.votes), flt(d.percentage)) for d in before.options}
+		votes_changed = [(d.user, d.option) for d in self.votes] != [(d.user, d.option) for d in before.votes]
+		counts_changed = any(
+			(cint(d.votes), flt(d.percentage)) != stored_counts.get(d.name, (0, 0)) for d in self.options
+		)
+		if votes_changed or counts_changed:
+			frappe.throw(_("Poll results change only through voting"), frappe.PermissionError)
 
 	def after_insert(self):
 		self.update_discussion_meta()
