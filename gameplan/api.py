@@ -122,6 +122,11 @@ def get_user_info(user=None):
 			if role in user_roles:
 				user.role = role
 
+		if user.name == frappe.session.user:
+			from gameplan.community_bans import banned_communities
+
+			user.banned_communities = banned_communities(user.name)
+
 		# Add discussion and comment counts
 		user.discussions_count_3m = discussion_count_map.get(user.name, 0)
 		user.comments_count_3m = comment_count_map.get(user.name, 0)

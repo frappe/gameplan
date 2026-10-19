@@ -63,6 +63,11 @@ class GPTeam(HasVisibility, Archivable, Document):
 
 	def validate(self):
 		self.check_visibility_change_allowed()
+		from gameplan.community_bans import is_banned
+
+		for member in self.members:
+			if (member.is_admin or member.is_moderator) and is_banned(self.name, member.user):
+				frappe.throw("Lift the community ban before appointing this user")
 		before = self.get_doc_before_save()
 		if before and self.has_value_changed("archived_at"):
 			require_admin_to_publish(

@@ -30,7 +30,7 @@
     </div>
     <div class="flex items-center gap-2">
       <Button
-        v-if="!publicVisitor"
+        v-if="!publicVisitor && !isCommunityBanned(communityId, useSessionUser())"
         variant="solid"
         icon-left="lucide-plus"
         :route="{ name: 'NewDiscussion', params: { communityId } }"
@@ -40,6 +40,19 @@
     </div>
   </PageHeader>
   <div class="body-container pt-5 pb-40">
+    <Button
+      v-if="canModerateCommunity(community, useSessionUser())"
+      class="mb-4"
+      icon-left="lucide-shield"
+      :route="{ name: 'CommunityModeration', params: { communityId } }"
+      >Moderation</Button
+    >
+    <p
+      v-if="isCommunityBanned(communityId, useSessionUser())"
+      class="mb-4 text-base text-ink-gray-5"
+    >
+      You are banned from participating in this Community. You can still read accessible content.
+    </p>
     <LastPostReminder v-if="!publicVisitor" class="mb-3" />
 
     <div class="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -75,6 +88,8 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { canModerateCommunity, isCommunityBanned } from '@/utils/permissions'
+import { useSessionUser } from '@/data/users'
 import {
   BottomSheet,
   PageHeader,

@@ -12,7 +12,8 @@
   "edited_at",
   "deleted_at",
   "hidden_at",
-  "tags"
+  "tags",
+  "spam_removed_at"
  ],
  "fields": [
   {
@@ -56,6 +57,12 @@
    "fieldtype": "Table",
    "label": "Tags",
    "options": "GP Tag Link"
+  },
+  {
+   "fieldname": "spam_removed_at",
+   "fieldtype": "Datetime",
+   "label": "Spam Removed At",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,

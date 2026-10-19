@@ -158,8 +158,13 @@ class PublicGameplanSearch(GameplanSearch):
 						(Content.reference_doctype == parent_doctype)
 						& Content.deleted_at.isnull()
 						& Content.hidden_at.isnull()
+						& Content.spam_removed_at.isnull()
 					)
 				)
+			if parent_doctype == "GP Discussion":
+				from gameplan.permissions import visible_discussion_criterion
+
+				query = query.where(visible_discussion_criterion(Parent))
 			yield (
 				query.join(Project).on(Parent.project == Project.name).where(self.space_criterion(Project)),
 				Content,

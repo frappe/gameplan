@@ -36,6 +36,10 @@ class HasReactions:
 		if not operations:
 			return self.get_reactions()
 
+		from gameplan.community_bans import require_participation
+
+		require_participation(post)
+
 		# Lock the post's row so that two reactions on one post apply one after another.
 		# The reactions are then read with a locking read too, which returns the rows other
 		# requests committed after this one began. A unique index cannot do this job: under

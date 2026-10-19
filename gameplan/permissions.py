@@ -32,7 +32,7 @@ def require_can_manage_space_members(project, user=None):
 
 def require_can_invite_guest(project, user=None):
 	user = user or frappe.session.user
-	if not can_invite_guest(user, project):
+	if not can_invite_guest(user, get_doc_name(project)):
 		frappe.throw(_("Only space managers can invite guests"), frappe.PermissionError)
 
 
@@ -185,6 +185,11 @@ def can_moderate_space(user, project):
 
 
 def can_invite_guest(user, project):
+	from gameplan.community_bans import is_banned
+
+	info = get_project_info(project)
+	if info and is_banned(info.team, user):
+		return False
 	if gameplan.is_anonymous(user):
 		return False
 	if gameplan.is_guest(user):
@@ -200,8 +205,10 @@ def can_view_content(user, doc):
 	):
 		# Tasks are never public, even when their Space is.
 		return False
+	from gameplan.mixins.moderation import discussion_is_removed, is_removed, parent_discussion
+
 	project = get_content_project(doc)
-	if doc.doctype == "GP Comment" and get_doc_value(doc, "hidden_at"):
+	if is_removed(doc) or discussion_is_removed(parent_discussion(doc)):
 		return bool(project and can_moderate_space(user, project))
 	if project:
 		return can_view_space(user, project)
@@ -310,6 +317,10 @@ GUEST_CREATABLE_DOCTYPES = {"GP Discussion", "GP Comment", "GP Poll"}
 
 
 def can_create_content(user, doc):
+	from gameplan.community_bans import content_is_banned
+
+	if content_is_banned(doc, user):
+		return False
 	if gameplan.is_anonymous(user):
 		return False
 	if gameplan.is_guest(user):
@@ -379,6 +390,10 @@ def can_interact_with_content(user, doc):
 	there: the owner of a personal task is not an editor of a comment someone else wrote
 	on it, but may still react to it.
 	"""
+	from gameplan.community_bans import content_is_banned
+
+	if content_is_banned(doc, user):
+		return False
 	if gameplan.is_anonymous(user):
 		return False
 	if is_global_admin(user):
@@ -411,6 +426,10 @@ def can_write_content(user, doc):
 	_guest_locked_fields_unchanged stops a guest from moving or pinning content, their
 	own included.
 	"""
+	from gameplan.community_bans import content_is_banned
+
+	if content_is_banned(doc, user):
+		return False
 	if gameplan.is_anonymous(user):
 		return False
 	if not _owner_only_write_allowed(user, doc):
@@ -525,6 +544,10 @@ def can_edit_content(user, doc):
 	the has_permission write check. Also mirrored in the frontend
 	(utils/permissions.ts::canEditContent) to gate edit affordances.
 	"""
+	from gameplan.community_bans import content_is_banned
+
+	if content_is_banned(doc, user):
+		return False
 	if gameplan.is_anonymous(user):
 		return False
 	if is_global_admin(user):
@@ -566,6 +589,10 @@ def can_delete_content(user, doc):
 		# members posted in it. Re-asking the per-child rule here would let one other
 		# member's poll veto the thread owner's delete, and roll the whole thing back.
 		return True
+	from gameplan.community_bans import content_is_banned
+
+	if content_is_banned(doc, user):
+		return False
 	if is_global_admin(user):
 		return True
 	if not can_view_content(user, doc):
@@ -602,7 +629,18 @@ def project_query_conditions(user=None, **kwargs):
 
 
 def discussion_query_conditions(user=None, **kwargs):
-	return content_project_query_conditions("GP Discussion", user)
+	Discussion = frappe.qb.DocType("GP Discussion")
+	return criterion_sql(readable_discussion_criterion(Discussion, user))
+
+
+def visible_discussion_criterion(Discussion):
+	return Discussion.hidden_at.isnull() & Discussion.spam_removed_at.isnull()
+
+
+def readable_discussion_criterion(Discussion, user=None):
+	criterion = visible_discussion_criterion(Discussion)
+	access = accessible_project_criterion(Discussion.project, user)
+	return criterion & access if access is not None else criterion
 
 
 def task_query_conditions(user=None, **kwargs):
@@ -632,8 +670,6 @@ def referenced_content_query_conditions(doctype, user=None):
 	"""Rows that point at a discussion or task (reference_doctype/reference_name) follow
 	that discussion's or task's space, or, for a task with no space, its owner."""
 	user = user or frappe.session.user
-	if is_global_admin(user):
-		return None
 
 	Row = frappe.qb.DocType(doctype)
 	Task = frappe.qb.DocType("GP Task")
@@ -641,7 +677,7 @@ def referenced_content_query_conditions(doctype, user=None):
 	discussion_query = (
 		frappe.qb.from_(Discussion)
 		.select(Discussion.name)
-		.where(accessible_project_criterion(Discussion.project, user))
+		.where(readable_discussion_criterion(Discussion, user))
 	)
 	task_query = frappe.qb.from_(Task).select(Task.name).where(task_access_criterion(Task, user))
 	on_discussion = (Row.reference_doctype == "GP Discussion") & Row.reference_name.isin(discussion_query)
@@ -651,15 +687,13 @@ def referenced_content_query_conditions(doctype, user=None):
 
 def poll_query_conditions(user=None, **kwargs):
 	user = user or frappe.session.user
-	if is_global_admin(user):
-		return None
 
 	Poll = frappe.qb.DocType("GP Poll")
 	Discussion = frappe.qb.DocType("GP Discussion")
 	discussion_query = (
 		frappe.qb.from_(Discussion)
 		.select(Discussion.name)
-		.where(accessible_project_criterion(Discussion.project, user))
+		.where(readable_discussion_criterion(Discussion, user))
 	)
 	# A poll with no discussion never reaches the UI, but it is still someone's row —
 	# keep it visible to its owner only, the way a space-less page is.

@@ -69,7 +69,23 @@ def _belongs_to_user(doc, fieldname, user):
 
 
 def notification_query_conditions(user=None, **kwargs):
-	return _own_rows_only("GP Notification", NOTIFICATION_USER_FIELD, user)
+	if gameplan.is_anonymous(user or frappe.session.user):
+		return criterion_sql(NOTHING)
+	Notification = frappe.qb.DocType("GP Notification")
+	Discussion = frappe.qb.DocType("GP Discussion")
+	from gameplan.permissions import visible_discussion_criterion
+
+	visible = (
+		frappe.qb.from_(Discussion).select(Discussion.name).where(visible_discussion_criterion(Discussion))
+	)
+	return criterion_sql(
+		(Notification.to_user == (user or frappe.session.user))
+		& (
+			Notification.discussion.isnull()
+			| (Notification.discussion == "")
+			| Notification.discussion.isin(visible)
+		)
+	)
 
 
 def notification_has_permission(doc, ptype="read", user=None, **kwargs):
@@ -77,7 +93,11 @@ def notification_has_permission(doc, ptype="read", user=None, **kwargs):
 
 	Deliberately no admin exception — nothing in Gameplan reads someone else's bell feed.
 	"""
-	return _belongs_to_user(doc, NOTIFICATION_USER_FIELD, user)
+	from gameplan.mixins.moderation import discussion_is_removed
+
+	return _belongs_to_user(doc, NOTIFICATION_USER_FIELD, user) and not (
+		hasattr(doc, "doctype") and discussion_is_removed(doc.discussion)
+	)
 
 
 def project_visit_query_conditions(user=None, **kwargs):

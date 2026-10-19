@@ -126,6 +126,9 @@ def get_discussions(filters=None, order_by=None, start=None, limit=None):
 		.limit(limit + 1)
 		.offset(start)
 	)
+	from gameplan.permissions import visible_discussion_criterion
+
+	query = query.where(visible_discussion_criterion(Discussion))
 	query = apply_accessible_project_filter(query, Discussion.project)
 
 	if participator:

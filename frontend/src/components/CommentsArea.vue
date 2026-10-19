@@ -379,6 +379,7 @@ const comments = useList<GPComment>({
     'edited_at',
     'deleted_at',
     'hidden_at',
+    'spam_removed_at',
     'reference_doctype',
     'reference_name',
   ],

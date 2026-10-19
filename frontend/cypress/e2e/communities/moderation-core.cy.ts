@@ -1,0 +1,128 @@
+import { resetData } from '../../support/seed'
+
+const moderationPath = (community: string) => `/g/community/${community}/moderation`
+
+function appointModerator(community: string) {
+  cy.request('POST', `/api/v2/document/GP Team/${community}/method/set_member_moderator`, {
+    user: 'member2@example.com',
+    is_moderator: 1,
+  })
+}
+
+function confirmRemoval(label: string) {
+  cy.get('[role="dialog"] textarea').type('Spam review')
+  cy.get('[role="dialog"]').contains('button', label).click()
+}
+
+describe('Community moderation core', () => {
+  it('hides a discussion, protects readers, and restores it from Removed content', () => {
+    resetData('space_with_discussion').then((ids) => {
+      appointModerator(ids.community!)
+      const path = `/g/community/${ids.community}/space/${ids.space}/discussion/${ids.discussion}/${ids.discussion_slug}`
+      cy.switchUser('secondMember')
+      cy.visit(path)
+      cy.selectDropdownOption('Discussion Options', 'Hide discussion')
+      confirmRemoval('Hide discussion')
+      cy.contains('h1', 'Community moderation').should('be.visible')
+      cy.contains('Spam review').should('be.visible')
+      cy.contains('button', 'Preview').click()
+      cy.contains('Seed content').should('be.visible')
+
+      cy.switchUser('member')
+      cy.visit(path)
+      cy.contains('Seed content').should('not.exist')
+      cy.contains(/Page not found|Discussion not found/).should('exist')
+
+      cy.switchUser('secondMember')
+      cy.visit(moderationPath(ids.community!))
+      cy.contains('button', 'Restore').click()
+      cy.get('[role="dialog"]').contains('button', 'Restore').click()
+      cy.contains('No removed content.').should('be.visible')
+      cy.visit(path)
+      cy.contains('Seed content').should('be.visible')
+    })
+  })
+
+  it('removes only the selected spam reply and restores its original text', () => {
+    resetData('space_with_discussion').then((ids) => {
+      appointModerator(ids.community!)
+      cy.request('POST', '/api/v2/document/GP Comment', {
+        reference_doctype: 'GP Discussion',
+        reference_name: ids.discussion,
+        content: '<p>Spam reply sentinel</p>',
+      }).then(({ body }) => {
+        const reply = () => cy.get(`div[data-id="${body.data.name}"]`)
+        cy.switchUser('secondMember')
+        cy.visit(
+          `/g/community/${ids.community}/space/${ids.space}/discussion/${ids.discussion}/${ids.discussion_slug}`,
+        )
+        reply().find('button[aria-label="Comment Options"]').click()
+        cy.contains('[role="menuitem"]', 'Delete spam').click()
+        confirmRemoval('Delete spam')
+        reply().should('contain.text', 'This reply was removed by a moderator.')
+        reply().should('not.contain.text', 'Spam reply sentinel')
+        cy.visit(moderationPath(ids.community!))
+        cy.get('[role="combobox"]').click()
+        cy.contains('[role="option"]', 'Replies').click()
+        cy.contains('Spam removed').should('be.visible')
+        cy.contains('button', 'Preview').click()
+        cy.contains('Spam reply sentinel').should('be.visible')
+        cy.contains('button', 'Restore').click()
+        cy.get('[role="dialog"]').contains('button', 'Restore').click()
+        cy.contains('No removed content.').should('be.visible')
+      })
+    })
+  })
+
+  it('bans and unbans participation while retaining reading access', () => {
+    resetData('space_with_discussion').then((ids) => {
+      appointModerator(ids.community!)
+      cy.switchUser('secondMember')
+      cy.visit(moderationPath(ids.community!))
+      cy.contains('button', 'Community bans').click()
+      cy.get('[role="combobox"]').click()
+      cy.contains('[role="option"]', /^Member$/).click()
+      cy.contains('button', 'Ban from Community').click()
+      confirmRemoval('Ban')
+      cy.contains('button', 'Lift ban').should('be.visible')
+
+      cy.switchUser('member')
+      cy.visit(
+        `/g/community/${ids.community}/space/${ids.space}/discussion/${ids.discussion}/${ids.discussion_slug}`,
+      )
+      cy.contains('Seed content').should('be.visible')
+      cy.contains('You are banned from participating').should('be.visible')
+      cy.contains('button', 'Add a comment').should('not.exist')
+      cy.window()
+        .then((win) =>
+          cy.request({
+            method: 'POST',
+            url: '/api/v2/document/GP Comment',
+            headers: { 'X-Frappe-CSRF-Token': (win as any).csrf_token },
+            failOnStatusCode: false,
+            body: {
+              reference_doctype: 'GP Discussion',
+              reference_name: ids.discussion,
+              content: 'Banned API reply',
+            },
+          }),
+        )
+        .then((response) => {
+          expect(response.status).to.eq(403)
+          expect(JSON.stringify(response.body)).to.include('PermissionError')
+        })
+
+      cy.switchUser('secondMember')
+      cy.visit(moderationPath(ids.community!))
+      cy.contains('button', 'Community bans').click()
+      cy.contains('button', 'Lift ban').click()
+      cy.get('[role="dialog"]').contains('button', 'Lift ban').click()
+      cy.contains('No active Community bans.').should('be.visible')
+      cy.switchUser('member')
+      cy.visit(
+        `/g/community/${ids.community}/space/${ids.space}/discussion/${ids.discussion}/${ids.discussion_slug}`,
+      )
+      cy.contains('button', 'Add a comment').should('be.visible')
+    })
+  })
+})

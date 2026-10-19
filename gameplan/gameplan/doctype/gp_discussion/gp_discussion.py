@@ -11,6 +11,7 @@ from gameplan.mixins.activity import HasActivity
 from gameplan.mixins.archivable import check_if_space_is_archived
 from gameplan.mixins.attachments import HasAttachments
 from gameplan.mixins.mentions import HasMentions
+from gameplan.mixins.moderation import Moderatable
 from gameplan.mixins.reactions import HasReactions, get_reactions_on
 from gameplan.mixins.tags import HasTags
 from gameplan.permissions import content_has_permission, discussion_query_conditions
@@ -21,7 +22,7 @@ from gameplan.utils.document import with_stored_document
 from gameplan.visibility import is_anonymous_eligible_space, require_admin_to_publish
 
 
-class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTags, Document):
+class GPDiscussion(Moderatable, HasActivity, HasAttachments, HasMentions, HasReactions, HasTags, Document):
 	# Class Configuration
 	# GP Activity is removed in on_trash, not here. See remove_all_activities.
 	on_delete_cascade = ["GP Comment", "GP Discussion Visit", "GP Poll"]
@@ -89,6 +90,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		GPUnreadRecord.delete_unread_records_for_discussion(self.name)
 
 	def validate(self):
+		self.validate_moderation()
 		before = self.get_doc_before_save()
 		if before and self.has_value_changed("project"):
 			require_admin_to_publish(
@@ -177,6 +179,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 	@frappe.whitelist()
 	@with_stored_document
 	def get_revisions(self, fieldname="content"):
+		frappe.get_doc(self.doctype, self.name).check_permission("read")
 		return get_document_revisions(self.doctype, self.name, fieldname)
 
 	@frappe.whitelist(methods=["POST"])
