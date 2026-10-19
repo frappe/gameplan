@@ -278,17 +278,12 @@ def accept_invitation(key: str = None):
 	if not invitation:
 		frappe.throw("Invalid or expired key")
 
-	invitation.accept()
+	# An account that was here before the invitation signs in the way it always has.
+	location = invitation.get_password_link() if invitation.accept() else "/g"
+	frappe.db.commit()  # nosemgrep: frappe-manual-commit
 
 	frappe.local.response["type"] = "redirect"
-	if invitation.flags.created_user:
-		# get_password_link commits, so the accepted invitation is saved with it.
-		frappe.local.response["location"] = invitation.get_password_link()
-	else:
-		# The account was here before the invitation, and its owner signs in to it the
-		# way they always have. Accepting a GET request is not committed on its own.
-		frappe.db.commit()  # nosemgrep: frappe-manual-commit
-		frappe.local.response["location"] = "/g"
+	frappe.local.response["location"] = location
 
 
 @frappe.whitelist()

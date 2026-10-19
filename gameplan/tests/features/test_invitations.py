@@ -388,8 +388,7 @@ class TestAcceptInvitationEndpoint(InvitationTestCase):
 		them to set one rather than logging them straight in."""
 		invitation = self.make_invitation("needs-password@example.com", role="Gameplan Member")
 
-		# get_password_link commits a reset-key write; stub it to keep the test
-		# transaction rolled back and to pin the redirect target deterministically.
+		# Stub the password link to pin the redirect target.
 		with patch.object(type(invitation), "get_password_link", return_value="/update-password?key=stub"):
 			accept_invitation(key=invitation.flags.invite_key)
 

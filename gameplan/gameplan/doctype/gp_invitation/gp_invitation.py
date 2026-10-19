@@ -77,11 +77,13 @@ class GPInvitation(Document):
 		self.db_set("email_sent_at", frappe.utils.now())
 
 	def accept(self):
+		"""Grant the invitation's role and access. Returns True if it created the account."""
 		# A key works once: accepting it, or letting it expire, ends it.
 		if self.status != "Pending":
 			frappe.throw("Invalid or expired key")
 
-		user = self.create_user_if_not_exists()
+		created_account = not frappe.db.exists("User", self.email)
+		user = self.create_user() if created_account else frappe.get_doc("User", self.email)
 		user.append_roles(self.role)
 		user.save(ignore_permissions=True)
 		self.create_guest_access(user)
@@ -90,6 +92,7 @@ class GPInvitation(Document):
 		self.status = "Accepted"
 		self.accepted_at = frappe.utils.now()
 		self.save(ignore_permissions=True)
+		return created_account
 
 	def get_password_link(self):
 		return password_link(frappe.get_doc("User", self.email))
@@ -136,20 +139,14 @@ class GPInvitation(Document):
 			team.flags.ignore_links = True
 			team.save(ignore_permissions=True)
 
-	def create_user_if_not_exists(self):
-		self.flags.created_user = not frappe.db.exists("User", self.email)
-		if self.flags.created_user:
-			first_name = self.email.split("@")[0].title()
-			user = frappe.get_doc(
-				doctype="User",
-				user_type="Website User",
-				email=self.email,
-				send_welcome_email=0,
-				first_name=first_name,
-			).insert(ignore_permissions=True)
-		else:
-			user = frappe.get_doc("User", self.email)
-		return user
+	def create_user(self):
+		return frappe.get_doc(
+			doctype="User",
+			user_type="Website User",
+			email=self.email,
+			send_welcome_email=0,
+			first_name=self.email.split("@")[0].title(),
+		).insert(ignore_permissions=True)
 
 
 def grant_access(email, role, projects=None):
@@ -199,9 +196,6 @@ def password_link(user, password_expired=False):
 	user.reset_password_key = hashed_key
 	user.last_reset_password_key_generated_on = now_datetime()
 	user.save(ignore_permissions=True)
-	# Accepting an invitation is a GET request, which is not committed. The key must be
-	# saved before the user follows the link.
-	frappe.db.commit()  # nosemgrep: frappe-manual-commit
 	url = "/update-password?key=" + key
 	if password_expired:
 		url = "/update-password?key=" + key + "&password_expired=true"

@@ -295,7 +295,7 @@ class TestGetRequestTransactions(FrappeAPITestCase):
 		self.assertTrue(frappe.db.get_value("GP Team", team.name, "archived_at"))
 
 	def test_existing_user_invitation_acceptance_persists_after_get(self):
-		"""The email link remains a GET because both successful branches commit explicitly.
+		"""The email link remains a GET because the endpoint commits explicitly.
 
 		An established user is sent to the app, and the endpoint commits the accepted
 		invitation before Frappe's end-of-request GET rollback runs.
