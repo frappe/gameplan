@@ -10,7 +10,6 @@ from frappe.model.naming import append_number_if_name_exists
 from frappe.query_builder.functions import Count
 from frappe.website.utils import cleanup_page_name
 
-from gameplan.api import get_user_info, require_admin
 from gameplan.extends.client import check_permissions
 from gameplan.mixins.attachments import HasAttachments
 from gameplan.realtime import notify_users_changed
@@ -194,36 +193,6 @@ class GPUserProfile(HasAttachments, Document):
 		self.save(ignore_permissions=True)
 
 		return {"cover_image_position": self.cover_image_position}
-
-	@frappe.whitelist(methods=["POST"])
-	def change_user_role(self, role):
-		require_admin()
-
-		if role not in ["Gameplan Guest", "Gameplan Member", "Gameplan Admin"]:
-			return get_user_info(self.user)[0]
-
-		user_doc = frappe.get_doc("User", self.user)
-		for _role in list(user_doc.roles):
-			if _role.role in ["Gameplan Guest", "Gameplan Member", "Gameplan Admin"]:
-				user_doc.remove(_role)
-		user_doc.append_roles(role)
-		# Admin-gated by require_admin() above; bypass User's own permission checks so an
-		# admin can change another user's roles.
-		user_doc.save(ignore_permissions=True)
-
-		return get_user_info(self.user)[0]
-
-	@frappe.whitelist(methods=["POST"])
-	def disable_user(self):
-		require_admin()
-
-		user_doc = frappe.get_doc("User", self.user)
-		user_doc.enabled = 0
-		# Admin-gated by require_admin() above; bypass User's own permission checks so an
-		# admin can disable another user.
-		user_doc.save(ignore_permissions=True)
-
-		return self.user
 
 
 def has_permission(doc, ptype="read", user=None):

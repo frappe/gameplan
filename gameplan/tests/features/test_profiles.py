@@ -5,7 +5,7 @@ import json
 
 import frappe
 
-from gameplan.api import get_user_info
+from gameplan.api import disable_user, get_user_info
 from gameplan.gameplan.doctype.gp_user_profile.gp_user_profile import (
 	get_bento_cards,
 	get_list,
@@ -149,12 +149,11 @@ class TestProfiles(GameplanTestCase):
 			alice_profile.save(ignore_permissions=True)
 
 	def test_admin_can_still_disable_a_user(self):
-		alice_profile = get_profile(self.alice.name)
 		frappe.set_user(self.admin.name)
 		# Syncing `enabled` to the profile runs as the admin and must not trip the ownership
 		# check. Assert on User: on Frappe v16 the profile re-fetches `user.enabled` from a
 		# value cache that is stale until the transaction ends.
-		alice_profile.disable_user()
+		disable_user(self.alice.name)
 		self.assertEqual(frappe.db.get_value("User", self.alice.name, "enabled"), 0)
 
 	def test_default_bento_layout_binds_every_populated_profile_field(self):

@@ -131,6 +131,40 @@ def invite_by_email(emails: str, role: str, projects: list = None):
 	return _invite_by_email(emails, role, projects)
 
 
+@frappe.whitelist(methods=["POST"])
+@validate_type
+def change_user_role(user: str, role: str):
+	require_admin()
+
+	user_doc = frappe.get_doc("User", user)
+	if role not in GAMEPLAN_ROLES:
+		return get_user_info(user)[0]
+
+	for _role in list(user_doc.roles):
+		if _role.role in GAMEPLAN_ROLES:
+			user_doc.remove(_role)
+	user_doc.append_roles(role)
+	# Admin-gated by require_admin() above; bypass User's own permission checks so an
+	# admin can change another user's roles.
+	user_doc.save(ignore_permissions=True)
+
+	return get_user_info(user)[0]
+
+
+@frappe.whitelist(methods=["POST"])
+@validate_type
+def disable_user(user: str):
+	require_admin()
+
+	user_doc = frappe.get_doc("User", user)
+	user_doc.enabled = 0
+	# Admin-gated by require_admin() above; bypass User's own permission checks so an
+	# admin can disable another user.
+	user_doc.save(ignore_permissions=True)
+
+	return user
+
+
 def _invite_by_email(emails: str, role: str, projects: list = None) -> dict:
 	"""Core invite logic, callable from trusted server code (e.g. onboarding).
 
