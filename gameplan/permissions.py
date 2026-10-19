@@ -508,7 +508,7 @@ def discussion_query_conditions(user=None, **kwargs):
 
 
 def task_query_conditions(user=None, **kwargs):
-	return content_project_query_conditions("GP Task", user)
+	return criterion_sql(task_access_criterion(frappe.qb.DocType("GP Task"), user))
 
 
 def page_query_conditions(user=None, **kwargs):

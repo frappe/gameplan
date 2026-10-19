@@ -48,6 +48,19 @@ class TestClientList(GameplanTestCase):
 					listed = get_list(doctype=doc.doctype, fields=["name"], filters={"name": doc.name})
 					self.assertEqual([str(row.name) for row in listed], [str(doc.name)])
 
+	def test_a_space_less_task_and_its_comments_are_listed_only_for_its_owner(self):
+		task = create_task("Client List Space-less Task", owner=self.member)
+		comment = create_comment(task, owner=self.member)
+
+		for user, visible in ((self.member, True), (self.second_member, False)):
+			with self.subTest(user=user.name), self.as_user(user):
+				tasks = get_task_list(
+					fields=frappe.as_json(["name"]), filters=frappe.as_json({"name": task.name})
+				)
+				self.assertEqual([str(row.name) for row in tasks], [str(task.name)] if visible else [])
+				comments = get_list(doctype="GP Comment", fields=["name"], filters={"name": comment.name})
+				self.assertEqual([str(row.name) for row in comments], [str(comment.name)] if visible else [])
+
 	def test_personal_lists_follow_their_user(self):
 		draft = set_owner(
 			frappe.get_doc(
