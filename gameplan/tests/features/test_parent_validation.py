@@ -71,7 +71,8 @@ class TestParentManagedRows(GameplanTestCase):
 			)
 		self.assertEqual(frappe.get_doc("GP Poll", self.poll.name).total_votes, 0)
 		self.assertEqual(frappe.get_doc("GP Poll", self.poll.name).options[0].title, "Updated")
-		self.assertEqual(frappe.get_doc("GP Discussion", self.discussion.name).tags[0].tag, other_tag.name)
+		discussion_tags = frappe.get_doc("GP Discussion", self.discussion.name).tags
+		self.assertEqual(discussion_tags[0].tag, str(other_tag.name))
 		self.assertIsNotNone(self.community.get_member(self.second_member.name))
 		self.assertEqual(profile.reload().bento_cards[0].text, "Updated")
 
