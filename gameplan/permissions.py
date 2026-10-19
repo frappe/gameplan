@@ -272,17 +272,19 @@ def can_interact_with_content(user, doc):
 	"""Whether `user` can reach `doc` to participate (react/comment) at all.
 
 	True for anyone who can view the content's space (members and granted guests
-	alike) and, for personal/space-less content, its owner. This is the floor for the
-	`write` permission; whether a specific *edit* is allowed on top of it is decided
-	by can_edit_content and, for non-editors, by whether the save changes any field.
+	alike) and, for personal/space-less content, the user it belongs to
+	(get_content_owner: the author, or for a comment on a personal task, the task's
+	owner). This is the floor for the `write` permission; whether a specific *edit* is
+	allowed on top of it is decided by can_edit_content and, for non-editors, by whether
+	the save changes any field.
 
-	Two of the branches below never fire from its only caller: can_write_content reaches
-	here only once can_edit_content has said False, and an admin or the owner of
-	space-less content is always an editor. They stay because this is a named predicate
-	about who may reach content at all, not a private tail of can_write_content: dropping
-	the admin line makes it answer False for a global admin on another user's personal
-	page, and dropping the owner line at the end turns the space-less case into an
-	unconditional True the moment can_view_content's own space-less rule loosens.
+	The admin branch never fires from its only caller: can_write_content reaches here
+	only once can_edit_content has said False, and a global admin is always an editor.
+	It stays because this is a named predicate about who may reach content at all, not a
+	private tail of can_write_content: dropping it makes this answer False for a global
+	admin on another user's personal page. The owner line at the end does fire from
+	there: the owner of a personal task is not an editor of a comment someone else wrote
+	on it, but may still react to it.
 	"""
 	if is_global_admin(user):
 		return True
@@ -290,9 +292,9 @@ def can_interact_with_content(user, doc):
 		return False
 	if get_content_project(doc):
 		return True
-	# Today can_view_content has already established owner == user for space-less content,
-	# so this only ever returns True — it is the deny-by-default that keeps that true.
-	return get_doc_value(doc, "owner") == user
+	# can_view_content has already established this for space-less content. It is the
+	# deny-by-default that keeps this answer False if that rule ever loosens.
+	return get_content_owner(doc) == user
 
 
 def can_write_content(user, doc):
@@ -475,12 +477,12 @@ def can_delete_content(user, doc):
 		return False
 	project = get_content_project(doc)
 	if not project:
-		# Space-less content has no community to moderate it: only its owner and the
-		# global admin, both handled above. Unreachable today (a non-owner who is not a
-		# global admin fails the can_view_content check above for space-less content) and
-		# the line below would deny too — get_project_info(None) is None. Kept as the
-		# explicit statement of the rule: that "would deny too" rests on an implicit
-		# falsy chain, and this is the one function where the rule should be readable.
+		# Space-less content has no community to moderate it: only its author and the
+		# global admin, both handled above. The owner of a personal task reaches this
+		# line for a comment someone else wrote on it: they can see the comment, but it
+		# is not theirs to delete. The line below would deny too — get_project_info(None)
+		# is None — but that rests on an implicit falsy chain, and this is the one
+		# function where the rule should be readable.
 		return False
 	project_info = get_project_info(project)
 	return bool(project_info and is_community_admin(user, project_info.team))
