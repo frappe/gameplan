@@ -32,8 +32,11 @@ describe('Mention interactions', () => {
   for (const surface of ['post', 'comment']) {
     it(`shows the mentioned user's card and opens their profile from a ${surface}`, () => {
       cy.visit(discussionUrl)
-      const scope = surface === 'post' ? '.discussion-container' : commentSelector
+      cy.get(`${commentSelector} ${mention}`).should('be.visible')
+      const scope = surface === 'post' ? '.discussion-container > div:first-child' : commentSelector
 
+      cy.get(`${scope} ${mention}`).should('have.length', 1)
+      cy.get(`${scope} ${everyone}`).should('have.length', 1)
       cy.get(`${scope} ${everyone}`).click()
       cy.location('pathname').should('include', discussionUrl)
 
