@@ -61,6 +61,15 @@ class TestClientList(GameplanTestCase):
 				comments = get_list(doctype="GP Comment", fields=["name"], filters={"name": comment.name})
 				self.assertEqual([str(row.name) for row in comments], [str(comment.name)] if visible else [])
 
+	def test_child_rows_are_listed_through_their_parent(self):
+		filters = {"parenttype": "GP Project", "parent": self.space.name}
+		with self.as_user(self.member):
+			rows = get_list(doctype="GP Member", fields=["user"], filters=filters, parent="GP Project")
+			self.assertIn(self.member.name, [row.user for row in rows])
+		with self.as_user(self.outsider):
+			rows = get_list(doctype="GP Member", fields=["user"], filters=filters, parent="GP Project")
+			self.assertEqual(rows, [])
+
 	def test_personal_lists_follow_their_user(self):
 		draft = set_owner(
 			frappe.get_doc(
