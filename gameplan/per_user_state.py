@@ -6,10 +6,9 @@
 GP Notification, GP Project Visit, GP Discussion Visit, GP Pinned Project and GP
 Followed Project each store one row per user, and each grants Gameplan Member and
 Gameplan Guest read and write with `if_owner` unset (the last two also grant
-`delete`). Role permissions alone therefore let any signed-in user read, enumerate,
-overwrite and — for pins and follows — delete anyone else's bell feed, visit history,
-read-state, sidebar and followed Spaces through the generic
-`/api/v2/document/<doctype>` API.
+`delete`). Role permissions do not tie a row to its user, so the hooks below limit
+every read, write and delete of a row to the user it belongs to, including through
+the generic `/api/v2/document/<doctype>` API.
 
 `if_owner` cannot express this rule. For GP Notification the row's `owner` is the
 person who *triggered* it (the mentioner), while the row belongs to `to_user` — so
