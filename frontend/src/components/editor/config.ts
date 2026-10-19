@@ -42,7 +42,7 @@ export function suggestionConfig(suggestions = true) {
   return {
     mention: {
       items: suggestions ? mentionItems : null,
-      component: TextEditorMentionComponent as Component,
+      nodeView: TextEditorMentionComponent as Component,
     },
     tag: { items: suggestions ? tagItems : null },
   }
