@@ -24,16 +24,16 @@
                 <Tooltip v-if="discussion.closed_at" text="Closed">
                   <span class="lucide-lock size-4 p-[1px] mr-1" />
                 </Tooltip>
-                <Tooltip v-else-if="postType == 'GP Comment'" text="Comment">
+                <Tooltip v-else-if="post.type == 'GP Comment'" text="Comment">
                   <span class="lucide-reply size-4 mr-1" />
                 </Tooltip>
-                <Tooltip v-else-if="postType == 'GP Poll'" text="Poll">
+                <Tooltip v-else-if="post.type == 'GP Poll'" text="Poll">
                   <span class="lucide-align-left size-4 p-[1px] mr-1" />
                 </Tooltip>
               </div>
               <div>
                 <span>
-                  {{ $user(postBy).full_name.trim() }}
+                  {{ $user(post.by).full_name.trim() }}
                 </span>
                 <span class="inline-flex items-center" v-if="showSpaceName">
                   &nbsp;in {{ discussion.project_title }}
@@ -44,7 +44,7 @@
                 >:&nbsp;
               </div>
               <div class="truncate">
-                {{ postContent }}
+                {{ post.content }}
               </div>
             </div>
           </div>
@@ -53,9 +53,9 @@
     </ListCell>
     <ListCell class="justify-end">
       <div>
-        <Tooltip :text="dayjsLocal(postAt).format('D MMM YYYY [at] h:mm A')">
+        <Tooltip :text="dayjsLocal(post.at).format('D MMM YYYY [at] h:mm A')">
           <div class="shrink-0 whitespace-nowrap text-sm text-ink-gray-5 text-right">
-            {{ relativeTimestamp(postAt || discussion.creation) }}
+            {{ relativeTimestamp(post.at || discussion.creation) }}
           </div>
         </Tooltip>
         <div class="mt-1.5 flex items-center justify-end space-x-3">
@@ -116,28 +116,23 @@ const linkTo = computed(() => {
   }
 })
 
-const isBookmark = computed(() => Boolean(props.discussion.bookmark))
-
-const postType = computed(() => {
-  if (!isBookmark.value) return props.discussion.last_post_type
-  return props.discussion.bookmarked_comment ? 'GP Comment' : null
+const post = computed(() => {
+  const d = props.discussion
+  if (d.bookmark) {
+    return {
+      type: d.bookmarked_comment ? 'GP Comment' : null,
+      by: d.bookmarked_post_by,
+      content: d.bookmarked_post_content,
+      at: d.bookmarked_post_at,
+    }
+  }
+  return {
+    type: d.last_post_type,
+    by: d.last_post_by || d.owner,
+    content: d.last_comment_content || d.last_poll_title,
+    at: d.last_post_at,
+  }
 })
-
-const postBy = computed(() =>
-  isBookmark.value
-    ? props.discussion.bookmarked_post_by
-    : props.discussion.last_post_by || props.discussion.owner,
-)
-
-const postContent = computed(() =>
-  isBookmark.value
-    ? props.discussion.bookmarked_post_content
-    : props.discussion.last_comment_content || props.discussion.last_poll_title,
-)
-
-const postAt = computed(() =>
-  isBookmark.value ? props.discussion.bookmarked_post_at : props.discussion.last_post_at,
-)
 
 function isSpacePrivate(spaceId: string) {
   return useSpace(spaceId).value?.is_private
