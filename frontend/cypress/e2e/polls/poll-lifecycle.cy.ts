@@ -119,9 +119,8 @@ describe('Poll lifecycle', () => {
     cy.wait('@stopPoll')
 
     cy.contains('Ended').should('exist')
-    cy.iconButton('Poll Options').click()
-    cy.get('[role="menuitem"]:visible').should('not.contain.text', 'Stop poll')
-    cy.get('body').type('{esc}')
+    // Nothing is left in a stopped multiple-answer poll's menu, so the button is hidden.
+    cy.get('button[aria-label="Poll Options"]').should('not.exist')
     pollAnswer('Yes').should('be.disabled')
   })
 
