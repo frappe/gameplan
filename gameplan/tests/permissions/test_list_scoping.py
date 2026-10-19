@@ -161,9 +161,9 @@ class TestMembershipListScoping(ListScopingTestCase):
 class TestTaskListEndpointScoping(GameplanTestCase):
 	"""`GP Task.get_list`, the endpoint behind every task list in the SPA.
 
-	It builds its own query instead of going through `frappe.get_list`, so
-	`permission_query_conditions` never reaches it and it has to apply the space filter
-	itself.
+	It builds its own query with `frappe.qb.get_query`, which applies the GP Task
+	`permission_query_conditions`, and then applies the same task access filter itself.
+	Both must list a space-less task for its owner.
 	"""
 
 	def setUp(self):
