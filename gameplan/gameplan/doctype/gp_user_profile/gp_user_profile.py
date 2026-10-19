@@ -10,6 +10,7 @@ from frappe.model.naming import append_number_if_name_exists
 from frappe.query_builder.functions import Count
 from frappe.website.utils import cleanup_page_name
 
+import gameplan
 from gameplan.extends.client import check_permissions
 from gameplan.mixins.attachments import HasAttachments
 from gameplan.realtime import notify_users_changed
@@ -109,10 +110,11 @@ class GPUserProfile(HasAttachments, Document):
 		"""Which of `images` name a private file this profile has no claim on.
 
 		Same rule as `HasAttachments._maybe_attach_file`: the file has to have been
-		uploaded by the profile's own user, or by whoever is saving (an admin acting on
-		someone's behalf). Only private files are checked, because a public file is
-		readable by everyone already and naming one exposes nothing. One query for the
-		whole layout, so a profile with many cards still costs a single round trip.
+		uploaded by the profile's own user, or by whoever is saving (the Administrator
+		account, or a system change made with `ignore_profile_ownership`). Only private
+		files are checked, because a public file is readable by everyone already and
+		naming one exposes nothing. One query for the whole layout, so a profile with
+		many cards still costs a single round trip.
 		"""
 		urls = {image for image in images if image}
 		if not urls:
@@ -206,9 +208,7 @@ def has_permission(doc, ptype="read", user=None):
 		return True
 
 	# Admins create and delete profiles along with the User, but never edit one.
-	if ptype in ("create", "delete") and (
-		"Gameplan Admin" in frappe.get_roles(user) or "System Manager" in frappe.get_roles(user)
-	):
+	if ptype in ("create", "delete") and gameplan.is_admin(user):
 		return True
 
 	if isinstance(doc, str):

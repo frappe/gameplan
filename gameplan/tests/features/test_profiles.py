@@ -104,7 +104,7 @@ class TestProfiles(GameplanTestCase):
 		alice_profile = get_profile(self.alice.name)
 		self.assertFalse(has_permission(alice_profile, ptype="write", user=self.bob.name))
 
-	def test_admin_can_edit_any_bio(self):
+	def test_administrator_can_edit_any_bio(self):
 		alice_profile = get_profile(self.alice.name)
 		self.assertTrue(has_permission(alice_profile, ptype="write", user="Administrator"))
 
