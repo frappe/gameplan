@@ -69,8 +69,13 @@ def _belongs_to_user(doc, fieldname, user):
 
 
 def notification_query_conditions(user=None, **kwargs):
-	if gameplan.is_anonymous(user or frappe.session.user):
-		return criterion_sql(NOTHING)
+	return criterion_sql(notification_criterion(user))
+
+
+def notification_criterion(user=None):
+	user = user or frappe.session.user
+	if gameplan.is_anonymous(user):
+		return NOTHING
 	Notification = frappe.qb.DocType("GP Notification")
 	Discussion = frappe.qb.DocType("GP Discussion")
 	from gameplan.permissions import visible_discussion_criterion
@@ -78,13 +83,10 @@ def notification_query_conditions(user=None, **kwargs):
 	visible = (
 		frappe.qb.from_(Discussion).select(Discussion.name).where(visible_discussion_criterion(Discussion))
 	)
-	return criterion_sql(
-		(Notification.to_user == (user or frappe.session.user))
-		& (
-			Notification.discussion.isnull()
-			| (Notification.discussion == "")
-			| Notification.discussion.isin(visible)
-		)
+	return (Notification.to_user == user) & (
+		Notification.discussion.isnull()
+		| (Notification.discussion == "")
+		| Notification.discussion.isin(visible)
 	)
 
 

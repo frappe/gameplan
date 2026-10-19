@@ -74,6 +74,26 @@ describe('Community moderation core', () => {
     })
   })
 
+  it('keeps a banned Space out of the composer while allowing another Community', () => {
+    resetData('two_communities').then((ids) => {
+      const community = ids.communities![0]
+      cy.request('POST', '/api/method/gameplan.community_bans.set_ban', {
+        community,
+        user: 'member@example.com',
+        banned: 1,
+        reason: 'Posting restriction test',
+      })
+      cy.switchUser('member')
+      cy.visit(`/g/community/${community}/new-discussion?spaceId=${ids.spaces![0]}`)
+      cy.get('textarea[placeholder="Title"]').type('Draft in a banned Community')
+      cy.contains('button', 'Publish').should('be.disabled')
+      cy.contains('button[aria-haspopup="listbox"]', 'Select Space').filter(':visible').click()
+      cy.contains('[role="option"]', 'Alpha Space').should('not.exist')
+      cy.contains('[role="option"]', 'Beta Space').click()
+      cy.contains('button', 'Publish').should('not.be.disabled')
+    })
+  })
+
   it('bans and unbans participation while retaining reading access', () => {
     resetData('space_with_discussion').then((ids) => {
       appointModerator(ids.community!)
@@ -93,6 +113,12 @@ describe('Community moderation core', () => {
       cy.contains('Seed content').should('be.visible')
       cy.contains('You are banned from participating').should('be.visible')
       cy.contains('button', 'Add a comment').should('not.exist')
+      cy.visit(`/g/community/${ids.community}/space/${ids.space}/discussions`)
+      cy.contains('Welcome thread').should('be.visible')
+      cy.contains('button', 'Add new').should('not.exist')
+      cy.visit(`/g/community/${ids.community}/new-discussion?spaceId=${ids.space}`)
+      cy.contains('No space to post in').should('be.visible')
+      cy.get('textarea[placeholder="Title"]').should('not.exist')
       cy.window()
         .then((win) =>
           cy.request({

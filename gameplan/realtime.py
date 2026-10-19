@@ -19,6 +19,8 @@ import frappe
 from frappe import realtime
 from frappe.query_builder.functions import Count
 
+from gameplan.per_user_state import notification_criterion
+
 # `realtime.publish_realtime` rather than the newer named helpers (`publish_to_user`,
 # `publish_to_website`): those only exist on frappe develop, and Gameplan is also tested
 # against v16, where importing them fails at module load. Going through the module object
@@ -71,7 +73,7 @@ def unread_notification_count(user: str) -> int:
 	rows = (
 		frappe.qb.from_(Notification)
 		.select(Count(Notification.name))
-		.where((Notification.to_user == user) & (Notification.read == 0))
+		.where(notification_criterion(user) & (Notification.read == 0))
 	).run()
 	return rows[0][0] if rows else 0
 
