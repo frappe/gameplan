@@ -158,9 +158,11 @@ def get_discussions(filters=None, order_by=None, start=None, limit=None):
 
 	discussions = include_unread_counts(discussions)
 	discussions = include_ongoing_polls(discussions)
-	discussions = include_last_post_content(discussions)
-	if feed_type == "bookmarks":
-		discussions = include_bookmarked_post(discussions)
+	discussions = (
+		include_bookmarked_post(discussions)
+		if feed_type == "bookmarks"
+		else include_last_post_content(discussions)
+	)
 
 	frappe.response["has_next_page"] = has_next_page
 	return discussions
