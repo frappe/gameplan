@@ -9,6 +9,11 @@ from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import create_community, create_discussion, create_poll, create_space
 
 
+def tag_content(label):
+	# Discussion tags are derived from the tag spans in the content on every save.
+	return f'<p><span class="tag-item" data-tag-label="{label}">#{label}</span></p>'
+
+
 class TestParentManagedRows(GameplanTestCase):
 	def setUp(self):
 		super().setUp()
@@ -19,10 +24,9 @@ class TestParentManagedRows(GameplanTestCase):
 
 	def test_rows_are_updated_through_their_parents(self):
 		other_poll = create_poll("Other Row Poll", self.discussion, owner=self.member)
-		tag = frappe.get_doc(doctype="GP Tag", label="First").insert(ignore_permissions=True)
 		other_tag = frappe.get_doc(doctype="GP Tag", label="Second").insert(ignore_permissions=True)
 		self.discussion.reload()
-		self.discussion.append("tags", {"tag": tag.name})
+		self.discussion.content = tag_content("First")
 		self.discussion.save(ignore_permissions=True)
 		with self.as_user(self.member):
 			self.poll.submit_vote("Yes")
@@ -59,7 +63,7 @@ class TestParentManagedRows(GameplanTestCase):
 			poll.options[0].title = "Updated"
 			poll.save()
 			discussion = frappe.get_doc("GP Discussion", self.discussion.name)
-			discussion.tags[0].tag = other_tag.name
+			discussion.content = tag_content("Second")
 			discussion.save()
 			self.community.add_members([self.second_member.name])
 			save_my_bento_cards(
