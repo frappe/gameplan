@@ -62,8 +62,8 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 	def validate(self):
 		if self.flags.ignore_permissions or not self.team:
 			return
-		# The save checks write on the Space only, and any member of a private Space may
-		# manage it, so the destination Community needs its own check.
+		# Covers both a new Space and a move. Creating a Space checks only the role, and
+		# any member of a private Space may manage it, so the Community needs its own check.
 		if self.has_value_changed("team") and not can_view_community(frappe.session.user, self.team):
 			frappe.throw(_("You do not have access to this community"), frappe.PermissionError)
 
