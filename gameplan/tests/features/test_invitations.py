@@ -470,6 +470,21 @@ class TestAcceptInvitationEndpoint(InvitationTestCase):
 		self.assert_message_page(410)
 		self.assertFalse(frappe.db.get_value("User", "existing-twice@example.com", "reset_password_key"))
 
+	def test_an_account_made_before_accepting_gets_a_message_when_it_opens_the_link_again(self):
+		"""An account created after the invitation was sent, but not by accepting it,
+		signs in the way it always has, and a reopened link only shows a message."""
+		invitation = self.make_invitation("joined-meanwhile@example.com")
+		create_member("joined-meanwhile@example.com")
+		key = invitation.flags.invite_key
+
+		accept_invitation(key=key)
+		self.assertEqual(frappe.local.response.get("location"), "/g")
+
+		accept_invitation(key=key)
+
+		self.assert_message_page(410)
+		self.assertFalse(frappe.db.get_value("User", "joined-meanwhile@example.com", "reset_password_key"))
+
 	def test_stored_key_does_not_open_the_invitation(self):
 		"""The link carries the key; the row keeps only its hash."""
 		invitation = self.make_invitation("stored-key@example.com")

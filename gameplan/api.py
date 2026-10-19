@@ -284,8 +284,9 @@ def accept_invitation(key: str = None):
 		return
 
 	if invitation.status == "Pending":
+		invitation.accept()
 		# An account that was here before the invitation signs in the way it always has.
-		location = invitation.get_password_link() if invitation.accept() else "/g"
+		location = invitation.get_password_link() if invitation.created_account else "/g"
 	elif invitation.created_account_awaits_password():
 		# The invitee opened the link again before setting a password, so give them a new
 		# password link in place of the first one.

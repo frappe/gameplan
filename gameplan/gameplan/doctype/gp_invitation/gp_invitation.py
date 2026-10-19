@@ -3,7 +3,7 @@
 
 import frappe
 from frappe.model.document import Document
-from frappe.utils import get_datetime, sha256_hash
+from frappe.utils import sha256_hash
 
 import gameplan
 from gameplan.gameplan.doctype.gp_team.gp_team import get_public_team_names
@@ -77,7 +77,7 @@ class GPInvitation(Document):
 		self.db_set("email_sent_at", frappe.utils.now())
 
 	def accept(self):
-		"""Grant the invitation's role and access. Returns True if it created the account."""
+		"""Grant the invitation's role and access, and record whether it created the account."""
 		# A key works once: accepting it, or letting it expire, ends it.
 		if self.status != "Pending":
 			frappe.throw("Invalid or expired key")
@@ -91,21 +91,14 @@ class GPInvitation(Document):
 
 		self.status = "Accepted"
 		self.accepted_at = frappe.utils.now()
+		self.created_account = created_account
 		self.save(ignore_permissions=True)
-		return created_account
 
 	def created_account_awaits_password(self):
-		"""Whether this invitation created its account, and no password has been set on it yet.
-
-		An account created after the invitation is taken to be the one accepting it created.
-		The password link goes to the invited address either way.
-		"""
-		user = frappe.db.get_value("User", self.email, ["creation", "last_password_reset_date"], as_dict=True)
-		return bool(
-			user
-			and get_datetime(user.creation) >= get_datetime(self.creation)
-			and not user.last_password_reset_date
-		)
+		"""Whether accepting this invitation created its account, and no password has been set on it yet."""
+		if not self.created_account:
+			return False
+		return not frappe.db.get_value("User", self.email, "last_password_reset_date")
 
 	def get_password_link(self):
 		return password_link(frappe.get_doc("User", self.email))
