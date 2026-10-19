@@ -97,7 +97,7 @@ class TestOnboardingEndpoint(APIEndpointTestCase):
 
 		self.assertEqual(frappe.db.get_value("GP Project", result["space"], "is_private"), 0)
 
-	def test_runs_only_until_the_site_has_a_community(self):
+	def test_runs_only_on_a_new_site(self):
 		create_community("Existing Community")
 
 		with self.as_user(self.member), self.assertRaises(frappe.PermissionError):
@@ -110,16 +110,6 @@ class TestOnboardingEndpoint(APIEndpointTestCase):
 
 		self.assertFalse(frappe.db.exists("GP Team", {"title": "Second Onboarding Community"}))
 		self.assertFalse(frappe.db.exists("GP Invitation", {"email": "late-invitee@example.com"}))
-
-		with self.as_user(self.admin):
-			onboarding(
-				community="Admin Onboarding Community",
-				space="Admin Onboarding Space",
-				icon="lucide-users",
-				emails="[]",
-			)
-
-		self.assertTrue(frappe.db.exists("GP Team", {"title": "Admin Onboarding Community"}))
 
 	def test_anonymous_caller_is_denied(self):
 		self.assert_anonymous_denied(onboarding)

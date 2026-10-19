@@ -329,9 +329,9 @@ def mark_all_notifications_as_read():
 
 @frappe.whitelist(methods=["POST"])
 def onboarding(community, space, icon, emails, is_private=0):
-	# Onboarding sets up a brand-new site. Once a community exists, communities and
-	# invitations go through their own screens and checks.
-	if not gameplan.is_admin() and frappe.db.get_all("GP Team", limit=1):
+	# Onboarding sets up a brand-new site. After that, communities and invitations go
+	# through their own screens and checks.
+	if not gameplan.is_new_site():
 		frappe.throw(_("This site is already set up"), frappe.PermissionError)
 
 	emails = frappe.parse_json(emails)
