@@ -4,6 +4,7 @@ import re
 import time
 
 import frappe
+from frappe import _
 from frappe.search.sqlite_search import (
 	MIN_RECENCY_BOOST,
 	RECENCY_DECAY_RATE,
@@ -19,6 +20,9 @@ from frappe.utils import cstr
 from gameplan.permissions import project_access_criterion
 
 INDEX_BUILD_FLAG = "discussions_index_in_progress"
+
+# Fields the search page can filter on. Any other key is refused.
+SEARCH_FILTER_FIELDS = frozenset({"owner", "project", "team", "doctype", "tags"})
 
 
 class GameplanSearch(SQLiteSearch):
@@ -294,7 +298,15 @@ class GameplanSearch(SQLiteSearch):
 		"""
 		Enhanced search method that handles tag filtering using LIKE operations.
 		"""
+		if filters and not isinstance(filters, dict):
+			frappe.throw(_("Search filters must be an object"), frappe.ValidationError)
 		filters = filters.copy() if filters else {}
+		unknown = set(filters) - SEARCH_FILTER_FIELDS
+		if unknown:
+			frappe.throw(
+				_("Cannot filter search by {0}").format(", ".join(sorted(map(str, unknown)))),
+				frappe.ValidationError,
+			)
 		self._requested_projects = filters.get("project")
 		try:
 			# Convert tag filters to LIKE filters for the parent search
@@ -420,6 +432,42 @@ class GameplanSearch(SQLiteSearch):
 
 class GameplanSearchIndexMissingError(SQLiteSearchIndexMissingError):
 	pass
+
+
+def enqueue_comment_reindex_on_move(doc):
+	"""Queue `reindex_comments` for `doc` when this save moved it to another space.
+
+	Call from `on_update`. A new document has no comments yet, so inserts are skipped."""
+	if not doc.get_doc_before_save() or not doc.has_value_changed("project"):
+		return
+
+	frappe.enqueue(
+		"gameplan.search_sqlite.reindex_comments",
+		reference_doctype=doc.doctype,
+		reference_name=doc.name,
+		enqueue_after_commit=True,
+		now=frappe.in_test,
+	)
+
+
+def reindex_comments(reference_doctype, reference_name):
+	"""Re-index every comment on a document. A comment's space and community come from
+	its parent, so they go stale in the index when the parent moves to another space."""
+	search = GameplanSearch()
+	if not (search.is_search_enabled() and search.index_exists()):
+		return
+
+	comments = frappe.get_all(
+		"GP Comment",
+		filters={
+			"reference_doctype": reference_doctype,
+			"reference_name": reference_name,
+			"deleted_at": ("is", "not set"),
+		},
+		pluck="name",
+	)
+	for name in comments:
+		search.index_doc("GP Comment", name)
 
 
 def rebuild_index():

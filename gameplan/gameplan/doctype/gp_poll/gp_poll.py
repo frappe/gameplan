@@ -4,7 +4,7 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import DATETIME_FORMAT, cstr, flt, get_datetime
+from frappe.utils import DATETIME_FORMAT, cint, cstr, flt, get_datetime
 
 from gameplan.mixins.archivable import check_if_space_is_archived
 from gameplan.mixins.reactions import HasReactions
@@ -66,8 +66,11 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 		if self.anonymous and self.multiple_answers:
 			frappe.throw(_("Anonymous polls cannot allow multiple answers"))
 		self.options = [d for d in self.options if d.title]
+		self.set("votes", [])
 		for option in self.options:
 			option.title = option.title.strip()
+			option.votes = 0
+			option.percentage = 0
 		# dont allow duplicate options
 		options = [d.title for d in self.options]
 		if len(set(options)) != len(options):
@@ -98,6 +101,7 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 
 	def validate(self):
 		self.check_comment_unchanged()
+		self.check_results_unchanged()
 		self.total_votes = len(self.votes)
 
 	def check_comment_unchanged(self):
@@ -108,6 +112,26 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 			frappe.throw(_("A poll cannot be moved to another comment"))
 		if self.comment and cstr(before.discussion) != cstr(self.discussion):
 			frappe.throw(_("A poll in a comment cannot be moved to another discussion"))
+
+	def check_results_unchanged(self):
+		"""Refuse a plain save that changes the vote rows or an option's counts.
+
+		Results change only through `submit_vote` and `retract_vote`, which save with
+		`ignore_permissions`. A plain save may still edit the title, add or remove
+		options and stop the poll; a new option starts with no votes.
+		"""
+		if self.is_new() or self.flags.ignore_permissions:
+			return
+		before = self.get_doc_before_save()
+		if before is None:
+			return
+		stored_counts = {d.name: (cint(d.votes), flt(d.percentage)) for d in before.options}
+		votes_changed = [(d.user, d.option) for d in self.votes] != [(d.user, d.option) for d in before.votes]
+		counts_changed = any(
+			(cint(d.votes), flt(d.percentage)) != stored_counts.get(d.name, (0, 0)) for d in self.options
+		)
+		if votes_changed or counts_changed:
+			frappe.throw(_("Poll results change only through voting"), frappe.PermissionError)
 
 	def after_insert(self):
 		self.update_discussion_meta()

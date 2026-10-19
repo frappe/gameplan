@@ -11,10 +11,11 @@ from gameplan.mixins.archivable import check_if_space_is_archived
 from gameplan.mixins.mentions import HasMentions
 from gameplan.mixins.reactions import get_reactions_on
 from gameplan.permissions import (
-	accessible_project_criterion,
 	content_has_permission,
+	task_access_criterion,
 	task_query_conditions,
 )
+from gameplan.search_sqlite import enqueue_comment_reindex_on_move
 
 
 class GPTask(HasMentions, HasActivity, Document):
@@ -36,6 +37,7 @@ class GPTask(HasMentions, HasActivity, Document):
 	def on_update(self):
 		self.notify_mentions()
 		self.log_value_updates()
+		enqueue_comment_reindex_on_move(self)
 
 	def log_value_updates(self):
 		fields = ["title", "description", "status", "priority", "assigned_to", "due_date", "project"]
@@ -126,17 +128,11 @@ def get_list(
 
 
 def apply_task_access_filter(query, Task, user=None):
-	"""Restrict a GP Task query to the tasks `user` may see, as can_view_content does.
-
-	A task in a Space follows the Space. A task with no Space is personal, so only its
-	owner sees it.
-	"""
-	user = user or frappe.session.user
-	criterion = accessible_project_criterion(Task.project, user)
+	"""Restrict a GP Task query to the tasks `user` may see (see task_access_criterion)."""
+	criterion = task_access_criterion(Task, user)
 	if criterion is None:
 		return query
-	space_less = Task.project.isnull() | (Task.project == "")
-	return query.where(criterion | (space_less & (Task.owner == user)))
+	return query.where(criterion)
 
 
 def get_permission_query_conditions(user):

@@ -14,6 +14,7 @@ from gameplan.mixins.mentions import HasMentions
 from gameplan.mixins.reactions import HasReactions, get_reactions_on
 from gameplan.mixins.tags import HasTags
 from gameplan.permissions import content_has_permission, discussion_query_conditions
+from gameplan.search_sqlite import enqueue_comment_reindex_on_move
 from gameplan.utils import get_document_revisions, remove_empty_trailing_paragraphs, url_safe_slug
 
 
@@ -93,6 +94,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		self.log_title_update()
 		self.attach_files_in_content()
 		self.sync_unread_records_on_move()
+		enqueue_comment_reindex_on_move(self)
 
 	def sync_unread_records_on_move(self):
 		# When a discussion moves to another space, realign its unread records so the count
@@ -237,8 +239,6 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		an already-authorised discussion delete. The generic cascade would check the role
 		permission on GP Activity, and the Gameplan Guest role has no delete there. A guest
 		could then not delete a discussion they started once anyone had closed or pinned it.
-		Granting that role delete on GP Activity is not an option: the doctype has no
-		row-level permission hook, so a guest could delete any activity row on the site.
 		"""
 		for name in frappe.get_all(
 			"GP Activity",

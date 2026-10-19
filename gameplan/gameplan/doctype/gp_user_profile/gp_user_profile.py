@@ -10,7 +10,7 @@ from frappe.model.naming import append_number_if_name_exists
 from frappe.query_builder.functions import Count
 from frappe.website.utils import cleanup_page_name
 
-from gameplan.api import get_user_info, require_admin
+import gameplan
 from gameplan.extends.client import check_permissions
 from gameplan.mixins.attachments import HasAttachments
 from gameplan.realtime import notify_users_changed
@@ -49,7 +49,12 @@ class GPUserProfile(HasAttachments, Document):
 		self.validate_profile_ownership()
 
 	def validate_profile_ownership(self):
-		# Prevent modifying another user's profile when permission checks are bypassed
+		"""Only the profile's own user may change it, admins included.
+
+		Runs even when permission checks are bypassed. Changes the system makes on a
+		user's behalf, such as syncing the name and enabled state from User, set
+		`ignore_profile_ownership`.
+		"""
 		if (
 			self.is_new()
 			or self.flags.ignore_profile_ownership
@@ -59,11 +64,8 @@ class GPUserProfile(HasAttachments, Document):
 		):
 			return
 		user = frappe.session.user
-		if user and user != "Administrator":
-			roles = frappe.get_roles(user)
-			if "Gameplan Admin" not in roles and "System Manager" not in roles:
-				if self.user and self.user != user:
-					frappe.throw("Cannot modify another user's profile", frappe.PermissionError)
+		if user != "Administrator" and self.user != user:
+			frappe.throw("Cannot modify another user's profile", frappe.PermissionError)
 
 	def autoname(self):
 		self.name = self.generate_name()
@@ -108,10 +110,11 @@ class GPUserProfile(HasAttachments, Document):
 		"""Which of `images` name a private file this profile has no claim on.
 
 		Same rule as `HasAttachments._maybe_attach_file`: the file has to have been
-		uploaded by the profile's own user, or by whoever is saving (an admin acting on
-		someone's behalf). Only private files are checked, because a public file is
-		readable by everyone already and naming one exposes nothing. One query for the
-		whole layout, so a profile with many cards still costs a single round trip.
+		uploaded by the profile's own user, or by whoever is saving (the Administrator
+		account, or a system change made with `ignore_profile_ownership`). Only private
+		files are checked, because a public file is readable by everyone already and
+		naming one exposes nothing. One query for the whole layout, so a profile with
+		many cards still costs a single round trip.
 		"""
 		urls = {image for image in images if image}
 		if not urls:
@@ -193,36 +196,6 @@ class GPUserProfile(HasAttachments, Document):
 
 		return {"cover_image_position": self.cover_image_position}
 
-	@frappe.whitelist(methods=["POST"])
-	def change_user_role(self, role):
-		require_admin()
-
-		if role not in ["Gameplan Guest", "Gameplan Member", "Gameplan Admin"]:
-			return get_user_info(self.user)[0]
-
-		user_doc = frappe.get_doc("User", self.user)
-		for _role in list(user_doc.roles):
-			if _role.role in ["Gameplan Guest", "Gameplan Member", "Gameplan Admin"]:
-				user_doc.remove(_role)
-		user_doc.append_roles(role)
-		# Admin-gated by require_admin() above; bypass User's own permission checks so an
-		# admin can change another user's roles.
-		user_doc.save(ignore_permissions=True)
-
-		return get_user_info(self.user)[0]
-
-	@frappe.whitelist(methods=["POST"])
-	def disable_user(self):
-		require_admin()
-
-		user_doc = frappe.get_doc("User", self.user)
-		user_doc.enabled = 0
-		# Admin-gated by require_admin() above; bypass User's own permission checks so an
-		# admin can disable another user.
-		user_doc.save(ignore_permissions=True)
-
-		return self.user
-
 
 def has_permission(doc, ptype="read", user=None):
 	user = user or frappe.session.user
@@ -231,16 +204,17 @@ def has_permission(doc, ptype="read", user=None):
 	if ptype in ("read", "select", "print", "email", "export", "share"):
 		return True
 
-	# Administrators and Gameplan Admins can manage any profile.
 	if user == "Administrator":
 		return True
-	if "Gameplan Admin" in frappe.get_roles(user) or "System Manager" in frappe.get_roles(user):
+
+	# Admins create and delete profiles along with the User, but never edit one.
+	if ptype in ("create", "delete") and gameplan.is_admin(user):
 		return True
 
 	if isinstance(doc, str):
 		doc = frappe.get_lazy_doc("GP User Profile", doc)
 
-	# Otherwise a user may only modify their own profile.
+	# A user may only modify their own profile.
 	return bool(doc and doc.user == user)
 
 

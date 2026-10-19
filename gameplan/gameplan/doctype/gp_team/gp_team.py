@@ -261,11 +261,14 @@ def leave_team(team: str):
 	if not member:
 		return
 
-	if member.is_admin and doc.count_admins(excluding_user=frappe.session.user) == 0:
-		frappe.throw(_("Make someone else an admin before you leave this community"))
+	remove_team_member_keeping_an_admin(doc, member)
 
-	doc.remove(member)
-	doc.save(ignore_permissions=True)
+
+def remove_team_member_keeping_an_admin(team, member):
+	if member.is_admin and team.count_admins(excluding_user=member.user) == 0:
+		frappe.throw(_("Make someone else an admin before you leave this community"))
+	team.remove(member)
+	team.save(ignore_permissions=True)
 
 
 def get_team_for_membership_change(team: str):
@@ -303,8 +306,7 @@ def update_joined_teams(teams: list = None, sidebar_badge_style: str | None = No
 			team.append("members", {"user": user})
 			team.save(ignore_permissions=True)
 		elif team_name not in team_names and member:
-			team.remove(member)
-			team.save(ignore_permissions=True)
+			remove_team_member_keeping_an_admin(team, member)
 
 	save_session_user_sidebar_preferences(ordered_team_names, sidebar_badge_style)
 	return ordered_team_names
