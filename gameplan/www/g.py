@@ -6,7 +6,7 @@ import subprocess
 
 import frappe
 from frappe import _, safe_decode
-from frappe.core.api.file import get_max_file_size
+from frappe.core.api.file import get_file_chunk_size, get_max_file_size
 from frappe.utils import get_system_timezone
 from frappe.utils.telemetry import capture
 
@@ -45,6 +45,7 @@ def get_boot():
 			"read_only_mode": frappe.flags.read_only,
 			"gameplan_frontend_sentry_dsn": frappe.conf.gameplan_frontend_sentry_dsn,
 			"max_file_size": get_max_file_size(),
+			"file_chunk_size": get_file_chunk_size(),
 			"app_version": get_app_version(),
 			"system_timezone": get_system_timezone(),
 		}
