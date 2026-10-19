@@ -127,7 +127,7 @@ class TestSpaceCommunityValidation(GameplanTestCase):
 				with self.assertRaises(frappe.PermissionError):
 					update_doc("GP Project", space.name)
 			self.assertEqual(space.reload().team, origin.name)
-			with patch.object(frappe.local, "form_dict", frappe._dict(team=destination.name, is_private=0)):
+			with patch.object(frappe.local, "form_dict", frappe._dict(team=destination.name)):
 				update_doc("GP Project", space.name)
 		self.assertEqual(space.reload().team, destination.name)
 		self.assertEqual(discussion.reload().team, destination.name)
