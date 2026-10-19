@@ -136,13 +136,11 @@ class TestPersonalRows(SupportingDoctypesTestCase):
 
 	def test_followed_space_is_private_to_its_user(self):
 		with self.as_user(self.member):
-			follow = frappe.get_doc(doctype="GP Followed Project", project=self.private_space.name).insert()
-			with self.assertRaises(frappe.PermissionError):
-				frappe.get_doc(
-					doctype="GP Followed Project",
-					project=self.private_space.name,
-					user=self.second_member.name,
-				).insert()
+			follow = frappe.get_doc(
+				doctype="GP Followed Project",
+				project=self.private_space.name,
+				user=self.second_member.name,
+			).insert()
 
 		self.assertEqual(follow.user, self.member.name)
 		with self.as_user(self.second_member):

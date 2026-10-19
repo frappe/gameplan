@@ -117,7 +117,7 @@ def followed_project_query_conditions(user=None, **kwargs):
 
 def followed_project_has_permission(doc, ptype="read", user=None, **kwargs):
 	"""Following a Space is one user's own choice, so only they may see, add or drop it."""
-	if ptype == "create" and hasattr(doc, "doctype") and not get_doc_value(doc, FOLLOW_USER_FIELD):
-		# `before_insert` stamps an empty `user` with the session user after this check.
+	if ptype == "create":
+		# As for pins: `before_insert` stamps `user` with the session user after this check.
 		return True
 	return _belongs_to_user(doc, FOLLOW_USER_FIELD, user)
