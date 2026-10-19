@@ -627,18 +627,10 @@ def guest_access_query_conditions(user=None, **kwargs):
 	GuestAccess = frappe.qb.DocType("GP Guest Access")
 	criterion = GuestAccess.user == user
 	if not gameplan.is_guest(user):
-		Project = frappe.qb.DocType("GP Project")
-		managed_teams = community_admin_team_query(user)
-		managed_projects = (
-			frappe.qb.from_(Project)
-			.select(Project.name)
-			.where(
-				Project.team.isin(managed_teams)
-				| ((Project.is_private == 1) & is_member_parent("GP Project", Project.name, user))
-			)
-		)
 		criterion = (
-			criterion | GuestAccess.project.isin(managed_projects) | GuestAccess.team.isin(managed_teams)
+			criterion
+			| GuestAccess.project.isin(managed_project_query(user))
+			| GuestAccess.team.isin(community_admin_team_query(user))
 		)
 	return criterion_sql(criterion)
 
@@ -738,6 +730,19 @@ def accessible_project_query(user=None):
 	if criterion is not None:
 		query = query.where(criterion)
 	return query
+
+
+def managed_project_query(user):
+	"""Spaces a non-guest `user` manages: the SQL form of can_manage_space / can_manage_community."""
+	Project = frappe.qb.DocType("GP Project")
+	return (
+		frappe.qb.from_(Project)
+		.select(Project.name)
+		.where(
+			Project.team.isin(community_admin_team_query(user))
+			| ((Project.is_private == 1) & is_member_parent("GP Project", Project.name, user))
+		)
+	)
 
 
 def accessible_team_query(user=None):
