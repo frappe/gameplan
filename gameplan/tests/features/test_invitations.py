@@ -224,6 +224,35 @@ class TestInvitationCreation(InvitationTestCase):
 		self.assertTrue(frappe.db.exists("GP Invitation", {"email": "existing-then-guest@example.com"}))
 
 
+class TestWhoCanInvite(InvitationTestCase):
+	def test_members_create_invitations_only_through_invite_actions(self):
+		with self.as_user(self.member), self.assertRaises(frappe.PermissionError):
+			frappe.get_doc(
+				doctype="GP Invitation", email="direct@example.com", role="Gameplan Member"
+			).insert()
+
+		self.assertFalse(frappe.db.exists("GP Invitation", {"email": "direct@example.com"}))
+
+	def test_only_admins_invite_admins(self):
+		with self.as_user(self.member), self.assertRaises(frappe.PermissionError):
+			self.make_invitation("new-admin@example.com", role="Gameplan Admin")
+
+		with self.as_user(self.admin):
+			self.make_invitation("new-admin@example.com", role="Gameplan Admin")
+
+		self.assertTrue(frappe.db.exists("GP Invitation", {"email": "new-admin@example.com"}))
+
+	def test_space_manager_removes_a_pending_guest_invitation(self):
+		community = create_community("Guest Invite Community", members=[self.member])
+		space = create_space("Guest Invite Space", community, is_private=1, members=[self.member])
+		with self.as_user(self.member):
+			space.invite_guest("pending-guest@example.com")
+			invitation = frappe.db.get_value("GP Invitation", {"email": "pending-guest@example.com"})
+			space.remove_guest_invitation(invitation)
+
+		self.assertFalse(frappe.db.exists("GP Invitation", invitation))
+
+
 class TestInvitationAccept(InvitationTestCase):
 	def test_accept_creates_website_user_with_role(self):
 		invitation = self.make_invitation("fresh@example.com", role="Gameplan Member")
@@ -354,12 +383,13 @@ class TestAcceptInvitationEndpoint(InvitationTestCase):
 		# get_password_link commits a reset-key write; stub it to keep the test
 		# transaction rolled back and to pin the redirect target deterministically.
 		with patch.object(type(invitation), "get_password_link", return_value="/update-password?key=stub"):
-			accept_invitation(key=invitation.key)
+			accept_invitation(key=invitation.flags.invite_key)
 
 		self.assertEqual(frappe.local.response.get("type"), "redirect")
 		self.assertEqual(frappe.local.response.get("location"), "/update-password?key=stub")
 
-	def test_existing_user_with_password_is_logged_in(self):
+	def test_existing_user_is_sent_to_the_app_to_sign_in(self):
+		"""An account that was here before the invitation signs in the way it always has."""
 		create_member("has-password@example.com")
 		# A Date field, so it must hold a date. MariaDB coerces a datetime silently, but the
 		# SQLite backend stores the string as given and frappe's `date` converter then fails
@@ -370,13 +400,31 @@ class TestAcceptInvitationEndpoint(InvitationTestCase):
 		previous = getattr(frappe.local, "login_manager", None)
 		frappe.local.login_manager = MagicMock()
 		try:
-			accept_invitation(key=invitation.key)
-			frappe.local.login_manager.login_as.assert_called_once_with("has-password@example.com")
+			accept_invitation(key=invitation.flags.invite_key)
+			frappe.local.login_manager.login_as.assert_not_called()
 		finally:
 			frappe.local.login_manager = previous
 
 		self.assertEqual(frappe.local.response.get("type"), "redirect")
 		self.assertEqual(frappe.local.response.get("location"), "/g")
+		self.assertIn("Gameplan Admin", frappe.get_roles("has-password@example.com"))
+
+	def test_a_key_works_once(self):
+		invitation = self.make_invitation("once@example.com")
+		with patch.object(type(invitation), "get_password_link", return_value="/update-password?key=stub"):
+			accept_invitation(key=invitation.flags.invite_key)
+
+		with self.assertRaises(frappe.ValidationError):
+			accept_invitation(key=invitation.flags.invite_key)
+
+	def test_stored_key_does_not_open_the_invitation(self):
+		"""The link carries the key; the row keeps only its hash."""
+		invitation = self.make_invitation("stored-key@example.com")
+
+		self.assertNotEqual(invitation.key, invitation.flags.invite_key)
+		with self.assertRaises(frappe.ValidationError):
+			accept_invitation(key=invitation.key)
+		self.assertEqual(frappe.db.get_value("GP Invitation", invitation.name, "status"), "Pending")
 
 	def test_accept_invitation_succeeds_when_signed_in_as_ordinary_member(self):
 		"""Accepting an invitation while logged in as a normal member must provision the
@@ -386,7 +434,7 @@ class TestAcceptInvitationEndpoint(InvitationTestCase):
 
 		frappe.set_user(member.name)
 		with patch.object(type(invitation), "get_password_link", return_value="/update-password?key=stub"):
-			accept_invitation(key=invitation.key)
+			accept_invitation(key=invitation.flags.invite_key)
 
 		self.assertTrue(frappe.db.exists("GP User Profile", {"user": "invited-member@example.com"}))
 

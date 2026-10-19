@@ -156,6 +156,22 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 		_invite_by_email(email, role="Gameplan Guest", projects=[self.name])
 
 	@frappe.whitelist(methods=["POST"])
+	def remove_guest_invitation(self, invitation):
+		require_can_invite_guest(self)
+		invitation = frappe.get_doc("GP Invitation", invitation)
+		projects = frappe.parse_json(invitation.projects or "[]")
+		# Compare as str: project names are ints, and the stored JSON may hold either.
+		remaining = [project for project in projects if str(project) != str(self.name)]
+		if invitation.role != "Gameplan Guest" or invitation.status != "Pending" or remaining == projects:
+			frappe.throw("Invalid guest invitation")
+
+		if remaining:
+			invitation.projects = frappe.as_json(remaining)
+			invitation.save(ignore_permissions=True)
+		else:
+			frappe.delete_doc("GP Invitation", invitation.name, ignore_permissions=True)
+
+	@frappe.whitelist(methods=["POST"])
 	def remove_guest(self, email):
 		require_can_invite_guest(self)
 		name = frappe.db.get_value("GP Guest Access", {"project": self.name, "user": email})

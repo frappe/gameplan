@@ -57,6 +57,12 @@ class TestUITestHelperHTTPMethods(GameplanTestCase):
 
 
 class TestOnboardingEndpoint(APIEndpointTestCase):
+	def setUp(self):
+		super().setUp()
+		# Onboarding runs on a brand-new site. The rows come back with the test's rollback.
+		frappe.db.delete("GP Project")
+		frappe.db.delete("GP Team")
+
 	def test_returns_the_created_community_and_space_route_identifiers(self):
 		with self.as_user(self.member):
 			result = onboarding(
@@ -90,6 +96,30 @@ class TestOnboardingEndpoint(APIEndpointTestCase):
 			)
 
 		self.assertEqual(frappe.db.get_value("GP Project", result["space"], "is_private"), 0)
+
+	def test_runs_only_until_the_site_has_a_community(self):
+		create_community("Existing Community")
+
+		with self.as_user(self.member), self.assertRaises(frappe.PermissionError):
+			onboarding(
+				community="Second Onboarding Community",
+				space="Second Onboarding Space",
+				icon="lucide-users",
+				emails='["late-invitee@example.com"]',
+			)
+
+		self.assertFalse(frappe.db.exists("GP Team", {"title": "Second Onboarding Community"}))
+		self.assertFalse(frappe.db.exists("GP Invitation", {"email": "late-invitee@example.com"}))
+
+		with self.as_user(self.admin):
+			onboarding(
+				community="Admin Onboarding Community",
+				space="Admin Onboarding Space",
+				icon="lucide-users",
+				emails="[]",
+			)
+
+		self.assertTrue(frappe.db.exists("GP Team", {"title": "Admin Onboarding Community"}))
 
 	def test_anonymous_caller_is_denied(self):
 		self.assert_anonymous_denied(onboarding)

@@ -3,7 +3,9 @@
 
 import frappe
 from frappe.model.document import Document
+from frappe.utils import sha256_hash
 
+import gameplan
 from gameplan.gameplan.doctype.gp_team.gp_team import get_public_team_names
 
 
@@ -17,7 +19,13 @@ class GPInvitation(Document):
 			self.teams = None
 			self.projects = None
 
-		self.key = frappe.generate_hash(length=12)
+		if self.role == "Gameplan Admin" and not gameplan.is_admin():
+			frappe.throw("Only admins can invite admins", frappe.PermissionError)
+
+		# Only the invite link carries the key. The row keeps its hash, so reading the
+		# invitation does not give anyone a link that works.
+		self.flags.invite_key = frappe.generate_hash(length=32)
+		self.key = sha256_hash(self.flags.invite_key)
 		self.invited_by = frappe.session.user
 		self.status = "Pending"
 
@@ -29,7 +37,9 @@ class GPInvitation(Document):
 		self.invite_via_email()
 
 	def invite_via_email(self):
-		invite_link = frappe.utils.get_url(f"/api/method/gameplan.api.accept_invitation?key={self.key}")
+		invite_link = frappe.utils.get_url(
+			f"/api/method/gameplan.api.accept_invitation?key={self.flags.invite_key}"
+		)
 		if frappe.local.dev_server:
 			print(f"Invite link for {self.email}: {invite_link}")
 			return
@@ -67,7 +77,8 @@ class GPInvitation(Document):
 		self.db_set("email_sent_at", frappe.utils.now())
 
 	def accept(self):
-		if self.status == "Expired":
+		# A key works once: accepting it, or letting it expire, ends it.
+		if self.status != "Pending":
 			frappe.throw("Invalid or expired key")
 
 		user = self.create_user_if_not_exists()
@@ -126,7 +137,8 @@ class GPInvitation(Document):
 			team.save(ignore_permissions=True)
 
 	def create_user_if_not_exists(self):
-		if not frappe.db.exists("User", self.email):
+		self.flags.created_user = not frappe.db.exists("User", self.email)
+		if self.flags.created_user:
 			first_name = self.email.split("@")[0].title()
 			user = frappe.get_doc(
 				doctype="User",
@@ -154,6 +166,14 @@ def grant_access(email, role, projects=None):
 	invitation.accept()
 	invitation.notify_access_granted()
 	return invitation
+
+
+def get_pending_invitation(key):
+	"""The pending invitation an invite link's key belongs to, or None."""
+	if not key:
+		return None
+	name = frappe.db.get_value("GP Invitation", {"key": sha256_hash(key), "status": "Pending"})
+	return frappe.get_doc("GP Invitation", name) if name else None
 
 
 def expire_invitations():

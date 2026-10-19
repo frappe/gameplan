@@ -10,7 +10,7 @@ from frappe.query_builder.functions import Count
 from frappe.utils import cint, split_emails, validate_email_address
 
 import gameplan
-from gameplan.gameplan.doctype.gp_invitation.gp_invitation import grant_access
+from gameplan.gameplan.doctype.gp_invitation.gp_invitation import get_pending_invitation, grant_access
 from gameplan.realtime import notify_notification_count_changed, unread_notification_count
 from gameplan.roles import GAMEPLAN_ROLES
 from gameplan.utils import validate_type
@@ -274,30 +274,21 @@ def unread_notifications():
 @frappe.whitelist(allow_guest=True)
 @validate_type
 def accept_invitation(key: str = None):
-	if not key:
+	invitation = get_pending_invitation(key)
+	if not invitation:
 		frappe.throw("Invalid or expired key")
-
-	result = frappe.db.get_all("GP Invitation", filters={"key": key}, pluck="name")
-	if not result:
-		frappe.throw("Invalid or expired key")
-
-	invitation = frappe.get_doc("GP Invitation", result[0])
 
 	invitation.accept()
-	invitation.reload()
 
-	user = frappe.get_doc("User", invitation.email)
-	needs_password_setup = user and not user.last_password_reset_date
-
-	if invitation.status == "Accepted":
-		if needs_password_setup:
-			url = invitation.get_password_link()
-			frappe.local.response["type"] = "redirect"
-			frappe.local.response["location"] = f"{url}"
-		else:
-			frappe.local.login_manager.login_as(invitation.email)
-			frappe.local.response["type"] = "redirect"
-			frappe.local.response["location"] = "/g"
+	frappe.local.response["type"] = "redirect"
+	if invitation.flags.created_user:
+		# get_password_link commits, so the accepted invitation is saved with it.
+		frappe.local.response["location"] = invitation.get_password_link()
+	else:
+		# The account was here before the invitation, and its owner signs in to it the
+		# way they always have. Accepting a GET request is not committed on its own.
+		frappe.db.commit()  # nosemgrep: frappe-manual-commit
+		frappe.local.response["location"] = "/g"
 
 
 @frappe.whitelist()
@@ -323,6 +314,11 @@ def mark_all_notifications_as_read():
 
 @frappe.whitelist(methods=["POST"])
 def onboarding(community, space, icon, emails, is_private=0):
+	# Onboarding sets up a brand-new site. Once a community exists, communities and
+	# invitations go through their own screens and checks.
+	if not gameplan.is_admin() and frappe.db.get_all("GP Team", limit=1):
+		frappe.throw(_("This site is already set up"), frappe.PermissionError)
+
 	emails = frappe.parse_json(emails)
 
 	# Create the community. The GP Team after_insert hook auto-creates a public
@@ -339,9 +335,9 @@ def onboarding(community, space, icon, emails, is_private=0):
 		doctype="GP Project", title=space, icon=icon, team=team.name, is_private=is_private
 	).insert()
 
-	# Trusted internal path: the signup creator invites their first teammates as
-	# Members. Bypasses the admin gate (the creator isn't an admin yet) but the
-	# role is hardcoded, so no escalation is possible.
+	# The signup creator invites their first teammates as Members. The creator may not
+	# be an admin yet, so this skips invite_by_email's admin check; the guard above
+	# limits it to the first run and the role is fixed.
 	_invite_by_email(", ".join(emails), role="Gameplan Member")
 	return {"team": team.name, "space": project.name}
 
