@@ -20,4 +20,5 @@ def with_stored_document(method):
 		self.check_permission("read")
 		return method(self, *args, **kwargs)
 
+	wrapped.uses_stored_document = True
 	return wrapped

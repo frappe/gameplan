@@ -1,6 +1,7 @@
 # Copyright (c) 2026, Frappe Technologies Pvt Ltd and Contributors
 # See license.txt
 
+import inspect
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -156,6 +157,12 @@ class TestStoredDocumentMethods(GameplanTestCase):
 			discussion = create_discussion("Stored thread totals", self.space)
 		with self.as_user(self.second_member):
 			comment = create_comment(discussion)
+			self.assertTrue(
+				frappe.db.exists(
+					"GP Discussion Visit",
+					{"user": self.second_member.name, "discussion": discussion.name},
+				)
+			)
 			poll = create_poll("Stored thread poll", discussion)
 			discussion.reload()
 			self.assertEqual(discussion.comments_count, 2)
@@ -170,3 +177,21 @@ class TestStoredDocumentMethods(GameplanTestCase):
 			discussion.reload()
 			self.assertEqual(discussion.comments_count, 0)
 			self.assertEqual(discussion.participants_count, 1)
+
+	def test_whitelisted_controller_methods_use_stored_document(self):
+		"""Every whitelisted method on a Gameplan controller runs through with_stored_document."""
+		doctypes = frappe.get_all(
+			"DocType", filters={"module": ["in", frappe.get_module_list("gameplan")]}, pluck="name"
+		)
+		self.assertTrue(doctypes)
+		checked = set()
+		for doctype in doctypes:
+			controller = frappe.get_controller(doctype)
+			for name, method in inspect.getmembers(controller, inspect.isfunction):
+				if not method.__module__.startswith("gameplan.") or method not in frappe.whitelisted:
+					continue
+				checked.add(method.__qualname__)
+				with self.subTest(doctype=doctype, method=name):
+					self.assertTrue(getattr(method, "uses_stored_document", False))
+		self.assertIn("GPPoll.submit_vote", checked)
+		self.assertIn("HasReactions.react", checked)
