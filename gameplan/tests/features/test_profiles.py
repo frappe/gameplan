@@ -151,8 +151,11 @@ class TestProfiles(GameplanTestCase):
 	def test_admin_can_still_disable_a_user(self):
 		alice_profile = get_profile(self.alice.name)
 		frappe.set_user(self.admin.name)
+		# Syncing `enabled` to the profile runs as the admin and must not trip the ownership
+		# check. Assert on User: on Frappe v16 the profile re-fetches `user.enabled` from a
+		# value cache that is stale until the transaction ends.
 		alice_profile.disable_user()
-		self.assertEqual(get_profile(self.alice.name).enabled, 0)
+		self.assertEqual(frappe.db.get_value("User", self.alice.name, "enabled"), 0)
 
 	def test_default_bento_layout_binds_every_populated_profile_field(self):
 		frappe.set_user(self.alice.name)
