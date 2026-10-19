@@ -123,6 +123,24 @@ describe('Poll lifecycle', () => {
     pollAnswer('Yes').should('be.disabled')
   })
 
+  it('keeps a poll-only comment draft across a reload', () => {
+    cy.intercept('POST', '/api/v2/document/GP%20Draft').as('draftInsert')
+    cy.visit(`/g/community/${community}/space/${space}/discussion/${discussion}`)
+
+    cy.button('Add a comment').click()
+    cy.get('[contenteditable=true]').should('be.visible').click()
+    cy.iconButton('Poll').click()
+    labelledInput('Question').type('Ship on Friday?')
+    cy.get('input[placeholder="Option 1"]').type('Yes')
+    cy.get('input[placeholder="Option 2"]').type('No')
+    cy.wait('@draftInsert').its('request.body.content').should('contain', 'data-type="poll"')
+
+    cy.reload()
+    labelledInput('Question').should('have.value', 'Ship on Friday?')
+    cy.get('input[placeholder="Option 1"]').should('have.value', 'Yes')
+    cy.get('input[placeholder="Option 2"]').should('have.value', 'No')
+  })
+
   // One answer per voter is a radiogroup, not a row of ticks. The bug this pins was a
   // checkbox on a poll that only ever accepts one answer: it offered a clear box next to
   // an empty one, a state the vote cannot hold, and it read as "pick as many as you
