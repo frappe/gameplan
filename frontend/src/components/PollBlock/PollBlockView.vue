@@ -1,6 +1,9 @@
 <template>
   <NodeViewWrapper class="not-prose my-3" contenteditable="false">
-    <div v-if="node.attrs.poll" class="rounded-6 border border-outline-gray-2 px-4 py-3">
+    <div
+      v-if="node.attrs.poll"
+      class="min-w-[50%] max-w-fit rounded-6 border border-outline-gray-2 px-4 py-3"
+    >
       <Poll
         v-if="poll"
         embedded

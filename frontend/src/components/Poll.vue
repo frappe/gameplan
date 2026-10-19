@@ -2,7 +2,7 @@
   <div class="relative">
     <DefinePollActions>
       <Button
-        v-if="!isStopped && !readOnlyMode && canDeletePoll"
+        v-if="!embedded && canStopPoll"
         variant="ghost"
         icon-left="lucide-minus-circle"
         @click="stopPoll"
@@ -13,6 +13,7 @@
         <span class="lucide-bar-chart-2 h-4 w-4 -rotate-90" />
       </Tooltip>
       <Dropdown
+        v-if="dropdownOptions.some((option) => option.condition())"
         align="end"
         :button="{
           icon: 'lucide-more-horizontal',
@@ -149,6 +150,14 @@
     </component>
     <!-- The tick moves optimistically, so a rejected vote has to say why it snapped back. -->
     <ErrorMessage class="-mt-2 mb-3" :message="voteError" />
+    <Button
+      v-if="embedded && !_poll.anonymous"
+      class="-mt-2"
+      variant="ghost"
+      @click="showDialog = true"
+    >
+      Show results
+    </Button>
     <div v-if="!embedded" class="mt-3">
       <Reactions doctype="GP Poll" :name="poll.name" :read-only-mode="readOnlyMode" />
     </div>
@@ -290,6 +299,7 @@ const canDeletePoll = computed(() => canDeleteContent(_poll.value, props.space, 
 const isStopped = computed(
   () => Boolean(_poll.value.stopped_at) && dayjsLocal().isAfter(_poll.value.stopped_at),
 )
+const canStopPoll = computed(() => !isStopped.value && !props.readOnlyMode && canDeletePoll.value)
 const totalLabel = computed(() => {
   const total = _poll.value.total_votes || 0
   if (!_poll.value.multiple_answers) {
@@ -326,10 +336,16 @@ const dropdownOptions = computed(() => [
   {
     label: 'Show results',
     icon: 'lucide-bar-chart-2',
-    condition: () => !_poll.value.anonymous,
+    condition: () => !props.embedded && !_poll.value.anonymous,
     onClick: () => {
       showDialog.value = true
     },
+  },
+  {
+    label: 'Stop poll',
+    icon: 'lucide-minus-circle',
+    condition: () => props.embedded && canStopPoll.value,
+    onClick: stopPoll,
   },
   {
     label: 'Retract vote',
