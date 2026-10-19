@@ -15,6 +15,7 @@ from gameplan.tests.fixtures import (
 	create_community,
 	create_discussion,
 	create_space,
+	create_task,
 	grant_guest_access,
 )
 
@@ -82,6 +83,21 @@ class TestActivity(SupportingDoctypesTestCase):
 			with self.subTest(user=user.name), self.as_user(user):
 				self.assertEqual(self.activity.name in list_as_client("GP Activity", **filters), visible)
 			self.assert_permission(self.activity, "read", user, visible)
+
+	def test_activity_on_a_personal_task_follows_the_task_owner(self):
+		task = create_task("Personal", owner=self.member)
+		# Edited by the admin, so the activity row's own owner is not the task owner.
+		with self.as_user(self.admin):
+			task = frappe.get_doc("GP Task", task.name)
+			task.title = "Personal, renamed"
+			task.save()
+		filters = {"reference_doctype": "GP Task", "reference_name": task.name}
+		activity = frappe.get_last_doc("GP Activity", filters=filters)
+
+		for user, visible in [(self.member, True), (self.second_member, False)]:
+			with self.subTest(user=user.name), self.as_user(user):
+				self.assertEqual(activity.name in list_as_client("GP Activity", **filters), visible)
+			self.assert_permission(activity, "read", user, visible)
 
 	def test_activity_is_only_written_by_the_server(self):
 		with self.as_user(self.member), self.assertRaises(frappe.PermissionError):

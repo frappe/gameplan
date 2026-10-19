@@ -137,7 +137,15 @@ def can_view_content(user, doc):
 		return can_view_space(user, project)
 	if is_global_admin(user):
 		return True
-	return get_doc_value(doc, "owner") == user
+	return get_content_owner(doc) == user
+
+
+def get_content_owner(doc):
+	"""The user that space-less content belongs to. A comment or activity row on a task
+	belongs to the task's owner, so it is visible wherever that task is."""
+	if doc.doctype in {"GP Comment", "GP Activity"} and doc.reference_doctype == "GP Task":
+		return frappe.db.get_value("GP Task", doc.reference_name, "owner")
+	return get_doc_value(doc, "owner")
 
 
 def users_who_can_view_content(users, doc):
@@ -161,7 +169,7 @@ def users_who_can_view_content(users, doc):
 		# can_view_content's own space-less fallback, inlined rather than called per
 		# user: it would re-resolve the project for every user (a query each, for a
 		# GP Comment) and give back exactly this answer.
-		owner = get_doc_value(doc, "owner")
+		owner = get_content_owner(doc)
 		return [user for user in users if is_global_admin(user) or user == owner]
 
 	project_info = get_project_info(project)
@@ -519,7 +527,7 @@ def activity_query_conditions(user=None, **kwargs):
 
 def referenced_content_query_conditions(doctype, user=None):
 	"""Rows that point at a discussion or task (reference_doctype/reference_name) follow
-	that discussion's or task's space."""
+	that discussion's or task's space, or, for a task with no space, its owner."""
 	user = user or frappe.session.user
 	if is_global_admin(user):
 		return None
@@ -532,8 +540,12 @@ def referenced_content_query_conditions(doctype, user=None):
 		.select(Discussion.name)
 		.where(accessible_project_criterion(Discussion.project, user))
 	)
+	# A task with no space is personal: only its owner sees it (see apply_task_access_filter).
+	space_less_task = (Task.project.isnull() | (Task.project == "")) & (Task.owner == user)
 	task_query = (
-		frappe.qb.from_(Task).select(Task.name).where(accessible_project_criterion(Task.project, user))
+		frappe.qb.from_(Task)
+		.select(Task.name)
+		.where(accessible_project_criterion(Task.project, user) | space_less_task)
 	)
 	on_discussion = (Row.reference_doctype == "GP Discussion") & Row.reference_name.isin(discussion_query)
 	on_task = (Row.reference_doctype == "GP Task") & Row.reference_name.isin(task_query)
