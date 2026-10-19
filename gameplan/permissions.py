@@ -39,7 +39,10 @@ def project_has_permission(doc, ptype="read", user=None, **kwargs):
 	if ptype in READ_PERMISSIONS:
 		return can_view_space(user, doc)
 	if ptype in {"write", "delete"}:
-		return can_manage_space(user, doc)
+		# Check both versions: a move or privacy change needs rights on the edited values,
+		# and the user must already manage the stored Space.
+		stored = _stored_version(doc)
+		return can_manage_space(user, doc) and (stored is None or can_manage_space(user, stored))
 	return True
 
 

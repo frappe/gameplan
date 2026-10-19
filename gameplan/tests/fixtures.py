@@ -61,9 +61,10 @@ def create_community(title="Test Community", *, is_private=0, members=(), admins
 
 def create_space(title, community, *, is_private=0, members=()):
 	doc = frappe.get_doc(doctype="GP Project", title=title, team=_name(community), is_private=is_private)
+	doc.insert(ignore_permissions=True)
 	for user in members:
 		doc.append("members", {"user": _name(user)})
-	return doc.insert(ignore_permissions=True)
+	return doc.save(ignore_permissions=True)
 
 
 def create_discussion(title, space, *, content="Test content", owner=None):

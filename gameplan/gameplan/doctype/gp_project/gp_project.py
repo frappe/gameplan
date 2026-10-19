@@ -56,7 +56,20 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 			self.icon = DEFAULT_SPACE_ICON
 
 	def before_insert(self):
+		self.set("members", [])
 		self.append("members", {"user": frappe.session.user})
+
+	def validate(self):
+		if self.flags.ignore_permissions or not self.team:
+			return
+		# Covers both a new Space and a move. Creating a Space checks only the role, and
+		# any member of a private Space may manage it, so the Community needs its own check.
+		if self.has_value_changed("team") and not can_view_community(frappe.session.user, self.team):
+			frappe.throw(_("You do not have access to this community"), frappe.PermissionError)
+
+	def on_update(self):
+		if not self.flags.in_insert and self.has_value_changed("team"):
+			self.update_project_team_references()
 
 	def on_trash(self):
 		GPUnreadRecord.delete_unread_records_for_project(self.name)
@@ -75,14 +88,8 @@ class GPProject(ManageMembersMixin, Archivable, Document):
 		team = team or None
 		if (self.team or None) == team:
 			return
-		# The save below checks write on the Space only, and every member of a private
-		# Space may manage it. Without this, a member could move the Space into a
-		# private Community they are not in.
-		if team and not can_view_community(frappe.session.user, team):
-			frappe.throw(_("You do not have access to this community"), frappe.PermissionError)
 		self.team = team
 		self.save()
-		self.update_project_team_references()
 
 	def update_project_team_references(self):
 		for doctype in PROJECT_TEAM_DOCTYPES:
