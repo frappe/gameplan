@@ -38,8 +38,6 @@ def project_has_permission(doc, ptype="read", user=None, **kwargs):
 	user = user or frappe.session.user
 	if ptype in READ_PERMISSIONS:
 		return can_view_space(user, doc)
-	if ptype == "create":
-		return not doc.team or can_view_community(user, doc.team)
 	if ptype in {"write", "delete"}:
 		return can_manage_space(user, _stored_version(doc) or doc)
 	return True
