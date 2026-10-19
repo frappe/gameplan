@@ -48,6 +48,7 @@ class GPComment(HasAttachments, HasMentions, HasReactions, HasTags, Document):
 		self.remove_all_reactions()
 		if self.reference_doctype == "GP Discussion":
 			GPUnreadRecord.delete_unread_records_for_comment(self.name)
+		self.remove_all_bookmarks()
 
 	def after_delete(self):
 		if self.flags.from_gameplan_delete_cascade == "GP Discussion":
@@ -171,6 +172,30 @@ class GPComment(HasAttachments, HasMentions, HasReactions, HasTags, Document):
 	@frappe.whitelist()
 	def get_revisions(self, fieldname="content"):
 		return get_document_revisions(self.doctype, self.name, fieldname)
+
+	@frappe.whitelist(methods=["POST"])
+	def add_bookmark(self):
+		if self.reference_doctype != "GP Discussion":
+			return
+		if frappe.db.exists("GP Bookmark", self.bookmark_filters()):
+			return
+		frappe.new_doc(
+			"GP Bookmark", discussion=self.reference_name, comment=self.name, user=frappe.session.user
+		).insert()
+
+	@frappe.whitelist(methods=["POST"])
+	def remove_bookmark(self):
+		bookmark = frappe.db.get_value("GP Bookmark", self.bookmark_filters(), "name")
+		if not bookmark:
+			return
+		frappe.get_doc("GP Bookmark", bookmark).delete()
+
+	def bookmark_filters(self):
+		return {"comment": self.name, "user": frappe.session.user}
+
+	def remove_all_bookmarks(self):
+		for name in frappe.get_all("GP Bookmark", filters={"comment": self.name}, pluck="name"):
+			frappe.delete_doc("GP Bookmark", name, ignore_permissions=True)
 
 
 def get_permission_query_conditions(user):

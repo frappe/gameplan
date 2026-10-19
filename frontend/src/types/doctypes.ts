@@ -435,3 +435,13 @@ export interface GPProfileBentoCard extends ChildDocType {
   /** Image Position: Int */
   image_position?: number
 }
+
+// Last updated: 2026-10-14 12:00:00.000000
+export interface GPBookmark extends DocType {
+  /** User: Link (User) */
+  user: string
+  /** Discussion: Link (GP Discussion) */
+  discussion?: string
+  /** Comment: Link (GP Comment) */
+  comment?: string
+}

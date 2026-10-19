@@ -112,7 +112,7 @@
 <script setup lang="ts">
 import { ref, computed, defineAsyncComponent } from 'vue'
 import { Dropdown, ErrorMessage, Tooltip, dayjsLocal } from 'frappe-ui'
-import { useList } from 'frappe-ui'
+import { useDoctype, useList } from 'frappe-ui'
 import { copyToClipboard } from '@/utils'
 import UserProfileLink from './UserProfileLink.vue'
 import CommentEditor from './editor/CommentEditor.vue'
@@ -120,19 +120,21 @@ import Reactions from './Reactions.vue'
 // Lazy: htmldiff-js + motion-v only load when a viewer opens edit history.
 const RevisionsDialog = defineAsyncComponent(() => import('./RevisionsDialog.vue'))
 import UserAvatarWithHover from './UserAvatarWithHover.vue'
-import { GPComment } from '@/types/doctypes'
+import { GPBookmark, GPComment } from '@/types/doctypes'
 import { dialog } from 'frappe-ui'
 import { tags } from '@/data/tags'
 import { useDraftSync } from '@/data/useDraftSync'
 import { useUser, useSessionUser } from '@/data/users'
 import type { Space } from '@/data/spaces'
 import { canDeleteContent, canEditContent } from '@/utils/permissions'
+import { captureError } from '@/utils/errorReporting'
 
 interface Props {
   comment: GPComment
   readOnlyMode?: boolean
   highlight?: boolean
   comments: ReturnType<typeof useList<GPComment>>
+  bookmarks?: ReturnType<typeof useList<GPBookmark>>
   // Space the comment's thread belongs to, for community-admin delete moderation.
   space?: Space | null
 }
@@ -198,6 +200,20 @@ const updateComment = async () => {
   }
 }
 
+const commentDoctype = useDoctype<GPComment>('GP Comment')
+
+const isBookmarked = computed(() =>
+  Boolean(props.bookmarks?.data?.some((b) => String(b.comment) === String(props.comment.name))),
+)
+
+const runBookmark = (method: 'add_bookmark' | 'remove_bookmark') =>
+  commentDoctype.runDocMethod
+    .submit({ name: props.comment.name, method })
+    .then(() => props.bookmarks?.reload())
+    .catch((error) =>
+      captureError(error, { action: method.replace('_', '-'), comment: props.comment.name }),
+    )
+
 const copyLink = (comment: GPComment) => {
   const location = window.location
   const url = `${location.origin}${location.pathname}?comment=${comment.name}`
@@ -226,6 +242,18 @@ const dropdownOptions = computed(() => [
     label: 'Copy link',
     icon: 'lucide-link',
     onClick: () => copyLink(props.comment),
+  },
+  {
+    label: 'Bookmark',
+    icon: 'lucide-bookmark',
+    onClick: () => runBookmark('add_bookmark'),
+    condition: () => Boolean(props.bookmarks) && !isBookmarked.value && !props.comment.deleted_at,
+  },
+  {
+    label: 'Remove Bookmark',
+    icon: 'lucide-bookmark',
+    onClick: () => runBookmark('remove_bookmark'),
+    condition: () => isBookmarked.value,
   },
   {
     label: 'Delete',
