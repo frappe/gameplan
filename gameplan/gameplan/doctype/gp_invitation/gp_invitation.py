@@ -95,7 +95,11 @@ class GPInvitation(Document):
 		return created_account
 
 	def created_account_awaits_password(self):
-		"""Whether this invitation created its account, and no password has been set on it yet."""
+		"""Whether this invitation created its account, and no password has been set on it yet.
+
+		An account created after the invitation is taken to be the one accepting it created.
+		The password link goes to the invited address either way.
+		"""
 		user = frappe.db.get_value("User", self.email, ["creation", "last_password_reset_date"], as_dict=True)
 		return bool(
 			user
