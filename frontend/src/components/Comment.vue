@@ -119,7 +119,7 @@ import Reactions from './Reactions.vue'
 // Lazy: htmldiff-js + motion-v only load when a viewer opens edit history.
 const RevisionsDialog = defineAsyncComponent(() => import('./RevisionsDialog.vue'))
 import UserAvatarWithHover from './UserAvatarWithHover.vue'
-import { GPComment } from '@/types/doctypes'
+import { GPBookmark, GPComment } from '@/types/doctypes'
 import { dialog } from 'frappe-ui'
 import { tags } from '@/data/tags'
 import { useDraftSync } from '@/data/useDraftSync'
@@ -132,7 +132,7 @@ interface Props {
   readOnlyMode?: boolean
   highlight?: boolean
   comments: ReturnType<typeof useList<GPComment>>
-  bookmarks?: ReturnType<typeof useList<{ name: string; comment: string | null }>>
+  bookmarks?: ReturnType<typeof useList<GPBookmark>>
   // Space the comment's thread belongs to, for community-admin delete moderation.
   space?: Space | null
 }
