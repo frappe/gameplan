@@ -27,7 +27,7 @@
     <List :selectable="selectable" v-model:selection="selectedDiscussions" :class="listClass">
       <DiscussionRow
         v-for="discussion of discussions.data"
-        :key="discussion.name"
+        :key="discussion.bookmark || discussion.name"
         :discussion="discussion"
         :showSpaceName="!filters || !filters.project"
       />

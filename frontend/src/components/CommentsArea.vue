@@ -48,6 +48,7 @@
           "
           :readOnlyMode="readOnlyMode"
           :comments="comments"
+          :bookmarks="bookmarks"
         />
         <Activity
           :class="[
@@ -276,7 +277,7 @@ import Poll from './Poll.vue'
 import UserAvatar from './UserAvatar.vue'
 import { dialog, shellScrollContainer } from 'frappe-ui'
 import { subscribeToDoc, useSocket, type NewActivityEvent } from '@/socket'
-import { GPActivity, GPComment, GPPoll } from '@/types/doctypes'
+import { GPActivity, GPBookmark, GPComment, GPPoll } from '@/types/doctypes'
 import type { Editor } from '@tiptap/vue-3'
 import { tags } from '@/data/tags'
 import { useRichQuotes } from '@/components/RichQuoteExtension/useRichQuotes'
@@ -422,6 +423,13 @@ const comments = useList<GPComment>({
       scrollToEnd()
     }
   },
+})
+
+const bookmarks = useList<GPBookmark>({
+  doctype: 'GP Bookmark',
+  fields: ['name', 'comment'],
+  filters: { discussion: props.name },
+  limit: 99999,
 })
 
 const activities = useList<GPActivity>({
