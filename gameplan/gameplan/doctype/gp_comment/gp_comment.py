@@ -103,9 +103,21 @@ class GPComment(HasAttachments, HasMentions, HasReactions, HasTags, Document):
 
 	def _get_missing_mandatory_fields(self):
 		missing = super()._get_missing_mandatory_fields()
-		if POLL_BLOCK.search(self.content or ""):
+		if self.has_a_poll_that_stays():
 			missing = [field for field in missing if field[0] != "content"]
 		return missing
+
+	def has_a_poll_that_stays(self):
+		# A block pointing at another comment's poll (one pasted from elsewhere) is dropped
+		# on save, so it does not count as content.
+		block = POLL_BLOCK.search(self.content or "")
+		if not block:
+			return False
+		attrs = BeautifulSoup(block.group(), "html.parser").div.attrs
+		if "data-poll-draft" in attrs:
+			return True
+		poll = not self.is_new() and frappe.db.get_value("GP Poll", {"comment": self.name})
+		return bool(poll) and attrs.get("data-poll") == str(poll)
 
 	def sanitize_content(self):
 		from gameplan.utils.sanitizer import sanitize_content

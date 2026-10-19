@@ -1152,6 +1152,22 @@ class TestPollInComment(PollTestCase):
 		self.assertTrue(frappe.db.exists("GP Poll", other.name))
 		self.assertFalse(self.poll_of(comment))
 
+	def test_a_comment_with_only_a_pasted_poll_is_rejected(self):
+		other = self.poll()
+
+		with self.assertRaises(frappe.MandatoryError):
+			self.comment(f'<div data-type="poll" data-poll="{other.name}"></div>')
+
+	def test_editing_a_comment_down_to_its_own_poll_is_allowed(self):
+		comment = self.comment(f"<p>Pick one</p>{poll_block()}")
+		poll = self.poll_of(comment)
+
+		only_the_poll = f'<div data-type="poll" data-poll="{poll}"></div>'
+		with self.as_user(self.member):
+			set_value("GP Comment", comment.name, "content", only_the_poll)
+
+		self.assertEqual(str(self.poll_of(comment)), str(poll))
+
 	def test_deleting_the_comment_deletes_its_poll(self):
 		comment = self.comment(poll_block())
 		poll = self.poll_of(comment)
