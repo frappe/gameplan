@@ -15,17 +15,21 @@ The other half of that rule is that a poll's ballot and lifecycle belong to its 
 go through `stop_poll` or straight at the document — TestPollFieldProtection locks that.
 """
 
+import html
+import json
 from contextlib import contextmanager
 from datetime import timedelta
 from unittest.mock import patch
 
 import frappe
 import frappe.utils.data
+from frappe.client import set_value
 from frappe.utils import add_days, get_datetime, now_datetime
 
 from gameplan.gameplan.doctype.gp_poll.gp_poll import GPPoll
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
+	create_comment,
 	create_community,
 	create_discussion,
 	create_poll,
@@ -949,3 +953,249 @@ class TestGuestPollParticipation(GameplanTestCase):
 		self.assertEqual([option.title for option in poll.options], ["Yes", "No"])
 		self.assertFalse(poll.anonymous)
 		self.assertEqual([(v.user, v.option) for v in poll.votes], [(self.guest.name, "Yes")])
+
+
+def poll_block(title="Lunch?", options=("Pizza", "Salad"), **settings):
+	draft = {"title": title, "options": [{"title": option} for option in options], **settings}
+	return f'<div data-type="poll" data-poll-draft="{html.escape(json.dumps(draft))}"></div>'
+
+
+class TestPollInComment(PollTestCase):
+	def comment(self, content, user=None):
+		with self.as_user(user or self.member):
+			return frappe.get_doc(
+				doctype="GP Comment",
+				reference_doctype="GP Discussion",
+				reference_name=self.discussion.name,
+				content=content,
+			).insert()
+
+	def edit(self, comment, content, user=None):
+		with self.as_user(user or self.member):
+			comment = frappe.get_doc("GP Comment", comment.name)
+			comment.content = content
+			comment.save()
+		return comment
+
+	def poll_of(self, comment):
+		return frappe.db.get_value("GP Poll", {"comment": comment.name})
+
+	def test_a_poll_block_creates_the_poll(self):
+		comment = self.comment(f"<p>Before</p>{poll_block()}<p>After</p>")
+
+		poll = frappe.get_doc("GP Poll", self.poll_of(comment))
+		self.assertEqual(poll.discussion, str(self.discussion.name))
+		self.assertEqual(poll.owner, self.member.name)
+		self.assertEqual([option.title for option in poll.options], ["Pizza", "Salad"])
+
+	def test_the_block_is_stamped_with_the_poll_and_the_text_around_it_is_kept(self):
+		comment = self.comment(f"<p>Before</p>{poll_block()}<p>After</p>")
+
+		saved = frappe.db.get_value("GP Comment", comment.name, "content")
+		block = f'<div data-type="poll" data-poll="{self.poll_of(comment)}"></div>'
+		self.assertEqual(saved, f"<p>Before</p>{block}<p>After</p>")
+		self.assertNotIn("data-poll-draft", saved)
+
+	def test_people_can_vote_on_a_poll_in_a_comment(self):
+		comment = self.comment(poll_block())
+		poll = frappe.get_doc("GP Poll", self.poll_of(comment))
+
+		self.vote(poll, self.second_member, "Pizza")
+
+		self.assertEqual(self.option(poll, "Pizza").votes, 1)
+
+	def test_empty_options_are_left_out(self):
+		comment = self.comment(poll_block(options=("Pizza", "Salad", "")))
+
+		poll = frappe.get_doc("GP Poll", self.poll_of(comment))
+		self.assertEqual([option.title for option in poll.options], ["Pizza", "Salad"])
+
+	def test_a_comment_can_be_just_a_poll(self):
+		comment = self.comment(poll_block())
+
+		self.assertTrue(self.poll_of(comment))
+
+	def test_attached_poll_is_not_counted_as_its_own_post(self):
+		comment = self.comment(f"<p>Pick one</p>{poll_block()}")
+
+		self.discussion.reload()
+		self.assertEqual(self.discussion.comments_count, 1)
+		self.assertEqual(self.discussion.last_post_type, "GP Comment")
+		self.assertEqual(str(self.discussion.last_post), str(comment.name))
+
+	def test_a_comment_takes_only_one_poll(self):
+		with self.assertRaises(frappe.ValidationError):
+			self.comment(poll_block() + poll_block("Dinner?"))
+
+	def test_an_incomplete_poll_is_rejected(self):
+		with self.assertRaises(frappe.ValidationError):
+			self.comment(poll_block(options=()))
+
+	def test_a_malformed_poll_draft_is_rejected_as_invalid(self):
+		for draft in ([], {"title": "Lunch?", "options": ["Pizza", "Salad"]}, {"title": "Lunch?"}):
+			block = f'<div data-type="poll" data-poll-draft="{html.escape(json.dumps(draft))}"></div>'
+			with self.subTest(draft=draft), self.assertRaises(frappe.ValidationError) as raised:
+				self.comment(block)
+			self.assertIn("Invalid poll", str(raised.exception))
+
+	def test_editing_the_text_keeps_the_poll(self):
+		comment = self.comment(f"<p>Before</p>{poll_block()}")
+		poll = self.poll_of(comment)
+
+		self.edit(comment, frappe.db.get_value("GP Comment", comment.name, "content") + "<p>Later</p>")
+
+		self.assertEqual(self.poll_of(comment), poll)
+
+	def test_removing_the_block_deletes_the_poll(self):
+		comment = self.comment(f"<p>Before</p>{poll_block()}")
+		poll = self.poll_of(comment)
+
+		self.edit(comment, "<p>Before</p>")
+
+		self.assertFalse(frappe.db.exists("GP Poll", poll))
+
+	def test_another_member_cannot_remove_the_poll(self):
+		comment = self.comment(f"<p>Before</p>{poll_block()}")
+		poll = self.poll_of(comment)
+
+		with self.assertRaises(frappe.PermissionError) as raised:
+			self.edit(comment, "<p>Before</p>", user=self.second_member)
+
+		self.assertIn("Only the poll's owner can remove it", str(raised.exception))
+		self.assertTrue(frappe.db.exists("GP Poll", poll))
+
+	def test_another_member_can_edit_the_text_around_the_poll(self):
+		comment = self.comment(f"<p>Before</p>{poll_block()}")
+		poll = self.poll_of(comment)
+		content = frappe.db.get_value("GP Comment", comment.name, "content")
+
+		self.edit(comment, content + "<p>Later</p>", user=self.second_member)
+
+		self.assertEqual(self.poll_of(comment), poll)
+		self.assertIn("<p>Later</p>", frappe.db.get_value("GP Comment", comment.name, "content"))
+
+	def test_a_poll_only_comment_still_checks_other_mandatory_fields(self):
+		field = frappe.get_meta("GP Comment").get_field("deleted_at")
+
+		with patch.object(field, "reqd", 1), self.assertRaises(frappe.MandatoryError) as raised:
+			self.comment(poll_block())
+
+		self.assertIn("deleted_at", str(raised.exception))
+		self.assertNotIn("content", str(raised.exception))
+
+	def test_a_comment_without_text_or_poll_is_still_rejected(self):
+		with self.assertRaises(frappe.MandatoryError):
+			self.comment("<p></p>")
+
+	def test_a_poll_cannot_be_moved_to_another_comment(self):
+		comment = self.comment(poll_block())
+		poll = self.poll_of(comment)
+		other = create_comment(self.discussion, owner=self.member)
+
+		with self.as_user(self.member), self.assertRaises(frappe.ValidationError):
+			set_value("GP Poll", poll, "comment", other.name)
+
+		self.assertEqual(str(frappe.db.get_value("GP Poll", poll, "comment")), str(comment.name))
+
+	def test_a_standalone_poll_cannot_be_moved_into_a_comment(self):
+		poll = self.poll()
+		comment = create_comment(self.discussion, owner=self.member)
+
+		with self.as_user(self.member), self.assertRaises(frappe.ValidationError):
+			set_value("GP Poll", poll.name, "comment", comment.name)
+
+		self.assertFalse(frappe.db.get_value("GP Poll", poll.name, "comment"))
+
+	def test_a_poll_in_a_comment_cannot_be_moved_to_another_discussion(self):
+		comment = self.comment(poll_block())
+		poll = self.poll_of(comment)
+		other = create_discussion("Other thread", self.space, owner=self.member)
+
+		with self.as_user(self.member), self.assertRaises(frappe.ValidationError):
+			set_value("GP Poll", poll, "discussion", other.name)
+
+		self.assertEqual(str(frappe.db.get_value("GP Poll", poll, "discussion")), str(self.discussion.name))
+
+	def test_a_comment_with_a_poll_cannot_be_moved_to_another_discussion(self):
+		comment = self.comment(poll_block())
+		poll = self.poll_of(comment)
+		other = create_discussion("Other thread", self.space, owner=self.member)
+
+		with self.as_user(self.member), self.assertRaises(frappe.ValidationError) as raised:
+			set_value("GP Comment", comment.name, "reference_name", other.name)
+
+		self.assertIn("A comment with a poll cannot be moved", str(raised.exception))
+		self.assertEqual(
+			str(frappe.db.get_value("GP Comment", comment.name, "reference_name")), str(self.discussion.name)
+		)
+		self.assertEqual(str(frappe.db.get_value("GP Poll", poll, "discussion")), str(self.discussion.name))
+
+	def test_a_comment_without_a_poll_can_still_be_moved(self):
+		comment = self.comment("<p>Hello</p>")
+		other = create_discussion("Other thread", self.space, owner=self.member)
+
+		with self.as_user(self.member):
+			set_value("GP Comment", comment.name, "reference_name", other.name)
+
+		self.assertEqual(
+			str(frappe.db.get_value("GP Comment", comment.name, "reference_name")), str(other.name)
+		)
+
+	def test_a_block_pointing_at_another_poll_is_dropped(self):
+		other = self.poll()
+
+		comment = self.comment(f'<p>Copied</p><div data-type="poll" data-poll="{other.name}"></div>')
+
+		self.assertEqual(frappe.db.get_value("GP Comment", comment.name, "content"), "<p>Copied</p>")
+		self.assertTrue(frappe.db.exists("GP Poll", other.name))
+		self.assertFalse(self.poll_of(comment))
+
+	def test_a_comment_with_only_a_pasted_poll_is_rejected(self):
+		other = self.poll()
+
+		with self.assertRaises(frappe.MandatoryError):
+			self.comment(f'<div data-type="poll" data-poll="{other.name}"></div>')
+
+	def test_editing_a_comment_down_to_its_own_poll_is_allowed(self):
+		comment = self.comment(f"<p>Pick one</p>{poll_block()}")
+		poll = self.poll_of(comment)
+
+		only_the_poll = f'<div data-type="poll" data-poll="{poll}"></div>'
+		with self.as_user(self.member):
+			set_value("GP Comment", comment.name, "content", only_the_poll)
+
+		self.assertEqual(str(self.poll_of(comment)), str(poll))
+
+	def test_deleting_the_comment_deletes_its_poll(self):
+		comment = self.comment(poll_block())
+		poll = self.poll_of(comment)
+
+		with self.as_user(self.member):
+			frappe.delete_doc("GP Comment", comment.name)
+
+		self.assertFalse(frappe.db.exists("GP Poll", poll))
+
+	def test_cannot_attach_a_poll_to_someone_elses_comment(self):
+		comment = create_comment(self.discussion, owner=self.second_member)
+
+		with self.as_user(self.member), self.assertRaises(frappe.PermissionError):
+			frappe.get_doc(
+				doctype="GP Poll",
+				title="Hijack?",
+				discussion=self.discussion.name,
+				comment=comment.name,
+				options=[{"title": "Yes"}, {"title": "No"}],
+			).insert()
+
+	def test_cannot_attach_a_poll_to_a_comment_in_another_discussion(self):
+		other = create_discussion("Other thread", self.space, owner=self.member)
+		comment = create_comment(other, owner=self.member)
+
+		with self.as_user(self.member), self.assertRaises(frappe.ValidationError):
+			frappe.get_doc(
+				doctype="GP Poll",
+				title="Elsewhere?",
+				discussion=self.discussion.name,
+				comment=comment.name,
+				options=[{"title": "Yes"}, {"title": "No"}],
+			).insert()

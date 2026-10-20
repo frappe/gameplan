@@ -1,5 +1,28 @@
 <template>
   <div class="relative">
+    <DefinePollActions>
+      <Button
+        v-if="!embedded && canStopPoll"
+        variant="ghost"
+        icon-left="lucide-minus-circle"
+        @click="stopPoll"
+      >
+        Stop Poll
+      </Button>
+      <Tooltip v-else-if="!embedded" text="This is a poll">
+        <span class="lucide-bar-chart-2 h-4 w-4 -rotate-90" />
+      </Tooltip>
+      <Dropdown
+        v-if="dropdownOptions.some((option) => option.condition())"
+        align="end"
+        :button="{
+          icon: 'lucide-more-horizontal',
+          variant: 'ghost',
+          label: 'Poll Options',
+        }"
+        :options="dropdownOptions"
+      />
+    </DefinePollActions>
     <div
       v-if="highlight"
       class="absolute inset-0 translate-y- z-[5] rounded-4 border-2 -mx-4 -mb-4 mt-11 pointer-events-none"
@@ -10,6 +33,7 @@
          app header's height so scrolled-up content is masked rather than showing through
          the strip above it. The previous `pt-15` was not a real utility, so it did nothing. -->
     <div
+      v-if="!embedded"
       class="sticky -top-px z-[1] -mx-2 flex items-center bg-surface-base px-2 pb-2 pt-2 text-base text-ink-gray-8 sm:top-0 sm:pt-14"
     >
       <UserProfileLink class="mr-3" :user="owner.name">
@@ -29,29 +53,15 @@
         </div>
       </div>
       <div class="ml-auto flex items-center space-x-2">
-        <Button
-          v-if="!isStopped && !readOnlyMode && canDeletePoll"
-          variant="ghost"
-          icon-left="lucide-minus-circle"
-          @click="stopPoll"
-        >
-          Stop Poll
-        </Button>
-        <Tooltip v-else text="This is a poll">
-          <span class="lucide-bar-chart-2 h-4 w-4 -rotate-90" />
-        </Tooltip>
-        <Dropdown
-          align="end"
-          :button="{
-            icon: 'lucide-more-horizontal',
-            variant: 'ghost',
-            label: 'Poll Options',
-          }"
-          :options="dropdownOptions"
-        />
+        <ReusePollActions />
       </div>
     </div>
-    <div class="text-base-semibold text-ink-gray-8">{{ _poll.title }}</div>
+    <div class="flex items-center gap-2">
+      <div class="flex-1 text-base-semibold text-ink-gray-8">{{ _poll.title }}</div>
+      <div v-if="embedded" class="flex items-center space-x-2">
+        <ReusePollActions />
+      </div>
+    </div>
     <div class="mt-1 text-sm text-ink-gray-5">
       <span v-if="_poll.multiple_answers"> Multiple answers &middot; </span>
       <span v-if="_poll.anonymous"> Anonymous &middot; </span>
@@ -73,7 +83,8 @@
       <div
         v-for="option in _poll.options"
         :key="option.idx"
-        class="relative -mx-2 overflow-hidden rounded-4"
+        class="relative overflow-hidden rounded-4"
+        :class="embedded ? 'bg-surface-gray-1' : '-mx-2'"
         :data-poll-option="option.title"
       >
         <div
@@ -139,7 +150,15 @@
     </component>
     <!-- The tick moves optimistically, so a rejected vote has to say why it snapped back. -->
     <ErrorMessage class="-mt-2 mb-3" :message="voteError" />
-    <div class="mt-3">
+    <Button
+      v-if="embedded && !_poll.anonymous"
+      class="-mt-2"
+      variant="ghost"
+      @click="showDialog = true"
+    >
+      Show results
+    </Button>
+    <div v-if="!embedded" class="mt-3">
       <Reactions doctype="GP Poll" :name="poll.name" :read-only-mode="readOnlyMode" />
     </div>
     <Dialog title="Poll results" v-model:open="showDialog">
@@ -172,6 +191,7 @@
 </template>
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import { createReusableTemplate } from '@vueuse/core'
 import {
   Checkbox,
   Dropdown,
@@ -203,6 +223,7 @@ interface Props {
   space?: Space | null
   // Archived space or site-wide read-only: the poll is visible but inert.
   readOnlyMode?: boolean
+  embedded?: boolean
 }
 
 interface PollMethods {
@@ -215,8 +236,10 @@ const props = withDefaults(defineProps<Props>(), {
   highlight: false,
   space: null,
   readOnlyMode: false,
+  embedded: false,
 })
 
+const [DefinePollActions, ReusePollActions] = createReusableTemplate()
 const showDialog = ref(false)
 const sessionUser = useSessionUser()
 const socket = useSocket()
@@ -276,6 +299,7 @@ const canDeletePoll = computed(() => canDeleteContent(_poll.value, props.space, 
 const isStopped = computed(
   () => Boolean(_poll.value.stopped_at) && dayjsLocal().isAfter(_poll.value.stopped_at),
 )
+const canStopPoll = computed(() => !isStopped.value && !props.readOnlyMode && canDeletePoll.value)
 const totalLabel = computed(() => {
   const total = _poll.value.total_votes || 0
   if (!_poll.value.multiple_answers) {
@@ -312,10 +336,16 @@ const dropdownOptions = computed(() => [
   {
     label: 'Show results',
     icon: 'lucide-bar-chart-2',
-    condition: () => !_poll.value.anonymous,
+    condition: () => !props.embedded && !_poll.value.anonymous,
     onClick: () => {
       showDialog.value = true
     },
+  },
+  {
+    label: 'Stop poll',
+    icon: 'lucide-minus-circle',
+    condition: () => props.embedded && canStopPoll.value,
+    onClick: stopPoll,
   },
   {
     label: 'Retract vote',
@@ -338,12 +368,13 @@ const dropdownOptions = computed(() => [
   {
     label: 'Copy link',
     icon: 'lucide-link',
+    condition: () => !props.embedded,
     onClick: copyLink,
   },
   {
     label: 'Delete',
     icon: 'lucide-trash',
-    condition: () => !props.readOnlyMode && canDeletePoll.value,
+    condition: () => !props.embedded && !props.readOnlyMode && canDeletePoll.value,
     onClick: () => {
       dialog.danger({
         title: 'Delete poll',
