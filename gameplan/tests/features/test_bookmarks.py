@@ -1,20 +1,22 @@
 # Copyright (c) 2026, Frappe Technologies Pvt Ltd and Contributors
 # See license.txt
 
-"""Bookmarks: a private, per-user reading list of discussions.
+"""Bookmarks: a private, per-user reading list of posts.
 
 A bookmark (GP Bookmark) is a personal row — like a draft, not like community
 content. Whoever created it is the only one who may see it, and the only one who
-may remove it. Everything a user does with bookmarks goes through the two
-GP Discussion doc-methods (`add_bookmark` / `remove_bookmark`), so the doctype's
-own read permission on the discussion is what gates *what* can be bookmarked.
+may remove it. A bookmark with a `comment` points at that comment; one without
+points at the discussion's opening post. Everything a user does with bookmarks goes
+through the `add_bookmark` / `remove_bookmark` doc-methods on GP Discussion and
+GP Comment, so read permission on the post is what gates *what* can be bookmarked.
 """
 
 import frappe
+from frappe.utils import add_to_date, now_datetime
 
 from gameplan.gameplan.doctype.gp_discussion.api import get_discussions
 from gameplan.tests.base import GameplanTestCase
-from gameplan.tests.fixtures import create_community, create_discussion, create_space
+from gameplan.tests.fixtures import create_comment, create_community, create_discussion, create_space
 
 
 def bookmark_rows(user=None, discussion=None):
@@ -28,7 +30,7 @@ def bookmark_rows(user=None, discussion=None):
 		filters["user"] = user.name
 	if discussion is not None:
 		filters["discussion"] = discussion.name
-	return frappe.get_all("GP Bookmark", filters=filters, fields=["name", "user", "discussion"])
+	return frappe.get_all("GP Bookmark", filters=filters, fields=["name", "user", "discussion", "comment"])
 
 
 class BookmarkTestCase(GameplanTestCase):
@@ -46,6 +48,18 @@ class BookmarkTestCase(GameplanTestCase):
 	def remove_bookmark(self, discussion, user):
 		with self.as_user(user):
 			frappe.get_doc("GP Discussion", discussion.name).remove_bookmark()
+
+	def add_comment_bookmark(self, comment, user):
+		with self.as_user(user):
+			frappe.get_doc("GP Comment", comment.name).add_bookmark()
+
+	def remove_comment_bookmark(self, comment, user):
+		with self.as_user(user):
+			frappe.get_doc("GP Comment", comment.name).remove_bookmark()
+
+	def is_opening_post_bookmarked(self, user):
+		with self.as_user(user):
+			return frappe.get_doc("GP Discussion", self.discussion.name).as_dict().is_bookmarked
 
 
 class TestAddAndRemoveBookmark(BookmarkTestCase):
@@ -123,6 +137,82 @@ class TestAddAndRemoveBookmark(BookmarkTestCase):
 		self.assertEqual(bookmark_rows(), [])
 
 
+class TestCommentBookmarks(BookmarkTestCase):
+	def setUp(self):
+		super().setUp()
+		self.comment = create_comment(self.discussion, content="<p>Ship it on Friday</p>", owner=self.member)
+
+	def test_add_bookmark_records_the_comment_and_its_discussion(self):
+		self.add_comment_bookmark(self.comment, self.second_member)
+
+		rows = bookmark_rows()
+		self.assertEqual(len(rows), 1)
+		self.assertEqual(rows[0].user, self.second_member.name)
+		self.assertEqual(str(rows[0].discussion), str(self.discussion.name))
+		self.assertEqual(str(rows[0].comment), str(self.comment.name))
+
+	def test_add_bookmark_twice_creates_only_one_row(self):
+		self.add_comment_bookmark(self.comment, self.member)
+		self.add_comment_bookmark(self.comment, self.member)
+
+		self.assertEqual(len(bookmark_rows(user=self.member)), 1)
+
+	def test_remove_bookmark_deletes_the_row(self):
+		self.add_comment_bookmark(self.comment, self.member)
+		self.remove_comment_bookmark(self.comment, self.member)
+
+		self.assertEqual(bookmark_rows(user=self.member), [])
+
+	def test_bookmarking_a_comment_does_not_bookmark_the_opening_post(self):
+		self.add_comment_bookmark(self.comment, self.member)
+
+		self.assertFalse(self.is_opening_post_bookmarked(self.member))
+
+	def test_opening_post_and_comment_bookmarks_are_removed_separately(self):
+		self.add_bookmark(self.discussion, self.member)
+		self.add_comment_bookmark(self.comment, self.member)
+
+		self.remove_bookmark(self.discussion, self.member)
+
+		rows = bookmark_rows(user=self.member)
+		self.assertEqual(len(rows), 1)
+		self.assertEqual(str(rows[0].comment), str(self.comment.name))
+
+		self.add_bookmark(self.discussion, self.member)
+		self.remove_comment_bookmark(self.comment, self.member)
+
+		rows = bookmark_rows(user=self.member)
+		self.assertEqual(len(rows), 1)
+		self.assertFalse(rows[0].comment)
+
+	def test_a_bookmark_without_a_comment_is_an_opening_post_bookmark(self):
+		frappe.get_doc(doctype="GP Bookmark", user=self.member.name, discussion=self.discussion.name).insert(
+			ignore_permissions=True
+		)
+
+		self.assertTrue(self.is_opening_post_bookmarked(self.member))
+
+	def test_deleting_a_comment_removes_every_users_bookmark_of_it(self):
+		self.add_bookmark(self.discussion, self.second_member)
+		self.add_comment_bookmark(self.comment, self.member)
+		self.add_comment_bookmark(self.comment, self.second_member)
+
+		with self.as_user(self.member):
+			frappe.delete_doc("GP Comment", self.comment.name)
+
+		rows = bookmark_rows()
+		self.assertEqual(len(rows), 1)
+		self.assertFalse(rows[0].comment)
+
+	def test_deleting_a_discussion_removes_its_comment_bookmarks(self):
+		self.add_comment_bookmark(self.comment, self.second_member)
+
+		with self.as_user(self.admin):
+			frappe.delete_doc("GP Discussion", self.discussion.name)
+
+		self.assertEqual(bookmark_rows(), [])
+
+
 class TestBookmarkPrivacy(BookmarkTestCase):
 	"""Bookmarks are private to the user who made them (see GPDraft for the same rule).
 
@@ -182,6 +272,23 @@ class TestBookmarkPrivacy(BookmarkTestCase):
 			with self.assertRaises(frappe.PermissionError):
 				bookmark.insert()
 
+	def test_a_user_cannot_bookmark_a_comment_under_another_discussion(self):
+		private_space = create_space("Secret", self.community, is_private=1, members=[self.second_member])
+		private_discussion = create_discussion("Secret thread", private_space, owner=self.second_member)
+		private_comment = create_comment(private_discussion, content="<p>Hi</p>", owner=self.second_member)
+
+		with self.as_user(self.member):
+			bookmark = frappe.get_doc(
+				doctype="GP Bookmark",
+				user=self.member.name,
+				discussion=self.discussion.name,
+				comment=private_comment.name,
+			)
+			with self.assertRaises(frappe.ValidationError):
+				bookmark.insert()
+
+		self.assertEqual([row.name for row in bookmark_rows(user=self.member)], [self.member_bookmark])
+
 	def test_a_guest_only_sees_their_own_bookmarks(self):
 		with self.as_user(self.guest):
 			self.assertEqual(frappe.get_list("GP Bookmark", fields=["name"]), [])
@@ -224,3 +331,69 @@ class TestBookmarksFeed(BookmarkTestCase):
 		space.save(ignore_permissions=True)
 
 		self.assertEqual(self.bookmarks_feed(self.member), [])
+
+	def bookmarks_feed_rows(self, user):
+		with self.as_user(user):
+			return get_discussions(filters={"feed_type": "bookmarks"}, limit=20)
+
+	def test_feed_shows_the_bookmarked_comment(self):
+		comment = create_comment(self.discussion, content="<p>Ship it</p>", owner=self.second_member)
+		create_comment(self.discussion, content="<p>A later reply</p>", owner=self.member)
+		self.add_comment_bookmark(comment, self.member)
+
+		row = self.bookmarks_feed_rows(self.member)[0]
+
+		self.assertEqual(str(row.bookmarked_comment), str(comment.name))
+		self.assertEqual(row.bookmarked_post_by, self.second_member.name)
+		self.assertEqual(row.bookmarked_post_content, "Ship it")
+		self.assertEqual(str(row.bookmarked_post_at), str(comment.creation))
+
+	def test_feed_skips_a_bookmarked_comment_from_another_discussion(self):
+		private_space = create_space("Secret", self.community, is_private=1, members=[self.second_member])
+		private_discussion = create_discussion("Secret thread", private_space, owner=self.second_member)
+		private_comment = create_comment(private_discussion, content="<p>Hi</p>", owner=self.second_member)
+		frappe.get_doc(
+			doctype="GP Bookmark",
+			user=self.member.name,
+			discussion=self.discussion.name,
+			comment=private_comment.name,
+		).db_insert()
+
+		self.assertEqual(self.bookmarks_feed_rows(self.member), [])
+
+	def test_feed_skips_a_bookmarked_comment_that_was_soft_deleted(self):
+		comment = create_comment(self.discussion, content="<p>Ship it</p>", owner=self.second_member)
+		self.add_comment_bookmark(comment, self.member)
+		frappe.db.set_value("GP Comment", comment.name, "deleted_at", now_datetime(), update_modified=False)
+
+		self.assertEqual(self.bookmarks_feed_rows(self.member), [])
+
+	def test_feed_shows_the_opening_post_for_an_opening_post_bookmark(self):
+		create_comment(self.discussion, content="<p>A later reply</p>", owner=self.second_member)
+		self.add_bookmark(self.discussion, self.member)
+
+		row = self.bookmarks_feed_rows(self.member)[0]
+
+		self.assertFalse(row.bookmarked_comment)
+		self.assertEqual(row.bookmarked_post_by, self.member.name)
+		self.assertEqual(row.bookmarked_post_content, "Test content")
+
+	def test_feed_lists_each_bookmark_of_a_discussion_newest_first(self):
+		comment = create_comment(self.discussion, owner=self.second_member)
+		self.add_bookmark(self.discussion, self.member)
+		self.add_comment_bookmark(comment, self.member)
+		opening_post_bookmark = frappe.db.get_value(
+			"GP Bookmark", {"user": self.member.name, "comment": ("is", "not set")}, "name"
+		)
+		frappe.db.set_value(
+			"GP Bookmark",
+			opening_post_bookmark,
+			"creation",
+			add_to_date(now_datetime(), hours=1),
+			update_modified=False,
+		)
+
+		rows = self.bookmarks_feed_rows(self.member)
+
+		self.assertEqual([str(row.bookmarked_comment or "") for row in rows], ["", str(comment.name)])
+		self.assertEqual({str(row.name) for row in rows}, {str(self.discussion.name)})

@@ -10,6 +10,7 @@ class GPPollAttributes:
 	options: list
 	multiple_answers: bool
 	discussion: str
+	comment: str
 	votes: list
 	total_votes: int
 	stopped_at: datetime.datetime

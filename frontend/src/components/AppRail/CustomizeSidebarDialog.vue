@@ -163,6 +163,7 @@ import {
 } from '@/data/sidebarPreferences'
 import { sessionUser } from '@/data/session'
 import { useSessionUser } from '@/data/users'
+import { extractServerMessage } from '@/utils'
 import {
   usePointerSortableSections,
   type PointerSortableCommit,
@@ -383,8 +384,8 @@ async function saveChanges() {
     initialBadgeStyle.value = selectedBadgeStyle.value
     show.value = false
     toast.success('Sidebar updated')
-  } catch {
-    toast.error('Failed to update sidebar')
+  } catch (error) {
+    toast.error(extractServerMessage(error) || 'Failed to update sidebar')
   } finally {
     isSaving.value = false
   }

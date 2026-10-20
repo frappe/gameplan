@@ -173,24 +173,14 @@ watch(showInviteDialog, (open, wasOpen) => {
 
 // `users` is a useCall resource (no setData); refetch after mutations so the
 // list — role labels and membership — reflects the server-side change.
-//
-// change_user_role and disable_user are both GP User Profile doc methods, so
-// their URLs are keyed on the target profile. `targetProfile` is swapped in
-// per row (set right before submit) rather than going through a full useDoc,
-// since neither call needs the target's doc data loaded — only the ability
-// to invoke a method on it.
-const targetProfile = ref('')
-function profileMethodUrl(method: string) {
-  return computed(() => `/api/v2/document/GP User Profile/${targetProfile.value}/method/${method}`)
-}
-const changeUserRoleCall = useCall<UserInfo, { role: string }>({
-  url: profileMethodUrl('change_user_role'),
+const changeUserRoleCall = useCall<UserInfo, { user: string; role: string }>({
+  url: '/api/v2/method/gameplan.api.change_user_role',
   method: 'POST',
   immediate: false,
   onSuccess: updateUserInfo,
 })
-const disableUserCall = useCall<unknown>({
-  url: profileMethodUrl('disable_user'),
+const disableUserCall = useCall<string, { user: string }>({
+  url: '/api/v2/method/gameplan.api.disable_user',
   method: 'POST',
   immediate: false,
   onSuccess: () => users.reload(),
@@ -256,8 +246,7 @@ function changeUserRole(user: UserRow, role: string) {
     message: `Are you sure you want to change ${user.full_name}'s role to ${role}?`,
     confirmLabel: 'Change Role',
     onConfirm: () => {
-      targetProfile.value = user.user_profile
-      changeUserRoleCall.submit({ role }).catch(() => {})
+      changeUserRoleCall.submit({ user: user.name, role }).catch(() => {})
     },
   })
 }
@@ -276,8 +265,7 @@ function disableUser(user: UserRow) {
     message: `${user.full_name} (${user.email}) will be disabled and can no longer sign in to Gameplan. You can re-enable them later from the Frappe admin.`,
     confirmLabel: 'Disable',
     onConfirm: () => {
-      targetProfile.value = user.user_profile
-      disableUserCall.submit().catch(() => {})
+      disableUserCall.submit({ user: user.name }).catch(() => {})
     },
   })
 }

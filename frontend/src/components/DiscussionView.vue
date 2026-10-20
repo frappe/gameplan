@@ -385,6 +385,7 @@ import DiscussionLinkPreview from '@/components/DiscussionLinkPreview.vue'
 import { refreshUnreadCountForProjects } from '@/data/unreadCount'
 import { useSessionUser } from '@/data/users'
 import { canDeleteContent, canEditContent, canMoveOrPinContent } from '@/utils/permissions'
+import { captureError } from '@/utils/errorReporting'
 import { useCommandPaletteCommands } from './CommandPalette/registry'
 import { useOwnedRouteWrites } from '@/composables/useOwnedRouteWrites'
 
@@ -906,7 +907,12 @@ const actions = computed(() => [
   {
     label: 'Bookmark',
     icon: 'lucide-bookmark',
-    onClick: () => discussion.addBookmark.submit().catch(() => {}),
+    onClick: () =>
+      discussion.addBookmark
+        .submit()
+        .catch((error) =>
+          captureError(error, { action: 'add-bookmark', discussion: props.postId }),
+        ),
     condition: () => !discussion.doc?.is_bookmarked,
   },
   {
@@ -969,7 +975,12 @@ const actions = computed(() => [
   {
     label: 'Remove Bookmark',
     icon: 'lucide-bookmark',
-    onClick: () => discussion.removeBookmark.submit().catch(() => {}),
+    onClick: () =>
+      discussion.removeBookmark
+        .submit()
+        .catch((error) =>
+          captureError(error, { action: 'remove-bookmark', discussion: props.postId }),
+        ),
     condition: () => discussion.doc?.is_bookmarked,
   },
   {

@@ -25,6 +25,12 @@
           <div class="flex items-center justify-between">
             <h2 class="text-2xl-semibold text-ink-gray-7">{{ peopleList.length }} members</h2>
             <div class="flex items-center gap-2">
+              <Select
+                class="shrink-0 !w-fit"
+                align="end"
+                :options="peopleSortOptions"
+                v-model="sortField"
+              />
               <TextInput
                 class="hidden sm:block"
                 type="text"
@@ -36,11 +42,6 @@
                   <span class="lucide-search w-4 text-ink-gray-5" />
                 </template>
               </TextInput>
-              <Select class="!w-fit" :options="peopleSortOptions" v-model="peopleSort">
-                <template #prefix>
-                  <span class="lucide-arrow-down-up w-4 text-ink-gray-5" />
-                </template>
-              </Select>
               <Button
                 v-if="isAdmin"
                 class="hidden sm:inline-flex"
@@ -75,21 +76,52 @@
             >
               <!-- px-3 matches the interactive rows' default horizontal padding. -->
               <ListHeader class="px-3">
-                <ListHeaderCell class="col-span-2">Member</ListHeaderCell>
-                <ListHeaderCell class="justify-end">Posts</ListHeaderCell>
-                <ListHeaderCell class="justify-end">Replies</ListHeaderCell>
-                <ListHeaderCell class="justify-end">
+                <ListHeaderCellSort
+                  class="col-span-2"
+                  :direction="directionFor('full_name')"
+                  @click="sortPeopleBy('full_name')"
+                >
+                  Member
+                  <template #sort-indicator><span /></template>
+                </ListHeaderCellSort>
+                <ListHeaderCellSort
+                  align="end"
+                  :direction="directionFor('discussions_count')"
+                  @click="sortPeopleBy('discussions_count')"
+                >
+                  Posts
+                  <template #sort-indicator><span /></template>
+                </ListHeaderCellSort>
+                <ListHeaderCellSort
+                  align="end"
+                  :direction="directionFor('comments_count')"
+                  @click="sortPeopleBy('comments_count')"
+                >
+                  Replies
+                  <template #sort-indicator><span /></template>
+                </ListHeaderCellSort>
+                <ListHeaderCellSort
+                  align="end"
+                  :direction="directionFor('reactions_received')"
+                  @click="sortPeopleBy('reactions_received')"
+                >
                   <template #prefix>
                     <ReactionFaceIcon class="size-4 text-ink-gray-5" aria-hidden="true" />
                   </template>
                   Received
-                </ListHeaderCell>
-                <ListHeaderCell class="justify-end">
+                  <template #sort-indicator><span /></template>
+                </ListHeaderCellSort>
+                <ListHeaderCellSort
+                  align="end"
+                  :direction="directionFor('reactions_given')"
+                  @click="sortPeopleBy('reactions_given')"
+                >
                   <template #prefix>
                     <ReactionFaceIcon class="size-4 text-ink-gray-5" aria-hidden="true" />
                   </template>
                   Given
-                </ListHeaderCell>
+                  <template #sort-indicator><span /></template>
+                </ListHeaderCellSort>
               </ListHeader>
               <ListRow
                 v-for="user in peopleList"
@@ -228,10 +260,17 @@ import {
   ErrorMessage,
   usePageMeta,
 } from 'frappe-ui'
-import { List, ListCell, ListHeader, ListHeaderCell, ListRow } from 'frappe-ui/list'
+import { List, ListCell, ListHeader, ListHeaderCellSort, ListRow } from 'frappe-ui/list'
 import { showSettingsDialog } from '@/components/Settings'
 import { isGameplanAdmin, useSessionUser, useUser } from '@/data/users'
-import { people, peopleSort, peopleSortOption, peopleSortOptions } from '@/data/people'
+import {
+  people,
+  peopleSortDirection,
+  peopleSortField,
+  peopleSortOptions,
+  sortPeopleBy,
+  type PeopleSortField,
+} from '@/data/people'
 import EmptyStateBox from '@/components/EmptyStateBox.vue'
 import UserAvatarWithHover from '@/components/UserAvatarWithHover.vue'
 import ReactionFaceIcon from '@/components/ReactionFaceIcon.vue'
@@ -258,25 +297,44 @@ const profiles = computed(() => {
     }))
 })
 
-const peopleList = computed(() => {
-  if (!profiles.value.length) return []
+const sortField = computed({
+  get: () => peopleSortField.value,
+  set: (field: PeopleSortField | '') => {
+    if (field) sortPeopleBy(field)
+  },
+})
 
+function directionFor(field: PeopleSortField) {
+  return peopleSortField.value === field ? peopleSortDirection.value : null
+}
+
+type Profile = (typeof profiles.value)[number]
+
+function compareProfiles(a: Profile, b: Profile) {
+  const field = peopleSortField.value
+  let result = 0
+  if (field === 'full_name' || field === 'modified') {
+    result = a[field].localeCompare(b[field])
+  } else {
+    result = a[field] - b[field]
+  }
+  return peopleSortDirection.value === 'asc' ? result : -result
+}
+
+const peopleList = computed(() => {
+  let list = profiles.value
   if (search.value) {
     const term = search.value.toLowerCase()
-    return profiles.value.filter(
+    list = list.filter(
       (profile) =>
         profile.full_name.toLowerCase().includes(term) ||
         profile.email.toLowerCase().includes(term),
     )
   }
 
-  const sessionUser = useSessionUser()
-  const myProfile = profiles.value.find((profile) => profile.user === sessionUser.name)
-  const others = profiles.value.filter((profile) => profile !== myProfile)
-  const list = myProfile ? [myProfile, ...others] : others
-
-  const count = peopleSortOption.value.count
-  return count ? list.sort((a, b) => b[count] - a[count]) : list
+  list = [...list].sort(compareProfiles)
+  const myProfile = list.find((profile) => profile.user === useSessionUser().name)
+  return myProfile ? [myProfile, ...list.filter((profile) => profile !== myProfile)] : list
 })
 
 const isEmpty = computed(() => !people.loading && !people.error && peopleList.value.length === 0)

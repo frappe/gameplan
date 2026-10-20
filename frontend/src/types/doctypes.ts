@@ -314,7 +314,7 @@ export interface GPPollVote extends ChildDocType {
   option?: string
 }
 
-// Last updated: 2026-10-16 20:00:00.000000
+// Last updated: 2026-10-17 12:00:00.000000
 export interface GPPoll extends DocType {
   /** Title: Data */
   title: string
@@ -332,6 +332,8 @@ export interface GPPoll extends DocType {
   total_votes?: number
   /** Stopped At: Datetime */
   stopped_at?: string
+  /** Comment: Link (GP Comment) */
+  comment?: string
 }
 
 // Last updated: 2022-12-07 21:34:41.411618
@@ -432,4 +434,14 @@ export interface GPProfileBentoCard extends ChildDocType {
   image_rendering?: 'Cover' | 'Natural' | 'Fit'
   /** Image Position: Int */
   image_position?: number
+}
+
+// Last updated: 2026-10-14 12:00:00.000000
+export interface GPBookmark extends DocType {
+  /** User: Link (User) */
+  user: string
+  /** Discussion: Link (GP Discussion) */
+  discussion?: string
+  /** Comment: Link (GP Comment) */
+  comment?: string
 }

@@ -5,7 +5,7 @@ import json
 
 import frappe
 
-from gameplan.api import get_user_info
+from gameplan.api import disable_user, get_user_info
 from gameplan.gameplan.doctype.gp_user_profile.gp_user_profile import (
 	get_bento_cards,
 	get_list,
@@ -104,7 +104,7 @@ class TestProfiles(GameplanTestCase):
 		alice_profile = get_profile(self.alice.name)
 		self.assertFalse(has_permission(alice_profile, ptype="write", user=self.bob.name))
 
-	def test_admin_can_edit_any_bio(self):
+	def test_administrator_can_edit_any_bio(self):
 		alice_profile = get_profile(self.alice.name)
 		self.assertTrue(has_permission(alice_profile, ptype="write", user="Administrator"))
 
@@ -126,6 +126,35 @@ class TestProfiles(GameplanTestCase):
 		profile.bio = "hello, I am Alice"
 		profile.save()
 		self.assertEqual(get_profile(self.alice.name).bio, "hello, I am Alice")
+
+	def test_has_permission_accepts_docname_string(self):
+		alice_profile = get_profile(self.alice.name)
+		self.assertFalse(has_permission(alice_profile.name, ptype="write", user=self.bob.name))
+		self.assertTrue(has_permission(alice_profile.name, ptype="write", user=self.alice.name))
+
+	def test_member_cannot_save_others_profile_even_with_ignore_permissions(self):
+		alice_profile = get_profile(self.alice.name)
+		frappe.set_user(self.bob.name)
+		alice_profile.bio = "hacked by bob"
+		with self.assertRaises(frappe.PermissionError):
+			alice_profile.save(ignore_permissions=True)
+
+	def test_admin_cannot_edit_others_profile(self):
+		alice_profile = get_profile(self.alice.name)
+		self.assertFalse(has_permission(alice_profile, ptype="write", user=self.admin.name))
+
+		frappe.set_user(self.admin.name)
+		alice_profile.bio = "edited by an admin"
+		with self.assertRaises(frappe.PermissionError):
+			alice_profile.save(ignore_permissions=True)
+
+	def test_admin_can_still_disable_a_user(self):
+		frappe.set_user(self.admin.name)
+		# Syncing `enabled` to the profile runs as the admin and must not trip the ownership
+		# check. Assert on User: on Frappe v16 the profile re-fetches `user.enabled` from a
+		# value cache that is stale until the transaction ends.
+		disable_user(self.alice.name)
+		self.assertEqual(frappe.db.get_value("User", self.alice.name, "enabled"), 0)
 
 	def test_default_bento_layout_binds_every_populated_profile_field(self):
 		frappe.set_user(self.alice.name)

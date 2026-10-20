@@ -10,6 +10,7 @@ from frappe.core.api.file import get_max_file_size
 from frappe.utils import get_system_timezone
 from frappe.utils.telemetry import capture
 
+from gameplan import is_new_site
 from gameplan.roles import has_app_access
 
 no_cache = 1
@@ -77,14 +78,7 @@ def on_login(login_manager):
 
 
 def get_default_route():
-	# Onboarding is only for brand-new sites with no data at all. A site with
-	# projects-but-no-teams is fixed by the migration (creates Default); a site with
-	# teams-but-no-projects is fixed by the GP Team after_insert hook (creates General).
-	has_projects = bool(frappe.db.get_all("GP Project", limit=1))
-	has_teams = bool(frappe.db.get_all("GP Team", limit=1))
-	if not has_projects and not has_teams:
-		return "/onboarding"
-	return "/home"
+	return "/onboarding" if is_new_site() else "/home"
 
 
 APP_VERSION_CACHE_KEY = "gameplan_app_version"

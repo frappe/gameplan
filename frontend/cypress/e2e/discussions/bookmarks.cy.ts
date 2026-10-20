@@ -1,4 +1,4 @@
-// A bookmark is a private reading list: save a discussion from its own page, find it
+// A bookmark is a private reading list: save a post or a comment from its menu, find it
 // again under Bookmarks, and take it back off the list.
 import { resetData } from '../../support/seed'
 
@@ -46,7 +46,7 @@ describe('Bookmarks', () => {
     cy.get('body').type('{esc}')
 
     cy.visit('/g/bookmarks')
-    cy.contains('a', 'Welcome thread').should('be.visible').click()
+    cy.contains('a', 'Welcome thread').should('be.visible').and('contain', 'Seed content').click()
     cy.url().should('include', `/discussion/${discussion}`)
 
     cy.selectDropdownOption('Discussion Options', 'Remove Bookmark')
@@ -55,5 +55,54 @@ describe('Bookmarks', () => {
     cy.visit('/g/bookmarks')
     cy.contains('div', 'No discussions').should('be.visible')
     cy.contains('a', 'Welcome thread').should('not.exist')
+  })
+
+  it('bookmarks a comment, opens it from Bookmarks, and removes it', () => {
+    cy.request({
+      method: 'POST',
+      url: '/api/v2/document/GP%20Comment',
+      body: {
+        reference_doctype: 'GP Discussion',
+        reference_name: discussion,
+        content: '<p>Ship it on Friday</p>',
+      },
+    }).then((response) => {
+      const comment = String(response.body.data.name)
+
+      cy.intercept('POST', `/api/v2/document/GP%20Comment/${comment}/method/add_bookmark`).as(
+        'addBookmark',
+      )
+      cy.intercept('POST', `/api/v2/document/GP%20Comment/${comment}/method/remove_bookmark`).as(
+        'removeBookmark',
+      )
+
+      visitDiscussion()
+      cy.get(`div[data-id="${comment}"]`).should('contain', 'Ship it on Friday')
+
+      cy.selectDropdownOption('Comment Options', 'Bookmark')
+      cy.wait('@addBookmark')
+
+      cy.get('button[aria-haspopup=menu][aria-label="Comment Options"]').click()
+      cy.get('[role="menuitem"]:contains("Remove Bookmark"):visible').should('exist')
+      cy.get('body').type('{esc}')
+
+      openDiscussionOptions()
+      cy.get('[role="menuitem"]:contains("Remove Bookmark"):visible').should('not.exist')
+      cy.get('body').type('{esc}')
+
+      cy.visit('/g/bookmarks')
+      cy.contains('a', 'Welcome thread')
+        .should('be.visible')
+        .and('contain', 'Ship it on Friday')
+        .click()
+      cy.url().should('include', `/discussion/${discussion}`).and('include', `comment=${comment}`)
+      cy.get(`div[data-id="${comment}"]`).should('be.visible')
+
+      cy.selectDropdownOption('Comment Options', 'Remove Bookmark')
+      cy.wait('@removeBookmark')
+
+      cy.visit('/g/bookmarks')
+      cy.contains('div', 'No discussions').should('be.visible')
+    })
   })
 })
