@@ -317,6 +317,8 @@ class Seeder:
 
 	def _event_space(self, event, actor, ts):
 		team = self._ref_name(event["community"])
+		# Inserting adds the actor as a member already.
+		members = [{"user": self.users[s]} for s in event.get("members", []) if self.users[s] != actor]
 		space = frappe.get_doc(
 			{
 				"doctype": "GP Project",
@@ -327,6 +329,8 @@ class Seeder:
 				"is_private": 1 if event.get("is_private") else 0,
 			}
 		).insert(ignore_permissions=True)
+		space.extend("members", members)
+		space.save(ignore_permissions=True)
 		self.refs[event["id"]] = ("GP Project", space.name)
 		self._backdate("GP Project", space.name, ts)
 
@@ -397,13 +401,12 @@ class Seeder:
 	def _event_react(self, event, actor, ts):
 		parent_dt, parent_name = self._ref(event["on"])
 		emoji = self._resolve(event["emoji"])
-		doc = frappe.get_doc(parent_dt, parent_name)
-		if not any(r.user == actor and r.emoji == emoji for r in doc.get("reactions") or []):
-			doc.append("reactions", {"emoji": emoji, "user": actor})
-		# Saving fires on_update -> notify_reactions, giving the author a notification.
-		doc.save(ignore_permissions=True)
-		# A reaction updates an existing post: move `modified` only, never `creation`.
-		self._touch(parent_dt, parent_name, ts)
+		# _replay runs this as the actor, so the reaction notifies the author.
+		reactions = frappe.get_doc(parent_dt, parent_name).react(
+			operations=[{"emoji": emoji, "operation": "add"}]
+		)
+		row = next(r for r in reactions if r.user == actor and r.emoji == emoji)
+		self._backdate("GP Reaction", row.name, ts)
 
 	def _event_task(self, event, actor, ts):
 		space = self._ref_name(event["space"])

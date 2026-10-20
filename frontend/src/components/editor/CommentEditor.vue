@@ -29,6 +29,7 @@ import GPEditor from './GPEditor.vue'
 import QuoteReplyButton from '@/components/RichQuoteExtension/QuoteReplyButton.vue'
 import { useRichQuotes, useBacklinkRefresh } from '@/components/RichQuoteExtension/useRichQuotes'
 import { commentExtensions } from './commentExtensions'
+import { hasPollBlock } from '@/components/PollBlock/poll-draft'
 
 // gameplan's comment box: the lighter CommentKit (no toc / iframe) + tables +
 // @-mentions + #-tags + RichQuote + slash commands. The shared `gameplanToolbar`
@@ -56,6 +57,7 @@ const props = withDefaults(
     quoteSourceId?: string
     // comment owner — stamped on quotes created from this comment's selection
     author?: string
+    canAttachPoll?: boolean
   }>(),
   { value: '', placeholder: null, editable: true, toolbarExpanded: false },
 )
@@ -278,18 +280,23 @@ function canInsertCodeBlock(editor: Editor) {
                   :disabled="!canInsertCodeBlock(e)"
                   @click="insertCodeBlock(e)"
                 />
+                <Button
+                  v-if="canAttachPoll"
+                  size="sm"
+                  variant="ghost"
+                  icon="lucide-bar-chart-2"
+                  label="Poll"
+                  tooltip="Poll"
+                  :disabled="hasPollBlock(e)"
+                  @click="e.chain().focus().insertPollBlock().run()"
+                />
               </TooltipProvider>
             </template>
           </div>
         </ScrollArea>
-        <div class="flex items-center justify-between gap-2 sm:justify-end">
-          <div class="sm:hidden">
-            <slot name="actions-left" />
-          </div>
-          <div class="flex items-center justify-end space-x-2">
-            <Button v-bind="discardButtonProps || {}"> Discard </Button>
-            <Button variant="solid" v-bind="submitButtonProps || {}"> Submit </Button>
-          </div>
+        <div class="flex items-center justify-end space-x-2">
+          <Button v-bind="discardButtonProps || {}"> Discard </Button>
+          <Button variant="solid" v-bind="submitButtonProps || {}"> Submit </Button>
         </div>
       </div>
     </template>

@@ -84,7 +84,7 @@ describe('Member management', () => {
 
   it('updates the sidebar when the current user becomes a guest', () => {
     cy.loginAs('admin')
-    cy.intercept('POST', '**/method/change_user_role').as('changeOwnRole')
+    cy.intercept('POST', '**/method/gameplan.api.change_user_role').as('changeOwnRole')
     openSettings()
     cy.scope('dialog').contains('button', 'Users').focus().type('{enter}')
     cy.contains('[data-slot="list-row"]', 'Administrator').should('be.visible')

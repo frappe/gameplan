@@ -10,10 +10,11 @@ from frappe.model.naming import append_number_if_name_exists
 from frappe.query_builder.functions import Count
 from frappe.website.utils import cleanup_page_name
 
-from gameplan.api import get_user_info, require_admin
+import gameplan
 from gameplan.extends.client import check_permissions
 from gameplan.mixins.attachments import HasAttachments
 from gameplan.realtime import notify_users_changed
+from gameplan.utils.document import with_stored_document
 
 PROFILE_BENTO_CARD_TYPES = {"Card", "Blank"}
 PROFILE_BENTO_CARD_SOURCES = {"custom", "field"}
@@ -46,6 +47,26 @@ class GPUserProfile(HasAttachments, Document):
 	def validate(self):
 		self.quick_reaction_emojis = normalize_quick_reaction_emojis(self.quick_reaction_emojis)
 		self.drop_foreign_card_images()
+		self.validate_profile_ownership()
+
+	def validate_profile_ownership(self):
+		"""Only the profile's own user may change it, admins included.
+
+		Runs even when permission checks are bypassed. Changes the system makes on a
+		user's behalf, such as syncing the name and enabled state from User, set
+		`ignore_profile_ownership`.
+		"""
+		if (
+			self.is_new()
+			or self.flags.ignore_profile_ownership
+			or frappe.flags.in_install
+			or frappe.flags.in_migrate
+			or frappe.flags.in_fixtures
+		):
+			return
+		user = frappe.session.user
+		if user != "Administrator" and self.user != user:
+			frappe.throw("Cannot modify another user's profile", frappe.PermissionError)
 
 	def autoname(self):
 		self.name = self.generate_name()
@@ -77,6 +98,7 @@ class GPUserProfile(HasAttachments, Document):
 		return append_number_if_name_exists(self.doctype, cleanup_page_name(full_name))
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def set_image(self, image):
 		self.check_image_is_ours(image)
 		self.image = image
@@ -90,10 +112,11 @@ class GPUserProfile(HasAttachments, Document):
 		"""Which of `images` name a private file this profile has no claim on.
 
 		Same rule as `HasAttachments._maybe_attach_file`: the file has to have been
-		uploaded by the profile's own user, or by whoever is saving (an admin acting on
-		someone's behalf). Only private files are checked, because a public file is
-		readable by everyone already and naming one exposes nothing. One query for the
-		whole layout, so a profile with many cards still costs a single round trip.
+		uploaded by the profile's own user, or by whoever is saving (the Administrator
+		account, or a system change made with `ignore_profile_ownership`). Only private
+		files are checked, because a public file is readable by everyone already and
+		naming one exposes nothing. One query for the whole layout, so a profile with
+		many cards still costs a single round trip.
 		"""
 		urls = {image for image in images if image}
 		if not urls:
@@ -152,6 +175,7 @@ class GPUserProfile(HasAttachments, Document):
 				row.image = None
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def set_cover_image_position(self, position):
 		"""Reposition the cover from the profile page.
 
@@ -175,36 +199,6 @@ class GPUserProfile(HasAttachments, Document):
 
 		return {"cover_image_position": self.cover_image_position}
 
-	@frappe.whitelist(methods=["POST"])
-	def change_user_role(self, role):
-		require_admin()
-
-		if role not in ["Gameplan Guest", "Gameplan Member", "Gameplan Admin"]:
-			return get_user_info(self.user)[0]
-
-		user_doc = frappe.get_doc("User", self.user)
-		for _role in list(user_doc.roles):
-			if _role.role in ["Gameplan Guest", "Gameplan Member", "Gameplan Admin"]:
-				user_doc.remove(_role)
-		user_doc.append_roles(role)
-		# Admin-gated by require_admin() above; bypass User's own permission checks so an
-		# admin can change another user's roles.
-		user_doc.save(ignore_permissions=True)
-
-		return get_user_info(self.user)[0]
-
-	@frappe.whitelist(methods=["POST"])
-	def disable_user(self):
-		require_admin()
-
-		user_doc = frappe.get_doc("User", self.user)
-		user_doc.enabled = 0
-		# Admin-gated by require_admin() above; bypass User's own permission checks so an
-		# admin can disable another user.
-		user_doc.save(ignore_permissions=True)
-
-		return self.user
-
 
 def has_permission(doc, ptype="read", user=None):
 	user = user or frappe.session.user
@@ -213,20 +207,27 @@ def has_permission(doc, ptype="read", user=None):
 	if ptype in ("read", "select", "print", "email", "export", "share"):
 		return True
 
-	# Administrators and Gameplan Admins can manage any profile.
 	if user == "Administrator":
 		return True
-	if "Gameplan Admin" in frappe.get_roles(user) or "System Manager" in frappe.get_roles(user):
+
+	# Admins create and delete profiles along with the User, but never edit one.
+	if ptype in ("create", "delete") and gameplan.is_admin(user):
 		return True
 
-	# Otherwise a user may only modify their own profile.
-	return doc.user == user
+	if isinstance(doc, str):
+		doc = frappe.get_lazy_doc("GP User Profile", doc)
+
+	# A user may only modify their own profile.
+	return bool(doc and doc.user == user)
 
 
 def create_user_profile(doc, method=None):
 	if not frappe.db.exists("GP User Profile", {"user": doc.name}):
-		frappe.get_doc(doctype="GP User Profile", user=doc.name).insert(ignore_permissions=True)
-		frappe.db.commit()
+		profile = frappe.get_doc(doctype="GP User Profile", user=doc.name)
+		profile.flags.ignore_profile_ownership = True
+		profile.insert(ignore_permissions=True)
+		# get_session_user_profile can create the profile during a GET request, which is not committed.
+		frappe.db.commit()  # nosemgrep: frappe-manual-commit
 
 
 def delete_user_profile(doc, method=None):
@@ -241,6 +242,7 @@ def on_user_update(doc, method=None):
 		profile = frappe.get_doc("GP User Profile", {"user": doc.name})
 		profile.enabled = doc.enabled
 		profile.full_name = doc.full_name
+		profile.flags.ignore_profile_ownership = True
 		profile.save(ignore_permissions=True)
 		# A rename changes what *other* sessions render, and their cached user list has
 		# no other reason to refetch.
@@ -311,9 +313,9 @@ def get_list(
 	discussion_reactions = (
 		frappe.qb.from_(Reaction)
 		.join(Discussion)
-		.on(Discussion.name == Reaction.parent)
+		.on(Discussion.name == Reaction.reference_name)
 		.select(Count(Reaction.name).as_("count"), Discussion.owner)
-		.where((Reaction.parenttype == "GP Discussion") & Discussion.owner.isin(users))
+		.where((Reaction.reference_doctype == "GP Discussion") & Discussion.owner.isin(users))
 		.groupby(Discussion.owner)
 	).run(as_dict=True)
 	for r in discussion_reactions:
@@ -322,10 +324,12 @@ def get_list(
 	comment_reactions = (
 		frappe.qb.from_(Reaction)
 		.join(Comment)
-		.on(Comment.name == Reaction.parent)
+		.on(Comment.name == Reaction.reference_name)
 		.select(Count(Reaction.name).as_("count"), Comment.owner)
 		.where(
-			(Reaction.parenttype == "GP Comment") & Comment.owner.isin(users) & Comment.deleted_at.isnull()
+			(Reaction.reference_doctype == "GP Comment")
+			& Comment.owner.isin(users)
+			& Comment.deleted_at.isnull()
 		)
 		.groupby(Comment.owner)
 	).run(as_dict=True)

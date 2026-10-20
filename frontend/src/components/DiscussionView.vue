@@ -180,7 +180,6 @@
             <Reactions
               doctype="GP Discussion"
               :name="discussion.doc.name"
-              v-model:reactions="discussion.doc.reactions"
               :read-only-mode="readOnlyMode"
             />
           </div>
@@ -369,6 +368,7 @@ import { getSpace, useSpace } from '@/data/spaces'
 import { useCommunity } from '@/data/communities'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { useDiscussion } from '@/data/discussions'
+import { provideThreadReactions } from '@/data/reactions'
 import { useDraftSync } from '@/data/useDraftSync'
 import { tags } from '@/data/tags'
 import { shellScrollContainer, useShellScrolled } from 'frappe-ui'
@@ -378,6 +378,7 @@ import QuoteBacklinksPopover from '@/components/RichQuoteExtension/QuoteBacklink
 import { refreshUnreadCountForProjects } from '@/data/unreadCount'
 import { useSessionUser } from '@/data/users'
 import { canDeleteContent, canEditContent, canMoveOrPinContent } from '@/utils/permissions'
+import { captureError } from '@/utils/errorReporting'
 import { useCommandPaletteCommands } from './CommandPalette/registry'
 import { useOwnedRouteWrites } from '@/composables/useOwnedRouteWrites'
 
@@ -472,6 +473,7 @@ const mobileHeaderTitle = computed(() =>
   showTitleInMobileHeader.value ? discussion.doc?.title || 'Discussion' : 'Discussion',
 )
 
+provideThreadReactions('GP Discussion', props.postId)
 const richQuotes = provideRichQuotes()
 richQuotes.setPostContentEl(() => mainPostContentEl.value)
 
@@ -891,7 +893,12 @@ const actions = computed(() => [
   {
     label: 'Bookmark',
     icon: 'lucide-bookmark',
-    onClick: () => discussion.addBookmark.submit().catch(() => {}),
+    onClick: () =>
+      discussion.addBookmark
+        .submit()
+        .catch((error) =>
+          captureError(error, { action: 'add-bookmark', discussion: props.postId }),
+        ),
     condition: () => !discussion.doc?.is_bookmarked,
   },
   {
@@ -954,7 +961,12 @@ const actions = computed(() => [
   {
     label: 'Remove Bookmark',
     icon: 'lucide-bookmark',
-    onClick: () => discussion.removeBookmark.submit().catch(() => {}),
+    onClick: () =>
+      discussion.removeBookmark
+        .submit()
+        .catch((error) =>
+          captureError(error, { action: 'remove-bookmark', discussion: props.postId }),
+        ),
     condition: () => discussion.doc?.is_bookmarked,
   },
   {

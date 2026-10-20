@@ -7,6 +7,7 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from gameplan.api import search_sqlite
+from gameplan.gameplan.doctype.gp_discussion.gp_discussion import move_discussion
 from gameplan.patches import drop_search_index_for_sort_columns
 from gameplan.search_sqlite import GameplanSearch, GameplanSearchIndexMissingError
 from gameplan.tests.base import GameplanTestCase
@@ -14,6 +15,7 @@ from gameplan.tests.fixtures import (
 	create_comment,
 	create_community,
 	create_space,
+	create_task,
 	drain_search_index_queue,
 	grant_guest_access,
 )
@@ -663,7 +665,7 @@ class TestSearchIndexLifecycle(IsolatedSearchIndex, GameplanTestCase):
 			is_private=1,
 			members=[self.member],
 		)
-		hidden = self.create_discussion(
+		self.create_discussion(
 			"Injectionneedle private result",
 			"injectionneedle must stay inside its private space",
 			space=inaccessible_space,
@@ -672,9 +674,8 @@ class TestSearchIndexLifecycle(IsolatedSearchIndex, GameplanTestCase):
 		crafted = {"doctype IN ('GP Discussion') OR 1=1 OR doctype": ["GP Discussion"]}
 
 		for query in ("", "injectionneedle"):
-			results = self.search_as(self.second_member, query, filters=crafted)
-
-			self.assertNotIn(f"GP Discussion:{hidden.name}", self.discussion_ids(results))
+			with self.assertRaises(frappe.ValidationError):
+				self.search_as(self.second_member, query, filters=crafted)
 
 	def test_search_without_a_query_or_filters_returns_nothing(self):
 		self.create_discussion("Unasked-for thread", "Nothing has been searched for yet")
@@ -735,6 +736,79 @@ class TestSearchIndexLifecycle(IsolatedSearchIndex, GameplanTestCase):
 
 		with self.assertRaises(GameplanSearchIndexMissingError):
 			self.search_as(self.member, "anything")
+
+	def test_search_filters_are_limited_to_the_fields_the_search_page_uses(self):
+		discussion = self.create_discussion(
+			"Filter field coverage",
+			"filterfieldneedle is found through the supported filters",
+		)
+		drain_search_index_queue()
+
+		results = self.search_as(
+			self.member,
+			"filterfieldneedle",
+			filters={"project": [str(self.space.name)], "owner": ["Administrator"]},
+		)
+		self.assertEqual([result["id"] for result in results], [f"GP Discussion:{discussion.name}"])
+
+		with self.assertRaises(frappe.ValidationError):
+			self.search_as(self.member, "filterfieldneedle", filters={"reference_name": [discussion.name]})
+
+	def test_moving_a_discussion_moves_its_comments_to_the_new_space_in_the_index(self):
+		other_space = create_space(
+			"Search Move Target Space",
+			self.community,
+			is_private=1,
+			members=[self.member, self.second_member],
+		)
+		discussion = self.create_discussion("Moving thread", "A thread that changes space")
+		comment = create_comment(
+			discussion, content="movedcommentneedle follows its thread", owner=self.member
+		)
+		drain_search_index_queue()
+
+		discussion.reload()
+		move_discussion(discussion, other_space.name)
+		drain_search_index_queue()
+
+		def comment_ids_in(space):
+			results = self.search_as(
+				self.member, "movedcommentneedle", filters={"project": [str(space.name)]}
+			)
+			return [result["id"] for result in results]
+
+		self.assertEqual(comment_ids_in(other_space), [f"GP Comment:{comment.name}"])
+		self.assertEqual(comment_ids_in(self.space), [])
+
+	def test_moving_a_task_moves_its_comments_to_the_new_space_in_the_index(self):
+		other_space = create_space(
+			"Search Task Move Target Space",
+			self.community,
+			is_private=1,
+			members=[self.member, self.second_member],
+		)
+		task = create_task("Moving task", self.space)
+		comment = frappe.get_doc(
+			doctype="GP Comment",
+			reference_doctype="GP Task",
+			reference_name=task.name,
+			content="movedtaskcommentneedle follows its task",
+		).insert(ignore_permissions=True)
+		drain_search_index_queue()
+
+		task.reload()
+		task.project = other_space.name
+		task.save(ignore_permissions=True)
+		drain_search_index_queue()
+
+		def comment_ids_in(space):
+			results = self.search_as(
+				self.member, "movedtaskcommentneedle", filters={"project": [str(space.name)]}
+			)
+			return [result["id"] for result in results]
+
+		self.assertEqual(comment_ids_in(other_space), [f"GP Comment:{comment.name}"])
+		self.assertEqual(comment_ids_in(self.space), [])
 
 
 class TestDropSearchIndexForSortColumnsPatch(IsolatedSearchIndex, GameplanTestCase):

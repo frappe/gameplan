@@ -54,6 +54,9 @@ still carries the old names. Do not rename the doctypes.
   workaround needs a comment naming the upstream PR that removes it.
 - Verify UI work in a browser before calling it done. Screenshots belong in the PR as
   GitHub attachments, never in the repo.
+- Do not change `__version__` in `gameplan/__init__.py`. Every merge to `develop` is
+  released by `.github/workflows/release.yml`, which commits the next version itself.
+  Only the maintainer sets a version by hand, such as 1.0.0.
 
 ## Environment
 

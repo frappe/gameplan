@@ -27,6 +27,10 @@ def get_list(
 		offset=start,
 		limit=limit,
 		group_by=group_by,
+		ignore_permissions=False,
+		# A child table's rows are scoped through its parent; on any other doctype,
+		# get_query would treat `parent` as a parent table to join.
+		parent_doctype=parent if frappe.is_table(doctype) else None,
 	)
 	query = apply_custom_filters(doctype, query)
 	return query.run(as_dict=True, debug=debug)

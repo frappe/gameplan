@@ -83,10 +83,6 @@ TIER1: dict[str, list[str]] = {
 TIER2: dict[str, list[str]] = {
 	"gameplan/gameplan/doctype/gp_user_profile/gp_user_profile.py": [
 		"gameplan.tests.features.test_profiles",
-		# test_profiles covers bento cards, emojis and quick reactions; the account-
-		# management methods on the same doctype (change_user_role, disable_user) are
-		# specced only here, as the privilege-escalation guards they are.
-		"gameplan.tests.features.test_members",
 	],
 	"gameplan/gameplan/doctype/gp_invitation/gp_invitation.py": [
 		# accept() and grant_access() are the only code that hands a user a Gameplan
@@ -100,8 +96,9 @@ TIER2: dict[str, list[str]] = {
 		# rather than by the endpoint suite: _invite_by_email and accept_invitation are
 		# called directly by test_invitations...
 		"gameplan.tests.features.test_invitations",
-		# ...and invite_by_email's admin gate and role allow-list, plus get_user_info's
-		# "strip other members' emails for a guest" branch, only by test_members.
+		# ...and the admin gates and role allow-lists of invite_by_email, change_user_role
+		# and disable_user, plus get_user_info's "strip other members' emails for a guest"
+		# branch, only by test_members.
 		"gameplan.tests.features.test_members",
 	],
 	"gameplan/gameplan/doctype/gp_draft/gp_draft.py": [
@@ -117,7 +114,7 @@ TIER2: dict[str, list[str]] = {
 	"gameplan/gameplan/doctype/gp_discussion/api.py": [
 		"gameplan.tests.features.test_discussions",
 		# The bookmarks feed is the one feed_type test_discussions does not exercise:
-		# clause_discussions_bookmarked_by_user is reached only from the Bookmarks page,
+		# its GP Bookmark join is reached only from the Bookmarks page,
 		# which is specced with the rest of bookmarking.
 		"gameplan.tests.features.test_bookmarks",
 	],
