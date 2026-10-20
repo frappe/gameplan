@@ -15,7 +15,7 @@
       @mouseover="selectedIndex = index"
     >
       <span class="truncate">{{ item.title }}</span>
-      <span class="ml-auto shrink-0 text-ink-gray-5">{{ getSpace(item.project)?.title }}</span>
+      <span class="ml-auto shrink-0 text-ink-gray-5">{{ spacePath(item.project) }}</span>
     </button>
   </div>
 </template>
@@ -23,6 +23,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { getSpace } from '@/data/spaces'
+import { getCommunity } from '@/data/communities'
 
 export interface DiscussionLinkItem {
   name: string
@@ -43,6 +44,12 @@ watch(
     selectedIndex.value = 0
   },
 )
+
+function spacePath(project: string) {
+  const space = getSpace(project)
+  const community = space?.team ? getCommunity(space.team) : null
+  return [community?.title, space?.title].filter(Boolean).join(' / ')
+}
 
 function onKeyDown({ event }: { event: KeyboardEvent }) {
   const count = props.items.length
