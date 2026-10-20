@@ -171,6 +171,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasBacklinks, HasMentions, HasRe
 		return get_document_revisions(self.doctype, self.name, fieldname)
 
 	@frappe.whitelist()
+	@with_stored_document
 	def get_reference_activities(self):
 		activities = frappe.get_all(
 			"GP Activity",
@@ -202,6 +203,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasBacklinks, HasMentions, HasRe
 		return visible
 
 	@frappe.whitelist()
+	@with_stored_document
 	def get_backlinks(self):
 		rows = frappe.get_all(
 			"GP Backlink", filters={"discussion": self.name}, fields=["parent", "parenttype"]

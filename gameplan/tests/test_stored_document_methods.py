@@ -37,7 +37,7 @@ class TestStoredDocumentMethods(GameplanTestCase):
 			patch.object(
 				frappe.local,
 				"request",
-				SimpleNamespace(method="GET" if method == "get_revisions" else "POST"),
+				SimpleNamespace(method="GET" if method == "get_revisions" else "POST", host=None),
 				create=True,
 			),
 			patch.object(frappe.local, "response", frappe._dict(docs=[])),
