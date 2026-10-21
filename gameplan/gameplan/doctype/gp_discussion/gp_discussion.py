@@ -229,6 +229,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 	@with_stored_document
 	def highlight_comment(self, comment: str):
 		self.check_can_highlight_comment()
+		frappe.db.get_value(self.doctype, self.name, "name", for_update=True)
 		reply = self.get_reply(comment)
 		if reply.highlighted_at:
 			return
@@ -256,6 +257,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 	@with_stored_document
 	def unhighlight_comment(self, comment: str):
 		self.check_can_highlight_comment()
+		frappe.db.get_value(self.doctype, self.name, "name", for_update=True)
 		reply = self.get_reply(comment)
 		if not reply.highlighted_at:
 			return
