@@ -360,8 +360,8 @@ def _highlight_fields_unchanged(doc):
 	return not _fields_changed(doc, fields)
 
 
-def can_highlight_comment(user, doc):
-	return get_doc_value(doc, "owner") == user
+def can_highlight_comment(user, discussion):
+	return get_doc_value(discussion, "owner") == user
 
 
 def _guest_locked_fields_unchanged(user, doc):

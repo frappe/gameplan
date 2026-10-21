@@ -229,7 +229,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 	@with_stored_document
 	def highlight_comment(self, comment: str):
 		self.check_can_highlight_comment()
-		if self.get_comment_highlighted_at(comment):
+		if self.get_reply(comment).highlighted_at:
 			return
 		frappe.db.set_value(
 			"GP Comment",
@@ -243,7 +243,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 	@with_stored_document
 	def unhighlight_comment(self, comment: str):
 		self.check_can_highlight_comment()
-		if not self.get_comment_highlighted_at(comment):
+		if not self.get_reply(comment).highlighted_at:
 			return
 		frappe.db.set_value(
 			"GP Comment",
@@ -314,8 +314,8 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 				_("Only the author of this discussion can highlight a comment"), frappe.PermissionError
 			)
 
-	def get_comment_highlighted_at(self, comment):
-		values = frappe.db.get_value(
+	def get_reply(self, comment):
+		reply = frappe.db.get_value(
 			"GP Comment",
 			{
 				"name": comment,
@@ -323,12 +323,12 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 				"reference_name": self.name,
 				"deleted_at": ("is", "not set"),
 			},
-			["name", "highlighted_at"],
+			["highlighted_at"],
 			as_dict=True,
 		)
-		if not values:
+		if not reply:
 			frappe.throw(_("This comment does not belong to this discussion"))
-		return values.highlighted_at
+		return reply
 
 	def get_highlighted_comments(self):
 		comments = frappe.get_all(
