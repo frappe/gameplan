@@ -129,6 +129,7 @@
 
 <script setup lang="ts">
 import { ref, computed, defineAsyncComponent, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { Button, Dropdown, ErrorMessage, Tooltip, dayjsLocal, useDoctype } from 'frappe-ui'
 import { useList } from 'frappe-ui'
 import { copyToClipboard, extractServerMessage } from '@/utils'
@@ -160,6 +161,7 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+const router = useRouter()
 const showRevisionsDialog = ref(false)
 const commentType = useDoctype<GPComment>('GP Comment')
 const hiddenContent = ref('')
@@ -309,6 +311,17 @@ const copyLink = (comment: GPComment) => {
 }
 
 const dropdownOptions = computed(() => [
+  {
+    label: 'Moderation history',
+    icon: 'lucide-history',
+    onClick: () =>
+      router.push({
+        name: 'CommunityModeration',
+        params: { communityId: props.space?.team },
+        query: { tab: 'history', kind: 'reply', target: String(props.comment.name) },
+      }),
+    condition: () => canModerate.value,
+  },
   {
     label:
       props.comment.hidden_at || props.comment.spam_removed_at ? 'Restore reply' : 'Hide reply',

@@ -1,6 +1,6 @@
 # Moderation decisions
 
-Owner: Ebrahim. Decisions updated: 2026-10-19.
+Owner: Ebrahim. Decisions updated: 2026-10-21.
 
 This log records choices Ebrahim confirmed in this chat.
 The roadmap describes sequencing and contains proposals for later features.
@@ -30,9 +30,10 @@ A recommendation becomes a decision only after Ebrahim accepts it.
 | D18 | Community bans last until manually lifted and survive leaving and rejoining. | Block creating, editing, deleting, reactions, voting, and invitations in that Community. Preserve reading and membership. Staff must lose their Community role before being banned; global admins are exempt. |
 | D19 | Add a moderator-only Removed content view per Community with preview and Restore. | Ordinary feeds/search omit removed discussions; direct access shows a neutral unavailable message. Replies show neutral placeholders. Private-Space restrictions still apply. |
 | D20 | Delete spam requires a reason and affects only the selected reply or discussion. | Preserve descendants/files and closed/pinned state for restoration without new notifications. Do not automatically ban the author or remove other posts. Ordinary Delete remains separate. |
-
 | D21 | Build T26 moderation history in a separate PR after the T27 review fixes. | Reuse the immutable log for discussion/reply action history and Community-scoped user ban/unban history. Include actor, time, reason, pagination, existing moderator/private-Space access rules, frontend, and tests. |
-
+| D22 | History uses a tab in Community moderation, filters for posts or users, and links in post menus. | Show action, actor, time, reason, and target. Original hidden text stays behind existing restricted Preview. Retain permanent, read-only records. |
+| D23 | Post history follows current target access after moves. | Moderators need current Community and private-Space access. Permanently deleted targets disappear from Community history while their logs remain restricted for global admins. Hidden/spam-removed targets remain visible to authorized moderators. |
+| D24 | Push the T26 branch now and open its separate upstream PR after #621 merges. | Keep T26 out of #621 and avoid including its unmerged foundation in the new PR diff. |
 
 D05–D07 were confirmed in the first answer accepting scope and assignment authority.
 D08–D10 were confirmed in the next answer accepting private access, eligibility, and the first PR boundary.
@@ -87,7 +88,6 @@ Tests: `gameplan/tests/features/test_moderators.py` and `frontend/cypress/e2e/co
 Plan these when their implementation slice is next. Roadmap recommendations do not settle them.
 
 - Ordinary members' editing rights and whether a Community can opt into forum-specific rules.
-- Audit history UI and retention policy.
 - Report reasons, resolution behavior, and review queue workflow.
 - Temporary bans, automatic expiry, and separate silence behavior.
 - Approval rules, posting limits, slow mode, watched-word matching, and censor behavior.
@@ -98,3 +98,11 @@ Plan these when their implementation slice is next. Roadmap recommendations do n
 Add confirmed decisions after each planning round.
 Record later changes against the original decision ID with the date and replacement decision.
 Keep unresolved questions and implementation choices distinct from confirmed product decisions.
+
+## T26 implementation notes
+
+- Community moderation has a History tab and post-menu links, with target-type and exact post/user filters.
+- A scoped read-only endpoint returns action metadata in deterministic pages of 40 records. It never returns stored bodies or original titles.
+- User filtering covers Community Ban/Unban history. Discussion/reply history uses the target's current Space permissions, including after moves.
+- Missing targets remain in restricted log storage and do not consume Community history pages. Existing raw-log permissions remain unchanged.
+- Verified on the disposable site: 68 backend tests, seven browser tests, formatting, lint, and frontend build.
