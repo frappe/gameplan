@@ -15,11 +15,11 @@ class TestHighlightedComments(DiscussionLifecycleTestCase):
 
 	def highlight(self, user, comment):
 		with self.as_user(user):
-			frappe.get_doc("GP Discussion", self.discussion.name).highlight_comment(comment.name)
+			frappe.get_doc("GP Discussion", self.discussion.name).highlight_comment(cstr(comment.name))
 
 	def unhighlight(self, user, comment):
 		with self.as_user(user):
-			frappe.get_doc("GP Discussion", self.discussion.name).unhighlight_comment(comment.name)
+			frappe.get_doc("GP Discussion", self.discussion.name).unhighlight_comment(cstr(comment.name))
 
 	def highlighted(self):
 		return [
@@ -191,6 +191,13 @@ class TestHighlightedComments(DiscussionLifecycleTestCase):
 			self.highlight(self.member, foreign)
 
 		self.assertIsNone(frappe.db.get_value("GP Comment", foreign.name, "highlighted_at"))
+
+	def test_a_filter_in_place_of_a_reply_is_rejected(self):
+		with self.as_user(self.member):
+			with self.assertRaises(frappe.FrappeTypeError):
+				frappe.get_doc("GP Discussion", self.discussion.name).highlight_comment(["like", "%"])
+
+		self.assertEqual(self.activities(), [])
 
 	def test_deleting_the_reply_drops_it_from_the_highlights(self):
 		self.highlight(self.member, self.reply)

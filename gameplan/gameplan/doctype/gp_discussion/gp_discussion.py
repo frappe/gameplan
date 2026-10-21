@@ -227,7 +227,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
-	def highlight_comment(self, comment):
+	def highlight_comment(self, comment: str):
 		self.check_can_highlight_comment()
 		if self.get_comment_highlighted_at(comment):
 			return
@@ -241,7 +241,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
-	def unhighlight_comment(self, comment):
+	def unhighlight_comment(self, comment: str):
 		self.check_can_highlight_comment()
 		if not self.get_comment_highlighted_at(comment):
 			return
