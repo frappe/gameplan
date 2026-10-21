@@ -61,7 +61,6 @@
           ]"
           v-else-if="item.doctype == 'GP Activity'"
           :activity="item"
-          :comment-owner="activityCommentOwner(item)"
           @open-comment="scrollToCommentById"
         />
         <Poll
@@ -537,12 +536,6 @@ defineExpose({
   getCommentContentElement,
   highlightComment,
 })
-
-function activityCommentOwner(activity: { data?: { comment?: string } | null }) {
-  const id = activity.data?.comment
-  if (!id) return null
-  return comments.data?.find((c) => String(c.name) === String(id))?.owner ?? null
-}
 
 function openCommentBox() {
   showCommentBox.value = true

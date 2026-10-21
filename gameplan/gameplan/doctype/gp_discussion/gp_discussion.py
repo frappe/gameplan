@@ -229,7 +229,8 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 	@with_stored_document
 	def highlight_comment(self, comment: str):
 		self.check_can_highlight_comment()
-		if self.get_reply(comment).highlighted_at:
+		reply = self.get_reply(comment)
+		if reply.highlighted_at:
 			return
 		for current in frappe.get_all(
 			"GP Comment",
@@ -238,24 +239,27 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 				"reference_name": self.name,
 				"highlighted_at": ("is", "set"),
 			},
-			pluck="name",
+			fields=["name", "owner"],
 		):
-			self.clear_highlight(current)
+			self.clear_highlight(current.name, current.owner)
 		frappe.db.set_value(
 			"GP Comment",
 			comment,
 			{"highlighted_by": frappe.session.user, "highlighted_at": frappe.utils.now()},
 			update_modified=False,
 		)
-		self.log_activity("Comment Highlighted", data={"comment": cstr(comment)})
+		self.log_activity(
+			"Comment Highlighted", data={"comment": cstr(comment), "comment_owner": reply.owner}
+		)
 
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
 	def unhighlight_comment(self, comment: str):
 		self.check_can_highlight_comment()
-		if not self.get_reply(comment).highlighted_at:
+		reply = self.get_reply(comment)
+		if not reply.highlighted_at:
 			return
-		self.clear_highlight(comment)
+		self.clear_highlight(comment, reply.owner)
 
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
@@ -327,21 +331,21 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 				"reference_name": self.name,
 				"deleted_at": ("is", "not set"),
 			},
-			["highlighted_at"],
+			["owner", "highlighted_at"],
 			as_dict=True,
 		)
 		if not reply:
 			frappe.throw(_("This comment does not belong to this discussion"))
 		return reply
 
-	def clear_highlight(self, comment):
+	def clear_highlight(self, comment, owner):
 		frappe.db.set_value(
 			"GP Comment",
 			comment,
 			{"highlighted_by": None, "highlighted_at": None},
 			update_modified=False,
 		)
-		self.log_activity("Comment Unhighlighted", data={"comment": cstr(comment)})
+		self.log_activity("Comment Unhighlighted", data={"comment": cstr(comment), "comment_owner": owner})
 
 	def get_highlighted_reply(self):
 		reply = frappe.db.get_value(

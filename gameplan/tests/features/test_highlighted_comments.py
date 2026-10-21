@@ -55,6 +55,19 @@ class TestHighlightedComments(DiscussionLifecycleTestCase):
 
 		self.assertEqual(self.activities(), [{"action": "Comment Highlighted", "user": self.member.name}])
 
+	def test_activities_name_the_reply_and_its_author(self):
+		self.highlight(self.member, self.reply)
+		self.unhighlight(self.member, self.reply)
+
+		logged = frappe.get_all(
+			"GP Activity",
+			filters={"reference_doctype": "GP Discussion", "reference_name": self.discussion.name},
+			pluck="data",
+		)
+
+		expected = {"comment": cstr(self.reply.name), "comment_owner": self.second_member.name}
+		self.assertEqual([frappe.parse_json(data) for data in logged], [expected, expected])
+
 	def test_highlighting_another_reply_replaces_the_first(self):
 		other = self.comment_as(self.member, "Another answer")
 		self.highlight(self.member, self.reply)

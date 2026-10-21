@@ -44,12 +44,12 @@
             : ' removed the accepted answer from '
         }}
         <button
-          v-if="commentOwnerUser"
+          v-if="activity.data.comment_owner"
           type="button"
           class="text-ink-gray-8 hover:text-ink-gray-5"
-          @click="emit('open-comment', String(activity.data.comment))"
+          @click="emit('open-comment', activity.data.comment)"
         >
-          {{ commentOwnerUser.full_name }}'s reply
+          {{ $user(activity.data.comment_owner).full_name }}'s reply
         </button>
         <template v-else>a reply</template>
         <template v-if="activity.action == 'Comment Highlighted'"> as the answer</template>
@@ -168,12 +168,12 @@ interface Activity {
     old_value?: string
     new_value?: string
     comment?: string
+    comment_owner?: string
   }
 }
 
 const props = defineProps<{
   activity: Activity
-  commentOwner?: string | null
 }>()
 
 const emit = defineEmits<{
@@ -181,9 +181,6 @@ const emit = defineEmits<{
 }>()
 
 const user = computed(() => useUser(props.activity.user))
-const commentOwnerUser = computed(() =>
-  props.commentOwner ? useUser(props.commentOwner) : null,
-)
 // Clearing an assignee logs the same activity with an empty new_value, so there is no
 // user to name — the template renders "unassigned this" instead.
 const assignedUser = computed(() =>
