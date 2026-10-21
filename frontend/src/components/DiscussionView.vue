@@ -181,7 +181,7 @@
               v-for="highlighted in visibleHighlightedComments"
               :key="highlighted.name"
               :data-highlight-card="highlighted.name"
-              class="cursor-pointer rounded-r-6 border-l-2 border-outline-gray-3 bg-surface-gray-2/40 px-4 py-4 sm:px-5 sm:py-5"
+              class="cursor-pointer rounded-6 border border-outline-gray-2 bg-surface-gray-2/40 px-4 py-4 sm:px-5 sm:py-5"
               @click="commentsArea?.scrollToCommentById(highlighted.name)"
             >
               <div class="flex items-center gap-3">
@@ -203,7 +203,6 @@
               <div class="prose-v3 mt-3 max-w-none text-ink-gray-7">
                 <p class="!my-0 line-clamp-3">{{ highlighted.content }}</p>
               </div>
-              <div class="mt-3 text-sm-medium text-ink-gray-5">Read more</div>
             </div>
             <button
               v-if="highlightedComments.length > HIGHLIGHTS_SHOWN"

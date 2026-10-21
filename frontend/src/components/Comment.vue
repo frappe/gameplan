@@ -56,9 +56,6 @@
               <template #prefix>
                 <span class="lucide-badge-check h-3.5 w-3.5" />
               </template>
-              <template #suffix>
-                <span class="lucide-chevron-up h-3.5 w-3.5" />
-              </template>
             </Badge>
           </button>
           <span v-if="isUpdating" class="italic text-ink-gray-5"> &nbsp;&middot; Sending... </span>
