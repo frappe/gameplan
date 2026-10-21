@@ -49,7 +49,7 @@
           :can-highlight="canHighlightComments"
           @highlight="emit('highlight-comment', String(item.name))"
           @unhighlight="emit('unhighlight-comment', String(item.name))"
-          @show-highlight="emit('show-highlight', String(item.name))"
+          @show-highlight="emit('show-highlight')"
         />
         <Activity
           :class="[
@@ -295,7 +295,7 @@ const emit = defineEmits<{
   'composer-resize': []
   'highlight-comment': [comment: string]
   'unhighlight-comment': [comment: string]
-  'show-highlight': [comment: string]
+  'show-highlight': []
 }>()
 
 const router = useRouter()

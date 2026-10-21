@@ -80,7 +80,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		d.last_unread_poll = polls[0] if polls else None
 		d.is_bookmarked = self.is_bookmarked_by_current_user()
 		d.views = frappe.db.count("GP Discussion Visit", {"discussion": self.name})
-		d.highlighted_comments = self.get_highlighted_comments()
+		d.highlighted_reply = self.get_highlighted_reply()
 		return d
 
 	def before_insert(self):
@@ -231,6 +231,16 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		self.check_can_highlight_comment()
 		if self.get_reply(comment).highlighted_at:
 			return
+		for current in frappe.get_all(
+			"GP Comment",
+			filters={
+				"reference_doctype": self.doctype,
+				"reference_name": self.name,
+				"highlighted_at": ("is", "set"),
+			},
+			pluck="name",
+		):
+			self.clear_highlight(current)
 		frappe.db.set_value(
 			"GP Comment",
 			comment,
@@ -245,13 +255,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		self.check_can_highlight_comment()
 		if not self.get_reply(comment).highlighted_at:
 			return
-		frappe.db.set_value(
-			"GP Comment",
-			comment,
-			{"highlighted_by": None, "highlighted_at": None},
-			update_modified=False,
-		)
-		self.log_activity("Comment Unhighlighted", data={"comment": cstr(comment)})
+		self.clear_highlight(comment)
 
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
@@ -330,28 +334,36 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 			frappe.throw(_("This comment does not belong to this discussion"))
 		return reply
 
-	def get_highlighted_comments(self):
-		comments = frappe.get_all(
+	def clear_highlight(self, comment):
+		frappe.db.set_value(
 			"GP Comment",
-			filters={
+			comment,
+			{"highlighted_by": None, "highlighted_at": None},
+			update_modified=False,
+		)
+		self.log_activity("Comment Unhighlighted", data={"comment": cstr(comment)})
+
+	def get_highlighted_reply(self):
+		reply = frappe.db.get_value(
+			"GP Comment",
+			{
 				"reference_doctype": self.doctype,
 				"reference_name": self.name,
 				"deleted_at": ("is", "not set"),
 				"highlighted_at": ("is", "set"),
 			},
-			fields=["name", "owner", "content", "highlighted_by", "highlighted_at"],
-			order_by="creation asc",
+			["name", "owner", "content", "highlighted_by", "highlighted_at"],
+			as_dict=True,
 		)
-		return [
-			{
-				"name": cstr(comment.name),
-				"owner": comment.owner,
-				"content": html_to_text_preview(comment.content, 300),
-				"highlighted_by": comment.highlighted_by,
-				"highlighted_at": comment.highlighted_at,
-			}
-			for comment in comments
-		]
+		if not reply:
+			return None
+		return {
+			"name": cstr(reply.name),
+			"owner": reply.owner,
+			"content": html_to_text_preview(reply.content, 300),
+			"highlighted_by": reply.highlighted_by,
+			"highlighted_at": reply.highlighted_at,
+		}
 
 	def update_slug(self):
 		self.slug = url_safe_slug(self.title)

@@ -38,16 +38,21 @@
           activity.action == 'Comment Highlighted' || activity.action == 'Comment Unhighlighted'
         "
       >
-        {{ activity.action == 'Comment Highlighted' ? ' highlighted ' : ' removed the highlight from ' }}
+        {{
+          activity.action == 'Comment Highlighted'
+            ? ' accepted '
+            : ' removed the accepted answer from '
+        }}
         <button
           v-if="commentOwnerUser"
           type="button"
           class="text-ink-gray-8 hover:text-ink-gray-5"
           @click="emit('open-comment', String(activity.data.comment))"
         >
-          {{ commentOwnerUser.full_name }}'s comment
+          {{ commentOwnerUser.full_name }}'s reply
         </button>
-        <template v-else>a comment</template>
+        <template v-else>a reply</template>
+        <template v-if="activity.action == 'Comment Highlighted'"> as the answer</template>
       </template>
       <span v-if="activity.action == 'Discussion Title Changed'">
         changed the title from

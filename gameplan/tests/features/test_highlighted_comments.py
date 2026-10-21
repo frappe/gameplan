@@ -55,13 +55,17 @@ class TestHighlightedComments(DiscussionLifecycleTestCase):
 
 		self.assertEqual(self.activities(), [{"action": "Comment Highlighted", "user": self.member.name}])
 
-	def test_several_replies_can_be_highlighted(self):
+	def test_highlighting_another_reply_replaces_the_first(self):
 		other = self.comment_as(self.member, "Another answer")
-
 		self.highlight(self.member, self.reply)
+
 		self.highlight(self.member, other)
 
-		self.assertEqual(self.highlighted(), [cstr(self.reply.name), cstr(other.name)])
+		self.assertEqual(self.highlighted(), [cstr(other.name)])
+		self.assertEqual(
+			[activity.action for activity in self.activities()],
+			["Comment Highlighted", "Comment Unhighlighted", "Comment Highlighted"],
+		)
 
 	def test_highlighting_the_same_reply_again_changes_nothing(self):
 		self.highlight(self.member, self.reply)
@@ -70,14 +74,12 @@ class TestHighlightedComments(DiscussionLifecycleTestCase):
 
 		self.assertEqual(len(self.activities("Comment Highlighted")), 1)
 
-	def test_unhighlighting_clears_only_that_reply_and_logs_it(self):
-		other = self.comment_as(self.member, "Another answer")
+	def test_unhighlighting_clears_the_reply_and_logs_it(self):
 		self.highlight(self.member, self.reply)
-		self.highlight(self.member, other)
 
 		self.unhighlight(self.member, self.reply)
 
-		self.assertEqual(self.highlighted(), [cstr(other.name)])
+		self.assertEqual(self.highlighted(), [])
 		self.assertEqual(len(self.activities("Comment Unhighlighted")), 1)
 
 	def test_unhighlighting_a_reply_that_is_not_highlighted_does_nothing(self):
@@ -199,32 +201,39 @@ class TestHighlightedComments(DiscussionLifecycleTestCase):
 
 		self.assertEqual(self.activities(), [])
 
-	def test_deleting_the_reply_drops_it_from_the_highlights(self):
+	def test_deleting_the_reply_drops_the_highlighted_reply(self):
 		self.highlight(self.member, self.reply)
 
 		self.delete_as(self.reply, self.second_member)
 
-		self.assertEqual(self.stored().as_dict().highlighted_comments, [])
+		self.assertIsNone(self.stored().as_dict().highlighted_reply)
 
-	def test_highlights_list_the_reply_author_text_and_highlighter(self):
+	def test_highlighted_reply_carries_the_reply_author_text_and_highlighter(self):
 		self.highlight(self.member, self.reply)
 
 		with self.as_user(self.second_member):
-			highlights = self.stored().as_dict().highlighted_comments
+			reply = self.stored().as_dict().highlighted_reply
 
-		self.assertEqual(len(highlights), 1)
-		self.assertEqual(highlights[0]["name"], cstr(self.reply.name))
-		self.assertEqual(highlights[0]["owner"], self.second_member.name)
-		self.assertEqual(highlights[0]["highlighted_by"], self.member.name)
-		self.assertIn("Restart the worker", highlights[0]["content"])
+		self.assertEqual(reply["name"], cstr(self.reply.name))
+		self.assertEqual(reply["owner"], self.second_member.name)
+		self.assertEqual(reply["highlighted_by"], self.member.name)
+		self.assertIn("Restart the worker", reply["content"])
+
+	def test_highlighted_reply_follows_the_replacement(self):
+		other = self.comment_as(self.member, "Another answer")
+		self.highlight(self.member, self.reply)
+
+		self.highlight(self.member, other)
+
+		self.assertEqual(self.stored().as_dict().highlighted_reply["name"], cstr(other.name))
 
 	def test_highlight_text_is_long_enough_for_a_few_lines(self):
 		long_reply = self.comment_as(self.second_member, "<p>" + "word " * 100 + "</p>")
 
 		self.highlight(self.member, long_reply)
 
-		content = self.stored().as_dict().highlighted_comments[0]["content"]
+		content = self.stored().as_dict().highlighted_reply["content"]
 		self.assertGreater(len(content), 200)
 
-	def test_highlights_are_empty_without_any(self):
-		self.assertEqual(self.stored().as_dict().highlighted_comments, [])
+	def test_highlighted_reply_is_empty_without_one(self):
+		self.assertIsNone(self.stored().as_dict().highlighted_reply)

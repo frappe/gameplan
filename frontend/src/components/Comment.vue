@@ -292,7 +292,7 @@ const dropdownOptions = computed(() => [
     condition: () => isBookmarked.value,
   },
   {
-    label: 'Highlight comment',
+    label: 'Accept as answer',
     icon: 'lucide-badge-check',
     onClick: () => emit('highlight'),
     condition: () =>
@@ -302,7 +302,7 @@ const dropdownOptions = computed(() => [
       !props.readOnlyMode,
   },
   {
-    label: 'Remove highlight',
+    label: 'Remove accepted answer',
     icon: 'lucide-badge-x',
     onClick: () => emit('unhighlight'),
     condition: () => props.canHighlight && isHighlighted.value && !props.readOnlyMode,

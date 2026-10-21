@@ -176,13 +176,11 @@
               @discard="cancelEdit"
             />
           </div>
-          <div v-if="highlightedComments.length && !editingPost" class="mt-6 space-y-4">
+          <div v-if="highlightedReply && !editingPost" class="mt-6">
             <div
-              v-for="highlighted in visibleHighlightedComments"
-              :key="highlighted.name"
-              :data-highlight-card="highlighted.name"
+              ref="highlightCard"
               class="cursor-pointer rounded-6 border border-outline-gray-2 bg-surface-gray-2/40 px-4 py-4 sm:px-5 sm:py-5"
-              @click="commentsArea?.scrollToCommentById(highlighted.name)"
+              @click="commentsArea?.scrollToCommentById(highlightedReply.name)"
             >
               <div class="flex items-center gap-3">
                 <span class="flex items-center gap-1.5 text-base-semibold text-ink-gray-9">
@@ -190,32 +188,20 @@
                   Accepted answer
                 </span>
                 <span class="ml-auto truncate text-sm text-ink-gray-5">
-                  by {{ $user(highlighted.highlighted_by).full_name }} &middot;
-                  {{ dayjsLocal(highlighted.highlighted_at).fromNow() }}
+                  by {{ $user(highlightedReply.highlighted_by).full_name }} &middot;
+                  {{ dayjsLocal(highlightedReply.highlighted_at).fromNow() }}
                 </span>
               </div>
               <div class="mt-4 flex items-center gap-2">
-                <UserAvatarWithHover size="sm" :user="highlighted.owner" />
+                <UserAvatarWithHover size="sm" :user="highlightedReply.owner" />
                 <span class="text-sm-medium text-ink-gray-7">
-                  {{ $user(highlighted.owner).full_name }}
+                  {{ $user(highlightedReply.owner).full_name }}
                 </span>
               </div>
               <div class="prose-v3 mt-3 max-w-none text-ink-gray-7">
-                <p class="!my-0 line-clamp-3">{{ highlighted.content }}</p>
+                <p class="!my-0 line-clamp-3">{{ highlightedReply.content }}</p>
               </div>
             </div>
-            <button
-              v-if="highlightedComments.length > HIGHLIGHTS_SHOWN"
-              type="button"
-              class="text-sm-medium text-ink-gray-5 hover:text-ink-gray-8"
-              @click="showAllHighlights = !showAllHighlights"
-            >
-              {{
-                showAllHighlights
-                  ? 'Show less'
-                  : `+${highlightedComments.length - HIGHLIGHTS_SHOWN} more`
-              }}
-            </button>
           </div>
           <div class="mt-3" v-show="!editingPost">
             <Reactions
@@ -909,14 +895,8 @@ const canMoveOrPinDiscussion = computed(() =>
   canMoveOrPinContent(discussion.doc, space.value, useSessionUser()),
 )
 const canHighlightComments = computed(() => canHighlightComment(discussion.doc, useSessionUser()))
-const HIGHLIGHTS_SHOWN = 3
-const showAllHighlights = ref(false)
-const highlightedComments = computed(() => discussion.doc?.highlighted_comments ?? [])
-const visibleHighlightedComments = computed(() =>
-  showAllHighlights.value
-    ? highlightedComments.value
-    : highlightedComments.value.slice(0, HIGHLIGHTS_SHOWN),
-)
+const highlightedReply = computed(() => discussion.doc?.highlighted_reply ?? null)
+const highlightCard = useTemplateRef<HTMLElement>('highlightCard')
 
 function highlightComment(comment: string) {
   discussion.highlightComment.submit({ comment }).then(refreshHighlights)
@@ -931,13 +911,8 @@ function refreshHighlights() {
   commentsArea.value?.reloadTimeline()
 }
 
-async function showHighlightCard(comment: string) {
-  const index = highlightedComments.value.findIndex((h) => String(h.name) === String(comment))
-  if (index >= HIGHLIGHTS_SHOWN) showAllHighlights.value = true
-  await nextTick()
-  document
-    .querySelector(`[data-highlight-card="${comment}"]`)
-    ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+function showHighlightCard() {
+  highlightCard.value?.scrollIntoView({ behavior: 'smooth', block: 'center' })
 }
 
 const actions = computed(() => [

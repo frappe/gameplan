@@ -85,13 +85,13 @@ export function useDiscussion(name: string) {
     last_unread_poll: string
     is_bookmarked: boolean
     views: number
-    highlighted_comments: {
+    highlighted_reply: {
       name: string
       owner: string
       content: string
       highlighted_by: string
       highlighted_at: string
-    }[]
+    } | null
   }
 
   interface DiscussionMethods {
