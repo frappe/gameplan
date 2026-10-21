@@ -260,9 +260,10 @@ interface Props {
   disableNewComment?: boolean
   // transient: hide the fixed comment bar while the post itself is being edited
   hideNewComment?: boolean
-  // Bumped by the parent whenever this client's own action changes the reference
-  // document (pass its `modified`). Lets the timeline refresh for the acting user
-  // without waiting on the `new_activity` socket echo — see the watch below.
+  // Any value that changes whenever this client's own action adds an activity (e.g. the
+  // doc's `modified` plus fields that change without bumping it). Lets the timeline
+  // refresh for the acting user without waiting on the `new_activity` socket echo — see
+  // the watch below.
   activityVersion?: string | number
   canHighlightComments?: boolean
   highlightedReply?: string | null
@@ -399,9 +400,9 @@ const activities = useList<GPActivity>({
 // The timeline normally updates live via the `new_activity` socket event (see
 // onMounted). Independent of that server round trip, the user who just
 // renamed/closed/moved the discussion should see their own action recorded at once.
-// The parent bumps `activityVersion` with the doc's `modified` on every such action,
-// so reload the timeline when it changes (skipping the initial undefined -> value
-// transition on first load, when the list has already fetched on mount).
+// `activityVersion` changes on every such action, so reload the timeline when it
+// changes (skipping the initial undefined -> value transition on first load, when the
+// list has already fetched on mount).
 watch(
   () => props.activityVersion,
   (next, prev) => {
