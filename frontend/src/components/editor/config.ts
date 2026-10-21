@@ -32,11 +32,12 @@ function tagItems() {
 declare const __FRONTEND_ROUTE__: string
 
 function discussionLinkItems(query: string): Promise<DiscussionLinkItem[]> {
-  if (!/\p{L}/u.test(query)) return Promise.resolve([])
+  if (query && !/^[\p{L}\p{N}]/u.test(query)) return Promise.resolve([])
+  const pattern = /^\p{N}/u.test(query) ? `${query}%` : `%${query}%`
   return call('frappe.client.get_list', {
     doctype: 'GP Discussion',
     fields: ['name', 'title', 'project'],
-    filters: { title: ['like', `%${query}%`] },
+    filters: query ? { title: ['like', pattern] } : {},
     order_by: 'last_post_at desc',
     limit_page_length: 10,
   })
