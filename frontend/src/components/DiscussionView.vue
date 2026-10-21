@@ -907,9 +907,7 @@ function highlightComment(comment: string) {
   discussion.highlightComment.submit({ comment }).then(() => discussion.reload())
 }
 
-function unhighlightComment() {
-  const comment = highlightedReply.value?.name
-  if (!comment) return
+function unhighlightComment(comment: string) {
   discussion.unhighlightComment.submit({ comment }).then(() => discussion.reload())
 }
 

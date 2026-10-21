@@ -49,7 +49,7 @@
           :can-highlight="canHighlightComments"
           :highlighted-reply="highlightedReply"
           @highlight="emit('highlight-comment', String(item.name))"
-          @unhighlight="emit('unhighlight-comment')"
+          @unhighlight="emit('unhighlight-comment', String(item.name))"
           @show-highlight="emit('show-highlight')"
         />
         <Activity
@@ -296,7 +296,7 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   'composer-resize': []
   'highlight-comment': [comment: string]
-  'unhighlight-comment': []
+  'unhighlight-comment': [comment: string]
   'show-highlight': []
   'new-activity': [action: string]
 }>()
