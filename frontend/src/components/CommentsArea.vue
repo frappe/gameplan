@@ -297,6 +297,7 @@ const emit = defineEmits<{
   'highlight-comment': [comment: string]
   'unhighlight-comment': []
   'show-highlight': []
+  'new-activity': [action: string]
 }>()
 
 const router = useRouter()
@@ -818,6 +819,7 @@ onMounted(() => {
     // timeline silently stops updating. Compare as strings.
     if (data.reference_doctype === props.doctype && data.reference_name === String(props.name)) {
       activities.reload()
+      emit('new-activity', data.action)
     }
   })
 })

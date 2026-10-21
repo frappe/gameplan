@@ -225,6 +225,7 @@
           @highlight-comment="highlightComment"
           @unhighlight-comment="unhighlightComment"
           @show-highlight="showHighlightCard"
+          @new-activity="onNewActivity"
           ref="commentsArea"
           @composer-resize="scheduleScrollToTopPlacement"
         />
@@ -910,6 +911,10 @@ function unhighlightComment() {
   const comment = highlightedReply.value?.name
   if (!comment) return
   discussion.unhighlightComment.submit({ comment }).then(() => discussion.reload())
+}
+
+function onNewActivity(action: string) {
+  if (action === 'Comment Highlighted' || action === 'Comment Unhighlighted') discussion.reload()
 }
 
 function showHighlightCard() {
