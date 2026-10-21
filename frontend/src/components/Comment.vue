@@ -151,6 +151,7 @@ interface Props {
   // Space the comment's thread belongs to, for community-admin delete moderation.
   space?: Space | null
   canHighlight?: boolean
+  highlightedReply?: string | null
 }
 
 const props = defineProps<Props>()
@@ -159,7 +160,7 @@ const emit = defineEmits<{
   unhighlight: []
   'show-highlight': []
 }>()
-const isHighlighted = computed(() => Boolean(props.comment.highlighted_at))
+const isHighlighted = computed(() => props.highlightedReply === String(props.comment.name))
 const showRevisionsDialog = ref(false)
 const isEditing = ref(false)
 const isUpdating = ref(false)

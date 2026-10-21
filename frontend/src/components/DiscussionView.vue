@@ -219,8 +219,9 @@
           :read-only-mode="readOnlyMode"
           :disable-new-comment="Boolean(discussion.doc.closed_at)"
           :hide-new-comment="editingPost"
-          :activity-version="discussion.doc.modified"
+          :activity-version="activityVersion"
           :can-highlight-comments="canHighlightComments"
+          :highlighted-reply="highlightedReply?.name"
           @highlight-comment="highlightComment"
           @unhighlight-comment="unhighlightComment"
           @show-highlight="showHighlightCard"
@@ -897,18 +898,18 @@ const canMoveOrPinDiscussion = computed(() =>
 const canHighlightComments = computed(() => canHighlightComment(discussion.doc, useSessionUser()))
 const highlightedReply = computed(() => discussion.doc?.highlighted_reply ?? null)
 const highlightCard = useTemplateRef<HTMLElement>('highlightCard')
+const activityVersion = computed(
+  () => `${discussion.doc?.modified}|${highlightedReply.value?.highlighted_at ?? ''}`,
+)
 
 function highlightComment(comment: string) {
-  discussion.highlightComment.submit({ comment }).then(refreshHighlights)
+  discussion.highlightComment.submit({ comment }).then(() => discussion.reload())
 }
 
-function unhighlightComment(comment: string) {
-  discussion.unhighlightComment.submit({ comment }).then(refreshHighlights)
-}
-
-function refreshHighlights() {
-  discussion.reload()
-  commentsArea.value?.reloadTimeline()
+function unhighlightComment() {
+  const comment = highlightedReply.value?.name
+  if (!comment) return
+  discussion.unhighlightComment.submit({ comment }).then(() => discussion.reload())
 }
 
 function showHighlightCard() {

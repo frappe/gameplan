@@ -47,8 +47,9 @@
           :comments="comments"
           :bookmarks="bookmarks"
           :can-highlight="canHighlightComments"
+          :highlighted-reply="highlightedReply"
           @highlight="emit('highlight-comment', String(item.name))"
-          @unhighlight="emit('unhighlight-comment', String(item.name))"
+          @unhighlight="emit('unhighlight-comment')"
           @show-highlight="emit('show-highlight')"
         />
         <Activity
@@ -265,6 +266,7 @@ interface Props {
   // without waiting on the `new_activity` socket echo — see the watch below.
   activityVersion?: string | number
   canHighlightComments?: boolean
+  highlightedReply?: string | null
 }
 
 interface ComposerUiState {
@@ -294,7 +296,7 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   'composer-resize': []
   'highlight-comment': [comment: string]
-  'unhighlight-comment': [comment: string]
+  'unhighlight-comment': []
   'show-highlight': []
 }>()
 
@@ -345,17 +347,7 @@ const composerStorageKey = computed(() => {
 const comments = useList<GPComment>({
   doctype: 'GP Comment',
   cacheKey: ['Comments', props.doctype, props.name],
-  fields: [
-    'name',
-    'content',
-    'owner',
-    'creation',
-    'modified',
-    'edited_at',
-    'deleted_at',
-    'highlighted_by',
-    'highlighted_at',
-  ],
+  fields: ['name', 'content', 'owner', 'creation', 'modified', 'edited_at', 'deleted_at'],
   transform(data) {
     return data.map((d) => ({ ...d, doctype: 'GP Comment' }))
   },
@@ -544,13 +536,7 @@ defineExpose({
   scrollToCommentById,
   getCommentContentElement,
   highlightComment,
-  reloadTimeline,
 })
-
-function reloadTimeline() {
-  comments.reload()
-  activities.reload()
-}
 
 function activityCommentOwner(activity: { data?: { comment?: string } | null }) {
   const id = activity.data?.comment
@@ -673,7 +659,7 @@ function _scrollToEnd() {
 
 function scrollToCommentById(id: string) {
   const item = timelineItems.value.find(
-    (item) => item.doctype === 'GP Comment' && String(item.name) === String(id),
+    (item) => item.doctype === 'GP Comment' && String(item.name) === id,
   )
   if (item) {
     scrollToItem(item)
