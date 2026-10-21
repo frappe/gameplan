@@ -187,7 +187,7 @@
               <div class="flex items-center gap-3">
                 <span class="flex items-center gap-1.5 text-base-semibold text-ink-gray-9">
                   <span class="lucide-badge-check h-4 w-4" />
-                  Highlighted
+                  Accepted answer
                 </span>
                 <span class="ml-auto truncate text-sm text-ink-gray-5">
                   by {{ $user(highlighted.highlighted_by).full_name }} &middot;

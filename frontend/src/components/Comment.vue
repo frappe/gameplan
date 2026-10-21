@@ -52,7 +52,7 @@
             class="ml-2 inline-flex align-middle"
             @click="emit('show-highlight')"
           >
-            <Badge theme="gray" variant="subtle" size="md" label="Highlighted">
+            <Badge theme="gray" variant="subtle" size="md" label="Accepted answer">
               <template #prefix>
                 <span class="lucide-badge-check h-3.5 w-3.5" />
               </template>
