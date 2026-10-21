@@ -321,7 +321,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 	def check_can_highlight_comment(self):
 		if not can_highlight_comment(frappe.session.user, self):
 			frappe.throw(
-				_("Only the author of this discussion can highlight a comment"), frappe.PermissionError
+				_("Only the author of this discussion can accept an answer."), frappe.PermissionError
 			)
 
 	def get_reply(self, comment):
