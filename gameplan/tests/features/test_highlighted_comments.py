@@ -134,6 +134,39 @@ class TestHighlightedComments(DiscussionLifecycleTestCase):
 
 		self.assertEqual(self.highlighted(), [])
 
+	def test_a_new_reply_cannot_arrive_highlighted(self):
+		for user in (self.second_member, self.member):
+			with self.as_user(user):
+				reply = frappe.get_doc(
+					doctype="GP Comment",
+					reference_doctype="GP Discussion",
+					reference_name=self.discussion.name,
+					content="Forged answer",
+					highlighted_by=self.member.name,
+					highlighted_at=frappe.utils.now(),
+				).insert()
+
+			stored = frappe.db.get_value(
+				"GP Comment", reply.name, ["highlighted_by", "highlighted_at"], as_dict=True
+			)
+			self.assertIsNone(stored.highlighted_by)
+			self.assertIsNone(stored.highlighted_at)
+
+	def test_moving_a_highlighted_reply_clears_its_highlight(self):
+		other_discussion = create_discussion("Other thread", self.space, owner=self.member)
+		self.highlight(self.member, self.reply)
+
+		with self.as_user(self.second_member):
+			doc = frappe.get_doc("GP Comment", self.reply.name)
+			doc.reference_name = other_discussion.name
+			doc.save()
+
+		stored = frappe.db.get_value(
+			"GP Comment", self.reply.name, ["highlighted_by", "highlighted_at"], as_dict=True
+		)
+		self.assertIsNone(stored.highlighted_by)
+		self.assertIsNone(stored.highlighted_at)
+
 	def test_the_reply_author_can_still_edit_a_highlighted_reply(self):
 		self.highlight(self.member, self.reply)
 
