@@ -1,4 +1,4 @@
-import { computed, MaybeRefOrGetter, toValue } from 'vue'
+import { computed, MaybeRefOrGetter, toValue, watch } from 'vue'
 import { dialog, useDoctype, useList } from 'frappe-ui'
 import { GPTeam, GPMember } from '@/types/doctypes'
 import { communityOrder } from './communityOrder'
@@ -44,6 +44,18 @@ export let communities = useList<Community>({
   },
   immediate: true,
 })
+
+// Public lists are paginated; the router must see every readable Community.
+if (isAnonymousVisitor()) {
+  watch(
+    () => [communities.isFinished, communities.hasNextPage] as const,
+    ([isFinished, hasNextPage]) => {
+      if (isFinished && hasNextPage && !communities.loading && !communities.error) {
+        communities.next()
+      }
+    },
+  )
+}
 
 export let availableCommunities = computed(() => {
   return (communities.data || []).filter((community) => !community.archived_at)

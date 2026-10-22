@@ -878,6 +878,9 @@ export default router
 
 async function ensureCommunityDataLoaded() {
   await Promise.all([waitForResource(communities), waitForResource(spaces)])
+  if (isAnonymousVisitor()) {
+    await until(() => !communities.hasNextPage || Boolean(communities.error)).toBe(true)
+  }
 }
 
 async function waitForResource(resource: ResourceLike) {
