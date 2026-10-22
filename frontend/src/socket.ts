@@ -1,4 +1,6 @@
 import { io, type Socket } from 'socket.io-client'
+import { watch } from 'vue'
+import { isOnline, onReconnect } from '@/data/online'
 import { socketio_port } from '../../../../sites/common_site_config.json'
 
 /** Payload published by GP Activity on every new discussion/comment activity.
@@ -76,6 +78,12 @@ export function initSocket() {
     withCredentials: true,
     reconnectionAttempts: 5,
   })
+  // Reconnection attempts are spent within seconds offline and then never retried, so
+  // pause the socket while offline and connect again once the connection returns.
+  watch(isOnline, (online) => {
+    if (!online) socket?.disconnect()
+  })
+  onReconnect(() => socket?.connect())
   // Attach one dispatcher per known event. socket.io keeps these across reconnects, so unlike
   // document rooms (see subscribeToDoc) they never need re-attaching.
   for (const event of GAMEPLAN_SOCKET_EVENTS) {

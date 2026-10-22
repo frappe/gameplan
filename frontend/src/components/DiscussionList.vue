@@ -24,6 +24,13 @@
       />
     </template>
 
+    <OfflineContentFallback
+      v-if="loadFailure"
+      class="mx-auto mt-6 max-w-2xl px-6"
+      v-bind="loadFailure"
+      @retry="discussions.reload()"
+    />
+
     <List :selectable="selectable" v-model:selection="selectedDiscussions" :class="listClass">
       <DiscussionRow
         v-for="discussion of discussions.data"
@@ -54,10 +61,12 @@
 import { computed, toValue } from 'vue'
 import type { OrderBy } from 'frappe-ui'
 import { List } from 'frappe-ui/list'
-import { UseDiscussionOptions, useDiscussions } from '@/data/discussions'
+import { UseDiscussionOptions, useDiscussions, pinScopes, pinnedFeedKey } from '@/data/discussions'
 import DiscussionRow from './DiscussionRow.vue'
 import ListRowSkeleton from './ListRowSkeleton.vue'
 import EmptyStateBox from './EmptyStateBox.vue'
+import OfflineContentFallback from './OfflineContentFallback.vue'
+import { useLoadFailure } from '@/data/loadFailure'
 import Pin from './icons/Pin.vue'
 
 interface Props {
@@ -89,35 +98,25 @@ const pinnedDiscussions = useDiscussions({
   filters: () => {
     const baseFilters = toValue(props.filters)
 
-    if (baseFilters?.project) {
-      // A community pin is a superset of a space pin — "Show in all <community>
-      // discussions" has to include the discussion's own space, or the pin is
-      // invisible everywhere the author looks for it. This also brings back every
-      // pre-2025-10 pin, which set_default_pin_scope + rename_global_pin_scope_to_category
-      // stamped `Category` without ever asking the user to pick a scope.
-      return {
-        ...baseFilters,
-        pinned_at: ['is', 'set'],
-        pin_scope: ['in', ['Space', 'Category']],
-      }
-    }
-
     return {
       ...baseFilters,
       pinned_at: ['is', 'set'],
-      pin_scope: 'Category',
+      pin_scope: ['in', pinScopes(Boolean(baseFilters?.project))],
     }
   },
   orderBy: 'pinned_at desc' as OrderBy,
   limit: 99999,
-  cacheKey: props.cacheKey ? ['pinned', props.cacheKey] : undefined,
+  cacheKey: props.cacheKey ? pinnedFeedKey(props.cacheKey) : undefined,
   immediate: props.showPinned,
 })
 
 const filters = computed(() => toValue(props.filters))
 const skeletonRowCount = 3
 const isInitialLoading = computed(() => discussions.loading && !discussions.data?.length)
-const showLoadMoreButton = computed(() => discussions.hasNextPage && !isInitialLoading.value)
+const loadFailure = useLoadFailure(discussions, 'discussions')
+const showLoadMoreButton = computed(
+  () => discussions.hasNextPage && !isInitialLoading.value && !loadFailure.value,
+)
 
 defineExpose({ discussions, pinnedDiscussions })
 </script>
