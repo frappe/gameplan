@@ -7,7 +7,7 @@
  * The reactive orchestration (debounced server sync, lazy row creation, reconciliation)
  * lives in `useDraftSync`.
  */
-import { get, update, del, entries, createStore, promisifyRequest } from 'idb-keyval'
+import { get, update, del, entries, clear, createStore, promisifyRequest } from 'idb-keyval'
 import { isEditorContentEmpty } from '@/utils'
 import { withLock } from '@/utils/locks'
 
@@ -142,6 +142,11 @@ function convertOldRecords(): Promise<void> {
     })
     return promisifyRequest(records.transaction)
   })
+}
+
+/** Wipes every local draft. Only on a user switch: after logout the same person may return. */
+export function clearDraftStore(): Promise<void> {
+  return clear(store)
 }
 
 /** The target a singleton draft is for, as a string: equal for every draft of one target. */
