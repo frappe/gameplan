@@ -42,7 +42,7 @@ def create_user(email, first_name, role=None):
 			}
 		).insert(ignore_permissions=True)
 	if role and role not in frappe.get_roles(email):
-		user.add_roles(role)
+		user.reload().add_roles(role)
 	# Reused test users can outlive a rolled-back profile. Avoid the production hook's commit.
 	if not frappe.db.exists("GP User Profile", {"user": user.name}):
 		frappe.get_doc(doctype="GP User Profile", user=user.name).insert(ignore_permissions=True)
