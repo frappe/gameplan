@@ -7,9 +7,6 @@ const network = useNetwork()
 
 export const isOnline = network.isOnline
 
-/** Data Saver is on. */
-export const saveData = network.saveData
-
 // A flapping connection flips several times a second. The callbacks are debounced, not
 // the ref, so the banner stays instant while refetches wait for the network to settle.
 const RECONNECT_DEBOUNCE_MS = 1500
@@ -56,14 +53,7 @@ watchDebounced(
   { debounce: RECONNECT_DEBOUNCE_MS },
 )
 
-export const OFFLINE_ACTION_MESSAGE = "You're offline. Reconnect to do this."
-
-/** What a request refused offline rejects with. A dialog awaiting it shows the message. */
-export class OfflineError extends TypeError {
-  constructor() {
-    super(OFFLINE_ACTION_MESSAGE)
-  }
-}
+const OFFLINE_ACTION_MESSAGE = "You're offline. Reconnect to do this."
 
 /** Says the action can't be done offline. Returns whether it was refused. */
 export function refuseOffline() {
@@ -72,11 +62,10 @@ export function refuseOffline() {
   return true
 }
 
-/** A request that never reached the server: refused offline, or a failed fetch. */
+/** A failed fetch that never reached the server. */
 export function isNetworkError(error: unknown) {
   // Chrome, Safari and Firefox each word a failed fetch differently.
   return (
-    error instanceof OfflineError ||
-    (error instanceof TypeError && /Failed to fetch|Load failed|NetworkError/.test(error.message))
+    error instanceof TypeError && /Failed to fetch|Load failed|NetworkError/.test(error.message)
   )
 }

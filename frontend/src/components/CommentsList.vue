@@ -102,7 +102,7 @@
             :editable="showCommentBox && !isDraftLoading"
             placeholder="Add a comment"
           />
-          <ErrorMessage :message="comments.insert.error" />
+          <ErrorMessage :message="discardError || comments.insert.error" />
         </div>
       </div>
     </div>
@@ -144,6 +144,7 @@ const route = useRoute()
 const socket = useSocket()
 
 const showCommentBox = ref(false)
+const discardError = ref(null)
 
 // Auto-saved draft for the new-comment composer, keyed to this task. Survives reloads
 // and restores across tabs. One draft per (user, task).
@@ -318,6 +319,7 @@ function openCommentBoxFromRow() {
 }
 
 function resetCommentState() {
+  discardError.value = null
   showCommentBox.value = false
   highlightedItem.value = null
 }
@@ -352,6 +354,7 @@ function scrollToEnd() {
 
 // Add these functions after the existing methods
 async function discardComment() {
+  discardError.value = null
   if (!editorObject.value?.isEmpty) {
     dialog.danger({
       title: 'Discard comment',
@@ -361,8 +364,12 @@ async function discardComment() {
         if (await draft.clear()) resetCommentState()
       },
     })
-  } else if (await draft.clear()) {
-    resetCommentState()
+  } else {
+    try {
+      if (await draft.clear()) resetCommentState()
+    } catch (error) {
+      discardError.value = error
+    }
   }
 }
 

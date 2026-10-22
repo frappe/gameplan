@@ -6,6 +6,7 @@
 from unittest.mock import patch
 
 import frappe
+from frappe.api.v2 import create_doc
 from frappe.utils import add_to_date, get_datetime, now_datetime
 
 from gameplan.gameplan.doctype.gp_draft.gp_draft import (
@@ -506,6 +507,30 @@ class TestClientNamedDrafts(GameplanTestCase):
 		):
 			with self.subTest(name=name), self.assertRaises(frappe.ValidationError):
 				self.new_draft(name)
+
+	def test_v2_create_checks_client_names_too(self):
+		with patch.object(
+			frappe.local,
+			"form_dict",
+			frappe._dict(name=self.NAME, type="Discussion", mode="New", content="Hello"),
+		):
+			self.assertEqual(create_doc("GP Draft")["name"], self.NAME)
+		frappe.delete_doc("GP Draft", self.NAME)
+		for name, error in (
+			(self.NAME, frappe.DoesNotExistError),
+			("NOT-a-client-name", frappe.ValidationError),
+		):
+			with (
+				self.subTest(name=name),
+				patch.object(
+					frappe.local,
+					"form_dict",
+					frappe._dict(name=name, type="Discussion", mode="New", content="Retried create"),
+				),
+				self.assertRaises(error),
+			):
+				create_doc("GP Draft")
+			self.assertFalse(frappe.db.exists("GP Draft", name))
 
 
 class TestScheduledDrafts(GameplanTestCase):

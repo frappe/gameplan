@@ -44,6 +44,58 @@ describe('Draft saves across devices and tabs', () => {
     cy.loginAs('member')
   })
 
+  it('converts valid legacy drafts even when another stored value is malformed', () => {
+    cy.visit(`/g/community/${community}/space/${space}/discussion/${discussion}`)
+    cy.button('Add a comment').click()
+    cy.get('[contenteditable=true]').should('be.visible')
+    localRecord((store) => store.put(null, 'broken-record'))
+    localRecord((store) =>
+      store.put(
+        {
+          identity: { type: 'Discussion', mode: 'New' },
+          payload: {
+            title: 'Legacy draft survives',
+            content: '<p>Recovered text</p>',
+            project: space,
+          },
+          user: 'member@example.com',
+          updatedAt: Date.now(),
+          syncedAt: null,
+        },
+        'Discussion::legacy',
+      ),
+    )
+    cy.intercept('POST', CREATE).as('recoveredDraft')
+    cy.visit('/g/drafts')
+    cy.wait('@recoveredDraft').its('request.body.title').should('eq', 'Legacy draft survives')
+    cy.contains('Legacy draft survives').should('be.visible')
+    localRecord((store) => store.get('broken-record'))
+      .its('record')
+      .should('be.undefined')
+  })
+
+  it('retries draft storage after a transient conversion failure without reloading', () => {
+    cy.visit(`/g/community/${community}/space/${space}/discussion/${discussion}`, {
+      onBeforeLoad(win) {
+        const prototype = win.IDBObjectStore.prototype
+        const getAllKeys = prototype.getAllKeys
+        cy.stub(prototype, 'getAllKeys').callsFake(function (...args) {
+          if (this.name === 'records') {
+            prototype.getAllKeys = getAllKeys
+            throw new win.DOMException('Temporary IndexedDB failure', 'UnknownError')
+          }
+          return getAllKeys.apply(this, args)
+        })
+      },
+    })
+    cy.button('Add a comment').click()
+    cy.intercept('POST', CREATE).as('savedAfterRetry')
+    cy.get('[contenteditable=true]').click().type('Saved after storage retry')
+    cy.wait('@savedAfterRetry')
+      .its('request.body.content')
+      .should('contain', 'Saved after storage retry')
+  })
+
   afterEach(() => {
     releaseLookup?.()
     releaseLookup = undefined

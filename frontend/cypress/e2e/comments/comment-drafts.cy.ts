@@ -102,6 +102,30 @@ describe('Comment drafts', () => {
     })
   })
 
+  it('shows an empty reply discard failure and allows retry', () => {
+    cy.intercept('POST', '/api/v2/document/GP%20Draft').as('draftInsert')
+    cy.visit(`/g/community/${community}/space/${space}/discussion/${discussion}`)
+    cy.button('Add a comment').click()
+    cy.get('[contenteditable=true]').click().type('Reply to discard')
+    cy.wait('@draftInsert')
+    cy.get('[contenteditable=true]').type('{selectall}{backspace}')
+    cy.intercept(
+      { method: 'DELETE', url: '**/api/v2/document/GP%20Draft/*', times: 1 },
+      {
+        statusCode: 503,
+        body: { errors: [{ type: 'ValidationError', message: 'Discard temporarily unavailable' }] },
+      },
+    ).as('failedDiscard')
+    cy.button('Discard').click()
+    cy.wait('@failedDiscard')
+    cy.contains('Discard temporarily unavailable').should('be.visible')
+    cy.get('[contenteditable=true]').should('be.visible')
+    cy.intercept('DELETE', '**/api/v2/document/GP%20Draft/*').as('retryDiscard')
+    cy.button('Discard').click()
+    cy.wait('@retryDiscard').its('response.statusCode').should('eq', 202)
+    cy.button('Add a comment').should('be.visible')
+  })
+
   it('blocks a new comment until its draft finishes loading', () => {
     cy.intercept(/find_my_draft/, (request) => {
       request.continue((response) => response.setDelay(5000))

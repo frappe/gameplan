@@ -206,7 +206,7 @@
               can-attach-poll
               placeholder="Add a comment..."
             />
-            <ErrorMessage class="mt-2" :message="comments.insert.error" />
+            <ErrorMessage class="mt-2" :message="discardError || comments.insert.error" />
           </div>
         </div>
       </div>
@@ -304,6 +304,7 @@ const sessionUser = useSessionUser()
 const isMobileViewport = useIsMobile()
 
 const showCommentBox = ref(false)
+const discardError = ref(null)
 const composerMinimized = ref(false)
 const mobileComposerFullscreen = ref(false)
 const composerToolbarExpanded = ref(false)
@@ -606,6 +607,7 @@ function highlightComment(id: string) {
 }
 
 function resetCommentState() {
+  discardError.value = null
   showCommentBox.value = false
   composerMinimized.value = false
   mobileComposerFullscreen.value = false
@@ -710,6 +712,7 @@ function onNewCommentChange(content: string) {
 }
 
 async function discardComment() {
+  discardError.value = null
   if (!editorObject.value?.isEmpty) {
     dialog.danger({
       title: 'Discard comment',
@@ -720,8 +723,12 @@ async function discardComment() {
         if (await draft.clear()) resetCommentState()
       },
     })
-  } else if (await draft.clear()) {
-    resetCommentState()
+  } else {
+    try {
+      if (await draft.clear()) resetCommentState()
+    } catch (error) {
+      discardError.value = error
+    }
   }
 }
 
