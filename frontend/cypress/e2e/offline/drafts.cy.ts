@@ -18,6 +18,30 @@ describe('Reply draft recovery with offline navigation', () => {
 
   const composer = () => cy.get('.ProseMirror').last()
 
+  it('keeps saved discussion edits open when discard is refused offline', () => {
+    cy.intercept('POST', CREATE).as('editDraft')
+    cy.visit(`/g/community/${community}/space/${space}/discussion/${discussion}`)
+    cy.selectDropdownOption('Discussion Options', 'Edit')
+    cy.get('input[placeholder="Title"]').should('be.visible')
+    cy.get('.ProseMirror').first().click().type('{moveToEnd} with offline discussion edits')
+    cy.wait('@editDraft')
+    cy.goOffline()
+    cy.button('Discard').click()
+    cy.contains('[role="dialog"] button', 'Discard changes').click()
+    cy.contains("You're offline. Reconnect to do this.").should('be.visible')
+    cy.get('input[placeholder="Title"]').should('be.visible')
+    cy.get('.ProseMirror').first().should('contain.text', 'with offline discussion edits')
+    cy.goOnline()
+    cy.intercept('DELETE', '**/api/v2/document/GP%20Draft/*').as('discardRetry')
+    cy.button('Discard').click()
+    cy.contains('[role="dialog"] button', 'Discard changes').click()
+    cy.wait('@discardRetry').its('response.statusCode').should('eq', 202)
+    cy.get('input[placeholder="Title"]').should('not.exist')
+    cy.selectDropdownOption('Discussion Options', 'Edit')
+    cy.get('input[placeholder="Title"]').should('be.visible')
+    cy.get('.ProseMirror').first().should('not.contain.text', 'with offline discussion edits')
+  })
+
   it('keeps a reply typed offline when another device has one for the same discussion', () => {
     cy.intercept('POST', CREATE).as('create')
     cy.then(() => cy.visit(`/g/community/${community}/space/${space}/discussions`))
