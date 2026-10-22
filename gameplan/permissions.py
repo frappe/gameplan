@@ -679,7 +679,9 @@ def referenced_content_query_conditions(doctype, user=None):
 		.select(Discussion.name)
 		.where(readable_discussion_criterion(Discussion, user))
 	)
-	task_query = frappe.qb.from_(Task).select(Task.name).where(task_access_criterion(Task, user))
+	task_query = frappe.qb.from_(Task).select(Task.name)
+	if access := task_access_criterion(Task, user):
+		task_query = task_query.where(access)
 	on_discussion = (Row.reference_doctype == "GP Discussion") & Row.reference_name.isin(discussion_query)
 	on_task = (Row.reference_doctype == "GP Task") & Row.reference_name.isin(task_query)
 	return criterion_sql(on_discussion if gameplan.is_anonymous(user) else on_discussion | on_task)

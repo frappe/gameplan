@@ -80,6 +80,27 @@ class TestModerationCore(IsolatedSearchIndex, GameplanTestCase):
 			with self.assertRaises(frappe.PermissionError):
 				create_comment(self.discussion, content="Bypass")
 
+	def test_admin_thread_queries_keep_removed_discussions_out_of_lists(self):
+		for user in (self.admin, "Administrator"):
+			with self.as_user(user):
+				for removed in (False, True):
+					if removed:
+						self.discussion.hide("Reviewed")
+					rows = frappe.qb.get_query(
+						"GP Comment",
+						fields=["name"],
+						filters={"name": self.reply.name},
+						ignore_permissions=False,
+					).run(pluck=True)
+					self.assertEqual(rows, [] if removed else [self.reply.name])
+					frappe.qb.get_query(
+						"GP Activity",
+						fields=["name"],
+						filters={"reference_name": str(self.discussion.name)},
+						ignore_permissions=False,
+					).run()
+				self.discussion.restore()
+
 	def test_private_space_is_not_revealed_in_removed_content(self):
 		private = create_space("Private moderation", self.community, visibility=VISIBILITY_MEMBER_ACCESS)
 		discussion = create_discussion("Private title", private)

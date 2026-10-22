@@ -201,6 +201,7 @@ class GPTeam(HasVisibility, Archivable, Document):
 		self.save()
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def set_member_moderator(self, user, is_moderator):
 		require_can_manage_community(self)
 		member = self.get_member(user)
