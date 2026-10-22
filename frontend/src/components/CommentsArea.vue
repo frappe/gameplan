@@ -618,6 +618,7 @@ function resetCommentState() {
 
 async function submitComment() {
   if (!canSubmit.value || comments.insert.loading) return
+  discardError.value = null
 
   const comment = await comments.insert.submit({
     reference_doctype: props.doctype,

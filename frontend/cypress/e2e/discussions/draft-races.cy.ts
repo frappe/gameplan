@@ -96,6 +96,35 @@ describe('Draft saves across devices and tabs', () => {
       .should('contain', 'Saved after storage retry')
   })
 
+  it('keeps discussion edits open until discard succeeds and allows retry', () => {
+    cy.visit(`/g/community/${community}/space/${space}/discussion/${discussion}`)
+    cy.intercept('POST', CREATE).as('editDraft')
+    cy.selectDropdownOption('Discussion Options', 'Edit')
+    cy.get('input[placeholder="Title"]').should('be.visible')
+    cy.get('.ProseMirror').first().click().type('{moveToEnd} with unsent discussion edits')
+    cy.wait('@editDraft')
+    cy.intercept(
+      { method: 'DELETE', url: '**/api/v2/document/GP%20Draft/*', times: 1 },
+      {
+        statusCode: 503,
+        delay: 1000,
+        body: { errors: [{ type: 'ValidationError', message: 'Discard temporarily unavailable' }] },
+      },
+    ).as('failedDiscard')
+    cy.button('Discard').click()
+    cy.contains('[role="dialog"] button', 'Discard changes').click()
+    cy.get('input[placeholder="Title"]').should('be.visible')
+    cy.wait('@failedDiscard')
+    cy.contains('Discard temporarily unavailable').should('be.visible')
+    cy.get('.ProseMirror').first().should('contain.text', 'with unsent discussion edits')
+    cy.intercept('DELETE', '**/api/v2/document/GP%20Draft/*').as('discardRetry')
+    cy.button('Discard').click()
+    cy.contains('[role="dialog"] button', 'Discard changes').click()
+    cy.wait('@discardRetry').its('response.statusCode').should('eq', 202)
+    cy.get('input[placeholder="Title"]').should('not.exist')
+    cy.contains('with unsent discussion edits').should('not.exist')
+  })
+
   afterEach(() => {
     releaseLookup?.()
     releaseLookup = undefined

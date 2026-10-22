@@ -120,6 +120,21 @@ describe('Comment drafts', () => {
     cy.wait('@failedDiscard')
     cy.contains('Discard temporarily unavailable').should('be.visible')
     cy.get('[contenteditable=true]').should('be.visible')
+    cy.get('[contenteditable=true]').type('Reply after failed discard')
+    cy.intercept(
+      { method: 'POST', url: '**/api/v2/document/GP%20Comment', times: 1 },
+      {
+        statusCode: 503,
+        body: { errors: [{ type: 'ValidationError', message: 'Posting temporarily unavailable' }] },
+      },
+    ).as('failedPost')
+    cy.button('Submit').click()
+    cy.wait('@failedPost')
+    cy.contains('Posting temporarily unavailable').should('be.visible')
+    cy.contains('Discard temporarily unavailable').should('not.exist')
+    cy.get('[contenteditable=true]')
+      .should('contain.text', 'Reply after failed discard')
+      .type('{selectall}{backspace}')
     cy.intercept('DELETE', '**/api/v2/document/GP%20Draft/*').as('retryDiscard')
     cy.button('Discard').click()
     cy.wait('@retryDiscard').its('response.statusCode').should('eq', 202)

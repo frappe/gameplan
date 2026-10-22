@@ -375,6 +375,7 @@ async function discardComment() {
 
 async function submitComment() {
   if (commentEmpty.value || comments.insert.loading) return
+  discardError.value = null
 
   const comment = await comments.insert.submit({
     reference_doctype: props.doctype,
