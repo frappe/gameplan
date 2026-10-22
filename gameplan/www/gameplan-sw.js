@@ -207,7 +207,7 @@ async function deleteOldCaches() {
         !currentCaches.has(name) &&
         name.endsWith(":assets"),
     )
-    .sort();
+    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
   const keepCache =
     pagesOpen && oldAssetCaches.length
       ? oldAssetCaches[oldAssetCaches.length - 1]

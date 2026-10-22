@@ -249,16 +249,16 @@ test('an upgraded worker cannot serve a late image from a legacy worker', async 
 test('old build chunks remain readable while a page still uses them', async () => {
   const caches = storage()
   const current = worker(caches)
-  const older = await caches.open(`${prefix}:v8:assets`)
-  await older.put('/assets/gameplan/frontend/assets/v8-route.js', new Response('v8 route'))
-  const old = await caches.open(`${prefix}:v9:assets`)
+  const older = await caches.open(`${prefix}:v9:assets`)
+  await older.put('/assets/gameplan/frontend/assets/v9-route.js', new Response('v9 route'))
+  const old = await caches.open(`${prefix}:v10:assets`)
   await old.put('/assets/gameplan/frontend/assets/old-route.js', new Response('old route'))
   current.context.self.clients.matchAll = async () => [{ url: `${origin}/g/community/acme` }]
   await current.evaluate('deleteOldCaches()')
   current.context.request = new Request(`${origin}/assets/gameplan/frontend/assets/old-route.js`)
   assert.equal(await (await current.evaluate('cacheFirst(request)')).text(), 'old route')
   // Older asset caches beyond the immediately preceding one are purged even if a page is open
-  assert.equal(await caches.match('/assets/gameplan/frontend/assets/v8-route.js'), undefined)
+  assert.equal(await caches.match('/assets/gameplan/frontend/assets/v9-route.js'), undefined)
 
   current.context.self.clients.matchAll = async () => []
   await current.evaluate('deleteOldCaches()')
