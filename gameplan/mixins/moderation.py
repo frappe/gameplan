@@ -1,5 +1,7 @@
 import frappe
 
+from gameplan.utils.document import with_stored_document
+
 
 def is_removed(doc):
 	return bool(doc.get("hidden_at") or doc.get("spam_removed_at"))
@@ -28,10 +30,12 @@ def discussion_is_removed(name):
 
 class Moderatable:
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def hide(self, reason: str):
 		self._remove_content("Hide", reason)
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def delete_spam(self, reason: str):
 		self._remove_content("Delete Spam", reason)
 
@@ -68,6 +72,7 @@ class Moderatable:
 		doc._notify_moderation_change()
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def restore(self):
 		from frappe.search.sqlite_search import update_doc_index
 
@@ -92,6 +97,7 @@ class Moderatable:
 		doc._notify_moderation_change()
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def get_hidden_content(self):
 		doc = self._moderation_target()
 		if is_removed(doc):

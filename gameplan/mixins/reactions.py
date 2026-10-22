@@ -38,7 +38,7 @@ class HasReactions:
 
 		from gameplan.community_bans import require_participation
 
-		require_participation(post)
+		require_participation(self)
 
 		# Lock the post's row so that two reactions on one post apply one after another.
 		# The reactions are then read with a locking read too, which returns the rows other
