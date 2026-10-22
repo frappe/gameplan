@@ -66,6 +66,7 @@ describe('Comment drafts', () => {
     // Posting the reply commits the draft, which deletes the GP Draft row.
     cy.button('Submit').click()
     cy.wait('@comment')
+    cy.button('Add a comment').should('be.visible')
 
     interceptDrafts()
     cy.visit('/g/drafts')
