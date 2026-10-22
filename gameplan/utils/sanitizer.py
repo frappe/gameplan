@@ -2,8 +2,7 @@
 
 from urllib.parse import urlparse
 
-from bleach import clean
-from bleach.css_sanitizer import CSSSanitizer
+import nh3
 from bleach_allowlist import bleach_allowlist
 from frappe.utils.html_utils import (
 	acceptable_attributes,
@@ -44,28 +43,20 @@ def is_allowed_iframe_domain(src_url):
 		return False
 
 
-def iframe_attribute_filter(tag, name, value):
-	"""Custom attribute filter for iframe tags."""
-	# Always allow these safe attributes
-	safe_attrs = ["src", "width", "height", "title", "frameborder", "allowfullscreen", "loading"]
+IFRAME_ATTRIBUTES = {"src", "width", "height", "title", "frameborder", "allowfullscreen", "loading"}
 
-	if name in safe_attrs:
-		# Special validation for src attribute
-		if name == "src":
-			return is_allowed_iframe_domain(value)
-		return True
 
-	# Allow data- attributes for iframe functionality
-	if name.startswith("data-"):
-		return True
-
-	return False
+def attribute_filter(tag, name, value):
+	"""Drop iframe sources outside the allowed domains. Returns the value to keep, or None."""
+	if tag == "iframe" and name == "src" and not is_allowed_iframe_domain(value):
+		return None
+	return value
 
 
 def sanitize_content(html):
 	"""
 	Sanitize HTML tags, attributes and style to prevent XSS attacks
-	Based on bleach clean, bleach whitelist and html5lib's Sanitizer defaults
+	Based on nh3 clean, bleach allowlist and html5lib's Sanitizer defaults
 
 	Does not sanitize JSON unless explicitly specified, as it could lead to future problems
 	"""
@@ -74,33 +65,30 @@ def sanitize_content(html):
 		return html
 
 	tags = (
-		list(acceptable_elements)
-		+ list(svg_elements)
-		+ list(mathml_elements)
-		+ ["html", "head", "meta", "link", "body", "style", "o:p", "iframe"]
+		acceptable_elements.union(svg_elements)
+		.union(mathml_elements)
+		.union(["html", "head", "meta", "link", "body", "o:p", "iframe"])
 	)
 
-	def attributes_filter(tag, name, value):
-		if name.startswith("data-"):
-			return True
+	attributes = {
+		"*": acceptable_attributes,
+		"svg": svg_attributes,
+		"iframe": IFRAME_ATTRIBUTES,
 		# TipTap stores resized table column widths as a comma-separated
 		# `colwidth` attribute on cells; it is the authoritative source on
 		# reparse, so preserve it to keep custom column widths after save.
-		if name == "colwidth" and tag in ("td", "th"):
-			return True
-		return name in acceptable_attributes
+		"td": {"colwidth"},
+		"th": {"colwidth"},
+	}
 
-	attributes = {"*": attributes_filter, "svg": svg_attributes, "iframe": iframe_attribute_filter}
-	css_sanitizer = CSSSanitizer(allowed_css_properties=bleach_allowlist.all_styles)
-
-	# returns html with escaped tags, escaped orphan >, <, etc.
-	escaped_html = clean(
+	# returns sanitized HTML with unsafe tags and attributes removed
+	return nh3.clean(
 		html,
 		tags=tags,
 		attributes=attributes,
-		css_sanitizer=css_sanitizer,
+		attribute_filter=attribute_filter,
+		generic_attribute_prefixes={"data-"},
 		strip_comments=False,
-		protocols={"cid", "http", "https", "mailto"},
+		filter_style_properties=set(bleach_allowlist.all_styles),
+		url_schemes={"cid", "http", "https", "mailto"},
 	)
-
-	return escaped_html
