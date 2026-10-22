@@ -21,6 +21,7 @@ from gameplan.tests.fixtures import (
 	create_space,
 	create_user,
 )
+from gameplan.visibility import VISIBILITY_MEMBER_ACCESS
 
 
 class TestMemberManagement(FrappeTestCase):
@@ -122,7 +123,7 @@ class TestMemberManagement(FrappeTestCase):
 		"""
 		member = create_member("sec_space_member@example.com")
 		team = create_community("Sec Team")
-		project = create_space("Sec Space", team.name, is_private=1)
+		project = create_space("Sec Space", team.name, visibility=VISIBILITY_MEMBER_ACCESS)
 		project.append("members", {"user": member.name})
 		project.save(ignore_permissions=True)
 

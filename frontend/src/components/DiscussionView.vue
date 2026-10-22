@@ -363,7 +363,7 @@ import UserProfileLink from './UserProfileLink.vue'
 const RevisionsDialog = defineAsyncComponent(() => import('./RevisionsDialog.vue'))
 import SpaceBreadcrumbs from './SpaceBreadcrumbs.vue'
 import EmptyStateBox from './EmptyStateBox.vue'
-import { copyToClipboard, isEditorContentEmpty } from '@/utils'
+import { copyToClipboard, extractServerMessage, isEditorContentEmpty } from '@/utils'
 import { getSpace, useSpace } from '@/data/spaces'
 import { useCommunity } from '@/data/communities'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
@@ -377,10 +377,16 @@ import { provideRichQuotes } from '@/components/RichQuoteExtension/useRichQuotes
 import QuoteBacklinksPopover from '@/components/RichQuoteExtension/QuoteBacklinksPopover.vue'
 import { refreshUnreadCountForProjects } from '@/data/unreadCount'
 import { useSessionUser } from '@/data/users'
-import { canDeleteContent, canEditContent, canMoveOrPinContent } from '@/utils/permissions'
+import {
+  canDeleteContent,
+  canEditContent,
+  canMoveOrPinContent,
+  canMoveContentToSpace,
+} from '@/utils/permissions'
 import { captureError } from '@/utils/errorReporting'
 import { useCommandPaletteCommands } from './CommandPalette/registry'
 import { useOwnedRouteWrites } from '@/composables/useOwnedRouteWrites'
+import { isAnonymousVisitor } from '@/utils/publicAccess'
 
 const props = defineProps<{
   postId: string
@@ -620,7 +626,12 @@ async function scrollToUnread() {
     }
   }
 
-  if (route.name === 'Discussion' && route.params.postId === doc?.name) {
+  if (
+    !props.readOnlyMode &&
+    !isAnonymousVisitor() &&
+    route.name === 'Discussion' &&
+    route.params.postId === doc?.name
+  ) {
     discussion.trackVisit
       .submit()
       .then(() => {
@@ -778,7 +789,7 @@ function updatePost() {
         // The save failed: put the old title back, unless something newer replaced it.
         const doc = discussion.doc
         if (doc && doc.title === title && previousTitle !== undefined) doc.title = previousTitle
-        toast.error('Could not save the discussion')
+        toast.error(extractServerMessage(discussion.setValue.error) || 'Could not save the post')
       },
     )
   editingPost.value = false
@@ -844,7 +855,10 @@ const currentSpaceId = computed(() => {
 })
 
 const spaceOptions = useGroupedSpaceOptions({
-  filterFn: (space) => !space.archived_at && space.name !== discussion.doc?.project,
+  filterFn: (target) =>
+    !target.archived_at &&
+    target.name !== discussion.doc?.project &&
+    canMoveContentToSpace(space.value, target, useSessionUser()),
 })
 
 // Edit and close/re-open change the post itself, so they follow the same business

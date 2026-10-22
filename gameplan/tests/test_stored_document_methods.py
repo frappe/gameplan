@@ -20,6 +20,7 @@ from gameplan.tests.fixtures import (
 	create_poll,
 	create_space,
 )
+from gameplan.visibility import VISIBILITY_MEMBER_ACCESS
 
 
 class TestStoredDocumentMethods(GameplanTestCase):
@@ -29,7 +30,7 @@ class TestStoredDocumentMethods(GameplanTestCase):
 		self.other_community = create_community("Other stored methods", members=[self.member])
 		self.space = create_space("Stored public space", self.community, members=[self.member])
 		self.private_space = create_space(
-			"Stored private space", self.community, is_private=1, members=[self.member]
+			"Stored private space", self.community, visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
 		)
 
 	def call_method(self, doc, method, *, route="docs", **kwargs):
@@ -77,15 +78,17 @@ class TestStoredDocumentMethods(GameplanTestCase):
 			for method in ("join", "leave", "track_visit", "mark_all_as_read"):
 				with self.subTest(method=method):
 					space = frappe.get_doc("GP Project", self.private_space.name)
-					space.is_private = 0
+					space.visibility = "General"
 					with self.assertRaises(frappe.PermissionError):
 						self.call_method(space, method)
 
 		with self.as_user(self.member):
 			space = frappe.get_doc("GP Project", self.private_space.name)
-			space.is_private = 0
+			space.visibility = "General"
 			self.call_method(space, "join")
-		self.assertEqual(frappe.db.get_value("GP Project", space.name, "is_private"), 1)
+		self.assertEqual(
+			frappe.db.get_value("GP Project", space.name, "visibility"), VISIBILITY_MEMBER_ACCESS
+		)
 
 	def test_revisions_check_stored_content_access(self):
 		public_discussion = create_discussion("Public stored thread", self.space, owner=self.member)
