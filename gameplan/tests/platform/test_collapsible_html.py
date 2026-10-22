@@ -3,7 +3,7 @@
 
 """The stored HTML contract for editor collapsible sections.
 
-A collapsible section is saved as `<details open><summary>title</summary><div
+A collapsible section is saved as `<details open=""><summary>title</summary><div
 data-type="collapsible-content">…</div></details>`. Every part of that shape has
 to survive sanitization and a real save, because each one fails silently if it
 does not: a dropped `<summary>` loses the title, a dropped `open` reopens every
@@ -23,7 +23,7 @@ from gameplan.tests.fixtures import create_community, create_discussion, create_
 from gameplan.utils.sanitizer import sanitize_content
 
 OPEN_SECTION = (
-	"<details open><summary>Deploy steps</summary>"
+	'<details open=""><summary>Deploy steps</summary>'
 	'<div data-type="collapsible-content"><p>ssh in</p></div></details>'
 )
 
@@ -44,14 +44,14 @@ class TestCollapsibleSanitization(FrappeTestCase):
 
 	def test_title_marks_are_kept(self):
 		html = (
-			"<details open><summary>Deploy <strong>now</strong></summary>"
+			'<details open=""><summary>Deploy <strong>now</strong></summary>'
 			'<div data-type="collapsible-content"><p>ssh in</p></div></details>'
 		)
 		self.assertEqual(sanitize_content(html), html)
 
 	def test_nested_section_survives(self):
 		html = (
-			"<details open><summary>Outer</summary>"
+			'<details open=""><summary>Outer</summary>'
 			f'<div data-type="collapsible-content">{OPEN_SECTION}</div></details>'
 		)
 		self.assertEqual(sanitize_content(html), html)
