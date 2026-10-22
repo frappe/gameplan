@@ -10,6 +10,7 @@
         :options="[
           { label: 'Removed content', value: 'removed' },
           { label: 'Community bans', value: 'bans' },
+          { label: 'Reports', value: 'reports' },
         ]"
       />
       <ErrorMessage
@@ -62,7 +63,7 @@
           <Button v-if="hasMore" @click="start += 40">Next</Button>
         </div>
       </template>
-      <template v-else>
+      <template v-else-if="tab === 'bans'">
         <p class="my-4 text-base text-ink-gray-5">
           Bans block participation in this Community until lifted. Reading and participation
           elsewhere stay available.
@@ -86,6 +87,7 @@
           No active Community bans.
         </p>
       </template>
+      <ReportQueue v-if="tab === 'reports'" :communityId="communityId" />
       <p v-if="loading" role="status" class="mt-4 text-base text-ink-gray-5">Loading…</p>
     </template>
     <p v-else class="text-base text-ink-gray-5">Only Community moderators can open this page.</p>
@@ -94,6 +96,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import ReportQueue from '@/components/ReportQueue.vue'
 import { Button, Select, TabButtons, ErrorMessage, call, dialog, useDoctype } from 'frappe-ui'
 import CommentEditor from '@/components/editor/CommentEditor.vue'
 import { useCommunity } from '@/data/communities'
@@ -149,7 +152,10 @@ async function load() {
   bans.value = []
   selected.value = ''
   error.value = null
-  if (!canModerate.value) return
+  if (!canModerate.value || tab.value === 'reports') {
+    loading.value = false
+    return
+  }
   loading.value = true
   try {
     if (tab.value === 'removed') {

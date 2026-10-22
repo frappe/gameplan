@@ -1,6 +1,6 @@
 # Moderation decisions
 
-Owner: Ebrahim. Decisions updated: 2026-10-19.
+Owner: Ebrahim. Decisions updated: 2026-10-22.
 
 This log records choices Ebrahim confirmed in this chat.
 The roadmap describes sequencing and contains proposals for later features.
@@ -30,9 +30,14 @@ A recommendation becomes a decision only after Ebrahim accepts it.
 | D18 | Community bans last until manually lifted and survive leaving and rejoining. | Block creating, editing, deleting, reactions, voting, and invitations in that Community. Preserve reading and membership. Staff must lose their Community role before being banned; global admins are exempt. |
 | D19 | Add a moderator-only Removed content view per Community with preview and Restore. | Ordinary feeds/search omit removed discussions; direct access shows a neutral unavailable message. Replies show neutral placeholders. Private-Space restrictions still apply. |
 | D20 | Delete spam requires a reason and affects only the selected reply or discussion. | Preserve descendants/files and closed/pinned state for restoration without new notifications. Do not automatically ban the author or remove other posts. Ordinary Delete remains separate. |
-
 | D21 | Build T26 moderation history in a separate PR after the T27 review fixes. | Reuse the immutable log for discussion/reply action history and Community-scoped user ban/unban history. Include actor, time, reason, pagination, existing moderator/private-Space access rules, frontend, and tests. |
-
+| D25 | Start T16 reporting and a basic Pending/Resolved moderator queue with manual decisions. | Discussion and reply reporting ships end to end. Automatic hiding, trust weighting, and migration remain separate. |
+| D26 | Members and invited Guests may report accessible content unless banned from participating in its Community. | Anonymous reports, self-reports, and reports on already hidden/removed targets are excluded. |
+| D27 | Report reasons are Spam, Abuse/inappropriate, Off-topic, AI-generated, and Other. | Notes are optional, limited to 500 characters, and required for Other. Reasons trigger manual review only. |
+| D28 | One pending review groups reports for each target. | Each authenticated reporter has at most one active report per target. Moderators review the reports together. |
+| D29 | Review decisions are Dismiss, Uphold while keeping visible, Hide, and Delete spam. | Require a decision note, resolve the grouped reports together, reuse existing moderation actions, and never automatically ban the author. |
+| D30 | Each report preserves the reported title/body version. | Only authorized moderators with current Space access may see identities, notes, and snapshots. Authors and other reporters cannot read the evidence. |
+| D31 | A new report after resolution opens a fresh review, including for previous reporters. | Limit new reports to 10 per account per hour across the site. Duplicate reports in an active review reuse the existing report without consuming quota. |
 
 D05–D07 were confirmed in the first answer accepting scope and assignment authority.
 D08–D10 were confirmed in the next answer accepting private access, eligibility, and the first PR boundary.
@@ -88,7 +93,6 @@ Plan these when their implementation slice is next. Roadmap recommendations do n
 
 - Ordinary members' editing rights and whether a Community can opt into forum-specific rules.
 - Audit history UI and retention policy.
-- Report reasons, resolution behavior, and review queue workflow.
 - Temporary bans, automatic expiry, and separate silence behavior.
 - Approval rules, posting limits, slow mode, watched-word matching, and censor behavior.
 - Bulk action selection, progress, partial failures, and undo behavior.
@@ -98,3 +102,12 @@ Plan these when their implementation slice is next. Roadmap recommendations do n
 Add confirmed decisions after each planning round.
 Record later changes against the original decision ID with the date and replacement decision.
 Keep unresolved questions and implementation choices distinct from confirmed product decisions.
+
+## T16 implementation notes
+
+- GP Review groups reports by discussion/reply and records one immutable resolution. GP Report preserves each reporter's original evidence and note.
+- Submission is session-bound, deduplicated, and limited to 10 reports per rolling hour across the site. Indexed locking reads serialize account quotas and target review decisions.
+- Queue and evidence access follow current Community/Space permissions. Pages contain at most 40 reviews/reports, and each response includes only one selected evidence body.
+- Resolving a review checks the content version and current scope before applying existing Hide/Delete spam actions. Dismiss and Uphold preserve content state. Conflicting decisions require refresh.
+- The UI includes report dialogs, Pending/Resolved queues, current author/content, reported versions, and a link to the full discussion. No automatic hiding, banning, notifications, or trust weighting is added.
+- Fresh installation, migration, 71 backend tests, and eight browser tests passed. Four MariaDB concurrency tests are included but skipped on the local SQLite site; they require MariaDB CI.
