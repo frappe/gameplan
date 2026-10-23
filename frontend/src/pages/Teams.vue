@@ -20,11 +20,33 @@
         </div>
       </RouterLink>
     </div>
+    <nav v-if="isAnonymousVisitor()" aria-label="Pagination" class="flex gap-3 px-4 py-3">
+      <a v-if="publicPageStart() > 0" :href="publicPageLink(-1)" class="underline">Previous page</a>
+      <a
+        v-if="availableCommunities.length > publicPageStart() + PUBLIC_PAGE_SIZE"
+        :href="publicPageLink(1)"
+        class="underline"
+        >Next page</a
+      >
+    </nav>
   </div>
 </template>
 <script setup>
+import { computed } from 'vue'
 import { Breadcrumbs } from 'frappe-ui'
-import { activeCommunities } from '@/data/communities'
+import { activeCommunities as joinedCommunities, availableCommunities } from '@/data/communities'
 import CommunityImage from '@/components/CommunityImage.vue'
 import { isMemberAccess } from '@/utils/visibility'
+import {
+  isAnonymousVisitor,
+  publicPageStart,
+  publicPageLink,
+  PUBLIC_PAGE_SIZE,
+} from '@/utils/publicAccess'
+
+const activeCommunities = computed(() =>
+  isAnonymousVisitor()
+    ? availableCommunities.value.slice(publicPageStart(), publicPageStart() + PUBLIC_PAGE_SIZE)
+    : joinedCommunities.value,
+)
 </script>

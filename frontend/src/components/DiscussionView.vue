@@ -605,6 +605,7 @@ async function scrollToUnread() {
 
   let doc = discussion.doc
   if (
+    !isAnonymousVisitor() &&
     route.name === 'Discussion' &&
     !route.query.comment &&
     !route.query.poll &&

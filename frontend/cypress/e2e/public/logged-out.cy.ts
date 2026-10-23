@@ -180,12 +180,14 @@ describe('Public spaces, logged out', () => {
     cy.then(() => expect(directoryRequests, 'member-directory requests').to.eq(0))
   })
 
-  it('sends a visitor to log in for anything that is not public', () => {
-    expectLoginRedirect(`/g/community/${ids.community}/space/${ids.general_space}/discussions`)
-    expectLoginRedirect(`/g/community/${ids.community}/space/${ids.private_space}/discussions`)
-    expectLoginRedirect(
+  it('returns not found for private content and requires login for member pages', () => {
+    for (const path of [
+      `/g/community/${ids.community}/space/${ids.general_space}/discussions`,
+      `/g/community/${ids.community}/space/${ids.private_space}/discussions`,
       `/g/community/${ids.community}/space/${ids.general_space}/discussion/${ids.hidden_discussion}`,
-    )
+    ]) {
+      cy.request({ url: path, failOnStatusCode: false }).its('status').should('eq', 404)
+    }
     expectLoginRedirect('/g/people')
   })
 })

@@ -162,6 +162,8 @@ def get_discussions(filters=None, order_by=None, start=None, limit=None):
 		)
 	else:
 		query = query.orderby(Discussion[order_field], order=frappe._dict(value=order_direction))
+		if gameplan.is_anonymous() and order_field != "name":
+			query = query.orderby(Discussion.name, order=frappe._dict(value="desc"))
 
 	discussions = query.run(as_dict=1)
 	has_next_page = len(discussions) > limit

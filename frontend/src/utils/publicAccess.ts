@@ -65,3 +65,17 @@ export function publicListUrl(
   }[doctype]
   return `/api/v2/method/gameplan.public_lists.${endpoint}`
 }
+
+export const PUBLIC_PAGE_SIZE = 50
+
+export function publicPageStart(): number {
+  if (!isAnonymousVisitor()) return 0
+  const value = new URLSearchParams(window.location.search).get('page') || '1'
+  const page = /^\d{1,6}$/.test(value) ? Number(value) : 1
+  return Math.max(0, page - 1) * PUBLIC_PAGE_SIZE
+}
+
+export function publicPageLink(direction: -1 | 1): string {
+  const page = publicPageStart() / PUBLIC_PAGE_SIZE + 1 + direction
+  return window.location.pathname + (page > 1 ? `?page=${page}` : '')
+}

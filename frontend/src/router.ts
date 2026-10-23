@@ -85,10 +85,11 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/',
     alias: '',
-    component: RouteGuard,
+    component: () => import('@/pages/Teams.vue'),
+    meta: { public: true },
     async beforeEnter() {
       await ensureCommunityDataLoaded()
-      return getHomeRoute()
+      if (!isAnonymousVisitor()) return getHomeRoute()
     },
   },
   {
@@ -834,6 +835,7 @@ async function resolveRoute(
   }
 
   if (['/', '/community'].includes(to.path)) {
+    if (to.path === '/' && isAnonymousVisitor() && publicAccessEnabled()) return
     return getHomeRoute()
   }
 
@@ -873,6 +875,32 @@ async function resolveRoute(
 
   communityState.scope(communityId)
 }
+
+// Discard metadata from the previous server-rendered page during app navigation.
+router.afterEach((to, from) => {
+  if (!from.matched.length) return
+  document.querySelectorAll('[data-public-seo]').forEach((element) => element.remove())
+  const indexable =
+    isAnonymousVisitor() &&
+    (to.path === '/' || ['Discussions', 'SpaceDiscussions', 'Discussion'].includes(String(to.name)))
+  const robots = document.createElement('meta')
+  robots.name = 'robots'
+  robots.content = indexable && publicAccessEnabled() ? 'index, follow' : 'noindex, follow'
+  robots.setAttribute('data-public-seo', '')
+  document.head.append(robots)
+  if (indexable && publicAccessEnabled()) {
+    const canonical = document.createElement('link')
+    canonical.rel = 'canonical'
+    const path = router.resolve({
+      ...to,
+      query: to.query.page ? { page: to.query.page } : {},
+      hash: '',
+    }).href
+    canonical.href = new URL(path, window.location.origin).href
+    canonical.setAttribute('data-public-seo', '')
+    document.head.append(canonical)
+  }
+})
 
 export default router
 

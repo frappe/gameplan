@@ -79,17 +79,12 @@
     </div>
 
     <div v-if="isAnonymousVisitor()" class="mb-6 flex flex-wrap justify-center gap-2">
+      <a v-if="publicPageStart() > 0" :href="publicPageLink(-1)" class="underline">Previous page</a>
       <Button
-        v-if="comments.hasNextPage"
-        label="Load more comments"
-        :loading="comments.loading"
-        @click="comments.next()"
-      />
-      <Button
-        v-if="polls.hasNextPage"
-        label="Load more polls"
-        :loading="polls.loading"
-        @click="polls.next()"
+        v-if="comments.hasNextPage || polls.hasNextPage"
+        label="Next page of replies"
+        :href="publicPageLink(1)"
+        target="_self"
       />
     </div>
     <div v-if="readOnlyMode && isAnonymousVisitor()" class="mb-20">
@@ -271,7 +266,13 @@ import {
   pollDraftInContent,
   threadPollsKey,
 } from '@/components/PollBlock/poll-draft'
-import { isAnonymousVisitor, publicListUrl } from '@/utils/publicAccess'
+import {
+  isAnonymousVisitor,
+  publicListUrl,
+  publicPageStart,
+  publicPageLink,
+  PUBLIC_PAGE_SIZE,
+} from '@/utils/publicAccess'
 import PublicJoinPrompt from '@/components/Public/PublicJoinPrompt.vue'
 
 interface Props {
@@ -367,7 +368,7 @@ const composerStorageKey = computed(() => {
 const comments = useList<GPComment>({
   doctype: 'GP Comment',
   url: publicListUrl('GP Comment'),
-  cacheKey: ['Comments', props.doctype, props.name],
+  cacheKey: isAnonymousVisitor() ? undefined : ['Comments', props.doctype, props.name],
   fields: ['name', 'content', 'owner', 'creation', 'modified', 'edited_at', 'deleted_at'],
   transform(data) {
     return data.map((d) => ({ ...d, doctype: 'GP Comment' }))
@@ -376,8 +377,9 @@ const comments = useList<GPComment>({
     reference_doctype: props.doctype,
     reference_name: props.name,
   },
-  orderBy: 'creation asc',
-  limit: isAnonymousVisitor() ? 1000 : 99999,
+  orderBy: 'creation asc, name asc',
+  start: publicPageStart(),
+  limit: isAnonymousVisitor() ? PUBLIC_PAGE_SIZE : 99999,
   onSuccess() {
     if (route.query.comment) {
       if (route.query.comment === 'first_post') {
@@ -450,8 +452,9 @@ const polls = useList<GPPoll>({
   filters: {
     discussion: props.name,
   },
-  orderBy: 'creation asc',
-  limit: isAnonymousVisitor() ? 1000 : 99999,
+  orderBy: 'creation asc, name asc',
+  start: publicPageStart(),
+  limit: isAnonymousVisitor() ? PUBLIC_PAGE_SIZE : 99999,
   transform(data) {
     return data.map((d) => ({ ...d, doctype: 'GP Poll' }))
   },

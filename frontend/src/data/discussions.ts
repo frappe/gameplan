@@ -38,7 +38,7 @@ export interface Discussion extends GPDiscussion {
 
 export type UseDiscussionOptions = Pick<
   UseListOptions<Discussion>,
-  'cacheKey' | 'filters' | 'limit' | 'orderBy' | 'immediate'
+  'cacheKey' | 'filters' | 'limit' | 'start' | 'orderBy' | 'immediate'
 >
 
 export function useDiscussions(options: UseDiscussionOptions) {
@@ -52,6 +52,7 @@ export function useDiscussions(options: UseDiscussionOptions) {
       !isAnonymousVisitor() && options.cacheKey ? ['Discussions', options.cacheKey] : undefined,
     filters: options.filters,
     limit: options.limit || 50,
+    start: options.start,
     orderBy: options.orderBy,
     immediate: options.immediate ?? true,
     onSuccess() {

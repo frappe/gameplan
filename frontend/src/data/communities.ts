@@ -32,7 +32,7 @@ export let communities = useList<Community>({
     'visibility',
     { members: ['user', 'is_admin'] },
   ],
-  orderBy: 'title asc',
+  orderBy: 'title asc, name asc',
   initialData: [],
   cacheKey: ['Communities', 'with-image'],
   limit: 999,

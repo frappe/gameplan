@@ -10,6 +10,7 @@ after frappe wins the route.
 from urllib.parse import quote
 
 import frappe
+from frappe.utils import get_url
 
 from gameplan.public_access import public_access_enabled
 
@@ -38,6 +39,16 @@ def gameplan_robots_rules() -> str:
 	"""
 	lines = ["# Gameplan: only spaces anyone may read without signing in.", "User-agent: *"]
 	if public_access_enabled():
+		lines.extend(["Allow: /g$", "Allow: /g?", "Allow: /g/?", "Allow: /g/$"])
+		Team = frappe.qb.DocType("GP Team")
+		from gameplan.visibility import public_team_criterion
+
+		for name in (
+			frappe.qb.from_(Team).select(Team.name).where(public_team_criterion(Team)).run(pluck=True)
+		):
+			path = f"/g/community/{quote(str(name), safe='')}/discussions"
+			lines.extend([f"Allow: {path}$", f"Allow: {path}?"])
+		lines.append(f"Sitemap: {get_url('/gameplan_sitemap.xml')}")
 		Project = frappe.qb.DocType("GP Project")
 		spaces = (
 			frappe.qb.from_(Project)
