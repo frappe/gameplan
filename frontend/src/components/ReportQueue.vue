@@ -5,6 +5,16 @@
     label="Review status"
     :options="['Pending', 'Resolved']"
   />
+  <div v-if="status === 'Pending'" class="my-4 flex flex-wrap items-center gap-3">
+    <Button :disabled="!items.length || selected.size + unselected.length > 50" @click="selectPage"
+      >Select this page</Button
+    >
+    <Button :disabled="!selected.size" @click="selected.clear()">Clear selection</Button>
+    <span role="status" class="text-base text-ink-gray-6">{{ selected.size }} of 50 selected</span>
+    <Button :disabled="!selected.size" variant="solid" @click="showBulk = true"
+      >Review selected</Button
+    >
+  </div>
   <ErrorMessage
     v-if="error"
     class="mt-3"
@@ -17,7 +27,16 @@
       :key="item.name"
       class="flex items-center justify-between gap-3 border-b py-4"
     >
-      <div>
+      <Checkbox
+        v-if="status === 'Pending'"
+        :model-value="selected.has(item.name)"
+        :disabled="selected.size >= 50 && !selected.has(item.name)"
+        :aria-label="`Select ${item.reference_doctype === 'GP Comment' ? 'reply' : 'discussion'} #${
+          item.reference_name
+        }`"
+        @update:model-value="toggleSelection(item.name, $event)"
+      />
+      <div class="flex-1">
         <p class="text-base-medium">
           {{ item.reference_doctype === 'GP Comment' ? 'Reply' : 'Discussion' }} #{{
             item.reference_name
@@ -38,6 +57,14 @@
       <Button v-if="hasMore" @click="changePage(40)">Next</Button>
     </div>
   </template>
+  <BulkReportReview
+    :key="communityId"
+    v-model:open="showBulk"
+    :community-id="communityId"
+    :reviews="[...selected]"
+    @inspect="openReview"
+    @complete="bulkComplete"
+  />
   <Dialog v-model:open="showReview" title="Review reports" :size="'4xl'">
     <template v-if="details">
       <div class="flex flex-wrap items-center justify-between gap-2">
@@ -118,48 +145,40 @@
   </Dialog>
 </template>
 <script setup lang="ts">
-import { provide, ref, watch } from 'vue'
-import { Button, Dialog, ErrorMessage, Select, Textarea, call, dayjsLocal } from 'frappe-ui'
+import { computed, provide, ref, watch } from 'vue'
+import {
+  Button,
+  Checkbox,
+  Dialog,
+  ErrorMessage,
+  Select,
+  Textarea,
+  call,
+  dayjsLocal,
+} from 'frappe-ui'
 import CommentEditor from '@/components/editor/CommentEditor.vue'
 import { threadPollsKey } from '@/components/PollBlock/poll-draft'
-import type { GPPoll } from '@/types/doctypes'
 import { useUser } from '@/data/users'
 import { reloadDiscussionLists } from '@/data/discussions'
 import { extractServerMessage } from '@/utils'
+import BulkReportReview from './BulkReportReview.vue'
+import type { Review, ReviewDetails as Details } from '@/data/reporting'
 const props = defineProps<{ communityId: string }>()
-type Review = {
-  name: string
-  reference_doctype: string
-  reference_name: string
-  creation: string
-  decision?: string
+const selected = ref(new Set<string>())
+const showBulk = ref(false)
+const unselected = computed(() => items.value.filter((item) => !selected.value.has(item.name)))
+function toggleSelection(name: string, checked: boolean) {
+  if (!checked) selected.value.delete(name)
+  else if (selected.value.size < 50) selected.value.add(name)
 }
-type Details = {
-  review: {
-    status: string
-    decision?: string
-    decision_note?: string
-    decided_by?: string
-    decided_at?: string
-  }
-  current: {
-    title?: string
-    content: string
-    version: string
-    owner: string
-    discussion: string
-    project: string
-  }
-  reports: {
-    name: string
-    owner: string
-    creation: string
-    reason: string
-    note: string
-  }[]
-  evidence: { name: string; reported_title?: string; reported_content: string } | null
-  polls: GPPoll[]
-  has_more: boolean
+function selectPage() {
+  if (selected.value.size + unselected.value.length > 50) return
+  for (const item of items.value) selected.value.add(item.name)
+}
+function bulkComplete() {
+  selected.value.clear()
+  reloadDiscussionLists()
+  load()
 }
 const status = ref('Pending'),
   start = ref(0),
@@ -213,6 +232,8 @@ watch(
   [() => props.communityId, status],
   () => {
     start.value = 0
+    selected.value.clear()
+    showBulk.value = false
     showReview.value = false
     load()
   },
@@ -266,6 +287,7 @@ async function resolve() {
       expected_version: details.value.current.version,
     })
     showReview.value = false
+    selected.value.delete(active.value)
     reloadDiscussionLists()
     await load()
   } catch (e) {
