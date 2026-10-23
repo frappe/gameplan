@@ -185,6 +185,16 @@ class TestPublicSEO(GameplanTestCase):
 		self.assertFalse(any(discussion_path(self.hidden) in url for url in urls))
 		self.assertEqual(frappe.session.user, "Administrator")
 
+	def test_empty_discussion_sitemap_does_not_generate_empty_in_queries(self):
+		self.space.set_visibility(VISIBILITY_MEMBER_ACCESS)
+		with patch.object(frappe.db, "sql", wraps=frappe.db.sql) as sql:
+			data = self.sitemap(section="discussions", page="1")
+		self.assertEqual(data.links, [])
+		for call in sql.call_args_list:
+			self.assertNotRegex(str(call.args[0]), r"\bIN\s*\(\s*\)")
+		with self.assertRaises(frappe.DoesNotExistError):
+			self.sitemap(section="discussions", page="2")
+
 	def test_public_rendering_preserves_the_real_session_and_request(self):
 		session = frappe.local.session
 		form_dict = frappe.local.form_dict

@@ -58,8 +58,10 @@ def get_context(context):
 			start=(page - 1) * SITEMAP_SIZE,
 			page_length=SITEMAP_SIZE,
 		)
-		if not rows and page > 1:
-			frappe.throw("Page not found", frappe.DoesNotExistError)
+		if not rows:
+			if page > 1:
+				frappe.throw("Page not found", frappe.DoesNotExistError)
+			return context
 		if section == "discussions":
 			teams = dict(
 				frappe.get_all(
