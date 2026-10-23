@@ -1,6 +1,7 @@
 # Copyright (c) 2026, Frappe Technologies Pvt Ltd and Contributors
 # See license.txt
 
+from html import escape
 from unittest.mock import patch
 
 import frappe
@@ -124,6 +125,30 @@ class TestPublicSEO(GameplanTestCase):
 		self.assertEqual(
 			frappe.flags.redirect_location, discussion_path(self.post) + f"?page=2&comment={comment.name}"
 		)
+
+	def test_embedded_polls_follow_their_comment_page_and_links(self):
+		draft = escape(
+			frappe.as_json(
+				{"title": "Later embedded question", "options": [{"title": "Yes"}, {"title": "No"}]}
+			),
+			quote=True,
+		)
+		comment = create_comment(
+			self.post, content=f'<p>Later reply</p><div data-type="poll" data-poll-draft="{draft}"></div>'
+		)
+		poll = frappe.db.get_value("GP Poll", {"comment": comment.name})
+		with patch("gameplan.public_seo.PAGE_SIZE", 1):
+			first = self.page(discussion_path(self.post))
+			second = self.page(discussion_path(self.post) + "?page=2")
+			self.assertEqual(first.polls, [])
+			self.assertEqual([str(p.name) for p in second.polls], [str(poll)])
+			with self.assertRaises(frappe.Redirect):
+				self.page(discussion_path(self.post) + f"?poll={poll}")
+			self.assertEqual(
+				frappe.flags.redirect_location, discussion_path(self.post) + f"?page=2&poll={poll}"
+			)
+			frappe.db.set_value("GP Comment", comment.name, "deleted_at", frappe.utils.now())
+			self.assertEqual(self.page(discussion_path(self.post) + "?page=2").polls, [])
 
 	def test_edits_and_deleted_replies_are_reflected_in_the_next_render(self):
 		self.page(discussion_path(self.post))

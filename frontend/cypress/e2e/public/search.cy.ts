@@ -58,6 +58,52 @@ describe('Public forum search', () => {
     cy.contains('0 matches').should('be.visible')
   })
 
+  it('opens later replies through search and keeps their embedded polls on the same page', () => {
+    const draft = JSON.stringify({
+      title: 'Question in the later reply',
+      options: [{ title: 'Yes' }, { title: 'No' }],
+    }).replaceAll('"', '&quot;')
+    cy.login()
+    cy.then(() =>
+      cy.request({
+        method: 'POST',
+        url: '/api/method/frappe.client.insert_many',
+        body: {
+          docs: Array.from({ length: 50 }, (_, i) => ({
+            doctype: 'GP Comment',
+            reference_doctype: 'GP Discussion',
+            reference_name: ids.discussion,
+            content:
+              i === 49
+                ? `<p>Borealreply</p><div data-type="poll" data-poll-draft="${draft}"></div>`
+                : `<p>Earlier reply ${i + 1}</p>`,
+          })),
+        },
+      }),
+    )
+    cy.request('POST', '/api/method/gameplan.ui_test_helpers.rebuild_search_index')
+    cy.clearCookies()
+    cy.visit(
+      `/g/community/${ids.community}/space/${ids.space}/discussion/${ids.discussion}/${ids.discussion_slug}`,
+    )
+    cy.contains('Question in the later reply').should('not.exist')
+    cy.contains('a', 'Next page of replies').click()
+    cy.contains('Question in the later reply').should('be.visible')
+    cy.contains('Poll unavailable').should('not.exist')
+    cy.visit('/g/search?q=Borealreply')
+    cy.contains('a', 'Borealreply').click()
+    cy.location('search').should('include', 'page=2').and('include', 'comment=')
+    cy.contains('Borealreply').should('be.visible')
+    cy.contains('Question in the later reply').should('be.visible')
+    cy.contains('Poll unavailable').should('not.exist')
+    cy.request(
+      `/g/community/${ids.community}/space/${ids.space}/discussion/${ids.discussion}/${ids.discussion_slug}?page=2`,
+    )
+      .its('body')
+      .should('include', 'Question in the later reply')
+    cy.location('search', { timeout: 15000 }).should('eq', '?page=2')
+  })
+
   it('refuses author probing and cannot search a non-public space', () => {
     cy.request({
       url: '/api/method/gameplan.api.search_sqlite',

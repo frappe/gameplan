@@ -243,7 +243,7 @@ import {
 } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useEventListener } from '@vueuse/core'
-import { useList, ErrorMessage, Button, Tooltip } from 'frappe-ui'
+import { useList, ErrorMessage, Button, Tooltip, type UseListOptions } from 'frappe-ui'
 import CommentEditor from '@/components/editor/CommentEditor.vue'
 import Comment from './Comment.vue'
 import Activity from './Activity.vue'
@@ -383,10 +383,10 @@ const comments = useList<GPComment>({
   onSuccess() {
     if (route.query.comment) {
       if (route.query.comment === 'first_post') {
-        router.replace({ query: {} })
+        router.replace({ query: route.query.page ? { page: route.query.page } : {} })
         return
       }
-      const comment = comments.data?.find((c) => c.name === route.query.comment)
+      const comment = comments.data?.find((c) => String(c.name) === route.query.comment)
       scrollToItem(comment)
     } else if (!route.query.fromSearch && comments.data?.length > 0) {
       scrollToEnd()
@@ -434,40 +434,61 @@ watch(
   },
 )
 
+const pollFields: UseListOptions<GPPoll>['fields'] = [
+  'name',
+  'title',
+  'anonymous',
+  'multiple_answers',
+  'creation',
+  'owner',
+  'stopped_at',
+  'comment',
+  { options: ['name', 'title', 'idx', 'percentage'] },
+  { votes: ['user', 'option'] },
+]
+
 const polls = useList<GPPoll>({
   doctype: 'GP Poll',
   url: publicListUrl('GP Poll'),
-  fields: [
-    'name',
-    'title',
-    'anonymous',
-    'multiple_answers',
-    'creation',
-    'owner',
-    'stopped_at',
-    'comment',
-    { options: ['name', 'title', 'idx', 'percentage'] },
-    { votes: ['user', 'option'] },
-  ],
-  filters: {
+  fields: pollFields,
+  filters: () => ({
     discussion: props.name,
-  },
+    comment: isAnonymousVisitor() ? ['is', 'not set'] : undefined,
+  }),
   orderBy: 'creation asc, name asc',
   start: publicPageStart(),
   limit: isAnonymousVisitor() ? PUBLIC_PAGE_SIZE : 99999,
   transform(data) {
     return data.map((d) => ({ ...d, doctype: 'GP Poll' }))
   },
-  onSuccess() {
-    if (route.query.poll) {
-      const poll = polls.data?.find((p) => p.name === route.query.poll)
-      scrollToItem(poll?.comment ? comments.data?.find((c) => c.name === poll.comment) : poll)
-    }
-  },
+  onSuccess: scrollToLinkedPoll,
 })
+
+const embeddedPolls = isAnonymousVisitor()
+  ? useList<GPPoll>({
+      doctype: 'GP Poll',
+      url: publicListUrl('GP Poll'),
+      fields: pollFields,
+      filters: () => ({
+        discussion: props.name,
+        comment: ['in', (comments.data ?? []).filter((c) => !c.deleted_at).map((c) => c.name)],
+      }),
+      limit: PUBLIC_PAGE_SIZE,
+      onSuccess: scrollToLinkedPoll,
+    })
+  : undefined
+
+function scrollToLinkedPoll(data: GPPoll[]) {
+  if (!route.query.poll) return
+  const poll = data.find((p) => String(p.name) === route.query.poll)
+  scrollToItem(
+    poll?.comment ? comments.data?.find((c) => String(c.name) === String(poll.comment)) : poll,
+  )
+}
 
 provide(threadPollsKey, {
   polls,
+  embeddedPolls,
   space: () => props.space,
   readOnlyMode: () => props.readOnlyMode,
 })
@@ -697,7 +718,7 @@ async function scrollToItem(item: any) {
   }
   setTimeout(() => {
     highlightedItem.value = null
-    router.replace({ query: {} })
+    router.replace({ query: route.query.page ? { page: route.query.page } : {} })
   }, 10000)
 }
 

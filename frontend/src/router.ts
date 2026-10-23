@@ -756,6 +756,18 @@ router.beforeEach(async (to, from) => {
     return sendToLogin(to)
   }
 
+  // The server resolves a linked reply's page before the public thread loads.
+  if (
+    !session.isLoggedIn &&
+    from.matched.length &&
+    to.name === 'Discussion' &&
+    !to.query.page &&
+    ((to.query.comment && to.query.comment !== 'first_post') || to.query.poll)
+  ) {
+    window.location.href = router.resolve(to).href
+    return false
+  }
+
   if (!session.isLoggedIn && to.name !== 'Login') {
     // Reading a public space without signing in. Whatever this visitor cannot see, they
     // are asked to log in for, the way Discourse does it: the page may well exist for

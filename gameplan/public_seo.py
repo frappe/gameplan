@@ -216,7 +216,7 @@ def discussion_page(name, page):
 	polls, more_polls = paginated_rows(
 		"GP Poll",
 		["name", "title", "creation", {"options": ["title", "percentage"]}],
-		{"discussion": doc.name},
+		{"discussion": doc.name, "comment": ["is", "not set"]},
 		"creation asc, name asc",
 		page,
 		allow_empty=True,
@@ -224,9 +224,17 @@ def discussion_page(name, page):
 	if page > 1 and not comments and not polls:
 		frappe.throw("Page not found", frappe.DoesNotExistError)
 	has_next = has_next or more_polls
+	embedded_polls = public_list(
+		"GP Poll",
+		["name", "title", "creation", {"options": ["title", "percentage"]}],
+		{"discussion": doc.name, "comment": ["in", [c.name for c in comments if not c.deleted_at]]},
+		"creation asc, name asc",
+		0,
+		PAGE_SIZE,
+	)
 	seo = page_data(discussion.title, discussion_path(discussion), [], has_next)
 	seo.page = page
-	seo.polls = polls
+	seo.polls = polls + embedded_polls
 	seo.discussion = discussion
 	seo.discussion.content = public_html(discussion.content)
 	seo.description = text_preview(discussion.content)
@@ -248,10 +256,23 @@ def linked_reply_page(discussion, default):
 		name = frappe.local.request.args.get(parameter)
 		if not name or name == "first_post":
 			continue
-		rows = public_list(doctype, ["name", "creation"], {**filters, "name": name}, None, 0, 1)
+		fields = ["name", "creation"] + (["comment"] if parameter == "poll" else [])
+		rows = public_list(doctype, fields, {**filters, "name": name}, None, 0, 1)
 		if not rows:
 			continue
 		row = rows[0]
+		if parameter == "poll":
+			if row.comment:
+				doctype = "GP Comment"
+				filters = {"reference_doctype": "GP Discussion", "reference_name": discussion}
+				rows = public_list(
+					doctype, ["name", "creation"], {**filters, "name": row.comment}, None, 0, 1
+				)
+				if not rows:
+					continue
+				row = rows[0]
+			else:
+				filters["comment"] = ["is", "not set"]
 		table = frappe.qb.DocType(doctype)
 		position = (
 			frappe.qb.get_query(
