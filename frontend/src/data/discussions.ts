@@ -2,6 +2,7 @@ import { ref, watch } from 'vue'
 import { useDoc, useList } from 'frappe-ui'
 import { UseListOptions } from 'frappe-ui'
 import { useDocumentVisibility } from '@vueuse/core'
+import { isAnonymousVisitor } from '@/utils/publicAccess'
 import { GPDiscussion } from '@/types/doctypes'
 
 // Reload the feed when the tab is re-activated after sitting in the background
@@ -37,7 +38,7 @@ export interface Discussion extends GPDiscussion {
 
 export type UseDiscussionOptions = Pick<
   UseListOptions<Discussion>,
-  'cacheKey' | 'filters' | 'limit' | 'orderBy' | 'immediate'
+  'cacheKey' | 'filters' | 'limit' | 'start' | 'orderBy' | 'immediate'
 >
 
 export function useDiscussions(options: UseDiscussionOptions) {
@@ -47,9 +48,11 @@ export function useDiscussions(options: UseDiscussionOptions) {
   const discussions = useList<Discussion>({
     url: '/api/v2/method/gameplan.gameplan.doctype.gp_discussion.api.get_discussions',
     doctype: 'GP Discussion',
-    cacheKey: options.cacheKey ? ['Discussions', options.cacheKey] : undefined,
+    cacheKey:
+      !isAnonymousVisitor() && options.cacheKey ? ['Discussions', options.cacheKey] : undefined,
     filters: options.filters,
     limit: options.limit || 50,
+    start: options.start,
     orderBy: options.orderBy,
     immediate: options.immediate ?? true,
     onSuccess() {

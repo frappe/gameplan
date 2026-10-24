@@ -30,12 +30,15 @@ from gameplan.tests.fixtures import (
 	create_space,
 	grant_guest_access,
 )
+from gameplan.visibility import VISIBILITY_MEMBER_ACCESS
 
 
 class TestPersonalContent(GameplanTestCase):
 	def test_private_page_is_owner_only_and_space_page_inherits_space(self):
 		community = create_community("Page Permission Community", members=[self.member, self.second_member])
-		private_space = create_space("Page Private Space", community, is_private=1, members=[self.member])
+		private_space = create_space(
+			"Page Private Space", community, visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
 		private_page = create_page("Private Page", owner=self.member)
 		space_page = create_page("Space Page", private_space, owner=self.member)
 

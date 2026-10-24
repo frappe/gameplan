@@ -7,10 +7,12 @@ import subprocess
 import frappe
 from frappe import _, safe_decode
 from frappe.core.api.file import get_max_file_size
-from frappe.utils import get_system_timezone
+from frappe.utils import cint, get_system_timezone
 from frappe.utils.telemetry import capture
 
 from gameplan import is_new_site
+from gameplan.public_access import public_access_enabled
+from gameplan.public_seo import get_public_page
 from gameplan.roles import has_app_access
 
 no_cache = 1
@@ -19,10 +21,13 @@ no_cache = 1
 def get_context():
 	login_as_demo_user_if_enabled()
 	require_app_access()
+	frappe.local.no_cache = True
+	frappe.local.response_headers["Cache-Control"] = "private, no-store"
+	seo = get_public_page()
 	csrf_token = frappe.sessions.get_csrf_token()
 	# A GET request is not committed, and the new CSRF token must outlive it.
 	frappe.db.commit()  # nosemgrep: frappe-manual-commit
-	context = frappe._dict()
+	context = frappe._dict(seo=seo)
 	context.boot = get_boot()
 	context.boot.csrf_token = csrf_token
 	if frappe.session.user != "Guest":
@@ -48,6 +53,11 @@ def get_boot():
 			"max_file_size": get_max_file_size(),
 			"app_version": get_app_version(),
 			"system_timezone": get_system_timezone(),
+			# Whether someone who is not signed in may read Anonymous-tier spaces here, and
+			# whether they may create an account. The SPA uses both only to decide what to
+			# show; the server enforces each on its own.
+			"public_access_enabled": public_access_enabled(),
+			"signup_enabled": not cint(frappe.get_website_settings("disable_signup")),
 		}
 	)
 
