@@ -125,7 +125,9 @@ describe('Poll lifecycle', () => {
   })
 
   it('keeps a poll-only comment draft across a reload', () => {
-    cy.intercept('POST', '/api/v2/document/GP%20Draft').as('draftInsert')
+    cy.intercept(/\/api\/v2\/document\/GP%20Draft/, (request) => {
+      if (request.body?.content?.includes('&quot;No&quot;')) request.alias = 'savedPollDraft'
+    })
     cy.visit(`/g/community/${community}/space/${space}/discussion/${discussion}`)
 
     cy.button('Add a comment').click()
@@ -134,7 +136,7 @@ describe('Poll lifecycle', () => {
     labelledInput('Question').type('Ship on Friday?')
     cy.get('input[placeholder="Option 1"]').type('Yes')
     cy.get('input[placeholder="Option 2"]').type('No')
-    cy.wait('@draftInsert').its('request.body.content').should('contain', 'data-type="poll"')
+    cy.wait('@savedPollDraft').its('request.body.content').should('contain', 'data-type="poll"')
 
     cy.reload()
     labelledInput('Question').should('have.value', 'Ship on Friday?')

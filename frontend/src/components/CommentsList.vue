@@ -102,7 +102,7 @@
             :editable="showCommentBox && !isDraftLoading"
             placeholder="Add a comment"
           />
-          <ErrorMessage :message="comments.insert.error" />
+          <ErrorMessage :message="discardError || comments.insert.error" />
         </div>
       </div>
     </div>
@@ -143,6 +143,7 @@ const route = useRoute()
 const socket = useSocket()
 
 const showCommentBox = ref(false)
+const discardError = ref(null)
 
 // Auto-saved draft for the new-comment composer, keyed to this task. Survives reloads
 // and restores across tabs. One draft per (user, task).
@@ -317,6 +318,7 @@ function openCommentBoxFromRow() {
 }
 
 function resetCommentState() {
+  discardError.value = null
   showCommentBox.value = false
   highlightedItem.value = null
 }
@@ -351,24 +353,28 @@ function scrollToEnd() {
 
 // Add these functions after the existing methods
 async function discardComment() {
+  discardError.value = null
   if (!editorObject.value?.isEmpty) {
     dialog.danger({
       title: 'Discard comment',
       message: 'Are you sure you want to discard your comment?',
       confirmLabel: 'Discard comment',
       onConfirm: async () => {
-        await draft.clear()
-        resetCommentState()
+        if (await draft.clear()) resetCommentState()
       },
     })
   } else {
-    await draft.clear()
-    resetCommentState()
+    try {
+      if (await draft.clear()) resetCommentState()
+    } catch (error) {
+      discardError.value = error
+    }
   }
 }
 
 async function submitComment() {
   if (commentEmpty.value || comments.insert.loading) return
+  discardError.value = null
 
   const comment = await comments.insert.submit({
     reference_doctype: props.doctype,
