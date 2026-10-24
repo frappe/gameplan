@@ -3,6 +3,7 @@
 
 import frappe
 from frappe.model.document import Document
+from frappe.search.sqlite_search import update_doc_index
 
 from gameplan.extends.client import check_permissions
 from gameplan.gameplan.doctype.gp_notification.gp_notification import GPNotification
@@ -60,6 +61,7 @@ class GPTask(HasMentions, HasActivity, Document):
 			"GP Comment", {"reference_doctype": "GP Task", "reference_name": self.name}
 		)
 		self.db_set("comments_count", comments_count)
+		update_doc_index(self)
 
 	def on_trash(self):
 		if not self.flags.from_gameplan_delete_cascade:
