@@ -1,7 +1,11 @@
 import type { Component } from 'vue'
 import type { AnyExtension } from '@tiptap/core'
-import { useFileUpload, type UploadedFile } from 'frappe-ui'
+import { call, useFileUpload, type UploadedFile } from 'frappe-ui'
+import { SuggestionExtension } from 'frappe-ui/editor'
 import type { MediaUploadRequestOptions } from 'frappe-ui/editor'
+import DiscussionLinkList, {
+  type DiscussionLinkItem,
+} from '@/components/editor/DiscussionLinkList.vue'
 import RichQuoteNodeExtension from '@/components/RichQuoteExtension/rich-quote-node-extension'
 import QuoteBacklinkDecoration from '@/components/RichQuoteExtension/quote-backlink-decoration'
 import type { RichQuoteController } from '@/components/RichQuoteExtension/useRichQuotes'
@@ -23,6 +27,51 @@ function mentionItems() {
 
 function tagItems() {
   return (tagList.data ?? []).map((tag) => ({ id: tag.name, label: tag.label }))
+}
+
+declare const __FRONTEND_ROUTE__: string
+
+function discussionLinkItems(query: string): Promise<DiscussionLinkItem[]> {
+  if (query && !/^[\p{L}\p{N}]/u.test(query)) return Promise.resolve([])
+  const pattern = /^\p{N}/u.test(query) ? `${query}%` : `%${query}%`
+  return call('frappe.client.get_list', {
+    doctype: 'GP Discussion',
+    fields: ['name', 'title', 'project'],
+    filters: query ? { title: ['like', pattern] } : {},
+    order_by: 'last_post_at desc',
+    limit_page_length: 10,
+  })
+}
+
+export function discussionLinkExtension() {
+  return SuggestionExtension.configure<DiscussionLinkItem>({
+    name: 'discussionLink',
+    trigger: '+',
+    items: discussionLinkItems,
+    listComponent: DiscussionLinkList as Component,
+    allowSpaces: true,
+    command: ({ editor, item, range }) => {
+      editor
+        .chain()
+        .focus()
+        .insertContentAt(range, [
+          {
+            type: 'text',
+            text: item.title,
+            marks: [
+              {
+                type: 'link',
+                attrs: {
+                  href: `${__FRONTEND_ROUTE__}/space/${item.project}/discussion/${item.name}`,
+                },
+              },
+            ],
+          },
+          { type: 'text', text: ' ' },
+        ])
+        .run()
+    },
+  })
 }
 
 /**
