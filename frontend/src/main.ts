@@ -69,6 +69,7 @@ function setupApp() {
   setConfig('defaultListUrl', 'gameplan.extends.client.get_list')
   setConfig('systemTimezone', window.system_timezone || null)
   setConfig('maxFileSize', window.max_file_size ? Number(window.max_file_size) : null)
+  setConfig('fileChunkSize', window.file_chunk_size ? Number(window.file_chunk_size) : null)
   socket = initSocket()
   app.config.globalProperties.$socket = socket
   app.mount('#app')
