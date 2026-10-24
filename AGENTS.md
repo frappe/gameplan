@@ -10,6 +10,15 @@ Backend in `gameplan/`, frontend in `frontend/src/` (`components/`, `pages/`,
 nearest precedent and copy it. This file covers only what the code cannot tell you.
 Where a trap or policy below contradicts the precedent you found, this file wins.
 
+## Moderation planning
+
+- Ebrahim owns moderation end to end, including product decisions, backend, and frontend.
+- Use the installed `grill-me` skill and its `grilling` dependency whenever planning moderation work.
+- Ask focused rounds about the next concrete implementation. Do not require a separate design-contract PR or maintainer approval.
+- Keep migration as a later workstream. Production inventory and importer work do not block moderation development.
+- Record confirmed choices in [moderation decisions](prd/moderation-decisions.md) after each planning round. Read it before planning or implementing moderation.
+- Keep recommendations and implementation choices distinct from decisions Ebrahim has confirmed.
+
 ## Naming: product vs schema
 
 New code, UI copy and commit messages say **Space** and **Community**. The schema
@@ -73,7 +82,9 @@ Site names and ports vary per bench. Resolve them, do not assume.
 - E2E: `cd frontend && yarn test`. Needs a dev server (`bench start`, or
   `DEV_SERVER=1 bench serve`) plus `allow_tests`, `enable_ui_tests: 1` and
   `developer_mode: 1` in `site_config.json`. `enable_ui_tests` is read through
-  `cint`, so `"true"` counts as off.
+  `cint`, so `"true"` counts as off. The specs in `cypress/e2e/public/` also need
+  `gameplan_public_access_enabled: 1`; set it before starting the server, which caches
+  site config for up to a minute.
 - Lint: `pre-commit run --all-files` (ruff: tabs, double quotes, line 110).
 - Debug: add `def execute():` to `gameplan/debug.py`, run
   `bench --site <site> execute gameplan.debug.execute`.

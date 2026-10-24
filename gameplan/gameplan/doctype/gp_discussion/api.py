@@ -8,8 +8,11 @@ from frappe.query_builder.functions import Count
 from frappe.utils import cint, cstr
 from pypika.terms import ExistsCriterion
 
+import gameplan
 from gameplan.gameplan.doctype.gp_poll.gp_poll import ongoing_polls_clause
-from gameplan.permissions import apply_accessible_project_filter
+from gameplan.permissions import apply_accessible_project_filter, can_view_space
+from gameplan.public_access import public_pagination
+from gameplan.public_payload import check_public_filters, refuse, rows_for_viewer
 from gameplan.utils import html_to_text_preview
 
 # `order_by` arrives from the client and both halves of it end up in the SQL — the field
@@ -79,7 +82,7 @@ def parse_filters(filters) -> dict:
 	return filters
 
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def get_discussions(filters=None, order_by=None, start=None, limit=None):
 	if not frappe.has_permission("GP Discussion", "read"):
 		frappe.throw("Insufficient Permission for GP Discussion", frappe.PermissionError)
@@ -87,7 +90,14 @@ def get_discussions(filters=None, order_by=None, start=None, limit=None):
 	filters = parse_filters(filters)
 	feed_type = filters.pop("feed_type", None) if filters else None
 	participator = filters.pop("participator", None) if filters else None
+	if gameplan.is_anonymous():
+		# Filtering by participant would confirm whether a guessed address posted here.
+		if participator:
+			refuse("Not allowed without signing in")
+		check_public_filters("GP Discussion", filters)
 	limit = cint(limit)
+	if gameplan.is_anonymous():
+		start, limit = public_pagination(start, limit)
 	start = parse_offset(start)
 	order_field, order_direction = parse_order_by(order_by or DEFAULT_ORDER_BY)
 
@@ -116,6 +126,9 @@ def get_discussions(filters=None, order_by=None, start=None, limit=None):
 		.limit(limit + 1)
 		.offset(start)
 	)
+	from gameplan.permissions import visible_discussion_criterion
+
+	query = query.where(visible_discussion_criterion(Discussion))
 	query = apply_accessible_project_filter(query, Discussion.project)
 
 	if participator:
@@ -166,7 +179,7 @@ def get_discussions(filters=None, order_by=None, start=None, limit=None):
 	)
 
 	frappe.response["has_next_page"] = has_next_page
-	return discussions
+	return rows_for_viewer("GP Discussion", discussions)
 
 
 def include_unread_counts(discussions):
@@ -235,33 +248,43 @@ def include_last_post_content(discussions):
 	last_comments_name = [d.last_post for d in discussions if d.last_post_type == "GP Comment"]
 	last_comments_content = (
 		frappe.qb.from_(Comment)
-		.select(Comment.content, Comment.name)
+		.select(Comment.content, Comment.name, Comment.reference_doctype, Comment.reference_name)
 		.where(Comment.name.isin(last_comments_name))
 		.run(as_dict=1)
 		if last_comments_name
 		else []
 	)
-	last_comments_content_map = {c.name: c.content for c in last_comments_content}
+	last_comments_content_map = {c.name: c for c in last_comments_content}
 
 	Poll = frappe.qb.DocType("GP Poll")
 	last_polls_name = [d.last_post for d in discussions if d.last_post_type == "GP Poll"]
 	last_poll_title = (
 		frappe.qb.from_(Poll)
-		.select(Poll.name, Poll.title)
+		.select(Poll.name, Poll.title, Poll.discussion)
 		.where(Poll.name.isin(last_polls_name))
 		.run(as_dict=1)
 		if last_polls_name
 		else []
 	)
-	last_poll_title_map = {p.name: p.title for p in last_poll_title}
+	last_poll_title_map = {p.name: p for p in last_poll_title}
+
+	projects = {d.get("project") for d in discussions if d.get("project")}
+	readable_spaces = {p for p in projects if can_view_space(frappe.session.user, p)}
 
 	for discussion in discussions:
-		if discussion.last_post_type == "GP Comment":
-			discussion.last_comment_content = html_to_text_preview(
-				last_comments_content_map.get(cint(discussion.last_post))
-			)
-		if discussion.last_post_type == "GP Poll":
-			discussion.last_poll_title = last_poll_title_map.get(cint(discussion.last_post))
+		if discussion.get("project") in readable_spaces:
+			if discussion.last_post_type == "GP Comment":
+				comment = last_comments_content_map.get(cint(discussion.last_post))
+				if (
+					comment
+					and comment.reference_doctype == "GP Discussion"
+					and str(comment.reference_name) == str(discussion.name)
+				):
+					discussion.last_comment_content = html_to_text_preview(comment.content)
+			if discussion.last_post_type == "GP Poll":
+				poll = last_poll_title_map.get(cint(discussion.last_post))
+				if poll and str(poll.discussion) == str(discussion.name):
+					discussion.last_poll_title = poll.title
 
 		if not discussion.last_post:
 			discussion.last_post_by = discussion.owner

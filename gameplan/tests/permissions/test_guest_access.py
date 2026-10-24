@@ -20,6 +20,7 @@ from gameplan.tests.fixtures import (
 	create_space,
 	grant_guest_access,
 )
+from gameplan.visibility import VISIBILITY_MEMBER_ACCESS
 
 
 class TestGuestAccess(GameplanTestCase):
@@ -27,7 +28,9 @@ class TestGuestAccess(GameplanTestCase):
 		super().setUp()
 		self.community = create_community("Guest Space Community", members=[self.member])
 		self.public_space = create_space("Guest Public Space", self.community)
-		self.granted_space = create_space("Guest Granted Space", self.community, is_private=1)
+		self.granted_space = create_space(
+			"Guest Granted Space", self.community, visibility=VISIBILITY_MEMBER_ACCESS
+		)
 		grant_guest_access(self.guest, self.granted_space)
 
 	def test_guest_sees_only_explicitly_granted_spaces(self):
@@ -74,7 +77,7 @@ class TestGuestAccess(GameplanTestCase):
 		every other guest's community in your list."""
 		other_guest = create_guest("second_guest@example.com", "Second Guest")
 		other_community = create_community("Second Guest Community")
-		other_space = create_space("Second Guest Space", other_community, is_private=1)
+		other_space = create_space("Second Guest Space", other_community, visibility=VISIBILITY_MEMBER_ACCESS)
 		grant_guest_access(other_guest, other_space)
 
 		with self.as_user(self.guest):

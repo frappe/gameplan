@@ -1,6 +1,7 @@
 import { computed, Ref } from 'vue'
 import { spaces, Space } from './spaces'
 import { communities, Community } from './communities'
+import { VISIBILITY_GENERAL } from '@/utils/visibility'
 
 type FilterFunction = (project: Space) => boolean | undefined
 export type GroupedSpaceItem = Community & { spaces: Space[] }
@@ -36,7 +37,7 @@ export function useGroupedSpaces({ filterFn = (_p: Space) => true }: Options = {
         name: UNCATEGORIZED,
         title: UNCATEGORIZED,
         spaces: ungrouped,
-        is_private: 0,
+        visibility: VISIBILITY_GENERAL,
         creation: '',
         modified: '',
       })
