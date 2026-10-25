@@ -53,6 +53,19 @@ class TestPublicSEO(GameplanTestCase):
 		self.assertNotIn(self.second_member.name, head + body)
 		self.assertNotIn("Secret", head + body)
 
+	def test_moderated_content_stays_out_of_public_html_and_sitemaps(self):
+		self.comment.hide("Hidden reply")
+		seo = self.page(discussion_path(self.post))
+		body = frappe.render_template("gameplan/templates/public/body.html", {"seo": seo})
+		self.assertNotIn("Public reply", body)
+		self.assertIn("Public <b>body</b>", body)
+		self.post.hide("Hidden discussion")
+		with self.assertRaises(frappe.DoesNotExistError):
+			self.page(discussion_path(self.post))
+		feed = self.page(space_path(self.space))
+		self.assertEqual(feed.rows, [])
+		self.assertEqual(self.sitemap(section="discussions")["links"], [])
+
 	def test_signed_in_private_pages_have_no_public_payload(self):
 		self.assertIsNone(self.page(discussion_path(self.hidden), user=self.admin.name))
 
