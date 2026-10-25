@@ -25,7 +25,8 @@
   "archived_by",
   "archived_at",
   "section_break_gvbw",
-  "readme"
+  "readme",
+  "approval_post_count"
  ],
  "fields": [
   {
@@ -125,13 +126,21 @@
    "fieldtype": "Datetime",
    "label": "Visibility Set At",
    "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "approval_post_count",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "Approval post count",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-01 06:12:56.974120",
- "modified_by": "faris@erpnext.com",
+ "modified": "2026-10-25 21:24:33.681459",
+ "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "GP Team",
  "naming_rule": "Set by user",

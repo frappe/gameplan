@@ -62,6 +62,9 @@ READ_ONLY_ENDPOINTS = frozenset(
 		# Scoped moderation reads.
 		"gameplan.moderation.community_bans",
 		"gameplan.reporting.queue",
+		"gameplan.approvals.queue",
+		"gameplan.approvals.detail",
+		"gameplan.approval_policy.get_policy",
 		"gameplan.reporting.detail",
 		"gameplan.moderation.removed_content",
 		# Revision history.

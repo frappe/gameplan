@@ -176,6 +176,7 @@ override_doctype_class = {"File": "gameplan.moderated_file.ModeratedFile"}
 # Hook on document methods and events
 
 doc_events = {
+	"GP Team": {"on_trash": "gameplan.approval_policy.delete_counters"},
 	"*": {
 		"on_trash": "gameplan.mixins.on_delete.on_trash",
 		"validate": "gameplan.community_bans.validate_participation",
@@ -183,16 +184,24 @@ doc_events = {
 	# Discourse-style limits on Gameplan Guests posting in a space only because it is public.
 	"GP Discussion": {
 		"on_trash": "gameplan.reporting.protect_pending_reviews",
+		"before_insert": "gameplan.approval_policy.guard_publication",
 		"validate": "gameplan.new_user_limits.check_new_user_limits",
-		"after_insert": "gameplan.new_user_limits.record_first_day_post",
+		"after_insert": [
+			"gameplan.new_user_limits.record_first_day_post",
+			"gameplan.approval_policy.record_accepted",
+		],
 	},
 	"GP Comment": {
 		"on_trash": "gameplan.reporting.protect_pending_reviews",
+		"before_insert": "gameplan.approval_policy.guard_publication",
 		"validate": [
 			"gameplan.new_user_limits.check_new_user_limits",
 			"gameplan.reporting.protect_pending_reviews",
 		],
-		"after_insert": "gameplan.new_user_limits.record_first_day_post",
+		"after_insert": [
+			"gameplan.new_user_limits.record_first_day_post",
+			"gameplan.approval_policy.record_accepted",
+		],
 	},
 	"GP Poll": {
 		"validate": "gameplan.new_user_limits.check_new_user_limits",
@@ -203,6 +212,7 @@ doc_events = {
 		"on_trash": [
 			"gameplan.gameplan.doctype.gp_user_profile.gp_user_profile.delete_user_profile",
 			"gameplan.gameplan.doctype.gp_guest_access.gp_guest_access.on_user_delete",
+			"gameplan.approval_policy.delete_counters",
 		],
 		"on_update": "gameplan.gameplan.doctype.gp_user_profile.gp_user_profile.on_user_update",
 	},

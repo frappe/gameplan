@@ -62,6 +62,12 @@ class GPTeam(HasVisibility, Archivable, Document):
 			self.add_member(frappe.session.user, is_admin=1)
 
 	def validate(self):
+		if self.is_new():
+			self.approval_post_count = 0
+		elif self.has_value_changed("approval_post_count"):
+			require_can_manage_community(self.name)
+			if not 0 <= cint(self.approval_post_count) <= 100:
+				frappe.throw("Choose an approval threshold between 0 and 100")
 		self.check_visibility_change_allowed()
 		from gameplan.community_bans import is_banned
 

@@ -68,6 +68,13 @@ class GPDraft(Document):
 			# New editor uploads are unattached and get picked up by HasAttachments on
 			# insert. Older drafts can still have files attached to the draft itself;
 			# move those before deleting the draft so Frappe doesn't cascade-delete them.
+			from gameplan.approval_policy import needs_approval
+			from gameplan.approvals import hold, new_content, validate_destination
+
+			target = new_content("GP Discussion", self.project, "", self.title, content)
+			validate_destination(target)
+			if needs_approval(target):
+				return hold(target, f"draft:{self.name}", self.name)
 			discussion = frappe.new_doc(
 				"GP Discussion", title=self.title, content=content, project=self.project
 			).insert()
@@ -285,7 +292,14 @@ def get_my_drafts():
 
 @frappe.whitelist(methods=["POST"])
 def publish_draft(name: str):
-	"""Publish a discussion draft by name. Returns the new GP Discussion name."""
+	"""Publish a discussion or return its held submission, including after a lost response."""
+	if not frappe.db.exists("GP Draft", name):
+		from gameplan.approvals import detail, outcome, submission_key
+
+		submission = frappe.db.get_value("GP Submission", {"request_key": submission_key(f"draft:{name}")})
+		if submission:
+			detail(submission)
+			return outcome(frappe.get_doc("GP Submission", submission))
 	return frappe.get_doc("GP Draft", name).publish()
 
 
