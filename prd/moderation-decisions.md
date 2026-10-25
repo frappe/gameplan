@@ -38,6 +38,11 @@ A recommendation becomes a decision only after Ebrahim accepts it.
 | D29 | Review decisions are Dismiss, Uphold while keeping visible, Hide, and Delete spam. | Require a decision note, resolve the grouped reports together, reuse existing moderation actions, and never automatically ban the author. |
 | D30 | Each report preserves the reported title/body version. | Only authorized moderators with current Space access may see identities, notes, and snapshots. Authors and other reporters cannot read the evidence. |
 | D31 | A new report after resolution opens a fresh review, including for previous reporters. | Limit new reports to 10 per account per hour across the site. Duplicate reports in an active review reuse the existing report without consuming quota. |
+| D36 | Implement Community-level, opt-in approval for new discussions and replies. | Existing published content stays published. Community/global admins configure the policy. Reviewing moderators still need current Space access. |
+| D37 | Require approval until a contributor has N accepted contributions in that Community. | N is configurable, with 3 suggested. Community moderators/admins and global admins are exempt. No automated trust engine is required. |
+| D38 | Count approved discussions and replies together, separately for each Community. | Pending, rejected, and withdrawn submissions earn no credit. Later hiding or deletion does not reduce earned credit. |
+| D39 | Include existing published contributions when establishing approval eligibility. | Established contributors do not all start from zero. Existing posts remain published when the policy is enabled. |
+| D40 | Reaching the threshold or disabling approval affects future submissions. | Already-pending submissions still need an explicit decision or author withdrawal. |
 
 D05–D07 were confirmed in the first answer accepting scope and assignment authority.
 D08–D10 were confirmed in the next answer accepting private access, eligibility, and the first PR boundary.
@@ -118,3 +123,12 @@ Keep unresolved questions and implementation choices distinct from confirmed pro
 - A Community ban also blocks Space management, including moves, merges, and permanent deletion. Reading and management elsewhere remain available.
 - Pending reports block permanent deletion of their target, including parent cascades, and moving replies outside discussions. Resolve the reports before either operation.
 - Review versions include embedded poll questions, options, and voting settings. Poll votes do not invalidate a content review.
+## T29 implementation notes
+
+- The accepted first-N policy is implemented with separate restricted GP Submission records and durable per-user/Community GP Approval Counter records.
+- Existing-contributor credit is initialized lazily from current published discussions/replies on the first eligibility check. Credit earned afterward is retained across content removal and policy changes.
+- First-release choices: immutable submitted snapshots, author withdrawal, required rejection feedback up to 500 characters, optional approval feedback, and at most five pending submissions per account in one Community.
+- Source drafts are removed only after the snapshot and referenced private attachments have been preserved. Approving creates the published record under its original author and records the reviewer separately.
+- Raw document creation is rejected when approval is required. Draft and scheduled publication enter the queue; the normal composer uses the same server rule.
+- Individual Space policies, edits to already-published posts, trust promotion, bulk approval, automatic filtering, and migration are separate work.
+- Submission destination IDs do not create deletion-blocking links. Removed targets leave restricted records. Deleting a Community or account clears its approval progress.

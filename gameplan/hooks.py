@@ -119,6 +119,8 @@ after_migrate = ["gameplan.roles.sync_roles"]
 # Permissions evaluated in scripted ways
 
 permission_query_conditions = {
+	"File": "gameplan.approval_access.file_query_conditions",
+	"GP Submission": "gameplan.approval_access.query_conditions",
 	"GP Team": "gameplan.permissions.team_query_conditions",
 	"GP Project": "gameplan.permissions.project_query_conditions",
 	"GP Discussion": "gameplan.gameplan.doctype.gp_discussion.gp_discussion.get_permission_query_conditions",
@@ -139,6 +141,7 @@ permission_query_conditions = {
 }
 
 has_permission = {
+	"GP Submission": "gameplan.approval_access.has_permission",
 	"File": "gameplan.moderated_file.file_has_permission",
 	"GP Team": "gameplan.permissions.team_has_permission",
 	"GP Project": "gameplan.permissions.project_has_permission",

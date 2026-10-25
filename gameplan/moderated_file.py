@@ -6,6 +6,12 @@ from gameplan.permissions import can_moderate_space, get_content_project
 
 
 def moderation_allows_file(doc, user=None):
+	if doc.attached_to_doctype == "GP Submission" and doc.attached_to_name:
+		from gameplan.approval_access import can_read_submission
+
+		if not frappe.db.exists("GP Submission", doc.attached_to_name):
+			return False
+		return can_read_submission(frappe.get_doc("GP Submission", doc.attached_to_name), user)
 	if doc.attached_to_doctype not in {"GP Discussion", "GP Comment", "GP Poll"} or not doc.attached_to_name:
 		return True
 	if not frappe.db.exists(doc.attached_to_doctype, doc.attached_to_name):
@@ -35,6 +41,9 @@ class ModeratedFile(File):
 	def validate(self):
 		before = self.get_doc_before_save()
 		file_has_permission(before or self)
+		from gameplan.approval_files import protect_submission_file
+
+		protect_submission_file(self, before)
 		from gameplan.community_bans import content_is_banned
 
 		for attachment in [self, before] if before else [self]:
@@ -57,3 +66,11 @@ class ModeratedFile(File):
 			if copies and not any(moderation_allows_file(row) for row in copies):
 				frappe.throw("This attachment is unavailable", frappe.PermissionError)
 		super().validate()
+
+	def on_trash(self):
+		if (
+			self.attached_to_doctype == "GP Submission"
+			and frappe.db.get_value("GP Submission", self.attached_to_name, "status") != "Approved"
+		):
+			frappe.throw("Unpublished submission attachments cannot be deleted", frappe.PermissionError)
+		super().on_trash()
