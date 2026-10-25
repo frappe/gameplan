@@ -1,6 +1,6 @@
 import { ref, computed, onMounted, provide, inject, watch, type InjectionKey } from 'vue'
 import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
-import { call, useDoctype, dialog, dayjs, dayjsLocal, getConfig, toast } from 'frappe-ui'
+import { call, dialog, dayjs, dayjsLocal, getConfig, toast } from 'frappe-ui'
 import { useOwnedRouteWrites } from '@/composables/useOwnedRouteWrites'
 import { useDraftSync, type DraftPayload } from '@/data/useDraftSync'
 import { drafts } from '@/data/drafts'
@@ -10,7 +10,6 @@ import { useSessionUser, useUser } from '@/data/users'
 import { tags } from '@/data/tags'
 import { extractServerMessage, isEditorContentEmpty } from '@/utils'
 import { captureError } from '@/utils/errorReporting'
-import type { GPDiscussion } from '@/types/doctypes'
 
 const PUBLISH_DRAFT = 'gameplan.gameplan.doctype.gp_draft.gp_draft.publish_draft'
 const SCHEDULE_DRAFT = 'gameplan.gameplan.doctype.gp_draft.gp_draft.schedule_draft'
@@ -35,7 +34,6 @@ export function useNewDiscussion() {
   const route = useRoute()
   const router = useRouter()
   const sessionUser = useSessionUser()
-  const discussions = useDoctype<GPDiscussion>('GP Discussion')
 
   // The canonical composer route carries the community; the legacy route does not.
   const communityId = computed(() => optionalParam(route.params.communityId))
@@ -43,6 +41,7 @@ export function useNewDiscussion() {
   const errorMessage = ref<string | null>(null)
   const publishError = ref<string | null>(null)
   const publishing = ref(false)
+  const submissionKey = crypto.randomUUID()
   const isPublishingSuccessfully = ref(false)
   const isDeletingDraft = ref(false)
   const hasInteracted = ref(false)
@@ -287,18 +286,26 @@ export function useNewDiscussion() {
       }
 
       let discussionId: string | undefined
+      let queued = false
       const draftRowName = draft.serverName.value
       if (draft.serverName.value) {
         isPublishingSuccessfully.value = true
-        discussionId = await call(PUBLISH_DRAFT, { name: draft.serverName.value })
+        const result = await call<string | { doctype: string; name: string }>(PUBLISH_DRAFT, {
+          name: draft.serverName.value,
+        })
+        queued = typeof result === 'object' && result.doctype === 'GP Submission'
+        discussionId = typeof result === 'object' ? result.name : result
       } else {
         // No server row (e.g. the flush failed) — publish directly so nothing is lost.
         isPublishingSuccessfully.value = true
-        const doc = await discussions.insert.submit({
+        const doc = await call<{ doctype: string; name: string }>('gameplan.approvals.submit', {
+          doctype: 'GP Discussion',
+          request_key: submissionKey,
           title: draftData.value?.title,
           content: draftData.value?.content,
-          project: draftData.value?.project || undefined,
+          project: String(draftData.value?.project || ''),
         })
+        queued = doc?.doctype === 'GP Submission'
         discussionId = doc?.name
       }
 
@@ -319,6 +326,11 @@ export function useNewDiscussion() {
       // drop it from the drafts list here.
       if (draftRowName) drafts.removeRow(draftRowName)
 
+      if (queued) {
+        toast.success('Submitted for moderator approval.')
+        await router.replace({ name: 'MySubmissions' })
+        return
+      }
       const spaceId = draftData.value?.project
       const targetCommunityId = communityId.value || (spaceId ? getSpace(spaceId)?.team : null)
       await router.replace({

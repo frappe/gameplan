@@ -176,6 +176,12 @@ const shortcuts = computed<RailShortcut[]>(() => [
     unreadCount: unreadNotifications.data || 0,
   },
   {
+    label: 'My submissions',
+    icon: 'lucide-clipboard-check',
+    isActive: isRoute('MySubmissions'),
+    route: { name: 'MySubmissions' },
+  },
+  {
     label: 'Drafts',
     icon: 'lucide-pencil-line',
     isActive: isRoute('Drafts'),

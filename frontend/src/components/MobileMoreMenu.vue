@@ -133,6 +133,7 @@ const userBio = computed(() => sessionUser.bio?.trim())
 const itemGroups = computed<MoreItemGroup[]>(() => {
   const workspaceItems: MoreItem[] = [
     { label: 'Drafts', icon: 'lucide-pencil-line', route: { name: 'Drafts' } },
+    { label: 'My submissions', icon: 'lucide-clipboard-check', route: { name: 'MySubmissions' } },
     { label: 'Bookmarks', icon: 'lucide-bookmark', route: { name: 'Bookmarks' } },
     { label: 'Pages', icon: 'lucide-files', route: { name: 'MyPages' } },
     { label: 'Tasks', icon: 'lucide-list-todo', route: { name: 'MyTasks' } },

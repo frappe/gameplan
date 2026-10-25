@@ -23,7 +23,7 @@ describe('Notifications', () => {
     cy.visit(`/g/community/${community}/space/${space}/discussion/${discussion}`)
     cy.wait('@getDiscussion')
 
-    cy.intercept({ method: 'POST', url: '/api/v2/document/GP%20Comment', times: 1 }).as('comment')
+    cy.intercept({ method: 'POST', url: '/api/method/gameplan.approvals.submit', times: 1 }).as('comment')
     cy.button('Add a comment').click()
     // Click the editor to settle focus before typing — the auto-focus races the
     // just-mounted ProseMirror view and drops the first keystroke. The mention
@@ -35,7 +35,7 @@ describe('Notifications', () => {
       'exist',
     )
     cy.button('Submit').click()
-    cy.wait('@comment').its('response.body.data.content').should('contain', 'member@example.com')
+    cy.wait('@comment').its('request.body.content').should('contain', 'member@example.com')
 
     // member lands on an unread badge in the rail. `switchUser` (not `loginAs`) because
     // member2's page is still loaded: its in-flight requests would otherwise re-set the

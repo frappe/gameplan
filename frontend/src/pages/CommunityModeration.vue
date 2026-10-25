@@ -1,7 +1,14 @@
 <template>
   <div class="body-container py-5">
-    <div class="mb-5 flex items-center justify-between gap-3">
-      <h1 class="text-xl-semibold text-ink-gray-9">Community moderation</h1>
+    <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex flex-wrap items-center gap-3">
+        <h1 class="text-xl-semibold text-ink-gray-9">Community moderation</h1>
+        <ApprovalSettings
+          v-if="canManageCommunity(community, useSessionUser())"
+          :key="communityId"
+          :community-id="communityId"
+        />
+      </div>
       <Button :route="{ name: 'Discussions', params: { communityId } }">Back to discussions</Button>
     </div>
     <template v-if="canModerate">
@@ -11,6 +18,7 @@
           { label: 'Removed content', value: 'removed' },
           { label: 'Community bans', value: 'bans' },
           { label: 'Reports', value: 'reports' },
+          { label: 'Approvals', value: 'approvals' },
         ]"
       />
       <ErrorMessage
@@ -87,6 +95,7 @@
           No active Community bans.
         </p>
       </template>
+      <ApprovalQueue v-if="tab === 'approvals'" :key="communityId" :community-id="communityId" />
       <ReportQueue v-if="tab === 'reports'" :communityId="communityId" />
       <p v-if="loading" role="status" class="mt-4 text-base text-ink-gray-5">Loading…</p>
     </template>
@@ -96,12 +105,14 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import ApprovalQueue from '@/components/ApprovalQueue.vue'
+import ApprovalSettings from '@/components/ApprovalSettings.vue'
 import ReportQueue from '@/components/ReportQueue.vue'
 import { Button, Select, TabButtons, ErrorMessage, call, dialog, useDoctype } from 'frappe-ui'
 import CommentEditor from '@/components/editor/CommentEditor.vue'
 import { useCommunity } from '@/data/communities'
 import { users, useSessionUser, useUser } from '@/data/users'
-import { canModerateCommunity, isGlobalAdmin } from '@/utils/permissions'
+import { canModerateCommunity, canManageCommunity, isGlobalAdmin } from '@/utils/permissions'
 import { reloadDiscussionLists, useDiscussion } from '@/data/discussions'
 import { extractServerMessage } from '@/utils'
 
@@ -152,7 +163,7 @@ async function load() {
   bans.value = []
   selected.value = ''
   error.value = null
-  if (!canModerate.value || tab.value === 'reports') {
+  if (!canModerate.value || ['reports', 'approvals'].includes(tab.value)) {
     loading.value = false
     return
   }
