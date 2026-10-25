@@ -84,6 +84,7 @@ def submit(doctype: str, name: str, reason: str, note: str = ""):
 		.insert(ignore_permissions=True)
 		.name
 	)
+	# A locked existing review can be newer than MariaDB's read snapshot.
 	report = frappe.get_doc(
 		doctype="GP Report",
 		review=review,
@@ -91,7 +92,7 @@ def submit(doctype: str, name: str, reason: str, note: str = ""):
 		note=note,
 		reported_title=doc.get("title"),
 		reported_content=doc.content,
-	).insert(ignore_permissions=True)
+	).insert(ignore_permissions=True, ignore_links=bool(pending))
 	return {"name": report.name}
 
 

@@ -114,6 +114,7 @@ class TestReportingConcurrency(FrappeTestCase):
 	def test_simultaneous_reports_on_different_targets_cannot_exceed_the_quota(self):
 		other = create_discussion("Other target", self.discussion.project, owner=self.owner)
 		self.targets.append(str(other.name))
+		frappe.set_user(self.reporter.name)
 		for _ in range(9):
 			review = frappe.get_doc(
 				doctype="GP Review",
@@ -124,6 +125,8 @@ class TestReportingConcurrency(FrappeTestCase):
 			frappe.get_doc(
 				doctype="GP Report", review=review.name, reason="Spam", owner=self.reporter.name
 			).insert(ignore_permissions=True)
+		self.assertEqual(frappe.db.count("GP Report", {"owner": self.reporter.name}), 9)
+		frappe.set_user("Administrator")
 		frappe.db.commit()
 		results, errors = self.concurrently(
 			self.reporter.name, lambda index: submit("GP Discussion", self.targets[index], "Spam")
