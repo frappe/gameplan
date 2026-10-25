@@ -1,6 +1,6 @@
 <template>
   <Dialog title="Space access" v-model:open="show">
-    <template v-if="space">
+    <ScrollArea v-if="space" class="-m-1" viewport-class="max-h-[calc(100dvh-14rem)] p-1">
       <div class="mt-2 space-y-6">
         <section>
           <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -137,12 +137,21 @@
         <ErrorMessage class="mt-2" :message="spaces.runDocMethod.error" />
         <Dialog v-bind="removeDialog.options || {}" v-model:open="removeDialog.open" />
       </div>
-    </template>
+    </ScrollArea>
   </Dialog>
 </template>
 <script setup lang="ts">
 import { ref, computed, reactive, watch } from 'vue'
-import { Badge, Combobox, toast, Tooltip, TextInput, useDoctype, useList } from 'frappe-ui'
+import {
+  Badge,
+  Combobox,
+  toast,
+  Tooltip,
+  TextInput,
+  useDoctype,
+  useList,
+  ScrollArea,
+} from 'frappe-ui'
 import EmptyStateBox from '@/components/EmptyStateBox.vue'
 import VisibilityDialog from '@/components/VisibilityDialog.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
