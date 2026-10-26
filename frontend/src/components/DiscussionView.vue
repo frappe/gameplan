@@ -5,22 +5,13 @@
         <PageHeaderBackButton :fallback-route="backRoute" />
       </template>
       <template #suffix>
-        <template v-if="showHeaderActions">
-          <DiscussionNotificationBell
-            :state="discussion.doc!.notification_state!"
-            :loading="discussion.setNotificationState.loading"
-            @select="setNotificationState"
-          />
-          <Dropdown
-            align="end"
-            :button="{
-              icon: 'lucide-more-horizontal',
-              variant: 'ghost',
-              label: 'Discussion Options',
-            }"
-            :options="headerActions"
-          />
-        </template>
+        <DiscussionHeaderActions
+          v-if="showHeaderActions"
+          :state="discussion.doc!.notification_state!"
+          :loading="discussion.setNotificationState.loading"
+          :actions="headerActions"
+          @select="setNotificationState"
+        />
       </template>
     </PageHeaderMobile>
     <PageHeader class="hidden sm:flex">
@@ -33,19 +24,11 @@
         {{ [communityTitle, space?.title].filter(Boolean).join(' / ') }}
       </span>
       <div v-if="showHeaderActions" class="flex items-center gap-2 print:hidden">
-        <DiscussionNotificationBell
+        <DiscussionHeaderActions
           :state="discussion.doc!.notification_state!"
           :loading="discussion.setNotificationState.loading"
+          :actions="headerActions"
           @select="setNotificationState"
-        />
-        <Dropdown
-          align="end"
-          :button="{
-            icon: 'lucide-more-horizontal',
-            variant: 'ghost',
-            label: 'Discussion Options',
-          }"
-          :options="headerActions"
         />
       </div>
     </PageHeader>
@@ -397,6 +380,7 @@ import { until, useEventListener, useIntersectionObserver } from '@vueuse/core'
 import type { Editor } from '@tiptap/vue-3'
 import Reactions from './Reactions.vue'
 import DiscussionNotificationBell from './DiscussionNotificationBell.vue'
+import DiscussionHeaderActions from './DiscussionHeaderActions.vue'
 import UserAvatarWithHover from './UserAvatarWithHover.vue'
 import CommentsArea from '@/components/CommentsArea.vue'
 import DiscussionViewEditor from './editor/DiscussionViewEditor.vue'
@@ -911,10 +895,7 @@ const showHeaderActions = computed(
   () =>
     !postActionsVisible.value && !props.readOnlyMode && Boolean(discussion.doc?.notification_state),
 )
-const HEADER_MENU_EXCLUDES = new Set(['Edit', 'Revisions'])
-const headerActions = computed(() =>
-  actions.value.filter((action) => !HEADER_MENU_EXCLUDES.has(action.label)),
-)
+const headerActions = computed(() => actions.value.filter((action) => !action.hideInHeader))
 
 const actions = computed(() => [
   {
@@ -922,11 +903,13 @@ const actions = computed(() => [
     icon: 'lucide-edit',
     onClick: startEditingPost,
     condition: () => canEditDiscussion.value,
+    hideInHeader: true,
   },
   {
     label: 'Revisions',
     icon: 'lucide-rotate-ccw',
     onClick: () => (showRevisionsDialog.value = true),
+    hideInHeader: true,
   },
   {
     label: 'Copy link',
