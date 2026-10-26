@@ -1,6 +1,6 @@
-import { Node, mergeAttributes } from '@tiptap/core'
+import { Node } from '@tiptap/core'
 import { VueNodeViewRenderer } from '@tiptap/vue-3'
-import { insertCard } from '@/components/editor/insertCard'
+import { cardLinkAttributes, insertCard, renderCard } from '@/components/editor/insertCard'
 import DiscussionCardView from './DiscussionCardView.vue'
 
 export interface DiscussionCardAttrs {
@@ -30,16 +30,7 @@ export const DiscussionCardExtension = Node.create({
         renderHTML: (attributes) =>
           attributes.discussion ? { 'data-discussion': attributes.discussion } : {},
       },
-      href: {
-        default: null,
-        parseHTML: (element) => element.querySelector('a')?.getAttribute('href') ?? null,
-        renderHTML: () => ({}),
-      },
-      title: {
-        default: '',
-        parseHTML: (element) => element.querySelector('a')?.textContent ?? '',
-        renderHTML: () => ({}),
-      },
+      ...cardLinkAttributes(),
     }
   },
 
@@ -47,13 +38,7 @@ export const DiscussionCardExtension = Node.create({
     return [{ tag: 'div[data-type="discussion-card"]' }]
   },
 
-  renderHTML({ node, HTMLAttributes }) {
-    return [
-      'div',
-      mergeAttributes({ 'data-type': 'discussion-card' }, HTMLAttributes),
-      ['a', { href: node.attrs.href }, node.attrs.title || node.attrs.href],
-    ]
-  },
+  renderHTML: renderCard('discussion-card'),
 
   addNodeView() {
     return VueNodeViewRenderer(DiscussionCardView)

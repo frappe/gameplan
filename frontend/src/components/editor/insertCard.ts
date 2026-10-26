@@ -1,4 +1,5 @@
-import type { CommandProps, JSONContent } from '@tiptap/core'
+import { mergeAttributes, type CommandProps, type JSONContent } from '@tiptap/core'
+import type { DOMOutputSpec, Node as ProseMirrorNode } from '@tiptap/pm/model'
 
 export function insertCard(card: JSONContent) {
   return ({ tr, commands }: CommandProps) => {
@@ -13,4 +14,33 @@ export function insertCard(card: JSONContent) {
     const atEnd = $from.parentOffset === $from.parent.content.size
     return commands.insertContent(isLast && atEnd ? [card, paragraph] : card)
   }
+}
+
+export function cardLinkAttributes() {
+  return {
+    href: {
+      default: null,
+      parseHTML: (element: HTMLElement) => element.querySelector('a')?.getAttribute('href') ?? null,
+      renderHTML: () => ({}),
+    },
+    title: {
+      default: '',
+      parseHTML: (element: HTMLElement) => element.querySelector('a')?.textContent ?? '',
+      renderHTML: () => ({}),
+    },
+  }
+}
+
+export function renderCard(type: string) {
+  return ({
+    node,
+    HTMLAttributes,
+  }: {
+    node: ProseMirrorNode
+    HTMLAttributes: Record<string, any>
+  }): DOMOutputSpec => [
+    'div',
+    mergeAttributes({ 'data-type': type }, HTMLAttributes),
+    ['a', { href: node.attrs.href }, node.attrs.title || node.attrs.href],
+  ]
 }

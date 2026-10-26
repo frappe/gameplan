@@ -1,6 +1,6 @@
-import { Node, mergeAttributes } from '@tiptap/core'
+import { Node } from '@tiptap/core'
 import { VueNodeViewRenderer } from '@tiptap/vue-3'
-import { insertCard } from '@/components/editor/insertCard'
+import { cardLinkAttributes, insertCard, renderCard } from '@/components/editor/insertCard'
 import LinkCardView from './LinkCardView.vue'
 
 export interface LinkCardAttrs {
@@ -37,16 +37,7 @@ export const LinkCardExtension = Node.create({
 
   addAttributes() {
     return {
-      href: {
-        default: null,
-        parseHTML: (element) => element.querySelector('a')?.getAttribute('href') ?? null,
-        renderHTML: () => ({}),
-      },
-      title: {
-        default: '',
-        parseHTML: (element) => element.querySelector('a')?.textContent ?? '',
-        renderHTML: () => ({}),
-      },
+      ...cardLinkAttributes(),
       description: dataAttribute('description'),
       image: dataAttribute('image'),
       siteName: dataAttribute('site-name'),
@@ -57,13 +48,7 @@ export const LinkCardExtension = Node.create({
     return [{ tag: 'div[data-type="link-card"]' }]
   },
 
-  renderHTML({ node, HTMLAttributes }) {
-    return [
-      'div',
-      mergeAttributes({ 'data-type': 'link-card' }, HTMLAttributes),
-      ['a', { href: node.attrs.href }, node.attrs.title || node.attrs.href],
-    ]
-  },
+  renderHTML: renderCard('link-card'),
 
   addNodeView() {
     return VueNodeViewRenderer(LinkCardView)
