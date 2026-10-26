@@ -68,7 +68,7 @@ def write_or_merge(
 	existing = _unread_row_for(to_user, type, points_at) if merge else None
 
 	if existing:
-		doc = frappe.get_doc("GP Notification", existing)
+		doc = frappe.get_doc("GP Notification", existing, for_update=True)
 		doc.event_count = (doc.event_count or 1) + 1
 		doc.message = (merged_message or message).replace("{count}", str(doc.event_count))
 		doc.from_user = None
@@ -112,4 +112,4 @@ def _unread_row_for(to_user: str, type: str, points_at: dict) -> str | None:
 	filters = {"to_user": to_user, "type": type, "read": 0}
 	for field in TARGET_FIELDS:
 		filters[field] = points_at[field] or ["is", "not set"]
-	return frappe.db.get_value("GP Notification", filters, "name")
+	return frappe.db.get_value("GP Notification", filters, "name", for_update=True)
