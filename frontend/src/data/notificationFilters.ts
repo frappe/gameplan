@@ -1,11 +1,8 @@
 import { computed } from 'vue'
 import { useLocalStorage } from '@vueuse/core'
-import { dayjs, dayjsLocal, getConfig } from 'frappe-ui'
+import { dayjs, getConfig } from 'frappe-ui'
 
-export type NotificationDateFilter =
-  | { kind: 'all' }
-  | { kind: 'today' }
-  | { kind: 'range'; from: string; to: string }
+export type NotificationDateFilter = { kind: 'all' } | { kind: 'range'; from: string; to: string }
 
 export interface NotificationFilterState {
   communities: string[]
@@ -42,10 +39,6 @@ export function setNotificationDate(date: NotificationDateFilter) {
   notificationFilters.value = { ...notificationFilters.value, date }
 }
 
-export function clearNotificationFilters() {
-  notificationFilters.value = { ...defaultFilters }
-}
-
 export const hasActiveNotificationFilters = computed(() => {
   const { communities, spaces, date } = notificationFilters.value
   return communities.length > 0 || spaces.length > 0 || date.kind !== 'all'
@@ -54,10 +47,6 @@ export const hasActiveNotificationFilters = computed(() => {
 export const notificationDateBounds = computed<[string, string] | null>(() => {
   const date = notificationFilters.value.date
   if (date.kind === 'all') return null
-  if (date.kind === 'today') {
-    const today = dayjsLocal().format('YYYY-MM-DD')
-    return [today, today]
-  }
   return [date.from, date.to]
 })
 
@@ -94,7 +83,6 @@ function normalize(value: Partial<NotificationFilterState> | null | undefined) {
 function normalizeDate(date: unknown): NotificationDateFilter {
   if (!date || typeof date !== 'object') return { kind: 'all' }
   const candidate = date as Partial<{ kind: string; from: string; to: string }>
-  if (candidate.kind === 'today') return { kind: 'today' }
   if (candidate.kind === 'range' && isDate(candidate.from) && isDate(candidate.to)) {
     return candidate.from <= candidate.to
       ? { kind: 'range', from: candidate.from, to: candidate.to }
