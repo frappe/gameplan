@@ -29,10 +29,7 @@
           </div>
 
           <template v-if="receiveNotifications && editingSchedule">
-            <SettingsRow
-              title="Hours"
-              class="!border-t-0 !py-2 [&>div:first-child>*]:!text-base [&>div:first-child>*]:!font-normal [&>div:first-child>*]:!text-ink-gray-7"
-            >
+            <SettingsRow title="Hours" class="!border-t-0 !py-2" :class="scheduleRowClass">
               <div class="flex flex-wrap items-center justify-end gap-2 text-base text-ink-gray-7">
                 <TextInput
                   type="time"
@@ -51,10 +48,7 @@
               </div>
             </SettingsRow>
 
-            <SettingsRow
-              title="Days"
-              class="!border-t-0 !pb-4 !pt-2 [&>div:first-child>*]:!text-base [&>div:first-child>*]:!font-normal [&>div:first-child>*]:!text-ink-gray-7"
-            >
+            <SettingsRow title="Days" class="!border-t-0 !pb-4 !pt-2" :class="scheduleRowClass">
               <div class="flex flex-wrap justify-end gap-1.5" role="group" aria-label="Active days">
                 <Button
                   v-for="day in allWeekdays"
@@ -186,6 +180,8 @@ const timezoneLabel = computed(
   () => sessionUser.time_zone || getConfig('systemTimezone') || 'the site timezone',
 )
 const editingSchedule = ref(false)
+const scheduleRowClass =
+  '[&>div:first-child>*]:!text-base [&>div:first-child>*]:!font-normal [&>div:first-child>*]:!text-ink-gray-7'
 
 const dayNames: Record<Weekday, string> = {
   Mon: 'Mondays',
