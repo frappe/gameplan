@@ -4,7 +4,7 @@
       <div class="w-full">
         <PageHeaderMobile class="sm:hidden" title="People">
           <template #prefix>
-            <PageHeaderBackButton :to="{ name: 'More' }" />
+            <PageHeaderBackButton :fallback-route="{ name: 'More' }" />
           </template>
           <template #suffix>
             <Button
@@ -23,8 +23,14 @@
         </PageHeader>
         <div class="mx-auto w-full body-container pt-6">
           <div class="flex items-center justify-between">
-            <h2 class="text-3xl-semibold text-ink-gray-7">{{ people.length }} members</h2>
+            <h2 class="text-2xl-semibold text-ink-gray-7">{{ peopleList.length }} members</h2>
             <div class="flex items-center gap-2">
+              <Select
+                class="shrink-0 !w-fit"
+                align="end"
+                :options="peopleSortOptions"
+                v-model="sortField"
+              />
               <TextInput
                 class="hidden sm:block"
                 type="text"
@@ -36,21 +42,6 @@
                   <span class="lucide-search w-4 text-ink-gray-5" />
                 </template>
               </TextInput>
-              <Select
-                class="!w-fit"
-                :options="[
-                  { label: 'Name', value: 'full_name asc' },
-                  { label: 'Last updated', value: 'modified desc' },
-                  { label: 'Posts', value: 'posts' },
-                  { label: 'Replies', value: 'replies' },
-                  { label: 'Reactions received', value: 'reactions_received' },
-                ]"
-                v-model="orderBy"
-              >
-                <template #prefix>
-                  <span class="lucide-arrow-down-up w-4 text-ink-gray-5" />
-                </template>
-              </Select>
               <Button
                 v-if="isAdmin"
                 class="hidden sm:inline-flex"
@@ -85,26 +76,57 @@
             >
               <!-- px-3 matches the interactive rows' default horizontal padding. -->
               <ListHeader class="px-3">
-                <ListHeaderCell class="col-span-2">Member</ListHeaderCell>
-                <ListHeaderCell class="justify-end">Posts</ListHeaderCell>
-                <ListHeaderCell class="justify-end">Replies</ListHeaderCell>
-                <ListHeaderCell class="justify-end">
+                <ListHeaderCellSort
+                  class="col-span-2"
+                  :direction="directionFor('full_name')"
+                  @click="sortPeopleBy('full_name')"
+                >
+                  Member
+                  <template #sort-indicator><span /></template>
+                </ListHeaderCellSort>
+                <ListHeaderCellSort
+                  align="end"
+                  :direction="directionFor('discussions_count')"
+                  @click="sortPeopleBy('discussions_count')"
+                >
+                  Posts
+                  <template #sort-indicator><span /></template>
+                </ListHeaderCellSort>
+                <ListHeaderCellSort
+                  align="end"
+                  :direction="directionFor('comments_count')"
+                  @click="sortPeopleBy('comments_count')"
+                >
+                  Replies
+                  <template #sort-indicator><span /></template>
+                </ListHeaderCellSort>
+                <ListHeaderCellSort
+                  align="end"
+                  :direction="directionFor('reactions_received')"
+                  @click="sortPeopleBy('reactions_received')"
+                >
                   <template #prefix>
                     <ReactionFaceIcon class="size-4 text-ink-gray-5" aria-hidden="true" />
                   </template>
                   Received
-                </ListHeaderCell>
-                <ListHeaderCell class="justify-end">
+                  <template #sort-indicator><span /></template>
+                </ListHeaderCellSort>
+                <ListHeaderCellSort
+                  align="end"
+                  :direction="directionFor('reactions_given')"
+                  @click="sortPeopleBy('reactions_given')"
+                >
                   <template #prefix>
                     <ReactionFaceIcon class="size-4 text-ink-gray-5" aria-hidden="true" />
                   </template>
                   Given
-                </ListHeaderCell>
+                  <template #sort-indicator><span /></template>
+                </ListHeaderCellSort>
               </ListHeader>
               <ListRow
-                v-for="user in people"
+                v-for="user in peopleList"
                 :key="user.name"
-                :to="{
+                :route="{
                   name: 'PersonProfileProfile',
                   params: {
                     personId: user.name,
@@ -119,9 +141,9 @@
                   <div class="min-w-0 flex-1">
                     <div class="flex items-center space-x-2">
                       <div class="text-base-medium text-ink-gray-8">
-                        {{ $user(user.user).full_name }}
+                        {{ useUser(user.user).full_name }}
                       </div>
-                      <Badge v-if="$user(user.user).isGuest">Guest</Badge>
+                      <Badge v-if="useUser(user.user).isGuest">Guest</Badge>
                     </div>
                     <div
                       v-if="user.bio"
@@ -172,9 +194,9 @@
               divider="inset"
             >
               <ListRow
-                v-for="user in people"
+                v-for="user in peopleList"
                 :key="user.name"
-                :to="{
+                :route="{
                   name: 'PersonProfileProfile',
                   params: {
                     personId: user.name,
@@ -189,9 +211,9 @@
                   <div class="min-w-0 flex-1">
                     <div class="flex items-center space-x-2">
                       <div class="text-base-medium text-ink-gray-8">
-                        {{ $user(user.user).full_name }}
+                        {{ useUser(user.user).full_name }}
                       </div>
-                      <Badge v-if="$user(user.user).isGuest">Guest</Badge>
+                      <Badge v-if="useUser(user.user).isGuest">Guest</Badge>
                     </div>
                     <div
                       v-if="user.bio"
@@ -209,13 +231,14 @@
               </ListRow>
             </List>
 
-            <div class="p-3" v-if="$resources.profiles.hasNextPage">
-              <Button
-                @click="$resources.profiles.next()"
-                :loading="$resources.profiles.list.loading"
-              >
-                Load more
-              </Button>
+            <ErrorMessage class="mt-2" :message="people.error" />
+            <EmptyStateBox v-if="isEmpty" class="mt-2">
+              <span class="lucide-users mb-1 size-7 text-ink-gray-4" aria-hidden="true" />
+              {{ search ? 'No members match your search' : 'No members yet' }}
+            </EmptyStateBox>
+
+            <div class="p-3" v-if="people.hasNextPage">
+              <Button @click="people.next" :loading="people.loading"> Load more </Button>
             </div>
           </div>
         </div>
@@ -223,8 +246,8 @@
     </div>
   </div>
 </template>
-<script>
-import { computed } from 'vue'
+<script setup lang="ts">
+import { computed, ref } from 'vue'
 import {
   PageHeaderBackButton,
   PageHeaderMobile,
@@ -234,109 +257,89 @@ import {
   Button,
   Select,
   TextInput,
+  ErrorMessage,
   usePageMeta,
 } from 'frappe-ui'
-import { List, ListCell, ListHeader, ListHeaderCell, ListRow } from 'frappe-ui/list'
+import { List, ListCell, ListHeader, ListHeaderCellSort, ListRow } from 'frappe-ui/list'
 import { showSettingsDialog } from '@/components/Settings'
-import { isGameplanAdmin } from '@/data/users'
+import { isGameplanAdmin, useSessionUser, useUser } from '@/data/users'
+import {
+  people,
+  peopleSortDirection,
+  peopleSortField,
+  peopleSortOptions,
+  sortPeopleBy,
+  type PeopleSortField,
+} from '@/data/people'
+import EmptyStateBox from '@/components/EmptyStateBox.vue'
 import UserAvatarWithHover from '@/components/UserAvatarWithHover.vue'
 import ReactionFaceIcon from '@/components/ReactionFaceIcon.vue'
 
-export default {
+defineOptions({
   name: 'People',
-  props: ['person'],
-  components: {
-    Badge,
-    Button,
-    TextInput,
-    Select,
-    Breadcrumbs,
-    PageHeaderBackButton,
-    PageHeaderMobile,
-    PageHeader,
-    ReactionFaceIcon,
-    List,
-    ListCell,
-    ListHeader,
-    ListHeaderCell,
-    ListRow,
-  },
-  data() {
-    return {
-      search: '',
-      orderBy: 'modified desc',
-    }
-  },
-  setup() {
-    usePageMeta(() => ({ title: 'People' }))
-    return {
-      showSettingsDialog,
-      isAdmin: computed(() => isGameplanAdmin()),
-    }
-  },
-  resources: {
-    profiles() {
-      let orderBy = this.orderBy
-      if (['posts', 'replies', 'reactions_received'].includes(orderBy)) {
-        orderBy = 'modified desc'
-      }
-      return {
-        type: 'list',
-        url: '/api/method/gameplan.gameplan.doctype.gp_user_profile.gp_user_profile.get_list',
-        cache: ['People', orderBy],
-        doctype: 'GP User Profile',
-        filters: { enabled: 1 },
-        fields: ['name', 'user', 'bio', 'modified', 'cover_image', 'cover_image_position'],
-        pageLength: 999,
-        orderBy: this.orderBy,
-        auto: true,
-      }
-    },
-  },
-  computed: {
-    people() {
-      if (!this.profiles.length) return []
-      let myProfile = this.profiles.find((p) => p.user == this.$user().name)
-      if (this.search) {
-        return this.profiles.filter((p) => {
-          return (
-            p.full_name.toLowerCase().includes(this.search.toLowerCase()) ||
-            p.email.toLowerCase().includes(this.search.toLowerCase())
-          )
-        })
-      }
+})
 
-      let list = [myProfile, ...this.profiles.filter((p) => p != myProfile)].filter(Boolean)
+const search = ref('')
+const isAdmin = computed(() => isGameplanAdmin())
 
-      if (this.orderBy == 'posts') {
-        list = list.sort((a, b) => b.discussions_count - a.discussions_count)
-      } else if (this.orderBy == 'replies') {
-        list = list.sort((a, b) => b.comments_count - a.comments_count)
-      } else if (this.orderBy == 'reactions_received') {
-        list = list.sort((a, b) => b.reactions_received - a.reactions_received)
-      }
-      return list
-    },
-    profiles() {
-      return (this.$resources.profiles.data || [])
-        .filter((profile) => this.$user(profile.user).isNotGuest)
-        .map((profile) => {
-          return {
-            ...profile,
-            email: this.$user(profile.user).email,
-            full_name: this.$user(profile.user).full_name,
-          }
-        })
-    },
+// Counts change between visits, and a failed load should not stick, so fetch on each visit.
+people.reload()
+
+// Guests are left out. Name and email come from the users store, the copy the rest of the
+// app shows, so search matches it.
+const profiles = computed(() => {
+  return (people.data || [])
+    .filter((profile) => useUser(profile.user).isNotGuest)
+    .map((profile) => ({
+      ...profile,
+      email: useUser(profile.user).email,
+      full_name: useUser(profile.user).full_name,
+    }))
+})
+
+const sortField = computed({
+  get: () => peopleSortField.value,
+  set: (field: PeopleSortField | '') => {
+    if (field) sortPeopleBy(field)
   },
-  methods: {
-    coverImageUrl(url) {
-      if (!url) return null
-      if (url.startsWith('https://images.unsplash.com')) {
-        return url + '&w=300&fit=crop&crop=entropy,faces,focalpoint'
-      }
-      return url
-    },
-  },
+})
+
+function directionFor(field: PeopleSortField) {
+  return peopleSortField.value === field ? peopleSortDirection.value : null
 }
+
+type Profile = (typeof profiles.value)[number]
+
+function compareProfiles(a: Profile, b: Profile) {
+  const field = peopleSortField.value
+  let result = 0
+  if (field === 'full_name' || field === 'modified') {
+    result = a[field].localeCompare(b[field])
+  } else {
+    result = a[field] - b[field]
+  }
+  return peopleSortDirection.value === 'asc' ? result : -result
+}
+
+const peopleList = computed(() => {
+  let list = profiles.value
+  if (search.value) {
+    const term = search.value.toLowerCase()
+    list = list.filter(
+      (profile) =>
+        profile.full_name.toLowerCase().includes(term) ||
+        profile.email.toLowerCase().includes(term),
+    )
+  }
+
+  list = [...list].sort(compareProfiles)
+  const myProfile = list.find((profile) => profile.user === useSessionUser().name)
+  return myProfile ? [myProfile, ...list.filter((profile) => profile !== myProfile)] : list
+})
+
+const isEmpty = computed(() => !people.loading && !people.error && peopleList.value.length === 0)
+
+usePageMeta(() => ({
+  title: 'People',
+}))
 </script>

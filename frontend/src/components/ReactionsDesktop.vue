@@ -28,7 +28,7 @@
           >
             <template #icon>
               <img v-if="isImageEmoji(emoji)" :src="emoji" alt="" class="size-4 object-contain" />
-              <span v-else class="text-lg">
+              <span v-else class="text-md">
                 {{ emoji }}
               </span>
             </template>
@@ -66,11 +66,12 @@
 import { ref } from 'vue'
 import { Button, HoverCard, Tooltip, TooltipProvider } from 'frappe-ui'
 import { isImageEmoji } from '@/utils/emoji'
+import type { ReactionCount } from '@/data/reactions'
 
 const props = defineProps<{
-  reactionsCount: Record<string, { count: number; userReacted: boolean }>
+  reactionsCount: Record<string, ReactionCount>
   toggleReaction: (emoji: string) => void
-  toolTipText: (reactions: { count: number; userReacted: boolean }) => string
+  toolTipText: (reactions: ReactionCount) => string
   standardEmojis: string[]
 }>()
 

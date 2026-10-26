@@ -65,8 +65,9 @@ def backfill_denormalized_team():
 		table = f"tab{doctype}"
 		# Correlated-subquery form (instead of UPDATE ... JOIN) so the patch runs on
 		# both MariaDB and SQLite; the EXISTS guard limits the update to rows whose
-		# project actually carries a team, matching the original INNER JOIN.
-		frappe.db.sql(
+		# project actually carries a team, matching the original INNER JOIN. The table
+		# name comes from PROJECT_LINKED_DOCTYPES, and SQL cannot take it as a parameter.
+		frappe.db.sql(  # nosemgrep: frappe-sql-format-injection
 			f"""
 			UPDATE `{table}`
 			SET team = (

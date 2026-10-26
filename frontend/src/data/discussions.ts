@@ -32,6 +32,11 @@ export interface Discussion extends GPDiscussion {
   unread: number
   last_comment_content?: string
   last_poll_title?: string
+  bookmark?: string
+  bookmarked_comment?: string | null
+  bookmarked_post_by?: string
+  bookmarked_post_content?: string
+  bookmarked_post_at?: string
 }
 
 export type UseDiscussionOptions = Pick<

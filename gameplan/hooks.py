@@ -136,6 +136,9 @@ permission_query_conditions = {
 	"GP Discussion Subscription": "gameplan.per_user_state.discussion_subscription_query_conditions",
 	"GP Space Subscription": "gameplan.per_user_state.space_subscription_query_conditions",
 	"GP Away Period": "gameplan.per_user_state.away_period_query_conditions",
+	"GP Followed Project": "gameplan.per_user_state.followed_project_query_conditions",
+	"GP Activity": "gameplan.permissions.activity_query_conditions",
+	"GP Guest Access": "gameplan.permissions.guest_access_query_conditions",
 }
 
 has_permission = {
@@ -155,6 +158,9 @@ has_permission = {
 	"GP Discussion Subscription": "gameplan.per_user_state.discussion_subscription_has_permission",
 	"GP Space Subscription": "gameplan.per_user_state.space_subscription_has_permission",
 	"GP Away Period": "gameplan.per_user_state.away_period_has_permission",
+	"GP Followed Project": "gameplan.per_user_state.followed_project_has_permission",
+	"GP Activity": "gameplan.permissions.activity_has_permission",
+	"GP Guest Access": "gameplan.permissions.guest_access_has_permission",
 }
 
 # DocType Class

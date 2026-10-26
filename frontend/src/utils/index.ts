@@ -87,6 +87,7 @@ export function relativeTimestamp(timestamp: string): string {
 export function isEditorContentEmpty(content: string | null | undefined): boolean {
   const html = (content ?? '').trim()
   if (!html) return true
+  if (/<div\b[^>]*\bdata-type="poll"/i.test(html)) return false
   const stripped = html
     .replace(/<(p|div|br|span)\b[^>]*>/gi, '')
     .replace(/<\/(p|div|span)>/gi, '')

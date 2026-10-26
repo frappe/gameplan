@@ -2,7 +2,10 @@
   <div>
     <PageHeaderMobile class="sm:hidden" :title="pageTitle">
       <template #prefix>
-        <PageHeaderBackButton :to="backRoute" :label="isSpacePage ? 'Pages' : 'My Pages'" />
+        <PageHeaderBackButton
+          :fallback-route="backRoute"
+          :label="isSpacePage ? 'Pages' : 'My Pages'"
+        />
       </template>
       <template v-if="page.doc && canEditPage" #suffix>
         <DropdownMoreOptions align="end" :options="pageActions" />
@@ -60,7 +63,7 @@
         </span>
         <div class="mb-3 md:px-[70px]" ref="titleField">
           <input
-            class="w-full border-0 p-0 pt-4 text-5xl-semibold focus:outline-none focus:ring-0 bg-surface-base text-ink-gray-8"
+            class="w-full border-0 p-0 pt-4 text-4xl-semibold focus:outline-none focus:ring-0 bg-surface-base text-ink-gray-8"
             type="text"
             v-model="title"
             :readonly="!canEditPage"
@@ -103,6 +106,7 @@ import {
   dayjsLocal,
   useDoc,
   dialog,
+  toast,
 } from 'frappe-ui'
 import PageEditor from '@/components/editor/PageEditor.vue'
 import { useSpace } from '@/data/spaces'
@@ -228,6 +232,8 @@ const save = () => {
       title: title.value,
       content: content.value,
     })
+    // Autosave can fail on every pause in typing; the id keeps a single toast on screen.
+    .catch(() => toast.error('Could not save the page', { id: 'page-save' }))
     .finally(() => {
       const elapsedTime = Date.now() - startTime
       const remainingTime = Math.max(0, MIN_AUTOSAVING_DURATION - elapsedTime)

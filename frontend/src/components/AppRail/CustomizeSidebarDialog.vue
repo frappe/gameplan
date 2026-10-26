@@ -5,7 +5,7 @@
         class="flex shrink-0 items-center justify-between border-b border-outline-gray-1 px-4 py-3"
       >
         <Dialog.Title as-child>
-          <h2 class="text-lg font-medium text-ink-gray-9">Customize sidebar</h2>
+          <h2 class="text-md font-medium text-ink-gray-9">Customize sidebar</h2>
         </Dialog.Title>
         <Dialog.Close as-child>
           <Button variant="ghost" label="Close" icon="lucide-x" />
@@ -163,6 +163,7 @@ import {
 } from '@/data/sidebarPreferences'
 import { sessionUser } from '@/data/session'
 import { useSessionUser } from '@/data/users'
+import { extractServerMessage } from '@/utils'
 import {
   usePointerSortableSections,
   type PointerSortableCommit,
@@ -383,8 +384,8 @@ async function saveChanges() {
     initialBadgeStyle.value = selectedBadgeStyle.value
     show.value = false
     toast.success('Sidebar updated')
-  } catch {
-    toast.error('Failed to update sidebar')
+  } catch (error) {
+    toast.error(extractServerMessage(error) || 'Failed to update sidebar')
   } finally {
     isSaving.value = false
   }

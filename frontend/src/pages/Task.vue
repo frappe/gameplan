@@ -2,7 +2,7 @@
   <div>
     <PageHeaderMobile class="sm:hidden" :title="taskTitle">
       <template #prefix>
-        <PageHeaderBackButton :to="backRoute" />
+        <PageHeaderBackButton :fallback-route="backRoute" />
       </template>
     </PageHeaderMobile>
     <PageHeader class="hidden sm:flex">
@@ -42,7 +42,9 @@
       />
     </PageHeader>
     <div>
+      <!-- Keyed so opening another task mounts a fresh view instead of reusing this one -->
       <TaskDetail
+        :key="taskId"
         :task-id="taskId"
         :read-only-mode="Boolean(space?.archived_at) || $readOnlyMode"
       />

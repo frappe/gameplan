@@ -1,17 +1,28 @@
-import { computed, reactive, shallowRef, unref, toValue, watch } from 'vue'
-import type { MaybeRefOrGetter } from 'vue'
+import { computed, inject, provide, reactive, shallowReactive, unref, toValue } from 'vue'
+import type { InjectionKey, MaybeRefOrGetter } from 'vue'
+import type { GPReaction } from '@/types/doctypes'
 import { toast, useCall } from 'frappe-ui'
 import { currentQuickReactionEmojis } from './reactionPreferences'
 import { session } from './session'
 import { useUser } from './users'
 
-interface Reaction {
-  name: string
-  emoji: string
-  user: string
+type Reaction = Pick<GPReaction, 'name' | 'emoji' | 'user'>
+
+export type ReactableDoctype = 'GP Discussion' | 'GP Comment' | 'GP Poll'
+type ThreadDoctype = 'GP Discussion' | 'GP Task'
+
+/** A row as thread_reactions and react() return it. */
+interface StoredReaction extends Reaction, Pick<GPReaction, 'reference_name'> {
+  reference_doctype: ReactableDoctype
 }
 
-interface ReactionCount {
+interface ThreadReactions {
+  of: (doctype: ReactableDoctype, name: string | number) => Reaction[]
+  /** Replace a post's reactions with the ones a react() response confirmed. */
+  confirm: (doctype: ReactableDoctype, name: string | number, reactions: Reaction[]) => void
+}
+
+export interface ReactionCount {
   count: number
   users: string[]
   userReacted: boolean
@@ -23,14 +34,57 @@ type ReactionOperation = {
 }
 
 interface UseReactionsOptions {
-  reactions: MaybeRefOrGetter<Reaction[]>
-  doctype: MaybeRefOrGetter<string>
+  doctype: MaybeRefOrGetter<ReactableDoctype>
   name: MaybeRefOrGetter<string | number>
   readOnlyMode?: MaybeRefOrGetter<boolean>
-  onUpdate: (reactions: Reaction[]) => void
 }
 
 const BATCH_DELAY = 1000
+
+const threadReactionsKey: InjectionKey<ThreadReactions> = Symbol('thread-reactions')
+const NO_REACTIONS: Reaction[] = []
+
+const toReaction = ({ name, emoji, user }: Reaction): Reaction => ({ name, emoji, user })
+
+/**
+ * Load the reactions on a thread's root post and on every comment and poll in it, in
+ * one request, for the reaction bars rendered inside the thread. The thread holds each
+ * post's reactions as the server last confirmed them, so a bar that mounts again (a
+ * comment leaving edit mode) shows the same state as before.
+ */
+export function provideThreadReactions(doctype: ThreadDoctype, name: string) {
+  // Fetched once per mount: the url is fixed, and DiscussionView and TaskDetail are
+  // keyed by the thread's id, so another thread mounts a new provider.
+  const thread = useCall<StoredReaction[]>({
+    url: `/api/v2/document/${doctype}/${name}/method/thread_reactions`,
+    cacheKey: ['Thread Reactions', doctype, name],
+  })
+
+  const snapshot = computed(() => {
+    const byPost = new Map<string, Reaction[]>()
+    for (const row of thread.data ?? []) {
+      const key = postKey(row.reference_doctype, row.reference_name)
+      byPost.set(key, [...(byPost.get(key) ?? []), toReaction(row)])
+    }
+    return byPost
+  })
+  // A react() response is newer than the thread request, which went out at mount, so
+  // a post's confirmed reactions win over the snapshot even when the snapshot (or its
+  // cached copy) arrives later.
+  const confirmed = shallowReactive(new Map<string, Reaction[]>())
+
+  provide(threadReactionsKey, {
+    of: (doctype, name) => {
+      const key = postKey(doctype, name)
+      return confirmed.get(key) ?? snapshot.value.get(key) ?? NO_REACTIONS
+    },
+    confirm: (doctype, name, reactions) => confirmed.set(postKey(doctype, name), reactions),
+  })
+}
+
+function postKey(doctype: ReactableDoctype, name: string | number) {
+  return `${doctype}:${name}`
+}
 
 export function useReactions(options: UseReactionsOptions) {
   const currentUser = computed(() => unref(session.user) || '')
@@ -39,17 +93,12 @@ export function useReactions(options: UseReactionsOptions) {
   const name = computed(() => toValue(options.name))
   const readOnlyMode = computed(() => toValue(options.readOnlyMode ?? false))
 
-  // What the reactions look like on the server. Follows the caller's data, and also
-  // takes each response directly, so a confirmed tap stays visible even when the
-  // caller's copy is not reactive.
-  const serverReactions = shallowRef<Reaction[]>([])
-  watch(
-    () => toValue(options.reactions),
-    (reactions) => {
-      serverReactions.value = reactions ?? []
-    },
-    { immediate: true },
-  )
+  const thread = inject(threadReactionsKey, null)
+  if (!thread) {
+    throw new Error('Reactions must render inside a thread that calls provideThreadReactions')
+  }
+  // What the reactions look like on the server, as the thread last heard.
+  const serverReactions = computed(() => thread.of(doctype.value, name.value))
 
   // Taps the server has not confirmed yet, as emoji -> whether the user wants to
   // have reacted with it. `queued` waits for the next batch; `sending` is the batch
@@ -66,15 +115,13 @@ export function useReactions(options: UseReactionsOptions) {
   const settledState = (emoji: string) => sending.get(emoji) ?? hasReacted(emoji)
   const displayedState = (emoji: string) => queued.get(emoji) ?? settledState(emoji)
 
-  const react = useCall<Reaction[], { operations: ReactionOperation[] }>({
+  const react = useCall<StoredReaction[], { operations: ReactionOperation[] }>({
     url: computed(() => `/api/v2/document/${doctype.value}/${name.value}/method/react`),
     method: 'POST',
     immediate: false,
     onSuccess(reactions) {
       if (Array.isArray(reactions)) {
-        const confirmed = reactions.map((r) => ({ name: r.name, emoji: r.emoji, user: r.user }))
-        serverReactions.value = confirmed
-        options.onUpdate(confirmed)
+        thread.confirm(doctype.value, name.value, reactions.map(toReaction))
       }
       settle()
     },
@@ -98,7 +145,7 @@ export function useReactions(options: UseReactionsOptions) {
     const operations = [...sending].map(
       ([emoji, wanted]): ReactionOperation => ({ emoji, operation: wanted ? 'add' : 'remove' }),
     )
-    react.submit({ operations })
+    react.submit({ operations }).catch(() => {})
   }
 
   const settle = () => {

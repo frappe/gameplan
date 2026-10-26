@@ -57,7 +57,7 @@
       </section>
 
       <section>
-        <h2 class="text-lg-semibold text-ink-gray-8">Sidebar</h2>
+        <h2 class="text-md-semibold text-ink-gray-8">Sidebar</h2>
 
         <div class="mt-2 divide-y divide-outline-gray-1">
           <SettingsRow title="Unread badge" description="Show unread activity as a dot or a count">
@@ -92,7 +92,7 @@
       </section>
 
       <section>
-        <h2 class="text-lg-semibold text-ink-gray-8">Reactions</h2>
+        <h2 class="text-md-semibold text-ink-gray-8">Reactions</h2>
 
         <div class="mt-2 divide-y divide-outline-gray-1">
           <SettingsRow

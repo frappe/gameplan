@@ -1,0 +1,153 @@
+name: Release
+
+# Every merge to develop is a release:
+#
+#   1. commit the new version to gameplan/__init__.py and tag it vX.Y.Z
+#   2. build the prebuilt assets for that commit (Pilot downloads them)
+#   3. publish a GitHub release with notes listing the merged pull requests
+#   4. open a release PR in frappe/marketplace and merge it once its checks pass, so
+#      Pilot benches offer the update
+#
+# .github/scripts/next_version.py picks the version and writes it to gameplan/__init__.py.
+# The first release is 0.1.0, and each merge after it raises the patch version (0.1.1,
+# 0.1.2, ...). To release another version, such as 1.0.0, run this workflow by hand with
+# it, or set it in gameplan/__init__.py in a pull request.
+#
+# If a job after the tag fails, use "Re-run failed jobs". "Re-run all jobs" finds the
+# version already tagged and publishes nothing.
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to release, such as 1.0.0. Leave empty for the next version.
+        required: false
+        type: string
+
+# One release at a time. A run that waits for another releases everything merged so far.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  version:
+    name: Commit and tag the version
+    if: github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.tag.outputs.version }}
+      commit: ${{ steps.tag.outputs.commit }}
+      previous: ${{ steps.tag.outputs.previous }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+
+      - id: tag
+        env:
+          REQUESTED: ${{ inputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          previous=$(git describe --tags --abbrev=0 --match 'v[0-9]*' 2>/dev/null || true)
+          if [ -n "$previous" ] && [ -z "$REQUESTED" ] && [ "$(git rev-list --count "$previous..HEAD")" = 0 ]; then
+            echo "Nothing merged since $previous."
+            exit 0
+          fi
+
+          # Pushes made with GITHUB_TOKEN start no workflows, so this commit does not
+          # start another release. The commit is empty when a pull request already set
+          # the version. A merge that lands while this runs makes the push fail; drop
+          # the release commit, move to the new develop and try again.
+          for attempt in 1 2 3; do
+            version=$(python3 .github/scripts/next_version.py "${previous#v}" "$REQUESTED")
+            git commit -qa --allow-empty -m "chore(release): v$version"
+            git tag -a "v$version" -m "v$version"
+            if git push --atomic origin HEAD:develop "v$version"; then
+              break
+            fi
+            git tag -d "v$version"
+            [ "$attempt" = 3 ] && exit 1
+            git fetch -q origin develop
+            git reset -q --hard FETCH_HEAD
+          done
+
+          {
+            echo "version=$version"
+            echo "commit=$(git rev-parse HEAD)"
+            echo "previous=$previous"
+          } >> "$GITHUB_OUTPUT"
+
+  assets:
+    name: Pre-build assets
+    needs: version
+    if: needs.version.outputs.version
+    uses: frappe/pilot/.github/workflows/app-assets.yml@develop
+    with:
+      ref: ${{ needs.version.outputs.commit }}
+    permissions:
+      contents: write
+
+  github-release:
+    name: Publish the GitHub release
+    needs: [version, assets]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: v${{ needs.version.outputs.version }}
+          PREVIOUS: ${{ needs.version.outputs.previous }}
+        run: |
+          gh release create "$VERSION" --verify-tag --latest --title "$VERSION" \
+            --generate-notes ${PREVIOUS:+--notes-start-tag "$PREVIOUS"}
+
+  marketplace:
+    name: Open the marketplace release PR
+    needs: [version, assets]
+    uses: frappe/marketplace/.github/workflows/publish-release.yml@main
+    with:
+      app: gameplan
+      branch: develop
+      commit: ${{ needs.version.outputs.commit }}
+      channel: stable
+    secrets:
+      registry_token: ${{ secrets.MARKETPLACE_PR_TOKEN }}
+
+  marketplace-merge:
+    name: Merge the marketplace release PR
+    needs: [version, marketplace]
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - env:
+          GH_TOKEN: ${{ secrets.MARKETPLACE_PR_TOKEN }}
+          GH_REPO: frappe/marketplace
+          COMMIT: ${{ needs.version.outputs.commit }}
+        run: |
+          # publish-release.yml names the branch publish/<app>-<first 8 characters of the commit>.
+          pr=$(gh pr list --head "publish/gameplan-${COMMIT:0:8}" --json number --jq '.[0].number')
+          if [ -z "$pr" ]; then
+            echo "No marketplace PR: the marketplace already lists this commit."
+            exit 0
+          fi
+          # The marketplace checks start some time after the PR opens, and
+          # `gh pr checks` fails while the PR has none. Wait up to 5 minutes for them.
+          for attempt in $(seq 20); do
+            count=$(gh pr checks "$pr" --json name --jq length 2>/dev/null || true)
+            [ "${count:-0}" -gt 0 ] && break
+            [ "$attempt" = 20 ] && { echo "The marketplace PR has no checks."; exit 1; }
+            sleep 15
+          done
+          gh pr checks "$pr" --watch --fail-fast --interval 30
+          gh pr merge "$pr" --squash --delete-branch

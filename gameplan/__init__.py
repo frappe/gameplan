@@ -1,6 +1,6 @@
 import frappe
 
-__version__ = "0.0.1"
+__version__ = "0.1.15"
 
 
 def is_guest(user=None):
@@ -29,3 +29,13 @@ def is_admin(user=None):
 		return True
 	roles = frappe.get_roles(user)
 	return "Gameplan Admin" in roles or "System Manager" in roles
+
+
+def is_new_site():
+	"""Return True while the site has no space and no community. Onboarding sets it up.
+
+	A site with spaces but no community is fixed by a migration (it creates Default), and
+	a site with communities but no spaces by the GP Team after_insert hook (it creates
+	General), so neither counts as new.
+	"""
+	return not frappe.db.get_all("GP Project", limit=1) and not frappe.db.get_all("GP Team", limit=1)

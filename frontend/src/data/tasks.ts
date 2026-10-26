@@ -1,8 +1,7 @@
 import { MaybeRefOrGetter, toValue } from 'vue'
-import { useDoc } from 'frappe-ui'
+import { toast, useDoc } from 'frappe-ui'
 import { GPTask } from '@/types/doctypes'
-
-let tasksCache: Record<string, ReturnType<typeof useDoc>> = {}
+import { OptimisticSave } from '@/utils/optimisticSave'
 
 interface Task extends GPTask {}
 
@@ -10,10 +9,30 @@ interface TaskMethods {
   trackVisit: () => void
 }
 
+type TaskResource = ReturnType<typeof useDoc<Task, TaskMethods>>
+
+interface CachedTask {
+  resource: TaskResource
+  // Lives as long as the resource, so a page opened again while a move is in flight
+  // queues behind that move instead of racing it.
+  spaceMove: OptimisticSave<string | undefined>
+}
+
+let tasksCache: Record<string, CachedTask> = {}
+
 export function useTask(taskId: MaybeRefOrGetter<string>) {
+  return cachedTask(taskId).resource
+}
+
+/** Moves a task to another space, one save at a time. */
+export function useTaskSpaceMove(taskId: MaybeRefOrGetter<string>) {
+  return cachedTask(taskId).spaceMove
+}
+
+function cachedTask(taskId: MaybeRefOrGetter<string>) {
   let name = toValue(taskId)
   if (!tasksCache[name]) {
-    tasksCache[name] = useDoc<Task, TaskMethods>({
+    let resource = useDoc<Task, TaskMethods>({
       doctype: 'GP Task',
       name: taskId,
       methods: {
@@ -26,6 +45,16 @@ export function useTask(taskId: MaybeRefOrGetter<string>) {
         }
       },
     })
+    tasksCache[name] = { resource, spaceMove: createSpaceMove(resource) }
   }
-  return tasksCache[name] as ReturnType<typeof useDoc<Task, TaskMethods>>
+  return tasksCache[name]
+}
+
+function createSpaceMove(task: TaskResource) {
+  // Shown through `spaceMove.shown(task.doc.project)`. Writing to `task.doc` would not
+  // reach the screen: `transform` makes `doc` a fresh copy, not the stored document.
+  return new OptimisticSave<string | undefined>({
+    send: (spaceId) => task.setValue.submit({ project: spaceId }),
+    onError: () => toast.error('Could not save the task'),
+  })
 }

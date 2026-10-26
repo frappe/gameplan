@@ -306,11 +306,14 @@ def get_discussion_reaction_counts(discussion_names):
 	Reaction = frappe.qb.DocType("GP Reaction")
 	rows = (
 		frappe.qb.from_(Reaction)
-		.select(Reaction.parent, Count(Reaction.name).as_("count"))
-		.where((Reaction.parenttype == "GP Discussion") & Reaction.parent.isin(discussion_names))
-		.groupby(Reaction.parent)
+		.select(Reaction.reference_name, Count(Reaction.name).as_("count"))
+		.where(
+			(Reaction.reference_doctype == "GP Discussion")
+			& Reaction.reference_name.isin([str(name) for name in discussion_names])
+		)
+		.groupby(Reaction.reference_name)
 	).run(as_dict=True)
-	return {str(row.parent): row.count for row in rows}
+	return {row.reference_name: row.count for row in rows}
 
 
 def get_comment_reaction_counts(discussion_names):
@@ -322,10 +325,10 @@ def get_comment_reaction_counts(discussion_names):
 	rows = (
 		frappe.qb.from_(Reaction)
 		.join(Comment)
-		.on(Reaction.parent == Comment.name)
+		.on(Reaction.reference_name == Comment.name)
 		.select(Comment.reference_name.as_("discussion"), Count(Reaction.name).as_("count"))
 		.where(
-			(Reaction.parenttype == "GP Comment")
+			(Reaction.reference_doctype == "GP Comment")
 			& (Comment.reference_doctype == "GP Discussion")
 			& Comment.reference_name.isin(discussion_names)
 			& Comment.deleted_at.isnull()

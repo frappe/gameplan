@@ -55,10 +55,10 @@ EXPECTATIONS = {
 		"outsider": (False, False, False),
 		# Member-OWNED content. write == "may interact" (react/comment), which a
 		# guest with space access holds even on someone else's post: a clean-doc
-		# permission check reports no protected-field change, so it passes. Editing
+		# permission check reports no field change, so it passes. Editing
 		# another's content is blocked separately at save time by
 		# content_has_permission's write branch (see
-		# permissions._protected_fields_changed and
+		# permissions._fields_changed and
 		# features/test_guest_participation.py). delete stays False: a guest may
 		# delete only content they own.
 		"guest": (True, True, False),

@@ -61,9 +61,10 @@ def create_community(title="Test Community", *, is_private=0, members=(), admins
 
 def create_space(title, community, *, is_private=0, members=()):
 	doc = frappe.get_doc(doctype="GP Project", title=title, team=_name(community), is_private=is_private)
+	doc.insert(ignore_permissions=True)
 	for user in members:
 		doc.append("members", {"user": _name(user)})
-	return doc.insert(ignore_permissions=True)
+	return doc.save(ignore_permissions=True)
 
 
 def create_discussion(title, space, *, content="Test content", owner=None):
@@ -74,11 +75,12 @@ def create_discussion(title, space, *, content="Test content", owner=None):
 	return doc
 
 
-def create_comment(discussion, *, content="Test comment", owner=None):
+def create_comment(reference, *, content="Test comment", owner=None):
+	"""Comment on `reference`: a GP Discussion or GP Task document, or a discussion name."""
 	doc = frappe.get_doc(
 		doctype="GP Comment",
-		reference_doctype="GP Discussion",
-		reference_name=_name(discussion),
+		reference_doctype=reference.doctype if isinstance(reference, Document) else "GP Discussion",
+		reference_name=_name(reference),
 		content=content,
 	)
 	doc.insert(ignore_permissions=True)

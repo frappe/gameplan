@@ -5,6 +5,8 @@
 import frappe
 from frappe import _
 
+from gameplan.utils.document import with_stored_document
+
 
 class Archivable:
 	"""
@@ -13,12 +15,14 @@ class Archivable:
 	"""
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def archive(self):
 		self.archived_at = frappe.utils.now()
 		self.archived_by = frappe.session.user
 		self.save()
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def unarchive(self):
 		self.archived_at = None
 		self.archived_by = None

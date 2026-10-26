@@ -1,5 +1,5 @@
 <template>
-  <ListRow :to="linkTo" :value="discussion.name" class="h-[68px] sm:h-15">
+  <ListRow :route="linkTo" :value="discussion.name" class="h-[68px] sm:h-15">
     <ListCell>
       <UserAvatarWithHover :user="discussion.owner" size="2xl" />
     </ListCell>
@@ -9,7 +9,7 @@
           <span
             class="overflow-hidden text-ellipsis whitespace-nowrap"
             :class="[
-              discussion.unread ? 'text-lg-semibold sm:text-base-semibold' : 'text-lg sm:text-base',
+              discussion.unread ? 'text-md-semibold sm:text-base-semibold' : 'text-md sm:text-base',
             ]"
           >
             {{ discussion.title }}
@@ -24,16 +24,16 @@
                 <Tooltip v-if="discussion.closed_at" text="Closed">
                   <span class="lucide-lock size-4 p-[1px] mr-1" />
                 </Tooltip>
-                <Tooltip v-else-if="discussion.last_post_type == 'GP Comment'" text="Comment">
+                <Tooltip v-else-if="post.type == 'GP Comment'" text="Comment">
                   <span class="lucide-reply size-4 mr-1" />
                 </Tooltip>
-                <Tooltip v-else-if="discussion.last_post_type == 'GP Poll'" text="Poll">
+                <Tooltip v-else-if="post.type == 'GP Poll'" text="Poll">
                   <span class="lucide-align-left size-4 p-[1px] mr-1" />
                 </Tooltip>
               </div>
               <div>
                 <span>
-                  {{ $user(discussion.last_post_by || discussion.owner).full_name.trim() }}
+                  {{ $user(post.by).full_name.trim() }}
                 </span>
                 <span class="inline-flex items-center" v-if="showSpaceName">
                   &nbsp;in {{ discussion.project_title }}
@@ -44,7 +44,7 @@
                 >:&nbsp;
               </div>
               <div class="truncate">
-                {{ discussion.last_comment_content || discussion.last_poll_title }}
+                {{ post.content }}
               </div>
             </div>
           </div>
@@ -53,9 +53,9 @@
     </ListCell>
     <ListCell class="justify-end">
       <div>
-        <Tooltip :text="dayjsLocal(discussion.last_post_at).format('D MMM YYYY [at] h:mm A')">
+        <Tooltip :text="dayjsLocal(post.at).format('D MMM YYYY [at] h:mm A')">
           <div class="shrink-0 whitespace-nowrap text-sm text-ink-gray-5 text-right">
-            {{ relativeTimestamp(discussion.last_post_at || discussion.creation) }}
+            {{ relativeTimestamp(post.at || discussion.creation) }}
           </div>
         </Tooltip>
         <div class="mt-1.5 flex items-center justify-end space-x-3">
@@ -110,6 +110,27 @@ const linkTo = computed(() => {
       postId: props.discussion.name,
       slug: props.discussion.slug,
     },
+    query: props.discussion.bookmark
+      ? { comment: props.discussion.bookmarked_comment || 'first_post' }
+      : undefined,
+  }
+})
+
+const post = computed(() => {
+  const d = props.discussion
+  if (d.bookmark) {
+    return {
+      type: d.bookmarked_comment ? 'GP Comment' : null,
+      by: d.bookmarked_post_by,
+      content: d.bookmarked_post_content,
+      at: d.bookmarked_post_at,
+    }
+  }
+  return {
+    type: d.last_post_type,
+    by: d.last_post_by || d.owner,
+    content: d.last_comment_content || d.last_poll_title,
+    at: d.last_post_at,
   }
 })
 

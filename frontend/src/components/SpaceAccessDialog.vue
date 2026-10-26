@@ -128,6 +128,7 @@
 import { ref, computed, reactive, watch } from 'vue'
 import { Badge, Combobox, toast, Tooltip, TextInput, useDoctype, useList } from 'frappe-ui'
 import EmptyStateBox from '@/components/EmptyStateBox.vue'
+import UserAvatar from '@/components/UserAvatar.vue'
 import { getCommunity } from '@/data/communities'
 import { useSpace } from '@/data/spaces'
 import { useSessionUser, useUser, users } from '@/data/users'
@@ -252,7 +253,17 @@ function remove(user: GuestAccess | PendingInvitation) {
           variant: 'solid',
           theme: 'red',
           onClick: ({ close }) => {
-            return pending.delete.submit({ name: user.name }).then(close)
+            if (!space.value) return
+            return spaces.runDocMethod
+              .submit({
+                name: space.value.name,
+                method: 'remove_guest_invitation',
+                params: { invitation: user.name },
+              })
+              .then(() => {
+                pending.reload()
+                close()
+              })
           },
         },
       ],

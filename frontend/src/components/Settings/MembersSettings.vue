@@ -6,7 +6,7 @@
          top of the scroll viewport (sticky) instead of inside this fixed region. -->
     <div class="pb-3">
       <div class="flex flex-col gap-4">
-        <h2 class="text-lg-semibold text-ink-gray-8 max-sm:hidden">Users</h2>
+        <h2 class="text-md-semibold text-ink-gray-8 max-sm:hidden">Users</h2>
         <div class="flex items-center justify-between gap-3">
           <TextInput
             class="min-w-0 flex-1 md:w-72 md:flex-none"
@@ -51,19 +51,19 @@
       <ListHeader class="sticky top-0 z-10 bg-surface-elevation-1 max-md:hidden">
         <ListHeaderCellSort :direction="directionFor('name')" @click="toggleSort('name')">
           User
-          <template #suffix="{ direction }">
+          <template #sort-indicator="{ direction }">
             <span class="size-3.5 text-ink-gray-5" :class="sortIcon(direction)" />
           </template>
         </ListHeaderCellSort>
         <ListHeaderCellSort :direction="directionFor('role')" @click="toggleSort('role')">
           Role
-          <template #suffix="{ direction }">
+          <template #sort-indicator="{ direction }">
             <span class="size-3.5 text-ink-gray-5" :class="sortIcon(direction)" />
           </template>
         </ListHeaderCellSort>
         <ListHeaderCellSort :direction="directionFor('creation')" @click="toggleSort('creation')">
           User since
-          <template #suffix="{ direction }">
+          <template #sort-indicator="{ direction }">
             <span class="size-3.5 text-ink-gray-5" :class="sortIcon(direction)" />
           </template>
         </ListHeaderCellSort>
@@ -121,6 +121,7 @@ import { computed, ref, watch } from 'vue'
 import { Button, Dialog, Select, dialog, dayjsLocal, useCall, useList } from 'frappe-ui'
 import PanelHeader from './PanelHeader.vue'
 import PanelBody from './PanelBody.vue'
+import UserAvatar from '@/components/UserAvatar.vue'
 import {
   List,
   ListCell,
@@ -172,24 +173,14 @@ watch(showInviteDialog, (open, wasOpen) => {
 
 // `users` is a useCall resource (no setData); refetch after mutations so the
 // list — role labels and membership — reflects the server-side change.
-//
-// change_user_role and disable_user are both GP User Profile doc methods, so
-// their URLs are keyed on the target profile. `targetProfile` is swapped in
-// per row (set right before submit) rather than going through a full useDoc,
-// since neither call needs the target's doc data loaded — only the ability
-// to invoke a method on it.
-const targetProfile = ref('')
-function profileMethodUrl(method: string) {
-  return computed(() => `/api/v2/document/GP User Profile/${targetProfile.value}/method/${method}`)
-}
-const changeUserRoleCall = useCall<UserInfo, { role: string }>({
-  url: profileMethodUrl('change_user_role'),
+const changeUserRoleCall = useCall<UserInfo, { user: string; role: string }>({
+  url: '/api/v2/method/gameplan.api.change_user_role',
   method: 'POST',
   immediate: false,
   onSuccess: updateUserInfo,
 })
-const disableUserCall = useCall<unknown>({
-  url: profileMethodUrl('disable_user'),
+const disableUserCall = useCall<string, { user: string }>({
+  url: '/api/v2/method/gameplan.api.disable_user',
   method: 'POST',
   immediate: false,
   onSuccess: () => users.reload(),
@@ -255,8 +246,7 @@ function changeUserRole(user: UserRow, role: string) {
     message: `Are you sure you want to change ${user.full_name}'s role to ${role}?`,
     confirmLabel: 'Change Role',
     onConfirm: () => {
-      targetProfile.value = user.user_profile
-      changeUserRoleCall.submit({ role })
+      changeUserRoleCall.submit({ user: user.name, role }).catch(() => {})
     },
   })
 }
@@ -275,8 +265,7 @@ function disableUser(user: UserRow) {
     message: `${user.full_name} (${user.email}) will be disabled and can no longer sign in to Gameplan. You can re-enable them later from the Frappe admin.`,
     confirmLabel: 'Disable',
     onConfirm: () => {
-      targetProfile.value = user.user_profile
-      disableUserCall.submit()
+      disableUserCall.submit({ user: user.name }).catch(() => {})
     },
   })
 }

@@ -1,6 +1,6 @@
 <template>
   <ListRow
-    :to="route ?? undefined"
+    :route="route ?? undefined"
     class="group h-[68px] sm:h-15"
     :class="!notification.read && 'w-[calc(100%-3rem)] sm:w-[calc(100%-2rem)]'"
     @click="open"
@@ -26,7 +26,7 @@
             <span
               class="overflow-hidden text-ellipsis whitespace-nowrap"
               :class="
-                notification.read ? 'text-lg sm:text-base' : 'text-lg-medium sm:text-base-medium'
+                notification.read ? 'text-md sm:text-base' : 'text-md-medium sm:text-base-medium'
               "
             >
               {{ notification.message }}

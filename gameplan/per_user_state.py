@@ -3,13 +3,13 @@
 
 """Row-level access control for the doctypes that hold per-user state.
 
-GP Notification, GP Project Visit, GP Discussion Visit, GP Pinned Project,
-GP Discussion Subscription, GP Space Subscription and GP Away Period each store one row per user, and each
-grants Gameplan Member and Gameplan Guest read and write with `if_owner` unset (GP Pinned
-Project and the two subscription doctypes also grant `delete`). Role permissions
-alone therefore let any signed-in user read, enumerate, overwrite and — for pins —
-delete anyone else's bell feed, visit history, read-state and sidebar through the
-generic `/api/v2/document/<doctype>` API.
+GP Notification, GP Project Visit, GP Discussion Visit, GP Pinned Project, GP Followed
+Project, GP Discussion Subscription, GP Space Subscription and GP Away Period each store
+one row per user, and each grants Gameplan Member and Gameplan Guest read and write with
+`if_owner` unset (pins, follows and the two subscription doctypes also grant `delete`).
+Role permissions do not tie a row to its user, so the hooks below limit every read, write
+and delete of a row to the user it belongs to, including through the generic
+`/api/v2/document/<doctype>` API.
 
 `if_owner` cannot express this rule. For GP Notification the row's `owner` is the
 person who *triggered* it (the mentioner), while the row belongs to `to_user` — so
@@ -21,10 +21,10 @@ session. The row's own user column is the only honest source of truth, so the ru
 expressed as a `permission_query_conditions` hook (list/report) plus a `has_permission`
 hook (single-document read/write/create/delete), the same pair GP Bookmark uses.
 
-`GPPinnedProject.get_list_query` scopes only one endpoint —
-`gameplan.extends.client.get_list`, the SPA's default list URL. `frappe.get_list`,
-`frappe.client.get_list` and `/api/v2/document/GP Pinned Project` never call it, and
-none of them scoped anything before these hooks existed.
+`GPPinnedProject.get_list_query` and `GPFollowedProject.get_list_query` scope only one
+endpoint — `gameplan.extends.client.get_list`, the SPA's default list URL.
+`frappe.get_list`, `frappe.client.get_list` and `/api/v2/document/<doctype>` never call
+them, and none of them scoped anything before these hooks existed.
 
 Server-side writers are unaffected: every one of them (`GPProject.track_visit`,
 `GPProject.mark_all_as_read`, `GPProject.archive`, `GPDiscussion.track_visit`, the
@@ -40,6 +40,7 @@ from gameplan.permissions import criterion_sql, get_doc_value, is_delete_cascade
 NOTIFICATION_USER_FIELD = "to_user"
 VISIT_USER_FIELD = "user"
 PIN_USER_FIELD = "user"
+FOLLOW_USER_FIELD = "user"
 
 
 def _own_rows_only(doctype, fieldname, user):
@@ -128,6 +129,18 @@ def pinned_project_has_permission(doc, ptype="read", user=None, **kwargs):
 		# makes creating a pin for someone else impossible in the first place.
 		return True
 	return _belongs_to_user(doc, PIN_USER_FIELD, user)
+
+
+def followed_project_query_conditions(user=None, **kwargs):
+	return _own_rows_only("GP Followed Project", FOLLOW_USER_FIELD, user)
+
+
+def followed_project_has_permission(doc, ptype="read", user=None, **kwargs):
+	"""Following a Space is one user's own choice, so only they may see, add or drop it."""
+	if ptype == "create":
+		# As for pins: `before_insert` stamps `user` with the session user after this check.
+		return True
+	return _belongs_to_user(doc, FOLLOW_USER_FIELD, user)
 
 
 SUBSCRIPTION_USER_FIELD = "user"

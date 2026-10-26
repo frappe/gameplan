@@ -10,7 +10,7 @@ from frappe.query_builder.functions import Count
 from frappe.utils import cint, split_emails, validate_email_address
 
 import gameplan
-from gameplan.gameplan.doctype.gp_invitation.gp_invitation import grant_access
+from gameplan.gameplan.doctype.gp_invitation.gp_invitation import get_invitation, grant_access
 from gameplan.realtime import notify_notification_changed, unread_notification_count
 from gameplan.roles import GAMEPLAN_ROLES
 from gameplan.utils import validate_type
@@ -147,6 +147,39 @@ def invite_by_email(emails: str, role: str, projects: list = None):
 	return _invite_by_email(emails, role, projects)
 
 
+@frappe.whitelist(methods=["POST"])
+@validate_type
+def change_user_role(user: str, role: str):
+	require_admin()
+	if role not in GAMEPLAN_ROLES:
+		frappe.throw(_("Invalid role: {0}").format(role), frappe.ValidationError)
+
+	user_doc = frappe.get_doc("User", user)
+	for _role in list(user_doc.roles):
+		if _role.role in GAMEPLAN_ROLES:
+			user_doc.remove(_role)
+	user_doc.append_roles(role)
+	# Admin-gated by require_admin() above; bypass User's own permission checks so an
+	# admin can change another user's roles.
+	user_doc.save(ignore_permissions=True)
+
+	return get_user_info(user)[0]
+
+
+@frappe.whitelist(methods=["POST"])
+@validate_type
+def disable_user(user: str):
+	require_admin()
+
+	user_doc = frappe.get_doc("User", user)
+	user_doc.enabled = 0
+	# Admin-gated by require_admin() above; bypass User's own permission checks so an
+	# admin can disable another user.
+	user_doc.save(ignore_permissions=True)
+
+	return user
+
+
 def _invite_by_email(emails: str, role: str, projects: list = None) -> dict:
 	"""Core invite logic, callable from trusted server code (e.g. onboarding).
 
@@ -273,30 +306,37 @@ def get_notifications(fields=None, filters=None, order_by=None, start=0, limit=2
 @frappe.whitelist(allow_guest=True)
 @validate_type
 def accept_invitation(key: str = None):
-	if not key:
-		frappe.throw("Invalid or expired key")
+	invitation = get_invitation(key)
+	if not invitation or invitation.status not in ("Pending", "Accepted"):
+		frappe.respond_as_web_page(
+			_("This invitation link is no longer valid"),
+			_("Ask the person who invited you to send a new invitation."),
+			http_status_code=404,
+		)
+		return
 
-	result = frappe.db.get_all("GP Invitation", filters={"key": key}, pluck="name")
-	if not result:
-		frappe.throw("Invalid or expired key")
+	if invitation.status == "Pending":
+		invitation.accept()
+		# An account that was here before the invitation signs in the way it always has.
+		location = invitation.get_password_link() if invitation.created_account else "/g"
+	elif invitation.created_account_awaits_password():
+		# The invitee opened the link again before setting a password, so give them a new
+		# password link in place of the first one.
+		location = invitation.get_password_link()
+	else:
+		frappe.respond_as_web_page(
+			_("This invitation link is no longer valid"),
+			_("This invitation has already been accepted. Sign in to continue."),
+			http_status_code=410,
+			primary_action="/login",
+			primary_label=_("Sign in"),
+		)
+		return
 
-	invitation = frappe.get_doc("GP Invitation", result[0])
+	frappe.db.commit()  # nosemgrep: frappe-manual-commit
 
-	invitation.accept()
-	invitation.reload()
-
-	user = frappe.get_doc("User", invitation.email)
-	needs_password_setup = user and not user.last_password_reset_date
-
-	if invitation.status == "Accepted":
-		if needs_password_setup:
-			url = invitation.get_password_link()
-			frappe.local.response["type"] = "redirect"
-			frappe.local.response["location"] = f"{url}"
-		else:
-			frappe.local.login_manager.login_as(invitation.email)
-			frappe.local.response["type"] = "redirect"
-			frappe.local.response["location"] = "/g"
+	frappe.local.response["type"] = "redirect"
+	frappe.local.response["location"] = location
 
 
 @frappe.whitelist()
@@ -322,6 +362,11 @@ def mark_all_notifications_as_read():
 
 @frappe.whitelist(methods=["POST"])
 def onboarding(community, space, icon, emails, is_private=0):
+	# Onboarding sets up a brand-new site. After that, communities and invitations go
+	# through their own screens and checks.
+	if not gameplan.is_new_site():
+		frappe.throw(_("This site is already set up"), frappe.PermissionError)
+
 	emails = frappe.parse_json(emails)
 
 	# Create the community. The GP Team after_insert hook auto-creates a public
@@ -338,9 +383,10 @@ def onboarding(community, space, icon, emails, is_private=0):
 		doctype="GP Project", title=space, icon=icon, team=team.name, is_private=is_private
 	).insert()
 
-	# Trusted internal path: the signup creator invites their first teammates as
-	# Members. Bypasses the admin gate (the creator isn't an admin yet) but the
-	# role is hardcoded, so no escalation is possible.
+	# The signup creator invites their first teammates. The creator may not be an admin
+	# yet, so this skips invite_by_email's admin check. The guard above limits it to a new
+	# site, and the role is fixed to Gameplan Member. GP Invitation's own rule that only
+	# admins invite admins still applies to these invitations.
 	_invite_by_email(", ".join(emails), role="Gameplan Member")
 	return {"team": team.name, "space": project.name}
 

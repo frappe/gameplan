@@ -1,11 +1,14 @@
 # Copyright (c) 2022, Frappe Technologies Pvt Ltd and Contributors
 # See license.txt
 
+import json
+
 import frappe
 
-from gameplan.api import get_user_info
+from gameplan.api import disable_user, get_user_info
 from gameplan.gameplan.doctype.gp_user_profile.gp_user_profile import (
 	get_bento_cards,
+	get_list,
 	get_my_bento_cards,
 	has_permission,
 	reset_my_bento_cards,
@@ -101,7 +104,7 @@ class TestProfiles(GameplanTestCase):
 		alice_profile = get_profile(self.alice.name)
 		self.assertFalse(has_permission(alice_profile, ptype="write", user=self.bob.name))
 
-	def test_admin_can_edit_any_bio(self):
+	def test_administrator_can_edit_any_bio(self):
 		alice_profile = get_profile(self.alice.name)
 		self.assertTrue(has_permission(alice_profile, ptype="write", user="Administrator"))
 
@@ -123,6 +126,35 @@ class TestProfiles(GameplanTestCase):
 		profile.bio = "hello, I am Alice"
 		profile.save()
 		self.assertEqual(get_profile(self.alice.name).bio, "hello, I am Alice")
+
+	def test_has_permission_accepts_docname_string(self):
+		alice_profile = get_profile(self.alice.name)
+		self.assertFalse(has_permission(alice_profile.name, ptype="write", user=self.bob.name))
+		self.assertTrue(has_permission(alice_profile.name, ptype="write", user=self.alice.name))
+
+	def test_member_cannot_save_others_profile_even_with_ignore_permissions(self):
+		alice_profile = get_profile(self.alice.name)
+		frappe.set_user(self.bob.name)
+		alice_profile.bio = "hacked by bob"
+		with self.assertRaises(frappe.PermissionError):
+			alice_profile.save(ignore_permissions=True)
+
+	def test_admin_cannot_edit_others_profile(self):
+		alice_profile = get_profile(self.alice.name)
+		self.assertFalse(has_permission(alice_profile, ptype="write", user=self.admin.name))
+
+		frappe.set_user(self.admin.name)
+		alice_profile.bio = "edited by an admin"
+		with self.assertRaises(frappe.PermissionError):
+			alice_profile.save(ignore_permissions=True)
+
+	def test_admin_can_still_disable_a_user(self):
+		frappe.set_user(self.admin.name)
+		# Syncing `enabled` to the profile runs as the admin and must not trip the ownership
+		# check. Assert on User: on Frappe v16 the profile re-fetches `user.enabled` from a
+		# value cache that is stale until the transaction ends.
+		disable_user(self.alice.name)
+		self.assertEqual(frappe.db.get_value("User", self.alice.name, "enabled"), 0)
 
 	def test_default_bento_layout_binds_every_populated_profile_field(self):
 		frappe.set_user(self.alice.name)
@@ -689,6 +721,55 @@ class TestProfiles(GameplanTestCase):
 		response = save_my_bento_cards(frappe.as_json([make_bento_card()]))
 
 		self.assertEqual([card["id"] for card in response["cards"]], ["intro"])
+
+
+class TestGetListQueryParams(GameplanTestCase):
+	"""`get_list` serves frappe-ui's `useList`, which sends its arguments as GET query
+	strings: `fields`/`filters` arrive JSON-encoded and `start`/`limit` as strings, not
+	as the `dict`/`int` shapes the query builder wants."""
+
+	def setUp(self):
+		super().setUp()
+		self.alice = create_member("test_alice_getlist@example.com", "Alice Getlist")
+		self.bob = create_member("test_bob_getlist@example.com", "Bob Getlist")
+		frappe.set_user(self.alice.name)
+
+	def test_accepts_json_stringified_fields_and_filters_with_string_pagination(self):
+		result = get_list(
+			fields=json.dumps(["name", "user"]),
+			filters=json.dumps({"user": self.alice.name}),
+			start="0",
+			limit="5",
+		)
+
+		self.assertEqual(len(result), 1)
+		self.assertEqual(result[0]["user"], self.alice.name)
+
+	def test_still_accepts_native_dict_filters_and_int_pagination(self):
+		"""A direct Python call passes them unencoded."""
+		result = get_list(fields=["name", "user"], filters={"user": self.bob.name}, start=0, limit=5)
+
+		self.assertEqual(len(result), 1)
+		self.assertEqual(result[0]["user"], self.bob.name)
+
+	def test_reads_nothing_of_another_users_account_through_a_link(self):
+		frappe.db.set_value("User", self.bob.name, "last_ip", "203.0.113.7", update_modified=False)
+
+		rows = get_list(
+			fields=json.dumps(["name", "user.last_ip"]), filters=json.dumps({"user": self.bob.name})
+		)
+		self.assertIsNone(rows[0].get("last_ip"))
+		# Nor one character at a time, through a filter.
+		self.assertEqual(get_list(fields=["name"], filters={"user.last_ip": ["like", "203.%"]}), [])
+
+	def test_defaults_still_work_when_every_argument_is_omitted(self):
+		# Just needs to not raise - the default `limit=20` means a specific row (e.g.
+		# self.alice's) isn't guaranteed to be in this page on a site with more than 20
+		# profiles, so this only checks the call succeeds and shapes a list.
+		result = get_list()
+
+		self.assertIsInstance(result, list)
+		self.assertLessEqual(len(result), 20)
 
 
 class TestCustomEmojis(GameplanTestCase):

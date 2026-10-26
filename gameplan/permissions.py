@@ -39,7 +39,10 @@ def project_has_permission(doc, ptype="read", user=None, **kwargs):
 	if ptype in READ_PERMISSIONS:
 		return can_view_space(user, doc)
 	if ptype in {"write", "delete"}:
-		return can_manage_space(user, doc)
+		# Check both versions: a move or privacy change needs rights on the edited values,
+		# and the user must already manage the stored Space.
+		stored = _stored_version(doc)
+		return can_manage_space(user, doc) and (stored is None or can_manage_space(user, stored))
 	return True
 
 
@@ -137,7 +140,15 @@ def can_view_content(user, doc):
 		return can_view_space(user, project)
 	if is_global_admin(user):
 		return True
-	return get_doc_value(doc, "owner") == user
+	return get_content_owner(doc) == user
+
+
+def get_content_owner(doc):
+	"""The user that space-less content belongs to. A comment or activity row on a task
+	belongs to the task's owner, so it is visible wherever that task is."""
+	if doc.doctype in {"GP Comment", "GP Activity"} and doc.reference_doctype == "GP Task":
+		return frappe.db.get_value("GP Task", doc.reference_name, "owner")
+	return get_doc_value(doc, "owner")
 
 
 def users_who_can_view_content(users, doc):
@@ -161,7 +172,7 @@ def users_who_can_view_content(users, doc):
 		# can_view_content's own space-less fallback, inlined rather than called per
 		# user: it would re-resolve the project for every user (a query each, for a
 		# GP Comment) and give back exactly this answer.
-		owner = get_doc_value(doc, "owner")
+		owner = get_content_owner(doc)
 		return [user for user in users if is_global_admin(user) or user == owner]
 
 	project_info = get_project_info(project)
@@ -221,22 +232,6 @@ def can_create_content(user, doc):
 	return can_view_content(user, doc)
 
 
-# Per-doctype fields a non-editor is allowed to change while still holding `write`.
-# These are interaction (not content) fields — reacting is participation, not an
-# edit — so changing only these keeps the write permission for guests/space viewers.
-INTERACTION_SAFE_FIELDS = {
-	"GP Discussion": {"reactions"},
-	"GP Comment": {"reactions"},
-	"GP Page": set(),
-	"GP Task": set(),
-	# Votes are deliberately NOT listed: a vote goes through GPPoll.submit_vote, which
-	# gates on participation, re-reads the stored poll (GPPoll.discard_client_state) so
-	# nothing the caller sent survives, and only touches the caller's own row. Leaving
-	# the vote tables protected here is what stops a non-editor rewriting a poll by
-	# plain save.
-	"GP Poll": {"reactions"},
-}
-
 # Per-doctype fields that only the content's owner (or a moderator who could delete it)
 # may change. Everyone who can reach a space may edit the content in it — see
 # can_edit_content — but a poll's ballot and lifecycle are not shared property: stopping
@@ -280,17 +275,19 @@ def can_interact_with_content(user, doc):
 	"""Whether `user` can reach `doc` to participate (react/comment) at all.
 
 	True for anyone who can view the content's space (members and granted guests
-	alike) and, for personal/space-less content, its owner. This is the floor for the
-	`write` permission; whether a specific *edit* is allowed on top of it is decided
-	by can_edit_content / _protected_fields_changed.
+	alike) and, for personal/space-less content, the user it belongs to
+	(get_content_owner: the author, or for a comment on a personal task, the task's
+	owner). This is the floor for the `write` permission; whether a specific *edit* is
+	allowed on top of it is decided by can_edit_content and, for non-editors, by whether
+	the save changes any field.
 
-	Two of the branches below never fire from its only caller: can_write_content reaches
-	here only once can_edit_content has said False, and an admin or the owner of
-	space-less content is always an editor. They stay because this is a named predicate
-	about who may reach content at all, not a private tail of can_write_content: dropping
-	the admin line makes it answer False for a global admin on another user's personal
-	page, and dropping the owner line at the end turns the space-less case into an
-	unconditional True the moment can_view_content's own space-less rule loosens.
+	The admin branch never fires from its only caller: can_write_content reaches here
+	only once can_edit_content has said False, and a global admin is always an editor.
+	It stays because this is a named predicate about who may reach content at all, not a
+	private tail of can_write_content: dropping it makes this answer False for a global
+	admin on another user's personal page. The owner line at the end does fire from
+	there: the owner of a personal task is not an editor of a comment someone else wrote
+	on it, but may still react to it.
 	"""
 	if is_global_admin(user):
 		return True
@@ -298,9 +295,9 @@ def can_interact_with_content(user, doc):
 		return False
 	if get_content_project(doc):
 		return True
-	# Today can_view_content has already established owner == user for space-less content,
-	# so this only ever returns True — it is the deny-by-default that keeps that true.
-	return get_doc_value(doc, "owner") == user
+	# can_view_content has already established this for space-less content. It is the
+	# deny-by-default that keeps this answer False if that rule ever loosens.
+	return get_content_owner(doc) == user
 
 
 def can_write_content(user, doc):
@@ -309,13 +306,13 @@ def can_write_content(user, doc):
 	Editors (can_edit_content: global admins, space-viewing members, owners, and
 	guests on their OWN content) always hold write. Non-editors who can still reach
 	the content (space viewers — guests included — and owners of personal content)
-	hold write only for interaction: the save must not touch anything beyond the
-	interaction-safe fields (reactions).
+	hold write only for interaction: they may call a participation method such as
+	react() or submit_vote(), but they may not save any change to the document.
 
-	This is checked in two contexts (see _protected_fields_changed): on a CLEAN doc
-	(the v2 doc-method gate and list/UI permission checks) it reports no changes, so
-	a guest passes and can reach react(); on the DIRTY in-memory doc at save time it
-	diffs against the DB row and rejects any edit to protected fields.
+	This is checked in two contexts (see _fields_changed): on a CLEAN
+	doc (the v2 doc-method gate and list/UI permission checks) it reports no changes,
+	so a guest passes and can reach react(); on the DIRTY in-memory doc at save time it
+	diffs against the DB row and rejects any edit.
 
 	Above all of that sit two field locks that apply even to an editor.
 	_owner_only_write_allowed keeps a poll's ballot and lifecycle to its author.
@@ -330,7 +327,7 @@ def can_write_content(user, doc):
 		return True
 	if not can_interact_with_content(user, doc):
 		return False
-	return not _protected_fields_changed(doc)
+	return not _fields_changed(doc, {df.fieldname for df in doc.meta.fields})
 
 
 def _owner_only_write_allowed(user, doc):
@@ -359,20 +356,6 @@ def _guest_locked_fields_unchanged(user, doc):
 	if not fields or not gameplan.is_guest(user):
 		return True
 	return not _fields_changed(doc, fields)
-
-
-def _protected_fields_changed(doc):
-	"""Whether `doc` has pending changes to any field a non-editor may not touch.
-
-	Compares the in-memory document against its stored row, ignoring the doctype's
-	interaction-safe fields.
-	"""
-	before = _stored_version(doc)
-	if before is None:
-		return False
-	safe_fields = INTERACTION_SAFE_FIELDS.get(doc.doctype, set())
-	protected = {df.fieldname for df in doc.meta.fields if df.fieldname not in safe_fields}
-	return _any_field_changed(doc, before, protected)
 
 
 def _fields_changed(doc, fieldnames):
@@ -444,7 +427,7 @@ def _child_table_changed(current_rows, previous_rows):
 def can_edit_content(user, doc):
 	"""Business rule for who may change a document's own content.
 
-	Enforced at save time by can_write_content and _protected_fields_changed in
+	Enforced at save time by can_write_content and _fields_changed in
 	the has_permission write check. Also mirrored in the frontend
 	(utils/permissions.ts::canEditContent) to gate edit affordances.
 	"""
@@ -497,12 +480,12 @@ def can_delete_content(user, doc):
 		return False
 	project = get_content_project(doc)
 	if not project:
-		# Space-less content has no community to moderate it: only its owner and the
-		# global admin, both handled above. Unreachable today (a non-owner who is not a
-		# global admin fails the can_view_content check above for space-less content) and
-		# the line below would deny too — get_project_info(None) is None. Kept as the
-		# explicit statement of the rule: that "would deny too" rests on an implicit
-		# falsy chain, and this is the one function where the rule should be readable.
+		# Space-less content has no community to moderate it: only its author and the
+		# global admin, both handled above. The owner of a personal task reaches this
+		# line for a comment someone else wrote on it: they can see the comment, but it
+		# is not theirs to delete. The line below would deny too — get_project_info(None)
+		# is None — but that rests on an implicit falsy chain, and this is the one
+		# function where the rule should be readable.
 		return False
 	project_info = get_project_info(project)
 	return bool(project_info and is_community_admin(user, project_info.team))
@@ -525,7 +508,7 @@ def discussion_query_conditions(user=None, **kwargs):
 
 
 def task_query_conditions(user=None, **kwargs):
-	return content_project_query_conditions("GP Task", user)
+	return criterion_sql(task_access_criterion(frappe.qb.DocType("GP Task"), user))
 
 
 def page_query_conditions(user=None, **kwargs):
@@ -540,11 +523,21 @@ def page_query_conditions(user=None, **kwargs):
 
 
 def comment_query_conditions(user=None, **kwargs):
+	return referenced_content_query_conditions("GP Comment", user)
+
+
+def activity_query_conditions(user=None, **kwargs):
+	return referenced_content_query_conditions("GP Activity", user)
+
+
+def referenced_content_query_conditions(doctype, user=None):
+	"""Rows that point at a discussion or task (reference_doctype/reference_name) follow
+	that discussion's or task's space, or, for a task with no space, its owner."""
 	user = user or frappe.session.user
 	if is_global_admin(user):
 		return None
 
-	Comment = frappe.qb.DocType("GP Comment")
+	Row = frappe.qb.DocType(doctype)
 	Discussion = frappe.qb.DocType("GP Discussion")
 	Task = frappe.qb.DocType("GP Task")
 	discussion_query = (
@@ -552,13 +545,10 @@ def comment_query_conditions(user=None, **kwargs):
 		.select(Discussion.name)
 		.where(accessible_project_criterion(Discussion.project, user))
 	)
-	task_query = (
-		frappe.qb.from_(Task).select(Task.name).where(accessible_project_criterion(Task.project, user))
-	)
-	criterion = (
-		(Comment.reference_doctype == "GP Discussion") & Comment.reference_name.isin(discussion_query)
-	) | ((Comment.reference_doctype == "GP Task") & Comment.reference_name.isin(task_query))
-	return criterion_sql(criterion)
+	task_query = frappe.qb.from_(Task).select(Task.name).where(task_access_criterion(Task, user))
+	on_discussion = (Row.reference_doctype == "GP Discussion") & Row.reference_name.isin(discussion_query)
+	on_task = (Row.reference_doctype == "GP Task") & Row.reference_name.isin(task_query)
+	return criterion_sql(on_discussion | on_task)
 
 
 def poll_query_conditions(user=None, **kwargs):
@@ -612,6 +602,63 @@ def bookmark_has_permission(doc, ptype="read", user=None, **kwargs):
 	return get_doc_value(doc, "user") == user
 
 
+def activity_has_permission(doc, ptype="read", user=None, **kwargs):
+	"""An activity row is part of a discussion's or task's timeline: whoever can see that
+	discussion or task can see it. Rows are written by the server (HasActivity.log_activity)
+	and removed with their discussion or task, never edited by hand.
+	"""
+	user = user or frappe.session.user
+	if not hasattr(doc, "doctype"):
+		return True
+	if ptype in READ_PERMISSIONS:
+		return can_view_content(user, doc)
+	if ptype == "delete":
+		return is_delete_cascade(doc) or is_global_admin(user)
+	if ptype in {"create", "write"}:
+		return is_global_admin(user)
+	return True
+
+
+def guest_access_query_conditions(user=None, **kwargs):
+	user = user or frappe.session.user
+	if is_global_admin(user):
+		return None
+	GuestAccess = frappe.qb.DocType("GP Guest Access")
+	criterion = GuestAccess.user == user
+	if not gameplan.is_guest(user):
+		criterion = (
+			criterion
+			| GuestAccess.project.isin(managed_project_query(user))
+			| GuestAccess.team.isin(community_admin_team_query(user))
+		)
+	return criterion_sql(criterion)
+
+
+def guest_access_has_permission(doc, ptype="read", user=None, **kwargs):
+	"""A guest's access to a space is visible to the guest and to the people who manage
+	that space or its community. Rows are added by accepting an invitation and removed
+	through GPProject.remove_guest / GPTeam.remove_guest_access.
+	"""
+	user = user or frappe.session.user
+	if not hasattr(doc, "doctype"):
+		return True
+	if ptype in READ_PERMISSIONS:
+		return get_doc_value(doc, "user") == user or can_manage_guest_access(user, doc)
+	if ptype == "delete":
+		return is_delete_cascade(doc) or can_manage_guest_access(user, doc)
+	if ptype in {"create", "write"}:
+		return is_global_admin(user)
+	return True
+
+
+def can_manage_guest_access(user, doc):
+	project = get_project_info(get_doc_value(doc, "project"))
+	if project:
+		return can_manage_space(user, project) or can_manage_community(user, project.team)
+	team = get_doc_value(doc, "team")
+	return bool(team) and can_manage_community(user, team)
+
+
 def content_project_query_conditions(doctype, user=None):
 	user = user or frappe.session.user
 	if is_global_admin(user):
@@ -653,6 +700,18 @@ def accessible_project_criterion(project_field, user=None):
 	return project_field.isin(accessible_project_query(user))
 
 
+def task_access_criterion(Task, user=None):
+	"""The tasks `user` may see, as can_view_content decides. A task in a Space follows
+	the Space. A task with no Space is personal, so only its owner sees it. None for a
+	global admin, who sees every task."""
+	user = user or frappe.session.user
+	criterion = accessible_project_criterion(Task.project, user)
+	if criterion is None:
+		return None
+	space_less = Task.project.isnull() | (Task.project == "")
+	return criterion | (space_less & (Task.owner == user))
+
+
 def apply_accessible_project_filter(query, project_field, user=None):
 	criterion = accessible_project_criterion(project_field, user)
 	if criterion is None:
@@ -682,6 +741,19 @@ def accessible_project_query(user=None):
 	if criterion is not None:
 		query = query.where(criterion)
 	return query
+
+
+def managed_project_query(user):
+	"""Spaces a non-guest `user` manages: the SQL form of can_manage_space / can_manage_community."""
+	Project = frappe.qb.DocType("GP Project")
+	return (
+		frappe.qb.from_(Project)
+		.select(Project.name)
+		.where(
+			Project.team.isin(community_admin_team_query(user))
+			| ((Project.is_private == 1) & is_member_parent("GP Project", Project.name, user))
+		)
+	)
 
 
 def accessible_team_query(user=None):
@@ -723,6 +795,17 @@ def is_community_admin(user, team):
 			"GP Member",
 			{"parenttype": "GP Team", "parent": team, "user": user, "is_admin": 1},
 		)
+	)
+
+
+def community_admin_team_query(user):
+	Member = frappe.qb.DocType("GP Member")
+	return (
+		frappe.qb.from_(Member)
+		.select(Member.parent)
+		.where(Member.parenttype == "GP Team")
+		.where(Member.user == user)
+		.where(Member.is_admin == 1)
 	)
 
 
@@ -771,7 +854,7 @@ def get_content_project(doc):
 		# A poll lives in a discussion, and takes that discussion's space.
 		discussion = get_doc_value(doc, "discussion")
 		return frappe.db.get_value("GP Discussion", discussion, "project") if discussion else None
-	if doc.doctype != "GP Comment":
+	if doc.doctype not in {"GP Comment", "GP Activity"}:
 		return None
 	if doc.reference_doctype in {"GP Discussion", "GP Task"}:
 		return frappe.db.get_value(doc.reference_doctype, doc.reference_name, "project")

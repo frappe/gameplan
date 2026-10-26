@@ -20,7 +20,6 @@ import { useUser, users } from './data/users'
 import { isSessionUser, session } from './data/session'
 import { initSocket } from './socket'
 import { installErrorReporting } from './utils/errorReporting'
-import resetDataMixin from './utils/resetDataMixin'
 
 let globalComponents = {
   Button,
@@ -35,9 +34,8 @@ let app = createApp(App)
 app.use(router)
 // Installed before anything else runs, so an error thrown during setup is reported too.
 installErrorReporting(app, router)
-app.mixin(resetDataMixin)
-for (let key in globalComponents) {
-  app.component(key, globalComponents[key])
+for (let [key, component] of Object.entries(globalComponents)) {
+  app.component(key, component)
 }
 
 app.config.globalProperties.$log = console.log.bind(console)
@@ -48,15 +46,13 @@ app.config.globalProperties.$readOnlyMode = window.read_only_mode
 app.config.globalProperties.$platform = getPlatform()
 app.config.globalProperties.$isSessionUser = isSessionUser
 
-let socket
+let socket: ReturnType<typeof initSocket>
 if (import.meta.env.DEV) {
-  useCall({
+  useCall<Record<string, unknown>>({
     url: '/api/v2/method/gameplan.www.g.get_context_for_dev',
     method: 'POST',
     onSuccess(values) {
-      for (let key in values) {
-        window[key] = values[key]
-      }
+      Object.assign(window, values)
       setupApp()
     },
   })
@@ -67,9 +63,7 @@ if (import.meta.env.DEV) {
 // Runs once boot values are on `window` (inline script in prod, the dev
 // context call above in dev) so frappe-ui gets its full config in one place.
 function setupApp() {
-  // `resources: true` keeps the v1 resources Options API installed for
-  // UnsplashImageBrowser.vue and People.vue, the last two components declaring
-  // a `resources` option. Port both to createResource/useList to drop this.
+  // UnsplashImageBrowser.vue still uses the v1 resources Options API.
   app.use(FrappeUI, { resources: true })
   setConfig('resourceFetcher', frappeRequest)
   setConfig('defaultListUrl', 'gameplan.extends.client.get_list')
@@ -81,9 +75,11 @@ function setupApp() {
 }
 
 if (import.meta.env.DEV) {
-  window.$user = useUser
-  window.$users = users
-  window.$session = session
-  window.$frappeRequest = frappeRequest
-  window.$router = router
+  Object.assign(window, {
+    $user: useUser,
+    $users: users,
+    $session: session,
+    $frappeRequest: frappeRequest,
+    $router: router,
+  })
 }

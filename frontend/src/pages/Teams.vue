@@ -6,16 +6,19 @@
       </div>
     </header>
     <div class="divide-y px-4">
-      <Links :links="activeCommunities" class="flex items-center py-3 font-medium text-ink-gray-8">
-        <template v-slot="{ link: team }">
-          <div class="flex w-full items-center">
-            <CommunityImage :community="team" class="mr-2 size-6 shrink-0 bg-surface-gray-1" />
-            <span class="text-xl-medium">{{ team.title }}</span>
-            <span v-if="team.is_private" class="lucide-lock ml-2 h-3 w-3" />
-            <span class="lucide-chevron-right ml-auto h-5 w-5 text-ink-gray-5" />
-          </div>
-        </template>
-      </Links>
+      <RouterLink
+        v-for="team in activeCommunities"
+        :key="team.name"
+        :to="{ name: 'Discussions', params: { communityId: team.name } }"
+        class="flex items-center py-3 font-medium text-ink-gray-8"
+      >
+        <div class="flex w-full items-center">
+          <CommunityImage :community="team" class="mr-2 size-6 shrink-0 bg-surface-gray-1" />
+          <span class="text-lg-medium">{{ team.title }}</span>
+          <span v-if="team.is_private" class="lucide-lock ml-2 h-3 w-3" />
+          <span class="lucide-chevron-right ml-auto h-5 w-5 text-ink-gray-5" />
+        </div>
+      </RouterLink>
     </div>
   </div>
 </template>

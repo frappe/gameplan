@@ -4,7 +4,7 @@
       <Button v-if="isBulkDeleteMode" variant="ghost" size="md" @click="cancelBulkDelete">
         Cancel
       </Button>
-      <PageHeaderBackButton v-else :to="{ name: 'More' }" />
+      <PageHeaderBackButton v-else :fallback-route="{ name: 'More' }" />
     </template>
     <template #suffix>
       <div class="flex items-center gap-2">
@@ -86,7 +86,7 @@
           <ListRow
             v-for="draft in drafts.data"
             :key="draft.name"
-            :to="draftRoute(draft)"
+            :route="draftRoute(draft)"
             :value="draft.name"
             class="h-15"
           >
@@ -106,7 +106,9 @@
                   </span>
                   <Tooltip
                     v-if="draft.scheduled_at"
-                    :text="`Scheduled for ${dayjsLocal(draft.scheduled_at).format('ddd D MMM, h:mm A')}`"
+                    :text="`Scheduled for ${dayjsLocal(draft.scheduled_at).format(
+                      'ddd D MMM, h:mm A',
+                    )}`"
                   >
                     <span class="lucide-calendar-clock size-4 shrink-0 text-ink-gray-5" />
                   </Tooltip>
@@ -173,6 +175,7 @@ import {
   toast,
 } from 'frappe-ui'
 import { List, ListRow, ListCell } from 'frappe-ui/list'
+import EmptyStateBox from '@/components/EmptyStateBox.vue'
 import UserAvatarWithHover from '@/components/UserAvatarWithHover.vue'
 import DropdownMoreOptions from '@/components/DropdownMoreOptions.vue'
 import NewDiscussionSpaceDialog from '@/components/NewDiscussionSpaceDialog.vue'

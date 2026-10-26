@@ -425,19 +425,22 @@ const shortcuts = computed((): CommandPaletteGroup[] => [
             newPage.doc.project = spaceId as string
           }
 
-          newPage.submit().then((doc) => {
-            router.push({
-              name: doc.project ? 'SpacePage' : 'Page',
-              params: doc.project
-                ? {
-                    communityId: getSpace(doc.project)?.team,
-                    pageId: doc.name,
-                    slug: doc.slug,
-                    spaceId: doc.project,
-                  }
-                : { pageId: doc.name, slug: doc.slug },
+          newPage
+            .submit()
+            .then((doc) => {
+              router.push({
+                name: doc.project ? 'SpacePage' : 'Page',
+                params: doc.project
+                  ? {
+                      communityId: getSpace(doc.project)?.team,
+                      pageId: doc.name,
+                      slug: doc.slug,
+                      spaceId: doc.project,
+                    }
+                  : { pageId: doc.name, slug: doc.slug },
+              })
             })
-          })
+            .catch(() => {})
         },
       },
     ].filter((item) => (item.condition ? item.condition() : true)),
@@ -602,9 +605,10 @@ async function submitTitleSearch() {
     return
   }
 
-  const response = await (titleSearch.submit({ query: submittedQuery }) as Promise<
-    SearchResult[] | null
-  >)
+  // A newer query supersedes this request, which then rejects; the check below drops it.
+  const response = await (
+    titleSearch.submit({ query: submittedQuery }) as Promise<SearchResult[] | null>
+  ).catch(() => null)
   if (submittedQuery !== normalizedQuery.value) return
 
   serverSearchQuery.value = submittedQuery

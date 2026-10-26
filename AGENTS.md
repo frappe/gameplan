@@ -32,7 +32,7 @@ still carries the old names. Do not rename the doctypes.
 ## Traps
 
 - **The vendored `./frappe-ui/` is not the version that runs.** The submodule is on
-  beta.28; `frontend/package.json` pins beta.61. `yarn dev:frappe-ui` symlinks the
+  beta.28, far behind the release `frontend/package.json` pins. `yarn dev:frappe-ui` symlinks the
   stale checkout. Read `frontend/node_modules/frappe-ui/` for current library
   source; use `./frappe-ui/` only when doing library work.
 - **Cypress wipes the entire site**, not the records a spec created — `resetData`
@@ -54,6 +54,9 @@ still carries the old names. Do not rename the doctypes.
   workaround needs a comment naming the upstream PR that removes it.
 - Verify UI work in a browser before calling it done. Screenshots belong in the PR as
   GitHub attachments, never in the repo.
+- Do not change `__version__` in `gameplan/__init__.py`. Every merge to `develop` is
+  released by `.github/workflows/release.yml`, which commits the next version itself.
+  Only the maintainer sets a version by hand, such as 1.0.0.
 
 ## Environment
 

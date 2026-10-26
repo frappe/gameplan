@@ -11,6 +11,7 @@ import {
 import { gameplanHeadingLevels, suggestionConfig, richQuoteExtensions } from './config'
 import { collapsibleExtensions, slashCommandsWithCollapsible } from './collapsible'
 import { CustomEmojiExtension } from './customEmojiExtension'
+import { PollBlockExtension } from '@/components/PollBlock/poll-block-extension'
 import type { RichQuoteController } from '@/components/RichQuoteExtension/useRichQuotes'
 
 /**
@@ -53,6 +54,7 @@ export function commentExtensions(
     Color,
     Highlight,
     CustomEmojiExtension,
+    PollBlockExtension,
     // Collapsible sections load here too, so a section written in a discussion
     // body still renders and edits when that body is reopened in CommentEditor.
     ...collapsibleExtensions(),

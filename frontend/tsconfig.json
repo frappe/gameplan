@@ -3,8 +3,7 @@
   "compilerOptions": {
     "paths": {
       "@/*": ["./src/*"]
-    },
-    "types": ["unplugin-icons/types/vue"]
+    }
   },
   "include": ["./src/**/*", "vite/client", "./vite.config.ts"],
   "exclude": ["node_modules", "**/*.spec.ts"]

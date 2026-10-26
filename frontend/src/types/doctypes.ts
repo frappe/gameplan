@@ -176,7 +176,7 @@ export interface GPNotification extends DocType {
   email_sent_at?: string
 }
 
-// Last updated: 2025-10-20 20:19:55.468697
+// Last updated: 2026-10-16 20:00:00.000000
 export interface GPDiscussion extends DocType {
   /** Project: Link (GP Project) */
   project: string
@@ -186,8 +186,6 @@ export interface GPDiscussion extends DocType {
   status?: string
   /** Title: Data */
   title: string
-  /** Reactions: Table (GP Reaction) */
-  reactions: GPReaction[]
   /** Team: Link (GP Team) */
   team?: string
   /** Last Post At: Datetime */
@@ -300,15 +298,19 @@ export interface GPProject extends DocType {
   is_private: 0 | 1
 }
 
-// Last updated: 2022-08-11 18:36:55.799372
-export interface GPReaction extends ChildDocType {
+// Last updated: 2026-10-16 20:00:00.000000
+export interface GPReaction extends DocType {
+  /** Reference DocType: Link (DocType) */
+  reference_doctype: string
+  /** Reference Name: Dynamic Link (reference_doctype) */
+  reference_name: string
   /** Emoji: Data */
   emoji: string
   /** User: Data */
-  user?: string
+  user: string
 }
 
-// Last updated: 2025-08-31 23:29:54.697656
+// Last updated: 2026-10-16 20:00:00.000000
 export interface GPComment extends DocType {
   /** Content: Text Editor */
   content: string
@@ -318,8 +320,6 @@ export interface GPComment extends DocType {
   reference_name?: string
   /** Edited At: Datetime */
   edited_at?: string
-  /** Reactions: Table (GP Reaction) */
-  reactions: GPReaction[]
   /** Deleted At: Datetime */
   deleted_at?: string
   /** Tags: Table (GP Tag Link) */
@@ -344,7 +344,7 @@ export interface GPPollVote extends ChildDocType {
   option?: string
 }
 
-// Last updated: 2023-09-08 00:06:11.732481
+// Last updated: 2026-10-17 12:00:00.000000
 export interface GPPoll extends DocType {
   /** Title: Data */
   title: string
@@ -362,8 +362,8 @@ export interface GPPoll extends DocType {
   total_votes?: number
   /** Stopped At: Datetime */
   stopped_at?: string
-  /** Reactions: Table (GP Reaction) */
-  reactions: GPReaction[]
+  /** Comment: Link (GP Comment) */
+  comment?: string
 }
 
 // Last updated: 2022-12-07 21:34:41.411618
@@ -486,4 +486,14 @@ export interface GPProfileBentoCard extends ChildDocType {
   image_rendering?: 'Cover' | 'Natural' | 'Fit'
   /** Image Position: Int */
   image_position?: number
+}
+
+// Last updated: 2026-10-14 12:00:00.000000
+export interface GPBookmark extends DocType {
+  /** User: Link (User) */
+  user: string
+  /** Discussion: Link (GP Discussion) */
+  discussion?: string
+  /** Comment: Link (GP Comment) */
+  comment?: string
 }
