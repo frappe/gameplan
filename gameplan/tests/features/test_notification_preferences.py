@@ -1,10 +1,12 @@
 # Copyright (c) 2026, Frappe Technologies Pvt Ltd and Contributors
 # See license.txt
 
+from unittest.mock import patch
 
 import frappe
 import frappe.client
 from frappe.api.v2 import read_doc
+from frappe.desk.form.load import get_docinfo
 from frappe.desk.reportview import execute as reportview_execute
 from frappe.utils import now_datetime
 
@@ -463,3 +465,21 @@ class TestPreferencesArePrivate(PreferenceTestCase):
 			save_my_notification_preferences({"bio": "Changed"})
 		with self.as_user(self.second_member), self.assertRaises(frappe.ValidationError):
 			save_my_notification_preferences({"last_batch_sent_at": "2026-09-16 10:00:00"})
+
+	def test_another_member_cannot_read_them_in_the_version_history(self):
+		with self.as_user(self.second_member), patch.object(frappe, "in_test", False):
+			save_my_notification_preferences(
+				{
+					"notification_channel": "In-app",
+					"receive_notifications": 0,
+					"active_hours_start": "07:15:00",
+					"active_hours_end": "08:45:00",
+				}
+			)
+		with self.as_user(self.member):
+			frappe.response.docinfo = None
+			get_docinfo(doctype="GP User Profile", name=self.profile)
+			history = frappe.as_json(frappe.response.docinfo.versions)
+		for value in ("last_batch_sent_at", *NOTIFICATION_PREFERENCE_FIELDS, "07:15:00", "08:45:00"):
+			with self.subTest(value=value):
+				self.assertNotIn(value, history)

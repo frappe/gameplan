@@ -440,7 +440,7 @@ def save_my_notification_preferences(preferences: dict | str):
 
 	profile = get_session_user_profile()
 	profile.update(preferences)
-	profile.save(ignore_permissions=True)
+	profile.save(ignore_permissions=True, ignore_version=True)
 
 
 @frappe.whitelist(methods=["GET", "POST"])
