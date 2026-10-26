@@ -7,6 +7,7 @@ import time
 import frappe
 from frappe import _
 from frappe.search.sqlite_search import (
+	MAX_RERANK_CANDIDATES,
 	MAX_SEARCH_RESULTS,
 	MIN_RECENCY_BOOST,
 	RECENCY_DECAY_RATE,
@@ -33,6 +34,7 @@ SORT_COLUMNS = {
 DEFAULT_SORT_BY = "last_post_at desc"
 DATE_SORT_COLUMNS = frozenset({"modified", "creation"})
 SECONDS_PER_DAY = 86400
+CONTENT_PREVIEW_LENGTH = 300
 # Fields the search page can filter on. Any other key is refused.
 SEARCH_FILTER_FIELDS = frozenset({"owner", "project", "team", "doctype", "tags"})
 MARK_START = "\x02"
@@ -434,10 +436,7 @@ class GameplanSearch(SQLiteSearch):
 
 	def _execute_search_query(self, fts_query, title_only, filters):
 		sort_column, sort_direction = getattr(self, "_sort", (None, None))
-		if not sort_column:
-			return super()._execute_search_query(fts_query, title_only, filters)
-
-		select_clause, params = self._build_sorted_select(title_only, bool(fts_query))
+		select_clause, params = self._build_select(title_only, bool(fts_query))
 		filter_conditions, filter_params = self._build_filter_conditions(filters)
 
 		conditions = []
@@ -449,14 +448,20 @@ class GameplanSearch(SQLiteSearch):
 				params.append(fts_query)
 		conditions.extend(filter_conditions)
 		params.extend(filter_params)
-		params.append(MAX_SEARCH_RESULTS)
+
+		if sort_column:
+			order_by = f"CAST({sort_column} AS REAL) {sort_direction.upper()}"
+			params.append(MAX_SEARCH_RESULTS)
+		else:
+			order_by = "bm25_score"
+			params.append(max(MAX_SEARCH_RESULTS, MAX_RERANK_CANDIDATES))
 
 		where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
 		sql = f"""
 			SELECT {select_clause}
 			FROM search_fts
 			{where_clause}
-			ORDER BY CAST({sort_column} AS REAL) {sort_direction.upper()}
+			ORDER BY {order_by}
 			LIMIT ?
 		"""
 		return self.sql(sql, tuple(params), read_only=True)
@@ -470,9 +475,10 @@ class GameplanSearch(SQLiteSearch):
 			results.sort(key=lambda result: self._sort_key(result, sort_column, descending, by_day))
 			for rank, result in enumerate(results, 1):
 				result["modified_rank"] = rank
-				for field in ("title", "content"):
-					if result.get(field):
-						result[field] = self._escape_marked(result[field])
+		for result in results:
+			for field in ("title", "content"):
+				if result.get(field):
+					result[field] = self._escape_marked(result[field])
 		return results
 
 	def _escape_marked(self, text):
@@ -485,7 +491,7 @@ class GameplanSearch(SQLiteSearch):
 			return (sign * (value // SECONDS_PER_DAY), -flt(result.get("score")), sign * value)
 		return (sign * value,)
 
-	def _build_sorted_select(self, title_only, has_match):
+	def _build_select(self, title_only, has_match):
 		select_fields = ["doc_id"]
 		params = []
 
@@ -501,7 +507,8 @@ class GameplanSearch(SQLiteSearch):
 			select_fields.append(f"snippet(search_fts, {content_index}, ?, ?, '...', ?) as content")
 			params.extend((MARK_START, MARK_END, SNIPPET_LENGTH))
 		else:
-			select_fields.append("content")
+			select_fields.append("substr(content, 1, ?) as content")
+			params.append(CONTENT_PREVIEW_LENGTH)
 
 		select_fields.extend(field for field in self.schema["metadata_fields"] if field != "doc_id")
 		select_fields.append("bm25(search_fts) as bm25_score" if has_match else "NULL as bm25_score")

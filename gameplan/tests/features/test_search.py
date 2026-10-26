@@ -713,23 +713,33 @@ class TestSearchIndexLifecycle(IsolatedSearchIndex, GameplanTestCase):
 
 			self.assertEqual(ids, [f"GP Discussion:{strong.name}", f"GP Discussion:{weak.name}"])
 
-	def test_sorted_and_filter_only_results_escape_indexed_markup(self):
+	def test_every_search_mode_escapes_indexed_markup(self):
 		payload = "&lt;img src=x onerror=alert(1)&gt;"
 		discussion = self.create_discussion(f"xssneedle {payload}", f"<p>xssneedle {payload}</p>")
 		drain_search_index_queue()
 		doc_id = f"GP Discussion:{discussion.name}"
 
 		browsed = self.search_as(self.member, "", filters={"project": [self.space.name]})
+		relevance_match = self.search_as(self.member, "xssneedle")
 		sorted_match = self.search_as(self.member, "xssneedle", sort_by="last_post_at desc")
 
-		for results in (browsed, sorted_match):
+		for results in (browsed, relevance_match, sorted_match):
 			result = next(result for result in results if result["id"] == doc_id)
 			for field in ("title", "content"):
 				self.assertNotIn("<img", result[field])
 				self.assertIn(payload, result[field])
-		sorted_result = next(result for result in sorted_match if result["id"] == doc_id)
-		self.assertIn("<mark>xssneedle</mark>", sorted_result["title"])
-		self.assertIn("<mark>xssneedle</mark>", sorted_result["content"])
+				if results is not browsed:
+					self.assertIn("<mark>xssneedle</mark>", result[field])
+
+	def test_filters_alone_return_a_short_preview_of_long_content(self):
+		discussion = self.create_discussion("Long browsable thread", "<p>" + "lengthy words " * 500 + "</p>")
+		drain_search_index_queue()
+
+		results = self.search_as(self.member, "", filters={"project": [self.space.name]})
+
+		result = next(result for result in results if result["id"] == f"GP Discussion:{discussion.name}")
+		self.assertTrue(result["content"].startswith("lengthy words"))
+		self.assertLessEqual(len(result["content"]), 300)
 
 	def test_missing_index_raises_the_gameplan_error_the_ui_handles(self):
 		self.search.drop_index()

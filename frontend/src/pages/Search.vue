@@ -874,7 +874,9 @@ function saveSearchState(searchQuery: string, results: SearchResponse) {
     sortBy: sortBy.value,
     timestamp: Date.now(),
   }
-  localStorage.setItem(getStorageKey(searchQuery), JSON.stringify(state))
+  try {
+    localStorage.setItem(getStorageKey(searchQuery), JSON.stringify(state))
+  } catch {}
 }
 
 function clearStoredSearches() {
