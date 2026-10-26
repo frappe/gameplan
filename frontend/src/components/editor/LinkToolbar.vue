@@ -47,7 +47,6 @@ type LinkTarget = {
   href: string
   text: string
   discussion?: string
-  external: boolean
 }
 type Target = LinkTarget | { kind: 'card'; pos: number }
 
@@ -77,15 +76,13 @@ function findTarget(state: EditorState): Target | null {
   if (!range) return null
   const href = state.doc.nodeAt(pos)?.marks.find((m) => m.type === linkType)?.attrs.href ?? ''
   const discussion = parseDiscussionUrl(href)?.name
-  const external = !discussion && /^https?:\/\//i.test(href)
-  if (!discussion && !external) return null
+  if (!discussion && !/^https?:\/\//i.test(href)) return null
   return {
     kind: 'link',
     ...range,
     href,
     text: state.doc.textBetween(range.from, range.to),
     discussion,
-    external,
   }
 }
 
@@ -137,7 +134,7 @@ function showPreview() {
         title: current.text,
       })
       .run()
-  } else if (current.external) {
+  } else {
     showLinkCard(current)
   }
 }
