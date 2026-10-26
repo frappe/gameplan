@@ -222,7 +222,7 @@ def notify_poll_vote(poll_doc, voter: str):
 	else:
 		message = f"{get_fullname(voter)} voted on your poll"
 		from_user = voter
-	voters = len({vote.user for vote in poll_doc.votes})
+	voters = len({vote.user for vote in poll_doc.votes if vote.user != owner})
 	records.write_or_merge(
 		to_user=owner,
 		type="Poll Vote",

@@ -325,6 +325,15 @@ class TestPollVote(SpaceNotificationTestCase):
 		self.assertEqual(rows[0].message, "2 people voted on your poll")
 		self.assertIsNone(rows[0].from_user)
 
+	def test_the_authors_own_vote_is_not_counted(self):
+		self.vote(self.member)
+		self.vote(self.second_member)
+		self.vote(self.admin, "No")
+
+		rows = self.notifications_for(self.member)
+		self.assertEqual(len(rows), 1)
+		self.assertEqual(rows[0].message, "2 people voted on your poll")
+
 	def test_changing_a_vote_is_not_another_person_voting(self):
 		self.vote(self.second_member, "Yes")
 		self.vote(self.second_member, "No")
