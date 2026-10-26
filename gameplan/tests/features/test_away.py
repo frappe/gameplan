@@ -116,7 +116,7 @@ class TestActiveHours(AwayTestCase):
 
 	def local(self, text):
 		aware = datetime.strptime(text, "%Y-%m-%d %H:%M").replace(tzinfo=self.IST)
-		return away._system(aware)
+		return away.system_time(aware)
 
 	def test_inside_the_hours_on_a_selected_day_is_not_away(self):
 		p = prefs(active_hours_enabled=1, active_hours_start="09:00:00", active_hours_end="18:00:00")

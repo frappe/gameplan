@@ -54,7 +54,7 @@ def scheduled_off_window(prefs, now: datetime | None = None, tz: ZoneInfo | None
 	next_start = min((starts for starts, _ in stretches if starts > now_local), default=None)
 	if not previous_end or not next_start:
 		return None
-	return _system(previous_end), _system(next_start)
+	return system_time(previous_end), system_time(next_start)
 
 
 def get_active_away_period(user: str, now: datetime | None = None) -> str | None:
@@ -133,7 +133,7 @@ def local_time(system_naive: datetime, tz: ZoneInfo) -> datetime:
 	return get_datetime(system_naive).replace(tzinfo=ZoneInfo(get_system_timezone())).astimezone(tz)
 
 
-def _system(aware: datetime) -> datetime:
+def system_time(aware: datetime) -> datetime:
 	return aware.astimezone(ZoneInfo(get_system_timezone())).replace(tzinfo=None)
 
 

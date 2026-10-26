@@ -15,12 +15,12 @@ from gameplan.email_digest import (
 	get_user_avatar_map,
 )
 from gameplan.notifications.away import (
-	_system,
 	is_away,
 	local_time,
 	mark_recap_sent,
 	pending_recap_periods,
 	scheduled_off_window,
+	system_time,
 	user_timezone,
 )
 from gameplan.notifications.preferences import profile_prefs
@@ -68,7 +68,7 @@ def should_send(user: str, now) -> bool:
 	tz = user_timezone(user)
 	kind = is_away(prefs, now, tz)
 	if kind is None:
-		boundary = _system(local_time(now, tz).replace(minute=0, second=0, microsecond=0))
+		boundary = system_time(local_time(now, tz).replace(minute=0, second=0, microsecond=0))
 		if is_away(prefs, boundary, tz):
 			return False
 	elif kind == "Active hours":
