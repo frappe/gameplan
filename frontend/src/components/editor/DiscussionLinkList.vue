@@ -37,8 +37,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { Button } from 'frappe-ui'
-import { getSpace } from '@/data/spaces'
-import { getCommunity } from '@/data/communities'
+import { spacePath } from '@/utils/discussionLinks'
 
 export interface DiscussionLinkItem {
   name: string
@@ -60,12 +59,6 @@ watch(
     selectedIndex.value = 0
   },
 )
-
-function spacePath(project: string) {
-  const space = getSpace(project)
-  const community = space?.team ? getCommunity(space.team) : null
-  return [community?.title, space?.title].filter(Boolean).join(' / ')
-}
 
 function onKeyDown({ event }: { event: KeyboardEvent }) {
   const count = props.items.length

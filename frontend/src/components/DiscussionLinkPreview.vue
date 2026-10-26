@@ -38,10 +38,8 @@ import { onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { PopoverAnchor, PopoverArrow, PopoverContent, PopoverPortal, PopoverRoot } from 'reka-ui'
 import { dayjsLocal } from 'frappe-ui'
-import { getCommunity } from '@/data/communities'
 import { loadDiscussionPreview, type DiscussionPreview } from '@/data/discussionPreviews'
-import { getSpace } from '@/data/spaces'
-import { parseDiscussionUrl } from '@/utils/discussionLinks'
+import { parseDiscussionUrl, spacePath } from '@/utils/discussionLinks'
 const HOVER_DELAY = 300
 const LEAVE_DELAY = 300
 
@@ -59,12 +57,6 @@ function discussionLink(target: EventTarget | null) {
   if (!link) return null
   const parsed = parseDiscussionUrl(link.href)
   return parsed ? { link, ...parsed } : null
-}
-
-function spacePath(project: string) {
-  const space = getSpace(project)
-  const community = space?.team ? getCommunity(space.team) : null
-  return [community?.title, space?.title].filter(Boolean).join(' / ')
 }
 
 function onPointerOver(event: PointerEvent) {

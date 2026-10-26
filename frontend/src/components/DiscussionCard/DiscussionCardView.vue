@@ -32,9 +32,8 @@
 import { ref, watch } from 'vue'
 import { NodeViewWrapper, nodeViewProps } from '@tiptap/vue-3'
 import { dayjsLocal } from 'frappe-ui'
-import { getCommunity } from '@/data/communities'
 import { loadDiscussionPreview, type DiscussionPreview } from '@/data/discussionPreviews'
-import { getSpace } from '@/data/spaces'
+import { spacePath } from '@/utils/discussionLinks'
 
 const props = defineProps(nodeViewProps)
 
@@ -53,12 +52,6 @@ watch(
   },
   { immediate: true },
 )
-
-function spacePath(project: string) {
-  const space = getSpace(project)
-  const community = space?.team ? getCommunity(space.team) : null
-  return [community?.title, space?.title].filter(Boolean).join(' / ')
-}
 
 function onClick(event: MouseEvent) {
   if (props.editor.isEditable) event.preventDefault()
