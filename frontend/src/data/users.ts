@@ -86,7 +86,7 @@ function mergeUserInfo(user: UserInfo) {
     loadPinnedSpaces(user.pinned_spaces, user.user_profile)
     loadQuickReactionSlots(user.quick_reaction_emojis, user.user_profile)
     setSidebarBadgeStyle(user.sidebar_badge_style)
-    loadNotificationPreferences(user, user.user_profile)
+    loadNotificationPreferences(user)
   }
 }
 

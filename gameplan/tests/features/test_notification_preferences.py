@@ -3,7 +3,17 @@
 
 
 import frappe
+import frappe.client
+from frappe.api.v2 import read_doc
+from frappe.desk.reportview import execute as reportview_execute
 
+from gameplan.api import get_user_info
+from gameplan.extends.client import get_list
+from gameplan.gameplan.doctype.gp_user_profile.gp_user_profile import (
+	NOTIFICATION_PREFERENCE_FIELDS,
+	save_my_notification_preferences,
+)
+from gameplan.gameplan.doctype.gp_user_profile.gp_user_profile import get_list as get_profile_list
 from gameplan.notifications.resolver import effective_discussion_state
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.features.test_notifications import mention_html, quote_html
@@ -383,3 +393,67 @@ class TestOwnContentToggles(PreferenceTestCase):
 		self.react_as(self.admin, self.discussion)
 
 		self.assertEqual(frappe.db.get_value("GP Notification", row.name, "read"), 1)
+
+
+class TestPreferencesArePrivate(PreferenceTestCase):
+	def setUp(self):
+		super().setUp()
+		self.profile = frappe.db.get_value("GP User Profile", {"user": self.second_member.name}, "name")
+		self.set_prefs(
+			self.second_member,
+			notification_channel="Email",
+			participation_level="Mentions only",
+			receive_notifications=1,
+			active_hours_enabled=1,
+			active_hours_start="09:00:00",
+			active_hours_end="18:00:00",
+			active_hours_days=frappe.as_json(["Mon"]),
+		)
+
+	def assert_hidden(self, row):
+		for field in NOTIFICATION_PREFERENCE_FIELDS:
+			with self.subTest(field=field):
+				self.assertFalse(row.get(field))
+
+	def test_another_member_cannot_read_them_through_the_document_api(self):
+		with self.as_user(self.member):
+			self.assert_hidden(read_doc("GP User Profile", self.profile))
+			self.assert_hidden(frappe.client.get("GP User Profile", self.profile))
+
+	def test_another_member_cannot_list_them(self):
+		fields = ["name", *NOTIFICATION_PREFERENCE_FIELDS]
+		filters = {"name": self.profile}
+		with self.as_user(self.member):
+			for rows in (
+				get_list(doctype="GP User Profile", fields=fields, filters=filters),
+				get_profile_list(fields=fields, filters=filters),
+				frappe.client.get_list("GP User Profile", fields=fields, filters=filters),
+				reportview_execute("GP User Profile", fields=fields, filters=filters),
+			):
+				self.assertEqual(len(rows), 1)
+				self.assert_hidden(rows[0])
+
+	def test_another_member_cannot_filter_by_them(self):
+		with self.as_user(self.member), self.assertRaises(frappe.PermissionError):
+			get_list(doctype="GP User Profile", filters={"notification_channel": "Email"})
+
+	def test_another_member_does_not_get_them_in_user_info(self):
+		with self.as_user(self.member):
+			[info] = get_user_info(self.second_member.name)
+		self.assert_hidden(info)
+
+	def test_the_owner_can_save_and_read_them(self):
+		with self.as_user(self.second_member):
+			save_my_notification_preferences(
+				{"notification_channel": "In-app", "participation_level": "Watch", "receive_notifications": 0}
+			)
+			[info] = get_user_info(self.second_member.name)
+
+		self.assertEqual(
+			(info.notification_channel, info.participation_level, info.receive_notifications),
+			("In-app", "Watch", 0),
+		)
+
+	def test_the_endpoint_saves_nothing_else(self):
+		with self.as_user(self.second_member), self.assertRaises(frappe.ValidationError):
+			save_my_notification_preferences({"bio": "Changed"})

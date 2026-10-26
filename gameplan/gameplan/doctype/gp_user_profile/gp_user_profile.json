@@ -184,7 +184,8 @@
    "fieldname": "notification_channel",
    "fieldtype": "Select",
    "label": "Notification Channel",
-   "options": "In-app\nEmail"
+   "options": "In-app\nEmail",
+   "permlevel": 1
   },
   {
    "default": "Watch",
@@ -192,43 +193,49 @@
    "fieldname": "participation_level",
    "fieldtype": "Select",
    "label": "Participation Level",
-   "options": "Watch\nMentions only"
+   "options": "Watch\nMentions only",
+   "permlevel": 1
   },
   {
    "default": "1",
    "description": "Off holds email; the inbox and unread counts keep working.",
    "fieldname": "receive_notifications",
    "fieldtype": "Check",
-   "label": "Receive Notifications"
+   "label": "Receive Notifications",
+   "permlevel": 1
   },
   {
    "default": "0",
    "description": "Only send email inside the hours below, on the selected days.",
    "fieldname": "active_hours_enabled",
    "fieldtype": "Check",
-   "label": "Active Hours Enabled"
+   "label": "Active Hours Enabled",
+   "permlevel": 1
   },
   {
    "fieldname": "active_hours_start",
    "fieldtype": "Time",
-   "label": "Active Hours Start"
+   "label": "Active Hours Start",
+   "permlevel": 1
   },
   {
    "fieldname": "active_hours_end",
    "fieldtype": "Time",
-   "label": "Active Hours End"
+   "label": "Active Hours End",
+   "permlevel": 1
   },
   {
    "default": "[\"Mon\", \"Tue\", \"Wed\", \"Thu\", \"Fri\", \"Sat\", \"Sun\"]",
    "description": "JSON list of Mon…Sun.",
    "fieldname": "active_hours_days",
    "fieldtype": "JSON",
-   "label": "Active Hours Days"
+   "label": "Active Hours Days",
+   "permlevel": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-27 10:05:00.000000",
+ "modified": "2026-10-27 10:10:00.000000",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "GP User Profile",

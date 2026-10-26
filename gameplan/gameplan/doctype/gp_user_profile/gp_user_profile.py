@@ -15,7 +15,7 @@ import gameplan
 from gameplan.extends.client import check_permissions
 from gameplan.mixins.attachments import HasAttachments
 from gameplan.notifications import away
-from gameplan.notifications.preferences import DAYS
+from gameplan.notifications.preferences import DAYS, PREF_FIELDS
 from gameplan.realtime import notify_users_changed
 from gameplan.utils.document import with_stored_document
 
@@ -31,6 +31,7 @@ PROFILE_BENTO_DEFAULT_IMAGE_POSITION = 50
 PROFILE_BENTO_HTML_TAG_PATTERN = re.compile(r"<[^>]*>")
 PROFILE_BENTO_HTML_MEDIA_PATTERN = re.compile(r"<\s*(img|video|audio|iframe|embed)\b", re.IGNORECASE)
 QUICK_REACTION_MAX_SLOTS = 20
+NOTIFICATION_PREFERENCE_FIELDS = ("notification_channel", *PREF_FIELDS)
 
 # Profile fields a bento card may bind to. The order is the default layout order:
 # row 1 is the cover (4 columns), row 2 is avatar + name + bio (1 + 1 + 2), and
@@ -420,6 +421,26 @@ def reset_my_bento_cards():
 	profile.layout_customized = 0
 	profile.save(ignore_permissions=True)
 	return get_profile_bento_response(profile)
+
+
+@frappe.whitelist(methods=["POST"])
+def save_my_notification_preferences(preferences: dict | str):
+	"""Save the session user's notification preferences.
+
+	These fields sit at permlevel 1, which no role has, so nobody reads or writes them
+	through the document or list APIs. The user reads their own from `get_user_info`
+	and writes them here.
+	"""
+	preferences = frappe.parse_json(preferences)
+	if not isinstance(preferences, dict):
+		frappe.throw("Notification preferences must be an object")
+	unknown = set(preferences) - set(NOTIFICATION_PREFERENCE_FIELDS)
+	if unknown:
+		frappe.throw(f"Not a notification preference: {', '.join(sorted(unknown))}")
+
+	profile = get_session_user_profile()
+	profile.update(preferences)
+	profile.save(ignore_permissions=True)
 
 
 @frappe.whitelist(methods=["GET", "POST"])

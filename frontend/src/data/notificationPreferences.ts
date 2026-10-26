@@ -1,5 +1,5 @@
 import { computed, ref, type Ref } from 'vue'
-import { toast, useDoctype } from 'frappe-ui'
+import { call, toast } from 'frappe-ui'
 import type { GPUserProfile } from '@/types/doctypes'
 
 export type NotificationChannel = 'In-app' | 'Email'
@@ -21,9 +21,9 @@ const channel = ref<NotificationChannel>('In-app')
 const activeHoursStart = ref(allDayStart)
 const activeHoursEnd = ref(allDayEnd)
 const activeHoursDays = ref<Weekday[]>([...allWeekdays])
-const profileName = ref('')
 
-const userProfiles = useDoctype<GPUserProfile>('GP User Profile')
+const savePreferencesMethod =
+  'gameplan.gameplan.doctype.gp_user_profile.gp_user_profile.save_my_notification_preferences'
 const saveToastId = 'notification-preference-save'
 
 export const currentParticipationLevel = computed(() => participation.value)
@@ -33,19 +33,15 @@ export const currentActiveHoursStart = computed(() => activeHoursStart.value)
 export const currentActiveHoursEnd = computed(() => activeHoursEnd.value)
 export const currentActiveHoursDays = computed(() => activeHoursDays.value)
 
-export function loadNotificationPreferences(
-  user: {
-    participation_level?: unknown
-    notification_channel?: unknown
-    receive_notifications?: unknown
-    active_hours_enabled?: unknown
-    active_hours_start?: unknown
-    active_hours_end?: unknown
-    active_hours_days?: unknown
-  },
-  currentProfileName = '',
-) {
-  profileName.value = currentProfileName
+export function loadNotificationPreferences(user: {
+  participation_level?: unknown
+  notification_channel?: unknown
+  receive_notifications?: unknown
+  active_hours_enabled?: unknown
+  active_hours_start?: unknown
+  active_hours_end?: unknown
+  active_hours_days?: unknown
+}) {
   participation.value = normalizeParticipation(user.participation_level)
   receiveNotifications.value = toBoolean(user.receive_notifications, true)
   channel.value = normalizeChannel(user.notification_channel)
@@ -124,9 +120,8 @@ export function setActiveHours(patch: { start?: string; end?: string; days?: Wee
 }
 
 async function persist(patch: Partial<GPUserProfile>, rollback: () => void) {
-  if (!profileName.value) return
   try {
-    await userProfiles.setValue.submit({ name: profileName.value, ...patch })
+    await call(savePreferencesMethod, { preferences: patch })
     toast.success('Notification preference saved', { id: saveToastId })
   } catch {
     rollback()
