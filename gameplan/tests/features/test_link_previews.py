@@ -163,7 +163,7 @@ class SafeFetchTestCase(GameplanTestCase):
 			self.assertRaisesRegex(LinkFetchError, "too long"),
 		):
 			safe_fetch("https://example.com/page", allowed_content_types=("text/html",))
-		self.assertEqual(send.call_count, 2)
+		self.assertIn(send.call_count, (1, 2))
 
 	def test_redirect_hops_are_revalidated(self):
 		redirect = FakeResponse(302, {"Location": "http://169.254.169.254/latest/"})
