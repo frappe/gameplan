@@ -240,7 +240,7 @@ class TestHourlyBatch(DeliveryTestCase):
 		with self.as_user(self.member):
 			create_comment(self.discussion, content="<p>something new</p>")
 
-		self.run_hourly().assert_called_once()
+		self.run_hourly(hours=1).assert_called_once()
 
 	def test_a_small_batch_is_still_listed_in_full(self):
 		self.mention_second_member()
@@ -373,6 +373,14 @@ class TestSendTimes(DeliveryTestCase):
 		self.mention_again()
 		self.run_tick(self.at("2026-09-16 10:11")).assert_not_called()
 		self.run_tick(self.at("2026-09-16 10:30")).assert_not_called()
+
+	def test_a_row_after_an_empty_hour_waits_for_the_next_hour(self):
+		for row in self.rows_for(self.second_member):
+			frappe.db.set_value("GP Notification", row.name, "read", 1)
+		self.run_tick(self.at("2026-09-16 10:00")).assert_not_called()
+		self.mention_again()
+		self.run_tick(self.at("2026-09-16 10:20")).assert_not_called()
+		self.run_tick(self.at("2026-09-16 11:00")).assert_called_once()
 
 	def test_a_sent_mail_is_stamped_on_the_profile(self):
 		self.assertIsNone(self.last_batch_sent_at())

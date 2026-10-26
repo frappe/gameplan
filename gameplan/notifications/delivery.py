@@ -56,7 +56,8 @@ def send_batches(now=None):
 	for user in users:
 		if not frappe.db.get_value("User", user, "enabled"):
 			continue
-		if should_send(user, now) and send_batch(user):
+		if should_send(user, now):
+			send_batch(user)
 			frappe.db.set_value(
 				"GP User Profile", {"user": user}, "last_batch_sent_at", now, update_modified=False
 			)
