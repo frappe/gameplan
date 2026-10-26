@@ -1,6 +1,6 @@
 import { Node } from '@tiptap/core'
 import { VueNodeViewRenderer } from '@tiptap/vue-3'
-import { cardLinkAttributes, insertCard, renderCard } from '@/components/editor/insertCard'
+import { cardLinkAttributes, insertCard, renderCard } from '@/components/editor/cardNode'
 import DiscussionCardView from './DiscussionCardView.vue'
 
 export interface DiscussionCardAttrs {
