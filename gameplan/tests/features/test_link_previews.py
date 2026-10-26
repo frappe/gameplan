@@ -64,8 +64,8 @@ def fake_network(response):
 	)
 
 
-def fetched(body, content_type="text/html", url="https://example.com/post"):
-	return SimpleNamespace(url=url, content_type=content_type, body=body)
+def fetched(body, url="https://example.com/post"):
+	return SimpleNamespace(url=url, body=body)
 
 
 class SafeFetchTestCase(GameplanTestCase):
@@ -172,7 +172,6 @@ class SafeFetchTestCase(GameplanTestCase):
 		resolve, send = fake_network(response)
 		with resolve, send:
 			result = safe_fetch("https://example.com/page", allowed_content_types=("text/html",))
-		self.assertEqual(result.content_type, "text/html")
 		self.assertEqual(result.body, b"<html>hi</html>")
 
 
@@ -248,7 +247,7 @@ class FillPreviewTestCase(GameplanTestCase):
 		page = fetched(b'<html><head><meta property="og:title" content="Hello"/></head></html>')
 		preview = self.new_preview()
 		with patch("gameplan.link_previews.safe_fetch", return_value=page):
-			self.assertTrue(fill_preview(preview))
+			fill_preview(preview)
 		saved = frappe.get_doc("GP Link Preview", {"url": "https://example.com/post"})
 		self.assertEqual(saved.status, "Fetched")
 		self.assertEqual(saved.title, "Hello")
@@ -260,16 +259,16 @@ class FillPreviewTestCase(GameplanTestCase):
 			"thumbnail_url": "https://i.ytimg.com/a.jpg",
 			"provider_name": "YouTube",
 		}
-		response = fetched(json.dumps(payload).encode(), "application/json")
+		response = fetched(json.dumps(payload).encode())
 		preview = self.new_preview("https://www.youtube.com/watch?v=abc123")
 		with patch("gameplan.link_previews.safe_fetch", return_value=response) as fetch:
 			fill_preview(preview)
 		self.assertTrue(fetch.call_args[0][0].startswith("https://www.youtube.com/oembed?"))
 		self.assertEqual((preview.title, preview.image), ("A video", "https://i.ytimg.com/a.jpg"))
 
-	def test_blocked_url_is_never_retried(self):
+	def test_blocked_url_is_marked_blocked(self):
 		preview = self.new_preview("http://127.0.0.1/admin")
-		self.assertFalse(fill_preview(preview))
+		fill_preview(preview)
 		self.assertEqual(preview.status, "Blocked")
 
 	def test_failures_retry_until_the_cap(self):
@@ -316,12 +315,10 @@ class GetOrFetchPreviewTestCase(GameplanTestCase):
 		self.assertEqual(
 			result,
 			{
-				"url": "https://example.com/post",
 				"title": "Cached",
 				"description": None,
 				"image": None,
 				"site_name": "example.com",
-				"provider": "Other",
 			},
 		)
 
@@ -339,7 +336,7 @@ class GetOrFetchPreviewTestCase(GameplanTestCase):
 		with patch("gameplan.link_previews.safe_fetch") as fetch:
 			result = get_or_fetch_preview("https://Example.com/post?utm_source=x&fbclid=y")
 		fetch.assert_not_called()
-		self.assertEqual(result["url"], "https://example.com/post")
+		self.assertEqual(result["title"], "Cached")
 		self.assertEqual(frappe.db.count("GP Link Preview", {"url": ["like", "%example.com/post%"]}), 1)
 
 	def test_blocked_and_failed_rows_return_none_without_fetching(self):
@@ -452,7 +449,6 @@ class LinkPreviewEndpointTestCase(GameplanTestCase):
 		with self.as_user(self.member), patch("gameplan.link_previews.safe_fetch", return_value=OG_PAGE):
 			result = get_link_preview(url="https://example.com/post")
 		self.assertEqual(result["title"], "Hello")
-		self.assertEqual(result["url"], "https://example.com/post")
 
 	def test_rate_limit_is_per_user(self):
 		stored_preview()

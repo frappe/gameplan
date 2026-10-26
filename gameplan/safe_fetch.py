@@ -32,7 +32,6 @@ class BlockedURLError(LinkFetchError):
 @dataclass
 class FetchedResponse:
 	url: str
-	content_type: str
 	body: bytes
 
 
@@ -74,9 +73,7 @@ def safe_fetch(
 			if not content_type.startswith(allowed_content_types):
 				raise LinkFetchError(f"Content type {content_type or 'unknown'} is not allowed")
 
-			return FetchedResponse(
-				url=url, content_type=content_type, body=_read_capped(response, max_bytes, deadline)
-			)
+			return FetchedResponse(url=url, body=_read_capped(response, max_bytes, deadline))
 		finally:
 			response.close()
 
@@ -134,7 +131,7 @@ class _PinnedAdapter(HTTPAdapter):
 		super().init_poolmanager(connections, maxsize, block, **pool_kwargs)
 
 
-def _send_once(url: str, ip: str, accept: str = "*/*") -> requests.Response:
+def _send_once(url: str, ip: str, accept: str) -> requests.Response:
 	parts = urlsplit(url)
 
 	netloc = f"[{ip}]" if ":" in ip else ip

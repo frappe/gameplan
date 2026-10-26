@@ -1,12 +1,10 @@
 import { call } from 'frappe-ui'
 
 export interface LinkPreview {
-  url: string
   title: string
   description: string
   image: string
   site_name: string
-  provider: string
 }
 
 const cache = new Map<string, Promise<LinkPreview | null>>()

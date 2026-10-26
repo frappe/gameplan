@@ -148,17 +148,14 @@ def _serialize(preview) -> dict | None:
 	if preview.status != "Fetched" or not preview.title:
 		return None
 	return {
-		"url": preview.url,
 		"title": preview.title,
 		"description": preview.description,
 		"image": preview.image,
 		"site_name": preview.site_name,
-		"provider": preview.provider,
 	}
 
 
-def fill_preview(preview) -> bool:
-	fetched = False
+def fill_preview(preview):
 	try:
 		data = fetch_preview_data(preview.url, preview.provider)
 	except BlockedURLError as error:
@@ -171,11 +168,9 @@ def fill_preview(preview) -> bool:
 		_record_failure(preview, "Unexpected error while fetching")
 	else:
 		_apply(preview, data)
-		fetched = True
 
 	preview.fetched_on = frappe.utils.now_datetime()
 	preview.save(ignore_permissions=True)
-	return fetched
 
 
 def _record_failure(preview, error: str):
