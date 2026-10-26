@@ -3,7 +3,7 @@ import { toast, useDoctype } from 'frappe-ui'
 import type { GPUserProfile } from '@/types/doctypes'
 
 export type NotificationLevel = 'Mentions only' | 'Mute'
-export type NotificationChannel = 'In-app' | 'Push' | 'Email'
+export type NotificationChannel = 'In-app' | 'Email'
 
 export type DiscussionNotificationState = 'Mute' | 'Mentions only' | 'Watch'
 export type DiscussionNotificationChoice = DiscussionNotificationState | 'Default'
@@ -143,7 +143,7 @@ function normalizeParticipation(value: unknown): ParticipationLevel {
 }
 
 function normalizeChannel(value: unknown): NotificationChannel {
-  return value === 'Email' || value === 'Push' ? value : 'In-app'
+  return value === 'Email' ? value : 'In-app'
 }
 
 function toBoolean(value: unknown, fallback: boolean) {

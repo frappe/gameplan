@@ -181,11 +181,11 @@
   },
   {
    "default": "In-app",
-   "description": "Where notifications reach this user besides the inbox. Email sends one batch an hour; Push needs the relay (later).",
+   "description": "Where notifications reach this user besides the inbox. Email sends one batch an hour.",
    "fieldname": "notification_channel",
    "fieldtype": "Select",
    "label": "Notification Channel",
-   "options": "In-app\nPush\nEmail"
+   "options": "In-app\nEmail"
   },
   {
    "default": "Mentions only",
@@ -205,14 +205,14 @@
   },
   {
    "default": "1",
-   "description": "Off holds push and email; the inbox and unread counts keep working.",
+   "description": "Off holds email; the inbox and unread counts keep working.",
    "fieldname": "receive_notifications",
    "fieldtype": "Check",
    "label": "Receive Notifications"
   },
   {
    "default": "0",
-   "description": "Only send push and email inside the hours below, on the selected days.",
+   "description": "Only send email inside the hours below, on the selected days.",
    "fieldname": "active_hours_enabled",
    "fieldtype": "Check",
    "label": "Active Hours Enabled"
@@ -237,7 +237,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-17 12:10:00.000000",
+ "modified": "2026-10-27 10:00:00.000000",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "GP User Profile",

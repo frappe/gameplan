@@ -99,7 +99,7 @@ export interface GPUserProfile extends DocType {
   /** Participation Level: Select - Written as the bell on every discussion this user starts or comments in, unless they set one themselves first. Watch also lets reactions and poll votes on their content notify them. */
   participation_level?: 'Watch' | 'Mentions only'
   /** Notification Channel: Select */
-  notification_channel?: 'In-app' | 'Push' | 'Email'
+  notification_channel?: 'In-app' | 'Email'
   /** Receive Notifications: Check */
   receive_notifications?: 0 | 1
   /** Active Hours Enabled: Check */
