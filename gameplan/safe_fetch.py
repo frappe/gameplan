@@ -3,12 +3,15 @@
 
 import ipaddress
 import socket
-import time
+import threading
+from contextvars import ContextVar
 from dataclasses import dataclass
 from urllib.parse import urljoin, urlsplit
 
 import requests
 from requests.adapters import HTTPAdapter
+from urllib3.connection import HTTPConnection, HTTPSConnection
+from urllib3.connectionpool import HTTPConnectionPool, HTTPSConnectionPool
 
 USER_AGENT = "Mozilla/5.0 (compatible; GameplanBot/1.0; link previews)"
 MAX_BODY_BYTES = 2 * 1024 * 1024
@@ -41,9 +44,29 @@ def safe_fetch(
 	allowed_content_types: tuple[str, ...],
 	max_bytes: int = MAX_BODY_BYTES,
 ) -> FetchedResponse:
-	deadline = time.monotonic() + TOTAL_TIMEOUT
+	watchdog = _Watchdog(TOTAL_TIMEOUT)
+	token = _active_watchdog.set(watchdog)
+	watchdog.start()
+	try:
+		result = _follow(url, allowed_content_types, max_bytes, watchdog)
+	except Exception as error:
+		if watchdog.expired:
+			raise LinkFetchError("Fetch took too long") from error
+		raise
+	finally:
+		watchdog.stop()
+		_active_watchdog.reset(token)
+	if watchdog.expired:
+		raise LinkFetchError("Fetch took too long")
+	return result
+
+
+def _follow(
+	url: str, allowed_content_types: tuple[str, ...], max_bytes: int, watchdog: "_Watchdog"
+) -> FetchedResponse:
 	for _hop in range(MAX_REDIRECTS + 1):
-		_check_deadline(deadline)
+		if watchdog.expired:
+			raise LinkFetchError("Fetch took too long")
 		parts = urlsplit(url)
 		scheme = parts.scheme.lower()
 		if scheme not in ("http", "https"):
@@ -73,7 +96,7 @@ def safe_fetch(
 			if not content_type.startswith(allowed_content_types):
 				raise LinkFetchError(f"Content type {content_type or 'unknown'} is not allowed")
 
-			return FetchedResponse(url=url, body=_read_capped(response, max_bytes, deadline))
+			return FetchedResponse(url=url, body=_read_capped(response, max_bytes))
 		finally:
 			response.close()
 
@@ -114,9 +137,71 @@ def is_public_address(address: ipaddress.IPv4Address | ipaddress.IPv6Address) ->
 	return address.is_global
 
 
-def _check_deadline(deadline: float):
-	if time.monotonic() > deadline:
-		raise LinkFetchError("Fetch took too long")
+class _Watchdog:
+	def __init__(self, seconds: float):
+		self.expired = False
+		self._lock = threading.Lock()
+		self._sockets: list[socket.socket] = []
+		self._timer = threading.Timer(seconds, self._expire)
+		self._timer.daemon = True
+
+	def start(self):
+		self._timer.start()
+
+	def watch(self, sock: socket.socket):
+		with self._lock:
+			watched = sock.dup()
+			self._sockets.append(watched)
+			if self.expired:
+				_shutdown(watched)
+
+	def _expire(self):
+		with self._lock:
+			self.expired = True
+			for sock in self._sockets:
+				_shutdown(sock)
+
+	def stop(self):
+		self._timer.cancel()
+		with self._lock:
+			for sock in self._sockets:
+				sock.close()
+			self._sockets.clear()
+
+
+def _shutdown(sock: socket.socket):
+	try:
+		sock.shutdown(socket.SHUT_RDWR)
+	except OSError:
+		pass
+
+
+_active_watchdog: ContextVar[_Watchdog | None] = ContextVar("safe_fetch_watchdog", default=None)
+
+
+class _WatchedConnection:
+	def _new_conn(self):
+		sock = super()._new_conn()
+		watchdog = _active_watchdog.get()
+		if watchdog:
+			watchdog.watch(sock)
+		return sock
+
+
+class _WatchedHTTPConnection(_WatchedConnection, HTTPConnection):
+	pass
+
+
+class _WatchedHTTPSConnection(_WatchedConnection, HTTPSConnection):
+	pass
+
+
+class _WatchedHTTPPool(HTTPConnectionPool):
+	ConnectionCls = _WatchedHTTPConnection
+
+
+class _WatchedHTTPSPool(HTTPSConnectionPool):
+	ConnectionCls = _WatchedHTTPSConnection
 
 
 class _PinnedAdapter(HTTPAdapter):
@@ -129,6 +214,7 @@ class _PinnedAdapter(HTTPAdapter):
 			pool_kwargs["server_hostname"] = self._tls_hostname
 			pool_kwargs["assert_hostname"] = self._tls_hostname
 		super().init_poolmanager(connections, maxsize, block, **pool_kwargs)
+		self.poolmanager.pool_classes_by_scheme = {"http": _WatchedHTTPPool, "https": _WatchedHTTPSPool}
 
 
 def _send_once(url: str, ip: str, accept: str) -> requests.Response:
@@ -159,7 +245,7 @@ def _send_once(url: str, ip: str, accept: str) -> requests.Response:
 		raise LinkFetchError(str(error)[:200]) from error
 
 
-def _read_capped(response: requests.Response, max_bytes: int, deadline: float) -> bytes:
+def _read_capped(response: requests.Response, max_bytes: int) -> bytes:
 	declared = response.headers.get("Content-Length")
 	if declared and declared.isdigit() and int(declared) > max_bytes:
 		raise LinkFetchError("Response too large")
@@ -167,7 +253,6 @@ def _read_capped(response: requests.Response, max_bytes: int, deadline: float) -
 	chunks = []
 	read = 0
 	for chunk in response.iter_content(chunk_size=READ_CHUNK_BYTES):
-		_check_deadline(deadline)
 		read += len(chunk)
 		if read > max_bytes:
 			raise LinkFetchError("Response too large")

@@ -3,6 +3,9 @@
 
 import ipaddress
 import json
+import socket
+import threading
+import time
 from types import SimpleNamespace
 from unittest.mock import call, patch
 
@@ -103,37 +106,60 @@ class SafeFetchTestCase(GameplanTestCase):
 				safe_fetch_module.is_public_address(ipaddress.ip_address(address)), public, msg=address
 			)
 
-	def test_slow_body_hits_the_total_time_cap(self):
-		clock = SimpleNamespace(now=0)
-		response = FakeResponse(200, HTML_HEADERS, b"x" * (safe_fetch_module.READ_CHUNK_BYTES * 4))
-		chunks = response.iter_content
+	def drip_server(self, head, drip):
+		listener = socket.create_server(("127.0.0.1", 0))
+		stop = threading.Event()
 
-		def slow_chunks(chunk_size):
-			for chunk in chunks(chunk_size):
-				clock.now += 10
-				yield chunk
+		def serve():
+			conn, _ = listener.accept()
+			with conn:
+				conn.recv(65536)
+				conn.sendall(head)
+				while not stop.is_set():
+					try:
+						conn.sendall(drip)
+					except OSError:
+						return
+					stop.wait(0.2)
 
-		response.iter_content = slow_chunks
-		resolve, send = fake_network(response)
+		thread = threading.Thread(target=serve, daemon=True)
+		thread.start()
+
+		def cleanup():
+			stop.set()
+			listener.close()
+			thread.join(5)
+
+		self.addCleanup(cleanup)
+		return listener.getsockname()[1]
+
+	def assert_fetch_is_cut_off(self, port):
+		started = time.monotonic()
 		with (
-			resolve,
-			send,
-			patch.object(safe_fetch_module, "time", SimpleNamespace(monotonic=lambda: clock.now)),
+			patch.object(safe_fetch_module, "resolve_public_ip", return_value="127.0.0.1"),
+			patch.object(safe_fetch_module, "TOTAL_TIMEOUT", 1),
 			self.assertRaisesRegex(LinkFetchError, "too long"),
 		):
-			safe_fetch("https://example.com/slow", allowed_content_types=("text/html",))
+			safe_fetch(f"http://localhost:{port}/slow", allowed_content_types=("text/html",))
+		self.assertLess(time.monotonic() - started, 3)
+
+	def test_dripped_body_hits_the_total_time_cap(self):
+		self.assert_fetch_is_cut_off(
+			self.drip_server(b"HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n", b"x")
+		)
+
+	def test_dripped_headers_hit_the_total_time_cap(self):
+		self.assert_fetch_is_cut_off(self.drip_server(b"HTTP/1.1 200 OK\r\n", b"X"))
 
 	def test_slow_redirect_chain_hits_the_total_time_cap(self):
-		clock = SimpleNamespace(now=0)
-
 		def slow_redirect(*args):
-			clock.now += 15
+			time.sleep(0.2)
 			return FakeResponse(302, {"Location": "https://example.com/next"})
 
 		with (
 			patch.object(safe_fetch_module, "resolve_public_ip", side_effect=_stubbed_resolve),
 			patch.object(safe_fetch_module, "_send_once", side_effect=slow_redirect) as send,
-			patch.object(safe_fetch_module, "time", SimpleNamespace(monotonic=lambda: clock.now)),
+			patch.object(safe_fetch_module, "TOTAL_TIMEOUT", 0.3),
 			self.assertRaisesRegex(LinkFetchError, "too long"),
 		):
 			safe_fetch("https://example.com/page", allowed_content_types=("text/html",))
