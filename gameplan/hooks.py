@@ -185,7 +185,10 @@ doc_events = {
 	},
 	"GP Comment": {
 		"on_trash": "gameplan.reporting.protect_pending_reviews",
-		"validate": "gameplan.new_user_limits.check_new_user_limits",
+		"validate": [
+			"gameplan.new_user_limits.check_new_user_limits",
+			"gameplan.reporting.protect_pending_reviews",
+		],
 		"after_insert": "gameplan.new_user_limits.record_first_day_post",
 	},
 	"GP Poll": {

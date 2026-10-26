@@ -4,7 +4,13 @@ import frappe
 
 from gameplan.reporting import detail, queue, resolve, submit
 from gameplan.tests.base import GameplanTestCase
-from gameplan.tests.fixtures import create_comment, create_community, create_discussion, create_space
+from gameplan.tests.fixtures import (
+	create_comment,
+	create_community,
+	create_discussion,
+	create_space,
+	create_task,
+)
 
 
 class TestReviewIntegrity(GameplanTestCase):
@@ -89,3 +95,18 @@ class TestReviewIntegrity(GameplanTestCase):
 			poll.submit_vote("Yes")
 		self.assertEqual(self.details(review)["current"]["version"], previous)
 		self.decide(review, previous)
+
+	def test_pending_reports_block_moving_reply_to_an_unreportable_target(self):
+		task = create_task("Task target", self.space)
+		review = self.report(self.reply)
+		with self.as_user(self.member), self.assertRaises(frappe.ValidationError):
+			self.reply.reference_doctype = "GP Task"
+			self.reply.reference_name = str(task.name)
+			self.reply.save()
+		self.assertEqual(self.details(review)["evidence"].reported_content, "Reported reply")
+		self.decide(review, self.details(review)["current"]["version"])
+		with self.as_user(self.member):
+			self.reply.reload()
+			self.reply.reference_doctype = "GP Task"
+			self.reply.reference_name = str(task.name)
+			self.reply.save()

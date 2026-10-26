@@ -116,5 +116,5 @@ Keep unresolved questions and implementation choices distinct from confirmed pro
 
 - These are implementation choices that enforce the existing ban and review rules.
 - A Community ban also blocks Space management, including moves, merges, and permanent deletion. Reading and management elsewhere remain available.
-- Pending reports block permanent deletion of their target, including parent cascades. Resolve the reports before deleting the content.
+- Pending reports block permanent deletion of their target, including parent cascades, and moving replies outside discussions. Resolve the reports before either operation.
 - Review versions include embedded poll questions, options, and voting settings. Poll votes do not invalidate a content review.

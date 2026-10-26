@@ -235,6 +235,12 @@ def review_target(community, name):
 
 
 def protect_pending_reviews(doc, method=None):
+	if method == "validate" and (
+		doc.is_new()
+		or not doc.has_value_changed("reference_doctype")
+		or doc.reference_doctype == "GP Discussion"
+	):
+		return
 	Review = frappe.qb.DocType("GP Review")
 	pending = (
 		frappe.qb.from_(Review)
@@ -249,7 +255,7 @@ def protect_pending_reviews(doc, method=None):
 		.run()
 	)
 	if pending:
-		frappe.throw("Resolve pending reports before permanently deleting this content")
+		frappe.throw("Resolve pending reports before deleting this content or moving it outside discussions")
 
 
 def review_polls(doc):
