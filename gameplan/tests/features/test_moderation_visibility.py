@@ -40,14 +40,13 @@ class TestModerationVisibility(GameplanTestCase):
 				with self.as_request("/g/discussion", user=user):
 					self.assertFalse(can_view_content(user, self.poll))
 					self.assertEqual(frappe.get_list("GP Poll", filters={"name": self.poll.name}), [])
-					self.assertEqual(
+					self.assertFalse(
 						frappe.qb.get_query(
 							"GP Poll",
 							fields=["name"],
 							filters={"name": self.poll.name},
 							ignore_permissions=False,
-						).run(),
-						[],
+						).run()
 					)
 					self.assertEqual(polls(fields=["name", "title"], filters={"name": self.poll.name}), [])
 			with self.as_request("/g/discussion", user="Guest"):

@@ -242,6 +242,7 @@ LEGACY_PRIVACY_REFERENCES = {
 	"gameplan/mixins/moderation.py": 1,
 	"gameplan/tests/features/test_reply_moderation.py": 2,
 	"gameplan/tests/features/test_moderation_core.py": 3,
+	"gameplan/tests/features/test_moderation_visibility.py": 2,
 	"gameplan/gameplan/doctype/gp_user_profile/gp_user_profile.py": 1,
 	"gameplan/migrate_from_discourse/__init__.py": 1,
 	# Reject the legacy onboarding key; File.is_private is unrelated.
