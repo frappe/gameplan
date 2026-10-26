@@ -75,7 +75,12 @@
                   <ReuseFilterFooter type="owner" :clear="clear" />
                 </template>
                 <template #trigger="{ open, selectedOptions, toggleOpen }">
-                  <Button variant="outline" @click="toggleOpen">
+                  <Button
+                    variant="outline"
+                    class="active:!bg-surface-base"
+                    :class="{ 'focus-ring': open }"
+                    @click="toggleOpen"
+                  >
                     <div
                       class="flex min-h-[20px] items-center"
                       :class="{ 'gap-2': selectedOptions.length > 0 }"
@@ -207,7 +212,7 @@
               </MultiSelect>
 
               <Select
-                class="shrink-0 !w-fit"
+                class="shrink-0 !w-fit data-[state=open]:!focus-ring"
                 variant="outline"
                 side="bottom"
                 :options="sortOptions"
