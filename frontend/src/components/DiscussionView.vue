@@ -179,8 +179,12 @@
           <div v-if="highlightedReply && !editingPost" class="mt-6">
             <div
               ref="highlightCard"
-              class="cursor-pointer rounded-6 border border-outline-gray-2 bg-surface-gray-2/40 px-4 py-4 sm:px-5 sm:py-5"
+              class="cursor-pointer rounded-6 border border-outline-gray-2 bg-surface-gray-2/40 px-4 py-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-outline-gray-3 sm:px-5 sm:py-5"
+              role="button"
+              tabindex="0"
               @click="commentsArea?.scrollToCommentById(highlightedReply.name)"
+              @keydown.enter.prevent="commentsArea?.scrollToCommentById(highlightedReply.name)"
+              @keydown.space.prevent="commentsArea?.scrollToCommentById(highlightedReply.name)"
             >
               <div class="flex items-center gap-3">
                 <span class="flex items-center gap-1.5 text-base-semibold text-ink-gray-9">
