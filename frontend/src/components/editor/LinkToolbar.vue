@@ -155,6 +155,7 @@ async function showLinkCard(link: LinkTarget) {
       .chain()
       .focus()
       .deleteRange({ from: link.from, to: link.to })
+      .setTextSelection(link.from)
       .insertLinkCard({
         href: link.href,
         title: preview.title,
