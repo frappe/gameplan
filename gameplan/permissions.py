@@ -60,7 +60,13 @@ def project_has_permission(doc, ptype="read", user=None, **kwargs):
 def content_has_permission(doc, ptype="read", user=None, **kwargs):
 	user = user or frappe.session.user
 	if ptype in READ_PERMISSIONS:
-		return can_view_content(user, doc)
+		from gameplan.mixins.moderation import content_is_removed
+
+		allowed = can_view_content(user, doc)
+		if not allowed and doc.doctype == "GP Poll" and content_is_removed(doc):
+			# A pre-existing share must not reopen moderated content.
+			frappe.throw("This content is unavailable", frappe.PermissionError)
+		return allowed
 	if ptype == "create":
 		return can_create_content(user, doc)
 	if ptype == "write":
@@ -205,10 +211,10 @@ def can_view_content(user, doc):
 	):
 		# Tasks are never public, even when their Space is.
 		return False
-	from gameplan.mixins.moderation import discussion_is_removed, is_removed, parent_discussion
+	from gameplan.mixins.moderation import content_is_removed
 
 	project = get_content_project(doc)
-	if is_removed(doc) or discussion_is_removed(parent_discussion(doc)):
+	if content_is_removed(doc):
 		return bool(project and can_moderate_space(user, project))
 	if project:
 		return can_view_space(user, project)
@@ -700,6 +706,13 @@ def poll_query_conditions(user=None, **kwargs):
 	# A poll with no discussion never reaches the UI, but it is still someone's row —
 	# keep it visible to its owner only, the way a space-less page is.
 	criterion = Poll.discussion.isin(discussion_query) | (Poll.discussion.isnull() & (Poll.owner == user))
+	Comment = frappe.qb.DocType("GP Comment")
+	visible_comments = (
+		frappe.qb.from_(Comment)
+		.select(Comment.name)
+		.where(Comment.hidden_at.isnull() & Comment.spam_removed_at.isnull() & Comment.deleted_at.isnull())
+	)
+	criterion &= Poll.comment.isnull() | (Poll.comment == "") | Poll.comment.isin(visible_comments)
 	return criterion_sql(criterion)
 
 

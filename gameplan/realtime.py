@@ -42,7 +42,7 @@ def notify_unread_counts_changed(users: str | list[str]):
 		realtime.publish_realtime(UNREAD_COUNTS_CHANGED, user=user, after_commit=True)
 
 
-def notify_notification_count_changed(user: str):
+def notify_notification_count_changed(user: str, *, force_refresh=False):
 	"""Tell one user that their unread notification count moved, and what it now is.
 
 	The number rides along so a tab can recognise the echo of its own change: this event
@@ -54,9 +54,13 @@ def notify_notification_count_changed(user: str):
 	(`GPDiscussion.track_visit`), so any window wide enough to cover the echo also swallows
 	the genuine count change arriving right behind it.
 	"""
+	message = {"count": unread_notification_count(user)}
+	if force_refresh:
+		# Moderation can change the read notification list without changing its unread count.
+		message["force_refresh"] = True
 	realtime.publish_realtime(
 		NOTIFICATION_COUNT_CHANGED,
-		message={"count": unread_notification_count(user)},
+		message=message,
 		user=user,
 		after_commit=True,
 	)

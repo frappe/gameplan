@@ -66,6 +66,20 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 	def as_dict(self, *args, **kwargs):
 		return for_viewer(self.doctype, super().as_dict(*args, **kwargs))
 
+	def validate_share(self, share):
+		if not any(share.get(right) for right in ("read", "write", "share", "submit")):
+			return
+		from gameplan.mixins.moderation import is_removed
+
+		discussion = (
+			frappe.get_doc("GP Discussion", self.discussion, for_update=True) if self.discussion else None
+		)
+		comment = frappe.get_doc("GP Comment", self.comment, for_update=True) if self.comment else None
+		if (discussion and is_removed(discussion)) or (
+			comment and (is_removed(comment) or comment.deleted_at)
+		):
+			frappe.throw("Removed content cannot be shared", frappe.PermissionError)
+
 	def before_insert(self):
 		self.check_if_discussion_is_closed()
 		self.check_comment()

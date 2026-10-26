@@ -77,6 +77,8 @@ Tests: `gameplan/tests/features/test_moderators.py` and `frontend/cypress/e2e/co
 - The current user's ban list drives the read-only UI. A user-scoped realtime event refreshes that list after a ban changes.
 - Frappe's supported File controller override applies the moderation policy to downloads, ZIP reads, and file mutations, including uploader/share access.
 - Public attachments must become private before removal. Existing independent copies and previously downloaded bytes remain outside removal.
+- Embedded polls follow their reply's removal state for reads, lists, voting, public HTML, and private attachments. Explicit poll shares must be removed before moderation; removed polls cannot receive new shares.
+- Discussion removal and restoration notify affected users' other tabs after commit, including read notification lists whose unread count stays unchanged.
 - Restoration preserves descendants, closed/pinned state, and existing notification records. It queues reply reindexing without new mention notifications.
 - Reports, trust levels, automatic filtering, bulk actions, moderation history UI, and migration remain separate tasks.
 

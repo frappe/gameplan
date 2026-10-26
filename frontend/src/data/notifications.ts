@@ -40,22 +40,23 @@ export function onRemoteNotificationChange(handler: () => void) {
   }
 }
 
-// One subscription, so every listener acts on the same set of events. Deciding per listener
-// would race: whichever ran first would reload the badge and change the answer for the rest.
-onSocketEvent(
-  'gameplan:notification_count_changed',
-  useDebounceFn(({ count }) => {
-    if (isAnonymousVisitor() || count === unreadNotifications.data) return
-    // Reloaded rather than taken from the event: `data` is a computed inside useCall, and a
-    // single fetched count keeps the badge and the lists reading the same server state.
-    unreadNotifications.reload()
-    for (const handler of [...listeners]) {
-      try {
-        handler()
-      } catch (error) {
-        // One bad listener must not skip the rest.
-        console.error('Notification change listener failed', error)
-      }
+const refreshNotifications = useDebounceFn(() => {
+  if (isAnonymousVisitor()) return
+  // Reloaded rather than taken from the event: `data` is a computed inside useCall, and a
+  // single fetched count keeps the badge and the lists reading the same server state.
+  unreadNotifications.reload()
+  for (const handler of [...listeners]) {
+    try {
+      handler()
+    } catch (error) {
+      // One bad listener must not skip the rest.
+      console.error('Notification change listener failed', error)
     }
-  }, 500),
-)
+  }
+}, 500)
+
+// Filter before debouncing so an ordinary echo cannot discard a forced moderation refresh.
+onSocketEvent('gameplan:notification_count_changed', ({ count, force_refresh }) => {
+  if (isAnonymousVisitor() || (!force_refresh && count === unreadNotifications.data)) return
+  refreshNotifications()
+})

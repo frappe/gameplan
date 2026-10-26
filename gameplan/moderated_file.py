@@ -1,7 +1,7 @@
 import frappe
 from frappe.core.doctype.file.file import File
 
-from gameplan.mixins.moderation import discussion_is_removed, is_removed, parent_discussion
+from gameplan.mixins.moderation import content_is_removed
 from gameplan.permissions import can_moderate_space, get_content_project
 
 
@@ -11,7 +11,7 @@ def moderation_allows_file(doc, user=None):
 	if not frappe.db.exists(doc.attached_to_doctype, doc.attached_to_name):
 		return True
 	parent = frappe.get_doc(doc.attached_to_doctype, doc.attached_to_name)
-	if not is_removed(parent) and not discussion_is_removed(parent_discussion(parent)):
+	if not content_is_removed(parent):
 		return True
 	return can_moderate_space(user or frappe.session.user, get_content_project(parent))
 

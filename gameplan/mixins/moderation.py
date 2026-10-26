@@ -28,6 +28,17 @@ def discussion_is_removed(name):
 	)
 
 
+def content_is_removed(doc):
+	if is_removed(doc) or discussion_is_removed(parent_discussion(doc)):
+		return True
+	if doc.doctype == "GP Poll" and doc.comment:
+		comment = frappe.db.get_value(
+			"GP Comment", doc.comment, ["hidden_at", "spam_removed_at", "deleted_at"], as_dict=True
+		)
+		return not comment or is_removed(comment) or bool(comment.deleted_at)
+	return False
+
+
 class Moderatable:
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
@@ -129,13 +140,41 @@ class Moderatable:
 				targets.extend(
 					(doctype, str(name)) for name in frappe.get_all(doctype, filters=filters, pluck="name")
 				)
+		elif self.doctype == "GP Comment":
+			targets.extend(
+				("GP Poll", str(name))
+				for name in frappe.get_all("GP Poll", filters={"comment": self.name}, pluck="name")
+			)
 		for doctype, name in targets:
+			if doctype == "GP Poll":
+				Share = frappe.qb.DocType("DocShare")
+				shares = (
+					frappe.qb.from_(Share)
+					.select(Share.name)
+					.where((Share.share_doctype == doctype) & (Share.share_name == name))
+					.where((Share.read == 1) | (Share.write == 1) | (Share.share == 1) | (Share.submit == 1))
+					.limit(1)
+					.for_update()
+					.run()
+				)
+				if shares:
+					frappe.throw("Remove this poll's document shares before removing its content")
 			if frappe.db.exists(
 				"File", {"attached_to_doctype": doctype, "attached_to_name": name, "is_private": 0}
 			):
 				frappe.throw("Make this content's attached files private before removing it")
 
 	def _notify_moderation_change(self):
+		if self.doctype == "GP Discussion":
+			from gameplan.realtime import notify_notification_count_changed, notify_unread_counts_changed
+
+			notify_unread_counts_changed(
+				frappe.get_all("GP Unread Record", filters={"discussion": self.name}, pluck="user")
+			)
+			for user in set(
+				frappe.get_all("GP Notification", filters={"discussion": self.name}, pluck="to_user")
+			):
+				notify_notification_count_changed(user, force_refresh=True)
 		frappe.publish_realtime(
 			"new_activity",
 			{"reference_doctype": "GP Discussion", "reference_name": str(parent_discussion(self))},
