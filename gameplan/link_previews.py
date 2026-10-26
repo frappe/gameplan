@@ -107,8 +107,6 @@ def get_or_fetch_preview(url: str) -> dict | None:
 		return None
 
 	preview = _find_preview(url) or _insert_preview(url)
-	if preview.status in ("Blocked", "Failed"):
-		return None
 	if preview.status == "Pending" or _is_stale(preview):
 		fill_preview(preview)
 
@@ -120,9 +118,9 @@ def is_own_site(url: str) -> bool:
 	return bool(own_host) and urlsplit(url).hostname == own_host
 
 
-def _find_preview(url: str):
-	name = frappe.db.get_value("GP Link Preview", {"url": url})
-	return frappe.get_doc("GP Link Preview", name) if name else None
+def _find_preview(url: str, for_update: bool = False):
+	name = frappe.db.get_value("GP Link Preview", {"url": url}, for_update=for_update)
+	return frappe.get_doc("GP Link Preview", name, for_update=for_update) if name else None
 
 
 def _insert_preview(url: str):
@@ -132,7 +130,7 @@ def _insert_preview(url: str):
 		preview.insert(ignore_permissions=True)
 	except (frappe.DuplicateEntryError, frappe.UniqueValidationError):
 		frappe.db.rollback(save_point="link_preview_insert")
-		existing = _find_preview(url)
+		existing = _find_preview(url, for_update=True)
 		if existing is None:
 			raise
 		return existing
@@ -140,8 +138,6 @@ def _insert_preview(url: str):
 
 
 def _is_stale(preview) -> bool:
-	if preview.status != "Fetched":
-		return False
 	if not preview.fetched_on:
 		return True
 	age = frappe.utils.now_datetime() - frappe.utils.get_datetime(preview.fetched_on)
@@ -177,14 +173,17 @@ def fill_preview(preview) -> bool:
 		_apply(preview, data)
 		fetched = True
 
+	preview.fetched_on = frappe.utils.now_datetime()
 	preview.save(ignore_permissions=True)
 	return fetched
 
 
 def _record_failure(preview, error: str):
+	preview.fetch_error = error
+	if preview.status == "Fetched":
+		return
 	preview.fetch_attempts = (preview.fetch_attempts or 0) + 1
 	preview.status = "Failed" if preview.fetch_attempts >= MAX_FETCH_ATTEMPTS else "Pending"
-	preview.fetch_error = error
 
 
 def _apply(preview, data: dict):
@@ -195,7 +194,7 @@ def _apply(preview, data: dict):
 	preview.image = image if len(image) <= MAX_URL_LENGTH else ""
 	preview.status = "Fetched"
 	preview.fetch_error = ""
-	preview.fetched_on = frappe.utils.now_datetime()
+	preview.fetch_attempts = 0
 
 
 def fetch_preview_data(url: str, provider: str) -> dict:

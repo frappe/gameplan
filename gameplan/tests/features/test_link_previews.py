@@ -4,7 +4,7 @@
 import ipaddress
 import json
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import call, patch
 
 import frappe
 
@@ -281,6 +281,14 @@ class FillPreviewTestCase(GameplanTestCase):
 		self.assertEqual(preview.status, "Failed")
 		self.assertEqual(preview.fetch_error, "HTTP 500")
 
+	def test_success_resets_the_attempt_count(self):
+		preview = self.new_preview()
+		preview.fetch_attempts = MAX_FETCH_ATTEMPTS - 1
+		with patch("gameplan.link_previews.safe_fetch", return_value=OG_PAGE):
+			fill_preview(preview)
+		self.assertEqual(preview.status, "Fetched")
+		self.assertEqual(preview.fetch_attempts, 0)
+
 
 OG_PAGE = fetched(b'<html><head><meta property="og:title" content="Hello"/></head></html>')
 
@@ -361,6 +369,32 @@ class GetOrFetchPreviewTestCase(GameplanTestCase):
 		self.assertEqual(fetch.call_count, 1)
 		self.assertEqual(result["title"], "Hello")
 
+	def test_failed_refresh_of_a_stale_row_keeps_the_old_preview(self):
+		stored_preview(
+			description="Old description",
+			fetched_on=frappe.utils.add_days(frappe.utils.now_datetime(), -(STALE_AFTER_DAYS + 1)),
+		)
+		with patch("gameplan.link_previews.safe_fetch", side_effect=LinkFetchError("HTTP 500")) as fetch:
+			first = get_or_fetch_preview("https://example.com/post")
+			second = get_or_fetch_preview("https://example.com/post")
+		self.assertEqual(fetch.call_count, 1)
+		self.assertEqual((first["title"], first["description"]), ("Cached", "Old description"))
+		self.assertEqual(first, second)
+		saved = frappe.get_doc("GP Link Preview", {"url": "https://example.com/post"})
+		self.assertEqual((saved.status, saved.fetch_error), ("Fetched", "HTTP 500"))
+
+	def test_expired_blocked_and_failed_rows_are_retried(self):
+		long_ago = frappe.utils.add_days(frappe.utils.now_datetime(), -(STALE_AFTER_DAYS + 1))
+		for status in ("Blocked", "Failed"):
+			url = f"https://example.com/{status.lower()}"
+			stored_preview(
+				url, status=status, title="", fetch_attempts=MAX_FETCH_ATTEMPTS, fetched_on=long_ago
+			)
+			with patch("gameplan.link_previews.safe_fetch", return_value=OG_PAGE) as fetch:
+				result = get_or_fetch_preview(url)
+			self.assertEqual(fetch.call_count, 1, msg=status)
+			self.assertEqual(result["title"], "Hello", msg=status)
+
 	def test_pending_row_is_retried(self):
 		stored_preview(status="Pending", title="", fetch_attempts=1, fetched_on=None)
 		with patch("gameplan.link_previews.safe_fetch", return_value=OG_PAGE) as fetch:
@@ -371,11 +405,12 @@ class GetOrFetchPreviewTestCase(GameplanTestCase):
 	def test_concurrent_insert_reuses_the_existing_row(self):
 		existing = stored_preview()
 		with (
-			patch("gameplan.link_previews._find_preview", side_effect=[None, existing]),
+			patch("gameplan.link_previews._find_preview", side_effect=[None, existing]) as find,
 			patch("gameplan.link_previews.safe_fetch") as fetch,
 		):
 			result = get_or_fetch_preview("https://example.com/post")
 		fetch.assert_not_called()
+		self.assertEqual(find.call_args_list[1], call("https://example.com/post", for_update=True))
 		self.assertEqual(result["title"], "Cached")
 		self.assertEqual(frappe.db.count("GP Link Preview", {"url": "https://example.com/post"}), 1)
 
