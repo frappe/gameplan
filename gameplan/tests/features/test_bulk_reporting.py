@@ -1,3 +1,5 @@
+import json
+
 import frappe
 
 from gameplan.reporting import resolve, submit
@@ -150,3 +152,23 @@ class TestBulkReporting(GameplanTestCase):
 		with self.assertRaises(frappe.PermissionError):
 			self.decide(item)
 		self.assertEqual(frappe.db.get_value("GP Review", item["review"], "status"), "Pending")
+
+	def test_poll_edits_after_bulk_preview_require_a_fresh_review(self):
+		draft = json.dumps({"title": "Original question", "options": [{"title": "Yes"}, {"title": "No"}]})
+		with self.as_user(self.member):
+			reply = create_comment(
+				self.discussion,
+				content=f"<div data-type=\"poll\" data-poll-draft='{draft}'></div>",
+				owner=self.member,
+			)
+		review = self.review(reply)
+		item = self.previews([review])[0]
+		with self.as_user(self.member):
+			poll = frappe.get_doc("GP Poll", {"comment": reply.name})
+			poll.options[0].title = "Changed choice"
+			poll.save()
+		with self.assertRaises(frappe.TimestampMismatchError):
+			self.decide(item)
+		self.assertEqual(frappe.db.get_value("GP Review", review, "status"), "Pending")
+		self.decide(self.previews([review])[0])
+		self.assertEqual(frappe.db.get_value("GP Review", review, "status"), "Resolved")
