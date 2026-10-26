@@ -8,9 +8,8 @@ from zoneinfo import ZoneInfo
 import frappe
 from frappe.utils import cint, get_datetime, get_system_timezone, get_time, now_datetime
 
-from gameplan.notifications.preferences import profile_prefs
+from gameplan.notifications.preferences import DAYS, profile_prefs
 
-DAYS = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
 END_OF_DAY = time(23, 59)
 
 

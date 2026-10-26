@@ -18,10 +18,10 @@ from gameplan.notifications.away import (
 	is_away,
 	mark_recap_sent,
 	pending_recap_periods,
-	profile_prefs,
 	scheduled_off_window,
 	user_timezone,
 )
+from gameplan.notifications.preferences import profile_prefs
 from gameplan.permissions import can_view_space
 
 MENTION_TYPES = ("Mention", "Rich Quote")

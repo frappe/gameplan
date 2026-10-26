@@ -15,6 +15,7 @@ import gameplan
 from gameplan.extends.client import check_permissions
 from gameplan.mixins.attachments import HasAttachments
 from gameplan.notifications import away
+from gameplan.notifications.preferences import DAYS
 from gameplan.realtime import notify_users_changed
 from gameplan.utils.document import with_stored_document
 
@@ -57,7 +58,7 @@ class GPUserProfile(HasAttachments, Document):
 		if not frappe.utils.cint(self.active_hours_enabled):
 			return
 		days = frappe.parse_json(self.active_hours_days or "[]")
-		if not [day for day in days if day in away.DAYS]:
+		if not [day for day in days if day in DAYS]:
 			frappe.throw(_("Pick at least one day for active hours"))
 		# Not a truthiness check: a loaded midnight is timedelta(0), which is falsy.
 		if self.active_hours_start in (None, "") or self.active_hours_end in (None, ""):

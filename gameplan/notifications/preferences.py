@@ -10,6 +10,8 @@ LEVELS = ("Mentions only", "Mute")
 DEFAULT_PARTICIPATION = "Watch"
 PARTICIPATION_LEVELS = ("Watch", "Mentions only")
 
+DAYS = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+
 PREF_FIELDS = (
 	"notification_level",
 	"participation_level",
@@ -27,7 +29,7 @@ _DEFAULTS = frappe._dict(
 	active_hours_enabled=0,
 	active_hours_start=None,
 	active_hours_end=None,
-	active_hours_days=["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+	active_hours_days=list(DAYS),
 )
 
 
