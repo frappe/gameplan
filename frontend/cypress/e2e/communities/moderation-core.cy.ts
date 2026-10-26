@@ -20,7 +20,10 @@ describe('Community moderation core', () => {
       const path = `/g/community/${ids.community}/space/${ids.private_space}/discussions`
       cy.switchUser('member')
       cy.visit(path)
-      cy.get('button[aria-label="Space actions"]').should('be.visible')
+      cy.get('button[aria-label="Space actions"]').click()
+      cy.contains('[role="menuitem"]', /^Visibility$/).should('be.visible')
+      cy.contains('[role="menuitem"]', /^Archive$/).should('be.visible')
+      cy.get('body').type('{esc}')
       cy.switchUser('admin')
       cy.request('POST', '/api/method/gameplan.community_bans.set_ban', {
         community: ids.community,
@@ -30,9 +33,12 @@ describe('Community moderation core', () => {
       })
       cy.switchUser('member')
       cy.visit(path)
-      cy.get('button[aria-label="Space actions"]').should('not.exist')
-      cy.location('pathname').should('eq', path)
       cy.contains('Secret thread').should('be.visible')
+      cy.get('button[aria-label="Space actions"]').click()
+      cy.contains('[role="menuitem"]', /^Copy link$/).should('be.visible')
+      cy.contains('[role="menuitem"]', /^Visibility$/).should('not.exist')
+      cy.contains('[role="menuitem"]', /^Archive$/).should('not.exist')
+      cy.location('pathname').should('eq', path)
     })
   })
 
