@@ -37,18 +37,11 @@
 import { onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { PopoverAnchor, PopoverArrow, PopoverContent, PopoverPortal, PopoverRoot } from 'reka-ui'
-import { call, dayjsLocal } from 'frappe-ui'
+import { dayjsLocal } from 'frappe-ui'
 import { getCommunity } from '@/data/communities'
+import { loadDiscussionPreview, type DiscussionPreview } from '@/data/discussionPreviews'
 import { getSpace } from '@/data/spaces'
-
-interface Preview {
-  title: string
-  project: string
-  creation: string
-  snippet: string
-}
-
-const DISCUSSION_PATH = /^\/(?:.+\/)?discussion\/(\d+)(?:\/|$)/
+import { parseDiscussionUrl } from '@/utils/discussionLinks'
 const HOVER_DELAY = 300
 const LEAVE_DELAY = 300
 
@@ -57,46 +50,15 @@ const route = useRoute()
 const router = useRouter()
 
 const anchorEl = ref<HTMLElement | null>(null)
-const preview = ref<Preview | null>(null)
-const cache = new Map<string, Promise<Preview | null>>()
+const preview = ref<DiscussionPreview | null>(null)
 let openTimer: ReturnType<typeof setTimeout> | undefined
 let closeTimer: ReturnType<typeof setTimeout> | undefined
 
 function discussionLink(target: EventTarget | null) {
   const link = (target as HTMLElement | null)?.closest?.('a[href]') as HTMLAnchorElement | null
   if (!link) return null
-  const url = new URL(link.href, window.location.origin)
-  const base = router.options.history.base
-  if (url.host !== window.location.host || !url.pathname.startsWith(`${base}/`)) return null
-  const path = url.pathname.slice(base.length)
-  const name = path.match(DISCUSSION_PATH)?.[1]
-  return name ? { link, name, path: path + url.search + url.hash } : null
-}
-
-function loadPreview(name: string) {
-  if (!cache.has(name)) {
-    cache.set(
-      name,
-      call('frappe.client.get_value', {
-        doctype: 'GP Discussion',
-        filters: { name },
-        fieldname: ['title', 'project', 'creation', 'content'],
-      })
-        .then((doc: (Omit<Preview, 'snippet'> & { content?: string }) | null) =>
-          doc?.title
-            ? {
-                ...doc,
-                snippet:
-                  new DOMParser()
-                    .parseFromString(doc.content || '', 'text/html')
-                    .body.textContent?.trim() || '',
-              }
-            : null,
-        )
-        .catch(() => null),
-    )
-  }
-  return cache.get(name)!
+  const parsed = parseDiscussionUrl(link.href)
+  return parsed ? { link, ...parsed } : null
 }
 
 function spacePath(project: string) {
@@ -107,12 +69,12 @@ function spacePath(project: string) {
 
 function onPointerOver(event: PointerEvent) {
   const hovered = discussionLink(event.target)
-  if (!hovered) return
+  if (!hovered || hovered.link.hasAttribute('data-discussion-card')) return
   if (hovered.link === anchorEl.value) return cancelClose()
 
   clearTimeout(openTimer)
   openTimer = setTimeout(async () => {
-    const result = await loadPreview(hovered.name)
+    const result = await loadDiscussionPreview(hovered.name)
     if (!result || !hovered.link.matches(':hover')) return
     cancelClose()
     preview.value = result

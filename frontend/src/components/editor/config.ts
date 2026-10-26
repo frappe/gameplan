@@ -1,5 +1,6 @@
 import type { Component } from 'vue'
-import type { AnyExtension } from '@tiptap/core'
+import { Extension, type AnyExtension } from '@tiptap/core'
+import { Plugin, PluginKey } from '@tiptap/pm/state'
 import { call, useFileUpload, type UploadedFile } from 'frappe-ui'
 import { SuggestionExtension } from 'frappe-ui/editor'
 import type { MediaUploadRequestOptions } from 'frappe-ui/editor'
@@ -12,6 +13,8 @@ import type { RichQuoteController } from '@/components/RichQuoteExtension/useRic
 import TextEditorMentionComponent from '@/components/TextEditorMentionComponent.vue'
 import { activeUsers } from '@/data/users'
 import { tags as tagList } from '@/data/tags'
+import { loadDiscussionPreview } from '@/data/discussionPreviews'
+import { discussionHref, parseDiscussionUrl } from '@/utils/discussionLinks'
 
 // @-mention items: gameplan users plus an "Everyone" entry. The mention node stores
 // `id`/`label`; the suggestion command maps value→id, so we provide all three.
@@ -28,8 +31,6 @@ function mentionItems() {
 function tagItems() {
   return (tagList.data ?? []).map((tag) => ({ id: tag.name, label: tag.label }))
 }
-
-declare const __FRONTEND_ROUTE__: string
 
 function discussionLinkItems(query: string): Promise<DiscussionLinkItem[]> {
   if (query && !/^[\p{L}\p{N}]/u.test(query)) return Promise.resolve([])
@@ -51,28 +52,78 @@ export function discussionLinkExtension() {
     listComponent: DiscussionLinkList as Component,
     allowSpaces: true,
     command: ({ editor, item, range }) => {
+      const href = discussionHref(item.project, item.name)
+      if (item.preview) {
+        editor
+          .chain()
+          .focus()
+          .deleteRange(range)
+          .insertDiscussionCard({ discussion: item.name, href, title: item.title })
+          .run()
+        return
+      }
       editor
         .chain()
         .focus()
         .insertContentAt(range, [
-          {
-            type: 'text',
-            text: item.title,
-            marks: [
-              {
-                type: 'link',
-                attrs: {
-                  href: `${__FRONTEND_ROUTE__}/space/${item.project}/discussion/${item.name}`,
-                },
-              },
-            ],
-          },
+          { type: 'text', text: item.title, marks: [{ type: 'link', attrs: { href } }] },
           { type: 'text', text: ' ' },
         ])
         .run()
     },
   })
 }
+
+export const DiscussionLinkPasteExtension = Extension.create({
+  name: 'discussionLinkPaste',
+
+  addProseMirrorPlugins() {
+    const editor = this.editor
+    return [
+      new Plugin({
+        key: new PluginKey('discussionLinkPaste'),
+        props: {
+          handlePaste: (view, event) => {
+            const href = event.clipboardData?.getData('text/plain').trim() ?? ''
+            if (!view.state.selection.empty || !/^https?:\/\/\S+$/.test(href)) return false
+            const discussion = parseDiscussionUrl(href)?.name
+            if (!discussion) return false
+
+            editor
+              .chain()
+              .insertContent({
+                type: 'text',
+                text: href,
+                marks: [{ type: 'link', attrs: { href } }],
+              })
+              .run()
+
+            loadDiscussionPreview(discussion).then((preview) => {
+              if (!preview || editor.isDestroyed) return
+              let range: { from: number; to: number } | null = null
+              editor.state.doc.descendants((node, pos) => {
+                if (range || !node.isText || node.text !== href) return
+                if (node.marks.some((m) => m.type.name === 'link' && m.attrs.href === href)) {
+                  range = { from: pos, to: pos + node.nodeSize }
+                }
+              })
+              if (!range) return
+              editor
+                .chain()
+                .insertContentAt(range, {
+                  type: 'text',
+                  text: preview.title,
+                  marks: [{ type: 'link', attrs: { href } }],
+                })
+                .run()
+            })
+            return true
+          },
+        },
+      }),
+    ]
+  },
+})
 
 /**
  * gameplan drops H1 everywhere — kits are configured with these heading levels.

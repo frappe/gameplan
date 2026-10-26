@@ -52,6 +52,17 @@ class BacklinkTestCase(GameplanTestCase):
 		create_comment(self.source, content=f'<p><a href="{url}">roadmap</a></p>')
 		self.assertEqual(len(self.backlinks()), 1)
 
+	def test_discussion_card_counts(self):
+		card = (
+			f'<div data-type="discussion-card" data-discussion="{self.target.name}">'
+			f'<a href="/g/space/{self.target.project}/discussion/{self.target.name}">Q3 Roadmap</a></div>'
+		)
+		comment = create_comment(self.source, content=card)
+		self.assertEqual([b.comment for b in self.backlinks()], [comment.name])
+		saved = frappe.db.get_value("GP Comment", comment.name, "content")
+		self.assertIn('data-type="discussion-card"', saved)
+		self.assertIn(f'data-discussion="{self.target.name}"', saved)
+
 	def test_removing_link_removes_backlink(self):
 		comment = create_comment(self.source, content=link_to(self.target))
 		comment.content = "<p>No link anymore</p>"
