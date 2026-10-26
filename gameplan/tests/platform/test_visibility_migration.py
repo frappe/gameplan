@@ -240,6 +240,9 @@ LEGACY_PRIVACY_REFERENCES = {
 	"gameplan/gameplan/doctype/gp_project/patches/migrate_members_from_team.py": 1,
 	# Frappe's File.is_private, an unrelated field on another doctype.
 	"gameplan/mixins/moderation.py": 1,
+	"gameplan/approval_files.py": 2,
+	"gameplan/tests/features/test_approvals.py": 1,
+	"gameplan/tests/features/test_submission_access.py": 3,
 	"gameplan/tests/features/test_reply_moderation.py": 2,
 	"gameplan/tests/features/test_moderation_core.py": 3,
 	"gameplan/tests/features/test_moderation_visibility.py": 2,
