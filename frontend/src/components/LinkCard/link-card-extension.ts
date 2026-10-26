@@ -9,7 +9,7 @@ export interface LinkCardAttrs {
   description?: string
   image?: string
   siteName?: string
-  imageLayout?: string
+  imageLayout?: 'large' | ''
 }
 
 declare module '@tiptap/core' {
