@@ -31,9 +31,10 @@ class TestReportingConcurrency(FrappeTestCase):
 	def cleanup_fixtures(self):
 		frappe.set_user("Administrator")
 		frappe.db.rollback()
-		doc = frappe.get_doc("GP Discussion", self.discussion.name)
-		if doc.hidden_at or doc.spam_removed_at:
-			doc.restore()
+		if frappe.db.exists("GP Discussion", self.discussion.name):
+			doc = frappe.get_doc("GP Discussion", self.discussion.name)
+			if doc.hidden_at or doc.spam_removed_at:
+				doc.restore()
 		reviews = frappe.get_all(
 			"GP Review",
 			filters={"reference_doctype": "GP Discussion", "reference_name": ["in", self.targets]},
@@ -147,3 +148,28 @@ class TestReportingConcurrency(FrappeTestCase):
 			frappe.db.get_value("GP Report", results[0]["name"], "review"),
 			frappe.db.get_value("GP Report", results[1]["name"], "review"),
 		)
+
+	def test_report_and_permanent_delete_cannot_leave_a_pending_review_without_its_target(self):
+		def action(index):
+			if index == 0:
+				return submit("GP Discussion", str(self.discussion.name), "Spam")
+			frappe.delete_doc("GP Discussion", self.discussion.name)
+			return "deleted"
+
+		results, errors = self.concurrently([self.reporter.name, self.owner.name], action)
+		self.assertEqual(len(results), 1)
+		self.assertEqual(len(errors), 1)
+		pending = frappe.db.count(
+			"GP Review",
+			{
+				"reference_doctype": "GP Discussion",
+				"reference_name": str(self.discussion.name),
+				"status": "Pending",
+			},
+		)
+		if frappe.db.exists("GP Discussion", self.discussion.name):
+			self.assertEqual(pending, 1)
+			self.assertIsInstance(errors[0], (frappe.ValidationError, frappe.QueryTimeoutError))
+		else:
+			self.assertEqual(pending, 0)
+			self.assertEqual(frappe.db.count("GP Report", {"owner": self.reporter.name}), 0)

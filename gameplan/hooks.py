@@ -179,10 +179,12 @@ doc_events = {
 	},
 	# Discourse-style limits on Gameplan Guests posting in a space only because it is public.
 	"GP Discussion": {
+		"on_trash": "gameplan.reporting.protect_pending_reviews",
 		"validate": "gameplan.new_user_limits.check_new_user_limits",
 		"after_insert": "gameplan.new_user_limits.record_first_day_post",
 	},
 	"GP Comment": {
+		"on_trash": "gameplan.reporting.protect_pending_reviews",
 		"validate": "gameplan.new_user_limits.check_new_user_limits",
 		"after_insert": "gameplan.new_user_limits.record_first_day_post",
 	},

@@ -166,12 +166,7 @@ def detail(community: str, review: str, start: int = 0, report: str = ""):
 	)
 	if report and not evidence:
 		frappe.throw("Report does not belong to this review", frappe.PermissionError)
-	polls = []
-	if doc.doctype == "GP Comment":
-		for name in frappe.get_all("GP Poll", filters={"comment": doc.name}, pluck="name"):
-			poll = frappe.get_doc("GP Poll", name)
-			poll.check_permission("read")
-			polls.append(poll.as_dict())
+	polls = review_polls(doc)
 	return {
 		"review": {
 			field: review.get(field)
@@ -180,14 +175,14 @@ def detail(community: str, review: str, start: int = 0, report: str = ""):
 		"current": {
 			"title": doc.get("title"),
 			"content": doc.content,
-			"version": version(doc),
+			"version": version(doc, polls),
 			"owner": doc.owner,
 			"discussion": str(parent_discussion(doc)),
 			"project": str(get_content_project(doc)),
 		},
 		"reports": reports[:40],
 		"evidence": evidence,
-		"polls": polls,
+		"polls": [poll.as_dict() for poll in polls],
 		"has_more": len(reports) > 40,
 	}
 
@@ -239,8 +234,55 @@ def review_target(community, name):
 	return frappe.get_doc("GP Review", name, for_update=True), doc
 
 
-def version(doc):
-	return hashlib.sha256(frappe.as_json([doc.get("title"), doc.content]).encode()).hexdigest()
+def protect_pending_reviews(doc, method=None):
+	Review = frappe.qb.DocType("GP Review")
+	pending = (
+		frappe.qb.from_(Review)
+		.select(Review.name)
+		.where(
+			(Review.reference_doctype == doc.doctype)
+			& (Review.reference_name == str(doc.name))
+			& (Review.status == "Pending")
+		)
+		.limit(1)
+		.for_update()
+		.run()
+	)
+	if pending:
+		frappe.throw("Resolve pending reports before permanently deleting this content")
+
+
+def review_polls(doc):
+	if doc.doctype != "GP Comment":
+		return []
+	Poll = frappe.qb.DocType("GP Poll")
+	names = (
+		frappe.qb.from_(Poll)
+		.select(Poll.name)
+		.where(Poll.comment == str(doc.name))
+		.orderby(Poll.name)
+		.for_update()
+		.run(pluck=True)
+	)
+	polls = [frappe.get_doc("GP Poll", name, for_update=True) for name in names]
+	for poll in polls:
+		poll.check_permission("read")
+	return polls
+
+
+def version(doc, polls=None):
+	polls = review_polls(doc) if polls is None else polls
+	content = [
+		[
+			poll.name,
+			poll.title,
+			poll.anonymous,
+			poll.multiple_answers,
+			[(row.idx, row.title) for row in poll.options],
+		]
+		for poll in polls
+	]
+	return hashlib.sha256(frappe.as_json([doc.get("title"), doc.content, content]).encode()).hexdigest()
 
 
 def checked_note(note, required):

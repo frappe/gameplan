@@ -111,3 +111,10 @@ Keep unresolved questions and implementation choices distinct from confirmed pro
 - Resolving a review checks the content version and current scope before applying existing Hide/Delete spam actions. Dismiss and Uphold preserve content state. Conflicting decisions require refresh.
 - The UI includes report dialogs, Pending/Resolved queues, current author/content, reported versions, and a link to the full discussion. No automatic hiding, banning, notifications, or trust weighting is added.
 - Fresh installation, migration, 71 backend tests, and eight browser tests passed. Four MariaDB concurrency tests are included but skipped on the local SQLite site; they require MariaDB CI.
+
+## Review integrity implementation notes
+
+- These are implementation choices that enforce the existing ban and review rules.
+- A Community ban also blocks Space management, including moves, merges, and permanent deletion. Reading and management elsewhere remain available.
+- Pending reports block permanent deletion of their target, including parent cascades. Resolve the reports before deleting the content.
+- Review versions include embedded poll questions, options, and voting settings. Poll votes do not invalidate a content review.
