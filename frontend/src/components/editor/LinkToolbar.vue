@@ -36,7 +36,7 @@ import { getMarkRange, posToDOMRect, type Editor } from '@tiptap/core'
 import { NodeSelection, type EditorState } from '@tiptap/pm/state'
 import { BubbleMenu } from '@tiptap/vue-3/menus'
 import { Button, toast } from 'frappe-ui'
-import { fetchLinkPreview } from '@/data/linkPreviews'
+import { fetchLinkPreview, measureImageLayout } from '@/data/linkPreviews'
 import { extractServerMessage } from '@/utils'
 import { parseDiscussionUrl } from '@/utils/discussionLinks'
 
@@ -146,6 +146,7 @@ async function showLinkCard(link: LinkTarget) {
   loadingPreview.value = true
   try {
     const preview = await fetchLinkPreview(link.href)
+    const imageLayout = await measureImageLayout(preview?.image)
     if (props.editor.isDestroyed || !isSameLink(link)) return
     if (!preview) {
       toast.error('No preview available for this link')
@@ -162,6 +163,7 @@ async function showLinkCard(link: LinkTarget) {
         description: preview.description,
         image: preview.image,
         siteName: preview.site_name,
+        imageLayout,
       })
       .run()
   } catch (error) {

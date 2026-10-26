@@ -25,3 +25,22 @@ export function fetchLinkPreview(url: string) {
   }
   return cache.get(url)!
 }
+
+export function measureImageLayout(src?: string): Promise<'large' | ''> {
+  if (!src || !/^https?:\/\//i.test(src)) return Promise.resolve('')
+  return new Promise((resolve) => {
+    const image = new Image()
+    const timer = setTimeout(() => resolve(''), 3000)
+    image.referrerPolicy = 'no-referrer'
+    image.onload = () => {
+      clearTimeout(timer)
+      const { naturalWidth: width, naturalHeight: height } = image
+      resolve(width >= 400 && width / height >= 1.3 ? 'large' : '')
+    }
+    image.onerror = () => {
+      clearTimeout(timer)
+      resolve('')
+    }
+    image.src = src
+  })
+}

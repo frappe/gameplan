@@ -9,6 +9,7 @@ export interface LinkCardAttrs {
   description?: string
   image?: string
   siteName?: string
+  imageLayout?: string
 }
 
 declare module '@tiptap/core' {
@@ -41,6 +42,7 @@ export const LinkCardExtension = Node.create({
       description: dataAttribute('description'),
       image: dataAttribute('image'),
       siteName: dataAttribute('site-name'),
+      imageLayout: dataAttribute('image-layout'),
     }
   },
 

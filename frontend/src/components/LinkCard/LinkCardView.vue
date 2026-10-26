@@ -6,7 +6,10 @@
       target="_blank"
       rel="noopener noreferrer"
       class="flex max-w-lg gap-4 rounded-6 border px-4 py-3 transition-colors hover:bg-surface-gray-1"
-      :class="selected && editor.isEditable ? 'border-outline-gray-4' : 'border-outline-gray-2'"
+      :class="[
+        selected && editor.isEditable ? 'border-outline-gray-4' : 'border-outline-gray-2',
+        { 'flex-col': large },
+      ]"
       @click="onClick"
     >
       <div class="min-w-0 flex-1">
@@ -24,7 +27,8 @@
         alt=""
         loading="lazy"
         referrerpolicy="no-referrer"
-        class="size-20 shrink-0 self-center rounded-4 bg-surface-gray-2 object-cover"
+        class="rounded-4 bg-surface-gray-2 object-cover"
+        :class="large ? 'max-h-80 w-full' : 'size-20 shrink-0 self-center'"
         @error="imageFailed = true"
       />
     </a>
@@ -47,6 +51,8 @@ const image = computed(() => {
   const src = props.node.attrs.image
   return !imageFailed.value && /^https?:\/\//i.test(src) ? src : ''
 })
+
+const large = computed(() => props.node.attrs.imageLayout === 'large')
 
 const siteName = computed(() => {
   if (props.node.attrs.siteName) return props.node.attrs.siteName
