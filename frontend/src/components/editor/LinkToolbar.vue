@@ -17,33 +17,17 @@
         icon="lucide-link"
         @click="showAsLink"
       />
-      <template v-else>
-        <Button
-          size="xs"
-          variant="ghost"
-          tooltip="Edit link"
-          icon="lucide-pencil"
-          @click="editLink"
-        />
-        <Button
-          v-if="target?.discussion || target?.external"
-          size="xs"
-          variant="ghost"
-          tooltip="Show preview"
-          icon="lucide-scan"
-          :loading="loadingPreview"
-          @click="showPreview"
-        />
-      </template>
+      <Button
+        v-else
+        size="xs"
+        variant="ghost"
+        tooltip="Show preview"
+        icon="lucide-scan"
+        :loading="loadingPreview"
+        @click="showPreview"
+      />
     </div>
   </BubbleMenu>
-  <EditLinkDialog
-    v-model:open="showEditDialog"
-    :href="editing?.href ?? ''"
-    :text="editing?.text ?? ''"
-    @save="saveLink"
-    @remove="removeLink"
-  />
 </template>
 
 <script setup lang="ts">
@@ -55,7 +39,6 @@ import { Button, toast } from 'frappe-ui'
 import { fetchLinkPreview } from '@/data/linkPreviews'
 import { extractServerMessage } from '@/utils'
 import { parseDiscussionUrl } from '@/utils/discussionLinks'
-import EditLinkDialog from './EditLinkDialog.vue'
 
 type LinkTarget = {
   kind: 'link'
@@ -73,8 +56,6 @@ const CARD_TYPES = ['discussionCard', 'linkCard']
 const props = defineProps<{ editor: Editor }>()
 
 const target = shallowRef<Target | null>(null)
-const editing = shallowRef<LinkTarget | null>(null)
-const showEditDialog = ref(false)
 const loadingPreview = ref(false)
 
 function findTarget(state: EditorState): Target | null {
@@ -96,13 +77,15 @@ function findTarget(state: EditorState): Target | null {
   if (!range) return null
   const href = state.doc.nodeAt(pos)?.marks.find((m) => m.type === linkType)?.attrs.href ?? ''
   const discussion = parseDiscussionUrl(href)?.name
+  const external = !discussion && /^https?:\/\//i.test(href)
+  if (!discussion && !external) return null
   return {
     kind: 'link',
     ...range,
     href,
     text: state.doc.textBetween(range.from, range.to),
     discussion,
-    external: !discussion && /^https?:\/\//i.test(href),
+    external,
   }
 }
 
@@ -138,40 +121,6 @@ function reference() {
     return dom ? { getBoundingClientRect: () => dom.getBoundingClientRect() } : null
   }
   return { getBoundingClientRect: () => posToDOMRect(view, current.from, current.to) }
-}
-
-function editLink() {
-  const current = target.value
-  if (current?.kind !== 'link') return
-  editing.value = current
-  showEditDialog.value = true
-}
-
-function saveLink({ href, text }: { href: string; text: string }) {
-  const current = editing.value
-  if (!current) return
-  props.editor
-    .chain()
-    .focus()
-    .insertContentAt(
-      { from: current.from, to: current.to },
-      { type: 'text', text, marks: [{ type: 'link', attrs: { href } }] },
-    )
-    .run()
-  showEditDialog.value = false
-}
-
-function removeLink() {
-  const current = editing.value
-  if (!current) return
-  props.editor
-    .chain()
-    .focus()
-    .setTextSelection({ from: current.from, to: current.to })
-    .unsetLink()
-    .setTextSelection(current.to)
-    .run()
-  showEditDialog.value = false
 }
 
 function showPreview() {
