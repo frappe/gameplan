@@ -12,7 +12,7 @@ from frappe.utils import cint, split_emails, validate_email_address
 import gameplan
 from gameplan.gameplan.doctype.gp_invitation.gp_invitation import get_invitation, grant_access
 from gameplan.realtime import notify_notification_count_changed, unread_notification_count
-from gameplan.roles import GAMEPLAN_ROLES
+from gameplan.roles import GAMEPLAN_ROLES, has_app_access
 from gameplan.utils import validate_type
 
 
@@ -412,7 +412,7 @@ LINK_PREVIEW_QUOTA_WINDOW = 60
 def get_link_preview(url: str):
 	from gameplan.link_previews import get_or_fetch_preview
 
-	if frappe.session.user == "Guest":
+	if not has_app_access():
 		frappe.throw(_("You are not permitted to fetch link previews"), frappe.PermissionError)
 
 	if _link_preview_quota_spent():

@@ -26,6 +26,7 @@ from gameplan.tests.fixtures import (
 	create_community,
 	create_discussion,
 	create_space,
+	create_user,
 	declared_http_methods,
 )
 
@@ -439,6 +440,13 @@ class LinkPreviewEndpointTestCase(GameplanTestCase):
 				frappe.is_whitelisted(get_link_preview)
 			with self.assertRaises(frappe.PermissionError):
 				get_link_preview(url="https://example.com/post")
+
+	def test_user_without_gameplan_access_is_refused(self):
+		user = create_user("no-gameplan-role@example.com", "No Role")
+		with self.as_user(user), patch("gameplan.link_previews.safe_fetch") as fetch:
+			with self.assertRaises(frappe.PermissionError):
+				get_link_preview(url="https://example.com/post")
+		fetch.assert_not_called()
 
 	def test_member_gets_a_preview(self):
 		with self.as_user(self.member), patch("gameplan.link_previews.safe_fetch", return_value=OG_PAGE):
