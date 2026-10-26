@@ -4,16 +4,12 @@
 
 import frappe
 
-DEFAULT_LEVEL = "Mentions only"
-LEVELS = ("Mentions only", "Mute")
-
 DEFAULT_PARTICIPATION = "Watch"
 PARTICIPATION_LEVELS = ("Watch", "Mentions only")
 
 DAYS = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
 
 PREF_FIELDS = (
-	"notification_level",
 	"participation_level",
 	"receive_notifications",
 	"active_hours_enabled",
@@ -23,7 +19,6 @@ PREF_FIELDS = (
 )
 
 _DEFAULTS = frappe._dict(
-	notification_level=DEFAULT_LEVEL,
 	participation_level=DEFAULT_PARTICIPATION,
 	receive_notifications=1,
 	active_hours_enabled=0,
@@ -41,22 +36,6 @@ def profile_prefs(user: str) -> frappe._dict:
 			if row.get(field) not in (None, ""):
 				prefs[field] = row[field]
 	return prefs
-
-
-def bulk_levels(users: list[str]) -> dict[str, str]:
-	users = list(dict.fromkeys(users))
-	levels = dict.fromkeys(users, DEFAULT_LEVEL)
-	if not users:
-		return levels
-	rows = frappe.db.get_all(
-		"GP User Profile",
-		filters={"user": ["in", users]},
-		fields=["user", "notification_level"],
-	)
-	for row in rows:
-		if row.notification_level in LEVELS:
-			levels[row.user] = row.notification_level
-	return levels
 
 
 def participation_level(user: str) -> str:

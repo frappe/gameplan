@@ -6,15 +6,11 @@ import frappe
 from frappe.utils import get_fullname
 
 from gameplan.notifications import records
-from gameplan.notifications.preferences import (
-	bulk_levels,
-	participation_level,
-	profile_prefs,
-	wants_content_feedback,
-)
+from gameplan.notifications.preferences import participation_level, wants_content_feedback
 from gameplan.permissions import can_view_space, users_who_can_view_content
 
 STATES = ("Mute", "Mentions only", "Watch")
+DEFAULT_STATE = "Mentions only"
 
 
 def discussion_of(doc) -> str | None:
@@ -33,20 +29,16 @@ def subscription_state(user: str, discussion: str) -> str | None:
 	)
 
 
-def effective_discussion_state(user: str, discussion: str, level: str | None = None) -> str:
+def effective_discussion_state(user: str, discussion: str) -> str:
 	state = subscription_state(user, discussion)
-	if state in STATES:
-		return state
-	level = level or profile_prefs(user).notification_level
-	return "Mute" if level == "Mute" else "Mentions only"
+	return state if state in STATES else DEFAULT_STATE
 
 
 def bulk_discussion_states(users: list[str], discussion: str) -> dict[str, str]:
 	users = list(dict.fromkeys(users))
 	if not users:
 		return {}
-	levels = bulk_levels(users)
-	states = {user: ("Mute" if levels[user] == "Mute" else "Mentions only") for user in users}
+	states = dict.fromkeys(users, DEFAULT_STATE)
 	rows = frappe.db.get_all(
 		"GP Discussion Subscription",
 		filters={"discussion": discussion, "user": ["in", users]},

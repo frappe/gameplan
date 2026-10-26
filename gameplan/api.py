@@ -78,7 +78,6 @@ def get_user_info(user=None):
 			"email_digest_frequency",
 			"email_digest_day_of_week",
 			"email_digest_last_sent_on",
-			"notification_level",
 			"participation_level",
 			"notification_channel",
 			"receive_notifications",
@@ -111,7 +110,6 @@ def get_user_info(user=None):
 				user.email_digest_frequency = user_profile.email_digest_frequency
 				user.email_digest_day_of_week = user_profile.email_digest_day_of_week
 				user.email_digest_last_sent_on = user_profile.email_digest_last_sent_on
-				user.notification_level = user_profile.notification_level
 				user.participation_level = user_profile.participation_level
 				user.notification_channel = user_profile.notification_channel
 				user.receive_notifications = user_profile.receive_notifications

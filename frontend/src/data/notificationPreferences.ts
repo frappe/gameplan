@@ -2,7 +2,6 @@ import { computed, ref, type Ref } from 'vue'
 import { toast, useDoctype } from 'frappe-ui'
 import type { GPUserProfile } from '@/types/doctypes'
 
-export type NotificationLevel = 'Mentions only' | 'Mute'
 export type NotificationChannel = 'In-app' | 'Email'
 
 export type DiscussionNotificationState = 'Mute' | 'Mentions only' | 'Watch'

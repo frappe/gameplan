@@ -82,7 +82,7 @@ class PreferenceTestCase(GameplanTestCase):
 			return frappe.get_doc("GP Discussion", _name(discussion)).set_notification_state(state)
 
 
-class TestGlobalLevel(PreferenceTestCase):
+class TestDefaultState(PreferenceTestCase):
 	def test_a_fresh_profile_is_on_mentions_only(self):
 		state = effective_discussion_state(self.second_member.name, self.discussion.name)
 		self.assertEqual(state, "Mentions only")
@@ -106,42 +106,6 @@ class TestGlobalLevel(PreferenceTestCase):
 
 		self.assertEqual(self.notifications_for(self.member), [])
 
-	def test_global_mute_silences_a_mention_in_an_untouched_discussion(self):
-		self.set_prefs(self.second_member, notification_level="Mute")
-
-		self.mention_second_member()
-
-		self.assertEqual(self.notifications_for(self.second_member), [])
-
-	def test_global_mute_silences_a_rich_quote_in_an_untouched_discussion(self):
-		self.set_prefs(self.second_member, notification_level="Mute")
-
-		with self.as_user(self.member):
-			create_comment(self.discussion, content=quote_html(self.second_member))
-
-		self.assertEqual(self.notifications_for(self.second_member), [])
-
-	def test_global_mute_silences_everyone_in_an_untouched_discussion(self):
-		self.set_prefs(self.second_member, notification_level="Mute")
-
-		with self.as_user(self.member):
-			create_comment(self.discussion, content=mention_html("_everyone_", "Everyone"))
-
-		self.assertEqual(self.notifications_for(self.second_member), [])
-		self.assertEqual([r.type for r in self.notifications_for(self.admin)], ["Mention"])
-
-	def test_global_mute_does_not_touch_task_mentions(self):
-		from gameplan.tests.fixtures import create_task
-
-		self.set_prefs(self.second_member, notification_level="Mute")
-
-		with self.as_user(self.member):
-			task = create_task("A task", self.space)
-			task.description = mention_html(self.second_member, "Second Member")
-			task.save()
-
-		self.assertEqual([r.type for r in self.notifications_for(self.second_member)], ["Mention"])
-
 
 class TestDiscussionState(PreferenceTestCase):
 	def test_watch_notifies_every_comment(self):
@@ -154,27 +118,6 @@ class TestDiscussionState(PreferenceTestCase):
 		self.assertEqual(rows[0].from_user, self.member.name)
 		self.assertEqual(str(rows[0].discussion), str(self.discussion.name))
 		self.assertIn("commented on Welcome thread", rows[0].message)
-
-	def test_watch_beats_a_global_mute(self):
-		self.set_prefs(self.second_member, notification_level="Mute")
-		self.subscribe(self.second_member, self.discussion, "Watch")
-
-		self.comment_as(self.member)
-		self.mention_second_member()
-
-		self.assertEqual(
-			sorted(r.type for r in self.notifications_for(self.second_member)), ["Comment", "Mention"]
-		)
-
-	def test_an_explicit_mentions_only_survives_a_global_change(self):
-		self.subscribe(self.second_member, self.discussion, "Mentions only")
-		self.set_prefs(self.second_member, notification_level="Mute")
-
-		self.mention_second_member()
-
-		self.assertEqual([r.type for r in self.notifications_for(self.second_member)], ["Mention"])
-		[row] = self.subscription_rows(self.second_member, self.discussion)
-		self.assertEqual(row.state, "Mentions only")
 
 	def test_a_muted_discussion_blocks_a_direct_mention(self):
 		self.subscribe(self.second_member, self.discussion, "Mute")
@@ -419,7 +362,6 @@ class TestParticipationLevel(PreferenceTestCase):
 class TestOwnContentToggles(PreferenceTestCase):
 	def test_reactions_follow_the_toggle_not_the_discussion_state(self):
 		self.subscribe(self.member, self.discussion, "Mute")
-		self.set_prefs(self.member, notification_level="Mute")
 
 		self.react_as(self.second_member, self.discussion)
 

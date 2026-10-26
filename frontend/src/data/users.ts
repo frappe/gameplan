@@ -5,7 +5,6 @@ import { setCommunityOrder } from './communityOrder'
 import {
   loadNotificationPreferences,
   type NotificationChannel,
-  type NotificationLevel,
   type ParticipationLevel,
 } from './notificationPreferences'
 import { loadPinnedSpaces } from './pinnedSpaces'
@@ -48,7 +47,6 @@ export interface UserInfo {
   email_digest_frequency?: EmailDigestFrequency
   email_digest_day_of_week?: EmailDigestDayOfWeek
   email_digest_last_sent_on?: string
-  notification_level?: NotificationLevel
   participation_level?: ParticipationLevel
   notification_channel?: NotificationChannel
   receive_notifications?: 0 | 1

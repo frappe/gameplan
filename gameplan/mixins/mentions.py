@@ -50,8 +50,8 @@ class HasMentions:
 		@everyone on a 500-member site added ~1,500 synchronous queries inline in the
 		request that created the discussion.
 
-		@everyone is a mention, so a user who muted this discussion — explicitly, or by
-		default under a global Mute — is left out, resolved in bulk the same way.
+		@everyone is a mention, so a user who muted this discussion is left out, resolved in
+		bulk the same way.
 		"""
 		audience = self._everyone_audience()
 		discussion = discussion_of(self)

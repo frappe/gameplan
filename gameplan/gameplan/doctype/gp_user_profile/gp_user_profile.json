@@ -18,7 +18,6 @@
   "email_digest_last_sent_on",
   "notifications_section",
   "notification_channel",
-  "notification_level",
   "participation_level",
   "receive_notifications",
   "active_hours_enabled",
@@ -188,14 +187,6 @@
    "options": "In-app\nEmail"
   },
   {
-   "default": "Mentions only",
-   "description": "What reaches this user from discussions they have not set a bell on. A bell set on a specific discussion always wins over this.",
-   "fieldname": "notification_level",
-   "fieldtype": "Select",
-   "label": "Notification Level",
-   "options": "Mentions only\nMute"
-  },
-  {
    "default": "Watch",
    "description": "Written as the bell on every discussion this user starts or comments in, unless they set one themselves first. Watch also lets reactions and poll votes on their content notify them.",
    "fieldname": "participation_level",
@@ -237,7 +228,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-27 10:00:00.000000",
+ "modified": "2026-10-27 10:05:00.000000",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "GP User Profile",

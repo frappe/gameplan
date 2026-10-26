@@ -94,8 +94,6 @@ export interface GPUserProfile extends DocType {
     | 'Sunday'
   /** Email Digest Last Sent On: Date */
   email_digest_last_sent_on?: string
-  /** Notification Level: Select - What reaches this user from discussions they have not set a bell on. A bell set on a specific discussion always wins over this. */
-  notification_level?: 'Mentions only' | 'Mute'
   /** Participation Level: Select - Written as the bell on every discussion this user starts or comments in, unless they set one themselves first. Watch also lets reactions and poll votes on their content notify them. */
   participation_level?: 'Watch' | 'Mentions only'
   /** Notification Channel: Select */
