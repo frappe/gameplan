@@ -5,7 +5,7 @@ from frappe.query_builder.functions import Count
 from frappe.utils import strip_html
 
 from gameplan.community_bans import can_moderate_community
-from gameplan.reporting import check_visible, review_target, version
+from gameplan.reporting import check_visible, review_polls, review_target, version
 
 
 @frappe.whitelist(methods=["POST"])
@@ -28,12 +28,16 @@ def preview(community: str, reviews: list):
 			if review.status != "Pending":
 				frappe.throw("This review was already resolved.", frappe.TimestampMismatchError)
 			check_visible(doc)
+			polls = review_polls(doc)
+			content = [unescape(strip_html(doc.content or ""))]
+			for poll in polls:
+				content.extend([poll.title, *(option.title for option in poll.options)])
 			item.update(
 				reference_doctype=doc.doctype,
 				reference_name=str(doc.name),
 				title=doc.get("title") or f"Reply #{doc.name}",
-				excerpt=" ".join(unescape(strip_html(doc.content or "")).split())[:300],
-				version=version(doc),
+				excerpt=" ".join(" ".join(content).split())[:300],
+				version=version(doc, polls),
 				reasons=[],
 			)
 		except (frappe.PermissionError, frappe.DoesNotExistError):

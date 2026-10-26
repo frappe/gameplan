@@ -153,6 +153,23 @@ class TestBulkReporting(GameplanTestCase):
 			self.decide(item)
 		self.assertEqual(frappe.db.get_value("GP Review", item["review"], "status"), "Pending")
 
+	def test_poll_only_preview_includes_current_question_and_choices(self):
+		draft = json.dumps(
+			{
+				"title": "Choose a release",
+				"options": [{"title": "Use <div> now"}, {"title": "Use <span> later"}],
+			}
+		)
+		with self.as_user(self.member):
+			reply = create_comment(
+				self.discussion,
+				content=f"<div data-type=\"poll\" data-poll-draft='{draft}'></div>",
+				owner=self.member,
+			)
+		item = self.previews([self.review(reply)])[0]
+		for text in ("Choose a release", "<div>", "<span>"):
+			self.assertIn(text, item["excerpt"])
+
 	def test_poll_edits_after_bulk_preview_require_a_fresh_review(self):
 		draft = json.dumps({"title": "Original question", "options": [{"title": "Yes"}, {"title": "No"}]})
 		with self.as_user(self.member):
