@@ -4,6 +4,17 @@ import type { GPUserProfile } from '@/types/doctypes'
 
 export type NotificationChannel = 'In-app' | 'Email'
 
+type NotificationPreferencePatch = Pick<
+  GPUserProfile,
+  | 'notification_channel'
+  | 'participation_level'
+  | 'receive_notifications'
+  | 'active_hours_enabled'
+  | 'active_hours_start'
+  | 'active_hours_end'
+  | 'active_hours_days'
+>
+
 export type DiscussionNotificationState = 'Mute' | 'Mentions only' | 'Watch'
 
 export type Weekday = 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun'
@@ -55,7 +66,7 @@ function setPref<T>(
   target: Ref<T>,
   value: unknown,
   normalize: (value: unknown) => T,
-  field: keyof GPUserProfile,
+  field: keyof NotificationPreferencePatch,
   toStored: (value: T) => unknown = (v) => v,
 ) {
   const next = normalize(value)
@@ -63,7 +74,7 @@ function setPref<T>(
   if (next === previous) return
   target.value = next
   void persist(
-    { [field]: toStored(next) } as Partial<GPUserProfile>,
+    { [field]: toStored(next) } as NotificationPreferencePatch,
     () => (target.value = previous),
   )
 }
@@ -119,7 +130,7 @@ export function setActiveHours(patch: { start?: string; end?: string; days?: Wee
   }, ACTIVE_HOURS_QUIET_MS)
 }
 
-async function persist(patch: Partial<GPUserProfile>, rollback: () => void) {
+async function persist(patch: NotificationPreferencePatch, rollback: () => void) {
   try {
     await call(savePreferencesMethod, { preferences: patch })
     toast.success('Notification preference saved', { id: saveToastId })
