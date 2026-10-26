@@ -6,6 +6,7 @@ import {
   loadNotificationPreferences,
   type NotificationChannel,
   type NotificationLevel,
+  type ParticipationLevel,
 } from './notificationPreferences'
 import { loadPinnedSpaces } from './pinnedSpaces'
 import { loadQuickReactionSlots } from './reactionPreferences'
@@ -48,7 +49,7 @@ export interface UserInfo {
   email_digest_day_of_week?: EmailDigestDayOfWeek
   email_digest_last_sent_on?: string
   notification_level?: NotificationLevel
-  participation_level?: 'Watch' | 'Mentions only'
+  participation_level?: ParticipationLevel
   notification_channel?: NotificationChannel
   receive_notifications?: 0 | 1
   active_hours_enabled?: 0 | 1
