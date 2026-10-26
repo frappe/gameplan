@@ -410,7 +410,7 @@ import { getSpace, useSpace } from '@/data/spaces'
 import { useCommunity } from '@/data/communities'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { useDiscussion } from '@/data/discussions'
-import type { DiscussionNotificationChoice } from '@/data/notificationPreferences'
+import type { DiscussionNotificationState } from '@/data/notificationPreferences'
 import { provideThreadReactions } from '@/data/reactions'
 import { useDraftSync } from '@/data/useDraftSync'
 import { tags } from '@/data/tags'
@@ -1057,7 +1057,7 @@ const actions = computed(() => [
   },
 ])
 
-async function setNotificationState(choice: DiscussionNotificationChoice) {
+async function setNotificationState(choice: DiscussionNotificationState) {
   try {
     await discussion.setNotificationState.submit({ state: choice })
   } catch {
@@ -1067,7 +1067,6 @@ async function setNotificationState(choice: DiscussionNotificationChoice) {
   const result = discussion.setNotificationState.data
   if (discussion.doc && result) {
     discussion.doc.notification_state = result.notification_state
-    discussion.doc.notification_state_is_explicit = result.notification_state_is_explicit
   }
 }
 

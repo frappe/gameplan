@@ -297,7 +297,7 @@ class TestSetNotificationState(PreferenceTestCase):
 	def test_setting_a_state_writes_the_row(self):
 		result = self.set_state(self.second_member, self.discussion, "Watch")
 
-		self.assertEqual(result, {"notification_state": "Watch", "notification_state_is_explicit": True})
+		self.assertEqual(result, {"notification_state": "Watch"})
 		self.assertEqual(self.subscription_rows(self.second_member, self.discussion)[0].state, "Watch")
 
 	def test_setting_again_updates_the_same_row(self):
@@ -307,23 +307,13 @@ class TestSetNotificationState(PreferenceTestCase):
 		rows = self.subscription_rows(self.second_member, self.discussion)
 		self.assertEqual([r.state for r in rows], ["Mute"])
 
-	def test_default_deletes_the_row_and_follows_global_again(self):
-		self.set_state(self.second_member, self.discussion, "Watch")
-		self.set_prefs(self.second_member, notification_level="Mute")
-
-		result = self.set_state(self.second_member, self.discussion, "Default")
-
-		self.assertEqual(self.subscription_rows(self.second_member, self.discussion), [])
-		self.assertEqual(result, {"notification_state": "Mute", "notification_state_is_explicit": False})
-
-	def test_default_with_no_row_is_a_no_op(self):
-		result = self.set_state(self.second_member, self.discussion, "Default")
-
-		self.assertEqual(result["notification_state"], "Mentions only")
-
 	def test_an_unknown_state_is_refused(self):
 		with self.assertRaises(frappe.ValidationError):
 			self.set_state(self.second_member, self.discussion, "Loud")
+
+	def test_default_is_no_longer_a_state(self):
+		with self.assertRaises(frappe.ValidationError):
+			self.set_state(self.second_member, self.discussion, "Default")
 
 	def test_the_discussion_reports_the_callers_state(self):
 		self.set_state(self.second_member, self.discussion, "Watch")
@@ -331,12 +321,11 @@ class TestSetNotificationState(PreferenceTestCase):
 		with self.as_user(self.second_member):
 			d = frappe.get_doc("GP Discussion", self.discussion.name).as_dict()
 		self.assertEqual(d.notification_state, "Watch")
-		self.assertTrue(d.notification_state_is_explicit)
+		self.assertNotIn("notification_state_is_explicit", d)
 
 		with self.as_user(self.admin):
 			d = frappe.get_doc("GP Discussion", self.discussion.name).as_dict()
 		self.assertEqual(d.notification_state, "Mentions only")
-		self.assertFalse(d.notification_state_is_explicit)
 
 	def test_a_row_is_private_to_its_user(self):
 		row = self.subscribe(self.second_member, self.discussion, "Watch")

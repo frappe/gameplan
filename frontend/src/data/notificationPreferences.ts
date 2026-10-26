@@ -6,7 +6,6 @@ export type NotificationLevel = 'Mentions only' | 'Mute'
 export type NotificationChannel = 'In-app' | 'Email'
 
 export type DiscussionNotificationState = 'Mute' | 'Mentions only' | 'Watch'
-export type DiscussionNotificationChoice = DiscussionNotificationState | 'Default'
 
 export type Weekday = 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun'
 export const allWeekdays: Weekday[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -191,7 +190,7 @@ export const discussionStateDescription: Record<DiscussionNotificationState, str
 
 export function discussionNotificationOptions(
   state: DiscussionNotificationState,
-  onSelect: (choice: DiscussionNotificationChoice) => void,
+  onSelect: (choice: DiscussionNotificationState) => void,
 ) {
   return discussionNotificationStates.map((candidate) => ({
     label: candidate,

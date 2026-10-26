@@ -20,7 +20,6 @@ from gameplan.notifications.resolver import (
 	notify_discussion_moved,
 	notify_new_discussion,
 	subscribe_on_participation,
-	subscription_state,
 )
 from gameplan.permissions import content_has_permission, discussion_query_conditions
 from gameplan.search_sqlite import enqueue_comment_reindex_on_move
@@ -76,10 +75,8 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		)
 		d.last_unread_poll = polls[0] if polls else None
 		d.is_bookmarked = self.is_bookmarked_by_current_user()
-		# The bell renders from these on first paint rather than after a second request.
-		explicit = subscription_state(frappe.session.user, self.name)
-		d.notification_state = explicit or effective_discussion_state(frappe.session.user, self.name)
-		d.notification_state_is_explicit = bool(explicit)
+		# The bell renders from this on first paint rather than after a second request.
+		d.notification_state = effective_discussion_state(frappe.session.user, self.name)
 		d.views = frappe.db.count("GP Discussion Visit", {"discussion": self.name})
 		return d
 
@@ -235,32 +232,24 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
 	def set_notification_state(self, state):
-		"""Set the caller's bell on this discussion: Mute, Mentions only, Watch — or Default.
-
-		Default deletes the caller's row so the discussion follows their global level
-		again; the other three write or update it. Returns what the bell should show.
+		"""Set the caller's bell on this discussion to Mute, Mentions only or Watch, writing
+		or updating their row. Returns what the bell should show.
 		"""
-		if state not in (*STATES, "Default"):
+		if state not in STATES:
 			frappe.throw(f"Invalid notification state: {state}")
 
 		user = frappe.session.user
 		existing = frappe.db.get_value(
 			"GP Discussion Subscription", {"user": user, "discussion": self.name}, "name"
 		)
-		if state == "Default":
-			if existing:
-				frappe.delete_doc("GP Discussion Subscription", existing, ignore_permissions=True)
-		elif existing:
+		if existing:
 			frappe.db.set_value("GP Discussion Subscription", existing, "state", state)
 		else:
 			frappe.get_doc(
 				doctype="GP Discussion Subscription", user=user, discussion=self.name, state=state
 			).insert(ignore_permissions=True)
 
-		return {
-			"notification_state": effective_discussion_state(user, self.name),
-			"notification_state_is_explicit": state != "Default",
-		}
+		return {"notification_state": effective_discussion_state(user, self.name)}
 
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document

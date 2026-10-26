@@ -18,7 +18,6 @@ import { Dropdown } from 'frappe-ui'
 import {
   discussionNotificationOptions,
   discussionStateIcon,
-  type DiscussionNotificationChoice,
   type DiscussionNotificationState,
 } from '@/data/notificationPreferences'
 
@@ -27,7 +26,7 @@ const props = defineProps<{
   loading?: boolean
 }>()
 
-const emit = defineEmits<{ (e: 'select', choice: DiscussionNotificationChoice): void }>()
+const emit = defineEmits<{ (e: 'select', choice: DiscussionNotificationState): void }>()
 
 const options = computed(() =>
   discussionNotificationOptions(props.state, (choice) => emit('select', choice)),
