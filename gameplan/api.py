@@ -403,6 +403,34 @@ def can_access_gameplan():
 	return False
 
 
+LINK_PREVIEW_QUOTA = 30
+LINK_PREVIEW_QUOTA_WINDOW = 60
+
+
+@frappe.whitelist(methods=["POST"])
+@validate_type
+def get_link_preview(url: str):
+	from gameplan.link_previews import get_or_fetch_preview
+
+	if frappe.session.user == "Guest":
+		frappe.throw(_("You are not permitted to fetch link previews"), frappe.PermissionError)
+
+	if _link_preview_quota_spent():
+		frappe.throw(
+			_("Too many link previews requested. Try again in a minute."), frappe.RateLimitExceededError
+		)
+
+	return get_or_fetch_preview(url)
+
+
+def _link_preview_quota_spent() -> bool:
+	key = frappe.cache.make_key(f"gameplan:link-preview-count:{frappe.session.user}")
+	count = frappe.cache.incrby(key, 1)
+	if count == 1:
+		frappe.cache.expire(key, LINK_PREVIEW_QUOTA_WINDOW)
+	return count > LINK_PREVIEW_QUOTA
+
+
 CLIENT_ERROR_QUOTA = 20
 CLIENT_ERROR_QUOTA_WINDOW = 60 * 60
 CLIENT_ERROR_FIELD_LIMIT = 4000
