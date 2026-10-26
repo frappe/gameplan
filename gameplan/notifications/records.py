@@ -80,14 +80,18 @@ def write_or_merge(
 
 	doc.project = project
 	doc.team = team
-	doc.last_event_at = frappe.utils.now()
-	doc.read = 0
-	doc.email_sent_at = None
-	doc.email_skipped_at = None
-	doc.away_period = get_active_away_period(to_user)
+	relight(doc, to_user)
 	doc.flags.ignore_permissions = True
 	doc.save()
 	return doc
+
+
+def relight(doc, to_user: str) -> None:
+	doc.read = 0
+	doc.email_sent_at = None
+	doc.email_skipped_at = None
+	doc.last_event_at = frappe.utils.now()
+	doc.away_period = get_active_away_period(to_user)
 
 
 def space_for(discussion: str | None, project=None, team=None) -> tuple:

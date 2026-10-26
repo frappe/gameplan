@@ -7,7 +7,6 @@ from frappe import _
 from frappe.query_builder import Criterion
 
 from gameplan.notifications import records
-from gameplan.notifications.away import get_active_away_period
 from gameplan.notifications.preferences import wants_content_feedback
 from gameplan.utils.document import with_stored_document
 
@@ -134,11 +133,7 @@ class HasReactions:
 			doc.update(records.target_fields(self))
 
 		doc.message = message
-		doc.read = 0
-		doc.email_sent_at = None
-		doc.email_skipped_at = None
-		doc.last_event_at = frappe.utils.now()
-		doc.away_period = get_active_away_period(self.owner)
+		records.relight(doc, self.owner)
 		doc.flags.ignore_permissions = True
 		doc.save()
 
