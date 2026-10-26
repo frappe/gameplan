@@ -157,6 +157,8 @@ def is_publicly_readable_community(team):
 
 
 def can_manage_space(user, project):
+	from gameplan.community_bans import is_banned
+
 	if gameplan.is_anonymous(user):
 		return False
 	if is_global_admin(user):
@@ -169,7 +171,7 @@ def can_manage_space(user, project):
 		# space (GPProject.join adds one).
 		return False
 	project = get_project_info(project)
-	if not project:
+	if not project or is_banned(project.team, user):
 		return False
 	if is_member_access(project.visibility):
 		return is_space_member(user, project.name)

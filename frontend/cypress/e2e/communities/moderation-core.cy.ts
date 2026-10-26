@@ -15,6 +15,27 @@ function confirmRemoval(label: string) {
 }
 
 describe('Community moderation core', () => {
+  it('removes private Space management actions for a banned member while keeping reading available', () => {
+    resetData('private_space_with_guest').then((ids) => {
+      const path = `/g/community/${ids.community}/space/${ids.private_space}/discussions`
+      cy.switchUser('member')
+      cy.visit(path)
+      cy.get('button[aria-label="Space actions"]').should('be.visible')
+      cy.switchUser('admin')
+      cy.request('POST', '/api/method/gameplan.community_bans.set_ban', {
+        community: ids.community,
+        user: 'member@example.com',
+        banned: 1,
+        reason: 'Read only',
+      })
+      cy.switchUser('member')
+      cy.visit(path)
+      cy.get('button[aria-label="Space actions"]').should('not.exist')
+      cy.location('pathname').should('eq', path)
+      cy.contains('Secret thread').should('be.visible')
+    })
+  })
+
   it('hides a discussion, protects readers, and restores it from Removed content', () => {
     resetData('space_with_discussion').then((ids) => {
       appointModerator(ids.community!)

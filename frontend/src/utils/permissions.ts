@@ -74,7 +74,7 @@ export function canMoveContentToSpace(
 export function canManageSpace(space: Space | null | undefined, user: PermissionUser) {
   if (!space || !user.name) return false
   if (isGlobalAdmin(user)) return true
-  if (isGuest(user)) return false
+  if (isGuest(user) || isCommunityBanned(space.team, user)) return false
   if (isMemberAccess(space.visibility)) {
     return Boolean(space.members?.some((member) => member.user === user.name))
   }
