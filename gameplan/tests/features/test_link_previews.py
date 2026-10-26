@@ -83,9 +83,60 @@ class SafeFetchTestCase(GameplanTestCase):
 			"http://0.0.0.0/x",
 			"http://100.64.0.1/x",
 			"http://[::ffff:10.0.0.5]/x",
+			"http://[64:ff9b::a00:5]/x",
+			"http://[64:ff9b::7f00:1]/x",
+			"http://[2002:a00:5::1]/x",
 		):
 			with self.assertRaises(BlockedURLError, msg=url):
 				safe_fetch(url, allowed_content_types=("text/html",))
+
+	def test_embedded_ipv4_addresses_are_checked(self):
+		for address, public in (
+			("64:ff9b::a00:5", False),
+			("64:ff9b::5db8:d822", True),
+			("2002:a00:5::1", False),
+			("2001:0:a00:5::f5ff:fffa", False),
+			("::ffff:93.184.216.34", True),
+		):
+			self.assertEqual(
+				safe_fetch_module.is_public_address(ipaddress.ip_address(address)), public, msg=address
+			)
+
+	def test_slow_body_hits_the_total_time_cap(self):
+		clock = SimpleNamespace(now=0)
+		response = FakeResponse(200, HTML_HEADERS, b"x" * (safe_fetch_module.READ_CHUNK_BYTES * 4))
+		chunks = response.iter_content
+
+		def slow_chunks(chunk_size):
+			for chunk in chunks(chunk_size):
+				clock.now += 10
+				yield chunk
+
+		response.iter_content = slow_chunks
+		resolve, send = fake_network(response)
+		with (
+			resolve,
+			send,
+			patch.object(safe_fetch_module, "time", SimpleNamespace(monotonic=lambda: clock.now)),
+			self.assertRaisesRegex(LinkFetchError, "too long"),
+		):
+			safe_fetch("https://example.com/slow", allowed_content_types=("text/html",))
+
+	def test_slow_redirect_chain_hits_the_total_time_cap(self):
+		clock = SimpleNamespace(now=0)
+
+		def slow_redirect(*args):
+			clock.now += 15
+			return FakeResponse(302, {"Location": "https://example.com/next"})
+
+		with (
+			patch.object(safe_fetch_module, "resolve_public_ip", side_effect=_stubbed_resolve),
+			patch.object(safe_fetch_module, "_send_once", side_effect=slow_redirect) as send,
+			patch.object(safe_fetch_module, "time", SimpleNamespace(monotonic=lambda: clock.now)),
+			self.assertRaisesRegex(LinkFetchError, "too long"),
+		):
+			safe_fetch("https://example.com/page", allowed_content_types=("text/html",))
+		self.assertEqual(send.call_count, 2)
 
 	def test_redirect_hops_are_revalidated(self):
 		redirect = FakeResponse(302, {"Location": "http://169.254.169.254/latest/"})

@@ -3,6 +3,7 @@
 
 import ipaddress
 import socket
+import time
 from dataclasses import dataclass
 from urllib.parse import urljoin, urlsplit
 
@@ -14,7 +15,10 @@ MAX_BODY_BYTES = 2 * 1024 * 1024
 MAX_REDIRECTS = 5
 CONNECT_TIMEOUT = 5
 READ_TIMEOUT = 15
+TOTAL_TIMEOUT = 20
+READ_CHUNK_BYTES = 8 * 1024
 REDIRECT_STATUSES = {301, 302, 303, 307, 308}
+NAT64_PREFIX = ipaddress.ip_network("64:ff9b::/96")
 
 
 class LinkFetchError(Exception):
@@ -38,7 +42,9 @@ def safe_fetch(
 	allowed_content_types: tuple[str, ...],
 	max_bytes: int = MAX_BODY_BYTES,
 ) -> FetchedResponse:
+	deadline = time.monotonic() + TOTAL_TIMEOUT
 	for _hop in range(MAX_REDIRECTS + 1):
+		_check_deadline(deadline)
 		parts = urlsplit(url)
 		scheme = parts.scheme.lower()
 		if scheme not in ("http", "https"):
@@ -68,7 +74,9 @@ def safe_fetch(
 			if not content_type.startswith(allowed_content_types):
 				raise LinkFetchError(f"Content type {content_type or 'unknown'} is not allowed")
 
-			return FetchedResponse(url=url, content_type=content_type, body=_read_capped(response, max_bytes))
+			return FetchedResponse(
+				url=url, content_type=content_type, body=_read_capped(response, max_bytes, deadline)
+			)
 		finally:
 			response.close()
 
@@ -88,16 +96,30 @@ def resolve_public_ip(host: str, port: int) -> str:
 			address = ipaddress.ip_address(ip_string)
 		except ValueError as error:
 			raise LinkFetchError(f"Bad address for {host}") from error
-		mapped = getattr(address, "ipv4_mapped", None)
-		if mapped is not None:
-			address = mapped
-		if not address.is_global:
+		if not is_public_address(address):
 			raise BlockedURLError(f"{host} resolves to a non-public address")
 		addresses.append(ip_string)
 
 	if not addresses:
 		raise LinkFetchError(f"Could not resolve {host}")
 	return addresses[0]
+
+
+def is_public_address(address: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+	if address.version == 6:
+		if address.ipv4_mapped is not None:
+			return address.ipv4_mapped.is_global
+		if address in NAT64_PREFIX:
+			return ipaddress.IPv4Address(int(address) & 0xFFFFFFFF).is_global
+		embedded = [address.sixtofour, *(address.teredo or ())]
+		if any(ip is not None and not ip.is_global for ip in embedded):
+			return False
+	return address.is_global
+
+
+def _check_deadline(deadline: float):
+	if time.monotonic() > deadline:
+		raise LinkFetchError("Fetch took too long")
 
 
 class _PinnedAdapter(HTTPAdapter):
@@ -140,14 +162,15 @@ def _send_once(url: str, ip: str, accept: str = "*/*") -> requests.Response:
 		raise LinkFetchError(str(error)[:200]) from error
 
 
-def _read_capped(response: requests.Response, max_bytes: int) -> bytes:
+def _read_capped(response: requests.Response, max_bytes: int, deadline: float) -> bytes:
 	declared = response.headers.get("Content-Length")
 	if declared and declared.isdigit() and int(declared) > max_bytes:
 		raise LinkFetchError("Response too large")
 
 	chunks = []
 	read = 0
-	for chunk in response.iter_content(chunk_size=64 * 1024):
+	for chunk in response.iter_content(chunk_size=READ_CHUNK_BYTES):
+		_check_deadline(deadline)
 		read += len(chunk)
 		if read > max_bytes:
 			raise LinkFetchError("Response too large")
