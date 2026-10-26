@@ -6,6 +6,7 @@ import frappe
 import frappe.client
 from frappe.api.v2 import read_doc
 from frappe.desk.reportview import execute as reportview_execute
+from frappe.utils import now_datetime
 
 from gameplan.api import get_user_info
 from gameplan.extends.client import get_list
@@ -416,9 +417,12 @@ class TestPreferencesArePrivate(PreferenceTestCase):
 				self.assertFalse(row.get(field))
 
 	def test_another_member_cannot_read_them_through_the_document_api(self):
+		frappe.db.set_value("GP User Profile", self.profile, "last_batch_sent_at", now_datetime())
 		with self.as_user(self.member):
 			self.assert_hidden(read_doc("GP User Profile", self.profile))
 			self.assert_hidden(frappe.client.get("GP User Profile", self.profile))
+			self.assertFalse(read_doc("GP User Profile", self.profile).get("last_batch_sent_at"))
+			self.assertFalse(frappe.client.get("GP User Profile", self.profile).get("last_batch_sent_at"))
 
 	def test_another_member_cannot_list_them(self):
 		fields = ["name", *NOTIFICATION_PREFERENCE_FIELDS]
@@ -457,3 +461,5 @@ class TestPreferencesArePrivate(PreferenceTestCase):
 	def test_the_endpoint_saves_nothing_else(self):
 		with self.as_user(self.second_member), self.assertRaises(frappe.ValidationError):
 			save_my_notification_preferences({"bio": "Changed"})
+		with self.as_user(self.second_member), self.assertRaises(frappe.ValidationError):
+			save_my_notification_preferences({"last_batch_sent_at": "2026-09-16 10:00:00"})

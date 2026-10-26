@@ -108,6 +108,8 @@ export interface GPUserProfile extends DocType {
   active_hours_end?: string
   /** Active Hours Days: JSON */
   active_hours_days?: string
+  /** Last Batch Sent At: Datetime */
+  last_batch_sent_at?: string
 }
 
 // Last updated: 2024-02-06 12:18:02.871772

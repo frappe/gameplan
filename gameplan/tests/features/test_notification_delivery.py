@@ -47,8 +47,10 @@ class DeliveryTestCase(GameplanTestCase):
 			order_by="creation asc",
 		)
 
-	def run_hourly(self):
-		return self.run_tick(now_datetime().replace(minute=0, second=0, microsecond=0))
+	def run_hourly(self, hours=0):
+		return self.run_tick(
+			now_datetime().replace(minute=0, second=0, microsecond=0) + timedelta(hours=hours)
+		)
 
 	def run_tick(self, now):
 		with patch("frappe.sendmail") as sendmail:
@@ -112,7 +114,7 @@ class TestHourlyBatch(DeliveryTestCase):
 		with self.as_user(self.member):
 			create_comment(self.discussion, content="<p>Two</p>")
 
-		sendmail = self.run_hourly()
+		sendmail = self.run_hourly(hours=1)
 
 		sendmail.assert_called_once()
 		self.assertIn("2 new comments", sendmail.call_args.kwargs["args"]["others"][0]["title"])
@@ -354,20 +356,46 @@ class TestSendTimes(DeliveryTestCase):
 	def at(self, text):
 		return get_datetime(datetime.strptime(text, "%Y-%m-%d %H:%M"))
 
+	def mention_again(self):
+		self.mention_second_member()
+		for row in self.rows_for(self.second_member):
+			if not row.email_sent_at:
+				frappe.db.set_value("GP Notification", row.name, "away_period", None)
+
+	def last_batch_sent_at(self):
+		return frappe.db.get_value("GP User Profile", {"user": self.second_member.name}, "last_batch_sent_at")
+
 	def test_the_top_of_an_hour_inside_the_window_sends(self):
 		self.run_tick(self.at("2026-09-16 10:00")).assert_called_once()
 
-	def test_a_tick_between_hours_sends_nothing(self):
-		self.run_tick(self.at("2026-09-16 10:05")).assert_not_called()
+	def test_a_late_tick_sends_that_hours_mail_once(self):
+		self.run_tick(self.at("2026-09-16 10:06")).assert_called_once()
+		self.mention_again()
+		self.run_tick(self.at("2026-09-16 10:11")).assert_not_called()
 		self.run_tick(self.at("2026-09-16 10:30")).assert_not_called()
+
+	def test_a_sent_mail_is_stamped_on_the_profile(self):
+		self.assertIsNone(self.last_batch_sent_at())
+		self.run_tick(self.at("2026-09-16 10:06")).assert_called_once()
+		self.assertEqual(get_datetime(self.last_batch_sent_at()), self.at("2026-09-16 10:06"))
 
 	def test_the_window_closing_sends_the_last_mail(self):
 		self.run_tick(self.at("2026-09-16 18:00")).assert_called_once()
 
+	def test_a_late_closing_tick_still_sends_the_last_mail_once(self):
+		self.run_tick(self.at("2026-09-16 18:07")).assert_called_once()
+		self.mention_again()
+		self.run_tick(self.at("2026-09-16 18:12")).assert_not_called()
+
 	def test_after_the_closing_tick_nothing_more_goes_out_that_day(self):
+		self.run_tick(self.at("2026-09-16 18:00")).assert_called_once()
+		self.mention_again()
 		self.run_tick(self.at("2026-09-16 18:05")).assert_not_called()
 		self.run_tick(self.at("2026-09-16 18:30")).assert_not_called()
 		self.run_tick(self.at("2026-09-16 22:00")).assert_not_called()
+
+	def test_a_closing_mail_never_sent_does_not_go_out_hours_later(self):
+		self.run_tick(self.at("2026-09-16 19:01")).assert_not_called()
 
 	def test_a_day_off_sends_nothing_even_on_the_hour(self):
 		self.run_tick(self.at("2026-09-19 10:00")).assert_not_called()
@@ -385,7 +413,9 @@ class TestSendTimes(DeliveryTestCase):
 		closing = datetime(2026, 9, 16, 18, 0, tzinfo=ZoneInfo(reader_tz))
 		in_system_time = closing.astimezone(ZoneInfo(get_system_timezone())).replace(tzinfo=None)
 
-		self.run_tick(get_datetime(in_system_time - timedelta(hours=1))).assert_not_called()
+		self.run_tick(get_datetime(in_system_time - timedelta(hours=1))).assert_called_once()
+		self.mention_again()
+		self.run_tick(get_datetime(in_system_time - timedelta(minutes=30))).assert_not_called()
 		self.run_tick(get_datetime(in_system_time)).assert_called_once()
 
 
@@ -469,7 +499,7 @@ class TestHeldWhileAway(DeliveryTestCase):
 			create_comment(self.discussion, content="<p>Two</p>")
 		self.set_prefs(self.second_member, receive_notifications=1)
 
-		sendmail = self.run_hourly()
+		sendmail = self.run_hourly(hours=1)
 
 		sendmail.assert_called_once()
 		self.assertEqual(sendmail.call_args.kwargs["subject"], "1 new notification in Gameplan")

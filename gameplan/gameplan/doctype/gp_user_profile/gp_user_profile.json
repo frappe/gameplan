@@ -24,6 +24,7 @@
   "active_hours_start",
   "active_hours_end",
   "active_hours_days",
+  "last_batch_sent_at",
   "bio",
   "readme",
   "bento_section",
@@ -231,6 +232,13 @@
    "fieldtype": "JSON",
    "label": "Active Hours Days",
    "permlevel": 1
+  },
+  {
+   "fieldname": "last_batch_sent_at",
+   "fieldtype": "Datetime",
+   "label": "Last Batch Sent At",
+   "permlevel": 1,
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,

@@ -5,7 +5,7 @@
 from datetime import timedelta
 
 import frappe
-from frappe.utils import get_url, now_datetime
+from frappe.utils import get_datetime, get_url, now_datetime
 
 from gameplan.email_digest import (
 	GAMEPLAN_LOGO_PATH,
@@ -15,7 +15,9 @@ from gameplan.email_digest import (
 	get_user_avatar_map,
 )
 from gameplan.notifications.away import (
+	_system,
 	is_away,
+	local_time,
 	mark_recap_sent,
 	pending_recap_periods,
 	scheduled_off_window,
@@ -25,7 +27,7 @@ from gameplan.notifications.preferences import profile_prefs
 from gameplan.permissions import can_view_space
 
 MENTION_TYPES = ("Mention", "Rich Quote")
-TICK_MINUTES = 5
+CLOSING_GRACE = timedelta(hours=1)
 
 SUMMARY_FROM = 20
 
@@ -54,8 +56,10 @@ def send_batches(now=None):
 	for user in users:
 		if not frappe.db.get_value("User", user, "enabled"):
 			continue
-		if should_send(user, now):
-			send_batch(user)
+		if should_send(user, now) and send_batch(user):
+			frappe.db.set_value(
+				"GP User Profile", {"user": user}, "last_batch_sent_at", now, update_modified=False
+			)
 
 
 def should_send(user: str, now) -> bool:
@@ -63,11 +67,17 @@ def should_send(user: str, now) -> bool:
 	tz = user_timezone(user)
 	kind = is_away(prefs, now, tz)
 	if kind is None:
-		return now.minute < TICK_MINUTES
-	if kind == "Active hours":
-		window_end, _ = scheduled_off_window(prefs, now, tz)
-		return now - window_end < timedelta(minutes=TICK_MINUTES)
-	return False
+		boundary = _system(local_time(now, tz).replace(minute=0, second=0, microsecond=0))
+		if is_away(prefs, boundary, tz):
+			return False
+	elif kind == "Active hours":
+		boundary, _ = scheduled_off_window(prefs, now, tz)
+		if now - boundary >= CLOSING_GRACE:
+			return False
+	else:
+		return False
+	last_sent = frappe.db.get_value("GP User Profile", {"user": user}, "last_batch_sent_at")
+	return not last_sent or boundary > get_datetime(last_sent)
 
 
 def send_batch(user: str) -> list:
