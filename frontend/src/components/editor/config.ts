@@ -1,6 +1,6 @@
 import type { Component } from 'vue'
 import { Extension, type AnyExtension } from '@tiptap/core'
-import { Plugin, PluginKey } from '@tiptap/pm/state'
+import { Plugin, PluginKey, type Transaction } from '@tiptap/pm/state'
 import { call, useFileUpload, type UploadedFile } from 'frappe-ui'
 import { SuggestionExtension } from 'frappe-ui/editor'
 import type { MediaUploadRequestOptions } from 'frappe-ui/editor'
@@ -89,6 +89,7 @@ export const DiscussionLinkPasteExtension = Extension.create({
             const discussion = parseDiscussionUrl(href)?.name
             if (!discussion) return false
 
+            let from = view.state.selection.from
             editor
               .chain()
               .insertContent({
@@ -98,25 +99,41 @@ export const DiscussionLinkPasteExtension = Extension.create({
               })
               .run()
 
-            loadDiscussionPreview(discussion).then((preview) => {
-              if (!preview || editor.isDestroyed) return
-              let range: { from: number; to: number } | null = null
-              editor.state.doc.descendants((node, pos) => {
-                if (range || !node.isText || node.text !== href) return
-                if (node.marks.some((m) => m.type.name === 'link' && m.attrs.href === href)) {
-                  range = { from: pos, to: pos + node.nodeSize }
-                }
+            const track = ({ transaction }: { transaction: Transaction }) => {
+              from = transaction.mapping.map(from)
+            }
+            editor.on('transaction', track)
+
+            const isPastedLink = (to: number) => {
+              const { doc, schema } = editor.state
+              if (to > doc.content.size || doc.textBetween(from, to) !== href) return false
+              let linked = true
+              doc.nodesBetween(from, to, (node) => {
+                if (!node.isText) return
+                const mark = node.marks.find((m) => m.type === schema.marks.link)
+                if (mark?.attrs.href !== href) linked = false
               })
-              if (!range) return
-              editor
-                .chain()
-                .insertContentAt(range, {
-                  type: 'text',
-                  text: preview.title,
-                  marks: [{ type: 'link', attrs: { href } }],
-                })
-                .run()
-            })
+              return linked
+            }
+
+            loadDiscussionPreview(discussion)
+              .then((preview) => {
+                editor.off('transaction', track)
+                const to = from + href.length
+                if (!preview || editor.isDestroyed || !isPastedLink(to)) return
+                editor
+                  .chain()
+                  .insertContentAt(
+                    { from, to },
+                    {
+                      type: 'text',
+                      text: preview.title,
+                      marks: [{ type: 'link', attrs: { href } }],
+                    },
+                  )
+                  .run()
+              })
+              .catch(() => editor.off('transaction', track))
             return true
           },
         },
