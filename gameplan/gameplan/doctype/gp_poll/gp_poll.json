@@ -70,7 +70,8 @@
    "fieldname": "comment",
    "fieldtype": "Link",
    "label": "Comment",
-   "options": "GP Comment"
+   "options": "GP Comment",
+   "search_index": 1
   }
  ],
  "index_web_pages_for_search": 1,

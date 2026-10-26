@@ -166,6 +166,12 @@ def detail(community: str, review: str, start: int = 0, report: str = ""):
 	)
 	if report and not evidence:
 		frappe.throw("Report does not belong to this review", frappe.PermissionError)
+	polls = []
+	if doc.doctype == "GP Comment":
+		for name in frappe.get_all("GP Poll", filters={"comment": doc.name}, pluck="name"):
+			poll = frappe.get_doc("GP Poll", name)
+			poll.check_permission("read")
+			polls.append(poll.as_dict())
 	return {
 		"review": {
 			field: review.get(field)
@@ -181,6 +187,7 @@ def detail(community: str, review: str, start: int = 0, report: str = ""):
 		},
 		"reports": reports[:40],
 		"evidence": evidence,
+		"polls": polls,
 		"has_more": len(reports) > 40,
 	}
 

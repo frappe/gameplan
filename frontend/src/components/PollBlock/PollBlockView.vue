@@ -75,7 +75,7 @@ onMounted(() => {
   if (draft.value && !draft.value.title) nextTick(() => questionInput.value?.focus())
   const resource = thread?.embeddedPolls ?? thread?.polls
   if (props.node.attrs.poll && resource && !poll.value && !resource.loading) {
-    resource.reload()
+    resource.reload?.()
   }
 })
 

@@ -64,6 +64,9 @@
         :editable="false"
       />
       <p class="mt-5 text-base-medium">Reported versions</p>
+      <p v-if="details.polls.length" class="mt-1 text-base text-ink-gray-5">
+        Poll questions and results show the current poll, including in reported versions.
+      </p>
       <div v-for="report in details.reports" :key="report.name" class="mt-3 border-t pt-3">
         <Button variant="ghost" @click="loadReview(report.name)"
           >{{ report.reason }} · {{ useUser(report.owner).full_name }}</Button
@@ -115,9 +118,11 @@
   </Dialog>
 </template>
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { provide, ref, watch } from 'vue'
 import { Button, Dialog, ErrorMessage, Select, Textarea, call, dayjsLocal } from 'frappe-ui'
 import CommentEditor from '@/components/editor/CommentEditor.vue'
+import { threadPollsKey } from '@/components/PollBlock/poll-draft'
+import type { GPPoll } from '@/types/doctypes'
 import { useUser } from '@/data/users'
 import { reloadDiscussionLists } from '@/data/discussions'
 import { extractServerMessage } from '@/utils'
@@ -153,6 +158,7 @@ type Details = {
     note: string
   }[]
   evidence: { name: string; reported_title?: string; reported_content: string } | null
+  polls: GPPoll[]
   has_more: boolean
 }
 const status = ref('Pending'),
@@ -169,6 +175,18 @@ const active = ref(''),
   decision = ref('Dismiss'),
   note = ref(''),
   resolving = ref(false)
+provide(threadPollsKey, {
+  polls: {
+    get data() {
+      return details.value?.polls ?? []
+    },
+    get loading() {
+      return !details.value
+    },
+  },
+  space: () => null,
+  readOnlyMode: () => true,
+})
 let request = 0
 async function load() {
   const current = ++request

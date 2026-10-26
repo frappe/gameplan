@@ -44,6 +44,26 @@ class TestReporting(GameplanTestCase):
 				**kwargs,
 			)
 
+	def test_review_previews_include_embedded_polls_even_after_removal(self):
+		with self.as_user(self.member):
+			self.reply.content = (
+				'<div data-type="poll" data-poll-draft=\''
+				'{"title":"Reported poll","options":[{"title":"Yes"},{"title":"No"}]}'
+				"'></div>"
+			)
+			self.reply.save()
+		review = self.review(self.report(self.reply))
+		for removed in (False, True):
+			if removed:
+				self.decide(review, "Hide")
+			with self.as_user(self.outsider):
+				data = detail(self.community.name, review)
+				self.assertEqual(len(data["polls"]), 1)
+				self.assertEqual(data["polls"][0]["title"], "Reported poll")
+				self.assertEqual([row["title"] for row in data["polls"][0]["options"]], ["Yes", "No"])
+		with self.as_user(self.member), self.assertRaises(frappe.PermissionError):
+			detail(self.community.name, review)
+
 	def test_reports_group_and_duplicate_submission_preserves_original_evidence(self):
 		first = self.report(note="First note")
 		self.assertEqual(self.report(note="Changed note"), first)

@@ -21,6 +21,52 @@ function decision(value: string, note = 'Moderator reviewed the reports') {
 }
 
 describe('Content reports', () => {
+  it('previews reported polls read-only in current and reported content, including after Hide', () => {
+    resetData('space_with_discussion').then((ids) => {
+      const poll = { title: 'Reported poll', options: [{ title: 'Yes' }, { title: 'No' }] }
+      cy.request('POST', '/api/v2/document/GP Comment', {
+        reference_doctype: 'GP Discussion',
+        reference_name: ids.discussion,
+        content: `<div data-type="poll" data-poll-draft='${JSON.stringify(poll)}'></div>`,
+      }).then(({ body }) => {
+        cy.switchUser('secondMember')
+        cy.request('POST', '/api/method/gameplan.reporting.submit', {
+          doctype: 'GP Comment',
+          name: String(body.data.name),
+          reason: 'Spam',
+        })
+      })
+      cy.switchUser('admin')
+      reports(ids)
+      cy.contains('button', /^Review$/).click()
+      cy.get('[role="dialog"] [data-node-view-wrapper]')
+        .should('have.length', 2)
+        .each(($preview) => {
+          cy.wrap($preview).contains('Reported poll').should('be.visible')
+          cy.wrap($preview)
+            .find('[role="radio"]')
+            .should('have.length', 2)
+            .each(($answer) => {
+              cy.wrap($answer).should('be.disabled')
+            })
+        })
+      cy.get('[role="dialog"] button[aria-label="Poll Options"]').should('not.exist')
+      decision('Hide')
+      cy.contains('No pending reports.').should('be.visible')
+      cy.get('[role="dialog"]').should('not.exist')
+      cy.get('[role="combobox"]').click()
+      cy.contains('[role="option"]', 'Resolved').click()
+      cy.contains('button', /^Review$/).click()
+      cy.get('[role="dialog"] [data-node-view-wrapper]')
+        .should('have.length', 1)
+        .contains('Reported poll')
+        .should('be.visible')
+      cy.get('[role="dialog"] [role="radio"]').each(($answer) => {
+        cy.wrap($answer).should('be.disabled')
+      })
+    })
+  })
+
   it('lets an invited Guest report a private discussion', () => {
     resetData('private_space_with_guest').then((ids) => {
       cy.switchUser('guest')

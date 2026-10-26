@@ -12,8 +12,10 @@ export interface PollDraft {
 }
 
 export interface ThreadPolls {
-  polls: ReturnType<typeof useList<GPPoll>>
-  embeddedPolls?: ReturnType<typeof useList<GPPoll>>
+  polls: Pick<ReturnType<typeof useList<GPPoll>>, 'data' | 'loading'> & { reload?: () => unknown }
+  embeddedPolls?: Pick<ReturnType<typeof useList<GPPoll>>, 'data' | 'loading'> & {
+    reload?: () => unknown
+  }
   space: () => Space | null | undefined
   readOnlyMode: () => boolean
 }
