@@ -394,6 +394,13 @@ def get_unsplash_photos(keyword=None):
 
 
 @frappe.whitelist(methods=["POST"])
+def set_discussion_read_state(discussion: str, unread: bool = False):
+	doc = frappe.get_doc("GP Discussion", discussion)
+	# Read markers belong to the viewer; they do not require content-write permission.
+	getattr(doc, "mark_as_unread" if unread else "track_visit")()
+
+
+@frappe.whitelist(methods=["POST"])
 def mark_all_notifications_as_read():
 	Notification = frappe.qb.DocType("GP Notification")
 	(

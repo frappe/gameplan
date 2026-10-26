@@ -42,6 +42,45 @@ describe('Community moderation core', () => {
     })
   })
 
+  it('marks readable discussions read for banned readers and archived Spaces', () => {
+    for (const archived of [false, true]) {
+      resetData('space_with_discussion').then((ids) => {
+        if (archived) {
+          cy.request('POST', `/api/v2/document/GP Project/${ids.space}/method/archive`)
+        } else {
+          cy.request('POST', '/api/method/gameplan.community_bans.set_ban', {
+            community: ids.community,
+            user: 'member@example.com',
+            banned: 1,
+            reason: 'Read only',
+          })
+        }
+        cy.request('POST', '/api/v2/document/GP Unread Record', {
+          user: 'member@example.com',
+          project: ids.space,
+          discussion: ids.discussion,
+          is_unread: 1,
+        }).then(({ body }) => {
+          const unread = body.data.name
+          cy.switchUser('member')
+          cy.intercept('POST', '/api/method/gameplan.api.set_discussion_read_state').as('readState')
+          cy.visit(
+            `/g/community/${ids.community}/space/${ids.space}/discussion/${ids.discussion}/${ids.discussion_slug}`,
+          )
+          cy.contains('Seed content').should('be.visible')
+          cy.wait('@readState').its('response.statusCode').should('eq', 200)
+          cy.get('@readState.all').each((entry: any) => {
+            expect(entry.request.body.unread).not.to.eq(true)
+          })
+          cy.switchUser('admin')
+          cy.request(`/api/v2/document/GP Unread Record/${unread}`)
+            .its('body.data.is_unread')
+            .should('eq', 0)
+        })
+      })
+    }
+  })
+
   it('hides a discussion, protects readers, and restores it from Removed content', () => {
     resetData('space_with_discussion').then((ids) => {
       appointModerator(ids.community!)

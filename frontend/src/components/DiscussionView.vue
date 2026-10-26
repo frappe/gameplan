@@ -629,12 +629,7 @@ async function scrollToUnread() {
     }
   }
 
-  if (
-    !props.readOnlyMode &&
-    !isAnonymousVisitor() &&
-    route.name === 'Discussion' &&
-    route.params.postId === doc?.name
-  ) {
+  if (!isAnonymousVisitor() && route.name === 'Discussion' && route.params.postId === doc?.name) {
     discussion.trackVisit
       .submit()
       .then(() => {

@@ -47,6 +47,11 @@ def team_has_permission(doc, ptype="read", user=None, **kwargs):
 
 def project_has_permission(doc, ptype="read", user=None, **kwargs):
 	user = user or frappe.session.user
+	if ptype == "create":
+		from gameplan.community_bans import is_banned
+
+		return not is_banned(doc.team, user)
+
 	if ptype in READ_PERMISSIONS:
 		return can_view_space(user, doc)
 	if ptype in {"write", "delete"}:

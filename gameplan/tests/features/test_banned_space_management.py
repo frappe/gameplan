@@ -53,3 +53,17 @@ class TestBannedSpaceManagement(GameplanTestCase):
 		with self.as_user(self.member):
 			self.space.move_to_team(self.destination.name)
 		self.assertEqual(frappe.db.get_value("GP Project", self.space.name, "team"), self.destination.name)
+
+	def test_banned_member_cannot_create_a_space_in_the_community(self):
+		with self.as_user(self.member):
+			with self.assertRaises(frappe.PermissionError):
+				frappe.get_doc(
+					doctype="GP Project",
+					title="Banned publication",
+					team=self.community.name,
+					description="Readme publication",
+				).insert()
+			space = frappe.get_doc(
+				doctype="GP Project", title="Allowed elsewhere", team=self.destination.name
+			).insert()
+			self.assertEqual(space.team, self.destination.name)

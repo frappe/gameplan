@@ -1,5 +1,5 @@
 import { ref, watch } from 'vue'
-import { useDoc, useList } from 'frappe-ui'
+import { useCall, useDoc, useList } from 'frappe-ui'
 import { UseListOptions } from 'frappe-ui'
 import { useDocumentVisibility } from '@vueuse/core'
 import { isAnonymousVisitor } from '@/utils/publicAccess'
@@ -103,12 +103,10 @@ export function useDiscussion(name: string) {
   }
 
   if (!discussionsCache[name]) {
-    discussionsCache[name] = useDoc<Discussion, DiscussionMethods>({
+    const discussion = useDoc<Discussion, DiscussionMethods>({
       doctype: 'GP Discussion',
       name,
       methods: {
-        trackVisit: 'track_visit',
-        markAsUnread: 'mark_as_unread',
         closeDiscussion: 'close_discussion',
         reopenDiscussion: 'reopen_discussion',
         pinDiscussion: 'pin_discussion',
@@ -118,6 +116,21 @@ export function useDiscussion(name: string) {
         moveToProject: 'move_to_project',
       },
     })
+    Object.assign(discussion, {
+      trackVisit: useCall({
+        url: '/api/method/gameplan.api.set_discussion_read_state',
+        method: 'POST',
+        immediate: false,
+        params: () => ({ discussion: name }),
+      }),
+      markAsUnread: useCall({
+        url: '/api/method/gameplan.api.set_discussion_read_state',
+        method: 'POST',
+        immediate: false,
+        params: () => ({ discussion: name, unread: true }),
+      }),
+    })
+    discussionsCache[name] = discussion
   }
   return discussionsCache[name] as ReturnType<typeof useDoc<Discussion, DiscussionMethods>>
 }
