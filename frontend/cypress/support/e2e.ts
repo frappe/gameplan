@@ -28,3 +28,13 @@ Cypress.on('uncaught:exception', (err) => {
     return false
   }
 })
+
+// Frappe Framework's UserOnboarding panel renders a floating trigger at bottom-right
+// (inset-inline-end: 20px, bottom: 24px, z-index: 1000) for Administrator.
+// Hide it so it never obscures bottom-aligned composer buttons.
+Cypress.on('window:before:load', (win) => {
+  const style = win.document.createElement('style')
+  style.id = 'cypress-hide-onboarding'
+  style.innerHTML = '.onb-panel { display: none !important; }'
+  win.document.head?.appendChild(style)
+})
