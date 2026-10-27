@@ -10,7 +10,7 @@ from frappe.core.api.file import get_max_file_size
 from frappe.utils import get_system_timezone
 from frappe.utils.telemetry import capture
 
-from gameplan import is_new_site
+from gameplan import __version__, is_new_site
 from gameplan.roles import has_app_access
 
 no_cache = 1
@@ -88,11 +88,14 @@ APP_VERSION_CACHE_TTL = 60
 
 
 def get_app_version():
-	"""Branch, commit and tag of the running checkout, for the About dialog.
+	"""Release version, plus branch and commit of the running checkout, for the About dialog.
 
-	Cached, because `get_boot` runs on every `/g` render and reading this costs six
-	git processes. A deploy restarts the workers, so the value cannot outlive the
-	checkout it describes by more than the TTL.
+	The version comes from `gameplan.__version__`, not a git tag: a deployed checkout is
+	usually shallow and carries no tags.
+
+	Cached, because `get_boot` runs on every `/g` render and reading this costs five git
+	processes. A deploy restarts the workers, so the value cannot outlive the checkout it
+	describes by more than the TTL.
 	"""
 	version = frappe.cache.get_value(APP_VERSION_CACHE_KEY)
 	if version is None:
@@ -104,7 +107,6 @@ def get_app_version():
 def read_app_version():
 	branch = run_git_command("rev-parse", "--abbrev-ref", "HEAD")
 	commit = run_git_command("rev-parse", "--short=7", "HEAD")
-	tag = run_git_command("describe", "--tags", "--abbrev=0")
 	dirty = bool(run_git_command("diff", "--name-only"))
 	commit_date = run_git_command("log", "-1", "--format=%cd")
 	commit_message = run_git_command("log", "-1", "--pretty=%B")
@@ -114,7 +116,7 @@ def read_app_version():
 		"commit": commit,
 		"commit_date": commit_date,
 		"commit_message": commit_message,
-		"tag": tag,
+		"version": __version__,
 		"dirty": dirty,
 	}
 

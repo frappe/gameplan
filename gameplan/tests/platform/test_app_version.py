@@ -3,10 +3,9 @@
 
 """The About-dialog version read, which `/g` runs on every page render.
 
-A deployed checkout is usually shallow and carries no tags, so `git describe` fails on
-every call. That used to write an Error Log row per failed git call per page load,
-which drowned real tracebacks in "Git Command Error" noise and made a broken login look
-like it produced no traceback at all.
+Git cannot always answer for a deployed checkout. A failed git call used to write an
+Error Log row on every page load, which drowned real tracebacks in "Git Command Error"
+noise and made a broken login look like it produced no traceback at all.
 """
 
 from unittest.mock import patch
@@ -15,6 +14,7 @@ import frappe
 from frappe.client import get_count
 from frappe.tests.utils import FrappeTestCase
 
+import gameplan
 from gameplan.www.g import (
 	APP_VERSION_CACHE_KEY,
 	get_app_version,
@@ -53,7 +53,7 @@ class TestAppVersion(FrappeTestCase):
 			version = read_app_version()
 
 		self.assertEqual(version["branch"], "")
-		self.assertEqual(version["tag"], "")
+		self.assertEqual(version["version"], gameplan.__version__)
 		self.assertFalse(version["dirty"])
 
 	def test_the_version_is_read_once_and_then_served_from_cache(self):

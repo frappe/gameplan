@@ -7,12 +7,17 @@
           <h3 class="text-2xl-semibold text-ink-gray-9">Gameplan</h3>
           <div class="flex items-center mt-1">
             <div class="text-base text-ink-gray-6">
-              {{ appVersion.branch != 'main' ? appVersion.branch : '' }}
-              <template v-if="appVersion.branch != 'main'"> ({{ appVersion.commit }}) </template>
-              <template v-else>{{ appVersion.tag }}</template>
+              v{{ appVersion.version }}
+              <!-- Releases are cut from develop, so elsewhere the version alone is not the build. -->
+              <template v-if="appVersion.branch && appVersion.branch !== 'develop'">
+                · {{ appVersion.branch }} ({{ appVersion.commit }})
+              </template>
             </div>
 
-            <Tooltip :text="`${appVersion.commit_message} - ${appVersion.commit_date}`" side="top">
+            <Tooltip
+              :text="`${appVersion.commit}: ${appVersion.commit_message} - ${appVersion.commit_date}`"
+              side="top"
+            >
               <span class="lucide-info size-3.5 text-ink-gray-8 ml-1" />
             </Tooltip>
           </div>
@@ -75,7 +80,7 @@ interface AppVersion {
   commit: string
   commit_date: string
   commit_message: string
-  tag?: string
+  version: string
 }
 let appVersion: AppVersion = window.app_version
 </script>
