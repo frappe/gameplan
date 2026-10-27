@@ -111,6 +111,7 @@ class GPProject(HasVisibility, ManageMembersMixin, Archivable, Document):
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
 	def move_to_team(self, team: str | None = None):
+		"""Move this Space to another Community. An empty `team` makes it uncategorized."""
 		# An empty team moves the Space to Uncategorized. "" and None mean the same.
 		team = team or None
 		if (self.team or None) == team:
@@ -125,6 +126,7 @@ class GPProject(HasVisibility, ManageMembersMixin, Archivable, Document):
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
 	def merge_with_project(self, project=None):
+		"""Merge this Space into Space `project` and delete it. Needs manage rights on both."""
 		if not project:
 			return
 		# Coerce BEFORE comparing. GP Project autoincrements, so self.name is an int, while
@@ -180,6 +182,7 @@ class GPProject(HasVisibility, ManageMembersMixin, Archivable, Document):
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
 	def invite_guest(self, email):
+		"""Invite `email` as a guest with access to this Space only."""
 		require_can_invite_guest(self)
 		# Trusted path: a space member invites a guest to this space. The role is
 		# hardcoded (non-escalating), so it bypasses invite_by_email's admin gate.
@@ -188,6 +191,7 @@ class GPProject(HasVisibility, ManageMembersMixin, Archivable, Document):
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
 	def remove_guest_invitation(self, invitation):
+		"""Withdraw this Space from a pending guest invitation (GP Invitation name)."""
 		require_can_invite_guest(self)
 		invitation = frappe.get_doc("GP Invitation", invitation)
 		projects = frappe.parse_json(invitation.projects or "[]")
@@ -205,6 +209,7 @@ class GPProject(HasVisibility, ManageMembersMixin, Archivable, Document):
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
 	def remove_guest(self, email):
+		"""Remove guest access to this Space for the user with `email`."""
 		require_can_invite_guest(self)
 		name = frappe.db.get_value("GP Guest Access", {"project": self.name, "user": email})
 		if name:
@@ -213,6 +218,7 @@ class GPProject(HasVisibility, ManageMembersMixin, Archivable, Document):
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
 	def track_visit(self):
+		"""Record that the current user visited this Space."""
 		self.require_view_access()
 		if frappe.flags.read_only:
 			return
@@ -232,18 +238,21 @@ class GPProject(HasVisibility, ManageMembersMixin, Archivable, Document):
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
 	def add_member(self, user):
+		"""Add `user` as a member of this Space. Needs rights to manage Space members."""
 		require_can_manage_space_members(self)
 		self.add_member_row(user)
 
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
 	def remove_member(self, user):
+		"""Remove `user` from this Space. Needs rights to manage Space members."""
 		require_can_manage_space_members(self)
 		self.remove_member_row(user)
 
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
 	def join(self):
+		"""Join this Space as the current user."""
 		self.require_view_access()
 		self.add_member_row(frappe.session.user)
 
@@ -265,12 +274,14 @@ class GPProject(HasVisibility, ManageMembersMixin, Archivable, Document):
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
 	def leave(self):
+		"""Leave this Space as the current user."""
 		self.require_view_access()
 		self.remove_member_row(frappe.session.user)
 
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
 	def archive(self):
+		"""Archive this Space and remove everyone's pins of it."""
 		super().archive()
 		# Everyone's pin, not just the archiver's. Archiving retires the Space for the
 		# whole site, so a pin left on another user's sidebar points at something they
@@ -346,6 +357,7 @@ def get_joined_spaces():
 
 @frappe.whitelist()
 def get_activity():
+	"""Return the latest activity time per accessible Space, as {space: timestamp}."""
 	from frappe.query_builder.functions import Max
 
 	activity_by_project = {}
@@ -382,6 +394,7 @@ def update_project_team_reference(doctype: str, project: str, team: str | None):
 
 @frappe.whitelist(methods=["POST"])
 def join_spaces(spaces: list[str | int] = None):
+	"""Join each Space in `spaces` as the current user."""
 	if not spaces:
 		return
 	for space in spaces:
@@ -390,6 +403,7 @@ def join_spaces(spaces: list[str | int] = None):
 
 @frappe.whitelist(methods=["POST"])
 def leave_spaces(spaces: list[str | int] = None):
+	"""Leave each Space in `spaces` as the current user."""
 	if not spaces:
 		return
 	for space in spaces:
@@ -398,6 +412,7 @@ def leave_spaces(spaces: list[str | int] = None):
 
 @frappe.whitelist(methods=["POST"])
 def track_visits(spaces: list[str | int] = None):
+	"""Record that the current user visited each Space in `spaces`."""
 	if not spaces:
 		return
 	for space in spaces:
@@ -406,6 +421,7 @@ def track_visits(spaces: list[str | int] = None):
 
 @frappe.whitelist(methods=["POST"])
 def track_visit(space: str | int):
+	"""Record that the current user visited Space `space`."""
 	frappe.get_doc("GP Project", str(space)).track_visit()
 
 
@@ -420,6 +436,7 @@ def mark_all_as_read(spaces: list[str | int] = None):
 
 @frappe.whitelist()
 def get_unread_count():
+	"""Return unread discussion counts per joined Space, as {space: count}."""
 	from frappe.query_builder.functions import Count
 
 	user = frappe.session.user

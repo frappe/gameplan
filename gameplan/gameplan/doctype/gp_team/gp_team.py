@@ -119,6 +119,7 @@ class GPTeam(HasVisibility, Archivable, Document):
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
 	def add_members(self, users):
+		"""Add `users` (list of user ids) to this Community. Community managers only."""
 		require_can_manage_community(self)
 		for user in users:
 			self.add_member(user)
@@ -127,6 +128,7 @@ class GPTeam(HasVisibility, Archivable, Document):
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
 	def remove_member(self, user):
+		"""Remove `user` from this Community and its private Spaces. Community managers only."""
 		require_can_manage_community(self)
 		member = self.get_member(user)
 		if not member:
@@ -140,6 +142,7 @@ class GPTeam(HasVisibility, Archivable, Document):
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
 	def remove_guest_access(self, user):
+		"""Remove `user`'s guest access to every Space in this Community."""
 		require_can_manage_community(self)
 		for access_name in self.get_guest_access_names(user):
 			frappe.delete_doc("GP Guest Access", access_name, ignore_permissions=True)
@@ -147,6 +150,7 @@ class GPTeam(HasVisibility, Archivable, Document):
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
 	def remove_guest_invitation(self, invitation):
+		"""Withdraw this Community's Spaces from a pending guest invitation."""
 		require_can_manage_community(self)
 		invitation = frappe.get_doc("GP Invitation", invitation)
 		if invitation.role != "Gameplan Guest" or invitation.status != "Pending":
@@ -170,6 +174,7 @@ class GPTeam(HasVisibility, Archivable, Document):
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
 	def merge_into_team(self, team: str):
+		"""Move this Community's Spaces and members into Community `team`, then archive it."""
 		if self.archived_at:
 			frappe.throw(_("Cannot merge an archived community"))
 
@@ -184,6 +189,7 @@ class GPTeam(HasVisibility, Archivable, Document):
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
 	def set_member_admin(self, user, is_admin):
+		"""Make `user` a Community admin (`is_admin` 1) or a regular member (0)."""
 		require_can_manage_community(self)
 		member = self.get_member(user)
 		if not member:
@@ -327,6 +333,7 @@ def get_team_for_membership_change(team: str):
 @frappe.whitelist(methods=["POST"])
 @validate_type
 def update_joined_teams(teams: list = None, sidebar_badge_style: str | None = None):
+	"""Set the Communities the current user belongs to, in sidebar order. Returns that list."""
 	if gameplan.is_guest():
 		frappe.throw("Guests cannot manage communities")
 
