@@ -22,7 +22,7 @@ digest mirrors the same split: `get_unread_notifications` vs `get_unread_discuss
 import frappe
 from frappe.utils import cint
 
-from gameplan.api import mark_all_notifications_as_read, unread_notifications
+from gameplan.api import get_notifications, mark_all_notifications_as_read, unread_notifications
 from gameplan.gameplan.doctype.gp_notification.gp_notification import GPNotification
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
@@ -206,7 +206,8 @@ class TestMentionNotifications(NotificationTestCase):
 				content=mention_html(self.guest, "Guest"),
 			)
 
-		rows = self.notifications_for(self.guest)
+		# The grant itself also puts an "Added" row in the guest's bell; this test is about the mention.
+		rows = self.notifications_for(self.guest, type="Mention")
 		self.assertEqual(len(rows), 1)
 		self.assertEqual(str(rows[0].discussion), str(discussion.name))
 
@@ -557,3 +558,67 @@ class TestMarkNotificationsAsRead(NotificationTestCase):
 			frappe.delete_doc("GP Poll", poll.name)
 
 		self.assertIsNone(frappe.db.get_value("GP Notification", notification.name, "poll"))
+
+
+class TestNotificationListFilters(NotificationTestCase):
+	def setUp(self):
+		super().setUp()
+		self.other_community = create_community("Beta", members=[self.member, self.second_member])
+		self.marketing = create_space("Marketing", self.other_community)
+		self.sales = create_space("Sales", self.other_community)
+
+	def notify(self, user, **fields):
+		return (
+			frappe.get_doc(
+				doctype="GP Notification", to_user=_name(user), type="Added", message="Test", **fields
+			)
+			.insert(ignore_permissions=True)
+			.name
+		)
+
+	def listed(self, user, **filters):
+		with self.as_user(user):
+			rows = get_notifications(
+				fields=frappe.as_json(["name"]),
+				filters=frappe.as_json({"to_user": _name(user), **filters}),
+				limit=100,
+			)
+		return {row.name for row in rows} - self.notifications_before
+
+	def test_a_community_filter_keeps_notifications_that_have_no_space(self):
+		added = self.notify(self.second_member, team=self.community.name)
+		in_space = self.notify(self.second_member, team=self.community.name, project=self.space.name)
+		self.notify(self.second_member, team=self.other_community.name)
+
+		listed = self.listed(self.second_member, team=["in", [self.community.name]])
+
+		self.assertEqual(listed, {added, in_space})
+
+	def test_a_community_and_a_space_elsewhere_list_either(self):
+		added = self.notify(self.second_member, team=self.community.name)
+		in_marketing = self.notify(
+			self.second_member, team=self.other_community.name, project=self.marketing.name
+		)
+		self.notify(self.second_member, team=self.other_community.name)
+		self.notify(self.second_member, team=self.other_community.name, project=self.sales.name)
+
+		listed = self.listed(
+			self.second_member,
+			team=["in", [self.community.name]],
+			project=["in", [self.space.name, self.marketing.name]],
+		)
+
+		self.assertEqual(listed, {added, in_marketing})
+
+	def test_the_space_filter_never_reaches_another_users_notifications(self):
+		mine = self.notify(self.second_member, team=self.community.name)
+		self.notify(self.member, team=self.community.name)
+
+		with self.as_user(self.second_member):
+			rows = get_notifications(
+				fields=frappe.as_json(["name"]),
+				filters=frappe.as_json({"team": ["in", [self.community.name]]}),
+				limit=100,
+			)
+
+		self.assertEqual({row.name for row in rows} - self.notifications_before, {mine})

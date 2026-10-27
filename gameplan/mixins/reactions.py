@@ -6,6 +6,8 @@ import frappe
 from frappe import _
 from frappe.query_builder import Criterion
 
+from gameplan.notifications import records
+from gameplan.notifications.preferences import wants_content_feedback
 from gameplan.utils.document import with_stored_document
 
 REACTION_FIELDS = ["name", "reference_doctype", "reference_name", "emoji", "user"]
@@ -100,37 +102,26 @@ class HasReactions:
 		# otherwise read "1 person reacted to your post" about yourself.
 		if not any(user != self.owner for user, _emoji in added):
 			return
-
-		# Several changes can land in one call (the frontend debounces a quick tap-tap
-		# into one batch). The message describes the post as it now stands, not the
-		# delta, so it stays true however many rows moved.
-		people = {r.user for r in reactions if r.user != self.owner}
+		if not wants_content_feedback(self.owner):
+			return
 		if not can_view_content(self.owner, self):
 			return
+		self._relight_reaction_row(self._reaction_message(reactions))
 
-		match len(people):
-			case 1:
-				message = "1 person reacted to your post"
-			case _:
-				message = f"{len(people)} people reacted to your post"
-		values = frappe._dict(
-			to_user=self.owner,
-			type="Reaction",
-		)
-		if self.doctype == "GP Discussion":
-			values.discussion = self.name
-		elif self.doctype == "GP Comment":
-			values.comment = self.name
-		elif self.doctype == "GP Poll":
-			values.poll = self.name
-			values.discussion = self.discussion
+	def _reaction_message(self, reactions) -> str:
+		"""How the post stands now, not what this call changed: several reactions can land
+		in one call (the frontend debounces a quick tap-tap into one batch), and the row is
+		rewritten each time."""
+		people = {reaction.user for reaction in reactions if reaction.user != self.owner}
+		if len(people) == 1:
+			return "1 person reacted to your post"
+		return f"{len(people)} people reacted to your post"
 
-		lookup = values.copy()
-		if self.doctype == "GP Discussion":
-			# Poll and comment notifications also carry their discussion for routing.
-			# Excluding both keeps a later discussion reaction from overwriting either row.
-			lookup.poll = ["is", "not set"]
-			lookup.comment = ["is", "not set"]
+	def _relight_reaction_row(self, message: str) -> None:
+		"""One row per piece of content, reused every time: a reaction that arrives after
+		the row was read, emailed or skipped has to surface as the news it is."""
+		owned = frappe._dict(to_user=self.owner, type="Reaction")
+		lookup = frappe._dict(owned, **records.content_key(self))
 
 		# One row per post is shared by every reactor. Read it with a lock: a plain read
 		# returns this request's snapshot, which misses a save another reaction just
@@ -139,12 +130,11 @@ class HasReactions:
 			doc = frappe.get_doc("GP Notification", existing, for_update=True)
 		else:
 			doc = frappe.get_doc(doctype="GP Notification")
-			doc.update(values)
-			if self.doctype == "GP Comment":
-				doc.discussion = self.reference_name if self.reference_doctype == "GP Discussion" else None
-				doc.task = self.reference_name if self.reference_doctype == "GP Task" else None
+			doc.update(owned)
+			doc.update(records.target_fields(self))
+
 		doc.message = message
-		doc.read = 0
+		records.relight(doc, self.owner)
 		doc.flags.ignore_permissions = True
 		doc.save()
 

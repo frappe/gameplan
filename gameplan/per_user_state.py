@@ -3,12 +3,13 @@
 
 """Row-level access control for the doctypes that hold per-user state.
 
-GP Notification, GP Project Visit, GP Discussion Visit, GP Pinned Project and GP
-Followed Project each store one row per user, and each grants Gameplan Member and
-Gameplan Guest read and write with `if_owner` unset (the last two also grant
-`delete`). Role permissions do not tie a row to its user, so the hooks below limit
-every read, write and delete of a row to the user it belongs to, including through
-the generic `/api/v2/document/<doctype>` API.
+GP Notification, GP Project Visit, GP Discussion Visit, GP Pinned Project, GP Followed
+Project, GP Discussion Subscription, GP Space Subscription and GP Away Period each store
+one row per user, and each grants Gameplan Member and Gameplan Guest read and write with
+`if_owner` unset (pins, follows and the two subscription doctypes also grant `delete`).
+Role permissions do not tie a row to its user, so the hooks below limit every read, write
+and delete of a row to the user it belongs to, including through the generic
+`/api/v2/document/<doctype>` API.
 
 `if_owner` cannot express this rule. For GP Notification the row's `owner` is the
 person who *triggered* it (the mentioner), while the row belongs to `to_user` — so
@@ -60,6 +61,25 @@ def _belongs_to_user(doc, fieldname, user):
 		# authorised and the flag is unreachable over HTTP, so this row goes with it.
 		return True
 	return get_doc_value(doc, fieldname) == user
+
+
+def _may_create_for(doc, fieldname, user):
+	"""Whether this session may create a row that belongs to `fieldname`'s user.
+
+	`create` is answered before `before_insert` runs, so an unset field is the ordinary
+	case and means "mine". A field that *is* set has to name the session user: the
+	subscription and away doctypes stamp with `if not self.user`, which keeps a value the
+	client supplied, so without this check a member could POST a row carrying someone
+	else's user and take over their bell settings or away state.
+
+	Server-side writers insert with `ignore_permissions` (`subscribe_on_participation`
+	passes an explicit user), which skips this hook, so they may still write for others.
+	"""
+	user = user or frappe.session.user
+	if not hasattr(doc, "doctype"):
+		return True
+	supplied = get_doc_value(doc, fieldname)
+	return not supplied or supplied == user
 
 
 def notification_query_conditions(user=None, **kwargs):
@@ -121,3 +141,43 @@ def followed_project_has_permission(doc, ptype="read", user=None, **kwargs):
 		# As for pins: `before_insert` stamps `user` with the session user after this check.
 		return True
 	return _belongs_to_user(doc, FOLLOW_USER_FIELD, user)
+
+
+SUBSCRIPTION_USER_FIELD = "user"
+
+
+def discussion_subscription_query_conditions(user=None, **kwargs):
+	return _own_rows_only("GP Discussion Subscription", SUBSCRIPTION_USER_FIELD, user)
+
+
+def discussion_subscription_has_permission(doc, ptype="read", user=None, **kwargs):
+	"""A subscription is one user's own bell setting on a discussion.
+
+	Unlike the pin hook, `before_insert` here only fills an *empty* `user`, so `create`
+	cannot simply stay open: it has to reject a user the client supplied for someone else.
+	"""
+	if ptype == "create":
+		return _may_create_for(doc, SUBSCRIPTION_USER_FIELD, user)
+	return _belongs_to_user(doc, SUBSCRIPTION_USER_FIELD, user)
+
+
+def space_subscription_query_conditions(user=None, **kwargs):
+	return _own_rows_only("GP Space Subscription", SUBSCRIPTION_USER_FIELD, user)
+
+
+def space_subscription_has_permission(doc, ptype="read", user=None, **kwargs):
+	"""A space subscription is one user's own toggle on a space; same shape as above."""
+	if ptype == "create":
+		return _may_create_for(doc, SUBSCRIPTION_USER_FIELD, user)
+	return _belongs_to_user(doc, SUBSCRIPTION_USER_FIELD, user)
+
+
+def away_period_query_conditions(user=None, **kwargs):
+	return _own_rows_only("GP Away Period", SUBSCRIPTION_USER_FIELD, user)
+
+
+def away_period_has_permission(doc, ptype="read", user=None, **kwargs):
+	"""An away period is one user's own quiet stretch; same shape as above."""
+	if ptype == "create":
+		return _may_create_for(doc, SUBSCRIPTION_USER_FIELD, user)
+	return _belongs_to_user(doc, SUBSCRIPTION_USER_FIELD, user)

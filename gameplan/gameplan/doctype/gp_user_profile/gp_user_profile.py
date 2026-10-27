@@ -5,6 +5,7 @@ import re
 from urllib.parse import urlparse
 
 import frappe
+from frappe import _
 from frappe.model.document import Document
 from frappe.model.naming import append_number_if_name_exists
 from frappe.query_builder.functions import Count
@@ -13,6 +14,8 @@ from frappe.website.utils import cleanup_page_name
 import gameplan
 from gameplan.extends.client import check_permissions
 from gameplan.mixins.attachments import HasAttachments
+from gameplan.notifications import away
+from gameplan.notifications.preferences import DAYS, PREF_FIELDS
 from gameplan.realtime import notify_users_changed
 from gameplan.utils.document import with_stored_document
 
@@ -28,6 +31,7 @@ PROFILE_BENTO_DEFAULT_IMAGE_POSITION = 50
 PROFILE_BENTO_HTML_TAG_PATTERN = re.compile(r"<[^>]*>")
 PROFILE_BENTO_HTML_MEDIA_PATTERN = re.compile(r"<\s*(img|video|audio|iframe|embed)\b", re.IGNORECASE)
 QUICK_REACTION_MAX_SLOTS = 20
+NOTIFICATION_PREFERENCE_FIELDS = ("notification_channel", *PREF_FIELDS)
 
 # Profile fields a bento card may bind to. The order is the default layout order:
 # row 1 is the cover (4 columns), row 2 is avatar + name + bio (1 + 1 + 2), and
@@ -47,7 +51,21 @@ class GPUserProfile(HasAttachments, Document):
 	def validate(self):
 		self.quick_reaction_emojis = normalize_quick_reaction_emojis(self.quick_reaction_emojis)
 		self.drop_foreign_card_images()
+		self.validate_active_hours()
 		self.validate_profile_ownership()
+
+	def validate_active_hours(self):
+		"""Active hours only make sense as a real window: some days, two times, not equal."""
+		if not frappe.utils.cint(self.active_hours_enabled):
+			return
+		days = frappe.parse_json(self.active_hours_days or "[]")
+		if not [day for day in days if day in DAYS]:
+			frappe.throw(_("Pick at least one day for active hours"))
+		# Not a truthiness check: a loaded midnight is timedelta(0), which is falsy.
+		if self.active_hours_start in (None, "") or self.active_hours_end in (None, ""):
+			frappe.throw(_("Set both a start and an end time for active hours"))
+		if frappe.utils.get_time(self.active_hours_start) == frappe.utils.get_time(self.active_hours_end):
+			frappe.throw(_("Active hours must start and end at different times"))
 
 	def validate_profile_ownership(self):
 		"""Only the profile's own user may change it, admins included.
@@ -74,6 +92,30 @@ class GPUserProfile(HasAttachments, Document):
 	def on_update(self):
 		self.attach_files_in_content()
 		self.attach_bento_card_images()
+		self.sync_away_periods()
+
+	def sync_away_periods(self):
+		"""The toggle opens or closes a Toggle stretch as it flips; a schedule edit ends the
+		scheduled stretch computed from the old hours. Insert-time values are not events."""
+		if not self.get_doc_before_save():
+			return
+		if self.has_value_changed("receive_notifications"):
+			away.set_receive_notifications(self.user, self.receive_notifications)
+		if self.has_value_changed("notification_channel") and self.notification_channel == "Email":
+			# Away stretches accrue whatever the channel is, but only Email sends what they held.
+			# Without this, turning Email on mails every stretch since the account was made as one
+			# message. Nothing was owed on the old channel, so they are retired unsent.
+			away.retire_pending_recaps(self.user)
+		if any(
+			self.has_value_changed(field)
+			for field in (
+				"active_hours_enabled",
+				"active_hours_start",
+				"active_hours_end",
+				"active_hours_days",
+			)
+		):
+			away.close_open_scheduled_period(self.user)
 
 	def attach_bento_card_images(self, allow_session_owner=True):
 		"""Attach the images on this profile's bento cards to the profile.
@@ -383,6 +425,26 @@ def reset_my_bento_cards():
 	profile.layout_customized = 0
 	profile.save(ignore_permissions=True)
 	return get_profile_bento_response(profile)
+
+
+@frappe.whitelist(methods=["POST"])
+def save_my_notification_preferences(preferences: dict | str):
+	"""Save the session user's notification preferences.
+
+	These fields sit at permlevel 1, which no role has, so nobody reads or writes them
+	through the document or list APIs. The user reads their own from `get_user_info`
+	and writes them here.
+	"""
+	preferences = frappe.parse_json(preferences)
+	if not isinstance(preferences, dict):
+		frappe.throw("Notification preferences must be an object")
+	unknown = set(preferences) - set(NOTIFICATION_PREFERENCE_FIELDS)
+	if unknown:
+		frappe.throw(f"Not a notification preference: {', '.join(sorted(unknown))}")
+
+	profile = get_session_user_profile()
+	profile.update(preferences)
+	profile.save(ignore_permissions=True, ignore_version=True)
 
 
 @frappe.whitelist(methods=["GET", "POST"])

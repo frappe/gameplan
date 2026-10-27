@@ -134,6 +134,9 @@ permission_query_conditions = {
 	"GP Project Visit": "gameplan.per_user_state.project_visit_query_conditions",
 	"GP Discussion Visit": "gameplan.per_user_state.discussion_visit_query_conditions",
 	"GP Pinned Project": "gameplan.per_user_state.pinned_project_query_conditions",
+	"GP Discussion Subscription": "gameplan.per_user_state.discussion_subscription_query_conditions",
+	"GP Space Subscription": "gameplan.per_user_state.space_subscription_query_conditions",
+	"GP Away Period": "gameplan.per_user_state.away_period_query_conditions",
 	"GP Followed Project": "gameplan.per_user_state.followed_project_query_conditions",
 	"GP Activity": "gameplan.permissions.activity_query_conditions",
 	"GP Guest Access": "gameplan.permissions.guest_access_query_conditions",
@@ -153,6 +156,9 @@ has_permission = {
 	"GP Project Visit": "gameplan.per_user_state.project_visit_has_permission",
 	"GP Discussion Visit": "gameplan.per_user_state.discussion_visit_has_permission",
 	"GP Pinned Project": "gameplan.per_user_state.pinned_project_has_permission",
+	"GP Discussion Subscription": "gameplan.per_user_state.discussion_subscription_has_permission",
+	"GP Space Subscription": "gameplan.per_user_state.space_subscription_has_permission",
+	"GP Away Period": "gameplan.per_user_state.away_period_has_permission",
 	"GP Followed Project": "gameplan.per_user_state.followed_project_has_permission",
 	"GP Activity": "gameplan.permissions.activity_has_permission",
 	"GP Guest Access": "gameplan.permissions.guest_access_has_permission",
@@ -193,6 +199,9 @@ scheduler_events = {
 	"all": ["gameplan.gameplan.doctype.gp_draft.gp_draft.publish_due_drafts"],
 	"hourly": ["gameplan.gameplan.doctype.gp_invitation.gp_invitation.expire_invitations"],
 	"daily": ["gameplan.demo.demo.generate_data_daily", "gameplan.email_digest.send_due_email_digests"],
+	# Every five minutes, not hourly: the mail is still hourly inside a user's active hours,
+	# but the closing mail has to go out as the hours end (notifications/delivery.py).
+	"cron": {"*/5 * * * *": ["gameplan.notifications.delivery.send_batches"]},
 }
 
 # scheduler_events = {

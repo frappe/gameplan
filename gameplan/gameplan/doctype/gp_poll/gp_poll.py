@@ -8,6 +8,7 @@ from frappe.utils import DATETIME_FORMAT, cint, cstr, flt, get_datetime
 
 from gameplan.mixins.archivable import check_if_space_is_archived
 from gameplan.mixins.reactions import HasReactions
+from gameplan.notifications.resolver import notify_poll_vote
 from gameplan.permissions import (
 	can_delete_content,
 	can_view_content,
@@ -168,6 +169,9 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 		check_if_space_is_archived(self, action="vote in", content_type="polls")
 		self.check_if_stopped()
 		selected = self.get_option(option)
+		# Read before the vote rows change: a second answer, or a changed one, is not
+		# another person voting.
+		first_vote = not self.has_voted()
 
 		if self.anonymous:
 			# An anonymous vote records the voter without their choice, so there is no row
@@ -189,6 +193,8 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 
 		self.update_tallies()
 		self.save_after_voting()
+		if first_vote:
+			notify_poll_vote(self, frappe.session.user)
 
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document

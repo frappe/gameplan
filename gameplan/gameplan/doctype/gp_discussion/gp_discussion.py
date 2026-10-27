@@ -13,6 +13,14 @@ from gameplan.mixins.attachments import HasAttachments
 from gameplan.mixins.mentions import HasMentions
 from gameplan.mixins.reactions import HasReactions, get_reactions_on
 from gameplan.mixins.tags import HasTags
+from gameplan.notifications import records
+from gameplan.notifications.resolver import (
+	STATES,
+	effective_discussion_state,
+	notify_discussion_moved,
+	notify_new_discussion,
+	subscribe_on_participation,
+)
 from gameplan.permissions import content_has_permission, discussion_query_conditions
 from gameplan.search_sqlite import enqueue_comment_reindex_on_move
 from gameplan.utils import get_document_revisions, remove_empty_trailing_paragraphs, url_safe_slug
@@ -22,7 +30,7 @@ from gameplan.utils.document import with_stored_document
 class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTags, Document):
 	# Class Configuration
 	# GP Activity is removed in on_trash, not here. See remove_all_activities.
-	on_delete_cascade = ["GP Comment", "GP Discussion Visit", "GP Poll"]
+	on_delete_cascade = ["GP Comment", "GP Discussion Visit", "GP Discussion Subscription", "GP Poll"]
 	on_delete_set_null = ["GP Notification"]
 	activities = [
 		"Discussion Closed",
@@ -67,6 +75,8 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		)
 		d.last_unread_poll = polls[0] if polls else None
 		d.is_bookmarked = self.is_bookmarked_by_current_user()
+		# The bell renders from this on first paint rather than after a second request.
+		d.notification_state = effective_discussion_state(frappe.session.user, self.name)
 		d.views = frappe.db.count("GP Discussion Visit", {"discussion": self.name})
 		return d
 
@@ -78,6 +88,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 	def after_insert(self):
 		self.update_discussions_count()
 		GPUnreadRecord.create_unread_records_for_discussion(self)
+		subscribe_on_participation(self.owner, self.name)
 
 	def on_trash(self):
 		self.remove_all_bookmarks()
@@ -91,7 +102,13 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		self.title = self.title.strip()
 
 	def on_update(self):
-		self.notify_mentions()
+		reached = self.notify_mentions()
+		# Subscribers hear about a discussion once, when it is posted, and anyone the mention
+		# pass just reached is left out: being named in a discussion is the more particular
+		# news, and it used to arrive alongside a second "started a discussion" row. Raised
+		# here rather than in after_insert because mentions have to run first to be skipped.
+		if self.flags.in_insert:
+			notify_new_discussion(self, reached)
 		self.log_title_update()
 		self.attach_files_in_content()
 		self.sync_unread_records_on_move()
@@ -219,6 +236,28 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		self.pin_scope = None
 		self.log_activity("Discussion Unpinned")
 		self.save()
+
+	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
+	def set_notification_state(self, state):
+		"""Set the caller's bell on this discussion to Mute, Mentions only or Watch, writing
+		or updating their row. Returns what the bell should show.
+		"""
+		if state not in STATES:
+			frappe.throw(f"Invalid notification state: {state}")
+
+		user = frappe.session.user
+		existing = frappe.db.get_value(
+			"GP Discussion Subscription", {"user": user, "discussion": self.name}, "name"
+		)
+		if existing:
+			frappe.db.set_value("GP Discussion Subscription", existing, "state", state)
+		else:
+			frappe.get_doc(
+				doctype="GP Discussion Subscription", user=user, discussion=self.name, state=state
+			).insert(ignore_permissions=True)
+
+		return {"notification_state": effective_discussion_state(user, self.name)}
 
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
@@ -362,6 +401,11 @@ def move_discussion(discussion, project):
 	discussion.update_discussions_count()
 	frappe.get_doc("GP Project", old_project).update_discussions_count()
 	discussion.log_activity("Discussion Moved", data={"old_project": old_project, "new_project": project})
+	# Notifications already raised for this discussion still name the space it came from, and
+	# the email batch decides who may read a row by that field. Left behind, it both offers
+	# the title to people who cannot open the new Space and hides it from people who can.
+	records.repoint_discussion(discussion.name, discussion.project, discussion.team)
+	notify_discussion_moved(discussion, old_project, frappe.session.user)
 	return discussion
 
 

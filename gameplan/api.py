@@ -11,7 +11,7 @@ from frappe.utils import cint, split_emails, validate_email_address
 
 import gameplan
 from gameplan.gameplan.doctype.gp_invitation.gp_invitation import get_invitation, grant_access
-from gameplan.realtime import notify_notification_count_changed, unread_notification_count
+from gameplan.realtime import notify_notification_changed, unread_notification_count
 from gameplan.roles import GAMEPLAN_ROLES
 from gameplan.utils import validate_type
 
@@ -35,7 +35,7 @@ def get_user_info(user=None):
 	users = frappe.qb.get_query(
 		"User",
 		filters=filters,
-		fields=["name", "email", "enabled", "user_image", "full_name", "user_type", "creation"],
+		fields=["name", "email", "enabled", "user_image", "full_name", "user_type", "creation", "time_zone"],
 		order_by="full_name asc",
 		distinct=True,
 	).run(as_dict=1)
@@ -79,6 +79,13 @@ def get_user_info(user=None):
 			"email_digest_frequency",
 			"email_digest_day_of_week",
 			"email_digest_last_sent_on",
+			"participation_level",
+			"notification_channel",
+			"receive_notifications",
+			"active_hours_enabled",
+			"active_hours_start",
+			"active_hours_end",
+			"active_hours_days",
 		],
 		filters={"user": ["in", [u.name for u in users]]},
 	)
@@ -104,6 +111,13 @@ def get_user_info(user=None):
 				user.email_digest_frequency = user_profile.email_digest_frequency
 				user.email_digest_day_of_week = user_profile.email_digest_day_of_week
 				user.email_digest_last_sent_on = user_profile.email_digest_last_sent_on
+				user.participation_level = user_profile.participation_level
+				user.notification_channel = user_profile.notification_channel
+				user.receive_notifications = user_profile.receive_notifications
+				user.active_hours_enabled = user_profile.active_hours_enabled
+				user.active_hours_start = user_profile.active_hours_start
+				user.active_hours_end = user_profile.active_hours_end
+				user.active_hours_days = user_profile.active_hours_days
 		user_roles = [r.role for r in roles if r.parent == user.name]
 		user.role = None
 		# GAMEPLAN_ROLES is ordered by privilege, so the last match is the effective role.
@@ -275,6 +289,22 @@ def unread_notifications():
 	return unread_notification_count(frappe.session.user)
 
 
+@frappe.whitelist(methods=["GET"])
+def get_notifications(fields=None, filters=None, order_by=None, start=0, limit=20):
+	filters = frappe.parse_json(filters) or {}
+	or_filters = {field: filters.pop(field) for field in ("team", "project") if field in filters}
+	return frappe.qb.get_query(
+		"GP Notification",
+		fields=frappe.parse_json(fields),
+		filters=filters,
+		or_filters=or_filters,
+		order_by=order_by,
+		offset=cint(start),
+		limit=cint(limit),
+		ignore_permissions=False,
+	).run(as_dict=True)
+
+
 # Invitation emails open in a browser navigation, so this endpoint must remain GET-reachable.
 @frappe.whitelist(allow_guest=True)
 @validate_type
@@ -332,7 +362,7 @@ def mark_all_notifications_as_read():
 		.set(Notification.read, 1)
 		.where((Notification.to_user == frappe.session.user) & (Notification.read == 0))
 	).run()
-	notify_notification_count_changed(frappe.session.user)
+	notify_notification_changed(frappe.session.user)
 
 
 @frappe.whitelist(methods=["POST"])

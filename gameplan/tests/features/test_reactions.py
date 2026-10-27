@@ -27,6 +27,7 @@ import threading
 
 import frappe
 from frappe.tests.utils import FrappeTestCase
+from frappe.utils import add_to_date
 
 from gameplan.api import mark_all_notifications_as_read, unread_notifications
 from gameplan.mixins.reactions import HasReactions
@@ -506,12 +507,29 @@ class TestReactionNotificationUnreadState(ReactionTestCase):
 		self.assertEqual(len(self.reaction_notifications(self.member, self.discussion)), 1)
 		self.assertEqual(self.bell_count(self.member), 1)
 
+	def test_a_later_reaction_moves_the_row_s_event_time_forward(self):
+		"""The inbox orders and dates rows by `last_event_at`. A reused row keeps its
+		`creation`, so without this the re-lit notification would sit — and be dated — at
+		the moment of the first reaction, buried under everything raised since."""
+		self.react(self.discussion, self.second_member, [add(THUMBS_UP)])
+		[name] = self.reaction_notifications(self.member, self.discussion)
+		first = frappe.db.get_value("GP Notification", name, "last_event_at")
+		self.assertIsNotNone(first)
+
+		# Push the stored time back so a same-second second reaction reads as "later".
+		frappe.db.set_value("GP Notification", name, "last_event_at", add_to_date(first, minutes=-5))
+		earlier = frappe.db.get_value("GP Notification", name, "last_event_at")
+
+		self.react(self.discussion, self.admin, [add(HEART)])
+
+		self.assertGreater(frappe.db.get_value("GP Notification", name, "last_event_at"), earlier)
+
 
 class TestWhichReactionChangesNotify(ReactionTestCase):
 	"""Only a reaction someone *added* is news to the post owner.
 
-	`notify_reactions` runs on every save of the post, so it has to work out what
-	actually changed in the reactions table. A withdrawal is not news — the owner
+	`react` tells `notify_reactions` which (user, emoji) pairs a call added, and only
+	those count. A withdrawal is not news — the owner
 	already saw that reaction and cleared the bell, and re-raising it says "1 person
 	reacted to your post" about a reaction that no longer exists. Swapping one emoji
 	for another in a single batch (the debounced tap-tap the frontend sends) leaves
@@ -596,6 +614,30 @@ class TestReactionNotificationRouting(ReactionTestCase):
 	key that is not specific enough makes a reaction on a thread and a reaction on a reply
 	inside it land on one row, and the second one silently overwrites the first.
 	"""
+
+	def test_a_reaction_on_a_task_comment_carries_the_space_it_lives_in(self):
+		"""`project` is fetched from the discussion, and a task comment has none. The inbox
+		builds the row's link out of the Space and the Community, so without them it points
+		nowhere — and the email batch has no Space to judge access by either."""
+		task = create_task("Ship it", self.space, owner=self.member)
+		with self.as_user(self.member):
+			comment = frappe.get_doc(
+				doctype="GP Comment",
+				reference_doctype="GP Task",
+				reference_name=task.name,
+				content="On it",
+			).insert()
+
+		self.react(comment, self.second_member, [add(THUMBS_UP)])
+
+		row = frappe.get_all(
+			"GP Notification",
+			filters={"to_user": self.member.name, "type": "Reaction", "task": task.name},
+			fields=["project", "team"],
+		)
+		self.assertTrue(row, "no reaction notification was written for the task comment")
+		self.assertEqual(str(row[0].project), str(self.space.name))
+		self.assertEqual(row[0].team, self.community.name)
 
 	def notifications(self, user):
 		rows = frappe.get_all(

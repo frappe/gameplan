@@ -47,6 +47,7 @@ READ_ONLY_ENDPOINTS = frozenset(
 		# Directory and notification reads.
 		"gameplan.api.get_user_info",
 		"gameplan.api.unread_notifications",
+		"gameplan.api.get_notifications",
 		"gameplan.api.get_unsplash_photos",
 		# Unsplash proxy. Talks to a third party with our key and writes nothing of ours.
 		"gameplan.unsplash.search_photos",
