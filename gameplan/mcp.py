@@ -7,8 +7,8 @@ AGENT_RULES = (
 	"GP Task and GP Page are deprecated. Do not create them or suggest them to people.",
 	'Replies are GP Comment with reference_doctype "GP Discussion" and reference_name set to the '
 	"discussion name. Closed discussions take no new replies.",
-	'content fields are HTML. Mention a person with <span data-type="mention" '
-	'data-id="<user email>" data-label="<full name>"></span>.',
+	'content fields are HTML. Mention a person with <span class="mention" data-type="mention" '
+	'data-id="<user email>" data-label="<full name>">@<full name></span>.',
 	"Create discussions and replies with create_document. Do not update project, closed_at or pinned_at. "
 	'Use these GP Discussion methods instead: move_to_project {"project": "<space>"}, close_discussion, '
 	'reopen_discussion, pin_discussion {"pin_scope": "Space" or "Category"} '

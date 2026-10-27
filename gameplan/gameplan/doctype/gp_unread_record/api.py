@@ -21,7 +21,7 @@ def get_unread_count(projects: list[str] = None):
 
 @frappe.whitelist(methods=["GET", "POST"])
 def get_participating_unread_count(team=None):
-	"""Return unread counts for discussions the user takes part in, in a Community."""
+	"""Return unread counts for discussions the user takes part in, optionally in Community `team`."""
 	from gameplan.gameplan.doctype.gp_unread_record.gp_unread_record import GPUnreadRecord
 
 	return GPUnreadRecord.get_participating_unread_count(frappe.session.user, team)
