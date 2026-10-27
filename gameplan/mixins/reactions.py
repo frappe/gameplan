@@ -6,6 +6,8 @@ import frappe
 from frappe import _
 from frappe.query_builder import Criterion
 
+from gameplan.utils.document import with_stored_document
+
 REACTION_FIELDS = ["name", "reference_doctype", "reference_name", "emoji", "user"]
 
 
@@ -13,7 +15,9 @@ class HasReactions:
 	"""A post people can react to. Reactions are GP Reaction rows that point at the post."""
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def react(self, operations=None):
+		"""Change the current user's reactions; `operations` lists {"emoji", "operation": "add"|"remove"}."""
 		from gameplan.permissions import can_view_content
 
 		operations = frappe.parse_json(operations) or []
@@ -22,28 +26,23 @@ class HasReactions:
 
 		user = frappe.session.user
 
-		# Work on the stored post, never on this instance: the v2 document-method route
-		# builds the instance from fields the caller sends, so its project and owner can
-		# be forged to pass the permission check below.
-		post = frappe.get_doc(self.doctype, self.name)
-
 		# Reacting is a participation action available to anyone who can VIEW the
 		# content — members and guests alike in the spaces they can reach. Each
 		# operation below only ever touches the acting user's own reaction rows
 		# (matched on `user` == frappe.session.user), so this cannot mutate others'
 		# data or the post body.
-		if not can_view_content(user, post):
+		if not can_view_content(user, self):
 			frappe.throw(_("You do not have access to react to this"), frappe.PermissionError)
 
 		if not operations:
-			return post.get_reactions()
+			return self.get_reactions()
 
 		# Lock the post's row so that two reactions on one post apply one after another.
 		# The reactions are then read with a locking read too, which returns the rows other
 		# requests committed after this one began. A unique index cannot do this job: under
 		# the site's collation, MariaDB compares every emoji outside the BMP as equal.
-		frappe.db.get_value(post.doctype, post.name, "name", for_update=True)
-		reactions = post.get_reactions(for_update=True)
+		frappe.db.get_value(self.doctype, self.name, "name", for_update=True)
+		reactions = self.get_reactions(for_update=True)
 		mine = [row for row in reactions if row.user == user]
 		wanted = list(dict.fromkeys(row.emoji for row in mine))
 		for operation in operations:
@@ -63,14 +62,14 @@ class HasReactions:
 		for emoji in added:
 			frappe.get_doc(
 				doctype="GP Reaction",
-				reference_doctype=post.doctype,
-				reference_name=post.name,
+				reference_doctype=self.doctype,
+				reference_name=self.name,
 				emoji=emoji,
 				user=user,
 			).insert(ignore_permissions=True)
 
-		reactions = post.get_reactions(for_update=True)
-		post.notify_reactions(reactions, added={(user, emoji) for emoji in added})
+		reactions = self.get_reactions(for_update=True)
+		self.notify_reactions(reactions, added={(user, emoji) for emoji in added})
 		return reactions
 
 	def get_reactions(self, for_update=False):

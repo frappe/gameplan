@@ -10,7 +10,7 @@ from frappe.query_builder.functions import Count
 from frappe.utils import cint, split_emails, validate_email_address
 
 import gameplan
-from gameplan.gameplan.doctype.gp_invitation.gp_invitation import grant_access
+from gameplan.gameplan.doctype.gp_invitation.gp_invitation import get_invitation, grant_access
 from gameplan.realtime import notify_notification_count_changed, unread_notification_count
 from gameplan.roles import GAMEPLAN_ROLES
 from gameplan.utils import validate_type
@@ -24,6 +24,7 @@ def require_admin():
 
 @frappe.whitelist(allow_guest=True)
 def get_user_info(user=None):
+	"""Return Gameplan users with role, profile and recent activity counts. Pass `user` for one."""
 	if frappe.session.user == "Guest":
 		frappe.throw("Authentication failed", exc=frappe.AuthenticationError)
 
@@ -61,7 +62,13 @@ def get_user_info(user=None):
 	).run(as_dict=1)
 	comment_count_map = {c.owner: c.count for c in comment_counts}
 
-	roles = frappe.db.get_all("Has Role", filters={"parenttype": "User"}, fields=["role", "parent"])
+	roles = frappe.db.get_all(
+		"Has Role",
+		filters={"parenttype": "User", "role": ["in", GAMEPLAN_ROLES]},
+		fields=["role", "parent"],
+	)
+	# GAMEPLAN_ROLES is ordered by privilege, so after sorting the last role per user wins.
+	role_map = {r.parent: r.role for r in sorted(roles, key=lambda r: GAMEPLAN_ROLES.index(r.role))}
 	user_profiles = frappe.db.get_all(
 		"GP User Profile",
 		fields=[
@@ -103,12 +110,7 @@ def get_user_info(user=None):
 				user.email_digest_frequency = user_profile.email_digest_frequency
 				user.email_digest_day_of_week = user_profile.email_digest_day_of_week
 				user.email_digest_last_sent_on = user_profile.email_digest_last_sent_on
-		user_roles = [r.role for r in roles if r.parent == user.name]
-		user.role = None
-		# GAMEPLAN_ROLES is ordered by privilege, so the last match is the effective role.
-		for role in GAMEPLAN_ROLES:
-			if role in user_roles:
-				user.role = role
+		user.role = role_map.get(user.name)
 
 		# Add discussion and comment counts
 		user.discussions_count_3m = discussion_count_map.get(user.name, 0)
@@ -125,10 +127,46 @@ def get_user_info(user=None):
 @frappe.whitelist(methods=["POST"])
 @validate_type
 def invite_by_email(emails: str, role: str, projects: list = None):
+	"""Invite comma-separated `emails` with a Gameplan `role`, optionally to `projects`. Admin only."""
 	require_admin()
 	if role not in GAMEPLAN_ROLES:
 		frappe.throw(_("Invalid role: {0}").format(role), frappe.ValidationError)
 	return _invite_by_email(emails, role, projects)
+
+
+@frappe.whitelist(methods=["POST"])
+@validate_type
+def change_user_role(user: str, role: str):
+	"""Change `user`'s Gameplan role. Admin only. Returns the updated user info."""
+	require_admin()
+	if role not in GAMEPLAN_ROLES:
+		frappe.throw(_("Invalid role: {0}").format(role), frappe.ValidationError)
+
+	user_doc = frappe.get_doc("User", user)
+	for _role in list(user_doc.roles):
+		if _role.role in GAMEPLAN_ROLES:
+			user_doc.remove(_role)
+	user_doc.append_roles(role)
+	# Admin-gated by require_admin() above; bypass User's own permission checks so an
+	# admin can change another user's roles.
+	user_doc.save(ignore_permissions=True)
+
+	return get_user_info(user)[0]
+
+
+@frappe.whitelist(methods=["POST"])
+@validate_type
+def disable_user(user: str):
+	"""Disable the account of `user`. Admin only."""
+	require_admin()
+
+	user_doc = frappe.get_doc("User", user)
+	user_doc.enabled = 0
+	# Admin-gated by require_admin() above; bypass User's own permission checks so an
+	# admin can disable another user.
+	user_doc.save(ignore_permissions=True)
+
+	return user
 
 
 def _invite_by_email(emails: str, role: str, projects: list = None) -> dict:
@@ -234,6 +272,7 @@ def emails_holding_a_gameplan_role(email_list: list) -> list:
 
 @frappe.whitelist()
 def unread_notifications():
+	"""Return the current user's unread notification count."""
 	return unread_notification_count(frappe.session.user)
 
 
@@ -241,34 +280,42 @@ def unread_notifications():
 @frappe.whitelist(allow_guest=True)
 @validate_type
 def accept_invitation(key: str = None):
-	if not key:
-		frappe.throw("Invalid or expired key")
+	invitation = get_invitation(key)
+	if not invitation or invitation.status not in ("Pending", "Accepted"):
+		frappe.respond_as_web_page(
+			_("This invitation link is no longer valid"),
+			_("Ask the person who invited you to send a new invitation."),
+			http_status_code=404,
+		)
+		return
 
-	result = frappe.db.get_all("GP Invitation", filters={"key": key}, pluck="name")
-	if not result:
-		frappe.throw("Invalid or expired key")
+	if invitation.status == "Pending":
+		invitation.accept()
+		# An account that was here before the invitation signs in the way it always has.
+		location = invitation.get_password_link() if invitation.created_account else "/g"
+	elif invitation.created_account_awaits_password():
+		# The invitee opened the link again before setting a password, so give them a new
+		# password link in place of the first one.
+		location = invitation.get_password_link()
+	else:
+		frappe.respond_as_web_page(
+			_("This invitation link is no longer valid"),
+			_("This invitation has already been accepted. Sign in to continue."),
+			http_status_code=410,
+			primary_action="/login",
+			primary_label=_("Sign in"),
+		)
+		return
 
-	invitation = frappe.get_doc("GP Invitation", result[0], for_update=True)
+	frappe.db.commit()  # nosemgrep: frappe-manual-commit
 
-	invitation.accept()
-	invitation.reload()
-
-	user = frappe.get_doc("User", invitation.email)
-	needs_password_setup = user and not user.last_password_reset_date
-
-	if invitation.status == "Accepted":
-		if needs_password_setup:
-			url = invitation.get_password_link()
-			frappe.local.response["type"] = "redirect"
-			frappe.local.response["location"] = f"{url}"
-		else:
-			frappe.local.login_manager.login_as(invitation.email)
-			frappe.local.response["type"] = "redirect"
-			frappe.local.response["location"] = "/g"
+	frappe.local.response["type"] = "redirect"
+	frappe.local.response["location"] = location
 
 
 @frappe.whitelist()
 def get_unsplash_photos(keyword=None):
+	"""Return Unsplash photos for `keyword`, or a default set."""
 	from gameplan.unsplash import get_by_keyword, get_list
 
 	if keyword:
@@ -279,6 +326,7 @@ def get_unsplash_photos(keyword=None):
 
 @frappe.whitelist(methods=["POST"])
 def mark_all_notifications_as_read():
+	"""Mark all of the current user's notifications as read."""
 	Notification = frappe.qb.DocType("GP Notification")
 	(
 		frappe.qb.update(Notification)
@@ -290,6 +338,12 @@ def mark_all_notifications_as_read():
 
 @frappe.whitelist(methods=["POST"])
 def onboarding(community, space, icon, emails, is_private=0):
+	"""Create the first Community and Space on a new site and invite `emails` (list)."""
+	# Onboarding sets up a brand-new site. After that, communities and invitations go
+	# through their own screens and checks.
+	if not gameplan.is_new_site():
+		frappe.throw(_("This site is already set up"), frappe.PermissionError)
+
 	emails = frappe.parse_json(emails)
 
 	# Create the community. The GP Team after_insert hook auto-creates a public
@@ -306,15 +360,17 @@ def onboarding(community, space, icon, emails, is_private=0):
 		doctype="GP Project", title=space, icon=icon, team=team.name, is_private=is_private
 	).insert()
 
-	# Trusted internal path: the signup creator invites their first teammates as
-	# Members. Bypasses the admin gate (the creator isn't an admin yet) but the
-	# role is hardcoded, so no escalation is possible.
+	# The signup creator invites their first teammates. The creator may not be an admin
+	# yet, so this skips invite_by_email's admin check. The guard above limits it to a new
+	# site, and the role is fixed to Gameplan Member. GP Invitation's own rule that only
+	# admins invite admins still applies to these invitations.
 	_invite_by_email(", ".join(emails), role="Gameplan Member")
 	return {"team": team.name, "space": project.name}
 
 
 @frappe.whitelist()
 def search_sqlite(query, filters=None):
+	"""Full-text search discussions and comments. `filters` is an optional dict."""
 	from gameplan.search_sqlite import GameplanSearch
 
 	search = GameplanSearch()

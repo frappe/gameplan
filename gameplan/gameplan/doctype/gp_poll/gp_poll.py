@@ -4,7 +4,7 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import DATETIME_FORMAT, flt, get_datetime
+from frappe.utils import DATETIME_FORMAT, cint, cstr, flt, get_datetime
 
 from gameplan.mixins.archivable import check_if_space_is_archived
 from gameplan.mixins.reactions import HasReactions
@@ -14,6 +14,7 @@ from gameplan.permissions import (
 	content_has_permission,
 	poll_query_conditions,
 )
+from gameplan.utils.document import with_stored_document
 
 from .gp_poll_attributes import GPPollAttributes
 
@@ -62,11 +63,15 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 
 	def before_insert(self):
 		self.check_if_discussion_is_closed()
+		self.check_comment()
 		if self.anonymous and self.multiple_answers:
 			frappe.throw(_("Anonymous polls cannot allow multiple answers"))
 		self.options = [d for d in self.options if d.title]
+		self.set("votes", [])
 		for option in self.options:
 			option.title = option.title.strip()
+			option.votes = 0
+			option.percentage = 0
 		# dont allow duplicate options
 		options = [d.title for d in self.options]
 		if len(set(options)) != len(options):
@@ -82,8 +87,52 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 		if frappe.db.get_value("GP Discussion", self.discussion, "closed_at"):
 			frappe.throw(_("Cannot add a poll to a closed discussion"))
 
+	def check_comment(self):
+		if not self.comment:
+			return
+		comment = frappe.db.get_value(
+			"GP Comment", self.comment, ["reference_doctype", "reference_name", "owner"], as_dict=True
+		)
+		if comment.reference_doctype != "GP Discussion" or comment.reference_name != str(self.discussion):
+			frappe.throw(_("A poll can only be attached to a comment in the same discussion"))
+		if comment.owner != frappe.session.user:
+			frappe.throw(_("You can only attach a poll to your own comment"), frappe.PermissionError)
+		if frappe.db.exists("GP Poll", {"comment": self.comment}):
+			frappe.throw(_("A comment can only have one poll"))
+
 	def validate(self):
+		self.check_comment_unchanged()
+		self.check_results_unchanged()
 		self.total_votes = len(self.votes)
+
+	def check_comment_unchanged(self):
+		before = self.get_doc_before_save()
+		if not before:
+			return
+		if cstr(before.comment) != cstr(self.comment):
+			frappe.throw(_("A poll cannot be moved to another comment"))
+		if self.comment and cstr(before.discussion) != cstr(self.discussion):
+			frappe.throw(_("A poll in a comment cannot be moved to another discussion"))
+
+	def check_results_unchanged(self):
+		"""Refuse a plain save that changes the vote rows or an option's counts.
+
+		Results change only through `submit_vote` and `retract_vote`, which save with
+		`ignore_permissions`. A plain save may still edit the title, add or remove
+		options and stop the poll; a new option starts with no votes.
+		"""
+		if self.is_new() or self.flags.ignore_permissions:
+			return
+		before = self.get_doc_before_save()
+		if before is None:
+			return
+		stored_counts = {d.name: (cint(d.votes), flt(d.percentage)) for d in before.options}
+		votes_changed = [(d.user, d.option) for d in self.votes] != [(d.user, d.option) for d in before.votes]
+		counts_changed = any(
+			(cint(d.votes), flt(d.percentage)) != stored_counts.get(d.name, (0, 0)) for d in self.options
+		)
+		if votes_changed or counts_changed:
+			frappe.throw(_("Poll results change only through voting"), frappe.PermissionError)
 
 	def after_insert(self):
 		self.update_discussion_meta()
@@ -101,18 +150,20 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 		self.update_discussion_meta()
 
 	def update_discussion_meta(self):
-		if not self.discussion:
+		if not self.discussion or self.comment:
 			return
 		discussion = frappe.get_doc("GP Discussion", self.discussion)
 		discussion.update_last_post()
 		discussion.update_post_count()
 		discussion.update_participants_count()
-		discussion.track_visit()
 		discussion.save(ignore_permissions=True)
+		# track_visit reloads the stored discussion, so save the counters first.
+		discussion.track_visit()
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def submit_vote(self, option):
-		self.discard_client_state()
+		"""Vote for the option titled `option`. Replaces the earlier vote on single-answer polls."""
 		self.check_can_participate()
 		check_if_space_is_archived(self, action="vote in", content_type="polls")
 		self.check_if_stopped()
@@ -140,8 +191,9 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 		self.save_after_voting()
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def retract_vote(self, option=None):
-		self.discard_client_state()
+		"""Remove the current user's vote for `option`, or all their votes if omitted."""
 		self.check_can_participate()
 		check_if_space_is_archived(self, action="retract votes from", content_type="polls")
 		self.check_if_stopped()
@@ -155,27 +207,14 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 		self.save_after_voting()
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def stop_poll(self):
-		self.discard_client_state()
+		"""Close this poll to new votes. Only the owner or an admin can stop it."""
 		if not can_delete_content(frappe.session.user, self):
 			frappe.throw(_("Only the owner or an admin can stop the poll"), frappe.PermissionError)
 		check_if_space_is_archived(self, action="stop", content_type="polls")
 		self.stopped_at = frappe.utils.now()
 		self.save()
-
-	def discard_client_state(self):
-		"""Re-read the stored poll, dropping any field values the caller sent.
-
-		The v2 document-method route loads the stored document, but its POST permission
-		is deliberately Gameplan's interaction tier: guests and members who may
-		participate can invoke these methods without being allowed to edit poll fields.
-		The vote save then bypasses write permission so it can persist that interaction.
-		Reloading before the business checks makes the method's invariant explicit:
-		`stopped_at`, `discussion`, `anonymous`, `multiple_answers`, options, and every
-		field written back come from storage, even if another whitelisted document
-		surface or in-process caller hands the method a dirty instance.
-		"""
-		self.reload()
 
 	def save_after_voting(self):
 		"""Persist a vote without requiring write access to the poll itself.
@@ -186,8 +225,8 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 		while nothing changed — that check exists to stop a non-editor rewriting a poll's
 		title or options, and it must keep doing so.
 
-		Bypassing that check is only safe because `discard_client_state` has already
-		thrown away everything the caller sent, so this save can carry nothing but the
+		Skipping that check is correct because `with_stored_document` rebuilds the poll
+		from storage before the vote method runs, so this save carries only the
 		server-computed vote rows and tallies.
 		"""
 		self.save(ignore_permissions=True)

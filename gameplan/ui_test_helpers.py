@@ -168,9 +168,10 @@ def _general_space(community):
 
 def _create_space(title, community, *, is_private=0, members=()):
 	space = frappe.get_doc(doctype="GP Project", title=title, team=community.name, is_private=is_private)
+	space.insert(ignore_permissions=True)
 	for email in members:
 		space.append("members", {"user": email})
-	space.insert(ignore_permissions=True)
+	space.save(ignore_permissions=True)
 	return space
 
 
@@ -362,4 +363,4 @@ def create_invitation(email, role="Gameplan Member", projects=None):
 	finally:
 		frappe.local.dev_server = previous
 
-	return {"name": invitation.name, "email": invitation.email, "key": invitation.key}
+	return {"name": invitation.name, "email": invitation.email, "key": invitation.flags.invite_key}

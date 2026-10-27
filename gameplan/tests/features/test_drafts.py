@@ -25,6 +25,7 @@ from gameplan.tests.fixtures import (
 	create_discussion,
 	create_member,
 	create_space,
+	grant_guest_access,
 	set_owner,
 )
 
@@ -278,6 +279,54 @@ class TestDraftCommit(GameplanTestCase):
 			with self.assertRaises(frappe.ValidationError):
 				commit_draft(draft.name, "GP Comment", str(comment.name))
 
+		self.assertTrue(frappe.db.exists("GP Draft", draft.name))
+
+	def _reply_draft_with_attachment(self, user, discussion):
+		with self.as_user(user):
+			draft = _insert_draft(
+				type="Comment",
+				mode="New",
+				reference_doctype="GP Discussion",
+				reference_name=str(discussion.name),
+				content="<p>a reply</p>",
+			)
+		attachment = frappe.get_doc(
+			doctype="File",
+			file_name="draft-commit-attachment.txt",
+			is_private=1,
+			content=b"attachment",
+			attached_to_doctype="GP Draft",
+			attached_to_name=draft.name,
+		).insert(ignore_permissions=True)
+		return draft, attachment
+
+	def _attached_to(self, attachment):
+		return frappe.db.get_value("File", attachment.name, ["attached_to_doctype", "attached_to_name"])
+
+	def test_a_guest_reply_draft_moves_its_attachments_onto_the_discussion(self):
+		grant_guest_access(self.guest, self.space)
+		draft, attachment = self._reply_draft_with_attachment(self.guest, self.discussion)
+
+		with self.as_user(self.guest):
+			commit_draft(draft.name, "GP Discussion", str(self.discussion.name))
+
+		self.assertEqual(self._attached_to(attachment), ("GP Discussion", str(self.discussion.name)))
+		self.assertFalse(frappe.db.exists("GP Draft", draft.name))
+
+	def test_a_draft_commits_only_onto_content_its_owner_can_write(self):
+		private_space = create_space(
+			"Draft Commit Private Space", self.community, is_private=1, members=[self.member]
+		)
+		private_discussion = create_discussion("Draft Commit Private", private_space, owner=self.member)
+		draft, attachment = self._reply_draft_with_attachment(self.outsider, self.discussion)
+
+		with self.as_user(self.outsider):
+			with self.assertRaises(frappe.PermissionError):
+				commit_draft(draft.name, "GP Discussion", str(private_discussion.name))
+			with self.assertRaises(frappe.ValidationError):
+				commit_draft(draft.name, "User", self.member.name)
+
+		self.assertEqual(self._attached_to(attachment), ("GP Draft", draft.name))
 		self.assertTrue(frappe.db.exists("GP Draft", draft.name))
 
 

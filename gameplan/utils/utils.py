@@ -10,7 +10,7 @@ from typing import NamedTuple
 from urllib.parse import parse_qs, unquote, urlparse
 
 import frappe
-from bleach import clean
+import nh3
 from bs4 import BeautifulSoup
 
 
@@ -163,7 +163,7 @@ def url_safe_slug(text):
 def html_to_text(html, ignore=None):
 	"""Strip HTML tags and unescape HTML entities"""
 
-	text = clean(html or "", tags=ignore or [], strip=True)
+	text = nh3.clean(html or "", tags=set(ignore or []))
 	text = unescape(text)
 	return text
 

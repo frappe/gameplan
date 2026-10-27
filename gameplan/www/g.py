@@ -10,6 +10,7 @@ from frappe.core.api.file import get_max_file_size
 from frappe.utils import get_system_timezone
 from frappe.utils.telemetry import capture
 
+from gameplan import __version__, is_new_site
 from gameplan.roles import has_app_access
 
 no_cache = 1
@@ -77,14 +78,7 @@ def on_login(login_manager):
 
 
 def get_default_route():
-	# Onboarding is only for brand-new sites with no data at all. A site with
-	# projects-but-no-teams is fixed by the migration (creates Default); a site with
-	# teams-but-no-projects is fixed by the GP Team after_insert hook (creates General).
-	has_projects = bool(frappe.db.get_all("GP Project", limit=1))
-	has_teams = bool(frappe.db.get_all("GP Team", limit=1))
-	if not has_projects and not has_teams:
-		return "/onboarding"
-	return "/home"
+	return "/onboarding" if is_new_site() else "/home"
 
 
 APP_VERSION_CACHE_KEY = "gameplan_app_version"
@@ -94,11 +88,14 @@ APP_VERSION_CACHE_TTL = 60
 
 
 def get_app_version():
-	"""Branch, commit and tag of the running checkout, for the About dialog.
+	"""Release version, plus branch and commit of the running checkout, for the About dialog.
 
-	Cached, because `get_boot` runs on every `/g` render and reading this costs six
-	git processes. A deploy restarts the workers, so the value cannot outlive the
-	checkout it describes by more than the TTL.
+	The version comes from `gameplan.__version__`, not a git tag: a deployed checkout is
+	usually shallow and carries no tags.
+
+	Cached, because `get_boot` runs on every `/g` render and reading this costs four git
+	processes. A deploy restarts the workers, so the value cannot outlive the checkout it
+	describes by more than the TTL.
 	"""
 	version = frappe.cache.get_value(APP_VERSION_CACHE_KEY)
 	if version is None:
@@ -110,8 +107,6 @@ def get_app_version():
 def read_app_version():
 	branch = run_git_command("rev-parse", "--abbrev-ref", "HEAD")
 	commit = run_git_command("rev-parse", "--short=7", "HEAD")
-	tag = run_git_command("describe", "--tags", "--abbrev=0")
-	dirty = bool(run_git_command("diff", "--name-only"))
 	commit_date = run_git_command("log", "-1", "--format=%cd")
 	commit_message = run_git_command("log", "-1", "--pretty=%B")
 
@@ -120,8 +115,7 @@ def read_app_version():
 		"commit": commit,
 		"commit_date": commit_date,
 		"commit_message": commit_message,
-		"tag": tag,
-		"dirty": dirty,
+		"version": __version__,
 	}
 
 
@@ -131,11 +125,11 @@ def run_git_command(*args):
 
 	Two kinds of failure, told apart on purpose:
 
-	A non-zero exit or an unreachable git binary is expected, not exceptional. A
-	deployed checkout is often shallow and carries no tags, so `git describe` fails on
-	every call. Logging those wrote an Error Log row per git call per page load and
-	buried real tracebacks under thousands of "Git Command Error" rows. A blank field
-	in the About dialog is the only signal they need.
+	A non-zero exit or an unreachable git binary is expected, not exceptional: the app
+	may not be a git checkout, or git may not be installed. Logging those wrote an Error
+	Log row per git call per page load and buried real tracebacks under thousands of
+	"Git Command Error" rows. A blank field in the About dialog is the only signal they
+	need.
 
 	Anything else keeps its traceback, so a genuinely broken version read stays
 	diagnosable. It is still swallowed rather than raised: this runs inside `get_boot`,

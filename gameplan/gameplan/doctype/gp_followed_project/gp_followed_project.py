@@ -7,8 +7,7 @@ from frappe.model.document import Document
 
 class GPFollowedProject(Document):
 	def before_insert(self):
-		if not self.user:
-			self.user = frappe.session.user
+		self.user = frappe.session.user
 
 	@staticmethod
 	def get_list_query(query):

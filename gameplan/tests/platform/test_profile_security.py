@@ -73,19 +73,22 @@ class TestInvitationSecurity(GameplanTestCase):
 			with self.assertRaises(frappe.PermissionError):
 				insert({"doctype": "GP Invitation", "email": self.member.name, "role": "Gameplan Admin"})
 
-	def test_members_and_guests_cannot_read_invitation_keys(self):
+	def test_members_cannot_read_invitation_keys_and_guests_cannot_list_invitations(self):
 		invitation = self.invitation()
-		for user in (self.member, self.guest):
-			with self.subTest(user=user.name), self.as_user(user):
-				for get_list in (frappe.get_list, get_client_list):
-					rows = get_list(
-						"GP Invitation", fields=["name", "email", "key"], filters={"name": invitation.name}
-					)
-					self.assertTrue(rows)
-					self.assertNotIn("key", rows[0])
-				invitation.reload()
-				invitation.apply_fieldlevel_read_permissions()
-				self.assertFalse(invitation.get("key"))
+		with self.as_user(self.member):
+			for get_list in (frappe.get_list, get_client_list):
+				rows = get_list(
+					"GP Invitation", fields=["name", "email", "key"], filters={"name": invitation.name}
+				)
+				self.assertTrue(rows)
+				self.assertNotIn("key", rows[0])
+			invitation.reload()
+			invitation.apply_fieldlevel_read_permissions()
+			self.assertFalse(invitation.get("key"))
+		with self.as_user(self.guest):
+			for get_list in (frappe.get_list, get_client_list):
+				with self.assertRaises(frappe.PermissionError):
+					get_list("GP Invitation", fields=["name"], filters={"name": invitation.name})
 
 	def test_member_cannot_rewrite_invitation_recipient_or_role(self):
 		invitation = self.invitation(self.second_member.name)
@@ -101,16 +104,18 @@ class TestInvitationSecurity(GameplanTestCase):
 		invitation.accept()
 		login_manager = MagicMock()
 		with patch.object(frappe.local, "login_manager", login_manager, create=True):
-			with self.as_user("Guest"), self.assertRaises(frappe.ValidationError):
-				accept_invitation(invitation.key)
+			with self.as_user("Guest"):
+				accept_invitation(invitation.flags.invite_key)
+				self.assertEqual(frappe.local.response.http_status_code, 410)
 		login_manager.login_as.assert_not_called()
 
 	def test_accepted_invitation_cannot_issue_another_password_reset(self):
 		invitation = self.invitation()
 		invitation.accept()
 		with patch.object(GPInvitation, "get_password_link") as password_link:
-			with self.as_user("Guest"), self.assertRaises(frappe.ValidationError):
-				accept_invitation(invitation.key)
+			with self.as_user("Guest"):
+				accept_invitation(invitation.flags.invite_key)
+				self.assertEqual(frappe.local.response.http_status_code, 410)
 		password_link.assert_not_called()
 
 	def test_new_user_acceptance_does_not_commit_before_consuming_key(self):

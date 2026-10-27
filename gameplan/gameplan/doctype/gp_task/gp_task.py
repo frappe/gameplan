@@ -11,10 +11,12 @@ from gameplan.mixins.archivable import check_if_space_is_archived
 from gameplan.mixins.mentions import HasMentions
 from gameplan.mixins.reactions import get_reactions_on
 from gameplan.permissions import (
-	accessible_project_criterion,
 	content_has_permission,
+	task_access_criterion,
 	task_query_conditions,
 )
+from gameplan.search_sqlite import enqueue_comment_reindex_on_move
+from gameplan.utils.document import with_stored_document
 
 
 class GPTask(HasMentions, HasActivity, Document):
@@ -36,6 +38,7 @@ class GPTask(HasMentions, HasActivity, Document):
 	def on_update(self):
 		self.notify_mentions()
 		self.log_value_updates()
+		enqueue_comment_reindex_on_move(self)
 
 	def log_value_updates(self):
 		fields = ["title", "description", "status", "priority", "assigned_to", "due_date", "project"]
@@ -69,20 +72,17 @@ class GPTask(HasMentions, HasActivity, Document):
 		frappe.get_doc("GP Project", self.project).update_tasks_count()
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def track_visit(self):
 		GPNotification.clear_notifications(task=self.name)
 
 	@frappe.whitelist(methods=["GET"])
+	@with_stored_document
 	def thread_reactions(self):
-		"""Reactions on everything in this thread, for the thread page.
-
-		Checks read on the stored thread: the v2 document-method route builds this instance
-		from fields the caller sends, so its own fields can be forged."""
-		thread = frappe.get_doc(self.doctype, self.name)
-		thread.check_permission("read")
+		"""Reactions on everything in this thread, for the thread page."""
 		comments = frappe.get_all(
 			"GP Comment",
-			filters={"reference_doctype": thread.doctype, "reference_name": thread.name},
+			filters={"reference_doctype": self.doctype, "reference_name": self.name},
 			pluck="name",
 		)
 		return get_reactions_on({"GP Comment": comments})
@@ -114,6 +114,7 @@ def get_list(
 		offset=start,
 		limit=limit + 1,
 		group_by=group_by,
+		ignore_permissions=False,
 	)
 	Task = frappe.qb.DocType(doctype)
 	query = apply_task_access_filter(query, Task)
@@ -126,17 +127,11 @@ def get_list(
 
 
 def apply_task_access_filter(query, Task, user=None):
-	"""Restrict a GP Task query to the tasks `user` may see, as can_view_content does.
-
-	A task in a Space follows the Space. A task with no Space is personal, so only its
-	owner sees it.
-	"""
-	user = user or frappe.session.user
-	criterion = accessible_project_criterion(Task.project, user)
+	"""Restrict a GP Task query to the tasks `user` may see (see task_access_criterion)."""
+	criterion = task_access_criterion(Task, user)
 	if criterion is None:
 		return query
-	space_less = Task.project.isnull() | (Task.project == "")
-	return query.where(criterion | (space_less & (Task.owner == user)))
+	return query.where(criterion)
 
 
 def get_permission_query_conditions(user):

@@ -33,13 +33,10 @@
             New comments
           </span>
         </div>
+        <!-- On mobile the sticky post header has no top padding, so the gap lives here. -->
         <Comment
           v-if="item.doctype == 'GP Comment'"
-          :class="{
-            'pt-14 sm:pt-0': needsMobileCommentGap(timelineItems, i, {
-              includeFirstComment: true,
-            }),
-          }"
+          class="pt-14 sm:pt-0"
           :ref="($comment) => setItemRef($comment, item)"
           :comment="item"
           :space="space"
@@ -48,6 +45,7 @@
           "
           :readOnlyMode="readOnlyMode"
           :comments="comments"
+          :bookmarks="bookmarks"
         />
         <Activity
           :class="[
@@ -61,11 +59,7 @@
         />
         <Poll
           v-else-if="item.doctype == 'GP Poll'"
-          :class="{
-            'pt-14 sm:pt-0': needsMobileCommentGap(timelineItems, i, {
-              includeFirstComment: true,
-            }),
-          }"
+          class="pt-14 sm:pt-0"
           :ref="($poll) => setItemRef($poll, item)"
           :highlight="
             highlightedItem?.doctype == item.doctype && highlightedItem?.name == item.name
@@ -165,15 +159,6 @@
               >
                 {{ $user().full_name }}
               </span>
-              <div class="hidden sm:block">
-                <TabButtons
-                  :options="[
-                    { value: 'Comment', label: 'Comment' },
-                    { value: 'Poll', label: 'Poll' },
-                  ]"
-                  v-model="newCommentType"
-                />
-              </div>
               <Tooltip :text="isComposerFullscreen ? 'Minimize' : 'Expand'">
                 <Button
                   class="sm:hidden"
@@ -195,7 +180,6 @@
             </div>
             <CommentEditor
               ref="newCommentEditor"
-              v-if="newCommentType == 'Comment'"
               :key="commentEditorKey"
               :value="draftData?.content"
               @change="onNewCommentChange"
@@ -203,7 +187,7 @@
                 variant: 'solid',
                 onClick: submitComment,
                 loading: comments.insert.loading,
-                disabled: commentEmpty,
+                disabled: !canSubmit,
               }"
               :discardButtonProps="{
                 onClick: discardComment,
@@ -212,41 +196,10 @@
               :max-height="activeComposerEditorMaxHeightStyle"
               :min-height="activeComposerEditorMinHeightStyle"
               v-model:toolbar-expanded="composerToolbarExpanded"
+              can-attach-poll
               placeholder="Add a comment..."
-            >
-              <template #actions-left>
-                <TabButtons
-                  :options="[
-                    { value: 'Comment', label: 'Comment' },
-                    { value: 'Poll', label: 'Poll' },
-                  ]"
-                  v-model="newCommentType"
-                />
-              </template>
-            </CommentEditor>
+            />
             <ErrorMessage class="mt-2" :message="comments.insert.error" />
-            <PollEditor
-              v-show="newCommentType == 'Poll'"
-              v-model:poll="newPoll"
-              :submitButtonProps="{
-                onClick: submitPoll,
-                loading: polls.insert.loading,
-              }"
-              :discardButtonProps="{
-                onClick: discardPoll,
-              }"
-            >
-              <template #actions-left>
-                <TabButtons
-                  :options="[
-                    { value: 'Comment', label: 'Comment' },
-                    { value: 'Poll', label: 'Poll' },
-                  ]"
-                  v-model="newCommentType"
-                />
-              </template>
-            </PollEditor>
-            <ErrorMessage class="mt-2" :message="polls.insert.error" />
           </div>
         </div>
       </div>
@@ -261,22 +214,22 @@ import {
   nextTick,
   onMounted,
   onUnmounted,
+  provide,
   watch,
   watchEffect,
   useTemplateRef,
 } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useEventListener } from '@vueuse/core'
-import { useList, TabButtons, ErrorMessage, Button, Tooltip } from 'frappe-ui'
+import { useList, ErrorMessage, Button, Tooltip } from 'frappe-ui'
 import CommentEditor from '@/components/editor/CommentEditor.vue'
 import Comment from './Comment.vue'
 import Activity from './Activity.vue'
-import PollEditor from './PollEditor.vue'
 import Poll from './Poll.vue'
 import UserAvatar from './UserAvatar.vue'
 import { dialog, shellScrollContainer } from 'frappe-ui'
 import { subscribeToDoc, useSocket, type NewActivityEvent } from '@/socket'
-import { GPActivity, GPComment, GPPoll } from '@/types/doctypes'
+import { GPActivity, GPBookmark, GPComment, GPPoll } from '@/types/doctypes'
 import type { Editor } from '@tiptap/vue-3'
 import { tags } from '@/data/tags'
 import { useRichQuotes } from '@/components/RichQuoteExtension/useRichQuotes'
@@ -284,7 +237,11 @@ import { useDraftSync } from '@/data/useDraftSync'
 import { useSessionUser } from '@/data/users'
 import type { Space } from '@/data/spaces'
 import { useIsMobile } from '@/utils/useIsMobile'
-import { needsMobileCommentGap } from '@/utils/commentTimeline'
+import {
+  isPollDraftReady,
+  pollDraftInContent,
+  threadPollsKey,
+} from '@/components/PollBlock/poll-draft'
 
 interface Props {
   doctype: string
@@ -303,24 +260,12 @@ interface Props {
   activityVersion?: string | number
 }
 
-interface NewPoll {
-  title: string
-  anonymous: boolean
-  multiple_answers: boolean
-  options: Array<{
-    title: string
-    idx: number
-  }>
-}
-
 interface ComposerUiState {
   open?: boolean
   minimized?: boolean
   toolbarExpanded?: boolean
   editorMaxHeight?: number
   editorMinHeight?: number | null
-  type?: 'Comment' | 'Poll'
-  poll?: NewPoll
 }
 
 const DEFAULT_COMPOSER_EDITOR_HEIGHT = 560
@@ -357,7 +302,6 @@ const composerToolbarExpanded = ref(false)
 const composerEditorMaxHeight = ref(DEFAULT_COMPOSER_EDITOR_HEIGHT)
 const composerEditorMinHeight = ref<number | null>(null)
 const composerStateLoaded = ref(false)
-const newCommentType = ref<'Comment' | 'Poll'>('Comment')
 
 // The new-comment composer is an auto-saved draft, keyed to this discussion so it
 // survives reloads and restores across tabs. One draft per (user, discussion).
@@ -372,15 +316,6 @@ const draft = useDraftSync({
 })
 const draftData = draft.data
 const isDraftLoading = draft.isLoading
-const newPoll = ref({
-  title: '',
-  multiple_answers: false,
-  anonymous: false,
-  options: [
-    { title: '', idx: 1 },
-    { title: '', idx: 2 },
-  ],
-})
 const newMessagesFrom = ref(props.newCommentsFrom)
 const highlightedItem = ref<{ doctype: string; name: string } | null>(null)
 const addCommentHeight = ref(0)
@@ -424,6 +359,13 @@ const comments = useList<GPComment>({
   },
 })
 
+const bookmarks = useList<GPBookmark>({
+  doctype: 'GP Bookmark',
+  fields: ['name', 'comment'],
+  filters: { discussion: props.name },
+  limit: 99999,
+})
+
 const activities = useList<GPActivity>({
   doctype: 'GP Activity',
   fields: ['name', 'user', 'action', 'data', 'creation'],
@@ -465,6 +407,7 @@ const polls = useList<GPPoll>({
     'creation',
     'owner',
     'stopped_at',
+    'comment',
     { options: ['name', 'title', 'idx', 'percentage'] },
     { votes: ['user', 'option'] },
   ],
@@ -479,9 +422,15 @@ const polls = useList<GPPoll>({
   onSuccess() {
     if (route.query.poll) {
       const poll = polls.data?.find((p) => p.name === route.query.poll)
-      scrollToItem(poll)
+      scrollToItem(poll?.comment ? comments.data?.find((c) => c.name === poll.comment) : poll)
     }
   },
+})
+
+provide(threadPollsKey, {
+  polls,
+  space: () => props.space,
+  readOnlyMode: () => props.readOnlyMode,
 })
 
 watchEffect(() => {
@@ -500,7 +449,7 @@ const timelineItems = computed(() => {
     items = items.concat(activities.data)
   }
   if (polls.data?.length) {
-    items = items.concat(polls.data)
+    items = items.concat(polls.data.filter((poll) => !poll.comment))
   }
   return items.sort((a, b) => new Date(a.creation).valueOf() - new Date(b.creation).valueOf())
 })
@@ -509,13 +458,18 @@ const commentEmpty = computed(() => {
   return !draftData.value?.content || draftData.value.content === '<p></p>'
 })
 
+const pollDraft = computed(() => pollDraftInContent(draftData.value?.content))
+
+const canSubmit = computed(
+  () => !commentEmpty.value && (!pollDraft.value || isPollDraftReady(pollDraft.value)),
+)
+
 const editorObject = computed<Editor | null>(() => {
   return newCommentEditor.value?.editor || null
 })
 
 const minimizedLabel = computed(() => {
-  if (newCommentType.value === 'Poll') return newPoll.value.title || 'Poll in progress'
-  return draftContentPreview.value || 'Add a comment'
+  return draftContentPreview.value || pollDraft.value?.title || 'Add a comment'
 })
 
 const draftContentPreview = computed(() => {
@@ -576,7 +530,6 @@ function openCommentBox() {
   showCommentBox.value = true
   composerMinimized.value = false
   mobileComposerFullscreen.value = false
-  newCommentType.value = 'Comment'
 }
 
 function minimizeComposer() {
@@ -650,21 +603,11 @@ function resetCommentState() {
   mobileComposerFullscreen.value = false
   composerToolbarExpanded.value = false
   commentEditorKey.value++
-  newCommentType.value = 'Comment'
-  newPoll.value = {
-    title: '',
-    multiple_answers: false,
-    anonymous: false,
-    options: [
-      { title: '', idx: 1 },
-      { title: '', idx: 2 },
-    ],
-  }
   highlightedItem.value = null
 }
 
 async function submitComment() {
-  if (commentEmpty.value || comments.insert.loading) return
+  if (!canSubmit.value || comments.insert.loading) return
 
   const comment = await comments.insert.submit({
     reference_doctype: props.doctype,
@@ -672,6 +615,7 @@ async function submitComment() {
     content: draftData.value?.content,
   })
   if (comments.insert.error || !comment?.name) return
+  if (pollDraft.value) polls.reload()
 
   await draft.commit()
   resetCommentState()
@@ -744,25 +688,6 @@ function wait(ms: number) {
   })
 }
 
-function submitPoll() {
-  if (props.doctype !== 'GP Discussion') return
-  return polls.insert
-    .submit({
-      discussion: props.name,
-      title: newPoll.value.title,
-      anonymous: newPoll.value.anonymous ? 1 : 0,
-      multiple_answers: newPoll.value.multiple_answers ? 1 : 0,
-      options: newPoll.value.options,
-    })
-    .then(() => {
-      resetCommentState()
-    })
-}
-
-function discardPoll() {
-  resetCommentState()
-}
-
 function setItemRef($component: any, item: any) {
   if ($component?.$el) {
     item.$el = $component.$el
@@ -818,8 +743,6 @@ watch(
     composerToolbarExpanded,
     composerEditorMaxHeight,
     composerEditorMinHeight,
-    newCommentType,
-    newPoll,
   ],
   () => {
     saveComposerState()
@@ -937,8 +860,6 @@ function loadComposerState() {
   composerEditorMaxHeight.value = normalizeComposerHeight(state.editorMaxHeight)
   composerEditorMinHeight.value =
     state.editorMinHeight == null ? null : normalizeComposerHeight(state.editorMinHeight)
-  newCommentType.value = state.type ?? 'Comment'
-  newPoll.value = normalizePoll(state.poll)
   composerStateLoaded.value = true
 }
 
@@ -952,8 +873,6 @@ function saveComposerState() {
       toolbarExpanded: composerToolbarExpanded.value,
       editorMaxHeight: composerEditorMaxHeight.value,
       editorMinHeight: composerEditorMinHeight.value,
-      type: newCommentType.value,
-      poll: newPoll.value,
     } satisfies ComposerUiState),
   )
 }
@@ -963,23 +882,6 @@ function readComposerState(): ComposerUiState {
     return JSON.parse(localStorage.getItem(composerStorageKey.value) || '{}')
   } catch {
     return {}
-  }
-}
-
-function normalizePoll(poll?: ComposerUiState['poll']): NewPoll {
-  return {
-    title: poll?.title ?? '',
-    multiple_answers: Boolean(poll?.multiple_answers),
-    anonymous: Boolean(poll?.anonymous),
-    options: poll?.options?.length
-      ? poll.options.map((option, index) => ({
-          title: option.title ?? '',
-          idx: option.idx || index + 1,
-        }))
-      : [
-          { title: '', idx: 1 },
-          { title: '', idx: 2 },
-        ],
   }
 }
 

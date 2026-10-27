@@ -14,7 +14,9 @@ from gameplan.mixins.mentions import HasMentions
 from gameplan.mixins.reactions import HasReactions, get_reactions_on
 from gameplan.mixins.tags import HasTags
 from gameplan.permissions import content_has_permission, discussion_query_conditions
+from gameplan.search_sqlite import enqueue_comment_reindex_on_move
 from gameplan.utils import get_document_revisions, remove_empty_trailing_paragraphs, url_safe_slug
+from gameplan.utils.document import with_stored_document
 
 
 class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTags, Document):
@@ -36,7 +38,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 
 	# Lifecycle Methods
 	def as_dict(self, *args, **kwargs):
-		d = super(__class__, self).as_dict(*args, **kwargs)
+		d = super().as_dict(*args, **kwargs)
 		last_visit = frappe.db.get_value(
 			"GP Discussion Visit", {"discussion": self.name, "user": frappe.session.user}, "last_visit"
 		)
@@ -93,6 +95,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		self.log_title_update()
 		self.attach_files_in_content()
 		self.sync_unread_records_on_move()
+		enqueue_comment_reindex_on_move(self)
 
 	def sync_unread_records_on_move(self):
 		# When a discussion moves to another space, realign its unread records so the count
@@ -113,23 +116,21 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 
 	# Whitelisted Methods
 	@frappe.whitelist(methods=["GET"])
+	@with_stored_document
 	def thread_reactions(self):
-		"""Reactions on everything in this thread, for the thread page.
-
-		Checks read on the stored thread: the v2 document-method route builds this instance
-		from fields the caller sends, so its own fields can be forged."""
-		thread = frappe.get_doc(self.doctype, self.name)
-		thread.check_permission("read")
+		"""Reactions on everything in this thread, for the thread page."""
 		comments = frappe.get_all(
 			"GP Comment",
-			filters={"reference_doctype": thread.doctype, "reference_name": thread.name},
+			filters={"reference_doctype": self.doctype, "reference_name": self.name},
 			pluck="name",
 		)
-		polls = frappe.get_all("GP Poll", filters={"discussion": thread.name}, pluck="name")
-		return get_reactions_on({"GP Discussion": [thread.name], "GP Comment": comments, "GP Poll": polls})
+		polls = frappe.get_all("GP Poll", filters={"discussion": self.name}, pluck="name")
+		return get_reactions_on({"GP Discussion": [self.name], "GP Comment": comments, "GP Poll": polls})
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def track_visit(self):
+		"""Mark this discussion and its notifications as read for the current user."""
 		if frappe.flags.read_only:
 			return
 
@@ -153,22 +154,30 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		GPNotification.clear_notifications(discussion=self.name)
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def mark_as_unread(self):
+		"""Mark this discussion as unread for the current user."""
 		if frappe.flags.read_only:
 			return
 
 		GPUnreadRecord.mark_discussion_as_unread_for_user(self.name, frappe.session.user)
 
 	@frappe.whitelist()
+	@with_stored_document
 	def get_revisions(self, fieldname="content"):
+		"""Return the edit history of `fieldname` (default: content) on this discussion."""
 		return get_document_revisions(self.doctype, self.name, fieldname)
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def move_to_project(self, project):
+		"""Move this discussion to another Space (`project`) and update both Spaces' counts."""
 		return move_discussion(self, project)
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def close_discussion(self):
+		"""Close this discussion to new replies. No-op if it is already closed."""
 		if self.closed_at:
 			return
 		self.closed_at = frappe.utils.now()
@@ -177,7 +186,9 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		self.save()
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def reopen_discussion(self):
+		"""Reopen this closed discussion. No-op if it is not closed."""
 		if not self.closed_at:
 			return
 		self.closed_at = None
@@ -186,7 +197,9 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		self.save()
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def pin_discussion(self, pin_scope="Category"):
+		"""Pin this discussion. `pin_scope` is "Category" (whole Community) or "Space"."""
 		if self.pinned_at:
 			return
 		self.pinned_at = frappe.utils.now()
@@ -196,7 +209,9 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		self.save()
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def unpin_discussion(self):
+		"""Unpin this discussion. No-op if it is not pinned."""
 		if not self.pinned_at:
 			return
 		self.pinned_at = None
@@ -206,16 +221,18 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		self.save()
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def add_bookmark(self):
+		"""Bookmark this discussion for the current user."""
 		if self.is_bookmarked_by_current_user():
 			return
 		frappe.new_doc("GP Bookmark", discussion=self.name, user=frappe.session.user).insert()
 
 	@frappe.whitelist(methods=["POST"])
+	@with_stored_document
 	def remove_bookmark(self):
-		bookmark = frappe.db.get_value(
-			"GP Bookmark", {"discussion": self.name, "user": frappe.session.user}, "name"
-		)
+		"""Remove the current user's bookmark on this discussion."""
+		bookmark = frappe.db.get_value("GP Bookmark", self.opening_post_bookmark_filters(), "name")
 		if not bookmark:
 			return
 		frappe.get_doc("GP Bookmark", bookmark).delete()
@@ -239,8 +256,6 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		an already-authorised discussion delete. The generic cascade would check the role
 		permission on GP Activity, and the Gameplan Guest role has no delete there. A guest
 		could then not delete a discussion they started once anyone had closed or pinned it.
-		Granting that role delete on GP Activity is not an option: the doctype has no
-		row-level permission hook, so a guest could delete any activity row on the site.
 		"""
 		for name in frappe.get_all(
 			"GP Activity",
@@ -257,7 +272,10 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		method of the same name would be shadowed by that bool and the next `as_dict` would
 		raise `TypeError: 'bool' object is not callable`.
 		"""
-		return bool(frappe.db.exists("GP Bookmark", {"discussion": self.name, "user": frappe.session.user}))
+		return bool(frappe.db.exists("GP Bookmark", self.opening_post_bookmark_filters()))
+
+	def opening_post_bookmark_filters(self):
+		return {"discussion": self.name, "user": frappe.session.user, "comment": ("is", "not set")}
 
 	def update_slug(self):
 		self.slug = url_safe_slug(self.title)
@@ -291,7 +309,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		last_comment = get_last_post(
 			"GP Comment", {"reference_doctype": self.doctype, "reference_name": self.name}
 		)
-		last_poll = get_last_post("GP Poll", {"discussion": self.name})
+		last_poll = get_last_post("GP Poll", {"discussion": self.name, "comment": ("is", "not set")})
 
 		if last_comment and last_poll:
 			latest = last_comment if last_comment.creation > last_poll.creation else last_poll
@@ -314,7 +332,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		comments_count = frappe.db.count(
 			"GP Comment", {"reference_doctype": self.doctype, "reference_name": self.name}
 		)
-		polls_count = frappe.db.count("GP Poll", {"discussion": self.name})
+		polls_count = frappe.db.count("GP Poll", {"discussion": self.name, "comment": ("is", "not set")})
 		self.comments_count = comments_count + polls_count
 
 	def update_discussions_count(self):
@@ -349,6 +367,7 @@ def move_discussion(discussion, project):
 
 @frappe.whitelist(methods=["POST"])
 def move_discussions(discussions: list[dict]):
+	"""Move many discussions; each item is {"name", "project"}. Returns moved and failed lists."""
 	if not discussions:
 		return {"moved": [], "failed": [], "total": 0, "success_count": 0, "failure_count": 0}
 
