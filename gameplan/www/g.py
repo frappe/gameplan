@@ -127,11 +127,11 @@ def run_git_command(*args):
 
 	Two kinds of failure, told apart on purpose:
 
-	A non-zero exit or an unreachable git binary is expected, not exceptional. A
-	deployed checkout is often shallow and carries no tags, so `git describe` fails on
-	every call. Logging those wrote an Error Log row per git call per page load and
-	buried real tracebacks under thousands of "Git Command Error" rows. A blank field
-	in the About dialog is the only signal they need.
+	A non-zero exit or an unreachable git binary is expected, not exceptional: the app
+	may not be a git checkout, or git may not be installed. Logging those wrote an Error
+	Log row per git call per page load and buried real tracebacks under thousands of
+	"Git Command Error" rows. A blank field in the About dialog is the only signal they
+	need.
 
 	Anything else keeps its traceback, so a genuinely broken version read stays
 	diagnosable. It is still swallowed rather than raised: this runs inside `get_boot`,
