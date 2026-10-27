@@ -119,7 +119,10 @@ VISIBILITY_PRIVATE_FIELDS = {
 	"visibility_set_at": "an admin action, not authorship",
 }
 PRIVATE_FIELDS = {
-	"GP Team": {**VISIBILITY_PRIVATE_FIELDS},
+	"GP Team": {
+		**VISIBILITY_PRIVATE_FIELDS,
+		"approval_post_count": "Community moderation policy, not public content",
+	},
 	"GP Project": {
 		**VISIBILITY_PRIVATE_FIELDS,
 		"tasks_count": "tasks are never public",
