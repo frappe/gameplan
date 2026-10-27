@@ -31,13 +31,13 @@
     </MultiSelect>
 
     <DateRangePicker :model-value="dateRange" @update:model-value="setDateRange" align="end">
-      <template #trigger="{ open, toggle }">
+      <template #trigger="{ open, setOpen }">
         <FilterTrigger
           :label="dateLabel"
           :open="open"
           :active="filters.date.kind !== 'all'"
           icon="lucide-calendar"
-          @click="toggle()"
+          @click="setOpen(!open)"
           @clear="setNotificationDate({ kind: 'all' })"
         />
       </template>
