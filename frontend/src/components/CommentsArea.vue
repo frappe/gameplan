@@ -116,6 +116,19 @@
             isComposerCollapsed ? '' : 'bg-surface-base sm:bg-transparent',
           ]"
         >
+          <p
+            v-if="slowStatus?.seconds"
+            class="mb-2 text-base text-ink-gray-6"
+            data-testid="slow-mode-status"
+          >
+            <template v-if="slowWait">Slow mode: you can reply again in {{ slowWait }}s.</template>
+            <template v-else-if="slowStatus.exempt"
+              >Slow mode is on. Moderators can reply without waiting.</template
+            >
+            <template v-else
+              >Slow mode: {{ slowModeLabel(slowStatus.seconds) }} between your replies.</template
+            >
+          </p>
           <div v-if="!showCommentBox" class="sm:-mx-3">
             <button
               type="button"
@@ -247,6 +260,7 @@ import {
 import { useRouter, useRoute } from 'vue-router'
 import { useEventListener } from '@vueuse/core'
 import { useList, ErrorMessage, Button, Tooltip, call, toast, type UseListOptions } from 'frappe-ui'
+import { slowModeLabel, useSlowMode } from '@/data/slowMode'
 import CommentEditor from '@/components/editor/CommentEditor.vue'
 import Comment from './Comment.vue'
 import Activity from './Activity.vue'
@@ -319,6 +333,14 @@ const props = withDefaults(defineProps<Props>(), {
   disableNewComment: false,
   hideNewComment: false,
 })
+
+const {
+  data: slowStatus,
+  remaining: slowWait,
+  refresh: refreshSlowMode,
+} = useSlowMode(() =>
+  props.doctype === 'GP Discussion' && !isAnonymousVisitor() ? String(props.name) : undefined,
+)
 
 const emit = defineEmits<{
   'composer-resize': []
@@ -541,7 +563,10 @@ const commentEmpty = computed(() => {
 const pollDraft = computed(() => pollDraftInContent(draftData.value?.content))
 
 const canSubmit = computed(
-  () => !commentEmpty.value && (!pollDraft.value || isPollDraftReady(pollDraft.value)),
+  () =>
+    !slowWait.value &&
+    !commentEmpty.value &&
+    (!pollDraft.value || isPollDraftReady(pollDraft.value)),
 )
 
 const editorObject = computed<Editor | null>(() => {
@@ -733,6 +758,7 @@ async function submitComment() {
     replyError.value = e
   } finally {
     submittingReply.value = false
+    refreshSlowMode()
   }
 }
 

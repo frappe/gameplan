@@ -21,6 +21,10 @@
         </time>
       </div>
       <p class="mt-1 text-base text-ink-gray-5">By {{ useUser(item.owner).full_name }}</p>
+      <p v-if="item.action === 'Slow Mode Changed'" class="mt-2 text-base text-ink-gray-6">
+        {{ slowModeLabel(item.previous_slow_mode_seconds) }} →
+        {{ slowModeLabel(item.slow_mode_seconds) }}
+      </p>
       <p v-if="item.reason" class="mt-2 whitespace-pre-wrap text-base text-ink-gray-7">
         {{ item.reason }}
       </p>
@@ -39,6 +43,7 @@
 import { ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Button, ErrorMessage, TextInput, Select, call, dayjsLocal } from 'frappe-ui'
+import { slowModeLabel } from '@/data/slowMode'
 import { useUser } from '@/data/users'
 import { extractServerMessage } from '@/utils'
 
@@ -62,6 +67,8 @@ type HistoryItem = {
   action: string
   owner: string
   creation: string
+  previous_slow_mode_seconds?: number
+  slow_mode_seconds?: number
   reason?: string
   discussion?: string
   comment?: string

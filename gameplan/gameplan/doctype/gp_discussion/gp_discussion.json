@@ -25,7 +25,8 @@
   "comments_count",
   "participants_count",
   "hidden_at",
-  "spam_removed_at"
+  "spam_removed_at",
+  "slow_mode_seconds"
  ],
  "fields": [
   {
@@ -150,6 +151,13 @@
    "fieldname": "spam_removed_at",
    "fieldtype": "Datetime",
    "label": "Spam Removed At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "slow_mode_seconds",
+   "label": "Slow Mode Seconds",
+   "fieldtype": "Int",
+   "default": "0",
    "read_only": 1
   }
  ],

@@ -13,7 +13,9 @@
   "discussion",
   "title",
   "community",
-  "user"
+  "user",
+  "previous_slow_mode_seconds",
+  "slow_mode_seconds"
  ],
  "fields": [
   {
@@ -28,7 +30,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Action",
-   "options": "Hide\nRestore\nDelete Spam\nBan\nUnban",
+   "options": "Hide\nRestore\nDelete Spam\nBan\nUnban\nSlow Mode Changed",
    "reqd": 1
   },
   {
@@ -66,6 +68,18 @@
    "fieldtype": "Data",
    "label": "User",
    "search_index": 1
+  },
+  {
+   "fieldname": "previous_slow_mode_seconds",
+   "label": "Previous Slow Mode Seconds",
+   "fieldtype": "Int",
+   "read_only": 1
+  },
+  {
+   "fieldname": "slow_mode_seconds",
+   "label": "Slow Mode Seconds",
+   "fieldtype": "Int",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 0,

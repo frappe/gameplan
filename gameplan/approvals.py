@@ -70,6 +70,10 @@ def hold(doc, request_key, draft=""):
 		frappe.throw(
 			"You already have five pending submissions in this Community", frappe.RateLimitExceededError
 		)
+	from gameplan.slow_mode import record_reply
+
+	record_reply(doc)
+
 	submission = frappe.get_doc(
 		doctype="GP Submission",
 		project=project if doc.doctype == "GP Discussion" else None,

@@ -30,7 +30,10 @@ def history(community: str, kind: str = "all", target: str = "", start: int = 0)
 	)
 	post_actions = Log.action.isin(["Hide", "Restore", "Delete Spam"])
 	sources = {
-		"discussion": (Log.discussion.isin(discussions) & post_actions, Log.discussion),
+		"discussion": (
+			Log.discussion.isin(discussions) & (post_actions | (Log.action == "Slow Mode Changed")),
+			Log.discussion,
+		),
 		"reply": (Log.comment.isin(replies) & post_actions, Log.comment),
 		"user": ((Log.community == community) & Log.action.isin(["Ban", "Unban"]), Log.user),
 	}
@@ -44,7 +47,16 @@ def history(community: str, kind: str = "all", target: str = "", start: int = 0)
 	rows = (
 		frappe.qb.from_(Log)
 		.select(
-			Log.name, Log.action, Log.owner, Log.creation, Log.reason, Log.discussion, Log.comment, Log.user
+			Log.name,
+			Log.action,
+			Log.owner,
+			Log.creation,
+			Log.reason,
+			Log.discussion,
+			Log.comment,
+			Log.user,
+			Log.previous_slow_mode_seconds,
+			Log.slow_mode_seconds,
 		)
 		.where(criterion)
 		.orderby(Log.creation, order=frappe.qb.desc)

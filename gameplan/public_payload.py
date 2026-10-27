@@ -127,7 +127,10 @@ PRIVATE_FIELDS = {
 		**VISIBILITY_PRIVATE_FIELDS,
 		"tasks_count": "tasks are never public",
 	},
-	"GP Discussion": {"modified_by": "who last touched it, not who wrote it"},
+	"GP Discussion": {
+		"modified_by": "who last touched it, not who wrote it",
+		"slow_mode_seconds": "posting policy; signed-in readers fetch their own cooldown separately",
+	},
 	"GP Comment": {"modified_by": "who last touched it, not who wrote it"},
 	"GP Poll": {"modified_by": "who last touched it, not who wrote it"},
 }

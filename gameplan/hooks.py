@@ -183,17 +183,20 @@ doc_events = {
 	},
 	# Discourse-style limits on Gameplan Guests posting in a space only because it is public.
 	"GP Discussion": {
-		"on_trash": "gameplan.reporting.protect_pending_reviews",
+		"on_trash": ["gameplan.reporting.protect_pending_reviews", "gameplan.slow_mode.clear_state"],
 		"before_insert": "gameplan.approval_policy.guard_publication",
-		"validate": "gameplan.new_user_limits.check_new_user_limits",
+		"validate": ["gameplan.new_user_limits.check_new_user_limits", "gameplan.slow_mode.protect_settings"],
 		"after_insert": [
 			"gameplan.new_user_limits.record_first_day_post",
 			"gameplan.approval_policy.record_accepted",
 		],
 	},
 	"GP Comment": {
-		"on_trash": "gameplan.reporting.protect_pending_reviews",
-		"before_insert": "gameplan.approval_policy.guard_publication",
+		"on_trash": [
+			"gameplan.reporting.protect_pending_reviews",
+			"gameplan.slow_mode.preserve_deleted_reply",
+		],
+		"before_insert": ["gameplan.approval_policy.guard_publication", "gameplan.slow_mode.record_reply"],
 		"validate": [
 			"gameplan.new_user_limits.check_new_user_limits",
 			"gameplan.reporting.protect_pending_reviews",
@@ -213,6 +216,7 @@ doc_events = {
 			"gameplan.gameplan.doctype.gp_user_profile.gp_user_profile.delete_user_profile",
 			"gameplan.gameplan.doctype.gp_guest_access.gp_guest_access.on_user_delete",
 			"gameplan.approval_policy.delete_counters",
+			"gameplan.slow_mode.clear_state",
 		],
 		"on_update": "gameplan.gameplan.doctype.gp_user_profile.gp_user_profile.on_user_update",
 	},

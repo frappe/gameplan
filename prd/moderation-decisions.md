@@ -53,6 +53,15 @@ A recommendation becomes a decision only after Ebrahim accepts it.
 | D39 | Include existing published contributions when establishing approval eligibility. | Established contributors do not all start from zero. Existing posts remain published when the policy is enabled. |
 | D40 | Reaching the threshold or disabling approval affects future submissions. | Already-pending submissions still need an explicit decision or author withdrawal. |
 | D41 | Build per-discussion slow mode (T18) next, before watched-word filtering. | Moderators choose a reply cooldown, the server enforces it, and readers see when they can reply again. Settle detailed rules in the next planning round. |
+| D42 | Community moderators/admins and global admins control slow mode on discussions they can already access. | Ordinary authors cannot enable, change, or disable it. Existing private-Space access still applies. |
+| D43 | Slow mode is off by default and remains active until staff disable it. | Allowed intervals: 30 seconds, 1 minute, 5 minutes, 15 minutes, 1 hour, and 1 day. Automatic expiry is deferred. |
+| D44 | Enforce one cooldown per person per discussion, including Members and Guests. | That Community's moderators/admins and global admins are exempt; no trust-level exemptions are added. |
+| D45 | An accepted reply submission starts the cooldown whether published or held for approval. | Count it once. Approval later neither charges again nor waits on the author's cooldown. Failed submissions consume no time. |
+| D46 | Slow mode restricts new replies only. | Existing editing, reaction, and voting policies remain. Deletion, withdrawal, and rejection do not reset the cooldown. |
+| D47 | Every slow-mode setting change requires a reason and appears in existing moderation history. | Record actor, time, and old/new interval. |
+| D48 | Calculate the wait from the latest accepted reply submission, including submissions before enablement. | Disabling removes the wait; changing or re-enabling uses the retained timestamp. |
+| D49 | Show a countdown and refresh status on focus, accepted replies, and setting changes. | Other viewers pick up staff changes on focus or their next submission. Server checks always enforce current settings. |
+
 
 
 
@@ -111,7 +120,7 @@ Plan these when their implementation slice is next. Roadmap recommendations do n
 - Ordinary members' editing rights and whether a Community can opt into forum-specific rules.
 
 - Temporary bans, automatic expiry, and separate silence behavior.
-- Approval rules, posting limits, slow mode, watched-word matching, and censor behavior.
+- Flood limits, watched-word matching, censor behavior, and automatic slow-mode expiry.
 - Bulk actions outside report review, background processing, and batch undo behavior.
 
 ## Keeping this log current
@@ -161,3 +170,13 @@ Keep unresolved questions and implementation choices distinct from confirmed pro
 - Each decision uses a separate request through the existing resolver. Permissions, current content, removal state, and review status are checked again. Successful decisions remain committed when another item fails.
 - The dialog shows progress and per-item results. Failed items require selection and a fresh preview before retry. Leaving the page stops unsent requests; there is no background resume. An in-flight decision can still finish.
 - Verification passed: seven bulk-review backend tests, 12 existing reporting tests, three bulk-review browser tests, four existing reporting browser tests, formatting/lint, and the frontend build. Local verification uses the disposable SQLite site; MariaDB concurrency remains covered by the existing CI suite.
+
+## T18 implementation notes
+
+- Slow mode is stored per discussion. A restricted per-user/discussion record retains the latest accepted reply time, including while slow mode is off.
+- Existing stored replies and submissions seed missing clocks, including before a reply is deleted. Earlier permanently deleted content is not reconstructed.
+- Account and discussion locks serialize submissions. The server applies the same check to direct reply creation and held submissions.
+- Publishing an approved submission skips a second charge. Invalid submissions roll back their clock updates with the request.
+- The existing moderation history records setting transitions and required reasons. Generic discussion saves cannot change the protected setting.
+- The new branch includes all six moderation PRs. Combining history, reports, and approvals preserves all moderation-page tabs.
+- Verification passed: nine slow-mode tests on SQLite and MariaDB, a MariaDB concurrency test, 22 browser tests, focused existing moderation suites, lint, and a production build.

@@ -83,7 +83,8 @@
   {
    "fieldname": "published_name",
    "fieldtype": "Data",
-   "label": "Published Name"
+   "label": "Published Name",
+   "search_index": 1
   }
  ],
  "grid_page_length": 50,
