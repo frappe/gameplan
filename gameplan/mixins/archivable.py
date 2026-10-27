@@ -17,6 +17,7 @@ class Archivable:
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
 	def archive(self):
+		"""Archive this document."""
 		self.archived_at = frappe.utils.now()
 		self.archived_by = frappe.session.user
 		self.save()
@@ -24,6 +25,7 @@ class Archivable:
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
 	def unarchive(self):
+		"""Restore this archived document."""
 		self.archived_at = None
 		self.archived_by = None
 		self.save()
