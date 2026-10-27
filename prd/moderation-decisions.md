@@ -2,6 +2,8 @@
 
 Owner: Ebrahim. Decisions updated: 2026-10-22.
 
+Owner: Ebrahim. Decisions updated: 2026-10-21.
+
 This log records choices Ebrahim confirmed in this chat.
 The roadmap describes sequencing and contains proposals for later features.
 A recommendation becomes a decision only after Ebrahim accepts it.
@@ -44,6 +46,10 @@ A recommendation becomes a decision only after Ebrahim accepts it.
 | D39 | Include existing published contributions when establishing approval eligibility. | Established contributors do not all start from zero. Existing posts remain published when the policy is enabled. |
 | D40 | Reaching the threshold or disabling approval affects future submissions. | Already-pending submissions still need an explicit decision or author withdrawal. |
 | D41 | Build per-discussion slow mode (T18) next, before watched-word filtering. | Moderators choose a reply cooldown, the server enforces it, and readers see when they can reply again. Settle detailed rules in the next planning round. |
+
+| D22 | History uses a tab in Community moderation, filters for posts or users, and links in post menus. | Show action, actor, time, reason, and target. Original hidden text stays behind existing restricted Preview. Retain permanent, read-only records. |
+| D23 | Post history follows current target access after moves. | Moderators need current Community and private-Space access. Permanently deleted targets disappear from Community history while their logs remain restricted for global admins. Hidden/spam-removed targets remain visible to authorized moderators. |
+| D24 | Push the T26 branch now and open its separate upstream PR after #621 merges. | Keep T26 out of #621 and avoid including its unmerged foundation in the new PR diff. |
 
 D05–D07 were confirmed in the first answer accepting scope and assignment authority.
 D08–D10 were confirmed in the next answer accepting private access, eligibility, and the first PR boundary.
@@ -98,7 +104,7 @@ Tests: `gameplan/tests/features/test_moderators.py` and `frontend/cypress/e2e/co
 Plan these when their implementation slice is next. Roadmap recommendations do not settle them.
 
 - Ordinary members' editing rights and whether a Community can opt into forum-specific rules.
-- Audit history UI and retention policy.
+
 - Temporary bans, automatic expiry, and separate silence behavior.
 - Approval rules, posting limits, slow mode, watched-word matching, and censor behavior.
 - Bulk action selection, progress, partial failures, and undo behavior.
@@ -124,6 +130,7 @@ Keep unresolved questions and implementation choices distinct from confirmed pro
 - A Community ban also blocks Space management, including moves, merges, and permanent deletion. Reading and management elsewhere remain available.
 - Pending reports block permanent deletion of their target, including parent cascades, and moving replies outside discussions. Resolve the reports before either operation.
 - Review versions include embedded poll questions, options, and voting settings. Poll votes do not invalidate a content review.
+
 ## T29 implementation notes
 
 - The accepted first-N policy is implemented with separate restricted GP Submission records and durable per-user/Community GP Approval Counter records.
@@ -133,3 +140,11 @@ Keep unresolved questions and implementation choices distinct from confirmed pro
 - Raw document creation is rejected when approval is required. Draft and scheduled publication enter the queue; the normal composer uses the same server rule.
 - Individual Space policies, edits to already-published posts, trust promotion, bulk approval, automatic filtering, and migration are separate work.
 - Submission destination IDs do not create deletion-blocking links. Removed targets leave restricted records. Deleting a Community or account clears its approval progress.
+
+## T26 implementation notes
+
+- Community moderation has a History tab and post-menu links, with target-type and exact post/user filters.
+- A scoped read-only endpoint returns action metadata in deterministic pages of 40 records. It never returns stored bodies or original titles.
+- User filtering covers Community Ban/Unban history. Discussion/reply history uses the target's current Space permissions, including after moves.
+- Missing targets remain in restricted log storage and do not consume Community history pages. Existing raw-log permissions remain unchanged.
+- Verified on the disposable site: 68 backend tests, seven browser tests, formatting, lint, and frontend build.

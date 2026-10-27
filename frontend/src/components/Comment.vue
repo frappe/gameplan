@@ -137,6 +137,7 @@
 import ReportDialog from './ReportDialog.vue'
 import { canReport } from '@/data/reporting'
 import { ref, computed, defineAsyncComponent, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { Button, Dropdown, ErrorMessage, Tooltip, dayjsLocal, useDoctype } from 'frappe-ui'
 import { useList } from 'frappe-ui'
 import { copyToClipboard, extractServerMessage } from '@/utils'
@@ -169,6 +170,7 @@ interface Props {
 
 const props = defineProps<Props>()
 const showReport = ref(false)
+const router = useRouter()
 const showRevisionsDialog = ref(false)
 const commentType = useDoctype<GPComment>('GP Comment')
 const hiddenContent = ref('')
@@ -326,6 +328,17 @@ const dropdownOptions = computed(() => [
     },
     condition: () =>
       props.comment.reference_doctype === 'GP Discussion' && canReport(props.comment, props.space),
+  },
+  {
+    label: 'Moderation history',
+    icon: 'lucide-history',
+    onClick: () =>
+      router.push({
+        name: 'CommunityModeration',
+        params: { communityId: props.space?.team },
+        query: { tab: 'history', kind: 'reply', target: String(props.comment.name) },
+      }),
+    condition: () => canModerate.value,
   },
   {
     label:

@@ -19,6 +19,7 @@
           { label: 'Community bans', value: 'bans' },
           { label: 'Reports', value: 'reports' },
           { label: 'Approvals', value: 'approvals' },
+          { label: 'History', value: 'history' },
         ]"
       />
       <ErrorMessage
@@ -97,6 +98,7 @@
       </template>
       <ApprovalQueue v-if="tab === 'approvals'" :key="communityId" :community-id="communityId" />
       <ReportQueue v-if="tab === 'reports'" :communityId="communityId" />
+      <ModerationHistory v-if="tab === 'history'" :communityId="communityId" />
       <p v-if="loading" role="status" class="mt-4 text-base text-ink-gray-5">Loading…</p>
     </template>
     <p v-else class="text-base text-ink-gray-5">Only Community moderators can open this page.</p>
@@ -108,6 +110,8 @@ import { computed, ref, watch } from 'vue'
 import ApprovalQueue from '@/components/ApprovalQueue.vue'
 import ApprovalSettings from '@/components/ApprovalSettings.vue'
 import ReportQueue from '@/components/ReportQueue.vue'
+import { useRoute, useRouter } from 'vue-router'
+import ModerationHistory from '@/components/ModerationHistory.vue'
 import { Button, Select, TabButtons, ErrorMessage, call, dialog, useDoctype } from 'frappe-ui'
 import CommentEditor from '@/components/editor/CommentEditor.vue'
 import { useCommunity } from '@/data/communities'
@@ -119,7 +123,17 @@ import { extractServerMessage } from '@/utils'
 const props = defineProps<{ communityId: string }>()
 const community = useCommunity(() => props.communityId)
 const canModerate = computed(() => canModerateCommunity(community.value, useSessionUser()))
-const tab = ref('removed')
+const route = useRoute()
+const router = useRouter()
+const tab = computed({
+  get: () =>
+    ['removed', 'bans', 'history'].includes(String(route.query.tab))
+      ? String(route.query.tab)
+      : 'removed',
+  set: (value) => {
+    router.replace({ query: { tab: value } })
+  },
+})
 const doctype = ref('GP Discussion')
 const discussionType = useDoctype('GP Discussion')
 const commentType = useDoctype('GP Comment')
@@ -163,7 +177,7 @@ async function load() {
   bans.value = []
   selected.value = ''
   error.value = null
-  if (!canModerate.value || ['reports', 'approvals'].includes(tab.value)) {
+  if (!canModerate.value || ['reports', 'approvals', 'history'].includes(tab.value)) {
     loading.value = false
     return
   }

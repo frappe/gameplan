@@ -914,6 +914,17 @@ const actions = computed(() => [
     condition: () => canReport(discussion.doc, space.value),
   },
   {
+    label: 'Moderation history',
+    icon: 'lucide-history',
+    onClick: () =>
+      router.push({
+        name: 'CommunityModeration',
+        params: { communityId: space.value?.team },
+        query: { tab: 'history', kind: 'discussion', target: String(discussion.doc?.name) },
+      }),
+    condition: () => canModerateSpace(space.value, useSessionUser()),
+  },
+  {
     label:
       discussion.doc?.hidden_at || discussion.doc?.spam_removed_at
         ? 'Restore discussion'
