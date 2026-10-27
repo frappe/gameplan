@@ -188,6 +188,7 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
 	def submit_vote(self, option):
+		"""Vote for the option titled `option`. Replaces the earlier vote on single-answer polls."""
 		self.check_can_participate()
 		check_if_space_is_archived(self, action="vote in", content_type="polls")
 		self.check_if_stopped()
@@ -217,6 +218,7 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
 	def retract_vote(self, option=None):
+		"""Remove the current user's vote for `option`, or all their votes if omitted."""
 		self.check_can_participate()
 		check_if_space_is_archived(self, action="retract votes from", content_type="polls")
 		self.check_if_stopped()
@@ -232,6 +234,7 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
 	def stop_poll(self):
+		"""Close this poll to new votes. Only the owner or an admin can stop it."""
 		if not can_delete_content(frappe.session.user, self):
 			frappe.throw(_("Only the owner or an admin can stop the poll"), frappe.PermissionError)
 		check_if_space_is_archived(self, action="stop", content_type="polls")
