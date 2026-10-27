@@ -62,7 +62,13 @@ def get_user_info(user=None):
 	).run(as_dict=1)
 	comment_count_map = {c.owner: c.count for c in comment_counts}
 
-	roles = frappe.db.get_all("Has Role", filters={"parenttype": "User"}, fields=["role", "parent"])
+	roles = frappe.db.get_all(
+		"Has Role",
+		filters={"parenttype": "User", "role": ["in", GAMEPLAN_ROLES]},
+		fields=["role", "parent"],
+	)
+	# GAMEPLAN_ROLES is ordered by privilege, so after sorting the last role per user wins.
+	role_map = {r.parent: r.role for r in sorted(roles, key=lambda r: GAMEPLAN_ROLES.index(r.role))}
 	user_profiles = frappe.db.get_all(
 		"GP User Profile",
 		fields=[
@@ -104,12 +110,7 @@ def get_user_info(user=None):
 				user.email_digest_frequency = user_profile.email_digest_frequency
 				user.email_digest_day_of_week = user_profile.email_digest_day_of_week
 				user.email_digest_last_sent_on = user_profile.email_digest_last_sent_on
-		user_roles = [r.role for r in roles if r.parent == user.name]
-		user.role = None
-		# GAMEPLAN_ROLES is ordered by privilege, so the last match is the effective role.
-		for role in GAMEPLAN_ROLES:
-			if role in user_roles:
-				user.role = role
+		user.role = role_map.get(user.name)
 
 		# Add discussion and comment counts
 		user.discussions_count_3m = discussion_count_map.get(user.name, 0)
