@@ -15,6 +15,7 @@
             </div>
 
             <Tooltip
+              v-if="appVersion.commit"
               :text="`${appVersion.commit}: ${appVersion.commit_message} - ${appVersion.commit_date}`"
               side="top"
             >
