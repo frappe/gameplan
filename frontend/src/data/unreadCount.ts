@@ -2,7 +2,7 @@ import { useDoctype } from 'frappe-ui'
 import { GPProject } from '@/types/doctypes'
 import { reactive } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
-import { onSocketEvent } from '@/socket'
+import { onSocketEvent, onSocketReconnect } from '@/socket'
 import { isAnonymousVisitor } from '@/utils/publicAccess'
 
 interface ProjectUnreadCount {
@@ -172,15 +172,15 @@ export function refreshUnreadCountForProjects(projects: string[]) {
 // Debounced because one action fans out several signals — posting creates records for every
 // recipient and marks the thread read for the author — and each one costs a full map fetch plus
 // a request per cached community.
-onSocketEvent(
-  'gameplan:unread_counts_changed',
-  useDebounceFn(() => {
-    if (isAnonymousVisitor()) return
-    // Nothing awaits these; swallow failures so a dropped request doesn't surface as an
-    // unhandled rejection. The next signal (or a page load) refetches anyway.
-    Promise.allSettled([
-      loadProjectUnreadCounts(),
-      ...Object.keys(participatingUnreadCounts).map((team) => fetchParticipatingUnreadCount(team)),
-    ])
-  }, 500),
-)
+const reloadAllUnreadCounts = useDebounceFn(() => {
+  if (isAnonymousVisitor()) return
+  // Nothing awaits these; swallow failures so a dropped request doesn't surface as an
+  // unhandled rejection. The next signal (or a page load) refetches anyway.
+  Promise.allSettled([
+    loadProjectUnreadCounts(),
+    ...Object.keys(participatingUnreadCounts).map((team) => fetchParticipatingUnreadCount(team)),
+  ])
+}, 500)
+
+onSocketEvent('gameplan:unread_counts_changed', reloadAllUnreadCounts)
+onSocketReconnect(reloadAllUnreadCounts)
