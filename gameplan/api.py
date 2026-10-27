@@ -369,7 +369,7 @@ def onboarding(community, space, icon, emails, is_private=0):
 
 @frappe.whitelist()
 def search_sqlite(query, filters=None):
-	"""Full-text search discussions, comments, pages and more. `filters` is an optional dict."""
+	"""Full-text search discussions and comments. `filters` is an optional dict."""
 	from gameplan.search_sqlite import GameplanSearch
 
 	search = GameplanSearch()

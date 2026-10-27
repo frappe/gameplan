@@ -3,7 +3,8 @@ import frappe
 AGENT_INSTRUCTIONS_HEADING = "Gameplan (gameplan app):"
 AGENT_RULES = (
 	"A Space belongs to a Community through its team field. "
-	"GP Discussion, GP Page and GP Task belong to a Space through their project field.",
+	"A GP Discussion belongs to a Space through its project field.",
+	"GP Task and GP Page are deprecated. Do not create them or suggest them to people.",
 	'Replies are GP Comment with reference_doctype "GP Discussion" and reference_name set to the '
 	"discussion name. Closed discussions take no new replies.",
 	'content fields are HTML. Mention a person with <span data-type="mention" '

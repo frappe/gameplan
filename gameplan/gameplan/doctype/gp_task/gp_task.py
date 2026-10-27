@@ -74,7 +74,6 @@ class GPTask(HasMentions, HasActivity, Document):
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
 	def track_visit(self):
-		"""Clear the current user's notifications for this task."""
 		GPNotification.clear_notifications(task=self.name)
 
 	@frappe.whitelist(methods=["GET"])
@@ -100,7 +99,6 @@ def get_list(
 	parent: str = None,
 	debug=False,
 ):
-	"""List tasks the user can see. Filter `assigned_or_owner` matches assignee or owner."""
 	doctype = "GP Task"
 	check_permissions(doctype, parent)
 	fields = frappe.parse_json(fields) if fields else None
