@@ -22,7 +22,7 @@ def submit(
 	title: str = "",
 	draft: str = "",
 ):
-	"""Submit a discussion or reply through publication policy, preserving a private pending submission if needed."""
+	"""Publish a discussion/reply or preserve a private submission for moderator approval."""
 	doc = new_content(doctype, project, discussion, title, content)
 	draft_found = True
 	if draft:
