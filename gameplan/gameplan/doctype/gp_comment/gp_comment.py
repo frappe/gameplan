@@ -209,12 +209,14 @@ class GPComment(Moderatable, HasAttachments, HasMentions, HasReactions, HasTags,
 	@frappe.whitelist()
 	@with_stored_document
 	def get_revisions(self, fieldname="content"):
+		"""Return the edit history of `fieldname` (default: content) on this comment."""
 		frappe.get_doc(self.doctype, self.name).check_permission("read")
 		return get_document_revisions(self.doctype, self.name, fieldname)
 
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
 	def add_bookmark(self):
+		"""Bookmark this comment for the current user. Only works on discussion comments."""
 		if self.reference_doctype != "GP Discussion":
 			return
 		if frappe.db.exists("GP Bookmark", self.bookmark_filters()):
@@ -226,6 +228,7 @@ class GPComment(Moderatable, HasAttachments, HasMentions, HasReactions, HasTags,
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
 	def remove_bookmark(self):
+		"""Remove the current user's bookmark on this comment."""
 		bookmark = frappe.db.get_value("GP Bookmark", self.bookmark_filters(), "name")
 		if not bookmark:
 			return
