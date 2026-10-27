@@ -19,15 +19,25 @@ Gameplan is an async discussions app. The UI says Community for GP Team and Spac
 AGENT_INSTRUCTIONS_HEADING = AGENT_INSTRUCTIONS.splitlines()[0]
 
 
-def add_agent_instructions():
-	"""Append Gameplan's guidance to System Settings > Agent Instructions, keeping existing text."""
+def sync_agent_instructions():
+	"""Write the current guide into System Settings > Agent Instructions on install and migrate.
+
+	Gameplan's block runs from its heading to the next blank line. It is replaced in place, or appended
+	when missing. Text outside the block is kept.
+	"""
 	# Frappe versions without the built-in MCP server have no such field.
 	if not frappe.get_meta("System Settings").has_field("agent_instructions"):
 		return
 
 	current = frappe.db.get_single_value("System Settings", "agent_instructions") or ""
-	if AGENT_INSTRUCTIONS_HEADING in current:
-		return
+	before, heading, after = current.partition(AGENT_INSTRUCTIONS_HEADING)
+	if heading:
+		_block, blank_line, rest = after.partition("\n\n")
+		instructions = before + AGENT_INSTRUCTIONS + blank_line + rest
+	elif current.strip():
+		instructions = f"{current.rstrip()}\n\n{AGENT_INSTRUCTIONS}"
+	else:
+		instructions = AGENT_INSTRUCTIONS
 
-	instructions = f"{current.rstrip()}\n\n{AGENT_INSTRUCTIONS}" if current.strip() else AGENT_INSTRUCTIONS
-	frappe.db.set_single_value("System Settings", "agent_instructions", instructions)
+	if instructions != current:
+		frappe.db.set_single_value("System Settings", "agent_instructions", instructions)

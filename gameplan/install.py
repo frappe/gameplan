@@ -7,11 +7,11 @@ def before_install():
 
 
 def after_install():
-	from gameplan.mcp import add_agent_instructions
+	from gameplan.mcp import sync_agent_instructions
 	from gameplan.roles import setup_roles
 
 	setup_roles()
-	add_agent_instructions()
+	sync_agent_instructions()
 	download_rembg_model()
 
 
