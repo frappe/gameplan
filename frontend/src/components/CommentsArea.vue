@@ -263,6 +263,7 @@ import { useDraftSync } from '@/data/useDraftSync'
 import { useSessionUser } from '@/data/users'
 import type { Space } from '@/data/spaces'
 import { extractServerMessage } from '@/utils'
+import { createRequestKey } from '@/utils/requestKey'
 import { useIsMobile } from '@/utils/useIsMobile'
 import { needsMobileCommentGap } from '@/utils/commentTimeline'
 import {
@@ -688,7 +689,7 @@ function resetCommentState() {
 
 const submittingReply = ref(false)
 const replyError = ref<unknown>(null)
-const replyRequestKey = ref(crypto.randomUUID())
+const replyRequestKey = ref(createRequestKey())
 async function submitComment() {
   if (!canSubmit.value || comments.insert.loading || submittingReply.value) return
   submittingReply.value = true
@@ -724,7 +725,7 @@ async function submitComment() {
       await draft.commit()
       if (pollDraft.value) polls.reload()
     }
-    replyRequestKey.value = crypto.randomUUID()
+    replyRequestKey.value = createRequestKey()
     resetCommentState()
     tags.reload()
     await comments.reload()

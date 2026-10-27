@@ -31,6 +31,22 @@ function selectStatus(value: string) {
 }
 
 describe('Post approval', () => {
+  it('opens discussion and reply composers when randomUUID is unavailable', () => {
+    cy.on('window:before:load', (win) => {
+      Object.defineProperty(win.crypto, 'randomUUID', { value: undefined })
+    })
+    resetData('space_with_discussion').then((ids) => {
+      newDiscussion(ids, 'Discussion without randomUUID')
+      cy.contains('Discussion without randomUUID').should('be.visible')
+      cy.visit(`/g/community/${ids.community}/space/${ids.space}/discussion/${ids.discussion}`)
+      cy.button('Add a comment').click()
+      cy.get('[contenteditable=true]').click().type('Reply without randomUUID')
+      cy.button('Submit').click()
+      cy.contains('Reply without randomUUID').should('be.visible')
+      cy.button('Add a comment').should('be.visible')
+    })
+  })
+
   it('configures first-N approval, holds a draft privately, and publishes once under its author', () => {
     resetData('space_with_discussion').then((ids) => {
       moderation(ids)
