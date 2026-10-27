@@ -43,6 +43,7 @@ A recommendation becomes a decision only after Ebrahim accepts it.
 | D38 | Count approved discussions and replies together, separately for each Community. | Pending, rejected, and withdrawn submissions earn no credit. Later hiding or deletion does not reduce earned credit. |
 | D39 | Include existing published contributions when establishing approval eligibility. | Established contributors do not all start from zero. Existing posts remain published when the policy is enabled. |
 | D40 | Reaching the threshold or disabling approval affects future submissions. | Already-pending submissions still need an explicit decision or author withdrawal. |
+| D41 | Build per-discussion slow mode (T18) next, before watched-word filtering. | Moderators choose a reply cooldown, the server enforces it, and readers see when they can reply again. Settle detailed rules in the next planning round. |
 
 D05–D07 were confirmed in the first answer accepting scope and assignment authority.
 D08–D10 were confirmed in the next answer accepting private access, eligibility, and the first PR boundary.
