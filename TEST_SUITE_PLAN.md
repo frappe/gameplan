@@ -38,8 +38,9 @@ One test map mirroring the product's feature catalog, at three layers:
    the discussion owner through `GP Unread Record` and the email digest, avoiding
    duplicate unread signals and an unusably noisy bell.
    _Superseded by the notification preferences work (#596): a discussion's bell
-   now decides this. Under Watch, new comments notify you, merged into one
-    row per discussion; under Mentions only, they do not._
+   now decides this. Under Watch, new comments notify you, merged into one unread
+   `Comment` row per discussion; under Mentions only (the default) or Mute, they
+   do not._
 3. **Global and community admins may stop someone else's poll.** Stopping and
    deleting a poll have the same authority; keeping stop owner-only was an
    unintended asymmetry.
