@@ -1,5 +1,6 @@
 import frappe
 
+# No blank lines: sync finds the block by the next blank line.
 AGENT_INSTRUCTIONS = """\
 Gameplan (gameplan app):
 Gameplan is an async discussions app. The UI says Community for GP Team and Space for GP Project.

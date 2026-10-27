@@ -16,10 +16,16 @@ class TestAgentInstructions(GameplanTestCase):
 	def get_instructions(self):
 		return frappe.db.get_single_value("System Settings", "agent_instructions")
 
-	def test_fills_empty_instructions(self):
+	def test_fills_empty_instructions_and_appends_to_admin_text(self):
+		self.assertNotIn("\n\n", AGENT_INSTRUCTIONS)
 		self.set_instructions("")
 		sync_agent_instructions()
 		self.assertEqual(self.get_instructions(), AGENT_INSTRUCTIONS)
+
+		self.set_instructions("Frappe CRM tracks sales.")
+		sync_agent_instructions()
+		sync_agent_instructions()
+		self.assertEqual(self.get_instructions(), f"Frappe CRM tracks sales.\n\n{AGENT_INSTRUCTIONS}")
 
 	def test_replaces_outdated_gameplan_block_and_keeps_admin_text(self):
 		outdated = f"{AGENT_INSTRUCTIONS_HEADING}\n- An old rule."
