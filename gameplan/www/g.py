@@ -93,7 +93,7 @@ def get_app_version():
 	The version comes from `gameplan.__version__`, not a git tag: a deployed checkout is
 	usually shallow and carries no tags.
 
-	Cached, because `get_boot` runs on every `/g` render and reading this costs five git
+	Cached, because `get_boot` runs on every `/g` render and reading this costs four git
 	processes. A deploy restarts the workers, so the value cannot outlive the checkout it
 	describes by more than the TTL.
 	"""
@@ -107,7 +107,6 @@ def get_app_version():
 def read_app_version():
 	branch = run_git_command("rev-parse", "--abbrev-ref", "HEAD")
 	commit = run_git_command("rev-parse", "--short=7", "HEAD")
-	dirty = bool(run_git_command("diff", "--name-only"))
 	commit_date = run_git_command("log", "-1", "--format=%cd")
 	commit_message = run_git_command("log", "-1", "--pretty=%B")
 
@@ -117,7 +116,6 @@ def read_app_version():
 		"commit_date": commit_date,
 		"commit_message": commit_message,
 		"version": __version__,
-		"dirty": dirty,
 	}
 
 

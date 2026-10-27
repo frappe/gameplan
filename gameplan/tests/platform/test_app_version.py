@@ -54,7 +54,6 @@ class TestAppVersion(FrappeTestCase):
 
 		self.assertEqual(version["branch"], "")
 		self.assertEqual(version["version"], gameplan.__version__)
-		self.assertFalse(version["dirty"])
 
 	def test_the_version_is_read_once_and_then_served_from_cache(self):
 		with patch("gameplan.www.g.read_app_version", return_value={"branch": "test"}) as read:
