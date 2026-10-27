@@ -108,6 +108,7 @@ class GPUserProfile(HasAttachments, Document):
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
 	def set_image(self, image):
+		"""Set this profile's image to an uploaded file URL owned by the user."""
 		self.check_image_is_ours(image)
 		self.image = image
 		self.is_image_background_removed = False
@@ -268,6 +269,7 @@ def get_list(
 	parent: str | None = None,
 	debug: bool = False,
 ):
+	"""List user profiles with their discussion and comment counts."""
 	# Hinted so frappe checks the types at the boundary, and wide enough for how they
 	# arrive: useList sends fields and filters as GET query strings (like get_discussions).
 	doctype = "GP User Profile"
@@ -355,6 +357,7 @@ def get_list(
 
 @frappe.whitelist(methods=["GET", "POST"])
 def get_my_bento_cards():
+	"""Return the current user's profile card layout."""
 	profile = get_session_user_profile()
 	profile.check_permission("read")
 	return get_profile_bento_response(profile)
@@ -362,6 +365,7 @@ def get_my_bento_cards():
 
 @frappe.whitelist(methods=["POST"])
 def save_my_bento_cards(cards: list | str):
+	"""Save the current user's profile card layout and return it."""
 	profile = get_session_user_profile()
 	check_profile_bento_save_permission(profile)
 	profile.set("bento_cards", normalize_bento_cards(cards))
@@ -391,6 +395,7 @@ def reset_my_bento_cards():
 
 @frappe.whitelist(methods=["GET", "POST"])
 def get_bento_cards(profile: str):
+	"""Return the profile card layout of user profile `profile`."""
 	profile_doc = frappe.get_doc("GP User Profile", profile)
 	profile_doc.check_permission("read")
 	return get_profile_bento_response(profile_doc)
@@ -755,6 +760,7 @@ def normalize_quick_reaction_emojis(value):
 
 @frappe.whitelist()
 def get_last_post():
+	"""Return when the current user last posted a discussion or comment, or None."""
 	discussions = frappe.db.get_list(
 		"GP Discussion",
 		filters={"owner": frappe.session.user},

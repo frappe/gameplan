@@ -22,6 +22,7 @@ def submit(
 	title: str = "",
 	draft: str = "",
 ):
+	"""Submit a discussion or reply through publication policy, preserving a private pending submission if needed."""
 	doc = new_content(doctype, project, discussion, title, content)
 	draft_found = True
 	if draft:
@@ -89,6 +90,7 @@ def hold(doc, request_key, draft=""):
 
 @frappe.whitelist(methods=["GET", "POST"])
 def queue(community: str = "", status: str = "Pending", start: int = 0):
+	"""List the author's submissions, or an accessible Community queue for its moderators."""
 	if status not in ("Pending", "Approved", "Rejected", "Withdrawn"):
 		frappe.throw("Choose a submission status")
 	Submission, Project = frappe.qb.DocType("GP Submission"), frappe.qb.DocType("GP Project")
