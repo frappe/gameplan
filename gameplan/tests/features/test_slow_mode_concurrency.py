@@ -36,10 +36,10 @@ class TestSlowModeConcurrency(FrappeTestCase):
 		site, sites_path = frappe.local.site, frappe.local.sites_path
 		barrier, successes, errors = threading.Barrier(2), [], []
 
-		def action(index):
+		def submit_reply(index):
 			return submit("GP Comment", str(index), "Concurrent reply", discussion=str(discussion.name))
 
-		def run(index):
+		def run(operation, index):
 			frappe.init(site, sites_path=sites_path)
 			try:
 				frappe.connect()
@@ -47,7 +47,7 @@ class TestSlowModeConcurrency(FrappeTestCase):
 				# Establish a snapshot before the other connection can create the cooldown row.
 				frappe.get_doc("GP Discussion", discussion.name)
 				barrier.wait(timeout=20)
-				result = action(index)
+				result = operation(index)
 				frappe.db.commit()
 				successes.append(result)
 			except Exception as error:
@@ -56,7 +56,7 @@ class TestSlowModeConcurrency(FrappeTestCase):
 			finally:
 				frappe.destroy()
 
-		threads = [threading.Thread(target=run, args=(index,)) for index in range(2)]
+		threads = [threading.Thread(target=run, args=(submit_reply, index)) for index in range(2)]
 		for thread in threads:
 			thread.start()
 		for thread in threads:
@@ -86,13 +86,13 @@ class TestSlowModeConcurrency(FrappeTestCase):
 		frappe.db.commit()
 		barrier, successes, errors = threading.Barrier(2), [], []
 
-		def action(index):
+		def delete_or_submit(index):
 			if index == 0:
 				return submit("GP Comment", "legacy-race", "Must wait", discussion=str(discussion.name))
 			frappe.delete_doc("GP Comment", legacy.name)
 			return "deleted"
 
-		threads = [threading.Thread(target=run, args=(index,)) for index in range(2)]
+		threads = [threading.Thread(target=run, args=(delete_or_submit, index)) for index in range(2)]
 		for thread in threads:
 			thread.start()
 		for thread in threads:
