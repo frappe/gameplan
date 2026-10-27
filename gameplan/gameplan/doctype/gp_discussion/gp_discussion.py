@@ -130,6 +130,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
 	def track_visit(self):
+		"""Mark this discussion and its notifications as read for the current user."""
 		if frappe.flags.read_only:
 			return
 
@@ -155,6 +156,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
 	def mark_as_unread(self):
+		"""Mark this discussion as unread for the current user."""
 		if frappe.flags.read_only:
 			return
 
@@ -163,16 +165,19 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 	@frappe.whitelist()
 	@with_stored_document
 	def get_revisions(self, fieldname="content"):
+		"""Return the edit history of `fieldname` (default: content) on this discussion."""
 		return get_document_revisions(self.doctype, self.name, fieldname)
 
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
 	def move_to_project(self, project):
+		"""Move this discussion to another Space (`project`) and update both Spaces' counts."""
 		return move_discussion(self, project)
 
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
 	def close_discussion(self):
+		"""Close this discussion to new replies. No-op if it is already closed."""
 		if self.closed_at:
 			return
 		self.closed_at = frappe.utils.now()
@@ -183,6 +188,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
 	def reopen_discussion(self):
+		"""Reopen this closed discussion. No-op if it is not closed."""
 		if not self.closed_at:
 			return
 		self.closed_at = None
@@ -193,6 +199,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
 	def pin_discussion(self, pin_scope="Category"):
+		"""Pin this discussion. `pin_scope` is "Category" (whole Community) or "Space"."""
 		if self.pinned_at:
 			return
 		self.pinned_at = frappe.utils.now()
@@ -204,6 +211,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
 	def unpin_discussion(self):
+		"""Unpin this discussion. No-op if it is not pinned."""
 		if not self.pinned_at:
 			return
 		self.pinned_at = None
@@ -215,6 +223,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
 	def add_bookmark(self):
+		"""Bookmark this discussion for the current user."""
 		if self.is_bookmarked_by_current_user():
 			return
 		frappe.new_doc("GP Bookmark", discussion=self.name, user=frappe.session.user).insert()
@@ -222,6 +231,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
 	def remove_bookmark(self):
+		"""Remove the current user's bookmark on this discussion."""
 		bookmark = frappe.db.get_value("GP Bookmark", self.opening_post_bookmark_filters(), "name")
 		if not bookmark:
 			return
@@ -357,6 +367,7 @@ def move_discussion(discussion, project):
 
 @frappe.whitelist(methods=["POST"])
 def move_discussions(discussions: list[dict]):
+	"""Move many discussions; each item is {"name", "project"}. Returns moved and failed lists."""
 	if not discussions:
 		return {"moved": [], "failed": [], "total": 0, "success_count": 0, "failure_count": 0}
 
