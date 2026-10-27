@@ -100,7 +100,8 @@ after_install = "gameplan.install.after_install"
 
 # Creates any Gameplan role that went missing. A no-op on a healthy site — it never writes
 # to a Role that already exists, so migrate cannot trip Role.on_update. See gameplan/roles.py.
-after_migrate = ["gameplan.roles.sync_roles"]
+# sync_agent_instructions keeps the MCP agent guide current. See gameplan/mcp.py.
+after_migrate = ["gameplan.roles.sync_roles", "gameplan.mcp.sync_agent_instructions"]
 
 # Uninstallation
 # ------------

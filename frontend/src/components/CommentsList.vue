@@ -36,7 +36,7 @@
         <Comment
           v-if="item.doctype == 'GP Comment'"
           :class="{
-            'pt-14 sm:pt-0': needsMobileCommentGap(timelineItems, i),
+            'pt-14 sm:pt-0': i > 0,
           }"
           :ref="($comment) => setItemRef($comment, item)"
           :comment="item"
@@ -117,7 +117,7 @@ import Comment from './Comment.vue'
 import Activity from './Activity.vue'
 import UserAvatar from './UserAvatar.vue'
 import { shellScrollContainer } from 'frappe-ui'
-import { needsMobileCommentGap } from '@/utils/commentTimeline'
+import { dialog } from 'frappe-ui'
 import { subscribeToDoc, useSocket, type NewActivityEvent } from '@/socket'
 import { GPActivity, GPComment } from '@/types/doctypes'
 import type { Space } from '@/data/spaces'

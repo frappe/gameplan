@@ -71,6 +71,7 @@ class GPDraft(Document):
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
 	def unschedule(self):
+		"""Cancel the scheduled publish time of this draft. Owner only."""
 		self.require_owner("schedule")
 		self.scheduled_at = None
 		self.save()
@@ -78,6 +79,7 @@ class GPDraft(Document):
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
 	def publish(self):
+		"""Publish this discussion draft and delete it. Owner only. Returns the new discussion name."""
 		self.require_owner("publish")
 
 		if self.type == "Discussion":
@@ -315,6 +317,7 @@ def schedule_draft(name: str, scheduled_at: str | datetime):
 
 @frappe.whitelist(methods=["POST"])
 def unschedule_draft(name: str):
+	"""Cancel the scheduled publish time of draft `name`. Owner only."""
 	frappe.get_doc("GP Draft", name).unschedule()
 
 
