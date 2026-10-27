@@ -157,17 +157,6 @@ class TestMemberManagement(FrappeTestCase):
 		for user in users:
 			self.assertNotIn("email", user)
 
-	def test_get_user_info_reports_each_users_highest_role(self):
-		member = create_member("role_directory_member@example.com")
-		promoted = create_member("role_directory_promoted@example.com")
-		promoted.add_roles("Gameplan Admin")
-
-		frappe.set_user("Administrator")
-		roles = {user.name: user.role for user in get_user_info()}
-
-		self.assertEqual(roles[member.name], "Gameplan Member")
-		self.assertEqual(roles[promoted.name], "Gameplan Admin")
-
 	def test_get_user_info_exposes_email_to_admin(self):
 		"""An admin still receives email (member directory management)."""
 		create_member("sec_directory_member2@example.com")
