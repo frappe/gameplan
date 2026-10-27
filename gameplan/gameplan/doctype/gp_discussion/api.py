@@ -81,6 +81,7 @@ def parse_filters(filters) -> dict:
 
 @frappe.whitelist()
 def get_discussions(filters=None, order_by=None, start=None, limit=None):
+	"""List discussions in Spaces the user can access, newest activity first by default."""
 	if not frappe.has_permission("GP Discussion", "read"):
 		frappe.throw("Insufficient Permission for GP Discussion", frappe.PermissionError)
 

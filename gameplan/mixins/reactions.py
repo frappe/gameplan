@@ -17,6 +17,7 @@ class HasReactions:
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
 	def react(self, operations=None):
+		"""Change your reactions; `operations` is a list of {"emoji", "operation": "add"|"remove"}."""
 		from gameplan.permissions import can_view_content
 
 		operations = frappe.parse_json(operations) or []
