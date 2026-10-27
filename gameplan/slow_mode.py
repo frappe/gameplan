@@ -14,6 +14,7 @@ INTERVALS = (0, 30, 60, 300, 900, 3600, 86400)
 
 @frappe.whitelist(methods=["GET", "POST"])
 def status(discussion: str):
+	"""Return the current reader's slow-mode policy and remaining reply cooldown."""
 	doc = frappe.get_doc("GP Discussion", discussion)
 	doc.check_permission("read")
 	seconds = doc.slow_mode_seconds or 0
@@ -29,6 +30,7 @@ def status(discussion: str):
 
 @frappe.whitelist(methods=["POST"])
 def set_mode(discussion: str, seconds: int, reason: str, expected_seconds: int):
+	"""Change a discussion's reply interval with current moderator authority and an audit reason."""
 	doc = frappe.get_doc("GP Discussion", discussion, for_update=True)
 	doc.check_permission("read")
 	if not can_moderate_space(frappe.session.user, doc.project):

@@ -33,13 +33,10 @@
             New comments
           </span>
         </div>
+        <!-- On mobile the sticky post header has no top padding, so the gap lives here. -->
         <Comment
           v-if="item.doctype == 'GP Comment'"
-          :class="{
-            'pt-14 sm:pt-0': needsMobileCommentGap(timelineItems, i, {
-              includeFirstComment: true,
-            }),
-          }"
+          class="pt-14 sm:pt-0"
           :ref="($comment) => setItemRef($comment, item)"
           :comment="item"
           :space="space"
@@ -62,11 +59,7 @@
         />
         <Poll
           v-else-if="item.doctype == 'GP Poll'"
-          :class="{
-            'pt-14 sm:pt-0': needsMobileCommentGap(timelineItems, i, {
-              includeFirstComment: true,
-            }),
-          }"
+          class="pt-14 sm:pt-0"
           :ref="($poll) => setItemRef($poll, item)"
           :highlight="
             highlightedItem?.doctype == item.doctype && highlightedItem?.name == item.name
@@ -277,8 +270,8 @@ import { useDraftSync } from '@/data/useDraftSync'
 import { useSessionUser } from '@/data/users'
 import type { Space } from '@/data/spaces'
 import { extractServerMessage } from '@/utils'
+import { createRequestKey } from '@/utils/requestKey'
 import { useIsMobile } from '@/utils/useIsMobile'
-import { needsMobileCommentGap } from '@/utils/commentTimeline'
 import {
   isPollDraftReady,
   pollDraftInContent,
@@ -713,7 +706,7 @@ function resetCommentState() {
 
 const submittingReply = ref(false)
 const replyError = ref<unknown>(null)
-const replyRequestKey = ref(crypto.randomUUID())
+const replyRequestKey = ref(createRequestKey())
 async function submitComment() {
   if (!canSubmit.value || comments.insert.loading || submittingReply.value) return
   submittingReply.value = true
@@ -749,7 +742,7 @@ async function submitComment() {
       await draft.commit()
       if (pollDraft.value) polls.reload()
     }
-    replyRequestKey.value = crypto.randomUUID()
+    replyRequestKey.value = createRequestKey()
     resetCommentState()
     tags.reload()
     await comments.reload()

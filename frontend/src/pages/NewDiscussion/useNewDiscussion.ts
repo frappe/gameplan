@@ -10,6 +10,7 @@ import { useSessionUser, useUser } from '@/data/users'
 import { tags } from '@/data/tags'
 import { extractServerMessage, isEditorContentEmpty } from '@/utils'
 import { captureError } from '@/utils/errorReporting'
+import { createRequestKey } from '@/utils/requestKey'
 
 const PUBLISH_DRAFT = 'gameplan.gameplan.doctype.gp_draft.gp_draft.publish_draft'
 const SCHEDULE_DRAFT = 'gameplan.gameplan.doctype.gp_draft.gp_draft.schedule_draft'
@@ -41,7 +42,7 @@ export function useNewDiscussion() {
   const errorMessage = ref<string | null>(null)
   const publishError = ref<string | null>(null)
   const publishing = ref(false)
-  const submissionKey = crypto.randomUUID()
+  const submissionKey = createRequestKey()
   const isPublishingSuccessfully = ref(false)
   const isDeletingDraft = ref(false)
   const hasInteracted = ref(false)

@@ -28,6 +28,7 @@ def require_admin():
 
 @frappe.whitelist(allow_guest=True)
 def get_user_info(user=None):
+	"""Return Gameplan users with role, profile and recent activity counts. Pass `user` for one."""
 	if frappe.session.user == "Guest":
 		frappe.throw("Authentication failed", exc=frappe.AuthenticationError)
 	if not has_app_access():
@@ -73,7 +74,13 @@ def get_user_info(user=None):
 	).run(as_dict=1)
 	comment_count_map = {c.owner: c.count for c in comment_counts}
 
-	roles = frappe.db.get_all("Has Role", filters={"parenttype": "User"}, fields=["role", "parent"])
+	roles = frappe.db.get_all(
+		"Has Role",
+		filters={"parenttype": "User", "role": ["in", GAMEPLAN_ROLES]},
+		fields=["role", "parent"],
+	)
+	# GAMEPLAN_ROLES is ordered by privilege, so after sorting the last role per user wins.
+	role_map = {r.parent: r.role for r in sorted(roles, key=lambda r: GAMEPLAN_ROLES.index(r.role))}
 	user_profiles = frappe.db.get_all(
 		"GP User Profile",
 		fields=[
@@ -115,12 +122,7 @@ def get_user_info(user=None):
 				user.email_digest_frequency = user_profile.email_digest_frequency
 				user.email_digest_day_of_week = user_profile.email_digest_day_of_week
 				user.email_digest_last_sent_on = user_profile.email_digest_last_sent_on
-		user_roles = [r.role for r in roles if r.parent == user.name]
-		user.role = None
-		# GAMEPLAN_ROLES is ordered by privilege, so the last match is the effective role.
-		for role in GAMEPLAN_ROLES:
-			if role in user_roles:
-				user.role = role
+		user.role = role_map.get(user.name)
 
 		if user.name == frappe.session.user:
 			from gameplan.community_bans import banned_communities
@@ -201,6 +203,7 @@ def public_file(fid=None):
 @frappe.whitelist(methods=["POST"])
 @validate_type
 def invite_by_email(emails: str, role: str, projects: list = None):
+	"""Invite comma-separated `emails` with a Gameplan `role`, optionally to `projects`. Admin only."""
 	require_admin()
 	if role not in GAMEPLAN_ROLES:
 		frappe.throw(_("Invalid role: {0}").format(role), frappe.ValidationError)
@@ -210,6 +213,7 @@ def invite_by_email(emails: str, role: str, projects: list = None):
 @frappe.whitelist(methods=["POST"])
 @validate_type
 def change_user_role(user: str, role: str):
+	"""Change `user`'s Gameplan role. Admin only. Returns the updated user info."""
 	require_admin()
 	if role not in GAMEPLAN_ROLES:
 		frappe.throw(_("Invalid role: {0}").format(role), frappe.ValidationError)
@@ -229,6 +233,7 @@ def change_user_role(user: str, role: str):
 @frappe.whitelist(methods=["POST"])
 @validate_type
 def disable_user(user: str):
+	"""Disable the account of `user`. Admin only."""
 	require_admin()
 
 	user_doc = frappe.get_doc("User", user)
@@ -343,6 +348,7 @@ def emails_holding_a_gameplan_role(email_list: list) -> list:
 
 @frappe.whitelist()
 def unread_notifications():
+	"""Return the current user's unread notification count."""
 	return unread_notification_count(frappe.session.user)
 
 
@@ -385,6 +391,7 @@ def accept_invitation(key: str = None):
 
 @frappe.whitelist()
 def get_unsplash_photos(keyword=None):
+	"""Return Unsplash photos for `keyword`, or a default set."""
 	from gameplan.unsplash import get_by_keyword, get_list
 
 	if keyword:
@@ -395,6 +402,7 @@ def get_unsplash_photos(keyword=None):
 
 @frappe.whitelist(methods=["POST"])
 def set_discussion_read_state(discussion: str, unread: bool = False):
+	"""Set the current reader's read/unread state without requiring participation rights."""
 	doc = frappe.get_doc("GP Discussion", discussion)
 	# Read markers belong to the viewer; they do not require content-write permission.
 	getattr(doc, "mark_as_unread" if unread else "track_visit")()
@@ -402,6 +410,7 @@ def set_discussion_read_state(discussion: str, unread: bool = False):
 
 @frappe.whitelist(methods=["POST"])
 def mark_all_notifications_as_read():
+	"""Mark all of the current user's notifications as read."""
 	Notification = frappe.qb.DocType("GP Notification")
 	(
 		frappe.qb.update(Notification)
@@ -413,6 +422,7 @@ def mark_all_notifications_as_read():
 
 @frappe.whitelist(methods=["POST"])
 def onboarding(community, space, icon, emails, *, visibility: str = VISIBILITY_GENERAL):
+	"""Create the first Community and Space with a visibility tier, then invite `emails`."""
 	# Onboarding sets up a brand-new site. After that, communities and invitations go
 	# through their own screens and checks.
 	if not gameplan.is_new_site():
@@ -450,6 +460,7 @@ def onboarding(community, space, icon, emails, *, visibility: str = VISIBILITY_G
 @frappe.whitelist(allow_guest=True, methods=["GET", "POST"])
 @validate_type
 def search_sqlite(query: str, filters: dict | str | None = None):
+	"""Search discussions and replies within the current viewer's access."""
 	from gameplan.public_search import search_for_viewer, validate_search_filters
 
 	anonymous = gameplan.is_anonymous()
