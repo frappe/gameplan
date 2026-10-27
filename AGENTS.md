@@ -54,6 +54,13 @@ still carries the old names. Do not rename the doctypes.
   workaround needs a comment naming the upstream PR that removes it.
 - Verify UI work in a browser before calling it done. Screenshots belong in the PR as
   GitHub attachments, never in the repo.
+- Keep the AI agent guide in `gameplan/mcp.py` current. Frappe's MCP server sends it to
+  every assistant that connects. It names doctypes, fields, methods and their arguments,
+  and most members' assistants cannot look methods up (Frappe's method discovery is for
+  System Users only). When a change renames, removes or changes the arguments of
+  something the guide names, or adds an action assistants should use, update the guide
+  in the same change. Give every new whitelisted method a one-line docstring, which
+  method discovery shows.
 - Do not change `__version__` in `gameplan/__init__.py`. Every merge to `develop` is
   released by `.github/workflows/release.yml`, which commits the next version itself.
   Only the maintainer sets a version by hand, such as 1.0.0.
