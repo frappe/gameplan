@@ -1,6 +1,6 @@
 # Moderation decisions
 
-Owner: Ebrahim. Decisions updated: 2026-10-22.
+Owner: Ebrahim. Decisions updated: 2026-10-23.
 
 Owner: Ebrahim. Decisions updated: 2026-10-21.
 
@@ -33,6 +33,9 @@ A recommendation becomes a decision only after Ebrahim accepts it.
 | D19 | Add a moderator-only Removed content view per Community with preview and Restore. | Ordinary feeds/search omit removed discussions; direct access shows a neutral unavailable message. Replies show neutral placeholders. Private-Space restrictions still apply. |
 | D20 | Delete spam requires a reason and affects only the selected reply or discussion. | Preserve descendants/files and closed/pinned state for restoration without new notifications. Do not automatically ban the author or remove other posts. Ordinary Delete remains separate. |
 | D21 | Build T26 moderation history in a separate PR after the T27 review fixes. | Reuse the immutable log for discussion/reply action history and Community-scoped user ban/unban history. Include actor, time, reason, pagination, existing moderator/private-Space access rules, frontend, and tests. |
+| D22 | History uses a tab in Community moderation, filters for posts or users, and links in post menus. | Show action, actor, time, reason, and target. Original hidden text stays behind existing restricted Preview. Retain permanent, read-only records. |
+| D23 | Post history follows current target access after moves. | Moderators need current Community and private-Space access. Permanently deleted targets disappear from Community history while their logs remain restricted for global admins. Hidden/spam-removed targets remain visible to authorized moderators. |
+| D24 | Push the T26 branch now and open its separate upstream PR after #621 merges. | Keep T26 out of #621 and avoid including its unmerged foundation in the new PR diff. |
 | D25 | Start T16 reporting and a basic Pending/Resolved moderator queue with manual decisions. | Discussion and reply reporting ships end to end. Automatic hiding, trust weighting, and migration remain separate. |
 | D26 | Members and invited Guests may report accessible content unless banned from participating in its Community. | Anonymous reports, self-reports, and reports on already hidden/removed targets are excluded. |
 | D27 | Report reasons are Spam, Abuse/inappropriate, Off-topic, AI-generated, and Other. | Notes are optional, limited to 500 characters, and required for Other. Reasons trigger manual review only. |
@@ -40,6 +43,10 @@ A recommendation becomes a decision only after Ebrahim accepts it.
 | D29 | Review decisions are Dismiss, Uphold while keeping visible, Hide, and Delete spam. | Require a decision note, resolve the grouped reports together, reuse existing moderation actions, and never automatically ban the author. |
 | D30 | Each report preserves the reported title/body version. | Only authorized moderators with current Space access may see identities, notes, and snapshots. Authors and other reporters cannot read the evidence. |
 | D31 | A new report after resolution opens a fresh review, including for previous reporters. | Limit new reports to 10 per account per hour across the site. Duplicate reports in an active review reuse the existing report without consuming quota. |
+| D32 | Implement T25 as bulk review of pending reports in a separate branch above T16. | Reuse D29’s four decisions and require one shared note. Keep remove-all-by-author and automatic bans separate. |
+| D33 | Keep selection across pages within one Community, capped at 50 reviews. | Include Select this page and Clear selection. Clear selection when the Community or review-status filter changes. |
+| D34 | Each review resolves independently. | One failure does not undo successful decisions. Show per-item outcomes, never retry destructive actions automatically, and require fresh review before retry. |
+| D35 | Preview each target’s current title/text excerpt and report-reason summary before confirmation. | Link to the full review. Recheck permissions and content versions when applying each action; skip changed, inaccessible, deleted, or already-resolved items. |
 | D36 | Implement Community-level, opt-in approval for new discussions and replies. | Existing published content stays published. Community/global admins configure the policy. Reviewing moderators still need current Space access. |
 | D37 | Require approval until a contributor has N accepted contributions in that Community. | N is configurable, with 3 suggested. Community moderators/admins and global admins are exempt. No automated trust engine is required. |
 | D38 | Count approved discussions and replies together, separately for each Community. | Pending, rejected, and withdrawn submissions earn no credit. Later hiding or deletion does not reduce earned credit. |
@@ -47,9 +54,7 @@ A recommendation becomes a decision only after Ebrahim accepts it.
 | D40 | Reaching the threshold or disabling approval affects future submissions. | Already-pending submissions still need an explicit decision or author withdrawal. |
 | D41 | Build per-discussion slow mode (T18) next, before watched-word filtering. | Moderators choose a reply cooldown, the server enforces it, and readers see when they can reply again. Settle detailed rules in the next planning round. |
 
-| D22 | History uses a tab in Community moderation, filters for posts or users, and links in post menus. | Show action, actor, time, reason, and target. Original hidden text stays behind existing restricted Preview. Retain permanent, read-only records. |
-| D23 | Post history follows current target access after moves. | Moderators need current Community and private-Space access. Permanently deleted targets disappear from Community history while their logs remain restricted for global admins. Hidden/spam-removed targets remain visible to authorized moderators. |
-| D24 | Push the T26 branch now and open its separate upstream PR after #621 merges. | Keep T26 out of #621 and avoid including its unmerged foundation in the new PR diff. |
+
 
 D05–D07 were confirmed in the first answer accepting scope and assignment authority.
 D08–D10 were confirmed in the next answer accepting private access, eligibility, and the first PR boundary.
@@ -107,7 +112,7 @@ Plan these when their implementation slice is next. Roadmap recommendations do n
 
 - Temporary bans, automatic expiry, and separate silence behavior.
 - Approval rules, posting limits, slow mode, watched-word matching, and censor behavior.
-- Bulk action selection, progress, partial failures, and undo behavior.
+- Bulk actions outside report review, background processing, and batch undo behavior.
 
 ## Keeping this log current
 
@@ -148,3 +153,11 @@ Keep unresolved questions and implementation choices distinct from confirmed pro
 - User filtering covers Community Ban/Unban history. Discussion/reply history uses the target's current Space permissions, including after moves.
 - Missing targets remain in restricted log storage and do not consume Community history pages. Existing raw-log permissions remain unchanged.
 - Verified on the disposable site: 68 backend tests, seven browser tests, formatting, lint, and frontend build.
+
+## T25 implementation notes
+
+- Bulk review reuses T16's Pending queue and four decisions. Moderators select up to 50 reviews across pages, inspect current excerpts and reason counts, and apply one shared note. Full review opens the existing evidence dialog.
+- Preview checks current Community and private-Space access without holding write locks across the batch. It returns no evidence or reporter identities.
+- Each decision uses a separate request through the existing resolver. Permissions, current content, removal state, and review status are checked again. Successful decisions remain committed when another item fails.
+- The dialog shows progress and per-item results. Failed items require selection and a fresh preview before retry. Leaving the page stops unsent requests; there is no background resume. An in-flight decision can still finish.
+- Verification passed: seven bulk-review backend tests, 12 existing reporting tests, three bulk-review browser tests, four existing reporting browser tests, formatting/lint, and the frontend build. Local verification uses the disposable SQLite site; MariaDB concurrency remains covered by the existing CI suite.

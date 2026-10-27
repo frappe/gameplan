@@ -127,7 +127,7 @@ const route = useRoute()
 const router = useRouter()
 const tab = computed({
   get: () =>
-    ['removed', 'bans', 'history'].includes(String(route.query.tab))
+    ['removed', 'bans', 'history', 'reports', 'approvals'].includes(String(route.query.tab))
       ? String(route.query.tab)
       : 'removed',
   set: (value) => {
