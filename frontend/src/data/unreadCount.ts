@@ -2,7 +2,7 @@ import { useDoctype } from 'frappe-ui'
 import { GPProject } from '@/types/doctypes'
 import { reactive } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
-import { onSocketEvent } from '@/socket'
+import { onSocketEvent, onSocketReconnect } from '@/socket'
 import { isOnline, onReconnect } from '@/data/online'
 
 interface ProjectUnreadCount {
@@ -185,8 +185,7 @@ function refreshAllUnreadCounts() {
 // Debounced because one action fans out several signals — posting creates records for every
 // recipient and marks the thread read for the author — and each one costs a full map fetch plus
 // a request per cached community.
-onSocketEvent('gameplan:unread_counts_changed', useDebounceFn(refreshAllUnreadCounts, 500))
-
-// The socket is disconnected while offline too, so other users' changes never reached us.
-// Reload once reconnected rather than waiting for the next unrelated socket signal.
-onReconnect(refreshAllUnreadCounts)
+const reloadAllUnreadCounts = useDebounceFn(refreshAllUnreadCounts, 500)
+onSocketEvent('gameplan:unread_counts_changed', reloadAllUnreadCounts)
+onSocketReconnect(reloadAllUnreadCounts)
+onReconnect(reloadAllUnreadCounts)

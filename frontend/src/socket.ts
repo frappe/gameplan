@@ -42,6 +42,9 @@ const GAMEPLAN_SOCKET_EVENTS = [
 let socket: Socket | null = null
 
 const listeners = new Map<SocketEventName, Set<(payload: any) => void>>()
+const reconnectListeners = new Set<() => void>()
+
+const HANDSHAKE_RETRY_DELAY = 5000
 
 /**
  * Listen for a backend event. Returns an unsubscribe function.
@@ -67,6 +70,19 @@ export function onSocketEvent<K extends SocketEventName>(
   }
 }
 
+/**
+ * Run `handler` each time the socket reconnects after a drop. Returns an unsubscribe function.
+ *
+ * Events published while the socket was down are gone for good, so data kept live by a
+ * push has to refetch here or it stays stale until the next push or a page reload.
+ */
+export function onSocketReconnect(handler: () => void) {
+  reconnectListeners.add(handler)
+  return () => {
+    reconnectListeners.delete(handler)
+  }
+}
+
 export function initSocket() {
   let host = window.location.hostname
   let siteName = window.site_name
@@ -74,31 +90,59 @@ export function initSocket() {
   let protocol = port ? 'http' : 'https'
   let url = `${protocol}://${host}${port}/${siteName}`
 
-  socket = io(url, {
-    withCredentials: true,
-    reconnectionAttempts: 5,
+  // No cap on reconnection attempts: a laptop sleep or a server deploy outlasts a small cap,
+  // and a socket that stops retrying leaves every live count frozen until a page reload.
+  const appSocket = io(url, { withCredentials: true })
+  socket = appSocket
+
+  // `connect`, not the Manager's `reconnect`: the server joins this user's room during the
+  // handshake, so refetching any earlier could miss a push sent before the room was joined.
+  let hasConnected = false
+  appSocket.on('connect', () => {
+    if (hasConnected) runEach(reconnectListeners, 'Socket reconnect listener')
+    hasConnected = true
   })
-  // Reconnection attempts are spent within seconds offline and then never retried, so
-  // pause the socket while offline and connect again once the connection returns.
+  // Pause while offline; the network callback resumes connection attempts.
   watch(isOnline, (online) => {
-    if (!online) socket?.disconnect()
+    if (!online) appSocket.disconnect()
   })
-  onReconnect(() => socket?.connect())
+  onReconnect(() => appSocket.connect())
+
+  // A rejected handshake needs an explicit retry, but never while the browser is offline.
+  appSocket.on('connect_error', () => {
+    if (!appSocket.active) {
+      setTimeout(() => {
+        if (isOnline.value) appSocket.connect()
+      }, HANDSHAKE_RETRY_DELAY)
+    }
+  })
+
   // Attach one dispatcher per known event. socket.io keeps these across reconnects, so unlike
   // document rooms (see subscribeToDoc) they never need re-attaching.
   for (const event of GAMEPLAN_SOCKET_EVENTS) {
-    socket.on(event, (payload: never) => {
-      listeners.get(event)?.forEach((handler) => {
-        try {
-          handler(payload)
-        } catch (error) {
-          // One bad listener must not skip the rest, nor bubble into socket.io's handler.
-          console.error(`Listener for "${event}" failed`, error)
-        }
-      })
+    appSocket.on(event, (payload: never) => {
+      runEach(listeners.get(event) ?? [], `Listener for "${event}"`, payload)
     })
   }
-  return socket
+  return appSocket
+}
+
+/**
+ * Call every handler with `args`. One that throws is logged, so it cannot skip the rest or
+ * bubble into the caller, which for socket events is socket.io's own handler.
+ */
+export function runEach<A extends unknown[]>(
+  handlers: Iterable<(...args: A) => void>,
+  label: string,
+  ...args: A
+) {
+  for (const handler of [...handlers]) {
+    try {
+      handler(...args)
+    } catch (error) {
+      console.error(`${label} failed`, error)
+    }
+  }
 }
 
 export function useSocket() {
