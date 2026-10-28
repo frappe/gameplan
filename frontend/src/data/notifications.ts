@@ -1,6 +1,6 @@
 import { useCall } from 'frappe-ui'
 import { useDebounceFn } from '@vueuse/core'
-import { onSocketEvent } from '@/socket'
+import { onSocketEvent, onSocketReconnect, runEach } from '@/socket'
 import { isAnonymousVisitor } from '@/utils/publicAccess'
 
 export let unreadNotifications = useCall({
@@ -45,18 +45,19 @@ const refreshNotifications = useDebounceFn(() => {
   // Reloaded rather than taken from the event: `data` is a computed inside useCall, and a
   // single fetched count keeps the badge and the lists reading the same server state.
   unreadNotifications.reload()
-  for (const handler of [...listeners]) {
-    try {
-      handler()
-    } catch (error) {
-      // One bad listener must not skip the rest.
-      console.error('Notification change listener failed', error)
-    }
-  }
+  runEach(listeners, 'Notification change listener')
 }, 500)
 
 // Filter before debouncing so an ordinary echo cannot discard a forced moderation refresh.
 onSocketEvent('gameplan:notification_count_changed', ({ count, force_refresh }) => {
   if (isAnonymousVisitor() || (!force_refresh && count === unreadNotifications.data)) return
   refreshNotifications()
+})
+
+// Open lists catch up after reconnect when the unread count changed while disconnected.
+onSocketReconnect(async () => {
+  if (isAnonymousVisitor()) return
+  const countBefore = unreadNotifications.data
+  await unreadNotifications.reload()
+  if (unreadNotifications.data !== countBefore) runEach(listeners, 'Notification change listener')
 })
