@@ -1,6 +1,6 @@
 import { useCall } from 'frappe-ui'
 import { useDebounceFn } from '@vueuse/core'
-import { onSocketEvent } from '@/socket'
+import { onSocketEvent, onSocketReconnect, runEach } from '@/socket'
 
 export let unreadNotifications = useCall({
   cacheKey: 'Unread Notifications Count',
@@ -47,13 +47,13 @@ onSocketEvent(
     // Reloaded rather than taken from the event: `data` is a computed inside useCall, and a
     // single fetched count keeps the badge and the lists reading the same server state.
     unreadNotifications.reload()
-    for (const handler of [...listeners]) {
-      try {
-        handler()
-      } catch (error) {
-        // One bad listener must not skip the rest.
-        console.error('Notification change listener failed', error)
-      }
-    }
+    runEach(listeners, 'Notification change listener')
   }, 500),
 )
+
+// Same rule as the event above: open lists refresh only when the count actually moved.
+onSocketReconnect(async () => {
+  const countBefore = unreadNotifications.data
+  await unreadNotifications.reload()
+  if (unreadNotifications.data !== countBefore) runEach(listeners, 'Notification change listener')
+})
