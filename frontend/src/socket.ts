@@ -40,6 +40,7 @@ const GAMEPLAN_SOCKET_EVENTS = [
 let socket: Socket | null = null
 
 const listeners = new Map<SocketEventName, Set<(payload: any) => void>>()
+const reconnectListeners = new Set<() => void>()
 
 /**
  * Listen for a backend event. Returns an unsubscribe function.
@@ -65,6 +66,19 @@ export function onSocketEvent<K extends SocketEventName>(
   }
 }
 
+/**
+ * Run `handler` each time the socket reconnects after a drop. Returns an unsubscribe function.
+ *
+ * Events published while the socket was down are gone for good, so data kept live by a
+ * push has to refetch here or it stays stale until the next push or a page reload.
+ */
+export function onSocketReconnect(handler: () => void) {
+  reconnectListeners.add(handler)
+  return () => {
+    reconnectListeners.delete(handler)
+  }
+}
+
 export function initSocket() {
   let host = window.location.hostname
   let siteName = window.site_name
@@ -72,9 +86,17 @@ export function initSocket() {
   let protocol = port ? 'http' : 'https'
   let url = `${protocol}://${host}${port}/${siteName}`
 
-  socket = io(url, {
-    withCredentials: true,
-    reconnectionAttempts: 5,
+  // No cap on reconnection attempts: a laptop sleep or a server deploy outlasts a small cap,
+  // and a socket that stops retrying leaves every live count frozen until a page reload.
+  socket = io(url, { withCredentials: true })
+  socket.io.on('reconnect', () => {
+    reconnectListeners.forEach((handler) => {
+      try {
+        handler()
+      } catch (error) {
+        console.error('Socket reconnect listener failed', error)
+      }
+    })
   })
   // Attach one dispatcher per known event. socket.io keeps these across reconnects, so unlike
   // document rooms (see subscribeToDoc) they never need re-attaching.

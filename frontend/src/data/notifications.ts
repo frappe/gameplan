@@ -1,6 +1,6 @@
 import { useCall } from 'frappe-ui'
 import { useDebounceFn } from '@vueuse/core'
-import { onSocketEvent } from '@/socket'
+import { onSocketEvent, onSocketReconnect } from '@/socket'
 
 export let unreadNotifications = useCall({
   cacheKey: 'Unread Notifications Count',
@@ -38,6 +38,17 @@ export function onRemoteNotificationChange(handler: () => void) {
   }
 }
 
+function notifyListeners() {
+  for (const handler of [...listeners]) {
+    try {
+      handler()
+    } catch (error) {
+      // One bad listener must not skip the rest.
+      console.error('Notification change listener failed', error)
+    }
+  }
+}
+
 // One subscription, so every listener acts on the same set of events. Deciding per listener
 // would race: whichever ran first would reload the badge and change the answer for the rest.
 onSocketEvent(
@@ -47,13 +58,13 @@ onSocketEvent(
     // Reloaded rather than taken from the event: `data` is a computed inside useCall, and a
     // single fetched count keeps the badge and the lists reading the same server state.
     unreadNotifications.reload()
-    for (const handler of [...listeners]) {
-      try {
-        handler()
-      } catch (error) {
-        // One bad listener must not skip the rest.
-        console.error('Notification change listener failed', error)
-      }
-    }
+    notifyListeners()
   }, 500),
 )
+
+// Any change while the socket was down was never pushed, so ask the server instead.
+onSocketReconnect(async () => {
+  const countBefore = unreadNotifications.data
+  await unreadNotifications.reload()
+  if (unreadNotifications.data !== countBefore) notifyListeners()
+})
