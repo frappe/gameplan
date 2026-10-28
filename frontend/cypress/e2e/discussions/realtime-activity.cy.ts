@@ -11,26 +11,7 @@
 // never reloads — so the timeline entry that shows up can only have come from
 // genuine delivery through the document room, not from the acting user's own save.
 import { resetData } from '../../support/seed'
-
-type AppSocket = {
-  emit: (...args: unknown[]) => unknown
-}
-
-/**
- * The app's socket.io client, as wired up in `src/main.js`
- * (`app.config.globalProperties.$socket`).
- */
-function appSocket(): Cypress.Chainable<AppSocket> {
-  return cy
-    .window({ log: false })
-    .its('document')
-    .then((doc) => {
-      const app = (doc.querySelector('#app') as { __vue_app__?: any } | null)?.__vue_app__
-      const socket = app?.config?.globalProperties?.$socket
-      expect(socket, 'app socket').to.exist
-      return socket as AppSocket
-    })
-}
+import { appSocket, skipUnlessRealtime } from '../../support/realtime'
 
 describe('Realtime activity', () => {
   let community: string
@@ -41,12 +22,7 @@ describe('Realtime activity', () => {
     // Check the exact sites before resetData can wipe anything. The second call,
     // after seeding, also proves fresh sessions resolve as the watching persona on
     // both the browser server and Socket.IO's :8000 authentication target.
-    cy.task<RealtimePreflightResult>('realtimePreflight').then((preflight) => {
-      if (!preflight.available) {
-        cy.log(preflight.reason ?? 'Realtime E2E capability unavailable')
-        this.skip()
-      }
-    })
+    skipUnlessRealtime(this)
     resetData('space_with_discussion').then((ids) => {
       community = ids.community as string
       space = ids.space as string
@@ -100,8 +76,3 @@ describe('Realtime activity', () => {
     )
   })
 })
-
-interface RealtimePreflightResult {
-  available: boolean
-  reason?: string
-}
