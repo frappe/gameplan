@@ -9,7 +9,9 @@ import {
   Highlight,
 } from 'frappe-ui/editor'
 import { gameplanHeadingLevels, suggestionConfig, richQuoteExtensions } from './config'
-import { collapsibleExtensions, slashCommandsWithCollapsible } from './collapsible'
+import { collapsibleExtensions } from './collapsible'
+import { footnoteExtensions } from './footnotes'
+import { gameplanSlashCommands } from './slashCommands'
 import { CustomEmojiExtension } from './customEmojiExtension'
 import { PollBlockExtension } from '@/components/PollBlock/poll-block-extension'
 import type { RichQuoteController } from '@/components/RichQuoteExtension/useRichQuotes'
@@ -37,6 +39,8 @@ export function commentExtensions(
     CommentKit.configure({
       heading: { levels: [...gameplanHeadingLevels] },
       table: { cellMinWidth: 25 },
+      // The footnotes list closes the document; no empty paragraph after it.
+      starterKit: { trailingNode: { notAfter: ['footnotes'] } },
       ...suggestionConfig(true),
     }),
     // TaskItem requires TaskList; Iframe ships the `openIframeDialog` command and
@@ -58,7 +62,8 @@ export function commentExtensions(
     // Collapsible sections load here too, so a section written in a discussion
     // body still renders and edits when that body is reopened in CommentEditor.
     ...collapsibleExtensions(),
-    slashCommandsWithCollapsible(),
+    ...footnoteExtensions(),
+    gameplanSlashCommands(),
     ...richQuoteExtensions(opts.controller, opts.sourceId),
   ]
 }
