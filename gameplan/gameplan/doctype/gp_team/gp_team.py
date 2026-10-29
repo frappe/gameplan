@@ -209,6 +209,7 @@ class GPTeam(HasVisibility, Archivable, Document):
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
 	def set_member_moderator(self, user, is_moderator):
+		"""Appoint or remove a moderator from existing Community members."""
 		require_can_manage_community(self)
 		member = self.get_member(user)
 		if not member:

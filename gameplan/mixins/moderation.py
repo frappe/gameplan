@@ -43,11 +43,13 @@ class Moderatable:
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
 	def hide(self, reason: str):
+		"""Hide content while preserving its restricted original."""
 		self._remove_content("Hide", reason)
 
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
 	def delete_spam(self, reason: str):
+		"""Remove spam reversibly while preserving its restricted original."""
 		self._remove_content("Delete Spam", reason)
 
 	def _remove_content(self, action, reason):
@@ -85,6 +87,7 @@ class Moderatable:
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
 	def restore(self):
+		"""Restore removed content without sending new mention notifications."""
 		from frappe.search.sqlite_search import update_doc_index
 
 		doc = self._moderation_target()
@@ -110,6 +113,7 @@ class Moderatable:
 	@frappe.whitelist(methods=["POST"])
 	@with_stored_document
 	def get_hidden_content(self):
+		"""Return the removed original to an authorized moderator."""
 		doc = self._moderation_target()
 		if is_removed(doc):
 			return doc._original_content().content

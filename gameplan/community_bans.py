@@ -99,6 +99,7 @@ def validate_participation(doc, method=None):
 
 @frappe.whitelist(methods=["POST"])
 def set_ban(community: str, user: str, banned: int, reason: str = ""):
+	"""Set or lift a Community participation ban without changing reading access."""
 	if not can_moderate_community(community):
 		frappe.throw("Only community moderators can perform this action", frappe.PermissionError)
 	frappe.get_doc("GP Team", community, for_update=True)
