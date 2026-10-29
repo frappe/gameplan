@@ -17,6 +17,7 @@ from frappe.utils import add_to_date, now_datetime
 from gameplan.gameplan.doctype.gp_discussion.api import get_discussions
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import create_comment, create_community, create_discussion, create_space
+from gameplan.visibility import VISIBILITY_MEMBER_ACCESS
 
 
 def bookmark_rows(user=None, discussion=None):
@@ -273,7 +274,9 @@ class TestBookmarkPrivacy(BookmarkTestCase):
 				bookmark.insert()
 
 	def test_a_user_cannot_bookmark_a_comment_under_another_discussion(self):
-		private_space = create_space("Secret", self.community, is_private=1, members=[self.second_member])
+		private_space = create_space(
+			"Secret", self.community, visibility=VISIBILITY_MEMBER_ACCESS, members=[self.second_member]
+		)
 		private_discussion = create_discussion("Secret thread", private_space, owner=self.second_member)
 		private_comment = create_comment(private_discussion, content="<p>Hi</p>", owner=self.second_member)
 
@@ -321,7 +324,9 @@ class TestBookmarksFeed(BookmarkTestCase):
 		self.assertEqual(self.bookmarks_feed(self.member), [])
 
 	def test_feed_hides_a_bookmarked_discussion_in_a_space_the_user_lost_access_to(self):
-		private_space = create_space("Secret Plans", self.community, is_private=1, members=[self.member])
+		private_space = create_space(
+			"Secret Plans", self.community, visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
 		private_discussion = create_discussion("Secret thread", private_space, owner=self.member)
 		self.add_bookmark(private_discussion, self.member)
 		self.assertEqual(self.bookmarks_feed(self.member), [str(private_discussion.name)])
@@ -349,7 +354,9 @@ class TestBookmarksFeed(BookmarkTestCase):
 		self.assertEqual(str(row.bookmarked_post_at), str(comment.creation))
 
 	def test_feed_skips_a_bookmarked_comment_from_another_discussion(self):
-		private_space = create_space("Secret", self.community, is_private=1, members=[self.second_member])
+		private_space = create_space(
+			"Secret", self.community, visibility=VISIBILITY_MEMBER_ACCESS, members=[self.second_member]
+		)
 		private_discussion = create_discussion("Secret thread", private_space, owner=self.second_member)
 		private_comment = create_comment(private_discussion, content="<p>Hi</p>", owner=self.second_member)
 		frappe.get_doc(

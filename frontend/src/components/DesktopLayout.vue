@@ -7,13 +7,13 @@
         <AppRail :show-border="onCommunityRoute" :show-community-active-state="onCommunityRoute" />
       </template>
       <template #sidebar>
-        <AppSidebar v-if="onCommunityRoute" />
+        <AppSidebar v-if="onCommunityRoute" :public-view="publicVisitor" />
       </template>
 
       <ReadOnlyBanner v-if="readOnlyMode" class="mb-3" />
       <slot />
     </DesktopShell>
-    <CommandPalette />
+    <CommandPalette v-if="!publicVisitor" />
   </div>
 </template>
 <script setup lang="ts">
@@ -28,9 +28,11 @@ import { readOnlyMode } from '@/data/readOnlyMode'
 import { usersReady } from '@/data/users'
 import { settingsBackgroundPath } from '@/components/Settings'
 import { getHomeRoute } from '@/router'
+import { isPublicVisitor } from '@/utils/publicAccess'
 
 const route = useRoute()
 const router = useRouter()
+const publicVisitor = computed(() => isPublicVisitor())
 
 // While the settings dialog is open the URL is /settings/*, but the page it was
 // opened over stays rendered behind the overlay (see App.vue's displayedRoute).

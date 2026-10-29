@@ -70,7 +70,8 @@
    "fieldname": "comment",
    "fieldtype": "Link",
    "label": "Comment",
-   "options": "GP Comment"
+   "options": "GP Comment",
+   "search_index": 1
   }
  ],
  "index_web_pages_for_search": 1,
@@ -129,6 +130,11 @@
    "role": "Gameplan Guest",
    "share": 1,
    "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Guest",
+   "select": 1
   }
  ],
  "sort_field": "modified",

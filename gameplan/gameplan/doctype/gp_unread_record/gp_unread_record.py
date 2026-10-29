@@ -8,6 +8,7 @@ from frappe.model.document import Document, bulk_insert
 
 import gameplan
 from gameplan.realtime import notify_unread_counts_changed
+from gameplan.visibility import is_member_access
 
 
 class GPUnreadRecord(Document):
@@ -337,6 +338,16 @@ class GPUnreadRecord(Document):
 		else:
 			condition = (UnreadRecord.user == user) & (UnreadRecord.is_unread == 1)
 
+		from gameplan.permissions import visible_discussion_criterion
+
+		Discussion = frappe.qb.DocType("GP Discussion")
+		visible = (
+			frappe.qb.from_(Discussion)
+			.select(Discussion.name)
+			.where(visible_discussion_criterion(Discussion))
+		)
+		condition &= UnreadRecord.discussion.isin(visible)
+
 		result = (
 			frappe.qb.from_(UnreadRecord)
 			.select(
@@ -395,6 +406,9 @@ class GPUnreadRecord(Document):
 			.where((Discussion.owner == user) | clause_discussions_commented_by_user(user))
 			.select(Count(Discussion.name).distinct())
 		)
+		from gameplan.permissions import visible_discussion_criterion
+
+		query = query.where(visible_discussion_criterion(Discussion))
 		query = apply_accessible_project_filter(query, Discussion.project)
 
 		if team:
@@ -405,11 +419,11 @@ class GPUnreadRecord(Document):
 	@staticmethod
 	def _get_project_members(project_name):
 		"""Get all users who have access to the project"""
-		project = frappe.db.get_value("GP Project", project_name, ["name", "is_private"], as_dict=True)
+		project = frappe.db.get_value("GP Project", project_name, ["name", "visibility"], as_dict=True)
 
 		all_users = set()
 
-		if project.is_private:
+		if is_member_access(project.visibility):
 			members = frappe.qb.get_query(
 				"GP Member",
 				fields=["user"],

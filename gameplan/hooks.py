@@ -120,6 +120,8 @@ after_migrate = ["gameplan.roles.sync_roles", "gameplan.mcp.sync_agent_instructi
 # Permissions evaluated in scripted ways
 
 permission_query_conditions = {
+	"File": "gameplan.approval_access.file_query_conditions",
+	"GP Submission": "gameplan.approval_access.query_conditions",
 	"GP Team": "gameplan.permissions.team_query_conditions",
 	"GP Project": "gameplan.permissions.project_query_conditions",
 	"GP Discussion": "gameplan.gameplan.doctype.gp_discussion.gp_discussion.get_permission_query_conditions",
@@ -127,6 +129,7 @@ permission_query_conditions = {
 	"GP Comment": "gameplan.gameplan.doctype.gp_comment.gp_comment.get_permission_query_conditions",
 	"GP Poll": "gameplan.gameplan.doctype.gp_poll.gp_poll.get_permission_query_conditions",
 	"GP Page": "gameplan.gameplan.doctype.gp_page.gp_page.get_permission_query_conditions",
+	"GP Activity": "gameplan.permissions.activity_query_conditions",
 	"GP Draft": "gameplan.permissions.draft_query_conditions",
 	"GP Bookmark": "gameplan.permissions.bookmark_query_conditions",
 	# Per-user state — see gameplan/per_user_state.py for why if_owner cannot express this.
@@ -135,11 +138,12 @@ permission_query_conditions = {
 	"GP Discussion Visit": "gameplan.per_user_state.discussion_visit_query_conditions",
 	"GP Pinned Project": "gameplan.per_user_state.pinned_project_query_conditions",
 	"GP Followed Project": "gameplan.per_user_state.followed_project_query_conditions",
-	"GP Activity": "gameplan.permissions.activity_query_conditions",
 	"GP Guest Access": "gameplan.permissions.guest_access_query_conditions",
 }
 
 has_permission = {
+	"GP Submission": "gameplan.approval_access.has_permission",
+	"File": "gameplan.moderated_file.file_has_permission",
 	"GP Team": "gameplan.permissions.team_has_permission",
 	"GP Project": "gameplan.permissions.project_has_permission",
 	"GP Discussion": "gameplan.gameplan.doctype.gp_discussion.gp_discussion.has_permission",
@@ -148,19 +152,21 @@ has_permission = {
 	"GP Poll": "gameplan.gameplan.doctype.gp_poll.gp_poll.has_permission",
 	"GP Page": "gameplan.gameplan.doctype.gp_page.gp_page.has_permission",
 	"GP User Profile": "gameplan.gameplan.doctype.gp_user_profile.gp_user_profile.has_permission",
+	"GP Activity": "gameplan.permissions.activity_has_permission",
 	"GP Bookmark": "gameplan.permissions.bookmark_has_permission",
 	"GP Notification": "gameplan.per_user_state.notification_has_permission",
 	"GP Project Visit": "gameplan.per_user_state.project_visit_has_permission",
 	"GP Discussion Visit": "gameplan.per_user_state.discussion_visit_has_permission",
 	"GP Pinned Project": "gameplan.per_user_state.pinned_project_has_permission",
 	"GP Followed Project": "gameplan.per_user_state.followed_project_has_permission",
-	"GP Activity": "gameplan.permissions.activity_has_permission",
 	"GP Guest Access": "gameplan.permissions.guest_access_has_permission",
 }
 
 # DocType Class
 # ---------------
 # Override standard doctype classes
+
+override_doctype_class = {"File": "gameplan.moderated_file.ModeratedFile"}
 
 # override_doctype_class = {
 # 	"ToDo": "custom_app.overrides.CustomToDo"
@@ -171,20 +177,61 @@ has_permission = {
 # Hook on document methods and events
 
 doc_events = {
+	"GP Team": {"on_trash": "gameplan.approval_policy.delete_counters"},
 	"*": {
 		"on_trash": "gameplan.mixins.on_delete.on_trash",
+		"validate": "gameplan.community_bans.validate_participation",
+	},
+	# Discourse-style limits on Gameplan Guests posting in a space only because it is public.
+	"GP Discussion": {
+		"on_trash": "gameplan.reporting.protect_pending_reviews",
+		"before_insert": "gameplan.approval_policy.guard_publication",
+		"validate": "gameplan.new_user_limits.check_new_user_limits",
+		"after_insert": [
+			"gameplan.new_user_limits.record_first_day_post",
+			"gameplan.approval_policy.record_accepted",
+		],
+	},
+	"GP Comment": {
+		"on_trash": "gameplan.reporting.protect_pending_reviews",
+		"before_insert": "gameplan.approval_policy.guard_publication",
+		"validate": [
+			"gameplan.new_user_limits.check_new_user_limits",
+			"gameplan.reporting.protect_pending_reviews",
+		],
+		"after_insert": [
+			"gameplan.new_user_limits.record_first_day_post",
+			"gameplan.approval_policy.record_accepted",
+		],
+	},
+	"GP Poll": {
+		"validate": "gameplan.new_user_limits.check_new_user_limits",
+		"after_insert": "gameplan.new_user_limits.record_first_day_post",
 	},
 	"User": {
 		"after_insert": "gameplan.gameplan.doctype.gp_user_profile.gp_user_profile.create_user_profile",
 		"on_trash": [
 			"gameplan.gameplan.doctype.gp_user_profile.gp_user_profile.delete_user_profile",
 			"gameplan.gameplan.doctype.gp_guest_access.gp_guest_access.on_user_delete",
+			"gameplan.approval_policy.delete_counters",
 		],
 		"on_update": "gameplan.gameplan.doctype.gp_user_profile.gp_user_profile.on_user_update",
 	},
 }
 
 on_login = "gameplan.www.g.on_login"
+
+# Public access: frappe's generic REST routes and doctype-wide realtime rooms would hand
+# anonymous visitors data that gameplan.public_payload never cleans, and the public read
+# paths need a per-IP rate limit. See public_access.py.
+before_request = [
+	"gameplan.public_access.refuse_generic_routes_for_anonymous",
+	"gameplan.public_access.limit_anonymous_request_rate",
+]
+after_request = ["gameplan.guest_payload.hide_guest_identity_data"]
+override_whitelisted_methods = {
+	"frappe.realtime.has_permission": "gameplan.public_access.realtime_has_permission",
+}
 
 # Scheduled Tasks
 # ---------------

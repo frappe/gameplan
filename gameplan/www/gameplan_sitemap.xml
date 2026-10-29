@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+{% if sitemaps %}
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+{% for url in sitemaps %}<sitemap><loc>{{ url | e }}</loc></sitemap>{% endfor %}
+</sitemapindex>
+{% else %}
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+{% for link in links %}<url><loc>{{ link.loc | e }}</loc><lastmod>{{ link.lastmod | e }}</lastmod></url>{% endfor %}
+</urlset>
+{% endif %}

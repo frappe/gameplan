@@ -13,6 +13,7 @@ from gameplan.gameplan.doctype.gp_unread_record.gp_unread_record import GPUnread
 from gameplan.realtime import UNREAD_COUNTS_CHANGED
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import create_community, create_discussion, create_member, create_space
+from gameplan.visibility import VISIBILITY_MEMBER_ACCESS
 
 
 def unread_count_events(publish_realtime):
@@ -406,7 +407,7 @@ class TestUnreadRecordLifecycle(GameplanTestCase):
 		self.space = create_space(
 			"Unread Space",
 			self.community,
-			is_private=1,
+			visibility=VISIBILITY_MEMBER_ACCESS,
 			members=[self.member, self.second_member, self.reader],
 		)
 
@@ -507,7 +508,7 @@ class TestUnreadRecordLifecycle(GameplanTestCase):
 		other_space = create_space(
 			"Other Unread Space",
 			self.community,
-			is_private=1,
+			visibility=VISIBILITY_MEMBER_ACCESS,
 			members=[self.member, self.second_member],
 		)
 		self.post_discussion(self.member)

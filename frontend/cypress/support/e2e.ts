@@ -28,3 +28,10 @@ Cypress.on('uncaught:exception', (err) => {
     return false
   }
 })
+
+// Keep the framework's Flow launcher from covering the app's composer buttons.
+Cypress.on('window:load', (win) => {
+  const style = win.document.createElement('style')
+  style.textContent = 'flow-launcher { display: none !important; }'
+  win.document.head.appendChild(style)
+})
