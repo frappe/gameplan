@@ -104,11 +104,7 @@ export function canModerateSpace(space: Space | null | undefined, user: Permissi
     !space.members?.some((member) => member.user === user.name)
   )
     return false
-  return Boolean(
-    getCommunity(space.team)?.members?.some(
-      (member) => member.user === user.name && (member.is_admin || member.is_moderator),
-    ),
-  )
+  return canModerateCommunity(getCommunity(space.team), user)
 }
 
 /** Guests can never invite; otherwise invite rights follow space management. */
