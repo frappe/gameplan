@@ -19,6 +19,14 @@ echo "Setting Up Sites & Database..."
 mkdir ~/frappe-bench/sites/gameplan.test
 cp "${GITHUB_WORKSPACE}/.github/helper/site_config.json" ~/frappe-bench/sites/gameplan.test/site_config.json
 
+# The UI tests read public spaces without signing in (frontend/cypress/e2e/public), which
+# needs public access switched on. Only for them: the server tests keep the shipped default
+# (off). Set here, before `bench start`, because frappe caches site config per worker for
+# up to a minute.
+if [ -n "${GAMEPLAN_PUBLIC_ACCESS:-}" ]; then
+  bench --site gameplan.test set-config --parse gameplan_public_access_enabled 1
+fi
+
 mariadb --host 127.0.0.1 --port 3306 -u root -p123 -e "SET GLOBAL character_set_server = 'utf8mb4'";
 mariadb --host 127.0.0.1 --port 3306 -u root -p123 -e "SET GLOBAL collation_server = 'utf8mb4_unicode_ci'";
 

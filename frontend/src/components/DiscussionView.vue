@@ -322,9 +322,18 @@
       />
     </div>
   </div>
+  <ReportDialog
+    v-if="showReport && discussion.doc"
+    v-model:open="showReport"
+    doctype="GP Discussion"
+    :name="String(discussion.doc.name)"
+  />
 </template>
 
 <script setup lang="ts">
+import ReportDialog from './ReportDialog.vue'
+import { canReport } from '@/data/reporting'
+import { call as moderationCall } from 'frappe-ui'
 import {
   ref,
   computed,
@@ -363,11 +372,11 @@ import UserProfileLink from './UserProfileLink.vue'
 const RevisionsDialog = defineAsyncComponent(() => import('./RevisionsDialog.vue'))
 import SpaceBreadcrumbs from './SpaceBreadcrumbs.vue'
 import EmptyStateBox from './EmptyStateBox.vue'
-import { copyToClipboard, isEditorContentEmpty } from '@/utils'
+import { copyToClipboard, extractServerMessage, isEditorContentEmpty } from '@/utils'
 import { getSpace, useSpace } from '@/data/spaces'
 import { useCommunity } from '@/data/communities'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
-import { useDiscussion } from '@/data/discussions'
+import { reloadDiscussionLists, useDiscussion } from '@/data/discussions'
 import { provideThreadReactions } from '@/data/reactions'
 import { useDraftSync } from '@/data/useDraftSync'
 import { tags } from '@/data/tags'
@@ -377,10 +386,17 @@ import { provideRichQuotes } from '@/components/RichQuoteExtension/useRichQuotes
 import QuoteBacklinksPopover from '@/components/RichQuoteExtension/QuoteBacklinksPopover.vue'
 import { refreshUnreadCountForProjects } from '@/data/unreadCount'
 import { useSessionUser } from '@/data/users'
-import { canDeleteContent, canEditContent, canMoveOrPinContent } from '@/utils/permissions'
+import {
+  canDeleteContent,
+  canModerateSpace,
+  canEditContent,
+  canMoveOrPinContent,
+  canMoveContentToSpace,
+} from '@/utils/permissions'
 import { captureError } from '@/utils/errorReporting'
 import { useCommandPaletteCommands } from './CommandPalette/registry'
 import { useOwnedRouteWrites } from '@/composables/useOwnedRouteWrites'
+import { isAnonymousVisitor } from '@/utils/publicAccess'
 
 const props = defineProps<{
   postId: string
@@ -599,6 +615,7 @@ async function scrollToUnread() {
 
   let doc = discussion.doc
   if (
+    !isAnonymousVisitor() &&
     route.name === 'Discussion' &&
     !route.query.comment &&
     !route.query.poll &&
@@ -620,7 +637,7 @@ async function scrollToUnread() {
     }
   }
 
-  if (route.name === 'Discussion' && route.params.postId === doc?.name) {
+  if (!isAnonymousVisitor() && route.name === 'Discussion' && route.params.postId === doc?.name) {
     discussion.trackVisit
       .submit()
       .then(() => {
@@ -778,7 +795,7 @@ function updatePost() {
         // The save failed: put the old title back, unless something newer replaced it.
         const doc = discussion.doc
         if (doc && doc.title === title && previousTitle !== undefined) doc.title = previousTitle
-        toast.error('Could not save the discussion')
+        toast.error(extractServerMessage(discussion.setValue.error) || 'Could not save the post')
       },
     )
   editingPost.value = false
@@ -844,7 +861,10 @@ const currentSpaceId = computed(() => {
 })
 
 const spaceOptions = useGroupedSpaceOptions({
-  filterFn: (space) => !space.archived_at && space.name !== discussion.doc?.project,
+  filterFn: (target) =>
+    !target.archived_at &&
+    target.name !== discussion.doc?.project &&
+    canMoveContentToSpace(space.value, target, useSessionUser()),
 })
 
 // Edit and close/re-open change the post itself, so they follow the same business
@@ -859,7 +879,56 @@ const canMoveOrPinDiscussion = computed(() =>
   canMoveOrPinContent(discussion.doc, space.value, useSessionUser()),
 )
 
+function moderateDiscussion(spam = false) {
+  const restore = !spam && Boolean(discussion.doc?.hidden_at || discussion.doc?.spam_removed_at)
+  const label = restore ? 'Restore discussion' : spam ? 'Delete spam' : 'Hide discussion'
+  dialog.prompt({
+    title: label,
+    message: restore
+      ? 'Make this discussion visible again?'
+      : 'This discussion and its replies will be unavailable to ordinary readers. You can restore it from Removed content.',
+    fields: restore ? [] : [{ name: 'reason', label: 'Reason', type: 'textarea', required: true }],
+    confirmLabel: label,
+    onConfirm: async ({ values }) => {
+      await moderationCall(
+        `/api/v2/document/GP Discussion/${props.postId}/method/${
+          restore ? 'restore' : spam ? 'delete_spam' : 'hide'
+        }`,
+        restore ? {} : { reason: values.reason },
+      )
+      reloadDiscussionLists()
+      await discussion.reload()
+      await router.push({ name: 'CommunityModeration', params: { communityId: space.value?.team } })
+    },
+  })
+}
+
+const showReport = ref(false)
 const actions = computed(() => [
+  {
+    label: 'Report',
+    icon: 'lucide-flag',
+    onClick: () => {
+      showReport.value = true
+    },
+    condition: () => canReport(discussion.doc, space.value),
+  },
+  {
+    label:
+      discussion.doc?.hidden_at || discussion.doc?.spam_removed_at
+        ? 'Restore discussion'
+        : 'Hide discussion',
+    icon: 'lucide-eye-off',
+    onClick: () => moderateDiscussion(),
+    condition: () => canModerateSpace(space.value, useSessionUser()),
+  },
+  {
+    label: 'Delete spam',
+    icon: 'lucide-trash',
+    onClick: () => moderateDiscussion(true),
+    condition: () =>
+      canModerateSpace(space.value, useSessionUser()) && !discussion.doc?.spam_removed_at,
+  },
   {
     label: 'Edit',
     icon: 'lucide-edit',

@@ -29,18 +29,27 @@ from gameplan.permissions import (
 )
 from gameplan.search_sqlite import GameplanSearch
 from gameplan.tests.base import GameplanTestCase
-from gameplan.tests.fixtures import create_community, create_discussion, create_member, create_space
+from gameplan.tests.fixtures import (
+	create_comment,
+	create_community,
+	create_discussion,
+	create_member,
+	create_poll,
+	create_space,
+	create_task,
+)
+from gameplan.visibility import VISIBILITY_MEMBER_ACCESS
 
-# Shared content: a global admin sees everything, so these hand back "no condition".
+# Container access: global admins have no membership restriction.
 ADMIN_EXEMPT_CONDITIONS = (
 	team_query_conditions,
 	project_query_conditions,
-	discussion_query_conditions,
 	task_query_conditions,
 	page_query_conditions,
-	comment_query_conditions,
-	poll_query_conditions,
 )
+
+# Ordinary lists exclude removed discussions and their children, even for global admins.
+MODERATION_CONDITIONS = (discussion_query_conditions, comment_query_conditions, poll_query_conditions)
 
 # Personal rows: scoped to their owner with no global-admin exception (see
 # bookmark_query_conditions' "Decision 4").
@@ -57,7 +66,9 @@ class TestCommunityVisibility(GameplanTestCase):
 
 	def test_private_community_is_visible_only_to_members_and_global_admins(self):
 		public = create_community("Visible Public Community")
-		private = create_community("Hidden Private Community", is_private=1, members=[self.member])
+		private = create_community(
+			"Hidden Private Community", visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
 
 		self.assert_allowed(public, "read", self.second_member)
 		self.assert_allowed(private, "read", self.member)
@@ -66,7 +77,9 @@ class TestCommunityVisibility(GameplanTestCase):
 
 	def test_private_community_is_filtered_from_lists_for_non_members(self):
 		public = create_community("Listed Public Community")
-		private = create_community("Unlisted Private Community", is_private=1, members=[self.member])
+		private = create_community(
+			"Unlisted Private Community", visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
 
 		with self.as_user(self.second_member):
 			communities = frappe.get_list("GP Team", fields=["name"], pluck="name")
@@ -78,7 +91,9 @@ class TestCommunityVisibility(GameplanTestCase):
 class TestSpaceVisibility(GameplanTestCase):
 	def test_private_space_is_visible_only_to_space_members_and_global_admins(self):
 		community = create_community("Private Space Community", members=[self.member, self.second_member])
-		private_space = create_space("Hidden Private Space", community, is_private=1, members=[self.member])
+		private_space = create_space(
+			"Hidden Private Space", community, visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
 
 		self.assert_allowed(private_space, "read", self.member)
 		self.assert_allowed(private_space, "read", self.admin)
@@ -87,7 +102,9 @@ class TestSpaceVisibility(GameplanTestCase):
 	def test_private_spaces_are_filtered_from_lists_for_non_members(self):
 		community = create_community("List Space Community", members=[self.member, self.second_member])
 		public_space = create_space("Listed Public Space", community)
-		private_space = create_space("Unlisted Private Space", community, is_private=1, members=[self.member])
+		private_space = create_space(
+			"Unlisted Private Space", community, visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
 
 		with self.as_user(self.second_member):
 			spaces = frappe.get_list("GP Project", fields=["name"], pluck="name")
@@ -96,7 +113,9 @@ class TestSpaceVisibility(GameplanTestCase):
 		self.assertNotIn(private_space.name, spaces)
 
 	def test_public_space_in_private_community_is_visible_only_to_community_members(self):
-		community = create_community("Private Parent Community", is_private=1, members=[self.member])
+		community = create_community(
+			"Private Parent Community", visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
 		space = create_space("Public Child Space", community)
 
 		self.assert_allowed(space, "read", self.member)
@@ -108,7 +127,9 @@ class TestSpaceVisibility(GameplanTestCase):
 		self.assertNotIn(space.name, spaces)
 
 	def test_client_list_filters_public_space_in_private_community_for_non_members(self):
-		community = create_community("Private Parent Client Community", is_private=1, members=[self.member])
+		community = create_community(
+			"Private Parent Client Community", visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
 		space = create_space("Public Client Child Space", community)
 
 		with self.as_user(self.second_member):
@@ -123,7 +144,7 @@ class TestSpaceVisibility(GameplanTestCase):
 		with self.as_user(self.second_member):
 			spaces = get_client_list(
 				doctype="GP Project",
-				fields=["name", "is_private", "team.title as team_title"],
+				fields=["name", "visibility", "team.title as team_title"],
 				limit=50,
 			)
 
@@ -132,7 +153,9 @@ class TestSpaceVisibility(GameplanTestCase):
 
 class TestPermissionAwareQueries(GameplanTestCase):
 	def test_discussion_feed_filters_public_space_in_private_community(self):
-		community = create_community("Private Feed Community", is_private=1, members=[self.member])
+		community = create_community(
+			"Private Feed Community", visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
 		space = create_space("Public Feed Space", community)
 		hidden = create_discussion("Hidden Feed Discussion", space, owner=self.member)
 
@@ -142,7 +165,9 @@ class TestPermissionAwareQueries(GameplanTestCase):
 		self.assertNotIn(hidden.name, [row.name for row in discussions])
 
 	def test_search_accessible_projects_filters_public_space_in_private_community(self):
-		community = create_community("Private Search Community", is_private=1, members=[self.member])
+		community = create_community(
+			"Private Search Community", visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
 		space = create_space("Public Search Space", community)
 
 		with self.as_user(self.second_member):
@@ -169,7 +194,10 @@ class TestContainerManagement(GameplanTestCase):
 		)
 		self.public_space = create_space("Container Public Space", self.community)
 		self.private_space = create_space(
-			"Container Private Space", self.community, is_private=1, members=[self.member]
+			"Container Private Space",
+			self.community,
+			visibility=VISIBILITY_MEMBER_ACCESS,
+			members=[self.member],
 		)
 
 	def assert_managed_by(self, doc, *, managers, others):
@@ -226,10 +254,10 @@ class TestPermissionQueriesUseTheGivenUser(GameplanTestCase):
 	What breaks is the code that serves one user from another's session: the weekly digest
 	builds each recipient's query while the scheduler runs as Administrator
 	(email_digest.get_unread_discussions). There the fallback does not merely pick the
-	wrong user — it picks a global admin, and a global admin is exempt from every content
-	filter, so the recipient's digest would be built from the whole site.
+	wrong user — it picks a global admin, and a global admin is exempt from membership
+	filters, so the recipient's digest would be built from the whole site.
 
-	Every test here therefore stays in the Administrator session on purpose.
+	The explicit-user checks stay in the Administrator session on purpose.
 	"""
 
 	def setUp(self):
@@ -240,7 +268,7 @@ class TestPermissionQueriesUseTheGivenUser(GameplanTestCase):
 			"Visible Query Discussion", self.open_space, owner=self.second_member
 		)
 		self.closed_community = create_community(
-			"Closed Query Community", is_private=1, members=[self.member]
+			"Closed Query Community", visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
 		)
 		self.closed_space = create_space("Closed Query Space", self.closed_community)
 		self.hidden_discussion = create_discussion(
@@ -269,17 +297,41 @@ class TestPermissionQueriesUseTheGivenUser(GameplanTestCase):
 		self.assertIn(str(self.hidden_discussion.name), names)
 
 	def test_permission_query_conditions_answer_for_the_user_they_are_given(self):
-		for condition in ADMIN_EXEMPT_CONDITIONS + PERSONAL_ROW_CONDITIONS:
+		for condition in ADMIN_EXEMPT_CONDITIONS + MODERATION_CONDITIONS + PERSONAL_ROW_CONDITIONS:
 			with self.subTest(condition=condition.__name__):
 				self.assertIsNotNone(
 					condition(user=self.member.name),
 					"a non-admin must always be filtered, whoever holds the session",
 				)
 
-	def test_a_global_admin_is_exempt_from_the_shared_content_filters(self):
+	def test_a_global_admin_is_exempt_from_membership_filters(self):
 		for condition in ADMIN_EXEMPT_CONDITIONS:
 			with self.subTest(condition=condition.__name__):
 				self.assertIsNone(condition(user=self.admin.name))
+
+	def test_global_admin_lists_include_private_content_and_task_replies(self):
+		reply = create_comment(self.hidden_discussion, owner=self.member)
+		poll = create_poll("Private poll", self.hidden_discussion, owner=self.member)
+		task = create_task("Private task", self.closed_space, owner=self.member)
+		task_reply = frappe.get_doc(
+			doctype="GP Comment",
+			reference_doctype="GP Task",
+			reference_name=task.name,
+			content="Task reply",
+		).insert()
+		for doc in (self.hidden_discussion, reply, poll, task_reply):
+			with self.subTest(doctype=doc.doctype, name=doc.name), self.as_user(self.admin):
+				self.assertTrue(frappe.get_list(doc.doctype, filters={"name": doc.name}))
+
+	def test_global_admin_lists_exclude_removed_discussions_and_their_children(self):
+		reply = create_comment(self.hidden_discussion, owner=self.member)
+		poll = create_poll("Removed discussion poll", self.hidden_discussion, owner=self.member)
+		for action in ("hide", "delete_spam"):
+			with self.subTest(action=action), self.as_user(self.admin):
+				getattr(self.hidden_discussion, action)("Moderation test")
+				for doc in (self.hidden_discussion, reply, poll):
+					self.assertEqual(frappe.get_list(doc.doctype, filters={"name": doc.name}), [])
+				self.hidden_discussion.restore()
 
 	def test_personal_rows_stay_scoped_to_their_owner_even_for_a_global_admin(self):
 		for condition in PERSONAL_ROW_CONDITIONS:

@@ -14,21 +14,27 @@ from gameplan.gameplan.doctype.gp_unread_record.gp_unread_record import GPUnread
 from gameplan.mixins.archivable import check_if_space_is_archived
 from gameplan.mixins.attachments import HasAttachments
 from gameplan.mixins.mentions import HasMentions
+from gameplan.mixins.moderation import Moderatable
 from gameplan.mixins.reactions import HasReactions
 from gameplan.mixins.tags import HasTags
 from gameplan.permissions import comment_query_conditions, content_has_permission
+from gameplan.public_payload import for_viewer
 from gameplan.utils import get_document_revisions, remove_empty_trailing_paragraphs
 from gameplan.utils.document import with_stored_document
+from gameplan.visibility import is_anonymous_eligible_discussion, require_admin_to_publish
 
 POLL_BLOCK = re.compile(r'<div\b[^>]*\bdata-type="poll"[^>]*>\s*</div>')
 
 
-class GPComment(HasAttachments, HasMentions, HasReactions, HasTags, Document):
+class GPComment(Moderatable, HasAttachments, HasMentions, HasReactions, HasTags, Document):
 	on_delete_cascade = ["GP Draft", "GP Poll"]
 	on_delete_set_null = ["GP Notification", "GP Discussion"]
 	mentions_field = "content"
 	tags_field = "content"
 	attachments_field = "content"
+
+	def as_dict(self, *args, **kwargs):
+		return for_viewer(self.doctype, super().as_dict(*args, **kwargs))
 
 	def before_insert(self):
 		if self.reference_doctype not in ["GP Discussion"]:
@@ -84,6 +90,23 @@ class GPComment(HasAttachments, HasMentions, HasReactions, HasTags, Document):
 		frappe.get_doc("GP Task", self.reference_name).update_comments_count()
 
 	def validate(self):
+		before = self.get_doc_before_save()
+		self.validate_moderation()
+		if before and (
+			self.has_value_changed("reference_name") or self.has_value_changed("reference_doctype")
+		):
+			was_public = (
+				is_anonymous_eligible_discussion(before.reference_name)
+				if before.reference_doctype == "GP Discussion"
+				else False
+			)
+			will_be_public = (
+				is_anonymous_eligible_discussion(self.reference_name)
+				if self.reference_doctype == "GP Discussion"
+				else False
+			)
+			require_admin_to_publish(was_public, will_be_public)
+
 		# Gate the content itself, not every save, as discussions do: they only guard
 		# `before_insert`.
 		if self.is_new():
@@ -187,6 +210,7 @@ class GPComment(HasAttachments, HasMentions, HasReactions, HasTags, Document):
 	@with_stored_document
 	def get_revisions(self, fieldname="content"):
 		"""Return the edit history of `fieldname` (default: content) on this comment."""
+		frappe.get_doc(self.doctype, self.name).check_permission("read")
 		return get_document_revisions(self.doctype, self.name, fieldname)
 
 	@frappe.whitelist(methods=["POST"])
