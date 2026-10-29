@@ -176,6 +176,37 @@
               @discard="cancelEdit"
             />
           </div>
+          <div v-if="highlightedReply && !editingPost" class="mt-6">
+            <div
+              ref="highlightCard"
+              class="cursor-pointer rounded-6 border border-outline-gray-2 bg-surface-gray-2/40 px-4 py-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-outline-gray-3 sm:px-5 sm:py-5"
+              role="button"
+              tabindex="0"
+              @click="commentsArea?.scrollToCommentById(highlightedReply.name)"
+              @keydown.enter.prevent="commentsArea?.scrollToCommentById(highlightedReply.name)"
+              @keydown.space.prevent="commentsArea?.scrollToCommentById(highlightedReply.name)"
+            >
+              <div class="flex items-center gap-3">
+                <span class="flex items-center gap-1.5 text-base-semibold text-ink-gray-9">
+                  <span class="lucide-badge-check h-4 w-4" />
+                  Accepted answer
+                </span>
+                <span class="ml-auto truncate text-sm text-ink-gray-5">
+                  by {{ $user(highlightedReply.highlighted_by).full_name }} &middot;
+                  {{ dayjsLocal(highlightedReply.highlighted_at).fromNow() }}
+                </span>
+              </div>
+              <div class="mt-4 flex items-center gap-2">
+                <UserAvatarWithHover size="sm" :user="highlightedReply.owner" />
+                <span class="text-sm-medium text-ink-gray-7">
+                  {{ $user(highlightedReply.owner).full_name }}
+                </span>
+              </div>
+              <div class="prose-v3 mt-3 max-w-none text-ink-gray-7">
+                <p class="!my-0 line-clamp-3">{{ highlightedReply.content }}</p>
+              </div>
+            </div>
+          </div>
           <div class="mt-3" v-show="!editingPost">
             <Reactions
               doctype="GP Discussion"
@@ -192,7 +223,13 @@
           :read-only-mode="readOnlyMode"
           :disable-new-comment="Boolean(discussion.doc.closed_at)"
           :hide-new-comment="editingPost"
-          :activity-version="discussion.doc.modified"
+          :activity-version="activityVersion"
+          :can-highlight-comments="canHighlightComments"
+          :highlighted-reply="highlightedReply?.name"
+          @highlight-comment="highlightComment"
+          @unhighlight-comment="unhighlightComment"
+          @show-highlight="showHighlightCard"
+          @new-activity="onNewActivity"
           ref="commentsArea"
           @composer-resize="scheduleScrollToTopPlacement"
         />
@@ -377,7 +414,12 @@ import { provideRichQuotes } from '@/components/RichQuoteExtension/useRichQuotes
 import QuoteBacklinksPopover from '@/components/RichQuoteExtension/QuoteBacklinksPopover.vue'
 import { refreshUnreadCountForProjects } from '@/data/unreadCount'
 import { useSessionUser } from '@/data/users'
-import { canDeleteContent, canEditContent, canMoveOrPinContent } from '@/utils/permissions'
+import {
+  canDeleteContent,
+  canEditContent,
+  canHighlightComment,
+  canMoveOrPinContent,
+} from '@/utils/permissions'
 import { captureError } from '@/utils/errorReporting'
 import { useCommandPaletteCommands } from './CommandPalette/registry'
 import { useOwnedRouteWrites } from '@/composables/useOwnedRouteWrites'
@@ -858,6 +900,28 @@ const canEditDiscussion = computed(() =>
 const canMoveOrPinDiscussion = computed(() =>
   canMoveOrPinContent(discussion.doc, space.value, useSessionUser()),
 )
+const canHighlightComments = computed(() => canHighlightComment(discussion.doc, useSessionUser()))
+const highlightedReply = computed(() => discussion.doc?.highlighted_reply ?? null)
+const highlightCard = useTemplateRef<HTMLElement>('highlightCard')
+const activityVersion = computed(
+  () => `${discussion.doc?.modified}|${highlightedReply.value?.highlighted_at ?? ''}`,
+)
+
+function highlightComment(comment: string) {
+  discussion.highlightComment.submit({ comment }).then(() => discussion.reload())
+}
+
+function unhighlightComment(comment: string) {
+  discussion.unhighlightComment.submit({ comment }).then(() => discussion.reload())
+}
+
+function onNewActivity(action: string) {
+  if (action === 'Comment Highlighted' || action === 'Comment Unhighlighted') discussion.reload()
+}
+
+function showHighlightCard() {
+  highlightCard.value?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+}
 
 const actions = computed(() => [
   {

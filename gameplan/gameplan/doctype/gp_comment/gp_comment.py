@@ -92,16 +92,25 @@ class GPComment(HasAttachments, HasMentions, HasReactions, HasTags, Document):
 			check_if_space_is_archived(self, action="edit", content_type="comments")
 		self.sanitize_content()
 		self.keep_poll_with_its_discussion()
+		self.clear_highlight_when_new_or_moved()
 
 	def keep_poll_with_its_discussion(self):
-		before = self.get_doc_before_save()
-		if not before:
-			return
-		fields = ("reference_doctype", "reference_name")
-		if all(cstr(before.get(field)) == cstr(self.get(field)) for field in fields):
+		if not self.is_moved():
 			return
 		if frappe.db.exists("GP Poll", {"comment": self.name}):
 			frappe.throw(_("A comment with a poll cannot be moved to another discussion"))
+
+	def clear_highlight_when_new_or_moved(self):
+		if self.is_new() or self.is_moved():
+			self.highlighted_by = None
+			self.highlighted_at = None
+
+	def is_moved(self):
+		before = self.get_doc_before_save()
+		if not before:
+			return False
+		fields = ("reference_doctype", "reference_name")
+		return any(cstr(before.get(field)) != cstr(self.get(field)) for field in fields)
 
 	def _get_missing_mandatory_fields(self):
 		missing = super()._get_missing_mandatory_fields()

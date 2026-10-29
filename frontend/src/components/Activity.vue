@@ -15,6 +15,14 @@
         class="lucide-corner-up-right h-4 w-4"
         v-else-if="activity.action === 'Discussion Moved'"
       />
+      <span
+        class="lucide-badge-check h-4 w-4"
+        v-else-if="activity.action === 'Comment Highlighted'"
+      />
+      <span
+        class="lucide-badge-x h-4 w-4"
+        v-else-if="activity.action === 'Comment Unhighlighted'"
+      />
       <span class="lucide-edit-3 h-4 w-4" v-else-if="activity.action === 'Task Value Changed'" />
     </div>
     <p>
@@ -25,6 +33,27 @@
       <span v-if="activity.action == 'Discussion Reopened'"> reopened this discussion</span>
       <span v-if="activity.action == 'Discussion Pinned'"> pinned this discussion</span>
       <span v-if="activity.action == 'Discussion Unpinned'"> unpinned this discussion</span>
+      <template
+        v-if="
+          activity.action == 'Comment Highlighted' || activity.action == 'Comment Unhighlighted'
+        "
+      >
+        {{
+          activity.action == 'Comment Highlighted'
+            ? ' accepted '
+            : ' removed the accepted answer from '
+        }}
+        <button
+          v-if="activity.data.comment_owner"
+          type="button"
+          class="text-ink-gray-8 hover:text-ink-gray-5"
+          @click="emit('open-comment', activity.data.comment)"
+        >
+          {{ $user(activity.data.comment_owner).full_name }}'s reply
+        </button>
+        <template v-else>a reply</template>
+        <template v-if="activity.action == 'Comment Highlighted'"> as the answer</template>
+      </template>
       <span v-if="activity.action == 'Discussion Title Changed'">
         changed the title from
         <span class="text-ink-gray-8">{{ activity.data.old_title }}</span> to
@@ -138,11 +167,17 @@ interface Activity {
     field_label?: string
     old_value?: string
     new_value?: string
+    comment?: string
+    comment_owner?: string
   }
 }
 
 const props = defineProps<{
   activity: Activity
+}>()
+
+const emit = defineEmits<{
+  'open-comment': [comment: string]
 }>()
 
 const user = computed(() => useUser(props.activity.user))

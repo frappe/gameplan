@@ -39,7 +39,7 @@ class HasActivity:
 		# by the realtime server, so joining the room already implies read access.
 		frappe.publish_realtime(
 			"new_activity",
-			{"reference_doctype": self.doctype, "reference_name": str(self.name)},
+			{"reference_doctype": self.doctype, "reference_name": str(self.name), "action": action},
 			doctype=self.doctype,
 			docname=self.name,
 			after_commit=True,

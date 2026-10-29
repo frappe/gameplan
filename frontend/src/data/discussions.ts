@@ -85,6 +85,13 @@ export function useDiscussion(name: string) {
     last_unread_poll: string
     is_bookmarked: boolean
     views: number
+    highlighted_reply: {
+      name: string
+      owner: string
+      content: string
+      highlighted_by: string
+      highlighted_at: string
+    } | null
   }
 
   interface DiscussionMethods {
@@ -97,6 +104,8 @@ export function useDiscussion(name: string) {
     addBookmark: () => void
     removeBookmark: () => void
     moveToProject: (data: { project: string }) => void
+    highlightComment: (data: { comment: string }) => void
+    unhighlightComment: (data: { comment: string }) => void
   }
 
   if (!discussionsCache[name]) {
@@ -113,6 +122,8 @@ export function useDiscussion(name: string) {
         addBookmark: 'add_bookmark',
         removeBookmark: 'remove_bookmark',
         moveToProject: 'move_to_project',
+        highlightComment: 'highlight_comment',
+        unhighlightComment: 'unhighlight_comment',
       },
     })
   }

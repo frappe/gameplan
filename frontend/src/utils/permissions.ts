@@ -106,6 +106,10 @@ export function canEditContent(
   return content.owner === user.name
 }
 
+export function canHighlightComment(discussion: ContentDoc, user: PermissionUser) {
+  return Boolean(discussion && user.name && discussion.owner === user.name)
+}
+
 /**
  * Mirror of backend `GUEST_LOCKED_FIELDS` (gameplan/permissions.py): moving a post
  * to another space and pinning it are structural actions. Editors may take them,

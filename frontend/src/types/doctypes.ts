@@ -292,6 +292,10 @@ export interface GPComment extends DocType {
   edited_at?: string
   /** Deleted At: Datetime */
   deleted_at?: string
+  /** Highlighted By: Link (User) */
+  highlighted_by?: string
+  /** Highlighted At: Datetime */
+  highlighted_at?: string
   /** Tags: Table (GP Tag Link) */
   tags: GPTagLink[]
 }
