@@ -161,6 +161,7 @@ def _baseline_ok(site: str, test_modules: list[str], timeout: int) -> tuple[bool
 		if result.timed_out:
 			return False, f"{module} timed out after {timeout}s"
 		if not result.passed:
+			_log(f"baseline output for {module}:\n{result.output.rstrip()}")
 			tail = result.output.strip().splitlines()[-5:]
 			return False, f"{module} failed (exit {result.returncode}): {' | '.join(tail)}"
 		if result.tests_ran in (0, None):

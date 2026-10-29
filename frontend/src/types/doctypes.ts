@@ -118,6 +118,8 @@ export interface GPMember extends ChildDocType {
   user?: string
   /** Community Admin: Check */
   is_admin?: 0 | 1
+  /** Community Moderator: Check */
+  is_moderator?: 0 | 1
 }
 
 // Last updated: 2026-07-31 10:15:00.000000
@@ -148,6 +150,8 @@ export interface GPNotification extends DocType {
 
 // Last updated: 2026-10-16 20:00:00.000000
 export interface GPDiscussion extends DocType {
+  hidden_at?: string
+  spam_removed_at?: string
   /** Project: Link (GP Project) */
   project: string
   /** Content: Text Editor */
@@ -204,10 +208,16 @@ export interface GPTeam extends DocType {
   archived_at?: string
   /** Archived By: Link (User) */
   archived_by?: string
-  /** Is Private: Check */
+  /** Is Private (Legacy): Check */
   is_private: 0 | 1
   /** Image: Attach Image */
   image?: string
+  /** Visibility: Select */
+  visibility?: 'General' | 'Member Access' | 'Anonymous'
+  /** Visibility Set By: Link (User) */
+  visibility_set_by?: string
+  /** Visibility Set At: Datetime */
+  visibility_set_at?: string
 }
 
 // Last updated: 2023-05-08 16:57:35.133580
@@ -264,8 +274,14 @@ export interface GPProject extends DocType {
   archived_at?: string
   /** Archived By: Link (User) */
   archived_by?: string
-  /** Is Private: Check */
+  /** Is Private (Legacy): Check */
   is_private: 0 | 1
+  /** Visibility: Select */
+  visibility?: 'General' | 'Member Access' | 'Anonymous'
+  /** Visibility Set By: Link (User) */
+  visibility_set_by?: string
+  /** Visibility Set At: Datetime */
+  visibility_set_at?: string
 }
 
 // Last updated: 2026-10-16 20:00:00.000000
@@ -292,6 +308,9 @@ export interface GPComment extends DocType {
   edited_at?: string
   /** Deleted At: Datetime */
   deleted_at?: string
+  /** Hidden At: Datetime */
+  hidden_at?: string
+  spam_removed_at?: string
   /** Tags: Table (GP Tag Link) */
   tags: GPTagLink[]
 }

@@ -7,6 +7,7 @@ from gameplan.gameplan.doctype.gp_team.gp_team import update_joined_teams
 from gameplan.gameplan.doctype.gp_user_profile.gp_user_profile import save_my_bento_cards
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import create_community, create_discussion, create_poll, create_space
+from gameplan.visibility import VISIBILITY_MEMBER_ACCESS
 
 
 def tag_content(label):
@@ -114,8 +115,12 @@ class TestParentManagedRows(GameplanTestCase):
 
 class TestSpaceCommunityValidation(GameplanTestCase):
 	def test_space_creation_uses_visible_communities_and_creator_membership(self):
-		hidden = create_community("Other Community", is_private=1, members=[self.second_member])
-		joined = create_community("Joined Community", is_private=1, members=[self.member])
+		hidden = create_community(
+			"Other Community", visibility=VISIBILITY_MEMBER_ACCESS, members=[self.second_member]
+		)
+		joined = create_community(
+			"Joined Community", visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
 		public = create_community("Visible Community")
 		with self.as_user(self.member):
 			with self.assertRaises(frappe.PermissionError):
@@ -126,7 +131,7 @@ class TestSpaceCommunityValidation(GameplanTestCase):
 						doctype="GP Project",
 						title="New Space",
 						team=team,
-						is_private=1,
+						visibility=VISIBILITY_MEMBER_ACCESS,
 						members=[
 							{"user": self.second_member.name},
 							{"user": self.member.name, "is_admin": 1},
@@ -139,8 +144,12 @@ class TestSpaceCommunityValidation(GameplanTestCase):
 	def test_space_saves_apply_community_move_rules(self):
 		origin = create_community("Source Community", admins=[self.member])
 		destination = create_community("Destination Community", members=[self.member])
-		hidden = create_community("Other Destination", is_private=1, members=[self.second_member])
-		space = create_space("Moving Space", origin, is_private=1, members=[self.member])
+		hidden = create_community(
+			"Other Destination", visibility=VISIBILITY_MEMBER_ACCESS, members=[self.second_member]
+		)
+		space = create_space(
+			"Moving Space", origin, visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
 		discussion = create_discussion("Moving Discussion", space)
 		with self.as_user(self.member):
 			with patch.object(frappe.local, "form_dict", frappe._dict(team=hidden.name)):
@@ -152,7 +161,9 @@ class TestSpaceCommunityValidation(GameplanTestCase):
 		self.assertEqual(space.reload().team, destination.name)
 		self.assertEqual(discussion.reload().team, destination.name)
 		with self.as_user(self.outsider):
-			with patch.object(frappe.local, "form_dict", frappe._dict(team=origin.name, is_private=1)):
+			with patch.object(
+				frappe.local, "form_dict", frappe._dict(team=origin.name, visibility=VISIBILITY_MEMBER_ACCESS)
+			):
 				with self.assertRaises(frappe.PermissionError):
 					update_doc("GP Project", space.name)
 

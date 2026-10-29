@@ -45,7 +45,7 @@ import { useDoctype } from 'frappe-ui'
 import { GPProject } from '@/types/doctypes'
 import { spaces as spaceList, useSpace } from '@/data/spaces'
 import { useSessionUser } from '@/data/users'
-import { canManageSpace, isGuest } from '@/utils/permissions'
+import { canManageSpace, canMoveContentToSpace, isGuest } from '@/utils/permissions'
 
 const props = defineProps<{
   spaceId: string
@@ -84,7 +84,8 @@ const groupedSpaceOptions = useGroupedSpaceOptions({
     canMergeThisSpace.value &&
     s.name.toString() !== props.spaceId.toString() &&
     s.team === space.value?.team &&
-    canManageSpace(s, sessionUser),
+    canManageSpace(s, sessionUser) &&
+    canMoveContentToSpace(space.value, s, sessionUser),
 })
 
 const hasMergeTargets = computed(() => groupedSpaceOptions.value.length > 0)

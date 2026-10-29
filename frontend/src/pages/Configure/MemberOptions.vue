@@ -44,6 +44,12 @@ const options = computed(() => [
     condition: () => canUpdateAdminStatus.value,
   },
   {
+    label: props.member.is_moderator ? 'Remove community moderator' : 'Make community moderator',
+    icon: props.member.is_moderator ? 'lucide-shield-minus' : 'lucide-shield-check',
+    onClick: () => setCommunityModerator(!props.member.is_moderator),
+    condition: () => props.canManage && !props.community.archived_at,
+  },
+  {
     label: 'Remove from community',
     icon: 'lucide-user-round-minus',
     onClick: removeMember,
@@ -67,6 +73,29 @@ function removeMember() {
         method: 'remove_member',
         params: {
           user: props.member.user,
+        },
+      })
+      await communities.reload()
+    },
+  })
+}
+
+function setCommunityModerator(isModerator: boolean) {
+  if (!props.canManage) return
+
+  dialog.confirm({
+    title: isModerator ? 'Make community moderator' : 'Remove community moderator',
+    message: isModerator
+      ? `${user.value.full_name} will be a moderator for this community. Private space access and community administration permissions stay the same.`
+      : `${user.value.full_name} will no longer be a moderator for this community. Their membership stays the same.`,
+    confirmLabel: isModerator ? 'Make Moderator' : 'Remove Moderator',
+    onConfirm: async () => {
+      await teams.runDocMethod.submit({
+        name: props.community.name,
+        method: 'set_member_moderator',
+        params: {
+          user: props.member.user,
+          is_moderator: isModerator ? 1 : 0,
         },
       })
       await communities.reload()
