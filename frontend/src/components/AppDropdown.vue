@@ -27,6 +27,7 @@ import AboutDialog from './AboutDialog.vue'
 import AppSelector from './AppSelector.vue'
 import GameplanLogo from './GameplanLogo.vue'
 import { openCustomizeSidebarDialog } from './AppRail/customizeSidebar'
+import { isAnonymousVisitor } from '@/utils/publicAccess'
 
 const showAboutDialog = ref(false)
 
@@ -34,6 +35,7 @@ const dropdownItems = [
   {
     icon: 'lucide-layout-grid',
     label: 'Apps',
+    condition: () => !isAnonymousVisitor(),
     submenu: [
       {
         slots: {
@@ -45,6 +47,7 @@ const dropdownItems = [
   {
     icon: 'lucide-settings',
     label: 'Settings',
+    condition: () => !isAnonymousVisitor(),
     onClick: () => showSettingsDialog(),
     slots: {
       suffix: () => h('span', { class: 'text-xs text-ink-gray-4' }, settingsShortcutLabel),
@@ -53,11 +56,13 @@ const dropdownItems = [
   {
     icon: 'lucide-settings-2',
     label: 'Customize sidebar',
+    condition: () => !isAnonymousVisitor(),
     onClick: openCustomizeSidebarDialog,
   },
   {
     icon: 'lucide-list-restart',
     label: 'Clear cache',
+    condition: () => !isAnonymousVisitor(),
     onClick: clearCache,
   },
   {

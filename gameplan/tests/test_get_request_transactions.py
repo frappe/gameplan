@@ -59,6 +59,16 @@ READ_ONLY_ENDPOINTS = frozenset(
 		"gameplan.gameplan.doctype.gp_discussion.api.get_discussions",
 		"gameplan.gameplan.doctype.gp_task.gp_task.get_list",
 		"gameplan.gameplan.doctype.gp_user_profile.gp_user_profile.get_list",
+		# Scoped moderation reads.
+		"gameplan.moderation.community_bans",
+		"gameplan.reporting.queue",
+		"gameplan.approvals.queue",
+		"gameplan.approvals.detail",
+		"gameplan.approval_policy.get_policy",
+		"gameplan.reporting.detail",
+		"gameplan.moderation_history.history",
+		"gameplan.slow_mode.status",
+		"gameplan.moderation.removed_content",
 		# Revision history.
 		"gameplan.gameplan.doctype.gp_comment.gp_comment.GPComment.get_revisions",
 		"gameplan.gameplan.doctype.gp_discussion.gp_discussion.GPDiscussion.get_revisions",
@@ -74,6 +84,19 @@ READ_ONLY_ENDPOINTS = frozenset(
 		# The Drafts list. Collapses duplicate reply drafts in its response but writes nothing;
 		# find_my_draft is what destroys the stale sibling, on its own POST path.
 		"gameplan.gameplan.doctype.gp_draft.gp_draft.get_my_drafts",
+		# Public access: profiles of authors of public content, and the socket permission check.
+		"gameplan.api.get_public_user_info",
+		"gameplan.public_access.realtime_has_permission",
+		"gameplan.guest_payload.can_view_presence",
+		# Streams one file the caller may read.
+		"gameplan.api.public_file",
+		# The public view's lists: permission-checked, cleaned reads.
+		"gameplan.public_lists.communities",
+		"gameplan.public_lists.spaces",
+		"gameplan.public_lists.comments",
+		"gameplan.public_lists.polls",
+		# The counts a visibility confirmation shows. Measures inside a savepoint it rolls back.
+		"gameplan.mixins.visibility.HasVisibility.get_visibility_change_impact",
 		# Profile reads.
 		"gameplan.gameplan.doctype.gp_user_profile.gp_user_profile.get_last_post",
 		"gameplan.gameplan.doctype.gp_user_profile.gp_user_profile.get_my_bento_cards",

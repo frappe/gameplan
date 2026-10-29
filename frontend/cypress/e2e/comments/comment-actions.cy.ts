@@ -24,7 +24,7 @@ describe('Comment actions', () => {
 
     cy.intercept({
       method: 'POST',
-      url: '/api/v2/document/GP%20Comment',
+      url: '/api/method/gameplan.approvals.submit',
       times: 1,
     }).as('comment')
     cy.button('Add a comment').click()
@@ -46,12 +46,12 @@ describe('Comment actions', () => {
     cy.get('[contenteditable=true]').should('be.visible').click().type('This is the first comment')
     cy.button('Submit').click()
     cy.wait('@comment')
-      .its('response.body.data.content')
+      .its('request.body.content')
       .should('contain', 'This is the first comment')
     cy.button('Add a comment').should('be.visible')
 
     cy.get('@comment')
-      .its('response.body.data')
+      .its('response.body.message')
       .then((comment: { name: string }) => {
         const commentSelector = `div[data-id="${comment.name}"]`
 

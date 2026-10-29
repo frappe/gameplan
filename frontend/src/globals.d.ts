@@ -37,6 +37,10 @@ declare global {
     max_file_size?: number | string
     /** Set from the boot data in `gameplan/www/g.py`; absent when the site has no DSN. */
     gameplan_frontend_sentry_dsn?: string
+    /** Boot data: whether people who are not signed in may read Anonymous-tier spaces. */
+    public_access_enabled?: boolean
+    /** Boot data: whether the site lets people create their own account. */
+    signup_enabled?: boolean
   }
 }
 

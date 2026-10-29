@@ -23,7 +23,10 @@
   "pin_scope",
   "pinned_by",
   "comments_count",
-  "participants_count"
+  "participants_count",
+  "hidden_at",
+  "spam_removed_at",
+  "slow_mode_seconds"
  ],
  "fields": [
   {
@@ -137,6 +140,25 @@
    "fieldtype": "Select",
    "label": "Pin Scope",
    "options": "Category\nSpace"
+  },
+  {
+   "fieldname": "hidden_at",
+   "fieldtype": "Datetime",
+   "label": "Hidden At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "spam_removed_at",
+   "fieldtype": "Datetime",
+   "label": "Spam Removed At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "slow_mode_seconds",
+   "label": "Slow Mode Seconds",
+   "fieldtype": "Int",
+   "default": "0",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
@@ -196,6 +218,11 @@
    "role": "Gameplan Guest",
    "share": 1,
    "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Guest",
+   "select": 1
   }
  ],
  "row_format": "Dynamic",

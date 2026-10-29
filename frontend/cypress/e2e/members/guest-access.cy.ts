@@ -25,7 +25,7 @@ describe('Guest access', () => {
   })
 
   it('scopes a guest to the granted space and lets them participate in it', () => {
-    cy.intercept('POST', '/api/v2/document/GP%20Comment').as('comment')
+    cy.intercept('POST', '/api/method/gameplan.approvals.submit').as('comment')
     cy.intercept('POST', '/api/v2/document/GP%20Discussion/*/method/react').as('react')
 
     // The guest never joined the community, but the granted space puts them inside it.
@@ -53,7 +53,7 @@ describe('Guest access', () => {
     cy.get('[contenteditable=true]').should('be.visible').click().type('A guest can reply here')
     cy.button('Submit').click()
     cy.wait('@comment')
-      .its('response.body.data')
+      .its('response.body.message')
       .then((comment: { name: string }) => {
         cy.get(`div[data-id="${comment.name}"]`).should('exist')
       })

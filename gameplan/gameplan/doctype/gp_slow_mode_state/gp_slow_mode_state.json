@@ -1,0 +1,54 @@
+{
+ "actions": [],
+ "allow_bulk_edit": 0,
+ "allow_rename": 0,
+ "autoname": "hash",
+ "creation": "2026-10-27 12:11:54.515374",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "discussion",
+  "user",
+  "last_submission"
+ ],
+ "fields": [
+  {
+   "fieldname": "discussion",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Discussion",
+   "options": "GP Discussion",
+   "reqd": 1
+  },
+  {
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "User",
+   "options": "User",
+   "reqd": 1
+  },
+  {
+   "fieldname": "last_submission",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Last Submission",
+   "reqd": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-10-27 12:11:54.515374",
+ "modified_by": "Administrator",
+ "module": "Gameplan",
+ "name": "GP Slow Mode State",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}

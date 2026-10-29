@@ -96,6 +96,8 @@ jobs:
           BEFORE: ${{ env.GITHUB_EVENT_PATH.before }}
           AFTER: ${{ env.GITHUB_EVENT_PATH.after }}
           GAMEPLAN_COVERAGE: "1"
+          # Public spaces are readable without signing in (cypress/e2e/public).
+          GAMEPLAN_PUBLIC_ACCESS: "1"
 
       - name: Site Setup
         run: |

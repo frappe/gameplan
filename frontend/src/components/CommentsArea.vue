@@ -71,6 +71,21 @@
       </template>
     </div>
 
+    <div v-if="isAnonymousVisitor()" class="mb-6 flex flex-wrap justify-center gap-2">
+      <a v-if="publicPageStart() > 0" :href="publicPageLink(-1)" class="underline">Previous page</a>
+      <Button
+        v-if="comments.hasNextPage || polls.hasNextPage"
+        label="Next page of replies"
+        :href="publicPageLink(1)"
+        target="_self"
+      />
+    </div>
+    <div v-if="readOnlyMode && isAnonymousVisitor()" class="mb-20">
+      <PublicJoinPrompt
+        :title="disableNewComment ? 'Follow this community' : 'Join the conversation'"
+      />
+    </div>
+
     <!-- In an installed PWA the collapsed button clears the home indicator: the 1rem
          the bottom nav uses on other pages, or the safe-area inset where that is larger. -->
     <div
@@ -94,6 +109,19 @@
             isComposerCollapsed ? '' : 'bg-surface-base sm:bg-transparent',
           ]"
         >
+          <p
+            v-if="slowStatus?.seconds"
+            class="mb-2 text-base text-ink-gray-6"
+            data-testid="slow-mode-status"
+          >
+            <template v-if="slowWait">Slow mode: you can reply again in {{ slowWait }}s.</template>
+            <template v-else-if="slowStatus.exempt"
+              >Slow mode is on. Moderators can reply without waiting.</template
+            >
+            <template v-else
+              >Slow mode: {{ slowModeLabel(slowStatus.seconds) }} between your replies.</template
+            >
+          </p>
           <div v-if="!showCommentBox" class="sm:-mx-3">
             <button
               type="button"
@@ -186,20 +214,23 @@
               :submitButtonProps="{
                 variant: 'solid',
                 onClick: submitComment,
-                loading: comments.insert.loading,
-                disabled: !canSubmit,
+                loading: comments.insert.loading || submittingReply,
+                disabled: !canSubmit || submittingReply,
               }"
               :discardButtonProps="{
                 onClick: discardComment,
               }"
-              :editable="!isDraftLoading"
+              :editable="!isDraftLoading && !submittingReply"
               :max-height="activeComposerEditorMaxHeightStyle"
               :min-height="activeComposerEditorMinHeightStyle"
               v-model:toolbar-expanded="composerToolbarExpanded"
               can-attach-poll
               placeholder="Add a comment..."
             />
-            <ErrorMessage class="mt-2" :message="comments.insert.error" />
+            <ErrorMessage
+              class="mt-2"
+              :message="extractServerMessage(replyError || comments.insert.error)"
+            />
           </div>
         </div>
       </div>
@@ -221,7 +252,8 @@ import {
 } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useEventListener } from '@vueuse/core'
-import { useList, ErrorMessage, Button, Tooltip } from 'frappe-ui'
+import { useList, ErrorMessage, Button, Tooltip, call, toast, type UseListOptions } from 'frappe-ui'
+import { slowModeLabel, useSlowMode } from '@/data/slowMode'
 import CommentEditor from '@/components/editor/CommentEditor.vue'
 import Comment from './Comment.vue'
 import Activity from './Activity.vue'
@@ -233,15 +265,26 @@ import { GPActivity, GPBookmark, GPComment, GPPoll } from '@/types/doctypes'
 import type { Editor } from '@tiptap/vue-3'
 import { tags } from '@/data/tags'
 import { useRichQuotes } from '@/components/RichQuoteExtension/useRichQuotes'
+import { drafts } from '@/data/drafts'
 import { useDraftSync } from '@/data/useDraftSync'
 import { useSessionUser } from '@/data/users'
 import type { Space } from '@/data/spaces'
+import { extractServerMessage } from '@/utils'
+import { createRequestKey } from '@/utils/requestKey'
 import { useIsMobile } from '@/utils/useIsMobile'
 import {
   isPollDraftReady,
   pollDraftInContent,
   threadPollsKey,
 } from '@/components/PollBlock/poll-draft'
+import {
+  isAnonymousVisitor,
+  publicListUrl,
+  publicPageStart,
+  publicPageLink,
+  PUBLIC_PAGE_SIZE,
+} from '@/utils/publicAccess'
+import PublicJoinPrompt from '@/components/Public/PublicJoinPrompt.vue'
 
 interface Props {
   doctype: string
@@ -284,6 +327,14 @@ const props = withDefaults(defineProps<Props>(), {
   hideNewComment: false,
 })
 
+const {
+  data: slowStatus,
+  remaining: slowWait,
+  refresh: refreshSlowMode,
+} = useSlowMode(() =>
+  props.doctype === 'GP Discussion' && !isAnonymousVisitor() ? String(props.name) : undefined,
+)
+
 const emit = defineEmits<{
   'composer-resize': []
 }>()
@@ -312,6 +363,7 @@ const draft = useDraftSync({
     referenceDoctype: props.doctype,
     referenceName: props.name,
   }),
+  enabled: () => !props.readOnlyMode && !isAnonymousVisitor(),
   initialPayload: () => ({ content: '' }),
 })
 const draftData = draft.data
@@ -332,10 +384,24 @@ const composerStorageKey = computed(() => {
   return ['gameplan', 'comment-composer', sessionUser.name, props.doctype, props.name].join(':')
 })
 
+let commentsLoaded = false
 const comments = useList<GPComment>({
   doctype: 'GP Comment',
-  cacheKey: ['Comments', props.doctype, props.name],
-  fields: ['name', 'content', 'owner', 'creation', 'modified', 'edited_at', 'deleted_at'],
+  url: publicListUrl('GP Comment'),
+  cacheKey: isAnonymousVisitor() ? undefined : ['Comments', props.doctype, props.name],
+  fields: [
+    'name',
+    'content',
+    'owner',
+    'creation',
+    'modified',
+    'edited_at',
+    'deleted_at',
+    'hidden_at',
+    'spam_removed_at',
+    'reference_doctype',
+    'reference_name',
+  ],
   transform(data) {
     return data.map((d) => ({ ...d, doctype: 'GP Comment' }))
   },
@@ -343,16 +409,20 @@ const comments = useList<GPComment>({
     reference_doctype: props.doctype,
     reference_name: props.name,
   },
-  orderBy: 'creation asc',
-  limit: 99999,
+  orderBy: 'creation asc, name asc',
+  start: publicPageStart(),
+  limit: isAnonymousVisitor() ? PUBLIC_PAGE_SIZE : 99999,
   onSuccess() {
+    if (commentsLoaded) return
+    const linkedComment = comments.data?.find((c) => String(c.name) === route.query.comment)
+    if (route.query.comment && route.query.comment !== 'first_post' && !linkedComment) return
+    commentsLoaded = true
     if (route.query.comment) {
       if (route.query.comment === 'first_post') {
-        router.replace({ query: {} })
+        router.replace({ query: route.query.page ? { page: route.query.page } : {} })
         return
       }
-      const comment = comments.data?.find((c) => c.name === route.query.comment)
-      scrollToItem(comment)
+      scrollToItem(linkedComment)
     } else if (!route.query.fromSearch && comments.data?.length > 0) {
       scrollToEnd()
     }
@@ -360,6 +430,7 @@ const comments = useList<GPComment>({
 })
 
 const bookmarks = useList<GPBookmark>({
+  immediate: !isAnonymousVisitor(),
   doctype: 'GP Bookmark',
   fields: ['name', 'comment'],
   filters: { discussion: props.name },
@@ -368,6 +439,7 @@ const bookmarks = useList<GPBookmark>({
 
 const activities = useList<GPActivity>({
   doctype: 'GP Activity',
+  immediate: !isAnonymousVisitor(),
   fields: ['name', 'user', 'action', 'data', 'creation'],
   filters: {
     reference_doctype: props.doctype,
@@ -393,42 +465,65 @@ const activities = useList<GPActivity>({
 watch(
   () => props.activityVersion,
   (next, prev) => {
-    if (prev !== undefined && next !== prev) activities.reload()
+    if (prev !== undefined && next !== prev && !isAnonymousVisitor()) activities.reload()
   },
 )
 
+const pollFields: UseListOptions<GPPoll>['fields'] = [
+  'name',
+  'title',
+  'anonymous',
+  'multiple_answers',
+  'creation',
+  'owner',
+  'stopped_at',
+  'comment',
+  { options: ['name', 'title', 'idx', 'percentage'] },
+  { votes: ['user', 'option'] },
+]
+
 const polls = useList<GPPoll>({
   doctype: 'GP Poll',
-  fields: [
-    'name',
-    'title',
-    'anonymous',
-    'multiple_answers',
-    'creation',
-    'owner',
-    'stopped_at',
-    'comment',
-    { options: ['name', 'title', 'idx', 'percentage'] },
-    { votes: ['user', 'option'] },
-  ],
-  filters: {
+  url: publicListUrl('GP Poll'),
+  fields: pollFields,
+  filters: () => ({
     discussion: props.name,
-  },
-  orderBy: 'creation asc',
-  limit: 99999,
+    comment: isAnonymousVisitor() ? ['is', 'not set'] : undefined,
+  }),
+  orderBy: 'creation asc, name asc',
+  start: publicPageStart(),
+  limit: isAnonymousVisitor() ? PUBLIC_PAGE_SIZE : 99999,
   transform(data) {
     return data.map((d) => ({ ...d, doctype: 'GP Poll' }))
   },
-  onSuccess() {
-    if (route.query.poll) {
-      const poll = polls.data?.find((p) => p.name === route.query.poll)
-      scrollToItem(poll?.comment ? comments.data?.find((c) => c.name === poll.comment) : poll)
-    }
-  },
+  onSuccess: scrollToLinkedPoll,
 })
+
+const embeddedPolls = isAnonymousVisitor()
+  ? useList<GPPoll>({
+      doctype: 'GP Poll',
+      url: publicListUrl('GP Poll'),
+      fields: pollFields,
+      filters: () => ({
+        discussion: props.name,
+        comment: ['in', (comments.data ?? []).filter((c) => !c.deleted_at).map((c) => c.name)],
+      }),
+      limit: PUBLIC_PAGE_SIZE,
+      onSuccess: scrollToLinkedPoll,
+    })
+  : undefined
+
+function scrollToLinkedPoll(data: GPPoll[]) {
+  if (!route.query.poll) return
+  const poll = data.find((p) => String(p.name) === route.query.poll)
+  scrollToItem(
+    poll?.comment ? comments.data?.find((c) => String(c.name) === String(poll.comment)) : poll,
+  )
+}
 
 provide(threadPollsKey, {
   polls,
+  embeddedPolls,
   space: () => props.space,
   readOnlyMode: () => props.readOnlyMode,
 })
@@ -461,7 +556,10 @@ const commentEmpty = computed(() => {
 const pollDraft = computed(() => pollDraftInContent(draftData.value?.content))
 
 const canSubmit = computed(
-  () => !commentEmpty.value && (!pollDraft.value || isPollDraftReady(pollDraft.value)),
+  () =>
+    !slowWait.value &&
+    !commentEmpty.value &&
+    (!pollDraft.value || isPollDraftReady(pollDraft.value)),
 )
 
 const editorObject = computed<Editor | null>(() => {
@@ -606,20 +704,55 @@ function resetCommentState() {
   highlightedItem.value = null
 }
 
+const submittingReply = ref(false)
+const replyError = ref<unknown>(null)
+const replyRequestKey = ref(createRequestKey())
 async function submitComment() {
-  if (!canSubmit.value || comments.insert.loading) return
-
-  const comment = await comments.insert.submit({
-    reference_doctype: props.doctype,
-    reference_name: props.name,
-    content: draftData.value?.content,
-  })
-  if (comments.insert.error || !comment?.name) return
-  if (pollDraft.value) polls.reload()
-
-  await draft.commit()
-  resetCommentState()
-  tags.reload()
+  if (!canSubmit.value || comments.insert.loading || submittingReply.value) return
+  submittingReply.value = true
+  replyError.value = null
+  try {
+    let queued = false
+    if (props.doctype === 'GP Discussion') {
+      await draft.flush()
+      const result = await call<{ doctype: string; name: string }>('gameplan.approvals.submit', {
+        doctype: 'GP Comment',
+        request_key: draft.serverName.value
+          ? `draft:${draft.serverName.value}`
+          : replyRequestKey.value,
+        discussion: String(props.name),
+        content: draftData.value?.content,
+        draft: draft.serverName.value || '',
+      })
+      queued = result.doctype === 'GP Submission'
+    } else {
+      const comment = await comments.insert.submit({
+        reference_doctype: props.doctype,
+        reference_name: props.name,
+        content: draftData.value?.content,
+      })
+      if (comments.insert.error || !comment?.name) return
+    }
+    if (queued) {
+      const name = draft.serverName.value
+      await draft.forget()
+      if (name) drafts.removeRow(name)
+      toast.success('Submitted for moderator approval. Find it in My submissions.')
+    } else {
+      await draft.commit()
+      if (pollDraft.value) polls.reload()
+    }
+    replyRequestKey.value = createRequestKey()
+    resetCommentState()
+    tags.reload()
+    await comments.reload()
+    if (!queued) scrollToEnd()
+  } catch (e) {
+    replyError.value = e
+  } finally {
+    submittingReply.value = false
+    refreshSlowMode()
+  }
 }
 
 async function scrollToEnd() {
@@ -658,7 +791,7 @@ async function scrollToItem(item: any) {
   }
   setTimeout(() => {
     highlightedItem.value = null
-    router.replace({ query: {} })
+    router.replace({ query: route.query.page ? { page: route.query.page } : {} })
   }, 10000)
 }
 
@@ -798,13 +931,15 @@ onMounted(() => {
     scrollToComment: scrollToCommentById,
     highlightComment,
   })
-  unsubscribeFromDoc = subscribeToDoc(props.doctype, String(props.name))
+  if (!isAnonymousVisitor()) unsubscribeFromDoc = subscribeToDoc(props.doctype, String(props.name))
   socket.on('new_activity', (data: NewActivityEvent) => {
+    if (isAnonymousVisitor()) return
     // The payload stringifies the id (activity.py) but doctypes that autoname to an
     // integer hand this component a number, so a strict compare never matches and the
     // timeline silently stops updating. Compare as strings.
     if (data.reference_doctype === props.doctype && data.reference_name === String(props.name)) {
       activities.reload()
+      comments.reload()
     }
   })
 })

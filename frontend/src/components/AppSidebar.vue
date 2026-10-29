@@ -2,7 +2,10 @@
   <Sidebar disable-collapse width="14rem">
     <template v-if="communityState.doc">
       <div class="flex shrink-0 items-center p-1.5">
-        <CommunityDropdown @new-space="openNewSpaceDialog" />
+        <div v-if="publicView" class="min-w-0 px-2 py-1 text-lg-medium text-ink-gray-7">
+          {{ communityState.doc?.title || 'Community' }}
+        </div>
+        <CommunityDropdown v-else @new-space="openNewSpaceDialog" />
       </div>
 
       <!--
@@ -14,7 +17,7 @@
         <div>
           <div class="flex h-7 items-center justify-between">
             <SidebarLabel>Spaces</SidebarLabel>
-            <div v-if="!sessionUser.isGuest" class="flex items-center">
+            <div v-if="!publicView && !sessionUser.isGuest" class="flex items-center">
               <Dropdown :options="spaceSortMenuOptions" align="end">
                 <template #trigger="{ open }">
                   <Button
@@ -50,7 +53,7 @@
 
               <span class="flex-1 inline-flex items-center gap-1 truncate text-sm">
                 <span
-                  v-if="space.is_private"
+                  v-if="isMemberAccess(space.visibility)"
                   class="lucide-lock size-3 shrink-0 text-ink-gray-5"
                   aria-hidden="true"
                 />
@@ -75,7 +78,12 @@
                   >
                     {{ getSpaceUnreadCount(space.name) }}
                   </span>
-                  <Dropdown :options="spaceOptions(space)" align="start" side="right">
+                  <Dropdown
+                    v-if="!publicView"
+                    :options="spaceOptions(space)"
+                    align="start"
+                    side="right"
+                  >
                     <template #default="{ open }">
                       <Button
                         :variant="open ? 'subtle' : 'ghost'"
@@ -97,7 +105,11 @@
             >
               {{ communitySpaces.emptyMessage }}
               <Button
-                v-if="communitySpaces.archived.length === 0 && !communitySpaces.hasHiddenInactive"
+                v-if="
+                  !publicView &&
+                  communitySpaces.archived.length === 0 &&
+                  !communitySpaces.hasHiddenInactive
+                "
                 size="sm"
                 icon-left="lucide-plus"
                 class="mt-2"
@@ -113,6 +125,7 @@
   </Sidebar>
 
   <NewSpaceDialog
+    v-if="!publicView"
     v-model="showNewSpaceDialog"
     :lockedCommunityId="communityState.id ?? undefined"
   />
@@ -133,6 +146,9 @@ import NewSpaceDialog from './NewSpaceDialog.vue'
 import SpaceIcon from './SpaceIcon.vue'
 import PushPin from './icons/PushPin.vue'
 import PushPinSlash from './icons/PushPinSlash.vue'
+import { isMemberAccess } from '@/utils/visibility'
+
+const props = withDefaults(defineProps<{ publicView?: boolean }>(), { publicView: false })
 
 const route = useRoute()
 const sessionUser = computed(() => useSessionUser())
@@ -154,6 +170,7 @@ function isActiveSpace(spaceId: string) {
 }
 
 function openNewSpaceDialog() {
+  if (props.publicView) return
   showNewSpaceDialog.value = true
 }
 
