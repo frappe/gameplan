@@ -11,7 +11,7 @@
         class="flex h-full items-center justify-center"
         @click.self="$emit('update:show', false)"
       >
-        <img :src="imageUrl" class="max-h-[80%] object-contain" />
+        <img :src="imageUrl" alt="Enlarged image preview" class="max-h-[80%] object-contain" />
       </div>
     </div>
   </teleport>
