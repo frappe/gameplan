@@ -10,6 +10,7 @@ from frappe.model.document import Document
 from frappe.utils import get_datetime, now_datetime
 
 from gameplan.utils.document import with_stored_document
+from gameplan.visibility import VISIBILITY_GENERAL
 
 # Edit drafts finish on the post or comment they edit; new-comment drafts finish on the
 # discussion or task they reply to.
@@ -226,7 +227,7 @@ def get_my_drafts():
 		results = frappe.qb.get_query(
 			"GP Project",
 			filters={"name": ["in", list(project_ids)]},
-			fields=["name", "title", "team", "is_private"],
+			fields=["name", "title", "team", "visibility"],
 			ignore_permissions=False,
 		).run(as_dict=True)
 		projects = {str(p.name): p for p in results}
@@ -252,7 +253,7 @@ def get_my_drafts():
 					"space": r.project,
 					"space_title": project.title if project else None,
 					"community": project.team if project else None,
-					"is_private": project.is_private if project else 0,
+					"visibility": project.visibility if project else VISIBILITY_GENERAL,
 					"discussion": None,
 					"scheduled_at": r.scheduled_at,
 				}
@@ -276,7 +277,7 @@ def get_my_drafts():
 					"space": discussion.project,
 					"space_title": project.title,
 					"community": project.team,
-					"is_private": project.is_private,
+					"visibility": project.visibility,
 					"discussion": r.reference_name,
 				}
 			)

@@ -3,7 +3,19 @@
 
 
 import frappe
+from frappe.database.query import Engine
 from frappe.model.base_document import get_controller
+
+import gameplan
+from gameplan.public_access import public_pagination
+from gameplan.public_payload import (
+	check_public_filters,
+	check_public_order_by,
+	public_doctypes,
+	public_list_fields,
+	public_rows,
+	refuse,
+)
 
 
 @frappe.whitelist()
@@ -19,7 +31,22 @@ def get_list(
 	debug=False,
 ):
 	check_permissions(doctype, parent)
-	query = frappe.qb.get_query(
+	anonymous = gameplan.is_anonymous()
+	if anonymous:
+		start, limit = public_pagination(start, limit)
+		# Nobody is signed in: only public columns, filtered and sorted on public columns,
+		# and the rows cleaned before they leave (see gameplan.public_payload).
+		if parent or group_by:
+			refuse("Not allowed without signing in")
+		fields = public_list_fields(doctype, fields)
+		check_public_filters(doctype, filters)
+		check_public_order_by(doctype, order_by)
+		debug = False
+	# The query must always receive the doctype's row scope. For signed-in callers Frappe
+	# applies it; the anonymous public path applies the same hooks below because Frappe's
+	# generic Guest-role gate runs before it can reach them.
+	engine = Engine()
+	query = engine.get_query(
 		table=doctype,
 		fields=fields,
 		filters=filters,
@@ -27,17 +54,27 @@ def get_list(
 		offset=start,
 		limit=limit,
 		group_by=group_by,
-		ignore_permissions=False,
-		# A child table's rows are scoped through its parent; on any other doctype,
-		# get_query would treat `parent` as a parent table to join.
+		# Frappe's query builder repeats the generic Guest role check before it applies
+		# the query-condition hooks. The public wrapper has already fixed the doctype and
+		# validated the request, so apply those hooks explicitly below instead.
+		ignore_permissions=anonymous,
 		parent_doctype=parent if frappe.is_table(doctype) else None,
 	)
+	if anonymous:
+		for condition in engine.get_permission_query_conditions(doctype):
+			query = query.where(condition)
 	query = apply_custom_filters(doctype, query)
-	return query.run(as_dict=True, debug=debug)
+	rows = query.run(as_dict=True, debug=debug)
+	return public_rows(doctype, rows) if anonymous else rows
 
 
 def check_permissions(doctype, parent):
 	user = frappe.session.user
+	# Public-list endpoints accept a fixed public-doctype allowlist, validate their query
+	# inputs, apply the anonymous row scope, and clean each returned row. The generic
+	# doctype check runs before those safeguards and rejects their Guest requests.
+	if gameplan.is_anonymous(user) and doctype in public_doctypes():
+		return
 	if not frappe.has_permission(
 		doctype, "select", user=user, parent_doctype=parent
 	) and not frappe.has_permission(doctype, "read", user=user, parent_doctype=parent):

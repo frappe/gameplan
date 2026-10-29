@@ -16,8 +16,8 @@ echo "Setting Up Gameplan App..."
 bench get-app gameplan "${GITHUB_WORKSPACE}"
 
 echo "Setting Up Procfile..."
-sed -i 's/^watch:/# watch:/g' Procfile
-sed -i 's/^schedule:/# schedule:/g' Procfile
+# Backend tests need Redis, but SQLite cannot share test writes with web or workers.
+sed -i -E '/^(web|socketio|watch|schedule|worker[^:]*):/s/^/# /' Procfile
 
 echo "Setting up redisearch module..."
 echo "loadmodule ${GITHUB_WORKSPACE}/.github/helper/redisearch.so" >> ./config/redis_cache.conf

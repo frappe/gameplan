@@ -12,6 +12,7 @@ from gameplan.tests.fixtures import (
 	create_space,
 	grant_guest_access,
 )
+from gameplan.visibility import VISIBILITY_MEMBER_ACCESS
 
 
 class PageTestCase(GameplanTestCase):
@@ -24,7 +25,7 @@ class PageTestCase(GameplanTestCase):
 		self.space = create_space(
 			"Page Space",
 			self.community,
-			is_private=1,
+			visibility=VISIBILITY_MEMBER_ACCESS,
 			members=[self.member, self.second_member],
 		)
 		grant_guest_access(self.guest, self.space)

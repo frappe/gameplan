@@ -71,6 +71,21 @@
       </template>
     </div>
 
+    <div v-if="isAnonymousVisitor()" class="mb-6 flex flex-wrap justify-center gap-2">
+      <a v-if="publicPageStart() > 0" :href="publicPageLink(-1)" class="underline">Previous page</a>
+      <Button
+        v-if="comments.hasNextPage || polls.hasNextPage"
+        label="Next page of replies"
+        :href="publicPageLink(1)"
+        target="_self"
+      />
+    </div>
+    <div v-if="readOnlyMode && isAnonymousVisitor()" class="mb-20">
+      <PublicJoinPrompt
+        :title="disableNewComment ? 'Follow this community' : 'Join the conversation'"
+      />
+    </div>
+
     <!-- In an installed PWA the collapsed button clears the home indicator: the 1rem
          the bottom nav uses on other pages, or the safe-area inset where that is larger. -->
     <div
@@ -199,7 +214,7 @@
               can-attach-poll
               placeholder="Add a comment..."
             />
-            <ErrorMessage class="mt-2" :message="comments.insert.error" />
+            <ErrorMessage class="mt-2" :message="extractServerMessage(comments.insert.error)" />
           </div>
         </div>
       </div>
@@ -221,7 +236,7 @@ import {
 } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useEventListener } from '@vueuse/core'
-import { useList, ErrorMessage, Button, Tooltip } from 'frappe-ui'
+import { useList, ErrorMessage, Button, Tooltip, type UseListOptions } from 'frappe-ui'
 import CommentEditor from '@/components/editor/CommentEditor.vue'
 import Comment from './Comment.vue'
 import Activity from './Activity.vue'
@@ -236,12 +251,21 @@ import { useRichQuotes } from '@/components/RichQuoteExtension/useRichQuotes'
 import { useDraftSync } from '@/data/useDraftSync'
 import { useSessionUser } from '@/data/users'
 import type { Space } from '@/data/spaces'
+import { extractServerMessage } from '@/utils'
 import { useIsMobile } from '@/utils/useIsMobile'
 import {
   isPollDraftReady,
   pollDraftInContent,
   threadPollsKey,
 } from '@/components/PollBlock/poll-draft'
+import {
+  isAnonymousVisitor,
+  publicListUrl,
+  publicPageStart,
+  publicPageLink,
+  PUBLIC_PAGE_SIZE,
+} from '@/utils/publicAccess'
+import PublicJoinPrompt from '@/components/Public/PublicJoinPrompt.vue'
 
 interface Props {
   doctype: string
@@ -312,6 +336,7 @@ const draft = useDraftSync({
     referenceDoctype: props.doctype,
     referenceName: props.name,
   }),
+  enabled: () => !props.readOnlyMode && !isAnonymousVisitor(),
   initialPayload: () => ({ content: '' }),
 })
 const draftData = draft.data
@@ -332,10 +357,24 @@ const composerStorageKey = computed(() => {
   return ['gameplan', 'comment-composer', sessionUser.name, props.doctype, props.name].join(':')
 })
 
+let commentsLoaded = false
 const comments = useList<GPComment>({
   doctype: 'GP Comment',
-  cacheKey: ['Comments', props.doctype, props.name],
-  fields: ['name', 'content', 'owner', 'creation', 'modified', 'edited_at', 'deleted_at'],
+  url: publicListUrl('GP Comment'),
+  cacheKey: isAnonymousVisitor() ? undefined : ['Comments', props.doctype, props.name],
+  fields: [
+    'name',
+    'content',
+    'owner',
+    'creation',
+    'modified',
+    'edited_at',
+    'deleted_at',
+    'hidden_at',
+    'spam_removed_at',
+    'reference_doctype',
+    'reference_name',
+  ],
   transform(data) {
     return data.map((d) => ({ ...d, doctype: 'GP Comment' }))
   },
@@ -343,16 +382,20 @@ const comments = useList<GPComment>({
     reference_doctype: props.doctype,
     reference_name: props.name,
   },
-  orderBy: 'creation asc',
-  limit: 99999,
+  orderBy: 'creation asc, name asc',
+  start: publicPageStart(),
+  limit: isAnonymousVisitor() ? PUBLIC_PAGE_SIZE : 99999,
   onSuccess() {
+    if (commentsLoaded) return
+    const linkedComment = comments.data?.find((c) => String(c.name) === route.query.comment)
+    if (route.query.comment && route.query.comment !== 'first_post' && !linkedComment) return
+    commentsLoaded = true
     if (route.query.comment) {
       if (route.query.comment === 'first_post') {
-        router.replace({ query: {} })
+        router.replace({ query: route.query.page ? { page: route.query.page } : {} })
         return
       }
-      const comment = comments.data?.find((c) => c.name === route.query.comment)
-      scrollToItem(comment)
+      scrollToItem(linkedComment)
     } else if (!route.query.fromSearch && comments.data?.length > 0) {
       scrollToEnd()
     }
@@ -360,6 +403,7 @@ const comments = useList<GPComment>({
 })
 
 const bookmarks = useList<GPBookmark>({
+  immediate: !isAnonymousVisitor(),
   doctype: 'GP Bookmark',
   fields: ['name', 'comment'],
   filters: { discussion: props.name },
@@ -368,6 +412,7 @@ const bookmarks = useList<GPBookmark>({
 
 const activities = useList<GPActivity>({
   doctype: 'GP Activity',
+  immediate: !isAnonymousVisitor(),
   fields: ['name', 'user', 'action', 'data', 'creation'],
   filters: {
     reference_doctype: props.doctype,
@@ -393,42 +438,65 @@ const activities = useList<GPActivity>({
 watch(
   () => props.activityVersion,
   (next, prev) => {
-    if (prev !== undefined && next !== prev) activities.reload()
+    if (prev !== undefined && next !== prev && !isAnonymousVisitor()) activities.reload()
   },
 )
 
+const pollFields: UseListOptions<GPPoll>['fields'] = [
+  'name',
+  'title',
+  'anonymous',
+  'multiple_answers',
+  'creation',
+  'owner',
+  'stopped_at',
+  'comment',
+  { options: ['name', 'title', 'idx', 'percentage'] },
+  { votes: ['user', 'option'] },
+]
+
 const polls = useList<GPPoll>({
   doctype: 'GP Poll',
-  fields: [
-    'name',
-    'title',
-    'anonymous',
-    'multiple_answers',
-    'creation',
-    'owner',
-    'stopped_at',
-    'comment',
-    { options: ['name', 'title', 'idx', 'percentage'] },
-    { votes: ['user', 'option'] },
-  ],
-  filters: {
+  url: publicListUrl('GP Poll'),
+  fields: pollFields,
+  filters: () => ({
     discussion: props.name,
-  },
-  orderBy: 'creation asc',
-  limit: 99999,
+    comment: isAnonymousVisitor() ? ['is', 'not set'] : undefined,
+  }),
+  orderBy: 'creation asc, name asc',
+  start: publicPageStart(),
+  limit: isAnonymousVisitor() ? PUBLIC_PAGE_SIZE : 99999,
   transform(data) {
     return data.map((d) => ({ ...d, doctype: 'GP Poll' }))
   },
-  onSuccess() {
-    if (route.query.poll) {
-      const poll = polls.data?.find((p) => p.name === route.query.poll)
-      scrollToItem(poll?.comment ? comments.data?.find((c) => c.name === poll.comment) : poll)
-    }
-  },
+  onSuccess: scrollToLinkedPoll,
 })
+
+const embeddedPolls = isAnonymousVisitor()
+  ? useList<GPPoll>({
+      doctype: 'GP Poll',
+      url: publicListUrl('GP Poll'),
+      fields: pollFields,
+      filters: () => ({
+        discussion: props.name,
+        comment: ['in', (comments.data ?? []).filter((c) => !c.deleted_at).map((c) => c.name)],
+      }),
+      limit: PUBLIC_PAGE_SIZE,
+      onSuccess: scrollToLinkedPoll,
+    })
+  : undefined
+
+function scrollToLinkedPoll(data: GPPoll[]) {
+  if (!route.query.poll) return
+  const poll = data.find((p) => String(p.name) === route.query.poll)
+  scrollToItem(
+    poll?.comment ? comments.data?.find((c) => String(c.name) === String(poll.comment)) : poll,
+  )
+}
 
 provide(threadPollsKey, {
   polls,
+  embeddedPolls,
   space: () => props.space,
   readOnlyMode: () => props.readOnlyMode,
 })
@@ -620,6 +688,8 @@ async function submitComment() {
   await draft.commit()
   resetCommentState()
   tags.reload()
+  await comments.reload()
+  scrollToEnd()
 }
 
 async function scrollToEnd() {
@@ -658,7 +728,7 @@ async function scrollToItem(item: any) {
   }
   setTimeout(() => {
     highlightedItem.value = null
-    router.replace({ query: {} })
+    router.replace({ query: route.query.page ? { page: route.query.page } : {} })
   }, 10000)
 }
 
@@ -798,13 +868,15 @@ onMounted(() => {
     scrollToComment: scrollToCommentById,
     highlightComment,
   })
-  unsubscribeFromDoc = subscribeToDoc(props.doctype, String(props.name))
+  if (!isAnonymousVisitor()) unsubscribeFromDoc = subscribeToDoc(props.doctype, String(props.name))
   socket.on('new_activity', (data: NewActivityEvent) => {
+    if (isAnonymousVisitor()) return
     // The payload stringifies the id (activity.py) but doctypes that autoname to an
     // integer hand this component a number, so a strict compare never matches and the
     // timeline silently stops updating. Compare as strings.
     if (data.reference_doctype === props.doctype && data.reference_name === String(props.name)) {
       activities.reload()
+      comments.reload()
     }
   })
 })

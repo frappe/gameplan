@@ -1,11 +1,13 @@
 import { useCall } from 'frappe-ui'
 import { useDebounceFn } from '@vueuse/core'
 import { onSocketEvent, onSocketReconnect, runEach } from '@/socket'
+import { isAnonymousVisitor } from '@/utils/publicAccess'
 
 export let unreadNotifications = useCall({
   cacheKey: 'Unread Notifications Count',
   url: '/api/v2/method/gameplan.api.unread_notifications',
   initialData: 0,
+  immediate: !isAnonymousVisitor(),
 })
 
 const listeners = new Set<() => void>()
@@ -38,21 +40,23 @@ export function onRemoteNotificationChange(handler: () => void) {
   }
 }
 
-// One subscription, so every listener acts on the same set of events. Deciding per listener
-// would race: whichever ran first would reload the badge and change the answer for the rest.
-onSocketEvent(
-  'gameplan:notification_count_changed',
-  useDebounceFn(({ count }) => {
-    if (count === unreadNotifications.data) return
-    // Reloaded rather than taken from the event: `data` is a computed inside useCall, and a
-    // single fetched count keeps the badge and the lists reading the same server state.
-    unreadNotifications.reload()
-    runEach(listeners, 'Notification change listener')
-  }, 500),
-)
+const refreshNotifications = useDebounceFn(() => {
+  if (isAnonymousVisitor()) return
+  // Reloaded rather than taken from the event: `data` is a computed inside useCall, and a
+  // single fetched count keeps the badge and the lists reading the same server state.
+  unreadNotifications.reload()
+  runEach(listeners, 'Notification change listener')
+}, 500)
 
-// Same rule as the event above: open lists refresh only when the count actually moved.
+// Filter before debouncing so an ordinary echo cannot discard a forced moderation refresh.
+onSocketEvent('gameplan:notification_count_changed', ({ count, force_refresh }) => {
+  if (isAnonymousVisitor() || (!force_refresh && count === unreadNotifications.data)) return
+  refreshNotifications()
+})
+
+// Open lists catch up after reconnect when the unread count changed while disconnected.
 onSocketReconnect(async () => {
+  if (isAnonymousVisitor()) return
   const countBefore = unreadNotifications.data
   await unreadNotifications.reload()
   if (unreadNotifications.data !== countBefore) runEach(listeners, 'Notification change listener')

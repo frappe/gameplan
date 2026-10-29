@@ -10,7 +10,11 @@ Gameplan is an async discussions app. The UI says Community for GP Team and Spac
 - Replies are GP Comment with reference_doctype "GP Discussion" and reference_name set to the discussion name. Closed discussions take no new replies.
 - content fields are HTML. Mention a person with <span class="mention" data-type="mention" data-id="<user email>" data-label="<full name>">@<full name></span>.
 - Create discussions and replies with create_document. Do not update project, closed_at or pinned_at. Use these GP Discussion methods instead: move_to_project {"project": "<space>"}, close_discussion, reopen_discussion, pin_discussion {"pin_scope": "Space" or "Category"} (Category pins it in the Community), unpin_discussion.
-- Mark a discussion as read with its track_visit method, or a whole Space with GP Project mark_all_as_read.
+- Mark a discussion as read with call_method gameplan.api.set_discussion_read_state {"discussion": "<name>"}; pass "unread": true to mark it unread. This also works for banned readers and archived Spaces. Mark a whole Space with GP Project mark_all_as_read.
+- Community admins appoint existing members with GP Team set_member_moderator {"user": "<email>", "is_moderator": 1 or 0}. Appointment never grants private-Space access.
+- Moderators use GP Discussion or GP Comment hide or delete_spam {"reason": "<reason, at most 500 characters>"}, get_hidden_content to preview, and restore. Public attachments must become private before removal.
+- List removed content with call_method gameplan.moderation.removed_content {"community": "<name>", "doctype": "GP Discussion" or "GP Comment", "start": 0}.
+- Moderators ban participation with call_method gameplan.community_bans.set_ban {"community": "<name>", "user": "<email>", "banned": 1, "reason": "<reason>"}; use banned 0 to lift it. List active bans with gameplan.moderation.community_bans {"community": "<name>"}. Bans preserve reading and survive rejoining.
 - React to a GP Discussion, GP Comment or GP Poll with its react method, args {"operations": [{"emoji": "👍", "operation": "add" or "remove"}]}. Bookmark with add_bookmark and remove_bookmark.
 - Vote with GP Poll submit_vote {"option": "<option title>"}. Undo with retract_vote.
 - Search posts with call_method gameplan.api.search_sqlite, args {"query": "<text>"}.
