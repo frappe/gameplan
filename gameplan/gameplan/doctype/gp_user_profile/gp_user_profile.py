@@ -50,22 +50,17 @@ class GPUserProfile(HasAttachments, Document):
 		self.validate_profile_ownership()
 
 	def validate_profile_ownership(self):
-		"""Only the profile's own user may change it, admins included.
-
-		Runs even when permission checks are bypassed. Changes the system makes on a
-		user's behalf, such as syncing the name and enabled state from User, set
-		`ignore_profile_ownership`.
-		"""
+		"""Only the stored profile owner may edit it; trusted User synchronization opts out."""
 		if (
-			self.is_new()
-			or self.flags.ignore_profile_ownership
+			self.flags.ignore_profile_ownership
 			or frappe.flags.in_install
 			or frappe.flags.in_migrate
 			or frappe.flags.in_fixtures
 		):
 			return
 		user = frappe.session.user
-		if user != "Administrator" and self.user != user:
+		stored_user = None if self.is_new() else frappe.db.get_value(self.doctype, self.name, "user")
+		if user != "Administrator" and (self.user != user or (not self.is_new() and stored_user != user)):
 			frappe.throw("Cannot modify another user's profile", frappe.PermissionError)
 
 	def autoname(self):
@@ -218,8 +213,11 @@ def has_permission(doc, ptype="read", user=None):
 	if isinstance(doc, str):
 		doc = frappe.get_lazy_doc("GP User Profile", doc)
 
-	# A user may only modify their own profile.
-	return bool(doc and doc.user == user)
+	# Otherwise a user may only modify their own profile.
+	if not doc or doc.user != user:
+		return False
+	# Authorize against the stored owner, before accepting client-supplied changes.
+	return doc.is_new() or frappe.db.get_value("GP User Profile", doc.name, "user") == user
 
 
 def create_user_profile(doc, method=None):
@@ -227,8 +225,6 @@ def create_user_profile(doc, method=None):
 		profile = frappe.get_doc(doctype="GP User Profile", user=doc.name)
 		profile.flags.ignore_profile_ownership = True
 		profile.insert(ignore_permissions=True)
-		# get_session_user_profile can create the profile during a GET request, which is not committed.
-		frappe.db.commit()  # nosemgrep: frappe-manual-commit
 
 
 def delete_user_profile(doc, method=None):
@@ -399,6 +395,8 @@ def get_session_user_profile():
 
 	if not frappe.db.exists("GP User Profile", {"user": frappe.session.user}):
 		create_user_profile(frappe.get_doc("User", frappe.session.user))
+		# This fallback can run during a GET, which Frappe would otherwise roll back.
+		frappe.db.commit()  # nosemgrep: frappe-manual-commit
 
 	return frappe.get_doc("GP User Profile", {"user": frappe.session.user})
 
