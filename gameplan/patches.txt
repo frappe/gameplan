@@ -47,3 +47,4 @@ gameplan.gameplan.doctype.gp_user_profile.patches.bind_starter_bento_cards
 gameplan.patches.attach_profile_bento_card_images
 gameplan.gameplan.doctype.gp_reaction.patches.point_reactions_at_their_posts
 gameplan.gameplan.doctype.gp_invitation.patches.hash_invitation_keys
+gameplan.gameplan.doctype.gp_backlink.patches.backfill_backlinks

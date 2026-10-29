@@ -13,6 +13,7 @@ from frappe.utils import cstr
 from gameplan.gameplan.doctype.gp_unread_record.gp_unread_record import GPUnreadRecord
 from gameplan.mixins.archivable import check_if_space_is_archived
 from gameplan.mixins.attachments import HasAttachments
+from gameplan.mixins.backlinks import HasBacklinks
 from gameplan.mixins.mentions import HasMentions
 from gameplan.mixins.reactions import HasReactions
 from gameplan.mixins.tags import HasTags
@@ -23,7 +24,7 @@ from gameplan.utils.document import with_stored_document
 POLL_BLOCK = re.compile(r'<div\b[^>]*\bdata-type="poll"[^>]*>\s*</div>')
 
 
-class GPComment(HasAttachments, HasMentions, HasReactions, HasTags, Document):
+class GPComment(HasAttachments, HasBacklinks, HasMentions, HasReactions, HasTags, Document):
 	on_delete_cascade = ["GP Draft", "GP Poll"]
 	on_delete_set_null = ["GP Notification", "GP Discussion"]
 	mentions_field = "content"
@@ -66,6 +67,7 @@ class GPComment(HasAttachments, HasMentions, HasReactions, HasTags, Document):
 	def before_save(self):
 		self.set_edited_at()
 		self.update_tags()
+		self.update_backlinks()
 
 	def update_discussion_meta(self):
 		if self.reference_doctype != "GP Discussion":
@@ -136,6 +138,7 @@ class GPComment(HasAttachments, HasMentions, HasReactions, HasTags, Document):
 
 	def on_update(self):
 		self.notify_mentions()
+		self.log_backlink_activities()
 		self.attach_files_in_content()
 		self.sync_poll()
 
