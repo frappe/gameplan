@@ -18,6 +18,7 @@ from gameplan.tests.fixtures import (
 	create_task,
 	grant_guest_access,
 )
+from gameplan.visibility import VISIBILITY_MEMBER_ACCESS
 
 
 def list_as_client(doctype, **filters):
@@ -31,7 +32,9 @@ class SupportingDoctypesTestCase(GameplanTestCase):
 	def setUp(self):
 		super().setUp()
 		self.community = create_community("Acme", members=[self.member, self.second_member, self.outsider])
-		self.private_space = create_space("Board", self.community, is_private=1, members=[self.member])
+		self.private_space = create_space(
+			"Board", self.community, visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
 		self.discussion = create_discussion("Plans", self.private_space, owner=self.member)
 
 
@@ -134,7 +137,7 @@ class TestPersonalRows(SupportingDoctypesTestCase):
 		self.assert_not_allowed(feedback, "read", self.second_member)
 		self.assert_not_allowed(feedback, "write", self.member)
 
-	def test_followed_space_is_private_to_its_user(self):
+	def test_followed_space_belongs_to_its_user(self):
 		with self.as_user(self.member):
 			follow = frappe.get_doc(
 				doctype="GP Followed Project",

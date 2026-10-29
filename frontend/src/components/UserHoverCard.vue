@@ -1,5 +1,5 @@
 <template>
-  <slot v-if="userData.name == '_everyone_'" />
+  <slot v-if="userData.name == '_everyone_' || isAnonymous" />
   <HoverCard v-else v-model:open="userCardOpen" side="top" align="center" arrow>
     <template #trigger>
       <slot />
@@ -29,7 +29,8 @@
 <script setup lang="ts">
 import { useUser } from '@/data/users'
 import { HoverCard } from 'frappe-ui'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
+import { isAnonymousVisitor } from '@/utils/publicAccess'
 
 defineOptions({
   inheritAttrs: false,
@@ -42,6 +43,7 @@ const props = defineProps({
   },
 })
 
+const isAnonymous = computed(() => isAnonymousVisitor())
 const userData = useUser(props.user)
 
 function pluralize(count: number, singular: string, plural: string) {

@@ -42,6 +42,7 @@ from gameplan.tests.fixtures import (
 	declared_http_methods,
 )
 from gameplan.tests.search_isolation import guard_real_index
+from gameplan.visibility import VISIBILITY_MEMBER_ACCESS
 
 THUMBS_UP = "\U0001f44d"
 HEART = "\U0001f496"
@@ -367,7 +368,9 @@ class TestReactionsAuthorizeTheStoredPost(ReactionTestCase):
 
 	def setUp(self):
 		super().setUp()
-		private_space = create_space("Leadership", self.community, is_private=1, members=[self.member])
+		private_space = create_space(
+			"Leadership", self.community, visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
 		self.private_discussion = create_discussion("Plans", private_space, owner=self.member)
 		self.react(self.private_discussion, self.member, [add(THUMBS_UP)])
 

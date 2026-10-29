@@ -37,6 +37,7 @@ from gameplan.tests.fixtures import (
 	declared_http_methods,
 	grant_guest_access,
 )
+from gameplan.visibility import VISIBILITY_MEMBER_ACCESS
 
 # A fixed instant to stop a poll at. Far enough ahead that the real clock never reaches
 # it, so a test that forgets to freeze the clock fails instead of passing by accident.
@@ -806,7 +807,9 @@ class TestWhoMayVote(PollTestCase):
 	def setUp(self):
 		super().setUp()
 		# A poll nobody outside the space can reach: only `member` is in this space.
-		self.private_space = create_space("Locked Space", self.community, is_private=1, members=[self.member])
+		self.private_space = create_space(
+			"Locked Space", self.community, visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
 		self.private_discussion = create_discussion("Locked thread", self.private_space, owner=self.member)
 
 	def private_poll(self):
@@ -865,9 +868,11 @@ class TestGuestPollParticipation(GameplanTestCase):
 	def setUp(self):
 		super().setUp()
 		self.community = create_community("Guest Poll Community", members=[self.member])
-		self.space = create_space("Granted Space", self.community, is_private=1, members=[self.member])
+		self.space = create_space(
+			"Granted Space", self.community, visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
 		self.other_space = create_space(
-			"Ungranted Space", self.community, is_private=1, members=[self.member]
+			"Ungranted Space", self.community, visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
 		)
 		grant_guest_access(self.guest, self.space)
 		self.discussion = create_discussion("Guest poll thread", self.space, owner=self.member)

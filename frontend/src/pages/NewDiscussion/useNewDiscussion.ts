@@ -117,7 +117,11 @@ export function useNewDiscussion() {
   })
 
   const canPublish = computed(() =>
-    Boolean(draftData.value?.project && draftData.value?.title?.trim()),
+    Boolean(
+      draftData.value?.project &&
+      canPostInSpace(getSpace(draftData.value.project)) &&
+      draftData.value.title?.trim(),
+    ),
   )
 
   // Keep fast IndexedDB/server restores visually quiet, but expose a real status when a
@@ -136,9 +140,7 @@ export function useNewDiscussion() {
     { immediate: true },
   )
 
-  // `canPostInSpace` is the same predicate the space dialog filters on, so the composer
-  // cannot offer a space the dialog would not: it also rules out read-only mode and guests,
-  // who may comment but never start a discussion anywhere.
+  // Use the same posting rules for the composer, Space pages, and the space dialog.
   const spaceOptions = useGroupedSpaceOptions({ filterFn: canPostInSpace })
 
   // Typing the composer URL is the one way into it without going through the dialog, so

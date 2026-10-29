@@ -10,10 +10,11 @@ import { call } from 'frappe-ui'
 import { session } from './data/session'
 import { users, usersReady } from './data/users'
 import { communities, getCommunity } from './data/communities'
-import { spaces, getSpace } from './data/spaces'
+import { spaces, getSpace, fetchSpace } from './data/spaces'
 import type { Space } from './data/spaces'
 import { communityState } from './data/communityState'
 import { settingsBackgroundPath } from './components/Settings'
+import { isAnonymousVisitor, loginUrl, publicAccessEnabled } from './utils/publicAccess'
 import { shellScrollContainer } from 'frappe-ui'
 
 declare const __FRONTEND_ROUTE__: string
@@ -84,10 +85,11 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/',
     alias: '',
-    component: RouteGuard,
+    component: () => import('@/pages/Teams.vue'),
+    meta: { public: true },
     async beforeEnter() {
       await ensureCommunityDataLoaded()
-      return getHomeRoute()
+      if (!isAnonymousVisitor()) return getHomeRoute()
     },
   },
   {
@@ -113,6 +115,12 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/community/:communityId/moderation',
+    name: 'CommunityModeration',
+    component: () => import('@/pages/CommunityModeration.vue'),
+    props: true,
+  },
+  {
     path: '/community/:communityId',
     redirect: (to) => ({
       name: 'Discussions',
@@ -132,7 +140,10 @@ const routes: RouteRecordRaw[] = [
     path: '/community/:communityId/discussions',
     component: () => import('@/pages/Discussions.vue'),
     props: true,
-    meta: { communityScope: true },
+    // Signed-out visitors get a read-only community forum here. The resolver still
+    // requires the community to be in the public list, and its feed is restricted to
+    // Anonymous spaces by the server.
+    meta: { communityScope: true, public: true },
   },
   {
     name: 'DiscussionsTab',
@@ -241,6 +252,7 @@ const routes: RouteRecordRaw[] = [
     path: '/search',
     name: 'Search',
     component: () => import('@/pages/Search.vue'),
+    meta: { public: true },
   },
   {
     path: '/onboarding',
@@ -279,14 +291,14 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/pages/Space.vue'),
     redirect: { name: 'SpaceDiscussions' },
     props: true,
-    meta: { communityScope: true },
+    meta: { communityScope: true, public: true },
     children: [
       {
         name: 'SpaceDiscussions',
         path: 'discussions',
         component: () => import('@/pages/SpaceDiscussions.vue'),
         props: true,
-        meta: { communityScope: true },
+        meta: { communityScope: true, public: true },
       },
       {
         name: 'SpacePages',
@@ -323,7 +335,7 @@ const routes: RouteRecordRaw[] = [
     path: '/community/:communityId/space/:spaceId/discussion/:postId/:slug?',
     component: () => import('@/pages/SpaceDiscussion.vue'),
     props: true,
-    meta: { communityScope: true, hideMobileNav: true },
+    meta: { communityScope: true, hideMobileNav: true, public: true },
   },
   {
     name: 'NewDiscussion',
@@ -429,6 +441,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/space/:spaceId',
     component: RouteGuard,
+    meta: { public: true },
     async beforeEnter(to) {
       const space = await findSpace(routeParam(to.params.spaceId))
 
@@ -448,6 +461,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/space/:spaceId/discussions',
     component: RouteGuard,
+    meta: { public: true },
     async beforeEnter(to) {
       const space = await findSpace(routeParam(to.params.spaceId))
 
@@ -550,6 +564,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/space/:spaceId/discussion/:postId/:slug?',
     component: RouteGuard,
+    meta: { public: true },
     async beforeEnter(to) {
       const space = await findSpace(routeParam(to.params.spaceId))
 
@@ -743,13 +758,58 @@ router.beforeEach(async (to, from) => {
     return { name: 'Home' }
   }
 
-  if (to.name !== 'Login' && !session.isLoggedIn) {
-    // `href` carries the router base (/g), so login returns the guest to this page.
-    window.location.href =
-      '/login?redirect-to=' + encodeURIComponent(router.resolve(to.fullPath).href)
-    return { name: 'Login' }
+  if (to.name !== 'Login' && !session.isLoggedIn && !isPublicRoute(to)) {
+    return sendToLogin(to)
   }
 
+  // The server resolves a linked reply's page before the public thread loads.
+  if (
+    !session.isLoggedIn &&
+    from.matched.length &&
+    to.name === 'Discussion' &&
+    !to.query.page &&
+    ((to.query.comment && to.query.comment !== 'first_post') || to.query.poll)
+  ) {
+    window.location.href = router.resolve(to).href
+    return false
+  }
+
+  if (!session.isLoggedIn && to.name !== 'Login') {
+    // Reading a public space without signing in. Whatever this visitor cannot see, they
+    // are asked to log in for, the way Discourse does it: the page may well exist for
+    // someone signed in, and "not found" would be the wrong answer.
+    const result = await resolveRoute(to, from)
+    return result && typeof result === 'object' && 'name' in result && result.name === 'NotFound'
+      ? sendToLogin(to)
+      : result
+  }
+
+  return resolveRoute(to, from)
+})
+
+/**
+ * A route someone who is not signed in may open: every record it matches says so with
+ * `meta.public`, and the site has public access switched on. An allowlist on purpose; a
+ * route nobody marked stays behind the login.
+ */
+function isPublicRoute(to: RouteLocationNormalized) {
+  return (
+    publicAccessEnabled() &&
+    to.matched.length > 0 &&
+    to.matched.every((record) => record.meta?.public === true)
+  )
+}
+
+function sendToLogin(to: RouteLocationNormalized) {
+  // `href` carries the router base (/g), so login returns the visitor to this page.
+  window.location.href = loginUrl(router.resolve(to.fullPath).href)
+  return { name: 'Login' }
+}
+
+async function resolveRoute(
+  to: RouteLocationNormalized,
+  from: RouteLocationNormalized,
+): Promise<RouteLocationRaw | undefined> {
   // Wait only for the first load. Gating on `users.isFinished` would also block every
   // navigation behind a background reload of the user list (see `usersReady`).
   if (!usersReady.value) {
@@ -793,6 +853,7 @@ router.beforeEach(async (to, from) => {
   }
 
   if (['/', '/community'].includes(to.path)) {
+    if (to.path === '/' && isAnonymousVisitor() && publicAccessEnabled()) return
     return getHomeRoute()
   }
 
@@ -807,7 +868,7 @@ router.beforeEach(async (to, from) => {
 
   let communityId = routeParam(to.params.communityId)
 
-  let space = to.params.spaceId ? getSpace(routeParam(to.params.spaceId)) : null
+  let space = to.params.spaceId ? await findSpace(routeParam(to.params.spaceId)) : null
 
   if (to.params.spaceId && !space) {
     return { name: 'NotFound' }
@@ -831,12 +892,41 @@ router.beforeEach(async (to, from) => {
   }
 
   communityState.scope(communityId)
+}
+
+// Discard metadata from the previous server-rendered page during app navigation.
+router.afterEach((to, from) => {
+  if (!from.matched.length) return
+  document.querySelectorAll('[data-public-seo]').forEach((element) => element.remove())
+  const indexable =
+    isAnonymousVisitor() &&
+    (to.path === '/' || ['Discussions', 'SpaceDiscussions', 'Discussion'].includes(String(to.name)))
+  const robots = document.createElement('meta')
+  robots.name = 'robots'
+  robots.content = indexable && publicAccessEnabled() ? 'index, follow' : 'noindex, follow'
+  robots.setAttribute('data-public-seo', '')
+  document.head.append(robots)
+  if (indexable && publicAccessEnabled()) {
+    const canonical = document.createElement('link')
+    canonical.rel = 'canonical'
+    const path = router.resolve({
+      ...to,
+      query: to.query.page ? { page: to.query.page } : {},
+      hash: '',
+    }).href
+    canonical.href = new URL(path, window.location.origin).href
+    canonical.setAttribute('data-public-seo', '')
+    document.head.append(canonical)
+  }
 })
 
 export default router
 
 async function ensureCommunityDataLoaded() {
   await Promise.all([waitForResource(communities), waitForResource(spaces)])
+  if (isAnonymousVisitor()) {
+    await until(() => !communities.hasNextPage || Boolean(communities.error)).toBe(true)
+  }
 }
 
 async function waitForResource(resource: ResourceLike) {
@@ -1001,6 +1091,14 @@ async function getProjectContentDoc(doctype: ContentRouteDescriptor['doctype'], 
 
 async function fetchProjectContentDoc(doctype: ContentRouteDescriptor['doctype'], name: string) {
   try {
+    if (isAnonymousVisitor()) {
+      // frappe.client.get needs a signed-in user. The document route is open to
+      // anonymous visitors for what they may read, cleaned on the way out.
+      const response = await fetch(
+        `/api/v2/document/${encodeURIComponent(doctype)}/${encodeURIComponent(name)}`,
+      )
+      return response.ok ? ((await response.json()).data as ProjectContentDoc) : null
+    }
     return await call<ProjectContentDoc>('frappe.client.get', { doctype, name })
   } catch {
     return null
@@ -1025,5 +1123,7 @@ function isCurrentContentRoute(
 
 async function findSpace(spaceId: string): Promise<Space | null> {
   await ensureCommunityDataLoaded()
-  return getSpace(spaceId)
+  const local = getSpace(spaceId)
+  if (local) return local
+  return await fetchSpace(spaceId)
 }

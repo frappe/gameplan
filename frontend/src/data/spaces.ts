@@ -1,10 +1,17 @@
-import { computed, MaybeRefOrGetter, toValue } from 'vue'
-import { useCall, useList, useDoctype, dialog } from 'frappe-ui'
+import { computed, MaybeRefOrGetter, toValue, watch } from 'vue'
+import { call, dialog, useCall, useDoctype, useList } from 'frappe-ui'
 import { GPProject, GPMember } from '@/types/doctypes'
 import { getProjectUnreadCount, markSpacesAsRead } from './unreadCount'
 import { useSessionUser } from './users'
-import { canManageSpace, isGuest } from '@/utils/permissions'
+import {
+  canManageSpace,
+  canMoveContentToSpace,
+  isCommunityBanned,
+  isGuest,
+} from '@/utils/permissions'
 import { readOnlyMode } from './readOnlyMode'
+import { isMemberAccess } from '@/utils/visibility'
+import { isAnonymousVisitor, publicListUrl } from '@/utils/publicAccess'
 
 interface Member extends Pick<GPMember, 'user'> {}
 
@@ -15,7 +22,7 @@ export interface Space extends Pick<
   | 'icon'
   | 'team'
   | 'archived_at'
-  | 'is_private'
+  | 'visibility'
   | 'modified'
   | 'tasks_count'
   | 'discussions_count'
@@ -26,22 +33,23 @@ export interface Space extends Pick<
 
 export let spaces = useList<Space>({
   doctype: 'GP Project',
+  url: publicListUrl('GP Project'),
   fields: [
     'name',
     'title',
     'icon',
     'team',
     'archived_at',
-    'is_private',
+    'visibility',
     'modified',
-    'tasks_count',
     'discussions_count',
-    'team.title as team_title',
+    // Anonymous lists cannot read task counts or joined community titles.
+    ...(!isAnonymousVisitor() ? ['tasks_count', 'team.title as team_title'] : []),
     { members: ['user'] },
   ],
   initialData: [],
   orderBy: 'title asc',
-  limit: 99999,
+  limit: isAnonymousVisitor() ? 1000 : 99999,
   cacheKey: 'spaces',
   transform(data) {
     for (let space of data) {
@@ -51,6 +59,19 @@ export let spaces = useList<Space>({
   },
   immediate: true,
 })
+
+// Anonymous visitors read from gameplan.public_lists.spaces, which clamps pages to 1,000.
+// Load remaining pages sequentially so links, sidebars, and searches cover all public spaces.
+if (isAnonymousVisitor()) {
+  watch(
+    () => [spaces.isFinished, spaces.hasNextPage] as const,
+    ([isFinished, hasNextPage]) => {
+      if (isFinished && hasNextPage && !spaces.loading) {
+        spaces.next()
+      }
+    },
+  )
+}
 
 export function useSpace(name: MaybeRefOrGetter<string | undefined>) {
   return computed(() => {
@@ -83,6 +104,12 @@ export function useSpacePermissions(spaceId: MaybeRefOrGetter<string | undefined
   const isGuestUser = computed(() => isGuest(sessionUser))
   const canEditSpace = computed(() => !readOnlyMode && !isArchived.value)
   const canManageAccess = computed(() => !readOnlyMode && canManageSpace(space.value, sessionUser))
+  const canUnarchive = computed(
+    () =>
+      canManageAccess.value &&
+      Boolean(space.value) &&
+      canMoveContentToSpace(null, { ...space.value!, archived_at: null }, sessionUser),
+  )
   // Renaming a space, moving it, merging it, archiving or deleting it are all writes
   // on GP Project, which the backend gates with can_manage_space. canEditSpace only
   // says the space is writable at all (not archived, not read-only), so it is never
@@ -96,6 +123,7 @@ export function useSpacePermissions(spaceId: MaybeRefOrGetter<string | undefined
     canEditSpace,
     canEditSettings,
     canManageAccess,
+    canUnarchive,
     canChangeMembership,
     canMoveDiscussions,
   }
@@ -112,17 +140,63 @@ export function useSpacePermissions(spaceId: MaybeRefOrGetter<string | undefined
  * they were granted. Pages and tasks stay closed to guests; they are gated separately.
  */
 export function canPostInSpace(space: Space | null | undefined) {
-  return Boolean(space && !readOnlyMode && !space.archived_at)
+  return Boolean(
+    space &&
+    !readOnlyMode &&
+    !space.archived_at &&
+    !isCommunityBanned(space.team, useSessionUser()),
+  )
 }
 
 export function getSpace(name: string) {
   return spaces.data?.find((space) => space.name.toString() === name.toString()) ?? null
 }
 
+const spaceRequests = new Map<string, Promise<Space | null>>()
+
+export async function fetchSpace(name: string): Promise<Space | null> {
+  const existing = getSpace(name)
+  if (existing) return existing
+
+  const key = String(name)
+  const inFlight = spaceRequests.get(key)
+  if (inFlight) return inFlight
+
+  const request = (async () => {
+    try {
+      let doc: Space | undefined
+      if (isAnonymousVisitor()) {
+        const response = await fetch(`/api/v2/document/GP%20Project/${encodeURIComponent(name)}`)
+        if (!response.ok) return null
+        doc = (await response.json()).data
+      } else {
+        doc = await call<Space>('frappe.client.get', { doctype: 'GP Project', name })
+      }
+      if (!doc?.name) return null
+      doc.name = doc.name.toString()
+      if (!doc.members) doc.members = []
+      if (spaces.data && !spaces.data.some((s) => s.name.toString() === doc.name.toString())) {
+        spaces.data.push(doc)
+      }
+      return doc
+    } catch {
+      return null
+    }
+  })()
+
+  spaceRequests.set(key, request)
+  request.finally(() => {
+    window.setTimeout(() => spaceRequests.delete(key), 1000)
+  })
+  return request
+}
+
 export const joinedSpaces = useCall<string[]>({
   url: '/api/v2/method/GP Project/get_joined_spaces',
   cacheKey: 'joinedSpaces',
   initialData: [],
+  // Nobody signed in has joined anything.
+  immediate: !isAnonymousVisitor(),
 })
 
 export function hasJoined(spaceId: MaybeRefOrGetter<string>) {
@@ -176,8 +250,8 @@ export function leaveSpace(space: Space) {
 export function confirmLeaveSpace(space: Space) {
   dialog.confirm({
     title: `Leave "${space.title}"?`,
-    message: space.is_private
-      ? "This space is private. You won't be able to rejoin unless a member adds you back."
+    message: isMemberAccess(space.visibility)
+      ? "Only its members can see this space. You won't be able to rejoin unless a member adds you back."
       : 'You can rejoin at any time.',
     confirmLabel: 'Leave',
     onConfirm: () => leaveSpace(space),
