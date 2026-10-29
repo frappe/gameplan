@@ -11,8 +11,10 @@ from gameplan.tests.fixtures import (
 	create_comment,
 	create_community,
 	create_discussion,
+	create_page,
 	create_poll,
 	create_space,
+	create_task,
 )
 from gameplan.tests.search_isolation import IsolatedSearchIndex
 from gameplan.visibility import VISIBILITY_ANONYMOUS, VISIBILITY_MEMBER_ACCESS
@@ -292,3 +294,44 @@ class TestModerationCore(IsolatedSearchIndex, GameplanTestCase):
 				attached_to_doctype="GP Comment",
 				attached_to_name=self.reply.name,
 			).insert(ignore_permissions=True)
+
+	def test_banned_uploader_can_read_but_cannot_delete_community_attachments(self):
+		from frappe.client import delete
+
+		parents = [
+			self.discussion,
+			self.reply,
+			create_poll("Attached poll", self.discussion),
+			create_task("Attached task", self.space),
+			create_page("Attached page", self.space),
+		]
+		files = []
+		with self.as_user(self.outsider):
+			for parent in parents:
+				file = frappe.get_doc(
+					doctype="File",
+					file_name=f"{parent.doctype}.txt",
+					content=f"Attachment on {parent.doctype}",
+					is_private=1,
+					attached_to_doctype=parent.doctype,
+					attached_to_name=parent.name,
+				).insert(ignore_permissions=True)
+				files.append(file)
+				self.addCleanup(
+					lambda name=file.name: frappe.delete_doc("File", name, ignore_permissions=True)
+				)
+		self.ban()
+		with self.as_user(self.outsider):
+			for file in files:
+				with self.subTest(parent=file.attached_to_doctype):
+					self.assertTrue(file.is_downloadable())
+					self.assertIn(file.attached_to_doctype, file.get_content())
+					with self.assertRaises(frappe.PermissionError):
+						delete("File", file.name)
+					self.assertTrue(frappe.db.exists("File", file.name))
+		with self.as_user(self.second_member):
+			set_ban(self.community.name, self.outsider.name, 0)
+		with self.as_user(self.outsider):
+			for file in files:
+				delete("File", file.name)
+				self.assertFalse(frappe.db.exists("File", file.name))
