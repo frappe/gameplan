@@ -82,6 +82,7 @@ import { isGameplanAdmin, useSessionUser } from '@/data/users'
 import { session } from '@/data/session'
 import { useIsMobile } from '@/utils/useIsMobile'
 import { useTheme, type Theme } from '@/utils/useTheme'
+import { WINDOW_OPTIONS, offlineWindow } from '@/data/offlineDownloads'
 
 interface MoreItem {
   label: string
@@ -129,6 +130,9 @@ const avatarStyle = computed(() => ({
   backgroundColor: sessionUser.image_background_color || undefined,
 }))
 const userBio = computed(() => sessionUser.bio?.trim())
+const offlineLabel = computed(
+  () => WINDOW_OPTIONS.find((option) => option.value === offlineWindow.value)?.label,
+)
 
 const itemGroups = computed<MoreItemGroup[]>(() => {
   const workspaceItems: MoreItem[] = [
@@ -195,6 +199,16 @@ const itemGroups = computed<MoreItemGroup[]>(() => {
           onClick: cycleTheme,
           value: THEME_META[currentTheme.value].label,
         },
+        ...(sessionUser.isGuest
+          ? []
+          : [
+              {
+                label: 'Offline',
+                icon: 'lucide-cloud-download',
+                route: { name: 'OfflineSettings' },
+                value: offlineLabel.value,
+              },
+            ]),
         {
           label: 'Log out',
           icon: 'lucide-log-out',

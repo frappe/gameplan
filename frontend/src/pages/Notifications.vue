@@ -129,6 +129,13 @@
       </ListRow>
     </List>
 
+    <OfflineContentFallback
+      v-else-if="loadFailure"
+      class="mx-auto mt-6 max-w-2xl px-6"
+      v-bind="loadFailure"
+      @retry="activeList.reload()"
+    />
+
     <div
       v-else
       class="mx-4 rounded-4 border border-dashed border-outline-gray-2 px-6 py-12 text-center sm:mx-3"
@@ -152,18 +159,22 @@ import {
   Tooltip,
   Breadcrumbs,
   dayjsLocal,
-  dialog,
+  usePageMeta,
   useCall,
   useList,
-  usePageMeta,
+  dialog,
 } from 'frappe-ui'
 import { List, ListRow, ListCell } from 'frappe-ui/list'
 import ListRowSkeleton from '@/components/ListRowSkeleton.vue'
+import OfflineContentFallback from '@/components/OfflineContentFallback.vue'
 import ReactionFaceIcon from '@/components/ReactionFaceIcon.vue'
 import UserAvatarWithHover from '@/components/UserAvatarWithHover.vue'
 import { getCommunity } from '@/data/communities'
 import { onRemoteNotificationChange, unreadNotifications } from '@/data/notifications'
 import { getSpace } from '@/data/spaces'
+import { useLoadFailure } from '@/data/loadFailure'
+import { isOnline } from '@/data/online'
+import { refuseOffline } from '@/data/offline/requests'
 import { useSessionUser } from '@/data/users'
 import type { GPNotification } from '@/types/doctypes'
 
@@ -254,6 +265,7 @@ const activeList = computed(() =>
   activeTab.value === 'Unread' ? unreadNotificationList : readNotificationList,
 )
 const isInitialLoading = computed(() => activeList.value.loading && !activeList.value.data?.length)
+const loadFailure = useLoadFailure(activeList, 'notifications')
 
 const emptyStateTitle = computed(() =>
   activeTab.value === 'Unread' ? "You're caught up" : 'No read notifications',
@@ -266,12 +278,14 @@ const emptyStateDescription = computed(() =>
 )
 
 function openNotification(notification: NotificationRow) {
-  if (!notification.read && notificationRoute(notification)) {
+  // Still navigate offline to whatever is cached; the read flag waits until the next visit.
+  if (!notification.read && isOnline.value && notificationRoute(notification)) {
     markAsRead(notification.name)
   }
 }
 
 function markAsRead(name: string) {
+  if (refuseOffline()) return
   // No `unreadNotificationList.reload()` here: `setValue` already re-runs its own list on
   // success. Asking for it twice aborted the first request, which left the abort error
   // parked in the list's `error` ref.

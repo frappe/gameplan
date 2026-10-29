@@ -2,6 +2,7 @@ import { computed, inject, provide, reactive, shallowReactive, unref, toValue } 
 import type { InjectionKey, MaybeRefOrGetter } from 'vue'
 import type { GPReaction } from '@/types/doctypes'
 import { toast, useCall } from 'frappe-ui'
+import { refuseOffline } from './offline/requests'
 import { currentQuickReactionEmojis } from './reactionPreferences'
 import { session } from './session'
 import { useUser } from './users'
@@ -161,7 +162,7 @@ export function useReactions(options: UseReactionsOptions) {
   }
 
   const toggleReaction = (emoji: string) => {
-    if (readOnlyMode.value) return
+    if (readOnlyMode.value || refuseOffline()) return
     const wanted = !displayedState(emoji)
     // Toggling back before the batch goes out cancels the tap instead of sending it.
     if (wanted === settledState(emoji)) {

@@ -10,7 +10,7 @@
             type="text"
             placeholder="Title"
             class="-ml-0.5 w-full rounded-1 border-none p-0.5 text-3xl-semibold bg-surface-base text-ink-gray-8 focus:outline-none focus:ring-2 focus:ring-outline-gray-3"
-            :readonly="!canEditTask"
+            :readonly="!canWriteTask"
             @blur="
               canEditTask
                 ? setTaskValue({ title: ($event.target as HTMLInputElement).value })
@@ -36,7 +36,7 @@
           editor-class="prose-v3 max-w-none focus-within:ring-2 focus-within:ring-outline-gray-3 rounded-1 p-0.5 -ml-0.5 min-h-[4rem]"
           placeholder="Description"
           :content="task.doc.description"
-          :editable="canEditTask"
+          :editable="canWriteTask"
           @blur="
             canEditTask && !$refs.description.editor.isEmpty
               ? setTaskValue({ description: $refs.description.editor.getHTML() })
@@ -167,6 +167,12 @@
       </div>
     </div>
   </div>
+  <OfflineContentFallback
+    v-else-if="loadFailure"
+    class="mx-auto mt-14 max-w-2xl px-6"
+    v-bind="loadFailure"
+    @retry="task.reload()"
+  />
 </template>
 
 <script setup lang="ts">
@@ -177,6 +183,7 @@ import CommentsList from '@/components/CommentsList.vue'
 import TaskStatusIcon from '@/components/NewTaskDialog/TaskStatusIcon.vue'
 import TaskPriorityIcon from '@/components/icons/TaskPriorityIcon.vue'
 import DropdownMoreOptions from './DropdownMoreOptions.vue'
+import OfflineContentFallback from './OfflineContentFallback.vue'
 import {
   LoadingText,
   DatePicker,
@@ -199,6 +206,8 @@ import { useSessionUser } from '@/data/users'
 import { canDeleteContent, canEditContent } from '@/utils/permissions'
 import { spaces } from '@/data/spaces'
 import { useCommandPaletteCommands } from './CommandPalette/registry'
+import { isOnline } from '@/data/online'
+import { useLoadFailure } from '@/data/loadFailure'
 
 const props = defineProps<{
   taskId: string
@@ -210,10 +219,12 @@ const route = useRoute()
 
 const task = useTask(() => props.taskId)
 provideThreadReactions('GP Task', props.taskId)
+const loadFailure = useLoadFailure(task, 'this task')
 const space = computed(() => getSpace(task.doc?.project))
 const canEditTask = computed(
   () => !props.readOnlyMode && canEditContent(task.doc, space.value, useSessionUser()),
 )
+const canWriteTask = computed(() => canEditTask.value && isOnline.value)
 
 function setTaskValue(values: Parameters<typeof task.setValue.submit>[0]) {
   task.setValue.submit(values).catch(showSaveError)

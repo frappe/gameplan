@@ -66,10 +66,9 @@ import { computed, watch } from 'vue'
 import { useRouter, type RouteLocationRaw } from 'vue-router'
 import MobileListRow from '@/components/MobileListRow.vue'
 import SpaceIcon from '@/components/SpaceIcon.vue'
+import { type FeedType } from '@/data/discussions'
 import { getSpaceUnreadCount, spaces } from '@/data/spaces'
 import { fetchParticipatingUnreadCount, getParticipatingUnreadCount } from '@/data/unreadCount'
-
-type FeedType = 'recent' | 'unread' | 'participating'
 
 interface Props {
   communityId: string
