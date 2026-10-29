@@ -83,8 +83,11 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		self.remove_all_bookmarks()
 		self.remove_all_activities()
 		self.remove_all_reactions()
-		self.update_discussions_count()
 		GPUnreadRecord.delete_unread_records_for_discussion(self.name)
+
+	def after_delete(self):
+		# Not in on_trash: that runs before the row is deleted, so the count would still include it.
+		self.update_discussions_count()
 
 	def validate(self):
 		self.sanitize_content()
