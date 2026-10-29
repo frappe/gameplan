@@ -1,11 +1,13 @@
 import { useCall } from 'frappe-ui'
 import { useDebounceFn } from '@vueuse/core'
 import { onSocketEvent, onSocketReconnect, runEach } from '@/socket'
+import { isAnonymousVisitor } from '@/utils/publicAccess'
 
 export let unreadNotifications = useCall({
   cacheKey: 'Unread Notifications Count',
   url: '/api/v2/method/gameplan.api.unread_notifications',
   initialData: 0,
+  immediate: !isAnonymousVisitor(),
 })
 
 const listeners = new Set<() => void>()
@@ -43,7 +45,7 @@ export function onRemoteNotificationChange(handler: () => void) {
 onSocketEvent(
   'gameplan:notification_count_changed',
   useDebounceFn(({ count }) => {
-    if (count === unreadNotifications.data) return
+    if (isAnonymousVisitor() || count === unreadNotifications.data) return
     // Reloaded rather than taken from the event: `data` is a computed inside useCall, and a
     // single fetched count keeps the badge and the lists reading the same server state.
     unreadNotifications.reload()
@@ -53,6 +55,7 @@ onSocketEvent(
 
 // Same rule as the event above: open lists refresh only when the count actually moved.
 onSocketReconnect(async () => {
+  if (isAnonymousVisitor()) return
   const countBefore = unreadNotifications.data
   await unreadNotifications.reload()
   if (unreadNotifications.data !== countBefore) runEach(listeners, 'Notification change listener')

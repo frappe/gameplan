@@ -12,8 +12,12 @@ from frappe.utils import cint, split_emails, validate_email_address
 import gameplan
 from gameplan.gameplan.doctype.gp_invitation.gp_invitation import get_invitation, grant_access
 from gameplan.realtime import notify_notification_count_changed, unread_notification_count
-from gameplan.roles import GAMEPLAN_ROLES
+from gameplan.roles import GAMEPLAN_ROLES, has_app_access
 from gameplan.utils import validate_type
+from gameplan.visibility import (
+	VISIBILITY_GENERAL,
+	VISIBILITY_MEMBER_ACCESS,
+)
 
 
 def require_admin():
@@ -27,9 +31,17 @@ def get_user_info(user=None):
 	"""Return Gameplan users with role, profile and recent activity counts. Pass `user` for one."""
 	if frappe.session.user == "Guest":
 		frappe.throw("Authentication failed", exc=frappe.AuthenticationError)
+	if not has_app_access():
+		frappe.throw("Not permitted", frappe.PermissionError)
 
 	filters = {"roles.role": ["like", "Gameplan %"]}
 	if user:
+		if gameplan.is_guest() and user != frappe.session.user:
+			from gameplan.guest_payload import users_for_handles
+
+			user = users_for_handles([user]).get(user)
+			if not user:
+				frappe.throw("Use a profile handle to look up another user.", frappe.PermissionError)
 		filters["name"] = user
 
 	users = frappe.qb.get_query(
@@ -120,8 +132,67 @@ def get_user_info(user=None):
 	if gameplan.is_guest():
 		for user in users:
 			user.pop("email", None)
+		from gameplan.guest_payload import for_guest
+
+		users = for_guest(users)
 
 	return users
+
+
+@frappe.whitelist(allow_guest=True)
+def get_public_user_info(handles=None):
+	"""Name and avatar for authors of public content, by profile handle.
+
+	What a person who is not signed in gets in place of get_user_info, which stays closed
+	to them: no email, no role, no bio, and only for people whose handle a public page
+	already shows. See gameplan.public_payload.public_profiles.
+	"""
+	from gameplan.public_payload import public_profiles
+
+	handles = frappe.parse_json(handles)
+	if not isinstance(handles, list):
+		frappe.throw(_("handles must be a list"))
+	return public_profiles(handles)
+
+
+@frappe.whitelist(allow_guest=True, methods=["GET"])
+def public_file(fid=None):
+	"""Serve a private file attached to something the caller can read, by File name.
+
+	frappe refuses every /private/files/ request with nobody signed in, so an image in a
+	public post would not load for the people it is public to. This serves exactly one
+	File, named by its `name` (never by a path the caller supplies), when it is attached
+	to a Gameplan document the caller may read. That read check is the same one the
+	document itself passes, so a space leaving the Anonymous tier closes its images in
+	the same moment it closes its posts. Public post bodies point here instead of at
+	/private/files/ (see gameplan.public_payload).
+	"""
+	from frappe.utils.response import send_private_file
+
+	from gameplan.public_access import public_access_enabled
+	from gameplan.public_payload import public_doctypes
+
+	file = fid and frappe.db.get_value(
+		"File",
+		{"name": fid, "is_private": 1},
+		["file_url", "file_name", "attached_to_doctype", "attached_to_name"],
+		as_dict=True,
+	)
+	if (
+		not public_access_enabled()
+		or not file
+		or not (file.file_url or "").startswith("/private/files/")
+		or ".." in file.file_url
+		or file.attached_to_doctype not in public_doctypes()
+		or not file.attached_to_name
+		or not frappe.has_permission(file.attached_to_doctype, "read", doc=file.attached_to_name)
+	):
+		frappe.throw(_("You don't have permission to access this file"), frappe.PermissionError)
+
+	response = send_private_file(file.file_url.split("/private", 1)[1], filename=file.file_name)
+	# Never in a shared cache: the next reader may not be allowed to see it.
+	response.headers["Cache-Control"] = "private, max-age=300"
+	return response
 
 
 @frappe.whitelist(methods=["POST"])
@@ -337,13 +408,18 @@ def mark_all_notifications_as_read():
 
 
 @frappe.whitelist(methods=["POST"])
-def onboarding(community, space, icon, emails, is_private=0):
-	"""Create the first Community and Space on a new site and invite `emails` (list)."""
+def onboarding(community, space, icon, emails, *, visibility: str = VISIBILITY_GENERAL):
+	"""Create the first Community and Space with a visibility tier, then invite `emails`."""
 	# Onboarding sets up a brand-new site. After that, communities and invitations go
 	# through their own screens and checks.
 	if not gameplan.is_new_site():
 		frappe.throw(_("This site is already set up"), frappe.PermissionError)
 
+	# Frappe drops unknown RPC arguments, so reject the old key before creating anything.
+	if "is_private" in frappe.form_dict:
+		frappe.throw(_("is_private is no longer accepted. Set visibility instead."))
+	if visibility not in (VISIBILITY_GENERAL, VISIBILITY_MEMBER_ACCESS):
+		frappe.throw(_("Onboarding visibility must be General or Member Access."))
 	emails = frappe.parse_json(emails)
 
 	# Create the community. The GP Team after_insert hook auto-creates a public
@@ -357,7 +433,7 @@ def onboarding(community, space, icon, emails, is_private=0):
 
 	# Create the user-named first space in addition to "General".
 	project = frappe.get_doc(
-		doctype="GP Project", title=space, icon=icon, team=team.name, is_private=is_private
+		doctype="GP Project", title=space, icon=icon, team=team.name, visibility=visibility
 	).insert()
 
 	# The signup creator invites their first teammates. The creator may not be an admin
@@ -368,30 +444,26 @@ def onboarding(community, space, icon, emails, is_private=0):
 	return {"team": team.name, "space": project.name}
 
 
-@frappe.whitelist()
-def search_sqlite(query, filters=None):
-	"""Full-text search discussions and comments. `filters` is an optional dict."""
-	from gameplan.search_sqlite import GameplanSearch
+@frappe.whitelist(allow_guest=True, methods=["GET", "POST"])
+@validate_type
+def search_sqlite(query: str, filters: dict | str | None = None):
+	"""Search discussions and replies within the current viewer's access."""
+	from gameplan.public_search import search_for_viewer, validate_search_filters
 
-	search = GameplanSearch()
-
-	# Parse filters if provided as JSON string
-	if filters and isinstance(filters, str):
-		import json
-
-		filters = json.loads(filters)
-
-	result = search.search(query, filters=filters)
-	return result
+	anonymous = gameplan.is_anonymous()
+	guest = gameplan.is_guest()
+	search = search_for_viewer()
+	if not (anonymous or guest):
+		filters = validate_search_filters(filters)
+	return search.search(query, filters=filters)
 
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True, methods=["GET", "POST"])
 def get_search_filter_options():
 	"""Get available filter options for advanced search"""
-	from gameplan.search_sqlite import GameplanSearch
+	from gameplan.public_search import search_for_viewer
 
-	search = GameplanSearch()
-	return search.get_filter_options()
+	return search_for_viewer().get_filter_options()
 
 
 def can_access_gameplan():

@@ -14,7 +14,9 @@ from gameplan.permissions import (
 	content_has_permission,
 	poll_query_conditions,
 )
+from gameplan.public_payload import for_viewer
 from gameplan.utils.document import with_stored_document
+from gameplan.visibility import is_anonymous_eligible_discussion, require_admin_to_publish
 
 from .gp_poll_attributes import GPPollAttributes
 
@@ -61,6 +63,9 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 
 	on_delete_set_null = ["GP Discussion", "GP Notification"]
 
+	def as_dict(self, *args, **kwargs):
+		return for_viewer(self.doctype, super().as_dict(*args, **kwargs))
+
 	def before_insert(self):
 		self.check_if_discussion_is_closed()
 		self.check_comment()
@@ -103,6 +108,12 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 	def validate(self):
 		self.check_comment_unchanged()
 		self.check_results_unchanged()
+		before = self.get_doc_before_save()
+		if before and self.has_value_changed("discussion"):
+			require_admin_to_publish(
+				is_anonymous_eligible_discussion(before.discussion),
+				is_anonymous_eligible_discussion(self.discussion),
+			)
 		self.total_votes = len(self.votes)
 
 	def check_comment_unchanged(self):
