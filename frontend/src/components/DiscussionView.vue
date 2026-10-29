@@ -175,6 +175,7 @@
               @save="updatePost"
               @discard="cancelEdit"
             />
+            <ErrorMessage v-if="editingPost" class="mt-2" :message="postDiscardError" />
           </div>
           <div class="mt-3" v-show="!editingPost">
             <Reactions
@@ -482,6 +483,7 @@ function scrollToQuotingComment(commentId: string) {
 }
 
 const editingPost = ref(false)
+const postDiscardError = ref(null)
 // snapshot of title/content captured when edit mode opens, so we can detect
 // unsaved changes and confirm before discarding them
 const editSnapshot = ref<{ title: string; content: string } | null>(null)
@@ -734,12 +736,16 @@ function isPostDirty() {
   )
 }
 
-function closeEditor() {
-  editingPost.value = false
-  editSnapshot.value = null
-  // Explicit discard throws the draft away (navigating away would keep it instead).
-  postDraft.clear()
-  discussion.reload()
+async function closeEditor() {
+  postDiscardError.value = null
+  try {
+    if (!(await postDraft.clear())) return
+    editingPost.value = false
+    editSnapshot.value = null
+    discussion.reload()
+  } catch (error) {
+    postDiscardError.value = error
+  }
 }
 
 function cancelEdit() {
@@ -759,6 +765,7 @@ function cancelEdit() {
 
 function updatePost() {
   if (!editingPost.value || !canSavePost.value) return
+  postDiscardError.value = null
   // Show the new title at once instead of the old one until the server answers.
   const title = postDraftData.value?.title
   const previousTitle = discussion.doc?.title
