@@ -1,6 +1,8 @@
 <template>
   <Dialog v-model:open="open" :title="title" size="6xl" bare :dismissible="!busy">
-    <div class="flex h-[48rem] max-h-[calc(100dvh-4rem)] flex-col text-ink-gray-9">
+    <div
+      class="moderation-review-dialog flex h-[48rem] max-h-[calc(100dvh-2rem)] flex-col text-ink-gray-9"
+    >
       <header
         class="flex shrink-0 items-center justify-between gap-4 border-b border-outline-gray-2 px-5 py-4"
       >
@@ -12,16 +14,19 @@
       <div class="flex min-h-0 flex-1 flex-col md:flex-row">
         <aside
           v-if="$slots.sidebar"
-          class="max-h-[35vh] shrink-0 overflow-y-auto border-b border-outline-gray-2 bg-surface-gray-1 p-5 md:order-last md:max-h-none md:w-80 md:border-b-0 md:border-l"
+          class="max-h-[35vh] shrink-0 border-b border-outline-gray-2 bg-surface-gray-1 md:order-last md:max-h-none md:w-80 md:border-b-0 md:border-l"
         >
-          <slot name="sidebar" />
+          <ScrollArea
+            class="max-h-[35vh] md:max-h-none"
+            viewport-class="max-h-[35vh] p-5 md:max-h-none"
+          >
+            <slot name="sidebar" />
+          </ScrollArea>
         </aside>
-        <main
-          ref="content"
-          class="min-h-0 min-w-0 flex-1 overflow-y-auto p-5 sm:p-6"
-          data-testid="review-content"
-        >
-          <slot />
+        <main class="min-h-0 min-w-0 flex-1" data-testid="review-content">
+          <ScrollArea ref="content" class="h-full min-h-0" viewport-class="h-full p-5 sm:p-6">
+            <slot />
+          </ScrollArea>
         </main>
       </div>
       <footer
@@ -35,13 +40,22 @@
 </template>
 <script setup lang="ts">
 import { nextTick, ref, watch } from 'vue'
-import { Button, Dialog } from 'frappe-ui'
+import { Button, Dialog, ScrollArea } from 'frappe-ui'
 import { DialogTitle } from 'reka-ui'
 const props = defineProps<{ title: string; busy?: boolean; contentKey?: string }>()
 const open = defineModel<boolean>('open', { default: false })
-const content = ref<HTMLElement | null>(null)
+const content = ref<{ viewportElement: HTMLElement | null } | null>(null)
 watch([open, () => props.contentKey], async () => {
   await nextTick()
-  content.value?.scrollTo({ top: 0 })
+  content.value?.viewportElement?.scrollTo({ top: 0 })
 })
 </script>
+<style>
+.dialog-scroll-container:has(.moderation-review-dialog) {
+  overflow: hidden;
+}
+
+.dialog-content:has(.moderation-review-dialog) {
+  margin-block: 0;
+}
+</style>
