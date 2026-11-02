@@ -31,6 +31,9 @@ A recommendation becomes a decision only after Ebrahim accepts it.
 | D19 | Add a moderator-only Removed content view per Community with preview and Restore. | Ordinary feeds/search omit removed discussions; direct access shows a neutral unavailable message. Replies show neutral placeholders. Private-Space restrictions still apply. |
 | D20 | Delete spam requires a reason and affects only the selected reply or discussion. | Preserve descendants/files and closed/pinned state for restoration without new notifications. Do not automatically ban the author or remove other posts. Ordinary Delete remains separate. |
 | D21 | Build T26 moderation history in a separate PR after the T27 review fixes. | Reuse the immutable log for discussion/reply action history and Community-scoped user ban/unban history. Include actor, time, reason, pagination, existing moderator/private-Space access rules, frontend, and tests. |
+| D22 | History uses a tab in Community moderation, filters for posts or users, and links in post menus. | Show action, actor, time, reason, and target. Original hidden text stays behind existing restricted Preview. Retain permanent, read-only records. |
+| D23 | Post history follows current target access after moves. | Moderators need current Community and private-Space access. Permanently deleted targets disappear from Community history while their logs remain restricted for global admins. Hidden/spam-removed targets remain visible to authorized moderators. |
+| D24 | Push the T26 branch now and open its separate upstream PR after #621 merges. | Keep T26 out of #621 and avoid including its unmerged foundation in the new PR diff. |
 | D25 | Start T16 reporting and a basic Pending/Resolved moderator queue with manual decisions. | Discussion and reply reporting ships end to end. Automatic hiding, trust weighting, and migration remain separate. |
 | D26 | Members and invited Guests may report accessible content unless banned from participating in its Community. | Anonymous reports, self-reports, and reports on already hidden/removed targets are excluded. |
 | D27 | Report reasons are Spam, Abuse/inappropriate, Off-topic, AI-generated, and Other. | Notes are optional, limited to 500 characters, and required for Other. Reasons trigger manual review only. |
@@ -96,7 +99,6 @@ Tests: `gameplan/tests/features/test_moderators.py` and `frontend/cypress/e2e/co
 Plan these when their implementation slice is next. Roadmap recommendations do not settle them.
 
 - Ordinary members' editing rights and whether a Community can opt into forum-specific rules.
-- Audit history UI and retention policy.
 - Temporary bans, automatic expiry, and separate silence behavior.
 - Approval rules, posting limits, slow mode, watched-word matching, and censor behavior.
 - Bulk actions outside report review, background processing, and batch undo behavior.
@@ -129,6 +131,14 @@ Keep unresolved questions and implementation choices distinct from confirmed pro
 - Each decision uses a separate request through the existing resolver. Permissions, current content, removal state, and review status are checked again. Successful decisions remain committed when another item fails.
 - The dialog shows progress and per-item results. Failed items require selection and a fresh preview before retry. Leaving the page stops unsent requests; there is no background resume. An in-flight decision can still finish.
 - Verification passed: seven bulk-review backend tests, 12 existing reporting tests, three bulk-review browser tests, four existing reporting browser tests, formatting/lint, and the frontend build. Local verification uses the disposable SQLite site; MariaDB concurrency remains covered by the existing CI suite.
+
+## T26 implementation notes
+
+- Community moderation has a History tab and post-menu links, with target-type and exact post/user filters.
+- A scoped read-only endpoint returns action metadata in deterministic pages of 40 records. It never returns stored bodies or original titles.
+- User filtering covers Community Ban/Unban history. Discussion/reply history uses the target's current Space permissions, including after moves.
+- Missing targets remain in restricted log storage and do not consume Community history pages. Existing raw-log permissions remain unchanged.
+- Verified on the disposable site: 68 backend tests, seven browser tests, formatting, lint, and frontend build.
 ## Forum-scale moderation and review usability — November 2
 
 Confirmed by Ebrahim:
