@@ -1,22 +1,24 @@
 <template>
   <div class="text-ink-gray-9">
     <template v-if="canModerate">
-      <div class="mb-4 flex justify-end">
+      <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <TabButtons
+          v-model="tab"
+          class="shrink-0"
+          :options="[
+            { label: 'Removed content', value: 'removed' },
+            { label: 'Community bans', value: 'bans' },
+            { label: 'Reports', value: 'reports' },
+            { label: 'Approvals', value: 'approvals' },
+          ]"
+        />
         <ApprovalSettings
           v-if="canManageCommunity(community, useSessionUser())"
           :key="communityId"
           :community-id="communityId"
+          class="ml-auto shrink-0"
         />
       </div>
-      <TabButtons
-        v-model="tab"
-        :options="[
-          { label: 'Removed content', value: 'removed' },
-          { label: 'Community bans', value: 'bans' },
-          { label: 'Reports', value: 'reports' },
-          { label: 'Approvals', value: 'approvals' },
-        ]"
-      />
       <ErrorMessage
         v-if="error"
         class="mt-4"
@@ -79,12 +81,19 @@
           <Combobox
             v-model="targetUser"
             v-model:query="userQuery"
+            variant="outline"
             label="User"
             placeholder="Name or email"
+            description="Type at least 2 characters to find an eligible member."
             class="min-w-0 flex-1"
             :options="userOptions"
             :filterable="false"
-          />
+            empty-text="No eligible members match this search."
+          >
+            <template #item-prefix="{ item }">
+              <Avatar :image="item.image" :label="item.label" size="sm" />
+            </template>
+          </Combobox>
           <Button :disabled="!targetUser" @click="banUser">Ban from Community</Button>
         </div>
         <div
@@ -120,6 +129,7 @@ import ApprovalQueue from '@/components/ApprovalQueue.vue'
 import ApprovalSettings from '@/components/ApprovalSettings.vue'
 import ReportQueue from '@/components/ReportQueue.vue'
 import {
+  Avatar,
   Button,
   Combobox,
   Select,
@@ -175,11 +185,11 @@ const staffUsers = computed(
 const userOptions = computed(() => {
   const query = userQuery.value.trim().toLowerCase()
   if (query.length < 2) return []
-  const options: { label: string; value: string }[] = []
+  const options: { label: string; value: string; image: string }[] = []
   for (const user of users.data || []) {
     if (isGlobalAdmin(user) || staffUsers.value.has(user.name)) continue
     if (!`${user.full_name} ${user.name}`.toLowerCase().includes(query)) continue
-    options.push({ label: user.full_name, value: user.name })
+    options.push({ label: user.full_name, value: user.name, image: user.user_image })
     if (options.length === 20) break
   }
   return options
