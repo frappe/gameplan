@@ -6,14 +6,14 @@
           v-model="tab"
           class="shrink-0"
           :options="[
+            { label: 'Approvals', value: 'approvals' },
+            { label: 'Reports', value: 'reports' },
             { label: 'Removed content', value: 'removed' },
             { label: 'Community bans', value: 'bans' },
-            { label: 'Reports', value: 'reports' },
-            { label: 'Approvals', value: 'approvals' },
-            { label: 'History', value: 'history' },
             ...(canManageCommunity(community, useSessionUser())
               ? [{ label: 'Watched words', value: 'words' }]
               : []),
+            { label: 'History', value: 'history' },
           ]"
         />
         <ApprovalSettings
@@ -173,7 +173,7 @@ const route = useRoute()
 const router = useRouter()
 const tab = computed({
   get: () =>
-    ['removed', 'bans', 'history', 'reports', 'approvals', 'words'].includes(
+    ['approvals', 'reports', 'removed', 'bans', 'words', 'history'].includes(
       String(route.query.tab),
     )
       ? String(route.query.tab)

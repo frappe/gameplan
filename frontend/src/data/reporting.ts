@@ -34,6 +34,7 @@ export type Review = {
   name: string
   reference_doctype: string
   reference_name: string
+  discussion_title?: string
   creation?: string
   decision?: string
 }
