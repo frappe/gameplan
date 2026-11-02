@@ -56,6 +56,8 @@ class HasReactions:
 			if comment.deleted_at:
 				frappe.throw("Restore this content before participating", frappe.PermissionError)
 		self = frappe.get_doc(self.doctype, self.name, for_update=True)
+		if self.get("deleted_at"):
+			frappe.throw("Restore this content before participating", frappe.PermissionError)
 		require_participation(self)
 		if not can_view_content(user, self):
 			frappe.throw(_("You do not have access to react to this"), frappe.PermissionError)
