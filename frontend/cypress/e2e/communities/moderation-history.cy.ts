@@ -90,13 +90,14 @@ describe('Community moderation history', () => {
       rows().should('have.length', 2)
       cy.contains('[role="combobox"]', 'All actions').click()
       cy.contains('[role="option"]', 'User bans').click()
-      cy.get('input[placeholder="All users"]').type('member@example.com')
+      cy.get('input[placeholder="Name or email"]').type('member@example.com')
+      cy.get('[role="option"]').should('have.length', 1).click()
       cy.contains('button', 'Apply filters').click()
       cy.url().then((url) =>
         expect(new URL(url).searchParams.get('target')).to.eq('member@example.com'),
       )
       rows().should('have.length', 2).and('contain.text', 'Ban history reason')
-      cy.get('input[placeholder="All users"]').clear().type('missing@example.com')
+      cy.get('input[placeholder="Name or email"]').clear().type('missing@example.com')
       cy.contains('button', 'Apply filters').click()
       cy.contains('No moderation history.').should('be.visible')
       cy.switchUser('member')

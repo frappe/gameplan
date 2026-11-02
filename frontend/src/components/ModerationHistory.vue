@@ -21,6 +21,7 @@
           : 'No users with Community ban history match this search.'
       "
       @update:open="setUserPickerOpen"
+      @update:query="updateUserQuery"
     >
       <template #item-prefix="{ item }">
         <Avatar :image="item.image" :label="item.label" size="sm" />
@@ -126,7 +127,12 @@ function applyFilters() {
       ...route.query,
       tab: 'history',
       kind: kind.value,
-      target: kind.value === 'all' ? undefined : target.value || undefined,
+      target:
+        kind.value === 'all'
+          ? undefined
+          : kind.value === 'user'
+            ? target.value || userQuery.value.trim() || undefined
+            : target.value || undefined,
     },
   })
 }
@@ -221,6 +227,12 @@ watch(
 
 function setUserPickerOpen(open: boolean) {
   userPickerOpen.value = open
+}
+
+function updateUserQuery(query: string) {
+  userQuery.value = query
+  const selected = userOptions.value.find((option) => option.value === target.value)
+  if (target.value && selected?.label !== query) target.value = ''
 }
 
 function loadMoreBanHistoryUsers(event: Event) {
