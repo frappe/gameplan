@@ -915,7 +915,7 @@ function moderateDiscussion(spam = false) {
       : 'This discussion and its replies will be unavailable to ordinary readers. You can restore it from Removed content.',
     fields: restore ? [] : [{ name: 'reason', label: 'Reason', type: 'textarea', required: true }],
     confirmLabel: label,
-    onConfirm: async ({ values }) => {
+    onConfirm: async ({ values, close }) => {
       await moderationCall(
         `/api/v2/document/GP Discussion/${props.postId}/method/${
           restore ? 'restore' : spam ? 'delete_spam' : 'hide'
@@ -924,6 +924,7 @@ function moderateDiscussion(spam = false) {
       )
       reloadDiscussionLists()
       await discussion.reload()
+      close()
       await router.push({ name: 'CommunityModeration', params: { communityId: space.value?.team } })
     },
   })

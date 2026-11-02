@@ -26,7 +26,7 @@ function reply(ids: SeedIds, text: string, privateSpace = false) {
   cy.contains('Submitted for moderator approval.').should('be.visible')
 }
 function selectStatus(value: string) {
-  cy.get('[role="combobox"]').click()
+  cy.contains('[role="combobox"]', /Pending|Approved|Rejected|Withdrawn/).click()
   cy.contains('[role="option"]', value).click()
 }
 
