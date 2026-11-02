@@ -4,14 +4,10 @@
       <header
         class="flex shrink-0 items-center justify-between gap-4 border-b border-outline-gray-2 px-5 py-4"
       >
-        <h2 class="text-xl-semibold">{{ title }}</h2>
-        <Button
-          icon="lucide-x"
-          variant="ghost"
-          aria-label="Close review"
-          :disabled="busy"
-          @click="open = false"
-        />
+        <DialogTitle as="h2" class="text-xl-semibold">{{ title }}</DialogTitle>
+        <Button variant="ghost" aria-label="Close review" :disabled="busy" @click="open = false"
+          ><span class="lucide-x size-4 text-ink-gray-9"
+        /></Button>
       </header>
       <div class="flex min-h-0 flex-1 flex-col md:flex-row">
         <aside
@@ -38,6 +34,7 @@
 </template>
 <script setup lang="ts">
 import { Button, Dialog } from 'frappe-ui'
+import { DialogTitle } from 'reka-ui'
 defineProps<{ title: string; busy?: boolean }>()
 const open = defineModel<boolean>('open', { default: false })
 </script>
