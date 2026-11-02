@@ -188,6 +188,28 @@ describe('Discussion actions', () => {
     cy.contains('p', 'adding more content').should('exist')
   })
 
+  it('keeps heading alignment when a post is shown and edited', () => {
+    // Write before cy.visit: a POST/PUT cy.request is only CSRF-free before the SPA boots.
+    cy.request('PUT', `/api/v2/document/GP Discussion/${discussion}`, {
+      content: '<h2 style="text-align: center">Centered heading</h2><p>Seed content</p>',
+    })
+    visitSeededDiscussion()
+    cy.contains('h2', 'Centered heading').should('have.css', 'text-align', 'center')
+
+    cy.selectDropdownOption('Discussion Options', 'Edit')
+    cy.get('[contenteditable=true]')
+      .should('be.visible')
+      .click()
+      .type('{moveToEnd} adding more content')
+    cy.button('Save').click()
+
+    cy.contains('p', 'adding more content').should('exist')
+    cy.contains('h2', 'Centered heading').should('have.css', 'text-align', 'center')
+    cy.request('GET', `/api/v2/document/GP Discussion/${discussion}`)
+      .its('body.data.content')
+      .should('match', /<h2[^>]*text-align:\s*center/)
+  })
+
   it('blocks post editing until its draft finishes loading', () => {
     cy.intercept(/find_my_draft/, (request) => {
       request.continue((response) => response.setDelay(1500))
