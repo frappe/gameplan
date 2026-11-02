@@ -122,7 +122,8 @@ def ban_candidates(community: str, query: str = "", after: str = ""):
 		.distinct()
 	)
 	if query:
-		prefix = f"{query}%"
+		escaped_query = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+		prefix = f"{escaped_query}%"
 		users = users.where(
 			(User.full_name.like(prefix)) | (User.email.like(prefix)) | (User.name.like(prefix))
 		)
