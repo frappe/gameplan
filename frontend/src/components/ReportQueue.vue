@@ -65,7 +65,12 @@
     @inspect="openReview"
     @complete="bulkComplete"
   />
-  <ModerationDialog v-model:open="showReview" title="Review reports" :busy="resolving">
+  <ModerationDialog
+    v-model:open="showReview"
+    title="Review reports"
+    :busy="resolving"
+    :content-key="`${view}-${selectedReport}-${details?.current.version}`"
+  >
     <template v-if="details" #sidebar>
       <div class="space-y-5">
         <Select

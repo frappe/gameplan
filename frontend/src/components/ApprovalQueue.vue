@@ -33,7 +33,12 @@
     <Button v-if="start" @click="changePage(-40)">Previous</Button>
     <Button v-if="hasMore" @click="changePage(40)">Next</Button>
   </div>
-  <ModerationDialog v-model:open="open" title="Review submission" :busy="saving">
+  <ModerationDialog
+    v-model:open="open"
+    title="Review submission"
+    :busy="saving"
+    :content-key="active"
+  >
     <template v-if="details">
       <p class="text-base-medium">
         {{ details.title || `Reply to discussion #${details.discussion}` }}
