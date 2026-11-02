@@ -25,6 +25,12 @@ describe('Watched words', () => {
   it('previews and imports CSV, adds a manual rule, tests matching, and exports CSV', () => {
     resetData('space_with_discussion').then((ids) => {
       settings(ids)
+      cy.contains('a', 'Sample CSV').should('have.attr', 'href').and('include', 'sample=1')
+      cy.contains('a', 'Sample CSV')
+        .invoke('attr', 'href')
+        .then((url) => {
+          cy.request(url!).its('headers.content-type').should('include', 'text/csv')
+        })
       cy.get('input[type=file]').selectFile(
         {
           contents: Cypress.Buffer.from('spamword\n"buy, now",,true\nSPAMWORD\n'),
