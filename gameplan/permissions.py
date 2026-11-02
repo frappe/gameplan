@@ -256,18 +256,40 @@ def users_who_can_view_content(users, doc):
 	keep the two in step.
 	"""
 	users = list(dict.fromkeys(users))
+	if doc.doctype == "GP Comment" and doc.reference_doctype != "GP Discussion":
+		users = [user for user in users if user != "Guest"]
 	project = get_content_project(doc)
+	from gameplan.mixins.moderation import content_is_removed
+
+	if content_is_removed(doc):
+		info = get_project_info(project) if project else None
+		if not info:
+			return []
+		role_sets = get_audience_roles(users)
+		admins, guests = role_sets
+		staff = set(
+			frappe.get_all(
+				"GP Member",
+				filters={"parenttype": "GP Team", "parent": info.team},
+				or_filters={"is_admin": 1, "is_moderator": 1},
+				pluck="user",
+			)
+		)
+		staff.update(admins)
+		users = [user for user in users if user != "Guest" and user not in guests and user in staff]
+		return users_who_can_view_space(users, project, role_sets=role_sets)
 	if not project:
 		# can_view_content's own space-less fallback, inlined rather than called per
 		# user: it would re-resolve the project for every user (a query each, for a
 		# GP Comment) and give back exactly this answer.
 		owner = get_content_owner(doc)
-		return [user for user in users if is_global_admin(user) or user == owner]
+		admins, _ = get_audience_roles(users)
+		return [user for user in users if user != "Guest" and (user in admins or user == owner)]
 
 	return users_who_can_view_space(users, project)
 
 
-def users_who_can_view_space(users, project):
+def users_who_can_view_space(users, project, *, role_sets=None):
 	"""The subset of `users` that can_view_space would return True for, order preserved.
 
 	The batched form of can_view_space, for the same reason users_who_can_view_content
@@ -289,21 +311,48 @@ def users_who_can_view_space(users, project):
 	)
 
 	publicly_readable = is_publicly_readable_space(project_info)
+	admins, guest_roles = role_sets if role_sets is not None else get_audience_roles(users)
 
 	def allowed(user):
-		if is_global_admin(user):
+		if user in admins:
 			return True
 		if publicly_readable:
 			return True
 		if gameplan.is_anonymous(user):
 			return False
-		if gameplan.is_guest(user):
+		if user in guest_roles:
 			return user in guests
 		if is_member_access(project_info.visibility):
 			return user in space_members
 		return not community_is_member_access or user in community_members
 
 	return [user for user in users if allowed(user)]
+
+
+def get_audience_roles(users):
+	"""Resolve batch permission roles without one Redis request per user."""
+	admins, guests, members = {"Administrator"}, set(), set()
+	if not users:
+		return admins, guests
+	rows = frappe.get_all(
+		"Has Role",
+		filters={
+			"parenttype": "User",
+			"parent": ["in", list(users)],
+			"role": ["in", ["Gameplan Admin", "System Manager", "Gameplan Guest", "Gameplan Member"]],
+		},
+		fields=["parent", "role"],
+	)
+	for row in rows:
+		if row.parent == "Guest":
+			continue
+		if row.role in {"Gameplan Admin", "System Manager"}:
+			admins.add(row.parent)
+		if row.role in {"Gameplan Admin", "Gameplan Member"}:
+			members.add(row.parent)
+		if row.role == "Gameplan Guest":
+			guests.add(row.parent)
+	return admins, guests - members - {"Administrator"}
 
 
 def _member_users(parenttype, parent):
@@ -901,6 +950,17 @@ def apply_project_query_filter(query, user=None):
 	Project = frappe.qb.DocType("GP Project")
 	criterion = project_access_criterion(Project, user)
 	return query.where(criterion) if criterion is not None else query
+
+
+def moderatable_project_names(community, user=None):
+	"""Resolve the moderator's current Space scope without per-Space permission reads."""
+	from gameplan.community_bans import can_moderate_community
+
+	user = user or frappe.session.user
+	if not can_moderate_community(community, user):
+		return []
+	Project = frappe.qb.DocType("GP Project")
+	return accessible_project_query(user).where(Project.team == community).run(pluck=True)
 
 
 def accessible_project_query(user=None):
