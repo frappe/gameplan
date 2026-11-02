@@ -11,7 +11,7 @@
     </header>
     <CommunityModeration v-if="selected" :key="selected" :community-id="selected" />
     <p v-else class="py-12 text-center text-base text-ink-gray-6">
-      You do not moderate any Communities.
+      Only Community moderators can open this page.
     </p>
   </div>
 </template>

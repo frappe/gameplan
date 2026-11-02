@@ -48,7 +48,7 @@
           </div>
           <div
             v-if="selected === item.name"
-            class="mt-3 max-h-96 overflow-y-auto rounded-lg border border-outline-gray-2 bg-surface-gray-1 p-4"
+            class="mt-3 max-h-96 overflow-y-auto rounded-5 border border-outline-gray-2 bg-surface-gray-1 p-4"
           >
             <CommentEditor :value="previewContent" :editable="false" />
           </div>
