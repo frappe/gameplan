@@ -17,6 +17,7 @@
           <slot name="sidebar" />
         </aside>
         <main
+          ref="content"
           class="min-h-0 min-w-0 flex-1 overflow-y-auto p-5 sm:p-6"
           data-testid="review-content"
         >
@@ -33,8 +34,14 @@
   </Dialog>
 </template>
 <script setup lang="ts">
+import { nextTick, ref, watch } from 'vue'
 import { Button, Dialog } from 'frappe-ui'
 import { DialogTitle } from 'reka-ui'
-defineProps<{ title: string; busy?: boolean }>()
+const props = defineProps<{ title: string; busy?: boolean; contentKey?: string }>()
 const open = defineModel<boolean>('open', { default: false })
+const content = ref<HTMLElement | null>(null)
+watch([open, () => props.contentKey], async () => {
+  await nextTick()
+  content.value?.scrollTo({ top: 0 })
+})
 </script>
