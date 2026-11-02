@@ -159,7 +159,7 @@ def queue(community: str, status: str = "Pending", start: int = 0):
 			.select(Discussion.name, Discussion.title)
 			.where(Discussion.name.isin(discussion_names))
 		).run(as_dict=True)
-		discussion_titles = {discussion.name: discussion.title for discussion in titles}
+		discussion_titles = {str(discussion.name): discussion.title for discussion in titles}
 	for row in rows:
 		discussion = (
 			row.reference_name
