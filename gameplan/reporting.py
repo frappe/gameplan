@@ -270,19 +270,45 @@ def protect_pending_reviews(doc, method=None):
 def review_polls(doc):
 	if doc.doctype != "GP Comment":
 		return []
+	doc.check_permission("read")
 	Poll = frappe.qb.DocType("GP Poll")
-	names = (
+	rows = (
 		frappe.qb.from_(Poll)
-		.select(Poll.name)
+		.select(Poll.star)
 		.where(Poll.comment == str(doc.name))
 		.orderby(Poll.name)
 		.for_update()
-		.run(pluck=True)
+		.run(as_dict=True)
 	)
-	polls = [frappe.get_doc("GP Poll", name, for_update=True) for name in names]
-	for poll in polls:
-		poll.check_permission("read")
-	return polls
+	if not rows:
+		return []
+	children = {}
+	for field, doctype in (("options", "GP Poll Option"), ("votes", "GP Poll Vote")):
+		Child = frappe.qb.DocType(doctype)
+		children[field] = {}
+		for row in (
+			frappe.qb.from_(Child)
+			.select(Child.star)
+			.where(
+				(Child.parenttype == "GP Poll")
+				& (Child.parentfield == field)
+				& Child.parent.isin([str(row.name) for row in rows])
+			)
+			.orderby(Child.idx)
+			.for_update()
+			.run(as_dict=True)
+		):
+			children[field].setdefault(str(row.parent), []).append(row)
+	return [
+		frappe.get_doc(
+			dict(
+				row,
+				doctype="GP Poll",
+				**{field: parents.get(str(row.name), []) for field, parents in children.items()},
+			)
+		)
+		for row in rows
+	]
 
 
 def version(doc, polls=None):

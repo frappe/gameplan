@@ -83,7 +83,9 @@ def counter(community):
 		.where(Discussion.hidden_at.isnull() & Discussion.spam_removed_at.isnull())
 	)
 	# Thresholds cannot exceed 100; older contributions need no full-history count.
-	accepted = len(discussions.select(Discussion.name).where(Discussion.owner == user).limit(100).run())
+	accepted = len(
+		discussions.select(Discussion.name).where(Discussion.owner == user).limit(100).for_update().run()
+	)
 	if accepted < 100:
 		accepted += len(
 			frappe.qb.from_(Comment)
@@ -99,6 +101,7 @@ def counter(community):
 				& Comment.spam_removed_at.isnull()
 			)
 			.limit(100 - accepted)
+			.for_update()
 			.run()
 		)
 	row = frappe.get_doc(doctype="GP Approval Counter", community=community, user=user, accepted=accepted)
