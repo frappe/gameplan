@@ -67,7 +67,15 @@
           elsewhere stay available.
         </p>
         <div class="flex items-end gap-2">
-          <Select v-model="targetUser" label="User" class="min-w-0 flex-1" :options="userOptions" />
+          <Combobox
+            v-model="targetUser"
+            v-model:query="userQuery"
+            label="User"
+            placeholder="Name or email"
+            class="min-w-0 flex-1"
+            :options="userOptions"
+            :filterable="false"
+          />
           <Button :disabled="!targetUser" @click="banUser">Ban from Community</Button>
         </div>
         <div
@@ -97,7 +105,16 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { Button, Select, TabButtons, ErrorMessage, call, dialog, useDoctype } from 'frappe-ui'
+import {
+  Button,
+  Combobox,
+  Select,
+  TabButtons,
+  ErrorMessage,
+  call,
+  dialog,
+  useDoctype,
+} from 'frappe-ui'
 import CommentEditor from '@/components/editor/CommentEditor.vue'
 import { useCommunity } from '@/data/communities'
 import { users, useSessionUser, useUser } from '@/data/users'
@@ -132,18 +149,27 @@ const hasMore = ref(false)
 const selected = ref('')
 const previewContent = ref('')
 const targetUser = ref('')
-const userOptions = computed(() => [
-  { label: 'Choose a user', value: '' },
-  ...(users.data || [])
-    .filter(
-      (user) =>
-        !isGlobalAdmin(user) &&
-        !community.value?.members.some(
-          (member) => member.user === user.name && (member.is_admin || member.is_moderator),
-        ),
-    )
-    .map((user) => ({ label: user.full_name, value: user.name })),
-])
+const userQuery = ref('')
+const staffUsers = computed(
+  () =>
+    new Set(
+      community.value?.members
+        .filter((member) => member.is_admin || member.is_moderator)
+        .map((member) => member.user),
+    ),
+)
+const userOptions = computed(() => {
+  const query = userQuery.value.trim().toLowerCase()
+  if (query.length < 2) return []
+  const options: { label: string; value: string }[] = []
+  for (const user of users.data || []) {
+    if (isGlobalAdmin(user) || staffUsers.value.has(user.name)) continue
+    if (!`${user.full_name} ${user.name}`.toLowerCase().includes(query)) continue
+    options.push({ label: user.full_name, value: user.name })
+    if (options.length === 20) break
+  }
+  return options
+})
 
 let request = 0
 async function load() {

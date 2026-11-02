@@ -183,7 +183,7 @@ describe('Community moderation core', () => {
       cy.switchUser('secondMember')
       cy.visit(moderationPath(ids.community!))
       cy.contains('button', 'Community bans').click()
-      cy.contains('[role="combobox"]', 'Choose a user').click()
+      cy.get('input[placeholder="Name or email"]').type('Member')
       cy.contains('[role="option"]', /^Member$/).click()
       cy.contains('button', 'Ban from Community').click()
       confirmRemoval('Ban')
