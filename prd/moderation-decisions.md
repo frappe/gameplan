@@ -106,7 +106,6 @@ Keep unresolved questions and implementation choices distinct from confirmed pro
 - User filtering covers Community Ban/Unban history. Discussion/reply history uses the target's current Space permissions, including after moves.
 - Missing targets remain in restricted log storage and do not consume Community history pages. Existing raw-log permissions remain unchanged.
 - Verified on the disposable site: 68 backend tests, seven browser tests, formatting, lint, and frontend build.
-
 ## Forum-scale moderation and review usability — November 2
 
 Confirmed by Ebrahim:

@@ -138,7 +138,7 @@ const tab = computed({
       ? String(route.query.tab)
       : 'removed',
   set: (value) => {
-    router.replace({ query: { tab: value } })
+    router.replace({ query: { ...route.query, tab: value } })
   },
 })
 const doctype = ref('GP Discussion')

@@ -38,7 +38,12 @@
   <ErrorMessage v-if="error" :message="extractServerMessage(error) || 'Could not load history'" />
   <p v-if="loading" role="status" class="mt-4 text-base text-ink-gray-5">Loading history…</p>
   <template v-else>
-    <div v-for="item in items" :key="item.name" class="border-b py-4" data-testid="history-row">
+    <div
+      v-for="item in items"
+      :key="item.name"
+      class="border-b border-outline-gray-2 py-5 text-ink-gray-9"
+      data-testid="history-row"
+    >
       <div class="flex flex-wrap items-baseline justify-between gap-2">
         <p class="text-base-medium text-ink-gray-9">{{ item.action }} · {{ targetLabel(item) }}</p>
         <time :datetime="item.creation" class="text-p-sm text-ink-gray-5">
@@ -118,6 +123,7 @@ function targetLabel(item: HistoryItem) {
 function applyFilters() {
   router.replace({
     query: {
+      ...route.query,
       tab: 'history',
       kind: kind.value,
       target: kind.value === 'all' ? undefined : target.value || undefined,
