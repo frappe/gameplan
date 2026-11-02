@@ -118,3 +118,12 @@ Keep unresolved questions and implementation choices distinct from confirmed pro
 - A Community ban also blocks Space management, including moves, merges, and permanent deletion. Reading and management elsewhere remain available.
 - Pending reports block permanent deletion of their target, including parent cascades, and moving replies outside discussions. Resolve the reports before either operation.
 - Review versions include embedded poll questions, options, and voting settings. Poll votes do not invalidate a content review.
+## Forum-scale moderation and review usability — November 2
+
+Confirmed by Ebrahim:
+- Design all moderation features for a forum with millions of discussions. Bound list responses and batch permission/scope reads.
+- Put moderation in the app sidebar, with access across the user's moderated Communities. Remove the Community feed button.
+- Keep the reporter's reason and note visible beside scrolling post content. Load historical reported bodies only when opened.
+- Improve moderation layout and dark-mode contrast using Frappe UI patterns.
+- Removed content must not accept reactions, including reactions by staff viewing originals.
+- Apply shared fixes to source feature branches and the combined forum branch.
