@@ -22,7 +22,7 @@
       <Button :href="downloadUrl(false)">Download list</Button>
       <Button :href="downloadUrl(true)">Sample CSV</Button>
     </div>
-    <div class="flex flex-wrap items-end gap-2">
+    <div class="flex flex-wrap items-center gap-2">
       <TextInput
         v-model="word"
         label="Word or phrase"
