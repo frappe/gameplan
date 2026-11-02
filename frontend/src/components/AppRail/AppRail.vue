@@ -105,7 +105,8 @@ import { useEventListener, useResizeObserver } from '@vueuse/core'
 import { SidebarRail, SidebarRailItem } from 'frappe-ui'
 import type { RouteLocationRaw } from 'vue-router'
 import { communityState } from '@/data/communityState'
-import { activeCommunities } from '@/data/communities'
+import { activeCommunities, communities } from '@/data/communities'
+import { canModerateCommunity } from '@/utils/permissions'
 import type { Community } from '@/data/communities'
 import { draftCount } from '@/data/drafts'
 import { unreadNotifications } from '@/data/notifications'
@@ -149,6 +150,16 @@ const badgeStyle = computed<'count' | 'dot'>(() =>
 )
 
 const shortcuts = computed<RailShortcut[]>(() => [
+  ...(communities.data?.some((community) => canModerateCommunity(community, sessionUser))
+    ? [
+        {
+          label: 'Moderation',
+          icon: 'lucide-shield-check',
+          isActive: isRoute('Moderation'),
+          route: { name: 'Moderation' },
+        },
+      ]
+    : []),
   {
     label: 'Search',
     icon: 'lucide-search',

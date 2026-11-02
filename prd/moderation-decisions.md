@@ -129,3 +129,12 @@ Keep unresolved questions and implementation choices distinct from confirmed pro
 - Each decision uses a separate request through the existing resolver. Permissions, current content, removal state, and review status are checked again. Successful decisions remain committed when another item fails.
 - The dialog shows progress and per-item results. Failed items require selection and a fresh preview before retry. Leaving the page stops unsent requests; there is no background resume. An in-flight decision can still finish.
 - Verification passed: seven bulk-review backend tests, 12 existing reporting tests, three bulk-review browser tests, four existing reporting browser tests, formatting/lint, and the frontend build. Local verification uses the disposable SQLite site; MariaDB concurrency remains covered by the existing CI suite.
+## Forum-scale moderation and review usability — November 2
+
+Confirmed by Ebrahim:
+- Design all moderation features for a forum with millions of discussions. Bound list responses and batch permission/scope reads.
+- Put moderation in the app sidebar, with access across the user's moderated Communities. Remove the Community feed button.
+- Keep the reporter's reason and note visible beside scrolling post content. Load historical reported bodies only when opened.
+- Improve moderation layout and dark-mode contrast using Frappe UI patterns.
+- Removed content must not accept reactions, including reactions by staff viewing originals.
+- Apply shared fixes to source feature branches and the combined forum branch.
