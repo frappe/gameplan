@@ -88,7 +88,7 @@ describe('Community moderation history', () => {
       cy.visit(`/g/community/${ids.community}/moderation`)
       cy.contains('button', /^History$/).click()
       rows().should('have.length', 2)
-      cy.get('[role="combobox"]').click()
+      cy.contains('[role="combobox"]', 'All actions').click()
       cy.contains('[role="option"]', 'User bans').click()
       cy.get('input[placeholder="All users"]').type('member@example.com')
       cy.contains('button', 'Apply filters').click()
