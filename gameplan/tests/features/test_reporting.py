@@ -72,6 +72,7 @@ class TestReporting(GameplanTestCase):
 		self.assertEqual(self.review(first), self.review(second))
 		with self.as_user(self.outsider):
 			data = detail(self.community.name, self.review(first))
+		self.assertIsNone(data["evidence"])
 		self.assertEqual(len(data["reports"]), 2)
 		self.assertEqual(data["reports"][0].note, "First note")
 		self.assertEqual(data["reports"][0].owner, self.second_member.name)
@@ -82,7 +83,11 @@ class TestReporting(GameplanTestCase):
 		self.discussion.content = "Edited content"
 		self.discussion.save()
 		with self.as_user(self.outsider):
-			data = detail(self.community.name, review)
+			data = detail(
+				self.community.name,
+				review,
+				report=frappe.db.get_value("GP Report", {"review": review}, "name"),
+			)
 		self.assertIn("Original evidence", data["evidence"].reported_content)
 		self.assertIn("Edited content", data["current"]["content"])
 
