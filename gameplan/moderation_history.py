@@ -3,7 +3,7 @@ from frappe.query_builder import Criterion
 from frappe.utils import cint
 
 from gameplan.community_bans import can_moderate_community
-from gameplan.permissions import can_moderate_space
+from gameplan.permissions import moderatable_project_names
 
 
 @frappe.whitelist(methods=["GET", "POST"])
@@ -14,11 +14,7 @@ def history(community: str, kind: str = "all", target: str = "", start: int = 0)
 		frappe.throw("Unsupported history target")
 	if not isinstance(target, str) or (target and kind == "all"):
 		frappe.throw("Choose a target type before filtering history")
-	projects = [
-		name
-		for name in frappe.get_all("GP Project", filters={"team": community}, pluck="name")
-		if can_moderate_space(frappe.session.user, name)
-	]
+	projects = moderatable_project_names(community)
 	Discussion = frappe.qb.DocType("GP Discussion")
 	Comment = frappe.qb.DocType("GP Comment")
 	Log = frappe.qb.DocType("GP Moderation Log")
