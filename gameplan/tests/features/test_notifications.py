@@ -298,19 +298,16 @@ class TestEveryoneMentionQueryCount(NotificationTestCase):
 	genuinely one insert per recipient and is supposed to scale.
 	"""
 
-	# The six reads users_who_can_view_content needs, whatever the member list holds:
+	# Eight reads, including batch roles and removal status, regardless of audience size:
 	# the active-user roster, GP Project (name/team/visibility), the GP Project and
-	# GP Team membership rows, GP Guest Access, and GP Team.visibility.
-	AUDIENCE_QUERY_BUDGET = 6
+	# GP Team membership rows, GP Guest Access, GP Team.visibility, Has Role, and removal status.
+	AUDIENCE_QUERY_BUDGET = 8
 
 	def test_everyone_audience_query_count_does_not_grow_with_the_member_list(self):
 		discussion = create_discussion("Everyone thread", self.space, owner=self.member)
 		doc = frappe.get_doc("GP Discussion", discussion.name)
 
-		# Resolve once before every measurement: the first call to see a newly created
-		# user pays for frappe's own per-user role cache (frappe.get_roles, ~8 queries
-		# each) and for any cold doctype meta. Neither is Gameplan's fan-out, and
-		# counting them would measure frappe's cache, not this resolver.
+		# Warm document metadata before measuring the audience queries.
 		doc._everyone_audience()
 		with patch.object(frappe.db, "sql", wraps=frappe.db.sql) as queries:
 			small_audience = doc._everyone_audience()

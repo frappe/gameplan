@@ -2,7 +2,7 @@ import frappe
 from frappe.utils import cint
 
 from gameplan.community_bans import can_moderate_community
-from gameplan.permissions import can_moderate_space
+from gameplan.permissions import moderatable_project_names
 
 
 @frappe.whitelist(methods=["GET", "POST"])
@@ -12,11 +12,7 @@ def removed_content(community: str, doctype: str = "GP Discussion", start: int =
 		frappe.throw("Only community moderators can perform this action", frappe.PermissionError)
 	if doctype not in {"GP Discussion", "GP Comment"}:
 		frappe.throw("Unsupported moderation target")
-	projects = [
-		name
-		for name in frappe.get_all("GP Project", filters={"team": community}, pluck="name")
-		if can_moderate_space(frappe.session.user, name)
-	]
+	projects = moderatable_project_names(community)
 	Target = frappe.qb.DocType(doctype)
 	Discussion = frappe.qb.DocType("GP Discussion")
 	query = frappe.qb.from_(Target)

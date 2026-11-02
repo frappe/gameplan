@@ -6,7 +6,7 @@ from datetime import timedelta
 import frappe
 from frappe.model.document import Document, bulk_insert
 
-import gameplan
+from gameplan.permissions import get_audience_roles, users_who_can_view_space
 from gameplan.realtime import notify_unread_counts_changed
 from gameplan.visibility import is_member_access
 
@@ -435,9 +435,7 @@ class GPUnreadRecord(Document):
 				"GP User Profile", filters={"enabled": 1}, fields=["user"]
 			).run(pluck=True)
 
-			for user in enabled_users:
-				if not gameplan.is_guest(user):
-					all_users.add(user)
+			all_users.update(enabled_users)
 
 		# Include guest users with explicit project access
 		guest_users = frappe.qb.get_query(
@@ -446,8 +444,10 @@ class GPUnreadRecord(Document):
 			filters={"project": project.name},
 		).run(pluck=True)
 		all_users.update(guest_users)
-
-		return list(all_users)
+		role_sets = get_audience_roles(all_users)
+		if not is_member_access(project.visibility):
+			all_users.difference_update(role_sets[1] - set(guest_users))
+		return users_who_can_view_space(all_users, project_name, role_sets=role_sets)
 
 	@staticmethod
 	def _notify_unread_counts_changed(users):
