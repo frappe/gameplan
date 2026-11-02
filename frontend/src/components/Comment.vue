@@ -303,13 +303,13 @@ const saveComment = async (content: string) => {
   updateError.value = null
 
   try {
-    await draft.flush()
+    const draftName = await draft.flush()
     const result = await call<{ doctype: string }>('gameplan.watched_word_edits.submit', {
       doctype: 'GP Comment',
       name: props.comment.name,
       expected_modified: originalEdit.value?.modified,
       content,
-      draft: draft.serverName.value || '',
+      draft: draftName || '',
     })
     if (result.doctype === 'GP Submission') {
       await draft.forget()

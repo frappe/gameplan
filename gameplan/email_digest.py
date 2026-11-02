@@ -383,7 +383,9 @@ def format_notification_item(notification, avatar_map, user: str):
 		if notification.discussion_title
 		else notification.task_title or notification.type
 	)
-	description = html_to_text_preview(notification.message, 160) or notification.type
+	description = (
+		censor(notification.team, html_to_text_preview(notification.message, 160)) or notification.type
+	)
 	metadata = location_text(notification.team_title, notification.project_title)
 	return {
 		"title": title or "Untitled",

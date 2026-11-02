@@ -84,7 +84,11 @@ def clean(payload, community=None):
 			or community
 		)
 	community = community_for_target(row.get("doctype"), row.get("name")) or community
+	if row.get("discussion"):
+		community = community_for_target("GP Discussion", row.discussion) or community
 	fields = text_fields()
+	if row.get("type") and row.get("discussion"):
+		fields.add("message")
 	for key, value in list(row.items()):
 		if key.startswith("_watched_"):
 			del row[key]

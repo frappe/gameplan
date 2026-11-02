@@ -203,3 +203,5 @@ Keep unresolved questions and implementation choices distinct from confirmed pro
 
 - Verification: 17 watched-word tests, 136 existing backend checks, and 26 browser tests passed. Migration, build, and lint passed.
 - The existing linked-user projection test still fails locally because Frappe returns an `api_key: null` field. This failure was reproduced before this feature.
+
+- Backported forum integration fixes: edit saves use the draft API return value across both draft implementations. Censor also covers notification messages and email descriptions. Verified with 18 watched-word tests, 27 digest tests, and six browser tests on a fresh standalone site.

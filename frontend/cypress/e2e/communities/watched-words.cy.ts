@@ -141,3 +141,33 @@ describe('Watched words', () => {
     })
   })
 })
+
+it('queues a reply edit and preserves its published original', () => {
+  resetData('space_with_discussion').then((ids) => {
+    cy.switchUser('member')
+    cy.request('POST', '/api/v2/document/GP Comment', {
+      reference_doctype: 'GP Discussion',
+      reference_name: ids.discussion,
+      content: '<p>Original reply for editing</p>',
+    }).then(({ body }) => {
+      const comment = String(body.data.name)
+      cy.switchUser('admin')
+      cy.request('POST', '/api/method/gameplan.watched_words.add', {
+        community: ids.community,
+        action: 'Require approval',
+        word: 'reviewreply',
+      })
+      cy.switchUser('member')
+      cy.visit(`/g/community/${ids.community}/space/${ids.space}/discussion/${ids.discussion}`)
+      cy.get(`[data-id="${comment}"] button[aria-label="Comment Options"]`).click()
+      cy.contains('[role="menuitem"]', /^Edit$/).click()
+      cy.get('[contenteditable=true]').click().type('{selectall}reviewreply proposed edit')
+      cy.contains('button', /^\s*Submit\s*$/).click()
+      cy.contains('Edit submitted for moderator approval').should('be.visible')
+      cy.contains('p', 'Original reply for editing').should('be.visible')
+      cy.request(`/api/v2/document/GP Comment/${comment}`)
+        .its('body.data.content')
+        .should('include', 'Original reply for editing')
+    })
+  })
+})

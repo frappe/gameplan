@@ -797,14 +797,14 @@ async function updatePost() {
   if (!editingPost.value || !canSavePost.value || savingWatchedEdit.value) return
   savingWatchedEdit.value = true
   try {
-    await postDraft.flush()
+    const draftName = await postDraft.flush()
     const result = await moderationCall<{ doctype: string }>('gameplan.watched_word_edits.submit', {
       doctype: 'GP Discussion',
       name: props.postId,
       expected_modified: originalEdit.value?.modified,
       title: postDraftData.value?.title,
       content: postDraftData.value?.content,
-      draft: postDraft.serverName.value || '',
+      draft: draftName || '',
     })
     if (result.doctype === 'GP Submission') {
       await postDraft.forget()

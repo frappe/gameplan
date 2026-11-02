@@ -257,3 +257,19 @@ class TestWatchedWords(GameplanTestCase):
 			self.assertEqual(frappe.db.count("GP Watched Word", {"community": self.community.name}), 2000)
 			with self.assertRaises(frappe.ValidationError):
 				add(self.community.name, "Block", "overflow")
+
+	def test_forum_notification_messages_and_email_censor_post_text(self):
+		from gameplan.email_digest import format_notification_item
+
+		self.rule("Censor", "sensitive")
+		notification = frappe._dict(
+			discussion=self.post.name,
+			discussion_title="A sensitive title",
+			project=self.space.name,
+			team=self.community.name,
+			type="New Discussion",
+			message="A new discussion: sensitive",
+		)
+		self.assertNotIn("sensitive", clean(notification).message)
+		item = format_notification_item(notification, {}, self.outsider.name)
+		self.assertNotIn("sensitive", item["title"] + item["description"])
