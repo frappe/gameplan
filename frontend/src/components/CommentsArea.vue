@@ -688,16 +688,15 @@ async function submitComment() {
   replyError.value = null
   try {
     let queued = false
+    let submittedDraft: string | null = null
     if (props.doctype === 'GP Discussion') {
-      await draft.flush()
+      submittedDraft = await draft.flush()
       const result = await call<{ doctype: string; name: string }>('gameplan.approvals.submit', {
         doctype: 'GP Comment',
-        request_key: draft.serverName.value
-          ? `draft:${draft.serverName.value}`
-          : replyRequestKey.value,
+        request_key: submittedDraft ? `draft:${submittedDraft}` : replyRequestKey.value,
         discussion: String(props.name),
         content: draftData.value?.content,
-        draft: draft.serverName.value || '',
+        draft: submittedDraft || '',
       })
       queued = result.doctype === 'GP Submission'
     } else {
@@ -709,7 +708,7 @@ async function submitComment() {
       if (comments.insert.error || !comment?.name) return
     }
     if (queued) {
-      const name = draft.serverName.value
+      const name = submittedDraft
       await draft.forget()
       if (name) drafts.removeRow(name)
       toast.success('Submitted for moderator approval. Find it in My submissions.')
