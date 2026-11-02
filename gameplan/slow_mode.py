@@ -4,6 +4,7 @@ from datetime import timedelta
 
 import frappe
 from frappe.query_builder.functions import Coalesce
+from frappe.query_builder import functions as fn
 from frappe.utils import get_datetime, now_datetime
 
 from gameplan.community_bans import can_moderate_community
@@ -130,7 +131,10 @@ def last_submission(discussion, *, user=None, for_update=False):
 	replies = (
 		frappe.qb.from_(Comment)
 		.left_join(Submission)
-		.on((Submission.published_doctype == "GP Comment") & (Submission.published_name == Comment.name))
+		.on(
+			(Submission.published_doctype == "GP Comment")
+			& (Submission.published_name == fn.Cast_(Comment.name, "varchar"))
+		)
 		.select(accepted)
 		.where(
 			(Comment.reference_doctype == "GP Discussion")

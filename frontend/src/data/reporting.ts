@@ -59,6 +59,7 @@ export type ReviewDetails = {
     creation: string
     reason: string
     note: string
+    automatic_rule?: number
   }[]
   evidence: { name: string; reported_title?: string; reported_content: string } | null
   polls: GPPoll[]

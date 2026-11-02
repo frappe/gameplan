@@ -45,7 +45,20 @@ class HasReactions:
 		# The reactions are then read with a locking read too, which returns the rows other
 		# requests committed after this one began. A unique index cannot do this job: under
 		# the site's collation, MariaDB compares every emoji outside the BMP as equal.
-		frappe.db.get_value(self.doctype, self.name, "name", for_update=True)
+		from gameplan.mixins.moderation import parent_discussion
+
+		parent = parent_discussion(self)
+		if parent and self.doctype != "GP Discussion":
+			require_participation(frappe.get_doc("GP Discussion", parent, for_update=True))
+		if self.doctype == "GP Poll" and self.comment:
+			comment = frappe.get_doc("GP Comment", self.comment, for_update=True)
+			require_participation(comment)
+			if comment.deleted_at:
+				frappe.throw("Restore this content before participating", frappe.PermissionError)
+		self = frappe.get_doc(self.doctype, self.name, for_update=True)
+		require_participation(self)
+		if not can_view_content(user, self):
+			frappe.throw(_("You do not have access to react to this"), frappe.PermissionError)
 		reactions = self.get_reactions(for_update=True)
 		mine = [row for row in reactions if row.user == user]
 		wanted = list(dict.fromkeys(row.emoji for row in mine))

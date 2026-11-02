@@ -205,3 +205,12 @@ Keep unresolved questions and implementation choices distinct from confirmed pro
 - The existing linked-user projection test still fails locally because Frappe returns an `api_key: null` field. This failure was reproduced before this feature.
 
 - Backported forum integration fixes: edit saves use the draft API return value across both draft implementations. Censor also covers notification messages and email descriptions. Verified with 18 watched-word tests, 27 digest tests, and six browser tests on a fresh standalone site.
+## Forum-scale moderation and review usability — November 2
+
+Confirmed by Ebrahim:
+- Design all moderation features for a forum with millions of discussions. Bound list responses and batch permission/scope reads.
+- Put moderation in the app sidebar, with access across the user's moderated Communities. Remove the Community feed button.
+- Keep the reporter's reason and note visible beside scrolling post content. Load historical reported bodies only when opened.
+- Improve moderation layout and dark-mode contrast using Frappe UI patterns.
+- Removed content must not accept reactions, including reactions by staff viewing originals.
+- Apply shared fixes to source feature branches and the combined forum branch.

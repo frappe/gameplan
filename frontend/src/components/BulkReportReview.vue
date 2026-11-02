@@ -1,22 +1,23 @@
 <template>
-  <Dialog v-model:open="open" title="Review selected reports" size="4xl" :dismissible="!running">
+  <ModerationDialog v-model:open="open" title="Review selected reports" :busy="running">
     <p class="text-base text-ink-gray-6">
       Check these posts before applying one decision and note to all eligible reviews.
     </p>
     <p v-if="loading" role="status" class="mt-4">Loading previews…</p>
     <ErrorMessage v-if="error" class="mt-3" :message="extractServerMessage(error)" />
-    <div v-for="item in items" :key="item.review" class="mt-4 border-t pt-4">
+    <div v-for="item in items" :key="item.review" class="mt-4 border-t border-outline-gray-2 pt-4">
       <div class="flex items-start justify-between gap-3">
-        <p class="text-base-medium">{{ item.title || `Review ${item.review}` }}</p>
+        <p class="text-base-medium text-ink-gray-9">{{ item.title || `Review ${item.review}` }}</p>
         <Button v-if="item.version" :disabled="running" @click="inspect(item)">Full review</Button>
       </div>
-      <p v-if="item.excerpt" class="mt-2 whitespace-pre-wrap text-base">{{ item.excerpt }}</p>
+      <p v-if="item.excerpt" class="mt-2 whitespace-pre-wrap text-base text-ink-gray-8">{{ item.excerpt }}</p>
       <p v-if="item.reasons" class="mt-2 text-base text-ink-gray-5">
         {{ item.reasons.map((reason) => `${reason.reason}: ${reason.count}`).join(' · ') }}
       </p>
       <p v-if="item.outcome" role="status" class="mt-2 text-base-medium">{{ item.outcome }}</p>
       <ErrorMessage v-if="item.error" class="mt-2" :message="item.error" />
     </div>
+    <template #sidebar>
     <template v-if="!finished">
       <Select
         v-model="decision"
@@ -41,6 +42,7 @@
       Unresolved items remain in the queue. Select them again to review fresh content before
       retrying.
     </p>
+    </template>
     <template #actions>
       <Button v-if="!running" @click="open = false">{{ finished ? 'Done' : 'Cancel' }}</Button>
       <Button
@@ -52,12 +54,13 @@
         >Resolve {{ eligible }} reviews</Button
       >
     </template>
-  </Dialog>
+  </ModerationDialog>
 </template>
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
-import { Button, Dialog, ErrorMessage, Select, Textarea, call } from 'frappe-ui'
+import { Button, ErrorMessage, Select, Textarea, call } from 'frappe-ui'
+import ModerationDialog from './ModerationDialog.vue'
 import { extractServerMessage } from '@/utils'
 import type { Review } from '@/data/reporting'
 

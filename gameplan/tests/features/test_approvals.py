@@ -293,3 +293,36 @@ class TestApprovals(GameplanTestCase):
 		frappe.delete_doc("User", user.name, ignore_permissions=True, force=True)
 		self.assertFalse(frappe.db.exists("GP Approval Counter", {"user": user.name}))
 		self.assertTrue(frappe.db.exists("GP Submission", result["name"]))
+
+	def test_bootstrap_credit_is_bounded_by_maximum_threshold(self):
+		from gameplan.approval_policy import counter
+
+		now = frappe.utils.now()
+		frappe.db.bulk_insert(
+			"GP Discussion",
+			fields=["name", "title", "project", "owner", "creation", "modified"],
+			values=[
+				(900000 + index, "Legacy contribution", self.space.name, self.member.name, now, now)
+				for index in range(110)
+			],
+		)
+		with self.as_user(self.member):
+			self.assertEqual(counter(self.community.name).accepted, 100)
+
+	def test_guest_system_manager_list_scope_matches_detail(self):
+		from gameplan.approval_access import can_read_submission, read_criterion
+		from gameplan.tests.fixtures import grant_guest_access
+
+		result = self.submit()
+		self.guest.add_roles("System Manager")
+		grant_guest_access(self.guest, self.space)
+		doc = frappe.get_doc("GP Submission", result["name"])
+		self.assertFalse(can_read_submission(doc, self.guest.name))
+		Submission = frappe.qb.DocType("GP Submission")
+		visible = (
+			frappe.qb.from_(Submission)
+			.select(Submission.name)
+			.where(read_criterion(self.guest.name))
+			.run(pluck=True)
+		)
+		self.assertNotIn(doc.name, visible)
