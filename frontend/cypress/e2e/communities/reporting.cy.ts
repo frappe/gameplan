@@ -24,31 +24,43 @@ describe('Content reports', () => {
   it('keeps reporter feedback visible while scrolling and loads evidence only on request', () => {
     resetData('space_with_discussion').then((ids) => {
       cy.request('PUT', `/api/v2/document/GP Discussion/${ids.discussion}`, {
-        content: Array.from({length: 80}, (_, index) => `<p>Long post paragraph ${index}</p>`).join(''),
+        content: Array.from(
+          { length: 80 },
+          (_, index) => `<p>Long post paragraph ${index}</p>`,
+        ).join(''),
       })
       cy.switchUser('secondMember')
       cy.request('POST', '/api/method/gameplan.reporting.submit', {
-        doctype: 'GP Discussion', name: String(ids.discussion), reason: 'Other', note: 'Keep this reporter note in view',
+        doctype: 'GP Discussion',
+        name: String(ids.discussion),
+        reason: 'Other',
+        note: 'Keep this reporter note in view',
       })
       cy.switchUser('admin')
       reports(ids)
       cy.intercept('POST', '**/gameplan.reporting.detail').as('detail')
       cy.contains('button', /^Review$/).click()
       cy.wait('@detail').its('response.body.message.evidence').should('eq', null)
-      cy.get('[aria-label="Reporter feedback"]').should('contain.text', 'Keep this reporter note in view').then(($feedback) => {
-        const top = $feedback[0].getBoundingClientRect().top
-        cy.get('[data-testid="review-content"]').scrollTo('bottom')
-        cy.get('[aria-label="Reporter feedback"]').should(($fixed) => {
-          expect($fixed[0].getBoundingClientRect().top).to.equal(top)
+      cy.get('[aria-label="Reporter feedback"]')
+        .should('contain.text', 'Keep this reporter note in view')
+        .then(($feedback) => {
+          const top = $feedback[0].getBoundingClientRect().top
+          cy.get('[data-testid="review-content"] [data-slot="scroll-area-viewport"]').scrollTo(
+            'bottom',
+          )
+          cy.get('[aria-label="Reporter feedback"]').should(($fixed) => {
+            expect($fixed[0].getBoundingClientRect().top).to.equal(top)
+          })
         })
-      })
       cy.contains('button', 'View reported version').click()
       cy.wait('@detail').its('request.body.report').should('not.eq', '')
       cy.contains('Reported version ·').should('be.visible')
-      cy.get('[aria-label="Reporter feedback"]').should('have.css', 'color').then(lightColor => {
-        cy.document().then(doc => doc.documentElement.setAttribute('data-theme', 'dark'))
-        cy.get('[aria-label="Reporter feedback"]').should('not.have.css', 'color', lightColor)
-      })
+      cy.get('[aria-label="Reporter feedback"]')
+        .should('have.css', 'color')
+        .then((lightColor) => {
+          cy.document().then((doc) => doc.documentElement.setAttribute('data-theme', 'dark'))
+          cy.get('[aria-label="Reporter feedback"]').should('not.have.css', 'color', lightColor)
+        })
     })
   })
   it('previews reported polls read-only in current and reported content, including after Hide', () => {
