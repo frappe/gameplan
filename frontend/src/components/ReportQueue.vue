@@ -25,7 +25,7 @@
     <div
       v-for="item in items"
       :key="item.name"
-      class="flex items-center justify-between gap-3 border-b py-4"
+      class="flex items-center justify-between gap-4 border-b border-outline-gray-2 py-5 text-ink-gray-9"
     >
       <Checkbox
         v-if="status === 'Pending'"
@@ -65,97 +65,131 @@
     @inspect="openReview"
     @complete="bulkComplete"
   />
-  <Dialog v-model:open="showReview" title="Review reports" :size="'4xl'">
-    <template v-if="details">
-      <div class="flex flex-wrap items-center justify-between gap-2">
-        <p class="text-base-medium">
-          Current post · {{ useUser(details.current.owner).full_name }}
-        </p>
-        <Button
-          :route="{
-            name: 'Discussion',
-            params: {
-              communityId,
-              spaceId: details.current.project,
-              postId: details.current.discussion,
-            },
-          }"
-          target="_blank"
-          >Open discussion</Button
+  <ModerationDialog v-model:open="showReview" title="Review reports" :busy="resolving">
+    <template v-if="details" #sidebar>
+      <div class="space-y-5">
+        <Select
+          v-if="details.reports.length > 1"
+          v-model="selectedReport"
+          label="Report"
+          :options="reportOptions"
+          @update:model-value="view = 'current'"
+        />
+        <section
+          v-if="activeReport"
+          class="rounded-lg border border-outline-gray-3 bg-surface-gray-2 p-4"
+          aria-label="Reporter feedback"
         >
+          <p class="text-base-semibold">{{ activeReport.reason }}</p>
+          <p class="mt-2 text-base text-ink-gray-7">
+            {{
+              activeReport.automatic_rule
+                ? 'Automatic watched-word rule'
+                : useUser(activeReport.owner).full_name
+            }}
+          </p>
+          <time class="mt-1 block text-p-sm text-ink-gray-6">{{
+            dayjsLocal(activeReport.creation).format('D MMM YYYY [at] h:mm A')
+          }}</time>
+          <p class="mt-4 whitespace-pre-wrap break-words text-base text-ink-gray-9">
+            {{ activeReport.note || 'No additional note.' }}
+          </p>
+          <Button
+            class="mt-4"
+            :loading="evidenceLoading"
+            :disabled="resolving"
+            @click="loadReview(activeReport.name)"
+            >View reported version</Button
+          >
+        </section>
+        <div v-if="reportStart || details.has_more" class="flex gap-2">
+          <Button v-if="reportStart" @click="reportPage(-40)">Previous reports</Button>
+          <Button v-if="details.has_more" @click="reportPage(40)">More reports</Button>
+        </div>
+        <template v-if="details.review.status === 'Pending'">
+          <Select
+            v-model="decision"
+            label="Decision"
+            :disabled="resolving || evidenceLoading"
+            :options="['Dismiss', 'Uphold', 'Hide', 'Delete Spam']"
+          />
+          <p class="text-p-sm text-ink-gray-6">{{ decisionHelp[decision] }}</p>
+          <Textarea
+            v-model="note"
+            label="Decision note"
+            :maxlength="500"
+            required
+            :disabled="resolving"
+          />
+        </template>
+        <div v-else class="space-y-2 text-base">
+          <p class="font-medium">
+            {{ details.review.decision }} by {{ useUser(details.review.decided_by).full_name }}
+          </p>
+          <p class="whitespace-pre-wrap text-ink-gray-7">{{ details.review.decision_note }}</p>
+        </div>
       </div>
-      <p v-if="details.current.title" class="mt-2 text-base-medium">{{ details.current.title }}</p>
+    </template>
+    <template v-if="details">
+      <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <p class="text-base text-ink-gray-6">
+          {{ view === 'reported' ? 'Reported version' : 'Current post' }} ·
+          {{ useUser(details.current.owner).full_name }}
+        </p>
+        <div class="flex gap-2">
+          <Button v-if="view === 'reported'" @click="view = 'current'">Current post</Button>
+          <Button
+            :route="{
+              name: 'Discussion',
+              params: {
+                communityId,
+                spaceId: details.current.project,
+                postId: details.current.discussion,
+              },
+            }"
+            target="_blank"
+            >Open discussion</Button
+          >
+        </div>
+      </div>
+      <h3 class="mb-5 text-xl-semibold">
+        {{ view === 'reported' ? details.evidence?.reported_title : details.current.title }}
+      </h3>
+      <p v-if="details.polls.length" class="mb-4 text-p-sm text-ink-gray-6">
+        Poll previews show the current question and results.
+      </p>
       <CommentEditor
-        :key="details.current.version"
-        :value="details.current.content"
+        :key="`${view}-${details.current.version}-${details.evidence?.name}`"
+        :value="
+          view === 'reported' ? details.evidence?.reported_content || '' : details.current.content
+        "
         :editable="false"
       />
-      <p class="mt-5 text-base-medium">Reported versions</p>
-      <p v-if="details.polls.length" class="mt-1 text-base text-ink-gray-5">
-        Poll questions and results show the current poll, including in reported versions.
-      </p>
-      <div v-for="report in details.reports" :key="report.name" class="mt-3 border-t pt-3">
-        <Button variant="ghost" @click="loadReview(report.name)"
-          >{{ report.reason }} · {{ useUser(report.owner).full_name }}</Button
-        >
-        <p class="text-p-sm text-ink-gray-5">
-          {{ dayjsLocal(report.creation).format('D MMM YYYY [at] h:mm A') }}
-        </p>
-        <p class="mt-1 whitespace-pre-wrap text-base">{{ report.note }}</p>
-        <template v-if="details.evidence?.name === report.name">
-          <p class="mt-2 text-base-medium">{{ details.evidence.reported_title }}</p>
-          <CommentEditor :value="details.evidence.reported_content" :editable="false" />
-        </template>
-      </div>
-      <div class="mt-3 flex gap-2">
-        <Button v-if="reportStart" @click="reportPage(-40)">Previous reports</Button>
-        <Button v-if="details.has_more" @click="reportPage(40)">More reports</Button>
-      </div>
-      <template v-if="details.review.status === 'Pending'">
-        <Select
-          v-model="decision"
-          class="mt-5"
-          label="Decision"
-          :options="['Dismiss', 'Uphold', 'Hide', 'Delete Spam']"
-        />
-        <Textarea v-model="note" class="mt-3" label="Decision note" :maxlength="500" required />
-      </template>
-      <p v-else class="mt-4 whitespace-pre-wrap text-base">
-        {{ details.review.decision }} by {{ useUser(details.review.decided_by).full_name }} ·
-        {{ dayjsLocal(details.review.decided_at).format('D MMM YYYY [at] h:mm A') }} ·
-        {{ details.review.decision_note }}
-      </p>
     </template>
+    <p v-else role="status" class="text-base text-ink-gray-6">Loading review…</p>
     <ErrorMessage
       v-if="reviewError"
-      class="mt-3"
+      class="mt-4"
       :message="extractServerMessage(reviewError) || 'Could not review reports'"
     />
     <template #actions>
       <Button v-if="reviewError" @click="loadReview()">Refresh review</Button>
+      <Button :disabled="resolving" @click="showReview = false">Close</Button>
       <Button
         v-if="details?.review.status === 'Pending'"
         variant="solid"
         :loading="resolving"
-        :disabled="!note.trim() || !decision"
+        :disabled="!note.trim() || !decision || evidenceLoading"
         @click="resolve"
         >Resolve review</Button
       >
     </template>
-  </Dialog>
+  </ModerationDialog>
 </template>
 <script setup lang="ts">
 import { computed, provide, ref, watch } from 'vue'
-import {
-  Button,
-  Checkbox,
-  Dialog,
-  ErrorMessage,
-  Select,
-  Textarea,
-  call,
-  dayjsLocal,
-} from 'frappe-ui'
+import { Button, Checkbox, ErrorMessage, Select, Textarea, call, dayjsLocal } from 'frappe-ui'
+import ModerationDialog from './ModerationDialog.vue'
 import CommentEditor from '@/components/editor/CommentEditor.vue'
 import { threadPollsKey } from '@/components/PollBlock/poll-draft'
 import { useUser } from '@/data/users'
@@ -186,6 +220,25 @@ const status = ref('Pending'),
   loading = ref(false)
 const items = ref<Review[]>([]),
   error = ref<unknown>(null)
+const selectedReport = ref('')
+const view = ref('current')
+const evidenceLoading = ref(false)
+const activeReport = computed(
+  () => details.value?.reports.find((report) => report.name === selectedReport.value),
+)
+const reportOptions = computed(
+  () =>
+    details.value?.reports.map((report) => ({
+      label: `${report.reason} · ${useUser(report.owner).full_name}`,
+      value: report.name,
+    })) || [],
+)
+const decisionHelp: Record<string, string> = {
+  Dismiss: 'No action needed. The post stays visible.',
+  Uphold: 'Accept the report and keep the post visible.',
+  Hide: 'Hide this post. Moderators can restore it later.',
+  'Delete Spam': 'Remove this post as spam. Moderators can restore it later.',
+}
 const showReview = ref(false),
   details = ref<Details | null>(null),
   reviewError = ref<unknown>(null)
@@ -248,13 +301,16 @@ function openReview(item: Review) {
   note.value = ''
   decision.value = 'Dismiss'
   reportStart.value = 0
+  details.value = null
+  selectedReport.value = ''
+  view.value = 'current'
   showReview.value = true
   loadReview()
 }
 let detailRequest = 0
 async function loadReview(report = '') {
   const current = ++detailRequest
-  details.value = null
+  evidenceLoading.value = true
   reviewError.value = null
   try {
     const result = await call<Details>('gameplan.reporting.detail', {
@@ -265,9 +321,13 @@ async function loadReview(report = '') {
     })
     if (current === detailRequest) {
       details.value = result
+      selectedReport.value = report || result.reports[0]?.name || ''
+      view.value = report ? 'reported' : 'current'
     }
   } catch (e) {
     if (current === detailRequest) reviewError.value = e
+  } finally {
+    if (current === detailRequest) evidenceLoading.value = false
   }
 }
 function reportPage(delta: number) {

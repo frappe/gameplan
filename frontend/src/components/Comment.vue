@@ -114,7 +114,14 @@
           class="mt-3"
           v-if="!comment.deleted_at && !comment.hidden_at && !comment.spam_removed_at && !isEditing"
         >
-          <Reactions doctype="GP Comment" :name="comment.name" :read-only-mode="readOnlyMode" />
+          <Reactions
+            doctype="GP Comment"
+            :name="comment.name"
+            :read-only-mode="
+              readOnlyMode ||
+              Boolean(comment.hidden_at || comment.spam_removed_at || comment.deleted_at)
+            "
+          />
         </div>
       </div>
     </div>

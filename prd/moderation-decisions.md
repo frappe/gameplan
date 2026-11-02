@@ -180,3 +180,12 @@ Keep unresolved questions and implementation choices distinct from confirmed pro
 - The existing moderation history records setting transitions and required reasons. Generic discussion saves cannot change the protected setting.
 - The new branch includes all six moderation PRs. Combining history, reports, and approvals preserves all moderation-page tabs.
 - Verification passed: nine slow-mode tests on SQLite and MariaDB, a MariaDB concurrency test, 22 browser tests, focused existing moderation suites, lint, and a production build.
+## Forum-scale moderation and review usability — November 2
+
+Confirmed by Ebrahim:
+- Design all moderation features for a forum with millions of discussions. Bound list responses and batch permission/scope reads.
+- Put moderation in the app sidebar, with access across the user's moderated Communities. Remove the Community feed button.
+- Keep the reporter's reason and note visible beside scrolling post content. Load historical reported bodies only when opened.
+- Improve moderation layout and dark-mode contrast using Frappe UI patterns.
+- Removed content must not accept reactions, including reactions by staff viewing originals.
+- Apply shared fixes to source feature branches and the combined forum branch.

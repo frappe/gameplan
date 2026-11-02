@@ -1,17 +1,13 @@
 <template>
-  <div class="body-container py-5">
-    <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
-      <div class="flex flex-wrap items-center gap-3">
-        <h1 class="text-xl-semibold text-ink-gray-9">Community moderation</h1>
+  <div class="text-ink-gray-9">
+    <template v-if="canModerate">
+      <div class="mb-4 flex justify-end">
         <ApprovalSettings
           v-if="canManageCommunity(community, useSessionUser())"
           :key="communityId"
           :community-id="communityId"
         />
       </div>
-      <Button :route="{ name: 'Discussions', params: { communityId } }">Back to discussions</Button>
-    </div>
-    <template v-if="canModerate">
       <TabButtons
         v-model="tab"
         :options="[
@@ -37,14 +33,14 @@
             { label: 'Replies', value: 'GP Comment' },
           ]"
         />
-        <div v-for="item in items" :key="item.name" class="border-b py-4">
+        <div v-for="item in items" :key="item.name" class="border-b border-outline-gray-2 py-5">
           <div class="text-base-medium text-ink-gray-9">{{ item.title }}</div>
           <p class="mt-1 text-base text-ink-gray-5">
             {{ item.spam_removed_at ? 'Spam removed' : 'Hidden' }} ·
             {{ useUser(item.owner).full_name }}
           </p>
           <p class="mt-2 whitespace-pre-wrap text-base text-ink-gray-7">{{ item.reason }}</p>
-          <div class="mt-3 flex gap-2">
+          <div class="mt-3 flex flex-wrap gap-2">
             <Button @click="preview(item)">Preview</Button>
             <Button
               :route="{
@@ -60,7 +56,10 @@
             >
             <Button @click="restore(item)">Restore</Button>
           </div>
-          <div v-if="selected === item.name" class="mt-3 rounded border p-3">
+          <div
+            v-if="selected === item.name"
+            class="mt-3 max-h-96 overflow-y-auto rounded-lg border border-outline-gray-2 bg-surface-gray-1 p-4"
+          >
             <CommentEditor :value="previewContent" :editable="false" />
           </div>
         </div>
@@ -84,13 +83,17 @@
         <div
           v-for="ban in bans"
           :key="ban.user"
-          class="flex items-center justify-between gap-3 border-b py-4"
+          class="flex items-center justify-between gap-3 border-b border-outline-gray-2 py-5"
         >
           <div>
             <div class="text-base-medium text-ink-gray-9">{{ useUser(ban.user).full_name }}</div>
             <p class="mt-1 whitespace-pre-wrap text-base text-ink-gray-5">{{ ban.reason }}</p>
           </div>
           <Button @click="liftBan(ban.user)">Lift ban</Button>
+        </div>
+        <div class="mt-4 flex gap-2">
+          <Button v-if="start" @click="start -= 40">Previous</Button>
+          <Button v-if="hasMore" @click="start += 40">Next</Button>
         </div>
         <p v-if="!loading && !bans.length" class="mt-5 text-base text-ink-gray-5">
           No active Community bans.
@@ -194,8 +197,12 @@ async function load() {
     } else {
       const result = await call<typeof bans.value>('gameplan.moderation.community_bans', {
         community: props.communityId,
+        start: start.value,
       })
-      if (current === request) bans.value = result
+      if (current === request) {
+        bans.value = result.slice(0, 40)
+        hasMore.value = result.length > 40
+      }
     }
   } catch (e) {
     if (current === request) error.value = e

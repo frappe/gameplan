@@ -13,7 +13,7 @@
   <div
     v-for="item in items"
     :key="item.name"
-    class="flex items-center justify-between gap-3 border-b py-4"
+    class="flex items-center justify-between gap-4 border-b border-outline-gray-2 py-5 text-ink-gray-9"
   >
     <div>
       <p class="text-base-medium">{{ item.title || `Reply to discussion #${item.discussion}` }}</p>
@@ -33,7 +33,7 @@
     <Button v-if="start" @click="changePage(-40)">Previous</Button>
     <Button v-if="hasMore" @click="changePage(40)">Next</Button>
   </div>
-  <Dialog v-model:open="open" title="Review submission" size="4xl" :dismissible="!saving">
+  <ModerationDialog v-model:open="open" title="Review submission" :busy="saving">
     <template v-if="details">
       <p class="text-base-medium">
         {{ details.title || `Reply to discussion #${details.discussion}` }}
@@ -42,29 +42,37 @@
         {{ details.status }} · {{ useUser(details.owner).full_name }}
       </p>
       <CommentEditor :key="details.name" :value="details.content" :editable="false" />
-      <template v-if="details.status === 'Pending' && communityId">
-        <Select
-          v-model="decision"
-          class="mt-4"
-          label="Decision"
-          :disabled="saving"
-          :options="['Approve', 'Reject']"
-        />
-        <Textarea
-          v-model="note"
-          class="mt-3"
-          label="Feedback visible to the author"
-          :required="decision === 'Reject'"
-          :maxlength="500"
-          :disabled="saving"
-        />
-      </template>
-      <p v-if="details.decision_note" class="mt-4 whitespace-pre-wrap text-base">
-        {{ details.decision_note }}
-      </p>
-      <Button v-if="details.status === 'Approved'" class="mt-4" :route="publishedRoute"
-        >Open published post</Button
-      >
+    </template>
+    <template v-if="details" #sidebar>
+      <div class="space-y-4 text-ink-gray-9">
+        <p class="text-base-medium">{{ useUser(details.owner).full_name }}</p>
+        <p class="text-base text-ink-gray-6">
+          {{ details.status }} · {{ dayjsLocal(details.creation).format('D MMM YYYY') }}
+        </p>
+        <template v-if="details.status === 'Pending' && communityId">
+          <Select
+            v-model="decision"
+            class="mt-4"
+            label="Decision"
+            :disabled="saving"
+            :options="['Approve', 'Reject']"
+          />
+          <Textarea
+            v-model="note"
+            class="mt-3"
+            label="Feedback visible to the author"
+            :required="decision === 'Reject'"
+            :maxlength="500"
+            :disabled="saving"
+          />
+        </template>
+        <p v-if="details.decision_note" class="mt-4 whitespace-pre-wrap text-base">
+          {{ details.decision_note }}
+        </p>
+        <Button v-if="details.status === 'Approved'" class="mt-4" :route="publishedRoute"
+          >Open published post</Button
+        >
+      </div>
     </template>
     <ErrorMessage
       v-if="detailError"
@@ -90,12 +98,13 @@
         >Withdraw submission</Button
       >
     </template>
-  </Dialog>
+  </ModerationDialog>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { Button, Dialog, ErrorMessage, Select, Textarea, call, dayjsLocal, dialog } from 'frappe-ui'
+import { Button, ErrorMessage, Select, Textarea, call, dayjsLocal, dialog } from 'frappe-ui'
+import ModerationDialog from './ModerationDialog.vue'
 import CommentEditor from '@/components/editor/CommentEditor.vue'
 import { useUser } from '@/data/users'
 import { reloadDiscussionLists } from '@/data/discussions'

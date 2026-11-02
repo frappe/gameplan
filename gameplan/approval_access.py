@@ -67,6 +67,8 @@ def read_criterion(user):
 	)
 	if gameplan.is_anonymous(user):
 		return Submission.name == ""
+	if gameplan.is_guest(user):
+		return (Submission.owner == user) & target_criterion(projects)
 	if gameplan.is_admin(user):
 		return target_criterion(projects)
 	communities = (
