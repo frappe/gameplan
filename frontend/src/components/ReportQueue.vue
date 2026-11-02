@@ -42,6 +42,12 @@
             item.reference_name
           }}
         </p>
+        <p
+          v-if="item.discussion_title"
+          class="mt-1 line-clamp-2 break-words text-base text-ink-gray-5"
+        >
+          {{ item.discussion_title }}
+        </p>
         <p class="mt-1 text-base text-ink-gray-5">
           {{ item.decision || 'Pending review' }} ·
           {{ dayjsLocal(item.creation).format('D MMM YYYY [at] h:mm A') }}
@@ -228,8 +234,8 @@ const items = ref<Review[]>([]),
 const selectedReport = ref('')
 const view = ref('current')
 const evidenceLoading = ref(false)
-const activeReport = computed(
-  () => details.value?.reports.find((report) => report.name === selectedReport.value),
+const activeReport = computed(() =>
+  details.value?.reports.find((report) => report.name === selectedReport.value),
 )
 const reportOptions = computed(
   () =>

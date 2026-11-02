@@ -2,8 +2,6 @@
 
 Owner: Ebrahim. Decisions updated: 2026-10-23.
 
-Owner: Ebrahim. Decisions updated: 2026-10-21.
-
 This log records choices Ebrahim confirmed in this chat.
 The roadmap describes sequencing and contains proposals for later features.
 A recommendation becomes a decision only after Ebrahim accepts it.
@@ -118,7 +116,6 @@ Tests: `gameplan/tests/features/test_moderators.py` and `frontend/cypress/e2e/co
 Plan these when their implementation slice is next. Roadmap recommendations do not settle them.
 
 - Ordinary members' editing rights and whether a Community can opt into forum-specific rules.
-
 - Temporary bans, automatic expiry, and separate silence behavior.
 - Flood limits, watched-word matching, censor behavior, and automatic slow-mode expiry.
 - Bulk actions outside report review, background processing, and batch undo behavior.
@@ -144,7 +141,6 @@ Keep unresolved questions and implementation choices distinct from confirmed pro
 - A Community ban also blocks Space management, including moves, merges, and permanent deletion. Reading and management elsewhere remain available.
 - Pending reports block permanent deletion of their target, including parent cascades, and moving replies outside discussions. Resolve the reports before either operation.
 - Review versions include embedded poll questions, options, and voting settings. Poll votes do not invalidate a content review.
-
 ## T29 implementation notes
 
 - The accepted first-N policy is implemented with separate restricted GP Submission records and durable per-user/Community GP Approval Counter records.
@@ -162,7 +158,6 @@ Keep unresolved questions and implementation choices distinct from confirmed pro
 - User filtering covers Community Ban/Unban history. Discussion/reply history uses the target's current Space permissions, including after moves.
 - Missing targets remain in restricted log storage and do not consume Community history pages. Existing raw-log permissions remain unchanged.
 - Verified on the disposable site: 68 backend tests, seven browser tests, formatting, lint, and frontend build.
-
 ## T25 implementation notes
 
 - Bulk review reuses T16's Pending queue and four decisions. Moderators select up to 50 reviews across pages, inspect current excerpts and reason counts, and apply one shared note. Full review opens the existing evidence dialog.

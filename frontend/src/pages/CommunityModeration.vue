@@ -6,10 +6,10 @@
           v-model="tab"
           class="shrink-0"
           :options="[
+            { label: 'Approvals', value: 'approvals' },
+            { label: 'Reports', value: 'reports' },
             { label: 'Removed content', value: 'removed' },
             { label: 'Community bans', value: 'bans' },
-            { label: 'Reports', value: 'reports' },
-            { label: 'Approvals', value: 'approvals' },
             { label: 'History', value: 'history' },
           ]"
         />
@@ -165,7 +165,7 @@ const route = useRoute()
 const router = useRouter()
 const tab = computed({
   get: () =>
-    ['removed', 'bans', 'history', 'reports', 'approvals'].includes(String(route.query.tab))
+    ['approvals', 'reports', 'removed', 'bans', 'history'].includes(String(route.query.tab))
       ? String(route.query.tab)
       : 'removed',
   set: (value) => {
