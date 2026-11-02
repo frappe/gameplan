@@ -7,6 +7,7 @@ import {
   TextStyle,
   Color,
   Highlight,
+  TextAlign,
 } from 'frappe-ui/editor'
 import { gameplanHeadingLevels, suggestionConfig, richQuoteExtensions } from './config'
 import { collapsibleExtensions, slashCommandsWithCollapsible } from './collapsible'
@@ -53,6 +54,10 @@ export function commentExtensions(
     TextStyle,
     Color,
     Highlight,
+    // Discussion bodies are composed with RichTextKit, which can center or
+    // right-align headings and paragraphs. Without TextAlign here, the post body
+    // renders them left-aligned and the next edit saves the alignment away.
+    TextAlign,
     CustomEmojiExtension,
     PollBlockExtension,
     // Collapsible sections load here too, so a section written in a discussion
