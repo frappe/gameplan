@@ -5,6 +5,8 @@ from gameplan.community_bans import can_moderate_community
 from gameplan.moderation_logs import latest_logs
 from gameplan.permissions import moderatable_project_names
 
+BAN_CANDIDATE_PAGE_SIZE = 20
+
 
 @frappe.whitelist(methods=["GET", "POST"])
 def removed_content(community: str, doctype: str = "GP Discussion", start: int = 0):
@@ -74,6 +76,67 @@ def community_bans(community: str, start: int = 0):
 		.limit(41)
 		.run(as_dict=True)
 	)
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def ban_candidates(community: str, query: str = "", after: str = ""):
+	"""Return one cursor-paged list of eligible users for Community bans."""
+	if not can_moderate_community(community):
+		frappe.throw("Only community moderators can perform this action", frappe.PermissionError)
+	query = (query or "").strip()
+	if len(query) > 100:
+		frappe.throw("Search text must be at most 100 characters")
+	if query and len(query) < 2:
+		return {"items": [], "has_more": False, "next_cursor": ""}
+
+	User = frappe.qb.DocType("User")
+	HasRole = frappe.qb.DocType("Has Role")
+	Member = frappe.qb.DocType("GP Member")
+	Log = frappe.qb.DocType("GP Moderation Log")
+	admin_users = (
+		frappe.qb.from_(HasRole)
+		.select(HasRole.parent)
+		.where((HasRole.parenttype == "User") & HasRole.role.isin(["Gameplan Admin", "System Manager"]))
+	)
+	community_staff = (
+		frappe.qb.from_(Member)
+		.select(Member.user)
+		.where((Member.parenttype == "GP Team") & (Member.parent == community))
+		.where((Member.is_admin == 1) | (Member.is_moderator == 1))
+	)
+	active_bans = (
+		latest_logs(["community", "user"], ["Ban", "Unban"])
+		.select(Log.user)
+		.where((Log.community == community) & (Log.action == "Ban"))
+	)
+	users = (
+		frappe.qb.from_(User)
+		.join(HasRole)
+		.on((HasRole.parent == User.name) & (HasRole.parenttype == "User"))
+		.select(User.name, User.full_name, User.user_image)
+		.where(HasRole.role.isin(["Gameplan Guest", "Gameplan Member"]))
+		.where(User.name != "Administrator")
+		.where(User.name.notin(admin_users))
+		.where(User.name.notin(community_staff))
+		.where(User.name.notin(active_bans))
+		.distinct()
+	)
+	if query:
+		prefix = f"{query}%"
+		users = users.where(
+			(User.full_name.like(prefix)) | (User.email.like(prefix)) | (User.name.like(prefix))
+		)
+	if after:
+		users = users.where(User.name > after)
+
+	rows = users.orderby(User.name).limit(BAN_CANDIDATE_PAGE_SIZE + 1).run(as_dict=True)
+	has_more = len(rows) > BAN_CANDIDATE_PAGE_SIZE
+	items = rows[:BAN_CANDIDATE_PAGE_SIZE]
+	return {
+		"items": items,
+		"has_more": has_more,
+		"next_cursor": items[-1].name if has_more else "",
+	}
 
 
 def reindex_discussion_replies(discussion):
