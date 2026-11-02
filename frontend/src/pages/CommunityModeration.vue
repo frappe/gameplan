@@ -87,7 +87,7 @@
             open-on-click
             label="User"
             placeholder="Name or email"
-            description="Type at least 2 characters to find an eligible member."
+            description="Browse eligible members or type at least 2 characters to search."
             class="min-w-0 flex-1"
             :options="userOptions"
             :filterable="false"
