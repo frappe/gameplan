@@ -40,13 +40,6 @@
     </div>
   </PageHeader>
   <div class="body-container pt-5 pb-40">
-    <Button
-      v-if="canModerateCommunity(community, useSessionUser())"
-      class="mb-4"
-      icon-left="lucide-shield"
-      :route="{ name: 'CommunityModeration', params: { communityId } }"
-      >Moderation</Button
-    >
     <p
       v-if="isCommunityBanned(communityId, useSessionUser())"
       class="mb-4 text-base text-ink-gray-5"
@@ -88,7 +81,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { canModerateCommunity, isCommunityBanned } from '@/utils/permissions'
+import { isCommunityBanned } from '@/utils/permissions'
 import { useSessionUser } from '@/data/users'
 import {
   BottomSheet,
