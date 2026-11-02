@@ -7,7 +7,13 @@
           Review content and manage participation across your Communities.
         </p>
       </div>
-      <Select v-model="selected" label="Community" class="w-full sm:w-64" :options="options" />
+      <Select
+        v-if="options.length"
+        v-model="selected"
+        label="Community"
+        class="w-full sm:w-64"
+        :options="options"
+      />
     </header>
     <CommunityModeration v-if="selected" :key="selected" :community-id="selected" />
     <p v-else class="py-12 text-center text-base text-ink-gray-6">
