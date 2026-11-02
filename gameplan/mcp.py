@@ -13,6 +13,10 @@ Gameplan is an async discussions app. The UI says Community for GP Team and Spac
 - Track your submissions with call_method gameplan.approvals.queue; omit community and choose status Pending, Approved, Rejected, or Withdrawn. Do not create GP Submission or GP Approval Counter directly.
 - Check your reply cooldown with call_method gameplan.slow_mode.status {"discussion": "<name>"}; respect retry_after seconds. Moderators change it with gameplan.slow_mode.set_mode {"discussion": "<name>", "seconds": 30, "expected_seconds": 0, "reason": "<why>"}. Use seconds 0 to disable; expected_seconds is the current policy. Do not write slow_mode_seconds or GP Slow Mode State directly.
 - Mark a discussion as read with call_method gameplan.api.set_discussion_read_state {"discussion": "<name>"}; pass "unread": true to mark it unread. This also works for banned readers and archived Spaces. Mark a whole Space with GP Project mark_all_as_read.
+- Community admins appoint existing members with GP Team set_member_moderator {"user": "<email>", "is_moderator": 1 or 0}. Appointment never grants private-Space access.
+- Moderators use GP Discussion or GP Comment hide or delete_spam {"reason": "<reason, at most 500 characters>"}, get_hidden_content to preview, and restore. Public attachments must become private before removal.
+- List removed content with call_method gameplan.moderation.removed_content {"community": "<name>", "doctype": "GP Discussion" or "GP Comment", "start": 0}.
+- Moderators ban participation with call_method gameplan.community_bans.set_ban {"community": "<name>", "user": "<email>", "banned": 1, "reason": "<reason>"}; use banned 0 to lift it. List active bans with gameplan.moderation.community_bans {"community": "<name>"}. Bans preserve reading and survive rejoining.
 - React to a GP Discussion, GP Comment or GP Poll with its react method, args {"operations": [{"emoji": "👍", "operation": "add" or "remove"}]}. Bookmark with add_bookmark and remove_bookmark.
 - Vote with GP Poll submit_vote {"option": "<option title>"}. Undo with retract_vote.
 - Search posts with call_method gameplan.api.search_sqlite, args {"query": "<text>"}.
