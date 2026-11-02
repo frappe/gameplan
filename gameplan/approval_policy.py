@@ -1,5 +1,4 @@
 import frappe
-from frappe.query_builder.functions import Count
 from frappe.utils import cint
 
 from gameplan.approval_files import publishing_submission
@@ -83,12 +82,12 @@ def counter(community):
 		.where(Discussion.project.isin(projects))
 		.where(Discussion.hidden_at.isnull() & Discussion.spam_removed_at.isnull())
 	)
-	accepted = (
-		discussions.select(Count(Discussion.name)).where(Discussion.owner == user).for_update().run()[0][0]
-	)
-	accepted += (
+	# Thresholds cannot exceed 100; older contributions need no full-history count.
+	accepted = len(discussions.select(Discussion.name).where(Discussion.owner == user).limit(100).run())
+	if accepted < 100:
+		accepted += len(
 		frappe.qb.from_(Comment)
-		.select(Count(Comment.name))
+		.select(Comment.name)
 		.where(
 			(Comment.reference_doctype == "GP Discussion")
 			& Comment.reference_name.isin(discussions.select(Discussion.name))
@@ -99,9 +98,9 @@ def counter(community):
 			& Comment.hidden_at.isnull()
 			& Comment.spam_removed_at.isnull()
 		)
-		.for_update()
-		.run()[0][0]
-	)
+		.limit(100 - accepted)
+		.run()
+		)
 	row = frappe.get_doc(doctype="GP Approval Counter", community=community, user=user, accepted=accepted)
 	row.insert(ignore_permissions=True)
 	return frappe._dict(name=row.name, accepted=accepted)

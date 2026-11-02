@@ -133,3 +133,12 @@ Keep unresolved questions and implementation choices distinct from confirmed pro
 - Raw document creation is rejected when approval is required. Draft and scheduled publication enter the queue; the normal composer uses the same server rule.
 - Individual Space policies, edits to already-published posts, trust promotion, bulk approval, automatic filtering, and migration are separate work.
 - Submission destination IDs do not create deletion-blocking links. Removed targets leave restricted records. Deleting a Community or account clears its approval progress.
+## Forum-scale moderation and review usability — November 2
+
+Confirmed by Ebrahim:
+- Design all moderation features for a forum with millions of discussions. Bound list responses and batch permission/scope reads.
+- Put moderation in the app sidebar, with access across the user's moderated Communities. Remove the Community feed button.
+- Keep the reporter's reason and note visible beside scrolling post content. Load historical reported bodies only when opened.
+- Improve moderation layout and dark-mode contrast using Frappe UI patterns.
+- Removed content must not accept reactions, including reactions by staff viewing originals.
+- Apply shared fixes to source feature branches and the combined forum branch.

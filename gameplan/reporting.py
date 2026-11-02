@@ -144,6 +144,7 @@ def queue(community: str, status: str = "Pending", start: int = 0):
 
 @frappe.whitelist(methods=["GET", "POST"])
 def detail(community: str, review: str, start: int = 0, report: str = ""):
+	"""Read report metadata and current content; load evidence only when explicitly selected."""
 	review, doc = review_target(community, review)
 	reports = frappe.get_all(
 		"GP Report",
@@ -153,7 +154,6 @@ def detail(community: str, review: str, start: int = 0, report: str = ""):
 		limit_start=max(0, cint(start)),
 		limit_page_length=41,
 	)
-	report = report or (reports[0].name if reports else "")
 	evidence = (
 		frappe.db.get_value(
 			"GP Report",

@@ -2,6 +2,7 @@ import frappe
 from frappe.utils import cint
 
 from gameplan.community_bans import can_moderate_community
+from gameplan.moderation_logs import latest_logs
 from gameplan.permissions import moderatable_project_names
 
 
@@ -39,16 +40,12 @@ def removed_content(community: str, doctype: str = "GP Discussion", start: int =
 		.limit(41)
 	).run(as_dict=True)
 	field = "comment" if doctype == "GP Comment" else "discussion"
+	Log = frappe.qb.DocType("GP Moderation Log")
 	logs = (
-		frappe.get_all(
-			"GP Moderation Log",
-			filters={
-				field: ["in", [str(row.name) for row in rows]],
-				"action": ["in", ["Hide", "Delete Spam"]],
-			},
-			fields=[field, "reason", "title"],
-			order_by="creation desc, name desc",
-		)
+		latest_logs([field], ["Hide", "Delete Spam"])
+		.select(Log[field], Log.reason, Log.title)
+		.where(Log[field].isin([str(row.name) for row in rows]))
+		.run(as_dict=True)
 		if rows
 		else []
 	)
@@ -62,20 +59,21 @@ def removed_content(community: str, doctype: str = "GP Discussion", start: int =
 
 
 @frappe.whitelist(methods=["GET", "POST"])
-def community_bans(community: str):
-	"""List active participation bans for an authorized Community moderator."""
+def community_bans(community: str, start: int = 0):
+	"""List one page of active bans for an authorized Community moderator."""
 	if not can_moderate_community(community):
 		frappe.throw("Only community moderators can perform this action", frappe.PermissionError)
-	logs = frappe.get_all(
-		"GP Moderation Log",
-		filters={"community": community, "action": ["in", ["Ban", "Unban"]]},
-		fields=["user", "action", "reason", "creation"],
-		order_by="creation desc, name desc",
+	Log = frappe.qb.DocType("GP Moderation Log")
+	return (
+		latest_logs(["community", "user"], ["Ban", "Unban"])
+		.select(Log.user, Log.action, Log.reason, Log.creation)
+		.where((Log.community == community) & (Log.action == "Ban"))
+		.orderby(Log.creation, order=frappe.qb.desc)
+		.orderby(Log.name, order=frappe.qb.desc)
+		.offset(max(0, cint(start)))
+		.limit(41)
+		.run(as_dict=True)
 	)
-	latest = {}
-	for row in logs:
-		latest.setdefault(row.user, row)
-	return [row for row in latest.values() if row.action == "Ban"]
 
 
 def reindex_discussion_replies(discussion):
