@@ -139,7 +139,35 @@ def queue(community: str, status: str = "Pending", start: int = 0):
 		.offset(max(0, cint(start)))
 		.limit(41)
 	).run(as_dict=True)
-	return {"items": rows[:40], "has_more": len(rows) > 40}
+	rows = rows[:40]
+	comment_names = {row.reference_name for row in rows if row.reference_doctype == "GP Comment"}
+	comment_discussions = {}
+	if comment_names:
+		comments = (
+			frappe.qb.from_(Comment)
+			.select(Comment.name, Comment.reference_name)
+			.where(Comment.name.isin(comment_names))
+		).run(as_dict=True)
+		comment_discussions = {comment.name: comment.reference_name for comment in comments}
+	discussion_names = {
+		row.reference_name for row in rows if row.reference_doctype == "GP Discussion"
+	} | set(comment_discussions.values())
+	discussion_titles = {}
+	if discussion_names:
+		titles = (
+			frappe.qb.from_(Discussion)
+			.select(Discussion.name, Discussion.title)
+			.where(Discussion.name.isin(discussion_names))
+		).run(as_dict=True)
+		discussion_titles = {discussion.name: discussion.title for discussion in titles}
+	for row in rows:
+		discussion = (
+			row.reference_name
+			if row.reference_doctype == "GP Discussion"
+			else comment_discussions.get(row.reference_name)
+		)
+		row["discussion_title"] = discussion_titles.get(discussion, "")
+	return {"items": rows, "has_more": len(rows) > 40}
 
 
 @frappe.whitelist(methods=["GET", "POST"])

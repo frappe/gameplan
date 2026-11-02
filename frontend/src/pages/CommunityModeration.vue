@@ -4,9 +4,9 @@
       <TabButtons
         v-model="tab"
         :options="[
+          { label: 'Reports', value: 'reports' },
           { label: 'Removed content', value: 'removed' },
           { label: 'Community bans', value: 'bans' },
-          { label: 'Reports', value: 'reports' },
         ]"
       />
       <ErrorMessage
@@ -108,7 +108,16 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import ReportQueue from '@/components/ReportQueue.vue'
-import { Button, Combobox, Select, TabButtons, ErrorMessage, call, dialog, useDoctype } from 'frappe-ui'
+import {
+  Button,
+  Combobox,
+  Select,
+  TabButtons,
+  ErrorMessage,
+  call,
+  dialog,
+  useDoctype,
+} from 'frappe-ui'
 import CommentEditor from '@/components/editor/CommentEditor.vue'
 import { useCommunity } from '@/data/communities'
 import { users, useSessionUser, useUser } from '@/data/users'
