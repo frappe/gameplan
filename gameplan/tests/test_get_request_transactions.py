@@ -66,6 +66,8 @@ READ_ONLY_ENDPOINTS = frozenset(
 		"gameplan.approvals.detail",
 		"gameplan.approval_policy.get_policy",
 		"gameplan.reporting.detail",
+		"gameplan.moderation_history.history",
+		"gameplan.moderation_history.ban_users",
 		"gameplan.moderation.removed_content",
 		# Revision history.
 		"gameplan.gameplan.doctype.gp_comment.gp_comment.GPComment.get_revisions",

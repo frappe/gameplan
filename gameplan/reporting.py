@@ -139,7 +139,35 @@ def queue(community: str, status: str = "Pending", start: int = 0):
 		.offset(max(0, cint(start)))
 		.limit(41)
 	).run(as_dict=True)
-	return {"items": rows[:40], "has_more": len(rows) > 40}
+	rows = rows[:40]
+	comment_names = {row.reference_name for row in rows if row.reference_doctype == "GP Comment"}
+	comment_discussions = {}
+	if comment_names:
+		comments = (
+			frappe.qb.from_(Comment)
+			.select(Comment.name, Comment.reference_name)
+			.where(Comment.name.isin(comment_names))
+		).run(as_dict=True)
+		comment_discussions = {comment.name: comment.reference_name for comment in comments}
+	discussion_names = {
+		row.reference_name for row in rows if row.reference_doctype == "GP Discussion"
+	} | set(comment_discussions.values())
+	discussion_titles = {}
+	if discussion_names:
+		titles = (
+			frappe.qb.from_(Discussion)
+			.select(Discussion.name, Discussion.title)
+			.where(Discussion.name.isin(discussion_names))
+		).run(as_dict=True)
+		discussion_titles = {discussion.name: discussion.title for discussion in titles}
+	for row in rows:
+		discussion = (
+			row.reference_name
+			if row.reference_doctype == "GP Discussion"
+			else comment_discussions.get(row.reference_name)
+		)
+		row["discussion_title"] = discussion_titles.get(discussion, "")
+	return {"items": rows, "has_more": len(rows) > 40}
 
 
 @frappe.whitelist(methods=["GET", "POST"])
@@ -188,10 +216,19 @@ def detail(community: str, review: str, start: int = 0, report: str = ""):
 
 
 @frappe.whitelist(methods=["POST"])
-def resolve(community: str, review: str, decision: str, note: str, expected_version: str):
+def resolve(
+	community: str,
+	review: str,
+	decision: str,
+	note: str,
+	expected_version: str,
+	require_visible: bool = False,
+):
 	review, doc = review_target(community, review)
 	if review.status != "Pending":
 		frappe.throw("This review was already resolved. Refresh the queue.", frappe.TimestampMismatchError)
+	if require_visible:
+		check_visible(doc)
 	if expected_version != version(doc):
 		frappe.throw(
 			"This post changed. Refresh and review its current content.", frappe.TimestampMismatchError
@@ -212,26 +249,26 @@ def resolve(community: str, review: str, decision: str, note: str, expected_vers
 	)
 
 
-def target(doctype, name):
+def target(doctype, name, *, for_update=True):
 	if doctype not in ("GP Discussion", "GP Comment"):
 		frappe.throw("Unsupported report target")
-	doc = frappe.get_doc(doctype, name, for_update=True)
+	doc = frappe.get_doc(doctype, name, for_update=for_update)
 	if doctype == "GP Comment" and doc.reference_doctype != "GP Discussion":
 		frappe.throw("Only discussion replies can be reported", frappe.PermissionError)
 	return doc
 
 
-def review_target(community, name):
+def review_target(community, name, *, for_update=True):
 	reference = frappe.db.get_value("GP Review", name, ["reference_doctype", "reference_name"], as_dict=True)
 	if not reference or not can_moderate_community(community):
 		frappe.throw("Only Community moderators can review reports", frappe.PermissionError)
-	doc = target(reference.reference_doctype, reference.reference_name)
+	doc = target(reference.reference_doctype, reference.reference_name, for_update=for_update)
 	project = get_content_project(doc)
 	if frappe.db.get_value("GP Project", project, "team") != community or not can_moderate_space(
 		frappe.session.user, project
 	):
 		frappe.throw("You cannot review this content", frappe.PermissionError)
-	return frappe.get_doc("GP Review", name, for_update=True), doc
+	return frappe.get_doc("GP Review", name, for_update=for_update), doc
 
 
 def protect_pending_reviews(doc, method=None):
@@ -321,3 +358,10 @@ def checked_note(note, required):
 	if not isinstance(note, str) or len(note) > 500 or (required and not note.strip()):
 		frappe.throw("Enter a note of at most 500 characters")
 	return note.strip()
+
+
+def check_visible(doc):
+	from gameplan.mixins.moderation import discussion_is_removed, is_removed
+
+	if doc.get("deleted_at") or is_removed(doc) or discussion_is_removed(parent_discussion(doc)):
+		frappe.throw("This content was removed. Review it individually.", frappe.TimestampMismatchError)
