@@ -1,23 +1,25 @@
 <template>
   <div class="text-ink-gray-9">
     <template v-if="canModerate">
-      <div class="mb-4 flex justify-end">
+      <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <TabButtons
+          v-model="tab"
+          class="shrink-0"
+          :options="[
+            { label: 'Removed content', value: 'removed' },
+            { label: 'Community bans', value: 'bans' },
+            { label: 'Reports', value: 'reports' },
+            { label: 'Approvals', value: 'approvals' },
+            { label: 'History', value: 'history' },
+          ]"
+        />
         <ApprovalSettings
           v-if="canManageCommunity(community, useSessionUser())"
           :key="communityId"
           :community-id="communityId"
+          class="ml-auto shrink-0"
         />
       </div>
-      <TabButtons
-        v-model="tab"
-        :options="[
-          { label: 'Removed content', value: 'removed' },
-          { label: 'Community bans', value: 'bans' },
-          { label: 'Reports', value: 'reports' },
-          { label: 'Approvals', value: 'approvals' },
-          { label: 'History', value: 'history' },
-        ]"
-      />
       <ErrorMessage
         v-if="error"
         class="mt-4"
@@ -76,16 +78,31 @@
           Bans block participation in this Community until lifted. Reading and participation
           elsewhere stay available.
         </p>
-        <div class="flex items-end gap-2">
+        <div class="flex items-center gap-2">
           <Combobox
             v-model="targetUser"
             v-model:query="userQuery"
+            :open="userPickerOpen"
+            :loading="userSearchLoading"
+            variant="outline"
+            open-on-click
             label="User"
             placeholder="Name or email"
+            description="Type at least 2 characters to find an eligible member."
             class="min-w-0 flex-1"
             :options="userOptions"
             :filterable="false"
-          />
+            :empty-text="
+              userQuery.trim().length === 1
+                ? 'Type one more character to search.'
+                : 'No eligible members match this search.'
+            "
+            @update:open="setUserPickerOpen"
+          >
+            <template #item-prefix="{ item }">
+              <Avatar :image="item.image" :label="item.label" size="sm" />
+            </template>
+          </Combobox>
           <Button :disabled="!targetUser" @click="banUser">Ban from Community</Button>
         </div>
         <div
@@ -117,13 +134,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import ApprovalQueue from '@/components/ApprovalQueue.vue'
 import ApprovalSettings from '@/components/ApprovalSettings.vue'
 import ReportQueue from '@/components/ReportQueue.vue'
 import { useRoute, useRouter } from 'vue-router'
 import ModerationHistory from '@/components/ModerationHistory.vue'
 import {
+  Avatar,
   Button,
   Combobox,
   Select,
@@ -135,8 +153,8 @@ import {
 } from 'frappe-ui'
 import CommentEditor from '@/components/editor/CommentEditor.vue'
 import { useCommunity } from '@/data/communities'
-import { users, useSessionUser, useUser } from '@/data/users'
-import { canModerateCommunity, canManageCommunity, isGlobalAdmin } from '@/utils/permissions'
+import { useSessionUser, useUser } from '@/data/users'
+import { canModerateCommunity, canManageCommunity } from '@/utils/permissions'
 import { reloadDiscussionLists, useDiscussion } from '@/data/discussions'
 import { extractServerMessage } from '@/utils'
 
@@ -178,26 +196,81 @@ const selected = ref('')
 const previewContent = ref('')
 const targetUser = ref('')
 const userQuery = ref('')
-const staffUsers = computed(
-  () =>
-    new Set(
-      community.value?.members
-        .filter((member) => member.is_admin || member.is_moderator)
-        .map((member) => member.user),
-    ),
-)
-const userOptions = computed(() => {
-  const query = userQuery.value.trim().toLowerCase()
-  if (query.length < 2) return []
-  const options: { label: string; value: string }[] = []
-  for (const user of users.data || []) {
-    if (isGlobalAdmin(user) || staffUsers.value.has(user.name)) continue
-    if (!`${user.full_name} ${user.name}`.toLowerCase().includes(query)) continue
-    options.push({ label: user.full_name, value: user.name })
-    if (options.length === 20) break
+const userPickerOpen = ref(false)
+const userSearchLoading = ref(false)
+const userHasMore = ref(false)
+const userCursor = ref('')
+const userOptions = ref<{ label: string; value: string; image: string }[]>([])
+let userSearchRequest = 0
+let userSearchTimer: ReturnType<typeof setTimeout> | undefined
+async function loadBanCandidates(query: string, request: number, after = '') {
+  userSearchLoading.value = true
+  try {
+    const result = await call<{
+      items: { name: string; full_name: string; user_image: string }[]
+      has_more: boolean
+      next_cursor: string
+    }>('gameplan.moderation.ban_candidates', {
+      community: props.communityId,
+      query,
+      after,
+    })
+    if (request !== userSearchRequest || !userPickerOpen.value) return
+    const options = result.items.map((user) => ({
+      label: user.full_name || user.name,
+      value: user.name,
+      image: user.user_image,
+    }))
+    userOptions.value = after ? [...userOptions.value, ...options] : options
+    userHasMore.value = result.has_more
+    userCursor.value = result.next_cursor
+  } catch (e) {
+    if (request === userSearchRequest) error.value = e
+  } finally {
+    if (request === userSearchRequest) userSearchLoading.value = false
   }
-  return options
+}
+
+watch([userQuery, userPickerOpen, () => props.communityId], ([query, open]) => {
+  const request = ++userSearchRequest
+  clearTimeout(userSearchTimer)
+  userSearchLoading.value = false
+  if (!open) return
+
+  const term = query.trim()
+  userOptions.value = []
+  userHasMore.value = false
+  userCursor.value = ''
+  if (term.length === 1) return
+
+  userSearchTimer = setTimeout(() => loadBanCandidates(term, request), term ? 250 : 0)
 })
+
+function setUserPickerOpen(open: boolean) {
+  userPickerOpen.value = open
+  if (open) {
+    targetUser.value = ''
+    userQuery.value = ''
+  }
+}
+
+function loadMoreBanCandidatesOnScroll(event: Event) {
+  const viewport = event.target
+  if (
+    !(viewport instanceof HTMLElement) ||
+    !viewport.closest('[data-slot="content"]') ||
+    viewport.scrollTop + viewport.clientHeight < viewport.scrollHeight - 24 ||
+    !userPickerOpen.value ||
+    !userHasMore.value ||
+    userSearchLoading.value
+  ) {
+    return
+  }
+  loadBanCandidates(userQuery.value.trim(), userSearchRequest, userCursor.value)
+}
+
+onMounted(() => document.addEventListener('scroll', loadMoreBanCandidatesOnScroll, true))
+onBeforeUnmount(() => document.removeEventListener('scroll', loadMoreBanCandidatesOnScroll, true))
 
 let request = 0
 async function load() {

@@ -57,6 +57,12 @@ const dropdownItems = computed(() => [
     route: { name: 'MyPages' },
   },
   {
+    icon: 'lucide-clipboard-check',
+    label: 'My submissions',
+    condition: () => !isAnonymousVisitor(),
+    route: { name: 'MySubmissions' },
+  },
+  {
     icon: 'lucide-settings',
     label: 'Settings',
     condition: () => !isAnonymousVisitor(),
