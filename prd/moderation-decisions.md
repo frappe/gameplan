@@ -106,3 +106,13 @@ Keep unresolved questions and implementation choices distinct from confirmed pro
 - User filtering covers Community Ban/Unban history. Discussion/reply history uses the target's current Space permissions, including after moves.
 - Missing targets remain in restricted log storage and do not consume Community history pages. Existing raw-log permissions remain unchanged.
 - Verified on the disposable site: 68 backend tests, seven browser tests, formatting, lint, and frontend build.
+
+## Forum-scale moderation and review usability — November 2
+
+Confirmed by Ebrahim:
+- Design all moderation features for a forum with millions of discussions. Bound list responses and batch permission/scope reads.
+- Put moderation in the app sidebar, with access across the user's moderated Communities. Remove the Community feed button.
+- Keep the reporter's reason and note visible beside scrolling post content. Load historical reported bodies only when opened.
+- Improve moderation layout and dark-mode contrast using Frappe UI patterns.
+- Removed content must not accept reactions, including reactions by staff viewing originals.
+- Apply shared fixes to source feature branches and the combined forum branch.

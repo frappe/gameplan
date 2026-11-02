@@ -180,7 +180,10 @@
             <Reactions
               doctype="GP Discussion"
               :name="discussion.doc.name"
-              :read-only-mode="readOnlyMode"
+              :read-only-mode="
+                readOnlyMode ||
+                Boolean(discussion.doc?.hidden_at || discussion.doc?.spam_removed_at)
+              "
             />
           </div>
         </div>
@@ -189,7 +192,9 @@
           :name="discussion.doc.name"
           :space="space"
           :newCommentsFrom="discussion.doc.last_unread_comment?.toString()"
-          :read-only-mode="readOnlyMode"
+          :read-only-mode="
+            readOnlyMode || Boolean(discussion.doc?.hidden_at || discussion.doc?.spam_removed_at)
+          "
           :disable-new-comment="Boolean(discussion.doc.closed_at)"
           :hide-new-comment="editingPost"
           :activity-version="discussion.doc.modified"
@@ -881,7 +886,7 @@ function moderateDiscussion(spam = false) {
       : 'This discussion and its replies will be unavailable to ordinary readers. You can restore it from Removed content.',
     fields: restore ? [] : [{ name: 'reason', label: 'Reason', type: 'textarea', required: true }],
     confirmLabel: label,
-    onConfirm: async ({ values }) => {
+    onConfirm: async ({ values, close }) => {
       await moderationCall(
         `/api/v2/document/GP Discussion/${props.postId}/method/${
           restore ? 'restore' : spam ? 'delete_spam' : 'hide'
@@ -890,6 +895,7 @@ function moderateDiscussion(spam = false) {
       )
       reloadDiscussionLists()
       await discussion.reload()
+      close()
       await router.push({ name: 'CommunityModeration', params: { communityId: space.value?.team } })
     },
   })

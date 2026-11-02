@@ -64,3 +64,61 @@ class TestModerationAudienceScaling(GameplanTestCase):
 		):
 			self.assertEqual(removed_content(self.community.name)["items"], [])
 		self.assertLessEqual(roles.call_count, 10)
+
+	def test_reaction_rechecks_removal_after_locking(self):
+		get_doc = frappe.get_doc
+		removed = False
+
+		def locked_doc(doctype, name=None, *args, **kwargs):
+			nonlocal removed
+			if (
+				doctype == "GP Discussion"
+				and str(name) == str(self.discussion.name)
+				and kwargs.get("for_update")
+			):
+				frappe.db.set_value(doctype, name, "hidden_at", frappe.utils.now())
+				removed = True
+			return get_doc(doctype, name, *args, **kwargs)
+
+		with (
+			patch.object(frappe, "get_doc", side_effect=locked_doc),
+			self.assertRaises(frappe.PermissionError),
+		):
+			self.discussion.react([{"emoji": "👍", "operation": "add"}])
+		self.assertTrue(removed)
+		self.assertFalse(
+			frappe.db.exists(
+				"GP Reaction",
+				{"reference_doctype": "GP Discussion", "reference_name": str(self.discussion.name)},
+			)
+		)
+
+	def test_active_ban_pages_exclude_lifted_bans_and_bound_results(self):
+		from gameplan.moderation import community_bans
+
+		now = frappe.utils.now()
+		for index in range(45):
+			for action in ["Ban", "Unban"] if index == 0 else ["Ban"]:
+				log = frappe.get_doc(
+					doctype="GP Moderation Log",
+					community=self.community.name,
+					user=f"banned-{index}@example.test",
+					action=action,
+					reason="Test history",
+				).insert(ignore_permissions=True, ignore_links=True)
+				frappe.db.set_value(
+					"GP Moderation Log",
+					log.name,
+					"creation",
+					frappe.utils.add_to_date(now, seconds=1) if action == "Unban" else now,
+				)
+		first = community_bans(self.community.name)
+		second = community_bans(self.community.name, start=40)
+		self.assertEqual(len(first), 41)
+		self.assertEqual(len(second), 4)
+		self.assertNotIn("banned-0@example.test", [row.user for row in first + second])
+
+	def test_deleted_reply_rejects_reactions_even_for_staff(self):
+		frappe.db.set_value("GP Comment", self.reply.name, "deleted_at", frappe.utils.now())
+		with self.assertRaises(frappe.PermissionError):
+			self.reply.react([{"emoji": "👍", "operation": "add"}])

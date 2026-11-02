@@ -45,16 +45,15 @@ def is_banned(community, user=None, *, for_update=False):
 def banned_communities(user):
 	if is_global_admin(user):
 		return []
-	rows = frappe.get_all(
-		"GP Moderation Log",
-		filters={"user": user, "action": ["in", ["Ban", "Unban"]]},
-		fields=["community", "action"],
-		order_by="creation desc, name desc",
+	from gameplan.moderation_logs import latest_logs
+
+	Log = frappe.qb.DocType("GP Moderation Log")
+	return (
+		latest_logs(["community", "user"], ["Ban", "Unban"])
+		.select(Log.community)
+		.where((Log.user == user) & (Log.action == "Ban"))
+		.run(pluck=True)
 	)
-	latest = {}
-	for row in rows:
-		latest.setdefault(row.community, row.action)
-	return [community for community, action in latest.items() if action == "Ban"]
 
 
 def content_is_banned(doc, user=None):
