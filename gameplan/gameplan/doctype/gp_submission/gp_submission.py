@@ -33,3 +33,5 @@ class GPSubmission(HasAttachments, Document):
 def on_doctype_update():
 	frappe.db.add_index("GP Submission", ["owner", "status"], "author_submissions")
 	frappe.db.add_index("GP Submission", ["status", "creation"], "approval_queue")
+
+	frappe.db.add_index("GP Submission", ["discussion", "owner", "creation"], "discussion_author_submissions")
