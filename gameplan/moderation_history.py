@@ -5,6 +5,47 @@ from frappe.utils import cint
 from gameplan.community_bans import can_moderate_community
 from gameplan.permissions import moderatable_project_names
 
+BAN_HISTORY_USER_PAGE_SIZE = 20
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def ban_users(community: str, query: str = "", after: str = ""):
+	if not can_moderate_community(community):
+		frappe.throw("Only community moderators can perform this action", frappe.PermissionError)
+	query = (query or "").strip()
+	if len(query) > 100:
+		frappe.throw("Search text must be at most 100 characters")
+	if query and len(query) < 2:
+		return {"items": [], "has_more": False, "next_cursor": ""}
+
+	User = frappe.qb.DocType("User")
+	Log = frappe.qb.DocType("GP Moderation Log")
+	community_bans = (
+		frappe.qb.from_(Log)
+		.select(Log.user)
+		.where((Log.community == community) & Log.action.isin(["Ban", "Unban"]))
+	)
+	users = frappe.qb.from_(User).select(User.name, User.full_name, User.user_image).where(
+		User.name.isin(community_bans)
+	)
+	if query:
+		escaped_query = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+		prefix = f"{escaped_query}%"
+		users = users.where(
+			(User.full_name.like(prefix)) | (User.email.like(prefix)) | (User.name.like(prefix))
+		)
+	if after:
+		users = users.where(User.name > after)
+
+	rows = users.orderby(User.name).limit(BAN_HISTORY_USER_PAGE_SIZE + 1).run(as_dict=True)
+	has_more = len(rows) > BAN_HISTORY_USER_PAGE_SIZE
+	items = rows[:BAN_HISTORY_USER_PAGE_SIZE]
+	return {
+		"items": items,
+		"has_more": has_more,
+		"next_cursor": items[-1].name if has_more else "",
+	}
+
 
 @frappe.whitelist(methods=["GET", "POST"])
 def history(community: str, kind: str = "all", target: str = "", start: int = 0):

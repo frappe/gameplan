@@ -8,8 +8,8 @@
       <TabButtons
         v-model="tab"
         :options="[
-          { label: 'Removed content', value: 'removed' },
           { label: 'Community bans', value: 'bans' },
+          { label: 'Removed content', value: 'removed' },
           { label: 'History', value: 'history' },
         ]"
       />

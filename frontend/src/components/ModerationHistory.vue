@@ -1,11 +1,36 @@
 <template>
   <form class="my-4 flex flex-wrap items-end gap-2" @submit.prevent="applyFilters">
     <Select v-model="kind" label="History type" :options="kinds" />
-    <TextInput
-      v-if="kind !== 'all'"
+    <Combobox
+      v-if="kind === 'user'"
       v-model="target"
-      :label="kind === 'user' ? 'User email' : 'Post ID'"
-      :placeholder="kind === 'user' ? 'All users' : 'All posts'"
+      v-model:query="userQuery"
+      :open="userPickerOpen"
+      :loading="userSearchLoading"
+      variant="outline"
+      open-on-click
+      label="User"
+      placeholder="Name or email"
+      description="Browse users with Community ban history or type at least 2 characters to search."
+      class="min-w-0 flex-1"
+      :options="userOptions"
+      :filterable="false"
+      :empty-text="
+        userQuery.trim().length === 1
+          ? 'Type one more character to search.'
+          : 'No users with Community ban history match this search.'
+      "
+      @update:open="setUserPickerOpen"
+    >
+      <template #item-prefix="{ item }">
+        <Avatar :image="item.image" :label="item.label" size="sm" />
+      </template>
+    </Combobox>
+    <TextInput
+      v-else-if="kind !== 'all'"
+      v-model="target"
+      label="Post ID"
+      placeholder="All posts"
       class="min-w-0 flex-1"
     />
     <Button type="submit">Apply filters</Button>
@@ -36,9 +61,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Button, ErrorMessage, TextInput, Select, call, dayjsLocal } from 'frappe-ui'
+import {
+  Avatar,
+  Button,
+  Combobox,
+  ErrorMessage,
+  TextInput,
+  Select,
+  call,
+  dayjsLocal,
+} from 'frappe-ui'
 import { useUser } from '@/data/users'
 import { extractServerMessage } from '@/utils'
 
@@ -53,6 +87,14 @@ const kinds = [
 ]
 const kind = ref('all')
 const target = ref('')
+const userQuery = ref('')
+const userPickerOpen = ref(false)
+const userSearchLoading = ref(false)
+const userHasMore = ref(false)
+const userCursor = ref('')
+const userOptions = ref<{ label: string; value: string; image: string | null }[]>([])
+let userSearchRequest = 0
+let userSearchTimer: ReturnType<typeof setTimeout> | undefined
 const start = ref(0)
 const loading = ref(false)
 const error = ref<unknown>(null)
@@ -124,4 +166,72 @@ function changePage(delta: number) {
   start.value += delta
   load()
 }
+
+async function loadBanHistoryUsers(query: string, request: number, after = '') {
+  userSearchLoading.value = true
+  try {
+    const result = await call<{
+      items: { name: string; full_name: string; user_image: string | null }[]
+      has_more: boolean
+      next_cursor: string
+    }>('gameplan.moderation_history.ban_users', {
+      community: props.communityId,
+      query,
+      after,
+    })
+    if (request !== userSearchRequest || !userPickerOpen.value) return
+    const options = result.items.map((user) => ({
+      label: user.full_name || user.name,
+      value: user.name,
+      image: user.user_image,
+    }))
+    userOptions.value = after ? [...userOptions.value, ...options] : options
+    userHasMore.value = result.has_more
+    userCursor.value = result.next_cursor
+  } catch (e) {
+    if (request === userSearchRequest) error.value = e
+  } finally {
+    if (request === userSearchRequest) userSearchLoading.value = false
+  }
+}
+
+watch(
+  [userQuery, userPickerOpen, () => props.communityId, kind],
+  ([query, open, , selectedKind]) => {
+    const request = ++userSearchRequest
+    clearTimeout(userSearchTimer)
+    userSearchLoading.value = false
+    if (!open || selectedKind !== 'user') return
+
+    const term = query.trim()
+    userOptions.value = []
+    userHasMore.value = false
+    userCursor.value = ''
+    if (term.length === 1) return
+
+    userSearchTimer = setTimeout(() => loadBanHistoryUsers(term, request), term ? 250 : 0)
+  },
+)
+
+function setUserPickerOpen(open: boolean) {
+  userPickerOpen.value = open
+}
+
+function loadMoreBanHistoryUsers(event: Event) {
+  const viewport = event.target
+  if (
+    !(viewport instanceof HTMLElement) ||
+    !viewport.closest('[data-slot="content"]') ||
+    viewport.scrollTop + viewport.clientHeight < viewport.scrollHeight - 24 ||
+    !userPickerOpen.value ||
+    !userHasMore.value ||
+    userSearchLoading.value
+  ) {
+    return
+  }
+  loadBanHistoryUsers(userQuery.value.trim(), userSearchRequest, userCursor.value)
+}
+
+onMounted(() => document.addEventListener('scroll', loadMoreBanHistoryUsers, true))
+onBeforeUnmount(() => document.removeEventListener('scroll', loadMoreBanHistoryUsers, true))
 </script>
