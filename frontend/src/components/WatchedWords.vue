@@ -1,5 +1,5 @@
 <template>
-  <div class="mt-4 space-y-4">
+  <div class="mt-5 space-y-5 text-ink-gray-9">
     <p class="text-base text-ink-gray-6">
       Rules apply to this Community. Code is preserved. Block takes priority over approval and
       flagging.
@@ -19,8 +19,8 @@
           }}</Button>
         </template>
       </FileUploader>
-      <Button :link="downloadUrl(false)">Download list</Button>
-      <Button :link="downloadUrl(true)">Sample CSV</Button>
+      <Button :href="downloadUrl(false)">Download list</Button>
+      <Button :href="downloadUrl(true)">Sample CSV</Button>
     </div>
     <div class="flex flex-wrap items-end gap-2">
       <TextInput
@@ -36,7 +36,7 @@
     <div
       v-for="rule in items"
       :key="rule.name"
-      class="flex items-center justify-between gap-3 border-b py-3"
+      class="flex items-center justify-between gap-3 border-b border-outline-gray-2 py-4"
     >
       <span class="text-base"
         >{{ rule.word }}

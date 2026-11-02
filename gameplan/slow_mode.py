@@ -3,8 +3,8 @@ import math
 from datetime import timedelta
 
 import frappe
-from frappe.query_builder.functions import Coalesce
 from frappe.query_builder import functions as fn
+from frappe.query_builder.functions import Coalesce
 from frappe.utils import get_datetime, now_datetime
 
 from gameplan.community_bans import can_moderate_community
@@ -127,12 +127,14 @@ def last_submission(discussion, *, user=None, for_update=False):
 		return stored
 	# Existing approved replies retain their original submission time, not publication time.
 	Comment, Submission = frappe.qb.DocType("GP Comment"), frappe.qb.DocType("GP Submission")
+	new_reply = Submission.edit_name.isnull() | (Submission.edit_name == "")
 	accepted = Coalesce(Submission.creation, Comment.creation)
 	replies = (
 		frappe.qb.from_(Comment)
 		.left_join(Submission)
 		.on(
 			(Submission.published_doctype == "GP Comment")
+			& new_reply
 			& (Submission.published_name == fn.Cast_(Comment.name, "varchar"))
 		)
 		.select(accepted)
@@ -147,7 +149,7 @@ def last_submission(discussion, *, user=None, for_update=False):
 	submissions = (
 		frappe.qb.from_(Submission)
 		.select(Submission.creation)
-		.where((Submission.discussion == discussion) & (Submission.owner == user))
+		.where((Submission.discussion == discussion) & (Submission.owner == user) & new_reply)
 		.orderby(Submission.creation, order=frappe.qb.desc)
 		.limit(1)
 	)

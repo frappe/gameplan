@@ -211,11 +211,11 @@ def public_rows(doctype, rows):
 		collect_user_ids(doctype, row, user_ids)
 	handles = handles_for(user_ids)
 	files = public_file_urls(doctype, rows)
-	from gameplan.watched_word_payload import POST_TYPES, clean, community_for_target
+	from gameplan.watched_word_payload import POST_TYPES, clean
 
 	result = [public_row(doctype, row, handles, files.get(str(row.get("name")), {})) for row in rows]
 	if doctype in POST_TYPES:
-		return [clean(row, community_for_target(doctype, row.get("name"))) for row in result]
+		return clean([dict(row, _watched_doctype=doctype) for row in result])
 	return result
 
 

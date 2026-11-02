@@ -3,8 +3,8 @@ from urllib.parse import unquote
 
 import frappe
 
-from gameplan.permissions import get_content_project
 from gameplan.watched_word_matching import censor
+from gameplan.watched_word_scope import ResponseScopes
 
 POST_TYPES = {"GP Discussion", "GP Comment"}
 PRIVATE_METHODS = {
@@ -16,12 +16,9 @@ PRIVATE_METHODS = {
 
 
 def community_for_target(doctype, name):
-	if doctype not in POST_TYPES or not name or not frappe.db.exists(doctype, name):
+	if doctype not in POST_TYPES or not name:
 		return None
-	doc = frappe.get_doc(doctype, name)
-	if doctype == "GP Comment" and doc.reference_doctype != "GP Discussion":
-		return None
-	return frappe.db.get_value("GP Project", get_content_project(doc), "team")
+	return ResponseScopes({"doctype": doctype, "name": name}).target(doctype, name)
 
 
 TEXT_FIELDS = {
@@ -50,9 +47,10 @@ def text_fields():
 	return fields
 
 
-def clean(payload, community=None):
+def clean(payload, community=None, *, scopes=None):
+	scopes = scopes or ResponseScopes(payload)
 	if isinstance(payload, list | tuple):
-		return [clean(row, community) for row in payload]
+		return [clean(row, community, scopes=scopes) for row in payload]
 	if not isinstance(payload, dict):
 		return payload
 	row = frappe._dict(payload)
@@ -74,18 +72,16 @@ def clean(payload, community=None):
 		return row
 	project = row.get("_watched_project") or row.get("project")
 	if project:
-		community = frappe.db.get_value("GP Project", project, "team") or community
+		community = scopes.projects.get(str(project)) or community
 	community = community or (row.get("team") if row.get("project") else None)
 	if (row.get("_watched_reference_doctype") or row.get("reference_doctype")) == "GP Discussion":
 		community = (
-			community_for_target(
-				"GP Discussion", row.get("_watched_reference_name") or row.get("reference_name")
-			)
+			scopes.target("GP Discussion", row.get("_watched_reference_name") or row.get("reference_name"))
 			or community
 		)
-	community = community_for_target(row.get("doctype"), row.get("name")) or community
+	community = scopes.target(row.get("_watched_doctype") or row.get("doctype"), row.get("name")) or community
 	if row.get("discussion"):
-		community = community_for_target("GP Discussion", row.discussion) or community
+		community = scopes.target("GP Discussion", row.discussion) or community
 	fields = text_fields()
 	if row.get("type") and row.get("discussion"):
 		fields.add("message")
@@ -93,10 +89,10 @@ def clean(payload, community=None):
 		if key.startswith("_watched_"):
 			del row[key]
 		elif isinstance(value, dict | list | tuple):
-			row[key] = clean(value, community)
+			row[key] = clean(value, community, scopes=scopes)
 		elif key == "data" and community and isinstance(value, str):
 			try:
-				row[key] = frappe.as_json(clean(frappe.parse_json(value), community))
+				row[key] = frappe.as_json(clean(frappe.parse_json(value), community, scopes=scopes))
 			except (ValueError, TypeError):
 				pass
 		elif community and isinstance(value, str) and key in fields:

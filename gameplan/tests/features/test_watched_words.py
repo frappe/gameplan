@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import frappe
 
 from gameplan.approvals import decide, detail, queue, submit
@@ -273,3 +275,45 @@ class TestWatchedWords(GameplanTestCase):
 		self.assertNotIn("sensitive", clean(notification).message)
 		item = format_notification_item(notification, {}, self.outsider.name)
 		self.assertNotIn("sensitive", item["title"] + item["description"])
+
+	def test_response_scope_reads_are_batched_across_posts_and_communities(self):
+		other = create_community("Other censor", admins=[self.member])
+		other_space = create_space("Other censor Space", other)
+		other_post = create_discussion("Other original", other_space)
+		reply = create_comment(self.post, content="Original reply")
+		with self.as_user(self.member):
+			add(self.community.name, "Censor", "alpha")
+			add(other.name, "Censor", "beta")
+		rows = [
+			{"doctype": "GP Discussion", "name": self.post.name, "content": "alpha beta"},
+			{"doctype": "GP Discussion", "name": other_post.name, "content": "alpha beta"},
+			{"doctype": "GP Comment", "name": reply.name, "content": "alpha beta"},
+		]
+		clean(rows)
+		counts = []
+		for payload in (rows, rows * 40):
+			with patch.object(frappe.db, "sql", wraps=frappe.db.sql) as queries:
+				result = clean(payload)
+			counts.append(queries.call_count)
+			self.assertEqual(result[0].content, "■■■■■ beta")
+			self.assertEqual(result[1].content, "alpha ■■■■")
+			self.assertEqual(result[2].content, "■■■■■ beta")
+		self.assertEqual(counts, [3, 3])
+
+	def test_held_edit_does_not_change_legacy_reply_cooldown(self):
+		from frappe.utils import add_to_date, get_datetime
+
+		from gameplan.slow_mode import last_submission
+
+		reply = create_comment(self.post, content="Old reply", owner=self.outsider)
+		created = add_to_date(frappe.utils.now(), hours=-2)
+		frappe.db.set_value("GP Comment", reply.name, "creation", created)
+		frappe.db.delete(
+			"GP Slow Mode State", {"discussion": str(self.post.name), "user": self.outsider.name}
+		)
+		self.rule("Require approval", "reviewword")
+		with self.as_user(self.outsider):
+			edit("GP Comment", str(reply.name), str(reply.reload().modified), "reviewword")
+		self.assertEqual(
+			get_datetime(last_submission(str(self.post.name), user=self.outsider.name)), get_datetime(created)
+		)
