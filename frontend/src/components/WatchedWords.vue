@@ -22,15 +22,17 @@
       <Button :href="downloadUrl(false)">Download list</Button>
       <Button :href="downloadUrl(true)">Sample CSV</Button>
     </div>
-    <div class="flex flex-wrap items-center gap-2">
+    <div class="flex flex-wrap items-end gap-2">
       <TextInput
         v-model="word"
         label="Word or phrase"
         placeholder="Word or phrase"
         class="min-w-0 flex-1"
       />
-      <Checkbox v-model="caseSensitive" label="Case sensitive" />
-      <Button :disabled="!word.trim()" :loading="saving" @click="addWord">Add rule</Button>
+      <div class="flex h-9 items-center gap-2">
+        <Checkbox v-model="caseSensitive" label="Case sensitive" />
+        <Button :disabled="!word.trim()" :loading="saving" @click="addWord">Add rule</Button>
+      </div>
     </div>
     <ErrorMessage v-if="error" :message="error" />
     <div
