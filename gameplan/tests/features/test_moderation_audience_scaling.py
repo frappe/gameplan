@@ -117,3 +117,8 @@ class TestModerationAudienceScaling(GameplanTestCase):
 		self.assertEqual(len(first), 41)
 		self.assertEqual(len(second), 4)
 		self.assertNotIn("banned-0@example.test", [row.user for row in first + second])
+
+	def test_deleted_reply_rejects_reactions_even_for_staff(self):
+		frappe.db.set_value("GP Comment", self.reply.name, "deleted_at", frappe.utils.now())
+		with self.assertRaises(frappe.PermissionError):
+			self.reply.react([{"emoji": "👍", "operation": "add"}])
