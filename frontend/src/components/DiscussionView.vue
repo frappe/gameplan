@@ -528,6 +528,8 @@ const showRevisionsDialog = ref(false)
 // While the post is being edited, its title/body live in an auto-saved draft instead of
 // being mutated on discussion.doc directly. The draft survives reloads and navigation, and
 // silently restores if the edit is reopened. Dormant until editingPost flips true.
+const originalEdit = ref<{ title: string; content: string; modified: string } | null>(null)
+const savingWatchedEdit = ref(false)
 const postDraft = useDraftSync({
   identity: () => ({
     type: 'Discussion',
@@ -537,8 +539,8 @@ const postDraft = useDraftSync({
   }),
   enabled: editingPost,
   initialPayload: () => ({
-    title: discussion.doc?.title ?? '',
-    content: discussion.doc?.content ?? '',
+    title: originalEdit.value?.title ?? discussion.doc?.title ?? '',
+    content: originalEdit.value?.content ?? discussion.doc?.content ?? '',
   }),
 })
 const postDraftData = postDraft.data
@@ -737,10 +739,19 @@ function currentPostContent() {
   return postEditor.value?.editor?.getHTML() ?? discussion.doc?.content ?? ''
 }
 
-function startEditingPost() {
+async function startEditingPost() {
+  try {
+    originalEdit.value = await moderationCall('gameplan.watched_word_edits.original', {
+      doctype: 'GP Discussion',
+      name: props.postId,
+    })
+  } catch (e) {
+    toast.error(extractServerMessage(e) || 'Could not open this edit')
+    return
+  }
   editSnapshot.value = {
-    title: discussion.doc?.title ?? '',
-    content: currentPostContent(),
+    title: originalEdit.value?.title ?? discussion.doc?.title ?? '',
+    content: originalEdit.value?.content ?? currentPostContent(),
   }
   editingPost.value = true
   // The options dropdown restores focus to its trigger as it closes, which would
@@ -782,32 +793,34 @@ function cancelEdit() {
   }
 }
 
-function updatePost() {
-  if (!editingPost.value || !canSavePost.value) return
-  // Show the new title at once instead of the old one until the server answers.
-  const title = postDraftData.value?.title
-  const previousTitle = discussion.doc?.title
-  if (discussion.doc && title) discussion.doc.title = title
-  discussion.setValue
-    .submit({
-      title,
+async function updatePost() {
+  if (!editingPost.value || !canSavePost.value || savingWatchedEdit.value) return
+  savingWatchedEdit.value = true
+  try {
+    await postDraft.flush()
+    const result = await moderationCall<{ doctype: string }>('gameplan.watched_word_edits.submit', {
+      doctype: 'GP Discussion',
+      name: props.postId,
+      expected_modified: originalEdit.value?.modified,
+      title: postDraftData.value?.title,
       content: postDraftData.value?.content,
+      draft: postDraft.serverName.value || '',
     })
-    .then(
-      async () => {
-        // Content is saved onto the post; migrate the draft's attachments and delete it.
-        await postDraft.commit()
-        tags.reload()
-      },
-      () => {
-        // The save failed: put the old title back, unless something newer replaced it.
-        const doc = discussion.doc
-        if (doc && doc.title === title && previousTitle !== undefined) doc.title = previousTitle
-        toast.error(extractServerMessage(discussion.setValue.error) || 'Could not save the post')
-      },
-    )
-  editingPost.value = false
-  editSnapshot.value = null
+    if (result.doctype === 'GP Submission') {
+      await postDraft.forget()
+      toast.success('Edit submitted for moderator approval. Find it in My submissions.')
+    } else {
+      await postDraft.commit()
+    }
+    editingPost.value = false
+    editSnapshot.value = null
+    tags.reload()
+    await discussion.reload()
+  } catch (e) {
+    toast.error(extractServerMessage(e) || 'Could not save the post')
+  } finally {
+    savingWatchedEdit.value = false
+  }
 }
 
 // Runs once per visit, when the doc resolves — so if the URL is not ours at that moment,

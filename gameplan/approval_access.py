@@ -10,6 +10,14 @@ from gameplan.permissions import (
 
 
 def submission_project(doc, *, for_update=False):
+	if doc.get("edit_name"):
+		from gameplan.permissions import get_content_project
+
+		if doc.edit_doctype not in {"GP Discussion", "GP Comment"} or not frappe.db.exists(
+			doc.edit_doctype, doc.edit_name
+		):
+			return None
+		return get_content_project(frappe.get_doc(doc.edit_doctype, doc.edit_name, for_update=for_update))
 	if doc.discussion:
 		return frappe.db.get_value("GP Discussion", doc.discussion, "project", for_update=for_update)
 	return doc.project if frappe.db.exists("GP Project", doc.project) else None
@@ -37,9 +45,27 @@ def has_permission(doc, ptype=None, user=None, **kwargs):
 def target_criterion(projects):
 	Submission, Discussion = frappe.qb.DocType("GP Submission"), frappe.qb.DocType("GP Discussion")
 	parents = frappe.qb.from_(Discussion).select(Discussion.name).where(Discussion.project.isin(projects))
+	Comment = frappe.qb.DocType("GP Comment")
+	replies = (
+		frappe.qb.from_(Comment)
+		.select(Comment.name)
+		.where((Comment.reference_doctype == "GP Discussion") & Comment.reference_name.isin(parents))
+	)
+	new = Submission.edit_name.isnull() | (Submission.edit_name == "")
 	return (
-		(Submission.discussion.isnull() | (Submission.discussion == "")) & Submission.project.isin(projects)
-	) | Submission.discussion.isin(parents)
+		(
+			new
+			& (
+				(
+					(Submission.discussion.isnull() | (Submission.discussion == ""))
+					& Submission.project.isin(projects)
+				)
+				| Submission.discussion.isin(parents)
+			)
+		)
+		| ((Submission.edit_doctype == "GP Discussion") & Submission.edit_name.isin(parents))
+		| ((Submission.edit_doctype == "GP Comment") & Submission.edit_name.isin(replies))
+	)
 
 
 def query_conditions(user=None, **kwargs):

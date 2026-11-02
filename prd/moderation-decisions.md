@@ -1,8 +1,6 @@
 # Moderation decisions
 
-Owner: Ebrahim. Decisions updated: 2026-10-23.
-
-Owner: Ebrahim. Decisions updated: 2026-10-21.
+Owner: Ebrahim. Decisions updated: 2026-11-02.
 
 This log records choices Ebrahim confirmed in this chat.
 The roadmap describes sequencing and contains proposals for later features.
@@ -61,6 +59,19 @@ A recommendation becomes a decision only after Ebrahim accepts it.
 | D47 | Every slow-mode setting change requires a reason and appears in existing moderation history. | Record actor, time, and old/new interval. |
 | D48 | Calculate the wait from the latest accepted reply submission, including submissions before enablement. | Disabling removes the wait; changing or re-enabling uses the retained timestamp. |
 | D49 | Show a countdown and refresh status on focus, accepted replies, and setting changes. | Other viewers pick up staff changes on focus or their next submission. Server checks always enforce current settings. |
+| D50 | Include Block, Require approval, Flag, and Censor in watched words. | Apply rules to discussion titles, bodies, replies, and edits. |
+| D51 | Community/global admins manage Community word lists. | Moderators enforce rules but cannot change them. |
+| D52 | CSV imports add rules after a preview. | Skip duplicates. Reject the whole import for invalid rows. Preserve existing rules. |
+| D53 | Match whole words or phrases, ignoring case by default. | Support * wildcards and optional case sensitivity. Do not accept arbitrary regex. |
+| D54 | Community staff and global admins bypass Block, Require approval, and Flag. | Censor still applies to displayed staff posts. |
+| D55 | Preserve code and working URLs. | Check prose, link labels, and destinations for write actions. Censor visible prose only. |
+| D56 | Hold approval-triggering edits privately while the published version stays visible. | Approval updates the same post. Reject stale proposals after published changes. |
+| D57 | Block takes priority over Require approval, then Flag. | Censor remains independent. Approval does not flag the reviewed version again. |
+| D58 | Include manual entry and CSV controls. | Choose an action. Use headerless CSV: word/phrase, unused column, optional true/false case sensitivity. Include list, deletion, sample, download, and Test. |
+| D59 | Censor ordinary reads without changing stored originals, including existing posts. | Cover pages, API responses, search, and notifications. Authors can edit originals. Authorized moderators can inspect them. |
+| D60 | Block identifies matched entries to the author. Keep full lists admin-only. | Limit each action to 2,000 rules per Community, entries to 100 characters, and CSV files to 1 MB. Show invalid row numbers. |
+| D61 | Apply Block, Require approval, and Flag to future writes. | Do not scan old posts. Recheck Block at approval. Approval satisfies the other review actions for that version. |
+
 
 
 
@@ -120,7 +131,7 @@ Plan these when their implementation slice is next. Roadmap recommendations do n
 - Ordinary members' editing rights and whether a Community can opt into forum-specific rules.
 
 - Temporary bans, automatic expiry, and separate silence behavior.
-- Flood limits, watched-word matching, censor behavior, and automatic slow-mode expiry.
+- Flood limits and automatic slow-mode expiry.
 - Bulk actions outside report review, background processing, and batch undo behavior.
 
 ## Keeping this log current
@@ -180,3 +191,15 @@ Keep unresolved questions and implementation choices distinct from confirmed pro
 - The existing moderation history records setting transitions and required reasons. Generic discussion saves cannot change the protected setting.
 - The new branch includes all six moderation PRs. Combining history, reports, and approvals preserves all moderation-page tabs.
 - Verification passed: nine slow-mode tests on SQLite and MariaDB, a MariaDB concurrency test, 22 browser tests, focused existing moderation suites, lint, and a production build.
+
+## Watched-word implementation notes
+
+- Reuse Frappe File uploads and CSV parsing/export, with frappe-ui upload and dialog controls.
+- Store rules in restricted GP Watched Word records. Keep proposed edits in existing GP Submission records.
+- Review access follows the target's current Community and Space. Removed and archived posts cannot queue edits.
+- Censor post text at response boundaries and search, revision, SEO, and digest output. Keep code and URL destinations unchanged.
+- Named document/list APIs return censored content. Raw framework export, print, scalar, and grouped post queries are restricted while censor rules exist.
+- This extends T29's first release to proposed edits. Migration remains a later workstream.
+
+- Verification: 17 watched-word tests, 136 existing backend checks, and 26 browser tests passed. Migration, build, and lint passed.
+- The existing linked-user projection test still fails locally because Frappe returns an `api_key: null` field. This failure was reproduced before this feature.

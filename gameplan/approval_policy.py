@@ -27,6 +27,10 @@ def needs_approval(doc):
 	if not project:
 		return False
 	community = frappe.db.get_value("GP Project", project, "team")
+	from gameplan.watched_word_actions import requires_approval
+
+	if requires_approval(doc):
+		return True
 	threshold = cint(frappe.db.get_value("GP Team", community, "approval_post_count"))
 	if not threshold or can_moderate_community(community):
 		return False

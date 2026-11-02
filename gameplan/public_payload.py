@@ -211,7 +211,12 @@ def public_rows(doctype, rows):
 		collect_user_ids(doctype, row, user_ids)
 	handles = handles_for(user_ids)
 	files = public_file_urls(doctype, rows)
-	return [public_row(doctype, row, handles, files.get(str(row.get("name")), {})) for row in rows]
+	from gameplan.watched_word_payload import POST_TYPES, clean, community_for_target
+
+	result = [public_row(doctype, row, handles, files.get(str(row.get("name")), {})) for row in rows]
+	if doctype in POST_TYPES:
+		return [clean(row, community_for_target(doctype, row.get("name"))) for row in result]
+	return result
 
 
 def public_row(doctype, row, handles, files=None):

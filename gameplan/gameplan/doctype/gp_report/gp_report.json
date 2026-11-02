@@ -12,7 +12,8 @@
   "reason",
   "note",
   "reported_title",
-  "reported_content"
+  "reported_content",
+  "automatic_rule"
  ],
  "fields": [
   {
@@ -46,6 +47,12 @@
    "fieldtype": "Code",
    "label": "Reported Content",
    "options": "HTML"
+  },
+  {
+   "fieldname": "automatic_rule",
+   "fieldtype": "Check",
+   "label": "Automatic watched-word report",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,

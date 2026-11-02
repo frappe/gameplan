@@ -138,7 +138,16 @@ import ReportDialog from './ReportDialog.vue'
 import { canReport } from '@/data/reporting'
 import { ref, computed, defineAsyncComponent, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Button, Dropdown, ErrorMessage, Tooltip, dayjsLocal, useDoctype } from 'frappe-ui'
+import {
+  Button,
+  Dropdown,
+  ErrorMessage,
+  Tooltip,
+  dayjsLocal,
+  useDoctype,
+  call,
+  toast,
+} from 'frappe-ui'
 import { useList } from 'frappe-ui'
 import { copyToClipboard, extractServerMessage } from '@/utils'
 import UserProfileLink from './UserProfileLink.vue'
@@ -231,6 +240,7 @@ const author = computed(() => useUser(props.comment.owner))
 
 // While editing, the comment body is an auto-saved draft: it survives reloads and
 // silently restores if the edit is reopened. Dormant until the editor is open.
+const originalEdit = ref<{ content: string; modified: string } | null>(null)
 const draft = useDraftSync({
   identity: () => ({
     type: 'Comment',
@@ -239,7 +249,7 @@ const draft = useDraftSync({
     referenceName: props.comment.name,
   }),
   enabled: isEditing,
-  initialPayload: () => ({ content: props.comment.content ?? '' }),
+  initialPayload: () => ({ content: originalEdit.value?.content ?? props.comment.content ?? '' }),
 })
 const draftData = draft.data
 const isDraftLoading = draft.isLoading
@@ -251,8 +261,16 @@ const onEditorChange = (value: string) => {
   draftData.value.content = value
 }
 
-const startEditing = () => {
-  isEditing.value = true
+const startEditing = async () => {
+  try {
+    originalEdit.value = await call('gameplan.watched_word_edits.original', {
+      doctype: 'GP Comment',
+      name: props.comment.name,
+    })
+    isEditing.value = true
+  } catch (e) {
+    toast.error(extractServerMessage(e) || 'Could not open this edit')
+  }
 }
 
 const discardEdit = async () => {
@@ -285,11 +303,21 @@ const saveComment = async (content: string) => {
   updateError.value = null
 
   try {
-    await props.comments.setValue.submit({
+    await draft.flush()
+    const result = await call<{ doctype: string }>('gameplan.watched_word_edits.submit', {
+      doctype: 'GP Comment',
       name: props.comment.name,
+      expected_modified: originalEdit.value?.modified,
       content,
+      draft: draft.serverName.value || '',
     })
-    await draft.commit()
+    if (result.doctype === 'GP Submission') {
+      await draft.forget()
+      toast.success('Edit submitted for moderator approval. Find it in My submissions.')
+    } else {
+      await draft.commit()
+    }
+    await props.comments.reload()
     isEditing.value = false
     tags.reload()
   } catch (error) {

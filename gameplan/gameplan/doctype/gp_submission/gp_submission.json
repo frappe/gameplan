@@ -18,7 +18,10 @@
   "decided_by",
   "decided_at",
   "published_doctype",
-  "published_name"
+  "published_name",
+  "edit_doctype",
+  "edit_name",
+  "edit_modified"
  ],
  "fields": [
   {
@@ -85,6 +88,21 @@
    "fieldtype": "Data",
    "label": "Published Name",
    "search_index": 1
+  },
+  {
+   "fieldname": "edit_doctype",
+   "fieldtype": "Data",
+   "label": "Edited doctype"
+  },
+  {
+   "fieldname": "edit_name",
+   "fieldtype": "Data",
+   "label": "Edited post"
+  },
+  {
+   "fieldname": "edit_modified",
+   "fieldtype": "Data",
+   "label": "Original version"
   }
  ],
  "grid_page_length": 50,

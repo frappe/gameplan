@@ -358,6 +358,9 @@ class GameplanSearch(SQLiteSearch):
 				from gameplan.moderation import filter_removed_search_results
 
 				response["results"] = filter_removed_search_results(response["results"])
+			from gameplan.watched_word_payload import clean
+
+			response["results"] = clean(response["results"])
 			return response
 		finally:
 			del self._requested_projects

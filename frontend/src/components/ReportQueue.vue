@@ -96,7 +96,10 @@
       </p>
       <div v-for="report in details.reports" :key="report.name" class="mt-3 border-t pt-3">
         <Button variant="ghost" @click="loadReview(report.name)"
-          >{{ report.reason }} · {{ useUser(report.owner).full_name }}</Button
+          >{{ report.reason }} ·
+          {{
+            report.automatic_rule ? 'Automatic watched-word rule' : useUser(report.owner).full_name
+          }}</Button
         >
         <p class="text-p-sm text-ink-gray-5">
           {{ dayjsLocal(report.creation).format('D MMM YYYY [at] h:mm A') }}

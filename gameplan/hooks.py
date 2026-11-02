@@ -177,22 +177,30 @@ override_doctype_class = {"File": "gameplan.moderated_file.ModeratedFile"}
 # Hook on document methods and events
 
 doc_events = {
-	"GP Team": {"on_trash": "gameplan.approval_policy.delete_counters"},
+	"GP Team": {
+		"on_trash": ["gameplan.approval_policy.delete_counters", "gameplan.watched_words.delete_rules"]
+	},
 	"*": {
 		"on_trash": "gameplan.mixins.on_delete.on_trash",
 		"validate": "gameplan.community_bans.validate_participation",
 	},
 	# Discourse-style limits on Gameplan Guests posting in a space only because it is public.
 	"GP Discussion": {
+		"on_update": "gameplan.watched_word_actions.flag",
 		"on_trash": ["gameplan.reporting.protect_pending_reviews", "gameplan.slow_mode.clear_state"],
 		"before_insert": "gameplan.approval_policy.guard_publication",
-		"validate": ["gameplan.new_user_limits.check_new_user_limits", "gameplan.slow_mode.protect_settings"],
+		"validate": [
+			"gameplan.new_user_limits.check_new_user_limits",
+			"gameplan.slow_mode.protect_settings",
+			"gameplan.watched_word_actions.validate",
+		],
 		"after_insert": [
 			"gameplan.new_user_limits.record_first_day_post",
 			"gameplan.approval_policy.record_accepted",
 		],
 	},
 	"GP Comment": {
+		"on_update": "gameplan.watched_word_actions.flag",
 		"on_trash": [
 			"gameplan.reporting.protect_pending_reviews",
 			"gameplan.slow_mode.preserve_deleted_reply",
@@ -201,6 +209,7 @@ doc_events = {
 		"validate": [
 			"gameplan.new_user_limits.check_new_user_limits",
 			"gameplan.reporting.protect_pending_reviews",
+			"gameplan.watched_word_actions.validate",
 		],
 		"after_insert": [
 			"gameplan.new_user_limits.record_first_day_post",
@@ -231,8 +240,12 @@ on_login = "gameplan.www.g.on_login"
 before_request = [
 	"gameplan.public_access.refuse_generic_routes_for_anonymous",
 	"gameplan.public_access.limit_anonymous_request_rate",
+	"gameplan.watched_word_payload.guard_source_routes",
 ]
-after_request = ["gameplan.guest_payload.hide_guest_identity_data"]
+after_request = [
+	"gameplan.watched_word_payload.after_request",
+	"gameplan.guest_payload.hide_guest_identity_data",
+]
 override_whitelisted_methods = {
 	"frappe.realtime.has_permission": "gameplan.public_access.realtime_has_permission",
 }

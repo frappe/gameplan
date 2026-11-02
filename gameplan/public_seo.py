@@ -143,6 +143,15 @@ def read_public_doc(doctype, name):
 		allowed = can_view_content("Guest", doc)
 	if not allowed:
 		frappe.throw("Page not found", frappe.DoesNotExistError)
+	if doctype in {"GP Discussion", "GP Comment"}:
+		from gameplan.watched_word_payload import clean, community_for_target
+
+		doc.update(
+			clean(
+				{"title": doc.get("title"), "content": doc.get("content")},
+				community_for_target(doctype, name),
+			)
+		)
 	return doc
 
 

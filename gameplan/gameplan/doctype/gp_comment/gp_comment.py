@@ -33,6 +33,14 @@ class GPComment(Moderatable, HasAttachments, HasMentions, HasReactions, HasTags,
 	tags_field = "content"
 	attachments_field = "content"
 
+	@staticmethod
+	def get_list(query):
+		from gameplan.watched_word_payload import list_query
+
+		return list_query(query, "GP Comment")
+
+	get_list_query = get_list
+
 	def as_dict(self, *args, **kwargs):
 		return for_viewer(self.doctype, super().as_dict(*args, **kwargs))
 

@@ -20,12 +20,19 @@
           { label: 'Reports', value: 'reports' },
           { label: 'Approvals', value: 'approvals' },
           { label: 'History', value: 'history' },
+          ...(canManageCommunity(community, useSessionUser())
+            ? [{ label: 'Watched words', value: 'words' }]
+            : []),
         ]"
       />
       <ErrorMessage
         v-if="error"
         class="mt-4"
         :message="extractServerMessage(error) || 'Could not load moderation data'"
+      />
+      <WatchedWords
+        v-if="tab === 'words' && canManageCommunity(community, useSessionUser())"
+        :community-id="communityId"
       />
       <template v-if="tab === 'removed'">
         <Select
@@ -106,6 +113,7 @@
 </template>
 
 <script setup lang="ts">
+import WatchedWords from '@/components/WatchedWords.vue'
 import { computed, ref, watch } from 'vue'
 import ApprovalQueue from '@/components/ApprovalQueue.vue'
 import ApprovalSettings from '@/components/ApprovalSettings.vue'
@@ -127,7 +135,9 @@ const route = useRoute()
 const router = useRouter()
 const tab = computed({
   get: () =>
-    ['removed', 'bans', 'history', 'reports', 'approvals'].includes(String(route.query.tab))
+    ['removed', 'bans', 'history', 'reports', 'approvals', 'words'].includes(
+      String(route.query.tab),
+    )
       ? String(route.query.tab)
       : 'removed',
   set: (value) => {
@@ -177,7 +187,7 @@ async function load() {
   bans.value = []
   selected.value = ''
   error.value = null
-  if (!canModerate.value || ['reports', 'approvals', 'history'].includes(tab.value)) {
+  if (!canModerate.value || ['reports', 'approvals', 'history', 'words'].includes(tab.value)) {
     loading.value = false
     return
   }

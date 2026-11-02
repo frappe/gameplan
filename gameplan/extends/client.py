@@ -65,6 +65,9 @@ def get_list(
 			query = query.where(condition)
 	query = apply_custom_filters(doctype, query)
 	rows = query.run(as_dict=True, debug=debug)
+	from gameplan.watched_word_payload import clean
+
+	rows = clean(rows) if doctype in {"GP Discussion", "GP Comment"} else rows
 	return public_rows(doctype, rows) if anonymous else rows
 
 

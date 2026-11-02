@@ -24,6 +24,9 @@ def submit(
 ):
 	"""Publish a discussion/reply or preserve a private submission for moderator approval."""
 	doc = new_content(doctype, project, discussion, title, content)
+	from gameplan.watched_word_actions import check_block
+
+	check_block(doc)
 	draft_found = True
 	if draft:
 		try:
@@ -44,7 +47,7 @@ def submit(
 	return {"doctype": doc.doctype, "name": str(doc.name)}
 
 
-def hold(doc, request_key, draft=""):
+def hold(doc, request_key, draft="", edit=None):
 	frappe.db.get_value("User", frappe.session.user, "name", for_update=True)
 	key = submission_key(request_key)
 	existing = existing_submission(doc, request_key)
@@ -73,7 +76,8 @@ def hold(doc, request_key, draft=""):
 		)
 	from gameplan.slow_mode import record_reply
 
-	record_reply(doc)
+	if not edit:
+		record_reply(doc)
 
 	submission = frappe.get_doc(
 		doctype="GP Submission",
@@ -83,10 +87,15 @@ def hold(doc, request_key, draft=""):
 		content=doc.content,
 		request_key=key,
 		status="Pending",
+		edit_doctype=edit.doctype if edit else None,
+		edit_name=edit.name if edit else None,
+		edit_modified=str(edit.modified) if edit else None,
 	)
 	submission.insert(ignore_permissions=True)
 	if draft:
-		stored = validate_draft(draft, doc)
+		from gameplan.watched_word_edits import validate_edit_draft
+
+		stored = validate_edit_draft(draft, edit) if edit else validate_draft(draft, doc)
 		# Referenced attachments are already attached to the submission before draft cleanup.
 		stored.delete()
 	return outcome(submission)
@@ -116,6 +125,7 @@ def queue(community: str = "", status: str = "Pending", start: int = 0):
 			Submission.owner,
 			Submission.creation,
 			Submission.discussion,
+			Submission.edit_name,
 			Submission.status,
 		)
 		.where(criterion & (Submission.status == status))
@@ -182,10 +192,15 @@ def decide(name: str, decision: str, expected_modified: str, note: str = ""):
 				submission.title,
 				published_content(submission.content),
 			)
-			validate_destination(doc)
+			if not submission.edit_name:
+				validate_destination(doc)
+			if submission.edit_name:
+				from gameplan.watched_word_edits import edited_document
+
+				doc = edited_document(submission, doc)
 			token = publishing_submission.set((doc, submission.name))
 			try:
-				doc.insert()
+				doc.save() if submission.edit_name else doc.insert()
 			finally:
 				publishing_submission.reset(token)
 		finally:

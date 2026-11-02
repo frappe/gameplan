@@ -16,7 +16,10 @@
     class="flex items-center justify-between gap-3 border-b py-4"
   >
     <div>
-      <p class="text-base-medium">{{ item.title || `Reply to discussion #${item.discussion}` }}</p>
+      <p class="text-base-medium">
+        {{ item.edit_name ? 'Edit: ' : ''
+        }}{{ item.title || `Reply to discussion #${item.discussion}` }}
+      </p>
       <p class="mt-1 text-base text-ink-gray-5">
         {{ useUser(item.owner).full_name }} ·
         {{ dayjsLocal(item.creation).format('D MMM YYYY [at] h:mm A') }}
@@ -103,6 +106,7 @@ import { extractServerMessage } from '@/utils'
 const props = defineProps<{ communityId?: string }>()
 type Submission = {
   name: string
+  edit_name?: string
   title?: string
   discussion?: string
   owner: string

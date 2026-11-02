@@ -223,6 +223,8 @@ class TestMissingTierFailsClosed(GameplanTestCase):
 # the GP Team / GP Project column any more, so a new occurrence is either a legacy reader
 # (which would read a frozen column) or one of these, knowingly updated.
 LEGACY_PRIVACY_REFERENCES = {
+	"gameplan/watched_words.py": 1,
+	"gameplan/tests/features/test_watched_words.py": 4,
 	# The migration itself: the backfill, its verification, and the legacy-key guard.
 	"gameplan/patches/backfill_visibility_from_is_private.py": 5,
 	"gameplan/mixins/visibility.py": 3,

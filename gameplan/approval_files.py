@@ -20,6 +20,15 @@ def published_content(content):
 
 def validate_submission_files(doc):
 	for reference in extract_file_references(doc.content):
+		if doc.get("edit_name") and frappe.db.exists(
+			"File",
+			{
+				"file_url": reference.file_url,
+				"attached_to_doctype": doc.edit_doctype,
+				"attached_to_name": doc.edit_name,
+			},
+		):
+			continue
 		if not reference.file_url.startswith("/private/files/"):
 			frappe.throw("Upload a private attachment before submitting for approval")
 		filters = {"name": reference.file_name} if reference.file_name else {"file_url": reference.file_url}

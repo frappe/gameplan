@@ -69,6 +69,7 @@ def submit(doctype: str, name: str, reason: str, note: str = ""):
 		frappe.qb.from_(Report)
 		.select(Report.name)
 		.where((Report.owner == user) & (Report.creation > now_datetime() - timedelta(hours=1)))
+		.where(Report.automatic_rule == 0)
 		.limit(10)
 		.for_update()
 		.run()
@@ -148,7 +149,7 @@ def detail(community: str, review: str, start: int = 0, report: str = ""):
 	reports = frappe.get_all(
 		"GP Report",
 		filters={"review": review.name},
-		fields=["name", "owner", "creation", "reason", "note"],
+		fields=["name", "owner", "creation", "reason", "note", "automatic_rule"],
 		order_by="creation asc, name asc",
 		limit_start=max(0, cint(start)),
 		limit_page_length=41,
