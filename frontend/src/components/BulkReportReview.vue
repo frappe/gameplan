@@ -10,7 +10,9 @@
         <p class="text-base-medium text-ink-gray-9">{{ item.title || `Review ${item.review}` }}</p>
         <Button v-if="item.version" :disabled="running" @click="inspect(item)">Full review</Button>
       </div>
-      <p v-if="item.excerpt" class="mt-2 whitespace-pre-wrap text-base text-ink-gray-8">{{ item.excerpt }}</p>
+      <p v-if="item.excerpt" class="mt-2 whitespace-pre-wrap text-base text-ink-gray-8">
+        {{ item.excerpt }}
+      </p>
       <p v-if="item.reasons" class="mt-2 text-base text-ink-gray-5">
         {{ item.reasons.map((reason) => `${reason.reason}: ${reason.count}`).join(' · ') }}
       </p>
@@ -18,30 +20,30 @@
       <ErrorMessage v-if="item.error" class="mt-2" :message="item.error" />
     </div>
     <template #sidebar>
-    <template v-if="!finished">
-      <Select
-        v-model="decision"
-        class="mt-5"
-        label="Decision for selected reviews"
-        :options="['Dismiss', 'Uphold', 'Hide', 'Delete Spam']"
-        :disabled="loading || running"
-      />
-      <Textarea
-        v-model="note"
-        class="mt-3"
-        label="Shared decision note"
-        :maxlength="500"
-        :disabled="loading || running"
-        required
-      />
-    </template>
-    <p v-if="running || finished" role="status" class="mt-4 text-base">
-      {{ processed }} of {{ eligible }} processed · {{ succeeded }} resolved.
-    </p>
-    <p v-if="finished" class="mt-2 text-base text-ink-gray-6">
-      Unresolved items remain in the queue. Select them again to review fresh content before
-      retrying.
-    </p>
+      <template v-if="!finished">
+        <Select
+          v-model="decision"
+          class="mt-5"
+          label="Decision for selected reviews"
+          :options="['Dismiss', 'Uphold', 'Hide', 'Delete Spam']"
+          :disabled="loading || running"
+        />
+        <Textarea
+          v-model="note"
+          class="mt-3"
+          label="Shared decision note"
+          :maxlength="500"
+          :disabled="loading || running"
+          required
+        />
+      </template>
+      <p v-if="running || finished" role="status" class="mt-4 text-base">
+        {{ processed }} of {{ eligible }} processed · {{ succeeded }} resolved.
+      </p>
+      <p v-if="finished" class="mt-2 text-base text-ink-gray-6">
+        Unresolved items remain in the queue. Select them again to review fresh content before
+        retrying.
+      </p>
     </template>
     <template #actions>
       <Button v-if="!running" @click="open = false">{{ finished ? 'Done' : 'Cancel' }}</Button>
