@@ -256,18 +256,21 @@ def users_who_can_view_content(users, doc):
 	keep the two in step.
 	"""
 	users = list(dict.fromkeys(users))
+	if doc.doctype == "GP Comment" and doc.reference_doctype != "GP Discussion":
+		users = [user for user in users if user != "Guest"]
 	project = get_content_project(doc)
 	if not project:
 		# can_view_content's own space-less fallback, inlined rather than called per
 		# user: it would re-resolve the project for every user (a query each, for a
 		# GP Comment) and give back exactly this answer.
 		owner = get_content_owner(doc)
-		return [user for user in users if is_global_admin(user) or user == owner]
+		admins, _ = get_audience_roles(users)
+		return [user for user in users if user != "Guest" and (user in admins or user == owner)]
 
 	return users_who_can_view_space(users, project)
 
 
-def users_who_can_view_space(users, project):
+def users_who_can_view_space(users, project, *, role_sets=None):
 	"""The subset of `users` that can_view_space would return True for, order preserved.
 
 	The batched form of can_view_space, for the same reason users_who_can_view_content
@@ -289,21 +292,48 @@ def users_who_can_view_space(users, project):
 	)
 
 	publicly_readable = is_publicly_readable_space(project_info)
+	admins, guest_roles = role_sets if role_sets is not None else get_audience_roles(users)
 
 	def allowed(user):
-		if is_global_admin(user):
+		if user in admins:
 			return True
 		if publicly_readable:
 			return True
 		if gameplan.is_anonymous(user):
 			return False
-		if gameplan.is_guest(user):
+		if user in guest_roles:
 			return user in guests
 		if is_member_access(project_info.visibility):
 			return user in space_members
 		return not community_is_member_access or user in community_members
 
 	return [user for user in users if allowed(user)]
+
+
+def get_audience_roles(users):
+	"""Resolve batch permission roles without one Redis request per user."""
+	admins, guests, members = {"Administrator"}, set(), set()
+	if not users:
+		return admins, guests
+	rows = frappe.get_all(
+		"Has Role",
+		filters={
+			"parenttype": "User",
+			"parent": ["in", list(users)],
+			"role": ["in", ["Gameplan Admin", "System Manager", "Gameplan Guest", "Gameplan Member"]],
+		},
+		fields=["parent", "role"],
+	)
+	for row in rows:
+		if row.parent == "Guest":
+			continue
+		if row.role in {"Gameplan Admin", "System Manager"}:
+			admins.add(row.parent)
+		if row.role in {"Gameplan Admin", "Gameplan Member"}:
+			members.add(row.parent)
+		if row.role == "Gameplan Guest":
+			guests.add(row.parent)
+	return admins, guests - members - {"Administrator"}
 
 
 def _member_users(parenttype, parent):

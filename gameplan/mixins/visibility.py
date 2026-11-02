@@ -5,7 +5,7 @@ import frappe
 from frappe import _
 from frappe.utils import cint
 
-from gameplan.permissions import is_global_admin, users_who_can_view_space
+from gameplan.permissions import get_audience_roles, is_global_admin, users_who_can_view_space
 from gameplan.realtime import notify_unread_counts_changed
 from gameplan.roles import GAMEPLAN_ROLES
 from gameplan.utils.document import with_stored_document
@@ -94,13 +94,18 @@ class HasVisibility:
 
 		users = gameplan_users()
 		spaces = self.get_affected_space_names()
-		readers_before = {space: set(users_who_can_view_space(users, space)) for space in spaces}
+		role_sets = get_audience_roles(users)
+		readers_before = {
+			space: set(users_who_can_view_space(users, space, role_sets=role_sets)) for space in spaces
+		}
 		public_before = anonymous_readable_spaces(spaces)
 		frappe.db.savepoint("visibility_impact")
 		try:
 			frappe.db.set_value(self.doctype, self.name, "visibility", visibility, update_modified=False)
 			refresh_anonymous_readable(spaces)
-			readers_after = {space: set(users_who_can_view_space(users, space)) for space in spaces}
+			readers_after = {
+				space: set(users_who_can_view_space(users, space, role_sets=role_sets)) for space in spaces
+			}
 			public_after = anonymous_readable_spaces(spaces)
 		finally:
 			frappe.db.rollback(save_point="visibility_impact")
