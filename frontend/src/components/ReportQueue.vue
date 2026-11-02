@@ -50,7 +50,7 @@
         />
         <section
           v-if="activeReport"
-          class="rounded-lg border border-outline-gray-3 bg-surface-gray-2 p-4"
+          class="rounded-5 border border-outline-gray-3 bg-surface-gray-2 p-4"
           aria-label="Reporter feedback"
         >
           <p class="text-base-semibold">{{ activeReport.reason }}</p>
