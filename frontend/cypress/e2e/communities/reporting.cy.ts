@@ -21,6 +21,36 @@ function decision(value: string, note = 'Moderator reviewed the reports') {
 }
 
 describe('Content reports', () => {
+  it('keeps reporter feedback visible while scrolling and loads evidence only on request', () => {
+    resetData('space_with_discussion').then((ids) => {
+      cy.request('PUT', `/api/v2/document/GP Discussion/${ids.discussion}`, {
+        content: Array.from({length: 80}, (_, index) => `<p>Long post paragraph ${index}</p>`).join(''),
+      })
+      cy.switchUser('secondMember')
+      cy.request('POST', '/api/method/gameplan.reporting.submit', {
+        doctype: 'GP Discussion', name: String(ids.discussion), reason: 'Other', note: 'Keep this reporter note in view',
+      })
+      cy.switchUser('admin')
+      reports(ids)
+      cy.intercept('POST', '**/gameplan.reporting.detail').as('detail')
+      cy.contains('button', /^Review$/).click()
+      cy.wait('@detail').its('response.body.message.evidence').should('eq', null)
+      cy.get('[aria-label="Reporter feedback"]').should('contain.text', 'Keep this reporter note in view').then(($feedback) => {
+        const top = $feedback[0].getBoundingClientRect().top
+        cy.get('[data-testid="review-content"]').scrollTo('bottom')
+        cy.get('[aria-label="Reporter feedback"]').should(($fixed) => {
+          expect($fixed[0].getBoundingClientRect().top).to.equal(top)
+        })
+      })
+      cy.contains('button', 'View reported version').click()
+      cy.wait('@detail').its('request.body.report').should('not.eq', '')
+      cy.contains('Reported version ·').should('be.visible')
+      cy.get('[aria-label="Reporter feedback"]').should('have.css', 'color').then(lightColor => {
+        cy.document().then(doc => doc.documentElement.setAttribute('data-theme', 'dark'))
+        cy.get('[aria-label="Reporter feedback"]').should('not.have.css', 'color', lightColor)
+      })
+    })
+  })
   it('previews reported polls read-only in current and reported content, including after Hide', () => {
     resetData('space_with_discussion').then((ids) => {
       const poll = { title: 'Reported poll', options: [{ title: 'Yes' }, { title: 'No' }] }
@@ -40,7 +70,7 @@ describe('Content reports', () => {
       reports(ids)
       cy.contains('button', /^Review$/).click()
       cy.get('[role="dialog"] [data-node-view-wrapper]')
-        .should('have.length', 2)
+        .should('have.length', 1)
         .each(($preview) => {
           cy.wrap($preview).contains('Reported poll').should('be.visible')
           cy.wrap($preview)
@@ -50,13 +80,16 @@ describe('Content reports', () => {
               cy.wrap($answer).should('be.disabled')
             })
         })
+      cy.contains('button', 'View reported version').click()
+      cy.contains('Reported version ·').should('be.visible')
       cy.get('[role="dialog"] button[aria-label="Poll Options"]').should('not.exist')
       decision('Hide')
       cy.contains('No pending reports.').should('be.visible')
       cy.get('[role="dialog"]').should('not.exist')
-      cy.get('[role="combobox"]').click()
+      cy.contains('[role="combobox"]', 'Pending').click()
       cy.contains('[role="option"]', 'Resolved').click()
       cy.contains('button', /^Review$/).click()
+      cy.contains('button', 'View reported version').click()
       cy.get('[role="dialog"] [data-node-view-wrapper]')
         .should('have.length', 1)
         .contains('Reported poll')
@@ -96,11 +129,13 @@ describe('Content reports', () => {
       reports(ids)
       cy.contains('button', /^Review$/).click()
       cy.contains('Needs moderator review').should('be.visible')
-      cy.contains('button', 'Other · Second Member').should('be.visible')
+      cy.get('[aria-label="Reporter feedback"]')
+        .should('contain.text', 'Other')
+        .and('contain.text', 'Second Member')
       decision('Hide')
       cy.contains('No pending reports.').should('be.visible')
       cy.get('[role="dialog"]').should('not.exist')
-      cy.get('[role="combobox"]').click()
+      cy.contains('[role="combobox"]', 'Pending').click()
       cy.contains('[role="option"]', 'Resolved').click()
       cy.contains('button', /^Review$/).click()
       cy.contains('Hide by').should('be.visible')
@@ -127,8 +162,11 @@ describe('Content reports', () => {
         })
         reports(ids)
         cy.contains('button', /^Review$/).click()
-        cy.contains('Original reply evidence').should('be.visible')
+        cy.contains('Original reply evidence').should('not.exist')
         cy.contains('Edited reply context').should('be.visible')
+        cy.contains('button', 'View reported version').click()
+        cy.contains('Original reply evidence').should('be.visible')
+        cy.contains('Edited reply context').should('not.exist')
         decision('Uphold')
         cy.contains('No pending reports.').should('be.visible')
         cy.visit(thread(ids))
