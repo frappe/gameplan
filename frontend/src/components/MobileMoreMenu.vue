@@ -80,6 +80,8 @@ import { useRouter, type RouteLocationRaw } from 'vue-router'
 import { BottomSheet } from 'frappe-ui'
 import { isGameplanAdmin, useSessionUser } from '@/data/users'
 import { session } from '@/data/session'
+import { communities } from '@/data/communities'
+import { canModerateCommunity } from '@/utils/permissions'
 import { useIsMobile } from '@/utils/useIsMobile'
 import { useTheme, type Theme } from '@/utils/useTheme'
 
@@ -132,6 +134,9 @@ const userBio = computed(() => sessionUser.bio?.trim())
 
 const itemGroups = computed<MoreItemGroup[]>(() => {
   const workspaceItems: MoreItem[] = [
+    ...(communities.data?.some((community) => canModerateCommunity(community, sessionUser))
+      ? [{ label: 'Moderation', icon: 'lucide-shield-check', route: { name: 'Moderation' } }]
+      : []),
     { label: 'Drafts', icon: 'lucide-pencil-line', route: { name: 'Drafts' } },
     { label: 'Bookmarks', icon: 'lucide-bookmark', route: { name: 'Bookmarks' } },
     { label: 'Pages', icon: 'lucide-files', route: { name: 'MyPages' } },
