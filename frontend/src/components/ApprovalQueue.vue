@@ -46,30 +46,32 @@
     <template v-if="details" #sidebar>
       <div class="space-y-4 text-ink-gray-9">
         <p class="text-base-medium">{{ useUser(details.owner).full_name }}</p>
-        <p class="text-base text-ink-gray-6">{{ details.status }} · {{ dayjsLocal(details.creation).format('D MMM YYYY') }}</p>
-      <template v-if="details.status === 'Pending' && communityId">
-        <Select
-          v-model="decision"
-          class="mt-4"
-          label="Decision"
-          :disabled="saving"
-          :options="['Approve', 'Reject']"
-        />
-        <Textarea
-          v-model="note"
-          class="mt-3"
-          label="Feedback visible to the author"
-          :required="decision === 'Reject'"
-          :maxlength="500"
-          :disabled="saving"
-        />
-      </template>
-      <p v-if="details.decision_note" class="mt-4 whitespace-pre-wrap text-base">
-        {{ details.decision_note }}
-      </p>
-      <Button v-if="details.status === 'Approved'" class="mt-4" :route="publishedRoute"
-        >Open published post</Button
-      >
+        <p class="text-base text-ink-gray-6">
+          {{ details.status }} · {{ dayjsLocal(details.creation).format('D MMM YYYY') }}
+        </p>
+        <template v-if="details.status === 'Pending' && communityId">
+          <Select
+            v-model="decision"
+            class="mt-4"
+            label="Decision"
+            :disabled="saving"
+            :options="['Approve', 'Reject']"
+          />
+          <Textarea
+            v-model="note"
+            class="mt-3"
+            label="Feedback visible to the author"
+            :required="decision === 'Reject'"
+            :maxlength="500"
+            :disabled="saving"
+          />
+        </template>
+        <p v-if="details.decision_note" class="mt-4 whitespace-pre-wrap text-base">
+          {{ details.decision_note }}
+        </p>
+        <Button v-if="details.status === 'Approved'" class="mt-4" :route="publishedRoute"
+          >Open published post</Button
+        >
       </div>
     </template>
     <ErrorMessage

@@ -86,20 +86,20 @@ def counter(community):
 	accepted = len(discussions.select(Discussion.name).where(Discussion.owner == user).limit(100).run())
 	if accepted < 100:
 		accepted += len(
-		frappe.qb.from_(Comment)
-		.select(Comment.name)
-		.where(
-			(Comment.reference_doctype == "GP Discussion")
-			& Comment.reference_name.isin(discussions.select(Discussion.name))
-		)
-		.where(
-			(Comment.owner == user)
-			& Comment.deleted_at.isnull()
-			& Comment.hidden_at.isnull()
-			& Comment.spam_removed_at.isnull()
-		)
-		.limit(100 - accepted)
-		.run()
+			frappe.qb.from_(Comment)
+			.select(Comment.name)
+			.where(
+				(Comment.reference_doctype == "GP Discussion")
+				& Comment.reference_name.isin(discussions.select(Discussion.name))
+			)
+			.where(
+				(Comment.owner == user)
+				& Comment.deleted_at.isnull()
+				& Comment.hidden_at.isnull()
+				& Comment.spam_removed_at.isnull()
+			)
+			.limit(100 - accepted)
+			.run()
 		)
 	row = frappe.get_doc(doctype="GP Approval Counter", community=community, user=user, accepted=accepted)
 	row.insert(ignore_permissions=True)

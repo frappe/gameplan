@@ -2,7 +2,11 @@
   <div class="text-ink-gray-9">
     <template v-if="canModerate">
       <div class="mb-4 flex justify-end">
-        <ApprovalSettings v-if="canManageCommunity(community, useSessionUser())" :key="communityId" :community-id="communityId" />
+        <ApprovalSettings
+          v-if="canManageCommunity(community, useSessionUser())"
+          :key="communityId"
+          :community-id="communityId"
+        />
       </div>
       <TabButtons
         v-model="tab"
